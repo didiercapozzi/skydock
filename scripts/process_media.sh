@@ -99,7 +99,7 @@ if [[ "${THEORY_COUNT}" -gt 0 ]]; then
                 "${SESSION_DIR}/${BASENAME}_frame_%04d.jpg"
         else
             echo "[Theory] Copying video ${FILENAME}..."
-            cp -a "${filepath}" "${SESSION_DIR}/${FILENAME}"
+            cp -an "${filepath}" "${SESSION_DIR}/${FILENAME}"
         fi
 
         echo "${file_id}" >> "${REGISTRY_FILE}"
@@ -118,9 +118,9 @@ if [[ "${NEW_COUNT}" -eq 0 ]]; then
 
         for session_dir in "${THEORY_SESSION_DIRS[@]}"; do
             [[ -d "${session_dir}" ]] || continue
-            cp -a "${session_dir}"/* "${PHOTOS_DIR}/" 2>/dev/null || true
-            cp -a "${session_dir}"/*.MP4 "${VIDEOS_DIR}/" 2>/dev/null || true
-            cp -a "${session_dir}"/*.mp4 "${VIDEOS_DIR}/" 2>/dev/null || true
+            cp -an "${session_dir}"/* "${PHOTOS_DIR}/" 2>/dev/null || true
+            cp -an "${session_dir}"/*.MP4 "${VIDEOS_DIR}/" 2>/dev/null || true
+            cp -an "${session_dir}"/*.mp4 "${VIDEOS_DIR}/" 2>/dev/null || true
         done
         rm -rf "${THEORY_SESSION_DIRS[@]}"
         sync
@@ -179,7 +179,7 @@ while IFS='|' read -r epoch cam_type filepath file_id; do
             "${PHOTOS_DIR}/${BASENAME}_frame_%04d.jpg"
     else
         echo "[Copy] Camera 2 (Video): Ingesting 4K video ${FILENAME} -> Jump_$(printf "%02d" "${CURRENT_JUMP_NUM}")..."
-        cp -a "${filepath}" "${VIDEOS_DIR}/${FILENAME}"
+            cp -an "${filepath}" "${VIDEOS_DIR}/${FILENAME}"
     fi
 
     # Mark as completed in registry
@@ -220,11 +220,11 @@ if [[ ${#THEORY_SESSION_DIRS[@]} -gt 0 ]]; then
             VIDEOS_DIR="${jump_dir}/videos"
 
             # Copy theory photos (JPEGs)
-            cp -a "${SESSION_DIR}"/*.jpg "${PHOTOS_DIR}/" 2>/dev/null || true
+            cp -an "${SESSION_DIR}"/*.jpg "${PHOTOS_DIR}/" 2>/dev/null || true
 
             # Copy theory videos (MP4s)
-            cp -a "${SESSION_DIR}"/*.MP4 "${VIDEOS_DIR}/" 2>/dev/null || true
-            cp -a "${SESSION_DIR}"/*.mp4 "${VIDEOS_DIR}/" 2>/dev/null || true
+            cp -an "${SESSION_DIR}"/*.MP4 "${VIDEOS_DIR}/" 2>/dev/null || true
+            cp -an "${SESSION_DIR}"/*.mp4 "${VIDEOS_DIR}/" 2>/dev/null || true
 
             echo "[Theory] Copied theory files to $(basename "${jump_dir}")"
         fi
