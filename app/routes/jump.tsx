@@ -1,6 +1,7 @@
-import { useLoaderData, Link } from "react-router";
+import { useLoaderData, Link, useFetcher } from "react-router";
 import type { Route } from "./+types/jump";
-import { getJump } from "../lib/scanner.server";
+import { getJump, getOutputDirPath } from "../lib/scanner.server";
+import type { FileEntry, Jump } from "../lib/types";
 
 const formatBytes = (bytes: number): string => {
   if (bytes === 0) return "0 B";
@@ -10,14 +11,77 @@ const formatBytes = (bytes: number): string => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 };
 
+const TheoryToggle = ({
+  file,
+  jumpId,
+}: {
+  file: FileEntry;
+  jumpId: string;
+}) => {
+  const fetcher = useFetcher();
+  const optimistic = fetcher.formData
+    ? fetcher.formData.get("isTheory") === "true"
+    : file.isTheory;
+
+  return (
+    <fetcher.Form method="post" action="/api/theory">
+      <input type="hidden" name="action" value="toggle" />
+      <input type="hidden" name="filePath" value={file.path} />
+      <input
+        type="hidden"
+        name="isTheory"
+        value={optimistic ? "false" : "true"}
+      />
+      <input type="hidden" name="jumpId" value={jumpId} />
+      <button
+        type="submit"
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide transition cursor-pointer ${
+          optimistic
+            ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50"
+            : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+        }`}
+      >
+        {optimistic ? "Theory" : "Mark theory"}
+      </button>
+    </fetcher.Form>
+  );
+};
+
+const ApplyButton = ({ jump }: { jump: Jump }) => {
+  const fetcher = useFetcher();
+  const busy = fetcher.state !== "idle";
+
+  return (
+    <fetcher.Form method="post" action="/api/theory">
+      <input type="hidden" name="action" value="apply" />
+      <input type="hidden" name="sourceJump" value={jump.id.split("/")[1]} />
+      <input type="hidden" name="sourceJumpDate" value={jump.date} />
+      <button
+        type="submit"
+        disabled={busy}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition disabled:opacity-50 cursor-pointer"
+      >
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+        </svg>
+        {busy ? "Applying..." : "Apply theory to all jumps"}
+      </button>
+    </fetcher.Form>
+  );
+};
+
 const FileTable = ({
   files,
   label,
   icon,
+  jumpId,
+  showToggles,
 }: {
-  files: { name: string; size: number; isTheory: boolean }[];
+  files: FileEntry[];
   label: string;
   icon: React.ReactNode;
+  jumpId: string;
+  showToggles: boolean;
 }) => {
   if (files.length === 0) return null;
   return (
@@ -33,6 +97,9 @@ const FileTable = ({
             <tr className="bg-gray-50 dark:bg-gray-800/50">
               <th className="text-left px-4 py-2 font-medium text-gray-500 dark:text-gray-400">Filename</th>
               <th className="text-right px-4 py-2 font-medium text-gray-500 dark:text-gray-400">Size</th>
+              {showToggles && (
+                <th className="w-24 px-4 py-2 font-medium text-gray-500 dark:text-gray-400 text-center">Theory</th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -49,17 +116,17 @@ const FileTable = ({
               >
                 <td className="px-4 py-2 font-mono text-xs text-gray-900 dark:text-gray-200">
                   <span className="flex items-center gap-2">
-                    {f.isTheory && (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 uppercase tracking-wide">
-                        Theory
-                      </span>
-                    )}
                     {f.name}
                   </span>
                 </td>
                 <td className="px-4 py-2 text-right text-gray-500 dark:text-gray-400 tabular-nums whitespace-nowrap">
                   {formatBytes(f.size)}
                 </td>
+                {showToggles && (
+                  <td className="px-4 py-2 text-center">
+                    <TheoryToggle file={f} jumpId={jumpId} />
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -72,7 +139,8 @@ const FileTable = ({
 const loader = ({ params }: Route.LoaderArgs) => {
   const jump = getJump(params.date, params.jumpDir);
   if (!jump) throw new Response("Jump not found", { status: 404 });
-  return jump;
+  const outputDir = getOutputDirPath();
+  return { jump, outputDir };
 };
 
 const meta = ({ params }: Route.MetaArgs) => [
@@ -81,7 +149,7 @@ const meta = ({ params }: Route.MetaArgs) => [
 ];
 
 const JumpDetail = () => {
-  const jump = useLoaderData<typeof loader>();
+  const { jump } = useLoaderData<typeof loader>();
 
   return (
     <div className="min-h-screen">
@@ -95,7 +163,7 @@ const JumpDetail = () => {
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-1">
             <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
               <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -109,6 +177,7 @@ const JumpDetail = () => {
               )}
             </div>
           </div>
+          <ApplyButton jump={jump} />
         </div>
       </header>
 
@@ -128,6 +197,8 @@ const JumpDetail = () => {
         <FileTable
           files={jump.jumpPhotos}
           label="Jump Photos"
+          jumpId={jump.id}
+          showToggles={true}
           icon={
             <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -138,6 +209,8 @@ const JumpDetail = () => {
         <FileTable
           files={jump.theoryPhotos}
           label="Theory Photos"
+          jumpId={jump.id}
+          showToggles={true}
           icon={
             <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -148,6 +221,8 @@ const JumpDetail = () => {
         <FileTable
           files={jump.jumpVideos}
           label="Jump Videos"
+          jumpId={jump.id}
+          showToggles={true}
           icon={
             <svg className="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -158,6 +233,8 @@ const JumpDetail = () => {
         <FileTable
           files={jump.theoryVideos}
           label="Theory Videos"
+          jumpId={jump.id}
+          showToggles={true}
           icon={
             <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />

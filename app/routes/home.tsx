@@ -11,6 +11,16 @@ const formatBytes = (bytes: number): string => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 };
 
+const formatTime = (epoch: number): string => {
+  if (epoch === 0) return "";
+  const d = new Date(epoch * 1000);
+  return d.toLocaleTimeString("de-CH", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Zurich",
+  });
+};
+
 const JumpCard = ({ jump }: { jump: Jump }) => (
   <Link
     to={`/jump/${jump.date}/${encodeURIComponent(jump.id.split("/")[1])}`}
@@ -27,9 +37,16 @@ const JumpCard = ({ jump }: { jump: Jump }) => (
           </p>
         )}
       </div>
-      <span className="text-xs font-medium text-gray-400 dark:text-gray-500 tabular-nums">
-        {formatBytes(jump.totalSize)}
-      </span>
+      <div className="text-right">
+        {jump.startedAt > 0 && (
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums">
+            {formatTime(jump.startedAt)}
+          </p>
+        )}
+        <p className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
+          {formatBytes(jump.totalSize)}
+        </p>
+      </div>
     </div>
 
     <div className="grid grid-cols-2 gap-3">

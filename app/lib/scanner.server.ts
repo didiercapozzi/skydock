@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import type { FileEntry, Jump, DayGroup } from "./types";
+import type { FileEntry, Jump, DayGroup, TheoryOverrides } from "./types";
 
 const getOutputDir = (): string => {
   if (process.env.SKYDOCK_OUTPUT_DIR) {
@@ -10,20 +10,48 @@ const getOutputDir = (): string => {
   return path.join(workspace, ".sim", "output");
 };
 
-const isTheoryFile = (name: string): boolean => /theory/i.test(name);
+const OVERRIDES_FILE = ".theory_overrides.json";
 
-const scanFiles = (dirPath: string): FileEntry[] => {
+const loadOverrides = (outputDir: string): TheoryOverrides => {
+  const filePath = path.join(outputDir, OVERRIDES_FILE);
+  if (!fs.existsSync(filePath)) return {};
+  try {
+    return JSON.parse(fs.readFileSync(filePath, "utf-8")) as TheoryOverrides;
+  } catch {
+    return {};
+  }
+};
+
+export const saveOverrides = (
+  outputDir: string,
+  overrides: TheoryOverrides,
+): void => {
+  const filePath = path.join(outputDir, OVERRIDES_FILE);
+  fs.writeFileSync(filePath, JSON.stringify(overrides, null, 2));
+};
+
+const isTheoryFileName = (name: string): boolean => /theory/i.test(name);
+
+const scanFiles = (
+  dirPath: string,
+  overrides: TheoryOverrides,
+): FileEntry[] => {
   if (!fs.existsSync(dirPath)) return [];
   return fs
     .readdirSync(dirPath)
     .filter((f) => fs.statSync(path.join(dirPath, f)).isFile())
     .map((name) => {
-      const stat = fs.statSync(path.join(dirPath, name));
+      const filePath = path.join(dirPath, name);
+      const stat = fs.statSync(filePath);
+      const nameBased = isTheoryFileName(name);
+      const overridden = overrides[filePath];
+      const isTheory = overridden !== undefined ? overridden : nameBased;
       return {
         name,
-        path: path.join(dirPath, name),
+        path: filePath,
         size: stat.size,
-        isTheory: isTheoryFile(name),
+        isTheory,
+        mtime: Math.floor(stat.mtimeMs / 1000),
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -44,10 +72,11 @@ const buildJump = (
   date: string,
   dirName: string,
   jumpPath: string,
+  overrides: TheoryOverrides,
 ): Jump => {
   const { name, displayName } = parseJumpDir(dirName);
-  const allPhotos = scanFiles(path.join(jumpPath, "photos"));
-  const allVideos = scanFiles(path.join(jumpPath, "videos"));
+  const allPhotos = scanFiles(path.join(jumpPath, "photos"), overrides);
+  const allVideos = scanFiles(path.join(jumpPath, "videos"), overrides);
 
   const jumpPhotos = allPhotos.filter((f) => !f.isTheory);
   const jumpVideos = allVideos.filter((f) => !f.isTheory);
@@ -57,6 +86,9 @@ const buildJump = (
   const totalSize =
     allPhotos.reduce((s, f) => s + f.size, 0) +
     allVideos.reduce((s, f) => s + f.size, 0);
+
+  const videoTimes = allVideos.map((f) => f.mtime).filter((t) => t > 0);
+  const startedAt = videoTimes.length > 0 ? Math.min(...videoTimes) : 0;
 
   return {
     id: `${date}/${dirName}`,
@@ -72,12 +104,14 @@ const buildJump = (
     theoryPhotos,
     theoryVideos,
     totalSize,
+    startedAt,
   };
 };
 
 export const scanOutput = (): DayGroup[] => {
   const outputDir = getOutputDir();
   if (!fs.existsSync(outputDir)) return [];
+  const overrides = loadOverrides(outputDir);
 
   const dateDirs = fs
     .readdirSync(outputDir)
@@ -99,7 +133,7 @@ export const scanOutput = (): DayGroup[] => {
       .sort();
 
     const jumps: Jump[] = jumpDirs.map((dirName) =>
-      buildJump(date, dirName, path.join(datePath, dirName)),
+      buildJump(date, dirName, path.join(datePath, dirName), overrides),
     );
 
     const totalPhotos = jumps.reduce(
@@ -119,5 +153,8 @@ export const getJump = (date: string, jumpDir: string): Jump | null => {
   const outputDir = getOutputDir();
   const jumpPath = path.join(outputDir, date, jumpDir);
   if (!fs.existsSync(jumpPath)) return null;
-  return buildJump(date, jumpDir, jumpPath);
+  const overrides = loadOverrides(outputDir);
+  return buildJump(date, jumpDir, jumpPath, overrides);
 };
+
+export const getOutputDirPath = (): string => getOutputDir();

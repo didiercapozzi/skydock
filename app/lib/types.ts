@@ -3,6 +3,7 @@ export type FileEntry = {
   path: string;
   size: number;
   isTheory: boolean;
+  mtime: number;
 };
 
 export type Jump = {
@@ -19,6 +20,7 @@ export type Jump = {
   theoryPhotos: FileEntry[];
   theoryVideos: FileEntry[];
   totalSize: number;
+  startedAt: number;
 };
 
 export type DayGroup = {
@@ -27,3 +29,5 @@ export type DayGroup = {
   totalPhotos: number;
   totalVideos: number;
 };
+
+export type TheoryOverrides = Record<string, boolean>;
