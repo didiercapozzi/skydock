@@ -6,7 +6,11 @@
     "build": "react-router build",
     "dev": "react-router dev --host",
     "start": "react-router-serve ./build/server/index.js",
-    "typecheck": "react-router typegen && tsc"
+    "typecheck": "react-router typegen && tsc",
+    "check": "npm run typecheck && npm run format:check && npm run lint",
+    "fc": "npm run format && npm run check",
+    "format": "oxfmt --config oxfmt.config.ts .",
+    "format:check": "oxfmt --config oxfmt.config.ts --check ."
   },
   "dependencies": {
     "@react-router/node": "^8",
@@ -22,6 +26,8 @@
     "@types/node": "^22",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "oxfmt": "^0.64.0",
+    "oxlint": "^1.79.0",
     "tailwindcss": "^4.2.2",
     "typescript": "^5.9.3",
     "vite": "^8.0.3"
