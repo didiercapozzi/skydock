@@ -162,17 +162,7 @@ for (( t=1; t<=THEORY_SESSIONS; t++ )); do
 
     echo "[Sim]   Creating ${THEORY_LABEL} (offset: $((THEORY_EPOCH - BASE_EPOCH))s)..."
 
-    # Camera 1 theory video (photos camera records theory)
-    FILE_COUNTER=$((FILE_COUNTER + 1))
-    FILENAME=$(printf "DJI_%04d_THEORY.MP4" "${FILE_COUNTER}")
-    FILEPATH="${PHOTO_DIR}/${FILENAME}"
-
-    generate_dummy_mp4 "${FILEPATH}" $((VIDEO_DURATION * 3))  # Theory videos longer
-    touch -d "@${THEORY_EPOCH}" "${FILEPATH}"
-
-    echo "${THEORY_EPOCH}|PHOTO|${FILEPATH}|PHOTO:${FILENAME}:$(stat -c %s "${FILEPATH}"):${THEORY_EPOCH}" >> "${MANIFEST_FILE}"
-
-    # Camera 2 theory video (video camera also records theory)
+    # Camera 2 theory video (video camera records theory)
     FILE_COUNTER=$((FILE_COUNTER + 1))
     FILENAME=$(printf "DJI_%04d_THEORY.MP4" "${FILE_COUNTER}")
     FILEPATH="${VIDEO_DIR}/${FILENAME}"

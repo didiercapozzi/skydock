@@ -1,7 +1,7 @@
 import type { Route } from './+types/api.theory'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { getOutputDirPath, saveOverrides } from '../lib/scanner.server'
+import { getOutputDirPath, saveOverrides, getTheoryDir } from '../lib/scanner.server'
 import type { TheoryOverrides } from '../lib/types'
 
 const OVERRIDES_FILE = '.theory_overrides.json'
@@ -16,12 +16,24 @@ const loadOverrides = (outputDir: string): TheoryOverrides => {
   }
 }
 
-const collectFiles = (dirPath: string): string[] => {
-  if (!fs.existsSync(dirPath)) return []
-  return fs
-    .readdirSync(dirPath)
-    .filter((f) => fs.statSync(path.join(dirPath, f)).isFile())
-    .map((f) => path.join(dirPath, f))
+const formatTimestamp = (epoch: number): string => {
+  const d = new Date(epoch * 1000)
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
+}
+
+const ensureDir = (dirPath: string): void => {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true })
+  }
+}
+
+const getSourceDateFromPath = (filePath: string): string => {
+  const parts = filePath.split(path.sep)
+  for (const part of parts) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(part)) return part
+  }
+  return ''
 }
 
 const action = async ({ request }: Route.ActionArgs) => {
@@ -35,8 +47,69 @@ const action = async ({ request }: Route.ActionArgs) => {
     const filePath = String(formData.get('filePath') ?? '')
     const isTheory = String(formData.get('isTheory') ?? '') === 'true'
     if (!filePath) return { ok: false, error: 'Missing filePath' }
-    overrides[filePath] = isTheory
+
+    if (isTheory) {
+      if (!fs.existsSync(filePath)) {
+        return { ok: false, error: 'File not found' }
+      }
+
+      const stat = fs.statSync(filePath)
+      const ext = path.extname(filePath)
+      const theoryTimestamp = formatTimestamp(stat.mtimeMs / 1000)
+      const newName = `theory_${theoryTimestamp}${ext}`
+
+      const theoryDir = getTheoryDir()
+      ensureDir(theoryDir)
+      const newPath = path.join(theoryDir, newName)
+
+      fs.copyFileSync(filePath, newPath)
+      fs.unlinkSync(filePath)
+
+      overrides[newPath] = {
+        originalPath: filePath,
+        sourceDate: getSourceDateFromPath(filePath)
+      }
+    } else {
+      const override = overrides[filePath]
+      if (override?.originalPath) {
+        const originalDir = path.dirname(override.originalPath)
+        ensureDir(originalDir)
+        fs.copyFileSync(filePath, override.originalPath)
+        fs.unlinkSync(filePath)
+        delete overrides[filePath]
+      }
+    }
+
     saveOverrides(outputDir, overrides)
+    return { ok: true }
+  }
+
+  if (formAction === 'copy-to-jump') {
+    const theoryPath = String(formData.get('theoryPath') ?? '')
+    const targetDate = String(formData.get('targetDate') ?? '')
+    const targetJumpDir = String(formData.get('targetJumpDir') ?? '')
+
+    if (!theoryPath || !targetDate || !targetJumpDir) {
+      return { ok: false, error: 'Missing parameters' }
+    }
+
+    if (!fs.existsSync(theoryPath)) {
+      return { ok: false, error: 'Theory file not found' }
+    }
+
+    const targetVideosDir = path.join(outputDir, targetDate, targetJumpDir, 'videos')
+    if (!fs.existsSync(targetVideosDir)) {
+      return { ok: false, error: 'Target jump not found' }
+    }
+
+    const theoryName = path.basename(theoryPath)
+    const targetPath = path.join(targetVideosDir, theoryName)
+
+    if (fs.existsSync(targetPath)) {
+      return { ok: true, message: 'File already exists' }
+    }
+
+    fs.copyFileSync(theoryPath, targetPath)
     return { ok: true }
   }
 
@@ -50,6 +123,14 @@ const action = async ({ request }: Route.ActionArgs) => {
     const sourcePath = path.join(outputDir, sourceJumpDate, sourceJump)
     if (!fs.existsSync(sourcePath)) {
       return { ok: false, error: 'Source jump not found' }
+    }
+
+    const collectFiles = (dirPath: string): string[] => {
+      if (!fs.existsSync(dirPath)) return []
+      return fs
+        .readdirSync(dirPath)
+        .filter((f) => fs.statSync(path.join(dirPath, f)).isFile())
+        .map((f) => path.join(dirPath, f))
     }
 
     const sourceFiles = collectFiles(path.join(sourcePath, 'photos')).concat(
@@ -81,7 +162,11 @@ const action = async ({ request }: Route.ActionArgs) => {
           const sourceName = path.basename(sourceFile)
           const matching = allJumpFiles.find((f) => path.basename(f) === sourceName)
           if (matching) {
-            overrides[matching] = overrides[sourceFile] ?? true
+            const sourceOverride = overrides[sourceFile]
+            overrides[matching] = sourceOverride ?? {
+              originalPath: matching,
+              sourceDate: getSourceDateFromPath(matching)
+            }
           }
         }
       }

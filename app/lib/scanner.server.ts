@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import type { FileEntry, Jump, DayGroup, TheoryOverrides } from './types'
+import type { FileEntry, Jump, DayGroup, TheoryOverrides, TheoryVideoWithSource } from './types'
 
 const getOutputDir = (): string => {
   if (process.env.SKYDOCK_OUTPUT_DIR) {
@@ -11,6 +11,9 @@ const getOutputDir = (): string => {
 }
 
 const OVERRIDES_FILE = '.theory_overrides.json'
+const THEORY_DIR = 'theory'
+
+export const getTheoryDir = (): string => path.join(getOutputDir(), THEORY_DIR)
 
 const loadOverrides = (outputDir: string): TheoryOverrides => {
   const filePath = path.join(outputDir, OVERRIDES_FILE)
@@ -39,7 +42,7 @@ const scanFiles = (dirPath: string, overrides: TheoryOverrides): FileEntry[] => 
       const stat = fs.statSync(filePath)
       const nameBased = isTheoryFileName(name)
       const overridden = overrides[filePath]
-      const isTheory = overridden !== undefined ? overridden : nameBased
+      const isTheory = overridden !== undefined ? true : nameBased
       return {
         name,
         path: filePath,
@@ -99,10 +102,45 @@ const buildJump = (
   }
 }
 
-export const scanOutput = (): DayGroup[] => {
+export const scanTheoryFolder = (): TheoryVideoWithSource[] => {
   const outputDir = getOutputDir()
-  if (!fs.existsSync(outputDir)) return []
+  const theoryDir = path.join(outputDir, THEORY_DIR)
+  if (!fs.existsSync(theoryDir)) return []
+
   const overrides = loadOverrides(outputDir)
+
+  return fs
+    .readdirSync(theoryDir)
+    .filter((f) => {
+      const full = path.join(theoryDir, f)
+      return fs.statSync(full).isFile()
+    })
+    .map((name) => {
+      const filePath = path.join(theoryDir, name)
+      const stat = fs.statSync(filePath)
+      const override = overrides[filePath]
+      const sourceDate = override?.sourceDate ?? ''
+
+      return {
+        name,
+        path: filePath,
+        size: stat.size,
+        isTheory: true,
+        mtime: Math.floor(stat.mtimeMs / 1000),
+        jumpName: '',
+        passengerName: null,
+        jumpDate: sourceDate,
+        jumpId: ''
+      }
+    })
+    .sort((a, b) => a.name.localeCompare(b.name))
+}
+
+export const scanOutput = (): { days: DayGroup[]; theoryVideos: TheoryVideoWithSource[] } => {
+  const outputDir = getOutputDir()
+  if (!fs.existsSync(outputDir)) return { days: [], theoryVideos: [] }
+
+  const theoryVideos = scanTheoryFolder()
 
   const dateDirs = fs
     .readdirSync(outputDir)
@@ -113,7 +151,7 @@ export const scanOutput = (): DayGroup[] => {
     .sort()
     .reverse()
 
-  return dateDirs.map((date) => {
+  const days = dateDirs.map((date) => {
     const datePath = path.join(outputDir, date)
     const jumpDirs = fs
       .readdirSync(datePath)
@@ -123,6 +161,7 @@ export const scanOutput = (): DayGroup[] => {
       })
       .sort()
 
+    const overrides = loadOverrides(outputDir)
     const jumps: Jump[] = jumpDirs.map((dirName) =>
       buildJump(date, dirName, path.join(datePath, dirName), overrides)
     )
@@ -132,6 +171,8 @@ export const scanOutput = (): DayGroup[] => {
 
     return { date, jumps, totalPhotos, totalVideos }
   })
+
+  return { days, theoryVideos }
 }
 
 export const getJump = (date: string, jumpDir: string): Jump | null => {

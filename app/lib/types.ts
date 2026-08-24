@@ -30,4 +30,16 @@ export type DayGroup = {
   totalVideos: number
 }
 
-export type TheoryOverrides = Record<string, boolean>
+export type TheoryOverride = {
+  originalPath: string
+  sourceDate: string
+}
+
+export type TheoryOverrides = Record<string, TheoryOverride>
+
+export type TheoryVideoWithSource = FileEntry & {
+  jumpName: string
+  passengerName: string | null
+  jumpDate: string
+  jumpId: string
+}

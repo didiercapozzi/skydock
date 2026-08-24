@@ -216,11 +216,7 @@ if [[ ${#THEORY_SESSION_DIRS[@]} -gt 0 ]]; then
 
         if [[ "${BEST_EPOCH}" -gt 0 ]]; then
             SESSION_DIR="${THEORY_SESSION_DIRS[$BEST_IDX]}"
-            PHOTOS_DIR="${jump_dir}/photos"
             VIDEOS_DIR="${jump_dir}/videos"
-
-            # Copy theory photos (JPEGs)
-            cp -an "${SESSION_DIR}"/*.jpg "${PHOTOS_DIR}/" 2>/dev/null || true
 
             # Copy theory videos (MP4s)
             cp -an "${SESSION_DIR}"/*.MP4 "${VIDEOS_DIR}/" 2>/dev/null || true

@@ -252,11 +252,10 @@ for d in "${DATE_DIR}"/Jump_*; do
 
     # Check for theory videos (files with THEORY in name)
     THEORY_VIDEOS=$(find "${d}/videos" -type f -iname "*THEORY*" 2>/dev/null | wc -l)
-    THEORY_PHOTOS=$(find "${d}/photos" -type f -iname "*THEORY*" 2>/dev/null | wc -l)
 
-    if [[ "${THEORY_VIDEOS}" -gt 0 ]] || [[ "${THEORY_PHOTOS}" -gt 0 ]]; then
+    if [[ "${THEORY_VIDEOS}" -gt 0 ]]; then
         THEORY_COPIED=$((THEORY_COPIED + 1))
-        echo "  PASS: ${JUMP_NAME} has ${THEORY_VIDEOS} theory video(s), ${THEORY_PHOTOS} theory photo(s)"
+        echo "  PASS: ${JUMP_NAME} has ${THEORY_VIDEOS} theory video(s)"
     fi
 done
 
