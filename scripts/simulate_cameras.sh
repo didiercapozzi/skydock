@@ -16,6 +16,7 @@ set -eo pipefail
 #   --gap SECS         Gap in seconds between jumps (default: 960)
 #   --date YYYY-MM-DD  Target date for timestamps (default: today)
 #   --use-ffmpeg       Generate real MP4 test patterns (requires ffmpeg)
+#   --names FILE       Passenger names file (one name per line)
 #   --clean            Remove simulation directory before creating
 #   -h, --help         Show this help message
 #
@@ -34,6 +35,7 @@ TARGET_DATE=$(date +"%Y-%m-%d")
 USE_FFMPEG=false
 NO_FFMPEG=false
 CLEAN=false
+NAMES_FILE=""
 
 usage() {
     sed -n '/^# Usage:/,/^$/p' "$0" | sed 's/^# //' | sed 's/^#//'
@@ -51,6 +53,7 @@ while [[ $# -gt 0 ]]; do
         --date)     TARGET_DATE="$2"; shift 2 ;;
         --use-ffmpeg) USE_FFMPEG=true; shift ;;
         --no-ffmpeg) NO_FFMPEG=true; shift ;;
+        --names)    NAMES_FILE="$2"; shift 2 ;;
         --clean)    CLEAN=true; shift ;;
         -h|--help)  usage ;;
         *)          echo "Unknown option: $1"; usage ;;
@@ -203,3 +206,31 @@ echo "Or manually:"
 echo "  PHOTO_PATH='${PHOTO_DIR}' VIDEO_PATH='${VIDEO_DIR}'"
 echo "  ./scripts/process_media.sh \"\${PHOTO_PATH}\" \"\${VIDEO_PATH}\""
 echo "============================================================"
+
+# ─── Generate passenger names file ─────────────────────────────
+NAMES_OUTPUT="${SIM_BASE}/passengers.txt"
+if [[ -n "${NAMES_FILE}" && -f "${NAMES_FILE}" ]]; then
+    cp "${NAMES_FILE}" "${NAMES_OUTPUT}"
+    echo "[Sim] Copied passenger names from ${NAMES_FILE}"
+else
+    # Generate default sample names
+    echo "[Sim] Generating sample passenger names file..."
+    SAMPLE_NAMES=(
+        "Alice Johnson"
+        "Bob Smith"
+        "Carol Davis"
+        "David Wilson"
+        "Emma Brown"
+        "Frank Miller"
+        "Grace Lee"
+        "Henry Taylor"
+        "Ivy Anderson"
+        "Jack Thomas"
+    )
+    : > "${NAMES_OUTPUT}"
+    for (( i=0; i<NUM_JUMPS && i<${#SAMPLE_NAMES[@]}; i++ )); do
+        echo "${SAMPLE_NAMES[$i]}" >> "${NAMES_OUTPUT}"
+    done
+fi
+echo "[Sim] Passenger names file: ${NAMES_OUTPUT}"
+cat "${NAMES_OUTPUT}"

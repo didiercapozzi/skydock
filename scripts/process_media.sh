@@ -3,6 +3,7 @@ set -eo pipefail
 
 PHOTO_ROOT="$1"
 VIDEO_ROOT="$2"
+NAMES_FILE="${3:-}"
 REGISTRY_FILE="/output/.ingested_registry.txt"
 JUMP_GAP=${JUMP_GAP_SECONDS:-900}
 PHOTO_FPS=${PHOTO_FPS:-2}
@@ -111,3 +112,23 @@ done < "${SORTED_MANIFEST}"
 
 sync
 echo "[Done] Batch ingestion complete for date: ${TARGET_DATE}."
+
+# ─── Apply passenger names to jump directories ────────────────
+if [[ -n "${NAMES_FILE}" && -f "${NAMES_FILE}" ]]; then
+    echo "[Names] Applying passenger names from ${NAMES_FILE}..."
+    JUMP_INDEX=0
+    while IFS= read -r name || [[ -n "${name}" ]]; do
+        name=$(echo "${name}" | xargs)  # trim whitespace
+        [[ -z "${name}" ]] && continue
+        JUMP_INDEX=$((JUMP_INDEX + 1))
+        OLD_DIR="${DATE_DIR}/Jump_$(printf "%02d" "${JUMP_INDEX}")"
+        # Sanitize name for filesystem: replace spaces with underscores, remove special chars
+        SAFE_NAME=$(echo "${name}" | sed 's/[^a-zA-Z0-9 _-]//g' | tr ' ' '_')
+        NEW_DIR="${DATE_DIR}/Jump_$(printf "%02d" "${JUMP_INDEX}")_${SAFE_NAME}"
+        if [[ -d "${OLD_DIR}" ]]; then
+            mv "${OLD_DIR}" "${NEW_DIR}"
+            echo "[Names] Renamed Jump_$(printf "%02d" "${JUMP_INDEX}") -> $(basename "${NEW_DIR}")"
+        fi
+    done < "${NAMES_FILE}"
+    echo "[Names] Applied ${JUMP_INDEX} passenger name(s)."
+fi

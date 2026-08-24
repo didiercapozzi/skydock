@@ -12,6 +12,7 @@ set -eo pipefail
 #   --video-dir DIR    Pre-existing video camera directory (skips simulation)
 #   --output DIR       Output directory for processed media (default: <project_root>/.sim/output)
 #   --jumps N          Number of jumps to simulate (default: 3)
+#   --names FILE       Passenger names file (one name per line)
 #   --clean            Remove output and simulation dirs before running
 #   -h, --help         Show this help message
 #
@@ -26,6 +27,7 @@ NUM_JUMPS=3
 CLEAN=false
 PHOTO_DIR=""
 VIDEO_DIR=""
+NAMES_FILE=""
 
 usage() {
     sed -n '/^# Usage:/,/^$/p' "$0" | sed 's/^# //' | sed 's/^#//'
@@ -38,6 +40,7 @@ while [[ $# -gt 0 ]]; do
         --video-dir)  VIDEO_DIR="$2"; shift 2 ;;
         --output)     OUTPUT_DIR="$2"; shift 2 ;;
         --jumps)      NUM_JUMPS="$2"; shift 2 ;;
+        --names)      NAMES_FILE="$2"; shift 2 ;;
         --clean)      CLEAN=true; shift ;;
         -h|--help)    usage ;;
         *)            echo "Unknown option: $1"; usage ;;
@@ -74,12 +77,18 @@ if [ -n "${PHOTO_DIR}" ] && [ -n "${VIDEO_DIR}" ]; then
     echo "  Video: ${VIDEO_DIR}"
 else
     echo "[Test] Generating simulated camera files..."
-    "${SCRIPT_DIR}/simulate_cameras.sh" \
-        --output "${SIM_BASE}" \
-        --jumps "${NUM_JUMPS}" \
-        --clean
+    SIM_ARGS=(--output "${SIM_BASE}" --jumps "${NUM_JUMPS}" --clean)
+    if [[ -n "${NAMES_FILE}" ]]; then
+        SIM_ARGS+=(--names "${NAMES_FILE}")
+    fi
+    "${SCRIPT_DIR}/simulate_cameras.sh" "${SIM_ARGS[@]}"
     PHOTO_DIR="${SIM_BASE}/photo_cam"
     VIDEO_DIR="${SIM_BASE}/video_cam"
+fi
+
+# Use generated names file if none specified
+if [[ -z "${NAMES_FILE}" && -f "${SIM_BASE}/passengers.txt" ]]; then
+    NAMES_FILE="${SIM_BASE}/passengers.txt"
 fi
 
 if [ ! -d "${PHOTO_DIR}" ] && [ ! -d "${VIDEO_DIR}" ]; then
@@ -122,7 +131,7 @@ trap 'rm -f "${PATCHED_SCRIPT}" "${TEMP_OUTPUT_LINK}"' EXIT
 sed "s|/output|${OUTPUT_DIR}|g" "${SCRIPT_DIR}/process_media.sh" > "${PATCHED_SCRIPT}"
 chmod +x "${PATCHED_SCRIPT}"
 
-"${PATCHED_SCRIPT}" "${PHOTO_DIR}" "${VIDEO_DIR}" || {
+"${PATCHED_SCRIPT}" "${PHOTO_DIR}" "${VIDEO_DIR}" "${NAMES_FILE}" || {
     echo "[Test] ERROR: process_media.sh failed with exit code $?"
 }
 
@@ -200,11 +209,40 @@ else
     FAIL_COUNT=$((FAIL_COUNT + 1))
 fi
 
-# ─── Phase 4: Idempotency test ────────────────────────────────
+# ─── Phase 4: Verify passenger names ──────────────────────────
+
+echo ""
+if [[ -n "${NAMES_FILE}" && -f "${NAMES_FILE}" ]]; then
+    echo "[Test] Verifying passenger names were applied..."
+    NAMES_APPLIED=0
+    while IFS= read -r name || [[ -n "${name}" ]]; do
+        name=$(echo "${name}" | xargs)
+        [[ -z "${name}" ]] && continue
+        SAFE_NAME=$(echo "${name}" | sed 's/[^a-zA-Z0-9 _-]//g' | tr ' ' '_')
+        for dir in "${DATE_DIR}"/Jump_*"${SAFE_NAME}"*; do
+            if [[ -d "${dir}" ]]; then
+                NAMES_APPLIED=$((NAMES_APPLIED + 1))
+                break
+            fi
+        done
+    done < "${NAMES_FILE}"
+    
+    if [ "${NAMES_APPLIED}" -gt 0 ]; then
+        echo "  PASS: ${NAMES_APPLIED} passenger name(s) applied to jump directories"
+        PASS_COUNT=$((PASS_COUNT + 1))
+    else
+        echo "  FAIL: No passenger names found in jump directories"
+        FAIL_COUNT=$((FAIL_COUNT + 1))
+    fi
+else
+    echo "[Test] No names file provided, skipping passenger names verification"
+fi
+
+# ─── Phase 5: Idempotency test ────────────────────────────────
 
 echo ""
 echo "[Test] Running pipeline again (idempotency check)..."
-"${PATCHED_SCRIPT}" "${PHOTO_DIR}" "${VIDEO_DIR}" 2>/dev/null
+"${PATCHED_SCRIPT}" "${PHOTO_DIR}" "${VIDEO_DIR}" "${NAMES_FILE}" 2>/dev/null
 NEW_REGISTRY_LINES=$(wc -l < "${OUTPUT_DIR}/.ingested_registry.txt" 2>/dev/null || echo "0")
 
 if [ "${NEW_REGISTRY_LINES}" -eq "${REGISTRY_LINES:-0}" ]; then

@@ -36,6 +36,26 @@ Footage is automatically sorted into a dated directory on your host Desktop:
 
 ---
 
+## 👥 Passenger Names
+
+SkyDock can automatically rename jump directories with passenger names. Create a simple text file with one name per line, in the order they jumped:
+
+```bash
+# Create a names file
+cat > passengers.txt << 'EOF'
+Alice Johnson
+Bob Smith
+Carol Davis
+EOF
+
+# Run pipeline with names
+./scripts/process_media.sh /path/to/photo /path/to/video passengers.txt
+```
+
+Jump directories will be renamed: `Jump_01` → `Jump_01_Alice_Johnson`
+
+---
+
 ## 🧪 Testing Without Real Cameras
 
 SkyDock includes a full simulation harness for testing the pipeline without physical DJI cameras.

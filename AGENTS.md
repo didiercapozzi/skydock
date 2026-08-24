@@ -28,6 +28,17 @@ shellcheck scripts/process_media.sh
 - Use `[[ ]]` instead of `[ ]` for test commands when possible.
 - Use `$(( ))` for arithmetic instead of `expr` or `let`.
 
+## Feature Development Policy
+
+When adding new features to SkyDock:
+
+1. **Update `process_media.sh`** — Implement the core feature logic
+2. **Update `simulate_cameras.sh`** — Add simulation support for the new feature (e.g., generate test data, add CLI options)
+3. **Update `test_pipeline.sh`** — Add assertions to verify the feature works correctly
+4. **Run shellcheck** — Ensure all modified scripts pass `shellcheck` before committing
+
+This ensures every feature is testable without real cameras and verified in CI.
+
 ## Key Features
 
 - **Zero-Touch Automation**: Dock your cameras and walk away.
