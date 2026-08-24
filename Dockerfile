@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     udev \
     ffmpeg \
     rsync \
+    ffmpeg \
     curl \
     jq \
     ca-certificates \

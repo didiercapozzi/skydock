@@ -9,6 +9,7 @@ RUN apt update && apt install -y --no-install-recommends \
     ca-certificates \
     wget \
     curl \
+    ffmpeg \
     git \
     xdg-utils \
     && rm -rf /var/lib/apt/lists/*
