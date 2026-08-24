@@ -5,9 +5,12 @@ RUN apk add --no-cache ffmpeg
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm ci
 
-COPY build ./build
+COPY . .
+RUN npm run build
+
+RUN npm prune --omit=dev
 
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0

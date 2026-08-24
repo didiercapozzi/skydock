@@ -7,3 +7,11 @@ output/
 # React Router
 /.react-router/
 /build/
+
+# Electron
+/dist-electron/
+/electron/dist/
+/release/
+/resources/*.icns
+/resources/*.ico
+/resources/*.png

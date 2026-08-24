@@ -1,5 +1,5 @@
 {
-  "name": "DJI Pipeline (Dev Environment)",
+  "name": "SkyDock (Dev Environment)",
   "dockerComposeFile": "docker-compose.dev.yml",
   "service": "dev_container",
   "workspaceFolder": "/workspace",

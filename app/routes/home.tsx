@@ -272,10 +272,7 @@ const LibrarySidebar = ({
                       <button
                         type='button'
                         onClick={() => {
-                          fetcher.submit(
-                            { path: v.path },
-                            { method: 'post', action: '/api/open' }
-                          )
+                          fetcher.submit({ path: v.path }, { method: 'post', action: '/api/open' })
                         }}
                         className='w-5 h-5 rounded flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 opacity-0 group-hover:opacity-100 transition cursor-pointer'
                         title='Open file'>

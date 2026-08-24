@@ -133,18 +133,18 @@ Creates fake SD card directories with dummy MP4 files and realistic timestamps.
 ./scripts/simulate_cameras.sh --gap 600 --clean
 ```
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--output DIR` | `/tmp/skydock_sim` | Base simulation directory |
-| `--jumps N` | `3` | Number of jump sessions |
-| `--cam1-files N` | `2` | Video files per jump (Camera 1) |
-| `--cam2-files N` | `2` | Video files per jump (Camera 2) |
-| `--duration SECS` | `5` | Duration of each dummy video |
-| `--gap SECS` | `960` | Gap between jumps (16 min) |
-| `--date YYYY-MM-DD` | today | Target date for timestamps |
-| `--use-ffmpeg` | auto | Generate real MP4 test patterns |
-| `--no-ffmpeg` | — | Force dummy files (no ffmpeg) |
-| `--clean` | — | Remove previous simulation first |
+| Option              | Default            | Description                      |
+| ------------------- | ------------------ | -------------------------------- |
+| `--output DIR`      | `/tmp/skydock_sim` | Base simulation directory        |
+| `--jumps N`         | `3`                | Number of jump sessions          |
+| `--cam1-files N`    | `2`                | Video files per jump (Camera 1)  |
+| `--cam2-files N`    | `2`                | Video files per jump (Camera 2)  |
+| `--duration SECS`   | `5`                | Duration of each dummy video     |
+| `--gap SECS`        | `960`              | Gap between jumps (16 min)       |
+| `--date YYYY-MM-DD` | today              | Target date for timestamps       |
+| `--use-ffmpeg`      | auto               | Generate real MP4 test patterns  |
+| `--no-ffmpeg`       | —                  | Force dummy files (no ffmpeg)    |
+| `--clean`           | —                  | Remove previous simulation first |
 
 #### `test_pipeline.sh` — End-to-End Test Runner
 
@@ -162,6 +162,7 @@ Generates simulated cameras, runs the ingestion pipeline, and validates output s
 ```
 
 The test validates:
+
 - Date directory creation
 - Jump directory structure (`Jump_01/`, `Jump_02/`, etc.)
 - Photo subdirectory with extracted JPEGs
@@ -208,3 +209,56 @@ Run the watcher daemon against simulated cameras instead of real hardware.
     └── Jump_03/
         ├── photos/
         └── videos/
+```
+
+---
+
+## 📦 Creating Releases
+
+SkyDock uses GitHub Actions to automatically build cross-platform installers (macOS, Windows, Linux) when you push a version tag.
+
+### One-Command Release
+
+```bash
+# Bump patch version (1.0.0 → 1.0.1)
+./scripts/release.sh patch
+
+# Bump minor version (1.0.0 → 1.1.0)
+./scripts/release.sh minor
+
+# Bump major version (1.0.0 → 2.0.0)
+./scripts/release.sh major
+```
+
+This automatically:
+
+1. Updates the version in `package.json`
+2. Commits the change
+3. Creates a git tag (`v1.0.1`)
+4. Pushes to GitHub
+5. Triggers GitHub Actions to build installers for all platforms
+
+### Manual Release
+
+```bash
+git tag v1.0.0
+git push origin main --tags
+```
+
+### Downloading Releases
+
+Users can download the latest release from:
+
+```
+https://github.com/YOUR_USERNAME/skydock/releases/latest
+```
+
+| Platform | File        | Description          |
+| -------- | ----------- | -------------------- |
+| macOS    | `.dmg`      | Drag to Applications |
+| Windows  | `.exe`      | Run installer        |
+| Linux    | `.AppImage` | Double-click to run  |
+
+### Auto-Update
+
+Existing installations check for updates on launch and prompt to install automatically.
