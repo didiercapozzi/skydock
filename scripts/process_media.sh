@@ -99,7 +99,7 @@ if [[ "${THEORY_COUNT}" -gt 0 ]]; then
                 "${SESSION_DIR}/${BASENAME}_frame_%04d.jpg"
         else
             echo "[Theory] Copying video ${FILENAME}..."
-            rsync -a --info=progress2 "${filepath}" "${SESSION_DIR}/${FILENAME}"
+            cp -a "${filepath}" "${SESSION_DIR}/${FILENAME}"
         fi
 
         echo "${file_id}" >> "${REGISTRY_FILE}"
@@ -179,7 +179,7 @@ while IFS='|' read -r epoch cam_type filepath file_id; do
             "${PHOTOS_DIR}/${BASENAME}_frame_%04d.jpg"
     else
         echo "[Copy] Camera 2 (Video): Ingesting 4K video ${FILENAME} -> Jump_$(printf "%02d" "${CURRENT_JUMP_NUM}")..."
-        rsync -a --info=progress2 "${filepath}" "${VIDEOS_DIR}/${FILENAME}"
+        cp -a "${filepath}" "${VIDEOS_DIR}/${FILENAME}"
     fi
 
     # Mark as completed in registry

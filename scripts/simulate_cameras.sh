@@ -245,30 +245,11 @@ echo "  PHOTO_PATH='${PHOTO_DIR}' VIDEO_PATH='${VIDEO_DIR}'"
 echo "  ./scripts/process_media.sh \"\${PHOTO_PATH}\" \"\${VIDEO_PATH}\""
 echo "============================================================"
 
-# ─── Generate passenger names file ─────────────────────────────
-NAMES_OUTPUT="${SIM_BASE}/passengers.txt"
+# ─── Generate passenger names file (only if provided) ──────────
 if [[ -n "${NAMES_FILE}" && -f "${NAMES_FILE}" ]]; then
+    NAMES_OUTPUT="${SIM_BASE}/passengers.txt"
     cp "${NAMES_FILE}" "${NAMES_OUTPUT}"
-    echo "[Sim] Copied passenger names from ${NAMES_FILE}"
+    echo "[Sim] Passenger names file: ${NAMES_OUTPUT}"
 else
-    # Generate default sample names
-    echo "[Sim] Generating sample passenger names file..."
-    SAMPLE_NAMES=(
-        "Alice Johnson"
-        "Bob Smith"
-        "Carol Davis"
-        "David Wilson"
-        "Emma Brown"
-        "Frank Miller"
-        "Grace Lee"
-        "Henry Taylor"
-        "Ivy Anderson"
-        "Jack Thomas"
-    )
-    : > "${NAMES_OUTPUT}"
-    for (( i=0; i<NUM_JUMPS && i<${#SAMPLE_NAMES[@]}; i++ )); do
-        echo "${SAMPLE_NAMES[$i]}" >> "${NAMES_OUTPUT}"
-    done
+    echo "[Sim] No passenger names provided, skipping names file"
 fi
-echo "[Sim] Passenger names file: ${NAMES_OUTPUT}"
-cat "${NAMES_OUTPUT}"
