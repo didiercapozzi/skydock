@@ -4,13 +4,14 @@
   "type": "module",
   "scripts": {
     "build": "react-router build",
-    "dev": "react-router dev --host",
-    "start": "react-router-serve ./build/server/index.js",
-    "typecheck": "react-router typegen && tsc",
     "check": "npm run typecheck && npm run format:check && npm run lint",
+    "dev": "react-router dev --host",
+    "lint": "oxlint --config oxlint.config.ts .",
     "fc": "npm run format && npm run check",
     "format": "oxfmt --config oxfmt.config.ts .",
-    "format:check": "oxfmt --config oxfmt.config.ts --check ."
+    "format:check": "oxfmt --config oxfmt.config.ts --check .",
+    "start": "react-router-serve ./build/server/index.js",
+    "typecheck": "react-router typegen && tsc"
   },
   "dependencies": {
     "@react-router/node": "^8",
@@ -26,6 +27,7 @@
     "@types/node": "^22",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "opencode-ai": "^1.18.21",
     "oxfmt": "^0.64.0",
     "oxlint": "^1.79.0",
     "tailwindcss": "^4.2.2",

@@ -22,7 +22,7 @@ services:
       - /media:/media:rslave
       - ${HOST_OUTPUT_DIR:-/home/${USER}/Desktop/tandem_jumps}:/output
     logging:
-      driver: "json-file"
+      driver: 'json-file'
       options:
-        max-size: "20m"
-        max-file: "3"
+        max-size: '20m'
+        max-file: '3'

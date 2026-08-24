@@ -1,103 +1,97 @@
-import type { Route } from "./+types/api.theory";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { getOutputDirPath, saveOverrides } from "../lib/scanner.server";
-import type { TheoryOverrides } from "../lib/types";
+import type { Route } from './+types/api.theory'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import { getOutputDirPath, saveOverrides } from '../lib/scanner.server'
+import type { TheoryOverrides } from '../lib/types'
 
-const OVERRIDES_FILE = ".theory_overrides.json";
+const OVERRIDES_FILE = '.theory_overrides.json'
 
 const loadOverrides = (outputDir: string): TheoryOverrides => {
-  const filePath = path.join(outputDir, OVERRIDES_FILE);
-  if (!fs.existsSync(filePath)) return {};
+  const filePath = path.join(outputDir, OVERRIDES_FILE)
+  if (!fs.existsSync(filePath)) return {}
   try {
-    return JSON.parse(fs.readFileSync(filePath, "utf-8")) as TheoryOverrides;
+    return JSON.parse(fs.readFileSync(filePath, 'utf-8')) as TheoryOverrides
   } catch {
-    return {};
+    return {}
   }
-};
+}
 
 const collectFiles = (dirPath: string): string[] => {
-  if (!fs.existsSync(dirPath)) return [];
+  if (!fs.existsSync(dirPath)) return []
   return fs
     .readdirSync(dirPath)
     .filter((f) => fs.statSync(path.join(dirPath, f)).isFile())
-    .map((f) => path.join(dirPath, f));
-};
+    .map((f) => path.join(dirPath, f))
+}
 
 const action = async ({ request }: Route.ActionArgs) => {
-  const formData = await request.formData();
-  const formAction = String(formData.get("action") ?? "");
+  const formData = await request.formData()
+  const formAction = String(formData.get('action') ?? '')
 
-  const outputDir = getOutputDirPath();
-  const overrides = loadOverrides(outputDir);
+  const outputDir = getOutputDirPath()
+  const overrides = loadOverrides(outputDir)
 
-  if (formAction === "toggle") {
-    const filePath = String(formData.get("filePath") ?? "");
-    const isTheory = String(formData.get("isTheory") ?? "") === "true";
-    if (!filePath) return { ok: false, error: "Missing filePath" };
-    overrides[filePath] = isTheory;
-    saveOverrides(outputDir, overrides);
-    return { ok: true };
+  if (formAction === 'toggle') {
+    const filePath = String(formData.get('filePath') ?? '')
+    const isTheory = String(formData.get('isTheory') ?? '') === 'true'
+    if (!filePath) return { ok: false, error: 'Missing filePath' }
+    overrides[filePath] = isTheory
+    saveOverrides(outputDir, overrides)
+    return { ok: true }
   }
 
-  if (formAction === "apply") {
-    const sourceJump = String(formData.get("sourceJump") ?? "");
-    const sourceJumpDate = String(formData.get("sourceJumpDate") ?? "");
+  if (formAction === 'apply') {
+    const sourceJump = String(formData.get('sourceJump') ?? '')
+    const sourceJumpDate = String(formData.get('sourceJumpDate') ?? '')
     if (!sourceJump || !sourceJumpDate) {
-      return { ok: false, error: "Missing source jump" };
+      return { ok: false, error: 'Missing source jump' }
     }
 
-    const sourcePath = path.join(outputDir, sourceJumpDate, sourceJump);
+    const sourcePath = path.join(outputDir, sourceJumpDate, sourceJump)
     if (!fs.existsSync(sourcePath)) {
-      return { ok: false, error: "Source jump not found" };
+      return { ok: false, error: 'Source jump not found' }
     }
 
-    const sourceFiles = collectFiles(path.join(sourcePath, "photos")).concat(
-      collectFiles(path.join(sourcePath, "videos")),
-    );
+    const sourceFiles = collectFiles(path.join(sourcePath, 'photos')).concat(
+      collectFiles(path.join(sourcePath, 'videos'))
+    )
 
-    const dateDirs = fs
-      .readdirSync(outputDir)
-      .filter((d) => {
-        const full = path.join(outputDir, d);
-        return fs.statSync(full).isDirectory() && /^\d{4}-\d{2}-\d{2}$/.test(d);
-      });
+    const dateDirs = fs.readdirSync(outputDir).filter((d) => {
+      const full = path.join(outputDir, d)
+      return fs.statSync(full).isDirectory() && /^\d{4}-\d{2}-\d{2}$/.test(d)
+    })
 
     for (const date of dateDirs) {
-      const datePath = path.join(outputDir, date);
-      const jumpDirs = fs
-        .readdirSync(datePath)
-        .filter((d) => {
-          const full = path.join(datePath, d);
-          return (
-            fs.statSync(full).isDirectory() &&
-            d.startsWith("Jump_") &&
-            `${date}/${d}` !== `${sourceJumpDate}/${sourceJump}`
-          );
-        });
+      const datePath = path.join(outputDir, date)
+      const jumpDirs = fs.readdirSync(datePath).filter((d) => {
+        const full = path.join(datePath, d)
+        return (
+          fs.statSync(full).isDirectory() &&
+          d.startsWith('Jump_') &&
+          `${date}/${d}` !== `${sourceJumpDate}/${sourceJump}`
+        )
+      })
 
       for (const jumpDir of jumpDirs) {
-        const jumpPhotos = collectFiles(path.join(datePath, jumpDir, "photos"));
-        const jumpVideos = collectFiles(path.join(datePath, jumpDir, "videos"));
-        const allJumpFiles = jumpPhotos.concat(jumpVideos);
+        const jumpPhotos = collectFiles(path.join(datePath, jumpDir, 'photos'))
+        const jumpVideos = collectFiles(path.join(datePath, jumpDir, 'videos'))
+        const allJumpFiles = jumpPhotos.concat(jumpVideos)
 
         for (const sourceFile of sourceFiles) {
-          const sourceName = path.basename(sourceFile);
-          const matching = allJumpFiles.find(
-            (f) => path.basename(f) === sourceName,
-          );
+          const sourceName = path.basename(sourceFile)
+          const matching = allJumpFiles.find((f) => path.basename(f) === sourceName)
           if (matching) {
-            overrides[matching] = overrides[sourceFile] ?? true;
+            overrides[matching] = overrides[sourceFile] ?? true
           }
         }
       }
     }
 
-    saveOverrides(outputDir, overrides);
-    return { ok: true };
+    saveOverrides(outputDir, overrides)
+    return { ok: true }
   }
 
-  return { ok: false, error: "Invalid action" };
-};
+  return { ok: false, error: 'Invalid action' }
+}
 
-export { action };
+export { action }

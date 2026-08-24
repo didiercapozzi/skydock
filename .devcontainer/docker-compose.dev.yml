@@ -1,17 +1,16 @@
 services:
   dev_container:
-      build:
-        context: .
-        dockerfile: Dockerfile.dev
-      privileged: true
-      volumes:
-        - $SSH_AUTH_SOCK:/ssh-agent
-        - /tmp/.X11-unix:/tmp/.X11-unix
-        - /var/run/docker.sock:/var/run/docker.sock
-        - ..:/workspace:cached
-      environment:
-        - SSH_AUTH_SOCK=/ssh-agent
-      env_file:
-        - ../.env
-      command: sleep infinity
-      
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    privileged: true
+    volumes:
+      - $SSH_AUTH_SOCK:/ssh-agent
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ..:/workspace:cached
+    environment:
+      - SSH_AUTH_SOCK=/ssh-agent
+    env_file:
+      - ../.env
+    command: sleep infinity

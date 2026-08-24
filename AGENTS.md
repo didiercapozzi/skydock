@@ -28,6 +28,17 @@ shellcheck scripts/process_media.sh
 - Use `[[ ]]` instead of `[ ]` for test commands when possible.
 - Use `$(( ))` for arithmetic instead of `expr` or `let`.
 
+## Agent Task Completion Checklist
+
+Before finishing any task, the agent **must** run:
+
+```bash
+npm run lint
+npm run format:check
+```
+
+Both commands must pass without errors before considering the task complete.
+
 ## Feature Development Policy
 
 When adding new features to SkyDock:
@@ -50,13 +61,13 @@ This ensures every feature is testable without real cameras and verified in CI.
 
 ## Scripts
 
-| Script | Purpose |
-|--------|---------|
-| `entrypoint.sh` | Docker ENTRYPOINT, hands off to watcher |
-| `watcher.sh` | Background daemon, polls for camera SD cards |
-| `process_media.sh` | Core engine: scan, cluster, extract, copy |
-| `simulate_cameras.sh` | Generate fake camera footage for testing |
-| `test_pipeline.sh` | End-to-end test runner with assertions |
+| Script                | Purpose                                      |
+| --------------------- | -------------------------------------------- |
+| `entrypoint.sh`       | Docker ENTRYPOINT, hands off to watcher      |
+| `watcher.sh`          | Background daemon, polls for camera SD cards |
+| `process_media.sh`    | Core engine: scan, cluster, extract, copy    |
+| `simulate_cameras.sh` | Generate fake camera footage for testing     |
+| `test_pipeline.sh`    | End-to-end test runner with assertions       |
 
 ## Testing Without Real Cameras
 
@@ -72,7 +83,6 @@ This ensures every feature is testable without real cameras and verified in CI.
 ```
 
 Simulation files are created under `.sim/` at the project root (gitignored).
-
 
 ### React Router 8 (Framework Mode)
 
