@@ -2,3 +2,4 @@
 output/
 *.log
 node_modules
+.sim/
