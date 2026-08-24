@@ -1,0 +1,18 @@
+{
+  "name": "DJI Pipeline (Dev Environment)",
+  "dockerComposeFile": "docker-compose.dev.yml" ,
+  "service": "dev_container",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "timonwong.shellcheck",
+        "foxundermoon.shell-format",
+        "ms-azuretools.vscode-docker",
+        "eamodio.gitlens",
+        "rogalmic.bash-debug"
+      ]
+    }
+  }
+}

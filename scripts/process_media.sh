@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+PHOTO_ROOT="$1"
+VIDEO_ROOT="$2"
+REGISTRY_FILE="/output/.ingested_registry.txt"
+JUMP_GAP=${JUMP_GAP_SECONDS:-900}
+PHOTO_FPS=${PHOTO_FPS:-2}
+JPEG_QUALITY=${JPEG_QUALITY:-2}
+
+touch "${REGISTRY_FILE}"
+
+TMP_MANIFEST=$(mktemp)
+trap 'rm -f "${TMP_MANIFEST}"' EXIT
+
+scan_camera_files() {
+    local src_dir="$1"
+    local cam_type="$2" # "PHOTO" or "VIDEO"
+
+    if [[ -z "${src_dir}" || ! -d "${src_dir}" ]]; then
+        return
+    fi
+
+    find "${src_dir}" -type f \( -iname "*.mp4" -o -iname "*.mov" \) 2>/dev/null | while IFS= read -r filepath; do
+        local filename filesize file_mtime file_id
+        filename=$(basename "${filepath}")
+        filesize=$(stat -c %s "${filepath}")
+        file_mtime=$(stat -c %Y "${filepath}")
+        file_id="${cam_type}:${filename}:${filesize}:${file_mtime}"
+
+        # Skip if already processed
+        if grep -Fqx "${file_id}" "${REGISTRY_FILE}"; then
+            continue
+        fi
+
+        echo "${file_mtime}|${cam_type}|${filepath}|${file_id}" >> "${TMP_MANIFEST}"
+    done
+}
+
+# Scan available sources
+scan_camera_files "${PHOTO_ROOT}" "PHOTO"
+scan_camera_files "${VIDEO_ROOT}" "VIDEO"
+
+NEW_COUNT=$(wc -l < "${TMP_MANIFEST}")
+if [[ "${NEW_COUNT}" -eq 0 ]]; then
+    exit 0
+fi
+
+echo "[Ingest] Found ${NEW_COUNT} new recording(s). Calculating jump clusters..."
+
+# Sort all new clips chronologically
+SORTED_MANIFEST=$(mktemp)
+sort -t'|' -k1,1n "${TMP_MANIFEST}" > "${SORTED_MANIFEST}"
+rm -f "${TMP_MANIFEST}"
+trap 'rm -f "${SORTED_MANIFEST}"' EXIT
+
+# Determine target date folder
+EARLIEST_EPOCH=$(head -n1 "${SORTED_MANIFEST}" | cut -d'|' -f1)
+TARGET_DATE=$(date -d "@${EARLIEST_EPOCH}" +"%Y-%m-%d")
+DATE_DIR="/output/${TARGET_DATE}"
+mkdir -p "${DATE_DIR}"
+
+# Determine next sequential Jump index for today
+get_next_jump_num() {
+    local max_num=0
+    for dir in "${DATE_DIR}"/Jump_*; do
+        if [[ -d "$dir" ]]; then
+            local num
+            num=$(basename "$dir" | sed -E 's/Jump_0*([0-9]+)/\1/')
+            if [[ "$num" =~ ^[0-9]+$ ]] && (( num > max_num )); then
+                max_num=$num
+            fi
+        fi
+    done
+    echo $(( max_num + 1 ))
+}
+
+CURRENT_JUMP_NUM=$(get_next_jump_num)
+LAST_EPOCH=0
+
+# Iterate and cluster files
+while IFS='|' read -r epoch cam_type filepath file_id; do
+    if (( LAST_EPOCH > 0 )) && (( epoch - LAST_EPOCH > JUMP_GAP )); then
+        CURRENT_JUMP_NUM=$(( CURRENT_JUMP_NUM + 1 ))
+        echo "[Cluster] Time gap of $(( epoch - LAST_EPOCH ))s detected (> ${JUMP_GAP}s). Incremented to Jump_$(printf "%02d" "${CURRENT_JUMP_NUM}")."
+    fi
+    LAST_EPOCH="${epoch}"
+
+    JUMP_DIR="${DATE_DIR}/Jump_$(printf "%02d" "${CURRENT_JUMP_NUM}")"
+    PHOTOS_DIR="${JUMP_DIR}/photos"
+    VIDEOS_DIR="${JUMP_DIR}/videos"
+    mkdir -p "${PHOTOS_DIR}" "${VIDEOS_DIR}"
+
+    FILENAME=$(basename "${filepath}")
+    BASENAME="${FILENAME%.*}"
+
+    if [[ "${cam_type}" == "PHOTO" ]]; then
+        echo "[Extract] Camera 1 (Photos): Extracting ${PHOTO_FPS} fps stills from ${FILENAME} -> Jump_$(printf "%02d" "${CURRENT_JUMP_NUM}")..."
+        ffmpeg -nostdin -loglevel error -stats -i "${filepath}" \
+            -vf "fps=${PHOTO_FPS}" \
+            -q:v "${JPEG_QUALITY}" \
+            "${PHOTOS_DIR}/${BASENAME}_frame_%04d.jpg"
+    else
+        echo "[Copy] Camera 2 (Video): Ingesting 4K video ${FILENAME} -> Jump_$(printf "%02d" "${CURRENT_JUMP_NUM}")..."
+        rsync -a --info=progress2 "${filepath}" "${VIDEOS_DIR}/${FILENAME}"
+    fi
+
+    # Mark as completed in registry
+    echo "${file_id}" >> "${REGISTRY_FILE}"
+done < "${SORTED_MANIFEST}"
+
+sync
+echo "[Done] Batch ingestion complete for date: ${TARGET_DATE}."

@@ -1,0 +1,6 @@
+{
+  "name": "skydock",
+  "dependencies": {
+    "opencode-ai": "^1.18.21"
+  }
+}
