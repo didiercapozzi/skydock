@@ -64,7 +64,7 @@ For tandem skydiving, you often film passenger briefings (theory sessions) befor
 
 1. Name your theory videos with `THEORY` in the filename (case-insensitive)
 2. SkyDock groups theory videos into sessions based on time gaps
-3. Each jump gets a symlink to its nearest preceding theory session
+3. Theory files (photos/videos) are copied to each jump folder
 
 ### Example
 
@@ -80,25 +80,27 @@ DJI_0011.MP4          # Jump footage
 
 ```
 2026-08-24/
-├── theory/
-│   ├── 08-45/              # Morning theory session
-│   │   ├── DJI_0001_THEORY.MP4
-│   │   └── DJI_0005_THEORY.MP4
-│   └── 14-30/              # Afternoon theory session
-│       ├── DJI_0010_THEORY.MP4
-│       └── DJI_0014_THEORY.MP4
 ├── Jump_01_Alice_Johnson/
 │   ├── photos/
-│   ├── videos/
-│   └── theory/ → ../theory/08-45/
+│   │   ├── DJI_0001_THEORY_frame_*.jpg  # Theory photos
+│   │   └── DJI_0003_frame_*.jpg         # Jump photos
+│   └── videos/
+│       ├── DJI_0001_THEORY.MP4          # Theory video
+│       └── DJI_0004.MP4                 # Jump video
 ├── Jump_02_Bob_Smith/
 │   ├── photos/
-│   ├── videos/
-│   └── theory/ → ../theory/08-45/
+│   │   ├── DJI_0001_THEORY_frame_*.jpg  # Same theory photos
+│   │   └── DJI_0005_frame_*.jpg
+│   └── videos/
+│       ├── DJI_0001_THEORY.MP4          # Same theory video
+│       └── DJI_0006.MP4
 └── Jump_03_Carol_Davis/
     ├── photos/
-    ├── videos/
-    └── theory/ → ../theory/14-30/
+    │   ├── DJI_0010_THEORY_frame_*.jpg  # Afternoon theory
+    │   └── DJI_0007_frame_*.jpg
+    └── videos/
+        ├── DJI_0010_THEORY.MP4          # Afternoon theory
+        └── DJI_0008.MP4
 ```
 
 ---

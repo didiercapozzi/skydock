@@ -241,30 +241,30 @@ else
     echo "[Test] No names file provided, skipping passenger names verification"
 fi
 
-# ─── Phase 5: Verify theory symlinks ──────────────────────────
+# ─── Phase 5: Verify theory files in jump folders ─────────────
 
 echo ""
-echo "[Test] Verifying theory symlinks..."
-THEORY_LINKS=0
+echo "[Test] Verifying theory files in jump folders..."
+THEORY_COPIED=0
 for d in "${DATE_DIR}"/Jump_*; do
     [[ -d "$d" ]] || continue
-    if [[ -L "${d}/theory" ]]; then
-        THEORY_LINKS=$((THEORY_LINKS + 1))
-        TARGET=$(readlink -f "${d}/theory")
-        if [[ -d "${TARGET}" ]]; then
-            echo "  PASS: $(basename "${d}")/theory -> $(basename "${TARGET}")"
-        else
-            echo "  FAIL: $(basename "${d}")/theory points to invalid target"
-            FAIL_COUNT=$((FAIL_COUNT + 1))
-        fi
+    JUMP_NAME=$(basename "${d}")
+
+    # Check for theory videos (files with THEORY in name)
+    THEORY_VIDEOS=$(find "${d}/videos" -type f -iname "*THEORY*" 2>/dev/null | wc -l)
+    THEORY_PHOTOS=$(find "${d}/photos" -type f -iname "*THEORY*" 2>/dev/null | wc -l)
+
+    if [[ "${THEORY_VIDEOS}" -gt 0 ]] || [[ "${THEORY_PHOTOS}" -gt 0 ]]; then
+        THEORY_COPIED=$((THEORY_COPIED + 1))
+        echo "  PASS: ${JUMP_NAME} has ${THEORY_VIDEOS} theory video(s), ${THEORY_PHOTOS} theory photo(s)"
     fi
 done
 
-if [ "${THEORY_LINKS}" -gt 0 ]; then
-    echo "  PASS: ${THEORY_LINKS} jump directory(ies) have theory symlinks"
+if [ "${THEORY_COPIED}" -gt 0 ]; then
+    echo "  PASS: Theory files copied to ${THEORY_COPIED} jump directory(ies)"
     PASS_COUNT=$((PASS_COUNT + 1))
 else
-    echo "  INFO: No theory symlinks found (no theory videos or no jumps)"
+    echo "  INFO: No theory files found in jump directories"
 fi
 
 # ─── Phase 6: Idempotency test ────────────────────────────────
