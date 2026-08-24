@@ -1,30 +1,22 @@
-FROM ubuntu:22.04
-
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    bash \
-    coreutils \
-    util-linux \
-    exfat-fuse \
-    exfatprogs \
-    dosfstools \
-    udev \
-    ffmpeg \
-    rsync \
-    ffmpeg \
-    curl \
-    jq \
-    ca-certificates \
-    git \
-    shellcheck \
-    tree \
-    procps \
-    && rm -rf /var/lib/apt/lists/*
-
+FROM node:24-alpine AS development-dependencies-env
+COPY . /app
 WORKDIR /app
+RUN npm ci
 
-COPY scripts/ /app/scripts/
-RUN chmod +x /app/scripts/*.sh
+FROM node:24-alpine AS production-dependencies-env
+COPY ./package.json package-lock.json /app/
+WORKDIR /app
+RUN npm ci --omit=dev
 
-ENTRYPOINT ["/app/scripts/entrypoint.sh"]
+FROM node:24-alpine AS build-env
+COPY . /app/
+COPY --from=development-dependencies-env /app/node_modules /app/node_modules
+WORKDIR /app
+RUN npm run build
+
+FROM node:24-alpine
+COPY ./package.json package-lock.json /app/
+COPY --from=production-dependencies-env /app/node_modules /app/node_modules
+COPY --from=build-env /app/build /app/build
+WORKDIR /app
+CMD ["npm", "run", "start"]

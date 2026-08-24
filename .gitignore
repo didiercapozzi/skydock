@@ -1,5 +1,9 @@
+.DS_Store
 .env
 output/
-*.log
-node_modules
 .sim/
+/node_modules/
+
+# React Router
+/.react-router/
+/build/
