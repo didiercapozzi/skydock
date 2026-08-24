@@ -17,6 +17,7 @@ set -eo pipefail
 #   --date YYYY-MM-DD  Target date for timestamps (default: today)
 #   --use-ffmpeg       Generate real MP4 test patterns (requires ffmpeg)
 #   --names FILE       Passenger names file (one name per line)
+#   --theory N         Number of theory sessions to simulate (default: 1)
 #   --clean            Remove simulation directory before creating
 #   -h, --help         Show this help message
 #
@@ -36,6 +37,7 @@ USE_FFMPEG=false
 NO_FFMPEG=false
 CLEAN=false
 NAMES_FILE=""
+THEORY_SESSIONS=1
 
 usage() {
     sed -n '/^# Usage:/,/^$/p' "$0" | sed 's/^# //' | sed 's/^#//'
@@ -54,6 +56,7 @@ while [[ $# -gt 0 ]]; do
         --use-ffmpeg) USE_FFMPEG=true; shift ;;
         --no-ffmpeg) NO_FFMPEG=true; shift ;;
         --names)    NAMES_FILE="$2"; shift 2 ;;
+        --theory)   THEORY_SESSIONS="$2"; shift 2 ;;
         --clean)    CLEAN=true; shift ;;
         -h|--help)  usage ;;
         *)          echo "Unknown option: $1"; usage ;;
@@ -86,6 +89,7 @@ echo " - Video duration   : ${VIDEO_DURATION}s"
 echo " - Jump gap         : ${JUMP_GAP}s"
 echo " - Target date      : ${TARGET_DATE}"
 echo " - Use ffmpeg       : ${USE_FFMPEG}"
+echo " - Theory sessions  : ${THEORY_SESSIONS}"
 echo "============================================================"
 
 # Calculate base epoch from target date at 09:00 local time
@@ -144,6 +148,40 @@ with open('${output_path}', 'wb') as f:
 }
 
 echo "[Sim] Generating ${NUM_JUMPS} jump sessions..."
+
+# ─── Generate theory sessions ───────────────────────────────────
+# Theory videos are placed before jumps with "THEORY" in the filename
+# Theory sessions are spaced evenly before the first jump
+THEORY_GAP=600  # 10 minutes between theory sessions
+THEORY_EPOCH=$((BASE_EPOCH - (THEORY_SESSIONS * THEORY_GAP)))
+
+for (( t=1; t<=THEORY_SESSIONS; t++ )); do
+    THEORY_LABEL=$(printf "THEORY_%02d" "${t}")
+    THEORY_OFFSET=$(( (t - 1) * THEORY_GAP ))
+    THEORY_EPOCH=$((BASE_EPOCH - (THEORY_SESSIONS * THEORY_GAP) + THEORY_OFFSET))
+
+    echo "[Sim]   Creating ${THEORY_LABEL} (offset: $((THEORY_EPOCH - BASE_EPOCH))s)..."
+
+    # Camera 1 theory video (photos camera records theory)
+    FILE_COUNTER=$((FILE_COUNTER + 1))
+    FILENAME=$(printf "DJI_%04d_THEORY.MP4" "${FILE_COUNTER}")
+    FILEPATH="${PHOTO_DIR}/${FILENAME}"
+
+    generate_dummy_mp4 "${FILEPATH}" $((VIDEO_DURATION * 3))  # Theory videos longer
+    touch -d "@${THEORY_EPOCH}" "${FILEPATH}"
+
+    echo "${THEORY_EPOCH}|PHOTO|${FILEPATH}|PHOTO:${FILENAME}:$(stat -c %s "${FILEPATH}"):${THEORY_EPOCH}" >> "${MANIFEST_FILE}"
+
+    # Camera 2 theory video (video camera also records theory)
+    FILE_COUNTER=$((FILE_COUNTER + 1))
+    FILENAME=$(printf "DJI_%04d_THEORY.MP4" "${FILE_COUNTER}")
+    FILEPATH="${VIDEO_DIR}/${FILENAME}"
+
+    generate_dummy_mp4 "${FILEPATH}" $((VIDEO_DURATION * 3))
+    touch -d "@$((THEORY_EPOCH + 5))" "${FILEPATH}"
+
+    echo "$((THEORY_EPOCH + 5))|VIDEO|${FILEPATH}|VIDEO:${FILENAME}:$(stat -c %s "${FILEPATH}"):$((THEORY_EPOCH + 5))" >> "${MANIFEST_FILE}"
+done
 
 for (( jump=1; jump<=NUM_JUMPS; jump++ )); do
     JUMP_LABEL=$(printf "Jump_%02d" "${jump}")

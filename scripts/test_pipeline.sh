@@ -13,6 +13,7 @@ set -eo pipefail
 #   --output DIR       Output directory for processed media (default: <project_root>/.sim/output)
 #   --jumps N          Number of jumps to simulate (default: 3)
 #   --names FILE       Passenger names file (one name per line)
+#   --theory N         Number of theory sessions to simulate (default: 1)
 #   --clean            Remove output and simulation dirs before running
 #   -h, --help         Show this help message
 #
@@ -28,6 +29,7 @@ CLEAN=false
 PHOTO_DIR=""
 VIDEO_DIR=""
 NAMES_FILE=""
+THEORY_SESSIONS=1
 
 usage() {
     sed -n '/^# Usage:/,/^$/p' "$0" | sed 's/^# //' | sed 's/^#//'
@@ -41,6 +43,7 @@ while [[ $# -gt 0 ]]; do
         --output)     OUTPUT_DIR="$2"; shift 2 ;;
         --jumps)      NUM_JUMPS="$2"; shift 2 ;;
         --names)      NAMES_FILE="$2"; shift 2 ;;
+        --theory)     THEORY_SESSIONS="$2"; shift 2 ;;
         --clean)      CLEAN=true; shift ;;
         -h|--help)    usage ;;
         *)            echo "Unknown option: $1"; usage ;;
@@ -77,7 +80,7 @@ if [ -n "${PHOTO_DIR}" ] && [ -n "${VIDEO_DIR}" ]; then
     echo "  Video: ${VIDEO_DIR}"
 else
     echo "[Test] Generating simulated camera files..."
-    SIM_ARGS=(--output "${SIM_BASE}" --jumps "${NUM_JUMPS}" --clean)
+    SIM_ARGS=(--output "${SIM_BASE}" --jumps "${NUM_JUMPS}" --theory "${THEORY_SESSIONS}" --clean)
     if [[ -n "${NAMES_FILE}" ]]; then
         SIM_ARGS+=(--names "${NAMES_FILE}")
     fi
@@ -238,7 +241,33 @@ else
     echo "[Test] No names file provided, skipping passenger names verification"
 fi
 
-# ─── Phase 5: Idempotency test ────────────────────────────────
+# ─── Phase 5: Verify theory symlinks ──────────────────────────
+
+echo ""
+echo "[Test] Verifying theory symlinks..."
+THEORY_LINKS=0
+for d in "${DATE_DIR}"/Jump_*; do
+    [[ -d "$d" ]] || continue
+    if [[ -L "${d}/theory" ]]; then
+        THEORY_LINKS=$((THEORY_LINKS + 1))
+        TARGET=$(readlink -f "${d}/theory")
+        if [[ -d "${TARGET}" ]]; then
+            echo "  PASS: $(basename "${d}")/theory -> $(basename "${TARGET}")"
+        else
+            echo "  FAIL: $(basename "${d}")/theory points to invalid target"
+            FAIL_COUNT=$((FAIL_COUNT + 1))
+        fi
+    fi
+done
+
+if [ "${THEORY_LINKS}" -gt 0 ]; then
+    echo "  PASS: ${THEORY_LINKS} jump directory(ies) have theory symlinks"
+    PASS_COUNT=$((PASS_COUNT + 1))
+else
+    echo "  INFO: No theory symlinks found (no theory videos or no jumps)"
+fi
+
+# ─── Phase 6: Idempotency test ────────────────────────────────
 
 echo ""
 echo "[Test] Running pipeline again (idempotency check)..."

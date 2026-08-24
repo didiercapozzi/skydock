@@ -56,6 +56,53 @@ Jump directories will be renamed: `Jump_01` → `Jump_01_Alice_Johnson`
 
 ---
 
+## 🎓 Theory Videos
+
+For tandem skydiving, you often film passenger briefings (theory sessions) before the jumps. SkyDock automatically handles these by detecting videos with `THEORY` in the filename.
+
+### How It Works
+
+1. Name your theory videos with `THEORY` in the filename (case-insensitive)
+2. SkyDock groups theory videos into sessions based on time gaps
+3. Each jump gets a symlink to its nearest preceding theory session
+
+### Example
+
+```
+DJI_0001_THEORY.MP4   # Morning theory session
+DJI_0002.MP4          # Jump footage
+DJI_0003.MP4          # Jump footage
+DJI_0010_THEORY.MP4   # Afternoon theory session
+DJI_0011.MP4          # Jump footage
+```
+
+### Output Structure
+
+```
+2026-08-24/
+├── theory/
+│   ├── 08-45/              # Morning theory session
+│   │   ├── DJI_0001_THEORY.MP4
+│   │   └── DJI_0005_THEORY.MP4
+│   └── 14-30/              # Afternoon theory session
+│       ├── DJI_0010_THEORY.MP4
+│       └── DJI_0014_THEORY.MP4
+├── Jump_01_Alice_Johnson/
+│   ├── photos/
+│   ├── videos/
+│   └── theory/ → ../theory/08-45/
+├── Jump_02_Bob_Smith/
+│   ├── photos/
+│   ├── videos/
+│   └── theory/ → ../theory/08-45/
+└── Jump_03_Carol_Davis/
+    ├── photos/
+    ├── videos/
+    └── theory/ → ../theory/14-30/
+```
+
+---
+
 ## 🧪 Testing Without Real Cameras
 
 SkyDock includes a full simulation harness for testing the pipeline without physical DJI cameras.

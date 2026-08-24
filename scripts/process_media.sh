@@ -6,13 +6,15 @@ VIDEO_ROOT="$2"
 NAMES_FILE="${3:-}"
 REGISTRY_FILE="/output/.ingested_registry.txt"
 JUMP_GAP=${JUMP_GAP_SECONDS:-900}
+THEORY_GAP=${THEORY_GAP_SECONDS:-600}
 PHOTO_FPS=${PHOTO_FPS:-2}
 JPEG_QUALITY=${JPEG_QUALITY:-2}
 
 touch "${REGISTRY_FILE}"
 
 TMP_MANIFEST=$(mktemp)
-trap 'rm -f "${TMP_MANIFEST}"' EXIT
+TMP_THEORY=$(mktemp)
+trap 'rm -f "${TMP_MANIFEST}" "${TMP_THEORY}"' EXIT
 
 scan_camera_files() {
     local src_dir="$1"
@@ -34,7 +36,12 @@ scan_camera_files() {
             continue
         fi
 
-        echo "${file_mtime}|${cam_type}|${filepath}|${file_id}" >> "${TMP_MANIFEST}"
+        # Route THEORY files to separate manifest
+        if [[ "${filename}" =~ [Tt][Hh][Ee][Oo][Rr][Yy] ]]; then
+            echo "${file_mtime}|${cam_type}|${filepath}|${file_id}" >> "${TMP_THEORY}"
+        else
+            echo "${file_mtime}|${cam_type}|${filepath}|${file_id}" >> "${TMP_MANIFEST}"
+        fi
     done
 }
 
@@ -42,8 +49,65 @@ scan_camera_files() {
 scan_camera_files "${PHOTO_ROOT}" "PHOTO"
 scan_camera_files "${VIDEO_ROOT}" "VIDEO"
 
+# ─── Process theory sessions ────────────────────────────────────
+ THEORY_COUNT=$(wc -l < "${TMP_THEORY}")
+declare -a THEORY_DIRS=()
+declare -a THEORY_EPOCHS=()
+
+if [[ "${THEORY_COUNT}" -gt 0 ]]; then
+    echo "[Theory] Found ${THEORY_COUNT} theory recording(s). Grouping into sessions..."
+
+    SORTED_THEORY=$(mktemp)
+    sort -t'|' -k1,1n "${TMP_THEORY}" > "${SORTED_THEORY}"
+    trap 'rm -f "${SORTED_THEORY}"' EXIT
+
+    THEOREY_SESSION_NUM=0
+    LAST_THEORY_EPOCH=0
+
+    while IFS='|' read -r epoch cam_type filepath file_id; do
+        # Start new session if gap > THEORY_GAP
+        if (( LAST_THEORY_EPOCH > 0 )) && (( epoch - LAST_THEORY_EPOCH > THEORY_GAP )); then
+            THEOREY_SESSION_NUM=$(( THEOREY_SESSION_NUM + 1 ))
+        fi
+        LAST_THEORY_EPOCH="${epoch}"
+
+        # First file in session creates the directory
+        if [[ "${THEOREY_SESSION_NUM}" -eq 0 ]] || [[ ${#THEORY_DIRS[@]} -le ${THEOREY_SESSION_NUM} ]]; then
+            THEOREY_SESSION_NUM=$(( ${#THEORY_DIRS[@]} ))
+            SESSION_TIME=$(date -d "@${epoch}" +"%H-%M")
+            SESSION_DIR="${DATE_DIR}/theory/${SESSION_TIME}"
+            mkdir -p "${SESSION_DIR}"
+            THEORY_DIRS+=("${SESSION_DIR}")
+            THEORY_EPOCHS+=("${epoch}")
+        fi
+
+        SESSION_DIR="${THEORY_DIRS[${THEOREY_SESSION_NUM}]}"
+        FILENAME=$(basename "${filepath}")
+
+        if [[ "${cam_type}" == "PHOTO" ]]; then
+            BASENAME="${FILENAME%.*}"
+            echo "[Theory] Extracting stills from ${FILENAME}..."
+            ffmpeg -nostdin -loglevel error -stats -i "${filepath}" \
+                -vf "fps=${PHOTO_FPS}" \
+                -q:v "${JPEG_QUALITY}" \
+                "${SESSION_DIR}/${BASENAME}_frame_%04d.jpg"
+        else
+            echo "[Theory] Copying video ${FILENAME}..."
+            rsync -a --info=progress2 "${filepath}" "${SESSION_DIR}/${FILENAME}"
+        fi
+
+        echo "${file_id}" >> "${REGISTRY_FILE}"
+    done < "${SORTED_THEORY}"
+fi
+
+# ─── Process jump footage ──────────────────────────────────────
 NEW_COUNT=$(wc -l < "${TMP_MANIFEST}")
 if [[ "${NEW_COUNT}" -eq 0 ]]; then
+    # If we had theory but no jumps, still finish
+    if [[ "${THEORY_COUNT}" -gt 0 ]]; then
+        sync
+        echo "[Done] Theory ingestion complete for date: ${TARGET_DATE}."
+    fi
     exit 0
 fi
 
@@ -53,7 +117,7 @@ echo "[Ingest] Found ${NEW_COUNT} new recording(s). Calculating jump clusters...
 SORTED_MANIFEST=$(mktemp)
 sort -t'|' -k1,1n "${TMP_MANIFEST}" > "${SORTED_MANIFEST}"
 rm -f "${TMP_MANIFEST}"
-trap 'rm -f "${SORTED_MANIFEST}"' EXIT
+trap 'rm -f "${SORTED_MANIFEST}" "${TMP_THEORY}"' EXIT
 
 # Determine target date folder
 EARLIEST_EPOCH=$(head -n1 "${SORTED_MANIFEST}" | cut -d'|' -f1)
@@ -78,6 +142,7 @@ get_next_jump_num() {
 
 CURRENT_JUMP_NUM=$(get_next_jump_num)
 LAST_EPOCH=0
+CURRENT_JUMP_DIR=""
 
 # Iterate and cluster files
 while IFS='|' read -r epoch cam_type filepath file_id; do
@@ -87,9 +152,9 @@ while IFS='|' read -r epoch cam_type filepath file_id; do
     fi
     LAST_EPOCH="${epoch}"
 
-    JUMP_DIR="${DATE_DIR}/Jump_$(printf "%02d" "${CURRENT_JUMP_NUM}")"
-    PHOTOS_DIR="${JUMP_DIR}/photos"
-    VIDEOS_DIR="${JUMP_DIR}/videos"
+    CURRENT_JUMP_DIR="${DATE_DIR}/Jump_$(printf "%02d" "${CURRENT_JUMP_NUM}")"
+    PHOTOS_DIR="${CURRENT_JUMP_DIR}/photos"
+    VIDEOS_DIR="${CURRENT_JUMP_DIR}/videos"
     mkdir -p "${PHOTOS_DIR}" "${VIDEOS_DIR}"
 
     FILENAME=$(basename "${filepath}")
@@ -109,6 +174,43 @@ while IFS='|' read -r epoch cam_type filepath file_id; do
     # Mark as completed in registry
     echo "${file_id}" >> "${REGISTRY_FILE}"
 done < "${SORTED_MANIFEST}"
+
+# ─── Symlink theory sessions to jumps ──────────────────────────
+if [[ ${#THEORY_DIRS[@]} -gt 0 && -n "${CURRENT_JUMP_DIR}" ]]; then
+    echo "[Theory] Linking theory sessions to jump directories..."
+
+    for jump_dir in "${DATE_DIR}"/Jump_*; do
+        [[ -d "${jump_dir}" ]] || continue
+        # Skip if already has theory symlink
+        [[ -L "${jump_dir}/theory" ]] && continue
+
+        # Get earliest epoch from this jump's videos
+        JUMP_FIRST_EPOCH=0
+        for f in "${jump_dir}/videos"/*.[Mm][Pp]4 "${jump_dir}/videos"/*.[Mm][Oo][Vv]; do
+            [[ -f "$f" ]] || continue
+            F_EPOCH=$(stat -c %Y "$f")
+            if [[ "${JUMP_FIRST_EPOCH}" -eq 0 ]] || (( F_EPOCH < JUMP_FIRST_EPOCH )); then
+                JUMP_FIRST_EPOCH="${F_EPOCH}"
+            fi
+        done
+
+        # Find nearest preceding theory session
+        BEST_THEORY_idx=0
+        BEST_THEORY_EPOCH=0
+        for i in "${!THEORY_EPOCHS[@]}"; do
+            T_EPOCH="${THEORY_EPOCHS[$i]}"
+            if (( T_EPOCH <= JUMP_FIRST_EPOCH )) && (( T_EPOCH > BEST_THEORY_EPOCH )); then
+                BEST_THEORY_EPOCH="${T_EPOCH}"
+                BEST_THEORY_idx="${i}"
+            fi
+        done
+
+        if [[ "${BEST_THEORY_EPOCH}" -gt 0 ]]; then
+            ln -sfn "${THEORY_DIRS[$BEST_THEORY_idx]}" "${jump_dir}/theory"
+            echo "[Theory] Linked $(basename "${jump_dir}") -> theory/$(basename "${THEORY_DIRS[$BEST_THEORY_idx]}")"
+        fi
+    done
+fi
 
 sync
 echo "[Done] Batch ingestion complete for date: ${TARGET_DATE}."
