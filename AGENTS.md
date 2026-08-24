@@ -72,3 +72,19 @@ This ensures every feature is testable without real cameras and verified in CI.
 ```
 
 Simulation files are created under `.sim/` at the project root (gitignored).
+
+
+### React Router 8 (Framework Mode)
+
+Both apps use React Router 8 in **Framework Mode** with SSR enabled:
+
+- `@react-router/dev/vite` plugin
+- `app/routes.ts` for route definitions
+- `app/routes/` for route modules
+- Imports from `./+types/...` for type safety
+- Arrow functions only (no function declarations)
+- Types over interfaces
+- Never use `any` - always 100% type safe
+- All exports at the end of files
+- always use `types` instead of `interface`
+- No comments in generated scripts
