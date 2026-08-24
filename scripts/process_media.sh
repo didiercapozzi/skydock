@@ -49,6 +49,16 @@ scan_camera_files() {
 scan_camera_files "${PHOTO_ROOT}" "PHOTO"
 scan_camera_files "${VIDEO_ROOT}" "VIDEO"
 
+# Determine target date folder from all files (theory + jump)
+ALL_EPOCHS=$(cat "${TMP_MANIFEST}" "${TMP_THEORY}" 2>/dev/null | cut -d'|' -f1 | sort -n | head -n1)
+if [[ -n "${ALL_EPOCHS}" ]]; then
+    TARGET_DATE=$(date -d "@${ALL_EPOCHS}" +"%Y-%m-%d")
+else
+    TARGET_DATE=$(date +"%Y-%m-%d")
+fi
+DATE_DIR="/output/${TARGET_DATE}"
+mkdir -p "${DATE_DIR}"
+
 # ─── Process theory sessions ────────────────────────────────────
  THEORY_COUNT=$(wc -l < "${TMP_THEORY}")
 declare -a THEORY_DIRS=()
@@ -118,12 +128,6 @@ SORTED_MANIFEST=$(mktemp)
 sort -t'|' -k1,1n "${TMP_MANIFEST}" > "${SORTED_MANIFEST}"
 rm -f "${TMP_MANIFEST}"
 trap 'rm -f "${SORTED_MANIFEST}" "${TMP_THEORY}"' EXIT
-
-# Determine target date folder
-EARLIEST_EPOCH=$(head -n1 "${SORTED_MANIFEST}" | cut -d'|' -f1)
-TARGET_DATE=$(date -d "@${EARLIEST_EPOCH}" +"%Y-%m-%d")
-DATE_DIR="/output/${TARGET_DATE}"
-mkdir -p "${DATE_DIR}"
 
 # Determine next sequential Jump index for today
 get_next_jump_num() {
@@ -206,8 +210,10 @@ if [[ ${#THEORY_DIRS[@]} -gt 0 && -n "${CURRENT_JUMP_DIR}" ]]; then
         done
 
         if [[ "${BEST_THEORY_EPOCH}" -gt 0 ]]; then
-            ln -sfn "${THEORY_DIRS[$BEST_THEORY_idx]}" "${jump_dir}/theory"
-            echo "[Theory] Linked $(basename "${jump_dir}") -> theory/$(basename "${THEORY_DIRS[$BEST_THEORY_idx]}")"
+            # Create relative symlink
+            RELATIVE_PATH=$(realpath --relative-to="${jump_dir}" "${THEORY_DIRS[$BEST_THEORY_idx]}")
+            ln -sfn "${RELATIVE_PATH}" "${jump_dir}/theory"
+            echo "[Theory] Linked $(basename "${jump_dir}") -> $(basename "${THEORY_DIRS[$BEST_THEORY_idx]}")"
         fi
     done
 fi
