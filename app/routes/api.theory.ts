@@ -1,7 +1,7 @@
 import type { Route } from './+types/api.theory'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { getOutputDirPath, saveOverrides, getTheoryDir } from '../lib/scanner.server'
+import { getOutputDirPath, saveOverrides } from '../lib/scanner.server'
 import type { TheoryOverrides } from '../lib/types'
 
 const OVERRIDES_FILE = '.theory_overrides.json'
@@ -13,18 +13,6 @@ const loadOverrides = (outputDir: string): TheoryOverrides => {
     return JSON.parse(fs.readFileSync(filePath, 'utf-8')) as TheoryOverrides
   } catch {
     return {}
-  }
-}
-
-const formatTimestamp = (epoch: number): string => {
-  const d = new Date(epoch * 1000)
-  const pad = (n: number) => n.toString().padStart(2, '0')
-  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
-}
-
-const ensureDir = (dirPath: string): void => {
-  if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true })
   }
 }
 
@@ -49,35 +37,12 @@ const action = async ({ request }: Route.ActionArgs) => {
     if (!filePath) return { ok: false, error: 'Missing filePath' }
 
     if (isTheory) {
-      if (!fs.existsSync(filePath)) {
-        return { ok: false, error: 'File not found' }
-      }
-
-      const stat = fs.statSync(filePath)
-      const ext = path.extname(filePath)
-      const theoryTimestamp = formatTimestamp(stat.mtimeMs / 1000)
-      const newName = `theory_${theoryTimestamp}${ext}`
-
-      const theoryDir = getTheoryDir()
-      ensureDir(theoryDir)
-      const newPath = path.join(theoryDir, newName)
-
-      fs.copyFileSync(filePath, newPath)
-      fs.unlinkSync(filePath)
-
-      overrides[newPath] = {
+      overrides[filePath] = {
         originalPath: filePath,
         sourceDate: getSourceDateFromPath(filePath)
       }
     } else {
-      const override = overrides[filePath]
-      if (override?.originalPath) {
-        const originalDir = path.dirname(override.originalPath)
-        ensureDir(originalDir)
-        fs.copyFileSync(filePath, override.originalPath)
-        fs.unlinkSync(filePath)
-        delete overrides[filePath]
-      }
+      delete overrides[filePath]
     }
 
     saveOverrides(outputDir, overrides)
@@ -94,7 +59,7 @@ const action = async ({ request }: Route.ActionArgs) => {
     }
 
     if (!fs.existsSync(theoryPath)) {
-      return { ok: false, error: 'Theory file not found' }
+      return { ok: false, error: 'Source file not found' }
     }
 
     const targetVideosDir = path.join(outputDir, targetDate, targetJumpDir, 'videos')
@@ -102,8 +67,8 @@ const action = async ({ request }: Route.ActionArgs) => {
       return { ok: false, error: 'Target jump not found' }
     }
 
-    const theoryName = path.basename(theoryPath)
-    const targetPath = path.join(targetVideosDir, theoryName)
+    const sourceName = path.basename(theoryPath)
+    const targetPath = path.join(targetVideosDir, sourceName)
 
     if (fs.existsSync(targetPath)) {
       return { ok: true, message: 'File already exists' }
@@ -162,8 +127,7 @@ const action = async ({ request }: Route.ActionArgs) => {
           const sourceName = path.basename(sourceFile)
           const matching = allJumpFiles.find((f) => path.basename(f) === sourceName)
           if (matching) {
-            const sourceOverride = overrides[sourceFile]
-            overrides[matching] = sourceOverride ?? {
+            overrides[matching] = {
               originalPath: matching,
               sourceDate: getSourceDateFromPath(matching)
             }

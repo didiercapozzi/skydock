@@ -11,9 +11,6 @@ const getOutputDir = (): string => {
 }
 
 const OVERRIDES_FILE = '.theory_overrides.json'
-const THEORY_DIR = 'theory'
-
-export const getTheoryDir = (): string => path.join(getOutputDir(), THEORY_DIR)
 
 const loadOverrides = (outputDir: string): TheoryOverrides => {
   const filePath = path.join(outputDir, OVERRIDES_FILE)
@@ -30,7 +27,7 @@ export const saveOverrides = (outputDir: string, overrides: TheoryOverrides): vo
   fs.writeFileSync(filePath, JSON.stringify(overrides, null, 2))
 }
 
-const isTheoryFileName = (name: string): boolean => /theory/i.test(name)
+const isCopiedFromLibrary = (name: string): boolean => /^theory_\d{8}_\d{6}/.test(name)
 
 const scanFiles = (dirPath: string, overrides: TheoryOverrides): FileEntry[] => {
   if (!fs.existsSync(dirPath)) return []
@@ -40,14 +37,13 @@ const scanFiles = (dirPath: string, overrides: TheoryOverrides): FileEntry[] => 
     .map((name) => {
       const filePath = path.join(dirPath, name)
       const stat = fs.statSync(filePath)
-      const nameBased = isTheoryFileName(name)
-      const overridden = overrides[filePath]
-      const isTheory = overridden !== undefined ? true : nameBased
+      const isTheory = overrides[filePath] !== undefined
       return {
         name,
         path: filePath,
         size: stat.size,
         isTheory,
+        copiedFromLibrary: isCopiedFromLibrary(name),
         mtime: Math.floor(stat.mtimeMs / 1000)
       }
     })
@@ -73,11 +69,6 @@ const buildJump = (
   const allPhotos = scanFiles(path.join(jumpPath, 'photos'), overrides)
   const allVideos = scanFiles(path.join(jumpPath, 'videos'), overrides)
 
-  const jumpPhotos = allPhotos.filter((f) => !f.isTheory)
-  const jumpVideos = allVideos.filter((f) => !f.isTheory)
-  const theoryPhotos = allPhotos.filter((f) => f.isTheory)
-  const theoryVideos = allVideos.filter((f) => f.isTheory)
-
   const totalSize =
     allPhotos.reduce((s, f) => s + f.size, 0) + allVideos.reduce((s, f) => s + f.size, 0)
 
@@ -89,58 +80,51 @@ const buildJump = (
     date,
     name,
     displayName,
-    photoCount: jumpPhotos.length,
-    videoCount: jumpVideos.length,
-    theoryPhotoCount: theoryPhotos.length,
-    theoryVideoCount: theoryVideos.length,
-    jumpPhotos,
-    jumpVideos,
-    theoryPhotos,
-    theoryVideos,
+    photoCount: allPhotos.length,
+    videoCount: allVideos.length,
+    theoryPhotoCount: 0,
+    theoryVideoCount: 0,
+    jumpPhotos: allPhotos,
+    jumpVideos: allVideos,
+    theoryPhotos: [],
+    theoryVideos: [],
     totalSize,
     startedAt
   }
 }
 
-export const scanTheoryFolder = (): TheoryVideoWithSource[] => {
-  const outputDir = getOutputDir()
-  const theoryDir = path.join(outputDir, THEORY_DIR)
-  if (!fs.existsSync(theoryDir)) return []
-
+export const scanLibrary = (outputDir: string): TheoryVideoWithSource[] => {
   const overrides = loadOverrides(outputDir)
+  const result: TheoryVideoWithSource[] = []
 
-  return fs
-    .readdirSync(theoryDir)
-    .filter((f) => {
-      const full = path.join(theoryDir, f)
-      return fs.statSync(full).isFile()
-    })
-    .map((name) => {
-      const filePath = path.join(theoryDir, name)
-      const stat = fs.statSync(filePath)
-      const override = overrides[filePath]
-      const sourceDate = override?.sourceDate ?? ''
+  for (const [filePath, override] of Object.entries(overrides)) {
+    if (!fs.existsSync(filePath)) continue
+    const stat = fs.statSync(filePath)
+    if (!stat.isFile()) continue
 
-      return {
-        name,
-        path: filePath,
-        size: stat.size,
-        isTheory: true,
-        mtime: Math.floor(stat.mtimeMs / 1000),
-        jumpName: '',
-        passengerName: null,
-        jumpDate: sourceDate,
-        jumpId: ''
-      }
+    const name = path.basename(filePath)
+    result.push({
+      name,
+      path: filePath,
+      size: stat.size,
+      isTheory: true,
+      copiedFromLibrary: false,
+      mtime: Math.floor(stat.mtimeMs / 1000),
+      jumpName: '',
+      passengerName: null,
+      jumpDate: override.sourceDate,
+      jumpId: ''
     })
-    .sort((a, b) => a.name.localeCompare(b.name))
+  }
+
+  return result.sort((a, b) => a.name.localeCompare(b.name))
 }
 
-export const scanOutput = (): { days: DayGroup[]; theoryVideos: TheoryVideoWithSource[] } => {
+export const scanOutput = (): { days: DayGroup[]; libraryFiles: TheoryVideoWithSource[] } => {
   const outputDir = getOutputDir()
-  if (!fs.existsSync(outputDir)) return { days: [], theoryVideos: [] }
+  if (!fs.existsSync(outputDir)) return { days: [], libraryFiles: [] }
 
-  const theoryVideos = scanTheoryFolder()
+  const libraryFiles = scanLibrary(outputDir)
 
   const dateDirs = fs
     .readdirSync(outputDir)
@@ -172,7 +156,7 @@ export const scanOutput = (): { days: DayGroup[]; theoryVideos: TheoryVideoWithS
     return { date, jumps, totalPhotos, totalVideos }
   })
 
-  return { days, theoryVideos }
+  return { days, libraryFiles }
 }
 
 export const getJump = (date: string, jumpDir: string): Jump | null => {

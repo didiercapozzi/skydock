@@ -22,9 +22,39 @@ const formatTime = (epoch: number): string => {
   })
 }
 
-const TheoryToggle = ({ file }: { file: FileEntry }) => {
+const VideoIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg
+    className={className}
+    fill='none'
+    viewBox='0 0 24 24'
+    stroke='currentColor'
+    strokeWidth={2}>
+    <path
+      strokeLinecap='round'
+      strokeLinejoin='round'
+      d='M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z'
+    />
+  </svg>
+)
+
+const PhotoIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
+  <svg
+    className={className}
+    fill='none'
+    viewBox='0 0 24 24'
+    stroke='currentColor'
+    strokeWidth={2}>
+    <path
+      strokeLinecap='round'
+      strokeLinejoin='round'
+      d='M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z'
+    />
+  </svg>
+)
+
+const SelectToggle = ({ file }: { file: FileEntry }) => {
   const fetcher = useFetcher()
-  const optimistic = fetcher.formData ? fetcher.formData.get('isTheory') === 'true' : file.isTheory
+  const isSelected = fetcher.formData ? fetcher.formData.get('isTheory') === 'true' : file.isTheory
 
   return (
     <fetcher.Form
@@ -43,16 +73,29 @@ const TheoryToggle = ({ file }: { file: FileEntry }) => {
       <input
         type='hidden'
         name='isTheory'
-        value={optimistic ? 'false' : 'true'}
+        value={isSelected ? 'false' : 'true'}
       />
       <button
         type='submit'
-        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide transition cursor-pointer ${
-          optimistic
-            ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50'
-            : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition cursor-pointer ${
+          isSelected
+            ? 'bg-blue-500 border-blue-500 text-white'
+            : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500'
         }`}>
-        {optimistic ? 'Theory' : 'Mark theory'}
+        {isSelected && (
+          <svg
+            className='w-3 h-3'
+            fill='none'
+            viewBox='0 0 24 24'
+            stroke='currentColor'
+            strokeWidth={3}>
+            <path
+              strokeLinecap='round'
+              strokeLinejoin='round'
+              d='M5 13l4 4L19 7'
+            />
+          </svg>
+        )}
       </button>
     </fetcher.Form>
   )
@@ -130,14 +173,16 @@ const NameEditor = ({
   )
 }
 
-const TheorySidebar = ({
-  theoryVideos,
+const LibrarySidebar = ({
+  libraryFiles,
   selectedDate
 }: {
-  theoryVideos: TheoryVideoWithSource[]
+  libraryFiles: TheoryVideoWithSource[]
   selectedDate: string | null
 }) => {
-  const grouped = theoryVideos.reduce<Record<string, TheoryVideoWithSource[]>>((acc, v) => {
+  const fetcher = useFetcher()
+
+  const grouped = libraryFiles.reduce<Record<string, TheoryVideoWithSource[]>>((acc, v) => {
     const date = v.jumpDate || 'unknown'
     if (!acc[date]) acc[date] = []
     acc[date].push(v)
@@ -146,14 +191,14 @@ const TheorySidebar = ({
 
   const dates = Object.keys(grouped).sort().reverse()
   const filtered = selectedDate
-    ? theoryVideos.filter((v) => v.jumpDate === selectedDate)
-    : theoryVideos
+    ? libraryFiles.filter((v) => v.jumpDate === selectedDate)
+    : libraryFiles
 
   return (
-    <div className='w-64 shrink-0 sticky top-[73px] h-[calc(100vh-73px)] overflow-y-auto border-r border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 p-4'>
+    <div className='w-72 shrink-0 sticky top-[73px] h-[calc(100vh-73px)] overflow-y-auto border-r border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 p-4'>
       <div className='flex items-center gap-2 mb-4'>
         <svg
-          className='w-4 h-4 text-amber-500'
+          className='w-4 h-4 text-blue-500'
           fill='none'
           viewBox='0 0 24 24'
           stroke='currentColor'
@@ -161,25 +206,20 @@ const TheorySidebar = ({
           <path
             strokeLinecap='round'
             strokeLinejoin='round'
-            d='M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z'
-          />
-          <path
-            strokeLinecap='round'
-            strokeLinejoin='round'
-            d='M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+            d='M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10'
           />
         </svg>
-        <h2 className='text-sm font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider'>
-          Theory
+        <h2 className='text-sm font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider'>
+          Library
         </h2>
-        <span className='text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 font-medium'>
+        <span className='text-xs px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 font-medium'>
           {filtered.length}
         </span>
       </div>
 
       {filtered.length === 0 ? (
         <p className='text-xs text-gray-400 dark:text-gray-500 italic'>
-          Mark videos as theory to see them here
+          Select files to add them here
         </p>
       ) : (
         <div className='space-y-3'>
@@ -199,27 +239,83 @@ const TheorySidebar = ({
                   {videos.map((v) => (
                     <div
                       key={v.path}
-                      draggable='true'
-                      onDragStart={(e) => {
-                        e.dataTransfer.setData('application/json', JSON.stringify(v))
-                        e.dataTransfer.effectAllowed = 'copy'
-                      }}
-                      className='flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-900/50 cursor-grab hover:shadow-md hover:border-amber-300 dark:hover:border-amber-700 transition active:cursor-grabbing'>
-                      <svg
-                        className='w-3 h-3 text-amber-500 shrink-0'
-                        fill='none'
-                        viewBox='0 0 24 24'
-                        stroke='currentColor'
-                        strokeWidth={2}>
-                        <path
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                          d='M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4'
+                      className='flex items-center gap-2 px-2 py-2 rounded-lg bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-900/50 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition group'>
+                      <div
+                        draggable='true'
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('application/json', JSON.stringify(v))
+                          e.dataTransfer.effectAllowed = 'copy'
+                        }}
+                        className='flex items-center gap-2 flex-1 min-w-0 cursor-grab active:cursor-grabbing'>
+                        <img
+                          src={`/api/thumbnail?path=${encodeURIComponent(v.path)}`}
+                          alt=''
+                          className='w-10 h-7 rounded object-cover bg-gray-100 dark:bg-gray-700 shrink-0'
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none'
+                            e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                          }}
                         />
-                      </svg>
-                      <span className='text-xs font-mono text-gray-700 dark:text-gray-300 truncate'>
-                        {v.name}
-                      </span>
+                        <div className='w-10 h-7 rounded bg-blue-100 dark:bg-blue-900/30 items-center justify-center shrink-0 hidden'>
+                          <VideoIcon className='w-4 h-4 text-blue-500' />
+                        </div>
+                        <div className='flex-1 min-w-0'>
+                          <p className='text-xs font-mono text-gray-700 dark:text-gray-300 truncate'>
+                            {v.name}
+                          </p>
+                          <p className='text-[10px] text-gray-400 dark:text-gray-500 tabular-nums'>
+                            {formatBytes(v.size)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type='button'
+                        onClick={() => {
+                          fetcher.submit(
+                            { path: v.path },
+                            { method: 'post', action: '/api/open' }
+                          )
+                        }}
+                        className='w-5 h-5 rounded flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 opacity-0 group-hover:opacity-100 transition cursor-pointer'
+                        title='Open file'>
+                        <svg
+                          className='w-3.5 h-3.5'
+                          fill='none'
+                          viewBox='0 0 24 24'
+                          stroke='currentColor'
+                          strokeWidth={2}>
+                          <path
+                            strokeLinecap='round'
+                            strokeLinejoin='round'
+                            d='M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14'
+                          />
+                        </svg>
+                      </button>
+
+                      <button
+                        type='button'
+                        onClick={() => {
+                          fetcher.submit(
+                            { action: 'toggle', filePath: v.path, isTheory: 'false' },
+                            { method: 'post', action: '/api/theory' }
+                          )
+                        }}
+                        className='w-5 h-5 rounded flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition cursor-pointer'
+                        title='Remove from library'>
+                        <svg
+                          className='w-3.5 h-3.5'
+                          fill='none'
+                          viewBox='0 0 24 24'
+                          stroke='currentColor'
+                          strokeWidth={2}>
+                          <path
+                            strokeLinecap='round'
+                            strokeLinejoin='round'
+                            d='M6 18L18 6M6 6l12 12'
+                          />
+                        </svg>
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -232,19 +328,111 @@ const TheorySidebar = ({
   )
 }
 
+const FileRow = ({
+  file,
+  type,
+  onOpen
+}: {
+  file: FileEntry
+  type: 'photo' | 'video'
+  onOpen: (file: FileEntry) => void
+}) => {
+  const isVideo = type === 'video'
+
+  return (
+    <div
+      className={`group flex items-center gap-3 px-3 py-2 rounded-lg transition hover:bg-gray-100 dark:hover:bg-gray-800 ${
+        file.isTheory
+          ? 'bg-blue-50/50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800'
+          : ''
+      }`}>
+      <SelectToggle file={file} />
+
+      <img
+        src={`/api/thumbnail?path=${encodeURIComponent(file.path)}`}
+        alt=''
+        className='w-12 h-8 rounded object-cover bg-gray-100 dark:bg-gray-700 shrink-0'
+        onError={(e) => {
+          e.currentTarget.style.display = 'none'
+          e.currentTarget.nextElementSibling?.classList.remove('hidden')
+        }}
+      />
+      <div
+        className={`w-12 h-8 rounded items-center justify-center shrink-0 hidden ${
+          isVideo ? 'bg-purple-100 dark:bg-purple-900/30' : 'bg-blue-100 dark:bg-blue-900/30'
+        }`}>
+        {isVideo ? (
+          <VideoIcon className='w-4 h-4 text-purple-500' />
+        ) : (
+          <PhotoIcon className='w-4 h-4 text-blue-500' />
+        )}
+      </div>
+
+      <div className='flex-1 min-w-0'>
+        <p className='text-sm font-mono text-gray-900 dark:text-gray-100 truncate'>{file.name}</p>
+        <div className='flex items-center gap-2 mt-0.5'>
+          <span className='text-[10px] text-gray-400 dark:text-gray-500 tabular-nums'>
+            {formatBytes(file.size)}
+          </span>
+          {file.isTheory && (
+            <span className='text-[10px] px-1 py-0.5 rounded bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 font-medium'>
+              in library
+            </span>
+          )}
+          {file.copiedFromLibrary && (
+            <span className='text-[10px] px-1 py-0.5 rounded bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 font-medium'>
+              copied
+            </span>
+          )}
+        </div>
+      </div>
+
+      <button
+        type='button'
+        onClick={() => onOpen(file)}
+        className='shrink-0 w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition cursor-pointer opacity-0 group-hover:opacity-100'
+        title='Preview'>
+        <svg
+          className='w-4 h-4'
+          fill='none'
+          viewBox='0 0 24 24'
+          stroke='currentColor'
+          strokeWidth={2}>
+          <path
+            strokeLinecap='round'
+            strokeLinejoin='round'
+            d='M15 12a3 3 0 11-6 0 3 3 0 016 0z'
+          />
+          <path
+            strokeLinecap='round'
+            strokeLinejoin='round'
+            d='M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z'
+          />
+        </svg>
+      </button>
+    </div>
+  )
+}
+
 const JumpRow = ({
   jump,
   expandedSection,
   onToggleSection,
-  onDrop
+  onDrop,
+  onOpenFile
 }: {
   jump: Jump
   expandedSection: 'photos' | 'videos' | null
   onToggleSection: (section: 'photos' | 'videos') => void
-  onDrop: (theoryPath: string) => void
+  onDrop: (libraryPath: string) => void
+  onOpenFile: (file: FileEntry) => void
 }) => {
   const [isDragOver, setIsDragOver] = useState(false)
   const fetcher = useFetcher()
+
+  const copiedCount = [...jump.jumpVideos, ...jump.jumpPhotos].filter(
+    (f) => f.copiedFromLibrary
+  ).length
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -304,11 +492,18 @@ const JumpRow = ({
               onRename={() => {}}
             />
           </div>
-          {jump.startedAt > 0 && (
-            <p className='text-xs text-gray-400 dark:text-gray-500 tabular-nums'>
-              {formatTime(jump.startedAt)}
-            </p>
-          )}
+          <div className='flex items-center gap-3 mt-0.5'>
+            {jump.startedAt > 0 && (
+              <span className='text-xs text-gray-400 dark:text-gray-500 tabular-nums'>
+                {formatTime(jump.startedAt)}
+              </span>
+            )}
+            {copiedCount > 0 && (
+              <span className='text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 font-medium'>
+                {copiedCount} file{copiedCount > 1 ? 's' : ''} from library
+              </span>
+            )}
+          </div>
         </div>
 
         <div className='flex items-center gap-2'>
@@ -320,18 +515,7 @@ const JumpRow = ({
                 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                 : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
             }`}>
-            <svg
-              className='w-3.5 h-3.5'
-              fill='none'
-              viewBox='0 0 24 24'
-              stroke='currentColor'
-              strokeWidth={2}>
-              <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                d='M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z'
-              />
-            </svg>
+            <PhotoIcon className='w-3.5 h-3.5' />
             {jump.photoCount}
           </button>
 
@@ -343,18 +527,7 @@ const JumpRow = ({
                 ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
                 : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
             }`}>
-            <svg
-              className='w-3.5 h-3.5'
-              fill='none'
-              viewBox='0 0 24 24'
-              stroke='currentColor'
-              strokeWidth={2}>
-              <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                d='M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z'
-              />
-            </svg>
+            <VideoIcon className='w-3.5 h-3.5' />
             {jump.videoCount}
           </button>
         </div>
@@ -365,81 +538,120 @@ const JumpRow = ({
       </div>
 
       {expandedSection === 'photos' && jump.jumpPhotos.length > 0 && (
-        <div className='border-t border-gray-100 dark:border-gray-800 px-4 py-3'>
+        <div className='border-t border-gray-100 dark:border-gray-800 px-4 py-3 space-y-1'>
           <div className='flex items-center gap-2 mb-2'>
-            <svg
-              className='w-4 h-4 text-blue-500'
-              fill='none'
-              viewBox='0 0 24 24'
-              stroke='currentColor'
-              strokeWidth={2}>
-              <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                d='M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z'
-              />
-            </svg>
+            <PhotoIcon className='w-4 h-4 text-blue-500' />
             <h4 className='text-xs font-semibold text-gray-700 dark:text-gray-300'>Photos</h4>
             <span className='text-[10px] text-gray-400 dark:text-gray-500'>
               ({jump.jumpPhotos.length})
             </span>
           </div>
-          <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2'>
-            {jump.jumpPhotos.map((f) => (
-              <div
-                key={f.name}
-                className='flex items-center justify-between px-2 py-1.5 rounded bg-gray-50 dark:bg-gray-800 text-xs'>
-                <span className='font-mono text-gray-700 dark:text-gray-300 truncate'>
-                  {f.name}
-                </span>
-                <TheoryToggle file={f} />
-              </div>
-            ))}
-          </div>
+          {jump.jumpPhotos.map((f) => (
+            <FileRow
+              key={f.name}
+              file={f}
+              type='photo'
+              onOpen={onOpenFile}
+            />
+          ))}
         </div>
       )}
 
       {expandedSection === 'videos' && jump.jumpVideos.length > 0 && (
-        <div className='border-t border-gray-100 dark:border-gray-800 px-4 py-3'>
+        <div className='border-t border-gray-100 dark:border-gray-800 px-4 py-3 space-y-1'>
           <div className='flex items-center gap-2 mb-2'>
-            <svg
-              className='w-4 h-4 text-purple-500'
-              fill='none'
-              viewBox='0 0 24 24'
-              stroke='currentColor'
-              strokeWidth={2}>
-              <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                d='M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z'
-              />
-            </svg>
+            <VideoIcon className='w-4 h-4 text-purple-500' />
             <h4 className='text-xs font-semibold text-gray-700 dark:text-gray-300'>Videos</h4>
             <span className='text-[10px] text-gray-400 dark:text-gray-500'>
               ({jump.jumpVideos.length})
             </span>
           </div>
-          <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2'>
-            {jump.jumpVideos.map((f) => (
-              <div
-                key={f.name}
-                className='flex items-center justify-between px-2 py-1.5 rounded bg-gray-50 dark:bg-gray-800 text-xs'>
-                <span className='font-mono text-gray-700 dark:text-gray-300 truncate'>
-                  {f.name}
-                </span>
-                <TheoryToggle file={f} />
-              </div>
-            ))}
-          </div>
+          {jump.jumpVideos.map((f) => (
+            <FileRow
+              key={f.name}
+              file={f}
+              type='video'
+              onOpen={onOpenFile}
+            />
+          ))}
         </div>
       )}
     </div>
   )
 }
 
+const FileDrawer = ({ file, onClose }: { file: FileEntry; onClose: () => void }) => {
+  const fetcher = useFetcher()
+  const isVideo = file.name.toLowerCase().endsWith('.mp4')
+
+  return (
+    <>
+      <div
+        className='fixed inset-0 bg-black/50 z-40'
+        onClick={onClose}
+      />
+      <div className='fixed right-0 top-0 h-full w-[500px] bg-white dark:bg-gray-900 shadow-2xl z-50 flex flex-col'>
+        <div className='flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800'>
+          <p className='text-sm font-mono text-gray-900 dark:text-gray-100 truncate flex-1 mr-4'>
+            {file.name}
+          </p>
+          <button
+            type='button'
+            onClick={onClose}
+            className='w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer'>
+            <svg
+              className='w-4 h-4'
+              fill='none'
+              viewBox='0 0 24 24'
+              stroke='currentColor'
+              strokeWidth={2}>
+              <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                d='M6 18L18 6M6 6l12 12'
+              />
+            </svg>
+          </button>
+        </div>
+        <div className='flex-1 flex items-center justify-center p-4 overflow-auto bg-gray-50 dark:bg-gray-950'>
+          {isVideo ? (
+            <video
+              src={`/api/thumbnail?path=${encodeURIComponent(file.path)}`}
+              controls
+              autoPlay
+              className='max-w-full max-h-full rounded-lg'
+              onError={(e) => {
+                const target = e.currentTarget
+                target.src = file.path
+              }}
+            />
+          ) : (
+            <img
+              src={file.path}
+              alt={file.name}
+              className='max-w-full max-h-full object-contain rounded-lg'
+            />
+          )}
+        </div>
+        <div className='px-4 py-3 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between'>
+          <span className='text-xs text-gray-500 dark:text-gray-400'>{formatBytes(file.size)}</span>
+          <button
+            type='button'
+            onClick={() => {
+              fetcher.submit({ path: file.path }, { method: 'post', action: '/api/open' })
+            }}
+            className='text-xs px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition cursor-pointer'>
+            Open in player
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}
+
 const loader = () => {
-  const { days, theoryVideos } = scanOutput()
-  return { days, theoryVideos }
+  const { days, libraryFiles } = scanOutput()
+  return { days, libraryFiles }
 }
 
 const meta = (_args: Route.MetaArgs) => [
@@ -448,9 +660,10 @@ const meta = (_args: Route.MetaArgs) => [
 ]
 
 const Home = () => {
-  const { days, theoryVideos } = useLoaderData<typeof loader>()
+  const { days, libraryFiles } = useLoaderData<typeof loader>()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [expandedSection, setExpandedSection] = useState<'photos' | 'videos' | null>(null)
+  const [openFile, setOpenFile] = useState<FileEntry | null>(null)
 
   const totalJumps = days.reduce((s, d) => s + d.jumps.length, 0)
   const totalPhotos = days.reduce((s, d) => s + d.totalPhotos, 0)
@@ -493,8 +706,8 @@ const Home = () => {
       </header>
 
       <div className='max-w-7xl mx-auto flex'>
-        <TheorySidebar
-          theoryVideos={theoryVideos}
+        <LibrarySidebar
+          libraryFiles={libraryFiles}
           selectedDate={selectedDate}
         />
 
@@ -551,6 +764,7 @@ const Home = () => {
                           }
                         }}
                         onDrop={() => {}}
+                        onOpenFile={setOpenFile}
                       />
                     ))}
                   </div>
@@ -560,6 +774,13 @@ const Home = () => {
           )}
         </main>
       </div>
+
+      {openFile && (
+        <FileDrawer
+          file={openFile}
+          onClose={() => setOpenFile(null)}
+        />
+      )}
     </div>
   )
 }

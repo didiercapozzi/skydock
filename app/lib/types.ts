@@ -3,6 +3,7 @@ export type FileEntry = {
   path: string
   size: number
   isTheory: boolean
+  copiedFromLibrary: boolean
   mtime: number
 }
 
