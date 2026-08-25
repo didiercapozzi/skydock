@@ -62,13 +62,16 @@ const action = async ({ request }: Route.ActionArgs) => {
       return { ok: false, error: 'Source file not found' }
     }
 
-    const targetVideosDir = path.join(outputDir, targetDate, targetJumpDir, 'videos')
-    if (!fs.existsSync(targetVideosDir)) {
+    const sourceName = path.basename(theoryPath)
+    const ext = path.extname(sourceName).toLowerCase()
+    const isPhoto = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'].includes(ext)
+    const targetSubdir = isPhoto ? 'photos' : 'videos'
+    const targetDir = path.join(outputDir, targetDate, targetJumpDir, targetSubdir)
+    if (!fs.existsSync(targetDir)) {
       return { ok: false, error: 'Target jump not found' }
     }
 
-    const sourceName = path.basename(theoryPath)
-    const targetPath = path.join(targetVideosDir, sourceName)
+    const targetPath = path.join(targetDir, sourceName)
 
     if (fs.existsSync(targetPath)) {
       return { ok: true, message: 'File already exists' }
