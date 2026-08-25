@@ -98,3 +98,4 @@ Both apps use React Router 8 in **Framework Mode** with SSR enabled:
 - All exports at the end of files
 - always use `types` instead of `interface`
 - No comments in generated scripts
+- the script but be written in bash only and no python

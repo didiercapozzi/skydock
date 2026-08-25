@@ -91,33 +91,27 @@ const action = async ({ request }: { request: Request }) => {
 
   const outputDir = getOutputDirPath()
   const simBase = path.join(process.cwd(), '..', '.sim')
+  const scanScript = path.join(SCRIPTS_DIR, 'scan_media.sh')
+  const photoDir = path.join(simBase, 'photo_cam')
+  const videoDir = path.join(simBase, 'video_cam')
 
   if (formAction === 'add-jump') {
     const result = addJumpFiles(simBase)
     if (!result.ok) return result
 
-    const photoDir = path.join(simBase, 'photo_cam')
-    const videoDir = path.join(simBase, 'video_cam')
-
-    console.log('[Simulate] Photo dir contents:', fs.readdirSync(photoDir))
-    console.log('[Simulate] Video dir contents:', fs.readdirSync(videoDir))
-
+    // Phase 1: Scan new files into manifest
     try {
-      const output = execSync(
-        `SKYDOCK_OUTPUT_DIR="${outputDir}" "${path.join(SCRIPTS_DIR, 'process_media.sh')}" "${photoDir}" "${videoDir}" 2>&1`,
+      execSync(
+        `SKYDOCK_OUTPUT_DIR="${outputDir}" "${scanScript}" "${photoDir}" "${videoDir}" 2>&1`,
         { timeout: 30_000 }
       )
-      console.log('[Simulate] process_media.sh output:', output.toString())
     } catch (e) {
-      console.error('[Simulate] process_media.sh failed:', e)
-      return {
-        ok: false,
-        error: `Processing failed: ${e instanceof Error ? e.message : String(e)}`
-      }
+      return { ok: false, error: `Scan failed: ${e instanceof Error ? e.message : String(e)}` }
     }
     return { ok: true }
   }
 
+  // Default action: simulate full load
   try {
     execSync(
       `"${path.join(SCRIPTS_DIR, 'simulate_cameras.sh')}" --output "${simBase}" --jumps 2 --clean`,
@@ -127,19 +121,14 @@ const action = async ({ request }: { request: Request }) => {
     return { ok: false, error: `Simulation failed: ${e instanceof Error ? e.message : String(e)}` }
   }
 
-  const photoDir = path.join(simBase, 'photo_cam')
-  const videoDir = path.join(simBase, 'video_cam')
-
+  // Phase 1: Scan into manifest for user review
   try {
     execSync(
-      `SKYDOCK_OUTPUT_DIR="${outputDir}" "${path.join(SCRIPTS_DIR, 'process_media.sh')}" "${photoDir}" "${videoDir}"`,
+      `SKYDOCK_OUTPUT_DIR="${outputDir}" "${scanScript}" "${photoDir}" "${videoDir}"`,
       { timeout: 30_000, stdio: 'pipe' }
     )
   } catch (e) {
-    return {
-      ok: false,
-      error: `Processing failed: ${e instanceof Error ? e.message : String(e)}`
-    }
+    return { ok: false, error: `Scan failed: ${e instanceof Error ? e.message : String(e)}` }
   }
 
   return { ok: true }

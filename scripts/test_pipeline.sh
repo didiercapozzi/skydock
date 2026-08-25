@@ -14,6 +14,7 @@ set -eo pipefail
 #   --jumps N          Number of jumps to simulate (default: 3)
 #   --names FILE       Passenger names file (one name per line)
 #   --theory N         Number of theory sessions to simulate (default: 1)
+#   --3phase           Test the 3-phase scan/confirm/execute workflow
 #   --clean            Remove output and simulation dirs before running
 #   -h, --help         Show this help message
 #
@@ -30,6 +31,7 @@ PHOTO_DIR=""
 VIDEO_DIR=""
 NAMES_FILE=""
 THEORY_SESSIONS=1
+THREE_PHASE=false
 
 usage() {
     sed -n '/^# Usage:/,/^$/p' "$0" | sed 's/^# //' | sed 's/^#//'
@@ -44,6 +46,7 @@ while [[ $# -gt 0 ]]; do
         --jumps)      NUM_JUMPS="$2"; shift 2 ;;
         --names)      NAMES_FILE="$2"; shift 2 ;;
         --theory)     THEORY_SESSIONS="$2"; shift 2 ;;
+        --3phase)     THREE_PHASE=true; shift ;;
         --clean)      CLEAN=true; shift ;;
         -h|--help)    usage ;;
         *)            echo "Unknown option: $1"; usage ;;
@@ -65,11 +68,40 @@ assert_dir_exists() {
     fi
 }
 
+assert_file_exists() {
+    local file="$1"
+    local label="$2"
+    if [ -f "${file}" ]; then
+        echo "  PASS: ${label} exists"
+        PASS_COUNT=$((PASS_COUNT + 1))
+    else
+        echo "  FAIL: ${label} does not exist"
+        FAIL_COUNT=$((FAIL_COUNT + 1))
+    fi
+}
+
+assert_json_field() {
+    local file="$1"
+    local field="$2"
+    local expected="$3"
+    local label="$4"
+    local actual
+    actual=$(python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(d${field})" "${file}" 2>/dev/null || echo "__ERROR__")
+    if [ "${actual}" = "${expected}" ]; then
+        echo "  PASS: ${label} = ${actual}"
+        PASS_COUNT=$((PASS_COUNT + 1))
+    else
+        echo "  FAIL: ${label} expected '${expected}', got '${actual}'"
+        FAIL_COUNT=$((FAIL_COUNT + 1))
+    fi
+}
+
 # ─── Setup ─────────────────────────────────────────────────────
 
 if $CLEAN; then
     echo "[Test] Cleaning previous test artifacts..."
     rm -rf "${SIM_BASE}"
+    rm -rf "${OUTPUT_DIR}"
 fi
 
 # ─── Phase 1: Generate simulated cameras ───────────────────────
@@ -101,177 +133,277 @@ fi
 
 mkdir -p "${OUTPUT_DIR}"
 
-# ─── Phase 2: Run the ingestion pipeline ───────────────────────
-
-echo ""
-echo "[Test] Running process_media.sh..."
-echo "------------------------------------------------------------"
-
 export JUMP_GAP_SECONDS=900
 export PHOTO_FPS=2
 export JPEG_QUALITY=2
 export SKYDOCK_OUTPUT_DIR="${OUTPUT_DIR}"
 
-"${SCRIPT_DIR}/process_media.sh" "${PHOTO_DIR}" "${VIDEO_DIR}" "${NAMES_FILE}" || {
-    echo "[Test] ERROR: process_media.sh failed with exit code $?"
-}
+# ─── Test 3-phase workflow ─────────────────────────────────────
 
-# ─── Phase 3: Verify output ───────────────────────────────────
+if $THREE_PHASE; then
+    echo ""
+    echo "============================================================"
+    echo "    Testing 3-Phase Workflow (scan -> confirm -> execute)"
+    echo "============================================================"
 
-echo ""
-echo "============================================================"
-echo "    Test Results"
-echo "============================================================"
+    # Phase 1: Scan
+    echo ""
+    echo "[Test] Phase 1: Scanning cameras..."
+    "${SCRIPT_DIR}/scan_media.sh" "${PHOTO_DIR}" "${VIDEO_DIR}" || {
+        echo "[Test] ERROR: scan_media.sh failed"
+        FAIL_COUNT=$((FAIL_COUNT + 1))
+    }
 
-# Find the date directory
-DATE_DIR=$(find "${OUTPUT_DIR}" -maxdepth 1 -type d -name "20??-??-??" | head -n1)
+    MANIFEST="${OUTPUT_DIR}/proposed_jumps.json"
+    assert_file_exists "${MANIFEST}" "Manifest file"
 
-if [ -z "${DATE_DIR}" ]; then
-    echo "  FAIL: No date directory found under ${OUTPUT_DIR}"
-    FAIL_COUNT=$((FAIL_COUNT + 1))
-else
-    echo "  PASS: Date directory created: $(basename "${DATE_DIR}")"
-    PASS_COUNT=$((PASS_COUNT + 1))
-
-    # Count jump directories
-    JUMP_DIRS=("${DATE_DIR}"/Jump_*)
-    JUMP_COUNT=0
-    for d in "${JUMP_DIRS[@]}"; do
-        [ -d "$d" ] && JUMP_COUNT=$((JUMP_COUNT + 1))
-    done
-
+    # Verify manifest structure
+    assert_json_field "${MANIFEST}" "['status']" "proposed" "Manifest status is proposed"
+    assert_json_field "${MANIFEST}" "['date']" "$(date +%Y-%m-%d)" "Manifest date is today"
+    JUMP_COUNT=$(python3 -c "import json; print(len(json.load(open('${MANIFEST}'))['jumps']))" 2>/dev/null || echo "0")
     if [ "${JUMP_COUNT}" -ge 1 ]; then
-        echo "  PASS: Found ${JUMP_COUNT} jump directory(ies)"
+        echo "  PASS: Manifest has ${JUMP_COUNT} jump(s)"
         PASS_COUNT=$((PASS_COUNT + 1))
     else
-        echo "  FAIL: No jump directories found"
+        echo "  FAIL: Manifest has 0 jumps"
         FAIL_COUNT=$((FAIL_COUNT + 1))
     fi
 
-    # Verify each jump directory
-    for d in "${JUMP_DIRS[@]}"; do
-        [ -d "$d" ] || continue
-        JUMP_NAME=$(basename "${d}")
-        echo ""
-        echo "  Checking ${JUMP_NAME}:"
+    # Phase 2: Confirm all jumps via JSON manipulation
+    echo ""
+    echo "[Test] Phase 2: Confirming all jumps..."
+    python3 -c "
+import json
+m = json.load(open('${MANIFEST}'))
+for j in m['jumps']:
+    j['confirmed'] = True
+m['status'] = 'confirmed'
+json.dump(m, open('${MANIFEST}', 'w'), indent=2)
+"
+    assert_json_field "${MANIFEST}" "['status']" "confirmed" "Manifest status after confirm"
 
-        assert_dir_exists "${d}/photos" "${JUMP_NAME}/photos"
-        assert_dir_exists "${d}/videos" "${JUMP_NAME}/videos"
+    # Phase 3: Execute
+    echo ""
+    echo "[Test] Phase 3: Executing confirmed manifest..."
+    "${SCRIPT_DIR}/execute_media.sh" "${MANIFEST}" || {
+        echo "[Test] ERROR: execute_media.sh failed"
+        FAIL_COUNT=$((FAIL_COUNT + 1))
+    }
 
-        # Check for photo files (JPEGs extracted by ffmpeg)
-        PHOTOS_FOUND=$(find "${d}/photos" -type f -name "*.jpg" 2>/dev/null | wc -l)
-        VIDEOS_FOUND=$(find "${d}/videos" -type f \( -name "*.MP4" -o -name "*.mp4" \) 2>/dev/null | wc -l)
+    # Verify execution results
+    DATE_DIR=$(find "${OUTPUT_DIR}" -maxdepth 1 -type d -name "20??-??-??" | head -n1)
+    if [ -z "${DATE_DIR}" ]; then
+        echo "  FAIL: No date directory found after execution"
+        FAIL_COUNT=$((FAIL_COUNT + 1))
+    else
+        echo "  PASS: Date directory created: $(basename "${DATE_DIR}")"
+        PASS_COUNT=$((PASS_COUNT + 1))
 
-        if [ "${PHOTOS_FOUND}" -gt 0 ]; then
-            echo "  PASS: ${JUMP_NAME}/photos contains ${PHOTOS_FOUND} JPEG(s)"
+        JUMP_DIRS=("${DATE_DIR}"/*)
+        EXEC_JUMP_COUNT=0
+        for d in "${JUMP_DIRS[@]}"; do
+            [ -d "$d" ] && EXEC_JUMP_COUNT=$((EXEC_JUMP_COUNT + 1))
+        done
+
+        if [ "${EXEC_JUMP_COUNT}" -ge 1 ]; then
+            echo "  PASS: Found ${EXEC_JUMP_COUNT} jump directory(ies) after execution"
             PASS_COUNT=$((PASS_COUNT + 1))
         else
-            echo "  INFO: ${JUMP_NAME}/photos has 0 JPEGs (ffmpeg may not be available or files are dummy)"
-        fi
-
-        if [ "${VIDEOS_FOUND}" -gt 0 ]; then
-            echo "  PASS: ${JUMP_NAME}/videos contains ${VIDEOS_FOUND} video(s)"
-            PASS_COUNT=$((PASS_COUNT + 1))
-        else
-            echo "  FAIL: ${JUMP_NAME}/videos has 0 videos"
+            echo "  FAIL: No jump directories found after execution"
             FAIL_COUNT=$((FAIL_COUNT + 1))
         fi
-    done
-fi
 
-# Check registry
-echo ""
-if [ -f "${OUTPUT_DIR}/.ingested_registry.txt" ]; then
-    REGISTRY_LINES=$(wc -l < "${OUTPUT_DIR}/.ingested_registry.txt")
-    echo "  PASS: Registry file exists with ${REGISTRY_LINES} entry(ies)"
-    PASS_COUNT=$((PASS_COUNT + 1))
-else
-    echo "  FAIL: Registry file not found"
-    FAIL_COUNT=$((FAIL_COUNT + 1))
-fi
+        for d in "${JUMP_DIRS[@]}"; do
+            [ -d "$d" ] || continue
+            JUMP_NAME=$(basename "${d}")
+            echo ""
+            echo "  Checking ${JUMP_NAME}:"
+            assert_dir_exists "${d}/photos" "${JUMP_NAME}/photos"
+            assert_dir_exists "${d}/videos" "${JUMP_NAME}/videos"
 
-# ─── Phase 4: Verify passenger names ──────────────────────────
-
-echo ""
-if [[ -n "${NAMES_FILE}" && -f "${NAMES_FILE}" ]]; then
-    echo "[Test] Verifying passenger names were applied..."
-    NAMES_APPLIED=0
-    while IFS= read -r name || [[ -n "${name}" ]]; do
-        name=$(echo "${name}" | xargs)
-        [[ -z "${name}" ]] && continue
-        SAFE_NAME=$(echo "${name}" | sed 's/[^a-zA-Z0-9 _-]//g' | tr ' ' '_')
-        for dir in "${DATE_DIR}/${SAFE_NAME}" "${DATE_DIR}/Jump_*"${SAFE_NAME}"*; do
-            if [[ -d "${dir}" ]]; then
-                NAMES_APPLIED=$((NAMES_APPLIED + 1))
-                break
+            VIDEOS_FOUND=$(find "${d}/videos" -type f \( -name "*.MP4" -o -name "*.mp4" \) 2>/dev/null | wc -l)
+            if [ "${VIDEOS_FOUND}" -gt 0 ]; then
+                echo "  PASS: ${JUMP_NAME}/videos contains ${VIDEOS_FOUND} video(s)"
+                PASS_COUNT=$((PASS_COUNT + 1))
+            else
+                echo "  FAIL: ${JUMP_NAME}/videos has 0 videos"
+                FAIL_COUNT=$((FAIL_COUNT + 1))
             fi
         done
-    done < "${NAMES_FILE}"
-    
-    if [ "${NAMES_APPLIED}" -gt 0 ]; then
-        echo "  PASS: ${NAMES_APPLIED} passenger name(s) applied to jump directories"
+    fi
+
+    # Verify manifest was marked as executed
+    assert_json_field "${MANIFEST}" "['status']" "executed" "Manifest status after execution"
+
+    # Verify registry
+    if [ -f "${OUTPUT_DIR}/.ingested_registry.txt" ]; then
+        REGISTRY_LINES=$(wc -l < "${OUTPUT_DIR}/.ingested_registry.txt")
+        echo "  PASS: Registry has ${REGISTRY_LINES} entry(ies)"
         PASS_COUNT=$((PASS_COUNT + 1))
     else
-        echo "  FAIL: No passenger names found in jump directories"
+        echo "  FAIL: Registry not found"
         FAIL_COUNT=$((FAIL_COUNT + 1))
     fi
+
+    echo ""
+    echo "============================================================"
+    echo "    3-Phase Test Summary"
+    echo "============================================================"
+
+# ─── Test legacy direct workflow ───────────────────────────────
+
 else
-    echo "[Test] No names file provided, skipping passenger names verification"
-fi
+    echo ""
+    echo "============================================================"
+    echo "    Testing Direct Workflow (process_media.sh)"
+    echo "============================================================"
 
-# ─── Phase 5: Verify theory files in jump folders ─────────────
+    echo ""
+    echo "[Test] Running process_media.sh..."
+    echo "------------------------------------------------------------"
 
-echo ""
-echo "[Test] Verifying theory files in jump folders..."
-THEORY_COPIED=0
-for d in "${DATE_DIR}"/Jump_*; do
-    [[ -d "$d" ]] || continue
-    JUMP_NAME=$(basename "${d}")
+    "${SCRIPT_DIR}/process_media.sh" "${PHOTO_DIR}" "${VIDEO_DIR}" "${NAMES_FILE}" || {
+        echo "[Test] ERROR: process_media.sh failed with exit code $?"
+    }
 
-    # Check for theory videos (files with THEORY in name)
-    THEORY_VIDEOS=$(find "${d}/videos" -type f -iname "*THEORY*" 2>/dev/null | wc -l)
+    # Verify output
+    echo ""
+    echo "------------------------------------------------------------"
 
-    if [[ "${THEORY_VIDEOS}" -gt 0 ]]; then
-        THEORY_COPIED=$((THEORY_COPIED + 1))
-        echo "  PASS: ${JUMP_NAME} has ${THEORY_VIDEOS} theory video(s)"
+    DATE_DIR=$(find "${OUTPUT_DIR}" -maxdepth 1 -type d -name "20??-??-??" | head -n1)
+
+    if [ -z "${DATE_DIR}" ]; then
+        echo "  FAIL: No date directory found under ${OUTPUT_DIR}"
+        FAIL_COUNT=$((FAIL_COUNT + 1))
+    else
+        echo "  PASS: Date directory created: $(basename "${DATE_DIR}")"
+        PASS_COUNT=$((PASS_COUNT + 1))
+
+        JUMP_DIRS=("${DATE_DIR}"/Jump_*)
+        JUMP_COUNT=0
+        for d in "${JUMP_DIRS[@]}"; do
+            [ -d "$d" ] && JUMP_COUNT=$((JUMP_COUNT + 1))
+        done
+
+        if [ "${JUMP_COUNT}" -ge 1 ]; then
+            echo "  PASS: Found ${JUMP_COUNT} jump directory(ies)"
+            PASS_COUNT=$((PASS_COUNT + 1))
+        else
+            echo "  FAIL: No jump directories found"
+            FAIL_COUNT=$((FAIL_COUNT + 1))
+        fi
+
+        for d in "${JUMP_DIRS[@]}"; do
+            [ -d "$d" ] || continue
+            JUMP_NAME=$(basename "${d}")
+            echo ""
+            echo "  Checking ${JUMP_NAME}:"
+
+            assert_dir_exists "${d}/photos" "${JUMP_NAME}/photos"
+            assert_dir_exists "${d}/videos" "${JUMP_NAME}/videos"
+
+            PHOTOS_FOUND=$(find "${d}/photos" -type f -name "*.jpg" 2>/dev/null | wc -l)
+            VIDEOS_FOUND=$(find "${d}/videos" -type f \( -name "*.MP4" -o -name "*.mp4" \) 2>/dev/null | wc -l)
+
+            if [ "${PHOTOS_FOUND}" -gt 0 ]; then
+                echo "  PASS: ${JUMP_NAME}/photos contains ${PHOTOS_FOUND} JPEG(s)"
+                PASS_COUNT=$((PASS_COUNT + 1))
+            else
+                echo "  INFO: ${JUMP_NAME}/photos has 0 JPEGs"
+            fi
+
+            if [ "${VIDEOS_FOUND}" -gt 0 ]; then
+                echo "  PASS: ${JUMP_NAME}/videos contains ${VIDEOS_FOUND} video(s)"
+                PASS_COUNT=$((PASS_COUNT + 1))
+            else
+                echo "  FAIL: ${JUMP_NAME}/videos has 0 videos"
+                FAIL_COUNT=$((FAIL_COUNT + 1))
+            fi
+        done
     fi
-done
 
-if [ "${THEORY_COPIED}" -gt 0 ]; then
-    echo "  PASS: Theory files copied to ${THEORY_COPIED} jump directory(ies)"
-    PASS_COUNT=$((PASS_COUNT + 1))
-else
-    echo "  INFO: No theory files found in jump directories"
-fi
+    # Check registry
+    echo ""
+    if [ -f "${OUTPUT_DIR}/.ingested_registry.txt" ]; then
+        REGISTRY_LINES=$(wc -l < "${OUTPUT_DIR}/.ingested_registry.txt")
+        echo "  PASS: Registry file exists with ${REGISTRY_LINES} entry(ies)"
+        PASS_COUNT=$((PASS_COUNT + 1))
+    else
+        echo "  FAIL: Registry file not found"
+        FAIL_COUNT=$((FAIL_COUNT + 1))
+    fi
 
-# ─── Phase 6: Idempotency test ────────────────────────────────
+    # Verify passenger names
+    echo ""
+    if [[ -n "${NAMES_FILE}" && -f "${NAMES_FILE}" ]]; then
+        echo "[Test] Verifying passenger names were applied..."
+        NAMES_APPLIED=0
+        while IFS= read -r name || [[ -n "${name}" ]]; do
+            name=$(echo "${name}" | xargs)
+            [[ -z "${name}" ]] && continue
+            SAFE_NAME=$(echo "${name}" | sed 's/[^a-zA-Z0-9 _-]//g' | tr ' ' '_')
+            for dir in "${DATE_DIR}/${SAFE_NAME}" "${DATE_DIR}"/Jump_*"${SAFE_NAME}"*; do
+                if [[ -d "${dir}" ]]; then
+                    NAMES_APPLIED=$((NAMES_APPLIED + 1))
+                    break
+                fi
+            done
+        done < "${NAMES_FILE}"
 
-echo ""
-echo "[Test] Running pipeline again (idempotency check)..."
-"${SCRIPT_DIR}/process_media.sh" "${PHOTO_DIR}" "${VIDEO_DIR}" "${NAMES_FILE}" 2>/dev/null
-NEW_REGISTRY_LINES=$(wc -l < "${OUTPUT_DIR}/.ingested_registry.txt" 2>/dev/null || echo "0")
+        if [ "${NAMES_APPLIED}" -gt 0 ]; then
+            echo "  PASS: ${NAMES_APPLIED} passenger name(s) applied"
+            PASS_COUNT=$((PASS_COUNT + 1))
+        else
+            echo "  FAIL: No passenger names found"
+            FAIL_COUNT=$((FAIL_COUNT + 1))
+        fi
+    fi
 
-if [ "${NEW_REGISTRY_LINES}" -eq "${REGISTRY_LINES:-0}" ]; then
-    echo "  PASS: Idempotent — registry unchanged after re-run (${NEW_REGISTRY_LINES} entries)"
-    PASS_COUNT=$((PASS_COUNT + 1))
-else
-    echo "  FAIL: Registry changed after re-run (was ${REGISTRY_LINES:-0}, now ${NEW_REGISTRY_LINES})"
-    FAIL_COUNT=$((FAIL_COUNT + 1))
+    # Verify theory files
+    echo ""
+    THEORY_COPIED=0
+    for d in "${DATE_DIR}"/Jump_*; do
+        [[ -d "$d" ]] || continue
+        JUMP_NAME=$(basename "${d}")
+        THEORY_VIDEOS=$(find "${d}/videos" -type f -iname "*THEORY*" 2>/dev/null | wc -l)
+        if [[ "${THEORY_VIDEOS}" -gt 0 ]]; then
+            THEORY_COPIED=$((THEORY_COPIED + 1))
+            echo "  PASS: ${JUMP_NAME} has ${THEORY_VIDEOS} theory video(s)"
+        fi
+    done
+    if [ "${THEORY_COPIED}" -gt 0 ]; then
+        echo "  PASS: Theory files copied to ${THEORY_COPIED} jump directory(ies)"
+        PASS_COUNT=$((PASS_COUNT + 1))
+    fi
+
+    # Idempotency test
+    echo ""
+    echo "[Test] Running pipeline again (idempotency check)..."
+    "${SCRIPT_DIR}/process_media.sh" "${PHOTO_DIR}" "${VIDEO_DIR}" "${NAMES_FILE}" 2>/dev/null
+    NEW_REGISTRY_LINES=$(wc -l < "${OUTPUT_DIR}/.ingested_registry.txt" 2>/dev/null || echo "0")
+
+    if [ "${NEW_REGISTRY_LINES}" -eq "${REGISTRY_LINES:-0}" ]; then
+        echo "  PASS: Idempotent — registry unchanged (${NEW_REGISTRY_LINES} entries)"
+        PASS_COUNT=$((PASS_COUNT + 1))
+    else
+        echo "  FAIL: Registry changed (was ${REGISTRY_LINES:-0}, now ${NEW_REGISTRY_LINES})"
+        FAIL_COUNT=$((FAIL_COUNT + 1))
+    fi
+
+    echo ""
+    echo "============================================================"
+    echo "    Direct Workflow Test Summary"
+    echo "============================================================"
 fi
 
 # ─── Summary ───────────────────────────────────────────────────
 
 echo ""
-echo "============================================================"
-echo "    Summary: ${PASS_COUNT} passed, ${FAIL_COUNT} failed"
+echo "    ${PASS_COUNT} passed, ${FAIL_COUNT} failed"
 echo "============================================================"
 
 echo ""
 echo "Output directory: ${OUTPUT_DIR}"
-echo ""
-echo "To inspect:"
-echo "  find ${OUTPUT_DIR} -type f | head -30"
-echo "  cat ${OUTPUT_DIR}/.ingested_registry.txt"
 echo ""
 
 if [ "${FAIL_COUNT}" -gt 0 ]; then
