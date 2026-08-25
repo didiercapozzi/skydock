@@ -4,7 +4,7 @@ export default [
   index('routes/home.tsx'),
   route('jump/:date/:jumpDir', 'routes/jump.tsx'),
   route('api/file', 'routes/api.file.ts'),
-  route('api/theory', 'routes/api.theory.ts'),
+  route('api/library', 'routes/api.library.ts'),
   route('api/jump', 'routes/api.jump.ts'),
   route('api/open', 'routes/api.open.ts'),
   route('api/simulate', 'routes/api.simulate.ts')

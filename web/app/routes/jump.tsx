@@ -13,12 +13,12 @@ const formatBytes = (bytes: number): string => {
 
 const TheoryToggle = ({ file, jumpId }: { file: FileEntry; jumpId: string }) => {
   const fetcher = useFetcher()
-  const optimistic = fetcher.formData ? fetcher.formData.get('isTheory') === 'true' : file.isTheory
+  const optimistic = fetcher.formData ? fetcher.formData.get('isInLibrary') === 'true' : file.isTheory
 
   return (
     <fetcher.Form
       method='post'
-      action='/api/theory'>
+      action='/api/library'>
       <input
         type='hidden'
         name='action'
@@ -31,7 +31,7 @@ const TheoryToggle = ({ file, jumpId }: { file: FileEntry; jumpId: string }) => 
       />
       <input
         type='hidden'
-        name='isTheory'
+        name='isInLibrary'
         value={optimistic ? 'false' : 'true'}
       />
       <input
@@ -59,7 +59,7 @@ const ApplyButton = ({ jump }: { jump: Jump }) => {
   return (
     <fetcher.Form
       method='post'
-      action='/api/theory'>
+      action='/api/library'>
       <input
         type='hidden'
         name='action'

@@ -1,4 +1,4 @@
-import type { Route } from './+types/api.theory'
+import type { Route } from './+types/api.library'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { getOutputDirPath, saveOverrides } from '../lib/scanner.server'
@@ -33,10 +33,10 @@ const action = async ({ request }: Route.ActionArgs) => {
 
   if (formAction === 'toggle') {
     const filePath = String(formData.get('filePath') ?? '')
-    const isTheory = String(formData.get('isTheory') ?? '') === 'true'
+    const isInLibrary = String(formData.get('isInLibrary') ?? '') === 'true'
     if (!filePath) return { ok: false, error: 'Missing filePath' }
 
-    if (isTheory) {
+    if (isInLibrary) {
       overrides[filePath] = {
         originalPath: filePath,
         sourceDate: getSourceDateFromPath(filePath)
@@ -50,19 +50,19 @@ const action = async ({ request }: Route.ActionArgs) => {
   }
 
   if (formAction === 'copy-to-jump') {
-    const theoryPath = String(formData.get('theoryPath') ?? '')
+    const sourcePath = String(formData.get('sourcePath') ?? '')
     const targetDate = String(formData.get('targetDate') ?? '')
     const targetJumpDir = String(formData.get('targetJumpDir') ?? '')
 
-    if (!theoryPath || !targetDate || !targetJumpDir) {
+    if (!sourcePath || !targetDate || !targetJumpDir) {
       return { ok: false, error: 'Missing parameters' }
     }
 
-    if (!fs.existsSync(theoryPath)) {
+    if (!fs.existsSync(sourcePath)) {
       return { ok: false, error: 'Source file not found' }
     }
 
-    const sourceName = path.basename(theoryPath)
+    const sourceName = path.basename(sourcePath)
     const ext = path.extname(sourceName).toLowerCase()
     const isPhoto = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'].includes(ext)
     const targetSubdir = isPhoto ? 'photos' : 'videos'
@@ -77,7 +77,7 @@ const action = async ({ request }: Route.ActionArgs) => {
       return { ok: true, message: 'File already exists' }
     }
 
-    fs.copyFileSync(theoryPath, targetPath)
+    fs.copyFileSync(sourcePath, targetPath)
     return { ok: true }
   }
 

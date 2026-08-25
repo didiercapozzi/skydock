@@ -56,12 +56,12 @@ const PhotoIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
 
 const SelectToggle = ({ file }: { file: FileEntry }) => {
   const fetcher = useFetcher()
-  const isSelected = fetcher.formData ? fetcher.formData.get('isTheory') === 'true' : file.isTheory
+  const isSelected = fetcher.formData ? fetcher.formData.get('isInLibrary') === 'true' : file.isTheory
 
   return (
     <fetcher.Form
       method='post'
-      action='/api/theory'>
+      action='/api/library'>
       <input
         type='hidden'
         name='action'
@@ -74,7 +74,7 @@ const SelectToggle = ({ file }: { file: FileEntry }) => {
       />
       <input
         type='hidden'
-        name='isTheory'
+        name='isInLibrary'
         value={isSelected ? 'false' : 'true'}
       />
       <button
@@ -296,8 +296,8 @@ const LibrarySidebar = ({
                         type='button'
                         onClick={() => {
                           fetcher.submit(
-                            { action: 'toggle', filePath: v.path, isTheory: 'false' },
-                            { method: 'post', action: '/api/theory' }
+                            { action: 'toggle', filePath: v.path, isInLibrary: 'false' },
+                            { method: 'post', action: '/api/library' }
                           )
                         }}
                         className='w-5 h-5 rounded flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition cursor-pointer'
@@ -453,11 +453,11 @@ const JumpRow = ({
           fetcher.submit(
             {
               action: 'copy-to-jump',
-              theoryPath: data.path,
+              sourcePath: data.path,
               targetDate: jump.date,
               targetJumpDir: jump.id.split('/')[1]
             },
-            { method: 'post', action: '/api/theory' }
+            { method: 'post', action: '/api/library' }
           )
           onDrop(data.path)
         }
