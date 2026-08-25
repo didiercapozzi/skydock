@@ -160,12 +160,11 @@ export const scanOutput = (): { days: DayGroup[]; libraryFiles: TheoryVideoWithS
         const full = path.join(datePath, d)
         return fs.statSync(full).isDirectory() && !d.startsWith('.')
       })
-      .sort()
 
     const overrides = loadOverrides(outputDir)
-    const jumps: Jump[] = jumpDirs.map((dirName) =>
-      buildJump(date, dirName, path.join(datePath, dirName), overrides)
-    )
+    const jumps: Jump[] = jumpDirs
+      .map((dirName) => buildJump(date, dirName, path.join(datePath, dirName), overrides))
+      .sort((a, b) => a.startedAt - b.startedAt)
 
     const totalPhotos = jumps.reduce((s, j) => s + j.photoCount + j.theoryPhotoCount, 0)
     const totalVideos = jumps.reduce((s, j) => s + j.videoCount + j.theoryVideoCount, 0)
