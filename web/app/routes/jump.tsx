@@ -1,4 +1,4 @@
-import { useLoaderData, Link, useFetcher } from 'react-router'
+import { useLoaderData, Link, useFetcher, href } from 'react-router'
 import type { Route } from './+types/jump'
 import { getJump, getOutputDirPath } from '../lib/scanner.server'
 import type { FileEntry, Jump } from '../lib/types'
@@ -189,7 +189,7 @@ const JumpDetail = () => {
       <header className='border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm sticky top-0 z-10'>
         <div className='max-w-5xl mx-auto px-4 py-4 flex items-center gap-4'>
           <Link
-            to='/'
+            to={href('/')}
             className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition'>
             <svg
               className='w-5 h-5'

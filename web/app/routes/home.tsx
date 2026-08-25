@@ -12,6 +12,8 @@ const formatBytes = (bytes: number): string => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
 }
 
+const fileUrl = (filePath: string): string => `/api/file?path=${encodeURIComponent(filePath)}`
+
 const formatTime = (epoch: number): string => {
   if (epoch === 0) return ''
   const d = new Date(epoch * 1000)
@@ -248,7 +250,7 @@ const LibrarySidebar = ({
                         }}
                         className='flex items-center gap-2 flex-1 min-w-0 cursor-grab active:cursor-grabbing'>
                         <img
-                          src={`/api/thumbnail?path=${encodeURIComponent(v.path)}`}
+                          src={fileUrl(v.path)}
                           alt=''
                           className='w-10 h-7 rounded object-cover bg-gray-100 dark:bg-gray-700 shrink-0'
                           onError={(e) => {
@@ -346,7 +348,7 @@ const FileRow = ({
       <SelectToggle file={file} />
 
       <img
-        src={`/api/thumbnail?path=${encodeURIComponent(file.path)}`}
+        src={fileUrl(file.path)}
         alt=''
         className='w-12 h-8 rounded object-cover bg-gray-100 dark:bg-gray-700 shrink-0'
         onError={(e) => {
@@ -613,18 +615,14 @@ const FileDrawer = ({ file, onClose }: { file: FileEntry; onClose: () => void })
         <div className='flex-1 flex items-center justify-center p-4 overflow-auto bg-gray-50 dark:bg-gray-950'>
           {isVideo ? (
             <video
-              src={`/api/thumbnail?path=${encodeURIComponent(file.path)}`}
+              src={fileUrl(file.path)}
               controls
               autoPlay
               className='max-w-full max-h-full rounded-lg'
-              onError={(e) => {
-                const target = e.currentTarget
-                target.src = file.path
-              }}
             />
           ) : (
             <img
-              src={file.path}
+              src={fileUrl(file.path)}
               alt={file.name}
               className='max-w-full max-h-full object-contain rounded-lg'
             />

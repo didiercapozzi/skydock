@@ -158,7 +158,7 @@ export const scanOutput = (): { days: DayGroup[]; libraryFiles: TheoryVideoWithS
       .readdirSync(datePath)
       .filter((d) => {
         const full = path.join(datePath, d)
-        return fs.statSync(full).isDirectory() && d.startsWith('Jump_')
+        return fs.statSync(full).isDirectory() && !d.startsWith('.')
       })
       .sort()
 
