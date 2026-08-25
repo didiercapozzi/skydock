@@ -708,16 +708,33 @@ const Home = () => {
             <span>{totalPhotos} photos</span>
             <span>{totalVideos} videos</span>
             {import.meta.env.DEV && (
-              <simulateFetcher.Form
-                method='post'
-                action='/api/simulate'>
-                <button
-                  type='submit'
-                  disabled={simulating}
-                  className='ml-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 transition disabled:opacity-50 cursor-pointer'>
-                  {simulating ? 'Simulating...' : 'Simulate Load'}
-                </button>
-              </simulateFetcher.Form>
+              <div className='flex items-center gap-2 ml-2'>
+                <simulateFetcher.Form
+                  method='post'
+                  action='/api/simulate'>
+                  <button
+                    type='submit'
+                    disabled={simulating}
+                    className='px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 transition disabled:opacity-50 cursor-pointer'>
+                    {simulating ? 'Simulating...' : 'Simulate Load'}
+                  </button>
+                </simulateFetcher.Form>
+                <simulateFetcher.Form
+                  method='post'
+                  action='/api/simulate'>
+                  <input
+                    type='hidden'
+                    name='action'
+                    value='add-jump'
+                  />
+                  <button
+                    type='submit'
+                    disabled={simulating}
+                    className='px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50 transition disabled:opacity-50 cursor-pointer'>
+                    {simulating ? 'Adding...' : 'Add Jump'}
+                  </button>
+                </simulateFetcher.Form>
+              </div>
             )}
           </div>
         </div>
