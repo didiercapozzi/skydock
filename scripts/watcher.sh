@@ -43,6 +43,7 @@ if $TEST_MODE; then
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
     SIM_BASE="${PROJECT_ROOT}/.sim"
+    SIM_OUTPUT="${PROJECT_ROOT}/output"
 
     # Auto-generate simulated cameras if directories not provided
     if [ -z "${SIM_PHOTO_DIR}" ] || [ -z "${SIM_VIDEO_DIR}" ]; then
@@ -55,18 +56,20 @@ if $TEST_MODE; then
     echo "[Watcher] Test mode active."
     echo "  Photo camera: ${SIM_PHOTO_DIR}"
     echo "  Video camera: ${SIM_VIDEO_DIR}"
+    echo "  Output dir:   ${SIM_OUTPUT}"
 
     PHOTO_PATH="${SIM_PHOTO_DIR}"
     VIDEO_PATH="${SIM_VIDEO_DIR}"
+    export SKYDOCK_OUTPUT_DIR="${SIM_OUTPUT}"
 
     if $RUN_ONCE; then
         echo "[Watcher] Test mode (single run): processing once..."
-        /app/scripts/process_media.sh "${PHOTO_PATH}" "${VIDEO_PATH}" || true
+        "${SCRIPT_DIR}/process_media.sh" "${PHOTO_PATH}" "${VIDEO_PATH}" || true
         echo "[Watcher] Test run complete."
     else
         echo "[Watcher] Test mode daemon active. Processing simulated cameras every 8s..."
         while true; do
-            /app/scripts/process_media.sh "${PHOTO_PATH}" "${VIDEO_PATH}" || true
+            "${SCRIPT_DIR}/process_media.sh" "${PHOTO_PATH}" "${VIDEO_PATH}" || true
             sleep 8
         done
     fi

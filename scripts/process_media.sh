@@ -4,7 +4,8 @@ set -eo pipefail
 PHOTO_ROOT="$1"
 VIDEO_ROOT="$2"
 NAMES_FILE="${3:-}"
-REGISTRY_FILE="/output/.ingested_registry.txt"
+OUTPUT_DIR="${SKYDOCK_OUTPUT_DIR:-/workspace/output}"
+REGISTRY_FILE="${OUTPUT_DIR}/.ingested_registry.txt"
 JUMP_GAP=${JUMP_GAP_SECONDS:-900}
 PHOTO_FPS=${PHOTO_FPS:-2}
 JPEG_QUALITY=${JPEG_QUALITY:-2}
@@ -55,7 +56,7 @@ if [[ -n "${ALL_EPOCHS}" ]]; then
 else
     TARGET_DATE=$(date +"%Y-%m-%d")
 fi
-DATE_DIR="/output/${TARGET_DATE}"
+DATE_DIR="${OUTPUT_DIR}/${TARGET_DATE}"
 mkdir -p "${DATE_DIR}"
 
 # ─── Process theory sessions (store in temp dirs per session) ──

@@ -23,7 +23,7 @@ set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SIM_BASE="${PROJECT_ROOT}/.sim"
-OUTPUT_DIR="${PROJECT_ROOT}/.sim/output"
+OUTPUT_DIR="${PROJECT_ROOT}/output"
 NUM_JUMPS=3
 CLEAN=false
 PHOTO_DIR=""
@@ -110,31 +110,9 @@ echo "------------------------------------------------------------"
 export JUMP_GAP_SECONDS=900
 export PHOTO_FPS=2
 export JPEG_QUALITY=2
-export REGISTRY_FILE="${OUTPUT_DIR}/.ingested_registry.txt"
+export SKYDOCK_OUTPUT_DIR="${OUTPUT_DIR}"
 
-# Override the hardcoded /output path in process_media.sh by running it
-# in a subshell with the output dir
-(
-    export REGISTRY_FILE="${OUTPUT_DIR}/.ingested_registry.txt"
-    # The script hardcodes /output, so we symlink or copy
-    # Actually, let's just run it with the output dir approach
-    true
-)
-
-# Since process_media.sh hardcodes /output, we need to handle this.
-# Create a temp /output symlink or use sed to patch it on the fly.
-TEMP_OUTPUT_LINK="/tmp/skydock_test_output_link"
-rm -f "${TEMP_OUTPUT_LINK}"
-ln -sfn "${OUTPUT_DIR}" "${TEMP_OUTPUT_LINK}"
-
-# Patch process_media.sh to use our output dir instead of /output
-PATCHED_SCRIPT=$(mktemp /tmp/process_media_XXXXXX.sh)
-trap 'rm -f "${PATCHED_SCRIPT}" "${TEMP_OUTPUT_LINK}"' EXIT
-
-sed "s|/output|${OUTPUT_DIR}|g" "${SCRIPT_DIR}/process_media.sh" > "${PATCHED_SCRIPT}"
-chmod +x "${PATCHED_SCRIPT}"
-
-"${PATCHED_SCRIPT}" "${PHOTO_DIR}" "${VIDEO_DIR}" "${NAMES_FILE}" || {
+"${SCRIPT_DIR}/process_media.sh" "${PHOTO_DIR}" "${VIDEO_DIR}" "${NAMES_FILE}" || {
     echo "[Test] ERROR: process_media.sh failed with exit code $?"
 }
 
@@ -270,7 +248,7 @@ fi
 
 echo ""
 echo "[Test] Running pipeline again (idempotency check)..."
-"${PATCHED_SCRIPT}" "${PHOTO_DIR}" "${VIDEO_DIR}" "${NAMES_FILE}" 2>/dev/null
+"${SCRIPT_DIR}/process_media.sh" "${PHOTO_DIR}" "${VIDEO_DIR}" "${NAMES_FILE}" 2>/dev/null
 NEW_REGISTRY_LINES=$(wc -l < "${OUTPUT_DIR}/.ingested_registry.txt" 2>/dev/null || echo "0")
 
 if [ "${NEW_REGISTRY_LINES}" -eq "${REGISTRY_LINES:-0}" ]; then
