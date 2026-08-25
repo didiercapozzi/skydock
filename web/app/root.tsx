@@ -4,6 +4,10 @@ import type { Route } from './+types/root'
 import './app.css'
 
 export const links: Route.LinksFunction = () => [
+  { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+  { rel: 'icon', type: 'image/png', sizes: '256x256', href: '/icon-256.png' },
+  { rel: 'icon', type: 'image/png', sizes: '128x128', href: '/icon-128.png' },
+  { rel: 'apple-touch-icon', type: 'image/png', sizes: '256x256', href: '/icon-256.png' },
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
   {
     rel: 'preconnect',

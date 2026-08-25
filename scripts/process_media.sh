@@ -6,15 +6,17 @@ VIDEO_ROOT="$2"
 NAMES_FILE="${3:-}"
 OUTPUT_DIR="${SKYDOCK_OUTPUT_DIR:-/workspace/output}"
 REGISTRY_FILE="${OUTPUT_DIR}/.ingested_registry.txt"
+PROCESSING_FILE="${OUTPUT_DIR}/.processing"
 JUMP_GAP=${JUMP_GAP_SECONDS:-900}
 PHOTO_FPS=${PHOTO_FPS:-2}
 JPEG_QUALITY=${JPEG_QUALITY:-2}
 
 touch "${REGISTRY_FILE}"
+echo "processing" > "${PROCESSING_FILE}"
 
 TMP_MANIFEST=$(mktemp)
 TMP_THEORY=$(mktemp)
-trap 'rm -f "${TMP_MANIFEST}" "${TMP_THEORY}"' EXIT
+trap 'rm -f "${TMP_MANIFEST}" "${TMP_THEORY}" "${PROCESSING_FILE}"' EXIT
 
 scan_camera_files() {
     local src_dir="$1"
