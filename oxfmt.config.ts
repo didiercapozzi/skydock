@@ -8,6 +8,6 @@ export default defineConfig({
   singleAttributePerLine: true,
   singleQuote: true,
   trailingComma: 'none',
-  ignorePatterns: ['server', 'client'],
+  ignorePatterns: ['server', 'client', 'dist'],
   sortPackageJson: { sortScripts: true }
 })

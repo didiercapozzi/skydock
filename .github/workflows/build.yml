@@ -37,5 +37,8 @@ jobs:
       - name: Build Electron TypeScript
         run: npx tsc -p electron/tsconfig.json
 
+      - name: Set CommonJS module type for packaged Electron code
+        run: printf '{"type":"commonjs"}\n' > dist-electron/package.json
+
       - name: Build Electron package
         run: npx electron-builder --publish never

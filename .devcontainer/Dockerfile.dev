@@ -12,7 +12,12 @@ RUN apt update && apt install -y --no-install-recommends \
     ffmpeg \
     git \
     xdg-utils \
+    xz-utils \
+    binutils \
+    locales \
     && rm -rf /var/lib/apt/lists/*
+
+RUN sed -i 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && locale-gen en_US.UTF-8
 
 RUN apt update && apt install -y --no-install-recommends \
     libnspr4 \
@@ -23,6 +28,7 @@ RUN apt update && apt install -y --no-install-recommends \
     libdrm2 \
     libdbus-1-3 \
     libxkbcommon0 \
+    libgtk-3-0 \
     libatspi2.0-0 \
     libxcomposite1 \
     libxdamage1 \

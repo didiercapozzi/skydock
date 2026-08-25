@@ -5,6 +5,8 @@ services:
       - '3000:3000'
     volumes:
       - ${SKYDOCK_OUTPUT:-./output}:/app/output
+      - /tmp/.X11-unix:/tmp/.X11-unix
     environment:
       - SKYDOCK_OUTPUT_DIR=/app/output
+      - DISPLAY=${DISPLAY}
     restart: unless-stopped

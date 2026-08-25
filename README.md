@@ -253,11 +253,30 @@ Users can download the latest release from:
 https://github.com/YOUR_USERNAME/skydock/releases/latest
 ```
 
-| Platform | File        | Description          |
-| -------- | ----------- | -------------------- |
-| macOS    | `.dmg`      | Drag to Applications |
-| Windows  | `.exe`      | Run installer        |
-| Linux    | `.AppImage` | Double-click to run  |
+| Platform | File        | Description             |
+| -------- | ----------- | ----------------------- |
+| macOS    | `.dmg`      | Drag to Applications    |
+| Windows  | `.exe`      | Run installer           |
+| Linux    | `.AppImage` | Double-click to run     |
+| Linux    | `.deb`      | Debian/Ubuntu installer |
+
+### Linux Installation
+
+**AppImage (any distro):**
+
+```bash
+chmod +x SkyDock-*.AppImage
+./SkyDock-*.AppImage
+```
+
+**Debian/Ubuntu (.deb):**
+
+```bash
+sudo dpkg -i skydock_*.deb
+sudo apt-get install -f  # fix any missing dependencies
+```
+
+Then launch from your application menu or run `skydock` from the terminal.
 
 ### Auto-Update
 

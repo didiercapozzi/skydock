@@ -1,112 +1,27 @@
 {
-  "name": "skydock",
-  "version": "1.0.0",
+  "name": "@workspace",
   "private": true,
-  "description": "Zero-Touch Tandem Skydiving Media Ingestion Pipeline",
-  "author": "Capo <capozzi.didier@gmail.com>",
+  "workspaces": [
+    "web",
+    "desktop"
+  ],
   "type": "module",
-  "main": "dist-electron/main.js",
   "scripts": {
-    "build": "react-router build",
     "check": "npm run typecheck && npm run format:check && npm run lint",
-    "dev": "react-router dev --host",
-    "dev:electron": "npm run build && npm run electron:dev",
-    "electron:build": "npm run build && tsc -p electron/tsconfig.json && electron-builder",
-    "electron:build:linux": "npm run build && tsc -p electron/tsconfig.json && electron-builder --linux",
-    "electron:build:mac": "npm run build && tsc -p electron/tsconfig.json && electron-builder --mac",
-    "electron:build:win": "npm run build && tsc -p electron/tsconfig.json && electron-builder --win",
-    "electron:dev": "tsc -p electron/tsconfig.json && electron dist-electron/main.js --no-sandbox",
-    "electron:preview": "npm run build && tsc -p electron/tsconfig.json && electron dist-electron/main.js",
     "fc": "npm run format && npm run check",
     "format": "oxfmt --config oxfmt.config.ts .",
     "format:check": "oxfmt --config oxfmt.config.ts --check .",
     "lint": "oxlint --config oxlint.config.ts .",
-    "start": "react-router-serve ./build/server/index.js",
-    "typecheck": "react-router typegen && tsc"
-  },
-  "dependencies": {
-    "@react-router/node": "^8",
-    "@react-router/serve": "^8",
-    "electron-updater": "^6.8.9",
-    "isbot": "^5.1.36",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "react-router": "^8"
+    "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
-    "@electron/rebuild": "^4.2.0",
-    "@react-router/dev": "^8",
-    "@tailwindcss/vite": "^4.2.2",
-    "@types/node": "^22.20.1",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "electron": "^43.4.1",
-    "electron-builder": "^26.15.3",
-    "opencode-ai": "^1.18.21",
-    "oxfmt": "^0.64.0",
-    "oxlint": "^1.79.0",
-    "tailwindcss": "^4.2.2",
-    "typescript": "^5.9.3",
-    "vite": "^8.0.3"
+    "electron": "^44.0.0",
+    "opencode-ai": "^1.18.23",
+    "oxfmt": "^0.65.0",
+    "oxlint": "^1.80.0"
   },
-  "build": {
-    "appId": "com.skydock.app",
-    "productName": "SkyDock",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "build/**/*",
-      "dist-electron/**/*",
-      "scripts/**/*",
-      "node_modules/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "scripts",
-        "to": "scripts",
-        "filter": [
-          "**/*.sh"
-        ]
-      }
-    ],
-    "mac": {
-      "category": "public.app-category.video",
-      "icon": "resources/icon.icns",
-      "target": [
-        "dmg",
-        "zip"
-      ],
-      "hardenedRuntime": true,
-      "entitlements": "entitlements.mac.plist",
-      "entitlementsInherit": "entitlements.mac.plist"
-    },
-    "win": {
-      "icon": "resources/icon.ico",
-      "target": [
-        "nsis",
-        "portable"
-      ]
-    },
-    "linux": {
-      "icon": "resources",
-      "target": [
-        "AppImage",
-        "deb"
-      ],
-      "category": "AudioVideo"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "SkyDock"
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "",
-      "repo": "skydock"
-    }
+  "allowScripts": {
+    "electron": true,
+    "esbuild": true
   }
 }
