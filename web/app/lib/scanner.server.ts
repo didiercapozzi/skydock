@@ -50,13 +50,29 @@ const scanFiles = (dirPath: string, overrides: TheoryOverrides): FileEntry[] => 
     .sort((a, b) => a.name.localeCompare(b.name))
 }
 
-const parseJumpDir = (dirName: string): { name: string | null; displayName: string } => {
+const parseJumpDir = (
+  dirName: string,
+  jumpPath: string
+): { name: string | null; displayName: string; num: number } => {
   const match = dirName.match(/^Jump_(\d+)(?:_(.+))?$/)
-  if (!match) return { name: null, displayName: dirName }
-  const num = match[1]
-  const rawName = match[2] ?? null
-  const name = rawName ? rawName.replace(/_/g, ' ') : null
-  return { name, displayName: `Jump ${parseInt(num, 10)}` }
+  if (match) {
+    const num = parseInt(match[1], 10)
+    const rawName = match[2] ?? null
+    const name = rawName ? rawName.replace(/_/g, ' ') : null
+    return { name, displayName: `Jump ${num}`, num }
+  }
+
+  const numFile = path.join(jumpPath, '.jump_number')
+  let num = 0
+  if (fs.existsSync(numFile)) {
+    try {
+      num = parseInt(fs.readFileSync(numFile, 'utf-8').trim(), 10)
+    } catch {
+      num = 0
+    }
+  }
+
+  return { name: dirName.replace(/_/g, ' '), displayName: dirName.replace(/_/g, ' '), num }
 }
 
 const buildJump = (
@@ -65,7 +81,7 @@ const buildJump = (
   jumpPath: string,
   overrides: TheoryOverrides
 ): Jump => {
-  const { name, displayName } = parseJumpDir(dirName)
+  const { name, displayName, num } = parseJumpDir(dirName, jumpPath)
   const allPhotos = scanFiles(path.join(jumpPath, 'photos'), overrides)
   const allVideos = scanFiles(path.join(jumpPath, 'videos'), overrides)
 
@@ -80,6 +96,7 @@ const buildJump = (
     date,
     name,
     displayName,
+    num,
     photoCount: allPhotos.length,
     videoCount: allVideos.length,
     theoryPhotoCount: 0,

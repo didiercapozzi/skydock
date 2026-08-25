@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react'
-import { useLoaderData, useFetcher } from 'react-router'
+import { useState, useCallback, useEffect } from 'react'
+import { useLoaderData, useFetcher, useRevalidator } from 'react-router'
 import type { Route } from './+types/home'
 import { scanOutput } from '../lib/scanner.server'
 import type { Jump, FileEntry, TheoryVideoWithSource } from '../lib/types'
@@ -480,7 +480,7 @@ const JumpRow = ({
         <div className='flex-1 min-w-0'>
           <div className='flex items-center gap-2'>
             <h3 className='text-sm font-semibold text-gray-900 dark:text-white'>
-              {jump.displayName}
+              {jump.name || jump.displayName}
             </h3>
             <NameEditor
               jumpDate={jump.date}
@@ -661,12 +661,21 @@ const Home = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [expandedSection, setExpandedSection] = useState<'photos' | 'videos' | null>(null)
   const [openFile, setOpenFile] = useState<FileEntry | null>(null)
+  const simulateFetcher = useFetcher()
+  const { revalidate } = useRevalidator()
 
   const totalJumps = days.reduce((s, d) => s + d.jumps.length, 0)
   const totalPhotos = days.reduce((s, d) => s + d.totalPhotos, 0)
   const totalVideos = days.reduce((s, d) => s + d.totalVideos, 0)
 
   const selectedDate = expandedId?.split('/')[0] ?? null
+  const simulating = simulateFetcher.state !== 'idle'
+
+  useEffect(() => {
+    if (simulateFetcher.state === 'idle' && simulateFetcher.data) {
+      revalidate()
+    }
+  }, [simulateFetcher.state, simulateFetcher.data, revalidate])
 
   return (
     <div className='min-h-screen'>
@@ -698,6 +707,18 @@ const Home = () => {
             <span>{totalJumps} jumps</span>
             <span>{totalPhotos} photos</span>
             <span>{totalVideos} videos</span>
+            {import.meta.env.DEV && (
+              <simulateFetcher.Form
+                method='post'
+                action='/api/simulate'>
+                <button
+                  type='submit'
+                  disabled={simulating}
+                  className='ml-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 transition disabled:opacity-50 cursor-pointer'>
+                  {simulating ? 'Simulating...' : 'Simulate Load'}
+                </button>
+              </simulateFetcher.Form>
+            )}
           </div>
         </div>
       </header>

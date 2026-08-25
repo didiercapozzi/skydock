@@ -6,5 +6,6 @@ export default [
   route('api/theory', 'routes/api.theory.ts'),
   route('api/jump', 'routes/api.jump.ts'),
   route('api/open', 'routes/api.open.ts'),
-  route('api/thumbnail', 'routes/api.thumbnail.ts')
+  route('api/thumbnail', 'routes/api.thumbnail.ts'),
+  route('api/simulate', 'routes/api.simulate.ts')
 ] satisfies RouteConfig

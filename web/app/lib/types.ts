@@ -12,6 +12,7 @@ export type Jump = {
   date: string
   name: string | null
   displayName: string
+  num: number
   photoCount: number
   videoCount: number
   theoryPhotoCount: number

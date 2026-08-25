@@ -226,9 +226,16 @@ const JumpDetail = () => {
             </div>
             <div>
               <h1 className='text-xl font-bold text-gray-900 dark:text-white'>
-                {jump.displayName}
+                {jump.name || jump.displayName}
               </h1>
-              {jump.name && <p className='text-sm text-gray-500 dark:text-gray-400'>{jump.name}</p>}
+              {jump.name && (
+                <p className='text-sm text-gray-500 dark:text-gray-400'>
+                  Jump {jump.num} &middot; {jump.date}
+                </p>
+              )}
+              {!jump.name && (
+                <p className='text-sm text-gray-500 dark:text-gray-400'>{jump.date}</p>
+              )}
             </div>
           </div>
           <ApplyButton jump={jump} />

@@ -245,8 +245,9 @@ if [[ -n "${NAMES_FILE}" && -f "${NAMES_FILE}" ]]; then
         OLD_DIR="${DATE_DIR}/Jump_$(printf "%02d" "${JUMP_INDEX}")"
         # Sanitize name for filesystem: replace spaces with underscores, remove special chars
         SAFE_NAME=$(echo "${name}" | sed 's/[^a-zA-Z0-9 _-]//g' | tr ' ' '_')
-        NEW_DIR="${DATE_DIR}/Jump_$(printf "%02d" "${JUMP_INDEX}")_${SAFE_NAME}"
+        NEW_DIR="${DATE_DIR}/${SAFE_NAME}"
         if [[ -d "${OLD_DIR}" ]]; then
+            printf "%02d" "${JUMP_INDEX}" > "${OLD_DIR}/.jump_number"
             mv "${OLD_DIR}" "${NEW_DIR}"
             echo "[Names] Renamed Jump_$(printf "%02d" "${JUMP_INDEX}") -> $(basename "${NEW_DIR}")"
         fi

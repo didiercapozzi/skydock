@@ -37,7 +37,7 @@ const action = async ({ request }: Route.ActionArgs) => {
 
     const num = match[1]
     const sanitized = newName ? sanitizeName(newName) : null
-    const newDirName = sanitized ? `Jump_${num}_${sanitized}` : `Jump_${num}`
+    const newDirName = sanitized || `Jump_${num}`
     const newPath = path.join(outputDir, date, newDirName)
 
     if (oldPath !== newPath && fs.existsSync(newPath)) {
@@ -45,6 +45,7 @@ const action = async ({ request }: Route.ActionArgs) => {
     }
 
     if (oldPath !== newPath) {
+      fs.writeFileSync(path.join(oldPath, '.jump_number'), num)
       fs.renameSync(oldPath, newPath)
     }
 

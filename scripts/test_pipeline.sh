@@ -200,7 +200,7 @@ if [[ -n "${NAMES_FILE}" && -f "${NAMES_FILE}" ]]; then
         name=$(echo "${name}" | xargs)
         [[ -z "${name}" ]] && continue
         SAFE_NAME=$(echo "${name}" | sed 's/[^a-zA-Z0-9 _-]//g' | tr ' ' '_')
-        for dir in "${DATE_DIR}"/Jump_*"${SAFE_NAME}"*; do
+        for dir in "${DATE_DIR}/${SAFE_NAME}" "${DATE_DIR}/Jump_*"${SAFE_NAME}"*; do
             if [[ -d "${dir}" ]]; then
                 NAMES_APPLIED=$((NAMES_APPLIED + 1))
                 break
