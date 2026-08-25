@@ -537,7 +537,7 @@ const JumpRow = ({
       </div>
 
       {expandedSection === 'photos' && jump.jumpPhotos.length > 0 && (
-        <div className='border-t border-gray-100 dark:border-gray-800 px-4 py-3 space-y-1'>
+        <div className='border-t border-gray-100 dark:border-gray-800 px-4 py-3'>
           <div className='flex items-center gap-2 mb-2'>
             <PhotoIcon className='w-4 h-4 text-blue-500' />
             <h4 className='text-xs font-semibold text-gray-700 dark:text-gray-300'>Photos</h4>
@@ -545,19 +545,21 @@ const JumpRow = ({
               ({jump.jumpPhotos.length})
             </span>
           </div>
-          {jump.jumpPhotos.map((f) => (
-            <FileRow
-              key={f.name}
-              file={f}
-              type='photo'
-              onOpen={onOpenFile}
-            />
-          ))}
+          <div className='max-h-80 overflow-y-auto space-y-1'>
+            {jump.jumpPhotos.map((f) => (
+              <FileRow
+                key={f.name}
+                file={f}
+                type='photo'
+                onOpen={onOpenFile}
+              />
+            ))}
+          </div>
         </div>
       )}
 
       {expandedSection === 'videos' && jump.jumpVideos.length > 0 && (
-        <div className='border-t border-gray-100 dark:border-gray-800 px-4 py-3 space-y-1'>
+        <div className='border-t border-gray-100 dark:border-gray-800 px-4 py-3'>
           <div className='flex items-center gap-2 mb-2'>
             <VideoIcon className='w-4 h-4 text-purple-500' />
             <h4 className='text-xs font-semibold text-gray-700 dark:text-gray-300'>Videos</h4>
@@ -565,14 +567,16 @@ const JumpRow = ({
               ({jump.jumpVideos.length})
             </span>
           </div>
-          {jump.jumpVideos.map((f) => (
-            <FileRow
-              key={f.name}
-              file={f}
-              type='video'
-              onOpen={onOpenFile}
-            />
-          ))}
+          <div className='max-h-80 overflow-y-auto space-y-1'>
+            {jump.jumpVideos.map((f) => (
+              <FileRow
+                key={f.name}
+                file={f}
+                type='video'
+                onOpen={onOpenFile}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
