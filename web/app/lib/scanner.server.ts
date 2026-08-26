@@ -154,12 +154,10 @@ export const scanOutput = (): { days: DayGroup[]; libraryFiles: TheoryVideoWithS
 
   const days = dateDirs.map((date) => {
     const datePath = path.join(outputDir, date)
-    const jumpDirs = fs
-      .readdirSync(datePath)
-      .filter((d) => {
-        const full = path.join(datePath, d)
-        return fs.statSync(full).isDirectory() && !d.startsWith('.')
-      })
+    const jumpDirs = fs.readdirSync(datePath).filter((d) => {
+      const full = path.join(datePath, d)
+      return fs.statSync(full).isDirectory() && !d.startsWith('.')
+    })
 
     const overrides = loadOverrides(outputDir)
     const jumps: Jump[] = jumpDirs

@@ -9,5 +9,6 @@ export default [
   route('api/jump', 'routes/api.jump.ts'),
   route('api/open', 'routes/api.open.ts'),
   route('api/simulate', 'routes/api.simulate.ts'),
+  route('api/scan', 'routes/api.scan.ts'),
   route('api/manifest', 'routes/api.manifest.ts')
 ] satisfies RouteConfig

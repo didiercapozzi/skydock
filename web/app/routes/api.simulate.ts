@@ -111,10 +111,10 @@ const action = async ({ request }: { request: Request }) => {
     return { ok: true }
   }
 
-  // Default action: simulate full load
+  // Default action: reset dev data (3 days ago: 5 jumps, 2 days ago: 4 jumps)
   try {
     execSync(
-      `"${path.join(SCRIPTS_DIR, 'simulate_cameras.sh')}" --output "${simBase}" --jumps 2 --clean`,
+      `"${path.join(SCRIPTS_DIR, 'simulate_cameras.sh')}" --output "${simBase}" --clean --day 3:5:4 --day 2:4:3`,
       { timeout: 30_000, stdio: 'pipe' }
     )
   } catch (e) {
@@ -123,10 +123,10 @@ const action = async ({ request }: { request: Request }) => {
 
   // Phase 1: Scan into manifest for user review
   try {
-    execSync(
-      `SKYDOCK_OUTPUT_DIR="${outputDir}" "${scanScript}" "${photoDir}" "${videoDir}"`,
-      { timeout: 30_000, stdio: 'pipe' }
-    )
+    execSync(`SKYDOCK_OUTPUT_DIR="${outputDir}" "${scanScript}" "${photoDir}" "${videoDir}"`, {
+      timeout: 30_000,
+      stdio: 'pipe'
+    })
   } catch (e) {
     return { ok: false, error: `Scan failed: ${e instanceof Error ? e.message : String(e)}` }
   }

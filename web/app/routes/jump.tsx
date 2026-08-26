@@ -13,7 +13,9 @@ const formatBytes = (bytes: number): string => {
 
 const TheoryToggle = ({ file, jumpId }: { file: FileEntry; jumpId: string }) => {
   const fetcher = useFetcher()
-  const optimistic = fetcher.formData ? fetcher.formData.get('isInLibrary') === 'true' : file.isTheory
+  const optimistic = fetcher.formData
+    ? fetcher.formData.get('isInLibrary') === 'true'
+    : file.isTheory
 
   return (
     <fetcher.Form

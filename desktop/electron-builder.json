@@ -4,30 +4,19 @@
   "directories": {
     "output": "dist"
   },
-  "files": [
-    "dist/**/*"
-  ],
+  "files": ["dist/**/*"],
   "mac": {
     "category": "public.app-category.video",
     "icon": "build/icon.png",
-    "target": [
-      "dmg",
-      "zip"
-    ]
+    "target": ["dmg", "zip"]
   },
   "win": {
     "icon": "build/icon.ico",
-    "target": [
-      "nsis",
-      "portable"
-    ]
+    "target": ["nsis", "portable"]
   },
   "linux": {
     "icon": "build/icon.png",
     "category": "AudioVideo",
-    "target": [
-      "AppImage",
-      "deb"
-    ]
+    "target": ["AppImage", "deb"]
   }
 }

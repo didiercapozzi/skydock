@@ -67,9 +67,11 @@ export type Manifest = {
   version: number
   status: ManifestStatus
   date: string
+  startDatetime: string
   createdAt: string
   camera1: { path: string; fileCount: number }
   camera2: { path: string; fileCount: number }
   theory: ManifestFile[]
   jumps: ManifestJump[]
+  loneFiles: ManifestFile[]
 }
