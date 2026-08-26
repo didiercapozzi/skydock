@@ -2,6 +2,7 @@ import type { Manifest, ManifestFile } from './types'
 
 export type Sequence = {
   id: string
+  camera: string
   files: ManifestFile[]
   date: string
   startTime: number
@@ -42,8 +43,8 @@ export const formatClockOffset = (seconds: number): string => {
   return `${sign}${days}d ${pad(hours)}:${pad(minutes)}:${pad(secs)}`
 }
 
-export const getSequences = (manifest: Manifest, camera: 'PHOTO' | 'VIDEO'): Sequence[] => {
-  const allFiles: ManifestFile[] = (manifest.files ?? []).filter((f) => f.camera === camera)
+export const getSequences = (manifest: Manifest, cameraId: string): Sequence[] => {
+  const allFiles: ManifestFile[] = (manifest.files ?? []).filter((f) => f.camera === cameraId)
 
   allFiles.sort((a, b) => a.mtime - b.mtime)
 
@@ -56,7 +57,8 @@ export const getSequences = (manifest: Manifest, camera: 'PHOTO' | 'VIDEO'): Seq
       const startTime = current[0].mtime
       const endTime = current[current.length - 1].mtime
       sequences.push({
-        id: `seq_${camera}_${sequences.length}`,
+        id: `seq_${cameraId}_${sequences.length}`,
+        camera: cameraId,
         files: current,
         date: formatSequenceDate(startTime),
         startTime,
@@ -72,7 +74,8 @@ export const getSequences = (manifest: Manifest, camera: 'PHOTO' | 'VIDEO'): Seq
     const startTime = current[0].mtime
     const endTime = current[current.length - 1].mtime
     sequences.push({
-      id: `seq_${camera}_${sequences.length}`,
+      id: `seq_${cameraId}_${sequences.length}`,
+      camera: cameraId,
       files: current,
       date: formatSequenceDate(startTime),
       startTime,
@@ -81,4 +84,12 @@ export const getSequences = (manifest: Manifest, camera: 'PHOTO' | 'VIDEO'): Seq
   }
 
   return sequences
+}
+
+export const getCameraIds = (manifest: Manifest): string[] => {
+  const ids = new Set<string>()
+  for (const file of manifest.files ?? []) {
+    ids.add(file.camera)
+  }
+  return Array.from(ids).sort()
 }

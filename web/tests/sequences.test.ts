@@ -33,8 +33,10 @@ describe('getSequences', () => {
     date: '2026-08-22',
     startDatetime: '2026-08-22T09:00:00Z',
     createdAt: new Date().toISOString(),
-    camera1: { path: '/camera1', fileCount: 0 },
-    camera2: { path: '/camera2', fileCount: 0 },
+    cameras: [
+      { id: 'camera1', path: '/camera1', fileCount: 0 },
+      { id: 'camera2', path: '/camera2', fileCount: 0 }
+    ],
     theory: [],
     jumps: [],
     files

@@ -65,8 +65,10 @@ describe('ensureManifestFileIds', () => {
     date: '2026-08-26',
     startDatetime: '2026-08-26T09:00:00Z',
     createdAt: new Date().toISOString(),
-    camera1: { path: '/camera1', fileCount: filePaths.length },
-    camera2: { path: '/camera2', fileCount: 0 },
+    cameras: [
+      { id: 'camera1', path: '/camera1', fileCount: filePaths.length },
+      { id: 'camera2', path: '/camera2', fileCount: 0 }
+    ],
     theory: [],
     files: filePaths.map((p) => ({
       path: p,

@@ -271,7 +271,7 @@ const action = async ({ request }: Route.ActionArgs) => {
     let offset = 0
     for (const file of jump.files) {
       file.mtime = baseEpoch + offset
-      offset += file.camera === 'PHOTO' ? 30 : 35
+      offset += 30
     }
 
     saveManifest(manifest)
@@ -286,7 +286,7 @@ const action = async ({ request }: Route.ActionArgs) => {
     const referencePaths = (body.referencePaths ?? []) as string[]
     const targetPaths = (body.targetPaths ?? []) as string[]
     const scope = String(body.scope ?? 'single')
-    const camera = body.camera === 'VIDEO' ? 'VIDEO' : 'PHOTO'
+    const camera = String(body.camera ?? '')
 
     if (referencePaths.length === 0 || targetPaths.length === 0) {
       return { ok: false, error: 'Missing sequence files' }

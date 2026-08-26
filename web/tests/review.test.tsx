@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Manifest, ManifestFile, ManifestJump } from '../app/lib/types'
 import Review from '../app/routes/review'
 
-const makeFile = (path: string, camera: 'PHOTO' | 'VIDEO', mtime: number): ManifestFile => ({
+const makeFile = (path: string, camera: string, mtime: number): ManifestFile => ({
   path,
   camera,
   mtime,
@@ -25,8 +25,10 @@ const makeManifest = (jumps: ManifestJump[] = [], files: ManifestFile[] = []): M
   date: '2026-08-22',
   startDatetime: '2026-08-22T09:00:00Z',
   createdAt: new Date().toISOString(),
-  camera1: { path: '/camera1', fileCount: 0 },
-  camera2: { path: '/camera2', fileCount: 0 },
+  cameras: [
+    { id: 'camera1', path: '/camera1', fileCount: 0 },
+    { id: 'camera2', path: '/camera2', fileCount: 0 }
+  ],
   theory: [],
   jumps,
   files
@@ -84,12 +86,16 @@ describe('Review', () => {
   })
 
   it('renders camera columns', () => {
-    const manifest = makeManifest([], [])
+    const files = [
+      makeFile('/camera1/photo1.jpg', 'camera1', 1787727600),
+      makeFile('/camera2/video1.mp4', 'camera2', 1787727600)
+    ]
+    const manifest = makeManifest([], files)
 
     renderReview(manifest)
 
-    expect(screen.getByText('Camera 1 — Photos')).toBeInTheDocument()
-    expect(screen.getByText('Camera 2 — Videos')).toBeInTheDocument()
+    expect(screen.getAllByText('Camera 1').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Camera 2').length).toBeGreaterThan(0)
     expect(screen.getByText('Jumps')).toBeInTheDocument()
   })
 
