@@ -1,6 +1,7 @@
 import type { Route } from './+types/api.manifest'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { execSync } from 'node:child_process'
 import { getOutputDirPath } from '../lib/scanner.server'
 import type { Manifest, ManifestFile, ManifestJump } from '../lib/types'
 
@@ -330,6 +331,39 @@ const action = async ({ request }: Route.ActionArgs) => {
     reclusterJumps(manifest)
     saveManifest(manifest)
     return { ok: true }
+  }
+
+  if (formAction === 'execute-jumps') {
+    const manifest = loadManifest()
+    if (!manifest) return { ok: false, error: 'No manifest found' }
+    if (manifest.status === 'executed') return { ok: false, error: 'Manifest already executed' }
+
+    const jumpIds = (body.jumpIds ?? []) as string[]
+    if (jumpIds.length === 0) {
+      return { ok: false, error: 'No jumps specified' }
+    }
+
+    for (const jump of manifest.jumps) {
+      if (jumpIds.includes(jump.id)) jump.confirmed = true
+    }
+    manifest.status = 'confirmed'
+    saveManifest(manifest)
+
+    const manifestPath = getManifestPath()
+    const scriptsDir = path.join(process.cwd(), '..', 'scripts')
+    const executeScript = path.join(scriptsDir, 'execute_media.sh')
+
+    try {
+      execSync(`"${executeScript}" "${manifestPath}" 2>&1`, {
+        timeout: 300_000,
+        env: { ...process.env, SKYDOCK_OUTPUT_DIR: getOutputDirPath() }
+      })
+    } catch (e) {
+      return { ok: false, error: `Execution failed: ${e instanceof Error ? e.message : String(e)}` }
+    }
+
+    const updated = loadManifest()
+    return { ok: true, manifest: updated }
   }
 
   return { ok: false, error: 'Invalid action' }

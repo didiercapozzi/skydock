@@ -150,3 +150,4 @@ Both apps use React Router 8 in **Framework Mode** with SSR enabled:
 - always use `types` instead of `interface`
 - No comments in generated scripts
 - the script but be written in bash only and no python
+- to read and write json files in bash script, use the jq library

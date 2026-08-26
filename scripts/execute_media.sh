@@ -28,28 +28,8 @@ if [[ ! -f "${MANIFEST}" ]]; then
     exit 1
 fi
 
-flatten_manifest() {
-    tr -d '\r\n\t' < "${MANIFEST}" | sed 's/[[:space:]][[:space:]]*/ /g'
-}
+STATUS=$(jq -r '.status' "${MANIFEST}")
 
-split_objects() {
-    sed -e 's/},{/},\n{/g' -e 's/\[{/[\
-{/g'
-}
-
-extract_str() {
-    local key="$1"
-    sed -n 's/.*"'"${key}"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1
-}
-
-extract_num() {
-    local key="$1"
-    sed -n 's/.*"'"${key}"'"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' | head -n 1
-}
-
-MANIFEST_FLAT=$(flatten_manifest)
-
-STATUS=$(printf '%s' "${MANIFEST_FLAT}" | extract_str status)
 if [[ "${STATUS}" != "confirmed" ]]; then
     echo "[Execute] ERROR: Manifest status is '${STATUS}', expected 'confirmed'." >&2
     echo "[Execute] Use the web UI to review and confirm the manifest before executing." >&2
@@ -60,129 +40,100 @@ touch "${REGISTRY_FILE}"
 echo "processing" > "${PROCESSING_FILE}"
 trap 'rm -f "${PROCESSING_FILE}"' EXIT
 
-DATE=$(printf '%s' "${MANIFEST_FLAT}" | extract_str date)
+DATE=$(jq -r '.date // empty' "${MANIFEST}")
+
 [[ -n "${DATE}" ]] || DATE=$(date +%Y-%m-%d)
 DATE_DIR="${OUTPUT_DIR}/${DATE}"
 mkdir -p "${DATE_DIR}"
 
-JUMP_COUNT=$(printf '%s' "${MANIFEST_FLAT}" | grep -oE '"confirmed"[[:space:]]*:[[:space:]]*(true|false)' | wc -l || true)
+TMP_FILE_LIST=$(mktemp)
+trap 'rm -rf "${TMP_FILE_LIST}" "${PROCESSING_FILE}"' EXIT
 
-echo "[Execute] Processing ${JUMP_COUNT} confirmed jump(s) for ${DATE}..."
+jq -r '
+    (.theory // []) | .[] |
+    (.id // "" | if . == "" then ("VIDEO:" + .filename) else . end) as $file_id |
+    "THEORY|\(.path // "")|\(.filename // "")|\($file_id)"
+' "${MANIFEST}" > "${TMP_FILE_LIST}"
 
-THEORY_SECTION=$(printf '%s' "${MANIFEST_FLAT}" | sed -n 's/.*"theory"[[:space:]]*:[[:space:]]*\[\([^]]*\).*/\1/p')
-THEORY_COUNT=$(printf '%s' "${THEORY_SECTION}" | grep -o '"path"' | wc -l || true)
+jq -r '
+    .jumps // [] | to_entries[] |
+    (.key + 1) as $jump_idx |
+    .value as $jump |
+    ($jump.label // "") as $label |
+    ($jump.confirmed // false) as $confirmed |
+    ($jump.files // []) | .[] |
+    (.id // "" | if . == "" then (.camera + ":" + .filename) else . end) as $file_id |
+    "\($jump_idx)|\($label)|\($confirmed)|\(.path // "")|\(.camera // "")|\(.filename // "")|\($file_id)"
+' "${MANIFEST}" >> "${TMP_FILE_LIST}"
+
+THEORY_COUNT=$(grep -c '^THEORY|' "${TMP_FILE_LIST}" || true)
+
+echo "[Execute] Processing jumps for ${DATE}..."
 
 THEORY_DIR=""
-register_theory_files() {
-    local filepath filename file_id
-    while IFS= read -r filepath || [[ -n "${filepath}" ]]; do
+if [[ "${THEORY_COUNT}" -gt 0 ]]; then
+    THEORY_DIR=$(mktemp -d)
+    trap 'rm -rf "${THEORY_DIR}" "${TMP_FILE_LIST}" "${PROCESSING_FILE}"' EXIT
+
+    while IFS='|' read -r _type filepath filename file_id; do
         [[ -f "${filepath}" ]] || continue
-        filename=$(basename "${filepath}")
         [[ "${filename}" =~ [Tt][Hh][Ee][Oo][Rr][Yy] ]] || continue
         cp -an "${filepath}" "${THEORY_DIR}/${filename}" 2>/dev/null || true
-        file_id=$(printf '%s' "${THEORY_SECTION}" | tr ',' '\n' \
-            | grep -E "\"path\":[[:space:]]*\"${filepath}\"" \
-            | extract_str id || true)
-        [[ -n "${file_id}" ]] || file_id="VIDEO:${filename}:$(stat -c %s "${filepath}"):$(stat -c %Y "${filepath}")"
         printf '%s\n' "${file_id}" >> "${REGISTRY_FILE}"
-    done
-}
-
-if [[ "${THEORY_COUNT}" -gt 0 ]]; then
-    echo "[Execute] Processing ${THEORY_COUNT} theory file(s)..."
-    THEORY_DIR=$(mktemp -d)
-    trap 'rm -rf "${THEORY_DIR}" "${PROCESSING_FILE}" 2>/dev/null' EXIT
-    printf '%s' "${THEORY_SECTION}" | split_objects | extract_str path | register_theory_files
+    done < <(grep '^THEORY|' "${TMP_FILE_LIST}")
 fi
 
-TMP_JUMP_FILES=$(mktemp)
-trap 'rm -rf "${THEORY_DIR}" "${TMP_JUMP_FILES}" "${PROCESSING_FILE}" 2>/dev/null' EXIT
+CURRENT_JUMP_IDX=""
+CURRENT_SAFE_NAME=""
+CURRENT_PHOTOS_DIR=""
+CURRENT_VIDEOS_DIR=""
 
-parse_jump_entries() {
-    local jump_idx=0
-    local chunk
-    while IFS= read -r chunk || [[ -n "${chunk}" ]]; do
-        [[ -n "${chunk}" ]] || continue
-        if printf '%s' "${chunk}" | grep -q '"label"'; then
-            jump_idx=$(( jump_idx + 1 ))
-            continue
-        fi
-        printf '%s' "${chunk}" | grep -q '"path"' || continue
-        printf '%s|%s\n' "${jump_idx}" "${chunk}" >> "${TMP_JUMP_FILES}"
-    done
-}
+process_line() {
+    local jump_idx="$1" jump_label="$2" confirmed="$3" filepath="$4" camera="$5" filename="$6" file_id="$7"
 
-printf '%s' "${MANIFEST_FLAT}" \
-    | sed -n 's/.*"jumps"[[:space:]]*:[[:space:]]*\[//p' \
-    | sed 's/\][^]]*$//' \
-    | split_objects \
-    | parse_jump_entries
+    [[ "${confirmed}" == "true" ]] || return 0
 
-process_file_chunk() {
-    local chunk="$1" safe_name="$2" photos_dir="$3" videos_dir="$4"
-    local file_path file_camera file_size file_mtime file_name file_id basename_noext
-    file_path=$(printf '%s' "${chunk}" | extract_str path)
-    file_camera=$(printf '%s' "${chunk}" | extract_str camera)
-    file_size=$(printf '%s' "${chunk}" | extract_num size)
-    file_mtime=$(printf '%s' "${chunk}" | extract_num mtime)
-    file_name=$(printf '%s' "${chunk}" | extract_str filename)
-    file_id=$(printf '%s' "${chunk}" | extract_str id || true)
-
-    [[ -f "${file_path}" ]] || return 0
-
-    if [[ -z "${file_id}" ]]; then
-        file_id="${file_camera}:${file_name}:${file_size}:${file_mtime}"
+    if [[ "${jump_idx}" != "${CURRENT_JUMP_IDX}" ]]; then
+        CURRENT_JUMP_IDX="${jump_idx}"
+        CURRENT_SAFE_NAME=$(printf '%s' "${jump_label}" | sed 's/[^a-zA-Z0-9 _-]//g' | tr ' ' '_')
+        CURRENT_PHOTOS_DIR="${DATE_DIR}/${CURRENT_SAFE_NAME}/photos"
+        CURRENT_VIDEOS_DIR="${DATE_DIR}/${CURRENT_SAFE_NAME}/videos"
+        mkdir -p "${CURRENT_PHOTOS_DIR}" "${CURRENT_VIDEOS_DIR}"
+        echo "[Execute] Processing '${jump_label}'..."
     fi
+
+    [[ -f "${filepath}" ]] || return 0
 
     if grep -Fqx "${file_id}" "${REGISTRY_FILE}" 2>/dev/null; then
         return 0
     fi
 
-    basename_noext="${file_name%.*}"
-
-    if [[ "${file_camera}" == "PHOTO" ]]; then
-        echo "  [Extract] ${file_name} -> ${safe_name}/photos/..."
-        ffmpeg -nostdin -loglevel error -stats -i "${file_path}" \
+    if [[ "${camera}" == "PHOTO" ]]; then
+        local basename_noext="${filename%.*}"
+        echo "  [Extract] ${filename} -> ${CURRENT_SAFE_NAME}/photos/..."
+        ffmpeg -nostdin -loglevel error -stats -i "${filepath}" \
             -vf "fps=${PHOTO_FPS}" \
             -q:v "${JPEG_QUALITY}" \
-            "${photos_dir}/${basename_noext}_frame_%04d.jpg"
+            "${CURRENT_PHOTOS_DIR}/${basename_noext}_frame_%04d.jpg"
     else
-        echo "  [Copy] ${file_name} -> ${safe_name}/videos/..."
-        cp -an "${file_path}" "${videos_dir}/${file_name}"
+        echo "  [Copy] ${filename} -> ${CURRENT_SAFE_NAME}/videos/..."
+        cp -an "${filepath}" "${CURRENT_VIDEOS_DIR}/${filename}"
     fi
 
     printf '%s\n' "${file_id}" >> "${REGISTRY_FILE}"
-}
-
-for (( j=1; j<=JUMP_COUNT; j++ )); do
-    JUMP_CHUNK=$(printf '%s' "${MANIFEST_FLAT}" \
-        | sed -n 's/.*"jumps"[[:space:]]*:[[:space:]]*\[//p' \
-        | sed 's/\][^]]*$//' \
-        | split_objects \
-        | grep '"label"' | sed -n "${j}p" || true)
-    JUMP_LABEL=$(printf '%s' "${JUMP_CHUNK}" | extract_str label)
-    if ! printf '%s' "${JUMP_CHUNK}" | grep -q '"confirmed"[[:space:]]*:[[:space:]]*true'; then
-        echo "[Execute] Skipping '${JUMP_LABEL}' (not confirmed)."
-        continue
-    fi
-
-    SAFE_NAME=$(printf '%s' "${JUMP_LABEL}" | sed 's/[^a-zA-Z0-9 _-]//g' | tr ' ' '_')
-    PHOTOS_DIR="${DATE_DIR}/${SAFE_NAME}/photos"
-    VIDEOS_DIR="${DATE_DIR}/${SAFE_NAME}/videos"
-    mkdir -p "${PHOTOS_DIR}" "${VIDEOS_DIR}"
-
-    echo "[Execute] Processing '${JUMP_LABEL}'..."
-
-    while IFS= read -r chunk || [[ -n "${chunk}" ]]; do
-        process_file_chunk "${chunk}" "${SAFE_NAME}" "${PHOTOS_DIR}" "${VIDEOS_DIR}"
-    done < <(grep -E "^${j}\|" "${TMP_JUMP_FILES}" | cut -d'|' -f2-)
 
     if [[ "${THEORY_COUNT}" -gt 0 && -d "${THEORY_DIR}" ]]; then
-        cp -an "${THEORY_DIR}"/* "${DATE_DIR}/${SAFE_NAME}/videos/" 2>/dev/null || true
+        cp -an "${THEORY_DIR}"/* "${CURRENT_VIDEOS_DIR}/" 2>/dev/null || true
     fi
-done
+}
 
-sed -i 's/"status"[[:space:]]*:[[:space:]]*"confirmed"/"status":"executed"/' "${MANIFEST}"
+while IFS='|' read -r jump_idx jump_label confirmed filepath camera filename file_id; do
+    process_line "${jump_idx}" "${jump_label}" "${confirmed}" "${filepath}" "${camera}" "${filename}" "${file_id}"
+done < <(grep -v '^THEORY|' "${TMP_FILE_LIST}")
+
+TMP_MANIFEST=$(mktemp)
+jq '.status = "executed"' "${MANIFEST}" > "${TMP_MANIFEST}"
+mv "${TMP_MANIFEST}" "${MANIFEST}"
 
 sync
 echo "[Done] Execution complete for ${DATE}."

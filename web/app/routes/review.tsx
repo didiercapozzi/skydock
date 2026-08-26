@@ -797,8 +797,9 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   }
 
   const handleConfirmAndExecute = () => {
+    const confirmedJumpIds = manifest?.jumps.filter((j) => j.confirmed).map((j) => j.id) ?? []
     manifestFetcher.submit(
-      { action: 'confirm' },
+      { action: 'execute-jumps', jumpIds: confirmedJumpIds },
       { method: 'POST', encType: 'application/json', action: '/api/manifest' }
     )
   }
