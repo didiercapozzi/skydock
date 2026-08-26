@@ -8,6 +8,7 @@ import {
   getSequences,
   formatSequenceTime,
   formatSequenceDate,
+  formatDateForInput,
   formatClockOffset
 } from '../lib/sequences'
 import type { Sequence } from '../lib/sequences'
@@ -50,6 +51,259 @@ type CalibrationSeq = {
   files: ManifestFile[]
 }
 
+type TimelineBar = {
+  id: string
+  camera: 'PHOTO' | 'VIDEO'
+  startTime: number
+  endTime: number
+  label: string
+}
+
+const TimelineStrip = ({
+  photoSequences,
+  videoSequences,
+  onShift
+}: {
+  photoSequences: Sequence[]
+  videoSequences: Sequence[]
+  onShift: (paths: string[], offsetSeconds: number) => void
+}) => {
+  const [dragging, setDragging] = useState<string | null>(null)
+  const [dragOffset, setDragOffset] = useState(0)
+  const [scopePicker, setScopePicker] = useState<{
+    percent: number
+    seq: Sequence
+    camera: 'PHOTO' | 'VIDEO'
+    offsetSeconds: number
+  } | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const dragOffsetRef = useRef(0)
+
+  const photoIdxMap = useMemo(() => {
+    const map = new Map<string, number>()
+    photoSequences.forEach((seq, i) => map.set(seq.id, i + 1))
+    return map
+  }, [photoSequences])
+
+  const videoIdxMap = useMemo(() => {
+    const map = new Map<string, number>()
+    videoSequences.forEach((seq, i) => map.set(seq.id, i + 1))
+    return map
+  }, [videoSequences])
+
+  const allSeqs = useMemo(() => {
+    const bars: TimelineBar[] = []
+    for (const seq of photoSequences) {
+      bars.push({
+        id: seq.id,
+        camera: 'PHOTO',
+        startTime: seq.startTime,
+        endTime: seq.endTime,
+        label: `Seq ${photoIdxMap.get(seq.id)}`
+      })
+    }
+    for (const seq of videoSequences) {
+      bars.push({
+        id: seq.id,
+        camera: 'VIDEO',
+        startTime: seq.startTime,
+        endTime: seq.endTime,
+        label: `Seq ${videoIdxMap.get(seq.id)}`
+      })
+    }
+    return bars
+  }, [photoSequences, videoSequences, photoIdxMap, videoIdxMap])
+
+  const timeRange = useMemo(() => {
+    if (allSeqs.length === 0) return { min: 0, max: 1 }
+    const min = Math.min(...allSeqs.map((s) => s.startTime))
+    const max = Math.max(...allSeqs.map((s) => s.endTime))
+    const padding = Math.max(300, (max - min) * 0.05)
+    return { min: min - padding, max: max + padding }
+  }, [allSeqs])
+
+  const range = timeRange.max - timeRange.min || 1
+
+  const posToPercent = (t: number): number => ((t - timeRange.min) / range) * 100
+
+  const barWidth = (start: number, end: number): number => {
+    const raw = ((end - start) / range) * 100
+    return Math.max(3, raw)
+  }
+
+  const handleMouseDown = (e: React.MouseEvent, seqId: string, camera: 'PHOTO' | 'VIDEO') => {
+    e.preventDefault()
+    e.stopPropagation()
+    const seqs = camera === 'PHOTO' ? photoSequences : videoSequences
+    const seq = seqs.find((s) => s.id === seqId)
+    if (!seq) return
+    setDragging(seqId)
+    setDragOffset(0)
+    dragOffsetRef.current = 0
+    setScopePicker(null)
+
+    const startX = e.clientX
+    const startStartTime = seq.startTime
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const dx = moveEvent.clientX - startX
+      const dt = (dx / (containerRef.current?.clientWidth ?? 1)) * range
+      dragOffsetRef.current = dt
+      setDragOffset(dt)
+    }
+
+    const handleMouseUp = () => {
+      setDragging(null)
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+
+      const finalOffset = dragOffsetRef.current
+      if (Math.abs(finalOffset) < 1) {
+        setDragOffset(0)
+        dragOffsetRef.current = 0
+        return
+      }
+
+      setScopePicker({
+        percent: posToPercent(startStartTime + finalOffset),
+        seq,
+        camera,
+        offsetSeconds: Math.round(finalOffset)
+      })
+      setDragOffset(0)
+      dragOffsetRef.current = 0
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }
+
+  const applyShift = (scope: 'single' | 'after' | 'all') => {
+    if (!scopePicker) return
+    const { seq, camera, offsetSeconds } = scopePicker
+
+    let targetSeqs: Sequence[]
+    if (scope === 'single') {
+      targetSeqs = [seq]
+    } else if (scope === 'after') {
+      targetSeqs = (camera === 'VIDEO' ? videoSequences : photoSequences).filter(
+        (s) => s.startTime >= seq.startTime
+      )
+    } else {
+      targetSeqs = camera === 'VIDEO' ? videoSequences : photoSequences
+    }
+
+    const paths = targetSeqs.flatMap((s) => s.files.map((f) => f.path))
+    onShift(paths, offsetSeconds)
+    setScopePicker(null)
+  }
+
+  if (allSeqs.length === 0) return null
+
+  return (
+    <div className='mb-4 relative'>
+      <div
+        ref={containerRef}
+        className='relative h-16 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden'>
+        <div className='absolute inset-x-0 top-0 h-1/2 border-b border-gray-200 dark:border-gray-700 flex items-center'>
+          <div className='absolute left-2 text-[10px] text-blue-500 font-medium'>Photos</div>
+        </div>
+        <div className='absolute inset-x-0 bottom-0 h-1/2 flex items-center'>
+          <div className='absolute left-2 text-[10px] text-purple-500 font-medium'>Videos</div>
+        </div>
+
+        {photoSequences.map((seq) => {
+          const isDragging = dragging === seq.id
+          const offset = isDragging ? dragOffset : 0
+          return (
+            <div
+              key={seq.id}
+              className={`absolute h-3 rounded cursor-grab active:cursor-grabbing transition-shadow ${
+                isDragging
+                  ? 'bg-blue-400 dark:bg-blue-500 shadow-lg ring-2 ring-blue-400 z-10'
+                  : 'bg-blue-300 dark:bg-blue-700 opacity-70 hover:opacity-100 hover:ring-1 hover:ring-blue-400'
+              }`}
+              style={{
+                top: '8px',
+                left: `${posToPercent(seq.startTime + offset)}%`,
+                width: `${barWidth(seq.startTime, seq.endTime)}%`
+              }}
+              onMouseDown={(e) => handleMouseDown(e, seq.id, 'PHOTO')}
+              title={`Sequence ${photoIdxMap.get(seq.id)} — drag to shift time`}
+            />
+          )
+        })}
+
+        {videoSequences.map((seq) => {
+          const isDragging = dragging === seq.id
+          const offset = isDragging ? dragOffset : 0
+          return (
+            <div
+              key={seq.id}
+              className={`absolute h-3 rounded cursor-grab active:cursor-grabbing transition-shadow ${
+                isDragging
+                  ? 'bg-purple-400 dark:bg-purple-500 shadow-lg ring-2 ring-purple-400 z-10'
+                  : 'bg-purple-300 dark:bg-purple-700 opacity-70 hover:opacity-100 hover:ring-1 hover:ring-purple-400'
+              }`}
+              style={{
+                bottom: '8px',
+                left: `${posToPercent(seq.startTime + offset)}%`,
+                width: `${barWidth(seq.startTime, seq.endTime)}%`
+              }}
+              onMouseDown={(e) => handleMouseDown(e, seq.id, 'VIDEO')}
+              title={`Sequence ${videoIdxMap.get(seq.id)} — drag to shift time`}
+            />
+          )
+        })}
+
+        {dragging && Math.abs(dragOffset) > 1 && (
+          <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[10px] font-mono bg-gray-800 text-white px-2 py-1 rounded shadow-lg pointer-events-none'>
+            {formatClockOffset(dragOffset)}
+          </div>
+        )}
+      </div>
+
+      {scopePicker && (
+        <div
+          className='absolute z-50 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-xl p-2 flex flex-col gap-1'
+          style={{
+            left: `${Math.max(0, Math.min(80, scopePicker.percent - 10))}%`,
+            top: '-10px',
+            transform: 'translateY(-100%)'
+          }}>
+          <div className='text-xs text-gray-500 dark:text-gray-400 px-2 py-1 whitespace-nowrap'>
+            Shift {formatClockOffset(scopePicker.offsetSeconds)}
+          </div>
+          <button
+            type='button'
+            onClick={() => applyShift('single')}
+            className='text-left text-xs px-2 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'>
+            This sequence
+          </button>
+          <button
+            type='button'
+            onClick={() => applyShift('after')}
+            className='text-left text-xs px-2 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'>
+            All later sequences
+          </button>
+          <button
+            type='button'
+            onClick={() => applyShift('all')}
+            className='text-left text-xs px-2 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'>
+            All {scopePicker.camera} sequences
+          </button>
+          <button
+            type='button'
+            onClick={() => setScopePicker(null)}
+            className='text-left text-xs px-2 py-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400'>
+            Cancel
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const CalibrationDialog = ({
   reference,
   target,
@@ -66,21 +320,104 @@ const CalibrationDialog = ({
   const previewFiles = target.files.slice(0, 6)
   const formatDateTime = (epoch: number): string =>
     `${formatSequenceDate(epoch)} ${formatSequenceTime(epoch)}`
+  const isCrossCamera = reference.camera !== target.camera
+
+  const refStartTime = Math.min(...reference.files.map((f) => f.mtime))
+  const refEndTime = Math.max(...reference.files.map((f) => f.mtime))
+  const targetStartTime = Math.min(...target.files.map((f) => f.mtime))
+  const targetEndTime = Math.max(...target.files.map((f) => f.mtime))
+
+  const alignedStart = targetStartTime + offsetSeconds
+  const alignedEnd = targetEndTime + offsetSeconds
+
+  const padding = 3600
+  const timelineMin = Math.min(refStartTime, targetStartTime, alignedStart) - padding
+  const timelineMax = Math.max(refEndTime, targetEndTime, alignedEnd) + padding
+  const timelineRange = timelineMax - timelineMin || 1
+
+  const timelinePos = (t: number): number => ((t - timelineMin) / timelineRange) * 100
+
+  const barWidth = (start: number, end: number): number => {
+    const raw = ((end - start) / timelineRange) * 100
+    return Math.max(8, raw)
+  }
 
   return (
     <div
       className='fixed inset-0 z-50 flex items-center justify-center bg-black/40'
       onClick={onCancel}>
       <div
-        className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full mx-4 p-5'
+        className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-xl w-full mx-4 p-5'
         onClick={(e) => e.stopPropagation()}>
-        <h3 className='text-lg font-semibold mb-1'>Recalibrate {target.label}</h3>
+        <h3 className='text-lg font-semibold mb-1'>
+          {isCrossCamera ? 'Sync Cameras' : 'Recalibrate Sequence'}
+        </h3>
         <p className='text-sm text-gray-500 mb-4'>
-          Aligned onto {reference.label} ({reference.camera}) · clock offset{' '}
+          {isCrossCamera ? (
+            <>
+              Align{' '}
+              <span className='font-semibold text-purple-600 dark:text-purple-400'>
+                {target.camera}
+              </span>{' '}
+              sequence onto{' '}
+              <span className='font-semibold text-blue-600 dark:text-blue-400'>
+                {reference.camera}
+              </span>{' '}
+              sequence · offset{' '}
+            </>
+          ) : (
+            <>
+              Aligned onto {reference.label} ({reference.camera}) · clock offset{' '}
+            </>
+          )}
           <span className='font-mono font-semibold text-gray-700 dark:text-gray-200'>
             {formatClockOffset(offsetSeconds)}
           </span>
         </p>
+
+        <div className='mb-4 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg'>
+          <div className='text-xs text-gray-500 dark:text-gray-400 mb-2'>Timeline preview</div>
+          <div className='relative h-14'>
+            <div
+              className='absolute h-3 rounded bg-blue-200 dark:bg-blue-900/50'
+              style={{
+                left: `${timelinePos(refStartTime)}%`,
+                width: `${barWidth(refStartTime, refEndTime)}%`
+              }}
+            />
+            <div
+              className='absolute h-3 rounded bg-purple-200 dark:bg-purple-900/50 opacity-50'
+              style={{
+                top: '10px',
+                left: `${timelinePos(targetStartTime)}%`,
+                width: `${barWidth(targetStartTime, targetEndTime)}%`
+              }}
+            />
+            <div
+              className='absolute h-3 rounded bg-green-300 dark:bg-green-700'
+              style={{
+                top: '10px',
+                left: `${timelinePos(alignedStart)}%`,
+                width: `${barWidth(alignedStart, alignedEnd)}%`
+              }}
+            />
+            <div className='absolute bottom-0 left-0 right-0 flex items-center gap-1 text-[10px] text-gray-400'>
+              <span className='flex items-center gap-1'>
+                <span className='w-2 h-2 rounded-full bg-blue-400' />
+                Ref ({reference.camera})
+              </span>
+              <span className='flex items-center gap-1 ml-2'>
+                <span className='w-2 h-2 rounded-full bg-purple-400 opacity-60' />
+                Before
+              </span>
+              <span className='flex items-center gap-1 ml-2'>
+                <span className='w-2 h-2 rounded-full bg-green-500' />
+                After
+              </span>
+            </div>
+          </div>
+        </div>
+
         <div className='border rounded divide-y dark:divide-gray-600 dark:border-gray-600 max-h-48 overflow-y-auto mb-2'>
           {previewFiles.map((file) => (
             <div
@@ -111,7 +448,9 @@ const CalibrationDialog = ({
             type='button'
             onClick={() => onApply('camera')}
             className='px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700'>
-            Align all {target.camera} sequences
+            {isCrossCamera
+              ? `Shift all ${target.camera} files`
+              : `Align all ${target.camera} sequences`}
           </button>
           <button
             type='button'
@@ -208,7 +547,9 @@ const SequenceSection = ({
   filesInJumps,
   onSelect,
   onDragStart,
-  onCalibrate
+  onCalibrate,
+  isCalibRef,
+  isCalibTarget
 }: {
   sequence: Sequence
   index: number
@@ -218,12 +559,21 @@ const SequenceSection = ({
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDragStart: (e: React.DragEvent, filePaths: string[], sourceJumpId: string) => void
   onCalibrate: (sequence: Sequence, camera: 'PHOTO' | 'VIDEO', index: number) => void
+  isCalibRef?: boolean
+  isCalibTarget?: boolean
 }) => {
   const [expanded, setExpanded] = useState(true)
   const selectedCount = sequence.files.filter((f) => selection[f.path]).length
 
   return (
-    <div className='mb-4'>
+    <div
+      className={`mb-4 rounded-lg p-2 transition-colors ${
+        isCalibRef
+          ? 'bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-300 dark:ring-blue-700'
+          : isCalibTarget
+            ? 'bg-green-50 dark:bg-green-900/20 ring-1 ring-green-300 dark:ring-green-700'
+            : ''
+      }`}>
       <div className='flex items-center gap-2 mb-1 px-1'>
         <button
           type='button'
@@ -247,8 +597,14 @@ const SequenceSection = ({
         <button
           type='button'
           onClick={() => onCalibrate(sequence, camera, index)}
-          className='text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 text-xs px-1 font-mono'
-          title='Recalibrate clock against another sequence'>
+          className={`text-xs px-1 font-mono ${
+            isCalibRef
+              ? 'text-blue-600 dark:text-blue-400'
+              : isCalibTarget
+                ? 'text-green-600 dark:text-green-400'
+                : 'text-gray-400 hover:text-blue-500 dark:hover:text-blue-400'
+          }`}
+          title='Sync this sequence onto another'>
           ⇄
         </button>
       </div>
@@ -476,6 +832,9 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   const [startTime, setStartTime] = useState(manifest?.startDatetime ?? '')
   const [calibRef, setCalibRef] = useState<CalibrationSeq | null>(null)
   const [calibTarget, setCalibTarget] = useState<CalibrationSeq | null>(null)
+  const [editingDay, setEditingDay] = useState<{ camera: 'PHOTO' | 'VIDEO'; date: string } | null>(
+    null
+  )
   const dragDataRef = useRef<{ filePaths: string[]; sourceJumpId: string } | null>(null)
 
   useEffect(() => {
@@ -495,6 +854,59 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
     if (!manifest) return []
     return getSequences(manifest, 'VIDEO')
   }, [manifest])
+
+  const groupByDay = (sequences: Sequence[]): { date: string; sequences: Sequence[] }[] => {
+    const groups: { date: string; sequences: Sequence[] }[] = []
+    for (const seq of sequences) {
+      const existing = groups.find((g) => g.date === seq.date)
+      if (existing) {
+        existing.sequences.push(seq)
+      } else {
+        groups.push({ date: seq.date, sequences: [seq] })
+      }
+    }
+    return groups
+  }
+
+  const photoDays = useMemo(() => groupByDay(photoSequences), [photoSequences])
+  const videoDays = useMemo(() => groupByDay(videoSequences), [videoSequences])
+
+  const allDates = useMemo(() => {
+    const dateSet = new Set<string>()
+    for (const d of photoDays) dateSet.add(d.date)
+    for (const d of videoDays) dateSet.add(d.date)
+    const dates = Array.from(dateSet)
+    dates.sort((a, b) => {
+      const aSeq = photoDays.find((d) => d.date === a) ?? videoDays.find((d) => d.date === a)
+      const bSeq = photoDays.find((d) => d.date === b) ?? videoDays.find((d) => d.date === b)
+      const aTime = aSeq?.sequences[0]?.startTime ?? 0
+      const bTime = bSeq?.sequences[0]?.startTime ?? 0
+      return aTime - bTime
+    })
+    return dates
+  }, [photoDays, videoDays])
+
+  const dayMap = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        photo?: { date: string; sequences: Sequence[] }
+        video?: { date: string; sequences: Sequence[] }
+      }
+    >()
+    for (const date of allDates) {
+      const entry: {
+        photo?: { date: string; sequences: Sequence[] }
+        video?: { date: string; sequences: Sequence[] }
+      } = {}
+      const photoDay = photoDays.find((d) => d.date === date)
+      const videoDay = videoDays.find((d) => d.date === date)
+      if (photoDay) entry.photo = photoDay
+      if (videoDay) entry.video = videoDay
+      map.set(date, entry)
+    }
+    return map
+  }, [allDates, photoDays, videoDays])
 
   const allFileIds = useMemo(() => {
     if (!manifest) return []
@@ -671,6 +1083,38 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
     setCalibRef(null)
     setCalibTarget(null)
   }
+
+  const handleShiftSequences = useCallback(
+    (paths: string[], offsetSeconds: number) => {
+      if (paths.length === 0 || offsetSeconds === 0) return
+      manifestFetcher.submit(
+        { action: 'shift-sequences', paths, offsetSeconds },
+        { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+      )
+    },
+    [manifestFetcher]
+  )
+
+  const handleDayDateChange = useCallback(
+    (camera: 'PHOTO' | 'VIDEO', date: string, newDateStr: string) => {
+      setEditingDay(null)
+      const seqs = camera === 'PHOTO' ? photoSequences : videoSequences
+      const day = seqs.find((s) => formatSequenceDate(s.startTime) === date)
+      if (!day) return
+      const oldTimestamp = day.startTime
+      const parts = newDateStr.split('-')
+      const year = parseInt(parts[0], 10)
+      const month = parseInt(parts[1], 10) - 1
+      const dayPart = parseInt(parts[2], 10)
+      const newTimestamp = Math.floor(new Date(year, month, dayPart, 12, 0, 0).getTime() / 1000)
+      const offsetSeconds = newTimestamp - oldTimestamp
+      if (offsetSeconds === 0) return
+      const daySeqs = seqs.filter((s) => formatSequenceDate(s.startTime) === date)
+      const paths = daySeqs.flatMap((s) => s.files.map((f) => f.path))
+      handleShiftSequences(paths, offsetSeconds)
+    },
+    [photoSequences, videoSequences, handleShiftSequences]
+  )
 
   const hasCalibration = useMemo(
     () =>
@@ -962,8 +1406,17 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
         {calibRef && !calibTarget && (
           <div className='flex items-center gap-3 mb-4 p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg'>
             <span className='text-sm font-medium text-indigo-700 dark:text-indigo-300'>
-              Reference set: {calibRef.label} ({calibRef.camera}) — click ⇄ on another sequence to
-              recalibrate it onto this one
+              Reference set:{' '}
+              <span
+                className={`px-1.5 py-0.5 rounded text-xs font-semibold uppercase ${
+                  calibRef.camera === 'PHOTO'
+                    ? 'bg-blue-200 text-blue-800 dark:bg-blue-800 dark:text-blue-200'
+                    : 'bg-purple-200 text-purple-800 dark:bg-purple-800 dark:text-purple-200'
+                }`}>
+                {calibRef.camera}
+              </span>{' '}
+              {calibRef.label} — click ⇄ on any sequence (same or other camera) to sync it onto this
+              one
             </span>
             <div className='flex-1' />
             <button
@@ -988,68 +1441,143 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
           />
         )}
 
-        <div className='grid grid-cols-3 gap-4'>
-          <div>
-            <div className='flex items-center gap-2 mb-3 px-1'>
-              <div className='w-3 h-3 rounded-full bg-blue-500' />
-              <h2 className='text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider'>
-                Camera 1 — Photos
-              </h2>
+        <TimelineStrip
+          photoSequences={photoSequences}
+          videoSequences={videoSequences}
+          onShift={handleShiftSequences}
+        />
+
+        <div className='flex gap-4'>
+          <div className='flex-1 min-w-0'>
+            <div className='grid grid-cols-2 gap-4 mb-3 px-1'>
+              <div className='flex items-center gap-2'>
+                <div className='w-3 h-3 rounded-full bg-blue-500' />
+                <h2 className='text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider'>
+                  Camera 1 — Photos
+                </h2>
+              </div>
+              <div className='flex items-center gap-2'>
+                <div className='w-3 h-3 rounded-full bg-purple-500' />
+                <h2 className='text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider'>
+                  Camera 2 — Videos
+                </h2>
+              </div>
             </div>
-            <div className='space-y-2'>
-              {photoSequences.map((seq, i) => (
-                <SequenceSection
-                  key={seq.id}
-                  sequence={seq}
-                  index={i}
-                  camera='PHOTO'
-                  selection={selection[seq.id] ?? {}}
-                  filesInJumps={filesInJumps}
-                  onSelect={handleSelect}
-                  onDragStart={handleDragStart}
-                  onCalibrate={(sequence, camera, index) =>
-                    handleCalibrateClick({
-                      label: `Sequence ${index + 1}`,
-                      camera,
-                      files: sequence.files
-                    })
-                  }
-                />
-              ))}
+            <div className='flex flex-col gap-3'>
+              {allDates.map((date) => {
+                const entry = dayMap.get(date)
+                return (
+                  <div
+                    key={date}
+                    className='grid grid-cols-2 gap-4'>
+                    <div>
+                      {entry?.photo ? (
+                        <div className='border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800/50'>
+                          {editingDay?.camera === 'PHOTO' && editingDay?.date === date ? (
+                            <input
+                              type='date'
+                              autoFocus
+                              defaultValue={formatDateForInput(date)}
+                              onBlur={(e) => handleDayDateChange('PHOTO', date, e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter')
+                                  handleDayDateChange('PHOTO', date, e.currentTarget.value)
+                                if (e.key === 'Escape') setEditingDay(null)
+                              }}
+                              className='text-sm font-medium px-2 py-1 border border-blue-300 dark:border-blue-600 rounded bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 mb-2 w-full'
+                            />
+                          ) : (
+                            <div
+                              className='text-sm font-medium text-gray-600 dark:text-gray-400 mb-2 cursor-pointer hover:underline decoration-dotted'
+                              onClick={() => setEditingDay({ camera: 'PHOTO', date })}
+                              title='Click to edit date'>
+                              {date}
+                            </div>
+                          )}
+                          <div className='space-y-2'>
+                            {entry.photo.sequences.map((seq, i) => (
+                              <SequenceSection
+                                key={seq.id}
+                                sequence={seq}
+                                index={i}
+                                camera='PHOTO'
+                                selection={selection[seq.id] ?? {}}
+                                filesInJumps={filesInJumps}
+                                onSelect={handleSelect}
+                                onDragStart={handleDragStart}
+                                onCalibrate={(sequence, camera, index) =>
+                                  handleCalibrateClick({
+                                    label: `Sequence ${index + 1}`,
+                                    camera,
+                                    files: sequence.files
+                                  })
+                                }
+                                isCalibRef={calibRef?.files[0]?.path === seq.files[0]?.path}
+                                isCalibTarget={calibTarget?.files[0]?.path === seq.files[0]?.path}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div>
+                      {entry?.video ? (
+                        <div className='border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800/50'>
+                          {editingDay?.camera === 'VIDEO' && editingDay?.date === date ? (
+                            <input
+                              type='date'
+                              autoFocus
+                              defaultValue={formatDateForInput(date)}
+                              onBlur={(e) => handleDayDateChange('VIDEO', date, e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter')
+                                  handleDayDateChange('VIDEO', date, e.currentTarget.value)
+                                if (e.key === 'Escape') setEditingDay(null)
+                              }}
+                              className='text-sm font-medium px-2 py-1 border border-purple-300 dark:border-purple-600 rounded bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 mb-2 w-full'
+                            />
+                          ) : (
+                            <div
+                              className='text-sm font-medium text-gray-600 dark:text-gray-400 mb-2 cursor-pointer hover:underline decoration-dotted'
+                              onClick={() => setEditingDay({ camera: 'VIDEO', date })}
+                              title='Click to edit date'>
+                              {date}
+                            </div>
+                          )}
+                          <div className='space-y-2'>
+                            {entry.video.sequences.map((seq, i) => (
+                              <SequenceSection
+                                key={seq.id}
+                                sequence={seq}
+                                index={i}
+                                camera='VIDEO'
+                                selection={selection[seq.id] ?? {}}
+                                filesInJumps={filesInJumps}
+                                onSelect={handleSelect}
+                                onDragStart={handleDragStart}
+                                onCalibrate={(sequence, camera, index) =>
+                                  handleCalibrateClick({
+                                    label: `Sequence ${index + 1}`,
+                                    camera,
+                                    files: sequence.files
+                                  })
+                                }
+                                isCalibRef={calibRef?.files[0]?.path === seq.files[0]?.path}
+                                isCalibTarget={calibTarget?.files[0]?.path === seq.files[0]?.path}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
 
-          <div>
-            <div className='flex items-center gap-2 mb-3 px-1'>
-              <div className='w-3 h-3 rounded-full bg-purple-500' />
-              <h2 className='text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider'>
-                Camera 2 — Videos
-              </h2>
-            </div>
-            <div className='space-y-2'>
-              {videoSequences.map((seq, i) => (
-                <SequenceSection
-                  key={seq.id}
-                  sequence={seq}
-                  index={i}
-                  camera='VIDEO'
-                  selection={selection[seq.id] ?? {}}
-                  filesInJumps={filesInJumps}
-                  onSelect={handleSelect}
-                  onDragStart={handleDragStart}
-                  onCalibrate={(sequence, camera, index) =>
-                    handleCalibrateClick({
-                      label: `Sequence ${index + 1}`,
-                      camera,
-                      files: sequence.files
-                    })
-                  }
-                />
-              ))}
-            </div>
-          </div>
-
-          <div>
+          <div className='w-80 shrink-0'>
             <div className='flex items-center gap-2 mb-3 px-1'>
               <div className='w-3 h-3 rounded-full bg-green-500' />
               <h2 className='text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider'>

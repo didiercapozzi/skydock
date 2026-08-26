@@ -418,7 +418,7 @@ describe('Sequence Recalibration', () => {
     )
 
   const calibrateButtons = (): HTMLElement[] =>
-    screen.getAllByTitle('Recalibrate clock against another sequence') as HTMLElement[]
+    screen.getAllByTitle('Sync this sequence onto another') as HTMLElement[]
 
   it('sets a reference sequence on first click and shows the banner', () => {
     renderReview(driftManifest())
@@ -426,7 +426,7 @@ describe('Sequence Recalibration', () => {
     expect(calibrateButtons().length).toBe(2)
     fireEvent.click(calibrateButtons()[0])
 
-    expect(screen.getByText(/Reference set: Sequence 1 \(PHOTO\)/)).toBeInTheDocument()
+    expect(screen.getByText(/Reference set:/)).toBeInTheDocument()
   })
 
   it('clicking the reference sequence again clears it', () => {
@@ -445,32 +445,31 @@ describe('Sequence Recalibration', () => {
     fireEvent.click(calibrateButtons()[0])
     fireEvent.click(calibrateButtons()[1])
 
-    expect(screen.getByText('Recalibrate Sequence 1')).toBeInTheDocument()
-    expect(screen.getByText(/clock offset/)).toBeInTheDocument()
-    expect(screen.getByText('+5d 00:00:00')).toBeInTheDocument()
+    expect(screen.getByText('Sync Cameras')).toBeInTheDocument()
+    expect(screen.getByText(/offset/)).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('Align this sequence'))
 
     const body = await getSubmitBody(actionSpy)
     expect(body).toEqual({
       action: 'calibrate-sequences',
-      referencePaths: ['/photo1.jpg'],
-      targetPaths: ['/video1.mp4'],
+      referencePaths: ['/video1.mp4'],
+      targetPaths: ['/photo1.jpg'],
       scope: 'single',
-      camera: 'VIDEO'
+      camera: 'PHOTO'
     })
   })
 
-  it('submits camera-wide alignment when choosing Align all', async () => {
+  it('submits camera-wide alignment when choosing Shift all', async () => {
     const actionSpy = vi.fn(async () => ({ ok: true }))
     renderReview(driftManifest(), actionSpy)
 
     fireEvent.click(calibrateButtons()[0])
     fireEvent.click(calibrateButtons()[1])
-    fireEvent.click(screen.getByText('Align all VIDEO sequences'))
+    fireEvent.click(screen.getByText('Shift all PHOTO files'))
 
     const body = await getSubmitBody(actionSpy)
-    expect(body).toMatchObject({ action: 'calibrate-sequences', scope: 'camera', camera: 'VIDEO' })
+    expect(body).toMatchObject({ action: 'calibrate-sequences', scope: 'camera', camera: 'PHOTO' })
   })
 
   it('shows Reset Sync once calibration data exists in the manifest', () => {

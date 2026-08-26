@@ -315,6 +315,23 @@ const action = async ({ request }: Route.ActionArgs) => {
     return { ok: true, offsetSeconds }
   }
 
+  if (formAction === 'shift-sequences') {
+    const manifest = loadManifest()
+    if (!manifest) return { ok: false, error: 'No manifest found' }
+    if (manifest.status === 'executed') return { ok: false, error: 'Manifest already executed' }
+
+    const paths = (body.paths ?? []) as string[]
+    const offsetSeconds = Number(body.offsetSeconds ?? 0)
+
+    if (paths.length === 0) return { ok: false, error: 'No paths specified' }
+    if (offsetSeconds === 0) return { ok: false, error: 'Offset is zero' }
+
+    shiftFiles(manifest, new Set(paths), offsetSeconds)
+    reclusterJumps(manifest)
+    saveManifest(manifest)
+    return { ok: true, offsetSeconds }
+  }
+
   if (formAction === 'reset-calibration') {
     const manifest = loadManifest()
     if (!manifest) return { ok: false, error: 'No manifest found' }
