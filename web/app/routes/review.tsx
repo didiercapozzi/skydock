@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useFetcher, useRevalidator } from 'react-router'
 import { getOutputDirPath } from '../lib/scanner.server'
 import { getSequences, formatSequenceTime } from '../lib/sequences'
@@ -53,7 +53,7 @@ const FileRow = ({
   isLone: boolean
   draggable: boolean
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
-  onDragStart: (e: React.DragEvent, filePaths: string[], sourceJumpId: string) => void
+  onDragStart: (e: React.DragEvent, filePath: string, groupId: string) => void
   onRemove?: (filePath: string) => void
 }) => {
   const time = formatTime(file.mtime)
@@ -68,7 +68,7 @@ const FileRow = ({
             : 'hover:bg-gray-100 dark:hover:bg-gray-800'
       }`}
       draggable={draggable}
-      onDragStart={(e) => onDragStart(e, [file.path], groupId)}
+      onDragStart={(e) => onDragStart(e, file.path, groupId)}
       onClick={(e) => onSelect(groupId, file.path, e.ctrlKey || e.metaKey, e.shiftKey)}>
       <input
         type='checkbox'
@@ -170,7 +170,7 @@ const SequenceSection = ({
                   .map((f) => f.path)
                 const pathsToDrag =
                   selectedPaths.length > 0 && selection[file.path] ? selectedPaths : [filePath]
-                onDragStart(e, pathsToDrag as string[], sequence.id)
+                onDragStart(e, pathsToDrag, sequence.id)
               }}
             />
           ))}
@@ -185,6 +185,7 @@ const JumpSection = ({
   selection,
   onSelect,
   onDrop,
+  onDragStart,
   onRemoveFiles,
   onResetTimestamps
 }: {
@@ -192,6 +193,7 @@ const JumpSection = ({
   selection: Record<string, boolean>
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDrop: (e: React.DragEvent, targetJumpId: string) => void
+  onDragStart: (e: React.DragEvent, filePaths: string[], sourceJumpId: string) => void
   onRemoveFiles: (jumpId: string, filePaths: string[]) => void
   onResetTimestamps: (jumpId: string) => void
 }) => {
@@ -349,10 +351,7 @@ const JumpSection = ({
                 const selectedPaths = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
                 const pathsToDrag =
                   selectedPaths.length > 0 && selection[file.path] ? selectedPaths : [filePath]
-                e.dataTransfer.setData(
-                  'application/json',
-                  JSON.stringify({ filePaths: pathsToDrag, sourceJumpId: jump.id })
-                )
+                onDragStart(e, pathsToDrag, jump.id)
               }}
               onRemove={(filePath) => onRemoveFiles(jump.id, [filePath])}
             />
@@ -376,6 +375,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   const [lastClicked, setLastClicked] = useState<string | null>(null)
   const [moveTarget, setMoveTarget] = useState<string>('')
   const [startTime, setStartTime] = useState(manifest?.startDatetime ?? '')
+  const dragDataRef = useRef<{ filePaths: string[]; sourceJumpId: string } | null>(null)
 
   useEffect(() => {
     if (manifestFetcher.data || scanFetcher.data) {
@@ -518,7 +518,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
 
   const handleDragStart = useCallback(
     (e: React.DragEvent, filePaths: string[], sourceJumpId: string) => {
-      e.dataTransfer.setData('application/json', JSON.stringify({ filePaths, sourceJumpId }))
+      dragDataRef.current = { filePaths, sourceJumpId }
       e.dataTransfer.effectAllowed = 'move'
     },
     []
@@ -527,12 +527,10 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   const handleDrop = useCallback(
     (e: React.DragEvent, targetJumpId: string) => {
       e.preventDefault()
-      try {
-        const data = JSON.parse(e.dataTransfer.getData('application/json')) as {
-          filePaths: string[]
-          sourceJumpId: string
-        }
+      const data = dragDataRef.current
+      if (!data) return
 
+      try {
         let sourceJumpId = data.sourceJumpId
         if (sourceJumpId.startsWith('seq_')) {
           for (const jump of manifest?.jumps ?? []) {
@@ -566,8 +564,8 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
             { method: 'POST', encType: 'application/json', action: '/api/manifest' }
           )
         }
-      } catch {
-        // ignore
+      } finally {
+        dragDataRef.current = null
       }
     },
     [manifestFetcher, manifest]
@@ -850,6 +848,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                   selection={selection[jump.id] ?? {}}
                   onSelect={handleSelect}
                   onDrop={handleDrop}
+                  onDragStart={handleDragStart}
                   onRemoveFiles={handleRemoveFiles}
                   onResetTimestamps={handleResetTimestamps}
                 />

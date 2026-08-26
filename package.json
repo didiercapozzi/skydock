@@ -19,6 +19,7 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.6",
     "electron": "^44.0.0",
     "jsdom": "^30.0.1",
     "opencode-ai": "^1.18.23",

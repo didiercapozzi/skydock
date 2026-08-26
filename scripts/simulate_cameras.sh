@@ -108,7 +108,7 @@ for day_spec in "${DAYS[@]}"; do
     echo "[Sim] ${sim_date} (${days_ago} days ago): ${num_jumps} jumps, ${files_per_jump} files each"
 
     for (( j=0; j<num_jumps; j++ )); do
-        offset=$(( j * 1200 ))
+        offset=$(( j * 3600 ))
         create_jump "${base_epoch}" "${offset}" "${files_per_jump}"
     done
 done

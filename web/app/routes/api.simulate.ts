@@ -102,7 +102,7 @@ const action = async ({ request }: { request: Request }) => {
     // Phase 1: Scan new files into manifest
     try {
       execSync(
-        `SKYDOCK_OUTPUT_DIR="${outputDir}" "${scanScript}" "${photoDir}" "${videoDir}" 2>&1`,
+        `JUMP_GAP_SECONDS=900 SKYDOCK_OUTPUT_DIR="${outputDir}" "${scanScript}" "${photoDir}" "${videoDir}" 2>&1`,
         { timeout: 30_000 }
       )
     } catch (e) {
@@ -123,10 +123,13 @@ const action = async ({ request }: { request: Request }) => {
 
   // Phase 1: Scan into manifest for user review
   try {
-    execSync(`SKYDOCK_OUTPUT_DIR="${outputDir}" "${scanScript}" "${photoDir}" "${videoDir}"`, {
-      timeout: 30_000,
-      stdio: 'pipe'
-    })
+    execSync(
+      `JUMP_GAP_SECONDS=900 SKYDOCK_OUTPUT_DIR="${outputDir}" "${scanScript}" "${photoDir}" "${videoDir}"`,
+      {
+        timeout: 30_000,
+        stdio: 'pipe'
+      }
+    )
   } catch (e) {
     return { ok: false, error: `Scan failed: ${e instanceof Error ? e.message : String(e)}` }
   }

@@ -107,7 +107,7 @@ while IFS='|' read -r epoch filepath filesize cam_type; do
         ALL_FILES_JSON="${ALL_FILES_JSON},"
     fi
     ALL_FILES_JSON="${ALL_FILES_JSON}$(printf '{"path":"%s","camera":"%s","size":%d,"mtime":%d,"filename":"%s"}' \
-        "${filepath}" "${cam_type}" "${filesize}" "$(( epoch * 1000 ))" "$(basename "${filepath}")")"
+        "${filepath}" "${cam_type}" "${filesize}" "${epoch}" "$(basename "${filepath}")")"
 
     if (( LAST_EPOCH > 0 )) && (( epoch - LAST_EPOCH > JUMP_GAP )); then
         flush_jump
@@ -118,7 +118,7 @@ while IFS='|' read -r epoch filepath filesize cam_type; do
         CURRENT_JUMP_FILES="${CURRENT_JUMP_FILES},"
     fi
     CURRENT_JUMP_FILES="${CURRENT_JUMP_FILES}$(printf '{"path":"%s","camera":"%s","size":%d,"mtime":%d,"filename":"%s"}' \
-        "${filepath}" "${cam_type}" "${filesize}" "$(( epoch * 1000 ))" "$(basename "${filepath}")")"
+        "${filepath}" "${cam_type}" "${filesize}" "${epoch}" "$(basename "${filepath}")")"
 done < "${SORTED_ALL}"
 
 flush_jump
@@ -132,7 +132,7 @@ if [[ -s "${TMP_THEORY_LIST}" ]]; then
     while IFS='|' read -r epoch filepath filesize cam_type; do
         [[ -n "${THEORY_FILES}" ]] && THEORY_FILES="${THEORY_FILES},"
         THEORY_FILES="${THEORY_FILES}$(printf '{"path":"%s","camera":"%s","size":%d,"mtime":%d,"filename":"%s"}' \
-            "${filepath}" "${cam_type}" "${filesize}" "$(( epoch * 1000 ))" "$(basename "${filepath}")")"
+            "${filepath}" "${cam_type}" "${filesize}" "${epoch}" "$(basename "${filepath}")")"
     done < <(sort -t'|' -k1,1n "${TMP_THEORY_LIST}")
 fi
 

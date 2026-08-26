@@ -1,8 +1,8 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
+import { describe, expect, it, vi } from 'vitest'
+import type { Manifest, ManifestFile, ManifestJump } from '../app/lib/types'
 import Review from '../app/routes/review'
-import type { Manifest, ManifestJump, ManifestFile } from '../app/lib/types'
 
 const makeFile = (path: string, camera: 'PHOTO' | 'VIDEO', mtime: number): ManifestFile => ({
   path,
@@ -32,18 +32,27 @@ const makeManifest = (jumps: ManifestJump[] = [], files: ManifestFile[] = []): M
   files
 })
 
-const renderReview = (manifest: Manifest | null) => {
-  const router = createMemoryRouter(
-    [
-      {
-        path: '/review',
-        // @ts-expect-error - testing with partial props
-        element: <Review loaderData={{ manifest }} />
-      }
-    ],
-    { initialEntries: ['/review'] }
-  )
+const renderReview = (manifest: Manifest | null, action?: unknown) => {
+  const routes: { path: string; element?: React.ReactNode; action?: unknown }[] = [
+    {
+      path: '/review',
+      // @ts-expect-error - testing with partial props
+      element: <Review loaderData={{ manifest }} />
+    }
+  ]
+  if (action) {
+    routes.push({ path: '/api/manifest', action })
+  }
+  const router = createMemoryRouter(routes as never, { initialEntries: ['/review'] })
   return render(<RouterProvider router={router} />)
+}
+
+const getSubmitBody = async (
+  actionSpy: ReturnType<typeof vi.fn>
+): Promise<Record<string, unknown>> => {
+  await waitFor(() => expect(actionSpy).toHaveBeenCalledTimes(1))
+  const request = (actionSpy.mock.calls[0][0] as { request: Request }).request
+  return (await request.json()) as Record<string, unknown>
 }
 
 const getTextContent = (element: Element | null): string => {
@@ -177,7 +186,7 @@ describe('Review', () => {
 describe('Drag and Drop', () => {
   const baseTime = new Date('2026-08-22T10:00:00Z').getTime() / 1000
 
-  it('file row has draggable attribute', () => {
+  it('file rows are draggable', () => {
     const manifest = makeManifest(
       [makeJump('jump_1', 'Jump 1', [makeFile('/photo1.jpg', 'PHOTO', baseTime)])],
       [makeFile('/photo1.jpg', 'PHOTO', baseTime)]
@@ -189,47 +198,62 @@ describe('Drag and Drop', () => {
     expect(draggables.length).toBeGreaterThan(0)
   })
 
-  it('sets drag data on dragstart', () => {
+
+  it('dragging sets effectAllowed to move', () => {
     const manifest = makeManifest(
-      [makeJump('jump_1', 'Jump 1', [makeFile('/photo1.jpg', 'PHOTO', baseTime)])],
+      [makeJump('jump_1', 'Jump 1', [])],
       [makeFile('/photo1.jpg', 'PHOTO', baseTime)]
     )
 
     renderReview(manifest)
 
-    const draggable = document.querySelector('[draggable="true"]') as HTMLElement
-    expect(draggable).toBeTruthy()
+    const fileRow = document.querySelector('[draggable="true"]') as HTMLElement
+    expect(fileRow).toBeTruthy()
 
-    const dataTransfer = {
-      setData: vi.fn(),
-      getData: vi.fn(),
-      effectAllowed: ''
-    }
+    const dataTransfer = { setData: vi.fn(), getData: vi.fn(), effectAllowed: '' }
+    fireEvent.dragStart(fileRow, { dataTransfer })
 
-    fireEvent.dragStart(draggable, { dataTransfer })
-
-    expect(dataTransfer.setData).toHaveBeenCalledWith(
-      'application/json',
-      expect.stringContaining('photo1.jpg')
-    )
+    expect(dataTransfer.effectAllowed).toBe('move')
   })
 
-  it('jump section accepts drop', () => {
+  it('jump section highlights on drag over', () => {
     const manifest = makeManifest(
-      [
-        makeJump('jump_1', 'Jump 1', [makeFile('/photo1.jpg', 'PHOTO', baseTime)]),
-        makeJump('jump_2', 'Jump 2', [])
-      ],
+      [makeJump('jump_1', 'Jump 1', [])],
       [makeFile('/photo1.jpg', 'PHOTO', baseTime)]
     )
 
     renderReview(manifest)
 
-    const jumpHeaders = screen.getAllByText(/Jump \d/)
-    expect(jumpHeaders.length).toBe(2)
+    const jumpEl = screen.getByText('Jump 1').closest('[class*="border"]') as HTMLElement
+    expect(jumpEl).toBeTruthy()
+
+    const dataTransfer = { setData: vi.fn(), getData: vi.fn(), effectAllowed: '' }
+    fireEvent.dragEnter(jumpEl)
+    fireEvent.dragOver(jumpEl, { dataTransfer })
+
+    expect(jumpEl.className).toContain('border-blue-400')
   })
 
-  it('sequence files show yellow background when not in any jump', () => {
+  it('jump section removes highlight on drag leave', () => {
+    const manifest = makeManifest(
+      [makeJump('jump_1', 'Jump 1', [])],
+      [makeFile('/photo1.jpg', 'PHOTO', baseTime)]
+    )
+
+    renderReview(manifest)
+
+    const jumpEl = screen.getByText('Jump 1').closest('[class*="border"]') as HTMLElement
+    const dataTransfer = { setData: vi.fn(), getData: vi.fn(), effectAllowed: '' }
+
+    fireEvent.dragEnter(jumpEl)
+    fireEvent.dragOver(jumpEl, { dataTransfer })
+    expect(jumpEl.className).toContain('border-blue-400')
+
+    fireEvent.dragLeave(jumpEl)
+    expect(jumpEl.className).not.toContain('border-blue-400')
+  })
+
+  it('unassigned files show yellow background', () => {
     const manifest = makeManifest([], [makeFile('/photo1.jpg', 'PHOTO', baseTime)])
 
     renderReview(manifest)
@@ -238,7 +262,7 @@ describe('Drag and Drop', () => {
     expect(yellowBg).toBeTruthy()
   })
 
-  it('sequence files do not show yellow background when in a jump', () => {
+  it('assigned files do not show yellow background', () => {
     const manifest = makeManifest(
       [makeJump('jump_1', 'Jump 1', [makeFile('/photo1.jpg', 'PHOTO', baseTime)])],
       [makeFile('/photo1.jpg', 'PHOTO', baseTime)]
@@ -250,7 +274,7 @@ describe('Drag and Drop', () => {
     expect(yellowBg).toBeFalsy()
   })
 
-  it('multi-select and drag moves all selected files', () => {
+  it('ctrl+click selects multiple files', () => {
     const manifest = makeManifest(
       [makeJump('jump_1', 'Jump 1', [])],
       [makeFile('/photo1.jpg', 'PHOTO', baseTime), makeFile('/photo2.jpg', 'PHOTO', baseTime + 300)]
@@ -258,15 +282,126 @@ describe('Drag and Drop', () => {
 
     renderReview(manifest)
 
-    const checkboxes = document.querySelectorAll('input[type="checkbox"]')
-    expect(checkboxes.length).toBeGreaterThan(0)
+    const fileRows = document.querySelectorAll('[draggable="true"]')
+    expect(fileRows.length).toBeGreaterThanOrEqual(2)
 
-    if (checkboxes.length >= 2) {
-      fireEvent.click(checkboxes[0] as HTMLElement)
-      fireEvent.click(checkboxes[1] as HTMLElement)
-    }
+    fireEvent.click(fileRows[0], { ctrlKey: true })
+    fireEvent.click(fileRows[1], { ctrlKey: true })
 
     const selected = document.querySelectorAll('.bg-blue-100')
-    expect(selected.length).toBeGreaterThanOrEqual(0)
+    expect(selected.length).toBe(2)
+  })
+
+  it('dragging an unselected file drops only that file without selecting first', async () => {
+    const manifest = makeManifest(
+      [makeJump('jump_1', 'Jump 1', [])],
+      [makeFile('/photo1.jpg', 'PHOTO', baseTime), makeFile('/photo2.jpg', 'PHOTO', baseTime + 60)]
+    )
+    const actionSpy = vi.fn(async () => ({ ok: true }))
+
+    renderReview(manifest, actionSpy)
+
+    const fileRow = document.querySelector('[draggable="true"]') as HTMLElement
+    const jumpEl = screen.getByText('Jump 1').closest('[class*="border"]') as HTMLElement
+    expect(jumpEl).toBeTruthy()
+
+    const dataTransfer = { setData: vi.fn(), getData: vi.fn(), effectAllowed: '' }
+    fireEvent.dragStart(fileRow, { dataTransfer })
+    fireEvent.dragOver(jumpEl, { dataTransfer })
+    fireEvent.drop(jumpEl, { dataTransfer })
+
+    const body = await getSubmitBody(actionSpy)
+    expect(body).toEqual({
+      action: 'add-to-jump',
+      jumpId: 'jump_1',
+      filePaths: ['/photo1.jpg']
+    })
+  })
+
+  it('dragging one unselected file while others are selected moves only the dragged file', async () => {
+    const manifest = makeManifest(
+      [makeJump('jump_1', 'Jump 1', [])],
+      [makeFile('/photo1.jpg', 'PHOTO', baseTime), makeFile('/photo2.jpg', 'PHOTO', baseTime + 60)]
+    )
+    const actionSpy = vi.fn(async () => ({ ok: true }))
+
+    renderReview(manifest, actionSpy)
+
+    const fileRows = document.querySelectorAll('[draggable="true"]')
+    const jumpEl = screen.getByText('Jump 1').closest('[class*="border"]') as HTMLElement
+
+    fireEvent.click(fileRows[0], { ctrlKey: true })
+    expect(document.querySelectorAll('.bg-blue-100').length).toBe(1)
+
+    const dataTransfer = { setData: vi.fn(), getData: vi.fn(), effectAllowed: '' }
+    fireEvent.dragStart(fileRows[1] as HTMLElement, { dataTransfer })
+    fireEvent.dragOver(jumpEl, { dataTransfer })
+    fireEvent.drop(jumpEl, { dataTransfer })
+
+    const body = await getSubmitBody(actionSpy)
+    expect(body).toEqual({
+      action: 'add-to-jump',
+      jumpId: 'jump_1',
+      filePaths: ['/photo2.jpg']
+    })
+  })
+
+  it('dragging a selected file carries all selected files of the group', async () => {
+    const manifest = makeManifest(
+      [makeJump('jump_1', 'Jump 1', [])],
+      [makeFile('/photo1.jpg', 'PHOTO', baseTime), makeFile('/photo2.jpg', 'PHOTO', baseTime + 60)]
+    )
+    const actionSpy = vi.fn(async () => ({ ok: true }))
+
+    renderReview(manifest, actionSpy)
+
+    const fileRows = document.querySelectorAll('[draggable="true"]')
+    const jumpEl = screen.getByText('Jump 1').closest('[class*="border"]') as HTMLElement
+
+    fireEvent.click(fileRows[0], { ctrlKey: true })
+    fireEvent.click(fileRows[1], { ctrlKey: true })
+    expect(document.querySelectorAll('.bg-blue-100').length).toBe(2)
+
+    const dataTransfer = { setData: vi.fn(), getData: vi.fn(), effectAllowed: '' }
+    fireEvent.dragStart(fileRows[0] as HTMLElement, { dataTransfer })
+    fireEvent.dragOver(jumpEl, { dataTransfer })
+    fireEvent.drop(jumpEl, { dataTransfer })
+
+    const body = await getSubmitBody(actionSpy)
+    expect(body).toEqual({
+      action: 'add-to-jump',
+      jumpId: 'jump_1',
+      filePaths: ['/photo1.jpg', '/photo2.jpg']
+    })
+  })
+
+  it('dragging a file between two jumps moves only that file', async () => {
+    const manifest = makeManifest(
+      [
+        makeJump('jump_1', 'Jump 1', [makeFile('/photo1.jpg', 'PHOTO', baseTime)]),
+        makeJump('jump_2', 'Jump 2', [])
+      ],
+      [makeFile('/photo1.jpg', 'PHOTO', baseTime)]
+    )
+    const actionSpy = vi.fn(async () => ({ ok: true }))
+
+    renderReview(manifest, actionSpy)
+
+    const jumpOne = screen.getByText('Jump 1').closest('[class*="border"]') as HTMLElement
+    const jumpTwo = screen.getByText('Jump 2').closest('[class*="border"]') as HTMLElement
+    const fileRow = jumpOne.querySelector('[draggable="true"]') as HTMLElement
+
+    const dataTransfer = { setData: vi.fn(), getData: vi.fn(), effectAllowed: '' }
+    fireEvent.dragStart(fileRow, { dataTransfer })
+    fireEvent.dragOver(jumpTwo, { dataTransfer })
+    fireEvent.drop(jumpTwo, { dataTransfer })
+
+    const body = await getSubmitBody(actionSpy)
+    expect(body).toEqual({
+      action: 'move-files',
+      fromJumpId: 'jump_1',
+      toJumpId: 'jump_2',
+      filePaths: ['/photo1.jpg']
+    })
   })
 })
