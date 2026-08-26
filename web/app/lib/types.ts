@@ -52,6 +52,8 @@ export type ManifestFile = {
   size: number
   mtime: number
   filename: string
+  id?: string
+  originalMtime?: number
 }
 
 export type ManifestJump = {
@@ -74,4 +76,5 @@ export type Manifest = {
   theory: ManifestFile[]
   files: ManifestFile[]
   jumps: ManifestJump[]
+  cameraClockOffsetSeconds?: number
 }

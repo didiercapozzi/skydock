@@ -23,6 +23,17 @@ export const formatSequenceTime = (epoch: number): string => {
   })
 }
 
+export const formatClockOffset = (seconds: number): string => {
+  const sign = seconds < 0 ? '-' : '+'
+  const abs = Math.abs(seconds)
+  const days = Math.floor(abs / 86400)
+  const hours = Math.floor((abs % 86400) / 3600)
+  const minutes = Math.floor((abs % 3600) / 60)
+  const secs = abs % 60
+  const pad = (n: number): string => String(n).padStart(2, '0')
+  return `${sign}${days}d ${pad(hours)}:${pad(minutes)}:${pad(secs)}`
+}
+
 export const getSequences = (manifest: Manifest, camera: 'PHOTO' | 'VIDEO'): Sequence[] => {
   const allFiles: ManifestFile[] = (manifest.files ?? []).filter((f) => f.camera === camera)
 

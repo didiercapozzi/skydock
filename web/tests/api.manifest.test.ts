@@ -1,4 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import * as fs from 'node:fs'
+import * as os from 'node:os'
+import * as path from 'node:path'
+import { action } from '../app/routes/api.manifest'
 import type { Manifest, ManifestJump, ManifestFile } from '../app/lib/types'
 
 const makeFile = (path: string, camera: 'PHOTO' | 'VIDEO', mtime: number): ManifestFile => ({
@@ -213,5 +217,193 @@ describe('manifest actions', () => {
         expect(jump.files[0].mtime).toBe(baseEpoch)
       }
     })
+  })
+})
+
+describe('calibration actions', () => {
+  let tmpDir = ''
+  let originalOutputDir: string | undefined
+
+  const DAY = 86400
+  const T = 1787727600
+
+  const callAction = async (payload: Record<string, unknown>): Promise<Record<string, unknown>> => {
+    const request = new Request('http://localhost/api/manifest', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    const handler = action as unknown as (args: { request: Request }) => Promise<unknown>
+    return (await handler({ request })) as Record<string, unknown>
+  }
+
+  const writeFixture = (manifest: Manifest): void => {
+    fs.writeFileSync(path.join(tmpDir, 'proposed_jumps.json'), JSON.stringify(manifest))
+  }
+
+  const readManifest = (): Manifest =>
+    JSON.parse(fs.readFileSync(path.join(tmpDir, 'proposed_jumps.json'), 'utf-8')) as Manifest
+
+  const driftManifest = (): Manifest => {
+    const photo = (name: string, mtime: number): ManifestFile => ({
+      path: `/${name}`,
+      camera: 'PHOTO',
+      size: 1000,
+      mtime,
+      filename: name
+    })
+    const video = (name: string, mtime: number): ManifestFile => ({
+      path: `/${name}`,
+      camera: 'VIDEO',
+      size: 2000,
+      mtime,
+      filename: name
+    })
+    return {
+      version: 1,
+      status: 'proposed',
+      date: '2026-08-26',
+      startDatetime: '2026-08-26T09:00:00Z',
+      createdAt: new Date().toISOString(),
+      camera1: { path: '/camera1', fileCount: 3 },
+      camera2: { path: '/camera2', fileCount: 3 },
+      theory: [],
+      files: [
+        photo('p1.jpg', T),
+        photo('p2.jpg', T + 30),
+        photo('p3.jpg', T + 3600),
+        video('v1.mp4', T - 5 * DAY),
+        video('v2.mp4', T - 5 * DAY + 30),
+        video('v3.mp4', T + 3600 - 5 * DAY)
+      ],
+      jumps: [
+        { id: 'jump_1', label: 'Jump 1', confirmed: false, files: [] },
+        { id: 'jump_2', label: 'Jump 2', confirmed: false, files: [] }
+      ]
+    }
+  }
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-calibration-'))
+    originalOutputDir = process.env.SKYDOCK_OUTPUT_DIR
+    process.env.SKYDOCK_OUTPUT_DIR = tmpDir
+  })
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true })
+    if (originalOutputDir === undefined) {
+      delete process.env.SKYDOCK_OUTPUT_DIR
+    } else {
+      process.env.SKYDOCK_OUTPUT_DIR = originalOutputDir
+    }
+  })
+
+  it('aligns a single video sequence onto the photo reference and merges jumps', async () => {
+    writeFixture(driftManifest())
+
+    const result = await callAction({
+      action: 'calibrate-sequences',
+      referencePaths: ['/p1.jpg'],
+      targetPaths: ['/v1.mp4', '/v2.mp4'],
+      scope: 'single',
+      camera: 'VIDEO'
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.offsetSeconds).toBe(5 * DAY)
+
+    const manifest = readManifest()
+    const v1 = manifest.files.find((f) => f.path === '/v1.mp4')
+    const v2 = manifest.files.find((f) => f.path === '/v2.mp4')
+    const v3 = manifest.files.find((f) => f.path === '/v3.mp4')
+
+    expect(v1?.mtime).toBe(T)
+    expect(v1?.originalMtime).toBe(T - 5 * DAY)
+    expect(v2?.mtime).toBe(T + 30)
+    expect(v3?.mtime).toBe(T + 3600 - 5 * DAY)
+
+    expect(manifest.cameraClockOffsetSeconds).toBeUndefined()
+    expect(manifest.jumps).toHaveLength(3)
+
+    const mergedJump = manifest.jumps.find(
+      (j) => j.files.some((f) => f.path === '/p1.jpg') && j.files.some((f) => f.path === '/v1.mp4')
+    )
+    expect(mergedJump).toBeDefined()
+  })
+
+  it('camera-wide alignment shifts every video file and records the offset', async () => {
+    writeFixture(driftManifest())
+
+    const result = await callAction({
+      action: 'calibrate-sequences',
+      referencePaths: ['/p1.jpg'],
+      targetPaths: ['/v1.mp4'],
+      scope: 'camera',
+      camera: 'VIDEO'
+    })
+
+    expect(result.ok).toBe(true)
+
+    const manifest = readManifest()
+    expect(manifest.cameraClockOffsetSeconds).toBe(5 * DAY)
+    expect(manifest.files.filter((f) => f.camera === 'VIDEO').every((f) => f.mtime >= T)).toBe(true)
+    expect(
+      manifest.files.filter((f) => f.camera === 'VIDEO').every((f) => f.originalMtime !== undefined)
+    ).toBe(true)
+    expect(
+      manifest.files.filter((f) => f.camera === 'PHOTO').every((f) => f.originalMtime === undefined)
+    ).toBe(true)
+    expect(manifest.jumps).toHaveLength(2)
+  })
+
+  it('reset-calibration restores original timestamps and reclusters', async () => {
+    writeFixture(driftManifest())
+
+    await callAction({
+      action: 'calibrate-sequences',
+      referencePaths: ['/p1.jpg'],
+      targetPaths: ['/v1.mp4'],
+      scope: 'camera',
+      camera: 'VIDEO'
+    })
+
+    const result = await callAction({ action: 'reset-calibration' })
+    expect(result.ok).toBe(true)
+
+    const manifest = readManifest()
+    expect(manifest.cameraClockOffsetSeconds).toBeUndefined()
+    expect(manifest.files.every((f) => f.originalMtime === undefined)).toBe(true)
+    const v1 = manifest.files.find((f) => f.path === '/v1.mp4')
+    expect(v1?.mtime).toBe(T - 5 * DAY)
+  })
+
+  it('rejects calibration on an executed manifest', async () => {
+    const executed = driftManifest()
+    executed.status = 'executed'
+    writeFixture(executed)
+
+    const result = await callAction({
+      action: 'calibrate-sequences',
+      referencePaths: ['/p1.jpg'],
+      targetPaths: ['/v1.mp4'],
+      scope: 'single',
+      camera: 'VIDEO'
+    })
+
+    expect(result.ok).toBe(false)
+  })
+
+  it('rejects calibration with missing sequence files', async () => {
+    writeFixture(driftManifest())
+
+    const result = await callAction({
+      action: 'calibrate-sequences',
+      referencePaths: [],
+      targetPaths: ['/v1.mp4'],
+      scope: 'single',
+      camera: 'VIDEO'
+    })
+
+    expect(result.ok).toBe(false)
   })
 })

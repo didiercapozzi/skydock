@@ -27,11 +27,9 @@ scan_camera_files() {
     fi
 
     find "${src_dir}" -type f \( -iname "*.mp4" -o -iname "*.mov" \) 2>/dev/null | while IFS= read -r filepath; do
-        local filename filesize file_mtime file_id
+        local filename file_id
         filename=$(basename "${filepath}")
-        filesize=$(stat -c %s "${filepath}")
-        file_mtime=$(stat -c %Y "${filepath}")
-        file_id="${cam_type}:${filename}:${filesize}:${file_mtime}"
+        file_id="${cam_type}:$( { head -c 1048576 "${filepath}"; tail -c 65536 "${filepath}"; stat -c %s "${filepath}"; } | sha256sum | cut -c1-16 )"
 
         # Skip if already processed
         if grep -Fqx "${file_id}" "${REGISTRY_FILE}"; then

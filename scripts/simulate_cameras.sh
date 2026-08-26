@@ -4,6 +4,7 @@ set -eo pipefail
 SIM_BASE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/.sim"
 CLEAN=false
 DURATION=5
+VIDEO_OFFSET_DAYS=0
 declare -a DAYS=()
 
 usage() {
@@ -11,25 +12,29 @@ usage() {
 Usage: $0 [OPTIONS] --day DAYS_AGO:NUM_JUMPS:FILES_PER_JUMP [...]
 
 Options:
-  --clean       Remove simulation directory first
-  --duration    Duration of dummy videos in seconds (default: 5)
-  --output      Custom output directory (default: .sim/)
+  --clean              Remove simulation directory first
+  --duration           Duration of dummy videos in seconds (default: 5)
+  --output             Custom output directory (default: .sim/)
+  --video-offset-days  Shift video camera clock by N days (e.g. -5 = video files
+                       stamped 5 days behind photo camera for the same jump)
 
 Examples:
   $0 --clean --day 3:5:4 --day 2:4:3
   $0 --clean --day 0:2:6 --day 1:3:4
+  $0 --clean --day 0:3:4 --video-offset-days -5
 EOF
     exit 0
 }
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --output)    SIM_BASE="$2"; shift 2 ;;
-        --clean)     CLEAN=true; shift ;;
-        --duration)  DURATION="$2"; shift 2 ;;
-        --day)       DAYS+=("$2"); shift 2 ;;
-        -h|--help)   usage ;;
-        *)           echo "Unknown option: $1"; usage ;;
+        --output)            SIM_BASE="$2"; shift 2 ;;
+        --clean)             CLEAN=true; shift ;;
+        --duration)          DURATION="$2"; shift 2 ;;
+        --video-offset-days) VIDEO_OFFSET_DAYS="$2"; shift 2 ;;
+        --day)               DAYS+=("$2"); shift 2 ;;
+        -h|--help)           usage ;;
+        *)                   echo "Unknown option: $1"; usage ;;
     esac
 done
 
@@ -53,7 +58,7 @@ generate_dummy_mp4() {
     if command -v ffmpeg &>/dev/null; then
         ffmpeg -y -loglevel error \
             -f lavfi -i "testsrc=duration=${dur}:size=1920x1080:rate=30" \
-            -f lavfi -i "sine=frequency=440:duration=${dur}" \
+            -f lavfi -i "sine=frequency=$(( 440 + FILE_COUNTER * 17 )):duration=${dur}" \
             -c:v libx264 -preset ultrafast -tune zerolatency \
             -c:a aac -shortest \
             "${output_path}" 2>/dev/null
@@ -85,7 +90,7 @@ create_jump() {
 
     for (( i=0; i<video_count; i++ )); do
         FILE_COUNTER=$((FILE_COUNTER + 1))
-        local file_epoch=$(( jump_epoch + photo_count * 30 + i * 30 + 5 ))
+        local file_epoch=$(( jump_epoch + photo_count * 30 + i * 30 + 5 + VIDEO_OFFSET_DAYS * 86400 ))
         local filename
         filename=$(printf "DJI_%04d.MP4" "${FILE_COUNTER}")
         generate_dummy_mp4 "${VIDEO_DIR}/${filename}" "${DURATION}"
@@ -106,6 +111,9 @@ for day_spec in "${DAYS[@]}"; do
 
     echo ""
     echo "[Sim] ${sim_date} (${days_ago} days ago): ${num_jumps} jumps, ${files_per_jump} files each"
+    if [[ "${VIDEO_OFFSET_DAYS}" -ne 0 ]]; then
+        echo "[Sim] Video camera clock offset: ${VIDEO_OFFSET_DAYS} day(s)"
+    fi
 
     for (( j=0; j<num_jumps; j++ )); do
         offset=$(( j * 3600 ))

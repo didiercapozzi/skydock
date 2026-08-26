@@ -18,6 +18,14 @@ fi
 
 mkdir -p "$(dirname "${OUTPUT_MANIFEST}")"
 
+compute_file_id() {
+    local filepath="$1"
+    local cam_type="$2"
+    local fingerprint
+    fingerprint=$( { head -c 1048576 "${filepath}"; tail -c 65536 "${filepath}"; stat -c %s "${filepath}"; } | sha256sum | cut -c1-16 )
+    echo "${cam_type}:${fingerprint}"
+}
+
 TMP_ALL_FILES=$(mktemp)
 TMP_THEORY_LIST=$(mktemp)
 trap 'rm -f "${TMP_ALL_FILES}" "${TMP_THEORY_LIST}"' EXIT
@@ -31,15 +39,16 @@ scan_camera_files() {
     fi
 
     while IFS= read -r filepath; do
-        local filename filesize file_mtime
+        local filename filesize file_mtime file_id
         filename=$(basename "${filepath}")
         filesize=$(stat -c %s "${filepath}")
         file_mtime=$(stat -c %Y "${filepath}")
+        file_id=$(compute_file_id "${filepath}" "${cam_type}")
 
         if [[ "${filename}" =~ [Tt][Hh][Ee][Oo][Rr][Yy] ]]; then
-            echo "${file_mtime}|${filepath}|${filesize}|${cam_type}" >> "${TMP_THEORY_LIST}"
+            echo "${file_mtime}|${filepath}|${filesize}|${cam_type}|${file_id}" >> "${TMP_THEORY_LIST}"
         else
-            echo "${file_mtime}|${filepath}|${filesize}|${cam_type}" >> "${TMP_ALL_FILES}"
+            echo "${file_mtime}|${filepath}|${filesize}|${cam_type}|${file_id}" >> "${TMP_ALL_FILES}"
         fi
     done < <(find "${src_dir}" -type f \( -iname "*.mp4" -o -iname "*.mov" \) 2>/dev/null)
 }
@@ -102,12 +111,12 @@ flush_jump() {
 }
 
 ALL_FILES_JSON=""
-while IFS='|' read -r epoch filepath filesize cam_type; do
+while IFS='|' read -r epoch filepath filesize cam_type file_id; do
     if [[ -n "${ALL_FILES_JSON}" ]]; then
         ALL_FILES_JSON="${ALL_FILES_JSON},"
     fi
-    ALL_FILES_JSON="${ALL_FILES_JSON}$(printf '{"path":"%s","camera":"%s","size":%d,"mtime":%d,"filename":"%s"}' \
-        "${filepath}" "${cam_type}" "${filesize}" "${epoch}" "$(basename "${filepath}")")"
+    ALL_FILES_JSON="${ALL_FILES_JSON}$(printf '{"path":"%s","camera":"%s","size":%d,"mtime":%d,"filename":"%s","id":"%s"}' \
+        "${filepath}" "${cam_type}" "${filesize}" "${epoch}" "$(basename "${filepath}")" "${file_id}")"
 
     if (( LAST_EPOCH > 0 )) && (( epoch - LAST_EPOCH > JUMP_GAP )); then
         flush_jump
@@ -117,8 +126,8 @@ while IFS='|' read -r epoch filepath filesize cam_type; do
     if [[ -n "${CURRENT_JUMP_FILES}" ]]; then
         CURRENT_JUMP_FILES="${CURRENT_JUMP_FILES},"
     fi
-    CURRENT_JUMP_FILES="${CURRENT_JUMP_FILES}$(printf '{"path":"%s","camera":"%s","size":%d,"mtime":%d,"filename":"%s"}' \
-        "${filepath}" "${cam_type}" "${filesize}" "${epoch}" "$(basename "${filepath}")")"
+    CURRENT_JUMP_FILES="${CURRENT_JUMP_FILES}$(printf '{"path":"%s","camera":"%s","size":%d,"mtime":%d,"filename":"%s","id":"%s"}' \
+        "${filepath}" "${cam_type}" "${filesize}" "${epoch}" "$(basename "${filepath}")" "${file_id}")"
 done < "${SORTED_ALL}"
 
 flush_jump
@@ -129,10 +138,10 @@ fi
 
 THEORY_FILES=""
 if [[ -s "${TMP_THEORY_LIST}" ]]; then
-    while IFS='|' read -r epoch filepath filesize cam_type; do
+    while IFS='|' read -r epoch filepath filesize cam_type file_id; do
         [[ -n "${THEORY_FILES}" ]] && THEORY_FILES="${THEORY_FILES},"
-        THEORY_FILES="${THEORY_FILES}$(printf '{"path":"%s","camera":"%s","size":%d,"mtime":%d,"filename":"%s"}' \
-            "${filepath}" "${cam_type}" "${filesize}" "${epoch}" "$(basename "${filepath}")")"
+        THEORY_FILES="${THEORY_FILES}$(printf '{"path":"%s","camera":"%s","size":%d,"mtime":%d,"filename":"%s","id":"%s"}' \
+            "${filepath}" "${cam_type}" "${filesize}" "${epoch}" "$(basename "${filepath}")" "${file_id}")"
     done < <(sort -t'|' -k1,1n "${TMP_THEORY_LIST}")
 fi
 

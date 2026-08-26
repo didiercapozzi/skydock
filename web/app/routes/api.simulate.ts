@@ -2,13 +2,14 @@ import { execSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { getOutputDirPath } from '../lib/scanner.server'
+import { ensureManifestFileIds } from '../lib/fileId.server'
 
 const SCRIPTS_DIR = path.join(process.cwd(), '..', 'scripts')
 
-const generateDummyMp4 = (outputPath: string): boolean => {
+const generateDummyMp4 = (outputPath: string, freq: number): boolean => {
   try {
     execSync(
-      `ffmpeg -y -loglevel error -f lavfi -i "testsrc=duration=2:size=1920x1080:rate=30" -f lavfi -i "sine=frequency=440:duration=2" -c:v libx264 -preset ultrafast -tune zerolatency -c:a aac -shortest "${outputPath}"`,
+      `ffmpeg -y -loglevel error -f lavfi -i "testsrc=duration=2:size=1920x1080:rate=30" -f lavfi -i "sine=frequency=${freq}:duration=2" -c:v libx264 -preset ultrafast -tune zerolatency -c:a aac -shortest "${outputPath}"`,
       { timeout: 15_000 }
     )
     return true
@@ -60,22 +61,22 @@ const addJumpFiles = (simBase: string): { ok: boolean; error?: string } => {
   for (let i = 0; i < 2; i++) {
     const epoch = baseEpoch + i * 30
     const filename = `DJI_${String(photoNum).padStart(4, '0')}.MP4`
-    photoNum++
     const filepath = path.join(photoDir, filename)
-    if (generateDummyMp4(filepath)) {
+    if (generateDummyMp4(filepath, 440 + photoNum * 13)) {
       fs.utimesSync(filepath, new Date(epoch * 1000), new Date(epoch * 1000))
     }
+    photoNum++
   }
 
   let videoNum = getNextFileNum(videoDir)
   for (let i = 0; i < 2; i++) {
     const epoch = baseEpoch + i * 30 + 5
     const filename = `DJI_${String(videoNum).padStart(4, '0')}.MP4`
-    videoNum++
     const filepath = path.join(videoDir, filename)
-    if (generateDummyMp4(filepath)) {
+    if (generateDummyMp4(filepath, 440 + videoNum * 13 + 7)) {
       fs.utimesSync(filepath, new Date(epoch * 1000), new Date(epoch * 1000))
     }
+    videoNum++
   }
 
   return { ok: true }
@@ -108,6 +109,7 @@ const action = async ({ request }: { request: Request }) => {
     } catch (e) {
       return { ok: false, error: `Scan failed: ${e instanceof Error ? e.message : String(e)}` }
     }
+    await ensureManifestFileIds(path.join(outputDir, 'proposed_jumps.json'))
     return { ok: true }
   }
 
@@ -133,6 +135,8 @@ const action = async ({ request }: { request: Request }) => {
   } catch (e) {
     return { ok: false, error: `Scan failed: ${e instanceof Error ? e.message : String(e)}` }
   }
+
+  await ensureManifestFileIds(path.join(outputDir, 'proposed_jumps.json'))
 
   return { ok: true }
 }

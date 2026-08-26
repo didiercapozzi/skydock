@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process'
 import path from 'node:path'
 import { getOutputDirPath } from '../lib/scanner.server'
+import { ensureManifestFileIds } from '../lib/fileId.server'
 
 const SCRIPTS_DIR = path.join(process.cwd(), '..', 'scripts')
 
@@ -22,6 +23,8 @@ const action = async () => {
   } catch (e) {
     return { ok: false, error: `Scan failed: ${e instanceof Error ? e.message : String(e)}` }
   }
+
+  await ensureManifestFileIds(path.join(outputDir, 'proposed_jumps.json'))
 
   return { ok: true }
 }

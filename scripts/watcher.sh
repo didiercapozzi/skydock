@@ -46,7 +46,7 @@ if $TEST_MODE; then
     SIM_OUTPUT="${PROJECT_ROOT}/output"
 
     # Auto-generate simulated cameras if directories not provided
-    if [ -z "${SIM_PHOTO_DIR}" ] || [ -z "${SIM_VIDEO_DIR}" ]; then
+    if [[ -z "${SIM_PHOTO_DIR}" ]] || [[ -z "${SIM_VIDEO_DIR}" ]]; then
         echo "[Watcher] Test mode: generating simulated cameras..."
         "${SCRIPT_DIR}/simulate_cameras.sh" --output "${SIM_BASE}" --jumps 3 --clean
         SIM_PHOTO_DIR="${SIM_BASE}/photo_cam"
@@ -86,14 +86,14 @@ find_and_mount() {
     local dev_node
     dev_node=$(blkid -L "${label}" 2>/dev/null || true)
     
-    if [ -z "${dev_node}" ]; then
+    if [[ -z "${dev_node}" ]]; then
         return 1
     fi
 
     local host_mount
     host_mount=$(lsblk -no MOUNTPOINTS "${dev_node}" 2>/dev/null | grep -E '^/media' | head -n1 || true)
     
-    if [ -n "${host_mount}" ] && [ -d "${host_mount}" ]; then
+    if [[ -n "${host_mount}" ]] && [[ -d "${host_mount}" ]]; then
         echo "${host_mount}"
         return 0
     fi
@@ -105,7 +105,7 @@ find_and_mount() {
     fi
 
     # Fallback: Mount raw block device directly
-    if [ -b "${dev_node}" ]; then
+    if [[ -b "${dev_node}" ]]; then
         if mount -o ro "${dev_node}" "${mount_target}" 2>/dev/null; then
             echo "${mount_target}"
             return 0
@@ -122,7 +122,7 @@ while true; do
     VIDEO_PATH=$(find_and_mount "${CAM_VIDEO_LABEL}" "${VIDEO_MOUNT}" || true)
 
     # Trigger processing if at least one camera is connected
-    if [ -n "${PHOTO_PATH}" ] || [ -n "${VIDEO_PATH}" ]; then
+    if [[ -n "${PHOTO_PATH}" ]] || [[ -n "${VIDEO_PATH}" ]]; then
         /app/scripts/process_media.sh "${PHOTO_PATH}" "${VIDEO_PATH}" || true
     fi
 

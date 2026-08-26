@@ -198,7 +198,6 @@ describe('Drag and Drop', () => {
     expect(draggables.length).toBeGreaterThan(0)
   })
 
-
   it('dragging sets effectAllowed to move', () => {
     const manifest = makeManifest(
       [makeJump('jump_1', 'Jump 1', [])],
@@ -403,5 +402,82 @@ describe('Drag and Drop', () => {
       toJumpId: 'jump_2',
       filePaths: ['/photo1.jpg']
     })
+  })
+})
+
+describe('Sequence Recalibration', () => {
+  const baseTime = new Date('2026-08-26T09:00:00Z').getTime() / 1000
+
+  const driftManifest = () =>
+    makeManifest(
+      [],
+      [
+        makeFile('/photo1.jpg', 'PHOTO', baseTime),
+        makeFile('/video1.mp4', 'VIDEO', baseTime - 5 * 86400)
+      ]
+    )
+
+  const calibrateButtons = (): HTMLElement[] =>
+    screen.getAllByTitle('Recalibrate clock against another sequence') as HTMLElement[]
+
+  it('sets a reference sequence on first click and shows the banner', () => {
+    renderReview(driftManifest())
+
+    expect(calibrateButtons().length).toBe(2)
+    fireEvent.click(calibrateButtons()[0])
+
+    expect(screen.getByText(/Reference set: Sequence 1 \(PHOTO\)/)).toBeInTheDocument()
+  })
+
+  it('clicking the reference sequence again clears it', () => {
+    renderReview(driftManifest())
+
+    fireEvent.click(calibrateButtons()[0])
+    fireEvent.click(calibrateButtons()[0])
+
+    expect(screen.queryByText(/Reference set:/)).not.toBeInTheDocument()
+  })
+
+  it('opens the dialog with computed offset and submits single-sequence alignment', async () => {
+    const actionSpy = vi.fn(async () => ({ ok: true }))
+    renderReview(driftManifest(), actionSpy)
+
+    fireEvent.click(calibrateButtons()[0])
+    fireEvent.click(calibrateButtons()[1])
+
+    expect(screen.getByText('Recalibrate Sequence 1')).toBeInTheDocument()
+    expect(screen.getByText(/clock offset/)).toBeInTheDocument()
+    expect(screen.getByText('+5d 00:00:00')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Align this sequence'))
+
+    const body = await getSubmitBody(actionSpy)
+    expect(body).toEqual({
+      action: 'calibrate-sequences',
+      referencePaths: ['/photo1.jpg'],
+      targetPaths: ['/video1.mp4'],
+      scope: 'single',
+      camera: 'VIDEO'
+    })
+  })
+
+  it('submits camera-wide alignment when choosing Align all', async () => {
+    const actionSpy = vi.fn(async () => ({ ok: true }))
+    renderReview(driftManifest(), actionSpy)
+
+    fireEvent.click(calibrateButtons()[0])
+    fireEvent.click(calibrateButtons()[1])
+    fireEvent.click(screen.getByText('Align all VIDEO sequences'))
+
+    const body = await getSubmitBody(actionSpy)
+    expect(body).toMatchObject({ action: 'calibrate-sequences', scope: 'camera', camera: 'VIDEO' })
+  })
+
+  it('shows Reset Sync once calibration data exists in the manifest', () => {
+    const manifest = driftManifest()
+    manifest.cameraClockOffsetSeconds = 432000
+    renderReview(manifest)
+
+    expect(screen.getByText('Reset Sync')).toBeInTheDocument()
   })
 })

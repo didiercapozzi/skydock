@@ -3,13 +3,20 @@ import * as path from 'node:path'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useFetcher, useRevalidator } from 'react-router'
 import { getOutputDirPath } from '../lib/scanner.server'
-import { getSequences, formatSequenceTime } from '../lib/sequences'
+import { ensureManifestFileIds } from '../lib/fileId.server'
+import {
+  getSequences,
+  formatSequenceTime,
+  formatSequenceDate,
+  formatClockOffset
+} from '../lib/sequences'
 import type { Sequence } from '../lib/sequences'
 import type { Manifest, ManifestFile, ManifestJump } from '../lib/types'
 import type { Route } from './+types/review'
 
 const loader = async () => {
   const manifestPath = path.join(getOutputDirPath(), 'proposed_jumps.json')
+  await ensureManifestFileIds(manifestPath)
   let manifest: Manifest | null = null
   try {
     if (fs.existsSync(manifestPath)) {
@@ -36,6 +43,87 @@ const formatTime = (epoch: number): string => {
 }
 
 type SelectionMap = Record<string, Record<string, boolean>>
+
+type CalibrationSeq = {
+  label: string
+  camera: 'PHOTO' | 'VIDEO'
+  files: ManifestFile[]
+}
+
+const CalibrationDialog = ({
+  reference,
+  target,
+  offsetSeconds,
+  onApply,
+  onCancel
+}: {
+  reference: CalibrationSeq
+  target: CalibrationSeq
+  offsetSeconds: number
+  onApply: (scope: 'single' | 'camera') => void
+  onCancel: () => void
+}) => {
+  const previewFiles = target.files.slice(0, 6)
+  const formatDateTime = (epoch: number): string =>
+    `${formatSequenceDate(epoch)} ${formatSequenceTime(epoch)}`
+
+  return (
+    <div
+      className='fixed inset-0 z-50 flex items-center justify-center bg-black/40'
+      onClick={onCancel}>
+      <div
+        className='bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full mx-4 p-5'
+        onClick={(e) => e.stopPropagation()}>
+        <h3 className='text-lg font-semibold mb-1'>Recalibrate {target.label}</h3>
+        <p className='text-sm text-gray-500 mb-4'>
+          Aligned onto {reference.label} ({reference.camera}) · clock offset{' '}
+          <span className='font-mono font-semibold text-gray-700 dark:text-gray-200'>
+            {formatClockOffset(offsetSeconds)}
+          </span>
+        </p>
+        <div className='border rounded divide-y dark:divide-gray-600 dark:border-gray-600 max-h-48 overflow-y-auto mb-2'>
+          {previewFiles.map((file) => (
+            <div
+              key={file.path}
+              className='flex items-center gap-2 px-3 py-1.5 text-xs font-mono'>
+              <span className='flex-1 truncate'>{file.filename}</span>
+              <span className='text-gray-400 tabular-nums whitespace-nowrap'>
+                {formatDateTime(file.mtime)}
+              </span>
+              <span className='text-gray-400'>→</span>
+              <span className='text-green-600 dark:text-green-400 tabular-nums whitespace-nowrap'>
+                {formatDateTime(file.mtime + offsetSeconds)}
+              </span>
+            </div>
+          ))}
+        </div>
+        {target.files.length > 6 && (
+          <p className='text-xs text-gray-400 mb-4'>…and {target.files.length - 6} more file(s)</p>
+        )}
+        <div className='flex items-center justify-end gap-2 mt-4'>
+          <button
+            type='button'
+            onClick={onCancel}
+            className='px-4 py-2 text-sm font-medium text-gray-700 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700'>
+            Cancel
+          </button>
+          <button
+            type='button'
+            onClick={() => onApply('camera')}
+            className='px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700'>
+            Align all {target.camera} sequences
+          </button>
+          <button
+            type='button'
+            onClick={() => onApply('single')}
+            className='px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700'>
+            Align this sequence
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const FileRow = ({
   file,
@@ -115,17 +203,21 @@ const FileRow = ({
 const SequenceSection = ({
   sequence,
   index,
+  camera,
   selection,
   filesInJumps,
   onSelect,
-  onDragStart
+  onDragStart,
+  onCalibrate
 }: {
   sequence: Sequence
   index: number
+  camera: 'PHOTO' | 'VIDEO'
   selection: Record<string, boolean>
   filesInJumps: Set<string>
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDragStart: (e: React.DragEvent, filePaths: string[], sourceJumpId: string) => void
+  onCalibrate: (sequence: Sequence, camera: 'PHOTO' | 'VIDEO', index: number) => void
 }) => {
   const [expanded, setExpanded] = useState(true)
   const selectedCount = sequence.files.filter((f) => selection[f.path]).length
@@ -152,6 +244,13 @@ const SequenceSection = ({
         {selectedCount > 0 && (
           <span className='text-xs text-blue-500 dark:text-blue-400'>{selectedCount} selected</span>
         )}
+        <button
+          type='button'
+          onClick={() => onCalibrate(sequence, camera, index)}
+          className='text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 text-xs px-1 font-mono'
+          title='Recalibrate clock against another sequence'>
+          ⇄
+        </button>
       </div>
       {expanded && (
         <div className='space-y-0.5 ml-4'>
@@ -375,6 +474,8 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   const [lastClicked, setLastClicked] = useState<string | null>(null)
   const [moveTarget, setMoveTarget] = useState<string>('')
   const [startTime, setStartTime] = useState(manifest?.startDatetime ?? '')
+  const [calibRef, setCalibRef] = useState<CalibrationSeq | null>(null)
+  const [calibTarget, setCalibTarget] = useState<CalibrationSeq | null>(null)
   const dragDataRef = useRef<{ filePaths: string[]; sourceJumpId: string } | null>(null)
 
   useEffect(() => {
@@ -523,6 +624,67 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
     },
     []
   )
+
+  const handleCalibrateClick = useCallback(
+    (seq: CalibrationSeq) => {
+      if (!calibRef) {
+        setCalibRef(seq)
+        setCalibTarget(null)
+        return
+      }
+      if (calibTarget) return
+      if (seq.files[0]?.path === calibRef.files[0]?.path) {
+        setCalibRef(null)
+        return
+      }
+      setCalibTarget(seq)
+    },
+    [calibRef, calibTarget]
+  )
+
+  const calibOffsetSeconds = useMemo(() => {
+    if (
+      !calibRef ||
+      !calibTarget ||
+      calibRef.files.length === 0 ||
+      calibTarget.files.length === 0
+    ) {
+      return 0
+    }
+    const refMin = Math.min(...calibRef.files.map((f) => f.mtime))
+    const targetMin = Math.min(...calibTarget.files.map((f) => f.mtime))
+    return refMin - targetMin
+  }, [calibRef, calibTarget])
+
+  const submitCalibration = (scope: 'single' | 'camera') => {
+    if (!calibRef || !calibTarget) return
+    manifestFetcher.submit(
+      {
+        action: 'calibrate-sequences',
+        referencePaths: calibRef.files.map((f) => f.path),
+        targetPaths: calibTarget.files.map((f) => f.path),
+        scope,
+        camera: calibTarget.camera
+      },
+      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+    )
+    setCalibRef(null)
+    setCalibTarget(null)
+  }
+
+  const hasCalibration = useMemo(
+    () =>
+      manifest?.cameraClockOffsetSeconds !== undefined ||
+      (manifest?.files.some((f) => f.originalMtime !== undefined) ?? false),
+    [manifest]
+  )
+
+  const handleResetCalibration = () => {
+    manifestFetcher.submit(
+      { action: 'reset-calibration' },
+      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+    )
+  }
 
   const handleDrop = useCallback(
     (e: React.DragEvent, targetJumpId: string) => {
@@ -740,6 +902,14 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
             className='px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50'>
             + Add Jump
           </button>
+          {hasCalibration && (
+            <button
+              type='button'
+              onClick={handleResetCalibration}
+              className='px-4 py-2 text-sm font-medium text-indigo-700 dark:text-indigo-300 bg-white border border-indigo-300 dark:border-indigo-700 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30'>
+              Reset Sync
+            </button>
+          )}
           <button
             type='button'
             onClick={handleConfirmAndExecute}
@@ -788,6 +958,35 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
           </div>
         )}
 
+        {calibRef && !calibTarget && (
+          <div className='flex items-center gap-3 mb-4 p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg'>
+            <span className='text-sm font-medium text-indigo-700 dark:text-indigo-300'>
+              Reference set: {calibRef.label} ({calibRef.camera}) — click ⇄ on another sequence to
+              recalibrate it onto this one
+            </span>
+            <div className='flex-1' />
+            <button
+              type='button'
+              onClick={() => setCalibRef(null)}
+              className='px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'>
+              Cancel
+            </button>
+          </div>
+        )}
+
+        {calibRef && calibTarget && (
+          <CalibrationDialog
+            reference={calibRef}
+            target={calibTarget}
+            offsetSeconds={calibOffsetSeconds}
+            onApply={submitCalibration}
+            onCancel={() => {
+              setCalibRef(null)
+              setCalibTarget(null)
+            }}
+          />
+        )}
+
         <div className='grid grid-cols-3 gap-4'>
           <div>
             <div className='flex items-center gap-2 mb-3 px-1'>
@@ -802,10 +1001,18 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                   key={seq.id}
                   sequence={seq}
                   index={i}
+                  camera='PHOTO'
                   selection={selection[seq.id] ?? {}}
                   filesInJumps={filesInJumps}
                   onSelect={handleSelect}
                   onDragStart={handleDragStart}
+                  onCalibrate={(sequence, camera, index) =>
+                    handleCalibrateClick({
+                      label: `Sequence ${index + 1}`,
+                      camera,
+                      files: sequence.files
+                    })
+                  }
                 />
               ))}
             </div>
@@ -824,10 +1031,18 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                   key={seq.id}
                   sequence={seq}
                   index={i}
+                  camera='VIDEO'
                   selection={selection[seq.id] ?? {}}
                   filesInJumps={filesInJumps}
                   onSelect={handleSelect}
                   onDragStart={handleDragStart}
+                  onCalibrate={(sequence, camera, index) =>
+                    handleCalibrateClick({
+                      label: `Sequence ${index + 1}`,
+                      camera,
+                      files: sequence.files
+                    })
+                  }
                 />
               ))}
             </div>

@@ -2,7 +2,7 @@ import type { Route } from './+types/api.manifest'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { getOutputDirPath } from '../lib/scanner.server'
-import type { Manifest, ManifestJump } from '../lib/types'
+import type { Manifest, ManifestFile, ManifestJump } from '../lib/types'
 
 const getManifestPath = (): string => {
   return path.join(getOutputDirPath(), 'proposed_jumps.json')
@@ -20,6 +20,60 @@ const loadManifest = (): Manifest | null => {
 
 const saveManifest = (manifest: Manifest): void => {
   fs.writeFileSync(getManifestPath(), JSON.stringify(manifest, null, 2))
+}
+
+const JUMP_GAP_SECONDS = 1800
+
+const reclusterJumps = (manifest: Manifest): void => {
+  const sorted = [...manifest.files].sort((a, b) => a.mtime - b.mtime)
+  const groups: ManifestFile[][] = []
+  let current: ManifestFile[] = []
+  let lastMtime = 0
+
+  for (const file of sorted) {
+    if (current.length > 0 && file.mtime - lastMtime > JUMP_GAP_SECONDS) {
+      groups.push(current)
+      current = []
+    }
+    current.push(file)
+    lastMtime = file.mtime
+  }
+  if (current.length > 0) groups.push(current)
+
+  const previousByPath = new Map<string, ManifestJump>()
+  for (const jump of manifest.jumps) {
+    for (const file of jump.files) previousByPath.set(file.path, jump)
+  }
+
+  manifest.jumps = groups.map((files, idx) => {
+    const counts = new Map<string, number>()
+    for (const file of files) {
+      const prev = previousByPath.get(file.path)
+      if (prev) counts.set(prev.id, (counts.get(prev.id) ?? 0) + 1)
+    }
+    let dominant: ManifestJump | undefined
+    let dominantCount = 0
+    for (const [jumpId, count] of counts) {
+      if (count > dominantCount) {
+        dominantCount = count
+        dominant = manifest.jumps.find((j) => j.id === jumpId)
+      }
+    }
+    return {
+      id: `jump_${idx + 1}`,
+      label: dominant?.label ?? `Jump ${idx + 1}`,
+      confirmed: dominant?.confirmed ?? false,
+      files
+    }
+  })
+}
+
+const shiftFiles = (manifest: Manifest, paths: Set<string>, offsetSeconds: number): void => {
+  for (const file of manifest.files) {
+    if (!paths.has(file.path)) continue
+    if (file.originalMtime === undefined) file.originalMtime = file.mtime
+    file.mtime += offsetSeconds
+  }
 }
 
 const loader = async () => {
@@ -221,6 +275,61 @@ const action = async ({ request }: Route.ActionArgs) => {
 
     saveManifest(manifest)
     return { ok: true, manifest }
+  }
+
+  if (formAction === 'calibrate-sequences') {
+    const manifest = loadManifest()
+    if (!manifest) return { ok: false, error: 'No manifest found' }
+    if (manifest.status === 'executed') return { ok: false, error: 'Manifest already executed' }
+
+    const referencePaths = (body.referencePaths ?? []) as string[]
+    const targetPaths = (body.targetPaths ?? []) as string[]
+    const scope = String(body.scope ?? 'single')
+    const camera = body.camera === 'VIDEO' ? 'VIDEO' : 'PHOTO'
+
+    if (referencePaths.length === 0 || targetPaths.length === 0) {
+      return { ok: false, error: 'Missing sequence files' }
+    }
+
+    const mtimeOf = (p: string): number | undefined =>
+      manifest.files.find((f) => f.path === p)?.mtime
+    const refTimes = referencePaths.map(mtimeOf).filter((t): t is number => t !== undefined)
+    const targetTimes = targetPaths.map(mtimeOf).filter((t): t is number => t !== undefined)
+
+    if (refTimes.length === 0 || targetTimes.length === 0) {
+      return { ok: false, error: 'Sequence files not found' }
+    }
+
+    const offsetSeconds = Math.min(...refTimes) - Math.min(...targetTimes)
+    const pathsToShift =
+      scope === 'camera'
+        ? new Set(manifest.files.filter((f) => f.camera === camera).map((f) => f.path))
+        : new Set(targetPaths)
+
+    shiftFiles(manifest, pathsToShift, offsetSeconds)
+    if (scope === 'camera') manifest.cameraClockOffsetSeconds = offsetSeconds
+
+    reclusterJumps(manifest)
+    saveManifest(manifest)
+    return { ok: true, offsetSeconds }
+  }
+
+  if (formAction === 'reset-calibration') {
+    const manifest = loadManifest()
+    if (!manifest) return { ok: false, error: 'No manifest found' }
+    if (manifest.status === 'executed') return { ok: false, error: 'Manifest already executed' }
+
+    for (const file of manifest.files) {
+      if (file.originalMtime !== undefined) {
+        file.mtime = file.originalMtime
+        delete file.originalMtime
+      }
+    }
+    delete manifest.cameraClockOffsetSeconds
+
+    reclusterJumps(manifest)
+    saveManifest(manifest)
+    return { ok: true }
   }
 
   return { ok: false, error: 'Invalid action' }
