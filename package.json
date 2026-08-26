@@ -12,13 +12,20 @@
     "format": "oxfmt --config oxfmt.config.ts .",
     "format:check": "oxfmt --config oxfmt.config.ts --check .",
     "lint": "oxlint --config oxlint.config.ts .",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.2",
     "electron": "^44.0.0",
+    "jsdom": "^30.0.1",
     "opencode-ai": "^1.18.23",
     "oxfmt": "^0.65.0",
-    "oxlint": "^1.80.0"
+    "oxlint": "^1.80.0",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.11"
   },
   "allowScripts": {
     "electron": true,

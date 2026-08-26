@@ -63,8 +63,8 @@ if [[ "${TOTAL_COUNT}" -eq 0 ]]; then
   "camera1": {"path": "${PHOTO_ROOT}", "fileCount": 0},
   "camera2": {"path": "${VIDEO_ROOT}", "fileCount": 0},
   "theory": [],
-  "jumps": [],
-  "loneFiles": []
+  "files": [],
+  "jumps": []
 }
 EOF
     exit 0
@@ -84,7 +84,6 @@ trap 'rm -f "${TMP_ALL_FILES}" "${TMP_THEORY_LIST}" "${SORTED_ALL}"' EXIT
 sort -t'|' -k1,1n "${TMP_ALL_FILES}" > "${SORTED_ALL}"
 
 JUMPS_JSON=""
-LONE_FILES_JSON=""
 JUMP_NUM=0
 LAST_EPOCH=0
 CURRENT_JUMP_FILES=""
@@ -102,7 +101,14 @@ flush_jump() {
     fi
 }
 
+ALL_FILES_JSON=""
 while IFS='|' read -r epoch filepath filesize cam_type; do
+    if [[ -n "${ALL_FILES_JSON}" ]]; then
+        ALL_FILES_JSON="${ALL_FILES_JSON},"
+    fi
+    ALL_FILES_JSON="${ALL_FILES_JSON}$(printf '{"path":"%s","camera":"%s","size":%d,"mtime":%d,"filename":"%s"}' \
+        "${filepath}" "${cam_type}" "${filesize}" "$(( epoch * 1000 ))" "$(basename "${filepath}")")"
+
     if (( LAST_EPOCH > 0 )) && (( epoch - LAST_EPOCH > JUMP_GAP )); then
         flush_jump
     fi
@@ -142,8 +148,8 @@ cat > "${OUTPUT_MANIFEST}" <<EOF
   "camera1": {"path": "${PHOTO_ROOT}", "fileCount": ${PHOTO_COUNT}},
   "camera2": {"path": "${VIDEO_ROOT}", "fileCount": ${VIDEO_COUNT}},
   "theory": [${THEORY_FILES}],
-  "jumps": [${JUMPS_JSON}],
-  "loneFiles": []
+  "files": [${ALL_FILES_JSON}],
+  "jumps": [${JUMPS_JSON}]
 }
 EOF
 

@@ -16,5 +16,8 @@
     "source.sortImports": "always",
     "source.removeUnusedImports": "always"
   },
-  "editor.defaultFormatter": "oxc.oxc-vscode"
+  "editor.defaultFormatter": "oxc.oxc-vscode",
+  "files.exclude": {
+    "**/.git": false
+  }
 }

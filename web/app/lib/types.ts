@@ -72,6 +72,6 @@ export type Manifest = {
   camera1: { path: string; fileCount: number }
   camera2: { path: string; fileCount: number }
   theory: ManifestFile[]
+  files: ManifestFile[]
   jumps: ManifestJump[]
-  loneFiles: ManifestFile[]
 }

@@ -84,27 +84,6 @@ const action = async ({ request }: Route.ActionArgs) => {
     return { ok: true, manifest }
   }
 
-  if (formAction === 'move-file') {
-    const manifest = loadManifest()
-    if (!manifest) return { ok: false, error: 'No manifest found' }
-
-    const fromJumpId = String(body.fromJumpId ?? '')
-    const toJumpId = String(body.toJumpId ?? '')
-    const filePath = String(body.filePath ?? '')
-
-    const fromJump = manifest.jumps.find((j: ManifestJump) => j.id === fromJumpId)
-    const toJump = manifest.jumps.find((j: ManifestJump) => j.id === toJumpId)
-    if (!fromJump || !toJump) return { ok: false, error: 'Jump not found' }
-
-    const fileIdx = fromJump.files.findIndex((f) => f.path === filePath)
-    if (fileIdx === -1) return { ok: false, error: 'File not found in source jump' }
-
-    const [file] = fromJump.files.splice(fileIdx, 1)
-    toJump.files.push(file)
-    saveManifest(manifest)
-    return { ok: true, manifest }
-  }
-
   if (formAction === 'create-jump') {
     const manifest = loadManifest()
     if (!manifest) return { ok: false, error: 'No manifest found' }
@@ -126,6 +105,120 @@ const action = async ({ request }: Route.ActionArgs) => {
     if (!manifest) return { ok: false, error: 'No manifest found' }
 
     manifest.status = 'confirmed'
+    saveManifest(manifest)
+    return { ok: true, manifest }
+  }
+
+  if (formAction === 'move-files') {
+    const manifest = loadManifest()
+    if (!manifest) return { ok: false, error: 'No manifest found' }
+
+    const fromJumpId = String(body.fromJumpId ?? '')
+    const toJumpId = String(body.toJumpId ?? '')
+    const filePaths = body.filePaths as string[] | undefined
+
+    if (!filePaths || filePaths.length === 0) {
+      return { ok: false, error: 'No files specified' }
+    }
+
+    const fromJump = manifest.jumps.find((j: ManifestJump) => j.id === fromJumpId)
+    const toJump = manifest.jumps.find((j: ManifestJump) => j.id === toJumpId)
+    if (!fromJump || !toJump) return { ok: false, error: 'Jump not found' }
+
+    for (const filePath of filePaths) {
+      const fileIdx = fromJump.files.findIndex((f) => f.path === filePath)
+      if (fileIdx !== -1) {
+        const [file] = fromJump.files.splice(fileIdx, 1)
+        toJump.files.push(file)
+      }
+    }
+
+    saveManifest(manifest)
+    return { ok: true, manifest }
+  }
+
+  if (formAction === 'add-to-jump') {
+    const manifest = loadManifest()
+    if (!manifest) return { ok: false, error: 'No manifest found' }
+
+    const jumpId = String(body.jumpId ?? '')
+    const filePaths = body.filePaths as string[] | undefined
+
+    if (!filePaths || filePaths.length === 0) {
+      return { ok: false, error: 'No files specified' }
+    }
+
+    const jump = manifest.jumps.find((j: ManifestJump) => j.id === jumpId)
+    if (!jump) return { ok: false, error: 'Jump not found' }
+
+    for (const filePath of filePaths) {
+      const file = manifest.files.find((f) => f.path === filePath)
+      if (file && !jump.files.some((f) => f.path === filePath)) {
+        jump.files.push(file)
+      }
+    }
+
+    saveManifest(manifest)
+    return { ok: true, manifest }
+  }
+
+  if (formAction === 'remove-files') {
+    const manifest = loadManifest()
+    if (!manifest) return { ok: false, error: 'No manifest found' }
+
+    const jumpId = String(body.jumpId ?? '')
+    const filePaths = body.filePaths as string[] | undefined
+
+    if (!filePaths || filePaths.length === 0) {
+      return { ok: false, error: 'No files specified' }
+    }
+
+    const jump = manifest.jumps.find((j: ManifestJump) => j.id === jumpId)
+    if (!jump) return { ok: false, error: 'Jump not found' }
+
+    for (const filePath of filePaths) {
+      const fileIdx = jump.files.findIndex((f) => f.path === filePath)
+      if (fileIdx !== -1) {
+        jump.files.splice(fileIdx, 1)
+      }
+    }
+
+    saveManifest(manifest)
+    return { ok: true, manifest }
+  }
+
+  if (formAction === 'update-start-datetime') {
+    const manifest = loadManifest()
+    if (!manifest) return { ok: false, error: 'No manifest found' }
+
+    const startDatetime = String(body.startDatetime ?? '')
+    if (!startDatetime) return { ok: false, error: 'No datetime provided' }
+
+    manifest.startDatetime = startDatetime
+    saveManifest(manifest)
+    return { ok: true, manifest }
+  }
+
+  if (formAction === 'reset-timestamps') {
+    const manifest = loadManifest()
+    if (!manifest) return { ok: false, error: 'No manifest found' }
+
+    const jumpId = String(body.jumpId ?? '')
+    const jump = manifest.jumps.find((j: ManifestJump) => j.id === jumpId)
+    if (!jump) return { ok: false, error: 'Jump not found' }
+
+    const sortedFiles = [...jump.files].sort((a, b) => a.mtime - b.mtime)
+    const baseEpoch =
+      sortedFiles.length > 0
+        ? sortedFiles[0].mtime
+        : new Date(manifest.startDatetime).getTime() / 1000
+
+    let offset = 0
+    for (const file of jump.files) {
+      file.mtime = baseEpoch + offset
+      offset += file.camera === 'PHOTO' ? 30 : 35
+    }
+
     saveManifest(manifest)
     return { ok: true, manifest }
   }

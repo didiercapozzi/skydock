@@ -18,6 +18,23 @@ All actions are virtual and saved in `proposed_jumps.json` before being applied 
 - Files alone in a sequence are visible **outside of any jump** as "lone files".
 - The user can set a **start datetime** for each session. If changed, all files and future files are recalculated from the start time + their offset from the original start.
 
+### Sequences vs Jumps
+
+Sequences and Jumps are **independent** concepts in the review UI:
+
+- **Sequences** — Time-based clusters within each camera, derived from file timestamps. They are **read-only** and cannot be renamed. Sequences are reconstructed on-the-fly from all files across all jumps, grouped by camera type and sorted by time with a 15-minute gap threshold.
+- **Jumps** — Cross-camera groupings where files from both cameras are associated. Jumps can be edited, renamed, confirmed, and files can be moved between them.
+
+**Key rules:**
+
+- Moving a file from one jump to another does **not** affect the sequence it belongs to.
+- Removing a file from a jump does **not** remove it from its sequence.
+- Sequences are **not renamable** — they are labeled "Sequence 1", "Sequence 2", etc. based on their time order.
+- Jumps are renamable and can be confirmed/deleted independently.
+- Multi-selection with drag-and-drop moves all selected files together.
+- Sequence files that are not part of a jump should have a yellow background
+- The Sequence title should be something like "Sequence X" on bold joined by the range of files datetime like this "15 03 2026 08:30 - 10:30" in a light font
+
 ### Manifest Structure (`proposed_jumps.json`)
 
 ```json
@@ -65,6 +82,7 @@ Before finishing any task, the agent **must** run:
 ```bash
 npm run lint
 npm run format:check
+npm run test
 ```
 
 Both commands must pass without errors before considering the task complete.
@@ -118,11 +136,10 @@ This ensures every feature is testable without real cameras and verified in CI.
 
 Simulation files are created under `.sim/` at the project root (gitignored).
 
-### React Router 8 (Framework Mode)
+### Coding rules
 
 Both apps use React Router 8 in **Framework Mode** with SSR enabled:
 
-- `@react-router/dev/vite` plugin
 - `app/routes.ts` for route definitions
 - `app/routes/` for route modules
 - Imports from `./+types/...` for type safety

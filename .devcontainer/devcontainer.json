@@ -12,7 +12,8 @@
         "ms-azuretools.vscode-docker",
         "eamodio.gitlens",
         "rogalmic.bash-debug",
-        "oxc.oxc-vscode"
+        "oxc.oxc-vscode",
+        "vitest.explorer"
       ]
     }
   }
