@@ -219,16 +219,43 @@ const TimelinePerDay = ({
   const allSeqs = useMemo(() => dayGroups.flatMap((d) => d.sequences), [dayGroups])
 
   const timeRange = useMemo(() => {
-    if (allSeqs.length === 0) return { min: 0, max: 1 }
-    const min = Math.min(...allSeqs.map((s) => s.startTime))
-    const max = Math.max(...allSeqs.map((s) => s.endTime))
-    const pad = Math.max(300, (max - min) * 0.05)
-    return { min: min - pad, max: max + pad }
+    if (allSeqs.length === 0) return { min: 0, max: 86400 }
+    const minStart = Math.min(...allSeqs.map((s) => s.startTime))
+    const maxEnd = Math.max(...allSeqs.map((s) => s.endTime))
+    const minD = new Date(minStart * 1000)
+    minD.setHours(0, 0, 0, 0)
+    const maxD = new Date(maxEnd * 1000)
+    maxD.setHours(0, 0, 0, 0)
+    maxD.setDate(maxD.getDate() + 1)
+    const min = Math.floor(minD.getTime() / 1000)
+    const max = Math.floor(maxD.getTime() / 1000)
+    return { min, max }
   }, [allSeqs])
 
   const range = timeRange.max - timeRange.min || 1
   const pos = (t: number) => ((t - timeRange.min) / range) * 100
   const width = (a: number, b: number) => Math.max(2, ((b - a) / range) * 100)
+
+  const hourTicks = useMemo(() => {
+    const ticks: { t: number; label: string }[] = []
+    const start = new Date(timeRange.min * 1000)
+    start.setMinutes(0, 0, 0)
+    start.setHours(Math.ceil(start.getHours() / 6) * 6)
+    for (
+      let d = new Date(start);
+      d.getTime() / 1000 < timeRange.max;
+      d.setHours(d.getHours() + 6)
+    ) {
+      const epoch = Math.floor(d.getTime() / 1000)
+      const h = d.getHours()
+      const label =
+        h === 0
+          ? d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+          : `${String(h).padStart(2, '0')}:00`
+      ticks.push({ t: epoch, label })
+    }
+    return ticks
+  }, [timeRange])
 
   if (allSeqs.length === 0) return null
 
@@ -244,6 +271,21 @@ const TimelinePerDay = ({
         ref={containerRef}
         className='relative bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden select-none'
         style={{ height: `${Math.max(56, dayGroups.length * 36)}px` }}>
+        {hourTicks.map((tick) => (
+          <div
+            key={tick.t}
+            className='absolute top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700 opacity-60'
+            style={{ left: `${pos(tick.t)}%` }}
+          />
+        ))}
+        {hourTicks.map((tick) => (
+          <div
+            key={`label-${tick.t}`}
+            className='absolute top-0.5 text-[8px] text-gray-400 pointer-events-none select-none'
+            style={{ left: `${pos(tick.t)}%`, transform: 'translateX(-50%)' }}>
+            {tick.label}
+          </div>
+        ))}
         {dayGroups.map((day, idx) => {
           const isDragging = draggingDay === day.date
           const offset = isDragging ? dragOffset : 0
