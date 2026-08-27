@@ -31,20 +31,21 @@ output/
 ## Deduplication
 
 Files are deduplicated using `cmp`:
+
 - If filename exists in `original_files/date/` and content matches → skip
 - If filename exists but content differs → copy (file was overwritten)
 - If filename doesn't exist → copy
 
 ## Scripts
 
-| Script                | Purpose                                    |
-| --------------------- | ------------------------------------------ |
-| `process_media.sh`    | Copy camera files to original_files/       |
-| `scan_media.sh`       | Generate proposed_jumps.json               |
-| `execute_media.sh`    | Copy confirmed jumps to processed/         |
-| `watcher.sh`          | Background daemon, polls for cameras       |
-| `simulate_cameras.sh` | Generate fake camera footage for testing   |
-| `test_pipeline.sh`    | End-to-end test runner                     |
+| Script                | Purpose                                  |
+| --------------------- | ---------------------------------------- |
+| `process_media.sh`    | Copy camera files to original_files/     |
+| `scan_media.sh`       | Generate proposed_jumps.json             |
+| `execute_media.sh`    | Copy confirmed jumps to processed/       |
+| `watcher.sh`          | Background daemon, polls for cameras     |
+| `simulate_cameras.sh` | Generate fake camera footage for testing |
+| `test_pipeline.sh`    | End-to-end test runner                   |
 
 ## Usage
 

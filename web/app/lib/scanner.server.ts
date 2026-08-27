@@ -6,8 +6,7 @@ const getOutputDir = (): string => {
   if (process.env.SKYDOCK_OUTPUT_DIR) {
     return process.env.SKYDOCK_OUTPUT_DIR
   }
-  const workspace = process.env.SKYDOCK_WORKSPACE ?? process.cwd()
-  return path.join(workspace, 'output')
+  return '/workspace/output'
 }
 
 const OVERRIDES_FILE = '.theory_overrides.json'

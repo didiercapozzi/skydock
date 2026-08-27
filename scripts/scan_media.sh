@@ -25,8 +25,8 @@ while IFS= read -r filepath; do
 
     FILE_NUM=$((FILE_NUM + 1))
 
-    file_json=$(printf '{"path":"%s","size":%d,"mtime":%d,"filename":"%s"}' \
-        "${filepath}" "${file_size}" "${file_mtime}" "${filename}")
+    file_json=$(printf '{"path":"%s","camera":"%s","size":%d,"mtime":%d,"filename":"%s"}' \
+        "${filepath}" "camera1" "${file_size}" "${file_mtime}" "${filename}")
 
     [[ -n "${ALL_FILES}" ]] && ALL_FILES="${ALL_FILES},"
     ALL_FILES="${ALL_FILES}${file_json}"

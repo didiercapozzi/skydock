@@ -31,20 +31,21 @@ output/
 ## Deduplication
 
 Files are deduplicated using `cmp`:
+
 - If filename exists in `original_files/date/` and content matches → skip
 - If filename exists but content differs → copy (file was overwritten)
 - If filename doesn't exist → copy
 
 ## Scripts
 
-| Script                | Purpose                                    |
-| --------------------- | ------------------------------------------ |
-| `process_media.sh`    | Copy camera files to original_files/       |
-| `scan_media.sh`       | Generate proposed_jumps.json               |
-| `execute_media.sh`    | Copy confirmed jumps to processed/         |
-| `watcher.sh`          | Background daemon, polls for cameras       |
-| `simulate_cameras.sh` | Generate fake camera footage for testing   |
-| `test_pipeline.sh`    | End-to-end test runner                     |
+| Script                | Purpose                                  |
+| --------------------- | ---------------------------------------- |
+| `process_media.sh`    | Copy camera files to original_files/     |
+| `scan_media.sh`       | Generate proposed_jumps.json             |
+| `execute_media.sh`    | Copy confirmed jumps to processed/       |
+| `watcher.sh`          | Background daemon, polls for cameras     |
+| `simulate_cameras.sh` | Generate fake camera footage for testing |
+| `test_pipeline.sh`    | End-to-end test runner                   |
 
 ## Usage
 
@@ -88,3 +89,21 @@ Files are deduplicated using `cmp`:
 - `jq` - JSON processing
 - `cmp` - File comparison (built-in)
 - `exiftool` - Optional, for camera metadata extraction
+
+### Coding rules
+
+Both apps use React Router 8 in **Framework Mode** with SSR enabled:
+
+- `app/routes.ts` for route definitions
+- `app/routes/` for route modules
+- Imports from `./+types/...` for type safety
+- Arrow functions only (no function declarations)
+- Types over interfaces
+- Never use `any` - always 100% type safe
+- All exports at the end of files
+- always use `types` instead of `interface`
+- don't force a function returned type. All returned types must be infered
+- No comments in generated scripts
+- the script but be written in bash only and no python
+- to read and write json files in bash script, use the jq library
+- before being done with a job make sure "nom `npm run check` command doesn't trigger any errror
