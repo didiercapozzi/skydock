@@ -802,8 +802,10 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   const handleSelect = useCallback(
     (groupId: string, filePath: string, _ctrlKey: boolean, shiftKey: boolean) => {
       setSelection((prev) => {
-        const next = { ...prev }
+        const next: SelectionMap = {}
+        for (const [k, v] of Object.entries(prev)) next[k] = { ...v }
         if (!next[groupId]) next[groupId] = {}
+        else next[groupId] = { ...next[groupId] }
         if (shiftKey && lastClicked) {
           const sIdx = allFileIds.indexOf(lastClicked)
           const eIdx = allFileIds.indexOf(filePath)
@@ -811,15 +813,24 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
             const [from, to] = sIdx < eIdx ? [sIdx, eIdx] : [eIdx, sIdx]
             for (let i = from; i <= to; i++) {
               const id = allFileIds[i]
-              for (const jid of Object.keys(next)) if (next[jid][id]) delete next[jid][id]
+              for (const jid of Object.keys(next)) {
+                if (next[jid][id]) {
+                  next[jid] = { ...next[jid] }
+                  delete next[jid][id]
+                }
+              }
               if (!next[groupId]) next[groupId] = {}
+              else if (!next[groupId][id]) next[groupId] = { ...next[groupId] }
               next[groupId][id] = true
             }
           }
         } else if (next[groupId][filePath]) {
-          delete next[groupId][filePath]
+          const g = { ...next[groupId] }
+          delete g[filePath]
+          next[groupId] = g
+          if (Object.keys(g).length === 0) delete next[groupId]
         } else {
-          next[groupId][filePath] = true
+          next[groupId] = { ...next[groupId], [filePath]: true }
         }
         setLastClicked(filePath)
         return next
