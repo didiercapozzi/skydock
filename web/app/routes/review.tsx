@@ -182,6 +182,7 @@ const FileRow = ({
   file,
   groupId,
   selected,
+  isSelectMode,
   onSelect,
   onDragStart,
   onPreview
@@ -189,12 +190,17 @@ const FileRow = ({
   file: ManifestFile
   groupId: string
   selected: boolean
+  isSelectMode?: boolean
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDragStart: (e: React.DragEvent, filePath: string, groupId: string) => void
   onPreview?: () => void
 }) => {
   const handleRowClick = (e: React.MouseEvent) => {
-    onSelect(groupId, file.path, e.ctrlKey || e.metaKey, e.shiftKey)
+    if (isSelectMode || e.ctrlKey || e.metaKey || e.shiftKey) {
+      onSelect(groupId, file.path, e.ctrlKey || e.metaKey, e.shiftKey)
+    } else if (onPreview) {
+      onPreview()
+    }
   }
 
   const handleCheckboxClick = (e: React.MouseEvent) => {
@@ -261,6 +267,7 @@ const FileRow = ({
 const JumpCard = ({
   jump,
   selection,
+  isSelectMode,
   onSelect,
   onDrop,
   onDragStart,
@@ -269,6 +276,7 @@ const JumpCard = ({
 }: {
   jump: ManifestJump
   selection: Record<string, boolean>
+  isSelectMode: boolean
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDrop: (e: React.DragEvent, targetJumpId: string) => void
   onDragStart: (e: React.DragEvent, filePaths: string[], sourceJumpId: string) => void
@@ -420,6 +428,7 @@ const JumpCard = ({
               file={file}
               groupId={jump.id}
               selected={!!selection[file.path]}
+              isSelectMode={isSelectMode}
               onSelect={onSelect}
               onDragStart={(e, fp) => {
                 if (isProcessed) return
@@ -442,6 +451,7 @@ const JumpCard = ({
 const JumpDaySection = ({
   day,
   selection,
+  isSelectMode,
   onSelect,
   onDragStart,
   onShiftDay,
@@ -453,6 +463,7 @@ const JumpDaySection = ({
 }: {
   day: JumpDayGroup
   selection: SelectionMap
+  isSelectMode: boolean
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDragStart: (e: React.DragEvent, filePaths: string[], sourceId: string) => void
   onShiftDay: (date: string, newDateStr: string) => void
@@ -506,6 +517,7 @@ const JumpDaySection = ({
             key={jump.id}
             jump={jump}
             selection={selection[jump.id] ?? {}}
+            isSelectMode={isSelectMode}
             onSelect={onSelect}
             onDrop={onDrop}
             onDragStart={onDragStart}
@@ -899,6 +911,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   }, [manifest, selection])
 
   const selectedCount = selectedFiles.length
+  const isSelectMode = selectedCount > 0
 
   const handleShiftDay = useCallback(
     (date: string, newDateStr: string) => {
@@ -1098,6 +1111,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
               key={day.date}
               day={day}
               selection={selection}
+              isSelectMode={isSelectMode}
               onSelect={handleSelect}
               onDragStart={handleDragStart}
               onShiftDay={handleShiftDay}
