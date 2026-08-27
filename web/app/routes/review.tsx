@@ -689,12 +689,13 @@ const TimelineJumps = ({
                   <div
                     key={jump.id}
                     data-jump-bar='true'
-                    className={`absolute h-4 rounded cursor-grab active:cursor-grabbing ${jump.processed ? 'bg-gray-400' : dayColor} opacity-80 hover:opacity-100 ${isJumpDragging ? 'shadow-lg ring-2 ring-blue-300 z-10' : ''}`}
+                    className={`absolute h-5 rounded cursor-grab active:cursor-grabbing ${jump.processed ? 'bg-gray-400 cursor-not-allowed opacity-60' : dayColor} opacity-90 hover:opacity-100 hover:h-6 ${isJumpDragging ? 'shadow-lg ring-2 ring-blue-300 z-10' : ''}`}
                     style={{
                       top: '50%',
                       transform: 'translateY(-50%)',
                       left: `${pos(bounds.start + offset)}%`,
-                      width: `${width(bounds.start, bounds.end)}%`
+                      width: `${width(bounds.start, bounds.end)}%`,
+                      minWidth: '32px'
                     }}
                     onMouseDown={(e) => {
                       if (jump.processed) return
@@ -708,9 +709,12 @@ const TimelineJumps = ({
                       setDragLabel(jump.label)
                       setDraggedTime(bounds.start)
                       const jumpPaths = jump.files.map((f) => f.path)
-                      const handleMove = (ev: MouseEvent) => {
-                        const dx = ev.clientX - startX
-                        const w = containerRef.current?.clientWidth ?? 1
+                      const handleMove = (ev: MouseEvent | TouchEvent) => {
+                        const clientX = (ev as TouchEvent).touches
+                          ? (ev as TouchEvent).touches[0].clientX
+                          : (ev as MouseEvent).clientX
+                        const dx = clientX - startX
+                        const w = containerRef.current?.clientWidth ?? 800
                         const dt = (dx / w) * effectiveRange
                         const snapped = snapDay
                           ? Math.round(dt / 86400) * 86400
@@ -719,8 +723,10 @@ const TimelineJumps = ({
                         setDragOffset(snapped)
                       }
                       const handleUp = () => {
-                        document.removeEventListener('mousemove', handleMove)
+                        document.removeEventListener('mousemove', handleMove as any)
                         document.removeEventListener('mouseup', handleUp)
+                        document.removeEventListener('touchmove', handleMove as any)
+                        document.removeEventListener('touchend', handleUp)
                         const off = dragOffsetRef.current
                         if (Math.abs(off) >= 60) {
                           onShiftDay(jump.id, off, jumpPaths)
@@ -732,10 +738,45 @@ const TimelineJumps = ({
                           dragOffsetRef.current = 0
                         }
                       }
-                      document.addEventListener('mousemove', handleMove)
+                      document.addEventListener('mousemove', handleMove as any)
                       document.addEventListener('mouseup', handleUp)
+                      document.addEventListener('touchmove', handleMove as any, { passive: false })
+                      document.addEventListener('touchend', handleUp)
                     }}
-                    title={`${jump.label} — drag to shift jump, Shift for 1-day snap`}
+                    onTouchStart={(e) => {
+                      if (jump.processed) return
+                      const touch = e.touches[0]
+                      const startX = touch.clientX
+                      setDraggingJump(jump.id)
+                      setDragOffset(0)
+                      dragOffsetRef.current = 0
+                      setDragLabel(jump.label)
+                      setDraggedTime(bounds.start)
+                      const jumpPaths = jump.files.map((f) => f.path)
+                      const handleMove = (ev: TouchEvent) => {
+                        const dx = ev.touches[0].clientX - startX
+                        const w = containerRef.current?.clientWidth ?? 800
+                        const dt = (dx / w) * effectiveRange
+                        const snapped = Math.round(dt / 900) * 900
+                        dragOffsetRef.current = snapped
+                        setDragOffset(snapped)
+                        ev.preventDefault()
+                      }
+                      const handleUp = () => {
+                        document.removeEventListener('touchmove', handleMove as any)
+                        document.removeEventListener('touchend', handleUp)
+                        const off = dragOffsetRef.current
+                        if (Math.abs(off) >= 60) onShiftDay(jump.id, off, jumpPaths)
+                        setDraggingJump(null)
+                        setDragOffset(0)
+                        setDragLabel('')
+                        setDraggedTime(null)
+                        dragOffsetRef.current = 0
+                      }
+                      document.addEventListener('touchmove', handleMove as any, { passive: false })
+                      document.addEventListener('touchend', handleUp)
+                    }}
+                    title={`${jump.label} — drag to shift jump${jump.processed ? ' (processed, undo first)' : ', Shift for 1-day snap'}`}
                   />
                 )
               })}
