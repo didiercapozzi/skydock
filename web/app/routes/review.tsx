@@ -4,13 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useFetcher, useRevalidator } from 'react-router'
 import { getOutputDirPath } from '../lib/scanner.server'
 import { ensureManifestFileIds } from '../lib/fileId.server'
-import {
-  getSequences,
-  formatDateForInput,
-  formatSequenceDate,
-  formatSequenceTime
-} from '../lib/sequences'
-import type { Sequence } from '../lib/sequences'
+import { formatDateForInput, formatSequenceDate, formatSequenceTime } from '../lib/sequences'
 import type { Manifest, ManifestFile, ManifestJump } from '../lib/types'
 import type { Route } from './+types/review'
 
@@ -43,19 +37,36 @@ const formatTime = (epoch: number): string =>
 
 type SelectionMap = Record<string, Record<string, boolean>>
 
-type DayGroup = {
+type JumpDayGroup = {
   date: string
-  sequences: Sequence[]
+  jumps: ManifestJump[]
 }
 
-const groupByDay = (sequences: Sequence[]): DayGroup[] => {
-  const map = new Map<string, DayGroup>()
-  for (const seq of sequences) {
-    const g = map.get(seq.date)
-    if (g) g.sequences.push(seq)
-    else map.set(seq.date, { date: seq.date, sequences: [seq] })
+const getJumpDate = (jump: ManifestJump): string => {
+  if (jump.files.length === 0) return ''
+  const min = Math.min(...jump.files.map((f) => f.mtime))
+  return formatSequenceDate(min)
+}
+
+const getJumpBounds = (jump: ManifestJump): { start: number; end: number } => {
+  if (jump.files.length === 0) return { start: 0, end: 0 }
+  const times = jump.files.map((f) => f.mtime)
+  return { start: Math.min(...times), end: Math.max(...times) }
+}
+
+const groupJumpsByDay = (jumps: ManifestJump[]): JumpDayGroup[] => {
+  const map = new Map<string, JumpDayGroup>()
+  for (const jump of jumps) {
+    const date = getJumpDate(jump) || 'Unknown'
+    const g = map.get(date)
+    if (g) g.jumps.push(jump)
+    else map.set(date, { date, jumps: [jump] })
   }
-  return Array.from(map.values())
+  return Array.from(map.values()).sort((a, b) => {
+    const ta = a.jumps[0] ? getJumpBounds(a.jumps[0]).start : 0
+    const tb = b.jumps[0] ? getJumpBounds(b.jumps[0]).start : 0
+    return ta - tb
+  })
 }
 
 type PreviewState = {
@@ -171,7 +182,6 @@ const FileRow = ({
   file,
   groupId,
   selected,
-  isUnassigned,
   isSelectMode,
   onSelect,
   onDragStart,
@@ -180,7 +190,6 @@ const FileRow = ({
   file: ManifestFile
   groupId: string
   selected: boolean
-  isUnassigned?: boolean
   isSelectMode?: boolean
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDragStart: (e: React.DragEvent, filePath: string, groupId: string) => void
@@ -217,9 +226,7 @@ const FileRow = ({
       className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded cursor-pointer select-none transition-colors ${
         selected
           ? 'bg-blue-100 dark:bg-blue-900/40 ring-1 ring-blue-300 dark:ring-blue-700'
-          : isUnassigned
-            ? 'bg-yellow-50 dark:bg-yellow-900/20 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800'
-            : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+          : 'hover:bg-gray-100 dark:hover:bg-gray-800'
       }`}
       draggable
       onDragStart={handleDragStart}
@@ -257,9 +264,192 @@ const FileRow = ({
   )
 }
 
-const SequenceDaySection = ({
+const JumpCard = ({
+  jump,
+  selection,
+  isSelectMode,
+  onSelect,
+  onDrop,
+  onDragStart,
+  onRemoveFiles,
+  onPreview
+}: {
+  jump: ManifestJump
+  selection: Record<string, boolean>
+  isSelectMode: boolean
+  onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
+  onDrop: (e: React.DragEvent, targetJumpId: string) => void
+  onDragStart: (e: React.DragEvent, filePaths: string[], sourceJumpId: string) => void
+  onRemoveFiles: (jumpId: string, filePaths: string[]) => void
+  onPreview: (files: ManifestFile[], index: number, label: string) => void
+}) => {
+  const [expanded, setExpanded] = useState(true)
+  const [editingLabel, setEditingLabel] = useState(false)
+  const [labelValue, setLabelValue] = useState(jump.label)
+  const [isDragOver, setIsDragOver] = useState(false)
+  const fetcher = useFetcher()
+  const selectedCount = jump.files.filter((f) => selection[f.path]).length
+  const isProcessed = !!jump.processed
+  const bounds = getJumpBounds(jump)
+
+  const handleLabelSave = () => {
+    fetcher.submit(
+      { action: 'update-label', jumpId: jump.id, label: labelValue },
+      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+    )
+    setEditingLabel(false)
+  }
+  const handleDelete = () => {
+    fetcher.submit(
+      { action: 'delete-jump', jumpId: jump.id },
+      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+    )
+  }
+  const handleConfirm = (confirmed: boolean) => {
+    fetcher.submit(
+      { action: 'confirm-jump', jumpId: jump.id, confirmed },
+      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+    )
+  }
+  const handleProcess = () => {
+    fetcher.submit(
+      { action: 'execute-jumps', jumpIds: [jump.id] },
+      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+    )
+  }
+  const handleUnprocess = () => {
+    fetcher.submit(
+      { action: 'unprocess-jump', jumpId: jump.id },
+      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+    )
+  }
+
+  return (
+    <div
+      className={`border rounded-lg overflow-hidden transition-colors ${isProcessed ? 'border-blue-300 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-900/20' : isDragOver ? 'border-blue-400 bg-blue-50/50' : jump.confirmed ? 'border-green-300 bg-green-50/50 dark:border-green-700 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50'}`}
+      onDragOver={(e) => {
+        if (isProcessed) return
+        e.preventDefault()
+        setIsDragOver(true)
+      }}
+      onDragLeave={() => setIsDragOver(false)}
+      onDrop={(e) => {
+        if (isProcessed) return
+        setIsDragOver(false)
+        onDrop(e, jump.id)
+      }}>
+      <div className='flex items-center gap-2 px-4 py-2'>
+        <input
+          type='checkbox'
+          checked={jump.confirmed}
+          onChange={(e) => handleConfirm(e.target.checked)}
+          disabled={isProcessed}
+          className='h-4 w-4 rounded border-gray-300 text-green-600 disabled:opacity-50'
+        />
+        <button
+          type='button'
+          onClick={() => setExpanded(!expanded)}
+          className='text-gray-400 text-xs'>
+          {expanded ? '▼' : '▶'}
+        </button>
+        {editingLabel && !isProcessed ? (
+          <input
+            type='text'
+            value={labelValue}
+            onChange={(e) => setLabelValue(e.target.value)}
+            onBlur={handleLabelSave}
+            onKeyDown={(e) => e.key === 'Enter' && handleLabelSave()}
+            autoFocus
+            className='font-semibold text-sm bg-white border rounded px-1 py-0.5 w-full'
+          />
+        ) : (
+          <span
+            className={`font-semibold text-sm flex-1 ${isProcessed ? '' : 'cursor-text hover:underline'}`}
+            onClick={() => {
+              if (!isProcessed) setEditingLabel(true)
+            }}>
+            {jump.label}
+          </span>
+        )}
+        <span className='text-xs text-gray-400'>
+          {jump.files.length} files •{' '}
+          {jump.files.length > 0
+            ? `${formatSequenceTime(bounds.start)}–${formatSequenceTime(bounds.end)}`
+            : ''}
+        </span>
+        {isProcessed ? (
+          <span className='text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30'>
+            Processed
+          </span>
+        ) : (
+          selectedCount > 0 && (
+            <>
+              <span className='text-xs text-blue-500'>{selectedCount} selected</span>
+              <button
+                type='button'
+                onClick={() => {
+                  const fps = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
+                  if (fps.length) onRemoveFiles(jump.id, fps)
+                }}
+                className='text-xs text-red-500'>
+                Remove
+              </button>
+            </>
+          )
+        )}
+        {isProcessed ? (
+          <button
+            type='button'
+            onClick={handleUnprocess}
+            className='text-xs px-2 py-1 rounded border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'>
+            Undo
+          </button>
+        ) : jump.confirmed && jump.files.length > 0 ? (
+          <button
+            type='button'
+            onClick={handleProcess}
+            className='text-xs px-2 py-1 rounded bg-green-600 text-white hover:bg-green-700'>
+            Process
+          </button>
+        ) : null}
+        <button
+          type='button'
+          onClick={handleDelete}
+          className='text-gray-400 hover:text-red-500 px-1'
+          title={isProcessed ? 'Delete and remove processed folder' : 'Remove jump'}>
+          ✕
+        </button>
+      </div>
+      {expanded && (
+        <div className='border-t dark:border-gray-700 px-4 py-2 space-y-0.5 bg-gray-50/30 dark:bg-gray-800/30'>
+          {jump.files.map((file, idx) => (
+            <FileRow
+              key={file.path}
+              file={file}
+              groupId={jump.id}
+              selected={!!selection[file.path]}
+              isSelectMode={isSelectMode}
+              onSelect={onSelect}
+              onDragStart={(e, fp) => {
+                if (isProcessed) return
+                const sel = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
+                const toDrag = sel.length > 0 && selection[file.path] ? sel : [fp]
+                onDragStart(e, toDrag, jump.id)
+              }}
+              onPreview={() => onPreview(jump.files, idx, jump.label)}
+            />
+          ))}
+          {jump.files.length === 0 && (
+            <p className='text-sm text-gray-400 italic py-2'>Drop files here</p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const JumpDaySection = ({
   day,
-  filesInJumps,
   selection,
   isSelectMode,
   onSelect,
@@ -267,10 +457,11 @@ const SequenceDaySection = ({
   onShiftDay,
   editingDay,
   setEditingDay,
+  onDrop,
+  onRemoveFiles,
   onPreview
 }: {
-  day: DayGroup
-  filesInJumps: Set<string>
+  day: JumpDayGroup
   selection: SelectionMap
   isSelectMode: boolean
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
@@ -278,15 +469,13 @@ const SequenceDaySection = ({
   onShiftDay: (date: string, newDateStr: string) => void
   editingDay: string | null
   setEditingDay: (d: string | null) => void
+  onDrop: (e: React.DragEvent, targetJumpId: string) => void
+  onRemoveFiles: (jumpId: string, filePaths: string[]) => void
   onPreview: (files: ManifestFile[], index: number, label: string) => void
 }) => {
-  const fileCount = day.sequences.reduce((s, seq) => s + seq.files.length, 0)
-  const unassignedCount = day.sequences.reduce(
-    (s, seq) => s + seq.files.filter((f) => !filesInJumps.has(f.path)).length,
-    0
-  )
+  const fileCount = day.jumps.reduce((s, j) => s + j.files.length, 0)
   return (
-    <div className='border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800/50 overflow-hidden mb-3'>
+    <div className='border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800/50 overflow-hidden mb-4'>
       <div className='flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700'>
         {editingDay === day.date ? (
           <input
@@ -316,76 +505,53 @@ const SequenceDaySection = ({
           </button>
         )}
         <span className='text-xs text-gray-500'>
-          {fileCount} files • {day.sequences.length} seq
+          {fileCount} files • {day.jumps.length} jumps
         </span>
-        {unassignedCount > 0 && (
-          <span className='text-xs px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'>
-            {unassignedCount} unassigned
-          </span>
-        )}
         <span className='ml-auto text-[10px] text-gray-400 hidden sm:inline'>
           drag timeline or click date to fix
         </span>
       </div>
-      <div className='p-2 space-y-3'>
-        {day.sequences.map((seq, idx) => (
-          <div
-            key={seq.id}
-            className='space-y-0.5'>
-            <div className='flex items-center gap-2 px-1 text-xs text-gray-500'>
-              <span className='font-medium'>Seq {idx + 1}</span>
-              <span className='tabular-nums'>
-                {formatSequenceTime(seq.startTime)}–{formatSequenceTime(seq.endTime)}
-              </span>
-              <span>• {seq.files.length} files</span>
-            </div>
-            {seq.files.map((file, fileIdx) => (
-              <FileRow
-                key={file.path}
-                file={file}
-                groupId={seq.id}
-                selected={!!selection[seq.id]?.[file.path]}
-                isUnassigned={!filesInJumps.has(file.path)}
-                isSelectMode={isSelectMode}
-                onSelect={onSelect}
-                onDragStart={(e, fp) => {
-                  const selected = seq.files
-                    .filter((f) => selection[seq.id]?.[f.path])
-                    .map((f) => f.path)
-                  const toDrag = selected.length > 0 && selection[seq.id]?.[fp] ? selected : [fp]
-                  onDragStart(e, toDrag, seq.id)
-                }}
-                onPreview={() => onPreview(seq.files, fileIdx, `${day.date} Seq ${idx + 1}`)}
-              />
-            ))}
-          </div>
+      <div className='p-3 space-y-3'>
+        {day.jumps.map((jump) => (
+          <JumpCard
+            key={jump.id}
+            jump={jump}
+            selection={selection[jump.id] ?? {}}
+            isSelectMode={isSelectMode}
+            onSelect={onSelect}
+            onDrop={onDrop}
+            onDragStart={onDragStart}
+            onRemoveFiles={onRemoveFiles}
+            onPreview={onPreview}
+          />
         ))}
       </div>
     </div>
   )
 }
 
-const TimelinePerDay = ({
+const TimelineJumps = ({
   dayGroups,
   onShiftDay
 }: {
-  dayGroups: DayGroup[]
+  dayGroups: JumpDayGroup[]
   onShiftDay: (date: string, offsetSeconds: number, dayPaths: string[]) => void
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [draggingDay, setDraggingDay] = useState<string | null>(null)
-  const [draggingSeq, setDraggingSeq] = useState<string | null>(null)
+  const [draggingJump, setDraggingJump] = useState<string | null>(null)
   const [dragOffset, setDragOffset] = useState(0)
   const [dragLabel, setDragLabel] = useState('')
   const [draggedTime, setDraggedTime] = useState<number | null>(null)
   const dragOffsetRef = useRef(0)
 
-  const allSeqs = useMemo(() => dayGroups.flatMap((d) => d.sequences), [dayGroups])
+  const allJumps = useMemo(() => dayGroups.flatMap((d) => d.jumps), [dayGroups])
 
   const timeRange = useMemo(() => {
-    if (allSeqs.length === 0) return { min: 0, max: 86400 }
-    const minStart = Math.min(...allSeqs.map((s) => s.startTime))
-    const maxEnd = Math.max(...allSeqs.map((s) => s.endTime))
+    const bounds = allJumps.map(getJumpBounds).filter((b) => b.start !== 0)
+    if (bounds.length === 0) return { min: 0, max: 86400 }
+    const minStart = Math.min(...bounds.map((b) => b.start))
+    const maxEnd = Math.max(...bounds.map((b) => b.end))
     const minD = new Date(minStart * 1000)
     minD.setHours(0, 0, 0, 0)
     const maxD = new Date(maxEnd * 1000)
@@ -394,7 +560,7 @@ const TimelinePerDay = ({
     const min = Math.floor(minD.getTime() / 1000)
     const max = Math.floor(maxD.getTime() / 1000)
     return { min, max }
-  }, [allSeqs])
+  }, [allJumps])
 
   const range = timeRange.max - timeRange.min || 1
   const isHugeRange = range > 7 * 86400
@@ -442,27 +608,29 @@ const TimelinePerDay = ({
   const outlierDates = useMemo(() => {
     if (!isHugeRange) return []
     const sorted = [...dayGroups].sort((a, b) => {
-      const ta = Math.min(...a.sequences.map((s) => s.startTime))
-      const tb = Math.min(...b.sequences.map((s) => s.startTime))
+      const ta = Math.min(...a.jumps.flatMap((j) => j.files.map((f) => f.mtime)))
+      const tb = Math.min(...b.jumps.flatMap((j) => j.files.map((f) => f.mtime)))
       return ta - tb
     })
     if (sorted.length < 2) return []
-    const lastStart = Math.min(...sorted[sorted.length - 1].sequences.map((s) => s.startTime))
+    const lastStart = Math.min(
+      ...sorted[sorted.length - 1].jumps.flatMap((j) => j.files.map((f) => f.mtime))
+    )
     return sorted
       .filter((g) => {
-        const t = Math.min(...g.sequences.map((s) => s.startTime))
+        const t = Math.min(...g.jumps.flatMap((j) => j.files.map((f) => f.mtime)))
         return lastStart - t > 30 * 86400
       })
       .map((g) => g.date)
   }, [dayGroups, isHugeRange])
 
-  if (allSeqs.length === 0) return null
+  if (allJumps.length === 0) return null
 
   return (
     <div className='mb-4'>
       <div className='flex items-center justify-between mb-1 px-1'>
         <span className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>
-          Timeline — drag a sequence to shift it, drag lane to shift day
+          Timeline — drag a jump to shift it, drag lane to shift day
         </span>
         <span className='text-[10px] text-gray-400'>
           {isHugeRange ? 'Outlier dates — time-of-day view' : 'Shift+drag snaps to 1 day'}
@@ -506,17 +674,17 @@ const TimelinePerDay = ({
               className='absolute inset-x-0 border-b border-gray-200/60 dark:border-gray-700/60 flex items-center cursor-grab active:cursor-grabbing'
               style={{ top: `${laneTop}%`, height: `${laneH}%` }}
               onMouseDown={(e) => {
-                if ((e.target as HTMLElement).closest('[data-seq-bar]')) return
+                if ((e.target as HTMLElement).closest('[data-jump-bar]')) return
                 e.preventDefault()
                 const startX = e.clientX
                 const snapDay = e.shiftKey
                 setDraggingDay(day.date)
-                setDraggingSeq(null)
+                setDraggingJump(null)
                 setDragOffset(0)
                 dragOffsetRef.current = 0
                 setDragLabel(day.date)
-                setDraggedTime(Math.min(...day.sequences.map((s) => s.startTime)))
-                const dayPaths = day.sequences.flatMap((s) => s.files.map((f) => f.path))
+                setDraggedTime(Math.min(...day.jumps.flatMap((j) => j.files.map((f) => f.mtime))))
+                const dayPaths = day.jumps.flatMap((j) => j.files.map((f) => f.path))
                 const handleMove = (ev: MouseEvent) => {
                   const dx = ev.clientX - startX
                   const w = containerRef.current?.clientWidth ?? 1
@@ -544,33 +712,34 @@ const TimelinePerDay = ({
               <div className='absolute left-2 text-[10px] font-medium text-gray-500 truncate max-w-[110px] pointer-events-none'>
                 {day.date}
               </div>
-              {day.sequences.map((seq) => {
-                const isSeqDragging = draggingSeq === seq.id
+              {day.jumps.map((jump) => {
+                const bounds = getJumpBounds(jump)
+                const isJumpDragging = draggingJump === jump.id
                 const isDayDraggingActive = draggingDay === day.date
-                const offset = isSeqDragging ? dragOffset : isDayDraggingActive ? dayOffset : 0
+                const offset = isJumpDragging ? dragOffset : isDayDraggingActive ? dayOffset : 0
                 return (
                   <div
-                    key={seq.id}
-                    data-seq-bar='true'
-                    className={`absolute h-4 rounded cursor-grab active:cursor-grabbing ${dayColor} opacity-80 hover:opacity-100 ${isSeqDragging || isDayDraggingActive ? 'shadow-lg ring-2 ring-blue-300 z-10' : ''}`}
+                    key={jump.id}
+                    data-jump-bar='true'
+                    className={`absolute h-4 rounded cursor-grab active:cursor-grabbing ${jump.processed ? 'bg-gray-400' : dayColor} opacity-80 hover:opacity-100 ${isJumpDragging || isDayDraggingActive ? 'shadow-lg ring-2 ring-blue-300 z-10' : ''}`}
                     style={{
                       top: '50%',
                       transform: 'translateY(-50%)',
-                      left: `${pos(seq.startTime + offset)}%`,
-                      width: `${width(seq.startTime, seq.endTime)}%`
+                      left: `${pos(bounds.start + offset)}%`,
+                      width: `${width(bounds.start, bounds.end)}%`
                     }}
                     onMouseDown={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
                       const startX = e.clientX
                       const snapDay = e.shiftKey
-                      setDraggingSeq(seq.id)
+                      setDraggingJump(jump.id)
                       setDraggingDay(null)
                       setDragOffset(0)
                       dragOffsetRef.current = 0
-                      setDragLabel(`Seq ${day.sequences.indexOf(seq) + 1}`)
-                      setDraggedTime(seq.startTime)
-                      const seqPaths = seq.files.map((f) => f.path)
+                      setDragLabel(jump.label)
+                      setDraggedTime(bounds.start)
+                      const jumpPaths = jump.files.map((f) => f.path)
                       const handleMove = (ev: MouseEvent) => {
                         const dx = ev.clientX - startX
                         const w = containerRef.current?.clientWidth ?? 1
@@ -585,214 +754,30 @@ const TimelinePerDay = ({
                         document.removeEventListener('mousemove', handleMove)
                         document.removeEventListener('mouseup', handleUp)
                         const off = dragOffsetRef.current
-                        setDraggingSeq(null)
+                        setDraggingJump(null)
                         setDragOffset(0)
                         setDragLabel('')
                         setDraggedTime(null)
                         dragOffsetRef.current = 0
-                        if (Math.abs(off) >= 60) onShiftDay(day.date, off, seqPaths)
+                        if (Math.abs(off) >= 60) onShiftDay(jump.id, off, jumpPaths)
                       }
                       document.addEventListener('mousemove', handleMove)
                       document.addEventListener('mouseup', handleUp)
                     }}
-                    title={`${day.date} Seq ${day.sequences.indexOf(seq) + 1} — drag to shift sequence, Shift for 1-day snap`}
+                    title={`${jump.label} — drag to shift jump, Shift for 1-day snap`}
                   />
                 )
               })}
             </div>
           )
         })}
-        {(draggingDay || draggingSeq) && Math.abs(dragOffset) >= 60 && draggedTime !== null && (
+        {(draggingDay || draggingJump) && Math.abs(dragOffset) >= 60 && draggedTime !== null && (
           <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-mono bg-gray-800 text-white px-2 py-1 rounded shadow pointer-events-none'>
             {dragLabel} {formatSequenceDate(draggedTime + dragOffset)}{' '}
             {formatSequenceTime(draggedTime + dragOffset)}
           </div>
         )}
       </div>
-    </div>
-  )
-}
-
-const JumpSection = ({
-  jump,
-  selection,
-  isSelectMode,
-  onSelect,
-  onDrop,
-  onDragStart,
-  onRemoveFiles,
-  onPreview
-}: {
-  jump: ManifestJump
-  selection: Record<string, boolean>
-  isSelectMode: boolean
-  onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
-  onDrop: (e: React.DragEvent, targetJumpId: string) => void
-  onDragStart: (e: React.DragEvent, filePaths: string[], sourceJumpId: string) => void
-  onRemoveFiles: (jumpId: string, filePaths: string[]) => void
-  onPreview: (files: ManifestFile[], index: number, label: string) => void
-}) => {
-  const [expanded, setExpanded] = useState(true)
-  const [editingLabel, setEditingLabel] = useState(false)
-  const [labelValue, setLabelValue] = useState(jump.label)
-  const [isDragOver, setIsDragOver] = useState(false)
-  const fetcher = useFetcher()
-  const selectedCount = jump.files.filter((f) => selection[f.path]).length
-  const isProcessed = !!jump.processed
-  const handleLabelSave = () => {
-    fetcher.submit(
-      { action: 'update-label', jumpId: jump.id, label: labelValue },
-      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-    )
-    setEditingLabel(false)
-  }
-  const handleDelete = () => {
-    fetcher.submit(
-      { action: 'delete-jump', jumpId: jump.id },
-      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-    )
-  }
-  const handleConfirm = (confirmed: boolean) => {
-    fetcher.submit(
-      { action: 'confirm-jump', jumpId: jump.id, confirmed },
-      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-    )
-  }
-  const handleProcess = () => {
-    fetcher.submit(
-      { action: 'execute-jumps', jumpIds: [jump.id] },
-      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-    )
-  }
-  const handleUnprocess = () => {
-    fetcher.submit(
-      { action: 'unprocess-jump', jumpId: jump.id },
-      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-    )
-  }
-  return (
-    <div
-      className={`border rounded-lg overflow-hidden transition-colors mb-3 ${
-        isProcessed
-          ? 'border-blue-300 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-900/20'
-          : isDragOver
-            ? 'border-blue-400 bg-blue-50/50'
-            : jump.confirmed
-              ? 'border-green-300 bg-green-50/50 dark:border-green-700 dark:bg-green-900/20'
-              : 'border-gray-200 dark:border-gray-700'
-      }`}
-      onDragOver={(e) => {
-        if (isProcessed) return
-        e.preventDefault()
-        setIsDragOver(true)
-      }}
-      onDragLeave={() => setIsDragOver(false)}
-      onDrop={(e) => {
-        if (isProcessed) return
-        setIsDragOver(false)
-        onDrop(e, jump.id)
-      }}>
-      <div className='flex items-center gap-2 px-4 py-2'>
-        <input
-          type='checkbox'
-          checked={jump.confirmed}
-          onChange={(e) => handleConfirm(e.target.checked)}
-          disabled={isProcessed}
-          className='h-4 w-4 rounded border-gray-300 text-green-600 disabled:opacity-50'
-        />
-        <button
-          type='button'
-          onClick={() => setExpanded(!expanded)}
-          className='text-gray-400 text-xs'>
-          {expanded ? '▼' : '▶'}
-        </button>
-        {editingLabel && !isProcessed ? (
-          <input
-            type='text'
-            value={labelValue}
-            onChange={(e) => setLabelValue(e.target.value)}
-            onBlur={handleLabelSave}
-            onKeyDown={(e) => e.key === 'Enter' && handleLabelSave()}
-            autoFocus
-            className='font-semibold text-sm bg-white border rounded px-1 py-0.5 w-full'
-          />
-        ) : (
-          <span
-            className={`font-semibold text-sm flex-1 ${isProcessed ? '' : 'cursor-text hover:underline'}`}
-            onClick={() => {
-              if (!isProcessed) setEditingLabel(true)
-            }}>
-            {jump.label}
-          </span>
-        )}
-        <span className='text-xs text-gray-400'>{jump.files.length} files</span>
-        {isProcessed ? (
-          <span className='text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30'>
-            Processed
-          </span>
-        ) : (
-          selectedCount > 0 && (
-            <>
-              <span className='text-xs text-blue-500'>{selectedCount} selected</span>
-              <button
-                type='button'
-                onClick={() => {
-                  const fps = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
-                  if (fps.length) onRemoveFiles(jump.id, fps)
-                }}
-                className='text-xs text-red-500'>
-                Remove
-              </button>
-            </>
-          )
-        )}
-        {isProcessed ? (
-          <button
-            type='button'
-            onClick={handleUnprocess}
-            className='text-xs px-2 py-1 rounded border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'>
-            Undo
-          </button>
-        ) : jump.confirmed && jump.files.length > 0 ? (
-          <button
-            type='button'
-            onClick={handleProcess}
-            className='text-xs px-2 py-1 rounded bg-green-600 text-white hover:bg-green-700'>
-            Process
-          </button>
-        ) : null}
-        <button
-          type='button'
-          onClick={handleDelete}
-          className='text-gray-400 hover:text-red-500 px-1'
-          title={isProcessed ? 'Delete and remove processed folder' : 'Remove jump'}>
-          ✕
-        </button>
-      </div>
-      {expanded && (
-        <div className='border-t dark:border-gray-700 px-4 py-2 space-y-0.5 bg-gray-50/50 dark:bg-gray-800/50'>
-          {jump.files.map((file, idx) => (
-            <FileRow
-              key={file.path}
-              file={file}
-              groupId={jump.id}
-              selected={!!selection[file.path]}
-              isSelectMode={isSelectMode}
-              onSelect={onSelect}
-              onDragStart={(e, fp) => {
-                if (isProcessed) return
-                const sel = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
-                const toDrag = sel.length > 0 && selection[file.path] ? sel : [fp]
-                onDragStart(e, toDrag, jump.id)
-              }}
-              onPreview={() => onPreview(jump.files, idx, jump.label)}
-            />
-          ))}
-          {jump.files.length === 0 && (
-            <p className='text-sm text-gray-400 italic py-2'>Drop files here</p>
-          )}
-        </div>
-      )}
     </div>
   )
 }
@@ -814,23 +799,12 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
 
   const scanning = scanFetcher.state !== 'idle'
 
-  const sequences = useMemo(() => (manifest ? getSequences(manifest) : []), [manifest])
-
-  const dayGroups = useMemo(() => groupByDay(sequences), [sequences])
-
-  const filesInJumps = useMemo(() => {
-    if (!manifest) return new Set<string>()
-    return new Set(manifest.jumps.flatMap((j) => j.files.map((f) => f.path)))
-  }, [manifest])
+  const jumpsByDay = useMemo(() => (manifest ? groupJumpsByDay(manifest.jumps) : []), [manifest])
 
   const allFileIds = useMemo(() => {
     if (!manifest) return []
-    const ids: string[] = []
-    for (const s of sequences) for (const f of s.files) ids.push(f.path)
-    for (const j of manifest.jumps)
-      for (const f of j.files) if (!ids.includes(f.path)) ids.push(f.path)
-    return ids
-  }, [manifest, sequences])
+    return manifest.jumps.flatMap((j) => j.files.map((f) => f.path))
+  }, [manifest])
 
   const hasCalibration = useMemo(
     () => manifest?.files.some((f) => f.originalMtime !== undefined) ?? false,
@@ -880,14 +854,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
       const data = dragDataRef.current
       if (!data) return
       try {
-        let sourceJumpId = data.sourceJumpId
-        if (sourceJumpId.startsWith('seq_')) {
-          for (const jump of manifest?.jumps ?? [])
-            if (jump.files.some((f) => data.filePaths.includes(f.path))) {
-              sourceJumpId = jump.id
-              break
-            }
-        }
+        const sourceJumpId = data.sourceJumpId
         if (sourceJumpId === targetJumpId) return
         const sourceJump = manifest?.jumps.find((j) => j.id === sourceJumpId)
         if (sourceJump) {
@@ -926,43 +893,39 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   const selectedFiles = useMemo(() => {
     const res: { groupId: string; file: ManifestFile }[] = []
     if (!manifest) return res
-    for (const seq of sequences)
-      for (const f of seq.files)
-        if (selection[seq.id]?.[f.path]) res.push({ groupId: seq.id, file: f })
     for (const jump of manifest.jumps)
       for (const f of jump.files)
-        if (selection[jump.id]?.[f.path] && !res.some((r) => r.file.path === f.path))
-          res.push({ groupId: jump.id, file: f })
+        if (selection[jump.id]?.[f.path]) res.push({ groupId: jump.id, file: f })
     return res
-  }, [manifest, selection, sequences])
+  }, [manifest, selection])
 
   const selectedCount = selectedFiles.length
   const isSelectMode = selectedCount > 0
 
   const handleShiftDay = useCallback(
     (date: string, newDateStr: string) => {
-      const group = dayGroups.find((g) => g.date === date)
+      const group = jumpsByDay.find((g) => g.date === date)
       if (!group) return
       const parts = newDateStr.split('-')
       const y = parseInt(parts[0], 10)
       const m = parseInt(parts[1], 10) - 1
       const d = parseInt(parts[2], 10)
       const newNoon = Math.floor(new Date(y, m, d, 12, 0, 0).getTime() / 1000)
-      const oldStart = Math.min(...group.sequences.map((s) => s.startTime))
+      const oldStart = Math.min(...group.jumps.flatMap((j) => j.files.map((f) => f.mtime)))
       const oldNoon = Math.floor(new Date(oldStart * 1000).setHours(12, 0, 0, 0) / 1000)
       const offset = newNoon - oldNoon
       if (offset === 0) return
-      const paths = group.sequences.flatMap((s) => s.files.map((f) => f.path))
+      const paths = group.jumps.flatMap((j) => j.files.map((f) => f.path))
       manifestFetcher.submit(
         { action: 'shift-sequences', paths, offsetSeconds: offset },
         { method: 'POST', encType: 'application/json', action: '/api/manifest' }
       )
     },
-    [dayGroups, manifestFetcher]
+    [jumpsByDay, manifestFetcher]
   )
 
-  const handleShiftDayOffset = useCallback(
-    (date: string, offsetSeconds: number, paths: string[]) => {
+  const handleShiftOffset = useCallback(
+    (dateOrId: string, offsetSeconds: number, paths: string[]) => {
       manifestFetcher.submit(
         { action: 'shift-sequences', paths, offsetSeconds },
         { method: 'POST', encType: 'application/json', action: '/api/manifest' }
@@ -1126,74 +1089,31 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
           </div>
         )}
 
-        <TimelinePerDay
-          dayGroups={dayGroups}
-          onShiftDay={handleShiftDayOffset}
+        <TimelineJumps
+          dayGroups={jumpsByDay}
+          onShiftDay={handleShiftOffset}
         />
 
-        <div className='flex gap-6'>
-          <div className='flex-1 min-w-0'>
-            <div className='flex items-center gap-2 mb-2 px-1'>
-              <div className='w-2.5 h-2.5 rounded-full bg-gray-400' />
-              <h2 className='text-xs font-semibold text-gray-600 uppercase tracking-wider'>
-                Sequences by day
-              </h2>
-              <span className='text-xs text-gray-400'>
-                — ground truth, click date or drag timeline to fix drift
-              </span>
-            </div>
-            <div className='space-y-1'>
-              {dayGroups.map((day) => (
-                <SequenceDaySection
-                  key={day.date}
-                  day={day}
-                  filesInJumps={filesInJumps}
-                  selection={selection}
-                  isSelectMode={isSelectMode}
-                  onSelect={handleSelect}
-                  onDragStart={handleDragStart}
-                  onShiftDay={handleShiftDay}
-                  editingDay={editingDay}
-                  setEditingDay={setEditingDay}
-                  onPreview={handlePreview}
-                />
-              ))}
-              {dayGroups.length === 0 && (
-                <p className='text-sm text-gray-400 italic'>No sequences</p>
-              )}
-            </div>
-            <div className='mt-3 flex items-center gap-2 text-xs text-gray-500 px-1'>
-              <span className='w-3 h-3 rounded bg-yellow-50 border border-yellow-200' />
-              <span>yellow = not yet in any jump (will be ignored on Execute)</span>
-            </div>
-          </div>
-
-          <div className='w-[380px] shrink-0'>
-            <div className='flex items-center gap-2 mb-2 px-1'>
-              <div className='w-2.5 h-2.5 rounded-full bg-green-500' />
-              <h2 className='text-xs font-semibold text-gray-600 uppercase tracking-wider'>
-                Jumps — to be processed
-              </h2>
-            </div>
-            <div className='space-y-3'>
-              {manifest.jumps.map((jump) => (
-                <JumpSection
-                  key={jump.id}
-                  jump={jump}
-                  selection={selection[jump.id] ?? {}}
-                  isSelectMode={isSelectMode}
-                  onSelect={handleSelect}
-                  onDrop={handleDrop}
-                  onDragStart={handleDragStart}
-                  onRemoveFiles={handleRemoveFiles}
-                  onPreview={handlePreview}
-                />
-              ))}
-              {manifest.jumps.length === 0 && (
-                <p className='text-sm text-gray-400 italic'>No jumps — create one or fix dates</p>
-              )}
-            </div>
-          </div>
+        <div className='space-y-4'>
+          {jumpsByDay.map((day) => (
+            <JumpDaySection
+              key={day.date}
+              day={day}
+              selection={selection}
+              isSelectMode={isSelectMode}
+              onSelect={handleSelect}
+              onDragStart={handleDragStart}
+              onShiftDay={handleShiftDay}
+              editingDay={editingDay}
+              setEditingDay={setEditingDay}
+              onDrop={handleDrop}
+              onRemoveFiles={handleRemoveFiles}
+              onPreview={handlePreview}
+            />
+          ))}
+          {jumpsByDay.length === 0 && (
+            <p className='text-sm text-gray-400 italic'>No jumps — create one or fix dates</p>
+          )}
         </div>
         {preview && (
           <PreviewDrawer
