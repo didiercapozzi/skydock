@@ -236,6 +236,7 @@ const TimelinePerDay = ({
 
   const range = timeRange.max - timeRange.min || 1
   const isHugeRange = range > 7 * 86400
+  const effectiveRange = isHugeRange ? 86400 : range
   const pos = (t: number) => {
     if (!isHugeRange) return ((t - timeRange.min) / range) * 100
     const d = new Date(t * 1000)
@@ -356,7 +357,7 @@ const TimelinePerDay = ({
                 const handleMove = (ev: MouseEvent) => {
                   const dx = ev.clientX - startX
                   const w = containerRef.current?.clientWidth ?? 1
-                  const dt = (dx / w) * range
+                  const dt = (dx / w) * effectiveRange
                   const snapped = snapDay
                     ? Math.round(dt / 86400) * 86400
                     : Math.round(dt / 1800) * 1800
@@ -408,7 +409,7 @@ const TimelinePerDay = ({
                       const handleMove = (ev: MouseEvent) => {
                         const dx = ev.clientX - startX
                         const w = containerRef.current?.clientWidth ?? 1
-                        const dt = (dx / w) * range
+                        const dt = (dx / w) * effectiveRange
                         const snapped = snapDay
                           ? Math.round(dt / 86400) * 86400
                           : Math.round(dt / 900) * 900
