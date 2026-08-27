@@ -25,13 +25,31 @@ const saveManifest = (manifest: Manifest): void => {
 
 const JUMP_GAP_SECONDS = 1800
 
-const reclusterJumps = (manifest: Manifest): void => {
-  const sorted = [...manifest.files].sort((a, b) => a.mtime - b.mtime)
+const reclusterJumps = (manifest: Manifest, preservedPaths?: Set<string>): void => {
+  const preservedJumpIds = new Set<string>()
+  if (preservedPaths) {
+    for (const jump of manifest.jumps) {
+      if (jump.files.some((f) => preservedPaths.has(f.path))) preservedJumpIds.add(jump.id)
+    }
+  }
+
+  const preservedGroups: ManifestFile[][] = []
+  const preservedFilePaths = new Set<string>()
+  for (const jump of manifest.jumps) {
+    if (preservedJumpIds.has(jump.id)) {
+      const sorted = [...jump.files].sort((a, b) => a.mtime - b.mtime)
+      preservedGroups.push(sorted)
+      for (const f of sorted) preservedFilePaths.add(f.path)
+    }
+  }
+
+  const remainingFiles = manifest.files.filter((f) => !preservedFilePaths.has(f.path))
+  const sortedRemaining = [...remainingFiles].sort((a, b) => a.mtime - b.mtime)
   const groups: ManifestFile[][] = []
   let current: ManifestFile[] = []
   let lastMtime = 0
 
-  for (const file of sorted) {
+  for (const file of sortedRemaining) {
     if (current.length > 0 && file.mtime - lastMtime > JUMP_GAP_SECONDS) {
       groups.push(current)
       current = []
@@ -41,12 +59,35 @@ const reclusterJumps = (manifest: Manifest): void => {
   }
   if (current.length > 0) groups.push(current)
 
+  const allGroups = [...preservedGroups, ...groups].sort((a, b) => {
+    const aMin = Math.min(...a.map((f) => f.mtime))
+    const bMin = Math.min(...b.map((f) => f.mtime))
+    return aMin - bMin
+  })
+
+  const mergedGroups: ManifestFile[][] = []
+  for (const group of allGroups) {
+    if (mergedGroups.length === 0) {
+      mergedGroups.push([...group].sort((a, b) => a.mtime - b.mtime))
+    } else {
+      const last = mergedGroups[mergedGroups.length - 1]
+      const lastMax = Math.max(...last.map((f) => f.mtime))
+      const curMin = Math.min(...group.map((f) => f.mtime))
+      if (curMin - lastMax <= JUMP_GAP_SECONDS) {
+        last.push(...group)
+        last.sort((a, b) => a.mtime - b.mtime)
+      } else {
+        mergedGroups.push([...group].sort((a, b) => a.mtime - b.mtime))
+      }
+    }
+  }
+
   const previousByPath = new Map<string, ManifestJump>()
   for (const jump of manifest.jumps) {
     for (const file of jump.files) previousByPath.set(file.path, jump)
   }
 
-  manifest.jumps = groups.map((files, idx) => {
+  manifest.jumps = mergedGroups.map((files, idx) => {
     const counts = new Map<string, number>()
     for (const file of files) {
       const prev = previousByPath.get(file.path)
@@ -60,10 +101,17 @@ const reclusterJumps = (manifest: Manifest): void => {
         dominant = manifest.jumps.find((j) => j.id === jumpId)
       }
     }
+    const isPreserved = files.some((f) => preservedFilePaths.has(f.path))
+    const preservedJump = isPreserved
+      ? manifest.jumps.find(
+          (j) => preservedJumpIds.has(j.id) && j.files.some((f) => files.includes(f))
+        )
+      : undefined
     return {
-      id: `jump_${idx + 1}`,
-      label: dominant?.label ?? `Jump ${idx + 1}`,
-      confirmed: dominant?.confirmed ?? false,
+      id: preservedJump?.id ?? `jump_${idx + 1}`,
+      label: dominant?.label ?? preservedJump?.label ?? `Jump ${idx + 1}`,
+      confirmed: dominant?.confirmed ?? preservedJump?.confirmed ?? false,
+      processed: dominant?.processed ?? preservedJump?.processed,
       files
     }
   })
@@ -325,7 +373,7 @@ const action = async ({ request }: Route.ActionArgs) => {
     shiftFiles(manifest, pathsToShift, offsetSeconds)
     if (scope === 'all') manifest.cameraClockOffsetSeconds = offsetSeconds
 
-    reclusterJumps(manifest)
+    reclusterJumps(manifest, pathsToShift)
     saveManifest(manifest)
     return { ok: true, offsetSeconds }
   }
@@ -350,7 +398,7 @@ const action = async ({ request }: Route.ActionArgs) => {
     }
 
     shiftFiles(manifest, new Set(paths), offsetSeconds)
-    reclusterJumps(manifest)
+    reclusterJumps(manifest, new Set(paths))
     saveManifest(manifest)
     return { ok: true, offsetSeconds }
   }
