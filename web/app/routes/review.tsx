@@ -539,7 +539,6 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   const { revalidate } = useRevalidator()
   const [selection, setSelection] = useState<SelectionMap>({})
   const [lastClicked, setLastClicked] = useState<string | null>(null)
-  const [moveTarget, setMoveTarget] = useState('')
   const [editingDay, setEditingDay] = useState<string | null>(null)
   const dragDataRef = useRef<{ filePaths: string[]; sourceJumpId: string } | null>(null)
 
@@ -672,42 +671,6 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   }, [manifest, selection, sequences])
 
   const selectedCount = selectedFiles.length
-  const selectedJumpIds = useMemo(() => {
-    const ids = new Set(
-      selectedFiles
-        .map((s) => {
-          if (!manifest) return null
-          for (const j of manifest.jumps)
-            if (j.files.some((f) => f.path === s.file.path)) return j.id
-          return null
-        })
-        .filter((id): id is string => id !== null)
-    )
-    return Array.from(ids)
-  }, [selectedFiles, manifest])
-
-  const handleMoveSelected = () => {
-    if (!moveTarget || selectedFiles.length === 0) return
-    const fromJumpId = selectedJumpIds.length === 1 ? selectedJumpIds[0] : ''
-    if (!fromJumpId) return
-    manifestFetcher.submit(
-      {
-        action: 'move-files',
-        fromJumpId,
-        toJumpId: moveTarget,
-        filePaths: selectedFiles
-          .filter((s) =>
-            manifest?.jumps
-              .find((j) => j.id === fromJumpId)
-              ?.files.some((f) => f.path === s.file.path)
-          )
-          .map((s) => s.file.path)
-      },
-      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-    )
-    setSelection({})
-    setMoveTarget('')
-  }
 
   const handleShiftDay = useCallback(
     (date: string, newDateStr: string) => {
@@ -868,36 +831,13 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
         </div>
 
         {selectedCount > 0 && (
-          <div className='flex items-center gap-3 mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg'>
-            <span className='text-sm font-medium text-blue-700'>
-              {selectedCount} files selected
-            </span>
-            <div className='flex-1' />
-            <select
-              value={moveTarget}
-              onChange={(e) => setMoveTarget(e.target.value)}
-              className='px-3 py-1.5 text-sm border rounded-lg bg-white'>
-              <option value=''>Move to jump...</option>
-              {manifest.jumps.map((j) => (
-                <option
-                  key={j.id}
-                  value={j.id}>
-                  {j.label}
-                </option>
-              ))}
-            </select>
-            <button
-              type='button'
-              onClick={handleMoveSelected}
-              disabled={!moveTarget}
-              className='px-4 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg disabled:opacity-50'>
-              Move
-            </button>
+          <div className='flex items-center gap-2 mb-3'>
+            <span className='text-sm text-gray-600'>{selectedCount} selected</span>
             <button
               type='button'
               onClick={() => setSelection({})}
-              className='px-3 py-1.5 text-sm text-gray-500'>
-              Clear
+              className='text-sm text-blue-600 hover:underline'>
+              Clear selection
             </button>
           </div>
         )}
