@@ -538,7 +538,6 @@ const TimelineJumps = ({
   onShiftDay: (date: string, offsetSeconds: number, dayPaths: string[]) => void
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [draggingDay, setDraggingDay] = useState<string | null>(null)
   const [draggingJump, setDraggingJump] = useState<string | null>(null)
   const [dragOffset, setDragOffset] = useState(0)
   const [dragLabel, setDragLabel] = useState('')
@@ -630,7 +629,7 @@ const TimelineJumps = ({
     <div className='mb-4'>
       <div className='flex items-center justify-between mb-1 px-1'>
         <span className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>
-          Timeline — drag a jump to shift it, drag lane to shift day
+          Timeline — drag a jump to shift it
         </span>
         <span className='text-[10px] text-gray-400'>
           {isHugeRange ? 'Outlier dates — time-of-day view' : 'Shift+drag snaps to 1 day'}
@@ -639,7 +638,7 @@ const TimelineJumps = ({
       {isHugeRange && outlierDates.length > 0 && (
         <div className='mb-1 px-2 py-1 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800'>
           Detected wrong dates ({outlierDates.join(', ')}) — likely camera clock not set. Timeline
-          shows time-of-day only. Drag the lane or click the date to correct.
+          shows time-of-day only. Click the date to correct.
         </div>
       )}
       <div
@@ -662,8 +661,6 @@ const TimelineJumps = ({
           </div>
         ))}
         {dayGroups.map((day, idx) => {
-          const isDayDragging = draggingDay === day.date
-          const dayOffset = isDayDragging ? dragOffset : 0
           const laneTop = (idx / dayGroups.length) * 100
           const laneH = 100 / dayGroups.length
           const dayColor =
@@ -671,57 +668,20 @@ const TimelineJumps = ({
           return (
             <div
               key={day.date}
-              className='absolute inset-x-0 border-b border-gray-200/60 dark:border-gray-700/60 flex items-center cursor-grab active:cursor-grabbing'
-              style={{ top: `${laneTop}%`, height: `${laneH}%` }}
-              onMouseDown={(e) => {
-                if ((e.target as HTMLElement).closest('[data-jump-bar]')) return
-                e.preventDefault()
-                const startX = e.clientX
-                const snapDay = e.shiftKey
-                setDraggingDay(day.date)
-                setDraggingJump(null)
-                setDragOffset(0)
-                dragOffsetRef.current = 0
-                setDragLabel(day.date)
-                setDraggedTime(Math.min(...day.jumps.flatMap((j) => j.files.map((f) => f.mtime))))
-                const dayPaths = day.jumps.flatMap((j) => j.files.map((f) => f.path))
-                const handleMove = (ev: MouseEvent) => {
-                  const dx = ev.clientX - startX
-                  const w = containerRef.current?.clientWidth ?? 1
-                  const dt = (dx / w) * effectiveRange
-                  const snapped = snapDay
-                    ? Math.round(dt / 86400) * 86400
-                    : Math.round(dt / 1800) * 1800
-                  dragOffsetRef.current = snapped
-                  setDragOffset(snapped)
-                }
-                const handleUp = () => {
-                  document.removeEventListener('mousemove', handleMove)
-                  document.removeEventListener('mouseup', handleUp)
-                  const off = dragOffsetRef.current
-                  setDraggingDay(null)
-                  setDragOffset(0)
-                  setDragLabel('')
-                  setDraggedTime(null)
-                  dragOffsetRef.current = 0
-                  if (Math.abs(off) >= 60) onShiftDay(day.date, off, dayPaths)
-                }
-                document.addEventListener('mousemove', handleMove)
-                document.addEventListener('mouseup', handleUp)
-              }}>
+              className='absolute inset-x-0 border-b border-gray-200/60 dark:border-gray-700/60 flex items-center'
+              style={{ top: `${laneTop}%`, height: `${laneH}%` }}>
               <div className='absolute left-2 text-[10px] font-medium text-gray-500 truncate max-w-[110px] pointer-events-none'>
                 {day.date}
               </div>
               {day.jumps.map((jump) => {
                 const bounds = getJumpBounds(jump)
                 const isJumpDragging = draggingJump === jump.id
-                const isDayDraggingActive = draggingDay === day.date
-                const offset = isJumpDragging ? dragOffset : isDayDraggingActive ? dayOffset : 0
+                const offset = isJumpDragging ? dragOffset : 0
                 return (
                   <div
                     key={jump.id}
                     data-jump-bar='true'
-                    className={`absolute h-4 rounded cursor-grab active:cursor-grabbing ${jump.processed ? 'bg-gray-400' : dayColor} opacity-80 hover:opacity-100 ${isJumpDragging || isDayDraggingActive ? 'shadow-lg ring-2 ring-blue-300 z-10' : ''}`}
+                    className={`absolute h-4 rounded cursor-grab active:cursor-grabbing ${jump.processed ? 'bg-gray-400' : dayColor} opacity-80 hover:opacity-100 ${isJumpDragging ? 'shadow-lg ring-2 ring-blue-300 z-10' : ''}`}
                     style={{
                       top: '50%',
                       transform: 'translateY(-50%)',
@@ -734,7 +694,6 @@ const TimelineJumps = ({
                       const startX = e.clientX
                       const snapDay = e.shiftKey
                       setDraggingJump(jump.id)
-                      setDraggingDay(null)
                       setDragOffset(0)
                       dragOffsetRef.current = 0
                       setDragLabel(jump.label)
@@ -771,7 +730,7 @@ const TimelineJumps = ({
             </div>
           )
         })}
-        {(draggingDay || draggingJump) && Math.abs(dragOffset) >= 60 && draggedTime !== null && (
+        {draggingJump && Math.abs(dragOffset) >= 60 && draggedTime !== null && (
           <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-mono bg-gray-800 text-white px-2 py-1 rounded shadow pointer-events-none'>
             {dragLabel} {formatSequenceDate(draggedTime + dragOffset)}{' '}
             {formatSequenceTime(draggedTime + dragOffset)}
