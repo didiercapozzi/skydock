@@ -6,7 +6,9 @@ services:
     volumes:
       - ${SKYDOCK_OUTPUT:-./output}:/workspace/output
       - /tmp/.X11-unix:/tmp/.X11-unix
+      - /media:/mnt/osmo:ro,rshared
     environment:
       - SKYDOCK_OUTPUT_DIR=/workspace/output
+      - CAM_MOUNT_PATH=/mnt/osmo
       - DISPLAY=${DISPLAY}
     restart: unless-stopped

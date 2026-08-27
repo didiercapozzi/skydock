@@ -12,6 +12,16 @@ All actions are virtual and saved in `proposed_jumps.json` before being applied 
 2. **Review** — User reviews the proposed jumps in the web UI. All state is virtual.
 3. **Apply** — Only when the user explicitly confirms are files extracted, copied, and organized.
 
+### Multi-Camera Support
+
+SkyDock supports **1, 2, 3, or more cameras** simultaneously. Each camera is a directory containing media files (videos and/or photos). Camera labels are derived from directory names (e.g., `camera1`, `camera2`, `ext-cam`).
+
+**File type detection is by extension**, not by camera:
+- **Video files** (`.mp4`, `.mov`) → frame-extracted to JPEGs at 2 fps
+- **Photo files** (`.jpg`, `.jpeg`, `.dng`) → copied directly
+
+A single camera directory can contain both video and photo files. The `camera` field in the manifest identifies which physical camera the file came from.
+
 ### Jump Clustering Rules
 
 - Files are regrouped by jump if their time interval is **≤ 30 minutes** (default).
@@ -22,8 +32,8 @@ All actions are virtual and saved in `proposed_jumps.json` before being applied 
 
 Sequences and Jumps are **independent** concepts in the review UI:
 
-- **Sequences** — Time-based clusters within each camera, derived from file timestamps. They are **read-only** and cannot be renamed. Sequences are reconstructed on-the-fly from all files across all jumps, grouped by camera type and sorted by time with a 15-minute gap threshold.
-- **Jumps** — Cross-camera groupings where files from both cameras are associated. Jumps can be edited, renamed, confirmed, and files can be moved between them.
+- **Sequences** — Time-based clusters within each camera, derived from file timestamps. They are **read-only** and cannot be renamed. Sequences are reconstructed on-the-fly from all files across all jumps, grouped by camera and sorted by time with a 15-minute gap threshold.
+- **Jumps** — Cross-camera groupings where files from all cameras are associated. Jumps can be edited, renamed, confirmed, and files can be moved between them.
 
 **Key rules:**
 
@@ -44,17 +54,21 @@ Sequences and Jumps are **independent** concepts in the review UI:
   "date": "2026-08-22",
   "startDatetime": "2026-08-22T09:00:00Z",
   "createdAt": "...",
-  "camera1": { "path": "...", "fileCount": 0 },
-  "camera2": { "path": "...", "fileCount": 0 },
+  "cameras": [
+    { "id": "camera1", "path": "/mnt/osmo/camera1", "fileCount": 12 },
+    { "id": "camera2", "path": "/mnt/osmo/camera2", "fileCount": 8 }
+  ],
   "theory": [],
-  "jumps": [],
-  "loneFiles": []
+  "files": [],
+  "jumps": []
 }
 ```
 
 - `status`: `empty` | `proposed` | `confirmed` | `executed`
-- `loneFiles`: Files not belonging to any jump cluster
-- `startDatetime`: User-settable reference time for virtual recalculation
+- `cameras`: Array of detected camera directories (supports N cameras)
+- `theory`: Theory session files (copied to each jump)
+- `files`: All discovered media files with camera label, size, mtime, and fingerprint id
+- `jumps`: Proposed jump clusters with confirmed status and file lists
 
 ## Code Quality: shellcheck
 
@@ -103,11 +117,12 @@ This ensures every feature is testable without real cameras and verified in CI.
 - **Virtual-First**: All operations are virtual until explicitly applied.
 - **Zero-Touch Automation**: Dock your cameras and walk away.
 - **Background Execution**: Works while your Ubuntu workstation is locked.
-- **Automated 0.5s Photo Extraction**: `ffmpeg` at 2 fps on Camera 1 footage.
+- **Automated 0.5s Photo Extraction**: `ffmpeg` at 2 fps on video files.
 - **30-Minute Jump Clustering**: Groups media into jumps with 30-minute idle gap detection.
 - **Lone File Visibility**: Files outside any jump cluster are shown separately.
 - **Start Datetime Control**: User can reset all virtual times from a chosen start.
 - **Simulation Harness**: Test without real cameras using `simulate_cameras.sh`.
+- **Multi-Camera**: Supports 1, 2, 3, or more cameras simultaneously.
 
 ## Scripts
 

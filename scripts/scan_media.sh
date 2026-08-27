@@ -1,150 +1,87 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-PHOTO_ROOT="$1"
-VIDEO_ROOT="$2"
-OUTPUT_MANIFEST="${3:-}"
-OUTPUT_DIR="${SKYDOCK_OUTPUT_DIR:-/workspace/output}"
-JUMP_GAP=${JUMP_GAP_SECONDS:-1800}
+OUTPUT_DIR="${SKYDOCK_OUTPUT_DIR:-/workspace/camera_files}"
+OUTPUT_MANIFEST="${OUTPUT_DIR}/proposed_jumps.json"
 
-if [[ -z "${PHOTO_ROOT}" || -z "${VIDEO_ROOT}" ]]; then
-    echo "Usage: $0 <photo_dir> <video_dir> [output_manifest]" >&2
+CAMERA_DIRS=()
+while [[ $# -gt 0 ]]; do
+    [[ -d "$1" ]] && CAMERA_DIRS+=("$1")
+    shift
+done
+
+if [[ ${#CAMERA_DIRS[@]} -eq 0 ]]; then
+    echo "Usage: $0 <camera_dir> [camera_dir ...]"
     exit 1
 fi
 
-if [[ -z "${OUTPUT_MANIFEST}" ]]; then
-    OUTPUT_MANIFEST="${OUTPUT_DIR}/proposed_jumps.json"
-fi
+mkdir -p "${OUTPUT_DIR}"
 
-mkdir -p "$(dirname "${OUTPUT_MANIFEST}")"
-
-compute_file_id() {
-    local filepath="$1"
-    local cam_type="$2"
-    local fingerprint
-    fingerprint=$( { head -c 1048576 "${filepath}"; tail -c 65536 "${filepath}"; stat -c %s "${filepath}"; } | sha256sum | cut -c1-16 )
-    echo "${cam_type}:${fingerprint}"
-}
-
-TMP_ALL_FILES=$(mktemp)
-TMP_THEORY_LIST=$(mktemp)
-trap 'rm -f "${TMP_ALL_FILES}" "${TMP_THEORY_LIST}"' EXIT
-
-scan_camera_files() {
-    local src_dir="$1"
-    local cam_type="$2"
-
-    if [[ -z "${src_dir}" || ! -d "${src_dir}" ]]; then
-        return
-    fi
-
-    while IFS= read -r filepath; do
-        local filename filesize file_mtime file_id
-        filename=$(basename "${filepath}")
-        filesize=$(stat -c %s "${filepath}")
-        file_mtime=$(stat -c %Y "${filepath}")
-        file_id=$(compute_file_id "${filepath}" "${cam_type}")
-
-        if [[ "${filename}" =~ [Tt][Hh][Ee][Oo][Rr][Yy] ]]; then
-            echo "${file_mtime}|${filepath}|${filesize}|${cam_type}|${file_id}" >> "${TMP_THEORY_LIST}"
-        else
-            echo "${file_mtime}|${filepath}|${filesize}|${cam_type}|${file_id}" >> "${TMP_ALL_FILES}"
-        fi
-    done < <(find "${src_dir}" -type f \( -iname "*.mp4" -o -iname "*.mov" \) 2>/dev/null)
-}
-
-scan_camera_files "${PHOTO_ROOT}" "PHOTO"
-scan_camera_files "${VIDEO_ROOT}" "VIDEO"
-
-PHOTO_COUNT=$(awk -F'|' '$4=="PHOTO"' "${TMP_ALL_FILES}" 2>/dev/null | wc -l)
-VIDEO_COUNT=$(awk -F'|' '$4=="VIDEO"' "${TMP_ALL_FILES}" 2>/dev/null | wc -l)
-TOTAL_COUNT=$(( PHOTO_COUNT + VIDEO_COUNT ))
-
-if [[ "${TOTAL_COUNT}" -eq 0 ]]; then
-    echo "[Scan] No new files found."
-    cat > "${OUTPUT_MANIFEST}" <<EOF
-{
-  "version": 1,
-  "status": "empty",
-  "date": "$(date +%Y-%m-%d)",
-  "startDatetime": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-  "createdAt": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
-  "camera1": {"path": "${PHOTO_ROOT}", "fileCount": 0},
-  "camera2": {"path": "${VIDEO_ROOT}", "fileCount": 0},
-  "theory": [],
-  "files": [],
-  "jumps": []
-}
-EOF
-    exit 0
-fi
-
-ALL_EPOCHS=$(cat "${TMP_ALL_FILES}" "${TMP_THEORY_LIST}" 2>/dev/null | cut -d'|' -f1 | sort -n | head -n1)
-if [[ -n "${ALL_EPOCHS}" ]]; then
-    TARGET_DATE=$(date -d "@${ALL_EPOCHS}" +"%Y-%m-%d")
-    START_DATETIME=$(date -d "@${ALL_EPOCHS}" -u +"%Y-%m-%dT%H:%M:%SZ")
-else
-    TARGET_DATE=$(date +"%Y-%m-%d")
-    START_DATETIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-fi
-
-SORTED_ALL=$(mktemp)
-trap 'rm -f "${TMP_ALL_FILES}" "${TMP_THEORY_LIST}" "${SORTED_ALL}"' EXIT
-sort -t'|' -k1,1n "${TMP_ALL_FILES}" > "${SORTED_ALL}"
-
+ALL_FILES=""
 JUMPS_JSON=""
+FILE_NUM=0
 JUMP_NUM=0
 LAST_EPOCH=0
 CURRENT_JUMP_FILES=""
 
-flush_jump() {
-    if [[ -n "${CURRENT_JUMP_FILES}" ]]; then
-        JUMP_NUM=$(( JUMP_NUM + 1 ))
-        JUMP_ID="jump_${JUMP_NUM}"
-        if [[ -n "${JUMPS_JSON}" ]]; then
-            JUMPS_JSON="${JUMPS_JSON},"
+for cam_dir in "${CAMERA_DIRS[@]}"; do
+    cam_num=0
+    for d in "${CAMERA_DIRS[@]}"; do
+        cam_num=$((cam_num + 1))
+        [[ "${d}" == "${cam_dir}" ]] && break
+    done
+    cam_name="camera${cam_num}"
+
+    while IFS= read -r filepath; do
+        filename=$(basename "${filepath}")
+        file_mtime=$(stat -c %Y "${filepath}")
+        file_size=$(stat -c %s "${filepath}")
+
+        FILE_NUM=$((FILE_NUM + 1))
+        file_id="cam${cam_num}_${FILE_NUM}"
+
+        file_json=$(printf '{"path":"%s","camera":"%s","size":%d,"mtime":%d,"filename":"%s","id":"%s"}' \
+            "${filepath}" "${cam_name}" "${file_size}" "${file_mtime}" "${filename}" "${file_id}")
+
+        [[ -n "${ALL_FILES}" ]] && ALL_FILES="${ALL_FILES},"
+        ALL_FILES="${ALL_FILES}${file_json}"
+
+        if (( LAST_EPOCH > 0 )) && (( file_mtime - LAST_EPOCH > 1800 )); then
+            if [[ -n "${CURRENT_JUMP_FILES}" ]]; then
+                JUMP_NUM=$((JUMP_NUM + 1))
+                [[ -n "${JUMPS_JSON}" ]] && JUMPS_JSON="${JUMPS_JSON},"
+                JUMPS_JSON="${JUMPS_JSON}$(printf '{"id":"jump_%d","label":"Jump %d","confirmed":false,"files":[%s]}' \
+                    "${JUMP_NUM}" "${JUMP_NUM}" "${CURRENT_JUMP_FILES}")"
+                CURRENT_JUMP_FILES=""
+            fi
         fi
-        JUMPS_JSON="${JUMPS_JSON}$(printf '{"id":"%s","label":"Jump %d","confirmed":false,"files":[%s]}' \
-            "${JUMP_ID}" "${JUMP_NUM}" "${CURRENT_JUMP_FILES}")"
-        CURRENT_JUMP_FILES=""
-    fi
-}
+        LAST_EPOCH="${file_mtime}"
 
-ALL_FILES_JSON=""
-while IFS='|' read -r epoch filepath filesize cam_type file_id; do
-    if [[ -n "${ALL_FILES_JSON}" ]]; then
-        ALL_FILES_JSON="${ALL_FILES_JSON},"
-    fi
-    ALL_FILES_JSON="${ALL_FILES_JSON}$(printf '{"path":"%s","camera":"%s","size":%d,"mtime":%d,"filename":"%s","id":"%s"}' \
-        "${filepath}" "${cam_type}" "${filesize}" "${epoch}" "$(basename "${filepath}")" "${file_id}")"
+        [[ -n "${CURRENT_JUMP_FILES}" ]] && CURRENT_JUMP_FILES="${CURRENT_JUMP_FILES},"
+        CURRENT_JUMP_FILES="${CURRENT_JUMP_FILES}${file_json}"
 
-    if (( LAST_EPOCH > 0 )) && (( epoch - LAST_EPOCH > JUMP_GAP )); then
-        flush_jump
-    fi
-    LAST_EPOCH="${epoch}"
+    done < <(find "${cam_dir}" -maxdepth 4 -type f \( \
+        -iname "*.mp4" -o -iname "*.mov" -o \
+        -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.dng" \
+    \) 2>/dev/null)
+done
 
-    if [[ -n "${CURRENT_JUMP_FILES}" ]]; then
-        CURRENT_JUMP_FILES="${CURRENT_JUMP_FILES},"
-    fi
-    CURRENT_JUMP_FILES="${CURRENT_JUMP_FILES}$(printf '{"path":"%s","camera":"%s","size":%d,"mtime":%d,"filename":"%s","id":"%s"}' \
-        "${filepath}" "${cam_type}" "${filesize}" "${epoch}" "$(basename "${filepath}")" "${file_id}")"
-done < "${SORTED_ALL}"
-
-flush_jump
-
-if [[ "${JUMP_NUM}" -eq 1 ]]; then
-    JUMPS_JSON="${JUMPS_JSON%,}"
+if [[ -n "${CURRENT_JUMP_FILES}" ]]; then
+    JUMP_NUM=$((JUMP_NUM + 1))
+    [[ -n "${JUMPS_JSON}" ]] && JUMPS_JSON="${JUMPS_JSON},"
+    JUMPS_JSON="${JUMPS_JSON}$(printf '{"id":"jump_%d","label":"Jump %d","confirmed":false,"files":[%s]}' \
+        "${JUMP_NUM}" "${JUMP_NUM}" "${CURRENT_JUMP_FILES}")"
 fi
 
-THEORY_FILES=""
-if [[ -s "${TMP_THEORY_LIST}" ]]; then
-    while IFS='|' read -r epoch filepath filesize cam_type file_id; do
-        [[ -n "${THEORY_FILES}" ]] && THEORY_FILES="${THEORY_FILES},"
-        THEORY_FILES="${THEORY_FILES}$(printf '{"path":"%s","camera":"%s","size":%d,"mtime":%d,"filename":"%s","id":"%s"}' \
-            "${filepath}" "${cam_type}" "${filesize}" "${epoch}" "$(basename "${filepath}")" "${file_id}")"
-    done < <(sort -t'|' -k1,1n "${TMP_THEORY_LIST}")
-fi
+CAMERAS_JSON=""
+cam_num=0
+for cam_dir in "${CAMERA_DIRS[@]}"; do
+    cam_num=$((cam_num + 1))
+    [[ -n "${CAMERAS_JSON}" ]] && CAMERAS_JSON="${CAMERAS_JSON},"
+    CAMERAS_JSON="${CAMERAS_JSON}$(printf '{"id":"camera%d","path":"%s"}' "${cam_num}" "${cam_dir}")"
+done
 
+TARGET_DATE=$(date +%Y-%m-%d)
 CREATED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 cat > "${OUTPUT_MANIFEST}" <<EOF
@@ -152,15 +89,13 @@ cat > "${OUTPUT_MANIFEST}" <<EOF
   "version": 1,
   "status": "proposed",
   "date": "${TARGET_DATE}",
-  "startDatetime": "${START_DATETIME}",
+  "startDatetime": "${CREATED_AT}",
   "createdAt": "${CREATED_AT}",
-  "camera1": {"path": "${PHOTO_ROOT}", "fileCount": ${PHOTO_COUNT}},
-  "camera2": {"path": "${VIDEO_ROOT}", "fileCount": ${VIDEO_COUNT}},
-  "theory": [${THEORY_FILES}],
-  "files": [${ALL_FILES_JSON}],
+  "cameras": [${CAMERAS_JSON}],
+  "files": [${ALL_FILES}],
   "jumps": [${JUMPS_JSON}]
 }
 EOF
 
-echo "[Scan] Manifest written to ${OUTPUT_MANIFEST}"
-echo "[Scan] ${JUMP_NUM} jump(s) proposed for review."
+echo "[Scan] Found ${FILE_NUM} file(s) in ${JUMP_NUM} jump(s)."
+echo "[Scan] Manifest: ${OUTPUT_MANIFEST}"
