@@ -473,6 +473,7 @@ const JumpSection = ({
   const [isDragOver, setIsDragOver] = useState(false)
   const fetcher = useFetcher()
   const selectedCount = jump.files.filter((f) => selection[f.path]).length
+  const isProcessed = !!jump.processed
   const handleLabelSave = () => {
     fetcher.submit(
       { action: 'update-label', jumpId: jump.id, label: labelValue },
@@ -492,15 +493,37 @@ const JumpSection = ({
       { method: 'POST', encType: 'application/json', action: '/api/manifest' }
     )
   }
+  const handleProcess = () => {
+    fetcher.submit(
+      { action: 'execute-jumps', jumpIds: [jump.id] },
+      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+    )
+  }
+  const handleUnprocess = () => {
+    fetcher.submit(
+      { action: 'unprocess-jump', jumpId: jump.id },
+      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+    )
+  }
   return (
     <div
-      className={`border rounded-lg overflow-hidden transition-colors mb-3 ${isDragOver ? 'border-blue-400 bg-blue-50/50' : jump.confirmed ? 'border-green-300 bg-green-50/50 dark:border-green-700 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700'}`}
+      className={`border rounded-lg overflow-hidden transition-colors mb-3 ${
+        isProcessed
+          ? 'border-blue-300 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-900/20'
+          : isDragOver
+            ? 'border-blue-400 bg-blue-50/50'
+            : jump.confirmed
+              ? 'border-green-300 bg-green-50/50 dark:border-green-700 dark:bg-green-900/20'
+              : 'border-gray-200 dark:border-gray-700'
+      }`}
       onDragOver={(e) => {
+        if (isProcessed) return
         e.preventDefault()
         setIsDragOver(true)
       }}
       onDragLeave={() => setIsDragOver(false)}
       onDrop={(e) => {
+        if (isProcessed) return
         setIsDragOver(false)
         onDrop(e, jump.id)
       }}>
@@ -509,7 +532,8 @@ const JumpSection = ({
           type='checkbox'
           checked={jump.confirmed}
           onChange={(e) => handleConfirm(e.target.checked)}
-          className='h-4 w-4 rounded border-gray-300 text-green-600'
+          disabled={isProcessed}
+          className='h-4 w-4 rounded border-gray-300 text-green-600 disabled:opacity-50'
         />
         <button
           type='button'
@@ -517,7 +541,7 @@ const JumpSection = ({
           className='text-gray-400 text-xs'>
           {expanded ? '▼' : '▶'}
         </button>
-        {editingLabel ? (
+        {editingLabel && !isProcessed ? (
           <input
             type='text'
             value={labelValue}
@@ -529,30 +553,54 @@ const JumpSection = ({
           />
         ) : (
           <span
-            className='font-semibold text-sm flex-1 cursor-text hover:underline'
-            onClick={() => setEditingLabel(true)}>
+            className={`font-semibold text-sm flex-1 ${isProcessed ? '' : 'cursor-text hover:underline'}`}
+            onClick={() => {
+              if (!isProcessed) setEditingLabel(true)
+            }}>
             {jump.label}
           </span>
         )}
         <span className='text-xs text-gray-400'>{jump.files.length} files</span>
-        {selectedCount > 0 && (
-          <>
-            <span className='text-xs text-blue-500'>{selectedCount} selected</span>
-            <button
-              type='button'
-              onClick={() => {
-                const fps = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
-                if (fps.length) onRemoveFiles(jump.id, fps)
-              }}
-              className='text-xs text-red-500'>
-              Remove
-            </button>
-          </>
+        {isProcessed ? (
+          <span className='text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30'>
+            Processed
+          </span>
+        ) : (
+          selectedCount > 0 && (
+            <>
+              <span className='text-xs text-blue-500'>{selectedCount} selected</span>
+              <button
+                type='button'
+                onClick={() => {
+                  const fps = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
+                  if (fps.length) onRemoveFiles(jump.id, fps)
+                }}
+                className='text-xs text-red-500'>
+                Remove
+              </button>
+            </>
+          )
         )}
+        {isProcessed ? (
+          <button
+            type='button'
+            onClick={handleUnprocess}
+            className='text-xs px-2 py-1 rounded border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'>
+            Undo
+          </button>
+        ) : jump.confirmed && jump.files.length > 0 ? (
+          <button
+            type='button'
+            onClick={handleProcess}
+            className='text-xs px-2 py-1 rounded bg-green-600 text-white hover:bg-green-700'>
+            Process
+          </button>
+        ) : null}
         <button
           type='button'
           onClick={handleDelete}
-          className='text-gray-400 hover:text-red-500 px-1'>
+          className='text-gray-400 hover:text-red-500 px-1'
+          title={isProcessed ? 'Delete and remove processed folder' : 'Remove jump'}>
           ✕
         </button>
       </div>
@@ -566,6 +614,7 @@ const JumpSection = ({
               selected={!!selection[file.path]}
               onSelect={onSelect}
               onDragStart={(e, fp) => {
+                if (isProcessed) return
                 const sel = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
                 const toDrag = sel.length > 0 && selection[file.path] ? sel : [fp]
                 onDragStart(e, toDrag, jump.id)
@@ -766,7 +815,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
     )
   }
   const handleConfirmAndExecute = () => {
-    const ids = manifest?.jumps.filter((j) => j.confirmed).map((j) => j.id) ?? []
+    const ids = manifest?.jumps.filter((j) => j.confirmed && !j.processed).map((j) => j.id) ?? []
     manifestFetcher.submit(
       { action: 'execute-jumps', jumpIds: ids },
       { method: 'POST', encType: 'application/json', action: '/api/manifest' }
@@ -813,10 +862,9 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
     return renderEmptyState('No Manifest Found', 'Run a scan first to generate proposed jumps.')
   if (manifest.status === 'empty')
     return renderEmptyState('No Files to Review', 'No new camera files were found.')
-  if (manifest.status === 'executed')
-    return renderEmptyState('Already Executed', 'This manifest has already been processed.')
 
-  const confirmedCount = manifest.jumps.filter((j) => j.confirmed).length
+  const confirmedCount = manifest.jumps.filter((j) => j.confirmed && !j.processed).length
+  const processedCount = manifest.jumps.filter((j) => j.processed).length
   const totalFiles = manifest.jumps.reduce((s, j) => s + j.files.length, 0)
 
   return (
@@ -827,6 +875,9 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
             <h1 className='text-3xl font-bold'>Review Proposed Jumps</h1>
             <p className='text-gray-500 mt-1'>
               {manifest.date} — {manifest.jumps.length} jumps, {totalFiles} files
+              {processedCount > 0 && (
+                <span className='ml-2 text-blue-600'>• {processedCount} processed</span>
+              )}
               {hasCalibration && <span className='ml-2 text-amber-600'>• dates shifted</span>}
             </p>
           </div>
@@ -874,8 +925,12 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
             type='button'
             onClick={handleConfirmAndExecute}
             disabled={confirmedCount === 0}
-            className={`ml-auto px-6 py-2 text-sm font-medium text-white rounded-lg ${confirmedCount > 0 ? 'bg-green-600' : 'bg-gray-300'}`}>
-            Confirm & Execute ({confirmedCount}/{manifest.jumps.length})
+            className={`ml-auto px-6 py-2 text-sm font-medium text-white rounded-lg ${confirmedCount > 0 ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-300 cursor-not-allowed'}`}>
+            {processedCount === manifest.jumps.length && manifest.jumps.length > 0
+              ? 'All processed'
+              : confirmedCount > 0
+                ? `Process ${confirmedCount} confirmed`
+                : `Confirm & Execute (${confirmedCount}/${manifest.jumps.length})`}
           </button>
         </div>
 

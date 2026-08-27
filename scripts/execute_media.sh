@@ -16,31 +16,35 @@ fi
 
 mkdir -p "${PROCESSED_DIR}"
 
-CONFIRMED=$(jq -r '.jumps[] | select(.confirmed == true) | .id' "${MANIFEST}" 2>/dev/null)
+JUMP_IDS=()
+if [[ $# -gt 1 ]]; then
+    for arg in "${@:2}"; do
+        JUMP_IDS+=("${arg}")
+    done
+else
+    while IFS= read -r line; do
+        [[ -n "${line}" ]] && JUMP_IDS+=("${line}")
+    done < <(jq -r '.jumps[] | select(.confirmed == true and .processed != true) | .id' "${MANIFEST}" 2>/dev/null)
+fi
 
-if [[ -z "${CONFIRMED}" ]]; then
-    echo "[Execute] No confirmed jumps found."
+if [[ ${#JUMP_IDS[@]} -eq 0 ]]; then
+    echo "[Execute] No confirmed unprocessed jumps found."
     exit 0
 fi
 
 copied=0
-for jump_id in $CONFIRMED; do
+for jump_id in "${JUMP_IDS[@]}"; do
     jump_dir="${PROCESSED_DIR}/${jump_id}"
     mkdir -p "${jump_dir}"
-
-    jq -r --arg id "${jump_id}" \
-        '.jumps[] | select(.id == $id) | .files[].path' "${MANIFEST}" | while IFS= read -r filepath; do
+    count=0
+    while IFS= read -r filepath; do
         if [[ -f "${filepath}" ]]; then
-            cp --update=none "${filepath}" "${jump_dir}/"
+            cp -p --update=none "${filepath}" "${jump_dir}/"
             copied=$((copied + 1))
+            count=$((count + 1))
         fi
-    done
-
-    echo "[Execute] ${jump_id}: copied files to ${jump_dir}"
+    done < <(jq -r --arg id "${jump_id}" '.jumps[] | select(.id == $id) | .files[].path' "${MANIFEST}" 2>/dev/null)
+    echo "[Execute] ${jump_id}: copied ${count} file(s) to ${jump_dir}"
 done
-
-TMP_MANIFEST=$(mktemp)
-jq '.status = "executed"' "${MANIFEST}" > "${TMP_MANIFEST}"
-mv "${TMP_MANIFEST}" "${MANIFEST}"
 
 echo "[Execute] Done. Copied ${copied} file(s)."

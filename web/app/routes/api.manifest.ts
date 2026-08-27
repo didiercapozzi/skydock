@@ -134,6 +134,14 @@ const action = async ({ request }: Route.ActionArgs) => {
     const idx = manifest.jumps.findIndex((j: ManifestJump) => j.id === jumpId)
     if (idx === -1) return { ok: false, error: 'Jump not found' }
 
+    const jump = manifest.jumps[idx]
+    if (jump.processed) {
+      const dir = path.join(getOutputDirPath(), 'processed', jumpId)
+      try {
+        if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true })
+      } catch {}
+    }
+
     manifest.jumps.splice(idx, 1)
     saveManifest(manifest)
     return { ok: true, manifest }
@@ -179,6 +187,9 @@ const action = async ({ request }: Route.ActionArgs) => {
     const fromJump = manifest.jumps.find((j: ManifestJump) => j.id === fromJumpId)
     const toJump = manifest.jumps.find((j: ManifestJump) => j.id === toJumpId)
     if (!fromJump || !toJump) return { ok: false, error: 'Jump not found' }
+    if (fromJump.processed || toJump.processed) {
+      return { ok: false, error: 'Cannot move files of a processed jump — unprocess first' }
+    }
 
     for (const filePath of filePaths) {
       const fileIdx = fromJump.files.findIndex((f) => f.path === filePath)
@@ -205,6 +216,9 @@ const action = async ({ request }: Route.ActionArgs) => {
 
     const jump = manifest.jumps.find((j: ManifestJump) => j.id === jumpId)
     if (!jump) return { ok: false, error: 'Jump not found' }
+    if (jump.processed) {
+      return { ok: false, error: 'Cannot add files to a processed jump — unprocess first' }
+    }
 
     for (const filePath of filePaths) {
       const file = manifest.files.find((f) => f.path === filePath)
@@ -230,6 +244,9 @@ const action = async ({ request }: Route.ActionArgs) => {
 
     const jump = manifest.jumps.find((j: ManifestJump) => j.id === jumpId)
     if (!jump) return { ok: false, error: 'Jump not found' }
+    if (jump.processed) {
+      return { ok: false, error: 'Cannot remove files from a processed jump — unprocess first' }
+    }
 
     for (const filePath of filePaths) {
       const fileIdx = jump.files.findIndex((f) => f.path === filePath)
@@ -281,7 +298,8 @@ const action = async ({ request }: Route.ActionArgs) => {
   if (formAction === 'calibrate-sequences') {
     const manifest = loadManifest()
     if (!manifest) return { ok: false, error: 'No manifest found' }
-    if (manifest.status === 'executed') return { ok: false, error: 'Manifest already executed' }
+    if (manifest.status === 'executed' || manifest.jumps.every((j) => j.processed))
+      return { ok: false, error: 'All jumps already processed' }
 
     const referencePaths = (body.referencePaths ?? []) as string[]
     const targetPaths = (body.targetPaths ?? []) as string[]
@@ -315,13 +333,21 @@ const action = async ({ request }: Route.ActionArgs) => {
   if (formAction === 'shift-sequences') {
     const manifest = loadManifest()
     if (!manifest) return { ok: false, error: 'No manifest found' }
-    if (manifest.status === 'executed') return { ok: false, error: 'Manifest already executed' }
+    if (manifest.status === 'executed' || manifest.jumps.every((j) => j.processed))
+      return { ok: false, error: 'All jumps already processed' }
 
     const paths = (body.paths ?? []) as string[]
     const offsetSeconds = Number(body.offsetSeconds ?? 0)
 
     if (paths.length === 0) return { ok: false, error: 'No paths specified' }
     if (offsetSeconds === 0) return { ok: false, error: 'Offset is zero' }
+
+    const processedPaths = new Set(
+      manifest.jumps.filter((j) => j.processed).flatMap((j) => j.files.map((f) => f.path))
+    )
+    if (paths.some((p) => processedPaths.has(p))) {
+      return { ok: false, error: 'Cannot shift files of a processed jump — unprocess first' }
+    }
 
     shiftFiles(manifest, new Set(paths), offsetSeconds)
     reclusterJumps(manifest)
@@ -332,7 +358,8 @@ const action = async ({ request }: Route.ActionArgs) => {
   if (formAction === 'reset-calibration') {
     const manifest = loadManifest()
     if (!manifest) return { ok: false, error: 'No manifest found' }
-    if (manifest.status === 'executed') return { ok: false, error: 'Manifest already executed' }
+    if (manifest.status === 'executed' || manifest.jumps.every((j) => j.processed))
+      return { ok: false, error: 'All jumps already processed' }
 
     for (const file of manifest.files) {
       if (file.originalMtime !== undefined) {
@@ -350,25 +377,32 @@ const action = async ({ request }: Route.ActionArgs) => {
   if (formAction === 'execute-jumps') {
     const manifest = loadManifest()
     if (!manifest) return { ok: false, error: 'No manifest found' }
-    if (manifest.status === 'executed') return { ok: false, error: 'Manifest already executed' }
 
-    const jumpIds = (body.jumpIds ?? []) as string[]
+    let jumpIds = (body.jumpIds ?? []) as string[]
     if (jumpIds.length === 0) {
-      return { ok: false, error: 'No jumps specified' }
+      jumpIds = manifest.jumps.filter((j) => j.confirmed && !j.processed).map((j) => j.id)
+    }
+    if (jumpIds.length === 0) {
+      return { ok: false, error: 'No jumps to process' }
     }
 
-    for (const jump of manifest.jumps) {
-      if (jumpIds.includes(jump.id)) jump.confirmed = true
+    const toProcess = manifest.jumps.filter((j) => jumpIds.includes(j.id) && !j.processed)
+    if (toProcess.length === 0) {
+      return { ok: false, error: 'Jumps already processed' }
     }
-    manifest.status = 'confirmed'
+
+    for (const jump of toProcess) {
+      jump.confirmed = true
+    }
     saveManifest(manifest)
 
     const manifestPath = getManifestPath()
     const scriptsDir = path.join(process.cwd(), '..', 'scripts')
     const executeScript = path.join(scriptsDir, 'execute_media.sh')
+    const jumpArgs = toProcess.map((j) => `"${j.id}"`).join(' ')
 
     try {
-      execSync(`"${executeScript}" "${manifestPath}" 2>&1`, {
+      execSync(`"${executeScript}" "${manifestPath}" ${jumpArgs} 2>&1`, {
         timeout: 300_000,
         env: { ...process.env, SKYDOCK_OUTPUT_DIR: getOutputDirPath() }
       })
@@ -377,7 +411,43 @@ const action = async ({ request }: Route.ActionArgs) => {
     }
 
     const updated = loadManifest()
-    return { ok: true, manifest: updated }
+    if (updated) {
+      for (const jump of updated.jumps) {
+        if (jumpIds.includes(jump.id)) jump.processed = true
+      }
+      if (updated.jumps.length > 0 && updated.jumps.every((j) => j.processed)) {
+        updated.status = 'executed'
+      } else if (updated.jumps.some((j) => j.processed)) {
+        updated.status = 'confirmed'
+      }
+      saveManifest(updated)
+      return { ok: true, manifest: updated }
+    }
+
+    return { ok: true, manifest: loadManifest() }
+  }
+
+  if (formAction === 'unprocess-jump') {
+    const manifest = loadManifest()
+    if (!manifest) return { ok: false, error: 'No manifest found' }
+
+    const jumpId = String(body.jumpId ?? '')
+    const jump = manifest.jumps.find((j) => j.id === jumpId)
+    if (!jump) return { ok: false, error: 'Jump not found' }
+    if (!jump.processed) return { ok: false, error: 'Jump not processed' }
+
+    const processedDir = path.join(getOutputDirPath(), 'processed', jumpId)
+    try {
+      if (fs.existsSync(processedDir)) {
+        fs.rmSync(processedDir, { recursive: true, force: true })
+      }
+    } catch {}
+
+    delete jump.processed
+    if (manifest.status === 'executed') manifest.status = 'confirmed'
+
+    saveManifest(manifest)
+    return { ok: true, manifest }
   }
 
   return { ok: false, error: 'Invalid action' }

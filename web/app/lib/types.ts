@@ -60,6 +60,7 @@ export type ManifestJump = {
   label: string
   confirmed: boolean
   files: ManifestFile[]
+  processed?: boolean
 }
 
 export type ManifestStatus = 'empty' | 'proposed' | 'confirmed' | 'executed'
