@@ -89,7 +89,8 @@ describe('Review', () => {
 
     renderReview(manifest)
 
-    expect(screen.getByText(/Unassigned Files/)).toBeInTheDocument()
+    expect(screen.getByText(/unassigned/i)).toBeInTheDocument()
+    expect(document.querySelector('[draggable="true"].bg-yellow-50')).toBeTruthy()
   })
 
   it('renders single unassigned file', () => {
@@ -98,7 +99,8 @@ describe('Review', () => {
 
     renderReview(manifest)
 
-    expect(screen.getByText(/Unassigned Files/)).toBeInTheDocument()
+    expect(screen.getByText(/unassigned/i)).toBeInTheDocument()
+    expect(document.querySelector('[draggable="true"].bg-yellow-50')).toBeTruthy()
   })
 
   it('renders jump with files', () => {
@@ -128,7 +130,8 @@ describe('Review', () => {
 
     renderReview(manifest)
 
-    expect(screen.getByText(/Unassigned Files/)).toBeInTheDocument()
+    expect(screen.getByText(/yellow = not yet in any jump/i)).toBeInTheDocument()
+    expect(document.querySelector('[draggable="true"].bg-yellow-50')).toBeTruthy()
   })
 
   it('shows scan button', () => {
@@ -243,7 +246,7 @@ describe('Drag and Drop', () => {
 
     renderReview(manifest)
 
-    const yellowBg = document.querySelector('.bg-yellow-50\\/50')
+    const yellowBg = document.querySelector('[draggable="true"].bg-yellow-50')
     expect(yellowBg).toBeTruthy()
   })
 
@@ -255,8 +258,8 @@ describe('Drag and Drop', () => {
 
     renderReview(manifest)
 
-    const yellowBg = document.querySelector('.bg-yellow-50')
-    expect(yellowBg).toBeFalsy()
+    const yellowFileRows = document.querySelectorAll('[draggable="true"].bg-yellow-50')
+    expect(yellowFileRows.length).toBe(0)
   })
 
   it('ctrl+click selects multiple files', () => {
@@ -356,7 +359,7 @@ describe('Drag and Drop', () => {
     expect(body).toEqual({
       action: 'add-to-jump',
       jumpId: 'jump_1',
-      filePaths: ['/photo1.jpg']
+      filePaths: ['/photo1.jpg', '/photo2.jpg']
     })
   })
 

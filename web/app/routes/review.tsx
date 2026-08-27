@@ -4,7 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useFetcher, useRevalidator } from 'react-router'
 import { getOutputDirPath } from '../lib/scanner.server'
 import { ensureManifestFileIds } from '../lib/fileId.server'
-import { getSequences } from '../lib/sequences'
+import {
+  getSequences,
+  formatDateForInput,
+  formatSequenceTime,
+  formatClockOffset
+} from '../lib/sequences'
+import type { Sequence } from '../lib/sequences'
 import type { Manifest, ManifestFile, ManifestJump } from '../lib/types'
 import type { Route } from './+types/review'
 
@@ -28,54 +34,288 @@ const formatSize = (bytes: number): string => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-const formatTime = (epoch: number): string => {
-  return new Date(epoch * 1000).toLocaleTimeString([], {
+const formatTime = (epoch: number): string =>
+  new Date(epoch * 1000).toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit'
   })
-}
 
 type SelectionMap = Record<string, Record<string, boolean>>
+
+type DayGroup = {
+  date: string
+  sequences: Sequence[]
+}
+
+const groupByDay = (sequences: Sequence[]): DayGroup[] => {
+  const map = new Map<string, DayGroup>()
+  for (const seq of sequences) {
+    const g = map.get(seq.date)
+    if (g) g.sequences.push(seq)
+    else map.set(seq.date, { date: seq.date, sequences: [seq] })
+  }
+  return Array.from(map.values())
+}
 
 const FileRow = ({
   file,
   groupId,
   selected,
+  isUnassigned,
   onSelect,
   onDragStart
 }: {
   file: ManifestFile
   groupId: string
   selected: boolean
+  isUnassigned?: boolean
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDragStart: (e: React.DragEvent, filePath: string, groupId: string) => void
-}) => {
-  return (
-    <div
-      className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded cursor-pointer select-none transition-colors ${
-        selected
-          ? 'bg-blue-100 dark:bg-blue-900/40 ring-1 ring-blue-300 dark:ring-blue-700'
+}) => (
+  <div
+    className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded cursor-pointer select-none transition-colors ${
+      selected
+        ? 'bg-blue-100 dark:bg-blue-900/40 ring-1 ring-blue-300 dark:ring-blue-700'
+        : isUnassigned
+          ? 'bg-yellow-50 dark:bg-yellow-900/20 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800'
           : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-      }`}
-      draggable
-      onDragStart={(e) => onDragStart(e, file.path, groupId)}
-      onClick={(e) => onSelect(groupId, file.path, e.ctrlKey || e.metaKey, e.shiftKey)}>
-      <input
-        type='checkbox'
-        checked={selected}
-        onChange={() => {}}
-        className='h-4 w-4 rounded border-gray-300 text-blue-600 pointer-events-none'
-      />
-      <span className='font-mono truncate flex-1 text-xs text-gray-700 dark:text-gray-300'>
-        {file.filename}
-      </span>
-      <span className='text-gray-400 dark:text-gray-500 text-xs whitespace-nowrap tabular-nums'>
-        {formatTime(file.mtime)}
-      </span>
-      <span className='text-gray-400 dark:text-gray-500 text-xs whitespace-nowrap'>
-        {formatSize(file.size)}
-      </span>
+    }`}
+    draggable
+    onDragStart={(e) => onDragStart(e, file.path, groupId)}
+    onClick={(e) => onSelect(groupId, file.path, e.ctrlKey || e.metaKey, e.shiftKey)}>
+    <input
+      type='checkbox'
+      checked={selected}
+      onChange={() => {}}
+      className='h-4 w-4 rounded border-gray-300 text-blue-600 pointer-events-none'
+    />
+    <span className='font-mono truncate flex-1 text-xs text-gray-700 dark:text-gray-300'>
+      {file.filename}
+    </span>
+    <span className='text-gray-400 dark:text-gray-500 text-xs whitespace-nowrap tabular-nums'>
+      {formatTime(file.mtime)}
+    </span>
+    <span className='text-gray-400 dark:text-gray-500 text-xs whitespace-nowrap'>
+      {formatSize(file.size)}
+    </span>
+  </div>
+)
+
+const SequenceDaySection = ({
+  day,
+  filesInJumps,
+  selection,
+  onSelect,
+  onDragStart,
+  onShiftDay,
+  editingDay,
+  setEditingDay
+}: {
+  day: DayGroup
+  filesInJumps: Set<string>
+  selection: SelectionMap
+  onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
+  onDragStart: (e: React.DragEvent, filePaths: string[], sourceId: string) => void
+  onShiftDay: (date: string, newDateStr: string) => void
+  editingDay: string | null
+  setEditingDay: (d: string | null) => void
+}) => {
+  const fileCount = day.sequences.reduce((s, seq) => s + seq.files.length, 0)
+  const unassignedCount = day.sequences.reduce(
+    (s, seq) => s + seq.files.filter((f) => !filesInJumps.has(f.path)).length,
+    0
+  )
+  return (
+    <div className='border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800/50 overflow-hidden mb-3'>
+      <div className='flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700'>
+        {editingDay === day.date ? (
+          <input
+            type='date'
+            autoFocus
+            defaultValue={formatDateForInput(day.date)}
+            onBlur={(e) => {
+              if (e.target.value) onShiftDay(day.date, e.target.value)
+              setEditingDay(null)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.currentTarget.value) {
+                onShiftDay(day.date, e.currentTarget.value)
+                setEditingDay(null)
+              }
+              if (e.key === 'Escape') setEditingDay(null)
+            }}
+            className='text-sm font-medium px-2 py-1 border rounded bg-white dark:bg-gray-900'
+          />
+        ) : (
+          <button
+            type='button'
+            onClick={() => setEditingDay(day.date)}
+            className='text-sm font-semibold text-gray-700 dark:text-gray-300 hover:underline decoration-dotted'
+            title='Click to change day'>
+            {day.date}
+          </button>
+        )}
+        <span className='text-xs text-gray-500'>
+          {fileCount} files • {day.sequences.length} seq
+        </span>
+        {unassignedCount > 0 && (
+          <span className='text-xs px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'>
+            {unassignedCount} unassigned
+          </span>
+        )}
+        <span className='ml-auto text-[10px] text-gray-400 hidden sm:inline'>
+          drag timeline or click date to fix
+        </span>
+      </div>
+      <div className='p-2 space-y-3'>
+        {day.sequences.map((seq, idx) => (
+          <div
+            key={seq.id}
+            className='space-y-0.5'>
+            <div className='flex items-center gap-2 px-1 text-xs text-gray-500'>
+              <span className='font-medium'>Seq {idx + 1}</span>
+              <span className='tabular-nums'>
+                {formatSequenceTime(seq.startTime)}–{formatSequenceTime(seq.endTime)}
+              </span>
+              <span>• {seq.files.length} files</span>
+            </div>
+            {seq.files.map((file) => (
+              <FileRow
+                key={file.path}
+                file={file}
+                groupId={seq.id}
+                selected={!!selection[seq.id]?.[file.path]}
+                isUnassigned={!filesInJumps.has(file.path)}
+                onSelect={onSelect}
+                onDragStart={(e, fp) => {
+                  const selected = seq.files
+                    .filter((f) => selection[seq.id]?.[f.path])
+                    .map((f) => f.path)
+                  const toDrag = selected.length > 0 && selection[seq.id]?.[fp] ? selected : [fp]
+                  onDragStart(e, toDrag, seq.id)
+                }}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const TimelinePerDay = ({
+  dayGroups,
+  onShiftDay
+}: {
+  dayGroups: DayGroup[]
+  onShiftDay: (date: string, offsetSeconds: number, dayPaths: string[]) => void
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [draggingDay, setDraggingDay] = useState<string | null>(null)
+  const [dragOffset, setDragOffset] = useState(0)
+  const dragOffsetRef = useRef(0)
+
+  const allSeqs = useMemo(() => dayGroups.flatMap((d) => d.sequences), [dayGroups])
+
+  const timeRange = useMemo(() => {
+    if (allSeqs.length === 0) return { min: 0, max: 1 }
+    const min = Math.min(...allSeqs.map((s) => s.startTime))
+    const max = Math.max(...allSeqs.map((s) => s.endTime))
+    const pad = Math.max(300, (max - min) * 0.05)
+    return { min: min - pad, max: max + pad }
+  }, [allSeqs])
+
+  const range = timeRange.max - timeRange.min || 1
+  const pos = (t: number) => ((t - timeRange.min) / range) * 100
+  const width = (a: number, b: number) => Math.max(2, ((b - a) / range) * 100)
+
+  if (allSeqs.length === 0) return null
+
+  return (
+    <div className='mb-4'>
+      <div className='flex items-center justify-between mb-1 px-1'>
+        <span className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>
+          Timeline — drag a day to shift
+        </span>
+        <span className='text-[10px] text-gray-400'>Shift+drag snaps to 1 day</span>
+      </div>
+      <div
+        ref={containerRef}
+        className='relative bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden select-none'
+        style={{ height: `${Math.max(56, dayGroups.length * 36)}px` }}>
+        {dayGroups.map((day, idx) => {
+          const isDragging = draggingDay === day.date
+          const offset = isDragging ? dragOffset : 0
+          const laneTop = (idx / dayGroups.length) * 100
+          const laneH = 100 / dayGroups.length
+          const dayColor =
+            idx % 2 === 0 ? 'bg-blue-400 dark:bg-blue-600' : 'bg-indigo-400 dark:bg-indigo-600'
+          return (
+            <div
+              key={day.date}
+              className='absolute inset-x-0 border-b border-gray-200/60 dark:border-gray-700/60 flex items-center'
+              style={{ top: `${laneTop}%`, height: `${laneH}%` }}>
+              <div className='absolute left-2 text-[10px] font-medium text-gray-500 truncate max-w-[110px]'>
+                {day.date}
+              </div>
+              {day.sequences.map((seq) => (
+                <div
+                  key={seq.id}
+                  className={`absolute h-4 rounded cursor-grab active:cursor-grabbing ${dayColor} opacity-80 hover:opacity-100 ${isDragging ? 'shadow-lg ring-2 ring-blue-300 z-10' : ''}`}
+                  style={{
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    left: `${pos(seq.startTime + offset)}%`,
+                    width: `${width(seq.startTime, seq.endTime)}%`
+                  }}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    const startX = e.clientX
+                    const snapDay = e.shiftKey
+                    setDraggingDay(day.date)
+                    setDragOffset(0)
+                    dragOffsetRef.current = 0
+                    const dayPaths = day.sequences.flatMap((s) => s.files.map((f) => f.path))
+                    const startMin = Math.min(...day.sequences.map((s) => s.startTime))
+                    const handleMove = (ev: MouseEvent) => {
+                      const dx = ev.clientX - startX
+                      const w = containerRef.current?.clientWidth ?? 1
+                      const dt = (dx / w) * range
+                      const snapped = snapDay
+                        ? Math.round(dt / 86400) * 86400
+                        : Math.round(dt / 1800) * 1800
+                      dragOffsetRef.current = snapped
+                      setDragOffset(snapped)
+                    }
+                    const handleUp = () => {
+                      document.removeEventListener('mousemove', handleMove)
+                      document.removeEventListener('mouseup', handleUp)
+                      const off = dragOffsetRef.current
+                      setDraggingDay(null)
+                      setDragOffset(0)
+                      dragOffsetRef.current = 0
+                      if (Math.abs(off) >= 60) {
+                        const _ = startMin
+                        void _
+                        onShiftDay(day.date, off, dayPaths)
+                      }
+                    }
+                    document.addEventListener('mousemove', handleMove)
+                    document.addEventListener('mouseup', handleUp)
+                  }}
+                  title={`${day.date} — drag to shift day`}
+                />
+              ))}
+            </div>
+          )
+        })}
+        {draggingDay && Math.abs(dragOffset) >= 60 && (
+          <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-mono bg-gray-800 text-white px-2 py-1 rounded shadow pointer-events-none'>
+            {draggingDay} {formatClockOffset(dragOffset)}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -100,9 +340,7 @@ const JumpSection = ({
   const [labelValue, setLabelValue] = useState(jump.label)
   const [isDragOver, setIsDragOver] = useState(false)
   const fetcher = useFetcher()
-
   const selectedCount = jump.files.filter((f) => selection[f.path]).length
-
   const handleLabelSave = () => {
     fetcher.submit(
       { action: 'update-label', jumpId: jump.id, label: labelValue },
@@ -110,65 +348,41 @@ const JumpSection = ({
     )
     setEditingLabel(false)
   }
-
   const handleDelete = () => {
     fetcher.submit(
       { action: 'delete-jump', jumpId: jump.id },
       { method: 'POST', encType: 'application/json', action: '/api/manifest' }
     )
   }
-
   const handleConfirm = (confirmed: boolean) => {
     fetcher.submit(
       { action: 'confirm-jump', jumpId: jump.id, confirmed },
       { method: 'POST', encType: 'application/json', action: '/api/manifest' }
     )
   }
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragOver(true)
-  }
-
-  const handleDragLeave = () => {
-    setIsDragOver(false)
-  }
-
-  const handleDrop = (e: React.DragEvent) => {
-    setIsDragOver(false)
-    onDrop(e, jump.id)
-  }
-
-  const handleRemoveSelected = () => {
-    const filePaths = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
-    if (filePaths.length > 0) {
-      onRemoveFiles(jump.id, filePaths)
-    }
-  }
-
   return (
     <div
-      className={`border rounded-lg overflow-hidden transition-colors mb-4 ${
-        isDragOver
-          ? 'border-blue-400 dark:border-blue-600 bg-blue-50/50 dark:bg-blue-900/30'
-          : jump.confirmed
-            ? 'border-green-300 dark:border-green-700 bg-green-50/50 dark:bg-green-900/20'
-            : 'border-gray-200 dark:border-gray-700'
-      }`}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}>
+      className={`border rounded-lg overflow-hidden transition-colors mb-3 ${isDragOver ? 'border-blue-400 bg-blue-50/50' : jump.confirmed ? 'border-green-300 bg-green-50/50 dark:border-green-700 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700'}`}
+      onDragOver={(e) => {
+        e.preventDefault()
+        setIsDragOver(true)
+      }}
+      onDragLeave={() => setIsDragOver(false)}
+      onDrop={(e) => {
+        setIsDragOver(false)
+        onDrop(e, jump.id)
+      }}>
       <div className='flex items-center gap-2 px-4 py-2'>
         <input
           type='checkbox'
           checked={jump.confirmed}
           onChange={(e) => handleConfirm(e.target.checked)}
-          className='h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500'
+          className='h-4 w-4 rounded border-gray-300 text-green-600'
         />
         <button
           type='button'
           onClick={() => setExpanded(!expanded)}
-          className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs'>
+          className='text-gray-400 text-xs'>
           {expanded ? '▼' : '▶'}
         </button>
         {editingLabel ? (
@@ -179,30 +393,26 @@ const JumpSection = ({
             onBlur={handleLabelSave}
             onKeyDown={(e) => e.key === 'Enter' && handleLabelSave()}
             autoFocus
-            className='font-semibold text-sm bg-white dark:bg-gray-800 border rounded px-1 py-0.5 w-full'
+            className='font-semibold text-sm bg-white border rounded px-1 py-0.5 w-full'
           />
         ) : (
           <span
-            className='font-semibold text-sm cursor-text hover:underline flex-1'
-            onClick={(e) => {
-              e.stopPropagation()
-              setEditingLabel(true)
-            }}>
+            className='font-semibold text-sm flex-1 cursor-text hover:underline'
+            onClick={() => setEditingLabel(true)}>
             {jump.label}
           </span>
         )}
-        <span className='text-xs text-gray-400 dark:text-gray-500'>
-          {jump.files.length} file{jump.files.length !== 1 ? 's' : ''}
-        </span>
+        <span className='text-xs text-gray-400'>{jump.files.length} files</span>
         {selectedCount > 0 && (
           <>
-            <span className='text-xs text-blue-500 dark:text-blue-400'>
-              {selectedCount} selected
-            </span>
+            <span className='text-xs text-blue-500'>{selectedCount} selected</span>
             <button
               type='button'
-              onClick={handleRemoveSelected}
-              className='text-xs text-red-500 hover:text-red-700'>
+              onClick={() => {
+                const fps = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
+                if (fps.length) onRemoveFiles(jump.id, fps)
+              }}
+              className='text-xs text-red-500'>
               Remove
             </button>
           </>
@@ -210,23 +420,10 @@ const JumpSection = ({
         <button
           type='button'
           onClick={handleDelete}
-          className='text-gray-400 hover:text-red-500 px-1'
-          title='Remove jump'>
-          <svg
-            className='w-4 h-4'
-            fill='none'
-            stroke='currentColor'
-            viewBox='0 0 24 24'>
-            <path
-              strokeLinecap='round'
-              strokeLinejoin='round'
-              strokeWidth={2}
-              d='M6 18L18 6M6 6l12 12'
-            />
-          </svg>
+          className='text-gray-400 hover:text-red-500 px-1'>
+          ✕
         </button>
       </div>
-
       {expanded && (
         <div className='border-t dark:border-gray-700 px-4 py-2 space-y-0.5 bg-gray-50/50 dark:bg-gray-800/50'>
           {jump.files.map((file) => (
@@ -236,11 +433,10 @@ const JumpSection = ({
               groupId={jump.id}
               selected={!!selection[file.path]}
               onSelect={onSelect}
-              onDragStart={(e, filePath) => {
-                const selectedPaths = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
-                const pathsToDrag =
-                  selectedPaths.length > 0 && selection[file.path] ? selectedPaths : [filePath]
-                onDragStart(e, pathsToDrag, jump.id)
+              onDragStart={(e, fp) => {
+                const sel = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
+                const toDrag = sel.length > 0 && selection[file.path] ? sel : [fp]
+                onDragStart(e, toDrag, jump.id)
               }}
             />
           ))}
@@ -258,65 +454,54 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   const manifestFetcher = useFetcher()
   const scanFetcher = useFetcher()
   const { revalidate } = useRevalidator()
-
   const [selection, setSelection] = useState<SelectionMap>({})
   const [lastClicked, setLastClicked] = useState<string | null>(null)
-  const [moveTarget, setMoveTarget] = useState<string>('')
+  const [moveTarget, setMoveTarget] = useState('')
+  const [editingDay, setEditingDay] = useState<string | null>(null)
   const dragDataRef = useRef<{ filePaths: string[]; sourceJumpId: string } | null>(null)
 
   useEffect(() => {
-    if (manifestFetcher.data || scanFetcher.data) {
-      revalidate()
-    }
+    if (manifestFetcher.data || scanFetcher.data) revalidate()
   }, [manifestFetcher.data, scanFetcher.data, revalidate])
 
   const scanning = scanFetcher.state !== 'idle'
 
-  const sequences = useMemo(() => {
-    if (!manifest) return []
-    return getSequences(manifest)
+  const sequences = useMemo(() => (manifest ? getSequences(manifest) : []), [manifest])
+
+  const dayGroups = useMemo(() => groupByDay(sequences), [sequences])
+
+  const filesInJumps = useMemo(() => {
+    if (!manifest) return new Set<string>()
+    return new Set(manifest.jumps.flatMap((j) => j.files.map((f) => f.path)))
   }, [manifest])
 
   const allFileIds = useMemo(() => {
     if (!manifest) return []
     const ids: string[] = []
-    for (const seq of sequences) {
-      for (const file of seq.files) {
-        ids.push(file.path)
-      }
-    }
-    for (const jump of manifest.jumps) {
-      for (const file of jump.files) {
-        if (!ids.includes(file.path)) {
-          ids.push(file.path)
-        }
-      }
-    }
+    for (const s of sequences) for (const f of s.files) ids.push(f.path)
+    for (const j of manifest.jumps)
+      for (const f of j.files) if (!ids.includes(f.path)) ids.push(f.path)
     return ids
   }, [manifest, sequences])
 
-  const unassignedFiles = useMemo(() => {
-    if (!manifest) return []
-    const inJumps = new Set(manifest.jumps.flatMap((j) => j.files.map((f) => f.path)))
-    return sequences.flatMap((s) => s.files.filter((f) => !inJumps.has(f.path)))
-  }, [manifest, sequences])
+  const hasCalibration = useMemo(
+    () => manifest?.files.some((f) => f.originalMtime !== undefined) ?? false,
+    [manifest]
+  )
 
   const handleSelect = useCallback(
     (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => {
       setSelection((prev) => {
         const next = { ...prev }
         if (!next[groupId]) next[groupId] = {}
-
         if (shiftKey && lastClicked) {
-          const startIdx = allFileIds.indexOf(lastClicked)
-          const endIdx = allFileIds.indexOf(filePath)
-          if (startIdx !== -1 && endIdx !== -1) {
-            const [from, to] = startIdx < endIdx ? [startIdx, endIdx] : [endIdx, startIdx]
+          const sIdx = allFileIds.indexOf(lastClicked)
+          const eIdx = allFileIds.indexOf(filePath)
+          if (sIdx !== -1 && eIdx !== -1) {
+            const [from, to] = sIdx < eIdx ? [sIdx, eIdx] : [eIdx, sIdx]
             for (let i = from; i <= to; i++) {
               const id = allFileIds[i]
-              for (const jid of Object.keys(next)) {
-                if (next[jid][id]) delete next[jid][id]
-              }
+              for (const jid of Object.keys(next)) if (next[jid][id]) delete next[jid][id]
               if (!next[groupId]) next[groupId] = {}
               next[groupId][id] = true
             }
@@ -324,12 +509,9 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
         } else if (ctrlKey) {
           next[groupId][filePath] = !next[groupId][filePath]
         } else {
-          for (const jid of Object.keys(next)) {
-            next[jid] = {}
-          }
+          for (const jid of Object.keys(next)) next[jid] = {}
           next[groupId][filePath] = true
         }
-
         setLastClicked(filePath)
         return next
       })
@@ -350,20 +532,16 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
       e.preventDefault()
       const data = dragDataRef.current
       if (!data) return
-
       try {
         let sourceJumpId = data.sourceJumpId
         if (sourceJumpId.startsWith('seq_')) {
-          for (const jump of manifest?.jumps ?? []) {
+          for (const jump of manifest?.jumps ?? [])
             if (jump.files.some((f) => data.filePaths.includes(f.path))) {
               sourceJumpId = jump.id
               break
             }
-          }
         }
-
         if (sourceJumpId === targetJumpId) return
-
         const sourceJump = manifest?.jumps.find((j) => j.id === sourceJumpId)
         if (sourceJump) {
           manifestFetcher.submit(
@@ -377,11 +555,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
           )
         } else {
           manifestFetcher.submit(
-            {
-              action: 'add-to-jump',
-              jumpId: targetJumpId,
-              filePaths: data.filePaths
-            },
+            { action: 'add-to-jump', jumpId: targetJumpId, filePaths: data.filePaths },
             { method: 'POST', encType: 'application/json', action: '/api/manifest' }
           )
         }
@@ -402,54 +576,17 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
     [manifestFetcher]
   )
 
-  const handleMoveSelected = () => {
-    if (!moveTarget || selectedFiles.length === 0) return
-
-    const fromJumpId = selectedJumpIds.length === 1 ? selectedJumpIds[0] : ''
-    if (!fromJumpId) return
-
-    manifestFetcher.submit(
-      {
-        action: 'move-files',
-        fromJumpId,
-        toJumpId: moveTarget,
-        filePaths: selectedFiles
-          .filter((s) => {
-            const jump = manifest?.jumps.find((j) => j.id === fromJumpId)
-            return jump?.files.some((f) => f.path === s.file.path)
-          })
-          .map((s) => s.file.path)
-      },
-      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-    )
-    setSelection({})
-    setMoveTarget('')
-  }
-
   const selectedFiles = useMemo(() => {
-    const result: { groupId: string; file: ManifestFile }[] = []
-    if (!manifest) return result
-
-    for (const seq of sequences) {
-      for (const file of seq.files) {
-        if (selection[seq.id]?.[file.path]) {
-          result.push({ groupId: seq.id, file })
-        }
-      }
-    }
-
-    for (const jump of manifest.jumps) {
-      for (const file of jump.files) {
-        if (selection[jump.id]?.[file.path]) {
-          const alreadySelected = result.some((r) => r.file.path === file.path)
-          if (!alreadySelected) {
-            result.push({ groupId: jump.id, file })
-          }
-        }
-      }
-    }
-
-    return result
+    const res: { groupId: string; file: ManifestFile }[] = []
+    if (!manifest) return res
+    for (const seq of sequences)
+      for (const f of seq.files)
+        if (selection[seq.id]?.[f.path]) res.push({ groupId: seq.id, file: f })
+    for (const jump of manifest.jumps)
+      for (const f of jump.files)
+        if (selection[jump.id]?.[f.path] && !res.some((r) => r.file.path === f.path))
+          res.push({ groupId: jump.id, file: f })
+    return res
   }, [manifest, selection, sequences])
 
   const selectedCount = selectedFiles.length
@@ -458,11 +595,8 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
       selectedFiles
         .map((s) => {
           if (!manifest) return null
-          for (const jump of manifest.jumps) {
-            if (jump.files.some((f) => f.path === s.file.path)) {
-              return jump.id
-            }
-          }
+          for (const j of manifest.jumps)
+            if (j.files.some((f) => f.path === s.file.path)) return j.id
           return null
         })
         .filter((id): id is string => id !== null)
@@ -470,24 +604,83 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
     return Array.from(ids)
   }, [selectedFiles, manifest])
 
+  const handleMoveSelected = () => {
+    if (!moveTarget || selectedFiles.length === 0) return
+    const fromJumpId = selectedJumpIds.length === 1 ? selectedJumpIds[0] : ''
+    if (!fromJumpId) return
+    manifestFetcher.submit(
+      {
+        action: 'move-files',
+        fromJumpId,
+        toJumpId: moveTarget,
+        filePaths: selectedFiles
+          .filter((s) =>
+            manifest?.jumps
+              .find((j) => j.id === fromJumpId)
+              ?.files.some((f) => f.path === s.file.path)
+          )
+          .map((s) => s.file.path)
+      },
+      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+    )
+    setSelection({})
+    setMoveTarget('')
+  }
+
+  const handleShiftDay = useCallback(
+    (date: string, newDateStr: string) => {
+      const group = dayGroups.find((g) => g.date === date)
+      if (!group) return
+      const parts = newDateStr.split('-')
+      const y = parseInt(parts[0], 10)
+      const m = parseInt(parts[1], 10) - 1
+      const d = parseInt(parts[2], 10)
+      const newNoon = Math.floor(new Date(y, m, d, 12, 0, 0).getTime() / 1000)
+      const oldStart = Math.min(...group.sequences.map((s) => s.startTime))
+      const oldNoon = Math.floor(new Date(oldStart * 1000).setHours(12, 0, 0, 0) / 1000)
+      const offset = newNoon - oldNoon
+      if (offset === 0) return
+      const paths = group.sequences.flatMap((s) => s.files.map((f) => f.path))
+      manifestFetcher.submit(
+        { action: 'shift-sequences', paths, offsetSeconds: offset },
+        { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+      )
+    },
+    [dayGroups, manifestFetcher]
+  )
+
+  const handleShiftDayOffset = useCallback(
+    (date: string, offsetSeconds: number, paths: string[]) => {
+      manifestFetcher.submit(
+        { action: 'shift-sequences', paths, offsetSeconds },
+        { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+      )
+    },
+    [manifestFetcher]
+  )
+
   const handleConfirmAll = () => {
     manifestFetcher.submit(
       { action: 'confirm-all', confirmed: true },
       { method: 'POST', encType: 'application/json', action: '/api/manifest' }
     )
   }
-
   const handleCreateJump = () => {
     manifestFetcher.submit(
       { action: 'create-jump' },
       { method: 'POST', encType: 'application/json', action: '/api/manifest' }
     )
   }
-
   const handleConfirmAndExecute = () => {
-    const confirmedJumpIds = manifest?.jumps.filter((j) => j.confirmed).map((j) => j.id) ?? []
+    const ids = manifest?.jumps.filter((j) => j.confirmed).map((j) => j.id) ?? []
     manifestFetcher.submit(
-      { action: 'execute-jumps', jumpIds: confirmedJumpIds },
+      { action: 'execute-jumps', jumpIds: ids },
+      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+    )
+  }
+  const handleResetCalibration = () => {
+    manifestFetcher.submit(
+      { action: 'reset-calibration' },
       { method: 'POST', encType: 'application/json', action: '/api/manifest' }
     )
   }
@@ -507,13 +700,13 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
               <button
                 type='submit'
                 disabled={scanning}
-                className='px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 cursor-pointer'>
+                className='px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg'>
                 {scanning ? 'Scanning...' : 'Scan'}
               </button>
             </scanFetcher.Form>
             <Link
               to='/'
-              className='text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'>
+              className='text-gray-500'>
               Back to Dashboard
             </Link>
           </div>
@@ -522,17 +715,12 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
     </div>
   )
 
-  if (!manifest) {
+  if (!manifest)
     return renderEmptyState('No Manifest Found', 'Run a scan first to generate proposed jumps.')
-  }
-
-  if (manifest.status === 'empty') {
+  if (manifest.status === 'empty')
     return renderEmptyState('No Files to Review', 'No new camera files were found.')
-  }
-
-  if (manifest.status === 'executed') {
+  if (manifest.status === 'executed')
     return renderEmptyState('Already Executed', 'This manifest has already been processed.')
-  }
 
   const confirmedCount = manifest.jumps.filter((j) => j.confirmed).length
   const totalFiles = manifest.jumps.reduce((s, j) => s + j.files.length, 0)
@@ -544,9 +732,8 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
           <div>
             <h1 className='text-3xl font-bold'>Review Proposed Jumps</h1>
             <p className='text-gray-500 mt-1'>
-              {manifest.date} — {manifest.jumps.length} jump
-              {manifest.jumps.length !== 1 ? 's' : ''}, {totalFiles} file
-              {totalFiles !== 1 ? 's' : ''}
+              {manifest.date} — {manifest.jumps.length} jumps, {totalFiles} files
+              {hasCalibration && <span className='ml-2 text-amber-600'>• dates shifted</span>}
             </p>
           </div>
           <div className='flex items-center gap-3'>
@@ -556,13 +743,13 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
               <button
                 type='submit'
                 disabled={scanning}
-                className='px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 cursor-pointer'>
+                className='px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg'>
                 {scanning ? 'Scanning...' : 'Scan'}
               </button>
             </scanFetcher.Form>
             <Link
               to='/'
-              className='text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'>
+              className='text-gray-500'>
               Back to Dashboard
             </Link>
           </div>
@@ -572,38 +759,42 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
           <button
             type='button'
             onClick={handleConfirmAll}
-            className='px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50'>
+            className='px-4 py-2 text-sm font-medium bg-white border rounded-lg'>
             Confirm All
           </button>
           <button
             type='button'
             onClick={handleCreateJump}
-            className='px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50'>
+            className='px-4 py-2 text-sm bg-white border rounded-lg'>
             + Add Jump
           </button>
+          {hasCalibration && (
+            <button
+              type='button'
+              onClick={handleResetCalibration}
+              className='px-4 py-2 text-sm text-amber-700 border border-amber-300 rounded-lg bg-amber-50'>
+              Reset dates
+            </button>
+          )}
           <button
             type='button'
             onClick={handleConfirmAndExecute}
             disabled={confirmedCount === 0}
-            className={`px-6 py-2 text-sm font-medium text-white rounded-lg ${
-              confirmedCount > 0
-                ? 'bg-green-600 hover:bg-green-700'
-                : 'bg-gray-300 cursor-not-allowed'
-            }`}>
+            className={`ml-auto px-6 py-2 text-sm font-medium text-white rounded-lg ${confirmedCount > 0 ? 'bg-green-600' : 'bg-gray-300'}`}>
             Confirm & Execute ({confirmedCount}/{manifest.jumps.length})
           </button>
         </div>
 
         {selectedCount > 0 && (
-          <div className='flex items-center gap-3 mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg'>
-            <span className='text-sm font-medium text-blue-700 dark:text-blue-300'>
-              {selectedCount} file{selectedCount !== 1 ? 's' : ''} selected
+          <div className='flex items-center gap-3 mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg'>
+            <span className='text-sm font-medium text-blue-700'>
+              {selectedCount} files selected
             </span>
             <div className='flex-1' />
             <select
               value={moveTarget}
               onChange={(e) => setMoveTarget(e.target.value)}
-              className='px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800'>
+              className='px-3 py-1.5 text-sm border rounded-lg bg-white'>
               <option value=''>Move to jump...</option>
               {manifest.jumps.map((j) => (
                 <option
@@ -616,45 +807,67 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
             <button
               type='button'
               onClick={handleMoveSelected}
-              disabled={!moveTarget || selectedCount === 0}
-              className='px-4 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 cursor-pointer'>
+              disabled={!moveTarget}
+              className='px-4 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg disabled:opacity-50'>
               Move
             </button>
             <button
               type='button'
               onClick={() => setSelection({})}
-              className='px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'>
+              className='px-3 py-1.5 text-sm text-gray-500'>
               Clear
             </button>
           </div>
         )}
 
-        <div className='flex gap-4'>
-          <div className='flex-1 min-w-0'>
-            {unassignedFiles.length > 0 && (
-              <div className='mb-4'>
-                <div className='flex items-center gap-2 mb-2 px-1'>
-                  <div className='w-3 h-3 rounded-full bg-yellow-500' />
-                  <h2 className='text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider'>
-                    Unassigned Files ({unassignedFiles.length})
-                  </h2>
-                </div>
-                <div className='border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 bg-yellow-50/50 dark:bg-yellow-900/10 space-y-0.5'>
-                  {unassignedFiles.map((file) => (
-                    <FileRow
-                      key={file.path}
-                      file={file}
-                      groupId='unassigned'
-                      selected={!!selection['unassigned']?.[file.path]}
-                      onSelect={handleSelect}
-                      onDragStart={(e, filePath) => handleDragStart(e, [filePath], 'unassigned')}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+        <TimelinePerDay
+          dayGroups={dayGroups}
+          onShiftDay={handleShiftDayOffset}
+        />
 
-            <div className='space-y-2'>
+        <div className='flex gap-6'>
+          <div className='flex-1 min-w-0'>
+            <div className='flex items-center gap-2 mb-2 px-1'>
+              <div className='w-2.5 h-2.5 rounded-full bg-gray-400' />
+              <h2 className='text-xs font-semibold text-gray-600 uppercase tracking-wider'>
+                Sequences by day
+              </h2>
+              <span className='text-xs text-gray-400'>
+                — ground truth, click date or drag timeline to fix drift
+              </span>
+            </div>
+            <div className='space-y-1'>
+              {dayGroups.map((day) => (
+                <SequenceDaySection
+                  key={day.date}
+                  day={day}
+                  filesInJumps={filesInJumps}
+                  selection={selection}
+                  onSelect={handleSelect}
+                  onDragStart={handleDragStart}
+                  onShiftDay={handleShiftDay}
+                  editingDay={editingDay}
+                  setEditingDay={setEditingDay}
+                />
+              ))}
+              {dayGroups.length === 0 && (
+                <p className='text-sm text-gray-400 italic'>No sequences</p>
+              )}
+            </div>
+            <div className='mt-3 flex items-center gap-2 text-xs text-gray-500 px-1'>
+              <span className='w-3 h-3 rounded bg-yellow-50 border border-yellow-200' />
+              <span>yellow = not yet in any jump (will be ignored on Execute)</span>
+            </div>
+          </div>
+
+          <div className='w-[380px] shrink-0'>
+            <div className='flex items-center gap-2 mb-2 px-1'>
+              <div className='w-2.5 h-2.5 rounded-full bg-green-500' />
+              <h2 className='text-xs font-semibold text-gray-600 uppercase tracking-wider'>
+                Jumps — to be processed
+              </h2>
+            </div>
+            <div className='space-y-3'>
               {manifest.jumps.map((jump) => (
                 <JumpSection
                   key={jump.id}
@@ -666,6 +879,9 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                   onRemoveFiles={handleRemoveFiles}
                 />
               ))}
+              {manifest.jumps.length === 0 && (
+                <p className='text-sm text-gray-400 italic'>No jumps — create one or fix dates</p>
+              )}
             </div>
           </div>
         </div>
