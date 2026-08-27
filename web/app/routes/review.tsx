@@ -546,6 +546,14 @@ const TimelineJumps = ({
 
   const allJumps = useMemo(() => dayGroups.flatMap((d) => d.jumps), [dayGroups])
 
+  useEffect(() => {
+    setDraggingJump(null)
+    setDragOffset(0)
+    setDragLabel('')
+    setDraggedTime(null)
+    dragOffsetRef.current = 0
+  }, [dayGroups])
+
   const timeRange = useMemo(() => {
     const bounds = allJumps.map(getJumpBounds).filter((b) => b.start !== 0)
     if (bounds.length === 0) return { min: 0, max: 86400 }
@@ -689,6 +697,7 @@ const TimelineJumps = ({
                       width: `${width(bounds.start, bounds.end)}%`
                     }}
                     onMouseDown={(e) => {
+                      if (jump.processed) return
                       e.preventDefault()
                       e.stopPropagation()
                       const startX = e.clientX
@@ -713,12 +722,15 @@ const TimelineJumps = ({
                         document.removeEventListener('mousemove', handleMove)
                         document.removeEventListener('mouseup', handleUp)
                         const off = dragOffsetRef.current
-                        setDraggingJump(null)
-                        setDragOffset(0)
-                        setDragLabel('')
-                        setDraggedTime(null)
-                        dragOffsetRef.current = 0
-                        if (Math.abs(off) >= 60) onShiftDay(jump.id, off, jumpPaths)
+                        if (Math.abs(off) >= 60) {
+                          onShiftDay(jump.id, off, jumpPaths)
+                        } else {
+                          setDraggingJump(null)
+                          setDragOffset(0)
+                          setDragLabel('')
+                          setDraggedTime(null)
+                          dragOffsetRef.current = 0
+                        }
                       }
                       document.addEventListener('mousemove', handleMove)
                       document.addEventListener('mouseup', handleUp)
