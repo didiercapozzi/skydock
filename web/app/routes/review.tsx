@@ -235,17 +235,33 @@ const TimelinePerDay = ({
   }, [allSeqs])
 
   const range = timeRange.max - timeRange.min || 1
-  const pos = (t: number) => ((t - timeRange.min) / range) * 100
-  const width = (a: number, b: number) => Math.max(2, ((b - a) / range) * 100)
+  const isHugeRange = range > 7 * 86400
+  const pos = (t: number) => {
+    if (!isHugeRange) return ((t - timeRange.min) / range) * 100
+    const d = new Date(t * 1000)
+    const secs = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds()
+    return (secs / 86400) * 100
+  }
+  const width = (a: number, b: number) => {
+    if (!isHugeRange) return Math.max(2, ((b - a) / range) * 100)
+    return Math.max(2, ((b - a) / 86400) * 100)
+  }
 
   const hourTicks = useMemo(() => {
+    if (isHugeRange) {
+      return [0, 6, 12, 18, 24].map((h) => ({
+        t: h * 3600,
+        label: h === 0 ? '00:00' : `${String(h).padStart(2, '0')}:00`
+      }))
+    }
     const ticks: { t: number; label: string }[] = []
     const start = new Date(timeRange.min * 1000)
     start.setMinutes(0, 0, 0)
     start.setHours(Math.ceil(start.getHours() / 6) * 6)
+    let count = 0
     for (
       let d = new Date(start);
-      d.getTime() / 1000 < timeRange.max;
+      d.getTime() / 1000 < timeRange.max && count < 200;
       d.setHours(d.getHours() + 6)
     ) {
       const epoch = Math.floor(d.getTime() / 1000)
@@ -255,9 +271,27 @@ const TimelinePerDay = ({
           ? d.toLocaleDateString([], { month: 'short', day: 'numeric' })
           : `${String(h).padStart(2, '0')}:00`
       ticks.push({ t: epoch, label })
+      count++
     }
     return ticks
-  }, [timeRange])
+  }, [timeRange, isHugeRange])
+
+  const outlierDates = useMemo(() => {
+    if (!isHugeRange) return []
+    const sorted = [...dayGroups].sort((a, b) => {
+      const ta = Math.min(...a.sequences.map((s) => s.startTime))
+      const tb = Math.min(...b.sequences.map((s) => s.startTime))
+      return ta - tb
+    })
+    if (sorted.length < 2) return []
+    const lastStart = Math.min(...sorted[sorted.length - 1].sequences.map((s) => s.startTime))
+    return sorted
+      .filter((g) => {
+        const t = Math.min(...g.sequences.map((s) => s.startTime))
+        return lastStart - t > 30 * 86400
+      })
+      .map((g) => g.date)
+  }, [dayGroups, isHugeRange])
 
   if (allSeqs.length === 0) return null
 
@@ -267,8 +301,16 @@ const TimelinePerDay = ({
         <span className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>
           Timeline — drag a sequence to shift it, drag lane to shift day
         </span>
-        <span className='text-[10px] text-gray-400'>Shift+drag snaps to 1 day</span>
+        <span className='text-[10px] text-gray-400'>
+          {isHugeRange ? 'Outlier dates — time-of-day view' : 'Shift+drag snaps to 1 day'}
+        </span>
       </div>
+      {isHugeRange && outlierDates.length > 0 && (
+        <div className='mb-1 px-2 py-1 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800'>
+          Detected wrong dates ({outlierDates.join(', ')}) — likely camera clock not set. Timeline
+          shows time-of-day only. Drag the lane or click the date to correct.
+        </div>
+      )}
       <div
         ref={containerRef}
         className='relative bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden select-none'
