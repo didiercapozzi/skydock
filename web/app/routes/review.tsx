@@ -7,8 +7,8 @@ import { ensureManifestFileIds } from '../lib/fileId.server'
 import {
   getSequences,
   formatDateForInput,
-  formatSequenceTime,
-  formatClockOffset
+  formatSequenceDate,
+  formatSequenceTime
 } from '../lib/sequences'
 import type { Sequence } from '../lib/sequences'
 import type { Manifest, ManifestFile, ManifestJump } from '../lib/types'
@@ -216,6 +216,7 @@ const TimelinePerDay = ({
   const [draggingSeq, setDraggingSeq] = useState<string | null>(null)
   const [dragOffset, setDragOffset] = useState(0)
   const [dragLabel, setDragLabel] = useState('')
+  const [draggedTime, setDraggedTime] = useState<number | null>(null)
   const dragOffsetRef = useRef(0)
 
   const allSeqs = useMemo(() => dayGroups.flatMap((d) => d.sequences), [dayGroups])
@@ -353,6 +354,7 @@ const TimelinePerDay = ({
                 setDragOffset(0)
                 dragOffsetRef.current = 0
                 setDragLabel(day.date)
+                setDraggedTime(Math.min(...day.sequences.map((s) => s.startTime)))
                 const dayPaths = day.sequences.flatMap((s) => s.files.map((f) => f.path))
                 const handleMove = (ev: MouseEvent) => {
                   const dx = ev.clientX - startX
@@ -371,6 +373,7 @@ const TimelinePerDay = ({
                   setDraggingDay(null)
                   setDragOffset(0)
                   setDragLabel('')
+                  setDraggedTime(null)
                   dragOffsetRef.current = 0
                   if (Math.abs(off) >= 60) onShiftDay(day.date, off, dayPaths)
                 }
@@ -405,6 +408,7 @@ const TimelinePerDay = ({
                       setDragOffset(0)
                       dragOffsetRef.current = 0
                       setDragLabel(`Seq ${day.sequences.indexOf(seq) + 1}`)
+                      setDraggedTime(seq.startTime)
                       const seqPaths = seq.files.map((f) => f.path)
                       const handleMove = (ev: MouseEvent) => {
                         const dx = ev.clientX - startX
@@ -423,6 +427,7 @@ const TimelinePerDay = ({
                         setDraggingSeq(null)
                         setDragOffset(0)
                         setDragLabel('')
+                        setDraggedTime(null)
                         dragOffsetRef.current = 0
                         if (Math.abs(off) >= 60) onShiftDay(day.date, off, seqPaths)
                       }
@@ -436,9 +441,10 @@ const TimelinePerDay = ({
             </div>
           )
         })}
-        {(draggingDay || draggingSeq) && Math.abs(dragOffset) >= 60 && (
+        {(draggingDay || draggingSeq) && Math.abs(dragOffset) >= 60 && draggedTime !== null && (
           <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-mono bg-gray-800 text-white px-2 py-1 rounded shadow pointer-events-none'>
-            {dragLabel} {formatClockOffset(dragOffset)}
+            {dragLabel} {formatSequenceDate(draggedTime + dragOffset)}{' '}
+            {formatSequenceTime(draggedTime + dragOffset)}
           </div>
         )}
       </div>
