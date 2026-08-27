@@ -37,15 +37,22 @@ create_file() {
     local name="$2"
     local epoch="$3"
     local path="${dir}/${name}"
-    if command -v ffmpeg &>/dev/null; then
-        ffmpeg -y -loglevel error \
-            -f lavfi -i "testsrc=duration=${DURATION}:size=1920x1080:rate=30" \
-            -f lavfi -i "sine=frequency=440:duration=${DURATION}" \
-            -c:v libx264 -preset ultrafast -tune zerolatency \
-            -c:a aac -shortest \
-            "${path}" 2>/dev/null
+    if [[ "${name}" == *.JPG ]] || [[ "${name}" == *.jpg ]]; then
+        dd if=/dev/urandom bs=1024 count=30 of="${path}" 2>/dev/null
+        if command -v ffmpeg &>/dev/null; then
+            ffmpeg -y -loglevel error -f lavfi -i "testsrc=size=1920x1080:rate=1" -frames:v 1 "${path}" 2>/dev/null || true
+        fi
     else
-        dd if=/dev/urandom bs=1024 count=50 of="${path}" 2>/dev/null
+        if command -v ffmpeg &>/dev/null; then
+            ffmpeg -y -loglevel error \
+                -f lavfi -i "testsrc=duration=${DURATION}:size=1920x1080:rate=30" \
+                -f lavfi -i "sine=frequency=440:duration=${DURATION}" \
+                -c:v libx264 -preset ultrafast -tune zerolatency \
+                -c:a aac -shortest \
+                "${path}" 2>/dev/null
+        else
+            dd if=/dev/urandom bs=1024 count=50 of="${path}" 2>/dev/null
+        fi
     fi
     touch -d "@${epoch}" "${path}"
 }
@@ -61,7 +68,11 @@ if $DEV_MODE; then
         FILE_COUNTER=$((FILE_COUNTER + 1))
         IDX=$((IDX + 1))
         epoch=$((DAY1_BASE + off))
-        filename=$(printf "DJI_%04d.MP4" "${FILE_COUNTER}")
+        if (( IDX % 3 == 0 )); then
+            filename=$(printf "DJI_%04d.JPG" "${FILE_COUNTER}")
+        else
+            filename=$(printf "DJI_%04d.MP4" "${FILE_COUNTER}")
+        fi
         if (( IDX % 2 == 1 )); then
             create_file "${CAMERA1_DIR}" "${filename}" "${epoch}"
         else
@@ -72,14 +83,18 @@ if $DEV_MODE; then
         FILE_COUNTER=$((FILE_COUNTER + 1))
         IDX=$((IDX + 1))
         epoch=$((DAY2_BASE + off))
-        filename=$(printf "DJI_%04d.MP4" "${FILE_COUNTER}")
+        if (( IDX % 3 == 0 )); then
+            filename=$(printf "DJI_%04d.JPG" "${FILE_COUNTER}")
+        else
+            filename=$(printf "DJI_%04d.MP4" "${FILE_COUNTER}")
+        fi
         if (( IDX % 2 == 1 )); then
             create_file "${CAMERA1_DIR}" "${filename}" "${epoch}"
         else
             create_file "${CAMERA2_DIR}" "${filename}" "${epoch}"
         fi
     done
-    echo "[Sim] Created 18 files (10 on $(date -d "@${DAY1_BASE}" +%Y-%m-%d) in 2 jumps, 8 on $(date -d "@${DAY2_BASE}" +%Y-%m-%d) in 2 jumps) under ${SIM_BASE}"
+    echo "[Sim] Created 18 files mixed JPG/MP4 (10 on $(date -d "@${DAY1_BASE}" +%Y-%m-%d) in 2 jumps, 8 on $(date -d "@${DAY2_BASE}" +%Y-%m-%d) in 2 jumps) under ${SIM_BASE}"
     echo ""
     echo "Test with:"
     echo "  ./scripts/process_media.sh '${CAMERA1_DIR}' '${CAMERA2_DIR}'"
