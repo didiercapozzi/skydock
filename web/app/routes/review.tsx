@@ -64,7 +64,7 @@ type PreviewState = {
   label: string
 }
 
-const PreviewModal = ({
+const PreviewDrawer = ({
   preview,
   onClose,
   onPrev,
@@ -90,79 +90,78 @@ const PreviewModal = ({
   }, [onClose, onPrev, onNext])
 
   return (
-    <div
-      className='fixed inset-0 z-50 flex flex-col bg-black/80'
-      onClick={onClose}>
-      <div className='flex items-center justify-between px-4 py-3 bg-black/60 text-white'>
-        <div className='flex items-center gap-3 min-w-0'>
-          <span className='text-sm font-medium truncate'>{preview.label}</span>
-          <span className='text-xs text-gray-300 truncate'>{file.filename}</span>
-          <span className='text-xs text-gray-400'>
-            {preview.index + 1} / {preview.files.length} • {formatTime(file.mtime)} •{' '}
-            {formatSize(file.size)}
-          </span>
+    <div className='fixed inset-0 z-50 flex justify-end'>
+      <div
+        className='absolute inset-0 bg-black/30'
+        onClick={onClose}
+      />
+      <div className='relative w-full max-w-[520px] h-full bg-white dark:bg-gray-900 shadow-xl flex flex-col'>
+        <div className='flex items-center justify-between px-4 py-3 border-b dark:border-gray-700'>
+          <div className='min-w-0'>
+            <div className='text-sm font-medium truncate'>{preview.label}</div>
+            <div className='text-xs text-gray-500 truncate'>
+              {file.filename} • {preview.index + 1} / {preview.files.length} •{' '}
+              {formatTime(file.mtime)}
+            </div>
+          </div>
+          <div className='flex items-center gap-2 shrink-0'>
+            <a
+              href={src}
+              target='_blank'
+              rel='noreferrer'
+              className='text-xs px-2 py-1 rounded border hover:bg-gray-50 dark:hover:bg-gray-800'>
+              Open
+            </a>
+            <button
+              type='button'
+              onClick={onClose}
+              className='w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-800'>
+              ✕
+            </button>
+          </div>
         </div>
-        <div className='flex items-center gap-2'>
-          <a
-            href={src}
-            target='_blank'
-            rel='noreferrer'
-            onClick={(e) => e.stopPropagation()}
-            className='text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20'>
-            Open
-          </a>
+        <div className='flex-1 flex flex-col items-center justify-center p-4 gap-3 overflow-auto'>
+          <div className='w-full flex items-center justify-center'>
+            {isVideo ? (
+              <video
+                key={file.path}
+                src={src}
+                controls
+                autoPlay
+                muted
+                preload='metadata'
+                className='max-w-full max-h-[60vh] rounded bg-black'
+              />
+            ) : (
+              <img
+                key={file.path}
+                src={src}
+                alt={file.filename}
+                className='max-w-full max-h-[60vh] rounded object-contain'
+              />
+            )}
+          </div>
+          <div className='text-xs text-gray-500'>{formatSize(file.size)}</div>
+        </div>
+        <div className='flex items-center justify-between px-4 py-3 border-t dark:border-gray-700'>
           <button
             type='button'
-            onClick={onClose}
-            className='w-8 h-8 flex items-center justify-center rounded bg-white/10 hover:bg-white/20'>
-            ✕
+            onClick={onPrev}
+            disabled={preview.files.length <= 1}
+            className='px-3 py-1.5 text-sm rounded border disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800'>
+            ← Prev
+          </button>
+          <span className='text-xs text-gray-500'>
+            {preview.index + 1} / {preview.files.length}
+          </span>
+          <button
+            type='button'
+            onClick={onNext}
+            disabled={preview.files.length <= 1}
+            className='px-3 py-1.5 text-sm rounded border disabled:opacity-30 hover:bg-gray-50 dark:hover:bg-gray-800'>
+            Next →
           </button>
         </div>
-      </div>
-      <div
-        className='flex-1 flex items-center justify-center p-4 gap-4'
-        onClick={(e) => e.stopPropagation()}>
-        <button
-          type='button'
-          onClick={onPrev}
-          disabled={preview.files.length <= 1}
-          className='w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white disabled:opacity-30 shrink-0'>
-          ‹
-        </button>
-        <div className='flex-1 flex items-center justify-center max-w-5xl max-h-[75vh]'>
-          {isVideo ? (
-            <video
-              key={file.path}
-              src={src}
-              controls
-              autoPlay
-              muted
-              preload='metadata'
-              className='max-w-full max-h-[75vh] rounded bg-black'
-            />
-          ) : (
-            <img
-              key={file.path}
-              src={src}
-              alt={file.filename}
-              className='max-w-full max-h-[75vh] rounded object-contain'
-            />
-          )}
-        </div>
-        <button
-          type='button'
-          onClick={onNext}
-          disabled={preview.files.length <= 1}
-          className='w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white disabled:opacity-30 shrink-0'>
-          ›
-        </button>
-      </div>
-      <div className='flex items-center justify-center gap-2 pb-4 text-xs text-gray-400'>
-        <span>← Prev</span>
-        <span>•</span>
-        <span>Next →</span>
-        <span>•</span>
-        <span>Esc to close</span>
       </div>
     </div>
   )
@@ -173,6 +172,7 @@ const FileRow = ({
   groupId,
   selected,
   isUnassigned,
+  isSelectMode,
   onSelect,
   onDragStart,
   onPreview
@@ -181,55 +181,73 @@ const FileRow = ({
   groupId: string
   selected: boolean
   isUnassigned?: boolean
+  isSelectMode?: boolean
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDragStart: (e: React.DragEvent, filePath: string, groupId: string) => void
   onPreview?: () => void
-}) => (
-  <div
-    className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded cursor-pointer select-none transition-colors ${
-      selected
-        ? 'bg-blue-100 dark:bg-blue-900/40 ring-1 ring-blue-300 dark:ring-blue-700'
-        : isUnassigned
-          ? 'bg-yellow-50 dark:bg-yellow-900/20 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800'
-          : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-    }`}
-    draggable
-    onDragStart={(e) => onDragStart(e, file.path, groupId)}
-    onClick={(e) => onSelect(groupId, file.path, e.ctrlKey || e.metaKey, e.shiftKey)}>
-    <input
-      type='checkbox'
-      checked={selected}
-      onChange={() => {}}
-      className='h-4 w-4 rounded border-gray-300 text-blue-600 pointer-events-none'
-    />
-    <span className='font-mono truncate flex-1 text-xs text-gray-700 dark:text-gray-300'>
-      {file.filename}
-    </span>
-    <span className='text-gray-400 dark:text-gray-500 text-xs whitespace-nowrap tabular-nums'>
-      {formatTime(file.mtime)}
-    </span>
-    <span className='text-gray-400 dark:text-gray-500 text-xs whitespace-nowrap'>
-      {formatSize(file.size)}
-    </span>
-    {onPreview && (
-      <button
-        type='button'
-        onClick={(e) => {
-          e.stopPropagation()
-          onPreview()
-        }}
-        className='w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 shrink-0'
-        title='Preview'>
-        👁
-      </button>
-    )}
-  </div>
-)
+}) => {
+  const handleRowClick = (e: React.MouseEvent) => {
+    if (isSelectMode || e.ctrlKey || e.metaKey || e.shiftKey) {
+      onSelect(groupId, file.path, e.ctrlKey || e.metaKey, e.shiftKey)
+    } else if (onPreview) {
+      onPreview()
+    }
+  }
+
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onSelect(groupId, file.path, true, false)
+  }
+
+  return (
+    <div
+      className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded cursor-pointer select-none transition-colors ${
+        selected
+          ? 'bg-blue-100 dark:bg-blue-900/40 ring-1 ring-blue-300 dark:ring-blue-700'
+          : isUnassigned
+            ? 'bg-yellow-50 dark:bg-yellow-900/20 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800'
+            : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+      }`}
+      draggable
+      onDragStart={(e) => onDragStart(e, file.path, groupId)}
+      onClick={handleRowClick}>
+      <input
+        type='checkbox'
+        checked={selected}
+        onChange={() => {}}
+        onClick={handleCheckboxClick}
+        className='h-4 w-4 rounded border-gray-300 text-blue-600'
+      />
+      <span className='font-mono truncate flex-1 text-xs text-gray-700 dark:text-gray-300'>
+        {file.filename}
+      </span>
+      <span className='text-gray-400 dark:text-gray-500 text-xs whitespace-nowrap tabular-nums'>
+        {formatTime(file.mtime)}
+      </span>
+      <span className='text-gray-400 dark:text-gray-500 text-xs whitespace-nowrap'>
+        {formatSize(file.size)}
+      </span>
+      {onPreview && (
+        <button
+          type='button'
+          onClick={(e) => {
+            e.stopPropagation()
+            onPreview()
+          }}
+          className='w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 shrink-0'
+          title='Preview'>
+          👁
+        </button>
+      )}
+    </div>
+  )
+}
 
 const SequenceDaySection = ({
   day,
   filesInJumps,
   selection,
+  isSelectMode,
   onSelect,
   onDragStart,
   onShiftDay,
@@ -240,6 +258,7 @@ const SequenceDaySection = ({
   day: DayGroup
   filesInJumps: Set<string>
   selection: SelectionMap
+  isSelectMode: boolean
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDragStart: (e: React.DragEvent, filePaths: string[], sourceId: string) => void
   onShiftDay: (date: string, newDateStr: string) => void
@@ -313,6 +332,7 @@ const SequenceDaySection = ({
                 groupId={seq.id}
                 selected={!!selection[seq.id]?.[file.path]}
                 isUnassigned={!filesInJumps.has(file.path)}
+                isSelectMode={isSelectMode}
                 onSelect={onSelect}
                 onDragStart={(e, fp) => {
                   const selected = seq.files
@@ -582,6 +602,7 @@ const TimelinePerDay = ({
 const JumpSection = ({
   jump,
   selection,
+  isSelectMode,
   onSelect,
   onDrop,
   onDragStart,
@@ -590,6 +611,7 @@ const JumpSection = ({
 }: {
   jump: ManifestJump
   selection: Record<string, boolean>
+  isSelectMode: boolean
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDrop: (e: React.DragEvent, targetJumpId: string) => void
   onDragStart: (e: React.DragEvent, filePaths: string[], sourceJumpId: string) => void
@@ -741,6 +763,7 @@ const JumpSection = ({
               file={file}
               groupId={jump.id}
               selected={!!selection[file.path]}
+              isSelectMode={isSelectMode}
               onSelect={onSelect}
               onDragStart={(e, fp) => {
                 if (isProcessed) return
@@ -900,6 +923,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   }, [manifest, selection, sequences])
 
   const selectedCount = selectedFiles.length
+  const isSelectMode = selectedCount > 0
 
   const handleShiftDay = useCallback(
     (date: string, newDateStr: string) => {
@@ -1111,6 +1135,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                   day={day}
                   filesInJumps={filesInJumps}
                   selection={selection}
+                  isSelectMode={isSelectMode}
                   onSelect={handleSelect}
                   onDragStart={handleDragStart}
                   onShiftDay={handleShiftDay}
@@ -1142,6 +1167,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                   key={jump.id}
                   jump={jump}
                   selection={selection[jump.id] ?? {}}
+                  isSelectMode={isSelectMode}
                   onSelect={handleSelect}
                   onDrop={handleDrop}
                   onDragStart={handleDragStart}
@@ -1156,7 +1182,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
           </div>
         </div>
         {preview && (
-          <PreviewModal
+          <PreviewDrawer
             preview={preview}
             onClose={handlePreviewClose}
             onPrev={handlePreviewPrev}
