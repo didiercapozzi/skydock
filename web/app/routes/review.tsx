@@ -573,7 +573,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   )
 
   const handleSelect = useCallback(
-    (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => {
+    (groupId: string, filePath: string, _ctrlKey: boolean, shiftKey: boolean) => {
       setSelection((prev) => {
         const next = { ...prev }
         if (!next[groupId]) next[groupId] = {}
@@ -589,10 +589,9 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
               next[groupId][id] = true
             }
           }
-        } else if (ctrlKey) {
-          next[groupId][filePath] = !next[groupId][filePath]
+        } else if (next[groupId][filePath]) {
+          delete next[groupId][filePath]
         } else {
-          for (const jid of Object.keys(next)) next[jid] = {}
           next[groupId][filePath] = true
         }
         setLastClicked(filePath)
