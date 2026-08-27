@@ -47,7 +47,7 @@ for cam_dir in "${CAMERA_DIRS[@]}"; do
             continue
         fi
 
-        cp --update=none "${filepath}" "${dest_dir}/${filename}"
+        cp -p --update=none "${filepath}" "${dest_dir}/${filename}"
         total_copied=$((total_copied + 1))
     done < <(find "${cam_dir}" -maxdepth 4 -type f \( \
         -iname "*.mp4" -o -iname "*.mov" -o \

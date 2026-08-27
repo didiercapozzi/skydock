@@ -1,4 +1,5 @@
 import { execSync } from 'node:child_process'
+import * as fs from 'node:fs'
 import path from 'node:path'
 import { getOutputDirPath } from '../lib/scanner.server'
 import { ensureManifestFileIds } from '../lib/fileId.server'
@@ -19,7 +20,6 @@ const action = async ({ request }: { request: Request }) => {
   const scanScript = path.join(SCRIPTS_DIR, 'scan_media.sh')
 
   if (formAction === 'add-jump') {
-    // Add new simulated files
     const simulateScript = path.join(SCRIPTS_DIR, 'simulate_cameras.sh')
     try {
       execSync(`"${simulateScript}" --output "${simBase}" --num-files 4`, { timeout: 30_000 })
@@ -30,7 +30,6 @@ const action = async ({ request }: { request: Request }) => {
       }
     }
 
-    // Copy new files to original_files
     const camera1 = path.join(simBase, 'camera1')
     const camera2 = path.join(simBase, 'camera2')
     const cameraDirs = []
@@ -50,7 +49,6 @@ const action = async ({ request }: { request: Request }) => {
       }
     }
 
-    // Regenerate manifest
     try {
       execSync(`SKYDOCK_OUTPUT_DIR="${outputDir}" "${scanScript}" 2>&1`, {
         timeout: 30_000
@@ -63,17 +61,19 @@ const action = async ({ request }: { request: Request }) => {
     return { ok: true }
   }
 
-  // Default action: reset dev data
+  try {
+    fs.rmSync(outputDir, { recursive: true, force: true })
+  } catch {}
+
   const simulateScript = path.join(SCRIPTS_DIR, 'simulate_cameras.sh')
   try {
-    execSync(`"${simulateScript}" --output "${simBase}" --clean --num-files 8`, {
+    execSync(`"${simulateScript}" --output "${simBase}" --clean --dev-data`, {
       timeout: 30_000
     })
   } catch (e) {
     return { ok: false, error: `Simulation failed: ${e instanceof Error ? e.message : String(e)}` }
   }
 
-  // Copy simulated files to original_files
   const camera1 = path.join(simBase, 'camera1')
   const camera2 = path.join(simBase, 'camera2')
   const cameraDirs = []
@@ -93,7 +93,6 @@ const action = async ({ request }: { request: Request }) => {
     }
   }
 
-  // Generate manifest
   try {
     execSync(`SKYDOCK_OUTPUT_DIR="${outputDir}" "${scanScript}" 2>&1`, {
       timeout: 30_000
