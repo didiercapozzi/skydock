@@ -58,13 +58,124 @@ const groupByDay = (sequences: Sequence[]): DayGroup[] => {
   return Array.from(map.values())
 }
 
+type PreviewState = {
+  files: ManifestFile[]
+  index: number
+  label: string
+}
+
+const PreviewModal = ({
+  preview,
+  onClose,
+  onPrev,
+  onNext
+}: {
+  preview: PreviewState
+  onClose: () => void
+  onPrev: () => void
+  onNext: () => void
+}) => {
+  const file = preview.files[preview.index]
+  const isVideo = /\.(mp4|mov|avi|mkv)$/i.test(file.filename)
+  const src = `/api/file?path=${encodeURIComponent(file.path)}`
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+      if (e.key === 'ArrowLeft') onPrev()
+      if (e.key === 'ArrowRight') onNext()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose, onPrev, onNext])
+
+  return (
+    <div
+      className='fixed inset-0 z-50 flex flex-col bg-black/80'
+      onClick={onClose}>
+      <div className='flex items-center justify-between px-4 py-3 bg-black/60 text-white'>
+        <div className='flex items-center gap-3 min-w-0'>
+          <span className='text-sm font-medium truncate'>{preview.label}</span>
+          <span className='text-xs text-gray-300 truncate'>{file.filename}</span>
+          <span className='text-xs text-gray-400'>
+            {preview.index + 1} / {preview.files.length} • {formatTime(file.mtime)} •{' '}
+            {formatSize(file.size)}
+          </span>
+        </div>
+        <div className='flex items-center gap-2'>
+          <a
+            href={src}
+            target='_blank'
+            rel='noreferrer'
+            onClick={(e) => e.stopPropagation()}
+            className='text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20'>
+            Open
+          </a>
+          <button
+            type='button'
+            onClick={onClose}
+            className='w-8 h-8 flex items-center justify-center rounded bg-white/10 hover:bg-white/20'>
+            ✕
+          </button>
+        </div>
+      </div>
+      <div
+        className='flex-1 flex items-center justify-center p-4 gap-4'
+        onClick={(e) => e.stopPropagation()}>
+        <button
+          type='button'
+          onClick={onPrev}
+          disabled={preview.files.length <= 1}
+          className='w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white disabled:opacity-30 shrink-0'>
+          ‹
+        </button>
+        <div className='flex-1 flex items-center justify-center max-w-5xl max-h-[75vh]'>
+          {isVideo ? (
+            <video
+              key={file.path}
+              src={src}
+              controls
+              autoPlay
+              muted
+              preload='metadata'
+              className='max-w-full max-h-[75vh] rounded bg-black'
+            />
+          ) : (
+            <img
+              key={file.path}
+              src={src}
+              alt={file.filename}
+              className='max-w-full max-h-[75vh] rounded object-contain'
+            />
+          )}
+        </div>
+        <button
+          type='button'
+          onClick={onNext}
+          disabled={preview.files.length <= 1}
+          className='w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white disabled:opacity-30 shrink-0'>
+          ›
+        </button>
+      </div>
+      <div className='flex items-center justify-center gap-2 pb-4 text-xs text-gray-400'>
+        <span>← Prev</span>
+        <span>•</span>
+        <span>Next →</span>
+        <span>•</span>
+        <span>Esc to close</span>
+      </div>
+    </div>
+  )
+}
+
 const FileRow = ({
   file,
   groupId,
   selected,
   isUnassigned,
   onSelect,
-  onDragStart
+  onDragStart,
+  onPreview
 }: {
   file: ManifestFile
   groupId: string
@@ -72,6 +183,7 @@ const FileRow = ({
   isUnassigned?: boolean
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDragStart: (e: React.DragEvent, filePath: string, groupId: string) => void
+  onPreview?: () => void
 }) => (
   <div
     className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded cursor-pointer select-none transition-colors ${
@@ -99,6 +211,18 @@ const FileRow = ({
     <span className='text-gray-400 dark:text-gray-500 text-xs whitespace-nowrap'>
       {formatSize(file.size)}
     </span>
+    {onPreview && (
+      <button
+        type='button'
+        onClick={(e) => {
+          e.stopPropagation()
+          onPreview()
+        }}
+        className='w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 shrink-0'
+        title='Preview'>
+        👁
+      </button>
+    )}
   </div>
 )
 
@@ -110,7 +234,8 @@ const SequenceDaySection = ({
   onDragStart,
   onShiftDay,
   editingDay,
-  setEditingDay
+  setEditingDay,
+  onPreview
 }: {
   day: DayGroup
   filesInJumps: Set<string>
@@ -120,6 +245,7 @@ const SequenceDaySection = ({
   onShiftDay: (date: string, newDateStr: string) => void
   editingDay: string | null
   setEditingDay: (d: string | null) => void
+  onPreview: (files: ManifestFile[], index: number, label: string) => void
 }) => {
   const fileCount = day.sequences.reduce((s, seq) => s + seq.files.length, 0)
   const unassignedCount = day.sequences.reduce(
@@ -180,7 +306,7 @@ const SequenceDaySection = ({
               </span>
               <span>• {seq.files.length} files</span>
             </div>
-            {seq.files.map((file) => (
+            {seq.files.map((file, fileIdx) => (
               <FileRow
                 key={file.path}
                 file={file}
@@ -195,6 +321,7 @@ const SequenceDaySection = ({
                   const toDrag = selected.length > 0 && selection[seq.id]?.[fp] ? selected : [fp]
                   onDragStart(e, toDrag, seq.id)
                 }}
+                onPreview={() => onPreview(seq.files, fileIdx, `${day.date} Seq ${idx + 1}`)}
               />
             ))}
           </div>
@@ -458,7 +585,8 @@ const JumpSection = ({
   onSelect,
   onDrop,
   onDragStart,
-  onRemoveFiles
+  onRemoveFiles,
+  onPreview
 }: {
   jump: ManifestJump
   selection: Record<string, boolean>
@@ -466,6 +594,7 @@ const JumpSection = ({
   onDrop: (e: React.DragEvent, targetJumpId: string) => void
   onDragStart: (e: React.DragEvent, filePaths: string[], sourceJumpId: string) => void
   onRemoveFiles: (jumpId: string, filePaths: string[]) => void
+  onPreview: (files: ManifestFile[], index: number, label: string) => void
 }) => {
   const [expanded, setExpanded] = useState(true)
   const [editingLabel, setEditingLabel] = useState(false)
@@ -606,7 +735,7 @@ const JumpSection = ({
       </div>
       {expanded && (
         <div className='border-t dark:border-gray-700 px-4 py-2 space-y-0.5 bg-gray-50/50 dark:bg-gray-800/50'>
-          {jump.files.map((file) => (
+          {jump.files.map((file, idx) => (
             <FileRow
               key={file.path}
               file={file}
@@ -619,6 +748,7 @@ const JumpSection = ({
                 const toDrag = sel.length > 0 && selection[file.path] ? sel : [fp]
                 onDragStart(e, toDrag, jump.id)
               }}
+              onPreview={() => onPreview(jump.files, idx, jump.label)}
             />
           ))}
           {jump.files.length === 0 && (
@@ -638,6 +768,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   const [selection, setSelection] = useState<SelectionMap>({})
   const [lastClicked, setLastClicked] = useState<string | null>(null)
   const [editingDay, setEditingDay] = useState<string | null>(null)
+  const [preview, setPreview] = useState<PreviewState | null>(null)
   const dragDataRef = useRef<{ filePaths: string[]; sourceJumpId: string } | null>(null)
 
   useEffect(() => {
@@ -828,6 +959,17 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
     )
   }
 
+  const handlePreview = useCallback((files: ManifestFile[], index: number, label: string) => {
+    setPreview({ files, index, label })
+  }, [])
+  const handlePreviewClose = useCallback(() => setPreview(null), [])
+  const handlePreviewPrev = useCallback(() => {
+    setPreview((p) => (p ? { ...p, index: (p.index - 1 + p.files.length) % p.files.length } : null))
+  }, [])
+  const handlePreviewNext = useCallback(() => {
+    setPreview((p) => (p ? { ...p, index: (p.index + 1) % p.files.length } : null))
+  }, [])
+
   const renderEmptyState = (title: string, description: string) => (
     <div className='min-h-screen bg-gray-50 dark:bg-gray-900'>
       <div className='max-w-7xl mx-auto px-6 py-8'>
@@ -974,6 +1116,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                   onShiftDay={handleShiftDay}
                   editingDay={editingDay}
                   setEditingDay={setEditingDay}
+                  onPreview={handlePreview}
                 />
               ))}
               {dayGroups.length === 0 && (
@@ -1003,6 +1146,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                   onDrop={handleDrop}
                   onDragStart={handleDragStart}
                   onRemoveFiles={handleRemoveFiles}
+                  onPreview={handlePreview}
                 />
               ))}
               {manifest.jumps.length === 0 && (
@@ -1011,6 +1155,14 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
             </div>
           </div>
         </div>
+        {preview && (
+          <PreviewModal
+            preview={preview}
+            onClose={handlePreviewClose}
+            onPrev={handlePreviewPrev}
+            onNext={handlePreviewNext}
+          />
+        )}
       </div>
     </div>
   )
