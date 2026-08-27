@@ -87,7 +87,23 @@ const reclusterJumps = (manifest: Manifest, preservedPaths?: Set<string>): void 
     for (const file of jump.files) previousByPath.set(file.path, jump)
   }
 
-  manifest.jumps = mergedGroups.map((files, idx) => {
+  const usedIds = new Set<string>()
+  for (const g of mergedGroups) {
+    for (const f of g) {
+      const prev = previousByPath.get(f.path)
+      if (prev && preservedJumpIds.has(prev.id)) usedIds.add(prev.id)
+    }
+  }
+  let nextIdx = 1
+  const getNextId = (): string => {
+    while (usedIds.has(`jump_${nextIdx}`)) nextIdx++
+    const id = `jump_${nextIdx}`
+    usedIds.add(id)
+    nextIdx++
+    return id
+  }
+
+  manifest.jumps = mergedGroups.map((files) => {
     const counts = new Map<string, number>()
     for (const file of files) {
       const prev = previousByPath.get(file.path)
@@ -107,11 +123,20 @@ const reclusterJumps = (manifest: Manifest, preservedPaths?: Set<string>): void 
           (j) => preservedJumpIds.has(j.id) && j.files.some((f) => files.includes(f))
         )
       : undefined
+    if (preservedJump) {
+      return {
+        id: preservedJump.id,
+        label: preservedJump.label,
+        confirmed: preservedJump.confirmed,
+        processed: preservedJump.processed,
+        files
+      }
+    }
     return {
-      id: preservedJump?.id ?? `jump_${idx + 1}`,
-      label: dominant?.label ?? preservedJump?.label ?? `Jump ${idx + 1}`,
-      confirmed: dominant?.confirmed ?? preservedJump?.confirmed ?? false,
-      processed: dominant?.processed ?? preservedJump?.processed,
+      id: dominant?.id ?? getNextId(),
+      label: dominant?.label ?? `Jump ${nextIdx - 1}`,
+      confirmed: dominant?.confirmed ?? false,
+      processed: dominant?.processed,
       files
     }
   })
@@ -122,6 +147,13 @@ const shiftFiles = (manifest: Manifest, paths: Set<string>, offsetSeconds: numbe
     if (!paths.has(file.path)) continue
     if (file.originalMtime === undefined) file.originalMtime = file.mtime
     file.mtime += offsetSeconds
+  }
+  for (const jump of manifest.jumps) {
+    for (const file of jump.files) {
+      if (!paths.has(file.path)) continue
+      if (file.originalMtime === undefined) file.originalMtime = file.mtime
+      file.mtime += offsetSeconds
+    }
   }
 }
 
