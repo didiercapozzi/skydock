@@ -213,7 +213,9 @@ const TimelinePerDay = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [draggingDay, setDraggingDay] = useState<string | null>(null)
+  const [draggingSeq, setDraggingSeq] = useState<string | null>(null)
   const [dragOffset, setDragOffset] = useState(0)
+  const [dragLabel, setDragLabel] = useState('')
   const dragOffsetRef = useRef(0)
 
   const allSeqs = useMemo(() => dayGroups.flatMap((d) => d.sequences), [dayGroups])
@@ -263,7 +265,7 @@ const TimelinePerDay = ({
     <div className='mb-4'>
       <div className='flex items-center justify-between mb-1 px-1'>
         <span className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>
-          Timeline — drag a day to shift
+          Timeline — drag a sequence to shift it, drag lane to shift day
         </span>
         <span className='text-[10px] text-gray-400'>Shift+drag snaps to 1 day</span>
       </div>
@@ -287,8 +289,8 @@ const TimelinePerDay = ({
           </div>
         ))}
         {dayGroups.map((day, idx) => {
-          const isDragging = draggingDay === day.date
-          const offset = isDragging ? dragOffset : 0
+          const isDayDragging = draggingDay === day.date
+          const dayOffset = isDayDragging ? dragOffset : 0
           const laneTop = (idx / dayGroups.length) * 100
           const laneH = 100 / dayGroups.length
           const dayColor =
@@ -296,65 +298,104 @@ const TimelinePerDay = ({
           return (
             <div
               key={day.date}
-              className='absolute inset-x-0 border-b border-gray-200/60 dark:border-gray-700/60 flex items-center'
-              style={{ top: `${laneTop}%`, height: `${laneH}%` }}>
-              <div className='absolute left-2 text-[10px] font-medium text-gray-500 truncate max-w-[110px]'>
+              className='absolute inset-x-0 border-b border-gray-200/60 dark:border-gray-700/60 flex items-center cursor-grab active:cursor-grabbing'
+              style={{ top: `${laneTop}%`, height: `${laneH}%` }}
+              onMouseDown={(e) => {
+                if ((e.target as HTMLElement).closest('[data-seq-bar]')) return
+                e.preventDefault()
+                const startX = e.clientX
+                const snapDay = e.shiftKey
+                setDraggingDay(day.date)
+                setDraggingSeq(null)
+                setDragOffset(0)
+                dragOffsetRef.current = 0
+                setDragLabel(day.date)
+                const dayPaths = day.sequences.flatMap((s) => s.files.map((f) => f.path))
+                const handleMove = (ev: MouseEvent) => {
+                  const dx = ev.clientX - startX
+                  const w = containerRef.current?.clientWidth ?? 1
+                  const dt = (dx / w) * range
+                  const snapped = snapDay
+                    ? Math.round(dt / 86400) * 86400
+                    : Math.round(dt / 1800) * 1800
+                  dragOffsetRef.current = snapped
+                  setDragOffset(snapped)
+                }
+                const handleUp = () => {
+                  document.removeEventListener('mousemove', handleMove)
+                  document.removeEventListener('mouseup', handleUp)
+                  const off = dragOffsetRef.current
+                  setDraggingDay(null)
+                  setDragOffset(0)
+                  setDragLabel('')
+                  dragOffsetRef.current = 0
+                  if (Math.abs(off) >= 60) onShiftDay(day.date, off, dayPaths)
+                }
+                document.addEventListener('mousemove', handleMove)
+                document.addEventListener('mouseup', handleUp)
+              }}>
+              <div className='absolute left-2 text-[10px] font-medium text-gray-500 truncate max-w-[110px] pointer-events-none'>
                 {day.date}
               </div>
-              {day.sequences.map((seq) => (
-                <div
-                  key={seq.id}
-                  className={`absolute h-4 rounded cursor-grab active:cursor-grabbing ${dayColor} opacity-80 hover:opacity-100 ${isDragging ? 'shadow-lg ring-2 ring-blue-300 z-10' : ''}`}
-                  style={{
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    left: `${pos(seq.startTime + offset)}%`,
-                    width: `${width(seq.startTime, seq.endTime)}%`
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault()
-                    const startX = e.clientX
-                    const snapDay = e.shiftKey
-                    setDraggingDay(day.date)
-                    setDragOffset(0)
-                    dragOffsetRef.current = 0
-                    const dayPaths = day.sequences.flatMap((s) => s.files.map((f) => f.path))
-                    const startMin = Math.min(...day.sequences.map((s) => s.startTime))
-                    const handleMove = (ev: MouseEvent) => {
-                      const dx = ev.clientX - startX
-                      const w = containerRef.current?.clientWidth ?? 1
-                      const dt = (dx / w) * range
-                      const snapped = snapDay
-                        ? Math.round(dt / 86400) * 86400
-                        : Math.round(dt / 1800) * 1800
-                      dragOffsetRef.current = snapped
-                      setDragOffset(snapped)
-                    }
-                    const handleUp = () => {
-                      document.removeEventListener('mousemove', handleMove)
-                      document.removeEventListener('mouseup', handleUp)
-                      const off = dragOffsetRef.current
+              {day.sequences.map((seq) => {
+                const isSeqDragging = draggingSeq === seq.id
+                const isDayDraggingActive = draggingDay === day.date
+                const offset = isSeqDragging ? dragOffset : isDayDraggingActive ? dayOffset : 0
+                return (
+                  <div
+                    key={seq.id}
+                    data-seq-bar='true'
+                    className={`absolute h-4 rounded cursor-grab active:cursor-grabbing ${dayColor} opacity-80 hover:opacity-100 ${isSeqDragging || isDayDraggingActive ? 'shadow-lg ring-2 ring-blue-300 z-10' : ''}`}
+                    style={{
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      left: `${pos(seq.startTime + offset)}%`,
+                      width: `${width(seq.startTime, seq.endTime)}%`
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      const startX = e.clientX
+                      const snapDay = e.shiftKey
+                      setDraggingSeq(seq.id)
                       setDraggingDay(null)
                       setDragOffset(0)
                       dragOffsetRef.current = 0
-                      if (Math.abs(off) >= 60) {
-                        const _ = startMin
-                        void _
-                        onShiftDay(day.date, off, dayPaths)
+                      setDragLabel(`Seq ${day.sequences.indexOf(seq) + 1}`)
+                      const seqPaths = seq.files.map((f) => f.path)
+                      const handleMove = (ev: MouseEvent) => {
+                        const dx = ev.clientX - startX
+                        const w = containerRef.current?.clientWidth ?? 1
+                        const dt = (dx / w) * range
+                        const snapped = snapDay
+                          ? Math.round(dt / 86400) * 86400
+                          : Math.round(dt / 900) * 900
+                        dragOffsetRef.current = snapped
+                        setDragOffset(snapped)
                       }
-                    }
-                    document.addEventListener('mousemove', handleMove)
-                    document.addEventListener('mouseup', handleUp)
-                  }}
-                  title={`${day.date} — drag to shift day`}
-                />
-              ))}
+                      const handleUp = () => {
+                        document.removeEventListener('mousemove', handleMove)
+                        document.removeEventListener('mouseup', handleUp)
+                        const off = dragOffsetRef.current
+                        setDraggingSeq(null)
+                        setDragOffset(0)
+                        setDragLabel('')
+                        dragOffsetRef.current = 0
+                        if (Math.abs(off) >= 60) onShiftDay(day.date, off, seqPaths)
+                      }
+                      document.addEventListener('mousemove', handleMove)
+                      document.addEventListener('mouseup', handleUp)
+                    }}
+                    title={`${day.date} Seq ${day.sequences.indexOf(seq) + 1} — drag to shift sequence, Shift for 1-day snap`}
+                  />
+                )
+              })}
             </div>
           )
         })}
-        {draggingDay && Math.abs(dragOffset) >= 60 && (
+        {(draggingDay || draggingSeq) && Math.abs(dragOffset) >= 60 && (
           <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-xs font-mono bg-gray-800 text-white px-2 py-1 rounded shadow pointer-events-none'>
-            {draggingDay} {formatClockOffset(dragOffset)}
+            {dragLabel} {formatClockOffset(dragOffset)}
           </div>
         )}
       </div>
