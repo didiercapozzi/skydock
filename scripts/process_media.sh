@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-OUTPUT_DIR="${SKYDOCK_OUTPUT_DIR:-/workspace/camera_files}"
+OUTPUT_DIR="${SKYDOCK_OUTPUT_DIR:-/workspace/output}"
+ORIGINAL_DIR="${OUTPUT_DIR}/original_files"
 
 CAMERA_DIRS=()
 while [[ $# -gt 0 ]]; do
@@ -16,33 +17,42 @@ if [[ ${#CAMERA_DIRS[@]} -eq 0 ]]; then
     exit 1
 fi
 
-mkdir -p "${OUTPUT_DIR}"
+mkdir -p "${ORIGINAL_DIR}"
 
-cam_num=0
-for cam_dir in "${CAMERA_DIRS[@]}"; do
-    cam_num=$((cam_num + 1))
-    cam_name="camera${cam_num}"
-    dest_dir="${OUTPUT_DIR}/${cam_name}"
-    mkdir -p "${dest_dir}"
-
-    file_count=$(find "${cam_dir}" -maxdepth 4 -type f \( \
-        -iname "*.mp4" -o -iname "*.mov" -o \
-        -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.dng" \
-    \) 2>/dev/null | wc -l)
-
-    if [[ "${file_count}" -eq 0 ]]; then
-        echo "[${cam_name}] No media files found, skipping."
-        continue
+file_matches_existing() {
+    local src="$1"
+    local dest_dir="$2"
+    local filename
+    filename=$(basename "${src}")
+    local existing="${dest_dir}/${filename}"
+    if [[ -f "${existing}" ]] && cmp -s "${src}" "${existing}"; then
+        return 0
     fi
+    return 1
+}
 
-    echo "[${cam_name}] Copying ${file_count} file(s)..."
-    find "${cam_dir}" -maxdepth 4 -type f \( \
+total_copied=0
+total_skipped=0
+
+for cam_dir in "${CAMERA_DIRS[@]}"; do
+    while IFS= read -r filepath; do
+        filename=$(basename "${filepath}")
+        file_mtime=$(stat -c %Y "${filepath}")
+        target_date=$(date -d "@${file_mtime}" +%Y-%m-%d)
+        dest_dir="${ORIGINAL_DIR}/${target_date}"
+        mkdir -p "${dest_dir}"
+
+        if file_matches_existing "${filepath}" "${dest_dir}"; then
+            total_skipped=$((total_skipped + 1))
+            continue
+        fi
+
+        cp --update=none "${filepath}" "${dest_dir}/${filename}"
+        total_copied=$((total_copied + 1))
+    done < <(find "${cam_dir}" -maxdepth 4 -type f \( \
         -iname "*.mp4" -o -iname "*.mov" -o \
         -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.dng" \
-    \) -exec cp --update=none {} "${dest_dir}/" \;
-
-    copied=$(find "${dest_dir}" -maxdepth 1 -type f | wc -l)
-    echo "[${cam_name}] Done. ${copied} file(s) in ${dest_dir}"
+    \) 2>/dev/null)
 done
 
-echo "[Done] All cameras processed."
+echo "[Done] Copied: ${total_copied}, Skipped (existing): ${total_skipped}"

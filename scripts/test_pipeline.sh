@@ -4,7 +4,7 @@ set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SIM_BASE="${PROJECT_ROOT}/.sim"
-OUTPUT_DIR="${PROJECT_ROOT}/camera_files"
+OUTPUT_DIR="${PROJECT_ROOT}/output"
 NUM_FILES=8
 CLEAN=false
 declare -a CAMERA_DIRS=()
@@ -43,12 +43,22 @@ assert_file_count() {
     local expected="$2"
     local label="$3"
     local actual
-    actual=$(find "${dir}" -maxdepth 1 -type f 2>/dev/null | wc -l)
+    actual=$(find "${dir}" -type f 2>/dev/null | wc -l)
     if [[ "${actual}" -ge "${expected}" ]]; then
         echo "  PASS: ${label} (${actual} files)"
         PASS=$((PASS + 1))
     else
         echo "  FAIL: ${label} (expected >=${expected}, got ${actual})"
+        FAIL=$((FAIL + 1))
+    fi
+}
+
+assert_file_exists() {
+    if [[ -f "$1" ]]; then
+        echo "  PASS: $2"
+        PASS=$((PASS + 1))
+    else
+        echo "  FAIL: $2"
         FAIL=$((FAIL + 1))
     fi
 }
@@ -80,14 +90,34 @@ echo "------------------------------------------------------------"
 echo "Verifying output..."
 echo ""
 
-assert_dir_exists "${OUTPUT_DIR}" "Output directory exists"
+TODAY=$(date +%Y-%m-%d)
+assert_dir_exists "${OUTPUT_DIR}/original_files" "Output directory exists"
+assert_dir_exists "${OUTPUT_DIR}/original_files/${TODAY}" "Today's date folder exists"
 
-for cam_dir in "${CAMERA_DIRS[@]}"; do
-    cam_name=$(basename "${cam_dir}")
-    dest="${OUTPUT_DIR}/${cam_name}"
-    assert_dir_exists "${dest}" "Camera folder: ${cam_name}"
-    assert_file_count "${dest}" 1 "Files copied for ${cam_name}"
-done
+ORIGINAL_COUNT=$(find "${OUTPUT_DIR}/original_files" -type f 2>/dev/null | wc -l)
+if [[ "${ORIGINAL_COUNT}" -gt 0 ]]; then
+    echo "  PASS: Original files copied (${ORIGINAL_COUNT} files)"
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: No original files found"
+    FAIL=$((FAIL + 1))
+fi
+
+echo ""
+echo "------------------------------------------------------------"
+echo "Testing deduplication (run again)..."
+echo ""
+
+"${SCRIPT_DIR}/process_media.sh" "${CAMERA_DIRS[@]}" 2>&1 | tail -1
+
+NEW_ORIGINAL_COUNT=$(find "${OUTPUT_DIR}/original_files" -type f 2>/dev/null | wc -l)
+if [[ "${NEW_ORIGINAL_COUNT}" -eq "${ORIGINAL_COUNT}" ]]; then
+    echo "  PASS: Deduplication works (no new files copied)"
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: Deduplication failed (files were copied again)"
+    FAIL=$((FAIL + 1))
+fi
 
 echo ""
 echo "============================================================"

@@ -18,7 +18,7 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 if $TEST_MODE; then
     SIM_BASE="${PROJECT_ROOT}/.sim"
-    SIM_OUTPUT="${PROJECT_ROOT}/camera_files"
+    SIM_OUTPUT="${PROJECT_ROOT}/output"
 
     if [[ ${#CAM_DIRS[@]} -eq 0 ]]; then
         echo "[Watcher] Test mode: generating simulated cameras..."

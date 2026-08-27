@@ -1,168 +1,90 @@
 # SkyDock
 
-> Virtual-First Tandem Skydiving Media Pipeline for DJI Osmo Nano
+> Simple camera file copy tool for DJI Osmo Nano
 
-SkyDock is a fully containerized, background automation engine for tandem skydiving videographers and dropzones. All media operations are **virtual by default** — files are never moved or modified until the user explicitly confirms and applies changes.
+SkyDock copies media files from your DJI cameras to a local folder structure, then groups them into skydive jumps.
 
-## Virtual-First Workflow
+## How It Works
 
-All actions are virtual and saved in `proposed_jumps.json` before being applied to real files. This ensures:
+1. **Connect cameras** → `process_media.sh` copies files to `output/original_files/YYYY-MM-DD/`
+2. **Scan** → `scan_media.sh` generates `proposed_jumps.json` grouping files by time gaps
+3. **Review** → User reviews jumps in web UI
+4. **Execute** → Confirmed jumps are copied to `output/processed/jump_XX/`
 
-1. **Scan** — Camera files are discovered and clustered into jumps. No files are moved.
-2. **Review** — User reviews the proposed jumps in the web UI. All state is virtual.
-3. **Apply** — Only when the user explicitly confirms are files extracted, copied, and organized.
+## Output Structure
 
-### Multi-Camera Support
-
-SkyDock supports **1, 2, 3, or more cameras** simultaneously. Each camera is a directory containing media files (videos and/or photos). Camera labels are derived from directory names (e.g., `camera1`, `camera2`, `ext-cam`).
-
-**File type detection is by extension**, not by camera:
-- **Video files** (`.mp4`, `.mov`) → frame-extracted to JPEGs at 2 fps
-- **Photo files** (`.jpg`, `.jpeg`, `.dng`) → copied directly
-
-A single camera directory can contain both video and photo files. The `camera` field in the manifest identifies which physical camera the file came from.
-
-### Jump Clustering Rules
-
-- Files are regrouped by jump if their time interval is **≤ 30 minutes** (default).
-- Files alone in a sequence are visible **outside of any jump** as "lone files".
-- The user can set a **start datetime** for each session. If changed, all files and future files are recalculated from the start time + their offset from the original start.
-
-### Sequences vs Jumps
-
-Sequences and Jumps are **independent** concepts in the review UI:
-
-- **Sequences** — Time-based clusters within each camera, derived from file timestamps. They are **read-only** and cannot be renamed. Sequences are reconstructed on-the-fly from all files across all jumps, grouped by camera and sorted by time with a 15-minute gap threshold.
-- **Jumps** — Cross-camera groupings where files from all cameras are associated. Jumps can be edited, renamed, confirmed, and files can be moved between them.
-
-**Key rules:**
-
-- Moving a file from one jump to another does **not** affect the sequence it belongs to.
-- Removing a file from a jump does **not** remove it from its sequence.
-- Sequences are **not renamable** — they are labeled "Sequence 1", "Sequence 2", etc. based on their time order.
-- Jumps are renamable and can be confirmed/deleted independently.
-- Multi-selection with drag-and-drop moves all selected files together.
-- Sequence files that are not part of a jump should have a yellow background
-- The Sequence title should be something like "Sequence X" on bold joined by the range of files datetime like this "15 03 2026 08:30 - 10:30" in a light font
-
-### Manifest Structure (`proposed_jumps.json`)
-
-```json
-{
-  "version": 1,
-  "status": "proposed",
-  "date": "2026-08-22",
-  "startDatetime": "2026-08-22T09:00:00Z",
-  "createdAt": "...",
-  "cameras": [
-    { "id": "camera1", "path": "/mnt/osmo/camera1", "fileCount": 12 },
-    { "id": "camera2", "path": "/mnt/osmo/camera2", "fileCount": 8 }
-  ],
-  "theory": [],
-  "files": [],
-  "jumps": []
-}
+```
+output/
+├── original_files/           # Raw files organized by date
+│   └── 2026-08-27/
+│       ├── DJI_0001.MP4
+│       └── DJI_0002.MP4
+├── proposed_jumps.json       # Jump grouping manifest
+└── processed/                # After confirmation
+    ├── jump_01/
+    │   ├── DJI_0001.MP4
+    │   └── DJI_0003.MP4
+    └── jump_02/
+        └── DJI_0002.MP4
 ```
 
-- `status`: `empty` | `proposed` | `confirmed` | `executed`
-- `cameras`: Array of detected camera directories (supports N cameras)
-- `theory`: Theory session files (copied to each jump)
-- `files`: All discovered media files with camera label, size, mtime, and fingerprint id
-- `jumps`: Proposed jump clusters with confirmed status and file lists
+## Deduplication
 
-## Code Quality: shellcheck
-
-All shell scripts in `scripts/` **must** pass `shellcheck` before committing.
-
-```bash
-shellcheck scripts/*.sh
-shellcheck -f gcc scripts/*.sh
-shellcheck scripts/process_media.sh
-```
-
-### Shellcheck Rules
-
-- `set -eo pipefail` is required in all scripts.
-- Unused variables must use `_` (underscore) as the variable name in `read` statements.
-- All functions must be invoked somewhere in the script.
-- Quote all variables in double quotes to prevent word splitting.
-- Use `[[ ]]` instead of `[ ]` for test commands when possible.
-- Use `$(( ))` for arithmetic instead of `expr` or `let`.
-
-## Agent Task Completion Checklist
-
-Before finishing any task, the agent **must** run:
-
-```bash
-npm run lint
-npm run format:check
-npm run test
-```
-
-Both commands must pass without errors before considering the task complete.
-
-## Feature Development Policy
-
-When adding new features to SkyDock:
-
-1. **Update `process_media.sh`** — Implement the core feature logic
-2. **Update `simulate_cameras.sh`** — Add simulation support for the new feature
-3. **Update `test_pipeline.sh`** — Add assertions to verify the feature works correctly
-4. **Run shellcheck** — Ensure all modified scripts pass `shellcheck` before committing
-
-This ensures every feature is testable without real cameras and verified in CI.
-
-## Key Features
-
-- **Virtual-First**: All operations are virtual until explicitly applied.
-- **Zero-Touch Automation**: Dock your cameras and walk away.
-- **Background Execution**: Works while your Ubuntu workstation is locked.
-- **Automated 0.5s Photo Extraction**: `ffmpeg` at 2 fps on video files.
-- **30-Minute Jump Clustering**: Groups media into jumps with 30-minute idle gap detection.
-- **Lone File Visibility**: Files outside any jump cluster are shown separately.
-- **Start Datetime Control**: User can reset all virtual times from a chosen start.
-- **Simulation Harness**: Test without real cameras using `simulate_cameras.sh`.
-- **Multi-Camera**: Supports 1, 2, 3, or more cameras simultaneously.
+Files are deduplicated using `cmp`:
+- If filename exists in `original_files/date/` and content matches → skip
+- If filename exists but content differs → copy (file was overwritten)
+- If filename doesn't exist → copy
 
 ## Scripts
 
-| Script                | Purpose                                      |
-| --------------------- | -------------------------------------------- |
-| `entrypoint.sh`       | Docker ENTRYPOINT, hands off to watcher      |
-| `watcher.sh`          | Background daemon, polls for camera SD cards |
-| `process_media.sh`    | Core engine: scan, cluster, extract, copy    |
-| `scan_media.sh`       | Phase 1: scan cameras, generate manifest     |
-| `execute_media.sh`    | Phase 3: execute confirmed manifest          |
-| `simulate_cameras.sh` | Generate fake camera footage for testing     |
-| `test_pipeline.sh`    | End-to-end test runner with assertions       |
+| Script                | Purpose                                    |
+| --------------------- | ------------------------------------------ |
+| `process_media.sh`    | Copy camera files to original_files/       |
+| `scan_media.sh`       | Generate proposed_jumps.json               |
+| `execute_media.sh`    | Copy confirmed jumps to processed/         |
+| `watcher.sh`          | Background daemon, polls for cameras       |
+| `simulate_cameras.sh` | Generate fake camera footage for testing   |
+| `test_pipeline.sh`    | End-to-end test runner                     |
 
-## Testing Without Real Cameras
+## Usage
+
+### Copy files from cameras
 
 ```bash
-# Full weekend simulation (Sat Aug 22 + Sun Aug 23, 2026)
-./scripts/simulate_cameras.sh --weekend --clean
+./scripts/process_media.sh /path/to/camera1 /path/to/camera2
+```
 
-# Full end-to-end test
-./scripts/test_pipeline.sh --clean
+### Generate jump manifest
 
-# Run watcher in test mode (single pass)
+```bash
+./scripts/scan_media.sh
+```
+
+### Watcher daemon
+
+```bash
+# Watch specific directories
+./scripts/watcher.sh --cam-dir /path/to/camera1 --cam-dir /path/to/camera2
+
+# Auto-scan common mount points
+./scripts/watcher.sh
+```
+
+### Test mode
+
+```bash
 ./scripts/watcher.sh --test --once
 ```
 
-Simulation files are created under `.sim/` at the project root (gitignored).
+## Testing
 
-### Coding rules
+```bash
+# Full end-to-end test
+./scripts/test_pipeline.sh --clean
+```
 
-Both apps use React Router 8 in **Framework Mode** with SSR enabled:
+## Dependencies
 
-- `app/routes.ts` for route definitions
-- `app/routes/` for route modules
-- Imports from `./+types/...` for type safety
-- Arrow functions only (no function declarations)
-- Types over interfaces
-- Never use `any` - always 100% type safe
-- All exports at the end of files
-- always use `types` instead of `interface`
-- No comments in generated scripts
-- the script but be written in bash only and no python
-- to read and write json files in bash script, use the jq library
+- `jq` - JSON processing
+- `cmp` - File comparison (built-in)
+- `exiftool` - Optional, for camera metadata extraction

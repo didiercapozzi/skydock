@@ -1,6 +1,6 @@
 .DS_Store
 .env
-camera_files/
+output/
 .sim/
 /node_modules/
 
