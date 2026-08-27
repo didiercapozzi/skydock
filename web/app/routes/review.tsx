@@ -933,7 +933,7 @@ const JumpSection = ({
               key={file.path}
               file={file}
               groupId={jump.id}
-              camera={file.camera}
+              camera={file.camera ?? 'default'}
               selected={!!selection[file.path]}
               isLone={false}
               draggable={true}
@@ -1726,7 +1726,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                     key={`theory-${i}`}
                     className='flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 rounded'>
                     <span className='px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'>
-                      {file.camera}
+                      {file.camera ?? 'Unknown'}
                     </span>
                     <span className='font-mono text-gray-600 dark:text-gray-400 truncate flex-1'>
                       {file.filename}

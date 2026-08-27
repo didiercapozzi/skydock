@@ -48,7 +48,7 @@ export type TheoryVideoWithSource = FileEntry & {
 
 export type ManifestFile = {
   path: string
-  camera: string
+  camera?: string
   size: number
   mtime: number
   filename: string

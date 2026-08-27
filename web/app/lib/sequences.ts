@@ -89,7 +89,7 @@ export const getSequences = (manifest: Manifest, cameraId: string): Sequence[] =
 export const getCameraIds = (manifest: Manifest): string[] => {
   const ids = new Set<string>()
   for (const file of manifest.files ?? []) {
-    ids.add(file.camera)
+    if (file.camera) ids.add(file.camera)
   }
   return Array.from(ids).sort()
 }

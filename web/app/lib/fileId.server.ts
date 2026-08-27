@@ -27,7 +27,7 @@ export const computeFileId = async (filePath: string, camera: string): Promise<s
     const stream = Buffer.concat([head, tail, Buffer.from(`${size}\n`, 'utf-8')])
     const digest = await getSubtle().digest('SHA-256', stream)
     const hex = Buffer.from(digest).toString('hex').slice(0, ID_HEX_LENGTH)
-    return `${camera}:${hex}`
+    return camera ? `${camera}:${hex}` : hex
   } finally {
     await handle.close()
   }
@@ -55,7 +55,7 @@ export const ensureManifestFileIds = async (manifestPath: string): Promise<void>
     if (file.id) continue
     if (!fs.existsSync(file.path)) continue
     try {
-      file.id = await computeFileId(file.path, file.camera)
+      file.id = await computeFileId(file.path, file.camera ?? '')
     } catch {
       continue
     }
