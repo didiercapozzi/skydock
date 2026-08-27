@@ -27,17 +27,17 @@ describe('computeFileId', () => {
   it('matches the bash sha256sum fingerprint for a small file', async () => {
     const filePath = writeTempFile(tmpDir, 'small.bin', SMALL_CONTENT)
 
-    const id = await computeFileId(filePath, 'PHOTO')
+    const id = await computeFileId(filePath)
 
-    expect(id).toBe('PHOTO:61cf47824a3ef32e')
+    expect(id).toBe('61cf47824a3ef32e')
   })
 
   it('is stable across repeated calls and unchanged mtimes', async () => {
     const filePath = writeTempFile(tmpDir, 'clip.mp4', SMALL_CONTENT)
     const stat = fs.statSync(filePath)
 
-    const first = await computeFileId(filePath, 'VIDEO')
-    const second = await computeFileId(filePath, 'VIDEO')
+    const first = await computeFileId(filePath)
+    const second = await computeFileId(filePath)
 
     expect(second).toBe(first)
     expect(fs.statSync(filePath).mtimeMs).toBe(stat.mtimeMs)
@@ -45,13 +45,12 @@ describe('computeFileId', () => {
 
   it('changes when binary content changes under the same name', async () => {
     const filePath = writeTempFile(tmpDir, 'DJI_0001.MP4', Buffer.alloc(4096, 7))
-    const before = await computeFileId(filePath, 'PHOTO')
+    const before = await computeFileId(filePath)
 
     fs.writeFileSync(filePath, Buffer.alloc(4096, 9))
-    const after = await computeFileId(filePath, 'PHOTO')
+    const after = await computeFileId(filePath)
 
     expect(after).not.toBe(before)
-    expect(after.startsWith('PHOTO:')).toBe(true)
   })
 })
 
@@ -65,14 +64,9 @@ describe('ensureManifestFileIds', () => {
     date: '2026-08-26',
     startDatetime: '2026-08-26T09:00:00Z',
     createdAt: new Date().toISOString(),
-    cameras: [
-      { id: 'camera1', path: '/camera1', fileCount: filePaths.length },
-      { id: 'camera2', path: '/camera2', fileCount: 0 }
-    ],
     theory: [],
     files: filePaths.map((p) => ({
       path: p,
-      camera: 'PHOTO' as const,
       size: 10,
       mtime: 1787727600,
       filename: path.basename(p)
@@ -84,7 +78,6 @@ describe('ensureManifestFileIds', () => {
         confirmed: false,
         files: filePaths.map((p) => ({
           path: p,
-          camera: 'PHOTO' as const,
           size: 10,
           mtime: 1787727600,
           filename: path.basename(p)
@@ -111,7 +104,7 @@ describe('ensureManifestFileIds', () => {
 
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest
     const ids = manifest.files.map((f) => f.id)
-    expect(ids.every((id) => typeof id === 'string' && id.startsWith('PHOTO:'))).toBe(true)
+    expect(ids.every((id) => typeof id === 'string' && id.length === 16)).toBe(true)
     expect(new Set(ids).size).toBe(2)
     expect(manifest.jumps[0].files.map((f) => f.id)).toEqual(ids)
   })

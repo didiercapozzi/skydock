@@ -19,9 +19,8 @@ describe('formatSequenceTime', () => {
 })
 
 describe('getSequences', () => {
-  const makeFile = (path: string, camera: 'PHOTO' | 'VIDEO', mtime: number): ManifestFile => ({
+  const makeFile = (path: string, _camera: 'PHOTO' | 'VIDEO', mtime: number): ManifestFile => ({
     path,
-    camera,
     mtime,
     size: 1000,
     filename: path.split('/').pop() ?? ''
@@ -33,10 +32,6 @@ describe('getSequences', () => {
     date: '2026-08-22',
     startDatetime: '2026-08-22T09:00:00Z',
     createdAt: new Date().toISOString(),
-    cameras: [
-      { id: 'camera1', path: '/camera1', fileCount: 0 },
-      { id: 'camera2', path: '/camera2', fileCount: 0 }
-    ],
     theory: [],
     jumps: [],
     files
@@ -44,29 +39,27 @@ describe('getSequences', () => {
 
   it('returns empty array for empty manifest', () => {
     const manifest = makeManifest([])
-    const sequences = getSequences(manifest, 'PHOTO')
+    const sequences = getSequences(manifest)
     expect(sequences).toEqual([])
   })
 
   it('returns empty array when files is undefined', () => {
     const manifest = { ...makeManifest([]), files: undefined } as unknown as Manifest
-    const sequences = getSequences(manifest, 'PHOTO')
+    const sequences = getSequences(manifest)
     expect(sequences).toEqual([])
   })
 
-  it('filters files by camera type', () => {
+  it('groups all files by time gap', () => {
     const manifest = makeManifest([
       makeFile('/photo1.jpg', 'PHOTO', 1000),
-      makeFile('/video1.mp4', 'VIDEO', 1000)
+      makeFile('/video1.mp4', 'VIDEO', 1000 + 16 * 60)
     ])
-    const photoSequences = getSequences(manifest, 'PHOTO')
-    const videoSequences = getSequences(manifest, 'VIDEO')
-    expect(photoSequences).toHaveLength(1)
-    expect(photoSequences[0].files).toHaveLength(1)
-    expect(photoSequences[0].files[0].path).toBe('/photo1.jpg')
-    expect(videoSequences).toHaveLength(1)
-    expect(videoSequences[0].files).toHaveLength(1)
-    expect(videoSequences[0].files[0].path).toBe('/video1.mp4')
+    const sequences = getSequences(manifest)
+    expect(sequences).toHaveLength(2)
+    expect(sequences[0].files).toHaveLength(1)
+    expect(sequences[0].files[0].path).toBe('/photo1.jpg')
+    expect(sequences[1].files).toHaveLength(1)
+    expect(sequences[1].files[0].path).toBe('/video1.mp4')
   })
 
   it('groups files into one sequence when within 15 minutes', () => {
@@ -76,7 +69,7 @@ describe('getSequences', () => {
       makeFile('/photo2.jpg', 'PHOTO', baseTime + 300),
       makeFile('/photo3.jpg', 'PHOTO', baseTime + 600)
     ])
-    const sequences = getSequences(manifest, 'PHOTO')
+    const sequences = getSequences(manifest)
     expect(sequences).toHaveLength(1)
     expect(sequences[0].files).toHaveLength(3)
   })
@@ -88,7 +81,7 @@ describe('getSequences', () => {
       makeFile('/photo2.jpg', 'PHOTO', baseTime + 300),
       makeFile('/photo3.jpg', 'PHOTO', baseTime + 1500)
     ])
-    const sequences = getSequences(manifest, 'PHOTO')
+    const sequences = getSequences(manifest)
     expect(sequences).toHaveLength(2)
     expect(sequences[0].files).toHaveLength(2)
     expect(sequences[1].files).toHaveLength(1)
@@ -101,7 +94,7 @@ describe('getSequences', () => {
       makeFile('/photo1.jpg', 'PHOTO', baseTime),
       makeFile('/photo2.jpg', 'PHOTO', baseTime + 300)
     ])
-    const sequences = getSequences(manifest, 'PHOTO')
+    const sequences = getSequences(manifest)
     expect(sequences[0].files[0].path).toBe('/photo1.jpg')
     expect(sequences[0].files[1].path).toBe('/photo2.jpg')
     expect(sequences[0].files[2].path).toBe('/photo3.jpg')
@@ -113,9 +106,9 @@ describe('getSequences', () => {
       makeFile('/photo1.jpg', 'PHOTO', baseTime),
       makeFile('/photo2.jpg', 'PHOTO', baseTime + 1000)
     ])
-    const sequences = getSequences(manifest, 'PHOTO')
-    expect(sequences[0].id).toBe('seq_PHOTO_0')
-    expect(sequences[1].id).toBe('seq_PHOTO_1')
+    const sequences = getSequences(manifest)
+    expect(sequences[0].id).toBe('seq_0')
+    expect(sequences[1].id).toBe('seq_1')
   })
 
   it('handles mixed cameras correctly', () => {
@@ -126,12 +119,9 @@ describe('getSequences', () => {
       makeFile('/video1.mp4', 'VIDEO', baseTime),
       makeFile('/video2.mp4', 'VIDEO', baseTime + 300)
     ])
-    const photoSequences = getSequences(manifest, 'PHOTO')
-    const videoSequences = getSequences(manifest, 'VIDEO')
-    expect(photoSequences).toHaveLength(1)
-    expect(photoSequences[0].files).toHaveLength(2)
-    expect(videoSequences).toHaveLength(1)
-    expect(videoSequences[0].files).toHaveLength(2)
+    const sequences = getSequences(manifest)
+    expect(sequences).toHaveLength(1)
+    expect(sequences[0].files).toHaveLength(4)
   })
 
   it('sets correct startTime and endTime', () => {
@@ -140,7 +130,7 @@ describe('getSequences', () => {
       makeFile('/photo1.jpg', 'PHOTO', baseTime),
       makeFile('/photo2.jpg', 'PHOTO', baseTime + 300)
     ])
-    const sequences = getSequences(manifest, 'PHOTO')
+    const sequences = getSequences(manifest)
     expect(sequences[0].startTime).toBe(baseTime)
     expect(sequences[0].endTime).toBe(baseTime + 300)
   })

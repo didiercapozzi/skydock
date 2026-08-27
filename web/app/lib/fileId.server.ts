@@ -13,7 +13,7 @@ const getSubtle = (): SubtleCrypto => {
   return nodeCrypto.webcrypto.subtle as unknown as SubtleCrypto
 }
 
-export const computeFileId = async (filePath: string, camera: string): Promise<string> => {
+export const computeFileId = async (filePath: string): Promise<string> => {
   const stat = await fs.promises.stat(filePath)
   const handle = await fs.promises.open(filePath, 'r')
   try {
@@ -26,8 +26,7 @@ export const computeFileId = async (filePath: string, camera: string): Promise<s
     await handle.read(tail, 0, tailLength, Math.max(0, size - tailLength))
     const stream = Buffer.concat([head, tail, Buffer.from(`${size}\n`, 'utf-8')])
     const digest = await getSubtle().digest('SHA-256', stream)
-    const hex = Buffer.from(digest).toString('hex').slice(0, ID_HEX_LENGTH)
-    return camera ? `${camera}:${hex}` : hex
+    return Buffer.from(digest).toString('hex').slice(0, ID_HEX_LENGTH)
   } finally {
     await handle.close()
   }
@@ -55,7 +54,7 @@ export const ensureManifestFileIds = async (manifestPath: string): Promise<void>
     if (file.id) continue
     if (!fs.existsSync(file.path)) continue
     try {
-      file.id = await computeFileId(file.path, file.camera ?? '')
+      file.id = await computeFileId(file.path)
     } catch {
       continue
     }

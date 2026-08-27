@@ -48,7 +48,6 @@ export type TheoryVideoWithSource = FileEntry & {
 
 export type ManifestFile = {
   path: string
-  camera?: string
   size: number
   mtime: number
   filename: string
@@ -65,19 +64,12 @@ export type ManifestJump = {
 
 export type ManifestStatus = 'empty' | 'proposed' | 'confirmed' | 'executed'
 
-export type CameraInfo = {
-  id: string
-  path: string
-  fileCount: number
-}
-
 export type Manifest = {
   version: number
   status: ManifestStatus
   date: string
   startDatetime: string
   createdAt: string
-  cameras: CameraInfo[]
   theory: ManifestFile[]
   files: ManifestFile[]
   jumps: ManifestJump[]

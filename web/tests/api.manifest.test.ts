@@ -5,9 +5,8 @@ import * as path from 'node:path'
 import { action } from '../app/routes/api.manifest'
 import type { Manifest, ManifestJump, ManifestFile } from '../app/lib/types'
 
-const makeFile = (path: string, camera: 'PHOTO' | 'VIDEO', mtime: number): ManifestFile => ({
+const makeFile = (path: string, _camera: 'PHOTO' | 'VIDEO', mtime: number): ManifestFile => ({
   path,
-  camera,
   mtime,
   size: 1000,
   filename: path.split('/').pop() ?? ''
@@ -26,10 +25,6 @@ const makeManifest = (jumps: ManifestJump[] = [], files: ManifestFile[] = []): M
   date: '2026-08-22',
   startDatetime: '2026-08-22T09:00:00Z',
   createdAt: new Date().toISOString(),
-  cameras: [
-    { id: 'camera1', path: '/camera1', fileCount: 0 },
-    { id: 'camera2', path: '/camera2', fileCount: 0 }
-  ],
   theory: [],
   jumps,
   files
@@ -213,7 +208,7 @@ describe('manifest actions', () => {
         let offset = 0
         for (const file of jump.files) {
           file.mtime = baseEpoch + offset
-          offset += file.camera === 'PHOTO' ? 30 : 35
+          offset += 30
         }
 
         expect(jump.files[0].mtime).toBe(baseEpoch)
@@ -249,14 +244,12 @@ describe('calibration actions', () => {
   const driftManifest = (): Manifest => {
     const photo = (name: string, mtime: number): ManifestFile => ({
       path: `/${name}`,
-      camera: 'PHOTO',
       size: 1000,
       mtime,
       filename: name
     })
     const video = (name: string, mtime: number): ManifestFile => ({
       path: `/${name}`,
-      camera: 'VIDEO',
       size: 2000,
       mtime,
       filename: name
@@ -267,10 +260,6 @@ describe('calibration actions', () => {
       date: '2026-08-26',
       startDatetime: '2026-08-26T09:00:00Z',
       createdAt: new Date().toISOString(),
-      cameras: [
-        { id: 'camera1', path: '/camera1', fileCount: 3 },
-        { id: 'camera2', path: '/camera2', fileCount: 3 }
-      ],
       theory: [],
       files: [
         photo('p1.jpg', T),
@@ -335,29 +324,24 @@ describe('calibration actions', () => {
     expect(mergedJump).toBeDefined()
   })
 
-  it('camera-wide alignment shifts every video file and records the offset', async () => {
+  it('all-wide alignment shifts every file and records the offset', async () => {
     writeFixture(driftManifest())
 
     const result = await callAction({
       action: 'calibrate-sequences',
       referencePaths: ['/p1.jpg'],
       targetPaths: ['/v1.mp4'],
-      scope: 'camera',
-      camera: 'VIDEO'
+      scope: 'all'
     })
 
     expect(result.ok).toBe(true)
 
     const manifest = readManifest()
     expect(manifest.cameraClockOffsetSeconds).toBe(5 * DAY)
-    expect(manifest.files.filter((f) => f.camera === 'VIDEO').every((f) => f.mtime >= T)).toBe(true)
-    expect(
-      manifest.files.filter((f) => f.camera === 'VIDEO').every((f) => f.originalMtime !== undefined)
-    ).toBe(true)
-    expect(
-      manifest.files.filter((f) => f.camera === 'PHOTO').every((f) => f.originalMtime === undefined)
-    ).toBe(true)
-    expect(manifest.jumps).toHaveLength(2)
+    expect(manifest.files.every((f) => f.mtime >= T)).toBe(true)
+    expect(manifest.files.every((f) => f.originalMtime !== undefined)).toBe(true)
+    expect(manifest.files.every((f) => f.originalMtime === undefined)).toBe(false)
+    expect(manifest.jumps).toHaveLength(4)
   })
 
   it('reset-calibration restores original timestamps and reclusters', async () => {
@@ -367,8 +351,7 @@ describe('calibration actions', () => {
       action: 'calibrate-sequences',
       referencePaths: ['/p1.jpg'],
       targetPaths: ['/v1.mp4'],
-      scope: 'camera',
-      camera: 'VIDEO'
+      scope: 'all'
     })
 
     const result = await callAction({ action: 'reset-calibration' })

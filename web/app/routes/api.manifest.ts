@@ -286,7 +286,6 @@ const action = async ({ request }: Route.ActionArgs) => {
     const referencePaths = (body.referencePaths ?? []) as string[]
     const targetPaths = (body.targetPaths ?? []) as string[]
     const scope = String(body.scope ?? 'single')
-    const camera = String(body.camera ?? '')
 
     if (referencePaths.length === 0 || targetPaths.length === 0) {
       return { ok: false, error: 'Missing sequence files' }
@@ -303,12 +302,10 @@ const action = async ({ request }: Route.ActionArgs) => {
 
     const offsetSeconds = Math.min(...refTimes) - Math.min(...targetTimes)
     const pathsToShift =
-      scope === 'camera'
-        ? new Set(manifest.files.filter((f) => f.camera === camera).map((f) => f.path))
-        : new Set(targetPaths)
+      scope === 'all' ? new Set(manifest.files.map((f) => f.path)) : new Set(targetPaths)
 
     shiftFiles(manifest, pathsToShift, offsetSeconds)
-    if (scope === 'camera') manifest.cameraClockOffsetSeconds = offsetSeconds
+    if (scope === 'all') manifest.cameraClockOffsetSeconds = offsetSeconds
 
     reclusterJumps(manifest)
     saveManifest(manifest)

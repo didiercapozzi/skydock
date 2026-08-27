@@ -67,7 +67,6 @@ cat > "${MANIFEST}" <<EOF
   "date": "${TARGET_DATE}",
   "startDatetime": "${CREATED_AT}",
   "createdAt": "${CREATED_AT}",
-  "cameras": [],
   "files": [${ALL_FILES}],
   "theory": [],
   "jumps": [${JUMPS_JSON}]

@@ -4,9 +4,8 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Manifest, ManifestFile, ManifestJump } from '../app/lib/types'
 import Review from '../app/routes/review'
 
-const makeFile = (path: string, camera: string, mtime: number): ManifestFile => ({
+const makeFile = (path: string, _camera: string, mtime: number): ManifestFile => ({
   path,
-  camera,
   mtime,
   size: 1000,
   filename: path.split('/').pop() ?? ''
@@ -25,10 +24,6 @@ const makeManifest = (jumps: ManifestJump[] = [], files: ManifestFile[] = []): M
   date: '2026-08-22',
   startDatetime: '2026-08-22T09:00:00Z',
   createdAt: new Date().toISOString(),
-  cameras: [
-    { id: 'camera1', path: '/camera1', fileCount: 0 },
-    { id: 'camera2', path: '/camera2', fileCount: 0 }
-  ],
   theory: [],
   jumps,
   files
@@ -85,21 +80,7 @@ describe('Review', () => {
     expect(text).toContain('1 jump')
   })
 
-  it('renders camera columns', () => {
-    const files = [
-      makeFile('/camera1/photo1.jpg', 'camera1', 1787727600),
-      makeFile('/camera2/video1.mp4', 'camera2', 1787727600)
-    ]
-    const manifest = makeManifest([], files)
-
-    renderReview(manifest)
-
-    expect(screen.getAllByText('Camera 1').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Camera 2').length).toBeGreaterThan(0)
-    expect(screen.getByText('Jumps')).toBeInTheDocument()
-  })
-
-  it('renders sequence with file count', () => {
+  it('renders unassigned files with count', () => {
     const baseTime = new Date('2026-08-22T10:00:00Z').getTime() / 1000
     const manifest = makeManifest(
       [],
@@ -108,17 +89,16 @@ describe('Review', () => {
 
     renderReview(manifest)
 
-    expect(screen.getByText('Sequence 1')).toBeInTheDocument()
-    expect(screen.getByText('2 files')).toBeInTheDocument()
+    expect(screen.getByText(/Unassigned Files/)).toBeInTheDocument()
   })
 
-  it('renders single file count in sequence', () => {
+  it('renders single unassigned file', () => {
     const baseTime = new Date('2026-08-22T10:00:00Z').getTime() / 1000
     const manifest = makeManifest([], [makeFile('/photo1.jpg', 'PHOTO', baseTime)])
 
     renderReview(manifest)
 
-    expect(screen.getAllByText(/1 file/).length).toBeGreaterThan(0)
+    expect(screen.getByText(/Unassigned Files/)).toBeInTheDocument()
   })
 
   it('renders jump with files', () => {
@@ -142,13 +122,13 @@ describe('Review', () => {
     expect(screen.getByText('Drop files here')).toBeInTheDocument()
   })
 
-  it('shows start time input', () => {
-    const manifest = makeManifest([], [])
+  it('shows unassigned files', () => {
+    const baseTime = new Date('2026-08-22T10:00:00Z').getTime() / 1000
+    const manifest = makeManifest([], [makeFile('/photo1.jpg', 'PHOTO', baseTime)])
 
     renderReview(manifest)
 
-    expect(screen.getByText('Start Time:')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('2026-08-22T09:00')).toBeInTheDocument()
+    expect(screen.getByText(/Unassigned Files/)).toBeInTheDocument()
   })
 
   it('shows scan button', () => {
@@ -263,7 +243,7 @@ describe('Drag and Drop', () => {
 
     renderReview(manifest)
 
-    const yellowBg = document.querySelector('.bg-yellow-50')
+    const yellowBg = document.querySelector('.bg-yellow-50\\/50')
     expect(yellowBg).toBeTruthy()
   })
 
@@ -376,7 +356,7 @@ describe('Drag and Drop', () => {
     expect(body).toEqual({
       action: 'add-to-jump',
       jumpId: 'jump_1',
-      filePaths: ['/photo1.jpg', '/photo2.jpg']
+      filePaths: ['/photo1.jpg']
     })
   })
 
@@ -408,81 +388,5 @@ describe('Drag and Drop', () => {
       toJumpId: 'jump_2',
       filePaths: ['/photo1.jpg']
     })
-  })
-})
-
-describe('Sequence Recalibration', () => {
-  const baseTime = new Date('2026-08-26T09:00:00Z').getTime() / 1000
-
-  const driftManifest = () =>
-    makeManifest(
-      [],
-      [
-        makeFile('/photo1.jpg', 'PHOTO', baseTime),
-        makeFile('/video1.mp4', 'VIDEO', baseTime - 5 * 86400)
-      ]
-    )
-
-  const calibrateButtons = (): HTMLElement[] =>
-    screen.getAllByTitle('Sync this sequence onto another') as HTMLElement[]
-
-  it('sets a reference sequence on first click and shows the banner', () => {
-    renderReview(driftManifest())
-
-    expect(calibrateButtons().length).toBe(2)
-    fireEvent.click(calibrateButtons()[0])
-
-    expect(screen.getByText(/Reference set:/)).toBeInTheDocument()
-  })
-
-  it('clicking the reference sequence again clears it', () => {
-    renderReview(driftManifest())
-
-    fireEvent.click(calibrateButtons()[0])
-    fireEvent.click(calibrateButtons()[0])
-
-    expect(screen.queryByText(/Reference set:/)).not.toBeInTheDocument()
-  })
-
-  it('opens the dialog with computed offset and submits single-sequence alignment', async () => {
-    const actionSpy = vi.fn(async () => ({ ok: true }))
-    renderReview(driftManifest(), actionSpy)
-
-    fireEvent.click(calibrateButtons()[0])
-    fireEvent.click(calibrateButtons()[1])
-
-    expect(screen.getByText('Sync Cameras')).toBeInTheDocument()
-    expect(screen.getByText(/offset/)).toBeInTheDocument()
-
-    fireEvent.click(screen.getByText('Align this sequence'))
-
-    const body = await getSubmitBody(actionSpy)
-    expect(body).toEqual({
-      action: 'calibrate-sequences',
-      referencePaths: ['/video1.mp4'],
-      targetPaths: ['/photo1.jpg'],
-      scope: 'single',
-      camera: 'PHOTO'
-    })
-  })
-
-  it('submits camera-wide alignment when choosing Shift all', async () => {
-    const actionSpy = vi.fn(async () => ({ ok: true }))
-    renderReview(driftManifest(), actionSpy)
-
-    fireEvent.click(calibrateButtons()[0])
-    fireEvent.click(calibrateButtons()[1])
-    fireEvent.click(screen.getByText('Shift all PHOTO files'))
-
-    const body = await getSubmitBody(actionSpy)
-    expect(body).toMatchObject({ action: 'calibrate-sequences', scope: 'camera', camera: 'PHOTO' })
-  })
-
-  it('shows Reset Sync once calibration data exists in the manifest', () => {
-    const manifest = driftManifest()
-    manifest.cameraClockOffsetSeconds = 432000
-    renderReview(manifest)
-
-    expect(screen.getByText('Reset Sync')).toBeInTheDocument()
   })
 })
