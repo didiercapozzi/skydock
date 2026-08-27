@@ -801,10 +801,23 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
 
   const jumpsByDay = useMemo(() => (manifest ? groupJumpsByDay(manifest.jumps) : []), [manifest])
 
+  const filesInJumps = useMemo(() => {
+    if (!manifest) return new Set<string>()
+    return new Set(manifest.jumps.flatMap((j) => j.files.map((f) => f.path)))
+  }, [manifest])
+
+  const unassignedFiles = useMemo(() => {
+    if (!manifest) return []
+    return manifest.files.filter((f) => !filesInJumps.has(f.path))
+  }, [manifest, filesInJumps])
+
   const allFileIds = useMemo(() => {
     if (!manifest) return []
-    return manifest.jumps.flatMap((j) => j.files.map((f) => f.path))
-  }, [manifest])
+    return [
+      ...unassignedFiles.map((f) => f.path),
+      ...manifest.jumps.flatMap((j) => j.files.map((f) => f.path))
+    ]
+  }, [manifest, unassignedFiles])
 
   const hasCalibration = useMemo(
     () => manifest?.files.some((f) => f.originalMtime !== undefined) ?? false,
@@ -1104,6 +1117,39 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
           dayGroups={jumpsByDay}
           onShiftDay={handleShiftOffset}
         />
+
+        {unassignedFiles.length > 0 && (
+          <div className='mb-4 border border-amber-200 rounded-lg bg-amber-50 dark:bg-amber-900/10 p-3'>
+            <div className='flex items-center gap-2 mb-2'>
+              <span className='text-sm font-semibold text-amber-800 dark:text-amber-200'>
+                Unassigned files • {unassignedFiles.length}
+              </span>
+              <span className='text-xs text-amber-600 dark:text-amber-400'>
+                not in any jump — drag to a jump or preview
+              </span>
+            </div>
+            <div className='space-y-0.5'>
+              {unassignedFiles.map((file, idx) => (
+                <FileRow
+                  key={file.path}
+                  file={file}
+                  groupId='unassigned'
+                  selected={!!selection['unassigned']?.[file.path]}
+                  isSelectMode={isSelectMode}
+                  onSelect={handleSelect}
+                  onDragStart={(e, fp) => {
+                    const sel = unassignedFiles
+                      .filter((f) => selection['unassigned']?.[f.path])
+                      .map((f) => f.path)
+                    const toDrag = sel.length > 0 && selection['unassigned']?.[fp] ? sel : [fp]
+                    handleDragStart(e, toDrag, 'unassigned')
+                  }}
+                  onPreview={() => handlePreview(unassignedFiles, idx, 'Unassigned')}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className='space-y-4'>
           {jumpsByDay.map((day) => (
