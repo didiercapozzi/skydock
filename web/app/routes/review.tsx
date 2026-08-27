@@ -199,6 +199,19 @@ const FileRow = ({
     onSelect(groupId, file.path, true, false)
   }
 
+  const handleCheckboxMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation()
+  }
+
+  const handleDragStart = (e: React.DragEvent) => {
+    const target = e.target as HTMLElement
+    if (target.closest('input[type="checkbox"]') || target.closest('button')) {
+      e.preventDefault()
+      return
+    }
+    onDragStart(e, file.path, groupId)
+  }
+
   return (
     <div
       className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded cursor-pointer select-none transition-colors ${
@@ -209,13 +222,14 @@ const FileRow = ({
             : 'hover:bg-gray-100 dark:hover:bg-gray-800'
       }`}
       draggable
-      onDragStart={(e) => onDragStart(e, file.path, groupId)}
+      onDragStart={handleDragStart}
       onClick={handleRowClick}>
       <input
         type='checkbox'
         checked={selected}
         onChange={() => {}}
         onClick={handleCheckboxClick}
+        onMouseDown={handleCheckboxMouseDown}
         className='h-4 w-4 rounded border-gray-300 text-blue-600'
       />
       <span className='font-mono truncate flex-1 text-xs text-gray-700 dark:text-gray-300'>
