@@ -376,6 +376,43 @@ const handleExecute = (manifest: Manifest, body: Body) => {
   return ok(loadManifest() ?? undefined)
 }
 
+const handleReorderFiles = (manifest: Manifest, body: Body) => {
+  const jumpId = asString(body.jumpId)
+  const filePaths = asStringArray(body.filePaths)
+  if (filePaths.length === 0) return fail('No files specified')
+  const r = requireJump(manifest, jumpId)
+  if ('error' in r) return fail(r.error)
+  if (r.jump.processed) return fail('Cannot reorder files of a processed jump — unprocess first')
+  const currentPaths = new Set(r.jump.files.map((f) => f.path))
+  if (filePaths.length !== currentPaths.size) return fail('File list does not match jump files')
+  for (const p of filePaths) {
+    if (!currentPaths.has(p)) return fail('File not found in jump')
+  }
+  r.jump.files = filePaths.map((p) => r.jump.files.find((f) => f.path === p)!)
+  return ok()
+}
+
+const handleMergeJumps = (manifest: Manifest, body: Body) => {
+  const sourceJumpIds = asStringArray(body.sourceJumpIds)
+  const targetJumpId = asString(body.targetJumpId)
+  if (sourceJumpIds.length < 2) return fail('Need at least 2 jumps to merge')
+  if (!sourceJumpIds.includes(targetJumpId)) return fail('Target jump must be in the selection')
+  const sources = sourceJumpIds.map((id) => manifest.jumps.find((j) => j.id === id))
+  for (let i = 0; i < sources.length; i++) {
+    if (!sources[i]) return fail(`Jump not found: ${sourceJumpIds[i]}`)
+  }
+  for (const jump of sources) {
+    if (jump!.processed) return fail('Cannot merge processed jumps — unprocess first')
+  }
+  const target = manifest.jumps.find((j) => j.id === targetJumpId)!
+  const allFiles = sources.flatMap((j) => j!.files).sort((a, b) => a.mtime - b.mtime)
+  target.files = allFiles
+  manifest.jumps = manifest.jumps.filter(
+    (j) => !sourceJumpIds.includes(j.id) || j.id === targetJumpId
+  )
+  return ok()
+}
+
 const handleUnprocess = (manifest: Manifest, body: Body) => {
   const jumpId = asString(body.jumpId)
   const r = requireJump(manifest, jumpId)
@@ -433,7 +470,9 @@ const handlers: Record<
   'shift-sequences': (m, b) => handleShift(m, b),
   'reset-calibration': (m) => handleResetCalibration(m),
   'execute-jumps': (m, b) => handleExecute(m, b),
-  'unprocess-jump': (m, b) => handleUnprocess(m, b)
+  'unprocess-jump': (m, b) => handleUnprocess(m, b),
+  'reorder-files': (m, b) => handleReorderFiles(m, b),
+  'merge-jumps': (m, b) => handleMergeJumps(m, b)
 }
 
 const loader = async () => {

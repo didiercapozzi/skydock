@@ -4,6 +4,7 @@ export default defineConfig({
   plugins: ['react'],
   ignorePatterns: ['server', 'client', 'dist'],
   rules: {
-    'eslint/no-unused-vars': 'error'
+    'eslint/no-unused-vars': 'error',
+    'react/refs': 'error'
   }
 })

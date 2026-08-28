@@ -17,6 +17,66 @@ if [[ ${#CAMERA_DIRS[@]} -eq 0 ]]; then
     exit 1
 fi
 
+HAS_EXIFTOOL=false
+if command -v exiftool &>/dev/null; then
+    HAS_EXIFTOOL=true
+fi
+
+build_date_map() {
+    local -n map_ref=$1
+    shift
+    local files=("$@")
+
+    if [[ "${HAS_EXIFTOOL}" != "true" ]] || [[ ${#files[@]} -eq 0 ]]; then
+        return
+    fi
+
+    local jpg_files=()
+    local mp4_files=()
+    for f in "${files[@]}"; do
+        local ext="${f##*.}"
+        ext=$(echo "${ext}" | tr '[:upper:]' '[:lower:]')
+        case "${ext}" in
+            jpg|jpeg|dng) jpg_files+=("${f}") ;;
+            mp4|mov) mp4_files+=("${f}") ;;
+        esac
+    done
+
+    if [[ ${#jpg_files[@]} -gt 0 ]]; then
+        while IFS=, read -r srcfile dateval; do
+            [[ "${srcfile}" == "SourceFile" ]] && continue
+            [[ -z "${dateval}" ]] && continue
+            local date_part
+            date_part=$(echo "${dateval}" | sed 's/^\([0-9]\{4\}\):\([0-9]\{2\}\):\([0-9]\{2\}\).*/\1-\2-\3/')
+            map_ref["${srcfile}"]="${date_part}"
+        done < <(exiftool -s3 -DateTimeOriginal -csv "${jpg_files[@]}" 2>/dev/null)
+    fi
+
+    if [[ ${#mp4_files[@]} -gt 0 ]]; then
+        while IFS=, read -r srcfile dateval; do
+            [[ "${srcfile}" == "SourceFile" ]] && continue
+            [[ -z "${dateval}" ]] && continue
+            local date_part
+            date_part=$(echo "${dateval}" | sed 's/^\([0-9]\{4\}\):\([0-9]\{2\}\):\([0-9]\{2\}\).*/\1-\2-\3/')
+            map_ref["${srcfile}"]="${date_part}"
+        done < <(exiftool -s3 -CreateDate -csv "${mp4_files[@]}" 2>/dev/null)
+    fi
+}
+
+get_capture_date() {
+    local filepath="$1"
+    local -n map_ref=$2
+
+    if [[ -n "${map_ref[${filepath}]+_}" ]]; then
+        echo "${map_ref[${filepath}]}"
+        return
+    fi
+
+    local mtime
+    mtime=$(stat -c %Y "${filepath}")
+    date -d "@${mtime}" +%Y-%m-%d
+}
+
 mkdir -p "${ORIGINAL_DIR}"
 
 file_matches_existing() {
@@ -34,11 +94,22 @@ file_matches_existing() {
 total_copied=0
 total_skipped=0
 
+declare -A DATE_MAP
+
 for cam_dir in "${CAMERA_DIRS[@]}"; do
+    all_files=()
     while IFS= read -r filepath; do
+        all_files+=("${filepath}")
+    done < <(find "${cam_dir}" -maxdepth 4 -type f \( \
+        -iname "*.mp4" -o -iname "*.mov" -o \
+        -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.dng" \
+    \) 2>/dev/null)
+
+    build_date_map DATE_MAP "${all_files[@]}"
+
+    for filepath in "${all_files[@]}"; do
         filename=$(basename "${filepath}")
-        file_mtime=$(stat -c %Y "${filepath}")
-        target_date=$(date -d "@${file_mtime}" +%Y-%m-%d)
+        target_date=$(get_capture_date "${filepath}" DATE_MAP)
         dest_dir="${ORIGINAL_DIR}/${target_date}"
         mkdir -p "${dest_dir}"
 
@@ -49,10 +120,7 @@ for cam_dir in "${CAMERA_DIRS[@]}"; do
 
         cp -p --update=none "${filepath}" "${dest_dir}/${filename}"
         total_copied=$((total_copied + 1))
-    done < <(find "${cam_dir}" -maxdepth 4 -type f \( \
-        -iname "*.mp4" -o -iname "*.mov" -o \
-        -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.dng" \
-    \) 2>/dev/null)
+    done
 done
 
 echo "[Done] Copied: ${total_copied}, Skipped (existing): ${total_skipped}"

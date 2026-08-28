@@ -23,6 +23,50 @@ const getMimeType = (filePath: string): string => {
   return MIME_TYPES[ext] ?? 'application/octet-stream'
 }
 
+const streamResponse = (
+  nodeStream: fs.ReadStream,
+  size: number,
+  contentType: string,
+  status = 200,
+  contentRange?: string
+) => {
+  let closed = false
+
+  const body = new ReadableStream({
+    start(controller) {
+      nodeStream.on('data', (chunk: Buffer | string) => {
+        if (closed) return
+        const buf = typeof chunk === 'string' ? Buffer.from(chunk) : chunk
+        controller.enqueue(new Uint8Array(buf))
+      })
+      nodeStream.on('end', () => {
+        if (!closed) controller.close()
+      })
+      nodeStream.on('error', (err) => {
+        if (!closed) controller.error(err)
+      })
+    },
+    cancel() {
+      closed = true
+      nodeStream.destroy()
+    }
+  })
+
+  const headers: Record<string, string> = {
+    'Content-Type': contentType,
+    'Accept-Ranges': 'bytes'
+  }
+
+  if (status === 206 && contentRange) {
+    headers['Content-Range'] = contentRange
+    headers['Content-Length'] = String(size)
+  } else {
+    headers['Content-Length'] = String(size)
+  }
+
+  return new Response(body, { status, headers })
+}
+
 const loader = async ({ request }: Route.LoaderArgs) => {
   const url = new URL(request.url)
   const filePath = url.searchParams.get('path')
@@ -52,47 +96,11 @@ const loader = async ({ request }: Route.LoaderArgs) => {
     const chunkSize = end - start + 1
 
     const stream = fs.createReadStream(resolved, { start, end })
-    const body = new ReadableStream({
-      start(controller) {
-        stream.on('data', (chunk) => {
-          const buf = typeof chunk === 'string' ? Buffer.from(chunk) : chunk
-          controller.enqueue(new Uint8Array(buf))
-        })
-        stream.on('end', () => controller.close())
-        stream.on('error', (err) => controller.error(err))
-      }
-    })
-
-    return new Response(body, {
-      status: 206,
-      headers: {
-        'Content-Range': `bytes ${start}-${end}/${stat.size}`,
-        'Accept-Ranges': 'bytes',
-        'Content-Length': String(chunkSize),
-        'Content-Type': contentType
-      }
-    })
+    return streamResponse(stream, chunkSize, contentType, 206, `bytes ${start}-${end}/${stat.size}`)
   }
 
   const stream = fs.createReadStream(resolved)
-  const body = new ReadableStream({
-    start(controller) {
-      stream.on('data', (chunk) => {
-        const buf = typeof chunk === 'string' ? Buffer.from(chunk) : chunk
-        controller.enqueue(new Uint8Array(buf))
-      })
-      stream.on('end', () => controller.close())
-      stream.on('error', (err) => controller.error(err))
-    }
-  })
-
-  return new Response(body, {
-    headers: {
-      'Content-Length': String(stat.size),
-      'Content-Type': contentType,
-      'Accept-Ranges': 'bytes'
-    }
-  })
+  return streamResponse(stream, stat.size, contentType)
 }
 
 export { loader }
