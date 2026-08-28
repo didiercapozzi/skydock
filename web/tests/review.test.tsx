@@ -44,6 +44,12 @@ const renderReview = (manifest: Manifest | null, action?: unknown) => {
   return render(<RouterProvider router={router} />)
 }
 
+const expandAll = () => {
+  document.querySelectorAll('button').forEach((b) => {
+    if (b.textContent === '▶') fireEvent.click(b)
+  })
+}
+
 const getSubmitBody = async (
   actionSpy: ReturnType<typeof vi.fn>
 ): Promise<Record<string, unknown>> => {
@@ -89,8 +95,9 @@ describe('Review', () => {
     const manifest = makeManifest([makeJump('jump_1', 'Jump 1', files)], files)
 
     renderReview(manifest)
+    expandAll()
 
-    expect(screen.getByText('Jump 1')).toBeInTheDocument()
+    expect(screen.getByText(/Jump 1/)).toBeInTheDocument()
     expect(document.querySelectorAll('[draggable="true"]').length).toBe(2)
   })
 
@@ -100,8 +107,9 @@ describe('Review', () => {
     const manifest = makeManifest([makeJump('jump_1', 'Jump 1', [file])], [file])
 
     renderReview(manifest)
+    expandAll()
 
-    expect(screen.getByText('Jump 1')).toBeInTheDocument()
+    expect(screen.getByText(/Jump 1/)).toBeInTheDocument()
     expect(document.querySelector('[draggable="true"]')).toBeTruthy()
   })
 
@@ -113,8 +121,9 @@ describe('Review', () => {
     )
 
     renderReview(manifest)
+    expandAll()
 
-    expect(screen.getByText('Jump 1')).toBeInTheDocument()
+    expect(screen.getByText(/Jump 1/)).toBeInTheDocument()
     expect(screen.getAllByText(/1 file/).length).toBeGreaterThan(0)
   })
 
@@ -122,6 +131,7 @@ describe('Review', () => {
     const manifest = makeManifest([makeJump('jump_1', 'Jump 1', [])], [])
 
     renderReview(manifest)
+    expandAll()
 
     expect(screen.getByText('Drop files here')).toBeInTheDocument()
   })
@@ -132,8 +142,9 @@ describe('Review', () => {
     const manifest = makeManifest([makeJump('jump_1', 'Jump 1', [file])], [file])
 
     renderReview(manifest)
+    expandAll()
 
-    expect(screen.getByText('Jump 1')).toBeInTheDocument()
+    expect(screen.getByText(/Jump 1/)).toBeInTheDocument()
     expect(document.querySelector('[draggable="true"]')).toBeTruthy()
     expect(document.querySelector('[draggable="true"].bg-yellow-50')).toBeFalsy()
   })
@@ -167,12 +178,12 @@ describe('Review', () => {
 
     renderReview(manifest)
 
-    const buttons = screen.getAllByRole('button')
-    const confirmBtn = buttons.find((b) => getTextContent(b).includes('Confirm & Execute'))
-    expect(confirmBtn).toBeDefined()
-    const btnText = getTextContent(confirmBtn ?? null)
-    expect(btnText).toContain('0')
-    expect(btnText).toContain('2')
+    expect(screen.queryByText(/Confirm & Execute/)).not.toBeInTheDocument()
+    const heading = screen.getByText('Review Proposed Jumps')
+    const statsP = heading.parentElement?.querySelector('p')
+    const text = getTextContent(statsP ?? null)
+    expect(text).toContain('2')
+    expect(text).toContain('2 jumps')
   })
 })
 
@@ -186,6 +197,7 @@ describe('Drag and Drop', () => {
     )
 
     renderReview(manifest)
+    expandAll()
 
     const draggables = document.querySelectorAll('[draggable="true"]')
     expect(draggables.length).toBeGreaterThan(0)
@@ -196,6 +208,7 @@ describe('Drag and Drop', () => {
     const manifest = makeManifest([makeJump('jump_1', 'Jump 1', [file])], [file])
 
     renderReview(manifest)
+    expandAll()
 
     const fileRow = document.querySelector('[draggable="true"]') as HTMLElement
     expect(fileRow).toBeTruthy()
@@ -214,7 +227,7 @@ describe('Drag and Drop', () => {
 
     renderReview(manifest)
 
-    const jumpEl = screen.getByText('Jump 1').closest('[class*="border"]') as HTMLElement
+    const jumpEl = screen.getByText(/Jump 1/).closest('[class*="border"]') as HTMLElement
     expect(jumpEl).toBeTruthy()
 
     const dataTransfer = { setData: vi.fn(), getData: vi.fn(), effectAllowed: '' }
@@ -232,7 +245,7 @@ describe('Drag and Drop', () => {
 
     renderReview(manifest)
 
-    const jumpEl = screen.getByText('Jump 1').closest('[class*="border"]') as HTMLElement
+    const jumpEl = screen.getByText(/Jump 1/).closest('[class*="border"]') as HTMLElement
     const dataTransfer = { setData: vi.fn(), getData: vi.fn(), effectAllowed: '' }
 
     fireEvent.dragEnter(jumpEl)
@@ -248,6 +261,7 @@ describe('Drag and Drop', () => {
     const manifest = makeManifest([makeJump('jump_1', 'Jump 1', [file])], [file])
 
     renderReview(manifest)
+    expandAll()
 
     const fileRow = document.querySelector('[draggable="true"]') as HTMLElement
     expect(fileRow).toBeTruthy()
@@ -261,6 +275,7 @@ describe('Drag and Drop', () => {
     )
 
     renderReview(manifest)
+    expandAll()
 
     const yellowFileRows = document.querySelectorAll('[draggable="true"].bg-yellow-50')
     expect(yellowFileRows.length).toBe(0)
@@ -274,6 +289,7 @@ describe('Drag and Drop', () => {
     const manifest = makeManifest([makeJump('jump_1', 'Jump 1', files)], files)
 
     renderReview(manifest)
+    expandAll()
 
     const fileRows = document.querySelectorAll('[draggable="true"]')
     expect(fileRows.length).toBeGreaterThanOrEqual(2)
@@ -297,9 +313,10 @@ describe('Drag and Drop', () => {
     const actionSpy = vi.fn(async () => ({ ok: true }))
 
     renderReview(manifest, actionSpy)
+    expandAll()
 
-    const jumpOne = screen.getByText('Jump 1').closest('[class*="border"]') as HTMLElement
-    const jumpTwo = screen.getByText('Jump 2').closest('[class*="border"]') as HTMLElement
+    const jumpOne = screen.getByText(/Jump 1/).closest('[class*="border"]') as HTMLElement
+    const jumpTwo = screen.getByText(/Jump 2/).closest('[class*="border"]') as HTMLElement
     const fileRow = jumpOne.querySelector('[draggable="true"]') as HTMLElement
     expect(jumpTwo).toBeTruthy()
 
@@ -329,9 +346,10 @@ describe('Drag and Drop', () => {
     const actionSpy = vi.fn(async () => ({ ok: true }))
 
     renderReview(manifest, actionSpy)
+    expandAll()
 
-    const jumpOne = screen.getByText('Jump 1').closest('[class*="border"]') as HTMLElement
-    const jumpTwo = screen.getByText('Jump 2').closest('[class*="border"]') as HTMLElement
+    const jumpOne = screen.getByText(/Jump 1/).closest('[class*="border"]') as HTMLElement
+    const jumpTwo = screen.getByText(/Jump 2/).closest('[class*="border"]') as HTMLElement
     const fileRows = jumpOne.querySelectorAll('[draggable="true"]')
 
     fireEvent.click(fileRows[0], { ctrlKey: true })
@@ -363,9 +381,10 @@ describe('Drag and Drop', () => {
     const actionSpy = vi.fn(async () => ({ ok: true }))
 
     renderReview(manifest, actionSpy)
+    expandAll()
 
-    const jumpOne = screen.getByText('Jump 1').closest('[class*="border"]') as HTMLElement
-    const jumpTwo = screen.getByText('Jump 2').closest('[class*="border"]') as HTMLElement
+    const jumpOne = screen.getByText(/Jump 1/).closest('[class*="border"]') as HTMLElement
+    const jumpTwo = screen.getByText(/Jump 2/).closest('[class*="border"]') as HTMLElement
     const fileRows = jumpOne.querySelectorAll('[draggable="true"]')
 
     fireEvent.click(fileRows[0], { ctrlKey: true })
@@ -397,9 +416,10 @@ describe('Drag and Drop', () => {
     const actionSpy = vi.fn(async () => ({ ok: true }))
 
     renderReview(manifest, actionSpy)
+    expandAll()
 
-    const jumpOne = screen.getByText('Jump 1').closest('[class*="border"]') as HTMLElement
-    const jumpTwo = screen.getByText('Jump 2').closest('[class*="border"]') as HTMLElement
+    const jumpOne = screen.getByText(/Jump 1/).closest('[class*="border"]') as HTMLElement
+    const jumpTwo = screen.getByText(/Jump 2/).closest('[class*="border"]') as HTMLElement
     const fileRow = jumpOne.querySelector('[draggable="true"]') as HTMLElement
 
     const dataTransfer = { setData: vi.fn(), getData: vi.fn(), effectAllowed: '' }

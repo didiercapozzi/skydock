@@ -238,6 +238,7 @@ const FileRow = ({
 
   return (
     <div
+      data-file-row='true'
       className={`relative flex items-center gap-2 px-3 py-1.5 text-sm rounded cursor-pointer select-none transition-colors ${dropBorder} ${
         selected
           ? 'bg-blue-100 dark:bg-blue-900/40 ring-1 ring-blue-300 dark:ring-blue-700'
@@ -317,7 +318,7 @@ const JumpCard = ({
   onReorder?: (jumpId: string, filePaths: string[]) => void
   onCompareToggle?: (jumpId: string) => void
 }) => {
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, setExpanded] = useState(false)
   const [editingLabel, setEditingLabel] = useState(false)
   const [labelValue, setLabelValue] = useState(jump.label)
   const [isDragOver, setIsDragOver] = useState(false)
@@ -329,6 +330,7 @@ const JumpCard = ({
   const selectedCount = jump.files.filter((f) => selection[f.path]).length
   const isProcessed = !!jump.processed
   const bounds = getJumpBounds(jump)
+  const minTimeLabel = bounds.start ? formatTime(bounds.start) : ''
 
   const handleRowDragOver = (e: React.DragEvent, filePath: string) => {
     if (isProcessed || !onReorder) return
@@ -381,12 +383,6 @@ const JumpCard = ({
       { method: 'POST', encType: 'application/json', action: '/api/manifest' }
     )
   }
-  const handleProcess = () => {
-    fetcher.submit(
-      { action: 'execute-jumps', jumpIds: [jump.id] },
-      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-    )
-  }
   const handleUnprocess = () => {
     fetcher.submit(
       { action: 'unprocess-jump', jumpId: jump.id },
@@ -396,7 +392,7 @@ const JumpCard = ({
 
   return (
     <div
-      className={`border rounded-lg overflow-hidden transition-colors ${isCompareSelected ? 'border-amber-300 bg-amber-50/50 ring-1 ring-amber-300' : isProcessed ? 'border-blue-300 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-900/20' : isDragOver && !hoveredFile ? 'border-blue-400 bg-blue-50/50' : jump.confirmed ? 'border-green-300 bg-green-50/50 dark:border-green-700 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50'}`}
+      className={`border rounded-lg overflow-hidden transition-colors flex ${isCompareSelected ? 'border-amber-300 bg-amber-50/50 ring-1 ring-amber-300' : isProcessed ? 'border-blue-300 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-900/20' : isDragOver && !hoveredFile ? 'border-blue-400 bg-blue-50/50' : jump.confirmed ? 'border-green-300 bg-green-50/50 dark:border-green-700 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50'}`}
       onDragOver={(e) => {
         if (isProcessed || hoveredFile) return
         e.preventDefault()
@@ -415,127 +411,140 @@ const JumpCard = ({
         setIsDragOver(false)
         onDrop(e, jump.id)
       }}>
-      <div className='flex items-center gap-2 px-4 py-2'>
-        <input
-          type='checkbox'
-          checked={jump.confirmed}
-          onChange={(e) => handleConfirm(e.target.checked)}
-          disabled={isProcessed}
-          className='h-4 w-4 rounded border-gray-300 text-green-600 disabled:opacity-50'
-        />
-        <button
-          type='button'
-          onClick={() => setExpanded(!expanded)}
-          className='text-gray-400 text-xs'>
-          {expanded ? '▼' : '▶'}
-        </button>
-        {editingLabel && !isProcessed ? (
+      <div
+        className={`w-2 shrink-0 cursor-pointer ${isCompareSelected ? 'bg-amber-400' : 'bg-gray-200 hover:bg-amber-300'}`}
+        onClick={(e) => {
+          e.stopPropagation()
+          onCompareToggle?.(jump.id)
+        }}
+        title={isCompareSelected ? 'Deselect jump' : 'Select jump for compare/process'}
+      />
+      <div className='flex-1 min-w-0'>
+        <div
+          className='flex items-center gap-2 px-4 py-2'
+          onClick={(e) => {
+            if ((e.target as HTMLElement).closest('input,button')) return
+            e.stopPropagation()
+            setExpanded(!expanded)
+          }}>
           <input
-            type='text'
-            value={labelValue}
-            onChange={(e) => setLabelValue(e.target.value)}
-            onBlur={handleLabelSave}
-            onKeyDown={(e) => e.key === 'Enter' && handleLabelSave()}
-            autoFocus
-            className='font-semibold text-sm bg-white border rounded px-1 py-0.5 w-full'
+            type='checkbox'
+            checked={jump.confirmed}
+            onChange={(e) => handleConfirm(e.target.checked)}
+            disabled={isProcessed}
+            className='h-4 w-4 rounded border-gray-300 text-green-600 disabled:opacity-50'
           />
-        ) : (
-          <span
-            className={`font-semibold text-sm flex-1 ${isProcessed ? '' : 'cursor-text hover:underline'}`}
-            onClick={() => {
-              if (!isProcessed) setEditingLabel(true)
-            }}>
-            {jump.label}
-          </span>
-        )}
-        <span className='text-xs text-gray-400'>
-          {jump.files.length} files •{' '}
-          {jump.files.length > 0
-            ? `${formatSequenceTime(bounds.start)}–${formatSequenceTime(bounds.end)}`
-            : ''}
-        </span>
-        {isProcessed ? (
-          <span className='text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30'>
-            Processed
-          </span>
-        ) : (
-          selectedCount > 0 && (
-            <>
-              <span className='text-xs text-blue-500'>{selectedCount} selected</span>
-              <button
-                type='button'
-                onClick={() => {
-                  const fps = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
-                  if (fps.length) onRemoveFiles(jump.id, fps)
-                }}
-                className='text-xs text-red-500'>
-                Remove
-              </button>
-            </>
-          )
-        )}
-        {isProcessed ? (
           <button
             type='button'
-            onClick={handleUnprocess}
-            className='text-xs px-2 py-1 rounded border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'>
-            Undo
+            onClick={(e) => {
+              e.stopPropagation()
+              setExpanded(!expanded)
+            }}
+            className='text-gray-400 text-xs'>
+            {expanded ? '▼' : '▶'}
           </button>
-        ) : jump.confirmed && jump.files.length > 0 ? (
-          <button
-            type='button'
-            onClick={handleProcess}
-            className='text-xs px-2 py-1 rounded bg-green-600 text-white hover:bg-green-700'>
-            Process
-          </button>
-        ) : null}
-        <button
-          type='button'
-          onClick={() => onCompareToggle?.(jump.id)}
-          className={`text-xs px-2 py-1 rounded border ${isCompareSelected ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-white hover:bg-gray-50'}`}
-          title='Select for comparison'>
-          {isCompareSelected ? '✓ Compare' : 'Compare'}
-        </button>
-        <button
-          type='button'
-          onClick={handleDelete}
-          className='text-gray-400 hover:text-red-500 px-1'
-          title={isProcessed ? 'Delete and remove processed folder' : 'Remove jump'}>
-          ✕
-        </button>
-      </div>
-      {expanded && (
-        <div className='border-t dark:border-gray-700 px-4 py-2 bg-gray-50/30 dark:bg-gray-800/30'>
-          {jump.files.length === 0 ? (
-            <p className='text-sm text-gray-400 italic py-2'>Drop files here</p>
+          {editingLabel && !isProcessed ? (
+            <input
+              type='text'
+              value={labelValue}
+              onChange={(e) => setLabelValue(e.target.value)}
+              onBlur={handleLabelSave}
+              onKeyDown={(e) => e.key === 'Enter' && handleLabelSave()}
+              autoFocus
+              className='font-semibold text-sm bg-white border rounded px-1 py-0.5'
+            />
           ) : (
-            <div className='max-h-80 overflow-y-auto space-y-0.5 pr-1'>
-              {jump.files.map((file, idx) => (
-                <FileRow
-                  key={file.path}
-                  file={file}
-                  groupId={jump.id}
-                  selected={!!selection[file.path]}
-                  isSelectMode={isSelectMode}
-                  dropPosition={hoveredFile === file.path ? dropPosition : null}
-                  onSelect={onSelect}
-                  onDragStart={(e, fp) => {
-                    if (isProcessed) return
-                    const sel = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
-                    const toDrag = sel.length > 0 && selection[fp] ? sel : [fp]
-                    dragDataRef.current = { filePaths: toDrag }
-                    onDragStart(e, toDrag, jump.id)
-                  }}
-                  onRowDragOver={isProcessed ? undefined : handleRowDragOver}
-                  onRowDragLeave={handleRowDragLeave}
-                  onRowDrop={isProcessed ? undefined : handleRowDrop}
-                  onPreview={() => onPreview(jump.files, idx, jump.label)}
-                />
-              ))}
-            </div>
+            <span
+              className={`font-semibold text-sm shrink-0 ${isProcessed ? '' : 'cursor-text hover:underline'}`}
+              onClick={(e) => {
+                e.stopPropagation()
+                if (!isProcessed) setEditingLabel(true)
+              }}>
+              {jump.label} {minTimeLabel ? `• ${minTimeLabel}` : ''}
+            </span>
           )}
+          <span className='text-xs text-gray-400'>
+            {jump.files.length} files •{' '}
+            {jump.files.length > 0
+              ? `${formatSequenceTime(bounds.start)}–${formatSequenceTime(bounds.end)}`
+              : ''}
+          </span>
+          {isProcessed ? (
+            <span className='text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30'>
+              Processed
+            </span>
+          ) : (
+            selectedCount > 0 && (
+              <>
+                <span className='text-xs text-blue-500'>{selectedCount} selected</span>
+                <button
+                  type='button'
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    const fps = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
+                    if (fps.length) onRemoveFiles(jump.id, fps)
+                  }}
+                  className='text-xs text-red-500'>
+                  Remove
+                </button>
+              </>
+            )
+          )}
+          {isProcessed && (
+            <button
+              type='button'
+              onClick={(e) => {
+                e.stopPropagation()
+                handleUnprocess()
+              }}
+              className='text-xs px-2 py-1 rounded border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'>
+              Undo
+            </button>
+          )}
+          <button
+            type='button'
+            onClick={(e) => {
+              e.stopPropagation()
+              handleDelete()
+            }}
+            className='text-gray-400 hover:text-red-500 px-1'
+            title={isProcessed ? 'Delete and remove processed folder' : 'Remove jump'}>
+            ✕
+          </button>
         </div>
-      )}
+        {expanded && (
+          <div className='border-t dark:border-gray-700 px-4 py-2 bg-gray-50/30 dark:bg-gray-800/30'>
+            {jump.files.length === 0 ? (
+              <p className='text-sm text-gray-400 italic py-2'>Drop files here</p>
+            ) : (
+              <div className='max-h-80 overflow-y-auto space-y-0.5 pr-1'>
+                {jump.files.map((file, idx) => (
+                  <FileRow
+                    key={file.path}
+                    file={file}
+                    groupId={jump.id}
+                    selected={!!selection[file.path]}
+                    isSelectMode={isSelectMode}
+                    dropPosition={hoveredFile === file.path ? dropPosition : null}
+                    onSelect={onSelect}
+                    onDragStart={(e, fp) => {
+                      if (isProcessed) return
+                      const sel = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
+                      const toDrag = sel.length > 0 && selection[fp] ? sel : [fp]
+                      dragDataRef.current = { filePaths: toDrag }
+                      onDragStart(e, toDrag, jump.id)
+                    }}
+                    onRowDragOver={isProcessed ? undefined : handleRowDragOver}
+                    onRowDragLeave={handleRowDragLeave}
+                    onRowDrop={isProcessed ? undefined : handleRowDrop}
+                    onPreview={() => onPreview(jump.files, idx, jump.label)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -766,6 +775,68 @@ const StagingTray = ({
   )
 }
 
+const SelectedJumpsPanel = ({
+  jumps,
+  onClear,
+  onCompare,
+  onProcess
+}: {
+  jumps: ManifestJump[]
+  onClear: () => void
+  onCompare: () => void
+  onProcess: () => void
+}) => {
+  const canCompare = jumps.length === 2
+  const canProcess = jumps.some((j) => j.confirmed && !j.processed)
+  return (
+    <div className='w-[320px] shrink-0 sticky top-6 h-fit max-h-[85vh] flex flex-col border border-amber-200 dark:border-amber-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden'>
+      <div className='px-3 py-2 border-b dark:border-gray-700 bg-amber-50 dark:bg-amber-900/20 flex items-center justify-between'>
+        <span className='text-sm font-semibold text-amber-800 dark:text-amber-200'>
+          {jumps.length} jump{jumps.length > 1 ? 's' : ''} selected
+        </span>
+        <button
+          type='button'
+          onClick={onClear}
+          className='text-xs text-amber-700 hover:underline'>
+          Clear
+        </button>
+      </div>
+      <div className='flex-1 overflow-y-auto p-2 space-y-2 min-h-[80px]'>
+        {jumps.map((jump) => {
+          const bounds = getJumpBounds(jump)
+          return (
+            <div
+              key={jump.id}
+              className='p-2 rounded border bg-gray-50 dark:bg-gray-800/50'>
+              <div className='text-xs font-medium truncate'>{jump.label}</div>
+              <div className='text-[11px] text-gray-500'>
+                {jump.files.length} files • {bounds.start ? formatTime(bounds.start) : ''} •{' '}
+                {getJumpDate(jump)}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <div className='p-3 border-t dark:border-gray-700 flex flex-col gap-2'>
+        <button
+          type='button'
+          disabled={!canCompare}
+          onClick={onCompare}
+          className='w-full text-sm px-3 py-1.5 rounded bg-amber-600 text-white disabled:opacity-30 hover:bg-amber-700'>
+          Compare
+        </button>
+        <button
+          type='button'
+          disabled={!canProcess}
+          onClick={onProcess}
+          className='w-full text-sm px-3 py-1.5 rounded bg-green-600 text-white disabled:opacity-30 hover:bg-green-700'>
+          Process selected
+        </button>
+      </div>
+    </div>
+  )
+}
+
 const JumpDaySection = ({
   day,
   selection,
@@ -859,9 +930,13 @@ const JumpDaySection = ({
 
 const TimelineJumps = ({
   dayGroups,
+  selectedIds,
+  onSelect,
   onShiftDay
 }: {
   dayGroups: JumpDayGroup[]
+  selectedIds: string[]
+  onSelect: (jumpId: string) => void
   onShiftDay: (date: string, offsetSeconds: number, dayPaths: string[]) => void
 }) => {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -1016,7 +1091,7 @@ const TimelineJumps = ({
                   <div
                     key={jump.id}
                     data-jump-bar='true'
-                    className={`absolute h-5 rounded cursor-grab active:cursor-grabbing ${jump.processed ? 'bg-gray-400 cursor-not-allowed opacity-60' : dayColor} opacity-90 hover:opacity-100 hover:h-6 ${isJumpDragging ? 'shadow-lg ring-2 ring-blue-300 z-10' : ''}`}
+                    className={`absolute h-5 rounded cursor-grab active:cursor-grabbing ${jump.processed ? 'bg-gray-400 cursor-not-allowed opacity-60' : dayColor} opacity-90 hover:opacity-100 hover:h-6 ${isJumpDragging ? 'shadow-lg ring-2 ring-blue-300 z-10' : selectedIds.includes(jump.id) ? 'ring-2 ring-amber-400' : ''}`}
                     style={{
                       top: '50%',
                       transform: 'translateY(-50%)',
@@ -1058,6 +1133,7 @@ const TimelineJumps = ({
                         if (Math.abs(off) >= 60) {
                           onShiftDay(jump.id, off, jumpPaths)
                         } else {
+                          onSelect(jump.id)
                           setDraggingJump(null)
                           setDragOffset(0)
                           setDragLabel('')
@@ -1094,6 +1170,7 @@ const TimelineJumps = ({
                         document.removeEventListener('touchend', handleUp)
                         const off = dragOffsetRef.current
                         if (Math.abs(off) >= 60) onShiftDay(jump.id, off, jumpPaths)
+                        else onSelect(jump.id)
                         setDraggingJump(null)
                         setDragOffset(0)
                         setDragLabel('')
@@ -1103,7 +1180,7 @@ const TimelineJumps = ({
                       document.addEventListener('touchmove', handleMove as any, { passive: false })
                       document.addEventListener('touchend', handleUp)
                     }}
-                    title={`${jump.label} — drag to shift jump${jump.processed ? ' (processed, undo first)' : ', Shift for 1-day snap'}`}
+                    title={`${jump.label} — click to select, drag to shift jump${jump.processed ? ' (processed, undo first)' : ', Shift for 1-day snap'}`}
                   />
                 )
               })}
@@ -1405,13 +1482,6 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
       { method: 'POST', encType: 'application/json', action: '/api/manifest' }
     )
   }
-  const handleConfirmAndExecute = () => {
-    const ids = manifest?.jumps.filter((j) => j.confirmed && !j.processed).map((j) => j.id) ?? []
-    manifestFetcher.submit(
-      { action: 'execute-jumps', jumpIds: ids },
-      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-    )
-  }
   const handleResetCalibration = () => {
     manifestFetcher.submit(
       { action: 'reset-calibration' },
@@ -1465,7 +1535,6 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   if (manifest.status === 'empty')
     return renderEmptyState('No Files to Review', 'No new camera files were found.')
 
-  const confirmedCount = manifest.jumps.filter((j) => j.confirmed && !j.processed).length
   const processedCount = manifest.jumps.filter((j) => j.processed).length
   const totalFiles = manifest.jumps.reduce((s, j) => s + j.files.length, 0)
 
@@ -1523,44 +1592,9 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
               Reset dates
             </button>
           )}
-          <button
-            type='button'
-            onClick={handleConfirmAndExecute}
-            disabled={confirmedCount === 0}
-            className={`ml-auto px-6 py-2 text-sm font-medium text-white rounded-lg ${confirmedCount > 0 ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-300 cursor-not-allowed'}`}>
-            {processedCount === manifest.jumps.length && manifest.jumps.length > 0
-              ? 'All processed'
-              : confirmedCount > 0
-                ? `Process ${confirmedCount} confirmed`
-                : `Confirm & Execute (${confirmedCount}/${manifest.jumps.length})`}
-          </button>
         </div>
 
-        {compareIds.length > 0 && (
-          <div className='flex items-center gap-2 mb-3 p-2 border border-amber-200 bg-amber-50 rounded'>
-            <span className='text-sm text-amber-800'>
-              {compareIds.length === 1
-                ? '1 jump selected for compare — select another'
-                : '2 jumps selected for compare'}
-            </span>
-            {compareIds.length === 2 && (
-              <button
-                type='button'
-                onClick={() => setShowCompare(true)}
-                className='text-sm px-3 py-1 rounded bg-amber-600 text-white hover:bg-amber-700'>
-                Compare
-              </button>
-            )}
-            <button
-              type='button'
-              onClick={() => setCompareIds([])}
-              className='text-sm text-amber-700 hover:underline ml-auto'>
-              Clear compare
-            </button>
-          </div>
-        )}
-
-        <div className={`${selectedCount > 0 ? 'flex gap-6' : ''}`}>
+        <div className={`${selectedCount > 0 || compareIds.length > 0 ? 'flex gap-6' : ''}`}>
           {selectedCount > 0 && (
             <StagingTray
               selectedFiles={selectedFiles}
@@ -1574,6 +1608,8 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
           <div className='flex-1 min-w-0'>
             <TimelineJumps
               dayGroups={jumpsByDay}
+              selectedIds={compareIds}
+              onSelect={handleCompareToggle}
               onShiftDay={handleShiftOffset}
             />
 
@@ -1629,6 +1665,27 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
               )}
             </div>
           </div>
+          {compareIds.length > 0 && (
+            <SelectedJumpsPanel
+              jumps={compareIds
+                .map((id) => manifest!.jumps.find((j) => j.id === id)!)
+                .filter(Boolean)}
+              onClear={() => setCompareIds([])}
+              onCompare={() => setShowCompare(true)}
+              onProcess={() => {
+                const ids = compareIds.filter((id) => {
+                  const j = manifest!.jumps.find((x) => x.id === id)
+                  return j?.confirmed && !j.processed
+                })
+                if (ids.length) {
+                  manifestFetcher.submit(
+                    { action: 'execute-jumps', jumpIds: ids },
+                    { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+                  )
+                }
+              }}
+            />
+          )}
         </div>
         {preview && (
           <PreviewDrawer
