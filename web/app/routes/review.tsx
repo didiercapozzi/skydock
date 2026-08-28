@@ -1356,7 +1356,6 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   const handleCompareToggle = useCallback((jumpId: string) => {
     setCompareIds((prev) => {
       if (prev.includes(jumpId)) return prev.filter((id) => id !== jumpId)
-      if (prev.length >= 2) return [prev[1], jumpId]
       return [...prev, jumpId]
     })
   }, [])
