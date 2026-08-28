@@ -296,22 +296,26 @@ const JumpCard = ({
   jump,
   selection,
   isSelectMode,
+  isCompareSelected,
   onSelect,
   onDrop,
   onDragStart,
   onRemoveFiles,
   onPreview,
-  onReorder
+  onReorder,
+  onCompareToggle
 }: {
   jump: ManifestJump
   selection: Record<string, boolean>
   isSelectMode: boolean
+  isCompareSelected?: boolean
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDrop: (e: React.DragEvent, targetJumpId: string) => void
   onDragStart: (e: React.DragEvent, filePaths: string[], sourceJumpId: string) => void
   onRemoveFiles: (jumpId: string, filePaths: string[]) => void
   onPreview: (files: ManifestFile[], index: number, label: string) => void
   onReorder?: (jumpId: string, filePaths: string[]) => void
+  onCompareToggle?: (jumpId: string) => void
 }) => {
   const [expanded, setExpanded] = useState(true)
   const [editingLabel, setEditingLabel] = useState(false)
@@ -392,7 +396,7 @@ const JumpCard = ({
 
   return (
     <div
-      className={`border rounded-lg overflow-hidden transition-colors ${isProcessed ? 'border-blue-300 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-900/20' : isDragOver && !hoveredFile ? 'border-blue-400 bg-blue-50/50' : jump.confirmed ? 'border-green-300 bg-green-50/50 dark:border-green-700 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50'}`}
+      className={`border rounded-lg overflow-hidden transition-colors ${isCompareSelected ? 'border-amber-300 bg-amber-50/50 ring-1 ring-amber-300' : isProcessed ? 'border-blue-300 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-900/20' : isDragOver && !hoveredFile ? 'border-blue-400 bg-blue-50/50' : jump.confirmed ? 'border-green-300 bg-green-50/50 dark:border-green-700 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50'}`}
       onDragOver={(e) => {
         if (isProcessed || hoveredFile) return
         e.preventDefault()
@@ -487,6 +491,13 @@ const JumpCard = ({
         ) : null}
         <button
           type='button'
+          onClick={() => onCompareToggle?.(jump.id)}
+          className={`text-xs px-2 py-1 rounded border ${isCompareSelected ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-white hover:bg-gray-50'}`}
+          title='Select for comparison'>
+          {isCompareSelected ? '✓ Compare' : 'Compare'}
+        </button>
+        <button
+          type='button'
           onClick={handleDelete}
           className='text-gray-400 hover:text-red-500 px-1'
           title={isProcessed ? 'Delete and remove processed folder' : 'Remove jump'}>
@@ -494,34 +505,179 @@ const JumpCard = ({
         </button>
       </div>
       {expanded && (
-        <div className='border-t dark:border-gray-700 px-4 py-2 space-y-0.5 bg-gray-50/30 dark:bg-gray-800/30'>
-          {jump.files.map((file, idx) => (
-            <FileRow
-              key={file.path}
-              file={file}
-              groupId={jump.id}
-              selected={!!selection[file.path]}
-              isSelectMode={isSelectMode}
-              dropPosition={hoveredFile === file.path ? dropPosition : null}
-              onSelect={onSelect}
-              onDragStart={(e, fp) => {
-                if (isProcessed) return
-                const sel = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
-                const toDrag = sel.length > 0 && selection[fp] ? sel : [fp]
-                dragDataRef.current = { filePaths: toDrag }
-                onDragStart(e, toDrag, jump.id)
-              }}
-              onRowDragOver={isProcessed ? undefined : handleRowDragOver}
-              onRowDragLeave={handleRowDragLeave}
-              onRowDrop={isProcessed ? undefined : handleRowDrop}
-              onPreview={() => onPreview(jump.files, idx, jump.label)}
-            />
-          ))}
-          {jump.files.length === 0 && (
+        <div className='border-t dark:border-gray-700 px-4 py-2 bg-gray-50/30 dark:bg-gray-800/30'>
+          {jump.files.length === 0 ? (
             <p className='text-sm text-gray-400 italic py-2'>Drop files here</p>
+          ) : (
+            <div className='max-h-80 overflow-y-auto space-y-0.5 pr-1'>
+              {jump.files.map((file, idx) => (
+                <FileRow
+                  key={file.path}
+                  file={file}
+                  groupId={jump.id}
+                  selected={!!selection[file.path]}
+                  isSelectMode={isSelectMode}
+                  dropPosition={hoveredFile === file.path ? dropPosition : null}
+                  onSelect={onSelect}
+                  onDragStart={(e, fp) => {
+                    if (isProcessed) return
+                    const sel = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
+                    const toDrag = sel.length > 0 && selection[fp] ? sel : [fp]
+                    dragDataRef.current = { filePaths: toDrag }
+                    onDragStart(e, toDrag, jump.id)
+                  }}
+                  onRowDragOver={isProcessed ? undefined : handleRowDragOver}
+                  onRowDragLeave={handleRowDragLeave}
+                  onRowDrop={isProcessed ? undefined : handleRowDrop}
+                  onPreview={() => onPreview(jump.files, idx, jump.label)}
+                />
+              ))}
+            </div>
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+const CompareDrawer = ({
+  jumps,
+  onClose,
+  onMerge
+}: {
+  jumps: [ManifestJump, ManifestJump]
+  onClose: () => void
+  onMerge: (targetId: string, sourceId: string) => void
+}) => {
+  const [leftIdx, setLeftIdx] = useState<number | null>(null)
+  const [rightIdx, setRightIdx] = useState<number | null>(null)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  const renderPreview = (file: ManifestFile | null) => {
+    if (!file)
+      return (
+        <div className='flex items-center justify-center h-[200px] text-xs text-gray-400'>
+          Select a file
+        </div>
+      )
+    const isVideo = /\.(mp4|mov|avi|mkv)$/i.test(file.filename)
+    const src = `/api/file?path=${encodeURIComponent(file.path)}`
+    return (
+      <div className='flex flex-col items-center gap-2'>
+        {isVideo ? (
+          <video
+            key={file.path}
+            src={src}
+            controls
+            autoPlay
+            muted
+            preload='metadata'
+            className='max-w-full max-h-[220px] rounded bg-black'
+          />
+        ) : (
+          <img
+            key={file.path}
+            src={src}
+            alt={file.filename}
+            className='max-w-full max-h-[220px] rounded object-contain'
+          />
+        )}
+        <div className='text-xs text-gray-500'>
+          {file.filename} • {formatTime(file.mtime)} • {formatSize(file.size)}
+        </div>
+      </div>
+    )
+  }
+
+  const leftFile = leftIdx !== null ? (jumps[0].files[leftIdx] ?? null) : null
+  const rightFile = rightIdx !== null ? (jumps[1].files[rightIdx] ?? null) : null
+
+  return (
+    <div className='fixed inset-0 z-50 flex justify-center items-start pt-10'>
+      <div
+        className='absolute inset-0 bg-black/40'
+        onClick={onClose}
+      />
+      <div className='relative w-full max-w-[1100px] mx-4 bg-white dark:bg-gray-900 rounded-lg shadow-xl flex flex-col max-h-[85vh]'>
+        <div className='flex items-center justify-between px-4 py-3 border-b dark:border-gray-700'>
+          <div className='text-sm font-semibold'>Compare jumps</div>
+          <button
+            type='button'
+            onClick={onClose}
+            className='w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-800'>
+            ✕
+          </button>
+        </div>
+        <div className='flex-1 grid grid-cols-2 gap-0 overflow-hidden min-h-0'>
+          {[jumps[0], jumps[1]].map((jump, colIdx) => {
+            const selectedIdx = colIdx === 0 ? leftIdx : rightIdx
+            const setIdx = colIdx === 0 ? setLeftIdx : setRightIdx
+            const bounds = getJumpBounds(jump)
+            return (
+              <div
+                key={jump.id}
+                className='flex flex-col border-r dark:border-gray-700 last:border-r-0 min-h-0'>
+                <div className='px-3 py-2 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800 shrink-0'>
+                  <div className='text-sm font-medium truncate'>{jump.label}</div>
+                  <div className='text-xs text-gray-500'>
+                    {jump.files.length} files •{' '}
+                    {jump.files.length > 0
+                      ? `${formatSequenceDate(bounds.start)} ${formatSequenceTime(bounds.start)} – ${formatSequenceTime(bounds.end)}`
+                      : ''}{' '}
+                    • {getJumpDate(jump)}
+                  </div>
+                </div>
+                <div className='flex-1 overflow-y-auto p-2 space-y-0.5 min-h-0'>
+                  {jump.files.map((file, idx) => (
+                    <div
+                      key={file.path}
+                      onClick={() => setIdx(idx)}
+                      className={`flex items-center gap-2 px-2 py-1 text-xs rounded cursor-pointer ${selectedIdx === idx ? 'bg-blue-100 dark:bg-blue-900/40 ring-1 ring-blue-300' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+                      <span className='font-mono truncate flex-1'>{file.filename}</span>
+                      <span className='text-gray-400 tabular-nums whitespace-nowrap'>
+                        {formatTime(file.mtime)}
+                      </span>
+                      <span className='text-gray-400 whitespace-nowrap'>
+                        {formatSize(file.size)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className='border-t dark:border-gray-700 p-3 flex items-center justify-center bg-gray-50/50 dark:bg-gray-800/30 min-h-[260px]'>
+                  {renderPreview(colIdx === 0 ? leftFile : rightFile)}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div className='flex items-center justify-end gap-2 px-4 py-3 border-t dark:border-gray-700'>
+          <button
+            type='button'
+            onClick={onClose}
+            className='text-sm px-3 py-1.5 rounded border'>
+            Cancel
+          </button>
+          <button
+            type='button'
+            onClick={() => onMerge(jumps[0].id, jumps[1].id)}
+            className='text-sm px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700'>
+            Merge into {jumps[0].label}
+          </button>
+          <button
+            type='button'
+            onClick={() => onMerge(jumps[1].id, jumps[0].id)}
+            className='text-sm px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700'>
+            Merge into {jumps[1].label}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -614,6 +770,7 @@ const JumpDaySection = ({
   day,
   selection,
   isSelectMode,
+  compareIds,
   onSelect,
   onDragStart,
   onShiftDay,
@@ -622,11 +779,13 @@ const JumpDaySection = ({
   onDrop,
   onRemoveFiles,
   onPreview,
-  onReorder
+  onReorder,
+  onCompareToggle
 }: {
   day: JumpDayGroup
   selection: SelectionMap
   isSelectMode: boolean
+  compareIds: string[]
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDragStart: (e: React.DragEvent, filePaths: string[], sourceId: string) => void
   onShiftDay: (date: string, newDateStr: string) => void
@@ -636,6 +795,7 @@ const JumpDaySection = ({
   onRemoveFiles: (jumpId: string, filePaths: string[]) => void
   onPreview: (files: ManifestFile[], index: number, label: string) => void
   onReorder: (jumpId: string, filePaths: string[]) => void
+  onCompareToggle: (jumpId: string) => void
 }) => {
   const fileCount = day.jumps.reduce((s, j) => s + j.files.length, 0)
   return (
@@ -682,12 +842,14 @@ const JumpDaySection = ({
             jump={jump}
             selection={selection[jump.id] ?? {}}
             isSelectMode={isSelectMode}
+            isCompareSelected={compareIds.includes(jump.id)}
             onSelect={onSelect}
             onDrop={onDrop}
             onDragStart={onDragStart}
             onRemoveFiles={onRemoveFiles}
             onPreview={onPreview}
             onReorder={onReorder}
+            onCompareToggle={onCompareToggle}
           />
         ))}
       </div>
@@ -969,6 +1131,8 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   const [editingDay, setEditingDay] = useState<string | null>(null)
   const [preview, setPreview] = useState<PreviewState | null>(null)
   const [copyMode, setCopyMode] = useState(false)
+  const [compareIds, setCompareIds] = useState<string[]>([])
+  const [showCompare, setShowCompare] = useState(false)
   const dragDataRef = useRef<{ filePaths: string[]; sourceJumpId: string } | null>(null)
   const trayDragRef = useRef<{
     filePaths: string[]
@@ -1171,6 +1335,32 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
     [manifestFetcher]
   )
 
+  const handleMerge = useCallback(
+    (targetId: string, sourceId: string) => {
+      manifestFetcher.submit(
+        { action: 'merge-jumps', sourceJumpIds: [targetId, sourceId], targetJumpId: targetId },
+        { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+      )
+    },
+    [manifestFetcher]
+  )
+
+  const handleCompareToggle = useCallback((jumpId: string) => {
+    setCompareIds((prev) => {
+      if (prev.includes(jumpId)) return prev.filter((id) => id !== jumpId)
+      if (prev.length >= 2) return [prev[1], jumpId]
+      return [...prev, jumpId]
+    })
+  }, [])
+
+  const compareJumps = useMemo(() => {
+    if (compareIds.length !== 2 || !manifest) return null
+    const a = manifest.jumps.find((j) => j.id === compareIds[0])
+    const b = manifest.jumps.find((j) => j.id === compareIds[1])
+    if (!a || !b) return null
+    return [a, b] as [ManifestJump, ManifestJump]
+  }, [compareIds, manifest])
+
   const handleShiftDay = useCallback(
     (date: string, newDateStr: string) => {
       const group = jumpsByDay.find((g) => g.date === date)
@@ -1346,6 +1536,30 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
           </button>
         </div>
 
+        {compareIds.length > 0 && (
+          <div className='flex items-center gap-2 mb-3 p-2 border border-amber-200 bg-amber-50 rounded'>
+            <span className='text-sm text-amber-800'>
+              {compareIds.length === 1
+                ? '1 jump selected for compare — select another'
+                : '2 jumps selected for compare'}
+            </span>
+            {compareIds.length === 2 && (
+              <button
+                type='button'
+                onClick={() => setShowCompare(true)}
+                className='text-sm px-3 py-1 rounded bg-amber-600 text-white hover:bg-amber-700'>
+                Compare
+              </button>
+            )}
+            <button
+              type='button'
+              onClick={() => setCompareIds([])}
+              className='text-sm text-amber-700 hover:underline ml-auto'>
+              Clear compare
+            </button>
+          </div>
+        )}
+
         <div className={`${selectedCount > 0 ? 'flex gap-6' : ''}`}>
           {selectedCount > 0 && (
             <StagingTray
@@ -1397,6 +1611,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                   day={day}
                   selection={selection}
                   isSelectMode={isSelectMode}
+                  compareIds={compareIds}
                   onSelect={handleSelect}
                   onDragStart={handleDragStart}
                   onShiftDay={handleShiftDay}
@@ -1406,6 +1621,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                   onRemoveFiles={handleRemoveFiles}
                   onPreview={handlePreview}
                   onReorder={handleReorder}
+                  onCompareToggle={handleCompareToggle}
                 />
               ))}
               {jumpsByDay.length === 0 && (
@@ -1420,6 +1636,17 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
             onClose={handlePreviewClose}
             onPrev={handlePreviewPrev}
             onNext={handlePreviewNext}
+          />
+        )}
+        {showCompare && compareJumps && (
+          <CompareDrawer
+            jumps={compareJumps}
+            onClose={() => setShowCompare(false)}
+            onMerge={(targetId, sourceId) => {
+              handleMerge(targetId, sourceId)
+              setShowCompare(false)
+              setCompareIds([])
+            }}
           />
         )}
       </div>
