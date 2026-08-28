@@ -38,19 +38,37 @@ build_time_map() {
     done
 
     if [[ ${#jpg_files[@]} -gt 0 ]]; then
-        while IFS=, read -r srcfile dateval; do
+        while IFS=, read -r srcfile dt1 dt2 dt3; do
             [[ "${srcfile}" == "SourceFile" ]] && continue
-            [[ -z "${dateval}" ]] && continue
-            map_ref["${srcfile}"]="${dateval}"
-        done < <(exiftool -s3 -DateTimeOriginal -csv "${jpg_files[@]}" 2>/dev/null)
+            srcfile=$(echo "${srcfile}" | sed 's/^"//;s/"$//')
+            dt1=$(echo "${dt1}" | sed 's/^"//;s/"$//')
+            dt2=$(echo "${dt2}" | sed 's/^"//;s/"$//')
+            dt3=$(echo "${dt3}" | sed 's/^"//;s/"$//')
+            local chosen=""
+            for cand in "${dt1}" "${dt2}" "${dt3}"; do
+                [[ -n "${cand}" ]] && { chosen="${cand}"; break; }
+            done
+            [[ -z "${chosen}" ]] && continue
+            map_ref["${srcfile}"]="${chosen}"
+        done < <(exiftool -s3 -DateTimeOriginal -CreateDate -MediaCreateDate -csv "${jpg_files[@]}" 2>/dev/null)
     fi
 
     if [[ ${#mp4_files[@]} -gt 0 ]]; then
-        while IFS=, read -r srcfile dateval; do
+        while IFS=, read -r srcfile dt1 dt2 dt3 dt4 dt5; do
             [[ "${srcfile}" == "SourceFile" ]] && continue
-            [[ -z "${dateval}" ]] && continue
-            map_ref["${srcfile}"]="${dateval}"
-        done < <(exiftool -s3 -CreateDate -csv "${mp4_files[@]}" 2>/dev/null)
+            srcfile=$(echo "${srcfile}" | sed 's/^"//;s/"$//')
+            dt1=$(echo "${dt1}" | sed 's/^"//;s/"$//')
+            dt2=$(echo "${dt2}" | sed 's/^"//;s/"$//')
+            dt3=$(echo "${dt3}" | sed 's/^"//;s/"$//')
+            dt4=$(echo "${dt4}" | sed 's/^"//;s/"$//')
+            dt5=$(echo "${dt5}" | sed 's/^"//;s/"$//')
+            local chosen=""
+            for cand in "${dt1}" "${dt2}" "${dt3}" "${dt4}" "${dt5}"; do
+                [[ -n "${cand}" ]] && { chosen="${cand}"; break; }
+            done
+            [[ -z "${chosen}" ]] && continue
+            map_ref["${srcfile}"]="${chosen}"
+        done < <(exiftool -s3 -CreateDate -MediaCreateDate -TrackCreateDate -DateTimeOriginal -ModifyDate -csv "${mp4_files[@]}" 2>/dev/null)
     fi
 }
 
