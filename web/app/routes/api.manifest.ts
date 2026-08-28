@@ -26,21 +26,30 @@ const saveManifest = (m: Manifest): void => {
 const JUMP_GAP_SECONDS = 1800
 
 const reclusterJumps = (manifest: Manifest, preservedPaths?: Set<string>): void => {
-  const preservedJumpIds = new Set<string>()
+  const seenIds = new Set<string>()
+  for (const jump of manifest.jumps) {
+    if (seenIds.has(jump.id)) {
+      let n = 1
+      while (seenIds.has(`jump_${n}`)) n++
+      jump.id = `jump_${n}`
+      jump.label = `Jump ${n}`
+    }
+    seenIds.add(jump.id)
+  }
+
+  const preservedJumps = new Set<ManifestJump>()
   if (preservedPaths) {
     for (const jump of manifest.jumps) {
-      if (jump.files.some((f) => preservedPaths.has(f.path))) preservedJumpIds.add(jump.id)
+      if (jump.files.some((f) => preservedPaths.has(f.path))) preservedJumps.add(jump)
     }
   }
 
   const preservedGroups: ManifestFile[][] = []
   const preservedFilePaths = new Set<string>()
-  for (const jump of manifest.jumps) {
-    if (preservedJumpIds.has(jump.id)) {
-      const sorted = [...jump.files].sort((a, b) => a.mtime - b.mtime)
-      preservedGroups.push(sorted)
-      for (const f of sorted) preservedFilePaths.add(f.path)
-    }
+  for (const jump of preservedJumps) {
+    const sorted = [...jump.files].sort((a, b) => a.mtime - b.mtime)
+    preservedGroups.push(sorted)
+    for (const f of sorted) preservedFilePaths.add(f.path)
   }
 
   const remainingFiles = manifest.files.filter((f) => !preservedFilePaths.has(f.path))
@@ -90,7 +99,7 @@ const reclusterJumps = (manifest: Manifest, preservedPaths?: Set<string>): void 
   for (const g of mergedGroups) {
     for (const f of g) {
       const prev = previousByPath.get(f.path)
-      if (prev && preservedJumpIds.has(prev.id)) usedIds.add(prev.id)
+      if (prev && preservedJumps.has(prev)) usedIds.add(prev.id)
     }
   }
   let nextIdx = 1
@@ -118,9 +127,7 @@ const reclusterJumps = (manifest: Manifest, preservedPaths?: Set<string>): void 
     }
     const isPreserved = files.some((f) => preservedFilePaths.has(f.path))
     const preservedJump = isPreserved
-      ? manifest.jumps.find(
-          (j) => preservedJumpIds.has(j.id) && j.files.some((f) => files.includes(f))
-        )
+      ? [...preservedJumps].find((j) => j.files.some((f) => files.includes(f)))
       : undefined
     if (preservedJump) {
       return {

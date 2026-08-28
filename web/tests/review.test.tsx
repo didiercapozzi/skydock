@@ -162,7 +162,7 @@ describe('Review', () => {
 
     renderReview(manifest)
 
-    expect(screen.getByText('Confirm All')).toBeInTheDocument()
+    expect(screen.getByText('Select All')).toBeInTheDocument()
     expect(screen.getByText('+ Add Jump')).toBeInTheDocument()
   })
 

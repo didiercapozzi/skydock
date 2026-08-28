@@ -330,7 +330,6 @@ const JumpCard = ({
   const selectedCount = jump.files.filter((f) => selection[f.path]).length
   const isProcessed = !!jump.processed
   const bounds = getJumpBounds(jump)
-  const minTimeLabel = bounds.start ? formatTime(bounds.start) : ''
 
   const handleRowDragOver = (e: React.DragEvent, filePath: string) => {
     if (isProcessed || !onReorder) return
@@ -377,12 +376,6 @@ const JumpCard = ({
       { method: 'POST', encType: 'application/json', action: '/api/manifest' }
     )
   }
-  const handleConfirm = (confirmed: boolean) => {
-    fetcher.submit(
-      { action: 'confirm-jump', jumpId: jump.id, confirmed },
-      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-    )
-  }
   const handleUnprocess = () => {
     fetcher.submit(
       { action: 'unprocess-jump', jumpId: jump.id },
@@ -392,7 +385,7 @@ const JumpCard = ({
 
   return (
     <div
-      className={`border rounded-lg overflow-hidden transition-colors flex ${isCompareSelected ? 'border-amber-300 bg-amber-50/50 ring-1 ring-amber-300' : isProcessed ? 'border-blue-300 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-900/20' : isDragOver && !hoveredFile ? 'border-blue-400 bg-blue-50/50' : jump.confirmed ? 'border-green-300 bg-green-50/50 dark:border-green-700 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50'}`}
+      className={`border rounded-lg overflow-hidden transition-colors ${isCompareSelected ? 'border-amber-300 bg-amber-50/50 ring-1 ring-amber-300' : isProcessed ? 'border-blue-300 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-900/20' : isDragOver && !hoveredFile ? 'border-blue-400 bg-blue-50/50' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50'}`}
       onDragOver={(e) => {
         if (isProcessed || hoveredFile) return
         e.preventDefault()
@@ -411,15 +404,7 @@ const JumpCard = ({
         setIsDragOver(false)
         onDrop(e, jump.id)
       }}>
-      <div
-        className={`w-2 shrink-0 cursor-pointer ${isCompareSelected ? 'bg-amber-400' : 'bg-gray-200 hover:bg-amber-300'}`}
-        onClick={(e) => {
-          e.stopPropagation()
-          onCompareToggle?.(jump.id)
-        }}
-        title={isCompareSelected ? 'Deselect jump' : 'Select jump for compare/process'}
-      />
-      <div className='flex-1 min-w-0'>
+      <div className='min-w-0'>
         <div
           className='flex items-center gap-2 px-4 py-2'
           onClick={(e) => {
@@ -429,10 +414,11 @@ const JumpCard = ({
           }}>
           <input
             type='checkbox'
-            checked={jump.confirmed}
-            onChange={(e) => handleConfirm(e.target.checked)}
-            disabled={isProcessed}
-            className='h-4 w-4 rounded border-gray-300 text-green-600 disabled:opacity-50'
+            checked={!!isCompareSelected}
+            onChange={() => onCompareToggle?.(jump.id)}
+            onClick={(e) => e.stopPropagation()}
+            title={isCompareSelected ? 'Deselect jump' : 'Select jump for compare/process'}
+            className='h-4 w-4 rounded border-gray-300 text-amber-600'
           />
           <button
             type='button'
@@ -460,57 +446,59 @@ const JumpCard = ({
                 e.stopPropagation()
                 if (!isProcessed) setEditingLabel(true)
               }}>
-              {jump.label} {minTimeLabel ? `• ${minTimeLabel}` : ''}
+              {jump.label}
             </span>
           )}
-          <span className='text-xs text-gray-400'>
-            {jump.files.length} files •{' '}
-            {jump.files.length > 0
-              ? `${formatSequenceTime(bounds.start)}–${formatSequenceTime(bounds.end)}`
-              : ''}
-          </span>
-          {isProcessed ? (
-            <span className='text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30'>
-              Processed
+          <div className='ml-auto flex items-center gap-2'>
+            <span className='text-xs text-gray-400'>
+              {jump.files.length} files •{' '}
+              {jump.files.length > 0
+                ? `${formatSequenceTime(bounds.start)}–${formatSequenceTime(bounds.end)}`
+                : ''}
             </span>
-          ) : (
-            selectedCount > 0 && (
-              <>
-                <span className='text-xs text-blue-500'>{selectedCount} selected</span>
-                <button
-                  type='button'
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    const fps = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
-                    if (fps.length) onRemoveFiles(jump.id, fps)
-                  }}
-                  className='text-xs text-red-500'>
-                  Remove
-                </button>
-              </>
-            )
-          )}
-          {isProcessed && (
+            {isProcessed ? (
+              <span className='text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30'>
+                Processed
+              </span>
+            ) : (
+              selectedCount > 0 && (
+                <>
+                  <span className='text-xs text-blue-500'>{selectedCount} selected</span>
+                  <button
+                    type='button'
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      const fps = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
+                      if (fps.length) onRemoveFiles(jump.id, fps)
+                    }}
+                    className='text-xs text-red-500'>
+                    Remove
+                  </button>
+                </>
+              )
+            )}
+            {isProcessed && (
+              <button
+                type='button'
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleUnprocess()
+                }}
+                className='text-xs px-2 py-1 rounded border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'>
+                Undo
+              </button>
+            )}
             <button
               type='button'
               onClick={(e) => {
                 e.stopPropagation()
-                handleUnprocess()
+                handleDelete()
               }}
-              className='text-xs px-2 py-1 rounded border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'>
-              Undo
+              className='text-gray-400 hover:text-red-500 px-1'
+              title={isProcessed ? 'Delete and remove processed folder' : 'Remove jump'}>
+              ✕
             </button>
-          )}
-          <button
-            type='button'
-            onClick={(e) => {
-              e.stopPropagation()
-              handleDelete()
-            }}
-            className='text-gray-400 hover:text-red-500 px-1'
-            title={isProcessed ? 'Delete and remove processed folder' : 'Remove jump'}>
-            ✕
-          </button>
+          </div>
         </div>
         {expanded && (
           <div className='border-t dark:border-gray-700 px-4 py-2 bg-gray-50/30 dark:bg-gray-800/30'>
@@ -787,7 +775,7 @@ const SelectedJumpsPanel = ({
   onProcess: () => void
 }) => {
   const canCompare = jumps.length === 2
-  const canProcess = jumps.some((j) => j.confirmed && !j.processed)
+  const canProcess = jumps.some((j) => !j.processed)
   return (
     <div className='w-[320px] shrink-0 sticky top-6 h-fit max-h-[85vh] flex flex-col border border-amber-200 dark:border-amber-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden'>
       <div className='px-3 py-2 border-b dark:border-gray-700 bg-amber-50 dark:bg-amber-900/20 flex items-center justify-between'>
@@ -869,6 +857,10 @@ const JumpDaySection = ({
   onCompareToggle: (jumpId: string) => void
 }) => {
   const fileCount = day.jumps.reduce((s, j) => s + j.files.length, 0)
+  const dayFiles = day.jumps.flatMap((j) => j.files)
+  const dayTimes = dayFiles.map((f) => f.mtime)
+  const dayStart = dayTimes.length ? Math.min(...dayTimes) : 0
+  const dayEnd = dayTimes.length ? Math.max(...dayTimes) : 0
   return (
     <div className='border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800/50 overflow-hidden mb-4'>
       <div className='flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700'>
@@ -901,6 +893,12 @@ const JumpDaySection = ({
         )}
         <span className='text-xs text-gray-500'>
           {fileCount} files • {day.jumps.length} jumps
+          {dayFiles.length > 0 && (
+            <>
+              {' '}
+              • {formatSequenceTime(dayStart)}–{formatSequenceTime(dayEnd)}
+            </>
+          )}
         </span>
         <span className='ml-auto text-[10px] text-gray-400 hidden sm:inline'>
           drag timeline or click date to fix
@@ -956,82 +954,23 @@ const TimelineJumps = ({
     dragOffsetRef.current = 0
   }, [dayGroups])
 
-  const timeRange = useMemo(() => {
-    const bounds = allJumps.map(getJumpBounds).filter((b) => b.start !== 0)
-    if (bounds.length === 0) return { min: 0, max: 86400 }
-    const minStart = Math.min(...bounds.map((b) => b.start))
-    const maxEnd = Math.max(...bounds.map((b) => b.end))
-    const minD = new Date(minStart * 1000)
-    minD.setHours(0, 0, 0, 0)
-    const maxD = new Date(maxEnd * 1000)
-    maxD.setHours(0, 0, 0, 0)
-    maxD.setDate(maxD.getDate() + 1)
-    const min = Math.floor(minD.getTime() / 1000)
-    const max = Math.floor(maxD.getTime() / 1000)
-    return { min, max }
-  }, [allJumps])
-
-  const range = timeRange.max - timeRange.min || 1
-  const isHugeRange = range > 7 * 86400
-  const effectiveRange = isHugeRange ? 86400 : range
+  const DAY = 86400
+  const effectiveRange = DAY
   const pos = (t: number) => {
-    if (!isHugeRange) return ((t - timeRange.min) / range) * 100
     const d = new Date(t * 1000)
     const secs = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds()
-    return (secs / 86400) * 100
+    return (secs / DAY) * 100
   }
-  const width = (a: number, b: number) => {
-    if (!isHugeRange) return Math.max(2, ((b - a) / range) * 100)
-    return Math.max(2, ((b - a) / 86400) * 100)
-  }
+  const width = (a: number, b: number) => Math.max(2, ((b - a) / DAY) * 100)
 
-  const hourTicks = useMemo(() => {
-    if (isHugeRange) {
-      return [0, 6, 12, 18, 24].map((h) => ({
+  const hourTicks = useMemo(
+    () =>
+      [0, 6, 12, 18, 24].map((h) => ({
         t: h * 3600,
         label: h === 0 ? '00:00' : `${String(h).padStart(2, '0')}:00`
-      }))
-    }
-    const ticks: { t: number; label: string }[] = []
-    const start = new Date(timeRange.min * 1000)
-    start.setMinutes(0, 0, 0)
-    start.setHours(Math.ceil(start.getHours() / 6) * 6)
-    let count = 0
-    for (
-      let d = new Date(start);
-      d.getTime() / 1000 < timeRange.max && count < 200;
-      d.setHours(d.getHours() + 6)
-    ) {
-      const epoch = Math.floor(d.getTime() / 1000)
-      const h = d.getHours()
-      const label =
-        h === 0
-          ? d.toLocaleDateString([], { month: 'short', day: 'numeric' })
-          : `${String(h).padStart(2, '0')}:00`
-      ticks.push({ t: epoch, label })
-      count++
-    }
-    return ticks
-  }, [timeRange, isHugeRange])
-
-  const outlierDates = useMemo(() => {
-    if (!isHugeRange) return []
-    const sorted = [...dayGroups].sort((a, b) => {
-      const ta = Math.min(...a.jumps.flatMap((j) => j.files.map((f) => f.mtime)))
-      const tb = Math.min(...b.jumps.flatMap((j) => j.files.map((f) => f.mtime)))
-      return ta - tb
-    })
-    if (sorted.length < 2) return []
-    const lastStart = Math.min(
-      ...sorted[sorted.length - 1].jumps.flatMap((j) => j.files.map((f) => f.mtime))
-    )
-    return sorted
-      .filter((g) => {
-        const t = Math.min(...g.jumps.flatMap((j) => j.files.map((f) => f.mtime)))
-        return lastStart - t > 30 * 86400
-      })
-      .map((g) => g.date)
-  }, [dayGroups, isHugeRange])
+      })),
+    []
+  )
 
   if (allJumps.length === 0) return null
 
@@ -1039,18 +978,10 @@ const TimelineJumps = ({
     <div className='mb-4'>
       <div className='flex items-center justify-between mb-1 px-1'>
         <span className='text-xs font-semibold text-gray-500 uppercase tracking-wider'>
-          Timeline — drag a jump to shift it
+          Timeline — drag a jump to shift it (00:00 → 24:00)
         </span>
-        <span className='text-[10px] text-gray-400'>
-          {isHugeRange ? 'Outlier dates — time-of-day view' : 'Shift+drag snaps to 1 day'}
-        </span>
+        <span className='text-[10px] text-gray-400'>Shift+drag snaps to 1 day</span>
       </div>
-      {isHugeRange && outlierDates.length > 0 && (
-        <div className='mb-1 px-2 py-1 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800'>
-          Detected wrong dates ({outlierDates.join(', ')}) — likely camera clock not set. Timeline
-          shows time-of-day only. Click the date to correct.
-        </div>
-      )}
       <div
         ref={containerRef}
         className='relative bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden select-none'
@@ -1059,14 +990,14 @@ const TimelineJumps = ({
           <div
             key={tick.t}
             className='absolute top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-700 opacity-60'
-            style={{ left: `${pos(tick.t)}%` }}
+            style={{ left: `${(tick.t / DAY) * 100}%` }}
           />
         ))}
         {hourTicks.map((tick) => (
           <div
             key={`label-${tick.t}`}
             className='absolute top-0.5 text-[8px] text-gray-400 pointer-events-none select-none'
-            style={{ left: `${pos(tick.t)}%`, transform: 'translateX(-50%)' }}>
+            style={{ left: `${(tick.t / DAY) * 100}%`, transform: 'translateX(-50%)' }}>
             {tick.label}
           </div>
         ))}
@@ -1470,11 +1401,10 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
     [manifestFetcher]
   )
 
-  const handleConfirmAll = () => {
-    manifestFetcher.submit(
-      { action: 'confirm-all', confirmed: true },
-      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-    )
+  const handleSelectAll = () => {
+    if (!manifest) return
+    const ids = manifest.jumps.filter((j) => !j.processed).map((j) => j.id)
+    setCompareIds(ids)
   }
   const handleCreateJump = () => {
     manifestFetcher.submit(
@@ -1574,9 +1504,9 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
         <div className='flex items-center gap-3 mb-4'>
           <button
             type='button'
-            onClick={handleConfirmAll}
+            onClick={handleSelectAll}
             className='px-4 py-2 text-sm font-medium bg-white border rounded-lg'>
-            Confirm All
+            Select All
           </button>
           <button
             type='button'
@@ -1675,7 +1605,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
               onProcess={() => {
                 const ids = compareIds.filter((id) => {
                   const j = manifest!.jumps.find((x) => x.id === id)
-                  return j?.confirmed && !j.processed
+                  return j && !j.processed
                 })
                 if (ids.length) {
                   manifestFetcher.submit(
