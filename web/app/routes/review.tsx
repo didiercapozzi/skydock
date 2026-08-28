@@ -183,16 +183,24 @@ const FileRow = ({
   groupId,
   selected,
   isSelectMode,
+  dropPosition,
   onSelect,
   onDragStart,
+  onRowDragOver,
+  onRowDragLeave,
+  onRowDrop,
   onPreview
 }: {
   file: ManifestFile
   groupId: string
   selected: boolean
   isSelectMode?: boolean
+  dropPosition?: 'above' | 'below' | null
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDragStart: (e: React.DragEvent, filePath: string, groupId: string) => void
+  onRowDragOver?: (e: React.DragEvent, filePath: string) => void
+  onRowDragLeave?: () => void
+  onRowDrop?: (e: React.DragEvent, filePath: string) => void
   onPreview?: () => void
 }) => {
   const handleRowClick = (e: React.MouseEvent) => {
@@ -221,15 +229,35 @@ const FileRow = ({
     onDragStart(e, file.path, groupId)
   }
 
+  const dropBorder =
+    dropPosition === 'above'
+      ? 'border-t-2 border-blue-500'
+      : dropPosition === 'below'
+        ? 'border-b-2 border-blue-500'
+        : ''
+
   return (
     <div
-      className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded cursor-pointer select-none transition-colors ${
+      className={`relative flex items-center gap-2 px-3 py-1.5 text-sm rounded cursor-pointer select-none transition-colors ${dropBorder} ${
         selected
           ? 'bg-blue-100 dark:bg-blue-900/40 ring-1 ring-blue-300 dark:ring-blue-700'
           : 'hover:bg-gray-100 dark:hover:bg-gray-800'
       }`}
       draggable
       onDragStart={handleDragStart}
+      onDragOver={(e) => {
+        if (!onRowDragOver) return
+        e.preventDefault()
+        e.stopPropagation()
+        onRowDragOver(e, file.path)
+      }}
+      onDragLeave={() => onRowDragLeave?.()}
+      onDrop={(e) => {
+        if (!onRowDrop) return
+        e.preventDefault()
+        e.stopPropagation()
+        onRowDrop(e, file.path)
+      }}
       onClick={handleRowClick}>
       <input
         type='checkbox'
@@ -272,7 +300,8 @@ const JumpCard = ({
   onDrop,
   onDragStart,
   onRemoveFiles,
-  onPreview
+  onPreview,
+  onReorder
 }: {
   jump: ManifestJump
   selection: Record<string, boolean>
@@ -282,15 +311,52 @@ const JumpCard = ({
   onDragStart: (e: React.DragEvent, filePaths: string[], sourceJumpId: string) => void
   onRemoveFiles: (jumpId: string, filePaths: string[]) => void
   onPreview: (files: ManifestFile[], index: number, label: string) => void
+  onReorder?: (jumpId: string, filePaths: string[]) => void
 }) => {
   const [expanded, setExpanded] = useState(true)
   const [editingLabel, setEditingLabel] = useState(false)
   const [labelValue, setLabelValue] = useState(jump.label)
   const [isDragOver, setIsDragOver] = useState(false)
+  const [hoveredFile, setHoveredFile] = useState<string | null>(null)
+  const [dropPosition, setDropPosition] = useState<'above' | 'below' | null>(null)
+  const dragDataRef = useRef<{ filePaths: string[] } | null>(null)
+  const withinJumpDropRef = useRef(false)
   const fetcher = useFetcher()
   const selectedCount = jump.files.filter((f) => selection[f.path]).length
   const isProcessed = !!jump.processed
   const bounds = getJumpBounds(jump)
+
+  const handleRowDragOver = (e: React.DragEvent, filePath: string) => {
+    if (isProcessed || !onReorder) return
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const midY = rect.top + rect.height / 2
+    const pos = e.clientY < midY ? 'above' : 'below'
+    setHoveredFile(filePath)
+    setDropPosition(pos)
+  }
+
+  const handleRowDragLeave = () => {
+    setHoveredFile(null)
+    setDropPosition(null)
+  }
+
+  const handleRowDrop = (e: React.DragEvent, targetFilePath: string) => {
+    setHoveredFile(null)
+    setDropPosition(null)
+    if (!onReorder || isProcessed) return
+    withinJumpDropRef.current = true
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const midY = rect.top + rect.height / 2
+    const insertBefore = e.clientY < midY
+    const paths = jump.files.map((f) => f.path)
+    const dragPaths = dragDataRef.current?.filePaths ?? []
+    if (dragPaths.length === 0) return
+    const filtered = paths.filter((p) => !dragPaths.includes(p))
+    const targetIdx = filtered.indexOf(targetFilePath)
+    const insertIdx = insertBefore ? targetIdx : targetIdx + 1
+    const newPaths = [...filtered.slice(0, insertIdx), ...dragPaths, ...filtered.slice(insertIdx)]
+    onReorder(jump.id, newPaths)
+  }
 
   const handleLabelSave = () => {
     fetcher.submit(
@@ -326,15 +392,22 @@ const JumpCard = ({
 
   return (
     <div
-      className={`border rounded-lg overflow-hidden transition-colors ${isProcessed ? 'border-blue-300 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-900/20' : isDragOver ? 'border-blue-400 bg-blue-50/50' : jump.confirmed ? 'border-green-300 bg-green-50/50 dark:border-green-700 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50'}`}
+      className={`border rounded-lg overflow-hidden transition-colors ${isProcessed ? 'border-blue-300 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-900/20' : isDragOver && !hoveredFile ? 'border-blue-400 bg-blue-50/50' : jump.confirmed ? 'border-green-300 bg-green-50/50 dark:border-green-700 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50'}`}
       onDragOver={(e) => {
-        if (isProcessed) return
+        if (isProcessed || hoveredFile) return
         e.preventDefault()
         setIsDragOver(true)
       }}
-      onDragLeave={() => setIsDragOver(false)}
+      onDragLeave={() => {
+        if (!hoveredFile) setIsDragOver(false)
+      }}
       onDrop={(e) => {
-        if (isProcessed) return
+        if (isProcessed || hoveredFile) return
+        if (withinJumpDropRef.current) {
+          withinJumpDropRef.current = false
+          setIsDragOver(false)
+          return
+        }
         setIsDragOver(false)
         onDrop(e, jump.id)
       }}>
@@ -429,19 +502,108 @@ const JumpCard = ({
               groupId={jump.id}
               selected={!!selection[file.path]}
               isSelectMode={isSelectMode}
+              dropPosition={hoveredFile === file.path ? dropPosition : null}
               onSelect={onSelect}
               onDragStart={(e, fp) => {
                 if (isProcessed) return
                 const sel = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
-                const toDrag = sel.length > 0 && selection[file.path] ? sel : [fp]
+                const toDrag = sel.length > 0 && selection[fp] ? sel : [fp]
+                dragDataRef.current = { filePaths: toDrag }
                 onDragStart(e, toDrag, jump.id)
               }}
+              onRowDragOver={isProcessed ? undefined : handleRowDragOver}
+              onRowDragLeave={handleRowDragLeave}
+              onRowDrop={isProcessed ? undefined : handleRowDrop}
               onPreview={() => onPreview(jump.files, idx, jump.label)}
             />
           ))}
           {jump.files.length === 0 && (
             <p className='text-sm text-gray-400 italic py-2'>Drop files here</p>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const StagingTray = ({
+  selectedFiles,
+  copyMode,
+  setCopyMode,
+  onClear,
+  onRemove,
+  onDragStart
+}: {
+  selectedFiles: { groupId: string; file: ManifestFile }[]
+  copyMode: boolean
+  setCopyMode: (v: boolean) => void
+  onClear: () => void
+  onRemove: (groupId: string, filePath: string) => void
+  onDragStart: (e: React.DragEvent, filePaths: string[]) => void
+}) => {
+  const handleTrayDragStart = (e: React.DragEvent) => {
+    const paths = selectedFiles.map((s) => s.file.path)
+    onDragStart(e, paths)
+  }
+
+  return (
+    <div className='w-[300px] shrink-0 sticky top-6 h-fit max-h-[80vh] flex flex-col border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden'>
+      <div className='px-3 py-2 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex items-center justify-between'>
+        <span className='text-sm font-semibold'>{selectedFiles.length} selected</span>
+        <button
+          type='button'
+          onClick={onClear}
+          className='text-xs text-blue-600 hover:underline'>
+          Clear
+        </button>
+      </div>
+      <div className='px-3 py-2 flex items-center gap-3 border-b dark:border-gray-700 text-xs'>
+        <label className='flex items-center gap-1 cursor-pointer'>
+          <input
+            type='radio'
+            checked={!copyMode}
+            onChange={() => setCopyMode(false)}
+            className='h-3 w-3'
+          />
+          Move
+        </label>
+        <label className='flex items-center gap-1 cursor-pointer'>
+          <input
+            type='radio'
+            checked={copyMode}
+            onChange={() => setCopyMode(true)}
+            className='h-3 w-3'
+          />
+          Copy
+        </label>
+      </div>
+      <div
+        className='flex-1 overflow-y-auto p-2 space-y-1 min-h-[80px]'
+        draggable={selectedFiles.length > 0}
+        onDragStart={handleTrayDragStart}>
+        {selectedFiles.length === 0 ? (
+          <p className='text-xs text-gray-400 italic px-2 py-4 text-center'>
+            Select files to stage
+          </p>
+        ) : (
+          selectedFiles.map(({ groupId, file }) => (
+            <div
+              key={`${groupId}-${file.path}`}
+              className='flex items-center gap-2 px-2 py-1 text-xs bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-800'>
+              <span className='font-mono truncate flex-1'>{file.filename}</span>
+              <button
+                type='button'
+                onClick={() => onRemove(groupId, file.path)}
+                className='text-gray-400 hover:text-red-500'>
+                ✕
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+      {selectedFiles.length > 0 && (
+        <div className='px-3 py-2 text-[11px] text-gray-500 border-t dark:border-gray-700 text-center'>
+          Drag this tray to a jump to {copyMode ? 'copy' : 'move'}
         </div>
       )}
     </div>
@@ -459,7 +621,8 @@ const JumpDaySection = ({
   setEditingDay,
   onDrop,
   onRemoveFiles,
-  onPreview
+  onPreview,
+  onReorder
 }: {
   day: JumpDayGroup
   selection: SelectionMap
@@ -472,6 +635,7 @@ const JumpDaySection = ({
   onDrop: (e: React.DragEvent, targetJumpId: string) => void
   onRemoveFiles: (jumpId: string, filePaths: string[]) => void
   onPreview: (files: ManifestFile[], index: number, label: string) => void
+  onReorder: (jumpId: string, filePaths: string[]) => void
 }) => {
   const fileCount = day.jumps.reduce((s, j) => s + j.files.length, 0)
   return (
@@ -523,6 +687,7 @@ const JumpDaySection = ({
             onDragStart={onDragStart}
             onRemoveFiles={onRemoveFiles}
             onPreview={onPreview}
+            onReorder={onReorder}
           />
         ))}
       </div>
@@ -803,7 +968,12 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   const [lastClicked, setLastClicked] = useState<string | null>(null)
   const [editingDay, setEditingDay] = useState<string | null>(null)
   const [preview, setPreview] = useState<PreviewState | null>(null)
+  const [copyMode, setCopyMode] = useState(false)
   const dragDataRef = useRef<{ filePaths: string[]; sourceJumpId: string } | null>(null)
+  const trayDragRef = useRef<{
+    filePaths: string[]
+    sourceGroups: Record<string, string[]>
+  } | null>(null)
 
   useEffect(() => {
     if (manifestFetcher.data || scanFetcher.data) revalidate()
@@ -876,6 +1046,20 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
     [lastClicked, allFileIds]
   )
 
+  const selectedFiles = useMemo(() => {
+    const res: { groupId: string; file: ManifestFile }[] = []
+    if (!manifest) return res
+    for (const jump of manifest.jumps)
+      for (const f of jump.files)
+        if (selection[jump.id]?.[f.path]) res.push({ groupId: jump.id, file: f })
+    for (const f of unassignedFiles)
+      if (selection['unassigned']?.[f.path]) res.push({ groupId: 'unassigned', file: f })
+    return res
+  }, [manifest, selection, unassignedFiles])
+
+  const selectedCount = selectedFiles.length
+  const isSelectMode = selectedCount > 0
+
   const handleDragStart = useCallback(
     (e: React.DragEvent, filePaths: string[], sourceJumpId: string) => {
       dragDataRef.current = { filePaths, sourceJumpId }
@@ -884,9 +1068,70 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
     []
   )
 
+  const handleReorder = useCallback(
+    (jumpId: string, filePaths: string[]) => {
+      manifestFetcher.submit(
+        { action: 'reorder-files', jumpId, filePaths },
+        { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+      )
+    },
+    [manifestFetcher]
+  )
+
+  const handleTrayDragStart = useCallback(
+    (e: React.DragEvent, filePaths: string[]) => {
+      const byGroup: Record<string, string[]> = {}
+      for (const { groupId, file } of selectedFiles) {
+        if (!filePaths.includes(file.path)) continue
+        if (!byGroup[groupId]) byGroup[groupId] = []
+        byGroup[groupId].push(file.path)
+      }
+      trayDragRef.current = { filePaths, sourceGroups: byGroup }
+      e.dataTransfer.effectAllowed = copyMode ? 'copy' : 'move'
+    },
+    [copyMode, selectedFiles]
+  )
+
   const handleDrop = useCallback(
     (e: React.DragEvent, targetJumpId: string) => {
       e.preventDefault()
+      const trayData = trayDragRef.current
+      if (trayData) {
+        const { filePaths, sourceGroups } = trayData
+        try {
+          if (copyMode) {
+            manifestFetcher.submit(
+              { action: 'copy-files', toJumpId: targetJumpId, filePaths },
+              { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+            )
+          } else {
+            for (const [sourceId, paths] of Object.entries(sourceGroups)) {
+              if (sourceId === targetJumpId) continue
+              const src = manifest?.jumps.find((j) => j.id === sourceId)
+              if (src) {
+                manifestFetcher.submit(
+                  {
+                    action: 'move-files',
+                    fromJumpId: sourceId,
+                    toJumpId: targetJumpId,
+                    filePaths: paths
+                  },
+                  { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+                )
+              } else {
+                manifestFetcher.submit(
+                  { action: 'add-to-jump', jumpId: targetJumpId, filePaths: paths },
+                  { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+                )
+              }
+            }
+            setSelection({})
+          }
+        } finally {
+          trayDragRef.current = null
+        }
+        return
+      }
       const data = dragDataRef.current
       if (!data) return
       try {
@@ -913,7 +1158,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
         dragDataRef.current = null
       }
     },
-    [manifestFetcher, manifest]
+    [manifestFetcher, manifest, copyMode]
   )
 
   const handleRemoveFiles = useCallback(
@@ -925,18 +1170,6 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
     },
     [manifestFetcher]
   )
-
-  const selectedFiles = useMemo(() => {
-    const res: { groupId: string; file: ManifestFile }[] = []
-    if (!manifest) return res
-    for (const jump of manifest.jumps)
-      for (const f of jump.files)
-        if (selection[jump.id]?.[f.path]) res.push({ groupId: jump.id, file: f })
-    return res
-  }, [manifest, selection])
-
-  const selectedCount = selectedFiles.length
-  const isSelectMode = selectedCount > 0
 
   const handleShiftDay = useCallback(
     (date: string, newDateStr: string) => {
@@ -1113,76 +1346,73 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
           </button>
         </div>
 
-        {selectedCount > 0 && (
-          <div className='flex items-center gap-2 mb-3'>
-            <span className='text-sm text-gray-600'>{selectedCount} selected</span>
-            <button
-              type='button'
-              onClick={() => setSelection({})}
-              className='text-sm text-blue-600 hover:underline'>
-              Clear selection
-            </button>
-          </div>
-        )}
+        <div className={`${selectedCount > 0 ? 'flex gap-6' : ''}`}>
+          {selectedCount > 0 && (
+            <StagingTray
+              selectedFiles={selectedFiles}
+              copyMode={copyMode}
+              setCopyMode={setCopyMode}
+              onClear={() => setSelection({})}
+              onRemove={(gid, fp) => handleSelect(gid, fp, true, false)}
+              onDragStart={handleTrayDragStart}
+            />
+          )}
+          <div className='flex-1 min-w-0'>
+            <TimelineJumps
+              dayGroups={jumpsByDay}
+              onShiftDay={handleShiftOffset}
+            />
 
-        <TimelineJumps
-          dayGroups={jumpsByDay}
-          onShiftDay={handleShiftOffset}
-        />
+            {unassignedFiles.length > 0 && (
+              <div className='mb-4 border border-amber-200 rounded-lg bg-amber-50 dark:bg-amber-900/10 p-3'>
+                <div className='flex items-center gap-2 mb-2'>
+                  <span className='text-sm font-semibold text-amber-800 dark:text-amber-200'>
+                    Unassigned files • {unassignedFiles.length}
+                  </span>
+                  <span className='text-xs text-amber-600 dark:text-amber-400'>
+                    not in any jump — select to stage
+                  </span>
+                </div>
+                <div className='space-y-0.5'>
+                  {unassignedFiles.map((file, idx) => (
+                    <FileRow
+                      key={file.path}
+                      file={file}
+                      groupId='unassigned'
+                      selected={!!selection['unassigned']?.[file.path]}
+                      isSelectMode={isSelectMode}
+                      onSelect={handleSelect}
+                      onDragStart={() => {}}
+                      onPreview={() => handlePreview(unassignedFiles, idx, 'Unassigned')}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
 
-        {unassignedFiles.length > 0 && (
-          <div className='mb-4 border border-amber-200 rounded-lg bg-amber-50 dark:bg-amber-900/10 p-3'>
-            <div className='flex items-center gap-2 mb-2'>
-              <span className='text-sm font-semibold text-amber-800 dark:text-amber-200'>
-                Unassigned files • {unassignedFiles.length}
-              </span>
-              <span className='text-xs text-amber-600 dark:text-amber-400'>
-                not in any jump — drag to a jump or preview
-              </span>
-            </div>
-            <div className='space-y-0.5'>
-              {unassignedFiles.map((file, idx) => (
-                <FileRow
-                  key={file.path}
-                  file={file}
-                  groupId='unassigned'
-                  selected={!!selection['unassigned']?.[file.path]}
+            <div className='space-y-4'>
+              {jumpsByDay.map((day) => (
+                <JumpDaySection
+                  key={day.date}
+                  day={day}
+                  selection={selection}
                   isSelectMode={isSelectMode}
                   onSelect={handleSelect}
-                  onDragStart={(e, fp) => {
-                    const sel = unassignedFiles
-                      .filter((f) => selection['unassigned']?.[f.path])
-                      .map((f) => f.path)
-                    const toDrag = sel.length > 0 && selection['unassigned']?.[fp] ? sel : [fp]
-                    handleDragStart(e, toDrag, 'unassigned')
-                  }}
-                  onPreview={() => handlePreview(unassignedFiles, idx, 'Unassigned')}
+                  onDragStart={handleDragStart}
+                  onShiftDay={handleShiftDay}
+                  editingDay={editingDay}
+                  setEditingDay={setEditingDay}
+                  onDrop={handleDrop}
+                  onRemoveFiles={handleRemoveFiles}
+                  onPreview={handlePreview}
+                  onReorder={handleReorder}
                 />
               ))}
+              {jumpsByDay.length === 0 && (
+                <p className='text-sm text-gray-400 italic'>No jumps — create one or fix dates</p>
+              )}
             </div>
           </div>
-        )}
-
-        <div className='space-y-4'>
-          {jumpsByDay.map((day) => (
-            <JumpDaySection
-              key={day.date}
-              day={day}
-              selection={selection}
-              isSelectMode={isSelectMode}
-              onSelect={handleSelect}
-              onDragStart={handleDragStart}
-              onShiftDay={handleShiftDay}
-              editingDay={editingDay}
-              setEditingDay={setEditingDay}
-              onDrop={handleDrop}
-              onRemoveFiles={handleRemoveFiles}
-              onPreview={handlePreview}
-            />
-          ))}
-          {jumpsByDay.length === 0 && (
-            <p className='text-sm text-gray-400 italic'>No jumps — create one or fix dates</p>
-          )}
         </div>
         {preview && (
           <PreviewDrawer

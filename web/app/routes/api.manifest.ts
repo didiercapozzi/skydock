@@ -376,6 +376,23 @@ const handleExecute = (manifest: Manifest, body: Body) => {
   return ok(loadManifest() ?? undefined)
 }
 
+const handleCopyFiles = (manifest: Manifest, body: Body) => {
+  const toJumpId = asString(body.toJumpId)
+  const filePaths = asStringArray(body.filePaths)
+  if (filePaths.length === 0) return fail('No files specified')
+  const toR = requireJump(manifest, toJumpId)
+  if ('error' in toR) return fail(toR.error)
+  if (toR.jump.processed) return fail('Cannot copy files to a processed jump — unprocess first')
+  for (const filePath of filePaths) {
+    if (toR.jump.files.some((f) => f.path === filePath)) continue
+    const file =
+      manifest.files.find((f) => f.path === filePath) ??
+      manifest.jumps.flatMap((j) => j.files).find((f) => f.path === filePath)
+    if (file) toR.jump.files.push(file)
+  }
+  return ok()
+}
+
 const handleReorderFiles = (manifest: Manifest, body: Body) => {
   const jumpId = asString(body.jumpId)
   const filePaths = asStringArray(body.filePaths)
@@ -439,10 +456,6 @@ const handlers: Record<
   'confirm-all': (m, b) => handleConfirmAll(m, b),
   'delete-jump': (m, b) => handleDeleteJump(m, b),
   'create-jump': (m) => handleCreateJump(m),
-  confirm: (m) => {
-    m.status = 'confirmed'
-    return ok()
-  },
   'move-files': (m, b) => handleMoveFiles(m, b),
   'add-to-jump': (m, b) => handleAddToJump(m, b),
   'remove-files': (m, b) => handleRemoveFiles(m, b),
@@ -472,7 +485,8 @@ const handlers: Record<
   'execute-jumps': (m, b) => handleExecute(m, b),
   'unprocess-jump': (m, b) => handleUnprocess(m, b),
   'reorder-files': (m, b) => handleReorderFiles(m, b),
-  'merge-jumps': (m, b) => handleMergeJumps(m, b)
+  'merge-jumps': (m, b) => handleMergeJumps(m, b),
+  'copy-files': (m, b) => handleCopyFiles(m, b)
 }
 
 const loader = async () => {
