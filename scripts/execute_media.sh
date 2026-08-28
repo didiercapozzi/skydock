@@ -73,8 +73,8 @@ for jump_id in "${JUMP_IDS[@]}"; do
 
         ext="${filepath##*.}"
         ext_lower="${ext,,}"
-        offset=$(echo "${file_mtime} - ${first_mtime}" | bc)
-        new_mtime=$(echo "${first_mtime} + ${offset}" | bc)
+        offset=$((file_mtime - first_mtime))
+        new_mtime=$((first_mtime + offset))
 
         if is_video_ext "${ext}"; then
             video_idx=$((video_idx + 1))
