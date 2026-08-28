@@ -422,6 +422,18 @@ const handleMergeJumps = (manifest: Manifest, body: Body) => {
     if (jump!.processed) return fail('Cannot merge processed jumps — unprocess first')
   }
   const target = manifest.jumps.find((j) => j.id === targetJumpId)!
+  if (target.files.length > 0) {
+    const targetMin = Math.min(...target.files.map((f) => f.mtime))
+    for (const src of sources) {
+      if (src!.id === targetJumpId || src!.files.length === 0) continue
+      const srcMin = Math.min(...src!.files.map((f) => f.mtime))
+      const offset = targetMin - srcMin
+      if (offset !== 0 && Math.abs(offset) > 12 * 3600) {
+        const paths = new Set(src!.files.map((f) => f.path))
+        shiftFiles(manifest, paths, offset)
+      }
+    }
+  }
   const allFiles = sources.flatMap((j) => j!.files).sort((a, b) => a.mtime - b.mtime)
   target.files = allFiles
   manifest.jumps = manifest.jumps.filter(

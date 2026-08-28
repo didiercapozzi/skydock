@@ -579,14 +579,14 @@ const CompareDrawer = ({
             autoPlay
             muted
             preload='metadata'
-            className='max-w-full max-h-[220px] rounded bg-black'
+            className='max-w-full max-h-[55vh] rounded bg-black'
           />
         ) : (
           <img
             key={file.path}
             src={src}
             alt={file.filename}
-            className='max-w-full max-h-[220px] rounded object-contain'
+            className='max-w-full max-h-[55vh] rounded object-contain'
           />
         )}
         <div className='text-xs text-gray-500'>
@@ -605,7 +605,7 @@ const CompareDrawer = ({
         className='absolute inset-0 bg-black/40'
         onClick={onClose}
       />
-      <div className='relative w-full max-w-[1100px] mx-4 bg-white dark:bg-gray-900 rounded-lg shadow-xl flex flex-col max-h-[85vh]'>
+      <div className='relative w-full max-w-[1400px] mx-4 bg-white dark:bg-gray-900 rounded-lg shadow-xl flex flex-col max-h-[92vh]'>
         <div className='flex items-center justify-between px-4 py-3 border-b dark:border-gray-700'>
           <div className='text-sm font-semibold'>Compare jumps</div>
           <button
@@ -634,7 +634,7 @@ const CompareDrawer = ({
                     • {getJumpDate(jump)}
                   </div>
                 </div>
-                <div className='flex-1 overflow-y-auto p-2 space-y-0.5 min-h-0'>
+                <div className='max-h-[28vh] overflow-y-auto p-2 space-y-0.5 shrink-0 border-b dark:border-gray-700'>
                   {jump.files.map((file, idx) => (
                     <div
                       key={file.path}
@@ -650,7 +650,7 @@ const CompareDrawer = ({
                     </div>
                   ))}
                 </div>
-                <div className='border-t dark:border-gray-700 p-3 flex items-center justify-center bg-gray-50/50 dark:bg-gray-800/30 min-h-[260px]'>
+                <div className='flex-1 min-h-[420px] border-t dark:border-gray-700 p-2 flex items-center justify-center bg-gray-50/50 dark:bg-gray-800/30 overflow-hidden'>
                   {renderPreview(colIdx === 0 ? leftFile : rightFile)}
                 </div>
               </div>
