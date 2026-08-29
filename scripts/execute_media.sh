@@ -48,7 +48,12 @@ is_photo_ext() {
 
 copied=0
 for jump_id in "${JUMP_IDS[@]}"; do
-    jump_dir="${PROCESSED_DIR}/${jump_id}"
+    jump_label=$(jq -r --arg id "${jump_id}" '.jumps[] | select(.id == $id) | .label' "${MANIFEST}" 2>/dev/null)
+    if [[ -z "${jump_label}" ]]; then
+        jump_label="${jump_id}"
+    fi
+    safe_label=$(echo "${jump_label}" | sed 's/[^a-zA-Z0-9._-]/_/g')
+    jump_dir="${PROCESSED_DIR}/${safe_label}"
     videos_dir="${jump_dir}/videos"
     photos_dir="${jump_dir}/photos"
 
@@ -79,17 +84,17 @@ for jump_id in "${JUMP_IDS[@]}"; do
         if is_video_ext "${ext}"; then
             video_idx=$((video_idx + 1))
             seq=$(printf "%02d" "${video_idx}")
-            new_name=$(printf "%s_%s.%s" "${jump_id}" "${seq}" "${ext_lower}")
+            new_name=$(printf "%s_%s.%s" "${safe_label}" "${seq}" "${ext_lower}")
             dest="${videos_dir}/${new_name}"
         elif is_photo_ext "${ext}"; then
             photo_idx=$((photo_idx + 1))
             seq=$(printf "%02d" "${photo_idx}")
-            new_name=$(printf "%s_%s.%s" "${jump_id}" "${seq}" "${ext_lower}")
+            new_name=$(printf "%s_%s.%s" "${safe_label}" "${seq}" "${ext_lower}")
             dest="${photos_dir}/${new_name}"
         else
             photo_idx=$((photo_idx + 1))
             seq=$(printf "%02d" "${photo_idx}")
-            new_name=$(printf "%s_%s.%s" "${jump_id}" "${seq}" "${ext_lower}")
+            new_name=$(printf "%s_%s.%s" "${safe_label}" "${seq}" "${ext_lower}")
             dest="${photos_dir}/${new_name}"
         fi
 

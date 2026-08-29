@@ -115,7 +115,7 @@ type Manifest = {
 
 - Default manifest `output/manifest.json`, `PROCESSED_DIR=output/processed`.
 - If jump IDs given, process only those; else process all `jumps[] | select(.confirmed==true and .processed!=true)`.
-- For each `jump_id`, `mkdir -p processed/jump_id` and `jq -r '.jumps[] | select(.id==$id) | .files[].path'` → `cp -p --update=none` each file.
+- For each `jump_id`, reads the jump label from the manifest, sanitizes it (alphanumeric + `.` + `-` + `_`), and creates `mkdir -p processed/sanitized_label` with subdirs `videos/` and `photos/`. Files are renamed to `sanitized_label_XX.ext`.
 
 ### 6.2 `api.manifest` execute
 
@@ -174,7 +174,7 @@ type Manifest = {
 ### 8.8 `api.manifest.ts` — handlers (all arrow functions, `ok`/`fail` helpers)
 
 - Helpers: `asString`, `asStringArray`, `requireManifest`, `requireJump`, `requireProcessedPaths`, `isAllProcessed`, `ok`, `fail`.
-- Handlers map: `update-label`, `confirm-jump`/`confirm-all` (kept for backward compat, not used for UI selection), `delete-jump` (also deletes `processed/jumpId` if `processed`), `create-jump`, `move-files` / `add-to-jump` / `remove-files` (blocked if involved jump `processed`), `copy-files` (duplicates refs to target without splicing source, allows same `path` in multiple jumps, blocked if target `processed`), `reorder-files` (validates `filePaths` length equals current size and all paths belong to jump, then remaps `jump.files` order), `merge-jumps`, `update-start-datetime`, `reset-timestamps` (re-times jump files 30 s apart), `calibrate-sequences` (computes `offset = min(ref)-min(target)`, `scope all` shifts all), `shift-sequences` (takes `paths`/`offsetSeconds`, checks processed, `shiftFiles` + `reclusterJumps(manifest, pathsSet)`), `reset-calibration` (restores `originalMtime` in both `files` and `jump.files`, deletes `cameraClockOffsetSeconds`, reclusters), `execute-jumps` (incremental, see §6.2; `jumpIds` from React state), `unprocess-jump` (deletes `processed/jumpId`, clears `processed`, sets `status` back to `confirmed` if was `executed`).
+- Handlers map: `update-label`, `confirm-jump`/`confirm-all` (kept for backward compat, not used for UI selection), `delete-jump` (also deletes `processed/sanitized_label` if `processed`), `create-jump`, `move-files` / `add-to-jump` / `remove-files` (blocked if involved jump `processed`), `copy-files` (duplicates refs to target without splicing source, allows same `path` in multiple jumps, blocked if target `processed`), `reorder-files` (validates `filePaths` length equals current size and all paths belong to jump, then remaps `jump.files` order), `merge-jumps`, `update-start-datetime`, `reset-timestamps` (re-times jump files 30 s apart), `calibrate-sequences` (computes `offset = min(ref)-min(target)`, `scope all` shifts all), `shift-sequences` (takes `paths`/`offsetSeconds`, checks processed, `shiftFiles` + `reclusterJumps(manifest, pathsSet)`), `reset-calibration` (restores `originalMtime` in both `files` and `jump.files`, deletes `cameraClockOffsetSeconds`, reclusters), `execute-jumps` (incremental, see §6.2; `jumpIds` from React state), `unprocess-jump` (deletes `processed/sanitized_label`, clears `processed`, sets `status` back to `confirmed` if was `executed`).
 - `loader` returns `{manifest}`. `action` dispatches via `handlers[formAction]`, `requireManifest`, `saveManifest` and returns `ok` with `manifest`.
 
 ## 9. Review UI (`app/routes/review.tsx`)

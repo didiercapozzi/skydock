@@ -9,7 +9,7 @@ SkyDock copies media files from your DJI cameras to a local folder structure, th
 1. **Connect cameras** → `process_media.sh` copies files to `output/original_files/YYYY-MM-DD/`
 2. **Scan** → `scan_media.sh` generates `manifest.json` grouping files by time gaps
 3. **Review** → User reviews jumps in web UI
-4. **Execute** → Confirmed jumps are copied to `output/processed/jump_XX/`
+4. **Execute** → Confirmed jumps are copied to `output/processed/{label}/`
 
 ## Output Structure
 

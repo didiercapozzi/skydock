@@ -7,6 +7,8 @@ import type { Manifest, ManifestFile, ManifestJump } from '../lib/types'
 
 type Body = Record<string, unknown>
 
+const sanitizeLabel = (label: string): string => label.replace(/[^a-zA-Z0-9._-]/g, '_')
+
 const getManifestPath = (): string => path.join(getOutputDirPath(), 'manifest.json')
 
 const loadManifest = (): Manifest | null => {
@@ -226,7 +228,7 @@ const handleDeleteJump = (manifest: Manifest, body: Body) => {
   if (idx === -1) return fail('Jump not found')
   const jump = manifest.jumps[idx]
   if (jump.processed) {
-    const dir = path.join(getOutputDirPath(), 'processed', jumpId)
+    const dir = path.join(getOutputDirPath(), 'processed', sanitizeLabel(jump.label))
     try {
       if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true })
     } catch {}
@@ -454,7 +456,7 @@ const handleUnprocess = (manifest: Manifest, body: Body) => {
   const r = requireJump(manifest, jumpId)
   if ('error' in r) return fail(r.error)
   if (!r.jump.processed) return fail('Jump not processed')
-  const dir = path.join(getOutputDirPath(), 'processed', jumpId)
+  const dir = path.join(getOutputDirPath(), 'processed', sanitizeLabel(r.jump.label))
   try {
     if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true })
   } catch {}
