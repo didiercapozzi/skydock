@@ -539,10 +539,16 @@ const JumpCard = ({
 
 const CompareDrawer = ({
   jumps,
+  allJumps,
+  compareIds,
+  onCompareIdsChange,
   onClose,
   onMerge
 }: {
   jumps: [ManifestJump, ManifestJump]
+  allJumps: ManifestJump[]
+  compareIds: string[]
+  onCompareIdsChange: (ids: string[]) => void
   onClose: () => void
   onMerge: (targetId: string, sourceId: string) => void
 }) => {
@@ -556,6 +562,32 @@ const CompareDrawer = ({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+
+  const navigateJump = useCallback(
+    (col: 0 | 1, dir: 1 | -1) => {
+      const currentId = compareIds[col]
+      const otherId = compareIds[1 - col]
+      const currentPos = allJumps.findIndex((j) => j.id === currentId)
+      if (currentPos === -1) return
+      let nextPos = currentPos + dir
+      if (nextPos < 0) nextPos = allJumps.length - 1
+      if (nextPos >= allJumps.length) nextPos = 0
+      let nextId = allJumps[nextPos].id
+      if (nextId === otherId) {
+        nextPos = nextPos + dir
+        if (nextPos < 0) nextPos = allJumps.length - 1
+        if (nextPos >= allJumps.length) nextPos = 0
+        nextId = allJumps[nextPos].id
+      }
+      if (nextId === otherId) return
+      const nextIds = [...compareIds]
+      nextIds[col] = nextId
+      onCompareIdsChange(nextIds)
+      if (col === 0) setLeftIdx(null)
+      else setRightIdx(null)
+    },
+    [allJumps, compareIds, onCompareIdsChange]
+  )
 
   const renderPreview = (file: ManifestFile | null) => {
     if (!file)
@@ -622,8 +654,24 @@ const CompareDrawer = ({
                 key={jump.id}
                 className='flex flex-col border-r dark:border-gray-700 last:border-r-0 min-h-0'>
                 <div className='px-3 py-2 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-800 shrink-0'>
-                  <div className='text-sm font-medium truncate'>{jump.label}</div>
-                  <div className='text-xs text-gray-500'>
+                  <div className='flex items-center gap-1'>
+                    <button
+                      type='button'
+                      onClick={() => navigateJump(colIdx as 0 | 1, -1)}
+                      className='w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 shrink-0'>
+                      ‹
+                    </button>
+                    <div className='text-sm font-medium truncate flex-1 text-center'>
+                      {jump.label}
+                    </div>
+                    <button
+                      type='button'
+                      onClick={() => navigateJump(colIdx as 0 | 1, 1)}
+                      className='w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 shrink-0'>
+                      ›
+                    </button>
+                  </div>
+                  <div className='text-xs text-gray-500 text-center'>
                     {jump.files.length} files •{' '}
                     {jump.files.length > 0
                       ? `${formatSequenceDate(bounds.start)} ${formatSequenceTime(bounds.start)} – ${formatSequenceTime(bounds.end)}`
@@ -1627,6 +1675,9 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
         {showCompare && compareJumps && (
           <CompareDrawer
             jumps={compareJumps}
+            allJumps={manifest.jumps}
+            compareIds={compareIds}
+            onCompareIdsChange={setCompareIds}
             onClose={() => setShowCompare(false)}
             onMerge={(targetId, sourceId) => {
               handleMerge(targetId, sourceId)
