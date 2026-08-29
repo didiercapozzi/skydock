@@ -81,12 +81,15 @@ type Manifest = {
 
 ## 5. Scan & Cluster
 
-### 5.1 `scan_media.sh`
+### 5.1 `scan_media.sh` — merge-on-scan
 
 - Requires `original_files/` to exist.
+- **Merge behavior:** If `proposed_jumps.json` already exists, scans `original_files/` and merges new files into the existing manifest instead of regenerating it. Preserves all user edits (confirmed status, labels, file groupings, calibration offsets).
+- **File comparison:** Uses content-based file ID as the identity key (SHA-256 of head 1MB + tail 64KB + file size, matching `computeFileId` in `fileId.server.ts`). Computes ID for each file on disk. Files in manifest whose ID no longer exists on disk are removed. Files whose ID exists but path changed are updated in place. New files (ID not in manifest) are added and clustered into jumps by the 1800 s gap threshold.
+- **Jump reclustering:** After adding/removing files, reclusters all files by mtime gaps (`> 1800 s` → new jump). Preserves jump metadata (id, label, confirmed) via majority voting: if a reclustered jump contains files from multiple original jumps, it inherits the id/label of the jump that contributed the most files.
+- **Fresh manifest:** If no manifest exists, creates `version:1, status:'proposed', date:today, files:[all], theory:[], jumps:[clustered]` from scratch.
 - `find original_files -type f -printf '%T@\t%p\n' | sort -n | cut -f2-` gives time-sorted files.
-- Iterates sorted files, builds `ALL_FILES` JSON array and `JUMPS_JSON` by tracking `LAST_EPOCH`; when `mtime - LAST_EPOCH > 1800` closes current jump and starts new.
-- Writes manifest with `jq` via heredoc, `cameras: []` not used.
+- Writes manifest with `jq` via heredoc.
 
 ### 5.2 `web/app/lib/sequences.ts` — ground truth for UI
 

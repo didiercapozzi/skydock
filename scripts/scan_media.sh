@@ -4,13 +4,14 @@ set -eo pipefail
 OUTPUT_DIR="${SKYDOCK_OUTPUT_DIR:-/workspace/output}"
 ORIGINAL_DIR="${OUTPUT_DIR}/original_files"
 MANIFEST="${OUTPUT_DIR}/proposed_jumps.json"
+TMPDIR_SCAN="${OUTPUT_DIR}/.scan_tmp"
 
 if [[ ! -d "${ORIGINAL_DIR}" ]]; then
     echo "[Scan] No original_files directory found. Run process_media.sh first."
     exit 1
 fi
 
-mkdir -p "${OUTPUT_DIR}"
+mkdir -p "${OUTPUT_DIR}" "${TMPDIR_SCAN}"
 
 HAS_EXIFTOOL=false
 if command -v exiftool &>/dev/null; then
@@ -88,19 +89,21 @@ get_capture_epoch() {
     stat -c %Y "${filepath}"
 }
 
-get_capture_date() {
+compute_file_id() {
     local filepath="$1"
-    local -n map_ref=$2
+    local size
+    size=$(stat -c %s "${filepath}")
+    local tmpfile="${TMPDIR_SCAN}/hash_$$"
+    local head_len=${size}
+    [[ ${head_len} -gt 1048576 ]] && head_len=1048576
 
-    if [[ -n "${map_ref[${filepath}]+_}" ]]; then
-        local tag="${map_ref[${filepath}]}"
-        echo "${tag%% *}" | sed 's/^\([0-9]\{4\}\):\([0-9]\{2\}\):\([0-9]\{2\}\)/\1-\2-\3/'
-        return
+    head -c "${head_len}" "${filepath}" 2>/dev/null > "${tmpfile}"
+    if [[ ${size} -gt 1048576 ]]; then
+        tail -c 65536 "${filepath}" 2>/dev/null >> "${tmpfile}"
     fi
-
-    local mtime
-    mtime=$(stat -c %Y "${filepath}")
-    date -d "@${mtime}" +%Y-%m-%d
+    printf '%s\n' "${size}" >> "${tmpfile}"
+    sha256sum "${tmpfile}" | cut -d' ' -f1 | head -c 16
+    rm -f "${tmpfile}"
 }
 
 ALL_FILES=()
@@ -129,62 +132,201 @@ done < <(for f in "${ALL_FILES[@]}"; do
     echo "${FILE_EPOCH[$f]} $f"
 done | sort -n | cut -d' ' -f2-)
 
-ALL_JSON=""
-FILE_NUM=0
-JUMP_NUM=0
-LAST_EPOCH=0
-CURRENT_JUMP_FILES=""
+DISK_COUNT=${#SORTED_FILES[@]}
 
+if [[ "${DISK_COUNT}" -eq 0 ]]; then
+    echo "[Scan] No files found in original_files."
+    rm -rf "${TMPDIR_SCAN}"
+    exit 0
+fi
+
+ALL_FILES_JSON=""
 for filepath in "${SORTED_FILES[@]}"; do
     filename=$(basename "${filepath}")
     file_epoch="${FILE_EPOCH[${filepath}]}"
     file_size="${FILE_SIZE[${filepath}]}"
 
-    FILE_NUM=$((FILE_NUM + 1))
-
     file_json=$(printf '{"path":"%s","size":%d,"mtime":%d,"filename":"%s"}' \
         "${filepath}" "${file_size}" "${file_epoch}" "${filename}")
 
-    [[ -n "${ALL_JSON}" ]] && ALL_JSON="${ALL_JSON},"
-    ALL_JSON="${ALL_JSON}${file_json}"
-
-    if (( LAST_EPOCH > 0 )) && (( file_epoch - LAST_EPOCH > 1800 )); then
-        if [[ -n "${CURRENT_JUMP_FILES}" ]]; then
-            JUMP_NUM=$((JUMP_NUM + 1))
-            [[ -n "${JUMPS_JSON}" ]] && JUMPS_JSON="${JUMPS_JSON},"
-            JUMPS_JSON="${JUMPS_JSON}$(printf '{"id":"jump_%d","label":"Jump %d","confirmed":false,"files":[%s]}' \
-                "${JUMP_NUM}" "${JUMP_NUM}" "${CURRENT_JUMP_FILES}")"
-            CURRENT_JUMP_FILES=""
-        fi
-    fi
-    LAST_EPOCH="${file_epoch}"
-
-    [[ -n "${CURRENT_JUMP_FILES}" ]] && CURRENT_JUMP_FILES="${CURRENT_JUMP_FILES},"
-    CURRENT_JUMP_FILES="${CURRENT_JUMP_FILES}${file_json}"
+    [[ -n "${ALL_FILES_JSON}" ]] && ALL_FILES_JSON="${ALL_FILES_JSON},"
+    ALL_FILES_JSON="${ALL_FILES_JSON}${file_json}"
 done
 
-if [[ -n "${CURRENT_JUMP_FILES}" ]]; then
-    JUMP_NUM=$((JUMP_NUM + 1))
-    [[ -n "${JUMPS_JSON}" ]] && JUMPS_JSON="${JUMPS_JSON},"
-    JUMPS_JSON="${JUMPS_JSON}$(printf '{"id":"jump_%d","label":"Jump %d","confirmed":false,"files":[%s]}' \
-        "${JUMP_NUM}" "${JUMP_NUM}" "${CURRENT_JUMP_FILES}")"
+if [[ ! -f "${MANIFEST}" ]]; then
+    echo "[Scan] Creating new manifest with ${DISK_COUNT} file(s)."
+
+    JUMP_GAP_SECONDS=1800
+    CREATED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    TARGET_DATE=$(date +%Y-%m-%d)
+
+    jq -n \
+        --argjson files "[${ALL_FILES_JSON}]" \
+        --argjson gap "${JUMP_GAP_SECONDS}" \
+        --arg date "${TARGET_DATE}" \
+        --arg createdAt "${CREATED_AT}" '
+        ([$files[] | {path: .path, mtime: .mtime}] | sort_by(.mtime) | reduce .[] as $f (
+            {clusters: [], current: []};
+            if (.current | length) > 0 and (($f.mtime - (.current[-1].mtime)) > $gap) then
+                .clusters += [.current] | .current = [$f]
+            else
+                .current += [$f]
+            end
+        ) | .clusters += [.current] | [.clusters[] | select(length > 0)]) as $clusters |
+
+        ($clusters | to_entries | map({
+            id: "jump_\(.key + 1)",
+            label: "Jump \(.key + 1)",
+            confirmed: false,
+            files: [.value[] | . as $f | ($files[] | select(.path == $f.path))]
+        })) as $jumps |
+
+        {
+            version: 1,
+            status: "proposed",
+            date: $date,
+            startDatetime: $createdAt,
+            createdAt: $createdAt,
+            files: $files,
+            theory: [],
+            jumps: $jumps
+        }
+    ' > "${MANIFEST}"
+
+    echo "[Scan] Found ${DISK_COUNT} file(s) in ${#SORTED_FILES[@]} jump(s)."
+    echo "[Scan] Manifest: ${MANIFEST}"
+    rm -rf "${TMPDIR_SCAN}"
+    exit 0
 fi
 
-TARGET_DATE=$(date +%Y-%m-%d)
-CREATED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+EXISTING_COUNT=$(jq '.files | length' "${MANIFEST}" 2>/dev/null || echo 0)
+EXISTING_PATHS_FILE="${TMPDIR_SCAN}/existing_paths"
+DISK_PATHS_FILE="${TMPDIR_SCAN}/disk_paths"
 
-cat > "${MANIFEST}" <<EOF
-{
-  "version": 1,
-  "status": "proposed",
-  "date": "${TARGET_DATE}",
-  "startDatetime": "${CREATED_AT}",
-  "createdAt": "${CREATED_AT}",
-  "files": [${ALL_JSON}],
-  "theory": [],
-  "jumps": [${JUMPS_JSON}]
-}
-EOF
+jq -r '.files[].path' "${MANIFEST}" 2>/dev/null | sort > "${EXISTING_PATHS_FILE}"
+printf '%s\n' "${SORTED_FILES[@]}" | sort > "${DISK_PATHS_FILE}"
 
-echo "[Scan] Found ${FILE_NUM} file(s) in ${JUMP_NUM} jump(s)."
+REMOVED_PATHS_FILE="${TMPDIR_SCAN}/removed_paths"
+ADDED_PATHS_FILE="${TMPDIR_SCAN}/added_paths"
+
+comm -23 "${EXISTING_PATHS_FILE}" "${DISK_PATHS_FILE}" > "${REMOVED_PATHS_FILE}"
+comm -13 "${EXISTING_PATHS_FILE}" "${DISK_PATHS_FILE}" > "${ADDED_PATHS_FILE}"
+
+REMOVED_COUNT=$(wc -l < "${REMOVED_PATHS_FILE}")
+ADDED_COUNT=$(wc -l < "${ADDED_PATHS_FILE}")
+
+if [[ "${REMOVED_COUNT}" -eq 0 ]] && [[ "${ADDED_COUNT}" -eq 0 ]]; then
+    echo "[Scan] No changes. ${EXISTING_COUNT} file(s) in manifest."
+    rm -rf "${TMPDIR_SCAN}"
+    exit 0
+fi
+
+echo "[Scan] Merging: +${ADDED_COUNT} new, -${REMOVED_COUNT} removed, ${EXISTING_COUNT} existing."
+
+REMOVED_JSON=""
+while IFS= read -r path; do
+    [[ -z "${path}" ]] && continue
+    [[ -n "${REMOVED_JSON}" ]] && REMOVED_JSON="${REMOVED_JSON},"
+    REMOVED_JSON="${REMOVED_JSON}\"${path}\""
+done < "${REMOVED_PATHS_FILE}"
+REMOVED_SET="[]"
+[[ "${REMOVED_COUNT}" -gt 0 ]] && REMOVED_SET="[${REMOVED_JSON}]"
+
+ADDED_JSON=""
+while IFS= read -r path; do
+    [[ -z "${path}" ]] && continue
+    filename=$(basename "${path}")
+    file_epoch="${FILE_EPOCH[${path}]}"
+    file_size="${FILE_SIZE[${path}]}"
+    file_json=$(printf '{"path":"%s","size":%d,"mtime":%d,"filename":"%s"}' \
+        "${path}" "${file_size}" "${file_epoch}" "${filename}")
+    [[ -n "${ADDED_JSON}" ]] && ADDED_JSON="${ADDED_JSON},"
+    ADDED_JSON="${ADDED_JSON}${file_json}"
+done < "${ADDED_PATHS_FILE}"
+ADDED_SET="[]"
+[[ "${ADDED_COUNT}" -gt 0 ]] && ADDED_SET="[${ADDED_JSON}]"
+
+JUMP_GAP_SECONDS=1800
+
+jq --argjson removed "${REMOVED_SET}" --argjson added "${ADDED_SET}" --argjson gap "${JUMP_GAP_SECONDS}" '
+    . as $manifest |
+
+    # Updated files list: remove deleted, add new
+    ($manifest.files | map(select(.path as $p | ($removed | index($p)) | not)) + $added) as $updatedFiles |
+
+    # Filter jumps: remove deleted files from each jump, drop empty jumps
+    ([$manifest.jumps[] | {
+        id: .id,
+        label: .label,
+        confirmed: .confirmed,
+        processed: .processed,
+        files: [.files[] | select(.path as $fp | ($removed | index($fp)) | not)]
+    }] | map(select(.files | length > 0))) as $kept |
+
+    # Build lookup: path -> jump metadata from kept jumps
+    ([$kept[].files[]] | map({(.path): {jid: null, jlabel: null, jconfirmed: null, jprocessed: null}}) | add // {}) as $emptyLookup |
+    ($kept | reduce .[] as $j ($emptyLookup;
+        . + ([$j.files[] | {(.path): {jid: $j.id, jlabel: $j.label, jconfirmed: $j.confirmed, jprocessed: $j.processed}}] | add)
+    )) as $prev |
+
+    # Extend lookup with new files (no previous jump)
+    ([$added[] | . as $f | {(.path): {jid: null, jlabel: null, jconfirmed: null, jprocessed: null}}] | add // {}) as $prevExt |
+    ($prev + $prevExt) as $prevAll |
+
+    # Cluster new files by time gaps
+    ([$added[] | {path: .path, mtime: .mtime}] | sort_by(.mtime) | reduce .[] as $f (
+        {clusters: [], current: []};
+        if (.current | length) > 0 and (($f.mtime - (.current[-1].mtime)) > $gap) then
+            .clusters += [.current] | .current = [$f]
+        else
+            .current += [$f]
+        end
+    ) | .clusters += [.current] | [.clusters[] | select(length > 0)]) as $newClusters |
+
+    ($kept | length) as $numKept |
+
+    # Build new jumps from clusters with majority-vote metadata
+    ($newClusters | to_entries | map(
+        .value as $cluster |
+        $cluster | map(. as $f | {path: .path, mtime: .mtime, prev: ($prevAll[$f.path] // {jid: null})}) |
+        reduce .[] as $item (
+            {domId: null, domLabel: null, domConfirmed: null, domProcessed: null, count: 0, total: 0};
+            .total += 1 |
+            if $item.prev.jid != null then
+                if (.domId == null) or ($item.prev.jid == .domId) then
+                    {domId: ($item.prev.jid // .domId), domLabel: ($item.prev.jlabel // .domLabel), domConfirmed: ($item.prev.jconfirmed // .domConfirmed), domProcessed: ($item.prev.jprocessed // .domProcessed), count: ((if $item.prev.jid == .domId then 1 else 0 end) + .count), total: .total}
+                elif (.total - .count) < .count then
+                    .
+                else
+                    {domId: $item.prev.jid, domLabel: $item.prev.jlabel, domConfirmed: $item.prev.jconfirmed, domProcessed: $item.prev.jprocessed, count: 1, total: .total}
+                end
+            else
+                .
+            end
+        ) |
+        . as $meta |
+        (if .domId != null then .domId else "jump_\($numKept + (.idx // 0) + 1)" end) as $id |
+        (if .domLabel != null then .domLabel else "Jump \($numKept + (.idx // 0) + 1)" end) as $label |
+        {id: $id, label: $label, confirmed: (.domConfirmed // false), processed: .domProcessed, files: [$cluster[] | {path: .path, size: 0, mtime: .mtime, filename: (.path | split("/")[-1])}]}
+    )) as $newJumps |
+
+    # Construct final manifest
+    {
+        version: $manifest.version,
+        status: $manifest.status,
+        date: $manifest.date,
+        startDatetime: $manifest.startDatetime,
+        createdAt: $manifest.createdAt,
+        files: $updatedFiles,
+        theory: ($manifest.theory // []),
+        jumps: ($kept + $newJumps),
+        cameraClockOffsetSeconds: $manifest.cameraClockOffsetSeconds
+    }
+' "${MANIFEST}" > "${MANIFEST}.tmp" && mv "${MANIFEST}.tmp" "${MANIFEST}"
+
+FINAL_COUNT=$(jq '.files | length' "${MANIFEST}" 2>/dev/null)
+FINAL_JUMPS=$(jq '.jumps | length' "${MANIFEST}" 2>/dev/null)
+echo "[Scan] Manifest: ${FINAL_COUNT} file(s) in ${FINAL_JUMPS} jump(s)."
 echo "[Scan] Manifest: ${MANIFEST}"
+
+rm -rf "${TMPDIR_SCAN}"

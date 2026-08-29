@@ -99,6 +99,16 @@ for jump_id in "${JUMP_IDS[@]}"; do
         count=$((count + 1))
     done < <(jq -r --arg id "${jump_id}" '.jumps[] | select(.id == $id) | .files[] | "\(.path)|\(.mtime)"' "${MANIFEST}" 2>/dev/null)
 
+    if command -v exiftool &>/dev/null && [[ ${count} -gt 0 ]]; then
+        if compgen -G "${videos_dir}/*" > /dev/null || compgen -G "${photos_dir}/*" > /dev/null; then
+            exiftool -P -overwrite_original -m -q \
+                "-CreateDate<FileModifyDate" "-MediaCreateDate<FileModifyDate" "-TrackCreateDate<FileModifyDate" \
+                "-MediaModifyDate<FileModifyDate" "-TrackModifyDate<FileModifyDate" "-ModifyDate<FileModifyDate" \
+                "-DateTimeOriginal<FileModifyDate" "-CreationDate<FileModifyDate" \
+                "${videos_dir}"/* "${photos_dir}"/* 2>/dev/null || true
+        fi
+    fi
+
     echo "[Execute] ${jump_id}: copied ${count} file(s) (${video_idx} videos, ${photo_idx} photos) to ${jump_dir}"
 done
 

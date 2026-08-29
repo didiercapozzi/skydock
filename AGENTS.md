@@ -107,3 +107,4 @@ Both apps use React Router 8 in **Framework Mode** with SSR enabled:
 - the script but be written in bash only and no python
 - to read and write json files in bash script, use the jq library
 - before being done with a job make sure "nom `npm run check` command doesn't trigger any errror
+- always update the RULES.md files in case of logic change
