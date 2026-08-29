@@ -188,7 +188,6 @@ const FileRow = ({
   onDragStart,
   onRowDragOver,
   onRowDragLeave,
-  onRowDrop,
   onPreview
 }: {
   file: ManifestFile
@@ -200,7 +199,6 @@ const FileRow = ({
   onDragStart: (e: React.DragEvent, filePath: string, groupId: string) => void
   onRowDragOver?: (e: React.DragEvent, filePath: string) => void
   onRowDragLeave?: () => void
-  onRowDrop?: (e: React.DragEvent, filePath: string) => void
   onPreview?: () => void
 }) => {
   const handleRowClick = (e: React.MouseEvent) => {
@@ -253,12 +251,6 @@ const FileRow = ({
         onRowDragOver(e, file.path)
       }}
       onDragLeave={() => onRowDragLeave?.()}
-      onDrop={(e) => {
-        if (!onRowDrop) return
-        e.preventDefault()
-        e.stopPropagation()
-        onRowDrop(e, file.path)
-      }}
       onClick={handleRowClick}>
       <input
         type='checkbox'
@@ -324,8 +316,7 @@ const JumpCard = ({
   const [isDragOver, setIsDragOver] = useState(false)
   const [hoveredFile, setHoveredFile] = useState<string | null>(null)
   const [dropPosition, setDropPosition] = useState<'above' | 'below' | null>(null)
-  const dragDataRef = useRef<{ filePaths: string[] } | null>(null)
-  const withinJumpDropRef = useRef(false)
+  const dragDataRef = useRef<{ filePaths: string[]; sourceJumpId: string } | null>(null)
   const fetcher = useFetcher()
   const selectedCount = jump.files.filter((f) => selection[f.path]).length
   const isProcessed = !!jump.processed
@@ -343,24 +334,6 @@ const JumpCard = ({
   const handleRowDragLeave = () => {
     setHoveredFile(null)
     setDropPosition(null)
-  }
-
-  const handleRowDrop = (e: React.DragEvent, targetFilePath: string) => {
-    setHoveredFile(null)
-    setDropPosition(null)
-    if (!onReorder || isProcessed) return
-    withinJumpDropRef.current = true
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    const midY = rect.top + rect.height / 2
-    const insertBefore = e.clientY < midY
-    const paths = jump.files.map((f) => f.path)
-    const dragPaths = dragDataRef.current?.filePaths ?? []
-    if (dragPaths.length === 0) return
-    const filtered = paths.filter((p) => !dragPaths.includes(p))
-    const targetIdx = filtered.indexOf(targetFilePath)
-    const insertIdx = insertBefore ? targetIdx : targetIdx + 1
-    const newPaths = [...filtered.slice(0, insertIdx), ...dragPaths, ...filtered.slice(insertIdx)]
-    onReorder(jump.id, newPaths)
   }
 
   const handleLabelSave = () => {
@@ -387,7 +360,7 @@ const JumpCard = ({
     <div
       className={`border rounded-lg overflow-hidden transition-colors ${isCompareSelected ? 'border-amber-300 bg-amber-50/50 ring-1 ring-amber-300' : isProcessed ? 'border-blue-300 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-900/20' : isDragOver && !hoveredFile ? 'border-blue-400 bg-blue-50/50' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50'}`}
       onDragOver={(e) => {
-        if (isProcessed || hoveredFile) return
+        if (isProcessed) return
         e.preventDefault()
         setIsDragOver(true)
       }}
@@ -395,14 +368,37 @@ const JumpCard = ({
         if (!hoveredFile) setIsDragOver(false)
       }}
       onDrop={(e) => {
-        if (isProcessed || hoveredFile) return
-        if (withinJumpDropRef.current) {
-          withinJumpDropRef.current = false
-          setIsDragOver(false)
+        if (isProcessed) return
+        e.preventDefault()
+        setHoveredFile(null)
+        setDropPosition(null)
+        setIsDragOver(false)
+        if (e.dataTransfer.types.includes('text/x-staging-tray')) {
+          onDrop(e, jump.id)
           return
         }
-        setIsDragOver(false)
-        onDrop(e, jump.id)
+        const data = dragDataRef.current
+        if (data && data.filePaths.length > 0) {
+          if (data.sourceJumpId === jump.id) {
+            if (!onReorder || !hoveredFile) return
+            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+            const midY = rect.top + rect.height / 2
+            const insertBefore = e.clientY < midY
+            const paths = jump.files.map((f) => f.path)
+            const filtered = paths.filter((p) => !data.filePaths.includes(p))
+            const targetIdx = filtered.indexOf(hoveredFile)
+            if (targetIdx === -1) return
+            const insertIdx = insertBefore ? targetIdx : targetIdx + 1
+            const newPaths = [
+              ...filtered.slice(0, insertIdx),
+              ...data.filePaths,
+              ...filtered.slice(insertIdx)
+            ]
+            onReorder(jump.id, newPaths)
+          } else {
+            onDrop(e, jump.id)
+          }
+        }
       }}>
       <div className='min-w-0'>
         <div
@@ -519,12 +515,11 @@ const JumpCard = ({
                       if (isProcessed) return
                       const sel = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
                       const toDrag = sel.length > 0 && selection[fp] ? sel : [fp]
-                      dragDataRef.current = { filePaths: toDrag }
+                      dragDataRef.current = { filePaths: toDrag, sourceJumpId: jump.id }
                       onDragStart(e, toDrag, jump.id)
                     }}
                     onRowDragOver={isProcessed ? undefined : handleRowDragOver}
                     onRowDragLeave={handleRowDragLeave}
-                    onRowDrop={isProcessed ? undefined : handleRowDrop}
                     onPreview={() => onPreview(jump.files, idx, jump.label)}
                   />
                 ))}
@@ -1308,6 +1303,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
       }
       trayDragRef.current = { filePaths, sourceGroups: byGroup }
       e.dataTransfer.effectAllowed = copyMode ? 'copy' : 'move'
+      e.dataTransfer.setData('text/x-staging-tray', 'true')
     },
     [copyMode, selectedFiles]
   )
