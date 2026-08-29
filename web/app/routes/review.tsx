@@ -255,6 +255,7 @@ const FileRow = ({
       onDragLeave={() => onRowDragLeave?.()}
       onDrop={(e) => {
         if (!onRowDrop) return
+        if (e.dataTransfer.types.includes('text/x-staging-tray')) return
         e.preventDefault()
         e.stopPropagation()
         onRowDrop(e, file.path)
@@ -387,7 +388,7 @@ const JumpCard = ({
     <div
       className={`border rounded-lg overflow-hidden transition-colors ${isCompareSelected ? 'border-amber-300 bg-amber-50/50 ring-1 ring-amber-300' : isProcessed ? 'border-blue-300 bg-blue-50/50 dark:border-blue-700 dark:bg-blue-900/20' : isDragOver && !hoveredFile ? 'border-blue-400 bg-blue-50/50' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50'}`}
       onDragOver={(e) => {
-        if (isProcessed || hoveredFile) return
+        if (isProcessed) return
         e.preventDefault()
         setIsDragOver(true)
       }}
@@ -395,7 +396,7 @@ const JumpCard = ({
         if (!hoveredFile) setIsDragOver(false)
       }}
       onDrop={(e) => {
-        if (isProcessed || hoveredFile) return
+        if (isProcessed) return
         if (withinJumpDropRef.current) {
           withinJumpDropRef.current = false
           setIsDragOver(false)
@@ -1308,6 +1309,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
       }
       trayDragRef.current = { filePaths, sourceGroups: byGroup }
       e.dataTransfer.effectAllowed = copyMode ? 'copy' : 'move'
+      e.dataTransfer.setData('text/x-staging-tray', 'true')
     },
     [copyMode, selectedFiles]
   )
