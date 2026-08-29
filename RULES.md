@@ -20,7 +20,7 @@ output/
 │   └── 2026-08-25/
 │       ├── DJI_0011.MP4
 │       └── ...
-├── proposed_jumps.json       # Manifest (see §4)
+├── manifest.json       # Manifest (see §4)
 └── processed/                # After per-jump Process
     ├── jump_1/
     │   ├── DJI_0001.MP4
@@ -39,7 +39,7 @@ output/
 - `file_matches_existing(src, dest_dir)`: if `dest_dir/filename` exists and `cmp -s src dest` → skip (same content). If exists but `cmp` differs → copy (overwritten on camera). If not exists → copy.
 - `cp -p --update=none` preserves timestamps.
 
-## 4. Manifest (`output/proposed_jumps.json`)
+## 4. Manifest (`output/manifest.json`)
 
 ```ts
 type ManifestFile = {
@@ -84,7 +84,7 @@ type Manifest = {
 ### 5.1 `scan_media.sh` — merge-on-scan
 
 - Requires `original_files/` to exist.
-- **Merge behavior:** If `proposed_jumps.json` already exists, scans `original_files/` and merges new files into the existing manifest instead of regenerating it. Preserves all user edits (confirmed status, labels, file groupings, calibration offsets).
+- **Merge behavior:** If `manifest.json` already exists, scans `original_files/` and merges new files into the existing manifest instead of regenerating it. Preserves all user edits (confirmed status, labels, file groupings, calibration offsets).
 - **File comparison:** Uses content-based file ID as the identity key (SHA-256 of head 1MB + tail 64KB + file size, matching `computeFileId` in `fileId.server.ts`). Computes ID for each file on disk. Files in manifest whose ID no longer exists on disk are removed. Files whose ID exists but path changed are updated in place. New files (ID not in manifest) are added and clustered into jumps by the 1800 s gap threshold.
 - **Jump reclustering:** After adding/removing files, reclusters all files by mtime gaps (`> 1800 s` → new jump). Preserves jump metadata (id, label, confirmed) via majority voting: if a reclustered jump contains files from multiple original jumps, it inherits the id/label of the jump that contributed the most files.
 - **Fresh manifest:** If no manifest exists, creates `version:1, status:'proposed', date:today, files:[all], theory:[], jumps:[clustered]` from scratch.
@@ -113,7 +113,7 @@ type Manifest = {
 
 ### 6.1 `execute_media.sh [manifest] [jumpId ...]`
 
-- Default manifest `output/proposed_jumps.json`, `PROCESSED_DIR=output/processed`.
+- Default manifest `output/manifest.json`, `PROCESSED_DIR=output/processed`.
 - If jump IDs given, process only those; else process all `jumps[] | select(.confirmed==true and .processed!=true)`.
 - For each `jump_id`, `mkdir -p processed/jump_id` and `jq -r '.jumps[] | select(.id==$id) | .files[].path'` → `cp -p --update=none` each file.
 
@@ -179,7 +179,7 @@ type Manifest = {
 
 ## 9. Review UI (`app/routes/review.tsx`)
 
-- **Loader:** `ensureManifestFileIds` then reads `proposed_jumps.json`.
+- **Loader:** `ensureManifestFileIds` then reads `manifest.json`.
 - **Helpers:** `formatSize`, `formatTime`, `groupJumpsByDay` (jumps grouped by `getJumpDate` via `formatSequenceDate(min mtime)`), `getJumpBounds`.
 - **State:** `selection: SelectionMap` (file-level), `lastClicked`, `editingDay`, `preview: PreviewState | null`, `copyMode: boolean`, `compareIds: string[]` (jump-level React state only for compare/process, not persisted), `showCompare`, `dragDataRef` (direct FileRow inter-jump), `trayDragRef` (staging tray), `jumpsByDay`, `filesInJumps`, `unassignedFiles = files.filter(not in jumps)`, `allFileIds = [...unassigned, ...jumps]`, `hasCalibration`, `selectedFiles` (file selection), `selectedCount`, `isSelectMode = selectedCount>0`, `processedCount` (no `confirmedCount`; `confirmed` not used for UI).
 - **File selection:** `handleSelect` clones `SelectionMap` immutably; `shift` does range via `allFileIds` index; otherwise toggles `next[groupId][filePath]`. `lastClicked` updated. Clicking row when `isSelectMode` or `ctrl/meta/shift` selects, otherwise opens preview drawer; checkbox always selects.

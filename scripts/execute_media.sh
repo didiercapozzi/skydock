@@ -6,7 +6,7 @@ OUTPUT_DIR="${SKYDOCK_OUTPUT_DIR:-/workspace/output}"
 PROCESSED_DIR="${OUTPUT_DIR}/processed"
 
 if [[ -z "${MANIFEST}" ]]; then
-    MANIFEST="${OUTPUT_DIR}/proposed_jumps.json"
+    MANIFEST="${OUTPUT_DIR}/manifest.json"
 fi
 
 if [[ ! -f "${MANIFEST}" ]]; then

@@ -57,7 +57,7 @@ const action = async ({ request }: { request: Request }) => {
       return { ok: false, error: `Scan failed: ${e instanceof Error ? e.message : String(e)}` }
     }
 
-    await ensureManifestFileIds(path.join(outputDir, 'proposed_jumps.json'))
+    await ensureManifestFileIds(path.join(outputDir, 'manifest.json'))
     return { ok: true }
   }
 
@@ -101,7 +101,7 @@ const action = async ({ request }: { request: Request }) => {
     return { ok: false, error: `Scan failed: ${e instanceof Error ? e.message : String(e)}` }
   }
 
-  await ensureManifestFileIds(path.join(outputDir, 'proposed_jumps.json'))
+  await ensureManifestFileIds(path.join(outputDir, 'manifest.json'))
 
   return { ok: true }
 }

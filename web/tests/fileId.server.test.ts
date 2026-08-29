@@ -88,7 +88,7 @@ describe('ensureManifestFileIds', () => {
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-manifest-'))
-    manifestPath = path.join(tmpDir, 'proposed_jumps.json')
+    manifestPath = path.join(tmpDir, 'manifest.json')
   })
 
   afterEach(() => {

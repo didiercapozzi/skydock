@@ -7,7 +7,7 @@ SkyDock copies media files from your DJI cameras to a local folder structure, th
 ## How It Works
 
 1. **Connect cameras** → `process_media.sh` copies files to `output/original_files/YYYY-MM-DD/`
-2. **Scan** → `scan_media.sh` generates `proposed_jumps.json` grouping files by time gaps
+2. **Scan** → `scan_media.sh` generates `manifest.json` grouping files by time gaps
 3. **Review** → User reviews jumps in web UI
 4. **Execute** → Confirmed jumps are copied to `output/processed/jump_XX/`
 
@@ -19,7 +19,7 @@ output/
 │   └── 2026-08-27/
 │       ├── DJI_0001.MP4
 │       └── DJI_0002.MP4
-├── proposed_jumps.json       # Jump grouping manifest
+├── manifest.json       # Jump grouping manifest
 └── processed/                # After confirmation
     ├── jump_01/
     │   ├── DJI_0001.MP4
@@ -41,7 +41,7 @@ Files are deduplicated using `cmp`:
 | Script                | Purpose                                  |
 | --------------------- | ---------------------------------------- |
 | `process_media.sh`    | Copy camera files to original_files/     |
-| `scan_media.sh`       | Generate proposed_jumps.json             |
+| `scan_media.sh`       | Generate manifest.json                   |
 | `execute_media.sh`    | Copy confirmed jumps to processed/       |
 | `watcher.sh`          | Background daemon, polls for cameras     |
 | `simulate_cameras.sh` | Generate fake camera footage for testing |

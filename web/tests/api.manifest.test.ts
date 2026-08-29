@@ -235,11 +235,11 @@ describe('calibration actions', () => {
   }
 
   const writeFixture = (manifest: Manifest): void => {
-    fs.writeFileSync(path.join(tmpDir, 'proposed_jumps.json'), JSON.stringify(manifest))
+    fs.writeFileSync(path.join(tmpDir, 'manifest.json'), JSON.stringify(manifest))
   }
 
   const readManifest = (): Manifest =>
-    JSON.parse(fs.readFileSync(path.join(tmpDir, 'proposed_jumps.json'), 'utf-8')) as Manifest
+    JSON.parse(fs.readFileSync(path.join(tmpDir, 'manifest.json'), 'utf-8')) as Manifest
 
   const driftManifest = (): Manifest => {
     const photo = (name: string, mtime: number): ManifestFile => ({

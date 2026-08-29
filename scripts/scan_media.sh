@@ -3,7 +3,7 @@ set -eo pipefail
 
 OUTPUT_DIR="${SKYDOCK_OUTPUT_DIR:-/workspace/output}"
 ORIGINAL_DIR="${OUTPUT_DIR}/original_files"
-MANIFEST="${OUTPUT_DIR}/proposed_jumps.json"
+MANIFEST="${OUTPUT_DIR}/manifest.json"
 TMPDIR_SCAN="${OUTPUT_DIR}/.scan_tmp"
 
 if [[ ! -d "${ORIGINAL_DIR}" ]]; then
@@ -160,11 +160,14 @@ if [[ ! -f "${MANIFEST}" ]]; then
     CREATED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
     TARGET_DATE=$(date +%Y-%m-%d)
 
+    echo "[${ALL_FILES_JSON}]" > "${TMPDIR_SCAN}/files.json"
+
     jq -n \
-        --argjson files "[${ALL_FILES_JSON}]" \
+        --slurpfile files "${TMPDIR_SCAN}/files.json" \
         --argjson gap "${JUMP_GAP_SECONDS}" \
         --arg date "${TARGET_DATE}" \
         --arg createdAt "${CREATED_AT}" '
+        ($files[0]) as $files |
         ([$files[] | {path: .path, mtime: .mtime}] | sort_by(.mtime) | reduce .[] as $f (
             {clusters: [], current: []};
             if (.current | length) > 0 and (($f.mtime - (.current[-1].mtime)) > $gap) then
@@ -193,7 +196,8 @@ if [[ ! -f "${MANIFEST}" ]]; then
         }
     ' > "${MANIFEST}"
 
-    echo "[Scan] Found ${DISK_COUNT} file(s) in ${#SORTED_FILES[@]} jump(s)."
+    FINAL_JUMPS=$(jq '.jumps | length' "${MANIFEST}" 2>/dev/null)
+    echo "[Scan] Found ${DISK_COUNT} file(s) in ${FINAL_JUMPS} jump(s)."
     echo "[Scan] Manifest: ${MANIFEST}"
     rm -rf "${TMPDIR_SCAN}"
     exit 0
@@ -248,7 +252,12 @@ ADDED_SET="[]"
 
 JUMP_GAP_SECONDS=1800
 
-jq --argjson removed "${REMOVED_SET}" --argjson added "${ADDED_SET}" --argjson gap "${JUMP_GAP_SECONDS}" '
+echo "${REMOVED_SET}" > "${TMPDIR_SCAN}/removed.json"
+echo "${ADDED_SET}" > "${TMPDIR_SCAN}/added.json"
+
+jq --slurpfile removed "${TMPDIR_SCAN}/removed.json" --slurpfile added "${TMPDIR_SCAN}/added.json" --argjson gap "${JUMP_GAP_SECONDS}" '
+    ($removed[0]) as $removed |
+    ($added[0]) as $added |
     . as $manifest |
 
     # Updated files list: remove deleted, add new
@@ -287,6 +296,7 @@ jq --argjson removed "${REMOVED_SET}" --argjson added "${ADDED_SET}" --argjson g
 
     # Build new jumps from clusters with majority-vote metadata
     ($newClusters | to_entries | map(
+        .key as $idx |
         .value as $cluster |
         $cluster | map(. as $f | {path: .path, mtime: .mtime, prev: ($prevAll[$f.path] // {jid: null})}) |
         reduce .[] as $item (
@@ -305,8 +315,8 @@ jq --argjson removed "${REMOVED_SET}" --argjson added "${ADDED_SET}" --argjson g
             end
         ) |
         . as $meta |
-        (if .domId != null then .domId else "jump_\($numKept + (.idx // 0) + 1)" end) as $id |
-        (if .domLabel != null then .domLabel else "Jump \($numKept + (.idx // 0) + 1)" end) as $label |
+        (if .domId != null then .domId else "jump_\($numKept + $idx + 1)" end) as $id |
+        (if .domLabel != null then .domLabel else "Jump \($numKept + $idx + 1)" end) as $label |
         {id: $id, label: $label, confirmed: (.domConfirmed // false), processed: .domProcessed, files: [$cluster[] | {path: .path, size: 0, mtime: .mtime, filename: (.path | split("/")[-1])}]}
     )) as $newJumps |
 

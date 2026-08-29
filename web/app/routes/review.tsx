@@ -9,7 +9,7 @@ import type { Manifest, ManifestFile, ManifestJump } from '../lib/types'
 import type { Route } from './+types/review'
 
 const loader = async () => {
-  const manifestPath = path.join(getOutputDirPath(), 'proposed_jumps.json')
+  const manifestPath = path.join(getOutputDirPath(), 'manifest.json')
   await ensureManifestFileIds(manifestPath)
   let manifest: Manifest | null = null
   try {

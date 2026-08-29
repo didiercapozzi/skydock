@@ -7,7 +7,7 @@ import type { Manifest, ManifestFile, ManifestJump } from '../lib/types'
 
 type Body = Record<string, unknown>
 
-const getManifestPath = (): string => path.join(getOutputDirPath(), 'proposed_jumps.json')
+const getManifestPath = (): string => path.join(getOutputDirPath(), 'manifest.json')
 
 const loadManifest = (): Manifest | null => {
   const p = getManifestPath()
