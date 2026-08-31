@@ -80,15 +80,20 @@ const isVideoFile = (filename: string) => /\.(mp4|mov|avi|mkv)$/i.test(filename)
 
 const MediaPreview = ({
   file,
-  maxHeight = '60vh'
+  maxHeight = '60vh',
+  videoRef,
+  onDurationLoaded
 }: {
   file: ManifestFile
   maxHeight?: string
+  videoRef?: React.RefObject<HTMLVideoElement | null>
+  onDurationLoaded?: (duration: number) => void
 }) => {
   const src = `/api/file?path=${encodeURIComponent(file.path)}`
   return isVideoFile(file.filename) ? (
     <video
       key={file.path}
+      ref={videoRef}
       src={src}
       controls
       autoPlay
@@ -96,6 +101,9 @@ const MediaPreview = ({
       preload='metadata'
       className='max-w-full rounded bg-black'
       style={{ maxHeight }}
+      onLoadedMetadata={(e) => {
+        onDurationLoaded?.(e.currentTarget.duration)
+      }}
     />
   ) : (
     <img
@@ -108,6 +116,155 @@ const MediaPreview = ({
   )
 }
 
+const VideoCropper = ({
+  videoRef,
+  duration
+}: {
+  videoRef: React.RefObject<HTMLVideoElement | null>
+  duration: number
+}) => {
+  const [currentTime, setCurrentTime] = useState(0)
+  const [cropStart, setCropStart] = useState(0)
+  const [cropEnd, setCropEnd] = useState(duration)
+  const [dragging, setDragging] = useState<'start' | 'end' | 'playhead' | null>(null)
+  const timelineRef = useRef<HTMLDivElement>(null)
+  const rafRef = useRef(0)
+
+  useEffect(() => {
+    setCropEnd(duration)
+  }, [duration])
+
+  useEffect(() => {
+    const vid = videoRef.current
+    if (!vid) return
+    const tick = () => {
+      setCurrentTime(vid.currentTime)
+      rafRef.current = requestAnimationFrame(tick)
+    }
+    rafRef.current = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [videoRef])
+
+  const seekTo = (time: number) => {
+    const vid = videoRef.current
+    if (!vid) return
+    const clamped = Math.max(0, Math.min(time, duration))
+    vid.currentTime = clamped
+    setCurrentTime(clamped)
+  }
+
+  const timeFromX = (clientX: number) => {
+    const rect = timelineRef.current?.getBoundingClientRect()
+    if (!rect) return 0
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    return ratio * duration
+  }
+
+  const formatTimeCode = (t: number) => {
+    const h = Math.floor(t / 3600)
+    const m = Math.floor((t % 3600) / 60)
+    const s = Math.floor(t % 60)
+    const f = Math.floor((t % 1) * 30)
+    if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(f).padStart(2, '0')}`
+    return `${m}:${String(s).padStart(2, '0')}.${String(f).padStart(2, '0')}`
+  }
+
+  const handlePointerDown = (e: React.PointerEvent, target: 'start' | 'end' | 'playhead' | 'timeline') => {
+    e.preventDefault()
+    e.stopPropagation()
+    const time = timeFromX(e.clientX)
+    if (target === 'timeline') {
+      seekTo(time)
+      setDragging('playhead')
+    } else {
+      setDragging(target)
+    }
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+  }
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!dragging) return
+    const time = timeFromX(e.clientX)
+    if (dragging === 'start') {
+      const clamped = Math.min(time, cropEnd - 0.1)
+      setCropStart(Math.max(0, clamped))
+    } else if (dragging === 'end') {
+      const clamped = Math.max(time, cropStart + 0.1)
+      setCropEnd(Math.min(duration, clamped))
+    } else if (dragging === 'playhead') {
+      seekTo(time)
+    }
+  }
+
+  const handlePointerUp = () => {
+    setDragging(null)
+  }
+
+  const startPct = duration > 0 ? (cropStart / duration) * 100 : 0
+  const endPct = duration > 0 ? (cropEnd / duration) * 100 : 100
+  const playheadPct = duration > 0 ? (currentTime / duration) * 100 : 0
+
+  return (
+    <div className='w-full px-1 select-none'>
+      <div className='flex items-center justify-between text-[10px] text-gray-400 mb-1 px-0.5'>
+        <span>{formatTimeCode(cropStart)}</span>
+        <span className='text-gray-500'>Crop: {formatTimeCode(cropEnd - cropStart)}</span>
+        <span>{formatTimeCode(cropEnd)}</span>
+      </div>
+      <div
+        ref={timelineRef}
+        className='relative h-8 bg-gray-200 dark:bg-gray-700 rounded cursor-pointer group'
+        onPointerDown={(e) => handlePointerDown(e, 'timeline')}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}>
+        <div
+          className='absolute top-0 bottom-0 bg-gray-300 dark:bg-gray-600'
+          style={{ left: 0, width: `${startPct}%` }}
+        />
+        <div
+          className='absolute top-0 bottom-0 bg-blue-200/40 dark:bg-blue-800/30'
+          style={{ left: `${startPct}%`, width: `${endPct - startPct}%` }}
+        />
+        <div
+          className='absolute top-0 bottom-0 bg-gray-300 dark:bg-gray-600'
+          style={{ left: `${endPct}%`, right: 0 }}
+        />
+        <div
+          className='absolute top-0 bottom-0 w-0.5 bg-white shadow-sm z-10'
+          style={{ left: `${playheadPct}%` }}
+        />
+        <div
+          className='absolute top-1/2 -translate-y-1/2 w-3 h-5 bg-white border border-gray-400 rounded-sm cursor-ew-resize z-20 shadow-sm hover:bg-gray-100'
+          style={{ left: `${startPct}%`, transform: 'translate(-50%, -50%)' }}
+          onPointerDown={(e) => handlePointerDown(e, 'start')}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+        />
+        <div
+          className='absolute top-1/2 -translate-y-1/2 w-3 h-5 bg-white border border-gray-400 rounded-sm cursor-ew-resize z-20 shadow-sm hover:bg-gray-100'
+          style={{ left: `${endPct}%`, transform: 'translate(-50%, -50%)' }}
+          onPointerDown={(e) => handlePointerDown(e, 'end')}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+        />
+      </div>
+      <div className='flex items-center justify-center gap-2 mt-2'>
+        <button
+          type='button'
+          onClick={() => seekTo(cropStart)}
+          className='text-[10px] px-1.5 py-0.5 rounded border text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'>
+          Go to in
+        </button>
+        <button
+          type='button'
+          onClick={() => seekTo(cropEnd)}
+          className='text-[10px] px-1.5 py-0.5 rounded border text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'>
+          Go to out
+        </button>
+      </div>
+    </div>
+  )
+}
 const PreviewDrawer = ({
   preview,
   onClose,
@@ -121,6 +278,13 @@ const PreviewDrawer = ({
 }) => {
   const file = preview.files[preview.index]
   const src = `/api/file?path=${encodeURIComponent(file.path)}`
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const [videoDuration, setVideoDuration] = useState(0)
+  const isVideo = isVideoFile(file.filename)
+
+  useEffect(() => {
+    setVideoDuration(0)
+  }, [file.path])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -167,8 +331,15 @@ const PreviewDrawer = ({
         </div>
         <div className='flex-1 flex flex-col items-center justify-center p-4 gap-3 overflow-auto'>
           <div className='w-full flex items-center justify-center'>
-            <MediaPreview file={file} />
+            <MediaPreview
+              file={file}
+              videoRef={isVideo ? videoRef : undefined}
+              onDurationLoaded={isVideo ? setVideoDuration : undefined}
+            />
           </div>
+          {isVideo && videoDuration > 0 && (
+            <VideoCropper videoRef={videoRef} duration={videoDuration} />
+          )}
           <div className='text-xs text-gray-500'>{formatSize(file.size)}</div>
         </div>
         <div className='flex items-center justify-between px-4 py-3 border-t dark:border-gray-700'>
