@@ -20,15 +20,15 @@ const ProxyBadge = ({
     return variant === 'overlay' ? (
       <div
         className='absolute bottom-6 left-1 text-[7px] font-medium bg-green-600 text-white rounded px-1 py-0.5 leading-none shadow-sm'
-        title='Proxy ready (480p) — preview will use proxy'>
-        480p
+        title='Proxy ready — preview will use proxy'>
+        proxy
       </div>
     ) : (
       <span
         className='shrink-0 inline-flex items-center gap-0.5 text-[9px] font-medium px-1 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800'
-        title='Proxy ready (480p) — preview will use proxy'>
+        title='Proxy ready — preview will use proxy'>
         <span className='w-1 h-1 rounded-full bg-green-600 dark:bg-green-400' />
-        480p
+        proxy
       </span>
     )
   }

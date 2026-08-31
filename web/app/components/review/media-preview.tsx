@@ -41,7 +41,7 @@ const MediaPreview = ({
       {isLoading && !videoError && (
         <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 rounded text-white text-xs p-4'>
           <div className='w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin' />
-          <span>Loading video… {useProxy && proxySrc ? '(proxy 480p)' : ''}</span>
+          <span>Loading video… {useProxy && proxySrc ? '(proxy)' : ''}</span>
           <span className='text-[10px] text-white/60 text-center max-w-[280px]'>
             Large files (3 GB+) with moov at end need to fetch tail via Range — can take 5-10 s. If
             stuck, use Open.
