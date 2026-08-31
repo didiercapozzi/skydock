@@ -9,6 +9,7 @@ export type TaskStatus = {
   message?: string
   total?: number
   done?: number
+  processing?: string[]
   startedAt?: string
   updatedAt?: string
   error?: string

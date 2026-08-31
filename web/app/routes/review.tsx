@@ -80,6 +80,18 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
 
   const scanning = scanFetcher.state !== 'idle' || systemStatus?.scan.state === 'running'
   const isProxiesRunning = systemStatus?.proxies.state === 'running'
+  const processingIds = useMemo(
+    () => new Set(systemStatus?.proxies.processing ?? []),
+    [systemStatus]
+  )
+  const processingFiles = useMemo(() => {
+    if (!manifest || !systemStatus?.proxies.processing?.length) return []
+    const idToFilename = new Map<string, string>()
+    for (const f of manifest.files) if (f.id) idToFilename.set(f.id, f.filename)
+    for (const j of manifest.jumps)
+      for (const f of j.files) if (f.id) idToFilename.set(f.id, f.filename)
+    return systemStatus.proxies.processing.map((id) => idToFilename.get(id) ?? id).slice(0, 4)
+  }, [manifest, systemStatus])
   const isExecuteRunning = systemStatus?.execute.state === 'running'
   const isProcessRunning = systemStatus?.process.state === 'running'
 
@@ -489,6 +501,15 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                     {systemStatus.proxies.message ||
                       'thumbnails and previews will appear when ready'}
                   </span>
+                  {processingFiles.length > 0 && (
+                    <span className='ml-2 text-xs font-mono text-amber-700 dark:text-amber-300 truncate max-w-[320px]'>
+                      · enc: {processingFiles.join(', ')}
+                      {systemStatus.proxies.processing &&
+                      systemStatus.proxies.processing.length > processingFiles.length
+                        ? ` +${systemStatus.proxies.processing.length - processingFiles.length}`
+                        : ''}
+                    </span>
+                  )}
                   <span className='ml-2 text-xs text-amber-600 dark:text-amber-400'>
                     · grid uses thumbPath when ready, preview falls back to original
                   </span>
@@ -589,6 +610,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
               onRemove={(gid, fp) => handleSelect(gid, fp, true, false)}
               onDragStart={handleTrayDragStart}
               isProxyGenerating={isProxiesRunning}
+              processingIds={processingIds}
             />
           )}
           <div className='flex-1 min-w-0'>
@@ -619,6 +641,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                       isSelectMode={isSelectMode}
                       isInMultipleJumps={multiJumpFiles.has(file.path)}
                       isProxyGenerating={isProxiesRunning}
+                      isActive={!!file.id && processingIds.has(file.id)}
                       onSelect={handleSelect}
                       onDragStart={() => {}}
                       onPreview={() => handlePreview(unassignedFiles, idx, 'Unassigned')}
@@ -638,6 +661,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                   compareIds={compareIds}
                   multiJumpFiles={multiJumpFiles}
                   isProxyGenerating={isProxiesRunning}
+                  processingIds={processingIds}
                   viewMode={viewMode}
                   onViewModeChange={setViewMode}
                   onSelect={handleSelect}
@@ -714,6 +738,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
             onCompareIdsChange={setCompareIds}
             onClose={() => setShowCompare(false)}
             isProxyGenerating={isProxiesRunning}
+            processingIds={processingIds}
             onMerge={(targetId, sourceId) => {
               handleMerge(targetId, sourceId)
               setShowCompare(false)

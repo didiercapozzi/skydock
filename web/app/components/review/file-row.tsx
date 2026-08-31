@@ -11,6 +11,7 @@ type FileRowProps = {
   isInMultipleJumps?: boolean
   dropPosition?: 'above' | 'below' | null
   isProxyGenerating?: boolean
+  isActive?: boolean
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDragStart: (e: React.DragEvent, filePath: string, groupId: string) => void
   onRowDragOver?: (e: React.DragEvent, filePath: string) => void
@@ -28,6 +29,7 @@ const FileRow = ({
   isInMultipleJumps,
   dropPosition,
   isProxyGenerating,
+  isActive,
   onSelect,
   onDragStart,
   onRowDragOver,
@@ -141,6 +143,7 @@ const FileRow = ({
       <ProxyBadge
         file={file}
         isGenerating={isProxyGenerating}
+        isActive={isActive}
       />
       <span className='text-gray-400 dark:text-gray-500 text-xs whitespace-nowrap tabular-nums'>
         {formatTime(file.mtime)}

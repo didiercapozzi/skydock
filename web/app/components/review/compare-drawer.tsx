@@ -13,6 +13,7 @@ type CompareDrawerProps = {
   onClose: () => void
   onMerge: (targetId: string, sourceId: string) => void
   isProxyGenerating?: boolean
+  processingIds?: Set<string>
 }
 
 const CompareDrawer = ({
@@ -22,7 +23,8 @@ const CompareDrawer = ({
   onCompareIdsChange,
   onClose,
   onMerge,
-  isProxyGenerating
+  isProxyGenerating,
+  processingIds
 }: CompareDrawerProps) => {
   const [leftIdx, setLeftIdx] = useState<number | null>(null)
   const [rightIdx, setRightIdx] = useState<number | null>(null)
@@ -136,6 +138,7 @@ const CompareDrawer = ({
                       <ProxyBadge
                         file={file}
                         isGenerating={isProxyGenerating}
+                        isActive={!!file.id && !!processingIds?.has(file.id)}
                       />
                       <span className='text-gray-400 tabular-nums whitespace-nowrap'>
                         {formatTime(file.mtime)}

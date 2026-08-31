@@ -30,14 +30,49 @@ write_proxy_status() {
     local msg="$2"
     local total="$3"
     local done="$4"
+    local processing_json="$5"
     local ts
     ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")
     local tmp="${STATUS_DIR}/proxies.json.tmp"
-    if [[ -n "${total}" && -n "${done}" ]]; then
-        printf '{"state":"%s","message":"%s","total":%s,"done":%s,"updatedAt":"%s","startedAt":"%s"}' "${state}" "${msg}" "${total}" "${done}" "${ts}" "${ts}" > "${tmp}" 2>/dev/null && mv -f "${tmp}" "${STATUS_DIR}/proxies.json" 2>/dev/null || true
-    else
-        printf '{"state":"%s","message":"%s","updatedAt":"%s","startedAt":"%s"}' "${state}" "${msg}" "${ts}" "${ts}" > "${tmp}" 2>/dev/null && mv -f "${tmp}" "${STATUS_DIR}/proxies.json" 2>/dev/null || true
+    if [[ -z "${processing_json}" ]]; then
+        if [[ -f "${TMP_PROCESSING:-}" ]]; then
+            processing_json=$(jq -R -s -c 'split("\n") | map(select(length>0))' "${TMP_PROCESSING}" 2>/dev/null || echo "[]")
+        else
+            processing_json="[]"
+        fi
     fi
+    if [[ -n "${total}" && -n "${done}" ]]; then
+        printf '{"state":"%s","message":"%s","total":%s,"done":%s,"processing":%s,"updatedAt":"%s","startedAt":"%s"}' "${state}" "${msg}" "${total}" "${done}" "${processing_json}" "${ts}" "${ts}" > "${tmp}" 2>/dev/null && mv -f "${tmp}" "${STATUS_DIR}/proxies.json" 2>/dev/null || true
+    else
+        printf '{"state":"%s","message":"%s","processing":%s,"updatedAt":"%s","startedAt":"%s"}' "${state}" "${msg}" "${processing_json}" "${ts}" "${ts}" > "${tmp}" 2>/dev/null && mv -f "${tmp}" "${STATUS_DIR}/proxies.json" 2>/dev/null || true
+    fi
+}
+update_processing_status() {
+    if [[ ! -f "${TMP_PROCESSING:-}" ]]; then return; fi
+    local total="${TOTAL_VIDEOS:-0}"
+    local done
+    done=$(ls "${PROXY_DIR}"/*.mp4 2>/dev/null | wc -l | tr -d ' ')
+    write_proxy_status "running" "Generating 480p proxies (${ENCODER} ${PRESET}) ${done}/${total}" "${total}" "${done}" 2>/dev/null || true
+}
+add_processing() {
+    local fid="$1"
+    if command -v flock &>/dev/null; then
+        flock -x "${TMP_PROCESSING}.lock" -c "echo \"${fid}\" >> \"${TMP_PROCESSING}\"" 2>/dev/null || echo "${fid}" >> "${TMP_PROCESSING}" 2>/dev/null || true
+    else
+        echo "${fid}" >> "${TMP_PROCESSING}" 2>/dev/null || true
+    fi
+    update_processing_status || true
+}
+remove_processing() {
+    local fid="$1"
+    if [[ -f "${TMP_PROCESSING}" ]]; then
+        if command -v flock &>/dev/null; then
+            flock -x "${TMP_PROCESSING}.lock" -c "grep -v -x \"${fid}\" \"${TMP_PROCESSING}\" > \"${TMP_PROCESSING}.tmp\" 2>/dev/null && mv -f \"${TMP_PROCESSING}.tmp\" \"${TMP_PROCESSING}\"" 2>/dev/null || { grep -v -x "${fid}" "${TMP_PROCESSING}" > "${TMP_PROCESSING}.tmp" 2>/dev/null && mv -f "${TMP_PROCESSING}.tmp" "${TMP_PROCESSING}" 2>/dev/null || true; }
+        else
+            grep -v -x "${fid}" "${TMP_PROCESSING}" > "${TMP_PROCESSING}.tmp" 2>/dev/null && mv -f "${TMP_PROCESSING}.tmp" "${TMP_PROCESSING}" 2>/dev/null || true
+        fi
+    fi
+    update_processing_status || true
 }
 trap 'write_proxy_status "idle" "Proxy generation interrupted" 2>/dev/null || true' INT TERM
 TOTAL_CPUS=$(nproc 2>/dev/null || echo 4)
@@ -84,7 +119,9 @@ if [[ -n "${IONICE_CMD}" ]]; then
 fi
 TMP_LIST=$(mktemp)
 TMP_JOBS=$(mktemp)
-trap 'rm -f "${TMP_LIST}" "${TMP_JOBS}"' EXIT
+TMP_PROCESSING=$(mktemp)
+: > "${TMP_PROCESSING}"
+trap 'rm -f "${TMP_LIST}" "${TMP_JOBS}" "${TMP_PROCESSING}" "${TMP_PROCESSING}.tmp" 2>/dev/null || true' EXIT
 jq -r '.files[] | select(.path | test("\\.(mp4|mov|avi|mkv)$"; "i")) | "\(.path)\t\(.id // "")\t\(.mtime)"' "${MANIFEST}" 2>/dev/null > "${TMP_LIST}" || true
 if [[ ! -s "${TMP_LIST}" ]]; then
     echo "[Proxies] No videos in manifest"
@@ -92,6 +129,7 @@ if [[ ! -s "${TMP_LIST}" ]]; then
     exit 0
 fi
 TOTAL_VIDEOS=$(wc -l < "${TMP_LIST}" 2>/dev/null | tr -d ' ')
+export TOTAL_VIDEOS
 write_proxy_status "running" "Generating thumbnails (320px)" "${TOTAL_VIDEOS}" 0 || true
 prune_stale() {
     local valid_ids
@@ -160,6 +198,8 @@ generate_proxy() {
         fi
     fi
     local proxy_tmp="${proxy}.tmp.mp4"
+    add_processing "${fid}" 2>/dev/null || true
+    trap 'remove_processing "${fid}" 2>/dev/null || true' RETURN
     local log_file="${LOG_DIR}/${fid}.log"
     local audio_codec
     audio_codec=$(ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "${src}" 2>/dev/null || echo "")
@@ -240,8 +280,8 @@ generate_proxy() {
         return 1
     fi
 }
-export -f generate_thumb generate_proxy
-export THUMB_DIR PROXY_DIR LOG_DIR RUN_PREFIX FFMPEG_THREADS ENCODER PRESET
+export -f generate_thumb generate_proxy add_processing remove_processing update_processing_status write_proxy_status
+export THUMB_DIR PROXY_DIR LOG_DIR RUN_PREFIX FFMPEG_THREADS ENCODER PRESET TMP_PROCESSING TOTAL_VIDEOS STATUS_DIR
 existing_thumbs=0
 existing_proxies=0
 while IFS=$'\t' read -r vpath vid vmtime; do
@@ -417,6 +457,7 @@ for fid_check in $(jq -r '.files[] | select(.id != null) | .id' "${MANIFEST}" 2>
     fi
 done
 rm -f "${TMP_CLEAN}" 2>/dev/null || true
+: > "${TMP_PROCESSING}" 2>/dev/null || true
 if [[ "${generated_proxies}" -eq "${TOTAL_VIDEOS}" && "${generated_thumbs}" -eq "${TOTAL_VIDEOS}" ]]; then
     write_proxy_status "done" "Thumbnails and proxies ready (${generated_proxies}/${TOTAL_VIDEOS} ${ENCODER} ${PRESET})" "${TOTAL_VIDEOS}" "${generated_proxies}" || true
     (

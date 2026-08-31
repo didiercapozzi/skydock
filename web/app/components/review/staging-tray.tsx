@@ -9,6 +9,7 @@ type StagingTrayProps = {
   onRemove: (groupId: string, filePath: string) => void
   onDragStart: (e: React.DragEvent, filePaths: string[]) => void
   isProxyGenerating?: boolean
+  processingIds?: Set<string>
 }
 
 const StagingTray = ({
@@ -18,7 +19,8 @@ const StagingTray = ({
   onClear,
   onRemove,
   onDragStart,
-  isProxyGenerating
+  isProxyGenerating,
+  processingIds
 }: StagingTrayProps) => {
   const handleTrayDragStart = (e: React.DragEvent) => {
     const paths = selectedFiles.map((s) => s.file.path)
@@ -73,6 +75,7 @@ const StagingTray = ({
               <ProxyBadge
                 file={file}
                 isGenerating={isProxyGenerating}
+                isActive={!!file.id && !!processingIds?.has(file.id)}
               />
               <button
                 type='button'

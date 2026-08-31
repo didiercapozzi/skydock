@@ -14,6 +14,7 @@ type JumpCardProps = {
   multiJumpFiles: Set<string>
   viewMode: 'list' | 'grid'
   isProxyGenerating?: boolean
+  processingIds?: Set<string>
   onViewModeChange: (v: 'list' | 'grid') => void
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDrop: (e: React.DragEvent, targetJumpId: string) => void
@@ -51,7 +52,8 @@ const JumpCard = ({
   onDeleteFile,
   onRenameFile,
   onShiftJump,
-  isProxyGenerating
+  isProxyGenerating,
+  processingIds
 }: JumpCardProps) => {
   const [expanded, setExpanded] = useState(false)
   const [editingLabel, setEditingLabel] = useState(false)
@@ -496,6 +498,7 @@ const JumpCard = ({
                             file={file}
                             variant='overlay'
                             isGenerating={isProxyGenerating}
+                            isActive={!!file.id && !!processingIds?.has(file.id)}
                           />
                         )}
                         {(file.cropStart != null && file.cropStart > 0) || file.cropEnd != null ? (
@@ -528,6 +531,7 @@ const JumpCard = ({
                       isInMultipleJumps={multiJumpFiles.has(file.path)}
                       dropPosition={hoveredFile === file.path ? dropPosition : null}
                       isProxyGenerating={isProxyGenerating}
+                      isActive={!!file.id && !!processingIds?.has(file.id)}
                       onSelect={onSelect}
                       onDragStart={(e, fp) => {
                         if (isProcessed) return
