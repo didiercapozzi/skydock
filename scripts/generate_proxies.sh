@@ -77,6 +77,16 @@ if [[ ! -s "${TMP_LIST}" ]]; then
 fi
 TOTAL_VIDEOS=$(wc -l < "${TMP_LIST}" 2>/dev/null | tr -d ' ')
 write_proxy_status "running" "Generating thumbnails and 480p proxies" "${TOTAL_VIDEOS}" 0 || true
+(
+    while true; do
+        sleep 5
+        cur_state=$(jq -r '.state' "${STATUS_DIR}/proxies.json" 2>/dev/null || echo "")
+        if [[ "${cur_state}" != "running" ]]; then break; fi
+        cur_done=$(ls "${PROXY_DIR}"/*.mp4 2>/dev/null | wc -l | tr -d ' ')
+        ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")
+        printf '{"state":"running","message":"Generating thumbnails and 480p proxies","total":%s,"done":%s,"updatedAt":"%s","startedAt":"%s"}' "${TOTAL_VIDEOS}" "${cur_done}" "${ts}" "${ts}" > "${STATUS_DIR}/proxies.json.tmp" 2>/dev/null && mv -f "${STATUS_DIR}/proxies.json.tmp" "${STATUS_DIR}/proxies.json" 2>/dev/null || true
+    done
+) > /dev/null 2>&1 & disown 2>/dev/null || true
 prune_stale() {
     local valid_ids
     valid_ids=$(jq -r '.files[] | .id // empty' "${MANIFEST}" 2>/dev/null | sort -u)
@@ -225,12 +235,16 @@ jq --arg thumbDir "${THUMB_DIR}" --arg proxyDir "${PROXY_DIR}" '
     else . end
   ))
 ' "${MANIFEST}" > "${TMP_MANIFEST}" 2>/dev/null && mv -f "${TMP_MANIFEST}" "${MANIFEST}" || rm -f "${TMP_MANIFEST}" 2>/dev/null || true
-write_proxy_status "done" "Thumbnails and proxies ready" "${TOTAL_VIDEOS}" "${TOTAL_VIDEOS}" || true
-(
-    sleep 8
-    cur=$(cat "${STATUS_DIR}/proxies.json" 2>/dev/null | jq -r '.state' 2>/dev/null || echo "")
-    if [[ "${cur}" == "done" ]]; then
-        printf '{"state":"idle","message":"Idle","updatedAt":"%s"}' "$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")" > "${STATUS_DIR}/proxies.json.tmp" 2>/dev/null && mv -f "${STATUS_DIR}/proxies.json.tmp" "${STATUS_DIR}/proxies.json" 2>/dev/null || true
-    fi
-) > /dev/null 2>&1 & disown 2>/dev/null || true
+if [[ "${generated_proxies}" -eq "${TOTAL_VIDEOS}" && "${generated_thumbs}" -eq "${TOTAL_VIDEOS}" ]]; then
+    write_proxy_status "done" "Thumbnails and proxies ready (${generated_proxies}/${TOTAL_VIDEOS})" "${TOTAL_VIDEOS}" "${generated_proxies}" || true
+    (
+        sleep 8
+        cur=$(cat "${STATUS_DIR}/proxies.json" 2>/dev/null | jq -r '.state' 2>/dev/null || echo "")
+        if [[ "${cur}" == "done" ]]; then
+            printf '{"state":"idle","message":"Idle","updatedAt":"%s"}' "$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")" > "${STATUS_DIR}/proxies.json.tmp" 2>/dev/null && mv -f "${STATUS_DIR}/proxies.json.tmp" "${STATUS_DIR}/proxies.json" 2>/dev/null || true
+        fi
+    ) > /dev/null 2>&1 & disown 2>/dev/null || true
+else
+    write_proxy_status "done" "Generated ${generated_thumbs} thumbs, ${generated_proxies} proxies — ${new_thumbs} new thumbs, ${new_proxies} new proxies (${generated_proxies}/${TOTAL_VIDEOS} ready)" "${TOTAL_VIDEOS}" "${generated_proxies}" || true
+fi
 echo "[Proxies] Done: ${generated_thumbs} thumbs (${new_thumbs} new), ${generated_proxies} proxies (${new_proxies} new), jobs=${JOBS} nice=${NICE_LEVEL} ionice=${IONICE_CLASS}:${IONICE_LEVEL}"
