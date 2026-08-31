@@ -1,12 +1,4 @@
-import type { Manifest, ManifestFile } from './types'
-
-export type Sequence = {
-  id: string
-  files: ManifestFile[]
-  date: string
-  startTime: number
-  endTime: number
-}
+import type { ManifestFile } from './types'
 
 export const formatSequenceDate = (epoch: number): string => {
   const d = new Date(epoch * 1000)
@@ -29,56 +21,4 @@ export const formatSequenceTime = (epoch: number): string => {
     hour: '2-digit',
     minute: '2-digit'
   })
-}
-
-export const formatClockOffset = (seconds: number): string => {
-  const sign = seconds < 0 ? '-' : '+'
-  const abs = Math.abs(seconds)
-  const days = Math.floor(abs / 86400)
-  const hours = Math.floor((abs % 86400) / 3600)
-  const minutes = Math.floor((abs % 3600) / 60)
-  const secs = abs % 60
-  const pad = (n: number): string => String(n).padStart(2, '0')
-  return `${sign}${days}d ${pad(hours)}:${pad(minutes)}:${pad(secs)}`
-}
-
-export const getSequences = (manifest: Manifest): Sequence[] => {
-  const allFiles: ManifestFile[] = [...(manifest.files ?? [])]
-
-  allFiles.sort((a, b) => a.mtime - b.mtime)
-
-  const sequences: Sequence[] = []
-  let current: ManifestFile[] = []
-  let lastTime = 0
-
-  for (const file of allFiles) {
-    if (current.length > 0 && file.mtime - lastTime > 900) {
-      const startTime = current[0].mtime
-      const endTime = current[current.length - 1].mtime
-      sequences.push({
-        id: `seq_${sequences.length}`,
-        files: current,
-        date: formatSequenceDate(startTime),
-        startTime,
-        endTime
-      })
-      current = []
-    }
-    current.push(file)
-    lastTime = file.mtime
-  }
-
-  if (current.length > 0) {
-    const startTime = current[0].mtime
-    const endTime = current[current.length - 1].mtime
-    sequences.push({
-      id: `seq_${sequences.length}`,
-      files: current,
-      date: formatSequenceDate(startTime),
-      startTime,
-      endTime
-    })
-  }
-
-  return sequences
 }

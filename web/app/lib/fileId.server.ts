@@ -1,5 +1,6 @@
 import * as fs from 'node:fs'
 import * as nodeCrypto from 'node:crypto'
+import { manifestSchema } from './types'
 import type { Manifest } from './types'
 
 const HEAD_BYTES = 1_048_576
@@ -37,7 +38,7 @@ export const ensureManifestFileIds = async (manifestPath: string): Promise<void>
 
   let manifest: Manifest
   try {
-    manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest
+    manifest = manifestSchema.parse(JSON.parse(fs.readFileSync(manifestPath, 'utf-8')))
   } catch {
     return
   }

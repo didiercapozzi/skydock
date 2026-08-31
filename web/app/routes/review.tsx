@@ -5,6 +5,7 @@ import { Link, useFetcher, useRevalidator } from 'react-router'
 import { getOutputDirPath } from '../lib/scanner.server'
 import { ensureManifestFileIds } from '../lib/fileId.server'
 import { formatDateForInput, formatSequenceDate, formatSequenceTime } from '../lib/sequences'
+import { manifestSchema } from '../lib/types'
 import type { Manifest, ManifestFile, ManifestJump } from '../lib/types'
 import type { Route } from './+types/review'
 
@@ -14,7 +15,7 @@ const loader = async () => {
   let manifest: Manifest | null = null
   try {
     if (fs.existsSync(manifestPath)) {
-      manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest
+      manifest = manifestSchema.parse(JSON.parse(fs.readFileSync(manifestPath, 'utf-8')))
     }
   } catch {
     manifest = null
@@ -22,13 +23,13 @@ const loader = async () => {
   return { manifest }
 }
 
-const formatSize = (bytes: number): string => {
+const formatSize = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-const formatTime = (epoch: number): string =>
+const formatTime = (epoch: number) =>
   new Date(epoch * 1000).toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
@@ -42,13 +43,13 @@ type JumpDayGroup = {
   jumps: ManifestJump[]
 }
 
-const getJumpDate = (jump: ManifestJump): string => {
+const getJumpDate = (jump: ManifestJump) => {
   if (jump.files.length === 0) return ''
   const min = Math.min(...jump.files.map((f) => f.mtime))
   return formatSequenceDate(min)
 }
 
-const getJumpBounds = (jump: ManifestJump): { start: number; end: number } => {
+const getJumpBounds = (jump: ManifestJump) => {
   if (jump.files.length === 0) return { start: 0, end: 0 }
   const times = jump.files.map((f) => f.mtime)
   return { start: Math.min(...times), end: Math.max(...times) }
@@ -75,6 +76,38 @@ type PreviewState = {
   label: string
 }
 
+const isVideoFile = (filename: string) => /\.(mp4|mov|avi|mkv)$/i.test(filename)
+
+const MediaPreview = ({
+  file,
+  maxHeight = '60vh'
+}: {
+  file: ManifestFile
+  maxHeight?: string
+}) => {
+  const src = `/api/file?path=${encodeURIComponent(file.path)}`
+  return isVideoFile(file.filename) ? (
+    <video
+      key={file.path}
+      src={src}
+      controls
+      autoPlay
+      muted
+      preload='metadata'
+      className='max-w-full rounded bg-black'
+      style={{ maxHeight }}
+    />
+  ) : (
+    <img
+      key={file.path}
+      src={src}
+      alt={file.filename}
+      className='max-w-full rounded object-contain'
+      style={{ maxHeight }}
+    />
+  )
+}
+
 const PreviewDrawer = ({
   preview,
   onClose,
@@ -87,7 +120,6 @@ const PreviewDrawer = ({
   onNext: () => void
 }) => {
   const file = preview.files[preview.index]
-  const isVideo = /\.(mp4|mov|avi|mkv)$/i.test(file.filename)
   const src = `/api/file?path=${encodeURIComponent(file.path)}`
 
   useEffect(() => {
@@ -133,24 +165,7 @@ const PreviewDrawer = ({
         </div>
         <div className='flex-1 flex flex-col items-center justify-center p-4 gap-3 overflow-auto'>
           <div className='w-full flex items-center justify-center'>
-            {isVideo ? (
-              <video
-                key={file.path}
-                src={src}
-                controls
-                autoPlay
-                muted
-                preload='metadata'
-                className='max-w-full max-h-[60vh] rounded bg-black'
-              />
-            ) : (
-              <img
-                key={file.path}
-                src={src}
-                alt={file.filename}
-                className='max-w-full max-h-[60vh] rounded object-contain'
-              />
-            )}
+            <MediaPreview file={file} />
           </div>
           <div className='text-xs text-gray-500'>{formatSize(file.size)}</div>
         </div>
@@ -183,24 +198,33 @@ const FileRow = ({
   groupId,
   selected,
   isSelectMode,
+  isInMultipleJumps,
   dropPosition,
   onSelect,
   onDragStart,
   onRowDragOver,
   onRowDragLeave,
-  onPreview
+  onPreview,
+  onDelete,
+  onRename
 }: {
   file: ManifestFile
   groupId: string
   selected: boolean
   isSelectMode?: boolean
+  isInMultipleJumps?: boolean
   dropPosition?: 'above' | 'below' | null
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDragStart: (e: React.DragEvent, filePath: string, groupId: string) => void
   onRowDragOver?: (e: React.DragEvent, filePath: string) => void
   onRowDragLeave?: () => void
   onPreview?: () => void
+  onDelete?: () => void
+  onRename?: (newFilename: string) => void
 }) => {
+  const [editingName, setEditingName] = useState(false)
+  const [nameValue, setNameValue] = useState(file.filename)
+
   const handleRowClick = (e: React.MouseEvent) => {
     if (isSelectMode || e.ctrlKey || e.metaKey || e.shiftKey) {
       onSelect(groupId, file.path, e.ctrlKey || e.metaKey, e.shiftKey)
@@ -214,10 +238,6 @@ const FileRow = ({
     onSelect(groupId, file.path, true, false)
   }
 
-  const handleCheckboxMouseDown = (e: React.MouseEvent) => {
-    e.stopPropagation()
-  }
-
   const handleDragStart = (e: React.DragEvent) => {
     const target = e.target as HTMLElement
     if (target.closest('input[type="checkbox"]') || target.closest('button')) {
@@ -225,6 +245,15 @@ const FileRow = ({
       return
     }
     onDragStart(e, file.path, groupId)
+  }
+
+  const handleRenameSave = () => {
+    if (nameValue.trim() && nameValue !== file.filename) {
+      onRename?.(nameValue.trim())
+    } else {
+      setNameValue(file.filename)
+    }
+    setEditingName(false)
   }
 
   const dropBorder =
@@ -240,7 +269,9 @@ const FileRow = ({
       className={`relative flex items-center gap-2 px-3 py-1.5 text-sm rounded cursor-pointer select-none transition-colors ${dropBorder} ${
         selected
           ? 'bg-blue-100 dark:bg-blue-900/40 ring-1 ring-blue-300 dark:ring-blue-700'
-          : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+          : isInMultipleJumps
+            ? 'bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30'
+            : 'hover:bg-gray-100 dark:hover:bg-gray-800'
       }`}
       draggable
       onDragStart={handleDragStart}
@@ -257,12 +288,35 @@ const FileRow = ({
         checked={selected}
         onChange={() => {}}
         onClick={handleCheckboxClick}
-        onMouseDown={handleCheckboxMouseDown}
         className='h-4 w-4 rounded border-gray-300 text-blue-600'
       />
-      <span className='font-mono truncate flex-1 text-xs text-gray-700 dark:text-gray-300'>
-        {file.filename}
-      </span>
+      {editingName ? (
+        <input
+          type='text'
+          value={nameValue}
+          onChange={(e) => setNameValue(e.target.value)}
+          onBlur={handleRenameSave}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleRenameSave()
+            if (e.key === 'Escape') {
+              setNameValue(file.filename)
+              setEditingName(false)
+            }
+          }}
+          autoFocus
+          className='font-mono flex-1 text-xs bg-white border rounded px-1 py-0.5'
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        <span
+          className='font-mono truncate flex-1 text-xs text-gray-700 dark:text-gray-300 hover:underline decoration-dotted cursor-text'
+          onClick={(e) => {
+            e.stopPropagation()
+            if (onDelete) setEditingName(true)
+          }}>
+          {file.filename}
+        </span>
+      )}
       <span className='text-gray-400 dark:text-gray-500 text-xs whitespace-nowrap tabular-nums'>
         {formatTime(file.mtime)}
       </span>
@@ -281,6 +335,18 @@ const FileRow = ({
           👁
         </button>
       )}
+      {onDelete && (
+        <button
+          type='button'
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete()
+          }}
+          className='w-6 h-6 flex items-center justify-center rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500 shrink-0'
+          title='Delete file'>
+          🗑
+        </button>
+      )}
     </div>
   )
 }
@@ -290,18 +356,26 @@ const JumpCard = ({
   selection,
   isSelectMode,
   isCompareSelected,
+  multiJumpFiles,
   onSelect,
   onDrop,
   onDragStart,
   onRemoveFiles,
   onPreview,
   onReorder,
-  onCompareToggle
+  onCompareToggle,
+  onDelete,
+  onLabelSave,
+  onUnprocess,
+  onDeleteFile,
+  onRenameFile,
+  onShiftJump
 }: {
   jump: ManifestJump
   selection: Record<string, boolean>
   isSelectMode: boolean
   isCompareSelected?: boolean
+  multiJumpFiles: Set<string>
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDrop: (e: React.DragEvent, targetJumpId: string) => void
   onDragStart: (e: React.DragEvent, filePaths: string[], sourceJumpId: string) => void
@@ -309,15 +383,23 @@ const JumpCard = ({
   onPreview: (files: ManifestFile[], index: number, label: string) => void
   onReorder?: (jumpId: string, filePaths: string[]) => void
   onCompareToggle?: (jumpId: string) => void
+  onDelete?: (jumpId: string) => void
+  onLabelSave?: (jumpId: string, label: string) => void
+  onUnprocess?: (jumpId: string) => void
+  onDeleteFile?: (jumpId: string, filePath: string) => void
+  onRenameFile?: (filePath: string, newFilename: string) => void
+  onShiftJump?: (jumpId: string, offsetSeconds: number, paths: string[]) => void
 }) => {
   const [expanded, setExpanded] = useState(false)
   const [editingLabel, setEditingLabel] = useState(false)
   const [labelValue, setLabelValue] = useState(jump.label)
+  const [editingDateTime, setEditingDateTime] = useState(false)
+  const [dateValue, setDateValue] = useState('')
+  const [timeValue, setTimeValue] = useState('')
   const [isDragOver, setIsDragOver] = useState(false)
   const [hoveredFile, setHoveredFile] = useState<string | null>(null)
   const [dropPosition, setDropPosition] = useState<'above' | 'below' | null>(null)
   const dragDataRef = useRef<{ filePaths: string[]; sourceJumpId: string } | null>(null)
-  const fetcher = useFetcher()
   const selectedCount = jump.files.filter((f) => selection[f.path]).length
   const isProcessed = !!jump.processed
   const bounds = getJumpBounds(jump)
@@ -337,23 +419,41 @@ const JumpCard = ({
   }
 
   const handleLabelSave = () => {
-    fetcher.submit(
-      { action: 'update-label', jumpId: jump.id, label: labelValue },
-      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-    )
+    onLabelSave?.(jump.id, labelValue)
     setEditingLabel(false)
   }
-  const handleDelete = () => {
-    fetcher.submit(
-      { action: 'delete-jump', jumpId: jump.id },
-      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-    )
+
+  const handleDateTimeSave = () => {
+    if (!dateValue || !timeValue) {
+      setEditingDateTime(false)
+      return
+    }
+    const parts = dateValue.split('-')
+    const timeParts = timeValue.split(':')
+    const y = parseInt(parts[0], 10)
+    const m = parseInt(parts[1], 10) - 1
+    const d = parseInt(parts[2], 10)
+    const h = parseInt(timeParts[0], 10)
+    const min = parseInt(timeParts[1], 10)
+    const newEpoch = Math.floor(new Date(y, m, d, h, min, 0).getTime() / 1000)
+    const offset = newEpoch - bounds.start
+    if (offset !== 0 && onShiftJump) {
+      const paths = jump.files.map((f) => f.path)
+      onShiftJump(jump.id, offset, paths)
+    }
+    setEditingDateTime(false)
   }
-  const handleUnprocess = () => {
-    fetcher.submit(
-      { action: 'unprocess-jump', jumpId: jump.id },
-      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+
+  const openDateTimeEditor = () => {
+    if (isProcessed || bounds.start === 0) return
+    const d = new Date(bounds.start * 1000)
+    setDateValue(
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     )
+    setTimeValue(
+      `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    )
+    setEditingDateTime(true)
   }
 
   return (
@@ -445,12 +545,40 @@ const JumpCard = ({
               {jump.label}
             </span>
           )}
-          <div className='ml-auto flex items-center gap-2'>
-            <span className='text-xs text-gray-400'>
-              {jump.files.length} files •{' '}
+          {editingDateTime ? (
+            <div className='flex items-center gap-1' onClick={(e) => e.stopPropagation()}>
+              <input
+                type='date'
+                value={dateValue}
+                onChange={(e) => setDateValue(e.target.value)}
+                className='text-xs border rounded px-1 py-0.5'
+              />
+              <input
+                type='time'
+                value={timeValue}
+                onChange={(e) => setTimeValue(e.target.value)}
+                onBlur={handleDateTimeSave}
+                onKeyDown={(e) => e.key === 'Enter' && handleDateTimeSave()}
+                autoFocus
+                className='text-xs border rounded px-1 py-0.5'
+              />
+            </div>
+          ) : (
+            <span
+              className='text-xs text-gray-400 cursor-pointer hover:underline decoration-dotted'
+              onClick={(e) => {
+                e.stopPropagation()
+                openDateTimeEditor()
+              }}
+              title='Click to edit date/time'>
               {jump.files.length > 0
                 ? `${formatSequenceTime(bounds.start)}–${formatSequenceTime(bounds.end)}`
                 : ''}
+            </span>
+          )}
+          <div className='ml-auto flex items-center gap-2'>
+            <span className='text-xs text-gray-400'>
+              {jump.files.length} files
             </span>
             {isProcessed ? (
               <span className='text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30'>
@@ -478,7 +606,7 @@ const JumpCard = ({
                 type='button'
                 onClick={(e) => {
                   e.stopPropagation()
-                  handleUnprocess()
+                  onUnprocess?.(jump.id)
                 }}
                 className='text-xs px-2 py-1 rounded border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'>
                 Undo
@@ -488,7 +616,7 @@ const JumpCard = ({
               type='button'
               onClick={(e) => {
                 e.stopPropagation()
-                handleDelete()
+                onDelete?.(jump.id)
               }}
               className='text-gray-400 hover:text-red-500 px-1'
               title={isProcessed ? 'Delete and remove processed folder' : 'Remove jump'}>
@@ -509,6 +637,7 @@ const JumpCard = ({
                     groupId={jump.id}
                     selected={!!selection[file.path]}
                     isSelectMode={isSelectMode}
+                    isInMultipleJumps={multiJumpFiles.has(file.path)}
                     dropPosition={hoveredFile === file.path ? dropPosition : null}
                     onSelect={onSelect}
                     onDragStart={(e, fp) => {
@@ -521,6 +650,16 @@ const JumpCard = ({
                     onRowDragOver={isProcessed ? undefined : handleRowDragOver}
                     onRowDragLeave={handleRowDragLeave}
                     onPreview={() => onPreview(jump.files, idx, jump.label)}
+                    onDelete={
+                      !isProcessed
+                        ? () => onDeleteFile?.(jump.id, file.path)
+                        : undefined
+                    }
+                    onRename={
+                      !isProcessed
+                        ? (newName) => onRenameFile?.(file.path, newName)
+                        : undefined
+                    }
                   />
                 ))}
               </div>
@@ -583,42 +722,6 @@ const CompareDrawer = ({
     },
     [allJumps, compareIds, onCompareIdsChange]
   )
-
-  const renderPreview = (file: ManifestFile | null) => {
-    if (!file)
-      return (
-        <div className='flex items-center justify-center h-[200px] text-xs text-gray-400'>
-          Select a file
-        </div>
-      )
-    const isVideo = /\.(mp4|mov|avi|mkv)$/i.test(file.filename)
-    const src = `/api/file?path=${encodeURIComponent(file.path)}`
-    return (
-      <div className='flex flex-col items-center gap-2'>
-        {isVideo ? (
-          <video
-            key={file.path}
-            src={src}
-            controls
-            autoPlay
-            muted
-            preload='metadata'
-            className='max-w-full max-h-[55vh] rounded bg-black'
-          />
-        ) : (
-          <img
-            key={file.path}
-            src={src}
-            alt={file.filename}
-            className='max-w-full max-h-[55vh] rounded object-contain'
-          />
-        )}
-        <div className='text-xs text-gray-500'>
-          {file.filename} • {formatTime(file.mtime)} • {formatSize(file.size)}
-        </div>
-      </div>
-    )
-  }
 
   const leftFile = leftIdx !== null ? (jumps[0].files[leftIdx] ?? null) : null
   const rightFile = rightIdx !== null ? (jumps[1].files[rightIdx] ?? null) : null
@@ -691,7 +794,17 @@ const CompareDrawer = ({
                   ))}
                 </div>
                 <div className='flex-1 min-h-[420px] border-t dark:border-gray-700 p-2 flex items-center justify-center bg-gray-50/50 dark:bg-gray-800/30 overflow-hidden'>
-                  {renderPreview(colIdx === 0 ? leftFile : rightFile)}
+                  {colIdx === 0 ? (
+                    leftFile ? (
+                      <MediaPreview file={leftFile} maxHeight='55vh' />
+                    ) : (
+                      <div className='text-xs text-gray-400'>Select a file</div>
+                    )
+                  ) : rightFile ? (
+                    <MediaPreview file={rightFile} maxHeight='55vh' />
+                  ) : (
+                    <div className='text-xs text-gray-400'>Select a file</div>
+                  )}
                 </div>
               </div>
             )
@@ -810,15 +923,26 @@ const SelectedJumpsPanel = ({
   jumps,
   onClear,
   onCompare,
-  onProcess
+  onProcess,
+  onChangeDay
 }: {
   jumps: ManifestJump[]
   onClear: () => void
   onCompare: () => void
   onProcess: () => void
+  onChangeDay: (newDate: string) => void
 }) => {
+  const [editingDay, setEditingDay] = useState(false)
+  const [dayValue, setDayValue] = useState('')
+
   const canCompare = jumps.length === 2
   const canProcess = jumps.some((j) => !j.processed)
+
+  const handleDaySave = () => {
+    if (dayValue) onChangeDay(dayValue)
+    setEditingDay(false)
+  }
+
   return (
     <div className='w-[320px] shrink-0 sticky top-6 h-fit max-h-[85vh] flex flex-col border border-amber-200 dark:border-amber-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm overflow-hidden'>
       <div className='px-3 py-2 border-b dark:border-gray-700 bg-amber-50 dark:bg-amber-900/20 flex items-center justify-between'>
@@ -849,6 +973,48 @@ const SelectedJumpsPanel = ({
         })}
       </div>
       <div className='p-3 border-t dark:border-gray-700 flex flex-col gap-2'>
+        {editingDay ? (
+          <div className='flex items-center gap-2'>
+            <input
+              type='date'
+              value={dayValue}
+              onChange={(e) => setDayValue(e.target.value)}
+              autoFocus
+              className='flex-1 text-xs border rounded px-2 py-1'
+            />
+            <button
+              type='button'
+              onClick={handleDaySave}
+              className='text-xs px-2 py-1 rounded bg-amber-600 text-white'>
+              Apply
+            </button>
+            <button
+              type='button'
+              onClick={() => setEditingDay(false)}
+              className='text-xs px-2 py-1 rounded border'>
+              ✕
+            </button>
+          </div>
+        ) : (
+          <button
+            type='button'
+            onClick={() => {
+              const firstJump = jumps[0]
+              if (firstJump) {
+                const bounds = getJumpBounds(firstJump)
+                if (bounds.start > 0) {
+                  const d = new Date(bounds.start * 1000)
+                  setDayValue(
+                    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+                  )
+                }
+              }
+              setEditingDay(true)
+            }}
+            className='w-full text-xs px-3 py-1.5 rounded border border-amber-300 text-amber-700 hover:bg-amber-50'>
+            Edit day for selected jumps
+          </button>
+        )}
         <button
           type='button'
           disabled={!canCompare}
@@ -873,31 +1039,39 @@ const JumpDaySection = ({
   selection,
   isSelectMode,
   compareIds,
+  multiJumpFiles,
   onSelect,
   onDragStart,
-  onShiftDay,
-  editingDay,
-  setEditingDay,
   onDrop,
   onRemoveFiles,
   onPreview,
   onReorder,
-  onCompareToggle
+  onCompareToggle,
+  onDelete,
+  onLabelSave,
+  onUnprocess,
+  onDeleteFile,
+  onRenameFile,
+  onShiftJump
 }: {
   day: JumpDayGroup
   selection: SelectionMap
   isSelectMode: boolean
   compareIds: string[]
+  multiJumpFiles: Set<string>
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDragStart: (e: React.DragEvent, filePaths: string[], sourceId: string) => void
-  onShiftDay: (date: string, newDateStr: string) => void
-  editingDay: string | null
-  setEditingDay: (d: string | null) => void
   onDrop: (e: React.DragEvent, targetJumpId: string) => void
   onRemoveFiles: (jumpId: string, filePaths: string[]) => void
   onPreview: (files: ManifestFile[], index: number, label: string) => void
   onReorder: (jumpId: string, filePaths: string[]) => void
   onCompareToggle: (jumpId: string) => void
+  onDelete: (jumpId: string) => void
+  onLabelSave: (jumpId: string, label: string) => void
+  onUnprocess: (jumpId: string) => void
+  onDeleteFile: (jumpId: string, filePath: string) => void
+  onRenameFile: (filePath: string, newFilename: string) => void
+  onShiftJump: (jumpId: string, offsetSeconds: number, paths: string[]) => void
 }) => {
   const fileCount = day.jumps.reduce((s, j) => s + j.files.length, 0)
   const dayFiles = day.jumps.flatMap((j) => j.files)
@@ -907,33 +1081,9 @@ const JumpDaySection = ({
   return (
     <div className='border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800/50 overflow-hidden mb-4'>
       <div className='flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700'>
-        {editingDay === day.date ? (
-          <input
-            type='date'
-            autoFocus
-            defaultValue={formatDateForInput(day.date)}
-            onBlur={(e) => {
-              if (e.target.value) onShiftDay(day.date, e.target.value)
-              setEditingDay(null)
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && e.currentTarget.value) {
-                onShiftDay(day.date, e.currentTarget.value)
-                setEditingDay(null)
-              }
-              if (e.key === 'Escape') setEditingDay(null)
-            }}
-            className='text-sm font-medium px-2 py-1 border rounded bg-white dark:bg-gray-900'
-          />
-        ) : (
-          <button
-            type='button'
-            onClick={() => setEditingDay(day.date)}
-            className='text-sm font-semibold text-gray-700 dark:text-gray-300 hover:underline decoration-dotted'
-            title='Click to change day'>
-            {day.date}
-          </button>
-        )}
+        <span className='text-sm font-semibold text-gray-700 dark:text-gray-300'>
+          {day.date}
+        </span>
         <span className='text-xs text-gray-500'>
           {fileCount} files • {day.jumps.length} jumps
           {dayFiles.length > 0 && (
@@ -942,9 +1092,6 @@ const JumpDaySection = ({
               • {formatSequenceTime(dayStart)}–{formatSequenceTime(dayEnd)}
             </>
           )}
-        </span>
-        <span className='ml-auto text-[10px] text-gray-400 hidden sm:inline'>
-          drag timeline or click date to fix
         </span>
       </div>
       <div className='p-3 space-y-3'>
@@ -955,6 +1102,7 @@ const JumpDaySection = ({
             selection={selection[jump.id] ?? {}}
             isSelectMode={isSelectMode}
             isCompareSelected={compareIds.includes(jump.id)}
+            multiJumpFiles={multiJumpFiles}
             onSelect={onSelect}
             onDrop={onDrop}
             onDragStart={onDragStart}
@@ -962,6 +1110,12 @@ const JumpDaySection = ({
             onPreview={onPreview}
             onReorder={onReorder}
             onCompareToggle={onCompareToggle}
+            onDelete={onDelete}
+            onLabelSave={onLabelSave}
+            onUnprocess={onUnprocess}
+            onDeleteFile={onDeleteFile}
+            onRenameFile={onRenameFile}
+            onShiftJump={onShiftJump}
           />
         ))}
       </div>
@@ -989,16 +1143,19 @@ const TimelineJumps = ({
 
   const allJumps = useMemo(() => dayGroups.flatMap((d) => d.jumps), [dayGroups])
 
-  useEffect(() => {
+  const resetDragState = () => {
     setDraggingJump(null)
     setDragOffset(0)
     setDragLabel('')
     setDraggedTime(null)
     dragOffsetRef.current = 0
+  }
+
+  useEffect(() => {
+    resetDragState()
   }, [dayGroups])
 
   const DAY = 86400
-  const effectiveRange = DAY
   const pos = (t: number) => {
     const d = new Date(t * 1000)
     const secs = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds()
@@ -1014,6 +1171,54 @@ const TimelineJumps = ({
       })),
     []
   )
+
+  const setupDrag = (
+    startX: number,
+    snapDay: boolean,
+    jump: ManifestJump,
+    bounds: { start: number; end: number }
+  ) => {
+    setDraggingJump(jump.id)
+    setDragOffset(0)
+    dragOffsetRef.current = 0
+    setDragLabel(jump.label)
+    setDraggedTime(bounds.start)
+    const jumpPaths = jump.files.map((f) => f.path)
+
+    const handleMove = (ev: MouseEvent | TouchEvent) => {
+      const clientX = (ev as TouchEvent).touches
+        ? (ev as TouchEvent).touches[0].clientX
+        : (ev as MouseEvent).clientX
+      const dx = clientX - startX
+      const w = containerRef.current?.clientWidth ?? 800
+      const dt = (dx / w) * DAY
+      const snapped = snapDay
+        ? Math.round(dt / 86400) * 86400
+        : Math.round(dt / 900) * 900
+      dragOffsetRef.current = snapped
+      setDragOffset(snapped)
+      if (ev.cancelable) ev.preventDefault()
+    }
+
+    const handleUp = () => {
+      document.removeEventListener('mousemove', handleMove as EventListener)
+      document.removeEventListener('mouseup', handleUp)
+      document.removeEventListener('touchmove', handleMove as EventListener)
+      document.removeEventListener('touchend', handleUp)
+      const off = dragOffsetRef.current
+      if (Math.abs(off) >= 60) {
+        onShiftDay(jump.id, off, jumpPaths)
+      } else {
+        onSelect(jump.id)
+      }
+      resetDragState()
+    }
+
+    document.addEventListener('mousemove', handleMove as EventListener)
+    document.addEventListener('mouseup', handleUp)
+    document.addEventListener('touchmove', handleMove as EventListener, { passive: false })
+    document.addEventListener('touchend', handleUp)
+  }
 
   if (allJumps.length === 0) return null
 
@@ -1077,82 +1282,11 @@ const TimelineJumps = ({
                       if (jump.processed) return
                       e.preventDefault()
                       e.stopPropagation()
-                      const startX = e.clientX
-                      const snapDay = e.shiftKey
-                      setDraggingJump(jump.id)
-                      setDragOffset(0)
-                      dragOffsetRef.current = 0
-                      setDragLabel(jump.label)
-                      setDraggedTime(bounds.start)
-                      const jumpPaths = jump.files.map((f) => f.path)
-                      const handleMove = (ev: MouseEvent | TouchEvent) => {
-                        const clientX = (ev as TouchEvent).touches
-                          ? (ev as TouchEvent).touches[0].clientX
-                          : (ev as MouseEvent).clientX
-                        const dx = clientX - startX
-                        const w = containerRef.current?.clientWidth ?? 800
-                        const dt = (dx / w) * effectiveRange
-                        const snapped = snapDay
-                          ? Math.round(dt / 86400) * 86400
-                          : Math.round(dt / 900) * 900
-                        dragOffsetRef.current = snapped
-                        setDragOffset(snapped)
-                      }
-                      const handleUp = () => {
-                        document.removeEventListener('mousemove', handleMove as any)
-                        document.removeEventListener('mouseup', handleUp)
-                        document.removeEventListener('touchmove', handleMove as any)
-                        document.removeEventListener('touchend', handleUp)
-                        const off = dragOffsetRef.current
-                        if (Math.abs(off) >= 60) {
-                          onShiftDay(jump.id, off, jumpPaths)
-                        } else {
-                          onSelect(jump.id)
-                          setDraggingJump(null)
-                          setDragOffset(0)
-                          setDragLabel('')
-                          setDraggedTime(null)
-                          dragOffsetRef.current = 0
-                        }
-                      }
-                      document.addEventListener('mousemove', handleMove as any)
-                      document.addEventListener('mouseup', handleUp)
-                      document.addEventListener('touchmove', handleMove as any, { passive: false })
-                      document.addEventListener('touchend', handleUp)
+                      setupDrag(e.clientX, e.shiftKey, jump, bounds)
                     }}
                     onTouchStart={(e) => {
                       if (jump.processed) return
-                      const touch = e.touches[0]
-                      const startX = touch.clientX
-                      setDraggingJump(jump.id)
-                      setDragOffset(0)
-                      dragOffsetRef.current = 0
-                      setDragLabel(jump.label)
-                      setDraggedTime(bounds.start)
-                      const jumpPaths = jump.files.map((f) => f.path)
-                      const handleMove = (ev: TouchEvent) => {
-                        const dx = ev.touches[0].clientX - startX
-                        const w = containerRef.current?.clientWidth ?? 800
-                        const dt = (dx / w) * effectiveRange
-                        const snapped = Math.round(dt / 900) * 900
-                        dragOffsetRef.current = snapped
-                        setDragOffset(snapped)
-                        ev.preventDefault()
-                      }
-                      const handleUp = () => {
-                        document.removeEventListener('touchmove', handleMove as any)
-                        document.removeEventListener('touchend', handleUp)
-                        const off = dragOffsetRef.current
-                        if (Math.abs(off) >= 60) onShiftDay(jump.id, off, jumpPaths)
-                        else onSelect(jump.id)
-                        setDraggingJump(null)
-                        setDragOffset(0)
-                        setDragLabel('')
-                        setDraggedTime(null)
-                        dragOffsetRef.current = 0
-                      }
-                      document.addEventListener('touchmove', handleMove as any, { passive: false })
-                      document.addEventListener('touchend', handleUp)
+                      setupDrag(e.touches[0].clientX, false, jump, bounds)
                     }}
                     title={`${jump.label} — click to select, drag to shift jump${jump.processed ? ' (processed, undo first)' : ', Shift for 1-day snap'}`}
                   />
@@ -1179,7 +1313,6 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   const { revalidate } = useRevalidator()
   const [selection, setSelection] = useState<SelectionMap>({})
   const [lastClicked, setLastClicked] = useState<string | null>(null)
-  const [editingDay, setEditingDay] = useState<string | null>(null)
   const [preview, setPreview] = useState<PreviewState | null>(null)
   const [copyMode, setCopyMode] = useState(false)
   const [compareIds, setCompareIds] = useState<string[]>([])
@@ -1196,6 +1329,17 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
 
   const scanning = scanFetcher.state !== 'idle'
 
+  const manifestSubmit = useCallback(
+    (body: Record<string, string | number | boolean | string[]>) => {
+      manifestFetcher.submit(body, {
+        method: 'POST',
+        encType: 'application/json',
+        action: '/api/manifest'
+      })
+    },
+    [manifestFetcher]
+  )
+
   const jumpsByDay = useMemo(() => (manifest ? groupJumpsByDay(manifest.jumps) : []), [manifest])
 
   const filesInJumps = useMemo(() => {
@@ -1207,6 +1351,17 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
     if (!manifest) return []
     return manifest.files.filter((f) => !filesInJumps.has(f.path))
   }, [manifest, filesInJumps])
+
+  const multiJumpFiles = useMemo(() => {
+    if (!manifest) return new Set<string>()
+    const pathCounts = new Map<string, number>()
+    for (const jump of manifest.jumps) {
+      for (const f of jump.files) {
+        pathCounts.set(f.path, (pathCounts.get(f.path) ?? 0) + 1)
+      }
+    }
+    return new Set([...pathCounts.entries()].filter(([, c]) => c > 1).map(([p]) => p))
+  }, [manifest])
 
   const allFileIds = useMemo(() => {
     if (!manifest) return []
@@ -1285,12 +1440,9 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
 
   const handleReorder = useCallback(
     (jumpId: string, filePaths: string[]) => {
-      manifestFetcher.submit(
-        { action: 'reorder-files', jumpId, filePaths },
-        { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-      )
+      manifestSubmit({ action: 'reorder-files', jumpId, filePaths })
     },
-    [manifestFetcher]
+    [manifestSubmit]
   )
 
   const handleTrayDragStart = useCallback(
@@ -1316,29 +1468,20 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
         const { filePaths, sourceGroups } = trayData
         try {
           if (copyMode) {
-            manifestFetcher.submit(
-              { action: 'copy-files', toJumpId: targetJumpId, filePaths },
-              { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-            )
+            manifestSubmit({ action: 'copy-files', toJumpId: targetJumpId, filePaths })
           } else {
             for (const [sourceId, paths] of Object.entries(sourceGroups)) {
               if (sourceId === targetJumpId) continue
               const src = manifest?.jumps.find((j) => j.id === sourceId)
               if (src) {
-                manifestFetcher.submit(
-                  {
-                    action: 'move-files',
-                    fromJumpId: sourceId,
-                    toJumpId: targetJumpId,
-                    filePaths: paths
-                  },
-                  { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-                )
+                manifestSubmit({
+                  action: 'move-files',
+                  fromJumpId: sourceId,
+                  toJumpId: targetJumpId,
+                  filePaths: paths
+                })
               } else {
-                manifestFetcher.submit(
-                  { action: 'add-to-jump', jumpId: targetJumpId, filePaths: paths },
-                  { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-                )
+                manifestSubmit({ action: 'copy-files', toJumpId: targetJumpId, filePaths: paths })
               }
             }
             setSelection({})
@@ -1355,46 +1498,38 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
         if (sourceJumpId === targetJumpId) return
         const sourceJump = manifest?.jumps.find((j) => j.id === sourceJumpId)
         if (sourceJump) {
-          manifestFetcher.submit(
-            {
-              action: 'move-files',
-              fromJumpId: sourceJumpId,
-              toJumpId: targetJumpId,
-              filePaths: data.filePaths
-            },
-            { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-          )
+          manifestSubmit({
+            action: 'move-files',
+            fromJumpId: sourceJumpId,
+            toJumpId: targetJumpId,
+            filePaths: data.filePaths
+          })
         } else {
-          manifestFetcher.submit(
-            { action: 'add-to-jump', jumpId: targetJumpId, filePaths: data.filePaths },
-            { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-          )
+          manifestSubmit({ action: 'copy-files', toJumpId: targetJumpId, filePaths: data.filePaths })
         }
       } finally {
         dragDataRef.current = null
       }
     },
-    [manifestFetcher, manifest, copyMode]
+    [manifestSubmit, manifest, copyMode]
   )
 
   const handleRemoveFiles = useCallback(
     (jumpId: string, filePaths: string[]) => {
-      manifestFetcher.submit(
-        { action: 'remove-files', jumpId, filePaths },
-        { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-      )
+      manifestSubmit({ action: 'remove-files', jumpId, filePaths })
     },
-    [manifestFetcher]
+    [manifestSubmit]
   )
 
   const handleMerge = useCallback(
     (targetId: string, sourceId: string) => {
-      manifestFetcher.submit(
-        { action: 'merge-jumps', sourceJumpIds: [targetId, sourceId], targetJumpId: targetId },
-        { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-      )
+      manifestSubmit({
+        action: 'merge-jumps',
+        sourceJumpIds: [targetId, sourceId],
+        targetJumpId: targetId
+      })
     },
-    [manifestFetcher]
+    [manifestSubmit]
   )
 
   const handleCompareToggle = useCallback((jumpId: string) => {
@@ -1412,36 +1547,18 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
     return [a, b] as [ManifestJump, ManifestJump]
   }, [compareIds, manifest])
 
-  const handleShiftDay = useCallback(
-    (date: string, newDateStr: string) => {
-      const group = jumpsByDay.find((g) => g.date === date)
-      if (!group) return
-      const parts = newDateStr.split('-')
-      const y = parseInt(parts[0], 10)
-      const m = parseInt(parts[1], 10) - 1
-      const d = parseInt(parts[2], 10)
-      const newNoon = Math.floor(new Date(y, m, d, 12, 0, 0).getTime() / 1000)
-      const oldStart = Math.min(...group.jumps.flatMap((j) => j.files.map((f) => f.mtime)))
-      const oldNoon = Math.floor(new Date(oldStart * 1000).setHours(12, 0, 0, 0) / 1000)
-      const offset = newNoon - oldNoon
-      if (offset === 0) return
-      const paths = group.jumps.flatMap((j) => j.files.map((f) => f.path))
-      manifestFetcher.submit(
-        { action: 'shift-sequences', paths, offsetSeconds: offset },
-        { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-      )
+  const handleShiftOffset = useCallback(
+    (_dateOrId: string, offsetSeconds: number, paths: string[]) => {
+      manifestSubmit({ action: 'shift-sequences', paths, offsetSeconds })
     },
-    [jumpsByDay, manifestFetcher]
+    [manifestSubmit]
   )
 
-  const handleShiftOffset = useCallback(
-    (dateOrId: string, offsetSeconds: number, paths: string[]) => {
-      manifestFetcher.submit(
-        { action: 'shift-sequences', paths, offsetSeconds },
-        { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-      )
+  const handleShiftJump = useCallback(
+    (jumpId: string, offsetSeconds: number, paths: string[]) => {
+      manifestSubmit({ action: 'shift-sequences', paths, offsetSeconds })
     },
-    [manifestFetcher]
+    [manifestSubmit]
   )
 
   const handleSelectAll = () => {
@@ -1449,18 +1566,49 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
     const ids = manifest.jumps.filter((j) => !j.processed).map((j) => j.id)
     setCompareIds(ids)
   }
+
   const handleCreateJump = () => {
-    manifestFetcher.submit(
-      { action: 'create-jump' },
-      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-    )
+    manifestSubmit({ action: 'create-jump' })
   }
+
   const handleResetCalibration = () => {
-    manifestFetcher.submit(
-      { action: 'reset-calibration' },
-      { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-    )
+    manifestSubmit({ action: 'reset-calibration' })
   }
+
+  const handleDeleteJump = useCallback(
+    (jumpId: string) => {
+      manifestSubmit({ action: 'delete-jump', jumpId })
+    },
+    [manifestSubmit]
+  )
+
+  const handleLabelSave = useCallback(
+    (jumpId: string, label: string) => {
+      manifestSubmit({ action: 'update-label', jumpId, label })
+    },
+    [manifestSubmit]
+  )
+
+  const handleUnprocess = useCallback(
+    (jumpId: string) => {
+      manifestSubmit({ action: 'unprocess-jump', jumpId })
+    },
+    [manifestSubmit]
+  )
+
+  const handleDeleteFile = useCallback(
+    (jumpId: string, filePath: string) => {
+      manifestSubmit({ action: 'remove-files', jumpId, filePaths: [filePath] })
+    },
+    [manifestSubmit]
+  )
+
+  const handleRenameFile = useCallback(
+    (filePath: string, newFilename: string) => {
+      manifestSubmit({ action: 'rename-file', filePath, newFilename })
+    },
+    [manifestSubmit]
+  )
 
   const handlePreview = useCallback((files: ManifestFile[], index: number, label: string) => {
     setPreview({ files, index, label })
@@ -1604,6 +1752,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                       groupId='unassigned'
                       selected={!!selection['unassigned']?.[file.path]}
                       isSelectMode={isSelectMode}
+                      isInMultipleJumps={multiJumpFiles.has(file.path)}
                       onSelect={handleSelect}
                       onDragStart={() => {}}
                       onPreview={() => handlePreview(unassignedFiles, idx, 'Unassigned')}
@@ -1621,16 +1770,20 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                   selection={selection}
                   isSelectMode={isSelectMode}
                   compareIds={compareIds}
+                  multiJumpFiles={multiJumpFiles}
                   onSelect={handleSelect}
                   onDragStart={handleDragStart}
-                  onShiftDay={handleShiftDay}
-                  editingDay={editingDay}
-                  setEditingDay={setEditingDay}
                   onDrop={handleDrop}
                   onRemoveFiles={handleRemoveFiles}
                   onPreview={handlePreview}
                   onReorder={handleReorder}
                   onCompareToggle={handleCompareToggle}
+                  onDelete={handleDeleteJump}
+                  onLabelSave={handleLabelSave}
+                  onUnprocess={handleUnprocess}
+                  onDeleteFile={handleDeleteFile}
+                  onRenameFile={handleRenameFile}
+                  onShiftJump={handleShiftJump}
                 />
               ))}
               {jumpsByDay.length === 0 && (
@@ -1651,10 +1804,26 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                   return j && !j.processed
                 })
                 if (ids.length) {
-                  manifestFetcher.submit(
-                    { action: 'execute-jumps', jumpIds: ids },
-                    { method: 'POST', encType: 'application/json', action: '/api/manifest' }
-                  )
+                  manifestSubmit({ action: 'execute-jumps', jumpIds: ids })
+                }
+              }}
+              onChangeDay={(newDate) => {
+                for (const jumpId of compareIds) {
+                  const jump = manifest!.jumps.find((j) => j.id === jumpId)
+                  if (!jump || jump.files.length === 0) continue
+                  const bounds = getJumpBounds(jump)
+                  const parts = newDate.split('-')
+                  const y = parseInt(parts[0], 10)
+                  const m = parseInt(parts[1], 10) - 1
+                  const d = parseInt(parts[2], 10)
+                  const newNoon = Math.floor(new Date(y, m, d, 12, 0, 0).getTime() / 1000)
+                  const oldStart = bounds.start
+                  const oldNoon = Math.floor(new Date(oldStart * 1000).setHours(12, 0, 0, 0) / 1000)
+                  const offset = newNoon - oldNoon
+                  if (offset !== 0) {
+                    const paths = jump.files.map((f) => f.path)
+                    manifestSubmit({ action: 'shift-sequences', paths, offsetSeconds: offset })
+                  }
                 }
               }}
             />

@@ -3,6 +3,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { execSync } from 'node:child_process'
 import { getOutputDirPath } from '../lib/scanner.server'
+import { manifestSchema } from '../lib/types'
 import type { Manifest, ManifestFile, ManifestJump } from '../lib/types'
 
 type Body = Record<string, unknown>
@@ -15,7 +16,7 @@ const loadManifest = (): Manifest | null => {
   const p = getManifestPath()
   if (!fs.existsSync(p)) return null
   try {
-    return JSON.parse(fs.readFileSync(p, 'utf-8')) as Manifest
+    return manifestSchema.parse(JSON.parse(fs.readFileSync(p, 'utf-8')))
   } catch {
     return null
   }
@@ -184,12 +185,40 @@ const requireJump = (
   return { jump }
 }
 
+const requireUnprocessed = (jump: ManifestJump): { ok: true } | { error: string } => {
+  if (jump.processed) return { error: 'Cannot modify files of a processed jump — unprocess first' }
+  return { ok: true }
+}
+
+const removeProcessedDir = (label: string): void => {
+  const dir = path.join(getOutputDirPath(), 'processed', sanitizeLabel(label))
+  try {
+    if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true })
+  } catch {}
+}
+
 const requireProcessedPaths = (manifest: Manifest): Set<string> =>
   new Set(manifest.jumps.filter((j) => j.processed).flatMap((j) => j.files.map((f) => f.path)))
 
 const isAllProcessed = (manifest: Manifest): boolean =>
   manifest.status === 'executed' ||
   (manifest.jumps.length > 0 && manifest.jumps.every((j) => j.processed))
+
+const applyShift = (
+  manifest: Manifest,
+  paths: string[],
+  offsetSeconds: number
+): { ok: true; offsetSeconds: number } | { ok: false; error: string } => {
+  if (paths.length === 0) return { ok: false, error: 'No paths specified' }
+  if (offsetSeconds === 0) return { ok: false, error: 'Offset is zero' }
+  const processedPaths = requireProcessedPaths(manifest)
+  if (paths.some((p) => processedPaths.has(p)))
+    return { ok: false, error: 'Cannot shift files of a processed jump — unprocess first' }
+  const pathsSet = new Set(paths)
+  shiftFiles(manifest, pathsSet, offsetSeconds)
+  reclusterJumps(manifest, pathsSet)
+  return { ok: true, offsetSeconds }
+}
 
 const ok = (manifest?: Manifest, extra?: Record<string, unknown>) => ({
   ok: true as const,
@@ -227,12 +256,7 @@ const handleDeleteJump = (manifest: Manifest, body: Body) => {
   const idx = manifest.jumps.findIndex((j) => j.id === jumpId)
   if (idx === -1) return fail('Jump not found')
   const jump = manifest.jumps[idx]
-  if (jump.processed) {
-    const dir = path.join(getOutputDirPath(), 'processed', sanitizeLabel(jump.label))
-    try {
-      if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true })
-    } catch {}
-  }
+  if (jump.processed) removeProcessedDir(jump.label)
   manifest.jumps.splice(idx, 1)
   return ok()
 }
@@ -257,8 +281,10 @@ const handleMoveFiles = (manifest: Manifest, body: Body) => {
   const toR = requireJump(manifest, toJumpId)
   if ('error' in fromR) return fail(fromR.error)
   if ('error' in toR) return fail(toR.error)
-  if (fromR.jump.processed || toR.jump.processed)
-    return fail('Cannot move files of a processed jump — unprocess first')
+  const fromCheck = requireUnprocessed(fromR.jump)
+  if ('error' in fromCheck) return fail(fromCheck.error)
+  const toCheck = requireUnprocessed(toR.jump)
+  if ('error' in toCheck) return fail(toCheck.error)
   for (const filePath of filePaths) {
     const fileIdx = fromR.jump.files.findIndex((f) => f.path === filePath)
     if (fileIdx !== -1) {
@@ -269,27 +295,14 @@ const handleMoveFiles = (manifest: Manifest, body: Body) => {
   return ok()
 }
 
-const handleAddToJump = (manifest: Manifest, body: Body) => {
-  const jumpId = asString(body.jumpId)
-  const filePaths = asStringArray(body.filePaths)
-  if (filePaths.length === 0) return fail('No files specified')
-  const r = requireJump(manifest, jumpId)
-  if ('error' in r) return fail(r.error)
-  if (r.jump.processed) return fail('Cannot add files to a processed jump — unprocess first')
-  for (const filePath of filePaths) {
-    const file = manifest.files.find((f) => f.path === filePath)
-    if (file && !r.jump.files.some((f) => f.path === filePath)) r.jump.files.push(file)
-  }
-  return ok()
-}
-
 const handleRemoveFiles = (manifest: Manifest, body: Body) => {
   const jumpId = asString(body.jumpId)
   const filePaths = asStringArray(body.filePaths)
   if (filePaths.length === 0) return fail('No files specified')
   const r = requireJump(manifest, jumpId)
   if ('error' in r) return fail(r.error)
-  if (r.jump.processed) return fail('Cannot remove files from a processed jump — unprocess first')
+  const check = requireUnprocessed(r.jump)
+  if ('error' in check) return fail(check.error)
   for (const filePath of filePaths) {
     const fileIdx = r.jump.files.findIndex((f) => f.path === filePath)
     if (fileIdx !== -1) r.jump.files.splice(fileIdx, 1)
@@ -302,15 +315,7 @@ const handleShift = (manifest: Manifest, body: Body) => {
   const paths = asStringArray(body.paths ?? body.targetPaths ?? body.referencePaths)
   const offsetSeconds =
     typeof body.offsetSeconds === 'number' ? body.offsetSeconds : Number(body.offsetSeconds ?? 0)
-  if (paths.length === 0) return fail('No paths specified')
-  if (offsetSeconds === 0) return fail('Offset is zero')
-  const processedPaths = requireProcessedPaths(manifest)
-  if (paths.some((p) => processedPaths.has(p)))
-    return fail('Cannot shift files of a processed jump — unprocess first')
-  const pathsSet = new Set(paths)
-  shiftFiles(manifest, pathsSet, offsetSeconds)
-  reclusterJumps(manifest, pathsSet)
-  return ok(undefined, { offsetSeconds })
+  return applyShift(manifest, paths, offsetSeconds)
 }
 
 const handleCalibrate = (manifest: Manifest, body: Body) => {
@@ -325,27 +330,20 @@ const handleCalibrate = (manifest: Manifest, body: Body) => {
   if (refTimes.length === 0 || targetTimes.length === 0) return fail('Sequence files not found')
   const offsetSeconds = Math.min(...refTimes) - Math.min(...targetTimes)
   const pathsToShift =
-    scope === 'all' ? new Set(manifest.files.map((f) => f.path)) : new Set(targetPaths)
-  shiftFiles(manifest, pathsToShift, offsetSeconds)
+    scope === 'all' ? manifest.files.map((f) => f.path) : targetPaths
+  const result = applyShift(manifest, pathsToShift, offsetSeconds)
+  if (!result.ok) return result
   if (scope === 'all') manifest.cameraClockOffsetSeconds = offsetSeconds
-  reclusterJumps(manifest, pathsToShift)
   return ok(undefined, { offsetSeconds })
 }
 
 const handleResetCalibration = (manifest: Manifest) => {
   if (isAllProcessed(manifest)) return fail('All jumps already processed')
-  for (const file of manifest.files) {
+  const allFiles = [...manifest.files, ...manifest.jumps.flatMap((j) => j.files)]
+  for (const file of allFiles) {
     if (file.originalMtime !== undefined) {
       file.mtime = file.originalMtime
       delete file.originalMtime
-    }
-  }
-  for (const jump of manifest.jumps) {
-    for (const file of jump.files) {
-      if (file.originalMtime !== undefined) {
-        file.mtime = file.originalMtime
-        delete file.originalMtime
-      }
     }
   }
   delete manifest.cameraClockOffsetSeconds
@@ -391,7 +389,8 @@ const handleCopyFiles = (manifest: Manifest, body: Body) => {
   if (filePaths.length === 0) return fail('No files specified')
   const toR = requireJump(manifest, toJumpId)
   if ('error' in toR) return fail(toR.error)
-  if (toR.jump.processed) return fail('Cannot copy files to a processed jump — unprocess first')
+  const check = requireUnprocessed(toR.jump)
+  if ('error' in check) return fail(check.error)
   for (const filePath of filePaths) {
     if (toR.jump.files.some((f) => f.path === filePath)) continue
     const file =
@@ -408,7 +407,8 @@ const handleReorderFiles = (manifest: Manifest, body: Body) => {
   if (filePaths.length === 0) return fail('No files specified')
   const r = requireJump(manifest, jumpId)
   if ('error' in r) return fail(r.error)
-  if (r.jump.processed) return fail('Cannot reorder files of a processed jump — unprocess first')
+  const check = requireUnprocessed(r.jump)
+  if ('error' in check) return fail(check.error)
   const currentPaths = new Set(r.jump.files.map((f) => f.path))
   if (filePaths.length !== currentPaths.size) return fail('File list does not match jump files')
   for (const p of filePaths) {
@@ -456,12 +456,20 @@ const handleUnprocess = (manifest: Manifest, body: Body) => {
   const r = requireJump(manifest, jumpId)
   if ('error' in r) return fail(r.error)
   if (!r.jump.processed) return fail('Jump not processed')
-  const dir = path.join(getOutputDirPath(), 'processed', sanitizeLabel(r.jump.label))
-  try {
-    if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true })
-  } catch {}
+  removeProcessedDir(r.jump.label)
   delete r.jump.processed
   if (manifest.status === 'executed') manifest.status = 'confirmed'
+  return ok()
+}
+
+const handleRenameFile = (manifest: Manifest, body: Body) => {
+  const filePath = asString(body.filePath)
+  const newFilename = asString(body.newFilename)
+  if (!filePath || !newFilename) return fail('Missing filePath or newFilename')
+  const allFiles = [...manifest.files, ...manifest.jumps.flatMap((j) => j.files)]
+  const file = allFiles.find((f) => f.path === filePath)
+  if (!file) return fail('File not found')
+  file.filename = newFilename
   return ok()
 }
 
@@ -472,42 +480,22 @@ const handlers: Record<
     body: Body
   ) => { ok: boolean; error?: string; offsetSeconds?: number } | { ok: boolean; error: string }
 > = {
-  'update-label': (m, b) => handleUpdateLabel(m, b),
-  'confirm-jump': (m, b) => handleConfirmJump(m, b),
-  'confirm-all': (m, b) => handleConfirmAll(m, b),
-  'delete-jump': (m, b) => handleDeleteJump(m, b),
+  'update-label': handleUpdateLabel,
+  'confirm-jump': handleConfirmJump,
+  'confirm-all': handleConfirmAll,
+  'delete-jump': handleDeleteJump,
   'create-jump': (m) => handleCreateJump(m),
-  'move-files': (m, b) => handleMoveFiles(m, b),
-  'add-to-jump': (m, b) => handleAddToJump(m, b),
-  'remove-files': (m, b) => handleRemoveFiles(m, b),
-  'update-start-datetime': (m, b) => {
-    const startDatetime = asString(b.startDatetime)
-    if (!startDatetime) return fail('No datetime provided')
-    m.startDatetime = startDatetime
-    return ok()
-  },
-  'reset-timestamps': (m, b) => {
-    const jumpId = asString(b.jumpId)
-    const r = requireJump(m, jumpId)
-    if ('error' in r) return fail(r.error)
-    const sortedFiles = [...r.jump.files].sort((a, b) => a.mtime - b.mtime)
-    const baseEpoch =
-      sortedFiles.length > 0 ? sortedFiles[0].mtime : new Date(m.startDatetime).getTime() / 1000
-    let offset = 0
-    for (const file of r.jump.files) {
-      file.mtime = baseEpoch + offset
-      offset += 30
-    }
-    return ok()
-  },
-  'calibrate-sequences': (m, b) => handleCalibrate(m, b),
-  'shift-sequences': (m, b) => handleShift(m, b),
+  'move-files': handleMoveFiles,
+  'remove-files': handleRemoveFiles,
+  'calibrate-sequences': handleCalibrate,
+  'shift-sequences': handleShift,
   'reset-calibration': (m) => handleResetCalibration(m),
-  'execute-jumps': (m, b) => handleExecute(m, b),
-  'unprocess-jump': (m, b) => handleUnprocess(m, b),
-  'reorder-files': (m, b) => handleReorderFiles(m, b),
-  'merge-jumps': (m, b) => handleMergeJumps(m, b),
-  'copy-files': (m, b) => handleCopyFiles(m, b)
+  'execute-jumps': handleExecute,
+  'unprocess-jump': handleUnprocess,
+  'reorder-files': handleReorderFiles,
+  'merge-jumps': handleMergeJumps,
+  'copy-files': handleCopyFiles,
+  'rename-file': handleRenameFile
 }
 
 const loader = async () => {

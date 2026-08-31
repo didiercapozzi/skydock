@@ -91,11 +91,9 @@ type Manifest = {
 - `find original_files -type f -printf '%T@\t%p\n' | sort -n | cut -f2-` gives time-sorted files.
 - Writes manifest with `jq` via heredoc.
 
-### 5.2 `web/app/lib/sequences.ts` — ground truth for UI
+### 5.2 `web/app/lib/sequences.ts` — date/time formatting helpers
 
-- `Sequence = { id, files, date, startTime, endTime }` where `date = formatSequenceDate(startTime)` (`D M YYYY`).
-- `getSequences(manifest)` sorts `manifest.files` by `mtime`, splits on gap `> 900 s` (15 min) into sequences. Used for left “Sequences by day” and timeline ground truth before refactor; now `groupJumpsByDay` is preferred but `getSequences` still exists for unassigned calc.
-- Helpers: `formatSequenceDate`, `formatDateForInput` (`D M YYYY` → `YYYY-MM-DD`), `formatSequenceTime` (`HH:MM`), `formatClockOffset`.
+- Helpers: `formatSequenceDate` (`D M YYYY`), `formatDateForInput` (`D M YYYY` → `YYYY-MM-DD`), `formatSequenceTime` (`HH:MM`).
 
 ### 5.3 `reclusterJumps(manifest, preservedPaths?)` (api.manifest)
 
@@ -173,29 +171,135 @@ type Manifest = {
 
 ### 8.8 `api.manifest.ts` — handlers (all arrow functions, `ok`/`fail` helpers)
 
-- Helpers: `asString`, `asStringArray`, `requireManifest`, `requireJump`, `requireProcessedPaths`, `isAllProcessed`, `ok`, `fail`.
-- Handlers map: `update-label`, `confirm-jump`/`confirm-all` (kept for backward compat, not used for UI selection), `delete-jump` (also deletes `processed/sanitized_label` if `processed`), `create-jump`, `move-files` / `add-to-jump` / `remove-files` (blocked if involved jump `processed`), `copy-files` (duplicates refs to target without splicing source, allows same `path` in multiple jumps, blocked if target `processed`), `reorder-files` (validates `filePaths` length equals current size and all paths belong to jump, then remaps `jump.files` order), `merge-jumps`, `update-start-datetime`, `reset-timestamps` (re-times jump files 30 s apart), `calibrate-sequences` (computes `offset = min(ref)-min(target)`, `scope all` shifts all), `shift-sequences` (takes `paths`/`offsetSeconds`, checks processed, `shiftFiles` + `reclusterJumps(manifest, pathsSet)`), `reset-calibration` (restores `originalMtime` in both `files` and `jump.files`, deletes `cameraClockOffsetSeconds`, reclusters), `execute-jumps` (incremental, see §6.2; `jumpIds` from React state), `unprocess-jump` (deletes `processed/sanitized_label`, clears `processed`, sets `status` back to `confirmed` if was `executed`).
+- Helpers: `asString`, `asStringArray`, `requireManifest`, `requireJump`, `requireUnprocessed`, `removeProcessedDir`, `requireProcessedPaths`, `isAllProcessed`, `applyShift`, `ok`, `fail`.
+- Handlers map: `update-label`, `confirm-jump`/`confirm-all` (kept for backward compat, not used for UI selection), `delete-jump` (also deletes `processed/sanitized_label` if `processed`), `create-jump`, `move-files` / `remove-files` (blocked if involved jump `processed`), `copy-files` (duplicates refs to target without splicing source, allows same `path` in multiple jumps, blocked if target `processed`), `reorder-files` (validates `filePaths` length equals current size and all paths belong to jump, then remaps `jump.files` order), `merge-jumps`, `calibrate-sequences` (computes `offset = min(ref)-min(target)`, `scope all` shifts all), `shift-sequences` (takes `paths`/`offsetSeconds`, checks processed, `shiftFiles` + `reclusterJumps(manifest, pathsSet)`), `reset-calibration` (restores `originalMtime` in both `files` and `jump.files`, deletes `cameraClockOffsetSeconds`, reclusters), `execute-jumps` (incremental, see §6.2; `jumpIds` from React state), `unprocess-jump` (deletes `processed/sanitized_label`, clears `processed`, sets `status` back to `confirmed` if was `executed`), `rename-file` (updates `filename` on a file in manifest or jumps).
 - `loader` returns `{manifest}`. `action` dispatches via `handlers[formAction]`, `requireManifest`, `saveManifest` and returns `ok` with `manifest`.
 
-## 9. Review UI (`app/routes/review.tsx`)
+## 9. Review UI
 
-- **Loader:** `ensureManifestFileIds` then reads `manifest.json`.
-- **Helpers:** `formatSize`, `formatTime`, `groupJumpsByDay` (jumps grouped by `getJumpDate` via `formatSequenceDate(min mtime)`), `getJumpBounds`.
-- **State:** `selection: SelectionMap` (file-level), `lastClicked`, `editingDay`, `preview: PreviewState | null`, `copyMode: boolean`, `compareIds: string[]` (jump-level React state only for compare/process, not persisted), `showCompare`, `dragDataRef` (direct FileRow inter-jump), `trayDragRef` (staging tray), `jumpsByDay`, `filesInJumps`, `unassignedFiles = files.filter(not in jumps)`, `allFileIds = [...unassigned, ...jumps]`, `hasCalibration`, `selectedFiles` (file selection), `selectedCount`, `isSelectMode = selectedCount>0`, `processedCount` (no `confirmedCount`; `confirmed` not used for UI).
-- **File selection:** `handleSelect` clones `SelectionMap` immutably; `shift` does range via `allFileIds` index; otherwise toggles `next[groupId][filePath]`. `lastClicked` updated. Clicking row when `isSelectMode` or `ctrl/meta/shift` selects, otherwise opens preview drawer; checkbox always selects.
-- **Jump selection (React state only):** `handleCompareToggle(jumpId)` toggles `compareIds`: remove if present, else add (max 2 keeps `[prev[1], jumpId]` for compare). `isCompareSelected={compareIds.includes(jump.id)}` drives amber `border-amber-300 ring-1` and `ring-2` on timeline bar. No manifest `confirmed` write; `confirmed` only auto-set by `execute-jumps`.
-- **Staging Tray (left column):** When `selectedCount>0` the page becomes `flex gap-6` with sticky `StagingTray` (`w-[300px] sticky top-6 max-h-[80vh]`) left and `flex-1 min-w-0` right content. Tray shows `selectedFiles` with filename + `✕` to deselect, `Move`/`Copy` radio (`copyMode`), `Clear` button, and `draggable` inner list (`handleTrayDragStart` groups `filePaths` by `groupId` into `sourceGroups` and sets `trayDragRef`, `effectAllowed = copyMode?'copy':'move'`). Hint `Drag this tray to a jump to move/copy`. Tray is the primary inter-jump drag source for far jumps; direct `FileRow` drag still works for short moves. On `Move` the tray clears `selection` after drop; on `Copy` it stays so file can be copied to multiple jumps (same `path` may exist in several jumps).
-- **Drag & Drop:**
-  - **Within-jump reorder:** `FileRow` is `draggable` with `dropPosition` (`above`/`below` → `border-t-2/b-2 border-blue-500`). `JumpCard` holds `hoveredFile`/`dropPosition`/`dragDataRef`/`withinJumpDropRef`. `handleRowDragOver` sets position via `midY`, `handleRowDrop` computes `filtered` (without dragged paths) and `insertIdx` then calls `onReorder` → `reorder-files`. `JumpCard` outer `onDragOver/onDrop` ignores `hoveredFile` and `withinJumpDropRef` to avoid conflict with inter-jump drop.
-  - **Inter-jump (tray or direct):** `JumpCard` outer is `onDragOver`/`onDrop` target (disabled if `processed`, highlight `border-blue-400` when `isDragOver && !hoveredFile`). `Review.handleDrop` handles tray first (`copy-files` if `copyMode` else `move-files`/`add-to-jump` per `sourceGroups`), else falls back to `dragDataRef` (direct `FileRow` drag) with same `move-files`/`add-to-jump`. `JumpCard` `FileRow.onDragStart` sets both internal `dragDataRef` (for reorder) and parent `dragDataRef` (for direct inter-jump) with multi-select logic (`sel = jump.files.filter(selected)`, `toDrag = sel.length>0 && selection[file.path] ? sel : [fp]`).
-- **FileRow:** checkbox + filename + time + size + `👁` preview button; `draggable` with `handleDragStart` that ignores checkbox/button; `selected` shows `bg-blue-100`. Supports `dropPosition` border for reorder.
-- **JumpCard:** header `flex` with checkbox `checked={isCompareSelected}` `text-amber-600` (React state, no `disabled`), expand `▼/▶`, editable label (no time), `ml-auto` right side: `files • HH:MM–HH:MM`, `selectedCount`/`Remove`, `Processed` badge + `Undo` or `✕` delete. Border `amber` if `isCompareSelected`, `blue` if `processed`, else gray; `isDragOver` blue. Body lists `FileRow`s.
-- **JumpDaySection:** day header with date (click to edit via `formatDateForInput` → `handleShiftDay` computes `offset = newNoon - oldNoon` and shifts all files of that day), `fileCount • jumps • HH:MM–HH:MM` (first–last file time via `dayStart`/`dayEnd`), `JumpCard`s (`onCompareToggle`, `onReorder`).
-- **Unassigned:** amber card on top if `unassignedFiles.length>0`, shows `FileRow`s with `groupId='unassigned'`, hint `select to stage` (inter-jump via tray); still supports `onPreview`.
-- **TimelineJumps:** per-day lanes stacked (`height = max(56, days*36)`), fixed `00:00→24:00` per lane (`DAY=86400`, `effectiveRange=DAY`, `pos` = time-of-day/DAY, `width` = duration/DAY, `hourTicks` `0,6,12,18,24`), bars `h-5` `minWidth 32px` `bg-blue/indigo` per day `bg-gray-400` if processed, `ring-2 amber` if `selectedIds`. Dragging bar (`onMouseDown`/`onTouchStart` sets `draggingJump`, `dragOffset` via `dx/w*DAY` snapped `900s` or `86400` with Shift) shows `pos(bounds.start+offset)` only for that jump; `draggedTime` overlay `formatSequenceDate/Time`. On `|off|≥60` calls `onShiftDay(jump.id, off, jumpPaths)` → `shift-sequences`; click without drag toggles `onSelect(jump.id)` (`compareIds`). `useEffect([dayGroups])` clears drag state.
-- **SelectedJumpsPanel:** sticky `w-[320px]` shown when `compareIds.length>0`, lists selected jumps (`files • time • date`), `Clear`, `Compare` (enabled if `2`), `Process selected` (enabled if `some !processed`, calls `execute-jumps` with filtered `compareIds`).
-- **CompareDrawer / PreviewDrawer:** `CompareDrawer` 2-col grid with file lists and previews, `Merge into` buttons → `merge-jumps`; `PreviewDrawer` right `520px` backdrop, video/img, `Prev/Next`, `Esc/←/→`.
-- **Header:** title stats `date — N jumps, M files` plus `• N processed` and `• dates shifted`, actions `Select All` (sets `compareIds` to all `!processed`), `+ Add Jump`, `Reset dates` (if calibrated); no `Confirm All`/`Process` global (process via `SelectedJumpsPanel`).
+The Review UI is a single-page interface for viewing, organizing, and processing skydive jumps. It loads the manifest and presents files grouped into jumps by day, with a timeline, drag-and-drop, and a staging tray for moving files between jumps.
+
+### 9.1 Data Loading
+
+- On load, ensure every file in the manifest has a content-based ID (SHA-256 of head+tail+size).
+- Read `manifest.json` and display its jumps and files.
+
+### 9.2 Page Layout
+
+- **Header** at the top with title, stats, and action buttons.
+- **Staging Tray** on the left (only visible when files are selected). Fixed width, sticks to the viewport while scrolling.
+- **Main content** on the right: Unassigned files card at the top, then one card per jump grouped by day, then a timeline at the bottom.
+- **Selected Jumps Panel** appears on the right when 1 or more jumps are selected for comparison or processing.
+
+### 9.3 File Display
+
+Each file is shown as a row with:
+- A checkbox for selection
+- Filename (renamable by clicking on it)
+- Time of day
+- File size
+- A preview button
+- A delete button
+
+Selected files are visually highlighted. Files that exist in multiple jumps (copied) are shown with a distinct background color. Deleted files are shown with a red background and strikethrough text.
+
+### 9.4 File Selection
+
+- Clicking a file row toggles its selection (unless it is the first click and no files are selected yet, which opens the preview instead).
+- Clicking the checkbox always toggles selection.
+- Holding Ctrl/Meta and clicking adds to or removes from the current selection.
+- Holding Shift and clicking selects a range from the last clicked file to the current one.
+- Selection state is independent per file across all jumps and unassigned.
+
+### 9.5 Staging Tray
+
+- Appears when at least one file is selected.
+- Lists all selected files with filename and a remove button to deselect individual files.
+- Has a **Move / Copy** toggle. In Move mode, files are removed from their source jump after dropping. In Copy mode, files stay in their source jump and are also added to the target (the same file can exist in multiple jumps).
+- Has a **Clear** button to deselect all files.
+- The tray itself is draggable. Dragging it to a jump card moves or copies all selected files into that jump.
+- After a Move drop, the selection is cleared. After a Copy drop, the selection persists.
+
+### 9.6 Drag & Drop
+
+**Reordering within a jump:**
+- Each file row is draggable. Dragging it over another row in the same jump shows a drop indicator line above or below the target row.
+- Dropping reorders the files within that jump.
+
+**Moving or copying between jumps:**
+- Dragging a file row (or the staging tray) over a different jump card highlights that card as a drop target.
+- Dropping moves or copies the files into the target jump, depending on the Move/Copy mode.
+- If multiple files are selected, dragging any selected file drags the entire selection.
+- Processed jumps cannot receive dropped files.
+
+### 9.7 Jump Card
+
+Each jump is displayed as a card with:
+- A checkbox for selecting the jump for comparison or processing
+- An expand/collapse toggle
+- An editable label (e.g. "Jump 1")
+- Editable date and time
+- File count and time range on the right side
+- A "Remove" link when files are selected (moves selected files out of this jump)
+- A "Processed" badge with an "Undo" button if the jump has been processed
+- A delete button
+
+Card border color: amber if selected for comparison, blue if processed, gray otherwise. Highlights blue when a drag is hovering over it.
+
+### 9.8 Jump Selection for Comparison
+
+- Clicking a jump checkbox adds or removes it from the selection (max 2 jumps).
+- Selected jumps appear in the Selected Jumps Panel on the right.
+- This selection is for comparison and processing only; it is not saved to the manifest.
+- When one or more jumps are selected, an option appears to edit the day assignment (not the time) for all selected jumps.
+
+### 9.9 Day Groups
+
+- Jumps are grouped by day based on the earliest file timestamp in each jump.
+- Each day group has a header showing the date, total file count, number of jumps, and time range of all files in that day.
+- The day date is not directly editable.
+- Below the header, all jumps for that day are listed as cards.
+
+### 9.10 Unassigned Files
+
+- Any file in the manifest that is not part of any jump appears in an "Unassigned" card at the top.
+- These files can be staged via selection and then dragged into a jump.
+
+### 9.11 Timeline
+
+- A visual timeline at the bottom shows all jumps as horizontal bars on a 00:00–24:00 time scale, one lane per day.
+- Bars are colored by day. Processed jumps are gray. Jumps selected for comparison have an amber ring.
+- **Clicking** a bar toggles that jump in the comparison selection.
+- **Dragging** a bar left or right shifts the jump's time. The shift snaps to 15-minute intervals (or full-day intervals when holding Shift). If the shift is 60 seconds or more, the time shift is applied to all files in that jump and the jumps may be reclustered.
+- A tooltip shows the new date and time while dragging.
+- Hour markers at 0, 6, 12, 18, and 24 are shown.
+
+### 9.12 Selected Jumps Panel
+
+- Appears on the right when 1 or more jumps are selected.
+- Lists each selected jump with file count, time range, and date.
+- **Clear** button deselects all jumps.
+- **Compare** button opens the compare view (enabled when exactly 2 jumps are selected).
+- **Process selected** button executes the selected jumps that have not been processed yet.
+
+### 9.13 Compare View
+
+- Opens as a panel showing two columns, one per selected jump.
+- Each column lists the jump's files with previews.
+- A "Merge into" button in each column merges all files from the other jump into this one.
+
+### 9.14 Preview View
+
+- Opens as a right-side panel when a file's preview button is clicked.
+- Shows the file (video player or image).
+- **Prev/Next** buttons or arrow keys navigate between files.
+- **Escape** or the close button closes the preview.
+
+### 9.15 Header Actions
+
+- Displays date, jump count, and file count. Shows processed count.
+- **Select All** button selects all jumps that are not yet processed.
+- **+ Add Jump** button creates a new empty jump.
 
 ## 10. Dependencies & Tooling
 
@@ -207,5 +311,10 @@ type Manifest = {
 
 - React Router 8 Framework Mode, SSR, `app/routes.ts` + `app/routes/` modules, `import from ./+types/...`.
 - Arrow functions only, `type` over `interface`, never `any`, all exports at end, inferred returns.
+- Data schemas (manifest, etc.) use Zod for runtime validation; types are inferred via `z.infer<typeof schema>`.
 - Bash scripts use `jq`, no comments in generated scripts.
 - `npm run check` (`typecheck` + `format:check` + `lint`) must pass before commit.
+- "export" keywords must be at the end of the file and not before a const/variable, function or types
+- we use camel case format for const/variables
+- use "const" instead of "let" or "var" every time you can
+

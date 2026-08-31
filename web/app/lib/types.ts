@@ -1,4 +1,42 @@
-export type FileEntry = {
+import { z } from 'zod'
+
+const manifestFileSchema = z.object({
+  path: z.string(),
+  size: z.number(),
+  mtime: z.number(),
+  filename: z.string(),
+  id: z.string().optional(),
+  originalMtime: z.number().optional(),
+})
+
+const manifestJumpSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  confirmed: z.boolean(),
+  files: z.array(manifestFileSchema),
+  processed: z.boolean().optional(),
+})
+
+const manifestStatusSchema = z.enum(['empty', 'proposed', 'confirmed', 'executed'])
+
+const manifestSchema = z.object({
+  version: z.number(),
+  status: manifestStatusSchema,
+  date: z.string(),
+  startDatetime: z.string(),
+  createdAt: z.string(),
+  theory: z.array(manifestFileSchema),
+  files: z.array(manifestFileSchema),
+  jumps: z.array(manifestJumpSchema),
+  cameraClockOffsetSeconds: z.number().optional(),
+})
+
+type ManifestFile = z.infer<typeof manifestFileSchema>
+type ManifestJump = z.infer<typeof manifestJumpSchema>
+type ManifestStatus = z.infer<typeof manifestStatusSchema>
+type Manifest = z.infer<typeof manifestSchema>
+
+type FileEntry = {
   name: string
   path: string
   size: number
@@ -7,7 +45,7 @@ export type FileEntry = {
   mtime: number
 }
 
-export type Jump = {
+type Jump = {
   id: string
   date: string
   name: string | null
@@ -25,54 +63,35 @@ export type Jump = {
   startedAt: number
 }
 
-export type DayGroup = {
+type DayGroup = {
   date: string
   jumps: Jump[]
   totalPhotos: number
   totalVideos: number
 }
 
-export type TheoryOverride = {
+type TheoryOverride = {
   originalPath: string
   sourceDate: string
 }
 
-export type TheoryOverrides = Record<string, TheoryOverride>
+type TheoryOverrides = Record<string, TheoryOverride>
 
-export type TheoryVideoWithSource = FileEntry & {
+type TheoryVideoWithSource = FileEntry & {
   jumpName: string
   passengerName: string | null
   jumpDate: string
   jumpId: string
 }
 
-export type ManifestFile = {
-  path: string
-  size: number
-  mtime: number
-  filename: string
-  id?: string
-  originalMtime?: number
+export type {
+  DayGroup, FileEntry,
+  Jump, Manifest, ManifestFile,
+  ManifestJump,
+  ManifestStatus, TheoryOverride,
+  TheoryOverrides,
+  TheoryVideoWithSource
 }
 
-export type ManifestJump = {
-  id: string
-  label: string
-  confirmed: boolean
-  files: ManifestFile[]
-  processed?: boolean
-}
+export { manifestSchema }
 
-export type ManifestStatus = 'empty' | 'proposed' | 'confirmed' | 'executed'
-
-export type Manifest = {
-  version: number
-  status: ManifestStatus
-  date: string
-  startDatetime: string
-  createdAt: string
-  theory: ManifestFile[]
-  files: ManifestFile[]
-  jumps: ManifestJump[]
-  cameraClockOffsetSeconds?: number
-}
