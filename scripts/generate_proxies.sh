@@ -10,6 +10,10 @@ NICE_LEVEL="${SKYDOCK_PROXY_NICE:-10}"
 IONICE_CLASS="${SKYDOCK_PROXY_IONICE_CLASS:-2}"
 IONICE_LEVEL="${SKYDOCK_PROXY_IONICE_LEVEL:-6}"
 PRESET="${SKYDOCK_PROXY_PRESET:-ultrafast}"
+SCALE="${SKYDOCK_PROXY_SCALE:-144}"
+CRF="${SKYDOCK_PROXY_CRF:-35}"
+FPS="${SKYDOCK_PROXY_FPS:-12}"
+PROXY_AUDIO="${SKYDOCK_PROXY_AUDIO:-0}"
 if [[ ! -f "${MANIFEST}" ]]; then
     exit 0
 fi
@@ -52,7 +56,7 @@ update_processing_status() {
     local total="${TOTAL_VIDEOS:-0}"
     local done
     done=$(ls "${PROXY_DIR}"/*.mp4 2>/dev/null | wc -l | tr -d ' ')
-    write_proxy_status "running" "Generating 480p proxies (${ENCODER} ${PRESET}) ${done}/${total}" "${total}" "${done}" 2>/dev/null || true
+    write_proxy_status "running" "Generating ${SCALE:-144}p proxies (${ENCODER} ${PRESET}) ${done}/${total}" "${total}" "${done}" 2>/dev/null || true
 }
 add_processing() {
     local fid="$1"
@@ -201,30 +205,36 @@ generate_proxy() {
     add_processing "${fid}" 2>/dev/null || true
     trap 'remove_processing "${fid}" 2>/dev/null || true' RETURN
     local log_file="${LOG_DIR}/${fid}.log"
-    local audio_codec
-    audio_codec=$(ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "${src}" 2>/dev/null || echo "")
-    local audio_streams
-    audio_streams=$(ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "${src}" 2>/dev/null | wc -l | tr -d ' ')
     local audio_args
-    if [[ "${audio_streams}" -eq 0 ]]; then
-        audio_args="-an"
-    elif [[ "${audio_codec}" == "aac" ]]; then
-        audio_args="-c:a copy"
+    if [[ "${PROXY_AUDIO}" == "1" ]]; then
+        local audio_codec
+        audio_codec=$(ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "${src}" 2>/dev/null || echo "")
+        local audio_streams
+        audio_streams=$(ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "${src}" 2>/dev/null | wc -l | tr -d ' ')
+        if [[ "${audio_streams}" -eq 0 ]]; then
+            audio_args="-an"
+        elif [[ "${audio_codec}" == "aac" ]]; then
+            audio_args="-c:a copy"
+        else
+            audio_args="-c:a aac -b:a 64k"
+        fi
     else
-        audio_args="-c:a aac -b:a 64k"
+        audio_args="-an"
+        audio_codec="silent"
+        audio_streams=0
     fi
     local v_args
     local enc_ok=false
     case "${ENCODER}" in
         h264_nvenc)
-            v_args="-c:v h264_nvenc -rc vbr_hq -cq 28 -preset fast"
-            if ${RUN_PREFIX} ffmpeg -y -hide_banner -loglevel error -hwaccel auto -i "${src}" -vf "scale=-2:480" ${v_args} ${audio_args} -movflags +faststart -threads ${FFMPEG_THREADS} "${proxy_tmp}" > "${log_file}" 2>&1; then
+            v_args="-c:v h264_nvenc -rc vbr_hq -cq ${CRF} -preset fast"
+            if ${RUN_PREFIX} ffmpeg -y -hide_banner -loglevel error -hwaccel auto -i "${src}" -vf "scale=-2:${SCALE},fps=${FPS}" ${v_args} ${audio_args} -movflags +faststart -threads ${FFMPEG_THREADS} "${proxy_tmp}" > "${log_file}" 2>&1; then
                 enc_ok=true
             else
                 cat "${log_file}" 2>/dev/null | head -20
                 rm -f "${proxy_tmp}" 2>/dev/null || true
-                v_args="-c:v libx264 -crf 28 -preset ${PRESET} -threads ${FFMPEG_THREADS}"
-                if ${RUN_PREFIX} ffmpeg -y -hide_banner -loglevel error -hwaccel auto -i "${src}" -vf "scale=-2:480" ${v_args} ${audio_args} -movflags +faststart "${proxy_tmp}" > "${log_file}" 2>&1; then
+                v_args="-c:v libx264 -crf ${CRF} -preset ${PRESET} -threads ${FFMPEG_THREADS}"
+                if ${RUN_PREFIX} ffmpeg -y -hide_banner -loglevel error -hwaccel auto -i "${src}" -vf "scale=-2:${SCALE},fps=${FPS}" ${v_args} ${audio_args} -movflags +faststart "${proxy_tmp}" > "${log_file}" 2>&1; then
                     enc_ok=true
                 else
                     cat "${log_file}" 2>/dev/null | head -20
@@ -232,14 +242,14 @@ generate_proxy() {
             fi
             ;;
         h264_qsv)
-            v_args="-c:v h264_qsv -global_quality 28 -preset veryfast"
-            if ${RUN_PREFIX} ffmpeg -y -hide_banner -loglevel error -hwaccel auto -i "${src}" -vf "scale=-2:480" ${v_args} ${audio_args} -movflags +faststart -threads ${FFMPEG_THREADS} "${proxy_tmp}" > "${log_file}" 2>&1; then
+            v_args="-c:v h264_qsv -global_quality ${CRF} -preset veryfast"
+            if ${RUN_PREFIX} ffmpeg -y -hide_banner -loglevel error -hwaccel auto -i "${src}" -vf "scale=-2:${SCALE},fps=${FPS}" ${v_args} ${audio_args} -movflags +faststart -threads ${FFMPEG_THREADS} "${proxy_tmp}" > "${log_file}" 2>&1; then
                 enc_ok=true
             else
                 cat "${log_file}" 2>/dev/null | head -20
                 rm -f "${proxy_tmp}" 2>/dev/null || true
-                v_args="-c:v libx264 -crf 28 -preset ${PRESET} -threads ${FFMPEG_THREADS}"
-                if ${RUN_PREFIX} ffmpeg -y -hide_banner -loglevel error -hwaccel auto -i "${src}" -vf "scale=-2:480" ${v_args} ${audio_args} -movflags +faststart "${proxy_tmp}" > "${log_file}" 2>&1; then
+                v_args="-c:v libx264 -crf ${CRF} -preset ${PRESET} -threads ${FFMPEG_THREADS}"
+                if ${RUN_PREFIX} ffmpeg -y -hide_banner -loglevel error -hwaccel auto -i "${src}" -vf "scale=-2:${SCALE},fps=${FPS}" ${v_args} ${audio_args} -movflags +faststart "${proxy_tmp}" > "${log_file}" 2>&1; then
                     enc_ok=true
                 else
                     cat "${log_file}" 2>/dev/null | head -20
@@ -248,13 +258,13 @@ generate_proxy() {
             ;;
         h264_videotoolbox)
             v_args="-c:v h264_videotoolbox -q:v 60"
-            if ${RUN_PREFIX} ffmpeg -y -hide_banner -loglevel error -hwaccel auto -i "${src}" -vf "scale=-2:480" ${v_args} ${audio_args} -movflags +faststart -threads ${FFMPEG_THREADS} "${proxy_tmp}" > "${log_file}" 2>&1; then
+            if ${RUN_PREFIX} ffmpeg -y -hide_banner -loglevel error -hwaccel auto -i "${src}" -vf "scale=-2:${SCALE},fps=${FPS}" ${v_args} ${audio_args} -movflags +faststart -threads ${FFMPEG_THREADS} "${proxy_tmp}" > "${log_file}" 2>&1; then
                 enc_ok=true
             else
                 cat "${log_file}" 2>/dev/null | head -20
                 rm -f "${proxy_tmp}" 2>/dev/null || true
-                v_args="-c:v libx264 -crf 28 -preset ${PRESET} -threads ${FFMPEG_THREADS}"
-                if ${RUN_PREFIX} ffmpeg -y -hide_banner -loglevel error -hwaccel auto -i "${src}" -vf "scale=-2:480" ${v_args} ${audio_args} -movflags +faststart "${proxy_tmp}" > "${log_file}" 2>&1; then
+                v_args="-c:v libx264 -crf ${CRF} -preset ${PRESET} -threads ${FFMPEG_THREADS}"
+                if ${RUN_PREFIX} ffmpeg -y -hide_banner -loglevel error -hwaccel auto -i "${src}" -vf "scale=-2:${SCALE},fps=${FPS}" ${v_args} ${audio_args} -movflags +faststart "${proxy_tmp}" > "${log_file}" 2>&1; then
                     enc_ok=true
                 else
                     cat "${log_file}" 2>/dev/null | head -20
@@ -262,8 +272,8 @@ generate_proxy() {
             fi
             ;;
         *)
-            v_args="-c:v libx264 -crf 28 -preset ${PRESET} -threads ${FFMPEG_THREADS}"
-            if ${RUN_PREFIX} ffmpeg -y -hide_banner -loglevel error -hwaccel auto -i "${src}" -vf "scale=-2:480" ${v_args} ${audio_args} -movflags +faststart "${proxy_tmp}" > "${log_file}" 2>&1; then
+            v_args="-c:v libx264 -crf ${CRF} -preset ${PRESET} -threads ${FFMPEG_THREADS}"
+            if ${RUN_PREFIX} ffmpeg -y -hide_banner -loglevel error -hwaccel auto -i "${src}" -vf "scale=-2:${SCALE},fps=${FPS}" ${v_args} ${audio_args} -movflags +faststart "${proxy_tmp}" > "${log_file}" 2>&1; then
                 enc_ok=true
             else
                 cat "${log_file}" 2>/dev/null | head -20
@@ -281,7 +291,7 @@ generate_proxy() {
     fi
 }
 export -f generate_thumb generate_proxy add_processing remove_processing update_processing_status write_proxy_status
-export THUMB_DIR PROXY_DIR LOG_DIR RUN_PREFIX FFMPEG_THREADS ENCODER PRESET TMP_PROCESSING TOTAL_VIDEOS STATUS_DIR
+export THUMB_DIR PROXY_DIR LOG_DIR RUN_PREFIX FFMPEG_THREADS ENCODER PRESET SCALE CRF FPS PROXY_AUDIO TMP_PROCESSING TOTAL_VIDEOS STATUS_DIR
 existing_thumbs=0
 existing_proxies=0
 while IFS=$'\t' read -r vpath vid vmtime; do
@@ -318,7 +328,7 @@ else
     fi
 fi
 thumb_done=$(ls "${THUMB_DIR}"/*.jpg 2>/dev/null | wc -l | tr -d ' ')
-write_proxy_status "running" "Thumbnails ready (${thumb_done}/${TOTAL_VIDEOS}), generating 480p proxies (${ENCODER} ${PRESET})" "${TOTAL_VIDEOS}" "${thumb_done}" || true
+write_proxy_status "running" "Thumbnails ready (${thumb_done}/${TOTAL_VIDEOS}), generating ${SCALE}p proxies (${ENCODER} ${PRESET})" "${TOTAL_VIDEOS}" "${thumb_done}" || true
 MAX_RETRIES=2
 attempt=0
 while [[ "${attempt}" -le "${MAX_RETRIES}" ]]; do
@@ -346,7 +356,7 @@ while [[ "${attempt}" -le "${MAX_RETRIES}" ]]; do
                     active=$((active - 1))
                 fi
                 cur_done=$(ls "${PROXY_DIR}"/*.mp4 2>/dev/null | wc -l | tr -d ' ')
-                write_proxy_status "running" "Generating 480p proxies (${ENCODER} ${PRESET}) ${cur_done}/${TOTAL_VIDEOS} attempt $((attempt + 1))/${MAX_RETRIES}" "${TOTAL_VIDEOS}" "${cur_done}" || true
+                write_proxy_status "running" "Generating ${SCALE}p proxies (${ENCODER} ${PRESET}) ${cur_done}/${TOTAL_VIDEOS} attempt $((attempt + 1))/${MAX_RETRIES}" "${TOTAL_VIDEOS}" "${cur_done}" || true
             done < "${TMP_LIST}"
             wait || true
         else
@@ -365,7 +375,7 @@ while [[ "${attempt}" -le "${MAX_RETRIES}" ]]; do
                 fi
                 generate_proxy "${vpath}" "${vid}" || true
                 done_count=$((done_count + 1))
-                write_proxy_status "running" "Generating 480p proxies (${ENCODER} ${PRESET}) ${done_count}/${TOTAL_VIDEOS} attempt $((attempt + 1))" "${TOTAL_VIDEOS}" "${done_count}" || true
+                write_proxy_status "running" "Generating ${SCALE}p proxies (${ENCODER} ${PRESET}) ${done_count}/${TOTAL_VIDEOS} attempt $((attempt + 1))" "${TOTAL_VIDEOS}" "${done_count}" || true
             done < "${TMP_LIST}"
         fi
     fi
