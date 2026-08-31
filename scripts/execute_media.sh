@@ -4,6 +4,16 @@ set -eo pipefail
 MANIFEST="${1:-}"
 OUTPUT_DIR="${SKYDOCK_OUTPUT_DIR:-/workspace/output}"
 PROCESSED_DIR="${OUTPUT_DIR}/processed"
+STATUS_DIR="${OUTPUT_DIR}/.status"
+mkdir -p "${STATUS_DIR}"
+write_exec_status() {
+    local state="$1"
+    local msg="$2"
+    local ts
+    ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")
+    printf '{"state":"%s","message":"%s","updatedAt":"%s","startedAt":"%s"}' "${state}" "${msg}" "${ts}" "${ts}" > "${STATUS_DIR}/execute.json.tmp" 2>/dev/null && mv -f "${STATUS_DIR}/execute.json.tmp" "${STATUS_DIR}/execute.json" 2>/dev/null || true
+}
+trap 'write_exec_status "idle" "Execute interrupted" 2>/dev/null || true' INT TERM
 
 if [[ -z "${MANIFEST}" ]]; then
     MANIFEST="${OUTPUT_DIR}/manifest.json"
@@ -29,8 +39,11 @@ fi
 
 if [[ ${#JUMP_IDS[@]} -eq 0 ]]; then
     echo "[Execute] No confirmed unprocessed jumps found."
+    write_exec_status "done" "No jumps to process" 2>/dev/null || true
+    ( sleep 5; printf '{"state":"idle","message":"Idle","updatedAt":"%s"}' "$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")" > "${STATUS_DIR}/execute.json.tmp" 2>/dev/null && mv -f "${STATUS_DIR}/execute.json.tmp" "${STATUS_DIR}/execute.json" 2>/dev/null || true ) > /dev/null 2>&1 & disown 2>/dev/null || true
     exit 0
 fi
+write_exec_status "running" "Processing ${#JUMP_IDS[@]} jump(s)" 2>/dev/null || true
 
 is_video_ext() {
     case "${1,,}" in
@@ -124,3 +137,5 @@ for jump_id in "${JUMP_IDS[@]}"; do
 done
 
 echo "[Execute] Done. Copied ${copied} file(s)."
+write_exec_status "done" "Copied ${copied} files" 2>/dev/null || true
+( sleep 5; printf '{"state":"idle","message":"Idle","updatedAt":"%s"}' "$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")" > "${STATUS_DIR}/execute.json.tmp" 2>/dev/null && mv -f "${STATUS_DIR}/execute.json.tmp" "${STATUS_DIR}/execute.json" 2>/dev/null || true ) > /dev/null 2>&1 & disown 2>/dev/null || true

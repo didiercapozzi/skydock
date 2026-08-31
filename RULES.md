@@ -20,6 +20,9 @@ output/
 │   └── 2026-08-25/
 │       ├── DJI_0011.MP4
 │       └── ...
+├── .cache/                   # Thumbnails + 480p proxies (not processed)
+│   ├── thumbs/{id}.jpg
+│   └── proxies/{id}.mp4
 ├── manifest.json       # Manifest (see §4)
 └── processed/                # After per-jump Process
     ├── jump_1/
@@ -38,6 +41,7 @@ output/
 - For each file: `filename=$(basename)`; `target_date` from `mtime`; `dest_dir=original_files/target_date`.
 - `file_matches_existing(src, dest_dir)`: if `dest_dir/filename` exists and `cmp -s src dest` → skip (same content). If exists but `cmp` differs → copy (overwritten on camera). If not exists → copy.
 - `cp -p --update=none` preserves timestamps.
+- Writes `output/.status/process.json` (`running` → `done` → `idle` after 5s) for `api/status`.
 
 ## 4. Manifest (`output/manifest.json`)
 
@@ -51,6 +55,8 @@ type ManifestFile = {
   originalMtime?: number
   cropStart?: number
   cropEnd?: number
+  thumbPath?: string
+  proxyPath?: string
 }
 type ManifestJump = {
   id: string
@@ -73,7 +79,7 @@ type Manifest = {
 }
 ```
 
-- `scan_media.sh` creates `version:1, status:'proposed', date: today, files: [all], theory: [], jumps: [clustered]`.
+- `scan_media.sh` creates `version:1, status:'proposed', date: today, files: [all], theory: [], jumps: [clustered]`, then queues `generate_proxies.sh` in background (both fresh and merge paths).
 - `files` is flat list of all `original_files` sorted by `mtime`.
 - `jumps` are clusters where gaps `> 1800 s` (30 min) start a new jump. `files` duplicated inside `jumps` (not references) but `path` is the key. Since `copy-files` exists, the same `path` may appear in multiple jumps (file copied to several jumps).
 - `id` is `jump_1 …` or preserved original id after recluster; `label` defaults `Jump N` and is editable.
@@ -82,6 +88,12 @@ type Manifest = {
 - Jump selection for compare/process is **not** persisted in manifest – it is React state `compareIds: string[]` in Review UI (checkbox `checked={isCompareSelected}`); `confirmed` remains only for execution bookkeeping and is auto-set by `execute-jumps`.
 
 ## 5. Scan & Cluster
+
+### 5.0 `generate_proxies.sh` — thumbnails + 480p proxies
+
+- Inputs: `output/manifest.json`, outputs `output/.cache/thumbs/{id}.jpg` + `output/.cache/proxies/{id}.mp4`.
+- For each video in manifest, generates `320px` thumb (`ffmpeg -ss 0.5 -vframes 1 -vf scale=320:-2 -q:v 3`) and `480p` proxy audible (`ffmpeg -vf scale=-2:480 -c:v libx264 -crf 28 -preset veryfast -c:a aac -b:a 64k -movflags +faststart`). Skips if cache newer than source mtime, prunes stale ids. Updates `manifest.json` `thumbPath`/`proxyPath` for all files/jumps. Throttling: `nice -n 10` + `ionice -c2 -n6` + parallel `nproc-1` (cap 8) via `xargs -P` or background `wait -n`. Tunable `SKYDOCK_PROXY_JOBS`, `SKYDOCK_PROXY_NICE`, `SKYDOCK_PROXY_IONICE_CLASS/LEVEL`. Queued async after `scan_media.sh` and `watcher.sh`, detached from `api/scan.ts`.
+- Writes `output/.status/proxies.json` (`running` with total/done, then `done` → `idle` after 8s) polled by `api/status` for UI banner: “Generating proxies — thumbnails and previews will appear when ready”.
 
 ### 5.1 `scan_media.sh` — merge-on-scan
 
@@ -92,6 +104,7 @@ type Manifest = {
 - **Fresh manifest:** If no manifest exists, creates `version:1, status:'proposed', date:today, files:[all], theory:[], jumps:[clustered]` from scratch.
 - `find original_files -type f -printf '%T@\t%p\n' | sort -n | cut -f2-` gives time-sorted files.
 - Writes manifest with `jq` via heredoc.
+- Writes `output/.status/scan.json` (`running` → `done` → `idle` after 5s) for `api/status`; UI polls `api/status` every 2s, shows “Scanning…” banner and header spinner when any task running, revalidates manifest when proxies finish.
 
 ### 5.2 `web/app/lib/sequences.ts` — date/time formatting helpers
 
@@ -116,6 +129,7 @@ type Manifest = {
 - Default manifest `output/manifest.json`, `PROCESSED_DIR=output/processed`.
 - If jump IDs given, process only those; else process all `jumps[] | select(.confirmed==true and .processed!=true)`.
 - For each `jump_id`, reads the jump label from the manifest, sanitizes it (alphanumeric + `.` + `-` + `_`), and creates `mkdir -p processed/sanitized_label` with subdirs `videos/` and `photos/`. Files are renamed to `sanitized_label_YYYYMMDD_HHMMSS.ext` (24h format, based on file mtime). If a video file has `cropStart`/`cropEnd` set and ffmpeg is available, the video is cropped to that range using `ffmpeg -ss -t -c copy`.
+- Writes `output/.status/execute.json` (`running` → `done` → `idle` after 5s) for `api/status` polling.
 
 ### 6.2 `api.manifest` execute
 
@@ -132,7 +146,7 @@ type Manifest = {
 
 ### 7.2 `watcher.sh`
 
-- Polls `SKYDOCK_OUTPUT_DIR` (default `/workspace/output`), finds camera root (not intermediate dirs), calls `process_media.sh` on detection.
+- Polls `SKYDOCK_OUTPUT_DIR` (default `/workspace/output`), finds camera root (not intermediate dirs), calls `process_media.sh` + `scan_media.sh` on detection, then queues `generate_proxies.sh` detached (`nice/ionice`).
 
 ### 7.3 `test_pipeline.sh`
 
@@ -142,7 +156,7 @@ type Manifest = {
 
 ### 8.1 Routes (`app/routes.ts`)
 
-- `index` → `routes/home.tsx`, `review` → `routes/review.tsx`, `jump/:date/:jumpDir` → `routes/jump.tsx`, `api/file`, `api/library`, `api/jump`, `api/open`, `api/simulate`, `api/scan`, `api/manifest`.
+- `index` → `routes/home.tsx`, `review` → `routes/review.tsx`, `jump/:date/:jumpDir` → `routes/jump.tsx`, `api/file`, `api/library`, `api/jump`, `api/open`, `api/simulate`, `api/scan`, `api/manifest`, `api/status`.
 
 ### 8.2 Types (`app/lib/types.ts`)
 
@@ -155,7 +169,7 @@ type Manifest = {
 
 ### 8.4 `fileId.server.ts`
 
-- `computeFileId(filePath)` SHA-256 of head+tail+size, hex 16; `ensureManifestFileIds` adds `id` to every file in `manifest.files`, `theory`, and `jumps[].files` if missing or file exists, deduplicates via `idOwners` map.
+- `computeFileId(filePath)` SHA-256 of head+tail+size, hex 16; `ensureManifestFileIds` adds `id` to every file in `manifest.files`, `theory`, and `jumps[].files` if missing or file exists, deduplicates via `idOwners` map, and backfills `thumbPath`/`proxyPath` (`output/.cache/thumbs/{id}.jpg`, `output/.cache/proxies/{id}.mp4`).
 
 ### 8.5 `api.simulate.ts`
 
@@ -165,11 +179,16 @@ type Manifest = {
 
 ### 8.6 `api.scan.ts`
 
-- Only runs `scan_media.sh` (with `SKYDOCK_OUTPUT_DIR`) and `ensureManifestFileIds`; resets manifest from existing `original_files`.
+- Only runs `scan_media.sh` (with `SKYDOCK_OUTPUT_DIR`) and `ensureManifestFileIds`, then spawns `generate_proxies.sh` detached; resets manifest from existing `original_files`.
 
 ### 8.7 `api.file.ts`
 
-- `loader` with `?path=`: `path.resolve`, `fs.existsSync`, `fs.createReadStream` with `Range` support (`206` + `Content-Range`), MIME via extension. Uses `streamResponse` helper with `ReadableStream` and proper cleanup on `cancel()`.
+- `loader` with `?path=`: `path.resolve`, `fs.existsSync`, `fs.createReadStream` with `Range` support (`206` + `Content-Range`), MIME via extension. Uses `streamResponse` helper with `ReadableStream` and proper cleanup on `cancel()`. Adds `Access-Control-Allow-Origin: *` for thumb canvas.
+
+### 8.71 `api.status.ts` + `lib/status.server.ts`
+
+- `status.server.ts` reads `output/.status/{proxies,scan,execute,process}.json` (written atomically via `*.tmp` + `mv`). `TaskStatus {state: idle|running|done|error, message, total, done, startedAt, updatedAt}`. Running is considered stale after 120s without update.
+- `api/status` `loader` returns `{ok:true, status: SystemStatus}` polled by review UI every 2s.
 
 ### 8.8 `api.manifest.ts` — handlers (all arrow functions, `ok`/`fail` helpers)
 
@@ -299,7 +318,7 @@ Card border color: amber if selected for comparison, blue if processed, gray oth
 ### 9.14 Preview View
 
 - Opens as a right-side panel when a file's preview button is clicked.
-- Shows the file (video player or image).
+- Shows the file (video player or image). Videos use `proxyPath` (`480p` audible proxy) if present with fallback to original on error; thumbnails for grid use `thumbPath` (`320px` jpg) via `VideoGridThumb` with lazy intersection observer.
 - **Prev/Next** buttons or arrow keys navigate between files.
 - **Escape** or the close button closes the preview.
 - **Video cropping**: A timeline below the video with draggable handles to select start/end frames. Click "Start here" / "End here" to set crop points at the current playback position (video pauses). Click "Apply" to save crop range to manifest.json and close the preview. At processing, ffmpeg crops the video to the selected range.
@@ -310,6 +329,11 @@ Card border color: amber if selected for comparison, blue if processed, gray oth
 - Displays date, jump count, and file count. Shows processed count.
 - **Select All** button selects all jumps that are not yet processed.
 - **+ Add Jump** button creates a new empty jump.
+
+### 9.16 System Status (background scripts)
+
+- Review UI polls `api/status` every 2s (`status.server.ts` reads `output/.status/*.json`). `generate_proxies.sh`/`scan_media.sh`/`execute_media.sh`/`process_media.sh` write `running` → `done` → `idle` atomically.
+- Header shows `Working…` pulsing pill + `background tasks running` when any task running; banners below header per task: `Generating proxies (done/total)`, `Scanning`, `Copying from cameras`, `Processing jumps` (spinning) and `done` summary for 5-8s. Explains why grid thumbs or 480p previews may still be pending (fallback to original used until proxy ready). Revalidates manifest when proxies finish.
 
 ## 10. Dependencies & Tooling
 

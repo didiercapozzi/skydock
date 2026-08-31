@@ -8,7 +8,9 @@ const manifestFileSchema = z.object({
   id: z.string().nullable().optional(),
   originalMtime: z.number().nullable().optional(),
   cropStart: z.number().nullable().optional(),
-  cropEnd: z.number().nullable().optional()
+  cropEnd: z.number().nullable().optional(),
+  thumbPath: z.string().nullable().optional(),
+  proxyPath: z.string().nullable().optional()
 })
 
 const manifestJumpSchema = z.object({

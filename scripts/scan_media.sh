@@ -12,6 +12,17 @@ if [[ ! -d "${ORIGINAL_DIR}" ]]; then
 fi
 
 mkdir -p "${OUTPUT_DIR}" "${TMPDIR_SCAN}"
+STATUS_DIR="${OUTPUT_DIR}/.status"
+mkdir -p "${STATUS_DIR}"
+write_scan_status() {
+    local state="$1"
+    local msg="$2"
+    local ts
+    ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")
+    printf '{"state":"%s","message":"%s","updatedAt":"%s","startedAt":"%s"}' "${state}" "${msg}" "${ts}" "${ts}" > "${STATUS_DIR}/scan.json.tmp" 2>/dev/null && mv -f "${STATUS_DIR}/scan.json.tmp" "${STATUS_DIR}/scan.json" 2>/dev/null || true
+}
+trap 'write_scan_status "idle" "Scan interrupted" 2>/dev/null || true' INT TERM
+write_scan_status "running" "Scanning original_files" || true
 
 HAS_EXIFTOOL=false
 if command -v exiftool &>/dev/null; then
@@ -123,6 +134,8 @@ DISK_COUNT=$(jq 'length' "${FILES_JSON}" 2>/dev/null)
 
 if [[ "${DISK_COUNT}" -eq 0 ]]; then
     echo "[Scan] No files found in original_files."
+    write_scan_status "done" "No files found" || true
+    ( sleep 5; printf '{"state":"idle","message":"Idle","updatedAt":"%s"}' "$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")" > "${STATUS_DIR}/scan.json.tmp" 2>/dev/null && mv -f "${STATUS_DIR}/scan.json.tmp" "${STATUS_DIR}/scan.json" 2>/dev/null || true ) > /dev/null 2>&1 & disown 2>/dev/null || true
     rm -rf "${TMPDIR_SCAN}"
     exit 0
 fi
@@ -169,7 +182,14 @@ if [[ ! -f "${MANIFEST}" ]]; then
     FINAL_JUMPS=$(jq '.jumps | length' "${MANIFEST}" 2>/dev/null)
     echo "[Scan] Found ${DISK_COUNT} file(s) in ${FINAL_JUMPS} jump(s)."
     echo "[Scan] Manifest: ${MANIFEST}"
+    write_scan_status "done" "Found ${DISK_COUNT} files in ${FINAL_JUMPS} jumps" || true
+    ( sleep 5; printf '{"state":"idle","message":"Idle","updatedAt":"%s"}' "$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")" > "${STATUS_DIR}/scan.json.tmp" 2>/dev/null && mv -f "${STATUS_DIR}/scan.json.tmp" "${STATUS_DIR}/scan.json" 2>/dev/null || true ) > /dev/null 2>&1 & disown 2>/dev/null || true
     rm -rf "${TMPDIR_SCAN}"
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ -x "${SCRIPT_DIR}/generate_proxies.sh" ]]; then
+        SKYDOCK_OUTPUT_DIR="${OUTPUT_DIR}" "${SCRIPT_DIR}/generate_proxies.sh" > /dev/null 2>&1 &
+        echo "[Scan] Proxy generation queued in background"
+    fi
     exit 0
 fi
 
@@ -284,6 +304,8 @@ CHANGED=$(jq -r '.changed' "${TMPDIR_SCAN}/result.json")
 if [[ "${CHANGED}" == "false" ]]; then
     EXISTING=$(jq -r '.existingCount' "${TMPDIR_SCAN}/result.json")
     echo "[Scan] No changes. ${EXISTING} file(s) in manifest."
+    write_scan_status "done" "No changes, ${EXISTING} files" || true
+    ( sleep 5; printf '{"state":"idle","message":"Idle","updatedAt":"%s"}' "$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")" > "${STATUS_DIR}/scan.json.tmp" 2>/dev/null && mv -f "${STATUS_DIR}/scan.json.tmp" "${STATUS_DIR}/scan.json" 2>/dev/null || true ) > /dev/null 2>&1 & disown 2>/dev/null || true
     rm -rf "${TMPDIR_SCAN}"
     exit 0
 fi
@@ -300,5 +322,12 @@ FINAL_COUNT=$(jq '.files | length' "${MANIFEST}" 2>/dev/null)
 FINAL_JUMPS=$(jq '.jumps | length' "${MANIFEST}" 2>/dev/null)
 echo "[Scan] Manifest: ${FINAL_COUNT} file(s) in ${FINAL_JUMPS} jump(s)."
 echo "[Scan] Manifest: ${MANIFEST}"
+write_scan_status "done" "Merged ${FINAL_COUNT} files in ${FINAL_JUMPS} jumps" || true
+( sleep 5; printf '{"state":"idle","message":"Idle","updatedAt":"%s"}' "$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")" > "${STATUS_DIR}/scan.json.tmp" 2>/dev/null && mv -f "${STATUS_DIR}/scan.json.tmp" "${STATUS_DIR}/scan.json" 2>/dev/null || true ) > /dev/null 2>&1 & disown 2>/dev/null || true
 
 rm -rf "${TMPDIR_SCAN}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -x "${SCRIPT_DIR}/generate_proxies.sh" ]]; then
+    SKYDOCK_OUTPUT_DIR="${OUTPUT_DIR}" "${SCRIPT_DIR}/generate_proxies.sh" > /dev/null 2>&1 &
+    echo "[Scan] Proxy generation queued in background"
+fi

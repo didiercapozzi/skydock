@@ -32,10 +32,16 @@ if $TEST_MODE; then
     if $RUN_ONCE; then
         "${SCRIPT_DIR}/process_media.sh" "${CAM_DIRS[@]}" || true
         "${SCRIPT_DIR}/scan_media.sh" || true
+        if [[ -x "${SCRIPT_DIR}/generate_proxies.sh" ]]; then
+            "${SCRIPT_DIR}/generate_proxies.sh" || true
+        fi
     else
         while true; do
             "${SCRIPT_DIR}/process_media.sh" "${CAM_DIRS[@]}" || true
             "${SCRIPT_DIR}/scan_media.sh" || true
+            if [[ -x "${SCRIPT_DIR}/generate_proxies.sh" ]]; then
+                "${SCRIPT_DIR}/generate_proxies.sh" > /dev/null 2>&1 & disown 2>/dev/null || true
+            fi
             sleep 8
         done
     fi
@@ -123,6 +129,9 @@ while true; do
     if [[ ${#FOUND_CAMERAS[@]} -gt 0 ]]; then
         "${SCRIPT_DIR}/process_media.sh" "${FOUND_CAMERAS[@]}" || true
         "${SCRIPT_DIR}/scan_media.sh" || true
+        if [[ -x "${SCRIPT_DIR}/generate_proxies.sh" ]]; then
+            "${SCRIPT_DIR}/generate_proxies.sh" > /dev/null 2>&1 & disown 2>/dev/null || true
+        fi
     fi
 
     sleep 8

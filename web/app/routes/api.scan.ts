@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process'
+import { execSync, spawn } from 'node:child_process'
 import * as fs from 'node:fs'
 import path from 'node:path'
 import { getOutputDirPath } from '../lib/scanner.server'
@@ -34,6 +34,15 @@ const action = async () => {
   }
 
   await ensureManifestFileIds(manifestPath)
+  const proxyScript = path.join(SCRIPTS_DIR, 'generate_proxies.sh')
+  if (fs.existsSync(proxyScript)) {
+    const child = spawn(proxyScript, [], {
+      env: { ...process.env, SKYDOCK_OUTPUT_DIR: outputDir },
+      detached: true,
+      stdio: 'ignore'
+    })
+    child.unref()
+  }
 
   return { ok: true }
 }

@@ -10,5 +10,6 @@ export default [
   route('api/open', 'routes/api.open.ts'),
   route('api/simulate', 'routes/api.simulate.ts'),
   route('api/scan', 'routes/api.scan.ts'),
-  route('api/manifest', 'routes/api.manifest.ts')
+  route('api/manifest', 'routes/api.manifest.ts'),
+  route('api/status', 'routes/api.status.ts')
 ] satisfies RouteConfig

@@ -78,6 +78,17 @@ get_capture_date() {
 }
 
 mkdir -p "${ORIGINAL_DIR}"
+STATUS_DIR="${OUTPUT_DIR}/.status"
+mkdir -p "${STATUS_DIR}"
+write_process_status() {
+    local state="$1"
+    local msg="$2"
+    local ts
+    ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")
+    printf '{"state":"%s","message":"%s","updatedAt":"%s","startedAt":"%s"}' "${state}" "${msg}" "${ts}" "${ts}" > "${STATUS_DIR}/process.json.tmp" 2>/dev/null && mv -f "${STATUS_DIR}/process.json.tmp" "${STATUS_DIR}/process.json" 2>/dev/null || true
+}
+trap 'write_process_status "idle" "Process interrupted" 2>/dev/null || true' INT TERM
+write_process_status "running" "Copying from cameras" 2>/dev/null || true
 
 file_matches_existing() {
     local src="$1"
@@ -124,3 +135,5 @@ for cam_dir in "${CAMERA_DIRS[@]}"; do
 done
 
 echo "[Done] Copied: ${total_copied}, Skipped (existing): ${total_skipped}"
+write_process_status "done" "Copied ${total_copied}, skipped ${total_skipped}" 2>/dev/null || true
+( sleep 5; printf '{"state":"idle","message":"Idle","updatedAt":"%s"}' "$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date +"%Y-%m-%dT%H:%M:%SZ")" > "${STATUS_DIR}/process.json.tmp" 2>/dev/null && mv -f "${STATUS_DIR}/process.json.tmp" "${STATUS_DIR}/process.json" 2>/dev/null || true ) > /dev/null 2>&1 & disown 2>/dev/null || true

@@ -7,6 +7,7 @@ import { ensureManifestFileIds } from '../lib/fileId.server'
 import { formatDayHeader, formatSequenceDate, formatSequenceTime } from '../lib/sequences'
 import { manifestSchema } from '../lib/types'
 import type { Manifest, ManifestFile, ManifestJump } from '../lib/types'
+import type { SystemStatus } from '../lib/status.server'
 import type { Route } from './+types/review'
 
 const loader = async () => {
@@ -78,10 +79,11 @@ type PreviewState = {
 
 const isVideoFile = (filename: string) => /\.(mp4|mov|avi|mkv)$/i.test(filename)
 
-const VideoGridThumb = ({ filePath }: { filePath: string }) => {
+const VideoGridThumb = ({ file }: { file: ManifestFile }) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(false)
   const [hasError, setHasError] = useState(false)
+  const [thumbError, setThumbError] = useState(false)
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
@@ -97,18 +99,27 @@ const VideoGridThumb = ({ filePath }: { filePath: string }) => {
     io.observe(el)
     return () => io.disconnect()
   }, [])
+  const useThumb = !!file.thumbPath && !thumbError
   return (
     <div
       ref={containerRef}
       className='w-full h-full bg-black'>
       {visible ? (
-        hasError ? (
+        useThumb ? (
+          <img
+            src={`/api/file?path=${encodeURIComponent(file.thumbPath!)}`}
+            alt={file.filename}
+            className='w-full h-full object-cover bg-black'
+            loading='lazy'
+            onError={() => setThumbError(true)}
+          />
+        ) : hasError ? (
           <div className='w-full h-full flex items-center justify-center bg-gray-800 text-white text-[10px]'>
             ▶ Video
           </div>
         ) : (
           <video
-            src={`/api/file?path=${encodeURIComponent(filePath)}`}
+            src={`/api/file?path=${encodeURIComponent(file.path)}`}
             muted
             preload='metadata'
             playsInline
@@ -141,14 +152,18 @@ const MediaPreview = ({
   videoRef?: React.RefObject<HTMLVideoElement | null>
   onDurationLoaded?: (duration: number) => void
 }) => {
-  const src = `/api/file?path=${encodeURIComponent(file.path)}`
+  const proxySrc = file.proxyPath ? `/api/file?path=${encodeURIComponent(file.proxyPath)}` : null
+  const originalSrc = `/api/file?path=${encodeURIComponent(file.path)}`
+  const [useProxy, setUseProxy] = useState(() => !!proxySrc)
+  const src = useProxy && proxySrc ? proxySrc : originalSrc
   const [videoError, setVideoError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(() => isVideoFile(file.filename))
   const [retryKey, setRetryKey] = useState(0)
   useEffect(() => {
     setVideoError(null)
     setIsLoading(isVideoFile(file.filename))
-  }, [file.path, file.filename, retryKey])
+    setUseProxy(!!proxySrc)
+  }, [file.path, file.filename, retryKey, proxySrc])
   useEffect(() => {
     if (!isVideoFile(file.filename) || !isLoading) return
     const t = window.setTimeout(() => {
@@ -159,6 +174,7 @@ const MediaPreview = ({
     return () => window.clearTimeout(t)
   }, [file.filename, isLoading, retryKey])
   const displaySrc = retryKey ? `${src}&retry=${retryKey}` : src
+  const fallbackSrc = proxySrc && useProxy ? originalSrc : null
   return isVideoFile(file.filename) ? (
     <div
       className='relative max-w-full'
@@ -166,7 +182,7 @@ const MediaPreview = ({
       {isLoading && !videoError && (
         <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 rounded text-white text-xs p-4'>
           <div className='w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin' />
-          <span>Loading video…</span>
+          <span>Loading video… {useProxy && proxySrc ? '(proxy 480p)' : ''}</span>
           <span className='text-[10px] text-white/60 text-center max-w-[280px]'>
             Large files (3 GB+) with moov at end need to fetch tail via Range — can take 5-10 s. If
             stuck, use Open.
@@ -201,11 +217,24 @@ const MediaPreview = ({
               className='text-xs px-3 py-1.5 rounded border border-white/20 hover:bg-white/10'>
               Retry
             </button>
+            {fallbackSrc && (
+              <button
+                type='button'
+                onClick={() => {
+                  setUseProxy(false)
+                  setVideoError(null)
+                  setIsLoading(true)
+                  setRetryKey((k) => k + 1)
+                }}
+                className='text-xs px-3 py-1.5 rounded border border-white/20 hover:bg-white/10'>
+                Try original
+              </button>
+            )}
           </div>
         </div>
       ) : (
         <video
-          key={`${file.path}-${retryKey}`}
+          key={`${file.path}-${retryKey}-${useProxy ? 'proxy' : 'orig'}`}
           ref={videoRef}
           src={displaySrc}
           controls
@@ -225,14 +254,26 @@ const MediaPreview = ({
           }}
           onCanPlay={() => setIsLoading(false)}
           onError={() => {
+            if (useProxy && proxySrc) {
+              setUseProxy(false)
+              setIsLoading(true)
+              setRetryKey((k) => k + 1)
+              return
+            }
             setIsLoading(false)
             setVideoError(
               'Browser cannot decode this file. Try Open in native player or re-encode with faststart.'
             )
           }}
-          onStalled={() =>
+          onStalled={() => {
+            if (useProxy && proxySrc) {
+              setUseProxy(false)
+              setIsLoading(true)
+              setRetryKey((k) => k + 1)
+              return
+            }
             setVideoError('Stalled — Range request failed or file moved. Retry or Open.')
-          }
+          }}
         />
       )}
     </div>
@@ -1253,7 +1294,7 @@ const JumpCard = ({
                           containIntrinsicSize: '84px 84px'
                         }}>
                         {isVideo ? (
-                          <VideoGridThumb filePath={file.path} />
+                          <VideoGridThumb file={file} />
                         ) : (
                           <img
                             src={`/api/file?path=${encodeURIComponent(file.path)}`}
@@ -2029,6 +2070,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   const [compareIds, setCompareIds] = useState<string[]>([])
   const [showCompare, setShowCompare] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
+  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
   const dragDataRef = useRef<{ filePaths: string[]; sourceJumpId: string } | null>(null)
   const trayDragRef = useRef<{
     filePaths: string[]
@@ -2039,7 +2081,33 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
     if (manifestFetcher.data || scanFetcher.data) revalidate()
   }, [manifestFetcher.data, scanFetcher.data, revalidate])
 
-  const scanning = scanFetcher.state !== 'idle'
+  useEffect(() => {
+    let cancelled = false
+    const prevProxiesRunning = { current: false }
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch('/api/status')
+        const data = (await res.json()) as { ok: boolean; status: SystemStatus }
+        if (cancelled || !data.ok) return
+        const wasRunning = prevProxiesRunning.current
+        const nowRunning = data.status.proxies.state === 'running'
+        if (wasRunning && !nowRunning) revalidate()
+        prevProxiesRunning.current = nowRunning
+        setSystemStatus(data.status)
+      } catch {}
+    }
+    fetchStatus()
+    const id = setInterval(fetchStatus, 2000)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+    }
+  }, [revalidate])
+
+  const scanning = scanFetcher.state !== 'idle' || systemStatus?.scan.state === 'running'
+  const isProxiesRunning = systemStatus?.proxies.state === 'running'
+  const isExecuteRunning = systemStatus?.execute.state === 'running'
+  const isProcessRunning = systemStatus?.process.state === 'running'
 
   const manifestSubmit = useCallback(
     (body: Record<string, string | number | boolean | string[]>) => {
@@ -2383,18 +2451,35 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   const processedCount = manifest.jumps.filter((j) => j.processed).length
   const totalFiles = manifest.jumps.reduce((s, j) => s + j.files.length, 0)
 
+  const anySystemRunning =
+    isProxiesRunning ||
+    isExecuteRunning ||
+    isProcessRunning ||
+    systemStatus?.scan.state === 'running'
+
   return (
     <div className='min-h-screen bg-gray-50 dark:bg-gray-900'>
       <div className='max-w-7xl mx-auto px-6 py-6'>
         <div className='flex items-center justify-between mb-6'>
           <div>
-            <h1 className='text-3xl font-bold'>Review Proposed Jumps</h1>
+            <div className='flex items-center gap-3'>
+              <h1 className='text-3xl font-bold'>Review Proposed Jumps</h1>
+              {anySystemRunning && (
+                <span className='inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200 border border-amber-200 dark:border-amber-700'>
+                  <span className='w-2 h-2 rounded-full bg-amber-500 animate-pulse' />
+                  Working…
+                </span>
+              )}
+            </div>
             <p className='text-gray-500 mt-1'>
               {manifest.date} — {manifest.jumps.length} jumps, {totalFiles} files
               {processedCount > 0 && (
                 <span className='ml-2 text-blue-600'>• {processedCount} processed</span>
               )}
               {hasCalibration && <span className='ml-2 text-amber-600'>• dates shifted</span>}
+              {anySystemRunning && (
+                <span className='ml-2 text-amber-600'>• background tasks running</span>
+              )}
             </p>
           </div>
           <div className='flex items-center gap-3'>
@@ -2404,7 +2489,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
               <button
                 type='submit'
                 disabled={scanning}
-                className='px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg'>
+                className='px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg disabled:opacity-50'>
                 {scanning ? 'Scanning...' : 'Scan'}
               </button>
             </scanFetcher.Form>
@@ -2415,6 +2500,87 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
             </Link>
           </div>
         </div>
+        {systemStatus && (
+          <div className='space-y-2 mb-4'>
+            {systemStatus.proxies.state === 'running' && (
+              <div className='flex items-center gap-3 px-4 py-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-sm text-amber-800 dark:text-amber-200'>
+                <span className='w-4 h-4 border-2 border-amber-300 border-t-amber-600 rounded-full animate-spin shrink-0' />
+                <div className='flex-1 min-w-0'>
+                  <span className='font-medium'>Generating proxies</span>
+                  <span className='ml-2 text-amber-700 dark:text-amber-300'>
+                    {systemStatus.proxies.total != null && systemStatus.proxies.done != null
+                      ? `${systemStatus.proxies.done}/${systemStatus.proxies.total} videos`
+                      : 'thumbnails and 480p proxies'}
+                    {' — '}
+                    {systemStatus.proxies.message ||
+                      'thumbnails and previews will appear when ready'}
+                  </span>
+                  <span className='ml-2 text-xs text-amber-600 dark:text-amber-400'>
+                    · grid uses thumbPath when ready, preview falls back to original
+                  </span>
+                </div>
+                <span className='text-xs px-2 py-1 rounded bg-amber-100 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-700'>
+                  Proxy
+                </span>
+              </div>
+            )}
+            {systemStatus.scan.state === 'running' && (
+              <div className='flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 text-sm text-blue-800 dark:text-blue-200'>
+                <span className='w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin shrink-0' />
+                <div className='flex-1'>
+                  <span className='font-medium'>Scanning</span>
+                  <span className='ml-2'>
+                    {systemStatus.scan.message || 'reading original_files and reclustering jumps…'}
+                  </span>
+                </div>
+                <span className='text-xs text-blue-600 dark:text-blue-300'>
+                  Jumps may reshuffle when done
+                </span>
+              </div>
+            )}
+            {systemStatus.process.state === 'running' && (
+              <div className='flex items-center gap-3 px-4 py-3 rounded-lg bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-700 text-sm text-sky-800 dark:text-sky-200'>
+                <span className='w-4 h-4 border-2 border-sky-300 border-t-sky-600 rounded-full animate-spin shrink-0' />
+                <div className='flex-1'>
+                  <span className='font-medium'>Copying from cameras</span>
+                  <span className='ml-2'>
+                    {systemStatus.process.message || 'copying to original_files…'}
+                  </span>
+                </div>
+              </div>
+            )}
+            {systemStatus.execute.state === 'running' && (
+              <div className='flex items-center gap-3 px-4 py-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 text-sm text-green-800 dark:text-green-200'>
+                <span className='w-4 h-4 border-2 border-green-300 border-t-green-600 rounded-full animate-spin shrink-0' />
+                <div className='flex-1'>
+                  <span className='font-medium'>Processing jumps</span>
+                  <span className='ml-2'>
+                    {systemStatus.execute.message || 'copying to processed/ with crops…'}
+                  </span>
+                </div>
+              </div>
+            )}
+            {(systemStatus.proxies.state === 'done' ||
+              systemStatus.scan.state === 'done' ||
+              systemStatus.execute.state === 'done' ||
+              systemStatus.process.state === 'done') && (
+              <div className='flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400'>
+                <span className='w-2 h-2 rounded-full bg-green-500' />
+                {[
+                  systemStatus.proxies.state === 'done' &&
+                    `Proxies: ${systemStatus.proxies.message}`,
+                  systemStatus.scan.state === 'done' && `Scan: ${systemStatus.scan.message}`,
+                  systemStatus.execute.state === 'done' &&
+                    `Process: ${systemStatus.execute.message}`,
+                  systemStatus.process.state === 'done' && `Copy: ${systemStatus.process.message}`
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+                <span className='ml-auto text-[11px] text-gray-400'>idle in 5s</span>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className='flex items-center gap-3 mb-4'>
           <button

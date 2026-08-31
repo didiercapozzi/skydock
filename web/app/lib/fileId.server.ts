@@ -67,6 +67,10 @@ export const ensureManifestFileIds = async (manifestPath: string): Promise<void>
         delete (file as unknown as Record<string, unknown>).cropStart
       if ((file as unknown as { cropEnd: unknown }).cropEnd === null)
         delete (file as unknown as Record<string, unknown>).cropEnd
+      if ((file as unknown as { thumbPath: unknown }).thumbPath === null)
+        delete (file as unknown as Record<string, unknown>).thumbPath
+      if ((file as unknown as { proxyPath: unknown }).proxyPath === null)
+        delete (file as unknown as Record<string, unknown>).proxyPath
     }
     if (normalized) {
       fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2))
@@ -97,6 +101,23 @@ export const ensureManifestFileIds = async (manifestPath: string): Promise<void>
     }
     idOwners.set(file.id, file.path)
     changed = true
+  }
+
+  const outputDir = manifestPath.replace(/\/manifest\.json$/, '')
+  const thumbDir = `${outputDir}/.cache/thumbs`
+  const proxyDir = `${outputDir}/.cache/proxies`
+  for (const file of entries) {
+    if (!file.id) continue
+    const expectedThumb = `${thumbDir}/${file.id}.jpg`
+    const expectedProxy = `${proxyDir}/${file.id}.mp4`
+    if (file.thumbPath !== expectedThumb) {
+      file.thumbPath = expectedThumb
+      changed = true
+    }
+    if (file.proxyPath !== expectedProxy) {
+      file.proxyPath = expectedProxy
+      changed = true
+    }
   }
 
   if (!changed) return
