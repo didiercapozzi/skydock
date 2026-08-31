@@ -588,6 +588,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
               onClear={() => setSelection({})}
               onRemove={(gid, fp) => handleSelect(gid, fp, true, false)}
               onDragStart={handleTrayDragStart}
+              isProxyGenerating={isProxiesRunning}
             />
           )}
           <div className='flex-1 min-w-0'>
@@ -617,6 +618,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                       selected={!!selection['unassigned']?.[file.path]}
                       isSelectMode={isSelectMode}
                       isInMultipleJumps={multiJumpFiles.has(file.path)}
+                      isProxyGenerating={isProxiesRunning}
                       onSelect={handleSelect}
                       onDragStart={() => {}}
                       onPreview={() => handlePreview(unassignedFiles, idx, 'Unassigned')}
@@ -635,6 +637,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                   isSelectMode={isSelectMode}
                   compareIds={compareIds}
                   multiJumpFiles={multiJumpFiles}
+                  isProxyGenerating={isProxiesRunning}
                   viewMode={viewMode}
                   onViewModeChange={setViewMode}
                   onSelect={handleSelect}
@@ -710,6 +713,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
             compareIds={compareIds}
             onCompareIdsChange={setCompareIds}
             onClose={() => setShowCompare(false)}
+            isProxyGenerating={isProxiesRunning}
             onMerge={(targetId, sourceId) => {
               handleMerge(targetId, sourceId)
               setShowCompare(false)

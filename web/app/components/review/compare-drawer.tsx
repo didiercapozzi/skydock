@@ -12,6 +12,7 @@ type CompareDrawerProps = {
   onCompareIdsChange: (ids: string[]) => void
   onClose: () => void
   onMerge: (targetId: string, sourceId: string) => void
+  isProxyGenerating?: boolean
 }
 
 const CompareDrawer = ({
@@ -20,7 +21,8 @@ const CompareDrawer = ({
   compareIds,
   onCompareIdsChange,
   onClose,
-  onMerge
+  onMerge,
+  isProxyGenerating
 }: CompareDrawerProps) => {
   const [leftIdx, setLeftIdx] = useState<number | null>(null)
   const [rightIdx, setRightIdx] = useState<number | null>(null)
@@ -131,7 +133,10 @@ const CompareDrawer = ({
                       onClick={() => setIdx(idx)}
                       className={`flex items-center gap-2 px-2 py-1 text-xs rounded cursor-pointer ${selectedIdx === idx ? 'bg-blue-100 dark:bg-blue-900/40 ring-1 ring-blue-300' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
                       <span className='font-mono truncate flex-1'>{file.filename}</span>
-                      <ProxyBadge file={file} />
+                      <ProxyBadge
+                        file={file}
+                        isGenerating={isProxyGenerating}
+                      />
                       <span className='text-gray-400 tabular-nums whitespace-nowrap'>
                         {formatTime(file.mtime)}
                       </span>

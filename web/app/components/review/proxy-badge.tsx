@@ -4,36 +4,56 @@ import { isVideoFile } from './utils'
 type ProxyBadgeProps = {
   file: ManifestFile
   variant?: 'inline' | 'overlay'
+  isGenerating?: boolean
 }
 
-const ProxyBadge = ({ file, variant = 'inline' }: ProxyBadgeProps) => {
+const ProxyBadge = ({ file, variant = 'inline', isGenerating = false }: ProxyBadgeProps) => {
   if (!isVideoFile(file.filename)) return null
   const hasProxy = !!file.proxyPath
-  if (variant === 'overlay') {
-    return hasProxy ? (
+  if (hasProxy) {
+    return variant === 'overlay' ? (
       <div
         className='absolute bottom-6 left-1 text-[7px] font-medium bg-green-600 text-white rounded px-1 py-0.5 leading-none shadow-sm'
-        title='Proxy ready (480p)'>
+        title='Proxy ready (480p) — preview will use proxy'>
         480p
       </div>
     ) : (
-      <div
-        className='absolute bottom-6 left-1 text-[7px] font-medium bg-amber-500 text-white rounded px-1 py-0.5 leading-none shadow-sm'
-        title='Proxy pending — generating'>
-        no proxy
-      </div>
+      <span
+        className='shrink-0 inline-flex items-center gap-0.5 text-[9px] font-medium px-1 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800'
+        title='Proxy ready (480p) — preview will use proxy'>
+        <span className='w-1 h-1 rounded-full bg-green-600 dark:bg-green-400' />
+        480p
+      </span>
     )
   }
-  return hasProxy ? (
-    <span
-      className='shrink-0 text-[9px] font-medium px-1 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800'
-      title='Proxy ready (480p)'>
-      480p
-    </span>
+  if (isGenerating) {
+    return variant === 'overlay' ? (
+      <div
+        className='absolute bottom-6 left-1 inline-flex items-center gap-0.5 text-[7px] font-medium bg-amber-500 text-white rounded px-1 py-0.5 leading-none shadow-sm'
+        title='Proxy generating — preview uses original'>
+        <span className='w-2 h-2 border border-white/40 border-t-white rounded-full animate-spin' />
+        gen
+      </div>
+    ) : (
+      <span
+        className='shrink-0 inline-flex items-center gap-1 text-[9px] font-medium px-1 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+        title='Proxy generating — preview uses original'>
+        <span className='w-2 h-2 border border-amber-400 border-t-amber-700 dark:border-amber-600 dark:border-t-amber-300 rounded-full animate-spin' />
+        gen
+      </span>
+    )
+  }
+  return variant === 'overlay' ? (
+    <div
+      className='absolute bottom-6 left-1 text-[7px] font-medium bg-red-600 text-white rounded px-1 py-0.5 leading-none shadow-sm'
+      title='Proxy failed or not generated — preview uses original'>
+      no proxy
+    </div>
   ) : (
     <span
-      className='shrink-0 text-[9px] font-medium px-1 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-      title='Proxy pending — generating'>
+      className='shrink-0 inline-flex items-center gap-0.5 text-[9px] font-medium px-1 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 border border-red-200 dark:border-red-800'
+      title='Proxy failed or not generated — preview uses original'>
+      <span className='w-1 h-1 rounded-full bg-red-600 dark:bg-red-400' />
       no proxy
     </span>
   )

@@ -8,6 +8,7 @@ type StagingTrayProps = {
   onClear: () => void
   onRemove: (groupId: string, filePath: string) => void
   onDragStart: (e: React.DragEvent, filePaths: string[]) => void
+  isProxyGenerating?: boolean
 }
 
 const StagingTray = ({
@@ -16,7 +17,8 @@ const StagingTray = ({
   setCopyMode,
   onClear,
   onRemove,
-  onDragStart
+  onDragStart,
+  isProxyGenerating
 }: StagingTrayProps) => {
   const handleTrayDragStart = (e: React.DragEvent) => {
     const paths = selectedFiles.map((s) => s.file.path)
@@ -68,7 +70,10 @@ const StagingTray = ({
               key={`${groupId}-${file.path}`}
               className='flex items-center gap-2 px-2 py-1 text-xs bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-800'>
               <span className='font-mono truncate flex-1'>{file.filename}</span>
-              <ProxyBadge file={file} />
+              <ProxyBadge
+                file={file}
+                isGenerating={isProxyGenerating}
+              />
               <button
                 type='button'
                 onClick={() => onRemove(groupId, file.path)}

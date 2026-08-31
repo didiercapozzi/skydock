@@ -110,15 +110,27 @@ export const ensureManifestFileIds = async (manifestPath: string): Promise<void>
   for (const file of entries) {
     if (!file.id) continue
     const isVideo = isVideoPath(file.path)
-    const expectedThumb = isVideo ? `${thumbDir}/${file.id}.jpg` : undefined
-    const expectedProxy = isVideo ? `${proxyDir}/${file.id}.mp4` : undefined
     if (isVideo) {
-      if (file.thumbPath !== expectedThumb) {
-        file.thumbPath = expectedThumb
+      const expectedThumb = `${thumbDir}/${file.id}.jpg`
+      const expectedProxy = `${proxyDir}/${file.id}.mp4`
+      const thumbExists = fs.existsSync(expectedThumb)
+      const proxyExists = fs.existsSync(expectedProxy)
+      if (thumbExists) {
+        if (file.thumbPath !== expectedThumb) {
+          file.thumbPath = expectedThumb
+          changed = true
+        }
+      } else if (file.thumbPath !== undefined) {
+        delete (file as unknown as Record<string, unknown>).thumbPath
         changed = true
       }
-      if (file.proxyPath !== expectedProxy) {
-        file.proxyPath = expectedProxy
+      if (proxyExists) {
+        if (file.proxyPath !== expectedProxy) {
+          file.proxyPath = expectedProxy
+          changed = true
+        }
+      } else if (file.proxyPath !== undefined) {
+        delete (file as unknown as Record<string, unknown>).proxyPath
         changed = true
       }
     } else {

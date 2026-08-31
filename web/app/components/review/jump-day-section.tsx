@@ -9,6 +9,7 @@ type JumpDaySectionProps = {
   isSelectMode: boolean
   compareIds: string[]
   multiJumpFiles: Set<string>
+  isProxyGenerating?: boolean
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDragStart: (e: React.DragEvent, filePaths: string[], sourceId: string) => void
   onDrop: (e: React.DragEvent, targetJumpId: string) => void
@@ -32,6 +33,7 @@ const JumpDaySection = ({
   isSelectMode,
   compareIds,
   multiJumpFiles,
+  isProxyGenerating,
   onSelect,
   onDragStart,
   onDrop,
@@ -78,6 +80,7 @@ const JumpDaySection = ({
             isSelectMode={isSelectMode}
             isCompareSelected={compareIds.includes(jump.id)}
             multiJumpFiles={multiJumpFiles}
+            isProxyGenerating={isProxyGenerating}
             viewMode={viewMode}
             onViewModeChange={onViewModeChange}
             onSelect={onSelect}
