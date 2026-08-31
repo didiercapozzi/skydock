@@ -452,8 +452,8 @@ const PreviewDrawer = ({
               videoRef={videoRef}
               duration={videoDuration}
               filePath={file.path}
-              initialCropStart={file.cropStart}
-              initialCropEnd={file.cropEnd}
+              initialCropStart={file.cropStart ?? undefined}
+              initialCropEnd={file.cropEnd ?? undefined}
               onApplied={onClose}
             />
           )}
@@ -608,7 +608,7 @@ const FileRow = ({
           {file.filename}
         </span>
       )}
-      {((file.cropStart !== undefined && file.cropStart > 0) || file.cropEnd !== undefined) && (
+      {((file.cropStart != null && file.cropStart > 0) || file.cropEnd != null) && (
         <span
           className='shrink-0 w-1.5 h-1.5 rounded-full bg-orange-400'
           title='Cropped'
@@ -681,6 +681,8 @@ const JumpCard = ({
   isSelectMode,
   isCompareSelected,
   multiJumpFiles,
+  viewMode,
+  onViewModeChange,
   onSelect,
   onDrop,
   onDragStart,
@@ -700,6 +702,8 @@ const JumpCard = ({
   isSelectMode: boolean
   isCompareSelected?: boolean
   multiJumpFiles: Set<string>
+  viewMode: 'list' | 'grid'
+  onViewModeChange: (v: 'list' | 'grid') => void
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDrop: (e: React.DragEvent, targetJumpId: string) => void
   onDragStart: (e: React.DragEvent, filePaths: string[], sourceJumpId: string) => void
@@ -723,25 +727,22 @@ const JumpCard = ({
   const [isDragOver, setIsDragOver] = useState(false)
   const [hoveredFile, setHoveredFile] = useState<string | null>(null)
   const [dropPosition, setDropPosition] = useState<'above' | 'below' | null>(null)
-  const [groupedByType, setGroupedByType] = useState(false)
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
-  const [searchQuery, setSearchQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<'all' | 'videos' | 'photos'>('all')
   const dragDataRef = useRef<{ filePaths: string[]; sourceJumpId: string } | null>(null)
   const selectedCount = jump.files.filter((f) => selection[f.path]).length
   const isProcessed = !!jump.processed
   const bounds = getJumpBounds(jump)
+  const videoCount = useMemo(
+    () => jump.files.filter((f) => isVideoFile(f.filename)).length,
+    [jump.files]
+  )
+  const photoCount = jump.files.length - videoCount
 
   const filteredFiles = useMemo(() => {
-    let files = jump.files
-    if (typeFilter === 'videos') files = files.filter((f) => isVideoFile(f.filename))
-    else if (typeFilter === 'photos') files = files.filter((f) => !isVideoFile(f.filename))
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase()
-      files = files.filter((f) => f.filename.toLowerCase().includes(q))
-    }
-    return files
-  }, [jump.files, typeFilter, searchQuery])
+    if (typeFilter === 'videos') return jump.files.filter((f) => isVideoFile(f.filename))
+    if (typeFilter === 'photos') return jump.files.filter((f) => !isVideoFile(f.filename))
+    return jump.files
+  }, [jump.files, typeFilter])
 
   const handleRowDragOver = (e: React.DragEvent, filePath: string) => {
     if (isProcessed || !onReorder) return
@@ -936,38 +937,91 @@ const JumpCard = ({
                 : ''}
             </span>
           )}
-          <div className='ml-auto flex items-center gap-2'>
-            <span className='text-xs text-gray-400'>{jump.files.length} files</span>
-            {jump.files.length > 0 && (
+          <div className='ml-auto flex items-center gap-1.5'>
+            <button
+              type='button'
+              disabled={videoCount === 0}
+              onClick={(e) => {
+                e.stopPropagation()
+                if (!expanded) setExpanded(true)
+                setTypeFilter((v) => (v === 'videos' ? 'all' : 'videos'))
+              }}
+              className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border ${
+                typeFilter === 'videos'
+                  ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
+                  : videoCount === 0
+                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-600 border-gray-200 dark:border-gray-700 cursor-not-allowed opacity-50'
+                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+              title={
+                videoCount === 0
+                  ? 'No videos'
+                  : typeFilter === 'videos'
+                    ? 'Show all files'
+                    : 'Filter videos'
+              }>
+              <span className='text-[9px]'>▶</span> {videoCount}
+            </button>
+            <button
+              type='button'
+              disabled={photoCount === 0}
+              onClick={(e) => {
+                e.stopPropagation()
+                if (!expanded) setExpanded(true)
+                setTypeFilter((v) => (v === 'photos' ? 'all' : 'photos'))
+              }}
+              className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border ${
+                typeFilter === 'photos'
+                  ? 'bg-gray-900 text-white border-gray-900 dark:bg-white dark:text-gray-900 dark:border-white'
+                  : photoCount === 0
+                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-600 border-gray-200 dark:border-gray-700 cursor-not-allowed opacity-50'
+                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+              title={
+                photoCount === 0
+                  ? 'No photos'
+                  : typeFilter === 'photos'
+                    ? 'Show all files'
+                    : 'Filter photos'
+              }>
+              <span className='text-[9px]'>▣</span> {photoCount}
+            </button>
+            {expanded && jump.files.length > 0 && (
               <button
                 type='button'
                 onClick={(e) => {
                   e.stopPropagation()
-                  setGroupedByType(!groupedByType)
+                  onViewModeChange(viewMode === 'list' ? 'grid' : 'list')
                 }}
-                className={`text-[10px] px-1.5 py-0.5 rounded ${
-                  groupedByType
-                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                    : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
-                } hover:opacity-80`}
-                title={groupedByType ? 'Show all files together' : 'Group by videos/photos'}>
-                {groupedByType ? 'Grouped' : 'Group'}
-              </button>
-            )}
-            {jump.files.length > 0 && (
-              <button
-                type='button'
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setViewMode(viewMode === 'list' ? 'grid' : 'list')
-                }}
-                className={`text-[10px] px-1.5 py-0.5 rounded ${
-                  viewMode === 'grid'
-                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                    : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
-                } hover:opacity-80`}
-                title={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}>
-                {viewMode === 'grid' ? 'Grid' : 'List'}
+                className='w-6 h-6 flex items-center justify-center rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700'
+                title={viewMode === 'grid' ? 'List view' : 'Grid view'}>
+                {viewMode === 'grid' ? (
+                  <svg
+                    className='w-3.5 h-3.5'
+                    fill='none'
+                    viewBox='0 0 24 24'
+                    strokeWidth='1.5'
+                    stroke='currentColor'>
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      d='M3.75 6h16.5M3.75 12h16.5M3.75 18h16.5'
+                    />
+                  </svg>
+                ) : (
+                  <svg
+                    className='w-3.5 h-3.5'
+                    fill='none'
+                    viewBox='0 0 24 24'
+                    strokeWidth='1.5'
+                    stroke='currentColor'>
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      d='M3.75 6A2.25 2.25 0 0 0 3.75 10.5h4.5A2.25 2.25 0 0 0 10.5 6v0A2.25 2.25 0 0 0 8.25 3.75h-4.5A2.25 2.25 0 0 0 3.75 6ZM13.5 6a2.25 2.25 0 0 1 2.25 2.25v4.5A2.25 2.25 0 0 1 13.5 15h-4.5A2.25 2.25 0 0 1 6.75 12.75v-4.5A2.25 2.25 0 0 1 9 6h4.5ZM13.5 15a2.25 2.25 0 0 1 2.25 2.25V19.5A2.25 2.25 0 0 1 13.5 21.75h-4.5A2.25 2.25 0 0 1 6.75 19.5v-2.25A2.25 2.25 0 0 1 9 15h4.5ZM19.5 6a2.25 2.25 0 0 1 2.25 2.25v4.5A2.25 2.25 0 0 1 19.5 15h-1.5A2.25 2.25 0 0 1 15.75 12.75v-4.5A2.25 2.25 0 0 1 18 6h1.5ZM19.5 15a2.25 2.25 0 0 1 2.25 2.25V19.5a2.25 2.25 0 0 1-2.25 2.25h-1.5a2.25 2.25 0 0 1-2.25-2.25v-2.25A2.25 2.25 0 0 1 18 15h1.5Z'
+                    />
+                  </svg>
+                )}
               </button>
             )}
             {isProcessed ? (
@@ -1029,296 +1083,132 @@ const JumpCard = ({
           <div className='border-t dark:border-gray-700 px-4 py-2 bg-gray-50/30 dark:bg-gray-800/30'>
             {jump.files.length === 0 ? (
               <p className='text-sm text-gray-400 italic py-2'>Drop files here</p>
-            ) : (
-              <>
-                <div className='flex items-center gap-2 mb-2'>
-                  <div className='relative flex-1'>
-                    <input
-                      type='text'
-                      placeholder='Search filename...'
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      className='w-full text-xs px-2 py-1 pr-6 border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-800 placeholder:text-gray-400'
-                    />
-                    {searchQuery && (
-                      <button
-                        type='button'
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setSearchQuery('')
+            ) : filteredFiles.length === 0 ? (
+              <p className='text-xs text-gray-400 italic py-2 text-center'>
+                No matching files • {jump.files.length} total
+              </p>
+            ) : viewMode === 'grid' ? (
+              <div className='max-h-80 overflow-y-auto pr-1'>
+                <div className='grid grid-cols-[repeat(auto-fill,minmax(84px,1fr))] gap-1.5'>
+                  {filteredFiles.map((file) => {
+                    const globalIdx = jump.files.indexOf(file)
+                    const isVideo = isVideoFile(file.filename)
+                    const selected = !!selection[file.path]
+                    return (
+                      <div
+                        key={file.path}
+                        draggable={!isProcessed}
+                        onDragStart={(e) => {
+                          if (isProcessed) return
+                          const sel = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
+                          const toDrag = sel.length > 0 && selection[file.path] ? sel : [file.path]
+                          dragDataRef.current = { filePaths: toDrag, sourceJumpId: jump.id }
+                          onDragStart(e, toDrag, jump.id)
                         }}
-                        className='absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 px-1'>
-                        ×
-                      </button>
-                    )}
-                  </div>
-                  <div className='flex gap-1 shrink-0'>
-                    {(['all', 'videos', 'photos'] as const).map((t) => (
-                      <button
-                        key={t}
-                        type='button'
                         onClick={(e) => {
-                          e.stopPropagation()
-                          setTypeFilter(t)
+                          const target = e.target as HTMLElement
+                          if (target.closest('input')) return
+                          if (e.ctrlKey || e.metaKey || e.shiftKey) {
+                            onSelect(jump.id, file.path, e.ctrlKey || e.metaKey, e.shiftKey)
+                          } else {
+                            onPreview(jump.files, globalIdx, jump.label)
+                          }
                         }}
-                        className={`text-[10px] px-1.5 py-0.5 rounded capitalize ${
-                          typeFilter === t
-                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                            : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
-                        } hover:opacity-80`}>
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {filteredFiles.length === 0 ? (
-                  <p className='text-xs text-gray-400 italic py-2 text-center'>
-                    No matching files
-                    {searchQuery || typeFilter !== 'all' ? ` • ${jump.files.length} total` : ''}
-                  </p>
-                ) : viewMode === 'grid' ? (
-                  <div className='max-h-80 overflow-y-auto pr-1'>
-                    <div className='grid grid-cols-[repeat(auto-fill,minmax(84px,1fr))] gap-1.5'>
-                      {filteredFiles.map((file) => {
-                        const globalIdx = jump.files.indexOf(file)
-                        const isVideo = isVideoFile(file.filename)
-                        const selected = !!selection[file.path]
-                        return (
-                          <div
-                            key={file.path}
-                            draggable={!isProcessed}
-                            onDragStart={(e) => {
-                              if (isProcessed) return
-                              const sel = jump.files
-                                .filter((f) => selection[f.path])
-                                .map((f) => f.path)
-                              const toDrag =
-                                sel.length > 0 && selection[file.path] ? sel : [file.path]
-                              dragDataRef.current = { filePaths: toDrag, sourceJumpId: jump.id }
-                              onDragStart(e, toDrag, jump.id)
-                            }}
-                            onClick={(e) => {
-                              const target = e.target as HTMLElement
-                              if (target.closest('input')) return
-                              if (e.ctrlKey || e.metaKey || e.shiftKey) {
-                                onSelect(jump.id, file.path, e.ctrlKey || e.metaKey, e.shiftKey)
-                              } else {
-                                onPreview(jump.files, globalIdx, jump.label)
-                              }
-                            }}
-                            className={`relative aspect-square bg-gray-100 dark:bg-gray-800 rounded overflow-hidden cursor-pointer group/thumb border ${
-                              selected
-                                ? 'ring-2 ring-blue-400 border-blue-300'
-                                : multiJumpFiles.has(file.path)
-                                  ? 'border-purple-300 dark:border-purple-600'
-                                  : 'border-gray-200 dark:border-gray-700'
-                            } hover:ring-2 hover:ring-blue-300`}
-                            style={{
-                              contentVisibility: 'auto',
-                              containIntrinsicSize: '84px 84px'
-                            }}>
-                            {isVideo ? (
-                              <video
-                                src={`/api/file?path=${encodeURIComponent(file.path)}`}
-                                className='w-full h-full object-cover'
-                                preload='metadata'
-                                muted
-                              />
-                            ) : (
-                              <img
-                                src={`/api/file?path=${encodeURIComponent(file.path)}`}
-                                alt={file.filename}
-                                className='w-full h-full object-cover'
-                                loading='lazy'
-                              />
-                            )}
-                            {isVideo && (
-                              <div className='absolute top-1 right-1 text-[8px] bg-black/60 text-white rounded px-1 py-0.5 leading-none'>
-                                ▶
-                              </div>
-                            )}
-                            {selected && (
-                              <div className='absolute top-1 left-1 w-3 h-3 bg-blue-600 rounded-sm flex items-center justify-center'>
-                                <svg
-                                  className='w-2 h-2 text-white'
-                                  viewBox='0 0 12 12'
-                                  fill='none'>
-                                  <path
-                                    d='M2 6l2 2 5-5'
-                                    stroke='currentColor'
-                                    strokeWidth='1.5'
-                                    strokeLinecap='round'
-                                    strokeLinejoin='round'
-                                  />
-                                </svg>
-                              </div>
-                            )}
-                            {(file.cropStart !== undefined && file.cropStart > 0) ||
-                            file.cropEnd !== undefined ? (
-                              <div className='absolute bottom-6 right-1 w-1.5 h-1.5 rounded-full bg-orange-400 border border-white' />
-                            ) : null}
-                            <div className='absolute bottom-0 inset-x-0 bg-black/60 text-white text-[8px] px-1 py-0.5 truncate leading-tight'>
-                              {file.filename}
-                            </div>
+                        className={`relative aspect-square bg-gray-100 dark:bg-gray-800 rounded overflow-hidden cursor-pointer group/thumb border ${
+                          selected
+                            ? 'ring-2 ring-blue-400 border-blue-300'
+                            : multiJumpFiles.has(file.path)
+                              ? 'border-purple-300 dark:border-purple-600'
+                              : 'border-gray-200 dark:border-gray-700'
+                        } hover:ring-2 hover:ring-blue-300`}
+                        style={{
+                          contentVisibility: 'auto',
+                          containIntrinsicSize: '84px 84px'
+                        }}>
+                        {isVideo ? (
+                          <video
+                            src={`/api/file?path=${encodeURIComponent(file.path)}`}
+                            className='w-full h-full object-cover'
+                            preload='metadata'
+                            muted
+                          />
+                        ) : (
+                          <img
+                            src={`/api/file?path=${encodeURIComponent(file.path)}`}
+                            alt={file.filename}
+                            className='w-full h-full object-cover'
+                            loading='lazy'
+                          />
+                        )}
+                        {isVideo && (
+                          <div className='absolute top-1 right-1 text-[8px] bg-black/60 text-white rounded px-1 py-0.5 leading-none'>
+                            ▶
                           </div>
-                        )
-                      })}
-                    </div>
-                    {filteredFiles.length !== jump.files.length && (
-                      <p className='text-[10px] text-gray-400 text-center mt-1.5'>
-                        Showing {filteredFiles.length} of {jump.files.length} files
-                      </p>
-                    )}
-                  </div>
-                ) : groupedByType ? (
-                  <div className='max-h-80 overflow-y-auto space-y-3 pr-1'>
-                    {(() => {
-                      const videos = filteredFiles.filter((f) => isVideoFile(f.filename))
-                      const photos = filteredFiles.filter((f) => !isVideoFile(f.filename))
-                      const globalIdx = (file: ManifestFile) => jump.files.indexOf(file)
-                      return (
-                        <>
-                          {videos.length > 0 && (
-                            <div>
-                              <div className='text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1'>
-                                Videos ({videos.length})
-                              </div>
-                              <div className='space-y-0.5'>
-                                {videos.map((file) => (
-                                  <FileRow
-                                    key={file.path}
-                                    file={file}
-                                    groupId={jump.id}
-                                    selected={!!selection[file.path]}
-                                    isSelectMode={isSelectMode}
-                                    isInMultipleJumps={multiJumpFiles.has(file.path)}
-                                    dropPosition={hoveredFile === file.path ? dropPosition : null}
-                                    onSelect={onSelect}
-                                    onDragStart={(e, fp) => {
-                                      if (isProcessed) return
-                                      const sel = jump.files
-                                        .filter((f) => selection[f.path])
-                                        .map((f) => f.path)
-                                      const toDrag = sel.length > 0 && selection[fp] ? sel : [fp]
-                                      dragDataRef.current = {
-                                        filePaths: toDrag,
-                                        sourceJumpId: jump.id
-                                      }
-                                      onDragStart(e, toDrag, jump.id)
-                                    }}
-                                    onRowDragOver={isProcessed ? undefined : handleRowDragOver}
-                                    onRowDragLeave={handleRowDragLeave}
-                                    onPreview={() =>
-                                      onPreview(jump.files, globalIdx(file), jump.label)
-                                    }
-                                    onDelete={
-                                      !isProcessed
-                                        ? () => onDeleteFile?.(jump.id, file.path)
-                                        : undefined
-                                    }
-                                    onRename={
-                                      !isProcessed
-                                        ? (newName) => onRenameFile?.(file.path, newName)
-                                        : undefined
-                                    }
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {photos.length > 0 && (
-                            <div>
-                              <div className='text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1'>
-                                Photos ({photos.length})
-                              </div>
-                              <div className='space-y-0.5'>
-                                {photos.map((file) => (
-                                  <FileRow
-                                    key={file.path}
-                                    file={file}
-                                    groupId={jump.id}
-                                    selected={!!selection[file.path]}
-                                    isSelectMode={isSelectMode}
-                                    isInMultipleJumps={multiJumpFiles.has(file.path)}
-                                    dropPosition={hoveredFile === file.path ? dropPosition : null}
-                                    onSelect={onSelect}
-                                    onDragStart={(e, fp) => {
-                                      if (isProcessed) return
-                                      const sel = jump.files
-                                        .filter((f) => selection[f.path])
-                                        .map((f) => f.path)
-                                      const toDrag = sel.length > 0 && selection[fp] ? sel : [fp]
-                                      dragDataRef.current = {
-                                        filePaths: toDrag,
-                                        sourceJumpId: jump.id
-                                      }
-                                      onDragStart(e, toDrag, jump.id)
-                                    }}
-                                    onRowDragOver={isProcessed ? undefined : handleRowDragOver}
-                                    onRowDragLeave={handleRowDragLeave}
-                                    onPreview={() =>
-                                      onPreview(jump.files, globalIdx(file), jump.label)
-                                    }
-                                    onDelete={
-                                      !isProcessed
-                                        ? () => onDeleteFile?.(jump.id, file.path)
-                                        : undefined
-                                    }
-                                    onRename={
-                                      !isProcessed
-                                        ? (newName) => onRenameFile?.(file.path, newName)
-                                        : undefined
-                                    }
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </>
-                      )
-                    })()}
-                  </div>
-                ) : (
-                  <div className='max-h-80 overflow-y-auto space-y-0.5 pr-1'>
-                    {filteredFiles.map((file) => {
-                      const idx = jump.files.indexOf(file)
-                      return (
-                        <FileRow
-                          key={file.path}
-                          file={file}
-                          groupId={jump.id}
-                          selected={!!selection[file.path]}
-                          isSelectMode={isSelectMode}
-                          isInMultipleJumps={multiJumpFiles.has(file.path)}
-                          dropPosition={hoveredFile === file.path ? dropPosition : null}
-                          onSelect={onSelect}
-                          onDragStart={(e, fp) => {
-                            if (isProcessed) return
-                            const sel = jump.files
-                              .filter((f) => selection[f.path])
-                              .map((f) => f.path)
-                            const toDrag = sel.length > 0 && selection[fp] ? sel : [fp]
-                            dragDataRef.current = { filePaths: toDrag, sourceJumpId: jump.id }
-                            onDragStart(e, toDrag, jump.id)
-                          }}
-                          onRowDragOver={isProcessed ? undefined : handleRowDragOver}
-                          onRowDragLeave={handleRowDragLeave}
-                          onPreview={() => onPreview(jump.files, idx, jump.label)}
-                          onDelete={
-                            !isProcessed ? () => onDeleteFile?.(jump.id, file.path) : undefined
-                          }
-                          onRename={
-                            !isProcessed
-                              ? (newName) => onRenameFile?.(file.path, newName)
-                              : undefined
-                          }
-                        />
-                      )
-                    })}
-                  </div>
+                        )}
+                        {selected && (
+                          <div className='absolute top-1 left-1 w-3 h-3 bg-blue-600 rounded-sm flex items-center justify-center'>
+                            <svg
+                              className='w-2 h-2 text-white'
+                              viewBox='0 0 12 12'
+                              fill='none'>
+                              <path
+                                d='M2 6l2 2 5-5'
+                                stroke='currentColor'
+                                strokeWidth='1.5'
+                                strokeLinecap='round'
+                                strokeLinejoin='round'
+                              />
+                            </svg>
+                          </div>
+                        )}
+                        {(file.cropStart != null && file.cropStart > 0) || file.cropEnd != null ? (
+                          <div className='absolute bottom-6 right-1 w-1.5 h-1.5 rounded-full bg-orange-400 border border-white' />
+                        ) : null}
+                        <div className='absolute bottom-0 inset-x-0 bg-black/60 text-white text-[8px] px-1 py-0.5 truncate leading-tight'>
+                          {file.filename}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                {filteredFiles.length !== jump.files.length && (
+                  <p className='text-[10px] text-gray-400 text-center mt-1.5'>
+                    Showing {filteredFiles.length} of {jump.files.length} files
+                  </p>
                 )}
-              </>
+              </div>
+            ) : (
+              <div className='max-h-80 overflow-y-auto space-y-0.5 pr-1'>
+                {filteredFiles.map((file) => {
+                  const idx = jump.files.indexOf(file)
+                  return (
+                    <FileRow
+                      key={file.path}
+                      file={file}
+                      groupId={jump.id}
+                      selected={!!selection[file.path]}
+                      isSelectMode={isSelectMode}
+                      isInMultipleJumps={multiJumpFiles.has(file.path)}
+                      dropPosition={hoveredFile === file.path ? dropPosition : null}
+                      onSelect={onSelect}
+                      onDragStart={(e, fp) => {
+                        if (isProcessed) return
+                        const sel = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
+                        const toDrag = sel.length > 0 && selection[fp] ? sel : [fp]
+                        dragDataRef.current = { filePaths: toDrag, sourceJumpId: jump.id }
+                        onDragStart(e, toDrag, jump.id)
+                      }}
+                      onRowDragOver={isProcessed ? undefined : handleRowDragOver}
+                      onRowDragLeave={handleRowDragLeave}
+                      onPreview={() => onPreview(jump.files, idx, jump.label)}
+                      onDelete={!isProcessed ? () => onDeleteFile?.(jump.id, file.path) : undefined}
+                      onRename={
+                        !isProcessed ? (newName) => onRenameFile?.(file.path, newName) : undefined
+                      }
+                    />
+                  )
+                })}
+              </div>
             )}
           </div>
         )}
@@ -1747,7 +1637,9 @@ const JumpDaySection = ({
   onUnprocess,
   onDeleteFile,
   onRenameFile,
-  onShiftJump
+  onShiftJump,
+  viewMode,
+  onViewModeChange
 }: {
   day: JumpDayGroup
   selection: SelectionMap
@@ -1767,6 +1659,8 @@ const JumpDaySection = ({
   onDeleteFile: (jumpId: string, filePath: string) => void
   onRenameFile: (filePath: string, newFilename: string) => void
   onShiftJump: (jumpId: string, offsetSeconds: number, paths: string[]) => void
+  viewMode: 'list' | 'grid'
+  onViewModeChange: (v: 'list' | 'grid') => void
 }) => {
   const fileCount = day.jumps.reduce((s, j) => s + j.files.length, 0)
   const dayFiles = day.jumps.flatMap((j) => j.files)
@@ -1774,12 +1668,12 @@ const JumpDaySection = ({
   const dayStart = dayTimes.length ? Math.min(...dayTimes) : 0
   const dayEnd = dayTimes.length ? Math.max(...dayTimes) : 0
   return (
-    <div className='border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800/50 overflow-hidden mb-4'>
-      <div className='flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700'>
-        <span className='text-sm font-semibold text-gray-700 dark:text-gray-300'>
+    <div className='mb-6'>
+      <div className='flex items-baseline gap-2 px-1 py-2'>
+        <span className='text-sm font-semibold text-gray-800 dark:text-gray-200'>
           {dayStart > 0 ? formatDayHeader(dayStart) : day.date}
         </span>
-        <span className='text-xs text-gray-500'>
+        <span className='text-xs text-gray-400'>
           {fileCount} files • {day.jumps.length} jumps
           {dayFiles.length > 0 && (
             <>
@@ -1789,7 +1683,7 @@ const JumpDaySection = ({
           )}
         </span>
       </div>
-      <div className='p-3 space-y-3'>
+      <div className='space-y-3'>
         {day.jumps.map((jump) => (
           <JumpCard
             key={jump.id}
@@ -1798,6 +1692,8 @@ const JumpDaySection = ({
             isSelectMode={isSelectMode}
             isCompareSelected={compareIds.includes(jump.id)}
             multiJumpFiles={multiJumpFiles}
+            viewMode={viewMode}
+            onViewModeChange={onViewModeChange}
             onSelect={onSelect}
             onDrop={onDrop}
             onDragStart={onDragStart}
@@ -2010,6 +1906,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   const [copyMode, setCopyMode] = useState(false)
   const [compareIds, setCompareIds] = useState<string[]>([])
   const [showCompare, setShowCompare] = useState(false)
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
   const dragDataRef = useRef<{ filePaths: string[]; sourceJumpId: string } | null>(null)
   const trayDragRef = useRef<{
     filePaths: string[]
@@ -2476,6 +2373,8 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                   isSelectMode={isSelectMode}
                   compareIds={compareIds}
                   multiJumpFiles={multiJumpFiles}
+                  viewMode={viewMode}
+                  onViewModeChange={setViewMode}
                   onSelect={handleSelect}
                   onDragStart={handleDragStart}
                   onDrop={handleDrop}

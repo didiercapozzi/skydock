@@ -5,10 +5,10 @@ const manifestFileSchema = z.object({
   size: z.number(),
   mtime: z.number(),
   filename: z.string(),
-  id: z.string().optional(),
-  originalMtime: z.number().optional(),
-  cropStart: z.number().optional(),
-  cropEnd: z.number().optional()
+  id: z.string().nullable().optional(),
+  originalMtime: z.number().nullable().optional(),
+  cropStart: z.number().nullable().optional(),
+  cropEnd: z.number().nullable().optional()
 })
 
 const manifestJumpSchema = z.object({
@@ -16,7 +16,7 @@ const manifestJumpSchema = z.object({
   label: z.string(),
   confirmed: z.boolean(),
   files: z.array(manifestFileSchema),
-  processed: z.boolean().optional()
+  processed: z.boolean().nullable().optional()
 })
 
 const manifestStatusSchema = z.enum(['empty', 'proposed', 'confirmed', 'executed'])
@@ -30,7 +30,7 @@ const manifestSchema = z.object({
   theory: z.array(manifestFileSchema),
   files: z.array(manifestFileSchema),
   jumps: z.array(manifestJumpSchema),
-  cameraClockOffsetSeconds: z.number().optional()
+  cameraClockOffsetSeconds: z.number().nullable().optional()
 })
 
 type ManifestFile = z.infer<typeof manifestFileSchema>

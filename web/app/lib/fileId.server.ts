@@ -38,7 +38,39 @@ export const ensureManifestFileIds = async (manifestPath: string): Promise<void>
 
   let manifest: Manifest
   try {
-    manifest = manifestSchema.parse(JSON.parse(fs.readFileSync(manifestPath, 'utf-8')))
+    const raw = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'))
+    manifest = manifestSchema.parse(raw)
+    let normalized = false
+    for (const jump of manifest.jumps) {
+      if ((jump as unknown as { processed: unknown }).processed === null) {
+        delete (jump as unknown as Record<string, unknown>).processed
+        normalized = true
+      }
+    }
+    if (
+      (manifest as unknown as { cameraClockOffsetSeconds: unknown }).cameraClockOffsetSeconds ===
+      null
+    ) {
+      delete (manifest as unknown as Record<string, unknown>).cameraClockOffsetSeconds
+      normalized = true
+    }
+    for (const file of [
+      ...manifest.files,
+      ...manifest.theory,
+      ...manifest.jumps.flatMap((j) => j.files)
+    ]) {
+      if ((file as unknown as { id: unknown }).id === null)
+        delete (file as unknown as Record<string, unknown>).id
+      if ((file as unknown as { originalMtime: unknown }).originalMtime === null)
+        delete (file as unknown as Record<string, unknown>).originalMtime
+      if ((file as unknown as { cropStart: unknown }).cropStart === null)
+        delete (file as unknown as Record<string, unknown>).cropStart
+      if ((file as unknown as { cropEnd: unknown }).cropEnd === null)
+        delete (file as unknown as Record<string, unknown>).cropEnd
+    }
+    if (normalized) {
+      fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2))
+    }
   } catch {
     return
   }

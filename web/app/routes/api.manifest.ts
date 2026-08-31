@@ -340,7 +340,7 @@ const handleResetCalibration = (manifest: Manifest) => {
   if (isAllProcessed(manifest)) return fail('All jumps already processed')
   const allFiles = [...manifest.files, ...manifest.jumps.flatMap((j) => j.files)]
   for (const file of allFiles) {
-    if (file.originalMtime !== undefined) {
+    if (file.originalMtime != null) {
       file.mtime = file.originalMtime
       delete file.originalMtime
     }

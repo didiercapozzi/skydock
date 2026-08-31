@@ -245,15 +245,14 @@ Each jump is displayed as a card with:
 - An expand/collapse toggle
 - An editable label (e.g. "Jump 1")
 - Editable date and time
-- File count and time range on the right side
-- A "Group" button to toggle grouping files by type (videos/photos sections)
-- A "List/Grid" toggle to switch between list and thumbnail grid view (grid uses `content-visibility: auto` for 500+ files)
-- When expanded, a search bar to filter by filename and `All | Videos | Photos` type filter buttons; grid and list both respect the filters, showing "No matching files" when empty and "Showing N of M" count in grid
+- Time range on the right side
+- `Videos` and `Photos` filter pills in the header row (always visible, even when collapsed) showing counts, e.g. `▶ 12` / `▣ 11`; disabled/dimmed when 0, gray (colorless) when active (no blue); clicking expands the card and filters to that type (click again to show all) — this makes it instantly visible whether a jump contains videos, photos, or both
+- Single colorless icon toggle `List/Grid` (only visible when expanded) to switch between list and thumbnail grid view (grid uses `content-visibility: auto` for 500+ files); switching applies globally to all opened jumps
 - A "Remove" link when files are selected (moves selected files out of this jump)
 - A "Processed" badge with an "Undo" button if the jump has been processed
 - A delete button
 
-Card border color: amber if selected for comparison, blue if processed, gray otherwise. Highlights blue when a drag is hovering over it.
+Card border color: amber if selected for comparison, blue if processed, gray otherwise. Highlights blue when a drag is hovering over it. Filtered list/grid shows "No matching files" when empty.
 
 ### 9.8 Jump Selection for Comparison
 
@@ -265,7 +264,7 @@ Card border color: amber if selected for comparison, blue if processed, gray oth
 ### 9.9 Day Groups
 
 - Jumps are grouped by day based on the earliest file timestamp in each jump.
-- Each day group has a header showing the day name, month, and ordinal date (e.g. "Saturday March 14th"), total file count, number of jumps, and time range of all files in that day.
+- Each day group is a transparent container (no border/background) with a minimal header showing the day name, month, and ordinal date (e.g. "Saturday March 14th"), total file count, number of jumps, and time range — cards float on the page background for easier scanning.
 - The day date is not directly editable.
 - Below the header, all jumps for that day are listed as cards.
 
