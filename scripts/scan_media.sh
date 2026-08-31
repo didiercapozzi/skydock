@@ -193,8 +193,6 @@ if [[ ! -f "${MANIFEST}" ]]; then
     exit 0
 fi
 
-EXISTING_COUNT=$(jq '.files | length' "${MANIFEST}" 2>/dev/null || echo 0)
-
 # Merge: diff and recluster in a single jq pass
 JUMP_GAP_SECONDS=1800
 

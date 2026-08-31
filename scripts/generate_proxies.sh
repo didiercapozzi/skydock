@@ -54,9 +54,9 @@ write_proxy_status() {
 update_processing_status() {
     if [[ ! -f "${TMP_PROCESSING:-}" ]]; then return; fi
     local total="${TOTAL_VIDEOS:-0}"
-    local done
-    done=$(ls "${PROXY_DIR}"/*.mp4 2>/dev/null | wc -l | tr -d ' ')
-    write_proxy_status "running" "Generating ${SCALE:-144}p proxies (${ENCODER} ${PRESET}) ${done}/${total}" "${total}" "${done}" 2>/dev/null || true
+    local done_count
+    done_count=$(ls "${PROXY_DIR}"/*.mp4 2>/dev/null | wc -l | tr -d ' ')
+    write_proxy_status "running" "Generating ${SCALE:-144}p proxies (${ENCODER} ${PRESET}) ${done_count}/${total}" "${total}" "${done_count}" 2>/dev/null || true
 }
 add_processing() {
     local fid="$1"
@@ -294,7 +294,7 @@ export -f generate_thumb generate_proxy add_processing remove_processing update_
 export THUMB_DIR PROXY_DIR LOG_DIR RUN_PREFIX FFMPEG_THREADS ENCODER PRESET SCALE CRF FPS PROXY_AUDIO TMP_PROCESSING TOTAL_VIDEOS STATUS_DIR
 existing_thumbs=0
 existing_proxies=0
-while IFS=$'\t' read -r vpath vid vmtime; do
+while IFS=$'\t' read -r vpath vid _; do
     if [[ -z "${vid}" ]]; then
         vid=$(echo -n "${vpath}" | sha256sum | cut -c1-16)
     fi
@@ -312,7 +312,7 @@ if command -v parallel &>/dev/null && [[ "${JOBS}" -gt 1 ]]; then
 else
     if [[ "${JOBS}" -gt 1 ]]; then
         active=0
-        while IFS=$'\t' read -r vpath vid vmtime; do
+        while IFS=$'\t' read -r vpath vid _; do
             generate_thumb "${vpath}" "${vid}" &
             active=$((active + 1))
             if [[ "${active}" -ge "${JOBS}" ]]; then
@@ -322,7 +322,7 @@ else
         done < "${TMP_LIST}"
         wait || true
     else
-        while IFS=$'\t' read -r vpath vid vmtime; do
+        while IFS=$'\t' read -r vpath vid _; do
             generate_thumb "${vpath}" "${vid}"
         done < "${TMP_LIST}"
     fi
@@ -337,7 +337,7 @@ while [[ "${attempt}" -le "${MAX_RETRIES}" ]]; do
     else
         if [[ "${JOBS}" -gt 1 ]]; then
             active=0
-            while IFS=$'\t' read -r vpath vid vmtime; do
+            while IFS=$'\t' read -r vpath vid _; do
                 fid_check="${vid}"
                 if [[ -z "${fid_check}" ]]; then
                     fid_check=$(echo -n "${vpath}" | sha256sum | cut -c1-16)
@@ -361,7 +361,7 @@ while [[ "${attempt}" -le "${MAX_RETRIES}" ]]; do
             wait || true
         else
             done_count=0
-            while IFS=$'\t' read -r vpath vid vmtime; do
+            while IFS=$'\t' read -r vpath vid _; do
                 fid_check="${vid}"
                 if [[ -z "${fid_check}" ]]; then
                     fid_check=$(echo -n "${vpath}" | sha256sum | cut -c1-16)
@@ -393,7 +393,7 @@ while [[ "${attempt}" -le "${MAX_RETRIES}" ]]; do
 done
 generated_thumbs=0
 generated_proxies=0
-while IFS=$'\t' read -r vpath vid vmtime; do
+while IFS=$'\t' read -r vpath vid _; do
     if [[ -z "${vid}" ]]; then
         vid=$(echo -n "${vpath}" | sha256sum | cut -c1-16)
     fi
