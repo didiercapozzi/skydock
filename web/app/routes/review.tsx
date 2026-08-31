@@ -4,12 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useFetcher, useRevalidator } from 'react-router'
 import { getOutputDirPath } from '../lib/scanner.server'
 import { ensureManifestFileIds } from '../lib/fileId.server'
-import {
-  formatDateForInput,
-  formatDayHeader,
-  formatSequenceDate,
-  formatSequenceTime
-} from '../lib/sequences'
+import { formatDayHeader, formatSequenceDate, formatSequenceTime } from '../lib/sequences'
 import { manifestSchema } from '../lib/types'
 import type { Manifest, ManifestFile, ManifestJump } from '../lib/types'
 import type { Route } from './+types/review'
@@ -85,7 +80,6 @@ const isVideoFile = (filename: string) => /\.(mp4|mov|avi|mkv)$/i.test(filename)
 
 const VideoGridThumb = ({ filePath }: { filePath: string }) => {
   const containerRef = useRef<HTMLDivElement>(null)
-  const videoRef = useRef<HTMLVideoElement>(null)
   const [visible, setVisible] = useState(false)
   const [hasError, setHasError] = useState(false)
   useEffect(() => {
@@ -103,24 +97,6 @@ const VideoGridThumb = ({ filePath }: { filePath: string }) => {
     io.observe(el)
     return () => io.disconnect()
   }, [])
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video || !visible) return
-    const onLoaded = () => {
-      if (video.duration > 1) {
-        try {
-          video.currentTime = 0.5
-        } catch {}
-      }
-    }
-    const onError = () => setHasError(true)
-    video.addEventListener('loadeddata', onLoaded)
-    video.addEventListener('error', onError)
-    return () => {
-      video.removeEventListener('loadeddata', onLoaded)
-      video.removeEventListener('error', onError)
-    }
-  }, [visible, filePath])
   return (
     <div
       ref={containerRef}
@@ -132,12 +108,18 @@ const VideoGridThumb = ({ filePath }: { filePath: string }) => {
           </div>
         ) : (
           <video
-            ref={videoRef}
-            src={`/api/file?path=${encodeURIComponent(filePath)}#t=0.5`}
+            src={`/api/file?path=${encodeURIComponent(filePath)}`}
             muted
             preload='metadata'
             playsInline
+            crossOrigin='anonymous'
             className='w-full h-full object-cover bg-black'
+            onLoadedMetadata={(e) => {
+              const v = e.currentTarget
+              try {
+                if (v.duration > 0.5) v.currentTime = 0.5
+              } catch {}
+            }}
             onError={() => setHasError(true)}
           />
         )

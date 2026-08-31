@@ -5,6 +5,7 @@ export default defineConfig({
   ignorePatterns: ['server', 'client', 'dist'],
   rules: {
     'eslint/no-unused-vars': 'error',
-    'react/refs': 'error'
+    'react/refs': 'error',
+    'react/set-state-in-effect': 'warn'
   }
 })

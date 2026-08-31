@@ -54,7 +54,9 @@ const streamResponse = (
 
   const headers: Record<string, string> = {
     'Content-Type': contentType,
-    'Accept-Ranges': 'bytes'
+    'Accept-Ranges': 'bytes',
+    'Access-Control-Allow-Origin': '*',
+    'Cache-Control': 'public, max-age=3600'
   }
 
   if (status === 206 && contentRange) {

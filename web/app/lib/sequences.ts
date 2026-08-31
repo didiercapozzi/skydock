@@ -1,5 +1,3 @@
-import type { ManifestFile } from './types'
-
 const MONTHS = [
   'January',
   'February',
