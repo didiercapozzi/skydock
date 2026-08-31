@@ -91,9 +91,9 @@ type Manifest = {
 
 ### 5.0 `generate_proxies.sh` — thumbnails + 480p proxies
 
-- Inputs: `output/manifest.json`, outputs `output/.cache/thumbs/{id}.jpg` + `output/.cache/proxies/{id}.mp4`.
-- For each video in manifest, generates `320px` thumb (`ffmpeg -ss 0.5 -vframes 1 -vf scale=320:-2 -q:v 3`) and `480p` proxy audible (`ffmpeg -vf scale=-2:480 -c:v libx264 -crf 28 -preset veryfast -c:a aac -b:a 64k -movflags +faststart`). Skips if cache newer than source mtime, prunes stale ids. Updates `manifest.json` `thumbPath`/`proxyPath` for all files/jumps. Throttling: `nice -n 10` + `ionice -c2 -n6` + parallel `nproc-1` (cap 8) via `xargs -P` or background `wait -n`. Tunable `SKYDOCK_PROXY_JOBS`, `SKYDOCK_PROXY_NICE`, `SKYDOCK_PROXY_IONICE_CLASS/LEVEL`. Queued async after `scan_media.sh` and `watcher.sh`, detached from `api/scan.ts`.
-- Writes `output/.status/proxies.json` (`running` with total/done, then `done` → `idle` after 8s) polled by `api/status` for UI banner: “Generating proxies — thumbnails and previews will appear when ready”.
+- Inputs: `output/manifest.json`, outputs `output/.cache/thumbs/{id}.jpg` + `output/.cache/proxies/{id}.mp4` + `output/.cache/logs/{id}.log` on failure.
+- For each video in manifest, generates `320px` thumb (`ffmpeg -ss 0.5 -vframes 1 -vf scale=320:-2 -q:v 3`) and `480p` proxy (`ffmpeg -vf scale=-2:480 -c:v libx264 -crf 28 -preset veryfast -movflags +faststart`). Audio handling: if source has no audio streams `ffprobe -select_streams a` → `0` then `-an` (silent proxy); else if codec is `aac` then `-c:a copy` else `-c:a aac -b:a 64k`. Skips if cache newer than source mtime, prunes stale ids (checks both `files` and `jumps[].files`). Updates `manifest.json` `thumbPath`/`proxyPath` only if cache file exists on disk (removes stale paths). Retries failed proxies up to `2` extra attempts before reporting. Throttling: `nice -n 10` + `ionice -c2 -n6` + parallel `nproc-1` (cap 8) via `xargs -P` or background `wait -n`. Tunable `SKYDOCK_PROXY_JOBS`, `SKYDOCK_PROXY_NICE`, `SKYDOCK_PROXY_IONICE_CLASS/LEVEL`. Queued async after `scan_media.sh` and `watcher.sh`, detached from `api/scan.ts`.
+- Writes `output/.status/proxies.json` (`running` with total/done, then `done` → `idle` after 8s or `error` with `total/done` and log dir if any proxy failed after retries) polled by `api/status` for UI banner: “Generating proxies — thumbnails and previews will appear when ready” or error banner.
 
 ### 5.1 `scan_media.sh` — merge-on-scan
 
