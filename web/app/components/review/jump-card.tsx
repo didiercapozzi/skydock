@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { formatSequenceTime } from '../../lib/sequences'
 import type { ManifestFile, ManifestJump } from '../../lib/types'
 import { FileRow } from './file-row'
+import { ProxyBadge } from './proxy-badge'
 import { VideoGridThumb } from './video-grid-thumb'
 import { getJumpBounds, isVideoFile } from './utils'
 
@@ -487,6 +488,12 @@ const JumpCard = ({
                               />
                             </svg>
                           </div>
+                        )}
+                        {isVideo && (
+                          <ProxyBadge
+                            file={file}
+                            variant='overlay'
+                          />
                         )}
                         {(file.cropStart != null && file.cropStart > 0) || file.cropEnd != null ? (
                           <div className='absolute bottom-6 right-1 w-1.5 h-1.5 rounded-full bg-orange-400 border border-white' />

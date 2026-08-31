@@ -1,4 +1,5 @@
 import type { ManifestFile } from '../../lib/types'
+import { ProxyBadge } from './proxy-badge'
 
 type StagingTrayProps = {
   selectedFiles: { groupId: string; file: ManifestFile }[]
@@ -67,6 +68,7 @@ const StagingTray = ({
               key={`${groupId}-${file.path}`}
               className='flex items-center gap-2 px-2 py-1 text-xs bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-800'>
               <span className='font-mono truncate flex-1'>{file.filename}</span>
+              <ProxyBadge file={file} />
               <button
                 type='button'
                 onClick={() => onRemove(groupId, file.path)}

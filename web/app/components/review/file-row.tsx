@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ManifestFile } from '../../lib/types'
+import { ProxyBadge } from './proxy-badge'
 import { formatSize, formatTime } from './utils'
 
 type FileRowProps = {
@@ -135,6 +136,7 @@ const FileRow = ({
           title='Cropped'
         />
       )}
+      <ProxyBadge file={file} />
       <span className='text-gray-400 dark:text-gray-500 text-xs whitespace-nowrap tabular-nums'>
         {formatTime(file.mtime)}
       </span>

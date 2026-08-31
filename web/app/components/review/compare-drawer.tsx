@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { formatSequenceDate, formatSequenceTime } from '../../lib/sequences'
 import type { ManifestJump } from '../../lib/types'
 import { MediaPreview } from './media-preview'
+import { ProxyBadge } from './proxy-badge'
 import { formatSize, formatTime, getJumpBounds, getJumpDate } from './utils'
 
 type CompareDrawerProps = {
@@ -130,6 +131,7 @@ const CompareDrawer = ({
                       onClick={() => setIdx(idx)}
                       className={`flex items-center gap-2 px-2 py-1 text-xs rounded cursor-pointer ${selectedIdx === idx ? 'bg-blue-100 dark:bg-blue-900/40 ring-1 ring-blue-300' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
                       <span className='font-mono truncate flex-1'>{file.filename}</span>
+                      <ProxyBadge file={file} />
                       <span className='text-gray-400 tabular-nums whitespace-nowrap'>
                         {formatTime(file.mtime)}
                       </span>
