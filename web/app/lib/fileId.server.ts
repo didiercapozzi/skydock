@@ -103,20 +103,33 @@ export const ensureManifestFileIds = async (manifestPath: string): Promise<void>
     changed = true
   }
 
+  const isVideoPath = (p: string): boolean => /\.(mp4|mov|avi|mkv)$/i.test(p)
   const outputDir = manifestPath.replace(/\/manifest\.json$/, '')
   const thumbDir = `${outputDir}/.cache/thumbs`
   const proxyDir = `${outputDir}/.cache/proxies`
   for (const file of entries) {
     if (!file.id) continue
-    const expectedThumb = `${thumbDir}/${file.id}.jpg`
-    const expectedProxy = `${proxyDir}/${file.id}.mp4`
-    if (file.thumbPath !== expectedThumb) {
-      file.thumbPath = expectedThumb
-      changed = true
-    }
-    if (file.proxyPath !== expectedProxy) {
-      file.proxyPath = expectedProxy
-      changed = true
+    const isVideo = isVideoPath(file.path)
+    const expectedThumb = isVideo ? `${thumbDir}/${file.id}.jpg` : undefined
+    const expectedProxy = isVideo ? `${proxyDir}/${file.id}.mp4` : undefined
+    if (isVideo) {
+      if (file.thumbPath !== expectedThumb) {
+        file.thumbPath = expectedThumb
+        changed = true
+      }
+      if (file.proxyPath !== expectedProxy) {
+        file.proxyPath = expectedProxy
+        changed = true
+      }
+    } else {
+      if (file.thumbPath !== undefined) {
+        delete (file as unknown as Record<string, unknown>).thumbPath
+        changed = true
+      }
+      if (file.proxyPath !== undefined) {
+        delete (file as unknown as Record<string, unknown>).proxyPath
+        changed = true
+      }
     }
   }
 
