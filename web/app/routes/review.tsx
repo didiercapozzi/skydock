@@ -83,6 +83,71 @@ type PreviewState = {
 
 const isVideoFile = (filename: string) => /\.(mp4|mov|avi|mkv)$/i.test(filename)
 
+const VideoGridThumb = ({ filePath }: { filePath: string }) => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [visible, setVisible] = useState(false)
+  const [hasError, setHasError] = useState(false)
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true)
+          io.disconnect()
+        }
+      },
+      { rootMargin: '300px' }
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !visible) return
+    const onLoaded = () => {
+      if (video.duration > 1) {
+        try {
+          video.currentTime = 0.5
+        } catch {}
+      }
+    }
+    const onError = () => setHasError(true)
+    video.addEventListener('loadeddata', onLoaded)
+    video.addEventListener('error', onError)
+    return () => {
+      video.removeEventListener('loadeddata', onLoaded)
+      video.removeEventListener('error', onError)
+    }
+  }, [visible, filePath])
+  return (
+    <div
+      ref={containerRef}
+      className='w-full h-full bg-black'>
+      {visible ? (
+        hasError ? (
+          <div className='w-full h-full flex items-center justify-center bg-gray-800 text-white text-[10px]'>
+            ▶ Video
+          </div>
+        ) : (
+          <video
+            ref={videoRef}
+            src={`/api/file?path=${encodeURIComponent(filePath)}#t=0.5`}
+            muted
+            preload='metadata'
+            playsInline
+            className='w-full h-full object-cover bg-black'
+            onError={() => setHasError(true)}
+          />
+        )
+      ) : (
+        <div className='w-full h-full bg-gray-200 dark:bg-gray-700 animate-pulse' />
+      )}
+    </div>
+  )
+}
+
 const MediaPreview = ({
   file,
   maxHeight = '60vh',
@@ -95,21 +160,100 @@ const MediaPreview = ({
   onDurationLoaded?: (duration: number) => void
 }) => {
   const src = `/api/file?path=${encodeURIComponent(file.path)}`
+  const [videoError, setVideoError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(() => isVideoFile(file.filename))
+  const [retryKey, setRetryKey] = useState(0)
+  useEffect(() => {
+    setVideoError(null)
+    setIsLoading(isVideoFile(file.filename))
+  }, [file.path, file.filename, retryKey])
+  useEffect(() => {
+    if (!isVideoFile(file.filename) || !isLoading) return
+    const t = window.setTimeout(() => {
+      setVideoError(
+        'Loading timeout — file may be very large (moov at end) or codec unsupported. Try Open.'
+      )
+    }, 8000)
+    return () => window.clearTimeout(t)
+  }, [file.filename, isLoading, retryKey])
+  const displaySrc = retryKey ? `${src}&retry=${retryKey}` : src
   return isVideoFile(file.filename) ? (
-    <video
-      key={file.path}
-      ref={videoRef}
-      src={src}
-      controls
-      autoPlay
-      muted
-      preload='metadata'
-      className='max-w-full rounded bg-black'
-      style={{ maxHeight }}
-      onLoadedMetadata={(e) => {
-        onDurationLoaded?.(e.currentTarget.duration)
-      }}
-    />
+    <div
+      className='relative max-w-full'
+      style={{ maxHeight }}>
+      {isLoading && !videoError && (
+        <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 rounded text-white text-xs p-4'>
+          <div className='w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin' />
+          <span>Loading video…</span>
+          <span className='text-[10px] text-white/60 text-center max-w-[280px]'>
+            Large files (3 GB+) with moov at end need to fetch tail via Range — can take 5-10 s. If
+            stuck, use Open.
+          </span>
+        </div>
+      )}
+      {videoError ? (
+        <div
+          className='flex flex-col items-center justify-center gap-3 bg-gray-900 text-white rounded p-6 text-center'
+          style={{ minHeight: 200, maxHeight }}>
+          <p className='text-sm font-medium'>Video failed to load</p>
+          <p className='text-xs text-white/70 max-w-[320px]'>{videoError}</p>
+          <p className='text-[11px] text-white/50'>
+            Codec: h264 High usually works; HEVC/h265 fails in Firefox/Chrome without hardware. 4 GB
+            files may exceed browser memory.
+          </p>
+          <div className='flex gap-2'>
+            <a
+              href={src}
+              target='_blank'
+              rel='noreferrer'
+              className='text-xs px-3 py-1.5 rounded bg-white text-gray-900 hover:bg-gray-100'>
+              Open / Download
+            </a>
+            <button
+              type='button'
+              onClick={() => {
+                setVideoError(null)
+                setIsLoading(true)
+                setRetryKey((k) => k + 1)
+              }}
+              className='text-xs px-3 py-1.5 rounded border border-white/20 hover:bg-white/10'>
+              Retry
+            </button>
+          </div>
+        </div>
+      ) : (
+        <video
+          key={`${file.path}-${retryKey}`}
+          ref={videoRef}
+          src={displaySrc}
+          controls
+          autoPlay
+          muted
+          playsInline
+          preload='metadata'
+          className='max-w-full rounded bg-black'
+          style={{ maxHeight }}
+          onLoadedData={() => setIsLoading(false)}
+          onLoadedMetadata={(e) => {
+            setIsLoading(false)
+            onDurationLoaded?.(e.currentTarget.duration)
+            const v = e.currentTarget
+            const p = v.play()
+            if (p && typeof p.catch === 'function') p.catch(() => {})
+          }}
+          onCanPlay={() => setIsLoading(false)}
+          onError={() => {
+            setIsLoading(false)
+            setVideoError(
+              'Browser cannot decode this file. Try Open in native player or re-encode with faststart.'
+            )
+          }}
+          onStalled={() =>
+            setVideoError('Stalled — Range request failed or file moved. Retry or Open.')
+          }
+        />
+      )}
+    </div>
   ) : (
     <img
       key={file.path}
@@ -167,7 +311,7 @@ const VideoCropper = ({
     }
     rafRef.current = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafRef.current)
-  }, [videoRef])
+  }, [videoRef, filePath, duration])
 
   const visibleDuration = duration / zoomLevel
   const viewStart = Math.max(
@@ -442,6 +586,7 @@ const PreviewDrawer = ({
         <div className='flex-1 flex flex-col items-center justify-center p-4 gap-3 overflow-auto'>
           <div className='w-full flex items-center justify-center'>
             <MediaPreview
+              key={file.path}
               file={file}
               videoRef={isVideo ? videoRef : undefined}
               onDurationLoaded={isVideo ? setVideoDuration : undefined}
@@ -1126,12 +1271,7 @@ const JumpCard = ({
                           containIntrinsicSize: '84px 84px'
                         }}>
                         {isVideo ? (
-                          <video
-                            src={`/api/file?path=${encodeURIComponent(file.path)}`}
-                            className='w-full h-full object-cover'
-                            preload='metadata'
-                            muted
-                          />
+                          <VideoGridThumb filePath={file.path} />
                         ) : (
                           <img
                             src={`/api/file?path=${encodeURIComponent(file.path)}`}

@@ -86,15 +86,47 @@ const loader = async ({ request }: Route.LoaderArgs) => {
     return new Response('Not a file', { status: 400 })
   }
 
-  const range = request.headers.get('range')
   const contentType = getMimeType(resolved)
 
-  if (range) {
-    const parts = range.replace(/bytes=/, '').split('-')
-    const start = parseInt(parts[0], 10)
-    const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1
-    const chunkSize = end - start + 1
+  if (request.method === 'HEAD') {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': String(stat.size),
+        'Accept-Ranges': 'bytes'
+      }
+    })
+  }
 
+  const range = request.headers.get('range')
+
+  if (range) {
+    const m = range.match(/bytes=(\d*)-(\d*)/)
+    if (!m) {
+      return new Response('Invalid range', {
+        status: 416,
+        headers: { 'Content-Range': `bytes */${stat.size}` }
+      })
+    }
+    let start: number
+    let end: number
+    if (m[1] === '' && m[2] !== '') {
+      const suffix = parseInt(m[2], 10)
+      start = Math.max(0, stat.size - suffix)
+      end = stat.size - 1
+    } else {
+      start = m[1] ? parseInt(m[1], 10) : 0
+      end = m[2] ? parseInt(m[2], 10) : stat.size - 1
+    }
+    if (Number.isNaN(start) || Number.isNaN(end) || start > end || start >= stat.size) {
+      return new Response('Range Not Satisfiable', {
+        status: 416,
+        headers: { 'Content-Range': `bytes */${stat.size}` }
+      })
+    }
+    end = Math.min(end, stat.size - 1)
+    const chunkSize = end - start + 1
     const stream = fs.createReadStream(resolved, { start, end })
     return streamResponse(stream, chunkSize, contentType, 206, `bytes ${start}-${end}/${stat.size}`)
   }
