@@ -4,7 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useFetcher, useRevalidator } from 'react-router'
 import { getOutputDirPath } from '../lib/scanner.server'
 import { ensureManifestFileIds } from '../lib/fileId.server'
-import { formatDateForInput, formatSequenceDate, formatSequenceTime } from '../lib/sequences'
+import {
+  formatDateForInput,
+  formatDayHeader,
+  formatSequenceDate,
+  formatSequenceTime
+} from '../lib/sequences'
 import { manifestSchema } from '../lib/types'
 import type { Manifest, ManifestFile, ManifestJump } from '../lib/types'
 import type { Route } from './+types/review'
@@ -118,21 +123,40 @@ const MediaPreview = ({
 
 const VideoCropper = ({
   videoRef,
-  duration
+  duration,
+  filePath,
+  initialCropStart,
+  initialCropEnd,
+  onApplied
 }: {
   videoRef: React.RefObject<HTMLVideoElement | null>
   duration: number
+  filePath: string
+  initialCropStart?: number
+  initialCropEnd?: number
+  onApplied?: () => void
 }) => {
   const [currentTime, setCurrentTime] = useState(0)
-  const [cropStart, setCropStart] = useState(0)
-  const [cropEnd, setCropEnd] = useState(duration)
+  const [cropStart, setCropStart] = useState(initialCropStart ?? 0)
+  const [cropEnd, setCropEnd] = useState(initialCropEnd ?? duration)
   const [dragging, setDragging] = useState<'start' | 'end' | 'playhead' | null>(null)
+  const [zoomLevel, setZoomLevel] = useState(1)
+  const [viewOffset, setViewOffset] = useState(0.5)
   const timelineRef = useRef<HTMLDivElement>(null)
   const rafRef = useRef(0)
+  const cropFetcher = useFetcher()
+  const { revalidate } = useRevalidator()
 
   useEffect(() => {
-    setCropEnd(duration)
-  }, [duration])
+    setCropEnd(initialCropEnd ?? duration)
+  }, [duration, initialCropEnd])
+
+  useEffect(() => {
+    if (cropFetcher.state === 'idle' && cropFetcher.data) {
+      revalidate()
+      onApplied?.()
+    }
+  }, [cropFetcher.state, cropFetcher.data, revalidate, onApplied])
 
   useEffect(() => {
     const vid = videoRef.current
@@ -144,6 +168,13 @@ const VideoCropper = ({
     rafRef.current = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafRef.current)
   }, [videoRef])
+
+  const visibleDuration = duration / zoomLevel
+  const viewStart = Math.max(
+    0,
+    Math.min(duration - visibleDuration, viewOffset * duration - visibleDuration / 2)
+  )
+  const viewEnd = Math.min(duration, viewStart + visibleDuration)
 
   const seekTo = (time: number) => {
     const vid = videoRef.current
@@ -157,21 +188,50 @@ const VideoCropper = ({
     const rect = timelineRef.current?.getBoundingClientRect()
     if (!rect) return 0
     const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
-    return ratio * duration
+    return viewStart + ratio * (viewEnd - viewStart)
   }
+
+  useEffect(() => {
+    const el = timelineRef.current
+    if (!el) return
+    const handler = (e: WheelEvent) => {
+      e.preventDefault()
+      const rect = el.getBoundingClientRect()
+      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+      const hoverTime = viewStart + ratio * (viewEnd - viewStart)
+      const zoomFactor = e.deltaY < 0 ? 1.2 : 1 / 1.2
+      const newZoom = Math.max(1, Math.min(50, zoomLevel * zoomFactor))
+      const newVisibleDuration = duration / newZoom
+      const newViewStart = Math.max(
+        0,
+        Math.min(duration - newVisibleDuration, hoverTime - ratio * newVisibleDuration)
+      )
+      const newViewOffset = (newViewStart + newVisibleDuration / 2) / duration
+      setZoomLevel(newZoom)
+      setViewOffset(newViewOffset)
+    }
+    el.addEventListener('wheel', handler, { passive: false })
+    return () => el.removeEventListener('wheel', handler)
+  }, [duration, zoomLevel, viewStart, viewEnd])
 
   const formatTimeCode = (t: number) => {
     const h = Math.floor(t / 3600)
     const m = Math.floor((t % 3600) / 60)
     const s = Math.floor(t % 60)
     const f = Math.floor((t % 1) * 30)
-    if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(f).padStart(2, '0')}`
+    if (h > 0)
+      return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(f).padStart(2, '0')}`
     return `${m}:${String(s).padStart(2, '0')}.${String(f).padStart(2, '0')}`
   }
 
-  const handlePointerDown = (e: React.PointerEvent, target: 'start' | 'end' | 'playhead' | 'timeline') => {
+  const handlePointerDown = (
+    e: React.PointerEvent,
+    target: 'start' | 'end' | 'playhead' | 'timeline'
+  ) => {
     e.preventDefault()
     e.stopPropagation()
+    const vid = videoRef.current
+    if (vid && !vid.paused) vid.pause()
     const time = timeFromX(e.clientX)
     if (target === 'timeline') {
       seekTo(time)
@@ -200,15 +260,36 @@ const VideoCropper = ({
     setDragging(null)
   }
 
-  const startPct = duration > 0 ? (cropStart / duration) * 100 : 0
-  const endPct = duration > 0 ? (cropEnd / duration) * 100 : 100
-  const playheadPct = duration > 0 ? (currentTime / duration) * 100 : 0
+  const toPct = (time: number) => {
+    if (viewEnd === viewStart) return 0
+    return ((time - viewStart) / (viewEnd - viewStart)) * 100
+  }
+
+  const startPct = toPct(cropStart)
+  const endPct = toPct(cropEnd)
+  const playheadPct = toPct(currentTime)
+
+  const clipStart = Math.max(0, startPct)
+  const clipEnd = Math.min(100, endPct)
 
   return (
     <div className='w-full px-1 select-none'>
       <div className='flex items-center justify-between text-[10px] text-gray-400 mb-1 px-0.5'>
         <span>{formatTimeCode(cropStart)}</span>
-        <span className='text-gray-500'>Crop: {formatTimeCode(cropEnd - cropStart)}</span>
+        <div className='flex items-center gap-2'>
+          <span className='text-gray-500'>Crop: {formatTimeCode(cropEnd - cropStart)}</span>
+          {zoomLevel > 1 && (
+            <button
+              type='button'
+              onClick={() => {
+                setZoomLevel(1)
+                setViewOffset(0.5)
+              }}
+              className='text-[9px] px-1 py-0.5 rounded bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500'>
+              Reset zoom
+            </button>
+          )}
+        </div>
         <span>{formatTimeCode(cropEnd)}</span>
       </div>
       <div
@@ -219,15 +300,15 @@ const VideoCropper = ({
         onPointerUp={handlePointerUp}>
         <div
           className='absolute top-0 bottom-0 bg-gray-300 dark:bg-gray-600'
-          style={{ left: 0, width: `${startPct}%` }}
+          style={{ left: 0, width: `${Math.max(0, clipStart)}%` }}
         />
         <div
           className='absolute top-0 bottom-0 bg-blue-200/40 dark:bg-blue-800/30'
-          style={{ left: `${startPct}%`, width: `${endPct - startPct}%` }}
+          style={{ left: `${clipStart}%`, width: `${Math.max(0, clipEnd - clipStart)}%` }}
         />
         <div
           className='absolute top-0 bottom-0 bg-gray-300 dark:bg-gray-600'
-          style={{ left: `${endPct}%`, right: 0 }}
+          style={{ left: `${Math.min(100, clipEnd)}%`, right: 0 }}
         />
         <div
           className='absolute top-0 bottom-0 w-0.5 bg-white shadow-sm z-10'
@@ -251,15 +332,35 @@ const VideoCropper = ({
       <div className='flex items-center justify-center gap-2 mt-2'>
         <button
           type='button'
-          onClick={() => seekTo(cropStart)}
+          onClick={() => {
+            const vid = videoRef.current
+            if (vid && !vid.paused) vid.pause()
+            setCropStart(currentTime)
+          }}
           className='text-[10px] px-1.5 py-0.5 rounded border text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'>
-          Go to in
+          Start here
         </button>
         <button
           type='button'
-          onClick={() => seekTo(cropEnd)}
+          onClick={() => {
+            const vid = videoRef.current
+            if (vid && !vid.paused) vid.pause()
+            setCropEnd(currentTime)
+          }}
           className='text-[10px] px-1.5 py-0.5 rounded border text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'>
-          Go to out
+          End here
+        </button>
+        <button
+          type='button'
+          onClick={() => {
+            cropFetcher.submit(
+              { action: 'set-crop', filePath, cropStart, cropEnd },
+              { method: 'POST', encType: 'application/json', action: '/api/manifest' }
+            )
+          }}
+          disabled={cropFetcher.state !== 'idle'}
+          className='text-[10px] px-1.5 py-0.5 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50'>
+          Apply
         </button>
       </div>
     </div>
@@ -323,8 +424,17 @@ const PreviewDrawer = ({
               type='button'
               onClick={onClose}
               className='w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-800'>
-              <svg className='w-4 h-4' fill='none' viewBox='0 0 24 24' strokeWidth='1.5' stroke='currentColor'>
-                <path strokeLinecap='round' strokeLinejoin='round' d='M6 18 18 6M6 6l12 12' />
+              <svg
+                className='w-4 h-4'
+                fill='none'
+                viewBox='0 0 24 24'
+                strokeWidth='1.5'
+                stroke='currentColor'>
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  d='M6 18 18 6M6 6l12 12'
+                />
               </svg>
             </button>
           </div>
@@ -338,7 +448,14 @@ const PreviewDrawer = ({
             />
           </div>
           {isVideo && videoDuration > 0 && (
-            <VideoCropper videoRef={videoRef} duration={videoDuration} />
+            <VideoCropper
+              videoRef={videoRef}
+              duration={videoDuration}
+              filePath={file.path}
+              initialCropStart={file.cropStart}
+              initialCropEnd={file.cropEnd}
+              onApplied={onClose}
+            />
           )}
           <div className='text-xs text-gray-500'>{formatSize(file.size)}</div>
         </div>
@@ -491,6 +608,12 @@ const FileRow = ({
           {file.filename}
         </span>
       )}
+      {((file.cropStart !== undefined && file.cropStart > 0) || file.cropEnd !== undefined) && (
+        <span
+          className='shrink-0 w-1.5 h-1.5 rounded-full bg-orange-400'
+          title='Cropped'
+        />
+      )}
       <span className='text-gray-400 dark:text-gray-500 text-xs whitespace-nowrap tabular-nums'>
         {formatTime(file.mtime)}
       </span>
@@ -506,9 +629,22 @@ const FileRow = ({
           }}
           className='w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 shrink-0'
           title='Preview'>
-          <svg className='w-3.5 h-3.5' fill='none' viewBox='0 0 24 24' strokeWidth='1.5' stroke='currentColor'>
-            <path strokeLinecap='round' strokeLinejoin='round' d='M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z' />
-            <path strokeLinecap='round' strokeLinejoin='round' d='M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z' />
+          <svg
+            className='w-3.5 h-3.5'
+            fill='none'
+            viewBox='0 0 24 24'
+            strokeWidth='1.5'
+            stroke='currentColor'>
+            <path
+              strokeLinecap='round'
+              strokeLinejoin='round'
+              d='M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z'
+            />
+            <path
+              strokeLinecap='round'
+              strokeLinejoin='round'
+              d='M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z'
+            />
           </svg>
         </button>
       )}
@@ -521,8 +657,17 @@ const FileRow = ({
           }}
           className='w-6 h-6 flex items-center justify-center rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500 shrink-0'
           title='Delete file'>
-          <svg className='w-3.5 h-3.5' fill='none' viewBox='0 0 24 24' strokeWidth='1.5' stroke='currentColor'>
-            <path strokeLinecap='round' strokeLinejoin='round' d='m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0' />
+          <svg
+            className='w-3.5 h-3.5'
+            fill='none'
+            viewBox='0 0 24 24'
+            strokeWidth='1.5'
+            stroke='currentColor'>
+            <path
+              strokeLinecap='round'
+              strokeLinejoin='round'
+              d='m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0'
+            />
           </svg>
         </button>
       )}
@@ -578,10 +723,25 @@ const JumpCard = ({
   const [isDragOver, setIsDragOver] = useState(false)
   const [hoveredFile, setHoveredFile] = useState<string | null>(null)
   const [dropPosition, setDropPosition] = useState<'above' | 'below' | null>(null)
+  const [groupedByType, setGroupedByType] = useState(false)
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'videos' | 'photos'>('all')
   const dragDataRef = useRef<{ filePaths: string[]; sourceJumpId: string } | null>(null)
   const selectedCount = jump.files.filter((f) => selection[f.path]).length
   const isProcessed = !!jump.processed
   const bounds = getJumpBounds(jump)
+
+  const filteredFiles = useMemo(() => {
+    let files = jump.files
+    if (typeFilter === 'videos') files = files.filter((f) => isVideoFile(f.filename))
+    else if (typeFilter === 'photos') files = files.filter((f) => !isVideoFile(f.filename))
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      files = files.filter((f) => f.filename.toLowerCase().includes(q))
+    }
+    return files
+  }, [jump.files, typeFilter, searchQuery])
 
   const handleRowDragOver = (e: React.DragEvent, filePath: string) => {
     if (isProcessed || !onReorder) return
@@ -702,10 +862,25 @@ const JumpCard = ({
               setExpanded(!expanded)
             }}
             className='text-gray-400 text-xs'>
-            <svg className='w-3 h-3' fill='none' viewBox='0 0 24 24' strokeWidth='2' stroke='currentColor'>
-              {expanded
-                ? <path strokeLinecap='round' strokeLinejoin='round' d='m19.5 8.25-7.5 7.5-7.5-7.5' />
-                : <path strokeLinecap='round' strokeLinejoin='round' d='m8.25 4.5 7.5 7.5-7.5 7.5' />}
+            <svg
+              className='w-3 h-3'
+              fill='none'
+              viewBox='0 0 24 24'
+              strokeWidth='2'
+              stroke='currentColor'>
+              {expanded ? (
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  d='m19.5 8.25-7.5 7.5-7.5-7.5'
+                />
+              ) : (
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  d='m8.25 4.5 7.5 7.5-7.5 7.5'
+                />
+              )}
             </svg>
           </button>
           {editingLabel && !isProcessed ? (
@@ -729,7 +904,9 @@ const JumpCard = ({
             </span>
           )}
           {editingDateTime ? (
-            <div className='flex items-center gap-1' onClick={(e) => e.stopPropagation()}>
+            <div
+              className='flex items-center gap-1'
+              onClick={(e) => e.stopPropagation()}>
               <input
                 type='date'
                 value={dateValue}
@@ -760,9 +937,39 @@ const JumpCard = ({
             </span>
           )}
           <div className='ml-auto flex items-center gap-2'>
-            <span className='text-xs text-gray-400'>
-              {jump.files.length} files
-            </span>
+            <span className='text-xs text-gray-400'>{jump.files.length} files</span>
+            {jump.files.length > 0 && (
+              <button
+                type='button'
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setGroupedByType(!groupedByType)
+                }}
+                className={`text-[10px] px-1.5 py-0.5 rounded ${
+                  groupedByType
+                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                    : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                } hover:opacity-80`}
+                title={groupedByType ? 'Show all files together' : 'Group by videos/photos'}>
+                {groupedByType ? 'Grouped' : 'Group'}
+              </button>
+            )}
+            {jump.files.length > 0 && (
+              <button
+                type='button'
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setViewMode(viewMode === 'list' ? 'grid' : 'list')
+                }}
+                className={`text-[10px] px-1.5 py-0.5 rounded ${
+                  viewMode === 'grid'
+                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                    : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                } hover:opacity-80`}
+                title={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}>
+                {viewMode === 'grid' ? 'Grid' : 'List'}
+              </button>
+            )}
             {isProcessed ? (
               <span className='text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30'>
                 Processed
@@ -803,8 +1010,17 @@ const JumpCard = ({
               }}
               className='text-gray-400 hover:text-red-500 px-1'
               title={isProcessed ? 'Delete and remove processed folder' : 'Remove jump'}>
-              <svg className='w-3.5 h-3.5' fill='none' viewBox='0 0 24 24' strokeWidth='1.5' stroke='currentColor'>
-                <path strokeLinecap='round' strokeLinejoin='round' d='M6 18 18 6M6 6l12 12' />
+              <svg
+                className='w-3.5 h-3.5'
+                fill='none'
+                viewBox='0 0 24 24'
+                strokeWidth='1.5'
+                stroke='currentColor'>
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  d='M6 18 18 6M6 6l12 12'
+                />
               </svg>
             </button>
           </div>
@@ -814,40 +1030,295 @@ const JumpCard = ({
             {jump.files.length === 0 ? (
               <p className='text-sm text-gray-400 italic py-2'>Drop files here</p>
             ) : (
-              <div className='max-h-80 overflow-y-auto space-y-0.5 pr-1'>
-                {jump.files.map((file, idx) => (
-                  <FileRow
-                    key={file.path}
-                    file={file}
-                    groupId={jump.id}
-                    selected={!!selection[file.path]}
-                    isSelectMode={isSelectMode}
-                    isInMultipleJumps={multiJumpFiles.has(file.path)}
-                    dropPosition={hoveredFile === file.path ? dropPosition : null}
-                    onSelect={onSelect}
-                    onDragStart={(e, fp) => {
-                      if (isProcessed) return
-                      const sel = jump.files.filter((f) => selection[f.path]).map((f) => f.path)
-                      const toDrag = sel.length > 0 && selection[fp] ? sel : [fp]
-                      dragDataRef.current = { filePaths: toDrag, sourceJumpId: jump.id }
-                      onDragStart(e, toDrag, jump.id)
-                    }}
-                    onRowDragOver={isProcessed ? undefined : handleRowDragOver}
-                    onRowDragLeave={handleRowDragLeave}
-                    onPreview={() => onPreview(jump.files, idx, jump.label)}
-                    onDelete={
-                      !isProcessed
-                        ? () => onDeleteFile?.(jump.id, file.path)
-                        : undefined
-                    }
-                    onRename={
-                      !isProcessed
-                        ? (newName) => onRenameFile?.(file.path, newName)
-                        : undefined
-                    }
-                  />
-                ))}
-              </div>
+              <>
+                <div className='flex items-center gap-2 mb-2'>
+                  <div className='relative flex-1'>
+                    <input
+                      type='text'
+                      placeholder='Search filename...'
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className='w-full text-xs px-2 py-1 pr-6 border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-800 placeholder:text-gray-400'
+                    />
+                    {searchQuery && (
+                      <button
+                        type='button'
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSearchQuery('')
+                        }}
+                        className='absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 px-1'>
+                        ×
+                      </button>
+                    )}
+                  </div>
+                  <div className='flex gap-1 shrink-0'>
+                    {(['all', 'videos', 'photos'] as const).map((t) => (
+                      <button
+                        key={t}
+                        type='button'
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setTypeFilter(t)
+                        }}
+                        className={`text-[10px] px-1.5 py-0.5 rounded capitalize ${
+                          typeFilter === t
+                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                            : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                        } hover:opacity-80`}>
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {filteredFiles.length === 0 ? (
+                  <p className='text-xs text-gray-400 italic py-2 text-center'>
+                    No matching files
+                    {searchQuery || typeFilter !== 'all' ? ` • ${jump.files.length} total` : ''}
+                  </p>
+                ) : viewMode === 'grid' ? (
+                  <div className='max-h-80 overflow-y-auto pr-1'>
+                    <div className='grid grid-cols-[repeat(auto-fill,minmax(84px,1fr))] gap-1.5'>
+                      {filteredFiles.map((file) => {
+                        const globalIdx = jump.files.indexOf(file)
+                        const isVideo = isVideoFile(file.filename)
+                        const selected = !!selection[file.path]
+                        return (
+                          <div
+                            key={file.path}
+                            draggable={!isProcessed}
+                            onDragStart={(e) => {
+                              if (isProcessed) return
+                              const sel = jump.files
+                                .filter((f) => selection[f.path])
+                                .map((f) => f.path)
+                              const toDrag =
+                                sel.length > 0 && selection[file.path] ? sel : [file.path]
+                              dragDataRef.current = { filePaths: toDrag, sourceJumpId: jump.id }
+                              onDragStart(e, toDrag, jump.id)
+                            }}
+                            onClick={(e) => {
+                              const target = e.target as HTMLElement
+                              if (target.closest('input')) return
+                              if (e.ctrlKey || e.metaKey || e.shiftKey) {
+                                onSelect(jump.id, file.path, e.ctrlKey || e.metaKey, e.shiftKey)
+                              } else {
+                                onPreview(jump.files, globalIdx, jump.label)
+                              }
+                            }}
+                            className={`relative aspect-square bg-gray-100 dark:bg-gray-800 rounded overflow-hidden cursor-pointer group/thumb border ${
+                              selected
+                                ? 'ring-2 ring-blue-400 border-blue-300'
+                                : multiJumpFiles.has(file.path)
+                                  ? 'border-purple-300 dark:border-purple-600'
+                                  : 'border-gray-200 dark:border-gray-700'
+                            } hover:ring-2 hover:ring-blue-300`}
+                            style={{
+                              contentVisibility: 'auto',
+                              containIntrinsicSize: '84px 84px'
+                            }}>
+                            {isVideo ? (
+                              <video
+                                src={`/api/file?path=${encodeURIComponent(file.path)}`}
+                                className='w-full h-full object-cover'
+                                preload='metadata'
+                                muted
+                              />
+                            ) : (
+                              <img
+                                src={`/api/file?path=${encodeURIComponent(file.path)}`}
+                                alt={file.filename}
+                                className='w-full h-full object-cover'
+                                loading='lazy'
+                              />
+                            )}
+                            {isVideo && (
+                              <div className='absolute top-1 right-1 text-[8px] bg-black/60 text-white rounded px-1 py-0.5 leading-none'>
+                                ▶
+                              </div>
+                            )}
+                            {selected && (
+                              <div className='absolute top-1 left-1 w-3 h-3 bg-blue-600 rounded-sm flex items-center justify-center'>
+                                <svg
+                                  className='w-2 h-2 text-white'
+                                  viewBox='0 0 12 12'
+                                  fill='none'>
+                                  <path
+                                    d='M2 6l2 2 5-5'
+                                    stroke='currentColor'
+                                    strokeWidth='1.5'
+                                    strokeLinecap='round'
+                                    strokeLinejoin='round'
+                                  />
+                                </svg>
+                              </div>
+                            )}
+                            {(file.cropStart !== undefined && file.cropStart > 0) ||
+                            file.cropEnd !== undefined ? (
+                              <div className='absolute bottom-6 right-1 w-1.5 h-1.5 rounded-full bg-orange-400 border border-white' />
+                            ) : null}
+                            <div className='absolute bottom-0 inset-x-0 bg-black/60 text-white text-[8px] px-1 py-0.5 truncate leading-tight'>
+                              {file.filename}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    {filteredFiles.length !== jump.files.length && (
+                      <p className='text-[10px] text-gray-400 text-center mt-1.5'>
+                        Showing {filteredFiles.length} of {jump.files.length} files
+                      </p>
+                    )}
+                  </div>
+                ) : groupedByType ? (
+                  <div className='max-h-80 overflow-y-auto space-y-3 pr-1'>
+                    {(() => {
+                      const videos = filteredFiles.filter((f) => isVideoFile(f.filename))
+                      const photos = filteredFiles.filter((f) => !isVideoFile(f.filename))
+                      const globalIdx = (file: ManifestFile) => jump.files.indexOf(file)
+                      return (
+                        <>
+                          {videos.length > 0 && (
+                            <div>
+                              <div className='text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1'>
+                                Videos ({videos.length})
+                              </div>
+                              <div className='space-y-0.5'>
+                                {videos.map((file) => (
+                                  <FileRow
+                                    key={file.path}
+                                    file={file}
+                                    groupId={jump.id}
+                                    selected={!!selection[file.path]}
+                                    isSelectMode={isSelectMode}
+                                    isInMultipleJumps={multiJumpFiles.has(file.path)}
+                                    dropPosition={hoveredFile === file.path ? dropPosition : null}
+                                    onSelect={onSelect}
+                                    onDragStart={(e, fp) => {
+                                      if (isProcessed) return
+                                      const sel = jump.files
+                                        .filter((f) => selection[f.path])
+                                        .map((f) => f.path)
+                                      const toDrag = sel.length > 0 && selection[fp] ? sel : [fp]
+                                      dragDataRef.current = {
+                                        filePaths: toDrag,
+                                        sourceJumpId: jump.id
+                                      }
+                                      onDragStart(e, toDrag, jump.id)
+                                    }}
+                                    onRowDragOver={isProcessed ? undefined : handleRowDragOver}
+                                    onRowDragLeave={handleRowDragLeave}
+                                    onPreview={() =>
+                                      onPreview(jump.files, globalIdx(file), jump.label)
+                                    }
+                                    onDelete={
+                                      !isProcessed
+                                        ? () => onDeleteFile?.(jump.id, file.path)
+                                        : undefined
+                                    }
+                                    onRename={
+                                      !isProcessed
+                                        ? (newName) => onRenameFile?.(file.path, newName)
+                                        : undefined
+                                    }
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {photos.length > 0 && (
+                            <div>
+                              <div className='text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1'>
+                                Photos ({photos.length})
+                              </div>
+                              <div className='space-y-0.5'>
+                                {photos.map((file) => (
+                                  <FileRow
+                                    key={file.path}
+                                    file={file}
+                                    groupId={jump.id}
+                                    selected={!!selection[file.path]}
+                                    isSelectMode={isSelectMode}
+                                    isInMultipleJumps={multiJumpFiles.has(file.path)}
+                                    dropPosition={hoveredFile === file.path ? dropPosition : null}
+                                    onSelect={onSelect}
+                                    onDragStart={(e, fp) => {
+                                      if (isProcessed) return
+                                      const sel = jump.files
+                                        .filter((f) => selection[f.path])
+                                        .map((f) => f.path)
+                                      const toDrag = sel.length > 0 && selection[fp] ? sel : [fp]
+                                      dragDataRef.current = {
+                                        filePaths: toDrag,
+                                        sourceJumpId: jump.id
+                                      }
+                                      onDragStart(e, toDrag, jump.id)
+                                    }}
+                                    onRowDragOver={isProcessed ? undefined : handleRowDragOver}
+                                    onRowDragLeave={handleRowDragLeave}
+                                    onPreview={() =>
+                                      onPreview(jump.files, globalIdx(file), jump.label)
+                                    }
+                                    onDelete={
+                                      !isProcessed
+                                        ? () => onDeleteFile?.(jump.id, file.path)
+                                        : undefined
+                                    }
+                                    onRename={
+                                      !isProcessed
+                                        ? (newName) => onRenameFile?.(file.path, newName)
+                                        : undefined
+                                    }
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )
+                    })()}
+                  </div>
+                ) : (
+                  <div className='max-h-80 overflow-y-auto space-y-0.5 pr-1'>
+                    {filteredFiles.map((file) => {
+                      const idx = jump.files.indexOf(file)
+                      return (
+                        <FileRow
+                          key={file.path}
+                          file={file}
+                          groupId={jump.id}
+                          selected={!!selection[file.path]}
+                          isSelectMode={isSelectMode}
+                          isInMultipleJumps={multiJumpFiles.has(file.path)}
+                          dropPosition={hoveredFile === file.path ? dropPosition : null}
+                          onSelect={onSelect}
+                          onDragStart={(e, fp) => {
+                            if (isProcessed) return
+                            const sel = jump.files
+                              .filter((f) => selection[f.path])
+                              .map((f) => f.path)
+                            const toDrag = sel.length > 0 && selection[fp] ? sel : [fp]
+                            dragDataRef.current = { filePaths: toDrag, sourceJumpId: jump.id }
+                            onDragStart(e, toDrag, jump.id)
+                          }}
+                          onRowDragOver={isProcessed ? undefined : handleRowDragOver}
+                          onRowDragLeave={handleRowDragLeave}
+                          onPreview={() => onPreview(jump.files, idx, jump.label)}
+                          onDelete={
+                            !isProcessed ? () => onDeleteFile?.(jump.id, file.path) : undefined
+                          }
+                          onRename={
+                            !isProcessed
+                              ? (newName) => onRenameFile?.(file.path, newName)
+                              : undefined
+                          }
+                        />
+                      )
+                    })}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -924,8 +1395,17 @@ const CompareDrawer = ({
             type='button'
             onClick={onClose}
             className='w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-800'>
-            <svg className='w-4 h-4' fill='none' viewBox='0 0 24 24' strokeWidth='1.5' stroke='currentColor'>
-              <path strokeLinecap='round' strokeLinejoin='round' d='M6 18 18 6M6 6l12 12' />
+            <svg
+              className='w-4 h-4'
+              fill='none'
+              viewBox='0 0 24 24'
+              strokeWidth='1.5'
+              stroke='currentColor'>
+              <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                d='M6 18 18 6M6 6l12 12'
+              />
             </svg>
           </button>
         </div>
@@ -983,12 +1463,18 @@ const CompareDrawer = ({
                 <div className='flex-1 min-h-[420px] border-t dark:border-gray-700 p-2 flex items-center justify-center bg-gray-50/50 dark:bg-gray-800/30 overflow-hidden'>
                   {colIdx === 0 ? (
                     leftFile ? (
-                      <MediaPreview file={leftFile} maxHeight='55vh' />
+                      <MediaPreview
+                        file={leftFile}
+                        maxHeight='55vh'
+                      />
                     ) : (
                       <div className='text-xs text-gray-400'>Select a file</div>
                     )
                   ) : rightFile ? (
-                    <MediaPreview file={rightFile} maxHeight='55vh' />
+                    <MediaPreview
+                      file={rightFile}
+                      maxHeight='55vh'
+                    />
                   ) : (
                     <div className='text-xs text-gray-400'>Select a file</div>
                   )}
@@ -1091,8 +1577,17 @@ const StagingTray = ({
                 type='button'
                 onClick={() => onRemove(groupId, file.path)}
                 className='text-gray-400 hover:text-red-500'>
-                <svg className='w-3 h-3' fill='none' viewBox='0 0 24 24' strokeWidth='1.5' stroke='currentColor'>
-                  <path strokeLinecap='round' strokeLinejoin='round' d='M6 18 18 6M6 6l12 12' />
+                <svg
+                  className='w-3 h-3'
+                  fill='none'
+                  viewBox='0 0 24 24'
+                  strokeWidth='1.5'
+                  stroke='currentColor'>
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    d='M6 18 18 6M6 6l12 12'
+                  />
                 </svg>
               </button>
             </div>
@@ -1181,8 +1676,17 @@ const SelectedJumpsPanel = ({
               type='button'
               onClick={() => setEditingDay(false)}
               className='text-xs px-2 py-1 rounded border'>
-              <svg className='w-3 h-3' fill='none' viewBox='0 0 24 24' strokeWidth='1.5' stroke='currentColor'>
-                <path strokeLinecap='round' strokeLinejoin='round' d='M6 18 18 6M6 6l12 12' />
+              <svg
+                className='w-3 h-3'
+                fill='none'
+                viewBox='0 0 24 24'
+                strokeWidth='1.5'
+                stroke='currentColor'>
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  d='M6 18 18 6M6 6l12 12'
+                />
               </svg>
             </button>
           </div>
@@ -1273,7 +1777,7 @@ const JumpDaySection = ({
     <div className='border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800/50 overflow-hidden mb-4'>
       <div className='flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700'>
         <span className='text-sm font-semibold text-gray-700 dark:text-gray-300'>
-          {day.date}
+          {dayStart > 0 ? formatDayHeader(dayStart) : day.date}
         </span>
         <span className='text-xs text-gray-500'>
           {fileCount} files • {day.jumps.length} jumps
@@ -1383,9 +1887,7 @@ const TimelineJumps = ({
       const dx = clientX - startX
       const w = containerRef.current?.clientWidth ?? 800
       const dt = (dx / w) * DAY
-      const snapped = snapDay
-        ? Math.round(dt / 86400) * 86400
-        : Math.round(dt / 900) * 900
+      const snapped = snapDay ? Math.round(dt / 86400) * 86400 : Math.round(dt / 900) * 900
       dragOffsetRef.current = snapped
       setDragOffset(snapped)
       if (ev.cancelable) ev.preventDefault()
@@ -1696,7 +2198,11 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
             filePaths: data.filePaths
           })
         } else {
-          manifestSubmit({ action: 'copy-files', toJumpId: targetJumpId, filePaths: data.filePaths })
+          manifestSubmit({
+            action: 'copy-files',
+            toJumpId: targetJumpId,
+            filePaths: data.filePaths
+          })
         }
       } finally {
         dragDataRef.current = null
@@ -1813,8 +2319,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   }, [])
 
   const renderEmptyState = (title: string, description: string) => {
-    const scanError =
-      scanFetcher.data && !scanFetcher.data.ok ? scanFetcher.data.error : null
+    const scanError = scanFetcher.data && !scanFetcher.data.ok ? scanFetcher.data.error : null
     return (
       <div className='min-h-screen bg-gray-50 dark:bg-gray-900'>
         <div className='max-w-7xl mx-auto px-6 py-8'>

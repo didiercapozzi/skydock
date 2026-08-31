@@ -27,7 +27,10 @@ const action = async () => {
   }
 
   if (!fs.existsSync(manifestPath)) {
-    return { ok: false, error: 'No media files found. Run process_media.sh first to copy files from cameras.' }
+    return {
+      ok: false,
+      error: 'No media files found. Run process_media.sh first to copy files from cameras.'
+    }
   }
 
   await ensureManifestFileIds(manifestPath)

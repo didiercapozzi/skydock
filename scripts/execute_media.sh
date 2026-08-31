@@ -69,7 +69,7 @@ for jump_id in "${JUMP_IDS[@]}"; do
     photo_idx=0
     count=0
 
-    while IFS='|' read -r filepath file_mtime; do
+    while IFS='|' read -r filepath file_mtime crop_start crop_end; do
         if [[ ! -f "${filepath}" ]]; then
             continue
         fi
@@ -77,6 +77,11 @@ for jump_id in "${JUMP_IDS[@]}"; do
         ext="${filepath##*.}"
         ext_lower="${ext,,}"
         timestamp=$(date -d "@${file_mtime}" +"%Y%m%d_%H%M%S")
+        needs_crop=false
+
+        if is_video_ext "${ext}" && [[ -n "${crop_start}" && -n "${crop_end}" ]] && command -v ffmpeg &>/dev/null; then
+            needs_crop=true
+        fi
 
         if is_video_ext "${ext}"; then
             video_idx=$((video_idx + 1))
@@ -92,11 +97,18 @@ for jump_id in "${JUMP_IDS[@]}"; do
             dest="${photos_dir}/${new_name}"
         fi
 
-        cp -p --update=none "${filepath}" "${dest}"
+        if [[ "${needs_crop}" == "true" ]]; then
+            crop_duration=$(awk "BEGIN {printf \"%.6f\", ${crop_end} - ${crop_start}}")
+            ffmpeg -y -ss "${crop_start}" -i "${filepath}" -t "${crop_duration}" \
+                -c copy -avoid_negative_ts make_zero "${dest}" 2>/dev/null || \
+                cp -p --update=none "${filepath}" "${dest}"
+        else
+            cp -p --update=none "${filepath}" "${dest}"
+        fi
         touch -d "@${file_mtime}" "${dest}"
         copied=$((copied + 1))
         count=$((count + 1))
-    done < <(jq -r --arg id "${jump_id}" '.jumps[] | select(.id == $id) | .files[] | "\(.path)|\(.mtime)"' "${MANIFEST}" 2>/dev/null)
+    done < <(jq -r --arg id "${jump_id}" '.jumps[] | select(.id == $id) | .files[] | "\(.path)|\(.mtime)|\(.cropStart // "")|\(.cropEnd // "")"' "${MANIFEST}" 2>/dev/null)
 
     if command -v exiftool &>/dev/null && [[ ${count} -gt 0 ]]; then
         if compgen -G "${videos_dir}/*" > /dev/null || compgen -G "${photos_dir}/*" > /dev/null; then

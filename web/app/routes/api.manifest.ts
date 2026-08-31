@@ -329,8 +329,7 @@ const handleCalibrate = (manifest: Manifest, body: Body) => {
   const targetTimes = targetPaths.map(mtimeOf).filter((t): t is number => t !== undefined)
   if (refTimes.length === 0 || targetTimes.length === 0) return fail('Sequence files not found')
   const offsetSeconds = Math.min(...refTimes) - Math.min(...targetTimes)
-  const pathsToShift =
-    scope === 'all' ? manifest.files.map((f) => f.path) : targetPaths
+  const pathsToShift = scope === 'all' ? manifest.files.map((f) => f.path) : targetPaths
   const result = applyShift(manifest, pathsToShift, offsetSeconds)
   if (!result.ok) return result
   if (scope === 'all') manifest.cameraClockOffsetSeconds = offsetSeconds
@@ -473,6 +472,40 @@ const handleRenameFile = (manifest: Manifest, body: Body) => {
   return ok()
 }
 
+const handleSetCrop = (manifest: Manifest, body: Body) => {
+  const filePath = asString(body.filePath)
+  if (!filePath) return fail('Missing filePath')
+  const cropStart = typeof body.cropStart === 'number' ? body.cropStart : undefined
+  const cropEnd = typeof body.cropEnd === 'number' ? body.cropEnd : undefined
+
+  const applyCrop = (file: ManifestFile) => {
+    if (cropStart !== undefined) file.cropStart = cropStart
+    if (cropEnd !== undefined) file.cropEnd = cropEnd
+    if (cropStart === 0 && cropEnd === undefined) {
+      delete file.cropStart
+      delete file.cropEnd
+    }
+  }
+
+  let found = false
+  for (const file of manifest.files) {
+    if (file.path === filePath) {
+      applyCrop(file)
+      found = true
+    }
+  }
+  for (const jump of manifest.jumps) {
+    for (const file of jump.files) {
+      if (file.path === filePath) {
+        applyCrop(file)
+        found = true
+      }
+    }
+  }
+  if (!found) return fail('File not found')
+  return ok()
+}
+
 const handlers: Record<
   string,
   (
@@ -495,7 +528,8 @@ const handlers: Record<
   'reorder-files': handleReorderFiles,
   'merge-jumps': handleMergeJumps,
   'copy-files': handleCopyFiles,
-  'rename-file': handleRenameFile
+  'rename-file': handleRenameFile,
+  'set-crop': handleSetCrop
 }
 
 const loader = async () => {

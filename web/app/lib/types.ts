@@ -7,6 +7,8 @@ const manifestFileSchema = z.object({
   filename: z.string(),
   id: z.string().optional(),
   originalMtime: z.number().optional(),
+  cropStart: z.number().optional(),
+  cropEnd: z.number().optional()
 })
 
 const manifestJumpSchema = z.object({
@@ -14,7 +16,7 @@ const manifestJumpSchema = z.object({
   label: z.string(),
   confirmed: z.boolean(),
   files: z.array(manifestFileSchema),
-  processed: z.boolean().optional(),
+  processed: z.boolean().optional()
 })
 
 const manifestStatusSchema = z.enum(['empty', 'proposed', 'confirmed', 'executed'])
@@ -28,7 +30,7 @@ const manifestSchema = z.object({
   theory: z.array(manifestFileSchema),
   files: z.array(manifestFileSchema),
   jumps: z.array(manifestJumpSchema),
-  cameraClockOffsetSeconds: z.number().optional(),
+  cameraClockOffsetSeconds: z.number().optional()
 })
 
 type ManifestFile = z.infer<typeof manifestFileSchema>
@@ -85,13 +87,16 @@ type TheoryVideoWithSource = FileEntry & {
 }
 
 export type {
-  DayGroup, FileEntry,
-  Jump, Manifest, ManifestFile,
+  DayGroup,
+  FileEntry,
+  Jump,
+  Manifest,
+  ManifestFile,
   ManifestJump,
-  ManifestStatus, TheoryOverride,
+  ManifestStatus,
+  TheoryOverride,
   TheoryOverrides,
   TheoryVideoWithSource
 }
 
 export { manifestSchema }
-

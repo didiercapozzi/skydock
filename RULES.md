@@ -49,6 +49,8 @@ type ManifestFile = {
   filename: string
   id?: string
   originalMtime?: number
+  cropStart?: number
+  cropEnd?: number
 }
 type ManifestJump = {
   id: string
@@ -93,7 +95,7 @@ type Manifest = {
 
 ### 5.2 `web/app/lib/sequences.ts` — date/time formatting helpers
 
-- Helpers: `formatSequenceDate` (`D M YYYY`), `formatDateForInput` (`D M YYYY` → `YYYY-MM-DD`), `formatSequenceTime` (`HH:MM`).
+- Helpers: `formatSequenceDate` (`D M YYYY`), `formatDayHeader` (`DayName Month Ordinal`, e.g. "Saturday March 14th"), `formatDateForInput` (`D M YYYY` → `YYYY-MM-DD`), `formatSequenceTime` (`HH:MM`).
 
 ### 5.3 `reclusterJumps(manifest, preservedPaths?)` (api.manifest)
 
@@ -113,7 +115,7 @@ type Manifest = {
 
 - Default manifest `output/manifest.json`, `PROCESSED_DIR=output/processed`.
 - If jump IDs given, process only those; else process all `jumps[] | select(.confirmed==true and .processed!=true)`.
-- For each `jump_id`, reads the jump label from the manifest, sanitizes it (alphanumeric + `.` + `-` + `_`), and creates `mkdir -p processed/sanitized_label` with subdirs `videos/` and `photos/`. Files are renamed to `sanitized_label_YYYYMMDD_HHMMSS.ext` (24h format, based on file mtime).
+- For each `jump_id`, reads the jump label from the manifest, sanitizes it (alphanumeric + `.` + `-` + `_`), and creates `mkdir -p processed/sanitized_label` with subdirs `videos/` and `photos/`. Files are renamed to `sanitized_label_YYYYMMDD_HHMMSS.ext` (24h format, based on file mtime). If a video file has `cropStart`/`cropEnd` set and ffmpeg is available, the video is cropped to that range using `ffmpeg -ss -t -c copy`.
 
 ### 6.2 `api.manifest` execute
 
@@ -172,7 +174,7 @@ type Manifest = {
 ### 8.8 `api.manifest.ts` — handlers (all arrow functions, `ok`/`fail` helpers)
 
 - Helpers: `asString`, `asStringArray`, `requireManifest`, `requireJump`, `requireUnprocessed`, `removeProcessedDir`, `requireProcessedPaths`, `isAllProcessed`, `applyShift`, `ok`, `fail`.
-- Handlers map: `update-label`, `confirm-jump`/`confirm-all` (kept for backward compat, not used for UI selection), `delete-jump` (also deletes `processed/sanitized_label` if `processed`), `create-jump`, `move-files` / `remove-files` (blocked if involved jump `processed`), `copy-files` (duplicates refs to target without splicing source, allows same `path` in multiple jumps, blocked if target `processed`), `reorder-files` (validates `filePaths` length equals current size and all paths belong to jump, then remaps `jump.files` order), `merge-jumps`, `calibrate-sequences` (computes `offset = min(ref)-min(target)`, `scope all` shifts all), `shift-sequences` (takes `paths`/`offsetSeconds`, checks processed, `shiftFiles` + `reclusterJumps(manifest, pathsSet)`), `reset-calibration` (restores `originalMtime` in both `files` and `jump.files`, deletes `cameraClockOffsetSeconds`, reclusters), `execute-jumps` (incremental, see §6.2; `jumpIds` from React state), `unprocess-jump` (deletes `processed/sanitized_label`, clears `processed`, sets `status` back to `confirmed` if was `executed`), `rename-file` (updates `filename` on a file in manifest or jumps).
+- Handlers map: `update-label`, `confirm-jump`/`confirm-all` (kept for backward compat, not used for UI selection), `delete-jump` (also deletes `processed/sanitized_label` if `processed`), `create-jump`, `move-files` / `remove-files` (blocked if involved jump `processed`), `copy-files` (duplicates refs to target without splicing source, allows same `path` in multiple jumps, blocked if target `processed`), `reorder-files` (validates `filePaths` length equals current size and all paths belong to jump, then remaps `jump.files` order), `merge-jumps`, `calibrate-sequences` (computes `offset = min(ref)-min(target)`, `scope all` shifts all), `shift-sequences` (takes `paths`/`offsetSeconds`, checks processed, `shiftFiles` + `reclusterJumps(manifest, pathsSet)`), `reset-calibration` (restores `originalMtime` in both `files` and `jump.files`, deletes `cameraClockOffsetSeconds`, reclusters), `execute-jumps` (incremental, see §6.2; `jumpIds` from React state), `unprocess-jump` (deletes `processed/sanitized_label`, clears `processed`, sets `status` back to `confirmed` if was `executed`), `rename-file` (updates `filename` on a file in manifest or jumps), `set-crop` (sets `cropStart`/`cropEnd` on a file for video cropping; updates both `manifest.files` and all matching `jump.files` entries for the same path).
 - `loader` returns `{manifest}`. `action` dispatches via `handlers[formAction]`, `requireManifest`, `saveManifest` and returns `ok` with `manifest`.
 
 ## 9. Review UI
@@ -194,6 +196,7 @@ The Review UI is a single-page interface for viewing, organizing, and processing
 ### 9.3 File Display
 
 Each file is shown as a row with:
+
 - A checkbox for selection
 - Filename (renamable by clicking on it)
 - Time of day
@@ -223,10 +226,12 @@ Selected files are visually highlighted. Files that exist in multiple jumps (cop
 ### 9.6 Drag & Drop
 
 **Reordering within a jump:**
+
 - Each file row is draggable. Dragging it over another row in the same jump shows a drop indicator line above or below the target row.
 - Dropping reorders the files within that jump.
 
 **Moving or copying between jumps:**
+
 - Dragging a file row (or the staging tray) over a different jump card highlights that card as a drop target.
 - Dropping moves or copies the files into the target jump, depending on the Move/Copy mode.
 - If multiple files are selected, dragging any selected file drags the entire selection.
@@ -235,11 +240,15 @@ Selected files are visually highlighted. Files that exist in multiple jumps (cop
 ### 9.7 Jump Card
 
 Each jump is displayed as a card with:
+
 - A checkbox for selecting the jump for comparison or processing
 - An expand/collapse toggle
 - An editable label (e.g. "Jump 1")
 - Editable date and time
 - File count and time range on the right side
+- A "Group" button to toggle grouping files by type (videos/photos sections)
+- A "List/Grid" toggle to switch between list and thumbnail grid view (grid uses `content-visibility: auto` for 500+ files)
+- When expanded, a search bar to filter by filename and `All | Videos | Photos` type filter buttons; grid and list both respect the filters, showing "No matching files" when empty and "Showing N of M" count in grid
 - A "Remove" link when files are selected (moves selected files out of this jump)
 - A "Processed" badge with an "Undo" button if the jump has been processed
 - A delete button
@@ -256,7 +265,7 @@ Card border color: amber if selected for comparison, blue if processed, gray oth
 ### 9.9 Day Groups
 
 - Jumps are grouped by day based on the earliest file timestamp in each jump.
-- Each day group has a header showing the date, total file count, number of jumps, and time range of all files in that day.
+- Each day group has a header showing the day name, month, and ordinal date (e.g. "Saturday March 14th"), total file count, number of jumps, and time range of all files in that day.
 - The day date is not directly editable.
 - Below the header, all jumps for that day are listed as cards.
 
@@ -294,7 +303,8 @@ Card border color: amber if selected for comparison, blue if processed, gray oth
 - Shows the file (video player or image).
 - **Prev/Next** buttons or arrow keys navigate between files.
 - **Escape** or the close button closes the preview.
-- **Video cropping** (planned): A timeline below the video with draggable handles to select start/end frames. Smooth scrubbing without lag, even on large files.
+- **Video cropping**: A timeline below the video with draggable handles to select start/end frames. Click "Start here" / "End here" to set crop points at the current playback position (video pauses). Click "Apply" to save crop range to manifest.json and close the preview. At processing, ffmpeg crops the video to the selected range.
+- **Crop bar zoom**: Scroll the mouse wheel while hovering over the crop bar to zoom in/out (up to 50x). Zoom is centered on the cursor position. A "Reset zoom" button appears when zoomed in to return to full view. Zoom allows precise frame-level crop adjustments.
 
 ### 9.15 Header Actions
 
@@ -318,4 +328,3 @@ Card border color: amber if selected for comparison, blue if processed, gray oth
 - "export" keywords must be at the end of the file and not before a const/variable, function or types
 - we use camel case format for const/variables
 - use "const" instead of "let" or "var" every time you can
-
