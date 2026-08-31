@@ -1,4 +1,5 @@
 import { execSync } from 'node:child_process'
+import * as fs from 'node:fs'
 import path from 'node:path'
 import { getOutputDirPath } from '../lib/scanner.server'
 import { ensureManifestFileIds } from '../lib/fileId.server'
@@ -12,16 +13,24 @@ const action = async () => {
 
   const outputDir = getOutputDirPath()
   const scanScript = path.join(SCRIPTS_DIR, 'scan_media.sh')
+  const manifestPath = path.join(outputDir, 'manifest.json')
 
+  let output = ''
   try {
-    execSync(`SKYDOCK_OUTPUT_DIR="${outputDir}" "${scanScript}" 2>&1`, {
-      timeout: 30_000
-    })
+    output = execSync(`SKYDOCK_OUTPUT_DIR="${outputDir}" "${scanScript}" 2>&1`, {
+      timeout: 300_000
+    }).toString()
   } catch (e) {
-    return { ok: false, error: `Scan failed: ${e instanceof Error ? e.message : String(e)}` }
+    const msg = e instanceof Error ? e.message : String(e)
+    const scriptMsg = output || msg
+    return { ok: false, error: `Scan failed: ${scriptMsg}` }
   }
 
-  await ensureManifestFileIds(path.join(outputDir, 'manifest.json'))
+  if (!fs.existsSync(manifestPath)) {
+    return { ok: false, error: 'No media files found. Run process_media.sh first to copy files from cameras.' }
+  }
+
+  await ensureManifestFileIds(manifestPath)
 
   return { ok: true }
 }

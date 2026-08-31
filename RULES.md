@@ -113,7 +113,7 @@ type Manifest = {
 
 - Default manifest `output/manifest.json`, `PROCESSED_DIR=output/processed`.
 - If jump IDs given, process only those; else process all `jumps[] | select(.confirmed==true and .processed!=true)`.
-- For each `jump_id`, reads the jump label from the manifest, sanitizes it (alphanumeric + `.` + `-` + `_`), and creates `mkdir -p processed/sanitized_label` with subdirs `videos/` and `photos/`. Files are renamed to `sanitized_label_XX.ext`.
+- For each `jump_id`, reads the jump label from the manifest, sanitizes it (alphanumeric + `.` + `-` + `_`), and creates `mkdir -p processed/sanitized_label` with subdirs `videos/` and `photos/`. Files are renamed to `sanitized_label_YYYYMMDD_HHMMSS.ext` (24h format, based on file mtime).
 
 ### 6.2 `api.manifest` execute
 
@@ -294,6 +294,7 @@ Card border color: amber if selected for comparison, blue if processed, gray oth
 - Shows the file (video player or image).
 - **Prev/Next** buttons or arrow keys navigate between files.
 - **Escape** or the close button closes the preview.
+- **Video cropping** (planned): A timeline below the video with draggable handles to select start/end frames. Smooth scrubbing without lag, even on large files.
 
 ### 9.15 Header Actions
 

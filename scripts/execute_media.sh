@@ -63,8 +63,6 @@ for jump_id in "${JUMP_IDS[@]}"; do
         continue
     fi
 
-    first_mtime=$(jq -r --arg id "${jump_id}" '.jumps[] | select(.id == $id) | .files[0].mtime' "${MANIFEST}" 2>/dev/null)
-
     mkdir -p "${videos_dir}" "${photos_dir}"
 
     video_idx=0
@@ -78,28 +76,24 @@ for jump_id in "${JUMP_IDS[@]}"; do
 
         ext="${filepath##*.}"
         ext_lower="${ext,,}"
-        offset=$((file_mtime - first_mtime))
-        new_mtime=$((first_mtime + offset))
+        timestamp=$(date -d "@${file_mtime}" +"%Y%m%d_%H%M%S")
 
         if is_video_ext "${ext}"; then
             video_idx=$((video_idx + 1))
-            seq=$(printf "%02d" "${video_idx}")
-            new_name=$(printf "%s_%s.%s" "${safe_label}" "${seq}" "${ext_lower}")
+            new_name=$(printf "%s_%s.%s" "${safe_label}" "${timestamp}" "${ext_lower}")
             dest="${videos_dir}/${new_name}"
         elif is_photo_ext "${ext}"; then
             photo_idx=$((photo_idx + 1))
-            seq=$(printf "%02d" "${photo_idx}")
-            new_name=$(printf "%s_%s.%s" "${safe_label}" "${seq}" "${ext_lower}")
+            new_name=$(printf "%s_%s.%s" "${safe_label}" "${timestamp}" "${ext_lower}")
             dest="${photos_dir}/${new_name}"
         else
             photo_idx=$((photo_idx + 1))
-            seq=$(printf "%02d" "${photo_idx}")
-            new_name=$(printf "%s_%s.%s" "${safe_label}" "${seq}" "${ext_lower}")
+            new_name=$(printf "%s_%s.%s" "${safe_label}" "${timestamp}" "${ext_lower}")
             dest="${photos_dir}/${new_name}"
         fi
 
         cp -p --update=none "${filepath}" "${dest}"
-        touch -d "@${new_mtime}" "${dest}"
+        touch -d "@${file_mtime}" "${dest}"
         copied=$((copied + 1))
         count=$((count + 1))
     done < <(jq -r --arg id "${jump_id}" '.jumps[] | select(.id == $id) | .files[] | "\(.path)|\(.mtime)"' "${MANIFEST}" 2>/dev/null)
