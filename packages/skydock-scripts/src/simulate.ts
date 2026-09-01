@@ -27,28 +27,46 @@ const createFile = (dir: string, name: string, epoch: number, duration: number):
     if (hasCommand('ffmpeg')) {
       try {
         execSync(
-          `ffmpeg -y -loglevel error -f lavfi -i "testsrc=size=1920x1080:rate=1" -frames:v 1 "${filePath}"`,
+          `ffmpeg -y -loglevel error -f lavfi -i "color=color=0x${((epoch * 997) & 0xffffff).toString(16).padStart(6, '0')}:size=1920x1080:rate=1" -frames:v 1 "${filePath}"`,
           { stdio: 'ignore' }
         )
       } catch {
-        fs.writeFileSync(filePath, Buffer.alloc(30 * 1024))
+        fs.writeFileSync(
+          filePath,
+          Buffer.concat([Buffer.alloc(30 * 1024), Buffer.from(`${name}-${epoch}`)])
+        )
       }
     } else {
-      fs.writeFileSync(filePath, Buffer.alloc(30 * 1024))
+      fs.writeFileSync(
+        filePath,
+        Buffer.concat([Buffer.alloc(30 * 1024), Buffer.from(`${name}-${epoch}`)])
+      )
     }
   } else {
     if (hasCommand('ffmpeg')) {
       try {
         execSync(
-          `ffmpeg -y -loglevel error -f lavfi -i "testsrc=duration=${duration}:size=1920x1080:rate=30" -f lavfi -i "sine=frequency=440:duration=${duration}" -c:v libx264 -preset ultrafast -tune zerolatency -c:a aac -shortest "${filePath}"`,
+          `ffmpeg -y -loglevel error -f lavfi -i "testsrc=duration=${duration}:size=1920x1080:rate=30" -f lavfi -i "sine=frequency=${440 + (epoch % 200)}:duration=${duration}" -c:v libx264 -preset ultrafast -tune zerolatency -c:a aac -shortest "${filePath}"`,
           { stdio: 'ignore' }
         )
       } catch {
-        fs.writeFileSync(filePath, Buffer.alloc(50 * 1024))
+        fs.writeFileSync(
+          filePath,
+          Buffer.concat([Buffer.alloc(50 * 1024), Buffer.from(`${name}-${epoch}`)])
+        )
       }
     } else {
-      fs.writeFileSync(filePath, Buffer.alloc(50 * 1024))
+      fs.writeFileSync(
+        filePath,
+        Buffer.concat([Buffer.alloc(50 * 1024), Buffer.from(`${name}-${epoch}`)])
+      )
     }
+  }
+
+  if (fs.existsSync(filePath)) {
+    try {
+      fs.appendFileSync(filePath, Buffer.from(`\n${name}-${epoch}\n`))
+    } catch {}
   }
 
   const stat = fs.statSync(filePath)
