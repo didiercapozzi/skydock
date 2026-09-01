@@ -1,11 +1,10 @@
-import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useFetcher, useRevalidator } from 'react-router'
 import { getOutputDirPath } from '../lib/scanner.server'
 import { ensureManifestFileIds } from '../lib/fileId.server'
-import { manifestSchema } from '../lib/types'
-import type { Manifest, ManifestFile, ManifestJump } from '../lib/types'
+import { loadManifest } from '@skydock/scripts'
+import type { ManifestFile, ManifestJump } from '../lib/types'
 import type { SystemStatus } from '../lib/status.server'
 import type { Route } from './+types/review'
 import { CompareDrawer } from '../components/review/compare-drawer'
@@ -21,14 +20,7 @@ import { getJumpBounds, groupJumpsByDay } from '../components/review/utils'
 const loader = async () => {
   const manifestPath = path.join(getOutputDirPath(), 'manifest.json')
   await ensureManifestFileIds(manifestPath)
-  let manifest: Manifest | null = null
-  try {
-    if (fs.existsSync(manifestPath)) {
-      manifest = manifestSchema.parse(JSON.parse(fs.readFileSync(manifestPath, 'utf-8')))
-    }
-  } catch {
-    manifest = null
-  }
+  const manifest = loadManifest(manifestPath)
   return { manifest }
 }
 
