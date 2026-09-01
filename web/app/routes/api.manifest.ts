@@ -47,8 +47,27 @@ const removeProcessedDir = (label: string): void => {
   } catch {}
 }
 
-const requireProcessedPaths = (manifest: Manifest): Set<string> =>
-  new Set(manifest.jumps.filter((j) => j.processed).flatMap((j) => j.files.map((f) => f.path)))
+const findFileByRef = (manifest: Manifest, ref: string): ManifestFile | undefined =>
+  manifest.files.find((f) => f.id === ref || f.path === ref)
+
+const toFileIds = (manifest: Manifest, refs: string[]): string[] => {
+  const ids: string[] = []
+  for (const ref of refs) {
+    const f = findFileByRef(manifest, ref)
+    if (f?.id) ids.push(f.id)
+  }
+  return ids
+}
+
+const matchesRef = (file: ManifestFile, ref: string): boolean =>
+  file.id === ref || file.path === ref
+
+const requireProcessedIds = (manifest: Manifest): Set<string> =>
+  new Set(
+    manifest.jumps
+      .filter((j) => j.processed)
+      .flatMap((j) => j.files.map((f) => f.id).filter((id): id is string => !!id))
+  )
 
 const isAllProcessed = (manifest: Manifest): boolean =>
   manifest.status === 'executed' ||
@@ -56,17 +75,19 @@ const isAllProcessed = (manifest: Manifest): boolean =>
 
 const applyShift = (
   manifest: Manifest,
-  paths: string[],
+  refs: string[],
   offsetSeconds: number
 ): { ok: true; offsetSeconds: number } | { ok: false; error: string } => {
-  if (paths.length === 0) return { ok: false, error: 'No paths specified' }
+  if (refs.length === 0) return { ok: false, error: 'No paths specified' }
   if (offsetSeconds === 0) return { ok: false, error: 'Offset is zero' }
-  const processedPaths = requireProcessedPaths(manifest)
-  if (paths.some((p) => processedPaths.has(p)))
+  const ids = toFileIds(manifest, refs)
+  if (ids.length === 0) return { ok: false, error: 'Files not found' }
+  const processedIds = requireProcessedIds(manifest)
+  if (ids.some((id) => processedIds.has(id)))
     return { ok: false, error: 'Cannot shift files of a processed jump — unprocess first' }
-  const pathsSet = new Set(paths)
-  shiftFiles(manifest, pathsSet, offsetSeconds)
-  reclusterJumps(manifest, pathsSet)
+  const idsSet = new Set(ids)
+  shiftFiles(manifest, idsSet, offsetSeconds)
+  reclusterJumps(manifest, idsSet)
   return { ok: true, offsetSeconds }
 }
 
@@ -129,8 +150,8 @@ const handleCreateJump = (manifest: Manifest) => {
 const handleMoveFiles = (manifest: Manifest, body: Body) => {
   const fromJumpId = asString(body.fromJumpId)
   const toJumpId = asString(body.toJumpId)
-  const filePaths = asStringArray(body.filePaths)
-  if (filePaths.length === 0) return fail('No files specified')
+  const fileRefs = asStringArray(body.fileIds ?? body.filePaths)
+  if (fileRefs.length === 0) return fail('No files specified')
   const fromR = requireJump(manifest, fromJumpId)
   const toR = requireJump(manifest, toJumpId)
   if ('error' in fromR) return fail(fromR.error)
@@ -139,8 +160,8 @@ const handleMoveFiles = (manifest: Manifest, body: Body) => {
   if ('error' in fromCheck) return fail(fromCheck.error)
   const toCheck = requireUnprocessed(toR.jump)
   if ('error' in toCheck) return fail(toCheck.error)
-  for (const filePath of filePaths) {
-    const fileIdx = fromR.jump.files.findIndex((f) => f.path === filePath)
+  for (const ref of fileRefs) {
+    const fileIdx = fromR.jump.files.findIndex((f) => matchesRef(f, ref))
     if (fileIdx !== -1) {
       const [file] = fromR.jump.files.splice(fileIdx, 1)
       toR.jump.files.push(file)
@@ -151,14 +172,14 @@ const handleMoveFiles = (manifest: Manifest, body: Body) => {
 
 const handleRemoveFiles = (manifest: Manifest, body: Body) => {
   const jumpId = asString(body.jumpId)
-  const filePaths = asStringArray(body.filePaths)
-  if (filePaths.length === 0) return fail('No files specified')
+  const fileRefs = asStringArray(body.fileIds ?? body.filePaths)
+  if (fileRefs.length === 0) return fail('No files specified')
   const r = requireJump(manifest, jumpId)
   if ('error' in r) return fail(r.error)
   const check = requireUnprocessed(r.jump)
   if ('error' in check) return fail(check.error)
-  for (const filePath of filePaths) {
-    const fileIdx = r.jump.files.findIndex((f) => f.path === filePath)
+  for (const ref of fileRefs) {
+    const fileIdx = r.jump.files.findIndex((f) => matchesRef(f, ref))
     if (fileIdx !== -1) r.jump.files.splice(fileIdx, 1)
   }
   return ok()
@@ -166,25 +187,25 @@ const handleRemoveFiles = (manifest: Manifest, body: Body) => {
 
 const handleShift = (manifest: Manifest, body: Body) => {
   if (isAllProcessed(manifest)) return fail('All jumps already processed')
-  const paths = asStringArray(body.paths ?? body.targetPaths ?? body.referencePaths)
+  const refs = asStringArray(body.fileIds ?? body.paths ?? body.targetPaths ?? body.referencePaths)
   const offsetSeconds =
     typeof body.offsetSeconds === 'number' ? body.offsetSeconds : Number(body.offsetSeconds ?? 0)
-  return applyShift(manifest, paths, offsetSeconds)
+  return applyShift(manifest, refs, offsetSeconds)
 }
 
 const handleCalibrate = (manifest: Manifest, body: Body) => {
   if (isAllProcessed(manifest)) return fail('All jumps already processed')
-  const referencePaths = asStringArray(body.referencePaths)
-  const targetPaths = asStringArray(body.targetPaths)
+  const referenceRefs = asStringArray(body.referenceIds ?? body.referencePaths)
+  const targetRefs = asStringArray(body.targetIds ?? body.targetPaths)
   const scope = asString(body.scope, 'single')
-  if (referencePaths.length === 0 || targetPaths.length === 0) return fail('Missing sequence files')
-  const mtimeOf = (p: string): number | undefined => manifest.files.find((f) => f.path === p)?.mtime
-  const refTimes = referencePaths.map(mtimeOf).filter((t): t is number => t !== undefined)
-  const targetTimes = targetPaths.map(mtimeOf).filter((t): t is number => t !== undefined)
+  if (referenceRefs.length === 0 || targetRefs.length === 0) return fail('Missing sequence files')
+  const mtimeOf = (ref: string): number | undefined => findFileByRef(manifest, ref)?.mtime
+  const refTimes = referenceRefs.map(mtimeOf).filter((t): t is number => t !== undefined)
+  const targetTimes = targetRefs.map(mtimeOf).filter((t): t is number => t !== undefined)
   if (refTimes.length === 0 || targetTimes.length === 0) return fail('Sequence files not found')
   const offsetSeconds = Math.min(...refTimes) - Math.min(...targetTimes)
-  const pathsToShift = scope === 'all' ? manifest.files.map((f) => f.path) : targetPaths
-  const result = applyShift(manifest, pathsToShift, offsetSeconds)
+  const refsToShift = scope === 'all' ? manifest.files.map((f) => f.id ?? f.path) : targetRefs
+  const result = applyShift(manifest, refsToShift, offsetSeconds)
   if (!result.ok) return result
   if (scope === 'all') manifest.cameraClockOffsetSeconds = offsetSeconds
   return ok(undefined, { offsetSeconds })
@@ -244,17 +265,17 @@ const handleExecute = (manifest: Manifest, body: Body) => {
 
 const handleCopyFiles = (manifest: Manifest, body: Body) => {
   const toJumpId = asString(body.toJumpId)
-  const filePaths = asStringArray(body.filePaths)
-  if (filePaths.length === 0) return fail('No files specified')
+  const fileRefs = asStringArray(body.fileIds ?? body.filePaths)
+  if (fileRefs.length === 0) return fail('No files specified')
   const toR = requireJump(manifest, toJumpId)
   if ('error' in toR) return fail(toR.error)
   const check = requireUnprocessed(toR.jump)
   if ('error' in check) return fail(check.error)
-  for (const filePath of filePaths) {
-    if (toR.jump.files.some((f) => f.path === filePath)) continue
+  for (const ref of fileRefs) {
+    if (toR.jump.files.some((f) => matchesRef(f, ref))) continue
     const file =
-      manifest.files.find((f) => f.path === filePath) ??
-      manifest.jumps.flatMap((j) => j.files).find((f) => f.path === filePath)
+      findFileByRef(manifest, ref) ??
+      manifest.jumps.flatMap((j) => j.files).find((f) => matchesRef(f, ref))
     if (file) toR.jump.files.push(file)
   }
   return ok()
@@ -262,18 +283,19 @@ const handleCopyFiles = (manifest: Manifest, body: Body) => {
 
 const handleReorderFiles = (manifest: Manifest, body: Body) => {
   const jumpId = asString(body.jumpId)
-  const filePaths = asStringArray(body.filePaths)
-  if (filePaths.length === 0) return fail('No files specified')
+  const fileRefs = asStringArray(body.fileIds ?? body.filePaths)
+  if (fileRefs.length === 0) return fail('No files specified')
   const r = requireJump(manifest, jumpId)
   if ('error' in r) return fail(r.error)
   const check = requireUnprocessed(r.jump)
   if ('error' in check) return fail(check.error)
-  const currentPaths = new Set(r.jump.files.map((f) => f.path))
-  if (filePaths.length !== currentPaths.size) return fail('File list does not match jump files')
-  for (const p of filePaths) {
-    if (!currentPaths.has(p)) return fail('File not found in jump')
+  const currentIds = new Set(r.jump.files.map((f) => f.id ?? f.path))
+  if (fileRefs.length !== currentIds.size) return fail('File list does not match jump files')
+  for (const ref of fileRefs) {
+    const id = findFileByRef(manifest, ref)?.id ?? ref
+    if (!currentIds.has(id)) return fail('File not found in jump')
   }
-  r.jump.files = filePaths.map((p) => r.jump.files.find((f) => f.path === p)!)
+  r.jump.files = fileRefs.map((ref) => r.jump.files.find((f) => matchesRef(f, ref))!)
   return ok()
 }
 
@@ -297,8 +319,8 @@ const handleMergeJumps = (manifest: Manifest, body: Body) => {
       const srcMin = Math.min(...src!.files.map((f) => f.mtime))
       const offset = targetMin - srcMin
       if (offset !== 0 && Math.abs(offset) > 12 * 3600) {
-        const paths = new Set(src!.files.map((f) => f.path))
-        shiftFiles(manifest, paths, offset)
+        const ids = new Set(src!.files.map((f) => f.id).filter((id): id is string => !!id))
+        shiftFiles(manifest, ids, offset)
       }
     }
   }
@@ -322,19 +344,18 @@ const handleUnprocess = (manifest: Manifest, body: Body) => {
 }
 
 const handleRenameFile = (manifest: Manifest, body: Body) => {
-  const filePath = asString(body.filePath)
+  const fileRef = asString(body.fileId ?? body.filePath)
   const newFilename = asString(body.newFilename)
-  if (!filePath || !newFilename) return fail('Missing filePath or newFilename')
-  const allFiles = [...manifest.files, ...manifest.jumps.flatMap((j) => j.files)]
-  const file = allFiles.find((f) => f.path === filePath)
+  if (!fileRef || !newFilename) return fail('Missing fileId or newFilename')
+  const file = findFileByRef(manifest, fileRef)
   if (!file) return fail('File not found')
   file.filename = newFilename
   return ok()
 }
 
 const handleSetCrop = (manifest: Manifest, body: Body) => {
-  const filePath = asString(body.filePath)
-  if (!filePath) return fail('Missing filePath')
+  const fileRef = asString(body.fileId ?? body.filePath)
+  if (!fileRef) return fail('Missing fileId')
   const cropStart = typeof body.cropStart === 'number' ? body.cropStart : undefined
   const cropEnd = typeof body.cropEnd === 'number' ? body.cropEnd : undefined
 
@@ -348,15 +369,10 @@ const handleSetCrop = (manifest: Manifest, body: Body) => {
   }
 
   let found = false
-  for (const file of manifest.files) {
-    if (file.path === filePath) {
-      applyCrop(file)
-      found = true
-    }
-  }
+  const targetId = findFileByRef(manifest, fileRef)?.id ?? fileRef
   for (const jump of manifest.jumps) {
     for (const file of jump.files) {
-      if (file.path === filePath) {
+      if (file.id === targetId || file.path === fileRef) {
         applyCrop(file)
         found = true
       }

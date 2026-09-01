@@ -13,6 +13,8 @@ export type {
   DayGroup,
   FileEntry,
   Jump,
+  JumpFileRef,
+  JumpsFile,
   Manifest,
   ManifestFile,
   ManifestJump,
@@ -26,6 +28,8 @@ export type {
 } from './types'
 
 export {
+  jumpFileRefSchema,
+  jumpsFileSchema,
   manifestFileSchema,
   manifestJumpSchema,
   manifestSchema,

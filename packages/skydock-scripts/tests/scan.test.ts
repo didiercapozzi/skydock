@@ -16,6 +16,7 @@ vi.mock('node:child_process', async (importOriginal) => {
 })
 
 const { scanMedia } = await import('../src/scan')
+const { loadManifest, saveManifest } = await import('../src/manifest')
 
 const createTmpDir = (): string => fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-scan-test-'))
 
@@ -106,7 +107,7 @@ describe('scanMedia', () => {
 
     const manifestPath = path.join(outputDir, 'manifest.json')
     expect(fs.existsSync(manifestPath)).toBe(true)
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest
+    const manifest = loadManifest(manifestPath) as Manifest
     expect(manifest.version).toBe(1)
     expect(manifest.status).toBe('proposed')
     expect(manifest.files).toHaveLength(1)
@@ -220,15 +221,15 @@ describe('scanMedia', () => {
     await scanMedia({ outputDir })
 
     const manifestPath = path.join(outputDir, 'manifest.json')
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest
+    const manifest = loadManifest(manifestPath) as Manifest
     manifest.jumps[0].label = 'My Custom Jump'
     manifest.jumps[0].confirmed = true
-    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2))
+    saveManifest(manifestPath, manifest)
 
     const result = await scanMedia({ outputDir })
 
     expect(result.unchanged).toBe(true)
-    const updated = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest
+    const updated = loadManifest(manifestPath) as Manifest
     expect(updated.jumps[0].label).toBe('My Custom Jump')
     expect(updated.jumps[0].confirmed).toBe(true)
   })
@@ -244,7 +245,7 @@ describe('scanMedia', () => {
     await scanMedia({ outputDir })
 
     const manifestPath = path.join(outputDir, 'manifest.json')
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest
+    const manifest = loadManifest(manifestPath) as Manifest
     expect(manifest.files[0].filename).toBe('DJI_0002.MP4')
     expect(manifest.files[1].filename).toBe('DJI_0001.MP4')
   })
@@ -263,7 +264,7 @@ describe('scanMedia', () => {
     await scanMedia({ outputDir })
 
     const manifestPath = path.join(outputDir, 'manifest.json')
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest
+    const manifest = loadManifest(manifestPath) as Manifest
     expect(manifest.jumps).toHaveLength(2)
     expect(manifest.jumps[0].files).toHaveLength(2)
     expect(manifest.jumps[1].files).toHaveLength(1)
@@ -288,7 +289,7 @@ describe('scanMedia', () => {
     await scanMedia({ outputDir })
 
     const manifestPath = path.join(outputDir, 'manifest.json')
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest
+    const manifest = loadManifest(manifestPath) as Manifest
     expect(manifest.files[0].mtime).toBe(targetEpoch)
   })
 
@@ -307,7 +308,7 @@ describe('scanMedia', () => {
     await scanMedia({ outputDir })
 
     const manifestPath = path.join(outputDir, 'manifest.json')
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest
+    const manifest = loadManifest(manifestPath) as Manifest
     expect(manifest.files[0].mtime).toBe(exifEpoch)
   })
 
@@ -331,7 +332,7 @@ describe('scanMedia', () => {
     await scanMedia({ outputDir })
 
     const manifestPath = path.join(outputDir, 'manifest.json')
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest
+    const manifest = loadManifest(manifestPath) as Manifest
     expect(manifest.files[0].mtime).toBe(baseEpoch)
     expect(manifest.files[1].mtime).toBe(baseEpoch + 60)
   })
@@ -344,7 +345,7 @@ describe('scanMedia', () => {
 
     const manifestPath = path.join(outputDir, 'manifest.json')
     expect(fs.existsSync(manifestPath)).toBe(true)
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest
+    const manifest = loadManifest(manifestPath) as Manifest
     expect(manifest.version).toBe(1)
     expect(manifest.status).toBe('proposed')
     expect(manifest.files).toHaveLength(1)
@@ -361,7 +362,7 @@ describe('scanMedia', () => {
     await scanMedia({ outputDir })
 
     const manifestPath = path.join(outputDir, 'manifest.json')
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest
+    const manifest = loadManifest(manifestPath) as Manifest
     expect(manifest.files).toHaveLength(2)
   })
 
@@ -444,7 +445,7 @@ describe('scanMedia', () => {
     await scanMedia({ outputDir })
 
     const manifestPath = path.join(outputDir, 'manifest.json')
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest
+    const manifest = loadManifest(manifestPath) as Manifest
     const firstId = manifest.files[0].id
 
     fs.rmSync(outputDir, { recursive: true, force: true })
@@ -453,7 +454,7 @@ describe('scanMedia', () => {
 
     await scanMedia({ outputDir })
 
-    const manifest2 = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest
+    const manifest2 = loadManifest(manifestPath) as Manifest
     expect(manifest2.files[0].id).toBe(firstId)
   })
 
@@ -465,7 +466,7 @@ describe('scanMedia', () => {
     await scanMedia({ outputDir })
 
     const manifestPath = path.join(outputDir, 'manifest.json')
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest
+    const manifest = loadManifest(manifestPath) as Manifest
     expect(manifest.files[0].id).not.toBe(manifest.files[1].id)
   })
 })

@@ -2,7 +2,7 @@ import { JUMP_GAP_SECONDS } from './constants'
 import type { Manifest, ManifestFile, ManifestJump } from './types'
 import { sortFilesByMtime } from './utils'
 
-const reclusterJumps = (manifest: Manifest, preservedPaths?: Set<string>): void => {
+const reclusterJumps = (manifest: Manifest, preservedIds?: Set<string>): void => {
   const seenIds = new Set<string>()
   for (const jump of manifest.jumps) {
     if (seenIds.has(jump.id)) {
@@ -15,21 +15,21 @@ const reclusterJumps = (manifest: Manifest, preservedPaths?: Set<string>): void 
   }
 
   const preservedJumps = new Set<ManifestJump>()
-  if (preservedPaths) {
+  if (preservedIds) {
     for (const jump of manifest.jumps) {
-      if (jump.files.some((f) => preservedPaths.has(f.path))) preservedJumps.add(jump)
+      if (jump.files.some((f) => f.id && preservedIds.has(f.id))) preservedJumps.add(jump)
     }
   }
 
   const preservedGroups: ManifestFile[][] = []
-  const preservedFilePaths = new Set<string>()
+  const preservedFileIds = new Set<string>()
   for (const jump of preservedJumps) {
     const sorted = sortFilesByMtime(jump.files)
     preservedGroups.push(sorted)
-    for (const f of sorted) preservedFilePaths.add(f.path)
+    for (const f of sorted) if (f.id) preservedFileIds.add(f.id)
   }
 
-  const remainingFiles = manifest.files.filter((f) => !preservedFilePaths.has(f.path))
+  const remainingFiles = manifest.files.filter((f) => !f.id || !preservedFileIds.has(f.id))
   const sortedRemaining = sortFilesByMtime(remainingFiles)
   const groups: ManifestFile[][] = []
   let current: ManifestFile[] = []
@@ -68,15 +68,16 @@ const reclusterJumps = (manifest: Manifest, preservedPaths?: Set<string>): void 
     }
   }
 
-  const previousByPath = new Map<string, ManifestJump>()
+  const previousById = new Map<string, ManifestJump>()
   for (const jump of manifest.jumps) {
-    for (const file of jump.files) previousByPath.set(file.path, jump)
+    for (const file of jump.files) if (file.id) previousById.set(file.id, jump)
   }
 
   const usedIds = new Set<string>()
   for (const g of mergedGroups) {
     for (const f of g) {
-      const prev = previousByPath.get(f.path)
+      if (!f.id) continue
+      const prev = previousById.get(f.id)
       if (prev && preservedJumps.has(prev)) usedIds.add(prev.id)
     }
   }
@@ -93,7 +94,8 @@ const reclusterJumps = (manifest: Manifest, preservedPaths?: Set<string>): void 
   manifest.jumps = mergedGroups.map((files) => {
     const counts = new Map<string, number>()
     for (const file of files) {
-      const prev = previousByPath.get(file.path)
+      if (!file.id) continue
+      const prev = previousById.get(file.id)
       if (prev) counts.set(prev.id, (counts.get(prev.id) ?? 0) + 1)
     }
 
@@ -106,7 +108,7 @@ const reclusterJumps = (manifest: Manifest, preservedPaths?: Set<string>): void 
       }
     }
 
-    const isPreserved = files.some((f) => preservedFilePaths.has(f.path))
+    const isPreserved = files.some((f) => f.id && preservedFileIds.has(f.id))
     const preservedJump = isPreserved
       ? [...preservedJumps].find((j) => j.files.some((f) => files.includes(f)))
       : undefined
@@ -131,15 +133,15 @@ const reclusterJumps = (manifest: Manifest, preservedPaths?: Set<string>): void 
   })
 }
 
-const shiftFiles = (manifest: Manifest, paths: Set<string>, offsetSeconds: number): void => {
+const shiftFiles = (manifest: Manifest, ids: Set<string>, offsetSeconds: number): void => {
   for (const file of manifest.files) {
-    if (!paths.has(file.path)) continue
+    if (!file.id || !ids.has(file.id)) continue
     if (file.originalMtime === undefined) file.originalMtime = file.mtime
     file.mtime += offsetSeconds
   }
   for (const jump of manifest.jumps) {
     for (const file of jump.files) {
-      if (!paths.has(file.path)) continue
+      if (!file.id || !ids.has(file.id)) continue
       if (file.originalMtime === undefined) file.originalMtime = file.mtime
       file.mtime += offsetSeconds
     }

@@ -13,12 +13,30 @@ const manifestFileSchema = z.object({
   proxyPath: z.string().nullable().optional()
 })
 
+const jumpFileRefSchema = z.object({
+  id: z.string(),
+  cropStart: z.number().nullable().optional(),
+  cropEnd: z.number().nullable().optional()
+})
+
 const manifestJumpSchema = z.object({
   id: z.string(),
   label: z.string(),
   confirmed: z.boolean(),
   files: z.array(manifestFileSchema),
   processed: z.boolean().nullable().optional()
+})
+
+const jumpsFileSchema = z.object({
+  jumps: z.array(
+    z.object({
+      id: z.string(),
+      label: z.string(),
+      confirmed: z.boolean(),
+      files: z.array(jumpFileRefSchema),
+      processed: z.boolean().nullable().optional()
+    })
+  )
 })
 
 const manifestStatusSchema = z.enum(['empty', 'proposed', 'confirmed', 'executed'])
@@ -39,6 +57,8 @@ type ManifestFile = z.infer<typeof manifestFileSchema>
 type ManifestJump = z.infer<typeof manifestJumpSchema>
 type ManifestStatus = z.infer<typeof manifestStatusSchema>
 type Manifest = z.infer<typeof manifestSchema>
+type JumpFileRef = z.infer<typeof jumpFileRefSchema>
+type JumpsFile = z.infer<typeof jumpsFileSchema>
 
 type FileEntry = {
   name: string
@@ -112,6 +132,8 @@ export type {
   DayGroup,
   FileEntry,
   Jump,
+  JumpFileRef,
+  JumpsFile,
   Manifest,
   ManifestFile,
   ManifestJump,
@@ -124,4 +146,11 @@ export type {
   TheoryVideoWithSource
 }
 
-export { manifestFileSchema, manifestJumpSchema, manifestSchema, manifestStatusSchema }
+export {
+  jumpFileRefSchema,
+  jumpsFileSchema,
+  manifestFileSchema,
+  manifestJumpSchema,
+  manifestSchema,
+  manifestStatusSchema
+}

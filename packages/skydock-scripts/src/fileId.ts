@@ -1,7 +1,6 @@
 import * as fs from 'node:fs'
 import * as crypto from 'node:crypto'
-import { manifestSchema } from './types'
-import type { Manifest } from './types'
+import { loadManifest, saveManifest } from './manifest'
 import { getExtensionSafe, getThumbDir, getProxyDir } from './utils'
 
 const ID_HEX_LENGTH = 16
@@ -17,15 +16,8 @@ const computeFileId = async (filePath: string): Promise<string> => {
 }
 
 const ensureManifestFileIds = async (manifestPath: string): Promise<void> => {
-  if (!fs.existsSync(manifestPath)) return
-
-  let manifest: Manifest
-  try {
-    const raw = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'))
-    manifest = manifestSchema.parse(raw)
-  } catch {
-    return
-  }
+  const manifest = loadManifest(manifestPath)
+  if (!manifest) return
 
   let normalized = false
   for (const jump of manifest.jumps) {
@@ -65,7 +57,7 @@ const ensureManifestFileIds = async (manifestPath: string): Promise<void> => {
     }
   }
   if (normalized) {
-    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2))
+    saveManifest(manifestPath, manifest)
   }
 
   let changed = false
@@ -115,7 +107,7 @@ const ensureManifestFileIds = async (manifestPath: string): Promise<void> => {
   }
 
   if (!changed) return
-  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2))
+  saveManifest(manifestPath, manifest)
 }
 
 export { computeFileId, ensureManifestFileIds }

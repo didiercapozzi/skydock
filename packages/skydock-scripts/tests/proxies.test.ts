@@ -5,6 +5,8 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 import type { Manifest, ManifestFile } from '../src/types'
 
+const { loadManifest: loadManifestForTest } = await import('../src/manifest')
+
 const execSyncMock = vi.hoisted(() => vi.fn())
 
 vi.mock('node:child_process', async (importOriginal) => {
@@ -204,7 +206,7 @@ describe('generateProxies', () => {
 
     await generateProxies({ outputDir, jobs: 1 })
 
-    const updated = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest
+    const updated = loadManifestForTest(manifestPath) as Manifest
     expect(updated.files[0].thumbPath).toContain('vid123.jpg')
     expect(updated.files[0].proxyPath).toContain('vid123.mp4')
     expect(updated.jumps[0].files[0].thumbPath).toContain('vid123.jpg')
@@ -258,7 +260,7 @@ describe('generateProxies', () => {
 
     await generateProxies({ outputDir, jobs: 1 })
 
-    const updated = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest
+    const updated = loadManifestForTest(manifestPath) as Manifest
     expect(updated.files[0].thumbPath).toBeUndefined()
     expect(updated.files[0].proxyPath).toBeUndefined()
     expect(updated.jumps[0].files[0].thumbPath).toBeUndefined()
