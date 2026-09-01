@@ -2,7 +2,7 @@ import * as fs from 'node:fs'
 import path from 'node:path'
 import { getOutputDirPath } from '../lib/scanner.server'
 import { ensureManifestFileIds } from '@skydock/scripts'
-import { scanMedia, generateProxies } from '@skydock/scripts'
+import { scanMedia } from '@skydock/scripts'
 
 const action = async () => {
   if (process.env.NODE_ENV === 'production') {
@@ -26,8 +26,6 @@ const action = async () => {
   }
 
   await ensureManifestFileIds(manifestPath)
-
-  generateProxies({ outputDir }).catch(console.error)
 
   return { ok: true }
 }

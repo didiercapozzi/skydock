@@ -91,11 +91,9 @@ const resolveCameras = (camDirs?: string[]): string[] => {
 const runPipeline = async (cameras: string[], outputDir: string): Promise<void> => {
   const { processMedia } = await import('./process.js')
   const { scanMedia } = await import('./scan.js')
-  const { generateProxies } = await import('./proxies.js')
 
   processMedia({ cameraDirs: cameras, outputDir })
   await scanMedia({ outputDir })
-  generateProxies({ outputDir }).catch(console.error)
 }
 
 const watcher = async (options?: WatcherOptions): Promise<void> => {

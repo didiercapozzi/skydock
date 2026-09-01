@@ -9,7 +9,6 @@ const VideoGridThumb = ({ file }: VideoGridThumbProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(false)
   const [hasError, setHasError] = useState(false)
-  const [thumbError, setThumbError] = useState(false)
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
@@ -25,38 +24,22 @@ const VideoGridThumb = ({ file }: VideoGridThumbProps) => {
     io.observe(el)
     return () => io.disconnect()
   }, [])
-  const useThumb = !!file.thumbPath && !thumbError
+  const liveThumbSrc = `/api/stream?path=${encodeURIComponent(file.path)}&thumb=1&w=320&t=0.5`
   return (
     <div
       ref={containerRef}
       className='w-full h-full bg-black'>
       {visible ? (
-        useThumb ? (
-          <img
-            src={`/api/file?path=${encodeURIComponent(file.thumbPath!)}`}
-            alt={file.filename}
-            className='w-full h-full object-cover bg-black'
-            loading='lazy'
-            onError={() => setThumbError(true)}
-          />
-        ) : hasError ? (
+        hasError ? (
           <div className='w-full h-full flex items-center justify-center bg-gray-800 text-white text-[10px]'>
             ▶ Video
           </div>
         ) : (
-          <video
-            src={`/api/file?path=${encodeURIComponent(file.path)}`}
-            muted
-            preload='metadata'
-            playsInline
-            crossOrigin='anonymous'
+          <img
+            src={liveThumbSrc}
+            alt={file.filename}
             className='w-full h-full object-cover bg-black'
-            onLoadedMetadata={(e) => {
-              const v = e.currentTarget
-              try {
-                if (v.duration > 0.5) v.currentTime = 0.5
-              } catch {}
-            }}
+            loading='lazy'
             onError={() => setHasError(true)}
           />
         )

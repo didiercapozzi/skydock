@@ -8,10 +8,7 @@ const manifestFileSchema = z.object({
   id: z.string().optional(),
   originalMtime: z.number().nullable().optional(),
   cropStart: z.number().nullable().optional(),
-  cropEnd: z.number().nullable().optional(),
-  thumbPath: z.string().nullable().optional(),
-  filmstripDir: z.string().nullable().optional(),
-  keyframes: z.array(z.number()).nullable().optional()
+  cropEnd: z.number().nullable().optional()
 })
 
 const jumpFileRefSchema = z.object({
@@ -123,7 +120,6 @@ type TaskStatus = {
 }
 
 type SystemStatus = {
-  proxies: TaskStatus
   scan: TaskStatus
   execute: TaskStatus
   process: TaskStatus

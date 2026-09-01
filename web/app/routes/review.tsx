@@ -1,6 +1,6 @@
 import * as path from 'node:path'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useFetcher, useRevalidator } from 'react-router'
+import { Link, useFetcher } from 'react-router'
 import { getOutputDirPath } from '../lib/scanner.server'
 import { ensureManifestFileIds } from '../lib/fileId.server'
 import { loadManifest } from '@skydock/scripts'
@@ -28,7 +28,6 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   const { manifest } = loaderData
   const manifestFetcher = useFetcher()
   const scanFetcher = useFetcher()
-  const { revalidate } = useRevalidator()
   const [selection, setSelection] = useState<SelectionMap>({})
   const [lastClicked, setLastClicked] = useState<string | null>(null)
   const [preview, setPreview] = useState<PreviewState | null>(null)
@@ -44,21 +43,12 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   } | null>(null)
 
   useEffect(() => {
-    if (manifestFetcher.data || scanFetcher.data) revalidate()
-  }, [manifestFetcher.data, scanFetcher.data, revalidate])
-
-  useEffect(() => {
     let cancelled = false
-    const prevProxiesRunning = { current: false }
     const fetchStatus = async () => {
       try {
         const res = await fetch('/api/status')
         const data = (await res.json()) as { ok: boolean; status: SystemStatus }
         if (cancelled || !data.ok) return
-        const wasRunning = prevProxiesRunning.current
-        const nowRunning = data.status.proxies.state === 'running'
-        if (wasRunning && !nowRunning) revalidate()
-        prevProxiesRunning.current = nowRunning
         setSystemStatus(data.status)
       } catch {}
     }
@@ -68,18 +58,9 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
       cancelled = true
       clearInterval(id)
     }
-  }, [revalidate])
+  }, [])
 
   const scanning = scanFetcher.state !== 'idle' || systemStatus?.scan.state === 'running'
-  const isProxiesRunning = systemStatus?.proxies.state === 'running'
-  const processingFiles = useMemo(() => {
-    if (!manifest || !systemStatus?.proxies.processing?.length) return []
-    const idToFilename = new Map<string, string>()
-    for (const f of manifest.files) if (f.id) idToFilename.set(f.id, f.filename)
-    for (const j of manifest.jumps)
-      for (const f of j.files) if (f.id) idToFilename.set(f.id, f.filename)
-    return systemStatus.proxies.processing.map((id) => idToFilename.get(id) ?? id).slice(0, 4)
-  }, [manifest, systemStatus])
   const isExecuteRunning = systemStatus?.execute.state === 'running'
   const isProcessRunning = systemStatus?.process.state === 'running'
 
@@ -426,10 +407,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
   const totalFiles = manifest.jumps.reduce((s, j) => s + j.files.length, 0)
 
   const anySystemRunning =
-    isProxiesRunning ||
-    isExecuteRunning ||
-    isProcessRunning ||
-    systemStatus?.scan.state === 'running'
+    isExecuteRunning || isProcessRunning || systemStatus?.scan.state === 'running'
 
   return (
     <div className='min-h-screen bg-gray-50 dark:bg-gray-900'>
@@ -476,37 +454,6 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
         </div>
         {systemStatus && (
           <div className='space-y-2 mb-4'>
-            {systemStatus.proxies.state === 'running' && (
-              <div className='flex items-center gap-3 px-4 py-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-sm text-amber-800 dark:text-amber-200'>
-                <span className='w-4 h-4 border-2 border-amber-300 border-t-amber-600 rounded-full animate-spin shrink-0' />
-                <div className='flex-1 min-w-0'>
-                  <span className='font-medium'>Generating proxies</span>
-                  <span className='ml-2 text-amber-700 dark:text-amber-300'>
-                    {systemStatus.proxies.total != null && systemStatus.proxies.done != null
-                      ? `${systemStatus.proxies.done}/${systemStatus.proxies.total} videos`
-                      : 'thumbnails and 480p proxies'}
-                    {' — '}
-                    {systemStatus.proxies.message ||
-                      'thumbnails and previews will appear when ready'}
-                  </span>
-                  {processingFiles.length > 0 && (
-                    <span className='ml-2 text-xs font-mono text-amber-700 dark:text-amber-300 truncate max-w-[320px]'>
-                      · enc: {processingFiles.join(', ')}
-                      {systemStatus.proxies.processing &&
-                      systemStatus.proxies.processing.length > processingFiles.length
-                        ? ` +${systemStatus.proxies.processing.length - processingFiles.length}`
-                        : ''}
-                    </span>
-                  )}
-                  <span className='ml-2 text-xs text-amber-600 dark:text-amber-400'>
-                    · grid uses thumbPath when ready, preview falls back to original
-                  </span>
-                </div>
-                <span className='text-xs px-2 py-1 rounded bg-amber-100 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-700'>
-                  Proxy
-                </span>
-              </div>
-            )}
             {systemStatus.scan.state === 'running' && (
               <div className='flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 text-sm text-blue-800 dark:text-blue-200'>
                 <span className='w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin shrink-0' />
@@ -543,15 +490,12 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                 </div>
               </div>
             )}
-            {(systemStatus.proxies.state === 'done' ||
-              systemStatus.scan.state === 'done' ||
+            {(systemStatus.scan.state === 'done' ||
               systemStatus.execute.state === 'done' ||
               systemStatus.process.state === 'done') && (
               <div className='flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400'>
                 <span className='w-2 h-2 rounded-full bg-green-500' />
                 {[
-                  systemStatus.proxies.state === 'done' &&
-                    `Proxies: ${systemStatus.proxies.message}`,
                   systemStatus.scan.state === 'done' && `Scan: ${systemStatus.scan.message}`,
                   systemStatus.execute.state === 'done' &&
                     `Process: ${systemStatus.execute.message}`,

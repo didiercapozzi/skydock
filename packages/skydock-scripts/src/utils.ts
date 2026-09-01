@@ -20,15 +20,6 @@ const getManifestPath = (outputDir?: string): string =>
 const getStatusDir = (outputDir?: string): string =>
   path.join(outputDir || getOutputDir(), '.status')
 
-const getCacheDir = (outputDir?: string): string => path.join(outputDir || getOutputDir(), '.cache')
-
-const getThumbDir = (outputDir?: string): string => path.join(getCacheDir(outputDir), 'thumbs')
-
-const getFilmstripDir = (outputDir?: string, fid?: string): string => {
-  const base = path.join(getCacheDir(outputDir), 'filmstrip')
-  return fid ? path.join(base, fid) : base
-}
-
 const sortFilesByMtime = (files: ManifestFile[]): ManifestFile[] =>
   [...files].sort((a, b) => a.mtime - b.mtime)
 
@@ -52,14 +43,11 @@ const toISOString = (date?: Date): string => (date || new Date()).toISOString()
 
 export {
   formatTimestamp,
-  getCacheDir,
   getExtension,
   getExtensionSafe,
-  getFilmstripDir,
   getManifestPath,
   getOutputDir,
   getStatusDir,
-  getThumbDir,
   isMediaFile,
   isPhotoFile,
   isVideoFile,

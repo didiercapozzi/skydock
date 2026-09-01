@@ -296,21 +296,8 @@ const scanMedia = async (options?: { outputDir?: string }): Promise<ScanResult> 
   }
 }
 
-const spawnProxies = (outputDir: string): void => {
-  const scriptDir = path.dirname(new URL(import.meta.url).pathname)
-  const proxyScript = path.join(scriptDir, 'proxies.ts')
-  if (!fs.existsSync(proxyScript)) return
-
-  try {
-    const { spawn } = require('node:child_process')
-    const child = spawn('npx', ['tsx', proxyScript], {
-      env: { ...process.env, SKYDOCK_OUTPUT_DIR: outputDir },
-      detached: true,
-      stdio: 'ignore'
-    })
-    child.unref()
-    console.log('[Scan] Proxy generation queued in background')
-  } catch {}
+const spawnProxies = (_outputDir: string, _only: 'thumbs' | 'all' = 'thumbs'): void => {
+  console.log('[Scan] Live mode — no disk proxies generated')
 }
 
 const isCli =

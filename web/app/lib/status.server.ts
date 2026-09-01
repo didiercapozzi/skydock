@@ -7,7 +7,6 @@ import type { TaskStatus } from '@skydock/scripts'
 export type TaskState = 'idle' | 'running' | 'done' | 'error'
 
 export type SystemStatus = {
-  proxies: TaskStatus
   scan: TaskStatus
   execute: TaskStatus
   process: TaskStatus
@@ -42,14 +41,12 @@ const readTask = (name: string): TaskStatus => {
 }
 
 const getSystemStatus = (): SystemStatus => ({
-  proxies: readTask('proxies'),
   scan: readTask('scan'),
   execute: readTask('execute'),
   process: readTask('process')
 })
 
 const isAnyRunning = (status: SystemStatus): boolean =>
-  status.proxies.state === 'running' ||
   status.scan.state === 'running' ||
   status.execute.state === 'running' ||
   status.process.state === 'running'

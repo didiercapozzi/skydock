@@ -16,11 +16,11 @@ const PreviewDrawer = ({ preview, onClose, onPrev, onNext }: PreviewDrawerProps)
   const src = `/api/file?path=${encodeURIComponent(file.path)}`
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [durations, setDurations] = useState<Record<string, number>>({})
-  const [scrubTime, setScrubTime] = useState<number | null>(null)
   const videoDuration = durations[file.path] ?? 0
   const isVideo = isVideoFile(file.filename)
 
   const setVideoDurationForFile = (d: number) => {
+    if (!Number.isFinite(d) || d <= 0 || d === Infinity) return
     setDurations((prev) => ({ ...prev, [file.path]: d }))
   }
 
@@ -78,39 +78,23 @@ const PreviewDrawer = ({ preview, onClose, onPrev, onNext }: PreviewDrawerProps)
         </div>
         <div className='flex-1 flex flex-col items-center justify-center p-4 gap-3 overflow-auto'>
           <div className='w-full flex items-center justify-center'>
-            {isVideo && scrubTime !== null && file.filmstripDir ? (
-              <div className='relative max-w-full'>
-                <img
-                  src={`/api/file?path=${encodeURIComponent(`${file.filmstripDir}/${String(Math.floor(scrubTime / 2) + 1).padStart(4, '0')}.jpg`)}`}
-                  alt=''
-                  className='max-w-full rounded bg-black object-contain'
-                  style={{ maxHeight: '60vh' }}
-                />
-                <span className='absolute bottom-1 left-1/2 -translate-x-1/2 text-xs px-1.5 py-0.5 rounded bg-black/70 text-white'>
-                  {Math.floor(scrubTime / 60)}:{String(Math.floor(scrubTime % 60)).padStart(2, '0')}
-                </span>
-              </div>
-            ) : (
-              <MediaPreview
-                key={file.path}
-                file={file}
-                videoRef={isVideo ? videoRef : undefined}
-                onDurationLoaded={isVideo ? setVideoDurationForFile : undefined}
-              />
-            )}
+            <MediaPreview
+              key={file.path}
+              file={file}
+              videoRef={isVideo ? videoRef : undefined}
+              onDurationLoaded={isVideo ? setVideoDurationForFile : undefined}
+            />
           </div>
-          {isVideo && videoDuration > 0 && (
+          {isVideo && Number.isFinite(videoDuration) && videoDuration > 0 && (
             <VideoCropper
               key={file.path}
               videoRef={videoRef}
               duration={videoDuration}
               filePath={file.path}
-              filmstripDir={file.filmstripDir ?? undefined}
-              keyframes={file.keyframes ?? undefined}
               initialCropStart={file.cropStart ?? undefined}
               initialCropEnd={file.cropEnd ?? undefined}
               onApplied={onClose}
-              onScrub={setScrubTime}
+              onScrub={() => {}}
             />
           )}
           <div className='text-xs text-gray-500'>{formatSize(file.size)}</div>

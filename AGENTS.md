@@ -45,7 +45,6 @@ All scripts are TypeScript modules in `packages/skydock-scripts/src/`, runnable 
 | `process.ts`       | Copy camera files to original_files/     |
 | `scan.ts`          | Generate manifest.json                   |
 | `execute.ts`       | Copy confirmed jumps to processed/       |
-| `proxies.ts`       | Generate thumbnails + proxy videos       |
 | `watcher.ts`       | Background daemon, polls for cameras     |
 | `simulate.ts`      | Generate fake camera footage for testing |
 | `test-pipeline.ts` | End-to-end test runner                   |
@@ -92,7 +91,7 @@ npm run test-pipeline -- --clean
 - `tsx` - TypeScript execution (zero-config)
 - `cmp` - File comparison (built-in)
 - `exiftool` - Optional, for camera metadata extraction
-- `ffmpeg` - Optional, for proxy generation
+- `ffmpeg` - Required, for live 360p transcoding via api/stream
 
 ### Coding rules
 

@@ -15,7 +15,9 @@ const MediaPreview = ({
   videoRef,
   onDurationLoaded
 }: MediaPreviewProps) => {
-  const src = `/api/file?path=${encodeURIComponent(file.path)}`
+  const src = isVideoFile(file.filename)
+    ? `/api/stream?path=${encodeURIComponent(file.path)}&w=360`
+    : `/api/file?path=${encodeURIComponent(file.path)}`
   const [videoError, setVideoError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(() => isVideoFile(file.filename))
   const [retryKey, setRetryKey] = useState(0)
@@ -87,11 +89,21 @@ const MediaPreview = ({
           style={{ maxHeight }}
           onLoadedData={() => setIsLoading(false)}
           onLoadedMetadata={(e) => {
-            setIsLoading(false)
-            onDurationLoaded?.(e.currentTarget.duration)
+            const d = e.currentTarget.duration
+            if (Number.isFinite(d) && d > 0 && d !== Infinity) {
+              setIsLoading(false)
+              onDurationLoaded?.(d)
+            }
             const v = e.currentTarget
             const p = v.play()
             if (p && typeof p.catch === 'function') p.catch(() => {})
+          }}
+          onDurationChange={(e) => {
+            const d = e.currentTarget.duration
+            if (Number.isFinite(d) && d > 0 && d !== Infinity) {
+              setIsLoading(false)
+              onDurationLoaded?.(d)
+            }
           }}
           onCanPlay={() => setIsLoading(false)}
           onError={() => {

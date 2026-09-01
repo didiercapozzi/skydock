@@ -1,12 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useFetcher, useRevalidator } from 'react-router'
 
 type VideoCropperProps = {
   videoRef: React.RefObject<HTMLVideoElement | null>
   duration: number
   filePath: string
-  filmstripDir?: string
-  keyframes?: number[]
   initialCropStart?: number
   initialCropEnd?: number
   onApplied?: () => void
@@ -17,14 +15,12 @@ const VideoCropper = ({
   videoRef,
   duration,
   filePath,
-  filmstripDir,
-  keyframes,
   initialCropStart,
   initialCropEnd,
   onApplied,
   onScrub
 }: VideoCropperProps) => {
-  const [currentTime, setCurrentTime] = useState(0)
+  const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 0
   const [scrubTime, setScrubTime] = useState<number | null>(null)
   const [cropStartOverride, setCropStartOverride] = useState<number | undefined>(
     initialCropStart ?? undefined
@@ -33,12 +29,11 @@ const VideoCropper = ({
     initialCropEnd ?? undefined
   )
   const cropStart = cropStartOverride ?? 0
-  const cropEnd = cropEndOverride ?? duration
+  const cropEnd = cropEndOverride ?? safeDuration
   const [dragging, setDragging] = useState<'start' | 'end' | 'playhead' | null>(null)
   const [zoomLevel, setZoomLevel] = useState(1)
   const [viewOffset, setViewOffset] = useState(0.5)
   const timelineRef = useRef<HTMLDivElement>(null)
-  const rafRef = useRef(0)
   const cropFetcher = useFetcher()
   const { revalidate } = useRevalidator()
 
@@ -49,44 +44,34 @@ const VideoCropper = ({
     }
   }, [cropFetcher.state, cropFetcher.data, revalidate, onApplied])
 
-  useEffect(() => {
-    const vid = videoRef.current
-    if (!vid) return
-    const tick = () => {
-      if (!dragging) setCurrentTime(vid.currentTime)
-      rafRef.current = requestAnimationFrame(tick)
-    }
-    rafRef.current = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [videoRef, filePath, duration, dragging])
-
-  const visibleDuration = duration / zoomLevel
+  const getSnapshot = useCallback(() => videoRef.current?.currentTime ?? 0, [videoRef])
+  const getServerSnapshot = useCallback(() => 0, [])
+  const subscribe = useCallback(
+    (callback: () => void) => {
+      if (dragging) return () => {}
+      let raf = 0
+      const tick = () => {
+        callback()
+        raf = requestAnimationFrame(tick)
+      }
+      raf = requestAnimationFrame(tick)
+      return () => cancelAnimationFrame(raf)
+    },
+    [dragging]
+  )
+  const currentTime = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+  const visibleDuration = safeDuration > 0 ? safeDuration / zoomLevel : 0
   const viewStart = Math.max(
     0,
-    Math.min(duration - visibleDuration, viewOffset * duration - visibleDuration / 2)
+    Math.min(safeDuration - visibleDuration, viewOffset * safeDuration - visibleDuration / 2)
   )
-  const viewEnd = Math.min(duration, viewStart + visibleDuration)
-
-  const snapToKeyframe = (t: number): number => {
-    if (!keyframes || keyframes.length === 0) return t
-    let best = keyframes[0]
-    let bestDist = Math.abs(t - best)
-    for (const k of keyframes) {
-      const d = Math.abs(t - k)
-      if (d < bestDist) {
-        bestDist = d
-        best = k
-      }
-    }
-    return bestDist < 0.5 ? best : t
-  }
+  const viewEnd = Math.min(safeDuration, viewStart + visibleDuration)
 
   const seekTo = (time: number) => {
     const vid = videoRef.current
     if (!vid) return
-    const clamped = Math.max(0, Math.min(time, duration))
+    const clamped = Math.max(0, Math.min(time, safeDuration))
     vid.currentTime = clamped
-    setCurrentTime(clamped)
   }
 
   const timeFromX = (clientX: number) => {
@@ -98,7 +83,7 @@ const VideoCropper = ({
 
   useEffect(() => {
     const el = timelineRef.current
-    if (!el) return
+    if (!el || safeDuration <= 0) return
     const handler = (e: WheelEvent) => {
       e.preventDefault()
       const rect = el.getBoundingClientRect()
@@ -106,18 +91,19 @@ const VideoCropper = ({
       const hoverTime = viewStart + ratio * (viewEnd - viewStart)
       const zoomFactor = e.deltaY < 0 ? 1.2 : 1 / 1.2
       const newZoom = Math.max(1, Math.min(50, zoomLevel * zoomFactor))
-      const newVisibleDuration = duration / newZoom
+      const newVisibleDuration = safeDuration / newZoom
       const newViewStart = Math.max(
         0,
-        Math.min(duration - newVisibleDuration, hoverTime - ratio * newVisibleDuration)
+        Math.min(safeDuration - newVisibleDuration, hoverTime - ratio * newVisibleDuration)
       )
-      const newViewOffset = (newViewStart + newVisibleDuration / 2) / duration
+      const newViewOffset =
+        safeDuration > 0 ? (newViewStart + newVisibleDuration / 2) / safeDuration : 0.5
       setZoomLevel(newZoom)
       setViewOffset(newViewOffset)
     }
     el.addEventListener('wheel', handler, { passive: false })
     return () => el.removeEventListener('wheel', handler)
-  }, [duration, zoomLevel, viewStart, viewEnd])
+  }, [safeDuration, zoomLevel, viewStart, viewEnd])
 
   const formatTimeCode = (t: number) => {
     const h = Math.floor(t / 3600)
@@ -138,18 +124,10 @@ const VideoCropper = ({
     const vid = videoRef.current
     if (vid && !vid.paused) vid.pause()
     const time = timeFromX(e.clientX)
-    const snapped = snapToKeyframe(time)
     if (target === 'timeline') {
-      if (filmstripDir) {
-        setScrubTime(snapped)
-        onScrub?.(snapped)
-      } else seekTo(snapped)
+      seekTo(time)
       setDragging('playhead')
     } else {
-      if (filmstripDir && (target === 'start' || target === 'end')) {
-        setScrubTime(snapped)
-        onScrub?.(snapped)
-      }
       setDragging(target)
     }
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
@@ -158,43 +136,25 @@ const VideoCropper = ({
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!dragging) return
     const time = timeFromX(e.clientX)
-    const snapped = snapToKeyframe(time)
     if (dragging === 'start') {
-      const clamped = Math.min(snapped, cropEnd - 0.1)
+      const clamped = Math.min(time, cropEnd - 0.1)
       setCropStartOverride(Math.max(0, clamped))
-      if (filmstripDir) {
-        setScrubTime(snapped)
-        onScrub?.(snapped)
-      }
     } else if (dragging === 'end') {
-      const clamped = Math.max(snapped, cropStart + 0.1)
-      setCropEndOverride(Math.min(duration, clamped))
-      if (filmstripDir) {
-        setScrubTime(snapped)
-        onScrub?.(snapped)
-      }
+      const clamped = Math.max(time, cropStart + 0.1)
+      setCropEndOverride(Math.min(safeDuration, clamped))
     } else if (dragging === 'playhead') {
-      if (filmstripDir) {
-        setScrubTime(snapped)
-        onScrub?.(snapped)
-      } else seekTo(snapped)
+      seekTo(time)
     }
   }
 
   const handlePointerUp = () => {
-    if (dragging === 'playhead' && scrubTime !== null) {
-      seekTo(snapToKeyframe(scrubTime))
-    }
-    if ((dragging === 'start' || dragging === 'end') && scrubTime !== null) {
-      seekTo(snapToKeyframe(scrubTime))
-    }
     setDragging(null)
     setScrubTime(null)
     onScrub?.(null)
   }
 
   const toPct = (time: number) => {
-    if (viewEnd === viewStart) return 0
+    if (!Number.isFinite(viewEnd) || !Number.isFinite(viewStart) || viewEnd === viewStart) return 0
     return ((time - viewStart) / (viewEnd - viewStart)) * 100
   }
 
@@ -212,11 +172,6 @@ const VideoCropper = ({
         <span>{formatTimeCode(cropStart)}</span>
         <div className='flex items-center gap-2'>
           <span className='text-gray-500'>Crop: {formatTimeCode(cropEnd - cropStart)}</span>
-          {filmstripDir && dragging && (
-            <span className='text-[9px] px-1 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300'>
-              filmstrip scrub
-            </span>
-          )}
           {zoomLevel > 1 && (
             <button
               type='button'
@@ -274,9 +229,8 @@ const VideoCropper = ({
           onClick={() => {
             const vid = videoRef.current
             if (vid && !vid.paused) vid.pause()
-            const t = snapToKeyframe(currentTime)
-            setCropStartOverride(t)
-            seekTo(t)
+            setCropStartOverride(currentTime)
+            seekTo(currentTime)
           }}
           className='text-[10px] px-1.5 py-0.5 rounded border text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'>
           Start here
@@ -286,9 +240,8 @@ const VideoCropper = ({
           onClick={() => {
             const vid = videoRef.current
             if (vid && !vid.paused) vid.pause()
-            const t = snapToKeyframe(currentTime)
-            setCropEndOverride(t)
-            seekTo(t)
+            setCropEndOverride(currentTime)
+            seekTo(currentTime)
           }}
           className='text-[10px] px-1.5 py-0.5 rounded border text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'>
           End here
@@ -296,10 +249,8 @@ const VideoCropper = ({
         <button
           type='button'
           onClick={() => {
-            const snappedStart = snapToKeyframe(cropStart)
-            const snappedEnd = snapToKeyframe(cropEnd)
             cropFetcher.submit(
-              { action: 'set-crop', filePath, cropStart: snappedStart, cropEnd: snappedEnd },
+              { action: 'set-crop', filePath, cropStart, cropEnd },
               { method: 'POST', encType: 'application/json', action: '/api/manifest' }
             )
           }}

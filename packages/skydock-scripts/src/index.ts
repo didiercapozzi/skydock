@@ -42,14 +42,11 @@ export { computeFileId, ensureManifestFileIds } from './fileId'
 export { writeStatus, scheduleIdle } from './status'
 export {
   formatTimestamp,
-  getCacheDir,
   getExtension,
   getExtensionSafe,
-  getFilmstripDir,
   getManifestPath,
   getOutputDir,
   getStatusDir,
-  getThumbDir,
   isMediaFile,
   isPhotoFile,
   isVideoFile,
@@ -66,9 +63,6 @@ export type { ScanResult } from './scan'
 
 export { executeMedia } from './execute'
 export type { ExecuteOptions, ExecuteResult } from './execute'
-
-export { generateProxies } from './proxies'
-export type { ProxyOptions } from './proxies'
 
 export { watcher } from './watcher'
 export type { WatcherOptions } from './watcher'

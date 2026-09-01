@@ -20,9 +20,10 @@ output/
 │   └── 2026-08-25/
 │       ├── DJI_0011.MP4
 │       └── ...
-├── .cache/                   # Thumbnails + 144p proxies (not processed)
-│   ├── thumbs/{id}.jpg
-│   └── proxies/{id}.mp4
+├── .cache/                   # (live mode: empty — no proxies on disk; legacy: thumbs/filmstrip/logs)
+│   ├── thumbs/{id}.jpg       # legacy only
+│   ├── filmstrip/{id}/%04d.jpg
+│   └── logs/{id}.log
 ├── manifest.json             # File registry — source of truth (see §4)
 ├── jumps.json                # Jumps — lightweight refs {id, cropStart?, cropEnd?} (see §4)
 └── processed/                # After per-jump Process
@@ -54,9 +55,6 @@ type ManifestFile = {
   filename: string
   id?: string // SHA-256(file) → 16 hex, computed at scan via computeFileId — sole truth
   originalMtime?: number
-  thumbPath?: string
-  filmstripDir?: string
-  keyframes?: number[]
 }
 type JumpFileRef = { id: string; cropStart?: number; cropEnd?: number }
 type ManifestJump = {
@@ -94,14 +92,12 @@ type Manifest = {
 
 ## 5. Scan & Cluster
 
-### 5.0 `generateProxies()` — thumbnails + filmstrip (LosslessCut-like)
+### 5.0 Live without disk — `api/stream` 360p fragmented MP4 (no proxies)
 
-- Inputs: `output/manifest.json` + `output/jumps.json`, outputs `output/.cache/thumbs/{id}.jpg` + `output/.cache/filmstrip/{id}/%04d.jpg` + `output/.cache/logs/{id}.log` on failure.
-- For each video, generates `320px` thumb (`ffmpeg -ss 0.5 -vframes 1 -vf scale=320:-2 -q:v 3`) and **filmstrip** `160px` at `1 fps` (`ffmpeg -vf fps=1,scale=160:-2 -q:v 5`). `video-grid-thumb.tsx` uses only thumb; `video-cropper.tsx` scrubs filmstrip images (instant, no GOP decode) and snaps `cropStart/End` to nearest keyframe (`ffprobe -show_entries frame=key_frame,best_effort_timestamp_time`). Filmstrip `0001.jpg` is at 0s, `0002.jpg` at 1s, etc. Primary for cropper is `filmstripDir`/`keyframes` on `ManifestFile`. `simulate.ts` makes fake bytes unique per `name-epoch` so each `id` gets distinct filmstrip.
-- **File ID:** Content-based `SHA-256(file)` streaming → 16 hex (`computeFileId`) — sole truth for `manifest.files[].id` and `jumps.json` refs.
-- **HW acceleration:** `detectHwaccel()` auto-detects Intel VAAPI/QSV inside Docker. Checks `SKYDOCK_HWACCEL` override, then enumerates `/dev/dri` (`renderD*` preferred, fallback `card*`), checks `ffmpeg -hwaccels`, probes `ffmpeg -init_hw_device vaapi/qsv` with `scale_vaapi/scale_qsv`. Uses `SKYDOCK_DRI_DEVICE` to override device path (`/dev/dri/renderD128`). `Dockerfile` installs `intel-media-va-driver`, `libmfx-gen1.2`, `libvpl2`, `vainfo`, `intel-gpu-tools`; `docker-compose.yml` passes `devices: [/dev/dri:/dev/dri]` + `group_add: [RENDER_GID, VIDEO_GID]` (host `getent group render/video` → 109/44). Both thumb and filmstrip use `getScaleFilter()`/`getHwaccelArgs()` with detected device; fallback is `-hwaccel auto` → `scale`. Logs `hwaccel=vaapi|qsv|cpu device=...` and warns if no `/dev/dri` found. `SKYDOCK_HWACCEL=cpu` forces CPU.
-- Skips if cache newer than source mtime, prunes stale ids (checks both `files` and `jumps[].files`). Updates `manifest.json` `thumbPath`/`filmstripDir`/`keyframes` only if cache exists on disk (removes stale paths). Retries failed filmstrips up to `2` extra attempts before reporting. Parallel via `Promise.all` with configurable concurrency.
-- Writes `output/.status/proxies.json` (`running` with total/done, then `done` → `idle` after 8s or `error`) polled by `api/status` for UI banner.
+- **Live mode (current):** No `.cache` proxies on disk. `scanMedia()`/`watcher`/`api/scan` no longer spawn `generateProxies`. `output/.cache/thumbs` + `filmstrip` not used. `api/stream.ts` live-transcodes on demand via `ffmpeg` pipe to `Response` `Transfer-Encoding: chunked` `video/mp4` with `frag_keyframe+empty_moov+default_base_moof` (immediate `moov`, no tail Range). `video-grid-thumb.tsx` requests `GET /api/stream?path=&thumb=1&w=320&t=0.5` → `ffmpeg -ss 0.5 -vframes 1 -vf scale=320:-2 -q:v 3 -f image2 pipe:1` `image/jpeg` `Cache-Control: public max-age=3600`. `media-preview.tsx` requests `GET /api/stream?path=&w=360` → `ffmpeg -hwaccel auto -i src -vf scale=360:-2 -c:v libx264 -preset ultrafast -crf 28 -g 60 -force_key_frames expr:gte(t,n_forced*2) -pix_fmt yuv420p -c:a aac -b:a 64k -movflags frag_keyframe+empty_moov+default_base_moof -f mp4 pipe:1` `chunked` `Accept-Ranges: none` `Cache-Control: no-store`. Concurrency capped `MAX_LIVE=3` (`SKYDOCK_LIVE_MAX`) `429 Retry-After:2` else `kill` on `request.signal abort`. `preview-drawer.tsx` shows live `360p` via `MediaPreview` and scrubs via native `video.currentTime` + `video-cropper.tsx` `snapToKeyframe` (keyframes from `ffprobe` still in manifest if present, else raw time). `simulate.ts` still makes distinct files for consistent `id`.
+- **File ID:** Content-based `SHA-256(file)` streaming → 16 hex (`computeFileId`) — sole truth for `manifest.files[].id` and `jumps.json` refs (unchanged).
+- **HW acceleration:** Live uses `-hwaccel auto` + `scale=360:-2` for simplicity; could switch to `vaapi/qsv` `scale_vaapi/scale_qsv` via `SKYDOCK_DRI_DEVICE` `/dev/dri/renderD128` if needed.
+- Writes only `output/.status/scan.json` etc.; no `proxies.json` banner in live mode.
 
 ### 5.1 `scanMedia()` — merge-on-scan
 
@@ -148,7 +144,7 @@ type Manifest = {
 
 ### 7.2 `watcher({ camDirs?, testMode?, runOnce?, outputDir? })`
 
-- Polls `SKYDOCK_OUTPUT_DIR` (default `/workspace/output`), finds camera root (not intermediate dirs), calls `processMedia()` + `scanMedia()` on detection, then queues `generateProxies()` detached.
+- Polls `SKYDOCK_OUTPUT_DIR` (default `/workspace/output`), finds camera root (not intermediate dirs), calls `processMedia()` + `scanMedia()` on detection.
 
 ### 7.3 `testPipeline({ camDirs?, numFiles?, outputDir?, clean? })`
 
@@ -158,7 +154,7 @@ type Manifest = {
 
 ### 8.1 Routes (`app/routes.ts`)
 
-- `index` → `routes/home.tsx`, `review` → `routes/review.tsx`, `jump/:date/:jumpDir` → `routes/jump.tsx`, `api/file`, `api/library`, `api/jump`, `api/open`, `api/simulate`, `api/scan`, `api/manifest`, `api/status`.
+- `index` → `routes/home.tsx`, `review` → `routes/review.tsx`, `jump/:date/:jumpDir` → `routes/jump.tsx`, `api/file`, `api/library`, `api/jump`, `api/open`, `api/simulate`, `api/scan`, `api/manifest`, `api/status`, `api/stream`.
 
 ### 8.2 Types (`@skydock/scripts/types`)
 
@@ -171,7 +167,7 @@ type Manifest = {
 
 ### 8.4 `fileId.server.ts`
 
-- Imports `computeFileId` and `ensureManifestFileIds` from `@skydock/scripts`. These add `id` to every file in `manifest.files`, `theory`, and `jumps[].files` if missing or file exists, deduplicates via `idOwners` map, and backfills `thumbPath`/`proxyPath` (`output/.cache/thumbs/{id}.jpg`, `output/.cache/proxies/{id}.mp4`).
+- Imports `computeFileId` and `ensureManifestFileIds` from `@skydock/scripts`. These add `id` to every file in `manifest.files`, `theory`, and `jumps[].files` if missing, deduplicates via `idOwners` map, and cleans legacy `thumbPath`/`filmstripDir` fields.
 
 ### 8.5 `api.simulate.ts`
 
@@ -181,16 +177,17 @@ type Manifest = {
 
 ### 8.6 `api.scan.ts`
 
-- Runs `scanMedia()` directly, then `ensureManifestFileIds()`, then spawns `generateProxies()` detached.
+- Runs `scanMedia()` directly, then `ensureManifestFileIds()`.
 
 ### 8.7 `api.file.ts`
 
 - `loader` with `?path=`: `path.resolve`, `fs.existsSync`, `fs.createReadStream` with `Range` support (`206` + `Content-Range`), MIME via extension. Uses `streamResponse` helper with `ReadableStream` and proper cleanup on `cancel()`. Adds `Access-Control-Allow-Origin: *` for thumb canvas.
 
-### 8.71 `api.status.ts` + `lib/status.server.ts`
+### 8.71 `api.status.ts` + `lib/status.server.ts` + `api/stream.ts`
 
-- `status.server.ts` reads `output/.status/{proxies,scan,execute,process}.json` (written atomically via `*.tmp` + `mv`). `TaskStatus {state: idle|running|done|error, message, total, done, startedAt, updatedAt}`. Running is considered stale after 120s without update.
+- `status.server.ts` reads `output/.status/{scan,execute,process}.json` (written atomically via `*.tmp` + `mv`). `TaskStatus {state: idle|running|done|error, message, total, done, processing?:string[], startedAt, updatedAt}`. Running is considered stale after 120s without update.
 - `api/status` `loader` returns `{ok:true, status: SystemStatus}` polled by review UI every 2s.
+- `api/stream.ts` `loader` `GET ?path=&w=360` or `?thumb=1&w=320` live-transcodes via `ffmpeg` `scale=360:-2` `faststart` `Range 206` or `image2 pipe:1` with `MAX_LIVE=3` `429`.
 
 ### 8.8 `api.manifest.ts` — handlers (all arrow functions, `ok`/`fail` helpers)
 
@@ -321,7 +318,7 @@ Card border color: amber if selected for comparison, blue if processed, gray oth
 ### 9.14 Preview View
 
 - Opens as a right-side panel when a file's preview button is clicked.
-- Shows the file (video player or image). Videos use `proxyPath` (`480p` audible proxy) if present with fallback to original on error; thumbnails for grid use `thumbPath` (`320px` jpg) via `VideoGridThumb` with lazy intersection observer.
+- Shows live `360p` video via `api/stream?w=360` (`MediaPreview`) with `Range` `faststart` `—` grid uses live thumbs `api/stream?thumb=1&w=320` via `VideoGridThumb` `IntersectionObserver`.
 - **Prev/Next** buttons or arrow keys navigate between files.
 - **Escape** or the close button closes the preview.
 - **Video cropping**: A timeline below the video with draggable handles to select start/end frames. Click "Start here" / "End here" to set crop points at the current playback position (video pauses). Click "Apply" to save crop range to manifest.json and close the preview. At processing, ffmpeg crops the video to the selected range.
@@ -335,15 +332,15 @@ Card border color: amber if selected for comparison, blue if processed, gray oth
 
 ### 9.16 System Status (background scripts)
 
-- Review UI polls `api/status` every 2s (`status.server.ts` reads `output/.status/*.json`). `generateProxies()`/`scanMedia()`/`executeMedia()`/`processMedia()` write `running` → `done` → `idle` atomically.
-- Header shows `Working…` pulsing pill + `background tasks running` when any task running; banners below header per task: `Generating proxies (done/total)`, `Scanning`, `Copying from cameras`, `Processing jumps` (spinning) and `done` summary for 5-8s. Explains why grid thumbs or 480p previews may still be pending (fallback to original used until proxy ready). Revalidates manifest when proxies finish.
+- Review UI polls `api/status` every 2s (`status.server.ts` reads `output/.status/*.json`). `scanMedia()`/`executeMedia()`/`processMedia()` write `running` → `done` → `idle` atomically.
+- Header shows `Working…` pulsing pill + `background tasks running` when any task running; banners below header per task: `Scanning`, `Copying from cameras`, `Processing jumps` (spinning) and `done` summary for 5-8s.
 
 ## 10. Dependencies & Tooling
 
 - `tsx` for running TypeScript scripts directly (zero-config).
 - `zod` for runtime validation of manifest data.
 - `cmp` for file dedup comparison, `exiftool` optional for metadata extraction.
-- `ffmpeg` for video proxy generation and thumbnail creation.
+- `ffmpeg` for live on-demand transcoding via `api/stream` (360p video + 320px thumbs).
 - Web: `react-router`, `react`, `oxfmt` (format), `oxlint` (lint), `vitest` (4 suites, 55+ tests), `vite-tsconfig-paths`.
 - Scripts are TypeScript only, no Python, no comments in generated scripts.
 
