@@ -1,10 +1,11 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { execSync } from 'node:child_process'
-import { MEDIA_EXTENSIONS } from './constants'
+import { MEDIA_EXTENSIONS_SET } from './constants'
 import { getOutputDir, getManifestPath, sortFilesByMtime, toISOString } from './utils'
 import { writeStatus, scheduleIdle } from './status'
 import { loadManifest, saveManifest } from './manifest'
+import { computeFileId } from './fileId'
 import { reclusterJumps } from './clustering'
 import type { Manifest, ManifestFile, ManifestJump } from './types'
 
@@ -18,7 +19,6 @@ type ScanResult = {
 
 const findMediaFiles = (dir: string): string[] => {
   const results: string[] = []
-  const extensions = MEDIA_EXTENSIONS.map((e) => e.toLowerCase())
 
   const search = (currentDir: string): void => {
     try {
@@ -29,7 +29,7 @@ const findMediaFiles = (dir: string): string[] => {
           search(fullPath)
         } else if (entry.isFile()) {
           const ext = path.extname(entry.name).slice(1).toLowerCase()
-          if (extensions.includes(ext)) results.push(fullPath)
+          if (MEDIA_EXTENSIONS_SET.has(ext)) results.push(fullPath)
         }
       }
     } catch {}
@@ -132,17 +132,22 @@ const getCaptureEpoch = (filepath: string, timeMap: Map<string, string>): number
   }
 }
 
-const scanFiles = (originalDir: string, timeMap: Map<string, string>): ManifestFile[] => {
+const scanFiles = async (
+  originalDir: string,
+  timeMap: Map<string, string>
+): Promise<ManifestFile[]> => {
   const files = findMediaFiles(originalDir)
   const manifestFiles: ManifestFile[] = []
 
   for (const filepath of files) {
     const stat = fs.statSync(filepath)
+    const id = await computeFileId(filepath)
     manifestFiles.push({
       path: filepath,
       size: stat.size,
       mtime: getCaptureEpoch(filepath, timeMap),
-      filename: path.basename(filepath)
+      filename: path.basename(filepath),
+      id
     })
   }
 
@@ -165,10 +170,10 @@ const createFreshManifest = (files: ManifestFile[], createdAt: string): Manifest
   return manifest
 }
 
-const mergeManifests = (
+const mergeManifests = async (
   existing: Manifest,
   diskFiles: ManifestFile[]
-): { manifest: Manifest; added: number; removed: number } => {
+): Promise<{ manifest: Manifest; added: number; removed: number }> => {
   const existingPaths = new Set(existing.files.map((f) => f.path))
   const diskPaths = new Set(diskFiles.map((f) => f.path))
 
@@ -201,7 +206,7 @@ const mergeManifests = (
   return { manifest: merged, added: addedFiles.length, removed: removedPaths.length }
 }
 
-const scanMedia = (options?: { outputDir?: string }): ScanResult => {
+const scanMedia = async (options?: { outputDir?: string }): Promise<ScanResult> => {
   const outputDir = options?.outputDir || getOutputDir()
   const originalDir = path.join(outputDir, 'original_files')
   const manifestPath = getManifestPath(outputDir)
@@ -214,18 +219,18 @@ const scanMedia = (options?: { outputDir?: string }): ScanResult => {
   writeStatus('scan', 'running', 'Scanning original_files', outputDir)
 
   const timeMap = buildTimeMap(findMediaFiles(originalDir))
-  const diskFiles = scanFiles(originalDir, timeMap)
-
-  if (diskFiles.length === 0) {
-    console.log('[Scan] No files found in original_files.')
-    writeStatus('scan', 'done', 'No files found', outputDir)
-    scheduleIdle('scan', 5000, outputDir)
-    return { added: 0, removed: 0, unchanged: true, fileCount: 0, jumpCount: 0 }
-  }
+  const diskFiles = await scanFiles(originalDir, timeMap)
 
   const existing = loadManifest(manifestPath)
 
   if (!existing) {
+    if (diskFiles.length === 0) {
+      console.log('[Scan] No files found in original_files.')
+      writeStatus('scan', 'done', 'No files found', outputDir)
+      scheduleIdle('scan', 5000, outputDir)
+      return { added: 0, removed: 0, unchanged: true, fileCount: 0, jumpCount: 0 }
+    }
+
     console.log(`[Scan] Creating new manifest with ${diskFiles.length} file(s).`)
     const createdAt = toISOString()
     const manifest = createFreshManifest(diskFiles, createdAt)
@@ -250,7 +255,7 @@ const scanMedia = (options?: { outputDir?: string }): ScanResult => {
     }
   }
 
-  const { manifest, added, removed } = mergeManifests(existing, diskFiles)
+  const { manifest, added, removed } = await mergeManifests(existing, diskFiles)
 
   if (added === 0 && removed === 0) {
     console.log(`[Scan] No changes. ${existing.files.length} file(s) in manifest.`)
@@ -312,7 +317,7 @@ const isCli =
   process.argv[1] && (process.argv[1].endsWith('scan.ts') || process.argv[1].endsWith('scan.js'))
 
 if (isCli) {
-  scanMedia()
+  scanMedia().catch(console.error)
 }
 
 export { scanMedia }

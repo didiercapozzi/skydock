@@ -93,16 +93,18 @@ type Manifest = {
 
 - Inputs: `output/manifest.json`, outputs `output/.cache/thumbs/{id}.jpg` + `output/.cache/proxies/{id}.mp4` + `output/.cache/logs/{id}.log` on failure.
 - For each video in manifest, generates `320px` thumb (`ffmpeg -ss 0.5 -vframes 1 -vf scale=320:-2 -q:v 3`) and `144p` proxy at `12 fps` silent (`ffmpeg -vf scale=-2:144,fps=12 -c:v libx264 -crf 35 -preset ultrafast -an -movflags +faststart`). Scale/CRF/FPS/audio tunable via env vars.
+- **File ID:** Uses path-based ID (SHA-256 of file path) for cache keys, not content-based. This avoids collisions when multiple files have identical content (e.g. simulated test footage). Files with identical content still get separate proxies/thumbs since they have different paths.
 - Skips if cache newer than source mtime, prunes stale ids (checks both `files` and `jumps[].files`). Updates `manifest.json` `thumbPath`/`proxyPath` only if cache file exists on disk (removes stale paths). Retries failed proxies up to `2` extra attempts before reporting. Parallel via `Promise.all` with configurable concurrency.
 - Writes `output/.status/proxies.json` (`running` with total/done, then `done` → `idle` after 8s or `error`) polled by `api/status` for UI banner.
 
 ### 5.1 `scanMedia()` — merge-on-scan
 
 - Requires `original_files/` to exist.
-- **Merge behavior:** If `manifest.json` already exists, scans `original_files/` and merges new files into the existing manifest instead of regenerating it. Preserves all user edits (confirmed status, labels, file groupings, calibration offsets).
+- **File discovery:** Recursively finds media files using `MEDIA_EXTENSIONS_SET` (union of `VIDEO_EXTENSIONS` and `PHOTO_EXTENSIONS`: mp4, mov, avi, mkv, mts, m4v, 3gp, jpg, jpeg, png, dng, raw, tif, tiff, heic, heif, arw, cr2, cr3, nef, orf, rw2, raf).
+- **Merge behavior:** If `manifest.json` already exists, scans `original_files/` and merges new files into the existing manifest instead of regenerating it. Preserves all user edits (confirmed status, labels, file groupings, calibration offsets). Detects removed files even when all files are deleted from disk (runs merge against existing manifest).
 - **File comparison:** Uses content-based file ID as the identity key (SHA-256 of head 1MB + tail 64KB + file size, matching `computeFileId` in `fileId.ts`). Computes ID for each file on disk. Files in manifest whose ID no longer exists on disk are removed. Files whose ID exists but path changed are updated in place. New files (ID not in manifest) are added and clustered into jumps by the 1800 s gap threshold.
 - **Jump reclustering:** After adding/removing files, reclusters all files by mtime gaps (`> 1800 s` → new jump). Preserves jump metadata (id, label, confirmed) via majority voting: if a reclustered jump contains files from multiple original jumps, it inherits the id/label of the jump that contributed the most files.
-- **Fresh manifest:** If no manifest exists, creates `version:1, status:'proposed', date:today, files:[all], theory:[], jumps:[clustered]` from scratch.
+- **Fresh manifest:** If no manifest exists and files are found, creates `version:1, status:'proposed', date:today, files:[all], theory:[], jumps:[clustered]` from scratch. Returns unchanged if no files found and no manifest exists.
 - Writes `output/.status/scan.json` (`running` → `done` → `idle` after 5s) for `api/status`.
 
 ### 5.2 `reclusterJumps(manifest, preservedPaths?)` (`@skydock/scripts/clustering`)

@@ -38,7 +38,7 @@ const action = async ({ request }: { request: Request }) => {
     }
 
     try {
-      scanMedia({ outputDir })
+      await scanMedia({ outputDir })
     } catch (e) {
       return { ok: false, error: `Scan failed: ${e instanceof Error ? e.message : String(e)}` }
     }
@@ -73,7 +73,7 @@ const action = async ({ request }: { request: Request }) => {
   }
 
   try {
-    scanMedia({ outputDir })
+    await scanMedia({ outputDir })
   } catch (e) {
     return { ok: false, error: `Scan failed: ${e instanceof Error ? e.message : String(e)}` }
   }

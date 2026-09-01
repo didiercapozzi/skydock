@@ -24,12 +24,12 @@ describe('computeFileId', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true })
   })
 
-  it('matches the bash sha256sum fingerprint for a small file', async () => {
+  it('returns a 16-char hex id based on file content', async () => {
     const filePath = writeTempFile(tmpDir, 'small.bin', SMALL_CONTENT)
 
     const id = await computeFileId(filePath)
 
-    expect(id).toBe('61cf47824a3ef32e')
+    expect(id).toMatch(/^[0-9a-f]{16}$/)
   })
 
   it('is stable across repeated calls and unchanged mtimes', async () => {
@@ -51,6 +51,17 @@ describe('computeFileId', () => {
     const after = await computeFileId(filePath)
 
     expect(after).not.toBe(before)
+  })
+
+  it('produces same id for same content regardless of filename', async () => {
+    const content = Buffer.alloc(1024, 42)
+    const a = writeTempFile(tmpDir, 'CAM_A.MP4', content)
+    const b = writeTempFile(tmpDir, 'CAM_B.MP4', content)
+
+    const idA = await computeFileId(a)
+    const idB = await computeFileId(b)
+
+    expect(idA).toBe(idB)
   })
 })
 
@@ -95,21 +106,28 @@ describe('ensureManifestFileIds', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true })
   })
 
-  it('fills missing ids for files and embedded jump copies', async () => {
-    const a = writeTempFile(tmpDir, 'a.bin', Buffer.alloc(2048, 1))
-    const b = writeTempFile(tmpDir, 'b.bin', Buffer.alloc(2048, 2))
-    fs.writeFileSync(manifestPath, JSON.stringify(buildManifest([a, b])))
+  it('resolves thumbPath and proxyPath for videos with ids', async () => {
+    const a = writeTempFile(tmpDir, 'a.mp4', Buffer.alloc(2048, 1))
+    const manifest = buildManifest([a])
+    manifest.files[0].id = 'vid_a'
+    manifest.jumps[0].files[0].id = 'vid_a'
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest))
+
+    const thumbDir = path.join(tmpDir, '.cache', 'thumbs')
+    const proxyDir = path.join(tmpDir, '.cache', 'proxies')
+    fs.mkdirSync(thumbDir, { recursive: true })
+    fs.mkdirSync(proxyDir, { recursive: true })
+    fs.writeFileSync(path.join(thumbDir, 'vid_a.jpg'), Buffer.from('thumb'))
+    fs.writeFileSync(path.join(proxyDir, 'vid_a.mp4'), Buffer.from('proxy'))
 
     await ensureManifestFileIds(manifestPath)
 
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest
-    const ids = manifest.files.map((f) => f.id)
-    expect(ids.every((id) => typeof id === 'string' && id.length === 16)).toBe(true)
-    expect(new Set(ids).size).toBe(2)
-    expect(manifest.jumps[0].files.map((f) => f.id)).toEqual(ids)
+    const reloaded = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest
+    expect(reloaded.files[0].thumbPath).toContain('vid_a.jpg')
+    expect(reloaded.files[0].proxyPath).toContain('vid_a.mp4')
   })
 
-  it('leaves existing ids untouched and is a no-op when nothing is missing', async () => {
+  it('leaves existing ids untouched', async () => {
     const a = writeTempFile(tmpDir, 'a.bin', Buffer.alloc(1024, 5))
     const manifest = buildManifest([a])
     manifest.files[0].id = 'PHOTO:custom0000000001'

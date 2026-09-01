@@ -94,7 +94,7 @@ const runPipeline = async (cameras: string[], outputDir: string): Promise<void> 
   const { generateProxies } = await import('./proxies.js')
 
   processMedia({ cameraDirs: cameras, outputDir })
-  scanMedia({ outputDir })
+  await scanMedia({ outputDir })
   generateProxies({ outputDir }).catch(console.error)
 }
 

@@ -281,6 +281,124 @@ describe('generateProxies', () => {
     expect(calls.some((c) => c.includes('libx264'))).toBe(true)
   })
 
+  it('generates unique proxies for files with identical content but different paths', async () => {
+    const content = Buffer.alloc(1024, 42)
+    const videoPath1 = writeTempFile(tmpDir, 'DJI_0001.MP4', content)
+    const videoPath2 = writeTempFile(tmpDir, 'DJI_0002.MP4', content)
+    const videoPath3 = writeTempFile(tmpDir, 'DJI_0003.MP4', content)
+    const manifest = buildManifest([
+      {
+        path: videoPath1,
+        size: content.length,
+        mtime: 1000,
+        filename: 'DJI_0001.MP4',
+        id: 'file1'
+      },
+      {
+        path: videoPath2,
+        size: content.length,
+        mtime: 1015,
+        filename: 'DJI_0002.MP4',
+        id: 'file2'
+      },
+      {
+        path: videoPath3,
+        size: content.length,
+        mtime: 1030,
+        filename: 'DJI_0003.MP4',
+        id: 'file3'
+      }
+    ])
+    fs.writeFileSync(path.join(outputDir, 'manifest.json'), JSON.stringify(manifest))
+
+    const result = await generateProxies({ outputDir, jobs: 1 })
+
+    expect(result.total).toBe(3)
+    expect(result.thumbs).toBe(3)
+    expect(result.proxies).toBe(3)
+
+    const thumbDir = path.join(outputDir, '.cache', 'thumbs')
+    const proxyDir = path.join(outputDir, '.cache', 'proxies')
+    expect(fs.existsSync(path.join(thumbDir, 'file1.jpg'))).toBe(true)
+    expect(fs.existsSync(path.join(thumbDir, 'file2.jpg'))).toBe(true)
+    expect(fs.existsSync(path.join(thumbDir, 'file3.jpg'))).toBe(true)
+    expect(fs.existsSync(path.join(proxyDir, 'file1.mp4'))).toBe(true)
+    expect(fs.existsSync(path.join(proxyDir, 'file2.mp4'))).toBe(true)
+    expect(fs.existsSync(path.join(proxyDir, 'file3.mp4'))).toBe(true)
+  })
+
+  it('reports accurate new vs existing counts for identical-content files', async () => {
+    const content = Buffer.alloc(1024, 99)
+    const videoPath1 = writeTempFile(tmpDir, 'DJI_0001.MP4', content)
+    const videoPath2 = writeTempFile(tmpDir, 'DJI_0002.MP4', content)
+    const manifest = buildManifest([
+      {
+        path: videoPath1,
+        size: content.length,
+        mtime: 2000,
+        filename: 'DJI_0001.MP4',
+        id: 'vid_a'
+      },
+      {
+        path: videoPath2,
+        size: content.length,
+        mtime: 2015,
+        filename: 'DJI_0002.MP4',
+        id: 'vid_b'
+      }
+    ])
+    fs.writeFileSync(path.join(outputDir, 'manifest.json'), JSON.stringify(manifest))
+
+    const result1 = await generateProxies({ outputDir, jobs: 1 })
+    expect(result1.thumbs).toBe(2)
+    expect(result1.proxies).toBe(2)
+
+    const result2 = await generateProxies({ outputDir, jobs: 1 })
+    expect(result2.thumbs).toBe(2)
+    expect(result2.proxies).toBe(2)
+
+    const thumbDir = path.join(outputDir, '.cache', 'thumbs')
+    const proxyDir = path.join(outputDir, '.cache', 'proxies')
+    expect(fs.readdirSync(thumbDir).filter((f) => f.endsWith('.jpg')).length).toBe(2)
+    expect(fs.readdirSync(proxyDir).filter((f) => f.endsWith('.mp4')).length).toBe(2)
+  })
+
+  it('generates separate proxies for files with different ids', async () => {
+    const content = Buffer.alloc(512, 7)
+    const videoPath1 = writeTempFile(tmpDir, 'CAM_A.MP4', content)
+    const videoPath2 = writeTempFile(tmpDir, 'CAM_B.MP4', content)
+    const manifest = buildManifest([
+      {
+        path: videoPath1,
+        size: content.length,
+        mtime: 3000,
+        filename: 'CAM_A.MP4',
+        id: 'cam_a_id'
+      },
+      { path: videoPath2, size: content.length, mtime: 3015, filename: 'CAM_B.MP4', id: 'cam_b_id' }
+    ])
+    fs.writeFileSync(path.join(outputDir, 'manifest.json'), JSON.stringify(manifest))
+
+    const result = await generateProxies({ outputDir, jobs: 1 })
+
+    expect(result.total).toBe(2)
+    expect(result.thumbs).toBe(2)
+    expect(result.proxies).toBe(2)
+
+    const thumbDir = path.join(outputDir, '.cache', 'thumbs')
+    const proxyDir = path.join(outputDir, '.cache', 'proxies')
+    const thumbFiles = fs.readdirSync(thumbDir).filter((f) => f.endsWith('.jpg'))
+    const proxyFiles = fs.readdirSync(proxyDir).filter((f) => f.endsWith('.mp4'))
+    expect(thumbFiles.length).toBe(2)
+    expect(proxyFiles.length).toBe(2)
+
+    const thumbIds = thumbFiles.map((f) => path.basename(f, '.jpg'))
+    const proxyIds = proxyFiles.map((f) => path.basename(f, '.mp4'))
+    expect(thumbIds[0]).not.toBe(thumbIds[1])
+    expect(proxyIds[0]).not.toBe(proxyIds[1])
+    expect(thumbIds).toEqual(proxyIds)
+  })
+
   it('respects custom proxy options', async () => {
     const videoPath = writeTempFile(tmpDir, 'DJI_0001.MP4')
     const manifest = buildManifest([

@@ -2,7 +2,6 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as os from 'node:os'
 import { execSync } from 'node:child_process'
-import * as crypto from 'node:crypto'
 import { VIDEO_EXTENSIONS } from './constants'
 import { getOutputDir, getManifestPath, getThumbDir, getProxyDir } from './utils'
 import { writeStatus, scheduleIdle } from './status'
@@ -193,20 +192,15 @@ const generateProxy = (src: string, fid: string, config: ProxyConfig): boolean =
   return false
 }
 
-const computeFileId = (filePath: string): string => {
-  const content = fs.readFileSync(filePath)
-  return crypto.createHash('sha256').update(content).digest('hex').slice(0, 16)
-}
-
 const getVideoFiles = (manifest: Manifest): Array<{ file: ManifestFile; fid: string }> => {
   const results: Array<{ file: ManifestFile; fid: string }> = []
 
   for (const file of manifest.files) {
+    if (!file.id) continue
     const ext = path.extname(file.path).slice(1).toLowerCase()
     if (!VIDEO_EXTENSIONS_SET.has(ext)) continue
 
-    const fid = file.id || computeFileId(file.path)
-    results.push({ file, fid })
+    results.push({ file, fid: file.id })
   }
 
   return results

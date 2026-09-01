@@ -1,39 +1,19 @@
 import * as fs from 'node:fs'
-import * as nodeCrypto from 'node:crypto'
+import * as crypto from 'node:crypto'
 import { manifestSchema } from './types'
 import type { Manifest } from './types'
 import { getExtensionSafe, getThumbDir, getProxyDir } from './utils'
 
-const HEAD_BYTES = 1_048_576
-
-const TAIL_BYTES = 65_536
-
 const ID_HEX_LENGTH = 16
 
-const getSubtle = (): SubtleCrypto => {
-  if (typeof globalThis.crypto !== 'undefined') {
-    return globalThis.crypto.subtle
-  }
-  return nodeCrypto.webcrypto.subtle as unknown as SubtleCrypto
-}
-
 const computeFileId = async (filePath: string): Promise<string> => {
-  const stat = await fs.promises.stat(filePath)
-  const handle = await fs.promises.open(filePath, 'r')
-  try {
-    const size = stat.size
-    const headLength = Math.min(HEAD_BYTES, size)
-    const tailLength = Math.min(TAIL_BYTES, size)
-    const head = Buffer.alloc(headLength)
-    await handle.read(head, 0, headLength, 0)
-    const tail = Buffer.alloc(tailLength)
-    await handle.read(tail, 0, tailLength, Math.max(0, size - tailLength))
-    const stream = Buffer.concat([head, tail, Buffer.from(`${size}\n`, 'utf-8')])
-    const digest = await getSubtle().digest('SHA-256', stream)
-    return Buffer.from(digest).toString('hex').slice(0, ID_HEX_LENGTH)
-  } finally {
-    await handle.close()
-  }
+  return new Promise<string>((resolve, reject) => {
+    const hash = crypto.createHash('sha256')
+    const stream = fs.createReadStream(filePath)
+    stream.on('data', (chunk) => hash.update(chunk))
+    stream.on('end', () => resolve(hash.digest('hex').slice(0, ID_HEX_LENGTH)))
+    stream.on('error', reject)
+  })
 }
 
 const ensureManifestFileIds = async (manifestPath: string): Promise<void> => {
@@ -63,10 +43,6 @@ const ensureManifestFileIds = async (manifestPath: string): Promise<void> => {
     ...manifest.theory,
     ...manifest.jumps.flatMap((j) => j.files)
   ]) {
-    if (file.id === null) {
-      delete file.id
-      normalized = true
-    }
     if (file.originalMtime === null) {
       delete file.originalMtime
       normalized = true
@@ -93,29 +69,7 @@ const ensureManifestFileIds = async (manifestPath: string): Promise<void> => {
   }
 
   let changed = false
-  const idOwners = new Map<string, string>()
-  for (const file of manifest.files) if (file.id) idOwners.set(file.id, file.path)
-  for (const jump of manifest.jumps) {
-    for (const file of jump.files) if (file.id) idOwners.set(file.id, file.path)
-  }
-
   const entries = [...manifest.files, ...manifest.theory, ...manifest.jumps.flatMap((j) => j.files)]
-  for (const file of entries) {
-    if (file.id) continue
-    if (!fs.existsSync(file.path)) continue
-    try {
-      file.id = await computeFileId(file.path)
-    } catch {
-      continue
-    }
-    const ownerPath = idOwners.get(file.id)
-    if (ownerPath !== undefined && ownerPath !== file.path) {
-      file.id = `${file.id}:${file.mtime.toString(36)}`
-    }
-    idOwners.set(file.id, file.path)
-    changed = true
-  }
-
   const outputDir = manifestPath.replace(/\/manifest\.json$/, '')
   const thumbDir = getThumbDir(outputDir)
   const proxyDirPath = getProxyDir(outputDir)

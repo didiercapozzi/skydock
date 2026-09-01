@@ -5,7 +5,7 @@ const manifestFileSchema = z.object({
   size: z.number(),
   mtime: z.number(),
   filename: z.string(),
-  id: z.string().nullable().optional(),
+  id: z.string().optional(),
   originalMtime: z.number().nullable().optional(),
   cropStart: z.number().nullable().optional(),
   cropEnd: z.number().nullable().optional(),
