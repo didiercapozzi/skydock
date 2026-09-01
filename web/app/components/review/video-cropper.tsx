@@ -10,6 +10,7 @@ type VideoCropperProps = {
   initialCropStart?: number
   initialCropEnd?: number
   onApplied?: () => void
+  onScrub?: (time: number | null) => void
 }
 
 const VideoCropper = ({
@@ -20,7 +21,8 @@ const VideoCropper = ({
   keyframes,
   initialCropStart,
   initialCropEnd,
-  onApplied
+  onApplied,
+  onScrub
 }: VideoCropperProps) => {
   const [currentTime, setCurrentTime] = useState(0)
   const [scrubTime, setScrubTime] = useState<number | null>(null)
@@ -138,11 +140,16 @@ const VideoCropper = ({
     const time = timeFromX(e.clientX)
     const snapped = snapToKeyframe(time)
     if (target === 'timeline') {
-      if (filmstripDir) setScrubTime(snapped)
-      else seekTo(snapped)
+      if (filmstripDir) {
+        setScrubTime(snapped)
+        onScrub?.(snapped)
+      } else seekTo(snapped)
       setDragging('playhead')
     } else {
-      if (filmstripDir && (target === 'start' || target === 'end')) setScrubTime(snapped)
+      if (filmstripDir && (target === 'start' || target === 'end')) {
+        setScrubTime(snapped)
+        onScrub?.(snapped)
+      }
       setDragging(target)
     }
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
@@ -155,14 +162,22 @@ const VideoCropper = ({
     if (dragging === 'start') {
       const clamped = Math.min(snapped, cropEnd - 0.1)
       setCropStartOverride(Math.max(0, clamped))
-      if (filmstripDir) setScrubTime(snapped)
+      if (filmstripDir) {
+        setScrubTime(snapped)
+        onScrub?.(snapped)
+      }
     } else if (dragging === 'end') {
       const clamped = Math.max(snapped, cropStart + 0.1)
       setCropEndOverride(Math.min(duration, clamped))
-      if (filmstripDir) setScrubTime(snapped)
+      if (filmstripDir) {
+        setScrubTime(snapped)
+        onScrub?.(snapped)
+      }
     } else if (dragging === 'playhead') {
-      if (filmstripDir) setScrubTime(snapped)
-      else seekTo(snapped)
+      if (filmstripDir) {
+        setScrubTime(snapped)
+        onScrub?.(snapped)
+      } else seekTo(snapped)
     }
   }
 
@@ -175,6 +190,7 @@ const VideoCropper = ({
     }
     setDragging(null)
     setScrubTime(null)
+    onScrub?.(null)
   }
 
   const toPct = (time: number) => {
@@ -190,21 +206,15 @@ const VideoCropper = ({
   const clipStart = Math.max(0, startPct)
   const clipEnd = Math.min(100, endPct)
 
-  const scrubFrame = filmstripDir && scrubTime !== null ? Math.floor(scrubTime * 1) + 1 : null
-  const scrubSrc =
-    filmstripDir && scrubFrame !== null
-      ? `/api/file?path=${encodeURIComponent(`${filmstripDir}/${String(scrubFrame).padStart(4, '0')}.jpg`)}`
-      : null
-
   return (
     <div className='w-full px-1 select-none'>
       <div className='flex items-center justify-between text-[10px] text-gray-400 mb-1 px-0.5'>
         <span>{formatTimeCode(cropStart)}</span>
         <div className='flex items-center gap-2'>
           <span className='text-gray-500'>Crop: {formatTimeCode(cropEnd - cropStart)}</span>
-          {filmstripDir && (
+          {filmstripDir && dragging && (
             <span className='text-[9px] px-1 py-0.5 rounded bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300'>
-              filmstrip
+              filmstrip scrub
             </span>
           )}
           {zoomLevel > 1 && (
@@ -221,23 +231,6 @@ const VideoCropper = ({
         </div>
         <span>{formatTimeCode(cropEnd)}</span>
       </div>
-      {scrubSrc && dragging && (
-        <div className='flex justify-center mb-1'>
-          <div className='relative'>
-            <img
-              src={scrubSrc}
-              alt=''
-              className='h-16 w-auto rounded border border-gray-300 dark:border-gray-600 bg-black object-contain'
-              onError={(e) => {
-                ;(e.currentTarget as HTMLImageElement).style.display = 'none'
-              }}
-            />
-            <span className='absolute bottom-0 left-1/2 -translate-x-1/2 text-[9px] px-1 rounded bg-black/70 text-white'>
-              {formatTimeCode(displayTime)}
-            </span>
-          </div>
-        </div>
-      )}
       <div
         ref={timelineRef}
         className='relative h-8 bg-gray-200 dark:bg-gray-700 rounded cursor-pointer group'
