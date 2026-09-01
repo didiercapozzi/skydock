@@ -9,7 +9,8 @@ const makeFile = (path: string, _camera: 'PHOTO' | 'VIDEO', mtime: number): Mani
   path,
   mtime,
   size: 1000,
-  filename: path.split('/').pop() ?? ''
+  filename: path.split('/').pop() ?? '',
+  id: path
 })
 
 const makeJump = (id: string, label: string, files: ManifestFile[] = []): ManifestJump => ({
@@ -235,24 +236,58 @@ describe('calibration actions', () => {
   }
 
   const writeFixture = (manifest: Manifest): void => {
+    try {
+      fs.unlinkSync(path.join(tmpDir, 'jumps.json'))
+    } catch {}
     fs.writeFileSync(path.join(tmpDir, 'manifest.json'), JSON.stringify(manifest))
   }
 
-  const readManifest = (): Manifest =>
-    JSON.parse(fs.readFileSync(path.join(tmpDir, 'manifest.json'), 'utf-8')) as Manifest
+  const readManifest = (): Manifest => {
+    const manifestPath = path.join(tmpDir, 'manifest.json')
+    const jumpsPath = path.join(tmpDir, 'jumps.json')
+    const raw = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest & {
+      jumps?: ManifestJump[]
+    }
+    if (fs.existsSync(jumpsPath)) {
+      try {
+        const jumpsRaw = JSON.parse(fs.readFileSync(jumpsPath, 'utf-8')) as {
+          jumps: Array<{
+            id: string
+            label: string
+            confirmed: boolean
+            files: Array<{ id: string }>
+            processed?: boolean
+          }>
+        }
+        const byId = new Map<string, ManifestFile>()
+        for (const f of raw.files) if (f.id) byId.set(f.id, f)
+        const jumps: ManifestJump[] = jumpsRaw.jumps.map((j) => ({
+          id: j.id,
+          label: j.label,
+          confirmed: j.confirmed,
+          processed: j.processed,
+          files: j.files.map((ref) => byId.get(ref.id)).filter((f): f is ManifestFile => !!f)
+        }))
+        return { ...raw, jumps } as Manifest
+      } catch {}
+    }
+    return raw as Manifest
+  }
 
   const driftManifest = (): Manifest => {
     const photo = (name: string, mtime: number): ManifestFile => ({
       path: `/${name}`,
       size: 1000,
       mtime,
-      filename: name
+      filename: name,
+      id: `/${name}`
     })
     const video = (name: string, mtime: number): ManifestFile => ({
       path: `/${name}`,
       size: 2000,
       mtime,
-      filename: name
+      filename: name,
+      id: `/${name}`
     })
     return {
       version: 1,

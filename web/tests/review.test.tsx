@@ -8,7 +8,8 @@ const makeFile = (path: string, _camera: string, mtime: number): ManifestFile =>
   path,
   mtime,
   size: 1000,
-  filename: path.split('/').pop() ?? ''
+  filename: path.split('/').pop() ?? '',
+  id: path
 })
 
 const makeJump = (id: string, label: string, files: ManifestFile[] = []): ManifestJump => ({

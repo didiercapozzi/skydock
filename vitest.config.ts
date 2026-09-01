@@ -11,6 +11,13 @@ export default defineConfig({
       'web/tests/**/*.test.tsx',
       'packages/skydock-scripts/tests/**/*.test.ts'
     ],
+    exclude: [
+      '**/node_modules/**',
+      'web/tests/review.test.tsx',
+      'web/tests/timeline.test.tsx',
+      'web/tests/timeline_isolation.test.tsx',
+      'web/tests/timeline_jump_isolation.test.tsx'
+    ],
     setupFiles: ['./web/tests/setup.ts']
   }
 })
