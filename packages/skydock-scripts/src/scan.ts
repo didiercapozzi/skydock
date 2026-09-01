@@ -120,7 +120,8 @@ const getCaptureEpoch = (filepath: string, timeMap: Map<string, string>): number
     const datePart = tag.split(' ')[0].replace(/:/g, '-')
     const timePart = tag.split(' ')[1]
     try {
-      return Math.floor(new Date(`${datePart}T${timePart}`).getTime() / 1000)
+      const epoch = Math.floor(new Date(`${datePart}T${timePart}`).getTime() / 1000)
+      if (Number.isFinite(epoch)) return epoch
     } catch {}
   }
 
