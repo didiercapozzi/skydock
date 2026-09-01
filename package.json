@@ -15,7 +15,14 @@
     "lint": "oxlint --config oxlint.config.ts .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "process": "npx tsx packages/skydock-scripts/src/process.ts",
+    "scan": "npx tsx packages/skydock-scripts/src/scan.ts",
+    "execute": "npx tsx packages/skydock-scripts/src/execute.ts",
+    "proxies": "npx tsx packages/skydock-scripts/src/proxies.ts",
+    "watcher": "npx tsx packages/skydock-scripts/src/watcher.ts",
+    "simulate": "npx tsx packages/skydock-scripts/src/simulate.ts",
+    "test-pipeline": "npx tsx packages/skydock-scripts/src/test-pipeline.ts"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^7.0.1",
@@ -26,6 +33,7 @@
     "opencode-ai": "^1.18.23",
     "oxfmt": "^0.65.0",
     "oxlint": "^1.80.0",
+    "tsx": "^4.23.13",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.11"
   },
