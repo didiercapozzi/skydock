@@ -3,7 +3,7 @@ import * as path from 'node:path'
 import * as os from 'node:os'
 import { execSync } from 'node:child_process'
 import { VIDEO_EXTENSIONS } from './constants'
-import { getOutputDir, getManifestPath, getThumbDir, getProxyDir } from './utils'
+import { getOutputDir, getManifestPath, getThumbDir, getFilmstripDir } from './utils'
 import { writeStatus, scheduleIdle } from './status'
 import { loadManifest, saveManifest } from './manifest'
 import type { Manifest, ManifestFile } from './types'
@@ -11,29 +11,18 @@ import type { Manifest, ManifestFile } from './types'
 type ProxyOptions = {
   outputDir?: string
   jobs?: number
-  preset?: string
-  scale?: number
-  crf?: number
-  fps?: number
-  audio?: boolean
 }
 
 type ProxyConfig = {
   outputDir: string
   manifestPath: string
   thumbDir: string
-  proxyDir: string
+  filmstripBaseDir: string
   logDir: string
   jobs: number
-  preset: string
-  scale: number
-  crf: number
-  fps: number
-  audio: boolean
   niceLevel: number
   ioniceClass: number
   ioniceLevel: number
-  encoder: string
   ffmpegThreads: number
 }
 
@@ -48,16 +37,6 @@ const hasCommand = (cmd: string): boolean => {
   }
 }
 
-const detectEncoder = (): string => {
-  try {
-    const encoders = execSync('ffmpeg -encoders 2>/dev/null', { encoding: 'utf-8' })
-    if (encoders.includes('h264_nvenc')) return 'h264_nvenc'
-    if (encoders.includes('h264_qsv')) return 'h264_qsv'
-    if (encoders.includes('h264_videotoolbox')) return 'h264_videotoolbox'
-  } catch {}
-  return 'libx264'
-}
-
 const buildConfig = (options?: ProxyOptions): ProxyConfig => {
   const outputDir = options?.outputDir || getOutputDir()
   const totalCpus = os.cpus().length || 4
@@ -70,18 +49,12 @@ const buildConfig = (options?: ProxyOptions): ProxyConfig => {
     outputDir,
     manifestPath: getManifestPath(outputDir),
     thumbDir: getThumbDir(outputDir),
-    proxyDir: getProxyDir(outputDir),
+    filmstripBaseDir: getFilmstripDir(outputDir),
     logDir: `${outputDir}/.cache/logs`,
     jobs,
-    preset: options?.preset || process.env.SKYDOCK_PROXY_PRESET || 'ultrafast',
-    scale: options?.scale || parseInt(process.env.SKYDOCK_PROXY_SCALE || '144', 10),
-    crf: options?.crf || parseInt(process.env.SKYDOCK_PROXY_CRF || '35', 10),
-    fps: options?.fps || parseInt(process.env.SKYDOCK_PROXY_FPS || '12', 10),
-    audio: options?.audio ?? process.env.SKYDOCK_PROXY_AUDIO === '1',
     niceLevel: parseInt(process.env.SKYDOCK_PROXY_NICE || '10', 10),
     ioniceClass: parseInt(process.env.SKYDOCK_PROXY_IONICE_CLASS || '2', 10),
     ioniceLevel: parseInt(process.env.SKYDOCK_PROXY_IONICE_LEVEL || '6', 10),
-    encoder: detectEncoder(),
     ffmpegThreads: jobs > 2 ? 1 : 2
   }
 }
@@ -119,77 +92,69 @@ const generateThumbnail = (src: string, fid: string, config: ProxyConfig): boole
   }
 }
 
-const generateProxy = (src: string, fid: string, config: ProxyConfig): boolean => {
+const generateFilmstrip = (src: string, fid: string, config: ProxyConfig): boolean => {
   if (!fs.existsSync(src)) return false
 
-  const proxy = path.join(config.proxyDir, `${fid}.mp4`)
-  if (fs.existsSync(proxy)) {
+  const dir = path.join(config.filmstripBaseDir, fid)
+  const probe = path.join(dir, '0001.jpg')
+  if (fs.existsSync(probe)) {
     const srcMtime = fs.statSync(src).mtimeMs
-    const proxyMtime = fs.statSync(proxy).mtimeMs
-    if (srcMtime <= proxyMtime) return true
+    const stripMtime = fs.statSync(probe).mtimeMs
+    if (srcMtime <= stripMtime) return true
   }
 
-  const tmp = `${proxy}.tmp.mp4`
+  fs.mkdirSync(dir, { recursive: true })
   const runPrefix = getRunPrefix(config)
-  const logFile = path.join(config.logDir, `${fid}.log`)
-  const audioArgs = config.audio ? '-c:a aac -b:a 64k -vn' : '-an'
-
-  let encOk = false
-
-  const tryEncode = (encoderArgs: string): boolean => {
-    const cmd = `${runPrefix} ffmpeg -y -hide_banner -loglevel error -hwaccel auto -i "${src}" -vf "scale=-2:${config.scale},fps=${config.fps}" ${encoderArgs} ${audioArgs} -movflags +faststart -threads ${config.ffmpegThreads} "${tmp}" 2>/dev/null`
-    try {
-      execSync(cmd, { stdio: 'ignore' })
-      return true
-    } catch {
-      return false
-    }
-  }
-
-  switch (config.encoder) {
-    case 'h264_nvenc':
-      encOk = tryEncode(`-c:v h264_nvenc -rc vbr_hq -cq ${config.crf} -preset fast`)
-      if (!encOk) {
-        try {
-          fs.unlinkSync(tmp)
-        } catch {}
-        encOk = tryEncode(`-c:v libx264 -crf ${config.crf} -preset ${config.preset}`)
-      }
-      break
-    case 'h264_qsv':
-      encOk = tryEncode(`-c:v h264_qsv -global_quality ${config.crf} -preset veryfast`)
-      if (!encOk) {
-        try {
-          fs.unlinkSync(tmp)
-        } catch {}
-        encOk = tryEncode(`-c:v libx264 -crf ${config.crf} -preset ${config.preset}`)
-      }
-      break
-    case 'h264_videotoolbox':
-      encOk = tryEncode(`-c:v h264_videotoolbox -q:v 60`)
-      if (!encOk) {
-        try {
-          fs.unlinkSync(tmp)
-        } catch {}
-        encOk = tryEncode(`-c:v libx264 -crf ${config.crf} -preset ${config.preset}`)
-      }
-      break
-    default:
-      encOk = tryEncode(`-c:v libx264 -crf ${config.crf} -preset ${config.preset}`)
-  }
-
-  if (encOk) {
-    fs.renameSync(tmp, proxy)
-    try {
-      fs.unlinkSync(logFile)
-    } catch {}
-    return true
-  }
-
+  const tmpDir = `${dir}.tmp`
   try {
-    fs.unlinkSync(tmp)
+    fs.rmSync(tmpDir, { recursive: true, force: true })
   } catch {}
-  return false
+  fs.mkdirSync(tmpDir, { recursive: true })
+  const cmd = `${runPrefix} ffmpeg -y -hide_banner -loglevel error -hwaccel auto -i "${src}" -vf "fps=1,scale=160:-2" -q:v 5 -threads ${config.ffmpegThreads} "${tmpDir}/%04d.jpg" 2>/dev/null`
+  try {
+    execSync(cmd, { stdio: 'ignore' })
+    try {
+      fs.rmSync(dir, { recursive: true, force: true })
+    } catch {}
+    fs.renameSync(tmpDir, dir)
+    return true
+  } catch {
+    try {
+      fs.rmSync(tmpDir, { recursive: true, force: true })
+    } catch {}
+    return false
+  }
+}
+
+const extractKeyframes = (src: string): number[] => {
+  if (!fs.existsSync(src)) return []
+  try {
+    const out = execSync(
+      `ffprobe -v error -select_streams v:0 -show_entries frame=key_frame,pkt_pts_time,best_effort_timestamp_time -of json "${src}" 2>/dev/null`,
+      { encoding: 'utf-8' }
+    )
+    const json = JSON.parse(out) as {
+      frames?: Array<{
+        key_frame: number
+        pkt_pts_time?: string
+        best_effort_timestamp_time?: string
+      }>
+    }
+    const frames = json.frames ?? []
+    const times: number[] = []
+    for (const f of frames) {
+      if (f.key_frame === 1) {
+        const raw = f.pkt_pts_time ?? f.best_effort_timestamp_time
+        if (raw !== undefined) {
+          const t = parseFloat(raw)
+          if (Number.isFinite(t)) times.push(t)
+        }
+      }
+    }
+    return times
+  } catch {
+    return []
+  }
 }
 
 const getVideoFiles = (manifest: Manifest): Array<{ file: ManifestFile; fid: string }> => {
@@ -231,11 +196,10 @@ const pruneStale = (manifest: Manifest, config: ProxyConfig): void => {
   } catch {}
 
   try {
-    for (const f of fs.readdirSync(config.proxyDir)) {
-      const base = path.basename(f, path.extname(f))
-      if (!validIds.has(base)) {
+    for (const f of fs.readdirSync(config.filmstripBaseDir)) {
+      if (!validIds.has(f)) {
         try {
-          fs.unlinkSync(path.join(config.proxyDir, f))
+          fs.rmSync(path.join(config.filmstripBaseDir, f), { recursive: true, force: true })
         } catch {}
       }
     }
@@ -249,14 +213,20 @@ const updateManifestPaths = (manifest: Manifest, config: ProxyConfig): void => {
   for (const file of manifest.files) {
     if (file.id && isVideoPath(file.path)) {
       const thumbPath = path.join(config.thumbDir, `${file.id}.jpg`)
-      const proxyPath = path.join(config.proxyDir, `${file.id}.mp4`)
       if (fs.existsSync(thumbPath)) file.thumbPath = thumbPath
       else delete file.thumbPath
-      if (fs.existsSync(proxyPath)) file.proxyPath = proxyPath
-      else delete file.proxyPath
+
+      const filmstripDir = path.join(config.filmstripBaseDir, file.id)
+      const probe = path.join(filmstripDir, '0001.jpg')
+      if (fs.existsSync(probe)) file.filmstripDir = filmstripDir
+      else delete file.filmstripDir
+
+      if (file.keyframes === null) delete file.keyframes
+      if (!file.keyframes) file.keyframes = undefined
     } else {
       delete file.thumbPath
-      delete file.proxyPath
+      delete file.filmstripDir
+      delete file.keyframes
     }
   }
 
@@ -264,14 +234,20 @@ const updateManifestPaths = (manifest: Manifest, config: ProxyConfig): void => {
     for (const file of jump.files) {
       if (file.id && isVideoPath(file.path)) {
         const thumbPath = path.join(config.thumbDir, `${file.id}.jpg`)
-        const proxyPath = path.join(config.proxyDir, `${file.id}.mp4`)
         if (fs.existsSync(thumbPath)) file.thumbPath = thumbPath
         else delete file.thumbPath
-        if (fs.existsSync(proxyPath)) file.proxyPath = proxyPath
-        else delete file.proxyPath
+
+        const filmstripDir = path.join(config.filmstripBaseDir, file.id)
+        const probe = path.join(filmstripDir, '0001.jpg')
+        if (fs.existsSync(probe)) file.filmstripDir = filmstripDir
+        else delete file.filmstripDir
+
+        if (file.keyframes === null) delete file.keyframes
+        if (!file.keyframes) file.keyframes = undefined
       } else {
         delete file.thumbPath
-        delete file.proxyPath
+        delete file.filmstripDir
+        delete file.keyframes
       }
     }
   }
@@ -309,7 +285,7 @@ const generateProxies = async (
   }
 
   fs.mkdirSync(config.thumbDir, { recursive: true })
-  fs.mkdirSync(config.proxyDir, { recursive: true })
+  fs.mkdirSync(config.filmstripBaseDir, { recursive: true })
   fs.mkdirSync(config.logDir, { recursive: true })
 
   const manifest = loadManifest(config.manifestPath)
@@ -324,10 +300,10 @@ const generateProxies = async (
   console.log(`[Proxies] Processing ${videos.length} video(s)`)
 
   let existingThumbs = 0
-  let existingProxies = 0
+  let existingStrips = 0
   for (const { fid } of videos) {
     if (fs.existsSync(path.join(config.thumbDir, `${fid}.jpg`))) existingThumbs++
-    if (fs.existsSync(path.join(config.proxyDir, `${fid}.mp4`))) existingProxies++
+    if (fs.existsSync(path.join(config.filmstripBaseDir, fid, '0001.jpg'))) existingStrips++
   }
 
   writeStatus('proxy', 'running', `Generating thumbnails (320px)`, config.outputDir, {
@@ -341,63 +317,71 @@ const generateProxies = async (
 
   console.log(`[Proxies] Thumbnails ready (${thumbResults}/${videos.length})`)
 
-  writeStatus(
-    'proxy',
-    'running',
-    `Generating ${config.scale}p proxies (${config.encoder} ${config.preset})`,
-    config.outputDir,
-    {
-      total: videos.length,
-      done: thumbResults
-    }
-  )
+  writeStatus('proxy', 'running', `Generating filmstrips (160px, 1 fps)`, config.outputDir, {
+    total: videos.length,
+    done: thumbResults
+  })
 
   const MAX_RETRIES = 2
-  let proxyResults = 0
+  let stripResults = 0
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    proxyResults = await runParallel(videos, config.jobs, async ({ file, fid }) => {
-      return generateProxy(file.path, fid, config)
+    stripResults = await runParallel(videos, config.jobs, async ({ file, fid }) => {
+      const ok = generateFilmstrip(file.path, fid, config)
+      if (ok) {
+        const kf = extractKeyframes(file.path)
+        if (kf.length > 0) {
+          file.keyframes = kf
+        }
+      }
+      return ok
     })
 
-    if (proxyResults >= videos.length) break
+    if (stripResults >= videos.length) break
 
     if (attempt < MAX_RETRIES) {
-      const missing = videos.length - proxyResults
-      console.log(`[Proxies] Retry ${attempt + 1}/${MAX_RETRIES}: ${missing} proxies still missing`)
+      const missing = videos.length - stripResults
+      console.log(
+        `[Proxies] Retry ${attempt + 1}/${MAX_RETRIES}: ${missing} filmstrips still missing`
+      )
       await new Promise((r) => setTimeout(r, 1000))
     }
   }
 
   const newThumbs = Math.max(0, thumbResults - existingThumbs)
-  const newProxies = Math.max(0, proxyResults - existingProxies)
+  const newStrips = Math.max(0, stripResults - existingStrips)
 
   pruneStale(manifest, config)
   updateManifestPaths(manifest, config)
+
+  for (const { file } of videos) {
+    if (file.keyframes && file.keyframes.length === 0) delete file.keyframes
+  }
+
   saveManifest(config.manifestPath, manifest)
 
-  if (proxyResults === videos.length && thumbResults === videos.length) {
-    const msg = `Thumbnails and proxies ready (${proxyResults}/${videos.length} ${config.encoder} ${config.preset})`
+  if (stripResults === videos.length && thumbResults === videos.length) {
+    const msg = `Thumbnails and filmstrips ready (${stripResults}/${videos.length})`
     console.log(
-      `[Proxies] Done: ${thumbResults} thumbs (${newThumbs} new), ${proxyResults} proxies (${newProxies} new)`
+      `[Proxies] Done: ${thumbResults} thumbs (${newThumbs} new), ${stripResults} filmstrips (${newStrips} new)`
     )
     writeStatus('proxy', 'done', msg, config.outputDir, {
       total: videos.length,
-      done: proxyResults
+      done: stripResults
     })
     scheduleIdle('proxy', 8000, config.outputDir)
   } else {
     const failedThumbs = videos.length - thumbResults
-    const failedProxies = videos.length - proxyResults
-    const msg = `Failed ${failedThumbs} thumbs, ${failedProxies} proxies`
+    const failedStrips = videos.length - stripResults
+    const msg = `Failed ${failedThumbs} thumbs, ${failedStrips} filmstrips`
     console.error(`[Proxies] ERROR: ${msg}`)
     writeStatus('proxy', 'error', msg, config.outputDir, {
       total: videos.length,
-      done: proxyResults
+      done: stripResults
     })
   }
 
-  return { thumbs: thumbResults, proxies: proxyResults, total: videos.length }
+  return { thumbs: thumbResults, proxies: stripResults, total: videos.length }
 }
 
 const isCli =

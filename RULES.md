@@ -93,11 +93,11 @@ type Manifest = {
 
 ## 5. Scan & Cluster
 
-### 5.0 `generateProxies()` — thumbnails + 144p proxies
+### 5.0 `generateProxies()` — thumbnails + filmstrip (LosslessCut-like)
 
-- Inputs: `output/manifest.json`, outputs `output/.cache/thumbs/{id}.jpg` + `output/.cache/proxies/{id}.mp4` + `output/.cache/logs/{id}.log` on failure.
-- For each video in manifest, generates `320px` thumb (`ffmpeg -ss 0.5 -vframes 1 -vf scale=320:-2 -q:v 3`) and `144p` proxy at `12 fps` silent (`ffmpeg -vf scale=-2:144,fps=12 -c:v libx264 -crf 35 -preset ultrafast -an -movflags +faststart`). Scale/CRF/FPS/audio tunable via env vars.
-- **File ID:** Uses path-based ID (SHA-256 of file path) for cache keys, not content-based. This avoids collisions when multiple files have identical content (e.g. simulated test footage). Files with identical content still get separate proxies/thumbs since they have different paths.
+- Inputs: `output/manifest.json` + `output/jumps.json`, outputs `output/.cache/thumbs/{id}.jpg` + `output/.cache/filmstrip/{id}/%04d.jpg` + `output/.cache/logs/{id}.log` on failure.
+- For each video, generates `320px` thumb (`ffmpeg -ss 0.5 -vframes 1 -vf scale=320:-2 -q:v 3`) and **filmstrip** `160px` at `1 fps` (`ffmpeg -vf fps=1,scale=160:-2 -q:v 5`). `video-grid-thumb.tsx` uses only thumb; `video-cropper.tsx` scrubs filmstrip images (instant, no GOP decode) and snaps `cropStart/End` to nearest keyframe (`ffprobe -show_entries frame=key_frame,best_effort_timestamp_time`). Filmstrip `0001.jpg` is at 0s, `0002.jpg` at 1s, etc. Keeps `proxyPath` for backward compat but primary for cropper is `filmstripDir`/`keyframes` on `ManifestFile`. `simulate.ts` makes fake bytes unique per `name-epoch` so each `id` gets distinct filmstrip.
+- **File ID:** Content-based `SHA-256(file)` streaming → 16 hex (`computeFileId`) — sole truth for `manifest.files[].id` and `jumps.json` refs.
 - Skips if cache newer than source mtime, prunes stale ids (checks both `files` and `jumps[].files`). Updates `manifest.json` `thumbPath`/`proxyPath` only if cache file exists on disk (removes stale paths). Retries failed proxies up to `2` extra attempts before reporting. Parallel via `Promise.all` with configurable concurrency.
 - Writes `output/.status/proxies.json` (`running` with total/done, then `done` → `idle` after 8s or `error`) polled by `api/status` for UI banner.
 

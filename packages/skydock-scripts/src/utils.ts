@@ -26,6 +26,11 @@ const getThumbDir = (outputDir?: string): string => path.join(getCacheDir(output
 
 const getProxyDir = (outputDir?: string): string => path.join(getCacheDir(outputDir), 'proxies')
 
+const getFilmstripDir = (outputDir?: string, fid?: string): string => {
+  const base = path.join(getCacheDir(outputDir), 'filmstrip')
+  return fid ? path.join(base, fid) : base
+}
+
 const sortFilesByMtime = (files: ManifestFile[]): ManifestFile[] =>
   [...files].sort((a, b) => a.mtime - b.mtime)
 
@@ -52,6 +57,7 @@ export {
   getCacheDir,
   getExtension,
   getExtensionSafe,
+  getFilmstripDir,
   getManifestPath,
   getOutputDir,
   getProxyDir,

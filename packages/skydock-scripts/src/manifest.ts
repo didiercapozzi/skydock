@@ -164,6 +164,8 @@ const normalizeManifest = (manifest: Manifest): void => {
     if (file.cropEnd === null) delete file.cropEnd
     if (file.thumbPath === null) delete file.thumbPath
     if (file.proxyPath === null) delete file.proxyPath
+    if (file.filmstripDir === null) delete file.filmstripDir
+    if (file.keyframes === null) delete file.keyframes
   }
 }
 

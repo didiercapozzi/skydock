@@ -10,7 +10,9 @@ const manifestFileSchema = z.object({
   cropStart: z.number().nullable().optional(),
   cropEnd: z.number().nullable().optional(),
   thumbPath: z.string().nullable().optional(),
-  proxyPath: z.string().nullable().optional()
+  proxyPath: z.string().nullable().optional(),
+  filmstripDir: z.string().nullable().optional(),
+  keyframes: z.array(z.number()).nullable().optional()
 })
 
 const jumpFileRefSchema = z.object({

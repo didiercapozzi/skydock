@@ -45,6 +45,7 @@ export {
   getCacheDir,
   getExtension,
   getExtensionSafe,
+  getFilmstripDir,
   getManifestPath,
   getOutputDir,
   getProxyDir,

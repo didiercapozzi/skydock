@@ -45,25 +45,39 @@ const buildManifest = (files: ManifestFile[]): Manifest => ({
   ]
 })
 
-const makeFfmpegMock = (opts?: { failEncoder?: string; ffmpegAvailable?: boolean }) => {
+const makeFfmpegMock = (opts?: { ffmpegAvailable?: boolean }) => {
   return (cmd: string | Buffer): Buffer => {
     const cmdStr = String(cmd)
     if (cmdStr.includes('command -v')) {
       if (opts?.ffmpegAvailable === false) throw new Error('command not found')
       return Buffer.from('')
     }
-    if (cmdStr.includes('ffmpeg -encoders')) {
-      return Buffer.from('V..... h264_nvenc      NVIDIA NVENC H.264 Encoder')
+    if (cmdStr.includes('ffprobe')) {
+      return Buffer.from(JSON.stringify({ frames: [{ key_frame: 1, pkt_pts_time: '0.000000' }] }))
     }
     if (cmdStr.includes('-i ') && cmdStr.includes('2>/dev/null')) {
-      if (opts?.failEncoder && cmdStr.includes(opts.failEncoder)) {
-        throw new Error(`${opts.failEncoder} failed`)
+      if (cmdStr.includes('fps=1,scale=160')) {
+        const outMatch = cmdStr.match(/"([^"]+%04d\.jpg)"/)
+        if (outMatch) {
+          const pattern = outMatch[1]
+          const dir = path.dirname(pattern)
+          fs.mkdirSync(dir, { recursive: true })
+          fs.writeFileSync(path.join(dir, '0001.jpg'), Buffer.from('filmstrip'))
+          fs.writeFileSync(path.join(dir, '0002.jpg'), Buffer.from('filmstrip'))
+        }
+        return Buffer.from('')
       }
       const outMatch = cmdStr.match(/"([^"]+)"\s*2>\/dev\/null$/)
       if (outMatch) {
         const outPath = outMatch[1]
-        fs.mkdirSync(path.dirname(outPath), { recursive: true })
-        fs.writeFileSync(outPath, Buffer.from('proxy'))
+        if (outPath.includes('%04d.jpg')) {
+          const dir = path.dirname(outPath)
+          fs.mkdirSync(dir, { recursive: true })
+          fs.writeFileSync(path.join(dir, '0001.jpg'), Buffer.from('filmstrip'))
+        } else {
+          fs.mkdirSync(path.dirname(outPath), { recursive: true })
+          fs.writeFileSync(outPath, Buffer.from('thumb'))
+        }
       }
       return Buffer.from('')
     }
@@ -116,7 +130,7 @@ describe('generateProxies', () => {
     expect(result).toEqual({ thumbs: 0, proxies: 0, total: 0 })
   })
 
-  it('generates thumbnails and proxies for video files', async () => {
+  it('generates thumbnails and filmstrips for video files', async () => {
     const videoPath = writeTempFile(tmpDir, 'DJI_0001.MP4')
     const manifest = buildManifest([
       { path: videoPath, size: 1024, mtime: Date.now(), filename: 'DJI_0001.MP4', id: 'vid123' }
@@ -130,9 +144,9 @@ describe('generateProxies', () => {
     expect(result.proxies).toBe(1)
 
     const thumbDir = path.join(outputDir, '.cache', 'thumbs')
-    const proxyDir = path.join(outputDir, '.cache', 'proxies')
+    const filmstripDir = path.join(outputDir, '.cache', 'filmstrip', 'vid123')
     expect(fs.existsSync(path.join(thumbDir, 'vid123.jpg'))).toBe(true)
-    expect(fs.existsSync(path.join(proxyDir, 'vid123.mp4'))).toBe(true)
+    expect(fs.existsSync(path.join(filmstripDir, '0001.jpg'))).toBe(true)
   })
 
   it('skips existing thumbnails that are newer than source', async () => {
@@ -157,26 +171,26 @@ describe('generateProxies', () => {
     )
   })
 
-  it('skips existing proxies that are newer than source', async () => {
+  it('skips existing filmstrips that are newer than source', async () => {
     const videoPath = writeTempFile(tmpDir, 'DJI_0001.MP4')
     const manifest = buildManifest([
       { path: videoPath, size: 1024, mtime: 1000, filename: 'DJI_0001.MP4', id: 'vid123' }
     ])
     fs.writeFileSync(path.join(outputDir, 'manifest.json'), JSON.stringify(manifest))
 
-    const proxyDir = path.join(outputDir, '.cache', 'proxies')
-    fs.mkdirSync(proxyDir, { recursive: true })
-    const proxyPath = path.join(proxyDir, 'vid123.mp4')
-    fs.writeFileSync(proxyPath, Buffer.from('existing'))
+    const filmstripDir = path.join(outputDir, '.cache', 'filmstrip', 'vid123')
+    fs.mkdirSync(filmstripDir, { recursive: true })
+    const probe = path.join(filmstripDir, '0001.jpg')
+    fs.writeFileSync(probe, Buffer.from('existing'))
     const futureTime = Date.now() + 100000
-    fs.utimesSync(proxyPath, futureTime / 1000, futureTime / 1000)
+    fs.utimesSync(probe, futureTime / 1000, futureTime / 1000)
 
     const result = await generateProxies({ outputDir, jobs: 1 })
 
     expect(result.proxies).toBe(1)
-    expect(execSyncMock.mock.calls.some((call) => String(call[0]).includes('scale=-2:'))).toBe(
-      false
-    )
+    expect(
+      execSyncMock.mock.calls.some((call) => String(call[0]).includes('fps=1,scale=160'))
+    ).toBe(false)
   })
 
   it('cleans up stale thumbnails not in manifest', async () => {
@@ -196,7 +210,7 @@ describe('generateProxies', () => {
     expect(fs.existsSync(path.join(thumbDir, 'new_vid.jpg'))).toBe(true)
   })
 
-  it('updates manifest with thumbPath and proxyPath', async () => {
+  it('updates manifest with thumbPath and filmstripDir', async () => {
     const videoPath = writeTempFile(tmpDir, 'DJI_0001.MP4')
     const manifest = buildManifest([
       { path: videoPath, size: 1024, mtime: Date.now(), filename: 'DJI_0001.MP4', id: 'vid123' }
@@ -208,12 +222,12 @@ describe('generateProxies', () => {
 
     const updated = loadManifestForTest(manifestPath) as Manifest
     expect(updated.files[0].thumbPath).toContain('vid123.jpg')
-    expect(updated.files[0].proxyPath).toContain('vid123.mp4')
+    expect(updated.files[0].filmstripDir).toContain('vid123')
     expect(updated.jumps[0].files[0].thumbPath).toContain('vid123.jpg')
-    expect(updated.jumps[0].files[0].proxyPath).toContain('vid123.mp4')
+    expect(updated.jumps[0].files[0].filmstripDir).toContain('vid123')
   })
 
-  it('removes thumbPath and proxyPath for non-video files', async () => {
+  it('removes thumbPath and filmstripDir for non-video files', async () => {
     const photoPath = writeTempFile(tmpDir, 'DJI_0001.JPG')
     const videoPath = writeTempFile(tmpDir, 'DJI_0002.MP4')
     const manifest: Manifest = {
@@ -231,7 +245,7 @@ describe('generateProxies', () => {
           filename: 'DJI_0001.JPG',
           id: 'photo1',
           thumbPath: '/stale/thumb.jpg',
-          proxyPath: '/stale/proxy.mp4'
+          filmstripDir: '/stale/filmstrip'
         },
         { path: videoPath, size: 1024, mtime: Date.now(), filename: 'DJI_0002.MP4', id: 'vid1' }
       ],
@@ -248,7 +262,7 @@ describe('generateProxies', () => {
               filename: 'DJI_0001.JPG',
               id: 'photo1',
               thumbPath: '/stale/thumb.jpg',
-              proxyPath: '/stale/proxy.mp4'
+              filmstripDir: '/stale/filmstrip'
             },
             { path: videoPath, size: 1024, mtime: Date.now(), filename: 'DJI_0002.MP4', id: 'vid1' }
           ]
@@ -262,28 +276,12 @@ describe('generateProxies', () => {
 
     const updated = loadManifestForTest(manifestPath) as Manifest
     expect(updated.files[0].thumbPath).toBeUndefined()
-    expect(updated.files[0].proxyPath).toBeUndefined()
+    expect(updated.files[0].filmstripDir).toBeUndefined()
     expect(updated.jumps[0].files[0].thumbPath).toBeUndefined()
-    expect(updated.jumps[0].files[0].proxyPath).toBeUndefined()
+    expect(updated.jumps[0].files[0].filmstripDir).toBeUndefined()
   })
 
-  it('uses h264_nvenc encoder with fallback to libx264', async () => {
-    execSyncMock.mockImplementation(makeFfmpegMock({ failEncoder: 'h264_nvenc' }))
-
-    const videoPath = writeTempFile(tmpDir, 'DJI_0001.MP4')
-    const manifest = buildManifest([
-      { path: videoPath, size: 1024, mtime: Date.now(), filename: 'DJI_0001.MP4', id: 'vid123' }
-    ])
-    fs.writeFileSync(path.join(outputDir, 'manifest.json'), JSON.stringify(manifest))
-
-    await generateProxies({ outputDir, jobs: 1 })
-
-    const calls = execSyncMock.mock.calls.map((c) => String(c[0]))
-    expect(calls.some((c) => c.includes('h264_nvenc'))).toBe(true)
-    expect(calls.some((c) => c.includes('libx264'))).toBe(true)
-  })
-
-  it('generates unique proxies for files with identical content but different paths', async () => {
+  it('generates unique filmstrips for files with different ids', async () => {
     const content = Buffer.alloc(1024, 42)
     const videoPath1 = writeTempFile(tmpDir, 'DJI_0001.MP4', content)
     const videoPath2 = writeTempFile(tmpDir, 'DJI_0002.MP4', content)
@@ -320,16 +318,16 @@ describe('generateProxies', () => {
     expect(result.proxies).toBe(3)
 
     const thumbDir = path.join(outputDir, '.cache', 'thumbs')
-    const proxyDir = path.join(outputDir, '.cache', 'proxies')
+    const baseDir = path.join(outputDir, '.cache', 'filmstrip')
     expect(fs.existsSync(path.join(thumbDir, 'file1.jpg'))).toBe(true)
     expect(fs.existsSync(path.join(thumbDir, 'file2.jpg'))).toBe(true)
     expect(fs.existsSync(path.join(thumbDir, 'file3.jpg'))).toBe(true)
-    expect(fs.existsSync(path.join(proxyDir, 'file1.mp4'))).toBe(true)
-    expect(fs.existsSync(path.join(proxyDir, 'file2.mp4'))).toBe(true)
-    expect(fs.existsSync(path.join(proxyDir, 'file3.mp4'))).toBe(true)
+    expect(fs.existsSync(path.join(baseDir, 'file1', '0001.jpg'))).toBe(true)
+    expect(fs.existsSync(path.join(baseDir, 'file2', '0001.jpg'))).toBe(true)
+    expect(fs.existsSync(path.join(baseDir, 'file3', '0001.jpg'))).toBe(true)
   })
 
-  it('reports accurate new vs existing counts for identical-content files', async () => {
+  it('reports accurate new vs existing counts', async () => {
     const content = Buffer.alloc(1024, 99)
     const videoPath1 = writeTempFile(tmpDir, 'DJI_0001.MP4', content)
     const videoPath2 = writeTempFile(tmpDir, 'DJI_0002.MP4', content)
@@ -360,12 +358,12 @@ describe('generateProxies', () => {
     expect(result2.proxies).toBe(2)
 
     const thumbDir = path.join(outputDir, '.cache', 'thumbs')
-    const proxyDir = path.join(outputDir, '.cache', 'proxies')
+    const baseDir = path.join(outputDir, '.cache', 'filmstrip')
     expect(fs.readdirSync(thumbDir).filter((f) => f.endsWith('.jpg')).length).toBe(2)
-    expect(fs.readdirSync(proxyDir).filter((f) => f.endsWith('.mp4')).length).toBe(2)
+    expect(fs.readdirSync(baseDir).length).toBe(2)
   })
 
-  it('generates separate proxies for files with different ids', async () => {
+  it('generates separate filmstrips for files with different ids', async () => {
     const content = Buffer.alloc(512, 7)
     const videoPath1 = writeTempFile(tmpDir, 'CAM_A.MP4', content)
     const videoPath2 = writeTempFile(tmpDir, 'CAM_B.MP4', content)
@@ -388,44 +386,12 @@ describe('generateProxies', () => {
     expect(result.proxies).toBe(2)
 
     const thumbDir = path.join(outputDir, '.cache', 'thumbs')
-    const proxyDir = path.join(outputDir, '.cache', 'proxies')
+    const baseDir = path.join(outputDir, '.cache', 'filmstrip')
     const thumbFiles = fs.readdirSync(thumbDir).filter((f) => f.endsWith('.jpg'))
-    const proxyFiles = fs.readdirSync(proxyDir).filter((f) => f.endsWith('.mp4'))
+    const stripDirs = fs.readdirSync(baseDir)
     expect(thumbFiles.length).toBe(2)
-    expect(proxyFiles.length).toBe(2)
+    expect(stripDirs.length).toBe(2)
 
-    const thumbIds = thumbFiles.map((f) => path.basename(f, '.jpg'))
-    const proxyIds = proxyFiles.map((f) => path.basename(f, '.mp4'))
-    expect(thumbIds[0]).not.toBe(thumbIds[1])
-    expect(proxyIds[0]).not.toBe(proxyIds[1])
-    expect(thumbIds).toEqual(proxyIds)
-  })
-
-  it('respects custom proxy options', async () => {
-    const videoPath = writeTempFile(tmpDir, 'DJI_0001.MP4')
-    const manifest = buildManifest([
-      { path: videoPath, size: 1024, mtime: Date.now(), filename: 'DJI_0001.MP4', id: 'vid123' }
-    ])
-    fs.writeFileSync(path.join(outputDir, 'manifest.json'), JSON.stringify(manifest))
-
-    await generateProxies({
-      outputDir,
-      jobs: 1,
-      scale: 240,
-      crf: 28,
-      fps: 24,
-      preset: 'fast',
-      audio: true
-    })
-
-    const proxyCalls = execSyncMock.mock.calls
-      .map((c) => String(c[0]))
-      .filter((c) => c.includes('scale=-2:'))
-
-    expect(proxyCalls.length).toBeGreaterThan(0)
-    expect(proxyCalls[0]).toContain('scale=-2:240')
-    expect(proxyCalls[0]).toContain('fps=24')
-    expect(proxyCalls[0]).toContain('-cq 28')
-    expect(proxyCalls[0]).toContain('-c:a aac')
+    expect(stripDirs[0]).not.toBe(stripDirs[1])
   })
 })
