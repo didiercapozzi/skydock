@@ -37,6 +37,99 @@ const hasCommand = (cmd: string): boolean => {
   }
 }
 
+type HwaccelType = 'vaapi' | 'qsv' | 'cpu'
+
+let cachedHw: HwaccelType | null = null
+let cachedDriDevice: string | null | undefined
+
+const getDriDevice = (): string | null => {
+  if (process.env.SKYDOCK_DRI_DEVICE) return process.env.SKYDOCK_DRI_DEVICE
+  if (cachedDriDevice !== undefined) return cachedDriDevice
+  const candidates = ['/dev/dri/renderD128', '/dev/dri/renderD129']
+  for (const c of candidates) {
+    if (fs.existsSync(c)) {
+      cachedDriDevice = c
+      return cachedDriDevice
+    }
+  }
+  try {
+    const entries = fs.readdirSync('/dev/dri')
+    const render = entries.find((e) => e.startsWith('renderD'))
+    if (render) {
+      cachedDriDevice = path.join('/dev/dri', render)
+      return cachedDriDevice
+    }
+    const card = entries.find((e) => e.startsWith('card'))
+    if (card) {
+      cachedDriDevice = path.join('/dev/dri', card)
+      return cachedDriDevice
+    }
+  } catch {}
+  cachedDriDevice = null
+  return cachedDriDevice
+}
+
+const hasHwaccel = (name: string): boolean => {
+  try {
+    const out = execSync('ffmpeg -hide_banner -hwaccels 2>&1', { encoding: 'utf-8' })
+    return out.split(/\s+/).includes(name)
+  } catch {
+    return false
+  }
+}
+
+const detectHwaccel = (): HwaccelType => {
+  if (process.env.SKYDOCK_HWACCEL) return process.env.SKYDOCK_HWACCEL as HwaccelType
+  if (process.env.VITEST) return 'cpu'
+  if (cachedHw) return cachedHw
+  const driDevice = getDriDevice()
+  if (!driDevice) {
+    cachedHw = 'cpu'
+    return cachedHw
+  }
+  const vaapiProbe = `ffmpeg -hide_banner -init_hw_device vaapi=va:${driDevice} -filter_hw_device va -f lavfi -i testsrc=size=1280x720:rate=1 -vf "format=nv12,hwupload,scale_vaapi=w=320:h=-2,hwdownload,format=nv12" -frames 1 -f null - 2>&1`
+  const qsvProbe = `ffmpeg -hide_banner -init_hw_device qsv=hw -filter_hw_device hw -f lavfi -i testsrc=size=1280x720:rate=1 -vf "scale_qsv=w=320:h=-2" -frames 1 -f null - 2>&1`
+  if (hasHwaccel('vaapi')) {
+    try {
+      execSync(vaapiProbe, { stdio: 'ignore' })
+      cachedHw = 'vaapi'
+      return cachedHw
+    } catch {}
+  }
+  if (hasHwaccel('qsv')) {
+    try {
+      execSync(qsvProbe, { stdio: 'ignore' })
+      cachedHw = 'qsv'
+      return cachedHw
+    } catch {}
+  }
+  try {
+    execSync(vaapiProbe, { stdio: 'ignore' })
+    cachedHw = 'vaapi'
+    return cachedHw
+  } catch {}
+  try {
+    execSync(qsvProbe, { stdio: 'ignore' })
+    cachedHw = 'qsv'
+    return cachedHw
+  } catch {}
+  cachedHw = 'cpu'
+  return cachedHw
+}
+
+const getScaleFilter = (w: number, hw: string): string => {
+  if (hw === 'vaapi') return `format=nv12,hwupload,scale_vaapi=w=${w}:h=-2,hwdownload,format=nv12`
+  if (hw === 'qsv') return `scale_qsv=w=${w}:h=-2`
+  return `scale=${w}:-2`
+}
+
+const getHwaccelArgs = (hw: string): string => {
+  const driDevice = getDriDevice() || '/dev/dri/renderD128'
+  if (hw === 'vaapi') return `-init_hw_device vaapi=va:${driDevice} -filter_hw_device va`
+  if (hw === 'qsv') return `-hwaccel qsv -qsv_device ${driDevice}`
+  return '-hwaccel auto'
+}
+
 const buildConfig = (options?: ProxyOptions): ProxyConfig => {
   const outputDir = options?.outputDir || getOutputDir()
   const totalCpus = os.cpus().length || 4
@@ -78,18 +171,29 @@ const generateThumbnail = (src: string, fid: string, config: ProxyConfig): boole
 
   const tmp = `${thumb}.tmp.jpg`
   const runPrefix = getRunPrefix(config)
-  const cmd = `${runPrefix} ffmpeg -y -hide_banner -loglevel error -hwaccel auto -ss 0.5 -i "${src}" -vframes 1 -vf "scale=320:-2" -q:v 3 -threads ${config.ffmpegThreads} "${tmp}" 2>/dev/null`
+  const hw = detectHwaccel()
+  const vf = getScaleFilter(320, hw)
+  const hwArgs = getHwaccelArgs(hw)
+  const cmd = `${runPrefix} ffmpeg -y -hide_banner -loglevel error ${hwArgs} -ss 0.5 -i "${src}" -vframes 1 -vf "${vf}" -q:v 3 -threads ${config.ffmpegThreads} "${tmp}" 2>/dev/null`
 
   try {
     execSync(cmd, { stdio: 'ignore' })
     fs.renameSync(tmp, thumb)
     return true
-  } catch {
+  } catch {}
+  if (hw !== 'cpu') {
+    const cpuVf = getScaleFilter(320, 'cpu')
+    const cpuCmd = `${runPrefix} ffmpeg -y -hide_banner -loglevel error -hwaccel auto -ss 0.5 -i "${src}" -vframes 1 -vf "${cpuVf}" -q:v 3 -threads ${config.ffmpegThreads} "${tmp}" 2>/dev/null`
     try {
-      fs.unlinkSync(tmp)
+      execSync(cpuCmd, { stdio: 'ignore' })
+      fs.renameSync(tmp, thumb)
+      return true
     } catch {}
-    return false
   }
+  try {
+    fs.unlinkSync(tmp)
+  } catch {}
+  return false
 }
 
 const generateFilmstrip = (src: string, fid: string, config: ProxyConfig): boolean => {
@@ -105,12 +209,15 @@ const generateFilmstrip = (src: string, fid: string, config: ProxyConfig): boole
 
   fs.mkdirSync(dir, { recursive: true })
   const runPrefix = getRunPrefix(config)
+  const hw = detectHwaccel()
+  const vf = `fps=1/2,${getScaleFilter(160, hw)}`
+  const hwArgs = getHwaccelArgs(hw)
   const tmpDir = `${dir}.tmp`
   try {
     fs.rmSync(tmpDir, { recursive: true, force: true })
   } catch {}
   fs.mkdirSync(tmpDir, { recursive: true })
-  const cmd = `${runPrefix} ffmpeg -y -hide_banner -loglevel error -hwaccel auto -i "${src}" -vf "fps=1,scale=160:-2" -q:v 5 -threads ${config.ffmpegThreads} "${tmpDir}/%04d.jpg" 2>/dev/null`
+  const cmd = `${runPrefix} ffmpeg -y -hide_banner -loglevel error ${hwArgs} -i "${src}" -vf "${vf}" -q:v 5 -threads ${config.ffmpegThreads} "${tmpDir}/%04d.jpg" 2>/dev/null`
   try {
     execSync(cmd, { stdio: 'ignore' })
     try {
@@ -118,12 +225,23 @@ const generateFilmstrip = (src: string, fid: string, config: ProxyConfig): boole
     } catch {}
     fs.renameSync(tmpDir, dir)
     return true
-  } catch {
+  } catch {}
+  if (hw !== 'cpu') {
+    const cpuVf = `fps=1/2,${getScaleFilter(160, 'cpu')}`
+    const cpuCmd = `${runPrefix} ffmpeg -y -hide_banner -loglevel error -hwaccel auto -i "${src}" -vf "${cpuVf}" -q:v 5 -threads ${config.ffmpegThreads} "${tmpDir}/%04d.jpg" 2>/dev/null`
     try {
-      fs.rmSync(tmpDir, { recursive: true, force: true })
+      execSync(cpuCmd, { stdio: 'ignore' })
+      try {
+        fs.rmSync(dir, { recursive: true, force: true })
+      } catch {}
+      fs.renameSync(tmpDir, dir)
+      return true
     } catch {}
-    return false
   }
+  try {
+    fs.rmSync(tmpDir, { recursive: true, force: true })
+  } catch {}
+  return false
 }
 
 const extractKeyframes = (src: string): number[] => {
@@ -314,7 +432,17 @@ const generateProxies = async (
     return { thumbs: 0, proxies: 0, total: 0 }
   }
 
-  console.log(`[Proxies] Processing ${videos.length} video(s)`)
+  const hw = detectHwaccel()
+  const driDevice = getDriDevice()
+  if (hw === 'cpu' && !driDevice) {
+    console.log(
+      '[Proxies] No /dev/dri device found, using CPU (pass --device /dev/dri:/dev/dri and add group_add render)'
+    )
+  } else {
+    console.log(
+      `[Proxies] Processing ${videos.length} video(s) with hwaccel=${hw}${driDevice ? ` device=${driDevice}` : ''}`
+    )
+  }
 
   let existingThumbs = 0
   let existingStrips = 0
@@ -409,5 +537,5 @@ if (isCli) {
   generateProxies().catch(console.error)
 }
 
-export { generateProxies }
-export type { ProxyOptions }
+export { detectHwaccel, generateProxies, getDriDevice, getHwaccelArgs, getScaleFilter }
+export type { HwaccelType, ProxyOptions }

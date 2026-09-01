@@ -3,6 +3,11 @@ services:
     build: .
     ports:
       - '3000:3000'
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - ${RENDER_GID:-109}
+      - ${VIDEO_GID:-44}
     volumes:
       - ${SKYDOCK_OUTPUT:-./output}:/workspace/output
       - /tmp/.X11-unix:/tmp/.X11-unix
@@ -11,4 +16,6 @@ services:
       - SKYDOCK_OUTPUT_DIR=/workspace/output
       - CAM_MOUNT_PATH=/mnt/osmo
       - DISPLAY=${DISPLAY}
+      - SKYDOCK_HWACCEL=${SKYDOCK_HWACCEL:-}
+      - SKYDOCK_DRI_DEVICE=${SKYDOCK_DRI_DEVICE:-}
     restart: unless-stopped

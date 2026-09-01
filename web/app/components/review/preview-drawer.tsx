@@ -81,7 +81,7 @@ const PreviewDrawer = ({ preview, onClose, onPrev, onNext }: PreviewDrawerProps)
             {isVideo && scrubTime !== null && file.filmstripDir ? (
               <div className='relative max-w-full'>
                 <img
-                  src={`/api/file?path=${encodeURIComponent(`${file.filmstripDir}/${String(Math.floor(scrubTime * 1) + 1).padStart(4, '0')}.jpg`)}`}
+                  src={`/api/file?path=${encodeURIComponent(`${file.filmstripDir}/${String(Math.floor(scrubTime / 2) + 1).padStart(4, '0')}.jpg`)}`}
                   alt=''
                   className='max-w-full rounded bg-black object-contain'
                   style={{ maxHeight: '60vh' }}
