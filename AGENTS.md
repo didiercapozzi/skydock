@@ -55,36 +55,36 @@ All scripts are TypeScript modules in `packages/skydock-scripts/src/`, runnable 
 ### Copy files from cameras
 
 ```bash
-npx tsx packages/skydock-scripts/src/process.ts /path/to/camera1 /path/to/camera2
+npm run process -- /path/to/camera1 /path/to/camera2
 ```
 
 ### Generate jump manifest
 
 ```bash
-npx tsx packages/skydock-scripts/src/scan.ts
+npm run scan
 ```
 
 ### Watcher daemon
 
 ```bash
 # Watch specific directories
-npx tsx packages/skydock-scripts/src/watcher.ts --cam-dir /path/to/camera1 --cam-dir /path/to/camera2
+npm run watcher -- --cam-dir /path/to/camera1 --cam-dir /path/to/camera2
 
 # Auto-scan common mount points
-npx tsx packages/skydock-scripts/src/watcher.ts
+npm run watcher
 ```
 
 ### Test mode
 
 ```bash
-npx tsx packages/skydock-scripts/src/watcher.ts --test --once
+npm run watcher -- --test --once
 ```
 
 ## Testing
 
 ```bash
 # Full end-to-end test
-npx tsx packages/skydock-scripts/src/test-pipeline.ts --clean
+npm run test-pipeline -- --clean
 ```
 
 ## Dependencies
