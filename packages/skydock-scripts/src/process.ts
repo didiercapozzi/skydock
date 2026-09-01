@@ -58,10 +58,13 @@ const buildDateMap = (files: string[]): Map<string, string> => {
 
   if (jpgFiles.length > 0) {
     try {
-      const csv = execSync(`exiftool -s3 -DateTimeOriginal -csv ${jpgFiles.map((f) => `"${f}"`).join(' ')}`, {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'ignore']
-      })
+      const csv = execSync(
+        `exiftool -s3 -DateTimeOriginal -csv ${jpgFiles.map((f) => `"${f}"`).join(' ')}`,
+        {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'ignore']
+        }
+      )
       for (const line of csv.split('\n')) {
         const [srcfile, dateval] = line.split(',')
         if (!srcfile || srcfile === 'SourceFile' || !dateval) continue
@@ -74,10 +77,13 @@ const buildDateMap = (files: string[]): Map<string, string> => {
 
   if (mp4Files.length > 0) {
     try {
-      const csv = execSync(`exiftool -s3 -CreateDate -csv ${mp4Files.map((f) => `"${f}"`).join(' ')}`, {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'ignore']
-      })
+      const csv = execSync(
+        `exiftool -s3 -CreateDate -csv ${mp4Files.map((f) => `"${f}"`).join(' ')}`,
+        {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'ignore']
+        }
+      )
       for (const line of csv.split('\n')) {
         const [srcfile, dateval] = line.split(',')
         if (!srcfile || srcfile === 'SourceFile' || !dateval) continue
@@ -159,10 +165,9 @@ const processMedia = (options: ProcessOptions): { copied: number; skipped: numbe
   return { copied: totalCopied, skipped: totalSkipped }
 }
 
-const isCli = process.argv[1] && (
-  process.argv[1].endsWith('process.ts') ||
-  process.argv[1].endsWith('process.js')
-)
+const isCli =
+  process.argv[1] &&
+  (process.argv[1].endsWith('process.ts') || process.argv[1].endsWith('process.js'))
 
 if (isCli) {
   const args = process.argv.slice(2)

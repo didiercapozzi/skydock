@@ -40,15 +40,15 @@ Files are deduplicated using `cmp`:
 
 All scripts are TypeScript modules in `packages/skydock-scripts/src/`, runnable via `tsx`.
 
-| Script              | Purpose                                  |
-| ------------------- | ---------------------------------------- |
-| `process.ts`        | Copy camera files to original_files/     |
-| `scan.ts`           | Generate manifest.json                   |
-| `execute.ts`        | Copy confirmed jumps to processed/       |
-| `proxies.ts`        | Generate thumbnails + proxy videos       |
-| `watcher.ts`        | Background daemon, polls for cameras     |
-| `simulate.ts`       | Generate fake camera footage for testing |
-| `test-pipeline.ts`  | End-to-end test runner                   |
+| Script             | Purpose                                  |
+| ------------------ | ---------------------------------------- |
+| `process.ts`       | Copy camera files to original_files/     |
+| `scan.ts`          | Generate manifest.json                   |
+| `execute.ts`       | Copy confirmed jumps to processed/       |
+| `proxies.ts`       | Generate thumbnails + proxy videos       |
+| `watcher.ts`       | Background daemon, polls for cameras     |
+| `simulate.ts`      | Generate fake camera footage for testing |
+| `test-pipeline.ts` | End-to-end test runner                   |
 
 ## Usage
 

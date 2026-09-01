@@ -26,7 +26,10 @@ const createFile = (dir: string, name: string, epoch: number, duration: number):
   if (ext === '.jpg' || ext === '.jpeg') {
     if (hasCommand('ffmpeg')) {
       try {
-        execSync(`ffmpeg -y -loglevel error -f lavfi -i "testsrc=size=1920x1080:rate=1" -frames:v 1 "${filePath}"`, { stdio: 'ignore' })
+        execSync(
+          `ffmpeg -y -loglevel error -f lavfi -i "testsrc=size=1920x1080:rate=1" -frames:v 1 "${filePath}"`,
+          { stdio: 'ignore' }
+        )
       } catch {
         fs.writeFileSync(filePath, Buffer.alloc(30 * 1024))
       }
@@ -70,8 +73,12 @@ const simulateCameras = async (options?: SimulateOptions): Promise<void> => {
 
   if (devData) {
     const now = new Date()
-    const day1Base = Math.floor(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 3, 9, 0, 0).getTime() / 1000)
-    const day2Base = Math.floor(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 2, 10, 0, 0).getTime() / 1000)
+    const day1Base = Math.floor(
+      new Date(now.getFullYear(), now.getMonth(), now.getDate() - 3, 9, 0, 0).getTime() / 1000
+    )
+    const day2Base = Math.floor(
+      new Date(now.getFullYear(), now.getMonth(), now.getDate() - 2, 10, 0, 0).getTime() / 1000
+    )
     const offsetsDay1 = [0, 90, 180, 270, 360, 2760, 2850, 2940, 3030, 3120]
     const offsetsDay2 = [0, 90, 180, 270, 2970, 3060, 3150, 3240]
     let fileCounter = 0
@@ -99,7 +106,9 @@ const simulateCameras = async (options?: SimulateOptions): Promise<void> => {
 
     const d1 = new Date(day1Base * 1000).toISOString().split('T')[0]
     const d2 = new Date(day2Base * 1000).toISOString().split('T')[0]
-    console.log(`[Sim] Created 18 files mixed JPG/MP4 (10 on ${d1} in 2 jumps, 8 on ${d2} in 2 jumps) under ${simBase}`)
+    console.log(
+      `[Sim] Created 18 files mixed JPG/MP4 (10 on ${d1} in 2 jumps, 8 on ${d2} in 2 jumps) under ${simBase}`
+    )
     return
   }
 
@@ -121,10 +130,9 @@ const simulateCameras = async (options?: SimulateOptions): Promise<void> => {
   console.log(`[Sim] Created ${numFiles} files in each camera under ${simBase}`)
 }
 
-const isCli = process.argv[1] && (
-  process.argv[1].endsWith('simulate.ts') ||
-  process.argv[1].endsWith('simulate.js')
-)
+const isCli =
+  process.argv[1] &&
+  (process.argv[1].endsWith('simulate.ts') || process.argv[1].endsWith('simulate.js'))
 
 if (isCli) {
   const args = process.argv.slice(2)
@@ -134,9 +142,18 @@ if (isCli) {
   }
 
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--output' && args[i + 1]) { options.outputDir = args[i + 1]; i++ }
-    if (args[i] === '--duration' && args[i + 1]) { options.duration = parseInt(args[i + 1], 10); i++ }
-    if (args[i] === '--num-files' && args[i + 1]) { options.numFiles = parseInt(args[i + 1], 10); i++ }
+    if (args[i] === '--output' && args[i + 1]) {
+      options.outputDir = args[i + 1]
+      i++
+    }
+    if (args[i] === '--duration' && args[i + 1]) {
+      options.duration = parseInt(args[i + 1], 10)
+      i++
+    }
+    if (args[i] === '--num-files' && args[i + 1]) {
+      options.numFiles = parseInt(args[i + 1], 10)
+      i++
+    }
   }
 
   simulateCameras(options).catch(console.error)

@@ -29,7 +29,11 @@ const normalizeManifest = (manifest: Manifest): void => {
   if (manifest.cameraClockOffsetSeconds === null) {
     delete manifest.cameraClockOffsetSeconds
   }
-  for (const file of [...manifest.files, ...manifest.theory, ...manifest.jumps.flatMap((j) => j.files)]) {
+  for (const file of [
+    ...manifest.files,
+    ...manifest.theory,
+    ...manifest.jumps.flatMap((j) => j.files)
+  ]) {
     if (file.id === null) delete file.id
     if (file.originalMtime === null) delete file.originalMtime
     if (file.cropStart === null) delete file.cropStart

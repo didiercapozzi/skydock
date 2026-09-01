@@ -14,7 +14,6 @@ type Body = Record<string, unknown>
 
 const getManifestPath = (): string => {
   const outputDir = getOutputDirPath()
-  const fs = require('node:fs')
   const path = require('node:path')
   return path.join(outputDir, 'manifest.json')
 }

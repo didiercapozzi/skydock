@@ -113,7 +113,9 @@ const generateThumbnail = (src: string, fid: string, config: ProxyConfig): boole
     fs.renameSync(tmp, thumb)
     return true
   } catch {
-    try { fs.unlinkSync(tmp) } catch {}
+    try {
+      fs.unlinkSync(tmp)
+    } catch {}
     return false
   }
 }
@@ -133,7 +135,6 @@ const generateProxy = (src: string, fid: string, config: ProxyConfig): boolean =
   const logFile = path.join(config.logDir, `${fid}.log`)
   const audioArgs = config.audio ? '-c:a aac -b:a 64k -vn' : '-an'
 
-  let vArgs: string
   let encOk = false
 
   const tryEncode = (encoderArgs: string): boolean => {
@@ -150,21 +151,27 @@ const generateProxy = (src: string, fid: string, config: ProxyConfig): boolean =
     case 'h264_nvenc':
       encOk = tryEncode(`-c:v h264_nvenc -rc vbr_hq -cq ${config.crf} -preset fast`)
       if (!encOk) {
-        try { fs.unlinkSync(tmp) } catch {}
+        try {
+          fs.unlinkSync(tmp)
+        } catch {}
         encOk = tryEncode(`-c:v libx264 -crf ${config.crf} -preset ${config.preset}`)
       }
       break
     case 'h264_qsv':
       encOk = tryEncode(`-c:v h264_qsv -global_quality ${config.crf} -preset veryfast`)
       if (!encOk) {
-        try { fs.unlinkSync(tmp) } catch {}
+        try {
+          fs.unlinkSync(tmp)
+        } catch {}
         encOk = tryEncode(`-c:v libx264 -crf ${config.crf} -preset ${config.preset}`)
       }
       break
     case 'h264_videotoolbox':
       encOk = tryEncode(`-c:v h264_videotoolbox -q:v 60`)
       if (!encOk) {
-        try { fs.unlinkSync(tmp) } catch {}
+        try {
+          fs.unlinkSync(tmp)
+        } catch {}
         encOk = tryEncode(`-c:v libx264 -crf ${config.crf} -preset ${config.preset}`)
       }
       break
@@ -174,11 +181,15 @@ const generateProxy = (src: string, fid: string, config: ProxyConfig): boolean =
 
   if (encOk) {
     fs.renameSync(tmp, proxy)
-    try { fs.unlinkSync(logFile) } catch {}
+    try {
+      fs.unlinkSync(logFile)
+    } catch {}
     return true
   }
 
-  try { fs.unlinkSync(tmp) } catch {}
+  try {
+    fs.unlinkSync(tmp)
+  } catch {}
   return false
 }
 
@@ -218,7 +229,9 @@ const pruneStale = (manifest: Manifest, config: ProxyConfig): void => {
     for (const f of fs.readdirSync(config.thumbDir)) {
       const base = path.basename(f, path.extname(f))
       if (!validIds.has(base)) {
-        try { fs.unlinkSync(path.join(config.thumbDir, f)) } catch {}
+        try {
+          fs.unlinkSync(path.join(config.thumbDir, f))
+        } catch {}
       }
     }
   } catch {}
@@ -227,14 +240,17 @@ const pruneStale = (manifest: Manifest, config: ProxyConfig): void => {
     for (const f of fs.readdirSync(config.proxyDir)) {
       const base = path.basename(f, path.extname(f))
       if (!validIds.has(base)) {
-        try { fs.unlinkSync(path.join(config.proxyDir, f)) } catch {}
+        try {
+          fs.unlinkSync(path.join(config.proxyDir, f))
+        } catch {}
       }
     }
   } catch {}
 }
 
 const updateManifestPaths = (manifest: Manifest, config: ProxyConfig): void => {
-  const isVideoPath = (p: string): boolean => VIDEO_EXTENSIONS_SET.has(path.extname(p).slice(1).toLowerCase())
+  const isVideoPath = (p: string): boolean =>
+    VIDEO_EXTENSIONS_SET.has(path.extname(p).slice(1).toLowerCase())
 
   for (const file of manifest.files) {
     if (file.id && isVideoPath(file.path)) {
@@ -267,7 +283,11 @@ const updateManifestPaths = (manifest: Manifest, config: ProxyConfig): void => {
   }
 }
 
-const runParallel = async <T>(items: T[], concurrency: number, fn: (item: T) => Promise<boolean>): Promise<number> => {
+const runParallel = async <T>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<boolean>
+): Promise<number> => {
   let successCount = 0
   const chunks: T[][] = []
   for (let i = 0; i < items.length; i += concurrency) {
@@ -280,7 +300,9 @@ const runParallel = async <T>(items: T[], concurrency: number, fn: (item: T) => 
   return successCount
 }
 
-const generateProxies = async (options?: ProxyOptions): Promise<{ thumbs: number; proxies: number; total: number }> => {
+const generateProxies = async (
+  options?: ProxyOptions
+): Promise<{ thumbs: number; proxies: number; total: number }> => {
   const config = buildConfig(options)
 
   if (!fs.existsSync(config.manifestPath)) {
@@ -325,10 +347,16 @@ const generateProxies = async (options?: ProxyOptions): Promise<{ thumbs: number
 
   console.log(`[Proxies] Thumbnails ready (${thumbResults}/${videos.length})`)
 
-  writeStatus('proxy', 'running', `Generating ${config.scale}p proxies (${config.encoder} ${config.preset})`, config.outputDir, {
-    total: videos.length,
-    done: thumbResults
-  })
+  writeStatus(
+    'proxy',
+    'running',
+    `Generating ${config.scale}p proxies (${config.encoder} ${config.preset})`,
+    config.outputDir,
+    {
+      total: videos.length,
+      done: thumbResults
+    }
+  )
 
   const MAX_RETRIES = 2
   let proxyResults = 0
@@ -356,24 +384,31 @@ const generateProxies = async (options?: ProxyOptions): Promise<{ thumbs: number
 
   if (proxyResults === videos.length && thumbResults === videos.length) {
     const msg = `Thumbnails and proxies ready (${proxyResults}/${videos.length} ${config.encoder} ${config.preset})`
-    console.log(`[Proxies] Done: ${thumbResults} thumbs (${newThumbs} new), ${proxyResults} proxies (${newProxies} new)`)
-    writeStatus('proxy', 'done', msg, config.outputDir, { total: videos.length, done: proxyResults })
+    console.log(
+      `[Proxies] Done: ${thumbResults} thumbs (${newThumbs} new), ${proxyResults} proxies (${newProxies} new)`
+    )
+    writeStatus('proxy', 'done', msg, config.outputDir, {
+      total: videos.length,
+      done: proxyResults
+    })
     scheduleIdle('proxy', 8000, config.outputDir)
   } else {
     const failedThumbs = videos.length - thumbResults
     const failedProxies = videos.length - proxyResults
     const msg = `Failed ${failedThumbs} thumbs, ${failedProxies} proxies`
     console.error(`[Proxies] ERROR: ${msg}`)
-    writeStatus('proxy', 'error', msg, config.outputDir, { total: videos.length, done: proxyResults })
+    writeStatus('proxy', 'error', msg, config.outputDir, {
+      total: videos.length,
+      done: proxyResults
+    })
   }
 
   return { thumbs: thumbResults, proxies: proxyResults, total: videos.length }
 }
 
-const isCli = process.argv[1] && (
-  process.argv[1].endsWith('proxies.ts') ||
-  process.argv[1].endsWith('proxies.js')
-)
+const isCli =
+  process.argv[1] &&
+  (process.argv[1].endsWith('proxies.ts') || process.argv[1].endsWith('proxies.js'))
 
 if (isCli) {
   generateProxies().catch(console.error)

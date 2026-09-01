@@ -139,10 +139,9 @@ const watcher = async (options?: WatcherOptions): Promise<void> => {
   }
 }
 
-const isCli = process.argv[1] && (
-  process.argv[1].endsWith('watcher.ts') ||
-  process.argv[1].endsWith('watcher.js')
-)
+const isCli =
+  process.argv[1] &&
+  (process.argv[1].endsWith('watcher.ts') || process.argv[1].endsWith('watcher.js'))
 
 if (isCli) {
   const args = process.argv.slice(2)

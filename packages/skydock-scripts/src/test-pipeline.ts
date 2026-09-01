@@ -1,6 +1,5 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { getOutputDir } from './utils'
 
 type TestOptions = {
   camDirs?: string[]
@@ -24,16 +23,6 @@ const assertDirExists = (dirPath: string, label: string, result: TestResult): vo
   }
 }
 
-const assertFileExists = (filePath: string, label: string, result: TestResult): void => {
-  if (fs.existsSync(filePath)) {
-    console.log(`  PASS: ${label}`)
-    result.passed++
-  } else {
-    console.log(`  FAIL: ${label}`)
-    result.failed++
-  }
-}
-
 const countFiles = (dir: string): number => {
   let count = 0
   try {
@@ -45,17 +34,6 @@ const countFiles = (dir: string): number => {
     }
   } catch {}
   return count
-}
-
-const assertFileCount = (dir: string, expected: number, label: string, result: TestResult): void => {
-  const actual = countFiles(dir)
-  if (actual >= expected) {
-    console.log(`  PASS: ${label} (${actual} files)`)
-    result.passed++
-  } else {
-    console.log(`  FAIL: ${label} (expected >=${expected}, got ${actual})`)
-    result.failed++
-  }
 }
 
 const testPipeline = async (options?: TestOptions): Promise<TestResult> => {
@@ -99,7 +77,11 @@ const testPipeline = async (options?: TestOptions): Promise<TestResult> => {
 
   const today = new Date().toISOString().split('T')[0]
   assertDirExists(path.join(outputDir, 'original_files'), 'Output directory exists', result)
-  assertDirExists(path.join(outputDir, 'original_files', today), "Today's date folder exists", result)
+  assertDirExists(
+    path.join(outputDir, 'original_files', today),
+    "Today's date folder exists",
+    result
+  )
 
   const originalCount = countFiles(path.join(outputDir, 'original_files'))
   if (originalCount > 0) {
@@ -134,10 +116,9 @@ const testPipeline = async (options?: TestOptions): Promise<TestResult> => {
   return result
 }
 
-const isCli = process.argv[1] && (
-  process.argv[1].endsWith('test-pipeline.ts') ||
-  process.argv[1].endsWith('test-pipeline.js')
-)
+const isCli =
+  process.argv[1] &&
+  (process.argv[1].endsWith('test-pipeline.ts') || process.argv[1].endsWith('test-pipeline.js'))
 
 if (isCli) {
   const args = process.argv.slice(2)

@@ -1,10 +1,16 @@
+import { execSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { execSync, spawnSync } from 'node:child_process'
-import { getOutputDir, getManifestPath, sanitizeLabel, formatTimestamp, isVideoFile, isPhotoFile } from './utils'
-import { writeStatus, scheduleIdle } from './status'
-import { loadManifest, saveManifest } from './manifest'
-import type { Manifest, ManifestJump } from './types'
+import { loadManifest } from './manifest'
+import { scheduleIdle, writeStatus } from './status'
+import {
+  formatTimestamp,
+  getManifestPath,
+  getOutputDir,
+  isPhotoFile,
+  isVideoFile,
+  sanitizeLabel
+} from './utils'
 
 type ExecuteOptions = {
   manifestPath?: string
@@ -72,9 +78,7 @@ const executeMedia = (options?: ExecuteOptions): ExecuteResult => {
 
   let jumpIds = options?.jumpIds
   if (!jumpIds || jumpIds.length === 0) {
-    jumpIds = manifest.jumps
-      .filter((j) => j.confirmed && !j.processed)
-      .map((j) => j.id)
+    jumpIds = manifest.jumps.filter((j) => j.confirmed && !j.processed).map((j) => j.id)
   }
 
   if (jumpIds.length === 0) {
@@ -127,11 +131,20 @@ const executeMedia = (options?: ExecuteOptions): ExecuteResult => {
         dest = path.join(photosDir, newName)
       }
 
-      const needsCrop = isVideoFile(file.path) &&
-        file.cropStart !== null && file.cropStart !== undefined &&
-        file.cropEnd !== null && file.cropEnd !== undefined
+      const needsCrop =
+        isVideoFile(file.path) &&
+        file.cropStart !== null &&
+        file.cropStart !== undefined &&
+        file.cropEnd !== null &&
+        file.cropEnd !== undefined
 
-      if (needsCrop && file.cropStart !== null && file.cropStart !== undefined && file.cropEnd !== null && file.cropEnd !== undefined) {
+      if (
+        needsCrop &&
+        file.cropStart !== null &&
+        file.cropStart !== undefined &&
+        file.cropEnd !== null &&
+        file.cropEnd !== undefined
+      ) {
         const success = cropVideo(file.path, dest, file.cropStart, file.cropEnd)
         if (!success) {
           fs.copyFileSync(file.path, dest)
@@ -148,7 +161,9 @@ const executeMedia = (options?: ExecuteOptions): ExecuteResult => {
     updateMetadata(videosDir)
     updateMetadata(photosDir)
 
-    console.log(`[Execute] ${jumpId}: copied ${jump.files.length} file(s) (${videoIdx} videos, ${photoIdx} photos) to ${jumpDir}`)
+    console.log(
+      `[Execute] ${jumpId}: copied ${jump.files.length} file(s) (${videoIdx} videos, ${photoIdx} photos) to ${jumpDir}`
+    )
     processedCount++
   }
 
@@ -159,10 +174,9 @@ const executeMedia = (options?: ExecuteOptions): ExecuteResult => {
   return { copied: totalCopied, processedJumps: processedCount }
 }
 
-const isCli = process.argv[1] && (
-  process.argv[1].endsWith('execute.ts') ||
-  process.argv[1].endsWith('execute.js')
-)
+const isCli =
+  process.argv[1] &&
+  (process.argv[1].endsWith('execute.ts') || process.argv[1].endsWith('execute.js'))
 
 if (isCli) {
   const args = process.argv.slice(2)

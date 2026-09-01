@@ -14,9 +14,11 @@ const isMediaFile = (filePath: string): boolean => MEDIA_EXTENSIONS_SET.has(getE
 
 const getOutputDir = (): string => process.env.SKYDOCK_OUTPUT_DIR || '/workspace/output'
 
-const getManifestPath = (outputDir?: string): string => path.join(outputDir || getOutputDir(), 'manifest.json')
+const getManifestPath = (outputDir?: string): string =>
+  path.join(outputDir || getOutputDir(), 'manifest.json')
 
-const getStatusDir = (outputDir?: string): string => path.join(outputDir || getOutputDir(), '.status')
+const getStatusDir = (outputDir?: string): string =>
+  path.join(outputDir || getOutputDir(), '.status')
 
 const getCacheDir = (outputDir?: string): string => path.join(outputDir || getOutputDir(), '.cache')
 

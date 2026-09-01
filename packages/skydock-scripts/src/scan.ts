@@ -1,7 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { execSync } from 'node:child_process'
-import { JUMP_GAP_SECONDS, MEDIA_EXTENSIONS } from './constants'
+import { MEDIA_EXTENSIONS } from './constants'
 import { getOutputDir, getManifestPath, sortFilesByMtime, toISOString } from './utils'
 import { writeStatus, scheduleIdle } from './status'
 import { loadManifest, saveManifest } from './manifest'
@@ -74,7 +74,10 @@ const buildTimeMap = (files: string[]): Map<string, string> => {
           if (!dateval) continue
           const match = dateval.match(/^(\d{4}):(\d{2}):(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/)
           if (match) {
-            timeMap.set(srcfile, `${match[1]}-${match[2]}-${match[3]} ${match[4]}:${match[5]}:${match[6]}`)
+            timeMap.set(
+              srcfile,
+              `${match[1]}-${match[2]}-${match[3]} ${match[4]}:${match[5]}:${match[6]}`
+            )
             break
           }
         }
@@ -97,7 +100,10 @@ const buildTimeMap = (files: string[]): Map<string, string> => {
           if (!dateval) continue
           const match = dateval.match(/^(\d{4}):(\d{2}):(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/)
           if (match) {
-            timeMap.set(srcfile, `${match[1]}-${match[2]}-${match[3]} ${match[4]}:${match[5]}:${match[6]}`)
+            timeMap.set(
+              srcfile,
+              `${match[1]}-${match[2]}-${match[3]} ${match[4]}:${match[5]}:${match[6]}`
+            )
             break
           }
         }
@@ -158,7 +164,10 @@ const createFreshManifest = (files: ManifestFile[], createdAt: string): Manifest
   return manifest
 }
 
-const mergeManifests = (existing: Manifest, diskFiles: ManifestFile[]): { manifest: Manifest; added: number; removed: number } => {
+const mergeManifests = (
+  existing: Manifest,
+  diskFiles: ManifestFile[]
+): { manifest: Manifest; added: number; removed: number } => {
   const existingPaths = new Set(existing.files.map((f) => f.path))
   const diskPaths = new Set(diskFiles.map((f) => f.path))
 
@@ -170,10 +179,7 @@ const mergeManifests = (existing: Manifest, diskFiles: ManifestFile[]): { manife
     return { manifest: existing, added: 0, removed: 0 }
   }
 
-  const updatedFiles = [
-    ...existing.files.filter((f) => !removedSet.has(f.path)),
-    ...addedFiles
-  ]
+  const updatedFiles = [...existing.files.filter((f) => !removedSet.has(f.path)), ...addedFiles]
 
   const keptJumps: ManifestJump[] = []
   for (const jump of existing.jumps) {
@@ -226,10 +232,21 @@ const scanMedia = (options?: { outputDir?: string }): ScanResult => {
 
     console.log(`[Scan] Found ${diskFiles.length} file(s) in ${manifest.jumps.length} jump(s).`)
     console.log(`[Scan] Manifest: ${manifestPath}`)
-    writeStatus('scan', 'done', `Found ${diskFiles.length} files in ${manifest.jumps.length} jumps`, outputDir)
+    writeStatus(
+      'scan',
+      'done',
+      `Found ${diskFiles.length} files in ${manifest.jumps.length} jumps`,
+      outputDir
+    )
     scheduleIdle('scan', 5000, outputDir)
     spawnProxies(outputDir)
-    return { added: diskFiles.length, removed: 0, unchanged: false, fileCount: diskFiles.length, jumpCount: manifest.jumps.length }
+    return {
+      added: diskFiles.length,
+      removed: 0,
+      unchanged: false,
+      fileCount: diskFiles.length,
+      jumpCount: manifest.jumps.length
+    }
   }
 
   const { manifest, added, removed } = mergeManifests(existing, diskFiles)
@@ -238,18 +255,39 @@ const scanMedia = (options?: { outputDir?: string }): ScanResult => {
     console.log(`[Scan] No changes. ${existing.files.length} file(s) in manifest.`)
     writeStatus('scan', 'done', `No changes, ${existing.files.length} files`, outputDir)
     scheduleIdle('scan', 5000, outputDir)
-    return { added: 0, removed: 0, unchanged: true, fileCount: existing.files.length, jumpCount: existing.jumps.length }
+    return {
+      added: 0,
+      removed: 0,
+      unchanged: true,
+      fileCount: existing.files.length,
+      jumpCount: existing.jumps.length
+    }
   }
 
-  console.log(`[Scan] Merging: +${added} new, -${removed} removed, ${existing.files.length} existing.`)
+  console.log(
+    `[Scan] Merging: +${added} new, -${removed} removed, ${existing.files.length} existing.`
+  )
   saveManifest(manifestPath, manifest)
 
-  console.log(`[Scan] Manifest: ${manifest.files.length} file(s) in ${manifest.jumps.length} jump(s).`)
+  console.log(
+    `[Scan] Manifest: ${manifest.files.length} file(s) in ${manifest.jumps.length} jump(s).`
+  )
   console.log(`[Scan] Manifest: ${manifestPath}`)
-  writeStatus('scan', 'done', `Merged ${manifest.files.length} files in ${manifest.jumps.length} jumps`, outputDir)
+  writeStatus(
+    'scan',
+    'done',
+    `Merged ${manifest.files.length} files in ${manifest.jumps.length} jumps`,
+    outputDir
+  )
   scheduleIdle('scan', 5000, outputDir)
   spawnProxies(outputDir)
-  return { added, removed, unchanged: false, fileCount: manifest.files.length, jumpCount: manifest.jumps.length }
+  return {
+    added,
+    removed,
+    unchanged: false,
+    fileCount: manifest.files.length,
+    jumpCount: manifest.jumps.length
+  }
 }
 
 const spawnProxies = (outputDir: string): void => {
@@ -269,10 +307,8 @@ const spawnProxies = (outputDir: string): void => {
   } catch {}
 }
 
-const isCli = process.argv[1] && (
-  process.argv[1].endsWith('scan.ts') ||
-  process.argv[1].endsWith('scan.js')
-)
+const isCli =
+  process.argv[1] && (process.argv[1].endsWith('scan.ts') || process.argv[1].endsWith('scan.js'))
 
 if (isCli) {
   scanMedia()

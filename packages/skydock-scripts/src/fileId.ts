@@ -58,13 +58,35 @@ const ensureManifestFileIds = async (manifestPath: string): Promise<void> => {
     delete manifest.cameraClockOffsetSeconds
     normalized = true
   }
-  for (const file of [...manifest.files, ...manifest.theory, ...manifest.jumps.flatMap((j) => j.files)]) {
-    if (file.id === null) { delete file.id; normalized = true }
-    if (file.originalMtime === null) { delete file.originalMtime; normalized = true }
-    if (file.cropStart === null) { delete file.cropStart; normalized = true }
-    if (file.cropEnd === null) { delete file.cropEnd; normalized = true }
-    if (file.thumbPath === null) { delete file.thumbPath; normalized = true }
-    if (file.proxyPath === null) { delete file.proxyPath; normalized = true }
+  for (const file of [
+    ...manifest.files,
+    ...manifest.theory,
+    ...manifest.jumps.flatMap((j) => j.files)
+  ]) {
+    if (file.id === null) {
+      delete file.id
+      normalized = true
+    }
+    if (file.originalMtime === null) {
+      delete file.originalMtime
+      normalized = true
+    }
+    if (file.cropStart === null) {
+      delete file.cropStart
+      normalized = true
+    }
+    if (file.cropEnd === null) {
+      delete file.cropEnd
+      normalized = true
+    }
+    if (file.thumbPath === null) {
+      delete file.thumbPath
+      normalized = true
+    }
+    if (file.proxyPath === null) {
+      delete file.proxyPath
+      normalized = true
+    }
   }
   if (normalized) {
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2))
@@ -109,20 +131,32 @@ const ensureManifestFileIds = async (manifestPath: string): Promise<void> => {
       const proxyExists = fs.existsSync(expectedProxy)
 
       if (thumbExists) {
-        if (file.thumbPath !== expectedThumb) { file.thumbPath = expectedThumb; changed = true }
+        if (file.thumbPath !== expectedThumb) {
+          file.thumbPath = expectedThumb
+          changed = true
+        }
       } else if (file.thumbPath !== undefined) {
         delete file.thumbPath
         changed = true
       }
       if (proxyExists) {
-        if (file.proxyPath !== expectedProxy) { file.proxyPath = expectedProxy; changed = true }
+        if (file.proxyPath !== expectedProxy) {
+          file.proxyPath = expectedProxy
+          changed = true
+        }
       } else if (file.proxyPath !== undefined) {
         delete file.proxyPath
         changed = true
       }
     } else {
-      if (file.thumbPath !== undefined) { delete file.thumbPath; changed = true }
-      if (file.proxyPath !== undefined) { delete file.proxyPath; changed = true }
+      if (file.thumbPath !== undefined) {
+        delete file.thumbPath
+        changed = true
+      }
+      if (file.proxyPath !== undefined) {
+        delete file.proxyPath
+        changed = true
+      }
     }
   }
 

@@ -25,7 +25,12 @@ export type {
   TheoryVideoWithSource
 } from './types'
 
-export { manifestFileSchema, manifestJumpSchema, manifestSchema, manifestStatusSchema } from './types'
+export {
+  manifestFileSchema,
+  manifestJumpSchema,
+  manifestSchema,
+  manifestStatusSchema
+} from './types'
 
 export { reclusterJumps, shiftFiles } from './clustering'
 export { loadManifest, normalizeManifest, saveManifest } from './manifest'
