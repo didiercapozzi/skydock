@@ -6,7 +6,11 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    include: ['web/tests/**/*.test.ts', 'web/tests/**/*.test.tsx'],
+    include: [
+      'web/tests/**/*.test.ts',
+      'web/tests/**/*.test.tsx',
+      'packages/skydock-scripts/tests/**/*.test.ts'
+    ],
     setupFiles: ['./web/tests/setup.ts']
   }
 })
