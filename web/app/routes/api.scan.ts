@@ -1,10 +1,8 @@
-import { execSync, spawn } from 'node:child_process'
 import * as fs from 'node:fs'
 import path from 'node:path'
 import { getOutputDirPath } from '../lib/scanner.server'
-import { ensureManifestFileIds } from '../lib/fileId.server'
-
-const SCRIPTS_DIR = path.join(process.cwd(), '..', 'scripts')
+import { ensureManifestFileIds } from '@skydock/scripts'
+import { scanMedia, generateProxies } from '@skydock/scripts'
 
 const action = async () => {
   if (process.env.NODE_ENV === 'production') {
@@ -12,37 +10,24 @@ const action = async () => {
   }
 
   const outputDir = getOutputDirPath()
-  const scanScript = path.join(SCRIPTS_DIR, 'scan_media.sh')
   const manifestPath = path.join(outputDir, 'manifest.json')
 
-  let output = ''
   try {
-    output = execSync(`SKYDOCK_OUTPUT_DIR="${outputDir}" "${scanScript}" 2>&1`, {
-      timeout: 300_000
-    }).toString()
+    await scanMedia({ outputDir })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e)
-    const scriptMsg = output || msg
-    return { ok: false, error: `Scan failed: ${scriptMsg}` }
+    return { ok: false, error: `Scan failed: ${e instanceof Error ? e.message : String(e)}` }
   }
 
   if (!fs.existsSync(manifestPath)) {
     return {
       ok: false,
-      error: 'No media files found. Run process_media.sh first to copy files from cameras.'
+      error: 'No media files found. Run processMedia first to copy files from cameras.'
     }
   }
 
   await ensureManifestFileIds(manifestPath)
-  const proxyScript = path.join(SCRIPTS_DIR, 'generate_proxies.sh')
-  if (fs.existsSync(proxyScript)) {
-    const child = spawn(proxyScript, [], {
-      env: { ...process.env, SKYDOCK_OUTPUT_DIR: outputDir },
-      detached: true,
-      stdio: 'ignore'
-    })
-    child.unref()
-  }
+
+  generateProxies({ outputDir }).catch(console.error)
 
   return { ok: true }
 }

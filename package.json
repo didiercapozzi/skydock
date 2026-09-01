@@ -3,7 +3,8 @@
   "private": true,
   "workspaces": [
     "web",
-    "desktop"
+    "desktop",
+    "packages/skydock-scripts"
   ],
   "type": "module",
   "scripts": {

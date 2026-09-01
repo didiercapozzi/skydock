@@ -6,7 +6,7 @@
 
 SkyDock copies media from DJI Osmo Nano cameras to a local folder tree, groups files into skydiving jumps by time gaps, lets the user review/correct dates and regroup, then copies confirmed jumps to `processed/`. No camera identity is tracked — cameras are treated as plain external storage merged into date folders.
 
-**Pipeline:** `Connect cameras` → `process_media.sh` → `scan_media.sh` → `Review (web UI)` → `execute_media.sh` → `output/processed/`
+**Pipeline:** `Connect cameras` → `processMedia()` → `scanMedia()` → `Review (web UI)` → `executeMedia()` → `output/processed/`
 
 ## 2. Output Structure
 
@@ -20,10 +20,10 @@ output/
 │   └── 2026-08-25/
 │       ├── DJI_0011.MP4
 │       └── ...
-├── .cache/                   # Thumbnails + 480p proxies (not processed)
+├── .cache/                   # Thumbnails + 144p proxies (not processed)
 │   ├── thumbs/{id}.jpg
 │   └── proxies/{id}.mp4
-├── manifest.json       # Manifest (see §4)
+├── manifest.json             # Manifest (see §4)
 └── processed/                # After per-jump Process
     ├── jump_1/
     │   ├── DJI_0001.MP4
@@ -33,14 +33,14 @@ output/
 ```
 
 - `output` defaults to `/workspace/output` or `SKYDOCK_OUTPUT_DIR`.
-- `original_files/YYYY-MM-DD/` uses file `mtime` (`stat -c %Y` → `date -d @mtime +%Y-%m-%d`) and `cp -p` to preserve timestamps for scan grouping.
+- `original_files/YYYY-MM-DD/` uses file `mtime` (`fs.statSync().mtimeMs`) and `fs.copyFileSync` to preserve timestamps for scan grouping.
 
-## 3. Deduplication (`process_media.sh`)
+## 3. Deduplication (`processMedia()`)
 
-- Inputs: `<camera_dir> [camera_dir ...]` (each contains `*.mp4,*.mov,*.jpg,*.jpeg,*.dng` up to 4 levels deep).
-- For each file: `filename=$(basename)`; `target_date` from `mtime`; `dest_dir=original_files/target_date`.
-- `file_matches_existing(src, dest_dir)`: if `dest_dir/filename` exists and `cmp -s src dest` → skip (same content). If exists but `cmp` differs → copy (overwritten on camera). If not exists → copy.
-- `cp -p --update=none` preserves timestamps.
+- Inputs: `{ cameraDirs: string[], outputDir?: string }`.
+- For each file: `filename = path.basename`; `targetDate` from `getCaptureDate()` (exiftool or mtime fallback); `destDir = originalFiles/targetDate`.
+- `fileMatchesExisting(src, destDir)`: if `destDir/filename` exists and `cmp -s src dest` → skip (same content). If exists but `cmp` differs → copy (overwritten on camera). If not exists → copy.
+- `fs.copyFileSync` + `fs.utimesSync` preserves timestamps.
 - Writes `output/.status/process.json` (`running` → `done` → `idle` after 5s) for `api/status`.
 
 ## 4. Manifest (`output/manifest.json`)
@@ -79,7 +79,7 @@ type Manifest = {
 }
 ```
 
-- `scan_media.sh` creates `version:1, status:'proposed', date: today, files: [all], theory: [], jumps: [clustered]`, then queues `generate_proxies.sh` in background (both fresh and merge paths).
+- `scanMedia()` creates `version:1, status:'proposed', date: today, files: [all], theory: [], jumps: [clustered]`, then queues `generateProxies()` in background (both fresh and merge paths).
 - `files` is flat list of all `original_files` sorted by `mtime`.
 - `jumps` are clusters where gaps `> 1800 s` (30 min) start a new jump. `files` duplicated inside `jumps` (not references) but `path` is the key. Since `copy-files` exists, the same `path` may appear in multiple jumps (file copied to several jumps).
 - `id` is `jump_1 …` or preserved original id after recluster; `label` defaults `Jump N` and is editable.
@@ -89,68 +89,62 @@ type Manifest = {
 
 ## 5. Scan & Cluster
 
-### 5.0 `generate_proxies.sh` — thumbnails + 144p proxies
+### 5.0 `generateProxies()` — thumbnails + 144p proxies
 
 - Inputs: `output/manifest.json`, outputs `output/.cache/thumbs/{id}.jpg` + `output/.cache/proxies/{id}.mp4` + `output/.cache/logs/{id}.log` on failure.
-- For each video in manifest, generates `320px` thumb (`ffmpeg -ss 0.5 -vframes 1 -vf scale=320:-2 -q:v 3`) and `144p` proxy at `12 fps` silent (`ffmpeg -vf scale=-2:144,fps=12 -c:v libx264 -crf 35 -preset ultrafast -an -movflags +faststart`). Scale/CRF/FPS/audio tunable via `SKYDOCK_PROXY_SCALE` (default `144`), `SKYDOCK_PROXY_CRF` (default `35`), `SKYDOCK_PROXY_FPS` (default `12`), `SKYDOCK_PROXY_AUDIO` (`0` silent default, `1` to keep audio: if `0` then `-an`, else if codec `aac` then `-c:a copy` else `-c:a aac -b:a 64k`). Skips if cache newer than source mtime, prunes stale ids (checks both `files` and `jumps[].files`). Updates `manifest.json` `thumbPath`/`proxyPath` only if cache file exists on disk (removes stale paths). Retries failed proxies up to `2` extra attempts before reporting. Throttling: `nice -n 10` + `ionice -c2 -n6` + parallel `nproc-1` (cap 8) via `xargs -P` or background `wait -n`. Tunable `SKYDOCK_PROXY_JOBS`, `SKYDOCK_PROXY_NICE`, `SKYDOCK_PROXY_IONICE_CLASS/LEVEL`, `SKYDOCK_PROXY_PRESET`, `SKYDOCK_PROXY_SCALE/CRF/FPS/AUDIO`. Queued async after `scan_media.sh` and `watcher.sh`, detached from `api/scan.ts`.
-- Writes `output/.status/proxies.json` (`running` with total/done, then `done` → `idle` after 8s or `error` with `total/done` and log dir if any proxy failed after retries) polled by `api/status` for UI banner: “Generating proxies — thumbnails and previews will appear when ready” or error banner.
+- For each video in manifest, generates `320px` thumb (`ffmpeg -ss 0.5 -vframes 1 -vf scale=320:-2 -q:v 3`) and `144p` proxy at `12 fps` silent (`ffmpeg -vf scale=-2:144,fps=12 -c:v libx264 -crf 35 -preset ultrafast -an -movflags +faststart`). Scale/CRF/FPS/audio tunable via env vars.
+- Skips if cache newer than source mtime, prunes stale ids (checks both `files` and `jumps[].files`). Updates `manifest.json` `thumbPath`/`proxyPath` only if cache file exists on disk (removes stale paths). Retries failed proxies up to `2` extra attempts before reporting. Parallel via `Promise.all` with configurable concurrency.
+- Writes `output/.status/proxies.json` (`running` with total/done, then `done` → `idle` after 8s or `error`) polled by `api/status` for UI banner.
 
-### 5.1 `scan_media.sh` — merge-on-scan
+### 5.1 `scanMedia()` — merge-on-scan
 
 - Requires `original_files/` to exist.
 - **Merge behavior:** If `manifest.json` already exists, scans `original_files/` and merges new files into the existing manifest instead of regenerating it. Preserves all user edits (confirmed status, labels, file groupings, calibration offsets).
-- **File comparison:** Uses content-based file ID as the identity key (SHA-256 of head 1MB + tail 64KB + file size, matching `computeFileId` in `fileId.server.ts`). Computes ID for each file on disk. Files in manifest whose ID no longer exists on disk are removed. Files whose ID exists but path changed are updated in place. New files (ID not in manifest) are added and clustered into jumps by the 1800 s gap threshold.
+- **File comparison:** Uses content-based file ID as the identity key (SHA-256 of head 1MB + tail 64KB + file size, matching `computeFileId` in `fileId.ts`). Computes ID for each file on disk. Files in manifest whose ID no longer exists on disk are removed. Files whose ID exists but path changed are updated in place. New files (ID not in manifest) are added and clustered into jumps by the 1800 s gap threshold.
 - **Jump reclustering:** After adding/removing files, reclusters all files by mtime gaps (`> 1800 s` → new jump). Preserves jump metadata (id, label, confirmed) via majority voting: if a reclustered jump contains files from multiple original jumps, it inherits the id/label of the jump that contributed the most files.
 - **Fresh manifest:** If no manifest exists, creates `version:1, status:'proposed', date:today, files:[all], theory:[], jumps:[clustered]` from scratch.
-- `find original_files -type f -printf '%T@\t%p\n' | sort -n | cut -f2-` gives time-sorted files.
-- Writes manifest with `jq` via heredoc.
-- Writes `output/.status/scan.json` (`running` → `done` → `idle` after 5s) for `api/status`; UI polls `api/status` every 2s, shows “Scanning…” banner and header spinner when any task running, revalidates manifest when proxies finish.
+- Writes `output/.status/scan.json` (`running` → `done` → `idle` after 5s) for `api/status`.
 
-### 5.2 `web/app/lib/sequences.ts` — date/time formatting helpers
-
-- Helpers: `formatSequenceDate` (`D M YYYY`), `formatDayHeader` (`DayName Month Ordinal`, e.g. "Saturday March 14th"), `formatDateForInput` (`D M YYYY` → `YYYY-MM-DD`), `formatSequenceTime` (`HH:MM`).
-
-### 5.3 `reclusterJumps(manifest, preservedPaths?)` (api.manifest)
+### 5.2 `reclusterJumps(manifest, preservedPaths?)` (`@skydock/scripts/clustering`)
 
 - `JUMP_GAP_SECONDS = 1800`.
 - Dedupes duplicate `jump.id` first: if `seenIds` has id, assigns next `jump_N` and `Jump N` label.
-- If `preservedPaths` given, collect `preservedJumps: Set<ManifestJump>` (per-object, not per-id) containing any jump with a preserved path. Each preserved jump’s files are kept as a single group (sorted but not split even if internal gap >1800) to avoid splitting a manually edited jump when it is shifted.
+- If `preservedPaths` given, collect `preservedJumps: Set<ManifestJump>` (per-object, not per-id) containing any jump with a preserved path. Each preserved jump's files are kept as a single group (sorted but not split even if internal gap >1800) to avoid splitting a manually edited jump when it is shifted.
 - Remaining files clustered by 1800 s gap, then `preservedGroups + groups` sorted by `min mtime`, then merged: adjacent groups with `curMin - lastMax ≤ 1800` are merged (allows drift-corrected jumps to coalesce).
 - Previous jump mapping via `previousByPath` to preserve `label`/`confirmed`/`processed` via dominant vote; `usedIds` tracked via `preservedJumps.has(prev)`; preserved jumps keep original `id`/`label` via `[...preservedJumps].find(...)`.
 
-### 5.4 `shiftFiles(manifest, paths, offset)`
+### 5.3 `shiftFiles(manifest, paths, offset)` (`@skydock/scripts/clustering`)
 
 - For each file in `manifest.files` and each `jump.files` where `path` in `paths`, save `originalMtime` if undefined, then `mtime += offset`. Updates both arrays (they are separate objects after JSON parse).
 
 ## 6. Execute
 
-### 6.1 `execute_media.sh [manifest] [jumpId ...]`
+### 6.1 `executeMedia({ manifestPath?, jumpIds?, outputDir? })`
 
 - Default manifest `output/manifest.json`, `PROCESSED_DIR=output/processed`.
-- If jump IDs given, process only those; else process all `jumps[] | select(.confirmed==true and .processed!=true)`.
-- For each `jump_id`, reads the jump label from the manifest, sanitizes it (alphanumeric + `.` + `-` + `_`), and creates `mkdir -p processed/sanitized_label` with subdirs `videos/` and `photos/`. Files are renamed to `sanitized_label_YYYYMMDD_HHMMSS.ext` (24h format, based on file mtime). If a video file has `cropStart`/`cropEnd` set and ffmpeg is available, the video is cropped to that range using `ffmpeg -ss -t -c copy`.
+- If jump IDs given, process only those; else process all `jumps.filter(j => j.confirmed && !j.processed)`.
+- For each jump, reads the jump label from the manifest, sanitizes it (alphanumeric + `.` + `-` + `_`), and creates `mkdir -p processed/sanitizedLabel` with subdirs `videos/` and `photos/`. Files are renamed to `sanitizedLabel_YYYYMMDD_HHMMSS.ext` (24h format, based on file mtime). If a video file has `cropStart`/`cropEnd` set and ffmpeg is available, the video is cropped to that range using `ffmpeg -ss -t -c copy`.
 - Writes `output/.status/execute.json` (`running` → `done` → `idle` after 5s) for `api/status` polling.
 
 ### 6.2 `api.manifest` execute
 
-- `execute-jumps` takes `jumpIds` (from Review React state `compareIds` filtered `!processed`; fallback all `confirmed && !processed` if empty), marks `confirmed=true`, saves, calls script with those ids, then reloads manifest, sets `jump.processed=true` for those ids, and sets `manifest.status` to `executed` if all processed, `confirmed` if some, else leaves `proposed`.
+- `execute-jumps` takes `jumpIds` (from Review React state `compareIds` filtered `!processed`; fallback all `confirmed && !processed` if empty), marks `confirmed=true`, saves, calls `executeMedia()` with those ids, then reloads manifest, sets `jump.processed=true` for those ids, and sets `manifest.status` to `executed` if all processed, `confirmed` if some, else leaves `proposed`.
 
 ## 7. Simulation & Testing
 
-### 7.1 `simulate_cameras.sh`
+### 7.1 `simulateCameras({ outputDir?, clean?, duration?, numFiles?, devData? })`
 
 - Base `.sim` with `camera1/`, `camera2/`.
-- Default: `today 09:00` base, `NUM_FILES=8` per camera, files every 30 s interleaved 15 s, `dd` random or `ffmpeg testsrc` if available, `touch -d @epoch`.
-- `--dev-data`: 18 files mixed `JPG`/`MP4` (IDX%3==0 → JPG else MP4) across 2 days → 10 on `3 days ago 09:00` (5 at 09:00, 40 min gap, 5 at 09:46) and 8 on `2 days ago 10:00` (4 at 10:00, 45 min gap, 4 at 10:49) → 4 jumps total, demonstrates intra-jump 90 s gaps and inter-jump 40–45 min gaps. Alternates cameras per file.
-- `create_file()` handles JPG vs MP4.
+- Default: `today 09:00` base, `NUM_FILES=8` per camera, files every 30 s interleaved 15 s, `ffmpeg testsrc` if available or random data fallback.
+- `devData`: 18 files mixed `JPG`/`MP4` across 2 days → 4 jumps total, demonstrates intra-jump 90 s gaps and inter-jump 40–45 min gaps. Alternates cameras per file.
 
-### 7.2 `watcher.sh`
+### 7.2 `watcher({ camDirs?, testMode?, runOnce?, outputDir? })`
 
-- Polls `SKYDOCK_OUTPUT_DIR` (default `/workspace/output`), finds camera root (not intermediate dirs), calls `process_media.sh` + `scan_media.sh` on detection, then queues `generate_proxies.sh` detached (`nice/ionice`).
+- Polls `SKYDOCK_OUTPUT_DIR` (default `/workspace/output`), finds camera root (not intermediate dirs), calls `processMedia()` + `scanMedia()` on detection, then queues `generateProxies()` detached.
 
-### 7.3 `test_pipeline.sh`
+### 7.3 `testPipeline({ camDirs?, numFiles?, outputDir?, clean? })`
 
-- `--clean` removes `.sim` and `output`, generates cameras, runs `process_media.sh` twice to test deduplication, asserts output exists, today folder exists, files copied, and second run copies 0.
+- `clean` removes `.sim` and `output`, generates cameras, runs `processMedia()` twice to test deduplication, asserts output exists, today folder exists, files copied, and second run copies 0.
 
 ## 8. Web App (React Router 8 Framework Mode, SSR)
 
@@ -158,10 +152,10 @@ type Manifest = {
 
 - `index` → `routes/home.tsx`, `review` → `routes/review.tsx`, `jump/:date/:jumpDir` → `routes/jump.tsx`, `api/file`, `api/library`, `api/jump`, `api/open`, `api/simulate`, `api/scan`, `api/manifest`, `api/status`.
 
-### 8.2 Types (`app/lib/types.ts`)
+### 8.2 Types (`@skydock/scripts/types`)
 
-- `FileEntry`, `Jump`, `DayGroup` for library view; `Manifest*` above; `CameraInfo` deprecated.
-- `ManifestFile` no longer has `camera`.
+- All manifest types (`ManifestFile`, `ManifestJump`, `Manifest`, `ManifestStatus`) are defined in `@skydock/scripts/src/types.ts` and re-exported via `app/lib/types.ts`.
+- `FileEntry`, `Jump`, `DayGroup` for library view are also exported from `@skydock/scripts`.
 
 ### 8.3 `scanner.server.ts`
 
@@ -169,17 +163,17 @@ type Manifest = {
 
 ### 8.4 `fileId.server.ts`
 
-- `computeFileId(filePath)` SHA-256 of head+tail+size, hex 16; `ensureManifestFileIds` adds `id` to every file in `manifest.files`, `theory`, and `jumps[].files` if missing or file exists, deduplicates via `idOwners` map, and backfills `thumbPath`/`proxyPath` (`output/.cache/thumbs/{id}.jpg`, `output/.cache/proxies/{id}.mp4`).
+- Imports `computeFileId` and `ensureManifestFileIds` from `@skydock/scripts`. These add `id` to every file in `manifest.files`, `theory`, and `jumps[].files` if missing or file exists, deduplicates via `idOwners` map, and backfills `thumbPath`/`proxyPath` (`output/.cache/thumbs/{id}.jpg`, `output/.cache/proxies/{id}.mp4`).
 
 ### 8.5 `api.simulate.ts`
 
 - `action({request})` with `formAction`:
-  - `add-jump`: `simulate_cameras.sh --num-files 4` → `process_media.sh` both cams → `scan_media.sh` → `ensureManifestFileIds`.
-  - default `reset dev data`: `rm -rf output`, `simulate_cameras.sh --clean --dev-data` → process → scan → ids.
+  - `add-jump`: `simulateCameras({ numFiles: 4 })` → `processMedia()` both cams → `scanMedia()` → `ensureManifestFileIds`.
+  - default `reset dev data`: `rm -rf output`, `simulateCameras({ clean: true, devData: true })` → process → scan → ids.
 
 ### 8.6 `api.scan.ts`
 
-- Only runs `scan_media.sh` (with `SKYDOCK_OUTPUT_DIR`) and `ensureManifestFileIds`, then spawns `generate_proxies.sh` detached; resets manifest from existing `original_files`.
+- Runs `scanMedia()` directly, then `ensureManifestFileIds()`, then spawns `generateProxies()` detached.
 
 ### 8.7 `api.file.ts`
 
@@ -192,8 +186,9 @@ type Manifest = {
 
 ### 8.8 `api.manifest.ts` — handlers (all arrow functions, `ok`/`fail` helpers)
 
+- Imports `loadManifest`, `saveManifest`, `reclusterJumps`, `shiftFiles`, `sanitizeLabel` from `@skydock/scripts`.
 - Helpers: `asString`, `asStringArray`, `requireManifest`, `requireJump`, `requireUnprocessed`, `removeProcessedDir`, `requireProcessedPaths`, `isAllProcessed`, `applyShift`, `ok`, `fail`.
-- Handlers map: `update-label`, `confirm-jump`/`confirm-all` (kept for backward compat, not used for UI selection), `delete-jump` (also deletes `processed/sanitized_label` if `processed`), `create-jump`, `move-files` / `remove-files` (blocked if involved jump `processed`), `copy-files` (duplicates refs to target without splicing source, allows same `path` in multiple jumps, blocked if target `processed`), `reorder-files` (validates `filePaths` length equals current size and all paths belong to jump, then remaps `jump.files` order), `merge-jumps`, `calibrate-sequences` (computes `offset = min(ref)-min(target)`, `scope all` shifts all), `shift-sequences` (takes `paths`/`offsetSeconds`, checks processed, `shiftFiles` + `reclusterJumps(manifest, pathsSet)`), `reset-calibration` (restores `originalMtime` in both `files` and `jump.files`, deletes `cameraClockOffsetSeconds`, reclusters), `execute-jumps` (incremental, see §6.2; `jumpIds` from React state), `unprocess-jump` (deletes `processed/sanitized_label`, clears `processed`, sets `status` back to `confirmed` if was `executed`), `rename-file` (updates `filename` on a file in manifest or jumps), `set-crop` (sets `cropStart`/`cropEnd` on a file for video cropping; updates both `manifest.files` and all matching `jump.files` entries for the same path).
+- Handlers map: `update-label`, `confirm-jump`/`confirm-all`, `delete-jump`, `create-jump`, `move-files` / `remove-files`, `copy-files`, `reorder-files`, `merge-jumps`, `calibrate-sequences`, `shift-sequences`, `reset-calibration`, `execute-jumps`, `unprocess-jump`, `rename-file`, `set-crop`.
 - `loader` returns `{manifest}`. `action` dispatches via `handlers[formAction]`, `requireManifest`, `saveManifest` and returns `ok` with `manifest`.
 
 ## 9. Review UI
@@ -332,22 +327,27 @@ Card border color: amber if selected for comparison, blue if processed, gray oth
 
 ### 9.16 System Status (background scripts)
 
-- Review UI polls `api/status` every 2s (`status.server.ts` reads `output/.status/*.json`). `generate_proxies.sh`/`scan_media.sh`/`execute_media.sh`/`process_media.sh` write `running` → `done` → `idle` atomically.
+- Review UI polls `api/status` every 2s (`status.server.ts` reads `output/.status/*.json`). `generateProxies()`/`scanMedia()`/`executeMedia()`/`processMedia()` write `running` → `done` → `idle` atomically.
 - Header shows `Working…` pulsing pill + `background tasks running` when any task running; banners below header per task: `Generating proxies (done/total)`, `Scanning`, `Copying from cameras`, `Processing jumps` (spinning) and `done` summary for 5-8s. Explains why grid thumbs or 480p previews may still be pending (fallback to original used until proxy ready). Revalidates manifest when proxies finish.
 
 ## 10. Dependencies & Tooling
 
-- `jq` for JSON in bash, `cmp` for dedup, `exiftool` optional.
+- `tsx` for running TypeScript scripts directly (zero-config).
+- `zod` for runtime validation of manifest data.
+- `cmp` for file dedup comparison, `exiftool` optional for metadata extraction.
+- `ffmpeg` for video proxy generation and thumbnail creation.
 - Web: `react-router`, `react`, `oxfmt` (format), `oxlint` (lint), `vitest` (4 suites, 55+ tests), `vite-tsconfig-paths`.
-- Scripts are bash only, no Python, no comments in generated scripts.
+- Scripts are TypeScript only, no Python, no comments in generated scripts.
 
 ## 11. Coding Rules
 
 - React Router 8 Framework Mode, SSR, `app/routes.ts` + `app/routes/` modules, `import from ./+types/...`.
 - Arrow functions only, `type` over `interface`, never `any`, all exports at end, inferred returns.
 - Data schemas (manifest, etc.) use Zod for runtime validation; types are inferred via `z.infer<typeof schema>`.
-- Bash scripts use `jq`, no comments in generated scripts.
+- Scripts use TypeScript with `tsx` for direct execution.
 - `npm run check` (`typecheck` + `format:check` + `lint`) must pass before commit.
 - "export" keywords must be at the end of the file and not before a const/variable, function or types
 - we use camel case format for const/variables
 - use "const" instead of "let" or "var" every time you can
+- Scripts package: `@skydock/scripts` — all shared logic lives here
+- Never duplicate: if logic is needed in multiple places, extract to `@skydock/scripts`

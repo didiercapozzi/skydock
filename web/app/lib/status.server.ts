@@ -2,18 +2,9 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { getOutputDirPath } from './scanner.server'
 
-export type TaskState = 'idle' | 'running' | 'done' | 'error'
+import type { TaskStatus } from '@skydock/scripts'
 
-export type TaskStatus = {
-  state: TaskState
-  message?: string
-  total?: number
-  done?: number
-  processing?: string[]
-  startedAt?: string
-  updatedAt?: string
-  error?: string
-}
+export type TaskState = 'idle' | 'running' | 'done' | 'error'
 
 export type SystemStatus = {
   proxies: TaskStatus

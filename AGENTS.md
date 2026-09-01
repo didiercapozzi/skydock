@@ -6,8 +6,8 @@ SkyDock copies media files from your DJI cameras to a local folder structure, th
 
 ## How It Works
 
-1. **Connect cameras** → `process_media.sh` copies files to `output/original_files/YYYY-MM-DD/`
-2. **Scan** → `scan_media.sh` generates `manifest.json` grouping files by time gaps
+1. **Connect cameras** → `processMedia()` copies files to `output/original_files/YYYY-MM-DD/`
+2. **Scan** → `scanMedia()` generates `manifest.json` grouping files by time gaps
 3. **Review** → User reviews jumps in web UI
 4. **Execute** → Confirmed jumps are copied to `output/processed/{label}/`
 
@@ -19,7 +19,7 @@ output/
 │   └── 2026-08-27/
 │       ├── DJI_0001.MP4
 │       └── DJI_0002.MP4
-├── manifest.json       # Jump grouping manifest
+├── manifest.json             # Jump grouping manifest
 └── processed/                # After confirmation
     ├── jump_01/
     │   ├── DJI_0001.MP4
@@ -38,57 +38,61 @@ Files are deduplicated using `cmp`:
 
 ## Scripts
 
-| Script                | Purpose                                  |
-| --------------------- | ---------------------------------------- |
-| `process_media.sh`    | Copy camera files to original_files/     |
-| `scan_media.sh`       | Generate manifest.json                   |
-| `execute_media.sh`    | Copy confirmed jumps to processed/       |
-| `watcher.sh`          | Background daemon, polls for cameras     |
-| `simulate_cameras.sh` | Generate fake camera footage for testing |
-| `test_pipeline.sh`    | End-to-end test runner                   |
+All scripts are TypeScript modules in `packages/skydock-scripts/src/`, runnable via `tsx`.
+
+| Script              | Purpose                                  |
+| ------------------- | ---------------------------------------- |
+| `process.ts`        | Copy camera files to original_files/     |
+| `scan.ts`           | Generate manifest.json                   |
+| `execute.ts`        | Copy confirmed jumps to processed/       |
+| `proxies.ts`        | Generate thumbnails + proxy videos       |
+| `watcher.ts`        | Background daemon, polls for cameras     |
+| `simulate.ts`       | Generate fake camera footage for testing |
+| `test-pipeline.ts`  | End-to-end test runner                   |
 
 ## Usage
 
 ### Copy files from cameras
 
 ```bash
-./scripts/process_media.sh /path/to/camera1 /path/to/camera2
+npx tsx packages/skydock-scripts/src/process.ts /path/to/camera1 /path/to/camera2
 ```
 
 ### Generate jump manifest
 
 ```bash
-./scripts/scan_media.sh
+npx tsx packages/skydock-scripts/src/scan.ts
 ```
 
 ### Watcher daemon
 
 ```bash
 # Watch specific directories
-./scripts/watcher.sh --cam-dir /path/to/camera1 --cam-dir /path/to/camera2
+npx tsx packages/skydock-scripts/src/watcher.ts --cam-dir /path/to/camera1 --cam-dir /path/to/camera2
 
 # Auto-scan common mount points
-./scripts/watcher.sh
+npx tsx packages/skydock-scripts/src/watcher.ts
 ```
 
 ### Test mode
 
 ```bash
-./scripts/watcher.sh --test --once
+npx tsx packages/skydock-scripts/src/watcher.ts --test --once
 ```
 
 ## Testing
 
 ```bash
 # Full end-to-end test
-./scripts/test_pipeline.sh --clean
+npx tsx packages/skydock-scripts/src/test-pipeline.ts --clean
 ```
 
 ## Dependencies
 
-- `jq` - JSON processing
+- `tsx` - TypeScript execution (zero-config)
 - `cmp` - File comparison (built-in)
 - `exiftool` - Optional, for camera metadata extraction
+- `ffmpeg` - Optional, for proxy generation
 
 ### Coding rules
 
@@ -104,7 +108,8 @@ Both apps use React Router 8 in **Framework Mode** with SSR enabled:
 - always use `types` instead of `interface`
 - don't force a function returned type. All returned types must be infered
 - No comments in generated scripts
-- the script but be written in bash only and no python
-- to read and write json files in bash script, use the jq library
-- before being done with a job make sure "nom `npm run check` command doesn't trigger any errror
+- Scripts are TypeScript only, no Python
+- All shared logic lives in `@skydock/scripts` package
+- Never duplicate: if logic is needed in multiple places, extract to `@skydock/scripts`
+- before being done with a job make sure `npm run check` command doesn't trigger any error
 - always update the RULES.md files in case of logic change
