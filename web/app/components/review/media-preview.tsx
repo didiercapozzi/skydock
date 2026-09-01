@@ -15,11 +15,7 @@ const MediaPreview = ({
   videoRef,
   onDurationLoaded
 }: MediaPreviewProps) => {
-  const proxySrc = file.proxyPath ? `/api/file?path=${encodeURIComponent(file.proxyPath)}` : null
-  const originalSrc = `/api/file?path=${encodeURIComponent(file.path)}`
-  const [forceOriginal, setForceOriginal] = useState(false)
-  const useProxy = !!proxySrc && !forceOriginal
-  const src = useProxy && proxySrc ? proxySrc : originalSrc
+  const src = `/api/file?path=${encodeURIComponent(file.path)}`
   const [videoError, setVideoError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(() => isVideoFile(file.filename))
   const [retryKey, setRetryKey] = useState(0)
@@ -33,7 +29,6 @@ const MediaPreview = ({
     return () => window.clearTimeout(t)
   }, [file.filename, isLoading, retryKey])
   const displaySrc = retryKey ? `${src}&retry=${retryKey}` : src
-  const fallbackSrc = proxySrc && useProxy ? originalSrc : null
   return isVideoFile(file.filename) ? (
     <div
       className='relative max-w-full'
@@ -41,7 +36,7 @@ const MediaPreview = ({
       {isLoading && !videoError && (
         <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 rounded text-white text-xs p-4'>
           <div className='w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin' />
-          <span>Loading video… {useProxy && proxySrc ? '(proxy)' : ''}</span>
+          <span>Loading video…</span>
           <span className='text-[10px] text-white/60 text-center max-w-[280px]'>
             Large files (3 GB+) with moov at end need to fetch tail via Range — can take 5-10 s. If
             stuck, use Open.
@@ -76,24 +71,11 @@ const MediaPreview = ({
               className='text-xs px-3 py-1.5 rounded border border-white/20 hover:bg-white/10'>
               Retry
             </button>
-            {fallbackSrc && (
-              <button
-                type='button'
-                onClick={() => {
-                  setForceOriginal(true)
-                  setVideoError(null)
-                  setIsLoading(true)
-                  setRetryKey((k) => k + 1)
-                }}
-                className='text-xs px-3 py-1.5 rounded border border-white/20 hover:bg-white/10'>
-                Try original
-              </button>
-            )}
           </div>
         </div>
       ) : (
         <video
-          key={`${file.path}-${retryKey}-${useProxy ? 'proxy' : 'orig'}`}
+          key={`${file.path}-${retryKey}`}
           ref={videoRef}
           src={displaySrc}
           controls
@@ -113,24 +95,12 @@ const MediaPreview = ({
           }}
           onCanPlay={() => setIsLoading(false)}
           onError={() => {
-            if (useProxy && proxySrc) {
-              setForceOriginal(true)
-              setIsLoading(true)
-              setRetryKey((k) => k + 1)
-              return
-            }
             setIsLoading(false)
             setVideoError(
               'Browser cannot decode this file. Try Open in native player or re-encode with faststart.'
             )
           }}
           onStalled={() => {
-            if (useProxy && proxySrc) {
-              setForceOriginal(true)
-              setIsLoading(true)
-              setRetryKey((k) => k + 1)
-              return
-            }
             setVideoError('Stalled — Range request failed or file moved. Retry or Open.')
           }}
         />

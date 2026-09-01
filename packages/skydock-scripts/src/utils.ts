@@ -24,8 +24,6 @@ const getCacheDir = (outputDir?: string): string => path.join(outputDir || getOu
 
 const getThumbDir = (outputDir?: string): string => path.join(getCacheDir(outputDir), 'thumbs')
 
-const getProxyDir = (outputDir?: string): string => path.join(getCacheDir(outputDir), 'proxies')
-
 const getFilmstripDir = (outputDir?: string, fid?: string): string => {
   const base = path.join(getCacheDir(outputDir), 'filmstrip')
   return fid ? path.join(base, fid) : base
@@ -60,7 +58,6 @@ export {
   getFilmstripDir,
   getManifestPath,
   getOutputDir,
-  getProxyDir,
   getStatusDir,
   getThumbDir,
   isMediaFile,

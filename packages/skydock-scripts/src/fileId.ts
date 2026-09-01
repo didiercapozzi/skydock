@@ -1,7 +1,7 @@
 import * as fs from 'node:fs'
 import * as crypto from 'node:crypto'
 import { loadManifest, saveManifest } from './manifest'
-import { getExtensionSafe, getThumbDir, getProxyDir } from './utils'
+import { getExtensionSafe, getFilmstripDir, getThumbDir } from './utils'
 
 const ID_HEX_LENGTH = 16
 
@@ -51,8 +51,12 @@ const ensureManifestFileIds = async (manifestPath: string): Promise<void> => {
       delete file.thumbPath
       normalized = true
     }
-    if (file.proxyPath === null) {
-      delete file.proxyPath
+    if (file.filmstripDir === null) {
+      delete file.filmstripDir
+      normalized = true
+    }
+    if (file.keyframes === null) {
+      delete file.keyframes
       normalized = true
     }
   }
@@ -64,7 +68,7 @@ const ensureManifestFileIds = async (manifestPath: string): Promise<void> => {
   const entries = [...manifest.files, ...manifest.theory, ...manifest.jumps.flatMap((j) => j.files)]
   const outputDir = manifestPath.replace(/\/manifest\.json$/, '')
   const thumbDir = getThumbDir(outputDir)
-  const proxyDirPath = getProxyDir(outputDir)
+  const filmstripBase = getFilmstripDir(outputDir)
   for (const file of entries) {
     if (!file.id) continue
     const ext = getExtensionSafe(file.path)
@@ -72,9 +76,9 @@ const ensureManifestFileIds = async (manifestPath: string): Promise<void> => {
 
     if (isVideo) {
       const expectedThumb = `${thumbDir}/${file.id}.jpg`
-      const expectedProxy = `${proxyDirPath}/${file.id}.mp4`
+      const expectedFilmstrip = `${filmstripBase}/${file.id}`
       const thumbExists = fs.existsSync(expectedThumb)
-      const proxyExists = fs.existsSync(expectedProxy)
+      const filmstripExists = fs.existsSync(`${expectedFilmstrip}/0001.jpg`)
 
       if (thumbExists) {
         if (file.thumbPath !== expectedThumb) {
@@ -85,13 +89,13 @@ const ensureManifestFileIds = async (manifestPath: string): Promise<void> => {
         delete file.thumbPath
         changed = true
       }
-      if (proxyExists) {
-        if (file.proxyPath !== expectedProxy) {
-          file.proxyPath = expectedProxy
+      if (filmstripExists) {
+        if (file.filmstripDir !== expectedFilmstrip) {
+          file.filmstripDir = expectedFilmstrip
           changed = true
         }
-      } else if (file.proxyPath !== undefined) {
-        delete file.proxyPath
+      } else if (file.filmstripDir !== undefined) {
+        delete file.filmstripDir
         changed = true
       }
     } else {
@@ -99,8 +103,12 @@ const ensureManifestFileIds = async (manifestPath: string): Promise<void> => {
         delete file.thumbPath
         changed = true
       }
-      if (file.proxyPath !== undefined) {
-        delete file.proxyPath
+      if (file.filmstripDir !== undefined) {
+        delete file.filmstripDir
+        changed = true
+      }
+      if (file.keyframes !== undefined) {
+        delete file.keyframes
         changed = true
       }
     }

@@ -55,7 +55,8 @@ type ManifestFile = {
   id?: string // SHA-256(file) → 16 hex, computed at scan via computeFileId — sole truth
   originalMtime?: number
   thumbPath?: string
-  proxyPath?: string
+  filmstripDir?: string
+  keyframes?: number[]
 }
 type JumpFileRef = { id: string; cropStart?: number; cropEnd?: number }
 type ManifestJump = {
@@ -96,9 +97,9 @@ type Manifest = {
 ### 5.0 `generateProxies()` — thumbnails + filmstrip (LosslessCut-like)
 
 - Inputs: `output/manifest.json` + `output/jumps.json`, outputs `output/.cache/thumbs/{id}.jpg` + `output/.cache/filmstrip/{id}/%04d.jpg` + `output/.cache/logs/{id}.log` on failure.
-- For each video, generates `320px` thumb (`ffmpeg -ss 0.5 -vframes 1 -vf scale=320:-2 -q:v 3`) and **filmstrip** `160px` at `1 fps` (`ffmpeg -vf fps=1,scale=160:-2 -q:v 5`). `video-grid-thumb.tsx` uses only thumb; `video-cropper.tsx` scrubs filmstrip images (instant, no GOP decode) and snaps `cropStart/End` to nearest keyframe (`ffprobe -show_entries frame=key_frame,best_effort_timestamp_time`). Filmstrip `0001.jpg` is at 0s, `0002.jpg` at 1s, etc. Keeps `proxyPath` for backward compat but primary for cropper is `filmstripDir`/`keyframes` on `ManifestFile`. `simulate.ts` makes fake bytes unique per `name-epoch` so each `id` gets distinct filmstrip.
+- For each video, generates `320px` thumb (`ffmpeg -ss 0.5 -vframes 1 -vf scale=320:-2 -q:v 3`) and **filmstrip** `160px` at `1 fps` (`ffmpeg -vf fps=1,scale=160:-2 -q:v 5`). `video-grid-thumb.tsx` uses only thumb; `video-cropper.tsx` scrubs filmstrip images (instant, no GOP decode) and snaps `cropStart/End` to nearest keyframe (`ffprobe -show_entries frame=key_frame,best_effort_timestamp_time`). Filmstrip `0001.jpg` is at 0s, `0002.jpg` at 1s, etc. Primary for cropper is `filmstripDir`/`keyframes` on `ManifestFile`. `simulate.ts` makes fake bytes unique per `name-epoch` so each `id` gets distinct filmstrip.
 - **File ID:** Content-based `SHA-256(file)` streaming → 16 hex (`computeFileId`) — sole truth for `manifest.files[].id` and `jumps.json` refs.
-- Skips if cache newer than source mtime, prunes stale ids (checks both `files` and `jumps[].files`). Updates `manifest.json` `thumbPath`/`proxyPath` only if cache file exists on disk (removes stale paths). Retries failed proxies up to `2` extra attempts before reporting. Parallel via `Promise.all` with configurable concurrency.
+- Skips if cache newer than source mtime, prunes stale ids (checks both `files` and `jumps[].files`). Updates `manifest.json` `thumbPath`/`filmstripDir`/`keyframes` only if cache exists on disk (removes stale paths). Retries failed filmstrips up to `2` extra attempts before reporting. Parallel via `Promise.all` with configurable concurrency.
 - Writes `output/.status/proxies.json` (`running` with total/done, then `done` → `idle` after 8s or `error`) polled by `api/status` for UI banner.
 
 ### 5.1 `scanMedia()` — merge-on-scan
@@ -106,7 +107,7 @@ type Manifest = {
 - Requires `original_files/` to exist.
 - **File discovery:** Recursively finds media files using `MEDIA_EXTENSIONS_SET` (union of `VIDEO_EXTENSIONS` and `PHOTO_EXTENSIONS`: mp4, mov, avi, mkv, mts, m4v, 3gp, jpg, jpeg, png, dng, raw, tif, tiff, heic, heif, arw, cr2, cr3, nef, orf, rw2, raf).
 - **Merge behavior:** If `manifest.json` already exists, scans `original_files/` and merges new files into the existing manifest instead of regenerating it. Preserves all user edits (confirmed status, labels, file groupings, calibration offsets). Detects removed files even when all files are deleted from disk (runs merge against existing manifest).
-- **File comparison:** Uses content-based file ID as the identity key (SHA-256 of head 1MB + tail 64KB + file size, matching `computeFileId` in `fileId.ts`). Computes ID for each file on disk. Files in manifest whose ID no longer exists on disk are removed. Files whose ID exists but path changed are updated in place. New files (ID not in manifest) are added and clustered into jumps by the 1800 s gap threshold.
+- **File comparison:** Uses content-based file ID as the identity key (streaming `SHA-256(file)` → 16 hex via `computeFileId`). Computes ID for each file on disk. Files in manifest whose ID no longer exists on disk are removed. New files (ID not in manifest) are added and clustered into jumps by the 1800 s gap threshold.
 - **Jump reclustering:** After adding/removing files, reclusters all files by mtime gaps (`> 1800 s` → new jump). Preserves jump metadata (id, label, confirmed) via majority voting: if a reclustered jump contains files from multiple original jumps, it inherits the id/label of the jump that contributed the most files.
 - **Fresh manifest:** If no manifest exists and files are found, creates `version:1, status:'proposed', date:today, files:[all], theory:[], jumps:[clustered]` from scratch. Returns unchanged if no files found and no manifest exists.
 - Writes `output/.status/scan.json` (`running` → `done` → `idle` after 5s) for `api/status`.

@@ -72,10 +72,6 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
 
   const scanning = scanFetcher.state !== 'idle' || systemStatus?.scan.state === 'running'
   const isProxiesRunning = systemStatus?.proxies.state === 'running'
-  const processingIds = useMemo(
-    () => new Set(systemStatus?.proxies.processing ?? []),
-    [systemStatus]
-  )
   const processingFiles = useMemo(() => {
     if (!manifest || !systemStatus?.proxies.processing?.length) return []
     const idToFilename = new Map<string, string>()
@@ -601,8 +597,6 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
               onClear={() => setSelection({})}
               onRemove={(gid, fp) => handleSelect(gid, fp, true, false)}
               onDragStart={handleTrayDragStart}
-              isProxyGenerating={isProxiesRunning}
-              processingIds={processingIds}
             />
           )}
           <div className='flex-1 min-w-0'>
@@ -632,8 +626,6 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                       selected={!!selection['unassigned']?.[file.path]}
                       isSelectMode={isSelectMode}
                       isInMultipleJumps={multiJumpFiles.has(file.path)}
-                      isProxyGenerating={isProxiesRunning}
-                      isActive={!!file.id && processingIds.has(file.id)}
                       onSelect={handleSelect}
                       onDragStart={() => {}}
                       onPreview={() => handlePreview(unassignedFiles, idx, 'Unassigned')}
@@ -652,8 +644,6 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
                   isSelectMode={isSelectMode}
                   compareIds={compareIds}
                   multiJumpFiles={multiJumpFiles}
-                  isProxyGenerating={isProxiesRunning}
-                  processingIds={processingIds}
                   viewMode={viewMode}
                   onViewModeChange={setViewMode}
                   onSelect={handleSelect}
@@ -729,8 +719,6 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
             compareIds={compareIds}
             onCompareIdsChange={setCompareIds}
             onClose={() => setShowCompare(false)}
-            isProxyGenerating={isProxiesRunning}
-            processingIds={processingIds}
             onMerge={(targetId, sourceId) => {
               handleMerge(targetId, sourceId)
               setShowCompare(false)

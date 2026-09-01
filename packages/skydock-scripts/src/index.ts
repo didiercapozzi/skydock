@@ -48,7 +48,6 @@ export {
   getFilmstripDir,
   getManifestPath,
   getOutputDir,
-  getProxyDir,
   getStatusDir,
   getThumbDir,
   isMediaFile,

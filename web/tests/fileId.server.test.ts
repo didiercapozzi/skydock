@@ -106,7 +106,7 @@ describe('ensureManifestFileIds', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true })
   })
 
-  it('resolves thumbPath and proxyPath for videos with ids', async () => {
+  it('resolves thumbPath and filmstripDir for videos with ids', async () => {
     const a = writeTempFile(tmpDir, 'a.mp4', Buffer.alloc(2048, 1))
     const manifest = buildManifest([a])
     manifest.files[0].id = 'vid_a'
@@ -114,17 +114,17 @@ describe('ensureManifestFileIds', () => {
     fs.writeFileSync(manifestPath, JSON.stringify(manifest))
 
     const thumbDir = path.join(tmpDir, '.cache', 'thumbs')
-    const proxyDir = path.join(tmpDir, '.cache', 'proxies')
+    const filmstripDir = path.join(tmpDir, '.cache', 'filmstrip', 'vid_a')
     fs.mkdirSync(thumbDir, { recursive: true })
-    fs.mkdirSync(proxyDir, { recursive: true })
+    fs.mkdirSync(filmstripDir, { recursive: true })
     fs.writeFileSync(path.join(thumbDir, 'vid_a.jpg'), Buffer.from('thumb'))
-    fs.writeFileSync(path.join(proxyDir, 'vid_a.mp4'), Buffer.from('proxy'))
+    fs.writeFileSync(path.join(filmstripDir, '0001.jpg'), Buffer.from('filmstrip'))
 
     await ensureManifestFileIds(manifestPath)
 
     const reloaded = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Manifest
     expect(reloaded.files[0].thumbPath).toContain('vid_a.jpg')
-    expect(reloaded.files[0].proxyPath).toContain('vid_a.mp4')
+    expect(reloaded.files[0].filmstripDir).toContain('vid_a')
   })
 
   it('leaves existing ids untouched', async () => {

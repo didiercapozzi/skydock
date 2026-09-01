@@ -3,7 +3,7 @@ import * as path from 'node:path'
 import * as os from 'node:os'
 import { execSync } from 'node:child_process'
 import { VIDEO_EXTENSIONS } from './constants'
-import { getOutputDir, getManifestPath, getThumbDir, getFilmstripDir } from './utils'
+import { getCacheDir, getFilmstripDir, getManifestPath, getOutputDir, getThumbDir } from './utils'
 import { writeStatus, scheduleIdle } from './status'
 import { loadManifest, saveManifest } from './manifest'
 import type { Manifest, ManifestFile } from './types'
@@ -202,6 +202,23 @@ const pruneStale = (manifest: Manifest, config: ProxyConfig): void => {
           fs.rmSync(path.join(config.filmstripBaseDir, f), { recursive: true, force: true })
         } catch {}
       }
+    }
+  } catch {}
+
+  try {
+    const oldProxyDir = path.join(getCacheDir(config.outputDir), 'proxies')
+    for (const f of fs.readdirSync(oldProxyDir)) {
+      const base = path.basename(f, path.extname(f))
+      if (!validIds.has(base)) {
+        try {
+          fs.unlinkSync(path.join(oldProxyDir, f))
+        } catch {}
+      }
+    }
+    if (fs.readdirSync(oldProxyDir).length === 0) {
+      try {
+        fs.rmdirSync(oldProxyDir)
+      } catch {}
     }
   } catch {}
 }

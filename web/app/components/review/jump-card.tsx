@@ -2,7 +2,6 @@ import { useMemo, useRef, useState } from 'react'
 import { formatSequenceTime } from '../../lib/sequences'
 import type { ManifestFile, ManifestJump } from '../../lib/types'
 import { FileRow } from './file-row'
-import { ProxyBadge } from './proxy-badge'
 import { VideoGridThumb } from './video-grid-thumb'
 import { getJumpBounds, isVideoFile } from './utils'
 
@@ -13,8 +12,6 @@ type JumpCardProps = {
   isCompareSelected?: boolean
   multiJumpFiles: Set<string>
   viewMode: 'list' | 'grid'
-  isProxyGenerating?: boolean
-  processingIds?: Set<string>
   onViewModeChange: (v: 'list' | 'grid') => void
   onSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   onDrop: (e: React.DragEvent, targetJumpId: string) => void
@@ -51,9 +48,7 @@ const JumpCard = ({
   onUnprocess,
   onDeleteFile,
   onRenameFile,
-  onShiftJump,
-  isProxyGenerating,
-  processingIds
+  onShiftJump
 }: JumpCardProps) => {
   const [expanded, setExpanded] = useState(false)
   const [editingLabel, setEditingLabel] = useState(false)
@@ -493,14 +488,6 @@ const JumpCard = ({
                             </svg>
                           </div>
                         )}
-                        {isVideo && (
-                          <ProxyBadge
-                            file={file}
-                            variant='overlay'
-                            isGenerating={isProxyGenerating}
-                            isActive={!!file.id && !!processingIds?.has(file.id)}
-                          />
-                        )}
                         {(file.cropStart != null && file.cropStart > 0) || file.cropEnd != null ? (
                           <div className='absolute bottom-6 right-1 w-1.5 h-1.5 rounded-full bg-orange-400 border border-white' />
                         ) : null}
@@ -530,8 +517,6 @@ const JumpCard = ({
                       isSelectMode={isSelectMode}
                       isInMultipleJumps={multiJumpFiles.has(file.path)}
                       dropPosition={hoveredFile === file.path ? dropPosition : null}
-                      isProxyGenerating={isProxyGenerating}
-                      isActive={!!file.id && !!processingIds?.has(file.id)}
                       onSelect={onSelect}
                       onDragStart={(e, fp) => {
                         if (isProcessed) return
