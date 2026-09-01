@@ -4,6 +4,8 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     privileged: true
+    devices:
+      - /dev/dri:/dev/dri
     volumes:
       - $SSH_AUTH_SOCK:/ssh-agent
       - /tmp/.X11-unix:/tmp/.X11-unix
