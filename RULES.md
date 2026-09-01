@@ -23,7 +23,8 @@ output/
 ├── .cache/                   # Thumbnails + 144p proxies (not processed)
 │   ├── thumbs/{id}.jpg
 │   └── proxies/{id}.mp4
-├── manifest.json             # Manifest (see §4)
+├── manifest.json             # File registry — source of truth (see §4)
+├── jumps.json                # Jumps — lightweight refs {id, cropStart?, cropEnd?} (see §4)
 └── processed/                # After per-jump Process
     ├── jump_1/
     │   ├── DJI_0001.MP4
@@ -43,7 +44,7 @@ output/
 - `fs.copyFileSync` + `fs.utimesSync` preserves timestamps.
 - Writes `output/.status/process.json` (`running` → `done` → `idle` after 5s) for `api/status`.
 
-## 4. Manifest (`output/manifest.json`)
+## 4. Manifest (`output/manifest.json` + `output/jumps.json`)
 
 ```ts
 type ManifestFile = {
@@ -51,18 +52,17 @@ type ManifestFile = {
   size: number
   mtime: number
   filename: string
-  id?: string
+  id?: string // SHA-256(file) → 16 hex, computed at scan via computeFileId — sole truth
   originalMtime?: number
-  cropStart?: number
-  cropEnd?: number
   thumbPath?: string
   proxyPath?: string
 }
+type JumpFileRef = { id: string; cropStart?: number; cropEnd?: number }
 type ManifestJump = {
   id: string
   label: string
   confirmed: boolean
-  files: ManifestFile[]
+  files: ManifestFile[] // in-memory resolved via manifest.files lookup
   processed?: boolean
 }
 type ManifestStatus = 'empty' | 'proposed' | 'confirmed' | 'executed'
@@ -77,13 +77,17 @@ type Manifest = {
   jumps: ManifestJump[]
   cameraClockOffsetSeconds?: number
 }
+// Persisted on disk as two files (loadManifest merges, saveManifest splits):
+// manifest.json: { version, status, date, startDatetime, createdAt, theory, files, cameraClockOffsetSeconds }
+// jumps.json:    { jumps: Array<{ id, label, confirmed, processed?, files: JumpFileRef[] }> }
 ```
 
-- `scanMedia()` creates `version:1, status:'proposed', date: today, files: [all], theory: [], jumps: [clustered]`, then queues `generateProxies()` in background (both fresh and merge paths).
+- `manifest.json` is **file registry** (source of truth, written by `scan` when files appear/disappear). `jumps.json` is **workspace** (jump grouping, labels, `confirmed`/`processed`, `JumpFileRef`s). `loadManifest` merges both (resolves `ref.id → ManifestFile`); `saveManifest` splits. Migration: old single `manifest.json` with `jumps[].files: ManifestFile[]` auto-splits on first `loadManifest`.
+- `scanMedia()` creates `version:1, status:'proposed', date: today, files: [all], theory: [], jumps: [clustered]`, then queues `generateProxies()` in background (both fresh and merge paths). `computeFileId` (streaming SHA-256) sets `file.id` at scan time.
 - `files` is flat list of all `original_files` sorted by `mtime`.
-- `jumps` are clusters where gaps `> 1800 s` (30 min) start a new jump. `files` duplicated inside `jumps` (not references) but `path` is the key. Since `copy-files` exists, the same `path` may appear in multiple jumps (file copied to several jumps).
+- `jumps[].files` are **lightweight refs** `{id, cropStart?, cropEnd?}` — no `path`/`filename`/`size`/`mtime` duplication. Same file `id` may appear in multiple jumps via `copy-files`. In-memory `Manifest` resolves refs to full `ManifestFile` for UI/execute.
 - `id` is `jump_1 …` or preserved original id after recluster; `label` defaults `Jump N` and is editable.
-- `originalMtime` saved on first time shift to allow `reset-calibration`.
+- `originalMtime` saved on first time shift to allow `reset-calibration` (stored on `manifest.files`).
 - `processed` marks per-jump execution (incremental). `manifest.status` is `executed` only when every jump is `processed`, `confirmed` when some processed, otherwise `proposed`.
 - Jump selection for compare/process is **not** persisted in manifest – it is React state `compareIds: string[]` in Review UI (checkbox `checked={isCompareSelected}`); `confirmed` remains only for execution bookkeeping and is auto-set by `execute-jumps`.
 
