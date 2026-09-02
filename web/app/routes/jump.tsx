@@ -1,6 +1,5 @@
 import { useLoaderData, Link, useFetcher, href } from 'react-router'
 import type { Route } from './+types/jump'
-import { getJump, getOutputDirPath } from '../lib/scanner.server'
 import type { FileEntry, Jump } from '../lib/types'
 
 const formatBytes = (bytes: number): string => {
@@ -171,7 +170,8 @@ const FileTable = ({
   )
 }
 
-const loader = ({ params }: Route.LoaderArgs) => {
+const loader = async ({ params }: Route.LoaderArgs) => {
+  const { getJump, getOutputDirPath } = await import('../lib/scanner.server')
   const jump = getJump(params.date, params.jumpDir)
   if (!jump) throw new Response('Jump not found', { status: 404, statusText: 'Jump not found' })
   const outputDir = getOutputDirPath()

@@ -1,5 +1,3 @@
-import { loadManifest } from '@skydock/scripts'
-import * as path from 'node:path'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useFetcher, useLoaderData, useRevalidator } from 'react-router'
 import { CompareDrawer } from '../components/review/compare-drawer'
@@ -11,8 +9,6 @@ import { StagingTray } from '../components/review/staging-tray'
 import { TimelineJumps } from '../components/review/timeline-jumps'
 import type { PreviewState, SelectionMap } from '../components/review/types'
 import { getJumpBounds, groupJumpsByDay } from '../components/review/utils'
-import { ensureManifestFileIds } from '../lib/fileId.server'
-import { getOutputDirPath, scanOutput } from '../lib/scanner.server'
 import type { SystemStatus } from '../lib/status.server'
 import type {
   DayGroup,
@@ -237,6 +233,13 @@ const FileDrawer = ({ file, onClose }: { file: FileEntry; onClose: () => void })
 }
 
 const loader = async (_args?: Route.LoaderArgs) => {
+  const [{ loadManifest }, path, { getOutputDirPath, scanOutput }, { ensureManifestFileIds }] =
+    await Promise.all([
+      import('@skydock/scripts'),
+      import('node:path'),
+      import('../lib/scanner.server'),
+      import('../lib/fileId.server')
+    ])
   const manifestPath = path.join(getOutputDirPath(), 'manifest.json')
   await ensureManifestFileIds(manifestPath)
   const manifest = loadManifest(manifestPath) as Manifest | null

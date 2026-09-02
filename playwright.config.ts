@@ -5,10 +5,10 @@ const isCI = !!process.env.CI
 export default defineConfig({
   testDir: 'e2e',
   testMatch: '**/*.spec.ts',
-  fullyParallel: true,
+  fullyParallel: false,
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
-  workers: isCI ? 1 : undefined,
+  workers: 1,
   reporter: 'html',
   use: {
     baseURL: isCI ? 'http://localhost:3000' : 'http://localhost:5173',
@@ -30,7 +30,7 @@ export default defineConfig({
     : {
         command: 'npm run dev --workspace=@workspace/web',
         url: 'http://localhost:5173',
-        reuseExistingServer: true,
+        reuseExistingServer: false,
         timeout: 120 * 1000,
         env: {
           SKYDOCK_OUTPUT_DIR: '/tmp/playwright-output'

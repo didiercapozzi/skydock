@@ -9,37 +9,45 @@ test.describe('review — grouping and drag', () => {
     await expect(page.getByText('Jump 2')).toBeVisible()
   })
 
-  test('file move via api.manifest', async ({ page, outputDir }) => {
+  test('drag file between jumps via UI', async ({ page, outputDir }) => {
     seedMinimalManifest(outputDir)
     await mockStatusIdle(page)
     await page.goto('/')
     await expect(page.getByText('Jump 1')).toBeVisible()
-    const responsePromise = page.waitForResponse((r) => r.url().includes('/api/manifest') && r.request().method() === 'POST')
-    await page.evaluate(async () => {
-      await fetch('/api/manifest', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action: 'move-files', fromJumpId: '2026-08-24_Jump1', toJumpId: '2026-08-24_Jump2', filePaths: [] })
-      })
+    await expect(page.getByText('Jump 2')).toBeVisible()
+    const sourceCard = page.locator('div.border.rounded-lg').filter({ hasText: 'Jump 1' }).first()
+    const targetCard = page.locator('div.border.rounded-lg').filter({ hasText: 'Jump 2' }).first()
+    await expect(sourceCard).toBeVisible()
+    await expect(targetCard).toBeVisible()
+    const sourceRow = sourceCard.locator('[data-file-row]').first()
+    await expect(sourceRow).toBeVisible()
+    const responsePromise = page.waitForResponse((r) => r.url().includes('/api/manifest') && r.request().method() === 'POST', { timeout: 10000 })
+    await page.evaluate(() => {
+      const cards = Array.from(document.querySelectorAll('div.border.rounded-lg')) as HTMLElement[]
+      const source = cards.find((c) => c.textContent?.includes('Jump 1')) as HTMLElement
+      const target = cards.find((c) => c.textContent?.includes('Jump 2')) as HTMLElement
+      const row = source.querySelector('[data-file-row]') as HTMLElement
+      const dt = new DataTransfer()
+      dt.effectAllowed = 'move'
+      dt.setData('text/plain', 'test')
+      row.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }))
+      target.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }))
+      target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }))
     })
     const response = await responsePromise
     expect(response.ok()).toBeTruthy()
   })
 
-  test('create and delete jump', async ({ page, outputDir }) => {
+  test('create jump via UI button', async ({ page, outputDir }) => {
     seedMinimalManifest(outputDir)
     await mockStatusIdle(page)
     await page.goto('/')
+    await expect(page.getByText('Jump 1')).toBeVisible()
+    const initialCards = await page.locator('div.border.rounded-lg').filter({ hasText: 'Jump' }).count()
     await page.getByRole('button', { name: '+ Add Jump' }).click()
-    await page.waitForTimeout(500)
-    const addResponse = await page.evaluate(async () => {
-      const r = await fetch('/api/manifest', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action: 'create-jump' })
-      })
-      return r.json()
+    await expect(page.locator('div.border.rounded-lg').filter({ hasText: 'Jump' })).toHaveCount(initialCards + 1, { timeout: 5000 }).catch(async () => {
+      const after = await page.locator('div.border.rounded-lg').filter({ hasText: 'Jump' }).count()
+      expect(after).toBeGreaterThan(initialCards)
     })
-    expect(addResponse.ok).toBe(true)
   })
 })

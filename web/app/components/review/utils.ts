@@ -1,7 +1,12 @@
 import { formatSequenceDate } from '../../lib/sequences'
 import type { ManifestJump } from '../../lib/types'
 import type { JumpDayGroup } from './types'
-import { isVideoFile } from '@skydock/scripts'
+
+const VIDEO_EXTS = new Set(['mp4', 'mov', 'avi', 'mkv', 'mts', 'm4v', '3gp'])
+const isVideoFile = (filename: string): boolean => {
+  const ext = filename.split('.').pop()?.toLowerCase() ?? ''
+  return VIDEO_EXTS.has(ext)
+}
 
 const formatSize = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`

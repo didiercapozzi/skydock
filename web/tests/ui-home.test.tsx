@@ -144,23 +144,25 @@ describe('ui-home — navigation & routing', () => {
     expect(mockLoadManifest).toHaveBeenCalled()
   })
 
-  it('jump/:date/:jumpDir loader getJump 404 fallback throws', () => {
+  it('jump/:date/:jumpDir loader getJump 404 fallback throws', async () => {
     mockGetJump.mockReturnValue(null)
-    expect(() =>
+    await expect(
       jumpLoader({ params: { date: '2026-08-24', jumpDir: 'Jump_1' } } as never)
-    ).toThrow()
+    ).rejects.toThrow()
     try {
-      jumpLoader({ params: { date: '2026-08-24', jumpDir: 'Jump_1' } } as never)
+      await jumpLoader({ params: { date: '2026-08-24', jumpDir: 'Jump_1' } } as never)
     } catch (e) {
       expect((e as Response).status).toBe(404)
     }
   })
 
-  it('jump/:date/:jumpDir loader success returns jump+outputDir', () => {
+  it('jump/:date/:jumpDir loader success returns jump+outputDir', async () => {
     const jump = makeJump({ id: '2026-08-24/Jump_1' })
     mockGetJump.mockReturnValue(jump)
     mockGetOutputDirPath.mockReturnValue('/tmp/output')
-    const result = jumpLoader({ params: { date: '2026-08-24', jumpDir: 'Jump_1' } } as never) as {
+    const result = (await jumpLoader({
+      params: { date: '2026-08-24', jumpDir: 'Jump_1' }
+    } as never)) as {
       jump: Jump
       outputDir: string
     }
@@ -325,13 +327,13 @@ describe('ui-home — navigation & routing', () => {
     expect(screen.getByText(/No Manifest Found/)).toBeInTheDocument()
   })
 
-  it('direct URL /jump with getJump=null → 404', () => {
+  it('direct URL /jump with getJump=null → 404', async () => {
     mockGetJump.mockReturnValue(null)
-    expect(() =>
+    await expect(
       jumpLoader({ params: { date: '2026-08-24', jumpDir: 'Jump_1' } } as never)
-    ).toThrow()
+    ).rejects.toThrow()
     try {
-      jumpLoader({ params: { date: '2026-08-24', jumpDir: 'Jump_1' } } as never)
+      await jumpLoader({ params: { date: '2026-08-24', jumpDir: 'Jump_1' } } as never)
     } catch (e) {
       const res = e as Response
       expect(res.status).toBe(404)
