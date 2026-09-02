@@ -5,10 +5,9 @@ import { randomUUID } from 'node:crypto'
 import { getOutputDir } from '@skydock/scripts'
 import { jsonError } from '../lib/response.server'
 import { resolveAndValidateFile } from '../lib/path.server'
-import { FFMPEG_AUDIO_FLAGS, FFMPEG_VIDEO_FLAGS, buildBaseArgs } from '../lib/ffmpeg.server'
+import { buildHlsArgs, rewritePlaylist } from '../lib/hls.server'
 
 const MAX_LIVE = Number(process.env.SKYDOCK_LIVE_MAX ?? 6)
-const HLS_SEGMENT_DURATION = '4'
 const HLS_POLL_INTERVAL_MS = 50
 const HLS_PLAYLIST_TIMEOUT_MS = 10_000
 const HLS_SESSION_TTL_MS = 30_000
@@ -44,25 +43,6 @@ const scheduleCleanup = (key: string) => {
   clearTimeout(s.timer)
   s.timer = setTimeout(() => cleanup(key), HLS_SESSION_TTL_MS)
   s.lastAccess = Date.now()
-}
-
-const buildHlsArgs = (resolved: string, seek: number, hlsDir: string): string[] => {
-  return [
-    ...buildBaseArgs(resolved, seek),
-    '-vf',
-    'scale=360:-2',
-    ...FFMPEG_VIDEO_FLAGS,
-    ...FFMPEG_AUDIO_FLAGS,
-    '-hls_time',
-    HLS_SEGMENT_DURATION,
-    '-hls_list_size',
-    '0',
-    '-hls_segment_filename',
-    path.join(hlsDir, 'seg%03d.ts'),
-    '-f',
-    'hls',
-    path.join(hlsDir, 'playlist.m3u8')
-  ]
 }
 
 const loader = async ({ request }: { request: Request }) => {
@@ -205,7 +185,4 @@ const loader = async ({ request }: { request: Request }) => {
   })
 }
 
-const rewritePlaylist = (playlist: string, baseUrl: string): string =>
-  playlist.replace(/(seg\d+\.ts)/g, `${baseUrl}&segment=$1`)
-
-export { loader, buildHlsArgs, rewritePlaylist }
+export { loader }

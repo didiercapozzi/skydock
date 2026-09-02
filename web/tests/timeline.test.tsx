@@ -3,7 +3,7 @@ import { fireEvent, render, waitFor } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
 import type { Manifest, ManifestFile, ManifestJump } from '../app/lib/types'
-import Review from '../app/routes/review'
+import Home from '../app/routes/home'
 
 const makeFile = (path: string, mtime: number): ManifestFile => ({
   path,
@@ -29,9 +29,9 @@ const makeManifest = (jumps: ManifestJump[], files: ManifestFile[]): Manifest =>
 })
 
 const renderReview = (manifest: Manifest, actionSpy?: ReturnType<typeof vi.fn>) => {
-  const routes: any[] = [{ path: '/review', element: <Review loaderData={{ manifest } as any} /> }]
+  const routes: any[] = [{ path: '/', element: <Home loaderData={{ manifest } as any} /> }]
   if (actionSpy) routes.push({ path: '/api/manifest', action: actionSpy })
-  const router = createMemoryRouter(routes, { initialEntries: ['/review'] })
+  const router = createMemoryRouter(routes, { initialEntries: ['/'] })
   return render(<RouterProvider router={router} />)
 }
 

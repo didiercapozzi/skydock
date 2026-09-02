@@ -8,6 +8,6 @@ export default defineConfig({
   singleAttributePerLine: true,
   singleQuote: true,
   trailingComma: 'none',
-  ignorePatterns: ['dist'],
+  ignorePatterns: ['dist', 'playwright-report', 'test-results', 'e2e'],
   sortPackageJson: { sortScripts: true }
 })

@@ -1,7 +1,7 @@
 import { loadManifest } from '@skydock/scripts'
 import * as path from 'node:path'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, NavLink, useFetcher, useLoaderData, useRevalidator } from 'react-router'
+import { Link, useFetcher, useLoaderData, useRevalidator } from 'react-router'
 import { CompareDrawer } from '../components/review/compare-drawer'
 import { FileRow } from '../components/review/file-row'
 import { JumpDaySection } from '../components/review/jump-day-section'
@@ -671,9 +671,9 @@ const Home = ({ loaderData: propLoaderData }: HomeProps) => {
                 />
               </svg>
             </div>
-            <NavLink to='/review'>
+            <Link to='/'>
               <h1 className='text-xl font-bold text-gray-900 dark:text-white'>SkyDock</h1>
-            </NavLink>
+            </Link>
           </div>
           <div className='flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400'>
             <span>{totalJumps} jumps</span>

@@ -18,7 +18,7 @@ vi.mock('../app/lib/fileId.server', () => ({
   computeFileId: vi.fn()
 }))
 
-import Review, { loader as reviewLoader } from '../app/routes/review'
+import Home, { loader as homeLoader } from '../app/routes/home'
 import { groupJumpsByDay, getJumpBounds } from '../app/components/review/utils'
 import { formatSequenceDate, formatSequenceTime } from '../app/lib/sequences'
 
@@ -92,13 +92,13 @@ const makeManifest = (
 const renderReview = (manifest: Manifest | null) => {
   const router = createMemoryRouter(
     [
-      { path: '/review', element: <Review loaderData={{ manifest } as unknown as never} /> },
+      { path: '/', element: <Home loaderData={{ manifest } as unknown as never} /> },
       { path: '/api/manifest', element: <div />, action: async () => null },
       { path: '/api/scan', element: <div />, action: async () => null },
       { path: '/api/status', element: <div />, action: async () => null }
     ],
     {
-      initialEntries: ['/review']
+      initialEntries: ['/']
     }
   )
   const result = render(<RouterProvider router={router} />)
@@ -138,7 +138,7 @@ describe('ui-review — data loading & empty states', () => {
     ensure.mockClear()
     load.mockClear()
     load.mockReturnValue(null)
-    await reviewLoader({} as never)
+    await homeLoader({} as never)
     expect(ensure).toHaveBeenCalledTimes(1)
     expect(load).toHaveBeenCalledTimes(1)
     const ensureOrder = ensure.mock.invocationCallOrder[0]

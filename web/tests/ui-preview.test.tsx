@@ -840,7 +840,7 @@ describe('ui-preview — streaming Sec16 server & hls player', () => {
   })
 
   it('api/hls buildHlsArgs hls_time 4 + hls_list_size 0 + seg%03d.ts rewriting', async () => {
-    const { buildHlsArgs, rewritePlaylist } = await import('../app/routes/api.hls')
+    const { buildHlsArgs, rewritePlaylist } = await import('../app/lib/hls.server')
     const hlsDir = '/tmp/.cache/hls/test'
     const args = buildHlsArgs('/tmp/video.MP4', 0, hlsDir)
     expect(args).toContain('-hls_time')
@@ -860,7 +860,7 @@ describe('ui-preview — streaming Sec16 server & hls player', () => {
   })
 
   it('api/hls session 30s TTL and MAX_LIVE 429 via HLS_SESSION_TTL_MS', async () => {
-    const hlsModule = await import('../app/routes/api.hls')
+    const hlsModule = await import('../app/lib/hls.server')
     expect(hlsModule.buildHlsArgs).toBeDefined()
     expect(hlsModule.rewritePlaylist).toBeDefined()
     const playlist = '#EXTM3U\nseg000.ts\n'

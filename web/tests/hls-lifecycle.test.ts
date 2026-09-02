@@ -111,7 +111,8 @@ const setupMocks = async (opts: SetupOpts = {}) => {
   getOutputDirMock.mockReturnValue(tmpDir)
   loadManifestMock.mockReturnValue(null)
 
-  const { loader, buildHlsArgs, rewritePlaylist } = await import('../app/routes/api.hls')
+  const { loader } = await import('../app/routes/api.hls')
+  const { buildHlsArgs, rewritePlaylist } = await import('../app/lib/hls.server')
 
   return { loader, buildHlsArgs, rewritePlaylist, spawnMock, getOutputDirMock, loadManifestMock }
 }

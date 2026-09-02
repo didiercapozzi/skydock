@@ -35,9 +35,8 @@ vi.mock('@skydock/scripts', async (importOriginal) => {
   }
 })
 
-import Home from '../app/routes/home'
+import Home, { loader as homeLoader } from '../app/routes/home'
 import JumpDetail, { loader as jumpLoader } from '../app/routes/jump'
-import Review, { loader as reviewLoader } from '../app/routes/review'
 
 const makeFileEntry = (overrides: Partial<FileEntry> & { name: string }): FileEntry => ({
   path: `/tmp/${overrides.name}`,
@@ -133,15 +132,11 @@ describe('ui-home — navigation & routing', () => {
     expect(screen.getAllByText(/1 jumps/)[0]).toBeInTheDocument()
   })
 
-  it('review /review loader calls loadManifest+ensureManifestFileIds', async () => {
-    mockLoadManifest.mockReturnValue({
-      status: 'proposed',
-      date: '2026-08-24',
-      jumps: [],
-      files: []
-    })
+  it('home / loader calls loadManifest+ensureManifestFileIds', async () => {
+    mockLoadManifest.mockReturnValue(null)
+    mockScanOutput.mockReturnValue({ days: [], libraryFiles: [] })
     const manifestPath = '/tmp/output/manifest.json'
-    await reviewLoader({} as never)
+    await homeLoader({} as never)
     expect(mockEnsureManifestFileIds).toHaveBeenCalled()
     const ensureArg = mockEnsureManifestFileIds.mock.calls[0][0] as string
     expect(ensureArg).toContain('manifest.json')
@@ -180,7 +175,7 @@ describe('ui-home — navigation & routing', () => {
           path: '/',
           element: <Home loaderData={{ days: [], libraryFiles: [] } as unknown as never} />
         },
-        { path: '/review', element: <div>review</div> }
+        { path: '/jump/:date/:jumpDir', element: <div>jump</div> }
       ],
       { initialEntries: ['/unknown-route'], initialIndex: 0 }
     )
@@ -189,55 +184,41 @@ describe('ui-home — navigation & routing', () => {
     expect(router.state.location.pathname).toBe('/unknown-route')
   })
 
-  it('Link nav home→review', async () => {
-    const user = userEvent.setup()
+  it('Link nav home logo points to /', async () => {
     const jump = makeJump({
       id: '2026-08-24/Jump_1',
       jumpVideos: [makeFileEntry({ name: 'a.mp4' })],
       videoCount: 1
     })
     mockScanOutput.mockReturnValue({ days: [makeDayGroup('2026-08-24', [jump])], libraryFiles: [] })
+    renderHome([makeDayGroup('2026-08-24', [jump])])
+    const link = screen.getByRole('link', { name: /SkyDock/i })
+    expect(link.getAttribute('href')).toBe('/')
+  })
+
+  it('Back link navigates home from empty state', async () => {
+    const user = userEvent.setup()
+    mockLoadManifest.mockReturnValue(null)
+    mockScanOutput.mockReturnValue({ days: [], libraryFiles: [] })
     const router = createMemoryRouter(
       [
         {
           path: '/',
           element: (
-            <Home
-              loaderData={
-                { days: [makeDayGroup('2026-08-24', [jump])], libraryFiles: [] } as unknown as never
-              }
-            />
+            <Home loaderData={{ manifest: null, days: [], libraryFiles: [] } as unknown as never} />
           )
-        },
-        { path: '/review', element: <div>Review Page</div> }
+        }
       ],
       { initialEntries: ['/'] }
-    )
-    render(<RouterProvider router={router} />)
-    const link = screen.getByRole('link', { name: /SkyDock/i })
-    expect(link.getAttribute('href')).toBe('/review')
-    await user.click(link)
-    await waitFor(() => expect(screen.getByText('Review Page')).toBeInTheDocument())
-  })
-
-  it('review→/ Back link navigates home', async () => {
-    const user = userEvent.setup()
-    mockLoadManifest.mockReturnValue(null)
-    const router = createMemoryRouter(
-      [
-        { path: '/', element: <div>Home Page</div> },
-        { path: '/review', element: <Review loaderData={{ manifest: null } as unknown as never} /> }
-      ],
-      { initialEntries: ['/review'] }
     )
     render(<RouterProvider router={router} />)
     const back = screen.getByRole('link', { name: /Back to Dashboard/i })
     expect(back.getAttribute('href')).toBe('/')
     await user.click(back)
-    await waitFor(() => expect(screen.getByText('Home Page')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/No Manifest Found/)).toBeInTheDocument())
   })
 
-  it('review→jump/:date/:jumpDir via jump card click', async () => {
+  it('home jumps link to jump/:date/:jumpDir via jump card click', async () => {
     const user = userEvent.setup()
     const manifest = {
       version: 1,
@@ -259,14 +240,22 @@ describe('ui-home — navigation & routing', () => {
     const router = createMemoryRouter(
       [
         {
-          path: '/review',
+          path: '/',
           element: (
-            <Review loaderData={{ manifest: manifest as unknown as never } as unknown as never} />
+            <Home
+              loaderData={
+                {
+                  manifest: manifest as unknown as never,
+                  days: [],
+                  libraryFiles: []
+                } as unknown as never
+              }
+            />
           )
         },
         { path: '/jump/:date/:jumpDir', element: <div>Jump Detail</div> }
       ],
-      { initialEntries: ['/review'] }
+      { initialEntries: ['/'] }
     )
     render(<RouterProvider router={router} />)
     const jumpLink = document.querySelector('a[href*="/jump"]') as HTMLElement | null
@@ -303,28 +292,33 @@ describe('ui-home — navigation & routing', () => {
             />
           )
         },
-        { path: '/review', element: <div>Review</div> }
+        { path: '/jump/:date/:jumpDir', element: <div>Jump Detail</div> }
       ],
-      // start at '/' so Home renders; test expects initialIndex 0 (was missing, default was last entry '/review' causing a.mp4 not found)
-      { initialEntries: ['/', '/review'], initialIndex: 0 }
+      { initialEntries: ['/'] }
     )
     render(<RouterProvider router={router} />)
     await user.click(screen.getByText('a.mp4'))
     expect(await screen.findByText(/Open in player/)).toBeInTheDocument()
+    await router.navigate('/jump/2026-08-24/Jump_1')
+    await waitFor(() => expect(screen.getByText('Jump Detail')).toBeInTheDocument())
     await router.navigate(-1)
     await waitFor(() => expect(screen.getByText(/SkyDock/)).toBeInTheDocument())
-    await router.navigate(1)
-    await waitFor(() => expect(screen.getByText('Review')).toBeInTheDocument())
   })
 
-  it('direct URL /review no manifest → No Manifest Found', () => {
+  it('direct URL / no manifest → No Manifest Found', () => {
     mockLoadManifest.mockReturnValue(null)
+    mockScanOutput.mockReturnValue({ days: [], libraryFiles: [] })
     const router = createMemoryRouter(
       [
-        { path: '/review', element: <Review loaderData={{ manifest: null } as unknown as never} /> }
+        {
+          path: '/',
+          element: (
+            <Home loaderData={{ manifest: null, days: [], libraryFiles: [] } as unknown as never} />
+          )
+        }
       ],
       {
-        initialEntries: ['/review']
+        initialEntries: ['/']
       }
     )
     render(<RouterProvider router={router} />)

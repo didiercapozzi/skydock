@@ -1647,7 +1647,7 @@ describe('ui-api — file, library, jump, open, simulate, scan, manifest, status
         const actual = await importOriginal<typeof import('@skydock/scripts')>()
         return { ...actual, getOutputDir: () => dir }
       })
-      const hlsMod = await import('../app/routes/api.hls')
+      const hlsMod = await import('../app/lib/hls.server')
       expect(hlsMod.buildHlsArgs).toBeDefined()
       const args = hlsMod.buildHlsArgs(filePath, 0, nodePath.join(dir, '.cache', 'hls', 'test'))
       expect(args.join(' ')).toContain('hls_time')

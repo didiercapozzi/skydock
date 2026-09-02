@@ -34,7 +34,7 @@ const makeManifest = (jumps: ManifestJump[] = [], files: ManifestFile[] = []): M
 const renderReview = (manifest: Manifest | null, action?: unknown) => {
   const routes: { path: string; element?: React.ReactNode; action?: unknown }[] = [
     {
-      path: '/review',
+      path: '/',
       element: React.createElement(
         Home as unknown as never,
         { loaderData: { manifest } } as unknown as never
@@ -44,7 +44,7 @@ const renderReview = (manifest: Manifest | null, action?: unknown) => {
   if (action) {
     routes.push({ path: '/api/manifest', action })
   }
-  const router = createMemoryRouter(routes as never, { initialEntries: ['/review'] })
+  const router = createMemoryRouter(routes as never, { initialEntries: ['/'] })
   return render(<RouterProvider router={router} />)
 }
 
