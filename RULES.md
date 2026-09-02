@@ -350,9 +350,10 @@ Card border color: amber if selected for comparison, blue if processed, gray oth
 #### Client — `use-hls-player.ts` hook
 
 - Lazy-loads `hls.js` on client only (dynamic `import()`). `Hls.isSupported()` → use MSE; fallback to native HLS (`canPlayType('application/vnd.apple.mpegurl')`).
-- Config: `enableWorker`, `lowLatencyMode`, `maxBufferLength: 30`, `startFragPrefetch`.
-- Fatal error handling: `NETWORK_ERROR` → `startLoad()`, `MEDIA_ERROR` → `recoverMediaError()`.
-- `destroy()` on unmount. `seekTo(time)` sets `video.currentTime`.
+- Config: `enableWorker`, `lowLatencyMode`, `maxBufferLength: 30`, `maxMaxBufferLength: 60`, `startFragPrefetch`.
+- Bandwidth: `stopLoad()` before `destroy()` on seek/unmount, session reuse for same `path:seek`, 30s idle cleanup, `MAX_LIVE=6` throttling (429).
+- Fatal error handling: `NETWORK_ERROR` → `startLoad()`, `MEDIA_ERROR` → `recoverMediaError()`, fallback to fMP4/raw on fatal.
+- `destroy()` on unmount and on `src` change. Tested in `video-ux` (29) and `hls-lifecycle` (20) suites.
 
 #### `MediaPreview` — HLS playback
 
@@ -378,7 +379,7 @@ Card border color: amber if selected for comparison, blue if processed, gray oth
 - `zod` for runtime validation of manifest data.
 - `cmp` for file dedup comparison, `exiftool` optional for metadata extraction.
 - `ffmpeg` for live on-demand transcoding via `api/stream` (fMP4 + thumbs) and `api/hls` (HLS segments).
-- Web: `react-router`, `react`, `hls.js` (HLS client), `oxfmt` (format), `oxlint` (lint), `vitest` (8 suites,90+ tests), `vite-tsconfig-paths`.
+- Web: `react-router`, `react`, `hls.js` (HLS client), `oxfmt` (format), `oxlint` (lint), `vitest` (10 suites,145 tests: `seek`, `api.stream`, `api.hls`, `video-ux` (29), `hls-lifecycle` (20), `api.manifest`, `review`, `timeline` etc.), `vite-tsconfig-paths`.
 - Scripts are TypeScript only, no Python, no comments in generated scripts.
 
 ## 11. Coding Rules

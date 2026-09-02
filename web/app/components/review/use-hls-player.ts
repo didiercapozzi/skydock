@@ -26,7 +26,14 @@ const useHlsPlayer = ({
 
   const destroy = useCallback(() => {
     if (hlsInstanceRef.current) {
-      hlsInstanceRef.current.destroy()
+      try {
+        const hls = hlsInstanceRef.current as unknown as {
+          stopLoad?: () => void
+          destroy: () => void
+        }
+        hls.stopLoad?.()
+        hls.destroy()
+      } catch {}
       hlsInstanceRef.current = null
     }
     lastSrcRef.current = ''
@@ -40,7 +47,14 @@ const useHlsPlayer = ({
     lastSrcRef.current = src
 
     if (hlsInstanceRef.current) {
-      hlsInstanceRef.current.destroy()
+      try {
+        const old = hlsInstanceRef.current as unknown as {
+          stopLoad?: () => void
+          destroy: () => void
+        }
+        old.stopLoad?.()
+        old.destroy()
+      } catch {}
       hlsInstanceRef.current = null
     }
 
@@ -116,7 +130,14 @@ const useHlsPlayer = ({
 
     return () => {
       if (hlsInstanceRef.current) {
-        hlsInstanceRef.current.destroy()
+        try {
+          const h = hlsInstanceRef.current as unknown as {
+            stopLoad?: () => void
+            destroy: () => void
+          }
+          h.stopLoad?.()
+          h.destroy()
+        } catch {}
         hlsInstanceRef.current = null
       }
     }
@@ -125,7 +146,14 @@ const useHlsPlayer = ({
   useEffect(() => {
     return () => {
       if (hlsInstanceRef.current) {
-        hlsInstanceRef.current.destroy()
+        try {
+          const h = hlsInstanceRef.current as unknown as {
+            stopLoad?: () => void
+            destroy: () => void
+          }
+          h.stopLoad?.()
+          h.destroy()
+        } catch {}
         hlsInstanceRef.current = null
       }
     }
