@@ -107,12 +107,18 @@ const loader = async ({ request }: Route.LoaderArgs) => {
   if (range) {
     const m = range.match(/bytes=(\d*)-(\d*)/)
     if (!m) {
-      return jsonError('Invalid range', 416)
+      return jsonError('Invalid range', 416, { 'Content-Range': `bytes */${stat.size}` })
+    }
+    if (m[1] === '' && m[2] === '') {
+      return jsonError('Range Not Satisfiable', 416, { 'Content-Range': `bytes */${stat.size}` })
     }
     let start: number
     let end: number
     if (m[1] === '' && m[2] !== '') {
       const suffix = parseInt(m[2], 10)
+      if (Number.isNaN(suffix)) {
+        return jsonError('Range Not Satisfiable', 416, { 'Content-Range': `bytes */${stat.size}` })
+      }
       start = Math.max(0, stat.size - suffix)
       end = stat.size - 1
     } else {

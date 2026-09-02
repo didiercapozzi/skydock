@@ -3,7 +3,7 @@ import * as path from 'node:path'
 import { MEDIA_EXTENSIONS_SET } from './constants'
 import { getOutputDir, isCliModule } from './utils'
 
-const POLL_INTERVAL_MS = 8_000
+const POLL_INTERVAL_MS = 8000
 
 type WatcherOptions = {
   camDirs?: string[]
@@ -157,5 +157,5 @@ if (isCliModule('watcher')) {
   watcher(options).catch(console.error)
 }
 
-export { watcher }
+export { POLL_INTERVAL_MS, findCameraRoot, hasMediaFiles, resolveCameras, watcher }
 export type { WatcherOptions }

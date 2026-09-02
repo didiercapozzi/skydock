@@ -426,10 +426,10 @@ const action = async ({ request }: Route.ActionArgs) => {
 
   if (!('manifest' in result) || result.manifest === undefined) {
     saveManifest(getManifestPath(), loaded.manifest)
-    return { ok: true, manifest: loaded.manifest, ...(result as Record<string, unknown>) }
+    return { ok: true, ...(result as Record<string, unknown>), manifest: loaded.manifest }
   }
 
-  return { ok: true, manifest: result.manifest, ...(result as Record<string, unknown>) }
+  return { ok: true, ...(result as Record<string, unknown>), manifest: result.manifest }
 }
 
 export { loader, action }

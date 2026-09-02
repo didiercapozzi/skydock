@@ -34,8 +34,7 @@ const renderReview = (manifest: Manifest | null, action?: unknown) => {
   const routes: { path: string; element?: React.ReactNode; action?: unknown }[] = [
     {
       path: '/review',
-      // @ts-expect-error - testing with partial props
-      element: <Review loaderData={{ manifest }} />
+      element: <Review loaderData={{ manifest } as unknown as never} />
     }
   ]
   if (action) {

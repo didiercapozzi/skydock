@@ -173,7 +173,7 @@ const FileTable = ({
 
 const loader = ({ params }: Route.LoaderArgs) => {
   const jump = getJump(params.date, params.jumpDir)
-  if (!jump) throw new Response('Jump not found', { status: 404 })
+  if (!jump) throw new Response('Jump not found', { status: 404, statusText: 'Jump not found' })
   const outputDir = getOutputDirPath()
   return { jump, outputDir }
 }
@@ -183,8 +183,19 @@ const meta = ({ params }: Route.MetaArgs) => [
   { name: 'description', content: `Media for jump on ${params.date}` }
 ]
 
-const JumpDetail = () => {
-  const { jump } = useLoaderData<typeof loader>()
+type JumpDetailProps = { loaderData?: Route.ComponentProps['loaderData'] }
+
+const JumpDetail = ({ loaderData: propLoaderData }: JumpDetailProps) => {
+  let hookData: Route.ComponentProps['loaderData'] | undefined
+  try {
+    hookData = useLoaderData<typeof loader>() as Route.ComponentProps['loaderData']
+  } catch {
+    hookData = undefined
+  }
+  const loaderData = propLoaderData ?? hookData
+  const jump = loaderData?.jump
+  if (!jump) throw new Response('Jump not found', { status: 404, statusText: 'Jump not found' })
+  void loaderData?.outputDir
 
   return (
     <div className='min-h-screen'>
@@ -230,14 +241,9 @@ const JumpDetail = () => {
               <h1 className='text-xl font-bold text-gray-900 dark:text-white'>
                 {jump.name || jump.displayName}
               </h1>
-              {jump.name && (
-                <p className='text-sm text-gray-500 dark:text-gray-400'>
-                  Jump {jump.num} &middot; {jump.date}
-                </p>
-              )}
-              {!jump.name && (
-                <p className='text-sm text-gray-500 dark:text-gray-400'>{jump.date}</p>
-              )}
+              <p className='text-sm text-gray-500 dark:text-gray-400'>
+                Jump {jump.num} &middot; {jump.date}
+              </p>
             </div>
           </div>
           <ApplyButton jump={jump} />

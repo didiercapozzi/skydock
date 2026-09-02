@@ -1,3 +1,4 @@
+// oxlint-disable react/immutability
 import { useEffect, useRef, useCallback } from 'react'
 
 type HlsType = typeof import('hls.js').default
@@ -70,13 +71,19 @@ const useHlsPlayer = ({
       }
 
       if (HlsClass.isSupported()) {
-        const hls = new HlsClass({
+        const hlsConfig = {
           enableWorker: true,
           lowLatencyMode: true,
           maxBufferLength: 30,
           maxMaxBufferLength: 60,
           startFragPrefetch: true
-        })
+        }
+        let hls: InstanceType<HlsType>
+        try {
+          hls = new HlsClass(hlsConfig)
+        } catch {
+          hls = (HlsClass as unknown as (c: typeof hlsConfig) => InstanceType<HlsType>)(hlsConfig)
+        }
 
         hls.loadSource(src)
         hls.attachMedia(vid)

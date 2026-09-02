@@ -68,12 +68,12 @@ const getExtensionSafe = (filePath: string): string => {
 
 const formatTimestamp = (epoch: number): string => {
   const date = new Date(epoch * 1000)
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  const h = String(date.getHours()).padStart(2, '0')
-  const min = String(date.getMinutes()).padStart(2, '0')
-  const s = String(date.getSeconds()).padStart(2, '0')
+  const y = date.getUTCFullYear()
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(date.getUTCDate()).padStart(2, '0')
+  const h = String(date.getUTCHours()).padStart(2, '0')
+  const min = String(date.getUTCMinutes()).padStart(2, '0')
+  const s = String(date.getUTCSeconds()).padStart(2, '0')
   return `${y}${m}${d}_${h}${min}${s}`
 }
 
@@ -86,14 +86,39 @@ const isCliModule = (baseName: string): boolean => {
 
 const parseExiftoolCsv = (csv: string): Map<string, string> => {
   const map = new Map<string, string>()
-  for (const line of csv.split('\n')) {
-    const trimmed = line.trim()
-    if (!trimmed) continue
-    const parts = trimmed.split(',')
-    if (parts.length < 2 || parts[0] === 'SourceFile') continue
-    const file = parts[0].replace(/^"|"$/g, '')
+  const parseLine = (line: string): string[] => {
+    const result: string[] = []
+    let cur = ''
+    let inQuotes = false
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i]
+      if (ch === '"') {
+        inQuotes = !inQuotes
+        cur += ch
+      } else if (ch === ',' && !inQuotes) {
+        result.push(cur)
+        cur = ''
+      } else {
+        cur += ch
+      }
+    }
+    result.push(cur)
+    return result
+  }
+  const stripQuotes = (s: string): string => {
+    const t = s.trim()
+    if (t.length >= 2 && t.startsWith('"') && t.endsWith('"')) return t.slice(1, -1).trim()
+    return t
+  }
+  for (const rawLine of csv.split('\n')) {
+    if (!rawLine.trim()) continue
+    const parts = parseLine(rawLine)
+    if (parts.length < 2) continue
+    const first = stripQuotes(parts[0])
+    if (first === 'SourceFile') continue
+    const file = first
     for (let i = 1; i < parts.length; i++) {
-      const val = parts[i].replace(/^"|"$/g, '').trim()
+      const val = stripQuotes(parts[i])
       if (!val) continue
       if (/^\d{4}:\d{2}:\d{2}/.test(val)) {
         map.set(file, val)

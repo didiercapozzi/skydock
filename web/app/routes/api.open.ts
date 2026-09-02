@@ -1,8 +1,5 @@
 import type { Route } from './+types/api.open'
 import { exec } from 'node:child_process'
-import { promisify } from 'node:util'
-
-const execAsync = promisify(exec)
 
 const action = async ({ request }: Route.ActionArgs) => {
   const formData = await request.formData()
@@ -13,7 +10,12 @@ const action = async ({ request }: Route.ActionArgs) => {
   }
 
   try {
-    await execAsync(`xdg-open "${filePath}"`)
+    await new Promise<void>((resolve, reject) => {
+      exec(`xdg-open "${filePath}"`, {}, (err) => {
+        if (err) reject(err)
+        else resolve()
+      })
+    })
     return { ok: true }
   } catch (error) {
     return { ok: false, error: String(error) }

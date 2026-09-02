@@ -200,146 +200,81 @@ type Manifest = {
 - Handlers map: `update-label`, `confirm-jump`/`confirm-all`, `delete-jump`, `create-jump`, `move-files` / `remove-files`, `copy-files`, `reorder-files`, `merge-jumps`, `calibrate-sequences`, `shift-sequences`, `reset-calibration`, `execute-jumps`, `unprocess-jump`, `rename-file`, `set-crop`.
 - `loader` returns `{manifest}`. `action` dispatches via `handlers[formAction]`, `requireManifest`, `saveManifest` and returns `ok` with `manifest`.
 
-## 9. Review UI
+## 9. Review UI — Logic (HTML/CSS independent)
 
-The Review UI is a single-page interface for viewing, organizing, and processing skydive jumps. It loads the manifest and presents files grouped into jumps by day, with a timeline, drag-and-drop, and a staging tray for moving files between jumps.
+> This section is the **behavioral spec** for the Review UI. It defines state, transitions and invariants. Markup, Tailwind classes and layout are presentation details in §9.20 and must not be part of logic assertions. Tests in `TODO-UI-COVERAGE.md` assert against this section, not against class names.
 
-### 9.1 Data Loading
+The Review UI is a single-page app `routes/review.tsx:27` that loads `manifest: Manifest|null` and lets the user group files into jumps. All logic below is pure and testable via `vitest` without DOM styling.
 
-- On load, ensure every file in the manifest has a content-based ID (SHA-256 of head+tail+size).
-- Read `manifest.json` and display its jumps and files.
+### 9.1 Pure helpers (no React)
 
-### 9.2 Page Layout
+- `groupJumpsByDay(jumps): DayGroup[]` (`components/review/utils.ts`) — groups by `min mtime` day, sorts days reverse-chronologically. Pure.
+- `getJumpBounds(jump): {start, end}` (`components/review/utils.ts`) — `min mtime`/`max mtime` of `jump.files`. Pure.
+- `reclusterJumps(manifest, preservedPaths?)` / `shiftFiles(manifest, paths, offset)` (`@skydock/scripts/clustering.ts`, `JUMP_GAP_SECONDS=1800`) — pure manifest transforms.
+- `sanitizeLabel(label)` (`@skydock/scripts/utils.ts`) — pure.
+- `formatTime(mtime)` / `formatBytes(size)` / `formatTimeCode(t, FPS=30)` — pure display helpers, tested in `ui-preview`.
 
-- **Header** at the top with title, stats, and action buttons.
-- **Staging Tray** on the left (only visible when files are selected). Fixed width, sticks to the viewport while scrolling.
-- **Main content** on the right: Unassigned files card at the top, then one card per jump grouped by day, then a timeline at the bottom.
-- **Selected Jumps Panel** appears on the right when 1 or more jumps are selected for comparison or processing.
+### 9.2 State (in-memory, not persisted except where noted)
 
-### 9.3 File Display
+- `manifest: Manifest|null` — from loader `ensureManifestFileIds` → `loadManifest`. `null` → empty states (§9.7).
+- `selection: SelectionMap = Record<groupId, Record<path, true>>` (`review.tsx:31`), `lastClicked: string|null` (`review.tsx:32`).
+- `preview: PreviewState|null {files: ManifestFile[], index: number, label: string}` (`review.tsx:33`, `types.ts`).
+- `copyMode: boolean` (`review.tsx:34`), `compareIds: string[]` max 2 (`review.tsx:35`), `showCompare: boolean` (`review.tsx:36`), `viewMode: 'list'|'grid'` (`review.tsx:37`).
+- `systemStatus: SystemStatus|null` — polled `fetch('/api/status')` every 2s (`review.tsx:45`), `cancelled` flag on unmount.
+- `preview.seekOffset: number` (`preview-drawer.tsx:20`) — HLS restart offset, `videoDuration: number` from `GET /api/duration` (ffprobe authoritative).
+- `VideoCropper` internal: `{start?,end?}` crop, `zoomLevel: number` (1..50) + `viewOffset: 0.5`, `dragging: 'start'|'end'|'playhead'|null`, `scrubTime: number|null`, `playhead = baseSeek + video.currentTime` via `useSyncExternalStore` + `requestAnimationFrame` (`video-cropper.tsx:51`).
+- `media-preview` state: `isLoading/useFallback/retryKey/error` via `useReducer` (`media-preview.tsx:14`), `LOADING_TIMEOUT_MS=20_000`.
+- `hls` session key: `path:seek` (`api.hls.ts:74`), `active: Set<proc>` capped `MAX_LIVE=6` (`SKYDOCK_LIVE_MAX`).
 
-Each file is shown as a row with:
+### 9.3 Invariants
 
-- A checkbox for selection
-- Filename (renamable by clicking on it)
-- Time of day
-- File size
-- A preview button
-- A delete button
+- `filesInJumps = Set(manifest.jumps.flatMap(files.path))` (`review.tsx:80`); `unassignedFiles = manifest.files.filter(p not in filesInJumps)` (`review.tsx:85`); `multiJumpFiles = Set(paths where count>1)` (`review.tsx:90`).
+- `jumpsByDay` always derived, never mutated directly. `processed` jumps are read-only for drop/reorder.
+- `compareIds` never persisted in `manifest`; `confirmed` is manifest-persisted execution flag, `processed` increments `manifest.status` → `executed` when all `processed`.
+- `hasCalibration = files.some(originalMtime!==undefined)` (`review.tsx:109`) controls Reset dates.
 
-Selected files are visually highlighted. Files that exist in multiple jumps (copied) are shown with a distinct background color. Deleted files are shown with a red background and strikethrough text.
+### 9.4 Transitions — File selection (`review.tsx:114`)
 
-### 9.4 File Selection
+- `handleSelect(groupId, path, ctrl/shift)` — toggles `selection[groupId][path]`; checkbox always toggles; `Ctrl/Meta` adds without clearing; `Shift` range from `lastClicked` via `allFileIds` (`review.tsx:101`); deselect last in group deletes `selection[groupId]`.
 
-- Clicking a file row toggles its selection (unless it is the first click and no files are selected yet, which opens the preview instead).
-- Clicking the checkbox always toggles selection.
-- Holding Ctrl/Meta and clicking adds to or removes from the current selection.
-- Holding Shift and clicking selects a range from the last clicked file to the current one.
-- Selection state is independent per file across all jumps and unassigned.
+### 9.5 Transitions — Staging tray (`components/review/staging-tray.tsx`)
 
-### 9.5 Staging Tray
+- Visible iff `selectedCount>0`. `Clear` → `setSelection({})`. `Move/Copy` toggle → `dataTransfer.effectAllowed` `move` vs `copy`. Dragging tray → `trayDragRef {filePaths, sourceGroups: Record<groupId, string[]>}` grouped, `text/x-staging-tray` set.
 
-- Appears when at least one file is selected.
-- Lists all selected files with filename and a remove button to deselect individual files.
-- Has a **Move / Copy** toggle. In Move mode, files are removed from their source jump after dropping. In Copy mode, files stay in their source jump and are also added to the target (the same file can exist in multiple jumps).
-- Has a **Clear** button to deselect all files.
-- The tray itself is draggable. Dragging it to a jump card moves or copies all selected files into that jump.
-- After a Move drop, the selection is cleared. After a Copy drop, the selection persists.
+### 9.6 Transitions — Drag & drop (`review.tsx:168`)
 
-### 9.6 Drag & Drop
+- `handleDragStart(filePaths, sourceJumpId)` → `dragDataRef`. `handleReorder(jumpId, filePaths)` → `reorder-files`. `handleDrop(targetJumpId)` with `trayDragRef` → per `sourceGroups` entry `copy-files` if `copyMode` else `move-files`; clears selection after move. With `dragDataRef` → `move-files` or `copy-files` if unassigned. `dragDataRef/trayDragRef` nulled in `finally`. Processed target rejected.
 
-**Reordering within a jump:**
+### 9.7 Transitions — Empty & header (`review.tsx:363`)
 
-- Each file row is draggable. Dragging it over another row in the same jump shows a drop indicator line above or below the target row.
-- Dropping reorders the files within that jump.
+- `!manifest` → "No Manifest Found" + Scan; `status==='empty'` → "No Files to Review"; banners per `SystemStatus` (`scan:running → Scanning`, `process → Copying`, `execute → Processing`, `done → idle in 5s`).
 
-**Moving or copying between jumps:**
+### 9.8 Transitions — Jump & timeline (`components/review/jump-card.tsx`, `timeline-jumps.tsx`)
 
-- Dragging a file row (or the staging tray) over a different jump card highlights that card as a drop target.
-- Dropping moves or copies the files into the target jump, depending on the Move/Copy mode.
-- If multiple files are selected, dragging any selected file drags the entire selection.
-- Processed jumps cannot receive dropped files.
+- `onCompareToggle(jumpId)` → toggle `compareIds` max 2. `expand/collapse` toggles `viewMode` globally. `onLabelSave → update-label`, `onShiftJump → shift-sequences` with `offsetSeconds`. `Timeline bar click` → `onSelect(compareIds)`, `drag bar` → `onShiftDay(handleShiftOffset)` snaps 15min / 24h with Shift, commits only if `|offset|≥60s`.
 
-### 9.7 Jump Card
+### 9.9 Transitions — Selected/Compare/Preview (`review.tsx:274`, `components/review/preview-drawer.tsx`)
 
-Each jump is displayed as a card with:
+- `SelectedJumpsPanel` appears `compareIds.length>0`, `Clear→[]`, `Compare→setShowCompare(true)` enabled only when 2, `Process→execute-jumps filtered !processed`, `Change Day → newNoon-oldNoon → shift-sequences` per jump.
+- `CompareDrawer` when `showCompare&&compareJumps` 2 columns, `Merge into → merge-jumps sourceJumpIds:[target,source]`, closes + clears `compareIds`.
+- `PreviewDrawer` `handlePreview(files,index,label) → setPreview`; `handlePreviewPrev/Next` wrap `(index±1+len)%len`; `Escape`/`arrow keys` → `onClose`/`onPrev`/`onNext`; `videoRef` shared `baseSeek` hybrid seeking.
 
-- A checkbox for selecting the jump for comparison or processing
-- An expand/collapse toggle
-- An editable label (e.g. "Jump 1")
-- Editable date and time
-- Time range on the right side
-- `Videos` and `Photos` filter pills in the header row (always visible, even when collapsed) showing counts, e.g. `▶ 12` / `▣ 11`; disabled/dimmed when 0, gray (colorless) when active (no blue); clicking expands the card and filters to that type (click again to show all) — this makes it instantly visible whether a jump contains videos, photos, or both
-- Single colorless icon toggle `List/Grid` (only visible when expanded) to switch between list and thumbnail grid view (grid uses `content-visibility: auto` for 500+ files); switching applies globally to all opened jumps
-- A "Remove" link when files are selected (moves selected files out of this jump)
-- A "Processed" badge with an "Undo" button if the jump has been processed
-- A delete button
+### 9.10 Transitions — Video cropper (`components/review/video-cropper.tsx`)
 
-Card border color: amber if selected for comparison, blue if processed, gray otherwise. Highlights blue when a drag is hovering over it. Filtered list/grid shows "No matching files" when empty.
+- `seekTo(time)` clamps `0..safeDuration`, `relative = time-baseSeek`, if `relative in video.buffered` → `video.currentTime=relative` else `onSeekCommit(clamped)`.
+- `timeFromX(clientX)` via `getBoundingClientRect`. Wheel zoom centered on cursor `zoomFactor 1.2` `MAX_ZOOM 50` → `viewOffset`. `pointer down` pauses if `!paused` + `setPointerCapture` + `dragging`; `pointer move` start `min(time,cropEnd-0.1)` / end `max(time,cropStart+0.1)` / playhead `seekTo`; `pointer up` clears. `Start here/End here → setCrop({start/end: currentTime}) + seekTo`; `Apply → set-crop filePath,cropStart,cropEnd`.
 
-### 9.8 Jump Selection for Comparison
+### 9.11 Transitions — Streaming (`routes/api.stream.ts`, `api.hls.ts`, `use-hls-player.ts`)
 
-- Clicking a jump checkbox adds or removes it from the selection (max 2 jumps).
-- Selected jumps appear in the Selected Jumps Panel on the right.
-- This selection is for comparison and processing only; it is not saved to the manifest.
-- When one or more jumps are selected, an option appears to edit the day assignment (not the time) for all selected jumps.
+- `api/stream` fMP4 `?path=&w=&seek=` → `buildBaseArgs` + `scale=W:-2` + `FFMPEG_VIDEO/AUDIO_FLAGS` + `frag_keyframe+empty_moov` chunked `video/mp4`, 429 if `active.size≥MAX_LIVE`. Thumb `?thumb=1&w=&t=`.
+- `api/hls` `?path=&seek=` → `buildHlsArgs` `hls_time 4` `seg%03d.ts` `playlist.m3u8` `rewritePlaylist` `&segment=`, session `path:seek` 30s TTL `setTimeout 30_000`, `request.signal abort → proc.kill`.
+- `useHlsPlayer` lazy `import('hls.js')` `isSupported→MSE` else native, `maxBufferLength:30/60` `stopLoad→destroy` on src change/unmount, `NETWORK_ERROR→startLoad` `MEDIA_ERROR→recoverMediaError`.
 
-### 9.9 Day Groups
+### 9.12 Presentation (non-logic, not asserted in `TODO-UI-COVERAGE`)
 
-- Jumps are grouped by day based on the earliest file timestamp in each jump.
-- Each day group is a transparent container (no border/background) with a minimal header showing the day name, month, and ordinal date (e.g. "Saturday March 14th"), total file count, number of jumps, and time range — cards float on the page background for easier scanning.
-- The day date is not directly editable.
-- Below the header, all jumps for that day are listed as cards.
+Layout, Tailwind classes, colors/borders (`amber/blue/gray`), `content-visibility:auto`, `dark:` variants, `IntersectionObserver` thumbs, hour markers 0/6/12/18/24, tooltips, `List/Grid` icon, filter pills `▶ 12`/`▣ 11` are presentation details. They live in `*.tsx` JSX and may change without breaking logic tests which assert against state + `fetcher.submit` payloads + `fetch` calls, not class names.
 
-### 9.10 Unassigned Files
-
-- Any file in the manifest that is not part of any jump appears in an "Unassigned" card at the top.
-- These files can be staged via selection and then dragged into a jump.
-
-### 9.11 Timeline
-
-- A visual timeline at the bottom shows all jumps as horizontal bars on a 00:00–24:00 time scale, one lane per day.
-- Bars are colored by day. Processed jumps are gray. Jumps selected for comparison have an amber ring.
-- **Clicking** a bar toggles that jump in the comparison selection.
-- **Dragging** a bar left or right shifts the jump's time. The shift snaps to 15-minute intervals (or full-day intervals when holding Shift). If the shift is 60 seconds or more, the time shift is applied to all files in that jump and the jumps may be reclustered.
-- A tooltip shows the new date and time while dragging.
-- Hour markers at 0, 6, 12, 18, and 24 are shown.
-
-### 9.12 Selected Jumps Panel
-
-- Appears on the right when 1 or more jumps are selected.
-- Lists each selected jump with file count, time range, and date.
-- **Clear** button deselects all jumps.
-- **Compare** button opens the compare view (enabled when exactly 2 jumps are selected).
-- **Process selected** button executes the selected jumps that have not been processed yet.
-
-### 9.13 Compare View
-
-- Opens as a panel showing two columns, one per selected jump.
-- Each column lists the jump's files with previews.
-- A "Merge into" button in each column merges all files from the other jump into this one.
-
-### 9.14 Preview View
-
-- Opens as a right-side panel when a file's preview button is clicked.
-- Shows live `360p` video via `api/stream?w=360` (`MediaPreview`) with `Range` `faststart` `—` grid uses live thumbs `api/stream?thumb=1&w=320` via `VideoGridThumb` `IntersectionObserver`.
-- **Prev/Next** buttons or arrow keys navigate between files.
-- **Escape** or the close button closes the preview.
-- **Video cropping**: A timeline below the video with draggable handles to select start/end frames. Click "Start here" / "End here" to set crop points at the current playback position (video pauses). Click "Apply" to save crop range to manifest.json and close the preview. At processing, ffmpeg crops the video to the selected range.
-- **Crop bar zoom**: Scroll the mouse wheel while hovering over the crop bar to zoom in/out (up to 50x). Zoom is centered on the cursor position. A "Reset zoom" button appears when zoomed in to return to full view. Zoom allows precise frame-level crop adjustments.
-
-### 9.15 Header Actions
-
-- Displays date, jump count, and file count. Shows processed count.
-- **Select All** button selects all jumps that are not yet processed.
-- **+ Add Jump** button creates a new empty jump.
-
-### 9.16 System Status (background scripts)
-
-- Review UI polls `api/status` every 2s (`status.server.ts` reads `output/.status/*.json`). `scanMedia()`/`executeMedia()`/`processMedia()` write `running` → `done` → `idle` atomically.
-- Header shows `Working…` pulsing pill + `background tasks running` when any task running; banners below header per task: `Scanning`, `Copying from cameras`, `Processing jumps` (spinning) and `done` summary for 5-8s.
-
-### 9.17 Video Preview & Live Streaming
+### 9.13 Video Preview & Live Streaming — Details
 
 #### Server — dual endpoints
 

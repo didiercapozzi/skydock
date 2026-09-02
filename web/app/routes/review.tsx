@@ -1,6 +1,6 @@
 import * as path from 'node:path'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useFetcher } from 'react-router'
+import { Link, useFetcher, useLoaderData } from 'react-router'
 import { getOutputDirPath } from '../lib/scanner.server'
 import { ensureManifestFileIds } from '../lib/fileId.server'
 import { loadManifest } from '@skydock/scripts'
@@ -17,19 +17,31 @@ import { TimelineJumps } from '../components/review/timeline-jumps'
 import type { PreviewState, SelectionMap } from '../components/review/types'
 import { getJumpBounds, groupJumpsByDay } from '../components/review/utils'
 
-const loader = async () => {
+const loader = async (_args?: Route.LoaderArgs) => {
   const manifestPath = path.join(getOutputDirPath(), 'manifest.json')
   await ensureManifestFileIds(manifestPath)
   const manifest = loadManifest(manifestPath)
   return { manifest }
 }
 
-const Review = ({ loaderData }: Route.ComponentProps) => {
-  const { manifest } = loaderData
-  const manifestFetcher = useFetcher()
+type ReviewProps = Partial<Route.ComponentProps> & {
+  loaderData?: Route.ComponentProps['loaderData']
+}
+
+const Review = ({ loaderData: propLoaderData }: ReviewProps) => {
+  let hookData: Route.ComponentProps['loaderData'] | undefined
+  try {
+    hookData = useLoaderData<typeof loader>() as Route.ComponentProps['loaderData']
+  } catch {
+    hookData = undefined
+  }
+  const loaderData = propLoaderData ?? hookData
+  const manifest = loaderData?.manifest ?? null
+  const _manifestFetcher = useFetcher()
   const scanFetcher = useFetcher()
   const [selection, setSelection] = useState<SelectionMap>({})
-  const [lastClicked, setLastClicked] = useState<string | null>(null)
+  const [_lastClicked, setLastClicked] = useState<string | null>(null)
+  const lastClickedRef = useRef<string | null>(null)
   const [preview, setPreview] = useState<PreviewState | null>(null)
   const [copyMode, setCopyMode] = useState(false)
   const [compareIds, setCompareIds] = useState<string[]>([])
@@ -66,13 +78,13 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
 
   const manifestSubmit = useCallback(
     (body: Record<string, string | number | boolean | string[]>) => {
-      manifestFetcher.submit(body, {
+      void fetch('/api/manifest', {
         method: 'POST',
-        encType: 'application/json',
-        action: '/api/manifest'
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
       })
     },
-    [manifestFetcher]
+    []
   )
 
   const jumpsByDay = useMemo(() => (manifest ? groupJumpsByDay(manifest.jumps) : []), [manifest])
@@ -113,42 +125,46 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
 
   const handleSelect = useCallback(
     (groupId: string, filePath: string, _ctrlKey: boolean, shiftKey: boolean) => {
+      const prevLast = lastClickedRef.current
+      setLastClicked(filePath)
+      lastClickedRef.current = filePath
       setSelection((prev) => {
         const next: SelectionMap = {}
         for (const [k, v] of Object.entries(prev)) next[k] = { ...v }
-        if (!next[groupId]) next[groupId] = {}
-        else next[groupId] = { ...next[groupId] }
-        if (shiftKey && lastClicked) {
-          const sIdx = allFileIds.indexOf(lastClicked)
+        if (shiftKey && prevLast) {
+          const sIdx = allFileIds.indexOf(prevLast)
           const eIdx = allFileIds.indexOf(filePath)
           if (sIdx !== -1 && eIdx !== -1) {
             const [from, to] = sIdx < eIdx ? [sIdx, eIdx] : [eIdx, sIdx]
+            const pathToGroup = new Map<string, string>()
+            if (manifest) {
+              for (const f of unassignedFiles) pathToGroup.set(f.path, 'unassigned')
+              for (const j of manifest.jumps) for (const f of j.files) pathToGroup.set(f.path, j.id)
+            }
             for (let i = from; i <= to; i++) {
               const id = allFileIds[i]
-              for (const jid of Object.keys(next)) {
-                if (next[jid][id]) {
-                  next[jid] = { ...next[jid] }
-                  delete next[jid][id]
-                }
-              }
-              if (!next[groupId]) next[groupId] = {}
-              else if (!next[groupId][id]) next[groupId] = { ...next[groupId] }
-              next[groupId][id] = true
+              const gid = pathToGroup.get(id) ?? groupId
+              if (!next[gid]) next[gid] = {}
+              else next[gid] = { ...next[gid] }
+              next[gid][id] = true
             }
+            return next
           }
-        } else if (next[groupId][filePath]) {
+        }
+        if (!next[groupId]) next[groupId] = {}
+        else next[groupId] = { ...next[groupId] }
+        if (next[groupId][filePath]) {
           const g = { ...next[groupId] }
           delete g[filePath]
-          next[groupId] = g
           if (Object.keys(g).length === 0) delete next[groupId]
+          else next[groupId] = g
         } else {
           next[groupId] = { ...next[groupId], [filePath]: true }
         }
-        setLastClicked(filePath)
         return next
       })
     },
-    [lastClicked, allFileIds]
+    [allFileIds, manifest, unassignedFiles]
   )
 
   const selectedFiles = useMemo(() => {
@@ -167,10 +183,19 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
 
   const handleDragStart = useCallback(
     (e: React.DragEvent, filePaths: string[], sourceJumpId: string) => {
-      dragDataRef.current = { filePaths, sourceJumpId }
-      e.dataTransfer.effectAllowed = 'move'
+      const selPaths = Object.values(selection).flatMap((g) => Object.keys(g))
+      const toDrag =
+        selPaths.length > 0 && filePaths.length === 1 && selPaths.includes(filePaths[0])
+          ? selPaths
+          : filePaths
+      const finalPaths = toDrag
+      dragDataRef.current = { filePaths: finalPaths, sourceJumpId }
+      e.dataTransfer.effectAllowed = copyMode ? 'copy' : 'move'
+      try {
+        e.dataTransfer.setData('text/plain', finalPaths.join(','))
+      } catch {}
     },
-    []
+    [selection, copyMode]
   )
 
   const handleReorder = useCallback(
@@ -223,6 +248,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
           }
         } finally {
           trayDragRef.current = null
+          dragDataRef.current = null
         }
         return
       }
@@ -246,8 +272,10 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
             filePaths: data.filePaths
           })
         }
+        if (!copyMode) setSelection({})
       } finally {
         dragDataRef.current = null
+        trayDragRef.current = null
       }
     },
     [manifestSubmit, manifest, copyMode]

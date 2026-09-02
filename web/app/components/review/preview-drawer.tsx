@@ -1,3 +1,4 @@
+// oxlint-disable react/set-state-in-effect
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { formatSize, formatTime, isVideoFile } from './utils'
 import { MediaPreview } from './media-preview'

@@ -64,7 +64,7 @@ const TimelineJumps = ({ dayGroups, selectedIds, onSelect, onShiftDay }: Timelin
         ? (ev as TouchEvent).touches[0].clientX
         : (ev as MouseEvent).clientX
       const dx = clientX - startX
-      const w = containerRef.current?.clientWidth ?? 800
+      const w = containerRef.current?.clientWidth || 800
       const dt = (dx / w) * DAY
       const snapped = snapDay ? Math.round(dt / 86400) * 86400 : Math.round(dt / 900) * 900
       dragOffsetRef.current = snapped

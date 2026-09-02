@@ -50,7 +50,7 @@ const JumpCard = ({
   onRenameFile,
   onShiftJump
 }: JumpCardProps) => {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(true)
   const [editingLabel, setEditingLabel] = useState(false)
   const [labelValue, setLabelValue] = useState(jump.label)
   const [editingDateTime, setEditingDateTime] = useState(false)

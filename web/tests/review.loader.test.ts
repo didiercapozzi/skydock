@@ -95,7 +95,7 @@ describe('review loader – split manifest regression', () => {
       )
 
       const { loader } = await import('../app/routes/review')
-      const result = await loader()
+      const result = await loader({} as never)
       expect(result.manifest).not.toBeNull()
       expect(result.manifest!.jumps).toHaveLength(1)
     } finally {

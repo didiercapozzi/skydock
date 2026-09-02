@@ -2,7 +2,31 @@ const JUMP_GAP_SECONDS = 1800
 
 const DEFAULT_OUTPUT_DIR = '/workspace/output'
 
-const MEDIA_EXTENSIONS = ['mp4', 'mov', 'jpg', 'jpeg', 'dng']
+const MEDIA_EXTENSIONS = [
+  'mp4',
+  'mov',
+  'avi',
+  'mkv',
+  'mts',
+  'm4v',
+  '3gp',
+  'jpg',
+  'jpeg',
+  'png',
+  'dng',
+  'raw',
+  'tif',
+  'tiff',
+  'heic',
+  'heif',
+  'arw',
+  'cr2',
+  'cr3',
+  'nef',
+  'orf',
+  'rw2',
+  'raf'
+]
 
 const VIDEO_EXTENSIONS = ['mp4', 'mov', 'avi', 'mkv', 'mts', 'm4v', '3gp']
 

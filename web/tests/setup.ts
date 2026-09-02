@@ -8,18 +8,31 @@ vi.mock('hls.js', () => {
   const mockDestroy = vi.fn()
   const mockRecover = vi.fn()
   const mockStartLoad = vi.fn()
-  const Hls = vi.fn().mockImplementation(() => ({
-    loadSource: mockLoadSource,
-    attachMedia: mockAttachMedia,
-    destroy: mockDestroy,
-    on: mockOn,
-    recoverMediaError: mockRecover,
-    startLoad: mockStartLoad,
-    currentTime: 0,
-    _mocks: { mockOn, mockLoadSource, mockAttachMedia, mockDestroy, mockRecover, mockStartLoad }
-  }))
+  const mockStopLoad = vi.fn()
+  function MockHls() {
+    return {
+      loadSource: mockLoadSource,
+      attachMedia: mockAttachMedia,
+      destroy: mockDestroy,
+      on: mockOn,
+      recoverMediaError: mockRecover,
+      startLoad: mockStartLoad,
+      stopLoad: mockStopLoad,
+      currentTime: 0,
+      _mocks: {
+        mockOn,
+        mockLoadSource,
+        mockAttachMedia,
+        mockDestroy,
+        mockRecover,
+        mockStartLoad,
+        mockStopLoad
+      }
+    }
+  }
+  const Hls = vi.fn(MockHls as unknown as () => unknown)
   Object.assign(Hls, {
-    isSupported: vi.fn().mockReturnValue(false),
+    isSupported: vi.fn().mockReturnValue(true),
     Events: {
       MANIFEST_PARSED: 'hlsManifestParsed',
       ERROR: 'hlsError'
@@ -35,6 +48,7 @@ vi.mock('hls.js', () => {
       mockDestroy.mockClear()
       mockRecover.mockClear()
       mockStartLoad.mockClear()
+      mockStopLoad.mockClear()
     }
   })
   return { default: Hls }

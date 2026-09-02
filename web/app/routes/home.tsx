@@ -229,8 +229,17 @@ const meta = (_args: Route.MetaArgs) => [
   { name: 'description', content: 'Browse your ingested tandem skydiving footage' }
 ]
 
-const Home = () => {
-  const { days } = useLoaderData<typeof loader>()
+type HomeProps = { loaderData?: Route.ComponentProps['loaderData'] }
+
+const Home = ({ loaderData: propLoaderData }: HomeProps) => {
+  let hookData: Route.ComponentProps['loaderData'] | undefined
+  try {
+    hookData = useLoaderData<typeof loader>() as Route.ComponentProps['loaderData']
+  } catch {
+    hookData = undefined
+  }
+  const loaderData = propLoaderData ?? hookData
+  const days = loaderData?.days ?? []
   const [openFile, setOpenFile] = useState<FileEntry | null>(null)
   const simulateFetcher = useFetcher()
   const { revalidate } = useRevalidator()

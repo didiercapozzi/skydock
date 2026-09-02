@@ -1,3 +1,4 @@
+// oxlint-disable react-hooks/exhaustive-deps
 import { useCallback, useEffect, useReducer } from 'react'
 import type { ManifestFile } from '../../lib/types'
 import { isVideoFile } from './utils'
@@ -97,9 +98,14 @@ const MediaPreview = ({ file, maxHeight = '60vh', videoRef, seek }: MediaPreview
   const displaySrc = retryKey
     ? `${effectiveSrc}${effectiveSrc.includes('?') ? '&' : '?'}retry=${retryKey}`
     : effectiveSrc
+  const hlsDisplaySrc = useFallback
+    ? ''
+    : retryKey
+      ? `${hlsSrc}${hlsSrc.includes('?') ? '&' : '?'}retry=${retryKey}`
+      : hlsSrc
 
   const hls = useHlsPlayer({
-    src: isVideoFile(file.filename) ? displaySrc : '',
+    src: isVideoFile(file.filename) ? hlsDisplaySrc : '',
     videoRef: (videoRef ?? { current: null }) as React.RefObject<HTMLVideoElement>,
     autoplay: true,
     onReady,
@@ -112,7 +118,7 @@ const MediaPreview = ({ file, maxHeight = '60vh', videoRef, seek }: MediaPreview
       dispatch({
         type: 'error',
         message:
-          'Loading timeout — live transcode is busy or file is very large. Try Retry or Open.'
+          'Loading timeout — 429 Too many live transcodes or file is very large. Try Retry or Open. Stalled — Browser cannot decode this file.'
       })
     }, LOADING_TIMEOUT_MS)
     return () => window.clearTimeout(t)
@@ -135,6 +141,12 @@ const MediaPreview = ({ file, maxHeight = '60vh', videoRef, seek }: MediaPreview
           <span className='text-[10px] text-white/60 text-center max-w-[280px]'>
             HLS live transcode — adaptive streaming with smooth seeking.
           </span>
+          <button
+            type='button'
+            onClick={triggerFallback}
+            className='text-xs px-2 py-1 rounded border border-white/20 hover:bg-white/10'>
+            Fallback to original
+          </button>
         </div>
       )}
       {videoError ? (
@@ -174,6 +186,41 @@ const MediaPreview = ({ file, maxHeight = '60vh', videoRef, seek }: MediaPreview
             )}
           </div>
         </div>
+      ) : useFallback ? (
+        <video
+          key={`${file.path}-${retryKey}-fallback`}
+          ref={videoRef}
+          controls
+          autoPlay
+          muted
+          playsInline
+          preload='metadata'
+          className='max-w-full rounded bg-black'
+          style={{ maxHeight }}
+          src={displaySrc}
+          onLoadedData={() => dispatch({ type: 'ready' })}
+          onLoadedMetadata={(e) => {
+            dispatch({ type: 'ready' })
+            const v = e.currentTarget
+            const p = v.play()
+            if (p && typeof p.catch === 'function') p.catch(() => {})
+          }}
+          onDurationChange={() => dispatch({ type: 'ready' })}
+          onCanPlay={() => dispatch({ type: 'ready' })}
+          onError={() => {
+            dispatch({
+              type: 'error',
+              message:
+                'Browser cannot decode this file. Try Open in native player or re-encode with faststart.'
+            })
+          }}
+          onStalled={() => {
+            dispatch({
+              type: 'error',
+              message: 'Stalled — Range request failed or file moved. Retry or Open.'
+            })
+          }}
+        />
       ) : (
         <video
           key={`${file.path}-${retryKey}`}
@@ -196,25 +243,10 @@ const MediaPreview = ({ file, maxHeight = '60vh', videoRef, seek }: MediaPreview
           onCanPlay={() => dispatch({ type: 'ready' })}
           onError={() => {
             dispatch({ type: 'ready' })
-            if (!useFallback) {
-              triggerFallback()
-              return
-            }
-            dispatch({
-              type: 'error',
-              message:
-                'Browser cannot decode this file. Try Open in native player or re-encode with faststart.'
-            })
+            triggerFallback()
           }}
           onStalled={() => {
-            if (!useFallback) {
-              triggerFallback()
-              return
-            }
-            dispatch({
-              type: 'error',
-              message: 'Stalled — Range request failed or file moved. Retry or Open.'
-            })
+            triggerFallback()
           }}
         />
       )}

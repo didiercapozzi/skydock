@@ -1,6 +1,6 @@
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createMemoryRouter, RouterProvider, Link, href } from 'react-router'
+import { createMemoryRouter, RouterProvider } from 'react-router'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { DayGroup, FileEntry, Jump, TheoryVideoWithSource } from '../app/lib/types'
 
@@ -75,21 +75,45 @@ const makeDayGroup = (date: string, jumps: Jump[], totalPhotos = 0, totalVideos 
 
 const renderHome = (days: DayGroup[], libraryFiles: TheoryVideoWithSource[] = []) => {
   mockScanOutput.mockReturnValue({ days, libraryFiles })
-  const router = createMemoryRouter([{ path: '/', element: <Home loaderData={{ days, libraryFiles } as unknown as never} /> }], {
-    initialEntries: ['/']
-  })
+  const router = createMemoryRouter(
+    [
+      { path: '/', element: <Home loaderData={{ days, libraryFiles } as unknown as never} /> },
+      // dummy API routes prevent fetcher 404/405 when FileDrawer/TheoryToggle submit — action prevents "Method Not Allowed"
+      { path: '/api/open', element: <div />, action: async () => null },
+      { path: '/api/library', element: <div />, action: async () => null },
+      { path: '/api/simulate', element: <div />, action: async () => null },
+      { path: '/api/scan', element: <div />, action: async () => null },
+      { path: '/api/manifest', element: <div />, action: async () => null }
+    ],
+    {
+      initialEntries: ['/']
+    }
+  )
   return render(<RouterProvider router={router} />)
 }
 
 const renderJump = (jump: Jump) => {
   mockGetJump.mockReturnValue(jump)
-  const router = createMemoryRouter([{ path: '/jump/:date/:jumpDir', element: <JumpDetail loaderData={{ jump, outputDir: '/tmp/output' } as unknown as never} /> }], {
-    initialEntries: [`/jump/${jump.date}/${jump.id.split('/')[1]}`]
-  })
+  const router = createMemoryRouter(
+    [
+      {
+        path: '/jump/:date/:jumpDir',
+        element: <JumpDetail loaderData={{ jump, outputDir: '/tmp/output' } as unknown as never} />
+      },
+      { path: '/api/open', element: <div />, action: async () => null },
+      { path: '/api/library', element: <div />, action: async () => null },
+      { path: '/api/simulate', element: <div />, action: async () => null },
+      { path: '/api/scan', element: <div />, action: async () => null },
+      { path: '/api/manifest', element: <div />, action: async () => null }
+    ],
+    {
+      initialEntries: [`/jump/${jump.date}/${jump.id.split('/')[1]}`]
+    }
+  )
   return render(<RouterProvider router={router} />)
 }
 
-const renderWithRouter = (element: React.ReactNode, initialPath = '/') => {
+const _renderWithRouter = (element: React.ReactNode, initialPath = '/') => {
   const router = createMemoryRouter([{ path: '*', element }], { initialEntries: [initialPath] })
   return render(<RouterProvider router={router} />)
 }
@@ -98,14 +122,24 @@ describe('ui-home — navigation & routing', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('index / renders Home dashboard', () => {
-    const jump = makeJump({ id: '2026-08-24/Jump_1', jumpVideos: [makeFileEntry({ name: 'a.mp4' })], videoCount: 1 })
+    const jump = makeJump({
+      id: '2026-08-24/Jump_1',
+      jumpVideos: [makeFileEntry({ name: 'a.mp4' })],
+      videoCount: 1
+    })
     renderHome([makeDayGroup('2026-08-24', [jump])])
     expect(screen.getByText('SkyDock')).toBeInTheDocument()
-    expect(screen.getByText(/1 jumps/)).toBeInTheDocument()
+    // spec renders both header total and day header "1 jumps" — getAllByText is correct (was getByText which fails on duplicate)
+    expect(screen.getAllByText(/1 jumps/)[0]).toBeInTheDocument()
   })
 
   it('review /review loader calls loadManifest+ensureManifestFileIds', async () => {
-    mockLoadManifest.mockReturnValue({ status: 'proposed', date: '2026-08-24', jumps: [], files: [] })
+    mockLoadManifest.mockReturnValue({
+      status: 'proposed',
+      date: '2026-08-24',
+      jumps: [],
+      files: []
+    })
     const manifestPath = '/tmp/output/manifest.json'
     await reviewLoader({} as never)
     expect(mockEnsureManifestFileIds).toHaveBeenCalled()
@@ -117,7 +151,9 @@ describe('ui-home — navigation & routing', () => {
 
   it('jump/:date/:jumpDir loader getJump 404 fallback throws', () => {
     mockGetJump.mockReturnValue(null)
-    expect(() => jumpLoader({ params: { date: '2026-08-24', jumpDir: 'Jump_1' } } as never)).toThrow()
+    expect(() =>
+      jumpLoader({ params: { date: '2026-08-24', jumpDir: 'Jump_1' } } as never)
+    ).toThrow()
     try {
       jumpLoader({ params: { date: '2026-08-24', jumpDir: 'Jump_1' } } as never)
     } catch (e) {
@@ -129,7 +165,10 @@ describe('ui-home — navigation & routing', () => {
     const jump = makeJump({ id: '2026-08-24/Jump_1' })
     mockGetJump.mockReturnValue(jump)
     mockGetOutputDirPath.mockReturnValue('/tmp/output')
-    const result = jumpLoader({ params: { date: '2026-08-24', jumpDir: 'Jump_1' } } as never) as { jump: Jump; outputDir: string }
+    const result = jumpLoader({ params: { date: '2026-08-24', jumpDir: 'Jump_1' } } as never) as {
+      jump: Jump
+      outputDir: string
+    }
     expect(result.jump).toEqual(jump)
     expect(result.outputDir).toBe('/tmp/output')
   })
@@ -137,7 +176,10 @@ describe('ui-home — navigation & routing', () => {
   it('unknown route → root 404 error boundary renders 404', async () => {
     const router = createMemoryRouter(
       [
-        { path: '/', element: <Home loaderData={{ days: [], libraryFiles: [] } as unknown as never} /> },
+        {
+          path: '/',
+          element: <Home loaderData={{ days: [], libraryFiles: [] } as unknown as never} />
+        },
         { path: '/review', element: <div>review</div> }
       ],
       { initialEntries: ['/unknown-route'], initialIndex: 0 }
@@ -149,11 +191,24 @@ describe('ui-home — navigation & routing', () => {
 
   it('Link nav home→review', async () => {
     const user = userEvent.setup()
-    const jump = makeJump({ id: '2026-08-24/Jump_1', jumpVideos: [makeFileEntry({ name: 'a.mp4' })], videoCount: 1 })
+    const jump = makeJump({
+      id: '2026-08-24/Jump_1',
+      jumpVideos: [makeFileEntry({ name: 'a.mp4' })],
+      videoCount: 1
+    })
     mockScanOutput.mockReturnValue({ days: [makeDayGroup('2026-08-24', [jump])], libraryFiles: [] })
     const router = createMemoryRouter(
       [
-        { path: '/', element: <Home loaderData={{ days: [makeDayGroup('2026-08-24', [jump])], libraryFiles: [] } as unknown as never} /> },
+        {
+          path: '/',
+          element: (
+            <Home
+              loaderData={
+                { days: [makeDayGroup('2026-08-24', [jump])], libraryFiles: [] } as unknown as never
+              }
+            />
+          )
+        },
         { path: '/review', element: <div>Review Page</div> }
       ],
       { initialEntries: ['/'] }
@@ -192,11 +247,23 @@ describe('ui-home — navigation & routing', () => {
       createdAt: '2026-08-24T00:00:00.000Z',
       theory: [],
       files: [{ path: '/tmp/a.mp4', size: 1000, mtime: 1000, filename: 'a.mp4', id: 'id-a' }],
-      jumps: [{ id: '2026-08-24/Jump_1', label: 'Jump 1', confirmed: false, files: [{ path: '/tmp/a.mp4', size: 1000, mtime: 1000, filename: 'a.mp4', id: 'id-a' }] }]
+      jumps: [
+        {
+          id: '2026-08-24/Jump_1',
+          label: 'Jump 1',
+          confirmed: false,
+          files: [{ path: '/tmp/a.mp4', size: 1000, mtime: 1000, filename: 'a.mp4', id: 'id-a' }]
+        }
+      ]
     }
     const router = createMemoryRouter(
       [
-        { path: '/review', element: <Review loaderData={{ manifest: manifest as unknown as never } as unknown as never} /> },
+        {
+          path: '/review',
+          element: (
+            <Review loaderData={{ manifest: manifest as unknown as never } as unknown as never} />
+          )
+        },
         { path: '/jump/:date/:jumpDir', element: <div>Jump Detail</div> }
       ],
       { initialEntries: ['/review'] }
@@ -226,10 +293,20 @@ describe('ui-home — navigation & routing', () => {
     mockScanOutput.mockReturnValue({ days: [makeDayGroup('2026-08-24', [jump])], libraryFiles: [] })
     const router = createMemoryRouter(
       [
-        { path: '/', element: <Home loaderData={{ days: [makeDayGroup('2026-08-24', [jump])], libraryFiles: [] } as unknown as never} /> },
+        {
+          path: '/',
+          element: (
+            <Home
+              loaderData={
+                { days: [makeDayGroup('2026-08-24', [jump])], libraryFiles: [] } as unknown as never
+              }
+            />
+          )
+        },
         { path: '/review', element: <div>Review</div> }
       ],
-      { initialEntries: ['/', '/review'] }
+      // start at '/' so Home renders; test expects initialIndex 0 (was missing, default was last entry '/review' causing a.mp4 not found)
+      { initialEntries: ['/', '/review'], initialIndex: 0 }
     )
     render(<RouterProvider router={router} />)
     await user.click(screen.getByText('a.mp4'))
@@ -242,16 +319,23 @@ describe('ui-home — navigation & routing', () => {
 
   it('direct URL /review no manifest → No Manifest Found', () => {
     mockLoadManifest.mockReturnValue(null)
-    const router = createMemoryRouter([{ path: '/review', element: <Review loaderData={{ manifest: null } as unknown as never} /> }], {
-      initialEntries: ['/review']
-    })
+    const router = createMemoryRouter(
+      [
+        { path: '/review', element: <Review loaderData={{ manifest: null } as unknown as never} /> }
+      ],
+      {
+        initialEntries: ['/review']
+      }
+    )
     render(<RouterProvider router={router} />)
     expect(screen.getByText(/No Manifest Found/)).toBeInTheDocument()
   })
 
   it('direct URL /jump with getJump=null → 404', () => {
     mockGetJump.mockReturnValue(null)
-    expect(() => jumpLoader({ params: { date: '2026-08-24', jumpDir: 'Jump_1' } } as never)).toThrow()
+    expect(() =>
+      jumpLoader({ params: { date: '2026-08-24', jumpDir: 'Jump_1' } } as never)
+    ).toThrow()
     try {
       jumpLoader({ params: { date: '2026-08-24', jumpDir: 'Jump_1' } } as never)
     } catch (e) {
@@ -266,11 +350,28 @@ describe('ui-home — Home stats & empty', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('stats header sums totalJumps/totalPhotos/totalVideos', () => {
-    const j1 = makeJump({ id: '2026-08-24/Jump_1', photoCount: 2, videoCount: 3, jumpPhotos: [makeFileEntry({ name: 'p1.jpg' }), makeFileEntry({ name: 'p2.jpg' })], jumpVideos: [makeFileEntry({ name: 'v1.mp4' })] })
-    const j2 = makeJump({ id: '2026-08-24/Jump_2', photoCount: 1, videoCount: 0, num: 2, displayName: 'Jump 2' })
+    const j1 = makeJump({
+      id: '2026-08-24/Jump_1',
+      photoCount: 2,
+      videoCount: 3,
+      jumpPhotos: [makeFileEntry({ name: 'p1.jpg' }), makeFileEntry({ name: 'p2.jpg' })],
+      jumpVideos: [makeFileEntry({ name: 'v1.mp4' })]
+    })
+    const j2 = makeJump({
+      id: '2026-08-24/Jump_2',
+      photoCount: 1,
+      videoCount: 0,
+      num: 2,
+      displayName: 'Jump 2'
+    })
     renderHome([
       makeDayGroup('2026-08-24', [j1, j2], 3, 3),
-      makeDayGroup('2026-08-25', [makeJump({ id: '2026-08-25/Jump_3', num: 3, displayName: 'Jump 3' })], 0, 1)
+      makeDayGroup(
+        '2026-08-25',
+        [makeJump({ id: '2026-08-25/Jump_3', num: 3, displayName: 'Jump 3' })],
+        0,
+        1
+      )
     ])
     expect(screen.getByText(/3 jumps/)).toBeInTheDocument()
     expect(screen.getByText(/3 photos/)).toBeInTheDocument()
@@ -293,18 +394,30 @@ describe('ui-home — Home stats & empty', () => {
     renderHome([d2, d1])
     const headers = screen.getAllByText(/2026-08-2/)
     expect(headers[0].textContent).toContain('2026-08-25')
-    expect(screen.getByText(/1 jumps/)).toBeInTheDocument()
+    // header total "2 jumps" plus each day "1 jumps" — use getAllByText
+    expect(screen.getAllByText(/1 jumps/)[0]).toBeInTheDocument()
   })
 
   it('JumpColumn Videos vs Photos + formatTime', () => {
     const photoFile = makeFileEntry({ name: 'p.jpg', mtime: 1724490000 })
     const videoFile = makeFileEntry({ name: 'v.mp4', mtime: 1724490000 })
-    const jump = makeJump({ id: 'j1', displayName: 'Jump 1', name: null, startedAt: 1724490000, jumpPhotos: [photoFile], jumpVideos: [videoFile], photoCount: 1, videoCount: 1 })
+    const jump = makeJump({
+      id: 'j1',
+      displayName: 'Jump 1',
+      name: null,
+      startedAt: 1724490000,
+      jumpPhotos: [photoFile],
+      jumpVideos: [videoFile],
+      photoCount: 1,
+      videoCount: 1
+    })
     renderHome([makeDayGroup('2026-08-24', [jump], 1, 1)])
     expect(screen.getByText('Videos')).toBeInTheDocument()
     expect(screen.getByText('Photos')).toBeInTheDocument()
-    expect(screen.getByText('Jump 1')).toBeInTheDocument()
-    expect(screen.getByText(/videos/i)).toBeInTheDocument()
+    // JumpColumn renders Jump 1 in both Videos and Photos columns — duplicate text expected
+    expect(screen.getAllByText('Jump 1')[0]).toBeInTheDocument()
+    // header "1 videos" and heading "Videos" both match /videos/i — use getAllByText
+    expect(screen.getAllByText(/videos/i)[0]).toBeInTheDocument()
   })
 
   it('FileCard library badge when isTheory', () => {
@@ -331,7 +444,13 @@ describe('ui-home — Home stats & empty', () => {
   it('FileDrawer shows img for photo with src=/api/file?path=', async () => {
     const user = userEvent.setup()
     const file = makeFileEntry({ name: 'photo.jpg', path: '/tmp/photo.jpg' })
-    const jump = makeJump({ id: 'j1', jumpPhotos: [file], jumpVideos: [], photoCount: 1, videoCount: 0 })
+    const jump = makeJump({
+      id: 'j1',
+      jumpPhotos: [file],
+      jumpVideos: [],
+      photoCount: 1,
+      videoCount: 0
+    })
     renderHome([makeDayGroup('2026-08-24', [jump], 1, 0)])
     await user.click(screen.getByText('photo.jpg'))
     await screen.findByText(/Open in player/)
@@ -344,9 +463,24 @@ describe('ui-home — Home stats & empty', () => {
     const file = makeFileEntry({ name: 'a.mp4', path: '/tmp/a.mp4' })
     const jump = makeJump({ id: 'j1', jumpVideos: [file], videoCount: 1 })
     mockScanOutput.mockReturnValue({ days: [makeDayGroup('2026-08-24', [jump])], libraryFiles: [] })
-    const router = createMemoryRouter([{ path: '/', element: <Home loaderData={{ days: [makeDayGroup('2026-08-24', [jump])], libraryFiles: [] } as unknown as never} /> }], {
-      initialEntries: ['/']
-    })
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/',
+          element: (
+            <Home
+              loaderData={
+                { days: [makeDayGroup('2026-08-24', [jump])], libraryFiles: [] } as unknown as never
+              }
+            />
+          )
+        },
+        { path: '/api/open', element: <div />, action: async () => null }
+      ],
+      {
+        initialEntries: ['/']
+      }
+    )
     render(<RouterProvider router={router} />)
     await user.click(screen.getByText('a.mp4'))
     const btn = await screen.findByText('Open in player')
@@ -374,7 +508,8 @@ describe('ui-home — Home stats & empty', () => {
     await user.click(screen.getByText('a.mp4'))
     await screen.findByText(/Open in player/)
     const drawer = document.querySelector('.fixed.right-0') as HTMLElement
-    const closeBtn = within(drawer).getByRole('button')
+    // drawer has two buttons (X and Open in player) — get the first (close) button
+    const closeBtn = within(drawer).getAllByRole('button')[0]
     await user.click(closeBtn)
     await waitFor(() => expect(screen.queryByText(/Open in player/)).not.toBeInTheDocument())
   })
@@ -395,8 +530,23 @@ describe('ui-home — Home stats & empty', () => {
 
   it('dev-only forms disabled when simulating', async () => {
     const originalDev = import.meta.env.DEV
-    Object.defineProperty(import.meta.env, 'DEV', { value: true, writable: true })
-    const jump = makeJump({ id: 'j1', jumpVideos: [makeFileEntry({ name: 'a.mp4' })], videoCount: 1 })
+    // import.meta.env is not configurable in Vitest — use try/catch and direct assignment fallback
+    try {
+      Object.defineProperty(import.meta.env, 'DEV', {
+        value: true,
+        writable: true,
+        configurable: true,
+        enumerable: true
+      })
+    } catch {
+      // fallback: direct assignment for jsdom/Vite where defineProperty throws
+      ;(import.meta.env as unknown as Record<string, unknown>).DEV = true
+    }
+    const jump = makeJump({
+      id: 'j1',
+      jumpVideos: [makeFileEntry({ name: 'a.mp4' })],
+      videoCount: 1
+    })
     renderHome([makeDayGroup('2026-08-24', [jump], 0, 1)])
     const buttons = screen.queryAllByRole('button', { name: /Reset dev data|Add Jump/ })
     if (buttons.length > 0) {
@@ -404,17 +554,45 @@ describe('ui-home — Home stats & empty', () => {
     } else {
       expect(screen.getByText(/SkyDock/)).toBeInTheDocument()
     }
-    Object.defineProperty(import.meta.env, 'DEV', { value: originalDev, writable: true })
+    try {
+      Object.defineProperty(import.meta.env, 'DEV', {
+        value: originalDev,
+        writable: true,
+        configurable: true,
+        enumerable: true
+      })
+    } catch {
+      ;(import.meta.env as unknown as Record<string, unknown>).DEV = originalDev
+    }
   })
 
   it('revalidate called when simulateFetcher.data arrives', async () => {
-    const jump = makeJump({ id: 'j1', jumpVideos: [makeFileEntry({ name: 'a.mp4' })], videoCount: 1 })
-    const router = createMemoryRouter([{ path: '/', element: <Home loaderData={{ days: [makeDayGroup('2026-08-24', [jump])], libraryFiles: [] } as unknown as never} /> }], {
-      initialEntries: ['/']
+    const jump = makeJump({
+      id: 'j1',
+      jumpVideos: [makeFileEntry({ name: 'a.mp4' })],
+      videoCount: 1
     })
+    const router = createMemoryRouter(
+      [
+        {
+          path: '/',
+          element: (
+            <Home
+              loaderData={
+                { days: [makeDayGroup('2026-08-24', [jump])], libraryFiles: [] } as unknown as never
+              }
+            />
+          )
+        }
+      ],
+      {
+        initialEntries: ['/']
+      }
+    )
     render(<RouterProvider router={router} />)
     expect(router.state.location.pathname).toBe('/')
-    expect(screen.getByText(/1 jumps/)).toBeInTheDocument()
+    // header total + day header both contain "1 jumps"
+    expect(screen.getAllByText(/1 jumps/)[0]).toBeInTheDocument()
   })
 
   it('formatBytes edges covered via FileCard', () => {
@@ -439,22 +617,41 @@ describe('ui-home — jump detail', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('header shows jump.name||displayName + Jump num•date + Apply theory', () => {
-    const jump = makeJump({ id: '2026-08-24/Jump_1', name: 'Tandem One', displayName: 'Jump 1', num: 3, date: '2026-08-24' })
+    const jump = makeJump({
+      id: '2026-08-24/Jump_1',
+      name: 'Tandem One',
+      displayName: 'Jump 1',
+      num: 3,
+      date: '2026-08-24'
+    })
     renderJump(jump)
     expect(screen.getByText('Tandem One')).toBeInTheDocument()
     expect(screen.getByText(/Jump 3/)).toBeInTheDocument()
-    expect(screen.getByText(/2026-08-24/)).toBeInTheDocument()
+    // date appears both in header "Jump 3 · 2026-08-24" and main stats — use getAllByText
+    expect(screen.getAllByText(/2026-08-24/)[0]).toBeInTheDocument()
     expect(screen.getByText(/Apply theory to all jumps/)).toBeInTheDocument()
   })
 
   it('header fallback to displayName when name null', () => {
-    const jump = makeJump({ id: '2026-08-24/Jump_2', name: null, displayName: 'Jump 2', num: 2, date: '2026-08-24' })
+    const jump = makeJump({
+      id: '2026-08-24/Jump_2',
+      name: null,
+      displayName: 'Jump 2',
+      num: 2,
+      date: '2026-08-24'
+    })
     renderJump(jump)
     expect(screen.getByText('Jump 2')).toBeInTheDocument()
   })
 
   it('FileTable per section hides when 0', () => {
-    const jump = makeJump({ id: '2026-08-24/Jump_1', jumpPhotos: [], theoryPhotos: [], jumpVideos: [makeFileEntry({ name: 'v.mp4' })], theoryVideos: [] })
+    const jump = makeJump({
+      id: '2026-08-24/Jump_1',
+      jumpPhotos: [],
+      theoryPhotos: [],
+      jumpVideos: [makeFileEntry({ name: 'v.mp4' })],
+      theoryVideos: []
+    })
     renderJump(jump)
     expect(screen.getByText('Jump Videos')).toBeInTheDocument()
     expect(screen.queryByText('Jump Photos')).not.toBeInTheDocument()
@@ -495,7 +692,8 @@ describe('ui-home — jump detail', () => {
     const fileTheory = makeFileEntry({ name: 'b.mp4', isTheory: true, path: '/tmp/b.mp4' })
     const jump = makeJump({ id: '2026-08-24/Jump_1', jumpVideos: [fileTheory] })
     renderJump(jump)
-    expect(screen.getByText('Theory')).toBeInTheDocument()
+    // "Theory" appears in <th>Theory</th> header and button — query button specifically
+    expect(screen.getByRole('button', { name: 'Theory' })).toBeInTheDocument()
   })
 
   it('ApplyButton disabled when busy', () => {
@@ -512,7 +710,9 @@ describe('ui-home — jump detail', () => {
     const form = screen.getByText(/Apply theory to all jumps/).closest('form') as HTMLFormElement
     expect(form.querySelector('input[name="action"]')?.getAttribute('value')).toBe('apply')
     expect(form.querySelector('input[name="sourceJump"]')?.getAttribute('value')).toBe('Jump_1')
-    expect(form.querySelector('input[name="sourceJumpDate"]')?.getAttribute('value')).toBe('2026-08-24')
+    expect(form.querySelector('input[name="sourceJumpDate"]')?.getAttribute('value')).toBe(
+      '2026-08-24'
+    )
   })
 
   it('formatBytes edges via jump detail', () => {
@@ -527,7 +727,8 @@ describe('ui-home — jump detail', () => {
       const file = makeFileEntry({ name: `x-${bytes}.mp4`, size: bytes })
       const jump = makeJump({ id: `2026-08-24/Jump_${bytes}`, jumpVideos: [file] })
       const { unmount } = renderJump(jump)
-      expect(screen.getByText(expected)).toBeInTheDocument()
+      // totalSize and file size both render same string (e.g. "1 KB" in header and table) — use getAllByText
+      expect(screen.getAllByText(expected)[0]).toBeInTheDocument()
       unmount()
     }
   })
@@ -544,9 +745,30 @@ describe('ui-home — edge cases sec18', () => {
 
   it('scanLibrary TheoryVideoWithSource sorting by name', async () => {
     const files: TheoryVideoWithSource[] = [
-      { ...makeFileEntry({ name: 'z.mp4', path: '/tmp/z.mp4' }), jumpName: '', passengerName: null, jumpDate: '2026-08-24', jumpId: 'a', isTheory: true } as TheoryVideoWithSource,
-      { ...makeFileEntry({ name: 'a.mp4', path: '/tmp/a.mp4' }), jumpName: '', passengerName: null, jumpDate: '2026-08-24', jumpId: 'b', isTheory: true } as TheoryVideoWithSource,
-      { ...makeFileEntry({ name: 'm.mp4', path: '/tmp/m.mp4' }), jumpName: '', passengerName: null, jumpDate: '2026-08-24', jumpId: 'c', isTheory: true } as TheoryVideoWithSource
+      {
+        ...makeFileEntry({ name: 'z.mp4', path: '/tmp/z.mp4' }),
+        jumpName: '',
+        passengerName: null,
+        jumpDate: '2026-08-24',
+        jumpId: 'a',
+        isTheory: true
+      } as TheoryVideoWithSource,
+      {
+        ...makeFileEntry({ name: 'a.mp4', path: '/tmp/a.mp4' }),
+        jumpName: '',
+        passengerName: null,
+        jumpDate: '2026-08-24',
+        jumpId: 'b',
+        isTheory: true
+      } as TheoryVideoWithSource,
+      {
+        ...makeFileEntry({ name: 'm.mp4', path: '/tmp/m.mp4' }),
+        jumpName: '',
+        passengerName: null,
+        jumpDate: '2026-08-24',
+        jumpId: 'c',
+        isTheory: true
+      } as TheoryVideoWithSource
     ]
     const sorted = [...files].sort((a, b) => a.name.localeCompare(b.name))
     expect(sorted[0].name).toBe('a.mp4')
@@ -577,7 +799,16 @@ describe('ui-home — edge cases sec18', () => {
   it('Jump files.length===0 → skip executeMedia', async () => {
     const { executeMedia } = await import('@skydock/scripts')
     void executeMedia
-    const jump = makeJump({ id: '2026-08-24/Jump_1', jumpPhotos: [], jumpVideos: [], theoryPhotos: [], theoryVideos: [], photoCount: 0, videoCount: 0, totalSize: 0 })
+    const jump = makeJump({
+      id: '2026-08-24/Jump_1',
+      jumpPhotos: [],
+      jumpVideos: [],
+      theoryPhotos: [],
+      theoryVideos: [],
+      photoCount: 0,
+      videoCount: 0,
+      totalSize: 0
+    })
     expect(jump.jumpPhotos.length + jump.jumpVideos.length).toBe(0)
     renderJump(jump)
     expect(screen.queryByText('Jump Photos')).not.toBeInTheDocument()
@@ -585,9 +816,20 @@ describe('ui-home — edge cases sec18', () => {
   })
 
   it('Jump with files.length===0 photosDir/videosDir not created', () => {
-    const jump = makeJump({ id: '2026-08-24/Jump_empty', jumpPhotos: [], jumpVideos: [], theoryPhotos: [], theoryVideos: [] })
-    expect(jump.files).toBeUndefined()
-    const totalFiles = jump.jumpPhotos.length + jump.jumpVideos.length + jump.theoryPhotos.length + jump.theoryVideos.length
+    const jump = makeJump({
+      id: '2026-08-24/Jump_empty',
+      jumpPhotos: [],
+      jumpVideos: [],
+      theoryPhotos: [],
+      theoryVideos: []
+    })
+    // Jump type has no `files` prop — check via cast that it's undefined (was direct access causing TS2339)
+    expect((jump as unknown as { files?: unknown }).files).toBeUndefined()
+    const totalFiles =
+      jump.jumpPhotos.length +
+      jump.jumpVideos.length +
+      jump.theoryPhotos.length +
+      jump.theoryVideos.length
     expect(totalFiles).toBe(0)
   })
 })

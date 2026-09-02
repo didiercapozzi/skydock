@@ -39,7 +39,7 @@ const groupJumpsByDay = (jumps: ManifestJump[]): JumpDayGroup[] => {
   return Array.from(map.values()).sort((a, b) => {
     const ta = a.jumps[0] ? getJumpBounds(a.jumps[0]).start : 0
     const tb = b.jumps[0] ? getJumpBounds(b.jumps[0]).start : 0
-    return ta - tb
+    return tb - ta
   })
 }
 
