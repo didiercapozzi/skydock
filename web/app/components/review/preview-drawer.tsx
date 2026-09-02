@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { formatSize, formatTime, isVideoFile } from './utils'
 import { MediaPreview } from './media-preview'
 import { VideoCropper } from './video-cropper'
@@ -15,14 +15,36 @@ const PreviewDrawer = ({ preview, onClose, onPrev, onNext }: PreviewDrawerProps)
   const file = preview.files[preview.index]
   const src = `/api/file?path=${encodeURIComponent(file.path)}`
   const videoRef = useRef<HTMLVideoElement | null>(null)
-  const [durations, setDurations] = useState<Record<string, number>>({})
-  const videoDuration = durations[file.path] ?? 0
+  const [videoDuration, setVideoDuration] = useState(0)
+  const [seekOffset, setSeekOffset] = useState(0)
   const isVideo = isVideoFile(file.filename)
 
-  const setVideoDurationForFile = (d: number) => {
+  useEffect(() => {
+    setSeekOffset(0)
+    setVideoDuration(0)
+  }, [file.path])
+
+  const setVideoDurationForFile = useCallback((d: number) => {
     if (!Number.isFinite(d) || d <= 0 || d === Infinity) return
-    setDurations((prev) => ({ ...prev, [file.path]: d }))
-  }
+    setVideoDuration((prev) => (Math.abs(prev - d) < 0.1 ? prev : d))
+  }, [])
+
+  useEffect(() => {
+    if (!isVideo) return
+    if (videoDuration > 0) return
+    let cancelled = false
+    fetch(`/api/duration?path=${encodeURIComponent(file.path)}`)
+      .then((r) => r.json())
+      .then((data: { ok: boolean; duration?: number }) => {
+        if (!cancelled && data.ok && typeof data.duration === 'number') {
+          setVideoDurationForFile(data.duration)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [file.path, isVideo, videoDuration, setVideoDurationForFile])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -79,23 +101,25 @@ const PreviewDrawer = ({ preview, onClose, onPrev, onNext }: PreviewDrawerProps)
         <div className='flex-1 flex flex-col items-center justify-center p-4 gap-3 overflow-auto'>
           <div className='w-full flex items-center justify-center'>
             <MediaPreview
-              key={file.path}
               file={file}
               videoRef={isVideo ? videoRef : undefined}
-              onDurationLoaded={isVideo ? setVideoDurationForFile : undefined}
+              seek={isVideo ? seekOffset : undefined}
             />
           </div>
           {isVideo && Number.isFinite(videoDuration) && videoDuration > 0 && (
             <VideoCropper
-              key={file.path}
               videoRef={videoRef}
               duration={videoDuration}
               filePath={file.path}
+              baseSeek={seekOffset}
               initialCropStart={file.cropStart ?? undefined}
               initialCropEnd={file.cropEnd ?? undefined}
               onApplied={onClose}
-              onScrub={() => {}}
+              onSeekCommit={(t) => setSeekOffset(t)}
             />
+          )}
+          {isVideo && (!Number.isFinite(videoDuration) || videoDuration <= 0) && (
+            <div className='w-full h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse' />
           )}
           <div className='text-xs text-gray-500'>{formatSize(file.size)}</div>
         </div>

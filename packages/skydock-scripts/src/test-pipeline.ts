@@ -1,5 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { isCliModule } from './utils'
 
 type TestOptions = {
   camDirs?: string[]
@@ -116,11 +117,7 @@ const testPipeline = async (options?: TestOptions): Promise<TestResult> => {
   return result
 }
 
-const isCli =
-  process.argv[1] &&
-  (process.argv[1].endsWith('test-pipeline.ts') || process.argv[1].endsWith('test-pipeline.js'))
-
-if (isCli) {
+if (isCliModule('test-pipeline')) {
   const args = process.argv.slice(2)
   const options: TestOptions = {
     clean: args.includes('--clean')

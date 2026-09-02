@@ -7,6 +7,8 @@ import {
   formatTimestamp,
   getManifestPath,
   getOutputDir,
+  hasCommand,
+  isCliModule,
   isPhotoFile,
   isVideoFile,
   sanitizeLabel
@@ -21,15 +23,6 @@ type ExecuteOptions = {
 type ExecuteResult = {
   copied: number
   processedJumps: number
-}
-
-const hasCommand = (cmd: string): boolean => {
-  try {
-    execSync(`command -v ${cmd}`, { stdio: 'ignore' })
-    return true
-  } catch {
-    return false
-  }
 }
 
 const cropVideo = (src: string, dest: string, cropStart: number, cropEnd: number): boolean => {
@@ -131,21 +124,10 @@ const executeMedia = (options?: ExecuteOptions): ExecuteResult => {
         dest = path.join(photosDir, newName)
       }
 
-      const needsCrop =
-        isVideoFile(file.path) &&
-        file.cropStart !== null &&
-        file.cropStart !== undefined &&
-        file.cropEnd !== null &&
-        file.cropEnd !== undefined
+      const needsCrop = isVideoFile(file.path) && file.cropStart != null && file.cropEnd != null
 
-      if (
-        needsCrop &&
-        file.cropStart !== null &&
-        file.cropStart !== undefined &&
-        file.cropEnd !== null &&
-        file.cropEnd !== undefined
-      ) {
-        const success = cropVideo(file.path, dest, file.cropStart, file.cropEnd)
+      if (needsCrop) {
+        const success = cropVideo(file.path, dest, file.cropStart!, file.cropEnd!)
         if (!success) {
           fs.copyFileSync(file.path, dest)
         }
@@ -174,11 +156,7 @@ const executeMedia = (options?: ExecuteOptions): ExecuteResult => {
   return { copied: totalCopied, processedJumps: processedCount }
 }
 
-const isCli =
-  process.argv[1] &&
-  (process.argv[1].endsWith('execute.ts') || process.argv[1].endsWith('execute.js'))
-
-if (isCli) {
+if (isCliModule('execute')) {
   const args = process.argv.slice(2)
   const manifestPath = args[0] && fs.existsSync(args[0]) ? args[0] : undefined
   const jumpIds = manifestPath ? args.slice(1) : args.filter((a) => !a.startsWith('-'))

@@ -92,9 +92,13 @@ type Manifest = {
 
 ## 5. Scan & Cluster
 
-### 5.0 Live without disk — `api/stream` 360p fragmented MP4 (no proxies)
+### 5.0 Live without disk — `api/stream` + `api/hls` 360p (no proxies)
 
-- **Live mode (current):** No `.cache` proxies on disk. `scanMedia()`/`watcher`/`api/scan` no longer spawn `generateProxies`. `output/.cache/thumbs` + `filmstrip` not used. `api/stream.ts` live-transcodes on demand via `ffmpeg` pipe to `Response` `Transfer-Encoding: chunked` `video/mp4` with `frag_keyframe+empty_moov+default_base_moof` (immediate `moov`, no tail Range). `video-grid-thumb.tsx` requests `GET /api/stream?path=&thumb=1&w=320&t=0.5` → `ffmpeg -ss 0.5 -vframes 1 -vf scale=320:-2 -q:v 3 -f image2 pipe:1` `image/jpeg` `Cache-Control: public max-age=3600`. `media-preview.tsx` requests `GET /api/stream?path=&w=360` → `ffmpeg -hwaccel auto -i src -vf scale=360:-2 -c:v libx264 -preset ultrafast -crf 28 -g 60 -force_key_frames expr:gte(t,n_forced*2) -pix_fmt yuv420p -c:a aac -b:a 64k -movflags frag_keyframe+empty_moov+default_base_moof -f mp4 pipe:1` `chunked` `Accept-Ranges: none` `Cache-Control: no-store`. Concurrency capped `MAX_LIVE=3` (`SKYDOCK_LIVE_MAX`) `429 Retry-After:2` else `kill` on `request.signal abort`. `preview-drawer.tsx` shows live `360p` via `MediaPreview` and scrubs via native `video.currentTime` + `video-cropper.tsx` `snapToKeyframe` (keyframes from `ffprobe` still in manifest if present, else raw time). `simulate.ts` still makes distinct files for consistent `id`.
+- **Live mode (current):** No `.cache` proxies on disk. `scanMedia()`/`watcher`/`api/scan` no longer spawn `generateProxies`. `output/.cache/thumbs` + `filmstrip` not used.
+- **fMP4 streaming** (`api/stream.ts`): live-transcodes on demand via `ffmpeg` pipe to `Response` `Transfer-Encoding: chunked` `video/mp4` with `frag_keyframe+empty_moov+default_base_moof` (immediate `moov`, no tail Range). Used for thumbnails (`?thumb=1`) and crop bar fMP4 fallback. Concurrency capped `MAX_LIVE=6` (`SKYDOCK_LIVE_MAX`) `429 Retry-After:2`.
+- **HLS streaming** (`api.hls.ts`): live-transcodes to `.cache/hls/{uuid}/` temp dir via `ffmpeg -f hls` with `hls_time=4`, `hls_list_size=0` (all segments). Returns `.m3u8` playlist on `GET /api/hls?path=&seek=`. Segments served from same endpoint with `&segment=seg000.ts`. Sessions keyed by `path:seek`, auto-cleaned after30s idle. Used for main video playback via `use-hls-player.ts` hook.
+- **Hybrid approach:** `MediaPreview` uses HLS via `useHlsPlayer` for smooth adaptive seeking. `VideoCropper` shares the same `<video>` element — `video.currentTime` works through MSE. For far-seeks beyond buffered range, `onSeekCommit` updates `seekOffset` which restarts HLS from the new offset.
+- **Thumb mode:** `GET /api/stream?thumb=1&w=320&t=0.5` → `ffmpeg -ss 0.5 -vframes 1 -vf scale=320:-2 -q:v 3 -f image2 pipe:1` `image/jpeg` `Cache-Control: public max-age=3600`. `video-grid-thumb.tsx` uses `IntersectionObserver`.
 - **File ID:** Content-based `SHA-256(file)` streaming → 16 hex (`computeFileId`) — sole truth for `manifest.files[].id` and `jumps.json` refs (unchanged).
 - **HW acceleration:** Live uses `-hwaccel auto` + `scale=360:-2` for simplicity; could switch to `vaapi/qsv` `scale_vaapi/scale_qsv` via `SKYDOCK_DRI_DEVICE` `/dev/dri/renderD128` if needed.
 - Writes only `output/.status/scan.json` etc.; no `proxies.json` banner in live mode.
@@ -154,7 +158,7 @@ type Manifest = {
 
 ### 8.1 Routes (`app/routes.ts`)
 
-- `index` → `routes/home.tsx`, `review` → `routes/review.tsx`, `jump/:date/:jumpDir` → `routes/jump.tsx`, `api/file`, `api/library`, `api/jump`, `api/open`, `api/simulate`, `api/scan`, `api/manifest`, `api/status`, `api/stream`.
+- `index` → `routes/home.tsx`, `review` → `routes/review.tsx`, `jump/:date/:jumpDir` → `routes/jump.tsx`, `api/file`, `api/library`, `api/jump`, `api/open`, `api/simulate`, `api/scan`, `api/manifest`, `api/status`, `api/stream`, `api/hls`.
 
 ### 8.2 Types (`@skydock/scripts/types`)
 
@@ -183,11 +187,11 @@ type Manifest = {
 
 - `loader` with `?path=`: `path.resolve`, `fs.existsSync`, `fs.createReadStream` with `Range` support (`206` + `Content-Range`), MIME via extension. Uses `streamResponse` helper with `ReadableStream` and proper cleanup on `cancel()`. Adds `Access-Control-Allow-Origin: *` for thumb canvas.
 
-### 8.71 `api.status.ts` + `lib/status.server.ts` + `api/stream.ts`
+### 8.71 `api.status.ts` + `lib/status.server.ts` + `api/stream.ts` + `api/hls.ts`
 
 - `status.server.ts` reads `output/.status/{scan,execute,process}.json` (written atomically via `*.tmp` + `mv`). `TaskStatus {state: idle|running|done|error, message, total, done, processing?:string[], startedAt, updatedAt}`. Running is considered stale after 120s without update.
-- `api/status` `loader` returns `{ok:true, status: SystemStatus}` polled by review UI every 2s.
-- `api/stream.ts` `loader` `GET ?path=&w=360` or `?thumb=1&w=320` live-transcodes via `ffmpeg` `scale=360:-2` `faststart` `Range 206` or `image2 pipe:1` with `MAX_LIVE=3` `429`.
+- `api/status` `loader` returns `{ok:true, status: SystemStatus}` polled by review UI every2s.
+- `api/stream.ts` `loader` `GET ?path=&w=360` or `?thumb=1&w=320` live-transcodes via fMP4. `api/hls.ts` `loader` `GET ?path=&seek=` live-transcodes to HLS segments, returns `.m3u8` playlist.
 
 ### 8.8 `api.manifest.ts` — handlers (all arrow functions, `ok`/`fail` helpers)
 
@@ -335,13 +339,46 @@ Card border color: amber if selected for comparison, blue if processed, gray oth
 - Review UI polls `api/status` every 2s (`status.server.ts` reads `output/.status/*.json`). `scanMedia()`/`executeMedia()`/`processMedia()` write `running` → `done` → `idle` atomically.
 - Header shows `Working…` pulsing pill + `background tasks running` when any task running; banners below header per task: `Scanning`, `Copying from cameras`, `Processing jumps` (spinning) and `done` summary for 5-8s.
 
+### 9.17 Video Preview & Live Streaming
+
+#### Server — dual endpoints
+
+1. **fMP4** (`api/stream`): `ffmpeg -hwaccel auto -i src -vf scale=W:-2 -c:v libx264 -preset ultrafast -tune zerolatency -crf 28 ... -movflags frag_keyframe+empty_moov+default_base_moof -f mp4 pipe:1`. Chunked `video/mp4`, `Accept-Ranges: none`, `Cache-Control: no-store`. Used for thumbnails and crop bar fMP4 fallback. `seek` query param: when provided, ffmpeg starts from that offset (`-ss seek`). Concurrency capped at `MAX_LIVE` (default 6). Returns `429 Retry-After:2` when full.
+
+2. **HLS** (`api.hls`): `ffmpeg ... -hls_time 4 -hls_list_size 0 -hls_segment_filename {dir}/seg%03d.ts -f hls {dir}/playlist.m3u8`. Returns `.m3u8` playlist (`Content-Type: application/vnd.apple.mpegurl`). Segments served via `&segment=seg000.ts` (`Content-Type: video/mp2t`). Sessions keyed by `path:seek`, auto-cleaned after30s idle. Used for main video playback.
+
+#### Client — `use-hls-player.ts` hook
+
+- Lazy-loads `hls.js` on client only (dynamic `import()`). `Hls.isSupported()` → use MSE; fallback to native HLS (`canPlayType('application/vnd.apple.mpegurl')`).
+- Config: `enableWorker`, `lowLatencyMode`, `maxBufferLength: 30`, `startFragPrefetch`.
+- Fatal error handling: `NETWORK_ERROR` → `startLoad()`, `MEDIA_ERROR` → `recoverMediaError()`.
+- `destroy()` on unmount. `seekTo(time)` sets `video.currentTime`.
+
+#### `MediaPreview` — HLS playback
+
+- Primary: `useHlsPlayer` with `src=/api/hls?path=&seek=`. `<video>` element managed by hls.js via MSE.
+- Fallback: on HLS error, switches to `useFallback` mode with `src=/api/file?path=` (raw file).
+- Loading timeout20s with spinner. Retry resets state. "Fallback to original" button.
+
+#### Duration — ffprobe only
+
+- `ffprobe` (`/api/duration`): runs `ffprobe -show_entries format=duration` on the original file. Returns the **true, complete duration** in one shot. This is the authoritative value for the crop bar.
+- Browser-reported durations from `<video>` are ignored for the crop bar.
+
+#### Crop bar interaction (hybrid approach)
+
+- `VideoCropper` shares the same `<video>` element as the HLS player.
+- `video.currentTime` works through MSE — seeking within buffered range is instant.
+- `seekTo()` checks `video.buffered` ranges. For out-of-buffer seeks, calls `onSeekCommit` which updates `seekOffset` in `PreviewDrawer`, restarting HLS from the new offset.
+- `baseSeek` offsets the playhead display for far-seek scenarios.
+
 ## 10. Dependencies & Tooling
 
 - `tsx` for running TypeScript scripts directly (zero-config).
 - `zod` for runtime validation of manifest data.
 - `cmp` for file dedup comparison, `exiftool` optional for metadata extraction.
-- `ffmpeg` for live on-demand transcoding via `api/stream` (360p video + 320px thumbs).
-- Web: `react-router`, `react`, `oxfmt` (format), `oxlint` (lint), `vitest` (4 suites, 55+ tests), `vite-tsconfig-paths`.
+- `ffmpeg` for live on-demand transcoding via `api/stream` (fMP4 + thumbs) and `api/hls` (HLS segments).
+- Web: `react-router`, `react`, `hls.js` (HLS client), `oxfmt` (format), `oxlint` (lint), `vitest` (8 suites,90+ tests), `vite-tsconfig-paths`.
 - Scripts are TypeScript only, no Python, no comments in generated scripts.
 
 ## 11. Coding Rules

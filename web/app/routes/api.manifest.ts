@@ -1,3 +1,6 @@
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import { execSync } from 'node:child_process'
 import type { Route } from './+types/api.manifest'
 import { getOutputDirPath } from '../lib/scanner.server'
 import {
@@ -14,7 +17,6 @@ type Body = Record<string, unknown>
 
 const getManifestPath = (): string => {
   const outputDir = getOutputDirPath()
-  const path = require('node:path')
   return path.join(outputDir, 'manifest.json')
 }
 
@@ -39,8 +41,6 @@ const requireUnprocessed = (jump: ManifestJump): { ok: true } | { error: string 
 }
 
 const removeProcessedDir = (label: string): void => {
-  const fs = require('node:fs')
-  const path = require('node:path')
   const dir = path.join(getOutputDirPath(), 'processed', sanitizeLabel(label))
   try {
     if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true })
@@ -235,8 +235,6 @@ const handleExecute = (manifest: Manifest, body: Body) => {
   for (const jump of toProcess) jump.confirmed = true
   saveManifest(getManifestPath(), manifest)
 
-  const { execSync } = require('node:child_process')
-  const path = require('node:path')
   const manifestPath = getManifestPath()
   const jumpArgs = toProcess.map((j) => `"${j.id}"`).join(' ')
   try {

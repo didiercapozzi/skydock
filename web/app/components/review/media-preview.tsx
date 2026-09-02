@@ -1,47 +1,139 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useReducer } from 'react'
 import type { ManifestFile } from '../../lib/types'
 import { isVideoFile } from './utils'
+import { useHlsPlayer } from './use-hls-player'
+
+const LOADING_TIMEOUT_MS = 20_000
 
 type MediaPreviewProps = {
   file: ManifestFile
   maxHeight?: string
   videoRef?: React.RefObject<HTMLVideoElement | null>
-  onDurationLoaded?: (duration: number) => void
+  seek?: number
 }
 
-const MediaPreview = ({
-  file,
-  maxHeight = '60vh',
-  videoRef,
-  onDurationLoaded
-}: MediaPreviewProps) => {
-  const src = isVideoFile(file.filename)
-    ? `/api/stream?path=${encodeURIComponent(file.path)}&w=360`
-    : `/api/file?path=${encodeURIComponent(file.path)}`
-  const [videoError, setVideoError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(() => isVideoFile(file.filename))
-  const [retryKey, setRetryKey] = useState(0)
+type MediaState = {
+  isLoading: boolean
+  useFallback: boolean
+  retryKey: number
+  error: string | null
+}
+
+type MediaAction =
+  | { type: 'ready' }
+  | { type: 'fallback' }
+  | { type: 'error'; message: string }
+  | { type: 'retry'; resetFallback?: boolean }
+  | { type: 'reset'; isVideo: boolean }
+
+const reducer = (state: MediaState, action: MediaAction): MediaState => {
+  switch (action.type) {
+    case 'ready':
+      return { ...state, isLoading: false, error: null }
+    case 'fallback':
+      return {
+        ...state,
+        useFallback: true,
+        isLoading: true,
+        retryKey: state.retryKey + 1,
+        error: null
+      }
+    case 'error':
+      return { ...state, isLoading: false, error: action.message }
+    case 'retry':
+      return {
+        ...state,
+        error: null,
+        isLoading: true,
+        retryKey: state.retryKey + 1,
+        useFallback: action.resetFallback ? false : state.useFallback
+      }
+    case 'reset':
+      return { isLoading: action.isVideo, useFallback: false, retryKey: 0, error: null }
+    default:
+      return state
+  }
+}
+
+const MediaPreview = ({ file, maxHeight = '60vh', videoRef, seek }: MediaPreviewProps) => {
+  const hlsSrc = `/api/hls?path=${encodeURIComponent(file.path)}${seek != null && seek > 0 ? `&seek=${seek}` : ''}`
+  const fallbackSrc = `/api/file?path=${encodeURIComponent(file.path)}`
+  const [state, dispatch] = useReducer(reducer, {
+    isLoading: isVideoFile(file.filename),
+    useFallback: false,
+    retryKey: 0,
+    error: null
+  })
+  const { isLoading, useFallback, retryKey, error: videoError } = state
+  const effectiveSrc = useFallback ? fallbackSrc : hlsSrc
+
+  useEffect(() => {
+    dispatch({ type: 'reset', isVideo: isVideoFile(file.filename) })
+  }, [file.path, file.filename])
+
+  const triggerFallback = useCallback(() => {
+    dispatch({ type: 'fallback' })
+  }, [])
+
+  const onReady = useCallback(() => {
+    dispatch({ type: 'ready' })
+  }, [])
+
+  const onError = useCallback(
+    (error: string) => {
+      dispatch({ type: 'ready' })
+      if (!useFallback) {
+        triggerFallback()
+        return
+      }
+      dispatch({
+        type: 'error',
+        message: error || 'Browser cannot decode this file. Try Open in native player.'
+      })
+    },
+    [useFallback, triggerFallback]
+  )
+
+  const displaySrc = retryKey
+    ? `${effectiveSrc}${effectiveSrc.includes('?') ? '&' : '?'}retry=${retryKey}`
+    : effectiveSrc
+
+  const hls = useHlsPlayer({
+    src: isVideoFile(file.filename) ? displaySrc : '',
+    videoRef: (videoRef ?? { current: null }) as React.RefObject<HTMLVideoElement>,
+    autoplay: true,
+    onReady,
+    onError
+  })
+
   useEffect(() => {
     if (!isVideoFile(file.filename) || !isLoading) return
     const t = window.setTimeout(() => {
-      setVideoError(
-        'Loading timeout — file may be very large (moov at end) or codec unsupported. Try Open.'
-      )
-    }, 8000)
+      dispatch({
+        type: 'error',
+        message:
+          'Loading timeout — live transcode is busy or file is very large. Try Retry or Open.'
+      })
+    }, LOADING_TIMEOUT_MS)
     return () => window.clearTimeout(t)
-  }, [file.filename, isLoading, retryKey])
-  const displaySrc = retryKey ? `${src}&retry=${retryKey}` : src
+  }, [file.filename, isLoading, retryKey, useFallback])
+
+  useEffect(() => {
+    return () => {
+      hls.destroy()
+    }
+  }, [file.path])
+
   return isVideoFile(file.filename) ? (
     <div
       className='relative max-w-full'
       style={{ maxHeight }}>
       {isLoading && !videoError && (
-        <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 rounded text-white text-xs p-4'>
+        <div className='absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 rounded text-white text-xs p-4 z-10'>
           <div className='w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin' />
           <span>Loading video…</span>
           <span className='text-[10px] text-white/60 text-center max-w-[280px]'>
-            Large files (3 GB+) with moov at end need to fetch tail via Range — can take 5-10 s. If
-            stuck, use Open.
+            HLS live transcode — adaptive streaming with smooth seeking.
           </span>
         </div>
       )}
@@ -57,7 +149,7 @@ const MediaPreview = ({
           </p>
           <div className='flex gap-2'>
             <a
-              href={src}
+              href={fallbackSrc}
               target='_blank'
               rel='noreferrer'
               className='text-xs px-3 py-1.5 rounded bg-white text-gray-900 hover:bg-gray-100'>
@@ -66,20 +158,26 @@ const MediaPreview = ({
             <button
               type='button'
               onClick={() => {
-                setVideoError(null)
-                setIsLoading(true)
-                setRetryKey((k) => k + 1)
+                const resetFallback = videoError.includes('429') || videoError.includes('Too many')
+                dispatch({ type: 'retry', resetFallback })
               }}
               className='text-xs px-3 py-1.5 rounded border border-white/20 hover:bg-white/10'>
               Retry
             </button>
+            {!useFallback && (
+              <button
+                type='button'
+                onClick={triggerFallback}
+                className='text-xs px-3 py-1.5 rounded border border-white/20 hover:bg-white/10'>
+                Fallback to original
+              </button>
+            )}
           </div>
         </div>
       ) : (
         <video
           key={`${file.path}-${retryKey}`}
           ref={videoRef}
-          src={displaySrc}
           controls
           autoPlay
           muted
@@ -87,33 +185,36 @@ const MediaPreview = ({
           preload='metadata'
           className='max-w-full rounded bg-black'
           style={{ maxHeight }}
-          onLoadedData={() => setIsLoading(false)}
+          onLoadedData={() => dispatch({ type: 'ready' })}
           onLoadedMetadata={(e) => {
-            const d = e.currentTarget.duration
-            if (Number.isFinite(d) && d > 0 && d !== Infinity) {
-              setIsLoading(false)
-              onDurationLoaded?.(d)
-            }
+            dispatch({ type: 'ready' })
             const v = e.currentTarget
             const p = v.play()
             if (p && typeof p.catch === 'function') p.catch(() => {})
           }}
-          onDurationChange={(e) => {
-            const d = e.currentTarget.duration
-            if (Number.isFinite(d) && d > 0 && d !== Infinity) {
-              setIsLoading(false)
-              onDurationLoaded?.(d)
-            }
-          }}
-          onCanPlay={() => setIsLoading(false)}
+          onDurationChange={() => dispatch({ type: 'ready' })}
+          onCanPlay={() => dispatch({ type: 'ready' })}
           onError={() => {
-            setIsLoading(false)
-            setVideoError(
-              'Browser cannot decode this file. Try Open in native player or re-encode with faststart.'
-            )
+            dispatch({ type: 'ready' })
+            if (!useFallback) {
+              triggerFallback()
+              return
+            }
+            dispatch({
+              type: 'error',
+              message:
+                'Browser cannot decode this file. Try Open in native player or re-encode with faststart.'
+            })
           }}
           onStalled={() => {
-            setVideoError('Stalled — Range request failed or file moved. Retry or Open.')
+            if (!useFallback) {
+              triggerFallback()
+              return
+            }
+            dispatch({
+              type: 'error',
+              message: 'Stalled — Range request failed or file moved. Retry or Open.'
+            })
           }}
         />
       )}
@@ -121,7 +222,7 @@ const MediaPreview = ({
   ) : (
     <img
       key={file.path}
-      src={src}
+      src={`/api/file?path=${encodeURIComponent(file.path)}`}
       alt={file.filename}
       className='max-w-full rounded object-contain'
       style={{ maxHeight }}

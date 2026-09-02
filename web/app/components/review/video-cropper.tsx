@@ -1,35 +1,41 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useFetcher, useRevalidator } from 'react-router'
 
+const ZOOM_FACTOR = 1.2
+const MAX_ZOOM = 50
+const FPS = 30
+
 type VideoCropperProps = {
   videoRef: React.RefObject<HTMLVideoElement | null>
   duration: number
   filePath: string
+  baseSeek?: number
   initialCropStart?: number
   initialCropEnd?: number
   onApplied?: () => void
   onScrub?: (time: number | null) => void
+  onSeekCommit?: (time: number) => void
 }
 
 const VideoCropper = ({
   videoRef,
   duration,
   filePath,
+  baseSeek = 0,
   initialCropStart,
   initialCropEnd,
   onApplied,
-  onScrub
+  onScrub,
+  onSeekCommit
 }: VideoCropperProps) => {
   const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 0
   const [scrubTime, setScrubTime] = useState<number | null>(null)
-  const [cropStartOverride, setCropStartOverride] = useState<number | undefined>(
-    initialCropStart ?? undefined
-  )
-  const [cropEndOverride, setCropEndOverride] = useState<number | undefined>(
-    initialCropEnd ?? undefined
-  )
-  const cropStart = cropStartOverride ?? 0
-  const cropEnd = cropEndOverride ?? safeDuration
+  const [crop, setCrop] = useState<{ start?: number; end?: number }>(() => ({
+    start: initialCropStart ?? undefined,
+    end: initialCropEnd ?? undefined
+  }))
+  const cropStart = crop.start ?? 0
+  const cropEnd = crop.end ?? safeDuration
   const [dragging, setDragging] = useState<'start' | 'end' | 'playhead' | null>(null)
   const [zoomLevel, setZoomLevel] = useState(1)
   const [viewOffset, setViewOffset] = useState(0.5)
@@ -44,8 +50,11 @@ const VideoCropper = ({
     }
   }, [cropFetcher.state, cropFetcher.data, revalidate, onApplied])
 
-  const getSnapshot = useCallback(() => videoRef.current?.currentTime ?? 0, [videoRef])
-  const getServerSnapshot = useCallback(() => 0, [])
+  const getSnapshot = useCallback(
+    () => baseSeek + (videoRef.current?.currentTime ?? 0),
+    [videoRef, baseSeek]
+  )
+  const getServerSnapshot = useCallback(() => baseSeek, [baseSeek])
   const subscribe = useCallback(
     (callback: () => void) => {
       if (dragging) return () => {}
@@ -71,7 +80,26 @@ const VideoCropper = ({
     const vid = videoRef.current
     if (!vid) return
     const clamped = Math.max(0, Math.min(time, safeDuration))
-    vid.currentTime = clamped
+    const relativeTarget = clamped - baseSeek
+    if (relativeTarget < 0) {
+      onSeekCommit?.(clamped)
+      return
+    }
+    let isBuffered = false
+    try {
+      const buf = vid.buffered
+      for (let i = 0; i < buf.length; i++) {
+        if (relativeTarget >= buf.start(i) && relativeTarget <= buf.end(i)) {
+          isBuffered = true
+          break
+        }
+      }
+    } catch {}
+    if (isBuffered) {
+      vid.currentTime = relativeTarget
+    } else {
+      onSeekCommit?.(clamped)
+    }
   }
 
   const timeFromX = (clientX: number) => {
@@ -89,8 +117,8 @@ const VideoCropper = ({
       const rect = el.getBoundingClientRect()
       const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
       const hoverTime = viewStart + ratio * (viewEnd - viewStart)
-      const zoomFactor = e.deltaY < 0 ? 1.2 : 1 / 1.2
-      const newZoom = Math.max(1, Math.min(50, zoomLevel * zoomFactor))
+      const zoomFactor = e.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR
+      const newZoom = Math.max(1, Math.min(MAX_ZOOM, zoomLevel * zoomFactor))
       const newVisibleDuration = safeDuration / newZoom
       const newViewStart = Math.max(
         0,
@@ -109,7 +137,7 @@ const VideoCropper = ({
     const h = Math.floor(t / 3600)
     const m = Math.floor((t % 3600) / 60)
     const s = Math.floor(t % 60)
-    const f = Math.floor((t % 1) * 30)
+    const f = Math.floor((t % 1) * FPS)
     if (h > 0)
       return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(f).padStart(2, '0')}`
     return `${m}:${String(s).padStart(2, '0')}.${String(f).padStart(2, '0')}`
@@ -138,10 +166,10 @@ const VideoCropper = ({
     const time = timeFromX(e.clientX)
     if (dragging === 'start') {
       const clamped = Math.min(time, cropEnd - 0.1)
-      setCropStartOverride(Math.max(0, clamped))
+      setCrop((prev) => ({ ...prev, start: Math.max(0, clamped) }))
     } else if (dragging === 'end') {
       const clamped = Math.max(time, cropStart + 0.1)
-      setCropEndOverride(Math.min(safeDuration, clamped))
+      setCrop((prev) => ({ ...prev, end: Math.min(safeDuration, clamped) }))
     } else if (dragging === 'playhead') {
       seekTo(time)
     }
@@ -188,6 +216,7 @@ const VideoCropper = ({
       </div>
       <div
         ref={timelineRef}
+        data-testid='timeline'
         className='relative h-8 bg-gray-200 dark:bg-gray-700 rounded cursor-pointer group'
         onPointerDown={(e) => handlePointerDown(e, 'timeline')}
         onPointerMove={handlePointerMove}
@@ -205,6 +234,7 @@ const VideoCropper = ({
           style={{ left: `${Math.min(100, clipEnd)}%`, right: 0 }}
         />
         <div
+          data-testid='playhead'
           className='absolute top-0 bottom-0 w-0.5 bg-white shadow-sm z-10'
           style={{ left: `${playheadPct}%` }}
         />
@@ -229,7 +259,7 @@ const VideoCropper = ({
           onClick={() => {
             const vid = videoRef.current
             if (vid && !vid.paused) vid.pause()
-            setCropStartOverride(currentTime)
+            setCrop((prev) => ({ ...prev, start: currentTime }))
             seekTo(currentTime)
           }}
           className='text-[10px] px-1.5 py-0.5 rounded border text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'>
@@ -240,7 +270,7 @@ const VideoCropper = ({
           onClick={() => {
             const vid = videoRef.current
             if (vid && !vid.paused) vid.pause()
-            setCropEndOverride(currentTime)
+            setCrop((prev) => ({ ...prev, end: currentTime }))
             seekTo(currentTime)
           }}
           className='text-[10px] px-1.5 py-0.5 rounded border text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'>

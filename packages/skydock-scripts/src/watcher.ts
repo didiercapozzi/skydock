@@ -1,7 +1,9 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { MEDIA_EXTENSIONS } from './constants'
-import { getOutputDir } from './utils'
+import { MEDIA_EXTENSIONS_SET } from './constants'
+import { getOutputDir, isCliModule } from './utils'
+
+const POLL_INTERVAL_MS = 8_000
 
 type WatcherOptions = {
   camDirs?: string[]
@@ -9,8 +11,6 @@ type WatcherOptions = {
   runOnce?: boolean
   outputDir?: string
 }
-
-const MEDIA_EXTENSIONS_SET = new Set(MEDIA_EXTENSIONS.map((e) => e.toLowerCase()))
 
 const hasMediaFiles = (dir: string): boolean => {
   try {
@@ -118,7 +118,7 @@ const watcher = async (options?: WatcherOptions): Promise<void> => {
 
     if (!runOnce) {
       while (true) {
-        await new Promise((r) => setTimeout(r, 8000))
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS))
         if (camDirs) await runPipeline(camDirs, outputDir)
       }
     }
@@ -133,15 +133,11 @@ const watcher = async (options?: WatcherOptions): Promise<void> => {
     if (cameras.length > 0) {
       await runPipeline(cameras, outputDir)
     }
-    await new Promise((r) => setTimeout(r, 8000))
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS))
   }
 }
 
-const isCli =
-  process.argv[1] &&
-  (process.argv[1].endsWith('watcher.ts') || process.argv[1].endsWith('watcher.js'))
-
-if (isCli) {
+if (isCliModule('watcher')) {
   const args = process.argv.slice(2)
   const options: WatcherOptions = {
     camDirs: [],

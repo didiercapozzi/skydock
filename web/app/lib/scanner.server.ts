@@ -1,13 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { FileEntry, Jump, DayGroup, TheoryOverrides, TheoryVideoWithSource } from './types'
-
-const getOutputDir = (): string => {
-  if (process.env.SKYDOCK_OUTPUT_DIR) {
-    return process.env.SKYDOCK_OUTPUT_DIR
-  }
-  return '/workspace/output'
-}
+import { getOutputDir } from '@skydock/scripts'
 
 const OVERRIDES_FILE = '.theory_overrides.json'
 

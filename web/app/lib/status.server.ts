@@ -1,20 +1,11 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { getOutputDirPath } from './scanner.server'
+import { getStatusDir } from '@skydock/scripts'
+import type { TaskStatus, SystemStatus } from '@skydock/scripts'
 
-import type { TaskStatus } from '@skydock/scripts'
+const STALE_THRESHOLD_MS = 120_000
 
-export type TaskState = 'idle' | 'running' | 'done' | 'error'
-
-export type SystemStatus = {
-  scan: TaskStatus
-  execute: TaskStatus
-  process: TaskStatus
-}
-
-const STATUS_DIR_NAME = '.status'
-
-const getStatusDir = (): string => path.join(getOutputDirPath(), STATUS_DIR_NAME)
+export type { SystemStatus }
 
 const readTask = (name: string): TaskStatus => {
   const file = path.join(getStatusDir(), `${name}.json`)
@@ -30,7 +21,7 @@ const readTask = (name: string): TaskStatus => {
       return { state: 'idle' }
     if (raw.state === 'running') {
       const updated = raw.updatedAt ? new Date(raw.updatedAt).getTime() : 0
-      if (Date.now() - updated > 120_000) {
+      if (Date.now() - updated > STALE_THRESHOLD_MS) {
         return { state: 'idle' }
       }
     }
@@ -51,4 +42,4 @@ const isAnyRunning = (status: SystemStatus): boolean =>
   status.execute.state === 'running' ||
   status.process.state === 'running'
 
-export { getStatusDir, getSystemStatus, isAnyRunning, readTask }
+export { getSystemStatus, isAnyRunning, readTask }

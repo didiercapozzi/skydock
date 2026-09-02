@@ -1,8 +1,15 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { execSync } from 'node:child_process'
-import { MEDIA_EXTENSIONS } from './constants'
-import { getOutputDir } from './utils'
+import { PHOTO_EXTENSIONS_SET, VIDEO_EXTENSIONS_SET } from './constants'
+import {
+  getOutputDir,
+  checkExiftool,
+  findMediaFiles,
+  getExtension,
+  isCliModule,
+  parseExiftoolCsv
+} from './utils'
 import { writeStatus, scheduleIdle } from './status'
 
 type ProcessOptions = {
@@ -12,49 +19,15 @@ type ProcessOptions = {
 
 export type { ProcessOptions }
 
-const findMediaFiles = (dir: string, maxDepth = 4): string[] => {
-  const results: string[] = []
-  const extensions = MEDIA_EXTENSIONS.map((e) => e.toLowerCase())
-
-  const search = (currentDir: string, depth: number): void => {
-    if (depth > maxDepth) return
-    try {
-      const entries = fs.readdirSync(currentDir, { withFileTypes: true })
-      for (const entry of entries) {
-        const fullPath = path.join(currentDir, entry.name)
-        if (entry.isDirectory()) {
-          search(fullPath, depth + 1)
-        } else if (entry.isFile()) {
-          const ext = path.extname(entry.name).slice(1).toLowerCase()
-          if (extensions.includes(ext)) results.push(fullPath)
-        }
-      }
-    } catch {}
-  }
-
-  search(dir, 0)
-  return results
-}
-
 const buildDateMap = (files: string[]): Map<string, string> => {
   const dateMap = new Map<string, string>()
 
-  const hasExiftool = (() => {
-    try {
-      execSync('command -v exiftool', { stdio: 'ignore' })
-      return true
-    } catch {
-      return false
-    }
-  })()
+  const hasExiftool = checkExiftool()
 
   if (!hasExiftool || files.length === 0) return dateMap
 
-  const jpgExts = new Set(['jpg', 'jpeg', 'dng'])
-  const mp4Exts = new Set(['mp4', 'mov'])
-
-  const jpgFiles = files.filter((f) => jpgExts.has(path.extname(f).slice(1).toLowerCase()))
-  const mp4Files = files.filter((f) => mp4Exts.has(path.extname(f).slice(1).toLowerCase()))
+  const jpgFiles = files.filter((f) => PHOTO_EXTENSIONS_SET.has(getExtension(f)))
+  const mp4Files = files.filter((f) => VIDEO_EXTENSIONS_SET.has(getExtension(f)))
 
   if (jpgFiles.length > 0) {
     try {
@@ -65,12 +38,9 @@ const buildDateMap = (files: string[]): Map<string, string> => {
           stdio: ['pipe', 'pipe', 'ignore']
         }
       )
-      for (const line of csv.split('\n')) {
-        const [srcfile, dateval] = line.split(',')
-        if (!srcfile || srcfile === 'SourceFile' || !dateval) continue
-        const cleaned = dateval.replace(/^"|"$/g, '').trim()
-        const match = cleaned.match(/^(\d{4}):(\d{2}):(\d{2})/)
-        if (match) dateMap.set(srcfile.replace(/^"|"$/g, ''), `${match[1]}-${match[2]}-${match[3]}`)
+      for (const [file, raw] of parseExiftoolCsv(csv)) {
+        const match = raw.match(/^(\d{4}):(\d{2}):(\d{2})/)
+        if (match) dateMap.set(file, `${match[1]}-${match[2]}-${match[3]}`)
       }
     } catch {}
   }
@@ -84,12 +54,9 @@ const buildDateMap = (files: string[]): Map<string, string> => {
           stdio: ['pipe', 'pipe', 'ignore']
         }
       )
-      for (const line of csv.split('\n')) {
-        const [srcfile, dateval] = line.split(',')
-        if (!srcfile || srcfile === 'SourceFile' || !dateval) continue
-        const cleaned = dateval.replace(/^"|"$/g, '').trim()
-        const match = cleaned.match(/^(\d{4}):(\d{2}):(\d{2})/)
-        if (match) dateMap.set(srcfile.replace(/^"|"$/g, ''), `${match[1]}-${match[2]}-${match[3]}`)
+      for (const [file, raw] of parseExiftoolCsv(csv)) {
+        const match = raw.match(/^(\d{4}):(\d{2}):(\d{2})/)
+        if (match) dateMap.set(file, `${match[1]}-${match[2]}-${match[3]}`)
       }
     } catch {}
   }
@@ -165,11 +132,7 @@ const processMedia = (options: ProcessOptions): { copied: number; skipped: numbe
   return { copied: totalCopied, skipped: totalSkipped }
 }
 
-const isCli =
-  process.argv[1] &&
-  (process.argv[1].endsWith('process.ts') || process.argv[1].endsWith('process.js'))
-
-if (isCli) {
+if (isCliModule('process')) {
   const args = process.argv.slice(2)
   const cameraDirs = args.filter((a) => !a.startsWith('-') && fs.existsSync(a))
 

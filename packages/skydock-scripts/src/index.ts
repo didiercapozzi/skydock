@@ -41,15 +41,20 @@ export { loadManifest, normalizeManifest, saveManifest } from './manifest'
 export { computeFileId, ensureManifestFileIds } from './fileId'
 export { writeStatus, scheduleIdle } from './status'
 export {
+  checkExiftool,
+  findMediaFiles,
   formatTimestamp,
   getExtension,
   getExtensionSafe,
   getManifestPath,
   getOutputDir,
   getStatusDir,
+  hasCommand,
+  isCliModule,
   isMediaFile,
   isPhotoFile,
   isVideoFile,
+  parseExiftoolCsv,
   sanitizeLabel,
   sortFilesByMtime,
   toISOString

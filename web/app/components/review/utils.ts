@@ -1,6 +1,7 @@
 import { formatSequenceDate } from '../../lib/sequences'
 import type { ManifestJump } from '../../lib/types'
 import type { JumpDayGroup } from './types'
+import { isVideoFile } from '@skydock/scripts'
 
 const formatSize = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`
@@ -14,8 +15,6 @@ const formatTime = (epoch: number) =>
     minute: '2-digit',
     second: '2-digit'
   })
-
-const isVideoFile = (filename: string) => /\.(mp4|mov|avi|mkv)$/i.test(filename)
 
 const getJumpDate = (jump: ManifestJump) => {
   if (jump.files.length === 0) return ''

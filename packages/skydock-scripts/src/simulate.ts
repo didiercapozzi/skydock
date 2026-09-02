@@ -1,6 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { execSync } from 'node:child_process'
+import { hasCommand, isCliModule } from './utils'
 
 type SimulateOptions = {
   outputDir?: string
@@ -8,15 +9,6 @@ type SimulateOptions = {
   duration?: number
   numFiles?: number
   devData?: boolean
-}
-
-const hasCommand = (cmd: string): boolean => {
-  try {
-    execSync(`command -v ${cmd}`, { stdio: 'ignore' })
-    return true
-  } catch {
-    return false
-  }
 }
 
 const createFile = (dir: string, name: string, epoch: number, duration: number): void => {
@@ -148,11 +140,7 @@ const simulateCameras = async (options?: SimulateOptions): Promise<void> => {
   console.log(`[Sim] Created ${numFiles} files in each camera under ${simBase}`)
 }
 
-const isCli =
-  process.argv[1] &&
-  (process.argv[1].endsWith('simulate.ts') || process.argv[1].endsWith('simulate.js'))
-
-if (isCli) {
+if (isCliModule('simulate')) {
   const args = process.argv.slice(2)
   const options: SimulateOptions = {
     clean: args.includes('--clean'),

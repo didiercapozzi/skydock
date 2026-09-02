@@ -1,8 +1,18 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { execSync } from 'node:child_process'
-import { MEDIA_EXTENSIONS_SET } from './constants'
-import { getOutputDir, getManifestPath, sortFilesByMtime, toISOString } from './utils'
+import { PHOTO_EXTENSIONS_SET, VIDEO_EXTENSIONS_SET } from './constants'
+import {
+  checkExiftool,
+  findMediaFiles,
+  getExtension,
+  getManifestPath,
+  getOutputDir,
+  isCliModule,
+  parseExiftoolCsv,
+  sortFilesByMtime,
+  toISOString
+} from './utils'
 import { writeStatus, scheduleIdle } from './status'
 import { loadManifest, saveManifest } from './manifest'
 import { computeFileId } from './fileId'
@@ -17,47 +27,15 @@ type ScanResult = {
   jumpCount: number
 }
 
-const findMediaFiles = (dir: string): string[] => {
-  const results: string[] = []
-
-  const search = (currentDir: string): void => {
-    try {
-      const entries = fs.readdirSync(currentDir, { withFileTypes: true })
-      for (const entry of entries) {
-        const fullPath = path.join(currentDir, entry.name)
-        if (entry.isDirectory()) {
-          search(fullPath)
-        } else if (entry.isFile()) {
-          const ext = path.extname(entry.name).slice(1).toLowerCase()
-          if (MEDIA_EXTENSIONS_SET.has(ext)) results.push(fullPath)
-        }
-      }
-    } catch {}
-  }
-
-  search(dir)
-  return results
-}
-
 const buildTimeMap = (files: string[]): Map<string, string> => {
   const timeMap = new Map<string, string>()
 
-  const hasExiftool = (() => {
-    try {
-      execSync('command -v exiftool', { stdio: 'ignore' })
-      return true
-    } catch {
-      return false
-    }
-  })()
+  const hasExiftool = checkExiftool()
 
   if (!hasExiftool || files.length === 0) return timeMap
 
-  const jpgExts = new Set(['jpg', 'jpeg', 'dng'])
-  const mp4Exts = new Set(['mp4', 'mov'])
-
-  const jpgFiles = files.filter((f) => jpgExts.has(path.extname(f).slice(1).toLowerCase()))
-  const mp4Files = files.filter((f) => mp4Exts.has(path.extname(f).slice(1).toLowerCase()))
+  const jpgFiles = files.filter((f) => PHOTO_EXTENSIONS_SET.has(getExtension(f)))
+  const mp4Files = files.filter((f) => VIDEO_EXTENSIONS_SET.has(getExtension(f)))
 
   if (jpgFiles.length > 0) {
     try {
@@ -65,21 +43,13 @@ const buildTimeMap = (files: string[]): Map<string, string> => {
         `exiftool -s3 -DateTimeOriginal -CreateDate -MediaCreateDate -csv ${jpgFiles.map((f) => `"${f}"`).join(' ')}`,
         { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }
       )
-      for (const line of csv.split('\n')) {
-        const parts = line.split(',')
-        if (parts.length < 2 || parts[0] === 'SourceFile') continue
-        const srcfile = parts[0].replace(/^"|"$/g, '')
-        for (let i = 1; i < parts.length; i++) {
-          const dateval = parts[i].replace(/^"|"$/g, '').trim()
-          if (!dateval) continue
-          const match = dateval.match(/^(\d{4}):(\d{2}):(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/)
-          if (match) {
-            timeMap.set(
-              srcfile,
-              `${match[1]}-${match[2]}-${match[3]} ${match[4]}:${match[5]}:${match[6]}`
-            )
-            break
-          }
+      for (const [file, raw] of parseExiftoolCsv(csv)) {
+        const match = raw.match(/^(\d{4}):(\d{2}):(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/)
+        if (match) {
+          timeMap.set(
+            file,
+            `${match[1]}-${match[2]}-${match[3]} ${match[4]}:${match[5]}:${match[6]}`
+          )
         }
       }
     } catch {}
@@ -91,21 +61,13 @@ const buildTimeMap = (files: string[]): Map<string, string> => {
         `exiftool -s3 -CreateDate -MediaCreateDate -TrackCreateDate -DateTimeOriginal -ModifyDate -csv ${mp4Files.map((f) => `"${f}"`).join(' ')}`,
         { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }
       )
-      for (const line of csv.split('\n')) {
-        const parts = line.split(',')
-        if (parts.length < 2 || parts[0] === 'SourceFile') continue
-        const srcfile = parts[0].replace(/^"|"$/g, '')
-        for (let i = 1; i < parts.length; i++) {
-          const dateval = parts[i].replace(/^"|"$/g, '').trim()
-          if (!dateval) continue
-          const match = dateval.match(/^(\d{4}):(\d{2}):(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/)
-          if (match) {
-            timeMap.set(
-              srcfile,
-              `${match[1]}-${match[2]}-${match[3]} ${match[4]}:${match[5]}:${match[6]}`
-            )
-            break
-          }
+      for (const [file, raw] of parseExiftoolCsv(csv)) {
+        const match = raw.match(/^(\d{4}):(\d{2}):(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/)
+        if (match) {
+          timeMap.set(
+            file,
+            `${match[1]}-${match[2]}-${match[3]} ${match[4]}:${match[5]}:${match[6]}`
+          )
         }
       }
     } catch {}
@@ -245,7 +207,6 @@ const scanMedia = async (options?: { outputDir?: string }): Promise<ScanResult> 
       outputDir
     )
     scheduleIdle('scan', 5000, outputDir)
-    spawnProxies(outputDir)
     return {
       added: diskFiles.length,
       removed: 0,
@@ -286,7 +247,6 @@ const scanMedia = async (options?: { outputDir?: string }): Promise<ScanResult> 
     outputDir
   )
   scheduleIdle('scan', 5000, outputDir)
-  spawnProxies(outputDir)
   return {
     added,
     removed,
@@ -296,14 +256,7 @@ const scanMedia = async (options?: { outputDir?: string }): Promise<ScanResult> 
   }
 }
 
-const spawnProxies = (_outputDir: string, _only: 'thumbs' | 'all' = 'thumbs'): void => {
-  console.log('[Scan] Live mode — no disk proxies generated')
-}
-
-const isCli =
-  process.argv[1] && (process.argv[1].endsWith('scan.ts') || process.argv[1].endsWith('scan.js'))
-
-if (isCli) {
+if (isCliModule('scan')) {
   scanMedia().catch(console.error)
 }
 

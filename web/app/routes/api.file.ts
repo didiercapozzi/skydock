@@ -1,6 +1,7 @@
 import type { Route } from './+types/api.file'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { jsonError } from '../lib/response.server'
 
 const MIME_TYPES: Record<string, string> = {
   '.mp4': 'video/mp4',
@@ -74,18 +75,18 @@ const loader = async ({ request }: Route.LoaderArgs) => {
   const filePath = url.searchParams.get('path')
 
   if (!filePath) {
-    return new Response('Missing path parameter', { status: 400 })
+    return jsonError('Missing path parameter', 400)
   }
 
   const resolved = path.resolve(filePath)
 
   if (!fs.existsSync(resolved)) {
-    return new Response('File not found', { status: 404 })
+    return jsonError('File not found', 404)
   }
 
   const stat = fs.statSync(resolved)
   if (!stat.isFile()) {
-    return new Response('Not a file', { status: 400 })
+    return jsonError('Not a file', 400)
   }
 
   const contentType = getMimeType(resolved)
@@ -106,10 +107,7 @@ const loader = async ({ request }: Route.LoaderArgs) => {
   if (range) {
     const m = range.match(/bytes=(\d*)-(\d*)/)
     if (!m) {
-      return new Response('Invalid range', {
-        status: 416,
-        headers: { 'Content-Range': `bytes */${stat.size}` }
-      })
+      return jsonError('Invalid range', 416)
     }
     let start: number
     let end: number
@@ -122,10 +120,7 @@ const loader = async ({ request }: Route.LoaderArgs) => {
       end = m[2] ? parseInt(m[2], 10) : stat.size - 1
     }
     if (Number.isNaN(start) || Number.isNaN(end) || start > end || start >= stat.size) {
-      return new Response('Range Not Satisfiable', {
-        status: 416,
-        headers: { 'Content-Range': `bytes */${stat.size}` }
-      })
+      return jsonError('Range Not Satisfiable', 416, { 'Content-Range': `bytes */${stat.size}` })
     }
     end = Math.min(end, stat.size - 1)
     const chunkSize = end - start + 1

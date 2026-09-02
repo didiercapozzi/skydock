@@ -650,6 +650,7 @@ const Review = ({ loaderData }: Route.ComponentProps) => {
         </div>
         {preview && (
           <PreviewDrawer
+            key={preview.files[preview.index]?.path ?? `${preview.index}`}
             preview={preview}
             onClose={handlePreviewClose}
             onPrev={handlePreviewPrev}
