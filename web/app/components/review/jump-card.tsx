@@ -145,7 +145,12 @@ const JumpCard = ({
         setHoveredFile(null)
         setDropPosition(null)
         setIsDragOver(false)
-        if (e.dataTransfer.types.includes('text/x-staging-tray')) {
+        const types =
+          (e.dataTransfer.types as unknown as string[] | DOMStringList | undefined) ?? []
+        const hasTray = Array.isArray(types)
+          ? types.includes('text/x-staging-tray')
+          : (types as DOMStringList).contains?.('text/x-staging-tray')
+        if (hasTray) {
           onDrop(e, jump.id)
           return
         }
@@ -170,6 +175,8 @@ const JumpCard = ({
           } else {
             onDrop(e, jump.id)
           }
+        } else {
+          onDrop(e, jump.id)
         }
       }}>
       <div className='min-w-0'>

@@ -1,10 +1,9 @@
 // @vitest-environment node
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { loadManifest, manifestSchema } from '@skydock/scripts'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { manifestSchema } from '@skydock/scripts'
-import { loadManifest } from '@skydock/scripts'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 describe('review loader – split manifest regression', () => {
   let tmpDir: string
@@ -94,7 +93,7 @@ describe('review loader – split manifest regression', () => {
         })
       )
 
-      const { loader } = await import('../app/routes/review')
+      const { loader } = await import('../app/routes/home')
       const result = await loader({} as never)
       expect(result.manifest).not.toBeNull()
       expect(result.manifest!.jumps).toHaveLength(1)

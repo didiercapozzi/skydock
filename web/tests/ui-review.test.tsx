@@ -91,7 +91,12 @@ const makeManifest = (
 
 const renderReview = (manifest: Manifest | null) => {
   const router = createMemoryRouter(
-    [{ path: '/review', element: <Review loaderData={{ manifest } as unknown as never} /> }],
+    [
+      { path: '/review', element: <Review loaderData={{ manifest } as unknown as never} /> },
+      { path: '/api/manifest', element: <div />, action: async () => null },
+      { path: '/api/scan', element: <div />, action: async () => null },
+      { path: '/api/status', element: <div />, action: async () => null }
+    ],
     {
       initialEntries: ['/review']
     }
