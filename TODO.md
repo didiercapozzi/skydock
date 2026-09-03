@@ -28,11 +28,18 @@ Rules: code adapts to tests first (tests change only on explicit request); §12 
 - [x] Unassigned = manifest files in no jump.
 - [x] Verify: `npm run check` green, `npm run test:e2e` 45/45.
 
-## Step 4 — Persist move/copy/reorder (§12 approval required per step)
+## Step 4 — Persist move/copy/reorder (reuse existing `api.manifest.ts`, §12)
 
-- [ ] Re-add `api.manifest` route with move/copy/reorder actions backed by `saveManifest`.
-- [ ] Home submits mutations via fetcher instead of local-only state.
-- [ ] Verify: `npm run check` green, `npm run test:e2e` green, manual move survives reload.
+> `web/app/routes/api.manifest.ts` already exists — **do NOT recreate**, only reuse/adapt if needed. Route already in `web/app/routes.ts` (`/api/manifest`) and `Register` includes `/api/manifest`. Do **very small steps** — after each sub-step run `npm run check` + **one** `npx playwright test --grep "<test>"` and **stop on first failure**.
+
+- [ ] 4.0 Verify `api.manifest.ts` exists: `createValidatedFormAction` with `save-jumps` (`z.array(manifestJumpSchema)`, `loadManifest`/`saveManifest`) — no recreation needed.
+- [ ] 4.1 Home: add `useSafeFetcher` import + `const { submit } = useSafeFetcher()` (no call yet) — verify `npm run check` + `npx playwright test --grep "checkbox click selects it, shows tray"`
+- [ ] 4.2 Home: add `saveJumps` plain function `submit({ url: '/api/manifest', actionArgs: { intent: 'save-jumps', jumps } })` (not yet called, React Compiler — no `useCallback`) — verify same single test
+- [ ] 4.3 Home: import `reorderFilesInJump` from `@skydock/scripts` — verify `npm run check`
+- [ ] 4.4 Home: wire `handleDrop` same-jump branch to `reorderFilesInJump` + `saveJumps`/`setJumps` — verify `npx playwright test --grep "reorders single file within same jump"`
+- [ ] 4.5 Home: import `moveFilesBetweenJumps` from `@skydock/scripts` — verify `npm run check`
+- [ ] 4.6 Home: wire `executeDrop` to `moveFilesBetweenJumps` + `saveJumps` — verify `npx playwright test --grep "full drag and drop: select, drag, move file between jumps"` + `copy keeps file in both jumps`
+- [ ] 4.7 Final verify: `npm run check` green, `npm run build` green, `npm run test:e2e` 45/45, manual move survives reload
 
 ## Step 5 — Real preview
 

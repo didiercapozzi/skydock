@@ -1,4 +1,4 @@
-import { loadManifest, moveFilesBetweenJumps, reorderFilesInJump } from '@skydock/scripts'
+import { loadManifest } from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { DropActionDialog } from '../components/drop-action-dialog'
@@ -16,7 +16,6 @@ import type {
   SelectionMap
 } from '../components/types'
 import { getDropIndex, groupJumpsByDay } from '../components/utils'
-import { useSafeFetcher } from '../helpers/routing'
 import type { Route } from './+types/home'
 
 const loader = ({}: Route.LoaderArgs) => {
@@ -39,7 +38,6 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const lastClickedRef = useRef<string | null>(null)
   const dragDataRef = useRef<DragData | null>(null)
   const mainRef = useRef<HTMLElement | null>(null)
-  const { submit } = useSafeFetcher()
   const jumpsByDay = groupJumpsByDay(jumps)
 
   useEffect(() => {
@@ -142,13 +140,6 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     e.dataTransfer.setData('text/plain', JSON.stringify(allPaths))
   }
 
-  const saveJumps = (next: ManifestJump[]) => {
-    submit({
-      url: '/api/manifest',
-      actionArgs: { intent: 'save-jumps', jumps: next }
-    })
-  }
-
   const handleDrop = (e: React.DragEvent, targetJumpId: string) => {
     const data = dragDataRef.current
     if (!data) return
@@ -159,9 +150,22 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     if (groupIds.length === 1 && groupIds[0] === targetJumpId) {
       const toIndex = getDropIndex(e.currentTarget as HTMLElement, e.clientY)
       const paths = data.groups[targetJumpId]
-      const next = reorderFilesInJump(jumps, targetJumpId, paths, toIndex)
-      setJumps(next)
-      saveJumps(next)
+      setJumps((prev) =>
+        prev.map((j) => {
+          if (j.id !== targetJumpId) return j
+          const moved = j.files.filter((f) => paths.includes(f.path))
+          if (moved.length === 0) return j
+          const remaining = j.files.filter((f) => !paths.includes(f.path))
+          const draggedBefore = j.files
+            .slice(0, toIndex)
+            .filter((f) => paths.includes(f.path)).length
+          const insertAt = Math.max(0, toIndex - draggedBefore)
+          return {
+            ...j,
+            files: [...remaining.slice(0, insertAt), ...moved, ...remaining.slice(insertAt)]
+          }
+        })
+      )
       return
     }
 
@@ -195,11 +199,33 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const executeDrop = (action: 'move' | 'copy') => {
     if (!dropDialog) return
     const { groups, targetJumpId } = dropDialog
-    const next = moveFilesBetweenJumps(jumps, manifestFiles, groups, targetJumpId, action)
-    setJumps(next)
+
+    setJumps((prev) => {
+      const lookup = new Map<string, ManifestFile>()
+      for (const f of manifestFiles) lookup.set(f.path, f)
+      for (const j of prev) for (const f of j.files) lookup.set(f.path, f)
+      const allPaths = Object.values(groups).flat()
+
+      return prev.map((j) => {
+        const sourcePaths = groups[j.id]
+        let files =
+          sourcePaths && action === 'move'
+            ? j.files.filter((f) => !sourcePaths.includes(f.path))
+            : j.files
+        if (j.id === targetJumpId) {
+          const additions: ManifestFile[] = []
+          for (const p of allPaths) {
+            const f = lookup.get(p)
+            if (f && !files.some((x) => x.path === f.path)) additions.push(f)
+          }
+          files = [...files, ...additions]
+        }
+        return files === j.files ? j : { ...j, files }
+      })
+    })
+
     setSelection({})
     setDropDialog(null)
-    saveJumps(next)
   }
 
   if (!loaderData.manifest) {
