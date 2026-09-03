@@ -1,7 +1,9 @@
 import { expect, test, type Locator } from '@playwright/test'
+import { seedViaApi } from './helpers/seed-via-api'
 
 test.describe('Home — UX rules from RULES.md §9', () => {
   test.beforeEach(async ({ page }) => {
+    await seedViaApi(page)
     await page.goto('/')
     await expect(page.getByText('Review Proposed Jumps')).toBeVisible()
     await expect(page.locator('[data-hydrated="true"]')).toBeVisible()
