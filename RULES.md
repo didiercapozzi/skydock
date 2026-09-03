@@ -180,41 +180,65 @@ The Review UI is a single-page app that loads the manifest and lets the user gro
 
 ### 9.5 Transitions — Staging tray
 
-- Visible when files selected. Clear resets selection. Move/Copy toggle affects drag behavior. Dragging tray packages files and source groups.
+- Visible when files selected. Clear resets selection. Move/Copy toggle affects drag behavior.
 
 ### 9.6 Transitions — Drag & drop
 
-- Drag start packages file paths and source jump. Reorder within same jump. Drop between jumps moves or copies files. Tray drop processes each source group. Processed targets rejected.
+All drag and drop operations follow these rules:
 
-### 9.7 Transitions — Empty & header
+**Drag sources:**
+
+- **File row drag:** Packages file paths and source jump ID. If multiple files selected, carries all selected paths.
+- **Tray drag:** Packages files grouped by source jump with `text/x-staging-tray` type. Move/Copy mode determines operation.
+
+**Drop targets:**
+
+- **Jump card drop:** Moves or copies files from source to target jump. Uses move or copy based on mode. Clears selection after move.
+- **Reorder within same jump:** Dragging within same jump reorders files. Uses `reorder-files` action.
+- **Tray drop:** Iterates each source group entry, performs move or copy per group. Clears selection after move.
+
+**Constraints:**
+
+- Processed jumps cannot receive drops (rejected).
+- `dragDataRef` and `trayDragRef` nulled in `finally` block after drop completes.
+- Drop indicator shows above/below position during drag over file rows.
+
+### 9.7 Transitions — Timeline drag
+
+- Timeline bar click selects jump for comparison.
+- Timeline bar drag shifts jump day with snap options (15min or 24h with Shift key).
+- Drag commits only if offset ≥ 60 seconds.
+- Processed jumps have `cursor-not-allowed` and cannot be dragged.
+
+### 9.8 Transitions — Empty & header
 
 - No manifest shows "No Manifest Found" with Scan button. Empty status shows "No Files to Review". Banners per system status: scanning, copying, processing. Scan button disabled when scanning.
 
-### 9.8 Transitions — Jump & timeline
+### 9.9 Transitions — Jump & timeline
 
-- Compare toggle limited to 2 jumps. Expand/collapse toggles view mode. Label save updates jump. Shift jump adjusts timestamps. Timeline bar click selects for comparison. Timeline drag shifts day with snap options.
+- Compare toggle limited to 2 jumps. Expand/collapse toggles view mode. Label save updates jump. Shift jump adjusts timestamps.
 
-### 9.9 Transitions — Selected/Compare/Preview
+### 9.10 Transitions — Selected/Compare/Preview
 
 - Selected jumps panel appears when jumps selected. Clear resets. Compare enables only with 2. Process executes unprocessed. Change Day shifts all selected jumps.
 - Compare drawer shows 2 columns, merge combines jumps.
 - Preview drawer navigates files with prev/next, escape closes.
 
-### 9.10 Transitions — Video cropper
+### 9.11 Transitions — Video cropper
 
 - Seek to time clamps to valid range. Checks if time is buffered, seeks directly or commits offset. Time from screen position via bounding rect. Wheel zoom centered on cursor. Pointer events for dragging crop markers. Start/End here sets crop points. Apply saves crop to manifest.
 
-### 9.11 Transitions — Streaming
+### 9.12 Transitions — Streaming
 
 - fMP4 endpoint live-transcodes with hardware acceleration. Returns chunked video with proper headers. Concurrency capped with retry headers.
 - HLS endpoint live-transcodes to segments. Returns playlist. Sessions auto-cleaned after idle timeout. Request abort kills process.
 - HLS player lazy-loads library. Uses MSE if supported, else native. Configures buffer lengths. Handles network and media errors gracefully. Destroys on unmount.
 
-### 9.12 Presentation (non-logic)
+### 9.13 Presentation (non-logic)
 
 - Layout, styling, colors, content visibility, thumbnails, hour markers, tooltips, icons, filter pills are presentation details. They live in JSX and may change without breaking logic tests.
 
-### 9.13 Video Preview & Live Streaming — Details
+### 9.14 Video Preview & Live Streaming — Details
 
 #### Server — dual endpoints
 
@@ -246,7 +270,7 @@ The Review UI is a single-page app that loads the manifest and lets the user gro
 - For out-of-buffer seeks, offset updates restart HLS from new offset.
 - Base seek offsets playhead display for far-seek scenarios.
 
-### 9.14 Visual UI Preview
+### 9.15 Visual UI Preview
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
