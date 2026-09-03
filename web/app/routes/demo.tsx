@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 
 type ManifestFile = {
@@ -19,6 +19,22 @@ type ManifestJump = {
 }
 
 type SelectionMap = Record<string, Record<string, boolean>>
+
+type DragData = {
+  groups: Record<string, string[]>
+}
+
+type DropDialog = {
+  x: number
+  y: number
+  groups: Record<string, string[]>
+  targetJumpId: string
+}
+
+type DropHint = {
+  jumpId: string
+  index: number
+}
 
 const VIDEO_EXTS = new Set(['mp4', 'mov', 'avi', 'mkv', 'mts', 'm4v', '3gp'])
 
@@ -206,6 +222,15 @@ const groupJumpsByDay = (jumps: ManifestJump[]): JumpDayGroup[] => {
   })
 }
 
+const getDropIndex = (cardEl: HTMLElement, clientY: number) => {
+  const rows = Array.from(cardEl.querySelectorAll('[data-file-row]'))
+  for (let i = 0; i < rows.length; i++) {
+    const rect = rows[i].getBoundingClientRect()
+    if (clientY < rect.top + rect.height / 2) return i
+  }
+  return rows.length
+}
+
 const VideoIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
   <svg
     className={className}
@@ -241,17 +266,23 @@ const FileRow = ({
   groupId,
   selected,
   isInMultipleJumps,
-  onSelect
+  onSelect,
+  onDragStart,
+  onDragEnd
 }: {
   file: ManifestFile
   groupId: string
   selected: boolean
   isInMultipleJumps: boolean
   onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
+  onDragStart?: (e: React.DragEvent, groupId: string, paths: string[]) => void
+  onDragEnd?: () => void
 }) => (
   <div
     data-file-row='true'
     draggable
+    onDragStart={(e) => onDragStart?.(e, groupId, [file.path])}
+    onDragEnd={() => onDragEnd?.()}
     onClick={(e) => onSelect(groupId, file.path, e.ctrlKey || e.metaKey, e.shiftKey)}
     className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg cursor-pointer select-none transition-all duration-150 ${
       selected
@@ -287,11 +318,23 @@ const FileRow = ({
 const JumpCard = ({
   jump,
   selection,
-  onSelect
+  dropIndex,
+  onSelect,
+  onDragStart,
+  onDragEnd,
+  onDrop,
+  onDragOver,
+  onDragLeave
 }: {
   jump: ManifestJump
   selection: SelectionMap
+  dropIndex: number | null
   onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
+  onDragStart?: (e: React.DragEvent, groupId: string, paths: string[]) => void
+  onDragEnd?: () => void
+  onDrop?: (e: React.DragEvent, targetJumpId: string) => void
+  onDragOver?: (e: React.DragEvent, targetJumpId: string) => void
+  onDragLeave?: (jumpId: string) => void
 }) => {
   const bounds = getJumpBounds(jump)
   const videoCount = jump.files.filter((f) => isVideoFile(f.filename)).length
@@ -300,6 +343,15 @@ const JumpCard = ({
   return (
     <div
       data-jump-card='true'
+      onDragOver={(e) => {
+        e.preventDefault()
+        onDragOver?.(e, jump.id)
+      }}
+      onDrop={(e) => {
+        e.preventDefault()
+        onDrop?.(e, jump.id)
+      }}
+      onDragLeave={() => onDragLeave?.(jump.id)}
       className='border border-gray-200 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden'>
       <div className='px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100'>
         <div className='flex items-center justify-between'>
@@ -331,16 +383,31 @@ const JumpCard = ({
         </div>
       </div>
       <div className='divide-y divide-gray-50'>
-        {jump.files.map((file) => (
-          <FileRow
-            key={file.path}
-            file={file}
-            groupId={jump.id}
-            selected={!!selection[jump.id]?.[file.path]}
-            isInMultipleJumps={false}
-            onSelect={onSelect}
-          />
+        {jump.files.map((file, i) => (
+          <Fragment key={file.path}>
+            {dropIndex === i && (
+              <div
+                data-drop-indicator='true'
+                className='h-0.5 mx-3 rounded bg-blue-500'
+              />
+            )}
+            <FileRow
+              file={file}
+              groupId={jump.id}
+              selected={!!selection[jump.id]?.[file.path]}
+              isInMultipleJumps={false}
+              onSelect={onSelect}
+              onDragStart={onDragStart}
+              onDragEnd={onDragEnd}
+            />
+          </Fragment>
         ))}
+        {dropIndex === jump.files.length && (
+          <div
+            data-drop-indicator='true'
+            className='h-0.5 mx-3 mb-1 rounded bg-blue-500'
+          />
+        )}
       </div>
     </div>
   )
@@ -349,10 +416,19 @@ const JumpCard = ({
 const Demo = () => {
   const [selection, setSelection] = useState<SelectionMap>({})
   const [compareIds, setCompareIds] = useState<string[]>([])
+  const [dropDialog, setDropDialog] = useState<DropDialog | null>(null)
+  const [dropHint, setDropHint] = useState<DropHint | null>(null)
+  const [jumps, setJumps] = useState<ManifestJump[]>(fakeJumps)
   const lastClickedRef = useRef<string | null>(null)
-  const jumpsByDay = groupJumpsByDay(fakeJumps)
+  const dragDataRef = useRef<DragData | null>(null)
+  const mainRef = useRef<HTMLElement | null>(null)
+  const jumpsByDay = groupJumpsByDay(jumps)
 
-  const filesInJumps = new Set(fakeJumps.flatMap((j) => j.files.map((f) => f.path)))
+  useEffect(() => {
+    mainRef.current?.setAttribute('data-hydrated', 'true')
+  }, [])
+
+  const filesInJumps = new Set(jumps.flatMap((j) => j.files.map((f) => f.path)))
   const unassignedFiles = fakeFiles.filter((f) => !filesInJumps.has(f.path))
 
   const selectedCount = Object.values(selection).reduce(
@@ -372,7 +448,7 @@ const Demo = () => {
         if (shiftKey && prevLast) {
           const allPaths = [
             ...unassignedFiles.map((f) => f.path),
-            ...fakeJumps.flatMap((j) => j.files.map((f) => f.path))
+            ...jumps.flatMap((j) => j.files.map((f) => f.path))
           ]
           const sIdx = allPaths.indexOf(prevLast)
           const eIdx = allPaths.indexOf(filePath)
@@ -382,7 +458,7 @@ const Demo = () => {
               const p = allPaths[i]
               const gid = unassignedFiles.some((f) => f.path === p)
                 ? 'unassigned'
-                : (fakeJumps.find((j) => j.files.some((f) => f.path === p))?.id ?? groupId)
+                : (jumps.find((j) => j.files.some((f) => f.path === p))?.id ?? groupId)
               if (!next[gid]) next[gid] = {}
               else next[gid] = { ...next[gid] }
               next[gid][p] = true
@@ -412,7 +488,7 @@ const Demo = () => {
         return next
       })
     },
-    [unassignedFiles]
+    [jumps, unassignedFiles]
   )
 
   const handleCompareToggle = useCallback((jumpId: string) => {
@@ -423,8 +499,112 @@ const Demo = () => {
     })
   }, [])
 
+  const handleDragStart = useCallback(
+    (e: React.DragEvent, groupId: string, paths: string[]) => {
+      const selectedPaths = selection[groupId] ? Object.keys(selection[groupId]) : paths
+      dragDataRef.current = { groups: { [groupId]: selectedPaths } }
+      e.dataTransfer.effectAllowed = 'move'
+      e.dataTransfer.setData('text/plain', JSON.stringify(selectedPaths))
+    },
+    [selection]
+  )
+
+  const handleDrop = useCallback((e: React.DragEvent, targetJumpId: string) => {
+    const data = dragDataRef.current
+    if (!data) return
+    dragDataRef.current = null
+    setDropHint(null)
+
+    const groupIds = Object.keys(data.groups)
+    if (groupIds.length === 1 && groupIds[0] === targetJumpId) {
+      const toIndex = getDropIndex(e.currentTarget as HTMLElement, e.clientY)
+      const paths = data.groups[targetJumpId]
+      setJumps((prev) =>
+        prev.map((j) => {
+          if (j.id !== targetJumpId) return j
+          const moved = j.files.filter((f) => paths.includes(f.path))
+          if (moved.length === 0) return j
+          const remaining = j.files.filter((f) => !paths.includes(f.path))
+          const draggedBefore = j.files
+            .slice(0, toIndex)
+            .filter((f) => paths.includes(f.path)).length
+          const insertAt = Math.max(0, toIndex - draggedBefore)
+          return {
+            ...j,
+            files: [...remaining.slice(0, insertAt), ...moved, ...remaining.slice(insertAt)]
+          }
+        })
+      )
+      return
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect()
+    setDropDialog({
+      x: e.clientX - rect.left + rect.left,
+      y: e.clientY,
+      groups: data.groups,
+      targetJumpId
+    })
+  }, [])
+
+  const handleDragOver = useCallback((e: React.DragEvent, targetJumpId: string) => {
+    const index = getDropIndex(e.currentTarget as HTMLElement, e.clientY)
+    setDropHint((prev) =>
+      prev && prev.jumpId === targetJumpId && prev.index === index
+        ? prev
+        : { jumpId: targetJumpId, index }
+    )
+  }, [])
+
+  const handleDragLeave = useCallback(() => {
+    setDropHint(null)
+  }, [])
+
+  const handleDragEnd = useCallback(() => {
+    dragDataRef.current = null
+    setDropHint(null)
+  }, [])
+
+  const executeDrop = useCallback(
+    (action: 'move' | 'copy') => {
+      if (!dropDialog) return
+      const { groups, targetJumpId } = dropDialog
+
+      setJumps((prev) => {
+        const lookup = new Map<string, ManifestFile>()
+        for (const f of fakeFiles) lookup.set(f.path, f)
+        for (const j of prev) for (const f of j.files) lookup.set(f.path, f)
+        const allPaths = Object.values(groups).flat()
+
+        return prev.map((j) => {
+          const sourcePaths = groups[j.id]
+          let files =
+            sourcePaths && action === 'move'
+              ? j.files.filter((f) => !sourcePaths.includes(f.path))
+              : j.files
+          if (j.id === targetJumpId) {
+            const additions: ManifestFile[] = []
+            for (const p of allPaths) {
+              const f = lookup.get(p)
+              if (f && !files.some((x) => x.path === f.path)) additions.push(f)
+            }
+            files = [...files, ...additions]
+          }
+          return files === j.files ? j : { ...j, files }
+        })
+      })
+
+      setSelection({})
+      setDropDialog(null)
+    },
+    [dropDialog]
+  )
+
   return (
-    <main className='min-h-screen bg-gradient-to-br from-gray-50 via-gray-50 to-gray-100'>
+    <main
+      ref={mainRef}
+      data-hydrated='false'
+      className='min-h-screen bg-gradient-to-br from-gray-50 via-gray-50 to-gray-100'>
       <header className='border-b bg-white/80 backdrop-blur-sm sticky top-0 z-40'>
         <div className='max-w-7xl mx-auto px-6 py-4 flex items-center justify-between'>
           <Link
@@ -467,7 +647,7 @@ const Demo = () => {
           <div>
             <h1 className='text-3xl font-bold text-gray-900'>Review Proposed Jumps</h1>
             <p className='text-gray-500 mt-2'>
-              2026-08-24 — {fakeJumps.length} jumps, {fakeFiles.length} files
+              2026-08-24 — {jumps.length} jumps, {fakeFiles.length} files
             </p>
           </div>
           {compareIds.length > 0 && (
@@ -526,6 +706,8 @@ const Demo = () => {
                   selected={!!selection['unassigned']?.[file.path]}
                   isInMultipleJumps={false}
                   onSelect={handleSelect}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
                 />
               ))}
             </div>
@@ -565,7 +747,13 @@ const Demo = () => {
                     <JumpCard
                       jump={jump}
                       selection={selection}
+                      dropIndex={dropHint && dropHint.jumpId === jump.id ? dropHint.index : null}
                       onSelect={handleSelect}
+                      onDragStart={handleDragStart}
+                      onDragEnd={handleDragEnd}
+                      onDrop={handleDrop}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
                     />
                   </div>
                 ))}
@@ -577,6 +765,17 @@ const Demo = () => {
         {selectedCount > 0 && (
           <div
             data-staging-tray='true'
+            draggable
+            onDragStart={(e) => {
+              const groups: Record<string, string[]> = {}
+              for (const [groupId, files] of Object.entries(selection)) {
+                groups[groupId] = Object.keys(files)
+              }
+              const allPaths = Object.values(groups).flat()
+              dragDataRef.current = { groups }
+              e.dataTransfer.effectAllowed = 'move'
+              e.dataTransfer.setData('text/plain', JSON.stringify(allPaths))
+            }}
             className='fixed bottom-0 left-0 right-0 border-t bg-white/95 backdrop-blur-sm p-4 shadow-2xl z-50'>
             <div className='max-w-7xl mx-auto flex items-center justify-between'>
               <div className='flex items-center gap-3'>
@@ -592,20 +791,37 @@ const Demo = () => {
                   className='px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors'>
                   Clear
                 </button>
-                <div className='flex items-center gap-2 bg-gray-100 rounded-lg p-1'>
-                  <button
-                    type='button'
-                    className='px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md shadow-sm'>
-                    Move
-                  </button>
-                  <button
-                    type='button'
-                    className='px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-white rounded-md transition-colors'>
-                    Copy
-                  </button>
-                </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {dropDialog && (
+          <div
+            data-drop-dialog='true'
+            className='fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-2 flex gap-2'
+            style={{ left: dropDialog.x, top: dropDialog.y }}>
+            <button
+              type='button'
+              data-action='move'
+              onClick={() => executeDrop('move')}
+              className='px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700'>
+              Move
+            </button>
+            <button
+              type='button'
+              data-action='copy'
+              onClick={() => executeDrop('copy')}
+              className='px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200'>
+              Copy
+            </button>
+            <button
+              type='button'
+              data-action='cancel'
+              onClick={() => setDropDialog(null)}
+              className='px-3 py-1.5 text-sm font-medium text-gray-500 hover:text-gray-700'>
+              Cancel
+            </button>
           </div>
         )}
       </div>

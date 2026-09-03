@@ -1,9 +1,10 @@
-import { test, expect } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 
 test.describe('demo — UX rules from RULES.md §9', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/demo')
     await expect(page.getByText('Review Proposed Jumps')).toBeVisible()
+    await expect(page.locator('[data-hydrated="true"]')).toBeVisible()
   })
 
   test.describe('§9.4 File selection', () => {
@@ -56,7 +57,9 @@ test.describe('demo — UX rules from RULES.md §9', () => {
     test('tray shows selected count and clear button', async ({ page }) => {
       const rows = page.locator('[data-file-row]')
       await rows.nth(0).click()
+      await expect(rows.nth(0)).toHaveClass(/bg-blue-50/)
       await rows.nth(1).click({ modifiers: ['Control'] })
+      await expect(rows.nth(1)).toHaveClass(/bg-blue-50/)
       const tray = page.locator('[data-staging-tray]')
       await expect(tray).toBeVisible()
       await expect(tray.getByText('2 files selected')).toBeVisible()
@@ -72,12 +75,202 @@ test.describe('demo — UX rules from RULES.md §9', () => {
       await expect(firstRow).not.toHaveClass(/bg-blue-50/)
     })
 
-    test('move and copy mode toggles', async ({ page }) => {
+    test('tray is staging area, no move/copy toggle', async ({ page }) => {
       const firstRow = page.locator('[data-file-row]').first()
       await firstRow.click()
       const tray = page.locator('[data-staging-tray]')
-      await expect(tray.getByText('Move')).toBeVisible()
-      await expect(tray.getByText('Copy')).toBeVisible()
+      await expect(tray).toBeVisible()
+      await expect(tray.getByText('Move')).not.toBeVisible()
+      await expect(tray.getByText('Copy')).not.toBeVisible()
+    })
+  })
+
+  test.describe('§9.6 Drag & drop', () => {
+    test.beforeEach(async ({ page }) => {
+      await page.evaluate(() => document.fonts.ready)
+    })
+
+    const mouseDrag = async (source: Locator, target: Locator) => {
+      await target.evaluate((el) => el.scrollIntoView({ block: 'center' }))
+      await source.dragTo(target)
+    }
+
+    const dragRowToPosition = async (source: Locator, targetRow: Locator, where: 'above' | 'below') => {
+      await targetRow.evaluate((el) => el.scrollIntoView({ block: 'center' }))
+      const box = await targetRow.boundingBox()
+      const height = box?.height ?? 40
+      const y = where === 'above' ? 6 : Math.max(7, height - 6)
+      await source.dragTo(targetRow, { targetPosition: { x: 8, y } })
+    }
+
+    test.describe('§9.6.1 Drag sources', () => {
+      test('file row is draggable', async ({ page }) => {
+        const firstRow = page.locator('[data-file-row]').first()
+        await expect(firstRow).toHaveAttribute('draggable', 'true')
+      })
+
+      test('tray is draggable when files selected', async ({ page }) => {
+        await page.locator('[data-file-row]').first().click()
+        const tray = page.locator('[data-staging-tray]')
+        await expect(tray).toBeVisible()
+        await expect(tray).toHaveAttribute('draggable', 'true')
+      })
+
+      test('tray not visible when no files selected', async ({ page }) => {
+        await expect(page.locator('[data-staging-tray]')).not.toBeVisible()
+      })
+    })
+
+    test.describe('§9.6.2 Drop targets', () => {
+      test('dropping file row on different jump shows Move/Copy/Cancel dialog', async ({ page }) => {
+        const jumpCards = page.locator('[data-jump-card]')
+        await expect(jumpCards).toHaveCount(4)
+        const sourceRow = jumpCards.first().locator('[data-file-row]').first()
+        await mouseDrag(sourceRow, jumpCards.nth(1))
+        const dialog = page.locator('[data-drop-dialog]')
+        await expect(dialog).toBeVisible()
+        await expect(dialog.getByRole('button', { name: 'Move' })).toBeVisible()
+        await expect(dialog.getByRole('button', { name: 'Copy' })).toBeVisible()
+        await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeVisible()
+      })
+
+      test('cancel closes dialog without changing selection', async ({ page }) => {
+        const jumpCards = page.locator('[data-jump-card]')
+        await mouseDrag(jumpCards.first().locator('[data-file-row]').first(), jumpCards.nth(1))
+        const dialog = page.locator('[data-drop-dialog]')
+        await expect(dialog).toBeVisible()
+        await dialog.getByRole('button', { name: 'Cancel' }).click()
+        await expect(dialog).not.toBeVisible()
+      })
+
+      test('move option closes dialog', async ({ page }) => {
+        const jumpCards = page.locator('[data-jump-card]')
+        await mouseDrag(jumpCards.first().locator('[data-file-row]').first(), jumpCards.nth(1))
+        const dialog = page.locator('[data-drop-dialog]')
+        await expect(dialog).toBeVisible()
+        await dialog.getByRole('button', { name: 'Move' }).click()
+        await expect(dialog).not.toBeVisible()
+      })
+
+      test('copy option closes dialog', async ({ page }) => {
+        const jumpCards = page.locator('[data-jump-card]')
+        await mouseDrag(jumpCards.first().locator('[data-file-row]').first(), jumpCards.nth(1))
+        const dialog = page.locator('[data-drop-dialog]')
+        await expect(dialog).toBeVisible()
+        await dialog.getByRole('button', { name: 'Copy' }).click()
+        await expect(dialog).not.toBeVisible()
+      })
+
+      test('dropping within same jump shows no dialog', async ({ page }) => {
+        const firstCard = page.locator('[data-jump-card]').first()
+        await expect(firstCard.locator('[data-file-row]').first()).toBeVisible()
+        await mouseDrag(firstCard.locator('[data-file-row]').first(), firstCard)
+        await expect(page.locator('[data-drop-dialog]')).not.toBeVisible()
+      })
+
+      test('reorders single file within same jump to correct position', async ({ page }) => {
+        const card = page.locator('[data-jump-card]').filter({ hasText: 'Jump 1' })
+        const rows = card.locator('[data-file-row]')
+        await dragRowToPosition(rows.nth(0), rows.nth(2), 'below')
+        await expect(page.locator('[data-drop-dialog]')).not.toBeVisible()
+        await expect(rows.nth(0).getByText('DJI_0002.MP4')).toBeVisible()
+        await expect(rows.nth(1).getByText('DJI_0003.JPG')).toBeVisible()
+        await expect(rows.nth(2).getByText('DJI_0001.MP4')).toBeVisible()
+      })
+
+      test('reorders grouped files within same jump to correct position', async ({ page }) => {
+        const card = page.locator('[data-jump-card]').filter({ hasText: 'Jump 1' })
+        const rows = card.locator('[data-file-row]')
+        await rows.nth(0).click()
+        await expect(rows.nth(0)).toHaveClass(/bg-blue-50/)
+        await rows.nth(1).click({ modifiers: ['Control'] })
+        await expect(rows.nth(1)).toHaveClass(/bg-blue-50/)
+        await dragRowToPosition(rows.nth(0), rows.nth(2), 'below')
+        await expect(page.locator('[data-drop-dialog]')).not.toBeVisible()
+        await expect(rows.nth(0).getByText('DJI_0003.JPG')).toBeVisible()
+        await expect(rows.nth(1).getByText('DJI_0001.MP4')).toBeVisible()
+        await expect(rows.nth(2).getByText('DJI_0002.MP4')).toBeVisible()
+      })
+    })
+
+    test.describe('§9.6.3 Constraints', () => {
+      test('jump cards accept drops', async ({ page }) => {
+        const jumpCards = page.locator('[data-jump-card]')
+        await expect(jumpCards).toHaveCount(4)
+        for (let i = 0; i < 4; i++) {
+          await expect(jumpCards.nth(i)).toBeVisible()
+        }
+      })
+    })
+
+    test.describe('§9.6.4 Staging tray', () => {
+      test('tray visible when files selected', async ({ page }) => {
+        await page.locator('[data-file-row]').first().click()
+        await expect(page.locator('[data-file-row]').first()).toHaveClass(/bg-blue-50/)
+        await expect(page.locator('[data-staging-tray]')).toBeVisible()
+      })
+
+      test('tray is drag source with clear button', async ({ page }) => {
+        await page.locator('[data-file-row]').first().click()
+        const tray = page.locator('[data-staging-tray]')
+        await expect(tray).toBeVisible()
+        await expect(tray).toHaveAttribute('draggable', 'true')
+        await expect(tray.getByRole('button', { name: 'Clear' })).toBeVisible()
+      })
+
+      test('clear button resets selection', async ({ page }) => {
+        await page.locator('[data-file-row]').first().click()
+        await expect(page.locator('[data-file-row]').first()).toHaveClass(/bg-blue-50/)
+        await expect(page.locator('[data-staging-tray]')).toBeVisible()
+        await page.locator('[data-staging-tray]').getByRole('button', { name: 'Clear' }).click()
+        await expect(page.locator('[data-staging-tray]')).not.toBeVisible()
+      })
+    })
+
+    test.describe('§9.6.5 User interactions', () => {
+      test('tray drag onto distant jump shows dialog', async ({ page }) => {
+        await page.locator('[data-file-row]').first().click()
+        const tray = page.locator('[data-staging-tray]')
+        await expect(tray).toBeVisible()
+        await mouseDrag(tray, page.locator('[data-jump-card]').nth(3))
+        await expect(page.locator('[data-drop-dialog]')).toBeVisible()
+      })
+
+      test('full drag and drop: select, drag, move file between jumps', async ({ page }) => {
+        const jumpCards = page.locator('[data-jump-card]')
+        const sourceCard = jumpCards.filter({ hasText: 'Jump 1' })
+        const targetCard = jumpCards.filter({ hasText: 'Jump 2' })
+        const sourceRow = sourceCard.locator('[data-file-row]').first()
+        await sourceRow.click()
+        await expect(sourceRow).toHaveClass(/bg-blue-50/)
+        await expect(page.locator('[data-staging-tray]')).toBeVisible()
+        await mouseDrag(sourceRow, targetCard)
+        const dialog = page.locator('[data-drop-dialog]')
+        await expect(dialog).toBeVisible()
+        await dialog.getByRole('button', { name: 'Move' }).click()
+        await expect(dialog).not.toBeVisible()
+        await expect(sourceCard.getByText('DJI_0001.MP4')).not.toBeVisible()
+        await expect(targetCard.getByText('DJI_0001.MP4')).toBeVisible()
+        await expect(page.locator('[data-staging-tray]')).not.toBeVisible()
+      })
+
+      test('full drag and drop: copy keeps file in both jumps', async ({ page }) => {
+        const jumpCards = page.locator('[data-jump-card]')
+        const sourceCard = jumpCards.filter({ hasText: 'Jump 1' })
+        const targetCard = jumpCards.filter({ hasText: 'Jump 2' })
+        const sourceRow = sourceCard.locator('[data-file-row]').first()
+        await sourceRow.click()
+        await expect(sourceRow).toHaveClass(/bg-blue-50/)
+        await expect(page.locator('[data-staging-tray]')).toBeVisible()
+        await mouseDrag(sourceRow, targetCard)
+        const dialog = page.locator('[data-drop-dialog]')
+        await expect(dialog).toBeVisible()
+        await dialog.getByRole('button', { name: 'Copy' }).click()
+        await expect(dialog).not.toBeVisible()
+        await expect(sourceCard.getByText('DJI_0001.MP4')).toBeVisible()
+        await expect(targetCard.getByText('DJI_0001.MP4')).toBeVisible()
+        await expect(page.locator('[data-staging-tray]')).not.toBeVisible()
+      })
     })
   })
 
@@ -105,9 +298,9 @@ test.describe('demo — UX rules from RULES.md §9', () => {
     test('jump cards show label, time range, and file count', async ({ page }) => {
       const jumpCards = page.locator('[data-jump-card]')
       await expect(jumpCards).toHaveCount(4)
-      const firstCard = jumpCards.first()
-      await expect(firstCard.getByText('Jump 1')).toBeVisible()
-      await expect(firstCard.getByText('3 files')).toBeVisible()
+      const jump1Card = jumpCards.filter({ hasText: 'Jump 1' })
+      await expect(jump1Card).toHaveCount(1)
+      await expect(jump1Card.getByText('3 files')).toBeVisible()
     })
 
     test('jump card shows video/photo counts', async ({ page }) => {

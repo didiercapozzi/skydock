@@ -152,10 +152,10 @@ The Review UI is a single-page app that loads the manifest and lets the user gro
 
 ### 9.1 Pure helpers
 
-- `groupJumpsByDay()` — groups jumps by minimum mtime day, sorts days reverse-chronologically.
-- `getJumpBounds()` — returns minimum and maximum mtime of jump files.
-- `reclusterJumps()` / `shiftFiles()` — pure manifest transforms.
-- `sanitizeLabel()` — pure label sanitization.
+- Groups jumps by minimum mtime day, sorts days reverse-chronologically.
+- Returns minimum and maximum mtime of jump files.
+- Pure manifest transforms for reclustering and time shifting.
+- Pure label sanitization.
 - Display helpers for time, bytes, and timecodes.
 
 ### 9.2 State (in-memory, not persisted except where noted)
@@ -164,7 +164,6 @@ The Review UI is a single-page app that loads the manifest and lets the user gro
 - `selection` — tracks selected files by group.
 - `lastClicked` — for shift-range selection.
 - `preview` — files, current index, and label for preview drawer.
-- `copyMode` — toggle for copy vs move operations.
 - `compareIds` — max 2 jump IDs for comparison.
 - `showCompare` — toggle for compare drawer.
 - `viewMode` — list or grid display.
@@ -180,28 +179,44 @@ The Review UI is a single-page app that loads the manifest and lets the user gro
 
 ### 9.5 Transitions — Staging tray
 
-- Visible when files selected. Clear resets selection. Move/Copy toggle affects drag behavior.
+- Visible when files selected. Clear resets selection. Acts as holding area for files to be moved or copied to other jumps.
 
 ### 9.6 Transitions — Drag & drop
 
 All drag and drop operations follow these rules:
 
-**Drag sources:**
+#### 9.6.1 Drag sources
 
-- **File row drag:** Packages file paths and source jump ID. If multiple files selected, carries all selected paths.
-- **Tray drag:** Packages files grouped by source jump. Move/Copy mode determines operation.
+| Source       | Behavior                                                                                     |
+| ------------ | -------------------------------------------------------------------------------------------- |
+| File row     | Packages file paths and source jump. If multiple files selected, carries all selected paths. |
+| Staging tray | Packages files grouped by source jump. Always available when files are selected.             |
 
-**Drop targets:**
+#### 9.6.2 Drop targets
 
-- **Jump card drop:** Moves or copies files from source to target jump. Uses move or copy based on mode. Clears selection after move.
-- **Reorder within same jump:** Dragging within same jump reorders files.
-- **Tray drop:** Iterates each source group entry, performs move or copy per group. Clears selection after move.
+| Target    | Behavior                                                                                             |
+| --------- | ---------------------------------------------------------------------------------------------------- |
+| Jump card | Shows dialog at mouse position with Move, Copy, or Cancel options. Clears selection after operation. |
+| Same jump | Reorders files directly. No dialog, no copy within same jump.                                        |
 
-**Constraints:**
+#### 9.6.3 Constraints
 
 - Processed jumps cannot receive drops (rejected).
 - Drag references are cleared after drop completes.
 - Drop indicator shows above/below position during drag over file rows.
+
+#### 9.6.4 Staging tray
+
+- Visible when files are selected.
+- Acts as holding area for files to be moved or copied.
+- Drag source only, not a drop target.
+- Clear button resets selection.
+
+#### 9.6.5 User interactions
+
+- Moving files within a jump reorders them.
+- Moving or copying files between jumps shows dialog with Move, Copy, Cancel options.
+- If target jump is far away, use tray as intermediate step: select files, scroll to target, drag from tray.
 
 ### 9.7 Transitions — Timeline drag
 
@@ -345,6 +360,9 @@ All drag and drop operations follow these rules:
 - use "const" instead of "let" or "var" every time you can
 - Scripts package: `@skydock/scripts` — all shared logic lives here
 - Never duplicate: if logic is needed in multiple places, extract to `@skydock/scripts`
+- Never use "import" inside of the code, all import words must be listed at the top of the files
+- E2E drag and drop tests always use Playwright's `locator.dragTo()` (with `targetPosition` for above/below precision); pre-scroll the drop target into view first so no auto-scroll breaks the gesture mid-drag
+- When app code changes, tests are the source of truth: adapt the code to the tests first. Tests change only when explicitly requested or when RULES.md behavior changes
 
 ## 12. Rule Changes
 
@@ -359,6 +377,7 @@ All drag and drop operations follow these rules:
 5. **Commit together:** Commit code changes and RULES.md updates in the same commit.
 
 **Examples of rule-impacting changes:**
+
 - Modifying manifest structure or file registry behavior
 - Changing scan/cluster thresholds or algorithms
 - Altering drag & drop operations or selection logic
@@ -367,6 +386,7 @@ All drag and drop operations follow these rules:
 - Changing deduplication or file comparison logic
 
 **Non-rule changes (no warning needed):**
+
 - Bug fixes that preserve existing behavior
 - Refactoring that doesn't change external behavior
 - Presentation/styling changes (§9.13)

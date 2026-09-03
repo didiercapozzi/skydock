@@ -30,7 +30,7 @@ export default defineConfig({
     : {
         command: 'npm run dev --workspace=@workspace/web',
         url: 'http://localhost:5173',
-        reuseExistingServer: false,
+        reuseExistingServer: true,
         timeout: 120 * 1000,
         env: {
           SKYDOCK_OUTPUT_DIR: '/tmp/playwright-output'
