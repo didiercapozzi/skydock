@@ -122,7 +122,7 @@ output/
 
 ### 8.1 Routes
 
-- Home page, review page, jump detail page, and API endpoints for file serving, library, jumps, file opening, simulation, scanning, manifest operations, status, streaming, and HLS.
+- Home page and API endpoints for file serving, library, jumps, file opening, simulation, scanning, manifest operations, status, streaming, and HLS.
 
 ### 8.2 Types
 

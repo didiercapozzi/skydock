@@ -1,82 +1,20 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
-
-type ManifestFile = {
-  path: string
-  size: number
-  mtime: number
-  filename: string
-  id: string
-  originalMtime?: number
-}
-
-type ManifestJump = {
-  id: string
-  label: string
-  confirmed: boolean
-  files: ManifestFile[]
-  processed?: boolean
-}
-
-type SelectionMap = Record<string, Record<string, boolean>>
-
-type DragData = {
-  groups: Record<string, string[]>
-}
-
-type DropDialog = {
-  x: number
-  y: number
-  groups: Record<string, string[]>
-  targetJumpId: string
-}
-
-type DropHint = {
-  jumpId: string
-  index: number
-}
-
-type PreviewState = {
-  files: ManifestFile[]
-  index: number
-  groupId: string
-} | null
-
-const VIDEO_EXTS = new Set(['mp4', 'mov', 'avi', 'mkv', 'mts', 'm4v', '3gp'])
-
-const isVideoFile = (filename: string): boolean => {
-  const ext = filename.split('.').pop()?.toLowerCase() ?? ''
-  return VIDEO_EXTS.has(ext)
-}
-
-const formatSize = (bytes: number) => {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
-const formatTime = (epoch: number) =>
-  new Date(epoch * 1000).toLocaleTimeString('de-CH', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  })
-
-const getJumpBounds = (jump: ManifestJump) => {
-  if (jump.files.length === 0) return { start: 0, end: 0 }
-  const times = jump.files.map((f) => f.mtime)
-  return { start: Math.min(...times), end: Math.max(...times) }
-}
-
-const getJumpDate = (jump: ManifestJump) => {
-  if (jump.files.length === 0) return ''
-  const min = Math.min(...jump.files.map((f) => f.mtime))
-  return new Date(min * 1000).toLocaleDateString('de-CH', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
-}
+import { DropActionDialog } from '../components/drop-action-dialog'
+import { FileRow } from '../components/file-row'
+import { JumpCard } from '../components/jump-card'
+import { PreviewDrawer } from '../components/preview-drawer'
+import { StagingTray } from '../components/staging-tray'
+import type {
+  DragData,
+  DropDialog,
+  DropHint,
+  ManifestFile,
+  ManifestJump,
+  PreviewState,
+  SelectionMap
+} from '../components/types'
+import { getDropIndex, groupJumpsByDay } from '../components/utils'
 
 const baseTime = Math.floor(Date.now() / 1000) - 86400
 
@@ -208,222 +146,6 @@ const fakeJumps: ManifestJump[] = [
   }
 ]
 
-type JumpDayGroup = {
-  date: string
-  jumps: ManifestJump[]
-}
-
-const groupJumpsByDay = (jumps: ManifestJump[]): JumpDayGroup[] => {
-  const map = new Map<string, JumpDayGroup>()
-  for (const jump of jumps) {
-    const date = getJumpDate(jump) || 'Unknown'
-    const g = map.get(date)
-    if (g) g.jumps.push(jump)
-    else map.set(date, { date, jumps: [jump] })
-  }
-  return Array.from(map.values()).sort((a, b) => {
-    const ta = a.jumps[0] ? getJumpBounds(a.jumps[0]).start : 0
-    const tb = b.jumps[0] ? getJumpBounds(b.jumps[0]).start : 0
-    return tb - ta
-  })
-}
-
-const getDropIndex = (cardEl: HTMLElement, clientY: number) => {
-  const rows = Array.from(cardEl.querySelectorAll('[data-file-row]'))
-  for (let i = 0; i < rows.length; i++) {
-    const rect = rows[i].getBoundingClientRect()
-    if (clientY < rect.top + rect.height / 2) return i
-  }
-  return rows.length
-}
-
-const VideoIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
-  <svg
-    className={className}
-    fill='none'
-    viewBox='0 0 24 24'
-    stroke='currentColor'
-    strokeWidth={1.5}>
-    <path
-      strokeLinecap='round'
-      strokeLinejoin='round'
-      d='m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z'
-    />
-  </svg>
-)
-
-const PhotoIcon = ({ className = 'w-4 h-4' }: { className?: string }) => (
-  <svg
-    className={className}
-    fill='none'
-    viewBox='0 0 24 24'
-    stroke='currentColor'
-    strokeWidth={1.5}>
-    <path
-      strokeLinecap='round'
-      strokeLinejoin='round'
-      d='m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z'
-    />
-  </svg>
-)
-
-const FileRow = ({
-  file,
-  groupId,
-  selected,
-  isInMultipleJumps,
-  onSelect,
-  onPreview,
-  onDragStart,
-  onDragEnd
-}: {
-  file: ManifestFile
-  groupId: string
-  selected: boolean
-  isInMultipleJumps: boolean
-  onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
-  onPreview: (file: ManifestFile, groupId: string) => void
-  onDragStart?: (e: React.DragEvent, groupId: string, paths: string[]) => void
-  onDragEnd?: () => void
-}) => (
-  <div
-    data-file-row='true'
-    draggable
-    onDragStart={(e) => onDragStart?.(e, groupId, [file.path])}
-    onDragEnd={() => onDragEnd?.()}
-    onClick={() => onPreview(file, groupId)}
-    className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg cursor-pointer select-none transition-all duration-150 ${
-      selected
-        ? 'bg-blue-50 ring-1 ring-blue-400 shadow-sm'
-        : isInMultipleJumps
-          ? 'bg-purple-50 hover:bg-purple-100 border border-purple-200'
-          : 'hover:bg-gray-50 border border-transparent hover:border-gray-200'
-    }`}>
-    <input
-      type='checkbox'
-      checked={selected}
-      onChange={() => {}}
-      onClick={(e) => {
-        e.stopPropagation()
-        onSelect(groupId, file.path, e.ctrlKey || e.metaKey, e.shiftKey)
-      }}
-      className='h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500'
-    />
-    <div
-      className={`p-1 rounded ${isVideoFile(file.filename) ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'}`}>
-      {isVideoFile(file.filename) ? (
-        <VideoIcon className='w-3.5 h-3.5' />
-      ) : (
-        <PhotoIcon className='w-3.5 h-3.5' />
-      )}
-    </div>
-    <span className='font-mono truncate flex-1 text-xs text-gray-700'>{file.filename}</span>
-    <span className='text-gray-400 text-xs tabular-nums font-medium'>{formatTime(file.mtime)}</span>
-    <span className='text-gray-400 text-xs tabular-nums'>{formatSize(file.size)}</span>
-  </div>
-)
-
-const JumpCard = ({
-  jump,
-  selection,
-  dropIndex,
-  onSelect,
-  onPreview,
-  onDragStart,
-  onDragEnd,
-  onDrop,
-  onDragOver,
-  onDragLeave
-}: {
-  jump: ManifestJump
-  selection: SelectionMap
-  dropIndex: number | null
-  onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
-  onPreview: (file: ManifestFile, groupId: string) => void
-  onDragStart?: (e: React.DragEvent, groupId: string, paths: string[]) => void
-  onDragEnd?: () => void
-  onDrop?: (e: React.DragEvent, targetJumpId: string) => void
-  onDragOver?: (e: React.DragEvent, targetJumpId: string) => void
-  onDragLeave?: (jumpId: string) => void
-}) => {
-  const bounds = getJumpBounds(jump)
-  const videoCount = jump.files.filter((f) => isVideoFile(f.filename)).length
-  const photoCount = jump.files.length - videoCount
-
-  return (
-    <div
-      data-jump-card='true'
-      onDragOver={(e) => {
-        e.preventDefault()
-        onDragOver?.(e, jump.id)
-      }}
-      onDrop={(e) => {
-        e.preventDefault()
-        onDrop?.(e, jump.id)
-      }}
-      onDragLeave={() => onDragLeave?.(jump.id)}
-      className='border border-gray-200 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden'>
-      <div className='px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100'>
-        <div className='flex items-center justify-between'>
-          <div className='flex items-center gap-3'>
-            <h3 className='font-semibold text-sm text-gray-800'>{jump.label}</h3>
-            <div className='flex items-center gap-1.5'>
-              {videoCount > 0 && (
-                <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700'>
-                  <VideoIcon className='w-3 h-3' />
-                  {videoCount}
-                </span>
-              )}
-              {photoCount > 0 && (
-                <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700'>
-                  <PhotoIcon className='w-3 h-3' />
-                  {photoCount}
-                </span>
-              )}
-            </div>
-          </div>
-          <div className='flex items-center gap-4 text-xs text-gray-500'>
-            <span className='tabular-nums font-medium'>
-              {formatTime(bounds.start)} — {formatTime(bounds.end)}
-            </span>
-            <span className='px-2 py-0.5 rounded-full bg-gray-100 text-gray-600'>
-              {jump.files.length} files
-            </span>
-          </div>
-        </div>
-      </div>
-      <div className='divide-y divide-gray-50'>
-        {jump.files.map((file, i) => (
-          <Fragment key={file.path}>
-            {dropIndex === i && (
-              <div
-                data-drop-indicator='true'
-                className='h-0.5 mx-3 rounded bg-blue-500'
-              />
-            )}
-            <FileRow
-              file={file}
-              groupId={jump.id}
-              selected={!!selection[jump.id]?.[file.path]}
-              isInMultipleJumps={false}
-              onSelect={onSelect}
-              onPreview={onPreview}
-              onDragStart={onDragStart}
-              onDragEnd={onDragEnd}
-            />
-          </Fragment>
-        ))}
-        {dropIndex === jump.files.length && (
-          <div
-            data-drop-indicator='true'
-            className='h-0.5 mx-3 mb-1 rounded bg-blue-500'
-          />
-        )}
-      </div>
-    </div>
-  )
-}
-
 const Demo = () => {
   const [selection, setSelection] = useState<SelectionMap>({})
   const [compareIds, setCompareIds] = useState<string[]>([])
@@ -439,15 +161,6 @@ const Demo = () => {
   useEffect(() => {
     mainRef.current?.setAttribute('data-hydrated', 'true')
   }, [])
-
-  useEffect(() => {
-    if (!preview) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setPreview(null)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [preview])
 
   const filesInJumps = new Set(jumps.flatMap((j) => j.files.map((f) => f.path)))
   const unassignedFiles = fakeFiles.filter((f) => !filesInJumps.has(f.path))
@@ -538,6 +251,20 @@ const Demo = () => {
       dragDataRef.current = { groups: { [groupId]: selectedPaths } }
       e.dataTransfer.effectAllowed = 'move'
       e.dataTransfer.setData('text/plain', JSON.stringify(selectedPaths))
+    },
+    [selection]
+  )
+
+  const handleTrayDragStart = useCallback(
+    (e: React.DragEvent) => {
+      const groups: Record<string, string[]> = {}
+      for (const [groupId, files] of Object.entries(selection)) {
+        groups[groupId] = Object.keys(files)
+      }
+      const allPaths = Object.values(groups).flat()
+      dragDataRef.current = { groups }
+      e.dataTransfer.effectAllowed = 'move'
+      e.dataTransfer.setData('text/plain', JSON.stringify(allPaths))
     },
     [selection]
   )
@@ -798,131 +525,37 @@ const Demo = () => {
         </div>
 
         {selectedCount > 0 && (
-          <div
-            data-staging-tray='true'
-            draggable
-            onDragStart={(e) => {
-              const groups: Record<string, string[]> = {}
-              for (const [groupId, files] of Object.entries(selection)) {
-                groups[groupId] = Object.keys(files)
-              }
-              const allPaths = Object.values(groups).flat()
-              dragDataRef.current = { groups }
-              e.dataTransfer.effectAllowed = 'move'
-              e.dataTransfer.setData('text/plain', JSON.stringify(allPaths))
-            }}
-            className='fixed bottom-0 left-0 right-0 border-t bg-white/95 backdrop-blur-sm p-4 shadow-2xl z-50'>
-            <div className='max-w-7xl mx-auto flex items-center justify-between'>
-              <div className='flex items-center gap-3'>
-                <div className='w-2 h-2 rounded-full bg-blue-500 animate-pulse' />
-                <span className='text-sm font-semibold text-gray-800'>
-                  {selectedCount} file{selectedCount !== 1 ? 's' : ''} selected
-                </span>
-              </div>
-              <div className='flex items-center gap-3'>
-                <button
-                  type='button'
-                  onClick={() => setSelection({})}
-                  className='px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors'>
-                  Clear
-                </button>
-              </div>
-            </div>
-          </div>
+          <StagingTray
+            selectedCount={selectedCount}
+            onClear={() => setSelection({})}
+            onDragStart={handleTrayDragStart}
+          />
         )}
 
         {preview && preview.files[preview.index] && (
-          <div
-            data-preview-drawer='true'
-            className='fixed top-0 right-0 bottom-0 w-[420px] max-w-[90vw] bg-white border-l border-gray-200 shadow-2xl z-40 flex flex-col'>
-            <div className='flex items-center justify-between px-4 py-3 border-b border-gray-100'>
-              <span className='font-mono truncate text-xs text-gray-700'>
-                {preview.files[preview.index].filename}
-              </span>
-              <button
-                type='button'
-                aria-label='Close preview'
-                onClick={() => setPreview(null)}
-                className='px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors'>
-                Close
-              </button>
-            </div>
-            <div className='flex-1 flex items-center justify-center bg-gray-950 p-4 overflow-hidden'>
-              {isVideoFile(preview.files[preview.index].filename) ? (
-                <video
-                  controls
-                  src={preview.files[preview.index].path}
-                  className='max-h-full max-w-full rounded'
-                />
-              ) : (
-                <img
-                  src={preview.files[preview.index].path}
-                  alt={preview.files[preview.index].filename}
-                  className='max-h-full max-w-full rounded object-contain'
-                />
-              )}
-            </div>
-            <div className='px-4 py-2 border-t border-gray-100 text-xs text-gray-500 tabular-nums'>
-              {formatTime(preview.files[preview.index].mtime)} ·{' '}
-              {formatSize(preview.files[preview.index].size)} · demo placeholder, no media file
-            </div>
-            <div className='flex items-center justify-between px-4 py-3 border-t border-gray-100'>
-              <button
-                type='button'
-                aria-label='Previous file'
-                disabled={preview.index === 0}
-                onClick={() =>
-                  setPreview((p) => (p ? { ...p, index: Math.max(0, p.index - 1) } : p))
-                }
-                className='px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed'>
-                Previous
-              </button>
-              <span className='text-xs text-gray-500 tabular-nums'>
-                {preview.index + 1} / {preview.files.length}
-              </span>
-              <button
-                type='button'
-                aria-label='Next file'
-                disabled={preview.index === preview.files.length - 1}
-                onClick={() =>
-                  setPreview((p) =>
-                    p ? { ...p, index: Math.min(p.files.length - 1, p.index + 1) } : p
-                  )
-                }
-                className='px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed'>
-                Next
-              </button>
-            </div>
-          </div>
+          <PreviewDrawer
+            files={preview.files}
+            index={preview.index}
+            onClose={() => setPreview(null)}
+            onPrevious={() =>
+              setPreview((p) => (p ? { ...p, index: Math.max(0, p.index - 1) } : p))
+            }
+            onNext={() =>
+              setPreview((p) =>
+                p ? { ...p, index: Math.min(p.files.length - 1, p.index + 1) } : p
+              )
+            }
+          />
         )}
 
         {dropDialog && (
-          <div
-            data-drop-dialog='true'
-            className='fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-2 flex gap-2'
-            style={{ left: dropDialog.x, top: dropDialog.y }}>
-            <button
-              type='button'
-              data-action='move'
-              onClick={() => executeDrop('move')}
-              className='px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700'>
-              Move
-            </button>
-            <button
-              type='button'
-              data-action='copy'
-              onClick={() => executeDrop('copy')}
-              className='px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200'>
-              Copy
-            </button>
-            <button
-              type='button'
-              data-action='cancel'
-              onClick={() => setDropDialog(null)}
-              className='px-3 py-1.5 text-sm font-medium text-gray-500 hover:text-gray-700'>
-              Cancel
-            </button>
-          </div>
+          <DropActionDialog
+            x={dropDialog.x}
+            y={dropDialog.y}
+            onMove={() => executeDrop('move')}
+            onCopy={() => executeDrop('copy')}
+            onCancel={() => setDropDialog(null)}
+          />
         )}
       </div>
     </main>
