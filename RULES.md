@@ -371,3 +371,5 @@ All drag and drop operations follow these rules:
 - Refactoring that doesn't change external behavior
 - Presentation/styling changes (§9.13)
 - Test additions or updates
+
+**Commit rule:** No commit is ever made until the user explicitly requests it. All changes are staged and reviewed before committing.
