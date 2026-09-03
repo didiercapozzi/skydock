@@ -6,7 +6,7 @@
 
 SkyDock copies media from DJI Osmo Nano cameras to a local folder tree, groups files into skydiving jumps by time gaps, lets the user review/correct dates and regroup, then copies confirmed jumps to `processed/`. No camera identity is tracked — cameras are treated as plain external storage merged into date folders.
 
-**Pipeline:** `Connect cameras` → `processMedia()` → `scanMedia()` → `Review (web UI)` → `executeMedia()` → `output/processed/`
+**Pipeline:** `Connect cameras` → `processMedia()` → `scanMedia()` → `Home (web UI)` → `executeMedia()` → `output/processed/`
 
 ## 2. Output Structure
 
@@ -122,11 +122,13 @@ output/
 
 ### 8.1 Routes
 
-- Home page and API endpoints for file serving, library, jumps, file opening, simulation, scanning, manifest operations, status, streaming, and HLS.
+- Home page at `/` (`routes/home.tsx`) with jump grouping, selection, drag and drop, and preview. API endpoints for file serving, library, jumps, file opening, simulation, scanning, manifest operations, status, streaming, and HLS.
 
 ### 8.2 Types
 
 - All manifest types defined in scripts package and re-exported via web app.
+- `home` reuses `ManifestFile`/`ManifestJump` from `@skydock/scripts` via `web/app/components/types.ts`.
+- Shared UI lives in `web/app/components/` (flat, no `review/` subfolder).
 - Additional types for library view also exported from scripts.
 
 ### 8.3 Server Utilities
@@ -144,11 +146,11 @@ output/
 - **HLS:** Live-transcodes to HLS segments for main playback.
 - **Manifest:** Full CRUD for jumps, files, calibration, execution.
 
-## 9. Review UI — Logic
+## 9. Home — Review UI — Logic
 
 > This section is the **behavioral spec** for the Review UI. It defines state, transitions and invariants.
 
-The Review UI is a single-page app that loads the manifest and lets the user group files into jumps.
+The Review UI is mounted at `/` (`routes/home.tsx`) and lets the user group files into jumps. Home runs on local fixture jumps (`useState`, `groupJumpsByDay`) with no loader and no manifest. Sections marked `Full Review (not in home)` describe the loader-backed app and are not mounted in home.
 
 ### 9.1 Pure helpers
 
@@ -160,11 +162,20 @@ The Review UI is a single-page app that loads the manifest and lets the user gro
 
 ### 9.2 State (in-memory, not persisted except where noted)
 
-- `manifest` — from loader. Null triggers empty states.
+Home state:
+
+- `jumps` — local fixture jumps, grouped for display.
 - `selection` — tracks selected files by group.
 - `lastClicked` — for shift-range selection.
-- `preview` — files, current index, and label for preview drawer.
+- `preview` — files, current index, and group for preview drawer.
 - `compareIds` — max 2 jump IDs for comparison.
+- `dropDialog` — pending cross-jump move/copy dialog.
+- `dropHint` — insertion index indicator during drag.
+- `dragDataRef` — packaged drag payload, cleared after drop.
+
+Full Review state (loader-backed app, not in home):
+
+- `manifest` — from loader. Null triggers empty states.
 - `showCompare` — toggle for compare drawer.
 - `viewMode` — list or grid display.
 - `systemStatus` — polled from API every 2 seconds.
@@ -218,7 +229,7 @@ All drag and drop operations follow these rules:
 - Moving or copying files between jumps shows dialog with Move, Copy, Cancel options.
 - If target jump is far away, use tray as intermediate step: select files, scroll to target, drag from tray.
 
-### 9.7 Transitions — Timeline drag
+### 9.7 Transitions — Timeline drag (Full Review, not in home)
 
 - Timeline bar click selects jump for comparison.
 - Timeline bar drag shifts jump day with snap options (15min or 24h with Shift key).
@@ -239,11 +250,11 @@ All drag and drop operations follow these rules:
 - Compare drawer shows 2 columns, merge combines jumps.
 - Preview drawer navigates files with prev/next, escape closes.
 
-### 9.11 Transitions — Video cropper
+### 9.11 Transitions — Video cropper (Full Review, not in home)
 
 - Seek to time clamps to valid range. Checks if time is buffered, seeks directly or commits offset. Time from screen position via bounding rect. Wheel zoom centered on cursor. Pointer events for dragging crop markers. Start/End here sets crop points. Apply saves crop to manifest.
 
-### 9.12 Transitions — Streaming
+### 9.12 Transitions — Streaming (Full Review, not in home)
 
 - fMP4 endpoint live-transcodes with hardware acceleration. Returns chunked video with proper headers. Concurrency capped with retry headers.
 - HLS endpoint live-transcodes to segments. Returns playlist. Sessions auto-cleaned after idle timeout. Request abort kills process.
@@ -253,7 +264,7 @@ All drag and drop operations follow these rules:
 
 - Layout, styling, colors, content visibility, thumbnails, hour markers, tooltips, icons, filter pills are presentation details. They live in JSX and may change without breaking logic tests.
 
-### 9.14 Video Preview & Live Streaming — Details
+### 9.14 Video Preview & Live Streaming — Details (Full Review, not in home)
 
 #### Server — dual endpoints
 

@@ -1,8 +1,8 @@
 import { expect, test, type Locator } from '@playwright/test'
 
-test.describe('demo — UX rules from RULES.md §9', () => {
+test.describe('Home — UX rules from RULES.md §9', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/demo')
+    await page.goto('/')
     await expect(page.getByText('Review Proposed Jumps')).toBeVisible()
     await expect(page.locator('[data-hydrated="true"]')).toBeVisible()
   })
@@ -275,9 +275,8 @@ test.describe('demo — UX rules from RULES.md §9', () => {
   })
 
   test.describe('§9.7 Header & empty states', () => {
-    test('header shows SkyDock link and demo badge', async ({ page }) => {
+    test('header shows SkyDock link and home badge', async ({ page }) => {
       await expect(page.locator('header').getByText('SkyDock')).toBeVisible()
-      await expect(page.getByText('DEMO MODE')).toBeVisible()
     })
 
     test('scan button is disabled', async ({ page }) => {
