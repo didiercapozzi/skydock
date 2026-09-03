@@ -36,6 +36,12 @@ type DropHint = {
   index: number
 }
 
+type PreviewState = {
+  files: ManifestFile[]
+  index: number
+  groupId: string
+} | null
+
 const VIDEO_EXTS = new Set(['mp4', 'mov', 'avi', 'mkv', 'mts', 'm4v', '3gp'])
 
 const isVideoFile = (filename: string): boolean => {
@@ -267,6 +273,7 @@ const FileRow = ({
   selected,
   isInMultipleJumps,
   onSelect,
+  onPreview,
   onDragStart,
   onDragEnd
 }: {
@@ -275,6 +282,7 @@ const FileRow = ({
   selected: boolean
   isInMultipleJumps: boolean
   onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
+  onPreview: (file: ManifestFile, groupId: string) => void
   onDragStart?: (e: React.DragEvent, groupId: string, paths: string[]) => void
   onDragEnd?: () => void
 }) => (
@@ -283,7 +291,7 @@ const FileRow = ({
     draggable
     onDragStart={(e) => onDragStart?.(e, groupId, [file.path])}
     onDragEnd={() => onDragEnd?.()}
-    onClick={(e) => onSelect(groupId, file.path, e.ctrlKey || e.metaKey, e.shiftKey)}
+    onClick={() => onPreview(file, groupId)}
     className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg cursor-pointer select-none transition-all duration-150 ${
       selected
         ? 'bg-blue-50 ring-1 ring-blue-400 shadow-sm'
@@ -297,7 +305,7 @@ const FileRow = ({
       onChange={() => {}}
       onClick={(e) => {
         e.stopPropagation()
-        onSelect(groupId, file.path, true, false)
+        onSelect(groupId, file.path, e.ctrlKey || e.metaKey, e.shiftKey)
       }}
       className='h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500'
     />
@@ -320,6 +328,7 @@ const JumpCard = ({
   selection,
   dropIndex,
   onSelect,
+  onPreview,
   onDragStart,
   onDragEnd,
   onDrop,
@@ -330,6 +339,7 @@ const JumpCard = ({
   selection: SelectionMap
   dropIndex: number | null
   onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
+  onPreview: (file: ManifestFile, groupId: string) => void
   onDragStart?: (e: React.DragEvent, groupId: string, paths: string[]) => void
   onDragEnd?: () => void
   onDrop?: (e: React.DragEvent, targetJumpId: string) => void
@@ -397,6 +407,7 @@ const JumpCard = ({
               selected={!!selection[jump.id]?.[file.path]}
               isInMultipleJumps={false}
               onSelect={onSelect}
+              onPreview={onPreview}
               onDragStart={onDragStart}
               onDragEnd={onDragEnd}
             />
@@ -418,6 +429,7 @@ const Demo = () => {
   const [compareIds, setCompareIds] = useState<string[]>([])
   const [dropDialog, setDropDialog] = useState<DropDialog | null>(null)
   const [dropHint, setDropHint] = useState<DropHint | null>(null)
+  const [preview, setPreview] = useState<PreviewState>(null)
   const [jumps, setJumps] = useState<ManifestJump[]>(fakeJumps)
   const lastClickedRef = useRef<string | null>(null)
   const dragDataRef = useRef<DragData | null>(null)
@@ -427,6 +439,15 @@ const Demo = () => {
   useEffect(() => {
     mainRef.current?.setAttribute('data-hydrated', 'true')
   }, [])
+
+  useEffect(() => {
+    if (!preview) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPreview(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [preview])
 
   const filesInJumps = new Set(jumps.flatMap((j) => j.files.map((f) => f.path)))
   const unassignedFiles = fakeFiles.filter((f) => !filesInJumps.has(f.path))
@@ -498,6 +519,18 @@ const Demo = () => {
       return [...prev, jumpId]
     })
   }, [])
+
+  const handlePreview = useCallback(
+    (file: ManifestFile, groupId: string) => {
+      const files =
+        groupId === 'unassigned'
+          ? unassignedFiles
+          : (jumps.find((j) => j.id === groupId)?.files ?? [file])
+      const found = files.findIndex((f) => f.path === file.path)
+      setPreview({ files, index: found === -1 ? 0 : found, groupId })
+    },
+    [jumps, unassignedFiles]
+  )
 
   const handleDragStart = useCallback(
     (e: React.DragEvent, groupId: string, paths: string[]) => {
@@ -706,6 +739,7 @@ const Demo = () => {
                   selected={!!selection['unassigned']?.[file.path]}
                   isInMultipleJumps={false}
                   onSelect={handleSelect}
+                  onPreview={handlePreview}
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
                 />
@@ -749,6 +783,7 @@ const Demo = () => {
                       selection={selection}
                       dropIndex={dropHint && dropHint.jumpId === jump.id ? dropHint.index : null}
                       onSelect={handleSelect}
+                      onPreview={handlePreview}
                       onDragStart={handleDragStart}
                       onDragEnd={handleDragEnd}
                       onDrop={handleDrop}
@@ -792,6 +827,71 @@ const Demo = () => {
                   Clear
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {preview && preview.files[preview.index] && (
+          <div
+            data-preview-drawer='true'
+            className='fixed top-0 right-0 bottom-0 w-[420px] max-w-[90vw] bg-white border-l border-gray-200 shadow-2xl z-40 flex flex-col'>
+            <div className='flex items-center justify-between px-4 py-3 border-b border-gray-100'>
+              <span className='font-mono truncate text-xs text-gray-700'>
+                {preview.files[preview.index].filename}
+              </span>
+              <button
+                type='button'
+                aria-label='Close preview'
+                onClick={() => setPreview(null)}
+                className='px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors'>
+                Close
+              </button>
+            </div>
+            <div className='flex-1 flex items-center justify-center bg-gray-950 p-4 overflow-hidden'>
+              {isVideoFile(preview.files[preview.index].filename) ? (
+                <video
+                  controls
+                  src={preview.files[preview.index].path}
+                  className='max-h-full max-w-full rounded'
+                />
+              ) : (
+                <img
+                  src={preview.files[preview.index].path}
+                  alt={preview.files[preview.index].filename}
+                  className='max-h-full max-w-full rounded object-contain'
+                />
+              )}
+            </div>
+            <div className='px-4 py-2 border-t border-gray-100 text-xs text-gray-500 tabular-nums'>
+              {formatTime(preview.files[preview.index].mtime)} ·{' '}
+              {formatSize(preview.files[preview.index].size)} · demo placeholder, no media file
+            </div>
+            <div className='flex items-center justify-between px-4 py-3 border-t border-gray-100'>
+              <button
+                type='button'
+                aria-label='Previous file'
+                disabled={preview.index === 0}
+                onClick={() =>
+                  setPreview((p) => (p ? { ...p, index: Math.max(0, p.index - 1) } : p))
+                }
+                className='px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed'>
+                Previous
+              </button>
+              <span className='text-xs text-gray-500 tabular-nums'>
+                {preview.index + 1} / {preview.files.length}
+              </span>
+              <button
+                type='button'
+                aria-label='Next file'
+                disabled={preview.index === preview.files.length - 1}
+                onClick={() =>
+                  setPreview((p) =>
+                    p ? { ...p, index: Math.min(p.files.length - 1, p.index + 1) } : p
+                  )
+                }
+                className='px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed'>
+                Next
+              </button>
             </div>
           </div>
         )}

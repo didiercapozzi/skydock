@@ -8,28 +8,28 @@ test.describe('demo — UX rules from RULES.md §9', () => {
   })
 
   test.describe('§9.4 File selection', () => {
-    test('click file row selects it, shows tray', async ({ page }) => {
+    test('checkbox click selects it, shows tray', async ({ page }) => {
       const firstRow = page.locator('[data-file-row]').first()
-      await firstRow.click()
+      await firstRow.getByRole('checkbox').click()
       await expect(firstRow).toHaveClass(/bg-blue-50/)
       await expect(page.locator('[data-staging-tray]')).toBeVisible()
       await expect(page.getByText('1 file selected')).toBeVisible()
     })
 
-    test('ctrl+click adds to selection without clearing', async ({ page }) => {
+    test('ctrl+click checkbox adds to selection without clearing', async ({ page }) => {
       const rows = page.locator('[data-file-row]')
-      await rows.nth(0).click()
-      await rows.nth(1).click({ modifiers: ['Control'] })
+      await rows.nth(0).getByRole('checkbox').click()
+      await rows.nth(1).getByRole('checkbox').click({ modifiers: ['Control'] })
       await expect(page.getByText('2 files selected')).toBeVisible()
       await expect(rows.nth(0)).toHaveClass(/bg-blue-50/)
       await expect(rows.nth(1)).toHaveClass(/bg-blue-50/)
     })
 
-    test('click without ctrl clears previous selection', async ({ page }) => {
+    test('checkbox click without ctrl clears previous selection', async ({ page }) => {
       const rows = page.locator('[data-file-row]')
-      await rows.nth(0).click()
+      await rows.nth(0).getByRole('checkbox').click()
       await expect(page.getByText('1 file selected')).toBeVisible()
-      await rows.nth(3).click()
+      await rows.nth(3).getByRole('checkbox').click()
       await expect(page.getByText('1 file selected')).toBeVisible()
       await expect(rows.nth(0)).not.toHaveClass(/bg-blue-50/)
       await expect(rows.nth(3)).toHaveClass(/bg-blue-50/)
@@ -37,16 +37,16 @@ test.describe('demo — UX rules from RULES.md §9', () => {
 
     test('deselect last file hides tray', async ({ page }) => {
       const firstRow = page.locator('[data-file-row]').first()
-      await firstRow.click()
+      await firstRow.getByRole('checkbox').click()
       await expect(page.locator('[data-staging-tray]')).toBeVisible()
-      await firstRow.click()
+      await firstRow.getByRole('checkbox').click()
       await expect(page.locator('[data-staging-tray]')).not.toBeVisible()
     })
 
-    test('shift+click selects range', async ({ page }) => {
+    test('shift+click checkbox selects range', async ({ page }) => {
       const rows = page.locator('[data-file-row]')
-      await rows.nth(0).click()
-      await rows.nth(2).click({ modifiers: ['Shift'] })
+      await rows.nth(0).getByRole('checkbox').click()
+      await rows.nth(2).getByRole('checkbox').click({ modifiers: ['Shift'] })
       await expect(rows.nth(0)).toHaveClass(/bg-blue-50/)
       await expect(rows.nth(1)).toHaveClass(/bg-blue-50/)
       await expect(rows.nth(2)).toHaveClass(/bg-blue-50/)
@@ -56,9 +56,9 @@ test.describe('demo — UX rules from RULES.md §9', () => {
   test.describe('§9.5 Staging tray', () => {
     test('tray shows selected count and clear button', async ({ page }) => {
       const rows = page.locator('[data-file-row]')
-      await rows.nth(0).click()
+      await rows.nth(0).getByRole('checkbox').click()
       await expect(rows.nth(0)).toHaveClass(/bg-blue-50/)
-      await rows.nth(1).click({ modifiers: ['Control'] })
+      await rows.nth(1).getByRole('checkbox').click({ modifiers: ['Control'] })
       await expect(rows.nth(1)).toHaveClass(/bg-blue-50/)
       const tray = page.locator('[data-staging-tray]')
       await expect(tray).toBeVisible()
@@ -68,7 +68,7 @@ test.describe('demo — UX rules from RULES.md §9', () => {
 
     test('clear button resets selection and hides tray', async ({ page }) => {
       const firstRow = page.locator('[data-file-row]').first()
-      await firstRow.click()
+      await firstRow.getByRole('checkbox').click()
       await expect(page.locator('[data-staging-tray]')).toBeVisible()
       await page.locator('[data-staging-tray]').getByRole('button', { name: 'Clear' }).click()
       await expect(page.locator('[data-staging-tray]')).not.toBeVisible()
@@ -77,7 +77,7 @@ test.describe('demo — UX rules from RULES.md §9', () => {
 
     test('tray is staging area, no move/copy toggle', async ({ page }) => {
       const firstRow = page.locator('[data-file-row]').first()
-      await firstRow.click()
+      await firstRow.getByRole('checkbox').click()
       const tray = page.locator('[data-staging-tray]')
       await expect(tray).toBeVisible()
       await expect(tray.getByText('Move')).not.toBeVisible()
@@ -110,7 +110,7 @@ test.describe('demo — UX rules from RULES.md §9', () => {
       })
 
       test('tray is draggable when files selected', async ({ page }) => {
-        await page.locator('[data-file-row]').first().click()
+        await page.locator('[data-file-row]').first().getByRole('checkbox').click()
         const tray = page.locator('[data-staging-tray]')
         await expect(tray).toBeVisible()
         await expect(tray).toHaveAttribute('draggable', 'true')
@@ -181,9 +181,9 @@ test.describe('demo — UX rules from RULES.md §9', () => {
       test('reorders grouped files within same jump to correct position', async ({ page }) => {
         const card = page.locator('[data-jump-card]').filter({ hasText: 'Jump 1' })
         const rows = card.locator('[data-file-row]')
-        await rows.nth(0).click()
+        await rows.nth(0).getByRole('checkbox').click()
         await expect(rows.nth(0)).toHaveClass(/bg-blue-50/)
-        await rows.nth(1).click({ modifiers: ['Control'] })
+        await rows.nth(1).getByRole('checkbox').click({ modifiers: ['Control'] })
         await expect(rows.nth(1)).toHaveClass(/bg-blue-50/)
         await dragRowToPosition(rows.nth(0), rows.nth(2), 'below')
         await expect(page.locator('[data-drop-dialog]')).not.toBeVisible()
@@ -205,13 +205,13 @@ test.describe('demo — UX rules from RULES.md §9', () => {
 
     test.describe('§9.6.4 Staging tray', () => {
       test('tray visible when files selected', async ({ page }) => {
-        await page.locator('[data-file-row]').first().click()
+        await page.locator('[data-file-row]').first().getByRole('checkbox').click()
         await expect(page.locator('[data-file-row]').first()).toHaveClass(/bg-blue-50/)
         await expect(page.locator('[data-staging-tray]')).toBeVisible()
       })
 
       test('tray is drag source with clear button', async ({ page }) => {
-        await page.locator('[data-file-row]').first().click()
+        await page.locator('[data-file-row]').first().getByRole('checkbox').click()
         const tray = page.locator('[data-staging-tray]')
         await expect(tray).toBeVisible()
         await expect(tray).toHaveAttribute('draggable', 'true')
@@ -219,7 +219,7 @@ test.describe('demo — UX rules from RULES.md §9', () => {
       })
 
       test('clear button resets selection', async ({ page }) => {
-        await page.locator('[data-file-row]').first().click()
+        await page.locator('[data-file-row]').first().getByRole('checkbox').click()
         await expect(page.locator('[data-file-row]').first()).toHaveClass(/bg-blue-50/)
         await expect(page.locator('[data-staging-tray]')).toBeVisible()
         await page.locator('[data-staging-tray]').getByRole('button', { name: 'Clear' }).click()
@@ -229,7 +229,7 @@ test.describe('demo — UX rules from RULES.md §9', () => {
 
     test.describe('§9.6.5 User interactions', () => {
       test('tray drag onto distant jump shows dialog', async ({ page }) => {
-        await page.locator('[data-file-row]').first().click()
+        await page.locator('[data-file-row]').first().getByRole('checkbox').click()
         const tray = page.locator('[data-staging-tray]')
         await expect(tray).toBeVisible()
         await mouseDrag(tray, page.locator('[data-jump-card]').nth(3))
@@ -241,7 +241,7 @@ test.describe('demo — UX rules from RULES.md §9', () => {
         const sourceCard = jumpCards.filter({ hasText: 'Jump 1' })
         const targetCard = jumpCards.filter({ hasText: 'Jump 2' })
         const sourceRow = sourceCard.locator('[data-file-row]').first()
-        await sourceRow.click()
+        await sourceRow.getByRole('checkbox').click()
         await expect(sourceRow).toHaveClass(/bg-blue-50/)
         await expect(page.locator('[data-staging-tray]')).toBeVisible()
         await mouseDrag(sourceRow, targetCard)
@@ -259,7 +259,7 @@ test.describe('demo — UX rules from RULES.md §9', () => {
         const sourceCard = jumpCards.filter({ hasText: 'Jump 1' })
         const targetCard = jumpCards.filter({ hasText: 'Jump 2' })
         const sourceRow = sourceCard.locator('[data-file-row]').first()
-        await sourceRow.click()
+        await sourceRow.getByRole('checkbox').click()
         await expect(sourceRow).toHaveClass(/bg-blue-50/)
         await expect(page.locator('[data-staging-tray]')).toBeVisible()
         await mouseDrag(sourceRow, targetCard)
@@ -346,6 +346,69 @@ test.describe('demo — UX rules from RULES.md §9', () => {
       await checkbox1.click()
       await checkbox2.click()
       await expect(page.getByText('2 jumps selected')).toBeVisible()
+    })
+  })
+
+  test.describe('§9.10 Preview drawer', () => {
+    test('row click opens preview drawer without selecting', async ({ page }) => {
+      const firstRow = page.locator('[data-file-row]').first()
+      await firstRow.click()
+      const drawer = page.locator('[data-preview-drawer]')
+      await expect(drawer).toBeVisible()
+      await expect(firstRow).not.toHaveClass(/bg-blue-50/)
+      await expect(page.locator('[data-staging-tray]')).not.toBeVisible()
+    })
+
+    test('preview shows video element for MP4 files', async ({ page }) => {
+      const card = page.locator('[data-jump-card]').filter({ hasText: 'Jump 1' })
+      await card.locator('[data-file-row]').first().click()
+      const drawer = page.locator('[data-preview-drawer]')
+      await expect(drawer).toBeVisible()
+      await expect(drawer.getByText('DJI_0001.MP4')).toBeVisible()
+      await expect(drawer.locator('video')).toBeVisible()
+    })
+
+    test('preview shows image element for JPG files', async ({ page }) => {
+      const card = page.locator('[data-jump-card]').filter({ hasText: 'Jump 1' })
+      await card.locator('[data-file-row]').nth(2).click()
+      const drawer = page.locator('[data-preview-drawer]')
+      await expect(drawer).toBeVisible()
+      await expect(drawer.getByText('DJI_0003.JPG')).toBeVisible()
+      await expect(drawer.locator('img')).toBeVisible()
+    })
+
+    test('checkbox click selects without opening preview', async ({ page }) => {
+      const firstRow = page.locator('[data-file-row]').first()
+      await firstRow.getByRole('checkbox').click()
+      await expect(firstRow).toHaveClass(/bg-blue-50/)
+      await expect(page.locator('[data-preview-drawer]')).not.toBeVisible()
+    })
+
+    test('escape closes preview', async ({ page }) => {
+      await page.locator('[data-file-row]').first().click()
+      const drawer = page.locator('[data-preview-drawer]')
+      await expect(drawer).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(drawer).not.toBeVisible()
+    })
+
+    test('close button closes preview', async ({ page }) => {
+      await page.locator('[data-file-row]').first().click()
+      const drawer = page.locator('[data-preview-drawer]')
+      await expect(drawer).toBeVisible()
+      await drawer.getByRole('button', { name: 'Close' }).click()
+      await expect(drawer).not.toBeVisible()
+    })
+
+    test('prev and next navigate files within jump', async ({ page }) => {
+      const card = page.locator('[data-jump-card]').filter({ hasText: 'Jump 1' })
+      await card.locator('[data-file-row]').first().click()
+      const drawer = page.locator('[data-preview-drawer]')
+      await expect(drawer.getByText('DJI_0001.MP4')).toBeVisible()
+      await drawer.getByRole('button', { name: 'Next' }).click()
+      await expect(drawer.getByText('DJI_0002.MP4')).toBeVisible()
+      await drawer.getByRole('button', { name: 'Previous' }).click()
+      await expect(drawer.getByText('DJI_0001.MP4')).toBeVisible()
     })
   })
 
