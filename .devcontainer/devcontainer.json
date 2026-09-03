@@ -13,7 +13,8 @@
         "eamodio.gitlens",
         "rogalmic.bash-debug",
         "oxc.oxc-vscode",
-        "vitest.explorer"
+        "vitest.explorer",
+        "ms-playwright.playwright"
       ]
     }
   }

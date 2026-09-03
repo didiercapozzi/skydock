@@ -4,7 +4,8 @@
   "workspaces": [
     "web",
     "desktop",
-    "packages/skydock-scripts"
+    "packages/skydock-scripts",
+    "packages/ui"
   ],
   "type": "module",
   "scripts": {
