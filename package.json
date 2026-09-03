@@ -9,6 +9,7 @@
   "type": "module",
   "scripts": {
     "check": "npm run typecheck && npm run format:check && npm run lint",
+    "dev": "npm run dev --workspace=@workspace/web",
     "execute": "npx tsx packages/skydock-scripts/src/execute.ts",
     "fc": "npm run format && npm run check",
     "format": "oxfmt --config oxfmt.config.ts .",
@@ -18,6 +19,7 @@
     "opencode:login": "opencode providers login --provider opencode-go",
     "opencode:logout": "opencode providers logout opencode-go",
     "opencode:models": "opencode models opencode-go",
+    "predev": "npx --yes kill-port 5173 || true",
     "process": "npx tsx packages/skydock-scripts/src/process.ts",
     "proxies": "npx tsx packages/skydock-scripts/src/proxies.ts",
     "scan": "npx tsx packages/skydock-scripts/src/scan.ts",
