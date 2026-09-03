@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
+import { loadManifest } from '@skydock/scripts'
+import type { Route } from './+types/home'
 import { DropActionDialog } from '../components/drop-action-dialog'
 import { FileRow } from '../components/file-row'
 import { JumpCard } from '../components/jump-card'
@@ -16,143 +18,23 @@ import type {
 } from '../components/types'
 import { getDropIndex, groupJumpsByDay } from '../components/utils'
 
-const baseTime = Math.floor(Date.now() / 1000) - 86400
-
-const fakeFiles: ManifestFile[] = [
-  {
-    path: '/demo/DJI_0001.MP4',
-    size: 245_000_000,
-    mtime: baseTime + 33125,
-    filename: 'DJI_0001.MP4',
-    id: 'a'.repeat(16)
-  },
-  {
-    path: '/demo/DJI_0002.MP4',
-    size: 198_700_000,
-    mtime: baseTime + 33333,
-    filename: 'DJI_0002.MP4',
-    id: 'b'.repeat(16)
-  },
-  {
-    path: '/demo/DJI_0003.JPG',
-    size: 9_400_000,
-    mtime: baseTime + 33361,
-    filename: 'DJI_0003.JPG',
-    id: 'c'.repeat(16)
-  },
-  {
-    path: '/demo/DJI_0004.MP4',
-    size: 312_500_000,
-    mtime: baseTime + 36131,
-    filename: 'DJI_0004.MP4',
-    id: 'd'.repeat(16)
-  },
-  {
-    path: '/demo/DJI_0005.MP4',
-    size: 287_300_000,
-    mtime: baseTime + 36347,
-    filename: 'DJI_0005.MP4',
-    id: 'e'.repeat(16)
-  },
-  {
-    path: '/demo/DJI_0006.JPG',
-    size: 8_200_000,
-    mtime: baseTime + 36361,
-    filename: 'DJI_0006.JPG',
-    id: 'f'.repeat(16)
-  },
-  {
-    path: '/demo/DJI_0007.MP4',
-    size: 156_800_000,
-    mtime: baseTime + 41422,
-    filename: 'DJI_0007.MP4',
-    id: 'g'.repeat(16)
-  },
-  {
-    path: '/demo/DJI_0008.MP4',
-    size: 203_100_000,
-    mtime: baseTime + 41625,
-    filename: 'DJI_0008.MP4',
-    id: 'h'.repeat(16)
-  },
-  {
-    path: '/demo/DJI_0009.JPG',
-    size: 7_900_000,
-    mtime: baseTime + 41641,
-    filename: 'DJI_0009.JPG',
-    id: 'i'.repeat(16)
-  },
-  {
-    path: '/demo/DJI_0010.MP4',
-    size: 178_400_000,
-    mtime: baseTime + 41838,
-    filename: 'DJI_0010.MP4',
-    id: 'j'.repeat(16)
-  },
-  {
-    path: '/demo/DJI_0011.JPG',
-    size: 8_100_000,
-    mtime: baseTime + 41875,
-    filename: 'DJI_0011.JPG',
-    id: 'k'.repeat(16)
-  },
-  {
-    path: '/demo/DJI_0012.MP4',
-    size: 142_200_000,
-    mtime: baseTime + 55822,
-    filename: 'DJI_0012.MP4',
-    id: 'l'.repeat(16)
-  },
-  {
-    path: '/demo/DJI_0013.MP4',
-    size: 98_500_000,
-    mtime: baseTime + 56100,
-    filename: 'DJI_0013.MP4',
-    id: 'm'.repeat(16)
-  },
-  {
-    path: '/demo/DJI_0014.JPG',
-    size: 6_800_000,
-    mtime: baseTime + 56200,
-    filename: 'DJI_0014.JPG',
-    id: 'n'.repeat(16)
+const loader = ({}: Route.LoaderArgs) => {
+  const outputDir = process.env.SKYDOCK_OUTPUT_DIR ?? '/workspace/output'
+  try {
+    return { manifest: loadManifest(`${outputDir}/manifest.json`) }
+  } catch {
+    return { manifest: null }
   }
-]
+}
 
-const fakeJumps: ManifestJump[] = [
-  {
-    id: 'jump_1',
-    label: 'Jump 1 — Tandem',
-    confirmed: false,
-    files: [fakeFiles[0], fakeFiles[1], fakeFiles[2]]
-  },
-  {
-    id: 'jump_2',
-    label: 'Jump 2 — Solo',
-    confirmed: false,
-    files: [fakeFiles[3], fakeFiles[4], fakeFiles[5]]
-  },
-  {
-    id: 'jump_3',
-    label: 'Jump 3 — Tandem',
-    confirmed: false,
-    files: [fakeFiles[6], fakeFiles[7], fakeFiles[8], fakeFiles[9], fakeFiles[10]]
-  },
-  {
-    id: 'jump_4',
-    label: 'Jump 4 — Video',
-    confirmed: false,
-    files: [fakeFiles[11]]
-  }
-]
-
-const Home = () => {
+const Home = ({ loaderData }: Route.ComponentProps) => {
+  const manifest = loaderData.manifest
   const [selection, setSelection] = useState<SelectionMap>({})
   const [compareIds, setCompareIds] = useState<string[]>([])
   const [dropDialog, setDropDialog] = useState<DropDialog | null>(null)
   const [dropHint, setDropHint] = useState<DropHint | null>(null)
   const [preview, setPreview] = useState<PreviewState>(null)
-  const [jumps, setJumps] = useState<ManifestJump[]>(fakeJumps)
+  const [jumps, setJumps] = useState<ManifestJump[]>(manifest?.jumps ?? [])
   const lastClickedRef = useRef<string | null>(null)
   const dragDataRef = useRef<DragData | null>(null)
   const mainRef = useRef<HTMLElement | null>(null)
@@ -162,8 +44,9 @@ const Home = () => {
     mainRef.current?.setAttribute('data-hydrated', 'true')
   }, [])
 
+  const manifestFiles = manifest?.files ?? []
   const filesInJumps = new Set(jumps.flatMap((j) => j.files.map((f) => f.path)))
-  const unassignedFiles = fakeFiles.filter((f) => !filesInJumps.has(f.path))
+  const unassignedFiles = manifestFiles.filter((f) => !filesInJumps.has(f.path))
 
   const selectedCount = Object.values(selection).reduce(
     (sum, group) => sum + Object.keys(group).length,
@@ -332,7 +215,7 @@ const Home = () => {
 
       setJumps((prev) => {
         const lookup = new Map<string, ManifestFile>()
-        for (const f of fakeFiles) lookup.set(f.path, f)
+        for (const f of manifestFiles) lookup.set(f.path, f)
         for (const j of prev) for (const f of j.files) lookup.set(f.path, f)
         const allPaths = Object.values(groups).flat()
 
@@ -359,6 +242,17 @@ const Home = () => {
     },
     [dropDialog]
   )
+
+  if (!loaderData.manifest) {
+    return (
+      <main className='min-h-screen bg-gradient-to-br from-gray-50 via-gray-50 to-gray-100'>
+        <div className='max-w-7xl mx-auto px-6 py-8'>
+          <h1 className='text-3xl font-bold text-gray-900'>No Manifest Found</h1>
+          <p className='text-gray-500 mt-2'>Run a scan to generate the manifest.</p>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main
@@ -404,7 +298,7 @@ const Home = () => {
           <div>
             <h1 className='text-3xl font-bold text-gray-900'>Review Proposed Jumps</h1>
             <p className='text-gray-500 mt-2'>
-              2026-08-24 — {jumps.length} jumps, {fakeFiles.length} files
+              2026-08-24 — {jumps.length} jumps, {manifestFiles.length} files
             </p>
           </div>
           {compareIds.length > 0 && (
@@ -558,5 +452,7 @@ const Home = () => {
     </main>
   )
 }
+
+export { loader }
 
 export default Home
