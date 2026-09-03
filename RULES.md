@@ -189,18 +189,18 @@ All drag and drop operations follow these rules:
 **Drag sources:**
 
 - **File row drag:** Packages file paths and source jump ID. If multiple files selected, carries all selected paths.
-- **Tray drag:** Packages files grouped by source jump with `text/x-staging-tray` type. Move/Copy mode determines operation.
+- **Tray drag:** Packages files grouped by source jump. Move/Copy mode determines operation.
 
 **Drop targets:**
 
 - **Jump card drop:** Moves or copies files from source to target jump. Uses move or copy based on mode. Clears selection after move.
-- **Reorder within same jump:** Dragging within same jump reorders files. Uses `reorder-files` action.
+- **Reorder within same jump:** Dragging within same jump reorders files.
 - **Tray drop:** Iterates each source group entry, performs move or copy per group. Clears selection after move.
 
 **Constraints:**
 
 - Processed jumps cannot receive drops (rejected).
-- `dragDataRef` and `trayDragRef` nulled in `finally` block after drop completes.
+- Drag references are cleared after drop completes.
 - Drop indicator shows above/below position during drag over file rows.
 
 ### 9.7 Transitions — Timeline drag
@@ -208,7 +208,7 @@ All drag and drop operations follow these rules:
 - Timeline bar click selects jump for comparison.
 - Timeline bar drag shifts jump day with snap options (15min or 24h with Shift key).
 - Drag commits only if offset ≥ 60 seconds.
-- Processed jumps have `cursor-not-allowed` and cannot be dragged.
+- Processed jumps cannot be dragged.
 
 ### 9.8 Transitions — Empty & header
 
