@@ -345,3 +345,29 @@ All drag and drop operations follow these rules:
 - use "const" instead of "let" or "var" every time you can
 - Scripts package: `@skydock/scripts` — all shared logic lives here
 - Never duplicate: if logic is needed in multiple places, extract to `@skydock/scripts`
+
+## 12. Rule Changes
+
+> RULES.md is the single source of truth. Any change that impacts a rule must follow this process.
+
+**Before implementing any change that may affect RULES.md:**
+
+1. **Identify impact:** Check if the change modifies any behavior described in §1-§11.
+2. **Warn user:** Present the affected sections and proposed modification.
+3. **Get approval:** Wait for user confirmation before proceeding.
+4. **Update RULES.md:** After implementation, update the relevant section(s) to reflect the new behavior.
+5. **Commit together:** Commit code changes and RULES.md updates in the same commit.
+
+**Examples of rule-impacting changes:**
+- Modifying manifest structure or file registry behavior
+- Changing scan/cluster thresholds or algorithms
+- Altering drag & drop operations or selection logic
+- Adding/removing API endpoints or changing their behavior
+- Modifying video preview, streaming, or crop interactions
+- Changing deduplication or file comparison logic
+
+**Non-rule changes (no warning needed):**
+- Bug fixes that preserve existing behavior
+- Refactoring that doesn't change external behavior
+- Presentation/styling changes (§9.13)
+- Test additions or updates
