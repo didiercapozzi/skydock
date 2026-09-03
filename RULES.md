@@ -21,11 +21,8 @@ output/
 │       ├── DJI_0011.MP4
 │       └── ...
 ├── .cache/                   # (live mode: empty — no proxies on disk; legacy: thumbs/filmstrip/logs)
-│   ├── thumbs/{id}.jpg       # legacy only
-│   ├── filmstrip/{id}/%04d.jpg
-│   └── logs/{id}.log
 ├── manifest.json             # File registry — source of truth (see §4)
-├── jumps.json                # Jumps — lightweight refs {id, cropStart?, cropEnd?} (see §4)
+├── jumps.json                # Jumps — lightweight refs (see §4)
 └── processed/                # After per-jump Process
     ├── jump_1/
     │   ├── DJI_0001.MP4
@@ -35,286 +32,281 @@ output/
 ```
 
 - `output` defaults to `/workspace/output` or `SKYDOCK_OUTPUT_DIR`.
-- `original_files/YYYY-MM-DD/` uses file `mtime` (`fs.statSync().mtimeMs`) and `fs.copyFileSync` to preserve timestamps for scan grouping.
+- `original_files/YYYY-MM-DD/` uses file `mtime` and preserves timestamps for scan grouping.
 
 ## 3. Deduplication (`processMedia()`)
 
-- Inputs: `{ cameraDirs: string[], outputDir?: string }`.
-- For each file: `filename = path.basename`; `targetDate` from `getCaptureDate()` (exiftool or mtime fallback); `destDir = originalFiles/targetDate`.
-- `fileMatchesExisting(src, destDir)`: if `destDir/filename` exists and `cmp -s src dest` → skip (same content). If exists but `cmp` differs → copy (overwritten on camera). If not exists → copy.
-- `fs.copyFileSync` + `fs.utimesSync` preserves timestamps.
-- Writes `output/.status/process.json` (`running` → `done` → `idle` after 5s) for `api/status`.
+- For each file: determine target date from capture date (exiftool or mtime fallback), destination is `original_files/targetDate`.
+- If destination file exists and content matches → skip (same content).
+- If destination file exists but content differs → copy (overwritten on camera).
+- If destination file doesn't exist → copy.
+- Preserves timestamps during copy.
+- Writes status file for API polling.
 
 ## 4. Manifest (`output/manifest.json` + `output/jumps.json`)
 
-```ts
-type ManifestFile = {
-  path: string
-  size: number
-  mtime: number
-  filename: string
-  id?: string // SHA-256(file) → 16 hex, computed at scan via computeFileId — sole truth
-  originalMtime?: number
-}
-type JumpFileRef = { id: string; cropStart?: number; cropEnd?: number }
-type ManifestJump = {
-  id: string
-  label: string
-  confirmed: boolean
-  files: ManifestFile[] // in-memory resolved via manifest.files lookup
-  processed?: boolean
-}
-type ManifestStatus = 'empty' | 'proposed' | 'confirmed' | 'executed'
-type Manifest = {
-  version: number
-  status: ManifestStatus
-  date: string
-  startDatetime: string
-  createdAt: string
-  theory: ManifestFile[]
-  files: ManifestFile[]
-  jumps: ManifestJump[]
-  cameraClockOffsetSeconds?: number
-}
-// Persisted on disk as two files (loadManifest merges, saveManifest splits):
-// manifest.json: { version, status, date, startDatetime, createdAt, theory, files, cameraClockOffsetSeconds }
-// jumps.json:    { jumps: Array<{ id, label, confirmed, processed?, files: JumpFileRef[] }> }
-```
-
-- `manifest.json` is **file registry** (source of truth, written by `scan` when files appear/disappear). `jumps.json` is **workspace** (jump grouping, labels, `confirmed`/`processed`, `JumpFileRef`s). `loadManifest` merges both (resolves `ref.id → ManifestFile`); `saveManifest` splits. Migration: old single `manifest.json` with `jumps[].files: ManifestFile[]` auto-splits on first `loadManifest`.
-- `scanMedia()` creates `version:1, status:'proposed', date: today, files: [all], theory: [], jumps: [clustered]`, then queues `generateProxies()` in background (both fresh and merge paths). `computeFileId` (streaming SHA-256) sets `file.id` at scan time.
-- `files` is flat list of all `original_files` sorted by `mtime`.
-- `jumps[].files` are **lightweight refs** `{id, cropStart?, cropEnd?}` — no `path`/`filename`/`size`/`mtime` duplication. Same file `id` may appear in multiple jumps via `copy-files`. In-memory `Manifest` resolves refs to full `ManifestFile` for UI/execute.
-- `id` is `jump_1 …` or preserved original id after recluster; `label` defaults `Jump N` and is editable.
-- `originalMtime` saved on first time shift to allow `reset-calibration` (stored on `manifest.files`).
-- `processed` marks per-jump execution (incremental). `manifest.status` is `executed` only when every jump is `processed`, `confirmed` when some processed, otherwise `proposed`.
-- Jump selection for compare/process is **not** persisted in manifest – it is React state `compareIds: string[]` in Review UI (checkbox `checked={isCompareSelected}`); `confirmed` remains only for execution bookkeeping and is auto-set by `execute-jumps`.
+- `manifest.json` is **file registry** (source of truth, written by `scan` when files appear/disappear). `jumps.json` is **workspace** (jump grouping, labels, confirmed/processed status).
+- All types (`ManifestFile`, `ManifestJump`, `Manifest`, `ManifestStatus`) are inferred from Zod schemas via `z.infer<typeof schema>` — never defined separately.
+- `loadManifest` merges both files; `saveManifest` splits them. Old single-file format auto-migrates on first load.
+- `scanMedia()` creates a new manifest with status `proposed`, today's date, all files, and clustered jumps.
+- `files` is flat list of all files sorted by `mtime`.
+- `jumps[].files` are lightweight refs — same file may appear in multiple jumps via copy. In-memory manifest resolves refs to full files for UI/execute.
+- Jump IDs are `jump_1 ...` or preserved original IDs after recluster; labels default to `Jump N` and are editable.
+- `originalMtime` saved on first time shift to allow reset-calibration.
+- `processed` marks per-jump execution (incremental). Manifest status becomes `executed` only when every jump is processed, `confirmed` when some processed, otherwise `proposed`.
+- Jump selection for compare/process is React state in Review UI, not persisted in manifest.
 
 ## 5. Scan & Cluster
 
-### 5.0 Live without disk — `api/stream` + `api/hls` 360p (no proxies)
+### 5.0 Live without disk
 
-- **Live mode (current):** No `.cache` proxies on disk. `scanMedia()`/`watcher`/`api/scan` no longer spawn `generateProxies`. `output/.cache/thumbs` + `filmstrip` not used.
-- **fMP4 streaming** (`api/stream.ts`): live-transcodes on demand via `ffmpeg` pipe to `Response` `Transfer-Encoding: chunked` `video/mp4` with `frag_keyframe+empty_moov+default_base_moof` (immediate `moov`, no tail Range). Used for thumbnails (`?thumb=1`) and crop bar fMP4 fallback. Concurrency capped `MAX_LIVE=6` (`SKYDOCK_LIVE_MAX`) `429 Retry-After:2`.
-- **HLS streaming** (`api.hls.ts`): live-transcodes to `.cache/hls/{uuid}/` temp dir via `ffmpeg -f hls` with `hls_time=4`, `hls_list_size=0` (all segments). Returns `.m3u8` playlist on `GET /api/hls?path=&seek=`. Segments served from same endpoint with `&segment=seg000.ts`. Sessions keyed by `path:seek`, auto-cleaned after30s idle. Used for main video playback via `use-hls-player.ts` hook.
-- **Hybrid approach:** `MediaPreview` uses HLS via `useHlsPlayer` for smooth adaptive seeking. `VideoCropper` shares the same `<video>` element — `video.currentTime` works through MSE. For far-seeks beyond buffered range, `onSeekCommit` updates `seekOffset` which restarts HLS from the new offset.
-- **Thumb mode:** `GET /api/stream?thumb=1&w=320&t=0.5` → `ffmpeg -ss 0.5 -vframes 1 -vf scale=320:-2 -q:v 3 -f image2 pipe:1` `image/jpeg` `Cache-Control: public max-age=3600`. `video-grid-thumb.tsx` uses `IntersectionObserver`.
-- **File ID:** Content-based `SHA-256(file)` streaming → 16 hex (`computeFileId`) — sole truth for `manifest.files[].id` and `jumps.json` refs (unchanged).
-- **HW acceleration:** Live uses `-hwaccel auto` + `scale=360:-2` for simplicity; could switch to `vaapi/qsv` `scale_vaapi/scale_qsv` via `SKYDOCK_DRI_DEVICE` `/dev/dri/renderD128` if needed.
-- Writes only `output/.status/scan.json` etc.; no `proxies.json` banner in live mode.
+- **Live mode (current):** No proxies on disk. Scan/watcher/API no longer spawn proxy generation.
+- **fMP4 streaming:** Live-transcodes on demand via ffmpeg pipe. Used for thumbnails and crop bar fallback. Concurrency capped.
+- **HLS streaming:** Live-transcodes to temp directory. Returns playlist on request. Sessions keyed by path and seek offset, auto-cleaned after idle timeout. Used for main video playback.
+- **Hybrid approach:** MediaPreview uses HLS for smooth adaptive seeking. VideoCropper shares the same video element. For far-seeks beyond buffered range, seek offset updates restart HLS from the new offset.
+- **Thumb mode:** Single frame extraction for grid thumbnails using IntersectionObserver.
+- **File ID:** Content-based SHA-256 hash → 16 hex characters — sole truth for manifest file IDs and jump refs.
 
 ### 5.1 `scanMedia()` — merge-on-scan
 
 - Requires `original_files/` to exist.
-- **File discovery:** Recursively finds media files using `MEDIA_EXTENSIONS_SET` (union of `VIDEO_EXTENSIONS` and `PHOTO_EXTENSIONS`: mp4, mov, avi, mkv, mts, m4v, 3gp, jpg, jpeg, png, dng, raw, tif, tiff, heic, heif, arw, cr2, cr3, nef, orf, rw2, raf).
-- **Merge behavior:** If `manifest.json` already exists, scans `original_files/` and merges new files into the existing manifest instead of regenerating it. Preserves all user edits (confirmed status, labels, file groupings, calibration offsets). Detects removed files even when all files are deleted from disk (runs merge against existing manifest).
-- **File comparison:** Uses content-based file ID as the identity key (streaming `SHA-256(file)` → 16 hex via `computeFileId`). Computes ID for each file on disk. Files in manifest whose ID no longer exists on disk are removed. New files (ID not in manifest) are added and clustered into jumps by the 1800 s gap threshold.
-- **Jump reclustering:** After adding/removing files, reclusters all files by mtime gaps (`> 1800 s` → new jump). Preserves jump metadata (id, label, confirmed) via majority voting: if a reclustered jump contains files from multiple original jumps, it inherits the id/label of the jump that contributed the most files.
-- **Fresh manifest:** If no manifest exists and files are found, creates `version:1, status:'proposed', date:today, files:[all], theory:[], jumps:[clustered]` from scratch. Returns unchanged if no files found and no manifest exists.
-- Writes `output/.status/scan.json` (`running` → `done` → `idle` after 5s) for `api/status`.
+- **File discovery:** Recursively finds media files using supported extensions (video: mp4, mov, avi, mkv, mts, m4v, 3gp; photo: jpg, jpeg, png, dng, raw, tif, tiff, heic, heif, arw, cr2, cr3, nef, orf, rw2, raf).
+- **Merge behavior:** If manifest exists, scans `original_files/` and merges new files into existing manifest. Preserves all user edits (confirmed status, labels, file groupings, calibration offsets). Detects removed files.
+- **File comparison:** Uses content-based file ID as identity key. Files in manifest whose ID no longer exists on disk are removed. New files are added and clustered into jumps.
+- **Jump reclustering:** After adding/removing files, reclusters all files by mtime gaps (>1800 seconds → new jump). Preserves jump metadata via majority voting.
+- **Fresh manifest:** If no manifest exists and files are found, creates new manifest from scratch.
+- Writes status file for API polling.
 
-### 5.2 `reclusterJumps(manifest, preservedPaths?)` (`@skydock/scripts/clustering`)
+### 5.2 `reclusterJumps()`
 
-- `JUMP_GAP_SECONDS = 1800`.
-- Dedupes duplicate `jump.id` first: if `seenIds` has id, assigns next `jump_N` and `Jump N` label.
-- If `preservedPaths` given, collect `preservedJumps: Set<ManifestJump>` (per-object, not per-id) containing any jump with a preserved path. Each preserved jump's files are kept as a single group (sorted but not split even if internal gap >1800) to avoid splitting a manually edited jump when it is shifted.
-- Remaining files clustered by 1800 s gap, then `preservedGroups + groups` sorted by `min mtime`, then merged: adjacent groups with `curMin - lastMax ≤ 1800` are merged (allows drift-corrected jumps to coalesce).
-- Previous jump mapping via `previousByPath` to preserve `label`/`confirmed`/`processed` via dominant vote; `usedIds` tracked via `preservedJumps.has(prev)`; preserved jumps keep original `id`/`label` via `[...preservedJumps].find(...)`.
+- Gap threshold: 1800 seconds.
+- Deduplicates jump IDs first.
+- If preserved paths given, keeps those jumps as single groups (not split even if internal gap >1800) to avoid splitting manually edited jumps.
+- Remaining files clustered by gap, then preserved and new groups sorted and merged if adjacent.
+- Previous jump mapping preserves label/confirmed/processed via dominant vote.
 
-### 5.3 `shiftFiles(manifest, paths, offset)` (`@skydock/scripts/clustering`)
+### 5.3 `shiftFiles()`
 
-- For each file in `manifest.files` and each `jump.files` where `path` in `paths`, save `originalMtime` if undefined, then `mtime += offset`. Updates both arrays (they are separate objects after JSON parse).
+- For each file in paths, saves original mtime if undefined, then adjusts mtime by offset. Updates both file registry and jump references.
 
 ## 6. Execute
 
-### 6.1 `executeMedia({ manifestPath?, jumpIds?, outputDir? })`
+### 6.1 `executeMedia()`
 
-- Default manifest `output/manifest.json`, `PROCESSED_DIR=output/processed`.
-- If jump IDs given, process only those; else process all `jumps.filter(j => j.confirmed && !j.processed)`.
-- For each jump, reads the jump label from the manifest, sanitizes it (alphanumeric + `.` + `-` + `_`), and creates `mkdir -p processed/sanitizedLabel` with subdirs `videos/` and `photos/`. Files are renamed to `sanitizedLabel_YYYYMMDD_HHMMSS.ext` (24h format, based on file mtime). If a video file has `cropStart`/`cropEnd` set and ffmpeg is available, the video is cropped to that range using `ffmpeg -ss -t -c copy`.
-- Writes `output/.status/execute.json` (`running` → `done` → `idle` after 5s) for `api/status` polling.
+- Default manifest `output/manifest.json`, processed directory `output/processed`.
+- If jump IDs given, process only those; else process all confirmed and unprocessed jumps.
+- For each jump: reads label, sanitizes it, creates directory structure with `videos/` and `photos/` subdirectories. Files renamed to standard format based on mtime. If crop range set and ffmpeg available, video is cropped.
+- Writes status file for API polling.
 
-### 6.2 `api.manifest` execute
+### 6.2 API execute
 
-- `execute-jumps` takes `jumpIds` (from Review React state `compareIds` filtered `!processed`; fallback all `confirmed && !processed` if empty), marks `confirmed=true`, saves, calls `executeMedia()` with those ids, then reloads manifest, sets `jump.processed=true` for those ids, and sets `manifest.status` to `executed` if all processed, `confirmed` if some, else leaves `proposed`.
+- Takes jump IDs from Review UI state, marks them confirmed, saves, executes, then marks them processed. Updates manifest status accordingly.
 
 ## 7. Simulation & Testing
 
-### 7.1 `simulateCameras({ outputDir?, clean?, duration?, numFiles?, devData? })`
+### 7.1 `simulateCameras()`
 
-- Base `.sim` with `camera1/`, `camera2/`.
-- Default: `today 09:00` base, `NUM_FILES=8` per camera, files every 30 s interleaved 15 s, `ffmpeg testsrc` if available or random data fallback.
-- `devData`: 18 files mixed `JPG`/`MP4` across 2 days → 4 jumps total, demonstrates intra-jump 90 s gaps and inter-jump 40–45 min gaps. Alternates cameras per file.
+- Creates simulated camera directories with test files.
+- Default: today at 09:00, 8 files per camera, files every 30 seconds interleaved.
+- Dev data mode: 18 files across 2 days → 4 jumps total, demonstrates intra-jump gaps and inter-jump gaps.
 
-### 7.2 `watcher({ camDirs?, testMode?, runOnce?, outputDir? })`
+### 7.2 `watcher()`
 
-- Polls `SKYDOCK_OUTPUT_DIR` (default `/workspace/output`), finds camera root (not intermediate dirs), calls `processMedia()` + `scanMedia()` on detection.
+- Polls output directory, finds camera roots, calls process and scan on detection.
 
-### 7.3 `testPipeline({ camDirs?, numFiles?, outputDir?, clean? })`
+### 7.3 `testPipeline()`
 
-- `clean` removes `.sim` and `output`, generates cameras, runs `processMedia()` twice to test deduplication, asserts output exists, today folder exists, files copied, and second run copies 0.
+- Generates cameras, runs process twice to test deduplication, asserts output exists and files copied correctly.
 
 ## 8. Web App (React Router 8 Framework Mode, SSR)
 
-### 8.1 Routes (`app/routes.ts`)
+### 8.1 Routes
 
-- `index` → `routes/home.tsx`, `review` → `routes/review.tsx`, `jump/:date/:jumpDir` → `routes/jump.tsx`, `api/file`, `api/library`, `api/jump`, `api/open`, `api/simulate`, `api/scan`, `api/manifest`, `api/status`, `api/stream`, `api/hls`.
+- Home page, review page, jump detail page, and API endpoints for file serving, library, jumps, file opening, simulation, scanning, manifest operations, status, streaming, and HLS.
 
-### 8.2 Types (`@skydock/scripts/types`)
+### 8.2 Types
 
-- All manifest types (`ManifestFile`, `ManifestJump`, `Manifest`, `ManifestStatus`) are defined in `@skydock/scripts/src/types.ts` and re-exported via `app/lib/types.ts`.
-- `FileEntry`, `Jump`, `DayGroup` for library view are also exported from `@skydock/scripts`.
+- All manifest types defined in scripts package and re-exported via web app.
+- Additional types for library view also exported from scripts.
 
-### 8.3 `scanner.server.ts`
+### 8.3 Server Utilities
 
-- `getOutputDirPath()` returns `SKYDOCK_OUTPUT_DIR` or `/workspace/output`. Used by all server loaders.
+- Output directory path resolution uses environment variable or default.
+- File ID computation and manifest file ID enforcement.
 
-### 8.4 `fileId.server.ts`
+### 8.4 API Endpoints
 
-- Imports `computeFileId` and `ensureManifestFileIds` from `@skydock/scripts`. These add `id` to every file in `manifest.files`, `theory`, and `jumps[].files` if missing, deduplicates via `idOwners` map, and cleans legacy `thumbPath`/`filmstripDir` fields.
+- **Simulate:** Actions to add jumps or reset dev data.
+- **Scan:** Runs scan and ensures file IDs.
+- **File:** Serves files with range support and proper MIME types.
+- **Status:** Reads status files, returns system status polled by review UI.
+- **Stream:** Live-transcodes to fMP4 for thumbnails and crop bar.
+- **HLS:** Live-transcodes to HLS segments for main playback.
+- **Manifest:** Full CRUD for jumps, files, calibration, execution.
 
-### 8.5 `api.simulate.ts`
+## 9. Review UI — Logic
 
-- `action({request})` with `formAction`:
-  - `add-jump`: `simulateCameras({ numFiles: 4 })` → `processMedia()` both cams → `scanMedia()` → `ensureManifestFileIds`.
-  - default `reset dev data`: `rm -rf output`, `simulateCameras({ clean: true, devData: true })` → process → scan → ids.
+> This section is the **behavioral spec** for the Review UI. It defines state, transitions and invariants.
 
-### 8.6 `api.scan.ts`
+The Review UI is a single-page app that loads the manifest and lets the user group files into jumps.
 
-- Runs `scanMedia()` directly, then `ensureManifestFileIds()`.
+### 9.1 Pure helpers
 
-### 8.7 `api.file.ts`
-
-- `loader` with `?path=`: `path.resolve`, `fs.existsSync`, `fs.createReadStream` with `Range` support (`206` + `Content-Range`), MIME via extension. Uses `streamResponse` helper with `ReadableStream` and proper cleanup on `cancel()`. Adds `Access-Control-Allow-Origin: *` for thumb canvas.
-
-### 8.71 `api.status.ts` + `lib/status.server.ts` + `api/stream.ts` + `api/hls.ts`
-
-- `status.server.ts` reads `output/.status/{scan,execute,process}.json` (written atomically via `*.tmp` + `mv`). `TaskStatus {state: idle|running|done|error, message, total, done, processing?:string[], startedAt, updatedAt}`. Running is considered stale after 120s without update.
-- `api/status` `loader` returns `{ok:true, status: SystemStatus}` polled by review UI every2s.
-- `api/stream.ts` `loader` `GET ?path=&w=360` or `?thumb=1&w=320` live-transcodes via fMP4. `api/hls.ts` `loader` `GET ?path=&seek=` live-transcodes to HLS segments, returns `.m3u8` playlist.
-
-### 8.8 `api.manifest.ts` — handlers (all arrow functions, `ok`/`fail` helpers)
-
-- Imports `loadManifest`, `saveManifest`, `reclusterJumps`, `shiftFiles`, `sanitizeLabel` from `@skydock/scripts`.
-- Helpers: `asString`, `asStringArray`, `requireManifest`, `requireJump`, `requireUnprocessed`, `removeProcessedDir`, `requireProcessedPaths`, `isAllProcessed`, `applyShift`, `ok`, `fail`.
-- Handlers map: `update-label`, `confirm-jump`/`confirm-all`, `delete-jump`, `create-jump`, `move-files` / `remove-files`, `copy-files`, `reorder-files`, `merge-jumps`, `calibrate-sequences`, `shift-sequences`, `reset-calibration`, `execute-jumps`, `unprocess-jump`, `rename-file`, `set-crop`.
-- `loader` returns `{manifest}`. `action` dispatches via `handlers[formAction]`, `requireManifest`, `saveManifest` and returns `ok` with `manifest`.
-
-## 9. Review UI — Logic (HTML/CSS independent)
-
-> This section is the **behavioral spec** for the Review UI. It defines state, transitions and invariants. Markup, Tailwind classes and layout are presentation details in §9.20 and must not be part of logic assertions. Tests in `TODO-UI-COVERAGE.md` assert against this section, not against class names.
-
-The Review UI is a single-page app `routes/review.tsx:27` that loads `manifest: Manifest|null` and lets the user group files into jumps. All logic below is pure and testable via `vitest` without DOM styling.
-
-### 9.1 Pure helpers (no React)
-
-- `groupJumpsByDay(jumps): DayGroup[]` (`components/review/utils.ts`) — groups by `min mtime` day, sorts days reverse-chronologically. Pure.
-- `getJumpBounds(jump): {start, end}` (`components/review/utils.ts`) — `min mtime`/`max mtime` of `jump.files`. Pure.
-- `reclusterJumps(manifest, preservedPaths?)` / `shiftFiles(manifest, paths, offset)` (`@skydock/scripts/clustering.ts`, `JUMP_GAP_SECONDS=1800`) — pure manifest transforms.
-- `sanitizeLabel(label)` (`@skydock/scripts/utils.ts`) — pure.
-- `formatTime(mtime)` / `formatBytes(size)` / `formatTimeCode(t, FPS=30)` — pure display helpers, tested in `ui-preview`.
+- `groupJumpsByDay()` — groups jumps by minimum mtime day, sorts days reverse-chronologically.
+- `getJumpBounds()` — returns minimum and maximum mtime of jump files.
+- `reclusterJumps()` / `shiftFiles()` — pure manifest transforms.
+- `sanitizeLabel()` — pure label sanitization.
+- Display helpers for time, bytes, and timecodes.
 
 ### 9.2 State (in-memory, not persisted except where noted)
 
-- `manifest: Manifest|null` — from loader `ensureManifestFileIds` → `loadManifest`. `null` → empty states (§9.7).
-- `selection: SelectionMap = Record<groupId, Record<path, true>>` (`review.tsx:31`), `lastClicked: string|null` (`review.tsx:32`).
-- `preview: PreviewState|null {files: ManifestFile[], index: number, label: string}` (`review.tsx:33`, `types.ts`).
-- `copyMode: boolean` (`review.tsx:34`), `compareIds: string[]` max 2 (`review.tsx:35`), `showCompare: boolean` (`review.tsx:36`), `viewMode: 'list'|'grid'` (`review.tsx:37`).
-- `systemStatus: SystemStatus|null` — polled `fetch('/api/status')` every 2s (`review.tsx:45`), `cancelled` flag on unmount.
-- `preview.seekOffset: number` (`preview-drawer.tsx:20`) — HLS restart offset, `videoDuration: number` from `GET /api/duration` (ffprobe authoritative).
-- `VideoCropper` internal: `{start?,end?}` crop, `zoomLevel: number` (1..50) + `viewOffset: 0.5`, `dragging: 'start'|'end'|'playhead'|null`, `scrubTime: number|null`, `playhead = baseSeek + video.currentTime` via `useSyncExternalStore` + `requestAnimationFrame` (`video-cropper.tsx:51`).
-- `media-preview` state: `isLoading/useFallback/retryKey/error` via `useReducer` (`media-preview.tsx:14`), `LOADING_TIMEOUT_MS=20_000`.
-- `hls` session key: `path:seek` (`api.hls.ts:74`), `active: Set<proc>` capped `MAX_LIVE=6` (`SKYDOCK_LIVE_MAX`).
+- `manifest` — from loader. Null triggers empty states.
+- `selection` — tracks selected files by group.
+- `lastClicked` — for shift-range selection.
+- `preview` — files, current index, and label for preview drawer.
+- `copyMode` — toggle for copy vs move operations.
+- `compareIds` — max 2 jump IDs for comparison.
+- `showCompare` — toggle for compare drawer.
+- `viewMode` — list or grid display.
+- `systemStatus` — polled from API every 2 seconds.
+- Preview state includes seek offset for HLS restart.
+- VideoCropper internal state: crop range, zoom, dragging, scrub time.
+- Media preview state: loading, fallback, retry key, error.
+- HLS session key: path and seek offset.
 
-### 9.3 Invariants
+### 9.4 Transitions — File selection
 
-- `filesInJumps = Set(manifest.jumps.flatMap(files.path))` (`review.tsx:80`); `unassignedFiles = manifest.files.filter(p not in filesInJumps)` (`review.tsx:85`); `multiJumpFiles = Set(paths where count>1)` (`review.tsx:90`).
-- `jumpsByDay` always derived, never mutated directly. `processed` jumps are read-only for drop/reorder.
-- `compareIds` never persisted in `manifest`; `confirmed` is manifest-persisted execution flag, `processed` increments `manifest.status` → `executed` when all `processed`.
-- `hasCalibration = files.some(originalMtime!==undefined)` (`review.tsx:109`) controls Reset dates.
+- Toggle selection per file. Checkbox always toggles. Ctrl/Meta adds without clearing. Shift selects range from last clicked. Deselect last in group deletes group.
 
-### 9.4 Transitions — File selection (`review.tsx:114`)
+### 9.5 Transitions — Staging tray
 
-- `handleSelect(groupId, path, ctrl/shift)` — toggles `selection[groupId][path]`; checkbox always toggles; `Ctrl/Meta` adds without clearing; `Shift` range from `lastClicked` via `allFileIds` (`review.tsx:101`); deselect last in group deletes `selection[groupId]`.
+- Visible when files selected. Clear resets selection. Move/Copy toggle affects drag behavior. Dragging tray packages files and source groups.
 
-### 9.5 Transitions — Staging tray (`components/review/staging-tray.tsx`)
+### 9.6 Transitions — Drag & drop
 
-- Visible iff `selectedCount>0`. `Clear` → `setSelection({})`. `Move/Copy` toggle → `dataTransfer.effectAllowed` `move` vs `copy`. Dragging tray → `trayDragRef {filePaths, sourceGroups: Record<groupId, string[]>}` grouped, `text/x-staging-tray` set.
+- Drag start packages file paths and source jump. Reorder within same jump. Drop between jumps moves or copies files. Tray drop processes each source group. Processed targets rejected.
 
-### 9.6 Transitions — Drag & drop (`review.tsx:168`)
+### 9.7 Transitions — Empty & header
 
-- `handleDragStart(filePaths, sourceJumpId)` → `dragDataRef`. `handleReorder(jumpId, filePaths)` → `reorder-files`. `handleDrop(targetJumpId)` with `trayDragRef` → per `sourceGroups` entry `copy-files` if `copyMode` else `move-files`; clears selection after move. With `dragDataRef` → `move-files` or `copy-files` if unassigned. `dragDataRef/trayDragRef` nulled in `finally`. Processed target rejected.
+- No manifest shows "No Manifest Found" with Scan button. Empty status shows "No Files to Review". Banners per system status: scanning, copying, processing. Scan button disabled when scanning.
 
-### 9.7 Transitions — Empty & header (`review.tsx:363`)
+### 9.8 Transitions — Jump & timeline
 
-- `!manifest` → "No Manifest Found" + Scan; `status==='empty'` → "No Files to Review"; banners per `SystemStatus` (`scan:running → Scanning`, `process → Copying`, `execute → Processing`, `done → idle in 5s`).
+- Compare toggle limited to 2 jumps. Expand/collapse toggles view mode. Label save updates jump. Shift jump adjusts timestamps. Timeline bar click selects for comparison. Timeline drag shifts day with snap options.
 
-### 9.8 Transitions — Jump & timeline (`components/review/jump-card.tsx`, `timeline-jumps.tsx`)
+### 9.9 Transitions — Selected/Compare/Preview
 
-- `onCompareToggle(jumpId)` → toggle `compareIds` max 2. `expand/collapse` toggles `viewMode` globally. `onLabelSave → update-label`, `onShiftJump → shift-sequences` with `offsetSeconds`. `Timeline bar click` → `onSelect(compareIds)`, `drag bar` → `onShiftDay(handleShiftOffset)` snaps 15min / 24h with Shift, commits only if `|offset|≥60s`.
+- Selected jumps panel appears when jumps selected. Clear resets. Compare enables only with 2. Process executes unprocessed. Change Day shifts all selected jumps.
+- Compare drawer shows 2 columns, merge combines jumps.
+- Preview drawer navigates files with prev/next, escape closes.
 
-### 9.9 Transitions — Selected/Compare/Preview (`review.tsx:274`, `components/review/preview-drawer.tsx`)
+### 9.10 Transitions — Video cropper
 
-- `SelectedJumpsPanel` appears `compareIds.length>0`, `Clear→[]`, `Compare→setShowCompare(true)` enabled only when 2, `Process→execute-jumps filtered !processed`, `Change Day → newNoon-oldNoon → shift-sequences` per jump.
-- `CompareDrawer` when `showCompare&&compareJumps` 2 columns, `Merge into → merge-jumps sourceJumpIds:[target,source]`, closes + clears `compareIds`.
-- `PreviewDrawer` `handlePreview(files,index,label) → setPreview`; `handlePreviewPrev/Next` wrap `(index±1+len)%len`; `Escape`/`arrow keys` → `onClose`/`onPrev`/`onNext`; `videoRef` shared `baseSeek` hybrid seeking.
+- Seek to time clamps to valid range. Checks if time is buffered, seeks directly or commits offset. Time from screen position via bounding rect. Wheel zoom centered on cursor. Pointer events for dragging crop markers. Start/End here sets crop points. Apply saves crop to manifest.
 
-### 9.10 Transitions — Video cropper (`components/review/video-cropper.tsx`)
+### 9.11 Transitions — Streaming
 
-- `seekTo(time)` clamps `0..safeDuration`, `relative = time-baseSeek`, if `relative in video.buffered` → `video.currentTime=relative` else `onSeekCommit(clamped)`.
-- `timeFromX(clientX)` via `getBoundingClientRect`. Wheel zoom centered on cursor `zoomFactor 1.2` `MAX_ZOOM 50` → `viewOffset`. `pointer down` pauses if `!paused` + `setPointerCapture` + `dragging`; `pointer move` start `min(time,cropEnd-0.1)` / end `max(time,cropStart+0.1)` / playhead `seekTo`; `pointer up` clears. `Start here/End here → setCrop({start/end: currentTime}) + seekTo`; `Apply → set-crop filePath,cropStart,cropEnd`.
+- fMP4 endpoint live-transcodes with hardware acceleration. Returns chunked video with proper headers. Concurrency capped with retry headers.
+- HLS endpoint live-transcodes to segments. Returns playlist. Sessions auto-cleaned after idle timeout. Request abort kills process.
+- HLS player lazy-loads library. Uses MSE if supported, else native. Configures buffer lengths. Handles network and media errors gracefully. Destroys on unmount.
 
-### 9.11 Transitions — Streaming (`routes/api.stream.ts`, `api.hls.ts`, `use-hls-player.ts`)
+### 9.12 Presentation (non-logic)
 
-- `api/stream` fMP4 `?path=&w=&seek=` → `buildBaseArgs` + `scale=W:-2` + `FFMPEG_VIDEO/AUDIO_FLAGS` + `frag_keyframe+empty_moov` chunked `video/mp4`, 429 if `active.size≥MAX_LIVE`. Thumb `?thumb=1&w=&t=`.
-- `api/hls` `?path=&seek=` → `buildHlsArgs` `hls_time 4` `seg%03d.ts` `playlist.m3u8` `rewritePlaylist` `&segment=`, session `path:seek` 30s TTL `setTimeout 30_000`, `request.signal abort → proc.kill`.
-- `useHlsPlayer` lazy `import('hls.js')` `isSupported→MSE` else native, `maxBufferLength:30/60` `stopLoad→destroy` on src change/unmount, `NETWORK_ERROR→startLoad` `MEDIA_ERROR→recoverMediaError`.
-
-### 9.12 Presentation (non-logic, not asserted in `TODO-UI-COVERAGE`)
-
-Layout, Tailwind classes, colors/borders (`amber/blue/gray`), `content-visibility:auto`, `dark:` variants, `IntersectionObserver` thumbs, hour markers 0/6/12/18/24, tooltips, `List/Grid` icon, filter pills `▶ 12`/`▣ 11` are presentation details. They live in `*.tsx` JSX and may change without breaking logic tests which assert against state + `fetcher.submit` payloads + `fetch` calls, not class names.
+- Layout, styling, colors, content visibility, thumbnails, hour markers, tooltips, icons, filter pills are presentation details. They live in JSX and may change without breaking logic tests.
 
 ### 9.13 Video Preview & Live Streaming — Details
 
 #### Server — dual endpoints
 
-1. **fMP4** (`api/stream`): `ffmpeg -hwaccel auto -i src -vf scale=W:-2 -c:v libx264 -preset ultrafast -tune zerolatency -crf 28 ... -movflags frag_keyframe+empty_moov+default_base_moof -f mp4 pipe:1`. Chunked `video/mp4`, `Accept-Ranges: none`, `Cache-Control: no-store`. Used for thumbnails and crop bar fMP4 fallback. `seek` query param: when provided, ffmpeg starts from that offset (`-ss seek`). Concurrency capped at `MAX_LIVE` (default 6). Returns `429 Retry-After:2` when full.
+1. **fMP4:** Live-transcodes with hardware acceleration. Used for thumbnails and crop bar fallback. Seek parameter for offset. Concurrency capped with retry headers.
+2. **HLS:** Live-transcodes to segments. Returns playlist. Sessions keyed by path and seek, auto-cleaned after idle. Used for main playback.
 
-2. **HLS** (`api.hls`): `ffmpeg ... -hls_time 4 -hls_list_size 0 -hls_segment_filename {dir}/seg%03d.ts -f hls {dir}/playlist.m3u8`. Returns `.m3u8` playlist (`Content-Type: application/vnd.apple.mpegurl`). Segments served via `&segment=seg000.ts` (`Content-Type: video/mp2t`). Sessions keyed by `path:seek`, auto-cleaned after30s idle. Used for main video playback.
+#### Client — HLS player hook
 
-#### Client — `use-hls-player.ts` hook
+- Lazy-loads library on client only. Uses MSE if supported, else native fallback.
+- Configures worker, low latency, buffer lengths, fragment prefetch.
+- Manages bandwidth with stop/destroy on seek/unmount, session reuse, idle cleanup, concurrency throttling.
+- Fatal error handling with network recovery, media error recovery, fallback to raw.
 
-- Lazy-loads `hls.js` on client only (dynamic `import()`). `Hls.isSupported()` → use MSE; fallback to native HLS (`canPlayType('application/vnd.apple.mpegurl')`).
-- Config: `enableWorker`, `lowLatencyMode`, `maxBufferLength: 30`, `maxMaxBufferLength: 60`, `startFragPrefetch`.
-- Bandwidth: `stopLoad()` before `destroy()` on seek/unmount, session reuse for same `path:seek`, 30s idle cleanup, `MAX_LIVE=6` throttling (429).
-- Fatal error handling: `NETWORK_ERROR` → `startLoad()`, `MEDIA_ERROR` → `recoverMediaError()`, fallback to fMP4/raw on fatal.
-- `destroy()` on unmount and on `src` change. Tested in `video-ux` (29) and `hls-lifecycle` (20) suites.
+#### MediaPreview — HLS playback
 
-#### `MediaPreview` — HLS playback
-
-- Primary: `useHlsPlayer` with `src=/api/hls?path=&seek=`. `<video>` element managed by hls.js via MSE.
-- Fallback: on HLS error, switches to `useFallback` mode with `src=/api/file?path=` (raw file).
-- Loading timeout20s with spinner. Retry resets state. "Fallback to original" button.
+- Primary: HLS via player hook. Video element managed by library.
+- Fallback: on error, switches to raw file mode.
+- Loading timeout with spinner. Retry resets state.
 
 #### Duration — ffprobe only
 
-- `ffprobe` (`/api/duration`): runs `ffprobe -show_entries format=duration` on the original file. Returns the **true, complete duration** in one shot. This is the authoritative value for the crop bar.
-- Browser-reported durations from `<video>` are ignored for the crop bar.
+- ffprobe returns true complete duration in one shot. Authoritative value for crop bar.
+- Browser-reported durations ignored for crop bar.
 
 #### Crop bar interaction (hybrid approach)
 
-- `VideoCropper` shares the same `<video>` element as the HLS player.
-- `video.currentTime` works through MSE — seeking within buffered range is instant.
-- `seekTo()` checks `video.buffered` ranges. For out-of-buffer seeks, calls `onSeekCommit` which updates `seekOffset` in `PreviewDrawer`, restarting HLS from the new offset.
-- `baseSeek` offsets the playhead display for far-seek scenarios.
+- VideoCropper shares video element with HLS player.
+- Video.currentTime works through MSE within buffered range.
+- For out-of-buffer seeks, offset updates restart HLS from new offset.
+- Base seek offsets playhead display for far-seek scenarios.
+
+### 9.14 Visual UI Preview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ SkyDock                                                          [Scan]    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Review Proposed Jumps                                                       │
+│ 2026-08-24 — 3 jumps, 12 files                              [Reset dates]  │
+│                                                                             │
+│ ┌─ Unassigned files • 2 ──────────────────────────────────────────────────┐ │
+│ │ not in any jump — select to stage                                        │ │
+│ │ ☐ DJI_0007.MP4                              10:45:32        125.3 MB    │ │
+│ │ ☐ DJI_0008.JPG                              10:46:01          8.2 MB    │ │
+│ └──────────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│ 2026-08-24                                            3 jumps ─────────── │
+│                                                                             │
+│ ┌─ Jump 1 (3 files) ─────────────────────────────────────────────────────┐ │
+│ │ ☐ DJI_0001.MP4                              09:12:05        245.1 MB   │ │
+│ │ ☐ DJI_0002.MP4                              09:15:33        198.7 MB   │ │
+│ │ ☐ DJI_0003.JPG                              09:16:01          9.4 MB   │ │
+│ └──────────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│ ┌─ Jump 2 (2 files) ─────────────────────────────────────────────────────┐ │
+│ │ ☐ DJI_0004.MP4                              10:02:11        312.5 MB   │ │
+│ │ ☐ DJI_0005.MP4                              10:05:47        287.3 MB   │ │
+│ └──────────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│ ┌─ Jump 3 (5 files) ─────────────────────────────────────────────────────┐ │
+│ │ ☐ DJI_0009.MP4                              11:30:22        156.8 MB   │ │
+│ │ ☐ DJI_0010.MP4                              11:33:45        203.1 MB   │ │
+│ │ ☐ DJI_0011.JPG                              11:34:01          7.9 MB   │ │
+│ │ ☐ DJI_0012.MP4                              11:37:18        178.4 MB   │ │
+│ │ ☐ DJI_0013.JPG                              11:37:55          8.1 MB   │ │
+│ └──────────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+│ ┌─ Selected Jumps Panel ─────────────────────────────────────────────────┐  │
+│ │ 2 jumps selected    [Clear] [Compare] [Process selected] [Change Day]  │  │
+│ └────────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key UI elements:**
+
+- **Header:** SkyDock link + Scan button
+- **Status banner:** Shows scanning/copying/processing state
+- **Unassigned files:** Files not in any jump, highlighted amber
+- **Day groups:** Jumps organized by date with jump count
+- **Jump cards:** Expandable cards showing files with size/time
+- **File rows:** Checkbox, filename, timestamp, size, preview button
+- **Selection panel:** Appears when jumps selected for compare/process
+- **Duplicate highlighting:** Files in multiple jumps shown with purple background
+- **Calibration indicator:** Shows when dates have been shifted
 
 ## 10. Dependencies & Tooling
 
-- `tsx` for running TypeScript scripts directly (zero-config).
+- `tsx` for running TypeScript scripts directly.
 - `zod` for runtime validation of manifest data.
 - `cmp` for file dedup comparison, `exiftool` optional for metadata extraction.
-- `ffmpeg` for live on-demand transcoding via `api/stream` (fMP4 + thumbs) and `api/hls` (HLS segments).
-- Web: `react-router`, `react`, `hls.js` (HLS client), `oxfmt` (format), `oxlint` (lint), `vitest` (10 suites,145 tests: `seek`, `api.stream`, `api.hls`, `video-ux` (29), `hls-lifecycle` (20), `api.manifest`, `review`, `timeline` etc.), `vite-tsconfig-paths`.
+- `ffmpeg` for live on-demand transcoding via streaming endpoints.
+- Web: React Router, React, HLS client library, formatting tools, linting tools, testing framework with multiple test suites.
 - Scripts are TypeScript only, no Python, no comments in generated scripts.
 
 ## 11. Coding Rules

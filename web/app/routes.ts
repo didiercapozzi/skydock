@@ -2,6 +2,7 @@ import { type RouteConfig, index, route } from '@react-router/dev/routes'
 
 export default [
   index('routes/home.tsx'),
+  route('demo', 'routes/demo.tsx'),
   route('jump/:date/:jumpDir', 'routes/jump.tsx'),
   route('api/file', 'routes/api.file.ts'),
   route('api/library', 'routes/api.library.ts'),
