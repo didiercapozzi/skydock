@@ -377,6 +377,7 @@ All drag and drop operations follow these rules:
 - Never call an endpoint using a string URL; always use the typesafe `routingEngine` (`routingEngine.href({ url })`, `useSafeFetcher`, `useSafeSubmit`) with routes from the generated `Register`
 - Server actions always use `createValidatedFormAction` with a Zod schema; field errors via `errors.addFieldError`, global errors via `errors.addGlobalError`, and return `errors.toResponse(422)` when `errors.hasErrors()`
 - Shared routing and form logic lives in `@skydock/ui` (`routingEngine`, safe hooks, validated actions); never reimplement endpoint calls per route
+- Never use React memoization (`useCallback`, `useMemo`, `memo`) — React Compiler handles memoization automatically; write plain functions and values
 
 ## 12. Rule Changes
 
