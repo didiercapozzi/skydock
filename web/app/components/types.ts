@@ -1,19 +1,4 @@
-type ManifestFile = {
-  path: string
-  size: number
-  mtime: number
-  filename: string
-  id: string
-  originalMtime?: number
-}
-
-type ManifestJump = {
-  id: string
-  label: string
-  confirmed: boolean
-  files: ManifestFile[]
-  processed?: boolean
-}
+import type { ManifestFile, ManifestJump } from '@skydock/scripts'
 
 type SelectionMap = Record<string, Record<string, boolean>>
 
