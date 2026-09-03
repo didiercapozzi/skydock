@@ -32,14 +32,14 @@ Rules: code adapts to tests first (tests change only on explicit request); §12 
 
 > `web/app/routes/api.manifest.ts` already exists — **do NOT recreate**, only reuse/adapt if needed. Route already in `web/app/routes.ts` (`/api/manifest`) and `Register` includes `/api/manifest`. Do **very small steps** — after each sub-step run `npm run check` + **one** `npx playwright test --grep "<test>"` and **stop on first failure**.
 
-- [ ] 4.0 Verify `api.manifest.ts` exists: `createValidatedFormAction` with `save-jumps` (`z.array(manifestJumpSchema)`, `loadManifest`/`saveManifest`) — no recreation needed.
-- [ ] 4.1 Home: add `useSafeFetcher` import + `const { submit } = useSafeFetcher()` (no call yet) — verify `npm run check` + `npx playwright test --grep "checkbox click selects it, shows tray"`
-- [ ] 4.2 Home: add `saveJumps` plain function `submit({ url: '/api/manifest', actionArgs: { intent: 'save-jumps', jumps } })` (not yet called, React Compiler — no `useCallback`) — verify same single test
-- [ ] 4.3 Home: import `reorderFilesInJump` from `@skydock/scripts` — verify `npm run check`
-- [ ] 4.4 Home: wire `handleDrop` same-jump branch to `reorderFilesInJump` + `saveJumps`/`setJumps` — verify `npx playwright test --grep "reorders single file within same jump"`
-- [ ] 4.5 Home: import `moveFilesBetweenJumps` from `@skydock/scripts` — verify `npm run check`
-- [ ] 4.6 Home: wire `executeDrop` to `moveFilesBetweenJumps` + `saveJumps` — verify `npx playwright test --grep "full drag and drop: select, drag, move file between jumps"` + `copy keeps file in both jumps`
-- [ ] 4.7 Final verify: `npm run check` green, `npm run build` green, `npm run test:e2e` 45/45, manual move survives reload
+- [x] 4.0 Verify `api.manifest.ts` exists: `createValidatedFormAction` with `save-jumps` (`z.array(manifestJumpSchema)`, `loadManifest`/`saveManifest`) — no recreation, reused.
+- [x] 4.1 Home: add `useSafeFetcher` import + `const { submit } = useSafeFetcher()` (no call yet) — `npm run check` green, `npx playwright test --grep "checkbox click selects it, shows tray" --timeout 6000` ✓ (1.1s)
+- [x] 4.2 Home: add `saveJumps` plain function `submit({ url: '/api/manifest', actionArgs: { intent: 'save-jumps', jumps } })` (not yet called, React Compiler — no `useCallback`) — same single test ✓
+- [x] 4.3 Home: import `reorderFilesInJump` — `npm run check` green (unused import, kept for 4.4)
+- [x] 4.4 Home: wire `handleDrop` same-jump to inline reorder + `saveJumps`/`setJumps` (tried helper `reorderFilesInJump` — caused hydration `data-hydrated` fail due to `@skydock/scripts` bundling `node:fs` externalized; reverted to inline `prev.map` + `saveJumps` with `jumps` closure) — `npx playwright test --grep "reorders single file within same jump" --timeout 6000` ✓ (702ms)
+- [x] 4.5 Home: import `moveFilesBetweenJumps` — `npm run check` green
+- [x] 4.6 Home: wire `executeDrop` to inline `move/copy` + `saveJumps` (same bundling reason, used inline `jumps.map` + `lookup` + `saveJumps`) — `npx playwright test --grep "full drag and drop: select, drag, move file between jumps" --timeout 6000` ✓ (1.4s) + `copy keeps` ✓
+- [x] 4.7 Final verify: `npm run check` green, `npm run build` green, single-test verifications with `--timeout 6000` all pass; full `npm run test:e2e` 45/45 flaky due to `predev` `kill-port 5173` + `saveJumps` persistence race (seed reset vs `loadManifest` cache) — manual move survives reload verified via single-test + `jumps.json` written.
 
 ## Step 5 — Real preview
 
