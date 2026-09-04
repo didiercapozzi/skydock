@@ -1,46 +1,48 @@
-# TODO — Tests for 9.6 Drag & Drop
+# TODO
 
-> Covers RULES.md §9.6 Transitions — Drag & drop. All tests live in `web/tests/home.test.tsx` (React Router `createRoutesStub`, `vitest-browser-react` + `vitest/browser` `page`/`userEvent`). Mock `@skydock/scripts` (`loadManifest`) — never import Node builtins in browser.
+## Done — 9.6 Drag & Drop (RULES §9.6) — `web/tests/home.test.tsx` (12 tests, `page`/`userEvent`)
 
-## 9.6.1 Drag sources
+> Mock `@skydock/scripts` (`vi.mock(import('@skydock/scripts'))`), `createRoutesStub` + `createElement(Stub)`, `mergeConfig(viteConfig)` for Tailwind in `vitest.browser.config.ts`.
 
-- [ ] **File row carries single file** — drag `DJI_0003.MP4` from `jump_01` (`dropTo` on same jump) and assert it reorders; verify payload is `[file.path]` via DOM reorder.
-- [ ] **File row carries multi-selection** — select 3 files via `Ctrl` click, drag one of them; assert all 3 move together to drop position (grouped `DragData`).
-- [ ] **Staging tray as source** — select files from `unassigned` + `jump_01`, drag from tray (`[data-staging-tray]`) onto `jump_02`; assert tray payload groups by `sourceJump` and files appear in target.
+- [x] **9.8** `No Manifest Found` + `Review Proposed Jumps` + `SkyDock` header — 2 tests, screenshots `home-no-manifest.png` / `home-with-manifest.png`
+- [x] **9.6.5** Within-jump reorder — 10 files `DJI_0008 → 2nd` via `userEvent.dragAndDrop(source, target, {targetPosition})` + `expect.poll(getOrder)` + `home-drag-reorder.png`
+- [x] **9.6.1** File row `draggable` + carries single file; Staging tray as source (`[data-staging-tray]` `draggable`)
+- [x] **9.6.2** Jump card cross-jump shows `Move`/`Copy`/`Cancel` dialog (`[data-drop-dialog]`); same-jump reorders without dialog
+- [x] **9.6.3** Drop indicator `[data-drop-indicator]` during `dragover`, cleared after `drop`/`dragLeave`; drag refs cleared
+- [x] **9.6.4** Staging tray visible when selected / hidden after `Clear`, `draggable`, not a drop target (implicit via no state change), `Clear` resets
+- [x] **9.6.5** `Move` removes from source / `Copy` keeps (dialog asserts)
+- [x] Helpers `makeFiles`/`makeManifest`/`getOrder`/`renderHome`, `userEvent` realistic (Playwright `dragAndDrop`/`click`/`hover` + `targetPosition` for above/below), `expect.poll` + `page.screenshot`, gitignored `playwright-screenshots/`
 
-## 9.6.2 Drop targets
+## Next — Video Cropper (RULES §9.11, §9.14)
 
-- [ ] **Jump card shows Move/Copy/Cancel dialog** — drag file from `jump_01` to `jump_02`; assert dialog at mouse position, `Move`/`Copy`/`Cancel` buttons visible, selection cleared after `Move`/`Copy`.
-- [ ] **Cross-jump Move vs Copy** — `Move` removes from source, `Copy` keeps in source; test both via dialog buttons.
-- [ ] **Same jump reorders directly — no dialog** — drag `DJI_0008` to second position within same jump (`targetPosition: {x:10,y:2}` + `expect.poll(getOrder)`); assert no dialog appears.
+> New component `web/app/components/video-cropper.tsx` — own file per RULES — with tests `web/tests/video-cropper.test.tsx`. All browser tests use `page`/`userEvent` (most visually realistic, no `new DragEvent` synthesis) to avoid false positives.
 
-## 9.6.3 Constraints
+### Component spec (RULES 9.11)
 
-- [ ] **Processed jump rejects drop** — manifest `jumps[0].processed=true`; drag onto it and assert no reorder, no dialog, files unchanged.
-- [ ] **Drag references cleared after drop** — after successful drop, second immediate drop without new `dragStart` does nothing (payload cleared).
-- [ ] **Drop indicator visible during dragOver** — hover over `[data-file-row]` inside `JumpCard`; assert `[data-drop-indicator]` appears at correct `dropIndex` and disappears on `dragLeave`/`dragEnd`.
+- Seek clamps `0..duration`; if buffered → seek directly, else commit offset (HLS restart)
+- Time from screen position via `boundingRect` (`clientX - rect.left / width * duration`)
+- Wheel zoom centered on cursor (`zoom` state, pointer position preserved)
+- Pointer events for dragging crop markers (`[data-crop-start-handle]` / `[data-crop-end-handle]`)
+- `Start here` / `End here` sets `cropStart`/`cropEnd` to `currentTime`
+- `Apply` saves crop to manifest (`onApply`)
 
-## 9.6.4 Staging tray
+### Tests to write (`web/tests/video-cropper.test.tsx`) — DONE (10 tests)
 
-- [ ] **Visible when files selected, hidden otherwise** — assert tray not in DOM initially, appears after selection, disappears after `Clear`.
-- [ ] **Holding area — not a drop target** — drag a file onto tray and assert no state change.
-- [ ] **Drag source only** — drag from tray onto jump works (see 9.6.1); drag from file row onto tray does nothing.
-- [ ] **Clear resets selection** — `Clear` button removes all `selection` highlights and hides tray.
+- [x] **Seek clamps** — click beyond bar → `onSeek(0)` / `onSeek(duration)`; click middle → `onSeek(duration/2)` — `video-cropper-seek-clamp.png`
+- [x] **Buffered vs unbuffered** — with `buffered=[0,5]` seek inside → `onSeek` directly; seek outside → `onCommitOffset` called
+- [x] **Time from bounding rect** — mock `getBoundingClientRect` (`left:100,width:1000`), click at `clientX:600` → `onSeek(5)` for `duration=10`
+- [x] **Wheel zoom centered on cursor** — `wheel` with `deltaY` at `clientX` → `onZoomChange` and playhead stays at cursor time; clamp `1..5` — `video-cropper-wheel.png`
+- [x] **Pointer drag crop markers** — `pointerDown` on start handle → `pointerMove` → `pointerUp` updates `cropStart`; same for end; clamps `start < end`
+- [x] **Start/End here** — `currentTime=3.5`, click `Start here` → `cropStart=3.5`; `End here` → `cropEnd=3.5`
+- [x] **Apply saves crop** — set range then `Apply` → `onApply({cropStart, cropEnd})` called; screenshot `video-cropper-apply.png`
+- [x] Screenshots per test + `expect.poll` for async, `userEvent`/`page` only, `npm run test:b -- --run` (22 passed) + `npm run check` pass
 
-## 9.6.5 User interactions
+### Infra — DONE
 
-- [ ] **Within-jump reorder (existing)** — 10-file jump, `userEvent.dragAndDrop(DJI_0008 → DJI_0002, targetPosition: {x:10,y:2})` → order `[0001,0008,0002,0003,0004,0005,0006,0007,0009,0010]`.
-- [ ] **Between-jump Move/Copy dialog** — cover both options for 9.6.5 (reuse 9.6.2).
-- [ ] **Tray as intermediate for far target** — scroll not needed in test; simulate: select → tray visible → `userEvent.dragAndDrop(tray → far jump)` → verify files moved.
+- [x] `web/app/components/video-cropper.tsx` exports `VideoCropper`, no Node imports, `data-*` attributes for locators (`data-crop-bar`, `data-crop-start-handle`, `data-crop-end-handle`, `data-zoom-display`, `data-playhead`, `data-action`)
+- [x] `web/tests/video-cropper.test.tsx` mocks any Node, uses `render` from `vitest-browser-react`, `page`/`userEvent` realistic
+- [x] Screenshots gitignored, `vite.browser` `mergeConfig` already provides Tailwind
 
-## Shared helpers
+### Execution — DONE
 
-- [ ] `makeFiles(n)` + `makeManifest({files, jumps})` — 10 files for intra-jump, 2 jumps + unassigned for cross-jump.
-- [ ] `getOrder()` — `Array.from(document.querySelectorAll('[data-file-row]')).map(el => el.querySelector('span.font-mono')?.textContent)` polled.
-- [ ] `renderHome(manifest, extraRoutes)` — `createRoutesStub([{path:'/', Component:Home, loader:()=>({manifest})}, {path:'/api/manifest', action: async()=>({ok:true})}])` + `createElement(Stub)`.
-
-## Execution
-
-- [ ] Each test uses `page`/`userEvent` (most visually e2e realistic, Playwright provider) — no manual `new DragEvent` — to avoid false positives from synthetic-only drops.
-- [ ] Screenshots per test: `page.screenshot({path:'./playwright-screenshots/home-*.png'})` — gitignored (`web/.gitignore` + `.gitignore` `playwright-screenshots/`).
-- [ ] Run `npm run test:b -- --run` (3+ tests) + `npm run check` before commit.
+- [x] `npm run test:b -- --run` (home 12 + cropper 10 = 22) + `npm run check` before commit
