@@ -16,8 +16,12 @@ output/
 /resources/*.ico
 /resources/*.png
 opencode.jsonc
+opencodeT.jsonc
+.vitest
 
 # Playwright
 /playwright-report/
 /test-results/
 /blob-report/
+/playwright-screenshots/
+playwright-screenshots/

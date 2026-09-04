@@ -3,7 +3,6 @@
   "private": true,
   "workspaces": [
     "web",
-    "desktop",
     "packages/skydock-scripts",
     "packages/ui"
   ],
@@ -26,30 +25,19 @@
     "scan": "npx tsx packages/skydock-scripts/src/scan.ts",
     "simulate": "npx tsx packages/skydock-scripts/src/simulate.ts",
     "test": "vitest run",
-    "test-pipeline": "npx tsx packages/skydock-scripts/src/test-pipeline.ts",
-    "test:e2e": "playwright test",
-    "test:e2e:prod": "npm run build --workspace=@workspace/web && playwright test",
-    "test:e2e:ui": "playwright test --ui",
+    "test:browser": "vitest --config=vitest.browser.config.ts",
+    "test:pipeline": "npx tsx packages/skydock-scripts/src/test-pipeline.ts",
     "test:watch": "vitest",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "watcher": "npx tsx packages/skydock-scripts/src/watcher.ts"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1",
-    "@testing-library/jest-dom": "^7.0.1",
-    "@testing-library/react": "^16.3.2",
-    "@testing-library/user-event": "^14.6.6",
+    "@react-router/dev": "^8.3.1",
     "electron": "^44.0.0",
     "jsdom": "^30.0.1",
     "opencode-ai": "^1.18.23",
     "oxfmt": "^0.65.0",
     "oxlint": "^1.80.0",
-    "tsx": "^4.23.13",
-    "vite-tsconfig-paths": "^6.1.1",
-    "vitest": "^4.1.11"
-  },
-  "allowScripts": {
-    "electron": true,
-    "esbuild": true
+    "tsx": "^4.23.13"
   }
 }
