@@ -24,10 +24,6 @@
     "proxies": "npx tsx packages/skydock-scripts/src/proxies.ts",
     "scan": "npx tsx packages/skydock-scripts/src/scan.ts",
     "simulate": "npx tsx packages/skydock-scripts/src/simulate.ts",
-    "test": "vitest run",
-    "test:browser": "vitest --config=vitest.browser.config.ts",
-    "test:pipeline": "npx tsx packages/skydock-scripts/src/test-pipeline.ts",
-    "test:watch": "vitest",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "watcher": "npx tsx packages/skydock-scripts/src/watcher.ts"
   },
