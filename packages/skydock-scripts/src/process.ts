@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { execSync } from 'node:child_process'
+import * as childProcess from 'node:child_process'
 import { PHOTO_EXTENSIONS_SET, VIDEO_EXTENSIONS_SET } from './constants'
 import {
   getOutputDir,
@@ -31,7 +31,7 @@ const buildDateMap = (files: string[]): Map<string, string> => {
 
   if (jpgFiles.length > 0) {
     try {
-      const csv = execSync(
+      const csv = childProcess.execSync(
         `exiftool -s3 -DateTimeOriginal -csv ${jpgFiles.map((f) => `"${f}"`).join(' ')}`,
         {
           encoding: 'utf-8',
@@ -47,7 +47,7 @@ const buildDateMap = (files: string[]): Map<string, string> => {
 
   if (mp4Files.length > 0) {
     try {
-      const csv = execSync(
+      const csv = childProcess.execSync(
         `exiftool -s3 -CreateDate -csv ${mp4Files.map((f) => `"${f}"`).join(' ')}`,
         {
           encoding: 'utf-8',
@@ -81,7 +81,7 @@ const fileMatchesExisting = (src: string, destDir: string): boolean => {
   const existing = path.join(destDir, filename)
   if (!fs.existsSync(existing)) return false
   try {
-    execSync(`cmp -s "${src}" "${existing}"`, { stdio: 'ignore' })
+    childProcess.execSync(`cmp -s "${src}" "${existing}"`, { stdio: 'ignore' })
     return true
   } catch {
     return false

@@ -47,4 +47,21 @@ const reorderFilesInJump = (
     }
   })
 
-export { moveFilesBetweenJumps, reorderFilesInJump }
+const mergeJumps = (jumps: ManifestJump[], leftId: string, rightId: string): ManifestJump[] => {
+  if (leftId === rightId) return jumps
+  const left = jumps.find((j) => j.id === leftId)
+  const right = jumps.find((j) => j.id === rightId)
+  if (!left || !right) return jumps
+  const seen = new Set(left.files.map((f) => f.path))
+  const additions = right.files.filter((f) => !seen.has(f.path))
+  const files = [...left.files, ...additions].sort((a, b) => a.mtime - b.mtime)
+  return jumps
+    .filter((j) => j.id !== rightId)
+    .map((j) =>
+      j.id === leftId
+        ? { ...j, files, confirmed: left.confirmed && right.confirmed, processed: false }
+        : j
+    )
+}
+
+export { mergeJumps, moveFilesBetweenJumps, reorderFilesInJump }

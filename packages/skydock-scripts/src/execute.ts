@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process'
+import * as childProcess from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { loadManifest } from './manifest'
@@ -29,7 +29,7 @@ const cropVideo = (src: string, dest: string, cropStart: number, cropEnd: number
   if (!hasCommand('ffmpeg')) return false
   const duration = (cropEnd - cropStart).toFixed(6)
   try {
-    execSync(
+    childProcess.execSync(
       `ffmpeg -y -ss ${cropStart} -i "${src}" -t ${duration} -c copy -avoid_negative_ts make_zero "${dest}" 2>/dev/null`,
       { stdio: 'ignore' }
     )
@@ -46,7 +46,7 @@ const updateMetadata = (dir: string): void => {
 
   const paths = files.map((f) => `"${path.join(dir, f)}"`).join(' ')
   try {
-    execSync(
+    childProcess.execSync(
       `exiftool -P -overwrite_original -m -q -CreateDate<FileModifyDate -MediaCreateDate<FileModifyDate -TrackCreateDate<FileModifyDate -MediaModifyDate<FileModifyDate -TrackModifyDate<FileModifyDate -ModifyDate<FileModifyDate -DateTimeOriginal<FileModifyDate -CreationDate<FileModifyDate ${paths}`,
       { stdio: 'ignore' }
     )

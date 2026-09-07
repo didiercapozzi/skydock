@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { execSync } from 'node:child_process'
+import * as childProcess from 'node:child_process'
 import { PHOTO_EXTENSIONS_SET, VIDEO_EXTENSIONS_SET } from './constants'
 import {
   checkExiftool,
@@ -39,7 +39,7 @@ const buildTimeMap = (files: string[]): Map<string, string> => {
 
   if (jpgFiles.length > 0) {
     try {
-      const csv = execSync(
+      const csv = childProcess.execSync(
         `exiftool -s3 -DateTimeOriginal -CreateDate -MediaCreateDate -csv ${jpgFiles.map((f) => `"${f}"`).join(' ')}`,
         { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }
       )
@@ -57,7 +57,7 @@ const buildTimeMap = (files: string[]): Map<string, string> => {
 
   if (mp4Files.length > 0) {
     try {
-      const csv = execSync(
+      const csv = childProcess.execSync(
         `exiftool -s3 -CreateDate -MediaCreateDate -TrackCreateDate -DateTimeOriginal -ModifyDate -csv ${mp4Files.map((f) => `"${f}"`).join(' ')}`,
         { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }
       )

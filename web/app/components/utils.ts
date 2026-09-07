@@ -58,7 +58,7 @@ const getFileUrl = (filePath: string) => {
   return `/api/file${relative}`
 }
 
-const getThumbUrl = (filePath: string, seekSeconds: number, width = 96) => {
+const getThumbUrl = (filePath: string, seekSeconds: number, width = 80) => {
   const relative = filePath.startsWith(OUTPUT_DIR) ? filePath.slice(OUTPUT_DIR.length) : filePath
   return `/api/thumb${relative}?seek=${seekSeconds.toFixed(1)}&width=${width}`
 }

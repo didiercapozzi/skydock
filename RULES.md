@@ -177,7 +177,7 @@ Home state:
 Full Review state (loader-backed app, not in home):
 
 - `manifest` — from loader. Null triggers empty states.
-- `showCompare` — toggle for compare drawer.
+- `showComparison` — toggle for comparison dialog.
 - `viewMode` — list or grid display.
 - `systemStatus` — polled from API every 2 seconds.
 - Preview state includes seek offset for HLS restart.
@@ -247,13 +247,13 @@ All drag and drop operations follow these rules:
 
 ### 9.10 Transitions — Selected/Compare/Preview
 
-- Selected jumps panel appears when jumps selected. Clear resets. Compare enables only with 2. Process executes unprocessed. Change Day shifts all selected jumps.
-- Compare dialog shows 2 columns side-by-side with jump navigation (< >) to cycle through all jumps independently, skipping the other side's current jump. Each side shows file list and preview panel (video with read-only time bar/zoom, or image). Merge button present (no-op for now). Close dismisses dialog.
+- Selected jumps panel appears when jumps selected. Clear resets selection. Compare appears only with exactly 2 selected and opens the comparison dialog.
+- Compare dialog shows 2 columns side-by-side with jump navigation (< >) to cycle through all jumps independently, skipping the other side's current jump. Each side shows file list and preview panel (video with read-only time bar/zoom, or image). Merge opens a date popup (left jump's date, right jump's date, or custom date+time) and combines the two currently displayed jumps into the left one (union of files by path, sorted by mtime; confirmed only if both were confirmed; never processed). Merged files shift rigidly so the earliest lands on the chosen anchor; the chosen side keeps its exact times. Merge is disabled when either jump is processed. After merge the dialog closes and selection clears. Close dismisses dialog.
 
 ### 9.11 Transitions — Video cropper
 
 - The VideoCropper component lives inside the PreviewDrawer (right panel), directly below the video player for video files.
-- **Thumbnail filmstrip:** Small JPEG thumbnails rendered along the crop bar background, loaded lazily via `/api/thumb/` endpoint. Thumbnails are keyframe-only fast seeks (`skip_frame nokey`, no audio, 24px wide, low JPEG quality) so all 8 load in well under a second. Positioned by time offset and scale with zoom level.
+- **Thumbnail filmstrip:** Small JPEG thumbnails rendered along the crop bar background, loaded lazily via `/api/thumb/` endpoint. Thumbnails are keyframe-only fast seeks (`skip_frame nokey`, no audio, 80px wide, lanczos downscale, medium JPEG quality) so all 8 load in well under a second. Positioned by time offset and scale with zoom level.
 - Seek to time clamps to valid range. Checks if time is buffered, seeks directly or commits offset. Time from screen position via bounding rect. Wheel zoom centered on cursor. Pointer events for dragging crop markers. Start/End here sets crop points. Apply saves crop to manifest.
 - **UI optimistic crop bar:** The blue playhead and crop range (start/end handles, blue selection region) must move instantly and be fully draggable across the entire bar, regardless of video loading state. The video may still be loading/buffering, but the crop UI must never block or lag behind user input. Dragging start/end handles or clicking the bar updates the visual position immediately; video seek happens asynchronously.
 - Quick timestamp switching: clicking the crop bar seeks the video. Users can rapidly jump between timestamps by clicking different positions on the zoomable time bar.

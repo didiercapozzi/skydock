@@ -1,11 +1,30 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ManifestJump } from './types'
 import { VideoCropper } from './video-cropper'
-import { formatSize, formatTime, getFileUrl, getThumbUrl, isVideoFile } from './utils'
+import { formatSize, formatTime, getFileUrl, getJumpDate, getThumbUrl, isVideoFile } from './utils'
 
 type VideoRef = {
   seek: (time: number) => void
   getBuffered: () => Array<{ start: number; end: number }>
+}
+
+const jumpMinMtime = (jump: ManifestJump) => {
+  const times = jump.files.map((f) => f.mtime)
+  return times.length > 0 ? Math.min(...times) : 0
+}
+
+const toDateInputValue = (epoch: number) => {
+  const d = new Date(epoch * 1000)
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${month}-${day}`
+}
+
+const toTimeInputValue = (epoch: number) => {
+  const d = new Date(epoch * 1000)
+  const hours = String(d.getHours()).padStart(2, '0')
+  const minutes = String(d.getMinutes()).padStart(2, '0')
+  return `${hours}:${minutes}`
 }
 
 const ComparisonDialog = ({
@@ -19,7 +38,7 @@ const ComparisonDialog = ({
   leftJumpId: string
   rightJumpId: string
   onClose: () => void
-  onMerge: () => void
+  onMerge: (leftId: string, rightId: string, anchorEpoch: number) => void
 }) => {
   const [currentLeftId, setCurrentLeftId] = useState(leftJumpId)
   const [currentRightId, setCurrentRightId] = useState(rightJumpId)
@@ -43,6 +62,11 @@ const ComparisonDialog = ({
   const [rightZoom, setRightZoom] = useState(1)
   const rightVideoRefRef = useRef<VideoRef | null>(null)
 
+  const [showDatePopup, setShowDatePopup] = useState(false)
+  const [dateChoice, setDateChoice] = useState<'left' | 'right' | 'custom'>('left')
+  const [customDate, setCustomDate] = useState('')
+  const [customTime, setCustomTime] = useState('')
+
   const leftJumpIndex = jumps.findIndex((j) => j.id === currentLeftId)
   const rightJumpIndex = jumps.findIndex((j) => j.id === currentRightId)
 
@@ -62,6 +86,32 @@ const ComparisonDialog = ({
         return
       }
     } while (newIdx !== startIdx)
+  }
+
+  const handleMergeClick = () => {
+    setDateChoice('left')
+    setCustomDate(toDateInputValue(jumpMinMtime(leftJump)))
+    setCustomTime(toTimeInputValue(jumpMinMtime(leftJump)))
+    setShowDatePopup(true)
+  }
+
+  const resolveAnchor = (): number | null => {
+    if (dateChoice === 'left' || dateChoice === 'right') {
+      const target = dateChoice === 'left' ? leftJump : rightJump
+      return jumpMinMtime(target)
+    }
+    if (!customDate) return null
+    const parsed = new Date(`${customDate}T${customTime || '00:00'}:00`).getTime()
+    if (!Number.isFinite(parsed)) return null
+    return Math.round(parsed / 1000)
+  }
+
+  const anchor = resolveAnchor()
+
+  const handleMergeConfirm = () => {
+    if (anchor === null) return
+    setShowDatePopup(false)
+    onMerge(currentLeftId, currentRightId, anchor)
   }
 
   const navigateRight = (direction: -1 | 1) => {
@@ -211,8 +261,9 @@ const ComparisonDialog = ({
           <button
             type='button'
             data-action='merge'
-            onClick={onMerge}
-            className='px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors'>
+            disabled={leftJump.processed === true || rightJump.processed === true}
+            onClick={handleMergeClick}
+            className='px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
             Merge
           </button>
           <button
@@ -223,6 +274,90 @@ const ComparisonDialog = ({
           </button>
         </div>
       </div>
+
+      {showDatePopup && (
+        <div
+          data-merge-date-popup='true'
+          className='absolute inset-0 z-10 flex items-center justify-center bg-black/50'>
+          <div className='bg-white rounded-xl shadow-2xl w-[380px] p-6'>
+            <h3 className='text-base font-semibold text-gray-900 mb-1'>Merge date</h3>
+            <p className='text-sm text-gray-500 mb-4'>
+              Which date should the merged jump have? The chosen jump keeps its times.
+            </p>
+            <div className='space-y-2 mb-4'>
+              <label className='flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer'>
+                <input
+                  type='radio'
+                  name='merge-date'
+                  data-date-choice='left'
+                  checked={dateChoice === 'left'}
+                  onChange={() => setDateChoice('left')}
+                />
+                <span className='text-sm text-gray-700'>
+                  {leftJump.label} — {getJumpDate(leftJump)}
+                </span>
+              </label>
+              <label className='flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer'>
+                <input
+                  type='radio'
+                  name='merge-date'
+                  data-date-choice='right'
+                  checked={dateChoice === 'right'}
+                  onChange={() => setDateChoice('right')}
+                />
+                <span className='text-sm text-gray-700'>
+                  {rightJump.label} — {getJumpDate(rightJump)}
+                </span>
+              </label>
+              <label className='flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer'>
+                <input
+                  type='radio'
+                  name='merge-date'
+                  data-date-choice='custom'
+                  checked={dateChoice === 'custom'}
+                  onChange={() => setDateChoice('custom')}
+                />
+                <span className='text-sm text-gray-700'>Custom</span>
+              </label>
+              {dateChoice === 'custom' && (
+                <div className='flex gap-2 pl-7'>
+                  <input
+                    type='date'
+                    data-custom-date='true'
+                    value={customDate}
+                    onChange={(e) => setCustomDate(e.target.value)}
+                    className='px-2 py-1.5 text-sm border border-gray-300 rounded-lg'
+                  />
+                  <input
+                    type='time'
+                    data-custom-time='true'
+                    value={customTime}
+                    onChange={(e) => setCustomTime(e.target.value)}
+                    className='px-2 py-1.5 text-sm border border-gray-300 rounded-lg'
+                  />
+                </div>
+              )}
+            </div>
+            <div className='flex items-center justify-end gap-3'>
+              <button
+                type='button'
+                data-action='merge-confirm'
+                disabled={anchor === null}
+                onClick={handleMergeConfirm}
+                className='px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
+                Confirm merge
+              </button>
+              <button
+                type='button'
+                data-action='merge-cancel'
+                onClick={() => setShowDatePopup(false)}
+                className='px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors'>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

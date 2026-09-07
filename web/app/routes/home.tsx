@@ -43,7 +43,8 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const dragDataRef = useRef<DragData | null>(null)
   const mainRef = useRef<HTMLElement | null>(null)
   const videoRefRef = useRef<VideoRef | null>(null)
-  const { submit } = useSafeFetcher()
+  const { submit, data } = useSafeFetcher()
+  const mergeRequestRef = useRef<{ leftId: string; rightId: string } | null>(null)
   const jumpsByDay = groupJumpsByDay(jumps)
   const [videoCrop, setVideoCrop] = useState<{ cropStart: number | null; cropEnd: number | null }>({
     cropStart: null,
@@ -83,6 +84,25 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const handleVideoRef = (ref: VideoRef) => {
     videoRefRef.current = ref
   }
+
+  const handleMerge = (leftId: string, rightId: string, anchorEpoch: number) => {
+    mergeRequestRef.current = { leftId, rightId }
+    submit({
+      url: '/api/manifest',
+      actionArgs: { intent: 'merge-jumps', leftId, rightId, anchorEpoch }
+    })
+  }
+
+  useEffect(() => {
+    if (!mergeRequestRef.current) return
+    if (data && typeof data === 'object' && 'jumps' in data && Array.isArray(data.jumps)) {
+      mergeRequestRef.current = null
+      // eslint-disable-next-line react/set-state-in-effect -- syncing server merge response into state
+      setJumps(data.jumps as ManifestJump[])
+      setShowComparison(false)
+      setCompareIds([])
+    }
+  }, [data])
 
   useEffect(() => {
     mainRef.current?.setAttribute('data-hydrated', 'true')
@@ -499,7 +519,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
             leftJumpId={compareIds[0]}
             rightJumpId={compareIds[1]}
             onClose={() => setShowComparison(false)}
-            onMerge={() => {}}
+            onMerge={handleMerge}
           />
         )}
       </div>

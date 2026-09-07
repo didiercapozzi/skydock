@@ -1,46 +1,17 @@
 # TODO
 
-## Thumbnail Filmstrip on Crop Bar — implemented
+## Done
 
-### Overview
+- Thumbnail filmstrip on crop bar (`api/thumb` + 8 lazy thumbs in VideoCropper, 1x–10x zoom, Reset button).
+- Jump merge via `merge-jumps` manifest intent with date-choice popup (left/right/custom anchor, rigid shift via `shiftFiles`).
+- Browser-safe `@skydock/scripts` barrel: namespace-only `node:` imports, `isCliModule` guards missing `process`; `scripts-barrel.test.tsx` regression test imports the real barrel in Chromium.
 
-Small image previews along the video timebar in VideoCropper show visual context when seeking. A new `/api/thumb/` endpoint extracts single JPEG frames via ffmpeg.
+## Jump merge — semantics (implemented)
 
-### Implementation
-
-#### 1. Create `web/app/routes/api.thumb.$.tsx`
-
-New endpoint: `/api/thumb/{path}?seek=12.5&width=160`
-
-- Extract single frame using ffmpeg: `ffmpeg -ss {seek} -i "{path}" -frames:v 1 -vf "scale={width}:-1" -f imagejpeg pipe:out`
-- Return `Content-Type: image/jpeg`, `Cache-Control: max-age=31536000` (immutable, same file+seek = same thumb)
-- Handle errors: invalid path, seek out of range, ffmpeg not available → 404
-- ~40 lines of code
-
-#### 2. Register route in `web/app/routes.ts`
-
-Add: `route('api/thumb/*', 'routes/api.thumb.$.tsx')`
-
-#### 3. Modify `web/app/components/video-cropper.tsx`
-
-- Calculate visible time range from `offset`, `visibleDuration`, `duration`
-- Determine thumbnail count: `Math.floor(barWidth / 80)` (one thumb per ~80px)
-- For each thumbnail position, compute time offset and build thumb URL
-- Render `<img>` elements inside the `data-crop-bar` div, absolutely positioned
-- Use `onLoad`/`onError` to handle loading states
-- Hide thumbnails when zoom < 1x (they'd be too dense to be useful)
-
-#### 4. Tests
-
-- Add test for thumb endpoint: returns JPEG for valid seek
-- Add test for thumb endpoint: returns 404 for invalid path
-- Add test for VideoCropper: renders thumbnail images when zoomed
-
-### Files
-
-| File                                   | Change                        |
-| -------------------------------------- | ----------------------------- |
-| `web/app/routes/api.thumb.$.tsx`       | New endpoint                  |
-| `web/app/routes.ts`                    | Register route                |
-| `web/app/components/video-cropper.tsx` | Add thumbnail strip rendering |
-| `web/tests/home.test.tsx`              | Add tests                     |
+- Survivor is the left jump: keeps its `id`, `label`, and position in the array.
+- Files are the union of both jumps by `path`, sorted by `mtime` ascending.
+- `confirmed` is true only if both jumps were confirmed.
+- `processed` is always false on the merged jump.
+- Unknown or identical ids → jumps unchanged.
+- Merge is disabled in the dialog when either displayed jump is processed.
+- Date popup offers left date, right date, or custom date+time; merged files shift rigidly so the earliest lands on the anchor; the chosen side keeps its exact times.

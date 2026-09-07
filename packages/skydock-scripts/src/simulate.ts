@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { execSync } from 'node:child_process'
+import * as childProcess from 'node:child_process'
 import { hasCommand, isCliModule } from './utils'
 
 type SimulateOptions = {
@@ -18,7 +18,7 @@ const createFile = (dir: string, name: string, epoch: number, duration: number):
   if (ext === '.jpg' || ext === '.jpeg') {
     if (hasCommand('ffmpeg')) {
       try {
-        execSync(
+        childProcess.execSync(
           `ffmpeg -y -loglevel error -f lavfi -i "color=color=0x${((epoch * 997) & 0xffffff).toString(16).padStart(6, '0')}:size=1920x1080:rate=1" -frames:v 1 "${filePath}"`,
           { stdio: 'ignore' }
         )
@@ -37,7 +37,7 @@ const createFile = (dir: string, name: string, epoch: number, duration: number):
   } else {
     if (hasCommand('ffmpeg')) {
       try {
-        execSync(
+        childProcess.execSync(
           `ffmpeg -y -loglevel error -f lavfi -i "testsrc=duration=${duration}:size=1920x1080:rate=30" -f lavfi -i "sine=frequency=${440 + (epoch % 200)}:duration=${duration}" -c:v libx264 -preset ultrafast -tune zerolatency -c:a aac -shortest "${filePath}"`,
           { stdio: 'ignore' }
         )

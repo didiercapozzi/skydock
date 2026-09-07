@@ -3,12 +3,12 @@ import { spawn } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 
-const DEFAULT_WIDTH = 96
+const DEFAULT_WIDTH = 80
 
 const clampWidth = (raw: string | null) => {
   const parsed = raw ? parseInt(raw, 10) : DEFAULT_WIDTH
   if (!Number.isFinite(parsed)) return DEFAULT_WIDTH
-  return Math.min(240, Math.max(64, parsed))
+  return Math.min(240, Math.max(16, parsed))
 }
 
 const clampSeek = (raw: string | null) => {
@@ -33,9 +33,9 @@ const extractFrame = (filePath: string, seek: number, width: number) =>
       '1',
       '-an',
       '-vf',
-      `scale=${width}:-2`,
+      `scale=${width}:-2:flags=lanczos`,
       '-q:v',
-      '10',
+      '4',
       '-f',
       'mjpeg',
       'pipe:1'

@@ -40,14 +40,70 @@ const getOrder = () =>
     (el) => el.querySelector('span.font-mono')?.textContent?.trim() ?? ''
   )
 
-const renderHome = async (manifest: unknown) => {
+const renderHome = async (
+  manifest: unknown,
+  action: (args: { request: Request }) => Promise<unknown> = async () => ({ ok: true })
+) => {
   const Stub = createRoutesStub([
     { path: '/', Component: Home, loader: () => ({ manifest }) },
-    { path: '/api/manifest', action: async () => ({ ok: true }) }
+    { path: '/api/manifest', action }
   ])
   const result = await render(createElement(Stub, { initialEntries: ['/'] }))
   return result
 }
+
+type StubFile = { path: string; mtime: number; filename: string; size: number }
+
+type StubJump = {
+  id: string
+  label: string
+  confirmed: boolean
+  processed?: boolean | null
+  files: StubFile[]
+}
+
+const mergeStubJumps = (jumps: StubJump[], leftId: string, rightId: string): StubJump[] => {
+  if (leftId === rightId) return jumps
+  const left = jumps.find((j) => j.id === leftId)
+  const right = jumps.find((j) => j.id === rightId)
+  if (!left || !right) return jumps
+  const seen = new Set(left.files.map((f) => f.path))
+  const additions = right.files.filter((f) => !seen.has(f.path))
+  const files = [...left.files, ...additions].sort((a, b) => a.mtime - b.mtime)
+  return jumps
+    .filter((j) => j.id !== rightId)
+    .map((j) =>
+      j.id === leftId
+        ? { ...j, files, confirmed: left.confirmed && right.confirmed, processed: false }
+        : j
+    )
+}
+
+const makeMergeAction =
+  (manifest: { jumps: StubJump[] }) =>
+  async ({ request }: { request: Request }) => {
+    const body = (await request.json()) as {
+      intent: string
+      leftId?: string
+      rightId?: string
+      anchorEpoch?: number
+    }
+    if (body.intent === 'merge-jumps' && body.leftId && body.rightId) {
+      const merged = mergeStubJumps(manifest.jumps, body.leftId, body.rightId)
+      if (typeof body.anchorEpoch === 'number' && Number.isFinite(body.anchorEpoch)) {
+        const target = merged.find((j) => j.id === body.leftId)
+        if (target && target.files.length > 0) {
+          const min = Math.min(...target.files.map((f) => f.mtime))
+          const offset = Math.round(body.anchorEpoch) - min
+          if (offset !== 0) {
+            for (const f of target.files) f.mtime += offset
+          }
+        }
+      }
+      return { jumps: merged }
+    }
+    return { ok: true }
+  }
 
 const expandAllJumpCards = async () => {
   const toggles = document.querySelectorAll('[data-jump-card-toggle]')
@@ -512,6 +568,192 @@ describe('Home - jump comparison dialog', () => {
     await expect.poll(() => document.querySelector('[data-comparison-dialog]') !== null).toBe(true)
     await userEvent.click(page.getByText('Close'))
     await expect.poll(() => document.querySelector('[data-comparison-dialog]') === null).toBe(true)
+  })
+
+  test('merge combines both jumps sorted by mtime and closes dialog', async () => {
+    const manifest = makeTwoJumpManifest()
+    await renderHome(manifest, makeMergeAction(manifest))
+    const checkboxes = document.querySelectorAll('input[title="Select for comparison"]')
+    await userEvent.click(page.elementLocator(checkboxes[0] as HTMLElement))
+    await userEvent.click(page.elementLocator(checkboxes[1] as HTMLElement))
+    await userEvent.click(page.getByText('Compare'))
+
+    await expect.poll(() => document.querySelector('[data-comparison-dialog]') !== null).toBe(true)
+    await userEvent.click(page.getByText('Merge'))
+    await expect.poll(() => document.querySelector('[data-merge-date-popup]') !== null).toBe(true)
+    await userEvent.click(page.getByText('Confirm merge'))
+    await expect.poll(() => document.querySelector('[data-comparison-dialog]') === null).toBe(true)
+    await expect.element(page.getByText('1 jump')).toBeInTheDocument()
+    expect(document.body.textContent).not.toContain('jumps selected')
+    expect(document.body.textContent).not.toContain('jump selected')
+
+    await expandAllJumpCards()
+    expect(getOrder()).toEqual([
+      'DJI_0001.MP4',
+      'DJI_0002.MP4',
+      'DJI_0003.MP4',
+      'B_DJI_0001.MP4',
+      'B_DJI_0002.MP4'
+    ])
+  })
+
+  test('merge dedupes files present in both jumps', async () => {
+    const filesA = makeFiles(3, 1724493600)
+    const extra = makeFiles(1, 1724493600 + 3600)
+    extra[0].path = `/output/B_${extra[0].filename}`
+    extra[0].filename = `B_${extra[0].filename}`
+    const manifest = {
+      version: 1,
+      status: 'proposed' as const,
+      date: '2026-08-24',
+      startDatetime: '2026-08-24T10:00:00.000Z',
+      createdAt: '2026-08-24T10:00:00.000Z',
+      theory: [],
+      files: [...filesA, ...extra],
+      jumps: [
+        { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...filesA] },
+        { id: 'jump_02', label: 'jump_02', confirmed: false, files: [filesA[0], ...extra] }
+      ]
+    } as never
+    await renderHome(manifest, makeMergeAction(manifest))
+    const checkboxes = document.querySelectorAll('input[title="Select for comparison"]')
+    await userEvent.click(page.elementLocator(checkboxes[0] as HTMLElement))
+    await userEvent.click(page.elementLocator(checkboxes[1] as HTMLElement))
+    await userEvent.click(page.getByText('Compare'))
+
+    await expect.poll(() => document.querySelector('[data-comparison-dialog]') !== null).toBe(true)
+    await userEvent.click(page.getByText('Merge'))
+    await expect.poll(() => document.querySelector('[data-merge-date-popup]') !== null).toBe(true)
+    await userEvent.click(page.getByText('Confirm merge'))
+    await expect.poll(() => document.querySelector('[data-comparison-dialog]') === null).toBe(true)
+
+    await expandAllJumpCards()
+    expect(document.querySelectorAll('[data-file-row]').length).toBe(4)
+  })
+
+  test('merge opens date popup with jump choices and cancel keeps dialog', async () => {
+    const manifest = makeTwoJumpManifest()
+    await renderHome(manifest, makeMergeAction(manifest))
+    const checkboxes = document.querySelectorAll('input[title="Select for comparison"]')
+    await userEvent.click(page.elementLocator(checkboxes[0] as HTMLElement))
+    await userEvent.click(page.elementLocator(checkboxes[1] as HTMLElement))
+    await userEvent.click(page.getByText('Compare'))
+
+    await expect.poll(() => document.querySelector('[data-comparison-dialog]') !== null).toBe(true)
+    await userEvent.click(page.getByText('Merge'))
+    await expect.poll(() => document.querySelector('[data-merge-date-popup]') !== null).toBe(true)
+    expect(document.querySelectorAll('[data-date-choice]').length).toBe(3)
+    await expect.element(page.getByText('Merge date')).toBeInTheDocument()
+    await expect.element(page.getByText('Custom')).toBeInTheDocument()
+
+    await userEvent.click(page.getByText('Cancel'))
+    await expect.poll(() => document.querySelector('[data-merge-date-popup]') === null).toBe(true)
+    await expect.poll(() => document.querySelector('[data-comparison-dialog]') !== null).toBe(true)
+  })
+
+  test('merge with right date shifts jump to that day', async () => {
+    const day1 = 1724493600
+    const day2 = day1 + 86400 * 3
+    const filesA = makeFiles(3, day1)
+    const filesB = makeFiles(2, day2)
+    filesB.forEach((f) => {
+      f.path = `/output/B_${f.filename}`
+      f.filename = `B_${f.filename}`
+    })
+    const manifest = {
+      version: 1,
+      status: 'proposed' as const,
+      date: '2026-08-24',
+      startDatetime: '2026-08-24T10:00:00.000Z',
+      createdAt: '2026-08-24T10:00:00.000Z',
+      theory: [],
+      files: [...filesA, ...filesB],
+      jumps: [
+        { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...filesA] },
+        { id: 'jump_02', label: 'jump_02', confirmed: false, files: [...filesB] }
+      ]
+    } as never
+    await renderHome(manifest, makeMergeAction(manifest))
+    const checkboxes = document.querySelectorAll('input[title="Select for comparison"]')
+    await userEvent.click(page.elementLocator(checkboxes[1] as HTMLElement))
+    await userEvent.click(page.elementLocator(checkboxes[0] as HTMLElement))
+    await userEvent.click(page.getByText('Compare'))
+
+    await expect.poll(() => document.querySelector('[data-comparison-dialog]') !== null).toBe(true)
+    await userEvent.click(page.getByText('Merge'))
+    await expect.poll(() => document.querySelector('[data-merge-date-popup]') !== null).toBe(true)
+    const rightChoice = document.querySelector('[data-date-choice="right"]') as HTMLElement
+    await userEvent.click(page.elementLocator(rightChoice))
+    await userEvent.click(page.getByText('Confirm merge'))
+    await expect.poll(() => document.querySelector('[data-comparison-dialog]') === null).toBe(true)
+
+    const expectedDate = new Date(day2 * 1000).toLocaleDateString('de-CH', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
+    await expect.element(page.getByText(expectedDate)).toBeInTheDocument()
+    await expandAllJumpCards()
+    expect(document.querySelectorAll('[data-file-row]').length).toBe(5)
+  })
+
+  test('merge with custom date anchors earliest file', async () => {
+    const manifest = makeTwoJumpManifest()
+    await renderHome(manifest, makeMergeAction(manifest))
+    const checkboxes = document.querySelectorAll('input[title="Select for comparison"]')
+    await userEvent.click(page.elementLocator(checkboxes[0] as HTMLElement))
+    await userEvent.click(page.elementLocator(checkboxes[1] as HTMLElement))
+    await userEvent.click(page.getByText('Compare'))
+
+    await expect.poll(() => document.querySelector('[data-comparison-dialog]') !== null).toBe(true)
+    await userEvent.click(page.getByText('Merge'))
+    await expect.poll(() => document.querySelector('[data-merge-date-popup]') !== null).toBe(true)
+    const customChoice = document.querySelector('[data-date-choice="custom"]') as HTMLElement
+    await userEvent.click(page.elementLocator(customChoice))
+    const dateInput = document.querySelector('[data-custom-date]') as HTMLElement
+    const timeInput = document.querySelector('[data-custom-time]') as HTMLElement
+    await userEvent.fill(page.elementLocator(dateInput), '2026-09-05')
+    await userEvent.fill(page.elementLocator(timeInput), '08:30')
+    await userEvent.click(page.getByText('Confirm merge'))
+    await expect.poll(() => document.querySelector('[data-comparison-dialog]') === null).toBe(true)
+
+    const expectedDate = new Date(2026, 8, 5).toLocaleDateString('de-CH', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
+    await expect.element(page.getByText(expectedDate)).toBeInTheDocument()
+  })
+
+  test('merge button disabled when a displayed jump is processed', async () => {
+    const filesA = makeFiles(3, 1724493600)
+    const filesB = makeFiles(2, 1724493600 + 3600)
+    filesB.forEach((f) => {
+      f.path = `/output/B_${f.filename}`
+      f.filename = `B_${f.filename}`
+    })
+    const manifest = {
+      version: 1,
+      status: 'proposed' as const,
+      date: '2026-08-24',
+      startDatetime: '2026-08-24T10:00:00.000Z',
+      createdAt: '2026-08-24T10:00:00.000Z',
+      theory: [],
+      files: [...filesA, ...filesB],
+      jumps: [
+        { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...filesA] },
+        { id: 'jump_02', label: 'jump_02', confirmed: false, processed: true, files: [...filesB] }
+      ]
+    } as never
+    await renderHome(manifest)
+    const checkboxes = document.querySelectorAll('input[title="Select for comparison"]')
+    await userEvent.click(page.elementLocator(checkboxes[0] as HTMLElement))
+    await userEvent.click(page.elementLocator(checkboxes[1] as HTMLElement))
+    await userEvent.click(page.getByText('Compare'))
+
+    await expect.poll(() => document.querySelector('[data-comparison-dialog]') !== null).toBe(true)
+    const mergeBtn = document.querySelector('[data-action="merge"]') as HTMLButtonElement
+    expect(mergeBtn.disabled).toBe(true)
   })
 
   test('clear button deselects all jumps', async () => {

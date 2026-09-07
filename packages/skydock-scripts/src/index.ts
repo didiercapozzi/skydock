@@ -37,7 +37,7 @@ export {
 } from './types'
 
 export { reclusterJumps, shiftFiles } from './clustering'
-export { moveFilesBetweenJumps, reorderFilesInJump } from './workspace'
+export { mergeJumps, moveFilesBetweenJumps, reorderFilesInJump } from './workspace'
 export { loadManifest, normalizeManifest, saveManifest } from './manifest'
 export { computeFileId, ensureManifestFileIds } from './fileId'
 export { writeStatus, scheduleIdle } from './status'

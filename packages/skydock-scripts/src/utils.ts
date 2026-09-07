@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { execSync } from 'node:child_process'
+import * as childProcess from 'node:child_process'
 import { VIDEO_EXTENSIONS_SET, PHOTO_EXTENSIONS_SET, MEDIA_EXTENSIONS_SET } from './constants'
 import type { ManifestFile } from './types'
 
@@ -31,7 +31,7 @@ const findMediaFiles = (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH): string[
 
 const hasCommand = (cmd: string): boolean => {
   try {
-    execSync(`command -v ${cmd}`, { stdio: 'ignore' })
+    childProcess.execSync(`command -v ${cmd}`, { stdio: 'ignore' })
     return true
   } catch {
     return false
@@ -80,6 +80,7 @@ const formatTimestamp = (epoch: number): string => {
 const toISOString = (date?: Date): string => (date || new Date()).toISOString()
 
 const isCliModule = (baseName: string): boolean => {
+  if (typeof process === 'undefined' || !process.argv) return false
   const p = process.argv[1] ?? ''
   return p.endsWith(`${baseName}.ts`) || p.endsWith(`${baseName}.js`)
 }
