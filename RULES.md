@@ -147,11 +147,11 @@ output/
 - **HLS:** Live-transcodes to HLS segments for main playback.
 - **Manifest:** Full CRUD for jumps, files, calibration, execution.
 
-## 9. Home — Review UI — Logic
+## 9. Review UI (`/`)
 
-> This section is the **behavioral spec** for the Review UI. It defines state, transitions and invariants.
+> Behavioral spec for the Review UI: state, interactions and invariants.
 
-The Review UI is mounted at `/` (`routes/home.tsx`) and lets the user group files into jumps. Home runs on local fixture jumps (`useState`, `groupJumpsByDay`) with no loader and no manifest. Sections marked `Full Review (not in home)` describe the loader-backed app and are not mounted in home.
+Mounted at `/` (`routes/home.tsx`). The loader reads the manifest; jumps live in React state and persist through the `save-jumps` manifest action, while selection stays in memory. Sections under §9.7 are planned behavior, not mounted.
 
 ### 9.1 Pure helpers
 
@@ -161,141 +161,153 @@ The Review UI is mounted at `/` (`routes/home.tsx`) and lets the user group file
 - Pure label sanitization.
 - Display helpers for time, bytes, and timecodes.
 
-### 9.2 State (in-memory, not persisted except where noted)
+### 9.2 State
 
-Home state:
+#### 9.2.1 Mounted state
 
-- `jumps` — local fixture jumps, grouped for display.
-- `selection` — tracks selected files by group.
-- `lastClicked` — for shift-range selection.
-- `preview` — files, current index, and group for preview drawer.
-- `compareIds` — max 2 jump IDs for comparison.
-- `dropDialog` — pending cross-jump move/copy dialog.
-- `dropHint` — insertion index indicator during drag.
-- `dragDataRef` — packaged drag payload, cleared after drop.
+- `jumps` — working copy of manifest jumps, grouped for display.
+- `selection` — selected files by group; `lastClicked` — anchor for shift-range selection.
+- `preview` — drawer files, current index, and group.
+- `compareIds` — max 2 jump IDs for comparison; `showComparison` — comparison dialog toggle.
+- `dropDialog` — pending cross-jump move/copy dialog; `dropHint` — insertion index indicator; `dragDataRef` — drag payload, cleared after drop.
+- `videoCrop`, `videoZoom`, `videoCurrentTime`, `videoDuration` — active preview video state.
 
-Full Review state (loader-backed app, not in home):
+#### 9.2.2 Planned state (not mounted)
 
-- `manifest` — from loader. Null triggers empty states.
-- `showComparison` — toggle for comparison dialog.
 - `viewMode` — list or grid display.
 - `systemStatus` — polled from API every 2 seconds.
-- Preview state includes seek offset for HLS restart.
-- VideoCropper internal state: crop range, zoom, dragging, scrub time.
+- Preview seek offset for HLS restart; HLS session key (path and seek offset).
 - Media preview state: loading, fallback, retry key, error.
-- HLS session key: path and seek offset.
 
-### 9.4 Transitions — File selection
+### 9.3 Organizing files
+
+#### 9.3.1 Selecting files
 
 - Toggle selection per file. Checkbox always toggles. Ctrl/Meta adds without clearing. Shift selects range from last clicked. Deselect last in group deletes group.
 
-### 9.5 Transitions — Staging tray
+#### 9.3.2 Staging tray
 
-- Visible when files selected. Clear resets selection. Acts as holding area for files to be moved or copied to other jumps.
+- Visible when files are selected. Clear resets selection. Acts as holding area for files to be moved or copied to other jumps.
+- Drag source only, never a drop target.
 
-### 9.6 Transitions — Drag & drop
+#### 9.3.3 Drag & drop
 
 All drag and drop operations follow these rules:
 
-#### 9.6.1 Drag sources
+**Drag sources**
 
 | Source       | Behavior                                                                                     |
 | ------------ | -------------------------------------------------------------------------------------------- |
 | File row     | Packages file paths and source jump. If multiple files selected, carries all selected paths. |
 | Staging tray | Packages files grouped by source jump. Always available when files are selected.             |
 
-#### 9.6.2 Drop targets
+**Drop targets**
 
 | Target    | Behavior                                                                                             |
 | --------- | ---------------------------------------------------------------------------------------------------- |
 | Jump card | Shows dialog at mouse position with Move, Copy, or Cancel options. Clears selection after operation. |
 | Same jump | Reorders files directly. No dialog, no copy within same jump.                                        |
 
-#### 9.6.3 Constraints
+**Constraints**
 
 - Processed jumps cannot receive drops (rejected).
 - Drag references are cleared after drop completes.
 - Drop indicator shows above/below position during drag over file rows.
 
-#### 9.6.4 Staging tray
-
-- Visible when files are selected.
-- Acts as holding area for files to be moved or copied.
-- Drag source only, not a drop target.
-- Clear button resets selection.
-
-#### 9.6.5 User interactions
+**User interactions**
 
 - Moving files within a jump reorders them.
 - Moving or copying files between jumps shows dialog with Move, Copy, Cancel options.
 - If target jump is far away, use tray as intermediate step: select files, scroll to target, drag from tray.
 
-### 9.7 Transitions — Timeline drag (Full Review, not in home)
+### 9.4 Browsing jumps
+
+#### 9.4.1 Empty states & header
+
+- No manifest shows "No Manifest Found" with a Scan button; the button is disabled while scanning.
+- Status banners reflect copying/scanning/processing activity.
+
+#### 9.4.2 Day groups & jump cards
+
+- Jumps grouped by day, days newest-first with per-day jump counts.
+- Compare checkbox per card, max 2 jumps. Cards expand/collapse. Jump labels are editable and save to the manifest.
+
+### 9.5 Comparing & merging jumps
+
+#### 9.5.1 Selection panel
+
+- Appears when jumps are selected. Clear resets selection. Compare appears only with exactly 2 selected and opens the comparison dialog.
+
+#### 9.5.2 Compare dialog
+
+- Two columns side-by-side with jump navigation (< >) to cycle through all jumps independently, skipping the other side's current jump. Each side shows file list and preview panel (video with read-only time bar/zoom, or image). Close dismisses dialog.
+
+#### 9.5.3 Merge
+
+- Merge opens a date popup (left jump's date, right jump's date, or custom date+time) and combines the two currently displayed jumps into the left one (union of files by path, sorted by mtime; confirmed only if both were confirmed; never processed).
+- Merged files shift rigidly so the earliest lands on the chosen anchor; the chosen side keeps its exact times.
+- Merge is disabled when either jump is processed. After merge the dialog closes and selection clears.
+
+### 9.6 Video cropping
+
+The VideoCropper component lives inside the PreviewDrawer (right panel), directly below the video player for video files. It shares the same video element as the player — seek changes propagate immediately.
+
+#### 9.6.1 Crop bar
+
+- Seek clamps to the valid range; seeks directly when buffered, otherwise commits an offset. Time maps from screen position via bounding rect. Crop markers drag with pointer events. Start/End here sets crop points. Apply saves crop to manifest.
+- **Optimistic UI:** the blue playhead and crop range (start/end handles, blue selection region) move instantly and stay draggable across the entire bar regardless of video loading state; video seek happens asynchronously.
+- Clicking the bar switches timestamps instantly for rapid seeking.
+
+#### 9.6.2 Filmstrip
+
+- Small JPEG thumbnails rendered along the crop bar background, loaded lazily via `/api/thumb/` endpoint. Thumbnails are keyframe-only fast seeks (`skip_frame nokey`, no audio, 80px wide, lanczos downscale, medium JPEG quality) so all 8 load in well under a second. Positioned by time offset and scale with zoom level.
+
+#### 9.6.3 Zoom
+
+- Mouse wheel zooms centered on cursor hover position (1x–10x range, exponential steps so ~12 notches span the full range). The time under the cursor stays pinned to that screen position while zoom changes around it.
+- A Reset button appears next to the zoom value whenever zoom is not 1x; clicking it restores 1x.
+
+### 9.7 Planned — not mounted
+
+#### 9.7.1 Timeline drag
 
 - Timeline bar click selects jump for comparison.
 - Timeline bar drag shifts jump day with snap options (15min or 24h with Shift key).
 - Drag commits only if offset ≥ 60 seconds.
 - Processed jumps cannot be dragged.
 
-### 9.8 Transitions — Empty & header
-
-- No manifest shows "No Manifest Found" with Scan button. Empty status shows "No Files to Review". Banners per system status: scanning, copying, processing. Scan button disabled when scanning.
-
-### 9.9 Transitions — Jump & timeline
-
-- Compare toggle limited to 2 jumps. Expand/collapse toggles view mode. Label save updates jump. Shift jump adjusts timestamps.
-
-### 9.10 Transitions — Selected/Compare/Preview
-
-- Selected jumps panel appears when jumps selected. Clear resets selection. Compare appears only with exactly 2 selected and opens the comparison dialog.
-- Compare dialog shows 2 columns side-by-side with jump navigation (< >) to cycle through all jumps independently, skipping the other side's current jump. Each side shows file list and preview panel (video with read-only time bar/zoom, or image). Merge opens a date popup (left jump's date, right jump's date, or custom date+time) and combines the two currently displayed jumps into the left one (union of files by path, sorted by mtime; confirmed only if both were confirmed; never processed). Merged files shift rigidly so the earliest lands on the chosen anchor; the chosen side keeps its exact times. Merge is disabled when either jump is processed. After merge the dialog closes and selection clears. Close dismisses dialog.
-
-### 9.11 Transitions — Video cropper
-
-- The VideoCropper component lives inside the PreviewDrawer (right panel), directly below the video player for video files.
-- **Thumbnail filmstrip:** Small JPEG thumbnails rendered along the crop bar background, loaded lazily via `/api/thumb/` endpoint. Thumbnails are keyframe-only fast seeks (`skip_frame nokey`, no audio, 80px wide, lanczos downscale, medium JPEG quality) so all 8 load in well under a second. Positioned by time offset and scale with zoom level.
-- Seek to time clamps to valid range. Checks if time is buffered, seeks directly or commits offset. Time from screen position via bounding rect. Wheel zoom centered on cursor. Pointer events for dragging crop markers. Start/End here sets crop points. Apply saves crop to manifest.
-- **UI optimistic crop bar:** The blue playhead and crop range (start/end handles, blue selection region) must move instantly and be fully draggable across the entire bar, regardless of video loading state. The video may still be loading/buffering, but the crop UI must never block or lag behind user input. Dragging start/end handles or clicking the bar updates the visual position immediately; video seek happens asynchronously.
-- Quick timestamp switching: clicking the crop bar seeks the video. Users can rapidly jump between timestamps by clicking different positions on the zoomable time bar.
-- **Zoom pinned to cursor hover:** Mouse wheel zooms centered on cursor hover position (1x–10x range, exponential steps so ~12 notches span the full range). The time under the cursor stays pinned to that screen position while zoom changes around it. A Reset button appears next to the zoom value whenever zoom is not 1x; clicking it restores 1x.
-- The crop bar shares the same video element as the player — seek changes propagate immediately.
-
-### 9.12 Transitions — Streaming (Full Review, not in home)
+#### 9.7.2 Streaming endpoints
 
 - fMP4 endpoint live-transcodes with hardware acceleration. Returns chunked video with proper headers. Concurrency capped with retry headers.
 - HLS endpoint live-transcodes to segments. Returns playlist. Sessions auto-cleaned after idle timeout. Request abort kills process.
 - HLS player lazy-loads library. Uses MSE if supported, else native. Configures buffer lengths. Handles network and media errors gracefully. Destroys on unmount.
 
-### 9.13 Presentation (non-logic)
+#### 9.7.3 HLS playback details
 
-- Layout, styling, colors, content visibility, thumbnails, hour markers, tooltips, icons, filter pills are presentation details. They live in JSX and may change without breaking logic tests.
-
-### 9.14 Video Preview & Live Streaming — Details (Full Review, not in home)
-
-#### Server — dual endpoints
+**Server — dual endpoints**
 
 1. **fMP4:** Live-transcodes with hardware acceleration. Used for thumbnails and crop bar fallback. Seek parameter for offset. Concurrency capped with retry headers.
 2. **HLS:** Live-transcodes to segments. Returns playlist. Sessions keyed by path and seek, auto-cleaned after idle. Used for main playback.
 
-#### Client — HLS player hook
+**Client — HLS player hook**
 
 - Lazy-loads library on client only. Uses MSE if supported, else native fallback.
 - Configures worker, low latency, buffer lengths, fragment prefetch.
 - Manages bandwidth with stop/destroy on seek/unmount, session reuse, idle cleanup, concurrency throttling.
 - Fatal error handling with network recovery, media error recovery, fallback to raw.
 
-#### MediaPreview — HLS playback
+**MediaPreview — HLS playback**
 
 - Primary: HLS via player hook. Video element managed by library.
 - Fallback: on error, switches to raw file mode.
 - Loading timeout with spinner. Retry resets state.
 
-#### Duration — ffprobe only
+**Duration — ffprobe only**
 
 - ffprobe returns true complete duration in one shot. Authoritative value for crop bar.
 - Browser-reported durations ignored for crop bar.
 
-#### Crop bar interaction (hybrid approach)
+**Crop bar interaction (hybrid approach)**
 
 - VideoCropper lives inside PreviewDrawer, directly below the video player.
 - VideoCropper shares video element with HLS player.
@@ -305,14 +317,18 @@ All drag and drop operations follow these rules:
 - Quick timestamp switching: clicking the crop bar seeks the video instantly.
 - Zoom on crop bar: mouse wheel zooms centered on cursor position (1x–10x).
 
-### 9.15 Visual UI Preview
+### 9.8 Presentation (non-logic)
+
+- Layout, styling, colors, content visibility, thumbnails, hour markers, tooltips, icons, filter pills are presentation details. They live in JSX and may change without breaking logic tests.
+
+### 9.9 Layout reference
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ SkyDock                                                          [Scan]    │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ Review Proposed Jumps                                                       │
-│ 2026-08-24 — 3 jumps, 12 files                              [Reset dates]  │
+│ 2026-08-24 — 3 jumps, 12 files                                              │
 │                                                                             │
 │ ┌─ Unassigned files • 2 ──────────────────────────────────────────────────┐ │
 │ │ not in any jump — select to stage                                        │ │
@@ -342,8 +358,8 @@ All drag and drop operations follow these rules:
 │ └──────────────────────────────────────────────────────────────────────────┘ │
 │                                                                             │
 │ ┌─ Selected Jumps Panel ─────────────────────────────────────────────────┐  │
-│ │ 2 jumps selected    [Clear] [Compare] [Process selected] [Change Day]  │  │
-│ └────────────────────────────────────────────────────────────────────────┘  │
+│ │ 2 jumps selected    [Clear] [Compare]                                    │  │
+│ └──────────────────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -355,9 +371,8 @@ All drag and drop operations follow these rules:
 - **Day groups:** Jumps organized by date with jump count
 - **Jump cards:** Expandable cards showing files with size/time
 - **File rows:** Checkbox, filename, timestamp, size, preview button
-- **Selection panel:** Appears when jumps selected for compare/process
+- **Selection panel:** Appears when jumps selected for compare
 - **Duplicate highlighting:** Files in multiple jumps shown with purple background
-- **Calibration indicator:** Shows when dates have been shifted
 
 ## 10. Dependencies & Tooling
 
@@ -413,7 +428,7 @@ All drag and drop operations follow these rules:
 
 - Bug fixes that preserve existing behavior
 - Refactoring that doesn't change external behavior
-- Presentation/styling changes (§9.13)
+- Presentation/styling changes (§9.8)
 - Test additions or updates
 
 **Commit rule:** No commit is ever made until the user explicitly requests it. All changes are staged and reviewed before committing.

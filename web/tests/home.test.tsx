@@ -112,7 +112,7 @@ const expandAllJumpCards = async () => {
   }
 }
 
-describe('Home - 9.8 empty', () => {
+describe('Home - 9.4.1 empty', () => {
   test('renders No Manifest Found when no manifest', async () => {
     const Stub = createRoutesStub([
       { path: '/', Component: Home, loader: () => ({ manifest: null }) }
@@ -123,7 +123,7 @@ describe('Home - 9.8 empty', () => {
   })
 })
 
-describe('Home - 9.6.5 within-jump reorder', () => {
+describe('Home - 9.3.3 within-jump reorder', () => {
   test('reorders file 8 to second position via drag and drop', async () => {
     const files = makeFiles(10)
     const manifest = makeManifest(files, [
@@ -162,7 +162,7 @@ describe('Home - 9.6.5 within-jump reorder', () => {
   })
 })
 
-describe('Home - 9.6.1 drag sources', () => {
+describe('Home - 9.3.3 drag sources', () => {
   test('file row is draggable and carries single file', async () => {
     const files = makeFiles(3)
     const manifest = makeManifest(files, [
@@ -191,7 +191,7 @@ describe('Home - 9.6.1 drag sources', () => {
   })
 })
 
-describe('Home - 9.6.2 drop targets', () => {
+describe('Home - 9.3.3 drop targets', () => {
   test('cross-jump drop shows Move/Copy/Cancel dialog', async () => {
     const filesA = makeFiles(2, 1724493600)
     const filesB = makeFiles(2, 1724493600 + 3600)
@@ -246,7 +246,7 @@ describe('Home - 9.6.2 drop targets', () => {
   })
 })
 
-describe('Home - 9.6.3 constraints', () => {
+describe('Home - 9.3.3 constraints', () => {
   test('drop indicator visible during drag over', async () => {
     const files = makeFiles(3)
     const manifest = makeManifest(files, [
@@ -292,7 +292,7 @@ describe('Home - 9.6.3 constraints', () => {
   })
 })
 
-describe('Home - 9.6.4 staging tray', () => {
+describe('Home - 9.3.2 staging tray', () => {
   test('tray visible when selected, hidden after Clear, not a drop target', async () => {
     const files = makeFiles(2)
     const manifest = makeManifest(files, [
@@ -338,7 +338,7 @@ describe('Home - 9.6.4 staging tray', () => {
   })
 })
 
-describe('Home - 9.6.5 user interactions', () => {
+describe('Home - 9.3.3 user interactions', () => {
   test('Move between jumps via dialog removes from source', async () => {
     const filesA = makeFiles(2, 1724493600)
     const filesB = makeFiles(1, 1724493600 + 3600)
@@ -855,7 +855,7 @@ describe('Home - jump comparison dialog', () => {
   })
 })
 
-describe('Home - video preview and crop (§9.11, §9.14)', () => {
+describe('Home - video preview and crop (§9.6)', () => {
   const renderWithVideo = async () => {
     const files = makeFiles(3)
     files.forEach((f) => {
