@@ -239,6 +239,34 @@ describe('VideoCropper - 9.11 wheel zoom centered', () => {
     )
     expect(onZoomChange).toHaveBeenCalledWith(5)
   })
+
+  test('wheel event calls preventDefault to stop page scroll', async () => {
+    await render(
+      createElement(VideoCropper, {
+        duration: 10,
+        currentTime: 5,
+        bufferedRanges: [],
+        cropStart: null,
+        cropEnd: null,
+        zoom: 1,
+        onSeek: vi.fn(),
+        onCropChange: vi.fn(),
+        onApply: vi.fn(),
+        onZoomChange: vi.fn()
+      })
+    )
+    const bar = document.querySelector('[data-crop-bar]') as HTMLElement
+    const wheelEvent = new WheelEvent('wheel', {
+      bubbles: true,
+      cancelable: true,
+      clientX: 500,
+      deltaY: -100
+    })
+    const preventDefaultSpy = vi.spyOn(wheelEvent, 'preventDefault')
+    bar.dispatchEvent(wheelEvent)
+    expect(preventDefaultSpy).toHaveBeenCalled()
+    await page.screenshot({ path: './playwright-screenshots/video-cropper-prevent-scroll.png' })
+  })
 })
 
 describe('VideoCropper - 9.11 pointer drag markers', () => {

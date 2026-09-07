@@ -6,6 +6,7 @@ const FileRow = ({
   file,
   groupId,
   selected,
+  isPreviewed,
   isInMultipleJumps,
   onSelect,
   onPreview,
@@ -15,6 +16,7 @@ const FileRow = ({
   file: ManifestFile
   groupId: string
   selected: boolean
+  isPreviewed: boolean
   isInMultipleJumps: boolean
   onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
   onPreview: (file: ManifestFile, groupId: string) => void
@@ -28,11 +30,13 @@ const FileRow = ({
     onDragEnd={() => onDragEnd?.()}
     onClick={() => onPreview(file, groupId)}
     className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg cursor-pointer select-none transition-all duration-150 ${
-      selected
-        ? 'bg-blue-50 ring-1 ring-blue-400 shadow-sm'
-        : isInMultipleJumps
-          ? 'bg-purple-50 hover:bg-purple-100 border border-purple-200'
-          : 'hover:bg-gray-50 border border-transparent hover:border-gray-200'
+      isPreviewed
+        ? 'bg-purple-50 ring-1 ring-purple-400 shadow-sm'
+        : selected
+          ? 'bg-blue-50 ring-1 ring-blue-400 shadow-sm'
+          : isInMultipleJumps
+            ? 'bg-purple-50 hover:bg-purple-100 border border-purple-200'
+            : 'hover:bg-gray-50 border border-transparent hover:border-gray-200'
     }`}>
     <input
       type='checkbox'

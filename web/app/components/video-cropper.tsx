@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 type VideoCropperProps = {
   duration: number
@@ -77,21 +77,25 @@ const VideoCropper = ({
     seekTo(t)
   }
 
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault()
+  useEffect(() => {
     const el = barRef.current
     if (!el) return
-    const rect = el.getBoundingClientRect()
-    const cursorTime = offset + clamp((e.clientX - rect.left) / rect.width, 0, 1) * vd
-    const delta = -e.deltaY * 0.001
-    const nextZoom = clamp(zoomClamped + delta, 1, 5)
-    const nextVd = safeDuration / nextZoom
-    const nextMax = Math.max(0, safeDuration - nextVd)
-    const ratio = clamp((e.clientX - rect.left) / rect.width, 0, 1)
-    const nextOffset = clamp(cursorTime - ratio * nextVd, 0, nextMax)
-    setViewOffset(nextOffset)
-    onZoomChange(nextZoom)
-  }
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const rect = el.getBoundingClientRect()
+      const cursorTime = offset + clamp((e.clientX - rect.left) / rect.width, 0, 1) * vd
+      const delta = -e.deltaY * 0.001
+      const nextZoom = clamp(zoomClamped + delta, 1, 5)
+      const nextVd = safeDuration / nextZoom
+      const nextMax = Math.max(0, safeDuration - nextVd)
+      const ratio = clamp((e.clientX - rect.left) / rect.width, 0, 1)
+      const nextOffset = clamp(cursorTime - ratio * nextVd, 0, nextMax)
+      setViewOffset(nextOffset)
+      onZoomChange(nextZoom)
+    }
+    el.addEventListener('wheel', handleWheel, { passive: false })
+    return () => el.removeEventListener('wheel', handleWheel)
+  }, [offset, vd, zoomClamped, safeDuration, onZoomChange])
 
   const handleCropHandleDown = (which: 'start' | 'end') => (e: React.PointerEvent) => {
     try {
@@ -142,7 +146,6 @@ const VideoCropper = ({
         ref={barRef}
         data-crop-bar='true'
         onPointerDown={handleBarDown}
-        onWheel={handleWheel}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         className='relative h-12 bg-gray-100 border border-gray-200 rounded-lg overflow-hidden cursor-crosshair'>

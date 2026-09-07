@@ -380,6 +380,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
                   file={file}
                   groupId='unassigned'
                   selected={!!selection['unassigned']?.[file.path]}
+                  isPreviewed={preview?.files[preview.index]?.path === file.path}
                   isInMultipleJumps={false}
                   onSelect={handleSelect}
                   onPreview={handlePreview}
@@ -424,6 +425,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
                     <JumpCard
                       jump={jump}
                       selection={selection}
+                      previewedPath={preview?.files[preview.index]?.path ?? null}
                       dropIndex={dropHint && dropHint.jumpId === jump.id ? dropHint.index : null}
                       onSelect={handleSelect}
                       onPreview={handlePreview}

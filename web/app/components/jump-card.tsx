@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import type { ManifestFile, ManifestJump, SelectionMap } from './types'
 import { formatTime, getJumpBounds, isVideoFile } from './utils'
 import { PhotoIcon, VideoIcon } from './icons'
@@ -7,6 +7,7 @@ import { FileRow } from './file-row'
 const JumpCard = ({
   jump,
   selection,
+  previewedPath,
   dropIndex,
   onSelect,
   onPreview,
@@ -18,6 +19,7 @@ const JumpCard = ({
 }: {
   jump: ManifestJump
   selection: SelectionMap
+  previewedPath: string | null
   dropIndex: number | null
   onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
   onPreview: (file: ManifestFile, groupId: string) => void
@@ -27,6 +29,7 @@ const JumpCard = ({
   onDragOver?: (e: React.DragEvent, targetJumpId: string) => void
   onDragLeave?: (jumpId: string) => void
 }) => {
+  const [expanded, setExpanded] = useState(false)
   const bounds = getJumpBounds(jump)
   const videoCount = jump.files.filter((f) => isVideoFile(f.filename)).length
   const photoCount = jump.files.length - videoCount
@@ -44,9 +47,20 @@ const JumpCard = ({
       }}
       onDragLeave={() => onDragLeave?.(jump.id)}
       className='border border-gray-200 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden'>
-      <div className='px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100'>
+      <div
+        data-jump-card-toggle='true'
+        onClick={() => setExpanded(!expanded)}
+        className='px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 cursor-pointer select-none'>
         <div className='flex items-center justify-between'>
           <div className='flex items-center gap-3'>
+            <svg
+              className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`}
+              fill='none'
+              viewBox='0 0 24 24'
+              stroke='currentColor'
+              strokeWidth={2}>
+              <path strokeLinecap='round' strokeLinejoin='round' d='M9 5l7 7-7 7' />
+            </svg>
             <h3 className='font-semibold text-sm text-gray-800'>{jump.label}</h3>
             <div className='flex items-center gap-1.5'>
               {videoCount > 0 && (
@@ -73,34 +87,37 @@ const JumpCard = ({
           </div>
         </div>
       </div>
-      <div className='divide-y divide-gray-50'>
-        {jump.files.map((file, i) => (
-          <Fragment key={file.path}>
-            {dropIndex === i && (
-              <div
-                data-drop-indicator='true'
-                className='h-0.5 mx-3 rounded bg-blue-500'
+      {expanded && (
+        <div className='divide-y divide-gray-50'>
+          {jump.files.map((file, i) => (
+            <Fragment key={file.path}>
+              {dropIndex === i && (
+                <div
+                  data-drop-indicator='true'
+                  className='h-0.5 mx-3 rounded bg-blue-500'
+                />
+              )}
+              <FileRow
+                file={file}
+                groupId={jump.id}
+                selected={!!selection[jump.id]?.[file.path]}
+                isPreviewed={previewedPath === file.path}
+                isInMultipleJumps={false}
+                onSelect={onSelect}
+                onPreview={onPreview}
+                onDragStart={onDragStart}
+                onDragEnd={onDragEnd}
               />
-            )}
-            <FileRow
-              file={file}
-              groupId={jump.id}
-              selected={!!selection[jump.id]?.[file.path]}
-              isInMultipleJumps={false}
-              onSelect={onSelect}
-              onPreview={onPreview}
-              onDragStart={onDragStart}
-              onDragEnd={onDragEnd}
+            </Fragment>
+          ))}
+          {dropIndex === jump.files.length && (
+            <div
+              data-drop-indicator='true'
+              className='h-0.5 mx-3 mb-1 rounded bg-blue-500'
             />
-          </Fragment>
-        ))}
-        {dropIndex === jump.files.length && (
-          <div
-            data-drop-indicator='true'
-            className='h-0.5 mx-3 mb-1 rounded bg-blue-500'
-          />
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

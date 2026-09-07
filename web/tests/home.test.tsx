@@ -49,6 +49,13 @@ const renderHome = async (manifest: unknown) => {
   return result
 }
 
+const expandAllJumpCards = async () => {
+  const toggles = document.querySelectorAll('[data-jump-card-toggle]')
+  for (const toggle of Array.from(toggles)) {
+    await userEvent.click(page.elementLocator(toggle as HTMLElement))
+  }
+}
+
 describe('Home - 9.8 empty', () => {
   test('renders No Manifest Found when no manifest', async () => {
     const Stub = createRoutesStub([
@@ -69,6 +76,8 @@ describe('Home - 9.6.5 within-jump reorder', () => {
 
     const { getByText } = await renderHome(manifest)
     await expect.element(getByText('Review Proposed Jumps')).toBeInTheDocument()
+
+    await expandAllJumpCards()
 
     const initial = getOrder()
     expect(initial).toEqual(files.map((f) => f.filename))
@@ -104,6 +113,7 @@ describe('Home - 9.6.1 drag sources', () => {
       { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...files] }
     ]) as never
     await renderHome(manifest)
+    await expandAllJumpCards()
     const row = document.querySelector('[data-file-row]') as HTMLElement
     expect(row.getAttribute('draggable')).toBe('true')
     await expect.element(page.getByText('DJI_0001.MP4')).toBeInTheDocument()
@@ -115,6 +125,7 @@ describe('Home - 9.6.1 drag sources', () => {
       { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...files] }
     ]) as never
     await renderHome(manifest)
+    await expandAllJumpCards()
     expect(document.querySelector('[data-staging-tray]')).toBeNull()
     const checkbox = document.querySelector('[data-file-row] input[type="checkbox"]') as HTMLElement
     await userEvent.click(page.elementLocator(checkbox))
@@ -146,6 +157,7 @@ describe('Home - 9.6.2 drop targets', () => {
       ]
     } as never
     await renderHome(manifest)
+    await expandAllJumpCards()
     const source = page.getByText(filesA[0].filename)
     const targetCard = page.elementLocator(
       document.querySelectorAll('[data-jump-card]')[1] as HTMLElement
@@ -165,6 +177,7 @@ describe('Home - 9.6.2 drop targets', () => {
       { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...files] }
     ]) as never
     await renderHome(manifest)
+    await expandAllJumpCards()
     const source = page.getByText('DJI_0003.MP4')
     const target = page.getByText('DJI_0001.MP4')
     await source.hover()
@@ -184,6 +197,7 @@ describe('Home - 9.6.3 constraints', () => {
       { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...files] }
     ]) as never
     await renderHome(manifest)
+    await expandAllJumpCards()
     const jumpCard = document.querySelector('[data-jump-card]') as HTMLElement
     const secondRow = document.querySelectorAll('[data-file-row]')[1] as HTMLElement
     const rect = secondRow.getBoundingClientRect()
@@ -205,6 +219,7 @@ describe('Home - 9.6.3 constraints', () => {
       { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...files] }
     ]) as never
     await renderHome(manifest)
+    await expandAllJumpCards()
     const source = page.getByText('DJI_0003.MP4')
     const target = page.getByText('DJI_0001.MP4')
     await userEvent.dragAndDrop(source, target, { targetPosition: { x: 10, y: 2 } } as never)
@@ -228,6 +243,7 @@ describe('Home - 9.6.4 staging tray', () => {
       { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...files] }
     ]) as never
     await renderHome(manifest)
+    await expandAllJumpCards()
     expect(document.querySelector('[data-staging-tray]')).toBeNull()
     const checkbox = document.querySelector('[data-file-row] input[type="checkbox"]') as HTMLElement
     await userEvent.click(page.elementLocator(checkbox))
@@ -254,6 +270,7 @@ describe('Home - 9.6.4 staging tray', () => {
       { path: '/api/manifest', action: async () => ({ ok: true }) }
     ])
     await render(createElement(Stub, { initialEntries: ['/'] }))
+    await expandAllJumpCards()
     const checkbox2 = document.querySelector(
       '[data-file-row] input[type="checkbox"]'
     ) as HTMLElement
@@ -285,6 +302,7 @@ describe('Home - 9.6.5 user interactions', () => {
       ]
     } as never
     await renderHome(manifest)
+    await expandAllJumpCards()
     const source = page.getByText(filesA[1].filename)
     const targetCard = page.elementLocator(
       document.querySelectorAll('[data-jump-card]')[1] as HTMLElement
@@ -318,6 +336,7 @@ describe('Home - 9.6.5 user interactions', () => {
       ]
     } as never
     await renderHome(manifest)
+    await expandAllJumpCards()
     const source = page.getByText(filesA[0].filename)
     const targetCard = page.elementLocator(
       document.querySelectorAll('[data-jump-card]')[1] as HTMLElement
@@ -330,6 +349,69 @@ describe('Home - 9.6.5 user interactions', () => {
   })
 })
 
+describe('Home - collapsible jump cards', () => {
+  test('jump cards are collapsed by default, click to expand', async () => {
+    const files = makeFiles(3)
+    const manifest = makeManifest(files, [
+      { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...files] }
+    ]) as never
+    await renderHome(manifest)
+
+    const fileRows = document.querySelectorAll('[data-file-row]')
+    expect(fileRows.length).toBe(0)
+
+    const toggleButton = document.querySelector('[data-jump-card-toggle]') as HTMLElement
+    expect(toggleButton).not.toBeNull()
+    await page.screenshot({ path: './playwright-screenshots/home-collapsed-card.png' })
+
+    await userEvent.click(page.elementLocator(toggleButton))
+
+    await expect.poll(() => document.querySelectorAll('[data-file-row]').length).toBe(3)
+    await page.screenshot({ path: './playwright-screenshots/home-expanded-card.png' })
+  })
+
+  test('click toggle again collapses the card', async () => {
+    const files = makeFiles(3)
+    const manifest = makeManifest(files, [
+      { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...files] }
+    ]) as never
+    await renderHome(manifest)
+
+    const toggleButton = document.querySelector('[data-jump-card-toggle]') as HTMLElement
+    await userEvent.click(page.elementLocator(toggleButton))
+    await expect.poll(() => document.querySelectorAll('[data-file-row]').length).toBe(3)
+
+    await userEvent.click(page.elementLocator(toggleButton))
+    await expect.poll(() => document.querySelectorAll('[data-file-row]').length).toBe(0)
+    await page.screenshot({ path: './playwright-screenshots/home-recollapsed-card.png' })
+  })
+})
+
+describe('Home - selected file distinct background when preview open', () => {
+  test('file being previewed has distinct background styling', async () => {
+    const files = makeFiles(3)
+    files.forEach((f) => {
+      f.filename = f.filename.replace(/\.\w+$/, '.MP4')
+    })
+    const manifest = makeManifest(files, [
+      { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...files] }
+    ]) as never
+    await renderHome(manifest)
+    await expandAllJumpCards()
+
+    const firstRow = document.querySelector('[data-file-row]') as HTMLElement
+    const initialClasses = firstRow.className
+
+    await userEvent.click(page.getByText('DJI_0001.MP4'))
+    await expect.poll(() => document.querySelector('[data-preview-drawer]') !== null).toBe(true)
+
+    const previewedRow = document.querySelector('[data-file-row]') as HTMLElement
+    expect(previewedRow.className).not.toBe(initialClasses)
+    expect(previewedRow.className).toContain('ring-purple')
+    await page.screenshot({ path: './playwright-screenshots/home-previewed-file-highlight.png' })
+  })
+})
+
 describe('Home - video preview and crop (§9.11, §9.14)', () => {
   const renderWithVideo = async () => {
     const files = makeFiles(3)
@@ -339,7 +421,9 @@ describe('Home - video preview and crop (§9.11, §9.14)', () => {
     const manifest = makeManifest(files, [
       { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...files] }
     ]) as never
-    return renderHome(manifest)
+    const result = await renderHome(manifest)
+    await expandAllJumpCards()
+    return result
   }
 
   const clickBarAt = async (bar: HTMLElement, pct: number) => {
