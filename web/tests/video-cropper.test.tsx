@@ -213,11 +213,11 @@ describe('VideoCropper - 9.11 wheel zoom centered', () => {
     expect(onZoomChange).toHaveBeenCalled()
     const zoom = onZoomChange.mock.calls[0][0] as number
     expect(zoom).toBeGreaterThan(1)
-    expect(zoom).toBeLessThanOrEqual(5)
+    expect(zoom).toBeLessThanOrEqual(10)
     await page.screenshot({ path: './playwright-screenshots/video-cropper-wheel.png' })
   })
 
-  test('zoom clamps 1..5', async () => {
+  test('zoom clamps 1..10', async () => {
     const onZoomChange = vi.fn()
     await render(
       createElement(VideoCropper, {
@@ -226,7 +226,7 @@ describe('VideoCropper - 9.11 wheel zoom centered', () => {
         bufferedRanges: [],
         cropStart: 2,
         cropEnd: 8,
-        zoom: 5,
+        zoom: 10,
         onSeek: vi.fn(),
         onCropChange: vi.fn(),
         onApply: vi.fn(),
@@ -237,7 +237,32 @@ describe('VideoCropper - 9.11 wheel zoom centered', () => {
     bar.dispatchEvent(
       new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: -1000, clientX: 500 })
     )
-    expect(onZoomChange).toHaveBeenCalledWith(5)
+    expect(onZoomChange).toHaveBeenCalledWith(10)
+  })
+
+  test('reset button appears when zoomed and resets to 1x', async () => {
+    const onZoomChange = vi.fn()
+    await render(
+      createElement(VideoCropper, {
+        duration: 10,
+        currentTime: 5,
+        bufferedRanges: [],
+        cropStart: null,
+        cropEnd: null,
+        zoom: 6,
+        onSeek: vi.fn(),
+        onCropChange: vi.fn(),
+        onApply: vi.fn(),
+        onZoomChange
+      })
+    )
+    await userEvent.click(page.getByText('Reset'))
+    expect(onZoomChange).toHaveBeenCalledWith(1)
+  })
+
+  test('reset button hidden at 1x zoom', async () => {
+    await renderCropper({ zoom: 1 })
+    expect(document.querySelector('[data-action="reset-zoom"]')).toBeNull()
   })
 
   test('wheel event calls preventDefault to stop page scroll', async () => {

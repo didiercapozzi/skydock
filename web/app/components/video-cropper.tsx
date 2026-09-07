@@ -17,6 +17,8 @@ type VideoCropperProps = {
 
 const THUMB_COUNT = 8
 
+const MAX_ZOOM = 10
+
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
 
 const VideoCropper = ({
@@ -37,7 +39,7 @@ const VideoCropper = ({
   const [viewOffset, setViewOffset] = useState(0)
 
   const safeDuration = duration || 1
-  const zoomClamped = clamp(zoom, 1, 5)
+  const zoomClamped = clamp(zoom, 1, MAX_ZOOM)
   const visibleDuration = safeDuration / zoomClamped
   const maxOffset = Math.max(0, safeDuration - visibleDuration)
 
@@ -73,6 +75,12 @@ const VideoCropper = ({
     onSeek(t)
   }
 
+  const handleBarResetZoom = () => {
+    draggingRef.current = null
+    setViewOffset(0)
+    onZoomChange(1)
+  }
+
   const handleBarDown = (e: React.PointerEvent) => {
     if (draggingRef.current) return
     try {
@@ -90,8 +98,8 @@ const VideoCropper = ({
       e.preventDefault()
       const rect = el.getBoundingClientRect()
       const cursorTime = offset + clamp((e.clientX - rect.left) / rect.width, 0, 1) * vd
-      const delta = -e.deltaY * 0.001
-      const nextZoom = clamp(zoomClamped + delta, 1, 5)
+      const deltaY = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY
+      const nextZoom = clamp(zoomClamped * Math.exp(-deltaY * 0.002), 1, MAX_ZOOM)
       const nextVd = safeDuration / nextZoom
       const nextMax = Math.max(0, safeDuration - nextVd)
       const ratio = clamp((e.clientX - rect.left) / rect.width, 0, 1)
@@ -153,6 +161,15 @@ const VideoCropper = ({
       className='w-full select-none'>
       <div className='flex items-center gap-2 mb-2 text-xs text-gray-500'>
         <span data-zoom-display='true'>{zoomClamped.toFixed(1)}x</span>
+        {zoomClamped !== 1 && (
+          <button
+            type='button'
+            data-action='reset-zoom'
+            onClick={handleBarResetZoom}
+            className='px-1.5 py-0.5 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors'>
+            Reset
+          </button>
+        )}
         <span data-current-time='true'>{currentTime.toFixed(2)}s</span>
         <span>/</span>
         <span data-duration='true'>{safeDuration.toFixed(2)}s</span>
@@ -175,6 +192,7 @@ const VideoCropper = ({
                 src={thumb.src}
                 alt=''
                 draggable={false}
+                decoding='async'
                 className='h-full object-cover pointer-events-none'
                 style={{ width: `${100 / THUMB_COUNT}%` }}
               />
