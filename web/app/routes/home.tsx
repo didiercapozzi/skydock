@@ -18,7 +18,15 @@ import type {
   PreviewState,
   SelectionMap
 } from '../components/types'
-import { getDropIndex, groupJumpsByDay } from '../components/utils'
+import {
+  buildGmailUrl,
+  DEFAULT_EMAIL_BODY,
+  DEFAULT_EMAIL_SUBJECT,
+  getDropIndex,
+  getJumpDate,
+  groupJumpsByDay,
+  renderEmailTemplate
+} from '../components/utils'
 import { useSafeFetcher } from '../helpers/routing'
 import type { Route } from './+types/home'
 
@@ -45,8 +53,14 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const mainRef = useRef<HTMLElement | null>(null)
   const videoRefRef = useRef<VideoRef | null>(null)
   const { submit, data } = useSafeFetcher()
-  const pendingRef = useRef<{ kind: 'merge' | 'process' } | null>(null)
+  const pendingRef = useRef<{ kind: 'merge' | 'process' | 'upload' } | null>(null)
   const [processingId, setProcessingId] = useState<string | null>(null)
+  const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const [mailPendingId, setMailPendingId] = useState<string | null>(null)
+  const [emailTemplates, setEmailTemplates] = useState<{
+    subject: string
+    body: string
+  } | null>(null)
   const jumpsByDay = groupJumpsByDay(jumps)
   const [videoCrop, setVideoCrop] = useState<{ cropStart: number | null; cropEnd: number | null }>({
     cropStart: null,
@@ -110,6 +124,47 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     })
   }
 
+  const handleUpload = (jumpId: string) => {
+    pendingRef.current = { kind: 'upload' }
+    setUploadingId(jumpId)
+    submit({
+      url: '/api/manifest',
+      actionArgs: { intent: 'upload-jump', jumpId }
+    })
+  }
+
+  const handleMail = (jumpId: string) => {
+    const jump = jumps.find((j) => j.id === jumpId)
+    const shareUrl = jump?.publish?.shareUrl
+    if (!jump || !shareUrl) return
+    const vars = {
+      firstname: jump.passenger?.firstname ?? '',
+      lastname: jump.passenger?.lastname ?? '',
+      jumpDate: getJumpDate(jump),
+      shareUrl,
+      fileCount: String(jump.files.length)
+    }
+    const subject = renderEmailTemplate(emailTemplates?.subject ?? DEFAULT_EMAIL_SUBJECT, vars)
+    const body = renderEmailTemplate(emailTemplates?.body ?? DEFAULT_EMAIL_BODY, vars)
+    window.open(buildGmailUrl(jump.passenger?.email ?? '', subject, body), '_blank', 'noopener')
+    setMailPendingId(jumpId)
+  }
+
+  const handleMarkSent = (jumpId: string) => {
+    const emailedAt = new Date().toISOString()
+    const next = jumps.map((j) => {
+      if (j.id !== jumpId || !j.publish?.shareUrl) return j
+      return { ...j, publish: { shareUrl: j.publish.shareUrl, emailedAt } }
+    })
+    setJumps(next)
+    saveJumps(next)
+    setMailPendingId(null)
+  }
+
+  const handleCancelMail = () => {
+    setMailPendingId(null)
+  }
+
   useEffect(() => {
     if (!pendingRef.current) return
     if (data && typeof data === 'object' && 'jumps' in data && Array.isArray(data.jumps)) {
@@ -118,6 +173,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
       // eslint-disable-next-line react/set-state-in-effect -- syncing server response into state
       setJumps(data.jumps as ManifestJump[])
       setProcessingId(null)
+      setUploadingId(null)
       if (kind === 'merge') {
         setShowComparison(false)
         setCompareIds([])
@@ -130,11 +186,39 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     ) {
       pendingRef.current = null
       setProcessingId(null)
+      setUploadingId(null)
     }
   }, [data])
 
   useEffect(() => {
     mainRef.current?.setAttribute('data-hydrated', 'true')
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        const [subject, body] = await Promise.all([
+          fetch('/templates/tandem-email.subject.txt').then((r) => {
+            if (!r.ok) throw new Error('missing subject template')
+            return r.text()
+          }),
+          fetch('/templates/tandem-email.body.txt').then((r) => {
+            if (!r.ok) throw new Error('missing body template')
+            return r.text()
+          })
+        ])
+        // eslint-disable-next-line react/set-state-in-effect -- loading email templates once on mount
+        if (!cancelled) setEmailTemplates({ subject, body })
+      } catch {
+        if (!cancelled)
+          setEmailTemplates({ subject: DEFAULT_EMAIL_SUBJECT, body: DEFAULT_EMAIL_BODY })
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const manifestFiles = manifest?.files ?? []
@@ -489,6 +573,12 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
                       onPassengerChange={handlePassengerChange}
                       onProcess={handleProcess}
                       processing={processingId === jump.id}
+                      onUpload={handleUpload}
+                      uploading={uploadingId === jump.id}
+                      onMail={handleMail}
+                      onMarkSent={handleMarkSent}
+                      onCancelMail={handleCancelMail}
+                      mailPending={mailPendingId === jump.id}
                     />
                   </div>
                 ))}

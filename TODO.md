@@ -76,40 +76,43 @@ window so the user just hits Send.
   passenger complete, spinner while busy, Reprocess + Processed badge after).
   Response `{jumps}` flows through the same fetcher effect as merge.
 
-### Phase 5 — Publish module (`publish.ts`, new)
+### Phase 5 — Publish module (done)
 
 - DSM client with native `fetch`/`FormData` (Node 26, no new deps):
   `SYNO.API.Auth` login → recursive `FileStation.Upload` with
   `create_parents` + `overwrite=true` → `FileStation.Sharing.create` →
   public link → logout.
+- `publish.ts`: DSM login (v6 with v3 fallback), recursive upload,
+  share-link creation, logout always. Unit-tested with stubbed fetch.
 - New `upload-jump` manifest intent: runs the publish module for one
   processed jump, stores `publish: { shareUrl }` (clearing any `emailedAt`),
-  saves, and returns `{ shareUrl, emailSubject, emailBody }` with the
-  template already rendered — single template source, client stays logic-free.
-- Email templates: `templates/tandem-email.subject.txt` and
-  `templates/tandem-email.body.txt`
-  (`{{firstname}} {{lastname}} {{jumpDate}} {{shareUrl}} {{fileCount}}`),
-  rendered server-side into a Gmail compose URL + `mailto:` fallback.
+  saves, returns `{ jumps }`.
+- Email templates live in `web/public/templates/` and render client-side
+  (popup blockers forbid opening windows from async responses); the upload
+  response carries no rendered content.
 - New optional `publish: { shareUrl, emailedAt? }` on jumps (thread through
   `types.ts`, `manifest.ts`, `clustering.ts` like `passenger`).
 
-### Phase 6 — UI wiring
+### Phase 6 — UI wiring (done)
 
 - `JumpCard` header: Process button (files present, not processed), Upload
   button (only when processed, spinner while the fetcher is busy), Mail
   button (disabled with "Upload first" tooltip until `shareUrl` exists).
-- Mail click opens the prefilled Gmail compose and offers "Mark as sent",
-  which persists `emailedAt` via `save-jumps` and disables the icon.
-- Share URL shown with copy action.
+- Expanded share section: link, copy action, Mail button (disabled until
+  `shareUrl`), "Did you send it?" confirm with Mark as sent / Not yet.
+- Mark as sent persists `emailedAt` via `save-jumps` and disables the icon
+  with a sent-on tooltip. Fixed a real bug found by tests: header button
+  clicks bubbled into the card expand toggle (stopPropagation).
 
-### Phase 7 — Verify
+### Phase 7 — Verify (tests and docs done, NAS dry run pending)
 
 - Browser tests (editor, persist, process/upload/mail gating, mark-as-sent
-  flow), pure-helper tests in `scripts-barrel.test.tsx`, template-render test.
-- RULES updates (§4 schema, §6 execute, §8.4 endpoints, §9 UI).
-- README env docs. Dry run against a test folder on the NAS.
+  flow), pure-helper tests in `scripts-barrel.test.tsx`, template-render
+  test, DSM unit tests with stubbed fetch in `packages/skydock-scripts/tests/`.
+- RULES updates (§4 schema, §6 execute, §8.4 endpoints, §9 UI, §13 flow).
+- README env docs.
 
-### Needed at implementation time
+### Still needed from you
 
-- DSM host URL + dedicated user credentials.
-- Email template text (or approve a drafted one).
+- DSM host URL + dedicated user credentials for the live dry run.
+- Email template text approval (defaults shipped in `web/public/templates/`).

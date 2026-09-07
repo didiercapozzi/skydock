@@ -18,7 +18,13 @@ const JumpCard = ({
   onDragLeave,
   onPassengerChange,
   onProcess,
-  processing
+  processing,
+  onUpload,
+  uploading,
+  onMail,
+  onMarkSent,
+  onCancelMail,
+  mailPending
 }: {
   jump: ManifestJump
   selection: SelectionMap
@@ -34,9 +40,16 @@ const JumpCard = ({
   onPassengerChange: (jumpId: string, passenger: ManifestPassenger | undefined) => void
   onProcess: (jumpId: string) => void
   processing: boolean
+  onUpload: (jumpId: string) => void
+  uploading: boolean
+  onMail: (jumpId: string) => void
+  onMarkSent: (jumpId: string) => void
+  onCancelMail: () => void
+  mailPending: boolean
 }) => {
   const [expanded, setExpanded] = useState(false)
   const [editingPassenger, setEditingPassenger] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
   const [draftFirstname, setDraftFirstname] = useState('')
   const [draftLastname, setDraftLastname] = useState('')
   const [draftEmail, setDraftEmail] = useState('')
@@ -83,6 +96,18 @@ const JumpCard = ({
   const cancelPassengerEditor = () => {
     setEditingPassenger(false)
   }
+
+  const copyShareLink = async () => {
+    if (!jump.publish?.shareUrl) return
+    try {
+      await navigator.clipboard.writeText(jump.publish.shareUrl)
+      setLinkCopied(true)
+    } catch {
+      setLinkCopied(false)
+    }
+  }
+
+  const emailedAt = jump.publish?.emailedAt ?? null
 
   return (
     <div
@@ -141,10 +166,25 @@ const JumpCard = ({
             )}
             <button
               type='button'
+              data-action='upload'
+              disabled={jump.processed !== true || uploading}
+              title={jump.processed === true ? undefined : 'Process the jump first'}
+              onClick={(e) => {
+                e.stopPropagation()
+                onUpload(jump.id)
+              }}
+              className='px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'>
+              {uploading ? 'Uploading…' : 'Upload'}
+            </button>
+            <button
+              type='button'
               data-action='process'
               disabled={!passengerComplete || processing}
               title={processTitle}
-              onClick={() => onProcess(jump.id)}
+              onClick={(e) => {
+                e.stopPropagation()
+                onProcess(jump.id)
+              }}
               className='px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'>
               {processing ? 'Processing…' : jump.processed === true ? 'Reprocess' : 'Process'}
             </button>
@@ -225,6 +265,66 @@ const JumpCard = ({
                 className='px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-800'>
                 Add passenger
               </button>
+            </div>
+          )}
+          {jump.processed === true && (
+            <div
+              data-share-section='true'
+              className='px-4 py-3 border-b border-gray-100 bg-gray-50/60'>
+              {jump.publish?.shareUrl ? (
+                <div className='flex items-center gap-2 flex-wrap'>
+                  <a
+                    href={jump.publish.shareUrl}
+                    target='_blank'
+                    rel='noreferrer'
+                    className='font-mono text-xs text-blue-600 hover:text-blue-800 truncate max-w-[260px]'>
+                    {jump.publish.shareUrl}
+                  </a>
+                  <button
+                    type='button'
+                    data-action='copy-link'
+                    onClick={copyShareLink}
+                    className='px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200'>
+                    {linkCopied ? 'Copied!' : 'Copy link'}
+                  </button>
+                  {emailedAt ? (
+                    <span
+                      data-mailed-badge='true'
+                      title={`Sent on ${new Date(emailedAt).toLocaleString()}`}
+                      className='px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium'>
+                      Sent
+                    </span>
+                  ) : mailPending ? (
+                    <span className='flex items-center gap-2 text-xs text-gray-600'>
+                      Did you send it?
+                      <button
+                        type='button'
+                        data-action='mark-sent'
+                        onClick={() => onMarkSent(jump.id)}
+                        className='px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700'>
+                        Mark as sent
+                      </button>
+                      <button
+                        type='button'
+                        data-action='cancel-mail'
+                        onClick={onCancelMail}
+                        className='px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200'>
+                        Not yet
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      type='button'
+                      data-action='mail'
+                      onClick={() => onMail(jump.id)}
+                      className='px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700'>
+                      Mail
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <p className='text-xs text-gray-500'>Upload to get a share link.</p>
+              )}
             </div>
           )}
           <div className='divide-y divide-gray-50'>

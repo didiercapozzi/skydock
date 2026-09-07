@@ -1,0 +1,10 @@
+Hi {{firstname}},
+
+What a jump! Your tandem skydive video and photos are ready to watch and share:
+
+{{shareUrl}}
+
+Jump date: {{jumpDate}}
+Files: {{fileCount}}
+
+Blue skies!

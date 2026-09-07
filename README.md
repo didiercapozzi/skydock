@@ -84,6 +84,16 @@ Files are deduplicated using `cmp`:
 ./scripts/test_pipeline.sh --clean
 ```
 
+## Configuration
+
+| Variable             | Purpose                                             | Default             |
+| -------------------- | --------------------------------------------------- | ------------------- |
+| `SKYDOCK_OUTPUT_DIR` | Output directory for originals, manifest, processed | `/workspace/output` |
+| `SYNOLOGY_HOST`      | Synology DSM origin, e.g. `https://nas.local:5001`  | — (upload disabled) |
+| `SYNOLOGY_USER`      | DSM user for upload and share links                 | —                   |
+| `SYNOLOGY_PASSWORD`  | DSM password (never stored in the manifest or git)  | —                   |
+| `SYNOLOGY_PATH`      | Destination folder on the NAS                       | `/SkyDock`          |
+
 ## Dependencies
 
 - `jq` - JSON processing

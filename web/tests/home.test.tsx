@@ -925,6 +925,155 @@ describe('Home - jump comparison dialog', () => {
     await expect.element(page.getByText('Reprocess')).toBeInTheDocument()
   })
 
+  test('upload button disabled until jump is processed', async () => {
+    const filesA = makeFiles(2, 1724493600)
+    const filesB = makeFiles(2, 1724493600 + 3600)
+    filesB.forEach((f) => {
+      f.path = `/output/B_${f.filename}`
+      f.filename = `B_${f.filename}`
+    })
+    const manifest = {
+      version: 1,
+      status: 'proposed' as const,
+      date: '2026-08-24',
+      startDatetime: '2026-08-24T10:00:00.000Z',
+      createdAt: '2026-08-24T10:00:00.000Z',
+      theory: [],
+      files: [...filesA, ...filesB],
+      jumps: [
+        { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...filesA] },
+        {
+          id: 'jump_02',
+          label: 'jump_02',
+          confirmed: false,
+          processed: true,
+          passenger: { firstname: 'John', lastname: 'Doe', email: 'john@example.com' },
+          files: [...filesB]
+        }
+      ]
+    } as never
+    await renderHome(manifest)
+    const buttons = document.querySelectorAll(
+      '[data-action="upload"]'
+    ) as NodeListOf<HTMLButtonElement>
+    expect(buttons.length).toBe(2)
+    expect(buttons[0].disabled).toBe(true)
+    expect(buttons[0].title).toBe('Process the jump first')
+    expect(buttons[1].disabled).toBe(false)
+  })
+
+  test('upload flow shows share link and enables mail', async () => {
+    const files = makeFiles(2)
+    const manifest = makeManifest(files, [
+      {
+        id: 'jump_01',
+        label: 'jump_01',
+        confirmed: false,
+        processed: true,
+        passenger: { firstname: 'John', lastname: 'Doe', email: 'john@example.com' },
+        files: [...files]
+      }
+    ]) as never
+    const uploadAction = async ({ request }: { request: Request }) => {
+      const body = (await request.json()) as { intent: string; jumpId?: string }
+      if (body.intent === 'upload-jump' && body.jumpId) {
+        const jumps = (manifest as unknown as { jumps: Array<{ id: string; publish?: unknown }> })
+          .jumps
+        const target = jumps.find((j) => j.id === body.jumpId)
+        if (target) target.publish = { shareUrl: 'https://nas.local:5001/sharing/demo123' }
+        return { jumps }
+      }
+      return { ok: true }
+    }
+    await renderHome(manifest, uploadAction)
+    await expandAllJumpCards()
+    await expect.element(page.getByText('Upload to get a share link.')).toBeInTheDocument()
+
+    const uploadBtn = document.querySelector('[data-action="upload"]') as HTMLButtonElement
+    await userEvent.click(page.elementLocator(uploadBtn))
+    await expect
+      .poll(() => document.querySelector('[data-share-section] a[href]') !== null, {
+        timeout: 5000
+      })
+      .toBe(true)
+    const link = document.querySelector('[data-share-section] a[href]') as HTMLAnchorElement
+    expect(link.href).toBe('https://nas.local:5001/sharing/demo123')
+    const mailBtn = document.querySelector('[data-action="mail"]') as HTMLButtonElement
+    expect(mailBtn.disabled).toBe(false)
+  })
+
+  test('mail opens gmail and mark as sent disables it', async () => {
+    const opened: string[] = []
+    vi.stubGlobal('open', (url: string) => {
+      opened.push(url)
+      return null
+    })
+    try {
+      const files = makeFiles(2)
+      const manifest = makeManifest(files, [
+        {
+          id: 'jump_01',
+          label: 'jump_01',
+          confirmed: false,
+          processed: true,
+          passenger: { firstname: 'John', lastname: 'Doe', email: 'john@example.com' },
+          publish: { shareUrl: 'https://nas.local:5001/sharing/demo123' },
+          files: [...files]
+        }
+      ]) as never
+      let saved: unknown = null
+      await renderHome(manifest, async ({ request }: { request: Request }) => {
+        saved = await request.json()
+        return { ok: true }
+      })
+      await expandAllJumpCards()
+
+      await userEvent.click(
+        page.elementLocator(document.querySelector('[data-action="mail"]') as HTMLElement)
+      )
+      await expect.poll(() => opened.length > 0, { timeout: 5000 }).toBe(true)
+      expect(opened[0]).toContain('mail.google.com/mail')
+      expect(opened[0]).toContain(encodeURIComponent('john@example.com'))
+      expect(opened[0]).toContain(encodeURIComponent('https://nas.local:5001/sharing/demo123'))
+
+      await expect.element(page.getByText('Mark as sent')).toBeInTheDocument()
+      await userEvent.click(page.getByText('Mark as sent'))
+      await expect.poll(() => document.querySelector('[data-mailed-badge]') !== null).toBe(true)
+      const mailed = document.querySelector('[data-mailed-badge]') as HTMLElement
+      expect(mailed.title).toContain('Sent on')
+      await expect
+        .poll(
+          () =>
+            (saved as { jumps: Array<{ publish?: { emailedAt?: string } }> } | null)?.jumps?.[0]
+              ?.publish?.emailedAt ?? null,
+          { timeout: 5000 }
+        )
+        .not.toBe(null)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  test('header buttons do not collapse an expanded card', async () => {
+    const files = makeFiles(2)
+    const manifest = makeManifest(files, [
+      {
+        id: 'jump_01',
+        label: 'jump_01',
+        confirmed: false,
+        processed: true,
+        passenger: { firstname: 'John', lastname: 'Doe', email: 'john@example.com' },
+        files: [...files]
+      }
+    ]) as never
+    await renderHome(manifest)
+    await expandAllJumpCards()
+    await expect.element(page.getByText('Upload to get a share link.')).toBeInTheDocument()
+    const uploadBtn = document.querySelector('[data-action="upload"]') as HTMLElement
+    await userEvent.click(page.elementLocator(uploadBtn))
+    await expect.element(page.getByText('Upload to get a share link.')).toBeInTheDocument()
+  })
+
   test('jump navigation buttons cycle through jumps', async () => {
     const filesC = makeFiles(2, 1724493600 + 7200)
     filesC.forEach((f) => {

@@ -63,6 +63,22 @@ const getThumbUrl = (filePath: string, seekSeconds: number, width = 80) => {
   return `/api/thumb${relative}?seek=${seekSeconds.toFixed(1)}&width=${width}`
 }
 
+const DEFAULT_EMAIL_SUBJECT = 'Your tandem skydive video is ready'
+
+const DEFAULT_EMAIL_BODY = 'Hi {{firstname}},\n\nYour video is ready: {{shareUrl}}'
+
+const renderEmailTemplate = (template: string, vars: Record<string, string>) => {
+  let out = template
+  for (const [key, value] of Object.entries(vars)) out = out.split(`{{${key}}}`).join(value)
+  return out
+}
+
+const buildGmailUrl = (to: string, subject: string, body: string) =>
+  `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+
+const buildMailtoUrl = (to: string, subject: string, body: string) =>
+  `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+
 const getDropIndex = (cardEl: HTMLElement, clientY: number) => {
   const rows = Array.from(cardEl.querySelectorAll('[data-file-row]'))
   for (let i = 0; i < rows.length; i++) {
@@ -73,6 +89,10 @@ const getDropIndex = (cardEl: HTMLElement, clientY: number) => {
 }
 
 export {
+  buildGmailUrl,
+  buildMailtoUrl,
+  DEFAULT_EMAIL_BODY,
+  DEFAULT_EMAIL_SUBJECT,
   formatSize,
   formatTime,
   getFileUrl,
@@ -81,5 +101,6 @@ export {
   getJumpBounds,
   getJumpDate,
   groupJumpsByDay,
-  isVideoFile
+  isVideoFile,
+  renderEmailTemplate
 }

@@ -98,9 +98,12 @@ output/
 - For each jump: builds the base name from the passenger (lowercase firstname, lastname and jump day) or the sanitized label as fallback, creates directory structure with `videos/` and `photos/` subdirectories. Files renamed to the base name with numbered suffixes past the first. If crop range set and ffmpeg available, video is cropped. Processed jumps are marked processed, their publish state is cleared, and the manifest is saved.
 - Writes status file for API polling.
 
-### 6.2 API execute
+### 6.2 Manifest action intents
 
-- Takes jump IDs from Review UI state, marks them confirmed, saves, executes, then marks them processed. Updates manifest status accordingly.
+- save-jumps persists the working jump list.
+- merge-jumps combines two jumps server-side with a date anchor for the merged files.
+- process-jump runs `executeMedia` for one jump with complete passenger details, marks it processed and clears its publish state.
+- upload-jump uploads one processed jump to network storage, stores the share link and clears any sent record.
 
 ## 7. Simulation & Testing
 
@@ -145,7 +148,7 @@ output/
 - **Thumb:** Single frame JPEG extraction via ffmpeg for crop bar thumbnails.
 - **Stream:** Live-transcodes to fMP4 for thumbnails and crop bar fallback.
 - **HLS:** Live-transcodes to HLS segments for main playback.
-- **Manifest:** Full CRUD for jumps, files, calibration, execution. Intents: save-jumps, merge-jumps (with date anchor), process-jump (requires complete passenger).
+- **Manifest:** Full CRUD for jumps, files, calibration, execution. Intents: save-jumps, merge-jumps (with date anchor), process-jump (requires complete passenger), upload-jump (requires processed jump and configured storage).
 
 ## 9. Review UI (`/`)
 
@@ -230,7 +233,7 @@ All drag and drop operations follow these rules:
 #### 9.4.2 Day groups & jump cards
 
 - Jumps grouped by day, days newest-first with per-day jump counts.
-- Compare checkbox per card, max 2 jumps. Cards expand/collapse. Each card has a Process button (enabled with complete passenger details, spinner while processing, Reprocess once done) and a Processed badge. The card title shows the passenger name once firstname and lastname are set, otherwise the jump label. The expanded card shows passenger names as labels (click to edit) or an Add passenger button; Done saves to the manifest, Cancel discards drafts.
+- Compare checkbox per card, max 2 jumps. Cards expand/collapse. Each card has Process and Upload buttons (Process needs complete passenger details, shows a spinner while busy and Reprocess once done; Upload needs a processed jump) with a Processed badge; the expanded card shows the share section (link, copy, mail) once published. The card title shows the passenger name once firstname and lastname are set, otherwise the jump label. The expanded card shows passenger names as labels (click to edit) or an Add passenger button; Done saves to the manifest, Cancel discards drafts.
 
 ### 9.5 Comparing & merging jumps
 
@@ -435,7 +438,7 @@ The VideoCropper component lives inside the PreviewDrawer (right panel), directl
 
 ## 13. Tandem passenger publishing
 
-> How tandem jumps go from processed files to the passenger's inbox. Passenger details and processing are live; upload and mail are still planned.
+> How tandem jumps go from processed files to the passenger's inbox.
 
 ### 13.1 Passenger details
 

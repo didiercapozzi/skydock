@@ -1,24 +1,28 @@
+import * as fs from 'node:fs'
+import * as path from 'node:path'
 import type { Route } from './+types/api.manifest'
 import { z } from 'zod'
 import {
+  buildJumpBaseName,
   executeMedia,
   getOutputDir,
   hasCompletePassenger,
   loadManifest,
   manifestJumpSchema,
   mergeJumps,
+  publishJump,
   saveManifest,
   shiftFiles
 } from '@skydock/scripts'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 
 const actionArgs = z.object({
-  intent: z.enum(['save-jumps', 'merge-jumps', 'process-jump']),
+  intent: z.enum(['save-jumps', 'merge-jumps', 'process-jump', 'upload-jump']),
+  jumpId: z.string().optional(),
   jumps: z.array(manifestJumpSchema).optional(),
   leftId: z.string().optional(),
   rightId: z.string().optional(),
-  anchorEpoch: z.number().optional(),
-  jumpId: z.string().optional()
+  anchorEpoch: z.number().optional()
 })
 
 const action = createValidatedFormAction<Route.ActionArgs>()({
@@ -68,6 +72,55 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       executeMedia({ manifestPath, jumpIds: [target.id], outputDir: getOutputDir() })
       const updated = loadManifest(manifestPath)
       return { jumps: updated?.jumps ?? manifest.jumps }
+    }
+    if (data.intent === 'upload-jump') {
+      if (!data.jumpId) {
+        errors.addGlobalError('Upload needs a jump id.')
+        return errors.toResponse(422)
+      }
+      const target = manifest.jumps.find((j) => j.id === data.jumpId)
+      if (!target) {
+        errors.addGlobalError('Jump not found.')
+        return errors.toResponse(422)
+      }
+      if (!target.processed) {
+        errors.addGlobalError('Process the jump first.')
+        return errors.toResponse(422)
+      }
+      if (target.files.length === 0) {
+        errors.addGlobalError('Jump has no files.')
+        return errors.toResponse(422)
+      }
+      const host = process.env.SYNOLOGY_HOST
+      const user = process.env.SYNOLOGY_USER
+      const password = process.env.SYNOLOGY_PASSWORD
+      if (!host || !user || !password) {
+        errors.addGlobalError('Synology storage is not configured.')
+        return errors.toResponse(422)
+      }
+      const min = Math.min(...target.files.map((f) => f.mtime))
+      const baseName = buildJumpBaseName(target.passenger, target.label, min)
+      const localDir = path.join(getOutputDir(), 'processed', baseName)
+      if (!fs.existsSync(localDir)) {
+        errors.addGlobalError('Processed files not found. Process the jump again.')
+        return errors.toResponse(422)
+      }
+      const remoteBase = process.env.SYNOLOGY_PATH ?? '/SkyDock'
+      try {
+        const { shareUrl } = await publishJump({
+          host,
+          user,
+          password,
+          localDir,
+          remoteDir: `${remoteBase}/${baseName}`
+        })
+        target.publish = { shareUrl }
+        saveManifest(manifestPath, manifest)
+        return { jumps: manifest.jumps }
+      } catch (err) {
+        errors.addGlobalError(err instanceof Error ? err.message : 'Upload failed.')
+        return errors.toResponse(422)
+      }
     }
     if (!data.jumps) {
       errors.addGlobalError('Save needs jumps.')
