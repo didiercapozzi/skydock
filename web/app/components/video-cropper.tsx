@@ -27,7 +27,7 @@ const VideoCropper = ({
   onZoomChange
 }: VideoCropperProps) => {
   const barRef = useRef<HTMLDivElement | null>(null)
-  const draggingRef = useRef<'start' | 'end' | null>(null)
+  const draggingRef = useRef<'start' | 'end' | 'playhead' | null>(null)
   const [viewOffset, setViewOffset] = useState(0)
 
   const safeDuration = duration || 1
@@ -67,7 +67,12 @@ const VideoCropper = ({
     onSeek(t)
   }
 
-  const handleBarClick = (e: React.MouseEvent) => {
+  const handleBarDown = (e: React.PointerEvent) => {
+    if (draggingRef.current) return
+    try {
+      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    } catch {}
+    draggingRef.current = 'playhead'
     const t = timeFromPosition(e.clientX)
     seekTo(t)
   }
@@ -88,7 +93,7 @@ const VideoCropper = ({
     onZoomChange(nextZoom)
   }
 
-  const handlePointerDown = (which: 'start' | 'end') => (e: React.PointerEvent) => {
+  const handleCropHandleDown = (which: 'start' | 'end') => (e: React.PointerEvent) => {
     try {
       ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
     } catch {}
@@ -100,12 +105,11 @@ const VideoCropper = ({
     const dragging = draggingRef.current
     if (!dragging) return
     const t = timeFromPosition(e.clientX)
+    seekTo(t)
     if (dragging === 'start') {
-      const next = clamp(t, 0, cropEnd ?? safeDuration)
-      onCropChange({ cropStart: next, cropEnd })
-    } else {
-      const next = clamp(t, cropStart ?? 0, safeDuration)
-      onCropChange({ cropStart, cropEnd: next })
+      onCropChange({ cropStart: clamp(t, 0, cropEnd ?? safeDuration), cropEnd })
+    } else if (dragging === 'end') {
+      onCropChange({ cropStart, cropEnd: clamp(t, cropStart ?? 0, safeDuration) })
     }
   }
 
@@ -137,20 +141,21 @@ const VideoCropper = ({
       <div
         ref={barRef}
         data-crop-bar='true'
-        onClick={handleBarClick}
+        onPointerDown={handleBarDown}
         onWheel={handleWheel}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         className='relative h-12 bg-gray-100 border border-gray-200 rounded-lg overflow-hidden cursor-crosshair'>
         <div
           data-playhead='true'
-          className='absolute top-0 bottom-0 w-0.5 bg-blue-600 z-10'
-          style={{ left: `${playheadPct}%` }}
-        />
+          className='absolute top-0 bottom-0 w-4 -ml-2 cursor-ew-resize z-30 pointer-events-none'
+          style={{ left: `${playheadPct}%` }}>
+          <div className='absolute left-1/2 top-0 bottom-0 w-0.5 -ml-px bg-blue-600 pointer-events-none' />
+        </div>
         {startPct !== null && (
           <div
             data-crop-start-handle='true'
-            onPointerDown={handlePointerDown('start')}
+            onPointerDown={handleCropHandleDown('start')}
             className='absolute top-0 bottom-0 w-3 -ml-1.5 bg-amber-500 rounded cursor-ew-resize z-20 hover:bg-amber-600 transition-colors'
             style={{ left: `${startPct}%` }}
           />
@@ -158,7 +163,7 @@ const VideoCropper = ({
         {endPct !== null && (
           <div
             data-crop-end-handle='true'
-            onPointerDown={handlePointerDown('end')}
+            onPointerDown={handleCropHandleDown('end')}
             className='absolute top-0 bottom-0 w-3 -ml-1.5 bg-amber-500 rounded cursor-ew-resize z-20 hover:bg-amber-600 transition-colors'
             style={{ left: `${endPct}%` }}
           />

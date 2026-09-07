@@ -61,21 +61,37 @@ describe('VideoCropper - 9.11 seek clamps', () => {
       }) as DOMRect
 
     bar.dispatchEvent(
-      new MouseEvent('click', {
+      new PointerEvent('pointerdown', {
         bubbles: true,
+        cancelable: true,
         clientX: 0,
-        clientY: 10
-      } as unknown as MouseEventInit)
+        clientY: 10,
+        pointerId: 1,
+        pointerType: 'mouse'
+      } as unknown as PointerEventInit)
     )
     expect(onSeek).toHaveBeenCalledWith(0)
 
     onSeek.mockClear()
     bar.dispatchEvent(
-      new MouseEvent('click', {
+      new PointerEvent('pointerup', {
         bubbles: true,
+        cancelable: true,
+        clientX: 0,
+        clientY: 10,
+        pointerId: 1,
+        pointerType: 'mouse'
+      } as unknown as PointerEventInit)
+    )
+    bar.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        cancelable: true,
         clientX: 2000,
-        clientY: 10
-      } as unknown as MouseEventInit)
+        clientY: 10,
+        pointerId: 1,
+        pointerType: 'mouse'
+      } as unknown as PointerEventInit)
     )
     expect(onSeek).toHaveBeenCalledWith(10)
     await page.screenshot({ path: './playwright-screenshots/video-cropper-seek-clamp.png' })
@@ -97,11 +113,14 @@ describe('VideoCropper - 9.11 seek clamps', () => {
         toJSON: () => {}
       }) as DOMRect
     bar.dispatchEvent(
-      new MouseEvent('click', {
+      new PointerEvent('pointerdown', {
         bubbles: true,
+        cancelable: true,
         clientX: 500,
-        clientY: 10
-      } as unknown as MouseEventInit)
+        clientY: 10,
+        pointerId: 1,
+        pointerType: 'mouse'
+      } as unknown as PointerEventInit)
     )
     await expect.poll(() => onSeek.mock.calls.length > 0).toBe(true)
     const last = onSeek.mock.calls.at(-1)?.[0] as number
@@ -140,11 +159,14 @@ describe('VideoCropper - 9.11 time from bounding rect', () => {
         toJSON: () => {}
       }) as DOMRect
     bar.dispatchEvent(
-      new MouseEvent('click', {
+      new PointerEvent('pointerdown', {
         bubbles: true,
+        cancelable: true,
         clientX: 600,
-        clientY: 10
-      } as unknown as MouseEventInit)
+        clientY: 10,
+        pointerId: 1,
+        pointerType: 'mouse'
+      } as unknown as PointerEventInit)
     )
     expect(onSeek).toHaveBeenCalledWith(5)
   })
