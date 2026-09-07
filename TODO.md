@@ -13,36 +13,24 @@
 - [x] **9.6.5** `Move` removes from source / `Copy` keeps (dialog asserts)
 - [x] Helpers `makeFiles`/`makeManifest`/`getOrder`/`renderHome`, `userEvent` realistic (Playwright `dragAndDrop`/`click`/`hover` + `targetPosition` for above/below), `expect.poll` + `page.screenshot`, gitignored `playwright-screenshots/`
 
-## Next — Video Cropper (RULES §9.11, §9.14)
+## Done — Video Preview & Crop Rewrite (RULES §9.11, §9.14) — 29 tests total
 
-> New component `web/app/components/video-cropper.tsx` — own file per RULES — with tests `web/tests/video-cropper.test.tsx`. All browser tests use `page`/`userEvent` (most visually realistic, no `new DragEvent` synthesis) to avoid false positives.
+### Rewrite spec
 
-### Component spec (RULES 9.11)
+- VideoCropper rewritten from scratch: zoom cursor-pinned via visible window, smooth pointer drag, proper position calculations.
+- PreviewDrawer rewritten from scratch: video ref for programmatic seek, API file URLs (`/api/file/...`), HLS-ready architecture.
+- New API endpoint `api/file/*` serves files with range support and proper MIME types.
+- Home.tsx wires video ref, proper seek callback (`video.currentTime`), no hardcoded buffered ranges.
+- Removed `onCommitOffset` prop — single `onSeek` handles all seek operations.
 
-- Seek clamps `0..duration`; if buffered → seek directly, else commit offset (HLS restart)
-- Time from screen position via `boundingRect` (`clientX - rect.left / width * duration`)
-- Wheel zoom centered on cursor (`zoom` state, pointer position preserved)
-- Pointer events for dragging crop markers (`[data-crop-start-handle]` / `[data-crop-end-handle]`)
-- `Start here` / `End here` sets `cropStart`/`cropEnd` to `currentTime`
-- `Apply` saves crop to manifest (`onApply`)
+### Tasks — DONE
 
-### Tests to write (`web/tests/video-cropper.test.tsx`) — DONE (10 tests)
-
-- [x] **Seek clamps** — click beyond bar → `onSeek(0)` / `onSeek(duration)`; click middle → `onSeek(duration/2)` — `video-cropper-seek-clamp.png`
-- [x] **Buffered vs unbuffered** — with `buffered=[0,5]` seek inside → `onSeek` directly; seek outside → `onCommitOffset` called
-- [x] **Time from bounding rect** — mock `getBoundingClientRect` (`left:100,width:1000`), click at `clientX:600` → `onSeek(5)` for `duration=10`
-- [x] **Wheel zoom centered on cursor** — `wheel` with `deltaY` at `clientX` → `onZoomChange` and playhead stays at cursor time; clamp `1..5` — `video-cropper-wheel.png`
-- [x] **Pointer drag crop markers** — `pointerDown` on start handle → `pointerMove` → `pointerUp` updates `cropStart`; same for end; clamps `start < end`
-- [x] **Start/End here** — `currentTime=3.5`, click `Start here` → `cropStart=3.5`; `End here` → `cropEnd=3.5`
-- [x] **Apply saves crop** — set range then `Apply` → `onApply({cropStart, cropEnd})` called; screenshot `video-cropper-apply.png`
-- [x] Screenshots per test + `expect.poll` for async, `userEvent`/`page` only, `npm run test:b -- --run` (22 passed) + `npm run check` pass
-
-### Infra — DONE
-
-- [x] `web/app/components/video-cropper.tsx` exports `VideoCropper`, no Node imports, `data-*` attributes for locators (`data-crop-bar`, `data-crop-start-handle`, `data-crop-end-handle`, `data-zoom-display`, `data-playhead`, `data-action`)
-- [x] `web/tests/video-cropper.test.tsx` mocks any Node, uses `render` from `vitest-browser-react`, `page`/`userEvent` realistic
-- [x] Screenshots gitignored, `vite.browser` `mergeConfig` already provides Tailwind
-
-### Execution — DONE
-
-- [x] `npm run test:b -- --run` (home 12 + cropper 10 = 22) + `npm run check` before commit
+- [x] API file serving endpoint (`routes/api.file.$.tsx`) — range support, MIME types, streaming
+- [x] Route registration in `routes.ts` (`api/file/*`)
+- [x] VideoCropper: zoom via visible window, cursor-pinned wheel zoom, pointer capture drag
+- [x] PreviewDrawer: video ref, `onVideoRef` callback, API file URLs, removed `bufferedRanges` prop
+- [x] Home: `handleVideoSeek` sets `video.currentTime` via ref, `handleVideoRef` captures ref
+- [x] Updated `video-cropper.test.tsx` — removed `onCommitOffset` (10 tests pass)
+- [x] Updated `home.test.tsx` — 8 video crop tests (full flow, seek, drag handles, zoom, nav, escape)
+- [x] `npm run check` passes (typecheck + format + lint)
+- [x] `npm run test:browser -- --run` — 29 tests pass

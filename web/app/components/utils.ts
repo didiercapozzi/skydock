@@ -51,6 +51,13 @@ const groupJumpsByDay = (jumps: ManifestJump[]) => {
   })
 }
 
+const OUTPUT_DIR = '/workspace/output'
+
+const getFileUrl = (filePath: string) => {
+  const relative = filePath.startsWith(OUTPUT_DIR) ? filePath.slice(OUTPUT_DIR.length) : filePath
+  return `/api/file${relative}`
+}
+
 const getDropIndex = (cardEl: HTMLElement, clientY: number) => {
   const rows = Array.from(cardEl.querySelectorAll('[data-file-row]'))
   for (let i = 0; i < rows.length; i++) {
@@ -63,6 +70,7 @@ const getDropIndex = (cardEl: HTMLElement, clientY: number) => {
 export {
   formatSize,
   formatTime,
+  getFileUrl,
   getDropIndex,
   getJumpBounds,
   getJumpDate,

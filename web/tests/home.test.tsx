@@ -329,3 +329,253 @@ describe('Home - 9.6.5 user interactions', () => {
     expect(all.filter((f) => f === filesA[0].filename).length).toBe(2)
   })
 })
+
+describe('Home - video preview and crop (§9.11, §9.14)', () => {
+  const renderWithVideo = async () => {
+    const files = makeFiles(3)
+    files.forEach((f) => {
+      f.filename = f.filename.replace(/\.\w+$/, '.MP4')
+    })
+    const manifest = makeManifest(files, [
+      { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...files] }
+    ]) as never
+    return renderHome(manifest)
+  }
+
+  const clickBarAt = async (bar: HTMLElement, pct: number) => {
+    const rect = bar.getBoundingClientRect()
+    await userEvent.click(page.elementLocator(bar), {
+      position: { x: rect.width * pct, y: rect.height / 2 }
+    })
+  }
+
+  test('user selects video file, preview drawer opens with video player and crop bar', async () => {
+    await renderWithVideo()
+    await expect.element(page.getByText('Review Proposed Jumps')).toBeInTheDocument()
+    const rows = document.querySelectorAll('[data-file-row]')
+    expect(rows.length).toBe(3)
+
+    await userEvent.click(page.getByText('DJI_0001.MP4'))
+    await expect.poll(() => document.querySelector('[data-preview-drawer]') !== null).toBe(true)
+    await expect.poll(() => document.querySelector('[data-video-cropper]') !== null).toBe(true)
+    await expect.poll(() => document.querySelector('[data-crop-bar]') !== null).toBe(true)
+    expect(document.querySelector('[data-crop-range]')).toBeNull()
+    await page.screenshot({ path: './playwright-screenshots/home-video-crop-drawer.png' })
+  })
+
+  test('clicking crop bar moves playhead, Start/End here set crop range', async () => {
+    await renderWithVideo()
+    await userEvent.click(page.getByText('DJI_0001.MP4'))
+    await expect.poll(() => document.querySelector('[data-crop-bar]') !== null).toBe(true)
+
+    const bar = document.querySelector('[data-crop-bar]') as HTMLElement
+    const timeEl = document.querySelector('[data-current-time]') as HTMLElement
+
+    await clickBarAt(bar, 0.25)
+    await expect
+      .poll(() => parseFloat(timeEl.textContent?.replace('s', '') ?? '0'), { timeout: 2000 })
+      .toBeGreaterThan(0)
+    const startTime = parseFloat(timeEl.textContent?.replace('s', '') ?? '0')
+
+    await userEvent.click(page.getByText('Start here'))
+    expect(document.querySelector('[data-crop-start-handle]')).not.toBeNull()
+
+    await clickBarAt(bar, 0.75)
+    await expect
+      .poll(() => parseFloat(timeEl.textContent?.replace('s', '') ?? '0'), { timeout: 2000 })
+      .toBeGreaterThan(startTime)
+
+    await userEvent.click(page.getByText('End here'))
+    const endTime = parseFloat(timeEl.textContent?.replace('s', '') ?? '0')
+    expect(endTime).toBeGreaterThan(startTime)
+    expect(document.querySelector('[data-crop-end-handle]')).not.toBeNull()
+    expect(document.querySelector('[data-crop-range]')).not.toBeNull()
+
+    await page.screenshot({ path: './playwright-screenshots/home-video-crop-range.png' })
+  })
+
+  test('dragging start handle updates crop start (UI optimistic)', async () => {
+    await renderWithVideo()
+    await userEvent.click(page.getByText('DJI_0001.MP4'))
+    await expect.poll(() => document.querySelector('[data-crop-bar]') !== null).toBe(true)
+
+    const bar = document.querySelector('[data-crop-bar]') as HTMLElement
+    await clickBarAt(bar, 0.2)
+    await userEvent.click(page.getByText('Start here'))
+    await clickBarAt(bar, 0.8)
+    await userEvent.click(page.getByText('End here'))
+
+    const startHandle = document.querySelector('[data-crop-start-handle]') as HTMLElement
+    const barRect = bar.getBoundingClientRect()
+    const handleRect = startHandle.getBoundingClientRect()
+
+    const fromX = handleRect.left + handleRect.width / 2
+    const fromY = handleRect.top + handleRect.height / 2
+    const toX = barRect.left + barRect.width * 0.4
+    const toY = barRect.top + barRect.height / 2
+
+    startHandle.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        cancelable: true,
+        clientX: fromX,
+        clientY: fromY,
+        pointerId: 1,
+        pointerType: 'mouse'
+      })
+    )
+    bar.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        cancelable: true,
+        clientX: toX,
+        clientY: toY,
+        pointerId: 1,
+        pointerType: 'mouse'
+      })
+    )
+    bar.dispatchEvent(
+      new PointerEvent('pointerup', {
+        bubbles: true,
+        cancelable: true,
+        clientX: toX,
+        clientY: toY,
+        pointerId: 1,
+        pointerType: 'mouse'
+      })
+    )
+
+    await expect.poll(() => document.querySelector('[data-crop-range]') !== null).toBe(true)
+    await page.screenshot({ path: './playwright-screenshots/home-video-crop-drag-start.png' })
+  })
+
+  test('dragging end handle updates crop end (UI optimistic)', async () => {
+    await renderWithVideo()
+    await userEvent.click(page.getByText('DJI_0001.MP4'))
+    await expect.poll(() => document.querySelector('[data-crop-bar]') !== null).toBe(true)
+
+    const bar = document.querySelector('[data-crop-bar]') as HTMLElement
+    await clickBarAt(bar, 0.1)
+    await userEvent.click(page.getByText('Start here'))
+    await clickBarAt(bar, 0.9)
+    await userEvent.click(page.getByText('End here'))
+
+    const endHandle = document.querySelector('[data-crop-end-handle]') as HTMLElement
+    const barRect = bar.getBoundingClientRect()
+    const handleRect = endHandle.getBoundingClientRect()
+
+    const fromX = handleRect.left + handleRect.width / 2
+    const fromY = handleRect.top + handleRect.height / 2
+    const toX = barRect.left + barRect.width * 0.6
+    const toY = barRect.top + barRect.height / 2
+
+    endHandle.dispatchEvent(
+      new PointerEvent('pointerdown', {
+        bubbles: true,
+        cancelable: true,
+        clientX: fromX,
+        clientY: fromY,
+        pointerId: 1,
+        pointerType: 'mouse'
+      })
+    )
+    bar.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        cancelable: true,
+        clientX: toX,
+        clientY: toY,
+        pointerId: 1,
+        pointerType: 'mouse'
+      })
+    )
+    bar.dispatchEvent(
+      new PointerEvent('pointerup', {
+        bubbles: true,
+        cancelable: true,
+        clientX: toX,
+        clientY: toY,
+        pointerId: 1,
+        pointerType: 'mouse'
+      })
+    )
+
+    await expect.poll(() => document.querySelector('[data-crop-range]') !== null).toBe(true)
+    await page.screenshot({ path: './playwright-screenshots/home-video-crop-drag-end.png' })
+  })
+
+  test('Apply saves crop to manifest, Close closes drawer', async () => {
+    await renderWithVideo()
+    await userEvent.click(page.getByText('DJI_0001.MP4'))
+    await expect.poll(() => document.querySelector('[data-preview-drawer]') !== null).toBe(true)
+
+    const bar = document.querySelector('[data-crop-bar]') as HTMLElement
+    await clickBarAt(bar, 0.2)
+    await userEvent.click(page.getByText('Start here'))
+    await clickBarAt(bar, 0.8)
+    await userEvent.click(page.getByText('End here'))
+
+    await userEvent.click(page.getByText('Apply'))
+    await expect.poll(() => document.querySelector('[data-crop-range]') !== null).toBe(true)
+    await page.screenshot({ path: './playwright-screenshots/home-video-crop-apply.png' })
+
+    await userEvent.click(page.getByText('Close'))
+    await expect.poll(() => document.querySelector('[data-preview-drawer]') === null).toBe(true)
+    await expect.poll(() => document.querySelector('[data-video-cropper]') === null).toBe(true)
+  })
+
+  test('zoom display shows 1.0x at default, wheel changes zoom level', async () => {
+    await renderWithVideo()
+    await userEvent.click(page.getByText('DJI_0001.MP4'))
+    await expect.poll(() => document.querySelector('[data-crop-bar]') !== null).toBe(true)
+
+    const zoomEl = document.querySelector('[data-zoom-display]') as HTMLElement
+    expect(zoomEl.textContent).toBe('1.0x')
+
+    const bar = document.querySelector('[data-crop-bar]') as HTMLElement
+    const rect = bar.getBoundingClientRect()
+    bar.dispatchEvent(
+      new WheelEvent('wheel', {
+        bubbles: true,
+        cancelable: true,
+        deltaY: -300,
+        clientX: rect.left + rect.width / 2,
+        clientY: rect.top + rect.height / 2
+      })
+    )
+
+    await expect
+      .poll(() => parseFloat(zoomEl.textContent?.replace('x', '') ?? '1'), { timeout: 2000 })
+      .toBeGreaterThan(1)
+    await page.screenshot({ path: './playwright-screenshots/home-video-crop-zoom.png' })
+  })
+
+  test('navigation prev/next cycles through files in preview', async () => {
+    await renderWithVideo()
+    await userEvent.click(page.getByText('DJI_0001.MP4'))
+    await expect.poll(() => document.querySelector('[data-preview-drawer]') !== null).toBe(true)
+
+    const filenameEl = document.querySelector('[data-preview-drawer] .font-mono') as HTMLElement
+    expect(filenameEl.textContent).toContain('DJI_0001.MP4')
+
+    await userEvent.click(page.getByText('Next'))
+    await expect
+      .poll(() => filenameEl.textContent ?? '', { timeout: 2000 })
+      .toContain('DJI_0002.MP4')
+
+    await userEvent.click(page.getByText('Previous'))
+    await expect
+      .poll(() => filenameEl.textContent ?? '', { timeout: 2000 })
+      .toContain('DJI_0001.MP4')
+  })
+
+  test('Escape key closes preview drawer', async () => {
+    await renderWithVideo()
+    await userEvent.click(page.getByText('DJI_0001.MP4'))
+    await expect.poll(() => document.querySelector('[data-preview-drawer]') !== null).toBe(true)
+
+    const drawer = document.querySelector('[data-preview-drawer]') as HTMLElement
+    drawer.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await expect.poll(() => document.querySelector('[data-preview-drawer]') === null).toBe(true)
+  })
+})

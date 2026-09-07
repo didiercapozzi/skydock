@@ -250,9 +250,14 @@ All drag and drop operations follow these rules:
 - Compare drawer shows 2 columns, merge combines jumps.
 - Preview drawer navigates files with prev/next, escape closes.
 
-### 9.11 Transitions — Video cropper (Full Review, not in home)
+### 9.11 Transitions — Video cropper
 
+- The VideoCropper component lives inside the PreviewDrawer (right panel), directly below the video player for video files.
 - Seek to time clamps to valid range. Checks if time is buffered, seeks directly or commits offset. Time from screen position via bounding rect. Wheel zoom centered on cursor. Pointer events for dragging crop markers. Start/End here sets crop points. Apply saves crop to manifest.
+- **UI optimistic crop bar:** The blue playhead and crop range (start/end handles, blue selection region) must move instantly and be fully draggable across the entire bar, regardless of video loading state. The video may still be loading/buffering, but the crop UI must never block or lag behind user input. Dragging start/end handles or clicking the bar updates the visual position immediately; video seek happens asynchronously.
+- Quick timestamp switching: clicking the crop bar seeks the video. Users can rapidly jump between timestamps by clicking different positions on the zoomable time bar.
+- **Zoom pinned to cursor hover:** Mouse wheel zooms centered on cursor hover position (1x–5x range). The time under the cursor stays pinned to that screen position while zoom changes around it.
+- The crop bar shares the same video element as the player — seek changes propagate immediately.
 
 ### 9.12 Transitions — Streaming (Full Review, not in home)
 
@@ -291,10 +296,13 @@ All drag and drop operations follow these rules:
 
 #### Crop bar interaction (hybrid approach)
 
+- VideoCropper lives inside PreviewDrawer, directly below the video player.
 - VideoCropper shares video element with HLS player.
 - Video.currentTime works through MSE within buffered range.
 - For out-of-buffer seeks, offset updates restart HLS from new offset.
 - Base seek offsets playhead display for far-seek scenarios.
+- Quick timestamp switching: clicking the crop bar seeks the video instantly.
+- Zoom on crop bar: mouse wheel zooms centered on cursor position (1x–5x).
 
 ### 9.15 Visual UI Preview
 

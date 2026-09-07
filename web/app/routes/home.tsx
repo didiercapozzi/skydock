@@ -5,8 +5,8 @@ import { DropActionDialog } from '../components/drop-action-dialog'
 import { FileRow } from '../components/file-row'
 import { JumpCard } from '../components/jump-card'
 import { PreviewDrawer } from '../components/preview-drawer'
+import type { VideoRef } from '../components/preview-drawer'
 import { StagingTray } from '../components/staging-tray'
-import { VideoCropper } from '../components/video-cropper'
 import type {
   DragData,
   DropDialog,
@@ -16,7 +16,7 @@ import type {
   PreviewState,
   SelectionMap
 } from '../components/types'
-import { getDropIndex, groupJumpsByDay, isVideoFile } from '../components/utils'
+import { getDropIndex, groupJumpsByDay } from '../components/utils'
 import { useSafeFetcher } from '../helpers/routing'
 import type { Route } from './+types/home'
 
@@ -40,6 +40,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const lastClickedRef = useRef<string | null>(null)
   const dragDataRef = useRef<DragData | null>(null)
   const mainRef = useRef<HTMLElement | null>(null)
+  const videoRefRef = useRef<VideoRef | null>(null)
   const { submit } = useSafeFetcher()
   const jumpsByDay = groupJumpsByDay(jumps)
   const [videoCrop, setVideoCrop] = useState<{ cropStart: number | null; cropEnd: number | null }>({
@@ -48,14 +49,18 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   })
   const [videoZoom, setVideoZoom] = useState(1)
   const [videoCurrentTime, setVideoCurrentTime] = useState(0)
-  const videoDuration = 10
-  const videoBuffered = [{ start: 0, end: 10 }]
+  const [videoDuration, setVideoDuration] = useState(0)
 
   const saveJumps = (next: ManifestJump[]) => {
     submit({
       url: '/api/manifest',
       actionArgs: { intent: 'save-jumps', jumps: next }
     })
+  }
+
+  const handleVideoSeek = (time: number) => {
+    setVideoCurrentTime(time)
+    videoRefRef.current?.seek(time)
   }
 
   const handleVideoApply = (range: { cropStart: number | null; cropEnd: number | null }) => {
@@ -73,19 +78,13 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     setVideoCrop(range)
   }
 
+  const handleVideoRef = (ref: VideoRef) => {
+    videoRefRef.current = ref
+  }
+
   useEffect(() => {
     mainRef.current?.setAttribute('data-hydrated', 'true')
   }, [])
-
-  useEffect(() => {
-    if (preview) {
-      const f = preview.files[preview.index]
-      if (f) {
-        setVideoCrop({ cropStart: f.cropStart ?? null, cropEnd: f.cropEnd ?? null })
-        setVideoCurrentTime(0)
-      }
-    }
-  }, [preview])
 
   const manifestFiles = manifest?.files ?? []
   const filesInJumps = new Set(jumps.flatMap((j) => j.files.map((f) => f.path)))
@@ -162,6 +161,9 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
         ? unassignedFiles
         : (jumps.find((j) => j.id === groupId)?.files ?? [file])
     const found = files.findIndex((f) => f.path === file.path)
+    setVideoCrop({ cropStart: file.cropStart ?? null, cropEnd: file.cropEnd ?? null })
+    setVideoCurrentTime(0)
+    setVideoDuration(0)
     setPreview({ files, index: found === -1 ? 0 : found, groupId })
   }
 
@@ -450,7 +452,10 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           <PreviewDrawer
             files={preview.files}
             index={preview.index}
-            onClose={() => setPreview(null)}
+            onClose={() => {
+              videoRefRef.current = null
+              setPreview(null)
+            }}
             onPrevious={() =>
               setPreview((p) => (p ? { ...p, index: Math.max(0, p.index - 1) } : p))
             }
@@ -459,31 +464,19 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
                 p ? { ...p, index: Math.min(p.files.length - 1, p.index + 1) } : p
               )
             }
+            cropStart={videoCrop.cropStart}
+            cropEnd={videoCrop.cropEnd}
+            zoom={videoZoom}
+            currentTime={videoCurrentTime}
+            duration={videoDuration || 10}
+            onSeek={handleVideoSeek}
+            onCropChange={setVideoCrop}
+            onApply={handleVideoApply}
+            onZoomChange={setVideoZoom}
+            onDurationChange={setVideoDuration}
+            onVideoRef={handleVideoRef}
           />
         )}
-
-        {preview &&
-          preview.files[preview.index] &&
-          isVideoFile(preview.files[preview.index].filename) && (
-            <div className='fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-full max-w-3xl px-4'>
-              <div className='bg-white border border-gray-200 rounded-xl shadow-lg p-4'>
-                <h3 className='text-sm font-semibold text-gray-800 mb-3'>Crop Video</h3>
-                <VideoCropper
-                  duration={videoDuration}
-                  currentTime={videoCurrentTime}
-                  bufferedRanges={videoBuffered}
-                  cropStart={videoCrop.cropStart}
-                  cropEnd={videoCrop.cropEnd}
-                  zoom={videoZoom}
-                  onSeek={setVideoCurrentTime}
-                  onCommitOffset={setVideoCurrentTime}
-                  onCropChange={setVideoCrop}
-                  onApply={handleVideoApply}
-                  onZoomChange={setVideoZoom}
-                />
-              </div>
-            </div>
-          )}
 
         {dropDialog && (
           <DropActionDialog

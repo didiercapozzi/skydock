@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 
 type VideoCropperProps = {
   duration: number
@@ -8,7 +8,6 @@ type VideoCropperProps = {
   cropEnd: number | null
   zoom: number
   onSeek: (time: number) => void
-  onCommitOffset: (time: number) => void
   onCropChange: (range: { cropStart: number | null; cropEnd: number | null }) => void
   onApply: (range: { cropStart: number | null; cropEnd: number | null }) => void
   onZoomChange: (zoom: number) => void
@@ -16,41 +15,60 @@ type VideoCropperProps = {
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
 
-const isBuffered = (time: number, ranges: Array<{ start: number; end: number }>) =>
-  ranges.some((r) => time >= r.start && time <= r.end)
-
-const timeFromPosition = (clientX: number, rect: DOMRect, duration: number, zoom: number) => {
-  const ratio = clamp((clientX - rect.left) / rect.width, 0, 1)
-  return clamp((ratio * duration) / clamp(zoom, 1, 5), 0, duration)
-}
-
 const VideoCropper = ({
   duration,
   currentTime,
-  bufferedRanges,
   cropStart,
   cropEnd,
   zoom,
   onSeek,
-  onCommitOffset,
   onCropChange,
   onApply,
   onZoomChange
 }: VideoCropperProps) => {
   const barRef = useRef<HTMLDivElement | null>(null)
   const draggingRef = useRef<'start' | 'end' | null>(null)
+  const [viewOffset, setViewOffset] = useState(0)
+
+  const safeDuration = duration || 1
+  const zoomClamped = clamp(zoom, 1, 5)
+  const visibleDuration = safeDuration / zoomClamped
+  const maxOffset = Math.max(0, safeDuration - visibleDuration)
+
+  const clampOffset = (offset: number) => clamp(offset, 0, maxOffset)
+
+  const computeVisibleRange = (offset: number) => {
+    let clamped = clampOffset(offset)
+    if (visibleDuration >= safeDuration) {
+      clamped = 0
+    } else if (currentTime < clamped) {
+      clamped = currentTime
+    } else if (currentTime > clamped + visibleDuration) {
+      clamped = currentTime - visibleDuration
+    }
+    clamped = clampOffset(clamped)
+    return { offset: clamped, visibleDuration }
+  }
+
+  const { offset, visibleDuration: vd } = computeVisibleRange(viewOffset)
+
+  const timeFromPosition = (clientX: number) => {
+    const el = barRef.current
+    if (!el) return 0
+    const rect = el.getBoundingClientRect()
+    const ratio = clamp((clientX - rect.left) / rect.width, 0, 1)
+    return offset + ratio * vd
+  }
+
+  const positionFromTime = (time: number) => clamp((time - offset) / vd, 0, 1) * 100
 
   const seekTo = (time: number) => {
-    const t = clamp(time, 0, duration)
-    if (isBuffered(t, bufferedRanges)) onSeek(t)
-    else onCommitOffset(t)
+    const t = clamp(time, 0, safeDuration)
+    onSeek(t)
   }
 
   const handleBarClick = (e: React.MouseEvent) => {
-    const el = barRef.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    const t = timeFromPosition(e.clientX, rect, duration, zoom)
+    const t = timeFromPosition(e.clientX)
     seekTo(t)
   }
 
@@ -59,13 +77,15 @@ const VideoCropper = ({
     const el = barRef.current
     if (!el) return
     const rect = el.getBoundingClientRect()
-    const cursorTime = timeFromPosition(e.clientX, rect, duration, zoom)
+    const cursorTime = offset + clamp((e.clientX - rect.left) / rect.width, 0, 1) * vd
     const delta = -e.deltaY * 0.001
-    const nextZoom = clamp(zoom + delta, 1, 5)
+    const nextZoom = clamp(zoomClamped + delta, 1, 5)
+    const nextVd = safeDuration / nextZoom
+    const nextMax = Math.max(0, safeDuration - nextVd)
+    const ratio = clamp((e.clientX - rect.left) / rect.width, 0, 1)
+    const nextOffset = clamp(cursorTime - ratio * nextVd, 0, nextMax)
+    setViewOffset(nextOffset)
     onZoomChange(nextZoom)
-    const nextTime = timeFromPosition(e.clientX, rect, duration, nextZoom)
-    const diff = cursorTime - nextTime
-    if (Math.abs(diff) > 0.001) seekTo(currentTime + diff)
   }
 
   const handlePointerDown = (which: 'start' | 'end') => (e: React.PointerEvent) => {
@@ -73,20 +93,18 @@ const VideoCropper = ({
       ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
     } catch {}
     draggingRef.current = which
+    e.preventDefault()
   }
 
   const handlePointerMove = (e: React.PointerEvent) => {
     const dragging = draggingRef.current
     if (!dragging) return
-    const el = barRef.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    const t = timeFromPosition(e.clientX, rect, duration, zoom)
+    const t = timeFromPosition(e.clientX)
     if (dragging === 'start') {
-      const next = clamp(t, 0, cropEnd ?? duration)
+      const next = clamp(t, 0, cropEnd ?? safeDuration)
       onCropChange({ cropStart: next, cropEnd })
     } else {
-      const next = clamp(t, cropStart ?? 0, duration)
+      const next = clamp(t, cropStart ?? 0, safeDuration)
       onCropChange({ cropStart, cropEnd: next })
     }
   }
@@ -102,12 +120,9 @@ const VideoCropper = ({
   const handleEndHere = () => onCropChange({ cropStart, cropEnd: currentTime })
   const handleApply = () => onApply({ cropStart, cropEnd })
 
-  const safeDuration = duration || 1
-  const zoomClamped = clamp(zoom, 1, 5)
-  const progress = clamp(currentTime / safeDuration, 0, 1) * 100
-  const startPct =
-    cropStart === null ? null : clamp(cropStart / safeDuration, 0, 1) * 100 * zoomClamped
-  const endPct = cropEnd === null ? null : clamp(cropEnd / safeDuration, 0, 1) * 100 * zoomClamped
+  const playheadPct = positionFromTime(currentTime)
+  const startPct = cropStart === null ? null : positionFromTime(cropStart)
+  const endPct = cropEnd === null ? null : positionFromTime(cropEnd)
 
   return (
     <div
@@ -117,7 +132,7 @@ const VideoCropper = ({
         <span data-zoom-display='true'>{zoomClamped.toFixed(1)}x</span>
         <span data-current-time='true'>{currentTime.toFixed(2)}s</span>
         <span>/</span>
-        <span data-duration='true'>{duration.toFixed(2)}s</span>
+        <span data-duration='true'>{safeDuration.toFixed(2)}s</span>
       </div>
       <div
         ref={barRef}
@@ -126,20 +141,17 @@ const VideoCropper = ({
         onWheel={handleWheel}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        className='relative h-12 bg-gray-100 border border-gray-200 rounded-lg overflow-hidden'
-        style={{ width: '100%' }}>
+        className='relative h-12 bg-gray-100 border border-gray-200 rounded-lg overflow-hidden cursor-crosshair'>
         <div
           data-playhead='true'
-          className='absolute top-0 bottom-0 w-0.5 bg-blue-600'
-          style={{ left: `${progress}%` }}
+          className='absolute top-0 bottom-0 w-0.5 bg-blue-600 z-10'
+          style={{ left: `${playheadPct}%` }}
         />
         {startPct !== null && (
           <div
             data-crop-start-handle='true'
             onPointerDown={handlePointerDown('start')}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            className='absolute top-0 bottom-0 w-3 -ml-1.5 bg-amber-500 rounded cursor-ew-resize'
+            className='absolute top-0 bottom-0 w-3 -ml-1.5 bg-amber-500 rounded cursor-ew-resize z-20 hover:bg-amber-600 transition-colors'
             style={{ left: `${startPct}%` }}
           />
         )}
@@ -147,9 +159,7 @@ const VideoCropper = ({
           <div
             data-crop-end-handle='true'
             onPointerDown={handlePointerDown('end')}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            className='absolute top-0 bottom-0 w-3 -ml-1.5 bg-amber-500 rounded cursor-ew-resize'
+            className='absolute top-0 bottom-0 w-3 -ml-1.5 bg-amber-500 rounded cursor-ew-resize z-20 hover:bg-amber-600 transition-colors'
             style={{ left: `${endPct}%` }}
           />
         )}
@@ -169,21 +179,21 @@ const VideoCropper = ({
           type='button'
           data-action='start-here'
           onClick={handleStartHere}
-          className='px-3 py-1.5 text-sm bg-gray-100 rounded'>
+          className='px-3 py-1.5 text-sm bg-gray-100 rounded hover:bg-gray-200 transition-colors'>
           Start here
         </button>
         <button
           type='button'
           data-action='end-here'
           onClick={handleEndHere}
-          className='px-3 py-1.5 text-sm bg-gray-100 rounded'>
+          className='px-3 py-1.5 text-sm bg-gray-100 rounded hover:bg-gray-200 transition-colors'>
           End here
         </button>
         <button
           type='button'
           data-action='apply'
           onClick={handleApply}
-          className='px-3 py-1.5 text-sm bg-blue-600 text-white rounded'>
+          className='px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors'>
           Apply
         </button>
       </div>
