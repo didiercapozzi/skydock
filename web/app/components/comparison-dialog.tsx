@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ManifestJump } from './types'
 import { VideoCropper } from './video-cropper'
-import { formatSize, formatTime, getFileUrl, isVideoFile } from './utils'
+import { formatSize, formatTime, getFileUrl, getThumbUrl, isVideoFile } from './utils'
 
 type VideoRef = {
   seek: (time: number) => void
@@ -120,6 +120,7 @@ const ComparisonDialog = ({
             cropEnd={null}
             zoom={zoom}
             readOnly
+            thumbSrc={(seek) => getThumbUrl(file.path, seek)}
             onSeek={onSeek}
             onCropChange={() => {}}
             onApply={() => {}}

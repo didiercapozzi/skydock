@@ -8,11 +8,14 @@ type VideoCropperProps = {
   cropEnd: number | null
   zoom: number
   readOnly?: boolean
+  thumbSrc?: (seekSeconds: number) => string
   onSeek: (time: number) => void
   onCropChange: (range: { cropStart: number | null; cropEnd: number | null }) => void
   onApply: (range: { cropStart: number | null; cropEnd: number | null }) => void
   onZoomChange: (zoom: number) => void
 }
+
+const THUMB_COUNT = 8
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
 
@@ -23,6 +26,7 @@ const VideoCropper = ({
   cropEnd,
   zoom,
   readOnly = false,
+  thumbSrc,
   onSeek,
   onCropChange,
   onApply,
@@ -134,6 +138,15 @@ const VideoCropper = ({
   const startPct = cropStart === null ? null : positionFromTime(cropStart)
   const endPct = cropEnd === null ? null : positionFromTime(cropEnd)
 
+  const thumbs =
+    thumbSrc && safeDuration > 0
+      ? Array.from({ length: THUMB_COUNT }, (_, i) => {
+          const t = offset + ((i + 0.5) / THUMB_COUNT) * vd
+          const rounded = Math.round(t * 2) / 2
+          return { key: i, src: thumbSrc(rounded) }
+        })
+      : []
+
   return (
     <div
       data-video-cropper='true'
@@ -151,6 +164,23 @@ const VideoCropper = ({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         className='relative h-12 bg-gray-100 border border-gray-200 rounded-lg overflow-hidden cursor-crosshair'>
+        {thumbs.length > 0 && (
+          <div
+            data-thumbs='true'
+            className='absolute inset-0 flex pointer-events-none'>
+            {thumbs.map((thumb) => (
+              <img
+                key={thumb.key}
+                data-thumb='true'
+                src={thumb.src}
+                alt=''
+                draggable={false}
+                className='h-full object-cover pointer-events-none'
+                style={{ width: `${100 / THUMB_COUNT}%` }}
+              />
+            ))}
+          </div>
+        )}
         <div
           data-playhead='true'
           className='absolute top-0 bottom-0 w-4 -ml-2 cursor-ew-resize z-30 pointer-events-none'

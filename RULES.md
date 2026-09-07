@@ -64,7 +64,7 @@ output/
 - **fMP4 streaming:** Live-transcodes on demand via ffmpeg pipe. Used for thumbnails and crop bar fallback. Concurrency capped.
 - **HLS streaming:** Live-transcodes to temp directory. Returns playlist on request. Sessions keyed by path and seek offset, auto-cleaned after idle timeout. Used for main video playback.
 - **Hybrid approach:** MediaPreview uses HLS for smooth adaptive seeking. VideoCropper shares the same video element. For far-seeks beyond buffered range, seek offset updates restart HLS from the new offset.
-- **Thumb mode:** Single frame extraction for grid thumbnails using IntersectionObserver.
+- **Thumb mode:** Single frame extraction for grid thumbnails and crop bar filmstrip using IntersectionObserver.
 - **File ID:** Content-based SHA-256 hash → 16 hex characters — sole truth for manifest file IDs and jump refs.
 
 ### 5.1 `scanMedia()` — merge-on-scan
@@ -142,7 +142,8 @@ output/
 - **Scan:** Runs scan and ensures file IDs.
 - **File:** Serves files with range support and proper MIME types.
 - **Status:** Reads status files, returns system status polled by review UI.
-- **Stream:** Live-transcodes to fMP4 for thumbnails and crop bar.
+- **Thumb:** Single frame JPEG extraction via ffmpeg for crop bar thumbnails.
+- **Stream:** Live-transcodes to fMP4 for thumbnails and crop bar fallback.
 - **HLS:** Live-transcodes to HLS segments for main playback.
 - **Manifest:** Full CRUD for jumps, files, calibration, execution.
 
@@ -252,6 +253,7 @@ All drag and drop operations follow these rules:
 ### 9.11 Transitions — Video cropper
 
 - The VideoCropper component lives inside the PreviewDrawer (right panel), directly below the video player for video files.
+- **Thumbnail filmstrip:** Small JPEG thumbnails rendered along the crop bar background, loaded lazily via `/api/thumb/` endpoint. Thumbnails are positioned by time offset and scale with zoom level. Hidden when zoom level too low for meaningful resolution.
 - Seek to time clamps to valid range. Checks if time is buffered, seeks directly or commits offset. Time from screen position via bounding rect. Wheel zoom centered on cursor. Pointer events for dragging crop markers. Start/End here sets crop points. Apply saves crop to manifest.
 - **UI optimistic crop bar:** The blue playhead and crop range (start/end handles, blue selection region) must move instantly and be fully draggable across the entire bar, regardless of video loading state. The video may still be loading/buffering, but the crop UI must never block or lag behind user input. Dragging start/end handles or clicking the bar updates the visual position immediately; video seek happens asynchronously.
 - Quick timestamp switching: clicking the crop bar seeks the video. Users can rapidly jump between timestamps by clicking different positions on the zoomable time bar.

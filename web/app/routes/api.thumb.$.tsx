@@ -1,0 +1,83 @@
+import { spawn } from 'node:child_process'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import { getOutputDir, isVideoFile } from '@skydock/scripts'
+
+const DEFAULT_WIDTH = 160
+
+const clampWidth = (raw: string | null) => {
+  const parsed = raw ? parseInt(raw, 10) : DEFAULT_WIDTH
+  if (!Number.isFinite(parsed)) return DEFAULT_WIDTH
+  return Math.min(480, Math.max(64, parsed))
+}
+
+const clampSeek = (raw: string | null) => {
+  const parsed = raw ? parseFloat(raw) : 0
+  if (!Number.isFinite(parsed) || parsed < 0) return 0
+  return parsed
+}
+
+const extractFrame = (filePath: string, seek: number, width: number) =>
+  new Promise<Buffer>((resolve, reject) => {
+    const child = spawn('ffmpeg', [
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-ss',
+      String(seek),
+      '-i',
+      filePath,
+      '-frames:v',
+      '1',
+      '-vf',
+      `scale=${width}:-1`,
+      '-q:v',
+      '4',
+      '-f',
+      'mjpeg',
+      'pipe:1'
+    ])
+    const chunks: Array<Buffer> = []
+    child.stdout.on('data', (chunk: Buffer) => {
+      chunks.push(Buffer.from(chunk))
+    })
+    child.on('error', (err) => reject(err))
+    child.on('close', (code) => {
+      if (code === 0 && chunks.length > 0) resolve(Buffer.concat(chunks))
+      else reject(new Error(`ffmpeg exited with code ${code}`))
+    })
+  })
+
+const loader = async ({
+  params,
+  request
+}: {
+  params: Record<string, string | undefined>
+  request: Request
+}) => {
+  const splat = params['*'] ?? ''
+  const filePath = path.join(getOutputDir(), splat)
+
+  if (!fs.existsSync(filePath) || !isVideoFile(filePath)) {
+    return new Response('Not found', { status: 404 })
+  }
+
+  const url = new URL(request.url)
+  const seek = clampSeek(url.searchParams.get('seek'))
+  const width = clampWidth(url.searchParams.get('width'))
+
+  try {
+    const jpeg = await extractFrame(filePath, seek, width)
+    return new Response(new Uint8Array(jpeg), {
+      headers: {
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        'Content-Length': String(jpeg.length),
+        'Content-Type': 'image/jpeg'
+      }
+    })
+  } catch {
+    return new Response('Thumbnail unavailable', { status: 404 })
+  }
+}
+
+export { loader }

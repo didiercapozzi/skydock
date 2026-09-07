@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { ManifestFile } from './types'
 import { VideoCropper } from './video-cropper'
-import { formatSize, formatTime, getFileUrl, isVideoFile } from './utils'
+import { formatSize, formatTime, getFileUrl, getThumbUrl, isVideoFile } from './utils'
 
 type VideoRef = {
   seek: (time: number) => void
@@ -121,6 +121,7 @@ const PreviewDrawer = ({
               cropStart={cropStart}
               cropEnd={cropEnd}
               zoom={zoom}
+              thumbSrc={(seek) => getThumbUrl(file.path, seek)}
               onSeek={onSeek}
               onCropChange={onCropChange}
               onApply={onApply}

@@ -395,3 +395,25 @@ describe('VideoCropper - 9.11 Start/End here and Apply', () => {
     await page.screenshot({ path: './playwright-screenshots/video-cropper-apply.png' })
   })
 })
+
+describe('VideoCropper - 9.11 thumbnail filmstrip', () => {
+  test('renders thumbnails spanning the visible range when thumbSrc provided', async () => {
+    await renderCropper({
+      duration: 16,
+      currentTime: 0,
+      thumbSrc: (seek) => `/api/thumb/video.mp4?seek=${seek.toFixed(1)}&width=160`
+    })
+    const thumbs = document.querySelectorAll('[data-thumb]')
+    expect(thumbs.length).toBe(8)
+    const first = thumbs[0] as HTMLImageElement
+    const last = thumbs[7] as HTMLImageElement
+    expect(first.src).toContain('seek=1.0')
+    expect(last.src).toContain('seek=15.0')
+  })
+
+  test('renders no thumbnails when thumbSrc omitted', async () => {
+    await renderCropper({ duration: 16, currentTime: 0 })
+    expect(document.querySelectorAll('[data-thumb]').length).toBe(0)
+    expect(document.querySelector('[data-thumbs]')).toBeNull()
+  })
+})
