@@ -119,6 +119,8 @@ const reclusterJumps = (manifest: Manifest, preservedIds?: Set<string>): void =>
         label: preservedJump.label,
         confirmed: preservedJump.confirmed,
         processed: preservedJump.processed,
+        passenger: preservedJump.passenger,
+        publish: preservedJump.publish,
         files
       }
     }
@@ -128,6 +130,7 @@ const reclusterJumps = (manifest: Manifest, preservedIds?: Set<string>): void =>
       label: dominant?.label ?? `Jump ${nextIdx - 1}`,
       confirmed: dominant?.confirmed ?? false,
       processed: dominant?.processed,
+      passenger: dominant?.passenger,
       files
     }
   })

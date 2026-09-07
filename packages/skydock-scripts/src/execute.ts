@@ -1,18 +1,17 @@
 import * as childProcess from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { loadManifest } from './manifest'
+import { loadManifest, saveManifest } from './manifest'
 import { scheduleIdle, writeStatus } from './status'
 import {
-  formatTimestamp,
   getManifestPath,
   getOutputDir,
   hasCommand,
   isCliModule,
   isPhotoFile,
-  isVideoFile,
-  sanitizeLabel
+  isVideoFile
 } from './utils'
+import { buildJumpBaseName } from './workspace'
 
 type ExecuteOptions = {
   manifestPath?: string
@@ -89,15 +88,16 @@ const executeMedia = (options?: ExecuteOptions): ExecuteResult => {
     const jump = manifest.jumps.find((j) => j.id === jumpId)
     if (!jump) continue
 
-    const safeLabel = sanitizeLabel(jump.label)
-    const jumpDir = path.join(processedDir, safeLabel)
-    const videosDir = path.join(jumpDir, 'videos')
-    const photosDir = path.join(jumpDir, 'photos')
-
     if (jump.files.length === 0) {
       console.log(`[Execute] ${jumpId}: no files, skipping`)
       continue
     }
+
+    const minMtime = Math.min(...jump.files.map((f) => f.mtime))
+    const baseName = buildJumpBaseName(jump.passenger, jump.label, minMtime)
+    const jumpDir = path.join(processedDir, baseName)
+    const videosDir = path.join(jumpDir, 'videos')
+    const photosDir = path.join(jumpDir, 'photos')
 
     fs.mkdirSync(videosDir, { recursive: true })
     fs.mkdirSync(photosDir, { recursive: true })
@@ -105,23 +105,26 @@ const executeMedia = (options?: ExecuteOptions): ExecuteResult => {
     let videoIdx = 0
     let photoIdx = 0
 
+    const fileName = (index: number, ext: string) =>
+      index === 0
+        ? `${baseName}.${ext}`
+        : `${baseName}_${String(index + 1).padStart(2, '0')}.${ext}`
+
     for (const file of jump.files) {
       if (!fs.existsSync(file.path)) continue
 
       const ext = path.extname(file.path).slice(1).toLowerCase()
-      const timestamp = formatTimestamp(file.mtime)
-      const newName = `${safeLabel}_${timestamp}.${ext}`
 
       let dest: string
       if (isVideoFile(file.path)) {
+        dest = path.join(videosDir, fileName(videoIdx, ext))
         videoIdx++
-        dest = path.join(videosDir, newName)
       } else if (isPhotoFile(file.path)) {
+        dest = path.join(photosDir, fileName(photoIdx, ext))
         photoIdx++
-        dest = path.join(photosDir, newName)
       } else {
+        dest = path.join(photosDir, fileName(photoIdx, ext))
         photoIdx++
-        dest = path.join(photosDir, newName)
       }
 
       const needsCrop = isVideoFile(file.path) && file.cropStart != null && file.cropEnd != null
@@ -143,10 +146,17 @@ const executeMedia = (options?: ExecuteOptions): ExecuteResult => {
     updateMetadata(videosDir)
     updateMetadata(photosDir)
 
+    jump.processed = true
+    delete jump.publish
+
     console.log(
       `[Execute] ${jumpId}: copied ${jump.files.length} file(s) (${videoIdx} videos, ${photoIdx} photos) to ${jumpDir}`
     )
     processedCount++
+  }
+
+  if (processedCount > 0) {
+    saveManifest(manifestPath, manifest)
   }
 
   console.log(`[Execute] Done. Copied ${totalCopied} file(s).`)

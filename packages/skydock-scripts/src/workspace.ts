@@ -1,4 +1,36 @@
-import type { ManifestFile, ManifestJump } from './types'
+import type { ManifestFile, ManifestJump, ManifestPassenger } from './types'
+
+const hasCompletePassenger = (passenger: ManifestPassenger | null | undefined): boolean => {
+  if (!passenger) return false
+  return (
+    passenger.firstname.trim() !== '' &&
+    passenger.lastname.trim() !== '' &&
+    passenger.email.trim() !== ''
+  )
+}
+
+const formatJumpDay = (mtime: number): string => {
+  const d = new Date(mtime * 1000)
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}${month}${day}`
+}
+
+const buildJumpBaseName = (
+  passenger: ManifestPassenger | null | undefined,
+  label: string,
+  minMtime: number
+): string => {
+  const raw =
+    passenger && passenger.firstname.trim() !== '' && passenger.lastname.trim() !== ''
+      ? `${passenger.firstname.trim()}_${passenger.lastname.trim()}`
+      : label
+  const stem = raw
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+  return `${stem === '' ? 'jump' : stem}_${formatJumpDay(minMtime)}`
+}
 
 const moveFilesBetweenJumps = (
   jumps: ManifestJump[],
@@ -59,9 +91,22 @@ const mergeJumps = (jumps: ManifestJump[], leftId: string, rightId: string): Man
     .filter((j) => j.id !== rightId)
     .map((j) =>
       j.id === leftId
-        ? { ...j, files, confirmed: left.confirmed && right.confirmed, processed: false }
+        ? {
+            ...j,
+            files,
+            confirmed: left.confirmed && right.confirmed,
+            processed: false,
+            passenger: left.passenger ?? right.passenger ?? undefined,
+            publish: undefined
+          }
         : j
     )
 }
 
-export { mergeJumps, moveFilesBetweenJumps, reorderFilesInJump }
+export {
+  buildJumpBaseName,
+  hasCompletePassenger,
+  mergeJumps,
+  moveFilesBetweenJumps,
+  reorderFilesInJump
+}

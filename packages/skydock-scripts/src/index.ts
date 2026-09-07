@@ -18,6 +18,8 @@ export type {
   Manifest,
   ManifestFile,
   ManifestJump,
+  ManifestPassenger,
+  ManifestPublish,
   ManifestStatus,
   SystemStatus,
   TaskState,
@@ -33,11 +35,19 @@ export {
   manifestFileSchema,
   manifestJumpSchema,
   manifestSchema,
-  manifestStatusSchema
+  manifestStatusSchema,
+  passengerSchema,
+  publishSchema
 } from './types'
 
 export { reclusterJumps, shiftFiles } from './clustering'
-export { mergeJumps, moveFilesBetweenJumps, reorderFilesInJump } from './workspace'
+export {
+  buildJumpBaseName,
+  hasCompletePassenger,
+  mergeJumps,
+  moveFilesBetweenJumps,
+  reorderFilesInJump
+} from './workspace'
 export { loadManifest, normalizeManifest, saveManifest } from './manifest'
 export { computeFileId, ensureManifestFileIds } from './fileId'
 export { writeStatus, scheduleIdle } from './status'

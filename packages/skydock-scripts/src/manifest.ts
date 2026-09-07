@@ -24,6 +24,8 @@ const resolveJumps = (files: ManifestFile[], jumpsFile: JumpsFile | null): Manif
     label: j.label,
     confirmed: j.confirmed,
     processed: j.processed ?? undefined,
+    passenger: j.passenger ?? undefined,
+    publish: j.publish ?? undefined,
     files: j.files
       .map((ref) => {
         const base = byId.get(ref.id)
@@ -54,6 +56,8 @@ const loadManifest = (manifestPath: string): Manifest | null => {
             label: j.label,
             confirmed: j.confirmed,
             processed: j.processed ?? undefined,
+            passenger: j.passenger ?? undefined,
+            publish: j.publish ?? undefined,
             files: j.files
               .filter((f) => f.id)
               .map((f) => ({
@@ -115,6 +119,8 @@ const saveManifest = (manifestPath: string, manifest: Manifest): void => {
       label: j.label,
       confirmed: j.confirmed,
       processed: j.processed ?? undefined,
+      passenger: j.passenger ?? undefined,
+      publish: j.publish ?? undefined,
       files: j.files
         .filter((f) => f.id)
         .map((f) => ({
@@ -148,6 +154,14 @@ const normalizeManifest = (manifest: Manifest): void => {
   for (const jump of manifest.jumps) {
     if (jump.processed === null) {
       delete jump.processed
+    }
+    if (jump.passenger === null) {
+      delete jump.passenger
+    }
+    if (jump.publish === null) {
+      delete jump.publish
+    } else if (jump.publish?.emailedAt === null) {
+      delete jump.publish.emailedAt
     }
   }
   if (manifest.cameraClockOffsetSeconds === null) {

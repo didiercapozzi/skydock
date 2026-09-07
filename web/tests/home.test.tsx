@@ -768,6 +768,163 @@ describe('Home - jump comparison dialog', () => {
     expect(document.querySelector('[data-compare-left]')).toBeNull()
   })
 
+  test('passenger add shows name as title and display labels', async () => {
+    const files = makeFiles(2)
+    const manifest = makeManifest(files, [
+      { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...files] }
+    ]) as never
+    let saved: unknown = null
+    await renderHome(manifest, async ({ request }: { request: Request }) => {
+      saved = await request.json()
+      return { ok: true }
+    })
+    await expect.element(page.getByText('jump_01')).toBeInTheDocument()
+    await expandAllJumpCards()
+    await expect.element(page.getByText('Add passenger')).toBeInTheDocument()
+    expect(document.querySelector('[data-passenger-display]')).toBeNull()
+
+    await userEvent.click(page.getByText('Add passenger'))
+    const fillField = async (label: string, value: string) => {
+      const input = document.querySelector(`input[aria-label="${label}"]`) as HTMLElement
+      await userEvent.fill(page.elementLocator(input), value)
+    }
+    await fillField('Passenger firstname', 'John')
+    await fillField('Passenger lastname', 'Doe')
+    await fillField('Passenger email', 'john@example.com')
+    await userEvent.click(page.getByText('Done'))
+
+    await expect.poll(() => document.querySelector('[data-passenger-display]') !== null).toBe(true)
+    await expect.element(page.getByRole('heading', { name: 'John Doe' })).toBeInTheDocument()
+    expect(document.querySelector('[data-passenger-display]')?.textContent).toContain('John Doe')
+    await expect
+      .poll(
+        () =>
+          (saved as { jumps: Array<{ passenger?: { email?: string } }> } | null)?.jumps?.[0]
+            ?.passenger?.email ?? null,
+        { timeout: 5000 }
+      )
+      .toBe('john@example.com')
+    const jumps = (saved as { jumps: Array<{ passenger: unknown }> }).jumps
+    expect(jumps[0].passenger).toEqual({
+      firstname: 'John',
+      lastname: 'Doe',
+      email: 'john@example.com'
+    })
+  })
+
+  test('clearing passenger restores label and add button', async () => {
+    const files = makeFiles(2)
+    const manifest = makeManifest(files, [
+      {
+        id: 'jump_01',
+        label: 'jump_01',
+        confirmed: false,
+        passenger: { firstname: 'John', lastname: 'Doe', email: 'john@example.com' },
+        files: [...files]
+      }
+    ]) as never
+    let saved: unknown = null
+    await renderHome(manifest, async ({ request }: { request: Request }) => {
+      saved = await request.json()
+      return { ok: true }
+    })
+    await expect.element(page.getByText('John Doe')).toBeInTheDocument()
+    await expandAllJumpCards()
+    await expect.poll(() => document.querySelector('[data-passenger-display]') !== null).toBe(true)
+
+    const display = document.querySelector('[data-passenger-display]') as HTMLElement
+    await userEvent.click(page.elementLocator(display))
+    const firstnameInput = document.querySelector(
+      'input[aria-label="Passenger firstname"]'
+    ) as HTMLInputElement
+    expect(firstnameInput.value).toBe('John')
+
+    const clearField = async (label: string) => {
+      const input = document.querySelector(`input[aria-label="${label}"]`) as HTMLElement
+      await userEvent.fill(page.elementLocator(input), '')
+    }
+    await clearField('Passenger firstname')
+    await clearField('Passenger lastname')
+    await clearField('Passenger email')
+    await userEvent.click(page.getByText('Done'))
+
+    await expect.poll(() => document.querySelector('[data-passenger-display]') === null).toBe(true)
+    await expect.element(page.getByText('jump_01')).toBeInTheDocument()
+    await expect.element(page.getByText('Add passenger')).toBeInTheDocument()
+    await expect.poll(() => saved !== null, { timeout: 5000 }).toBe(true)
+    const jumps = (saved as { jumps: Array<Record<string, unknown>> }).jumps
+    expect('passenger' in jumps[0]).toBe(false)
+  })
+
+  test('process button disabled without complete passenger', async () => {
+    const filesA = makeFiles(2, 1724493600)
+    const filesB = makeFiles(2, 1724493600 + 3600)
+    filesB.forEach((f) => {
+      f.path = `/output/B_${f.filename}`
+      f.filename = `B_${f.filename}`
+    })
+    const manifest = {
+      version: 1,
+      status: 'proposed' as const,
+      date: '2026-08-24',
+      startDatetime: '2026-08-24T10:00:00.000Z',
+      createdAt: '2026-08-24T10:00:00.000Z',
+      theory: [],
+      files: [...filesA, ...filesB],
+      jumps: [
+        { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...filesA] },
+        {
+          id: 'jump_02',
+          label: 'jump_02',
+          confirmed: false,
+          passenger: { firstname: 'John', lastname: '', email: '' },
+          files: [...filesB]
+        }
+      ]
+    } as never
+    await renderHome(manifest)
+    const buttons = document.querySelectorAll(
+      '[data-action="process"]'
+    ) as NodeListOf<HTMLButtonElement>
+    expect(buttons.length).toBe(2)
+    for (const btn of Array.from(buttons)) {
+      expect(btn.disabled).toBe(true)
+      expect(btn.title).toBe('Add complete passenger details to process')
+    }
+  })
+
+  test('process button processes jump and shows processed badge', async () => {
+    const files = makeFiles(2)
+    const manifest = makeManifest(files, [
+      {
+        id: 'jump_01',
+        label: 'jump_01',
+        confirmed: false,
+        passenger: { firstname: 'John', lastname: 'Doe', email: 'john@example.com' },
+        files: [...files]
+      }
+    ]) as never
+    const processAction = async ({ request }: { request: Request }) => {
+      const body = (await request.json()) as { intent: string; jumpId?: string }
+      if (body.intent === 'process-jump' && body.jumpId) {
+        const jumps = (manifest as unknown as { jumps: Array<{ id: string; processed?: boolean }> })
+          .jumps
+        const target = jumps.find((j) => j.id === body.jumpId)
+        if (target) target.processed = true
+        return { jumps }
+      }
+      return { ok: true }
+    }
+    await renderHome(manifest, processAction)
+    const button = document.querySelector('[data-action="process"]') as HTMLButtonElement
+    expect(button.disabled).toBe(false)
+    expect(button.textContent).toBe('Process')
+
+    await userEvent.click(page.elementLocator(button))
+    await expect.poll(() => document.querySelector('[data-processed-badge]') !== null).toBe(true)
+    await expect.element(page.getByText('Reprocess')).toBeInTheDocument()
+  })
+
   test('jump navigation buttons cycle through jumps', async () => {
     const filesC = makeFiles(2, 1724493600 + 7200)
     filesC.forEach((f) => {

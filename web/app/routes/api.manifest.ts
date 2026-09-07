@@ -1,7 +1,9 @@
 import type { Route } from './+types/api.manifest'
 import { z } from 'zod'
 import {
+  executeMedia,
   getOutputDir,
+  hasCompletePassenger,
   loadManifest,
   manifestJumpSchema,
   mergeJumps,
@@ -11,11 +13,12 @@ import {
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 
 const actionArgs = z.object({
-  intent: z.enum(['save-jumps', 'merge-jumps']),
+  intent: z.enum(['save-jumps', 'merge-jumps', 'process-jump']),
   jumps: z.array(manifestJumpSchema).optional(),
   leftId: z.string().optional(),
   rightId: z.string().optional(),
-  anchorEpoch: z.number().optional()
+  anchorEpoch: z.number().optional(),
+  jumpId: z.string().optional()
 })
 
 const action = createValidatedFormAction<Route.ActionArgs>()({
@@ -47,6 +50,24 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       }
       saveManifest(manifestPath, manifest)
       return { jumps: manifest.jumps }
+    }
+    if (data.intent === 'process-jump') {
+      if (!data.jumpId) {
+        errors.addGlobalError('Process needs a jump id.')
+        return errors.toResponse(422)
+      }
+      const target = manifest.jumps.find((j) => j.id === data.jumpId)
+      if (!target) {
+        errors.addGlobalError('Jump not found.')
+        return errors.toResponse(422)
+      }
+      if (!hasCompletePassenger(target.passenger)) {
+        errors.addGlobalError('Complete passenger details are required to process.')
+        return errors.toResponse(422)
+      }
+      executeMedia({ manifestPath, jumpIds: [target.id], outputDir: getOutputDir() })
+      const updated = loadManifest(manifestPath)
+      return { jumps: updated?.jumps ?? manifest.jumps }
     }
     if (!data.jumps) {
       errors.addGlobalError('Save needs jumps.')

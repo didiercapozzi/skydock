@@ -1,4 +1,4 @@
-import type { ManifestFile, ManifestJump } from '@skydock/scripts'
+import type { ManifestFile, ManifestJump, ManifestPassenger } from '@skydock/scripts'
 
 type SelectionMap = Record<string, Record<string, boolean>>
 
@@ -36,6 +36,7 @@ export type {
   JumpDayGroup,
   ManifestFile,
   ManifestJump,
+  ManifestPassenger,
   PreviewState,
   SelectionMap
 }

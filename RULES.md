@@ -95,7 +95,7 @@ output/
 
 - Default manifest `output/manifest.json`, processed directory `output/processed`.
 - If jump IDs given, process only those; else process all confirmed and unprocessed jumps.
-- For each jump: reads label, sanitizes it, creates directory structure with `videos/` and `photos/` subdirectories. Files renamed to standard format based on mtime. If crop range set and ffmpeg available, video is cropped.
+- For each jump: builds the base name from the passenger (lowercase firstname, lastname and jump day) or the sanitized label as fallback, creates directory structure with `videos/` and `photos/` subdirectories. Files renamed to the base name with numbered suffixes past the first. If crop range set and ffmpeg available, video is cropped. Processed jumps are marked processed, their publish state is cleared, and the manifest is saved.
 - Writes status file for API polling.
 
 ### 6.2 API execute
@@ -145,7 +145,7 @@ output/
 - **Thumb:** Single frame JPEG extraction via ffmpeg for crop bar thumbnails.
 - **Stream:** Live-transcodes to fMP4 for thumbnails and crop bar fallback.
 - **HLS:** Live-transcodes to HLS segments for main playback.
-- **Manifest:** Full CRUD for jumps, files, calibration, execution.
+- **Manifest:** Full CRUD for jumps, files, calibration, execution. Intents: save-jumps, merge-jumps (with date anchor), process-jump (requires complete passenger).
 
 ## 9. Review UI (`/`)
 
@@ -230,7 +230,7 @@ All drag and drop operations follow these rules:
 #### 9.4.2 Day groups & jump cards
 
 - Jumps grouped by day, days newest-first with per-day jump counts.
-- Compare checkbox per card, max 2 jumps. Cards expand/collapse. Jump labels are editable and save to the manifest.
+- Compare checkbox per card, max 2 jumps. Cards expand/collapse. Each card has a Process button (enabled with complete passenger details, spinner while processing, Reprocess once done) and a Processed badge. The card title shows the passenger name once firstname and lastname are set, otherwise the jump label. The expanded card shows passenger names as labels (click to edit) or an Add passenger button; Done saves to the manifest, Cancel discards drafts.
 
 ### 9.5 Comparing & merging jumps
 
@@ -432,3 +432,37 @@ The VideoCropper component lives inside the PreviewDrawer (right panel), directl
 - Test additions or updates
 
 **Commit rule:** No commit is ever made until the user explicitly requests it. All changes are staged and reviewed before committing.
+
+## 13. Tandem passenger publishing
+
+> How tandem jumps go from processed files to the passenger's inbox. Passenger details and processing are live; upload and mail are still planned.
+
+### 13.1 Passenger details
+
+- Each jump can carry the tandem passenger's first name, last name and email address.
+- Passenger details are optional while reviewing, and jumps without them fall back to the jump label wherever a name is needed. Processing a jump requires all three fields.
+- They are edited on the jump card and saved with the rest of the workspace.
+
+### 13.2 Naming
+
+- Processed folders and files are named from the passenger, all lowercase: first name, last name and jump day joined with underscores.
+- Files after the first get a numbered suffix so names stay unique.
+- Videos and photos keep their separate subfolders.
+
+### 13.3 Per-jump lifecycle
+
+- Each jump moves through proposed, processed, uploaded and mailed, in that order.
+- The Process button is available once a jump has files and all three passenger fields are set. Processing copies and renames the files and marks the jump processed; re-processing clears any previous publishing state.
+- The Upload button is only enabled for processed jumps and starts the upload immediately. Uploading copies the processed folder to the network storage and creates a share link, which is stored on the jump.
+- The Mail button stays disabled until a share link exists. It opens a prefilled email in the browser mail app — recipient, subject and message already filled, including the share link — so the user only has to send it.
+- Since sending happens outside the app, it is confirmed manually: marking it sent records the date and disables the mail button with a sent-on note.
+
+### 13.4 Freshness rules
+
+- Re-processing a jump discards its share link and sent record, because the files changed and the old link is stale.
+- Merged jumps start unpublished, with no link and no sent record.
+- Re-uploading replaces the share link and resets the sent record for the same reason.
+
+### 13.5 Secrets
+
+- Storage and mail credentials live in environment configuration only. They are never written into the workspace files or committed to version control.

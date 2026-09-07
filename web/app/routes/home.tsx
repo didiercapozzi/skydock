@@ -14,6 +14,7 @@ import type {
   DropHint,
   ManifestFile,
   ManifestJump,
+  ManifestPassenger,
   PreviewState,
   SelectionMap
 } from '../components/types'
@@ -44,7 +45,8 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const mainRef = useRef<HTMLElement | null>(null)
   const videoRefRef = useRef<VideoRef | null>(null)
   const { submit, data } = useSafeFetcher()
-  const mergeRequestRef = useRef<{ leftId: string; rightId: string } | null>(null)
+  const pendingRef = useRef<{ kind: 'merge' | 'process' } | null>(null)
+  const [processingId, setProcessingId] = useState<string | null>(null)
   const jumpsByDay = groupJumpsByDay(jumps)
   const [videoCrop, setVideoCrop] = useState<{ cropStart: number | null; cropEnd: number | null }>({
     cropStart: null,
@@ -85,22 +87,49 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     videoRefRef.current = ref
   }
 
+  const handlePassengerChange = (jumpId: string, passenger: ManifestPassenger | undefined) => {
+    const next = jumps.map((j) => (j.id === jumpId ? { ...j, passenger } : j))
+    setJumps(next)
+    saveJumps(next)
+  }
+
   const handleMerge = (leftId: string, rightId: string, anchorEpoch: number) => {
-    mergeRequestRef.current = { leftId, rightId }
+    pendingRef.current = { kind: 'merge' }
     submit({
       url: '/api/manifest',
       actionArgs: { intent: 'merge-jumps', leftId, rightId, anchorEpoch }
     })
   }
 
+  const handleProcess = (jumpId: string) => {
+    pendingRef.current = { kind: 'process' }
+    setProcessingId(jumpId)
+    submit({
+      url: '/api/manifest',
+      actionArgs: { intent: 'process-jump', jumpId }
+    })
+  }
+
   useEffect(() => {
-    if (!mergeRequestRef.current) return
+    if (!pendingRef.current) return
     if (data && typeof data === 'object' && 'jumps' in data && Array.isArray(data.jumps)) {
-      mergeRequestRef.current = null
-      // eslint-disable-next-line react/set-state-in-effect -- syncing server merge response into state
+      const kind = pendingRef.current.kind
+      pendingRef.current = null
+      // eslint-disable-next-line react/set-state-in-effect -- syncing server response into state
       setJumps(data.jumps as ManifestJump[])
-      setShowComparison(false)
-      setCompareIds([])
+      setProcessingId(null)
+      if (kind === 'merge') {
+        setShowComparison(false)
+        setCompareIds([])
+      }
+    } else if (
+      data &&
+      typeof data === 'object' &&
+      'success' in data &&
+      (data as { success?: unknown }).success === false
+    ) {
+      pendingRef.current = null
+      setProcessingId(null)
     }
   }, [data])
 
@@ -457,6 +486,9 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
                       onDrop={handleDrop}
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
+                      onPassengerChange={handlePassengerChange}
+                      onProcess={handleProcess}
+                      processing={processingId === jump.id}
                     />
                   </div>
                 ))}

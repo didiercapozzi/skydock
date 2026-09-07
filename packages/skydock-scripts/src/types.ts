@@ -17,12 +17,25 @@ const jumpFileRefSchema = z.object({
   cropEnd: z.number().nullable().optional()
 })
 
+const passengerSchema = z.object({
+  firstname: z.string(),
+  lastname: z.string(),
+  email: z.string()
+})
+
+const publishSchema = z.object({
+  shareUrl: z.string(),
+  emailedAt: z.string().nullable().optional()
+})
+
 const manifestJumpSchema = z.object({
   id: z.string(),
   label: z.string(),
   confirmed: z.boolean(),
   files: z.array(manifestFileSchema),
-  processed: z.boolean().nullable().optional()
+  processed: z.boolean().nullable().optional(),
+  passenger: passengerSchema.optional(),
+  publish: publishSchema.optional()
 })
 
 const jumpsFileSchema = z.object({
@@ -32,7 +45,9 @@ const jumpsFileSchema = z.object({
       label: z.string(),
       confirmed: z.boolean(),
       files: z.array(jumpFileRefSchema),
-      processed: z.boolean().nullable().optional()
+      processed: z.boolean().nullable().optional(),
+      passenger: passengerSchema.optional(),
+      publish: publishSchema.optional()
     })
   )
 })
@@ -53,6 +68,8 @@ const manifestSchema = z.object({
 
 type ManifestFile = z.infer<typeof manifestFileSchema>
 type ManifestJump = z.infer<typeof manifestJumpSchema>
+type ManifestPassenger = z.infer<typeof passengerSchema>
+type ManifestPublish = z.infer<typeof publishSchema>
 type ManifestStatus = z.infer<typeof manifestStatusSchema>
 type Manifest = z.infer<typeof manifestSchema>
 type JumpFileRef = z.infer<typeof jumpFileRefSchema>
@@ -134,6 +151,8 @@ export type {
   Manifest,
   ManifestFile,
   ManifestJump,
+  ManifestPassenger,
+  ManifestPublish,
   ManifestStatus,
   SystemStatus,
   TaskState,
@@ -149,5 +168,7 @@ export {
   manifestFileSchema,
   manifestJumpSchema,
   manifestSchema,
-  manifestStatusSchema
+  manifestStatusSchema,
+  passengerSchema,
+  publishSchema
 }
