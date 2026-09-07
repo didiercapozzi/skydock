@@ -22,6 +22,7 @@ const JumpCard = ({
   onUpload,
   uploading,
   onMail,
+  mailtoUrl,
   onMarkSent,
   onCancelMail,
   mailPending
@@ -43,6 +44,7 @@ const JumpCard = ({
   onUpload: (jumpId: string) => void
   uploading: boolean
   onMail: (jumpId: string) => void
+  mailtoUrl: string | null
   onMarkSent: (jumpId: string) => void
   onCancelMail: () => void
   mailPending: boolean
@@ -313,13 +315,23 @@ const JumpCard = ({
                       </button>
                     </span>
                   ) : (
-                    <button
-                      type='button'
-                      data-action='mail'
-                      onClick={() => onMail(jump.id)}
-                      className='px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700'>
-                      Mail
-                    </button>
+                    <span className='flex items-center gap-2'>
+                      <button
+                        type='button'
+                        data-action='mail'
+                        onClick={() => onMail(jump.id)}
+                        className='px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700'>
+                        Mail
+                      </button>
+                      {mailtoUrl && (
+                        <a
+                          href={mailtoUrl}
+                          data-action='mailto'
+                          className='text-xs text-gray-500 hover:text-gray-700 underline'>
+                          mailto instead
+                        </a>
+                      )}
+                    </span>
                   )}
                 </div>
               ) : (

@@ -1028,6 +1028,10 @@ describe('Home - jump comparison dialog', () => {
       })
       await expandAllJumpCards()
 
+      const mailto = document.querySelector('[data-action="mailto"]') as HTMLAnchorElement
+      expect(mailto.href.startsWith('mailto:john@example.com?')).toBe(true)
+      expect(mailto.href).toContain(encodeURIComponent('https://nas.local:5001/sharing/demo123'))
+
       await userEvent.click(
         page.elementLocator(document.querySelector('[data-action="mail"]') as HTMLElement)
       )

@@ -99,7 +99,8 @@ window so the user just hits Send.
   button (only when processed, spinner while the fetcher is busy), Mail
   button (disabled with "Upload first" tooltip until `shareUrl` exists).
 - Expanded share section: link, copy action, Mail button (disabled until
-  `shareUrl`), "Did you send it?" confirm with Mark as sent / Not yet.
+  `shareUrl`) with a `mailto:` fallback link, "Did you send it?" confirm
+  with Mark as sent / Not yet.
 - Mark as sent persists `emailedAt` via `save-jumps` and disables the icon
   with a sent-on tooltip. Fixed a real bug found by tests: header button
   clicks bubbled into the card expand toggle (stopPropagation).

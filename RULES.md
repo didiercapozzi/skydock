@@ -457,7 +457,7 @@ The VideoCropper component lives inside the PreviewDrawer (right panel), directl
 - Each jump moves through proposed, processed, uploaded and mailed, in that order.
 - The Process button is available once a jump has files and all three passenger fields are set. Processing copies and renames the files and marks the jump processed; re-processing clears any previous publishing state.
 - The Upload button is only enabled for processed jumps and starts the upload immediately. Uploading copies the processed folder to the network storage and creates a share link, which is stored on the jump.
-- The Mail button stays disabled until a share link exists. It opens a prefilled email in the browser mail app — recipient, subject and message already filled, including the share link — so the user only has to send it.
+- The Mail button stays disabled until a share link exists. It opens a prefilled email in the browser mail app, with a system-mail fallback link next to it — recipient, subject and message already filled, including the share link — so the user only has to send it.
 - Since sending happens outside the app, it is confirmed manually: marking it sent records the date and disables the mail button with a sent-on note.
 
 ### 13.4 Freshness rules

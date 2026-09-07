@@ -20,6 +20,7 @@ import type {
 } from '../components/types'
 import {
   buildGmailUrl,
+  buildMailtoUrl,
   DEFAULT_EMAIL_BODY,
   DEFAULT_EMAIL_SUBJECT,
   getDropIndex,
@@ -133,10 +134,9 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     })
   }
 
-  const handleMail = (jumpId: string) => {
-    const jump = jumps.find((j) => j.id === jumpId)
-    const shareUrl = jump?.publish?.shareUrl
-    if (!jump || !shareUrl) return
+  const getMailUrls = (jump: ManifestJump) => {
+    const shareUrl = jump.publish?.shareUrl
+    if (!shareUrl) return null
     const vars = {
       firstname: jump.passenger?.firstname ?? '',
       lastname: jump.passenger?.lastname ?? '',
@@ -146,7 +146,18 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     }
     const subject = renderEmailTemplate(emailTemplates?.subject ?? DEFAULT_EMAIL_SUBJECT, vars)
     const body = renderEmailTemplate(emailTemplates?.body ?? DEFAULT_EMAIL_BODY, vars)
-    window.open(buildGmailUrl(jump.passenger?.email ?? '', subject, body), '_blank', 'noopener')
+    const to = jump.passenger?.email ?? ''
+    return {
+      gmailUrl: buildGmailUrl(to, subject, body),
+      mailtoUrl: buildMailtoUrl(to, subject, body)
+    }
+  }
+
+  const handleMail = (jumpId: string) => {
+    const jump = jumps.find((j) => j.id === jumpId)
+    const urls = jump ? getMailUrls(jump) : null
+    if (!urls) return
+    window.open(urls.gmailUrl, '_blank', 'noopener')
     setMailPendingId(jumpId)
   }
 
@@ -576,6 +587,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
                       onUpload={handleUpload}
                       uploading={uploadingId === jump.id}
                       onMail={handleMail}
+                      mailtoUrl={getMailUrls(jump)?.mailtoUrl ?? null}
                       onMarkSent={handleMarkSent}
                       onCancelMail={handleCancelMail}
                       mailPending={mailPendingId === jump.id}

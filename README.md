@@ -94,6 +94,8 @@ Files are deduplicated using `cmp`:
 | `SYNOLOGY_PASSWORD`  | DSM password (never stored in the manifest or git)  | —                   |
 | `SYNOLOGY_PATH`      | Destination folder on the NAS                       | `/SkyDock`          |
 
+Put local overrides in `web/.env` for development (loaded automatically); production uses real environment variables. No extra setup needed.
+
 ## Dependencies
 
 - `jq` - JSON processing
