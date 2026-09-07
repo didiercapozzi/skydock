@@ -247,8 +247,7 @@ All drag and drop operations follow these rules:
 ### 9.10 Transitions — Selected/Compare/Preview
 
 - Selected jumps panel appears when jumps selected. Clear resets. Compare enables only with 2. Process executes unprocessed. Change Day shifts all selected jumps.
-- Compare drawer shows 2 columns, merge combines jumps.
-- Preview drawer navigates files with prev/next, escape closes.
+- Compare dialog shows 2 columns side-by-side with jump navigation (< >) to cycle through all jumps independently, skipping the other side's current jump. Each side shows file list and preview panel (video with read-only time bar/zoom, or image). Merge button present (no-op for now). Close dismisses dialog.
 
 ### 9.11 Transitions — Video cropper
 

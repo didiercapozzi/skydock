@@ -7,6 +7,7 @@ type VideoCropperProps = {
   cropStart: number | null
   cropEnd: number | null
   zoom: number
+  readOnly?: boolean
   onSeek: (time: number) => void
   onCropChange: (range: { cropStart: number | null; cropEnd: number | null }) => void
   onApply: (range: { cropStart: number | null; cropEnd: number | null }) => void
@@ -21,6 +22,7 @@ const VideoCropper = ({
   cropStart,
   cropEnd,
   zoom,
+  readOnly = false,
   onSeek,
   onCropChange,
   onApply,
@@ -155,7 +157,7 @@ const VideoCropper = ({
           style={{ left: `${playheadPct}%` }}>
           <div className='absolute left-1/2 top-0 bottom-0 w-0.5 -ml-px bg-blue-600 pointer-events-none' />
         </div>
-        {startPct !== null && (
+        {!readOnly && startPct !== null && (
           <div
             data-crop-start-handle='true'
             onPointerDown={handleCropHandleDown('start')}
@@ -163,7 +165,7 @@ const VideoCropper = ({
             style={{ left: `${startPct}%` }}
           />
         )}
-        {endPct !== null && (
+        {!readOnly && endPct !== null && (
           <div
             data-crop-end-handle='true'
             onPointerDown={handleCropHandleDown('end')}
@@ -171,7 +173,7 @@ const VideoCropper = ({
             style={{ left: `${endPct}%` }}
           />
         )}
-        {startPct !== null && endPct !== null && (
+        {!readOnly && startPct !== null && endPct !== null && (
           <div
             data-crop-range='true'
             className='absolute top-0 bottom-0 bg-amber-200/50 border-x border-amber-500'
@@ -182,29 +184,31 @@ const VideoCropper = ({
           />
         )}
       </div>
-      <div className='flex gap-2 mt-3'>
-        <button
-          type='button'
-          data-action='start-here'
-          onClick={handleStartHere}
-          className='px-3 py-1.5 text-sm bg-gray-100 rounded hover:bg-gray-200 transition-colors'>
-          Start here
-        </button>
-        <button
-          type='button'
-          data-action='end-here'
-          onClick={handleEndHere}
-          className='px-3 py-1.5 text-sm bg-gray-100 rounded hover:bg-gray-200 transition-colors'>
-          End here
-        </button>
-        <button
-          type='button'
-          data-action='apply'
-          onClick={handleApply}
-          className='px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors'>
-          Apply
-        </button>
-      </div>
+      {!readOnly && (
+        <div className='flex gap-2 mt-3'>
+          <button
+            type='button'
+            data-action='start-here'
+            onClick={handleStartHere}
+            className='px-3 py-1.5 text-sm bg-gray-100 rounded hover:bg-gray-200 transition-colors'>
+            Start here
+          </button>
+          <button
+            type='button'
+            data-action='end-here'
+            onClick={handleEndHere}
+            className='px-3 py-1.5 text-sm bg-gray-100 rounded hover:bg-gray-200 transition-colors'>
+            End here
+          </button>
+          <button
+            type='button'
+            data-action='apply'
+            onClick={handleApply}
+            className='px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors'>
+            Apply
+          </button>
+        </div>
+      )}
     </div>
   )
 }

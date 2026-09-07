@@ -1,6 +1,7 @@
 import { loadManifest } from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
+import { ComparisonDialog } from '../components/comparison-dialog'
 import { DropActionDialog } from '../components/drop-action-dialog'
 import { FileRow } from '../components/file-row'
 import { JumpCard } from '../components/jump-card'
@@ -33,6 +34,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const manifest = loaderData.manifest
   const [selection, setSelection] = useState<SelectionMap>({})
   const [compareIds, setCompareIds] = useState<string[]>([])
+  const [showComparison, setShowComparison] = useState(false)
   const [dropDialog, setDropDialog] = useState<DropDialog | null>(null)
   const [dropHint, setDropHint] = useState<DropHint | null>(null)
   const [preview, setPreview] = useState<PreviewState>(null)
@@ -340,6 +342,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
               {compareIds.length === 2 && (
                 <button
                   type='button'
+                  onClick={() => setShowComparison(true)}
                   className='px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700'>
                   Compare
                 </button>
@@ -487,6 +490,16 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
             onMove={() => executeDrop('move')}
             onCopy={() => executeDrop('copy')}
             onCancel={() => setDropDialog(null)}
+          />
+        )}
+
+        {showComparison && compareIds.length === 2 && (
+          <ComparisonDialog
+            jumps={jumps}
+            leftJumpId={compareIds[0]}
+            rightJumpId={compareIds[1]}
+            onClose={() => setShowComparison(false)}
+            onMerge={() => {}}
           />
         )}
       </div>

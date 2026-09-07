@@ -59,7 +59,11 @@ const JumpCard = ({
               viewBox='0 0 24 24'
               stroke='currentColor'
               strokeWidth={2}>
-              <path strokeLinecap='round' strokeLinejoin='round' d='M9 5l7 7-7 7' />
+              <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                d='M9 5l7 7-7 7'
+              />
             </svg>
             <h3 className='font-semibold text-sm text-gray-800'>{jump.label}</h3>
             <div className='flex items-center gap-1.5'>

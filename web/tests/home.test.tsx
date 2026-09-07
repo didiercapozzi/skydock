@@ -412,6 +412,207 @@ describe('Home - selected file distinct background when preview open', () => {
   })
 })
 
+describe('Home - jump comparison dialog', () => {
+  const makeTwoJumpManifest = () => {
+    const filesA = makeFiles(3, 1724493600)
+    const filesB = makeFiles(2, 1724493600 + 3600)
+    filesB.forEach((f) => {
+      f.path = `/output/B_${f.filename}`
+      f.filename = `B_${f.filename}`
+    })
+    return {
+      version: 1,
+      status: 'proposed' as const,
+      date: '2026-08-24',
+      startDatetime: '2026-08-24T10:00:00.000Z',
+      createdAt: '2026-08-24T10:00:00.000Z',
+      theory: [],
+      files: [...filesA, ...filesB],
+      jumps: [
+        { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...filesA] },
+        { id: 'jump_02', label: 'jump_02', confirmed: false, files: [...filesB] }
+      ]
+    } as never
+  }
+
+  test('compare checkbox selects jumps, max 2', async () => {
+    await renderHome(makeTwoJumpManifest())
+    const checkboxes = document.querySelectorAll('input[title="Select for comparison"]')
+    expect(checkboxes.length).toBe(2)
+
+    await userEvent.click(page.elementLocator(checkboxes[0] as HTMLElement))
+    await expect.element(page.getByText('1 jump selected')).toBeInTheDocument()
+
+    await userEvent.click(page.elementLocator(checkboxes[1] as HTMLElement))
+    await expect.element(page.getByText('2 jumps selected')).toBeInTheDocument()
+
+    await page.screenshot({ path: './playwright-screenshots/home-compare-selected.png' })
+  })
+
+  test('compare button opens comparison dialog', async () => {
+    await renderHome(makeTwoJumpManifest())
+    const checkboxes = document.querySelectorAll('input[title="Select for comparison"]')
+    await userEvent.click(page.elementLocator(checkboxes[0] as HTMLElement))
+    await userEvent.click(page.elementLocator(checkboxes[1] as HTMLElement))
+
+    await userEvent.click(page.getByText('Compare'))
+    await expect.poll(() => document.querySelector('[data-comparison-dialog]') !== null).toBe(true)
+    await page.screenshot({ path: './playwright-screenshots/home-comparison-dialog.png' })
+  })
+
+  test('comparison dialog shows both jumps side by side', async () => {
+    await renderHome(makeTwoJumpManifest())
+    const checkboxes = document.querySelectorAll('input[title="Select for comparison"]')
+    await userEvent.click(page.elementLocator(checkboxes[0] as HTMLElement))
+    await userEvent.click(page.elementLocator(checkboxes[1] as HTMLElement))
+    await userEvent.click(page.getByText('Compare'))
+
+    await expect.poll(() => document.querySelector('[data-comparison-dialog]') !== null).toBe(true)
+    const leftSide = document.querySelector('[data-compare-side="left"]') as HTMLElement
+    const rightSide = document.querySelector('[data-compare-side="right"]') as HTMLElement
+    expect(leftSide).not.toBeNull()
+    expect(rightSide).not.toBeNull()
+    expect(leftSide.textContent).toContain('jump_01')
+    expect(rightSide.textContent).toContain('jump_02')
+  })
+
+  test('comparison dialog shows files for each jump', async () => {
+    await renderHome(makeTwoJumpManifest())
+    const checkboxes = document.querySelectorAll('input[title="Select for comparison"]')
+    await userEvent.click(page.elementLocator(checkboxes[0] as HTMLElement))
+    await userEvent.click(page.elementLocator(checkboxes[1] as HTMLElement))
+    await userEvent.click(page.getByText('Compare'))
+
+    await expect.poll(() => document.querySelector('[data-comparison-dialog]') !== null).toBe(true)
+    const leftFiles = document.querySelectorAll('[data-compare-side="left"] [data-compare-file]')
+    const rightFiles = document.querySelectorAll('[data-compare-side="right"] [data-compare-file]')
+    expect(leftFiles.length).toBe(3)
+    expect(rightFiles.length).toBe(2)
+  })
+
+  test('comparison dialog has navigation to browse files', async () => {
+    await renderHome(makeTwoJumpManifest())
+    const checkboxes = document.querySelectorAll('input[title="Select for comparison"]')
+    await userEvent.click(page.elementLocator(checkboxes[0] as HTMLElement))
+    await userEvent.click(page.elementLocator(checkboxes[1] as HTMLElement))
+    await userEvent.click(page.getByText('Compare'))
+
+    await expect.poll(() => document.querySelector('[data-comparison-dialog]') !== null).toBe(true)
+    await expect.element(page.getByText('Merge')).toBeInTheDocument()
+    await expect.element(page.getByText('Close')).toBeInTheDocument()
+  })
+
+  test('comparison dialog close button closes dialog', async () => {
+    await renderHome(makeTwoJumpManifest())
+    const checkboxes = document.querySelectorAll('input[title="Select for comparison"]')
+    await userEvent.click(page.elementLocator(checkboxes[0] as HTMLElement))
+    await userEvent.click(page.elementLocator(checkboxes[1] as HTMLElement))
+    await userEvent.click(page.getByText('Compare'))
+
+    await expect.poll(() => document.querySelector('[data-comparison-dialog]') !== null).toBe(true)
+    await userEvent.click(page.getByText('Close'))
+    await expect.poll(() => document.querySelector('[data-comparison-dialog]') === null).toBe(true)
+  })
+
+  test('clear button deselects all jumps', async () => {
+    await renderHome(makeTwoJumpManifest())
+    const checkboxes = document.querySelectorAll('input[title="Select for comparison"]')
+    await userEvent.click(page.elementLocator(checkboxes[0] as HTMLElement))
+    await userEvent.click(page.elementLocator(checkboxes[1] as HTMLElement))
+    await expect.element(page.getByText('2 jumps selected')).toBeInTheDocument()
+
+    await userEvent.click(page.getByText('Clear'))
+    await expect.poll(() => document.querySelector('[data-comparison-dialog]') === null).toBe(true)
+    expect(document.querySelector('[data-compare-left]')).toBeNull()
+  })
+
+  test('jump navigation buttons cycle through jumps', async () => {
+    const filesC = makeFiles(2, 1724493600 + 7200)
+    filesC.forEach((f) => {
+      f.path = `/output/C_${f.filename}`
+      f.filename = `C_${f.filename}`
+    })
+    const manifest = (() => {
+      const filesA = makeFiles(3, 1724493600)
+      const filesB = makeFiles(2, 1724493600 + 3600)
+      filesB.forEach((f) => {
+        f.path = `/output/B_${f.filename}`
+        f.filename = `B_${f.filename}`
+      })
+      return {
+        version: 1,
+        status: 'proposed' as const,
+        date: '2026-08-24',
+        startDatetime: '2026-08-24T10:00:00.000Z',
+        createdAt: '2026-08-24T10:00:00.000Z',
+        theory: [],
+        files: [...filesA, ...filesB, ...filesC],
+        jumps: [
+          { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...filesA] },
+          { id: 'jump_02', label: 'jump_02', confirmed: false, files: [...filesB] },
+          { id: 'jump_03', label: 'jump_03', confirmed: false, files: [...filesC] }
+        ]
+      }
+    })() as never
+    await renderHome(manifest)
+    const checkboxes = document.querySelectorAll('input[title="Select for comparison"]')
+    await userEvent.click(page.elementLocator(checkboxes[0] as HTMLElement))
+    await userEvent.click(page.elementLocator(checkboxes[1] as HTMLElement))
+    await userEvent.click(page.getByText('Compare'))
+
+    await expect.poll(() => document.querySelector('[data-comparison-dialog]') !== null).toBe(true)
+    const leftSide = () => document.querySelector('[data-compare-side="left"]') as HTMLElement
+    expect(leftSide().textContent).toContain('jump_01')
+
+    const nextBtn = document.querySelector('[data-action="jump-next-left"]') as HTMLElement
+    expect(nextBtn).not.toBeNull()
+    nextBtn.scrollIntoView()
+    await userEvent.click(page.elementLocator(nextBtn))
+
+    await expect.poll(() => leftSide().textContent ?? '').toContain('jump_03')
+    await page.screenshot({ path: './playwright-screenshots/home-comparison-navigate.png' })
+  })
+
+  test('clicking file shows preview area', async () => {
+    const manifest = (() => {
+      const filesA = makeFiles(3, 1724493600)
+      filesA.forEach((f) => {
+        f.filename = f.filename.replace(/\.\w+$/, '.MP4')
+      })
+      const filesB = makeFiles(2, 1724493600 + 3600)
+      filesB.forEach((f) => {
+        f.path = `/output/B_${f.filename}`
+        f.filename = `B_${f.filename.replace(/\.\w+$/, '.MP4')}`
+      })
+      return {
+        version: 1,
+        status: 'proposed' as const,
+        date: '2026-08-24',
+        startDatetime: '2026-08-24T10:00:00.000Z',
+        createdAt: '2026-08-24T10:00:00.000Z',
+        theory: [],
+        files: [...filesA, ...filesB],
+        jumps: [
+          { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...filesA] },
+          { id: 'jump_02', label: 'jump_02', confirmed: false, files: [...filesB] }
+        ]
+      }
+    })() as never
+    await renderHome(manifest)
+    const checkboxes = document.querySelectorAll('input[title="Select for comparison"]')
+    await userEvent.click(page.elementLocator(checkboxes[0] as HTMLElement))
+    await userEvent.click(page.elementLocator(checkboxes[1] as HTMLElement))
+    await userEvent.click(page.getByText('Compare'))
+
+    await expect.poll(() => document.querySelector('[data-comparison-dialog]') !== null).toBe(true)
+    const leftFiles = document.querySelectorAll('[data-compare-side="left"] [data-compare-file]')
+    await userEvent.click(page.elementLocator(leftFiles[1] as HTMLElement))
+
+    await expect.poll(() => document.querySelector('[data-video-cropper]') !== null).toBe(true)
+    await page.screenshot({ path: './playwright-screenshots/home-comparison-preview.png' })
+  })
+})
+
 describe('Home - video preview and crop (§9.11, §9.14)', () => {
   const renderWithVideo = async () => {
     const files = makeFiles(3)
