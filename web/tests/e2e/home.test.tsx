@@ -993,7 +993,8 @@ describe('Home - jump comparison dialog', () => {
     const nasAction = async () => ({
       connected: true,
       hostname: 'https://nas.local:5001',
-      username: 'admin'
+      username: 'admin',
+      defaultFolder: '/test'
     })
     await renderHome(manifest, uploadAction, nasAction)
     await expandAllJumpCards()

@@ -2,11 +2,19 @@ import { Link } from 'react-router'
 
 type Props = {
   nasConnected: boolean
+  defaultFolder: string | null
   onConnect: () => void
   onDisconnect: () => void
+  onChangeFolder: () => void
 }
 
-const Header = ({ nasConnected, onConnect, onDisconnect }: Props) => {
+const Header = ({
+  nasConnected,
+  defaultFolder,
+  onConnect,
+  onDisconnect,
+  onChangeFolder
+}: Props) => {
   return (
     <header className='border-b bg-white/80 backdrop-blur-sm sticky top-0 z-40'>
       <div className='max-w-7xl mx-auto px-6 py-4 flex items-center justify-between'>
@@ -40,12 +48,25 @@ const Header = ({ nasConnected, onConnect, onDisconnect }: Props) => {
               {nasConnected ? 'NAS Connected' : 'NAS Disconnected'}
             </span>
             {nasConnected ? (
-              <button
-                type='button'
-                onClick={onDisconnect}
-                className='text-xs text-red-600 hover:text-red-800 font-medium'>
-                Disconnect
-              </button>
+              <>
+                <span
+                  className='text-xs text-gray-400 hidden sm:inline'
+                  title={defaultFolder ?? ''}>
+                  {defaultFolder ? `NAS Folder: ${defaultFolder}` : 'No folder selected'}
+                </span>
+                <button
+                  type='button'
+                  onClick={onChangeFolder}
+                  className='text-xs text-blue-600 hover:text-blue-800 font-medium'>
+                  Change
+                </button>
+                <button
+                  type='button'
+                  onClick={onDisconnect}
+                  className='text-xs text-red-600 hover:text-red-800 font-medium'>
+                  Disconnect
+                </button>
+              </>
             ) : (
               <button
                 type='button'

@@ -52,7 +52,10 @@ describe('NAS connection', () => {
   test('filling form and clicking Connect submits credentials', async () => {
     let nasPayload: unknown = null
     const nasAction = async ({ request }: { request: Request }) => {
-      const body = (await request.json().catch(() => ({}))) as { intent?: string }
+      const body = (await request.json().catch(() => ({}))) as { intent?: string; path?: string }
+      if (body.intent === 'list-folder') {
+        return { folders: [] }
+      }
       nasPayload = body
       if (body.intent === 'status') return { connected: false }
       if (body.intent === 'connect') return { connected: true, hostname: 'https://nas.local:5001', username: 'admin' }
@@ -83,8 +86,11 @@ describe('NAS connection', () => {
   test('successful connect shows connected state and closes dialog', async () => {
     const nasAction = async ({ request }: { request: Request }) => {
       const body = (await request.json().catch(() => ({}))) as { intent?: string }
+      if (body.intent === 'list-folder') {
+        return { folders: [] }
+      }
       if (body.intent === 'status') return { connected: false }
-      return { connected: true, hostname: 'https://nas.local:5001', username: 'admin' }
+      return { connected: true, hostname: 'https://nas.local:5001', username: 'admin', defaultFolder: '/test' }
     }
     await renderHome(null, { '/api/nas': nasAction })
 
@@ -134,7 +140,7 @@ describe('NAS connection', () => {
       const body = await request.json()
       nasPayload = body
       if (body.intent === 'status')
-        return { connected: true, hostname: 'https://nas.local:5001', username: 'admin' }
+        return { connected: true, hostname: 'https://nas.local:5001', username: 'admin', defaultFolder: '/test' }
       if (body.intent === 'disconnect') return { connected: false }
       return { connected: false }
     }
@@ -189,12 +195,16 @@ describe('Upload with NAS connection', () => {
   test('upload proceeds when connected', async () => {
     let manifestPayload: unknown = null
     const nasAction = async ({ request }: { request: Request }) => {
-      const body = await request.json().catch(() => ({}))
+      const body = (await request.json().catch(() => ({}))) as { intent?: string; path?: string }
       console.log('nasAction called with', body)
+      if (body.intent === 'list-folder') {
+        return { folders: [{ name: 'test', path: '/test', is_dir: true }] }
+      }
       return {
         connected: true,
         hostname: 'https://nas.local:5001',
-        username: 'admin'
+        username: 'admin',
+        defaultFolder: '/test'
       }
     }
     const manifestAction = async ({ request }: { request: Request }) => {

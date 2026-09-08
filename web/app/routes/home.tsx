@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react'
 import { ComparisonDialog } from '../components/comparison-dialog'
 import { ConnectionDialog } from '../components/connection-dialog'
 import { DropActionDialog } from '../components/drop-action-dialog'
+import { NasFolderBrowser } from '../components/nas-folder-browser'
 import { PreviewDrawer } from '../components/preview-drawer'
 import { StagingTray } from '../components/staging-tray'
 import { DayGroups } from '../components/home/DayGroups'
@@ -80,7 +81,9 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const {
     nasConnected,
     showConnectionDialog,
+    showFolderDialog,
     nasError,
+    defaultFolder,
     processingId,
     uploadingId,
     handleConnect,
@@ -88,7 +91,9 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     handleMerge,
     handleProcess,
     handleUpload,
+    handleSelectFolder,
     setShowConnectionDialog,
+    setShowFolderDialog,
     setNasError
   } = useNas(setJumps, setCompareIds, setShowComparison)
   const { mailPendingId, getMailUrls, handleMail, handleMarkSent, handleCancelMail } =
@@ -116,8 +121,10 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
         className='min-h-screen bg-gradient-to-br from-gray-50 via-gray-50 to-gray-100'>
         <Header
           nasConnected={nasConnected}
+          defaultFolder={defaultFolder}
           onConnect={() => setShowConnectionDialog(true)}
           onDisconnect={handleDisconnect}
+          onChangeFolder={() => setShowFolderDialog(true)}
         />
         <div className='max-w-7xl mx-auto px-6 py-8'>
           <h1 className='text-3xl font-bold text-gray-900'>No Manifest Found</h1>
@@ -133,6 +140,11 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
             error={nasError ?? undefined}
           />
         )}
+        <NasFolderBrowser
+          open={showFolderDialog}
+          onSelect={handleSelectFolder}
+          onClose={() => setShowFolderDialog(false)}
+        />
       </main>
     )
   }
@@ -144,8 +156,10 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
       className='min-h-screen bg-gradient-to-br from-gray-50 via-gray-50 to-gray-100'>
       <Header
         nasConnected={nasConnected}
+        defaultFolder={defaultFolder}
         onConnect={() => setShowConnectionDialog(true)}
         onDisconnect={handleDisconnect}
+        onChangeFolder={() => setShowFolderDialog(true)}
       />
       <div className='max-w-7xl mx-auto px-6 py-8'>
         <ReviewHeader
@@ -254,6 +268,11 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
             error={nasError ?? undefined}
           />
         )}
+        <NasFolderBrowser
+          open={showFolderDialog}
+          onSelect={handleSelectFolder}
+          onClose={() => setShowFolderDialog(false)}
+        />
       </div>
     </main>
   )

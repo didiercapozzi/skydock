@@ -1,0 +1,185 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { z } from 'zod'
+import { useSafeFetcher } from '../helpers/routing'
+
+const folderItemSchema = z.object({ name: z.string(), path: z.string() })
+const foldersResponseSchema = z.object({ folders: z.array(folderItemSchema) })
+const folderErrorSchema = z
+  .object({ globalErrors: z.array(z.string()).optional(), error: z.string().optional() })
+  .passthrough()
+
+type FolderItem = z.infer<typeof folderItemSchema>
+
+type Props = {
+  open: boolean
+  onSelect: (path: string) => void
+  onClose: () => void
+}
+
+const NasFolderBrowser = ({ open, onSelect, onClose }: Props) => {
+  const fetcher = useSafeFetcher()
+  const fetcherRef = useRef(fetcher)
+  useEffect(() => {
+    fetcherRef.current = fetcher
+  }, [fetcher])
+  const [expanded, setExpanded] = useState<Set<string>>(new Set(['/']))
+  const [foldersByPath, setFoldersByPath] = useState<Record<string, FolderItem[]>>({})
+  const [selected, setSelected] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const pendingPathRef = useRef<string>('/')
+
+  const load = useCallback((folderPath: string) => {
+    pendingPathRef.current = folderPath
+    fetcherRef.current.submit({
+      url: '/api/nas',
+      actionArgs: { intent: 'list-folder', path: folderPath }
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    queueMicrotask(() => {
+      setError(null)
+      setFoldersByPath({})
+      setExpanded(new Set(['/']))
+      setSelected(null)
+    })
+    load('/')
+  }, [open, load])
+
+  useEffect(() => {
+    const parsedFolders = foldersResponseSchema.safeParse(fetcher.data)
+    if (parsedFolders.success) {
+      const key = pendingPathRef.current ?? '/'
+      queueMicrotask(() =>
+        setFoldersByPath((prev) => ({ ...prev, [key]: parsedFolders.data.folders }))
+      )
+      return
+    }
+    const parsedError = folderErrorSchema.safeParse(fetcher.data)
+    if (parsedError.success) {
+      const msg = parsedError.data.globalErrors?.[0] ?? parsedError.data.error
+      if (msg) queueMicrotask(() => setError(msg))
+    }
+  }, [fetcher.data])
+
+  const toggle = (folderPath: string) => {
+    const next = new Set(expanded)
+    if (next.has(folderPath)) {
+      next.delete(folderPath)
+      setExpanded(next)
+    } else {
+      next.add(folderPath)
+      setExpanded(next)
+      if (!foldersByPath[folderPath]) {
+        load(folderPath)
+      }
+    }
+  }
+
+  const renderTree = (folderPath: string, depth: number): React.ReactNode => {
+    const children = foldersByPath[folderPath]
+    if (!children) {
+      return (
+        <div
+          key={folderPath}
+          className='pl-4 py-1 text-xs text-gray-400'>
+          Loading...
+        </div>
+      )
+    }
+    return (
+      <div key={folderPath}>
+        {children.map((child) => {
+          const isExpanded = expanded.has(child.path)
+          const isSelected = selected === child.path
+          return (
+            <div key={child.path}>
+              <div
+                className={`flex items-center gap-1 px-2 py-1 rounded cursor-pointer text-sm ${isSelected ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100'}`}
+                style={{ paddingLeft: `${8 + depth * 16}px` }}
+                onClick={() => setSelected(child.path)}>
+                <button
+                  type='button'
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    toggle(child.path)
+                  }}
+                  className='w-4 h-4 flex items-center justify-center text-gray-500 hover:text-gray-700'>
+                  {isExpanded ? '▼' : '▶'}
+                </button>
+                <span className='truncate'>{child.name}</span>
+                <span className='ml-auto text-xs text-gray-400 truncate hidden sm:inline'>
+                  {child.path}
+                </span>
+              </div>
+              {isExpanded && renderTree(child.path, depth + 1)}
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  const handleRootLoad = () => {
+    const anyLoading = fetcher.state !== 'idle'
+    return anyLoading
+  }
+
+  if (!open) return null
+
+  return (
+    <div
+      data-nas-folder-dialog='true'
+      className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
+      <div className='bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[70vh] flex flex-col'>
+        <div className='px-6 py-4 border-b border-gray-100'>
+          <h2 className='text-lg font-semibold text-gray-900'>Choose NAS Folder</h2>
+          <p className='text-xs text-gray-500 mt-1'>
+            Select the destination folder for uploads. Required before first upload.
+          </p>
+        </div>
+        <div className='flex-1 overflow-auto px-4 py-3'>
+          {error && (
+            <div className='mb-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700'>
+              {error}
+            </div>
+          )}
+          <div
+            className={`flex items-center gap-1 px-2 py-1 rounded cursor-pointer text-sm mb-2 ${selected === '/' ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100'}`}
+            onClick={() => setSelected('/')}>
+            <span className='font-medium'>/</span>
+            <span className='text-xs text-gray-400'>(root)</span>
+          </div>
+          {foldersByPath['/'] ? (
+            renderTree('/', 0)
+          ) : (
+            <div className='text-xs text-gray-400'>
+              {handleRootLoad() ? 'Loading...' : 'No folders'}
+            </div>
+          )}
+        </div>
+        <div className='px-6 py-4 border-t border-gray-100 flex justify-end gap-3'>
+          <button
+            type='button'
+            onClick={onClose}
+            className='px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200'>
+            Cancel
+          </button>
+          <button
+            type='button'
+            disabled={!selected}
+            onClick={() => {
+              if (selected) onSelect(selected)
+            }}
+            className='px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'>
+            Select
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export { NasFolderBrowser }
+export type { Props }
