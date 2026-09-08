@@ -17,7 +17,9 @@ const ConnectionDialog = ({ onConnect, onCancel, error }: ConnectionDialogProps)
   }
 
   return (
-    <div className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
+    <div
+      data-connection-dialog='true'
+      className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
       <div className='bg-white rounded-xl shadow-xl p-6 w-full max-w-md'>
         <h2 className='text-lg font-semibold text-gray-900 mb-4'>Connect to NAS</h2>
         {error && (

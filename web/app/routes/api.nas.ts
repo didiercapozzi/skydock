@@ -1,10 +1,11 @@
-import { z } from 'zod'
 import {
   clearNasSession,
+  dsmLogin,
   dsmValidateSession,
   loadNasSession,
   saveNasSession
 } from '@skydock/scripts'
+import { z } from 'zod'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 
 const actionArgs = z.object({
@@ -38,18 +39,13 @@ const action = createValidatedFormAction()({
         errors.addGlobalError('Host, username, and password are required.')
         return errors.toResponse(422)
       }
-      const { dsmLogin } = await import('@skydock/scripts')
       try {
         const sessionId = await dsmLogin({
           host: data.host,
           user: data.user,
           password: data.password
         })
-        saveNasSession({
-          hostname: data.host,
-          username: data.user,
-          sessionId
-        })
+        saveNasSession({ hostname: data.host, username: data.user, sessionId })
         return { connected: true as const, hostname: data.host, username: data.user }
       } catch (err) {
         errors.addGlobalError(err instanceof Error ? err.message : 'Login failed.')
