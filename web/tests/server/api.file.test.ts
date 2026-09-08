@@ -6,7 +6,7 @@ vi.mock('@skydock/scripts', async (importOriginal) => {
   return { ...actual, getOutputDir: () => '/workspace/output' }
 })
 
-const { loader } = await import('../app/routes/api.file.$')
+const { loader } = await import('../../app/routes/api.file.$')
 
 const TEST_DIR = '/workspace/output/test-stream'
 const TEST_FILE = `${TEST_DIR}/test-video.mp4`

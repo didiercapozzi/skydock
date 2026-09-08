@@ -5,7 +5,7 @@ import {
   DEFAULT_EMAIL_BODY,
   DEFAULT_EMAIL_SUBJECT,
   renderEmailTemplate
-} from '../app/components/utils'
+} from '../../app/components/utils'
 
 describe('email template rendering', () => {
   test('replaces every placeholder including repeats', () => {

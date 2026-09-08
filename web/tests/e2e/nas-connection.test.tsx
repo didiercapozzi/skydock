@@ -9,7 +9,7 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
   return { ...actual, loadManifest: vi.fn(() => null) }
 })
 
-import Home from '../app/routes/home'
+import Home from '../../app/routes/home'
 
 const renderHome = async (
   manifest: unknown,

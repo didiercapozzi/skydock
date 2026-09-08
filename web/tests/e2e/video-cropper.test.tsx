@@ -3,7 +3,7 @@ import { describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 
-import { VideoCropper } from '../app/components/video-cropper'
+import { VideoCropper } from '../../app/components/video-cropper'
 
 const renderCropper = async (props: Partial<Parameters<typeof VideoCropper>[0]> = {}) => {
   const onSeek = vi.fn()

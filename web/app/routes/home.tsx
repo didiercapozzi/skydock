@@ -252,8 +252,8 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
       try {
         const res = await fetch('/api/nas', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: 'intent=status'
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ intent: 'status' })
         })
         const result = await res.json()
         if (!cancelled) setNasConnected(result.connected === true)

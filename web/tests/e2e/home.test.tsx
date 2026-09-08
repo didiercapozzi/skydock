@@ -9,7 +9,7 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
   return { ...actual, loadManifest: vi.fn(() => null) }
 })
 
-import Home from '../app/routes/home'
+import Home from '../../app/routes/home'
 
 const makeFiles = (count: number, startMtime = 1724493600) =>
   Array.from({ length: count }, (_, i) => {
@@ -964,29 +964,42 @@ describe('Home - jump comparison dialog', () => {
   })
 
   test('upload flow shows share link and enables mail', async () => {
-    const files = makeFiles(2)
-    const manifest = makeManifest(files, [
-      {
-        id: 'jump_01',
-        label: 'jump_01',
-        confirmed: false,
-        processed: true,
-        passenger: { firstname: 'John', lastname: 'Doe', email: 'john@example.com' },
-        files: [...files]
+    const fetchMock = vi.fn(async (input: RequestInfo) => {
+      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input)
+      if (url.includes('/api/nas')) {
+        return new Response(JSON.stringify({ connected: true, hostname: 'https://nas.local:5001', username: 'admin' }), {
+          headers: { 'Content-Type': 'application/json' }
+        })
       }
-    ]) as never
-    const uploadAction = async ({ request }: { request: Request }) => {
-      const body = (await request.json()) as { intent: string; jumpId?: string }
-      if (body.intent === 'upload-jump' && body.jumpId) {
-        const jumps = (manifest as unknown as { jumps: Array<{ id: string; publish?: unknown }> })
-          .jumps
-        const target = jumps.find((j) => j.id === body.jumpId)
-        if (target) target.publish = { shareUrl: 'https://nas.local:5001/sharing/demo123' }
-        return { jumps }
+      if (url.includes('/templates/')) {
+        return new Response('template', { status: 200, headers: { 'Content-Type': 'text/plain' } })
       }
-      return { ok: true }
-    }
-    await renderHome(manifest, uploadAction)
+      return new Response(JSON.stringify({}), { headers: { 'Content-Type': 'application/json' } })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      const files = makeFiles(2)
+      const manifest = makeManifest(files, [
+        {
+          id: 'jump_01',
+          label: 'jump_01',
+          confirmed: false,
+          processed: true,
+          passenger: { firstname: 'John', lastname: 'Doe', email: 'john@example.com' },
+          files: [...files]
+        }
+      ]) as never
+      const uploadAction = async ({ request }: { request: Request }) => {
+        const body = (await request.json()) as { intent: string; jumpId?: string }
+        if (body.intent === 'upload-jump' && body.jumpId) {
+          const jumps = (manifest as unknown as { jumps: Array<{ id: string; publish?: unknown }> }).jumps
+          const target = jumps.find((j) => j.id === body.jumpId)
+          if (target) target.publish = { shareUrl: 'https://nas.local:5001/sharing/demo123' }
+          return { jumps }
+        }
+        return { ok: true }
+      }
+      await renderHome(manifest, uploadAction)
     await expandAllJumpCards()
     await expect.element(page.getByText('Upload to get a share link.')).toBeInTheDocument()
 
@@ -1001,6 +1014,9 @@ describe('Home - jump comparison dialog', () => {
     expect(link.href).toBe('https://nas.local:5001/sharing/demo123')
     const mailBtn = document.querySelector('[data-action="mail"]') as HTMLButtonElement
     expect(mailBtn.disabled).toBe(false)
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 
   test('mail opens gmail and mark as sent disables it', async () => {

@@ -7,7 +7,11 @@
     "dev": "react-router dev --host",
     "predev": "npx --yes kill-port 5173 || true",
     "start": "react-router-serve ./build/server/index.js",
-    "test:browser": "vitest --config=vitest.browser.config.ts tests",
+    "test": "npm run test:node && npm run test:browser",
+    "test:browser": "vitest --config=vitest.browser.config.ts",
+    "test:e2e": "npm run test:browser",
+    "test:node": "vitest --config=vitest.node.config.ts",
+    "test:server": "npm run test:node",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

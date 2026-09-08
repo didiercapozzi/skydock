@@ -6,6 +6,7 @@ export default mergeConfig(
   viteConfig,
   defineConfig({
     test: {
+      include: ['tests/e2e/**/*.test.{ts,tsx}'],
       setupFiles: ['./tests/setup.ts'],
       browser: {
         enabled: true,

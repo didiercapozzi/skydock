@@ -6,6 +6,15 @@
 
 Keep `web/app/routes/home.tsx` as React Router 8 Framework Mode route (`loader` + default `Home`). Extract stateful logic to `web/app/hooks/*` and presentational UI to `web/app/components/home/*`. Respect `RULES.md:11`: arrow functions only, `type` over `interface`, inferred returns, exports at EOF, `useSafeFetcher`/`routingEngine`, React Compiler (no `useCallback`/`useMemo`), `createValidatedFormAction` for server actions.
 
+## Guideline: Avoid `useEffect` as Much as Possible
+
+> `useEffect` is only for true external side-effects that cannot be derived or handled by events/loaders. Prefer derived state, `loader`/`action` data, and direct event handlers.
+
+- **Derive, don't sync:** `jumps` from `data.jumps` (`fetcher.data`) should be derived via `const jumps = data?.jumps ?? initialJumps` or lifted to `loader` revalidation, not `useEffect(() => setJumps(data.jumps))`. Pending merge-then-clear (`setCompareIds`, `setShowComparison`) becomes an `onSuccess` callback from `submit`, not an effect watching `data`.
+- **Fetch in `loader`, not effects:** Email templates (`fetch /templates/tandem-email.*`) belong in `loader` (parallel `Promise.all`) and passed as `loaderData` — eliminates `useEffect:270-295` with `cancelled` flag. NAS `intent=status` poll (`useEffect:249-268`) becomes a `useSafeFetcher` + `onMount` submit or a `loader` revalidation; only the 2s poll interval (if kept) stays as a single `setInterval` effect, not 4 separate effects.
+- **Hydration flag:** `mainRef.current.setAttribute('data-hydrated','true')` (`useEffect:245-247`) → use `clientLoader` or `useSyncExternalStore`/`useState` initializer, or just CSS `data-hydrated` via `useEffect` is the one allowed exception — document it as the only `useEffect` that may remain.
+- **Every remaining `useEffect` must justify:** list it in the PR description with why it cannot be an event, derived value, or loader. Aim for **≤2 effects** in the final `home.tsx` shell (NAS poll + hydration) vs. 8 today. Hooks extracted in Phase 1 must expose `onSuccess`/`onError` callbacks instead of `useEffect` watchers where possible.
+
 ## Current Inventory
 
 ```
@@ -46,31 +55,31 @@ Tests assert `data-file-row`, `data-jump-card`, `data-staging-tray`, `data-previ
 
 Verify: `npm run check`, no imports yet.
 
-### Phase 1 — Extract hooks (logic only)
+### Phase 1 — Extract hooks (logic only, no new `useEffect`)
 
-Create `web/app/hooks/*` (arrow functions, `type` props, inferred returns, exports at EOF):
+Create `web/app/hooks/*` (arrow functions, `type` props, inferred returns, exports at EOF). **No hook may introduce a new `useEffect` unless justified per Guideline above — prefer callbacks/derived state:**
 
-- [ ] `hooks/useSelection.ts` (~80 LOC) — owns `selection:SelectionMap`, `lastClickedRef`, `selectedCount` derived, `handleSelect`, `clearSelection`. Inputs: `jumps`, `unassignedFiles`. Moves `handleSelect:306-356` and `selectedCount:301-304`. Extracts shift-range calc to `selection.logic.ts`.
+- [ ] `hooks/useSelection.ts` (~80 LOC, **0 effects**) — owns `selection:SelectionMap`, `lastClickedRef`, `selectedCount` derived, `handleSelect`, `clearSelection`. Inputs: `jumps`, `unassignedFiles`. Moves `handleSelect:306-356` and `selectedCount:301-304`. Extracts shift-range calc to `selection.logic.ts`.
 
-- [ ] `hooks/useJumps.ts` (~50 LOC) — owns `jumps:ManifestJump[]`, `jumpsByDay` (via `groupJumpsByDay`), `saveJumps` (wraps `useSafeFetcher` submit to `/api/manifest`). Exposes `setJumps`, `updateJumpFiles` helper to consolidate `jumps.map` + `saveJumps` pattern used in `handleVideoApply:91-104`, `handlePassengerChange:110-114`, `handleMarkSent:190-199`.
+- [ ] `hooks/useJumps.ts` (~50 LOC, **0 effects**) — owns `jumps:ManifestJump[]`, `jumpsByDay` (via `groupJumpsByDay`), `saveJumps` (wraps `useSafeFetcher` submit to `/api/manifest`). Exposes `setJumps`, `updateJumpFiles` helper to consolidate `jumps.map` + `saveJumps` pattern used in `handleVideoApply:91-104`, `handlePassengerChange:110-114`, `handleMarkSent:190-199`. **Replaces** `useEffect:205-228` manifest sync with `onSuccess` callback from `submit` (or derived `data?.jumps ?? jumps`).
 
-- [ ] `hooks/useDragDrop.ts` (~90 LOC) — owns `dragDataRef`, `dropDialog:DropDialog|null`, `dropHint:DropHint|null` and handlers `handleDragStart`, `handleTrayDragStart`, `handleDrop`, `handleDragOver/Leave/End`, `executeDrop`. Internally calls `reorderFilesInJump`/`moveFilesBetweenJumps` (`@skydock/scripts:43-88`) and `getDropIndex` (`utils:82`). Inputs: `jumps`, `manifestFiles`, `saveJumps`, `setSelection`. Keeps `data-drop-indicator` contract via `dropHint`.
+- [ ] `hooks/useDragDrop.ts` (~90 LOC, **0 effects**) — owns `dragDataRef`, `dropDialog:DropDialog|null`, `dropHint:DropHint|null` and handlers `handleDragStart`, `handleTrayDragStart`, `handleDrop`, `handleDragOver/Leave/End`, `executeDrop`. Internally calls `reorderFilesInJump`/`moveFilesBetweenJumps` (`@skydock/scripts:43-88`) and `getDropIndex` (`utils:82`). Inputs: `jumps`, `manifestFiles`, `saveJumps`, `setSelection`. Keeps `data-drop-indicator` contract via `dropHint`.
 
-- [ ] `hooks/usePreview.ts` (~45 LOC) — owns `preview:PreviewState`, `videoCrop/Zoom/CurrentTime/Duration`, `videoRefRef:VideoRef` and `handlePreview:366-376`, `handleVideoSeek:86-89`, `handleVideoApply:91-104`, `handleVideoRef:106-108`, `closePreview`. Inputs: `jumps`, `unassignedFiles`, `setJumps`, `saveJumps`.
+- [ ] `hooks/usePreview.ts` (~45 LOC, **0 effects**) — owns `preview:PreviewState`, `videoCrop/Zoom/CurrentTime/Duration`, `videoRefRef:VideoRef` and `handlePreview:366-376`, `handleVideoSeek:86-89`, `handleVideoApply:91-104`, `handleVideoRef:106-108`, `closePreview`. Inputs: `jumps`, `unassignedFiles`, `setJumps`, `saveJumps`.
 
-- [ ] `hooks/useCompare.ts` (~25 LOC) — owns `compareIds:string[]`, `showComparison:boolean`, `handleCompareToggle:358-364` and merge close side-effect (from `useEffect:205-228` `kind==='merge'` branch).
+- [ ] `hooks/useCompare.ts` (~25 LOC, **0 effects**) — owns `compareIds:string[]`, `showComparison:boolean`, `handleCompareToggle:358-364` and merge close via `onSuccess` callback, not `useEffect:205-228` branch.
 
-- [ ] `hooks/useNas.ts` (~70 LOC) — owns `nasConnected`, `showConnectionDialog`, `nasError`, `processingId`, `uploadingId`, `mailPendingId`, `nasSubmit:useSafeFetcher()`, `pendingRef` coordination. Encapsulates `useEffect:230-268` (NAS response sync + `fetch /api/nas intent=status` poll) and handlers `handleConnect:146-153`, `handleDisconnect:155-161`, `handleProcess:124-131`, `handleUpload:133-144`, `handleMerge:116-122`. Props: `jumps`, `setJumps`.
+- [ ] `hooks/useNas.ts` (~70 LOC, **≤1 effect**) — owns `nasConnected`, `showConnectionDialog`, `nasError`, `processingId`, `uploadingId`, `mailPendingId`, `nasSubmit:useSafeFetcher()`, `pendingRef` coordination. Wraps handlers `handleConnect:146-153`, `handleDisconnect:155-161`, `handleProcess:124-131`, `handleUpload:133-144`, `handleMerge:116-122`. **Only allowed effect:** single `setInterval` poll for `intent=status` (if kept) via `nasSubmit.submit`; NAS response sync becomes `nasSubmit.data` **derived** or `onSuccess` callback, not `useEffect:230-268`.
 
-- [ ] `hooks/useEmail.ts` (~45 LOC) — owns `emailTemplates:{subject,body}|null`, `getMailUrls:163-180`, `handleMail:182-188`, `handleMarkSent:190-199`, `handleCancelMail:201-203` and `useEffect:270-295` template fetch (`fetch /templates/tandem-email.*`).
+- [ ] `hooks/useEmail.ts` (~45 LOC, **0 effects after loader move**) — owns `getMailUrls:163-180`, `handleMail:182-188`, `handleMarkSent:190-199`, `handleCancelMail:201-203`. **Email templates fetched in `loader:35-42` (add `Promise.all` for `/templates/tandem-email.*` alongside `loadManifest`) and passed as `loaderData.emailTemplates`; hook just consumes `loaderData`, eliminating `useEffect:270-295` + `cancelled` flag. Fallback to `DEFAULT_EMAIL_*` stays derived.
 
 Verify per hook: `npm run check`, `npx vitest run --config=vitest.browser.config.ts tests/nas-connection.test.tsx tests/home.test.tsx` spot check (hooks not yet wired, just typecheck).
 
-### Phase 2 — Wire hooks into route
+### Phase 2 — Wire hooks into route (keep `home.tsx` effect-free)
 
-- [ ] Update `web/app/routes/home.tsx` to compose hooks: `const {jumps, jumpsByDay, saveJumps} = useJumps(manifest)` etc. Keep `loader:35-42` unchanged, `manifestFiles/filesInJumps/unassignedFiles:297-299` as derived (or move to `useJumps`). Keep `pendingRef` for manifest `submit/data` sync (`useEffect:205-228`) either in route or inside `useJumps`.
+- [ ] Update `web/app/routes/home.tsx` to compose hooks: `const {jumps, jumpsByDay, saveJumps} = useJumps(manifest)` etc. **Extend `loader:35-42` to also fetch email templates** (`Promise.all` `/templates/tandem-email.*` → `loaderData.emailTemplates`), removing `useEmail` effect. Keep `manifestFiles/filesInJumps/unassignedFiles:297-299` as derived (or move to `useJumps`). **Remove** `useEffect:205-228` pending sync — replace with `saveJumps` `onSuccess` that calls `setJumps(data.jumps)` directly.
 - [ ] Remove inline `handleSelect/handlePreview/handleDrag*` bodies, delegate to hooks. Keep handler names stable for JSX props.
-- [ ] Ensure `vi.mock(import('@skydock/scripts'), async (c)=>({ ...await c(), loadManifest: vi.fn()}))` preserved in tests (already fixed for `moveFilesBetweenJumps`/`hasCompletePassenger`).
+- [ ] Ensure `vi.mock(import('@skydock/scripts'), async (c)=>({ ...await c(), loadManifest: vi.fn()}))` preserved in tests (already fixed for `moveFilesBetweenJumps`/`hasCompletePassenger`). Verify no new `useEffect` added in this phase.
 
 Verify: `npm run check`, full `web/tests` (6 suites, ~90 tests) green, `data-*` selectors unchanged via `page.screenshot` sanity.
 
@@ -90,9 +99,9 @@ Create `web/app/components/home/*` (arrow functions, `type Props`, exports at EO
 
 Verify: `npm run check`, `npx vitest run --config=vitest.browser.config.ts tests/home.test.tsx` — `No Manifest Found`, reorder, staging tray, compare still pass.
 
-### Phase 4 — Final shell and cleanup
+### Phase 4 — Final shell and cleanup (≤2 `useEffect` total)
 
-- [ ] Reduce `web/app/routes/home.tsx` to ~220 LOC thin orchestrator: `loader` + `Home = ({loaderData}) => { hooks }` + `if (!manifest) return <EmptyManifest/>` + `<main><Header/><ReviewHeader/><Unassigned/><DayGroups/><StagingTray/><PreviewDrawer/><DropActionDialog/><ComparisonDialog/><ConnectionDialog/></main>`.
+- [ ] Reduce `web/app/routes/home.tsx` to ~220 LOC thin orchestrator: `loader` (now also email templates) + `Home = ({loaderData}) => { hooks }` + `if (!manifest) return <EmptyManifest/>` + `<main><Header/><ReviewHeader/><Unassigned/><DayGroups/><StagingTray/><PreviewDrawer/><DropActionDialog/><ComparisonDialog/><ConnectionDialog/></main>`. **Audit final file:** `grep -c "useEffect"` must be ≤2 (allowed: hydration `data-hydrated` + optional NAS poll interval). All other sync must be derived/callback.
 - [ ] Ensure no `useCallback`/`useMemo`/`memo` added (React Compiler). All imports at top, `export { loader }` + `export default Home` at EOF.
 - [ ] Run `oxfmt`, update `RULES.md:8.1` route map if needed (no behavior change, so optional).
 - [ ] Delete dead inline code, verify `oxlint` only pre-existing `home.tsx:35` `no-empty-pattern` warning remains.
