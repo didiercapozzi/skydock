@@ -1427,3 +1427,84 @@ describe('Home - video preview and crop (§9.6)', () => {
     await expect.poll(() => document.querySelector('[data-preview-drawer]') === null).toBe(true)
   })
 })
+
+describe('Home - NAS reload persistence (regression for nas.json delete on reload)', () => {
+  test('NAS stays connected with folder after reload when nas.json exists', async () => {
+    const manifest = makeManifest(makeFiles(2), [
+      { id: 'jump_01', label: 'jump_01', confirmed: false, files: makeFiles(2) }
+    ]) as never
+    const nasAction = async ({ request }: { request: Request }) => {
+      const body = (await request.json().catch(() => ({}))) as { intent?: string; path?: string }
+      if (body.intent === 'list-folder') return { folders: [] }
+      return { connected: true, hostname: 'https://nas.local:5001', username: 'admin', defaultFolder: '/test' }
+    }
+    const Stub = createRoutesStub([
+      {
+        path: '/',
+        Component: Home,
+        loader: () => ({
+          manifest,
+          emailTemplates: null,
+          initialNas: { connected: true, defaultFolder: '/test', hostname: 'https://nas.local:5001', username: 'admin' }
+        })
+      },
+      { path: '/api/manifest', action: async () => ({ ok: true }) },
+      { path: '/api/nas', action: nasAction }
+    ])
+    await render(createElement(Stub, { initialEntries: ['/'] }))
+    await expect.element(page.getByText('NAS Connected')).toBeInTheDocument()
+    await expect.element(page.getByText('NAS Folder: /test')).toBeInTheDocument()
+    expect(document.querySelector('[data-nas-folder-dialog]')).toBeNull()
+    await page.screenshot({ path: './playwright-screenshots/home-nas-reload-connected.png' })
+  })
+
+  test('NAS shows folder picker on reload when connected without folder (required)', async () => {
+    const manifest = makeManifest(makeFiles(2), [
+      { id: 'jump_01', label: 'jump_01', confirmed: false, files: makeFiles(2) }
+    ]) as never
+    const nasAction = async ({ request }: { request: Request }) => {
+      const body = (await request.json().catch(() => ({}))) as { intent?: string; path?: string }
+      if (body.intent === 'list-folder') {
+        return { folders: [{ name: 'video', path: '/video', is_dir: true }] }
+      }
+      return { connected: true, hostname: 'https://nas.local:5001', username: 'admin' }
+    }
+    const Stub = createRoutesStub([
+      {
+        path: '/',
+        Component: Home,
+        loader: () => ({
+          manifest,
+          emailTemplates: null,
+          initialNas: { connected: true, defaultFolder: null, hostname: 'https://nas.local:5001', username: 'admin' }
+        })
+      },
+      { path: '/api/manifest', action: async () => ({ ok: true }) },
+      { path: '/api/nas', action: nasAction }
+    ])
+    await render(createElement(Stub, { initialEntries: ['/'] }))
+    await expect.element(page.getByText('NAS Connected')).toBeInTheDocument()
+    await expect.element(page.getByText('No folder selected')).toBeInTheDocument()
+    await expect.poll(() => document.querySelector('[data-nas-folder-dialog]') !== null).toBe(true)
+    await expect.element(page.getByText('Choose NAS Folder')).toBeInTheDocument()
+    await page.screenshot({ path: './playwright-screenshots/home-nas-reload-requires-folder.png' })
+  })
+
+  test('NAS shows disconnected after reload when nas.json missing, file is not deleted on status 401', async () => {
+    const manifest = makeManifest(makeFiles(2), [
+      { id: 'jump_01', label: 'jump_01', confirmed: false, files: makeFiles(2) }
+    ]) as never
+    const Stub = createRoutesStub([
+      {
+        path: '/',
+        Component: Home,
+        loader: () => ({ manifest, emailTemplates: null, initialNas: { connected: false, defaultFolder: null } })
+      },
+      { path: '/api/manifest', action: async () => ({ ok: true }) },
+      { path: '/api/nas', action: async () => ({ connected: false }) }
+    ])
+    await render(createElement(Stub, { initialEntries: ['/'] }))
+    await expect.element(page.getByText('NAS Disconnected')).toBeInTheDocument()
+    expect(document.querySelector('[data-nas-folder-dialog]')).toBeNull()
+  })
+})
