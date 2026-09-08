@@ -51,7 +51,9 @@ export {
 } from './workspace'
 export { loadManifest, normalizeManifest, saveManifest } from './manifest'
 export { publishJump } from './publish'
-export type { DsmConfig, PublishArgs, PublishResult } from './publish'
+export type { DsmConfig, PublishArgs } from './publish'
+export { clearNasSession, loadNasSession, saveNasSession, updateDefaultFolder } from './nas'
+export type { NasSession } from './nas'
 export { computeFileId, ensureManifestFileIds } from './fileId'
 export { writeStatus, scheduleIdle } from './status'
 export {

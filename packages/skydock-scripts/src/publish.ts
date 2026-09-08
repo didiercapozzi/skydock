@@ -1,5 +1,12 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { z } from 'zod'
+import { clearNasSession, loadNasSession, saveNasSession } from './nas'
+
+const dsmResponseSchema = z.object({
+  success: z.boolean(),
+  data: z.record(z.string(), z.unknown()).optional()
+})
 
 type DsmConfig = {
   host: string
@@ -10,121 +17,124 @@ type DsmConfig = {
 type PublishArgs = DsmConfig & {
   localDir: string
   remoteDir: string
+  outputDir?: string
 }
 
-type PublishResult = {
-  shareUrl: string
-}
+const dsmUrl = (host: string) => `${host.replace(/\/+$/, '')}/webapi/entry.cgi`
 
-const normalizeHost = (host: string): string => host.replace(/\/+$/, '')
-
-const dsmEntryUrl = (host: string): string => `${normalizeHost(host)}/webapi/entry.cgi`
-
-type DsmResponse = {
-  success: boolean
-  data?: Record<string, unknown>
-  errno?: unknown
-}
-
-const readDsmBody = async (res: Response): Promise<DsmResponse> => {
+const dsmFetch = async (host: string, params: Record<string, string>, body?: FormData) => {
+  const init: RequestInit = body ? { method: 'POST', body } : {}
+  const res = await fetch(`${dsmUrl(host)}?${new URLSearchParams(params)}`, init)
   try {
-    return (await res.json()) as DsmResponse
+    return dsmResponseSchema.parse(await res.json())
   } catch {
     throw new Error(`DSM request failed with status ${res.status}`)
   }
 }
 
-const dsmLogin = async (config: DsmConfig): Promise<string> => {
-  const params = new URLSearchParams({
-    api: 'SYNO.API.Auth',
-    method: 'login',
-    session: 'FileStation',
-    format: 'sid',
-    account: config.user,
-    passwd: config.password
-  })
-  let lastError = 'unknown error'
+const dsmLogin = async (config: DsmConfig) => {
   for (const version of ['6', '3']) {
-    params.set('version', version)
-    const res = await fetch(`${dsmEntryUrl(config.host)}?${params.toString()}`)
-    const body = await readDsmBody(res)
+    const body = await dsmFetch(config.host, {
+      api: 'SYNO.API.Auth',
+      method: 'login',
+      version,
+      session: 'FileStation',
+      format: 'sid',
+      account: config.user,
+      passwd: config.password
+    })
     if (body.success && typeof body.data?.sid === 'string') return body.data.sid
-    lastError = JSON.stringify(body)
   }
-  throw new Error(`DSM login failed: ${lastError}`)
+  throw new Error('DSM login failed')
 }
 
-const dsmLogout = async (host: string, sid: string): Promise<void> => {
+const dsmLogout = async (host: string, sid: string) => {
   try {
-    await fetch(
-      `${dsmEntryUrl(host)}?api=SYNO.API.Auth&method=logout&version=6&session=FileStation&_sid=${encodeURIComponent(sid)}`
-    )
+    await dsmFetch(host, {
+      api: 'SYNO.API.Auth',
+      method: 'logout',
+      version: '6',
+      session: 'FileStation',
+      _sid: sid
+    })
   } catch {}
 }
 
-const walkFiles = (dir: string): string[] => {
-  const out: string[] = []
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name)
-    if (entry.isDirectory()) out.push(...walkFiles(full))
-    else if (entry.isFile()) out.push(full)
+const dsmValidateSession = async (host: string, sid: string) => {
+  try {
+    const body = await dsmFetch(host, {
+      api: 'SYNO.API.Auth',
+      method: 'check',
+      version: '6',
+      session: 'FileStation',
+      _sid: sid
+    })
+    return body.success === true
+  } catch {
+    return false
   }
-  return out
 }
 
-const remoteJoin = (...parts: string[]): string => parts.join('/').replace(/\/+/g, '/')
+const walkFiles = (dir: string): string[] =>
+  fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name)
+    return entry.isDirectory() ? walkFiles(full) : entry.isFile() ? [full] : []
+  })
 
-const uploadFile = async (
-  host: string,
-  sid: string,
-  remoteDir: string,
-  localPath: string
-): Promise<void> => {
+const remoteJoin = (...parts: string[]) => parts.join('/').replace(/\/+/g, '/')
+
+const uploadFile = async (host: string, sid: string, remoteDir: string, localPath: string) => {
   const form = new FormData()
   form.append('path', remoteDir)
   form.append('create_parents', 'true')
   form.append('overwrite', 'true')
   form.append('file', new Blob([fs.readFileSync(localPath)]), path.basename(localPath))
-  const params = new URLSearchParams({
-    api: 'SYNO.FileStation.Upload',
-    method: 'upload',
-    version: '2',
-    _sid: sid
-  })
-  const res = await fetch(`${dsmEntryUrl(host)}?${params.toString()}`, {
-    method: 'POST',
-    body: form
-  })
-  const body = await readDsmBody(res)
+
+  const body = await dsmFetch(
+    host,
+    { api: 'SYNO.FileStation.Upload', method: 'upload', version: '2', _sid: sid },
+    form
+  )
   if (!body.success) throw new Error(`Upload failed for ${localPath}: ${JSON.stringify(body)}`)
 }
 
-const createShareLink = async (host: string, sid: string, remotePath: string): Promise<string> => {
-  const params = new URLSearchParams({
+const shareLinkSchema = z.array(z.object({ url: z.string().optional() })).optional()
+
+const createShareLink = async (host: string, sid: string, remotePath: string) => {
+  const body = await dsmFetch(host, {
     api: 'SYNO.FileStation.Sharing',
     method: 'create',
     version: '2',
     path: remotePath,
     _sid: sid
   })
-  const res = await fetch(`${dsmEntryUrl(host)}?${params.toString()}`)
-  const body = await readDsmBody(res)
   if (!body.success) throw new Error(`Share failed for ${remotePath}: ${JSON.stringify(body)}`)
-  const links = body.data?.links as Array<{ url?: string }> | undefined
-  const url = links?.[0]?.url
+  const url = shareLinkSchema.parse(body.data?.links)?.[0]?.url
   if (!url) throw new Error(`Share returned no link for ${remotePath}`)
-  return `${normalizeHost(host)}${url.startsWith('/') ? url : `/${url}`}`
+  const hostBase = dsmUrl(host).replace('/webapi/entry.cgi', '')
+  return `${hostBase}${url.startsWith('/') ? url : `/${url}`}`
 }
 
-const publishJump = async (args: PublishArgs): Promise<PublishResult> => {
-  const sid = await dsmLogin(args)
+const loginWithSession = async (config: DsmConfig, outputDir?: string) => {
+  const stored = loadNasSession(outputDir)
+  const canReuse = stored && stored.hostname === config.host && stored.username === config.user
+  if (canReuse && (await dsmValidateSession(config.host, stored.sessionId))) {
+    return { sid: stored.sessionId, isNew: false as const }
+  }
+  if (canReuse) clearNasSession(outputDir)
+
+  const sid = await dsmLogin(config)
+  saveNasSession({ hostname: config.host, username: config.user, sessionId: sid }, outputDir)
+  return { sid, isNew: true as const }
+}
+
+const publishJump = async (args: PublishArgs) => {
+  const { sid } = await loginWithSession(args, args.outputDir)
   try {
     for (const file of walkFiles(args.localDir)) {
       const rel = path.relative(args.localDir, path.dirname(file))
       const remoteDir =
-        rel === '' || rel === '.'
-          ? args.remoteDir
-          : remoteJoin(args.remoteDir, rel.split(path.sep).join('/'))
+        rel === '.' ? args.remoteDir : remoteJoin(args.remoteDir, rel.split(path.sep).join('/'))
       await uploadFile(args.host, sid, remoteDir, file)
     }
     return { shareUrl: await createShareLink(args.host, sid, args.remoteDir) }
@@ -135,12 +145,13 @@ const publishJump = async (args: PublishArgs): Promise<PublishResult> => {
 
 export {
   createShareLink,
-  dsmEntryUrl,
   dsmLogin,
   dsmLogout,
+  dsmValidateSession,
+  loginWithSession,
   publishJump,
   remoteJoin,
   uploadFile,
   walkFiles
 }
-export type { DsmConfig, PublishArgs, PublishResult }
+export type { DsmConfig, PublishArgs }

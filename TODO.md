@@ -8,6 +8,7 @@
 - RULES.md §9 restructured into grouped subsections (9.1–9.9).
 - RULES.md updated: process naming with HHMMSS, upload with chunked progress, NAS session storage.
 - Phase 1 — Execute naming update: HHMMSS pattern, collision handling, skip empty dirs, .trash on re-process, filesystem timestamps, refactored execute.ts.
+- Phase 2 — NAS session storage: nas.ts module, loginWithSession, dsmValidateSession, Zod schemas.
 
 ## Process + Upload pipeline (RULES.md §6 + §13)
 
@@ -21,12 +22,13 @@
 - On re-process: move existing processed folder to `output/.trash/` before creating new one.
 - Refactored execute.ts: extracted `getMediaType`, `makeFileName`, `buildFsTime`, `processJump` helpers.
 
-### Phase 2 — NAS session storage
+### Phase 2 — NAS session storage (done)
 
 - Create `output/.status/nas.json` schema: `{ hostname, username, sessionId, defaultFolder }`.
 - Update `publish.ts` to store session ID after login.
 - On app restart, validate stored session before showing login dialog.
 - Password never written to disk.
+- Zod schemas for DSM responses, no `as` type assertions.
 
 ### Phase 3 — Upload chunking + progress
 
