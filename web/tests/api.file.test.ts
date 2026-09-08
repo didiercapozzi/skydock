@@ -1,15 +1,15 @@
 import * as fs from 'node:fs'
-import * as path from 'node:path'
 import { describe, expect, test, vi, beforeEach, afterEach } from 'vitest'
 
-vi.mock('@skydock/scripts', () => ({
-  getOutputDir: () => '/workspace/output'
-}))
+vi.mock('@skydock/scripts', async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>
+  return { ...actual, getOutputDir: () => '/workspace/output' }
+})
 
 const { loader } = await import('../app/routes/api.file.$')
 
 const TEST_DIR = '/workspace/output/test-stream'
-const TEST_FILE = path.join(TEST_DIR, 'test-video.mp4')
+const TEST_FILE = `${TEST_DIR}/test-video.mp4`
 
 beforeEach(() => {
   fs.mkdirSync(TEST_DIR, { recursive: true })

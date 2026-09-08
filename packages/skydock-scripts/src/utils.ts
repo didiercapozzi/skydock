@@ -18,7 +18,11 @@ const checkExiftool = (): boolean => hasCommand('exiftool')
 
 const sanitizeLabel = (label: string): string => label.replace(/[^a-zA-Z0-9._-]/g, '_')
 
-const getExtension = (filePath: string): string => path.extname(filePath).slice(1).toLowerCase()
+const getExtension = (filePath: string): string => {
+  const base = filePath.split('/').pop() ?? filePath
+  const dot = base.lastIndexOf('.')
+  return dot === -1 ? '' : base.slice(dot + 1).toLowerCase()
+}
 
 const isVideoFile = (filePath: string): boolean => VIDEO_EXTENSIONS_SET.has(getExtension(filePath))
 
@@ -26,7 +30,8 @@ const isPhotoFile = (filePath: string): boolean => PHOTO_EXTENSIONS_SET.has(getE
 
 const isMediaFile = (filePath: string): boolean => MEDIA_EXTENSIONS_SET.has(getExtension(filePath))
 
-const getOutputDir = (): string => process.env.SKYDOCK_OUTPUT_DIR || '/workspace/output'
+const getOutputDir = (): string =>
+  (typeof process !== 'undefined' && process.env?.SKYDOCK_OUTPUT_DIR) || '/workspace/output'
 
 const getManifestPath = (outputDir?: string): string =>
   path.join(outputDir || getOutputDir(), 'manifest.json')

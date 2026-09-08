@@ -4,9 +4,10 @@ import { describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 
-vi.mock(import('@skydock/scripts'), () => ({
-  loadManifest: vi.fn(() => null)
-}))
+vi.mock(import('@skydock/scripts'), async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>
+  return { ...actual, loadManifest: vi.fn(() => null) }
+})
 
 import Home from '../app/routes/home'
 
