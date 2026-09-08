@@ -7,10 +7,11 @@
 - Browser-safe `@skydock/scripts` barrel: namespace-only `node:` imports, `isCliModule` guards missing `process`; `scripts-barrel.test.tsx` regression test imports the real barrel in Chromium.
 - RULES.md §9 restructured into grouped subsections (9.1–9.9).
 - RULES.md updated: process naming with HHMMSS, upload with chunked progress, NAS session storage.
+- Phase 1 — Execute naming update: HHMMSS pattern, collision handling, skip empty dirs, .trash on re-process, filesystem timestamps, refactored execute.ts.
 
 ## Process + Upload pipeline (RULES.md §6 + §13)
 
-### Phase 1 — Execute naming update
+### Phase 1 — Execute naming update (done)
 
 - Update `buildJumpBaseName` and file naming in `execute.ts` to use `{baseName}_{HHMMSS}.{ext}` pattern.
 - Add collision handling: counter suffix `_1`, `_2` only when files share the same capture time.
@@ -18,6 +19,7 @@
 - Set filesystem timestamps (creation + modification) to jump date + original capture time.
 - Set EXIF metadata dates to match filename date-time.
 - On re-process: move existing processed folder to `output/.trash/` before creating new one.
+- Refactored execute.ts: extracted `getMediaType`, `makeFileName`, `buildFsTime`, `processJump` helpers.
 
 ### Phase 2 — NAS session storage
 

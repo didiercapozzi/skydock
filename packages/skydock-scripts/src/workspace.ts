@@ -16,6 +16,14 @@ const formatJumpDay = (mtime: number): string => {
   return `${d.getFullYear()}${month}${day}`
 }
 
+const formatCaptureTime = (mtime: number): string => {
+  const d = new Date(mtime * 1000)
+  const hours = String(d.getHours()).padStart(2, '0')
+  const minutes = String(d.getMinutes()).padStart(2, '0')
+  const seconds = String(d.getSeconds()).padStart(2, '0')
+  return `${hours}${minutes}${seconds}`
+}
+
 const buildJumpBaseName = (
   passenger: ManifestPassenger | null | undefined,
   label: string,
@@ -105,6 +113,7 @@ const mergeJumps = (jumps: ManifestJump[], leftId: string, rightId: string): Man
 
 export {
   buildJumpBaseName,
+  formatCaptureTime,
   hasCompletePassenger,
   mergeJumps,
   moveFilesBetweenJumps,

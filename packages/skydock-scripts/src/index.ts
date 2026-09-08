@@ -43,6 +43,7 @@ export {
 export { reclusterJumps, shiftFiles } from './clustering'
 export {
   buildJumpBaseName,
+  formatCaptureTime,
   hasCompletePassenger,
   mergeJumps,
   moveFilesBetweenJumps,

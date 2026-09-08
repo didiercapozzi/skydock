@@ -3,15 +3,8 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { loadManifest, saveManifest } from './manifest'
 import { scheduleIdle, writeStatus } from './status'
-import {
-  getManifestPath,
-  getOutputDir,
-  hasCommand,
-  isCliModule,
-  isPhotoFile,
-  isVideoFile
-} from './utils'
-import { buildJumpBaseName } from './workspace'
+import { getManifestPath, getOutputDir, hasCommand, isCliModule, isVideoFile } from './utils'
+import { buildJumpBaseName, formatCaptureTime, hasCompletePassenger } from './workspace'
 
 type ExecuteOptions = {
   manifestPath?: string
@@ -42,7 +35,6 @@ const updateMetadata = (dir: string): void => {
   if (!hasCommand('exiftool')) return
   const files = fs.readdirSync(dir)
   if (files.length === 0) return
-
   const paths = files.map((f) => `"${path.join(dir, f)}"`).join(' ')
   try {
     childProcess.execSync(
@@ -52,13 +44,107 @@ const updateMetadata = (dir: string): void => {
   } catch {}
 }
 
+const moveToTrash = (dir: string, outputDir: string): void => {
+  if (!fs.existsSync(dir)) return
+  const trashDir = path.join(outputDir, '.trash')
+  fs.mkdirSync(trashDir, { recursive: true })
+  fs.renameSync(dir, path.join(trashDir, `${path.basename(dir)}_${Date.now()}`))
+}
+
+const getMediaType = (filePath: string): 'video' | 'photo' =>
+  isVideoFile(filePath) ? 'video' : 'photo'
+
+const makeFileName = (
+  baseName: string,
+  mtime: number,
+  ext: string,
+  usedNames: Set<string>
+): string => {
+  const timeStr = formatCaptureTime(mtime)
+  const candidate = `${baseName}_${timeStr}.${ext}`
+  if (!usedNames.has(candidate)) {
+    usedNames.add(candidate)
+    return candidate
+  }
+  let counter = 1
+  while (usedNames.has(`${baseName}_${timeStr}_${counter}.${ext}`)) counter++
+  const name = `${baseName}_${timeStr}_${counter}.${ext}`
+  usedNames.add(name)
+  return name
+}
+
+const buildFsTime = (jumpMtime: number, captureMtime: number): Date => {
+  const jumpDate = new Date(jumpMtime * 1000)
+  const origTime = new Date(captureMtime * 1000)
+  return new Date(
+    jumpDate.getFullYear(),
+    jumpDate.getMonth(),
+    jumpDate.getDate(),
+    origTime.getHours(),
+    origTime.getMinutes(),
+    origTime.getSeconds()
+  )
+}
+
+const processJump = (
+  jump: NonNullable<ReturnType<typeof loadManifest>>['jumps'][number],
+  processedDir: string,
+  outputDir: string
+): number => {
+  const minMtime = Math.min(...jump.files.map((f) => f.mtime))
+  const baseName = buildJumpBaseName(jump.passenger, jump.label, minMtime)
+  const jumpDir = path.join(processedDir, baseName)
+
+  moveToTrash(jumpDir, outputDir)
+
+  const byType = {
+    video: jump.files.filter((f) => getMediaType(f.path) === 'video'),
+    photo: jump.files.filter((f) => getMediaType(f.path) === 'photo')
+  }
+
+  for (const type of ['video', 'photo'] as const) {
+    if (byType[type].length > 0) fs.mkdirSync(path.join(jumpDir, `${type}s`), { recursive: true })
+  }
+
+  const usedNames = new Set<string>()
+  let copied = 0
+
+  for (const file of jump.files) {
+    if (!fs.existsSync(file.path)) continue
+
+    const ext = path.extname(file.path).slice(1).toLowerCase()
+    const type = getMediaType(file.path)
+    const dest = path.join(jumpDir, `${type}s`, makeFileName(baseName, file.mtime, ext, usedNames))
+
+    const needsCrop = type === 'video' && file.cropStart != null && file.cropEnd != null
+    if (needsCrop) {
+      if (!cropVideo(file.path, dest, file.cropStart!, file.cropEnd!))
+        fs.copyFileSync(file.path, dest)
+    } else {
+      fs.copyFileSync(file.path, dest)
+    }
+
+    fs.utimesSync(dest, buildFsTime(minMtime, file.mtime), buildFsTime(minMtime, file.mtime))
+    copied++
+  }
+
+  for (const type of ['video', 'photo'] as const) {
+    if (byType[type].length > 0) updateMetadata(path.join(jumpDir, `${type}s`))
+  }
+
+  jump.processed = true
+  delete jump.publish
+
+  console.log(`[Execute] ${jump.id}: copied ${jump.files.length} file(s) to ${jumpDir}`)
+  return copied
+}
+
 const executeMedia = (options?: ExecuteOptions): ExecuteResult => {
   const outputDir = options?.outputDir || getOutputDir()
   const manifestPath = options?.manifestPath || getManifestPath(outputDir)
   const processedDir = path.join(outputDir, 'processed')
 
   fs.mkdirSync(processedDir, { recursive: true })
-
   writeStatus('execute', 'running', 'Processing jumps', outputDir)
 
   const manifest = loadManifest(manifestPath)
@@ -68,10 +154,9 @@ const executeMedia = (options?: ExecuteOptions): ExecuteResult => {
     return { copied: 0, processedJumps: 0 }
   }
 
-  let jumpIds = options?.jumpIds
-  if (!jumpIds || jumpIds.length === 0) {
-    jumpIds = manifest.jumps.filter((j) => j.confirmed && !j.processed).map((j) => j.id)
-  }
+  const jumpIds = options?.jumpIds?.length
+    ? options.jumpIds
+    : manifest.jumps.filter((j) => j.confirmed && !j.processed).map((j) => j.id)
 
   if (jumpIds.length === 0) {
     console.log('[Execute] No confirmed unprocessed jumps found.')
@@ -86,78 +171,13 @@ const executeMedia = (options?: ExecuteOptions): ExecuteResult => {
 
   for (const jumpId of jumpIds) {
     const jump = manifest.jumps.find((j) => j.id === jumpId)
-    if (!jump) continue
+    if (!jump || jump.files.length === 0 || !hasCompletePassenger(jump.passenger)) continue
 
-    if (jump.files.length === 0) {
-      console.log(`[Execute] ${jumpId}: no files, skipping`)
-      continue
-    }
-
-    const minMtime = Math.min(...jump.files.map((f) => f.mtime))
-    const baseName = buildJumpBaseName(jump.passenger, jump.label, minMtime)
-    const jumpDir = path.join(processedDir, baseName)
-    const videosDir = path.join(jumpDir, 'videos')
-    const photosDir = path.join(jumpDir, 'photos')
-
-    fs.mkdirSync(videosDir, { recursive: true })
-    fs.mkdirSync(photosDir, { recursive: true })
-
-    let videoIdx = 0
-    let photoIdx = 0
-
-    const fileName = (index: number, ext: string) =>
-      index === 0
-        ? `${baseName}.${ext}`
-        : `${baseName}_${String(index + 1).padStart(2, '0')}.${ext}`
-
-    for (const file of jump.files) {
-      if (!fs.existsSync(file.path)) continue
-
-      const ext = path.extname(file.path).slice(1).toLowerCase()
-
-      let dest: string
-      if (isVideoFile(file.path)) {
-        dest = path.join(videosDir, fileName(videoIdx, ext))
-        videoIdx++
-      } else if (isPhotoFile(file.path)) {
-        dest = path.join(photosDir, fileName(photoIdx, ext))
-        photoIdx++
-      } else {
-        dest = path.join(photosDir, fileName(photoIdx, ext))
-        photoIdx++
-      }
-
-      const needsCrop = isVideoFile(file.path) && file.cropStart != null && file.cropEnd != null
-
-      if (needsCrop) {
-        const success = cropVideo(file.path, dest, file.cropStart!, file.cropEnd!)
-        if (!success) {
-          fs.copyFileSync(file.path, dest)
-        }
-      } else {
-        fs.copyFileSync(file.path, dest)
-      }
-
-      const srcStat = fs.statSync(file.path)
-      fs.utimesSync(dest, srcStat.atime, srcStat.mtime)
-      totalCopied++
-    }
-
-    updateMetadata(videosDir)
-    updateMetadata(photosDir)
-
-    jump.processed = true
-    delete jump.publish
-
-    console.log(
-      `[Execute] ${jumpId}: copied ${jump.files.length} file(s) (${videoIdx} videos, ${photoIdx} photos) to ${jumpDir}`
-    )
+    totalCopied += processJump(jump, processedDir, outputDir)
     processedCount++
   }
 
-  if (processedCount > 0) {
-    saveManifest(manifestPath, manifest)
-  }
+  if (processedCount > 0) saveManifest(manifestPath, manifest)
 
   console.log(`[Execute] Done. Copied ${totalCopied} file(s).`)
   writeStatus('execute', 'done', `Copied ${totalCopied} files`, outputDir)
@@ -170,11 +190,7 @@ if (isCliModule('execute')) {
   const args = process.argv.slice(2)
   const manifestPath = args[0] && fs.existsSync(args[0]) ? args[0] : undefined
   const jumpIds = manifestPath ? args.slice(1) : args.filter((a) => !a.startsWith('-'))
-
-  executeMedia({
-    manifestPath,
-    jumpIds: jumpIds.length > 0 ? jumpIds : undefined
-  })
+  executeMedia({ manifestPath, jumpIds: jumpIds.length > 0 ? jumpIds : undefined })
 }
 
 export { executeMedia }
