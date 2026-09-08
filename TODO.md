@@ -30,7 +30,7 @@
 - Password never written to disk.
 - Zod schemas for DSM responses, no `as` type assertions.
 
-### Phase 3 — Upload chunking + progress
+### Phase 3 — Upload chunking + progress (done)
 
 - Update `uploadFile` in `publish.ts` to use 10 MB chunks.
 - Add per-file progress tracking (bytes uploaded / total).

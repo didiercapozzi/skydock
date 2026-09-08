@@ -130,7 +130,7 @@ describe('publishJump', () => {
           localDir: dir,
           remoteDir: '/SkyDock/jump'
         })
-      ).rejects.toThrow('Upload failed')
+      ).rejects.toThrow('chunk')
       expect(seen.some((c) => c.url.includes('method=logout'))).toBe(true)
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
@@ -155,6 +155,65 @@ describe('publishJump', () => {
           remoteDir: '/SkyDock/jump'
         })
       ).rejects.toThrow('no link')
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('reports progress during upload', async () => {
+    const dir = makeTmpTree()
+    try {
+      stubFetch((url) => {
+        if (url.includes('method=login')) return loginSuccess('sid')
+        if (url.includes('SYNO.API.Auth')) return jsonResponse({ success: true })
+        if (url.includes('SYNO.FileStation.Upload')) return jsonResponse({ success: true })
+        if (url.includes('SYNO.FileStation.Sharing'))
+          return jsonResponse({ success: true, data: { links: [{ url: '/sharing/abc' }] } })
+        throw new Error(`unexpected call ${url}`)
+      })
+      const progress: Array<{ filename: string; bytesUploaded: number; totalBytes: number }> = []
+      await publishJump(
+        {
+          host: 'https://nas.local:5001',
+          user: 'u',
+          password: 'p',
+          localDir: dir,
+          remoteDir: '/SkyDock/jump'
+        },
+        (p) => progress.push({ ...p })
+      )
+      expect(progress.length).toBe(2)
+      expect(progress.every((p) => p.bytesUploaded === p.totalBytes)).toBe(true)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('retries failed upload chunks', async () => {
+    const dir = makeTmpTree()
+    try {
+      let uploadCalls = 0
+      stubFetch((url) => {
+        if (url.includes('method=login')) return loginSuccess('sid')
+        if (url.includes('SYNO.API.Auth')) return jsonResponse({ success: true })
+        if (url.includes('SYNO.FileStation.Upload')) {
+          uploadCalls++
+          if (uploadCalls === 1) return jsonResponse({ success: false })
+          return jsonResponse({ success: true })
+        }
+        if (url.includes('SYNO.FileStation.Sharing'))
+          return jsonResponse({ success: true, data: { links: [{ url: '/sharing/abc' }] } })
+        throw new Error(`unexpected call ${url}`)
+      })
+      const result = await publishJump({
+        host: 'https://nas.local:5001',
+        user: 'u',
+        password: 'p',
+        localDir: dir,
+        remoteDir: '/SkyDock/jump'
+      })
+      expect(result.shareUrl).toContain('/sharing/abc')
+      expect(uploadCalls).toBe(3)
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
     }
