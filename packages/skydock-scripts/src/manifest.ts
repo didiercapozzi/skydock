@@ -150,33 +150,65 @@ const saveManifest = (manifestPath: string, manifest: Manifest): void => {
   fs.renameSync(tmpM, manifestPath)
 }
 
-const normalizeManifest = (manifest: Manifest): void => {
+const normalizeManifest = (manifest: Manifest): boolean => {
+  let changed = false
   for (const jump of manifest.jumps) {
     if (jump.processed === null) {
       delete jump.processed
+      changed = true
     }
     if (jump.passenger === null) {
       delete jump.passenger
+      changed = true
     }
     if (jump.publish === null) {
       delete jump.publish
+      changed = true
     } else if (jump.publish?.emailedAt === null) {
       delete jump.publish.emailedAt
+      changed = true
     }
   }
   if (manifest.cameraClockOffsetSeconds === null) {
     delete manifest.cameraClockOffsetSeconds
+    changed = true
   }
   for (const file of [
     ...manifest.files,
     ...manifest.theory,
     ...manifest.jumps.flatMap((j) => j.files)
   ]) {
-    if (file.id === null) delete file.id
-    if (file.originalMtime === null) delete file.originalMtime
-    if (file.cropStart === null) delete file.cropStart
-    if (file.cropEnd === null) delete file.cropEnd
+    if (file.id === null) {
+      delete file.id
+      changed = true
+    }
+    if (file.originalMtime === null) {
+      delete file.originalMtime
+      changed = true
+    }
+    if (file.cropStart === null) {
+      delete file.cropStart
+      changed = true
+    }
+    if (file.cropEnd === null) {
+      delete file.cropEnd
+      changed = true
+    }
+    const legacy = file as unknown as Record<string, unknown>
+    if (legacy.thumbPath !== undefined) {
+      delete legacy.thumbPath
+      changed = true
+    }
+    if (legacy.filmstripDir !== undefined) {
+      delete legacy.filmstripDir
+      changed = true
+    }
+    if (legacy.keyframes !== undefined) {
+      delete legacy.keyframes
+      changed = true
+    }
   }
+  return changed
 }
 
 export { loadManifest, normalizeManifest, saveManifest }

@@ -111,10 +111,44 @@ const mergeJumps = (jumps: ManifestJump[], leftId: string, rightId: string): Man
     )
 }
 
+const makeFileName = (
+  baseName: string,
+  mtime: number,
+  ext: string,
+  usedNames: Set<string>
+): string => {
+  const timeStr = formatCaptureTime(mtime)
+  const candidate = `${baseName}_${timeStr}.${ext}`
+  if (!usedNames.has(candidate)) {
+    usedNames.add(candidate)
+    return candidate
+  }
+  let counter = 1
+  while (usedNames.has(`${baseName}_${timeStr}_${counter}.${ext}`)) counter++
+  const name = `${baseName}_${timeStr}_${counter}.${ext}`
+  usedNames.add(name)
+  return name
+}
+
+const buildFsTime = (jumpMtime: number, captureMtime: number): Date => {
+  const jumpDate = new Date(jumpMtime * 1000)
+  const origTime = new Date(captureMtime * 1000)
+  return new Date(
+    jumpDate.getFullYear(),
+    jumpDate.getMonth(),
+    jumpDate.getDate(),
+    origTime.getHours(),
+    origTime.getMinutes(),
+    origTime.getSeconds()
+  )
+}
+
 export {
+  buildFsTime,
   buildJumpBaseName,
   formatCaptureTime,
   hasCompletePassenger,
+  makeFileName,
   mergeJumps,
   moveFilesBetweenJumps,
   reorderFilesInJump

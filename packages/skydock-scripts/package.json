@@ -4,7 +4,6 @@
   "bin": {
     "skydock-execute": "./src/execute.ts",
     "skydock-process": "./src/process.ts",
-    "skydock-proxies": "./src/proxies.ts",
     "skydock-scan": "./src/scan.ts",
     "skydock-simulate": "./src/simulate.ts",
     "skydock-test": "./src/test-pipeline.ts",

@@ -1,6 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { z } from 'zod'
+import { walkFiles } from './lib/fs'
 import { clearNasSession, loadNasSession, saveNasSession } from './nas'
 
 const CHUNK_SIZE = 10 * 1024 * 1024
@@ -83,12 +84,6 @@ const dsmValidateSession = async (host: string, sid: string) => {
   }
 }
 
-const walkFiles = (dir: string): string[] =>
-  fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const full = path.join(dir, entry.name)
-    return entry.isDirectory() ? walkFiles(full) : entry.isFile() ? [full] : []
-  })
-
 const remoteJoin = (...parts: string[]) => parts.join('/').replace(/\/+/g, '/')
 
 const uploadChunk = async (
@@ -161,6 +156,50 @@ const uploadFile = async (
   }
 }
 
+const folderItemSchema = z.object({
+  path: z.string(),
+  name: z.string(),
+  is_dir: z.boolean()
+})
+
+const folderListSchema = z.object({
+  files: z.array(folderItemSchema)
+})
+
+const dsmListFolder = async (host: string, sid: string, folderPath: string) => {
+  const body = await dsmFetch(host, {
+    api: 'SYNO.FileStation.List',
+    method: 'list',
+    version: '2',
+    folder_path: folderPath,
+    _sid: sid
+  })
+  if (!body.success) throw new Error(`Failed to list folder ${folderPath}`)
+  const parsed = folderListSchema.parse(body.data)
+  return parsed.files.filter((f) => f.is_dir)
+}
+
+const dsmCreateFolder = async (host: string, sid: string, parentPath: string, name: string) => {
+  const body = await dsmFetch(
+    host,
+    {
+      api: 'SYNO.FileStation.CreateFolder',
+      method: 'create',
+      version: '2',
+      _sid: sid
+    },
+    (() => {
+      const form = new FormData()
+      form.append('folder_path', parentPath)
+      form.append('name', name)
+      form.append('force_parent', 'true')
+      return form
+    })()
+  )
+  if (!body.success) throw new Error(`Failed to create folder ${name}`)
+  return body.data?.folder as string | undefined
+}
+
 const shareLinkSchema = z.array(z.object({ url: z.string().optional() })).optional()
 
 const createShareLink = async (host: string, sid: string, remotePath: string) => {
@@ -210,6 +249,8 @@ const publishJump = async (args: PublishArgs, onProgress?: (progress: UploadProg
 
 export {
   createShareLink,
+  dsmCreateFolder,
+  dsmListFolder,
   dsmLogin,
   dsmLogout,
   dsmValidateSession,

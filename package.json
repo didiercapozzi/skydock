@@ -21,7 +21,6 @@
     "opencode:models": "opencode models opencode-go",
     "predev": "npx --yes kill-port 5173 || true",
     "process": "npx tsx packages/skydock-scripts/src/process.ts",
-    "proxies": "npx tsx packages/skydock-scripts/src/proxies.ts",
     "scan": "npx tsx packages/skydock-scripts/src/scan.ts",
     "simulate": "npx tsx packages/skydock-scripts/src/simulate.ts",
     "typecheck": "npm run typecheck --workspaces --if-present",

@@ -10,9 +10,6 @@ export {
 } from './constants'
 
 export type {
-  DayGroup,
-  FileEntry,
-  Jump,
   JumpFileRef,
   JumpsFile,
   Manifest,
@@ -23,10 +20,7 @@ export type {
   ManifestStatus,
   SystemStatus,
   TaskState,
-  TaskStatus,
-  TheoryOverride,
-  TheoryOverrides,
-  TheoryVideoWithSource
+  TaskStatus
 } from './types'
 
 export {
@@ -42,15 +36,23 @@ export {
 
 export { reclusterJumps, shiftFiles } from './clustering'
 export {
+  buildFsTime,
   buildJumpBaseName,
   formatCaptureTime,
   hasCompletePassenger,
+  makeFileName,
   mergeJumps,
   moveFilesBetweenJumps,
   reorderFilesInJump
 } from './workspace'
 export { loadManifest, normalizeManifest, saveManifest } from './manifest'
-export { dsmLogin, dsmValidateSession, publishJump } from './publish'
+export {
+  dsmCreateFolder,
+  dsmListFolder,
+  dsmLogin,
+  dsmValidateSession,
+  publishJump
+} from './publish'
 export type { DsmConfig, PublishArgs, UploadProgress } from './publish'
 export { clearNasSession, loadNasSession, saveNasSession, updateDefaultFolder } from './nas'
 export type { NasSession } from './nas'
@@ -58,6 +60,8 @@ export { computeFileId, ensureManifestFileIds } from './fileId'
 export { writeStatus, scheduleIdle } from './status'
 export {
   checkExiftool,
+  countFiles,
+  fileMatchesExisting,
   findMediaFiles,
   formatTimestamp,
   getExtension,
@@ -66,6 +70,7 @@ export {
   getOutputDir,
   getStatusDir,
   hasCommand,
+  hasMediaFiles,
   isCliModule,
   isMediaFile,
   isPhotoFile,
@@ -73,8 +78,12 @@ export {
   parseExiftoolCsv,
   sanitizeLabel,
   sortFilesByMtime,
-  toISOString
+  toISOString,
+  walkFiles
 } from './utils'
+export { buildExifMap } from './lib/exif'
+export { DEFAULT_MAX_FIND_DEPTH } from './lib/fs'
+export { withStatus } from './lib/cli'
 
 export { processMedia } from './process'
 export type { ProcessOptions } from './process'

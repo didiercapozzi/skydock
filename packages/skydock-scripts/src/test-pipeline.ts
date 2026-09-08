@@ -1,5 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { countFiles } from './lib/fs'
 import { isCliModule } from './utils'
 
 type TestOptions = {
@@ -22,19 +23,6 @@ const assertDirExists = (dirPath: string, label: string, result: TestResult): vo
     console.log(`  FAIL: ${label}`)
     result.failed++
   }
-}
-
-const countFiles = (dir: string): number => {
-  let count = 0
-  try {
-    const entries = fs.readdirSync(dir, { withFileTypes: true })
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name)
-      if (entry.isFile()) count++
-      else if (entry.isDirectory()) count += countFiles(fullPath)
-    }
-  } catch {}
-  return count
 }
 
 const testPipeline = async (options?: TestOptions): Promise<TestResult> => {

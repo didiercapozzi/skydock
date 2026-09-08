@@ -1,4 +1,4 @@
-import { loadManifest } from '@skydock/scripts'
+import { loadManifest, moveFilesBetweenJumps, reorderFilesInJump } from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { ComparisonDialog } from '../components/comparison-dialog'
@@ -224,19 +224,23 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
       pendingRef.current = null
       setProcessingId(null)
       setUploadingId(null)
-    } else if (data && typeof data === 'object' && 'connected' in data) {
-      const kind = pendingRef.current.kind
-      pendingRef.current = null
-      const connected = (data as { connected?: unknown }).connected === true
-      setNasConnected(connected)
-      if (connected) {
-        setShowConnectionDialog(false)
-        setNasError(null)
-      } else if (kind === 'nas') {
-        setNasError('Connection failed. Please check your credentials.')
-      }
     }
   }, [data])
+
+  useEffect(() => {
+    if (!nasSubmit.data || typeof nasSubmit.data !== 'object') return
+    if (!('connected' in nasSubmit.data)) return
+    pendingRef.current = null
+    const connected = (nasSubmit.data as { connected?: unknown }).connected === true
+    // eslint-disable-next-line react/set-state-in-effect -- syncing server response into state
+    setNasConnected(connected)
+    if (connected) {
+      setShowConnectionDialog(false)
+      setNasError(null)
+    } else {
+      setNasError('Connection failed. Please check your credentials.')
+    }
+  }, [nasSubmit.data])
 
   useEffect(() => {
     mainRef.current?.setAttribute('data-hydrated', 'true')
@@ -399,18 +403,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     if (groupIds.length === 1 && groupIds[0] === targetJumpId) {
       const toIndex = getDropIndex(e.currentTarget as HTMLElement, e.clientY)
       const paths = data.groups[targetJumpId]
-      const next = jumps.map((j) => {
-        if (j.id !== targetJumpId) return j
-        const moved = j.files.filter((f) => paths.includes(f.path))
-        if (moved.length === 0) return j
-        const remaining = j.files.filter((f) => !paths.includes(f.path))
-        const draggedBefore = j.files.slice(0, toIndex).filter((f) => paths.includes(f.path)).length
-        const insertAt = Math.max(0, toIndex - draggedBefore)
-        return {
-          ...j,
-          files: [...remaining.slice(0, insertAt), ...moved, ...remaining.slice(insertAt)]
-        }
-      })
+      const next = reorderFilesInJump(jumps, targetJumpId, paths, toIndex)
       setJumps(next)
       saveJumps(next)
       return
@@ -446,26 +439,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const executeDrop = (action: 'move' | 'copy') => {
     if (!dropDialog) return
     const { groups, targetJumpId } = dropDialog
-    const lookup = new Map<string, ManifestFile>()
-    for (const f of manifestFiles) lookup.set(f.path, f)
-    for (const j of jumps) for (const f of j.files) lookup.set(f.path, f)
-    const allPaths = Object.values(groups).flat()
-    const next = jumps.map((j) => {
-      const sourcePaths = groups[j.id]
-      let files =
-        sourcePaths && action === 'move'
-          ? j.files.filter((f) => !sourcePaths.includes(f.path))
-          : j.files
-      if (j.id === targetJumpId) {
-        const additions: ManifestFile[] = []
-        for (const p of allPaths) {
-          const f = lookup.get(p)
-          if (f && !files.some((x) => x.path === f.path)) additions.push(f)
-        }
-        files = [...files, ...additions]
-      }
-      return files === j.files ? j : { ...j, files }
-    })
+    const next = moveFilesBetweenJumps(jumps, manifestFiles, groups, targetJumpId, action)
     setJumps(next)
     setSelection({})
     setDropDialog(null)

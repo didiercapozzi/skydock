@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { MEDIA_EXTENSIONS_SET } from './constants'
+import { hasMediaFiles } from './lib/fs'
 import { getOutputDir, isCliModule } from './utils'
 
 const POLL_INTERVAL_MS = 8000
@@ -10,23 +10,6 @@ type WatcherOptions = {
   testMode?: boolean
   runOnce?: boolean
   outputDir?: string
-}
-
-const hasMediaFiles = (dir: string): boolean => {
-  try {
-    const entries = fs.readdirSync(dir, { withFileTypes: true })
-    for (const entry of entries) {
-      if (!entry.isFile()) continue
-      const ext = path.extname(entry.name).slice(1).toLowerCase()
-      if (MEDIA_EXTENSIONS_SET.has(ext)) return true
-    }
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        if (hasMediaFiles(path.join(dir, entry.name))) return true
-      }
-    }
-  } catch {}
-  return false
 }
 
 const findCameraRoot = (startDir: string, baseDir: string): string => {

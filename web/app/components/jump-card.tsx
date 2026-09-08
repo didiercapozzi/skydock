@@ -1,3 +1,4 @@
+import { hasCompletePassenger } from '@skydock/scripts'
 import { Fragment, useState } from 'react'
 import type { ManifestFile, ManifestJump, ManifestPassenger, SelectionMap } from './types'
 import { formatTime, getJumpBounds, isVideoFile } from './utils'
@@ -58,12 +59,7 @@ const JumpCard = ({
   const bounds = getJumpBounds(jump)
   const videoCount = jump.files.filter((f) => isVideoFile(f.filename)).length
   const photoCount = jump.files.length - videoCount
-  const passengerComplete =
-    jump.files.length > 0 &&
-    !!jump.passenger &&
-    jump.passenger.firstname.trim() !== '' &&
-    jump.passenger.lastname.trim() !== '' &&
-    jump.passenger.email.trim() !== ''
+  const passengerComplete = jump.files.length > 0 && hasCompletePassenger(jump.passenger)
   const processTitle =
     jump.files.length === 0
       ? 'Empty jump'

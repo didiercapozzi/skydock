@@ -394,8 +394,9 @@ The VideoCropper component lives inside the PreviewDrawer (right panel), directl
 - `zod` for runtime validation of manifest data.
 - `cmp` for file dedup comparison, `exiftool` optional for metadata extraction.
 - `ffmpeg` for live on-demand transcoding via streaming endpoints.
-- Web: React Router, React, HLS client library, formatting tools, linting tools, testing framework with multiple test suites.
+- Web: React Router, React, formatting tools, linting tools, testing framework with multiple test suites.
 - Scripts are TypeScript only, no Python, no comments in generated scripts.
+- Scripts package: `@skydock/scripts` — pipeline (`process`, `scan`, `execute`, `watcher`) plus dev (`simulate`, `test-pipeline`) and shared libs (`lib/exif`, `lib/fs`, `lib/cli`, `workspace`, `manifest`, `clustering`); no `proxies` script.
 
 ## 11. Coding Rules
 
@@ -419,6 +420,7 @@ The VideoCropper component lives inside the PreviewDrawer (right panel), directl
 - Shared routing and form logic lives in `@skydock/ui` (`routingEngine`, safe hooks, validated actions); never reimplement endpoint calls per route
 - Never use React memoization (`useCallback`, `useMemo`, `memo`) — React Compiler handles memoization automatically; write plain functions and values
 - Never commit without explicit user approval
+- Never use bypass eslint comment code like // eslint-disable-next-line react/set-state-in-effect for example
 
 ## 12. Rule Changes
 

@@ -75,54 +75,6 @@ type Manifest = z.infer<typeof manifestSchema>
 type JumpFileRef = z.infer<typeof jumpFileRefSchema>
 type JumpsFile = z.infer<typeof jumpsFileSchema>
 
-type FileEntry = {
-  name: string
-  path: string
-  size: number
-  isTheory: boolean
-  copiedFromLibrary: boolean
-  mtime: number
-}
-
-type Jump = {
-  id: string
-  date: string
-  name: string | null
-  displayName: string
-  num: number
-  photoCount: number
-  videoCount: number
-  theoryPhotoCount: number
-  theoryVideoCount: number
-  jumpPhotos: FileEntry[]
-  jumpVideos: FileEntry[]
-  theoryPhotos: FileEntry[]
-  theoryVideos: FileEntry[]
-  totalSize: number
-  startedAt: number
-}
-
-type DayGroup = {
-  date: string
-  jumps: Jump[]
-  totalPhotos: number
-  totalVideos: number
-}
-
-type TheoryOverride = {
-  originalPath: string
-  sourceDate: string
-}
-
-type TheoryOverrides = Record<string, TheoryOverride>
-
-type TheoryVideoWithSource = FileEntry & {
-  jumpName: string
-  passengerName: string | null
-  jumpDate: string
-  jumpId: string
-}
-
 type TaskState = 'idle' | 'running' | 'done' | 'error'
 
 type TaskStatus = {
@@ -143,9 +95,6 @@ type SystemStatus = {
 }
 
 export type {
-  DayGroup,
-  FileEntry,
-  Jump,
   JumpFileRef,
   JumpsFile,
   Manifest,
@@ -156,10 +105,7 @@ export type {
   ManifestStatus,
   SystemStatus,
   TaskState,
-  TaskStatus,
-  TheoryOverride,
-  TheoryOverrides,
-  TheoryVideoWithSource
+  TaskStatus
 }
 
 export {

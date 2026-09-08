@@ -1,16 +1,9 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import * as childProcess from 'node:child_process'
-import { PHOTO_EXTENSIONS_SET, VIDEO_EXTENSIONS_SET } from './constants'
-import {
-  getOutputDir,
-  checkExiftool,
-  findMediaFiles,
-  getExtension,
-  isCliModule,
-  parseExiftoolCsv
-} from './utils'
-import { writeStatus, scheduleIdle } from './status'
+import { findMediaFiles, getOutputDir, isCliModule } from './utils'
+import { fileMatchesExisting } from './lib/fs'
+import { buildExifMap } from './lib/exif'
+import { scheduleIdle, writeStatus } from './status'
 
 type ProcessOptions = {
   cameraDirs: string[]
@@ -19,73 +12,27 @@ type ProcessOptions = {
 
 export type { ProcessOptions }
 
-const buildDateMap = (files: string[]): Map<string, string> => {
-  const dateMap = new Map<string, string>()
-
-  const hasExiftool = checkExiftool()
-
-  if (!hasExiftool || files.length === 0) return dateMap
-
-  const jpgFiles = files.filter((f) => PHOTO_EXTENSIONS_SET.has(getExtension(f)))
-  const mp4Files = files.filter((f) => VIDEO_EXTENSIONS_SET.has(getExtension(f)))
-
-  if (jpgFiles.length > 0) {
-    try {
-      const csv = childProcess.execSync(
-        `exiftool -s3 -DateTimeOriginal -csv ${jpgFiles.map((f) => `"${f}"`).join(' ')}`,
-        {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'ignore']
-        }
-      )
-      for (const [file, raw] of parseExiftoolCsv(csv)) {
-        const match = raw.match(/^(\d{4}):(\d{2}):(\d{2})/)
-        if (match) dateMap.set(file, `${match[1]}-${match[2]}-${match[3]}`)
-      }
-    } catch {}
-  }
-
-  if (mp4Files.length > 0) {
-    try {
-      const csv = childProcess.execSync(
-        `exiftool -s3 -CreateDate -csv ${mp4Files.map((f) => `"${f}"`).join(' ')}`,
-        {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'ignore']
-        }
-      )
-      for (const [file, raw] of parseExiftoolCsv(csv)) {
-        const match = raw.match(/^(\d{4}):(\d{2}):(\d{2})/)
-        if (match) dateMap.set(file, `${match[1]}-${match[2]}-${match[3]}`)
-      }
-    } catch {}
-  }
-
-  return dateMap
+const parseDate = (raw: string): string | null => {
+  const match = raw.match(/^(\d{4}):(\d{2}):(\d{2})/)
+  return match ? `${match[1]}-${match[2]}-${match[3]}` : null
 }
+
+const buildDateMap = (files: string[]): Map<string, string> =>
+  buildExifMap(files, {
+    photoTags: ['-DateTimeOriginal'],
+    videoTags: ['-CreateDate'],
+    parse: parseDate
+  })
 
 const getCaptureDate = (filepath: string, dateMap: Map<string, string>): string => {
   const mapped = dateMap.get(filepath)
   if (mapped) return mapped
-
   const stat = fs.statSync(filepath)
   const date = new Date(stat.mtimeMs)
   const y = date.getFullYear()
   const m = String(date.getMonth() + 1).padStart(2, '0')
   const d = String(date.getDate()).padStart(2, '0')
   return `${y}-${m}-${d}`
-}
-
-const fileMatchesExisting = (src: string, destDir: string): boolean => {
-  const filename = path.basename(src)
-  const existing = path.join(destDir, filename)
-  if (!fs.existsSync(existing)) return false
-  try {
-    childProcess.execSync(`cmp -s "${src}" "${existing}"`, { stdio: 'ignore' })
-    return true
-  } catch {
-    return false
-  }
 }
 
 const processMedia = (options: ProcessOptions): { copied: number; skipped: number } => {

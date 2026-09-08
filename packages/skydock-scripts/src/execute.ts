@@ -4,7 +4,7 @@ import * as path from 'node:path'
 import { loadManifest, saveManifest } from './manifest'
 import { scheduleIdle, writeStatus } from './status'
 import { getManifestPath, getOutputDir, hasCommand, isCliModule, isVideoFile } from './utils'
-import { buildJumpBaseName, formatCaptureTime, hasCompletePassenger } from './workspace'
+import { buildFsTime, buildJumpBaseName, hasCompletePassenger, makeFileName } from './workspace'
 
 type ExecuteOptions = {
   manifestPath?: string
@@ -53,38 +53,6 @@ const moveToTrash = (dir: string, outputDir: string): void => {
 
 const getMediaType = (filePath: string): 'video' | 'photo' =>
   isVideoFile(filePath) ? 'video' : 'photo'
-
-const makeFileName = (
-  baseName: string,
-  mtime: number,
-  ext: string,
-  usedNames: Set<string>
-): string => {
-  const timeStr = formatCaptureTime(mtime)
-  const candidate = `${baseName}_${timeStr}.${ext}`
-  if (!usedNames.has(candidate)) {
-    usedNames.add(candidate)
-    return candidate
-  }
-  let counter = 1
-  while (usedNames.has(`${baseName}_${timeStr}_${counter}.${ext}`)) counter++
-  const name = `${baseName}_${timeStr}_${counter}.${ext}`
-  usedNames.add(name)
-  return name
-}
-
-const buildFsTime = (jumpMtime: number, captureMtime: number): Date => {
-  const jumpDate = new Date(jumpMtime * 1000)
-  const origTime = new Date(captureMtime * 1000)
-  return new Date(
-    jumpDate.getFullYear(),
-    jumpDate.getMonth(),
-    jumpDate.getDate(),
-    origTime.getHours(),
-    origTime.getMinutes(),
-    origTime.getSeconds()
-  )
-}
 
 const processJump = (
   jump: NonNullable<ReturnType<typeof loadManifest>>['jumps'][number],

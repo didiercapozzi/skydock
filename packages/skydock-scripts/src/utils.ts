@@ -1,33 +1,9 @@
-import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as childProcess from 'node:child_process'
 import { VIDEO_EXTENSIONS_SET, PHOTO_EXTENSIONS_SET, MEDIA_EXTENSIONS_SET } from './constants'
 import type { ManifestFile } from './types'
-
-const DEFAULT_MAX_FIND_DEPTH = 10
-
-const findMediaFiles = (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH): string[] => {
-  const results: string[] = []
-
-  const search = (currentDir: string, depth: number): void => {
-    if (depth > maxDepth) return
-    try {
-      const entries = fs.readdirSync(currentDir, { withFileTypes: true })
-      for (const entry of entries) {
-        const fullPath = path.join(currentDir, entry.name)
-        if (entry.isDirectory()) {
-          search(fullPath, depth + 1)
-        } else if (entry.isFile()) {
-          const ext = path.extname(entry.name).slice(1).toLowerCase()
-          if (MEDIA_EXTENSIONS_SET.has(ext)) results.push(fullPath)
-        }
-      }
-    } catch {}
-  }
-
-  search(dir, 0)
-  return results
-}
+import { countFiles, fileMatchesExisting, findMediaFiles, hasMediaFiles, walkFiles } from './lib/fs'
+import { DEFAULT_MAX_FIND_DEPTH } from './lib/fs'
 
 const hasCommand = (cmd: string): boolean => {
   try {
@@ -132,6 +108,9 @@ const parseExiftoolCsv = (csv: string): Map<string, string> => {
 
 export {
   checkExiftool,
+  countFiles,
+  DEFAULT_MAX_FIND_DEPTH,
+  fileMatchesExisting,
   findMediaFiles,
   formatTimestamp,
   getExtension,
@@ -140,6 +119,7 @@ export {
   getOutputDir,
   getStatusDir,
   hasCommand,
+  hasMediaFiles,
   isCliModule,
   isMediaFile,
   isPhotoFile,
@@ -147,5 +127,6 @@ export {
   parseExiftoolCsv,
   sanitizeLabel,
   sortFilesByMtime,
-  toISOString
+  toISOString,
+  walkFiles
 }

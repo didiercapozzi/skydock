@@ -14,7 +14,6 @@
     "@react-router/node": "^8",
     "@react-router/serve": "^8",
     "@skydock/scripts": "file:../packages/skydock-scripts",
-    "hls.js": "^1.7.1",
     "isbot": "^5.1.36",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

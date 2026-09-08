@@ -1,11 +1,7 @@
+import { getOutputDir, isVideoFile as isVideoFileFromScripts } from '@skydock/scripts'
 import type { ManifestJump } from './types'
 
-const VIDEO_EXTS = new Set(['mp4', 'mov', 'avi', 'mkv', 'mts', 'm4v', '3gp'])
-
-const isVideoFile = (filename: string): boolean => {
-  const ext = filename.split('.').pop()?.toLowerCase() ?? ''
-  return VIDEO_EXTS.has(ext)
-}
+const isVideoFile = (filename: string): boolean => isVideoFileFromScripts(filename)
 
 const formatSize = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`
@@ -51,15 +47,15 @@ const groupJumpsByDay = (jumps: ManifestJump[]) => {
   })
 }
 
-const OUTPUT_DIR = '/workspace/output'
-
 const getFileUrl = (filePath: string) => {
-  const relative = filePath.startsWith(OUTPUT_DIR) ? filePath.slice(OUTPUT_DIR.length) : filePath
+  const outputDir = getOutputDir()
+  const relative = filePath.startsWith(outputDir) ? filePath.slice(outputDir.length) : filePath
   return `/api/file${relative}`
 }
 
 const getThumbUrl = (filePath: string, seekSeconds: number, width = 80) => {
-  const relative = filePath.startsWith(OUTPUT_DIR) ? filePath.slice(OUTPUT_DIR.length) : filePath
+  const outputDir = getOutputDir()
+  const relative = filePath.startsWith(outputDir) ? filePath.slice(outputDir.length) : filePath
   return `/api/thumb${relative}?seek=${seekSeconds.toFixed(1)}&width=${width}`
 }
 

@@ -1,19 +1,15 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import * as childProcess from 'node:child_process'
-import { PHOTO_EXTENSIONS_SET, VIDEO_EXTENSIONS_SET } from './constants'
 import {
-  checkExiftool,
   findMediaFiles,
-  getExtension,
   getManifestPath,
   getOutputDir,
   isCliModule,
-  parseExiftoolCsv,
   sortFilesByMtime,
   toISOString
 } from './utils'
-import { writeStatus, scheduleIdle } from './status'
+import { buildExifMap } from './lib/exif'
+import { scheduleIdle, writeStatus } from './status'
 import { loadManifest, saveManifest } from './manifest'
 import { computeFileId } from './fileId'
 import { reclusterJumps } from './clustering'
@@ -27,54 +23,23 @@ type ScanResult = {
   jumpCount: number
 }
 
-const buildTimeMap = (files: string[]): Map<string, string> => {
-  const timeMap = new Map<string, string>()
-
-  const hasExiftool = checkExiftool()
-
-  if (!hasExiftool || files.length === 0) return timeMap
-
-  const jpgFiles = files.filter((f) => PHOTO_EXTENSIONS_SET.has(getExtension(f)))
-  const mp4Files = files.filter((f) => VIDEO_EXTENSIONS_SET.has(getExtension(f)))
-
-  if (jpgFiles.length > 0) {
-    try {
-      const csv = childProcess.execSync(
-        `exiftool -s3 -DateTimeOriginal -CreateDate -MediaCreateDate -csv ${jpgFiles.map((f) => `"${f}"`).join(' ')}`,
-        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }
-      )
-      for (const [file, raw] of parseExiftoolCsv(csv)) {
-        const match = raw.match(/^(\d{4}):(\d{2}):(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/)
-        if (match) {
-          timeMap.set(
-            file,
-            `${match[1]}-${match[2]}-${match[3]} ${match[4]}:${match[5]}:${match[6]}`
-          )
-        }
-      }
-    } catch {}
-  }
-
-  if (mp4Files.length > 0) {
-    try {
-      const csv = childProcess.execSync(
-        `exiftool -s3 -CreateDate -MediaCreateDate -TrackCreateDate -DateTimeOriginal -ModifyDate -csv ${mp4Files.map((f) => `"${f}"`).join(' ')}`,
-        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] }
-      )
-      for (const [file, raw] of parseExiftoolCsv(csv)) {
-        const match = raw.match(/^(\d{4}):(\d{2}):(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/)
-        if (match) {
-          timeMap.set(
-            file,
-            `${match[1]}-${match[2]}-${match[3]} ${match[4]}:${match[5]}:${match[6]}`
-          )
-        }
-      }
-    } catch {}
-  }
-
-  return timeMap
+const parseDateTime = (raw: string): string | null => {
+  const match = raw.match(/^(\d{4}):(\d{2}):(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/)
+  return match ? `${match[1]}-${match[2]}-${match[3]} ${match[4]}:${match[5]}:${match[6]}` : null
 }
+
+const buildTimeMap = (files: string[]): Map<string, string> =>
+  buildExifMap(files, {
+    photoTags: ['-DateTimeOriginal', '-CreateDate', '-MediaCreateDate'],
+    videoTags: [
+      '-CreateDate',
+      '-MediaCreateDate',
+      '-TrackCreateDate',
+      '-DateTimeOriginal',
+      '-ModifyDate'
+    ],
+    parse: parseDateTime
+  })
 
 const getCaptureEpoch = (filepath: string, timeMap: Map<string, string>): number => {
   const tag = timeMap.get(filepath)
