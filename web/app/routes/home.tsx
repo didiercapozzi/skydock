@@ -2,6 +2,7 @@ import { loadManifest } from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { ComparisonDialog } from '../components/comparison-dialog'
+import { ConnectionDialog } from '../components/connection-dialog'
 import { DropActionDialog } from '../components/drop-action-dialog'
 import { FileRow } from '../components/file-row'
 import { JumpCard } from '../components/jump-card'
@@ -54,7 +55,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const mainRef = useRef<HTMLElement | null>(null)
   const videoRefRef = useRef<VideoRef | null>(null)
   const { submit, data } = useSafeFetcher()
-  const pendingRef = useRef<{ kind: 'merge' | 'process' | 'upload' } | null>(null)
+  const pendingRef = useRef<{ kind: 'merge' | 'process' | 'upload' | 'nas' } | null>(null)
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const [mailPendingId, setMailPendingId] = useState<string | null>(null)
@@ -62,6 +63,10 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     subject: string
     body: string
   } | null>(null)
+  const [nasConnected, setNasConnected] = useState(false)
+  const [showConnectionDialog, setShowConnectionDialog] = useState(false)
+  const [nasError, setNasError] = useState<string | null>(null)
+  const nasSubmit = useSafeFetcher()
   const jumpsByDay = groupJumpsByDay(jumps)
   const [videoCrop, setVideoCrop] = useState<{ cropStart: number | null; cropEnd: number | null }>({
     cropStart: null,
@@ -126,11 +131,32 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   }
 
   const handleUpload = (jumpId: string) => {
+    if (!nasConnected) {
+      setShowConnectionDialog(true)
+      return
+    }
     pendingRef.current = { kind: 'upload' }
     setUploadingId(jumpId)
     submit({
       url: '/api/manifest',
       actionArgs: { intent: 'upload-jump', jumpId }
+    })
+  }
+
+  const handleConnect = (host: string, user: string, password: string) => {
+    setNasError(null)
+    pendingRef.current = { kind: 'nas' }
+    nasSubmit.submit({
+      url: '/api/nas',
+      actionArgs: { intent: 'connect', host, user, password }
+    })
+  }
+
+  const handleDisconnect = () => {
+    pendingRef.current = { kind: 'nas' }
+    nasSubmit.submit({
+      url: '/api/nas',
+      actionArgs: { intent: 'disconnect' }
     })
   }
 
@@ -198,11 +224,43 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
       pendingRef.current = null
       setProcessingId(null)
       setUploadingId(null)
+    } else if (data && typeof data === 'object' && 'connected' in data) {
+      const kind = pendingRef.current.kind
+      pendingRef.current = null
+      const connected = (data as { connected?: unknown }).connected === true
+      setNasConnected(connected)
+      if (connected) {
+        setShowConnectionDialog(false)
+        setNasError(null)
+      } else if (kind === 'nas') {
+        setNasError('Connection failed. Please check your credentials.')
+      }
     }
   }, [data])
 
   useEffect(() => {
     mainRef.current?.setAttribute('data-hydrated', 'true')
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    const checkNas = async () => {
+      try {
+        const res = await fetch('/api/nas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'intent=status'
+        })
+        const result = await res.json()
+        if (!cancelled) setNasConnected(result.connected === true)
+      } catch {
+        if (!cancelled) setNasConnected(false)
+      }
+    }
+    checkNas()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   useEffect(() => {
@@ -454,6 +512,29 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
             </h1>
           </Link>
           <div className='flex items-center gap-4'>
+            <div className='flex items-center gap-2'>
+              <div
+                className={`w-2 h-2 rounded-full ${nasConnected ? 'bg-green-500' : 'bg-gray-400'}`}
+              />
+              <span className='text-xs text-gray-500'>
+                {nasConnected ? 'NAS Connected' : 'NAS Disconnected'}
+              </span>
+              {nasConnected ? (
+                <button
+                  type='button'
+                  onClick={handleDisconnect}
+                  className='text-xs text-red-600 hover:text-red-800 font-medium'>
+                  Disconnect
+                </button>
+              ) : (
+                <button
+                  type='button'
+                  onClick={() => setShowConnectionDialog(true)}
+                  className='text-xs text-blue-600 hover:text-blue-800 font-medium'>
+                  Connect
+                </button>
+              )}
+            </div>
             <button
               type='button'
               disabled
@@ -654,6 +735,17 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
             rightJumpId={compareIds[1]}
             onClose={() => setShowComparison(false)}
             onMerge={handleMerge}
+          />
+        )}
+
+        {showConnectionDialog && (
+          <ConnectionDialog
+            onConnect={handleConnect}
+            onCancel={() => {
+              setShowConnectionDialog(false)
+              setNasError(null)
+            }}
+            error={nasError ?? undefined}
           />
         )}
       </div>

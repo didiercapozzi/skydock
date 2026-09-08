@@ -7,6 +7,7 @@ import {
   executeMedia,
   getOutputDir,
   hasCompletePassenger,
+  loadNasSession,
   loadManifest,
   manifestJumpSchema,
   mergeJumps,
@@ -91,11 +92,9 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         errors.addGlobalError('Jump has no files.')
         return errors.toResponse(422)
       }
-      const host = process.env.SYNOLOGY_HOST
-      const user = process.env.SYNOLOGY_USER
-      const password = process.env.SYNOLOGY_PASSWORD
-      if (!host || !user || !password) {
-        errors.addGlobalError('Synology storage is not configured.')
+      const session = loadNasSession()
+      if (!session) {
+        errors.addGlobalError('Not connected to NAS. Please connect first.')
         return errors.toResponse(422)
       }
       const min = Math.min(...target.files.map((f) => f.mtime))
@@ -105,12 +104,12 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         errors.addGlobalError('Processed files not found. Process the jump again.')
         return errors.toResponse(422)
       }
-      const remoteBase = process.env.SYNOLOGY_PATH ?? '/SkyDock'
+      const remoteBase = session.defaultFolder ?? '/SkyDock'
       try {
         const { shareUrl } = await publishJump({
-          host,
-          user,
-          password,
+          host: session.hostname,
+          user: session.username,
+          password: '',
           localDir,
           remoteDir: `${remoteBase}/${baseName}`
         })

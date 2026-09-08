@@ -9,6 +9,8 @@
 - RULES.md updated: process naming with HHMMSS, upload with chunked progress, NAS session storage.
 - Phase 1 — Execute naming update: HHMMSS pattern, collision handling, skip empty dirs, .trash on re-process, filesystem timestamps, refactored execute.ts.
 - Phase 2 — NAS session storage: nas.ts module, loginWithSession, dsmValidateSession, Zod schemas.
+- Phase 3 — Upload chunking + progress: 10 MB chunks, per-file progress callback, retry on failure.
+- Phase 5 — Process + Upload UI wiring: ConnectionDialog, NAS session validation, animated upload button.
 
 ## Process + Upload pipeline (RULES.md §6 + §13)
 
@@ -43,11 +45,15 @@
 - Store selected default folder in `output/.status/nas.json`.
 - Upload goes directly to default folder (no dialog).
 
-### Phase 5 — Process + Upload UI wiring
+### Phase 5 — Process + Upload UI wiring (done)
 
-- Update JumpCard to show per-file progress bars during upload.
-- Connection dialog: hostname, username, password fields.
-- Validate session on mount; show login if expired.
+- ConnectionDialog component: hostname, username, password fields.
+- `/api/nas` endpoint: status, connect, disconnect intents.
+- Upload handler uses stored NAS session instead of env vars.
+- Session validated on mount; connect dialog shown if expired.
+- JumpCard upload button shows animated spinner during upload.
+- NAS status indicator in header (green dot = connected).
+- Disconnect button when connected, Connect link when disconnected.
 
 ### Phase 6 — Tests + docs
 

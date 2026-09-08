@@ -186,6 +186,8 @@ const loginWithSession = async (config: DsmConfig, outputDir?: string) => {
   }
   if (canReuse) clearNasSession(outputDir)
 
+  if (!config.password) throw new Error('Session expired. Please reconnect to NAS.')
+
   const sid = await dsmLogin(config)
   saveNasSession({ hostname: config.host, username: config.user, sessionId: sid }, outputDir)
   return { sid, isNew: true as const }
@@ -218,4 +220,3 @@ export {
   walkFiles
 }
 export type { DsmConfig, PublishArgs, UploadProgress }
-
