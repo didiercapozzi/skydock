@@ -43,11 +43,13 @@ const getOrder = () =>
 
 const renderHome = async (
   manifest: unknown,
-  action: (args: { request: Request }) => Promise<unknown> = async () => ({ ok: true })
+  action: (args: { request: Request }) => Promise<unknown> = async () => ({ ok: true }),
+  nasAction: (args: { request: Request }) => Promise<unknown> = async () => ({ connected: false })
 ) => {
   const Stub = createRoutesStub([
     { path: '/', Component: Home, loader: () => ({ manifest }) },
-    { path: '/api/manifest', action }
+    { path: '/api/manifest', action },
+    { path: '/api/nas', action: nasAction }
   ])
   const result = await render(createElement(Stub, { initialEntries: ['/'] }))
   return result
@@ -116,7 +118,9 @@ const expandAllJumpCards = async () => {
 describe('Home - 9.4.1 empty', () => {
   test('renders No Manifest Found when no manifest', async () => {
     const Stub = createRoutesStub([
-      { path: '/', Component: Home, loader: () => ({ manifest: null }) }
+      { path: '/', Component: Home, loader: () => ({ manifest: null }) },
+      { path: '/api/nas', action: async () => ({ connected: false }) },
+      { path: '/api/manifest', action: async () => ({ ok: true }) }
     ])
     const { getByText } = await render(createElement(Stub, { initialEntries: ['/'] }))
     await expect.element(getByText('No Manifest Found')).toBeInTheDocument()
@@ -324,7 +328,8 @@ describe('Home - 9.3.2 staging tray', () => {
     } as never
     const Stub = createRoutesStub([
       { path: '/', Component: Home, loader: () => ({ manifest }) },
-      { path: '/api/manifest', action: async () => ({ ok: true }) }
+      { path: '/api/manifest', action: async () => ({ ok: true }) },
+      { path: '/api/nas', action: async () => ({ connected: false }) }
     ])
     await render(createElement(Stub, { initialEntries: ['/'] }))
     await expandAllJumpCards()
@@ -964,42 +969,33 @@ describe('Home - jump comparison dialog', () => {
   })
 
   test('upload flow shows share link and enables mail', async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo) => {
-      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input)
-      if (url.includes('/api/nas')) {
-        return new Response(JSON.stringify({ connected: true, hostname: 'https://nas.local:5001', username: 'admin' }), {
-          headers: { 'Content-Type': 'application/json' }
-        })
+    const files = makeFiles(2)
+    const manifest = makeManifest(files, [
+      {
+        id: 'jump_01',
+        label: 'jump_01',
+        confirmed: false,
+        processed: true,
+        passenger: { firstname: 'John', lastname: 'Doe', email: 'john@example.com' },
+        files: [...files]
       }
-      if (url.includes('/templates/')) {
-        return new Response('template', { status: 200, headers: { 'Content-Type': 'text/plain' } })
+    ]) as never
+    const uploadAction = async ({ request }: { request: Request }) => {
+      const body = (await request.json()) as { intent: string; jumpId?: string }
+      if (body.intent === 'upload-jump' && body.jumpId) {
+        const jumps = (manifest as unknown as { jumps: Array<{ id: string; publish?: unknown }> }).jumps
+        const target = jumps.find((j) => j.id === body.jumpId)
+        if (target) target.publish = { shareUrl: 'https://nas.local:5001/sharing/demo123' }
+        return { jumps }
       }
-      return new Response(JSON.stringify({}), { headers: { 'Content-Type': 'application/json' } })
+      return { ok: true }
+    }
+    const nasAction = async () => ({
+      connected: true,
+      hostname: 'https://nas.local:5001',
+      username: 'admin'
     })
-    vi.stubGlobal('fetch', fetchMock)
-    try {
-      const files = makeFiles(2)
-      const manifest = makeManifest(files, [
-        {
-          id: 'jump_01',
-          label: 'jump_01',
-          confirmed: false,
-          processed: true,
-          passenger: { firstname: 'John', lastname: 'Doe', email: 'john@example.com' },
-          files: [...files]
-        }
-      ]) as never
-      const uploadAction = async ({ request }: { request: Request }) => {
-        const body = (await request.json()) as { intent: string; jumpId?: string }
-        if (body.intent === 'upload-jump' && body.jumpId) {
-          const jumps = (manifest as unknown as { jumps: Array<{ id: string; publish?: unknown }> }).jumps
-          const target = jumps.find((j) => j.id === body.jumpId)
-          if (target) target.publish = { shareUrl: 'https://nas.local:5001/sharing/demo123' }
-          return { jumps }
-        }
-        return { ok: true }
-      }
-      await renderHome(manifest, uploadAction)
+    await renderHome(manifest, uploadAction, nasAction)
     await expandAllJumpCards()
     await expect.element(page.getByText('Upload to get a share link.')).toBeInTheDocument()
 
@@ -1014,9 +1010,6 @@ describe('Home - jump comparison dialog', () => {
     expect(link.href).toBe('https://nas.local:5001/sharing/demo123')
     const mailBtn = document.querySelector('[data-action="mail"]') as HTMLButtonElement
     expect(mailBtn.disabled).toBe(false)
-    } finally {
-      vi.unstubAllGlobals()
-    }
   })
 
   test('mail opens gmail and mark as sent disables it', async () => {

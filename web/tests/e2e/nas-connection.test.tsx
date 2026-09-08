@@ -52,8 +52,11 @@ describe('NAS connection', () => {
   test('filling form and clicking Connect submits credentials', async () => {
     let nasPayload: unknown = null
     const nasAction = async ({ request }: { request: Request }) => {
-      nasPayload = await request.json()
-      return { connected: true, hostname: 'https://nas.local:5001', username: 'admin' }
+      const body = (await request.json().catch(() => ({}))) as { intent?: string }
+      nasPayload = body
+      if (body.intent === 'status') return { connected: false }
+      if (body.intent === 'connect') return { connected: true, hostname: 'https://nas.local:5001', username: 'admin' }
+      return { connected: false }
     }
     await renderHome(null, { '/api/nas': nasAction })
 
@@ -66,7 +69,7 @@ describe('NAS connection', () => {
     )
     await userEvent.fill(page.getByRole('textbox', { name: 'Username' }), 'admin')
     await userEvent.fill(page.getByRole('textbox', { name: 'Password' }), 'secret')
-    await userEvent.click(page.getByRole('button', { name: 'Connect' }))
+    await userEvent.click(page.elementLocator(document.querySelector('[data-connection-dialog] button[type="submit"]') as HTMLElement))
 
     await expect.poll(() => nasPayload !== null, { timeout: 5000 }).toBe(true)
     expect(nasPayload).toEqual({
@@ -78,11 +81,11 @@ describe('NAS connection', () => {
   })
 
   test('successful connect shows connected state and closes dialog', async () => {
-    const nasAction = async () => ({
-      connected: true,
-      hostname: 'https://nas.local:5001',
-      username: 'admin'
-    })
+    const nasAction = async ({ request }: { request: Request }) => {
+      const body = (await request.json().catch(() => ({}))) as { intent?: string }
+      if (body.intent === 'status') return { connected: false }
+      return { connected: true, hostname: 'https://nas.local:5001', username: 'admin' }
+    }
     await renderHome(null, { '/api/nas': nasAction })
 
     await userEvent.click(page.getByText('Connect'))
@@ -92,7 +95,7 @@ describe('NAS connection', () => {
     )
     await userEvent.fill(page.getByRole('textbox', { name: 'Username' }), 'admin')
     await userEvent.fill(page.getByRole('textbox', { name: 'Password' }), 'secret')
-    await userEvent.click(page.getByRole('button', { name: 'Connect' }))
+    await userEvent.click(page.elementLocator(document.querySelector('[data-connection-dialog] button[type="submit"]') as HTMLElement))
 
     await expect.element(page.getByText('NAS Connected')).toBeInTheDocument()
     await expect.element(page.getByText('Disconnect')).toBeInTheDocument()
@@ -103,10 +106,11 @@ describe('NAS connection', () => {
   })
 
   test('failed connect shows error message', async () => {
-    const nasAction = async () => ({
-      success: false,
-      error: 'Login failed.'
-    })
+    const nasAction = async ({ request }: { request: Request }) => {
+      const body = (await request.json().catch(() => ({}))) as { intent?: string }
+      if (body.intent === 'status') return { connected: false }
+      return { success: false, error: 'Login failed.' }
+    }
     await renderHome(null, { '/api/nas': nasAction })
 
     await userEvent.click(page.getByText('Connect'))
@@ -116,7 +120,7 @@ describe('NAS connection', () => {
     )
     await userEvent.fill(page.getByRole('textbox', { name: 'Username' }), 'admin')
     await userEvent.fill(page.getByRole('textbox', { name: 'Password' }), 'wrong')
-    await userEvent.click(page.getByRole('button', { name: 'Connect' }))
+    await userEvent.click(page.elementLocator(document.querySelector('[data-connection-dialog] button[type="submit"]') as HTMLElement))
 
     await expect
       .poll(() => document.querySelector('[data-connection-dialog]') !== null, { timeout: 5000 })
@@ -184,11 +188,15 @@ describe('Upload with NAS connection', () => {
 
   test('upload proceeds when connected', async () => {
     let manifestPayload: unknown = null
-    const nasAction = async () => ({
-      connected: true,
-      hostname: 'https://nas.local:5001',
-      username: 'admin'
-    })
+    const nasAction = async ({ request }: { request: Request }) => {
+      const body = await request.json().catch(() => ({}))
+      console.log('nasAction called with', body)
+      return {
+        connected: true,
+        hostname: 'https://nas.local:5001',
+        username: 'admin'
+      }
+    }
     const manifestAction = async ({ request }: { request: Request }) => {
       manifestPayload = await request.json()
       const body = manifestPayload as { intent: string }
