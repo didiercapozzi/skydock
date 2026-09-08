@@ -95,7 +95,18 @@ output/
 
 - Default manifest `output/manifest.json`, processed directory `output/processed`.
 - If jump IDs given, process only those; else process all confirmed and unprocessed jumps.
-- For each jump: builds the base name from the passenger (lowercase firstname, lastname and jump day) or the sanitized label as fallback, creates directory structure with `videos/` and `photos/` subdirectories. Files renamed to the base name with numbered suffixes past the first. If crop range set and ffmpeg available, video is cropped. Processed jumps are marked processed, their publish state is cleared, and the manifest is saved.
+- For each jump:
+  - Skip if no files.
+  - Require complete passenger (firstname, lastname, email) — refuse otherwise.
+  - Build base name: `{firstname}_{lastname}_{YYYYMMDD}` (all lowercase, jump date).
+  - Create `videos/` and `photos/` subdirectories only if files of that type exist.
+  - File naming: `{baseName}_{HHMMSS}.{ext}` where HHMMSS comes from original file capture time.
+  - Collision: if two files share the same capture time, add counter suffix: `_1`, `_2`.
+  - If crop range set and ffmpeg available, video is cropped.
+  - Set filesystem timestamps (creation + modification) to jump date + original capture time.
+  - Set EXIF metadata dates (creation + modification) to match filename date-time.
+  - On re-process: move existing processed folder to `output/.trash/` before creating new one.
+  - Mark jump processed, clear publish state, save manifest.
 - Writes status file for API polling.
 
 ### 6.2 Manifest action intents
@@ -103,7 +114,7 @@ output/
 - save-jumps persists the working jump list.
 - merge-jumps combines two jumps server-side with a date anchor for the merged files.
 - process-jump runs `executeMedia` for one jump with complete passenger details, marks it processed and clears its publish state.
-- upload-jump uploads one processed jump to network storage, stores the share link and clears any sent record.
+- upload-jump uploads one processed jump to network storage using Synology DSM API. Binary comparison via SHA-256 hash skips files already present. Upload uses 10 MB chunks. Per-file progress tracked. Failed uploads retry from beginning. Share link reused if already exists; otherwise created via FileStation Sharing API.
 
 ## 7. Simulation & Testing
 
@@ -448,24 +459,70 @@ The VideoCropper component lives inside the PreviewDrawer (right panel), directl
 
 ### 13.2 Naming
 
-- Processed folders and files are named from the passenger, all lowercase: first name, last name and jump day joined with underscores.
-- Files after the first get a numbered suffix so names stay unique.
-- Videos and photos keep their separate subfolders.
+- Folder: `{firstname}_{lastname}_{YYYYMMDD}` (all lowercase, jump date).
+- Files: `{firstname}_{lastname}_{YYYYMMDD}_{HHMMSS}.{ext}` (HHMMSS from original capture time).
+- Date source: jump date (from scan or manually updated). If updated, re-processing applies the new date.
+- Time source: original file capture time (follows date if updated).
+- Collision: counter suffix only when needed: `_1`, `_2`.
+- Videos and photos keep separate subdirectories.
+- Empty subdirectories are not created.
+- EXIF metadata dates (creation + modification) match filename date-time.
+
+Example:
+
+```
+output/processed/bim_bam_20260829/
+├── videos/
+│   ├── bim_bam_20260829_113015.mp4
+│   └── bim_bam_20260829_113015_1.mp4
+└── photos/
+    └── bim_bam_20260829_182506.jpg
+```
 
 ### 13.3 Per-jump lifecycle
 
-- Each jump moves through proposed, processed, uploaded and mailed, in that order.
+- Each jump moves through proposed, processed, uploaded, in that order.
 - The Process button is available once a jump has files and all three passenger fields are set. Processing copies and renames the files and marks the jump processed; re-processing clears any previous publishing state.
-- The Upload button is only enabled for processed jumps and starts the upload immediately. Uploading copies the processed folder to the network storage and creates a share link, which is stored on the jump.
-- The Mail button stays disabled until a share link exists. It opens a prefilled email in the browser mail app, with a system-mail fallback link next to it — recipient, subject and message already filled, including the share link — so the user only has to send it.
-- Since sending happens outside the app, it is confirmed manually: marking it sent records the date and disables the mail button with a sent-on note.
+- The Upload button is only enabled for processed jumps and starts the upload immediately.
+  - Upload destination: processed folder placed directly inside the user's selected NAS folder: `{NAS_FOLDER}/{baseName}/...`
+  - Binary comparison: each file compared by SHA-256 hash. Files with matching hash on NAS are skipped.
+  - Chunked upload: files uploaded in 10 MB chunks.
+  - Progress: each file shows a progress bar with percentage.
+  - Failure: on upload failure, retry from beginning.
+  - Share link: reused if already exists. Otherwise created via Synology FileStation Sharing API and stored on the jump.
 
 ### 13.4 Freshness rules
 
+- Re-processing a jump moves the existing processed folder to `output/.trash/` before creating the new one.
 - Re-processing a jump discards its share link and sent record, because the files changed and the old link is stale.
 - Merged jumps start unpublished, with no link and no sent record.
 - Re-uploading replaces the share link and resets the sent record for the same reason.
 
 ### 13.5 Secrets
 
-- Storage and mail credentials live in environment configuration only. They are never written into the workspace files or committed to version control.
+- NAS session ID (`sessionId`), hostname, and username are stored in `output/.status/nas.json`. Password is never written to disk.
+- On app restart, the stored session ID is reused if still valid on the NAS. If expired, the user is prompted to re-enter credentials.
+- Mail credentials removed — email uses prefilled `mailto:` link, user sends manually.
+
+### 13.6 NAS connection
+
+- On first upload (or when no valid session exists), a connection dialog appears asking for NAS hostname, username, and password.
+- On successful login, the session ID is saved to `output/.status/nas.json` (password is not saved).
+- On app restart, the stored session ID is validated. If still active, connection is ready without re-login. If expired, the login dialog reappears.
+- The user can disconnect or update credentials, which clears the stored session.
+
+### 13.7 NAS folder browser
+
+- Custom visual file-tree browser displays NAS folder structure.
+- Folders expand/collapse on click.
+- "Create Folder" button allows creating new folders inline.
+- User selects a destination folder for processed uploads.
+- Selected folder stored in `output/.status/nas.json` as default destination.
+- Future uploads go directly to default folder (unless user changes it).
+
+### 13.8 Upload progress
+
+- Each file being uploaded displays a progress bar with percentage.
+- Upload uses 10 MB chunks for accurate progress calculation.
+- Overall upload status shows which file is currently uploading.
+- On failure, upload retries from beginning of failed file.
