@@ -125,8 +125,8 @@ const uploadFile = async (
   const stat = fs.statSync(localPath)
   const totalBytes = stat.size
   const totalChunks = Math.max(1, Math.ceil(totalBytes / CHUNK_SIZE))
-
   const fd = fs.openSync(localPath, 'r')
+
   try {
     for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
       const offset = chunkIndex * CHUNK_SIZE
@@ -218,3 +218,4 @@ export {
   walkFiles
 }
 export type { DsmConfig, PublishArgs, UploadProgress }
+

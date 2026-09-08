@@ -401,7 +401,9 @@ The VideoCropper component lives inside the PreviewDrawer (right panel), directl
 
 - React Router 8 Framework Mode, SSR, `app/routes.ts` + `app/routes/` modules, `import from ./+types/...`.
 - Arrow functions only, `type` over `interface`, never `any`, all exports at end, inferred returns.
-- Data schemas (manifest, etc.) use Zod for runtime validation; types are inferred via `z.infer<typeof schema>`.
+- Never explicitly type function return types — let TypeScript infer them.
+- Data schemas use Zod for runtime validation; types are inferred via `z.infer<typeof schema>` — never defined separately.
+- Write the cleanest, most reusable, most readable, most reduced code possible — no verbosity, no redundancy.
 - Scripts use TypeScript with `tsx` for direct execution.
 - `npm run check` (`typecheck` + `format:check` + `lint`) must pass before commit.
 - "export" keywords must be at the end of the file and not before a const/variable, function or types
