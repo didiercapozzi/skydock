@@ -1,18 +1,16 @@
 // @vitest-environment node
 import * as fs from 'node:fs'
-import * as os from 'node:os'
 import * as path from 'node:path'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { action } from '../../app/routes/api.scan'
-
-const createTmpDir = (): string => fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-api-scan-test-'))
+import { createTmpDir } from './fixtures'
 
 describe('api/scan (truthful, no UI mock)', () => {
   let tmpDir: string
   let originalOutputDir: string | undefined
 
   beforeEach(() => {
-    tmpDir = createTmpDir()
+    tmpDir = createTmpDir('skydock-api-scan-test-')
     originalOutputDir = process.env.SKYDOCK_OUTPUT_DIR
     process.env.SKYDOCK_OUTPUT_DIR = tmpDir
   })

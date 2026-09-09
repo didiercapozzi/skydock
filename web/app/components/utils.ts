@@ -18,8 +18,19 @@ const formatTime = (epoch: number) =>
 
 const getJumpBounds = (jump: ManifestJump) => {
   if (jump.files.length === 0) return { start: 0, end: 0 }
-  const times = jump.files.map((f) => f.mtime)
-  return { start: Math.min(...times), end: Math.max(...times) }
+  let start = Infinity
+  let end = -Infinity
+  for (const f of jump.files) {
+    if (f.mtime < start) start = f.mtime
+    if (f.mtime > end) end = f.mtime
+  }
+  return { start, end }
+}
+
+const minFileMtime = (files: Array<{ mtime: number }>) => {
+  let min = Infinity
+  for (const f of files) if (f.mtime < min) min = f.mtime
+  return min === Infinity ? 0 : min
 }
 
 const getJumpDate = (jump: ManifestJump) => jump.day ?? ''
@@ -59,7 +70,7 @@ const getThumbUrl = (filePath: string, seekSeconds: number, width = 80) => {
 }
 
 const getDropIndex = (cardEl: HTMLElement, clientY: number) => {
-  const rows = Array.from(cardEl.querySelectorAll('[data-file-row]'))
+  const rows = Array.from(cardEl.querySelectorAll('[data-file-row],[data-file-grid-item]'))
   for (let i = 0; i < rows.length; i++) {
     const rect = rows[i].getBoundingClientRect()
     if (clientY < rect.top + rect.height / 2) return i
@@ -76,5 +87,6 @@ export {
   getJumpBounds,
   getJumpDate,
   groupJumpsByDay,
-  isVideoFile
+  isVideoFile,
+  minFileMtime
 }

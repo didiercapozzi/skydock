@@ -147,6 +147,18 @@ const parseExiftoolCsv = (csv: string) => {
   return map
 }
 
+const withRetry = async <T>(fn: () => Promise<T>, maxAttempts: number) => {
+  let lastError: Error | null = null
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await fn()
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error(String(e))
+    }
+  }
+  throw lastError ?? new Error('Retry failed with no attempts')
+}
+
 export {
   checkExiftool,
   countFiles,
@@ -175,5 +187,6 @@ export {
   sanitizeLabel,
   sortFilesByMtime,
   toISOString,
-  walkFiles
+  walkFiles,
+  withRetry
 }

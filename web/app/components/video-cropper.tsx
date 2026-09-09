@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 type VideoCropperProps = {
   duration: number
   currentTime: number
-  bufferedRanges: Array<{ start: number; end: number }>
+  bufferedRanges?: Array<{ start: number; end: number }>
   cropStart: number | null
   cropEnd: number | null
   zoom: number

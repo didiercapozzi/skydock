@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs'
-import * as os from 'node:os'
 import * as path from 'node:path'
+import { createTmpDir } from './fixtures'
 import {
   clearNasSession,
   loadNasSession,
@@ -11,13 +11,11 @@ import {
   updateDefaultFolder
 } from '../src/nas'
 
-const createTmpDir = (): string => fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-nas-test-'))
-
 describe('nas session storage', () => {
   let tmpDir: string
 
   beforeEach(() => {
-    tmpDir = createTmpDir()
+    tmpDir = createTmpDir('skydock-nas-test-')
   })
 
   afterEach(() => {
@@ -116,7 +114,7 @@ describe('loginWithSession', () => {
   }
 
   beforeEach(() => {
-    tmpDir = createTmpDir()
+    tmpDir = createTmpDir('skydock-nas-test-')
     mockDsm.login.mockClear()
     mockDsm.validate.mockClear()
   })

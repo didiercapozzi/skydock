@@ -51,7 +51,7 @@ const streamFile = (
       nodeStream.on('data', (chunk) => {
         if (destroyed) return
         try {
-          controller.enqueue(new Uint8Array(chunk as unknown as ArrayBuffer))
+          controller.enqueue(chunk)
         } catch {
           destroy()
         }

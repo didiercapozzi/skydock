@@ -109,6 +109,12 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const manifestFiles = manifest?.files ?? []
   const filesInJumps = new Set(jumps.flatMap((j) => j.files.map((f) => f.path)))
   const unassignedFiles = manifestFiles.filter((f) => !filesInJumps.has(f.path))
+  const pathCounts = new Map<string, number>()
+  for (const j of jumps) {
+    for (const f of j.files) pathCounts.set(f.path, (pathCounts.get(f.path) ?? 0) + 1)
+  }
+  const multiJumpPaths = new Set<string>()
+  for (const [p, c] of pathCounts) if (c > 1) multiJumpPaths.add(p)
   const { selection, selectedCount, handleSelect, clearSelection } = useSelection(
     jumps,
     unassignedFiles
@@ -125,7 +131,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     setVideoState,
     closePreview,
     setPreview
-  } = usePreview(jumps, unassignedFiles, updateJumps, () => {})
+  } = usePreview(jumps, unassignedFiles, updateJumps)
   const {
     dropDialog,
     dropHint,
@@ -310,6 +316,18 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
       })
       return
     }
+    const parsedOk = z
+      .object({ ok: z.literal(true) })
+      .passthrough()
+      .safeParse(manifestFetcher.data)
+    if (parsedOk.success) {
+      queueMicrotask(() => {
+        setManifestError(null)
+        setProcessingId(null)
+        setUploadingId(null)
+      })
+      return
+    }
     queueMicrotask(() => {
       setProcessingId(null)
       setUploadingId(null)
@@ -403,6 +421,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           groups={jumpsByDay}
           compareIds={compareIds}
           selection={selection}
+          multiJumpPaths={multiJumpPaths}
           previewedPath={preview?.files[preview.index]?.path ?? null}
           dropHint={dropHint}
           viewMode={viewMode}
@@ -413,9 +432,9 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           onPreview={handlePreview}
           onDragStart={(e, groupId, paths) => handleDragStart(e, groupId, paths, selection)}
           onDragEnd={handleDragEnd}
-          onDrop={(e, id) => handleDrop(e, id, jumps, updateJumps, updateJumps)}
+          onDrop={(e, id) => handleDrop(e, id, jumps, updateJumps)}
           onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
+          onDragLeave={(_jumpId: string) => handleDragLeave()}
           onPassengerChange={handlePassengerChange}
           onLabelChange={handleLabelChange}
           onProcess={handleProcess}
@@ -465,12 +484,8 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           <DropActionDialog
             x={dropDialog.x}
             y={dropDialog.y}
-            onMove={() =>
-              executeDrop('move', jumps, manifestFiles, updateJumps, updateJumps, clearSelection)
-            }
-            onCopy={() =>
-              executeDrop('copy', jumps, manifestFiles, updateJumps, updateJumps, clearSelection)
-            }
+            onMove={() => executeDrop('move', jumps, manifestFiles, updateJumps, clearSelection)}
+            onCopy={() => executeDrop('copy', jumps, manifestFiles, updateJumps, clearSelection)}
             onCancel={() => setDropDialog(null)}
           />
         )}

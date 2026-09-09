@@ -120,6 +120,11 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       const allFiles = walkFiles(localDir)
       const sortedFiles = [...allFiles].sort()
       const sortedManifestFiles = [...target.files].sort((a, b) => a.mtime - b.mtime)
+      const fileIndexByName = new Map<string, number>()
+      for (let i = 0; i < sortedFiles.length; i++) {
+        const base = sortedFiles[i].split('/').pop() ?? sortedFiles[i]
+        if (!fileIndexByName.has(base)) fileIndexByName.set(base, i)
+      }
       const totalFiles = sortedFiles.length
       try {
         clearUploadProgress(getOutputDir())
@@ -132,8 +137,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
             remoteDir: `${remoteBase}/${baseName}`
           },
           (p) => {
-            const idx = sortedFiles.findIndex((f) => f.endsWith(p.filename))
-            const fileIndex = idx >= 0 ? idx : 0
+            const fileIndex = fileIndexByName.get(p.filename) ?? 0
             const originalFilename = sortedManifestFiles[fileIndex]?.filename ?? p.filename
             writeUploadProgress(
               {
@@ -143,7 +147,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
                 totalBytes: p.totalBytes,
                 fileIndex,
                 totalFiles,
-                state: p.bytesUploaded >= p.totalBytes ? 'uploading' : 'uploading'
+                state: 'uploading'
               },
               getOutputDir()
             )

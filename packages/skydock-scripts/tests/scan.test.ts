@@ -1,41 +1,26 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs'
-import * as os from 'node:os'
 import * as path from 'node:path'
 import type { Manifest } from '../src/types'
-
-const execSyncMock = vi.hoisted(() => vi.fn())
+import {
+  createTmpDir,
+  execSyncMock,
+  makeExiftoolMock,
+  makeFfmpegMock,
+  writeTempFile
+} from './fixtures'
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>()
   return {
     ...actual,
-    execSync: execSyncMock
+    execSync: (await import('./fixtures')).execSyncMock
   }
 })
 
 const { scanMedia } = await import('../src/scan')
 const { loadManifest, saveManifest } = await import('../src/manifest')
-
-const createTmpDir = (): string => fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-scan-test-'))
-
-const writeTempFile = (dir: string, name: string, content?: Buffer): string => {
-  const filePath = path.join(dir, name)
-  fs.mkdirSync(path.dirname(filePath), { recursive: true })
-  fs.writeFileSync(filePath, content || Buffer.alloc(1024, 1))
-  return filePath
-}
-
-const makeFfmpegMock = () => {
-  return (cmd: string | Buffer): Buffer => {
-    const cmdStr = String(cmd)
-    if (cmdStr.includes('command -v exiftool')) {
-      throw new Error('command not found')
-    }
-    return Buffer.from('')
-  }
-}
 
 const toLocalExifTag = (epoch: number): string => {
   const d = new Date(epoch * 1000)
@@ -45,33 +30,12 @@ const toLocalExifTag = (epoch: number): string => {
   return `${local.getUTCFullYear()}:${pad(local.getUTCMonth() + 1)}:${pad(local.getUTCDate())} ${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())}:${pad(local.getUTCSeconds())}`
 }
 
-const makeExiftoolMock = (timeMap: Map<string, string>) => {
-  return (cmd: string | Buffer, opts?: { encoding?: string }): string | Buffer => {
-    const cmdStr = String(cmd)
-    if (cmdStr.includes('command -v exiftool')) {
-      return Buffer.from('/usr/bin/exiftool')
-    }
-    if (cmdStr.includes('exiftool')) {
-      if (opts?.encoding === 'utf-8') {
-        const lines = ['SourceFile,DateTimeOriginal,CreateDate,MediaCreateDate']
-        for (const [file, tag] of timeMap) {
-          const exifDate = tag.replace(/-/g, ':').replace(' ', ' ')
-          lines.push(`"${file}","${exifDate}","${exifDate}","${exifDate}"`)
-        }
-        return lines.join('\n')
-      }
-      return Buffer.from('')
-    }
-    return Buffer.from('')
-  }
-}
-
 describe('scanMedia', () => {
   let tmpDir: string
   let outputDir: string
 
   beforeEach(() => {
-    tmpDir = createTmpDir()
+    tmpDir = createTmpDir('skydock-scan-test-')
     outputDir = path.join(tmpDir, 'output')
     fs.mkdirSync(outputDir, { recursive: true })
     execSyncMock.mockReset()
@@ -84,13 +48,27 @@ describe('scanMedia', () => {
 
   it('returns zeros when original_files does not exist', async () => {
     const result = await scanMedia({ outputDir })
-    expect(result).toEqual({ added: 0, removed: 0, unchanged: true, fileCount: 0, jumpCount: 0 })
+    expect(result).toEqual({
+      added: 0,
+      removed: 0,
+      moved: 0,
+      unchanged: true,
+      fileCount: 0,
+      jumpCount: 0
+    })
   })
 
   it('returns zeros when no media files found', async () => {
     fs.mkdirSync(path.join(outputDir, 'original_files'), { recursive: true })
     const result = await scanMedia({ outputDir })
-    expect(result).toEqual({ added: 0, removed: 0, unchanged: true, fileCount: 0, jumpCount: 0 })
+    expect(result).toEqual({
+      added: 0,
+      removed: 0,
+      moved: 0,
+      unchanged: true,
+      fileCount: 0,
+      jumpCount: 0
+    })
   })
 
   it('creates fresh manifest with video files and computes id', async () => {
@@ -398,7 +376,14 @@ describe('scanMedia', () => {
 
     const result = await scanMedia({ outputDir })
 
-    expect(result).toEqual({ added: 0, removed: 0, unchanged: true, fileCount: 0, jumpCount: 0 })
+    expect(result).toEqual({
+      added: 0,
+      removed: 0,
+      moved: 0,
+      unchanged: true,
+      fileCount: 0,
+      jumpCount: 0
+    })
   })
 
   it('supports video extensions mp4 and mov', async () => {

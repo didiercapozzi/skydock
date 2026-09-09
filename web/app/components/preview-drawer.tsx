@@ -1,11 +1,10 @@
 import { useEffect, useRef } from 'react'
 import type { ManifestFile } from './types'
-import { VideoCropper } from './video-cropper'
 import { formatSize, formatTime, getFileUrl, getThumbUrl, isVideoFile } from './utils'
+import { VideoCropper } from './video-cropper'
 
 type VideoRef = {
   seek: (time: number) => void
-  getBuffered: () => Array<{ start: number; end: number }>
 }
 
 const PreviewDrawer = ({
@@ -59,15 +58,6 @@ const PreviewDrawer = ({
       onVideoRef({
         seek: (time: number) => {
           if (videoRef.current) videoRef.current.currentTime = time
-        },
-        getBuffered: () => {
-          if (!videoRef.current) return []
-          const v = videoRef.current
-          const ranges: Array<{ start: number; end: number }> = []
-          for (let i = 0; i < v.buffered.length; i++) {
-            ranges.push({ start: v.buffered.start(i), end: v.buffered.end(i) })
-          }
-          return ranges
         }
       })
     }
@@ -80,7 +70,7 @@ const PreviewDrawer = ({
   return (
     <div
       data-preview-drawer='true'
-      className='fixed top-0 right-0 bottom-0 w-[420px] max-w-[90vw] bg-white border-l border-gray-200 shadow-2xl z-40 flex flex-col'>
+      className='fixed top-0 right-0 bottom-0 w-[33.333vw] bg-white border-l border-gray-200 shadow-2xl z-40 flex flex-col'>
       <div className='flex items-center justify-between px-4 py-3 border-b border-gray-100'>
         <span className='font-mono truncate text-xs text-gray-700'>{file.filename}</span>
         <button
@@ -117,7 +107,6 @@ const PreviewDrawer = ({
             <VideoCropper
               duration={duration}
               currentTime={currentTime}
-              bufferedRanges={[]}
               cropStart={cropStart}
               cropEnd={cropEnd}
               zoom={zoom}

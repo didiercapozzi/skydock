@@ -71,8 +71,8 @@ export {
   dsmListFolder,
   dsmLogin,
   dsmLogout,
+  dsmRequestUrl,
   dsmResponseSchema,
-  dsmUrl,
   dsmValidateSession,
   encryptPasswordForStorage,
   listNasFolder,
@@ -89,16 +89,12 @@ export { writeStatus, scheduleIdle } from './status'
 export {
   checkExiftool,
   countFiles,
-  daySchema,
   dayToIso,
-  DEFAULT_MAX_FIND_DEPTH,
   fileMatchesExisting,
   findMediaFiles,
   formatDay,
   formatTodayDeCh,
-  formatTimestamp,
   getExtension,
-  getExtensionSafe,
   getManifestPath,
   getOutputDir,
   getStatusDir,
@@ -106,18 +102,16 @@ export {
   hasMediaFiles,
   isCliModule,
   isoToDay,
-  isMediaFile,
-  isPhotoFile,
   isVideoFile,
   parseDayEpoch,
   parseExiftoolCsv,
-  sanitizeLabel,
   sortFilesByMtime,
   toISOString,
-  walkFiles
+  walkFiles,
+  withRetry
 } from './utils'
 export { buildExifMap } from './lib/exif'
-export { withStatus } from './lib/cli'
+export { writeJsonAtomic } from './lib/fs'
 
 export { processMedia } from './process'
 export type { ProcessOptions } from './process'

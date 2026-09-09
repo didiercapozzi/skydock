@@ -3,7 +3,6 @@ import { createSafeRoutingEngine, createSafeRoutingHooks } from '../../../packag
 
 const routingEngine = createSafeRoutingEngine<Register>()
 
-const { useSafeFetcher, useSafeForm, useSafeSearchParams, useSafeSubmit } =
-  createSafeRoutingHooks(routingEngine)
+const { useSafeFetcher } = createSafeRoutingHooks(routingEngine)
 
-export { routingEngine, useSafeFetcher, useSafeForm, useSafeSearchParams, useSafeSubmit }
+export { routingEngine, useSafeFetcher }

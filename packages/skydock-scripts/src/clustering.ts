@@ -9,7 +9,6 @@ const reclusterJumps = (manifest: Manifest, preservedIds?: Set<string>) => {
       let n = 1
       while (seenIds.has(`jump_${n}`)) n++
       jump.id = `jump_${n}`
-      jump.label = `Jump ${n}`
     }
     seenIds.add(jump.id)
   }
@@ -45,31 +44,36 @@ const reclusterJumps = (manifest: Manifest, preservedIds?: Set<string>) => {
   }
   if (current.length > 0) groups.push(current)
 
-  const allGroups = [...preservedGroups, ...groups].sort((a, b) => {
-    const aMin = Math.min(...a.map((f) => f.mtime))
-    const bMin = Math.min(...b.map((f) => f.mtime))
-    return aMin - bMin
-  })
+  const groupMin = (files: ManifestFile[]) => {
+    let min = Infinity
+    for (const f of files) if (f.mtime < min) min = f.mtime
+    return min
+  }
+  const allUnsorted = [...preservedGroups, ...groups]
+  const mins = new Map<ManifestFile[], number>()
+  for (const g of allUnsorted) mins.set(g, groupMin(g))
+  const allGroups = allUnsorted.sort((a, b) => (mins.get(a) ?? 0) - (mins.get(b) ?? 0))
 
   const mergedGroups: ManifestFile[][] = []
+  let runningMax = -Infinity
   for (const group of allGroups) {
-    if (mergedGroups.length === 0) {
-      mergedGroups.push([...group].sort((a, b) => a.mtime - b.mtime))
+    const curMin = mins.get(group) ?? Infinity
+    const last = mergedGroups[mergedGroups.length - 1]
+    if (last && curMin - runningMax < JUMP_GAP_SECONDS) {
+      last.push(...group)
+      for (const f of group) if (f.mtime > runningMax) runningMax = f.mtime
     } else {
-      const last = mergedGroups[mergedGroups.length - 1]
-      const lastMax = Math.max(...last.map((f) => f.mtime))
-      const curMin = Math.min(...group.map((f) => f.mtime))
-      if (curMin - lastMax < JUMP_GAP_SECONDS) {
-        last.push(...group)
-        last.sort((a, b) => a.mtime - b.mtime)
-      } else {
-        mergedGroups.push([...group].sort((a, b) => a.mtime - b.mtime))
-      }
+      mergedGroups.push([...group])
+      runningMax = -Infinity
+      for (const f of group) if (f.mtime > runningMax) runningMax = f.mtime
     }
   }
+  for (const g of mergedGroups) g.sort((a, b) => a.mtime - b.mtime)
 
   const previousById = new Map<string, ManifestJump>()
+  const jumpById = new Map<string, ManifestJump>()
   for (const jump of manifest.jumps) {
+    jumpById.set(jump.id, jump)
     for (const file of jump.files) if (file.id) previousById.set(file.id, jump)
   }
 
@@ -104,16 +108,19 @@ const reclusterJumps = (manifest: Manifest, preservedIds?: Set<string>) => {
     for (const [jumpId, count] of counts) {
       if (count > dominantCount) {
         dominantCount = count
-        dominant = manifest.jumps.find((j) => j.id === jumpId)
+        dominant = jumpById.get(jumpId)
       }
     }
 
-    const isPreserved = files.some((f) => f.id && preservedFileIds.has(f.id))
+    const groupIds = new Set<string>()
+    for (const f of files) if (f.id) groupIds.add(f.id)
+    const isPreserved = [...groupIds].some((id) => preservedFileIds.has(id))
     const preservedJump = isPreserved
-      ? [...preservedJumps].find((j) => j.files.some((f) => files.includes(f)))
+      ? [...preservedJumps].find((j) => j.files.some((f) => f.id && groupIds.has(f.id)))
       : undefined
 
-    const minMtime = Math.min(...files.map((f) => f.mtime))
+    let minMtime = Infinity
+    for (const f of files) if (f.mtime < minMtime) minMtime = f.mtime
     const day = formatDay(minMtime)
 
     if (preservedJump) {
@@ -142,17 +149,16 @@ const reclusterJumps = (manifest: Manifest, preservedIds?: Set<string>) => {
 }
 
 const shiftFiles = (manifest: Manifest, ids: Set<string>, offsetSeconds: number) => {
-  for (const file of manifest.files) {
-    if (!file.id || !ids.has(file.id)) continue
+  const shifted = new Set<ManifestFile>()
+  const shiftOne = (file: ManifestFile) => {
+    if (!file.id || !ids.has(file.id) || shifted.has(file)) return
+    shifted.add(file)
     if (file.originalMtime === undefined) file.originalMtime = file.mtime
     file.mtime += offsetSeconds
   }
+  for (const file of manifest.files) shiftOne(file)
   for (const jump of manifest.jumps) {
-    for (const file of jump.files) {
-      if (!file.id || !ids.has(file.id)) continue
-      if (file.originalMtime === undefined) file.originalMtime = file.mtime
-      file.mtime += offsetSeconds
-    }
+    for (const file of jump.files) shiftOne(file)
   }
 }
 

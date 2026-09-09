@@ -1,6 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { z } from 'zod'
+import { writeJsonAtomic } from './lib/fs'
 import { getStatusDir, toISOString } from './utils'
 import type { TaskState } from './types'
 
@@ -15,13 +16,7 @@ const statusPayloadSchema = z
   })
   .passthrough()
 
-const writeStatus = (
-  task: string,
-  state: TaskState,
-  message: string,
-  outputDir?: string,
-  extra?: Record<string, unknown>
-) => {
+const writeStatus = (task: string, state: TaskState, message: string, outputDir?: string) => {
   const statusDir = getStatusDir(outputDir)
   fs.mkdirSync(statusDir, { recursive: true })
 
@@ -30,17 +25,14 @@ const writeStatus = (
     state,
     message,
     updatedAt: now,
-    startedAt: now,
-    ...extra
+    startedAt: now
   }
 
-  const tmpPath = path.join(statusDir, `${task}.json.tmp`)
   const finalPath = path.join(statusDir, `${task}.json`)
 
   try {
     statusPayloadSchema.parse(payload)
-    fs.writeFileSync(tmpPath, JSON.stringify(payload))
-    fs.renameSync(tmpPath, finalPath)
+    writeJsonAtomic(finalPath, payload)
   } catch {}
 }
 
@@ -48,14 +40,12 @@ const scheduleIdle = (task: string, delayMs: number, outputDir?: string) => {
   const timer = setTimeout(() => {
     const now = toISOString()
     const statusDir = getStatusDir(outputDir)
-    const tmpPath = path.join(statusDir, `${task}.json.tmp`)
     const finalPath = path.join(statusDir, `${task}.json`)
     const payload = { state: 'idle' as const, message: 'Idle', updatedAt: now }
 
     try {
       statusPayloadSchema.parse(payload)
-      fs.writeFileSync(tmpPath, JSON.stringify(payload))
-      fs.renameSync(tmpPath, finalPath)
+      writeJsonAtomic(finalPath, payload)
     } catch {}
   }, delayMs)
 

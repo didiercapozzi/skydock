@@ -33,7 +33,7 @@ const useUploadProgress = (jumpId: string | null) => {
       } catch {}
     }
     queueMicrotask(fetchOnce)
-    const id = setInterval(fetchOnce, 300)
+    const id = setInterval(fetchOnce, 1000)
     return () => {
       cancelled = true
       clearInterval(id)

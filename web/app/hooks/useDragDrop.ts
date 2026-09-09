@@ -26,8 +26,7 @@ type UseDragDropReturn = {
     e: React.DragEvent,
     targetJumpId: string,
     jumps: ManifestJump[],
-    saveJumps: (next: ManifestJump[]) => void,
-    setJumps: (next: ManifestJump[]) => void
+    onJumpsChange: (next: ManifestJump[]) => void
   ) => void
   handleDragOver: (e: React.DragEvent, targetJumpId: string) => void
   handleDragLeave: () => void
@@ -36,8 +35,7 @@ type UseDragDropReturn = {
     action: 'move' | 'copy',
     jumps: ManifestJump[],
     manifestFiles: ManifestFile[],
-    setJumps: (next: ManifestJump[]) => void,
-    saveJumps: (next: ManifestJump[]) => void,
+    onJumpsChange: (next: ManifestJump[]) => void,
     clearSelection: () => void
   ) => void
   setDropDialog: (next: DropDialog | null) => void
@@ -76,12 +74,10 @@ const useDragDrop = () => {
     e: React.DragEvent,
     targetJumpId: string,
     jumps: ManifestJump[],
-    saveJumps: (next: ManifestJump[]) => void,
-    setJumps: (next: ManifestJump[]) => void
+    onJumpsChange: (next: ManifestJump[]) => void
   ) => {
     const data = dragDataRef.current
     if (!data) return
-    dragDataRef.current = null
     setDropHint(null)
     const target = jumps.find((j) => j.id === targetJumpId)
     if (target?.processed === true) return
@@ -90,13 +86,12 @@ const useDragDrop = () => {
       const toIndex = getDropIndex(e.currentTarget as HTMLElement, e.clientY)
       const paths = data.groups[targetJumpId]
       const next = reorderFilesInJump(jumps, targetJumpId, paths, toIndex)
-      setJumps(next)
-      saveJumps(next)
+      dragDataRef.current = null
+      onJumpsChange(next)
       return
     }
-    const rect = e.currentTarget.getBoundingClientRect()
     setDropDialog({
-      x: e.clientX - rect.left + rect.left,
+      x: e.clientX,
       y: e.clientY,
       groups: data.groups,
       targetJumpId
@@ -125,17 +120,16 @@ const useDragDrop = () => {
     action: 'move' | 'copy',
     jumps: ManifestJump[],
     manifestFiles: ManifestFile[],
-    setJumps: (next: ManifestJump[]) => void,
-    saveJumps: (next: ManifestJump[]) => void,
+    onJumpsChange: (next: ManifestJump[]) => void,
     clearSelection: () => void
   ) => {
     if (!dropDialog) return
     const { groups, targetJumpId } = dropDialog
     const next = moveFilesBetweenJumps(jumps, manifestFiles, groups, targetJumpId, action)
-    setJumps(next)
+    dragDataRef.current = null
+    onJumpsChange(next)
     clearSelection()
     setDropDialog(null)
-    saveJumps(next)
   }
 
   return {

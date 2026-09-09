@@ -10,6 +10,7 @@ import { formatTime, getJumpBounds, isVideoFile } from './utils'
 const JumpCard = ({
   jump,
   selection,
+  multiJumpPaths,
   previewedPath,
   dropIndex,
   onSelect,
@@ -35,6 +36,7 @@ const JumpCard = ({
 }: {
   jump: ManifestJump
   selection: SelectionMap
+  multiJumpPaths: Set<string>
   previewedPath: string | null
   dropIndex: number | null
   onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
@@ -480,7 +482,7 @@ const JumpCard = ({
                       groupId={jump.id}
                       selected={!!selection[jump.id]?.[file.path]}
                       isPreviewed={previewedPath === file.path}
-                      isInMultipleJumps={false}
+                      isInMultipleJumps={multiJumpPaths.has(file.path)}
                       hasSelection={locked ? false : hasSelection}
                       uploadPercent={uploadPercent}
                       uploadState={uploadState}

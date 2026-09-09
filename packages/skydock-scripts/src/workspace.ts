@@ -26,7 +26,7 @@ const buildJumpBaseName = (
   minMtime: number
 ) => {
   const raw =
-    passenger && passenger.firstname.trim() !== '' && passenger.lastname.trim() !== ''
+    hasCompletePassenger(passenger) && passenger
       ? `${passenger.firstname.trim()}_${passenger.lastname.trim()}`
       : label
   const stem = raw

@@ -1,14 +1,17 @@
 import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
+import * as http from 'node:http'
+import * as https from 'node:https'
 import * as path from 'node:path'
-import * as stream from 'node:stream'
 import { z } from 'zod'
 import { walkFiles } from './lib/fs'
+import { withRetry } from './utils'
 import {
   createShareLink,
   dsmConfigSchema,
-  dsmFetch,
   dsmLogin,
+  dsmRequestUrl,
+  dsmResponseSchema,
   dsmValidateSession,
   loginWithSession
 } from './nas'
@@ -30,6 +33,24 @@ type UploadProgress = z.infer<typeof uploadProgressSchema>
 const remoteJoin = (...parts: string[]) => parts.join('/').replace(/\/+/g, '/')
 
 const PROGRESS_REPORT_INTERVAL = 1024 * 1024
+
+const PROGRESS_FLUSH_FRACTION = 0.95
+
+const readResponseJson = (res: http.IncomingMessage) =>
+  new Promise<unknown>((resolve, reject) => {
+    const chunks: Array<Buffer> = []
+    res.on('data', (chunk: string | Buffer) =>
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+    )
+    res.on('end', () => {
+      try {
+        resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')))
+      } catch (e) {
+        reject(e instanceof Error ? e : new Error(String(e)))
+      }
+    })
+    res.on('error', reject)
+  })
 
 const uploadFile = async (
   host: string,
@@ -53,70 +74,74 @@ const uploadFile = async (
   const epilogue = Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8')
   const contentLength = preamble.length + totalBytes + epilogue.length
 
-  const sendOnce = async () => {
-    let fileSent = 0
-    let lastReported = 0
-    const report = (sent: number) => {
-      const clamped = Math.max(0, Math.min(totalBytes, sent))
-      if (clamped === totalBytes || clamped - lastReported >= PROGRESS_REPORT_INTERVAL) {
-        lastReported = clamped
-        onProgress?.({ filename, bytesUploaded: clamped, totalBytes })
+  const sendOnce = () =>
+    new Promise<void>((resolve, reject) => {
+      let settled = false
+      const done = (err?: Error) => {
+        if (settled) return
+        settled = true
+        if (err) reject(err)
+        else resolve()
       }
-    }
-    const nodeStream = fs.createReadStream(localPath, { highWaterMark: 1024 * 1024 })
-    const webStream = stream.Readable.toWeb(nodeStream)
-    const body = new ReadableStream({
-      async start(controller) {
-        controller.enqueue(preamble)
-        const reader = webStream.getReader()
-        try {
-          for (;;) {
-            const next = await reader.read()
-            if (next.done) break
-            fileSent += next.value.byteLength
-            report(fileSent)
-            controller.enqueue(next.value)
-          }
-        } catch (err) {
-          nodeStream.destroy()
-          controller.error(err)
-          return
-        } finally {
-          reader.releaseLock()
-        }
-        controller.enqueue(epilogue)
-        controller.close()
-      },
-      cancel() {
-        nodeStream.destroy()
-      }
-    })
-    const res = await dsmFetch(
-      host,
-      { api: 'SYNO.FileStation.Upload', method: 'upload', version: '2', _sid: sid },
-      body,
-      {
-        headers: {
-          'Content-Type': `multipart/form-data; boundary=${boundary}`,
-          'Content-Length': String(contentLength)
-        }
-      }
-    )
-    if (!res.success) throw new Error(`Upload failed for ${filename}`)
-  }
 
-  let lastError: Error | null = null
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      await sendOnce()
-      lastError = null
-      break
-    } catch (e) {
-      lastError = e instanceof Error ? e : new Error(String(e))
-    }
-  }
-  if (lastError) throw lastError
-  onProgress?.({ filename, bytesUploaded: totalBytes, totalBytes })
+      const cap = Math.floor(totalBytes * PROGRESS_FLUSH_FRACTION)
+      let fileFlushed = 0
+      let lastReported = 0
+      const report = (flushed: number) => {
+        const scaled = totalBytes === 0 ? 0 : Math.floor((flushed * cap) / totalBytes)
+        if (scaled >= cap || scaled - lastReported >= PROGRESS_REPORT_INTERVAL) {
+          lastReported = scaled
+          onProgress?.({ filename, bytesUploaded: scaled, totalBytes })
+        }
+      }
+
+      const endpoint = dsmRequestUrl(host, {
+        api: 'SYNO.FileStation.Upload',
+        method: 'upload',
+        version: '2',
+        _sid: sid
+      })
+      const headers = {
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        'Content-Length': String(contentLength)
+      }
+      const handleResponse = (res: http.IncomingMessage) => {
+        readResponseJson(res).then((json) => {
+          const parsed = dsmResponseSchema.safeParse(json)
+          if (parsed.success && parsed.data.success) {
+            onProgress?.({ filename, bytesUploaded: totalBytes, totalBytes })
+            done()
+          } else done(new Error(`Upload failed for ${filename}`))
+        }, done)
+      }
+      const req =
+        endpoint.protocol === 'https:'
+          ? https.request(endpoint, { method: 'POST', headers }, handleResponse)
+          : http.request(endpoint, { method: 'POST', headers }, handleResponse)
+      req.on('error', (err) => {
+        nodeStream.destroy()
+        done(err instanceof Error ? err : new Error(String(err)))
+      })
+
+      const nodeStream = fs.createReadStream(localPath, { highWaterMark: 1024 * 1024 })
+      nodeStream.on('error', (err) => {
+        req.destroy()
+        done(err)
+      })
+      req.write(preamble)
+      nodeStream.on('data', (chunk: string | Buffer) => {
+        nodeStream.pause()
+        const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+        req.write(buf, () => {
+          fileFlushed += buf.byteLength
+          report(fileFlushed)
+          nodeStream.resume()
+        })
+      })
+      nodeStream.on('end', () => req.end(epilogue))
+    })
+
+  await withRetry(sendOnce, 3)
 }
 
 const publishJump = async (args: PublishArgs, onProgress?: (progress: UploadProgress) => void) => {

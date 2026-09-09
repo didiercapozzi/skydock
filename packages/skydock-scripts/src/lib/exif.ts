@@ -8,6 +8,10 @@ type BuildExifOptions = {
   parse: (raw: string) => string | null
 }
 
+const EXIF_BATCH_SIZE = 500
+
+const escapeShellArg = (value: string) => `"${value.replace(/(["$`\\])/g, '\\$1')}"`
+
 const buildExifMap = (files: string[], options: BuildExifOptions) => {
   const map = new Map<string, string>()
 
@@ -18,18 +22,21 @@ const buildExifMap = (files: string[], options: BuildExifOptions) => {
 
   const run = (targets: string[], tags: string[]) => {
     if (targets.length === 0 || tags.length === 0) return
-    try {
-      const tagArgs = tags.join(' ')
-      const fileArgs = targets.map((f) => `"${f}"`).join(' ')
-      const csv = childProcess.execSync(`exiftool -s3 ${tagArgs} -csv ${fileArgs}`, {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'ignore']
-      })
-      for (const [file, raw] of parseExiftoolCsv(csv)) {
-        const parsed = options.parse(raw)
-        if (parsed) map.set(file, parsed)
-      }
-    } catch {}
+    for (let i = 0; i < targets.length; i += EXIF_BATCH_SIZE) {
+      const batch = targets.slice(i, i + EXIF_BATCH_SIZE)
+      try {
+        const tagArgs = tags.join(' ')
+        const fileArgs = batch.map(escapeShellArg).join(' ')
+        const csv = childProcess.execSync(`exiftool -s3 ${tagArgs} -csv ${fileArgs}`, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'ignore']
+        })
+        for (const [file, raw] of parseExiftoolCsv(csv)) {
+          const parsed = options.parse(raw)
+          if (parsed) map.set(file, parsed)
+        }
+      } catch {}
+    }
   }
 
   run(jpgFiles, options.photoTags)

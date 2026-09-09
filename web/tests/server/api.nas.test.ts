@@ -1,28 +1,16 @@
 // @vitest-environment node
 import * as fs from 'node:fs'
-import * as os from 'node:os'
 import * as path from 'node:path'
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { action } from '../../app/routes/api.nas'
-
-const createTmpDir = (): string => fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-api-nas-test-'))
-
-const jsonResponse = (body: unknown) =>
-  new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } })
-
-const stubFetch = (handler: (url: string, init?: RequestInit) => Response | Promise<Response>) => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (url: string, init?: RequestInit) => handler(url, init))
-  )
-}
+import { createTmpDir, jsonResponse, stubFetch } from './fixtures'
 
 describe('api/nas file persistence (truthful, no UI mock)', () => {
   let tmpDir: string
   let originalOutputDir: string | undefined
 
   beforeEach(() => {
-    tmpDir = createTmpDir()
+    tmpDir = createTmpDir('skydock-api-nas-test-')
     originalOutputDir = process.env.SKYDOCK_OUTPUT_DIR
     process.env.SKYDOCK_OUTPUT_DIR = tmpDir
   })

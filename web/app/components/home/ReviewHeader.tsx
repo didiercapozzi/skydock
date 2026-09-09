@@ -27,7 +27,7 @@ const ReviewHeader = ({
         <div>
           <h1 className='text-3xl font-bold text-gray-900'>Review Proposed Jumps</h1>
           <p className='text-gray-500 mt-2'>
-            2026-08-24 — {jumpCount} jumps, {fileCount} files
+            {jumpCount} jumps, {fileCount} files
           </p>
         </div>
         <div className='flex items-center gap-2'>

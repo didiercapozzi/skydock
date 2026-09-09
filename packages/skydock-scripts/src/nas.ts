@@ -2,6 +2,7 @@ import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { z } from 'zod'
+import { writeJsonAtomic } from './lib/fs'
 import { getStatusDir } from './utils'
 
 const nasSessionSchema = z.object({
@@ -68,7 +69,8 @@ const normalizeHost = (host: string): string => host.replace(/\/+$/, '')
 
 const dsmEntryUrl = (host: string): string => `${normalizeHost(host)}/webapi/entry.cgi`
 
-const dsmUrl = dsmEntryUrl
+const dsmRequestUrl = (host: string, params: Record<string, string>) =>
+  new URL(`${dsmEntryUrl(host)}?${new URLSearchParams(params)}`)
 
 type DsmFetchOptions = {
   headers?: Record<string, string>
@@ -87,7 +89,7 @@ const dsmFetch = async (
   const controller = options.timeoutMs ? new AbortController() : null
   const timer = controller ? setTimeout(() => controller.abort(), options.timeoutMs) : null
   try {
-    const url = `${dsmEntryUrl(host)}?${new URLSearchParams(params)}`
+    const url = dsmRequestUrl(host, params).toString()
     const init: DsmRequestInit = body
       ? { method: 'POST', headers: options.headers, body, duplex: options.duplex ?? 'half' }
       : {}
@@ -384,9 +386,7 @@ const saveNasSession = (session: NasSession, outputDir?: string): void => {
   nasSessionSchema.parse(session)
   const target = nasPath(outputDir)
   fs.mkdirSync(path.dirname(target), { recursive: true })
-  const tmp = `${target}.tmp`
-  fs.writeFileSync(tmp, JSON.stringify(session, null, 2))
-  fs.renameSync(tmp, target)
+  writeJsonAtomic(target, session)
   fs.chmodSync(target, 0o600)
 }
 
@@ -398,6 +398,37 @@ const clearNasSession = (outputDir?: string): void => {
 const updateDefaultFolder = (folder: string, outputDir?: string): void => {
   const session = loadNasSession(outputDir)
   if (session) saveNasSession({ ...session, defaultFolder: folder }, outputDir)
+}
+
+const refreshStoredSession = async (
+  stored: NasSession,
+  outputDir?: string,
+  login: (config: DsmConfig) => Promise<string> = dsmLogin
+) => {
+  const enc = stored.encPasswd
+  if (!enc) throw new Error('No stored password to refresh session')
+  if (enc.startsWith('dsm:')) {
+    const cipher = enc.slice(4)
+    const body = await dsmFetch(stored.hostname, {
+      api: 'SYNO.API.Auth',
+      method: 'login',
+      version: '6',
+      session: 'FileStation',
+      format: 'sid',
+      account: stored.username,
+      passwd: cipher
+    })
+    const parsedSid = dsmSidResponseSchema.safeParse(body)
+    if (!parsedSid.success) throw new Error(dsmApiErrorMessage(body))
+    const sid = parsedSid.data.data.sid
+    saveNasSession({ ...stored, sessionId: sid }, outputDir)
+    return sid
+  }
+  const plain = decryptPasswordFromStorage(stored.hostname, stored.username, enc)
+  const sid = await login({ host: stored.hostname, user: stored.username, password: plain })
+  const newEnc = await encryptPasswordForStorage(stored.hostname, stored.username, plain)
+  saveNasSession({ ...stored, sessionId: sid, encPasswd: newEnc }, outputDir)
+  return sid
 }
 
 const loginWithSession = async (
@@ -412,33 +443,9 @@ const loginWithSession = async (
   const stored = loadNasSession(outputDir)
   const canReuse = stored && stored.hostname === host && stored.username === user
   if (canReuse && (await dsm.validate(host, stored.sessionId))) return stored.sessionId
-  if (canReuse && !password && stored.encPasswd) {
+  if (canReuse && stored && !password && stored.encPasswd) {
     try {
-      const enc = stored.encPasswd
-      if (enc.startsWith('dsm:')) {
-        const cipher = enc.slice(4)
-        const body = await dsmFetch(host, {
-          api: 'SYNO.API.Auth',
-          method: 'login',
-          version: '6',
-          session: 'FileStation',
-          format: 'sid',
-          account: user,
-          passwd: cipher
-        })
-        const parsedSid = dsmSidResponseSchema.safeParse(body)
-        if (parsedSid.success) {
-          const sid = parsedSid.data.data.sid
-          saveNasSession({ ...stored, sessionId: sid }, outputDir)
-          return sid
-        }
-      } else {
-        const plain = decryptPasswordFromStorage(host, user, enc)
-        const sid = await dsm.login({ host, user, password: plain })
-        const newEnc = await encryptPasswordForStorage(host, user, plain)
-        saveNasSession({ ...stored, sessionId: sid, encPasswd: newEnc }, outputDir)
-        return sid
-      }
+      return await refreshStoredSession(stored, outputDir, dsm.login)
     } catch {}
   }
   if (canReuse) clearNasSession(outputDir)
@@ -466,33 +473,8 @@ const tryAutoRefreshSession = async (outputDir?: string) => {
     if (valid) return stored
   } catch {}
   try {
-    const enc = stored.encPasswd
-    if (enc.startsWith('dsm:')) {
-      const cipher = enc.slice(4)
-      const body = await dsmFetch(stored.hostname, {
-        api: 'SYNO.API.Auth',
-        method: 'login',
-        version: '6',
-        session: 'FileStation',
-        format: 'sid',
-        account: stored.username,
-        passwd: cipher
-      })
-      const parsedSid = dsmSidResponseSchema.safeParse(body)
-      if (parsedSid.success) {
-        const sid = parsedSid.data.data.sid
-        const next = { ...stored, sessionId: sid }
-        saveNasSession(next, outputDir)
-        return next
-      }
-    } else {
-      const plain = decryptPasswordFromStorage(stored.hostname, stored.username, enc)
-      const sid = await dsmLogin({ host: stored.hostname, user: stored.username, password: plain })
-      const newEnc = await encryptPasswordForStorage(stored.hostname, stored.username, plain)
-      const next = { ...stored, sessionId: sid, encPasswd: newEnc }
-      saveNasSession(next, outputDir)
-      return next
-    }
+    const sid = await refreshStoredSession(stored, outputDir)
+    return loadNasSession(outputDir) ?? { ...stored, sessionId: sid }
   } catch {}
   return null
 }
@@ -509,14 +491,15 @@ export {
   dsmListFolder,
   dsmLogin,
   dsmLogout,
+  dsmRequestUrl,
   dsmResponseSchema,
-  dsmUrl,
   dsmValidateSession,
   encryptPasswordForStorage,
   listNasFolder,
   loadNasSession,
   loginWithSession,
   normalizeNasPath,
+  refreshStoredSession,
   saveNasSession,
   tryAutoRefreshSession,
   updateDefaultFolder

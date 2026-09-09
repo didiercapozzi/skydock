@@ -7,7 +7,6 @@ type UseJumpsReturn = {
   jumps: ManifestJump[]
   jumpsByDay: ReturnType<typeof groupJumpsByDay>
   setJumps: (next: ManifestJump[]) => void
-  saveJumps: (next: ManifestJump[]) => void
   updateJumps: (next: ManifestJump[]) => void
 }
 
@@ -15,10 +14,6 @@ const useJumps = (initialJumps: ManifestJump[]) => {
   const [jumps, setJumps] = useState<ManifestJump[]>(initialJumps)
   const { submit } = useSafeFetcher()
   const jumpsByDay = groupJumpsByDay(jumps)
-
-  const saveJumps = (next: ManifestJump[]) => {
-    submit({ url: '/api/manifest', actionArgs: { intent: 'save-jumps', jumps: next } })
-  }
 
   const updateJumps = (next: ManifestJump[]) => {
     const withDirty = next.map((j) => {
@@ -49,7 +44,7 @@ const useJumps = (initialJumps: ManifestJump[]) => {
     submit({ url: '/api/manifest', actionArgs: { intent: 'save-jumps', jumps: withDirty } })
   }
 
-  return { jumps, jumpsByDay, setJumps, saveJumps, updateJumps }
+  return { jumps, jumpsByDay, setJumps, updateJumps }
 }
 
 export { useJumps }

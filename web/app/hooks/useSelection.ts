@@ -7,7 +7,6 @@ type UseSelectionReturn = {
   selectedCount: number
   handleSelect: (groupId: string, filePath: string, ctrlKey: boolean, shiftKey: boolean) => void
   clearSelection: () => void
-  setSelection: (next: SelectionMap) => void
 }
 
 const useSelection = (jumps: ManifestJump[], unassignedFiles: ManifestFile[]) => {
@@ -46,11 +45,7 @@ const useSelection = (jumps: ManifestJump[], unassignedFiles: ManifestFile[]) =>
     setSelectionState({})
   }
 
-  const setSelection = (next: SelectionMap) => {
-    setSelectionState(next)
-  }
-
-  return { selection, selectedCount, handleSelect, clearSelection, setSelection }
+  return { selection, selectedCount, handleSelect, clearSelection }
 }
 
 export { useSelection }

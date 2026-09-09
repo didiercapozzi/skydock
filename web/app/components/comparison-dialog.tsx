@@ -1,17 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ManifestJump } from './types'
 import { VideoCropper } from './video-cropper'
-import { formatSize, formatTime, getFileUrl, getJumpDate, getThumbUrl, isVideoFile } from './utils'
+import {
+  formatSize,
+  formatTime,
+  getFileUrl,
+  getJumpDate,
+  getThumbUrl,
+  isVideoFile,
+  minFileMtime
+} from './utils'
 
 type VideoRef = {
   seek: (time: number) => void
-  getBuffered: () => Array<{ start: number; end: number }>
 }
 
-const jumpMinMtime = (jump: ManifestJump) => {
-  const times = jump.files.map((f) => f.mtime)
-  return times.length > 0 ? Math.min(...times) : 0
-}
+const jumpMinMtime = (jump: ManifestJump) => minFileMtime(jump.files)
 
 const toDateInputValue = (epoch: number) => {
   const d = new Date(epoch * 1000)
@@ -165,7 +169,6 @@ const ComparisonDialog = ({
           <VideoCropper
             duration={duration}
             currentTime={currentTime}
-            bufferedRanges={[]}
             cropStart={null}
             cropEnd={null}
             zoom={zoom}
@@ -185,7 +188,7 @@ const ComparisonDialog = ({
     <div
       data-comparison-dialog='true'
       className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
-      <div className='bg-white rounded-xl shadow-2xl w-[960px] max-h-[90vh] flex flex-col overflow-hidden'>
+      <div className='bg-white rounded-xl shadow-2xl w-[90vw] max-h-[90vh] flex flex-col overflow-hidden'>
         <div className='px-6 py-4 border-b border-gray-200 flex items-center justify-between'>
           <h2 className='text-lg font-semibold text-gray-900'>Compare Jumps</h2>
           <button
@@ -523,15 +526,6 @@ const PreviewVideo = ({
       onVideoRef({
         seek: (time: number) => {
           if (videoRef.current) videoRef.current.currentTime = time
-        },
-        getBuffered: () => {
-          if (!videoRef.current) return []
-          const v = videoRef.current
-          const ranges: Array<{ start: number; end: number }> = []
-          for (let i = 0; i < v.buffered.length; i++) {
-            ranges.push({ start: v.buffered.start(i), end: v.buffered.end(i) })
-          }
-          return ranges
         }
       })
     }

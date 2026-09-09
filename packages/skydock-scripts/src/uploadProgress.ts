@@ -1,6 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { z } from 'zod'
+import { writeJsonAtomic } from './lib/fs'
 import { getStatusDir } from './utils'
 
 const uploadProgressStateSchema = z.object({
@@ -33,9 +34,7 @@ const writeUploadProgress = (state: UploadProgressState, outputDir?: string) => 
   uploadProgressStateSchema.parse(state)
   const target = getUploadProgressPath(outputDir)
   fs.mkdirSync(path.dirname(target), { recursive: true })
-  const tmp = `${target}.tmp`
-  fs.writeFileSync(tmp, JSON.stringify(state, null, 2))
-  fs.renameSync(tmp, target)
+  writeJsonAtomic(target, state)
 }
 
 const clearUploadProgress = (outputDir?: string) => {

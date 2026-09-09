@@ -140,5 +140,5 @@ if (isCliModule('watcher')) {
   watcher(options).catch(console.error)
 }
 
-export { POLL_INTERVAL_MS, findCameraRoot, hasMediaFiles, resolveCameras, watcher }
+export { POLL_INTERVAL_MS, hasMediaFiles, watcher }
 export type { WatcherOptions }

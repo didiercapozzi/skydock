@@ -1,5 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { writeJsonAtomic } from './lib/fs'
 import { jumpsFileSchema, manifestSchema } from './types'
 import type { JumpsFile, Manifest, ManifestFile } from './types'
 
@@ -18,7 +19,8 @@ const resolveJumps = (files: ManifestFile[], jumpsFile: JumpsFile | null) => {
   if (!jumpsFile) return []
   const byId = new Map<string, ManifestFile>()
   for (const f of files) if (f.id) byId.set(f.id, f)
-  return jumpsFile.jumps.map((j) => ({
+  let dangling = 0
+  const jumps = jumpsFile.jumps.map((j) => ({
     id: j.id,
     label: j.label,
     confirmed: j.confirmed,
@@ -29,7 +31,10 @@ const resolveJumps = (files: ManifestFile[], jumpsFile: JumpsFile | null) => {
     files: j.files
       .map((ref) => {
         const base = byId.get(ref.id)
-        if (!base) return null
+        if (!base) {
+          dangling++
+          return null
+        }
         const resolved: ManifestFile = { ...base }
         if (ref.cropStart !== undefined) resolved.cropStart = ref.cropStart
         else delete resolved.cropStart
@@ -39,6 +44,8 @@ const resolveJumps = (files: ManifestFile[], jumpsFile: JumpsFile | null) => {
       })
       .filter((f): f is ManifestFile => f !== null)
   }))
+  if (dangling > 0) console.log(`[Manifest] Dropped ${dangling} dangling jump file ref(s).`)
+  return jumps
 }
 
 const loadManifest = (manifestPath: string) => {
@@ -69,9 +76,7 @@ const loadManifest = (manifestPath: string) => {
           }))
         }
         jumpsFileSchema.parse(jumpsFile)
-        const tmpJ = `${jumpsPath}.tmp`
-        fs.writeFileSync(tmpJ, JSON.stringify(jumpsFile, null, 2))
-        fs.renameSync(tmpJ, jumpsPath)
+        writeJsonAtomic(jumpsPath, jumpsFile)
 
         const newManifestRaw = {
           version: parsed.version,
@@ -84,9 +89,7 @@ const loadManifest = (manifestPath: string) => {
           cameraClockOffsetSeconds: parsed.cameraClockOffsetSeconds
         }
         manifestSchema.omit({ jumps: true }).passthrough().parse(newManifestRaw)
-        const tmpM = `${manifestPath}.tmp`
-        fs.writeFileSync(tmpM, JSON.stringify(newManifestRaw, null, 2))
-        fs.renameSync(tmpM, manifestPath)
+        writeJsonAtomic(manifestPath, newManifestRaw)
       }
       return parsed
     }
@@ -137,9 +140,7 @@ const saveManifest = (manifestPath: string, manifest: Manifest) => {
   }
   jumpsFileSchema.parse(jumpsFile)
   const jumpsPath = getJumpsPath(manifestPath)
-  const tmpJ = `${jumpsPath}.tmp`
-  fs.writeFileSync(tmpJ, JSON.stringify(jumpsFile, null, 2))
-  fs.renameSync(tmpJ, jumpsPath)
+  writeJsonAtomic(jumpsPath, jumpsFile)
 
   const raw = {
     version: manifest.version,
@@ -152,9 +153,7 @@ const saveManifest = (manifestPath: string, manifest: Manifest) => {
     cameraClockOffsetSeconds: manifest.cameraClockOffsetSeconds
   }
   manifestSchema.omit({ jumps: true }).passthrough().parse(raw)
-  const tmpM = `${manifestPath}.tmp`
-  fs.writeFileSync(tmpM, JSON.stringify(raw, null, 2))
-  fs.renameSync(tmpM, manifestPath)
+  writeJsonAtomic(manifestPath, raw)
 }
 
 const normalizeManifest = (manifest: Manifest) => {

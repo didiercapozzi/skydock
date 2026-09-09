@@ -2,6 +2,7 @@ import * as childProcess from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { z } from 'zod'
+import { writeJsonAtomic } from './lib/fs'
 import { loadManifest, saveManifest } from './manifest'
 import { scheduleIdle, writeStatus } from './status'
 import { getManifestPath, getOutputDir, hasCommand, isCliModule, isVideoFile } from './utils'
@@ -36,7 +37,7 @@ const cropVideo = (src: string, dest: string, cropStart: number, cropEnd: number
 const updateMetadata = (dir: string) => {
   const files = fs.readdirSync(dir)
   if (files.length === 0) return
-  const paths = files.map((f) => `"${path.join(dir, f)}"`).join(' ')
+  const paths = files.map((f) => `"${path.join(dir, f).replace(/(["$`\\])/g, '\\$1')}"`).join(' ')
   try {
     childProcess.execSync(
       `exiftool -P -overwrite_original -m -q '-CreateDate<FileModifyDate' '-MediaCreateDate<FileModifyDate' '-TrackCreateDate<FileModifyDate' '-MediaModifyDate<FileModifyDate' '-TrackModifyDate<FileModifyDate' '-ModifyDate<FileModifyDate' '-DateTimeOriginal<FileModifyDate' '-CreationDate<FileModifyDate' ${paths}`,
@@ -74,9 +75,7 @@ const readProcessedMap = (outputDir?: string) => {
 const writeProcessedMap = (outputDir: string, map: Record<string, string>) => {
   const p = getProcessedMapPath(outputDir)
   fs.mkdirSync(path.dirname(p), { recursive: true })
-  const tmp = `${p}.tmp`
-  fs.writeFileSync(tmp, JSON.stringify(map, null, 2))
-  fs.renameSync(tmp, p)
+  writeJsonAtomic(p, map)
 }
 
 const getMediaType = (filePath: string) => (isVideoFile(filePath) ? 'video' : 'photo')
@@ -85,7 +84,8 @@ const processJump = (
   jump: NonNullable<ReturnType<typeof loadManifest>>['jumps'][number],
   processedDir: string,
   outputDir: string,
-  claimedDirs: Set<string>
+  claimedDirs: Set<string>,
+  processedMap: Record<string, string>
 ) => {
   const dayEpoch = parseDayEpoch(jump.day) ?? Math.min(...jump.files.map((f) => f.mtime))
   const baseName = buildJumpBaseName(jump.passenger, jump.label, dayEpoch)
@@ -98,7 +98,6 @@ const processJump = (
   claimedDirs.add(dirName)
   const jumpDir = path.join(processedDir, dirName)
 
-  const processedMap = readProcessedMap(outputDir)
   const oldBase = processedMap[jump.id]
   if (oldBase && oldBase !== baseName) {
     const oldDir = path.join(processedDir, oldBase)
@@ -192,12 +191,13 @@ const executeMedia = (options?: ExecuteOptions) => {
   let totalCopied = 0
   let processedCount = 0
   const claimedDirs = new Set<string>()
+  const processedMap = readProcessedMap(outputDir)
 
   for (const jumpId of jumpIds) {
     const jump = manifest.jumps.find((j) => j.id === jumpId)
     if (!jump || jump.files.length === 0) continue
 
-    totalCopied += processJump(jump, processedDir, outputDir, claimedDirs)
+    totalCopied += processJump(jump, processedDir, outputDir, claimedDirs, processedMap)
     processedCount++
   }
 

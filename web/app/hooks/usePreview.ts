@@ -25,8 +25,7 @@ type UsePreviewReturn = {
 const usePreview = (
   jumps: ManifestJump[],
   unassignedFiles: ManifestFile[],
-  onJumpsChange: (next: ManifestJump[]) => void,
-  saveJumps: (next: ManifestJump[]) => void
+  onJumpsChange: (next: ManifestJump[]) => void
 ) => {
   const [preview, setPreview] = useState<PreviewState>(null)
   const videoRefRef = useRef<VideoRef | null>(null)
@@ -80,7 +79,6 @@ const usePreview = (
           }
     )
     onJumpsChange(next as never)
-    saveJumps(next)
     setVideoStateRaw((prev) => ({ ...prev, crop: range }))
   }
 

@@ -1,41 +1,20 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs'
-import * as os from 'node:os'
 import * as path from 'node:path'
 import type { Manifest, ManifestFile, ManifestJump } from '../src/types'
-
-const execSyncMock = vi.hoisted(() => vi.fn())
+import { createTmpDir, execSyncMock, makeExiftoolMock, writeTempFile } from './fixtures'
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>()
   return {
     ...actual,
-    execSync: execSyncMock
+    execSync: (await import('./fixtures')).execSyncMock
   }
 })
 
 const { executeMedia } = await import('../src/execute')
 const { loadManifest, saveManifest } = await import('../src/manifest')
-
-const createTmpDir = (): string => fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-execute-test-'))
-
-const writeTempFile = (dir: string, name: string, content?: Buffer): string => {
-  const filePath = path.join(dir, name)
-  fs.mkdirSync(path.dirname(filePath), { recursive: true })
-  fs.writeFileSync(filePath, content || Buffer.alloc(1024, 1))
-  return filePath
-}
-
-const makeExiftoolMock = () => {
-  return (cmd: string | Buffer): Buffer => {
-    const cmdStr = String(cmd)
-    if (cmdStr.includes('command -v exiftool')) {
-      throw new Error('command not found')
-    }
-    return Buffer.from('')
-  }
-}
 
 const toLocalHHMMSS = (epoch: number): string => {
   const d = new Date(epoch * 1000)
@@ -90,7 +69,7 @@ describe('executeMedia', () => {
   let processedDir: string
 
   beforeEach(() => {
-    tmpDir = createTmpDir()
+    tmpDir = createTmpDir('skydock-execute-test-')
     outputDir = path.join(tmpDir, 'output')
     processedDir = path.join(outputDir, 'processed')
     fs.mkdirSync(outputDir, { recursive: true })

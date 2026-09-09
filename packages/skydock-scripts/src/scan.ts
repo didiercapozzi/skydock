@@ -18,6 +18,7 @@ import type { Manifest, ManifestFile, ManifestJump } from './types'
 type ScanResult = {
   added: number
   removed: number
+  moved: number
   unchanged: boolean
   fileCount: number
   jumpCount: number
@@ -59,21 +60,34 @@ const getCaptureEpoch = (filepath: string, timeMap: Map<string, string>) => {
   }
 }
 
+const HASH_POOL_SIZE = 4
+
 const scanFiles = async (originalDir: string, timeMap: Map<string, string>) => {
   const files = findMediaFiles(originalDir)
-  const manifestFiles: ManifestFile[] = []
-
-  for (const filepath of files) {
-    const stat = fs.statSync(filepath)
-    const id = await computeFileId(filepath)
-    manifestFiles.push({
-      path: filepath,
-      size: stat.size,
-      mtime: getCaptureEpoch(filepath, timeMap),
-      filename: path.basename(filepath),
-      id
-    })
-  }
+  const manifestFiles: ManifestFile[] = new Array(files.length)
+  const stats = files.map((filepath) => fs.statSync(filepath))
+  let next = 0
+  const workers = Array.from(
+    { length: Math.min(HASH_POOL_SIZE, Math.max(files.length, 1)) },
+    async () => {
+      while (next < files.length) {
+        const i = next
+        next++
+        const filepath = files[i]
+        const stat = stats[i]
+        if (!filepath || !stat) continue
+        const id = await computeFileId(filepath)
+        manifestFiles[i] = {
+          path: filepath,
+          size: stat.size,
+          mtime: getCaptureEpoch(filepath, timeMap),
+          filename: path.basename(filepath),
+          id
+        }
+      }
+    }
+  )
+  await Promise.all(workers)
 
   return sortFilesByMtime(manifestFiles)
 }
@@ -140,7 +154,7 @@ const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => 
   )
 
   if (removed === 0 && addedFiles.length === 0 && moved === 0) {
-    return { manifest: existing, added: 0, removed: 0 }
+    return { manifest: existing, added: 0, removed: 0, moved: 0 }
   }
 
   const updatedFiles = [...keptFiles, ...addedFiles]
@@ -166,7 +180,7 @@ const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => 
 
   reclusterJumps(merged)
 
-  return { manifest: merged, added: addedFiles.length, removed }
+  return { manifest: merged, added: addedFiles.length, removed, moved }
 }
 
 const scanMedia = async (options?: { outputDir?: string }) => {
@@ -176,7 +190,7 @@ const scanMedia = async (options?: { outputDir?: string }) => {
 
   if (!fs.existsSync(originalDir)) {
     console.log('[Scan] No original_files directory found. Run processMedia first.')
-    return { added: 0, removed: 0, unchanged: true, fileCount: 0, jumpCount: 0 }
+    return { added: 0, removed: 0, moved: 0, unchanged: true, fileCount: 0, jumpCount: 0 }
   }
 
   writeStatus('scan', 'running', 'Scanning original_files', outputDir)
@@ -191,7 +205,7 @@ const scanMedia = async (options?: { outputDir?: string }) => {
       console.log('[Scan] No files found in original_files.')
       writeStatus('scan', 'done', 'No files found', outputDir)
       scheduleIdle('scan', 5000, outputDir)
-      return { added: 0, removed: 0, unchanged: true, fileCount: 0, jumpCount: 0 }
+      return { added: 0, removed: 0, moved: 0, unchanged: true, fileCount: 0, jumpCount: 0 }
     }
 
     console.log(`[Scan] Creating new manifest with ${diskFiles.length} file(s).`)
@@ -211,21 +225,23 @@ const scanMedia = async (options?: { outputDir?: string }) => {
     return {
       added: diskFiles.length,
       removed: 0,
+      moved: 0,
       unchanged: false,
       fileCount: diskFiles.length,
       jumpCount: manifest.jumps.length
     }
   }
 
-  const { manifest, added, removed } = await mergeManifests(existing, diskFiles)
+  const { manifest, added, removed, moved } = await mergeManifests(existing, diskFiles)
 
-  if (added === 0 && removed === 0) {
+  if (added === 0 && removed === 0 && moved === 0) {
     console.log(`[Scan] No changes. ${existing.files.length} file(s) in manifest.`)
     writeStatus('scan', 'done', `No changes, ${existing.files.length} files`, outputDir)
     scheduleIdle('scan', 5000, outputDir)
     return {
       added: 0,
       removed: 0,
+      moved: 0,
       unchanged: true,
       fileCount: existing.files.length,
       jumpCount: existing.jumps.length
@@ -233,7 +249,7 @@ const scanMedia = async (options?: { outputDir?: string }) => {
   }
 
   console.log(
-    `[Scan] Merging: +${added} new, -${removed} removed, ${existing.files.length} existing.`
+    `[Scan] Merging: +${added} new, -${removed} removed, ~${moved} moved, ${existing.files.length} existing.`
   )
   saveManifest(manifestPath, manifest)
 
@@ -251,6 +267,7 @@ const scanMedia = async (options?: { outputDir?: string }) => {
   return {
     added,
     removed,
+    moved,
     unchanged: false,
     fileCount: manifest.files.length,
     jumpCount: manifest.jumps.length

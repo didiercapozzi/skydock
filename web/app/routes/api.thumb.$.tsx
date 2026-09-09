@@ -47,7 +47,7 @@ const extractFrame = (filePath: string, seek: number, width: number) =>
     ])
     const chunks: Array<Buffer> = []
     child.stdout.on('data', (chunk: Buffer) => {
-      chunks.push(Buffer.from(chunk))
+      chunks.push(chunk)
     })
     child.on('error', (err) => reject(err))
     child.on('close', (code) => {

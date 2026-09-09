@@ -6,6 +6,7 @@ type Props = {
   groups: { date: string; jumps: ManifestJump[] }[]
   compareIds: string[]
   selection: SelectionMap
+  multiJumpPaths: Set<string>
   previewedPath: string | null
   dropHint: { jumpId: string; index: number } | null
   viewMode: 'list' | 'grid'
@@ -18,7 +19,7 @@ type Props = {
   onDragEnd: () => void
   onDrop: (e: React.DragEvent, targetJumpId: string) => void
   onDragOver: (e: React.DragEvent, targetJumpId: string) => void
-  onDragLeave: () => void
+  onDragLeave: (jumpId: string) => void
   onPassengerChange: (jumpId: string, passenger: ManifestPassenger | undefined) => void
   onLabelChange: (jumpId: string, label: string) => void
   onProcess: (jumpId: string) => void
@@ -36,6 +37,7 @@ const DayGroups = ({
   groups,
   compareIds,
   selection,
+  multiJumpPaths,
   previewedPath,
   dropHint,
   viewMode,
@@ -95,6 +97,7 @@ const DayGroups = ({
                 <JumpCard
                   jump={jump}
                   selection={selection}
+                  multiJumpPaths={multiJumpPaths}
                   previewedPath={previewedPath}
                   dropIndex={dropHint && dropHint.jumpId === jump.id ? dropHint.index : null}
                   viewMode={viewMode}

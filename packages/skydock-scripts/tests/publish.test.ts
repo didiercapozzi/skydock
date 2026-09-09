@@ -1,40 +1,19 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs'
-import * as os from 'node:os'
+import * as http from 'node:http'
 import * as path from 'node:path'
 import { dsmLogin } from '../src/nas'
 import { publishJump } from '../src/publish'
-
-type SeenCall = { url: string; init: RequestInit }
-
-const seen: SeenCall[] = []
-
-const jsonResponse = (body: unknown) =>
-  new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } })
-
-const stubFetch = (handler: (url: string, init: RequestInit) => Response | Promise<Response>) => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (url: string, init: RequestInit) => {
-      seen.push({ url, init })
-      return handler(url, init)
-    })
-  )
-}
-
-const loginSuccess = (sid: string) => jsonResponse({ success: true, data: { sid } })
-const loginFailure = () =>
-  jsonResponse({ success: false, errno: { section: 'auth', key: 'login' } })
-
-const makeTmpTree = (): string => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-publish-test-'))
-  fs.mkdirSync(path.join(dir, 'videos'), { recursive: true })
-  fs.mkdirSync(path.join(dir, 'photos'), { recursive: true })
-  fs.writeFileSync(path.join(dir, 'videos', 'a.mp4'), Buffer.from('video'))
-  fs.writeFileSync(path.join(dir, 'photos', 'b.jpg'), Buffer.from('photo'))
-  return dir
-}
+import {
+  createTmpDir,
+  jsonResponse,
+  loginFailure,
+  loginSuccess,
+  makeTmpTree,
+  seen,
+  stubFetch
+} from './fixtures'
 
 beforeEach(() => {
   seen.length = 0
@@ -43,6 +22,51 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals()
 })
+
+type ReceivedUpload = {
+  url: string
+  headers: http.IncomingHttpHeaders
+  bytes: number
+  body: Buffer
+}
+
+type UploadServer = {
+  url: string
+  uploads: Array<ReceivedUpload>
+  close: () => Promise<void>
+}
+
+const startUploadServer = (
+  respond: (calls: number) => { status: number; body: unknown }
+): Promise<UploadServer> => {
+  const uploads: Array<ReceivedUpload> = []
+  let calls = 0
+  const server = http.createServer((req, res) => {
+    calls++
+    const chunks: Array<Buffer> = []
+    req.on('data', (chunk: string | Buffer) =>
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+    )
+    req.on('end', () => {
+      const body = Buffer.concat(chunks)
+      uploads.push({ url: req.url ?? '', headers: req.headers, bytes: body.length, body })
+      const answer = respond(calls)
+      res.writeHead(answer.status, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify(answer.body))
+    })
+  })
+  return new Promise<UploadServer>((resolve) => {
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address()
+      const port = typeof address === 'object' && address ? address.port : 0
+      resolve({
+        url: `http://127.0.0.1:${port}`,
+        uploads,
+        close: () => new Promise<void>((done) => server.close(() => done()))
+      })
+    })
+  })
+}
 
 describe('dsmLogin', () => {
   it('returns sid on version 6 success', async () => {
@@ -75,26 +99,13 @@ describe('dsmLogin', () => {
 describe('publishJump', () => {
   it('uploads every file, creates a share link and keeps session alive', async () => {
     const dir = makeTmpTree()
-    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-publish-nas-'))
-    const bodies: Array<{ text: string; contentLength: string }> = []
+    const out = createTmpDir('skydock-publish-nas-')
+    const server = await startUploadServer(() => ({ status: 200, body: { success: true } }))
     try {
-      stubFetch(async (url, init) => {
+      stubFetch(async (url) => {
         if (url.includes('SYNO.API.Auth') && url.includes('method=login'))
           return loginSuccess('sid')
         if (url.includes('SYNO.API.Auth')) return jsonResponse({ success: true })
-        if (url.includes('SYNO.FileStation.Upload')) {
-          const text = await new Response(init.body as BodyInit).text()
-          const fieldValue = (name: string) =>
-            text.match(new RegExp(`name="${name}"\\r\\n\\r\\n([^\\r]+)`))?.[1]
-          expect(fieldValue('create_parents')).toBe('true')
-          expect(fieldValue('overwrite')).toBe('true')
-          expect(typeof fieldValue('path')).toBe('string')
-          expect(text.match(/name="file"; filename="([^"]+)"/)?.[1]).toMatch(/\.(mp4|jpg)$/)
-          const headers = init.headers as Record<string, string>
-          expect(headers['Content-Type']).toMatch(/^multipart\/form-data; boundary=/)
-          bodies.push({ text, contentLength: headers['Content-Length'] })
-          return jsonResponse({ success: true })
-        }
         if (url.includes('SYNO.FileStation.Sharing')) {
           expect(new URL(url).searchParams.get('path')).toBe('/SkyDock/john_doe_20260824')
           return jsonResponse({ success: true, data: { links: [{ url: '/sharing/abc123' }] } })
@@ -102,29 +113,38 @@ describe('publishJump', () => {
         throw new Error(`unexpected call ${url}`)
       })
       const result = await publishJump({
-        host: 'https://nas.local:5001',
+        host: server.url,
         user: 'u',
         password: 'p',
         localDir: dir,
         remoteDir: '/SkyDock/john_doe_20260824',
         outputDir: out
       })
-      expect(result).toEqual({ shareUrl: 'https://nas.local:5001/sharing/abc123' })
+      expect(result).toEqual({ shareUrl: `${server.url}/sharing/abc123` })
 
-      const uploads = seen.filter((c) => c.url.includes('SYNO.FileStation.Upload'))
-      expect(uploads.length).toBe(2)
-      for (const c of uploads) expect(c.init.body).toBeInstanceOf(ReadableStream)
+      expect(server.uploads.length).toBe(2)
+      const bodies: Array<{ text: string; contentLength: string }> = []
+      for (const u of server.uploads) {
+        expect(u.url).toContain('SYNO.FileStation.Upload')
+        expect(u.headers['content-type']).toMatch(/^multipart\/form-data; boundary=/)
+        const contentLength = String(u.headers['content-length'] ?? '')
+        expect(u.bytes).toBe(Number(contentLength))
+        bodies.push({ text: u.body.toString('utf8'), contentLength })
+      }
       const paths = bodies.map((b) => b.text.match(/name="path"\r\n\r\n([^\r]+)/)?.[1]).sort()
       expect(paths).toEqual([
         '/SkyDock/john_doe_20260824/photos',
         '/SkyDock/john_doe_20260824/videos'
       ])
       for (const b of bodies) {
-        expect(Number(b.contentLength)).toBe(Buffer.byteLength(b.text))
+        expect(b.text).toContain('name="create_parents"\r\n\r\ntrue')
+        expect(b.text).toContain('name="overwrite"\r\n\r\ntrue')
+        expect(b.text.match(/name="file"; filename="([^"]+)"/)?.[1]).toMatch(/\.(mp4|jpg)$/)
         expect(b.text.endsWith('--\r\n')).toBe(true)
       }
       expect(seen.some((c) => c.url.includes('method=logout'))).toBe(false)
     } finally {
+      await server.close()
       fs.rmSync(dir, { recursive: true, force: true })
       fs.rmSync(out, { recursive: true, force: true })
     }
@@ -132,17 +152,19 @@ describe('publishJump', () => {
 
   it('keeps session and throws when an upload fails', async () => {
     const dir = makeTmpTree()
-    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-publish-nas-'))
+    const out = createTmpDir('skydock-publish-nas-')
+    const server = await startUploadServer(() => ({
+      status: 200,
+      body: { success: false, errno: { key: 'disk_full' } }
+    }))
     try {
       stubFetch((url) => {
         if (url.includes('method=login')) return loginSuccess('sid')
-        if (url.includes('SYNO.FileStation.Upload'))
-          return jsonResponse({ success: false, errno: { key: 'disk_full' } })
         return jsonResponse({ success: true })
       })
       await expect(
         publishJump({
-          host: 'https://nas.local:5001',
+          host: server.url,
           user: 'u',
           password: 'p',
           localDir: dir,
@@ -150,8 +172,10 @@ describe('publishJump', () => {
           outputDir: out
         })
       ).rejects.toThrow('Upload failed')
+      expect(server.uploads.length).toBe(3)
       expect(seen.some((c) => c.url.includes('method=logout'))).toBe(false)
     } finally {
+      await server.close()
       fs.rmSync(dir, { recursive: true, force: true })
       fs.rmSync(out, { recursive: true, force: true })
     }
@@ -159,7 +183,8 @@ describe('publishJump', () => {
 
   it('throws when sharing returns no link', async () => {
     const dir = makeTmpTree()
-    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-publish-nas-'))
+    const out = createTmpDir('skydock-publish-nas-')
+    const server = await startUploadServer(() => ({ status: 200, body: { success: true } }))
     try {
       stubFetch((url) => {
         if (url.includes('method=login')) return loginSuccess('sid')
@@ -169,7 +194,7 @@ describe('publishJump', () => {
       })
       await expect(
         publishJump({
-          host: 'https://nas.local:5001',
+          host: server.url,
           user: 'u',
           password: 'p',
           localDir: dir,
@@ -178,6 +203,7 @@ describe('publishJump', () => {
         })
       ).rejects.toThrow('no link')
     } finally {
+      await server.close()
       fs.rmSync(dir, { recursive: true, force: true })
       fs.rmSync(out, { recursive: true, force: true })
     }
@@ -185,12 +211,12 @@ describe('publishJump', () => {
 
   it('reports progress during upload', async () => {
     const dir = makeTmpTree()
-    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-publish-nas-'))
+    const out = createTmpDir('skydock-publish-nas-')
+    const server = await startUploadServer(() => ({ status: 200, body: { success: true } }))
     try {
       stubFetch((url) => {
         if (url.includes('method=login')) return loginSuccess('sid')
         if (url.includes('SYNO.API.Auth')) return jsonResponse({ success: true })
-        if (url.includes('SYNO.FileStation.Upload')) return jsonResponse({ success: true })
         if (url.includes('SYNO.FileStation.Sharing'))
           return jsonResponse({ success: true, data: { links: [{ url: '/sharing/abc' }] } })
         throw new Error(`unexpected call ${url}`)
@@ -198,7 +224,7 @@ describe('publishJump', () => {
       const progress: Array<{ filename: string; bytesUploaded: number; totalBytes: number }> = []
       await publishJump(
         {
-          host: 'https://nas.local:5001',
+          host: server.url,
           user: 'u',
           password: 'p',
           localDir: dir,
@@ -207,38 +233,34 @@ describe('publishJump', () => {
         },
         (p) => progress.push({ ...p })
       )
-      expect(progress.length).toBe(4)
+      expect(progress.length).toBe(6)
       const completions = progress.filter(
         (p) => p.bytesUploaded === p.totalBytes && p.bytesUploaded > 0
       )
       expect(completions.length).toBe(2)
+      for (const p of progress) {
+        expect(p.bytesUploaded).toBeGreaterThanOrEqual(0)
+        expect(p.bytesUploaded).toBeLessThanOrEqual(p.totalBytes)
+      }
     } finally {
+      await server.close()
       fs.rmSync(dir, { recursive: true, force: true })
       fs.rmSync(out, { recursive: true, force: true })
     }
   })
 
   it('streams large files with exact Content-Length and monotonic progress', async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-publish-big-'))
-    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-publish-nas-'))
+    const dir = createTmpDir('skydock-publish-big-')
+    const out = createTmpDir('skydock-publish-nas-')
     const fileSize = 64 * 1024 * 1024
     fs.mkdirSync(path.join(dir, 'videos'), { recursive: true })
     const bigPath = path.join(dir, 'videos', 'big.mp4')
     fs.writeFileSync(bigPath, '')
     fs.truncateSync(bigPath, fileSize)
-    let receivedBytes = 0
-    let sentContentLength = ''
+    const server = await startUploadServer(() => ({ status: 200, body: { success: true } }))
     try {
-      stubFetch((url, init) => {
+      stubFetch((url) => {
         if (url.includes('method=login')) return loginSuccess('sid')
-        if (url.includes('SYNO.FileStation.Upload')) {
-          sentContentLength = (init.headers as Record<string, string>)['Content-Length']
-          expect(init.body).toBeInstanceOf(ReadableStream)
-          return new Response(init.body as BodyInit).arrayBuffer().then((buf) => {
-            receivedBytes = buf.byteLength
-            return jsonResponse({ success: true })
-          })
-        }
         if (url.includes('SYNO.FileStation.Sharing'))
           return jsonResponse({ success: true, data: { links: [{ url: '/sharing/big' }] } })
         return jsonResponse({ success: true })
@@ -246,7 +268,7 @@ describe('publishJump', () => {
       const progress: Array<{ bytesUploaded: number; totalBytes: number }> = []
       await publishJump(
         {
-          host: 'https://nas.local:5001',
+          host: server.url,
           user: 'u',
           password: 'p',
           localDir: dir,
@@ -255,8 +277,10 @@ describe('publishJump', () => {
         },
         (p) => progress.push({ bytesUploaded: p.bytesUploaded, totalBytes: p.totalBytes })
       )
-      expect(receivedBytes).toBe(Number(sentContentLength))
-      expect(receivedBytes).toBeGreaterThan(fileSize)
+      expect(server.uploads.length).toBe(1)
+      const [upload] = server.uploads
+      expect(upload.bytes).toBe(Number(upload.headers['content-length']))
+      expect(upload.bytes).toBeGreaterThan(fileSize)
       expect(progress.length).toBeGreaterThan(2)
       expect(progress.length).toBeLessThan(200)
       for (let i = 1; i < progress.length; i++) {
@@ -266,6 +290,7 @@ describe('publishJump', () => {
       const last = progress[progress.length - 1]
       expect(last.bytesUploaded).toBe(fileSize)
     } finally {
+      await server.close()
       fs.rmSync(dir, { recursive: true, force: true })
       fs.rmSync(out, { recursive: true, force: true })
     }
@@ -273,23 +298,22 @@ describe('publishJump', () => {
 
   it('retries failed uploads', async () => {
     const dir = makeTmpTree()
-    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-publish-nas-'))
+    const out = createTmpDir('skydock-publish-nas-')
+    const server = await startUploadServer((calls) =>
+      calls === 1
+        ? { status: 200, body: { success: false } }
+        : { status: 200, body: { success: true } }
+    )
     try {
-      let uploadCalls = 0
       stubFetch((url) => {
         if (url.includes('method=login')) return loginSuccess('sid')
         if (url.includes('SYNO.API.Auth')) return jsonResponse({ success: true })
-        if (url.includes('SYNO.FileStation.Upload')) {
-          uploadCalls++
-          if (uploadCalls === 1) return jsonResponse({ success: false })
-          return jsonResponse({ success: true })
-        }
         if (url.includes('SYNO.FileStation.Sharing'))
           return jsonResponse({ success: true, data: { links: [{ url: '/sharing/abc' }] } })
         throw new Error(`unexpected call ${url}`)
       })
       const result = await publishJump({
-        host: 'https://nas.local:5001',
+        host: server.url,
         user: 'u',
         password: 'p',
         localDir: dir,
@@ -297,8 +321,9 @@ describe('publishJump', () => {
         outputDir: out
       })
       expect(result.shareUrl).toContain('/sharing/abc')
-      expect(uploadCalls).toBe(3)
+      expect(server.uploads.length).toBe(3)
     } finally {
+      await server.close()
       fs.rmSync(dir, { recursive: true, force: true })
       fs.rmSync(out, { recursive: true, force: true })
     }
@@ -306,23 +331,20 @@ describe('publishJump', () => {
 
   it('keeps stored session alive after successful upload (does not logout reused SID)', async () => {
     const dir = makeTmpTree()
-    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-publish-nas-'))
+    const out = createTmpDir('skydock-publish-nas-')
     const { saveNasSession } = await import('../src/nas')
-    saveNasSession(
-      { hostname: 'https://nas.local:5001', username: 'u', sessionId: 'reused-sid' },
-      out
-    )
+    const server = await startUploadServer(() => ({ status: 200, body: { success: true } }))
+    saveNasSession({ hostname: server.url, username: 'u', sessionId: 'reused-sid' }, out)
     try {
       stubFetch((url) => {
         if (url.includes('method=list_share'))
           return jsonResponse({ success: true, data: { shares: [] } })
-        if (url.includes('SYNO.FileStation.Upload')) return jsonResponse({ success: true })
         if (url.includes('SYNO.FileStation.Sharing'))
           return jsonResponse({ success: true, data: { links: [{ url: '/sharing/keepalive' }] } })
         throw new Error(`unexpected call ${url}`)
       })
       const result = await publishJump({
-        host: 'https://nas.local:5001',
+        host: server.url,
         user: 'u',
         password: 'p',
         localDir: dir,
@@ -333,6 +355,7 @@ describe('publishJump', () => {
       expect(seen.some((c) => c.url.includes('method=logout'))).toBe(false)
       expect(seen.some((c) => c.url.includes('method=login'))).toBe(false)
     } finally {
+      await server.close()
       fs.rmSync(dir, { recursive: true, force: true })
       fs.rmSync(out, { recursive: true, force: true })
     }
