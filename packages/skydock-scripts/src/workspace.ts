@@ -2,11 +2,7 @@ import type { ManifestFile, ManifestJump, ManifestPassenger } from './types'
 
 const hasCompletePassenger = (passenger: ManifestPassenger | null | undefined): boolean => {
   if (!passenger) return false
-  return (
-    passenger.firstname.trim() !== '' &&
-    passenger.lastname.trim() !== '' &&
-    passenger.email.trim() !== ''
-  )
+  return passenger.firstname.trim() !== '' && passenger.lastname.trim() !== ''
 }
 
 const formatJumpDay = (mtime: number): string => {

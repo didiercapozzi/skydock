@@ -26,7 +26,6 @@ const action = createValidatedFormAction()({
       if (!session) return { connected: false as const }
       const valid = await dsmValidateSession(session.hostname, session.sessionId)
       if (!valid) {
-        clearNasSession()
         return { connected: false as const }
       }
       return {
@@ -53,12 +52,19 @@ const action = createValidatedFormAction()({
           user: data.user,
           password: data.password
         })
+        console.log('[api.nas] connect save', {
+          host: data.host,
+          user: data.user,
+          sessionId: sessionId.slice(0, 8) + '...',
+          prevFolder
+        })
         saveNasSession({
           hostname: data.host,
           username: data.user,
           sessionId,
           defaultFolder: prevFolder
         })
+        console.log('[api.nas] after save', loadNasSession())
         return {
           connected: true as const,
           hostname: data.host,
@@ -84,8 +90,7 @@ const action = createValidatedFormAction()({
       }
       const valid = await dsmValidateSession(session.hostname, session.sessionId)
       if (!valid) {
-        clearNasSession()
-        errors.addGlobalError('Session expired.')
+        errors.addGlobalError('Session expired. Please reconnect.')
         return errors.toResponse(401)
       }
       try {

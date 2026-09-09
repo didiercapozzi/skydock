@@ -19,13 +19,11 @@ const jumpFileRefSchema = z.object({
 
 const passengerSchema = z.object({
   firstname: z.string(),
-  lastname: z.string(),
-  email: z.string()
+  lastname: z.string()
 })
 
 const publishSchema = z.object({
-  shareUrl: z.string(),
-  emailedAt: z.string().nullable().optional()
+  shareUrl: z.string()
 })
 
 const manifestJumpSchema = z.object({

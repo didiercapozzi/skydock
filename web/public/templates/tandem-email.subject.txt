@@ -1,1 +1,0 @@
-Your tandem skydive video is ready – {{jumpDate}}

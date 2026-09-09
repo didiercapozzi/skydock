@@ -420,7 +420,7 @@ The VideoCropper component lives inside the PreviewDrawer (right panel), directl
 - Shared routing and form logic lives in `@skydock/ui` (`routingEngine`, safe hooks, validated actions); never reimplement endpoint calls per route
 - Never use React memoization (`useCallback`, `useMemo`, `memo`) — React Compiler handles memoization automatically; write plain functions and values
 - Never commit without explicit user approval
-- Never use bypass eslint comment code like // eslint-disable-next-line react/set-state-in-effect for example
+- Never bypass lint like: eslint-disable-next-line react/set-state-in-effect or any other
 - Always use Zod `safeParse` for runtime validation of API, loader, and fetcher data; never use dirty manual checks like `as unknown`, `as {…}`, `typeof data === 'object'`, `'key' in data`, `Array.isArray((data as…).field)`, or `if (data && 'prop' in data)`. Define a `z.object`/`z.array` schema and branch on `parsed.success` (`parsed.data` / `parsed.error`).
 
 ## 12. Rule Changes

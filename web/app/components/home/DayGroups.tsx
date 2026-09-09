@@ -23,11 +23,6 @@ type Props = {
   processingId: string | null
   onUpload: (jumpId: string) => void
   uploadingId: string | null
-  onMail: (jumpId: string) => void
-  mailtoUrl: (jump: ManifestJump) => string | null
-  onMarkSent: (jumpId: string) => void
-  onCancelMail: () => void
-  mailPendingId: string | null
 }
 
 const DayGroups = ({
@@ -48,12 +43,7 @@ const DayGroups = ({
   onProcess,
   processingId,
   onUpload,
-  uploadingId,
-  onMail,
-  mailtoUrl,
-  onMarkSent,
-  onCancelMail,
-  mailPendingId
+  uploadingId
 }: Props) => {
   return (
     <div className='space-y-8'>
@@ -97,11 +87,6 @@ const DayGroups = ({
                   processing={processingId === jump.id}
                   onUpload={onUpload}
                   uploading={uploadingId === jump.id}
-                  onMail={onMail}
-                  mailtoUrl={mailtoUrl(jump)}
-                  onMarkSent={onMarkSent}
-                  onCancelMail={onCancelMail}
-                  mailPending={mailPendingId === jump.id}
                 />
               </div>
             ))}

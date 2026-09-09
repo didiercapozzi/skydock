@@ -1,11 +1,8 @@
-import * as fs from 'node:fs'
-import * as path from 'node:path'
-import { loadManifest } from '@skydock/scripts'
-import { useEffect, useRef } from 'react'
+import { loadManifest, loadNasSession } from '@skydock/scripts'
+import { useEffect, useRef, useState } from 'react'
 import { ComparisonDialog } from '../components/comparison-dialog'
 import { ConnectionDialog } from '../components/connection-dialog'
 import { DropActionDialog } from '../components/drop-action-dialog'
-import { NasFolderBrowser } from '../components/nas-folder-browser'
 import { PreviewDrawer } from '../components/preview-drawer'
 import { StagingTray } from '../components/staging-tray'
 import { DayGroups } from '../components/home/DayGroups'
@@ -14,9 +11,7 @@ import { ReviewHeader } from '../components/home/ReviewHeader'
 import { Unassigned } from '../components/home/Unassigned'
 import { useCompare } from '../hooks/useCompare'
 import { useDragDrop } from '../hooks/useDragDrop'
-import { useEmail } from '../hooks/useEmail'
 import { useJumps } from '../hooks/useJumps'
-import { useNas } from '../hooks/useNas'
 import { usePreview } from '../hooks/usePreview'
 import { useSelection } from '../hooks/useSelection'
 import type { Route } from './+types/home'
@@ -29,22 +24,34 @@ const loader = async ({}: Route.LoaderArgs) => {
   } catch {
     manifest = null
   }
-  let emailTemplates: { subject: string; body: string } | null = null
-  try {
-    const subjectPath = path.join(process.cwd(), 'public/templates/tandem-email.subject.txt')
-    const bodyPath = path.join(process.cwd(), 'public/templates/tandem-email.body.txt')
-    const subject = fs.readFileSync(subjectPath, 'utf-8')
-    const body = fs.readFileSync(bodyPath, 'utf-8')
-    emailTemplates = { subject, body }
-  } catch {
-    emailTemplates = null
+  let initialNas: {
+    connected: boolean
+    defaultFolder: string | null
+    hostname?: string
+    username?: string
+  } = {
+    connected: false,
+    defaultFolder: null
   }
-  return { manifest, emailTemplates }
+  try {
+    const session = loadNasSession()
+    if (session) {
+      initialNas = {
+        connected: true,
+        defaultFolder: session.defaultFolder ?? null,
+        hostname: session.hostname,
+        username: session.username
+      }
+    }
+  } catch {}
+  return { manifest, initialNas }
 }
 
 const Home = ({ loaderData }: Route.ComponentProps) => {
   const manifest = loaderData.manifest
-  const initialEmailTemplates = loaderData.emailTemplates
+  const initialNas = loaderData.initialNas as
+    | { connected: boolean; defaultFolder: string | null }
+    | undefined
   const { jumps, jumpsByDay, setJumps, saveJumps } = useJumps(manifest?.jumps ?? [])
   const manifestFiles = manifest?.files ?? []
   const filesInJumps = new Set(jumps.flatMap((j) => j.files.map((f) => f.path)))
@@ -78,26 +85,18 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     executeDrop,
     setDropDialog
   } = useDragDrop()
-  const {
-    nasConnected,
-    showConnectionDialog,
-    showFolderDialog,
-    nasError,
-    defaultFolder,
-    processingId,
-    uploadingId,
-    handleConnect,
-    handleDisconnect,
-    handleMerge,
-    handleProcess,
-    handleUpload,
-    handleSelectFolder,
-    setShowConnectionDialog,
-    setShowFolderDialog,
-    setNasError
-  } = useNas(setJumps, setCompareIds, setShowComparison)
-  const { mailPendingId, getMailUrls, handleMail, handleMarkSent, handleCancelMail } =
-    useEmail(initialEmailTemplates)
+  const [nasConnected] = useState(initialNas?.connected ?? false)
+  const [showConnectionDialog, setShowConnectionDialog] = useState(false)
+  const [nasError, setNasError] = useState<string | null>(null)
+  const [defaultFolder] = useState<string | null>(initialNas?.defaultFolder ?? null)
+  const [processingId] = useState<string | null>(null)
+  const [uploadingId] = useState<string | null>(null)
+
+  const handleConnect = (_host: string, _user: string, _password: string) => {}
+  const handleDisconnect = () => {}
+  const handleMerge = () => {}
+  const handleProcess = () => {}
+  const handleUpload = () => {}
   const mainRef = useRef<HTMLElement | null>(null)
 
   const handlePassengerChange = (
@@ -124,7 +123,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           defaultFolder={defaultFolder}
           onConnect={() => setShowConnectionDialog(true)}
           onDisconnect={handleDisconnect}
-          onChangeFolder={() => setShowFolderDialog(true)}
+          onChangeFolder={() => {}}
         />
         <div className='max-w-7xl mx-auto px-6 py-8'>
           <h1 className='text-3xl font-bold text-gray-900'>No Manifest Found</h1>
@@ -140,11 +139,6 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
             error={nasError ?? undefined}
           />
         )}
-        <NasFolderBrowser
-          open={showFolderDialog}
-          onSelect={handleSelectFolder}
-          onClose={() => setShowFolderDialog(false)}
-        />
       </main>
     )
   }
@@ -159,7 +153,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
         defaultFolder={defaultFolder}
         onConnect={() => setShowConnectionDialog(true)}
         onDisconnect={handleDisconnect}
-        onChangeFolder={() => setShowFolderDialog(true)}
+        onChangeFolder={() => {}}
       />
       <div className='max-w-7xl mx-auto px-6 py-8'>
         <ReviewHeader
@@ -197,11 +191,6 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           processingId={processingId}
           onUpload={handleUpload}
           uploadingId={uploadingId}
-          onMail={(id) => handleMail(id, jumps, getMailUrls)}
-          mailtoUrl={(jump) => getMailUrls(jump)?.mailtoUrl ?? null}
-          onMarkSent={(id) => handleMarkSent(id, jumps, setJumps, saveJumps)}
-          onCancelMail={handleCancelMail}
-          mailPendingId={mailPendingId}
         />
         {selectedCount > 0 && (
           <StagingTray
@@ -268,11 +257,6 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
             error={nasError ?? undefined}
           />
         )}
-        <NasFolderBrowser
-          open={showFolderDialog}
-          onSelect={handleSelectFolder}
-          onClose={() => setShowFolderDialog(false)}
-        />
       </div>
     </main>
   )

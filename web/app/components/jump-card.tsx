@@ -21,12 +21,7 @@ const JumpCard = ({
   onProcess,
   processing,
   onUpload,
-  uploading,
-  onMail,
-  mailtoUrl,
-  onMarkSent,
-  onCancelMail,
-  mailPending
+  uploading
 }: {
   jump: ManifestJump
   selection: SelectionMap
@@ -44,18 +39,12 @@ const JumpCard = ({
   processing: boolean
   onUpload: (jumpId: string) => void
   uploading: boolean
-  onMail: (jumpId: string) => void
-  mailtoUrl: string | null
-  onMarkSent: (jumpId: string) => void
-  onCancelMail: () => void
-  mailPending: boolean
 }) => {
   const [expanded, setExpanded] = useState(false)
   const [editingPassenger, setEditingPassenger] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const [draftFirstname, setDraftFirstname] = useState('')
   const [draftLastname, setDraftLastname] = useState('')
-  const [draftEmail, setDraftEmail] = useState('')
   const bounds = getJumpBounds(jump)
   const videoCount = jump.files.filter((f) => isVideoFile(f.filename)).length
   const photoCount = jump.files.length - videoCount
@@ -74,20 +63,15 @@ const JumpCard = ({
   const openPassengerEditor = () => {
     setDraftFirstname(savedFirstname)
     setDraftLastname(savedLastname)
-    setDraftEmail(jump.passenger?.email ?? '')
     setEditingPassenger(true)
   }
 
   const savePassengerEditor = () => {
     const trimmed = {
       firstname: draftFirstname.trim(),
-      lastname: draftLastname.trim(),
-      email: draftEmail.trim()
+      lastname: draftLastname.trim()
     }
-    onPassengerChange(
-      jump.id,
-      trimmed.firstname || trimmed.lastname || trimmed.email ? trimmed : undefined
-    )
+    onPassengerChange(jump.id, trimmed.firstname || trimmed.lastname ? trimmed : undefined)
     setEditingPassenger(false)
   }
 
@@ -104,8 +88,6 @@ const JumpCard = ({
       setLinkCopied(false)
     }
   }
-
-  const emailedAt = jump.publish?.emailedAt ?? null
 
   return (
     <div
@@ -226,7 +208,7 @@ const JumpCard = ({
               data-passenger-editor='true'
               className='px-4 py-3 border-b border-gray-100 bg-gray-50/60'>
               <p className='text-xs font-medium text-gray-500 mb-2'>Tandem passenger</p>
-              <div className='grid grid-cols-3 gap-2'>
+              <div className='grid grid-cols-2 gap-2'>
                 <input
                   type='text'
                   aria-label='Passenger firstname'
@@ -241,14 +223,6 @@ const JumpCard = ({
                   placeholder='Lastname'
                   value={draftLastname}
                   onChange={(e) => setDraftLastname(e.target.value)}
-                  className='px-2 py-1.5 text-sm border border-gray-300 rounded-md bg-white'
-                />
-                <input
-                  type='email'
-                  aria-label='Passenger email'
-                  placeholder='Email'
-                  value={draftEmail}
-                  onChange={(e) => setDraftEmail(e.target.value)}
                   className='px-2 py-1.5 text-sm border border-gray-300 rounded-md bg-white'
                 />
               </div>
@@ -275,9 +249,6 @@ const JumpCard = ({
               <p className='text-sm font-medium text-gray-800'>
                 {savedFirstname} {savedLastname}
               </p>
-              {jump.passenger?.email && (
-                <p className='text-xs text-gray-500'>{jump.passenger.email}</p>
-              )}
             </div>
           ) : (
             <div className='px-4 py-3 border-b border-gray-100 bg-gray-50/60'>
@@ -309,50 +280,6 @@ const JumpCard = ({
                     className='px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200'>
                     {linkCopied ? 'Copied!' : 'Copy link'}
                   </button>
-                  {emailedAt ? (
-                    <span
-                      data-mailed-badge='true'
-                      title={`Sent on ${new Date(emailedAt).toLocaleString()}`}
-                      className='px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-medium'>
-                      Sent
-                    </span>
-                  ) : mailPending ? (
-                    <span className='flex items-center gap-2 text-xs text-gray-600'>
-                      Did you send it?
-                      <button
-                        type='button'
-                        data-action='mark-sent'
-                        onClick={() => onMarkSent(jump.id)}
-                        className='px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700'>
-                        Mark as sent
-                      </button>
-                      <button
-                        type='button'
-                        data-action='cancel-mail'
-                        onClick={onCancelMail}
-                        className='px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200'>
-                        Not yet
-                      </button>
-                    </span>
-                  ) : (
-                    <span className='flex items-center gap-2'>
-                      <button
-                        type='button'
-                        data-action='mail'
-                        onClick={() => onMail(jump.id)}
-                        className='px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700'>
-                        Mail
-                      </button>
-                      {mailtoUrl && (
-                        <a
-                          href={mailtoUrl}
-                          data-action='mailto'
-                          className='text-xs text-gray-500 hover:text-gray-700 underline'>
-                          mailto instead
-                        </a>
-                      )}
-                    </span>
-                  )}
                 </div>
               ) : (
                 <p className='text-xs text-gray-500'>Upload to get a share link.</p>

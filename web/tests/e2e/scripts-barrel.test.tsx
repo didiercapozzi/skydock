@@ -37,14 +37,13 @@ describe('scripts barrel browser import', () => {
       label: 'Jump 1',
       confirmed: false,
       files: [],
-      passenger: { firstname: 'John', lastname: 'Doe', email: 'john@example.com' },
+      passenger: { firstname: 'John', lastname: 'Doe' },
       publish: { shareUrl: 'https://example.com/sharing/x' }
     }
     const parsed = scripts.manifestJumpSchema.parse(jump)
     expect(parsed.passenger).toEqual({
       firstname: 'John',
-      lastname: 'Doe',
-      email: 'john@example.com'
+      lastname: 'Doe'
     })
     expect(parsed.publish).toEqual({ shareUrl: 'https://example.com/sharing/x' })
   })
@@ -59,31 +58,29 @@ describe('scripts barrel browser import', () => {
     const t = 1724493600
     expect(
       scripts.buildJumpBaseName(
-        { firstname: 'John', lastname: 'Doe', email: 'john@example.com' },
+        { firstname: 'John', lastname: 'Doe' },
         'Jump 1',
         t
       )
     ).toBe(`john_doe_${dayOf(t)}`)
     expect(scripts.buildJumpBaseName(undefined, 'Jump 1', t)).toBe(`jump_1_${dayOf(t)}`)
     expect(
-      scripts.buildJumpBaseName({ firstname: 'Mary Ann', lastname: "O'Brien", email: 'x' }, 'J', t)
+      scripts.buildJumpBaseName({ firstname: 'Mary Ann', lastname: "O'Brien" }, 'J', t)
     ).toBe(`mary_ann_o_brien_${dayOf(t)}`)
-    expect(scripts.buildJumpBaseName({ firstname: '', lastname: '', email: '' }, '', t)).toBe(
+    expect(scripts.buildJumpBaseName({ firstname: '', lastname: '' }, '', t)).toBe(
       `jump_${dayOf(t)}`
     )
   })
 
   test('hasCompletePassenger requires all three trimmed fields', () => {
     expect(
-      scripts.hasCompletePassenger({ firstname: 'John', lastname: 'Doe', email: 'j@e.com' })
+      scripts.hasCompletePassenger({ firstname: 'John', lastname: 'Doe' })
     ).toBe(true)
     expect(scripts.hasCompletePassenger(undefined)).toBe(false)
     expect(scripts.hasCompletePassenger(null)).toBe(false)
-    expect(scripts.hasCompletePassenger({ firstname: 'John', lastname: 'Doe', email: '' })).toBe(
-      false
-    )
+    expect(scripts.hasCompletePassenger({ firstname: 'John', lastname: '' })).toBe(false)
     expect(
-      scripts.hasCompletePassenger({ firstname: '  ', lastname: 'Doe', email: 'j@e.com' })
+      scripts.hasCompletePassenger({ firstname: '  ', lastname: 'Doe' })
     ).toBe(false)
   })
 
@@ -92,7 +89,7 @@ describe('scripts barrel browser import', () => {
       id: 'jump_1',
       label: 'Jump 1',
       confirmed: false,
-      passenger: { firstname: 'John', lastname: 'Doe', email: 'john@example.com' },
+      passenger: { firstname: 'John', lastname: 'Doe' },
       publish: { shareUrl: 'https://example.com/sharing/old' },
       files: []
     }
@@ -106,8 +103,7 @@ describe('scripts barrel browser import', () => {
     expect(next[0].publish).toBeUndefined()
     expect(next[0].passenger).toEqual({
       firstname: 'John',
-      lastname: 'Doe',
-      email: 'john@example.com'
+      lastname: 'Doe'
     })
   })
 })

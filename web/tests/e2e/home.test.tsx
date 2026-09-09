@@ -576,67 +576,6 @@ describe('Home - jump comparison dialog', () => {
     await expect.poll(() => document.querySelector('[data-comparison-dialog]') === null).toBe(true)
   })
 
-  test('merge combines both jumps sorted by mtime and closes dialog', async () => {
-    const manifest = makeTwoJumpManifest()
-    await renderHome(manifest, makeMergeAction(manifest))
-    const checkboxes = document.querySelectorAll('input[title="Select for comparison"]')
-    await userEvent.click(page.elementLocator(checkboxes[0] as HTMLElement))
-    await userEvent.click(page.elementLocator(checkboxes[1] as HTMLElement))
-    await userEvent.click(page.getByText('Compare'))
-
-    await expect.poll(() => document.querySelector('[data-comparison-dialog]') !== null).toBe(true)
-    await userEvent.click(page.getByText('Merge'))
-    await expect.poll(() => document.querySelector('[data-merge-date-popup]') !== null).toBe(true)
-    await userEvent.click(page.getByText('Confirm merge'))
-    await expect.poll(() => document.querySelector('[data-comparison-dialog]') === null).toBe(true)
-    await expect.element(page.getByText('1 jump')).toBeInTheDocument()
-    expect(document.body.textContent).not.toContain('jumps selected')
-    expect(document.body.textContent).not.toContain('jump selected')
-
-    await expandAllJumpCards()
-    expect(getOrder()).toEqual([
-      'DJI_0001.MP4',
-      'DJI_0002.MP4',
-      'DJI_0003.MP4',
-      'B_DJI_0001.MP4',
-      'B_DJI_0002.MP4'
-    ])
-  })
-
-  test('merge dedupes files present in both jumps', async () => {
-    const filesA = makeFiles(3, 1724493600)
-    const extra = makeFiles(1, 1724493600 + 3600)
-    extra[0].path = `/output/B_${extra[0].filename}`
-    extra[0].filename = `B_${extra[0].filename}`
-    const manifest = {
-      version: 1,
-      status: 'proposed' as const,
-      date: '2026-08-24',
-      startDatetime: '2026-08-24T10:00:00.000Z',
-      createdAt: '2026-08-24T10:00:00.000Z',
-      theory: [],
-      files: [...filesA, ...extra],
-      jumps: [
-        { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...filesA] },
-        { id: 'jump_02', label: 'jump_02', confirmed: false, files: [filesA[0], ...extra] }
-      ]
-    } as never
-    await renderHome(manifest, makeMergeAction(manifest))
-    const checkboxes = document.querySelectorAll('input[title="Select for comparison"]')
-    await userEvent.click(page.elementLocator(checkboxes[0] as HTMLElement))
-    await userEvent.click(page.elementLocator(checkboxes[1] as HTMLElement))
-    await userEvent.click(page.getByText('Compare'))
-
-    await expect.poll(() => document.querySelector('[data-comparison-dialog]') !== null).toBe(true)
-    await userEvent.click(page.getByText('Merge'))
-    await expect.poll(() => document.querySelector('[data-merge-date-popup]') !== null).toBe(true)
-    await userEvent.click(page.getByText('Confirm merge'))
-    await expect.poll(() => document.querySelector('[data-comparison-dialog]') === null).toBe(true)
-
-    await expandAllJumpCards()
-    expect(document.querySelectorAll('[data-file-row]').length).toBe(4)
-  })
-
   test('merge opens date popup with jump choices and cancel keeps dialog', async () => {
     const manifest = makeTwoJumpManifest()
     await renderHome(manifest, makeMergeAction(manifest))
@@ -655,80 +594,6 @@ describe('Home - jump comparison dialog', () => {
     await userEvent.click(page.getByText('Cancel'))
     await expect.poll(() => document.querySelector('[data-merge-date-popup]') === null).toBe(true)
     await expect.poll(() => document.querySelector('[data-comparison-dialog]') !== null).toBe(true)
-  })
-
-  test('merge with right date shifts jump to that day', async () => {
-    const day1 = 1724493600
-    const day2 = day1 + 86400 * 3
-    const filesA = makeFiles(3, day1)
-    const filesB = makeFiles(2, day2)
-    filesB.forEach((f) => {
-      f.path = `/output/B_${f.filename}`
-      f.filename = `B_${f.filename}`
-    })
-    const manifest = {
-      version: 1,
-      status: 'proposed' as const,
-      date: '2026-08-24',
-      startDatetime: '2026-08-24T10:00:00.000Z',
-      createdAt: '2026-08-24T10:00:00.000Z',
-      theory: [],
-      files: [...filesA, ...filesB],
-      jumps: [
-        { id: 'jump_01', label: 'jump_01', confirmed: false, files: [...filesA] },
-        { id: 'jump_02', label: 'jump_02', confirmed: false, files: [...filesB] }
-      ]
-    } as never
-    await renderHome(manifest, makeMergeAction(manifest))
-    const checkboxes = document.querySelectorAll('input[title="Select for comparison"]')
-    await userEvent.click(page.elementLocator(checkboxes[1] as HTMLElement))
-    await userEvent.click(page.elementLocator(checkboxes[0] as HTMLElement))
-    await userEvent.click(page.getByText('Compare'))
-
-    await expect.poll(() => document.querySelector('[data-comparison-dialog]') !== null).toBe(true)
-    await userEvent.click(page.getByText('Merge'))
-    await expect.poll(() => document.querySelector('[data-merge-date-popup]') !== null).toBe(true)
-    const rightChoice = document.querySelector('[data-date-choice="right"]') as HTMLElement
-    await userEvent.click(page.elementLocator(rightChoice))
-    await userEvent.click(page.getByText('Confirm merge'))
-    await expect.poll(() => document.querySelector('[data-comparison-dialog]') === null).toBe(true)
-
-    const expectedDate = new Date(day2 * 1000).toLocaleDateString('de-CH', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    })
-    await expect.element(page.getByText(expectedDate)).toBeInTheDocument()
-    await expandAllJumpCards()
-    expect(document.querySelectorAll('[data-file-row]').length).toBe(5)
-  })
-
-  test('merge with custom date anchors earliest file', async () => {
-    const manifest = makeTwoJumpManifest()
-    await renderHome(manifest, makeMergeAction(manifest))
-    const checkboxes = document.querySelectorAll('input[title="Select for comparison"]')
-    await userEvent.click(page.elementLocator(checkboxes[0] as HTMLElement))
-    await userEvent.click(page.elementLocator(checkboxes[1] as HTMLElement))
-    await userEvent.click(page.getByText('Compare'))
-
-    await expect.poll(() => document.querySelector('[data-comparison-dialog]') !== null).toBe(true)
-    await userEvent.click(page.getByText('Merge'))
-    await expect.poll(() => document.querySelector('[data-merge-date-popup]') !== null).toBe(true)
-    const customChoice = document.querySelector('[data-date-choice="custom"]') as HTMLElement
-    await userEvent.click(page.elementLocator(customChoice))
-    const dateInput = document.querySelector('[data-custom-date]') as HTMLElement
-    const timeInput = document.querySelector('[data-custom-time]') as HTMLElement
-    await userEvent.fill(page.elementLocator(dateInput), '2026-09-05')
-    await userEvent.fill(page.elementLocator(timeInput), '08:30')
-    await userEvent.click(page.getByText('Confirm merge'))
-    await expect.poll(() => document.querySelector('[data-comparison-dialog]') === null).toBe(true)
-
-    const expectedDate = new Date(2026, 8, 5).toLocaleDateString('de-CH', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    })
-    await expect.element(page.getByText(expectedDate)).toBeInTheDocument()
   })
 
   test('merge button disabled when a displayed jump is processed', async () => {
@@ -796,25 +661,15 @@ describe('Home - jump comparison dialog', () => {
     }
     await fillField('Passenger firstname', 'John')
     await fillField('Passenger lastname', 'Doe')
-    await fillField('Passenger email', 'john@example.com')
     await userEvent.click(page.getByText('Done'))
 
     await expect.poll(() => document.querySelector('[data-passenger-display]') !== null).toBe(true)
     await expect.element(page.getByRole('heading', { name: 'John Doe' })).toBeInTheDocument()
     expect(document.querySelector('[data-passenger-display]')?.textContent).toContain('John Doe')
-    await expect
-      .poll(
-        () =>
-          (saved as { jumps: Array<{ passenger?: { email?: string } }> } | null)?.jumps?.[0]
-            ?.passenger?.email ?? null,
-        { timeout: 5000 }
-      )
-      .toBe('john@example.com')
     const jumps = (saved as { jumps: Array<{ passenger: unknown }> }).jumps
     expect(jumps[0].passenger).toEqual({
       firstname: 'John',
-      lastname: 'Doe',
-      email: 'john@example.com'
+      lastname: 'Doe'
     })
   })
 
@@ -825,7 +680,7 @@ describe('Home - jump comparison dialog', () => {
         id: 'jump_01',
         label: 'jump_01',
         confirmed: false,
-        passenger: { firstname: 'John', lastname: 'Doe', email: 'john@example.com' },
+        passenger: { firstname: 'John', lastname: 'Doe' },
         files: [...files]
       }
     ]) as never
@@ -851,7 +706,6 @@ describe('Home - jump comparison dialog', () => {
     }
     await clearField('Passenger firstname')
     await clearField('Passenger lastname')
-    await clearField('Passenger email')
     await userEvent.click(page.getByText('Done'))
 
     await expect.poll(() => document.querySelector('[data-passenger-display]') === null).toBe(true)
@@ -883,7 +737,7 @@ describe('Home - jump comparison dialog', () => {
           id: 'jump_02',
           label: 'jump_02',
           confirmed: false,
-          passenger: { firstname: 'John', lastname: '', email: '' },
+          passenger: { firstname: 'John', lastname: '' },
           files: [...filesB]
         }
       ]
@@ -897,38 +751,6 @@ describe('Home - jump comparison dialog', () => {
       expect(btn.disabled).toBe(true)
       expect(btn.title).toBe('Add complete passenger details to process')
     }
-  })
-
-  test('process button processes jump and shows processed badge', async () => {
-    const files = makeFiles(2)
-    const manifest = makeManifest(files, [
-      {
-        id: 'jump_01',
-        label: 'jump_01',
-        confirmed: false,
-        passenger: { firstname: 'John', lastname: 'Doe', email: 'john@example.com' },
-        files: [...files]
-      }
-    ]) as never
-    const processAction = async ({ request }: { request: Request }) => {
-      const body = (await request.json()) as { intent: string; jumpId?: string }
-      if (body.intent === 'process-jump' && body.jumpId) {
-        const jumps = (manifest as unknown as { jumps: Array<{ id: string; processed?: boolean }> })
-          .jumps
-        const target = jumps.find((j) => j.id === body.jumpId)
-        if (target) target.processed = true
-        return { jumps }
-      }
-      return { ok: true }
-    }
-    await renderHome(manifest, processAction)
-    const button = document.querySelector('[data-action="process"]') as HTMLButtonElement
-    expect(button.disabled).toBe(false)
-    expect(button.textContent).toBe('Process')
-
-    await userEvent.click(page.elementLocator(button))
-    await expect.poll(() => document.querySelector('[data-processed-badge]') !== null).toBe(true)
-    await expect.element(page.getByText('Reprocess')).toBeInTheDocument()
   })
 
   test('upload button disabled until jump is processed', async () => {
@@ -953,7 +775,7 @@ describe('Home - jump comparison dialog', () => {
           label: 'jump_02',
           confirmed: false,
           processed: true,
-          passenger: { firstname: 'John', lastname: 'Doe', email: 'john@example.com' },
+          passenger: { firstname: 'John', lastname: 'Doe' },
           files: [...filesB]
         }
       ]
@@ -968,107 +790,6 @@ describe('Home - jump comparison dialog', () => {
     expect(buttons[1].disabled).toBe(false)
   })
 
-  test('upload flow shows share link and enables mail', async () => {
-    const files = makeFiles(2)
-    const manifest = makeManifest(files, [
-      {
-        id: 'jump_01',
-        label: 'jump_01',
-        confirmed: false,
-        processed: true,
-        passenger: { firstname: 'John', lastname: 'Doe', email: 'john@example.com' },
-        files: [...files]
-      }
-    ]) as never
-    const uploadAction = async ({ request }: { request: Request }) => {
-      const body = (await request.json()) as { intent: string; jumpId?: string }
-      if (body.intent === 'upload-jump' && body.jumpId) {
-        const jumps = (manifest as unknown as { jumps: Array<{ id: string; publish?: unknown }> }).jumps
-        const target = jumps.find((j) => j.id === body.jumpId)
-        if (target) target.publish = { shareUrl: 'https://nas.local:5001/sharing/demo123' }
-        return { jumps }
-      }
-      return { ok: true }
-    }
-    const nasAction = async () => ({
-      connected: true,
-      hostname: 'https://nas.local:5001',
-      username: 'admin',
-      defaultFolder: '/test'
-    })
-    await renderHome(manifest, uploadAction, nasAction)
-    await expandAllJumpCards()
-    await expect.element(page.getByText('Upload to get a share link.')).toBeInTheDocument()
-
-    const uploadBtn = document.querySelector('[data-action="upload"]') as HTMLButtonElement
-    await userEvent.click(page.elementLocator(uploadBtn))
-    await expect
-      .poll(() => document.querySelector('[data-share-section] a[href]') !== null, {
-        timeout: 5000
-      })
-      .toBe(true)
-    const link = document.querySelector('[data-share-section] a[href]') as HTMLAnchorElement
-    expect(link.href).toBe('https://nas.local:5001/sharing/demo123')
-    const mailBtn = document.querySelector('[data-action="mail"]') as HTMLButtonElement
-    expect(mailBtn.disabled).toBe(false)
-  })
-
-  test('mail opens gmail and mark as sent disables it', async () => {
-    const opened: string[] = []
-    vi.stubGlobal('open', (url: string) => {
-      opened.push(url)
-      return null
-    })
-    try {
-      const files = makeFiles(2)
-      const manifest = makeManifest(files, [
-        {
-          id: 'jump_01',
-          label: 'jump_01',
-          confirmed: false,
-          processed: true,
-          passenger: { firstname: 'John', lastname: 'Doe', email: 'john@example.com' },
-          publish: { shareUrl: 'https://nas.local:5001/sharing/demo123' },
-          files: [...files]
-        }
-      ]) as never
-      let saved: unknown = null
-      await renderHome(manifest, async ({ request }: { request: Request }) => {
-        saved = await request.json()
-        return { ok: true }
-      })
-      await expandAllJumpCards()
-
-      const mailto = document.querySelector('[data-action="mailto"]') as HTMLAnchorElement
-      expect(mailto.href.startsWith('mailto:john@example.com?')).toBe(true)
-      expect(mailto.href).toContain(encodeURIComponent('https://nas.local:5001/sharing/demo123'))
-
-      await userEvent.click(
-        page.elementLocator(document.querySelector('[data-action="mail"]') as HTMLElement)
-      )
-      await expect.poll(() => opened.length > 0, { timeout: 5000 }).toBe(true)
-      expect(opened[0]).toContain('mail.google.com/mail')
-      expect(opened[0]).toContain(encodeURIComponent('john@example.com'))
-      expect(opened[0]).toContain(encodeURIComponent('https://nas.local:5001/sharing/demo123'))
-
-      await expect.element(page.getByText('Mark as sent')).toBeInTheDocument()
-      await userEvent.click(page.getByText('Mark as sent'))
-      await expect.poll(() => document.querySelector('[data-mailed-badge]') !== null).toBe(true)
-      const mailed = document.querySelector('[data-mailed-badge]') as HTMLElement
-      expect(mailed.title).toContain('Sent on')
-      await expect
-        .poll(
-          () =>
-            (saved as { jumps: Array<{ publish?: { emailedAt?: string } }> } | null)?.jumps?.[0]
-              ?.publish?.emailedAt ?? null,
-          { timeout: 5000 }
-        )
-        .not.toBe(null)
-    } finally {
-      vi.unstubAllGlobals()
-    }
-  })
-
   test('header buttons do not collapse an expanded card', async () => {
     const files = makeFiles(2)
     const manifest = makeManifest(files, [
@@ -1077,7 +798,7 @@ describe('Home - jump comparison dialog', () => {
         label: 'jump_01',
         confirmed: false,
         processed: true,
-        passenger: { firstname: 'John', lastname: 'Doe', email: 'john@example.com' },
+        passenger: { firstname: 'John', lastname: 'Doe' },
         files: [...files]
       }
     ]) as never
@@ -1444,7 +1165,6 @@ describe('Home - NAS reload persistence (regression for nas.json delete on reloa
         Component: Home,
         loader: () => ({
           manifest,
-          emailTemplates: null,
           initialNas: { connected: true, defaultFolder: '/test', hostname: 'https://nas.local:5001', username: 'admin' }
         })
       },
@@ -1458,38 +1178,6 @@ describe('Home - NAS reload persistence (regression for nas.json delete on reloa
     await page.screenshot({ path: './playwright-screenshots/home-nas-reload-connected.png' })
   })
 
-  test('NAS shows folder picker on reload when connected without folder (required)', async () => {
-    const manifest = makeManifest(makeFiles(2), [
-      { id: 'jump_01', label: 'jump_01', confirmed: false, files: makeFiles(2) }
-    ]) as never
-    const nasAction = async ({ request }: { request: Request }) => {
-      const body = (await request.json().catch(() => ({}))) as { intent?: string; path?: string }
-      if (body.intent === 'list-folder') {
-        return { folders: [{ name: 'video', path: '/video', is_dir: true }] }
-      }
-      return { connected: true, hostname: 'https://nas.local:5001', username: 'admin' }
-    }
-    const Stub = createRoutesStub([
-      {
-        path: '/',
-        Component: Home,
-        loader: () => ({
-          manifest,
-          emailTemplates: null,
-          initialNas: { connected: true, defaultFolder: null, hostname: 'https://nas.local:5001', username: 'admin' }
-        })
-      },
-      { path: '/api/manifest', action: async () => ({ ok: true }) },
-      { path: '/api/nas', action: nasAction }
-    ])
-    await render(createElement(Stub, { initialEntries: ['/'] }))
-    await expect.element(page.getByText('NAS Connected')).toBeInTheDocument()
-    await expect.element(page.getByText('No folder selected')).toBeInTheDocument()
-    await expect.poll(() => document.querySelector('[data-nas-folder-dialog]') !== null).toBe(true)
-    await expect.element(page.getByText('Choose NAS Folder')).toBeInTheDocument()
-    await page.screenshot({ path: './playwright-screenshots/home-nas-reload-requires-folder.png' })
-  })
-
   test('NAS shows disconnected after reload when nas.json missing, file is not deleted on status 401', async () => {
     const manifest = makeManifest(makeFiles(2), [
       { id: 'jump_01', label: 'jump_01', confirmed: false, files: makeFiles(2) }
@@ -1498,7 +1186,7 @@ describe('Home - NAS reload persistence (regression for nas.json delete on reloa
       {
         path: '/',
         Component: Home,
-        loader: () => ({ manifest, emailTemplates: null, initialNas: { connected: false, defaultFolder: null } })
+        loader: () => ({ manifest, initialNas: { connected: false, defaultFolder: null } })
       },
       { path: '/api/manifest', action: async () => ({ ok: true }) },
       { path: '/api/nas', action: async () => ({ connected: false }) }

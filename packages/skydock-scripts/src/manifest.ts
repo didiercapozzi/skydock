@@ -164,9 +164,6 @@ const normalizeManifest = (manifest: Manifest): boolean => {
     if (jump.publish === null) {
       delete jump.publish
       changed = true
-    } else if (jump.publish?.emailedAt === null) {
-      delete jump.publish.emailedAt
-      changed = true
     }
   }
   if (manifest.cameraClockOffsetSeconds === null) {
