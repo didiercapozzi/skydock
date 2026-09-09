@@ -55,18 +55,20 @@ describe('dsmLogin', () => {
     ).resolves.toBe('sid-6')
   })
 
-  it('falls back to mock sid when version 6 fails', async () => {
+  it('throws when DSM login returns failure', async () => {
     stubFetch(() => loginFailure())
     await expect(
       dsmLogin({ host: 'https://nas.local:5001', user: 'u', password: 'p' })
-    ).resolves.toMatch(/^mock-sid-/)
+    ).rejects.toThrow(/DSM login failed/)
   })
 
-  it('returns mock sid when all versions fail', async () => {
-    stubFetch(() => loginFailure())
+  it('throws when DSM login fails (network error)', async () => {
+    stubFetch(() => {
+      throw new Error('network down')
+    })
     await expect(
       dsmLogin({ host: 'https://nas.local:5001', user: 'u', password: 'p' })
-    ).resolves.toMatch(/^mock-sid-/)
+    ).rejects.toThrow()
   })
 })
 

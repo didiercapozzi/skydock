@@ -37,6 +37,10 @@ const dsmFolderFilesSchema = z.object({
   files: z.array(dsmFileEntrySchema).optional()
 })
 
+const dsmShareEntrySchema = z.object({ name: z.string(), path: z.string() }).passthrough()
+
+const dsmSharesSchema = z.object({ shares: z.array(dsmShareEntrySchema).optional() }).passthrough()
+
 const dsmConfigSchema = z.object({
   host: z.string(),
   user: z.string(),
@@ -63,22 +67,18 @@ const dsmFetch = async (host: string, params: Record<string, string>, body?: For
 }
 
 const dsmLogin = async (config: DsmConfig): Promise<string> => {
-  try {
-    const body = await dsmFetch(config.host, {
-      api: 'SYNO.API.Auth',
-      method: 'login',
-      version: '6',
-      session: 'FileStation',
-      format: 'sid',
-      account: config.user,
-      passwd: config.password
-    })
-    const parsed = dsmSidResponseSchema.safeParse(body)
-    if (parsed.success) return parsed.data.data.sid
-    throw new Error(`DSM login failed: ${JSON.stringify(body)}`)
-  } catch {
-    return `mock-sid-${Date.now()}`
-  }
+  const body = await dsmFetch(config.host, {
+    api: 'SYNO.API.Auth',
+    method: 'login',
+    version: '6',
+    session: 'FileStation',
+    format: 'sid',
+    account: config.user,
+    passwd: config.password
+  })
+  const parsed = dsmSidResponseSchema.safeParse(body)
+  if (parsed.success) return parsed.data.data.sid
+  throw new Error(`DSM login failed: ${JSON.stringify(body)}`)
 }
 
 const dsmLogout = async (host: string, sid: string): Promise<void> => {
@@ -94,7 +94,6 @@ const dsmLogout = async (host: string, sid: string): Promise<void> => {
 }
 
 const dsmValidateSession = async (host: string, sid: string) => {
-  if (sid.startsWith('mock-sid-')) return true
   try {
     const body = await dsmFetch(host, {
       api: 'SYNO.FileStation.List',
@@ -104,7 +103,7 @@ const dsmValidateSession = async (host: string, sid: string) => {
     })
     return body.success === true
   } catch {
-    return true
+    return false
   }
 }
 
@@ -146,25 +145,40 @@ const listNasFolder = async (
 }
 
 const dsmListFolder = async (host: string, sid: string, folderPath: string) => {
-  if (sid.startsWith('mock-sid-')) {
-    if (folderPath === '/' || folderPath === '' || folderPath === '/home') {
-      return [
-        { path: '/video', name: 'video', is_dir: true },
-        { path: '/photo', name: 'photo', is_dir: true },
-        { path: '/SkyDock', name: 'SkyDock', is_dir: true },
-        { path: '/home', name: 'home', is_dir: true }
-      ]
-    }
-    if (['/video', '/photo', '/SkyDock', '/home'].includes(folderPath)) {
-      return [
-        { path: `${folderPath}/2024`, name: '2024', is_dir: true },
-        { path: `${folderPath}/2025`, name: '2025', is_dir: true }
-      ]
-    }
-    return []
+  const cpath = normalizeNasPath(folderPath)
+  if (cpath === '/') {
+    const body = await dsmFetch(host, {
+      api: 'SYNO.FileStation.List',
+      version: '2',
+      method: 'list_share',
+      _sid: sid
+    })
+    if (!body.success) throw new Error(`List shares failed: ${JSON.stringify(body)}`)
+    const parsed = dsmSharesSchema.safeParse(body.data)
+    const shares = parsed.success ? (parsed.data.shares ?? []) : []
+    return shares.map((s) => ({ path: normalizeNasPath(s.path), name: s.name, is_dir: true }))
   }
-  const entries = await listNasFolder(host, sid, folderPath)
+  const entries = await listNasFolder(host, sid, cpath)
   return entries.map((e) => ({ path: e.path, name: e.name, is_dir: true }))
+}
+
+const dsmCreateFolder = async (host: string, sid: string, folderPath: string, name: string) => {
+  const normalizedParent = normalizeNasPath(folderPath)
+  const trimmedName = name.trim()
+  if (!trimmedName) throw new Error('Folder name is required')
+  if (trimmedName.includes('/')) throw new Error('Folder name must not contain "/"')
+  const body = await dsmFetch(host, {
+    api: 'SYNO.FileStation.CreateFolder',
+    version: '2',
+    method: 'create',
+    folder_path: normalizedParent,
+    name: trimmedName,
+    _sid: sid
+  })
+  if (!body.success)
+    throw new Error(
+      `Create folder failed for ${normalizedParent}/${trimmedName}: ${JSON.stringify(body)}`
+    )
 }
 
 const shareLinkSchema = z.array(z.object({ url: z.string().optional() })).optional()
@@ -244,6 +258,7 @@ export {
   clearNasSession,
   createShareLink,
   dsmConfigSchema,
+  dsmCreateFolder,
   dsmEntryUrl,
   dsmFetch,
   dsmListFolder,

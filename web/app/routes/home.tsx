@@ -112,6 +112,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const nasFetcher = useSafeFetcher()
   const manifestFetcher = useSafeFetcher()
   const [showConnectionDialog, setShowConnectionDialog] = useState(false)
+  const [connectionDialogOpenData, setConnectionDialogOpenData] = useState<unknown>(null)
   const [showFolderBrowser, setShowFolderBrowser] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
   const [showGroupCreation, setShowGroupCreation] = useState(false)
@@ -140,12 +141,21 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
         'Request failed')
       : null
 
-  const effectiveShowConnection = showConnectionDialog
-    ? !(parsedSuccess.success && parsedSuccess.data.connected)
-    : false
-  const effectiveShowFolder = showFolderBrowser
-    ? !(parsedSuccess.success && parsedSuccess.data.connected)
-    : false
+  const shouldAutoCloseConnection =
+    parsedSuccess.success &&
+    parsedSuccess.data.connected &&
+    connectionDialogOpenData !== nasFetcher.data &&
+    showConnectionDialog
+  const effectiveShowConnection = showConnectionDialog && !shouldAutoCloseConnection
+
+  const openConnectionDialog = () => {
+    setConnectionDialogOpenData(nasFetcher.data)
+    setShowConnectionDialog(true)
+  }
+
+  const closeConnectionDialog = () => {
+    setShowConnectionDialog(false)
+  }
 
   const handleConnect = (host: string, user: string, password: string) => {
     nasFetcher.submit({
@@ -160,6 +170,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
 
   const handleSelectFolder = (path: string) => {
     nasFetcher.submit({ url: '/api/nas', actionArgs: { intent: 'select-folder', path } })
+    setShowFolderBrowser(false)
   }
 
   const handleMerge = () => {}
@@ -266,7 +277,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
         <Header
           nasConnected={nasConnected}
           defaultFolder={defaultFolder}
-          onConnect={() => setShowConnectionDialog(true)}
+          onConnect={openConnectionDialog}
           onDisconnect={handleDisconnect}
           onChangeFolder={() => setShowFolderBrowser(true)}
         />
@@ -277,12 +288,12 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
         {effectiveShowConnection && (
           <ConnectionDialog
             onConnect={handleConnect}
-            onCancel={() => setShowConnectionDialog(false)}
+            onCancel={closeConnectionDialog}
             error={nasError ?? undefined}
           />
         )}
         <NasFolderBrowser
-          open={effectiveShowFolder}
+          open={showFolderBrowser}
           onSelect={handleSelectFolder}
           onClose={() => setShowFolderBrowser(false)}
         />
@@ -298,7 +309,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
       <Header
         nasConnected={nasConnected}
         defaultFolder={defaultFolder}
-        onConnect={() => setShowConnectionDialog(true)}
+        onConnect={openConnectionDialog}
         onDisconnect={handleDisconnect}
         onChangeFolder={() => setShowFolderBrowser(true)}
       />
@@ -414,12 +425,12 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
         {effectiveShowConnection && (
           <ConnectionDialog
             onConnect={handleConnect}
-            onCancel={() => setShowConnectionDialog(false)}
+            onCancel={closeConnectionDialog}
             error={nasError ?? undefined}
           />
         )}
         <NasFolderBrowser
-          open={effectiveShowFolder}
+          open={showFolderBrowser}
           onSelect={handleSelectFolder}
           onClose={() => setShowFolderBrowser(false)}
         />

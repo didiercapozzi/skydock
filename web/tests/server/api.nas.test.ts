@@ -44,7 +44,8 @@ describe('api/nas file persistence (truthful, no UI mock)', () => {
     stubFetch((url) => {
       if (url.includes('method=login'))
         return jsonResponse({ success: true, data: { sid: 'sid-1' } })
-      if (url.includes('method=check')) return jsonResponse({ success: true })
+      if (url.includes('method=list_share'))
+        return jsonResponse({ success: true, data: { shares: [] } })
       return jsonResponse({ success: false })
     })
 
@@ -66,7 +67,6 @@ describe('api/nas file persistence (truthful, no UI mock)', () => {
       sessionId: 'sid-1'
     })
 
-    // set a folder
     const selectReq = new Request('http://localhost/api/nas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -76,14 +76,12 @@ describe('api/nas file persistence (truthful, no UI mock)', () => {
     expect((selectRes as { defaultFolder?: string }).defaultFolder).toBe('/video')
     expect(loadSessionFile()?.defaultFolder).toBe('/video')
 
-    // reconnect with same host/user should preserve folder, even though login returns new sid
     stubFetch((url) => {
-      if (url.includes('method=check')) return jsonResponse({ success: false })
+      if (url.includes('method=list_share')) return jsonResponse({ success: false })
       if (url.includes('method=login'))
         return jsonResponse({ success: true, data: { sid: 'sid-2' } })
       return jsonResponse({ success: false })
     })
-    // need to re-import to get fresh handler with new fetch mock? action closure captures fetch at call time, so same action works
     const req2 = new Request('http://localhost/api/nas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -100,19 +98,25 @@ describe('api/nas file persistence (truthful, no UI mock)', () => {
     expect(loadSessionFile()?.sessionId).toBe('sid-2')
   })
 
-  it('list-folder does not delete nas.json and returns folders (mock-sid path)', async () => {
+  it('list-folder returns real folders via list_share for root and list for subfolders', async () => {
     stubFetch((url) => {
       if (url.includes('method=login'))
-        return jsonResponse({ success: true, data: { sid: 'mock-sid-1' } })
-      if (url.includes('method=check')) return jsonResponse({ success: true })
-      if (url.includes('api=SYNO.FileStation.List')) {
+        return jsonResponse({ success: true, data: { sid: 'real-sid-1' } })
+      if (url.includes('method=list_share'))
         return jsonResponse({
           success: true,
           data: {
-            files: [
-              { path: '/video', name: 'video', is_dir: true },
-              { path: '/photo', name: 'photo', is_dir: true }
+            shares: [
+              { path: '/video', name: 'video' },
+              { path: '/photo', name: 'photo' }
             ]
+          }
+        })
+      if (url.includes('method=list')) {
+        return jsonResponse({
+          success: true,
+          data: {
+            files: [{ path: '/video/sub', name: 'sub', isdir: true }]
           }
         })
       }
@@ -131,22 +135,39 @@ describe('api/nas file persistence (truthful, no UI mock)', () => {
     await action({ request: connectReq })
     expect(loadSessionFile()).not.toBeNull()
 
-    const listReq = new Request('http://localhost/api/nas', {
+    const listRootReq = new Request('http://localhost/api/nas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ intent: 'list-folder', path: '/' })
     })
-    const listRes = (await action({ request: listReq })) as unknown as Record<string, unknown>
-    expect((listRes as { folders?: unknown[] }).folders).toBeDefined()
+    const listRootRes = (await action({ request: listRootReq })) as unknown as Record<
+      string,
+      unknown
+    >
+    expect((listRootRes as { folders?: unknown[] }).folders).toBeDefined()
+    expect((listRootRes as { folders?: unknown[] }).folders).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path: '/video' })])
+    )
     expect(loadSessionFile()).not.toBeNull()
-    expect(loadSessionFile()?.sessionId).toBe('mock-sid-1')
+    expect(loadSessionFile()?.sessionId).toBe('real-sid-1')
+
+    const listSubReq = new Request('http://localhost/api/nas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ intent: 'list-folder', path: '/video' })
+    })
+    const listSubRes = (await action({ request: listSubReq })) as unknown as Record<string, unknown>
+    expect((listSubRes as { folders?: unknown[] }).folders).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path: '/video/sub' })])
+    )
   })
 
-  it('list-folder with network failure does not delete nas.json (regression for session expired bug)', async () => {
-    // first connect with mock sid
+  it('list-folder with network failure returns session expired but does not delete nas.json', async () => {
     stubFetch((url) => {
       if (url.includes('method=login'))
-        return jsonResponse({ success: true, data: { sid: 'mock-sid-2' } })
+        return jsonResponse({ success: true, data: { sid: 'real-sid-2' } })
+      if (url.includes('method=list_share'))
+        return jsonResponse({ success: true, data: { shares: [] } })
       return jsonResponse({ success: true })
     })
     const connectReq = new Request('http://localhost/api/nas', {
@@ -160,30 +181,27 @@ describe('api/nas file persistence (truthful, no UI mock)', () => {
       })
     })
     await action({ request: connectReq })
-    expect(loadSessionFile()?.sessionId).toBe('mock-sid-2')
+    expect(loadSessionFile()?.sessionId).toBe('real-sid-2')
 
-    // now list-folder where fetch throws (network) -> dsmValidateSession returns true (our fix) and dsmListFolder returns mock, file must stay
-    // if dsmValidateSession returned false and api.nas cleared the file, this would fail
     stubFetch(() => {
       throw new Error('network down')
     })
-    // list-folder should still keep file because validate returns true for mock-sid
-    // but to test the new behavior where validate returns true on catch, we use mock-sid so it returns true without fetch
     const listReq = new Request('http://localhost/api/nas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ intent: 'list-folder', path: '/' })
     })
     const listRes = (await action({ request: listReq })) as unknown as Record<string, unknown>
-    // even though fetch would fail, mock-sid path returns mock folders without calling fetch, so it should succeed
-    expect((listRes as { folders?: unknown[] }).folders).toBeDefined()
+    expect((listRes as { globalErrors?: string[] }).globalErrors?.[0]).toMatch(/Session expired/)
     expect(loadSessionFile()).not.toBeNull()
   })
 
-  it('status does not delete file when DSM check fails (offline)', async () => {
+  it('status with network failure returns disconnected but does not delete file', async () => {
     stubFetch((url) => {
       if (url.includes('method=login'))
-        return jsonResponse({ success: true, data: { sid: 'mock-sid-3' } })
+        return jsonResponse({ success: true, data: { sid: 'real-sid-3' } })
+      if (url.includes('method=list_share'))
+        return jsonResponse({ success: true, data: { shares: [] } })
       return jsonResponse({ success: true })
     })
     const connectReq = new Request('http://localhost/api/nas', {
@@ -199,14 +217,16 @@ describe('api/nas file persistence (truthful, no UI mock)', () => {
     await action({ request: connectReq })
     expect(loadSessionFile()).not.toBeNull()
 
-    // status with mock-sid should return connected:true even if fetch would fail, because mock-sid bypasses fetch
+    stubFetch(() => {
+      throw new Error('network down')
+    })
     const statusReq = new Request('http://localhost/api/nas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ intent: 'status' })
     })
     const statusRes = (await action({ request: statusReq })) as unknown as Record<string, unknown>
-    expect((statusRes as { connected?: boolean }).connected).toBe(true)
+    expect((statusRes as { connected?: boolean }).connected).toBe(false)
     expect(loadSessionFile()).not.toBeNull()
   })
 
@@ -269,5 +289,55 @@ describe('api/nas file persistence (truthful, no UI mock)', () => {
       unknown
     >
     expect((invalidRes as { globalErrors?: string[] }).globalErrors?.[0]).toMatch(/Session expired/)
+  })
+
+  it('create-folder creates and returns updated folder list', async () => {
+    stubFetch((url) => {
+      if (url.includes('method=login'))
+        return jsonResponse({ success: true, data: { sid: 'real-sid-create' } })
+      if (url.includes('method=list_share'))
+        return jsonResponse({
+          success: true,
+          data: { shares: [{ path: '/video', name: 'video' }] }
+        })
+      return jsonResponse({ success: true })
+    })
+    const connectReq = new Request('http://localhost/api/nas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        intent: 'connect',
+        host: 'https://nas.local:5001',
+        user: 'admin',
+        password: 'secret'
+      })
+    })
+    await action({ request: connectReq })
+
+    stubFetch((url) => {
+      if (url.includes('method=list_share'))
+        return jsonResponse({
+          success: true,
+          data: { shares: [{ path: '/video', name: 'video' }] }
+        })
+      if (url.includes('SYNO.FileStation.CreateFolder')) return jsonResponse({ success: true })
+      if (url.includes('method=list')) {
+        return jsonResponse({
+          success: true,
+          data: { files: [{ path: '/video/newFolder', name: 'newFolder', isdir: true }] }
+        })
+      }
+      return jsonResponse({ success: true })
+    })
+
+    const createReq = new Request('http://localhost/api/nas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ intent: 'create-folder', path: '/video', name: 'newFolder' })
+    })
+    const createRes = (await action({ request: createReq })) as unknown as Record<string, unknown>
+    expect((createRes as { folders?: unknown[] }).folders).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path: '/video/newFolder' })])
+    )
   })
 })

@@ -39,11 +39,6 @@ const uploadFile = async (
   const stat = fs.statSync(localPath)
   const totalBytes = stat.size
   onProgress?.({ filename, bytesUploaded: 0, totalBytes })
-  if (sid.startsWith('mock-sid-')) {
-    await new Promise<void>((r) => setTimeout(r, 80))
-    onProgress?.({ filename, bytesUploaded: totalBytes, totalBytes })
-    return
-  }
   const buffer = fs.readFileSync(localPath)
   let lastError: Error | null = null
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -81,9 +76,6 @@ const publishJump = async (args: PublishArgs, onProgress?: (progress: UploadProg
       const remoteDir =
         rel === '.' ? args.remoteDir : remoteJoin(args.remoteDir, rel.split(path.sep).join('/'))
       await uploadFile(args.host, sid, remoteDir, file, onProgress)
-    }
-    if (sid.startsWith('mock-sid-')) {
-      return { shareUrl: `${args.host.replace(/\/+$/, '')}/sharing/mock-${Date.now()}` }
     }
     return { shareUrl: await createShareLink(args.host, sid, args.remoteDir) }
   } finally {

@@ -60,6 +60,7 @@ export {
   clearNasSession,
   createShareLink,
   dsmConfigSchema,
+  dsmCreateFolder,
   dsmFetch,
   dsmListFolder,
   dsmLogin,
@@ -70,6 +71,7 @@ export {
   listNasFolder,
   loadNasSession,
   loginWithSession,
+  normalizeNasPath,
   saveNasSession,
   updateDefaultFolder
 } from './nas'
