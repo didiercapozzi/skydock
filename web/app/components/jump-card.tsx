@@ -3,6 +3,7 @@ import { Fragment, useState } from 'react'
 import type { ManifestFile, ManifestJump, ManifestPassenger, SelectionMap } from './types'
 import { formatTime, getJumpBounds, isVideoFile } from './utils'
 import { PhotoIcon, VideoIcon } from './icons'
+import { FileGrid } from './file-grid'
 import { FileRow } from './file-row'
 
 const JumpCard = ({
@@ -21,7 +22,8 @@ const JumpCard = ({
   onProcess,
   processing,
   onUpload,
-  uploading
+  uploading,
+  viewMode
 }: {
   jump: ManifestJump
   selection: SelectionMap
@@ -39,6 +41,7 @@ const JumpCard = ({
   processing: boolean
   onUpload: (jumpId: string) => void
   uploading: boolean
+  viewMode: 'list' | 'grid'
 }) => {
   const [expanded, setExpanded] = useState(false)
   const [editingPassenger, setEditingPassenger] = useState(false)
@@ -297,35 +300,50 @@ const JumpCard = ({
               )}
             </div>
           )}
-          <div className='divide-y divide-gray-50'>
-            {jump.files.map((file, i) => (
-              <Fragment key={file.path}>
-                {dropIndex === i && (
-                  <div
-                    data-drop-indicator='true'
-                    className='h-0.5 mx-3 rounded bg-blue-500'
-                  />
-                )}
-                <FileRow
-                  file={file}
-                  groupId={jump.id}
-                  selected={!!selection[jump.id]?.[file.path]}
-                  isPreviewed={previewedPath === file.path}
-                  isInMultipleJumps={false}
-                  onSelect={onSelect}
-                  onPreview={onPreview}
-                  onDragStart={onDragStart}
-                  onDragEnd={onDragEnd}
-                />
-              </Fragment>
-            ))}
-            {dropIndex === jump.files.length && (
-              <div
-                data-drop-indicator='true'
-                className='h-0.5 mx-3 mb-1 rounded bg-blue-500'
+          {viewMode === 'grid' ? (
+            <div className='p-3'>
+              <FileGrid
+                files={jump.files}
+                groupId={jump.id}
+                selection={selection[jump.id] ?? {}}
+                previewedPath={previewedPath}
+                onSelect={onSelect}
+                onPreview={onPreview}
+                onDragStart={onDragStart}
+                onDragEnd={onDragEnd}
               />
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className='divide-y divide-gray-50'>
+              {jump.files.map((file, i) => (
+                <Fragment key={file.path}>
+                  {dropIndex === i && (
+                    <div
+                      data-drop-indicator='true'
+                      className='h-0.5 mx-3 rounded bg-blue-500'
+                    />
+                  )}
+                  <FileRow
+                    file={file}
+                    groupId={jump.id}
+                    selected={!!selection[jump.id]?.[file.path]}
+                    isPreviewed={previewedPath === file.path}
+                    isInMultipleJumps={false}
+                    onSelect={onSelect}
+                    onPreview={onPreview}
+                    onDragStart={onDragStart}
+                    onDragEnd={onDragEnd}
+                  />
+                </Fragment>
+              ))}
+              {dropIndex === jump.files.length && (
+                <div
+                  data-drop-indicator='true'
+                  className='h-0.5 mx-3 mb-1 rounded bg-blue-500'
+                />
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

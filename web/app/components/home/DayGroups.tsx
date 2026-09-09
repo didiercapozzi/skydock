@@ -7,6 +7,7 @@ type Props = {
   selection: SelectionMap
   previewedPath: string | null
   dropHint: { jumpId: string; index: number } | null
+  viewMode: 'list' | 'grid'
   onCompareToggle: (jumpId: string) => void
   onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
   onPreview: (file: import('../types').ManifestFile, groupId: string) => void
@@ -31,6 +32,7 @@ const DayGroups = ({
   selection,
   previewedPath,
   dropHint,
+  viewMode,
   onCompareToggle,
   onSelect,
   onPreview,
@@ -75,6 +77,7 @@ const DayGroups = ({
                   selection={selection}
                   previewedPath={previewedPath}
                   dropIndex={dropHint && dropHint.jumpId === jump.id ? dropHint.index : null}
+                  viewMode={viewMode}
                   onSelect={onSelect}
                   onPreview={onPreview}
                   onDragStart={onDragStart}

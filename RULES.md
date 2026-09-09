@@ -142,7 +142,7 @@ output/
 
 - All manifest types defined in scripts package and re-exported via web app.
 - `home` reuses `ManifestFile`/`ManifestJump` from `@skydock/scripts` via `web/app/components/types.ts`.
-- Shared UI lives in `web/app/components/` (flat, no `review/` subfolder).
+- Shared UI lives in `web/app/components/` (flat, no `review/` subfolder) — `FileRow` for list, `FileGrid` for `grid` squares (same selection/preview/drag contract).
 - Additional types for library view also exported from scripts.
 
 ### 8.3 Server Utilities
@@ -156,7 +156,7 @@ output/
 - **Scan:** Runs scan and ensures file IDs.
 - **File:** Serves files with range support and proper MIME types.
 - **Status:** Reads status files, returns system status polled by review UI.
-- **Thumb:** Single frame JPEG extraction via ffmpeg for crop bar thumbnails.
+- **Thumb:** Single frame JPEG extraction via ffmpeg for crop bar thumbnails and `FileGrid` `160px` squares (`/api/thumb?seek=0.5&width=160`, `loading=lazy`).
 - **Stream:** Live-transcodes to fMP4 for thumbnails and crop bar fallback.
 - **HLS:** Live-transcodes to HLS segments for main playback.
 - **Manifest:** Full CRUD for jumps, files, calibration, execution. Intents: save-jumps, merge-jumps (with date anchor), process-jump (requires complete passenger), upload-jump (requires processed jump and configured storage).
@@ -185,10 +185,10 @@ Mounted at `/` (`routes/home.tsx`). The loader reads the manifest; jumps live in
 - `compareIds` — max 2 jump IDs for comparison; `showComparison` — comparison dialog toggle.
 - `dropDialog` — pending cross-jump move/copy dialog; `dropHint` — insertion index indicator; `dragDataRef` — drag payload, cleared after drop.
 - `videoCrop`, `videoZoom`, `videoCurrentTime`, `videoDuration` — active preview video state.
+- `viewMode` — `'list' | 'grid'` display mode, toggled in `ReviewHeader`, propagated to `JumpCard`/`Unassigned`/`DayGroups`. `FileGrid` renders square `160px` thumbnails via `getThumbUrl(path,0.5,160)` with `loading=lazy`, cropped `✂️` badge and video `▶` overlay, same `onSelect`/`onPreview`/`onDragStart` contract as `FileRow`.
 
 #### 9.2.2 Planned state (not mounted)
 
-- `viewMode` — list or grid display.
 - `systemStatus` — polled from API every 2 seconds.
 - Preview seek offset for HLS restart; HLS session key (path and seek offset).
 - Media preview state: loading, fallback, retry key, error.
@@ -245,6 +245,7 @@ All drag and drop operations follow these rules:
 
 - Jumps grouped by day, days newest-first with per-day jump counts.
 - Compare checkbox per card, max 2 jumps. Cards expand/collapse. Each card has Process and Upload buttons (Process needs complete passenger details, shows a spinner while busy and Reprocess once done; Upload needs a processed jump) with a Processed badge; the expanded card shows the share section (link, copy, mail) once published. The card title shows the passenger name once firstname and lastname are set, otherwise the jump label. The expanded card shows passenger names as labels (click to edit) or an Add passenger button; Done saves to the manifest, Cancel discards drafts.
+- Expanded card file list respects `viewMode`: `list` renders `FileRow` (`filename`, `time`, `size`, `Cropped ✂️` badge, `multiple-jump` highlight); `grid` renders `FileGrid` (`3×` `4×` `5×` squares, `aspect-square`, `160px` thumbs via `/api/thumb`, `loading=lazy`, filename overlay, `✂️` cropped badge top-right, `▶` video overlay, `ring-blue`/`ring-purple` selection).
 
 ### 9.5 Comparing & merging jumps
 

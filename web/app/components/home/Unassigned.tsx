@@ -1,10 +1,12 @@
 import type { ManifestFile, SelectionMap } from '../types'
+import { FileGrid } from '../file-grid'
 import { FileRow } from '../file-row'
 
 type Props = {
   files: ManifestFile[]
   selection: SelectionMap
   previewedPath: string | null
+  viewMode: 'list' | 'grid'
   onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
   onPreview: (file: ManifestFile, groupId: string) => void
   onDragStart: (e: React.DragEvent, groupId: string, paths: string[]) => void
@@ -15,6 +17,7 @@ const Unassigned = ({
   files,
   selection,
   previewedPath,
+  viewMode,
   onSelect,
   onPreview,
   onDragStart,
@@ -30,22 +33,35 @@ const Unassigned = ({
         </span>
         <span className='text-xs text-amber-600'>— not in any jump, select to stage</span>
       </div>
-      <div className='space-y-1'>
-        {files.map((file) => (
-          <FileRow
-            key={file.path}
-            file={file}
-            groupId='unassigned'
-            selected={!!selection['unassigned']?.[file.path]}
-            isPreviewed={previewedPath === file.path}
-            isInMultipleJumps={false}
-            onSelect={onSelect}
-            onPreview={onPreview}
-            onDragStart={onDragStart}
-            onDragEnd={onDragEnd}
-          />
-        ))}
-      </div>
+      {viewMode === 'grid' ? (
+        <FileGrid
+          files={files}
+          groupId='unassigned'
+          selection={selection['unassigned'] ?? {}}
+          previewedPath={previewedPath}
+          onSelect={onSelect}
+          onPreview={onPreview}
+          onDragStart={onDragStart}
+          onDragEnd={onDragEnd}
+        />
+      ) : (
+        <div className='space-y-1'>
+          {files.map((file) => (
+            <FileRow
+              key={file.path}
+              file={file}
+              groupId='unassigned'
+              selected={!!selection['unassigned']?.[file.path]}
+              isPreviewed={previewedPath === file.path}
+              isInMultipleJumps={false}
+              onSelect={onSelect}
+              onPreview={onPreview}
+              onDragStart={onDragStart}
+              onDragEnd={onDragEnd}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

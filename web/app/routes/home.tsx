@@ -4,13 +4,13 @@ import { z } from 'zod'
 import { ComparisonDialog } from '../components/comparison-dialog'
 import { ConnectionDialog } from '../components/connection-dialog'
 import { DropActionDialog } from '../components/drop-action-dialog'
-import { NasFolderBrowser } from '../components/nas-folder-browser'
-import { PreviewDrawer } from '../components/preview-drawer'
-import { StagingTray } from '../components/staging-tray'
 import { DayGroups } from '../components/home/DayGroups'
 import { Header } from '../components/home/Header'
 import { ReviewHeader } from '../components/home/ReviewHeader'
 import { Unassigned } from '../components/home/Unassigned'
+import { NasFolderBrowser } from '../components/nas-folder-browser'
+import { PreviewDrawer } from '../components/preview-drawer'
+import { StagingTray } from '../components/staging-tray'
 import { useSafeFetcher } from '../helpers/routing'
 import { useCompare } from '../hooks/useCompare'
 import { useDragDrop } from '../hooks/useDragDrop'
@@ -108,6 +108,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const nasFetcher = useSafeFetcher()
   const [showConnectionDialog, setShowConnectionDialog] = useState(false)
   const [showFolderBrowser, setShowFolderBrowser] = useState(false)
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
   const [processingId] = useState<string | null>(null)
   const [uploadingId] = useState<string | null>(null)
 
@@ -218,6 +219,8 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           jumpCount={jumps.length}
           fileCount={manifestFiles.length}
           compareIds={compareIds}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
           onClearCompare={() => setCompareIds([])}
           onShowComparison={() => setShowComparison(true)}
         />
@@ -225,6 +228,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           files={unassignedFiles}
           selection={selection}
           previewedPath={preview?.files[preview.index]?.path ?? null}
+          viewMode={viewMode}
           onSelect={handleSelect}
           onPreview={handlePreview}
           onDragStart={(e, groupId, paths) => handleDragStart(e, groupId, paths, selection)}
@@ -236,6 +240,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           selection={selection}
           previewedPath={preview?.files[preview.index]?.path ?? null}
           dropHint={dropHint}
+          viewMode={viewMode}
           onCompareToggle={handleCompareToggle}
           onSelect={handleSelect}
           onPreview={handlePreview}

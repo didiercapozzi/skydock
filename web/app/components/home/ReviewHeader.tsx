@@ -1,7 +1,11 @@
+import { GridIcon, ListIcon } from '../icons'
+
 type Props = {
   jumpCount: number
   fileCount: number
   compareIds: string[]
+  viewMode: 'list' | 'grid'
+  onViewModeChange: (mode: 'list' | 'grid') => void
   onClearCompare: () => void
   onShowComparison: () => void
 }
@@ -10,6 +14,8 @@ const ReviewHeader = ({
   jumpCount,
   fileCount,
   compareIds,
+  viewMode,
+  onViewModeChange,
   onClearCompare,
   onShowComparison
 }: Props) => {
@@ -21,6 +27,24 @@ const ReviewHeader = ({
           <p className='text-gray-500 mt-2'>
             2026-08-24 — {jumpCount} jumps, {fileCount} files
           </p>
+        </div>
+        <div className='flex items-center gap-2 rounded-lg border border-gray-200 bg-white p-1'>
+          <button
+            type='button'
+            aria-label='List view'
+            onClick={() => onViewModeChange('list')}
+            className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium ${viewMode === 'list' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
+            <ListIcon className='w-3.5 h-3.5' />
+            List
+          </button>
+          <button
+            type='button'
+            aria-label='Grid view'
+            onClick={() => onViewModeChange('grid')}
+            className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium ${viewMode === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
+            <GridIcon className='w-3.5 h-3.5' />
+            Grid
+          </button>
         </div>
         {compareIds.length > 0 && (
           <div className='flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2'>
