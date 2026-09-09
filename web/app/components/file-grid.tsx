@@ -6,6 +6,7 @@ const FileGrid = ({
   groupId,
   selection,
   previewedPath,
+  hasSelection,
   onSelect,
   onPreview,
   onDragStart,
@@ -15,6 +16,7 @@ const FileGrid = ({
   groupId: string
   selection: Record<string, boolean>
   previewedPath: string | null
+  hasSelection: boolean
   onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
   onPreview: (file: ManifestFile, groupId: string) => void
   onDragStart?: (e: React.DragEvent, groupId: string, paths: string[]) => void
@@ -36,7 +38,10 @@ const FileGrid = ({
           draggable
           onDragStart={(e) => onDragStart?.(e, groupId, [file.path])}
           onDragEnd={() => onDragEnd?.()}
-          onClick={() => onPreview(file, groupId)}
+          onClick={(e) => {
+            if (hasSelection) onSelect(groupId, file.path, e.ctrlKey || e.metaKey, e.shiftKey)
+            else onPreview(file, groupId)
+          }}
           className={`group relative aspect-square overflow-hidden rounded-lg border cursor-pointer select-none ${isPreviewed ? 'ring-2 ring-purple-400' : selected ? 'ring-2 ring-blue-400' : 'border-gray-200 hover:border-gray-300'} ${selected ? 'bg-blue-50' : 'bg-gray-50'}`}>
           <img
             src={thumbSrc}

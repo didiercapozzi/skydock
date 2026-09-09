@@ -229,6 +229,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           selection={selection}
           previewedPath={preview?.files[preview.index]?.path ?? null}
           viewMode={viewMode}
+          hasSelection={selectedCount > 0}
           onSelect={handleSelect}
           onPreview={handlePreview}
           onDragStart={(e, groupId, paths) => handleDragStart(e, groupId, paths, selection)}
@@ -241,6 +242,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           previewedPath={preview?.files[preview.index]?.path ?? null}
           dropHint={dropHint}
           viewMode={viewMode}
+          hasSelection={selectedCount > 0}
           onCompareToggle={handleCompareToggle}
           onSelect={handleSelect}
           onPreview={handlePreview}

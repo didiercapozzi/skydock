@@ -8,6 +8,7 @@ const FileRow = ({
   selected,
   isPreviewed,
   isInMultipleJumps,
+  hasSelection,
   onSelect,
   onPreview,
   onDragStart,
@@ -18,6 +19,7 @@ const FileRow = ({
   selected: boolean
   isPreviewed: boolean
   isInMultipleJumps: boolean
+  hasSelection: boolean
   onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
   onPreview: (file: ManifestFile, groupId: string) => void
   onDragStart?: (e: React.DragEvent, groupId: string, paths: string[]) => void
@@ -28,7 +30,10 @@ const FileRow = ({
     draggable
     onDragStart={(e) => onDragStart?.(e, groupId, [file.path])}
     onDragEnd={() => onDragEnd?.()}
-    onClick={() => onPreview(file, groupId)}
+    onClick={(e) => {
+      if (hasSelection) onSelect(groupId, file.path, e.ctrlKey || e.metaKey, e.shiftKey)
+      else onPreview(file, groupId)
+    }}
     className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg cursor-pointer select-none transition-all duration-150 ${
       isPreviewed
         ? 'bg-purple-50 ring-1 ring-purple-400 shadow-sm'

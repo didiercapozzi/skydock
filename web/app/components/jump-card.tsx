@@ -23,7 +23,8 @@ const JumpCard = ({
   processing,
   onUpload,
   uploading,
-  viewMode
+  viewMode,
+  hasSelection
 }: {
   jump: ManifestJump
   selection: SelectionMap
@@ -42,6 +43,7 @@ const JumpCard = ({
   onUpload: (jumpId: string) => void
   uploading: boolean
   viewMode: 'list' | 'grid'
+  hasSelection: boolean
 }) => {
   const [expanded, setExpanded] = useState(false)
   const [editingPassenger, setEditingPassenger] = useState(false)
@@ -307,6 +309,7 @@ const JumpCard = ({
                 groupId={jump.id}
                 selection={selection[jump.id] ?? {}}
                 previewedPath={previewedPath}
+                hasSelection={hasSelection}
                 onSelect={onSelect}
                 onPreview={onPreview}
                 onDragStart={onDragStart}
@@ -329,6 +332,7 @@ const JumpCard = ({
                     selected={!!selection[jump.id]?.[file.path]}
                     isPreviewed={previewedPath === file.path}
                     isInMultipleJumps={false}
+                    hasSelection={hasSelection}
                     onSelect={onSelect}
                     onPreview={onPreview}
                     onDragStart={onDragStart}

@@ -7,6 +7,7 @@ type Props = {
   selection: SelectionMap
   previewedPath: string | null
   viewMode: 'list' | 'grid'
+  hasSelection: boolean
   onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
   onPreview: (file: ManifestFile, groupId: string) => void
   onDragStart: (e: React.DragEvent, groupId: string, paths: string[]) => void
@@ -18,6 +19,7 @@ const Unassigned = ({
   selection,
   previewedPath,
   viewMode,
+  hasSelection,
   onSelect,
   onPreview,
   onDragStart,
@@ -39,6 +41,7 @@ const Unassigned = ({
           groupId='unassigned'
           selection={selection['unassigned'] ?? {}}
           previewedPath={previewedPath}
+          hasSelection={hasSelection}
           onSelect={onSelect}
           onPreview={onPreview}
           onDragStart={onDragStart}
@@ -54,6 +57,7 @@ const Unassigned = ({
               selected={!!selection['unassigned']?.[file.path]}
               isPreviewed={previewedPath === file.path}
               isInMultipleJumps={false}
+              hasSelection={hasSelection}
               onSelect={onSelect}
               onPreview={onPreview}
               onDragStart={onDragStart}
