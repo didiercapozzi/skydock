@@ -2,9 +2,7 @@ import type { ChangeEvent } from 'react'
 import type { z } from 'zod'
 import type { DeepFieldAccessor, FieldPath } from './types'
 
-const buildProxy = <T, Prefix extends string = ''>(
-  prefix: Prefix
-): DeepFieldAccessor<T, Prefix> => {
+const buildProxy = <T, Prefix extends string = ''>(prefix: Prefix) => {
   const handler: ProxyHandler<{ readonly path: Prefix }> = {
     get(target, prop) {
       if (prop === 'path') return target.path
@@ -18,11 +16,10 @@ const buildProxy = <T, Prefix extends string = ''>(
   return new Proxy({ path: prefix }, handler) as DeepFieldAccessor<T, Prefix>
 }
 
-const createSchemaFields = <TSchema extends z.ZodType>(
-  _schema: TSchema
-): DeepFieldAccessor<z.output<TSchema>, ''> => buildProxy<z.output<TSchema>, ''>('')
+const createSchemaFields = <TSchema extends z.ZodType>(_schema: TSchema) =>
+  buildProxy<z.output<TSchema>, ''>('')
 
-const getDeepValue = (target: unknown, path: string): unknown =>
+const getDeepValue = (target: unknown, path: string) =>
   path
     .split('.')
     .reduce<unknown>(
@@ -35,7 +32,7 @@ const setDeepValue = <T extends Record<string, unknown>>(
   target: T,
   path: string,
   value: unknown
-): T => {
+) => {
   const segments = path.split('.')
   const update = (current: unknown, index: number): unknown => {
     if (index >= segments.length) return value
@@ -67,12 +64,7 @@ const setDeepValue = <T extends Record<string, unknown>>(
     : target
 }
 
-const extractIssues = <TSchema extends z.ZodTypeAny>(
-  issues: readonly z.ZodIssue[]
-): {
-  readonly fieldErrors: Partial<Record<FieldPath<z.infer<TSchema>>, string>>
-  readonly globalErrors?: readonly string[]
-} => {
+const extractIssues = <TSchema extends z.ZodTypeAny>(issues: readonly z.ZodIssue[]) => {
   const fieldErrors: Partial<Record<FieldPath<z.infer<TSchema>>, string>> = {}
   const globalErrors: string[] = []
 

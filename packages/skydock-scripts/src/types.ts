@@ -19,7 +19,8 @@ const jumpFileRefSchema = z.object({
 
 const passengerSchema = z.object({
   firstname: z.string(),
-  lastname: z.string()
+  lastname: z.string(),
+  email: z.string().optional()
 })
 
 const publishSchema = z.object({
@@ -75,24 +76,30 @@ type Manifest = z.infer<typeof manifestSchema>
 type JumpFileRef = z.infer<typeof jumpFileRefSchema>
 type JumpsFile = z.infer<typeof jumpsFileSchema>
 
-type TaskState = 'idle' | 'running' | 'done' | 'error'
+const taskStateSchema = z.enum(['idle', 'running', 'done', 'error'])
 
-type TaskStatus = {
-  state: TaskState
-  message?: string
-  total?: number
-  done?: number
-  processing?: string[]
-  startedAt?: string
-  updatedAt?: string
-  error?: string
-}
+const taskStatusSchema = z.object({
+  state: taskStateSchema,
+  message: z.string().optional(),
+  total: z.number().optional(),
+  done: z.number().optional(),
+  processing: z.array(z.string()).optional(),
+  startedAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+  error: z.string().optional()
+})
 
-type SystemStatus = {
-  scan: TaskStatus
-  execute: TaskStatus
-  process: TaskStatus
-}
+const systemStatusSchema = z.object({
+  scan: taskStatusSchema,
+  execute: taskStatusSchema,
+  process: taskStatusSchema
+})
+
+type TaskState = z.infer<typeof taskStateSchema>
+
+type TaskStatus = z.infer<typeof taskStatusSchema>
+
+type SystemStatus = z.infer<typeof systemStatusSchema>
 
 export type {
   JumpFileRef,
@@ -116,5 +123,8 @@ export {
   manifestSchema,
   manifestStatusSchema,
   passengerSchema,
-  publishSchema
+  publishSchema,
+  systemStatusSchema,
+  taskStateSchema,
+  taskStatusSchema
 }

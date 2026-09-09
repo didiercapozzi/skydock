@@ -6,6 +6,8 @@ type Props = {
   onConnect: () => void
   onDisconnect: () => void
   onChangeFolder: () => void
+  onScan: () => void
+  scanning: boolean
 }
 
 const Header = ({
@@ -13,7 +15,9 @@ const Header = ({
   defaultFolder,
   onConnect,
   onDisconnect,
-  onChangeFolder
+  onChangeFolder,
+  onScan,
+  scanning
 }: Props) => {
   return (
     <header className='border-b bg-white/80 backdrop-blur-sm sticky top-0 z-40'>
@@ -78,9 +82,11 @@ const Header = ({
           </div>
           <button
             type='button'
-            disabled
-            className='px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg opacity-50 cursor-not-allowed shadow-sm'>
-            Scan
+            onClick={onScan}
+            disabled={scanning}
+            title={scanning ? 'Scanning…' : 'Scan original_files'}
+            className='px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'>
+            {scanning ? 'Scanning…' : 'Scan'}
           </button>
         </div>
       </div>

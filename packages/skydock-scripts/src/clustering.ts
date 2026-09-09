@@ -2,7 +2,7 @@ import { JUMP_GAP_SECONDS } from './constants'
 import type { Manifest, ManifestFile, ManifestJump } from './types'
 import { formatDay, sortFilesByMtime } from './utils'
 
-const reclusterJumps = (manifest: Manifest, preservedIds?: Set<string>): void => {
+const reclusterJumps = (manifest: Manifest, preservedIds?: Set<string>) => {
   const seenIds = new Set<string>()
   for (const jump of manifest.jumps) {
     if (seenIds.has(jump.id)) {
@@ -36,7 +36,7 @@ const reclusterJumps = (manifest: Manifest, preservedIds?: Set<string>): void =>
   let lastMtime = 0
 
   for (const file of sortedRemaining) {
-    if (current.length > 0 && file.mtime - lastMtime > JUMP_GAP_SECONDS) {
+    if (current.length > 0 && file.mtime - lastMtime >= JUMP_GAP_SECONDS) {
       groups.push(current)
       current = []
     }
@@ -59,7 +59,7 @@ const reclusterJumps = (manifest: Manifest, preservedIds?: Set<string>): void =>
       const last = mergedGroups[mergedGroups.length - 1]
       const lastMax = Math.max(...last.map((f) => f.mtime))
       const curMin = Math.min(...group.map((f) => f.mtime))
-      if (curMin - lastMax <= JUMP_GAP_SECONDS) {
+      if (curMin - lastMax < JUMP_GAP_SECONDS) {
         last.push(...group)
         last.sort((a, b) => a.mtime - b.mtime)
       } else {
@@ -83,7 +83,7 @@ const reclusterJumps = (manifest: Manifest, preservedIds?: Set<string>): void =>
   }
 
   let nextIdx = 1
-  const getNextId = (): string => {
+  const getNextId = () => {
     while (usedIds.has(`jump_${nextIdx}`)) nextIdx++
     const id = `jump_${nextIdx}`
     usedIds.add(id)
@@ -141,7 +141,7 @@ const reclusterJumps = (manifest: Manifest, preservedIds?: Set<string>): void =>
   })
 }
 
-const shiftFiles = (manifest: Manifest, ids: Set<string>, offsetSeconds: number): void => {
+const shiftFiles = (manifest: Manifest, ids: Set<string>, offsetSeconds: number) => {
   for (const file of manifest.files) {
     if (!file.id || !ids.has(file.id)) continue
     if (file.originalMtime === undefined) file.originalMtime = file.mtime

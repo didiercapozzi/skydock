@@ -27,7 +27,7 @@ const usePreview = (
   unassignedFiles: ManifestFile[],
   onJumpsChange: (next: ManifestJump[]) => void,
   saveJumps: (next: ManifestJump[]) => void
-): UsePreviewReturn => {
+) => {
   const [preview, setPreview] = useState<PreviewState>(null)
   const videoRefRef = useRef<VideoRef | null>(null)
   const [videoState, setVideoStateRaw] = useState<VideoState>({

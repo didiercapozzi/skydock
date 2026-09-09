@@ -1,6 +1,6 @@
 import type { SubmitFunction } from 'react-router'
 import { z } from 'zod'
-import { dayToIso, formatTodayDeCh, isoToDay } from '../../../packages/skydock-scripts/src/utils'
+import { dayToIso, formatTodayDeCh, isoToDay } from '@skydock/scripts'
 import { Form, FormField, GlobalErrors, useForm } from '../../../packages/ui/forms'
 
 const groupCreationSchema = z.object({
@@ -35,8 +35,7 @@ const GroupCreationDialog = ({
   })()
 
   const submit: SubmitFunction = async (target) => {
-    const data = target as unknown as z.infer<typeof groupCreationSchema>
-    const parsed = groupCreationSchema.safeParse(data)
+    const parsed = groupCreationSchema.safeParse(target)
     if (!parsed.success) return
     const day = isoToDay(parsed.data.date)
     onCreate(parsed.data.title.trim(), day)

@@ -23,12 +23,12 @@ type ScanResult = {
   jumpCount: number
 }
 
-const parseDateTime = (raw: string): string | null => {
+const parseDateTime = (raw: string) => {
   const match = raw.match(/^(\d{4}):(\d{2}):(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/)
   return match ? `${match[1]}-${match[2]}-${match[3]} ${match[4]}:${match[5]}:${match[6]}` : null
 }
 
-const buildTimeMap = (files: string[]): Map<string, string> =>
+const buildTimeMap = (files: string[]) =>
   buildExifMap(files, {
     photoTags: ['-DateTimeOriginal', '-CreateDate', '-MediaCreateDate'],
     videoTags: [
@@ -41,7 +41,7 @@ const buildTimeMap = (files: string[]): Map<string, string> =>
     parse: parseDateTime
   })
 
-const getCaptureEpoch = (filepath: string, timeMap: Map<string, string>): number => {
+const getCaptureEpoch = (filepath: string, timeMap: Map<string, string>) => {
   const tag = timeMap.get(filepath)
   if (tag) {
     const datePart = tag.split(' ')[0].replace(/:/g, '-')
@@ -59,10 +59,7 @@ const getCaptureEpoch = (filepath: string, timeMap: Map<string, string>): number
   }
 }
 
-const scanFiles = async (
-  originalDir: string,
-  timeMap: Map<string, string>
-): Promise<ManifestFile[]> => {
+const scanFiles = async (originalDir: string, timeMap: Map<string, string>) => {
   const files = findMediaFiles(originalDir)
   const manifestFiles: ManifestFile[] = []
 
@@ -81,7 +78,7 @@ const scanFiles = async (
   return sortFilesByMtime(manifestFiles)
 }
 
-const createFreshManifest = (files: ManifestFile[], createdAt: string): Manifest => {
+const createFreshManifest = (files: ManifestFile[], createdAt: string) => {
   const manifest: Manifest = {
     version: 1,
     status: 'proposed',
@@ -97,26 +94,65 @@ const createFreshManifest = (files: ManifestFile[], createdAt: string): Manifest
   return manifest
 }
 
-const mergeManifests = async (
-  existing: Manifest,
-  diskFiles: ManifestFile[]
-): Promise<{ manifest: Manifest; added: number; removed: number }> => {
-  const existingPaths = new Set(existing.files.map((f) => f.path))
-  const diskPaths = new Set(diskFiles.map((f) => f.path))
+const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => {
+  const existingByPath = new Map(existing.files.map((f) => [f.path, f]))
+  const diskByPath = new Map(diskFiles.map((f) => [f.path, f]))
+  const diskPathsById = new Map<string, string[]>()
+  for (const f of diskFiles) {
+    if (!f.id) continue
+    const list = diskPathsById.get(f.id) ?? []
+    list.push(f.path)
+    diskPathsById.set(f.id, list)
+  }
+  const existingPathsById = new Map<string, string[]>()
+  for (const f of existing.files) {
+    if (!f.id) continue
+    const list = existingPathsById.get(f.id) ?? []
+    list.push(f.path)
+    existingPathsById.set(f.id, list)
+  }
 
-  const removedPaths = existing.files.filter((f) => !diskPaths.has(f.path)).map((f) => f.path)
-  const addedFiles = diskFiles.filter((f) => !existingPaths.has(f.path))
-  const removedSet = new Set(removedPaths)
+  const claimedDiskPaths = new Set<string>()
+  const keptFiles: ManifestFile[] = []
+  let removed = 0
+  let moved = 0
+  for (const f of existing.files) {
+    const disk = diskByPath.get(f.path)
+    if (disk) {
+      keptFiles.push(disk)
+      continue
+    }
+    const candidates = (f.id && diskPathsById.get(f.id)) || []
+    const fresh = candidates.filter((p) => !existingByPath.has(p) && !claimedDiskPaths.has(p))
+    const siblings = (f.id && existingPathsById.get(f.id)) || []
+    const freshPath = fresh.length === 1 && siblings.length === 1 ? fresh[0] : undefined
+    const movedDisk = freshPath ? diskByPath.get(freshPath) : undefined
+    if (freshPath && movedDisk) {
+      claimedDiskPaths.add(freshPath)
+      keptFiles.push(movedDisk)
+      moved++
+      continue
+    }
+    removed++
+  }
+  const addedFiles = diskFiles.filter(
+    (f) => !existingByPath.has(f.path) && !claimedDiskPaths.has(f.path)
+  )
 
-  if (removedPaths.length === 0 && addedFiles.length === 0) {
+  if (removed === 0 && addedFiles.length === 0 && moved === 0) {
     return { manifest: existing, added: 0, removed: 0 }
   }
 
-  const updatedFiles = [...existing.files.filter((f) => !removedSet.has(f.path)), ...addedFiles]
+  const updatedFiles = [...keptFiles, ...addedFiles]
+  const keptIds = new Set<string>()
+  for (const f of updatedFiles) if (f.id) keptIds.add(f.id)
+  const keptPaths = new Set(updatedFiles.map((f) => f.path))
 
   const keptJumps: ManifestJump[] = []
   for (const jump of existing.jumps) {
-    const filteredFiles = jump.files.filter((f) => !removedSet.has(f.path))
+    const filteredFiles = jump.files.filter((f) =>
+      f.id ? keptIds.has(f.id) : keptPaths.has(f.path)
+    )
     if (filteredFiles.length > 0) {
       keptJumps.push({ ...jump, files: filteredFiles })
     }
@@ -130,10 +166,10 @@ const mergeManifests = async (
 
   reclusterJumps(merged)
 
-  return { manifest: merged, added: addedFiles.length, removed: removedPaths.length }
+  return { manifest: merged, added: addedFiles.length, removed }
 }
 
-const scanMedia = async (options?: { outputDir?: string }): Promise<ScanResult> => {
+const scanMedia = async (options?: { outputDir?: string }) => {
   const outputDir = options?.outputDir || getOutputDir()
   const originalDir = path.join(outputDir, 'original_files')
   const manifestPath = getManifestPath(outputDir)

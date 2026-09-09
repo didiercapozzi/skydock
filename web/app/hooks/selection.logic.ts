@@ -12,7 +12,7 @@ type UpdateArgs = {
   jumps: ManifestJump[]
 }
 
-const updateSelection = (prev: SelectionMap, args: UpdateArgs): SelectionMap => {
+const updateSelection = (prev: SelectionMap, args: UpdateArgs) => {
   const { groupId, filePath, ctrlKey, shiftKey, prevLast, allPaths, unassignedFiles, jumps } = args
   const next: SelectionMap = {}
   for (const [k, v] of Object.entries(prev)) next[k] = { ...v }

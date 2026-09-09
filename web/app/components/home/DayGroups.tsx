@@ -1,5 +1,5 @@
 import type { UploadProgressState } from '../../hooks/useUploadProgress'
-import type { ManifestJump, SelectionMap } from '../types'
+import type { ManifestFile, ManifestJump, ManifestPassenger, SelectionMap } from '../types'
 import { JumpCard } from '../jump-card'
 
 type Props = {
@@ -13,16 +13,13 @@ type Props = {
   onCreateGroup: (dayDate: string) => void
   onCompareToggle: (jumpId: string) => void
   onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
-  onPreview: (file: import('../types').ManifestFile, groupId: string) => void
+  onPreview: (file: ManifestFile, groupId: string) => void
   onDragStart: (e: React.DragEvent, groupId: string, paths: string[]) => void
   onDragEnd: () => void
   onDrop: (e: React.DragEvent, targetJumpId: string) => void
   onDragOver: (e: React.DragEvent, targetJumpId: string) => void
   onDragLeave: () => void
-  onPassengerChange: (
-    jumpId: string,
-    passenger: import('../types').ManifestPassenger | undefined
-  ) => void
+  onPassengerChange: (jumpId: string, passenger: ManifestPassenger | undefined) => void
   onLabelChange: (jumpId: string, label: string) => void
   onProcess: (jumpId: string) => void
   processingId: string | null

@@ -280,11 +280,7 @@ const decryptPasswordFromStorage = (host: string, user: string, stored: string) 
   return decryptLocal(host, user, stored)
 }
 
-type NasFolderEntry = {
-  name: string
-  path: string
-  isdir: boolean
-}
+type NasFolderEntry = z.infer<typeof dsmFileEntrySchema>
 
 const normalizeNasPath = (input: string): string => {
   const trimmed = input.trim()
@@ -391,6 +387,7 @@ const saveNasSession = (session: NasSession, outputDir?: string): void => {
   const tmp = `${target}.tmp`
   fs.writeFileSync(tmp, JSON.stringify(session, null, 2))
   fs.renameSync(tmp, target)
+  fs.chmodSync(target, 0o600)
 }
 
 const clearNasSession = (outputDir?: string): void => {

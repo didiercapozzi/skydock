@@ -43,7 +43,7 @@ type UseDragDropReturn = {
   setDropDialog: (next: DropDialog | null) => void
 }
 
-const useDragDrop = (): UseDragDropReturn => {
+const useDragDrop = () => {
   const dragDataRef = useRef<DragData | null>(null)
   const [dropDialog, setDropDialog] = useState<DropDialog | null>(null)
   const [dropHint, setDropHint] = useState<DropHint | null>(null)
@@ -83,6 +83,8 @@ const useDragDrop = (): UseDragDropReturn => {
     if (!data) return
     dragDataRef.current = null
     setDropHint(null)
+    const target = jumps.find((j) => j.id === targetJumpId)
+    if (target?.processed === true) return
     const groupIds = Object.keys(data.groups)
     if (groupIds.length === 1 && groupIds[0] === targetJumpId) {
       const toIndex = getDropIndex(e.currentTarget as HTMLElement, e.clientY)

@@ -1,18 +1,18 @@
 import type { ManifestFile, ManifestJump, ManifestPassenger } from './types'
 
-const hasCompletePassenger = (passenger: ManifestPassenger | null | undefined): boolean => {
+const hasCompletePassenger = (passenger: ManifestPassenger | null | undefined) => {
   if (!passenger) return false
   return passenger.firstname.trim() !== '' && passenger.lastname.trim() !== ''
 }
 
-const formatJumpDay = (mtime: number): string => {
+const formatJumpDay = (mtime: number) => {
   const d = new Date(mtime * 1000)
   const month = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${d.getFullYear()}${month}${day}`
 }
 
-const formatCaptureTime = (mtime: number): string => {
+const formatCaptureTime = (mtime: number) => {
   const d = new Date(mtime * 1000)
   const hours = String(d.getHours()).padStart(2, '0')
   const minutes = String(d.getMinutes()).padStart(2, '0')
@@ -24,7 +24,7 @@ const buildJumpBaseName = (
   passenger: ManifestPassenger | null | undefined,
   label: string,
   minMtime: number
-): string => {
+) => {
   const raw =
     passenger && passenger.firstname.trim() !== '' && passenger.lastname.trim() !== ''
       ? `${passenger.firstname.trim()}_${passenger.lastname.trim()}`
@@ -42,7 +42,7 @@ const moveFilesBetweenJumps = (
   groups: Record<string, string[]>,
   targetJumpId: string,
   action: 'move' | 'copy'
-): ManifestJump[] => {
+) => {
   const byPath = new Map<string, ManifestFile>()
   for (const j of jumps) for (const f of j.files) byPath.set(f.path, f)
   for (const f of files) if (!byPath.has(f.path)) byPath.set(f.path, f)
@@ -70,7 +70,7 @@ const reorderFilesInJump = (
   jumpId: string,
   paths: string[],
   toIndex: number
-): ManifestJump[] =>
+) =>
   jumps.map((j) => {
     if (j.id !== jumpId) return j
     const moved = j.files.filter((f) => paths.includes(f.path))
@@ -84,7 +84,7 @@ const reorderFilesInJump = (
     }
   })
 
-const mergeJumps = (jumps: ManifestJump[], leftId: string, rightId: string): ManifestJump[] => {
+const mergeJumps = (jumps: ManifestJump[], leftId: string, rightId: string) => {
   if (leftId === rightId) return jumps
   const left = jumps.find((j) => j.id === leftId)
   const right = jumps.find((j) => j.id === rightId)
@@ -108,12 +108,7 @@ const mergeJumps = (jumps: ManifestJump[], leftId: string, rightId: string): Man
     )
 }
 
-const makeFileName = (
-  baseName: string,
-  mtime: number,
-  ext: string,
-  usedNames: Set<string>
-): string => {
+const makeFileName = (baseName: string, mtime: number, ext: string, usedNames: Set<string>) => {
   const timeStr = formatCaptureTime(mtime)
   const candidate = `${baseName}_${timeStr}.${ext}`
   if (!usedNames.has(candidate)) {
@@ -127,7 +122,7 @@ const makeFileName = (
   return name
 }
 
-const buildFsTime = (jumpMtime: number, captureMtime: number): Date => {
+const buildFsTime = (jumpMtime: number, captureMtime: number) => {
   const jumpDate = new Date(jumpMtime * 1000)
   const origTime = new Date(captureMtime * 1000)
   return new Date(

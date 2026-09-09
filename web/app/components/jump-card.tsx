@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react'
-import { dayToIso, isoToDay } from '../../../packages/skydock-scripts/src/utils'
+import { dayToIso, isoToDay } from '@skydock/scripts'
 import { FileGrid } from './file-grid'
 import { FileRow } from './file-row'
 import { PhotoIcon, VideoIcon } from './icons'

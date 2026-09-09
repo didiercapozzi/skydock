@@ -117,7 +117,7 @@ output/
 - save-jumps persists the working jump list.
 - merge-jumps combines two jumps server-side with a date anchor for the merged files.
 - process-jump runs `executeMedia` for one jump/group (files required, passenger optional — label `yverdon` used if no passenger), marks it processed and clears its publish state.
-- upload-jump uploads one processed jump to network storage using Synology DSM API. Binary comparison via SHA-256 hash skips files already present. Upload uses 10 MB chunks. Per-file progress tracked. Failed uploads retry from beginning. Share link reused if already exists; otherwise created via FileStation Sharing API.
+- upload-jump uploads one processed jump to network storage using Synology DSM API (requires NAS session and chosen upload folder, see §12.3). Binary comparison via SHA-256 hash skips files already present. Upload streams with byte-accurate progress. Per-file progress tracked. Failed uploads retry from beginning. Share link reused if already exists; otherwise created via FileStation Sharing API.
 
 ## 7. Simulation & Testing
 
@@ -162,7 +162,7 @@ output/
 - **Thumb:** Single frame JPEG extraction via ffmpeg for crop bar thumbnails and `FileGrid` `160px` squares (`/api/thumb?seek=0.5&width=160`, `loading=lazy`).
 - **Stream:** Live-transcodes to fMP4 for thumbnails and crop bar fallback.
 - **HLS:** Live-transcodes to HLS segments for main playback.
-- **Manifest:** Full CRUD for jumps, files, calibration, execution. Intents: save-jumps, merge-jumps (with date anchor), process-jump (requires complete passenger), upload-jump (requires processed jump and configured storage).
+- **Manifest:** Full CRUD for jumps, files, calibration, execution. Intents: save-jumps, merge-jumps (with date anchor), process-jump (files required, passenger optional), upload-jump (requires processed jump, NAS session and chosen upload folder).
 
 ## 9. Review UI (`/`)
 

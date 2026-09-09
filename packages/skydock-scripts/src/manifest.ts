@@ -3,10 +3,9 @@ import * as path from 'node:path'
 import { jumpsFileSchema, manifestSchema } from './types'
 import type { JumpsFile, Manifest, ManifestFile } from './types'
 
-const getJumpsPath = (manifestPath: string): string =>
-  path.join(path.dirname(manifestPath), 'jumps.json')
+const getJumpsPath = (manifestPath: string) => path.join(path.dirname(manifestPath), 'jumps.json')
 
-const readJumpsFile = (jumpsPath: string): JumpsFile | null => {
+const readJumpsFile = (jumpsPath: string) => {
   if (!fs.existsSync(jumpsPath)) return null
   try {
     return jumpsFileSchema.parse(JSON.parse(fs.readFileSync(jumpsPath, 'utf-8')))
@@ -15,7 +14,7 @@ const readJumpsFile = (jumpsPath: string): JumpsFile | null => {
   }
 }
 
-const resolveJumps = (files: ManifestFile[], jumpsFile: JumpsFile | null): Manifest['jumps'] => {
+const resolveJumps = (files: ManifestFile[], jumpsFile: JumpsFile | null) => {
   if (!jumpsFile) return []
   const byId = new Map<string, ManifestFile>()
   for (const f of files) if (f.id) byId.set(f.id, f)
@@ -42,7 +41,7 @@ const resolveJumps = (files: ManifestFile[], jumpsFile: JumpsFile | null): Manif
   }))
 }
 
-const loadManifest = (manifestPath: string): Manifest | null => {
+const loadManifest = (manifestPath: string) => {
   if (!fs.existsSync(manifestPath)) return null
   try {
     const raw = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'))
@@ -113,7 +112,7 @@ const loadManifest = (manifestPath: string): Manifest | null => {
   }
 }
 
-const saveManifest = (manifestPath: string, manifest: Manifest): void => {
+const saveManifest = (manifestPath: string, manifest: Manifest) => {
   manifestSchema.parse(manifest)
   const dir = path.dirname(manifestPath)
   fs.mkdirSync(dir, { recursive: true })
@@ -158,7 +157,7 @@ const saveManifest = (manifestPath: string, manifest: Manifest): void => {
   fs.renameSync(tmpM, manifestPath)
 }
 
-const normalizeManifest = (manifest: Manifest): boolean => {
+const normalizeManifest = (manifest: Manifest) => {
   let changed = false
   for (const jump of manifest.jumps) {
     if (jump.processed === null) {

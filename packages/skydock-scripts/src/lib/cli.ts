@@ -1,7 +1,7 @@
 import { scheduleIdle, writeStatus } from '../status'
 import { isCliModule } from '../utils'
 
-const withStatus = <T>(task: string, runningMsg: string, fn: () => T, outputDir?: string): T => {
+const withStatus = <T>(task: string, runningMsg: string, fn: () => T, outputDir?: string) => {
   writeStatus(task, 'running', runningMsg, outputDir)
   try {
     const result = fn()

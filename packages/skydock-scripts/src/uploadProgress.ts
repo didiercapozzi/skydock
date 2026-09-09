@@ -15,10 +15,10 @@ const uploadProgressStateSchema = z.object({
 })
 type UploadProgressState = z.infer<typeof uploadProgressStateSchema>
 
-const getUploadProgressPath = (outputDir?: string): string =>
+const getUploadProgressPath = (outputDir?: string) =>
   path.join(getStatusDir(outputDir), 'upload-progress.json')
 
-const readUploadProgress = (outputDir?: string): UploadProgressState | null => {
+const readUploadProgress = (outputDir?: string) => {
   try {
     const raw = JSON.parse(fs.readFileSync(getUploadProgressPath(outputDir), 'utf-8'))
     const parsed = uploadProgressStateSchema.safeParse(raw)
@@ -29,7 +29,7 @@ const readUploadProgress = (outputDir?: string): UploadProgressState | null => {
   }
 }
 
-const writeUploadProgress = (state: UploadProgressState, outputDir?: string): void => {
+const writeUploadProgress = (state: UploadProgressState, outputDir?: string) => {
   uploadProgressStateSchema.parse(state)
   const target = getUploadProgressPath(outputDir)
   fs.mkdirSync(path.dirname(target), { recursive: true })
@@ -38,7 +38,7 @@ const writeUploadProgress = (state: UploadProgressState, outputDir?: string): vo
   fs.renameSync(tmp, target)
 }
 
-const clearUploadProgress = (outputDir?: string): void => {
+const clearUploadProgress = (outputDir?: string) => {
   const target = getUploadProgressPath(outputDir)
   if (fs.existsSync(target)) fs.unlinkSync(target)
 }

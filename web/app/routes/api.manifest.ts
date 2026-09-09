@@ -103,7 +103,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         errors.addGlobalError('Choose an upload folder first.')
         return errors.toResponse(422)
       }
-      const parseDay = (day?: string): number | null => {
+      const parseDay = (day?: string) => {
         if (!day) return null
         const [d, m, y] = day.split('.').map(Number)
         if (!d || !m || !y) return null

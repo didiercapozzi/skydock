@@ -1,6 +1,12 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { z } from 'zod'
 import { getOutputDir } from '@skydock/scripts'
+
+const rangeSchema = z.object({
+  start: z.number().int().nonnegative(),
+  end: z.number().int().nonnegative()
+})
 
 const MIME_TYPES: Record<string, string> = {
   '.mp4': 'video/mp4',
@@ -107,7 +113,8 @@ const loader = async ({
     const parts = rangeHeader.replace(/bytes=/, '').split('-')
     const start = parseInt(parts[0], 10)
     const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1
-    range = { start, end }
+    const parsed = rangeSchema.safeParse({ start, end })
+    if (parsed.success) range = parsed.data
   }
 
   return streamFile(filePath, contentType, stat.size, range)

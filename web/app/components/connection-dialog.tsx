@@ -22,8 +22,9 @@ type ConnectionDialogProps = {
 
 const ConnectionDialog = ({ onConnect, onCancel, error }: ConnectionDialogProps) => {
   const submit: SubmitFunction = async (target) => {
-    const data = target as unknown as z.infer<typeof connectionSchema>
-    onConnect(data.host, data.user, data.password)
+    const parsed = connectionSchema.safeParse(target)
+    if (!parsed.success) return
+    onConnect(parsed.data.host, parsed.data.user, parsed.data.password)
   }
 
   const form = useForm({

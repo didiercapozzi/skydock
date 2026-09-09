@@ -31,7 +31,10 @@ export {
   manifestSchema,
   manifestStatusSchema,
   passengerSchema,
-  publishSchema
+  publishSchema,
+  systemStatusSchema,
+  taskStateSchema,
+  taskStatusSchema
 } from './types'
 
 export { reclusterJumps, shiftFiles } from './clustering'

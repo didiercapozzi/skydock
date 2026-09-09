@@ -6,7 +6,7 @@ import type { ManifestFile } from './types'
 import { countFiles, fileMatchesExisting, findMediaFiles, hasMediaFiles, walkFiles } from './lib/fs'
 import { DEFAULT_MAX_FIND_DEPTH } from './lib/fs'
 
-const hasCommand = (cmd: string): boolean => {
+const hasCommand = (cmd: string) => {
   try {
     childProcess.execSync(`command -v ${cmd}`, { stdio: 'ignore' })
     return true
@@ -15,40 +15,38 @@ const hasCommand = (cmd: string): boolean => {
   }
 }
 
-const checkExiftool = (): boolean => hasCommand('exiftool')
+const checkExiftool = () => hasCommand('exiftool')
 
-const sanitizeLabel = (label: string): string => label.replace(/[^a-zA-Z0-9._-]/g, '_')
+const sanitizeLabel = (label: string) => label.replace(/[^a-zA-Z0-9._-]/g, '_')
 
-const getExtension = (filePath: string): string => {
+const getExtension = (filePath: string) => {
   const base = filePath.split('/').pop() ?? filePath
   const dot = base.lastIndexOf('.')
   return dot === -1 ? '' : base.slice(dot + 1).toLowerCase()
 }
 
-const isVideoFile = (filePath: string): boolean => VIDEO_EXTENSIONS_SET.has(getExtension(filePath))
+const isVideoFile = (filePath: string) => VIDEO_EXTENSIONS_SET.has(getExtension(filePath))
 
-const isPhotoFile = (filePath: string): boolean => PHOTO_EXTENSIONS_SET.has(getExtension(filePath))
+const isPhotoFile = (filePath: string) => PHOTO_EXTENSIONS_SET.has(getExtension(filePath))
 
-const isMediaFile = (filePath: string): boolean => MEDIA_EXTENSIONS_SET.has(getExtension(filePath))
+const isMediaFile = (filePath: string) => MEDIA_EXTENSIONS_SET.has(getExtension(filePath))
 
-const getOutputDir = (): string =>
+const getOutputDir = () =>
   (typeof process !== 'undefined' && process.env?.SKYDOCK_OUTPUT_DIR) || '/workspace/output'
 
-const getManifestPath = (outputDir?: string): string =>
+const getManifestPath = (outputDir?: string) =>
   path.join(outputDir || getOutputDir(), 'manifest.json')
 
-const getStatusDir = (outputDir?: string): string =>
-  path.join(outputDir || getOutputDir(), '.status')
+const getStatusDir = (outputDir?: string) => path.join(outputDir || getOutputDir(), '.status')
 
-const sortFilesByMtime = (files: ManifestFile[]): ManifestFile[] =>
-  [...files].sort((a, b) => a.mtime - b.mtime)
+const sortFilesByMtime = (files: ManifestFile[]) => [...files].sort((a, b) => a.mtime - b.mtime)
 
-const getExtensionSafe = (filePath: string): string => {
+const getExtensionSafe = (filePath: string) => {
   const ext = getExtension(filePath)
   return ext || 'unknown'
 }
 
-const formatTimestamp = (epoch: number): string => {
+const formatTimestamp = (epoch: number) => {
   const date = new Date(epoch * 1000)
   const y = date.getUTCFullYear()
   const m = String(date.getUTCMonth() + 1).padStart(2, '0')
@@ -59,9 +57,9 @@ const formatTimestamp = (epoch: number): string => {
   return `${y}${m}${d}_${h}${min}${s}`
 }
 
-const toISOString = (date?: Date): string => (date || new Date()).toISOString()
+const toISOString = (date?: Date) => (date || new Date()).toISOString()
 
-const isCliModule = (baseName: string): boolean => {
+const isCliModule = (baseName: string) => {
   if (typeof process === 'undefined' || !process.argv) return false
   const p = process.argv[1] ?? ''
   return p.endsWith(`${baseName}.ts`) || p.endsWith(`${baseName}.js`)
@@ -69,14 +67,14 @@ const isCliModule = (baseName: string): boolean => {
 
 const daySchema = z.string().regex(/^\d{2}\.\d{2}\.\d{4}$/, 'Invalid day, expected DD.MM.YYYY')
 
-const parseDayEpoch = (day?: string): number | null => {
+const parseDayEpoch = (day?: string) => {
   const parsed = daySchema.safeParse(day)
   if (!parsed.success) return null
   const [d, m, y] = parsed.data.split('.').map(Number)
   return Math.floor(new Date(y, m - 1, d).getTime() / 1000)
 }
 
-const formatDay = (epoch: number): string => {
+const formatDay = (epoch: number) => {
   const day = new Date(epoch * 1000).toLocaleDateString('de-CH', {
     year: 'numeric',
     month: '2-digit',
@@ -86,16 +84,16 @@ const formatDay = (epoch: number): string => {
   return day
 }
 
-const formatTodayDeCh = (): string => formatDay(Math.floor(Date.now() / 1000))
+const formatTodayDeCh = () => formatDay(Math.floor(Date.now() / 1000))
 
-const dayToIso = (day: string): string => {
+const dayToIso = (day: string) => {
   const parsed = daySchema.safeParse(day)
   if (!parsed.success) throw new Error(parsed.error.issues[0].message)
   const [d, m, y] = parsed.data.split('.').map(Number)
   return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 
-const isoToDay = (isoDate: string): string => {
+const isoToDay = (isoDate: string) => {
   const m = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/)
   if (!m) throw new Error('Invalid ISO date, expected YYYY-MM-DD')
   const [, y, mon, d] = m
@@ -104,9 +102,9 @@ const isoToDay = (isoDate: string): string => {
   return day
 }
 
-const parseExiftoolCsv = (csv: string): Map<string, string> => {
+const parseExiftoolCsv = (csv: string) => {
   const map = new Map<string, string>()
-  const parseLine = (line: string): string[] => {
+  const parseLine = (line: string) => {
     const result: string[] = []
     let cur = ''
     let inQuotes = false
@@ -125,7 +123,7 @@ const parseExiftoolCsv = (csv: string): Map<string, string> => {
     result.push(cur)
     return result
   }
-  const stripQuotes = (s: string): string => {
+  const stripQuotes = (s: string) => {
     const t = s.trim()
     if (t.length >= 2 && t.startsWith('"') && t.endsWith('"')) return t.slice(1, -1).trim()
     return t

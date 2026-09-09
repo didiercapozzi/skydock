@@ -5,10 +5,10 @@ import { MEDIA_EXTENSIONS_SET } from '../constants'
 
 const DEFAULT_MAX_FIND_DEPTH = 10
 
-const findMediaFiles = (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH): string[] => {
+const findMediaFiles = (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH) => {
   const results: string[] = []
 
-  const search = (currentDir: string, depth: number): void => {
+  const search = (currentDir: string, depth: number) => {
     if (depth > maxDepth) return
     try {
       const entries = fs.readdirSync(currentDir, { withFileTypes: true })
@@ -28,8 +28,8 @@ const findMediaFiles = (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH): string[
   return results
 }
 
-const hasMediaFiles = (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH): boolean => {
-  const search = (currentDir: string, depth: number): boolean => {
+const hasMediaFiles = (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH) => {
+  const search = (currentDir: string, depth: number) => {
     if (depth > maxDepth) return false
     try {
       const entries = fs.readdirSync(currentDir, { withFileTypes: true })
@@ -51,7 +51,7 @@ const hasMediaFiles = (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH): boolean 
   return search(dir, 0)
 }
 
-const fileMatchesExisting = (src: string, destDir: string): boolean => {
+const fileMatchesExisting = (src: string, destDir: string) => {
   const existing = path.join(destDir, path.basename(src))
   if (!fs.existsSync(existing)) return false
   try {
@@ -62,7 +62,7 @@ const fileMatchesExisting = (src: string, destDir: string): boolean => {
   }
 }
 
-const countFiles = (dir: string): number => {
+const countFiles = (dir: string) => {
   let count = 0
   try {
     const entries = fs.readdirSync(dir, { withFileTypes: true })

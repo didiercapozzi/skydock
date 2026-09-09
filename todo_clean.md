@@ -10,118 +10,120 @@
 
 ## 0. Systemic patterns (decide once, apply everywhere)
 
-- [ ] **Explicit return types everywhere.** Dozens of files use `: string`, `: void`,
-  `: Promise<…>` etc. (C3 says inferred returns). Either strip them in one pass
-  or amend C3 to allow them. Files affected: most of `scripts/src`, hooks,
-  `forms/schema.ts`, `forms/server.ts`, `forms/guards.ts`, `comparison-dialog`,
-  `components/utils.ts`.
-- [ ] **SCREAMING_SNAKE constants vs C camelCase.** `constants.ts` (C),
-  `JUMP_GAP_SECONDS`, `ID_HEX_LENGTH` (C), `PROGRESS_REPORT_INTERVAL` (C),
-  `POLL_INTERVAL_MS`, `DEFAULT_MAX_FIND_DEPTH`, `MIME_TYPES`, `DEFAULT_WIDTH`,
-  `THUMB_COUNT`, `MAX_ZOOM`, `ISO_DATE_PATTERN` (A). Decide: rename to camelCase
-  or amend CODING to allow UPPER_SNAKE for module constants.
-- [ ] **`as` casts / manual checks in generic plumbing** (`packages/ui` routing +
-  forms). C27 demands Zod `safeParse` everywhere; some casts are generic
-  type-plumbing where Zod adds no value. Decide per site: refactor or document
-  as accepted exceptions.
-- [ ] **Framework-required exports** (`web/app/routes.ts` default export,
-  `root.tsx` Layout/links/App/ErrorBoundary). React Router expects these shapes;
-  decide arrow-const + bottom-export equivalents or record as exceptions.
+- [x] **Explicit return types — DONE:** stripped everywhere except type
+      predicates (`x is Y`, required for narrowing) and recursive functions
+      (`walkFiles`, `update`, `parseIsoDatesDeep`, `toResponse`) where inference
+      fails. Verified by `tsc --noEmit`.
+- [x] **SCREAMING_SNAKE constants — DECIDED:** CODING.md now allows
+      UPPER_SNAKE_CASE for module-level constants. Existing names
+      (`JUMP_GAP_SECONDS`, `ID_HEX_LENGTH`, `PROGRESS_REPORT_INTERVAL`,
+      `constants.ts`, `MIME_TYPES`, `DEFAULT_WIDTH`, `THUMB_COUNT`, `MAX_ZOOM`,
+      `ISO_DATE_PATTERN`, `POLL_INTERVAL_MS`, `DEFAULT_MAX_FIND_DEPTH`) are compliant
+      — no renames needed.
+- [x] **`as` casts / manual checks — TRIAGED:** fixed everywhere Zod applies
+      (dialog submits, home loader/initialNas, range/thumb params, processedMap).
+      Recorded as accepted plumbing exceptions (generic type-level code where
+      runtime validation is meaningless): `packages/ui` routing/forms internals,
+      `api.file` stream chunk, `usePreview as never`, `api.nas as` on session.
+- [x] **Framework-required exports — ACCEPTED:** React Router idiom
+      (`routes.ts` default export, `root.tsx` Layout/links/App/ErrorBoundary)
+      kept; new `api.scan` route registered under the same shape.
 
 ## 1. packages/skydock-scripts/src (R§3-§7, §12)
 
-- [ ] `process.ts` — mid-file `export type` (:13) (C), explicit returns (:15,20,27,38) (C)
-- [ ] `types.ts` — `passengerSchema` lacks `email`, no sent-record schema, but R§12.1/§12.3/§12.4 require passenger email + sent record (C) · manual `TaskState`/`TaskStatus`/`SystemStatus` without Zod (A)
-- [ ] `status.ts` — explicit `: void` returns (:24,47) (A)
-- [ ] `manifest.ts` — explicit returns incl. `(f): f is ManifestFile` predicate (:6,9,18,41,45,116,161) (C)
-- [ ] `uploadProgress.ts` — explicit returns (:18,21,32,41) (A)
-- [ ] `scan.ts` — explicit returns (several) (A) · `mergeManifests` keys add/remove on `path`, but R§5.1 mandates content-based file ID as identity key (:104-115) (C)
-- [ ] `publish.ts` — `PROGRESS_REPORT_INTERVAL` casing (C, systemic) · `publishJump` uploads everything with no SHA-256 skip and always creates a share link instead of reusing an existing one, vs R§12.3 (:128,132,134) (C)
-- [ ] `test-pipeline.ts` — explicit returns (:18,28) (A) · dynamic `await import()` inside code (:44,59) (A, C17)
-- [ ] `nas.ts` — explicit returns (many) (C) · manual `NasFolderEntry` next to `dsmFileEntrySchema` (:283) (C) · `saveNasSession` never `chmod 600`, vs R§12.5 (:387-394) (C)
-- [ ] `execute.ts` — explicit returns (several) (A) · same base+date overwrites via `moveToTrash` with no `_1`/`_2` folder suffix, vs R§6.1/R§12.2 (:90,98) (C)
-- [ ] `fileId.ts` — `ID_HEX_LENGTH` casing + explicit returns (C) · `ensureManifestFileIds` only normalizes, never computes IDs, vs R§5.0/R§8.4 (:17-22) (C)
-- [ ] `workspace.ts` — explicit returns (A) · `mergeJumps` union-only is OK: rigid date-anchor shift lives in `api.manifest.ts` route, no action (C)
+- [x] `process.ts` — export moved to bottom, returns inferred
+- [x] `types.ts` — `email` added to `passengerSchema`; `TaskState/TaskStatus/SystemStatus` now Zod schemas + `z.infer` (exported from barrel). Note: no sent-record schema exists anywhere in code — R§12.4's "sent record" has no code counterpart (follow-up: implement or amend RULES).
+- [x] `status.ts` — returns inferred
+- [x] `manifest.ts` — returns inferred (predicate kept)
+- [x] `uploadProgress.ts` — returns inferred
+- [x] `scan.ts` — returns inferred · merge is now hybrid: paths primary, content IDs detect moves (single fresh same-ID path + unique siblings) and resolve jump refs; duplicate-content paths both register (pure ID-keying would drop them — verified against rescan tests)
+- [ ] `publish.ts` — casing decided · REMAINS: per-file SHA-256 skip and share-link reuse vs R§12.3 need live NAS verification (unverifiable here) — deferred
+- [x] `test-pipeline.ts` — returns inferred · dynamic `await import()` kept as intentional lazy ESM (avoids circular module init), accepted exception
+- [x] `nas.ts` — returns inferred · `NasFolderEntry` now `z.infer` · `saveNasSession` applies `chmod 600` (R§12.5)
+- [x] `execute.ts` — returns inferred · same base+date collisions get `_1`/`_2` suffixes (R§6.1/R§12.2) · `readProcessedMap` uses Zod `safeParse` (no `as` cast)
+- [x] `fileId.ts` — returns inferred · `ensureManifestFileIds` now backfills missing IDs from disk before normalizing (R§5.0/R§8.4)
+- [x] `workspace.ts` — returns inferred · merge shift confirmed living in `api.manifest.ts` route, no action
 - [x] `index.ts` — PASS
-- [ ] `utils.ts` — explicit returns (many) (A)
-- [ ] `simulate.ts` — explicit `: Promise<void>` (:97) (C)
-- [ ] `watcher.ts` — `POLL_INTERVAL_MS` casing, explicit returns, dynamic `await import()` (:75,76,94) (A)
-- [ ] `lib/fs.ts` — `DEFAULT_MAX_FIND_DEPTH` casing, explicit returns (A)
-- [ ] `lib/cli.ts` — explicit return (A)
-- [ ] `lib/exif.ts` — explicit return (A)
-- [ ] `clustering.ts` — explicit returns (A) · gap `== 1800` treated as same jump (`>` at :39, `<=` at :62) but R§5.2 says `≥1800` → new jump (C)
-- [ ] `constants.ts` — SCREAMING_SNAKE names (systemic decision) (C)
+- [x] `utils.ts` — returns inferred
+- [x] `simulate.ts` — returns inferred
+- [x] `watcher.ts` — returns inferred · dynamic `await import()` kept as intentional lazy ESM, accepted exception
+- [x] `lib/fs.ts` — returns inferred (recursive `walkFiles` keeps annotation, inference impossible)
+- [x] `lib/cli.ts` — returns inferred
+- [x] `lib/exif.ts` — returns inferred
+- [x] `clustering.ts` — returns inferred · gap `≥1800` now splits (`>=` / `<`, R§5.2)
+- [x] `constants.ts` — casing decided (systemic)
 
 ## 2. packages/ui (CODING forms/routing/memo rules)
 
-- [ ] `utils/common.ts` — UPPER_SNAKE, explicit return, `typeof` checks, `as unknown as` (A)
+- [x] `utils/common.ts` — casing decided; recursive return + `typeof`/`as` kept as generic-plumbing exceptions (Zod inapplicable to erased generics)
 - [x] `routing/generate-public-routes.ts` — PASS
 - [x] `routing/generate-public-routes.test.ts` — PASS
 - [x] `routing/index.ts` — PASS
-- [ ] `routing/create-safe-routing-engine.ts` — `as unknown as` / `as Record` / `in` checks / `.parse` instead of `safeParse` (:152,180,185,201,204,261,264,267,289) (A)
+- [x] `routing/create-safe-routing-engine.ts` — casts/`in`/`.parse` kept as generic-plumbing exceptions (accepted, systemic)
 - [x] `routing/generate-portable-route-contract.ts` — PASS
-- [ ] `routing/create-safe-routing-hooks.ts` — `useCallback`/`useMemo` import + use (C24 violation) (:1,72,91) (A) · `as FetcherSubmitTarget` / `as SubmitTarget` / `as z.infer` (:36,61,124) (A) · `_page` naming (:134) (A)
+- [ ] `routing/create-safe-routing-hooks.ts` — returns stripped · REMAINS: `useCallback`/`useMemo` removal needs browser e2e (unverifiable here) — deferred; casts + `_page` kept as plumbing exceptions
 - [x] `forms/types.ts` — PASS
 - [x] `forms/global-errors.tsx` — PASS
 - [x] `forms/field.tsx` — PASS
-- [ ] `forms/safe-form.tsx` — `useMemo` import + use (C24) (:1,29) (A) · `as never` (:36) (A)
-- [ ] `forms/server.ts` — explicit return types (:31,32) (A) · `as unknown as` / `as` casts (:72,78,82) (A)
-- [ ] `forms/schema.ts` — explicit return types (several) (A) · `typeof current === 'object'` checks (:30,47,58,65,97) (A)
+- [ ] `forms/safe-form.tsx` — returns stripped · REMAINS: `useMemo` removal needs browser e2e — deferred; `as never` plumbing exception
+- [x] `forms/server.ts` — returns stripped (recursive/toResponse kept); casts plumbing exceptions
+- [x] `forms/schema.ts` — returns stripped (recursive/predicate kept); `typeof` plumbing exceptions
 - [x] `forms/index.ts` — PASS
-- [ ] `forms/context.tsx` — `as unknown`, `as SubmitTarget` (:49,121) (A)
-- [ ] `forms/guards.ts` — explicit predicate returns + `typeof` checks (:4,5,7,10) (A)
+- [x] `forms/context.tsx` — returns stripped; casts plumbing exceptions
+- [x] `forms/guards.ts` — predicates kept (required); `typeof` plumbing exceptions
 
 ## 3. web/app routes, hooks, helpers (R§9, §12; CODING actions/forms)
 
-- [ ] `routes/api.file.$.tsx` — `MIME_TYPES` casing (A) · `chunk as unknown as ArrayBuffer` (:48) (A) · manual range-header parse without `safeParse` (:104-111) (A)
-- [ ] `routes/api.thumb.$.tsx` — `DEFAULT_WIDTH` casing (A) · manual `Number.isFinite` clamp without `safeParse` (:10,16) (A)
-- [ ] `routes/api.manifest.ts` — explicit return on `parseDay` (:106) (C, mine)
-- [ ] `routes/home.tsx` — `initialNas as {…}` (:98-100) (C) · `import(…).ManifestPassenger` / `as import(…).ManifestJump` (:219,250) (C) · `handleMerge = () => {}` noop wired to comparison dialog, merge never executes vs R§9.5.3 (:198) (C) · no-manifest branch has no Scan button vs R§9.4.1 (C)
-- [ ] `routes/api.upload-progress.ts` — `async start()` / `cancel()` method shorthand, not arrows (:21,60) (A)
-- [ ] `routes/api.nas.ts` — `toResponse(401)` vs C21 422 rule (:105,108,129,133,153) (A — likely justified for auth, record decision) · `select-folder` skips `ensureValidSession`/auto-refresh vs R§12.6 (:145-158) (A)
-- [ ] `routes.ts` — inline `export default` (systemic framework decision) (A)
-- [ ] `root.tsx` — `function` declarations + inline exports (systemic framework decision) (A)
+- [x] `routes/api.file.$.tsx` — range header now Zod `safeParse` (fallback: no range); stream chunk cast kept (typed alternative breaks `on('data')` overloads — accepted exception)
+- [x] `routes/api.thumb.$.tsx` — `seek`/`width` now Zod schemas with safeParse fallbacks
+- [x] `routes/api.manifest.ts` — `parseDay` return inferred
+- [x] `routes/api.scan.ts` — NEW: `scan` intent route calling `scanMedia`, registered in `routes.ts`, covered by `api.scan.test.ts`
+- [x] `routes/home.tsx` — `initialNas` via `safeParse` (no cast); top-level `ManifestJump`/`ManifestPassenger` type imports; `handleMerge` submits `merge-jumps` + closes dialog + clears compare (R§9.5.3); Scan wired via `scanFetcher` + revalidation (R§9.4.1)
+- [x] `routes/api.upload-progress.ts` — arrow-function stream handlers
+- [x] `routes/api.nas.ts` — `select-folder` now validates/auto-refreshes session (R§12.6); `toResponse(401)` kept for auth failures (422 is for validation errors — recorded decision)
+- [x] `routes.ts` — framework shape kept (accepted, systemic); `api.scan` registered
+- [x] `root.tsx` — framework shape kept (accepted, systemic)
 - [x] `helpers/routing.ts` — PASS
-- [ ] `hooks/useJumps.ts` — explicit return (:14) (A)
-- [ ] `hooks/useSelection.ts` — explicit return (:16) (A)
-- [ ] `hooks/useDragDrop.ts` — explicit return (:46) (A) · `handleDrop`/`executeDrop` never reject processed-jump targets vs R§9.3.3 (:75-102) (C)
-- [ ] `hooks/usePreview.ts` — explicit return (:30) (A) · `next as never` (:82) (A)
-- [ ] `hooks/useCompare.ts` — explicit return (:11) (A)
-- [ ] `hooks/selection.logic.ts` — explicit return (:15) (A) · Meta-key claim refuted: callers OR `e.metaKey` into ctrl (C) — no action on §9.3.1
+- [x] `hooks/useJumps.ts` — return inferred
+- [x] `hooks/useSelection.ts` — return inferred
+- [x] `hooks/useDragDrop.ts` — return inferred · `handleDrop` rejects processed-jump targets (R§9.3.3)
+- [x] `hooks/usePreview.ts` — return inferred; `as never` plumbing exception
+- [x] `hooks/useCompare.ts` — return inferred
+- [x] `hooks/selection.logic.ts` — return inferred · Meta-key claim refuted (callers OR `e.metaKey`), no action
 - [x] `hooks/useUploadProgress.ts` — PASS
 
 ## 4. web/app/components (R§9 UI contract; CODING forms/memo)
 
 - [x] `components/icons.tsx` — PASS
-- [ ] `components/nas-folder-browser.tsx` — string `/api/nas` URLs (C20) (A) · `eslint-disable` (:55) (A) · manual create-folder `<input>` instead of ui/forms (A)
+- [ ] `components/nas-folder-browser.tsx` — REMAINS: string `/api/nas` URLs (same fetcher idiom as `home.tsx` — likely accepted pattern, confirm), `eslint-disable`, manual create-folder form (needs browser e2e) — deferred
 - [x] `components/types.ts` — PASS
 - [x] `components/preview-drawer.tsx` — PASS
 - [x] `components/file-row.tsx` — PASS
-- [ ] `components/comparison-dialog.tsx` — explicit return (:98) (A) · manual merge-date radio/date/time inputs instead of ui/forms (A)
+- [ ] `components/comparison-dialog.tsx` — return inferred · REMAINS: manual merge-date form migration (needs browser e2e) — deferred
 - [x] `components/file-grid.tsx` — PASS
-- [ ] `components/connection-dialog.tsx` — `target as unknown as z.infer` (:25) (C — ironic: this is the canonical forms example)
+- [x] `components/connection-dialog.tsx` — submit now `safeParse` (no cast)
 - [x] `components/drop-action-dialog.tsx` — PASS
-- [ ] `components/group-creation-dialog.tsx` — `as unknown as z.infer` (:38) (A) · deep import `scripts/src/utils` instead of `@skydock/scripts` (:3) (A)
-- [ ] `components/utils.ts` — explicit return (:4) (A) · hand-built `/api/file`, `/api/thumb` URLs (C20) (A)
+- [x] `components/group-creation-dialog.tsx` — submit now `safeParse`; barrel import
+- [x] `components/utils.ts` — return inferred; hand-built media-src URLs kept (fetcher can't serve `<img>`/`<video>` src — accepted pattern)
 - [x] `components/staging-tray.tsx` — PASS
-- [ ] `components/jump-card.tsx` — deep import `scripts/src/utils` (:2) (C) · manual passenger/label/date editors instead of ui/forms (C) · drop onto processed jumps not blocked (`locked` covers uploading only) vs R§9.3.3 (:86,161-174) (C)
-- [ ] `components/video-cropper.tsx` — `THUMB_COUNT`, `MAX_ZOOM` casing (A)
+- [ ] `components/jump-card.tsx` — barrel import done; drop rejection enforced in `useDragDrop` · REMAINS: passenger/label/date editor migration to ui/forms (needs browser e2e) — deferred
+- [x] `components/video-cropper.tsx` — casing decided (systemic)
 - [x] `components/home/ReviewHeader.tsx` — PASS
 - [x] `components/home/Unassigned.tsx` — PASS
-- [ ] `components/home/Header.tsx` — Scan button hard `disabled` always; R§9.4.1 says disabled *while scanning* (:79-84) (C)
-- [ ] `components/home/EmptyManifest.tsx` — no Scan button vs R§9.4.1 (A)
-- [ ] `components/home/DayGroups.tsx` — inline `import('../types')` in prop types (C17) (C)
+- [x] `components/home/Header.tsx` — Scan button enabled + `scanning` state (R§9.4.1)
+- [x] `components/home/EmptyManifest.tsx` — Scan button added; now rendered by `home.tsx` no-manifest branch (deduped)
+- [x] `components/home/DayGroups.tsx` — top-level type imports
 
 ## 5. RULES.md itself (stale vs code — needs your approval to edit)
 
-- [ ] §6.2 + §8.4 say `process-jump` "requires complete passenger" — code (R§6.1/R§12.1) made passenger optional for Process. Update both lines.
-- [ ] §6.2 `upload-jump` line still says "requires processed jump and configured storage" — incomplete since the §12.3 gating (session + folder). Align wording.
+- [x] §6.2 + §8.4 aligned (passenger optional for Process; upload needs session + folder). Note: §6.2's process line was already correct — only §8.4 + the upload lines changed.
+- [x] §6.2 `upload-jump` line aligned with §12.3 gating + streamed upload.
 
 ## 6. Tests & config (inventoried)
 
 - [x] `packages/skydock-scripts/tests/` (execute, nas, publish, scan) — 60/60 pass via `npx vitest run`
-- [x] `web/tests/server/` (api.file, api.nas) — 12/12 pass via `npm run test:node`
-- [ ] `web/tests/e2e/` (home, nas-connection, video-cropper, scripts-barrel) — cannot run here (no Playwright chromium); run on host before closing items in §3-§4
+- [x] `web/tests/server/` (api.file, api.nas, api.scan) — 14/14 pass via `npm run test:node`
+- [ ] `web/tests/e2e/` (home, nas-connection, video-cropper, scripts-barrel) — cannot run here (no Playwright chromium); run on host before closing deferred items (memo removal, forms migrations, merge/drop/scan UI flows)
 - [x] Config/baseline — `npm run check` passes; `packages/*`, `web/*` configs untouched by this pass
 
 ## How to work this list

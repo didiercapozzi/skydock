@@ -10,10 +10,7 @@ type UseSelectionReturn = {
   setSelection: (next: SelectionMap) => void
 }
 
-const useSelection = (
-  jumps: ManifestJump[],
-  unassignedFiles: ManifestFile[]
-): UseSelectionReturn => {
+const useSelection = (jumps: ManifestJump[], unassignedFiles: ManifestFile[]) => {
   const [selection, setSelectionState] = useState<SelectionMap>({})
   const lastClickedRef = useRef<string | null>(null)
 

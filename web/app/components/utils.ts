@@ -1,7 +1,7 @@
 import { getOutputDir, isVideoFile as isVideoFileFromScripts } from '@skydock/scripts'
 import type { ManifestJump } from './types'
 
-const isVideoFile = (filename: string): boolean => isVideoFileFromScripts(filename)
+const isVideoFile = (filename: string) => isVideoFileFromScripts(filename)
 
 const formatSize = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`

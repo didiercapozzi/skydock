@@ -10,21 +10,19 @@ type ProcessOptions = {
   outputDir?: string
 }
 
-export type { ProcessOptions }
-
-const parseDate = (raw: string): string | null => {
+const parseDate = (raw: string) => {
   const match = raw.match(/^(\d{4}):(\d{2}):(\d{2})/)
   return match ? `${match[1]}-${match[2]}-${match[3]}` : null
 }
 
-const buildDateMap = (files: string[]): Map<string, string> =>
+const buildDateMap = (files: string[]) =>
   buildExifMap(files, {
     photoTags: ['-DateTimeOriginal'],
     videoTags: ['-CreateDate'],
     parse: parseDate
   })
 
-const getCaptureDate = (filepath: string, dateMap: Map<string, string>): string => {
+const getCaptureDate = (filepath: string, dateMap: Map<string, string>) => {
   const mapped = dateMap.get(filepath)
   if (mapped) return mapped
   const stat = fs.statSync(filepath)
@@ -35,7 +33,7 @@ const getCaptureDate = (filepath: string, dateMap: Map<string, string>): string 
   return `${y}-${m}-${d}`
 }
 
-const processMedia = (options: ProcessOptions): { copied: number; skipped: number } => {
+const processMedia = (options: ProcessOptions) => {
   const outputDir = options.outputDir || getOutputDir()
   const originalDir = path.join(outputDir, 'original_files')
 
@@ -92,3 +90,4 @@ if (isCliModule('process')) {
 }
 
 export { processMedia }
+export type { ProcessOptions }

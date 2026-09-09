@@ -11,7 +11,7 @@ type UseJumpsReturn = {
   updateJumps: (next: ManifestJump[]) => void
 }
 
-const useJumps = (initialJumps: ManifestJump[]): UseJumpsReturn => {
+const useJumps = (initialJumps: ManifestJump[]) => {
   const [jumps, setJumps] = useState<ManifestJump[]>(initialJumps)
   const { submit } = useSafeFetcher()
   const jumpsByDay = groupJumpsByDay(jumps)

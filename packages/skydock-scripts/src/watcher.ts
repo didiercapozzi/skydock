@@ -12,7 +12,7 @@ type WatcherOptions = {
   outputDir?: string
 }
 
-const findCameraRoot = (startDir: string, baseDir: string): string => {
+const findCameraRoot = (startDir: string, baseDir: string) => {
   let root = startDir
   while (true) {
     const parent = path.dirname(root)
@@ -26,10 +26,10 @@ const findCameraRoot = (startDir: string, baseDir: string): string => {
   return root
 }
 
-const findCamerasInDir = (base: string): string[] => {
+const findCamerasInDir = (base: string) => {
   const cameras: string[] = []
 
-  const search = (dir: string): void => {
+  const search = (dir: string) => {
     try {
       const entries = fs.readdirSync(dir, { withFileTypes: true })
       for (const entry of entries) {
@@ -48,7 +48,7 @@ const findCamerasInDir = (base: string): string[] => {
   return cameras
 }
 
-const resolveCameras = (camDirs?: string[]): string[] => {
+const resolveCameras = (camDirs?: string[]) => {
   if (camDirs && camDirs.length > 0) {
     const existing = camDirs.filter((d) => fs.existsSync(d))
     if (existing.length > 0) return existing
@@ -71,7 +71,7 @@ const resolveCameras = (camDirs?: string[]): string[] => {
   return []
 }
 
-const runPipeline = async (cameras: string[], outputDir: string): Promise<void> => {
+const runPipeline = async (cameras: string[], outputDir: string) => {
   const { processMedia } = await import('./process.js')
   const { scanMedia } = await import('./scan.js')
 
@@ -79,7 +79,7 @@ const runPipeline = async (cameras: string[], outputDir: string): Promise<void> 
   await scanMedia({ outputDir })
 }
 
-const watcher = async (options?: WatcherOptions): Promise<void> => {
+const watcher = async (options?: WatcherOptions) => {
   const testMode = options?.testMode ?? false
   const runOnce = options?.runOnce ?? false
   const camDirs = options?.camDirs

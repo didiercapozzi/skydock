@@ -18,7 +18,7 @@ const loader = async ({ request }: Route.LoaderArgs) => {
     })
 
     const stream = new ReadableStream({
-      async start(controller) {
+      start: async (controller) => {
         const encoder = new TextEncoder()
         const send = (data: unknown) => {
           if (closed) return
@@ -57,7 +57,7 @@ const loader = async ({ request }: Route.LoaderArgs) => {
           controller.close()
         } catch {}
       },
-      cancel() {
+      cancel: () => {
         closed = true
       }
     })

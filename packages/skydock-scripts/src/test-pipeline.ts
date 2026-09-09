@@ -15,7 +15,7 @@ type TestResult = {
   failed: number
 }
 
-const assertDirExists = (dirPath: string, label: string, result: TestResult): void => {
+const assertDirExists = (dirPath: string, label: string, result: TestResult) => {
   if (fs.existsSync(dirPath)) {
     console.log(`  PASS: ${label}`)
     result.passed++
@@ -25,7 +25,7 @@ const assertDirExists = (dirPath: string, label: string, result: TestResult): vo
   }
 }
 
-const testPipeline = async (options?: TestOptions): Promise<TestResult> => {
+const testPipeline = async (options?: TestOptions) => {
   const projectRoot = path.resolve(new URL(import.meta.url).pathname, '..', '..', '..')
   const simBase = options?.outputDir || path.join(projectRoot, '.sim')
   const outputDir = path.join(projectRoot, 'output')

@@ -10,7 +10,7 @@
 - Scripts use TypeScript with `tsx` for direct execution.
 - `npm run check` (`typecheck` + `format:check` + `lint`) must pass before commit.
 - "export" keywords must be at the end of the file and not before a const/variable, function or types
-- we use camel case format for const/variables
+- we use camel case format for const/variables, except UPPER_SNAKE_CASE is allowed for module-level constants
 - use "const" instead of "let" or "var" every time you can
 - Scripts package: `@skydock/scripts` — all shared logic lives here
 - Never duplicate: if logic is needed in multiple places, extract to `@skydock/scripts`

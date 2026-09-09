@@ -94,7 +94,7 @@ const createFile = (
   fs.utimesSync(filePath, stat.atime, new Date(epoch * 1000))
 }
 
-const simulateCameras = async (options?: SimulateOptions): Promise<void> => {
+const simulateCameras = async (options?: SimulateOptions) => {
   const simBase = options?.outputDir || path.resolve(process.cwd(), '.sim')
   const clean = options?.clean ?? false
   const duration = options?.duration ?? 5

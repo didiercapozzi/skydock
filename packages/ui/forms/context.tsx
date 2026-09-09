@@ -94,10 +94,10 @@ const useForm = <TSchema extends z.ZodObject<z.ZodRawShape>>({
     })
   }
 
-  const getFieldValue = (field: string | FieldDescriptor<string>): unknown =>
+  const getFieldValue = (field: string | FieldDescriptor<string>) =>
     getDeepValue(values, typeof field === 'string' ? field : field.path)
 
-  const getFieldError = (field: string | FieldDescriptor<string>): string | undefined => {
+  const getFieldError = (field: string | FieldDescriptor<string>) => {
     const path = typeof field === 'string' ? field : field.path
     const clientErr = Reflect.get(clientErrors, path)
     if (typeof clientErr === 'string') return clientErr

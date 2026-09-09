@@ -1,6 +1,7 @@
 import * as childProcess from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { z } from 'zod'
 import { loadManifest, saveManifest } from './manifest'
 import { scheduleIdle, writeStatus } from './status'
 import { getManifestPath, getOutputDir, hasCommand, isCliModule, isVideoFile } from './utils'
@@ -18,7 +19,7 @@ type ExecuteResult = {
   processedJumps: number
 }
 
-const cropVideo = (src: string, dest: string, cropStart: number, cropEnd: number): boolean => {
+const cropVideo = (src: string, dest: string, cropStart: number, cropEnd: number) => {
   if (!hasCommand('ffmpeg')) return false
   const duration = (cropEnd - cropStart).toFixed(6)
   try {
@@ -32,7 +33,7 @@ const cropVideo = (src: string, dest: string, cropStart: number, cropEnd: number
   }
 }
 
-const updateMetadata = (dir: string): void => {
+const updateMetadata = (dir: string) => {
   const files = fs.readdirSync(dir)
   if (files.length === 0) return
   const paths = files.map((f) => `"${path.join(dir, f)}"`).join(' ')
@@ -48,28 +49,29 @@ const updateMetadata = (dir: string): void => {
   }
 }
 
-const moveToTrash = (dir: string, outputDir: string): void => {
+const moveToTrash = (dir: string, outputDir: string) => {
   if (!fs.existsSync(dir)) return
   const trashDir = path.join(outputDir, '.trash')
   fs.mkdirSync(trashDir, { recursive: true })
   fs.renameSync(dir, path.join(trashDir, `${path.basename(dir)}_${Date.now()}`))
 }
 
-const getProcessedMapPath = (outputDir: string): string =>
-  path.join(outputDir, '.status', 'processed.json')
+const getProcessedMapPath = (outputDir: string) => path.join(outputDir, '.status', 'processed.json')
 
-const readProcessedMap = (outputDir: string): Record<string, string> => {
+const readProcessedMap = (outputDir?: string) => {
   try {
-    return JSON.parse(fs.readFileSync(getProcessedMapPath(outputDir), 'utf-8')) as Record<
-      string,
-      string
-    >
+    const raw = JSON.parse(
+      fs.readFileSync(getProcessedMapPath(outputDir ?? getOutputDir()), 'utf-8')
+    )
+    const parsed = z.record(z.string(), z.string()).safeParse(raw)
+    if (parsed.success) return parsed.data
+    return {}
   } catch {
     return {}
   }
 }
 
-const writeProcessedMap = (outputDir: string, map: Record<string, string>): void => {
+const writeProcessedMap = (outputDir: string, map: Record<string, string>) => {
   const p = getProcessedMapPath(outputDir)
   fs.mkdirSync(path.dirname(p), { recursive: true })
   const tmp = `${p}.tmp`
@@ -77,17 +79,24 @@ const writeProcessedMap = (outputDir: string, map: Record<string, string>): void
   fs.renameSync(tmp, p)
 }
 
-const getMediaType = (filePath: string): 'video' | 'photo' =>
-  isVideoFile(filePath) ? 'video' : 'photo'
+const getMediaType = (filePath: string) => (isVideoFile(filePath) ? 'video' : 'photo')
 
 const processJump = (
   jump: NonNullable<ReturnType<typeof loadManifest>>['jumps'][number],
   processedDir: string,
-  outputDir: string
-): number => {
+  outputDir: string,
+  claimedDirs: Set<string>
+) => {
   const dayEpoch = parseDayEpoch(jump.day) ?? Math.min(...jump.files.map((f) => f.mtime))
   const baseName = buildJumpBaseName(jump.passenger, jump.label, dayEpoch)
-  const jumpDir = path.join(processedDir, baseName)
+  let dirName = baseName
+  let counter = 1
+  while (claimedDirs.has(dirName)) {
+    dirName = `${baseName}_${counter}`
+    counter++
+  }
+  claimedDirs.add(dirName)
+  const jumpDir = path.join(processedDir, dirName)
 
   const processedMap = readProcessedMap(outputDir)
   const oldBase = processedMap[jump.id]
@@ -146,14 +155,14 @@ const processJump = (
 
   jump.processed = true
   delete jump.publish
-  processedMap[jump.id] = baseName
+  processedMap[jump.id] = path.basename(jumpDir)
   writeProcessedMap(outputDir, processedMap)
 
   console.log(`[Execute] ${jump.id}: copied ${jump.files.length} file(s) to ${jumpDir}`)
   return copied
 }
 
-const executeMedia = (options?: ExecuteOptions): ExecuteResult => {
+const executeMedia = (options?: ExecuteOptions) => {
   const outputDir = options?.outputDir || getOutputDir()
   const manifestPath = options?.manifestPath || getManifestPath(outputDir)
   const processedDir = path.join(outputDir, 'processed')
@@ -182,12 +191,13 @@ const executeMedia = (options?: ExecuteOptions): ExecuteResult => {
   console.log(`[Execute] Processing ${jumpIds.length} jump(s)`)
   let totalCopied = 0
   let processedCount = 0
+  const claimedDirs = new Set<string>()
 
   for (const jumpId of jumpIds) {
     const jump = manifest.jumps.find((j) => j.id === jumpId)
     if (!jump || jump.files.length === 0) continue
 
-    totalCopied += processJump(jump, processedDir, outputDir)
+    totalCopied += processJump(jump, processedDir, outputDir, claimedDirs)
     processedCount++
   }
 

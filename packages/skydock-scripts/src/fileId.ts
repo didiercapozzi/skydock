@@ -4,7 +4,7 @@ import { loadManifest, normalizeManifest, saveManifest } from './manifest'
 
 const ID_HEX_LENGTH = 16
 
-const computeFileId = async (filePath: string): Promise<string> => {
+const computeFileId = async (filePath: string) => {
   return new Promise<string>((resolve, reject) => {
     const hash = crypto.createHash('sha256')
     const stream = fs.createReadStream(filePath)
@@ -14,10 +14,17 @@ const computeFileId = async (filePath: string): Promise<string> => {
   })
 }
 
-const ensureManifestFileIds = async (manifestPath: string): Promise<void> => {
+const ensureManifestFileIds = async (manifestPath: string) => {
   const manifest = loadManifest(manifestPath)
   if (!manifest) return
-  const changed = normalizeManifest(manifest)
+  let changed = false
+  for (const file of manifest.files) {
+    if (!file.id && fs.existsSync(file.path)) {
+      file.id = await computeFileId(file.path)
+      changed = true
+    }
+  }
+  if (normalizeManifest(manifest)) changed = true
   if (changed) saveManifest(manifestPath, manifest)
 }
 

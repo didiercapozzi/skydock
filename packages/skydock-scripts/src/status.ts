@@ -21,7 +21,7 @@ const writeStatus = (
   message: string,
   outputDir?: string,
   extra?: Record<string, unknown>
-): void => {
+) => {
   const statusDir = getStatusDir(outputDir)
   fs.mkdirSync(statusDir, { recursive: true })
 
@@ -44,7 +44,7 @@ const writeStatus = (
   } catch {}
 }
 
-const scheduleIdle = (task: string, delayMs: number, outputDir?: string): void => {
+const scheduleIdle = (task: string, delayMs: number, outputDir?: string) => {
   const timer = setTimeout(() => {
     const now = toISOString()
     const statusDir = getStatusDir(outputDir)

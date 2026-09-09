@@ -147,8 +147,13 @@ const action = createValidatedFormAction()({
         errors.addGlobalError('Folder path required.')
         return errors.toResponse(422)
       }
-      const session = loadNasSession()
+      const session = await ensureValidSession()
       if (!session) {
+        const raw = loadNasSession()
+        if (raw) {
+          errors.addGlobalError('Session expired. Please reconnect.')
+          return errors.toResponse(401)
+        }
         errors.addGlobalError('Not connected.')
         return errors.toResponse(401)
       }

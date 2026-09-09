@@ -8,7 +8,7 @@ type UseCompareReturn = {
   setShowComparison: (show: boolean) => void
 }
 
-const useCompare = (): UseCompareReturn => {
+const useCompare = () => {
   const [compareIds, setCompareIds] = useState<string[]>([])
   const [showComparison, setShowComparison] = useState(false)
 

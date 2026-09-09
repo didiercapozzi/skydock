@@ -2,19 +2,24 @@ import { getOutputDir, isVideoFile } from '@skydock/scripts'
 import { spawn } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { z } from 'zod'
 
 const DEFAULT_WIDTH = 80
 
+const widthSchema = z.number().int().min(16).max(240)
+const seekSchema = z.number().nonnegative()
+
 const clampWidth = (raw: string | null) => {
-  const parsed = raw ? parseInt(raw, 10) : DEFAULT_WIDTH
-  if (!Number.isFinite(parsed)) return DEFAULT_WIDTH
-  return Math.min(240, Math.max(16, parsed))
+  const fallback = DEFAULT_WIDTH
+  const parsed = widthSchema.safeParse(raw ? parseInt(raw, 10) : fallback)
+  if (!parsed.success) return fallback
+  return parsed.data
 }
 
 const clampSeek = (raw: string | null) => {
-  const parsed = raw ? parseFloat(raw) : 0
-  if (!Number.isFinite(parsed) || parsed < 0) return 0
-  return parsed
+  const parsed = seekSchema.safeParse(raw ? parseFloat(raw) : 0)
+  if (!parsed.success) return 0
+  return parsed.data
 }
 
 const extractFrame = (filePath: string, seek: number, width: number) =>

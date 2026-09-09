@@ -6,12 +6,14 @@ import {
   tryAutoRefreshSession
 } from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
+import { useRevalidator } from 'react-router'
 import { z } from 'zod'
 import { ComparisonDialog } from '../components/comparison-dialog'
 import { ConnectionDialog } from '../components/connection-dialog'
 import { DropActionDialog } from '../components/drop-action-dialog'
 import { GroupCreationDialog } from '../components/group-creation-dialog'
 import { DayGroups } from '../components/home/DayGroups'
+import { EmptyManifest } from '../components/home/EmptyManifest'
 import { Header } from '../components/home/Header'
 import { ReviewHeader } from '../components/home/ReviewHeader'
 import { Unassigned } from '../components/home/Unassigned'
@@ -25,6 +27,7 @@ import { useJumps } from '../hooks/useJumps'
 import { usePreview } from '../hooks/usePreview'
 import { useSelection } from '../hooks/useSelection'
 import { useUploadProgress } from '../hooks/useUploadProgress'
+import type { ManifestJump, ManifestPassenger } from '../components/types'
 import type { Route } from './+types/home'
 
 const nasSuccessSchema = z
@@ -95,9 +98,13 @@ const loader = async (_args: Route.LoaderArgs) => {
 
 const Home = ({ loaderData }: Route.ComponentProps) => {
   const manifest = loaderData.manifest
-  const initialNas = loaderData.initialNas as
-    | { connected: boolean; defaultFolder: string | null }
-    | undefined
+  const initialNasSchema = z
+    .object({
+      connected: z.boolean(),
+      defaultFolder: z.string().nullable()
+    })
+    .passthrough()
+  const initialNas = initialNasSchema.safeParse(loaderData.initialNas).data ?? undefined
   const { jumps, jumpsByDay, setJumps, updateJumps } = useJumps(manifest?.jumps ?? [])
   const manifestFiles = manifest?.files ?? []
   const filesInJumps = new Set(jumps.flatMap((j) => j.files.map((f) => f.path)))
@@ -133,6 +140,8 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   } = useDragDrop()
   const nasFetcher = useSafeFetcher()
   const manifestFetcher = useSafeFetcher()
+  const scanFetcher = useSafeFetcher()
+  const revalidator = useRevalidator()
   const [showConnectionDialog, setShowConnectionDialog] = useState(false)
   const [connectionDialogOpenData, setConnectionDialogOpenData] = useState<unknown>(null)
   const [showFolderBrowser, setShowFolderBrowser] = useState(false)
@@ -195,7 +204,15 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     setShowFolderBrowser(false)
   }
 
-  const handleMerge = () => {}
+  const handleMerge = (leftId: string, rightId: string, anchorEpoch: number) => {
+    setManifestError(null)
+    setShowComparison(false)
+    setCompareIds([])
+    manifestFetcher.submit({
+      url: '/api/manifest',
+      actionArgs: { intent: 'merge-jumps', leftId, rightId, anchorEpoch }
+    })
+  }
   const handleProcess = (jumpId: string) => {
     setManifestError(null)
     setProcessingId(jumpId)
@@ -214,12 +231,13 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     setUploadingId(jumpId)
     manifestFetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'upload-jump', jumpId } })
   }
+  const scanning = scanFetcher.state !== 'idle'
+  const handleScan = () => {
+    scanFetcher.submit({ url: '/api/scan', actionArgs: {} })
+  }
   const mainRef = useRef<HTMLElement | null>(null)
 
-  const handlePassengerChange = (
-    jumpId: string,
-    passenger: import('../components/types').ManifestPassenger | undefined
-  ) => {
+  const handlePassengerChange = (jumpId: string, passenger: ManifestPassenger | undefined) => {
     const next = jumps.map((j) => (j.id === jumpId ? { ...j, passenger } : j))
     updateJumps(next)
   }
@@ -240,14 +258,14 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   }
 
   const handleGroupCreated = (title: string, day: string) => {
-    const newJump = {
+    const newJump: ManifestJump = {
       id: `group_${Date.now()}`,
       label: title,
       confirmed: false,
       files: [],
       processed: false,
       day
-    } as import('../components/types').ManifestJump
+    }
     const next = [...jumps, newJump]
     updateJumps(next)
     setShowGroupCreation(false)
@@ -298,6 +316,13 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     })
   }, [manifestFetcher.data, setJumps])
 
+  useEffect(() => {
+    if (!scanFetcher.data) return
+    queueMicrotask(() => {
+      revalidator.revalidate()
+    })
+  }, [scanFetcher.data, revalidator])
+
   if (!manifest) {
     return (
       <main
@@ -310,11 +335,13 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           onConnect={openConnectionDialog}
           onDisconnect={handleDisconnect}
           onChangeFolder={() => setShowFolderBrowser(true)}
+          onScan={handleScan}
+          scanning={scanning}
         />
-        <div className='max-w-7xl mx-auto px-6 py-8'>
-          <h1 className='text-3xl font-bold text-gray-900'>No Manifest Found</h1>
-          <p className='text-gray-500 mt-2'>Run a scan to generate the manifest.</p>
-        </div>
+        <EmptyManifest
+          onScan={handleScan}
+          scanning={scanning}
+        />
         {effectiveShowConnection && (
           <ConnectionDialog
             onConnect={handleConnect}
@@ -342,6 +369,8 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
         onConnect={openConnectionDialog}
         onDisconnect={handleDisconnect}
         onChangeFolder={() => setShowFolderBrowser(true)}
+        onScan={handleScan}
+        scanning={scanning}
       />
       <div className='max-w-7xl mx-auto px-6 py-8'>
         <ReviewHeader

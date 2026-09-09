@@ -28,7 +28,7 @@ const createFormErrorBuilder = <TSchema extends z.ZodTypeAny>(
       globalErrors.push(message)
       return builder
     },
-    hasErrors: (): boolean => Object.keys(fieldErrors).length > 0 || globalErrors.length > 0,
+    hasErrors: () => Object.keys(fieldErrors).length > 0 || globalErrors.length > 0,
     toResponse: (status: HttpStatusError = defaultStatus): FormResult<TSchema> => ({
       success: false,
       status,
@@ -60,7 +60,7 @@ const createValidatedFormAction =
     onValidationError?: (
       issues: readonly z.ZodIssue[]
     ) => Promise<TValidationError> | TValidationError
-  }): ((args: TActionArgs) => Promise<TResult | TValidationError>) => {
+  }) => {
     const { schema, handler, onValidationError: customOnValidationError } = options
     const onValidationError =
       customOnValidationError ??
@@ -71,7 +71,7 @@ const createValidatedFormAction =
           ...extractIssues<TSchema>(issues)
         }) as unknown as TValidationError)
 
-    const action = async (args: TActionArgs): Promise<TResult | TValidationError> => {
+    const action = async (args: TActionArgs) => {
       const jsonData = await args.request.clone().json()
       const parsed = deepDateSchema(schema).safeParse(jsonData)
       if (!parsed.success) {

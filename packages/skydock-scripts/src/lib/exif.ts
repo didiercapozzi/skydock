@@ -8,7 +8,7 @@ type BuildExifOptions = {
   parse: (raw: string) => string | null
 }
 
-const buildExifMap = (files: string[], options: BuildExifOptions): Map<string, string> => {
+const buildExifMap = (files: string[], options: BuildExifOptions) => {
   const map = new Map<string, string>()
 
   if (!checkExiftool() || files.length === 0) return map

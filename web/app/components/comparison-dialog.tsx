@@ -95,7 +95,7 @@ const ComparisonDialog = ({
     setShowDatePopup(true)
   }
 
-  const resolveAnchor = (): number | null => {
+  const resolveAnchor = () => {
     if (dateChoice === 'left' || dateChoice === 'right') {
       const target = dateChoice === 'left' ? leftJump : rightJump
       return jumpMinMtime(target)
