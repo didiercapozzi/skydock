@@ -75,7 +75,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const initialNas = loaderData.initialNas as
     | { connected: boolean; defaultFolder: string | null }
     | undefined
-  const { jumps, jumpsByDay, setJumps, saveJumps } = useJumps(manifest?.jumps ?? [])
+  const { jumps, jumpsByDay, setJumps, updateJumps } = useJumps(manifest?.jumps ?? [])
   const manifestFiles = manifest?.files ?? []
   const filesInJumps = new Set(jumps.flatMap((j) => j.files.map((f) => f.path)))
   const unassignedFiles = manifestFiles.filter((f) => !filesInJumps.has(f.path))
@@ -95,7 +95,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     setVideoState,
     closePreview,
     setPreview
-  } = usePreview(jumps, unassignedFiles, setJumps, saveJumps)
+  } = usePreview(jumps, unassignedFiles, updateJumps, () => {})
   const {
     dropDialog,
     dropHint,
@@ -175,14 +175,12 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     passenger: import('../components/types').ManifestPassenger | undefined
   ) => {
     const next = jumps.map((j) => (j.id === jumpId ? { ...j, passenger } : j))
-    setJumps(next)
-    saveJumps(next)
+    updateJumps(next)
   }
 
   const handleLabelChange = (jumpId: string, label: string) => {
     const next = jumps.map((j) => (j.id === jumpId ? { ...j, label } : j))
-    setJumps(next)
-    saveJumps(next)
+    updateJumps(next)
   }
 
   const handleCreateGroup = (dayDate: string) => {
@@ -205,22 +203,19 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
       day
     } as import('../components/types').ManifestJump
     const next = [...jumps, newJump]
-    setJumps(next)
-    saveJumps(next)
+    updateJumps(next)
     setShowGroupCreation(false)
     setGroupCreationInitialDay(undefined)
   }
 
   const handleRemoveGroup = (jumpId: string) => {
     const next = jumps.filter((j) => j.id !== jumpId)
-    setJumps(next)
-    saveJumps(next)
+    updateJumps(next)
   }
 
   const handleGroupDateChange = (jumpId: string, day: string) => {
     const next = jumps.map((j) => (j.id === jumpId ? { ...j, day } : j))
-    setJumps(next)
-    saveJumps(next)
+    updateJumps(next)
   }
 
   useEffect(() => {
@@ -325,7 +320,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           onPreview={handlePreview}
           onDragStart={(e, groupId, paths) => handleDragStart(e, groupId, paths, selection)}
           onDragEnd={handleDragEnd}
-          onDrop={(e, id) => handleDrop(e, id, jumps, saveJumps, setJumps)}
+          onDrop={(e, id) => handleDrop(e, id, jumps, updateJumps, updateJumps)}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onPassengerChange={handlePassengerChange}
@@ -375,10 +370,10 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
             x={dropDialog.x}
             y={dropDialog.y}
             onMove={() =>
-              executeDrop('move', jumps, manifestFiles, setJumps, saveJumps, clearSelection)
+              executeDrop('move', jumps, manifestFiles, updateJumps, updateJumps, clearSelection)
             }
             onCopy={() =>
-              executeDrop('copy', jumps, manifestFiles, setJumps, saveJumps, clearSelection)
+              executeDrop('copy', jumps, manifestFiles, updateJumps, updateJumps, clearSelection)
             }
             onCancel={() => setDropDialog(null)}
           />
