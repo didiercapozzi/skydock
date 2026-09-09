@@ -2,6 +2,13 @@ import { JUMP_GAP_SECONDS } from './constants'
 import type { Manifest, ManifestFile, ManifestJump } from './types'
 import { sortFilesByMtime } from './utils'
 
+const formatDay = (epoch: number): string =>
+  new Date(epoch * 1000).toLocaleDateString('de-CH', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  })
+
 const reclusterJumps = (manifest: Manifest, preservedIds?: Set<string>): void => {
   const seenIds = new Set<string>()
   for (const jump of manifest.jumps) {
@@ -113,6 +120,9 @@ const reclusterJumps = (manifest: Manifest, preservedIds?: Set<string>): void =>
       ? [...preservedJumps].find((j) => j.files.some((f) => files.includes(f)))
       : undefined
 
+    const minMtime = Math.min(...files.map((f) => f.mtime))
+    const day = formatDay(minMtime)
+
     if (preservedJump) {
       return {
         id: preservedJump.id,
@@ -121,6 +131,7 @@ const reclusterJumps = (manifest: Manifest, preservedIds?: Set<string>): void =>
         processed: preservedJump.processed,
         passenger: preservedJump.passenger,
         publish: preservedJump.publish,
+        day: preservedJump.day ?? day,
         files
       }
     }
@@ -131,6 +142,7 @@ const reclusterJumps = (manifest: Manifest, preservedIds?: Set<string>): void =>
       confirmed: dominant?.confirmed ?? false,
       processed: dominant?.processed,
       passenger: dominant?.passenger,
+      day,
       files
     }
   })

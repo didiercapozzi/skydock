@@ -54,13 +54,20 @@ const moveToTrash = (dir: string, outputDir: string): void => {
 const getMediaType = (filePath: string): 'video' | 'photo' =>
   isVideoFile(filePath) ? 'video' : 'photo'
 
+const parseDayEpoch = (day?: string): number | null => {
+  if (!day) return null
+  const [d, m, y] = day.split('.').map(Number)
+  if (!d || !m || !y) return null
+  return Math.floor(new Date(y, m - 1, d).getTime() / 1000)
+}
+
 const processJump = (
   jump: NonNullable<ReturnType<typeof loadManifest>>['jumps'][number],
   processedDir: string,
   outputDir: string
 ): number => {
-  const minMtime = Math.min(...jump.files.map((f) => f.mtime))
-  const baseName = buildJumpBaseName(jump.passenger, jump.label, minMtime)
+  const dayEpoch = parseDayEpoch(jump.day) ?? Math.min(...jump.files.map((f) => f.mtime))
+  const baseName = buildJumpBaseName(jump.passenger, jump.label, dayEpoch)
   const jumpDir = path.join(processedDir, baseName)
 
   moveToTrash(jumpDir, outputDir)
@@ -92,7 +99,7 @@ const processJump = (
       fs.copyFileSync(file.path, dest)
     }
 
-    fs.utimesSync(dest, buildFsTime(minMtime, file.mtime), buildFsTime(minMtime, file.mtime))
+    fs.utimesSync(dest, buildFsTime(dayEpoch, file.mtime), buildFsTime(dayEpoch, file.mtime))
     copied++
   }
 

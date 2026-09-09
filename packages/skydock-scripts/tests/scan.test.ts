@@ -111,11 +111,11 @@ describe('scanMedia', () => {
     expect(manifest.version).toBe(1)
     expect(manifest.status).toBe('proposed')
     expect(manifest.files).toHaveLength(1)
-    expect(manifest.files[0].path).toBe(videoPath)
-    expect(manifest.files[0].filename).toBe('DJI_0001.MP4')
-    expect(manifest.files[0].id).toBeDefined()
-    expect(typeof manifest.files[0].id).toBe('string')
-    expect(manifest.files[0].id.length).toBe(16)
+    expect(manifest.files[0]?.path).toBe(videoPath)
+    expect(manifest.files[0]?.filename).toBe('DJI_0001.MP4')
+    expect(manifest.files[0]?.id).toBeDefined()
+    expect(typeof manifest.files[0]?.id).toBe('string')
+    expect(manifest.files[0]?.id?.length).toBe(16)
     expect(manifest.jumps).toHaveLength(1)
   })
 
@@ -222,8 +222,8 @@ describe('scanMedia', () => {
 
     const manifestPath = path.join(outputDir, 'manifest.json')
     const manifest = loadManifest(manifestPath) as Manifest
-    manifest.jumps[0].label = 'My Custom Jump'
-    manifest.jumps[0].confirmed = true
+    manifest.jumps[0]!.label = 'My Custom Jump'
+    manifest.jumps[0]!.confirmed = true
     saveManifest(manifestPath, manifest)
 
     const result = await scanMedia({ outputDir })
@@ -246,8 +246,8 @@ describe('scanMedia', () => {
 
     const manifestPath = path.join(outputDir, 'manifest.json')
     const manifest = loadManifest(manifestPath) as Manifest
-    expect(manifest.files[0].filename).toBe('DJI_0002.MP4')
-    expect(manifest.files[1].filename).toBe('DJI_0001.MP4')
+    expect(manifest.files[0]!.filename).toBe('DJI_0002.MP4')
+    expect(manifest.files[1]!.filename).toBe('DJI_0001.MP4')
   })
 
   it('clusters files into jumps by time gap', async () => {
@@ -266,7 +266,7 @@ describe('scanMedia', () => {
     const manifestPath = path.join(outputDir, 'manifest.json')
     const manifest = loadManifest(manifestPath) as Manifest
     expect(manifest.jumps).toHaveLength(2)
-    expect(manifest.jumps[0].files).toHaveLength(2)
+    expect(manifest.jumps[0]!.files).toHaveLength(2)
     expect(manifest.jumps[1].files).toHaveLength(1)
   })
 
@@ -290,7 +290,7 @@ describe('scanMedia', () => {
 
     const manifestPath = path.join(outputDir, 'manifest.json')
     const manifest = loadManifest(manifestPath) as Manifest
-    expect(manifest.files[0].mtime).toBe(targetEpoch)
+    expect(manifest.files[0]!.mtime).toBe(targetEpoch)
   })
 
   it('uses exiftool time when available', async () => {
@@ -309,7 +309,7 @@ describe('scanMedia', () => {
 
     const manifestPath = path.join(outputDir, 'manifest.json')
     const manifest = loadManifest(manifestPath) as Manifest
-    expect(manifest.files[0].mtime).toBe(exifEpoch)
+    expect(manifest.files[0]!.mtime).toBe(exifEpoch)
   })
 
   it('handles multiple files with different exif times', async () => {
@@ -333,8 +333,8 @@ describe('scanMedia', () => {
 
     const manifestPath = path.join(outputDir, 'manifest.json')
     const manifest = loadManifest(manifestPath) as Manifest
-    expect(manifest.files[0].mtime).toBe(baseEpoch)
-    expect(manifest.files[1].mtime).toBe(baseEpoch + 60)
+    expect(manifest.files[0]!.mtime).toBe(baseEpoch)
+    expect(manifest.files[1]!.mtime).toBe(baseEpoch + 60)
   })
 
   it('creates manifest with correct structure after fresh scan', async () => {
@@ -350,7 +350,7 @@ describe('scanMedia', () => {
     expect(manifest.status).toBe('proposed')
     expect(manifest.files).toHaveLength(1)
     expect(manifest.jumps).toHaveLength(1)
-    expect(manifest.jumps[0].confirmed).toBe(false)
+    expect(manifest.jumps[0]!.confirmed).toBe(false)
   })
 
   it('updates manifest correctly after merge with new files', async () => {
@@ -446,7 +446,7 @@ describe('scanMedia', () => {
 
     const manifestPath = path.join(outputDir, 'manifest.json')
     const manifest = loadManifest(manifestPath) as Manifest
-    const firstId = manifest.files[0].id
+    const firstId = manifest.files[0]!.id
 
     fs.rmSync(outputDir, { recursive: true, force: true })
     fs.mkdirSync(outputDir, { recursive: true })
@@ -455,7 +455,7 @@ describe('scanMedia', () => {
     await scanMedia({ outputDir })
 
     const manifest2 = loadManifest(manifestPath) as Manifest
-    expect(manifest2.files[0].id).toBe(firstId)
+    expect(manifest2.files[0]!.id).toBe(firstId)
   })
 
   it('computes different ids for different file content', async () => {
@@ -467,6 +467,6 @@ describe('scanMedia', () => {
 
     const manifestPath = path.join(outputDir, 'manifest.json')
     const manifest = loadManifest(manifestPath) as Manifest
-    expect(manifest.files[0].id).not.toBe(manifest.files[1].id)
+    expect(manifest.files[0]!.id).not.toBe(manifest.files[1]!.id)
   })
 })

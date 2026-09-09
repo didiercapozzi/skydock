@@ -26,6 +26,7 @@ const resolveJumps = (files: ManifestFile[], jumpsFile: JumpsFile | null): Manif
     processed: j.processed ?? undefined,
     passenger: j.passenger ?? undefined,
     publish: j.publish ?? undefined,
+    day: j.day,
     files: j.files
       .map((ref) => {
         const base = byId.get(ref.id)
@@ -58,6 +59,7 @@ const loadManifest = (manifestPath: string): Manifest | null => {
             processed: j.processed ?? undefined,
             passenger: j.passenger ?? undefined,
             publish: j.publish ?? undefined,
+            day: j.day,
             files: j.files
               .filter((f) => f.id)
               .map((f) => ({
@@ -67,6 +69,7 @@ const loadManifest = (manifestPath: string): Manifest | null => {
               }))
           }))
         }
+        jumpsFileSchema.parse(jumpsFile)
         const tmpJ = `${jumpsPath}.tmp`
         fs.writeFileSync(tmpJ, JSON.stringify(jumpsFile, null, 2))
         fs.renameSync(tmpJ, jumpsPath)
@@ -81,6 +84,7 @@ const loadManifest = (manifestPath: string): Manifest | null => {
           files: parsed.files,
           cameraClockOffsetSeconds: parsed.cameraClockOffsetSeconds
         }
+        manifestSchema.omit({ jumps: true }).passthrough().parse(newManifestRaw)
         const tmpM = `${manifestPath}.tmp`
         fs.writeFileSync(tmpM, JSON.stringify(newManifestRaw, null, 2))
         fs.renameSync(tmpM, manifestPath)
@@ -110,6 +114,7 @@ const loadManifest = (manifestPath: string): Manifest | null => {
 }
 
 const saveManifest = (manifestPath: string, manifest: Manifest): void => {
+  manifestSchema.parse(manifest)
   const dir = path.dirname(manifestPath)
   fs.mkdirSync(dir, { recursive: true })
 
@@ -121,6 +126,7 @@ const saveManifest = (manifestPath: string, manifest: Manifest): void => {
       processed: j.processed ?? undefined,
       passenger: j.passenger ?? undefined,
       publish: j.publish ?? undefined,
+      day: j.day,
       files: j.files
         .filter((f) => f.id)
         .map((f) => ({
@@ -130,6 +136,7 @@ const saveManifest = (manifestPath: string, manifest: Manifest): void => {
         }))
     }))
   }
+  jumpsFileSchema.parse(jumpsFile)
   const jumpsPath = getJumpsPath(manifestPath)
   const tmpJ = `${jumpsPath}.tmp`
   fs.writeFileSync(tmpJ, JSON.stringify(jumpsFile, null, 2))
@@ -145,6 +152,7 @@ const saveManifest = (manifestPath: string, manifest: Manifest): void => {
     files: manifest.files,
     cameraClockOffsetSeconds: manifest.cameraClockOffsetSeconds
   }
+  manifestSchema.omit({ jumps: true }).passthrough().parse(raw)
   const tmpM = `${manifestPath}.tmp`
   fs.writeFileSync(tmpM, JSON.stringify(raw, null, 2))
   fs.renameSync(tmpM, manifestPath)

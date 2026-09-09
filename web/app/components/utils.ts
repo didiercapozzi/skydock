@@ -22,28 +22,27 @@ const getJumpBounds = (jump: ManifestJump) => {
   return { start: Math.min(...times), end: Math.max(...times) }
 }
 
-const getJumpDate = (jump: ManifestJump) => {
-  if (jump.files.length === 0) return jump.day ?? ''
-  const min = Math.min(...jump.files.map((f) => f.mtime))
-  return new Date(min * 1000).toLocaleDateString('de-CH', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
-}
+const getJumpDate = (jump: ManifestJump) => jump.day ?? ''
 
 const groupJumpsByDay = (jumps: ManifestJump[]) => {
   const map = new Map<string, { date: string; jumps: ManifestJump[] }>()
   for (const jump of jumps) {
-    const date = getJumpDate(jump) || jump.day || 'Unknown'
+    const date = jump.day || 'Unknown'
     const g = map.get(date)
     if (g) g.jumps.push(jump)
     else map.set(date, { date, jumps: [jump] })
   }
   return Array.from(map.values()).sort((a, b) => {
-    const ta = a.jumps[0] ? getJumpBounds(a.jumps[0]).start : 0
-    const tb = b.jumps[0] ? getJumpBounds(b.jumps[0]).start : 0
-    return tb - ta
+    const da = a.date === 'Unknown' ? '' : a.date
+    const db = b.date === 'Unknown' ? '' : b.date
+    if (da === db) return 0
+    if (da === 'Unknown') return 1
+    if (db === 'Unknown') return -1
+    const parse = (s: string) => {
+      const [d, m, y] = s.split('.').map(Number)
+      return new Date(y, (m ?? 1) - 1, d ?? 1).getTime()
+    }
+    return parse(db) - parse(da)
   })
 }
 

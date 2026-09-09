@@ -13,12 +13,14 @@ describe('scripts barrel browser import', () => {
       id: 'jump_1',
       label: 'Jump 1',
       confirmed: true,
+      day: '01.01.2025',
       files: [{ path: '/a.mp4', size: 1, mtime: 100, filename: 'a.mp4' }]
     }
     const right = {
       id: 'jump_2',
       label: 'Jump 2',
       confirmed: false,
+      day: '01.01.2025',
       files: [
         { path: '/a.mp4', size: 1, mtime: 100, filename: 'a.mp4' },
         { path: '/b.mp4', size: 1, mtime: 50, filename: 'b.mp4' }
@@ -36,6 +38,7 @@ describe('scripts barrel browser import', () => {
       id: 'jump_1',
       label: 'Jump 1',
       confirmed: false,
+      day: '01.01.2025',
       files: [],
       passenger: { firstname: 'John', lastname: 'Doe' },
       publish: { shareUrl: 'https://example.com/sharing/x' }
@@ -89,6 +92,7 @@ describe('scripts barrel browser import', () => {
       id: 'jump_1',
       label: 'Jump 1',
       confirmed: false,
+      day: '01.01.2025',
       passenger: { firstname: 'John', lastname: 'Doe' },
       publish: { shareUrl: 'https://example.com/sharing/old' },
       files: []
@@ -97,6 +101,7 @@ describe('scripts barrel browser import', () => {
       id: 'jump_2',
       label: 'Jump 2',
       confirmed: false,
+      day: '01.01.2025',
       files: []
     }
     const next = scripts.mergeJumps([left, right], 'jump_1', 'jump_2')

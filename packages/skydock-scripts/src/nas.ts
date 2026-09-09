@@ -197,6 +197,7 @@ const loadNasSession = (outputDir?: string): NasSession | null => {
 }
 
 const saveNasSession = (session: NasSession, outputDir?: string): void => {
+  nasSessionSchema.parse(session)
   const target = nasPath(outputDir)
   fs.mkdirSync(path.dirname(target), { recursive: true })
   const tmp = `${target}.tmp`

@@ -52,7 +52,7 @@ output/
 - `files` is flat list of all files sorted by `mtime`.
 - `jumps[].files` are lightweight refs (`id` + `cropStart`/`cropEnd`) — same file may appear in multiple jumps via copy. In-memory manifest resolves refs to full files for UI/execute. A cropped video that is moved or copied retains its crop in the target; a copy's crop is independent — it can be uncropped or re-cropped to a different range without affecting the source (crop is stored per jump ref, not per file registry).
 - Jump IDs are `jump_1 ...` or preserved original IDs after recluster; labels default to `Jump N` and are editable. For fun jumps `label` holds the location (`yverdon`, `colombier`) and acts as `Group` name — see §13.2.
-- `day` (`YYYY.MM.DD` locale `de-CH`, e.g. `24.08.2026`) is stored on empty `Group`s to keep them under the selected `Day` after `+ Create Group` (files empty → `getJumpDate` falls back to `day`).
+- Each `Jump` in `jumps.json` is a regroupment where `EXIF createdAt` gap `<1800s` (30 mins) → same `Jump`, otherwise new `Jump` (`scan` and `+ Create Group` share same logic). Each `Jump` gets a mandatory `date` (`YYYY.MM.DD` locale `de-CH`, e.g. `24.08.2026`) by default the minimum `EXIF createdAt` of its files (fallback `mtime` if `EXIF` missing), stored as `day` and used for grouping and `execute` base name. `+ Create Group` empty `Group`s store `day` to keep them under the selected `Day` (files empty → `getJumpDate` falls back to `day`).
 - `originalMtime` saved on first time shift to allow reset-calibration.
 - `processed` marks per-jump execution (incremental). Manifest status becomes `executed` only when every jump is processed, `confirmed` when some processed, otherwise `proposed`.
 - Jump selection for compare/process is React state in Review UI, not persisted in manifest.
@@ -74,17 +74,18 @@ output/
 - **File discovery:** Recursively finds media files using supported extensions (video: mp4, mov, avi, mkv, mts, m4v, 3gp; photo: jpg, jpeg, png, dng, raw, tif, tiff, heic, heif, arw, cr2, cr3, nef, orf, rw2, raf).
 - **Merge behavior:** If manifest exists, scans `original_files/` and merges new files into existing manifest. Preserves all user edits (confirmed status, labels, file groupings, calibration offsets). Detects removed files.
 - **File comparison:** Uses content-based file ID as identity key. Files in manifest whose ID no longer exists on disk are removed. New files are added and clustered into jumps.
-- **Jump reclustering:** After adding/removing files, reclusters all files by mtime gaps (>1800 seconds → new jump). Preserves jump metadata via majority voting.
+- **Jump reclustering:** After adding/removing files, reclusters all files by `EXIF createdAt` gaps (`<1800s` → same `Jump`, `≥1800s` → new `Jump`, fallback `mtime` if `EXIF` missing). Preserves jump metadata via majority voting. New `Jump`s get mandatory `date` = `min EXIF` of its files (same rule as `+ Create Group`).
 - **Fresh manifest:** If no manifest exists and files are found, creates new manifest from scratch.
 - Writes status file for API polling.
 
 ### 5.2 `reclusterJumps()`
 
-- Gap threshold: 1800 seconds.
+- Gap threshold: `1800s` on `EXIF createdAt` (fallback `mtime` if missing) — `<1800s` same `Jump`, `≥1800s` new `Jump`. `scan` and `+ Create Group` share same `Jump` creation logic.
+- Each new `Jump` gets mandatory `date` = `min EXIF` of its files.
 - Deduplicates jump IDs first.
 - If preserved paths given, keeps those jumps as single groups (not split even if internal gap >1800) to avoid splitting manually edited jumps.
 - Remaining files clustered by gap, then preserved and new groups sorted and merged if adjacent.
-- Previous jump mapping preserves label/confirmed/processed via dominant vote.
+- Previous jump mapping preserves `label`/`day`/`confirmed`/`processed` via dominant vote.
 
 ### 5.3 `shiftFiles()`
 

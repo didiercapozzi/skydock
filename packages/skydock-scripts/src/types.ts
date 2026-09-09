@@ -34,7 +34,7 @@ const manifestJumpSchema = z.object({
   processed: z.boolean().nullable().optional(),
   passenger: passengerSchema.optional(),
   publish: publishSchema.optional(),
-  day: z.string().optional()
+  day: z.string()
 })
 
 const jumpsFileSchema = z.object({
@@ -47,7 +47,7 @@ const jumpsFileSchema = z.object({
       processed: z.boolean().nullable().optional(),
       passenger: passengerSchema.optional(),
       publish: publishSchema.optional(),
-      day: z.string().optional()
+      day: z.string()
     })
   )
 })
