@@ -57,6 +57,18 @@ const FileRow = ({
       )}
     </div>
     <span className='font-mono truncate flex-1 text-xs text-gray-700'>{file.filename}</span>
+    {isVideoFile(file.filename) && (file.cropStart != null || file.cropEnd != null) && (
+      <span
+        data-cropped-badge='true'
+        title={
+          file.cropStart != null || file.cropEnd != null
+            ? `Cropped ${file.cropStart != null ? `${file.cropStart.toFixed(1)}s` : '0.0s'} → ${file.cropEnd != null ? `${file.cropEnd.toFixed(1)}s` : 'end'}`
+            : undefined
+        }
+        className='inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200'>
+        ✂️ Cropped
+      </span>
+    )}
     <span className='text-gray-400 text-xs tabular-nums font-medium'>{formatTime(file.mtime)}</span>
     <span className='text-gray-400 text-xs tabular-nums'>{formatSize(file.size)}</span>
   </div>

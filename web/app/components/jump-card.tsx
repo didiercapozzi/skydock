@@ -48,6 +48,9 @@ const JumpCard = ({
   const bounds = getJumpBounds(jump)
   const videoCount = jump.files.filter((f) => isVideoFile(f.filename)).length
   const photoCount = jump.files.length - videoCount
+  const croppedCount = jump.files.filter(
+    (f) => isVideoFile(f.filename) && (f.cropStart != null || f.cropEnd != null)
+  ).length
   const passengerComplete = jump.files.length > 0 && hasCompletePassenger(jump.passenger)
   const processTitle =
     jump.files.length === 0
@@ -132,6 +135,14 @@ const JumpCard = ({
                 <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700'>
                   <PhotoIcon className='w-3 h-3' />
                   {photoCount}
+                </span>
+              )}
+              {croppedCount > 0 && (
+                <span
+                  data-cropped-count='true'
+                  title={`${croppedCount} cropped video${croppedCount > 1 ? 's' : ''}`}
+                  className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200'>
+                  ✂️ {croppedCount}
                 </span>
               )}
             </div>
