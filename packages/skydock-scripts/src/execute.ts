@@ -32,16 +32,19 @@ const cropVideo = (src: string, dest: string, cropStart: number, cropEnd: number
 }
 
 const updateMetadata = (dir: string): void => {
-  if (!hasCommand('exiftool')) return
   const files = fs.readdirSync(dir)
   if (files.length === 0) return
   const paths = files.map((f) => `"${path.join(dir, f)}"`).join(' ')
   try {
     childProcess.execSync(
-      `exiftool -P -overwrite_original -m -q -CreateDate<FileModifyDate -MediaCreateDate<FileModifyDate -TrackCreateDate<FileModifyDate -MediaModifyDate<FileModifyDate -TrackModifyDate<FileModifyDate -ModifyDate<FileModifyDate -DateTimeOriginal<FileModifyDate -CreationDate<FileModifyDate ${paths}`,
+      `exiftool -P -overwrite_original -m -q '-CreateDate<FileModifyDate' '-MediaCreateDate<FileModifyDate' '-TrackCreateDate<FileModifyDate' '-MediaModifyDate<FileModifyDate' '-TrackModifyDate<FileModifyDate' '-ModifyDate<FileModifyDate' '-DateTimeOriginal<FileModifyDate' '-CreationDate<FileModifyDate' ${paths}`,
       { stdio: 'ignore' }
     )
-  } catch {}
+  } catch (e) {
+    throw new Error(
+      `EXIF failed for ${path.basename(dir)}: ${e instanceof Error ? e.message : String(e)} — FileModifyDate is correct but CreateDate stayed 2026:08:28 vs expected 2024:08:23; install exiftool`
+    )
+  }
 }
 
 const moveToTrash = (dir: string, outputDir: string): void => {
@@ -49,6 +52,28 @@ const moveToTrash = (dir: string, outputDir: string): void => {
   const trashDir = path.join(outputDir, '.trash')
   fs.mkdirSync(trashDir, { recursive: true })
   fs.renameSync(dir, path.join(trashDir, `${path.basename(dir)}_${Date.now()}`))
+}
+
+const getProcessedMapPath = (outputDir: string): string =>
+  path.join(outputDir, '.status', 'processed.json')
+
+const readProcessedMap = (outputDir: string): Record<string, string> => {
+  try {
+    return JSON.parse(fs.readFileSync(getProcessedMapPath(outputDir), 'utf-8')) as Record<
+      string,
+      string
+    >
+  } catch {
+    return {}
+  }
+}
+
+const writeProcessedMap = (outputDir: string, map: Record<string, string>): void => {
+  const p = getProcessedMapPath(outputDir)
+  fs.mkdirSync(path.dirname(p), { recursive: true })
+  const tmp = `${p}.tmp`
+  fs.writeFileSync(tmp, JSON.stringify(map, null, 2))
+  fs.renameSync(tmp, p)
 }
 
 const getMediaType = (filePath: string): 'video' | 'photo' =>
@@ -70,6 +95,12 @@ const processJump = (
   const baseName = buildJumpBaseName(jump.passenger, jump.label, dayEpoch)
   const jumpDir = path.join(processedDir, baseName)
 
+  const processedMap = readProcessedMap(outputDir)
+  const oldBase = processedMap[jump.id]
+  if (oldBase && oldBase !== baseName) {
+    const oldDir = path.join(processedDir, oldBase)
+    moveToTrash(oldDir, outputDir)
+  }
   moveToTrash(jumpDir, outputDir)
 
   const byType = {
@@ -93,8 +124,13 @@ const processJump = (
 
     const needsCrop = type === 'video' && file.cropStart != null && file.cropEnd != null
     if (needsCrop) {
-      if (!cropVideo(file.path, dest, file.cropStart!, file.cropEnd!))
-        fs.copyFileSync(file.path, dest)
+      const ok = cropVideo(file.path, dest, file.cropStart!, file.cropEnd!)
+      if (!ok) {
+        moveToTrash(jumpDir, outputDir)
+        throw new Error(
+          `ffmpeg crop failed for ${file.filename} ${file.cropStart}→${file.cropEnd}: install ffmpeg or check range`
+        )
+      }
     } else {
       fs.copyFileSync(file.path, dest)
     }
@@ -104,11 +140,20 @@ const processJump = (
   }
 
   for (const type of ['video', 'photo'] as const) {
-    if (byType[type].length > 0) updateMetadata(path.join(jumpDir, `${type}s`))
+    if (byType[type].length > 0) {
+      try {
+        updateMetadata(path.join(jumpDir, `${type}s`))
+      } catch (e) {
+        moveToTrash(jumpDir, outputDir)
+        throw e
+      }
+    }
   }
 
   jump.processed = true
   delete jump.publish
+  processedMap[jump.id] = baseName
+  writeProcessedMap(outputDir, processedMap)
 
   console.log(`[Execute] ${jump.id}: copied ${jump.files.length} file(s) to ${jumpDir}`)
   return copied
