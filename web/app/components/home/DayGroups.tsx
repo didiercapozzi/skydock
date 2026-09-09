@@ -28,6 +28,8 @@ type Props = {
   processingId: string | null
   onUpload: (jumpId: string) => void
   uploadingId: string | null
+  nasConnected: boolean
+  hasUploadFolder: boolean
   onRemoveGroup: (jumpId: string) => void
   onGroupDateChange: (jumpId: string, day: string) => void
   uploadProgress?: UploadProgressState | null
@@ -56,6 +58,8 @@ const DayGroups = ({
   processingId,
   onUpload,
   uploadingId,
+  nasConnected,
+  hasUploadFolder,
   onRemoveGroup,
   onGroupDateChange,
   uploadProgress
@@ -111,6 +115,8 @@ const DayGroups = ({
                   processing={processingId === jump.id}
                   onUpload={onUpload}
                   uploading={uploadingId === jump.id}
+                  nasConnected={nasConnected}
+                  hasUploadFolder={hasUploadFolder}
                   onRemoveGroup={onRemoveGroup}
                   onGroupDateChange={onGroupDateChange}
                   uploadProgress={uploadProgress}

@@ -203,6 +203,14 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   }
   const handleUpload = (jumpId: string) => {
     setManifestError(null)
+    if (!nasConnected) {
+      openConnectionDialog()
+      return
+    }
+    if (!defaultFolder) {
+      setShowFolderBrowser(true)
+      return
+    }
     setUploadingId(jumpId)
     manifestFetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'upload-jump', jumpId } })
   }
@@ -386,6 +394,8 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           onUpload={handleUpload}
           uploadingId={uploadingId}
           uploadProgress={uploadProgress}
+          nasConnected={nasConnected}
+          hasUploadFolder={!!defaultFolder}
           onRemoveGroup={handleRemoveGroup}
           onGroupDateChange={handleGroupDateChange}
         />

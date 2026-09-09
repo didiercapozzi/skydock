@@ -25,6 +25,8 @@ const JumpCard = ({
   processing,
   onUpload,
   uploading,
+  nasConnected,
+  hasUploadFolder,
   viewMode,
   hasSelection,
   onRemoveGroup,
@@ -48,6 +50,8 @@ const JumpCard = ({
   processing: boolean
   onUpload: (jumpId: string) => void
   uploading: boolean
+  nasConnected: boolean
+  hasUploadFolder: boolean
   viewMode: 'list' | 'grid'
   hasSelection: boolean
   onRemoveGroup: (jumpId: string) => void
@@ -71,6 +75,14 @@ const JumpCard = ({
   ).length
   const canProcess = jump.files.length > 0
   const processTitle = jump.files.length === 0 ? 'Empty jump' : undefined
+  const uploadTitle =
+    jump.processed !== true
+      ? 'Process the jump first'
+      : !nasConnected
+        ? 'Connect to NAS to upload'
+        : !hasUploadFolder
+          ? 'Choose an upload folder first'
+          : undefined
   const locked = uploading || (!!uploadProgress && uploadProgress.jumpId === jump.id)
   const isUploadingJump = locked
   const savedFirstname = jump.passenger?.firstname ?? ''
@@ -248,7 +260,7 @@ const JumpCard = ({
               type='button'
               data-action='upload'
               disabled={jump.processed !== true || uploading || locked}
-              title={jump.processed === true ? undefined : 'Process the jump first'}
+              title={uploadTitle}
               onClick={(e) => {
                 e.stopPropagation()
                 onUpload(jump.id)

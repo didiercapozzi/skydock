@@ -1,3 +1,4 @@
+import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as childProcess from 'node:child_process'
@@ -11,7 +12,33 @@ type SimulateOptions = {
   devData?: boolean
 }
 
-const createFile = (dir: string, name: string, epoch: number, duration: number): void => {
+const hashFileSync = (filePath: string) => {
+  const digest = crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex')
+  return digest.slice(0, 16)
+}
+
+const ensureUniqueBinaryId = (filePath: string, name: string, epoch: number, seen: Set<string>) => {
+  let id = hashFileSync(filePath)
+  let attempt = 0
+  while (seen.has(id)) {
+    attempt++
+    fs.appendFileSync(
+      filePath,
+      Buffer.from(`\n${name}-${epoch}#${attempt}-${crypto.randomBytes(8).toString('hex')}\n`)
+    )
+    id = hashFileSync(filePath)
+  }
+  seen.add(id)
+}
+
+const createFile = (
+  dir: string,
+  name: string,
+  epoch: number,
+  duration: number,
+  seed: number,
+  seen: Set<string>
+) => {
   const filePath = path.join(dir, name)
   const ext = path.extname(name).toLowerCase()
 
@@ -19,7 +46,7 @@ const createFile = (dir: string, name: string, epoch: number, duration: number):
     if (hasCommand('ffmpeg')) {
       try {
         childProcess.execSync(
-          `ffmpeg -y -loglevel error -f lavfi -i "color=color=0x${((epoch * 997) & 0xffffff).toString(16).padStart(6, '0')}:size=1920x1080:rate=1" -frames:v 1 "${filePath}"`,
+          `ffmpeg -y -loglevel error -f lavfi -i "color=color=0x${(((epoch * 997 + seed * 104729) >>> 0) & 0xffffff).toString(16).padStart(6, '0')}:size=1920x1080:rate=1" -frames:v 1 "${filePath}"`,
           { stdio: 'ignore' }
         )
       } catch {
@@ -38,7 +65,7 @@ const createFile = (dir: string, name: string, epoch: number, duration: number):
     if (hasCommand('ffmpeg')) {
       try {
         childProcess.execSync(
-          `ffmpeg -y -loglevel error -f lavfi -i "testsrc=duration=${duration}:size=1920x1080:rate=30" -f lavfi -i "sine=frequency=${440 + (epoch % 200)}:duration=${duration}" -c:v libx264 -preset ultrafast -tune zerolatency -c:a aac -shortest "${filePath}"`,
+          `ffmpeg -y -loglevel error -f lavfi -i "testsrc=duration=${duration}:size=1920x1080:rate=30" -f lavfi -i "sine=frequency=${440 + ((epoch + seed * 37) % 200)}:duration=${duration}" -c:v libx264 -preset ultrafast -tune zerolatency -c:a aac -shortest "${filePath}"`,
           { stdio: 'ignore' }
         )
       } catch {
@@ -61,6 +88,8 @@ const createFile = (dir: string, name: string, epoch: number, duration: number):
     } catch {}
   }
 
+  ensureUniqueBinaryId(filePath, name, epoch, seen)
+
   const stat = fs.statSync(filePath)
   fs.utimesSync(filePath, stat.atime, new Date(epoch * 1000))
 }
@@ -80,6 +109,7 @@ const simulateCameras = async (options?: SimulateOptions): Promise<void> => {
   const camera2Dir = path.join(simBase, 'camera2')
   fs.mkdirSync(camera1Dir, { recursive: true })
   fs.mkdirSync(camera2Dir, { recursive: true })
+  const seen = new Set<string>()
 
   if (devData) {
     const now = new Date()
@@ -101,7 +131,7 @@ const simulateCameras = async (options?: SimulateOptions): Promise<void> => {
       const ext = idx % 3 === 0 ? '.JPG' : '.MP4'
       const filename = `DJI_${String(fileCounter).padStart(4, '0')}${ext}`
       const targetDir = idx % 2 === 1 ? camera1Dir : camera2Dir
-      createFile(targetDir, filename, epoch, duration)
+      createFile(targetDir, filename, epoch, duration, fileCounter, seen)
     }
 
     for (const off of offsetsDay2) {
@@ -111,7 +141,7 @@ const simulateCameras = async (options?: SimulateOptions): Promise<void> => {
       const ext = idx % 3 === 0 ? '.JPG' : '.MP4'
       const filename = `DJI_${String(fileCounter).padStart(4, '0')}${ext}`
       const targetDir = idx % 2 === 1 ? camera1Dir : camera2Dir
-      createFile(targetDir, filename, epoch, duration)
+      createFile(targetDir, filename, epoch, duration, fileCounter, seen)
     }
 
     const d1 = new Date(day1Base * 1000).toISOString().split('T')[0]
@@ -129,12 +159,12 @@ const simulateCameras = async (options?: SimulateOptions): Promise<void> => {
     fileCounter++
     const epoch1 = baseEpoch + i * 30
     const filename1 = `DJI_${String(fileCounter).padStart(4, '0')}.MP4`
-    createFile(camera1Dir, filename1, epoch1, duration)
+    createFile(camera1Dir, filename1, epoch1, duration, fileCounter, seen)
 
     fileCounter++
     const epoch2 = baseEpoch + i * 30 + 15
     const filename2 = `DJI_${String(fileCounter).padStart(4, '0')}.MP4`
-    createFile(camera2Dir, filename2, epoch2, duration)
+    createFile(camera2Dir, filename2, epoch2, duration, fileCounter, seen)
   }
 
   console.log(`[Sim] Created ${numFiles} files in each camera under ${simBase}`)

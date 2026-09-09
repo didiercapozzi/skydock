@@ -99,6 +99,10 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         errors.addGlobalError('Not connected to NAS. Please connect first.')
         return errors.toResponse(422)
       }
+      if (!session.defaultFolder) {
+        errors.addGlobalError('Choose an upload folder first.')
+        return errors.toResponse(422)
+      }
       const parseDay = (day?: string): number | null => {
         if (!day) return null
         const [d, m, y] = day.split('.').map(Number)
@@ -112,7 +116,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         errors.addGlobalError('Processed files not found. Process the jump again.')
         return errors.toResponse(422)
       }
-      const remoteBase = session.defaultFolder ?? '/SkyDock'
+      const remoteBase = session.defaultFolder
       const allFiles = walkFiles(localDir)
       const sortedFiles = [...allFiles].sort()
       const sortedManifestFiles = [...target.files].sort((a, b) => a.mtime - b.mtime)
