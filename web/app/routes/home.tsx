@@ -1,20 +1,40 @@
 import { loadManifest, loadNasSession } from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
+import { z } from 'zod'
 import { ComparisonDialog } from '../components/comparison-dialog'
 import { ConnectionDialog } from '../components/connection-dialog'
 import { DropActionDialog } from '../components/drop-action-dialog'
+import { NasFolderBrowser } from '../components/nas-folder-browser'
 import { PreviewDrawer } from '../components/preview-drawer'
 import { StagingTray } from '../components/staging-tray'
 import { DayGroups } from '../components/home/DayGroups'
 import { Header } from '../components/home/Header'
 import { ReviewHeader } from '../components/home/ReviewHeader'
 import { Unassigned } from '../components/home/Unassigned'
+import { useSafeFetcher } from '../helpers/routing'
 import { useCompare } from '../hooks/useCompare'
 import { useDragDrop } from '../hooks/useDragDrop'
 import { useJumps } from '../hooks/useJumps'
 import { usePreview } from '../hooks/usePreview'
 import { useSelection } from '../hooks/useSelection'
 import type { Route } from './+types/home'
+
+const nasSuccessSchema = z
+  .object({
+    connected: z.boolean(),
+    hostname: z.string().optional(),
+    username: z.string().optional(),
+    defaultFolder: z.string().nullable().optional()
+  })
+  .passthrough()
+
+const nasErrorSchema = z
+  .object({
+    success: z.literal(false),
+    globalErrors: z.array(z.string()).optional(),
+    fieldErrors: z.record(z.string(), z.string()).optional()
+  })
+  .passthrough()
 
 const loader = async ({}: Route.LoaderArgs) => {
   const outputDir = process.env.SKYDOCK_OUTPUT_DIR ?? '/workspace/output'
@@ -85,15 +105,51 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     executeDrop,
     setDropDialog
   } = useDragDrop()
-  const [nasConnected] = useState(initialNas?.connected ?? false)
+  const nasFetcher = useSafeFetcher()
   const [showConnectionDialog, setShowConnectionDialog] = useState(false)
-  const [nasError, setNasError] = useState<string | null>(null)
-  const [defaultFolder] = useState<string | null>(initialNas?.defaultFolder ?? null)
+  const [showFolderBrowser, setShowFolderBrowser] = useState(false)
   const [processingId] = useState<string | null>(null)
   const [uploadingId] = useState<string | null>(null)
 
-  const handleConnect = (_host: string, _user: string, _password: string) => {}
-  const handleDisconnect = () => {}
+  const parsedSuccess = nasSuccessSchema.safeParse(nasFetcher.data)
+  const parsedError = nasErrorSchema.safeParse(nasFetcher.data)
+  const nasConnected = parsedSuccess.success
+    ? parsedSuccess.data.connected
+    : (initialNas?.connected ?? false)
+  const defaultFolder = parsedSuccess.success
+    ? (parsedSuccess.data.defaultFolder ?? null)
+    : (initialNas?.defaultFolder ?? null)
+  const nasError =
+    !parsedSuccess.success && parsedError.success
+      ? (parsedError.data.globalErrors?.[0] ??
+        (parsedError.data.fieldErrors
+          ? Object.values(parsedError.data.fieldErrors)[0]
+          : undefined) ??
+        'Request failed')
+      : null
+
+  const effectiveShowConnection = showConnectionDialog
+    ? !(parsedSuccess.success && parsedSuccess.data.connected)
+    : false
+  const effectiveShowFolder = showFolderBrowser
+    ? !(parsedSuccess.success && parsedSuccess.data.connected)
+    : false
+
+  const handleConnect = (host: string, user: string, password: string) => {
+    nasFetcher.submit({
+      url: '/api/nas',
+      actionArgs: { intent: 'connect', host, user, password }
+    })
+  }
+
+  const handleDisconnect = () => {
+    nasFetcher.submit({ url: '/api/nas', actionArgs: { intent: 'disconnect' } })
+  }
+
+  const handleSelectFolder = (path: string) => {
+    nasFetcher.submit({ url: '/api/nas', actionArgs: { intent: 'select-folder', path } })
+  }
+
   const handleMerge = () => {}
   const handleProcess = () => {}
   const handleUpload = () => {}
@@ -123,22 +179,24 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           defaultFolder={defaultFolder}
           onConnect={() => setShowConnectionDialog(true)}
           onDisconnect={handleDisconnect}
-          onChangeFolder={() => {}}
+          onChangeFolder={() => setShowFolderBrowser(true)}
         />
         <div className='max-w-7xl mx-auto px-6 py-8'>
           <h1 className='text-3xl font-bold text-gray-900'>No Manifest Found</h1>
           <p className='text-gray-500 mt-2'>Run a scan to generate the manifest.</p>
         </div>
-        {showConnectionDialog && (
+        {effectiveShowConnection && (
           <ConnectionDialog
             onConnect={handleConnect}
-            onCancel={() => {
-              setShowConnectionDialog(false)
-              setNasError(null)
-            }}
+            onCancel={() => setShowConnectionDialog(false)}
             error={nasError ?? undefined}
           />
         )}
+        <NasFolderBrowser
+          open={effectiveShowFolder}
+          onSelect={handleSelectFolder}
+          onClose={() => setShowFolderBrowser(false)}
+        />
       </main>
     )
   }
@@ -153,7 +211,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
         defaultFolder={defaultFolder}
         onConnect={() => setShowConnectionDialog(true)}
         onDisconnect={handleDisconnect}
-        onChangeFolder={() => {}}
+        onChangeFolder={() => setShowFolderBrowser(true)}
       />
       <div className='max-w-7xl mx-auto px-6 py-8'>
         <ReviewHeader
@@ -247,16 +305,18 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
             onMerge={handleMerge}
           />
         )}
-        {showConnectionDialog && (
+        {effectiveShowConnection && (
           <ConnectionDialog
             onConnect={handleConnect}
-            onCancel={() => {
-              setShowConnectionDialog(false)
-              setNasError(null)
-            }}
+            onCancel={() => setShowConnectionDialog(false)}
             error={nasError ?? undefined}
           />
         )}
+        <NasFolderBrowser
+          open={effectiveShowFolder}
+          onSelect={handleSelectFolder}
+          onClose={() => setShowFolderBrowser(false)}
+        />
       </div>
     </main>
   )

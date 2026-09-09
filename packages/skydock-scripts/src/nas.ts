@@ -22,6 +22,21 @@ const dsmResponseSchema = z.object({
   data: z.record(z.string(), z.unknown()).optional()
 })
 
+const dsmSidResponseSchema = z.object({
+  success: z.literal(true),
+  data: z.object({ sid: z.string() }).passthrough()
+})
+
+const dsmFileEntrySchema = z.object({
+  name: z.string(),
+  path: z.string(),
+  isdir: z.boolean()
+})
+
+const dsmFolderFilesSchema = z.object({
+  files: z.array(dsmFileEntrySchema).optional()
+})
+
 const dsmConfigSchema = z.object({
   host: z.string(),
   user: z.string(),
@@ -31,11 +46,15 @@ type DsmConfig = z.infer<typeof dsmConfigSchema>
 
 const nasPath = (outputDir?: string): string => path.join(getStatusDir(outputDir), 'nas.json')
 
-const dsmUrl = (host: string) => `${host.replace(/\/+$/, '')}/webapi/entry.cgi`
+const normalizeHost = (host: string): string => host.replace(/\/+$/, '')
+
+const dsmEntryUrl = (host: string): string => `${normalizeHost(host)}/webapi/entry.cgi`
+
+const dsmUrl = dsmEntryUrl
 
 const dsmFetch = async (host: string, params: Record<string, string>, body?: FormData) => {
   const init: RequestInit = body ? { method: 'POST', body } : {}
-  const res = await fetch(`${dsmUrl(host)}?${new URLSearchParams(params)}`, init)
+  const res = await fetch(`${dsmEntryUrl(host)}?${new URLSearchParams(params)}`, init)
   try {
     return dsmResponseSchema.parse(await res.json())
   } catch {
@@ -43,27 +62,26 @@ const dsmFetch = async (host: string, params: Record<string, string>, body?: For
   }
 }
 
-const dsmLogin = async (config: DsmConfig) => {
+const dsmLogin = async (config: DsmConfig): Promise<string> => {
   try {
-    for (const version of ['6', '3']) {
-      const body = await dsmFetch(config.host, {
-        api: 'SYNO.API.Auth',
-        method: 'login',
-        version,
-        session: 'FileStation',
-        format: 'sid',
-        account: config.user,
-        passwd: config.password
-      })
-      if (body.success && typeof body.data?.sid === 'string') return body.data.sid
-    }
+    const body = await dsmFetch(config.host, {
+      api: 'SYNO.API.Auth',
+      method: 'login',
+      version: '6',
+      session: 'FileStation',
+      format: 'sid',
+      account: config.user,
+      passwd: config.password
+    })
+    const parsed = dsmSidResponseSchema.safeParse(body)
+    if (parsed.success) return parsed.data.data.sid
+    throw new Error(`DSM login failed: ${JSON.stringify(body)}`)
   } catch {
     return `mock-sid-${Date.now()}`
   }
-  return `mock-sid-${Date.now()}`
 }
 
-const dsmLogout = async (host: string, sid: string) => {
+const dsmLogout = async (host: string, sid: string): Promise<void> => {
   try {
     await dsmFetch(host, {
       api: 'SYNO.API.Auth',
@@ -79,10 +97,9 @@ const dsmValidateSession = async (host: string, sid: string) => {
   if (sid.startsWith('mock-sid-')) return true
   try {
     const body = await dsmFetch(host, {
-      api: 'SYNO.API.Auth',
-      method: 'check',
-      version: '6',
-      session: 'FileStation',
+      api: 'SYNO.FileStation.List',
+      method: 'list_share',
+      version: '2',
       _sid: sid
     })
     return body.success === true
@@ -91,15 +108,42 @@ const dsmValidateSession = async (host: string, sid: string) => {
   }
 }
 
-const folderItemSchema = z.object({
-  path: z.string(),
-  name: z.string(),
-  is_dir: z.boolean()
-})
+type NasFolderEntry = {
+  name: string
+  path: string
+  isdir: boolean
+}
 
-const folderListSchema = z.object({
-  files: z.array(folderItemSchema)
-})
+const normalizeNasPath = (input: string): string => {
+  const trimmed = input.trim()
+  if (trimmed === '' || trimmed === '/') return '/'
+  const withSlash = trimmed.startsWith('/') ? trimmed : `/${trimmed}`
+  return withSlash.replace(/\/+/g, '/').replace(/\/+$/, '') || '/'
+}
+
+const listNasFolder = async (
+  host: string,
+  sid: string,
+  folderPath: string
+): Promise<NasFolderEntry[]> => {
+  const cpath = normalizeNasPath(folderPath)
+  const body = await dsmFetch(host, {
+    api: 'SYNO.FileStation.List',
+    version: '2',
+    method: 'list',
+    folder_path: cpath,
+    additional: '["real_path"]',
+    sort_by: 'name',
+    filetype: 'dir',
+    _sid: sid
+  })
+  if (!body.success) throw new Error(`List failed for ${cpath}: ${JSON.stringify(body)}`)
+  const parsed = dsmFolderFilesSchema.safeParse(body.data)
+  const files = parsed.success ? (parsed.data.files ?? []) : []
+  return files
+    .filter((f) => f.isdir)
+    .map((f) => ({ name: f.name, path: normalizeNasPath(f.path), isdir: true }))
+}
 
 const dsmListFolder = async (host: string, sid: string, folderPath: string) => {
   if (sid.startsWith('mock-sid-')) {
@@ -118,37 +162,8 @@ const dsmListFolder = async (host: string, sid: string, folderPath: string) => {
     }
     return []
   }
-  const body = await dsmFetch(host, {
-    api: 'SYNO.FileStation.List',
-    method: 'list',
-    version: '2',
-    folder_path: folderPath,
-    _sid: sid
-  })
-  if (!body.success) throw new Error(`Failed to list folder ${folderPath}`)
-  const parsed = folderListSchema.parse(body.data)
-  return parsed.files.filter((f) => f.is_dir)
-}
-
-const dsmCreateFolder = async (host: string, sid: string, parentPath: string, name: string) => {
-  const body = await dsmFetch(
-    host,
-    {
-      api: 'SYNO.FileStation.CreateFolder',
-      method: 'create',
-      version: '2',
-      _sid: sid
-    },
-    (() => {
-      const form = new FormData()
-      form.append('folder_path', parentPath)
-      form.append('name', name)
-      form.append('force_parent', 'true')
-      return form
-    })()
-  )
-  if (!body.success) throw new Error(`Failed to create folder ${name}`)
-  return body.data?.folder as string | undefined
+  const entries = await listNasFolder(host, sid, folderPath)
+  return entries.map((e) => ({ path: e.path, name: e.name, is_dir: true }))
 }
 
 const shareLinkSchema = z.array(z.object({ url: z.string().optional() })).optional()
@@ -164,8 +179,8 @@ const createShareLink = async (host: string, sid: string, remotePath: string) =>
   if (!body.success) throw new Error(`Share failed for ${remotePath}: ${JSON.stringify(body)}`)
   const url = shareLinkSchema.parse(body.data?.links)?.[0]?.url
   if (!url) throw new Error(`Share returned no link for ${remotePath}`)
-  const hostBase = dsmUrl(host).replace('/webapi/entry.cgi', '')
-  return `${hostBase}${url.startsWith('/') ? url : `/${url}`}`
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
+  return `${normalizeHost(host)}${url.startsWith('/') ? url : `/${url}`}`
 }
 
 type DsmAuth = {
@@ -227,7 +242,7 @@ export {
   clearNasSession,
   createShareLink,
   dsmConfigSchema,
-  dsmCreateFolder,
+  dsmEntryUrl,
   dsmFetch,
   dsmListFolder,
   dsmLogin,
@@ -235,9 +250,11 @@ export {
   dsmResponseSchema,
   dsmUrl,
   dsmValidateSession,
+  listNasFolder,
   loadNasSession,
   loginWithSession,
+  normalizeNasPath,
   saveNasSession,
   updateDefaultFolder
 }
-export type { DsmAuth, DsmConfig, NasSession }
+export type { DsmAuth, DsmConfig, NasFolderEntry, NasSession }
