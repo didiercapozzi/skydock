@@ -70,20 +70,46 @@ const dsmEntryUrl = (host: string): string => `${normalizeHost(host)}/webapi/ent
 
 const dsmUrl = dsmEntryUrl
 
-const dsmFetch = async (host: string, params: Record<string, string>, body?: FormData) => {
-  const init: RequestInit = body ? { method: 'POST', body } : {}
-  const url = `${dsmEntryUrl(host)}?${new URLSearchParams(params)}`
-  const res = await fetch(url, init)
-  let json: unknown = null
+type DsmFetchOptions = {
+  headers?: Record<string, string>
+  timeoutMs?: number
+  duplex?: 'half'
+}
+
+type DsmRequestInit = RequestInit & { duplex?: 'half' }
+
+const dsmFetch = async (
+  host: string,
+  params: Record<string, string>,
+  body?: BodyInit,
+  options: DsmFetchOptions = {}
+) => {
+  const controller = options.timeoutMs ? new AbortController() : null
+  const timer = controller ? setTimeout(() => controller.abort(), options.timeoutMs) : null
   try {
-    json = await res.json()
-  } catch {
-    throw new Error(`DSM request failed with status ${res.status} at ${url}`)
-  }
-  try {
-    return dsmResponseSchema.parse(json)
-  } catch {
-    throw new Error(`DSM invalid response at ${url}: ${JSON.stringify(json)}`)
+    const url = `${dsmEntryUrl(host)}?${new URLSearchParams(params)}`
+    const init: DsmRequestInit = body
+      ? { method: 'POST', headers: options.headers, body, duplex: options.duplex ?? 'half' }
+      : {}
+    const res = await fetch(url, controller ? { ...init, signal: controller.signal } : init)
+    let json: unknown = null
+    try {
+      json = await res.json()
+    } catch {
+      throw new Error(`DSM request failed with status ${res.status} at ${url}`)
+    }
+    try {
+      return dsmResponseSchema.parse(json)
+    } catch {
+      throw new Error(`DSM invalid response at ${url}: ${JSON.stringify(json)}`)
+    }
+  } catch (err) {
+    if (controller && err instanceof Error && err.name === 'AbortError') {
+      throw new Error(`DSM request timed out after ${options.timeoutMs}ms`)
+    }
+    throw err
+  } finally {
+    if (timer) clearTimeout(timer)
   }
 }
 

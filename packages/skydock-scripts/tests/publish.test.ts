@@ -76,17 +76,23 @@ describe('publishJump', () => {
   it('uploads every file, creates a share link and keeps session alive', async () => {
     const dir = makeTmpTree()
     const out = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-publish-nas-'))
+    const bodies: Array<{ text: string; contentLength: string }> = []
     try {
-      stubFetch((url, init) => {
+      stubFetch(async (url, init) => {
         if (url.includes('SYNO.API.Auth') && url.includes('method=login'))
           return loginSuccess('sid')
         if (url.includes('SYNO.API.Auth')) return jsonResponse({ success: true })
         if (url.includes('SYNO.FileStation.Upload')) {
-          const form = init.body as FormData
-          expect(form.get('create_parents')).toBe('true')
-          expect(form.get('overwrite')).toBe('true')
-          expect(typeof form.get('path')).toBe('string')
-          expect((form.get('file') as File).name).toMatch(/\.(mp4|jpg)$/)
+          const text = await new Response(init.body as BodyInit).text()
+          const fieldValue = (name: string) =>
+            text.match(new RegExp(`name="${name}"\\r\\n\\r\\n([^\\r]+)`))?.[1]
+          expect(fieldValue('create_parents')).toBe('true')
+          expect(fieldValue('overwrite')).toBe('true')
+          expect(typeof fieldValue('path')).toBe('string')
+          expect(text.match(/name="file"; filename="([^"]+)"/)?.[1]).toMatch(/\.(mp4|jpg)$/)
+          const headers = init.headers as Record<string, string>
+          expect(headers['Content-Type']).toMatch(/^multipart\/form-data; boundary=/)
+          bodies.push({ text, contentLength: headers['Content-Length'] })
           return jsonResponse({ success: true })
         }
         if (url.includes('SYNO.FileStation.Sharing')) {
@@ -107,11 +113,16 @@ describe('publishJump', () => {
 
       const uploads = seen.filter((c) => c.url.includes('SYNO.FileStation.Upload'))
       expect(uploads.length).toBe(2)
-      const paths = uploads.map((c) => (c.init.body as FormData).get('path')).sort()
+      for (const c of uploads) expect(c.init.body).toBeInstanceOf(ReadableStream)
+      const paths = bodies.map((b) => b.text.match(/name="path"\r\n\r\n([^\r]+)/)?.[1]).sort()
       expect(paths).toEqual([
         '/SkyDock/john_doe_20260824/photos',
         '/SkyDock/john_doe_20260824/videos'
       ])
+      for (const b of bodies) {
+        expect(Number(b.contentLength)).toBe(Buffer.byteLength(b.text))
+        expect(b.text.endsWith('--\r\n')).toBe(true)
+      }
       expect(seen.some((c) => c.url.includes('method=logout'))).toBe(false)
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
@@ -201,6 +212,59 @@ describe('publishJump', () => {
         (p) => p.bytesUploaded === p.totalBytes && p.bytesUploaded > 0
       )
       expect(completions.length).toBe(2)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+      fs.rmSync(out, { recursive: true, force: true })
+    }
+  })
+
+  it('streams large files with exact Content-Length and monotonic progress', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-publish-big-'))
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-publish-nas-'))
+    const fileSize = 64 * 1024 * 1024
+    fs.mkdirSync(path.join(dir, 'videos'), { recursive: true })
+    const bigPath = path.join(dir, 'videos', 'big.mp4')
+    fs.writeFileSync(bigPath, '')
+    fs.truncateSync(bigPath, fileSize)
+    let receivedBytes = 0
+    let sentContentLength = ''
+    try {
+      stubFetch((url, init) => {
+        if (url.includes('method=login')) return loginSuccess('sid')
+        if (url.includes('SYNO.FileStation.Upload')) {
+          sentContentLength = (init.headers as Record<string, string>)['Content-Length']
+          expect(init.body).toBeInstanceOf(ReadableStream)
+          return new Response(init.body as BodyInit).arrayBuffer().then((buf) => {
+            receivedBytes = buf.byteLength
+            return jsonResponse({ success: true })
+          })
+        }
+        if (url.includes('SYNO.FileStation.Sharing'))
+          return jsonResponse({ success: true, data: { links: [{ url: '/sharing/big' }] } })
+        return jsonResponse({ success: true })
+      })
+      const progress: Array<{ bytesUploaded: number; totalBytes: number }> = []
+      await publishJump(
+        {
+          host: 'https://nas.local:5001',
+          user: 'u',
+          password: 'p',
+          localDir: dir,
+          remoteDir: '/SkyDock/jump',
+          outputDir: out
+        },
+        (p) => progress.push({ bytesUploaded: p.bytesUploaded, totalBytes: p.totalBytes })
+      )
+      expect(receivedBytes).toBe(Number(sentContentLength))
+      expect(receivedBytes).toBeGreaterThan(fileSize)
+      expect(progress.length).toBeGreaterThan(2)
+      expect(progress.length).toBeLessThan(200)
+      for (let i = 1; i < progress.length; i++) {
+        expect(progress[i].bytesUploaded).toBeGreaterThanOrEqual(progress[i - 1].bytesUploaded)
+        expect(progress[i].totalBytes).toBe(fileSize)
+      }
+      const last = progress[progress.length - 1]
+      expect(last.bytesUploaded).toBe(fileSize)
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
       fs.rmSync(out, { recursive: true, force: true })

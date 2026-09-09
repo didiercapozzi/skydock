@@ -485,9 +485,8 @@ output/processed/yverdon_20260802/
 - The `Upload` button is only enabled for processed jumps/groups. Uploading additionally requires a valid NAS session and a chosen upload folder: clicking `Upload` while disconnected opens the connection dialog, and while connected without a folder opens the folder browser — no upload starts until both are in place. The server rejects `upload-jump` without a session (`Not connected`) or without a default folder (`Choose an upload folder first`). `Email` generation still requires complete passenger (`firstname`/`lastname`/`email`).
   - Upload destination: processed folder placed directly inside the user's selected NAS folder: `{NAS_FOLDER}/{baseName}/...`
   - Binary comparison: each file compared by SHA-256 hash. Files with matching hash on NAS are skipped.
-  - Chunked upload: files uploaded in 10 MB chunks.
+  - Streamed upload: files stream with byte-accurate progress and flat memory use; on failure, retry from beginning.
   - Progress: each file shows a progress bar with percentage.
-  - Failure: on upload failure, retry from beginning.
   - Share link: reused if already exists. Otherwise created via Synology FileStation Sharing API and stored on the jump.
 
 ### 12.4 Freshness rules
@@ -524,6 +523,6 @@ output/processed/yverdon_20260802/
 ### 12.8 Upload progress
 
 - Each file being uploaded displays a progress bar with percentage.
-- Upload uses 10 MB chunks for accurate progress calculation.
+- Upload streams each file with byte-accurate progress calculation.
 - Overall upload status shows which file is currently uploading.
 - On failure, upload retries from beginning of failed file.
