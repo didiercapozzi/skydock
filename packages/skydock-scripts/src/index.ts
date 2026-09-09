@@ -46,8 +46,16 @@ export {
   reorderFilesInJump
 } from './workspace'
 export { loadManifest, normalizeManifest, saveManifest } from './manifest'
-export { publishJump } from './publish'
+export { publishJump, uploadFile } from './publish'
 export type { PublishArgs, UploadProgress } from './publish'
+export {
+  clearUploadProgress,
+  getUploadProgressPath,
+  readUploadProgress,
+  uploadProgressStateSchema,
+  writeUploadProgress
+} from './uploadProgress'
+export type { UploadProgressState } from './uploadProgress'
 export {
   clearNasSession,
   createShareLink,
@@ -71,8 +79,13 @@ export { writeStatus, scheduleIdle } from './status'
 export {
   checkExiftool,
   countFiles,
+  daySchema,
+  dayToIso,
+  DEFAULT_MAX_FIND_DEPTH,
   fileMatchesExisting,
   findMediaFiles,
+  formatDay,
+  formatTodayDeCh,
   formatTimestamp,
   getExtension,
   getExtensionSafe,
@@ -82,9 +95,11 @@ export {
   hasCommand,
   hasMediaFiles,
   isCliModule,
+  isoToDay,
   isMediaFile,
   isPhotoFile,
   isVideoFile,
+  parseDayEpoch,
   parseExiftoolCsv,
   sanitizeLabel,
   sortFilesByMtime,
@@ -92,7 +107,6 @@ export {
   walkFiles
 } from './utils'
 export { buildExifMap } from './lib/exif'
-export { DEFAULT_MAX_FIND_DEPTH } from './lib/fs'
 export { withStatus } from './lib/cli'
 
 export { processMedia } from './process'

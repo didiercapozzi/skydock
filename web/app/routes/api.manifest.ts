@@ -4,6 +4,7 @@ import type { Route } from './+types/api.manifest'
 import { z } from 'zod'
 import {
   buildJumpBaseName,
+  clearUploadProgress,
   executeMedia,
   getOutputDir,
   loadNasSession,
@@ -12,7 +13,9 @@ import {
   mergeJumps,
   publishJump,
   saveManifest,
-  shiftFiles
+  shiftFiles,
+  walkFiles,
+  writeUploadProgress
 } from '@skydock/scripts'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 
@@ -110,19 +113,67 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         return errors.toResponse(422)
       }
       const remoteBase = session.defaultFolder ?? '/SkyDock'
+      const allFiles = walkFiles(localDir)
+      const sortedFiles = [...allFiles].sort()
+      const totalFiles = sortedFiles.length
       try {
-        const { shareUrl } = await publishJump({
-          host: session.hostname,
-          user: session.username,
-          password: '',
-          localDir,
-          remoteDir: `${remoteBase}/${baseName}`
-        })
+        clearUploadProgress(getOutputDir())
+        const { shareUrl } = await publishJump(
+          {
+            host: session.hostname,
+            user: session.username,
+            password: '',
+            localDir,
+            remoteDir: `${remoteBase}/${baseName}`
+          },
+          (p) => {
+            const idx = sortedFiles.findIndex((f) => f.endsWith(p.filename))
+            const fileIndex = idx >= 0 ? idx : 0
+            writeUploadProgress(
+              {
+                jumpId: target.id,
+                filename: p.filename,
+                bytesUploaded: p.bytesUploaded,
+                totalBytes: p.totalBytes,
+                fileIndex,
+                totalFiles,
+                state: p.bytesUploaded >= p.totalBytes ? 'uploading' : 'uploading'
+              },
+              getOutputDir()
+            )
+          }
+        )
+        writeUploadProgress(
+          {
+            jumpId: target.id,
+            filename: sortedFiles[sortedFiles.length - 1]?.split('/').pop() ?? '',
+            bytesUploaded: 1,
+            totalBytes: 1,
+            fileIndex: Math.max(0, totalFiles - 1),
+            totalFiles,
+            state: 'done'
+          },
+          getOutputDir()
+        )
         target.publish = { shareUrl }
         saveManifest(manifestPath, manifest)
         return { jumps: manifest.jumps }
       } catch (err) {
-        errors.addGlobalError(err instanceof Error ? err.message : 'Upload failed.')
+        const msg = err instanceof Error ? err.message : 'Upload failed.'
+        writeUploadProgress(
+          {
+            jumpId: target.id,
+            filename: '',
+            bytesUploaded: 0,
+            totalBytes: 1,
+            fileIndex: 0,
+            totalFiles,
+            state: 'error',
+            error: msg
+          },
+          getOutputDir()
+        )
+        errors.addGlobalError(msg)
         return errors.toResponse(422)
       }
     }

@@ -402,39 +402,13 @@ The VideoCropper component lives inside the PreviewDrawer (right panel), directl
 - Scripts are TypeScript only, no Python, no comments in generated scripts.
 - Scripts package: `@skydock/scripts` — pipeline (`process`, `scan`, `execute`, `watcher`) plus dev (`simulate`, `test-pipeline`) and shared libs (`lib/exif`, `lib/fs`, `lib/cli`, `workspace`, `manifest`, `clustering`); no `proxies` script.
 
-## 11. Coding Rules
-
-- React Router 8 Framework Mode, SSR, `app/routes.ts` + `app/routes/` modules, `import from ./+types/...`.
-- Arrow functions only, `type` over `interface`, never `any`, all exports at end, inferred returns.
-- Never explicitly type function return types — let TypeScript infer them.
-- Data schemas use Zod for runtime validation; types are inferred via `z.infer<typeof schema>` — never defined separately.
-- Write the cleanest, most reusable, most readable, most reduced code possible — no verbosity, no redundancy.
-- Scripts use TypeScript with `tsx` for direct execution.
-- `npm run check` (`typecheck` + `format:check` + `lint`) must pass before commit.
-- "export" keywords must be at the end of the file and not before a const/variable, function or types
-- we use camel case format for const/variables
-- use "const" instead of "let" or "var" every time you can
-- Scripts package: `@skydock/scripts` — all shared logic lives here
-- Never duplicate: if logic is needed in multiple places, extract to `@skydock/scripts`
-- Never use "import" inside of the code, all import words must be listed at the top of the files
-- E2E and browser tests always use the most visually realistic user simulation to avoid false positives: `userEvent` from `vitest/browser` (`page`, `userEvent.dragAndDrop`/`userEvent.click`/`userEvent.fill`) or `locator.dropTo`/`dragTo` with Playwright provider. Never synthesize `new DragEvent`/`new MouseEvent` + `dispatchEvent` — they bypass `preventDefault` checks, `DataTransfer` sharing, and viewport hit-testing. For drag & drop, use `userEvent.dragAndDrop(source, target, { targetPosition })` (or `source.dropTo(target)`) with `targetPosition: {x,y}` for above/below precision; pre-scroll the drop target into view first so no auto-scroll breaks the gesture mid-drag. Assert DOM order via `expect.poll`, persistence via stubbed `action`, and visual state via `page.screenshot`.
-- When app code changes, tests are the source of truth: adapt the code to the tests first. Tests change only when explicitly requested or when RULES.md behavior changes
-- Never call an endpoint using a string URL; always use the typesafe `routingEngine` (`routingEngine.href({ url })`, `useSafeFetcher`, `useSafeSubmit`) with routes from the generated `Register`
-- Server actions always use `createValidatedFormAction` with a Zod schema; field errors via `errors.addFieldError`, global errors via `errors.addGlobalError`, and return `errors.toResponse(422)` when `errors.hasErrors()`
-- Shared routing and form logic lives in `@skydock/ui` (`routingEngine`, safe hooks, validated actions); never reimplement endpoint calls per route
-- All forms must use `@skydock/ui/forms` (`useForm`, `Form`, `FormField`, `GlobalErrors`, `createValidatedFormAction`) with a Zod schema — see `web/app/components/connection-dialog.tsx` as canonical example; never use `useState` + manual `<input>`/`<form>` handling for form state or validation
-- Never use React memoization (`useCallback`, `useMemo`, `memo`) — React Compiler handles memoization automatically; write plain functions and values
-- Never commit without explicit user approval
-- Never bypass lint like: eslint-disable-next-line react/set-state-in-effect or any other
-- Always use Zod `safeParse` for runtime validation of API, loader, and fetcher data; never use dirty manual checks like `as unknown`, `as {…}`, `typeof data === 'object'`, `'key' in data`, `Array.isArray((data as…).field)`, or `if (data && 'prop' in data)`. Define a `z.object`/`z.array` schema and branch on `parsed.success` (`parsed.data` / `parsed.error`).
-
-## 12. Rule Changes
+## 11. Rule Changes
 
 > RULES.md is the single source of truth. Any change that impacts a rule must follow this process.
 
 **Before implementing any change that may affect RULES.md:**
 
-1. **Identify impact:** Check if the change modifies any behavior described in §1-§11.
+1. **Identify impact:** Check if the change modifies any behavior described in §1-§10.
 2. **Warn user:** Present the affected sections and proposed modification.
 3. **Get approval:** Wait for user confirmation before proceeding.
 4. **Update RULES.md:** After implementation, update the relevant section(s) to reflect the new behavior.
@@ -458,17 +432,17 @@ The VideoCropper component lives inside the PreviewDrawer (right panel), directl
 
 **Commit rule:** No commit is ever made until the user explicitly requests it. All changes are staged and reviewed before committing.
 
-## 13. Tandem passenger publishing
+## 12. Tandem passenger publishing
 
 > How tandem jumps go from processed files to the passenger's inbox.
 
-### 13.1 Passenger / location details
+### 12.1 Passenger / location details
 
 - Each jump/group can carry the tandem passenger's `firstname`/`lastname`/`email` **or** just a location `label` for fun jumps (`yverdon`, `colombier`). `label` acts as location for fun.
 - Passenger/location details are optional while reviewing, and jumps without them fall back to `label` wherever a name is needed. **Processing (`Process`) no longer requires passenger** — `label` (`yverdon`) is used for fun, `firstname_lastname` for tandem, fallback `Jump N`. **Only `Email`/`Share` generation requires complete passenger (`firstname`/`lastname`/`email`).**
 - They are edited on the jump/group card (`Add passenger` / location prompt on `+ Create Group`) and saved with the rest of the workspace. Empty `Group` stores `day` to stay under its `Day`.
 
-### 13.2 Naming
+### 12.2 Naming
 
 - Folder: `{base}_{YYYYMMDD}` where `base` is `firstname_lastname` (tandem) or `label` (`yverdon`, `colombier`, `Jump N`) sanitized lowercased (all lowercase, jump/group date). `fun` example: `yverdon_20260802 - yverdon` label → `yverdon_20260802_113345.mp4`.
 - Files: `{base}_{YYYYMMDD}_{HHMMSS}.{ext}` (`HHMMSS` from original capture time). Same `base` as folder.
@@ -504,7 +478,7 @@ output/processed/yverdon_20260802/
     └─  yverdon_20260802_091601.jpg
 ```
 
-### 13.3 Per-jump / per-group lifecycle
+### 12.3 Per-jump / per-group lifecycle
 
 - Each jump/group moves through proposed, processed, uploaded, in that order. `Day` loose files are processed individually per-file to `output/processed/YYYY-MM-DD/` flat.
 - The `Process` button is available once a jump/group has files (no passenger required — `yverdon` `Group` processes with `label`). Processing copies and renames the files (using `passenger` if present else `label`) and marks the jump/group `processed`; re-processing clears any previous publishing state. `+ Create Group` at a `Day` creates an empty `Group` (`label` prompt, `day` stored) that becomes processable once files are dragged in.
@@ -516,27 +490,27 @@ output/processed/yverdon_20260802/
   - Failure: on upload failure, retry from beginning.
   - Share link: reused if already exists. Otherwise created via Synology FileStation Sharing API and stored on the jump.
 
-### 13.4 Freshness rules
+### 12.4 Freshness rules
 
 - Re-processing a jump moves the existing processed folder to `output/.trash/` before creating the new one.
 - Re-processing a jump discards its share link and sent record, because the files changed and the old link is stale.
 - Merged jumps start unpublished, with no link and no sent record.
 - Re-uploading replaces the share link and resets the sent record for the same reason.
 
-### 13.5 Secrets
+### 12.5 Secrets
 
 - NAS session ID (`sessionId`), hostname, and username are stored in `output/.status/nas.json`. Password is never written to disk.
 - On app restart, the stored session ID is reused if still valid on the NAS. If expired, the user is prompted to re-enter credentials.
 - Mail credentials removed — email uses prefilled `mailto:` link, user sends manually.
 
-### 13.6 NAS connection
+### 12.6 NAS connection
 
 - On first upload (or when no valid session exists), a connection dialog appears asking for NAS hostname, username, and password.
 - On successful login, the session ID is saved to `output/.status/nas.json` (password is not saved).
 - On app restart, the stored session ID is validated. If still active, connection is ready without re-login. If expired, the login dialog reappears.
 - The user can disconnect or update credentials, which clears the stored session.
 
-### 13.7 NAS folder browser
+### 12.7 NAS folder browser
 
 - Custom visual file-tree browser displays NAS folder structure.
 - Folders expand/collapse on click.
@@ -545,7 +519,7 @@ output/processed/yverdon_20260802/
 - Selected folder stored in `output/.status/nas.json` as default destination.
 - Future uploads go directly to default folder (unless user changes it).
 
-### 13.8 Upload progress
+### 12.8 Upload progress
 
 - Each file being uploaded displays a progress bar with percentage.
 - Upload uses 10 MB chunks for accurate progress calculation.

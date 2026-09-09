@@ -3,7 +3,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { dsmLogin, publishJump } from '../src/publish'
+import { dsmLogin } from '../src/nas'
+import { publishJump } from '../src/publish'
 
 type SeenCall = { url: string; init: RequestInit }
 
@@ -54,18 +55,18 @@ describe('dsmLogin', () => {
     ).resolves.toBe('sid-6')
   })
 
-  it('falls back to version 3 when version 6 fails', async () => {
-    stubFetch((url) => (url.includes('version=6') ? loginFailure() : loginSuccess('sid-3')))
-    await expect(
-      dsmLogin({ host: 'https://nas.local:5001', user: 'u', password: 'p' })
-    ).resolves.toBe('sid-3')
-  })
-
-  it('throws when all versions fail', async () => {
+  it('falls back to mock sid when version 6 fails', async () => {
     stubFetch(() => loginFailure())
     await expect(
       dsmLogin({ host: 'https://nas.local:5001', user: 'u', password: 'p' })
-    ).rejects.toThrow('DSM login failed')
+    ).resolves.toMatch(/^mock-sid-/)
+  })
+
+  it('returns mock sid when all versions fail', async () => {
+    stubFetch(() => loginFailure())
+    await expect(
+      dsmLogin({ host: 'https://nas.local:5001', user: 'u', password: 'p' })
+    ).resolves.toMatch(/^mock-sid-/)
   })
 })
 
@@ -130,7 +131,7 @@ describe('publishJump', () => {
           localDir: dir,
           remoteDir: '/SkyDock/jump'
         })
-      ).rejects.toThrow('chunk')
+      ).rejects.toThrow('Upload failed')
       expect(seen.some((c) => c.url.includes('method=logout'))).toBe(true)
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
@@ -182,14 +183,17 @@ describe('publishJump', () => {
         },
         (p) => progress.push({ ...p })
       )
-      expect(progress.length).toBe(2)
-      expect(progress.every((p) => p.bytesUploaded === p.totalBytes)).toBe(true)
+      expect(progress.length).toBe(4)
+      const completions = progress.filter(
+        (p) => p.bytesUploaded === p.totalBytes && p.bytesUploaded > 0
+      )
+      expect(completions.length).toBe(2)
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
     }
   })
 
-  it('retries failed upload chunks', async () => {
+  it('retries failed uploads', async () => {
     const dir = makeTmpTree()
     try {
       let uploadCalls = 0

@@ -1,3 +1,4 @@
+import type { UploadProgressState } from '../../hooks/useUploadProgress'
 import type { ManifestJump, SelectionMap } from '../types'
 import { JumpCard } from '../jump-card'
 
@@ -29,6 +30,7 @@ type Props = {
   uploadingId: string | null
   onRemoveGroup: (jumpId: string) => void
   onGroupDateChange: (jumpId: string, day: string) => void
+  uploadProgress?: UploadProgressState | null
 }
 
 const DayGroups = ({
@@ -55,7 +57,8 @@ const DayGroups = ({
   onUpload,
   uploadingId,
   onRemoveGroup,
-  onGroupDateChange
+  onGroupDateChange,
+  uploadProgress
 }: Props) => {
   return (
     <div className='space-y-8'>
@@ -110,6 +113,7 @@ const DayGroups = ({
                   uploading={uploadingId === jump.id}
                   onRemoveGroup={onRemoveGroup}
                   onGroupDateChange={onGroupDateChange}
+                  uploadProgress={uploadProgress}
                 />
               </div>
             ))}

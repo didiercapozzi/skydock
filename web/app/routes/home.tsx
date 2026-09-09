@@ -18,6 +18,7 @@ import { useDragDrop } from '../hooks/useDragDrop'
 import { useJumps } from '../hooks/useJumps'
 import { usePreview } from '../hooks/usePreview'
 import { useSelection } from '../hooks/useSelection'
+import { useUploadProgress } from '../hooks/useUploadProgress'
 import type { Route } from './+types/home'
 
 const nasSuccessSchema = z
@@ -39,7 +40,7 @@ const nasErrorSchema = z
 
 const manifestJumpsResponseSchema = z.object({ jumps: z.array(manifestJumpSchema) }).passthrough()
 
-const loader = async ({}: Route.LoaderArgs) => {
+const loader = async (_args: Route.LoaderArgs) => {
   const outputDir = process.env.SKYDOCK_OUTPUT_DIR ?? '/workspace/output'
   let manifest = null
   try {
@@ -120,6 +121,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const [manifestError, setManifestError] = useState<string | null>(null)
+  const uploadProgress = useUploadProgress(uploadingId)
 
   const parsedSuccess = nasSuccessSchema.safeParse(nasFetcher.data)
   const parsedError = nasErrorSchema.safeParse(nasFetcher.data)
@@ -350,6 +352,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           processingId={processingId}
           onUpload={handleUpload}
           uploadingId={uploadingId}
+          uploadProgress={uploadProgress}
           onRemoveGroup={handleRemoveGroup}
           onGroupDateChange={handleGroupDateChange}
         />

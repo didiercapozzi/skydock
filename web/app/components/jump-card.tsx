@@ -3,6 +3,7 @@ import { dayToIso, isoToDay } from '../../../packages/skydock-scripts/src/utils'
 import { FileGrid } from './file-grid'
 import { FileRow } from './file-row'
 import { PhotoIcon, VideoIcon } from './icons'
+import type { UploadProgressState } from '../hooks/useUploadProgress'
 import type { ManifestFile, ManifestJump, ManifestPassenger, SelectionMap } from './types'
 import { formatTime, getJumpBounds, isVideoFile } from './utils'
 
@@ -27,7 +28,8 @@ const JumpCard = ({
   viewMode,
   hasSelection,
   onRemoveGroup,
-  onGroupDateChange
+  onGroupDateChange,
+  uploadProgress
 }: {
   jump: ManifestJump
   selection: SelectionMap
@@ -50,6 +52,7 @@ const JumpCard = ({
   hasSelection: boolean
   onRemoveGroup: (jumpId: string) => void
   onGroupDateChange: (jumpId: string, day: string) => void
+  uploadProgress?: UploadProgressState | null
 }) => {
   const [expanded, setExpanded] = useState(false)
   const [editingPassenger, setEditingPassenger] = useState(false)
@@ -286,6 +289,31 @@ const JumpCard = ({
               {jump.files.length} files
             </span>
           </div>
+          {uploading && uploadProgress && uploadProgress.jumpId === jump.id && (
+            <div
+              data-upload-progress='true'
+              className='mt-3'>
+              <div className='flex items-center justify-between text-xs text-gray-600 mb-1'>
+                <span className='truncate'>
+                  {uploadProgress.filename} {uploadProgress.fileIndex + 1}/
+                  {uploadProgress.totalFiles}
+                </span>
+                <span className='tabular-nums'>
+                  {uploadProgress.totalBytes > 0
+                    ? `${Math.round((uploadProgress.bytesUploaded / uploadProgress.totalBytes) * 100)}%`
+                    : '0%'}
+                </span>
+              </div>
+              <div className='h-1.5 bg-gray-200 rounded-full overflow-hidden'>
+                <div
+                  className='h-full bg-blue-600 transition-all duration-200'
+                  style={{
+                    width: `${uploadProgress.totalBytes > 0 ? Math.round((uploadProgress.bytesUploaded / uploadProgress.totalBytes) * 100) : 0}%`
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
       {expanded && (

@@ -80,7 +80,8 @@ const makeJump = (
   confirmed: true,
   files,
   processed,
-  passenger
+  passenger,
+  day: '29.08.2026'
 })
 
 describe('executeMedia', () => {
@@ -367,7 +368,7 @@ describe('executeMedia', () => {
   })
 
   describe('passenger validation', () => {
-    it('skips jump without complete passenger', () => {
+    it('processes jump without complete passenger using label', () => {
       const videoPath = writeTempFile(tmpDir, 'DJI_0001.MP4')
       const videoMtime = new Date('2026-08-29T11:30:15Z').getTime() / 1000
       const videoFile = makeFile(videoPath, videoMtime)
@@ -384,11 +385,11 @@ describe('executeMedia', () => {
 
       const result = executeMedia({ manifestPath, jumpIds: ['jump_1'], outputDir })
 
-      expect(result.copied).toBe(0)
-      expect(result.processedJumps).toBe(0)
+      expect(result.copied).toBe(1)
+      expect(result.processedJumps).toBe(1)
     })
 
-    it('skips jump with no passenger', () => {
+    it('processes jump with no passenger using label', () => {
       const videoPath = writeTempFile(tmpDir, 'DJI_0001.MP4')
       const videoMtime = new Date('2026-08-29T11:30:15Z').getTime() / 1000
       const videoFile = makeFile(videoPath, videoMtime)
@@ -401,8 +402,8 @@ describe('executeMedia', () => {
 
       const result = executeMedia({ manifestPath, jumpIds: ['jump_1'], outputDir })
 
-      expect(result.copied).toBe(0)
-      expect(result.processedJumps).toBe(0)
+      expect(result.copied).toBe(1)
+      expect(result.processedJumps).toBe(1)
     })
   })
 
