@@ -44,7 +44,8 @@ const moveFilesBetweenJumps = (
   action: 'move' | 'copy'
 ): ManifestJump[] => {
   const byPath = new Map<string, ManifestFile>()
-  for (const f of files) byPath.set(f.path, f)
+  for (const j of jumps) for (const f of j.files) byPath.set(f.path, f)
+  for (const f of files) if (!byPath.has(f.path)) byPath.set(f.path, f)
   const allPaths = Object.values(groups).flat()
   return jumps.map((j) => {
     const sourcePaths = groups[j.id]
