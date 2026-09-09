@@ -289,32 +289,31 @@ const JumpCard = ({
               {jump.files.length} files
             </span>
           </div>
-          {uploading && uploadProgress && uploadProgress.jumpId === jump.id && (
-            <div
-              data-upload-progress='true'
-              className='mt-3'>
-              <div className='flex items-center justify-between text-xs text-gray-600 mb-1'>
-                <span className='truncate'>
-                  {uploadProgress.filename} {uploadProgress.fileIndex + 1}/
-                  {uploadProgress.totalFiles}
-                </span>
-                <span className='tabular-nums'>
-                  {uploadProgress.totalBytes > 0
-                    ? `${Math.round((uploadProgress.bytesUploaded / uploadProgress.totalBytes) * 100)}%`
-                    : '0%'}
-                </span>
-              </div>
-              <div className='h-1.5 bg-gray-200 rounded-full overflow-hidden'>
-                <div
-                  className='h-full bg-blue-600 transition-all duration-200'
-                  style={{
-                    width: `${uploadProgress.totalBytes > 0 ? Math.round((uploadProgress.bytesUploaded / uploadProgress.totalBytes) * 100) : 0}%`
-                  }}
-                />
-              </div>
-            </div>
-          )}
         </div>
+        {uploading && uploadProgress && uploadProgress.jumpId === jump.id && (
+          <div
+            data-upload-progress='true'
+            className='px-4 py-3 bg-blue-50 border-t border-blue-100'>
+            <div className='flex items-center justify-between text-xs text-gray-600 mb-1'>
+              <span className='truncate'>
+                {uploadProgress.filename} {uploadProgress.fileIndex + 1}/{uploadProgress.totalFiles}
+              </span>
+              <span className='tabular-nums'>
+                {uploadProgress.totalBytes > 0
+                  ? `${Math.round((uploadProgress.bytesUploaded / uploadProgress.totalBytes) * 100)}%`
+                  : '0%'}
+              </span>
+            </div>
+            <div className='h-1.5 bg-gray-200 rounded-full overflow-hidden'>
+              <div
+                className='h-full bg-blue-600 transition-all duration-200'
+                style={{
+                  width: `${uploadProgress.totalBytes > 0 ? Math.round((uploadProgress.bytesUploaded / uploadProgress.totalBytes) * 100) : 0}%`
+                }}
+              />
+            </div>
+          </div>
+        )}
       </div>
       {expanded && (
         <div>
