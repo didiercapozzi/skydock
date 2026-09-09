@@ -9,6 +9,7 @@ type Props = {
   dropHint: { jumpId: string; index: number } | null
   viewMode: 'list' | 'grid'
   hasSelection: boolean
+  onCreateGroup: (dayDate: string) => void
   onCompareToggle: (jumpId: string) => void
   onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
   onPreview: (file: import('../types').ManifestFile, groupId: string) => void
@@ -35,6 +36,7 @@ const DayGroups = ({
   dropHint,
   viewMode,
   hasSelection,
+  onCreateGroup,
   onCompareToggle,
   onSelect,
   onPreview,
@@ -59,6 +61,12 @@ const DayGroups = ({
             <span className='text-xs font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-full'>
               {day.jumps.length} jump{day.jumps.length !== 1 ? 's' : ''}
             </span>
+            <button
+              type='button'
+              onClick={() => onCreateGroup(day.date)}
+              className='px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100'>
+              + Create Group
+            </button>
           </div>
           <div className='space-y-4'>
             {day.jumps.map((jump) => (

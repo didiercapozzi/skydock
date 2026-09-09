@@ -6,7 +6,6 @@ import {
   buildJumpBaseName,
   executeMedia,
   getOutputDir,
-  hasCompletePassenger,
   loadNasSession,
   loadManifest,
   manifestJumpSchema,
@@ -66,8 +65,8 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         errors.addGlobalError('Jump not found.')
         return errors.toResponse(422)
       }
-      if (!hasCompletePassenger(target.passenger)) {
-        errors.addGlobalError('Complete passenger details are required to process.')
+      if (target.files.length === 0) {
+        errors.addGlobalError('Jump has no files.')
         return errors.toResponse(422)
       }
       executeMedia({ manifestPath, jumpIds: [target.id], outputDir: getOutputDir() })

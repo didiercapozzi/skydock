@@ -4,7 +4,7 @@ import * as path from 'node:path'
 import { loadManifest, saveManifest } from './manifest'
 import { scheduleIdle, writeStatus } from './status'
 import { getManifestPath, getOutputDir, hasCommand, isCliModule, isVideoFile } from './utils'
-import { buildFsTime, buildJumpBaseName, hasCompletePassenger, makeFileName } from './workspace'
+import { buildFsTime, buildJumpBaseName, makeFileName } from './workspace'
 
 type ExecuteOptions = {
   manifestPath?: string
@@ -139,7 +139,7 @@ const executeMedia = (options?: ExecuteOptions): ExecuteResult => {
 
   for (const jumpId of jumpIds) {
     const jump = manifest.jumps.find((j) => j.id === jumpId)
-    if (!jump || jump.files.length === 0 || !hasCompletePassenger(jump.passenger)) continue
+    if (!jump || jump.files.length === 0) continue
 
     totalCopied += processJump(jump, processedDir, outputDir)
     processedCount++

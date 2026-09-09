@@ -23,7 +23,7 @@ const getJumpBounds = (jump: ManifestJump) => {
 }
 
 const getJumpDate = (jump: ManifestJump) => {
-  if (jump.files.length === 0) return ''
+  if (jump.files.length === 0) return jump.day ?? ''
   const min = Math.min(...jump.files.map((f) => f.mtime))
   return new Date(min * 1000).toLocaleDateString('de-CH', {
     year: 'numeric',
@@ -35,7 +35,7 @@ const getJumpDate = (jump: ManifestJump) => {
 const groupJumpsByDay = (jumps: ManifestJump[]) => {
   const map = new Map<string, { date: string; jumps: ManifestJump[] }>()
   for (const jump of jumps) {
-    const date = getJumpDate(jump) || 'Unknown'
+    const date = getJumpDate(jump) || jump.day || 'Unknown'
     const g = map.get(date)
     if (g) g.jumps.push(jump)
     else map.set(date, { date, jumps: [jump] })

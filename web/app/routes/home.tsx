@@ -1,4 +1,4 @@
-import { loadManifest, loadNasSession } from '@skydock/scripts'
+import { loadManifest, loadNasSession, manifestJumpSchema } from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
 import { ComparisonDialog } from '../components/comparison-dialog'
@@ -35,6 +35,8 @@ const nasErrorSchema = z
     fieldErrors: z.record(z.string(), z.string()).optional()
   })
   .passthrough()
+
+const manifestJumpsResponseSchema = z.object({ jumps: z.array(manifestJumpSchema) }).passthrough()
 
 const loader = async ({}: Route.LoaderArgs) => {
   const outputDir = process.env.SKYDOCK_OUTPUT_DIR ?? '/workspace/output'
@@ -106,11 +108,12 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     setDropDialog
   } = useDragDrop()
   const nasFetcher = useSafeFetcher()
+  const manifestFetcher = useSafeFetcher()
   const [showConnectionDialog, setShowConnectionDialog] = useState(false)
   const [showFolderBrowser, setShowFolderBrowser] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
-  const [processingId] = useState<string | null>(null)
-  const [uploadingId] = useState<string | null>(null)
+  const [processingId, setProcessingId] = useState<string | null>(null)
+  const [uploadingId, setUploadingId] = useState<string | null>(null)
 
   const parsedSuccess = nasSuccessSchema.safeParse(nasFetcher.data)
   const parsedError = nasErrorSchema.safeParse(nasFetcher.data)
@@ -152,8 +155,14 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   }
 
   const handleMerge = () => {}
-  const handleProcess = () => {}
-  const handleUpload = () => {}
+  const handleProcess = (jumpId: string) => {
+    setProcessingId(jumpId)
+    manifestFetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'process-jump', jumpId } })
+  }
+  const handleUpload = (jumpId: string) => {
+    setUploadingId(jumpId)
+    manifestFetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'upload-jump', jumpId } })
+  }
   const mainRef = useRef<HTMLElement | null>(null)
 
   const handlePassengerChange = (
@@ -165,9 +174,42 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     saveJumps(next)
   }
 
+  const handleCreateGroup = (dayDate: string) => {
+    const label = window.prompt('Group name (location)', 'yverdon')?.trim()
+    if (!label) return
+    const newJump = {
+      id: `group_${Date.now()}`,
+      label,
+      confirmed: false,
+      files: [],
+      processed: false,
+      day: dayDate
+    } as import('../components/types').ManifestJump
+    const next = [...jumps, newJump]
+    setJumps(next)
+    saveJumps(next)
+  }
+
   useEffect(() => {
     mainRef.current?.setAttribute('data-hydrated', 'true')
   }, [])
+
+  useEffect(() => {
+    if (!manifestFetcher.data) return
+    const parsed = manifestJumpsResponseSchema.safeParse(manifestFetcher.data)
+    if (parsed.success) {
+      queueMicrotask(() => {
+        setJumps(parsed.data.jumps)
+        setProcessingId(null)
+        setUploadingId(null)
+      })
+      return
+    }
+    queueMicrotask(() => {
+      setProcessingId(null)
+      setUploadingId(null)
+    })
+  }, [manifestFetcher.data, setJumps])
 
   if (!manifest) {
     return (
@@ -243,6 +285,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           dropHint={dropHint}
           viewMode={viewMode}
           hasSelection={selectedCount > 0}
+          onCreateGroup={handleCreateGroup}
           onCompareToggle={handleCompareToggle}
           onSelect={handleSelect}
           onPreview={handlePreview}

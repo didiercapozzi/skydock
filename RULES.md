@@ -51,7 +51,8 @@ output/
 - `scanMedia()` creates a new manifest with status `proposed`, today's date, all files, and clustered jumps.
 - `files` is flat list of all files sorted by `mtime`.
 - `jumps[].files` are lightweight refs — same file may appear in multiple jumps via copy. In-memory manifest resolves refs to full files for UI/execute.
-- Jump IDs are `jump_1 ...` or preserved original IDs after recluster; labels default to `Jump N` and are editable.
+- Jump IDs are `jump_1 ...` or preserved original IDs after recluster; labels default to `Jump N` and are editable. For fun jumps `label` holds the location (`yverdon`, `colombier`) and acts as `Group` name — see §13.2.
+- `day` (`YYYY.MM.DD` locale `de-CH`, e.g. `24.08.2026`) is stored on empty `Group`s to keep them under the selected `Day` after `+ Create Group` (files empty → `getJumpDate` falls back to `day`).
 - `originalMtime` saved on first time shift to allow reset-calibration.
 - `processed` marks per-jump execution (incremental). Manifest status becomes `executed` only when every jump is processed, `confirmed` when some processed, otherwise `proposed`.
 - Jump selection for compare/process is React state in Review UI, not persisted in manifest.
@@ -95,10 +96,11 @@ output/
 
 - Default manifest `output/manifest.json`, processed directory `output/processed`.
 - If jump IDs given, process only those; else process all confirmed and unprocessed jumps.
-- For each jump:
+- For each jump/group:
   - Skip if no files.
-  - Require complete passenger (firstname, lastname, email) — refuse otherwise.
-  - Build base name: `{firstname}_{lastname}_{YYYYMMDD}` (all lowercase, jump date).
+  - Passenger is optional for `Process` — if `passenger` with `firstname`/`lastname` present use `firstname_lastname`, otherwise use `label` (`yverdon`, `colombier`, `Jump N`) sanitized lowercased. Passenger is only mandatory for `Email`/`Share` generation.
+  - Build base name: `{base}_{YYYYMMDD}` where `base` is `firstname_lastname` or `label` (all lowercase, jump/group date). For `Group` (`label=yverdon`) on `2026-08-02` → `yverdon_20260802`.
+  - Same-day same-location collisions get counter suffix `_1`, `_2` (via `makeFileName`) or `HHMMSS` variant. `Day` loose files (`output/processed/2026-08-29/` flat) not grouped use per-file stem.
   - Create `videos/` and `photos/` subdirectories only if files of that type exist.
   - File naming: `{baseName}_{HHMMSS}.{ext}` where HHMMSS comes from original file capture time.
   - Collision: if two files share the same capture time, add counter suffix: `_1`, `_2`.
@@ -113,7 +115,7 @@ output/
 
 - save-jumps persists the working jump list.
 - merge-jumps combines two jumps server-side with a date anchor for the merged files.
-- process-jump runs `executeMedia` for one jump with complete passenger details, marks it processed and clears its publish state.
+- process-jump runs `executeMedia` for one jump/group (files required, passenger optional — label `yverdon` used if no passenger), marks it processed and clears its publish state.
 - upload-jump uploads one processed jump to network storage using Synology DSM API. Binary comparison via SHA-256 hash skips files already present. Upload uses 10 MB chunks. Per-file progress tracked. Failed uploads retry from beginning. Share link reused if already exists; otherwise created via FileStation Sharing API.
 
 ## 7. Simulation & Testing
@@ -243,9 +245,9 @@ All drag and drop operations follow these rules:
 
 #### 9.4.2 Day groups & jump cards
 
-- Jumps grouped by day, days newest-first with per-day jump counts.
-- Compare checkbox per card, max 2 jumps. Cards expand/collapse. Each card has Process and Upload buttons (Process needs complete passenger details, shows a spinner while busy and Reprocess once done; Upload needs a processed jump) with a Processed badge; the expanded card shows the share section (link, copy, mail) once published. The card title shows the passenger name once firstname and lastname are set, otherwise the jump label. The expanded card shows passenger names as labels (click to edit) or an Add passenger button; Done saves to the manifest, Cancel discards drafts.
-- Expanded card file list respects `viewMode`: `list` renders `FileRow` (`filename`, `time`, `size`, `Cropped ✂️` badge, `multiple-jump` highlight); `grid` renders `FileGrid` (`3×` `4×` `5×` squares, `aspect-square`, `160px` thumbs via `/api/thumb`, `loading=lazy`, filename overlay, `✂️` cropped badge top-right, `▶` video overlay, `ring-blue`/`ring-purple` selection).
+- Jumps grouped by day, days newest-first with per-day jump counts. Each `Day` header shows `+ Create Group` — creates an empty `Group` for that day with `label` (`yverdon`/`colombier` via prompt, stored in `day` field when empty) that appears under the day and is droppable like any jump (files dragged in adapt date via `shiftFiles`). Empty `Group` is kept under its `Day` via `day` fallback.
+- Compare checkbox per card, max 2 jumps. Cards expand/collapse. Each card (`Jump`/`Group`) has Process and Upload buttons — `Process` is enabled when `files.length>0` (no passenger required; `label` `yverdon` used for fun, `firstname_lastname` for tandem, fallback `Jump N`), shows spinner while busy and `Reprocess` once done; `Upload` needs a processed jump (and passenger only for `Email` generation) with a `Processed` badge; the expanded card shows the share section (link, copy, mail) once published. The card title shows the passenger name once `firstname`/`lastname` set, otherwise the `label` (`yverdon`). The expanded card shows passenger names as labels (click to edit) or an `Add passenger` button; `Done` saves to the manifest, `Cancel` discards drafts.
+- Expanded card file list respects `viewMode`: `list` renders `FileRow` (`filename`, `time`, `size`, `Cropped ✂️` badge, `multiple-jump` highlight); `grid` renders `FileGrid` (`3×` `4×` `5×` squares, `aspect-square`, `160px` thumbs via `/api/thumb` for video else `/api/file` for photo, `loading=lazy`, filename overlay, `✂️` cropped badge top-right, `▶` video overlay, `ring-blue`/`ring-purple` selection). Row click when `hasSelection` selects instead of preview; `FileGrid` drill-down `setSelected+load` for `NasFolderBrowser` is separate.
 
 ### 9.5 Comparing & merging jumps
 
@@ -459,24 +461,26 @@ The VideoCropper component lives inside the PreviewDrawer (right panel), directl
 
 > How tandem jumps go from processed files to the passenger's inbox.
 
-### 13.1 Passenger details
+### 13.1 Passenger / location details
 
-- Each jump can carry the tandem passenger's first name, last name and email address.
-- Passenger details are optional while reviewing, and jumps without them fall back to the jump label wherever a name is needed. Processing a jump requires all three fields.
-- They are edited on the jump card and saved with the rest of the workspace.
+- Each jump/group can carry the tandem passenger's `firstname`/`lastname`/`email` **or** just a location `label` for fun jumps (`yverdon`, `colombier`). `label` acts as location for fun.
+- Passenger/location details are optional while reviewing, and jumps without them fall back to `label` wherever a name is needed. **Processing (`Process`) no longer requires passenger** — `label` (`yverdon`) is used for fun, `firstname_lastname` for tandem, fallback `Jump N`. **Only `Email`/`Share` generation requires complete passenger (`firstname`/`lastname`/`email`).**
+- They are edited on the jump/group card (`Add passenger` / location prompt on `+ Create Group`) and saved with the rest of the workspace. Empty `Group` stores `day` to stay under its `Day`.
 
 ### 13.2 Naming
 
-- Folder: `{firstname}_{lastname}_{YYYYMMDD}` (all lowercase, jump date).
-- Files: `{firstname}_{lastname}_{YYYYMMDD}_{HHMMSS}.{ext}` (HHMMSS from original capture time).
-- Date source: jump date (from scan or manually updated). If updated, re-processing applies the new date.
+- Folder: `{base}_{YYYYMMDD}` where `base` is `firstname_lastname` (tandem) or `label` (`yverdon`, `colombier`, `Jump N`) sanitized lowercased (all lowercase, jump/group date). `fun` example: `yverdon_20260802 - yverdon` label → `yverdon_20260802_113345.mp4`.
+- Files: `{base}_{YYYYMMDD}_{HHMMSS}.{ext}` (`HHMMSS` from original capture time). Same `base` as folder.
+- For `Group` `label=yverdon` on `2026-08-02` with 3 jumps merged, all files share `yverdon_20260802_HHMMSS.ext` in `videos/`/`photos/` (collision `_1`). Same-day same-location groups get `_1`/`_2` folder suffix (`yverdon_20260802_1`).
+- Loose `Day` files (`output/processed/2026-08-29/` flat) use per-file stem, no `base`, no `videos/` split (or flat `Day` folder).
+- Date source: jump/group date (from scan or `+ Create Group` `day`, or manually updated). If updated, re-processing applies the new date.
 - Time source: original file capture time (follows date if updated).
 - Collision: counter suffix only when needed: `_1`, `_2`.
-- Videos and photos keep separate subdirectories.
+- Videos and photos keep separate subdirectories for `Group` (loose `Day` may be flat).
 - Empty subdirectories are not created.
 - EXIF metadata dates (creation + modification) match filename date-time.
 
-Example:
+Example tandem:
 
 ```
 output/processed/bim_bam_20260829/
@@ -487,11 +491,23 @@ output/processed/bim_bam_20260829/
     └── bim_bam_20260829_182506.jpg
 ```
 
-### 13.3 Per-jump lifecycle
+Example fun `yverdon` (3 jumps merged same day):
 
-- Each jump moves through proposed, processed, uploaded, in that order.
-- The Process button is available once a jump has files and all three passenger fields are set. Processing copies and renames the files and marks the jump processed; re-processing clears any previous publishing state.
-- The Upload button is only enabled for processed jumps and starts the upload immediately.
+```
+output/processed/yverdon_20260802/
+├── videos/
+│   ├── yverdon_20260802_091205.mp4
+│   ├── yverdon_20260802_100211.mp4
+│   └── yverdon_20260802_113015.mp4
+└─  photos/
+    └─  yverdon_20260802_091601.jpg
+```
+
+### 13.3 Per-jump / per-group lifecycle
+
+- Each jump/group moves through proposed, processed, uploaded, in that order. `Day` loose files are processed individually per-file to `output/processed/YYYY-MM-DD/` flat.
+- The `Process` button is available once a jump/group has files (no passenger required — `yverdon` `Group` processes with `label`). Processing copies and renames the files (using `passenger` if present else `label`) and marks the jump/group `processed`; re-processing clears any previous publishing state. `+ Create Group` at a `Day` creates an empty `Group` (`label` prompt, `day` stored) that becomes processable once files are dragged in.
+- The `Upload` button is only enabled for processed jumps/groups and starts the upload immediately. `Email` generation still requires complete passenger (`firstname`/`lastname`/`email`).
   - Upload destination: processed folder placed directly inside the user's selected NAS folder: `{NAS_FOLDER}/{baseName}/...`
   - Binary comparison: each file compared by SHA-256 hash. Files with matching hash on NAS are skipped.
   - Chunked upload: files uploaded in 10 MB chunks.

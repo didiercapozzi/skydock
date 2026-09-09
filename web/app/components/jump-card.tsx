@@ -1,4 +1,3 @@
-import { hasCompletePassenger } from '@skydock/scripts'
 import { Fragment, useState } from 'react'
 import type { ManifestFile, ManifestJump, ManifestPassenger, SelectionMap } from './types'
 import { formatTime, getJumpBounds, isVideoFile } from './utils'
@@ -56,13 +55,8 @@ const JumpCard = ({
   const croppedCount = jump.files.filter(
     (f) => isVideoFile(f.filename) && (f.cropStart != null || f.cropEnd != null)
   ).length
-  const passengerComplete = jump.files.length > 0 && hasCompletePassenger(jump.passenger)
-  const processTitle =
-    jump.files.length === 0
-      ? 'Empty jump'
-      : !passengerComplete
-        ? 'Add complete passenger details to process'
-        : undefined
+  const canProcess = jump.files.length > 0
+  const processTitle = jump.files.length === 0 ? 'Empty jump' : undefined
   const savedFirstname = jump.passenger?.firstname ?? ''
   const savedLastname = jump.passenger?.lastname ?? ''
   const hasPassengerName = savedFirstname !== '' && savedLastname !== ''
@@ -199,7 +193,7 @@ const JumpCard = ({
             <button
               type='button'
               data-action='process'
-              disabled={!passengerComplete || processing}
+              disabled={!canProcess || processing}
               title={processTitle}
               onClick={(e) => {
                 e.stopPropagation()
