@@ -47,7 +47,7 @@ afterEach(() => {
 describe('dsmLogin', () => {
   it('returns sid on version 6 success', async () => {
     stubFetch((url) => {
-      expect(url).toContain('version=6')
+      expect(url).toMatch(/version=(7|6)/)
       return loginSuccess('sid-6')
     })
     await expect(

@@ -19,10 +19,14 @@ const nasLoginConfigSchema = z.object({
   password: z.string()
 })
 
-const dsmResponseSchema = z.object({
-  success: z.boolean(),
-  data: z.record(z.string(), z.unknown()).optional()
-})
+const dsmResponseSchema = z
+  .object({
+    success: z.boolean(),
+    data: z.record(z.string(), z.unknown()).optional(),
+    error: z.object({ code: z.number(), errors: z.unknown().optional() }).passthrough().optional(),
+    errno: z.record(z.string(), z.unknown()).optional()
+  })
+  .passthrough()
 
 const dsmSidResponseSchema = z.object({
   success: z.literal(true),
@@ -68,19 +72,54 @@ const dsmUrl = dsmEntryUrl
 
 const dsmFetch = async (host: string, params: Record<string, string>, body?: FormData) => {
   const init: RequestInit = body ? { method: 'POST', body } : {}
-  const res = await fetch(`${dsmEntryUrl(host)}?${new URLSearchParams(params)}`, init)
+  const url = `${dsmEntryUrl(host)}?${new URLSearchParams(params)}`
+  const res = await fetch(url, init)
+  let json: unknown = null
   try {
-    return dsmResponseSchema.parse(await res.json())
+    json = await res.json()
   } catch {
-    throw new Error(`DSM request failed with status ${res.status}`)
+    throw new Error(`DSM request failed with status ${res.status} at ${url}`)
+  }
+  try {
+    return dsmResponseSchema.parse(json)
+  } catch {
+    throw new Error(`DSM invalid response at ${url}: ${JSON.stringify(json)}`)
   }
 }
 
-const dsmLogin = async (config: DsmConfig): Promise<string> => {
+const dsmApiErrorMessage = (body: z.infer<typeof dsmResponseSchema>) => {
+  const code = body.error?.code ?? (body.errno ? 400 : undefined)
+  if (code === undefined) return `DSM login failed: ${JSON.stringify(body)}`
+  const map: Record<number, string> = {
+    100: 'Unknown error',
+    101: 'No parameter of API, method or version',
+    102: 'API does not exist',
+    103: 'Method does not exist',
+    104: 'This API version is not supported',
+    105: 'Insufficient user privilege',
+    106: 'Connection time out',
+    107: 'Multiple login detected',
+    400: 'No such account or incorrect password',
+    401: 'Account disabled',
+    402: 'Permission denied',
+    403: 'One time password not specified',
+    404: 'One time password authenticate failed',
+    406: 'OTP code enforced',
+    407: 'Max Tries (if auto blocking is enabled)',
+    408: 'Password expired cannot login',
+    409: 'Password must be changed',
+    410: 'Permission denied',
+    411: 'Account locked',
+    412: 'Account expired'
+  }
+  return `DSM login failed: ${map[code] ?? `DSM error ${code}`}: ${JSON.stringify(body)}`
+}
+
+const dsmLoginAttempt = async (config: DsmConfig, version: string) => {
   const body = await dsmFetch(config.host, {
     api: 'SYNO.API.Auth',
     method: 'login',
-    version: '6',
+    version,
     session: 'FileStation',
     format: 'sid',
     account: config.user,
@@ -88,7 +127,29 @@ const dsmLogin = async (config: DsmConfig): Promise<string> => {
   })
   const parsed = dsmSidResponseSchema.safeParse(body)
   if (parsed.success) return parsed.data.data.sid
-  throw new Error(`DSM login failed: ${JSON.stringify(body)}`)
+  throw new Error(dsmApiErrorMessage(body))
+}
+
+const dsmLogin = async (config: DsmConfig): Promise<string> => {
+  const versions = ['7', '6', '3']
+  let lastErr: Error | null = null
+  for (const v of versions) {
+    try {
+      return await dsmLoginAttempt(config, v)
+    } catch (e) {
+      lastErr = e instanceof Error ? e : new Error(String(e))
+      const msg = lastErr.message
+      if (
+        msg.includes('not supported') ||
+        msg.includes('102') ||
+        msg.includes('103') ||
+        msg.includes('104')
+      )
+        continue
+      if (msg.includes('400') && v !== versions[versions.length - 1]) continue
+    }
+  }
+  throw lastErr ?? new Error('DSM login failed: no version succeeded')
 }
 
 const dsmLogout = async (host: string, sid: string): Promise<void> => {
