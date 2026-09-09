@@ -3,9 +3,11 @@ import {
   dsmCreateFolder,
   dsmListFolder,
   dsmLogin,
+  dsmLogout,
   dsmValidateSession,
   loadNasSession,
   loginWithSession,
+  tryAutoRefreshSession,
   updateDefaultFolder
 } from '@skydock/scripts'
 import { z } from 'zod'
@@ -27,14 +29,29 @@ const actionArgs = z.object({
   name: z.string().optional()
 })
 
+const ensureValidSession = async () => {
+  const session = loadNasSession()
+  if (!session) return null
+  const valid = await dsmValidateSession(session.hostname, session.sessionId)
+  if (valid) return session
+  const refreshed = await tryAutoRefreshSession()
+  if (refreshed) {
+    const stillValid = await dsmValidateSession(refreshed.hostname, refreshed.sessionId)
+    if (stillValid) return refreshed
+  }
+  return null
+}
+
 const action = createValidatedFormAction()({
   schema: actionArgs,
   handler: async ({ data, errors }) => {
     if (data.intent === 'status') {
-      const session = loadNasSession()
-      if (!session) return { connected: false as const }
-      const valid = await dsmValidateSession(session.hostname, session.sessionId)
-      if (!valid) {
+      const session = await ensureValidSession()
+      if (!session) {
+        const raw = loadNasSession()
+        if (raw && raw.encPasswd) {
+          return { connected: false as const, needsRelogin: true as const }
+        }
         return { connected: false as const }
       }
       return {
@@ -69,19 +86,25 @@ const action = createValidatedFormAction()({
     }
 
     if (data.intent === 'disconnect') {
+      const session = loadNasSession()
+      if (session) {
+        try {
+          await dsmLogout(session.hostname, session.sessionId)
+        } catch {}
+      }
       clearNasSession()
       return { connected: false as const }
     }
 
     if (data.intent === 'list-folder') {
-      const session = loadNasSession()
+      const session = await ensureValidSession()
       if (!session) {
+        const raw = loadNasSession()
+        if (raw) {
+          errors.addGlobalError('Session expired. Please reconnect.')
+          return errors.toResponse(401)
+        }
         errors.addGlobalError('Not connected.')
-        return errors.toResponse(401)
-      }
-      const valid = await dsmValidateSession(session.hostname, session.sessionId)
-      if (!valid) {
-        errors.addGlobalError('Session expired. Please reconnect.')
         return errors.toResponse(401)
       }
       try {
@@ -99,14 +122,14 @@ const action = createValidatedFormAction()({
         errors.addGlobalError('Folder path and name are required.')
         return errors.toResponse(422)
       }
-      const session = loadNasSession()
+      const session = await ensureValidSession()
       if (!session) {
+        const raw = loadNasSession()
+        if (raw) {
+          errors.addGlobalError('Session expired. Please reconnect.')
+          return errors.toResponse(401)
+        }
         errors.addGlobalError('Not connected.')
-        return errors.toResponse(401)
-      }
-      const valid = await dsmValidateSession(session.hostname, session.sessionId)
-      if (!valid) {
-        errors.addGlobalError('Session expired. Please reconnect.')
         return errors.toResponse(401)
       }
       try {

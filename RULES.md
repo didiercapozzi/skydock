@@ -499,16 +499,18 @@ output/processed/yverdon_20260802/
 
 ### 12.5 Secrets
 
-- NAS session ID (`sessionId`), hostname, and username are stored in `output/.status/nas.json`. Password is never written to disk.
-- On app restart, the stored session ID is reused if still valid on the NAS. If expired, the user is prompted to re-enter credentials.
+- NAS `sessionId`, `hostname`, `username` and an **encrypted password** (`encPasswd`) are stored in `output/.status/nas.json` (`chmod 600`). Plain `password` is never written to disk.
+- `encPasswd` is created on first successful login via DSM 7.4 `SYNO.API.Encryption` (`getinfo` → RSA public key) with fallback to local `AES-256-GCM` (`host:user` derived key). DSM `dsm:` ciphertext is replayed, `local:` ciphertext is decrypted in-memory for re-login.
+- On app restart, the stored `sessionId` is validated (`FileStation/list_share`). If still valid it is reused. If expired and `encPasswd` exists it auto-refreshes via encrypted login without prompting; otherwise the user is prompted.
 - Mail credentials removed — email uses prefilled `mailto:` link, user sends manually.
 
 ### 12.6 NAS connection
 
 - On first upload (or when no valid session exists), a connection dialog appears asking for NAS hostname, username, and password.
-- On successful login, the session ID is saved to `output/.status/nas.json` (password is not saved).
-- On app restart, the stored session ID is validated. If still active, connection is ready without re-login. If expired, the login dialog reappears.
-- The user can disconnect or update credentials, which clears the stored session.
+- On successful login, the session ID and encrypted password are saved to `output/.status/nas.json` (plain password is never saved). Reused SIDs are kept alive after uploads – only temporary SIDs are logged out.
+- On app restart, the stored session ID is validated. If still active, connection is ready without re-login. If expired and `encPasswd` exists it auto-refreshes via `SYNO.API.Encryption` without prompting; otherwise the login dialog reappears.
+- The user can disconnect (logs out on DSM) or update credentials, which clears the stored session.
+- No background heartbeat – local app validates and auto-refreshes on demand (`status`/`list-folder`/`select-folder`), so closing the app for days still reconnects without relogin.
 
 ### 12.7 NAS folder browser
 

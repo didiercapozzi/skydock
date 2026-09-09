@@ -1,4 +1,10 @@
-import { loadManifest, loadNasSession, manifestJumpSchema } from '@skydock/scripts'
+import {
+  dsmValidateSession,
+  loadManifest,
+  loadNasSession,
+  manifestJumpSchema,
+  tryAutoRefreshSession
+} from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
 import { ComparisonDialog } from '../components/comparison-dialog'
@@ -60,11 +66,27 @@ const loader = async (_args: Route.LoaderArgs) => {
   try {
     const session = loadNasSession()
     if (session) {
-      initialNas = {
-        connected: true,
-        defaultFolder: session.defaultFolder ?? null,
-        hostname: session.hostname,
-        username: session.username
+      const valid = await dsmValidateSession(session.hostname, session.sessionId).catch(() => false)
+      let effectiveSession: typeof session | null = null
+      if (valid) effectiveSession = session
+      else {
+        const refreshed = await tryAutoRefreshSession().catch(() => null)
+        if (refreshed) effectiveSession = refreshed
+      }
+      if (effectiveSession) {
+        initialNas = {
+          connected: true,
+          defaultFolder: effectiveSession.defaultFolder ?? null,
+          hostname: effectiveSession.hostname,
+          username: effectiveSession.username
+        }
+      } else if (valid === false && session.encPasswd) {
+        initialNas = {
+          connected: false,
+          defaultFolder: session.defaultFolder ?? null,
+          hostname: session.hostname,
+          username: session.username
+        }
       }
     }
   } catch {}

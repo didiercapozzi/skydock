@@ -137,8 +137,7 @@ describe('loginWithSession', () => {
       mockDsm,
       tmpDir
     )
-    expect(result.sid).toBe('stored-sid')
-    expect(result.isNew).toBe(false)
+    expect(result).toBe('stored-sid')
     expect(mockDsm.login).not.toHaveBeenCalled()
   })
 
@@ -151,8 +150,7 @@ describe('loginWithSession', () => {
       mockDsm,
       tmpDir
     )
-    expect(result.sid).toBe('new-sid')
-    expect(result.isNew).toBe(true)
+    expect(result).toBe('new-sid')
     expect(loadNasSession(tmpDir)?.sessionId).toBe('new-sid')
   })
 
@@ -163,8 +161,7 @@ describe('loginWithSession', () => {
       mockDsm,
       tmpDir
     )
-    expect(result.sid).toBe('fresh-sid')
-    expect(result.isNew).toBe(true)
+    expect(result).toBe('fresh-sid')
   })
 
   it('clears stored session when hostname changes', async () => {
@@ -178,8 +175,7 @@ describe('loginWithSession', () => {
       mockDsm,
       tmpDir
     )
-    expect(result.sid).toBe('new-sid')
-    expect(result.isNew).toBe(true)
+    expect(result).toBe('new-sid')
     const session = loadNasSession(tmpDir)
     expect(session?.hostname).toBe('https://new-nas.local')
   })

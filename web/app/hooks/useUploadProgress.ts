@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { z } from 'zod'
+import { routingEngine } from '../helpers/routing'
 
 const progressSchema = z.object({
   jumpId: z.string(),
@@ -18,24 +19,24 @@ const useUploadProgress = (jumpId: string | null) => {
 
   useEffect(() => {
     if (!jumpId) return
-    let closed = false
-    const es = new EventSource(`/api/upload-progress?jumpId=${encodeURIComponent(jumpId)}`)
-    es.onmessage = (event) => {
+    let cancelled = false
+    const fetchOnce = async () => {
       try {
-        const raw = JSON.parse(event.data as string)
-        if (raw === null) return
+        const raw = await routingEngine.loader({
+          url: '/api/upload-progress',
+          searchParamsArgs: { jumpId }
+        })
+        if (raw === null || raw === undefined) return
         const parsed = progressSchema.safeParse(raw)
-        if (parsed.success) {
-          if (parsed.data.jumpId === jumpId) setRawProgress(parsed.data)
-        }
+        if (parsed.success && parsed.data.jumpId === jumpId && !cancelled)
+          setRawProgress(parsed.data)
       } catch {}
     }
-    es.onerror = () => {
-      if (closed) return
-    }
+    queueMicrotask(fetchOnce)
+    const id = setInterval(fetchOnce, 300)
     return () => {
-      closed = true
-      es.close()
+      cancelled = true
+      clearInterval(id)
     }
   }, [jumpId])
 

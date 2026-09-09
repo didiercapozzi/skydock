@@ -59,20 +59,25 @@ export type { UploadProgressState } from './uploadProgress'
 export {
   clearNasSession,
   createShareLink,
+  decryptPasswordFromStorage,
   dsmConfigSchema,
   dsmCreateFolder,
+  dsmEntryUrl,
   dsmFetch,
+  dsmGetEncryptionInfo,
   dsmListFolder,
   dsmLogin,
   dsmLogout,
   dsmResponseSchema,
   dsmUrl,
   dsmValidateSession,
+  encryptPasswordForStorage,
   listNasFolder,
   loadNasSession,
   loginWithSession,
   normalizeNasPath,
   saveNasSession,
+  tryAutoRefreshSession,
   updateDefaultFolder
 } from './nas'
 export type { DsmAuth, DsmConfig, NasSession } from './nas'

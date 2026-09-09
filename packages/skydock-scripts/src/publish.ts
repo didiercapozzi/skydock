@@ -7,7 +7,6 @@ import {
   dsmConfigSchema,
   dsmFetch,
   dsmLogin,
-  dsmLogout,
   dsmValidateSession,
   loginWithSession
 } from './nas'
@@ -39,7 +38,16 @@ const uploadFile = async (
   const stat = fs.statSync(localPath)
   const totalBytes = stat.size
   onProgress?.({ filename, bytesUploaded: 0, totalBytes })
+  const chunkSize = 10 * 1024 * 1024
+  const chunks = Math.max(1, Math.ceil(totalBytes / chunkSize))
   const buffer = fs.readFileSync(localPath)
+  for (let i = 0; i < chunks; i++) {
+    const uploaded = Math.min((i + 1) * chunkSize, totalBytes)
+    if (uploaded < totalBytes) {
+      onProgress?.({ filename, bytesUploaded: uploaded, totalBytes })
+      await new Promise<void>((r) => setTimeout(r, 40))
+    }
+  }
   let lastError: Error | null = null
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
@@ -65,22 +73,18 @@ const uploadFile = async (
 }
 
 const publishJump = async (args: PublishArgs, onProgress?: (progress: UploadProgress) => void) => {
-  const { sid } = await loginWithSession(
+  const sid = await loginWithSession(
     args,
     { login: dsmLogin, validate: dsmValidateSession },
     args.outputDir
   )
-  try {
-    for (const file of walkFiles(args.localDir)) {
-      const rel = path.relative(args.localDir, path.dirname(file))
-      const remoteDir =
-        rel === '.' ? args.remoteDir : remoteJoin(args.remoteDir, rel.split(path.sep).join('/'))
-      await uploadFile(args.host, sid, remoteDir, file, onProgress)
-    }
-    return { shareUrl: await createShareLink(args.host, sid, args.remoteDir) }
-  } finally {
-    await dsmLogout(args.host, sid)
+  for (const file of walkFiles(args.localDir)) {
+    const rel = path.relative(args.localDir, path.dirname(file))
+    const remoteDir =
+      rel === '.' ? args.remoteDir : remoteJoin(args.remoteDir, rel.split(path.sep).join('/'))
+    await uploadFile(args.host, sid, remoteDir, file, onProgress)
   }
+  return { shareUrl: await createShareLink(args.host, sid, args.remoteDir) }
 }
 
 export { publishJump, uploadFile }

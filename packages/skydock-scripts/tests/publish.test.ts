@@ -73,8 +73,9 @@ describe('dsmLogin', () => {
 })
 
 describe('publishJump', () => {
-  it('uploads every file, creates a share link and logs out', async () => {
+  it('uploads every file, creates a share link and keeps session alive', async () => {
     const dir = makeTmpTree()
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-publish-nas-'))
     try {
       stubFetch((url, init) => {
         if (url.includes('SYNO.API.Auth') && url.includes('method=login'))
@@ -99,7 +100,8 @@ describe('publishJump', () => {
         user: 'u',
         password: 'p',
         localDir: dir,
-        remoteDir: '/SkyDock/john_doe_20260824'
+        remoteDir: '/SkyDock/john_doe_20260824',
+        outputDir: out
       })
       expect(result).toEqual({ shareUrl: 'https://nas.local:5001/sharing/abc123' })
 
@@ -110,14 +112,16 @@ describe('publishJump', () => {
         '/SkyDock/john_doe_20260824/photos',
         '/SkyDock/john_doe_20260824/videos'
       ])
-      expect(seen.some((c) => c.url.includes('method=logout'))).toBe(true)
+      expect(seen.some((c) => c.url.includes('method=logout'))).toBe(false)
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
+      fs.rmSync(out, { recursive: true, force: true })
     }
   })
 
-  it('logs out and throws when an upload fails', async () => {
+  it('keeps session and throws when an upload fails', async () => {
     const dir = makeTmpTree()
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-publish-nas-'))
     try {
       stubFetch((url) => {
         if (url.includes('method=login')) return loginSuccess('sid')
@@ -131,17 +135,20 @@ describe('publishJump', () => {
           user: 'u',
           password: 'p',
           localDir: dir,
-          remoteDir: '/SkyDock/jump'
+          remoteDir: '/SkyDock/jump',
+          outputDir: out
         })
       ).rejects.toThrow('Upload failed')
-      expect(seen.some((c) => c.url.includes('method=logout'))).toBe(true)
+      expect(seen.some((c) => c.url.includes('method=logout'))).toBe(false)
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
+      fs.rmSync(out, { recursive: true, force: true })
     }
   })
 
   it('throws when sharing returns no link', async () => {
     const dir = makeTmpTree()
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-publish-nas-'))
     try {
       stubFetch((url) => {
         if (url.includes('method=login')) return loginSuccess('sid')
@@ -155,16 +162,19 @@ describe('publishJump', () => {
           user: 'u',
           password: 'p',
           localDir: dir,
-          remoteDir: '/SkyDock/jump'
+          remoteDir: '/SkyDock/jump',
+          outputDir: out
         })
       ).rejects.toThrow('no link')
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
+      fs.rmSync(out, { recursive: true, force: true })
     }
   })
 
   it('reports progress during upload', async () => {
     const dir = makeTmpTree()
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-publish-nas-'))
     try {
       stubFetch((url) => {
         if (url.includes('method=login')) return loginSuccess('sid')
@@ -181,7 +191,8 @@ describe('publishJump', () => {
           user: 'u',
           password: 'p',
           localDir: dir,
-          remoteDir: '/SkyDock/jump'
+          remoteDir: '/SkyDock/jump',
+          outputDir: out
         },
         (p) => progress.push({ ...p })
       )
@@ -192,11 +203,13 @@ describe('publishJump', () => {
       expect(completions.length).toBe(2)
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
+      fs.rmSync(out, { recursive: true, force: true })
     }
   })
 
   it('retries failed uploads', async () => {
     const dir = makeTmpTree()
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-publish-nas-'))
     try {
       let uploadCalls = 0
       stubFetch((url) => {
@@ -216,12 +229,48 @@ describe('publishJump', () => {
         user: 'u',
         password: 'p',
         localDir: dir,
-        remoteDir: '/SkyDock/jump'
+        remoteDir: '/SkyDock/jump',
+        outputDir: out
       })
       expect(result.shareUrl).toContain('/sharing/abc')
       expect(uploadCalls).toBe(3)
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
+      fs.rmSync(out, { recursive: true, force: true })
+    }
+  })
+
+  it('keeps stored session alive after successful upload (does not logout reused SID)', async () => {
+    const dir = makeTmpTree()
+    const out = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-publish-nas-'))
+    const { saveNasSession } = await import('../src/nas')
+    saveNasSession(
+      { hostname: 'https://nas.local:5001', username: 'u', sessionId: 'reused-sid' },
+      out
+    )
+    try {
+      stubFetch((url) => {
+        if (url.includes('method=list_share'))
+          return jsonResponse({ success: true, data: { shares: [] } })
+        if (url.includes('SYNO.FileStation.Upload')) return jsonResponse({ success: true })
+        if (url.includes('SYNO.FileStation.Sharing'))
+          return jsonResponse({ success: true, data: { links: [{ url: '/sharing/keepalive' }] } })
+        throw new Error(`unexpected call ${url}`)
+      })
+      const result = await publishJump({
+        host: 'https://nas.local:5001',
+        user: 'u',
+        password: 'p',
+        localDir: dir,
+        remoteDir: '/SkyDock/jump',
+        outputDir: out
+      })
+      expect(result.shareUrl).toContain('/sharing/keepalive')
+      expect(seen.some((c) => c.url.includes('method=logout'))).toBe(false)
+      expect(seen.some((c) => c.url.includes('method=login'))).toBe(false)
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true })
+      fs.rmSync(out, { recursive: true, force: true })
     }
   })
 })

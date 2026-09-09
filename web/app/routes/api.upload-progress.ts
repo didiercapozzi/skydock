@@ -1,10 +1,13 @@
 import { getOutputDir, readUploadProgress } from '@skydock/scripts'
+import { z } from 'zod'
+import { routingEngine } from '../helpers/routing'
 import type { Route } from './+types/api.upload-progress'
 
-const loader = async ({ request }: Route.LoaderArgs) => {
-  const url = new URL(request.url)
-  const jumpId = url.searchParams.get('jumpId')
+const searchParamsArgs = z.object({ jumpId: z.string().optional() })
 
+const loader = async ({ request }: Route.LoaderArgs) => {
+  const parsed = routingEngine.parseSearchParams(searchParamsArgs, { request })
+  const jumpId = parsed.jumpId
   const accept = request.headers.get('accept') ?? ''
   const wantsEventStream = accept.includes('text/event-stream')
 
@@ -75,4 +78,4 @@ const loader = async ({ request }: Route.LoaderArgs) => {
   return Response.json(state)
 }
 
-export { loader }
+export { loader, searchParamsArgs }

@@ -115,6 +115,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       const remoteBase = session.defaultFolder ?? '/SkyDock'
       const allFiles = walkFiles(localDir)
       const sortedFiles = [...allFiles].sort()
+      const sortedManifestFiles = [...target.files].sort((a, b) => a.mtime - b.mtime)
       const totalFiles = sortedFiles.length
       try {
         clearUploadProgress(getOutputDir())
@@ -129,10 +130,11 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
           (p) => {
             const idx = sortedFiles.findIndex((f) => f.endsWith(p.filename))
             const fileIndex = idx >= 0 ? idx : 0
+            const originalFilename = sortedManifestFiles[fileIndex]?.filename ?? p.filename
             writeUploadProgress(
               {
                 jumpId: target.id,
-                filename: p.filename,
+                filename: originalFilename,
                 bytesUploaded: p.bytesUploaded,
                 totalBytes: p.totalBytes,
                 fileIndex,
@@ -143,10 +145,11 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
             )
           }
         )
+        const lastOriginal = sortedManifestFiles[sortedManifestFiles.length - 1]?.filename ?? ''
         writeUploadProgress(
           {
             jumpId: target.id,
-            filename: sortedFiles[sortedFiles.length - 1]?.split('/').pop() ?? '',
+            filename: lastOriginal,
             bytesUploaded: 1,
             totalBytes: 1,
             fileIndex: Math.max(0, totalFiles - 1),

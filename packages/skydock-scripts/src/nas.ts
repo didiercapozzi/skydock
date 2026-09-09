@@ -1,3 +1,4 @@
+import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { z } from 'zod'
@@ -7,7 +8,8 @@ const nasSessionSchema = z.object({
   hostname: z.string(),
   username: z.string(),
   sessionId: z.string(),
-  defaultFolder: z.string().optional()
+  defaultFolder: z.string().optional(),
+  encPasswd: z.string().optional()
 })
 type NasSession = z.infer<typeof nasSessionSchema>
 
@@ -40,6 +42,14 @@ const dsmFolderFilesSchema = z.object({
 const dsmShareEntrySchema = z.object({ name: z.string(), path: z.string() }).passthrough()
 
 const dsmSharesSchema = z.object({ shares: z.array(dsmShareEntrySchema).optional() }).passthrough()
+
+const dsmEncryptionInfoSchema = z
+  .object({
+    public_key: z.string().optional(),
+    publicKey: z.string().optional(),
+    key: z.string().optional()
+  })
+  .passthrough()
 
 const dsmConfigSchema = z.object({
   host: z.string(),
@@ -105,6 +115,82 @@ const dsmValidateSession = async (host: string, sid: string) => {
   } catch {
     return false
   }
+}
+
+const getLocalKey = (host: string, user: string) => {
+  const base = `${host}:${user}:skydock-v1`
+  return crypto.scryptSync(base, 'skydock-salt', 32)
+}
+
+const encryptLocal = (host: string, user: string, plain: string) => {
+  const key = getLocalKey(host, user)
+  const iv = crypto.randomBytes(12)
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv)
+  const enc = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()])
+  const tag = cipher.getAuthTag()
+  return `${iv.toString('base64')}:${enc.toString('base64')}:${tag.toString('base64')}`
+}
+
+const decryptLocal = (host: string, user: string, encStr: string) => {
+  const parts = encStr.split(':')
+  if (parts.length !== 3) throw new Error('Invalid encPasswd format')
+  const [ivB64, encB64, tagB64] = parts
+  const key = getLocalKey(host, user)
+  const iv = Buffer.from(ivB64, 'base64')
+  const enc = Buffer.from(encB64, 'base64')
+  const tag = Buffer.from(tagB64, 'base64')
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv)
+  decipher.setAuthTag(tag)
+  const dec = Buffer.concat([decipher.update(enc), decipher.final()])
+  return dec.toString('utf8')
+}
+
+const dsmGetEncryptionInfo = async (host: string) => {
+  try {
+    const body = await dsmFetch(host, {
+      api: 'SYNO.API.Encryption',
+      method: 'getinfo',
+      version: '1'
+    })
+    const parsed = dsmEncryptionInfoSchema.safeParse(body.data)
+    if (!parsed.success) return null
+    const raw = parsed.data.public_key ?? parsed.data.publicKey ?? parsed.data.key
+    if (!raw) return null
+    const pem = raw.includes('BEGIN PUBLIC KEY')
+      ? raw
+      : `-----BEGIN PUBLIC KEY-----\n${raw}\n-----END PUBLIC KEY-----`
+    return { publicKey: pem }
+  } catch {
+    return null
+  }
+}
+
+const encryptWithPublicKey = (publicKey: string, plain: string) => {
+  const buffer = Buffer.from(plain, 'utf8')
+  const encrypted = crypto.publicEncrypt(
+    { key: publicKey, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' },
+    buffer
+  )
+  return encrypted.toString('base64')
+}
+
+const encryptPasswordForStorage = async (host: string, user: string, plain: string) => {
+  try {
+    const info = await dsmGetEncryptionInfo(host)
+    if (info) {
+      try {
+        const enc = encryptWithPublicKey(info.publicKey, plain)
+        return `dsm:${enc}`
+      } catch {}
+    }
+  } catch {}
+  return `local:${encryptLocal(host, user, plain)}`
+}
+
+const decryptPasswordFromStorage = (host: string, user: string, stored: string) => {
+  if (stored.startsWith('dsm:')) throw new Error('DSM encrypted password requires re-entry')
+  if (stored.startsWith('local:')) return decryptLocal(host, user, stored.slice(6))
+  return decryptLocal(host, user, stored)
 }
 
 type NasFolderEntry = {
@@ -241,37 +327,114 @@ const loginWithSession = async (
 
   const stored = loadNasSession(outputDir)
   const canReuse = stored && stored.hostname === host && stored.username === user
-  if (canReuse && (await dsm.validate(host, stored.sessionId))) {
-    return { sid: stored.sessionId, isNew: false as const }
+  if (canReuse && (await dsm.validate(host, stored.sessionId))) return stored.sessionId
+  if (canReuse && !password && stored.encPasswd) {
+    try {
+      const enc = stored.encPasswd
+      if (enc.startsWith('dsm:')) {
+        const cipher = enc.slice(4)
+        const body = await dsmFetch(host, {
+          api: 'SYNO.API.Auth',
+          method: 'login',
+          version: '6',
+          session: 'FileStation',
+          format: 'sid',
+          account: user,
+          passwd: cipher
+        })
+        const parsedSid = dsmSidResponseSchema.safeParse(body)
+        if (parsedSid.success) {
+          const sid = parsedSid.data.data.sid
+          saveNasSession({ ...stored, sessionId: sid }, outputDir)
+          return sid
+        }
+      } else {
+        const plain = decryptPasswordFromStorage(host, user, enc)
+        const sid = await dsm.login({ host, user, password: plain })
+        const newEnc = await encryptPasswordForStorage(host, user, plain)
+        saveNasSession({ ...stored, sessionId: sid, encPasswd: newEnc }, outputDir)
+        return sid
+      }
+    } catch {}
   }
   if (canReuse) clearNasSession(outputDir)
   if (!password) throw new Error('Session expired. Please reconnect to NAS.')
   const sid = await dsm.login({ host, user, password })
+  const encPasswd = await encryptPasswordForStorage(host, user, password)
   saveNasSession(
-    { hostname: host, username: user, sessionId: sid, defaultFolder: stored?.defaultFolder },
+    {
+      hostname: host,
+      username: user,
+      sessionId: sid,
+      defaultFolder: stored?.defaultFolder,
+      encPasswd
+    },
     outputDir
   )
-  return { sid, isNew: true as const }
+  return sid
+}
+
+const tryAutoRefreshSession = async (outputDir?: string) => {
+  const stored = loadNasSession(outputDir)
+  if (!stored || !stored.encPasswd) return null
+  try {
+    const valid = await dsmValidateSession(stored.hostname, stored.sessionId)
+    if (valid) return stored
+  } catch {}
+  try {
+    const enc = stored.encPasswd
+    if (enc.startsWith('dsm:')) {
+      const cipher = enc.slice(4)
+      const body = await dsmFetch(stored.hostname, {
+        api: 'SYNO.API.Auth',
+        method: 'login',
+        version: '6',
+        session: 'FileStation',
+        format: 'sid',
+        account: stored.username,
+        passwd: cipher
+      })
+      const parsedSid = dsmSidResponseSchema.safeParse(body)
+      if (parsedSid.success) {
+        const sid = parsedSid.data.data.sid
+        const next = { ...stored, sessionId: sid }
+        saveNasSession(next, outputDir)
+        return next
+      }
+    } else {
+      const plain = decryptPasswordFromStorage(stored.hostname, stored.username, enc)
+      const sid = await dsmLogin({ host: stored.hostname, user: stored.username, password: plain })
+      const newEnc = await encryptPasswordForStorage(stored.hostname, stored.username, plain)
+      const next = { ...stored, sessionId: sid, encPasswd: newEnc }
+      saveNasSession(next, outputDir)
+      return next
+    }
+  } catch {}
+  return null
 }
 
 export {
   clearNasSession,
   createShareLink,
+  decryptPasswordFromStorage,
   dsmConfigSchema,
   dsmCreateFolder,
   dsmEntryUrl,
   dsmFetch,
+  dsmGetEncryptionInfo,
   dsmListFolder,
   dsmLogin,
   dsmLogout,
   dsmResponseSchema,
   dsmUrl,
   dsmValidateSession,
+  encryptPasswordForStorage,
   listNasFolder,
   loadNasSession,
   loginWithSession,
   normalizeNasPath,
   saveNasSession,
+  tryAutoRefreshSession,
   updateDefaultFolder
 }
 export type { DsmAuth, DsmConfig, NasFolderEntry, NasSession }

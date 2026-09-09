@@ -71,12 +71,15 @@ const JumpCard = ({
   ).length
   const canProcess = jump.files.length > 0
   const processTitle = jump.files.length === 0 ? 'Empty jump' : undefined
+  const locked = uploading || (!!uploadProgress && uploadProgress.jumpId === jump.id)
+  const isUploadingJump = locked
   const savedFirstname = jump.passenger?.firstname ?? ''
   const savedLastname = jump.passenger?.lastname ?? ''
   const hasPassengerName = savedFirstname !== '' && savedLastname !== ''
   const passengerTitle = hasPassengerName ? `${savedFirstname} ${savedLastname}` : jump.label
 
   const openPassengerEditor = () => {
+    if (locked) return
     setDraftFirstname(savedFirstname)
     setDraftLastname(savedLastname)
     setEditingPassenger(true)
@@ -96,6 +99,7 @@ const JumpCard = ({
   }
 
   const openLabelEditor = () => {
+    if (locked) return
     setDraftLabel(jump.label)
     setEditingLabel(true)
   }
@@ -111,6 +115,7 @@ const JumpCard = ({
   }
 
   const openDateEditor = () => {
+    if (locked) return
     setDraftDate(dayToIso(jump.day))
     setEditingDate(true)
   }
@@ -142,15 +147,20 @@ const JumpCard = ({
     <div
       data-jump-card='true'
       onDragOver={(e) => {
+        if (locked) return
         e.preventDefault()
         onDragOver?.(e, jump.id)
       }}
       onDrop={(e) => {
+        if (locked) return
         e.preventDefault()
         onDrop?.(e, jump.id)
       }}
-      onDragLeave={() => onDragLeave?.(jump.id)}
-      className='border border-gray-200 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden'>
+      onDragLeave={() => {
+        if (locked) return
+        onDragLeave?.(jump.id)
+      }}
+      className={`border border-gray-200 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden ${locked ? 'opacity-80 pointer-events-none' : ''}`}>
       <div
         data-jump-card-toggle='true'
         onClick={() => setExpanded(!expanded)}
@@ -237,14 +247,14 @@ const JumpCard = ({
             <button
               type='button'
               data-action='upload'
-              disabled={jump.processed !== true || uploading}
+              disabled={jump.processed !== true || uploading || locked}
               title={jump.processed === true ? undefined : 'Process the jump first'}
               onClick={(e) => {
                 e.stopPropagation()
                 onUpload(jump.id)
               }}
               className='px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'>
-              {uploading ? (
+              {isUploadingJump ? (
                 <span className='flex items-center gap-1.5'>
                   <svg
                     className='animate-spin w-3 h-3'
@@ -273,8 +283,8 @@ const JumpCard = ({
             <button
               type='button'
               data-action='process'
-              disabled={!canProcess || processing}
-              title={processTitle}
+              disabled={!canProcess || processing || locked}
+              title={locked ? 'Upload in progress – actions locked' : processTitle}
               onClick={(e) => {
                 e.stopPropagation()
                 onProcess(jump.id)
@@ -290,30 +300,6 @@ const JumpCard = ({
             </span>
           </div>
         </div>
-        {uploading && uploadProgress && uploadProgress.jumpId === jump.id && (
-          <div
-            data-upload-progress='true'
-            className='px-4 py-3 bg-blue-50 border-t border-blue-100'>
-            <div className='flex items-center justify-between text-xs text-gray-600 mb-1'>
-              <span className='truncate'>
-                {uploadProgress.filename} {uploadProgress.fileIndex + 1}/{uploadProgress.totalFiles}
-              </span>
-              <span className='tabular-nums'>
-                {uploadProgress.totalBytes > 0
-                  ? `${Math.round((uploadProgress.bytesUploaded / uploadProgress.totalBytes) * 100)}%`
-                  : '0%'}
-              </span>
-            </div>
-            <div className='h-1.5 bg-gray-200 rounded-full overflow-hidden'>
-              <div
-                className='h-full bg-blue-600 transition-all duration-200'
-                style={{
-                  width: `${uploadProgress.totalBytes > 0 ? Math.round((uploadProgress.bytesUploaded / uploadProgress.totalBytes) * 100) : 0}%`
-                }}
-              />
-            </div>
-          </div>
-        )}
       </div>
       {expanded && (
         <div>
@@ -359,7 +345,7 @@ const JumpCard = ({
             <div
               data-passenger-display='true'
               onClick={openPassengerEditor}
-              className='px-4 py-3 border-b border-gray-100 bg-gray-50/60 cursor-pointer'>
+              className={`px-4 py-3 border-b border-gray-100 bg-gray-50/60 ${locked ? 'opacity-50 pointer-events-none' : 'cursor-pointer'}`}>
               <p className='text-sm font-medium text-gray-800'>
                 {savedFirstname} {savedLastname}
               </p>
@@ -368,8 +354,9 @@ const JumpCard = ({
             <div className='px-4 py-3 border-b border-gray-100 bg-gray-50/60'>
               <button
                 type='button'
+                disabled={locked}
                 onClick={openPassengerEditor}
-                className='px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-800'>
+                className='px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 disabled:opacity-50 disabled:cursor-not-allowed'>
                 Add passenger
               </button>
             </div>
@@ -402,13 +389,14 @@ const JumpCard = ({
               <>
                 <span
                   onClick={openDateEditor}
-                  className='cursor-pointer text-sm font-medium text-gray-700 hover:text-blue-600'>
+                  className={`text-sm font-medium ${locked ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:text-blue-600 cursor-pointer'}`}>
                   📅 {jump.day}
                 </span>
                 <button
                   type='button'
+                  disabled={locked}
                   onClick={() => onRemoveGroup(jump.id)}
-                  className='px-2 py-1 text-xs font-medium text-red-600 hover:text-red-800 bg-red-50 rounded-md hover:bg-red-100 border border-red-200'>
+                  className='px-2 py-1 text-xs font-medium text-red-600 hover:text-red-800 bg-red-50 rounded-md hover:bg-red-100 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed'>
                   Remove Group
                 </button>
               </>
@@ -456,28 +444,42 @@ const JumpCard = ({
             </div>
           ) : (
             <div className='divide-y divide-gray-50'>
-              {jump.files.map((file, i) => (
-                <Fragment key={file.path}>
-                  {dropIndex === i && (
-                    <div
-                      data-drop-indicator='true'
-                      className='h-0.5 mx-3 rounded bg-blue-500'
+              {jump.files.map((file, i) => {
+                const isCurrentFile =
+                  !!uploadProgress &&
+                  uploadProgress.jumpId === jump.id &&
+                  uploadProgress.filename === file.filename
+                const uploadPercent = isCurrentFile
+                  ? uploadProgress.totalBytes > 0
+                    ? Math.round((uploadProgress.bytesUploaded / uploadProgress.totalBytes) * 100)
+                    : 0
+                  : null
+                const uploadState = isCurrentFile ? uploadProgress.state : null
+                return (
+                  <Fragment key={file.path}>
+                    {dropIndex === i && (
+                      <div
+                        data-drop-indicator='true'
+                        className='h-0.5 mx-3 rounded bg-blue-500'
+                      />
+                    )}
+                    <FileRow
+                      file={file}
+                      groupId={jump.id}
+                      selected={!!selection[jump.id]?.[file.path]}
+                      isPreviewed={previewedPath === file.path}
+                      isInMultipleJumps={false}
+                      hasSelection={locked ? false : hasSelection}
+                      uploadPercent={uploadPercent}
+                      uploadState={uploadState}
+                      onSelect={locked ? () => {} : onSelect}
+                      onPreview={locked ? () => {} : onPreview}
+                      onDragStart={locked ? undefined : onDragStart}
+                      onDragEnd={locked ? undefined : onDragEnd}
                     />
-                  )}
-                  <FileRow
-                    file={file}
-                    groupId={jump.id}
-                    selected={!!selection[jump.id]?.[file.path]}
-                    isPreviewed={previewedPath === file.path}
-                    isInMultipleJumps={false}
-                    hasSelection={hasSelection}
-                    onSelect={onSelect}
-                    onPreview={onPreview}
-                    onDragStart={onDragStart}
-                    onDragEnd={onDragEnd}
-                  />
-                </Fragment>
-              ))}
+                  </Fragment>
+                )
+              })}
               {dropIndex === jump.files.length && (
                 <div
                   data-drop-indicator='true'
