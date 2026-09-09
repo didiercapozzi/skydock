@@ -23,7 +23,9 @@ const JumpCard = ({
   onUpload,
   uploading,
   viewMode,
-  hasSelection
+  hasSelection,
+  onRemoveGroup,
+  onGroupDateChange
 }: {
   jump: ManifestJump
   selection: SelectionMap
@@ -43,12 +45,16 @@ const JumpCard = ({
   uploading: boolean
   viewMode: 'list' | 'grid'
   hasSelection: boolean
+  onRemoveGroup: (jumpId: string) => void
+  onGroupDateChange: (jumpId: string, day: string) => void
 }) => {
   const [expanded, setExpanded] = useState(false)
   const [editingPassenger, setEditingPassenger] = useState(false)
+  const [editingDate, setEditingDate] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const [draftFirstname, setDraftFirstname] = useState('')
   const [draftLastname, setDraftLastname] = useState('')
+  const [draftDate, setDraftDate] = useState('')
   const bounds = getJumpBounds(jump)
   const videoCount = jump.files.filter((f) => isVideoFile(f.filename)).length
   const photoCount = jump.files.length - videoCount
@@ -79,6 +85,30 @@ const JumpCard = ({
 
   const cancelPassengerEditor = () => {
     setEditingPassenger(false)
+  }
+
+  const toIso = (deCh: string) => {
+    const [d, m, y] = deCh.split('.').map(Number)
+    if (!d || !m || !y) return ''
+    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+  }
+
+  const openDateEditor = () => {
+    setDraftDate(toIso(jump.day))
+    setEditingDate(true)
+  }
+
+  const saveDateEditor = () => {
+    if (!draftDate) return
+    const [y, m, d] = draftDate.split('-').map(Number)
+    if (!y || !m || !d) return
+    const deCh = `${String(d).padStart(2, '0')}.${String(m).padStart(2, '0')}.${y}`
+    onGroupDateChange(jump.id, deCh)
+    setEditingDate(false)
+  }
+
+  const cancelDateEditor = () => {
+    setEditingDate(false)
   }
 
   const copyShareLink = async () => {
@@ -270,6 +300,46 @@ const JumpCard = ({
               </button>
             </div>
           )}
+          <div className='px-4 py-3 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between'>
+            {editingDate ? (
+              <>
+                <input
+                  type='date'
+                  value={draftDate}
+                  onChange={(e) => setDraftDate(e.target.value)}
+                  className='px-2 py-1.5 text-sm border border-gray-300 rounded-md bg-white'
+                />
+                <div className='flex gap-2'>
+                  <button
+                    type='button'
+                    onClick={saveDateEditor}
+                    className='px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700'>
+                    Done
+                  </button>
+                  <button
+                    type='button'
+                    onClick={cancelDateEditor}
+                    className='px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200'>
+                    Cancel
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <span
+                  onClick={openDateEditor}
+                  className='cursor-pointer text-sm font-medium text-gray-700 hover:text-blue-600'>
+                  📅 {jump.day}
+                </span>
+                <button
+                  type='button'
+                  onClick={() => onRemoveGroup(jump.id)}
+                  className='px-2 py-1 text-xs font-medium text-red-600 hover:text-red-800 bg-red-50 rounded-md hover:bg-red-100 border border-red-200'>
+                  Remove Group
+                </button>
+              </>
+            )}
+          </div>
           {jump.processed === true && (
             <div
               data-share-section='true'

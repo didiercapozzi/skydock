@@ -26,6 +26,8 @@ type Props = {
   processingId: string | null
   onUpload: (jumpId: string) => void
   uploadingId: string | null
+  onRemoveGroup: (jumpId: string) => void
+  onGroupDateChange: (jumpId: string, day: string) => void
 }
 
 const DayGroups = ({
@@ -49,7 +51,9 @@ const DayGroups = ({
   onProcess,
   processingId,
   onUpload,
-  uploadingId
+  uploadingId,
+  onRemoveGroup,
+  onGroupDateChange
 }: Props) => {
   return (
     <div className='space-y-8'>
@@ -101,6 +105,8 @@ const DayGroups = ({
                   processing={processingId === jump.id}
                   onUpload={onUpload}
                   uploading={uploadingId === jump.id}
+                  onRemoveGroup={onRemoveGroup}
+                  onGroupDateChange={onGroupDateChange}
                 />
               </div>
             ))}

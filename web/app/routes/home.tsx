@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { ComparisonDialog } from '../components/comparison-dialog'
 import { ConnectionDialog } from '../components/connection-dialog'
 import { DropActionDialog } from '../components/drop-action-dialog'
+import { GroupCreationDialog } from '../components/group-creation-dialog'
 import { DayGroups } from '../components/home/DayGroups'
 import { Header } from '../components/home/Header'
 import { ReviewHeader } from '../components/home/ReviewHeader'
@@ -112,6 +113,10 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const [showConnectionDialog, setShowConnectionDialog] = useState(false)
   const [showFolderBrowser, setShowFolderBrowser] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
+  const [showGroupCreation, setShowGroupCreation] = useState(false)
+  const [groupCreationInitialDay, setGroupCreationInitialDay] = useState<string | undefined>(
+    undefined
+  )
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
 
@@ -175,17 +180,39 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   }
 
   const handleCreateGroup = (dayDate: string) => {
-    const label = window.prompt('Group name (location)', 'yverdon')?.trim()
-    if (!label) return
+    setGroupCreationInitialDay(dayDate)
+    setShowGroupCreation(true)
+  }
+
+  const handleCreateGroupGlobal = () => {
+    setGroupCreationInitialDay(undefined)
+    setShowGroupCreation(true)
+  }
+
+  const handleGroupCreated = (title: string, day: string) => {
     const newJump = {
       id: `group_${Date.now()}`,
-      label,
+      label: title,
       confirmed: false,
       files: [],
       processed: false,
-      day: dayDate
+      day
     } as import('../components/types').ManifestJump
     const next = [...jumps, newJump]
+    setJumps(next)
+    saveJumps(next)
+    setShowGroupCreation(false)
+    setGroupCreationInitialDay(undefined)
+  }
+
+  const handleRemoveGroup = (jumpId: string) => {
+    const next = jumps.filter((j) => j.id !== jumpId)
+    setJumps(next)
+    saveJumps(next)
+  }
+
+  const handleGroupDateChange = (jumpId: string, day: string) => {
+    const next = jumps.map((j) => (j.id === jumpId ? { ...j, day } : j))
     setJumps(next)
     saveJumps(next)
   }
@@ -263,6 +290,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           compareIds={compareIds}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
+          onCreateGroup={handleCreateGroupGlobal}
           onClearCompare={() => setCompareIds([])}
           onShowComparison={() => setShowComparison(true)}
         />
@@ -299,6 +327,8 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           processingId={processingId}
           onUpload={handleUpload}
           uploadingId={uploadingId}
+          onRemoveGroup={handleRemoveGroup}
+          onGroupDateChange={handleGroupDateChange}
         />
         {selectedCount > 0 && (
           <StagingTray
@@ -367,6 +397,16 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           onSelect={handleSelectFolder}
           onClose={() => setShowFolderBrowser(false)}
         />
+        {showGroupCreation && (
+          <GroupCreationDialog
+            initialDay={groupCreationInitialDay}
+            onCreate={handleGroupCreated}
+            onCancel={() => {
+              setShowGroupCreation(false)
+              setGroupCreationInitialDay(undefined)
+            }}
+          />
+        )}
       </div>
     </main>
   )
