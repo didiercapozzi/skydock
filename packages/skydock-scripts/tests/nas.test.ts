@@ -3,20 +3,15 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { clearNasSession, loadNasSession, saveNasSession, updateDefaultFolder } from '../src/nas'
-import { loginWithSession } from '../src/publish'
+import {
+  clearNasSession,
+  loadNasSession,
+  loginWithSession,
+  saveNasSession,
+  updateDefaultFolder
+} from '../src/nas'
 
 const createTmpDir = (): string => fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-nas-test-'))
-
-const jsonResponse = (body: unknown) =>
-  new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } })
-
-const stubFetch = (handler: (url: string, init: RequestInit) => Response | Promise<Response>) => {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (url: string, init: RequestInit) => handler(url, init))
-  )
-}
 
 describe('nas session storage', () => {
   let tmpDir: string
@@ -115,8 +110,15 @@ describe('nas session storage', () => {
 describe('loginWithSession', () => {
   let tmpDir: string
 
+  const mockDsm = {
+    login: vi.fn(async () => 'new-sid'),
+    validate: vi.fn(async () => true)
+  }
+
   beforeEach(() => {
     tmpDir = createTmpDir()
+    mockDsm.login.mockClear()
+    mockDsm.validate.mockClear()
   })
 
   afterEach(() => {
@@ -129,28 +131,24 @@ describe('loginWithSession', () => {
       { hostname: 'https://nas.local', username: 'u', sessionId: 'stored-sid' },
       tmpDir
     )
-    stubFetch((url) => {
-      if (url.includes('method=check')) return jsonResponse({ success: true })
-      return jsonResponse({ success: false })
-    })
+    mockDsm.validate.mockResolvedValue(true)
     const result = await loginWithSession(
       { host: 'https://nas.local', user: 'u', password: 'p' },
+      mockDsm,
       tmpDir
     )
     expect(result.sid).toBe('stored-sid')
     expect(result.isNew).toBe(false)
+    expect(mockDsm.login).not.toHaveBeenCalled()
   })
 
   it('logs in fresh when stored session is invalid', async () => {
     saveNasSession({ hostname: 'https://nas.local', username: 'u', sessionId: 'old-sid' }, tmpDir)
-    stubFetch((url) => {
-      if (url.includes('method=check')) return jsonResponse({ success: false })
-      if (url.includes('method=login'))
-        return jsonResponse({ success: true, data: { sid: 'new-sid' } })
-      return jsonResponse({ success: false })
-    })
+    mockDsm.validate.mockResolvedValue(false)
+    mockDsm.login.mockResolvedValue('new-sid')
     const result = await loginWithSession(
       { host: 'https://nas.local', user: 'u', password: 'p' },
+      mockDsm,
       tmpDir
     )
     expect(result.sid).toBe('new-sid')
@@ -159,13 +157,10 @@ describe('loginWithSession', () => {
   })
 
   it('logs in fresh when no stored session exists', async () => {
-    stubFetch((url) => {
-      if (url.includes('method=login'))
-        return jsonResponse({ success: true, data: { sid: 'fresh-sid' } })
-      return jsonResponse({ success: false })
-    })
+    mockDsm.login.mockResolvedValue('fresh-sid')
     const result = await loginWithSession(
       { host: 'https://nas.local', user: 'u', password: 'p' },
+      mockDsm,
       tmpDir
     )
     expect(result.sid).toBe('fresh-sid')
@@ -177,13 +172,10 @@ describe('loginWithSession', () => {
       { hostname: 'https://old-nas.local', username: 'u', sessionId: 'old-sid' },
       tmpDir
     )
-    stubFetch((url) => {
-      if (url.includes('method=login'))
-        return jsonResponse({ success: true, data: { sid: 'new-sid' } })
-      return jsonResponse({ success: false })
-    })
+    mockDsm.login.mockResolvedValue('new-sid')
     const result = await loginWithSession(
       { host: 'https://new-nas.local', user: 'u', password: 'p' },
+      mockDsm,
       tmpDir
     )
     expect(result.sid).toBe('new-sid')

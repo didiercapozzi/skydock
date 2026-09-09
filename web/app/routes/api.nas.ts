@@ -4,7 +4,7 @@ import {
   dsmLogin,
   dsmValidateSession,
   loadNasSession,
-  saveNasSession,
+  loginWithSession,
   updateDefaultFolder
 } from '@skydock/scripts'
 import { z } from 'zod'
@@ -42,34 +42,16 @@ const action = createValidatedFormAction()({
         return errors.toResponse(422)
       }
       try {
-        const prev = loadNasSession()
-        const prevFolder =
-          prev?.hostname === data.host && prev?.username === data.user
-            ? prev.defaultFolder
-            : undefined
-        const sessionId = await dsmLogin({
-          host: data.host,
-          user: data.user,
-          password: data.password
-        })
-        console.log('[api.nas] connect save', {
-          host: data.host,
-          user: data.user,
-          sessionId: sessionId.slice(0, 8) + '...',
-          prevFolder
-        })
-        saveNasSession({
-          hostname: data.host,
-          username: data.user,
-          sessionId,
-          defaultFolder: prevFolder
-        })
-        console.log('[api.nas] after save', loadNasSession())
+        await loginWithSession(
+          { host: data.host, user: data.user, password: data.password },
+          { login: dsmLogin, validate: dsmValidateSession }
+        )
+        const session = loadNasSession()
         return {
           connected: true as const,
-          hostname: data.host,
-          username: data.user,
-          defaultFolder: prevFolder
+          hostname: session!.hostname,
+          username: session!.username,
+          defaultFolder: session!.defaultFolder
         }
       } catch (err) {
         errors.addGlobalError(err instanceof Error ? err.message : 'Login failed.')

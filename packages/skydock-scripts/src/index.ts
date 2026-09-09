@@ -46,16 +46,26 @@ export {
   reorderFilesInJump
 } from './workspace'
 export { loadManifest, normalizeManifest, saveManifest } from './manifest'
+export { publishJump } from './publish'
+export type { PublishArgs, UploadProgress } from './publish'
 export {
+  clearNasSession,
+  createShareLink,
+  dsmConfigSchema,
   dsmCreateFolder,
+  dsmFetch,
   dsmListFolder,
   dsmLogin,
+  dsmLogout,
+  dsmResponseSchema,
+  dsmUrl,
   dsmValidateSession,
-  publishJump
-} from './publish'
-export type { DsmConfig, PublishArgs, UploadProgress } from './publish'
-export { clearNasSession, loadNasSession, saveNasSession, updateDefaultFolder } from './nas'
-export type { NasSession } from './nas'
+  loadNasSession,
+  loginWithSession,
+  saveNasSession,
+  updateDefaultFolder
+} from './nas'
+export type { DsmAuth, DsmConfig, NasSession } from './nas'
 export { computeFileId, ensureManifestFileIds } from './fileId'
 export { writeStatus, scheduleIdle } from './status'
 export {
