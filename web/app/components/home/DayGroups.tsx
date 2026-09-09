@@ -22,6 +22,7 @@ type Props = {
     jumpId: string,
     passenger: import('../types').ManifestPassenger | undefined
   ) => void
+  onLabelChange: (jumpId: string, label: string) => void
   onProcess: (jumpId: string) => void
   processingId: string | null
   onUpload: (jumpId: string) => void
@@ -48,6 +49,7 @@ const DayGroups = ({
   onDragOver,
   onDragLeave,
   onPassengerChange,
+  onLabelChange,
   onProcess,
   processingId,
   onUpload,
@@ -101,6 +103,7 @@ const DayGroups = ({
                   onDragOver={onDragOver}
                   onDragLeave={onDragLeave}
                   onPassengerChange={onPassengerChange}
+                  onLabelChange={onLabelChange}
                   onProcess={onProcess}
                   processing={processingId === jump.id}
                   onUpload={onUpload}

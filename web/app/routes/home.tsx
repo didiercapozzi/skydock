@@ -179,6 +179,12 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     saveJumps(next)
   }
 
+  const handleLabelChange = (jumpId: string, label: string) => {
+    const next = jumps.map((j) => (j.id === jumpId ? { ...j, label } : j))
+    setJumps(next)
+    saveJumps(next)
+  }
+
   const handleCreateGroup = (dayDate: string) => {
     setGroupCreationInitialDay(dayDate)
     setShowGroupCreation(true)
@@ -323,6 +329,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onPassengerChange={handlePassengerChange}
+          onLabelChange={handleLabelChange}
           onProcess={handleProcess}
           processingId={processingId}
           onUpload={handleUpload}

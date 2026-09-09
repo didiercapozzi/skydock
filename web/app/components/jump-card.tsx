@@ -18,6 +18,7 @@ const JumpCard = ({
   onDragOver,
   onDragLeave,
   onPassengerChange,
+  onLabelChange,
   onProcess,
   processing,
   onUpload,
@@ -39,6 +40,7 @@ const JumpCard = ({
   onDragOver?: (e: React.DragEvent, targetJumpId: string) => void
   onDragLeave?: (jumpId: string) => void
   onPassengerChange: (jumpId: string, passenger: ManifestPassenger | undefined) => void
+  onLabelChange: (jumpId: string, label: string) => void
   onProcess: (jumpId: string) => void
   processing: boolean
   onUpload: (jumpId: string) => void
@@ -51,9 +53,11 @@ const JumpCard = ({
   const [expanded, setExpanded] = useState(false)
   const [editingPassenger, setEditingPassenger] = useState(false)
   const [editingDate, setEditingDate] = useState(false)
+  const [editingLabel, setEditingLabel] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const [draftFirstname, setDraftFirstname] = useState('')
   const [draftLastname, setDraftLastname] = useState('')
+  const [draftLabel, setDraftLabel] = useState('')
   const [draftDate, setDraftDate] = useState('')
   const bounds = getJumpBounds(jump)
   const videoCount = jump.files.filter((f) => isVideoFile(f.filename)).length
@@ -85,6 +89,21 @@ const JumpCard = ({
 
   const cancelPassengerEditor = () => {
     setEditingPassenger(false)
+  }
+
+  const openLabelEditor = () => {
+    setDraftLabel(jump.label)
+    setEditingLabel(true)
+  }
+
+  const saveLabelEditor = () => {
+    const trimmed = draftLabel.trim()
+    if (trimmed && trimmed !== jump.label) onLabelChange(jump.id, trimmed)
+    setEditingLabel(false)
+  }
+
+  const cancelLabelEditor = () => {
+    setEditingLabel(false)
   }
 
   const toIso = (deCh: string) => {
@@ -152,7 +171,40 @@ const JumpCard = ({
                 d='M9 5l7 7-7 7'
               />
             </svg>
-            <h3 className='font-semibold text-sm text-gray-800'>{passengerTitle}</h3>
+            {editingLabel ? (
+              <div
+                className='flex items-center gap-2'
+                onClick={(e) => e.stopPropagation()}>
+                <input
+                  type='text'
+                  value={draftLabel}
+                  onChange={(e) => setDraftLabel(e.target.value)}
+                  className='px-2 py-1 text-sm font-semibold border border-gray-300 rounded-md bg-white min-w-[120px]'
+                />
+                <button
+                  type='button'
+                  onClick={saveLabelEditor}
+                  className='px-2 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700'>
+                  Done
+                </button>
+                <button
+                  type='button'
+                  onClick={cancelLabelEditor}
+                  className='px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200'>
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <h3
+                onClick={(e) => {
+                  e.stopPropagation()
+                  openLabelEditor()
+                }}
+                title='Click to rename group'
+                className='font-semibold text-sm text-gray-800 cursor-pointer hover:text-blue-600'>
+                {passengerTitle}
+              </h3>
+            )}
             <div className='flex items-center gap-1.5'>
               {videoCount > 0 && (
                 <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700'>
