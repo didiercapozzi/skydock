@@ -8,6 +8,7 @@ import type {
   SafeHrefArgs
 } from './create-safe-routing-engine'
 import { useForm } from '../forms/context'
+import type { UseFormOptions } from '../forms/types'
 
 type EngineInstance<TRegister extends BaseRegister> = {
   href: <const TPage extends PageOf<TRegister>>(args: SafeHrefArgs<TRegister, TPage>) => string
@@ -130,37 +131,11 @@ const createSafeRoutingHooks = <const TRegister extends BaseRegister>(
     TSchema extends z.ZodObject<z.ZodRawShape>,
     TPage extends PageOf<TRegister>
   >({
-    schema,
-    defaultValues,
-    page,
-    onSuccess
-  }: {
-    readonly schema: TSchema
-    readonly defaultValues: z.input<TSchema>
+    page: _page,
+    ...options
+  }: UseFormOptions<TSchema> & {
     readonly page: TPage
-    readonly onSuccess?: (data: z.output<TSchema>) => void
-  }) => {
-    const rawFetcher = useSafeFetcher()
-
-    const fetcher = useMemo(
-      () => ({
-        ...rawFetcher,
-        submit: (data: unknown) =>
-          rawFetcher.submit({
-            url: page,
-            actionArgs: data
-          } as never)
-      }),
-      [rawFetcher, page]
-    )
-
-    return useForm({
-      schema,
-      defaultValues,
-      fetcher,
-      onSuccess
-    })
-  }
+  }) => useForm(options)
 
   return {
     useSafeFetcher,

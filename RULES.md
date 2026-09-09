@@ -418,6 +418,7 @@ The VideoCropper component lives inside the PreviewDrawer (right panel), directl
 - Never call an endpoint using a string URL; always use the typesafe `routingEngine` (`routingEngine.href({ url })`, `useSafeFetcher`, `useSafeSubmit`) with routes from the generated `Register`
 - Server actions always use `createValidatedFormAction` with a Zod schema; field errors via `errors.addFieldError`, global errors via `errors.addGlobalError`, and return `errors.toResponse(422)` when `errors.hasErrors()`
 - Shared routing and form logic lives in `@skydock/ui` (`routingEngine`, safe hooks, validated actions); never reimplement endpoint calls per route
+- All forms must use `@skydock/ui/forms` (`useForm`, `Form`, `FormField`, `GlobalErrors`, `createValidatedFormAction`) with a Zod schema — see `web/app/components/connection-dialog.tsx` as canonical example; never use `useState` + manual `<input>`/`<form>` handling for form state or validation
 - Never use React memoization (`useCallback`, `useMemo`, `memo`) — React Compiler handles memoization automatically; write plain functions and values
 - Never commit without explicit user approval
 - Never bypass lint like: eslint-disable-next-line react/set-state-in-effect or any other

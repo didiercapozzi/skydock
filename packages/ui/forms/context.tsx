@@ -1,5 +1,6 @@
 import type { ChangeEvent, FormEvent, ReactNode } from 'react'
 import { createContext, useContext, useEffect, useId, useRef, useState } from 'react'
+import { useActionData, useNavigation, useSubmit, type SubmitTarget } from 'react-router'
 import type { z } from 'zod'
 import {
   createSchemaFields,
@@ -9,6 +10,7 @@ import {
   setDeepValue
 } from './schema'
 import type { FieldDescriptor, FieldPath, FormContextValue, UseFormOptions } from './types'
+import { isFormError, isFormSuccess } from './guards'
 
 const FormContext = createContext<FormContextValue | null>(null)
 
@@ -38,16 +40,14 @@ const Form = ({ children, value, onSubmit, noValidate = true, ...props }: FormPr
   </FormContext.Provider>
 )
 
-const useForm = <
-  TSchema extends z.ZodObject<z.ZodRawShape>,
-  TFetcher extends { readonly data?: unknown; readonly state: 'idle' | 'submitting' | 'loading' } =
-    { readonly data?: unknown; readonly state: 'idle' | 'submitting' | 'loading' }
->({
+const useForm = <TSchema extends z.ZodObject<z.ZodRawShape>>({
   schema,
   defaultValues,
-  fetcher,
-  onSuccess
-}: UseFormOptions<TSchema, TFetcher>) => {
+  onSuccess,
+  submit = useSubmit(),
+  navigation = useNavigation(),
+  actionData = useActionData() as unknown
+}: UseFormOptions<TSchema>) => {
   type PathType = FieldPath<z.infer<TSchema>>
 
   const [values, setValues] = useState<z.input<TSchema>>(defaultValues)
@@ -55,34 +55,28 @@ const useForm = <
   const [dismissedServerFields, setDismissedServerFields] = useState<Record<string, boolean>>({})
 
   const fields = createSchemaFields(schema)
-  const isSubmitting = fetcher.state === 'submitting' || fetcher.state === 'loading'
+  const isSubmitting = navigation.state === 'submitting' || navigation.state === 'loading'
   const lastProcessedDataRef = useRef<unknown>(undefined)
 
   useEffect(() => {
-    if (!fetcher.data || fetcher.data === lastProcessedDataRef.current) return
-    lastProcessedDataRef.current = fetcher.data
+    if (!actionData || actionData === lastProcessedDataRef.current) return
+    lastProcessedDataRef.current = actionData
 
-    if (
-      typeof fetcher.data === 'object' &&
-      fetcher.data !== null &&
-      Reflect.get(fetcher.data, 'success') === true
-    ) {
-      const parsed = schema.safeParse(Reflect.get(fetcher.data, 'data'))
+    if (isFormSuccess<z.output<TSchema>>(actionData)) {
+      const parsed = schema.safeParse(actionData.data)
       if (parsed.success) {
         onSuccess?.(parsed.data)
       }
     }
-  }, [fetcher.data, schema, onSuccess])
+  }, [actionData, schema, onSuccess])
 
-  const isFailedResponse =
-    typeof fetcher.data === 'object' &&
-    fetcher.data !== null &&
-    Reflect.get(fetcher.data, 'success') === false
+  const failedResponse = isFormError<TSchema>(actionData) ? actionData : undefined
 
-  const serverFieldErrors = isFailedResponse ? Reflect.get(fetcher.data, 'fieldErrors') : undefined
-  const rawGlobalErrors = isFailedResponse ? Reflect.get(fetcher.data, 'globalErrors') : undefined
+  const serverFieldErrors = failedResponse?.fieldErrors
   const globalErrors: readonly string[] =
-    Array.isArray(rawGlobalErrors) && !dismissedServerFields['_global'] ? rawGlobalErrors : []
+    failedResponse?.globalErrors && !dismissedServerFields['_global']
+      ? failedResponse.globalErrors
+      : []
 
   const setFieldValue = (field: string | FieldDescriptor<string>, value: unknown) => {
     const path = typeof field === 'string' ? field : field.path
@@ -109,11 +103,8 @@ const useForm = <
     if (typeof clientErr === 'string') return clientErr
     if (dismissedServerFields[path]) return undefined
 
-    if (typeof serverFieldErrors === 'object' && serverFieldErrors !== null) {
-      const serverErr = Reflect.get(serverFieldErrors, path)
-      if (typeof serverErr === 'string') return serverErr
-    }
-    return undefined
+    const serverErr = serverFieldErrors?.[path as PathType]
+    return typeof serverErr === 'string' ? serverErr : undefined
   }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -127,9 +118,7 @@ const useForm = <
     }
 
     setClientErrors({})
-    if ('submit' in fetcher && typeof fetcher.submit === 'function') {
-      ;(fetcher.submit as unknown as (data: unknown) => void)(clientResult.data)
-    }
+    submit(clientResult.data as SubmitTarget, { method: 'post', encType: 'application/json' })
   }
 
   return {
@@ -172,4 +161,4 @@ const useFormField = (field: FieldDescriptor<string>) => {
   }
 }
 
-export { Form, FormContext, FormProvider, useForm, useFormField }
+export { Form, FormProvider, useForm, useFormField }

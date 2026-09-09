@@ -1,4 +1,18 @@
-import { useState } from 'react'
+import type { SubmitFunction } from 'react-router'
+import { z } from 'zod'
+import { Form, FormField, GlobalErrors, useForm } from '../../../packages/ui/forms'
+
+const connectionSchema = z.object({
+  host: z
+    .string()
+    .min(1, 'Hostname is required')
+    .url('Must be a valid URL (e.g. https://nas.local:5001)'),
+  user: z.string().min(1, 'Username is required').min(2, 'Username must be at least 2 characters'),
+  password: z
+    .string()
+    .min(1, 'Password is required')
+    .min(3, 'Password must be at least 3 characters')
+})
 
 type ConnectionDialogProps = {
   onConnect: (host: string, user: string, password: string) => void
@@ -7,14 +21,18 @@ type ConnectionDialogProps = {
 }
 
 const ConnectionDialog = ({ onConnect, onCancel, error }: ConnectionDialogProps) => {
-  const [host, setHost] = useState('')
-  const [user, setUser] = useState('')
-  const [password, setPassword] = useState('')
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (host && user && password) onConnect(host, user, password)
+  const submit: SubmitFunction = async (target) => {
+    const data = target as unknown as z.infer<typeof connectionSchema>
+    onConnect(data.host, data.user, data.password)
   }
+
+  const form = useForm({
+    schema: connectionSchema,
+    defaultValues: { host: '', user: '', password: '' },
+    submit
+  })
+
+  const globalErrors = error ? [error, ...form.globalErrors] : [...form.globalErrors]
 
   return (
     <div
@@ -22,77 +40,65 @@ const ConnectionDialog = ({ onConnect, onCancel, error }: ConnectionDialogProps)
       className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
       <div className='bg-white rounded-xl shadow-xl p-6 w-full max-w-md'>
         <h2 className='text-lg font-semibold text-gray-900 mb-4'>Connect to NAS</h2>
-        {error && (
-          <div className='mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700'>
-            {error}
-          </div>
-        )}
-        <form
-          onSubmit={handleSubmit}
-          className='space-y-4'>
-          <div>
-            <label
-              htmlFor='host'
-              className='block text-sm font-medium text-gray-700 mb-1'>
-              NAS Hostname
-            </label>
-            <input
-              id='host'
-              type='text'
-              value={host}
-              onChange={(e) => setHost(e.target.value)}
-              placeholder='https://nas.local:5001'
-              className='w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-              required
-            />
-          </div>
-          <div>
-            <label
-              htmlFor='user'
-              className='block text-sm font-medium text-gray-700 mb-1'>
-              Username
-            </label>
-            <input
-              id='user'
-              type='text'
-              value={user}
-              onChange={(e) => setUser(e.target.value)}
-              className='w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-              required
-            />
-          </div>
-          <div>
-            <label
-              htmlFor='password'
-              className='block text-sm font-medium text-gray-700 mb-1'>
-              Password
-            </label>
-            <input
-              id='password'
-              type='password'
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className='w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-              required
-            />
-          </div>
+        <GlobalErrors errors={globalErrors} />
+        <Form
+          value={form}
+          className='space-y-4 mt-4'>
+          <FormField
+            field={form.fields.host}
+            label='NAS Hostname'>
+            {(control) => (
+              <input
+                {...control}
+                type='text'
+                placeholder='https://nas.local:5001'
+                className='w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50'
+              />
+            )}
+          </FormField>
+          <FormField
+            field={form.fields.user}
+            label='Username'>
+            {(control) => (
+              <input
+                {...control}
+                type='text'
+                placeholder='admin'
+                className='w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50'
+              />
+            )}
+          </FormField>
+          <FormField
+            field={form.fields.password}
+            label='Password'>
+            {(control) => (
+              <input
+                {...control}
+                type='password'
+                placeholder='••••••••'
+                className='w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50'
+              />
+            )}
+          </FormField>
           <div className='flex justify-end gap-3 pt-2'>
             <button
               type='button'
               onClick={onCancel}
-              className='px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200'>
+              disabled={form.isSubmitting}
+              className='px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50'>
               Cancel
             </button>
             <button
               type='submit'
-              className='px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700'>
-              Connect
+              disabled={form.isSubmitting}
+              className='px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50'>
+              {form.isSubmitting ? 'Connecting...' : 'Connect'}
             </button>
           </div>
-        </form>
+        </Form>
       </div>
     </div>
   )
 }
 
-export { ConnectionDialog }
+export { ConnectionDialog, connectionSchema }

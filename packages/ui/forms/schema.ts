@@ -2,10 +2,6 @@ import type { ChangeEvent } from 'react'
 import type { z } from 'zod'
 import type { DeepFieldAccessor, FieldPath } from './types'
 
-const isAccessor = <T, Prefix extends string>(
-  value: unknown
-): value is DeepFieldAccessor<T, Prefix> => typeof value === 'object' && value !== null
-
 const buildProxy = <T, Prefix extends string = ''>(
   prefix: Prefix
 ): DeepFieldAccessor<T, Prefix> => {
@@ -19,11 +15,7 @@ const buildProxy = <T, Prefix extends string = ''>(
     }
   }
 
-  const proxyInstance = new Proxy({ path: prefix }, handler)
-  if (isAccessor<T, Prefix>(proxyInstance)) {
-    return proxyInstance
-  }
-  throw new Error('Accessor initialization error')
+  return new Proxy({ path: prefix }, handler) as DeepFieldAccessor<T, Prefix>
 }
 
 const createSchemaFields = <TSchema extends z.ZodType>(
@@ -75,7 +67,7 @@ const setDeepValue = <T extends Record<string, unknown>>(
     : target
 }
 
-const extractIssues = <TSchema extends z.ZodType>(
+const extractIssues = <TSchema extends z.ZodTypeAny>(
   issues: readonly z.ZodIssue[]
 ): {
   readonly fieldErrors: Partial<Record<FieldPath<z.infer<TSchema>>, string>>

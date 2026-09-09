@@ -5,6 +5,7 @@ import type {
   InputHTMLAttributes,
   ReactNode
 } from 'react'
+import type { SubmitFunction } from 'react-router'
 import type { z } from 'zod'
 
 type FieldElement = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -50,21 +51,16 @@ type FormSuccessResponse<TData> = {
   readonly data: TData
 }
 
-type FormErrorResponse<TSchema extends z.ZodType> = {
+type FormErrorResponse<TSchema extends z.ZodTypeAny> = {
   readonly success: false
   readonly status: HttpStatusError
   readonly fieldErrors?: Partial<Record<FieldPath<z.infer<TSchema>>, string>>
   readonly globalErrors?: readonly string[]
 }
 
-type FormResult<TSchema extends z.ZodType> =
+type FormResult<TSchema extends z.ZodTypeAny> =
   | FormSuccessResponse<z.output<TSchema>>
   | FormErrorResponse<TSchema>
-
-type FetcherLike = {
-  readonly data?: unknown
-  readonly state: 'idle' | 'submitting' | 'loading'
-}
 
 type FormContextValue = {
   readonly getFieldError: (field: FieldDescriptor<string>) => string | undefined
@@ -93,19 +89,19 @@ type FormFieldProps = {
   readonly children: (props: FormFieldRenderProps) => ReactNode
 }
 
-type UseFormOptions<
-  TSchema extends z.ZodObject<z.ZodRawShape>,
-  TFetcher extends FetcherLike = FetcherLike
-> = {
+type NavigationState = 'idle' | 'submitting' | 'loading'
+
+type UseFormOptions<TSchema extends z.ZodObject<z.ZodRawShape>> = {
   readonly schema: TSchema
   readonly defaultValues: z.input<TSchema>
-  readonly fetcher: TFetcher
   readonly onSuccess?: (data: z.output<TSchema>) => void
+  readonly submit?: SubmitFunction
+  readonly navigation?: { readonly state: NavigationState }
+  readonly actionData?: unknown
 }
 
 export type {
   DeepFieldAccessor,
-  FetcherLike,
   FieldDescriptor,
   FieldPath,
   FormContextValue,
@@ -115,5 +111,6 @@ export type {
   FormResult,
   FormSuccessResponse,
   HttpStatusError,
+  NavigationState,
   UseFormOptions
 }
