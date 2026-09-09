@@ -1,5 +1,6 @@
 import * as path from 'node:path'
 import * as childProcess from 'node:child_process'
+import { z } from 'zod'
 import { VIDEO_EXTENSIONS_SET, PHOTO_EXTENSIONS_SET, MEDIA_EXTENSIONS_SET } from './constants'
 import type { ManifestFile } from './types'
 import { countFiles, fileMatchesExisting, findMediaFiles, hasMediaFiles, walkFiles } from './lib/fs'
@@ -66,6 +67,43 @@ const isCliModule = (baseName: string): boolean => {
   return p.endsWith(`${baseName}.ts`) || p.endsWith(`${baseName}.js`)
 }
 
+const daySchema = z.string().regex(/^\d{2}\.\d{2}\.\d{4}$/, 'Invalid day, expected DD.MM.YYYY')
+
+const parseDayEpoch = (day?: string): number | null => {
+  const parsed = daySchema.safeParse(day)
+  if (!parsed.success) return null
+  const [d, m, y] = parsed.data.split('.').map(Number)
+  return Math.floor(new Date(y, m - 1, d).getTime() / 1000)
+}
+
+const formatDay = (epoch: number): string => {
+  const day = new Date(epoch * 1000).toLocaleDateString('de-CH', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  })
+  daySchema.parse(day)
+  return day
+}
+
+const formatTodayDeCh = (): string => formatDay(Math.floor(Date.now() / 1000))
+
+const dayToIso = (day: string): string => {
+  const parsed = daySchema.safeParse(day)
+  if (!parsed.success) throw new Error(parsed.error.issues[0].message)
+  const [d, m, y] = parsed.data.split('.').map(Number)
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+}
+
+const isoToDay = (isoDate: string): string => {
+  const m = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) throw new Error('Invalid ISO date, expected YYYY-MM-DD')
+  const [, y, mon, d] = m
+  const day = `${d}.${mon}.${y}`
+  daySchema.parse(day)
+  return day
+}
+
 const parseExiftoolCsv = (csv: string): Map<string, string> => {
   const map = new Map<string, string>()
   const parseLine = (line: string): string[] => {
@@ -114,9 +152,13 @@ const parseExiftoolCsv = (csv: string): Map<string, string> => {
 export {
   checkExiftool,
   countFiles,
+  daySchema,
+  dayToIso,
   DEFAULT_MAX_FIND_DEPTH,
   fileMatchesExisting,
   findMediaFiles,
+  formatDay,
+  formatTodayDeCh,
   formatTimestamp,
   getExtension,
   getExtensionSafe,
@@ -126,9 +168,11 @@ export {
   hasCommand,
   hasMediaFiles,
   isCliModule,
+  isoToDay,
   isMediaFile,
   isPhotoFile,
   isVideoFile,
+  parseDayEpoch,
   parseExiftoolCsv,
   sanitizeLabel,
   sortFilesByMtime,

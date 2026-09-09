@@ -716,7 +716,7 @@ describe('Home - jump comparison dialog', () => {
     expect('passenger' in jumps[0]).toBe(false)
   })
 
-  test('process button disabled without complete passenger', async () => {
+  test('process button enabled without passenger (fun group)', async () => {
     const filesA = makeFiles(2, 1724493600)
     const filesB = makeFiles(2, 1724493600 + 3600)
     filesB.forEach((f) => {
@@ -748,8 +748,8 @@ describe('Home - jump comparison dialog', () => {
     ) as NodeListOf<HTMLButtonElement>
     expect(buttons.length).toBe(2)
     for (const btn of Array.from(buttons)) {
-      expect(btn.disabled).toBe(true)
-      expect(btn.title).toBe('Add complete passenger details to process')
+      expect(btn.disabled).toBe(false)
+      expect(btn.title).toBe('')
     }
   })
 

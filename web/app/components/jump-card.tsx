@@ -1,9 +1,10 @@
 import { Fragment, useState } from 'react'
-import type { ManifestFile, ManifestJump, ManifestPassenger, SelectionMap } from './types'
-import { formatTime, getJumpBounds, isVideoFile } from './utils'
-import { PhotoIcon, VideoIcon } from './icons'
+import { dayToIso, isoToDay } from '../../../packages/skydock-scripts/src/utils'
 import { FileGrid } from './file-grid'
 import { FileRow } from './file-row'
+import { PhotoIcon, VideoIcon } from './icons'
+import type { ManifestFile, ManifestJump, ManifestPassenger, SelectionMap } from './types'
+import { formatTime, getJumpBounds, isVideoFile } from './utils'
 
 const JumpCard = ({
   jump,
@@ -106,24 +107,18 @@ const JumpCard = ({
     setEditingLabel(false)
   }
 
-  const toIso = (deCh: string) => {
-    const [d, m, y] = deCh.split('.').map(Number)
-    if (!d || !m || !y) return ''
-    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-  }
-
   const openDateEditor = () => {
-    setDraftDate(toIso(jump.day))
+    setDraftDate(dayToIso(jump.day))
     setEditingDate(true)
   }
 
   const saveDateEditor = () => {
     if (!draftDate) return
-    const [y, m, d] = draftDate.split('-').map(Number)
-    if (!y || !m || !d) return
-    const deCh = `${String(d).padStart(2, '0')}.${String(m).padStart(2, '0')}.${y}`
-    onGroupDateChange(jump.id, deCh)
-    setEditingDate(false)
+    try {
+      const deCh = isoToDay(draftDate)
+      onGroupDateChange(jump.id, deCh)
+      setEditingDate(false)
+    } catch {}
   }
 
   const cancelDateEditor = () => {

@@ -209,4 +209,65 @@ describe('api/nas file persistence (truthful, no UI mock)', () => {
     expect((statusRes as { connected?: boolean }).connected).toBe(true)
     expect(loadSessionFile()).not.toBeNull()
   })
+
+  it('regression: valid real sid via list_share allows list-folder without session expired', async () => {
+    stubFetch((url) => {
+      if (url.includes('method=login'))
+        return jsonResponse({ success: true, data: { sid: 'real-sid-123' } })
+      if (url.includes('method=list_share'))
+        return jsonResponse({ success: true, data: { shares: [{ path: '/home', name: 'home' }] } })
+      if (url.includes('method=list') && url.includes('folder_path=%2Fhome'))
+        return jsonResponse({
+          success: true,
+          data: { files: [{ path: '/home/tmp', name: 'tmp', isdir: true }] }
+        })
+      if (url.includes('method=list'))
+        return jsonResponse({
+          success: true,
+          data: { files: [{ path: '/home', name: 'home', isdir: true }] }
+        })
+      return jsonResponse({ success: false })
+    })
+    const connectReq = new Request('http://localhost/api/nas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        intent: 'connect',
+        host: 'https://nas.local:5001',
+        user: 'admin',
+        password: 'secret'
+      })
+    })
+    await action({ request: connectReq })
+    expect(loadSessionFile()?.sessionId).toBe('real-sid-123')
+
+    const listReq = new Request('http://localhost/api/nas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ intent: 'list-folder', path: '/home' })
+    })
+    const listRes = (await action({ request: listReq })) as unknown as Record<string, unknown>
+    expect((listRes as { folders?: unknown[] }).folders).toBeDefined()
+    expect((listRes as { globalErrors?: string[] }).globalErrors).toBeUndefined()
+    expect((listRes as { folders?: unknown[] }).folders).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path: '/home/tmp' })])
+    )
+    expect(loadSessionFile()).not.toBeNull()
+
+    const invalidListReq = new Request('http://localhost/api/nas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ intent: 'list-folder', path: '/invalid' })
+    })
+    stubFetch((url) => {
+      if (url.includes('method=list_share'))
+        return jsonResponse({ success: false, error: { code: 119 } })
+      return jsonResponse({ success: false, error: { code: 119 } })
+    })
+    const invalidRes = (await action({ request: invalidListReq })) as unknown as Record<
+      string,
+      unknown
+    >
+    expect((invalidRes as { globalErrors?: string[] }).globalErrors?.[0]).toMatch(/Session expired/)
+  })
 })

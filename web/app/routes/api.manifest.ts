@@ -96,8 +96,14 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         errors.addGlobalError('Not connected to NAS. Please connect first.')
         return errors.toResponse(422)
       }
-      const min = Math.min(...target.files.map((f) => f.mtime))
-      const baseName = buildJumpBaseName(target.passenger, target.label, min)
+      const parseDay = (day?: string): number | null => {
+        if (!day) return null
+        const [d, m, y] = day.split('.').map(Number)
+        if (!d || !m || !y) return null
+        return Math.floor(new Date(y, m - 1, d).getTime() / 1000)
+      }
+      const dayEpoch = parseDay(target.day) ?? Math.min(...target.files.map((f) => f.mtime))
+      const baseName = buildJumpBaseName(target.passenger, target.label, dayEpoch)
       const localDir = path.join(getOutputDir(), 'processed', baseName)
       if (!fs.existsSync(localDir)) {
         errors.addGlobalError('Processed files not found. Process the jump again.')

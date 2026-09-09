@@ -119,6 +119,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   )
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const [manifestError, setManifestError] = useState<string | null>(null)
 
   const parsedSuccess = nasSuccessSchema.safeParse(nasFetcher.data)
   const parsedError = nasErrorSchema.safeParse(nasFetcher.data)
@@ -161,10 +162,12 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
 
   const handleMerge = () => {}
   const handleProcess = (jumpId: string) => {
+    setManifestError(null)
     setProcessingId(jumpId)
     manifestFetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'process-jump', jumpId } })
   }
   const handleUpload = (jumpId: string) => {
+    setManifestError(null)
     setUploadingId(jumpId)
     manifestFetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'upload-jump', jumpId } })
   }
@@ -228,6 +231,19 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     if (parsed.success) {
       queueMicrotask(() => {
         setJumps(parsed.data.jumps)
+        setProcessingId(null)
+        setUploadingId(null)
+        setManifestError(null)
+      })
+      return
+    }
+    const parsedError = z
+      .object({ success: z.literal(false), globalErrors: z.array(z.string()).optional() })
+      .passthrough()
+      .safeParse(manifestFetcher.data)
+    if (parsedError.success) {
+      queueMicrotask(() => {
+        setManifestError(parsedError.data.globalErrors?.[0] ?? 'Request failed')
         setProcessingId(null)
         setUploadingId(null)
       })
@@ -295,6 +311,11 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           onClearCompare={() => setCompareIds([])}
           onShowComparison={() => setShowComparison(true)}
         />
+        {manifestError && (
+          <div className='mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700'>
+            {manifestError}
+          </div>
+        )}
         <Unassigned
           files={unassignedFiles}
           selection={selection}

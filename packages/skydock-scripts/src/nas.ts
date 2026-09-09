@@ -147,14 +147,15 @@ const listNasFolder = async (
 
 const dsmListFolder = async (host: string, sid: string, folderPath: string) => {
   if (sid.startsWith('mock-sid-')) {
-    if (folderPath === '/' || folderPath === '') {
+    if (folderPath === '/' || folderPath === '' || folderPath === '/home') {
       return [
         { path: '/video', name: 'video', is_dir: true },
         { path: '/photo', name: 'photo', is_dir: true },
-        { path: '/SkyDock', name: 'SkyDock', is_dir: true }
+        { path: '/SkyDock', name: 'SkyDock', is_dir: true },
+        { path: '/home', name: 'home', is_dir: true }
       ]
     }
-    if (['/video', '/photo', '/SkyDock'].includes(folderPath)) {
+    if (['/video', '/photo', '/SkyDock', '/home'].includes(folderPath)) {
       return [
         { path: `${folderPath}/2024`, name: '2024', is_dir: true },
         { path: `${folderPath}/2025`, name: '2025', is_dir: true }

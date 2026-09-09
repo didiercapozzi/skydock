@@ -1,13 +1,6 @@
 import { JUMP_GAP_SECONDS } from './constants'
 import type { Manifest, ManifestFile, ManifestJump } from './types'
-import { sortFilesByMtime } from './utils'
-
-const formatDay = (epoch: number): string =>
-  new Date(epoch * 1000).toLocaleDateString('de-CH', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
+import { formatDay, sortFilesByMtime } from './utils'
 
 const reclusterJumps = (manifest: Manifest, preservedIds?: Set<string>): void => {
   const seenIds = new Set<string>()

@@ -4,6 +4,7 @@ import * as path from 'node:path'
 import { loadManifest, saveManifest } from './manifest'
 import { scheduleIdle, writeStatus } from './status'
 import { getManifestPath, getOutputDir, hasCommand, isCliModule, isVideoFile } from './utils'
+import { parseDayEpoch } from './utils'
 import { buildFsTime, buildJumpBaseName, makeFileName } from './workspace'
 
 type ExecuteOptions = {
@@ -78,13 +79,6 @@ const writeProcessedMap = (outputDir: string, map: Record<string, string>): void
 
 const getMediaType = (filePath: string): 'video' | 'photo' =>
   isVideoFile(filePath) ? 'video' : 'photo'
-
-const parseDayEpoch = (day?: string): number | null => {
-  if (!day) return null
-  const [d, m, y] = day.split('.').map(Number)
-  if (!d || !m || !y) return null
-  return Math.floor(new Date(y, m - 1, d).getTime() / 1000)
-}
 
 const processJump = (
   jump: NonNullable<ReturnType<typeof loadManifest>>['jumps'][number],

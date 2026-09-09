@@ -1,5 +1,6 @@
 import type { SubmitFunction } from 'react-router'
 import { z } from 'zod'
+import { dayToIso, formatTodayDeCh, isoToDay } from '../../../packages/skydock-scripts/src/utils'
 import { Form, FormField, GlobalErrors, useForm } from '../../../packages/ui/forms'
 
 const groupCreationSchema = z.object({
@@ -18,21 +19,6 @@ type GroupCreationDialogProps = {
   initialDay?: string
 }
 
-const formatTodayDeCh = () =>
-  new Date().toLocaleDateString('de-CH', { year: 'numeric', month: '2-digit', day: '2-digit' })
-
-const toDeCh = (isoDate: string) => {
-  const [y, m, d] = isoDate.split('-').map(Number)
-  if (!y || !m || !d) return isoDate
-  return `${String(d).padStart(2, '0')}.${String(m).padStart(2, '0')}.${y}`
-}
-
-const toIso = (deCh: string) => {
-  const [d, m, y] = deCh.split('.').map(Number)
-  if (!d || !m || !y) return new Date().toISOString().split('T')[0] ?? ''
-  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-}
-
 const GroupCreationDialog = ({
   onCreate,
   onCancel,
@@ -40,13 +26,19 @@ const GroupCreationDialog = ({
   initialDay
 }: GroupCreationDialogProps) => {
   const defaultDay = initialDay ?? formatTodayDeCh()
-  const defaultIso = toIso(defaultDay)
+  const defaultIso = (() => {
+    try {
+      return dayToIso(defaultDay)
+    } catch {
+      return new Date().toISOString().split('T')[0] ?? ''
+    }
+  })()
 
   const submit: SubmitFunction = async (target) => {
     const data = target as unknown as z.infer<typeof groupCreationSchema>
     const parsed = groupCreationSchema.safeParse(data)
     if (!parsed.success) return
-    const day = toDeCh(parsed.data.date)
+    const day = isoToDay(parsed.data.date)
     onCreate(parsed.data.title.trim(), day)
   }
 
