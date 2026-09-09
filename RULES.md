@@ -50,7 +50,7 @@ output/
 - `loadManifest` merges both files; `saveManifest` splits them. Old single-file format auto-migrates on first load.
 - `scanMedia()` creates a new manifest with status `proposed`, today's date, all files, and clustered jumps.
 - `files` is flat list of all files sorted by `mtime`.
-- `jumps[].files` are lightweight refs — same file may appear in multiple jumps via copy. In-memory manifest resolves refs to full files for UI/execute.
+- `jumps[].files` are lightweight refs (`id` + `cropStart`/`cropEnd`) — same file may appear in multiple jumps via copy. In-memory manifest resolves refs to full files for UI/execute. A cropped video that is moved or copied retains its crop in the target; a copy's crop is independent — it can be uncropped or re-cropped to a different range without affecting the source (crop is stored per jump ref, not per file registry).
 - Jump IDs are `jump_1 ...` or preserved original IDs after recluster; labels default to `Jump N` and are editable. For fun jumps `label` holds the location (`yverdon`, `colombier`) and acts as `Group` name — see §13.2.
 - `day` (`YYYY.MM.DD` locale `de-CH`, e.g. `24.08.2026`) is stored on empty `Group`s to keep them under the selected `Day` after `+ Create Group` (files empty → `getJumpDate` falls back to `day`).
 - `originalMtime` saved on first time shift to allow reset-calibration.
@@ -267,7 +267,7 @@ All drag and drop operations follow these rules:
 
 ### 9.6 Video cropping
 
-The VideoCropper component lives inside the PreviewDrawer (right panel), directly below the video player for video files. It shares the same video element as the player — seek changes propagate immediately.
+The VideoCropper component lives inside the PreviewDrawer (right panel), directly below the video player for video files. It shares the same video element as the player — seek changes propagate immediately. Crop is per jump copy: moving a cropped video keeps its crop; copying creates an independent crop that can be cleared or changed without affecting the original.
 
 #### 9.6.1 Crop bar
 

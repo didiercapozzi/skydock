@@ -56,7 +56,7 @@ const moveFilesBetweenJumps = (
       const additions: ManifestFile[] = []
       for (const p of allPaths) {
         const f = byPath.get(p)
-        if (f && !next.some((x) => x.path === f.path)) additions.push(f)
+        if (f && !next.some((x) => x.path === f.path)) additions.push({ ...f })
       }
       next = [...next, ...additions]
     }

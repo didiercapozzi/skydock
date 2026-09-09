@@ -65,12 +65,20 @@ const usePreview = (
     if (!preview) return
     const file = preview.files[preview.index]
     if (!file) return
-    const next = jumps.map((j) => ({
-      ...j,
-      files: j.files.map((f) =>
-        f.path === file.path ? { ...f, cropStart: range.cropStart, cropEnd: range.cropEnd } : f
-      )
-    }))
+    const targetId = preview.groupId
+    if (targetId === 'unassigned') return
+    const next = jumps.map((j) =>
+      j.id !== targetId
+        ? j
+        : {
+            ...j,
+            files: j.files.map((f) =>
+              f.path === file.path
+                ? { ...f, cropStart: range.cropStart, cropEnd: range.cropEnd }
+                : f
+            )
+          }
+    )
     onJumpsChange(next as never)
     saveJumps(next)
     setVideoStateRaw((prev) => ({ ...prev, crop: range }))
