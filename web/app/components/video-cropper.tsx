@@ -141,6 +141,11 @@ const VideoCropper = ({
   const handleStartHere = () => onCropChange({ cropStart: currentTime, cropEnd })
   const handleEndHere = () => onCropChange({ cropStart, cropEnd: currentTime })
   const handleApply = () => onApply({ cropStart, cropEnd })
+  const hasCrop = cropStart !== null || cropEnd !== null
+  const handleResetCrop = () => {
+    onCropChange({ cropStart: null, cropEnd: null })
+    onApply({ cropStart: null, cropEnd: null })
+  }
 
   const playheadPct = positionFromTime(currentTime)
   const startPct = cropStart === null ? null : positionFromTime(cropStart)
@@ -255,6 +260,15 @@ const VideoCropper = ({
             className='px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors'>
             Apply
           </button>
+          {hasCrop && (
+            <button
+              type='button'
+              data-action='reset-crop'
+              onClick={handleResetCrop}
+              className='px-3 py-1.5 text-sm bg-gray-100 rounded hover:bg-gray-200 transition-colors'>
+              Reset crop
+            </button>
+          )}
         </div>
       )}
     </div>
