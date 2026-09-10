@@ -118,6 +118,7 @@ output/
 - merge-jumps combines two jumps server-side with a date anchor for the merged files.
 - process-jump runs `executeMedia` for one jump/group (files required, passenger optional — label `yverdon` used if no passenger), marks it processed and clears its publish state.
 - upload-jump uploads one processed jump to network storage using Synology DSM API (requires NAS session and chosen upload folder, see §12.3). Binary comparison via SHA-256 hash skips files already present. Upload streams with byte-accurate progress. Per-file progress tracked. Failed uploads retry from beginning. Share link reused if already exists; otherwise created via FileStation Sharing API.
+- shift-jump-time shifts all file timestamps in a jump so the minimum-time file lands on the chosen anchor epoch. Other files keep their existing time diffs. Used by the per-jump time picker.
 
 ## 7. Simulation & Testing
 
@@ -162,7 +163,7 @@ output/
 - **Thumb:** Single frame JPEG extraction via ffmpeg for crop bar thumbnails and `FileGrid` `160px` squares (`/api/thumb?seek=0.5&width=160`, `loading=lazy`).
 - **Stream:** Live-transcodes to fMP4 for thumbnails and crop bar fallback.
 - **HLS:** Live-transcodes to HLS segments for main playback.
-- **Manifest:** Full CRUD for jumps, files, calibration, execution. Intents: save-jumps, merge-jumps (with date anchor), process-jump (files required, passenger optional), upload-jump (requires processed jump, NAS session and chosen upload folder).
+- **Manifest:** Full CRUD for jumps, files, calibration, execution. Intents: save-jumps, merge-jumps (with date anchor), shift-jump-time (shifts file times to anchor), process-jump (files required, passenger optional), upload-jump (requires processed jump, NAS session and chosen upload folder).
 
 ## 9. Review UI (`/`)
 
@@ -249,6 +250,7 @@ All drag and drop operations follow these rules:
 - Jumps grouped by day, days newest-first with per-day jump counts. Each `Day` header shows `+ Create Group` — creates an empty `Group` for that day with `label` (`yverdon`/`colombier` via prompt, stored in `day` field when empty) that appears under the day and is droppable like any jump (files dragged in adapt date via `shiftFiles`). Empty `Group` is kept under its `Day` via `day` fallback.
 - Compare checkbox per card, max 2 jumps. Cards expand/collapse. Each card (`Jump`/`Group`) has Process and Upload buttons — `Process` is enabled when `files.length>0` (no passenger required; `label` `yverdon` used for fun, `firstname_lastname` for tandem, fallback `Jump N`), shows spinner while busy and `Reprocess` once done; `Upload` needs a processed jump (plus NAS connection and upload folder, see §12.3; passenger only for `Email` generation) with a `Processed` badge; the expanded card shows the share section (link, copy, mail) once published. The card title shows the passenger name once `firstname`/`lastname` set, otherwise the `label` (`yverdon`). The expanded card shows passenger names as labels (click to edit) or an `Add passenger` button; `Done` saves to the manifest, `Cancel` discards drafts.
 - Expanded card file list respects `viewMode`: `list` renders `FileRow` (`filename`, `time`, `size`, `Cropped ✂️` badge, `multiple-jump` highlight); `grid` renders `FileGrid` (`3×` `4×` `5×` squares, `aspect-square`, `160px` thumbs via `/api/thumb` for video else `/api/file` for photo, `loading=lazy`, filename overlay, `✂️` cropped badge top-right, `▶` video overlay, `ring-blue`/`ring-purple` selection). Row click when `hasSelection` selects instead of preview; `FileGrid` drill-down `setSelected+load` for `NasFolderBrowser` is separate.
+- The expanded card also shows a clickable start time (`⏰ HH:MM:SS`) derived from the minimum file mtime. Clicking opens a `<input type="time">` editor; saving shifts all file timestamps via `shift-jump-time` so the earliest file lands on the chosen time, preserving relative offsets between files.
 
 ### 9.5 Comparing & merging jumps
 

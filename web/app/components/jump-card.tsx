@@ -1,9 +1,9 @@
-import { Fragment, useState } from 'react'
 import { dayToIso, isoToDay } from '@skydock/scripts'
+import { Fragment, useState } from 'react'
+import type { UploadProgressState } from '../hooks/useUploadProgress'
 import { FileGrid } from './file-grid'
 import { FileRow } from './file-row'
 import { PhotoIcon, VideoIcon } from './icons'
-import type { UploadProgressState } from '../hooks/useUploadProgress'
 import type { ManifestFile, ManifestJump, ManifestPassenger, SelectionMap } from './types'
 import { formatTime, getJumpBounds, isVideoFile } from './utils'
 
@@ -32,6 +32,7 @@ const JumpCard = ({
   hasSelection,
   onRemoveGroup,
   onGroupDateChange,
+  onGroupTimeChange,
   uploadProgress
 }: {
   jump: ManifestJump
@@ -58,17 +59,20 @@ const JumpCard = ({
   hasSelection: boolean
   onRemoveGroup: (jumpId: string) => void
   onGroupDateChange: (jumpId: string, day: string) => void
+  onGroupTimeChange: (jumpId: string, anchorEpoch: number) => void
   uploadProgress?: UploadProgressState | null
 }) => {
   const [expanded, setExpanded] = useState(false)
   const [editingPassenger, setEditingPassenger] = useState(false)
   const [editingDate, setEditingDate] = useState(false)
+  const [editingTime, setEditingTime] = useState(false)
   const [editingLabel, setEditingLabel] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const [draftFirstname, setDraftFirstname] = useState('')
   const [draftLastname, setDraftLastname] = useState('')
   const [draftLabel, setDraftLabel] = useState('')
   const [draftDate, setDraftDate] = useState('')
+  const [draftTime, setDraftTime] = useState('')
   const bounds = getJumpBounds(jump)
   const videoCount = jump.files.filter((f) => isVideoFile(f.filename)).length
   const photoCount = jump.files.length - videoCount
@@ -145,6 +149,39 @@ const JumpCard = ({
 
   const cancelDateEditor = () => {
     setEditingDate(false)
+  }
+
+  const toTimeInputValue = (epoch: number) => {
+    const d = new Date(epoch * 1000)
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
+  }
+
+  const openTimeEditor = () => {
+    if (locked) return
+    setDraftTime(toTimeInputValue(bounds.start))
+    setEditingTime(true)
+  }
+
+  const saveTimeEditor = () => {
+    if (!draftTime) return
+    const [hours, minutes, seconds] = draftTime.split(':').map(Number)
+    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return
+    const currentDate = new Date(bounds.start * 1000)
+    const anchor = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      currentDate.getDate(),
+      hours,
+      minutes,
+      Number.isFinite(seconds) ? seconds : 0
+    )
+    const anchorEpoch = Math.floor(anchor.getTime() / 1000)
+    onGroupTimeChange(jump.id, anchorEpoch)
+    setEditingTime(false)
+  }
+
+  const cancelTimeEditor = () => {
+    setEditingTime(false)
   }
 
   const copyShareLink = async () => {
@@ -399,13 +436,49 @@ const JumpCard = ({
                   </button>
                 </div>
               </>
+            ) : editingTime ? (
+              <div
+                lang='de-CH'
+                className='contents'>
+                <input
+                  type='time'
+                  step='1'
+                  value={draftTime}
+                  onChange={(e) => setDraftTime(e.target.value)}
+                  className='px-2 py-1.5 text-sm border border-gray-300 rounded-md bg-white'
+                />
+                <div className='flex gap-2'>
+                  <button
+                    type='button'
+                    onClick={saveTimeEditor}
+                    className='px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700'>
+                    Done
+                  </button>
+                  <button
+                    type='button'
+                    onClick={cancelTimeEditor}
+                    className='px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200'>
+                    Cancel
+                  </button>
+                </div>
+              </div>
             ) : (
               <>
-                <span
-                  onClick={openDateEditor}
-                  className={`text-sm font-medium ${locked ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:text-blue-600 cursor-pointer'}`}>
-                  📅 {jump.day}
-                </span>
+                <div className='flex items-center gap-3'>
+                  <span
+                    onClick={openDateEditor}
+                    className={`text-sm font-medium ${locked ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:text-blue-600 cursor-pointer'}`}>
+                    📅 {jump.day}
+                  </span>
+                  {jump.files.length > 0 && (
+                    <span
+                      onClick={openTimeEditor}
+                      className={`text-sm font-medium ${locked ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:text-blue-600 cursor-pointer'}`}
+                      title='Click to set jump start time'>
+                      ⏰ {formatTime(bounds.start)}
+                    </span>
+                  )}
+                </div>
                 <button
                   type='button'
                   disabled={locked}

@@ -30,6 +30,7 @@ type Props = {
   hasUploadFolder: boolean
   onRemoveGroup: (jumpId: string) => void
   onGroupDateChange: (jumpId: string, day: string) => void
+  onGroupTimeChange: (jumpId: string, anchorEpoch: number) => void
   uploadProgress?: UploadProgressState | null
 }
 
@@ -61,6 +62,7 @@ const DayGroups = ({
   hasUploadFolder,
   onRemoveGroup,
   onGroupDateChange,
+  onGroupTimeChange,
   uploadProgress
 }: Props) => {
   return (
@@ -119,6 +121,7 @@ const DayGroups = ({
                   hasUploadFolder={hasUploadFolder}
                   onRemoveGroup={onRemoveGroup}
                   onGroupDateChange={onGroupDateChange}
+                  onGroupTimeChange={onGroupTimeChange}
                   uploadProgress={uploadProgress}
                 />
               </div>

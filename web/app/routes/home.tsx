@@ -288,6 +288,14 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     updateJumps(next)
   }
 
+  const handleGroupTimeChange = (jumpId: string, anchorEpoch: number) => {
+    setManifestError(null)
+    manifestFetcher.submit({
+      url: '/api/manifest',
+      actionArgs: { intent: 'shift-jump-time', jumpId, anchorEpoch }
+    })
+  }
+
   useEffect(() => {
     mainRef.current?.setAttribute('data-hydrated', 'true')
   }, [])
@@ -446,6 +454,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           hasUploadFolder={!!defaultFolder}
           onRemoveGroup={handleRemoveGroup}
           onGroupDateChange={handleGroupDateChange}
+          onGroupTimeChange={handleGroupTimeChange}
         />
         {selectedCount > 0 && (
           <StagingTray

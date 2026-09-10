@@ -20,7 +20,7 @@ import {
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 
 const actionArgs = z.object({
-  intent: z.enum(['save-jumps', 'merge-jumps', 'process-jump', 'upload-jump']),
+  intent: z.enum(['save-jumps', 'merge-jumps', 'process-jump', 'upload-jump', 'shift-jump-time']),
   jumpId: z.string().optional(),
   jumps: z.array(manifestJumpSchema).optional(),
   leftId: z.string().optional(),
@@ -54,6 +54,34 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
             shiftFiles(manifest, ids, offset)
           }
         }
+      }
+      saveManifest(manifestPath, manifest)
+      return { jumps: manifest.jumps }
+    }
+    if (data.intent === 'shift-jump-time') {
+      if (!data.jumpId) {
+        errors.addGlobalError('Shift needs a jump id.')
+        return errors.toResponse(422)
+      }
+      if (data.anchorEpoch === undefined || !Number.isFinite(data.anchorEpoch)) {
+        errors.addGlobalError('Shift needs a valid anchor time.')
+        return errors.toResponse(422)
+      }
+      const target = manifest.jumps.find((j) => j.id === data.jumpId)
+      if (!target) {
+        errors.addGlobalError('Jump not found.')
+        return errors.toResponse(422)
+      }
+      if (target.files.length === 0) {
+        errors.addGlobalError('Jump has no files.')
+        return errors.toResponse(422)
+      }
+      const min = Math.min(...target.files.map((f) => f.mtime))
+      const offset = Math.round(data.anchorEpoch) - min
+      if (offset !== 0) {
+        const ids = new Set<string>()
+        for (const f of target.files) if (f.id) ids.add(f.id)
+        shiftFiles(manifest, ids, offset)
       }
       saveManifest(manifestPath, manifest)
       return { jumps: manifest.jumps }
