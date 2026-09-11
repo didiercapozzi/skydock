@@ -31,6 +31,8 @@ type Props = {
   onGroupDateChange: (jumpId: string, day: string) => void
   onGroupTimeChange: (jumpId: string, anchorEpoch: number) => void
   uploadProgress?: UploadProgressState | null
+  onImportFile?: (jumpId: string, files: File[]) => void
+  importingId?: string | null
 }
 
 const DayGroups = ({
@@ -61,7 +63,9 @@ const DayGroups = ({
   onRemoveGroup,
   onGroupDateChange,
   onGroupTimeChange,
-  uploadProgress
+  uploadProgress,
+  onImportFile,
+  importingId
 }: Props) => {
   return (
     <div className='space-y-8'>
@@ -120,6 +124,8 @@ const DayGroups = ({
                   onGroupDateChange={onGroupDateChange}
                   onGroupTimeChange={onGroupTimeChange}
                   uploadProgress={uploadProgress}
+                  onImportFile={onImportFile}
+                  importing={importingId === jump.id}
                 />
               </div>
             ))}

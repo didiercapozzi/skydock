@@ -1,5 +1,5 @@
 import { dayToIso, isoToDay } from '@skydock/scripts'
-import { Fragment, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import type { UploadProgressState } from '../hooks/useUploadProgress'
 import { FileGrid } from './file-grid'
 import { FileRow } from './file-row'
@@ -32,7 +32,9 @@ const JumpCard = ({
   onRemoveGroup,
   onGroupDateChange,
   onGroupTimeChange,
-  uploadProgress
+  uploadProgress,
+  onImportFile,
+  importing
 }: {
   jump: ManifestJump
   selection: SelectionMap
@@ -59,6 +61,8 @@ const JumpCard = ({
   onGroupDateChange: (jumpId: string, day: string) => void
   onGroupTimeChange: (jumpId: string, anchorEpoch: number) => void
   uploadProgress?: UploadProgressState | null
+  onImportFile?: (jumpId: string, files: File[]) => void
+  importing?: boolean
 }) => {
   const [expanded, setExpanded] = useState(false)
   const [editingDate, setEditingDate] = useState(false)
@@ -68,6 +72,7 @@ const JumpCard = ({
   const [draftLabel, setDraftLabel] = useState('')
   const [draftDate, setDraftDate] = useState('')
   const [draftTime, setDraftTime] = useState('')
+  const cardRef = useRef<HTMLDivElement>(null)
   const bounds = getJumpBounds(jump)
   const videoCount = jump.files.filter((f) => isVideoFile(f.filename)).length
   const photoCount = jump.files.length - videoCount
@@ -86,6 +91,62 @@ const JumpCard = ({
           : undefined
   const locked = uploading || (!!uploadProgress && uploadProgress.jumpId === jump.id)
   const isUploadingJump = locked
+  const canImport = !!onImportFile
+
+  const onImportFileRef = useRef(onImportFile)
+  const canImportRef = useRef(canImport)
+  const dragCounterRef = useRef(0)
+  const [osDragOver, setOsDragOver] = useState(false)
+
+  useEffect(() => {
+    onImportFileRef.current = onImportFile
+    canImportRef.current = canImport
+  })
+
+  useEffect(() => {
+    const card = cardRef.current
+    if (!card) return
+    const onEnter = (e: DragEvent) => {
+      if (!e.dataTransfer?.types.includes('Files')) return
+      if (!canImportRef.current) return
+      dragCounterRef.current++
+      if (dragCounterRef.current === 1) setOsDragOver(true)
+    }
+    const onLeave = (e: DragEvent) => {
+      if (!e.dataTransfer?.types.includes('Files')) return
+      dragCounterRef.current--
+      if (dragCounterRef.current <= 0) {
+        dragCounterRef.current = 0
+        setOsDragOver(false)
+      }
+    }
+    const onOver = (e: DragEvent) => {
+      if (!e.dataTransfer?.types.includes('Files')) return
+      if (!canImportRef.current) return
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'copy'
+    }
+    const onDropped = (e: DragEvent) => {
+      if (!e.dataTransfer?.types.includes('Files')) return
+      if (!canImportRef.current) return
+      e.preventDefault()
+      e.stopPropagation()
+      dragCounterRef.current = 0
+      setOsDragOver(false)
+      const files = Array.from(e.dataTransfer.files)
+      if (files.length > 0) onImportFileRef.current?.(jump.id, files)
+    }
+    card.addEventListener('dragenter', onEnter)
+    card.addEventListener('dragleave', onLeave)
+    card.addEventListener('dragover', onOver)
+    card.addEventListener('drop', onDropped)
+    return () => {
+      card.removeEventListener('dragenter', onEnter)
+      card.removeEventListener('dragleave', onLeave)
+      card.removeEventListener('dragover', onOver)
+      card.removeEventListener('drop', onDropped)
+    }
+  }, [jump.id])
 
   const openLabelEditor = () => {
     if (locked) return
@@ -167,6 +228,7 @@ const JumpCard = ({
 
   return (
     <div
+      ref={cardRef}
       data-jump-card='true'
       onDragOver={(e) => {
         if (locked) return
@@ -182,7 +244,16 @@ const JumpCard = ({
         if (locked) return
         onDragLeave?.(jump.id)
       }}
-      className={`border border-gray-200 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden ${locked ? 'opacity-80 pointer-events-none' : ''}`}>
+      className={`relative border rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden ${
+        osDragOver ? 'border-blue-400 ring-2 ring-blue-200' : 'border-gray-200'
+      } ${locked ? 'opacity-80 pointer-events-none' : ''}`}>
+      {osDragOver && (
+        <div className='absolute inset-0 z-20 flex items-center justify-center bg-blue-50/80 rounded-xl pointer-events-none'>
+          <span className='text-sm font-medium text-blue-700'>
+            {jump.processed === true ? 'Drop to import' : 'Drop to add to jump'}
+          </span>
+        </div>
+      )}
       <div
         data-jump-card-toggle='true'
         onClick={() => setExpanded(!expanded)}
@@ -320,6 +391,29 @@ const JumpCard = ({
             <span className='px-2 py-0.5 rounded-full bg-gray-100 text-gray-600'>
               {jump.files.length} files
             </span>
+            {importing && (
+              <span className='flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium'>
+                <svg
+                  className='animate-spin w-3 h-3'
+                  fill='none'
+                  viewBox='0 0 24 24'>
+                  <circle
+                    className='opacity-25'
+                    cx='12'
+                    cy='12'
+                    r='10'
+                    stroke='currentColor'
+                    strokeWidth='4'
+                  />
+                  <path
+                    className='opacity-75'
+                    fill='currentColor'
+                    d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
+                  />
+                </svg>
+                Importing…
+              </span>
+            )}
           </div>
         </div>
       </div>

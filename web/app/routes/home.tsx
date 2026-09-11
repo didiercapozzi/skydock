@@ -158,6 +158,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   )
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const [importingId, setImportingId] = useState<string | null>(null)
   const [manifestError, setManifestError] = useState<string | null>(null)
   const uploadProgress = useUploadProgress(uploadingId)
 
@@ -236,6 +237,34 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     }
     setUploadingId(jumpId)
     manifestFetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'upload-jump', jumpId } })
+  }
+  const handleImportFile = async (jumpId: string, files: File[]) => {
+    setImportingId(jumpId)
+    try {
+      const jump = jumps.find((j) => j.id === jumpId)
+      const day = jump?.day
+      for (const file of files) {
+        const params = new URLSearchParams({ jumpId, filename: file.name })
+        if (day) params.set('day', day)
+        const res = await fetch(`/api/import-file?${params}`, {
+          method: 'POST',
+          body: file.stream(),
+          headers: { 'Content-Type': 'application/octet-stream' }
+        })
+        const data = await res.json()
+        if (data.error) {
+          setManifestError(data.error)
+          return
+        }
+        if (data.manifest) {
+          setJumps(data.manifest.jumps)
+        }
+      }
+    } catch (err) {
+      setManifestError(err instanceof Error ? err.message : 'Import failed')
+    } finally {
+      setImportingId(null)
+    }
   }
   const scanning = scanFetcher.state !== 'idle'
   const handleScan = () => {
@@ -449,6 +478,8 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           onRemoveGroup={handleRemoveGroup}
           onGroupDateChange={handleGroupDateChange}
           onGroupTimeChange={handleGroupTimeChange}
+          onImportFile={handleImportFile}
+          importingId={importingId}
         />
         {selectedCount > 0 && (
           <StagingTray
