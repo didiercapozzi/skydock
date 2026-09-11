@@ -1,5 +1,5 @@
 import type { UploadProgressState } from '../../hooks/useUploadProgress'
-import type { ManifestFile, ManifestJump, ManifestPassenger, SelectionMap } from '../types'
+import type { ManifestFile, ManifestJump, SelectionMap } from '../types'
 import { JumpCard } from '../jump-card'
 
 type Props = {
@@ -20,7 +20,6 @@ type Props = {
   onDrop: (e: React.DragEvent, targetJumpId: string) => void
   onDragOver: (e: React.DragEvent, targetJumpId: string) => void
   onDragLeave: (jumpId: string) => void
-  onPassengerChange: (jumpId: string, passenger: ManifestPassenger | undefined) => void
   onLabelChange: (jumpId: string, label: string) => void
   onProcess: (jumpId: string) => void
   processingId: string | null
@@ -52,7 +51,6 @@ const DayGroups = ({
   onDrop,
   onDragOver,
   onDragLeave,
-  onPassengerChange,
   onLabelChange,
   onProcess,
   processingId,
@@ -111,7 +109,6 @@ const DayGroups = ({
                   onDrop={onDrop}
                   onDragOver={onDragOver}
                   onDragLeave={onDragLeave}
-                  onPassengerChange={onPassengerChange}
                   onLabelChange={onLabelChange}
                   onProcess={onProcess}
                   processing={processingId === jump.id}

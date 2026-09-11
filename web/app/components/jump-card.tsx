@@ -4,7 +4,7 @@ import type { UploadProgressState } from '../hooks/useUploadProgress'
 import { FileGrid } from './file-grid'
 import { FileRow } from './file-row'
 import { PhotoIcon, VideoIcon } from './icons'
-import type { ManifestFile, ManifestJump, ManifestPassenger, SelectionMap } from './types'
+import type { ManifestFile, ManifestJump, SelectionMap } from './types'
 import { formatTime, getJumpBounds, isVideoFile } from './utils'
 
 const JumpCard = ({
@@ -20,7 +20,6 @@ const JumpCard = ({
   onDrop,
   onDragOver,
   onDragLeave,
-  onPassengerChange,
   onLabelChange,
   onProcess,
   processing,
@@ -47,7 +46,6 @@ const JumpCard = ({
   onDrop?: (e: React.DragEvent, targetJumpId: string) => void
   onDragOver?: (e: React.DragEvent, targetJumpId: string) => void
   onDragLeave?: (jumpId: string) => void
-  onPassengerChange: (jumpId: string, passenger: ManifestPassenger | undefined) => void
   onLabelChange: (jumpId: string, label: string) => void
   onProcess: (jumpId: string) => void
   processing: boolean
@@ -63,13 +61,10 @@ const JumpCard = ({
   uploadProgress?: UploadProgressState | null
 }) => {
   const [expanded, setExpanded] = useState(false)
-  const [editingPassenger, setEditingPassenger] = useState(false)
   const [editingDate, setEditingDate] = useState(false)
   const [editingTime, setEditingTime] = useState(false)
   const [editingLabel, setEditingLabel] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
-  const [draftFirstname, setDraftFirstname] = useState('')
-  const [draftLastname, setDraftLastname] = useState('')
   const [draftLabel, setDraftLabel] = useState('')
   const [draftDate, setDraftDate] = useState('')
   const [draftTime, setDraftTime] = useState('')
@@ -91,30 +86,6 @@ const JumpCard = ({
           : undefined
   const locked = uploading || (!!uploadProgress && uploadProgress.jumpId === jump.id)
   const isUploadingJump = locked
-  const savedFirstname = jump.passenger?.firstname ?? ''
-  const savedLastname = jump.passenger?.lastname ?? ''
-  const hasPassengerName = savedFirstname !== '' && savedLastname !== ''
-  const passengerTitle = hasPassengerName ? `${savedFirstname} ${savedLastname}` : jump.label
-
-  const openPassengerEditor = () => {
-    if (locked) return
-    setDraftFirstname(savedFirstname)
-    setDraftLastname(savedLastname)
-    setEditingPassenger(true)
-  }
-
-  const savePassengerEditor = () => {
-    const trimmed = {
-      firstname: draftFirstname.trim(),
-      lastname: draftLastname.trim()
-    }
-    onPassengerChange(jump.id, trimmed.firstname || trimmed.lastname ? trimmed : undefined)
-    setEditingPassenger(false)
-  }
-
-  const cancelPassengerEditor = () => {
-    setEditingPassenger(false)
-  }
 
   const openLabelEditor = () => {
     if (locked) return
@@ -261,7 +232,7 @@ const JumpCard = ({
                 }}
                 title='Click to rename group'
                 className='font-semibold text-sm text-gray-800 cursor-pointer hover:text-blue-600'>
-                {passengerTitle}
+                {jump.label}
               </h3>
             )}
             <div className='flex items-center gap-1.5'>
@@ -354,64 +325,6 @@ const JumpCard = ({
       </div>
       {expanded && (
         <div>
-          {editingPassenger ? (
-            <div
-              data-passenger-editor='true'
-              className='px-4 py-3 border-b border-gray-100 bg-gray-50/60'>
-              <p className='text-xs font-medium text-gray-500 mb-2'>Tandem passenger</p>
-              <div className='grid grid-cols-2 gap-2'>
-                <input
-                  type='text'
-                  aria-label='Passenger firstname'
-                  placeholder='Firstname'
-                  value={draftFirstname}
-                  onChange={(e) => setDraftFirstname(e.target.value)}
-                  className='px-2 py-1.5 text-sm border border-gray-300 rounded-md bg-white'
-                />
-                <input
-                  type='text'
-                  aria-label='Passenger lastname'
-                  placeholder='Lastname'
-                  value={draftLastname}
-                  onChange={(e) => setDraftLastname(e.target.value)}
-                  className='px-2 py-1.5 text-sm border border-gray-300 rounded-md bg-white'
-                />
-              </div>
-              <div className='flex gap-2 mt-2'>
-                <button
-                  type='button'
-                  onClick={savePassengerEditor}
-                  className='px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700'>
-                  Done
-                </button>
-                <button
-                  type='button'
-                  onClick={cancelPassengerEditor}
-                  className='px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200'>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : hasPassengerName ? (
-            <div
-              data-passenger-display='true'
-              onClick={openPassengerEditor}
-              className={`px-4 py-3 border-b border-gray-100 bg-gray-50/60 ${locked ? 'opacity-50 pointer-events-none' : 'cursor-pointer'}`}>
-              <p className='text-sm font-medium text-gray-800'>
-                {savedFirstname} {savedLastname}
-              </p>
-            </div>
-          ) : (
-            <div className='px-4 py-3 border-b border-gray-100 bg-gray-50/60'>
-              <button
-                type='button'
-                disabled={locked}
-                onClick={openPassengerEditor}
-                className='px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 disabled:opacity-50 disabled:cursor-not-allowed'>
-                Add passenger
-              </button>
-            </div>
-          )}
           <div className='px-4 py-3 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between'>
             {editingDate ? (
               <>

@@ -21,8 +21,6 @@ const useJumps = (initialJumps: ManifestJump[]) => {
       if (!prev?.processed) return j
       if (prev.label !== j.label) return { ...j, processed: false, publish: undefined }
       if (prev.day !== j.day) return { ...j, processed: false, publish: undefined }
-      if (JSON.stringify(prev.passenger) !== JSON.stringify(j.passenger))
-        return { ...j, processed: false, publish: undefined }
       if (prev.files.length !== j.files.length)
         return { ...j, processed: false, publish: undefined }
       for (let i = 0; i < j.files.length; i++) {

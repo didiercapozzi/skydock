@@ -27,7 +27,7 @@ import { useJumps } from '../hooks/useJumps'
 import { usePreview } from '../hooks/usePreview'
 import { useSelection } from '../hooks/useSelection'
 import { useUploadProgress } from '../hooks/useUploadProgress'
-import type { ManifestJump, ManifestPassenger } from '../components/types'
+import type { ManifestJump } from '../components/types'
 import type { Route } from './+types/home'
 
 const nasSuccessSchema = z
@@ -243,11 +243,6 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   }
   const mainRef = useRef<HTMLElement | null>(null)
 
-  const handlePassengerChange = (jumpId: string, passenger: ManifestPassenger | undefined) => {
-    const next = jumps.map((j) => (j.id === jumpId ? { ...j, passenger } : j))
-    updateJumps(next)
-  }
-
   const handleLabelChange = (jumpId: string, label: string) => {
     const next = jumps.map((j) => (j.id === jumpId ? { ...j, label } : j))
     updateJumps(next)
@@ -443,7 +438,6 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           onDrop={(e, id) => handleDrop(e, id, jumps, updateJumps)}
           onDragOver={handleDragOver}
           onDragLeave={(_jumpId: string) => handleDragLeave()}
-          onPassengerChange={handlePassengerChange}
           onLabelChange={handleLabelChange}
           onProcess={handleProcess}
           processingId={processingId}
