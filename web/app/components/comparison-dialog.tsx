@@ -62,19 +62,29 @@ const ComparisonDialog = ({
   const leftGroupIndex = groups.findIndex((j) => j.id === currentLeftId)
   const rightGroupIndex = groups.findIndex((j) => j.id === currentRightId)
 
-  const navigateLeft = (direction: -1 | 1) => {
-    const startIdx = leftGroupIndex
+  const navigate = (
+    direction: -1 | 1,
+    currentId: string,
+    currentIdx: number,
+    otherSideId: string,
+    setSideId: (id: string) => void,
+    setFileIndex: (i: number) => void,
+    setDuration: (d: number) => void,
+    setCurrentTime: (t: number) => void,
+    setZoom: (z: number) => void
+  ) => {
+    const startIdx = currentIdx
     let newIdx = startIdx
     do {
       newIdx = newIdx + direction
       if (newIdx < 0) newIdx = groups.length - 1
       if (newIdx >= groups.length) newIdx = 0
-      if (groups[newIdx].id !== currentRightId) {
-        setCurrentLeftId(groups[newIdx].id)
-        setLeftFileIndex(0)
-        setLeftDuration(0)
-        setLeftCurrentTime(0)
-        setLeftZoom(1)
+      if (groups[newIdx].id !== otherSideId) {
+        setSideId(groups[newIdx].id)
+        setFileIndex(0)
+        setDuration(0)
+        setCurrentTime(0)
+        setZoom(1)
         return
       }
     } while (newIdx !== startIdx)
@@ -104,24 +114,6 @@ const ComparisonDialog = ({
     if (anchor === null) return
     setShowDatePopup(false)
     onMerge(currentLeftId, currentRightId, anchor)
-  }
-
-  const navigateRight = (direction: -1 | 1) => {
-    const startIdx = rightGroupIndex
-    let newIdx = startIdx
-    do {
-      newIdx = newIdx + direction
-      if (newIdx < 0) newIdx = groups.length - 1
-      if (newIdx >= groups.length) newIdx = 0
-      if (groups[newIdx].id !== currentLeftId) {
-        setCurrentRightId(groups[newIdx].id)
-        setRightFileIndex(0)
-        setRightDuration(0)
-        setRightCurrentTime(0)
-        setRightZoom(1)
-        return
-      }
-    } while (newIdx !== startIdx)
   }
 
   const renderPreview = (
@@ -216,8 +208,32 @@ const ComparisonDialog = ({
             onVideoRef={(ref) => {
               leftVideoRefRef.current = ref
             }}
-            onGroupPrev={() => navigateLeft(-1)}
-            onGroupNext={() => navigateLeft(1)}
+            onGroupPrev={() =>
+              navigate(
+                -1,
+                currentLeftId,
+                leftGroupIndex,
+                currentRightId,
+                setCurrentLeftId,
+                setLeftFileIndex,
+                setLeftDuration,
+                setLeftCurrentTime,
+                setLeftZoom
+              )
+            }
+            onGroupNext={() =>
+              navigate(
+                1,
+                currentLeftId,
+                leftGroupIndex,
+                currentRightId,
+                setCurrentLeftId,
+                setLeftFileIndex,
+                setLeftDuration,
+                setLeftCurrentTime,
+                setLeftZoom
+              )
+            }
             side='left'
             renderPreview={renderPreview}
           />
@@ -241,8 +257,32 @@ const ComparisonDialog = ({
             onVideoRef={(ref) => {
               rightVideoRefRef.current = ref
             }}
-            onGroupPrev={() => navigateRight(-1)}
-            onGroupNext={() => navigateRight(1)}
+            onGroupPrev={() =>
+              navigate(
+                -1,
+                currentRightId,
+                rightGroupIndex,
+                currentLeftId,
+                setCurrentRightId,
+                setRightFileIndex,
+                setRightDuration,
+                setRightCurrentTime,
+                setRightZoom
+              )
+            }
+            onGroupNext={() =>
+              navigate(
+                1,
+                currentRightId,
+                rightGroupIndex,
+                currentLeftId,
+                setCurrentRightId,
+                setRightFileIndex,
+                setRightDuration,
+                setRightCurrentTime,
+                setRightZoom
+              )
+            }
             side='right'
             renderPreview={renderPreview}
           />

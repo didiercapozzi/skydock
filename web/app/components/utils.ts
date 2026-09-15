@@ -128,15 +128,18 @@ const groupGroupsByDestination = (
   )
 }
 
+const getRelativePath = (filePath: string, outputDir: string) =>
+  filePath.startsWith(outputDir) ? filePath.slice(outputDir.length) : filePath
+
 const getFileUrl = (filePath: string) => {
   const outputDir = getOutputDir()
-  const relative = filePath.startsWith(outputDir) ? filePath.slice(outputDir.length) : filePath
+  const relative = getRelativePath(filePath, outputDir)
   return `/api/file${relative}`
 }
 
 const getThumbUrl = (filePath: string, seekSeconds: number, width = 80) => {
   const outputDir = getOutputDir()
-  const relative = filePath.startsWith(outputDir) ? filePath.slice(outputDir.length) : filePath
+  const relative = getRelativePath(filePath, outputDir)
   return `/api/thumb${relative}?seek=${seekSeconds.toFixed(1)}&width=${width}`
 }
 
@@ -154,6 +157,7 @@ export {
   formatTime,
   toTimeInputValue,
   toDateInputValue,
+  getRelativePath,
   getFileUrl,
   getThumbUrl,
   getDropIndex,
