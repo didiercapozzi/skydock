@@ -1,15 +1,11 @@
+import { destinationCreationSchema } from '@skydock/scripts'
+import { useState } from 'react'
 import type { SubmitFunction } from 'react-router'
-import { z } from 'zod'
 import { Form, FormField, GlobalErrors, useForm } from '../../../packages/ui/forms'
-
-const destinationCreationSchema = z.object({
-  name: z.string().trim().min(1, 'Name is required').max(64, 'Name must be at most 64 characters'),
-  type: z.enum(['location', 'passenger']),
-  path: z.string().trim().optional()
-})
+import { NasFolderBrowser } from './nas-folder-browser'
 
 type DestinationCreationDialogProps = {
-  onCreate: (name: string, type: 'location' | 'passenger', path?: string) => void
+  onCreate: (name: string, path?: string) => void
   onCancel: () => void
   error?: string
 }
@@ -19,17 +15,18 @@ const DestinationCreationDialog = ({
   onCancel,
   error
 }: DestinationCreationDialogProps) => {
+  const [showBrowser, setShowBrowser] = useState(false)
+  const [selectedPath, setSelectedPath] = useState<string | null>(null)
+
   const submit: SubmitFunction = async (target) => {
     const parsed = destinationCreationSchema.safeParse(target)
     if (!parsed.success) return
-    const path =
-      parsed.data.path && parsed.data.path.trim() !== '' ? parsed.data.path.trim() : undefined
-    onCreate(parsed.data.name.trim(), parsed.data.type, path)
+    onCreate(parsed.data.name.trim(), selectedPath ?? undefined)
   }
 
   const form = useForm({
     schema: destinationCreationSchema,
-    defaultValues: { name: '', type: 'location' as const, path: '' },
+    defaultValues: { name: '' },
     submit
   })
 
@@ -57,30 +54,34 @@ const DestinationCreationDialog = ({
               />
             )}
           </FormField>
-          <FormField
-            field={form.fields.type}
-            label='Type'>
-            {(control) => (
-              <select
-                {...control}
-                className='w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50'>
-                <option value='location'>Location</option>
-                <option value='passenger'>Passenger</option>
-              </select>
+          <div>
+            <label className='block text-sm font-medium text-gray-700 mb-1'>
+              NAS path (optional)
+            </label>
+            {selectedPath ? (
+              <div className='flex items-center gap-2'>
+                <span className='flex-1 px-3 py-2 text-sm font-mono bg-gray-50 border border-gray-200 rounded-lg truncate'>
+                  {selectedPath}
+                </span>
+                <button
+                  type='button'
+                  onClick={() => setSelectedPath(null)}
+                  className='px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200'>
+                  Clear
+                </button>
+              </div>
+            ) : (
+              <button
+                type='button'
+                onClick={() => setShowBrowser(true)}
+                className='w-full px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 text-left'>
+                Browse NAS folders...
+              </button>
             )}
-          </FormField>
-          <FormField
-            field={form.fields.path}
-            label='NAS path (optional — leave empty for default)'>
-            {(control) => (
-              <input
-                {...control}
-                type='text'
-                placeholder='/volume1/.../skydive/yverdon'
-                className='w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50'
-              />
-            )}
-          </FormField>
+            <p className='mt-1 text-xs text-gray-400'>
+              Leave empty to use the default upload folder.
+            </p>
+          </div>
           <div className='flex justify-end gap-3 pt-2'>
             <button
               type='button'
@@ -98,8 +99,16 @@ const DestinationCreationDialog = ({
           </div>
         </Form>
       </div>
+      <NasFolderBrowser
+        open={showBrowser}
+        onSelect={(path) => {
+          setSelectedPath(path)
+          setShowBrowser(false)
+        }}
+        onClose={() => setShowBrowser(false)}
+      />
     </div>
   )
 }
 
-export { DestinationCreationDialog, destinationCreationSchema }
+export { DestinationCreationDialog }
