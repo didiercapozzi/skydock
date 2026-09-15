@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import type { ManifestFile, ManifestJump, SelectionMap } from '../components/types'
+import type { ManifestFile, ManifestGroup, SelectionMap } from '../components/types'
 import { updateSelection } from './selection.logic'
 
 type UseSelectionReturn = {
@@ -9,7 +9,7 @@ type UseSelectionReturn = {
   clearSelection: () => void
 }
 
-const useSelection = (jumps: ManifestJump[], unassignedFiles: ManifestFile[]) => {
+const useSelection = (groups: ManifestGroup[], unassignedFiles: ManifestFile[]) => {
   const [selection, setSelectionState] = useState<SelectionMap>({})
   const lastClickedRef = useRef<string | null>(null)
 
@@ -24,7 +24,7 @@ const useSelection = (jumps: ManifestJump[], unassignedFiles: ManifestFile[]) =>
 
     const allPaths = [
       ...unassignedFiles.map((f) => f.path),
-      ...jumps.flatMap((j) => j.files.map((f) => f.path))
+      ...groups.flatMap((g) => g.files.map((f) => f.path))
     ]
 
     setSelectionState((prev) =>
@@ -36,7 +36,7 @@ const useSelection = (jumps: ManifestJump[], unassignedFiles: ManifestFile[]) =>
         prevLast,
         allPaths,
         unassignedFiles,
-        jumps
+        groups
       })
     )
   }

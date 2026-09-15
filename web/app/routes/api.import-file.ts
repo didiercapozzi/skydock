@@ -3,7 +3,7 @@ import * as path from 'node:path'
 import * as stream from 'node:stream'
 import type { Route } from './+types/api.import-file'
 import {
-  buildJumpBaseName,
+  buildGroupBaseName,
   computeFileId,
   getExtension,
   getOutputDir,
@@ -32,12 +32,12 @@ const formatStamp = (ms: number) => {
 
 const action = async ({ request }: Route.ActionArgs) => {
   const url = new URL(request.url)
-  const jumpId = url.searchParams.get('jumpId')
+  const groupId = url.searchParams.get('groupId')
   const filename = url.searchParams.get('filename')
   const day = url.searchParams.get('day')
 
-  if (!jumpId || !filename) {
-    return Response.json({ error: 'Missing jumpId or filename' }, { status: 400 })
+  if (!groupId || !filename) {
+    return Response.json({ error: 'Missing groupId or filename' }, { status: 400 })
   }
 
   const ext = getExtension(filename)
@@ -55,35 +55,35 @@ const action = async ({ request }: Route.ActionArgs) => {
     return Response.json({ error: 'No manifest found. Run a scan first.' }, { status: 422 })
   }
 
-  const jump = manifest.jumps.find((j) => j.id === jumpId)
-  if (!jump) {
-    return Response.json({ error: 'Jump not found.' }, { status: 404 })
+  const group = manifest.groups.find((g) => g.id === groupId)
+  if (!group) {
+    return Response.json({ error: 'Group not found.' }, { status: 404 })
   }
 
   if (!request.body) {
     return Response.json({ error: 'No file data' }, { status: 400 })
   }
 
-  if (jump.processed === true) {
-    if (jump.files.length === 0) {
-      return Response.json({ error: 'Jump has no files.' }, { status: 422 })
+  if (group.processed === true) {
+    if (group.files.length === 0) {
+      return Response.json({ error: 'Group has no files.' }, { status: 422 })
     }
 
-    const dayEpoch = parseDayEpoch(jump.day) ?? Math.min(...jump.files.map((f) => f.mtime))
-    const baseName = buildJumpBaseName(jump.passenger, jump.label, dayEpoch)
+    const dayEpoch = parseDayEpoch(group.day) ?? Math.min(...group.files.map((f) => f.mtime))
+    const baseName = buildGroupBaseName(group.passenger, group.label, dayEpoch)
 
     const processedDir = path.join(outputDir, 'processed')
-    const jumpDirs = fs.readdirSync(processedDir).filter((d) => d.startsWith(baseName))
-    if (jumpDirs.length === 0) {
+    const groupDirs = fs.readdirSync(processedDir).filter((d) => d.startsWith(baseName))
+    if (groupDirs.length === 0) {
       return Response.json(
-        { error: 'Processed folder not found. Process the jump again.' },
+        { error: 'Processed folder not found. Process the group again.' },
         { status: 422 }
       )
     }
-    const jumpDir = path.join(processedDir, jumpDirs[0])
+    const groupDir = path.join(processedDir, groupDirs[0])
 
     const type = isVideoFile(filename) ? 'videos' : 'photos'
-    const typeDir = path.join(jumpDir, type)
+    const typeDir = path.join(groupDir, type)
     fs.mkdirSync(typeDir, { recursive: true })
 
     const now = Date.now()
@@ -122,7 +122,7 @@ const action = async ({ request }: Route.ActionArgs) => {
     return { ok: true, filename: targetName, path: dest, size: stat.size, type }
   }
 
-  const targetDay = day || jump.day
+  const targetDay = day || group.day
   const targetDate = targetDay.replace(/\./g, '-')
   const originalDir = path.join(outputDir, 'original_files', targetDate)
   fs.mkdirSync(originalDir, { recursive: true })
@@ -174,9 +174,9 @@ const action = async ({ request }: Route.ActionArgs) => {
     })
   }
 
-  const fileRef = jump.files.find((f) => f.id === fileId)
+  const fileRef = group.files.find((f) => f.id === fileId)
   if (!fileRef) {
-    jump.files.push({
+    group.files.push({
       path: relPath,
       size: stat.size,
       mtime: Math.floor(stat.mtimeMs / 1000),

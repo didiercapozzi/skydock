@@ -1,4 +1,4 @@
-import type { ManifestJump, SelectionMap } from '../components/types'
+import type { ManifestGroup, SelectionMap } from '../components/types'
 import type { ManifestFile } from '../components/types'
 
 type UpdateArgs = {
@@ -9,11 +9,11 @@ type UpdateArgs = {
   prevLast: string | null
   allPaths: string[]
   unassignedFiles: ManifestFile[]
-  jumps: ManifestJump[]
+  groups: ManifestGroup[]
 }
 
 const updateSelection = (prev: SelectionMap, args: UpdateArgs) => {
-  const { groupId, filePath, ctrlKey, shiftKey, prevLast, allPaths, unassignedFiles, jumps } = args
+  const { groupId, filePath, ctrlKey, shiftKey, prevLast, allPaths, unassignedFiles, groups } = args
   const next: SelectionMap = {}
   for (const [k, v] of Object.entries(prev)) next[k] = { ...v }
 
@@ -26,7 +26,7 @@ const updateSelection = (prev: SelectionMap, args: UpdateArgs) => {
         const p = allPaths[i]
         const gid = unassignedFiles.some((f) => f.path === p)
           ? 'unassigned'
-          : (jumps.find((j) => j.files.some((f) => f.path === p))?.id ?? groupId)
+          : (groups.find((g) => g.files.some((f) => f.path === p))?.id ?? groupId)
         if (!next[gid]) next[gid] = {}
         else next[gid] = { ...next[gid] }
         next[gid][p] = true

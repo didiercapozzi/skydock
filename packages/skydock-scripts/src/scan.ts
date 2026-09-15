@@ -12,8 +12,8 @@ import { buildExifMap } from './lib/exif'
 import { scheduleIdle, writeStatus } from './status'
 import { loadManifest, saveManifest } from './manifest'
 import { computeFileId } from './fileId'
-import { reclusterJumps } from './clustering'
-import type { Manifest, ManifestFile, ManifestJump } from './types'
+import { reclusterGroups } from './clustering'
+import type { Manifest, ManifestFile, ManifestGroup } from './types'
 
 type ScanResult = {
   added: number
@@ -21,7 +21,7 @@ type ScanResult = {
   moved: number
   unchanged: boolean
   fileCount: number
-  jumpCount: number
+  groupCount: number
 }
 
 const parseDateTime = (raw: string) => {
@@ -101,10 +101,10 @@ const createFreshManifest = (files: ManifestFile[], createdAt: string) => {
     createdAt,
     theory: [],
     files,
-    jumps: []
+    groups: []
   }
 
-  reclusterJumps(manifest)
+  reclusterGroups(manifest)
   return manifest
 }
 
@@ -162,23 +162,23 @@ const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => 
   for (const f of updatedFiles) if (f.id) keptIds.add(f.id)
   const keptPaths = new Set(updatedFiles.map((f) => f.path))
 
-  const keptJumps: ManifestJump[] = []
-  for (const jump of existing.jumps) {
-    const filteredFiles = jump.files.filter((f) =>
+  const keptGroups: ManifestGroup[] = []
+  for (const group of existing.groups) {
+    const filteredFiles = group.files.filter((f) =>
       f.id ? keptIds.has(f.id) : keptPaths.has(f.path)
     )
     if (filteredFiles.length > 0) {
-      keptJumps.push({ ...jump, files: filteredFiles })
+      keptGroups.push({ ...group, files: filteredFiles })
     }
   }
 
   const merged: Manifest = {
     ...existing,
     files: updatedFiles,
-    jumps: keptJumps
+    groups: keptGroups
   }
 
-  reclusterJumps(merged)
+  reclusterGroups(merged)
 
   return { manifest: merged, added: addedFiles.length, removed, moved }
 }
@@ -190,7 +190,7 @@ const scanMedia = async (options?: { outputDir?: string }) => {
 
   if (!fs.existsSync(originalDir)) {
     console.log('[Scan] No original_files directory found. Run processMedia first.')
-    return { added: 0, removed: 0, moved: 0, unchanged: true, fileCount: 0, jumpCount: 0 }
+    return { added: 0, removed: 0, moved: 0, unchanged: true, fileCount: 0, groupCount: 0 }
   }
 
   writeStatus('scan', 'running', 'Scanning original_files', outputDir)
@@ -205,7 +205,7 @@ const scanMedia = async (options?: { outputDir?: string }) => {
       console.log('[Scan] No files found in original_files.')
       writeStatus('scan', 'done', 'No files found', outputDir)
       scheduleIdle('scan', 5000, outputDir)
-      return { added: 0, removed: 0, moved: 0, unchanged: true, fileCount: 0, jumpCount: 0 }
+      return { added: 0, removed: 0, moved: 0, unchanged: true, fileCount: 0, groupCount: 0 }
     }
 
     console.log(`[Scan] Creating new manifest with ${diskFiles.length} file(s).`)
@@ -213,12 +213,12 @@ const scanMedia = async (options?: { outputDir?: string }) => {
     const manifest = createFreshManifest(diskFiles, createdAt)
     saveManifest(manifestPath, manifest)
 
-    console.log(`[Scan] Found ${diskFiles.length} file(s) in ${manifest.jumps.length} jump(s).`)
+    console.log(`[Scan] Found ${diskFiles.length} file(s) in ${manifest.groups.length} group(s).`)
     console.log(`[Scan] Manifest: ${manifestPath}`)
     writeStatus(
       'scan',
       'done',
-      `Found ${diskFiles.length} files in ${manifest.jumps.length} jumps`,
+      `Found ${diskFiles.length} files in ${manifest.groups.length} groups`,
       outputDir
     )
     scheduleIdle('scan', 5000, outputDir)
@@ -228,7 +228,7 @@ const scanMedia = async (options?: { outputDir?: string }) => {
       moved: 0,
       unchanged: false,
       fileCount: diskFiles.length,
-      jumpCount: manifest.jumps.length
+      groupCount: manifest.groups.length
     }
   }
 
@@ -244,7 +244,7 @@ const scanMedia = async (options?: { outputDir?: string }) => {
       moved: 0,
       unchanged: true,
       fileCount: existing.files.length,
-      jumpCount: existing.jumps.length
+      groupCount: existing.groups.length
     }
   }
 
@@ -254,13 +254,13 @@ const scanMedia = async (options?: { outputDir?: string }) => {
   saveManifest(manifestPath, manifest)
 
   console.log(
-    `[Scan] Manifest: ${manifest.files.length} file(s) in ${manifest.jumps.length} jump(s).`
+    `[Scan] Manifest: ${manifest.files.length} file(s) in ${manifest.groups.length} group(s).`
   )
   console.log(`[Scan] Manifest: ${manifestPath}`)
   writeStatus(
     'scan',
     'done',
-    `Merged ${manifest.files.length} files in ${manifest.jumps.length} jumps`,
+    `Merged ${manifest.files.length} files in ${manifest.groups.length} groups`,
     outputDir
   )
   scheduleIdle('scan', 5000, outputDir)
@@ -270,7 +270,7 @@ const scanMedia = async (options?: { outputDir?: string }) => {
     moved,
     unchanged: false,
     fileCount: manifest.files.length,
-    jumpCount: manifest.jumps.length
+    groupCount: manifest.groups.length
   }
 }
 

@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import type { ManifestFile, ManifestJump, PreviewState } from '../components/types'
+import { useRef, useState } from 'react'
 import type { VideoRef } from '../components/preview-drawer'
+import type { ManifestFile, ManifestGroup, PreviewState } from '../components/types'
 
 type VideoState = {
   crop: { cropStart: number | null; cropEnd: number | null }
@@ -23,9 +23,9 @@ type UsePreviewReturn = {
 }
 
 const usePreview = (
-  jumps: ManifestJump[],
+  groups: ManifestGroup[],
   unassignedFiles: ManifestFile[],
-  onJumpsChange: (next: ManifestJump[]) => void
+  onGroupsChange: (next: ManifestGroup[]) => void
 ) => {
   const [preview, setPreview] = useState<PreviewState>(null)
   const videoRefRef = useRef<VideoRef | null>(null)
@@ -44,7 +44,7 @@ const usePreview = (
     const files =
       groupId === 'unassigned'
         ? unassignedFiles
-        : (jumps.find((j) => j.id === groupId)?.files ?? [file])
+        : (groups.find((g) => g.id === groupId)?.files ?? [file])
     const found = files.findIndex((f) => f.path === file.path)
     setVideoStateRaw({
       crop: { cropStart: file.cropStart ?? null, cropEnd: file.cropEnd ?? null },
@@ -66,19 +66,19 @@ const usePreview = (
     if (!file) return
     const targetId = preview.groupId
     if (targetId === 'unassigned') return
-    const next = jumps.map((j) =>
-      j.id !== targetId
-        ? j
+    const next = groups.map((g) =>
+      g.id !== targetId
+        ? g
         : {
-            ...j,
-            files: j.files.map((f) =>
+            ...g,
+            files: g.files.map((f) =>
               f.path === file.path
                 ? { ...f, cropStart: range.cropStart, cropEnd: range.cropEnd }
                 : f
             )
           }
     )
-    onJumpsChange(next as never)
+    onGroupsChange(next as never)
     setVideoStateRaw((prev) => ({ ...prev, crop: range }))
   }
 

@@ -1,4 +1,4 @@
-import type { ManifestFile, ManifestJump, ManifestPassenger } from '@skydock/scripts'
+import type { Destination, ManifestFile, ManifestGroup, ManifestPassenger } from '@skydock/scripts'
 
 type SelectionMap = Record<string, Record<string, boolean>>
 
@@ -10,11 +10,11 @@ type DropDialog = {
   x: number
   y: number
   groups: Record<string, string[]>
-  targetJumpId: string
+  targetGroupId: string
 }
 
 type DropHint = {
-  jumpId: string
+  groupId: string
   index: number
 }
 
@@ -24,18 +24,25 @@ type PreviewState = {
   groupId: string
 } | null
 
-type JumpDayGroup = {
+type DayGroup = {
   date: string
-  jumps: ManifestJump[]
+  groups: ManifestGroup[]
+}
+
+type DestinationGroup = {
+  name: string
+  groups: ManifestGroup[]
 }
 
 export type {
+  Destination,
+  DestinationGroup,
+  DayGroup,
   DragData,
   DropDialog,
   DropHint,
-  JumpDayGroup,
   ManifestFile,
-  ManifestJump,
+  ManifestGroup,
   ManifestPassenger,
   PreviewState,
   SelectionMap

@@ -1,34 +1,35 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { writeJsonAtomic } from './lib/fs'
-import { jumpsFileSchema, manifestSchema } from './types'
-import type { JumpsFile, Manifest, ManifestFile } from './types'
+import { groupsFileSchema, manifestSchema } from './types'
+import type { GroupsFile, Manifest, ManifestFile } from './types'
 
-const getJumpsPath = (manifestPath: string) => path.join(path.dirname(manifestPath), 'jumps.json')
+const getGroupsPath = (manifestPath: string) => path.join(path.dirname(manifestPath), 'groups.json')
 
-const readJumpsFile = (jumpsPath: string) => {
-  if (!fs.existsSync(jumpsPath)) return null
+const readGroupsFile = (groupsPath: string) => {
+  if (!fs.existsSync(groupsPath)) return null
   try {
-    return jumpsFileSchema.parse(JSON.parse(fs.readFileSync(jumpsPath, 'utf-8')))
+    return groupsFileSchema.parse(JSON.parse(fs.readFileSync(groupsPath, 'utf-8')))
   } catch {
     return null
   }
 }
 
-const resolveJumps = (files: ManifestFile[], jumpsFile: JumpsFile | null) => {
-  if (!jumpsFile) return []
+const resolveGroups = (files: ManifestFile[], groupsFile: GroupsFile | null) => {
+  if (!groupsFile) return []
   const byId = new Map<string, ManifestFile>()
   for (const f of files) if (f.id) byId.set(f.id, f)
   let dangling = 0
-  const jumps = jumpsFile.jumps.map((j) => ({
-    id: j.id,
-    label: j.label,
-    confirmed: j.confirmed,
-    processed: j.processed ?? undefined,
-    passenger: j.passenger ?? undefined,
-    publish: j.publish ?? undefined,
-    day: j.day,
-    files: j.files
+  const groups = groupsFile.groups.map((g) => ({
+    id: g.id,
+    label: g.label,
+    confirmed: g.confirmed,
+    processed: g.processed ?? undefined,
+    passenger: g.passenger ?? undefined,
+    publish: g.publish ?? undefined,
+    day: g.day,
+    destination: g.destination ?? undefined,
+    files: g.files
       .map((ref) => {
         const base = byId.get(ref.id)
         if (!base) {
@@ -44,8 +45,8 @@ const resolveJumps = (files: ManifestFile[], jumpsFile: JumpsFile | null) => {
       })
       .filter((f): f is ManifestFile => f !== null)
   }))
-  if (dangling > 0) console.log(`[Manifest] Dropped ${dangling} dangling jump file ref(s).`)
-  return jumps
+  if (dangling > 0) console.log(`[Manifest] Dropped ${dangling} dangling group file ref(s).`)
+  return groups
 }
 
 const loadManifest = (manifestPath: string) => {
@@ -54,19 +55,20 @@ const loadManifest = (manifestPath: string) => {
     const raw = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'))
 
     if (Array.isArray(raw.jumps)) {
-      const parsed = manifestSchema.parse(raw)
-      const jumpsPath = getJumpsPath(manifestPath)
-      if (!fs.existsSync(jumpsPath)) {
-        const jumpsFile: JumpsFile = {
-          jumps: parsed.jumps.map((j) => ({
-            id: j.id,
-            label: j.label,
-            confirmed: j.confirmed,
-            processed: j.processed ?? undefined,
-            passenger: j.passenger ?? undefined,
-            publish: j.publish ?? undefined,
-            day: j.day,
-            files: j.files
+      const parsed = manifestSchema.parse({ ...raw, groups: raw.jumps })
+      const groupsPath = getGroupsPath(manifestPath)
+      if (!fs.existsSync(groupsPath)) {
+        const groupsFile: GroupsFile = {
+          groups: parsed.groups.map((g) => ({
+            id: g.id,
+            label: g.label,
+            confirmed: g.confirmed,
+            processed: g.processed ?? undefined,
+            passenger: g.passenger ?? undefined,
+            publish: g.publish ?? undefined,
+            day: g.day,
+            destination: g.destination ?? undefined,
+            files: g.files
               .filter((f) => f.id)
               .map((f) => ({
                 id: f.id!,
@@ -75,8 +77,8 @@ const loadManifest = (manifestPath: string) => {
               }))
           }))
         }
-        jumpsFileSchema.parse(jumpsFile)
-        writeJsonAtomic(jumpsPath, jumpsFile)
+        groupsFileSchema.parse(groupsFile)
+        writeJsonAtomic(groupsPath, groupsFile)
 
         const newManifestRaw = {
           version: parsed.version,
@@ -86,27 +88,29 @@ const loadManifest = (manifestPath: string) => {
           createdAt: parsed.createdAt,
           theory: parsed.theory,
           files: parsed.files,
+          destinations: parsed.destinations ?? undefined,
           cameraClockOffsetSeconds: parsed.cameraClockOffsetSeconds
         }
-        manifestSchema.omit({ jumps: true }).passthrough().parse(newManifestRaw)
+        manifestSchema.omit({ groups: true }).passthrough().parse(newManifestRaw)
         writeJsonAtomic(manifestPath, newManifestRaw)
       }
       return parsed
     }
 
     const files: ManifestFile[] = Array.isArray(raw.files) ? raw.files : []
-    const jumpsFile = readJumpsFile(getJumpsPath(manifestPath))
-    const jumps = resolveJumps(files, jumpsFile)
+    const groupsFile = readGroupsFile(getGroupsPath(manifestPath))
+    const groups = resolveGroups(files, groupsFile)
 
     const manifest: Manifest = {
       version: raw.version ?? 1,
-      status: raw.status ?? (jumps.length > 0 ? 'proposed' : 'empty'),
+      status: raw.status ?? (groups.length > 0 ? 'proposed' : 'empty'),
       date: raw.date ?? new Date().toISOString().split('T')[0],
       startDatetime: raw.startDatetime ?? new Date().toISOString(),
       createdAt: raw.createdAt ?? new Date().toISOString(),
       theory: Array.isArray(raw.theory) ? raw.theory : [],
       files,
-      jumps,
+      groups,
+      destinations: raw.destinations ?? undefined,
       cameraClockOffsetSeconds: raw.cameraClockOffsetSeconds ?? undefined
     }
     return manifestSchema.parse(manifest)
@@ -120,16 +124,17 @@ const saveManifest = (manifestPath: string, manifest: Manifest) => {
   const dir = path.dirname(manifestPath)
   fs.mkdirSync(dir, { recursive: true })
 
-  const jumpsFile: JumpsFile = {
-    jumps: manifest.jumps.map((j) => ({
-      id: j.id,
-      label: j.label,
-      confirmed: j.confirmed,
-      processed: j.processed ?? undefined,
-      passenger: j.passenger ?? undefined,
-      publish: j.publish ?? undefined,
-      day: j.day,
-      files: j.files
+  const groupsFile: GroupsFile = {
+    groups: manifest.groups.map((g) => ({
+      id: g.id,
+      label: g.label,
+      confirmed: g.confirmed,
+      processed: g.processed ?? undefined,
+      passenger: g.passenger ?? undefined,
+      publish: g.publish ?? undefined,
+      day: g.day,
+      destination: g.destination ?? undefined,
+      files: g.files
         .filter((f) => f.id)
         .map((f) => ({
           id: f.id!,
@@ -138,9 +143,9 @@ const saveManifest = (manifestPath: string, manifest: Manifest) => {
         }))
     }))
   }
-  jumpsFileSchema.parse(jumpsFile)
-  const jumpsPath = getJumpsPath(manifestPath)
-  writeJsonAtomic(jumpsPath, jumpsFile)
+  groupsFileSchema.parse(groupsFile)
+  const groupsPath = getGroupsPath(manifestPath)
+  writeJsonAtomic(groupsPath, groupsFile)
 
   const raw = {
     version: manifest.version,
@@ -150,25 +155,26 @@ const saveManifest = (manifestPath: string, manifest: Manifest) => {
     createdAt: manifest.createdAt,
     theory: manifest.theory,
     files: manifest.files,
+    destinations: manifest.destinations ?? undefined,
     cameraClockOffsetSeconds: manifest.cameraClockOffsetSeconds
   }
-  manifestSchema.omit({ jumps: true }).passthrough().parse(raw)
+  manifestSchema.omit({ groups: true }).passthrough().parse(raw)
   writeJsonAtomic(manifestPath, raw)
 }
 
 const normalizeManifest = (manifest: Manifest) => {
   let changed = false
-  for (const jump of manifest.jumps) {
-    if (jump.processed === null) {
-      delete jump.processed
+  for (const group of manifest.groups) {
+    if (group.processed === null) {
+      delete group.processed
       changed = true
     }
-    if (jump.passenger === null) {
-      delete jump.passenger
+    if (group.passenger === null) {
+      delete group.passenger
       changed = true
     }
-    if (jump.publish === null) {
-      delete jump.publish
+    if (group.publish === null) {
+      delete group.publish
       changed = true
     }
   }
@@ -179,7 +185,7 @@ const normalizeManifest = (manifest: Manifest) => {
   for (const file of [
     ...manifest.files,
     ...manifest.theory,
-    ...manifest.jumps.flatMap((j) => j.files)
+    ...manifest.groups.flatMap((g) => g.files)
   ]) {
     if (file.id === null) {
       delete file.id

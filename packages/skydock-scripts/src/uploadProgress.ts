@@ -5,7 +5,7 @@ import { writeJsonAtomic } from './lib/fs'
 import { getStatusDir } from './utils'
 
 const uploadProgressStateSchema = z.object({
-  jumpId: z.string(),
+  groupId: z.string(),
   filename: z.string(),
   bytesUploaded: z.number(),
   totalBytes: z.number(),

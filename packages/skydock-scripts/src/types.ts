@@ -11,7 +11,7 @@ const manifestFileSchema = z.object({
   cropEnd: z.number().nullable().optional()
 })
 
-const jumpFileRefSchema = z.object({
+const groupFileRefSchema = z.object({
   id: z.string(),
   cropStart: z.number().nullable().optional(),
   cropEnd: z.number().nullable().optional()
@@ -27,7 +27,7 @@ const publishSchema = z.object({
   shareUrl: z.string()
 })
 
-const manifestJumpSchema = z.object({
+const manifestGroupSchema = z.object({
   id: z.string(),
   label: z.string(),
   confirmed: z.boolean(),
@@ -35,23 +35,32 @@ const manifestJumpSchema = z.object({
   processed: z.boolean().nullable().optional(),
   passenger: passengerSchema.optional(),
   publish: publishSchema.optional(),
-  day: z.string()
+  day: z.string(),
+  destination: z.string().optional()
 })
 
-const jumpsFileSchema = z.object({
-  jumps: z.array(
+const groupsFileSchema = z.object({
+  groups: z.array(
     z.object({
       id: z.string(),
       label: z.string(),
       confirmed: z.boolean(),
-      files: z.array(jumpFileRefSchema),
+      files: z.array(groupFileRefSchema),
       processed: z.boolean().nullable().optional(),
       passenger: passengerSchema.optional(),
       publish: publishSchema.optional(),
-      day: z.string()
+      day: z.string(),
+      destination: z.string().optional()
     })
   )
 })
+
+const destinationSchema = z.object({
+  name: z.string(),
+  path: z.string().optional()
+})
+
+const destinationsSchema = z.array(destinationSchema)
 
 const manifestStatusSchema = z.enum(['empty', 'proposed', 'confirmed', 'executed'])
 
@@ -63,18 +72,24 @@ const manifestSchema = z.object({
   createdAt: z.string(),
   theory: z.array(manifestFileSchema),
   files: z.array(manifestFileSchema),
-  jumps: z.array(manifestJumpSchema),
+  groups: z.array(manifestGroupSchema),
+  destinations: destinationsSchema.optional(),
   cameraClockOffsetSeconds: z.number().nullable().optional()
 })
 
 type ManifestFile = z.infer<typeof manifestFileSchema>
-type ManifestJump = z.infer<typeof manifestJumpSchema>
+type ManifestGroup = z.infer<typeof manifestGroupSchema>
 type ManifestPassenger = z.infer<typeof passengerSchema>
 type ManifestPublish = z.infer<typeof publishSchema>
 type ManifestStatus = z.infer<typeof manifestStatusSchema>
 type Manifest = z.infer<typeof manifestSchema>
-type JumpFileRef = z.infer<typeof jumpFileRefSchema>
-type JumpsFile = z.infer<typeof jumpsFileSchema>
+type GroupFileRef = z.infer<typeof groupFileRefSchema>
+type GroupsFile = z.infer<typeof groupsFileSchema>
+type Destination = z.infer<typeof destinationSchema>
+
+const destinationCreationSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(64, 'Name must be at most 64 characters')
+})
 
 const taskStateSchema = z.enum(['idle', 'running', 'done', 'error'])
 
@@ -102,11 +117,12 @@ type TaskStatus = z.infer<typeof taskStatusSchema>
 type SystemStatus = z.infer<typeof systemStatusSchema>
 
 export type {
-  JumpFileRef,
-  JumpsFile,
+  Destination,
+  GroupFileRef,
+  GroupsFile,
   Manifest,
   ManifestFile,
-  ManifestJump,
+  ManifestGroup,
   ManifestPassenger,
   ManifestPublish,
   ManifestStatus,
@@ -116,10 +132,13 @@ export type {
 }
 
 export {
-  jumpFileRefSchema,
-  jumpsFileSchema,
+  destinationCreationSchema,
+  destinationSchema,
+  destinationsSchema,
+  groupFileRefSchema,
+  groupsFileSchema,
   manifestFileSchema,
-  manifestJumpSchema,
+  manifestGroupSchema,
   manifestSchema,
   manifestStatusSchema,
   passengerSchema,

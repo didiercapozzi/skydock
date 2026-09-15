@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ManifestJump } from './types'
+import type { ManifestGroup } from './types'
 import { VideoCropper } from './video-cropper'
 import {
   formatSize,
   formatTime,
   getFileUrl,
-  getJumpDate,
+  getGroupDate,
   getThumbUrl,
   isVideoFile,
   minFileMtime
@@ -15,7 +15,7 @@ type VideoRef = {
   seek: (time: number) => void
 }
 
-const jumpMinMtime = (jump: ManifestJump) => minFileMtime(jump.files)
+const groupMinMtime = (group: ManifestGroup) => minFileMtime(group.files)
 
 const toDateInputValue = (epoch: number) => {
   const d = new Date(epoch * 1000)
@@ -32,23 +32,23 @@ const toTimeInputValue = (epoch: number) => {
 }
 
 const ComparisonDialog = ({
-  jumps,
-  leftJumpId,
-  rightJumpId,
+  groups,
+  leftGroupId,
+  rightGroupId,
   onClose,
   onMerge
 }: {
-  jumps: ManifestJump[]
-  leftJumpId: string
-  rightJumpId: string
+  groups: ManifestGroup[]
+  leftGroupId: string
+  rightGroupId: string
   onClose: () => void
   onMerge: (leftId: string, rightId: string, anchorEpoch: number) => void
 }) => {
-  const [currentLeftId, setCurrentLeftId] = useState(leftJumpId)
-  const [currentRightId, setCurrentRightId] = useState(rightJumpId)
+  const [currentLeftId, setCurrentLeftId] = useState(leftGroupId)
+  const [currentRightId, setCurrentRightId] = useState(rightGroupId)
 
-  const leftJump = jumps.find((j) => j.id === currentLeftId) ?? jumps[0]
-  const rightJump = jumps.find((j) => j.id === currentRightId) ?? jumps[1]
+  const leftGroup = groups.find((j) => j.id === currentLeftId) ?? groups[0]
+  const rightGroup = groups.find((j) => j.id === currentRightId) ?? groups[1]
 
   const leftFileIndexDefault = 0
   const rightFileIndexDefault = 0
@@ -71,18 +71,18 @@ const ComparisonDialog = ({
   const [customDate, setCustomDate] = useState('')
   const [customTime, setCustomTime] = useState('')
 
-  const leftJumpIndex = jumps.findIndex((j) => j.id === currentLeftId)
-  const rightJumpIndex = jumps.findIndex((j) => j.id === currentRightId)
+  const leftGroupIndex = groups.findIndex((j) => j.id === currentLeftId)
+  const rightGroupIndex = groups.findIndex((j) => j.id === currentRightId)
 
   const navigateLeft = (direction: -1 | 1) => {
-    const startIdx = leftJumpIndex
+    const startIdx = leftGroupIndex
     let newIdx = startIdx
     do {
       newIdx = newIdx + direction
-      if (newIdx < 0) newIdx = jumps.length - 1
-      if (newIdx >= jumps.length) newIdx = 0
-      if (jumps[newIdx].id !== currentRightId) {
-        setCurrentLeftId(jumps[newIdx].id)
+      if (newIdx < 0) newIdx = groups.length - 1
+      if (newIdx >= groups.length) newIdx = 0
+      if (groups[newIdx].id !== currentRightId) {
+        setCurrentLeftId(groups[newIdx].id)
         setLeftFileIndex(0)
         setLeftDuration(0)
         setLeftCurrentTime(0)
@@ -94,15 +94,15 @@ const ComparisonDialog = ({
 
   const handleMergeClick = () => {
     setDateChoice('left')
-    setCustomDate(toDateInputValue(jumpMinMtime(leftJump)))
-    setCustomTime(toTimeInputValue(jumpMinMtime(leftJump)))
+    setCustomDate(toDateInputValue(groupMinMtime(leftGroup)))
+    setCustomTime(toTimeInputValue(groupMinMtime(leftGroup)))
     setShowDatePopup(true)
   }
 
   const resolveAnchor = () => {
     if (dateChoice === 'left' || dateChoice === 'right') {
-      const target = dateChoice === 'left' ? leftJump : rightJump
-      return jumpMinMtime(target)
+      const target = dateChoice === 'left' ? leftGroup : rightGroup
+      return groupMinMtime(target)
     }
     if (!customDate) return null
     const parsed = new Date(`${customDate}T${customTime || '00:00'}:00`).getTime()
@@ -119,14 +119,14 @@ const ComparisonDialog = ({
   }
 
   const navigateRight = (direction: -1 | 1) => {
-    const startIdx = rightJumpIndex
+    const startIdx = rightGroupIndex
     let newIdx = startIdx
     do {
       newIdx = newIdx + direction
-      if (newIdx < 0) newIdx = jumps.length - 1
-      if (newIdx >= jumps.length) newIdx = 0
-      if (jumps[newIdx].id !== currentLeftId) {
-        setCurrentRightId(jumps[newIdx].id)
+      if (newIdx < 0) newIdx = groups.length - 1
+      if (newIdx >= groups.length) newIdx = 0
+      if (groups[newIdx].id !== currentLeftId) {
+        setCurrentRightId(groups[newIdx].id)
         setRightFileIndex(0)
         setRightDuration(0)
         setRightCurrentTime(0)
@@ -137,7 +137,7 @@ const ComparisonDialog = ({
   }
 
   const renderPreview = (
-    file: ManifestJump['files'][number],
+    file: ManifestGroup['files'][number],
     duration: number,
     currentTime: number,
     zoom: number,
@@ -190,7 +190,7 @@ const ComparisonDialog = ({
       className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
       <div className='bg-white rounded-xl shadow-2xl w-[90vw] max-h-[90vh] flex flex-col overflow-hidden'>
         <div className='px-6 py-4 border-b border-gray-200 flex items-center justify-between'>
-          <h2 className='text-lg font-semibold text-gray-900'>Compare Jumps</h2>
+          <h2 className='text-lg font-semibold text-gray-900'>Compare Groups</h2>
           <button
             type='button'
             onClick={onClose}
@@ -212,8 +212,8 @@ const ComparisonDialog = ({
 
         <div className='flex-1 flex overflow-hidden'>
           <ComparePanel
-            jump={leftJump}
-            jumps={jumps}
+            group={leftGroup}
+            groups={groups}
             fileIndex={leftFileIndex}
             onFileIndexChange={setLeftFileIndex}
             duration={leftDuration}
@@ -228,8 +228,8 @@ const ComparisonDialog = ({
             onVideoRef={(ref) => {
               leftVideoRefRef.current = ref
             }}
-            onJumpPrev={() => navigateLeft(-1)}
-            onJumpNext={() => navigateLeft(1)}
+            onGroupPrev={() => navigateLeft(-1)}
+            onGroupNext={() => navigateLeft(1)}
             side='left'
             renderPreview={renderPreview}
           />
@@ -237,8 +237,8 @@ const ComparisonDialog = ({
           <div className='w-px bg-gray-200' />
 
           <ComparePanel
-            jump={rightJump}
-            jumps={jumps}
+            group={rightGroup}
+            groups={groups}
             fileIndex={rightFileIndex}
             onFileIndexChange={setRightFileIndex}
             duration={rightDuration}
@@ -253,8 +253,8 @@ const ComparisonDialog = ({
             onVideoRef={(ref) => {
               rightVideoRefRef.current = ref
             }}
-            onJumpPrev={() => navigateRight(-1)}
-            onJumpNext={() => navigateRight(1)}
+            onGroupPrev={() => navigateRight(-1)}
+            onGroupNext={() => navigateRight(1)}
             side='right'
             renderPreview={renderPreview}
           />
@@ -264,7 +264,7 @@ const ComparisonDialog = ({
           <button
             type='button'
             data-action='merge'
-            disabled={leftJump.processed === true || rightJump.processed === true}
+            disabled={leftGroup.processed === true || rightGroup.processed === true}
             onClick={handleMergeClick}
             className='px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
             Merge
@@ -297,7 +297,7 @@ const ComparisonDialog = ({
                   onChange={() => setDateChoice('left')}
                 />
                 <span className='text-sm text-gray-700'>
-                  {leftJump.label} — {getJumpDate(leftJump)}
+                  {leftGroup.label} — {getGroupDate(leftGroup)}
                 </span>
               </label>
               <label className='flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer'>
@@ -309,7 +309,7 @@ const ComparisonDialog = ({
                   onChange={() => setDateChoice('right')}
                 />
                 <span className='text-sm text-gray-700'>
-                  {rightJump.label} — {getJumpDate(rightJump)}
+                  {rightGroup.label} — {getGroupDate(rightGroup)}
                 </span>
               </label>
               <label className='flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer'>
@@ -366,8 +366,8 @@ const ComparisonDialog = ({
 }
 
 const ComparePanel = ({
-  jump,
-  jumps,
+  group,
+  groups,
   fileIndex,
   onFileIndexChange,
   duration,
@@ -377,13 +377,13 @@ const ComparePanel = ({
   onDurationChange,
   onZoomChange,
   onVideoRef,
-  onJumpPrev,
-  onJumpNext,
+  onGroupPrev,
+  onGroupNext,
   side,
   renderPreview
 }: {
-  jump: ManifestJump
-  jumps: ManifestJump[]
+  group: ManifestGroup
+  groups: ManifestGroup[]
   fileIndex: number
   onFileIndexChange: (i: number) => void
   duration: number
@@ -393,11 +393,11 @@ const ComparePanel = ({
   onDurationChange: (d: number) => void
   onZoomChange: (z: number) => void
   onVideoRef: (ref: VideoRef) => void
-  onJumpPrev: () => void
-  onJumpNext: () => void
+  onGroupPrev: () => void
+  onGroupNext: () => void
   side: 'left' | 'right'
   renderPreview: (
-    file: ManifestJump['files'][number],
+    file: ManifestGroup['files'][number],
     duration: number,
     currentTime: number,
     zoom: number,
@@ -407,8 +407,8 @@ const ComparePanel = ({
     onVideoRef: (ref: VideoRef) => void
   ) => React.ReactNode
 }) => {
-  const file = jump.files[fileIndex]
-  const jumpIndex = jumps.findIndex((j) => j.id === jump.id)
+  const file = group.files[fileIndex]
+  const groupIndex = groups.findIndex((j) => j.id === group.id)
 
   return (
     <div
@@ -419,8 +419,8 @@ const ComparePanel = ({
           <div className='flex items-center gap-2'>
             <button
               type='button'
-              data-action={`jump-prev-${side}`}
-              onClick={onJumpPrev}
+              data-action={`group-prev-${side}`}
+              onClick={onGroupPrev}
               className='w-6 h-6 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded transition-colors'>
               <svg
                 className='w-4 h-4'
@@ -435,11 +435,11 @@ const ComparePanel = ({
                 />
               </svg>
             </button>
-            <h3 className='font-semibold text-sm text-gray-800 min-w-0 truncate'>{jump.label}</h3>
+            <h3 className='font-semibold text-sm text-gray-800 min-w-0 truncate'>{group.label}</h3>
             <button
               type='button'
-              data-action={`jump-next-${side}`}
-              onClick={onJumpNext}
+              data-action={`group-next-${side}`}
+              onClick={onGroupNext}
               className='w-6 h-6 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded transition-colors'>
               <svg
                 className='w-4 h-4'
@@ -456,17 +456,17 @@ const ComparePanel = ({
             </button>
           </div>
           <span className='text-xs text-gray-500 tabular-nums'>
-            {jumpIndex + 1} / {jumps.length}
+            {groupIndex + 1} / {groups.length}
           </span>
         </div>
         <p className='text-xs text-gray-500'>
-          {jump.files.length} files • {formatTime(jump.files[0]?.mtime ?? 0)} —{' '}
-          {formatTime(jump.files[jump.files.length - 1]?.mtime ?? 0)}
+          {group.files.length} files • {formatTime(group.files[0]?.mtime ?? 0)} —{' '}
+          {formatTime(group.files[group.files.length - 1]?.mtime ?? 0)}
         </p>
       </div>
 
       <div className='flex-1 overflow-y-auto p-3 space-y-1 min-h-0'>
-        {jump.files.map((f, i) => (
+        {group.files.map((f, i) => (
           <div
             key={f.path}
             data-compare-file='true'
@@ -501,7 +501,7 @@ const ComparePanel = ({
             )}
           </div>
           <p className='text-xs text-gray-500 mt-2 shrink-0'>
-            File {fileIndex + 1} of {jump.files.length}:{' '}
+            File {fileIndex + 1} of {group.files.length}:{' '}
             <span className='font-mono text-gray-700'>{file.filename}</span>
           </p>
         </div>

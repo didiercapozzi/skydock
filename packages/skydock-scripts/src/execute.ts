@@ -7,17 +7,17 @@ import { loadManifest, saveManifest } from './manifest'
 import { scheduleIdle, writeStatus } from './status'
 import { getManifestPath, getOutputDir, hasCommand, isCliModule, isVideoFile } from './utils'
 import { parseDayEpoch } from './utils'
-import { buildFsTime, buildJumpBaseName, makeFileName } from './workspace'
+import { buildFsTime, buildGroupBaseName, makeFileName } from './workspace'
 
 type ExecuteOptions = {
   manifestPath?: string
-  jumpIds?: string[]
+  groupIds?: string[]
   outputDir?: string
 }
 
 type ExecuteResult = {
   copied: number
-  processedJumps: number
+  processedGroups: number
 }
 
 const cropVideo = (src: string, dest: string, cropStart: number, cropEnd: number) => {
@@ -80,15 +80,15 @@ const writeProcessedMap = (outputDir: string, map: Record<string, string>) => {
 
 const getMediaType = (filePath: string) => (isVideoFile(filePath) ? 'video' : 'photo')
 
-const processJump = (
-  jump: NonNullable<ReturnType<typeof loadManifest>>['jumps'][number],
+const processGroup = (
+  group: NonNullable<ReturnType<typeof loadManifest>>['groups'][number],
   processedDir: string,
   outputDir: string,
   claimedDirs: Set<string>,
   processedMap: Record<string, string>
 ) => {
-  const dayEpoch = parseDayEpoch(jump.day) ?? Math.min(...jump.files.map((f) => f.mtime))
-  const baseName = buildJumpBaseName(jump.passenger, jump.label, dayEpoch)
+  const dayEpoch = parseDayEpoch(group.day) ?? Math.min(...group.files.map((f) => f.mtime))
+  const baseName = buildGroupBaseName(group.passenger, group.label, dayEpoch)
   let dirName = baseName
   let counter = 1
   while (claimedDirs.has(dirName)) {
@@ -96,39 +96,39 @@ const processJump = (
     counter++
   }
   claimedDirs.add(dirName)
-  const jumpDir = path.join(processedDir, dirName)
+  const groupDir = path.join(processedDir, dirName)
 
-  const oldBase = processedMap[jump.id]
+  const oldBase = processedMap[group.id]
   if (oldBase && oldBase !== baseName) {
     const oldDir = path.join(processedDir, oldBase)
     moveToTrash(oldDir, outputDir)
   }
-  moveToTrash(jumpDir, outputDir)
+  moveToTrash(groupDir, outputDir)
 
   const byType = {
-    video: jump.files.filter((f) => getMediaType(f.path) === 'video'),
-    photo: jump.files.filter((f) => getMediaType(f.path) === 'photo')
+    video: group.files.filter((f) => getMediaType(f.path) === 'video'),
+    photo: group.files.filter((f) => getMediaType(f.path) === 'photo')
   }
 
   for (const type of ['video', 'photo'] as const) {
-    if (byType[type].length > 0) fs.mkdirSync(path.join(jumpDir, `${type}s`), { recursive: true })
+    if (byType[type].length > 0) fs.mkdirSync(path.join(groupDir, `${type}s`), { recursive: true })
   }
 
   const usedNames = new Set<string>()
   let copied = 0
 
-  for (const file of jump.files) {
+  for (const file of group.files) {
     if (!fs.existsSync(file.path)) continue
 
     const ext = path.extname(file.path).slice(1).toLowerCase()
     const type = getMediaType(file.path)
-    const dest = path.join(jumpDir, `${type}s`, makeFileName(baseName, file.mtime, ext, usedNames))
+    const dest = path.join(groupDir, `${type}s`, makeFileName(baseName, file.mtime, ext, usedNames))
 
     const needsCrop = type === 'video' && file.cropStart != null && file.cropEnd != null
     if (needsCrop) {
       const ok = cropVideo(file.path, dest, file.cropStart!, file.cropEnd!)
       if (!ok) {
-        moveToTrash(jumpDir, outputDir)
+        moveToTrash(groupDir, outputDir)
         throw new Error(
           `ffmpeg crop failed for ${file.filename} ${file.cropStart}→${file.cropEnd}: install ffmpeg or check range`
         )
@@ -144,20 +144,20 @@ const processJump = (
   for (const type of ['video', 'photo'] as const) {
     if (byType[type].length > 0) {
       try {
-        updateMetadata(path.join(jumpDir, `${type}s`))
+        updateMetadata(path.join(groupDir, `${type}s`))
       } catch (e) {
-        moveToTrash(jumpDir, outputDir)
+        moveToTrash(groupDir, outputDir)
         throw e
       }
     }
   }
 
-  jump.processed = true
-  delete jump.publish
-  processedMap[jump.id] = path.basename(jumpDir)
+  group.processed = true
+  delete group.publish
+  processedMap[group.id] = path.basename(groupDir)
   writeProcessedMap(outputDir, processedMap)
 
-  console.log(`[Execute] ${jump.id}: copied ${jump.files.length} file(s) to ${jumpDir}`)
+  console.log(`[Execute] ${group.id}: copied ${group.files.length} file(s) to ${groupDir}`)
   return copied
 }
 
@@ -167,37 +167,37 @@ const executeMedia = (options?: ExecuteOptions) => {
   const processedDir = path.join(outputDir, 'processed')
 
   fs.mkdirSync(processedDir, { recursive: true })
-  writeStatus('execute', 'running', 'Processing jumps', outputDir)
+  writeStatus('execute', 'running', 'Processing groups', outputDir)
 
   const manifest = loadManifest(manifestPath)
   if (!manifest) {
     console.error('[Execute] ERROR: Manifest not found')
     writeStatus('execute', 'error', 'Manifest not found', outputDir)
-    return { copied: 0, processedJumps: 0 }
+    return { copied: 0, processedGroups: 0 }
   }
 
-  const jumpIds = options?.jumpIds?.length
-    ? options.jumpIds
-    : manifest.jumps.filter((j) => j.confirmed && !j.processed).map((j) => j.id)
+  const groupIds = options?.groupIds?.length
+    ? options.groupIds
+    : manifest.groups.filter((g) => g.confirmed && !g.processed).map((g) => g.id)
 
-  if (jumpIds.length === 0) {
-    console.log('[Execute] No confirmed unprocessed jumps found.')
-    writeStatus('execute', 'done', 'No jumps to process', outputDir)
+  if (groupIds.length === 0) {
+    console.log('[Execute] No confirmed unprocessed groups found.')
+    writeStatus('execute', 'done', 'No groups to process', outputDir)
     scheduleIdle('execute', 5000, outputDir)
-    return { copied: 0, processedJumps: 0 }
+    return { copied: 0, processedGroups: 0 }
   }
 
-  console.log(`[Execute] Processing ${jumpIds.length} jump(s)`)
+  console.log(`[Execute] Processing ${groupIds.length} group(s)`)
   let totalCopied = 0
   let processedCount = 0
   const claimedDirs = new Set<string>()
   const processedMap = readProcessedMap(outputDir)
 
-  for (const jumpId of jumpIds) {
-    const jump = manifest.jumps.find((j) => j.id === jumpId)
-    if (!jump || jump.files.length === 0) continue
+  for (const groupId of groupIds) {
+    const group = manifest.groups.find((g) => g.id === groupId)
+    if (!group || group.files.length === 0) continue
 
-    totalCopied += processJump(jump, processedDir, outputDir, claimedDirs, processedMap)
+    totalCopied += processGroup(group, processedDir, outputDir, claimedDirs, processedMap)
     processedCount++
   }
 
@@ -207,14 +207,14 @@ const executeMedia = (options?: ExecuteOptions) => {
   writeStatus('execute', 'done', `Copied ${totalCopied} files`, outputDir)
   scheduleIdle('execute', 5000, outputDir)
 
-  return { copied: totalCopied, processedJumps: processedCount }
+  return { copied: totalCopied, processedGroups: processedCount }
 }
 
 if (isCliModule('execute')) {
   const args = process.argv.slice(2)
   const manifestPath = args[0] && fs.existsSync(args[0]) ? args[0] : undefined
-  const jumpIds = manifestPath ? args.slice(1) : args.filter((a) => !a.startsWith('-'))
-  executeMedia({ manifestPath, jumpIds: jumpIds.length > 0 ? jumpIds : undefined })
+  const groupIds = manifestPath ? args.slice(1) : args.filter((a) => !a.startsWith('-'))
+  executeMedia({ manifestPath, groupIds: groupIds.length > 0 ? groupIds : undefined })
 }
 
 export { executeMedia }

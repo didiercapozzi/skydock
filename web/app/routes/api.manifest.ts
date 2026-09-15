@@ -3,14 +3,15 @@ import * as path from 'node:path'
 import type { Route } from './+types/api.manifest'
 import { z } from 'zod'
 import {
-  buildJumpBaseName,
+  buildGroupBaseName,
   clearUploadProgress,
+  destinationSchema,
   executeMedia,
   getOutputDir,
   loadNasSession,
   loadManifest,
-  manifestJumpSchema,
-  mergeJumps,
+  manifestGroupSchema,
+  mergeGroups,
   publishJump,
   saveManifest,
   shiftFiles,
@@ -20,9 +21,16 @@ import {
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 
 const actionArgs = z.object({
-  intent: z.enum(['save-jumps', 'merge-jumps', 'process-jump', 'upload-jump', 'shift-jump-time']),
-  jumpId: z.string().optional(),
-  jumps: z.array(manifestJumpSchema).optional(),
+  intent: z.enum([
+    'save-groups',
+    'merge-groups',
+    'process-group',
+    'upload-group',
+    'shift-group-time'
+  ]),
+  groupId: z.string().optional(),
+  groups: z.array(manifestGroupSchema).optional(),
+  destinations: z.array(destinationSchema).optional(),
   leftId: z.string().optional(),
   rightId: z.string().optional(),
   anchorEpoch: z.number().optional()
@@ -37,14 +45,14 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       errors.addGlobalError('No manifest found. Run a scan first.')
       return errors.toResponse(422)
     }
-    if (data.intent === 'merge-jumps') {
+    if (data.intent === 'merge-groups') {
       if (!data.leftId || !data.rightId) {
-        errors.addGlobalError('Merge needs two jump ids.')
+        errors.addGlobalError('Merge needs two group ids.')
         return errors.toResponse(422)
       }
-      manifest.jumps = mergeJumps(manifest.jumps, data.leftId, data.rightId)
+      manifest.groups = mergeGroups(manifest.groups, data.leftId, data.rightId)
       if (data.anchorEpoch !== undefined && Number.isFinite(data.anchorEpoch)) {
-        const merged = manifest.jumps.find((j) => j.id === data.leftId)
+        const merged = manifest.groups.find((g) => g.id === data.leftId)
         if (merged && merged.files.length > 0) {
           const min = Math.min(...merged.files.map((f) => f.mtime))
           const offset = Math.round(data.anchorEpoch) - min
@@ -56,24 +64,24 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         }
       }
       saveManifest(manifestPath, manifest)
-      return { jumps: manifest.jumps }
+      return { groups: manifest.groups }
     }
-    if (data.intent === 'shift-jump-time') {
-      if (!data.jumpId) {
-        errors.addGlobalError('Shift needs a jump id.')
+    if (data.intent === 'shift-group-time') {
+      if (!data.groupId) {
+        errors.addGlobalError('Shift needs a group id.')
         return errors.toResponse(422)
       }
       if (data.anchorEpoch === undefined || !Number.isFinite(data.anchorEpoch)) {
         errors.addGlobalError('Shift needs a valid anchor time.')
         return errors.toResponse(422)
       }
-      const target = manifest.jumps.find((j) => j.id === data.jumpId)
+      const target = manifest.groups.find((g) => g.id === data.groupId)
       if (!target) {
-        errors.addGlobalError('Jump not found.')
+        errors.addGlobalError('Group not found.')
         return errors.toResponse(422)
       }
       if (target.files.length === 0) {
-        errors.addGlobalError('Jump has no files.')
+        errors.addGlobalError('Group has no files.')
         return errors.toResponse(422)
       }
       const min = Math.min(...target.files.map((f) => f.mtime))
@@ -84,42 +92,42 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         shiftFiles(manifest, ids, offset)
       }
       saveManifest(manifestPath, manifest)
-      return { jumps: manifest.jumps }
+      return { groups: manifest.groups }
     }
-    if (data.intent === 'process-jump') {
-      if (!data.jumpId) {
-        errors.addGlobalError('Process needs a jump id.')
+    if (data.intent === 'process-group') {
+      if (!data.groupId) {
+        errors.addGlobalError('Process needs a group id.')
         return errors.toResponse(422)
       }
-      const target = manifest.jumps.find((j) => j.id === data.jumpId)
+      const target = manifest.groups.find((g) => g.id === data.groupId)
       if (!target) {
-        errors.addGlobalError('Jump not found.')
+        errors.addGlobalError('Group not found.')
         return errors.toResponse(422)
       }
       if (target.files.length === 0) {
-        errors.addGlobalError('Jump has no files.')
+        errors.addGlobalError('Group has no files.')
         return errors.toResponse(422)
       }
-      executeMedia({ manifestPath, jumpIds: [target.id], outputDir: getOutputDir() })
+      executeMedia({ manifestPath, groupIds: [target.id], outputDir: getOutputDir() })
       const updated = loadManifest(manifestPath)
-      return { jumps: updated?.jumps ?? manifest.jumps }
+      return { groups: updated?.groups ?? manifest.groups }
     }
-    if (data.intent === 'upload-jump') {
-      if (!data.jumpId) {
-        errors.addGlobalError('Upload needs a jump id.')
+    if (data.intent === 'upload-group') {
+      if (!data.groupId) {
+        errors.addGlobalError('Upload needs a group id.')
         return errors.toResponse(422)
       }
-      const target = manifest.jumps.find((j) => j.id === data.jumpId)
+      const target = manifest.groups.find((g) => g.id === data.groupId)
       if (!target) {
-        errors.addGlobalError('Jump not found.')
+        errors.addGlobalError('Group not found.')
         return errors.toResponse(422)
       }
       if (!target.processed) {
-        errors.addGlobalError('Process the jump first.')
+        errors.addGlobalError('Process the group first.')
         return errors.toResponse(422)
       }
       if (target.files.length === 0) {
-        errors.addGlobalError('Jump has no files.')
+        errors.addGlobalError('Group has no files.')
         return errors.toResponse(422)
       }
       const session = loadNasSession()
@@ -138,10 +146,10 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         return Math.floor(new Date(y, m - 1, d).getTime() / 1000)
       }
       const dayEpoch = parseDay(target.day) ?? Math.min(...target.files.map((f) => f.mtime))
-      const baseName = buildJumpBaseName(target.passenger, target.label, dayEpoch)
+      const baseName = buildGroupBaseName(target.passenger, target.label, dayEpoch)
       const localDir = path.join(getOutputDir(), 'processed', baseName)
       if (!fs.existsSync(localDir)) {
-        errors.addGlobalError('Processed files not found. Process the jump again.')
+        errors.addGlobalError('Processed files not found. Process the group again.')
         return errors.toResponse(422)
       }
       const remoteBase = session.defaultFolder
@@ -169,7 +177,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
             const originalFilename = sortedManifestFiles[fileIndex]?.filename ?? p.filename
             writeUploadProgress(
               {
-                jumpId: target.id,
+                groupId: target.id,
                 filename: originalFilename,
                 bytesUploaded: p.bytesUploaded,
                 totalBytes: p.totalBytes,
@@ -184,7 +192,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         const lastOriginal = sortedManifestFiles[sortedManifestFiles.length - 1]?.filename ?? ''
         writeUploadProgress(
           {
-            jumpId: target.id,
+            groupId: target.id,
             filename: lastOriginal,
             bytesUploaded: 1,
             totalBytes: 1,
@@ -196,12 +204,12 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         )
         target.publish = { shareUrl }
         saveManifest(manifestPath, manifest)
-        return { jumps: manifest.jumps }
+        return { groups: manifest.groups }
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Upload failed.'
         writeUploadProgress(
           {
-            jumpId: target.id,
+            groupId: target.id,
             filename: '',
             bytesUploaded: 0,
             totalBytes: 1,
@@ -216,11 +224,14 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         return errors.toResponse(422)
       }
     }
-    if (!data.jumps) {
-      errors.addGlobalError('Save needs jumps.')
+    if (!data.groups) {
+      errors.addGlobalError('Save needs groups.')
       return errors.toResponse(422)
     }
-    manifest.jumps = data.jumps
+    manifest.groups = data.groups
+    if (data.destinations) {
+      manifest.destinations = data.destinations
+    }
     saveManifest(manifestPath, manifest)
     return { ok: true as const }
   }

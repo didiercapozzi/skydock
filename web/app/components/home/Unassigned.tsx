@@ -56,7 +56,7 @@ const Unassigned = ({
               groupId='unassigned'
               selected={!!selection['unassigned']?.[file.path]}
               isPreviewed={previewedPath === file.path}
-              isInMultipleJumps={false}
+              isInMultipleGroups={false}
               hasSelection={hasSelection}
               onSelect={onSelect}
               onPreview={onPreview}

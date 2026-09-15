@@ -1,5 +1,5 @@
 import { getOutputDir, isVideoFile as isVideoFileFromScripts } from '@skydock/scripts'
-import type { ManifestJump } from './types'
+import type { ManifestGroup } from './types'
 
 const isVideoFile = (filename: string) => isVideoFileFromScripts(filename)
 
@@ -16,11 +16,11 @@ const formatTime = (epoch: number) =>
     second: '2-digit'
   })
 
-const getJumpBounds = (jump: ManifestJump) => {
-  if (jump.files.length === 0) return { start: 0, end: 0 }
+const getGroupBounds = (group: ManifestGroup) => {
+  if (group.files.length === 0) return { start: 0, end: 0 }
   let start = Infinity
   let end = -Infinity
-  for (const f of jump.files) {
+  for (const f of group.files) {
     if (f.mtime < start) start = f.mtime
     if (f.mtime > end) end = f.mtime
   }
@@ -33,15 +33,15 @@ const minFileMtime = (files: Array<{ mtime: number }>) => {
   return min === Infinity ? 0 : min
 }
 
-const getJumpDate = (jump: ManifestJump) => jump.day ?? ''
+const getGroupDate = (group: ManifestGroup) => group.day ?? ''
 
-const groupJumpsByDay = (jumps: ManifestJump[]) => {
-  const map = new Map<string, { date: string; jumps: ManifestJump[] }>()
-  for (const jump of jumps) {
-    const date = jump.day || 'Unknown'
+const groupGroupsByDay = (groups: ManifestGroup[]) => {
+  const map = new Map<string, { date: string; groups: ManifestGroup[] }>()
+  for (const group of groups) {
+    const date = group.day || 'Unknown'
     const g = map.get(date)
-    if (g) g.jumps.push(jump)
-    else map.set(date, { date, jumps: [jump] })
+    if (g) g.groups.push(group)
+    else map.set(date, { date, groups: [group] })
   }
   return Array.from(map.values()).sort((a, b) => {
     const da = a.date === 'Unknown' ? '' : a.date
@@ -55,6 +55,35 @@ const groupJumpsByDay = (jumps: ManifestJump[]) => {
     }
     return parse(db) - parse(da)
   })
+}
+
+const groupGroupsByDestination = (
+  groups: ManifestGroup[],
+  destinations: Array<{ name: string }>
+) => {
+  const map = new Map<string, { name: string; groups: ManifestGroup[] }>()
+  for (const dest of destinations) {
+    map.set(dest.name, { name: dest.name, groups: [] })
+  }
+  for (const group of groups) {
+    const destName = group.destination
+    if (destName) {
+      const existing = map.get(destName)
+      if (existing) {
+        existing.groups.push(group)
+      } else {
+        map.set(destName, { name: destName, groups: [group] })
+      }
+    } else {
+      let unassigned = map.get('__unassigned__')
+      if (!unassigned) {
+        unassigned = { name: 'Unassigned', groups: [] }
+        map.set('__unassigned__', unassigned)
+      }
+      unassigned.groups.push(group)
+    }
+  }
+  return Array.from(map.values()).filter((g) => g.groups.length > 0 || g.name !== 'Unassigned')
 }
 
 const getFileUrl = (filePath: string) => {
@@ -84,9 +113,10 @@ export {
   getFileUrl,
   getThumbUrl,
   getDropIndex,
-  getJumpBounds,
-  getJumpDate,
-  groupJumpsByDay,
+  getGroupBounds,
+  getGroupDate,
+  groupGroupsByDestination,
+  groupGroupsByDay,
   isVideoFile,
   minFileMtime
 }

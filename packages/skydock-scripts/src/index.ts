@@ -1,6 +1,6 @@
 export {
   DEFAULT_OUTPUT_DIR,
-  JUMP_GAP_SECONDS,
+  GROUP_GAP_SECONDS,
   MEDIA_EXTENSIONS,
   MEDIA_EXTENSIONS_SET,
   PHOTO_EXTENSIONS,
@@ -10,11 +10,12 @@ export {
 } from './constants'
 
 export type {
-  JumpFileRef,
-  JumpsFile,
+  Destination,
+  GroupFileRef,
+  GroupsFile,
   Manifest,
   ManifestFile,
-  ManifestJump,
+  ManifestGroup,
   ManifestPassenger,
   ManifestPublish,
   ManifestStatus,
@@ -24,10 +25,13 @@ export type {
 } from './types'
 
 export {
-  jumpFileRefSchema,
-  jumpsFileSchema,
+  destinationCreationSchema,
+  destinationSchema,
+  destinationsSchema,
+  groupFileRefSchema,
+  groupsFileSchema,
   manifestFileSchema,
-  manifestJumpSchema,
+  manifestGroupSchema,
   manifestSchema,
   manifestStatusSchema,
   passengerSchema,
@@ -37,16 +41,16 @@ export {
   taskStatusSchema
 } from './types'
 
-export { reclusterJumps, shiftFiles } from './clustering'
+export { reclusterGroups, shiftFiles } from './clustering'
 export {
   buildFsTime,
-  buildJumpBaseName,
+  buildGroupBaseName,
   formatCaptureTime,
   hasCompletePassenger,
   makeFileName,
-  mergeJumps,
-  moveFilesBetweenJumps,
-  reorderFilesInJump
+  mergeGroups,
+  moveFilesBetweenGroups,
+  reorderFilesInGroup
 } from './workspace'
 export { loadManifest, normalizeManifest, saveManifest } from './manifest'
 export { publishJump, uploadFile } from './publish'

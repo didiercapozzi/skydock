@@ -4,13 +4,13 @@ import type { UploadProgressState } from '../hooks/useUploadProgress'
 import { FileGrid } from './file-grid'
 import { FileRow } from './file-row'
 import { PhotoIcon, VideoIcon } from './icons'
-import type { ManifestFile, ManifestJump, SelectionMap } from './types'
-import { formatTime, getJumpBounds, isVideoFile } from './utils'
+import type { Destination, ManifestFile, ManifestGroup, SelectionMap } from './types'
+import { formatTime, getGroupBounds, isVideoFile } from './utils'
 
-const JumpCard = ({
-  jump,
+const GroupCard = ({
+  group,
   selection,
-  multiJumpPaths,
+  multiGroupPaths,
   previewedPath,
   dropIndex,
   onSelect,
@@ -34,35 +34,43 @@ const JumpCard = ({
   onGroupTimeChange,
   uploadProgress,
   onImportFile,
-  importing
+  importing,
+  onCreateMontage,
+  hasKdenlive,
+  destinations,
+  onDestinationChange
 }: {
-  jump: ManifestJump
+  group: ManifestGroup
   selection: SelectionMap
-  multiJumpPaths: Set<string>
+  multiGroupPaths: Set<string>
   previewedPath: string | null
   dropIndex: number | null
   onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
   onPreview: (file: ManifestFile, groupId: string) => void
   onDragStart?: (e: React.DragEvent, groupId: string, paths: string[]) => void
   onDragEnd?: () => void
-  onDrop?: (e: React.DragEvent, targetJumpId: string) => void
-  onDragOver?: (e: React.DragEvent, targetJumpId: string) => void
-  onDragLeave?: (jumpId: string) => void
-  onLabelChange: (jumpId: string, label: string) => void
-  onProcess: (jumpId: string) => void
+  onDrop?: (e: React.DragEvent, targetGroupId: string) => void
+  onDragOver?: (e: React.DragEvent, targetGroupId: string) => void
+  onDragLeave?: (groupId: string) => void
+  onLabelChange: (groupId: string, label: string) => void
+  onProcess: (groupId: string) => void
   processing: boolean
-  onUpload: (jumpId: string) => void
+  onUpload: (groupId: string) => void
   uploading: boolean
   nasConnected: boolean
   hasUploadFolder: boolean
   viewMode: 'list' | 'grid'
   hasSelection: boolean
-  onRemoveGroup: (jumpId: string) => void
-  onGroupDateChange: (jumpId: string, day: string) => void
-  onGroupTimeChange: (jumpId: string, anchorEpoch: number) => void
+  onRemoveGroup: (groupId: string) => void
+  onGroupDateChange: (groupId: string, day: string) => void
+  onGroupTimeChange: (groupId: string, anchorEpoch: number) => void
   uploadProgress?: UploadProgressState | null
-  onImportFile?: (jumpId: string, files: File[]) => void
+  onImportFile?: (groupId: string, files: File[]) => void
   importing?: boolean
+  onCreateMontage?: (groupId: string) => void
+  hasKdenlive?: boolean
+  destinations?: Destination[]
+  onDestinationChange?: (groupId: string, destinationName: string) => void
 }) => {
   const [expanded, setExpanded] = useState(false)
   const [editingDate, setEditingDate] = useState(false)
@@ -73,24 +81,24 @@ const JumpCard = ({
   const [draftDate, setDraftDate] = useState('')
   const [draftTime, setDraftTime] = useState('')
   const cardRef = useRef<HTMLDivElement>(null)
-  const bounds = getJumpBounds(jump)
-  const videoCount = jump.files.filter((f) => isVideoFile(f.filename)).length
-  const photoCount = jump.files.length - videoCount
-  const croppedCount = jump.files.filter(
+  const bounds = getGroupBounds(group)
+  const videoCount = group.files.filter((f) => isVideoFile(f.filename)).length
+  const photoCount = group.files.length - videoCount
+  const croppedCount = group.files.filter(
     (f) => isVideoFile(f.filename) && (f.cropStart != null || f.cropEnd != null)
   ).length
-  const canProcess = jump.files.length > 0
-  const processTitle = jump.files.length === 0 ? 'Empty jump' : undefined
+  const canProcess = group.files.length > 0
+  const processTitle = group.files.length === 0 ? 'Empty group' : undefined
   const uploadTitle =
-    jump.processed !== true
-      ? 'Process the jump first'
+    group.processed !== true
+      ? 'Process the group first'
       : !nasConnected
         ? 'Connect to NAS to upload'
         : !hasUploadFolder
           ? 'Choose an upload folder first'
           : undefined
-  const locked = uploading || (!!uploadProgress && uploadProgress.jumpId === jump.id)
-  const isUploadingJump = locked
+  const locked = uploading || (!!uploadProgress && uploadProgress.groupId === group.id)
+  const isUploadingGroup = locked
   const canImport = !!onImportFile
 
   const onImportFileRef = useRef(onImportFile)
@@ -134,7 +142,7 @@ const JumpCard = ({
       dragCounterRef.current = 0
       setOsDragOver(false)
       const files = Array.from(e.dataTransfer.files)
-      if (files.length > 0) onImportFileRef.current?.(jump.id, files)
+      if (files.length > 0) onImportFileRef.current?.(group.id, files)
     }
     card.addEventListener('dragenter', onEnter)
     card.addEventListener('dragleave', onLeave)
@@ -146,17 +154,17 @@ const JumpCard = ({
       card.removeEventListener('dragover', onOver)
       card.removeEventListener('drop', onDropped)
     }
-  }, [jump.id])
+  }, [group.id])
 
   const openLabelEditor = () => {
     if (locked) return
-    setDraftLabel(jump.label)
+    setDraftLabel(group.label)
     setEditingLabel(true)
   }
 
   const saveLabelEditor = () => {
     const trimmed = draftLabel.trim()
-    if (trimmed && trimmed !== jump.label) onLabelChange(jump.id, trimmed)
+    if (trimmed && trimmed !== group.label) onLabelChange(group.id, trimmed)
     setEditingLabel(false)
   }
 
@@ -166,7 +174,7 @@ const JumpCard = ({
 
   const openDateEditor = () => {
     if (locked) return
-    setDraftDate(dayToIso(jump.day))
+    setDraftDate(dayToIso(group.day))
     setEditingDate(true)
   }
 
@@ -174,7 +182,7 @@ const JumpCard = ({
     if (!draftDate) return
     try {
       const deCh = isoToDay(draftDate)
-      onGroupDateChange(jump.id, deCh)
+      onGroupDateChange(group.id, deCh)
       setEditingDate(false)
     } catch {}
   }
@@ -208,7 +216,7 @@ const JumpCard = ({
       Number.isFinite(seconds) ? seconds : 0
     )
     const anchorEpoch = Math.floor(anchor.getTime() / 1000)
-    onGroupTimeChange(jump.id, anchorEpoch)
+    onGroupTimeChange(group.id, anchorEpoch)
     setEditingTime(false)
   }
 
@@ -217,9 +225,9 @@ const JumpCard = ({
   }
 
   const copyShareLink = async () => {
-    if (!jump.publish?.shareUrl) return
+    if (!group.publish?.shareUrl) return
     try {
-      await navigator.clipboard.writeText(jump.publish.shareUrl)
+      await navigator.clipboard.writeText(group.publish.shareUrl)
       setLinkCopied(true)
     } catch {
       setLinkCopied(false)
@@ -229,20 +237,20 @@ const JumpCard = ({
   return (
     <div
       ref={cardRef}
-      data-jump-card='true'
+      data-group-card='true'
       onDragOver={(e) => {
         if (locked) return
         e.preventDefault()
-        onDragOver?.(e, jump.id)
+        onDragOver?.(e, group.id)
       }}
       onDrop={(e) => {
         if (locked) return
         e.preventDefault()
-        onDrop?.(e, jump.id)
+        onDrop?.(e, group.id)
       }}
       onDragLeave={() => {
         if (locked) return
-        onDragLeave?.(jump.id)
+        onDragLeave?.(group.id)
       }}
       className={`relative border rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden ${
         osDragOver ? 'border-blue-400 ring-2 ring-blue-200' : 'border-gray-200'
@@ -250,12 +258,12 @@ const JumpCard = ({
       {osDragOver && (
         <div className='absolute inset-0 z-20 flex items-center justify-center bg-blue-50/80 rounded-xl pointer-events-none'>
           <span className='text-sm font-medium text-blue-700'>
-            {jump.processed === true ? 'Drop to import' : 'Drop to add to jump'}
+            {group.processed === true ? 'Drop to import' : 'Drop to add to group'}
           </span>
         </div>
       )}
       <div
-        data-jump-card-toggle='true'
+        data-group-card-toggle='true'
         onClick={() => setExpanded(!expanded)}
         className='px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 cursor-pointer select-none'>
         <div className='flex items-center justify-between'>
@@ -303,7 +311,7 @@ const JumpCard = ({
                 }}
                 title='Click to rename group'
                 className='font-semibold text-sm text-gray-800 cursor-pointer hover:text-blue-600'>
-                {jump.label}
+                {group.label}
               </h3>
             )}
             <div className='flex items-center gap-1.5'>
@@ -330,7 +338,7 @@ const JumpCard = ({
             </div>
           </div>
           <div className='flex items-center gap-4 text-xs text-gray-500'>
-            {jump.processed === true && (
+            {group.processed === true && (
               <span
                 data-processed-badge='true'
                 className='px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium'>
@@ -340,14 +348,14 @@ const JumpCard = ({
             <button
               type='button'
               data-action='upload'
-              disabled={jump.processed !== true || uploading || locked}
+              disabled={group.processed !== true || uploading || locked}
               title={uploadTitle}
               onClick={(e) => {
                 e.stopPropagation()
-                onUpload(jump.id)
+                onUpload(group.id)
               }}
               className='px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'>
-              {isUploadingJump ? (
+              {isUploadingGroup ? (
                 <span className='flex items-center gap-1.5'>
                   <svg
                     className='animate-spin w-3 h-3'
@@ -373,6 +381,20 @@ const JumpCard = ({
                 'Upload'
               )}
             </button>
+            {group.processed === true && onCreateMontage && (
+              <button
+                type='button'
+                data-action='create-montage'
+                disabled={locked || hasKdenlive}
+                title={hasKdenlive ? 'Montage already created' : 'Create montage project'}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onCreateMontage(group.id)
+                }}
+                className='px-3 py-1 text-xs font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed'>
+                {hasKdenlive ? 'Montage Created' : 'Create Montage'}
+              </button>
+            )}
             <button
               type='button'
               data-action='process'
@@ -380,16 +402,16 @@ const JumpCard = ({
               title={locked ? 'Upload in progress – actions locked' : processTitle}
               onClick={(e) => {
                 e.stopPropagation()
-                onProcess(jump.id)
+                onProcess(group.id)
               }}
               className='px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'>
-              {processing ? 'Processing…' : jump.processed === true ? 'Reprocess' : 'Process'}
+              {processing ? 'Processing…' : group.processed === true ? 'Reprocess' : 'Process'}
             </button>
             <span className='tabular-nums font-medium'>
               {formatTime(bounds.start)} — {formatTime(bounds.end)}
             </span>
             <span className='px-2 py-0.5 rounded-full bg-gray-100 text-gray-600'>
-              {jump.files.length} files
+              {group.files.length} files
             </span>
             {importing && (
               <span className='flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium'>
@@ -475,13 +497,13 @@ const JumpCard = ({
                   <span
                     onClick={openDateEditor}
                     className={`text-sm font-medium ${locked ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:text-blue-600 cursor-pointer'}`}>
-                    📅 {jump.day}
+                    📅 {group.day}
                   </span>
-                  {jump.files.length > 0 && (
+                  {group.files.length > 0 && (
                     <span
                       onClick={openTimeEditor}
                       className={`text-sm font-medium ${locked ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:text-blue-600 cursor-pointer'}`}
-                      title='Click to set jump start time'>
+                      title='Click to set group start time'>
                       ⏰ {formatTime(bounds.start)}
                     </span>
                   )}
@@ -489,25 +511,25 @@ const JumpCard = ({
                 <button
                   type='button'
                   disabled={locked}
-                  onClick={() => onRemoveGroup(jump.id)}
+                  onClick={() => onRemoveGroup(group.id)}
                   className='px-2 py-1 text-xs font-medium text-red-600 hover:text-red-800 bg-red-50 rounded-md hover:bg-red-100 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed'>
                   Remove Group
                 </button>
               </>
             )}
           </div>
-          {jump.processed === true && (
+          {group.processed === true && (
             <div
               data-share-section='true'
               className='px-4 py-3 border-b border-gray-100 bg-gray-50/60'>
-              {jump.publish?.shareUrl ? (
+              {group.publish?.shareUrl ? (
                 <div className='flex items-center gap-2 flex-wrap'>
                   <a
-                    href={jump.publish.shareUrl}
+                    href={group.publish.shareUrl}
                     target='_blank'
                     rel='noreferrer'
                     className='font-mono text-xs text-blue-600 hover:text-blue-800 truncate max-w-[260px]'>
-                    {jump.publish.shareUrl}
+                    {group.publish.shareUrl}
                   </a>
                   <button
                     type='button'
@@ -522,12 +544,32 @@ const JumpCard = ({
               )}
             </div>
           )}
+          {destinations && destinations.length > 0 && onDestinationChange && (
+            <div className='px-4 py-2 border-b border-gray-100 bg-gray-50/60'>
+              <div className='flex items-center gap-2'>
+                <span className='text-xs font-medium text-gray-500'>Destination:</span>
+                <select
+                  value={group.destination ?? ''}
+                  onChange={(e) => onDestinationChange(group.id, e.target.value)}
+                  className='px-2 py-1 text-xs border border-gray-300 rounded-md bg-white focus:ring-1 focus:ring-blue-500'>
+                  <option value=''>None</option>
+                  {destinations.map((dest) => (
+                    <option
+                      key={dest.name}
+                      value={dest.name}>
+                      {dest.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
           {viewMode === 'grid' ? (
             <div className='p-3'>
               <FileGrid
-                files={jump.files}
-                groupId={jump.id}
-                selection={selection[jump.id] ?? {}}
+                files={group.files}
+                groupId={group.id}
+                selection={selection[group.id] ?? {}}
                 previewedPath={previewedPath}
                 hasSelection={hasSelection}
                 onSelect={onSelect}
@@ -538,10 +580,10 @@ const JumpCard = ({
             </div>
           ) : (
             <div className='divide-y divide-gray-50'>
-              {jump.files.map((file, i) => {
+              {group.files.map((file, i) => {
                 const isCurrentFile =
                   !!uploadProgress &&
-                  uploadProgress.jumpId === jump.id &&
+                  uploadProgress.groupId === group.id &&
                   uploadProgress.filename === file.filename
                 const uploadPercent = isCurrentFile
                   ? uploadProgress.totalBytes > 0
@@ -559,10 +601,10 @@ const JumpCard = ({
                     )}
                     <FileRow
                       file={file}
-                      groupId={jump.id}
-                      selected={!!selection[jump.id]?.[file.path]}
+                      groupId={group.id}
+                      selected={!!selection[group.id]?.[file.path]}
                       isPreviewed={previewedPath === file.path}
-                      isInMultipleJumps={multiJumpPaths.has(file.path)}
+                      isInMultipleGroups={multiGroupPaths.has(file.path)}
                       hasSelection={locked ? false : hasSelection}
                       uploadPercent={uploadPercent}
                       uploadState={uploadState}
@@ -574,7 +616,7 @@ const JumpCard = ({
                   </Fragment>
                 )
               })}
-              {dropIndex === jump.files.length && (
+              {dropIndex === group.files.length && (
                 <div
                   data-drop-indicator='true'
                   className='h-0.5 mx-3 mb-1 rounded bg-blue-500'
@@ -588,4 +630,4 @@ const JumpCard = ({
   )
 }
 
-export { JumpCard }
+export { GroupCard }

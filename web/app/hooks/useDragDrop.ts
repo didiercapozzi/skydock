@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react'
-import { moveFilesBetweenJumps, reorderFilesInJump } from '@skydock/scripts'
+import { moveFilesBetweenGroups, reorderFilesInGroup } from '@skydock/scripts'
 import type {
   DragData,
   DropDialog,
   DropHint,
   ManifestFile,
-  ManifestJump
+  ManifestGroup
 } from '../components/types'
 import { getDropIndex } from '../components/utils'
 
@@ -24,18 +24,18 @@ type UseDragDropReturn = {
   ) => void
   handleDrop: (
     e: React.DragEvent,
-    targetJumpId: string,
-    jumps: ManifestJump[],
-    onJumpsChange: (next: ManifestJump[]) => void
+    targetGroupId: string,
+    groups: ManifestGroup[],
+    onGroupsChange: (next: ManifestGroup[]) => void
   ) => void
-  handleDragOver: (e: React.DragEvent, targetJumpId: string) => void
+  handleDragOver: (e: React.DragEvent, targetGroupId: string) => void
   handleDragLeave: () => void
   handleDragEnd: () => void
   executeDrop: (
     action: 'move' | 'copy',
-    jumps: ManifestJump[],
+    groups: ManifestGroup[],
     manifestFiles: ManifestFile[],
-    onJumpsChange: (next: ManifestJump[]) => void,
+    onGroupsChange: (next: ManifestGroup[]) => void,
     clearSelection: () => void
   ) => void
   setDropDialog: (next: DropDialog | null) => void
@@ -72,38 +72,38 @@ const useDragDrop = () => {
 
   const handleDrop = (
     e: React.DragEvent,
-    targetJumpId: string,
-    jumps: ManifestJump[],
-    onJumpsChange: (next: ManifestJump[]) => void
+    targetGroupId: string,
+    groups: ManifestGroup[],
+    onGroupsChange: (next: ManifestGroup[]) => void
   ) => {
     const data = dragDataRef.current
     if (!data) return
     setDropHint(null)
-    const target = jumps.find((j) => j.id === targetJumpId)
+    const target = groups.find((g) => g.id === targetGroupId)
     if (target?.processed === true) return
     const groupIds = Object.keys(data.groups)
-    if (groupIds.length === 1 && groupIds[0] === targetJumpId) {
+    if (groupIds.length === 1 && groupIds[0] === targetGroupId) {
       const toIndex = getDropIndex(e.currentTarget as HTMLElement, e.clientY)
-      const paths = data.groups[targetJumpId]
-      const next = reorderFilesInJump(jumps, targetJumpId, paths, toIndex)
+      const paths = data.groups[targetGroupId]
+      const next = reorderFilesInGroup(groups, targetGroupId, paths, toIndex)
       dragDataRef.current = null
-      onJumpsChange(next)
+      onGroupsChange(next)
       return
     }
     setDropDialog({
       x: e.clientX,
       y: e.clientY,
       groups: data.groups,
-      targetJumpId
+      targetGroupId
     })
   }
 
-  const handleDragOver = (e: React.DragEvent, targetJumpId: string) => {
+  const handleDragOver = (e: React.DragEvent, targetGroupId: string) => {
     const index = getDropIndex(e.currentTarget as HTMLElement, e.clientY)
     setDropHint((prev) =>
-      prev && prev.jumpId === targetJumpId && prev.index === index
+      prev && prev.groupId === targetGroupId && prev.index === index
         ? prev
-        : { jumpId: targetJumpId, index }
+        : { groupId: targetGroupId, index }
     )
   }
 
@@ -118,16 +118,16 @@ const useDragDrop = () => {
 
   const executeDrop = (
     action: 'move' | 'copy',
-    jumps: ManifestJump[],
+    groups: ManifestGroup[],
     manifestFiles: ManifestFile[],
-    onJumpsChange: (next: ManifestJump[]) => void,
+    onGroupsChange: (next: ManifestGroup[]) => void,
     clearSelection: () => void
   ) => {
     if (!dropDialog) return
-    const { groups, targetJumpId } = dropDialog
-    const next = moveFilesBetweenJumps(jumps, manifestFiles, groups, targetJumpId, action)
+    const { groups: fileGroups, targetGroupId } = dropDialog
+    const next = moveFilesBetweenGroups(groups, manifestFiles, fileGroups, targetGroupId, action)
     dragDataRef.current = null
-    onJumpsChange(next)
+    onGroupsChange(next)
     clearSelection()
     setDropDialog(null)
   }

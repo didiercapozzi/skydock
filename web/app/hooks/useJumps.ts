@@ -1,32 +1,32 @@
 import { useState } from 'react'
-import type { ManifestJump } from '../components/types'
-import { groupJumpsByDay } from '../components/utils'
+import type { ManifestGroup } from '../components/types'
+import { groupGroupsByDay } from '../components/utils'
 import { useSafeFetcher } from '../helpers/routing'
 
-type UseJumpsReturn = {
-  jumps: ManifestJump[]
-  jumpsByDay: ReturnType<typeof groupJumpsByDay>
-  setJumps: (next: ManifestJump[]) => void
-  updateJumps: (next: ManifestJump[]) => void
+type UseGroupsReturn = {
+  groups: ManifestGroup[]
+  groupsByDay: ReturnType<typeof groupGroupsByDay>
+  setGroups: (next: ManifestGroup[]) => void
+  updateGroups: (next: ManifestGroup[]) => void
 }
 
-const useJumps = (initialJumps: ManifestJump[]) => {
-  const [jumps, setJumps] = useState<ManifestJump[]>(initialJumps)
+const useGroups = (initialGroups: ManifestGroup[]) => {
+  const [groups, setGroups] = useState<ManifestGroup[]>(initialGroups)
   const { submit } = useSafeFetcher()
-  const jumpsByDay = groupJumpsByDay(jumps)
+  const groupsByDay = groupGroupsByDay(groups)
 
-  const updateJumps = (next: ManifestJump[]) => {
-    const withDirty = next.map((j) => {
-      const prev = jumps.find((p) => p.id === j.id)
-      if (!prev?.processed) return j
-      if (prev.label !== j.label) return { ...j, processed: false, publish: undefined }
-      if (prev.day !== j.day) return { ...j, processed: false, publish: undefined }
-      if (prev.files.length !== j.files.length)
-        return { ...j, processed: false, publish: undefined }
-      for (let i = 0; i < j.files.length; i++) {
+  const updateGroups = (next: ManifestGroup[]) => {
+    const withDirty = next.map((g) => {
+      const prev = groups.find((p) => p.id === g.id)
+      if (!prev?.processed) return g
+      if (prev.label !== g.label) return { ...g, processed: false, publish: undefined }
+      if (prev.day !== g.day) return { ...g, processed: false, publish: undefined }
+      if (prev.files.length !== g.files.length)
+        return { ...g, processed: false, publish: undefined }
+      for (let i = 0; i < g.files.length; i++) {
         const a = prev.files[i]
-        const b = j.files[i]
-        if (!a || !b) return { ...j, processed: false, publish: undefined }
+        const b = g.files[i]
+        if (!a || !b) return { ...g, processed: false, publish: undefined }
         if (
           a.path !== b.path ||
           a.id !== b.id ||
@@ -34,16 +34,16 @@ const useJumps = (initialJumps: ManifestJump[]) => {
           a.cropEnd !== b.cropEnd ||
           a.mtime !== b.mtime
         )
-          return { ...j, processed: false, publish: undefined }
+          return { ...g, processed: false, publish: undefined }
       }
-      return j
+      return g
     })
-    setJumps(withDirty)
-    submit({ url: '/api/manifest', actionArgs: { intent: 'save-jumps', jumps: withDirty } })
+    setGroups(withDirty)
+    submit({ url: '/api/manifest', actionArgs: { intent: 'save-groups', groups: withDirty } })
   }
 
-  return { jumps, jumpsByDay, setJumps, updateJumps }
+  return { groups, groupsByDay, setGroups, updateGroups }
 }
 
-export { useJumps }
-export type { UseJumpsReturn }
+export { useGroups }
+export type { UseGroupsReturn }

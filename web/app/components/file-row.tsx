@@ -7,7 +7,7 @@ const FileRow = ({
   groupId,
   selected,
   isPreviewed,
-  isInMultipleJumps,
+  isInMultipleGroups,
   hasSelection,
   uploadPercent,
   uploadState,
@@ -20,7 +20,7 @@ const FileRow = ({
   groupId: string
   selected: boolean
   isPreviewed: boolean
-  isInMultipleJumps: boolean
+  isInMultipleGroups: boolean
   hasSelection: boolean
   uploadPercent?: number | null
   uploadState?: 'uploading' | 'done' | 'error' | null
@@ -43,7 +43,7 @@ const FileRow = ({
         ? 'bg-purple-50 ring-1 ring-purple-400 shadow-sm'
         : selected
           ? 'bg-blue-50 ring-1 ring-blue-400 shadow-sm'
-          : isInMultipleJumps
+          : isInMultipleGroups
             ? 'bg-purple-50 hover:bg-purple-100 border border-purple-200'
             : 'hover:bg-gray-50 border border-transparent hover:border-gray-200'
     }`}>

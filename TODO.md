@@ -12,6 +12,10 @@
 - Phase 3 — Upload chunking + progress: 10 MB chunks, per-file progress callback, retry on failure.
 - Phase 5 — Process + Upload UI wiring: ConnectionDialog, NAS session validation, animated upload button.
 - Phase 6 — Tests + docs: NAS connection e2e tests, RULES.md updated with inferred returns and no-commit rules.
+- Jump → Group rename: All types, exports, and internal references renamed from `jump` to `group`.
+- Collections: Added `Collection` type, `collection` field on groups, `CollectionGroups` component, collection creation dialog.
+- Montage: Added "Create Montage" button, `.kdenlive` project creation, zip archive creation, reprocess protection.
+- Collection view: Added "By Collection" toggle in ReviewHeader, `CollectionGroups` component for viewing groups by collection.
 
 ## Process + Upload pipeline (RULES.md §6 + §13)
 
@@ -37,3 +41,4 @@
 ### Still needed
 
 - DSM host URL + dedicated user credentials for live dry run.
+- Upload reorganization: collection-aware upload paths (passenger → `{NAS}/tandems/{label}/`, location → `{NAS}/{collectionName}/`).

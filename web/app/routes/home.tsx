@@ -2,7 +2,7 @@ import {
   dsmValidateSession,
   loadManifest,
   loadNasSession,
-  manifestJumpSchema,
+  manifestGroupSchema,
   tryAutoRefreshSession
 } from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
@@ -12,6 +12,8 @@ import { ComparisonDialog } from '../components/comparison-dialog'
 import { ConnectionDialog } from '../components/connection-dialog'
 import { DropActionDialog } from '../components/drop-action-dialog'
 import { GroupCreationDialog } from '../components/group-creation-dialog'
+import { DestinationCreationDialog } from '../components/collection-creation-dialog'
+import { Destinations } from '../components/home/CollectionGroups'
 import { DayGroups } from '../components/home/DayGroups'
 import { EmptyManifest } from '../components/home/EmptyManifest'
 import { Header } from '../components/home/Header'
@@ -23,11 +25,12 @@ import { StagingTray } from '../components/staging-tray'
 import { useSafeFetcher } from '../helpers/routing'
 import { useCompare } from '../hooks/useCompare'
 import { useDragDrop } from '../hooks/useDragDrop'
-import { useJumps } from '../hooks/useJumps'
+import { useGroups } from '../hooks/useJumps'
 import { usePreview } from '../hooks/usePreview'
 import { useSelection } from '../hooks/useSelection'
 import { useUploadProgress } from '../hooks/useUploadProgress'
-import type { ManifestJump } from '../components/types'
+import { groupGroupsByDestination } from '../components/utils'
+import type { Destination, ManifestGroup } from '../components/types'
 import type { Route } from './+types/home'
 
 const nasSuccessSchema = z
@@ -47,7 +50,9 @@ const nasErrorSchema = z
   })
   .passthrough()
 
-const manifestJumpsResponseSchema = z.object({ jumps: z.array(manifestJumpSchema) }).passthrough()
+const manifestGroupsResponseSchema = z
+  .object({ groups: z.array(manifestGroupSchema) })
+  .passthrough()
 
 const loader = async (_args: Route.LoaderArgs) => {
   const outputDir = process.env.SKYDOCK_OUTPUT_DIR ?? '/workspace/output'
@@ -105,18 +110,19 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     })
     .passthrough()
   const initialNas = initialNasSchema.safeParse(loaderData.initialNas).data ?? undefined
-  const { jumps, jumpsByDay, setJumps, updateJumps } = useJumps(manifest?.jumps ?? [])
+  const { groups, groupsByDay, setGroups, updateGroups } = useGroups(manifest?.groups ?? [])
+  const [destinations, setDestinations] = useState<Destination[]>(manifest?.destinations ?? [])
   const manifestFiles = manifest?.files ?? []
-  const filesInJumps = new Set(jumps.flatMap((j) => j.files.map((f) => f.path)))
-  const unassignedFiles = manifestFiles.filter((f) => !filesInJumps.has(f.path))
+  const filesInGroups = new Set(groups.flatMap((g) => g.files.map((f) => f.path)))
+  const unassignedFiles = manifestFiles.filter((f) => !filesInGroups.has(f.path))
   const pathCounts = new Map<string, number>()
-  for (const j of jumps) {
-    for (const f of j.files) pathCounts.set(f.path, (pathCounts.get(f.path) ?? 0) + 1)
+  for (const g of groups) {
+    for (const f of g.files) pathCounts.set(f.path, (pathCounts.get(f.path) ?? 0) + 1)
   }
-  const multiJumpPaths = new Set<string>()
-  for (const [p, c] of pathCounts) if (c > 1) multiJumpPaths.add(p)
+  const multiGroupPaths = new Set<string>()
+  for (const [p, c] of pathCounts) if (c > 1) multiGroupPaths.add(p)
   const { selection, selectedCount, handleSelect, clearSelection } = useSelection(
-    jumps,
+    groups,
     unassignedFiles
   )
   const { compareIds, showComparison, handleCompareToggle, setCompareIds, setShowComparison } =
@@ -131,7 +137,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     setVideoState,
     closePreview,
     setPreview
-  } = usePreview(jumps, unassignedFiles, updateJumps)
+  } = usePreview(groups, unassignedFiles, updateGroups)
   const {
     dropDialog,
     dropHint,
@@ -152,14 +158,17 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const [connectionDialogOpenData, setConnectionDialogOpenData] = useState<unknown>(null)
   const [showFolderBrowser, setShowFolderBrowser] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
+  const [groupingMode, setGroupingMode] = useState<'day' | 'destination'>('day')
   const [showGroupCreation, setShowGroupCreation] = useState(false)
   const [groupCreationInitialDay, setGroupCreationInitialDay] = useState<string | undefined>(
     undefined
   )
+  const [showDestinationCreation, setShowDestinationCreation] = useState(false)
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const [importingId, setImportingId] = useState<string | null>(null)
   const [manifestError, setManifestError] = useState<string | null>(null)
+  const [hasKdenliveMap, setHasKdenliveMap] = useState<Map<string, boolean>>(new Map())
   const uploadProgress = useUploadProgress(uploadingId)
 
   const parsedSuccess = nasSuccessSchema.safeParse(nasFetcher.data)
@@ -217,15 +226,18 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     setCompareIds([])
     manifestFetcher.submit({
       url: '/api/manifest',
-      actionArgs: { intent: 'merge-jumps', leftId, rightId, anchorEpoch }
+      actionArgs: { intent: 'merge-groups', leftId, rightId, anchorEpoch }
     })
   }
-  const handleProcess = (jumpId: string) => {
+  const handleProcess = (groupId: string) => {
     setManifestError(null)
-    setProcessingId(jumpId)
-    manifestFetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'process-jump', jumpId } })
+    setProcessingId(groupId)
+    manifestFetcher.submit({
+      url: '/api/manifest',
+      actionArgs: { intent: 'process-group', groupId }
+    })
   }
-  const handleUpload = (jumpId: string) => {
+  const handleUpload = (groupId: string) => {
     setManifestError(null)
     if (!nasConnected) {
       openConnectionDialog()
@@ -235,16 +247,19 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
       setShowFolderBrowser(true)
       return
     }
-    setUploadingId(jumpId)
-    manifestFetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'upload-jump', jumpId } })
+    setUploadingId(groupId)
+    manifestFetcher.submit({
+      url: '/api/manifest',
+      actionArgs: { intent: 'upload-group', groupId }
+    })
   }
-  const handleImportFile = async (jumpId: string, files: File[]) => {
-    setImportingId(jumpId)
+  const handleImportFile = async (groupId: string, files: File[]) => {
+    setImportingId(groupId)
     try {
-      const jump = jumps.find((j) => j.id === jumpId)
-      const day = jump?.day
+      const group = groups.find((g) => g.id === groupId)
+      const day = group?.day
       for (const file of files) {
-        const params = new URLSearchParams({ jumpId, filename: file.name })
+        const params = new URLSearchParams({ groupId, filename: file.name })
         if (day) params.set('day', day)
         const res = await fetch(`/api/import-file?${params}`, {
           method: 'POST',
@@ -257,7 +272,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           return
         }
         if (data.manifest) {
-          setJumps(data.manifest.jumps)
+          setGroups(data.manifest.groups)
         }
       }
     } catch (err) {
@@ -272,9 +287,9 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   }
   const mainRef = useRef<HTMLElement | null>(null)
 
-  const handleLabelChange = (jumpId: string, label: string) => {
-    const next = jumps.map((j) => (j.id === jumpId ? { ...j, label } : j))
-    updateJumps(next)
+  const handleLabelChange = (groupId: string, label: string) => {
+    const next = groups.map((g) => (g.id === groupId ? { ...g, label } : g))
+    updateGroups(next)
   }
 
   const handleCreateGroup = (dayDate: string) => {
@@ -288,7 +303,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   }
 
   const handleGroupCreated = (title: string, day: string) => {
-    const newJump: ManifestJump = {
+    const newGroup: ManifestGroup = {
       id: `group_${Date.now()}`,
       label: title,
       confirmed: false,
@@ -296,28 +311,63 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
       processed: false,
       day
     }
-    const next = [...jumps, newJump]
-    updateJumps(next)
+    const next = [...groups, newGroup]
+    updateGroups(next)
     setShowGroupCreation(false)
     setGroupCreationInitialDay(undefined)
   }
 
-  const handleRemoveGroup = (jumpId: string) => {
-    const next = jumps.filter((j) => j.id !== jumpId)
-    updateJumps(next)
+  const handleRemoveGroup = (groupId: string) => {
+    const next = groups.filter((g) => g.id !== groupId)
+    updateGroups(next)
   }
 
-  const handleGroupDateChange = (jumpId: string, day: string) => {
-    const next = jumps.map((j) => (j.id === jumpId ? { ...j, day } : j))
-    updateJumps(next)
+  const handleGroupDateChange = (groupId: string, day: string) => {
+    const next = groups.map((g) => (g.id === groupId ? { ...g, day } : g))
+    updateGroups(next)
   }
 
-  const handleGroupTimeChange = (jumpId: string, anchorEpoch: number) => {
+  const handleGroupTimeChange = (groupId: string, anchorEpoch: number) => {
     setManifestError(null)
     manifestFetcher.submit({
       url: '/api/manifest',
-      actionArgs: { intent: 'shift-jump-time', jumpId, anchorEpoch }
+      actionArgs: { intent: 'shift-group-time', groupId, anchorEpoch }
     })
+  }
+
+  const handleDestinationChange = (groupId: string, destinationName: string) => {
+    const next = groups.map((g) =>
+      g.id === groupId ? { ...g, destination: destinationName || undefined } : g
+    )
+    updateGroups(next)
+  }
+
+  const handleCreateDestination = () => {
+    setShowDestinationCreation(true)
+  }
+
+  const handleDestinationCreated = (name: string, path?: string) => {
+    const newDestination: Destination = { name, path }
+    const next = [...destinations, newDestination]
+    setDestinations(next)
+    manifestFetcher.submit({
+      url: '/api/manifest',
+      actionArgs: { intent: 'save-groups', groups, destinations: next }
+    })
+    setShowDestinationCreation(false)
+  }
+
+  const handleCreateMontage = async (groupId: string) => {
+    setManifestError(null)
+    try {
+      const res = await fetch(`/api/create-montage?groupId=${groupId}`)
+      const data = await res.json()
+      if (data.error) {
+        setManifestError(data.error)
+      }
+    } catch (err) {
+      setManifestError(err instanceof Error ? err.message : 'Failed to create montage')
+    }
   }
 
   useEffect(() => {
@@ -326,10 +376,10 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
 
   useEffect(() => {
     if (!manifestFetcher.data) return
-    const parsed = manifestJumpsResponseSchema.safeParse(manifestFetcher.data)
+    const parsed = manifestGroupsResponseSchema.safeParse(manifestFetcher.data)
     if (parsed.success) {
       queueMicrotask(() => {
-        setJumps(parsed.data.jumps)
+        setGroups(parsed.data.groups)
         setProcessingId(null)
         setUploadingId(null)
         setManifestError(null)
@@ -364,7 +414,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
       setProcessingId(null)
       setUploadingId(null)
     })
-  }, [manifestFetcher.data, setJumps])
+  }, [manifestFetcher.data, setGroups])
 
   useEffect(() => {
     if (!scanFetcher.data) return
@@ -372,6 +422,26 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
       revalidator.revalidate()
     })
   }, [scanFetcher.data, revalidator])
+
+  // Check for kdenlive files in processed groups
+  useEffect(() => {
+    const checkKdenlive = async () => {
+      const newMap = new Map<string, boolean>()
+      for (const group of groups) {
+        if (group.processed) {
+          try {
+            const res = await fetch(`/api/create-montage?groupId=${group.id}`)
+            const data = await res.json()
+            newMap.set(group.id, data.error === 'Montage already created.')
+          } catch {
+            newMap.set(group.id, false)
+          }
+        }
+      }
+      setHasKdenliveMap(newMap)
+    }
+    checkKdenlive()
+  }, [groups])
 
   if (!manifest) {
     return (
@@ -424,11 +494,13 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
       />
       <div className='max-w-7xl mx-auto px-6 py-8'>
         <ReviewHeader
-          jumpCount={jumps.length}
+          groupCount={groups.length}
           fileCount={manifestFiles.length}
           compareIds={compareIds}
           viewMode={viewMode}
+          groupingMode={groupingMode}
           onViewModeChange={setViewMode}
+          onGroupingModeChange={setGroupingMode}
           onCreateGroup={handleCreateGroupGlobal}
           onClearCompare={() => setCompareIds([])}
           onShowComparison={() => setShowComparison(true)}
@@ -449,38 +521,89 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           onDragStart={(e, groupId, paths) => handleDragStart(e, groupId, paths, selection)}
           onDragEnd={handleDragEnd}
         />
-        <DayGroups
-          groups={jumpsByDay}
-          compareIds={compareIds}
-          selection={selection}
-          multiJumpPaths={multiJumpPaths}
-          previewedPath={preview?.files[preview.index]?.path ?? null}
-          dropHint={dropHint}
-          viewMode={viewMode}
-          hasSelection={selectedCount > 0}
-          onCreateGroup={handleCreateGroup}
-          onCompareToggle={handleCompareToggle}
-          onSelect={handleSelect}
-          onPreview={handlePreview}
-          onDragStart={(e, groupId, paths) => handleDragStart(e, groupId, paths, selection)}
-          onDragEnd={handleDragEnd}
-          onDrop={(e, id) => handleDrop(e, id, jumps, updateJumps)}
-          onDragOver={handleDragOver}
-          onDragLeave={(_jumpId: string) => handleDragLeave()}
-          onLabelChange={handleLabelChange}
-          onProcess={handleProcess}
-          processingId={processingId}
-          onUpload={handleUpload}
-          uploadingId={uploadingId}
-          uploadProgress={uploadProgress}
-          nasConnected={nasConnected}
-          hasUploadFolder={!!defaultFolder}
-          onRemoveGroup={handleRemoveGroup}
-          onGroupDateChange={handleGroupDateChange}
-          onGroupTimeChange={handleGroupTimeChange}
-          onImportFile={handleImportFile}
-          importingId={importingId}
-        />
+        {groupingMode === 'day' ? (
+          <DayGroups
+            groups={groupsByDay}
+            compareIds={compareIds}
+            selection={selection}
+            multiGroupPaths={multiGroupPaths}
+            previewedPath={preview?.files[preview.index]?.path ?? null}
+            dropHint={dropHint}
+            viewMode={viewMode}
+            hasSelection={selectedCount > 0}
+            onCreateGroup={handleCreateGroup}
+            onCompareToggle={handleCompareToggle}
+            onSelect={handleSelect}
+            onPreview={handlePreview}
+            onDragStart={(e, groupId, paths) => handleDragStart(e, groupId, paths, selection)}
+            onDragEnd={handleDragEnd}
+            onDrop={(e, id) => handleDrop(e, id, groups, updateGroups)}
+            onDragOver={handleDragOver}
+            onDragLeave={(_groupId: string) => handleDragLeave()}
+            onLabelChange={handleLabelChange}
+            onProcess={handleProcess}
+            processingId={processingId}
+            onUpload={handleUpload}
+            uploadingId={uploadingId}
+            uploadProgress={uploadProgress}
+            nasConnected={nasConnected}
+            hasUploadFolder={!!defaultFolder}
+            onRemoveGroup={handleRemoveGroup}
+            onGroupDateChange={handleGroupDateChange}
+            onGroupTimeChange={handleGroupTimeChange}
+            onImportFile={handleImportFile}
+            importingId={importingId}
+            onCreateMontage={handleCreateMontage}
+            hasKdenliveMap={hasKdenliveMap}
+            destinations={destinations}
+            onDestinationChange={handleDestinationChange}
+          />
+        ) : (
+          <Destinations
+            destinations={destinations}
+            groupsByDestination={groupGroupsByDestination(groups, destinations)}
+            compareIds={compareIds}
+            selection={selection}
+            multiGroupPaths={multiGroupPaths}
+            previewedPath={preview?.files[preview.index]?.path ?? null}
+            dropHint={dropHint}
+            viewMode={viewMode}
+            hasSelection={selectedCount > 0}
+            onCreateDestination={handleCreateDestination}
+            onCreateGroup={(destinationName) => {
+              if (destinationName) {
+                setGroupCreationInitialDay(undefined)
+                setShowGroupCreation(true)
+              } else {
+                handleCreateGroupGlobal()
+              }
+            }}
+            onCompareToggle={handleCompareToggle}
+            onSelect={handleSelect}
+            onPreview={handlePreview}
+            onDragStart={(e, groupId, paths) => handleDragStart(e, groupId, paths, selection)}
+            onDragEnd={handleDragEnd}
+            onDrop={(e, id) => handleDrop(e, id, groups, updateGroups)}
+            onDragOver={handleDragOver}
+            onDragLeave={(_groupId: string) => handleDragLeave()}
+            onLabelChange={handleLabelChange}
+            onProcess={handleProcess}
+            processingId={processingId}
+            onUpload={handleUpload}
+            uploadingId={uploadingId}
+            uploadProgress={uploadProgress}
+            nasConnected={nasConnected}
+            hasUploadFolder={!!defaultFolder}
+            onRemoveGroup={handleRemoveGroup}
+            onGroupDateChange={handleGroupDateChange}
+            onGroupTimeChange={handleGroupTimeChange}
+            onImportFile={handleImportFile}
+            importingId={importingId}
+            onCreateMontage={handleCreateMontage}
+            hasKdenliveMap={hasKdenliveMap}
+            onDestinationChange={handleDestinationChange}
+          />
+        )}
         {selectedCount > 0 && (
           <StagingTray
             selectedCount={selectedCount}
@@ -518,16 +641,16 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           <DropActionDialog
             x={dropDialog.x}
             y={dropDialog.y}
-            onMove={() => executeDrop('move', jumps, manifestFiles, updateJumps, clearSelection)}
-            onCopy={() => executeDrop('copy', jumps, manifestFiles, updateJumps, clearSelection)}
+            onMove={() => executeDrop('move', groups, manifestFiles, updateGroups, clearSelection)}
+            onCopy={() => executeDrop('copy', groups, manifestFiles, updateGroups, clearSelection)}
             onCancel={() => setDropDialog(null)}
           />
         )}
         {showComparison && compareIds.length === 2 && (
           <ComparisonDialog
-            jumps={jumps}
-            leftJumpId={compareIds[0]}
-            rightJumpId={compareIds[1]}
+            groups={groups}
+            leftGroupId={compareIds[0]}
+            rightGroupId={compareIds[1]}
             onClose={() => setShowComparison(false)}
             onMerge={handleMerge}
           />
@@ -552,6 +675,12 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
               setShowGroupCreation(false)
               setGroupCreationInitialDay(undefined)
             }}
+          />
+        )}
+        {showDestinationCreation && (
+          <DestinationCreationDialog
+            onCreate={handleDestinationCreated}
+            onCancel={() => setShowDestinationCreation(false)}
           />
         )}
       </div>

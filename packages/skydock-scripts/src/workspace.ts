@@ -1,11 +1,11 @@
-import type { ManifestFile, ManifestJump, ManifestPassenger } from './types'
+import type { ManifestFile, ManifestGroup, ManifestPassenger } from './types'
 
 const hasCompletePassenger = (passenger: ManifestPassenger | null | undefined) => {
   if (!passenger) return false
   return passenger.firstname.trim() !== '' && passenger.lastname.trim() !== ''
 }
 
-const formatJumpDay = (mtime: number) => {
+const formatGroupDay = (mtime: number) => {
   const d = new Date(mtime * 1000)
   const month = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
@@ -20,7 +20,7 @@ const formatCaptureTime = (mtime: number) => {
   return `${hours}${minutes}${seconds}`
 }
 
-const buildJumpBaseName = (
+const buildGroupBaseName = (
   passenger: ManifestPassenger | null | undefined,
   label: string,
   minMtime: number
@@ -33,27 +33,27 @@ const buildJumpBaseName = (
     .toLowerCase()
     .replace(/[^a-z0-9._-]+/g, '_')
     .replace(/^_+|_+$/g, '')
-  return `${stem === '' ? 'jump' : stem}_${formatJumpDay(minMtime)}`
+  return `${stem === '' ? 'group' : stem}_${formatGroupDay(minMtime)}`
 }
 
-const moveFilesBetweenJumps = (
-  jumps: ManifestJump[],
+const moveFilesBetweenGroups = (
+  groups: ManifestGroup[],
   files: ManifestFile[],
-  groups: Record<string, string[]>,
-  targetJumpId: string,
+  fileGroups: Record<string, string[]>,
+  targetGroupId: string,
   action: 'move' | 'copy'
 ) => {
   const byPath = new Map<string, ManifestFile>()
-  for (const j of jumps) for (const f of j.files) byPath.set(f.path, f)
+  for (const g of groups) for (const f of g.files) byPath.set(f.path, f)
   for (const f of files) if (!byPath.has(f.path)) byPath.set(f.path, f)
-  const allPaths = Object.values(groups).flat()
-  return jumps.map((j) => {
-    const sourcePaths = groups[j.id]
+  const allPaths = Object.values(fileGroups).flat()
+  return groups.map((g) => {
+    const sourcePaths = fileGroups[g.id]
     let next =
       sourcePaths && action === 'move'
-        ? j.files.filter((f) => !sourcePaths.includes(f.path))
-        : j.files
-    if (j.id === targetJumpId) {
+        ? g.files.filter((f) => !sourcePaths.includes(f.path))
+        : g.files
+    if (g.id === targetGroupId) {
       const additions: ManifestFile[] = []
       for (const p of allPaths) {
         const f = byPath.get(p)
@@ -61,50 +61,50 @@ const moveFilesBetweenJumps = (
       }
       next = [...next, ...additions]
     }
-    return next === j.files ? j : { ...j, files: next }
+    return next === g.files ? g : { ...g, files: next }
   })
 }
 
-const reorderFilesInJump = (
-  jumps: ManifestJump[],
-  jumpId: string,
+const reorderFilesInGroup = (
+  groups: ManifestGroup[],
+  groupId: string,
   paths: string[],
   toIndex: number
 ) =>
-  jumps.map((j) => {
-    if (j.id !== jumpId) return j
-    const moved = j.files.filter((f) => paths.includes(f.path))
-    if (moved.length === 0) return j
-    const remaining = j.files.filter((f) => !paths.includes(f.path))
-    const draggedBefore = j.files.slice(0, toIndex).filter((f) => paths.includes(f.path)).length
+  groups.map((g) => {
+    if (g.id !== groupId) return g
+    const moved = g.files.filter((f) => paths.includes(f.path))
+    if (moved.length === 0) return g
+    const remaining = g.files.filter((f) => !paths.includes(f.path))
+    const draggedBefore = g.files.slice(0, toIndex).filter((f) => paths.includes(f.path)).length
     const insertAt = Math.max(0, toIndex - draggedBefore)
     return {
-      ...j,
+      ...g,
       files: [...remaining.slice(0, insertAt), ...moved, ...remaining.slice(insertAt)]
     }
   })
 
-const mergeJumps = (jumps: ManifestJump[], leftId: string, rightId: string) => {
-  if (leftId === rightId) return jumps
-  const left = jumps.find((j) => j.id === leftId)
-  const right = jumps.find((j) => j.id === rightId)
-  if (!left || !right) return jumps
+const mergeGroups = (groups: ManifestGroup[], leftId: string, rightId: string) => {
+  if (leftId === rightId) return groups
+  const left = groups.find((g) => g.id === leftId)
+  const right = groups.find((g) => g.id === rightId)
+  if (!left || !right) return groups
   const seen = new Set(left.files.map((f) => f.path))
   const additions = right.files.filter((f) => !seen.has(f.path))
   const files = [...left.files, ...additions].sort((a, b) => a.mtime - b.mtime)
-  return jumps
-    .filter((j) => j.id !== rightId)
-    .map((j) =>
-      j.id === leftId
+  return groups
+    .filter((g) => g.id !== rightId)
+    .map((g) =>
+      g.id === leftId
         ? {
-            ...j,
+            ...g,
             files,
             confirmed: left.confirmed && right.confirmed,
             processed: false,
             passenger: left.passenger ?? right.passenger ?? undefined,
             publish: undefined
           }
-        : j
+        : g
     )
 }
 
@@ -122,13 +122,13 @@ const makeFileName = (baseName: string, mtime: number, ext: string, usedNames: S
   return name
 }
 
-const buildFsTime = (jumpMtime: number, captureMtime: number) => {
-  const jumpDate = new Date(jumpMtime * 1000)
+const buildFsTime = (groupMtime: number, captureMtime: number) => {
+  const groupDate = new Date(groupMtime * 1000)
   const origTime = new Date(captureMtime * 1000)
   return new Date(
-    jumpDate.getFullYear(),
-    jumpDate.getMonth(),
-    jumpDate.getDate(),
+    groupDate.getFullYear(),
+    groupDate.getMonth(),
+    groupDate.getDate(),
     origTime.getHours(),
     origTime.getMinutes(),
     origTime.getSeconds()
@@ -137,11 +137,11 @@ const buildFsTime = (jumpMtime: number, captureMtime: number) => {
 
 export {
   buildFsTime,
-  buildJumpBaseName,
+  buildGroupBaseName,
   formatCaptureTime,
   hasCompletePassenger,
   makeFileName,
-  mergeJumps,
-  moveFilesBetweenJumps,
-  reorderFilesInJump
+  mergeGroups,
+  moveFilesBetweenGroups,
+  reorderFilesInGroup
 }

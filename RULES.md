@@ -22,12 +22,12 @@ output/
 │       └── ...
 ├── .cache/                   # (live mode: empty — no proxies on disk; legacy: thumbs/filmstrip/logs)
 ├── manifest.json             # File registry — source of truth (see §4)
-├── jumps.json                # Jumps — lightweight refs (see §4)
-└── processed/                # After per-jump Process
-    ├── jump_1/
+├── groups.json               # Groups — lightweight refs (see §4)
+└── processed/                # After per-group Process
+    ├── group_1/
     │   ├── DJI_0001.MP4
     │   └── ...
-    └── jump_2/
+    └── group_2/
         └── ...
 ```
 
@@ -43,19 +43,20 @@ output/
 - Preserves timestamps during copy.
 - Writes status file for API polling.
 
-## 4. Manifest (`output/manifest.json` + `output/jumps.json`)
+## 4. Manifest (`output/manifest.json` + `output/groups.json`)
 
-- `manifest.json` is **file registry** (source of truth, written by `scan` when files appear/disappear). `jumps.json` is **workspace** (jump grouping, labels, confirmed/processed status).
-- All types (`ManifestFile`, `ManifestJump`, `Manifest`, `ManifestStatus`) are inferred from Zod schemas via `z.infer<typeof schema>` — never defined separately.
+- `manifest.json` is **file registry** (source of truth, written by `scan` when files appear/disappear). `groups.json` is **workspace** (group grouping, labels, confirmed/processed status, destination assignments).
+- All types (`ManifestFile`, `ManifestGroup`, `Manifest`, `ManifestStatus`) are inferred from Zod schemas via `z.infer<typeof schema>` — never defined separately.
 - `loadManifest` merges both files; `saveManifest` splits them. Old single-file format auto-migrates on first load.
-- `scanMedia()` creates a new manifest with status `proposed`, today's date, all files, and clustered jumps.
+- `scanMedia()` creates a new manifest with status `proposed`, today's date, all files, and clustered groups.
 - `files` is flat list of all files sorted by `mtime`.
-- `jumps[].files` are lightweight refs (`id` + `cropStart`/`cropEnd`) — same file may appear in multiple jumps via copy. In-memory manifest resolves refs to full files for UI/execute. A cropped video that is moved or copied retains its crop in the target; a copy's crop is independent — it can be uncropped or re-cropped to a different range without affecting the source (crop is stored per jump ref, not per file registry).
-- Jump IDs are `jump_1 ...` or preserved original IDs after recluster; labels default to `Jump N` and are editable. For fun jumps `label` holds the location (`yverdon`, `colombier`) and acts as `Group` name — see §13.2.
-- Each `Jump` in `jumps.json` is a regroupment where `EXIF createdAt` gap `<1800s` (30 mins) → same `Jump`, otherwise new `Jump` (`scan` and `+ Create Group` share same logic). Each `Jump` gets a mandatory `date` (`YYYY.MM.DD` locale `de-CH`, e.g. `24.08.2026`) by default the minimum `EXIF createdAt` of its files (fallback `mtime` if `EXIF` missing), stored as `day` and used for grouping and `execute` base name. `+ Create Group` empty `Group`s store `day` to keep them under the selected `Day` (files empty → `getJumpDate` falls back to `day`).
+- `groups[].files` are lightweight refs (`id` + `cropStart`/`cropEnd`) — same file may appear in multiple groups via copy. In-memory manifest resolves refs to full files for UI/execute. A cropped video that is moved or copied retains its crop in the target; a copy's crop is independent — it can be uncropped or re-cropped to a different range without affecting the source (crop is stored per group ref, not per file registry).
+- Group IDs are `group_1 ...` or preserved original IDs after recluster; labels default to `Group N` and are editable. For fun groups `label` holds the location (`yverdon`, `colombier`) and acts as `Group` name — see §13.2.
+- Each `Group` in `groups.json` is a regroupment where `EXIF createdAt` gap `<1800s` (30 mins) → same `Group`, otherwise new `Group` (`scan` and `+ Create Group` share same logic). Each `Group` gets a mandatory `date` (`YYYY.MM.DD` locale `de-CH`, e.g. `24.08.2026`) by default the minimum `EXIF createdAt` of its files (fallback `mtime` if `EXIF` missing), stored as `day` and used for grouping and `execute` base name. `+ Create Group` empty `Group`s store `day` to keep them under the selected `Day` (files empty → `getGroupDate` falls back to `day`).
 - `originalMtime` saved on first time shift to allow reset-calibration.
-- `processed` marks per-jump execution (incremental). Manifest status becomes `executed` only when every jump is processed, `confirmed` when some processed, otherwise `proposed`.
-- Jump selection for compare/process is React state in Review UI, not persisted in manifest.
+- `processed` marks per-group execution (incremental). Manifest status becomes `executed` only when every group is processed, `confirmed` when some processed, otherwise `proposed`.
+- Group selection for compare/process is React state in Review UI, not persisted in manifest.
+- `destination` field on groups links them to destinations for NAS upload organization.
 
 ## 5. Scan & Cluster
 
@@ -528,3 +529,26 @@ output/processed/yverdon_20260802/
 - Upload streams each file; progress counts bytes flushed to the network (0–95%) with 100% on server confirmation.
 - Overall upload status shows which file is currently uploading.
 - On failure, upload retries from beginning of failed file.
+
+## 13. Destinations & Montage
+
+### 13.1 Destinations
+
+- Destinations group jumps by location or passenger name across different days, mapping them to NAS folder paths.
+- Each destination has a `name`, `type` (`location` or `passenger`), and optional `path` (NAS path override).
+- Groups can be assigned to a destination via the `destination` field.
+- Destinations are stored in `manifest.json` as a `destinations` array.
+- The UI supports viewing groups by destination via the "By Destination" toggle.
+- Default NAS path: `location` → `{defaultFolder}/{name}/`, `passenger` → `{defaultFolder}/tandems/{name}/`. If `path` is set, it overrides the default.
+
+### 13.2 Montage workflow
+
+- **Process:** Process a group to create the processed folder with renamed files.
+- **Create Montage:** Click "Create Montage" button on a processed group to:
+  1. Create a `.kdenlive` project file in the processed folder.
+  2. Create a zip archive of all files in the processed folder.
+- **Reprocess protection:** If a `.kdenlive` file exists in the processed folder, the "Create Montage" button shows "Montage Created" and is disabled.
+- **Edit in kdenlive:** Open the `.kdenlive` file to edit the montage.
+- **Export:** Export the final video from kdenlive.
+- **Select photos:** Select photos in the app to include in the final package.
+- **Upload:** Upload the processed group to NAS.

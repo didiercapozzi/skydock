@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { routingEngine } from '../helpers/routing'
 
 const progressSchema = z.object({
-  jumpId: z.string(),
+  groupId: z.string(),
   filename: z.string(),
   bytesUploaded: z.number(),
   totalBytes: z.number(),
@@ -14,21 +14,21 @@ const progressSchema = z.object({
 })
 type UploadProgressState = z.infer<typeof progressSchema>
 
-const useUploadProgress = (jumpId: string | null) => {
+const useUploadProgress = (groupId: string | null) => {
   const [rawProgress, setRawProgress] = useState<UploadProgressState | null>(null)
 
   useEffect(() => {
-    if (!jumpId) return
+    if (!groupId) return
     let cancelled = false
     const fetchOnce = async () => {
       try {
         const raw = await routingEngine.loader({
           url: '/api/upload-progress',
-          searchParamsArgs: { jumpId }
+          searchParamsArgs: { groupId }
         })
         if (raw === null || raw === undefined) return
         const parsed = progressSchema.safeParse(raw)
-        if (parsed.success && parsed.data.jumpId === jumpId && !cancelled)
+        if (parsed.success && parsed.data.groupId === groupId && !cancelled)
           setRawProgress(parsed.data)
       } catch {}
     }
@@ -38,9 +38,9 @@ const useUploadProgress = (jumpId: string | null) => {
       cancelled = true
       clearInterval(id)
     }
-  }, [jumpId])
+  }, [groupId])
 
-  const progress = jumpId && rawProgress?.jumpId === jumpId ? rawProgress : null
+  const progress = groupId && rawProgress?.groupId === groupId ? rawProgress : null
   return progress
 }
 
