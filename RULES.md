@@ -126,7 +126,7 @@ output/
 
 - save-jumps persists the working jump list.
 - merge-jumps combines two jumps server-side with a date anchor for the merged files.
-- process runs `executeMedia` in a single request: with `groupId` for one group (per-group `Process` button), with `destination` for one destination (`Process Destination` button), or with neither for everything (`Process All` button). Passenger optional — label `yverdon` used if no passenger. Marks processed groups and clears their publish state. The client never loops over groups/files.
+- process runs `executeMedia` in a single request: with `groupId` for one group (per-group `Process` button), with `groupIds` for a set of groups (the board's per-day `Process` button), with `destination` for one destination (`Process Destination` button), or with none of them for everything (`Process All` button). Passenger optional — label `yverdon` used if no passenger. Marks processed groups and clears their publish state. The client never loops over groups/files. A failure inside `executeMedia` (missing `exiftool`, failed `ffmpeg` crop) is returned as a `422` with the message in `globalErrors` so the UI can show it, never as an unhandled `500`.
 - upload-jump uploads one processed jump to network storage using Synology DSM API (requires NAS session and chosen upload folder, see §12.3). Binary comparison via SHA-256 hash skips files already present. Upload streams with byte-accurate progress. Per-file progress tracked. Failed uploads retry from beginning. Share link reused if already exists; otherwise created via FileStation Sharing API.
 - shift-jump-time shifts all file timestamps in a jump so the minimum-time file lands on the chosen anchor epoch. Other files keep their existing time diffs. Used by the per-jump time picker.
 
@@ -150,7 +150,9 @@ output/
 
 ### 8.1 Routes
 
-- Home page at `/` (`routes/home.tsx`) with jump grouping, selection, drag and drop, and preview. API endpoints for file serving, library, jumps, file opening, simulation, scanning, manifest operations, status, streaming, and HLS.
+- Board at `/` (`routes/board.tsx`) — the everyday sorting view (see §14).
+- Classic view at `/classic` (`routes/home.tsx`) with jump grouping, selection, drag and drop, and preview (see §9). It keeps scan, NAS connection, compare/merge and calibration.
+- API endpoints for file serving, library, jumps, file opening, simulation, scanning, manifest operations, status, streaming, and HLS.
 
 ### 8.2 Types
 
@@ -175,11 +177,11 @@ output/
 - **HLS:** Live-transcodes to HLS segments for main playback.
 - **Manifest:** Full CRUD for jumps, files, calibration, execution. Intents: save-jumps, merge-jumps (with date anchor), shift-jump-time (shifts file times to anchor), process (`groupId` / `destination` / all — see §6.2), upload-jump (requires processed jump, NAS session and chosen upload folder).
 
-## 9. Review UI (`/`)
+## 9. Review UI (`/classic`)
 
 > Behavioral spec for the Review UI: state, interactions and invariants.
 
-Mounted at `/` (`routes/home.tsx`). The loader reads the manifest; jumps live in React state and persist through the `save-jumps` manifest action, while selection stays in memory. Sections under §9.7 are planned behavior, not mounted.
+Mounted at `/classic` (`routes/home.tsx`). The loader reads the manifest; jumps live in React state and persist through the `save-jumps` manifest action, while selection stays in memory. Sections under §9.7 are planned behavior, not mounted.
 
 ### 9.1 Pure helpers
 
@@ -572,3 +574,34 @@ output/processed/yverdon_20260802/
 - **Export:** Export the final video from kdenlive.
 - **Select photos:** Select photos in the app to include in the final package.
 - **Upload:** Upload the processed group to NAS.
+
+## 14. Board UI (`/`)
+
+> Behavioral spec for the board: the everyday view for sorting a card of jumps into places and passengers.
+
+Mounted at `/` (`routes/board.tsx`). The loader reads the manifest, the destinations and the stored NAS session (no DSM round-trip). Groups live in React state through `useGroups` and persist with the `save-groups` manifest action; every mutation is a whole-list `updateGroups`. The route answers the fetcher in an effect: a `{ groups }` payload replaces the state, anything else is read as a refusal and its first `globalErrors` entry is shown as a note. With no manifest, the board shows a single line pointing at the classic view to run a scan.
+
+### 14.1 Layout
+
+- **To sort** — every group without a destination, as a small card: start time, file count and up to four thumbnails. Cards are draggable and checkbox-selectable; dragging a selected card drags the whole selection.
+- **Fun jumps** — one drop-target card per destination (except `Tandems`), with an inline input to add a location. Inside, files are listed by day, flat, without opening anything: no per-jump nesting, since they land flat on disk (§13.1).
+- **Tandems** — one drop-target card, one row per tandem group: start time, first/last name inputs, kept/removed counts and all the group's thumbnails.
+- A selection bar offers every location and `Tandems` as one-click targets, so a batch of fun jumps is filed in a single move.
+
+### 14.2 Interactions
+
+- Drag a jump (or a selection) onto a location card or the Tandems card to set `group.destination`. Dropping on Tandems keeps any existing passenger; dropping anywhere else clears it.
+- Adding a location saves the destinations list immediately through `save-groups`.
+- Passenger first/last name are edited inline on the tandem row and saved on blur.
+- Clicking a thumbnail opens the shared `PreviewDrawer` for preview and cropping (`usePreview`, same contract as §9.6).
+- Every file is kept by default; the ✕ on a thumbnail sets `keep: false` (↺ puts it back). Removed files stay in the manifest, greyed out, and are skipped by `execute`, zipping and montage.
+
+### 14.3 Actions
+
+The three pipeline steps are distinct and never shown out of order:
+
+1. **Process** — per day for fun jumps (one request with `groupIds`), per group for tandems (disabled until the passenger has a name). Copies, renames and crops locally (§6.1).
+2. **Montage** — tandems only, and only once processed. Calls `/api/create-montage` (§13.2) and reports the generated project path or the reason it refused.
+3. **Upload** — tandems only, and only once processed; disabled while the NAS is not connected, with the classic view named in the tooltip.
+
+Dates shown on the board are derived from the files' minimum mtime with local date parts (no `Intl`, no `toISOString`), so the server and client render the same string.

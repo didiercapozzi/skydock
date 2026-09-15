@@ -2,13 +2,8 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { ZipArchive } from 'archiver'
 import { z } from 'zod'
-import {
-  createMontageProject,
-  getGroupProcessedDir,
-  getOutputDir,
-  isVideoFile,
-  loadManifest
-} from '@skydock/scripts'
+import { getGroupProcessedDir, getOutputDir, isVideoFile, loadManifest } from '@skydock/scripts'
+import { createMontageProject } from '../../../packages/skydock-scripts/src/montage'
 import type { Route } from './+types/api.create-montage'
 
 const searchParamsArgs = z.object({

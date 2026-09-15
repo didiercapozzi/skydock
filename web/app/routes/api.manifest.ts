@@ -24,6 +24,7 @@ import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 const actionArgs = z.object({
   intent: z.enum(['save-groups', 'merge-groups', 'process', 'upload-group', 'shift-group-time']),
   groupId: z.string().optional(),
+  groupIds: z.array(z.string()).optional(),
   destination: z.string().optional(),
   groups: z.array(manifestGroupSchema).optional(),
   fileUpdates: z.array(manifestFileSchema).optional(),
@@ -92,12 +93,18 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       return { groups: manifest.groups }
     }
     if (data.intent === 'process') {
-      executeMedia({
-        manifestPath,
-        outputDir: getOutputDir(),
-        groupIds: data.groupId ? [data.groupId] : undefined,
-        destination: data.destination
-      })
+      const requestedGroups = data.groupIds ?? (data.groupId ? [data.groupId] : undefined)
+      try {
+        executeMedia({
+          manifestPath,
+          outputDir: getOutputDir(),
+          groupIds: requestedGroups && requestedGroups.length > 0 ? requestedGroups : undefined,
+          destination: data.destination
+        })
+      } catch (e) {
+        errors.addGlobalError(e instanceof Error ? e.message : String(e))
+        return errors.toResponse(422)
+      }
       const updated = loadManifest(manifestPath)
       return { groups: updated?.groups ?? manifest.groups }
     }
