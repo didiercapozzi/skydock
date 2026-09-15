@@ -70,6 +70,13 @@ const reclusterGroups = (manifest: Manifest, preservedIds?: Set<string>) => {
   }
   for (const g of mergedFileGroups) g.sort((a, b) => a.mtime - b.mtime)
 
+  // Lone files (single-file groups) stay in manifest.files but not in any group.
+  // They appear as unassigned file rows in the UI and can be dragged into groups.
+  // Preserved groups (manually edited) are kept even with 1 file.
+  const multiFileGroups = mergedFileGroups.filter(
+    (g) => g.length > 1 || g.some((f) => f.id && preservedFileIds.has(f.id))
+  )
+
   const previousById = new Map<string, ManifestGroup>()
   const groupById = new Map<string, ManifestGroup>()
   for (const group of manifest.groups) {
@@ -78,7 +85,7 @@ const reclusterGroups = (manifest: Manifest, preservedIds?: Set<string>) => {
   }
 
   const usedIds = new Set<string>()
-  for (const g of mergedFileGroups) {
+  for (const g of multiFileGroups) {
     for (const f of g) {
       if (!f.id) continue
       const prev = previousById.get(f.id)
@@ -95,7 +102,7 @@ const reclusterGroups = (manifest: Manifest, preservedIds?: Set<string>) => {
     return id
   }
 
-  manifest.groups = mergedFileGroups.map((files) => {
+  manifest.groups = multiFileGroups.map((files) => {
     const counts = new Map<string, number>()
     for (const file of files) {
       if (!file.id) continue

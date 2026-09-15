@@ -89,20 +89,20 @@ const processGroup = (
 ) => {
   const dayEpoch = parseDayEpoch(group.day) ?? Math.min(...group.files.map((f) => f.mtime))
   const baseName = buildGroupBaseName(group.passenger, group.label, dayEpoch)
-  let dirName = baseName
-  let counter = 1
-  while (claimedDirs.has(dirName)) {
-    dirName = `${baseName}_${counter}`
-    counter++
-  }
+  const oldBase = processedMap[group.id]
+
+  // Always use baseName - if a group is reprocessed, overwrite the existing directory
+  const dirName = baseName
   claimedDirs.add(dirName)
   const groupDir = path.join(processedDir, dirName)
 
-  const oldBase = processedMap[group.id]
+  // Clean up old directory if name changed
   if (oldBase && oldBase !== baseName) {
     const oldDir = path.join(processedDir, oldBase)
     moveToTrash(oldDir, outputDir)
   }
+
+  // Remove existing directory to start fresh
   moveToTrash(groupDir, outputDir)
 
   const byType = {
@@ -161,6 +161,60 @@ const processGroup = (
   return copied
 }
 
+const processFile = (
+  file: { path: string; mtime: number; filename: string; destination?: string },
+  destinationName: string,
+  processedDir: string,
+  outputDir: string,
+  claimedDirs: Set<string>
+) => {
+  if (!file.destination) return 0
+  if (!fs.existsSync(file.path)) return 0
+
+  let dirName = destinationName
+  let counter = 1
+  while (claimedDirs.has(dirName)) {
+    dirName = `${destinationName}_${counter}`
+    counter++
+  }
+  claimedDirs.add(dirName)
+
+  const destDir = path.join(processedDir, dirName)
+  fs.mkdirSync(destDir, { recursive: true })
+
+  const ext = path.extname(file.path).slice(1).toLowerCase()
+  const type = isVideoFile(file.path) ? 'video' : 'photo'
+  const usedNames = new Set<string>()
+  let destName: string
+  if (type === 'video') {
+    destName = makeFileName(destinationName, file.mtime, ext, usedNames)
+  } else {
+    destName = `${destinationName}-${file.filename}`
+    if (usedNames.has(destName)) {
+      let c = 1
+      while (
+        usedNames.has(`${destinationName}-${path.basename(file.filename, `.${ext}`)}-${c}.${ext}`)
+      )
+        c++
+      destName = `${destinationName}-${path.basename(file.filename, `.${ext}`)}-${c}.${ext}`
+    }
+    usedNames.add(destName)
+  }
+
+  const dest = path.join(destDir, destName)
+  fs.copyFileSync(file.path, dest)
+  fs.utimesSync(dest, buildFsTime(file.mtime, file.mtime), buildFsTime(file.mtime, file.mtime))
+
+  try {
+    updateMetadata(destDir)
+  } catch {
+    // non-fatal for single file
+  }
+
+  console.log(`[Execute] lone file ${file.filename}: copied to ${dest}`)
+  return 1
+}
+
 const executeMedia = (options?: ExecuteOptions) => {
   const outputDir = options?.outputDir || getOutputDir()
   const manifestPath = options?.manifestPath || getManifestPath(outputDir)
@@ -190,7 +244,11 @@ const executeMedia = (options?: ExecuteOptions) => {
   console.log(`[Execute] Processing ${groupIds.length} group(s)`)
   let totalCopied = 0
   let processedCount = 0
-  const claimedDirs = new Set<string>()
+  const claimedDirs = new Set(
+    fs
+      .readdirSync(processedDir)
+      .filter((d) => fs.statSync(path.join(processedDir, d)).isDirectory())
+  )
   const processedMap = readProcessedMap(outputDir)
 
   for (const groupId of groupIds) {
@@ -217,5 +275,5 @@ if (isCliModule('execute')) {
   executeMedia({ manifestPath, groupIds: groupIds.length > 0 ? groupIds : undefined })
 }
 
-export { executeMedia }
+export { executeMedia, processFile }
 export type { ExecuteOptions, ExecuteResult }

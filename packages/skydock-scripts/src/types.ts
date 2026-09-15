@@ -8,7 +8,8 @@ const manifestFileSchema = z.object({
   id: z.string().optional(),
   originalMtime: z.number().nullable().optional(),
   cropStart: z.number().nullable().optional(),
-  cropEnd: z.number().nullable().optional()
+  cropEnd: z.number().nullable().optional(),
+  destination: z.string().optional()
 })
 
 const groupFileRefSchema = z.object({

@@ -534,13 +534,16 @@ output/processed/yverdon_20260802/
 
 ### 13.1 Destinations
 
-- Destinations group jumps by location or passenger name across different days, mapping them to NAS folder paths.
+- Destinations group jumps and individual files by location or passenger name across different days, mapping them to NAS folder paths.
 - Each destination has a `name` and optional `path` (NAS path override).
-- Groups can be assigned to a destination via the `destination` field.
+- Groups can be assigned to a destination via the `group.destination` field.
+- Individual files can be assigned to a destination via the `file.destination` field (lone files — not in any group).
 - Destinations are stored in `manifest.json` as a `destinations` array.
 - The UI supports viewing groups by destination via the "By Destination" toggle.
 - Default NAS path: `{defaultFolder}/{name}/`. If `path` is set, it overrides the default.
 - Groups can be drag-assigned to destinations: drag the group header (≡ handle) onto a destination section header. Drop on "Unassigned" clears the destination field. Uses `application/x-group` data type to distinguish from file drag.
+- Lone files can be drag-assigned to destinations: drag from the staging tray or file row onto a destination section header. Uses `text/plain` data type with JSON array of file paths.
+- Lone files in a destination are processed flat at `{destname}/{filename}` (no `videos/`/`photos/` subdirs). Videos: `{destname}-{YYYYMMDD}-{HHMMSS}.{ext}`. Photos: `{destname}-{filename}.{ext}`.
 
 ### 13.2 Montage workflow
 

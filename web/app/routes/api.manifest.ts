@@ -10,8 +10,10 @@ import {
   getOutputDir,
   loadNasSession,
   loadManifest,
+  manifestFileSchema,
   manifestGroupSchema,
   mergeGroups,
+  processFile,
   publishJump,
   resolveDestinationPath,
   saveManifest,
@@ -26,11 +28,14 @@ const actionArgs = z.object({
     'save-groups',
     'merge-groups',
     'process-group',
+    'process-file',
     'upload-group',
     'shift-group-time'
   ]),
   groupId: z.string().optional(),
+  filePath: z.string().optional(),
   groups: z.array(manifestGroupSchema).optional(),
+  fileUpdates: z.array(manifestFileSchema).optional(),
   destinations: z.array(destinationSchema).optional(),
   leftId: z.string().optional(),
   rightId: z.string().optional(),
@@ -112,6 +117,30 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       executeMedia({ manifestPath, groupIds: [target.id], outputDir: getOutputDir() })
       const updated = loadManifest(manifestPath)
       return { groups: updated?.groups ?? manifest.groups }
+    }
+    if (data.intent === 'process-file') {
+      if (!data.filePath) {
+        errors.addGlobalError('Process file needs a file path.')
+        return errors.toResponse(422)
+      }
+      const file = manifest.files.find((f) => f.path === data.filePath)
+      if (!file) {
+        errors.addGlobalError('File not found in manifest.')
+        return errors.toResponse(422)
+      }
+      if (!file.destination) {
+        errors.addGlobalError('File has no destination assigned.')
+        return errors.toResponse(422)
+      }
+      const processedDir = path.join(getOutputDir(), 'processed')
+      fs.mkdirSync(processedDir, { recursive: true })
+      const claimedDirs = new Set(
+        fs
+          .readdirSync(processedDir)
+          .filter((d) => fs.statSync(path.join(processedDir, d)).isDirectory())
+      )
+      processFile(file, file.destination, processedDir, getOutputDir(), claimedDirs)
+      return { ok: true as const }
     }
     if (data.intent === 'upload-group') {
       if (!data.groupId) {
@@ -238,6 +267,14 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
     manifest.groups = data.groups
     if (data.destinations) {
       manifest.destinations = data.destinations
+    }
+    if (data.fileUpdates) {
+      for (const update of data.fileUpdates) {
+        const idx = manifest.files.findIndex((f) => f.path === update.path)
+        if (idx !== -1) {
+          manifest.files[idx] = { ...manifest.files[idx], destination: update.destination }
+        }
+      }
     }
     saveManifest(manifestPath, manifest)
     return { ok: true as const }

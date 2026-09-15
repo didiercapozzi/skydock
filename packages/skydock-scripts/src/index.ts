@@ -124,7 +124,7 @@ export type { ProcessOptions } from './process'
 export { scanMedia } from './scan'
 export type { ScanResult } from './scan'
 
-export { executeMedia } from './execute'
+export { executeMedia, processFile } from './execute'
 export type { ExecuteOptions, ExecuteResult } from './execute'
 
 export { watcher } from './watcher'

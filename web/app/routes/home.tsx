@@ -113,8 +113,17 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const { groups, groupsByDay, setGroups, updateGroups } = useGroups(manifest?.groups ?? [])
   const [destinations, setDestinations] = useState<Destination[]>(manifest?.destinations ?? [])
   const manifestFiles = manifest?.files ?? []
+  const [fileDestinations, setFileDestinations] = useState<Map<string, string | undefined>>(
+    () => new Map(manifestFiles.filter((f) => f.destination).map((f) => [f.path, f.destination]))
+  )
   const filesInGroups = new Set(groups.flatMap((g) => g.files.map((f) => f.path)))
-  const unassignedFiles = manifestFiles.filter((f) => !filesInGroups.has(f.path))
+  const unassignedFiles = manifestFiles.filter(
+    (f) => !filesInGroups.has(f.path) && !fileDestinations.has(f.path)
+  )
+  const effectiveManifestFiles = manifestFiles.map((f) => {
+    const dest = fileDestinations.get(f.path)
+    return dest !== undefined ? { ...f, destination: dest } : f
+  })
   const pathCounts = new Map<string, number>()
   for (const g of groups) {
     for (const f of g.files) pathCounts.set(f.path, (pathCounts.get(f.path) ?? 0) + 1)
@@ -169,6 +178,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const [showDestinationCreation, setShowDestinationCreation] = useState(false)
   const [editingDestination, setEditingDestination] = useState<string | null>(null)
   const [processingId, setProcessingId] = useState<string | null>(null)
+  const [processingDestName, setProcessingDestName] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const [importingId, setImportingId] = useState<string | null>(null)
   const [manifestError, setManifestError] = useState<string | null>(null)
@@ -240,6 +250,20 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
       url: '/api/manifest',
       actionArgs: { intent: 'process-group', groupId }
     })
+  }
+  const handleProcessLoneFiles = (destinationName: string) => {
+    setManifestError(null)
+    setProcessingDestName(destinationName)
+    const destFiles = effectiveManifestFiles.filter(
+      (f) => f.destination === destinationName && !filesInGroups.has(f.path)
+    )
+    for (const file of destFiles) {
+      manifestFetcher.submit({
+        url: '/api/manifest',
+        actionArgs: { intent: 'process-file', filePath: file.path }
+      })
+    }
+    setProcessingDestName(null)
   }
   const handleUpload = (groupId: string) => {
     setManifestError(null)
@@ -355,6 +379,16 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
       g.id === groupId ? { ...g, destination: destinationName || undefined } : g
     )
     updateGroups(next)
+  }
+
+  const handleFilesDropToDestination = (paths: string[], destinationName: string) => {
+    const droppedFiles = manifestFiles.filter((f) => paths.includes(f.path))
+    if (droppedFiles.length === 0) return
+    const next = new Map(fileDestinations)
+    for (const f of droppedFiles) next.set(f.path, destinationName)
+    setFileDestinations(next)
+    const fileUpdates = droppedFiles.map((f) => ({ ...f, destination: destinationName }))
+    updateGroups(groups, fileUpdates)
   }
 
   const handleCreateDestination = () => {
@@ -600,7 +634,11 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
         ) : (
           <Destinations
             destinations={destinations}
-            groupsByDestination={groupGroupsByDestination(groups, destinations)}
+            groupsByDestination={groupGroupsByDestination(
+              groups,
+              destinations,
+              effectiveManifestFiles
+            )}
             compareIds={compareIds}
             selection={selection}
             multiGroupPaths={multiGroupPaths}
@@ -644,7 +682,10 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
             hasKdenliveMap={hasKdenliveMap}
             onDestinationChange={handleDestinationChange}
             onAssignDestination={handleAssignDestination}
+            onFilesDrop={handleFilesDropToDestination}
             onEditDestination={handleEditDestination}
+            onProcessLoneFiles={handleProcessLoneFiles}
+            processingDestName={processingDestName}
           />
         )}
         {selectedCount > 0 && (

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ManifestGroup } from '../components/types'
+import type { ManifestFile, ManifestGroup } from '../components/types'
 import { groupGroupsByDay } from '../components/utils'
 import { useSafeFetcher } from '../helpers/routing'
 
@@ -7,7 +7,7 @@ type UseGroupsReturn = {
   groups: ManifestGroup[]
   groupsByDay: ReturnType<typeof groupGroupsByDay>
   setGroups: (next: ManifestGroup[]) => void
-  updateGroups: (next: ManifestGroup[]) => void
+  updateGroups: (next: ManifestGroup[], fileUpdates?: ManifestFile[]) => void
 }
 
 const useGroups = (initialGroups: ManifestGroup[]) => {
@@ -15,7 +15,7 @@ const useGroups = (initialGroups: ManifestGroup[]) => {
   const { submit } = useSafeFetcher()
   const groupsByDay = groupGroupsByDay(groups)
 
-  const updateGroups = (next: ManifestGroup[]) => {
+  const updateGroups = (next: ManifestGroup[], fileUpdates?: ManifestFile[]) => {
     const withDirty = next.map((g) => {
       const prev = groups.find((p) => p.id === g.id)
       if (!prev?.processed) return g
@@ -39,7 +39,14 @@ const useGroups = (initialGroups: ManifestGroup[]) => {
       return g
     })
     setGroups(withDirty)
-    submit({ url: '/api/manifest', actionArgs: { intent: 'save-groups', groups: withDirty } })
+    submit({
+      url: '/api/manifest',
+      actionArgs: {
+        intent: 'save-groups',
+        groups: withDirty,
+        ...(fileUpdates ? { fileUpdates } : {})
+      }
+    })
   }
 
   return { groups, groupsByDay, setGroups, updateGroups }

@@ -32,6 +32,7 @@ type DayGroup = {
 type DestinationGroup = {
   name: string
   groups: ManifestGroup[]
+  files: ManifestFile[]
 }
 
 export type {

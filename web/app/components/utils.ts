@@ -1,5 +1,5 @@
 import { getOutputDir, isVideoFile as isVideoFileFromScripts } from '@skydock/scripts'
-import type { ManifestGroup } from './types'
+import type { ManifestFile, ManifestGroup } from './types'
 
 const isVideoFile = (filename: string) => isVideoFileFromScripts(filename)
 
@@ -59,11 +59,12 @@ const groupGroupsByDay = (groups: ManifestGroup[]) => {
 
 const groupGroupsByDestination = (
   groups: ManifestGroup[],
-  destinations: Array<{ name: string }>
+  destinations: Array<{ name: string }>,
+  files: ManifestFile[] = []
 ) => {
-  const map = new Map<string, { name: string; groups: ManifestGroup[] }>()
+  const map = new Map<string, { name: string; groups: ManifestGroup[]; files: ManifestFile[] }>()
   for (const dest of destinations) {
-    map.set(dest.name, { name: dest.name, groups: [] })
+    map.set(dest.name, { name: dest.name, groups: [], files: [] })
   }
   for (const group of groups) {
     const destName = group.destination
@@ -72,18 +73,40 @@ const groupGroupsByDestination = (
       if (existing) {
         existing.groups.push(group)
       } else {
-        map.set(destName, { name: destName, groups: [group] })
+        map.set(destName, { name: destName, groups: [group], files: [] })
       }
     } else {
       let unassigned = map.get('__unassigned__')
       if (!unassigned) {
-        unassigned = { name: 'Unassigned', groups: [] }
+        unassigned = { name: 'Unassigned', groups: [], files: [] }
         map.set('__unassigned__', unassigned)
       }
       unassigned.groups.push(group)
     }
   }
-  return Array.from(map.values()).filter((g) => g.groups.length > 0 || g.name !== 'Unassigned')
+  const filesInGroups = new Set(groups.flatMap((g) => g.files.map((f) => f.path)))
+  for (const file of files) {
+    if (filesInGroups.has(file.path)) continue
+    const destName = file.destination
+    if (destName) {
+      const existing = map.get(destName)
+      if (existing) {
+        existing.files.push(file)
+      } else {
+        map.set(destName, { name: destName, groups: [], files: [file] })
+      }
+    } else {
+      let unassigned = map.get('__unassigned__')
+      if (!unassigned) {
+        unassigned = { name: 'Unassigned', groups: [], files: [] }
+        map.set('__unassigned__', unassigned)
+      }
+      unassigned.files.push(file)
+    }
+  }
+  return Array.from(map.values()).filter(
+    (g) => g.groups.length > 0 || g.files.length > 0 || g.name !== 'Unassigned'
+  )
 }
 
 const getFileUrl = (filePath: string) => {
