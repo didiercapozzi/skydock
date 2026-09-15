@@ -23,11 +23,15 @@ output/
 ├── .cache/                   # (live mode: empty — no proxies on disk; legacy: thumbs/filmstrip/logs)
 ├── manifest.json             # File registry — source of truth (see §4)
 ├── groups.json               # Groups — lightweight refs (see §4)
-└── processed/                # After per-group Process
-    ├── group_1/
-    │   ├── DJI_0001.MP4
+└── processed/                # After Process (see §6.1)
+    ├── Yverdon/                        # destination
+    │   ├── yverdon_20260101_103000.mp4 # loose files in the destination
     │   └── ...
-    └── group_2/
+    ├── Tandems/                        # destination
+    │   └── martine_rosier_20260101/    # group in the destination
+    │       ├── videos/
+    │       └── photos/
+    └── group_1_20260829/               # group without destination
         └── ...
 ```
 
@@ -97,19 +101,23 @@ output/
 ### 6.1 `executeMedia()`
 
 - Default manifest `output/manifest.json`, processed directory `output/processed`.
-- If jump IDs given, process only those; else process all confirmed and unprocessed jumps.
+- Scope (one call, server-side loop):
+  - `groupIds` given → only those groups; each group's folder is rebuilt, nothing else is touched.
+  - `destination` given → every group with that `destination` plus every loose file in it (`file.destination` set, not in any group). The whole `processed/{destination}/` folder is moved to `.trash` and rebuilt.
+  - Neither → everything: every destination (as above) plus every group without destination. `confirmed`/`processed` flags do not filter — processing always rebuilds from `manifest.json` + `groups.json`.
+- Output folder: group with `destination` → `processed/{destination}/{baseName}/`; group without → `processed/{baseName}/`; loose destination files → `processed/{destination}/` flat.
 - For each jump/group:
   - Skip if no files.
   - Passenger is optional for `Process` — if `passenger` with `firstname`/`lastname` present use `firstname_lastname`, otherwise use `label` (`yverdon`, `colombier`, `Jump N`) sanitized lowercased. Passenger is only mandatory for `Email`/`Share` generation.
   - Build base name: `{base}_{YYYYMMDD}` where `base` is `firstname_lastname` or `label` (all lowercase, jump/group date). For `Group` (`label=yverdon`) on `2026-08-02` → `yverdon_20260802`.
-  - Same-day same-location collisions get counter suffix `_1`, `_2` (via `makeFileName`) or `HHMMSS` variant. `Day` loose files (`output/processed/2026-08-29/` flat) not grouped use per-file stem.
+  - Reprocessing always writes to the same folder — never numbered folder variants (`_1`, `_2`).
   - Create `videos/` and `photos/` subdirectories only if files of that type exist.
   - File naming: `{baseName}_{HHMMSS}.{ext}` where HHMMSS comes from original file capture time.
   - Collision: if two files share the same capture time, add counter suffix: `_1`, `_2`.
   - If crop range set and ffmpeg available, video is cropped.
   - Set filesystem timestamps (creation + modification) to jump date + original capture time.
   - Set EXIF metadata dates (creation + modification) to match filename date-time.
-  - On re-process: move existing processed folder to `output/.trash/` before creating new one.
+  - Before writing: move the existing folder in scope to `output/.trash/` (so montage/zip files inside it go to `.trash` too).
   - Mark jump processed, clear publish state, save manifest.
 - Writes status file for API polling.
 
@@ -117,7 +125,7 @@ output/
 
 - save-jumps persists the working jump list.
 - merge-jumps combines two jumps server-side with a date anchor for the merged files.
-- process-jump runs `executeMedia` for one jump/group (files required, passenger optional — label `yverdon` used if no passenger), marks it processed and clears its publish state.
+- process runs `executeMedia` in a single request: with `groupId` for one group (per-group `Process` button), with `destination` for one destination (`Process Destination` button), or with neither for everything (`Process All` button). Passenger optional — label `yverdon` used if no passenger. Marks processed groups and clears their publish state. The client never loops over groups/files.
 - upload-jump uploads one processed jump to network storage using Synology DSM API (requires NAS session and chosen upload folder, see §12.3). Binary comparison via SHA-256 hash skips files already present. Upload streams with byte-accurate progress. Per-file progress tracked. Failed uploads retry from beginning. Share link reused if already exists; otherwise created via FileStation Sharing API.
 - shift-jump-time shifts all file timestamps in a jump so the minimum-time file lands on the chosen anchor epoch. Other files keep their existing time diffs. Used by the per-jump time picker.
 
@@ -164,7 +172,7 @@ output/
 - **Thumb:** Single frame JPEG extraction via ffmpeg for crop bar thumbnails and `FileGrid` `160px` squares (`/api/thumb?seek=0.5&width=160`, `loading=lazy`).
 - **Stream:** Live-transcodes to fMP4 for thumbnails and crop bar fallback.
 - **HLS:** Live-transcodes to HLS segments for main playback.
-- **Manifest:** Full CRUD for jumps, files, calibration, execution. Intents: save-jumps, merge-jumps (with date anchor), shift-jump-time (shifts file times to anchor), process-jump (files required, passenger optional), upload-jump (requires processed jump, NAS session and chosen upload folder).
+- **Manifest:** Full CRUD for jumps, files, calibration, execution. Intents: save-jumps, merge-jumps (with date anchor), shift-jump-time (shifts file times to anchor), process (`groupId` / `destination` / all — see §6.2), upload-jump (requires processed jump, NAS session and chosen upload folder).
 
 ## 9. Review UI (`/`)
 
@@ -449,19 +457,20 @@ The VideoCropper component lives inside the PreviewDrawer (right panel), directl
 
 - Folder: `{base}_{YYYYMMDD}` where `base` is `firstname_lastname` (tandem) or `label` (`yverdon`, `colombier`, `Jump N`) sanitized lowercased (all lowercase, jump/group date). `fun` example: `yverdon_20260802 - yverdon` label → `yverdon_20260802_113345.mp4`.
 - Files: `{base}_{YYYYMMDD}_{HHMMSS}.{ext}` (`HHMMSS` from original capture time). Same `base` as folder.
-- For `Group` `label=yverdon` on `2026-08-02` with 3 jumps merged, all files share `yverdon_20260802_HHMMSS.ext` in `videos/`/`photos/` (collision `_1`). Same-day same-location groups get `_1`/`_2` folder suffix (`yverdon_20260802_1`).
-- Loose `Day` files (`output/processed/2026-08-29/` flat) use per-file stem, no `base`, no `videos/` split (or flat `Day` folder).
+- For `Group` `label=yverdon` on `2026-08-02` with 3 jumps merged, all files share `yverdon_20260802_HHMMSS.ext` in `videos/`/`photos/` (collision `_1`). Reprocessing reuses the same folder — never `_1`/`_2` folder suffixes.
+- Loose destination files (`output/processed/{destination}/` flat): `{destination}_{YYYYMMDD}_{HHMMSS}.{ext}` for videos and photos, `destination` sanitized lowercased, date/time from the file's capture time, no `videos/`/`photos/` split.
+- Group with `destination`: the group folder is nested in the destination folder (`output/processed/Tandems/bim_bam_20260829/`). Files keep the group `base`, never the destination name.
 - Date source: jump/group date (from scan or `+ Create Group` `day`, or manually updated). If updated, re-processing applies the new date.
 - Time source: original file capture time (follows date if updated).
 - Collision: counter suffix only when needed: `_1`, `_2`.
-- Videos and photos keep separate subdirectories for `Group` (loose `Day` may be flat).
+- Videos and photos keep separate subdirectories for `Group` (loose destination files are flat).
 - Empty subdirectories are not created.
 - EXIF metadata dates (creation + modification) match filename date-time.
 
 Example tandem:
 
 ```
-output/processed/bim_bam_20260829/
+output/processed/Tandems/bim_bam_20260829/
 ├── videos/
 │   ├── bim_bam_20260829_113015.mp4
 │   └── bim_bam_20260829_113015_1.mp4
@@ -483,7 +492,8 @@ output/processed/yverdon_20260802/
 
 ### 12.3 Per-jump / per-group lifecycle
 
-- Each jump/group moves through proposed, processed, uploaded, in that order. `Day` loose files are processed individually per-file to `output/processed/YYYY-MM-DD/` flat.
+- Each jump/group moves through proposed, processed, uploaded, in that order.
+- Process buttons: per-group `Process` (group card), `Process Destination` (destination header: its groups + loose files), `Process All` (review header). Each sends one `process` request; buttons show a processing state until the response returns.
 - The `Process` button is available once a jump/group has files (no passenger required — `yverdon` `Group` processes with `label`). Processing copies and renames the files (using `passenger` if present else `label`) and marks the jump/group `processed`; re-processing clears any previous publishing state. `+ Create Group` at a `Day` creates an empty `Group` (`label` prompt, `day` stored) that becomes processable once files are dragged in.
 - The `Upload` button is only enabled for processed jumps/groups. Uploading additionally requires a valid NAS session and a chosen upload folder: clicking `Upload` while disconnected opens the connection dialog, and while connected without a folder opens the folder browser — no upload starts until both are in place. The server rejects `upload-jump` without a session (`Not connected`) or without a default folder (`Choose an upload folder first`). `Email` generation still requires complete passenger (`firstname`/`lastname`/`email`).
   - Upload destination: if group has a `destination`, resolves to `{destination.path}/{baseName}/...` or `{defaultFolder}/{destination.name}/{baseName}/...` (see §13.1). Otherwise `{NAS_FOLDER}/{baseName}/...`
@@ -494,7 +504,7 @@ output/processed/yverdon_20260802/
 
 ### 12.4 Freshness rules
 
-- Re-processing a jump moves the existing processed folder to `output/.trash/` before creating the new one.
+- Re-processing moves the folder in scope (group folder, or whole destination folder) to `output/.trash/` before rebuilding it.
 - Re-processing a jump discards its share link and sent record, because the files changed and the old link is stale.
 - Merged jumps start unpublished, with no link and no sent record.
 - Re-uploading replaces the share link and resets the sent record for the same reason.
@@ -543,7 +553,7 @@ output/processed/yverdon_20260802/
 - Default NAS path: `{defaultFolder}/{name}/`. If `path` is set, it overrides the default.
 - Groups can be drag-assigned to destinations: drag the group header (≡ handle) onto a destination section header. Drop on "Unassigned" clears the destination field. Uses `application/x-group` data type to distinguish from file drag.
 - Lone files can be drag-assigned to destinations: drag from the staging tray or file row onto a destination section header. Uses `text/plain` data type with JSON array of file paths.
-- Lone files in a destination are processed flat at `{destname}/{filename}` (no `videos/`/`photos/` subdirs). All lone files for a destination go into the SAME destination folder (never numbered variants like `{destname}_1`). Videos: `{destname}-{YYYYMMDD}-{HHMMSS}.{ext}`. Photos: `{destname}-{filename}.{ext}`.
+- Lone files in a destination are processed flat into `processed/{destination}/` (no `videos/`/`photos/` subdirs), named `{destination}_{YYYYMMDD}_{HHMMSS}.{ext}` (see §12.2). Groups in a destination are processed into `processed/{destination}/{baseName}/` with their own group name. Local layout mirrors the NAS upload layout.
 
 ### 13.2 Montage workflow
 

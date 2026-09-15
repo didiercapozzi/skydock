@@ -177,8 +177,9 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   )
   const [showDestinationCreation, setShowDestinationCreation] = useState(false)
   const [editingDestination, setEditingDestination] = useState<string | null>(null)
-  const [processingId, setProcessingId] = useState<string | null>(null)
-  const [processingDestName, setProcessingDestName] = useState<string | null>(null)
+  const [processing, setProcessing] = useState<{ groupId?: string; destination?: string } | null>(
+    null
+  )
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const [importingId, setImportingId] = useState<string | null>(null)
   const [manifestError, setManifestError] = useState<string | null>(null)
@@ -243,28 +244,15 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
       actionArgs: { intent: 'merge-groups', leftId, rightId, anchorEpoch }
     })
   }
-  const handleProcess = (groupId: string) => {
+  const submitProcess = (target: { groupId?: string; destination?: string }) => {
     setManifestError(null)
-    setProcessingId(groupId)
-    manifestFetcher.submit({
-      url: '/api/manifest',
-      actionArgs: { intent: 'process-group', groupId }
-    })
+    setProcessing(target)
+    manifestFetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'process', ...target } })
   }
-  const handleProcessLoneFiles = (destinationName: string) => {
-    setManifestError(null)
-    setProcessingDestName(destinationName)
-    const destFiles = effectiveManifestFiles.filter(
-      (f) => f.destination === destinationName && !filesInGroups.has(f.path)
-    )
-    for (const file of destFiles) {
-      manifestFetcher.submit({
-        url: '/api/manifest',
-        actionArgs: { intent: 'process-file', filePath: file.path }
-      })
-    }
-    setProcessingDestName(null)
-  }
+  const handleProcess = (groupId: string) => submitProcess({ groupId })
+  const handleProcessDestination = (destination: string) => submitProcess({ destination })
+  const handleProcessAll = () => submitProcess({})
+
   const handleUpload = (groupId: string) => {
     setManifestError(null)
     if (!nasConnected) {
@@ -451,7 +439,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     if (parsed.success) {
       queueMicrotask(() => {
         setGroups(parsed.data.groups)
-        setProcessingId(null)
+        setProcessing(null)
         setUploadingId(null)
         setManifestError(null)
       })
@@ -464,7 +452,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     if (parsedError.success) {
       queueMicrotask(() => {
         setManifestError(parsedError.data.globalErrors?.[0] ?? 'Request failed')
-        setProcessingId(null)
+        setProcessing(null)
         setUploadingId(null)
       })
       return
@@ -476,13 +464,13 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     if (parsedOk.success) {
       queueMicrotask(() => {
         setManifestError(null)
-        setProcessingId(null)
+        setProcessing(null)
         setUploadingId(null)
       })
       return
     }
     queueMicrotask(() => {
-      setProcessingId(null)
+      setProcessing(null)
       setUploadingId(null)
     })
   }, [manifestFetcher.data, setGroups])
@@ -575,6 +563,8 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
           onCreateGroup={handleCreateGroupGlobal}
           onClearCompare={() => setCompareIds([])}
           onShowComparison={() => setShowComparison(true)}
+          onProcessAll={handleProcessAll}
+          processing={processing !== null}
         />
         {manifestError && (
           <div className='mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700'>
@@ -613,7 +603,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
             onDragLeave={(_groupId: string) => handleDragLeave()}
             onLabelChange={handleLabelChange}
             onProcess={handleProcess}
-            processingId={processingId}
+            processingId={processing?.groupId ?? null}
             onUpload={handleUpload}
             uploadingId={uploadingId}
             uploadProgress={uploadProgress}
@@ -664,7 +654,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
             onDragLeave={(_groupId: string) => handleDragLeave()}
             onLabelChange={handleLabelChange}
             onProcess={handleProcess}
-            processingId={processingId}
+            processingId={processing?.groupId ?? null}
             onUpload={handleUpload}
             uploadingId={uploadingId}
             uploadProgress={uploadProgress}
@@ -681,8 +671,8 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
             onAssignDestination={handleAssignDestination}
             onFilesDrop={handleFilesDropToDestination}
             onEditDestination={handleEditDestination}
-            onProcessLoneFiles={handleProcessLoneFiles}
-            processingDestName={processingDestName}
+            onProcessDestination={handleProcessDestination}
+            processingDestName={processing?.destination ?? null}
           />
         )}
         {selectedCount > 0 && (

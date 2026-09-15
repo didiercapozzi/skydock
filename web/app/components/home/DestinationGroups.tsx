@@ -15,7 +15,7 @@ const SectionHeader = ({
   onFilesDrop,
   onEditDestination,
   onCreateGroup,
-  onProcessLoneFiles
+  onProcessDestination
 }: {
   title: string
   groupCount: number
@@ -26,7 +26,7 @@ const SectionHeader = ({
   onFilesDrop?: (paths: string[], destinationName: string) => void
   onEditDestination?: (destinationName: string) => void
   onCreateGroup: () => void
-  onProcessLoneFiles?: (destinationName: string) => void
+  onProcessDestination?: (destinationName: string) => void
 }) => {
   const [dragOver, setDragOver] = useState(false)
   const counterRef = useRef(0)
@@ -114,11 +114,11 @@ const SectionHeader = ({
         className='px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100'>
         + Create Group
       </button>
-      {fileCount > 0 && onProcessLoneFiles && (
+      {onProcessDestination && (
         <button
           type='button'
           disabled={processing}
-          onClick={() => onProcessLoneFiles(destinationName)}
+          onClick={() => onProcessDestination(destinationName)}
           className='px-2 py-1 text-xs font-medium text-green-600 bg-green-50 border border-green-200 rounded-md hover:bg-green-100 disabled:opacity-50 disabled:cursor-not-allowed'>
           {processing ? (
             <span className='flex items-center gap-1'>
@@ -143,7 +143,7 @@ const SectionHeader = ({
               Processing
             </span>
           ) : (
-            'Process'
+            'Process Destination'
           )}
         </button>
       )}
@@ -190,7 +190,7 @@ type Props = {
   onAssignDestination?: (groupId: string, destinationName: string) => void
   onFilesDrop?: (paths: string[], destinationName: string) => void
   onEditDestination?: (destinationName: string) => void
-  onProcessLoneFiles?: (destinationName: string) => void
+  onProcessDestination?: (destinationName: string) => void
   processingDestName?: string | null
 }
 
@@ -233,7 +233,7 @@ const Destinations = ({
   onAssignDestination,
   onFilesDrop,
   onEditDestination,
-  onProcessLoneFiles,
+  onProcessDestination,
   processingDestName
 }: Props) => {
   const unassigned = groupsByDestination.find((g) => g.name === 'Unassigned')
@@ -297,7 +297,7 @@ const Destinations = ({
             onFilesDrop={onFilesDrop}
             onEditDestination={onEditDestination}
             onCreateGroup={() => onCreateGroup(name)}
-            onProcessLoneFiles={onProcessLoneFiles}
+            onProcessDestination={onProcessDestination}
           />
           <div className='space-y-4'>
             {groups.map((group) => (

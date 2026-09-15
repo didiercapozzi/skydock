@@ -3,7 +3,7 @@ import * as path from 'node:path'
 import { ZipArchive } from 'archiver'
 import type { Route } from './+types/api.create-montage'
 import { z } from 'zod'
-import { getOutputDir, loadManifest, walkFiles } from '@skydock/scripts'
+import { getGroupProcessedDir, getOutputDir, loadManifest, walkFiles } from '@skydock/scripts'
 
 const searchParamsArgs = z.object({
   groupId: z.string()
@@ -33,26 +33,10 @@ const loader = async ({ request }: Route.LoaderArgs) => {
     return Response.json({ error: 'Group not processed yet.' }, { status: 422 })
   }
 
-  // Find the processed directory
-  const processedDir = path.join(outputDir, 'processed')
-  if (!fs.existsSync(processedDir)) {
-    return Response.json({ error: 'Processed directory not found.' }, { status: 422 })
-  }
-
-  // Look for the group's processed folder
-  const groupDirs = fs.readdirSync(processedDir).filter((d) => {
-    const dirPath = path.join(processedDir, d)
-    return (
-      fs.statSync(dirPath).isDirectory() &&
-      d.includes(group.label.toLowerCase().replace(/\s+/g, '_'))
-    )
-  })
-
-  if (groupDirs.length === 0) {
+  const { dir: groupDir } = getGroupProcessedDir(outputDir, group)
+  if (!fs.existsSync(groupDir)) {
     return Response.json({ error: 'Processed folder not found.' }, { status: 422 })
   }
-
-  const groupDir = path.join(processedDir, groupDirs[0])
 
   // Check if .kdenlive file already exists (reprocess protection)
   const kdenliveFiles = fs.readdirSync(groupDir).filter((f) => f.endsWith('.kdenlive'))

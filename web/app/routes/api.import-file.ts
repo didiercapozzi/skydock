@@ -3,13 +3,12 @@ import * as path from 'node:path'
 import * as stream from 'node:stream'
 import type { Route } from './+types/api.import-file'
 import {
-  buildGroupBaseName,
   computeFileId,
   getExtension,
+  getGroupProcessedDir,
   getOutputDir,
   isVideoFile,
   loadManifest,
-  parseDayEpoch,
   saveManifest,
   walkFiles
 } from '@skydock/scripts'
@@ -69,18 +68,13 @@ const action = async ({ request }: Route.ActionArgs) => {
       return Response.json({ error: 'Group has no files.' }, { status: 422 })
     }
 
-    const dayEpoch = parseDayEpoch(group.day) ?? Math.min(...group.files.map((f) => f.mtime))
-    const baseName = buildGroupBaseName(group.passenger, group.label, dayEpoch)
-
-    const processedDir = path.join(outputDir, 'processed')
-    const groupDirs = fs.readdirSync(processedDir).filter((d) => d.startsWith(baseName))
-    if (groupDirs.length === 0) {
+    const { dir: groupDir, baseName } = getGroupProcessedDir(outputDir, group)
+    if (!fs.existsSync(groupDir)) {
       return Response.json(
         { error: 'Processed folder not found. Process the group again.' },
         { status: 422 }
       )
     }
-    const groupDir = path.join(processedDir, groupDirs[0])
 
     const type = isVideoFile(filename) ? 'videos' : 'photos'
     const typeDir = path.join(groupDir, type)

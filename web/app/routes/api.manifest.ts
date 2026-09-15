@@ -1,19 +1,17 @@
 import * as fs from 'node:fs'
-import * as path from 'node:path'
 import type { Route } from './+types/api.manifest'
 import { z } from 'zod'
 import {
-  buildGroupBaseName,
   clearUploadProgress,
   destinationSchema,
   executeMedia,
+  getGroupProcessedDir,
   getOutputDir,
   loadNasSession,
   loadManifest,
   manifestFileSchema,
   manifestGroupSchema,
   mergeGroups,
-  processFile,
   publishJump,
   resolveDestinationPath,
   saveManifest,
@@ -24,16 +22,9 @@ import {
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 
 const actionArgs = z.object({
-  intent: z.enum([
-    'save-groups',
-    'merge-groups',
-    'process-group',
-    'process-file',
-    'upload-group',
-    'shift-group-time'
-  ]),
+  intent: z.enum(['save-groups', 'merge-groups', 'process', 'upload-group', 'shift-group-time']),
   groupId: z.string().optional(),
-  filePath: z.string().optional(),
+  destination: z.string().optional(),
   groups: z.array(manifestGroupSchema).optional(),
   fileUpdates: z.array(manifestFileSchema).optional(),
   destinations: z.array(destinationSchema).optional(),
@@ -100,47 +91,15 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       saveManifest(manifestPath, manifest)
       return { groups: manifest.groups }
     }
-    if (data.intent === 'process-group') {
-      if (!data.groupId) {
-        errors.addGlobalError('Process needs a group id.')
-        return errors.toResponse(422)
-      }
-      const target = manifest.groups.find((g) => g.id === data.groupId)
-      if (!target) {
-        errors.addGlobalError('Group not found.')
-        return errors.toResponse(422)
-      }
-      if (target.files.length === 0) {
-        errors.addGlobalError('Group has no files.')
-        return errors.toResponse(422)
-      }
-      executeMedia({ manifestPath, groupIds: [target.id], outputDir: getOutputDir() })
+    if (data.intent === 'process') {
+      executeMedia({
+        manifestPath,
+        outputDir: getOutputDir(),
+        groupIds: data.groupId ? [data.groupId] : undefined,
+        destination: data.destination
+      })
       const updated = loadManifest(manifestPath)
       return { groups: updated?.groups ?? manifest.groups }
-    }
-    if (data.intent === 'process-file') {
-      if (!data.filePath) {
-        errors.addGlobalError('Process file needs a file path.')
-        return errors.toResponse(422)
-      }
-      const file = manifest.files.find((f) => f.path === data.filePath)
-      if (!file) {
-        errors.addGlobalError('File not found in manifest.')
-        return errors.toResponse(422)
-      }
-      if (!file.destination) {
-        errors.addGlobalError('File has no destination assigned.')
-        return errors.toResponse(422)
-      }
-      const processedDir = path.join(getOutputDir(), 'processed')
-      fs.mkdirSync(processedDir, { recursive: true })
-      const claimedDirs = new Set(
-        fs
-          .readdirSync(processedDir)
-          .filter((d) => fs.statSync(path.join(processedDir, d)).isDirectory())
-      )
-      processFile(file, file.destination, processedDir, getOutputDir(), claimedDirs)
-      return { ok: true as const }
     }
     if (data.intent === 'upload-group') {
       if (!data.groupId) {
@@ -169,15 +128,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         errors.addGlobalError('Choose an upload folder first.')
         return errors.toResponse(422)
       }
-      const parseDay = (day?: string) => {
-        if (!day) return null
-        const [d, m, y] = day.split('.').map(Number)
-        if (!d || !m || !y) return null
-        return Math.floor(new Date(y, m - 1, d).getTime() / 1000)
-      }
-      const dayEpoch = parseDay(target.day) ?? Math.min(...target.files.map((f) => f.mtime))
-      const baseName = buildGroupBaseName(target.passenger, target.label, dayEpoch)
-      const localDir = path.join(getOutputDir(), 'processed', baseName)
+      const { dir: localDir, baseName } = getGroupProcessedDir(getOutputDir(), target)
       if (!fs.existsSync(localDir)) {
         errors.addGlobalError('Processed files not found. Process the group again.')
         return errors.toResponse(422)

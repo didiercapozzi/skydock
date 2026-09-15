@@ -11,6 +11,8 @@ type Props = {
   onCreateGroup: () => void
   onClearCompare: () => void
   onShowComparison: () => void
+  onProcessAll: () => void
+  processing: boolean
 }
 
 const ReviewHeader = ({
@@ -23,7 +25,9 @@ const ReviewHeader = ({
   onGroupingModeChange,
   onCreateGroup,
   onClearCompare,
-  onShowComparison
+  onShowComparison,
+  onProcessAll,
+  processing
 }: Props) => {
   return (
     <>
@@ -35,6 +39,13 @@ const ReviewHeader = ({
           </p>
         </div>
         <div className='flex items-center gap-2'>
+          <button
+            type='button'
+            onClick={onProcessAll}
+            disabled={processing}
+            className='px-3 py-1.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed'>
+            {processing ? 'Processing…' : 'Process All'}
+          </button>
           <button
             type='button'
             onClick={onCreateGroup}

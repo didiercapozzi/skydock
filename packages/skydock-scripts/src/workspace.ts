@@ -29,12 +29,14 @@ const buildGroupBaseName = (
     hasCompletePassenger(passenger) && passenger
       ? `${passenger.firstname.trim()}_${passenger.lastname.trim()}`
       : label
-  const stem = raw
+  return `${toFileStem(raw, 'group')}_${formatGroupDay(minMtime)}`
+}
+
+const toFileStem = (raw: string, fallback: string) =>
+  raw
     .toLowerCase()
     .replace(/[^a-z0-9._-]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-  return `${stem === '' ? 'group' : stem}_${formatGroupDay(minMtime)}`
-}
+    .replace(/^_+|_+$/g, '') || fallback
 
 const moveFilesBetweenGroups = (
   groups: ManifestGroup[],
@@ -151,10 +153,12 @@ export {
   buildFsTime,
   buildGroupBaseName,
   formatCaptureTime,
+  formatGroupDay,
   hasCompletePassenger,
   makeFileName,
   mergeGroups,
   moveFilesBetweenGroups,
   reorderFilesInGroup,
-  resolveDestinationPath
+  resolveDestinationPath,
+  toFileStem
 }
