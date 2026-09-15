@@ -32,8 +32,15 @@ const buildGroupBaseName = (
   return `${toFileStem(raw, 'group')}_${formatGroupDay(minMtime)}`
 }
 
+const buildPassengerFolder = (passenger: ManifestPassenger | null | undefined, label: string) =>
+  hasCompletePassenger(passenger) && passenger
+    ? `${passenger.firstname.trim()} ${passenger.lastname.trim()}`.replace(/[/\\]+/g, ' ').trim()
+    : label.replace(/[/\\]+/g, ' ').trim()
+
 const toFileStem = (raw: string, fallback: string) =>
   raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9._-]+/g, '_')
     .replace(/^_+|_+$/g, '') || fallback
@@ -150,6 +157,7 @@ const resolveDestinationPath = (
 }
 
 export {
+  buildPassengerFolder,
   buildFsTime,
   buildGroupBaseName,
   formatCaptureTime,

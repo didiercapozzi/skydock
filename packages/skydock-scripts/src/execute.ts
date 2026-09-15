@@ -15,7 +15,9 @@ import {
 import {
   buildFsTime,
   buildGroupBaseName,
+  buildPassengerFolder,
   formatGroupDay,
+  hasCompletePassenger,
   makeFileName,
   toFileStem
 } from './workspace'
@@ -71,13 +73,22 @@ const moveToTrash = (target: string, outputDir: string) => {
 const getDestinationDir = (outputDir: string, destination: string) =>
   path.join(outputDir, 'processed', destination.replace(/[/\\]+/g, '_').trim() || 'destination')
 
+const isFlatGroup = (group: ManifestGroup) =>
+  !hasCompletePassenger(group.passenger) && !!group.destination
+
 const getGroupProcessedDir = (outputDir: string, group: ManifestGroup) => {
   const dayEpoch = parseDayEpoch(group.day) ?? Math.min(...group.files.map((f) => f.mtime))
   const baseName = buildGroupBaseName(group.passenger, group.label, dayEpoch)
+  if (isFlatGroup(group)) {
+    return { dir: getDestinationDir(outputDir, group.destination!), baseName, dayEpoch, flat: true }
+  }
   const parent = group.destination
     ? getDestinationDir(outputDir, group.destination)
     : path.join(outputDir, 'processed')
-  return { dir: path.join(parent, baseName), baseName, dayEpoch }
+  const folder = hasCompletePassenger(group.passenger)
+    ? buildPassengerFolder(group.passenger, baseName)
+    : baseName
+  return { dir: path.join(parent, folder), baseName, dayEpoch, flat: false }
 }
 
 const copyMedia = (file: ManifestFile, dest: string, time: Date) => {
@@ -93,23 +104,26 @@ const copyMedia = (file: ManifestFile, dest: string, time: Date) => {
   fs.utimesSync(dest, time, time)
 }
 
-const writeGroup = (group: ManifestGroup, outputDir: string) => {
-  const { dir, baseName, dayEpoch } = getGroupProcessedDir(outputDir, group)
-  const usedNames = new Set<string>()
+const writeGroup = (group: ManifestGroup, outputDir: string, usedNames: Set<string>) => {
+  const { dir, baseName, dayEpoch, flat } = getGroupProcessedDir(outputDir, group)
   const written: string[] = []
   try {
     for (const file of group.files) {
+      if (file.keep === false) continue
       if (!fs.existsSync(file.path)) continue
-      const typeDir = path.join(dir, isVideoFile(file.path) ? 'videos' : 'photos')
-      fs.mkdirSync(typeDir, { recursive: true })
+      const targetDir = flat ? dir : path.join(dir, isVideoFile(file.path) ? 'videos' : 'photos')
+      fs.mkdirSync(targetDir, { recursive: true })
       const ext = path.extname(file.path).slice(1).toLowerCase()
-      const dest = path.join(typeDir, makeFileName(baseName, file.mtime, ext, usedNames))
-      copyMedia(file, dest, buildFsTime(dayEpoch, file.mtime))
+      const stem = flat
+        ? `${toFileStem(group.destination!, 'destination')}_${formatGroupDay(file.mtime)}`
+        : baseName
+      const dest = path.join(targetDir, makeFileName(stem, file.mtime, ext, usedNames))
+      copyMedia(file, dest, buildFsTime(flat ? file.mtime : dayEpoch, file.mtime))
       written.push(dest)
     }
     updateMetadata(written)
   } catch (e) {
-    moveToTrash(dir, outputDir)
+    if (!flat) moveToTrash(dir, outputDir)
     throw e
   }
   group.processed = true
@@ -124,6 +138,7 @@ const writeLooseFiles = (destination: string, files: ManifestFile[], outputDir: 
   const usedNames = new Set<string>()
   const written: string[] = []
   for (const file of files) {
+    if (file.keep === false) continue
     if (!fs.existsSync(file.path)) continue
     fs.mkdirSync(dir, { recursive: true })
     const ext = path.extname(file.path).slice(1).toLowerCase()
@@ -181,10 +196,21 @@ const executeMedia = (options?: ExecuteOptions) => {
 
   for (const destination of destinations)
     moveToTrash(getDestinationDir(outputDir, destination), outputDir)
-  for (const group of groups) moveToTrash(getGroupProcessedDir(outputDir, group).dir, outputDir)
+  for (const group of groups) {
+    const { dir, flat } = getGroupProcessedDir(outputDir, group)
+    if (!flat) moveToTrash(dir, outputDir)
+  }
+
+  const namePools = new Map<string, Set<string>>()
+  const poolFor = (dir: string) => {
+    const pool = namePools.get(dir) ?? new Set<string>()
+    namePools.set(dir, pool)
+    return pool
+  }
 
   let copied = 0
-  for (const group of groups) copied += writeGroup(group, outputDir)
+  for (const group of groups)
+    copied += writeGroup(group, outputDir, poolFor(getGroupProcessedDir(outputDir, group).dir))
   for (const destination of destinations) {
     copied += writeLooseFiles(destination, looseByDestination.get(destination) ?? [], outputDir)
   }

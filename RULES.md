@@ -54,9 +54,10 @@ output/
 - `loadManifest` merges both files; `saveManifest` splits them. Old single-file format auto-migrates on first load.
 - `scanMedia()` creates a new manifest with status `proposed`, today's date, all files, and clustered groups.
 - `files` is flat list of all files sorted by `mtime`.
-- `groups[].files` are lightweight refs (`id` + `cropStart`/`cropEnd`) — same file may appear in multiple groups via copy. In-memory manifest resolves refs to full files for UI/execute. A cropped video that is moved or copied retains its crop in the target; a copy's crop is independent — it can be uncropped or re-cropped to a different range without affecting the source (crop is stored per group ref, not per file registry).
+- `groups[].files` are lightweight refs (`id` + `cropStart`/`cropEnd` + `keep`) — same file may appear in multiple groups via copy. In-memory manifest resolves refs to full files for UI/execute. A cropped video that is moved or copied retains its crop in the target; a copy's crop is independent — it can be uncropped or re-cropped to a different range without affecting the source (crop is stored per group ref, not per file registry).
 - Group IDs are `group_1 ...` or preserved original IDs after recluster; labels default to `Group N` and are editable. For fun groups `label` holds the location (`yverdon`, `colombier`) and acts as `Group` name — see §13.2.
 - Each `Group` in `groups.json` is a regroupment where `EXIF createdAt` gap `<1800s` (30 mins) → same `Group`, otherwise new `Group` (`scan` and `+ Create Group` share same logic). Each `Group` gets a mandatory `date` (`YYYY.MM.DD` locale `de-CH`, e.g. `24.08.2026`) by default the minimum `EXIF createdAt` of its files (fallback `mtime` if `EXIF` missing), stored as `day` and used for grouping and `execute` base name. `+ Create Group` empty `Group`s store `day` to keep them under the selected `Day` (files empty → `getGroupDate` falls back to `day`).
+- `keep` on a group file ref marks whether the file takes part in processing. Absent or `true` means it does; `false` means it was removed in the UI and is skipped by `execute` (the source file is never touched).
 - `originalMtime` saved on first time shift to allow reset-calibration.
 - `processed` marks per-group execution (incremental). Manifest status becomes `executed` only when every group is processed, `confirmed` when some processed, otherwise `proposed`.
 - Group selection for compare/process is React state in Review UI, not persisted in manifest.
@@ -455,15 +456,18 @@ The VideoCropper component lives inside the PreviewDrawer (right panel), directl
 
 ### 12.2 Naming
 
-- Folder: `{base}_{YYYYMMDD}` where `base` is `firstname_lastname` (tandem) or `label` (`yverdon`, `colombier`, `Jump N`) sanitized lowercased (all lowercase, jump/group date). `fun` example: `yverdon_20260802 - yverdon` label → `yverdon_20260802_113345.mp4`.
-- Files: `{base}_{YYYYMMDD}_{HHMMSS}.{ext}` (`HHMMSS` from original capture time). Same `base` as folder.
+- **Tandem folder:** the passenger's name as typed — `Tandems/Luc Favre/` — never dated, never sanitized. Two jumps for the same passenger share that folder.
+- **Fun jumps are flat:** a group with a destination and no passenger writes its files straight into `processed/{destination}/`, with no group folder and no `videos/`/`photos/` split. The same applies to lone files with a destination.
+- Folder (group without a destination, unchanged): `{base}_{YYYYMMDD}` where `base` is `firstname_lastname` (tandem) or `label` sanitized lowercased. `fun` example: `yverdon_20260802 - yverdon` label → `yverdon_20260802_113345.mp4`.
+- Files: `{base}_{YYYYMMDD}_{HHMMSS}.{ext}` (`HHMMSS` from original capture time). For a flat fun jump `base` is the destination (`yverdon_20260802_113015.mp4`); inside a tandem folder it stays `firstname_lastname`.
+- Sanitizing folds accents before replacing the rest: `Chloé Perret` → `chloe_perret`.
 - For `Group` `label=yverdon` on `2026-08-02` with 3 jumps merged, all files share `yverdon_20260802_HHMMSS.ext` in `videos/`/`photos/` (collision `_1`). Reprocessing reuses the same folder — never `_1`/`_2` folder suffixes.
 - Loose destination files (`output/processed/{destination}/` flat): `{destination}_{YYYYMMDD}_{HHMMSS}.{ext}` for videos and photos, `destination` sanitized lowercased, date/time from the file's capture time, no `videos/`/`photos/` split.
 - Group with `destination`: the group folder is nested in the destination folder (`output/processed/Tandems/bim_bam_20260829/`). Files keep the group `base`, never the destination name.
 - Date source: jump/group date (from scan or `+ Create Group` `day`, or manually updated). If updated, re-processing applies the new date.
 - Time source: original file capture time (follows date if updated).
 - Collision: counter suffix only when needed: `_1`, `_2`.
-- Videos and photos keep separate subdirectories for `Group` (loose destination files are flat).
+- Videos and photos keep separate subdirectories inside a tandem folder only; everything written flat has no subdirectories.
 - Empty subdirectories are not created.
 - EXIF metadata dates (creation + modification) match filename date-time.
 
@@ -553,14 +557,16 @@ output/processed/yverdon_20260802/
 - Default NAS path: `{defaultFolder}/{name}/`. If `path` is set, it overrides the default.
 - Groups can be drag-assigned to destinations: drag the group header (≡ handle) onto a destination section header. Drop on "Unassigned" clears the destination field. Uses `application/x-group` data type to distinguish from file drag.
 - Lone files can be drag-assigned to destinations: drag from the staging tray or file row onto a destination section header. Uses `text/plain` data type with JSON array of file paths.
-- Lone files in a destination are processed flat into `processed/{destination}/` (no `videos/`/`photos/` subdirs), named `{destination}_{YYYYMMDD}_{HHMMSS}.{ext}` (see §12.2). Groups in a destination are processed into `processed/{destination}/{baseName}/` with their own group name. Local layout mirrors the NAS upload layout.
+- Every fun jump in a destination — a group without a passenger, and lone files alike — is processed flat into `processed/{destination}/` (no `videos/`/`photos/` subdirs), named `{destination}_{YYYYMMDD}_{HHMMSS}.{ext}` (see §12.2). Reprocessing a flat group overwrites its own files in place and never trashes the destination folder, because other days live there too. Tandem groups are processed into `processed/{destination}/{Passenger Name}/`. Local layout mirrors the NAS upload layout.
 
 ### 13.2 Montage workflow
 
 - **Process:** Process a group to create the processed folder with renamed files.
-- **Create Montage:** Click "Create Montage" button on a processed group to:
-  1. Create a `.kdenlive` project file in the processed folder.
-  2. Create a zip archive of all files in the processed folder.
+- **Create Montage:** Click "Create Montage" on a processed group to:
+  1. Copy a kdenlive **template** project and lay the group's processed videos on its first video track, in time order. Crops are already applied by `execute`, so the timeline entries carry no in/out. The template's own assets (music, logo, title files) are rewritten to absolute paths, the project is re-rooted at the group folder, given a fresh `documentid`/`uuid`, and an MLT `<consumer target="{base}.mp4">` so `melt` and `kdenlive_render --output` know where the film goes.
+  2. Write `{base}.photos.zip` — the processed photos, for the passenger.
+  3. Write `{base}.rushes.zip` — the original videos the edit came from, for the backup folder.
+- **Template:** resolved in order — `SKYDOCK_MONTAGE_TEMPLATE`, `{outputDir}/montage-template.kdenlive`, then `templates/tandem.kdenlive` in the repo. Parsing must keep XML entities untouched, or the template's `kdenlivetitle` clips are destroyed.
 - **Reprocess protection:** If a `.kdenlive` file exists in the processed folder, the "Create Montage" button shows "Montage Created" and is disabled.
 - **Edit in kdenlive:** Open the `.kdenlive` file to edit the montage.
 - **Export:** Export the final video from kdenlive.

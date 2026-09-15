@@ -41,6 +41,8 @@ const resolveGroups = (files: ManifestFile[], groupsFile: GroupsFile | null) => 
         else delete resolved.cropStart
         if (ref.cropEnd !== undefined) resolved.cropEnd = ref.cropEnd
         else delete resolved.cropEnd
+        if (ref.keep !== undefined) resolved.keep = ref.keep
+        else delete resolved.keep
         return resolved
       })
       .filter((f): f is ManifestFile => f !== null)
@@ -73,7 +75,8 @@ const loadManifest = (manifestPath: string) => {
               .map((f) => ({
                 id: f.id!,
                 cropStart: f.cropStart ?? undefined,
-                cropEnd: f.cropEnd ?? undefined
+                cropEnd: f.cropEnd ?? undefined,
+                keep: f.keep ?? undefined
               }))
           }))
         }
@@ -139,7 +142,8 @@ const saveManifest = (manifestPath: string, manifest: Manifest) => {
         .map((f) => ({
           id: f.id!,
           cropStart: f.cropStart ?? undefined,
-          cropEnd: f.cropEnd ?? undefined
+          cropEnd: f.cropEnd ?? undefined,
+          keep: f.keep ?? undefined
         }))
     }))
   }
@@ -201,6 +205,10 @@ const normalizeManifest = (manifest: Manifest) => {
     }
     if (file.cropEnd === null) {
       delete file.cropEnd
+      changed = true
+    }
+    if (file.keep === null) {
+      delete file.keep
       changed = true
     }
     const legacy = file as unknown as Record<string, unknown>

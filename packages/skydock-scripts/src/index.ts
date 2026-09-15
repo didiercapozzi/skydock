@@ -125,6 +125,8 @@ export { scanMedia } from './scan'
 export type { ScanResult } from './scan'
 
 export { executeMedia, getGroupProcessedDir } from './execute'
+export { createMontageProject, montageOptionsSchema } from './montage'
+export type { MontageClip, MontageOptions } from './montage'
 export type { ExecuteOptions, ExecuteResult } from './execute'
 
 export { watcher } from './watcher'

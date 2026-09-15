@@ -9,13 +9,15 @@ const manifestFileSchema = z.object({
   originalMtime: z.number().nullable().optional(),
   cropStart: z.number().nullable().optional(),
   cropEnd: z.number().nullable().optional(),
-  destination: z.string().optional()
+  destination: z.string().optional(),
+  keep: z.boolean().optional()
 })
 
 const groupFileRefSchema = z.object({
   id: z.string(),
   cropStart: z.number().nullable().optional(),
-  cropEnd: z.number().nullable().optional()
+  cropEnd: z.number().nullable().optional(),
+  keep: z.boolean().optional()
 })
 
 const passengerSchema = z.object({
