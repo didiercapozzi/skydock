@@ -13,32 +13,33 @@
 - Phase 5 — Process + Upload UI wiring: ConnectionDialog, NAS session validation, animated upload button.
 - Phase 6 — Tests + docs: NAS connection e2e tests, RULES.md updated with inferred returns and no-commit rules.
 - Jump → Group rename: All types, exports, and internal references renamed from `jump` to `group`.
-- Collections: Added `Collection` type, `collection` field on groups, `CollectionGroups` component, collection creation dialog.
 - Montage: Added "Create Montage" button, `.kdenlive` project creation, zip archive creation, reprocess protection.
-- Collection view: Added "By Collection" toggle in ReviewHeader, `CollectionGroups` component for viewing groups by collection.
+- Destinations: Renamed collection → destination, added `path` field, `DestinationCreationDialog` with `NasFolderBrowser`, `Destinations` component, "By Destination" toggle, `groupGroupsByDestination` utility, destination dropdown on GroupCard.
+- Fixed unassigned groups duplication in By Destination view.
 
-## Process + Upload pipeline (RULES.md §6 + §13)
+## Destinations & Upload
 
-### Phase 1 — Execute naming update (done)
+### Drag-to-assign destination
 
-### Phase 2 — NAS session storage (done)
+- Add drag handle on group header (chevron/label row) to drag entire groups.
+- Use `application/x-group` data type to distinguish group drag from file drag.
+- Make destination section headers in `Destinations` component act as drop targets.
+- On drop: update group's `destination` field to the target destination name.
+- Drop on "Unassigned" section clears the `destination` field.
+- Visual feedback: highlight section header on drag over.
+- Props: `onGroupDragStart` on GroupCard, `onAssignDestination` on Destinations.
 
-### Phase 3 — Upload chunking + progress (done)
+### Destination-aware upload paths
 
-### Phase 4 — NAS folder browser UI
+- Upload path determined by destination: `{destination.path}/{baseName}/...` if path set, else default `{defaultFolder}/{destination.name}/...`.
+- Update `upload-group` intent in `api.manifest.ts` to resolve destination path from the group's `destination` field.
+- Flatten videos/photos subdirectories during upload to match NAS structure (flat folder per destination).
 
-- Custom file-tree component: expand/collapse, create folder button.
-- Store selected default folder in `output/.status/nas.json`.
-- Upload goes directly to default folder (no dialog).
+### Upload path helpers
 
-### Phase 5 — Process + Upload UI wiring (done)
-
-### Phase 6 — Tests + docs (done)
-
-- E2e tests for NAS connection: connect, disconnect, dialog, error handling, upload flow.
-- RULES.md §11 updated: inferred return types, never commit without user approval.
+- Add `resolveDestinationPath(group, destinations, defaultFolder)` helper to `@skydock/scripts`.
+- Uses destination's `path` override if set, otherwise computes from destination name.
 
 ### Still needed
 
 - DSM host URL + dedicated user credentials for live dry run.
-- Upload reorganization: collection-aware upload paths (passenger → `{NAS}/tandems/{label}/`, location → `{NAS}/{collectionName}/`).
