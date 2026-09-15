@@ -365,8 +365,6 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     })
   }
 
-  const handleGroupDragStart = () => {}
-
   const handleDestinationChange = (groupId: string, destinationName: string) => {
     const next = groups.map((g) =>
       g.id === groupId ? { ...g, destination: destinationName || undefined } : g
@@ -660,7 +658,6 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
             onSelect={handleSelect}
             onPreview={handlePreview}
             onDragStart={(e, groupId, paths) => handleDragStart(e, groupId, paths, selection)}
-            onGroupDragStart={handleGroupDragStart}
             onDragEnd={handleDragEnd}
             onDrop={(e, id) => handleDrop(e, id, groups, updateGroups)}
             onDragOver={handleDragOver}

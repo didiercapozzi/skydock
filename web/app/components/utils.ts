@@ -16,6 +16,25 @@ const formatTime = (epoch: number) =>
     second: '2-digit'
   })
 
+const toTimeInputValue = (epoch: number, includeSeconds = false) => {
+  const ms = epoch * 1000
+  const date = new Date(ms)
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  if (includeSeconds) {
+    const seconds = String(date.getSeconds()).padStart(2, '0')
+    return `${hours}:${minutes}:${seconds}`
+  }
+  return `${hours}:${minutes}`
+}
+
+const toDateInputValue = (epoch: number) => {
+  const d = new Date(epoch * 1000)
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${month}-${day}`
+}
+
 const getGroupBounds = (group: ManifestGroup) => {
   if (group.files.length === 0) return { start: 0, end: 0 }
   let start = Infinity
@@ -133,6 +152,8 @@ const getDropIndex = (cardEl: HTMLElement, clientY: number) => {
 export {
   formatSize,
   formatTime,
+  toTimeInputValue,
+  toDateInputValue,
   getFileUrl,
   getThumbUrl,
   getDropIndex,

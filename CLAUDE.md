@@ -41,6 +41,10 @@ This file documents core directives for working on the SkyDock project. **Read a
 - Even if code is ready, only commit when user says "commit" or "create a PR"
 - All commits must include the attribution line from the system reminder
 
+### Tooling Permissions
+
+- **`grep` is always allowed** — read-only tool, no permission prompt needed. Use freely for code searches.
+
 ### Cross-Session Consistency
 
 These rules apply to every session with this project, regardless of when or how Claude Code is invoked.

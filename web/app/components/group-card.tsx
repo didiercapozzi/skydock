@@ -5,7 +5,7 @@ import { FileGrid } from './file-grid'
 import { FileRow } from './file-row'
 import { PhotoIcon, VideoIcon } from './icons'
 import type { Destination, ManifestFile, ManifestGroup, SelectionMap } from './types'
-import { formatTime, getGroupBounds, isVideoFile } from './utils'
+import { formatTime, getGroupBounds, isVideoFile, toTimeInputValue } from './utils'
 
 const GroupCard = ({
   group,
@@ -16,7 +16,6 @@ const GroupCard = ({
   onSelect,
   onPreview,
   onDragStart,
-  onGroupDragStart,
   onDragEnd,
   onDrop,
   onDragOver,
@@ -49,7 +48,6 @@ const GroupCard = ({
   onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
   onPreview: (file: ManifestFile, groupId: string) => void
   onDragStart?: (e: React.DragEvent, groupId: string, paths: string[]) => void
-  onGroupDragStart?: (e: React.DragEvent, groupId: string) => void
   onDragEnd?: () => void
   onDrop?: (e: React.DragEvent, targetGroupId: string) => void
   onDragOver?: (e: React.DragEvent, targetGroupId: string) => void
@@ -193,14 +191,9 @@ const GroupCard = ({
     setEditingDate(false)
   }
 
-  const toTimeInputValue = (epoch: number) => {
-    const d = new Date(epoch * 1000)
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
-  }
-
   const openTimeEditor = () => {
     if (locked) return
-    setDraftTime(toTimeInputValue(bounds.start))
+    setDraftTime(toTimeInputValue(bounds.start, true))
     setEditingTime(true)
   }
 
@@ -270,32 +263,29 @@ const GroupCard = ({
         className='px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 cursor-pointer select-none'>
         <div className='flex items-center justify-between'>
           <div className='flex items-center gap-3'>
-            {onGroupDragStart && (
-              <div
-                draggable
-                onDragStart={(e) => {
-                  e.stopPropagation()
-                  e.dataTransfer.effectAllowed = 'move'
-                  e.dataTransfer.setData('application/x-group', group.id)
-                  onGroupDragStart(e, group.id)
-                }}
-                onDragEnd={onDragEnd}
-                className='cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 -ml-1 p-0.5'
-                title='Drag to assign destination'>
-                <svg
-                  className='w-4 h-4'
-                  fill='none'
-                  viewBox='0 0 24 24'
-                  stroke='currentColor'
-                  strokeWidth={2}>
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    d='M4 8h16M4 16h16'
-                  />
-                </svg>
-              </div>
-            )}
+            <div
+              draggable
+              onDragStart={(e) => {
+                e.stopPropagation()
+                e.dataTransfer.effectAllowed = 'move'
+                e.dataTransfer.setData('application/x-group', group.id)
+              }}
+              onDragEnd={onDragEnd}
+              className='cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 -ml-1 p-0.5'
+              title='Drag to assign destination'>
+              <svg
+                className='w-4 h-4'
+                fill='none'
+                viewBox='0 0 24 24'
+                stroke='currentColor'
+                strokeWidth={2}>
+                <path
+                  strokeLinecap='round'
+                  strokeLinejoin='round'
+                  d='M4 8h16M4 16h16'
+                />
+              </svg>
+            </div>
             <svg
               className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`}
               fill='none'

@@ -16,7 +16,6 @@ type Props = {
   onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
   onPreview: (file: ManifestFile, groupId: string) => void
   onDragStart: (e: React.DragEvent, groupId: string, paths: string[]) => void
-  onGroupDragStart?: (e: React.DragEvent, groupId: string) => void
   onDragEnd: () => void
   onDrop: (e: React.DragEvent, targetGroupId: string) => void
   onDragOver: (e: React.DragEvent, targetGroupId: string) => void
@@ -54,7 +53,6 @@ const DayGroups = ({
   onSelect,
   onPreview,
   onDragStart,
-  onGroupDragStart,
   onDragEnd,
   onDrop,
   onDragOver,
@@ -119,7 +117,6 @@ const DayGroups = ({
                   onSelect={onSelect}
                   onPreview={onPreview}
                   onDragStart={onDragStart}
-                  onGroupDragStart={onGroupDragStart}
                   onDragEnd={onDragEnd}
                   onDrop={onDrop}
                   onDragOver={onDragOver}

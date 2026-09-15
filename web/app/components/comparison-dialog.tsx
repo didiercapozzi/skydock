@@ -8,7 +8,9 @@ import {
   getGroupDate,
   getThumbUrl,
   isVideoFile,
-  minFileMtime
+  minFileMtime,
+  toDateInputValue,
+  toTimeInputValue
 } from './utils'
 
 type VideoRef = {
@@ -16,20 +18,6 @@ type VideoRef = {
 }
 
 const groupMinMtime = (group: ManifestGroup) => minFileMtime(group.files)
-
-const toDateInputValue = (epoch: number) => {
-  const d = new Date(epoch * 1000)
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${d.getFullYear()}-${month}-${day}`
-}
-
-const toTimeInputValue = (epoch: number) => {
-  const d = new Date(epoch * 1000)
-  const hours = String(d.getHours()).padStart(2, '0')
-  const minutes = String(d.getMinutes()).padStart(2, '0')
-  return `${hours}:${minutes}`
-}
 
 const ComparisonDialog = ({
   groups,
