@@ -171,12 +171,8 @@ const processFile = (
   if (!file.destination) return 0
   if (!fs.existsSync(file.path)) return 0
 
-  let dirName = destinationName
-  let counter = 1
-  while (claimedDirs.has(dirName)) {
-    dirName = `${destinationName}_${counter}`
-    counter++
-  }
+  // Always use the destination name - reuse existing folder if it exists
+  const dirName = destinationName
   claimedDirs.add(dirName)
 
   const destDir = path.join(processedDir, dirName)

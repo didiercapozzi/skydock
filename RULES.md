@@ -543,7 +543,7 @@ output/processed/yverdon_20260802/
 - Default NAS path: `{defaultFolder}/{name}/`. If `path` is set, it overrides the default.
 - Groups can be drag-assigned to destinations: drag the group header (≡ handle) onto a destination section header. Drop on "Unassigned" clears the destination field. Uses `application/x-group` data type to distinguish from file drag.
 - Lone files can be drag-assigned to destinations: drag from the staging tray or file row onto a destination section header. Uses `text/plain` data type with JSON array of file paths.
-- Lone files in a destination are processed flat at `{destname}/{filename}` (no `videos/`/`photos/` subdirs). Videos: `{destname}-{YYYYMMDD}-{HHMMSS}.{ext}`. Photos: `{destname}-{filename}.{ext}`.
+- Lone files in a destination are processed flat at `{destname}/{filename}` (no `videos/`/`photos/` subdirs). All lone files for a destination go into the SAME destination folder (never numbered variants like `{destname}_1`). Videos: `{destname}-{YYYYMMDD}-{HHMMSS}.{ext}`. Photos: `{destname}-{filename}.{ext}`.
 
 ### 13.2 Montage workflow
 
