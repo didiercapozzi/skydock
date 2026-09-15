@@ -16,29 +16,11 @@
 - Montage: Added "Create Montage" button, `.kdenlive` project creation, zip archive creation, reprocess protection.
 - Destinations: Renamed collection → destination, added `path` field, `DestinationCreationDialog` with `NasFolderBrowser`, `Destinations` component, "By Destination" toggle, `groupGroupsByDestination` utility, destination dropdown on GroupCard.
 - Fixed unassigned groups duplication in By Destination view.
+- Drag-to-assign destination: group header drag handle, `application/x-group` data type, section header drop targets, `onGroupDragStart`/`onAssignDestination` props, `SectionHeader` component with drag-over highlight.
+- Destination-aware upload paths: `resolveDestinationPath` helper, `upload-group` intent resolves destination path from group's `destination` field.
+- RULES.md §13.1 updated: removed `type` field, added drag-to-assign behavior, destination-aware upload paths.
 
 ## Destinations & Upload
-
-### Drag-to-assign destination
-
-- Add drag handle on group header (chevron/label row) to drag entire groups.
-- Use `application/x-group` data type to distinguish group drag from file drag.
-- Make destination section headers in `Destinations` component act as drop targets.
-- On drop: update group's `destination` field to the target destination name.
-- Drop on "Unassigned" section clears the `destination` field.
-- Visual feedback: highlight section header on drag over.
-- Props: `onGroupDragStart` on GroupCard, `onAssignDestination` on Destinations.
-
-### Destination-aware upload paths
-
-- Upload path determined by destination: `{destination.path}/{baseName}/...` if path set, else default `{defaultFolder}/{destination.name}/...`.
-- Update `upload-group` intent in `api.manifest.ts` to resolve destination path from the group's `destination` field.
-- Flatten videos/photos subdirectories during upload to match NAS structure (flat folder per destination).
-
-### Upload path helpers
-
-- Add `resolveDestinationPath(group, destinations, defaultFolder)` helper to `@skydock/scripts`.
-- Uses destination's `path` override if set, otherwise computes from destination name.
 
 ### Still needed
 

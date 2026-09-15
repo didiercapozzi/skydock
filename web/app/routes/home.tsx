@@ -163,7 +163,11 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const [groupCreationInitialDay, setGroupCreationInitialDay] = useState<string | undefined>(
     undefined
   )
+  const [pendingDestinationName, setPendingDestinationName] = useState<string | undefined>(
+    undefined
+  )
   const [showDestinationCreation, setShowDestinationCreation] = useState(false)
+  const [editingDestination, setEditingDestination] = useState<string | null>(null)
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const [importingId, setImportingId] = useState<string | null>(null)
@@ -309,12 +313,14 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
       confirmed: false,
       files: [],
       processed: false,
-      day
+      day,
+      destination: pendingDestinationName
     }
     const next = [...groups, newGroup]
     updateGroups(next)
     setShowGroupCreation(false)
     setGroupCreationInitialDay(undefined)
+    setPendingDestinationName(undefined)
   }
 
   const handleRemoveGroup = (groupId: string) => {
@@ -335,6 +341,8 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     })
   }
 
+  const handleGroupDragStart = () => {}
+
   const handleDestinationChange = (groupId: string, destinationName: string) => {
     const next = groups.map((g) =>
       g.id === groupId ? { ...g, destination: destinationName || undefined } : g
@@ -342,19 +350,50 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
     updateGroups(next)
   }
 
+  const handleAssignDestination = (groupId: string, destinationName: string) => {
+    const next = groups.map((g) =>
+      g.id === groupId ? { ...g, destination: destinationName || undefined } : g
+    )
+    updateGroups(next)
+  }
+
   const handleCreateDestination = () => {
+    setEditingDestination(null)
+    setShowDestinationCreation(true)
+  }
+
+  const handleEditDestination = (destinationName: string) => {
+    setEditingDestination(destinationName)
     setShowDestinationCreation(true)
   }
 
   const handleDestinationCreated = (name: string, path?: string) => {
-    const newDestination: Destination = { name, path }
-    const next = [...destinations, newDestination]
-    setDestinations(next)
-    manifestFetcher.submit({
-      url: '/api/manifest',
-      actionArgs: { intent: 'save-groups', groups, destinations: next }
-    })
+    if (editingDestination) {
+      const next = destinations.map((d) =>
+        d.name === editingDestination ? { ...d, name, path } : d
+      )
+      setDestinations(next)
+      if (editingDestination !== name) {
+        const updatedGroups = groups.map((g) =>
+          g.destination === editingDestination ? { ...g, destination: name } : g
+        )
+        updateGroups(updatedGroups)
+      }
+      manifestFetcher.submit({
+        url: '/api/manifest',
+        actionArgs: { intent: 'save-groups', groups, destinations: next }
+      })
+    } else {
+      const newDestination: Destination = { name, path }
+      const next = [...destinations, newDestination]
+      setDestinations(next)
+      manifestFetcher.submit({
+        url: '/api/manifest',
+        actionArgs: { intent: 'save-groups', groups, destinations: next }
+      })
+    }
     setShowDestinationCreation(false)
+    setEditingDestination(null)
   }
 
   const handleCreateMontage = async (groupId: string) => {
@@ -573,6 +612,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
             onCreateGroup={(destinationName) => {
               if (destinationName) {
                 setGroupCreationInitialDay(undefined)
+                setPendingDestinationName(destinationName)
                 setShowGroupCreation(true)
               } else {
                 handleCreateGroupGlobal()
@@ -582,6 +622,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
             onSelect={handleSelect}
             onPreview={handlePreview}
             onDragStart={(e, groupId, paths) => handleDragStart(e, groupId, paths, selection)}
+            onGroupDragStart={handleGroupDragStart}
             onDragEnd={handleDragEnd}
             onDrop={(e, id) => handleDrop(e, id, groups, updateGroups)}
             onDragOver={handleDragOver}
@@ -602,6 +643,8 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
             onCreateMontage={handleCreateMontage}
             hasKdenliveMap={hasKdenliveMap}
             onDestinationChange={handleDestinationChange}
+            onAssignDestination={handleAssignDestination}
+            onEditDestination={handleEditDestination}
           />
         )}
         {selectedCount > 0 && (
@@ -674,13 +717,23 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
             onCancel={() => {
               setShowGroupCreation(false)
               setGroupCreationInitialDay(undefined)
+              setPendingDestinationName(undefined)
             }}
           />
         )}
         {showDestinationCreation && (
           <DestinationCreationDialog
             onCreate={handleDestinationCreated}
-            onCancel={() => setShowDestinationCreation(false)}
+            onCancel={() => {
+              setShowDestinationCreation(false)
+              setEditingDestination(null)
+            }}
+            initialName={editingDestination ?? undefined}
+            initialPath={
+              editingDestination
+                ? (destinations.find((d) => d.name === editingDestination)?.path ?? null)
+                : undefined
+            }
           />
         )}
       </div>

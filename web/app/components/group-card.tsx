@@ -16,6 +16,7 @@ const GroupCard = ({
   onSelect,
   onPreview,
   onDragStart,
+  onGroupDragStart,
   onDragEnd,
   onDrop,
   onDragOver,
@@ -48,6 +49,7 @@ const GroupCard = ({
   onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
   onPreview: (file: ManifestFile, groupId: string) => void
   onDragStart?: (e: React.DragEvent, groupId: string, paths: string[]) => void
+  onGroupDragStart?: (e: React.DragEvent, groupId: string) => void
   onDragEnd?: () => void
   onDrop?: (e: React.DragEvent, targetGroupId: string) => void
   onDragOver?: (e: React.DragEvent, targetGroupId: string) => void
@@ -268,6 +270,32 @@ const GroupCard = ({
         className='px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 cursor-pointer select-none'>
         <div className='flex items-center justify-between'>
           <div className='flex items-center gap-3'>
+            {onGroupDragStart && (
+              <div
+                draggable
+                onDragStart={(e) => {
+                  e.stopPropagation()
+                  e.dataTransfer.effectAllowed = 'move'
+                  e.dataTransfer.setData('application/x-group', group.id)
+                  onGroupDragStart(e, group.id)
+                }}
+                onDragEnd={onDragEnd}
+                className='cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 -ml-1 p-0.5'
+                title='Drag to assign destination'>
+                <svg
+                  className='w-4 h-4'
+                  fill='none'
+                  viewBox='0 0 24 24'
+                  stroke='currentColor'
+                  strokeWidth={2}>
+                  <path
+                    strokeLinecap='round'
+                    strokeLinejoin='round'
+                    d='M4 8h16M4 16h16'
+                  />
+                </svg>
+              </div>
+            )}
             <svg
               className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`}
               fill='none'

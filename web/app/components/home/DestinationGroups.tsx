@@ -1,6 +1,98 @@
+import { useRef, useState } from 'react'
 import type { UploadProgressState } from '../../hooks/useUploadProgress'
 import type { Destination, ManifestFile, ManifestGroup, SelectionMap } from '../types'
 import { GroupCard } from '../group-card'
+
+const SectionHeader = ({
+  title,
+  count,
+  destinationName,
+  onAssignDestination,
+  onEditDestination,
+  onCreateGroup
+}: {
+  title: string
+  count: number
+  destinationName: string
+  onAssignDestination?: (groupId: string, destinationName: string) => void
+  onEditDestination?: (destinationName: string) => void
+  onCreateGroup: () => void
+}) => {
+  const [dragOver, setDragOver] = useState(false)
+  const counterRef = useRef(0)
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('application/x-group')) return
+    counterRef.current++
+    setDragOver(true)
+  }
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('application/x-group')) return
+    counterRef.current--
+    if (counterRef.current <= 0) {
+      counterRef.current = 0
+      setDragOver(false)
+    }
+  }
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('application/x-group')) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+  const handleDrop = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('application/x-group')) return
+    e.preventDefault()
+    counterRef.current = 0
+    setDragOver(false)
+    const groupId = e.dataTransfer.getData('application/x-group')
+    if (groupId && onAssignDestination) {
+      onAssignDestination(groupId, destinationName)
+    }
+  }
+
+  return (
+    <div
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      className={`flex items-center gap-4 mb-4 px-2 py-1 rounded-lg transition-colors ${
+        dragOver ? 'bg-blue-50 ring-2 ring-blue-300' : ''
+      }`}>
+      <h2 className='text-sm font-bold text-gray-600 uppercase tracking-wider'>{title}</h2>
+      {destinationName && onEditDestination && (
+        <button
+          type='button'
+          onClick={() => onEditDestination(destinationName)}
+          className='text-gray-400 hover:text-blue-600 transition-colors'
+          title='Edit destination'>
+          <svg
+            className='w-3.5 h-3.5'
+            fill='none'
+            viewBox='0 0 24 24'
+            stroke='currentColor'
+            strokeWidth={2}>
+            <path
+              strokeLinecap='round'
+              strokeLinejoin='round'
+              d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'
+            />
+          </svg>
+        </button>
+      )}
+      <div className='h-px flex-1 bg-gradient-to-r from-gray-200 to-transparent' />
+      <span className='text-xs font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-full'>
+        {count} group{count !== 1 ? 's' : ''}
+      </span>
+      <button
+        type='button'
+        onClick={onCreateGroup}
+        className='px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100'>
+        + Create Group
+      </button>
+    </div>
+  )
+}
 
 type Props = {
   destinations: Destination[]
@@ -18,6 +110,7 @@ type Props = {
   onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
   onPreview: (file: ManifestFile, groupId: string) => void
   onDragStart: (e: React.DragEvent, groupId: string, paths: string[]) => void
+  onGroupDragStart?: (e: React.DragEvent, groupId: string) => void
   onDragEnd: () => void
   onDrop: (e: React.DragEvent, targetGroupId: string) => void
   onDragOver: (e: React.DragEvent, targetGroupId: string) => void
@@ -38,6 +131,8 @@ type Props = {
   onCreateMontage?: (groupId: string) => void
   hasKdenliveMap?: Map<string, boolean>
   onDestinationChange?: (groupId: string, destinationName: string) => void
+  onAssignDestination?: (groupId: string, destinationName: string) => void
+  onEditDestination?: (destinationName: string) => void
 }
 
 const Destinations = ({
@@ -56,6 +151,7 @@ const Destinations = ({
   onSelect,
   onPreview,
   onDragStart,
+  onGroupDragStart,
   onDragEnd,
   onDrop,
   onDragOver,
@@ -75,7 +171,9 @@ const Destinations = ({
   importingId,
   onCreateMontage,
   hasKdenliveMap,
-  onDestinationChange
+  onDestinationChange,
+  onAssignDestination,
+  onEditDestination
 }: Props) => {
   const unassigned = groupsByDestination.find((g) => g.name === 'Unassigned')
   const namedDestinations = groupsByDestination.filter((g) => g.name !== 'Unassigned')
@@ -93,19 +191,14 @@ const Destinations = ({
 
       {namedDestinations.map(({ name, groups }) => (
         <section key={name}>
-          <div className='flex items-center gap-4 mb-4'>
-            <h2 className='text-sm font-bold text-gray-600 uppercase tracking-wider'>{name}</h2>
-            <div className='h-px flex-1 bg-gradient-to-r from-gray-200 to-transparent' />
-            <span className='text-xs font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-full'>
-              {groups.length} group{groups.length !== 1 ? 's' : ''}
-            </span>
-            <button
-              type='button'
-              onClick={() => onCreateGroup(name)}
-              className='px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100'>
-              + Create Group
-            </button>
-          </div>
+          <SectionHeader
+            title={name}
+            count={groups.length}
+            destinationName={name}
+            onAssignDestination={onAssignDestination}
+            onEditDestination={onEditDestination}
+            onCreateGroup={() => onCreateGroup(name)}
+          />
           <div className='space-y-4'>
             {groups.map((group) => (
               <div
@@ -131,6 +224,7 @@ const Destinations = ({
                   onSelect={onSelect}
                   onPreview={onPreview}
                   onDragStart={onDragStart}
+                  onGroupDragStart={onGroupDragStart}
                   onDragEnd={onDragEnd}
                   onDrop={onDrop}
                   onDragOver={onDragOver}
@@ -161,19 +255,13 @@ const Destinations = ({
 
       {unassigned && unassigned.groups.length > 0 && (
         <section>
-          <div className='flex items-center gap-4 mb-4'>
-            <h2 className='text-sm font-bold text-gray-600 uppercase tracking-wider'>Unassigned</h2>
-            <div className='h-px flex-1 bg-gradient-to-r from-gray-200 to-transparent' />
-            <span className='text-xs font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-full'>
-              {unassigned.groups.length} group{unassigned.groups.length !== 1 ? 's' : ''}
-            </span>
-            <button
-              type='button'
-              onClick={() => onCreateGroup()}
-              className='px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100'>
-              + Create Group
-            </button>
-          </div>
+          <SectionHeader
+            title='Unassigned'
+            count={unassigned.groups.length}
+            destinationName=''
+            onAssignDestination={onAssignDestination}
+            onCreateGroup={() => onCreateGroup()}
+          />
           <div className='space-y-4'>
             {unassigned.groups.map((group) => (
               <div
@@ -199,6 +287,7 @@ const Destinations = ({
                   onSelect={onSelect}
                   onPreview={onPreview}
                   onDragStart={onDragStart}
+                  onGroupDragStart={onGroupDragStart}
                   onDragEnd={onDragEnd}
                   onDrop={onDrop}
                   onDragOver={onDragOver}

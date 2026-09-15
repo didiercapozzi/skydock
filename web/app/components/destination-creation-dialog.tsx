@@ -8,15 +8,20 @@ type DestinationCreationDialogProps = {
   onCreate: (name: string, path?: string) => void
   onCancel: () => void
   error?: string
+  initialName?: string
+  initialPath?: string | null
 }
 
 const DestinationCreationDialog = ({
   onCreate,
   onCancel,
-  error
+  error,
+  initialName,
+  initialPath
 }: DestinationCreationDialogProps) => {
+  const isEdit = initialName !== undefined
   const [showBrowser, setShowBrowser] = useState(false)
-  const [selectedPath, setSelectedPath] = useState<string | null>(null)
+  const [selectedPath, setSelectedPath] = useState<string | null>(initialPath ?? null)
 
   const submit: SubmitFunction = async (target) => {
     const parsed = destinationCreationSchema.safeParse(target)
@@ -26,7 +31,7 @@ const DestinationCreationDialog = ({
 
   const form = useForm({
     schema: destinationCreationSchema,
-    defaultValues: { name: '' },
+    defaultValues: { name: initialName ?? '' },
     submit
   })
 
@@ -37,7 +42,9 @@ const DestinationCreationDialog = ({
       data-destination-creation-dialog='true'
       className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
       <div className='bg-white rounded-xl shadow-xl p-6 w-full max-w-md'>
-        <h2 className='text-lg font-semibold text-gray-900 mb-4'>Create New Destination</h2>
+        <h2 className='text-lg font-semibold text-gray-900 mb-4'>
+          {isEdit ? 'Edit Destination' : 'Create New Destination'}
+        </h2>
         <GlobalErrors errors={globalErrors} />
         <Form
           value={form}
@@ -94,7 +101,13 @@ const DestinationCreationDialog = ({
               type='submit'
               disabled={form.isSubmitting}
               className='px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50'>
-              {form.isSubmitting ? 'Creating...' : 'Create'}
+              {form.isSubmitting
+                ? isEdit
+                  ? 'Saving...'
+                  : 'Creating...'
+                : isEdit
+                  ? 'Save'
+                  : 'Create'}
             </button>
           </div>
         </Form>

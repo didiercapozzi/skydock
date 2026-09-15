@@ -486,7 +486,7 @@ output/processed/yverdon_20260802/
 - Each jump/group moves through proposed, processed, uploaded, in that order. `Day` loose files are processed individually per-file to `output/processed/YYYY-MM-DD/` flat.
 - The `Process` button is available once a jump/group has files (no passenger required — `yverdon` `Group` processes with `label`). Processing copies and renames the files (using `passenger` if present else `label`) and marks the jump/group `processed`; re-processing clears any previous publishing state. `+ Create Group` at a `Day` creates an empty `Group` (`label` prompt, `day` stored) that becomes processable once files are dragged in.
 - The `Upload` button is only enabled for processed jumps/groups. Uploading additionally requires a valid NAS session and a chosen upload folder: clicking `Upload` while disconnected opens the connection dialog, and while connected without a folder opens the folder browser — no upload starts until both are in place. The server rejects `upload-jump` without a session (`Not connected`) or without a default folder (`Choose an upload folder first`). `Email` generation still requires complete passenger (`firstname`/`lastname`/`email`).
-  - Upload destination: processed folder placed directly inside the user's selected NAS folder: `{NAS_FOLDER}/{baseName}/...`
+  - Upload destination: if group has a `destination`, resolves to `{destination.path}/{baseName}/...` or `{defaultFolder}/{destination.name}/{baseName}/...` (see §13.1). Otherwise `{NAS_FOLDER}/{baseName}/...`
   - Binary comparison: each file compared by SHA-256 hash. Files with matching hash on NAS are skipped.
   - Streamed upload: files stream with flat memory use and wire-true progress — 0–95% counts bytes flushed to the network, 100% on server confirmation; on failure, retry from beginning.
   - Progress: each file shows a progress bar with percentage.
@@ -535,11 +535,12 @@ output/processed/yverdon_20260802/
 ### 13.1 Destinations
 
 - Destinations group jumps by location or passenger name across different days, mapping them to NAS folder paths.
-- Each destination has a `name`, `type` (`location` or `passenger`), and optional `path` (NAS path override).
+- Each destination has a `name` and optional `path` (NAS path override).
 - Groups can be assigned to a destination via the `destination` field.
 - Destinations are stored in `manifest.json` as a `destinations` array.
 - The UI supports viewing groups by destination via the "By Destination" toggle.
-- Default NAS path: `location` → `{defaultFolder}/{name}/`, `passenger` → `{defaultFolder}/tandems/{name}/`. If `path` is set, it overrides the default.
+- Default NAS path: `{defaultFolder}/{name}/`. If `path` is set, it overrides the default.
+- Groups can be drag-assigned to destinations: drag the group header (≡ handle) onto a destination section header. Drop on "Unassigned" clears the destination field. Uses `application/x-group` data type to distinguish from file drag.
 
 ### 13.2 Montage workflow
 

@@ -50,7 +50,8 @@ export {
   makeFileName,
   mergeGroups,
   moveFilesBetweenGroups,
-  reorderFilesInGroup
+  reorderFilesInGroup,
+  resolveDestinationPath
 } from './workspace'
 export { loadManifest, normalizeManifest, saveManifest } from './manifest'
 export { publishJump, uploadFile } from './publish'

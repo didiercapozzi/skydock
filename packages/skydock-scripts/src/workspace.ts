@@ -135,6 +135,18 @@ const buildFsTime = (groupMtime: number, captureMtime: number) => {
   )
 }
 
+const resolveDestinationPath = (
+  destinationName: string | undefined,
+  destinations: { name: string; path?: string }[],
+  defaultFolder: string
+): string | null => {
+  if (!destinationName) return null
+  const dest = destinations.find((d) => d.name === destinationName)
+  if (!dest) return null
+  if (dest.path) return dest.path
+  return `${defaultFolder}/${destinationName}`
+}
+
 export {
   buildFsTime,
   buildGroupBaseName,
@@ -143,5 +155,6 @@ export {
   makeFileName,
   mergeGroups,
   moveFilesBetweenGroups,
-  reorderFilesInGroup
+  reorderFilesInGroup,
+  resolveDestinationPath
 }

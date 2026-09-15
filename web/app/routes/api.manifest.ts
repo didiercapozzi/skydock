@@ -13,6 +13,7 @@ import {
   manifestGroupSchema,
   mergeGroups,
   publishJump,
+  resolveDestinationPath,
   saveManifest,
   shiftFiles,
   walkFiles,
@@ -152,7 +153,13 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         errors.addGlobalError('Processed files not found. Process the group again.')
         return errors.toResponse(422)
       }
-      const remoteBase = session.defaultFolder
+      const remoteBase = target.destination
+        ? (resolveDestinationPath(
+            target.destination,
+            manifest.destinations ?? [],
+            session.defaultFolder
+          ) ?? session.defaultFolder)
+        : session.defaultFolder
       const allFiles = walkFiles(localDir)
       const sortedFiles = [...allFiles].sort()
       const sortedManifestFiles = [...target.files].sort((a, b) => a.mtime - b.mtime)
