@@ -14,7 +14,8 @@
         "rogalmic.bash-debug",
         "oxc.oxc-vscode",
         "vitest.explorer",
-        "ms-playwright.playwright"
+        "ms-playwright.playwright",
+        "anthropic.claude-code"
       ]
     }
   }

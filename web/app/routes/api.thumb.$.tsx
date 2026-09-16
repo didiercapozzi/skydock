@@ -22,16 +22,16 @@ const clampSeek = (raw: string | null) => {
   return parsed.data
 }
 
+/* Videos are seeked to a keyframe; a photo is simply rescaled, so a card full of
+   photos costs a few kB each instead of the whole original. */
 const extractFrame = (filePath: string, seek: number, width: number) =>
   new Promise<Buffer>((resolve, reject) => {
+    const seekArgs = isVideoFile(filePath) ? ['-ss', String(seek), '-skip_frame', 'nokey'] : []
     const child = spawn('ffmpeg', [
       '-hide_banner',
       '-loglevel',
       'error',
-      '-ss',
-      String(seek),
-      '-skip_frame',
-      'nokey',
+      ...seekArgs,
       '-i',
       filePath,
       '-frames:v',
@@ -66,7 +66,7 @@ const loader = async ({
   const splat = params['*'] ?? ''
   const filePath = path.join(getOutputDir(), splat)
 
-  if (!fs.existsSync(filePath) || !isVideoFile(filePath)) {
+  if (!fs.existsSync(filePath)) {
     return new Response('Not found', { status: 404 })
   }
 

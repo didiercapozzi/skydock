@@ -1,16 +1,14 @@
-import { loadManifest, loadNasSession, manifestGroupSchema } from '@skydock/scripts'
+import {
+  loadManifest,
+  loadNasSession,
+  manifestFileSchema,
+  manifestGroupSchema
+} from '@skydock/scripts'
 import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { PreviewDrawer } from '../components/preview-drawer'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
-import {
-  formatSize,
-  formatTime,
-  getFileUrl,
-  getThumbUrl,
-  isVideoFile,
-  minFileMtime
-} from '../components/utils'
+import { formatSize, formatTime, getThumbUrl, isVideoFile, minFileMtime } from '../components/utils'
 import { useSafeFetcher } from '../helpers/routing'
 import { useGroups } from '../hooks/useJumps'
 import { usePreview } from '../hooks/usePreview'
@@ -45,8 +43,13 @@ const loader = async (_args: Route.LoaderArgs) => {
   } catch {
     nas = { connected: false, defaultFolder: null }
   }
+  const grouped = new Set(
+    (manifest?.groups ?? []).flatMap((g) => g.files.map((f) => f.id ?? f.path))
+  )
+  const looseFiles = (manifest?.files ?? []).filter((f) => !grouped.has(f.id ?? f.path))
   return {
     groups: manifest?.groups ?? [],
+    looseFiles,
     destinations: manifest?.destinations ?? [],
     hasManifest: manifest !== null,
     nas
@@ -87,39 +90,59 @@ const passengerName = (group: ManifestGroup) =>
   group.passenger ? `${group.passenger.firstname} ${group.passenger.lastname}`.trim() : ''
 
 const isTandem = (group: ManifestGroup) => group.destination === TANDEMS
-const kept = (group: ManifestGroup) => group.files.filter((f) => f.keep !== false)
+const videosOf = (files: ManifestFile[]) => files.filter((f) => isVideoFile(f.path))
+const photosOf = (files: ManifestFile[]) => files.filter((f) => !isVideoFile(f.path))
+
+/* A jump of ordinary size shows its files straight away — reaching one should cost no click.
+   Only a card big enough to bury the page stays folded. */
+const AUTO_OPEN_MAX = 40
+const defaultOpen = (group: ManifestGroup) => group.files.length <= AUTO_OPEN_MAX
+
+/* a shift-click range runs across every file shown under one day, in the order drawn */
+const dayLane = (dayGroups: ManifestGroup[]) => dayGroups.flatMap((g) => g.files)
 
 const Thumb = ({
   file,
-  removed,
-  onOpen,
-  onToggle
+  selected,
+  selecting,
+  onClick,
+  onDragStart,
+  small
 }: {
   file: ManifestFile
-  removed: boolean
-  onOpen: () => void
-  onToggle: () => void
+  selected: boolean
+  selecting: boolean
+  onClick: (e: React.MouseEvent) => void
+  onDragStart?: (e: React.DragEvent) => void
+  small?: boolean
 }) => (
-  <div className={`relative ${removed ? 'opacity-35 grayscale' : ''}`}>
+  <div className='relative'>
     <button
       type='button'
-      onClick={onOpen}
+      draggable={onDragStart !== undefined}
+      onDragStart={onDragStart}
+      onClick={onClick}
       title={`${file.filename} · ${formatTime(file.mtime)} · ${formatSize(file.size)}`}
-      className='block h-12 w-16 overflow-hidden rounded border border-gray-200 bg-gray-100'>
+      className={`block overflow-hidden rounded border-2 bg-gray-100 ${
+        small ? 'h-10 w-10' : 'h-12 w-16'
+      } ${selected ? 'border-teal-600 ring-2 ring-teal-200' : 'border-gray-200'}`}>
       <img
-        src={isVideoFile(file.path) ? getThumbUrl(file.path, 0.5, 120) : getFileUrl(file.path)}
+        src={getThumbUrl(file.path, 0.5, small ? 80 : 120)}
         alt={file.filename}
         loading='lazy'
         className='h-full w-full object-cover'
       />
     </button>
-    <button
-      type='button'
-      onClick={onToggle}
-      title={removed ? 'Put it back' : 'Remove it from this jump'}
-      className='absolute -top-1 -right-1 h-5 w-5 rounded-full border border-gray-300 bg-white text-[10px] leading-none text-gray-600 hover:border-red-400 hover:text-red-600'>
-      {removed ? '↺' : '✕'}
-    </button>
+    {(selecting || selected) && (
+      <span
+        className={`pointer-events-none absolute -top-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full border text-[9px] leading-none ${
+          selected
+            ? 'border-teal-600 bg-teal-600 text-white'
+            : 'border-gray-400 bg-white text-white'
+        }`}>
+        ✓
+      </span>
+    )}
   </div>
 )
 
@@ -128,7 +151,14 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const [busy, setBusy] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [dragged, setDragged] = useState<string[]>([])
+  const [draggedFiles, setDraggedFiles] = useState<string[]>([])
   const [picked, setPicked] = useState<string[]>([])
+  const [pickedFiles, setPickedFiles] = useState<string[]>([])
+  const [anchor, setAnchor] = useState<string | null>(null)
+  const [selecting, setSelecting] = useState(false)
+  const [toggled, setToggled] = useState<string[]>([])
+  const [overTarget, setOverTarget] = useState<string | null>(null)
+  const [loose, setLoose] = useState<ManifestFile[]>(loaderData.looseFiles)
   const [newPlace, setNewPlace] = useState('')
   const [places, setPlaces] = useState<Destination[]>(loaderData.destinations)
   const fetcher = useSafeFetcher()
@@ -137,10 +167,17 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   /* the server answers with the groups it saved, or with the reason it refused */
   useEffect(() => {
     if (!fetcher.data) return
-    const answered = z.object({ groups: z.array(manifestGroupSchema) }).safeParse(fetcher.data)
+    const answered = z
+      .object({
+        groups: z.array(manifestGroupSchema),
+        looseFiles: z.array(manifestFileSchema).optional()
+      })
+      .safeParse(fetcher.data)
     if (answered.success) {
+      const { groups: saved, looseFiles } = answered.data
       queueMicrotask(() => {
-        setGroups(answered.data.groups)
+        setGroups(saved)
+        if (looseFiles) setLoose(looseFiles)
         setBusy(null)
         setNote(null)
       })
@@ -192,20 +229,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     updateGroups(next)
   }
 
-  const toggleKeep = (groupId: string, fileId: string | undefined, path: string) => {
-    const next = groups.map((g) =>
-      g.id === groupId
-        ? {
-            ...g,
-            files: g.files.map((f) =>
-              (f.id && f.id === fileId) || f.path === path ? { ...f, keep: f.keep === false } : f
-            )
-          }
-        : g
-    )
-    updateGroups(next)
-  }
-
   const setPassenger = (groupId: string, firstname: string, lastname: string) => {
     const next = groups.map((g) =>
       g.id === groupId
@@ -243,16 +266,178 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const openPreview = (group: ManifestGroup, file: ManifestFile) =>
     preview.handlePreview(file, group.id)
 
-  const dropTarget = (destination: string | null) => ({
-    onDragOver: (e: React.DragEvent) => {
-      if (dragged.length > 0) e.preventDefault()
-    },
-    onDrop: (e: React.DragEvent) => {
-      e.preventDefault()
-      if (dragged.length > 0) assign(dragged, destination)
-      setDragged([])
+  /* files leave their jump and are re-filed server-side, so the answer is the truth */
+  const moveFiles = (ids: string[], destination: string | null) => {
+    if (ids.length === 0) return
+    setNote(null)
+    setBusy('move')
+    setPickedFiles([])
+    setAnchor(null)
+    fetcher.submit({
+      url: '/api/manifest',
+      actionArgs: {
+        intent: 'move-files',
+        fileIds: ids,
+        destination: destination ?? undefined
+      }
+    })
+  }
+
+  /* plain click previews while nothing is picked, and extends the picking once it started */
+  const clickFile = (
+    file: ManifestFile,
+    lane: ManifestFile[],
+    e: React.MouseEvent,
+    onPreview: () => void
+  ) => {
+    const id = file.id
+    if (!id) {
+      onPreview()
+      return
     }
+    const ids = lane.flatMap((f) => (f.id ? [f.id] : []))
+    if (e.shiftKey && anchor && ids.includes(anchor)) {
+      const from = ids.indexOf(anchor)
+      const to = ids.indexOf(id)
+      const range = ids.slice(Math.min(from, to), Math.max(from, to) + 1)
+      setPickedFiles([...new Set([...pickedFiles, ...range])])
+      return
+    }
+    if (selecting || e.ctrlKey || e.metaKey || pickedFiles.length > 0) {
+      setPickedFiles(
+        pickedFiles.includes(id) ? pickedFiles.filter((x) => x !== id) : [...pickedFiles, id]
+      )
+      setAnchor(id)
+      return
+    }
+    setAnchor(id)
+    onPreview()
+  }
+
+  const stopSelecting = () => {
+    setSelecting(false)
+    setPickedFiles([])
+    setAnchor(null)
+  }
+
+  /* one button turns picking on, so it never depends on knowing the ctrl-click trick */
+  const SelectButton = ({ files }: { files: ManifestFile[] }) => {
+    const ids = files.flatMap((f) => (f.id ? [f.id] : []))
+    const allPicked = ids.length > 0 && ids.every((id) => pickedFiles.includes(id))
+    if (!selecting) {
+      return (
+        <button
+          type='button'
+          onClick={() => setSelecting(true)}
+          className='rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600'>
+          Select
+        </button>
+      )
+    }
+    return (
+      <button
+        type='button'
+        onClick={() =>
+          setPickedFiles(
+            allPicked
+              ? pickedFiles.filter((id) => !ids.includes(id))
+              : [...new Set([...pickedFiles, ...ids])]
+          )
+        }
+        className='rounded border border-teal-600 bg-teal-50 px-2 py-0.5 text-xs font-semibold text-teal-800'>
+        {allPicked ? 'None' : `All ${ids.length}`}
+      </button>
+    )
+  }
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      /* never steal Delete or Backspace from the passenger name fields */
+      if (target && /^(INPUT|TEXTAREA)$/.test(target.tagName)) return
+      if (e.key === 'Escape') {
+        queueMicrotask(() => {
+          setSelecting(false)
+          setPickedFiles([])
+          setAnchor(null)
+        })
+        return
+      }
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return
+      if (pickedFiles.length === 0) return
+      e.preventDefault()
+      queueMicrotask(() => moveFiles(pickedFiles, null))
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   })
+
+  const startFileDrag = (file: ManifestFile, e?: React.DragEvent) => {
+    if (!file.id) return
+    /* a thumbnail sits inside a draggable jump card — only the file must travel */
+    e?.stopPropagation()
+    setDragged([])
+    setDraggedFiles(pickedFiles.includes(file.id) ? pickedFiles : [file.id])
+  }
+
+  /* Only the zone under the pointer lights up, and only when it takes what is being carried.
+     onDragLeave also fires when the pointer crosses a child, so `contains` stops the flicker. */
+  const leaveTarget = (key: string) => (e: React.DragEvent) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+    setOverTarget((current) => (current === key ? null : current))
+  }
+
+  /* a jump card accepts files dropped from anywhere, so a photo can change jump */
+  const groupDropTarget = (groupId: string) => {
+    const key = `group:${groupId}`
+    return {
+      onDragOver: (e: React.DragEvent) => {
+        if (draggedFiles.length === 0) return
+        e.preventDefault()
+        e.stopPropagation()
+        setOverTarget(key)
+      },
+      onDragLeave: leaveTarget(key),
+      onDrop: (e: React.DragEvent) => {
+        setOverTarget(null)
+        if (draggedFiles.length === 0) return
+        e.preventDefault()
+        e.stopPropagation()
+        setNote(null)
+        setBusy('move')
+        setPickedFiles([])
+        setAnchor(null)
+        fetcher.submit({
+          url: '/api/manifest',
+          actionArgs: { intent: 'move-files', fileIds: draggedFiles, targetGroupId: groupId }
+        })
+        setDraggedFiles([])
+      }
+    }
+  }
+
+  const dropTarget = (destination: string | null) => {
+    const key = destination === null ? 'sort' : `dest:${destination}`
+    /* the sorting area takes files back; a destination card takes whole jumps as well */
+    const accepts =
+      destination === null ? draggedFiles.length > 0 : dragged.length > 0 || draggedFiles.length > 0
+    return {
+      onDragOver: (e: React.DragEvent) => {
+        if (!accepts) return
+        e.preventDefault()
+        setOverTarget(key)
+      },
+      onDragLeave: leaveTarget(key),
+      onDrop: (e: React.DragEvent) => {
+        e.preventDefault()
+        setOverTarget(null)
+        if (draggedFiles.length > 0) moveFiles(draggedFiles, destination)
+        else if (dragged.length > 0) assign(dragged, destination)
+        setDragged([])
+        setDraggedFiles([])
+      }
+    }
+  }
 
   if (!loaderData.hasManifest) {
     return (
@@ -272,7 +457,14 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   }
 
   return (
-    <main className='mx-auto max-w-6xl p-4 pb-24'>
+    <main
+      /* dragend bubbles, so one handler clears the highlight however a drag ends */
+      onDragEnd={() => {
+        setOverTarget(null)
+        setDraggedFiles([])
+        setDragged([])
+      }}
+      className='mx-auto max-w-6xl p-4 pb-24'>
       <header className='flex flex-wrap items-center gap-3 border-b border-gray-200 pb-3'>
         <span className='text-base font-bold'>
           Sky<span className='text-teal-700'>Dock</span>
@@ -292,58 +484,193 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         <p className='mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900'>{note}</p>
       )}
 
-      <section className='mt-4 rounded-xl border border-gray-200 bg-white p-4'>
+      <section
+        {...dropTarget(null)}
+        className={`mt-4 rounded-xl border bg-white p-4 ${
+          overTarget === 'sort' ? 'border-dashed border-teal-500' : 'border-gray-200'
+        }`}>
         <div className='flex flex-wrap items-baseline gap-3'>
           <h2 className='text-sm font-semibold'>To sort</h2>
           <span className='text-xs text-gray-500'>
-            {unsorted.length > 0
+            {unsorted.length > 0 || loose.length > 0
               ? 'drag a jump onto a location below, or pick a few and use the buttons'
               : 'nothing left'}
           </span>
+          <span className='ml-auto text-xs text-gray-500'>
+            To pick single files, use <b>Select</b> on any card below.
+          </span>
         </div>
-        <div className='mt-3 flex flex-wrap gap-2'>
-          {unsorted.map((group) => (
-            <div
-              key={group.id}
-              draggable
-              onDragStart={() => setDragged(picked.includes(group.id) ? picked : [group.id])}
-              onDragEnd={() => setDragged([])}
-              className={`w-52 cursor-grab rounded-lg border p-2 ${
-                picked.includes(group.id) ? 'border-teal-600 bg-teal-50' : 'border-gray-200'
-              }`}>
-              <label className='flex items-center gap-2 text-sm'>
-                <input
-                  type='checkbox'
-                  checked={picked.includes(group.id)}
-                  onChange={() =>
-                    setPicked(
-                      picked.includes(group.id)
-                        ? picked.filter((id) => id !== group.id)
-                        : [...picked, group.id]
-                    )
-                  }
-                />
-                <span className='font-mono'>{formatTime(minFileMtime(group.files) ?? 0)}</span>
-                <span className='ml-auto text-xs text-gray-500'>{group.files.length} files</span>
-              </label>
-              <div className='mt-2 flex gap-1 overflow-hidden'>
-                {group.files.slice(0, 4).map((file, index) => (
-                  <img
-                    key={`${index}:${file.path}`}
-                    src={
-                      isVideoFile(file.path)
-                        ? getThumbUrl(file.path, 0.5, 80)
-                        : getFileUrl(file.path)
+        <div className='mt-3 space-y-2'>
+          {unsorted.map((group) => {
+            const open = toggled.includes(group.id) ? !defaultOpen(group) : defaultOpen(group)
+            const videos = videosOf(group.files)
+            const photos = photosOf(group.files)
+            const toggle = () =>
+              setToggled(
+                toggled.includes(group.id)
+                  ? toggled.filter((id) => id !== group.id)
+                  : [...toggled, group.id]
+              )
+            return (
+              <div
+                key={group.id}
+                draggable={!open}
+                onDragStart={() => setDragged(picked.includes(group.id) ? picked : [group.id])}
+                onDragEnd={() => {
+                  setDragged([])
+                  setOverTarget(null)
+                }}
+                {...groupDropTarget(group.id)}
+                className={`rounded-lg border p-2 ${open ? '' : 'cursor-grab'} ${
+                  overTarget === `group:${group.id}`
+                    ? 'border-dashed border-teal-500'
+                    : picked.includes(group.id)
+                      ? 'border-teal-600 bg-teal-50'
+                      : 'border-gray-200'
+                }`}>
+                <div
+                  onClick={toggle}
+                  className='flex cursor-pointer items-center gap-2 text-sm'>
+                  <input
+                    type='checkbox'
+                    checked={picked.includes(group.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={() =>
+                      setPicked(
+                        picked.includes(group.id)
+                          ? picked.filter((id) => id !== group.id)
+                          : [...picked, group.id]
+                      )
                     }
-                    alt={file.filename}
-                    loading='lazy'
-                    className='h-8 w-11 rounded object-cover'
                   />
-                ))}
+                  <span className='font-mono'>{formatTime(minFileMtime(group.files) ?? 0)}</span>
+                  <span className='truncate text-xs whitespace-nowrap text-gray-500'>
+                    {videos.length > 0 && `${videos.length} video${videos.length > 1 ? 's' : ''}`}
+                    {videos.length > 0 && photos.length > 0 && ' · '}
+                    {photos.length > 0 && `${photos.length} photo${photos.length > 1 ? 's' : ''}`}
+                  </span>
+                  {open && (
+                    <span onClick={(e) => e.stopPropagation()}>
+                      <SelectButton files={group.files} />
+                    </span>
+                  )}
+                  <button
+                    type='button'
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggle()
+                    }}
+                    className='ml-auto rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600'>
+                    {open
+                      ? 'Hide'
+                      : `Show ${group.files.length} ${photos.length > videos.length ? 'photos' : 'files'}`}
+                  </button>
+                </div>
+                {!open && (
+                  <div className='mt-2 flex gap-1 overflow-hidden'>
+                    {group.files.slice(0, 4).map((file, index) => (
+                      <img
+                        key={`${index}:${file.path}`}
+                        src={getThumbUrl(file.path, 0.5, 80)}
+                        alt=''
+                        loading='lazy'
+                        draggable
+                        onDragStart={(e) => startFileDrag(file, e)}
+                        className='h-8 w-11 rounded bg-gray-100 object-cover'
+                      />
+                    ))}
+                  </div>
+                )}
+                {open && (
+                  <div className='mt-2 space-y-3'>
+                    {videos.length > 0 && (
+                      <div>
+                        <p className='text-[11px] font-semibold tracking-wide text-gray-500 uppercase'>
+                          {videos.length} video{videos.length > 1 ? 's' : ''}
+                        </p>
+                        <div className='mt-1 flex flex-wrap gap-1'>
+                          {videos.map((file, index) => (
+                            <Thumb
+                              key={`v:${index}:${file.path}`}
+                              file={file}
+                              selected={!!file.id && pickedFiles.includes(file.id)}
+                              selecting={selecting}
+                              onClick={(e) =>
+                                clickFile(file, videos, e, () => openPreview(group, file))
+                              }
+                              onDragStart={(e) => startFileDrag(file, e)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {photos.length > 0 && (
+                      <div>
+                        <p className='text-[11px] font-semibold tracking-wide text-gray-500 uppercase'>
+                          {photos.length} photo{photos.length > 1 ? 's' : ''}
+                        </p>
+                        <div className='mt-1 flex flex-wrap gap-1'>
+                          {photos.map((file, index) => (
+                            <Thumb
+                              key={`p:${index}:${file.path}`}
+                              file={file}
+                              small
+                              selected={!!file.id && pickedFiles.includes(file.id)}
+                              selecting={selecting}
+                              onClick={(e) =>
+                                clickFile(file, photos, e, () => openPreview(group, file))
+                              }
+                              onDragStart={(e) => startFileDrag(file, e)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
+        {loose.length > 0 && (
+          <div className='mt-3 border-t border-gray-100 pt-3'>
+            <div className='flex flex-wrap items-center gap-2'>
+              <p className='text-xs text-gray-500'>
+                {loose.length} loose file{loose.length > 1 ? 's' : ''} — not in any jump. Pick them
+                and file them below.
+              </p>
+              <button
+                type='button'
+                disabled={busy !== null}
+                onClick={() => {
+                  setNote(null)
+                  setBusy('regroup')
+                  fetcher.submit({
+                    url: '/api/manifest',
+                    actionArgs: { intent: 'regroup-loose' }
+                  })
+                }}
+                title='Cluster them back into jumps by their capture time, like the scan does'
+                className='rounded border border-gray-300 bg-white px-2 py-0.5 text-xs font-semibold disabled:opacity-50'>
+                {busy === 'regroup' ? 'Regrouping…' : 'Regroup into jumps'}
+              </button>
+            </div>
+            <div className='mt-2 flex flex-wrap gap-1'>
+              {loose.map((file, index) => (
+                <Thumb
+                  key={`loose:${index}:${file.path}`}
+                  file={file}
+                  selected={!!file.id && pickedFiles.includes(file.id)}
+                  selecting={selecting}
+                  onClick={(e) =>
+                    clickFile(file, loose, e, () => preview.handlePreview(file, 'loose'))
+                  }
+                  onDragStart={() => startFileDrag(file)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
         {picked.length > 0 && (
           <div className='mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-gray-900 p-2 text-sm text-white'>
             <b className='px-1'>{picked.length} selected</b>
@@ -402,7 +729,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               key={destination.name}
               {...dropTarget(destination.name)}
               className={`rounded-xl border bg-white p-4 ${
-                dragged.length > 0 ? 'border-dashed border-teal-500' : 'border-gray-200'
+                overTarget === `dest:${destination.name}`
+                  ? 'border-dashed border-teal-500'
+                  : 'border-gray-200'
               }`}>
               <div className='flex items-baseline gap-2'>
                 <h3 className='font-semibold'>{destination.name}</h3>
@@ -424,8 +753,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                     <div className='flex flex-wrap items-center gap-2'>
                       <b className='text-xs'>{dayLabel(day)}</b>
                       <span className='text-xs text-gray-500'>
-                        {dayGroups.reduce((n, g) => n + kept(g).length, 0)} files
+                        {dayGroups.reduce((n, g) => n + g.files.length, 0)} files
                       </span>
+                      <SelectButton files={dayLane(dayGroups)} />
                       {unprocessed.length > 0 ? (
                         <button
                           type='button'
@@ -449,9 +779,12 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                           <Thumb
                             key={`${group.id}:${index}:${file.path}`}
                             file={file}
-                            removed={file.keep === false}
-                            onOpen={() => openPreview(group, file)}
-                            onToggle={() => toggleKeep(group.id, file.id, file.path)}
+                            selected={!!file.id && pickedFiles.includes(file.id)}
+                            selecting={selecting}
+                            onClick={(e) =>
+                              clickFile(file, dayLane(dayGroups), e, () => openPreview(group, file))
+                            }
+                            onDragStart={() => startFileDrag(file)}
                           />
                         ))
                       )}
@@ -470,7 +803,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       <section
         {...dropTarget(TANDEMS)}
         className={`mt-2 rounded-xl border bg-gray-50 p-4 ${
-          dragged.length > 0 ? 'border-dashed border-teal-500' : 'border-gray-200'
+          overTarget === `dest:${TANDEMS}` ? 'border-dashed border-teal-500' : 'border-gray-200'
         }`}>
         <p className='font-mono text-[11px] text-gray-400'>
           processed/Tandems/{'{passenger}'}/ · videos/ + photos/ · film + photos.zip for the
@@ -505,12 +838,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                 }
                 className='w-28 rounded border border-gray-300 px-2 py-1 text-sm'
               />
-              <span className='text-xs text-gray-500'>
-                {kept(group).length} files
-                {group.files.length !== kept(group).length &&
-                  ` · ${group.files.length - kept(group).length} removed`}
-              </span>
+              <span className='text-xs text-gray-500'>{group.files.length} files</span>
               <span className='ml-auto flex items-center gap-2'>
+                <SelectButton files={group.files} />
                 {!group.processed && (
                   <button
                     type='button'
@@ -550,15 +880,44 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                 <Thumb
                   key={`${index}:${file.path}`}
                   file={file}
-                  removed={file.keep === false}
-                  onOpen={() => openPreview(group, file)}
-                  onToggle={() => toggleKeep(group.id, file.id, file.path)}
+                  selected={!!file.id && pickedFiles.includes(file.id)}
+                  selecting={selecting}
+                  onClick={(e) => clickFile(file, group.files, e, () => openPreview(group, file))}
+                  onDragStart={() => startFileDrag(file)}
                 />
               ))}
             </div>
           </div>
         ))}
       </section>
+
+      {(selecting || pickedFiles.length > 0) && (
+        <div className='fixed inset-x-0 bottom-0 z-40 border-t border-gray-700 bg-gray-900 p-3 text-sm text-white'>
+          <div className='mx-auto flex max-w-6xl flex-wrap items-center gap-3'>
+            <b>
+              {pickedFiles.length === 0
+                ? 'Click the files you want'
+                : `${pickedFiles.length} file${pickedFiles.length > 1 ? 's' : ''} selected`}
+            </b>
+            <button
+              type='button'
+              disabled={busy !== null || pickedFiles.length === 0}
+              onClick={() => moveFiles(pickedFiles, null)}
+              className='rounded bg-teal-600 px-3 py-1 font-semibold disabled:opacity-40'>
+              Remove — back to sorting
+            </button>
+            <span className='text-xs opacity-60'>
+              or drag them onto another card · shift-click for a range
+            </span>
+            <button
+              type='button'
+              onClick={stopSelecting}
+              className='ml-auto rounded bg-white px-3 py-1 font-semibold text-gray-900'>
+              Done
+            </button>
+          </div>
+        </div>
+      )}
 
       {preview.preview && preview.preview.files[preview.preview.index] && (
         <PreviewDrawer

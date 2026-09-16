@@ -104,7 +104,12 @@ const copyMedia = (file: ManifestFile, dest: string, time: Date) => {
   fs.utimesSync(dest, time, time)
 }
 
-const writeGroup = (group: ManifestGroup, outputDir: string, usedNames: Set<string>) => {
+const writeGroup = (
+  group: ManifestGroup,
+  outputDir: string,
+  usedNames: Set<string>,
+  record: (sourcePath: string, destPath: string) => void
+) => {
   const { dir, baseName, dayEpoch, flat } = getGroupProcessedDir(outputDir, group)
   const written: string[] = []
   try {
@@ -119,6 +124,7 @@ const writeGroup = (group: ManifestGroup, outputDir: string, usedNames: Set<stri
         : baseName
       const dest = path.join(targetDir, makeFileName(stem, file.mtime, ext, usedNames))
       copyMedia(file, dest, buildFsTime(flat ? file.mtime : dayEpoch, file.mtime))
+      record(file.path, dest)
       written.push(dest)
     }
     updateMetadata(written)
@@ -132,7 +138,12 @@ const writeGroup = (group: ManifestGroup, outputDir: string, usedNames: Set<stri
   return written.length
 }
 
-const writeLooseFiles = (destination: string, files: ManifestFile[], outputDir: string) => {
+const writeLooseFiles = (
+  destination: string,
+  files: ManifestFile[],
+  outputDir: string,
+  record: (sourcePath: string, destPath: string) => void
+) => {
   const dir = getDestinationDir(outputDir, destination)
   const stem = toFileStem(destination, 'destination')
   const usedNames = new Set<string>()
@@ -145,6 +156,7 @@ const writeLooseFiles = (destination: string, files: ManifestFile[], outputDir: 
     const name = makeFileName(`${stem}_${formatGroupDay(file.mtime)}`, file.mtime, ext, usedNames)
     const dest = path.join(dir, name)
     copyMedia(file, dest, buildFsTime(file.mtime, file.mtime))
+    record(file.path, dest)
     written.push(dest)
   }
   updateMetadata(written)
@@ -194,8 +206,9 @@ const executeMedia = (options?: ExecuteOptions) => {
         : !options?.destination || g.destination === options.destination)
   )
 
-  for (const destination of destinations)
-    moveToTrash(getDestinationDir(outputDir, destination), outputDir)
+  /* only ever bin a folder one group owns. A destination folder is shared by every day
+     ever shot there, while the manifest only holds what the last scan found — rebuilding it
+     would bin older days. Stale files are removed precisely via `processedPath` instead. */
   for (const group of groups) {
     const { dir, flat } = getGroupProcessedDir(outputDir, group)
     if (!flat) moveToTrash(dir, outputDir)
@@ -208,14 +221,35 @@ const executeMedia = (options?: ExecuteOptions) => {
     return pool
   }
 
-  let copied = 0
-  for (const group of groups)
-    copied += writeGroup(group, outputDir, poolFor(getGroupProcessedDir(outputDir, group).dir))
-  for (const destination of destinations) {
-    copied += writeLooseFiles(destination, looseByDestination.get(destination) ?? [], outputDir)
+  const processedPaths = new Map<string, string>()
+  const record = (sourcePath: string, destPath: string) => {
+    processedPaths.set(sourcePath, destPath)
   }
 
-  if (groups.length > 0) saveManifest(manifestPath, manifest)
+  let copied = 0
+  for (const group of groups)
+    copied += writeGroup(
+      group,
+      outputDir,
+      poolFor(getGroupProcessedDir(outputDir, group).dir),
+      record
+    )
+  for (const destination of destinations) {
+    copied += writeLooseFiles(
+      destination,
+      looseByDestination.get(destination) ?? [],
+      outputDir,
+      record
+    )
+  }
+
+  /* remember where each source landed, so removing a file can delete its processed copy */
+  for (const file of manifest.files) {
+    const dest = processedPaths.get(file.path)
+    if (dest) file.processedPath = dest
+  }
+
+  if (groups.length > 0 || processedPaths.size > 0) saveManifest(manifestPath, manifest)
 
   console.log(`[Execute] Done. Copied ${copied} file(s).`)
   writeStatus('execute', 'done', `Copied ${copied} files`, outputDir)

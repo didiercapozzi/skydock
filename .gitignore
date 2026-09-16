@@ -1,6 +1,9 @@
 .DS_Store
 .env
 output/
+
+.claude/*
+!.claude/settings.json
 .sim/
 /node_modules/
 

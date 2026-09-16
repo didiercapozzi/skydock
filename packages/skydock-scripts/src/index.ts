@@ -41,7 +41,7 @@ export {
   taskStatusSchema
 } from './types'
 
-export { reclusterGroups, shiftFiles } from './clustering'
+export { reclusterGroups, regroupLooseFiles, shiftFiles } from './clustering'
 export {
   buildFsTime,
   buildGroupBaseName,

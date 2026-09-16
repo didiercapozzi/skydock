@@ -12,6 +12,7 @@ import {
   manifestFileSchema,
   manifestGroupSchema,
   mergeGroups,
+  regroupLooseFiles,
   publishJump,
   resolveDestinationPath,
   saveManifest,
@@ -22,9 +23,19 @@ import {
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 
 const actionArgs = z.object({
-  intent: z.enum(['save-groups', 'merge-groups', 'process', 'upload-group', 'shift-group-time']),
+  intent: z.enum([
+    'save-groups',
+    'merge-groups',
+    'process',
+    'upload-group',
+    'shift-group-time',
+    'move-files',
+    'regroup-loose'
+  ]),
   groupId: z.string().optional(),
   groupIds: z.array(z.string()).optional(),
+  fileIds: z.array(z.string()).optional(),
+  targetGroupId: z.string().optional(),
   destination: z.string().optional(),
   groups: z.array(manifestGroupSchema).optional(),
   fileUpdates: z.array(manifestFileSchema).optional(),
@@ -91,6 +102,69 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       }
       saveManifest(manifestPath, manifest)
       return { groups: manifest.groups }
+    }
+    if (data.intent === 'regroup-loose') {
+      const made = regroupLooseFiles(manifest)
+      if (made === 0) {
+        errors.addGlobalError('Nothing to regroup — the sorting area has no loose files.')
+        return errors.toResponse(422)
+      }
+      saveManifest(manifestPath, manifest)
+      const stillGrouped = new Set(
+        manifest.groups.flatMap((g) => g.files.map((f) => f.id ?? f.path))
+      )
+      return {
+        groups: manifest.groups,
+        looseFiles: manifest.files.filter((f) => !stillGrouped.has(f.id ?? f.path))
+      }
+    }
+    if (data.intent === 'move-files') {
+      const ids = new Set(data.fileIds ?? [])
+      if (ids.size === 0) {
+        errors.addGlobalError('Select at least one file to move.')
+        return errors.toResponse(422)
+      }
+      /* the files leave wherever they were, so their processed copies are stale */
+      for (const file of manifest.files) {
+        if (!file.id || !ids.has(file.id)) continue
+        if (file.processedPath && fs.existsSync(file.processedPath)) {
+          try {
+            fs.unlinkSync(file.processedPath)
+          } catch {
+            /* a copy we cannot delete is not worth failing the move over */
+          }
+        }
+        delete file.processedPath
+        if (data.destination) file.destination = data.destination
+        else delete file.destination
+      }
+      const moved = manifest.groups.flatMap((g) => g.files).filter((f) => f.id && ids.has(f.id))
+      const seen = new Set<string>()
+      const uniqueMoved = moved.filter((f) => {
+        if (!f.id || seen.has(f.id)) return false
+        seen.add(f.id)
+        return true
+      })
+      manifest.groups = manifest.groups
+        .map((g) => ({ ...g, files: g.files.filter((f) => !f.id || !ids.has(f.id)) }))
+        .filter((g) => g.files.length > 0 || g.id === data.targetGroupId)
+      if (data.targetGroupId) {
+        const target = manifest.groups.find((g) => g.id === data.targetGroupId)
+        if (!target) {
+          errors.addGlobalError('Target jump not found.')
+          return errors.toResponse(422)
+        }
+        target.files = [...target.files, ...uniqueMoved].sort((a, b) => a.mtime - b.mtime)
+        target.processed = undefined
+      }
+      saveManifest(manifestPath, manifest)
+      const stillGrouped = new Set(
+        manifest.groups.flatMap((g) => g.files.map((f) => f.id ?? f.path))
+      )
+      return {
+        groups: manifest.groups,
+        looseFiles: manifest.files.filter((f) => !stillGrouped.has(f.id ?? f.path))
+      }
     }
     if (data.intent === 'process') {
       const requestedGroups = data.groupIds ?? (data.groupId ? [data.groupId] : undefined)

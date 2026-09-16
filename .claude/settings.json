@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "defaultMode": "auto",
+    "allow": ["Bash(npm run :*)", "Bash(npx vitest run:*)"],
+    "ask": [
+      "Bash(git commit*)",
+      "Bash(git push*)",
+      "Bash(gh *)",
+      "Bash(npm install*)",
+      "Bash(npm publish*)",
+      "Bash(apt *)",
+      "Bash(apt-get *)",
+      "Bash(docker *)"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)",
+      "Bash(rm -rf /workspace)",
+      "Bash(rm -rf /workspace/*)",
+      "Bash(rm -rf /mnt/osmo*)",
+      "Bash(git push --force*)",
+      "Read(/workspace/.env)"
+    ]
+  }
+}

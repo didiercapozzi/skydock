@@ -10,7 +10,8 @@ const manifestFileSchema = z.object({
   cropStart: z.number().nullable().optional(),
   cropEnd: z.number().nullable().optional(),
   destination: z.string().optional(),
-  keep: z.boolean().optional()
+  keep: z.boolean().optional(),
+  processedPath: z.string().optional()
 })
 
 const groupFileRefSchema = z.object({

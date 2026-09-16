@@ -1,6 +1,7 @@
 # CODING — SkyDock Coding Rules
 
-> Coding conventions for SkyDock. Extracted from RULES.md §11.
+> Code style, architecture and testing constraints for SkyDock — the sole owner of these rules.
+> Process rules (verification, commits, permissions) live in [CLAUDE.md](./CLAUDE.md); domain behavior lives in [RULES.md](./RULES.md).
 
 - React Router 8 Framework Mode, SSR, `app/routes.ts` + `app/routes/` modules, `import from ./+types/...`.
 - Arrow functions only, `type` over `interface`, never `any`, all exports at end, inferred returns.
@@ -8,7 +9,6 @@
 - Data schemas use Zod for runtime validation; types are inferred via `z.infer<typeof schema>` — never defined separately.
 - Write the cleanest, most reusable, most readable, most reduced code possible — no verbosity, no redundancy.
 - Scripts use TypeScript with `tsx` for direct execution.
-- `npm run check` (`typecheck` + `format:check` + `lint`) must pass before commit.
 - "export" keywords must be at the end of the file and not before a const/variable, function or types
 - we use camel case format for const/variables, except UPPER_SNAKE_CASE is allowed for module-level constants
 - use "const" instead of "let" or "var" every time you can
@@ -22,6 +22,5 @@
 - Shared routing and form logic lives in `@skydock/ui` (`routingEngine`, safe hooks, validated actions); never reimplement endpoint calls per route
 - All forms must use `@skydock/ui/forms` (`useForm`, `Form`, `FormField`, `GlobalErrors`, `createValidatedFormAction`) with a Zod schema — see `web/app/components/connection-dialog.tsx` as canonical example; never use `useState` + manual `<input>`/`<form>` handling for form state or validation
 - Never use React memoization (`useCallback`, `useMemo`, `memo`) — React Compiler handles memoization automatically; write plain functions and values
-- Never commit without explicit user approval
 - Never bypass lint like: eslint-disable-next-line react/set-state-in-effect or any other
 - Always use Zod `safeParse` for runtime validation of API, loader, and fetcher data; never use dirty manual checks like `as unknown`, `as {…}`, `typeof data === 'object'`, `'key' in data`, `Array.isArray((data as…).field)`, or `if (data && 'prop' in data)`. Define a `z.object`/`z.array` schema and branch on `parsed.success` (`parsed.data` / `parsed.error`).

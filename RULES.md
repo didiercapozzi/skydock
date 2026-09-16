@@ -28,7 +28,7 @@ output/
     │   ├── yverdon_20260101_103000.mp4 # loose files in the destination
     │   └── ...
     ├── Tandems/                        # destination
-    │   └── martine_rosier_20260101/    # group in the destination
+    │   └── Luc Favre/                  # passenger folder — the name as typed, never dated
     │       ├── videos/
     │       └── photos/
     └── group_1_20260829/               # group without destination
@@ -62,6 +62,7 @@ output/
 - `processed` marks per-group execution (incremental). Manifest status becomes `executed` only when every group is processed, `confirmed` when some processed, otherwise `proposed`.
 - Group selection for compare/process is React state in Review UI, not persisted in manifest.
 - `destination` field on groups links them to destinations for NAS upload organization.
+- `processedPath` on a manifest file records where `execute` last wrote its processed copy. It is what makes removing a file able to delete that copy; files processed before this field existed simply have none, and regain one on the next `process`.
 
 ## 5. Scan & Cluster
 
@@ -91,11 +92,17 @@ output/
 - Deduplicates jump IDs first.
 - If preserved paths given, keeps those jumps as single groups (not split even if internal gap >1800) to avoid splitting manually edited jumps.
 - Remaining files clustered by gap, then preserved and new groups sorted and merged if adjacent.
-- Previous jump mapping preserves `label`/`day`/`confirmed`/`processed` via dominant vote.
+- Previous jump mapping preserves `label`/`day`/`confirmed`/`processed`/`destination` via dominant vote. A preserved group additionally keeps its `publish`; a group rebuilt by dominant vote does not, because its files changed and the published folder is stale (§12.4). Losing `destination` on a rescan would silently undo the user's sorting, so it is preserved on both paths.
 
 ### 5.3 `shiftFiles()`
 
 - For each file in paths, saves original mtime if undefined, then adjusts mtime by offset. Updates both file registry and jump references.
+
+### 5.4 `regroupLooseFiles()`
+
+- Clusters only files that are in no group and have no `destination`, by the same `1800s` gap rule as the scan. Existing groups are left alone, so sorting work already done is never disturbed.
+- New groups get fresh `group_N` ids that do not collide with existing ones, `confirmed: false`, and `day` = `formatDay(min mtime)`.
+- Returns the number of groups created; the caller refuses the request when that is zero.
 
 ## 6. Execute
 
@@ -106,7 +113,7 @@ output/
   - `groupIds` given → only those groups; each group's folder is rebuilt, nothing else is touched.
   - `destination` given → every group with that `destination` plus every loose file in it (`file.destination` set, not in any group). The whole `processed/{destination}/` folder is moved to `.trash` and rebuilt.
   - Neither → everything: every destination (as above) plus every group without destination. `confirmed`/`processed` flags do not filter — processing always rebuilds from `manifest.json` + `groups.json`.
-- Output folder: group with `destination` → `processed/{destination}/{baseName}/`; group without → `processed/{baseName}/`; loose destination files → `processed/{destination}/` flat.
+- Output folder: a **tandem** group (complete passenger) → `processed/{destination}/{Passenger Name}/` with `videos/` and `photos/` inside; a **flat fun jump** (destination, no passenger) → straight into `processed/{destination}/`, no folder of its own and no subdirectories; a group with no destination at all → `processed/{baseName}/`; loose destination files → `processed/{destination}/` flat.
 - For each jump/group:
   - Skip if no files.
   - Passenger is optional for `Process` — if `passenger` with `firstname`/`lastname` present use `firstname_lastname`, otherwise use `label` (`yverdon`, `colombier`, `Jump N`) sanitized lowercased. Passenger is only mandatory for `Email`/`Share` generation.
@@ -118,7 +125,7 @@ output/
   - If crop range set and ffmpeg available, video is cropped.
   - Set filesystem timestamps (creation + modification) to jump date + original capture time.
   - Set EXIF metadata dates (creation + modification) to match filename date-time.
-  - Before writing: move the existing folder in scope to `output/.trash/` (so montage/zip files inside it go to `.trash` too).
+  - Before writing, only a folder a **single group owns** is moved to `output/.trash/` — that is, a tandem's passenger folder, so a stale `.kdenlive` and the old zips inside it go to `.trash` too. A **destination folder is never rebuilt**, whatever the scope of the request: it is shared by every day ever shot there, while the manifest only holds what the last scan found, so binning it would take older days with it. Flat fun jumps therefore overwrite their own files in place. Stale files are removed precisely instead, through `processedPath` (§4) when a file is removed from the board. `.trash` is never pruned automatically.
   - Mark jump processed, clear publish state, save manifest.
 - Writes status file for API polling.
 
@@ -129,6 +136,8 @@ output/
 - process runs `executeMedia` in a single request: with `groupId` for one group (per-group `Process` button), with `groupIds` for a set of groups (the board's per-day `Process` button), with `destination` for one destination (`Process Destination` button), or with none of them for everything (`Process All` button). Passenger optional — label `yverdon` used if no passenger. Marks processed groups and clears their publish state. The client never loops over groups/files. A failure inside `executeMedia` (missing `exiftool`, failed `ffmpeg` crop) is returned as a `422` with the message in `globalErrors` so the UI can show it, never as an unhandled `500`.
 - upload-jump uploads one processed jump to network storage using Synology DSM API (requires NAS session and chosen upload folder, see §12.3). Binary comparison via SHA-256 hash skips files already present. Upload streams with byte-accurate progress. Per-file progress tracked. Failed uploads retry from beginning. Share link reused if already exists; otherwise created via FileStation Sharing API.
 - shift-jump-time shifts all file timestamps in a jump so the minimum-time file lands on the chosen anchor epoch. Other files keep their existing time diffs. Used by the per-jump time picker.
+- regroup-loose re-clusters the files that belong to no group and carry no `destination` — the sorting area — into fresh jumps using the same `GROUP_GAP_SECONDS` rule as the scan (`regroupLooseFiles`, §5.4). Groups already filed to a destination are never touched, and a loose file deliberately assigned to a destination stays loose. Refuses with a 422 when there is nothing to regroup. Returns the saved groups and the remaining loose files.
+- move-files takes `fileIds` and either an optional `destination` or a `targetGroupId`. With `targetGroupId` the files leave their current group and join that one, sorted back into mtime order, and the target is marked unprocessed because its contents changed; an unknown id is refused with a 422. The files leave whatever group holds them, their `destination` is set (or cleared, which sends them back to the sorting area as loose files), and any group left empty is dropped. Because the files no longer belong where they were processed, each one's `processedPath` copy is deleted from disk and the field cleared — a copy that cannot be deleted does not fail the move. Returns the saved groups **and** the resulting loose files.
 
 ## 7. Simulation & Testing
 
@@ -172,7 +181,7 @@ output/
 - **Scan:** Runs scan and ensures file IDs.
 - **File:** Serves files with range support and proper MIME types.
 - **Status:** Reads status files, returns system status polled by review UI.
-- **Thumb:** Single frame JPEG extraction via ffmpeg for crop bar thumbnails and `FileGrid` `160px` squares (`/api/thumb?seek=0.5&width=160`, `loading=lazy`).
+- **Thumb:** Single frame JPEG extraction via ffmpeg for crop bar thumbnails and `FileGrid` `160px` squares (`/api/thumb?seek=0.5&width=160`, `loading=lazy`). It serves **photos as well as videos** — a video is seeked to a keyframe, a photo is simply rescaled. The board uses it for every thumbnail: a 2 MB JPEG comes back as roughly 1 kB, which is what makes a card of several hundred photos affordable to display.
 - **Stream:** Live-transcodes to fMP4 for thumbnails and crop bar fallback.
 - **HLS:** Live-transcodes to HLS segments for main playback.
 - **Manifest:** Full CRUD for jumps, files, calibration, execution. Intents: save-jumps, merge-jumps (with date anchor), shift-jump-time (shifts file times to anchor), process (`groupId` / `destination` / all — see §6.2), upload-jump (requires processed jump, NAS session and chosen upload folder).
@@ -418,17 +427,25 @@ The VideoCropper component lives inside the PreviewDrawer (right panel), directl
 
 ## 11. Rule Changes
 
-> RULES.md is the single source of truth. Any change that impacts a rule must follow this process.
+> RULES.md is the single source of truth. It must never fall behind the code — but keeping it current is a duty to document, not a reason to stop and ask.
 
-**Before implementing any change that may affect RULES.md:**
+**Implement, document, report.** On a clear request, for any change that affects behavior described in §1–§10:
 
-1. **Identify impact:** Check if the change modifies any behavior described in §1-§10.
-2. **Warn user:** Present the affected sections and proposed modification.
-3. **Get approval:** Wait for user confirmation before proceeding.
-4. **Update RULES.md:** After implementation, update the relevant section(s) to reflect the new behavior.
-5. **Commit together:** Commit code changes and RULES.md updates in the same commit.
+1. **Identify impact:** work out which sections the change touches.
+2. **Implement it.** Do not pause for confirmation.
+3. **Update RULES.md in the same change**, so the rules and the code are never out of step.
+4. **Report** what was built, which decisions were taken on the user's behalf and why, and anything that was left out.
+5. **Commit together:** code changes and RULES.md updates go in the same commit.
 
-**Examples of rule-impacting changes:**
+**Stop and ask only when:**
+
+- The request has two readings that lead to materially different work, and guessing wrong would waste the effort.
+- The change could destroy data the user cannot get back — deleting originals, overwriting processed output, anything touching `/mnt/osmo`.
+- The user's own standing rules require it: no commit, push or share link without an explicit request.
+
+Anything else — naming, layout, thresholds, which of two sound designs to use — is Claude's call. Make it, say so in the report, and move on. A decision that turns out wrong is cheaper to reverse than a question is to answer.
+
+**Examples of rule-impacting changes** (implement and document; do not ask):
 
 - Modifying manifest structure or file registry behavior
 - Changing scan/cluster thresholds or algorithms
@@ -437,7 +454,7 @@ The VideoCropper component lives inside the PreviewDrawer (right panel), directl
 - Modifying video preview, streaming, or crop interactions
 - Changing deduplication or file comparison logic
 
-**Non-rule changes (no warning needed):**
+**Changes that need no RULES.md update at all:**
 
 - Bug fixes that preserve existing behavior
 - Refactoring that doesn't change external behavior
@@ -465,7 +482,7 @@ The VideoCropper component lives inside the PreviewDrawer (right panel), directl
 - Sanitizing folds accents before replacing the rest: `Chloé Perret` → `chloe_perret`.
 - For `Group` `label=yverdon` on `2026-08-02` with 3 jumps merged, all files share `yverdon_20260802_HHMMSS.ext` in `videos/`/`photos/` (collision `_1`). Reprocessing reuses the same folder — never `_1`/`_2` folder suffixes.
 - Loose destination files (`output/processed/{destination}/` flat): `{destination}_{YYYYMMDD}_{HHMMSS}.{ext}` for videos and photos, `destination` sanitized lowercased, date/time from the file's capture time, no `videos/`/`photos/` split.
-- Group with `destination`: the group folder is nested in the destination folder (`output/processed/Tandems/bim_bam_20260829/`). Files keep the group `base`, never the destination name.
+- Tandem group with `destination`: the passenger folder is nested in the destination folder (`output/processed/Tandems/Luc Favre/`). Files keep the `firstname_lastname` base, never the destination name.
 - Date source: jump/group date (from scan or `+ Create Group` `day`, or manually updated). If updated, re-processing applies the new date.
 - Time source: original file capture time (follows date if updated).
 - Collision: counter suffix only when needed: `_1`, `_2`.
@@ -476,12 +493,12 @@ The VideoCropper component lives inside the PreviewDrawer (right panel), directl
 Example tandem:
 
 ```
-output/processed/Tandems/bim_bam_20260829/
+output/processed/Tandems/Luc Favre/
 ├── videos/
-│   ├── bim_bam_20260829_113015.mp4
-│   └── bim_bam_20260829_113015_1.mp4
+│   ├── luc_favre_20260829_113015.mp4
+│   └── luc_favre_20260829_113015_1.mp4
 └── photos/
-    └── bim_bam_20260829_182506.jpg
+    └── luc_favre_20260829_182506.jpg
 ```
 
 Example fun `yverdon` (3 jumps merged same day):
@@ -510,7 +527,7 @@ output/processed/yverdon_20260802/
 
 ### 12.4 Freshness rules
 
-- Re-processing moves the folder in scope (group folder, or whole destination folder) to `output/.trash/` before rebuilding it.
+- Re-processing moves a tandem's passenger folder to `output/.trash/` before rebuilding it. A destination folder is never moved to `.trash` — see §6.1.
 - Re-processing a jump discards its share link and sent record, because the files changed and the old link is stale.
 - Merged jumps start unpublished, with no link and no sent record.
 - Re-uploading replaces the share link and resets the sent record for the same reason.
@@ -559,7 +576,7 @@ output/processed/yverdon_20260802/
 - Default NAS path: `{defaultFolder}/{name}/`. If `path` is set, it overrides the default.
 - Groups can be drag-assigned to destinations: drag the group header (≡ handle) onto a destination section header. Drop on "Unassigned" clears the destination field. Uses `application/x-group` data type to distinguish from file drag.
 - Lone files can be drag-assigned to destinations: drag from the staging tray or file row onto a destination section header. Uses `text/plain` data type with JSON array of file paths.
-- Every fun jump in a destination — a group without a passenger, and lone files alike — is processed flat into `processed/{destination}/` (no `videos/`/`photos/` subdirs), named `{destination}_{YYYYMMDD}_{HHMMSS}.{ext}` (see §12.2). Reprocessing a flat group overwrites its own files in place and never trashes the destination folder, because other days live there too. Tandem groups are processed into `processed/{destination}/{Passenger Name}/`. Local layout mirrors the NAS upload layout.
+- Every fun jump in a destination — a group without a passenger, and lone files alike — is processed flat into `processed/{destination}/` (no `videos/`/`photos/` subdirs), named `{destination}_{YYYYMMDD}_{HHMMSS}.{ext}` (see §12.2). Reprocessing a flat group overwrites its own files in place and never trashes the destination folder, because other days live there too — this holds for every scope, including `Process Destination` and `Process All` (§6.1). Tandem groups are processed into `processed/{destination}/{Passenger Name}/`. Local layout mirrors the NAS upload layout.
 
 ### 13.2 Montage workflow
 
@@ -583,7 +600,7 @@ Mounted at `/` (`routes/board.tsx`). The loader reads the manifest, the destinat
 
 ### 14.1 Layout
 
-- **To sort** — every group without a destination, as a small card: start time, file count and up to four thumbnails. Cards are draggable and checkbox-selectable; dragging a selected card drags the whole selection.
+- **To sort** — one full-width row per group without a destination: start time, a **videos · photos** count, and its files. A jump of **`AUTO_OPEN_MAX` (40) files or fewer shows them immediately** — reaching a file costs no click at all. Only a bigger jump stays folded behind **Show N photos**, and even then its four preview thumbnails are draggable, so a file can leave a folded card without expanding it. Videos and photos are listed in separate labelled sections (videos at normal size, photos in a denser grid). Clicking anywhere on the row header folds or unfolds it, which is why the checkbox and the **Select** button stop the click from propagating. An unfolded card is not itself draggable — its thumbnails are. Folded cards are draggable and checkbox-selectable; dragging a selected card drags the whole selection. Below the cards, every **loose file** — in the manifest but in no group — is listed as an individual thumbnail, so a file pulled out of a location is never invisible. The whole section is a drop target that clears a file's destination. A **Regroup into jumps** button re-clusters those loose files (`regroup-loose`, §6.2), because removing files from a card returns them flat and the scan's grouping would otherwise be lost for good.
 - **Fun jumps** — one drop-target card per destination (except `Tandems`), with an inline input to add a location. Inside, files are listed by day, flat, without opening anything: no per-jump nesting, since they land flat on disk (§13.1).
 - **Tandems** — one drop-target card, one row per tandem group: start time, first/last name inputs, kept/removed counts and all the group's thumbnails.
 - A selection bar offers every location and `Tandems` as one-click targets, so a batch of fun jumps is filed in a single move.
@@ -591,10 +608,14 @@ Mounted at `/` (`routes/board.tsx`). The loader reads the manifest, the destinat
 ### 14.2 Interactions
 
 - Drag a jump (or a selection) onto a location card or the Tandems card to set `group.destination`. Dropping on Tandems keeps any existing passenger; dropping anywhere else clears it.
+- **Dragging files between jumps:** a jump card in the sorting area is itself a drop target. Dragging a thumbnail (or a selection) onto another jump card sends `move-files` with that card's `targetGroupId`, so a file filmed on the wrong jump is re-filed by dropping it where it belongs. The drag starts on the thumbnail and stops propagating, so the card underneath never starts its own drag.
+- **Drop feedback:** exactly one zone is ever highlighted — the innermost one under the pointer, and only when it accepts what is being dragged. Zones are keyed (`sort`, `group:{id}`, `dest:{name}`) and compared against a single `overTarget`; nothing is styled merely because a drag is in progress, because lighting every eligible zone at once hides the one that matters. `onDragLeave` only clears when the pointer truly leaves (`currentTarget.contains(relatedTarget)`), otherwise crossing a child thumbnail makes the highlight flicker. A `dragend` handler on `<main>` clears the highlight however a drag ends, including when it is abandoned. Destination and Tandems cards accept both jumps and files; the To-sort area and jump cards accept files only.
 - Adding a location saves the destinations list immediately through `save-groups`.
 - Passenger first/last name are edited inline on the tandem row and saved on blur.
-- Clicking a thumbnail opens the shared `PreviewDrawer` for preview and cropping (`usePreview`, same contract as §9.6).
-- Every file is kept by default; the ✕ on a thumbnail sets `keep: false` (↺ puts it back). Removed files stay in the manifest, greyed out, and are skipped by `execute`, zipping and montage.
+- Clicking a thumbnail opens the shared `PreviewDrawer` for preview and cropping (`usePreview`, same contract as §9.6) — but only while no file is selected.
+- **Selecting files:** every location day-row and tandem row carries a **Select** button, so picking files never depends on knowing a keyboard shortcut. Pressing it puts the whole board in selection mode: every thumbnail shows a checkbox, a plain click toggles instead of previewing, and the button becomes **All N** / **None** for that row. Ctrl/Cmd-click and Shift-click remain available without entering the mode first; Shift-click extends a range across every file drawn under that day (or that tandem), in display order. `Escape` or **Done** leaves the mode and clears the selection.
+- **Acting on a selection:** the bar offers exactly one action — **Remove — back to sorting** — which sends `move-files` with no destination (§6.2), so the files leave their card and reappear in the To-sort area. `Delete` and `Backspace` do the same thing, except while a text field has focus, so the passenger name inputs still edit normally. **Done** or `Escape` leaves the mode. Moving files between destinations is done by dragging the selection onto another card, not by buttons. The client redraws a move from the server's answer — it never guesses the result.
+- The board does not expose `keep`. Everything sitting in a destination is processed; to exclude a file you remove it, which sends it back to the sorting area. The `keep` field stays in the schema and `execute` still honours it (§6.1), but nothing in the board sets it — so a file's presence on a card is the whole truth about whether it will be processed. The board therefore offers three actions only: **Select**, **Remove**, and drag-and-drop between cards.
 
 ### 14.3 Actions
 
