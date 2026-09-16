@@ -44,6 +44,40 @@ const dsmFolderFilesSchema = z.object({
   files: z.array(dsmFileEntrySchema).optional()
 })
 
+const dsmSizedFileSchema = z
+  .object({
+    name: z.string(),
+    path: z.string(),
+    isdir: z.boolean().optional(),
+    additional: z.object({ size: z.number().optional() }).passthrough().optional(),
+    size: z.number().optional()
+  })
+  .passthrough()
+
+const dsmSizedFilesSchema = z
+  .object({ files: z.array(dsmSizedFileSchema).optional() })
+  .passthrough()
+
+const dsmMd5StartSchema = z.object({ taskid: z.string() }).passthrough()
+
+const dsmMd5StatusSchema = z
+  .object({ finished: z.boolean().optional(), md5: z.string().optional() })
+  .passthrough()
+
+const dsmShareLinkSchema = z
+  .object({
+    id: z.string().optional(),
+    url: z.string().optional(),
+    path: z.string().optional(),
+    status: z.string().optional(),
+    link_owner: z.string().optional()
+  })
+  .passthrough()
+
+const dsmShareListSchema = z
+  .object({ links: z.array(dsmShareLinkSchema).optional(), total: z.number().optional() })
+  .passthrough()
+
 const dsmShareEntrySchema = z.object({ name: z.string(), path: z.string() }).passthrough()
 
 const dsmSharesSchema = z.object({ shares: z.array(dsmShareEntrySchema).optional() }).passthrough()
@@ -254,27 +288,12 @@ const dsmGetEncryptionInfo = async (host: string) => {
   }
 }
 
-const encryptWithPublicKey = (publicKey: string, plain: string) => {
-  const buffer = Buffer.from(plain, 'utf8')
-  const encrypted = crypto.publicEncrypt(
-    { key: publicKey, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' },
-    buffer
-  )
-  return encrypted.toString('base64')
-}
-
-const encryptPasswordForStorage = async (host: string, user: string, plain: string) => {
-  try {
-    const info = await dsmGetEncryptionInfo(host)
-    if (info) {
-      try {
-        const enc = encryptWithPublicKey(info.publicKey, plain)
-        return `dsm:${enc}`
-      } catch {}
-    }
-  } catch {}
-  return `local:${encryptLocal(host, user, plain)}`
-}
+/* Always local AES. DSM's public key encrypts a password for one login request, not for storage:
+   the stored `dsm:` ciphertext cannot be decrypted here and replaying it as `passwd` is not the
+   envelope DSM expects, so an expired session could never refresh itself silently. `dsm:` blobs
+   written by older versions are still read (see refreshStoredSession) and replaced on next connect. */
+const encryptPasswordForStorage = (host: string, user: string, plain: string) =>
+  `local:${encryptLocal(host, user, plain)}`
 
 const decryptPasswordFromStorage = (host: string, user: string, stored: string) => {
   if (stored.startsWith('dsm:')) throw new Error('DSM encrypted password requires re-entry')
@@ -283,6 +302,8 @@ const decryptPasswordFromStorage = (host: string, user: string, stored: string) 
 }
 
 type NasFolderEntry = z.infer<typeof dsmFileEntrySchema>
+
+type NasFileEntry = { name: string; path: string; size: number | null }
 
 const normalizeNasPath = (input: string): string => {
   const trimmed = input.trim()
@@ -313,6 +334,83 @@ const listNasFolder = async (
   return files
     .filter((f) => f.isdir)
     .map((f) => ({ name: f.name, path: normalizeNasPath(f.path), isdir: true }))
+}
+
+/* files with their byte size — the cheap half of the "is it already up there" question.
+   A folder that does not exist yet is not an error: it just holds nothing. */
+const listNasFiles = async (host: string, sid: string, folderPath: string) => {
+  const cpath = normalizeNasPath(folderPath)
+  try {
+    const body = await dsmFetch(host, {
+      api: 'SYNO.FileStation.List',
+      version: '2',
+      method: 'list',
+      folder_path: cpath,
+      additional: '["size"]',
+      filetype: 'file',
+      _sid: sid
+    })
+    if (!body.success) return []
+    const parsed = dsmSizedFilesSchema.safeParse(body.data)
+    if (!parsed.success) return []
+    return (parsed.data.files ?? [])
+      .filter((f) => f.isdir !== true)
+      .map((f) => ({
+        name: f.name,
+        path: normalizeNasPath(f.path),
+        size: f.additional?.size ?? f.size ?? null
+      }))
+  } catch {
+    return []
+  }
+}
+
+const MD5_POLL_MS = 500
+const MD5_TIMEOUT_MS = 5 * 60 * 1000
+
+/* DSM hashes the file on the NAS itself and hands back an md5 — the only digest available for a
+   remote file without downloading it. Returns null whenever the answer is not a usable hash, and
+   a null always means "upload it": never skip a file on an uncertain comparison. */
+const dsmFileMd5 = async (
+  host: string,
+  sid: string,
+  filePath: string,
+  options?: { pollMs?: number; timeoutMs?: number }
+) => {
+  const pollMs = options?.pollMs ?? MD5_POLL_MS
+  const deadline = Date.now() + (options?.timeoutMs ?? MD5_TIMEOUT_MS)
+  try {
+    const started = await dsmFetch(host, {
+      api: 'SYNO.FileStation.MD5',
+      version: '2',
+      method: 'start',
+      file_path: normalizeNasPath(filePath),
+      _sid: sid
+    })
+    if (!started.success) return null
+    const task = dsmMd5StartSchema.safeParse(started.data)
+    if (!task.success) return null
+    for (;;) {
+      const body = await dsmFetch(host, {
+        /* the taskid goes back quoted. Unquoted, DSM answers the first status call of a session
+           and then fails every later one with 599 "no such task" — which silently turns the whole
+           dedup pass into "upload everything" after the first file. Verified against DSM 7. */
+        api: 'SYNO.FileStation.MD5',
+        version: '2',
+        method: 'status',
+        taskid: `"${task.data.taskid}"`,
+        _sid: sid
+      })
+      if (!body.success) return null
+      const status = dsmMd5StatusSchema.safeParse(body.data)
+      if (!status.success) return null
+      if (status.data.finished) return status.data.md5 ?? null
+      if (Date.now() > deadline) return null
+      await new Promise((resolve) => setTimeout(resolve, pollMs))
+    }
+  } catch {
+    return null
+  }
 }
 
 const dsmListFolder = async (host: string, sid: string, folderPath: string) => {
@@ -354,6 +452,11 @@ const dsmCreateFolder = async (host: string, sid: string, folderPath: string, na
 
 const shareLinkSchema = z.array(z.object({ url: z.string().optional() })).optional()
 
+const absoluteShareUrl = (host: string, url: string) => {
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
+  return `${normalizeHost(host)}${url.startsWith('/') ? url : `/${url}`}`
+}
+
 const createShareLink = async (host: string, sid: string, remotePath: string) => {
   const body = await dsmFetch(host, {
     api: 'SYNO.FileStation.Sharing',
@@ -365,9 +468,54 @@ const createShareLink = async (host: string, sid: string, remotePath: string) =>
   if (!body.success) throw new Error(`Share failed for ${remotePath}: ${JSON.stringify(body)}`)
   const url = shareLinkSchema.parse(body.data?.links)?.[0]?.url
   if (!url) throw new Error(`Share returned no link for ${remotePath}`)
-  if (url.startsWith('http://') || url.startsWith('https://')) return url
-  return `${normalizeHost(host)}${url.startsWith('/') ? url : `/${url}`}`
+  return absoluteShareUrl(host, url)
 }
+
+const SHARE_PAGE_SIZE = 1000
+
+const listShareLinks = async (host: string, sid: string) => {
+  const links: z.infer<typeof dsmShareLinkSchema>[] = []
+  for (let offset = 0; ; offset += SHARE_PAGE_SIZE) {
+    const body = await dsmFetch(host, {
+      api: 'SYNO.FileStation.Sharing',
+      method: 'list',
+      version: '1',
+      offset: String(offset),
+      limit: String(SHARE_PAGE_SIZE),
+      _sid: sid
+    })
+    if (!body.success) return links
+    const parsed = dsmShareListSchema.safeParse(body.data)
+    if (!parsed.success) return links
+    const page = parsed.data.links ?? []
+    links.push(...page)
+    const total = parsed.data.total ?? links.length
+    if (page.length === 0 || links.length >= total) return links
+  }
+}
+
+/* a link that has been disabled or has expired is worse than no link — it would be handed to a
+   passenger and simply fail, so those are ignored and a fresh one is created instead */
+const isLiveShareLink = (link: z.infer<typeof dsmShareLinkSchema>) =>
+  !!link.url && (link.status === undefined || link.status === 'valid')
+
+const findShareLink = async (host: string, sid: string, remotePath: string) => {
+  const wanted = normalizeNasPath(remotePath)
+  try {
+    const links = await listShareLinks(host, sid)
+    const match = links.find(
+      (l) => isLiveShareLink(l) && l.path !== undefined && normalizeNasPath(l.path) === wanted
+    )
+    return match?.url ? absoluteShareUrl(host, match.url) : null
+  } catch {
+    return null
+  }
+}
+
+/* reuse before creating: re-processing and re-uploading a folder must not invalidate the link
+   already sent to the passenger, and must not litter the NAS with a link per upload */
+const ensureShareLink = async (host: string, sid: string, remotePath: string) =>
+  (await findShareLink(host, sid, remotePath)) ?? (await createShareLink(host, sid, remotePath))
 
 type DsmAuth = {
   login: (config: DsmConfig) => Promise<string>
@@ -407,6 +555,8 @@ const refreshStoredSession = async (
 ) => {
   const enc = stored.encPasswd
   if (!enc) throw new Error('No stored password to refresh session')
+  /* legacy only — nothing writes `dsm:` any more (see encryptPasswordForStorage); the blob is
+     replayed for the sessions that still carry one and replaced on the next interactive connect */
   if (enc.startsWith('dsm:')) {
     const cipher = enc.slice(4)
     const body = await dsmFetch(stored.hostname, {
@@ -426,7 +576,7 @@ const refreshStoredSession = async (
   }
   const plain = decryptPasswordFromStorage(stored.hostname, stored.username, enc)
   const sid = await login({ host: stored.hostname, user: stored.username, password: plain })
-  const newEnc = await encryptPasswordForStorage(stored.hostname, stored.username, plain)
+  const newEnc = encryptPasswordForStorage(stored.hostname, stored.username, plain)
   saveNasSession({ ...stored, sessionId: sid, encPasswd: newEnc }, outputDir)
   return sid
 }
@@ -451,7 +601,7 @@ const loginWithSession = async (
   if (canReuse) clearNasSession(outputDir)
   if (!password) throw new Error('Session expired. Please reconnect to NAS.')
   const sid = await dsm.login({ host, user, password })
-  const encPasswd = await encryptPasswordForStorage(host, user, password)
+  const encPasswd = encryptPasswordForStorage(host, user, password)
   saveNasSession(
     {
       hostname: host,
@@ -479,6 +629,19 @@ const tryAutoRefreshSession = async (outputDir?: string) => {
   return null
 }
 
+/* The one gate every caller uses before touching the NAS: a stored session is only a session if
+   DSM still accepts it, and a dead one refreshes itself silently from the stored password.
+   Returns null when the user really does have to log in again. */
+const ensureNasSession = async (outputDir?: string) => {
+  const session = loadNasSession(outputDir)
+  if (!session) return null
+  if (await dsmValidateSession(session.hostname, session.sessionId)) return session
+  const refreshed = await tryAutoRefreshSession(outputDir)
+  if (refreshed && (await dsmValidateSession(refreshed.hostname, refreshed.sessionId)))
+    return refreshed
+  return null
+}
+
 export {
   clearNasSession,
   createShareLink,
@@ -487,6 +650,7 @@ export {
   dsmCreateFolder,
   dsmEntryUrl,
   dsmFetch,
+  dsmFileMd5,
   dsmGetEncryptionInfo,
   dsmListFolder,
   dsmLogin,
@@ -495,7 +659,12 @@ export {
   dsmResponseSchema,
   dsmValidateSession,
   encryptPasswordForStorage,
+  ensureNasSession,
+  ensureShareLink,
+  findShareLink,
+  listNasFiles,
   listNasFolder,
+  listShareLinks,
   loadNasSession,
   loginWithSession,
   normalizeNasPath,
@@ -504,4 +673,4 @@ export {
   tryAutoRefreshSession,
   updateDefaultFolder
 }
-export type { DsmAuth, DsmConfig, NasFolderEntry, NasSession }
+export type { DsmAuth, DsmConfig, NasFileEntry, NasFolderEntry, NasSession }

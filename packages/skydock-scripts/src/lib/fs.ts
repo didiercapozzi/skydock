@@ -1,3 +1,4 @@
+import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as childProcess from 'node:child_process'
@@ -118,6 +119,17 @@ const walkFiles = (dir: string): string[] => {
   return results
 }
 
+/* streamed so a 4 GB video costs no more memory than a photo — md5 because that is the only
+   digest DSM can compute for a file already sitting on the NAS */
+const hashFile = (filePath: string, algorithm = 'md5') =>
+  new Promise<string>((resolve, reject) => {
+    const hash = crypto.createHash(algorithm)
+    const stream = fs.createReadStream(filePath, { highWaterMark: 1024 * 1024 })
+    stream.on('data', (chunk) => hash.update(chunk))
+    stream.on('error', reject)
+    stream.on('end', () => resolve(hash.digest('hex')))
+  })
+
 const writeJsonAtomic = (target: string, value: unknown) => {
   const tmp = `${target}.tmp`
   fs.writeFileSync(tmp, JSON.stringify(value, null, 2))
@@ -129,6 +141,7 @@ export {
   DEFAULT_MAX_FIND_DEPTH,
   fileMatchesExisting,
   findMediaFiles,
+  hashFile,
   hasMediaFiles,
   walkFiles,
   writeJsonAtomic

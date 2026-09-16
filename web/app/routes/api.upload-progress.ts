@@ -3,16 +3,12 @@ import { z } from 'zod'
 import { routingEngine } from '../helpers/routing'
 import type { Route } from './+types/api.upload-progress'
 
-const searchParamsArgs = z.object({ groupId: z.string().optional() })
+const searchParamsArgs = z.object({ scope: z.string().optional() })
 
 const loader = async ({ request }: Route.LoaderArgs) => {
-  const parsed = routingEngine.parseSearchParams(searchParamsArgs, { request })
-  const groupId = parsed.groupId
-
+  const { scope } = routingEngine.parseSearchParams(searchParamsArgs, { request })
   const state = readUploadProgress(getOutputDir())
-  if (groupId && state && state.groupId !== groupId) {
-    return Response.json(null)
-  }
+  if (scope && state && state.scope !== scope) return Response.json(null)
   return Response.json(state)
 }
 

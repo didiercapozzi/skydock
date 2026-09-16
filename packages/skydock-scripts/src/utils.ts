@@ -147,9 +147,33 @@ const parseExiftoolCsv = (csv: string) => {
   return map
 }
 
-const withRetry = async <T>(fn: () => Promise<T>, maxAttempts: number) => {
+/* runs at most `limit` promises at a time and keeps the results in input order — a tandem of
+   several hundred files must not open several hundred DSM jobs at once */
+const mapWithLimit = async <T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>
+) => {
+  const results: R[] = new Array(items.length)
+  let next = 0
+  const worker = async () => {
+    for (;;) {
+      const index = next++
+      if (index >= items.length) return
+      results[index] = await fn(items[index], index)
+    }
+  }
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, worker))
+  return results
+}
+
+/* `delayMs` waits between attempts. Retrying a failed upload instantly tends to hit whatever
+   transient state caused the failure (a remote NAS mid-write answers 418 "illegal name or path"),
+   so a pause is what makes the retry worth having. */
+const withRetry = async <T>(fn: () => Promise<T>, maxAttempts: number, delayMs = 0) => {
   let lastError: Error | null = null
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (attempt > 0 && delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs))
     try {
       return await fn()
     } catch (e) {
@@ -182,6 +206,7 @@ export {
   isMediaFile,
   isPhotoFile,
   isVideoFile,
+  mapWithLimit,
   parseDayEpoch,
   parseExiftoolCsv,
   sanitizeLabel,

@@ -189,7 +189,8 @@ output/
 - **Thumb:** Single frame JPEG extraction via ffmpeg for crop bar thumbnails and `FileGrid` `160px` squares (`/api/thumb?seek=0.5&width=160`, `loading=lazy`). It serves **photos as well as videos** — a video is seeked to a keyframe, a photo is simply rescaled. The board uses it for every thumbnail: a 2 MB JPEG comes back as roughly 1 kB, which is what makes a card of several hundred photos affordable to display.
 - **Stream:** Live-transcodes to fMP4 for thumbnails and crop bar fallback.
 - **HLS:** Live-transcodes to HLS segments for main playback.
-- **Manifest:** Full CRUD for jumps, files, calibration, execution. Intents: save-jumps, merge-jumps (with date anchor), shift-jump-time (shifts file times to anchor), process (`groupId` / `destination` / all — see §6.2), upload-jump (requires processed jump, NAS session and chosen upload folder).
+- **Manifest:** Full CRUD for jumps, files, calibration, execution. Intents: save-groups (answers with the saved `groups` **and** `destinations`), merge-groups (with date anchor), shift-group-time (shifts file times to anchor), process (`groupId` / `groupIds` / `destination` / all — see §6.2), move-files (§6.2), regroup-loose, upload-group (`groupId` / `groupIds` / `destination`; requires processed groups and a NAS session — see §12.3).
+- **Upload progress:** `/api/upload-progress?scope=` returns the current record, or `null` when the stored one belongs to another scope (§12.8).
 
 ## 9. Review UI (`/classic`)
 
@@ -523,57 +524,53 @@ output/processed/yverdon_20260802/
 - Each jump/group moves through proposed, processed, uploaded, in that order.
 - Process buttons: per-group `Process` (group card), `Process Destination` (destination header: its groups + loose files), `Process All` (review header). Each sends one `process` request; buttons show a processing state until the response returns.
 - The `Process` button is available once a jump/group has files (no passenger required — `yverdon` `Group` processes with `label`). Processing copies and renames the files (using `passenger` if present else `label`) and marks the jump/group `processed`; re-processing clears any previous publishing state. `+ Create Group` at a `Day` creates an empty `Group` (`label` prompt, `day` stored) that becomes processable once files are dragged in.
-- The `Upload` button is only enabled for processed jumps/groups. Uploading additionally requires a valid NAS session and a chosen upload folder: clicking `Upload` while disconnected opens the connection dialog, and while connected without a folder opens the folder browser — no upload starts until both are in place. The server rejects `upload-jump` without a session (`Not connected`) or without a default folder (`Choose an upload folder first`). `Email` generation still requires complete passenger (`firstname`/`lastname`/`email`).
-  - Upload destination: if group has a `destination`, resolves to `{destination.path}/{baseName}/...` or `{defaultFolder}/{destination.name}/{baseName}/...` (see §13.1). Otherwise `{NAS_FOLDER}/{baseName}/...`
-  - Binary comparison: each file compared by SHA-256 hash. Files with matching hash on NAS are skipped.
+- The `Upload` button is only enabled for processed jumps/groups. Uploading additionally requires a valid NAS session and a folder to put the files in: clicking `Upload` while disconnected opens the connection dialog, and with no resolvable folder opens the folder browser — no upload starts until both are in place. `Email` generation still requires complete passenger (`firstname`/`lastname`/`email`).
+  - **Scope** (`upload-group`, one request): `groupId`/`groupIds` for one or more groups, or `destination` for a whole dropzone — every group filed there **plus its lone files**. `resolveUploadTargets` turns a scope into one target per remote folder, so two fun jumps filed to the same destination are one upload of one folder, not two.
+  - **Where each target lands:** a **flat fun jump has no folder of its own** — its files live in `processed/{destination}/` shared with every other day shot there, so it uploads to `{destBase}` and never to `{destBase}/{baseName}`. A tandem goes to `{destBase}/{Passenger Name}/`, and a group with no destination to `{defaultFolder}/{baseName}/`. `destBase` is the destination's own `path`, else `{defaultFolder}/{name}` (§13.1). **A destination with its own `path` needs no default folder at all**; only path-less destinations and destination-less groups do. A folder that cannot be resolved is reported (`Choose a NAS folder for {name}, or set a default upload folder`), never guessed.
+  - **Session:** the server re-checks the stored session against DSM before uploading and lets it refresh itself (§12.5), so an expired session reconnects instead of failing the upload.
+  - **Binary comparison** (`planUpload`): one file listing per remote folder; a file already there under the same name **and the exact same byte size** is a candidate, and only a candidate is hashed — a size mismatch already proves the files differ. The candidate's local MD5 and DSM's own `SYNO.FileStation.MD5` of the remote file are computed in parallel and compared; equal means skip. At most 4 candidates are checked at once and a job is abandoned after 5 minutes. **A missing, failed or disabled digest means upload** — never skip on an uncertain comparison. MD5 rather than SHA-256 because DSM cannot produce a SHA-256 of a file already on the NAS, and downloading it to hash locally would cost more than re-uploading. Uploads keep `overwrite=true`, so a false negative costs a re-upload and never corruption.
   - Streamed upload: files stream with flat memory use and wire-true progress — 0–95% counts bytes flushed to the network, 100% on server confirmation; on failure, retry from beginning.
-  - Progress: each file shows a progress bar with percentage.
-  - Share link: reused if already exists. Otherwise created via Synology FileStation Sharing API and stored on the jump.
+  - Share link: **looked up in FileStation's sharing list first and reused** when a live link for that exact folder exists (expired or disabled links are ignored), otherwise created. A re-upload therefore keeps the link already sent to the passenger instead of orphaning it. Stored on every group behind the target, and on the destination itself (`destination.shareUrl`) for a dropzone folder.
 
 ### 12.4 Freshness rules
 
 - Re-processing moves a tandem's passenger folder to `output/.trash/` before rebuilding it. A destination folder is never moved to `.trash` — see §6.1.
 - Re-processing a jump discards its share link and sent record, because the files changed and the old link is stale.
 - Merged jumps start unpublished, with no link and no sent record.
-- Re-uploading replaces the share link and resets the sent record for the same reason.
+- Re-uploading **keeps** the folder's share link — it is the same folder, and the passenger may already have the URL — and resets the sent record. A link is only minted when the folder has none that still works (§12.3).
 
 ### 12.5 Secrets
 
 - NAS `sessionId`, `hostname`, `username` and an **encrypted password** (`encPasswd`) are stored in `output/.status/nas.json` (`chmod 600`). Plain `password` is never written to disk.
-- `encPasswd` is created on first successful login via DSM 7.4 `SYNO.API.Encryption` (`getinfo` → RSA public key) with fallback to local `AES-256-GCM` (`host:user` derived key). DSM `dsm:` ciphertext is replayed, `local:` ciphertext is decrypted in-memory for re-login.
-- On app restart, the stored `sessionId` is validated (`FileStation/list_share`). If still valid it is reused. If expired and `encPasswd` exists it auto-refreshes via encrypted login without prompting; otherwise the user is prompted.
+- `encPasswd` is **always** local `AES-256-GCM` (key derived from `host:user`). DSM's `SYNO.API.Encryption` public key encrypts a password for _one login request_, not for storage: the resulting ciphertext cannot be decrypted back here, and replaying it as `passwd` is not the envelope DSM expects — so a session encrypted that way could never refresh itself, which is the one thing storing a password is for. `dsm:` blobs written by older versions are still replayed on refresh and are replaced with a `local:` one at the next interactive connect.
+- Every path to the NAS goes through **`ensureNasSession`**: the stored `sessionId` is validated (`FileStation/list_share`), reused if live, and otherwise refreshed from `encPasswd` without prompting. Only when that fails does the user see the login dialog.
 - Mail credentials removed — email uses prefilled `mailto:` link, user sends manually.
 
 ### 12.6 NAS connection
 
 - On first upload (or when no valid session exists), a connection dialog appears asking for NAS hostname, username, and password.
 - On successful login, the session ID and encrypted password are saved to `output/.status/nas.json` (plain password is never saved). Reused SIDs are kept alive after uploads – only temporary SIDs are logged out.
-- On app restart, the stored session ID is validated. If still active, connection is ready without re-login. If expired and `encPasswd` exists it auto-refreshes via `SYNO.API.Encryption` without prompting; otherwise the login dialog reappears.
+- On app restart the stored session is re-checked and auto-refreshed by `ensureNasSession` (§12.5); the login dialog only reappears when that cannot recover it. Both the board and the classic view do this in their loader, so neither ever shows a connection that is already dead.
 - The user can disconnect (logs out on DSM) or update credentials, which clears the stored session.
-- No background heartbeat – local app validates and auto-refreshes on demand (`status`/`list-folder`/`select-folder`), so closing the app for days still reconnects without relogin.
+- No background heartbeat – local app validates and auto-refreshes on demand, so closing the app for days still reconnects without relogin.
 
 ### 12.7 NAS folder browser
 
-- Custom visual file-tree browser displays NAS folder structure.
-- Folders expand/collapse on click.
-- "Create Folder" button allows creating new folders inline.
-- User selects a destination folder for processed uploads.
-- Selected folder stored in `output/.status/nas.json` as default destination.
-- Future uploads go directly to default folder (unless user changes it).
+- One browser serves two jobs: choosing the **default upload folder** (saved into the NAS session through `select-folder`) and choosing **one destination's own folder** (saved into the workspace as `destination.path` through `save-groups`). It takes an `initialPath`, so re-opening a destination starts at the folder it already points to rather than at `/`, and a `title` naming whose folder is being chosen.
+- Flat list of the current folder's children with breadcrumbs, not a tree: click selects, double-click or `Open` descends, `+ Create Folder` makes one inline.
 
 ### 12.8 Upload progress
 
-- Each file being uploaded displays a progress bar with percentage.
-- Upload streams each file; progress counts bytes flushed to the network (0–95%) with 100% on server confirmation.
-- Overall upload status shows which file is currently uploading.
-- On failure, upload retries from beginning of failed file.
+- One record at `output/.status/upload-progress.json`, keyed by **upload scope** (`group:{id}` or `dest:{name}`) rather than by group, because one upload can cover a whole destination; the poller only accepts a record whose scope is its own.
+- Two phases: **`checking`** counts the dedup pass (`Checking what is already there — 120/571`) before a byte moves, then **`uploading`** counts files across the whole scope with the current file's byte percentage. `done` reports how many were skipped as already present.
+- Upload streams each file; progress counts bytes flushed to the network (0–95%) with 100% on server confirmation. On failure, upload retries from the beginning of the failed file, and the record ends in `error` with the message.
 
 ## 13. Destinations & Montage
 
 ### 13.1 Destinations
 
 - Destinations group jumps and individual files by location or passenger name across different days, mapping them to NAS folder paths.
-- Each destination has a `name` and optional `path` (NAS path override).
+- Each destination has a `name`, an optional `path` (the NAS folder it uploads into, chosen from the board's folder browser and saved with `save-groups`) and an optional `shareUrl` (the link to that folder, set by an upload). A destination naming no `path` uploads to `{defaultFolder}/{name}`; one that names a `path` needs no default folder at all (§12.3).
 - Groups can be assigned to a destination via the `group.destination` field.
 - Individual files can be assigned to a destination via the `file.destination` field (lone files — not in any group).
 - Destinations are stored in `manifest.json` as a `destinations` array.
@@ -637,6 +634,13 @@ The three pipeline steps are distinct and never shown out of order:
 
 1. **Process** — per day for fun jumps, per group for tandems (disabled until the passenger has a name). Copies, renames and crops locally (§6.1). A day row of whole jumps sends `groupIds`; a day row that also holds lone files sends `destination` instead, because a lone file belongs to no group and `groupIds` could not name it. That widens the request to the destination's other days, which is harmless: a flat fun-jump folder is overwritten in place and never trashed (§6.1), so re-processing an already-processed day changes nothing on disk.
 2. **Montage** — tandems only, and only once processed. Calls `/api/create-montage` (§13.2) and reports the generated project path or the reason it refused.
-3. **Upload** — tandems only, and only once processed; disabled while the NAS is not connected, with the classic view named in the tooltip.
+3. **Upload** — on a **location card header** (that whole dropzone: its groups and its lone files) and on each **processed tandem row** (that passenger). Sends one `upload-group` request with the matching scope (§12.3). Clicking it while disconnected opens the connection dialog; clicking it with no folder resolvable for that card opens the folder browser for that card. Progress shows the dedup pass, then the file count and the current file's percentage, then how many were already on the NAS (§12.8); the share link appears beside the button once there is one.
 
 Dates shown on the board are derived from the files' minimum mtime with local date parts (no `Intl`, no `toISOString`), so the server and client render the same string.
+
+### 14.4 NAS on the board
+
+- The header carries the NAS state: a status dot, the hostname, the **default upload folder** as a button that opens the folder browser, and `disconnect` — or a single `Connect the NAS` button when there is no live session. The board no longer sends anyone to the classic view to connect.
+- The loader reports the session through `ensureNasSession` (§12.5), so a dead or expired one never renders as connected. Live state is then **derived** from the `/api/nas` fetcher, falling back to the loader — connecting, disconnecting and choosing a folder all take effect without a reload, and the connection dialog closes itself when a new answer says it worked.
+- Each location card shows **its own NAS folder** as a button (`destination.path`, else `{defaultFolder}/{name}`, else `choose a folder`), with `clear` to fall back to the default. Choosing one saves the destinations list through `save-groups`, like every other board edit.
+- After connecting, a pending upload is **not** resumed automatically: the dialog closes, the button becomes live, and the user clicks it. One less effect, and no way to start the same upload twice.

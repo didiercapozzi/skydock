@@ -120,7 +120,11 @@ describe('publishJump', () => {
         remoteDir: '/SkyDock/john_doe_20260824',
         outputDir: out
       })
-      expect(result).toEqual({ shareUrl: `${server.url}/sharing/abc123` })
+      expect(result).toMatchObject({
+        shareUrl: `${server.url}/sharing/abc123`,
+        uploaded: 2,
+        skipped: 0
+      })
 
       expect(server.uploads.length).toBe(2)
       const bodies: Array<{ text: string; contentLength: string }> = []
@@ -143,6 +147,38 @@ describe('publishJump', () => {
         expect(b.text.endsWith('--\r\n')).toBe(true)
       }
       expect(seen.some((c) => c.url.includes('method=logout'))).toBe(false)
+    } finally {
+      await server.close()
+      fs.rmSync(dir, { recursive: true, force: true })
+      fs.rmSync(out, { recursive: true, force: true })
+    }
+  })
+
+  /* a flat fun jump's files sit directly in localDir, where path.relative() returns '' — joining
+     that on made `/SkyDock/jump/`, which DSM refuses with error 418 */
+  it('uploads a file at the root of the folder to that exact path, with no trailing slash', async () => {
+    const dir = createTmpDir('skydock-publish-flat-')
+    const out = createTmpDir('skydock-publish-nas-')
+    fs.writeFileSync(path.join(dir, 'yverdon_20260829_011623.mp4'), Buffer.from('flat'))
+    const server = await startUploadServer(() => ({ status: 200, body: { success: true } }))
+    try {
+      stubFetch((url) => {
+        if (url.includes('method=login')) return loginSuccess('sid')
+        if (url.includes('SYNO.FileStation.Sharing'))
+          return jsonResponse({ success: true, data: { links: [{ url: '/sharing/flat' }] } })
+        return jsonResponse({ success: true })
+      })
+      await publishJump({
+        host: server.url,
+        user: 'u',
+        password: 'p',
+        localDir: dir,
+        remoteDir: '/SkyDock/Yverdon',
+        outputDir: out
+      })
+      expect(server.uploads).toHaveLength(1)
+      const body = server.uploads[0].body.toString('utf8')
+      expect(body.match(/name="path"\r\n\r\n([^\r]+)/)?.[1]).toBe('/SkyDock/Yverdon')
     } finally {
       await server.close()
       fs.rmSync(dir, { recursive: true, force: true })
@@ -231,7 +267,7 @@ describe('publishJump', () => {
           remoteDir: '/SkyDock/jump',
           outputDir: out
         },
-        (p) => progress.push({ ...p })
+        { onProgress: (p) => progress.push({ ...p }) }
       )
       expect(progress.length).toBe(6)
       const completions = progress.filter(
@@ -275,7 +311,10 @@ describe('publishJump', () => {
           remoteDir: '/SkyDock/jump',
           outputDir: out
         },
-        (p) => progress.push({ bytesUploaded: p.bytesUploaded, totalBytes: p.totalBytes })
+        {
+          onProgress: (p) =>
+            progress.push({ bytesUploaded: p.bytesUploaded, totalBytes: p.totalBytes })
+        }
       )
       expect(server.uploads.length).toBe(1)
       const [upload] = server.uploads

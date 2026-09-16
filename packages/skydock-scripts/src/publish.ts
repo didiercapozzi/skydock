@@ -4,31 +4,43 @@ import * as http from 'node:http'
 import * as https from 'node:https'
 import * as path from 'node:path'
 import { z } from 'zod'
-import { walkFiles } from './lib/fs'
-import { withRetry } from './utils'
+import { hashFile, walkFiles } from './lib/fs'
+import { mapWithLimit, withRetry } from './utils'
 import {
-  createShareLink,
   dsmConfigSchema,
+  dsmFileMd5,
   dsmLogin,
   dsmRequestUrl,
   dsmResponseSchema,
   dsmValidateSession,
+  ensureShareLink,
+  listNasFiles,
   loginWithSession
 } from './nas'
 
 const publishArgsSchema = dsmConfigSchema.extend({
   localDir: z.string(),
   remoteDir: z.string(),
-  outputDir: z.string().optional()
+  outputDir: z.string().optional(),
+  dedupe: z.boolean().optional(),
+  md5Concurrency: z.number().optional()
 })
 type PublishArgs = z.infer<typeof publishArgsSchema>
 
 const uploadProgressSchema = z.object({
   filename: z.string(),
   bytesUploaded: z.number(),
-  totalBytes: z.number()
+  totalBytes: z.number(),
+  fileIndex: z.number().optional(),
+  totalFiles: z.number().optional()
 })
 type UploadProgress = z.infer<typeof uploadProgressSchema>
+
+type CheckProgress = { checked: number; total: number; filename: string }
+
+const MD5_CONCURRENCY = 4
+
+const UPLOAD_RETRY_DELAY_MS = 2000
 
 const remoteJoin = (...parts: string[]) => parts.join('/').replace(/\/+/g, '/')
 
@@ -111,7 +123,16 @@ const uploadFile = async (
           if (parsed.success && parsed.data.success) {
             onProgress?.({ filename, bytesUploaded: totalBytes, totalBytes })
             done()
-          } else done(new Error(`Upload failed for ${filename}`))
+          } else {
+            /* DSM says why it refused — quota, permission, missing folder. Swallowing that and
+               reporting only "upload failed" leaves the user with nothing to act on. */
+            const code = parsed.success ? parsed.data.error?.code : undefined
+            done(
+              new Error(
+                `Upload failed for ${filename}${code !== undefined ? ` (DSM error ${code})` : ''}: ${JSON.stringify(json).slice(0, 200)}`
+              )
+            )
+          }
         }, done)
       }
       const req =
@@ -141,23 +162,116 @@ const uploadFile = async (
       nodeStream.on('end', () => req.end(epilogue))
     })
 
-  await withRetry(sendOnce, 3)
+  await withRetry(sendOnce, 3, UPLOAD_RETRY_DELAY_MS)
 }
 
-const publishJump = async (args: PublishArgs, onProgress?: (progress: UploadProgress) => void) => {
+/* `path.relative(dir, dir)` is '', not '.', and joining that on produced a trailing slash —
+   which DSM refuses with error 418, "illegal name or path". Only reachable since flat fun jumps
+   upload into the destination folder itself, where the files sit directly in `localDir`. */
+const remoteDirOf = (localDir: string, remoteDir: string, file: string) => {
+  const rel = path.relative(localDir, path.dirname(file))
+  return rel === '' || rel === '.'
+    ? remoteDir
+    : remoteJoin(remoteDir, rel.split(path.sep).join('/'))
+}
+
+/* Decides what actually has to travel. A file already on the NAS under the same name and the
+   exact same byte size is a candidate; only then is it worth asking DSM to hash it, because a
+   size mismatch already proves the files differ. The local and remote digests are computed at
+   the same time, so a file costs max(local, remote) rather than the sum, and `mapWithLimit`
+   keeps the NAS from being asked for hundreds of hashes at once.
+   Anything uncertain — no size, no digest, a failed job — is uploaded. */
+const planUpload = async ({
+  host,
+  sid,
+  localDir,
+  remoteDir,
+  concurrency = MD5_CONCURRENCY,
+  onCheck
+}: {
+  host: string
+  sid: string
+  localDir: string
+  remoteDir: string
+  concurrency?: number
+  onCheck?: (progress: CheckProgress) => void
+}) => {
+  const files = walkFiles(localDir)
+  const remoteDirs = [...new Set(files.map((f) => remoteDirOf(localDir, remoteDir, f)))]
+  const remoteByPath = new Map<string, number | null>()
+  for (const dir of remoteDirs) {
+    for (const entry of await listNasFiles(host, sid, dir)) {
+      remoteByPath.set(`${dir}/${entry.name}`, entry.size)
+    }
+  }
+
+  const candidates: { local: string; remote: string }[] = []
+  const upload: string[] = []
+  for (const file of files) {
+    const remote = `${remoteDirOf(localDir, remoteDir, file)}/${path.basename(file)}`
+    const remoteSize = remoteByPath.get(remote)
+    if (remoteSize !== undefined && remoteSize === fs.statSync(file).size) {
+      candidates.push({ local: file, remote })
+    } else upload.push(file)
+  }
+
+  let checked = 0
+  const verdicts = await mapWithLimit(candidates, concurrency, async (candidate) => {
+    const [local, remote] = await Promise.all([
+      hashFile(candidate.local),
+      dsmFileMd5(host, sid, candidate.remote)
+    ])
+    checked += 1
+    onCheck?.({ checked, total: candidates.length, filename: path.basename(candidate.local) })
+    return remote !== null && remote.toLowerCase() === local.toLowerCase()
+  })
+
+  const skip: string[] = []
+  candidates.forEach((candidate, index) => {
+    if (verdicts[index]) skip.push(candidate.local)
+    else upload.push(candidate.local)
+  })
+  return { upload: upload.sort(), skip }
+}
+
+const publishJump = async (
+  args: PublishArgs,
+  handlers?: {
+    onProgress?: (progress: UploadProgress) => void
+    onCheck?: (progress: CheckProgress) => void
+  }
+) => {
   const sid = await loginWithSession(
     args,
     { login: dsmLogin, validate: dsmValidateSession },
     args.outputDir
   )
-  for (const file of walkFiles(args.localDir)) {
-    const rel = path.relative(args.localDir, path.dirname(file))
-    const remoteDir =
-      rel === '.' ? args.remoteDir : remoteJoin(args.remoteDir, rel.split(path.sep).join('/'))
-    await uploadFile(args.host, sid, remoteDir, file, onProgress)
+  const all = walkFiles(args.localDir)
+  const planned =
+    args.dedupe === false
+      ? { upload: [...all].sort(), skip: [] }
+      : await planUpload({
+          host: args.host,
+          sid,
+          localDir: args.localDir,
+          remoteDir: args.remoteDir,
+          concurrency: args.md5Concurrency,
+          onCheck: handlers?.onCheck
+        })
+
+  const totalFiles = planned.upload.length
+  for (const [index, file] of planned.upload.entries()) {
+    const remoteDir = remoteDirOf(args.localDir, args.remoteDir, file)
+    await uploadFile(args.host, sid, remoteDir, file, (progress) =>
+      handlers?.onProgress?.({ ...progress, fileIndex: index, totalFiles })
+    )
   }
-  return { shareUrl: await createShareLink(args.host, sid, args.remoteDir) }
+  return {
+    shareUrl: await ensureShareLink(args.host, sid, args.remoteDir),
+    uploaded: planned.upload.length,
+    skipped: planned.skip.length
+  }
 }
 
-export { publishJump, uploadFile }
-export type { PublishArgs, UploadProgress }
+export { planUpload, publishJump, uploadFile }
+export type { CheckProgress, PublishArgs, UploadProgress }

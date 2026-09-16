@@ -2,11 +2,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { createTmpDir } from './fixtures'
+import { createTmpDir, jsonResponse, stubFetch } from './fixtures'
 import {
   clearNasSession,
+  decryptPasswordFromStorage,
+  ensureNasSession,
   loadNasSession,
   loginWithSession,
+  refreshStoredSession,
   saveNasSession,
   updateDefaultFolder
 } from '../src/nas'
@@ -176,5 +179,50 @@ describe('loginWithSession', () => {
     expect(result).toBe('new-sid')
     const session = loadNasSession(tmpDir)
     expect(session?.hostname).toBe('https://new-nas.local')
+  })
+
+  /* the whole point of storing a password: an expired session must come back on its own */
+  it('stores a locally decryptable password and refreshes an expired session without asking', async () => {
+    mockDsm.login.mockResolvedValue('first-sid')
+    await loginWithSession({ host: 'https://nas.local', user: 'u', password: 'p' }, mockDsm, tmpDir)
+    const stored = loadNasSession(tmpDir)
+    expect(stored?.encPasswd?.startsWith('local:')).toBe(true)
+    expect(decryptPasswordFromStorage('https://nas.local', 'u', stored!.encPasswd!)).toBe('p')
+
+    mockDsm.validate.mockResolvedValue(false)
+    mockDsm.login.mockResolvedValue('refreshed-sid')
+    const sid = await refreshStoredSession(stored!, tmpDir, mockDsm.login)
+    expect(sid).toBe('refreshed-sid')
+    expect(loadNasSession(tmpDir)?.sessionId).toBe('refreshed-sid')
+  })
+})
+
+describe('ensureNasSession', () => {
+  let tmpDir: string
+
+  beforeEach(() => {
+    tmpDir = createTmpDir('skydock-nas-gate-')
+  })
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true })
+    vi.unstubAllGlobals()
+  })
+
+  it('returns null when there is no session at all', async () => {
+    await expect(ensureNasSession(tmpDir)).resolves.toBeNull()
+  })
+
+  it('reuses a session DSM still accepts', async () => {
+    saveNasSession({ hostname: 'https://nas.local', username: 'u', sessionId: 'live' }, tmpDir)
+    stubFetch(() => jsonResponse({ success: true, data: { shares: [] } }))
+    const session = await ensureNasSession(tmpDir)
+    expect(session?.sessionId).toBe('live')
+  })
+
+  it('refuses a session DSM rejects when nothing can refresh it', async () => {
+    saveNasSession({ hostname: 'https://nas.local', username: 'u', sessionId: 'dead' }, tmpDir)
+    stubFetch(() => jsonResponse({ success: false, error: { code: 119 } }))
+    await expect(ensureNasSession(tmpDir)).resolves.toBeNull()
   })
 })

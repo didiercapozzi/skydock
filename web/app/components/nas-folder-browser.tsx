@@ -16,9 +16,13 @@ type Props = {
   open: boolean
   onSelect: (path: string) => void
   onClose: () => void
+  /* where to open — a destination that already has a folder starts at that folder, not at / */
+  initialPath?: string
+  /* whose folder is being chosen, so the dialog says so when it is not the default one */
+  title?: string
 }
 
-const NasFolderBrowser = ({ open, onSelect, onClose }: Props) => {
+const NasFolderBrowser = ({ open, onSelect, onClose, initialPath, title }: Props) => {
   const fetcher = useSafeFetcher()
   const [currentPath, setCurrentPath] = useState('/')
   const [selected, setSelected] = useState<string | null>(null)
@@ -50,10 +54,11 @@ const NasFolderBrowser = ({ open, onSelect, onClose }: Props) => {
 
   useEffect(() => {
     if (open) {
-      load(currentPath)
+      load(initialPath ?? currentPath)
+      setSelected(initialPath ?? null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
+  }, [open, initialPath])
 
   useEffect(() => {
     if (parsedFolders.success) setNewFolderName('')
@@ -71,7 +76,7 @@ const NasFolderBrowser = ({ open, onSelect, onClose }: Props) => {
       className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
       <div className='bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[70vh] flex flex-col'>
         <div className='px-6 py-4 border-b border-gray-100'>
-          <h2 className='text-lg font-semibold text-gray-900'>Choose NAS Folder</h2>
+          <h2 className='text-lg font-semibold text-gray-900'>{title ?? 'Choose NAS Folder'}</h2>
           <p className='text-xs text-gray-500 mt-1'>
             Select the destination folder for uploads. Browsing live NAS. Required before first
             upload.

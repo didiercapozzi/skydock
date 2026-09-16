@@ -4,21 +4,20 @@ import { z } from 'zod'
 import {
   clearUploadProgress,
   destinationSchema,
+  ensureNasSession,
   executeMedia,
-  getGroupProcessedDir,
   getOutputDir,
   groupFromFiles,
-  loadNasSession,
+  groupsInScope,
   loadManifest,
   manifestFileSchema,
   manifestGroupSchema,
   mergeGroups,
   regroupLooseFiles,
-  publishJump,
-  resolveDestinationPath,
   saveManifest,
+  scopeKey,
   shiftFiles,
-  walkFiles,
+  uploadScope,
   writeUploadProgress
 } from '@skydock/scripts'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
@@ -201,110 +200,120 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       return { groups: updated?.groups ?? manifest.groups }
     }
     if (data.intent === 'upload-group') {
-      if (!data.groupId) {
-        errors.addGlobalError('Upload needs a group id.')
+      const scope = {
+        groupId: data.groupId,
+        groupIds: data.groupIds,
+        destination: data.destination
+      }
+      const key = scopeKey(scope)
+      if (key === 'group:' && !scope.destination) {
+        errors.addGlobalError('Upload needs a group or a destination.')
         return errors.toResponse(422)
       }
-      const target = manifest.groups.find((g) => g.id === data.groupId)
-      if (!target) {
-        errors.addGlobalError('Group not found.')
-        return errors.toResponse(422)
-      }
-      if (!target.processed) {
-        errors.addGlobalError('Process the group first.')
-        return errors.toResponse(422)
-      }
-      if (target.files.length === 0) {
-        errors.addGlobalError('Group has no files.')
-        return errors.toResponse(422)
-      }
-      const session = loadNasSession()
+      /* a stored session is only a session if DSM still takes it — this is also what lets an
+         expired one refresh itself instead of failing the upload (§12.5) */
+      const session = await ensureNasSession()
       if (!session) {
         errors.addGlobalError('Not connected to NAS. Please connect first.')
         return errors.toResponse(422)
       }
-      if (!session.defaultFolder) {
-        errors.addGlobalError('Choose an upload folder first.')
+      const outputDir = getOutputDir()
+      const unprocessed = groupsInScope(manifest, scope).find((g) => !g.processed)
+      if (unprocessed) {
+        errors.addGlobalError(`Process ${unprocessed.label} first.`)
         return errors.toResponse(422)
       }
-      const { dir: localDir, baseName } = getGroupProcessedDir(getOutputDir(), target)
-      if (!fs.existsSync(localDir)) {
-        errors.addGlobalError('Processed files not found. Process the group again.')
-        return errors.toResponse(422)
-      }
-      const remoteBase = target.destination
-        ? (resolveDestinationPath(
-            target.destination,
-            manifest.destinations ?? [],
-            session.defaultFolder
-          ) ?? session.defaultFolder)
-        : session.defaultFolder
-      const allFiles = walkFiles(localDir)
-      const sortedFiles = [...allFiles].sort()
-      const sortedManifestFiles = [...target.files].sort((a, b) => a.mtime - b.mtime)
-      const fileIndexByName = new Map<string, number>()
-      for (let i = 0; i < sortedFiles.length; i++) {
-        const base = sortedFiles[i].split('/').pop() ?? sortedFiles[i]
-        if (!fileIndexByName.has(base)) fileIndexByName.set(base, i)
-      }
-      const totalFiles = sortedFiles.length
+      let progress = { filename: '', fileIndex: 0, totalFiles: 0 }
       try {
-        clearUploadProgress(getOutputDir())
-        const { shareUrl } = await publishJump(
-          {
-            host: session.hostname,
-            user: session.username,
-            password: '',
-            localDir,
-            remoteDir: `${remoteBase}/${baseName}`
-          },
-          (p) => {
-            const fileIndex = fileIndexByName.get(p.filename) ?? 0
-            const originalFilename = sortedManifestFiles[fileIndex]?.filename ?? p.filename
+        clearUploadProgress(outputDir)
+        const result = await uploadScope({
+          outputDir,
+          manifest,
+          session,
+          scope,
+          onCheck: (check) =>
             writeUploadProgress(
               {
-                groupId: target.id,
-                filename: originalFilename,
+                scope: key,
+                filename: check.filename,
+                bytesUploaded: 0,
+                totalBytes: 1,
+                fileIndex: 0,
+                totalFiles: check.total,
+                checked: check.checked,
+                state: 'checking'
+              },
+              outputDir
+            ),
+          onProgress: (p) => {
+            progress = {
+              filename: p.filename,
+              fileIndex: p.fileIndex ?? 0,
+              totalFiles: p.totalFiles ?? 0
+            }
+            writeUploadProgress(
+              {
+                scope: key,
+                groupId: p.groupIds[0],
+                filename: p.filename,
                 bytesUploaded: p.bytesUploaded,
                 totalBytes: p.totalBytes,
-                fileIndex,
-                totalFiles,
+                fileIndex: p.fileIndex ?? 0,
+                totalFiles: p.totalFiles ?? 0,
                 state: 'uploading'
               },
-              getOutputDir()
+              outputDir
             )
           }
-        )
-        const lastOriginal = sortedManifestFiles[sortedManifestFiles.length - 1]?.filename ?? ''
+        })
+        /* every group behind a target gets the link, and a destination keeps its own so the
+           board can hand out a dropzone folder without opening a group */
+        const destinations = manifest.destinations ?? []
+        for (const { target, shareUrl } of result.shareUrls) {
+          for (const id of target.groupIds) {
+            const group = manifest.groups.find((g) => g.id === id)
+            if (group) group.publish = { shareUrl }
+          }
+          if (target.destination) {
+            const dest = destinations.find((d) => d.name === target.destination)
+            if (dest) dest.shareUrl = shareUrl
+          }
+        }
+        manifest.destinations = destinations
         writeUploadProgress(
           {
-            groupId: target.id,
-            filename: lastOriginal,
+            scope: key,
+            filename: progress.filename,
             bytesUploaded: 1,
             totalBytes: 1,
-            fileIndex: Math.max(0, totalFiles - 1),
-            totalFiles,
+            fileIndex: progress.totalFiles,
+            totalFiles: progress.totalFiles,
+            skipped: result.skipped,
             state: 'done'
           },
-          getOutputDir()
+          outputDir
         )
-        target.publish = { shareUrl }
         saveManifest(manifestPath, manifest)
-        return { groups: manifest.groups }
+        return {
+          groups: manifest.groups,
+          destinations,
+          uploaded: result.uploaded,
+          skipped: result.skipped
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Upload failed.'
         writeUploadProgress(
           {
-            groupId: target.id,
-            filename: '',
+            scope: key,
+            filename: progress.filename,
             bytesUploaded: 0,
             totalBytes: 1,
-            fileIndex: 0,
-            totalFiles,
+            fileIndex: progress.fileIndex,
+            totalFiles: progress.totalFiles,
             state: 'error',
             error: msg
           },
-          getOutputDir()
+          outputDir
         )
         errors.addGlobalError(msg)
         return errors.toResponse(422)
@@ -318,6 +327,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
     if (data.destinations) {
       manifest.destinations = data.destinations
     }
+
     if (data.fileUpdates) {
       for (const update of data.fileUpdates) {
         const idx = manifest.files.findIndex((f) => f.path === update.path)
@@ -327,7 +337,9 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       }
     }
     saveManifest(manifestPath, manifest)
-    return { ok: true as const }
+    /* answer with what was saved, so the board redraws destinations from the server rather than
+       trusting its own optimistic copy — the same rule every other mutation follows (§14.2) */
+    return { groups: manifest.groups, destinations: manifest.destinations ?? [] }
   }
 })
 

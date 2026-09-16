@@ -1,21 +1,36 @@
 import {
+  destinationSchema,
+  ensureNasSession,
+  getOutputDir,
   loadManifest,
-  loadNasSession,
   manifestFileSchema,
   manifestGroupSchema
 } from '@skydock/scripts'
 import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { ComparisonDialog } from '../components/comparison-dialog'
+import { ConnectionDialog } from '../components/connection-dialog'
+import { NasFolderBrowser } from '../components/nas-folder-browser'
 import { PreviewDrawer } from '../components/preview-drawer'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
 import { formatSize, formatTime, getThumbUrl, isVideoFile, minFileMtime } from '../components/utils'
 import { useSafeFetcher } from '../helpers/routing'
 import { useGroups } from '../hooks/useJumps'
 import { usePreview } from '../hooks/usePreview'
+import { useUploadProgress } from '../hooks/useUploadProgress'
+import type { UploadProgressState } from '../hooks/useUploadProgress'
 import type { Route } from './+types/board'
 
 const TANDEMS = 'Tandems'
+
+const nasSuccessSchema = z.object({
+  connected: z.boolean(),
+  hostname: z.string().optional(),
+  username: z.string().optional(),
+  defaultFolder: z.string().nullish()
+})
+
+const nasErrorSchema = z.object({ globalErrors: z.array(z.string()).optional() }).passthrough()
 
 const montageResponseSchema = z.object({
   ok: z.boolean().optional(),
@@ -27,22 +42,30 @@ const montageResponseSchema = z.object({
 })
 
 const loader = async (_args: Route.LoaderArgs) => {
-  const outputDir = process.env.SKYDOCK_OUTPUT_DIR ?? '/workspace/output'
+  const outputDir = getOutputDir()
   let manifest = null
   try {
     manifest = loadManifest(`${outputDir}/manifest.json`)
   } catch {
     manifest = null
   }
-  let nas: { connected: boolean; defaultFolder: string | null } = {
-    connected: false,
-    defaultFolder: null
-  }
+  /* a session file is not a session: ask DSM whether the id still works (and let it refresh
+     itself if it does not), so the board never shows a connection that is already dead */
+  let nas: {
+    connected: boolean
+    hostname: string | null
+    defaultFolder: string | null
+  } = { connected: false, hostname: null, defaultFolder: null }
   try {
-    const session = loadNasSession()
-    if (session) nas = { connected: true, defaultFolder: session.defaultFolder ?? null }
+    const session = await ensureNasSession()
+    if (session)
+      nas = {
+        connected: true,
+        hostname: session.hostname,
+        defaultFolder: session.defaultFolder ?? null
+      }
   } catch {
-    nas = { connected: false, defaultFolder: null }
+    nas = { connected: false, hostname: null, defaultFolder: null }
   }
   const grouped = new Set(
     (manifest?.groups ?? []).flatMap((g) => g.files.map((f) => f.id ?? f.path))
@@ -215,6 +238,42 @@ const Peek = ({
   </div>
 )
 
+/* what an upload is doing right now: the dedup pass first, then the bytes. Without the checking
+   line a re-upload looks frozen while the NAS hashes hundreds of files. */
+const UploadStrip = ({ progress }: { progress: UploadProgressState }) => {
+  const percent =
+    progress.totalBytes > 0
+      ? Math.min(100, Math.round((progress.bytesUploaded / progress.totalBytes) * 100))
+      : 0
+  if (progress.state === 'checking')
+    return (
+      <p className='mt-1 text-[11px] text-gray-500'>
+        Checking what is already there — {progress.checked ?? 0}/{progress.totalFiles}
+      </p>
+    )
+  if (progress.state === 'error')
+    return <p className='mt-1 text-[11px] text-red-700'>Upload failed: {progress.error}</p>
+  if (progress.state === 'done')
+    return (
+      <p className='mt-1 text-[11px] text-green-700'>
+        ✓ uploaded{progress.skipped ? ` · ${progress.skipped} already there` : ''}
+      </p>
+    )
+  return (
+    <div className='mt-1'>
+      <p className='truncate text-[11px] text-gray-500'>
+        Uploading {progress.fileIndex + 1}/{progress.totalFiles} · {progress.filename} {percent}%
+      </p>
+      <div className='mt-0.5 h-1 w-full overflow-hidden rounded bg-gray-200'>
+        <div
+          className='h-full bg-teal-600'
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
 /* one wall of thumbnails; `lane` is the run a shift-click range covers */
 const Wall = ({
   files,
@@ -287,8 +346,32 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const [loose, setLoose] = useState<ManifestFile[]>(loaderData.looseFiles)
   const [newPlace, setNewPlace] = useState('')
   const [places, setPlaces] = useState<Destination[]>(loaderData.destinations)
+  /* one value, so two dialogs can never be open at once; `destination` set means the folder is
+     being chosen for that card rather than as the global default */
+  const [dialog, setDialog] = useState<
+    null | { kind: 'connect' } | { kind: 'folder'; destination?: string }
+  >(null)
+  const [dialogOpenedOn, setDialogOpenedOn] = useState<unknown>(null)
+  const [uploading, setUploading] = useState<string | null>(null)
   const fetcher = useSafeFetcher()
+  /* NAS answers must not land in the groups effect below, so they get their own fetcher */
+  const nasFetcher = useSafeFetcher()
   const preview = usePreview(groups, [], updateGroups)
+  const progress = useUploadProgress(uploading)
+
+  /* derived, never stored: the loader is the first paint and the fetcher is the live truth */
+  const nasAnswer = nasSuccessSchema.safeParse(nasFetcher.data)
+  const nasConnected = nasAnswer.success ? nasAnswer.data.connected : loaderData.nas.connected
+  const nasHost = nasAnswer.success ? (nasAnswer.data.hostname ?? null) : loaderData.nas.hostname
+  const defaultFolder = nasAnswer.success
+    ? (nasAnswer.data.defaultFolder ?? null)
+    : loaderData.nas.defaultFolder
+  const nasRefused = nasErrorSchema.safeParse(nasFetcher.data)
+  const nasError =
+    !nasAnswer.success && nasRefused.success ? nasRefused.data.globalErrors?.[0] : undefined
+  /* the dialog closes itself once a *new* answer says we are connected */
+  const connectSucceeded =
+    nasAnswer.success && nasAnswer.data.connected && nasFetcher.data !== dialogOpenedOn
 
   /* the server answers with the groups it saved, or with the reason it refused */
   useEffect(() => {
@@ -296,16 +379,27 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     const answered = z
       .object({
         groups: z.array(manifestGroupSchema),
-        looseFiles: z.array(manifestFileSchema).optional()
+        looseFiles: z.array(manifestFileSchema).optional(),
+        destinations: z.array(destinationSchema).optional(),
+        uploaded: z.number().optional(),
+        skipped: z.number().optional()
       })
       .safeParse(fetcher.data)
     if (answered.success) {
-      const { groups: saved, looseFiles } = answered.data
+      const { groups: saved, looseFiles, destinations, uploaded, skipped } = answered.data
       queueMicrotask(() => {
         setGroups(saved)
         if (looseFiles) setLoose(looseFiles)
+        if (destinations) setPlaces(destinations)
         setBusy(null)
-        setNote(null)
+        setUploading(null)
+        setNote(
+          uploaded === undefined
+            ? null
+            : `Uploaded ${uploaded} file${uploaded === 1 ? '' : 's'}${
+                skipped ? ` · ${skipped} already on the NAS` : ''
+              }`
+        )
       })
       return
     }
@@ -315,6 +409,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       .safeParse(fetcher.data)
     queueMicrotask(() => {
       setBusy(null)
+      setUploading(null)
       if (refused.success) setNote(refused.data.globalErrors?.[0] ?? 'Request failed')
     })
   }, [fetcher.data, setGroups])
@@ -384,6 +479,60 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     setNote(null)
     setBusy(label)
     fetcher.submit({ url: '/api/manifest', actionArgs: args })
+  }
+
+  const openConnect = () => {
+    setDialogOpenedOn(nasFetcher.data)
+    setDialog({ kind: 'connect' })
+  }
+
+  const connect = (host: string, user: string, password: string) =>
+    nasFetcher.submit({ url: '/api/nas', actionArgs: { intent: 'connect', host, user, password } })
+
+  const disconnect = () =>
+    nasFetcher.submit({ url: '/api/nas', actionArgs: { intent: 'disconnect' } })
+
+  /* the global default folder goes through the NAS session; a destination's own folder is part
+     of the workspace, so it is saved with the destinations list like any other board edit */
+  const chooseFolder = (path: string, destination?: string) => {
+    if (destination === undefined) {
+      nasFetcher.submit({ url: '/api/nas', actionArgs: { intent: 'select-folder', path } })
+    } else {
+      const known = places.some((d) => d.name === destination)
+      saveDestinations(
+        known
+          ? places.map((d) => (d.name === destination ? { ...d, path } : d))
+          : [...places, { name: destination, path }]
+      )
+    }
+    setDialog(null)
+  }
+
+  const folderFor = (destination: string) => {
+    const place = places.find((d) => d.name === destination)
+    if (place?.path) return place.path
+    return defaultFolder ? `${defaultFolder}/${destination}` : null
+  }
+
+  /* the client opens whichever dialog is missing rather than firing a request the server would
+     only refuse — but the server still decides, so the client never guesses a path */
+  const requestUpload = (scope: { groupIds?: string[]; destination?: string }, key: string) => {
+    if (!nasConnected) {
+      openConnect()
+      return
+    }
+    if (scope.destination && !folderFor(scope.destination)) {
+      setDialog({ kind: 'folder', destination: scope.destination })
+      return
+    }
+    if (!scope.destination && !defaultFolder) {
+      setDialog({ kind: 'folder' })
+      return
+    }
+    setNote(null)
+    setBusy(key)
+    setUploading(key)
+    fetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'upload-group', ...scope } })
   }
 
   const createMontage = async (group: ManifestGroup) => {
@@ -607,11 +756,41 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           {groups.length} jumps · {groups.reduce((n, g) => n + g.files.length, 0)} files ·{' '}
           {unsorted.length} to sort
         </span>
-        <a
-          href='/classic'
-          className='ml-auto text-sm text-gray-500 underline'>
-          classic view (scan, NAS, calibration)
-        </a>
+        <span className='ml-auto flex flex-wrap items-center gap-2 text-xs'>
+          <span
+            className={`h-2 w-2 rounded-full ${nasConnected ? 'bg-green-500' : 'bg-gray-300'}`}
+          />
+          {nasConnected ? (
+            <>
+              <span className='text-gray-600'>{nasHost ?? 'NAS'}</span>
+              <button
+                type='button'
+                onClick={() => setDialog({ kind: 'folder' })}
+                title='The folder used by anything without a folder of its own'
+                className='rounded border border-gray-300 bg-white px-2 py-0.5 font-mono text-[11px]'>
+                {defaultFolder ?? 'no default folder'}
+              </button>
+              <button
+                type='button'
+                onClick={disconnect}
+                className='text-gray-500 underline'>
+                disconnect
+              </button>
+            </>
+          ) : (
+            <button
+              type='button'
+              onClick={openConnect}
+              className='rounded bg-teal-700 px-3 py-1 font-semibold text-white'>
+              Connect the NAS
+            </button>
+          )}
+          <a
+            href='/classic'
+            className='text-gray-500 underline'>
+            classic view
+          </a>
+        </span>
       </header>
 
       {note && (
@@ -865,15 +1044,69 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                       ? 'border-dashed border-teal-500'
                       : 'border-gray-200'
                   }`}>
-                  <div className='flex items-baseline gap-2'>
+                  <div className='flex flex-wrap items-baseline gap-2'>
                     <h3 className='font-semibold'>{destination.name}</h3>
-                    <span className='ml-auto text-xs text-gray-500'>
+                    <span className='text-xs text-gray-500'>
                       {inside.reduce((n, g) => n + g.files.length, 0) + lone.length} files
                     </span>
+                    {(inside.length > 0 || lone.length > 0) && (
+                      <button
+                        type='button'
+                        disabled={busy !== null}
+                        onClick={() =>
+                          requestUpload(
+                            { destination: destination.name },
+                            `dest:${destination.name}`
+                          )
+                        }
+                        title='Send this dropzone to the NAS — files already there are skipped'
+                        className='ml-auto rounded bg-teal-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50'>
+                        {busy === `dest:${destination.name}` ? 'Uploading…' : 'Upload'}
+                      </button>
+                    )}
                   </div>
                   <p className='mt-1 font-mono text-[11px] text-gray-400'>
                     processed/{destination.name}/ · every file lands here directly
                   </p>
+                  <div className='mt-1 flex flex-wrap items-center gap-2'>
+                    <span className='text-[11px] text-gray-400'>NAS</span>
+                    <button
+                      type='button'
+                      onClick={() => setDialog({ kind: 'folder', destination: destination.name })}
+                      title='Choose the NAS folder this dropzone uploads into'
+                      className='rounded border border-gray-300 bg-white px-2 py-0.5 font-mono text-[11px]'>
+                      {folderFor(destination.name) ?? 'choose a folder'}
+                    </button>
+                    {destination.path && (
+                      <button
+                        type='button'
+                        onClick={() =>
+                          saveDestinations(
+                            places.map((d) =>
+                              d.name === destination.name
+                                ? { name: d.name, shareUrl: d.shareUrl }
+                                : d
+                            )
+                          )
+                        }
+                        title='Fall back to the default upload folder'
+                        className='text-[11px] text-gray-500 underline'>
+                        clear
+                      </button>
+                    )}
+                    {destination.shareUrl && (
+                      <a
+                        href={destination.shareUrl}
+                        target='_blank'
+                        rel='noreferrer'
+                        className='text-[11px] text-teal-700 underline'>
+                        share link
+                      </a>
+                    )}
+                  </div>
+                  {uploading === `dest:${destination.name}` && progress && (
+                    <UploadStrip progress={progress} />
+                  )}
                   {days.length === 0 && (
                     <p className='mt-3 text-xs text-gray-400'>Drag jumps or files here.</p>
                   )}
@@ -1115,22 +1348,30 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                         </button>
                         <button
                           type='button'
-                          disabled={busy !== null || !loaderData.nas.connected}
-                          title={
-                            loaderData.nas.connected
-                              ? 'Send to the NAS'
-                              : 'Connect the NAS from the classic view first'
-                          }
+                          disabled={busy !== null}
+                          title='Send this passenger to the NAS — files already there are skipped'
                           onClick={() =>
-                            run(group.id, { intent: 'upload-group', groupId: group.id })
+                            requestUpload({ groupIds: [group.id] }, `group:${group.id}`)
                           }
                           className='rounded bg-teal-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50'>
-                          Upload
+                          {busy === `group:${group.id}` ? 'Uploading…' : 'Upload'}
                         </button>
+                        {group.publish?.shareUrl && (
+                          <a
+                            href={group.publish.shareUrl}
+                            target='_blank'
+                            rel='noreferrer'
+                            className='text-[11px] text-teal-700 underline'>
+                            share link
+                          </a>
+                        )}
                       </>
                     )}
                   </span>
                 </div>
+                {uploading === `group:${group.id}` && progress && (
+                  <UploadStrip progress={progress} />
+                )}
                 {isOpen(group.id, group.files) ? (
                   <div className='mt-2'>
                     <Wall
@@ -1178,6 +1419,32 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             </button>
           </div>
         </div>
+      )}
+
+      {dialog?.kind === 'connect' && !connectSucceeded && (
+        <ConnectionDialog
+          onConnect={connect}
+          onCancel={() => setDialog(null)}
+          error={nasError}
+        />
+      )}
+
+      {dialog?.kind === 'folder' && (
+        <NasFolderBrowser
+          open
+          initialPath={
+            dialog.destination
+              ? (places.find((d) => d.name === dialog.destination)?.path ?? undefined)
+              : (defaultFolder ?? undefined)
+          }
+          title={
+            dialog.destination
+              ? `NAS folder for ${dialog.destination}`
+              : 'Default NAS upload folder'
+          }
+          onSelect={(path) => chooseFolder(path, dialog.destination)}
+          onClose={() => setDialog(null)}
+        />
       )}
 
       {comparing && picked.length === 2 && (

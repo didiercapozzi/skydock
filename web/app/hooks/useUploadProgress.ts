@@ -1,35 +1,25 @@
+import { uploadProgressStateSchema } from '@skydock/scripts'
+import type { UploadProgressState } from '@skydock/scripts'
 import { useEffect, useState } from 'react'
-import { z } from 'zod'
 import { routingEngine } from '../helpers/routing'
 
-const progressSchema = z.object({
-  groupId: z.string(),
-  filename: z.string(),
-  bytesUploaded: z.number(),
-  totalBytes: z.number(),
-  fileIndex: z.number(),
-  totalFiles: z.number(),
-  state: z.enum(['uploading', 'done', 'error']),
-  error: z.string().optional()
-})
-type UploadProgressState = z.infer<typeof progressSchema>
-
-const useUploadProgress = (groupId: string | null) => {
+/* `scope` is what the server keyed the job with — `group:{id}` for one jump, `dest:{name}` for a
+   whole destination — so a poller only ever picks up its own upload. */
+const useUploadProgress = (scope: string | null) => {
   const [rawProgress, setRawProgress] = useState<UploadProgressState | null>(null)
 
   useEffect(() => {
-    if (!groupId) return
+    if (!scope) return
     let cancelled = false
     const fetchOnce = async () => {
       try {
         const raw = await routingEngine.loader({
           url: '/api/upload-progress',
-          searchParamsArgs: { groupId }
+          searchParamsArgs: { scope }
         })
         if (raw === null || raw === undefined) return
-        const parsed = progressSchema.safeParse(raw)
-        if (parsed.success && parsed.data.groupId === groupId && !cancelled)
-          setRawProgress(parsed.data)
+        const parsed = uploadProgressStateSchema.safeParse(raw)
+        if (parsed.success && parsed.data.scope === scope && !cancelled) setRawProgress(parsed.data)
       } catch {}
     }
     queueMicrotask(fetchOnce)
@@ -38,10 +28,9 @@ const useUploadProgress = (groupId: string | null) => {
       cancelled = true
       clearInterval(id)
     }
-  }, [groupId])
+  }, [scope])
 
-  const progress = groupId && rawProgress?.groupId === groupId ? rawProgress : null
-  return progress
+  return scope && rawProgress?.scope === scope ? rawProgress : null
 }
 
 export { useUploadProgress }

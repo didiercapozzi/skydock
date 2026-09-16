@@ -265,5 +265,5 @@ if (isCliModule('execute')) {
   executeMedia({ manifestPath, groupIds: groupIds.length > 0 ? groupIds : undefined })
 }
 
-export { executeMedia, getGroupProcessedDir }
+export { executeMedia, getDestinationDir, getGroupProcessedDir, isFlatGroup }
 export type { ExecuteOptions, ExecuteResult }

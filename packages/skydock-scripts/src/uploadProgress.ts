@@ -4,14 +4,21 @@ import { z } from 'zod'
 import { writeJsonAtomic } from './lib/fs'
 import { getStatusDir } from './utils'
 
+/* Keyed by upload *scope* (`group:{id}` or `dest:{name}`), because one upload can cover a whole
+   destination — several groups plus its lone files — and the poller has to recognise its own job.
+   `checking` is the dedup pass that runs before a single byte moves (§12.3); without it the UI
+   would sit silent while the NAS hashes hundreds of files. */
 const uploadProgressStateSchema = z.object({
-  groupId: z.string(),
+  scope: z.string(),
+  groupId: z.string().optional(),
   filename: z.string(),
   bytesUploaded: z.number(),
   totalBytes: z.number(),
   fileIndex: z.number(),
   totalFiles: z.number(),
-  state: z.enum(['uploading', 'done', 'error']),
+  state: z.enum(['checking', 'uploading', 'done', 'error']),
+  checked: z.number().optional(),
+  skipped: z.number().optional(),
   error: z.string().optional()
 })
 type UploadProgressState = z.infer<typeof uploadProgressStateSchema>

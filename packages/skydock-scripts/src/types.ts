@@ -61,7 +61,10 @@ const groupsFileSchema = z.object({
 
 const destinationSchema = z.object({
   name: z.string(),
-  path: z.string().optional()
+  /* the NAS folder this dropzone uploads into; absent means `{defaultFolder}/{name}` */
+  path: z.string().optional(),
+  /* the share link of that folder, kept so the board can hand it out without opening a group */
+  shareUrl: z.string().optional()
 })
 
 const destinationsSchema = z.array(destinationSchema)

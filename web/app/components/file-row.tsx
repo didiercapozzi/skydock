@@ -23,7 +23,7 @@ const FileRow = ({
   isInMultipleGroups: boolean
   hasSelection: boolean
   uploadPercent?: number | null
-  uploadState?: 'uploading' | 'done' | 'error' | null
+  uploadState?: 'checking' | 'uploading' | 'done' | 'error' | null
   onSelect: (groupId: string, path: string, ctrl: boolean, shift: boolean) => void
   onPreview: (file: ManifestFile, groupId: string) => void
   onDragStart?: (e: React.DragEvent, groupId: string, paths: string[]) => void

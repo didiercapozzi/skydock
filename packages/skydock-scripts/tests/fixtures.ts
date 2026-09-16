@@ -79,10 +79,62 @@ const makeTmpTree = () => {
   return dir
 }
 
+/* A DSM stub for the calls an upload now makes: the file listing that finds size matches, the
+   MD5 job that confirms them, and the sharing list that is consulted before a link is created.
+   `files` is keyed by folder path, `md5` by file path. */
+const nasStubs = ({
+  files = {},
+  md5 = {},
+  links = []
+}: {
+  files?: Record<string, { name: string; size: number }[]>
+  md5?: Record<string, string>
+  links?: { url: string; path: string; status?: string }[]
+}) => {
+  const tasks = new Map<string, string>()
+  let nextTask = 0
+  return (url: string): Response | null => {
+    const params = new URL(url, 'http://stub').searchParams
+    const api = params.get('api')
+    const method = params.get('method')
+    if (api === 'SYNO.FileStation.List' && method === 'list' && params.get('filetype') === 'file') {
+      const folder = params.get('folder_path') ?? ''
+      const entries = files[folder] ?? []
+      return jsonResponse({
+        success: true,
+        data: {
+          files: entries.map((f) => ({
+            name: f.name,
+            path: `${folder}/${f.name}`,
+            isdir: false,
+            additional: { size: f.size }
+          }))
+        }
+      })
+    }
+    if (api === 'SYNO.FileStation.MD5' && method === 'start') {
+      const id = `task-${nextTask++}`
+      tasks.set(id, md5[params.get('file_path') ?? ''] ?? '')
+      return jsonResponse({ success: true, data: { taskid: id } })
+    }
+    if (api === 'SYNO.FileStation.MD5' && method === 'status') {
+      /* DSM is sent the taskid JSON-quoted and unquotes it itself — see dsmFileMd5 */
+      const raw = params.get('taskid') ?? ''
+      const digest = tasks.get(raw.replace(/^"|"$/g, ''))
+      return jsonResponse({ success: true, data: { finished: true, md5: digest || undefined } })
+    }
+    if (api === 'SYNO.FileStation.Sharing' && method === 'list') {
+      return jsonResponse({ success: true, data: { links, total: links.length } })
+    }
+    return null
+  }
+}
+
 export {
   createTmpDir,
   execSyncMock,
   jsonResponse,
+  nasStubs,
   loginFailure,
   loginSuccess,
   makeExiftoolMock,

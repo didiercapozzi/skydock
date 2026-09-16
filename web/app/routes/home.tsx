@@ -184,7 +184,7 @@ const Home = ({ loaderData }: Route.ComponentProps) => {
   const [importingId, setImportingId] = useState<string | null>(null)
   const [manifestError, setManifestError] = useState<string | null>(null)
   const [hasKdenliveMap, setHasKdenliveMap] = useState<Map<string, boolean>>(new Map())
-  const uploadProgress = useUploadProgress(uploadingId)
+  const uploadProgress = useUploadProgress(uploadingId ? `group:${uploadingId}` : null)
 
   const parsedSuccess = nasSuccessSchema.safeParse(nasFetcher.data)
   const parsedError = nasErrorSchema.safeParse(nasFetcher.data)

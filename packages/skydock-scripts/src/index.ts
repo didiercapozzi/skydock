@@ -54,8 +54,10 @@ export {
   resolveDestinationPath
 } from './workspace'
 export { loadManifest, normalizeManifest, saveManifest } from './manifest'
-export { publishJump, uploadFile } from './publish'
-export type { PublishArgs, UploadProgress } from './publish'
+export { planUpload, publishJump, uploadFile } from './publish'
+export type { CheckProgress, PublishArgs, UploadProgress } from './publish'
+export { groupsInScope, resolveUploadTargets, scopeKey, uploadScope } from './upload'
+export type { UploadScope, UploadTarget } from './upload'
 export {
   clearUploadProgress,
   getUploadProgressPath,
@@ -72,6 +74,7 @@ export {
   dsmCreateFolder,
   dsmEntryUrl,
   dsmFetch,
+  dsmFileMd5,
   dsmGetEncryptionInfo,
   dsmListFolder,
   dsmLogin,
@@ -80,7 +83,12 @@ export {
   dsmResponseSchema,
   dsmValidateSession,
   encryptPasswordForStorage,
+  ensureNasSession,
+  ensureShareLink,
+  findShareLink,
+  listNasFiles,
   listNasFolder,
+  listShareLinks,
   loadNasSession,
   loginWithSession,
   normalizeNasPath,
@@ -88,7 +96,7 @@ export {
   tryAutoRefreshSession,
   updateDefaultFolder
 } from './nas'
-export type { DsmAuth, DsmConfig, NasSession } from './nas'
+export type { DsmAuth, DsmConfig, NasFileEntry, NasSession } from './nas'
 export { computeFileId, ensureManifestFileIds } from './fileId'
 export { writeStatus, scheduleIdle } from './status'
 export {
@@ -124,7 +132,7 @@ export type { ProcessOptions } from './process'
 export { scanMedia } from './scan'
 export type { ScanResult } from './scan'
 
-export { executeMedia, getGroupProcessedDir } from './execute'
+export { executeMedia, getDestinationDir, getGroupProcessedDir, isFlatGroup } from './execute'
 export type { ExecuteOptions, ExecuteResult } from './execute'
 
 export { watcher } from './watcher'

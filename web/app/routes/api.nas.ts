@@ -5,9 +5,9 @@ import {
   dsmLogin,
   dsmLogout,
   dsmValidateSession,
+  ensureNasSession,
   loadNasSession,
   loginWithSession,
-  tryAutoRefreshSession,
   updateDefaultFolder
 } from '@skydock/scripts'
 import { z } from 'zod'
@@ -29,24 +29,11 @@ const actionArgs = z.object({
   name: z.string().optional()
 })
 
-const ensureValidSession = async () => {
-  const session = loadNasSession()
-  if (!session) return null
-  const valid = await dsmValidateSession(session.hostname, session.sessionId)
-  if (valid) return session
-  const refreshed = await tryAutoRefreshSession()
-  if (refreshed) {
-    const stillValid = await dsmValidateSession(refreshed.hostname, refreshed.sessionId)
-    if (stillValid) return refreshed
-  }
-  return null
-}
-
 const action = createValidatedFormAction()({
   schema: actionArgs,
   handler: async ({ data, errors }) => {
     if (data.intent === 'status') {
-      const session = await ensureValidSession()
+      const session = await ensureNasSession()
       if (!session) {
         const raw = loadNasSession()
         if (raw && raw.encPasswd) {
@@ -97,7 +84,7 @@ const action = createValidatedFormAction()({
     }
 
     if (data.intent === 'list-folder') {
-      const session = await ensureValidSession()
+      const session = await ensureNasSession()
       if (!session) {
         const raw = loadNasSession()
         if (raw) {
@@ -122,7 +109,7 @@ const action = createValidatedFormAction()({
         errors.addGlobalError('Folder path and name are required.')
         return errors.toResponse(422)
       }
-      const session = await ensureValidSession()
+      const session = await ensureNasSession()
       if (!session) {
         const raw = loadNasSession()
         if (raw) {
@@ -147,7 +134,7 @@ const action = createValidatedFormAction()({
         errors.addGlobalError('Folder path required.')
         return errors.toResponse(422)
       }
-      const session = await ensureValidSession()
+      const session = await ensureNasSession()
       if (!session) {
         const raw = loadNasSession()
         if (raw) {
