@@ -102,7 +102,7 @@ const loader = async (_args: Route.LoaderArgs) => {
     looseFiles,
     destinations: manifest?.destinations ?? [],
     /* what the disk says about each processed copy — the record alone cannot know someone
-       emptied processed/ (§14.5) */
+       emptied processed/ (RULES, File status) */
     outputs: manifest ? statProcessedOutputs(manifest) : {},
     remote,
     hasManifest: manifest !== null,
@@ -583,7 +583,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const locations = places.filter((d) => d.name !== TANDEMS)
   const tandems = groups.filter(isTandem)
   /* a loose file that carries a destination is shown inside that card, not in the sorting area —
-     it is a real lone file destined for that folder (§13.1), not something still to sort */
+     it is a real lone file destined for that folder (RULES, Dropzones and tandems), not something still to sort */
   const sorting = loose.filter((f) => !f.destination)
   const looseIn = (destination: string) => loose.filter((f) => f.destination === destination)
   /* the sorting area is read a shooting day at a time, newest first, like the location cards */
@@ -826,7 +826,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   }
 
   /* Only a listing that came back may demote a file; a NAS that was never asked, or that failed,
-     leaves every proven upload alone (§14.5). */
+     leaves every proven upload alone (RULES, File status). */
   const remoteAnswer = remoteFilesSchema.safeParse(remoteFetcher.data)
   const fresh = remoteAnswer.success && remoteAnswer.data.ok ? remoteAnswer.data : null
   /* the loader took the first look; an upload's own listing or a Refresh replaces it, newest wins */
@@ -1344,7 +1344,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                     const dayGroups = inside.filter((g) => dayOf(g) === day)
                     const dayLone = lone.filter((f) => dayOfFile(f) === day)
                     /* a day row mixes whole jumps and lone files — on disk they are the same
-                       flat folder (§13.1), so they are drawn as one run of thumbnails */
+                       flat folder (RULES, Dropzones and tandems), so they are drawn as one run of thumbnails */
                     const files = byMtime([...dayGroups.flatMap((g) => g.files), ...dayLone])
                     const owner = new Map(
                       dayGroups.flatMap((g) => g.files.map((f) => [f.path, g] as const))
@@ -1373,7 +1373,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                               type='button'
                               disabled={busy !== null}
                               /* lone files belong to no group, so a day holding any of them is
-                                 processed by destination scope instead of by group ids (§6.1) */
+                                 processed by destination scope instead of by group ids (RULES, What lands on disk) */
                               onClick={() =>
                                 run(
                                   key,

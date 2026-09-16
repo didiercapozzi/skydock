@@ -6,7 +6,7 @@ Each rule has exactly one owner. Never restate a rule from another file here —
 
 | Subject                                                           | Owner                                                                |
 | ----------------------------------------------------------------- | -------------------------------------------------------------------- |
-| Domain logic, pipeline, manifest, UI behavior                     | **RULES.md** — non-negotiable                                        |
+| What the app does: workflow, jumps, delivery, board, storage      | **RULES.md** — non-negotiable                                        |
 | Code style, architecture, testing                                 | **CODING.md**                                                        |
 | How to work here: verification, permissions, environment, commits | **this file**                                                        |
 | What may actually run                                             | **`.claude/settings.json`** (enforced by the harness, not by Claude) |
@@ -30,11 +30,29 @@ Each rule has exactly one owner. Never restate a rule from another file here —
 - When a requested task is completed, move it from active list to `## Done` section
 - Keep TODO.md updated
 
-### Behavior Changes — implement, document, report (RULES.md §11)
+### Behavior Changes — implement, document, report
 
-- On a clear request, **build it**; update the affected RULES.md sections in the same change; then report what was decided and why. Do not pause for confirmation.
-- Stop and ask only when the request has two readings that lead to materially different work, or when the change could destroy data that cannot be recovered. §11 has the full rule.
-- Naming, layout, thresholds, choosing between two sound designs — Claude's call. Decide, say so in the report, move on.
+RULES.md is the single source of truth for what the app does. It must never fall behind the code — but keeping it current is a duty to document, not a reason to stop and ask.
+
+On a clear request that changes how the app behaves:
+
+1. Work out which parts of RULES.md the change touches.
+2. **Build it.** Do not pause for confirmation.
+3. **Update RULES.md in the same change**, so the rules and the code are never out of step.
+4. **Report** what was built, which decisions were taken on the user's behalf and why, and anything left out.
+5. Code and RULES.md go in the same commit.
+
+RULES.md describes the app, not the code: no function, file or field names, no schemas, no endpoint lists. Write what the app does and what it guarantees; the code and its tests are the authority on how.
+
+**Stop and ask only when:**
+
+- The request has two readings that lead to materially different work, and guessing wrong would waste the effort.
+- The change could destroy data the user cannot get back — deleting originals, overwriting processed output, anything touching `/mnt/osmo`.
+- A standing rule requires it: no commit, push or share link without an explicit request.
+
+Anything else — naming, layout, thresholds, which of two sound designs to use — is Claude's call. Make it, say so in the report, and move on. A decision that turns out wrong is cheaper to reverse than a question is to answer.
+
+**Changes that need no RULES.md update:** bug fixes that preserve behavior, refactors with no external change, styling, and tests.
 
 ### Git Commits Rule
 

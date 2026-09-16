@@ -6,7 +6,7 @@ import { getStatusDir } from './utils'
 
 /* Keyed by upload *scope* (`group:{id}` or `dest:{name}`), because one upload can cover a whole
    destination — several groups plus its lone files — and the poller has to recognise its own job.
-   `checking` is the dedup pass that runs before a single byte moves (§12.3); without it the UI
+   `checking` is the dedup pass that runs before a single byte moves (RULES, Network storage); without it the UI
    would sit silent while the NAS hashes hundreds of files. */
 const uploadProgressStateSchema = z.object({
   scope: z.string(),

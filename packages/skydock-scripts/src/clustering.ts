@@ -145,7 +145,7 @@ const reclusterGroups = (manifest: Manifest, preservedIds?: Set<string>) => {
     }
 
     /* the destination is a user edit and survives a rescan; the share link does not,
-       because the group's files changed and the published folder is now stale (§12.4) */
+       because the group's files changed and the published folder is now stale (RULES, Network storage) */
     return {
       id: dominant?.id ?? getNextId(),
       label: dominant?.label ?? `Group ${nextIdx - 1}`,

@@ -3,7 +3,7 @@ import type { FileStatus } from '@skydock/scripts'
 /* local — only the original exists; nothing has been made from it yet, or what was made is out of
    date because the file was cropped, retimed or replaced since.
    processed — a renamed copy of the current file exists in output/processed.
-   uploaded — that copy is on the NAS, proved by a matching md5 (§14.5). */
+   uploaded — that copy is on the NAS, proved by a matching md5 (RULES, File status). */
 const LABELS: Record<FileStatus, string> = {
   local: 'local',
   processed: 'processed',

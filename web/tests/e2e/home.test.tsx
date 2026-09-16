@@ -897,7 +897,7 @@ describe('Home - jump comparison dialog', () => {
   })
 })
 
-describe('Home - video preview and crop (§9.6)', () => {
+describe('Home - video preview and crop (RULES, The board)', () => {
   const renderWithVideo = async () => {
     const files = makeFiles(3)
     files.forEach((f) => {

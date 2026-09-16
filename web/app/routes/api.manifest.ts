@@ -152,7 +152,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         delete file.processed
         delete file.uploaded
         /* a file that lands in a group takes its destination from that group, never its own —
-           `file.destination` is what marks a lone file (§13.1) */
+           `file.destination` is what marks a lone file (RULES, Dropzones and tandems) */
         if (data.destination && !data.newGroup && !data.targetGroupId)
           file.destination = data.destination
         else delete file.destination
@@ -220,7 +220,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         return errors.toResponse(422)
       }
       /* a stored session is only a session if DSM still takes it — this is also what lets an
-         expired one refresh itself instead of failing the upload (§12.5) */
+         expired one refresh itself instead of failing the upload (RULES, Network storage) */
       const session = await ensureNasSession()
       if (!session) {
         errors.addGlobalError('Not connected to NAS. Please connect first.')
@@ -403,7 +403,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
     }
     saveManifest(manifestPath, manifest)
     /* answer with what was saved, so the board redraws destinations from the server rather than
-       trusting its own optimistic copy — the same rule every other mutation follows (§14.2) */
+       trusting its own optimistic copy — the same rule every other mutation follows (RULES, The board) */
     return { ...answer(manifest), destinations: manifest.destinations ?? [] }
   }
 })
