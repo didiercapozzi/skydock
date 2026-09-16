@@ -2,8 +2,10 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { getDestinationDir, getGroupProcessedDir, isFlatGroup } from './execute'
 import { publishJump } from './publish'
-import type { CheckProgress, UploadProgress } from './publish'
+import type { CheckProgress, UploadProgress, UploadVerdict } from './publish'
+import { listNasFiles } from './nas'
 import type { NasSession } from './nas'
+import { mapWithLimit } from './utils'
 import type { Manifest, ManifestGroup } from './types'
 import { resolveDestinationPath } from './workspace'
 
@@ -17,6 +19,38 @@ type UploadTarget = {
   remoteDir: string | null
   destination: string | null
   groupIds: string[]
+}
+
+const LIST_CONCURRENCY = 4
+
+const dirOfRemote = (remotePath: string) => {
+  const cut = remotePath.lastIndexOf('/')
+  return cut <= 0 ? '/' : remotePath.slice(0, cut)
+}
+
+/* What the NAS holds right now in the folders we have uploaded into, so a file deleted over there
+   stops reading as uploaded. The folders come from the upload records themselves, not from the
+   destination list — a tandem lives in `{destination}/{Passenger}/`, which listing the destination
+   would miss. `listNasFiles` answers [] both for an empty folder and for a call that failed, so a
+   folder only counts as checked when its listing came back: an unchecked folder demotes nothing. */
+const listRemoteFiles = async (manifest: Manifest, session: NasSession) => {
+  const wanted = [
+    ...new Set(
+      manifest.files.flatMap((f) => (f.uploaded ? [dirOfRemote(f.uploaded.remotePath)] : []))
+    )
+  ]
+  const sizes: Record<string, number | null> = {}
+  const dirs: string[] = []
+  await mapWithLimit(wanted, LIST_CONCURRENCY, async (dir) => {
+    try {
+      const entries = await listNasFiles(session.hostname, session.sessionId, dir)
+      dirs.push(dir)
+      for (const entry of entries) sizes[`${dir}/${entry.name}`] = entry.size
+    } catch {
+      /* left out of `dirs`, so nothing in it is demoted */
+    }
+  })
+  return { dirs, sizes, at: Math.floor(Date.now() / 1000) }
 }
 
 const scopeKey = (scope: UploadScope) => {
@@ -154,6 +188,7 @@ const uploadScope = async ({
   if (absent) throw new Error(`Processed files not found for ${absent.label}. Process it again.`)
 
   const shareUrls: { target: UploadTarget; shareUrl: string }[] = []
+  const files: UploadVerdict[] = []
   let uploaded = 0
   let skipped = 0
   for (const target of targets) {
@@ -172,11 +207,12 @@ const uploadScope = async ({
       }
     )
     shareUrls.push({ target, shareUrl: result.shareUrl })
+    files.push(...result.files)
     uploaded += result.uploaded
     skipped += result.skipped
   }
-  return { targets, shareUrls, uploaded, skipped }
+  return { targets, shareUrls, uploaded, skipped, files }
 }
 
-export { groupsInScope, resolveUploadTargets, scopeKey, uploadScope }
+export { groupsInScope, listRemoteFiles, resolveUploadTargets, scopeKey, uploadScope }
 export type { UploadScope, UploadTarget }

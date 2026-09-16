@@ -9,6 +9,7 @@ import {
   getOutputDir,
   groupFromFiles,
   groupsInScope,
+  listRemoteFiles,
   loadManifest,
   manifestFileSchema,
   manifestGroupSchema,
@@ -17,9 +18,12 @@ import {
   saveManifest,
   scopeKey,
   shiftFiles,
+  statProcessedOutputs,
+  uploadGate,
   uploadScope,
   writeUploadProgress
 } from '@skydock/scripts'
+import type { Manifest } from '@skydock/scripts'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 
 const actionArgs = z.object({
@@ -45,6 +49,21 @@ const actionArgs = z.object({
   rightId: z.string().optional(),
   anchorEpoch: z.number().optional()
 })
+
+/* Every mutation answers with the same three things, because the board's per-file status is
+   computed from all of them: the groups, the files belonging to no group, and what the disk says
+   about each processed copy. Leaving `looseFiles` out of an answer left lone files stale. */
+const answer = (manifest: Manifest) => {
+  const grouped = new Set(manifest.groups.flatMap((g) => g.files.map((f) => f.id ?? f.path)))
+  return {
+    groups: manifest.groups,
+    looseFiles: manifest.files.filter((f) => !grouped.has(f.id ?? f.path)),
+    outputs: statProcessedOutputs(manifest)
+  }
+}
+
+const passengerOf = (group: { passenger?: { firstname: string; lastname: string } }) =>
+  group.passenger ? `${group.passenger.firstname} ${group.passenger.lastname}` : ''
 
 const action = createValidatedFormAction<Route.ActionArgs>()({
   schema: actionArgs,
@@ -74,7 +93,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         }
       }
       saveManifest(manifestPath, manifest)
-      return { groups: manifest.groups }
+      return answer(manifest)
     }
     if (data.intent === 'shift-group-time') {
       if (!data.groupId) {
@@ -102,7 +121,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         shiftFiles(manifest, ids, offset)
       }
       saveManifest(manifestPath, manifest)
-      return { groups: manifest.groups }
+      return answer(manifest)
     }
     if (data.intent === 'regroup-loose') {
       const made = regroupLooseFiles(manifest)
@@ -111,13 +130,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         return errors.toResponse(422)
       }
       saveManifest(manifestPath, manifest)
-      const stillGrouped = new Set(
-        manifest.groups.flatMap((g) => g.files.map((f) => f.id ?? f.path))
-      )
-      return {
-        groups: manifest.groups,
-        looseFiles: manifest.files.filter((f) => !stillGrouped.has(f.id ?? f.path))
-      }
+      return answer(manifest)
     }
     if (data.intent === 'move-files') {
       const ids = new Set(data.fileIds ?? [])
@@ -128,14 +141,16 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       /* the files leave wherever they were, so their processed copies are stale */
       for (const file of manifest.files) {
         if (!file.id || !ids.has(file.id)) continue
-        if (file.processedPath && fs.existsSync(file.processedPath)) {
+        const output = file.processed?.path
+        if (output && fs.existsSync(output)) {
           try {
-            fs.unlinkSync(file.processedPath)
+            fs.unlinkSync(output)
           } catch {
             /* a copy we cannot delete is not worth failing the move over */
           }
         }
-        delete file.processedPath
+        delete file.processed
+        delete file.uploaded
         /* a file that lands in a group takes its destination from that group, never its own —
            `file.destination` is what marks a lone file (§13.1) */
         if (data.destination && !data.newGroup && !data.targetGroupId)
@@ -175,13 +190,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         groupFromFiles(manifest, picked, data.destination)
       }
       saveManifest(manifestPath, manifest)
-      const stillGrouped = new Set(
-        manifest.groups.flatMap((g) => g.files.map((f) => f.id ?? f.path))
-      )
-      return {
-        groups: manifest.groups,
-        looseFiles: manifest.files.filter((f) => !stillGrouped.has(f.id ?? f.path))
-      }
+      return answer(manifest)
     }
     if (data.intent === 'process') {
       const requestedGroups = data.groupIds ?? (data.groupId ? [data.groupId] : undefined)
@@ -197,7 +206,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         return errors.toResponse(422)
       }
       const updated = loadManifest(manifestPath)
-      return { groups: updated?.groups ?? manifest.groups }
+      return answer(updated ?? manifest)
     }
     if (data.intent === 'upload-group') {
       const scope = {
@@ -218,9 +227,18 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         return errors.toResponse(422)
       }
       const outputDir = getOutputDir()
-      const unprocessed = groupsInScope(manifest, scope).find((g) => !g.processed)
-      if (unprocessed) {
-        errors.addGlobalError(`Process ${unprocessed.label} first.`)
+      /* the same rule the button uses, so the server never accepts what the board would refuse —
+         and catches a file that changed between the click and the request */
+      const outputs = statProcessedOutputs(manifest)
+      const scopeFiles = [
+        ...groupsInScope(manifest, scope).flatMap((g) => g.files),
+        ...(scope.destination
+          ? manifest.files.filter((f) => f.destination === scope.destination)
+          : [])
+      ]
+      const gate = uploadGate(scopeFiles, (file) => ({ output: outputs[file.path] }))
+      if (gate.blocked) {
+        errors.addGlobalError(`${gate.message} — process before uploading.`)
         return errors.toResponse(422)
       }
       let progress = { filename: '', fileIndex: 0, totalFiles: 0 }
@@ -266,12 +284,30 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
             )
           }
         })
+        /* An upload runs for minutes; anything the user saved meanwhile is on disk and would be
+           clobbered by writing the copy loaded before it started. */
+        const saved = loadManifest(manifestPath) ?? manifest
+        /* mark every file now proved to be on the NAS — sent or found identical there */
+        const byOutput = new Map(
+          saved.files.flatMap((f) => (f.processed ? [[f.processed.path, f] as const] : []))
+        )
+        for (const verdict of result.files) {
+          const file = byOutput.get(verdict.localPath)
+          if (file)
+            file.uploaded = {
+              remotePath: verdict.remotePath,
+              md5: verdict.md5,
+              size: verdict.size,
+              localPath: verdict.localPath,
+              at: verdict.at
+            }
+        }
         /* every group behind a target gets the link, and a destination keeps its own so the
            board can hand out a dropzone folder without opening a group */
-        const destinations = manifest.destinations ?? []
+        const destinations = saved.destinations ?? []
         for (const { target, shareUrl } of result.shareUrls) {
           for (const id of target.groupIds) {
-            const group = manifest.groups.find((g) => g.id === id)
+            const group = saved.groups.find((g) => g.id === id)
             if (group) group.publish = { shareUrl }
           }
           if (target.destination) {
@@ -279,7 +315,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
             if (dest) dest.shareUrl = shareUrl
           }
         }
-        manifest.destinations = destinations
+        saved.destinations = destinations
         writeUploadProgress(
           {
             scope: key,
@@ -293,9 +329,12 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
           },
           outputDir
         )
-        saveManifest(manifestPath, manifest)
+        saveManifest(manifestPath, saved)
         return {
-          groups: manifest.groups,
+          ...answer(saved),
+          /* taken right after the upload, by the session that did it — the board gets the new
+             truth without having to go and ask for it */
+          remote: await listRemoteFiles(saved, session),
           destinations,
           uploaded: result.uploaded,
           skipped: result.skipped
@@ -323,23 +362,49 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       errors.addGlobalError('Save needs groups.')
       return errors.toResponse(422)
     }
+    /* Renaming a passenger, a label or a destination changes where the files are written, so the
+       copies already on disk belong to a folder that is no longer this group's — the source is
+       untouched, which is exactly what the stamp compares, so it has to be said explicitly. */
+    for (const incoming of data.groups) {
+      const before = manifest.groups.find((g) => g.id === incoming.id)
+      if (!before) continue
+      const movedOutput =
+        before.label !== incoming.label ||
+        before.destination !== incoming.destination ||
+        passengerOf(before) !== passengerOf(incoming)
+      if (!movedOutput) continue
+      const ids = new Set(incoming.files.flatMap((f) => (f.id ? [f.id] : [])))
+      for (const file of manifest.files) {
+        if (!file.id || !ids.has(file.id)) continue
+        delete file.processed
+        delete file.uploaded
+      }
+    }
     manifest.groups = data.groups
     if (data.destinations) {
       manifest.destinations = data.destinations
     }
 
+    /* named fields only — never a spread of whatever the client sent */
     if (data.fileUpdates) {
       for (const update of data.fileUpdates) {
-        const idx = manifest.files.findIndex((f) => f.path === update.path)
+        const idx = manifest.files.findIndex((f) =>
+          update.id ? f.id === update.id : f.path === update.path
+        )
         if (idx !== -1) {
-          manifest.files[idx] = { ...manifest.files[idx], destination: update.destination }
+          manifest.files[idx] = {
+            ...manifest.files[idx],
+            destination: update.destination,
+            cropStart: update.cropStart,
+            cropEnd: update.cropEnd
+          }
         }
       }
     }
     saveManifest(manifestPath, manifest)
     /* answer with what was saved, so the board redraws destinations from the server rather than
        trusting its own optimistic copy — the same rule every other mutation follows (§14.2) */
-    return { groups: manifest.groups, destinations: manifest.destinations ?? [] }
+    return { ...answer(manifest), destinations: manifest.destinations ?? [] }
   }
 })
 

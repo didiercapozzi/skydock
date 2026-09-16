@@ -38,6 +38,15 @@ type UploadProgress = z.infer<typeof uploadProgressSchema>
 
 type CheckProgress = { checked: number; total: number; filename: string }
 
+/* one file proved to be on the NAS — either just sent, or found identical there */
+type UploadVerdict = {
+  localPath: string
+  remotePath: string
+  md5: string
+  size: number
+  at: number
+}
+
 const MD5_CONCURRENCY = 4
 
 const UPLOAD_RETRY_DELAY_MS = 2000
@@ -86,14 +95,17 @@ const uploadFile = async (
   const epilogue = Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8')
   const contentLength = preamble.length + totalBytes + epilogue.length
 
+  /* the bytes are already streamed past us, so the digest of what actually went up is free —
+     and it is what lets the file be marked uploaded without asking the NAS to hash it back */
   const sendOnce = () =>
-    new Promise<void>((resolve, reject) => {
+    new Promise<string>((resolve, reject) => {
       let settled = false
+      const digest = crypto.createHash('md5')
       const done = (err?: Error) => {
         if (settled) return
         settled = true
         if (err) reject(err)
-        else resolve()
+        else resolve(digest.digest('hex'))
       }
 
       const cap = Math.floor(totalBytes * PROGRESS_FLUSH_FRACTION)
@@ -153,6 +165,7 @@ const uploadFile = async (
       nodeStream.on('data', (chunk: string | Buffer) => {
         nodeStream.pause()
         const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+        digest.update(buf)
         req.write(buf, () => {
           fileFlushed += buf.byteLength
           report(fileFlushed)
@@ -162,7 +175,8 @@ const uploadFile = async (
       nodeStream.on('end', () => req.end(epilogue))
     })
 
-  await withRetry(sendOnce, 3, UPLOAD_RETRY_DELAY_MS)
+  /* a retry re-reads the file, so each attempt hashes afresh and the winner's digest is returned */
+  return { md5: await withRetry(sendOnce, 3, UPLOAD_RETRY_DELAY_MS), size: totalBytes }
 }
 
 /* `path.relative(dir, dir)` is '', not '.', and joining that on produced a trailing slash —
@@ -223,13 +237,23 @@ const planUpload = async ({
     ])
     checked += 1
     onCheck?.({ checked, total: candidates.length, filename: path.basename(candidate.local) })
-    return remote !== null && remote.toLowerCase() === local.toLowerCase()
+    return remote !== null && remote.toLowerCase() === local.toLowerCase() ? local : null
   })
 
-  const skip: string[] = []
+  /* a skip is a proof that both sides hold the same bytes, which is exactly what the file needs
+     to be marked uploaded — so the digest travels out instead of being thrown away */
+  const skip: UploadVerdict[] = []
   candidates.forEach((candidate, index) => {
-    if (verdicts[index]) skip.push(candidate.local)
-    else upload.push(candidate.local)
+    const md5 = verdicts[index]
+    if (md5 === null || md5 === undefined) upload.push(candidate.local)
+    else
+      skip.push({
+        localPath: candidate.local,
+        remotePath: candidate.remote,
+        md5,
+        size: fs.statSync(candidate.local).size,
+        at: Math.floor(Date.now() / 1000)
+      })
   })
   return { upload: upload.sort(), skip }
 }
@@ -249,7 +273,7 @@ const publishJump = async (
   const all = walkFiles(args.localDir)
   const planned =
     args.dedupe === false
-      ? { upload: [...all].sort(), skip: [] }
+      ? { upload: [...all].sort(), skip: [] as UploadVerdict[] }
       : await planUpload({
           host: args.host,
           sid,
@@ -260,18 +284,28 @@ const publishJump = async (
         })
 
   const totalFiles = planned.upload.length
+  const sent: UploadVerdict[] = []
   for (const [index, file] of planned.upload.entries()) {
     const remoteDir = remoteDirOf(args.localDir, args.remoteDir, file)
-    await uploadFile(args.host, sid, remoteDir, file, (progress) =>
+    const { md5, size } = await uploadFile(args.host, sid, remoteDir, file, (progress) =>
       handlers?.onProgress?.({ ...progress, fileIndex: index, totalFiles })
     )
+    sent.push({
+      localPath: file,
+      remotePath: `${remoteDir}/${path.basename(file)}`,
+      md5,
+      size,
+      at: Math.floor(Date.now() / 1000)
+    })
   }
   return {
     shareUrl: await ensureShareLink(args.host, sid, args.remoteDir),
     uploaded: planned.upload.length,
-    skipped: planned.skip.length
+    skipped: planned.skip.length,
+    /* every file now known to be on the NAS, sent or already there */
+    files: [...sent, ...planned.skip]
   }
 }
 
 export { planUpload, publishJump, uploadFile }
-export type { CheckProgress, PublishArgs, UploadProgress }
+export type { CheckProgress, PublishArgs, UploadProgress, UploadVerdict }

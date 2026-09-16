@@ -67,8 +67,14 @@ describe('planUpload', () => {
       localDir: dir,
       remoteDir: '/nas/jump'
     })
-    expect(plan.skip.map((f) => path.basename(f))).toEqual(['same.mp4'])
+    expect(plan.skip.map((v) => path.basename(v.localPath))).toEqual(['same.mp4'])
     expect(plan.upload.map((f) => path.basename(f))).toEqual(['new.mp4'])
+    /* the verdict carries the proof, so the file can be marked uploaded without re-checking */
+    expect(plan.skip[0]).toMatchObject({
+      remotePath: '/nas/jump/videos/same.mp4',
+      md5: md5Of('identical'),
+      size: 'identical'.length
+    })
     fs.rmSync(dir, { recursive: true, force: true })
   })
 

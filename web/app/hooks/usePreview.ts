@@ -25,7 +25,12 @@ type UsePreviewReturn = {
 const usePreview = (
   groups: ManifestGroup[],
   unassignedFiles: ManifestFile[],
-  onGroupsChange: (next: ManifestGroup[]) => void
+  onGroupsChange: (next: ManifestGroup[]) => void,
+  /* a file in no group has no group ref to hold its crop, so the caller says where to put it */
+  onFileCrop?: (
+    file: ManifestFile,
+    range: { cropStart: number | null; cropEnd: number | null }
+  ) => void
 ) => {
   const [preview, setPreview] = useState<PreviewState>(null)
   const videoRefRef = useRef<VideoRef | null>(null)
@@ -60,12 +65,32 @@ const usePreview = (
     videoRefRef.current?.seek(time)
   }
 
+  const closePreview = () => {
+    videoRefRef.current = null
+    setPreview(null)
+  }
+
+  /* Applying a crop is the end of the job: it is saved and the drawer gets out of the way, so the
+     card behind it — where the ✂ and the status have just changed — is what you see next.
+     `Reset crop` comes through here too, with an empty range; that is a clearing rather than a
+     commit, so it leaves the drawer open to set a new one. */
+  const committed = (range: { cropStart: number | null; cropEnd: number | null }) =>
+    range.cropStart !== null || range.cropEnd !== null
+
   const handleVideoApply = (range: { cropStart: number | null; cropEnd: number | null }) => {
     if (!preview) return
     const file = preview.files[preview.index]
     if (!file) return
     const targetId = preview.groupId
     if (targetId === 'unassigned') return
+    /* a lone file belongs to no group: its crop lives on the registry entry, and mapping over
+       groups here used to quietly discard it */
+    if (targetId === 'loose') {
+      onFileCrop?.(file, range)
+      setVideoStateRaw((prev) => ({ ...prev, crop: range }))
+      if (committed(range)) closePreview()
+      return
+    }
     const next = groups.map((g) =>
       g.id !== targetId
         ? g
@@ -80,15 +105,11 @@ const usePreview = (
     )
     onGroupsChange(next as never)
     setVideoStateRaw((prev) => ({ ...prev, crop: range }))
+    if (committed(range)) closePreview()
   }
 
   const handleVideoRef = (ref: VideoRef) => {
     videoRefRef.current = ref
-  }
-
-  const closePreview = () => {
-    videoRefRef.current = null
-    setPreview(null)
   }
 
   return {

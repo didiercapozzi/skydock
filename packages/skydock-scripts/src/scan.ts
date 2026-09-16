@@ -130,10 +130,14 @@ const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => 
   const keptFiles: ManifestFile[] = []
   let removed = 0
   let moved = 0
+  /* Keep what the registry knows and let the disk win on what the disk measures. Pushing the bare
+     disk entry dropped `destination`, the processed/uploaded records and `keep` from every file on
+     any scan that added or removed one — so a single new file un-sorted every lone file. A file
+     whose bytes or time really did change invalidates its own records through the new size/mtime. */
   for (const f of existing.files) {
     const disk = diskByPath.get(f.path)
     if (disk) {
-      keptFiles.push(disk)
+      keptFiles.push({ ...f, ...disk })
       continue
     }
     const candidates = (f.id && diskPathsById.get(f.id)) || []
@@ -143,7 +147,7 @@ const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => 
     const movedDisk = freshPath ? diskByPath.get(freshPath) : undefined
     if (freshPath && movedDisk) {
       claimedDiskPaths.add(freshPath)
-      keptFiles.push(movedDisk)
+      keptFiles.push({ ...f, ...movedDisk })
       moved++
       continue
     }

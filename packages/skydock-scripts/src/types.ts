@@ -1,5 +1,33 @@
 import { z } from 'zod'
 
+/* What `execute` wrote for this file, and the exact inputs that produced it. Change any of those
+   inputs — recrop it, shift its time, replace the bytes — and the copy on disk is no longer this
+   file's copy, which is how the board knows a file dropped back to `local` without anyone having
+   to remember to clear a flag. */
+const processedRecordSchema = z.object({
+  path: z.string(),
+  size: z.number(),
+  at: z.number(),
+  source: z.object({
+    id: z.string().optional(),
+    size: z.number(),
+    mtime: z.number(),
+    cropStart: z.number().nullable().optional(),
+    cropEnd: z.number().nullable().optional()
+  })
+})
+
+/* What actually travelled to the NAS, proved equal on both sides by md5. Only the upload path
+   writes this: a folder listing can say a file is gone, never that it is the right file. */
+const uploadedRecordSchema = z.object({
+  remotePath: z.string(),
+  md5: z.string(),
+  size: z.number(),
+  /* which processed copy went up — re-processing writes a new one and invalidates this */
+  localPath: z.string(),
+  at: z.number()
+})
+
 const manifestFileSchema = z.object({
   path: z.string(),
   size: z.number(),
@@ -11,6 +39,9 @@ const manifestFileSchema = z.object({
   cropEnd: z.number().nullable().optional(),
   destination: z.string().optional(),
   keep: z.boolean().optional(),
+  processed: processedRecordSchema.optional(),
+  uploaded: uploadedRecordSchema.optional(),
+  /* superseded by `processed`; still read once, on load, to migrate old manifests */
   processedPath: z.string().optional()
 })
 
@@ -85,6 +116,8 @@ const manifestSchema = z.object({
 })
 
 type ManifestFile = z.infer<typeof manifestFileSchema>
+type ProcessedRecord = z.infer<typeof processedRecordSchema>
+type UploadedRecord = z.infer<typeof uploadedRecordSchema>
 type ManifestGroup = z.infer<typeof manifestGroupSchema>
 type ManifestPassenger = z.infer<typeof passengerSchema>
 type ManifestPublish = z.infer<typeof publishSchema>
@@ -133,6 +166,8 @@ export type {
   ManifestPassenger,
   ManifestPublish,
   ManifestStatus,
+  ProcessedRecord,
+  UploadedRecord,
   SystemStatus,
   TaskState,
   TaskStatus
@@ -149,7 +184,9 @@ export {
   manifestSchema,
   manifestStatusSchema,
   passengerSchema,
+  processedRecordSchema,
   publishSchema,
+  uploadedRecordSchema,
   systemStatusSchema,
   taskStateSchema,
   taskStatusSchema

@@ -51,6 +51,32 @@ const resolveGroups = (files: ManifestFile[], groupsFile: GroupsFile | null) => 
   return groups
 }
 
+/* Old manifests carry a bare `processedPath`. Having it used to mean "processed", so it becomes a
+   record stamped from the file's current values — with `size: 0, at: 0` marking it unverified,
+   which the first look at the disk then confirms or denies. */
+const migrateFile = (file: ManifestFile): ManifestFile => {
+  if (!file.processedPath || file.processed) {
+    const { processedPath: _legacy, ...rest } = file
+    return rest
+  }
+  const { processedPath, ...rest } = file
+  return {
+    ...rest,
+    processed: {
+      path: processedPath,
+      size: 0,
+      at: 0,
+      source: {
+        id: file.id,
+        size: file.size,
+        mtime: file.mtime,
+        cropStart: file.cropStart ?? null,
+        cropEnd: file.cropEnd ?? null
+      }
+    }
+  }
+}
+
 const loadManifest = (manifestPath: string) => {
   if (!fs.existsSync(manifestPath)) return null
   try {
@@ -100,7 +126,7 @@ const loadManifest = (manifestPath: string) => {
       return parsed
     }
 
-    const files: ManifestFile[] = Array.isArray(raw.files) ? raw.files : []
+    const files: ManifestFile[] = (Array.isArray(raw.files) ? raw.files : []).map(migrateFile)
     const groupsFile = readGroupsFile(getGroupsPath(manifestPath))
     const groups = resolveGroups(files, groupsFile)
 
@@ -120,6 +146,23 @@ const loadManifest = (manifestPath: string) => {
   } catch {
     return null
   }
+}
+
+/* What the disk currently says about each processed copy, keyed by source path. The record alone
+   cannot know that someone emptied `processed/` or that a crop was re-rendered shorter, so the
+   status is only trustworthy with this alongside it. One stat per processed file. */
+const statProcessedOutputs = (manifest: Manifest) => {
+  const outputs: Record<string, { exists: boolean; size: number }> = {}
+  for (const file of manifest.files) {
+    if (!file.processed) continue
+    try {
+      const stat = fs.statSync(file.processed.path)
+      outputs[file.path] = { exists: true, size: stat.size }
+    } catch {
+      outputs[file.path] = { exists: false, size: 0 }
+    }
+  }
+  return outputs
 }
 
 const saveManifest = (manifestPath: string, manifest: Manifest) => {
@@ -228,4 +271,4 @@ const normalizeManifest = (manifest: Manifest) => {
   return changed
 }
 
-export { loadManifest, normalizeManifest, saveManifest }
+export { loadManifest, normalizeManifest, saveManifest, statProcessedOutputs }

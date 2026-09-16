@@ -19,9 +19,11 @@ export type {
   ManifestPassenger,
   ManifestPublish,
   ManifestStatus,
+  ProcessedRecord,
   SystemStatus,
   TaskState,
-  TaskStatus
+  TaskStatus,
+  UploadedRecord
 } from './types'
 
 export {
@@ -42,6 +44,8 @@ export {
 } from './types'
 
 export { groupFromFiles, reclusterGroups, regroupLooseFiles, shiftFiles } from './clustering'
+export { fileStatus, scopeStatus, uploadGate } from './fileStatus'
+export type { FileStatus, OutputFact, RemoteListing, StatusContext } from './fileStatus'
 export {
   buildFsTime,
   buildGroupBaseName,
@@ -53,10 +57,16 @@ export {
   reorderFilesInGroup,
   resolveDestinationPath
 } from './workspace'
-export { loadManifest, normalizeManifest, saveManifest } from './manifest'
+export { loadManifest, normalizeManifest, saveManifest, statProcessedOutputs } from './manifest'
 export { planUpload, publishJump, uploadFile } from './publish'
-export type { CheckProgress, PublishArgs, UploadProgress } from './publish'
-export { groupsInScope, resolveUploadTargets, scopeKey, uploadScope } from './upload'
+export type { CheckProgress, PublishArgs, UploadProgress, UploadVerdict } from './publish'
+export {
+  groupsInScope,
+  listRemoteFiles,
+  resolveUploadTargets,
+  scopeKey,
+  uploadScope
+} from './upload'
 export type { UploadScope, UploadTarget } from './upload'
 export {
   clearUploadProgress,
@@ -116,6 +126,7 @@ export {
   isCliModule,
   isoToDay,
   isVideoFile,
+  mapWithLimit,
   parseDayEpoch,
   parseExiftoolCsv,
   sortFilesByMtime,

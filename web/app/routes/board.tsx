@@ -1,20 +1,28 @@
 import {
   destinationSchema,
   ensureNasSession,
+  fileStatus,
   getOutputDir,
+  listRemoteFiles,
   loadManifest,
   manifestFileSchema,
-  manifestGroupSchema
+  manifestGroupSchema,
+  statProcessedOutputs,
+  uploadGate
 } from '@skydock/scripts'
+import type { FileStatus, OutputFact, RemoteListing } from '@skydock/scripts'
 import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import { ComparisonDialog } from '../components/comparison-dialog'
 import { ConnectionDialog } from '../components/connection-dialog'
 import { NasFolderBrowser } from '../components/nas-folder-browser'
+import { StatusChip, StatusDot, StatusLegend } from '../components/file-status'
 import { PreviewDrawer } from '../components/preview-drawer'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
 import { formatSize, formatTime, getThumbUrl, isVideoFile, minFileMtime } from '../components/utils'
 import { useSafeFetcher } from '../helpers/routing'
+import { setFileView, useFileView } from '../hooks/useFileView'
+import type { FileView } from '../hooks/useFileView'
 import { useGroups } from '../hooks/useJumps'
 import { usePreview } from '../hooks/usePreview'
 import { useUploadProgress } from '../hooks/useUploadProgress'
@@ -31,6 +39,19 @@ const nasSuccessSchema = z.object({
 })
 
 const nasErrorSchema = z.object({ globalErrors: z.array(z.string()).optional() }).passthrough()
+
+const remoteFilesSchema = z.union([
+  z.object({
+    ok: z.literal(true),
+    dirs: z.array(z.string()),
+    sizes: z.record(z.string(), z.number().nullable()),
+    at: z.number()
+  }),
+  z.object({ ok: z.literal(false), reason: z.string() })
+])
+
+/* a listing plus when it was taken, so the newest of several answers wins */
+type CheckedListing = RemoteListing & { at: number }
 
 const montageResponseSchema = z.object({
   ok: z.boolean().optional(),
@@ -56,14 +77,19 @@ const loader = async (_args: Route.LoaderArgs) => {
     hostname: string | null
     defaultFolder: string | null
   } = { connected: false, hostname: null, defaultFolder: null }
+  /* the first look at the NAS happens here rather than on mount: the page then arrives already
+     correct, and the Refresh button re-runs the same check through /api/remote-files */
+  let remote: { dirs: string[]; sizes: Record<string, number | null>; at: number } | null = null
   try {
     const session = await ensureNasSession()
-    if (session)
+    if (session) {
       nas = {
         connected: true,
         hostname: session.hostname,
         defaultFolder: session.defaultFolder ?? null
       }
+      if (manifest) remote = await listRemoteFiles(manifest, session)
+    }
   } catch {
     nas = { connected: false, hostname: null, defaultFolder: null }
   }
@@ -75,6 +101,10 @@ const loader = async (_args: Route.LoaderArgs) => {
     groups: manifest?.groups ?? [],
     looseFiles,
     destinations: manifest?.destinations ?? [],
+    /* what the disk says about each processed copy — the record alone cannot know someone
+       emptied processed/ (§14.5) */
+    outputs: manifest ? statProcessedOutputs(manifest) : {},
+    remote,
     hasManifest: manifest !== null,
     nas
   }
@@ -139,6 +169,7 @@ const Thumb = ({
   file,
   selected,
   picking,
+  status,
   onClick,
   onDragStart,
   small
@@ -147,6 +178,7 @@ const Thumb = ({
   selected: boolean
   /* a selection is under way somewhere on the board — every thumbnail shows its mark */
   picking: boolean
+  status: FileStatus
   onClick: (e: React.MouseEvent) => void
   onDragStart?: (e: React.DragEvent) => void
   small?: boolean
@@ -178,6 +210,14 @@ const Thumb = ({
         ✓
       </span>
     )}
+    {file.cropStart != null && file.cropEnd != null && (
+      <span
+        title={`Cropped ${file.cropStart.toFixed(1)}s → ${file.cropEnd.toFixed(1)}s`}
+        className='pointer-events-none absolute right-0 bottom-0 rounded-tl bg-black/60 px-0.5 text-[9px] leading-none'>
+        ✂️
+      </span>
+    )}
+    <StatusDot status={status} />
   </div>
 )
 
@@ -191,6 +231,9 @@ type WallHooks = {
     onPreview: () => void
   ) => void
   onDragFile: (file: ManifestFile, e?: React.DragEvent) => void
+  /* one function decides every file's state, so rows, dots and the Upload gate cannot disagree */
+  statusOf: (file: ManifestFile) => FileStatus
+  view: FileView
 }
 
 /* Hide / Show N files — absent entirely on a card small enough not to need folding */
@@ -218,24 +261,89 @@ const Fold = ({
 /* the first few thumbnails of a folded card, so a file can leave it without opening it */
 const Peek = ({
   files,
-  onDragFile
+  onDragFile,
+  statusOf
 }: {
   files: ManifestFile[]
   onDragFile: WallHooks['onDragFile']
+  statusOf: WallHooks['statusOf']
 }) => (
   <div className='mt-2 flex gap-1 overflow-hidden'>
     {files.slice(0, 4).map((file, index) => (
-      <img
+      /* the dot goes here too: on a folded card of several hundred files it is the only sign */
+      <span
         key={`${index}:${file.path}`}
+        className='relative'>
+        <img
+          src={getThumbUrl(file.path, 0.5, 80)}
+          alt=''
+          loading='lazy'
+          draggable
+          onDragStart={(e) => onDragFile(file, e)}
+          className='h-8 w-11 rounded bg-gray-100 object-cover'
+        />
+        <StatusDot status={statusOf(file)} />
+      </span>
+    ))}
+  </div>
+)
+
+/* One file as a row: what it is, when it was shot, how big, and where it has got to. */
+const FileLine = ({
+  file,
+  selected,
+  picking,
+  status,
+  onClick,
+  onDragStart
+}: {
+  file: ManifestFile
+  selected: boolean
+  picking: boolean
+  status: FileStatus
+  onClick: (e: React.MouseEvent) => void
+  onDragStart: (e: React.DragEvent) => void
+}) => (
+  <li>
+    <button
+      type='button'
+      draggable
+      onDragStart={onDragStart}
+      onClick={onClick}
+      className={`flex w-full items-center gap-2 rounded border px-1.5 py-1 text-left ${
+        selected ? 'border-teal-600 bg-teal-50' : 'border-transparent hover:bg-gray-50'
+      }`}>
+      {(picking || selected) && (
+        <span
+          className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border text-[8px] leading-none ${
+            selected ? 'border-teal-600 bg-teal-600 text-white' : 'border-gray-400 bg-white'
+          }`}>
+          ✓
+        </span>
+      )}
+      <img
         src={getThumbUrl(file.path, 0.5, 80)}
         alt=''
         loading='lazy'
-        draggable
-        onDragStart={(e) => onDragFile(file, e)}
-        className='h-8 w-11 rounded bg-gray-100 object-cover'
+        className='h-7 w-10 shrink-0 rounded bg-gray-100 object-cover'
       />
-    ))}
-  </div>
+      <span className='min-w-0 flex-1 truncate font-mono text-[11px] text-gray-700'>
+        {file.filename}
+      </span>
+      {file.cropStart != null && file.cropEnd != null && (
+        <span
+          title={`Cropped ${file.cropStart.toFixed(1)}s → ${file.cropEnd.toFixed(1)}s`}
+          className='shrink-0 text-[10px]'>
+          ✂️
+        </span>
+      )}
+      <span className='shrink-0 font-mono text-[11px] text-gray-500'>{formatTime(file.mtime)}</span>
+      <span className='w-16 shrink-0 text-right text-[11px] text-gray-400 tabular-nums'>
+        {formatSize(file.size)}
+      </span>
+      <StatusChip status={status} />
+    </button>
+  </li>
 )
 
 /* what an upload is doing right now: the dedup pass first, then the bytes. Without the checking
@@ -282,28 +390,46 @@ const Wall = ({
   split,
   picked,
   onFile,
-  onDragFile
+  onDragFile,
+  statusOf,
+  view
 }: WallHooks & {
   files: ManifestFile[]
   lane: ManifestFile[]
   onPreview: (file: ManifestFile) => void
   split?: boolean
 }) => {
-  const strip = (list: ManifestFile[], small?: boolean) => (
-    <div className='mt-1 flex flex-wrap gap-1'>
-      {list.map((file, index) => (
-        <Thumb
-          key={`${index}:${file.path}`}
-          file={file}
-          small={small}
-          selected={!!file.id && picked.includes(file.id)}
-          picking={picked.length > 0}
-          onClick={(e) => onFile(file, lane, e, () => onPreview(file))}
-          onDragStart={(e) => onDragFile(file, e)}
-        />
-      ))}
-    </div>
-  )
+  const strip = (list: ManifestFile[], small?: boolean) =>
+    view === 'rows' ? (
+      <ul className='mt-1 space-y-0.5'>
+        {list.map((file, index) => (
+          <FileLine
+            key={`${index}:${file.path}`}
+            file={file}
+            selected={!!file.id && picked.includes(file.id)}
+            picking={picked.length > 0}
+            status={statusOf(file)}
+            onClick={(e) => onFile(file, lane, e, () => onPreview(file))}
+            onDragStart={(e) => onDragFile(file, e)}
+          />
+        ))}
+      </ul>
+    ) : (
+      <div className='mt-1 flex flex-wrap gap-1'>
+        {list.map((file, index) => (
+          <Thumb
+            key={`${index}:${file.path}`}
+            file={file}
+            small={small}
+            selected={!!file.id && picked.includes(file.id)}
+            picking={picked.length > 0}
+            status={statusOf(file)}
+            onClick={(e) => onFile(file, lane, e, () => onPreview(file))}
+            onDragStart={(e) => onDragFile(file, e)}
+          />
+        ))}
+      </div>
+    )
   if (!split) return strip(files)
   const videos = videosOf(files)
   const photos = photosOf(files)
@@ -353,10 +479,28 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   >(null)
   const [dialogOpenedOn, setDialogOpenedOn] = useState<unknown>(null)
   const [uploading, setUploading] = useState<string | null>(null)
+  const [outputs, setOutputs] = useState<Record<string, OutputFact>>(loaderData.outputs)
+  const [remoteAfterUpload, setRemoteAfterUpload] = useState<CheckedListing | null>(null)
+  const view = useFileView()
   const fetcher = useSafeFetcher()
   /* NAS answers must not land in the groups effect below, so they get their own fetcher */
   const nasFetcher = useSafeFetcher()
-  const preview = usePreview(groups, [], updateGroups)
+  /* what the NAS currently holds, so a file deleted over there stops reading as uploaded */
+  const remoteFetcher = useSafeFetcher()
+  /* A lone file's crop goes through the same save as everything else, on the registry entry — and
+     the board's own copy has to be updated with it. `updateGroups` refreshes `groups` optimistically
+     but answers on its own fetcher, so nothing here ever hears about the saved loose files: without
+     this the crop was invisible until a reload, and re-opening the preview read back the stale
+     uncropped file. */
+  const cropLoneFile = (
+    file: ManifestFile,
+    range: { cropStart: number | null; cropEnd: number | null }
+  ) => {
+    const cropped = { ...file, cropStart: range.cropStart, cropEnd: range.cropEnd }
+    setLoose((current) => current.map((f) => (f.path === file.path ? cropped : f)))
+    updateGroups(groups, [cropped])
+  }
+  const preview = usePreview(groups, [], updateGroups, cropLoneFile)
   const progress = useUploadProgress(uploading)
 
   /* derived, never stored: the loader is the first paint and the fetcher is the live truth */
@@ -381,16 +525,37 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         groups: z.array(manifestGroupSchema),
         looseFiles: z.array(manifestFileSchema).optional(),
         destinations: z.array(destinationSchema).optional(),
+        outputs: z
+          .record(z.string(), z.object({ exists: z.boolean(), size: z.number() }))
+          .optional(),
+        remote: z
+          .object({
+            dirs: z.array(z.string()),
+            sizes: z.record(z.string(), z.number().nullable()),
+            at: z.number()
+          })
+          .optional(),
         uploaded: z.number().optional(),
         skipped: z.number().optional()
       })
       .safeParse(fetcher.data)
     if (answered.success) {
-      const { groups: saved, looseFiles, destinations, uploaded, skipped } = answered.data
+      const {
+        groups: saved,
+        looseFiles,
+        destinations,
+        outputs: freshOutputs,
+        remote: freshRemote,
+        uploaded,
+        skipped
+      } = answered.data
       queueMicrotask(() => {
         setGroups(saved)
         if (looseFiles) setLoose(looseFiles)
         if (destinations) setPlaces(destinations)
+        if (freshOutputs) setOutputs(freshOutputs)
+        /* an upload answers with the listing taken right after it */
+        if (freshRemote) setRemoteAfterUpload(freshRemote)
         setBusy(null)
         setUploading(null)
         setNote(
@@ -660,8 +825,36 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     setDraggedFiles(pickedFiles.includes(file.id) ? pickedFiles : [file.id])
   }
 
-  /* every wall of thumbnails needs the same three things from the board */
-  const wall = { picked: pickedFiles, onFile: clickFile, onDragFile: startFileDrag }
+  /* Only a listing that came back may demote a file; a NAS that was never asked, or that failed,
+     leaves every proven upload alone (§14.5). */
+  const remoteAnswer = remoteFilesSchema.safeParse(remoteFetcher.data)
+  const fresh = remoteAnswer.success && remoteAnswer.data.ok ? remoteAnswer.data : null
+  /* the loader took the first look; an upload's own listing or a Refresh replaces it, newest wins */
+  const seen: CheckedListing[] = [fresh, remoteAfterUpload, loaderData.remote].filter(
+    (r): r is CheckedListing => r !== null
+  )
+  const newest = seen.length === 0 ? null : seen.reduce((a, b) => (a.at >= b.at ? a : b))
+  const remote: RemoteListing | null = newest
+  const remoteCheckedAt = newest?.at ?? null
+
+  const statusContext = (file: ManifestFile) => ({
+    crop: { cropStart: file.cropStart, cropEnd: file.cropEnd },
+    output: outputs[file.path],
+    remote
+  })
+  const statusOf = (file: ManifestFile) => fileStatus(file, statusContext(file))
+  const gateFor = (files: ManifestFile[]) => uploadGate(files, statusContext)
+
+  const checkRemote = () => remoteFetcher.load({ url: '/api/remote-files' })
+
+  /* every wall of thumbnails needs the same things from the board */
+  const wall = {
+    picked: pickedFiles,
+    onFile: clickFile,
+    onDragFile: startFileDrag,
+    statusOf,
+    view
+  }
 
   /* Only the zone under the pointer lights up, and only when it takes what is being carried.
      onDragLeave also fires when the pointer crosses a child, so `contains` stops the flicker. */
@@ -772,6 +965,18 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               </button>
               <button
                 type='button'
+                disabled={remoteFetcher.state !== 'idle'}
+                onClick={checkRemote}
+                title='Ask the NAS what it holds now — a file deleted there stops reading as uploaded'
+                className='rounded border border-gray-300 bg-white px-2 py-0.5 disabled:opacity-50'>
+                {remoteFetcher.state !== 'idle'
+                  ? 'Checking…'
+                  : remoteCheckedAt
+                    ? `⟳ checked ${formatTime(remoteCheckedAt)}`
+                    : '⟳ check NAS'}
+              </button>
+              <button
+                type='button'
                 onClick={disconnect}
                 className='text-gray-500 underline'>
                 disconnect
@@ -785,6 +990,20 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               Connect the NAS
             </button>
           )}
+          <span className='flex overflow-hidden rounded border border-gray-300'>
+            {(['rows', 'grid'] as const).map((mode) => (
+              <button
+                key={mode}
+                type='button'
+                onClick={() => setFileView(mode)}
+                className={`px-2 py-0.5 ${
+                  view === mode ? 'bg-gray-900 text-white' : 'bg-white text-gray-600'
+                }`}>
+                {mode}
+              </button>
+            ))}
+          </span>
+          <StatusLegend />
           <a
             href='/classic'
             className='text-gray-500 underline'>
@@ -941,6 +1160,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                             <Peek
                               files={group.files}
                               onDragFile={startFileDrag}
+                              statusOf={statusOf}
                             />
                           )}
                         </div>
@@ -1035,6 +1255,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               const days = [...new Set([...inside.map(dayOf), ...lone.map(dayOfFile)])]
                 .sort()
                 .reverse()
+              /* a changed file reads `local` again, and nothing leaves until it is processed */
+              const gate = gateFor([...inside.flatMap((g) => g.files), ...lone])
               return (
                 <section
                   key={destination.name}
@@ -1052,19 +1274,27 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                     {(inside.length > 0 || lone.length > 0) && (
                       <button
                         type='button'
-                        disabled={busy !== null}
+                        disabled={busy !== null || gate.blocked}
                         onClick={() =>
                           requestUpload(
                             { destination: destination.name },
                             `dest:${destination.name}`
                           )
                         }
-                        title='Send this dropzone to the NAS — files already there are skipped'
+                        title={
+                          gate.message ??
+                          'Send this dropzone to the NAS — files already there are skipped'
+                        }
                         className='ml-auto rounded bg-teal-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50'>
                         {busy === `dest:${destination.name}` ? 'Uploading…' : 'Upload'}
                       </button>
                     )}
                   </div>
+                  {gate.blocked && (
+                    <p className='mt-1 text-[11px] text-amber-700'>
+                      {gate.message} — process before uploading
+                    </p>
+                  )}
                   <p className='mt-1 font-mono text-[11px] text-gray-400'>
                     processed/{destination.name}/ · every file lands here directly
                   </p>
@@ -1120,8 +1350,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                       dayGroups.flatMap((g) => g.files.map((f) => [f.path, g] as const))
                     )
                     const key = `${destination.name}:${day}`
-                    const pending =
-                      dayGroups.some((g) => !g.processed) || dayLone.some((f) => !f.processedPath)
+                    /* the day needs processing when any of its files reads `local` — the same
+                       fact the chips show, rather than a second opinion from a group flag */
+                    const pending = files.some((f) => statusOf(f) === 'local')
                     return (
                       <div
                         key={day}
@@ -1176,6 +1407,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                           <Peek
                             files={files}
                             onDragFile={startFileDrag}
+                            statusOf={statusOf}
                           />
                         )}
                       </div>
@@ -1248,6 +1480,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                       <Peek
                         files={stray}
                         onDragFile={startFileDrag}
+                        statusOf={statusOf}
                       />
                     )}
                   </div>
@@ -1348,8 +1581,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                         </button>
                         <button
                           type='button'
-                          disabled={busy !== null}
-                          title='Send this passenger to the NAS — files already there are skipped'
+                          disabled={busy !== null || gateFor(group.files).blocked}
+                          title={
+                            gateFor(group.files).message ??
+                            'Send this passenger to the NAS — files already there are skipped'
+                          }
                           onClick={() =>
                             requestUpload({ groupIds: [group.id] }, `group:${group.id}`)
                           }
@@ -1386,6 +1622,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                   <Peek
                     files={group.files}
                     onDragFile={startFileDrag}
+                    statusOf={statusOf}
                   />
                 )}
               </div>

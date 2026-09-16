@@ -108,7 +108,7 @@ const writeGroup = (
   group: ManifestGroup,
   outputDir: string,
   usedNames: Set<string>,
-  record: (sourcePath: string, destPath: string) => void
+  record: (source: ManifestFile, destPath: string) => void
 ) => {
   const { dir, baseName, dayEpoch, flat } = getGroupProcessedDir(outputDir, group)
   const written: string[] = []
@@ -124,7 +124,7 @@ const writeGroup = (
         : baseName
       const dest = path.join(targetDir, makeFileName(stem, file.mtime, ext, usedNames))
       copyMedia(file, dest, buildFsTime(flat ? file.mtime : dayEpoch, file.mtime))
-      record(file.path, dest)
+      record(file, dest)
       written.push(dest)
     }
     updateMetadata(written)
@@ -142,7 +142,7 @@ const writeLooseFiles = (
   destination: string,
   files: ManifestFile[],
   outputDir: string,
-  record: (sourcePath: string, destPath: string) => void
+  record: (source: ManifestFile, destPath: string) => void
 ) => {
   const dir = getDestinationDir(outputDir, destination)
   const stem = toFileStem(destination, 'destination')
@@ -156,7 +156,7 @@ const writeLooseFiles = (
     const name = makeFileName(`${stem}_${formatGroupDay(file.mtime)}`, file.mtime, ext, usedNames)
     const dest = path.join(dir, name)
     copyMedia(file, dest, buildFsTime(file.mtime, file.mtime))
-    record(file.path, dest)
+    record(file, dest)
     written.push(dest)
   }
   updateMetadata(written)
@@ -221,9 +221,12 @@ const executeMedia = (options?: ExecuteOptions) => {
     return pool
   }
 
-  const processedPaths = new Map<string, string>()
-  const record = (sourcePath: string, destPath: string) => {
-    processedPaths.set(sourcePath, destPath)
+  /* keyed by source path, holding the file as it was COPIED — a grouped file carries the group
+     ref's crop, which the registry entry does not, and that crop is part of what produced the
+     output, so the stamp has to come from this object and not from `manifest.files` */
+  const processedPaths = new Map<string, { dest: string; source: ManifestFile }>()
+  const record = (source: ManifestFile, destPath: string) => {
+    processedPaths.set(source.path, { dest: destPath, source })
   }
 
   let copied = 0
@@ -243,10 +246,28 @@ const executeMedia = (options?: ExecuteOptions) => {
     )
   }
 
-  /* remember where each source landed, so removing a file can delete its processed copy */
+  /* Stamp each source with where it landed and what it was made from, so the board can tell a
+     current copy from one whose source has moved on. A fresh copy is not the copy that went to
+     the NAS, so the upload record goes — if the bytes are identical the next dedup pass restores
+     it without sending anything. */
   for (const file of manifest.files) {
-    const dest = processedPaths.get(file.path)
-    if (dest) file.processedPath = dest
+    const written = processedPaths.get(file.path)
+    if (!written) continue
+    const { dest, source } = written
+    file.processed = {
+      path: dest,
+      size: fs.statSync(dest).size,
+      at: Math.floor(Date.now() / 1000),
+      source: {
+        id: source.id,
+        size: source.size,
+        mtime: source.mtime,
+        cropStart: source.cropStart ?? null,
+        cropEnd: source.cropEnd ?? null
+      }
+    }
+    delete file.uploaded
+    delete file.processedPath
   }
 
   if (groups.length > 0 || processedPaths.size > 0) saveManifest(manifestPath, manifest)
