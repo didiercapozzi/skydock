@@ -399,4 +399,78 @@ describe('publishJump', () => {
       fs.rmSync(out, { recursive: true, force: true })
     }
   })
+
+  /* A tandem's folder holds the working trees, the project and the rushes as well as the two
+     things the passenger gets. Sending the folder is how the rushes ended up behind a passenger's
+     share link, so what travels has to be named rather than walked. */
+  it('sends only the files it was given, although the folder holds more', async () => {
+    const dir = makeTmpTree()
+    const out = createTmpDir('skydock-publish-nas-')
+    fs.writeFileSync(path.join(dir, 'film.mp4'), Buffer.from('film'))
+    fs.writeFileSync(path.join(dir, 'rushes.zip'), Buffer.from('rushes'))
+    const server = await startUploadServer(() => ({ status: 200, body: { success: true } }))
+    try {
+      stubFetch(async (url) => {
+        if (url.includes('SYNO.API.Auth') && url.includes('method=login'))
+          return loginSuccess('sid')
+        if (url.includes('SYNO.API.Auth')) return jsonResponse({ success: true })
+        if (url.includes('SYNO.FileStation.List'))
+          return jsonResponse({ success: true, data: { files: [] } })
+        if (url.includes('SYNO.FileStation.Sharing'))
+          return jsonResponse({ success: true, data: { links: [{ url: '/sharing/one' }] } })
+        throw new Error(`unexpected call ${url}`)
+      })
+      const result = await publishJump({
+        host: server.url,
+        user: 'u',
+        password: 'p',
+        localDir: dir,
+        remoteDir: '/SkyDock/Luc Favre',
+        outputDir: out,
+        files: [path.join(dir, 'film.mp4')]
+      })
+      expect(result.uploaded).toBe(1)
+      const sent = server.uploads.map(
+        (u) => /filename="([^"]+)"/.exec(u.body.toString('latin1'))?.[1]
+      )
+      expect(sent).toEqual(['film.mp4'])
+      expect(sent).not.toContain('rushes.zip')
+    } finally {
+      await server.close()
+      fs.rmSync(dir, { recursive: true, force: true })
+      fs.rmSync(out, { recursive: true, force: true })
+    }
+  })
+
+  /* nobody is handed a link to the backup folder */
+  it('asks for no share link when told not to', async () => {
+    const dir = makeTmpTree()
+    const out = createTmpDir('skydock-publish-nas-')
+    const server = await startUploadServer(() => ({ status: 200, body: { success: true } }))
+    try {
+      stubFetch(async (url) => {
+        if (url.includes('SYNO.API.Auth') && url.includes('method=login'))
+          return loginSuccess('sid')
+        if (url.includes('SYNO.API.Auth')) return jsonResponse({ success: true })
+        if (url.includes('SYNO.FileStation.List'))
+          return jsonResponse({ success: true, data: { files: [] } })
+        throw new Error(`unexpected call ${url}`)
+      })
+      const result = await publishJump({
+        host: server.url,
+        user: 'u',
+        password: 'p',
+        localDir: dir,
+        remoteDir: '/Backup',
+        outputDir: out,
+        share: false
+      })
+      expect(result.shareUrl).toBeNull()
+      expect(seen.some((c) => c.url.includes('SYNO.FileStation.Sharing'))).toBe(false)
+    } finally {
+      await server.close()
+      fs.rmSync(dir, { recursive: true, force: true })
+      fs.rmSync(out, { recursive: true, force: true })
+    }
+  })
 })

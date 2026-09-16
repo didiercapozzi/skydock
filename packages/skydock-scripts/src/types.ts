@@ -58,6 +58,26 @@ const publishSchema = z.object({
   shareUrl: z.string()
 })
 
+/* The editing project written for this tandem, and the template it came from — kept because the
+   template can be replaced later, and a film already handed over should still say what made it. */
+const montageRecordSchema = z.object({
+  projectPath: z.string(),
+  filmPath: z.string(),
+  template: z.string(),
+  clips: z.number(),
+  at: z.number()
+})
+
+/* What was handed over, and to where. The film and the archives are not files off a camera, so
+   their state cannot ride on the per-file records — it belongs to the tandem. */
+const deliveredRecordSchema = z.object({
+  at: z.number(),
+  shareUrl: z.string().optional(),
+  film: uploadedRecordSchema.optional(),
+  photos: uploadedRecordSchema.optional(),
+  rushes: uploadedRecordSchema.optional()
+})
+
 const manifestGroupSchema = z.object({
   id: z.string(),
   label: z.string(),
@@ -65,6 +85,8 @@ const manifestGroupSchema = z.object({
   processed: z.boolean().nullable().optional(),
   passenger: passengerSchema.optional(),
   publish: publishSchema.optional(),
+  montage: montageRecordSchema.optional(),
+  delivered: deliveredRecordSchema.optional(),
   day: z.string(),
   destination: z.string().optional()
 })
@@ -101,6 +123,7 @@ type Destination = z.infer<typeof destinationSchema>
 export type { Destination, GroupsFile, Manifest, ManifestFile, ManifestGroup, ManifestPassenger }
 
 export {
+  deliveredRecordSchema,
   destinationSchema,
   destinationsSchema,
   groupFileRefSchema,
@@ -108,6 +131,7 @@ export {
   manifestFileSchema,
   manifestGroupSchema,
   manifestSchema,
+  montageRecordSchema,
   passengerSchema,
   processedRecordSchema,
   publishSchema,

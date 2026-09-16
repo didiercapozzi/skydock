@@ -23,7 +23,12 @@ const publishArgsSchema = dsmConfigSchema.extend({
   remoteDir: z.string(),
   outputDir: z.string().optional(),
   dedupe: z.boolean().optional(),
-  md5Concurrency: z.number().optional()
+  md5Concurrency: z.number().optional(),
+  /* exactly what to send, when the folder holds more than the recipient should get — a passenger's
+     folder also holds the project and the rushes, and neither is theirs */
+  files: z.array(z.string()).optional(),
+  /* a backup folder gets no public link */
+  share: z.boolean().optional()
 })
 type PublishArgs = z.infer<typeof publishArgsSchema>
 
@@ -201,7 +206,8 @@ const planUpload = async ({
   localDir,
   remoteDir,
   concurrency = MD5_CONCURRENCY,
-  onCheck
+  onCheck,
+  files: only
 }: {
   host: string
   sid: string
@@ -209,8 +215,9 @@ const planUpload = async ({
   remoteDir: string
   concurrency?: number
   onCheck?: (progress: CheckProgress) => void
+  files?: string[]
 }) => {
-  const files = walkFiles(localDir)
+  const files = only ?? walkFiles(localDir)
   const remoteDirs = [...new Set(files.map((f) => remoteDirOf(localDir, remoteDir, f)))]
   const remoteByPath = new Map<string, number | null>()
   for (const dir of remoteDirs) {
@@ -270,7 +277,7 @@ const publishJump = async (
     { login: dsmLogin, validate: dsmValidateSession },
     args.outputDir
   )
-  const all = walkFiles(args.localDir)
+  const all = args.files ?? walkFiles(args.localDir)
   const planned =
     args.dedupe === false
       ? { upload: [...all].sort(), skip: [] as UploadVerdict[] }
@@ -280,7 +287,8 @@ const publishJump = async (
           localDir: args.localDir,
           remoteDir: args.remoteDir,
           concurrency: args.md5Concurrency,
-          onCheck: handlers?.onCheck
+          onCheck: handlers?.onCheck,
+          files: args.files
         })
 
   const totalFiles = planned.upload.length
@@ -299,7 +307,7 @@ const publishJump = async (
     })
   }
   return {
-    shareUrl: await ensureShareLink(args.host, sid, args.remoteDir),
+    shareUrl: args.share === false ? null : await ensureShareLink(args.host, sid, args.remoteDir),
     uploaded: planned.upload.length,
     skipped: planned.skip.length,
     /* every file now known to be on the NAS, sent or already there */

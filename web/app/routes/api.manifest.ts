@@ -1,11 +1,15 @@
 import * as fs from 'node:fs'
+import * as path from 'node:path'
 import type { Route } from './+types/api.manifest'
 import { z } from 'zod'
 import {
   clearUploadProgress,
+  deliverScopeKey,
   destinationSchema,
   ensureNasSession,
+  isTandem,
   processJumps,
+  getGroupProcessedDir,
   getOutputDir,
   groupFromFiles,
   groupsInScope,
@@ -23,6 +27,10 @@ import {
   uploadScope,
   writeUploadProgress
 } from '@skydock/scripts'
+/* both reach the filesystem and the NAS, so they are imported straight from the package rather
+   than through the barrel the board also reads */
+import { deliverTandem } from '../../../packages/skydock-scripts/src/deliver'
+import { createMontageProject } from '../../../packages/skydock-scripts/src/montage'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 import { boardAnswer } from '../helpers/manifest'
 
@@ -32,6 +40,8 @@ const actionArgs = z.object({
     'merge-groups',
     'process',
     'upload-group',
+    'montage',
+    'deliver',
     'shift-group-time',
     'move-files',
     'regroup-loose'
@@ -42,6 +52,7 @@ const actionArgs = z.object({
   targetGroupId: z.string().optional(),
   newGroup: z.boolean().optional(),
   destination: z.string().optional(),
+  template: z.string().optional(),
   groups: z.array(manifestGroupSchema).optional(),
   fileUpdates: z.array(manifestFileSchema).optional(),
   destinations: z.array(destinationSchema).optional(),
@@ -195,6 +206,191 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       }
       const updated = loadManifest(manifestPath)
       return boardAnswer(updated ?? manifest)
+    }
+    if (data.intent === 'montage') {
+      const group = manifest.groups.find((g) => g.id === data.groupId)
+      if (!group) {
+        errors.addGlobalError('Group not found.')
+        return errors.toResponse(422)
+      }
+      if (!isTandem(group)) {
+        errors.addGlobalError('Only a tandem gets a montage — give it a passenger first.')
+        return errors.toResponse(422)
+      }
+      if (!group.processed) {
+        errors.addGlobalError('Process this tandem before making its montage.')
+        return errors.toResponse(422)
+      }
+      const outputDir = getOutputDir()
+      const { dir: groupDir, baseName } = getGroupProcessedDir(outputDir, group)
+      if (!fs.existsSync(groupDir)) {
+        errors.addGlobalError('Processed folder not found. Process it again.')
+        return errors.toResponse(422)
+      }
+      /* an edit someone has been working on is never overwritten (RULES, Montage) */
+      if (fs.readdirSync(groupDir).some((f) => f.endsWith('.kdenlive'))) {
+        errors.addGlobalError('This tandem already has a project — open it in kdenlive.')
+        return errors.toResponse(422)
+      }
+      try {
+        /* the processed copies are already renamed and cropped — the timeline lays them out */
+        const videos = fs
+          .readdirSync(path.join(groupDir, 'videos'), { withFileTypes: true })
+          .filter((e) => e.isFile())
+          .map((e) => path.join(groupDir, 'videos', e.name))
+          .sort()
+        const made = createMontageProject({
+          groupDir,
+          outputDir,
+          baseName,
+          title: passengerOf(group).trim() || group.label,
+          template: data.template,
+          clips: videos.map((file) => ({ path: file }))
+        })
+        group.montage = {
+          projectPath: made.projectPath,
+          filmPath: made.filmPath,
+          template: made.template,
+          clips: made.clips,
+          at: Math.floor(Date.now() / 1000)
+        }
+        saveManifest(manifestPath, manifest)
+        return {
+          ...boardAnswer(manifest),
+          montage: { clips: made.clips, missingAssets: made.missingAssets }
+        }
+      } catch (e) {
+        errors.addGlobalError(e instanceof Error ? e.message : String(e))
+        return errors.toResponse(422)
+      }
+    }
+    if (data.intent === 'deliver') {
+      const group = manifest.groups.find((g) => g.id === data.groupId)
+      if (!group) {
+        errors.addGlobalError('Group not found.')
+        return errors.toResponse(422)
+      }
+      const session = await ensureNasSession()
+      if (!session) {
+        errors.addGlobalError('Not connected to NAS. Please connect first.')
+        return errors.toResponse(422)
+      }
+      const outputDir = getOutputDir()
+      /* the same rule upload uses: a film built from a copy that no longer matches its source is
+         not this tandem's film */
+      const outputs = statProcessedOutputs(manifest)
+      const gate = uploadGate(group.files, (file) => ({ output: outputs[file.path] }))
+      if (gate.blocked) {
+        errors.addGlobalError(`${gate.message} — process before delivering.`)
+        return errors.toResponse(422)
+      }
+      const key = deliverScopeKey(group.id)
+      let progress = { filename: '', fileIndex: 0, totalFiles: 0 }
+      try {
+        clearUploadProgress(outputDir)
+        const result = await deliverTandem({
+          outputDir,
+          manifest,
+          group,
+          session,
+          onArchive: (archive) =>
+            writeUploadProgress(
+              {
+                scope: key,
+                groupId: group.id,
+                filename: `${archive.name}.zip`,
+                bytesUploaded: archive.bytes,
+                totalBytes: Math.max(1, archive.totalBytes),
+                fileIndex: archive.entries,
+                totalFiles: archive.totalEntries,
+                state: 'archiving'
+              },
+              outputDir
+            ),
+          onCheck: (check) =>
+            writeUploadProgress(
+              {
+                scope: key,
+                groupId: group.id,
+                filename: check.filename,
+                bytesUploaded: 0,
+                totalBytes: 1,
+                fileIndex: 0,
+                totalFiles: check.total,
+                checked: check.checked,
+                state: 'checking'
+              },
+              outputDir
+            ),
+          onProgress: (p) => {
+            progress = {
+              filename: p.filename,
+              fileIndex: p.fileIndex ?? 0,
+              totalFiles: p.totalFiles ?? 0
+            }
+            writeUploadProgress(
+              {
+                scope: key,
+                groupId: group.id,
+                filename: p.filename,
+                bytesUploaded: p.bytesUploaded,
+                totalBytes: p.totalBytes,
+                fileIndex: p.fileIndex ?? 0,
+                totalFiles: p.totalFiles ?? 0,
+                state: 'uploading'
+              },
+              outputDir
+            )
+          }
+        })
+        /* a delivery runs for minutes; anything saved meanwhile is on disk and must not be
+           clobbered by the copy loaded before it started */
+        const saved = loadManifest(manifestPath) ?? manifest
+        const target = saved.groups.find((g) => g.id === group.id)
+        if (target) {
+          target.delivered = result.delivered
+          if (result.delivered.shareUrl) target.publish = { shareUrl: result.delivered.shareUrl }
+        }
+        writeUploadProgress(
+          {
+            scope: key,
+            groupId: group.id,
+            filename: progress.filename,
+            bytesUploaded: 1,
+            totalBytes: 1,
+            fileIndex: progress.totalFiles,
+            totalFiles: progress.totalFiles,
+            skipped: result.skipped,
+            state: 'done'
+          },
+          outputDir
+        )
+        saveManifest(manifestPath, saved)
+        return {
+          ...boardAnswer(saved),
+          remote: await listRemoteFiles(saved, session),
+          uploaded: result.uploaded,
+          skipped: result.skipped
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Delivery failed.'
+        writeUploadProgress(
+          {
+            scope: key,
+            groupId: group.id,
+            filename: progress.filename,
+            bytesUploaded: 0,
+            totalBytes: 1,
+            fileIndex: progress.fileIndex,
+            totalFiles: progress.totalFiles,
+            state: 'error',
+            error: msg
+          },
+          outputDir
+        )
+        errors.addGlobalError(msg)
+        return errors.toResponse(422)
+      }
     }
     if (data.intent === 'upload-group') {
       const scope = {

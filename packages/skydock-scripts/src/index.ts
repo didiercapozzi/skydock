@@ -17,6 +17,7 @@ export { groupsInScope, listRemoteFiles, scopeKey, uploadScope } from './upload'
 
 export {
   clearUploadProgress,
+  deliverScopeKey,
   readUploadProgress,
   uploadProgressStateSchema,
   writeUploadProgress
@@ -33,10 +34,14 @@ export {
   ensureNasSession,
   loadNasSession,
   loginWithSession,
-  updateDefaultFolder
+  updateNasFolder
 } from './nas'
 
 export { getOutputDir, isVideoFile } from './utils'
 
 export { scanMedia } from './scan'
 export { getGroupProcessedDir, processJumps } from './process'
+
+/* only the facts a tandem row shows — delivering one pulls in archiving and uploading, which the
+   routes import directly so none of it can reach the browser bundle */
+export { filmNameOf, isTandem, statTandemArtifacts } from './tandem'

@@ -16,11 +16,16 @@ const uploadProgressStateSchema = z.object({
   totalBytes: z.number(),
   fileIndex: z.number(),
   totalFiles: z.number(),
-  state: z.enum(['checking', 'uploading', 'done', 'error']),
+  /* `archiving` is delivery zipping the photos and the rushes, which moves gigabytes before a
+     single byte reaches the NAS — without it the UI sits silent for minutes */
+  state: z.enum(['archiving', 'checking', 'uploading', 'done', 'error']),
   checked: z.number().optional(),
   skipped: z.number().optional(),
   error: z.string().optional()
 })
+
+/* one place both sides name a delivery, so the poller cannot look for a scope nobody writes */
+const deliverScopeKey = (groupId: string) => `deliver:${groupId}`
 type UploadProgressState = z.infer<typeof uploadProgressStateSchema>
 
 const getUploadProgressPath = (outputDir?: string) =>
@@ -51,6 +56,7 @@ const clearUploadProgress = (outputDir?: string) => {
 
 export {
   clearUploadProgress,
+  deliverScopeKey,
   getUploadProgressPath,
   readUploadProgress,
   uploadProgressStateSchema,

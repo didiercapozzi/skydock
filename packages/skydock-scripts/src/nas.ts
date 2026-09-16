@@ -10,6 +10,8 @@ const nasSessionSchema = z.object({
   username: z.string(),
   sessionId: z.string(),
   defaultFolder: z.string().optional(),
+  /* where the original videos are archived, kept apart from anything a passenger can see */
+  backupFolder: z.string().optional(),
   encPasswd: z.string().optional()
 })
 type NasSession = z.infer<typeof nasSessionSchema>
@@ -543,9 +545,14 @@ const clearNasSession = (outputDir?: string): void => {
   if (fs.existsSync(target)) fs.unlinkSync(target)
 }
 
-const updateDefaultFolder = (folder: string, outputDir?: string): void => {
+/* Two folders are remembered: where uploads go, and where the original videos are kept. They are
+   chosen the same way and never derived from each other — a backup that falls back to the upload
+   folder puts gigabytes of rushes in a passenger's hands. */
+const updateNasFolder = (kind: 'default' | 'backup', folder: string, outputDir?: string): void => {
   const session = loadNasSession(outputDir)
-  if (session) saveNasSession({ ...session, defaultFolder: folder }, outputDir)
+  if (!session) return
+  const key = kind === 'backup' ? 'backupFolder' : 'defaultFolder'
+  saveNasSession({ ...session, [key]: folder }, outputDir)
 }
 
 const refreshStoredSession = async (
@@ -671,6 +678,6 @@ export {
   refreshStoredSession,
   saveNasSession,
   tryAutoRefreshSession,
-  updateDefaultFolder
+  updateNasFolder
 }
 export type { DsmAuth, DsmConfig, NasFileEntry, NasFolderEntry, NasSession }

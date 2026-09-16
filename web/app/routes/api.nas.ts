@@ -8,7 +8,7 @@ import {
   ensureNasSession,
   loadNasSession,
   loginWithSession,
-  updateDefaultFolder
+  updateNasFolder
 } from '@skydock/scripts'
 import { z } from 'zod'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
@@ -26,7 +26,9 @@ const actionArgs = z.object({
   user: z.string().optional(),
   password: z.string().optional(),
   path: z.string().optional(),
-  name: z.string().optional()
+  name: z.string().optional(),
+  /* which folder is being chosen: where uploads go, or where the original videos are kept */
+  kind: z.enum(['default', 'backup']).optional()
 })
 
 const action = createValidatedFormAction()({
@@ -144,9 +146,14 @@ const action = createValidatedFormAction()({
         errors.addGlobalError('Not connected.')
         return errors.toResponse(401)
       }
-      updateDefaultFolder(data.path)
+      const kind = data.kind ?? 'default'
+      updateNasFolder(kind, data.path)
       const updated = loadNasSession()
-      return { connected: true as const, defaultFolder: updated?.defaultFolder ?? data.path }
+      return {
+        connected: true as const,
+        defaultFolder: updated?.defaultFolder ?? null,
+        backupFolder: updated?.backupFolder ?? null
+      }
     }
 
     errors.addGlobalError('Unknown intent.')

@@ -8,6 +8,7 @@ import {
   manifestFileSchema,
   manifestGroupSchema,
   statProcessedOutputs,
+  statTandemArtifacts,
   uploadGate
 } from '@skydock/scripts'
 import type { FileStatus, OutputFact, RemoteListing } from '@skydock/scripts'
@@ -35,7 +36,8 @@ const nasSuccessSchema = z.object({
   connected: z.boolean(),
   hostname: z.string().optional(),
   username: z.string().optional(),
-  defaultFolder: z.string().nullish()
+  defaultFolder: z.string().nullish(),
+  backupFolder: z.string().nullish()
 })
 
 const nasErrorSchema = z.object({ globalErrors: z.array(z.string()).optional() }).passthrough()
@@ -53,6 +55,17 @@ const remoteFilesSchema = z.union([
 /* a listing plus when it was taken, so the newest of several answers wins */
 type CheckedListing = RemoteListing & { at: number }
 
+/* what a tandem's folder holds, taken fresh by the server every time it answers — the film is
+   rendered outside SkyDock, so nothing else can know it has appeared */
+const tandemFactSchema = z.object({
+  project: z.boolean(),
+  projectPath: z.string(),
+  film: z.object({ size: z.number(), mtime: z.number() }).nullable(),
+  baseName: z.string()
+})
+
+type TandemFacts = Record<string, z.infer<typeof tandemFactSchema>>
+
 const scanResultSchema = z.object({
   added: z.number(),
   removed: z.number(),
@@ -63,19 +76,19 @@ const scanResultSchema = z.object({
 })
 
 /* what a scan found, in the words the board uses for it */
+/* A template that came without its music and logos still produces a project, and the holes only
+   show up at the render — so they are said out loud the moment the montage is made. */
+const montageNote = ({ clips, missingAssets }: { clips: number; missingAssets: string[] }) =>
+  missingAssets.length === 0
+    ? `Montage ready — ${clips} clip${clips === 1 ? '' : 's'} on the timeline`
+    : `Montage ready — ${clips} clip${clips === 1 ? '' : 's'}, but the template is missing ${missingAssets.length} file${
+        missingAssets.length === 1 ? '' : 's'
+      }: ${missingAssets.join(', ')}`
+
 const scanNote = (scan: z.infer<typeof scanResultSchema>) =>
   scan.unchanged
     ? `Scan: nothing new — ${scan.fileCount} files in ${scan.groupCount} jumps`
     : `Scan: +${scan.added} new, −${scan.removed} gone, ${scan.moved} moved — ${scan.fileCount} files in ${scan.groupCount} jumps`
-
-const montageResponseSchema = z.object({
-  ok: z.boolean().optional(),
-  error: z.string().optional(),
-  projectPath: z.string().optional(),
-  photosZip: z.string().nullable().optional(),
-  rushesZip: z.string().nullable().optional(),
-  clips: z.number().optional()
-})
 
 const loader = async (_args: Route.LoaderArgs) => {
   const outputDir = getOutputDir()
@@ -91,7 +104,8 @@ const loader = async (_args: Route.LoaderArgs) => {
     connected: boolean
     hostname: string | null
     defaultFolder: string | null
-  } = { connected: false, hostname: null, defaultFolder: null }
+    backupFolder: string | null
+  } = { connected: false, hostname: null, defaultFolder: null, backupFolder: null }
   /* the first look at the NAS happens here rather than on mount: the page then arrives already
      correct, and the Refresh button re-runs the same check through /api/remote-files */
   let remote: { dirs: string[]; sizes: Record<string, number | null>; at: number } | null = null
@@ -101,12 +115,13 @@ const loader = async (_args: Route.LoaderArgs) => {
       nas = {
         connected: true,
         hostname: session.hostname,
-        defaultFolder: session.defaultFolder ?? null
+        defaultFolder: session.defaultFolder ?? null,
+        backupFolder: session.backupFolder ?? null
       }
       if (manifest) remote = await listRemoteFiles(manifest, session)
     }
   } catch {
-    nas = { connected: false, hostname: null, defaultFolder: null }
+    nas = { connected: false, hostname: null, defaultFolder: null, backupFolder: null }
   }
   const grouped = new Set(
     (manifest?.groups ?? []).flatMap((g) => g.files.map((f) => f.id ?? f.path))
@@ -119,6 +134,9 @@ const loader = async (_args: Route.LoaderArgs) => {
     /* what the disk says about each processed copy — the record alone cannot know someone
        emptied processed/ (RULES, File status) */
     outputs: manifest ? statProcessedOutputs(manifest) : {},
+    /* and what each tandem's folder holds: nothing tells SkyDock when the editor finishes, so a
+       film is only ever noticed by looking (RULES, Delivery) */
+    tandems: manifest ? statTandemArtifacts(manifest, outputDir) : {},
     remote,
     hasManifest: manifest !== null,
     nas
@@ -179,7 +197,9 @@ const fromLocalInput = (value: string) => {
 const passengerName = (group: ManifestGroup) =>
   group.passenger ? `${group.passenger.firstname} ${group.passenger.lastname}`.trim() : ''
 
-const isTandem = (group: ManifestGroup) => group.destination === TANDEMS
+/* which card a jump is shown in — not the same question as whether it is a passenger's tandem,
+   which needs a name and is what the server gates montage and delivery on */
+const inTandemsCard = (group: ManifestGroup) => group.destination === TANDEMS
 const videosOf = (files: ManifestFile[]) => files.filter((f) => isVideoFile(f.path))
 const photosOf = (files: ManifestFile[]) => files.filter((f) => !isVideoFile(f.path))
 
@@ -446,11 +466,135 @@ const FileLine = ({
 
 /* what an upload is doing right now: the dedup pass first, then the bytes. Without the checking
    line a re-upload looks frozen while the NAS hashes hundreds of files. */
+const formatFilmSize = (bytes: number) =>
+  bytes > 1024 ** 3 ? `${(bytes / 1024 ** 3).toFixed(1)} GB` : `${Math.round(bytes / 1024 ** 2)} MB`
+
+/* The editor is opened by hand — SkyDock runs where it cannot start an application on the machine
+   you are sitting at — so the least it can do is say exactly which file, spelled the way that
+   machine knows it, and hand it over without anyone reading a path off the screen. */
+const ProjectPath = ({ path: projectPath }: { path: string }) => {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(projectPath)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      /* clipboard access can be refused; the full path is in the tooltip either way */
+    }
+  }
+  return (
+    <button
+      type='button'
+      onClick={copy}
+      title={`${projectPath}\n\nClick to copy`}
+      className='max-w-[22rem] truncate font-mono text-[11px] text-gray-400 hover:text-teal-700'>
+      {copied ? '✓ copied' : `${projectPath} ⧉`}
+    </button>
+  )
+}
+
+/* One step at a time, always in the same place. The three are distinct and never offered out of
+   order (RULES, The board): Process copies and crops here, Montage writes the project the editor
+   opens, Deliver hands over what was rendered. Deliver stays enabled with no film yet, because a
+   disabled button cannot say why — and pressing it is also how the board looks again, there being
+   nothing that notices a render finishing. */
+const TandemActions = ({
+  group,
+  facts,
+  busy,
+  blocked,
+  named,
+  onProcess,
+  onMontage,
+  onDeliver
+}: {
+  group: ManifestGroup
+  facts?: {
+    project: boolean
+    projectPath: string
+    film: { size: number; mtime: number } | null
+    baseName: string
+  }
+  busy: string | null
+  blocked: { blocked: boolean; message: string | null }
+  named: boolean
+  onProcess: () => void
+  onMontage: () => void
+  onDeliver: () => void
+}) => {
+  const working = busy !== null
+  const deliverKey = `deliver:${group.id}`
+  if (!group.processed)
+    return (
+      <span className='ml-auto flex items-center gap-2'>
+        <button
+          type='button'
+          disabled={working || !named}
+          onClick={onProcess}
+          className='rounded bg-teal-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50'>
+          {busy === group.id ? 'Processing…' : 'Process'}
+        </button>
+      </span>
+    )
+  if (!facts?.project)
+    return (
+      <span className='ml-auto flex items-center gap-2'>
+        <button
+          type='button'
+          disabled={working}
+          title='Write the kdenlive project, with the clips laid out and the render destination set'
+          onClick={onMontage}
+          className='rounded bg-teal-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50'>
+          {busy === group.id ? 'Writing…' : 'Montage'}
+        </button>
+      </span>
+    )
+  return (
+    <span className='ml-auto flex items-center gap-2'>
+      <ProjectPath path={facts.projectPath} />
+      {facts.film ? (
+        <span className='text-[11px] text-gray-500'>film {formatFilmSize(facts.film.size)}</span>
+      ) : (
+        <span className='text-[11px] text-gray-400'>edit and render it</span>
+      )}
+      {group.delivered && <span className='text-[11px] text-green-700'>✓ delivered</span>}
+      <button
+        type='button'
+        disabled={working || blocked.blocked}
+        title={
+          blocked.message ??
+          'Zip the photos and the rushes, then send the film and the photos to the passenger'
+        }
+        onClick={onDeliver}
+        className='rounded bg-teal-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50'>
+        {busy === deliverKey ? 'Delivering…' : group.delivered ? 'Deliver again' : 'Deliver'}
+      </button>
+      {group.publish?.shareUrl && (
+        <a
+          href={group.publish.shareUrl}
+          target='_blank'
+          rel='noreferrer'
+          className='text-[11px] text-teal-700 underline'>
+          share link
+        </a>
+      )}
+    </span>
+  )
+}
+
 const UploadStrip = ({ progress }: { progress: UploadProgressState }) => {
   const percent =
     progress.totalBytes > 0
       ? Math.min(100, Math.round((progress.bytesUploaded / progress.totalBytes) * 100))
       : 0
+  if (progress.state === 'archiving')
+    return (
+      <p className='mt-1 text-[11px] text-gray-500'>
+        Zipping the {progress.filename.replace('.zip', '')} — {progress.fileIndex}/
+        {progress.totalFiles} files
+      </p>
+    )
   if (progress.state === 'checking')
     return (
       <p className='mt-1 text-[11px] text-gray-500'>
@@ -573,11 +717,12 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   /* one value, so two dialogs can never be open at once; `destination` set means the folder is
      being chosen for that card rather than as the global default */
   const [dialog, setDialog] = useState<
-    null | { kind: 'connect' } | { kind: 'folder'; destination?: string }
+    null | { kind: 'connect' } | { kind: 'folder'; destination?: string; target?: 'backup' }
   >(null)
   const [dialogOpenedOn, setDialogOpenedOn] = useState<unknown>(null)
   const [uploading, setUploading] = useState<string | null>(null)
   const [outputs, setOutputs] = useState<Record<string, OutputFact>>(loaderData.outputs)
+  const [tandemFacts, setTandemFacts] = useState<TandemFacts>(loaderData.tandems)
   const [remoteAfterUpload, setRemoteAfterUpload] = useState<CheckedListing | null>(null)
   /* the first scan is what creates the manifest, so this is state and not read from the loader */
   const [hasManifest, setHasManifest] = useState(loaderData.hasManifest)
@@ -610,6 +755,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const defaultFolder = nasAnswer.success
     ? (nasAnswer.data.defaultFolder ?? null)
     : loaderData.nas.defaultFolder
+  const backupFolder = nasAnswer.success
+    ? (nasAnswer.data.backupFolder ?? null)
+    : loaderData.nas.backupFolder
   const nasRefused = nasErrorSchema.safeParse(nasFetcher.data)
   const nasError =
     !nasAnswer.success && nasRefused.success ? nasRefused.data.globalErrors?.[0] : undefined
@@ -628,6 +776,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         outputs: z
           .record(z.string(), z.object({ exists: z.boolean(), size: z.number() }))
           .optional(),
+        tandems: z.record(z.string(), tandemFactSchema).optional(),
         remote: z
           .object({
             dirs: z.array(z.string()),
@@ -637,6 +786,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           .optional(),
         uploaded: z.number().optional(),
         skipped: z.number().optional(),
+        montage: z.object({ clips: z.number(), missingAssets: z.array(z.string()) }).optional(),
         scan: scanResultSchema.optional()
       })
       .safeParse(fetcher.data)
@@ -646,9 +796,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         looseFiles,
         destinations,
         outputs: freshOutputs,
+        tandems: freshTandems,
         remote: freshRemote,
         uploaded,
         skipped,
+        montage,
         scan: scanned
       } = answered.data
       queueMicrotask(() => {
@@ -656,6 +808,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         if (looseFiles) setLoose(looseFiles)
         if (destinations) setPlaces(destinations)
         if (freshOutputs) setOutputs(freshOutputs)
+        if (freshTandems) setTandemFacts(freshTandems)
         /* an upload answers with the listing taken right after it */
         if (freshRemote) setRemoteAfterUpload(freshRemote)
         /* a scan may be the first thing that ever put a manifest there */
@@ -667,9 +820,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             ? `Uploaded ${uploaded} file${uploaded === 1 ? '' : 's'}${
                 skipped ? ` · ${skipped} already on the NAS` : ''
               }`
-            : scanned
-              ? scanNote(scanned)
-              : null
+            : montage
+              ? montageNote(montage)
+              : scanned
+                ? scanNote(scanned)
+                : null
         )
       })
       return
@@ -694,7 +849,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
   const unsorted = groups.filter((g) => !g.destination)
   const locations = places.filter((d) => d.name !== TANDEMS)
-  const tandems = groups.filter(isTandem)
+  const tandems = groups.filter(inTandemsCard)
   /* a loose file that carries a destination is shown inside that card, not in the sorting area —
      it is a real lone file destined for that folder (RULES, Dropzones and tandems), not something still to sort */
   const sorting = loose.filter((f) => !f.destination)
@@ -779,11 +934,15 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const disconnect = () =>
     nasFetcher.submit({ url: '/api/nas', actionArgs: { intent: 'disconnect' } })
 
-  /* the global default folder goes through the NAS session; a destination's own folder is part
-     of the workspace, so it is saved with the destinations list like any other board edit */
-  const chooseFolder = (path: string, destination?: string) => {
+  /* the two session folders — where uploads go and where the originals are kept — go through the
+     NAS session; a destination's own folder is part of the workspace, so it is saved with the
+     destinations list like any other board edit */
+  const chooseFolder = (path: string, destination?: string, target?: 'backup') => {
     if (destination === undefined) {
-      nasFetcher.submit({ url: '/api/nas', actionArgs: { intent: 'select-folder', path } })
+      nasFetcher.submit({
+        url: '/api/nas',
+        actionArgs: { intent: 'select-folder', path, kind: target ?? 'default' }
+      })
     } else {
       const known = places.some((d) => d.name === destination)
       saveDestinations(
@@ -822,20 +981,33 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     fetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'upload-group', ...scope } })
   }
 
-  const createMontage = async (group: ManifestGroup) => {
-    setBusy(group.id)
+  const createMontage = (group: ManifestGroup) => {
     setNote(null)
-    try {
-      const res = await fetch(`/api/create-montage?groupId=${encodeURIComponent(group.id)}`)
-      const data = montageResponseSchema.safeParse(await res.json())
-      if (!data.success) setNote('Montage: unexpected answer from the server')
-      else if (data.data.error) setNote(`Montage: ${data.data.error}`)
-      else setNote(`Montage ready — ${data.data.clips ?? 0} clips in ${data.data.projectPath}`)
-    } catch (e) {
-      setNote(`Montage failed: ${e instanceof Error ? e.message : String(e)}`)
-    } finally {
-      setBusy(null)
+    setBusy(group.id)
+    fetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'montage', groupId: group.id } })
+  }
+
+  /* the same shape as an upload: open whichever choice is missing rather than firing a request the
+     server would only refuse. The backup folder has no fallback — putting the rushes in a
+     passenger's folder is the failure keeping them apart exists to prevent. */
+  const deliver = (group: ManifestGroup) => {
+    if (!nasConnected) {
+      openConnect()
+      return
     }
+    if (!defaultFolder) {
+      setDialog({ kind: 'folder' })
+      return
+    }
+    if (!backupFolder) {
+      setDialog({ kind: 'folder', target: 'backup' })
+      return
+    }
+    const key = `deliver:${group.id}`
+    setNote(null)
+    setBusy(key)
+    setUploading(key)
+    fetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'deliver', groupId: group.id } })
   }
 
   const openPreview = (group: ManifestGroup, file: ManifestFile) =>
@@ -1094,6 +1266,13 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                 title='The folder used by anything without a folder of its own'
                 className='rounded border border-gray-300 bg-white px-2 py-0.5 font-mono text-[11px]'>
                 {defaultFolder ?? 'no default folder'}
+              </button>
+              <button
+                type='button'
+                onClick={() => setDialog({ kind: 'folder', target: 'backup' })}
+                title='Where the original videos are archived — never a folder a passenger can see'
+                className='rounded border border-gray-300 bg-white px-2 py-0.5 font-mono text-[11px]'>
+                {backupFolder ? `backup ${backupFolder}` : 'no backup folder'}
               </button>
               <button
                 type='button'
@@ -1696,52 +1875,18 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                     open={isOpen(group.id, group.files)}
                     onToggle={() => toggle(group.id)}
                   />
-                  <span className='ml-auto flex items-center gap-2'>
-                    {!group.processed && (
-                      <button
-                        type='button'
-                        disabled={busy !== null || !passengerName(group)}
-                        onClick={() => run(group.id, { intent: 'process', groupId: group.id })}
-                        className='rounded bg-teal-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50'>
-                        {busy === group.id ? 'Processing…' : 'Process'}
-                      </button>
-                    )}
-                    {group.processed && (
-                      <>
-                        <button
-                          type='button'
-                          disabled={busy !== null}
-                          onClick={() => createMontage(group)}
-                          className='rounded border border-gray-300 bg-white px-3 py-1 text-xs font-semibold disabled:opacity-50'>
-                          Montage
-                        </button>
-                        <button
-                          type='button'
-                          disabled={busy !== null || gateFor(group.files).blocked}
-                          title={
-                            gateFor(group.files).message ??
-                            'Send this passenger to the NAS — files already there are skipped'
-                          }
-                          onClick={() =>
-                            requestUpload({ groupIds: [group.id] }, `group:${group.id}`)
-                          }
-                          className='rounded bg-teal-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50'>
-                          {busy === `group:${group.id}` ? 'Uploading…' : 'Upload'}
-                        </button>
-                        {group.publish?.shareUrl && (
-                          <a
-                            href={group.publish.shareUrl}
-                            target='_blank'
-                            rel='noreferrer'
-                            className='text-[11px] text-teal-700 underline'>
-                            share link
-                          </a>
-                        )}
-                      </>
-                    )}
-                  </span>
+                  <TandemActions
+                    group={group}
+                    facts={tandemFacts[group.id]}
+                    busy={busy}
+                    blocked={gateFor(group.files)}
+                    named={passengerName(group) !== ''}
+                    onProcess={() => run(group.id, { intent: 'process', groupId: group.id })}
+                    onMontage={() => createMontage(group)}
+                    onDeliver={() => deliver(group)}
+                  />
                 </div>
-                {uploading === `group:${group.id}` && progress && (
+                {uploading === `deliver:${group.id}` && progress && (
                   <UploadStrip progress={progress} />
                 )}
                 {isOpen(group.id, group.files) ? (
@@ -1814,9 +1959,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           title={
             dialog.destination
               ? `NAS folder for ${dialog.destination}`
-              : 'Default NAS upload folder'
+              : dialog.target === 'backup'
+                ? 'Folder for the original videos'
+                : 'Default NAS upload folder'
           }
-          onSelect={(path) => chooseFolder(path, dialog.destination)}
+          onSelect={(path) => chooseFolder(path, dialog.destination, dialog.target)}
           onClose={() => setDialog(null)}
         />
       )}

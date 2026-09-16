@@ -11,7 +11,7 @@ import {
   loginWithSession,
   refreshStoredSession,
   saveNasSession,
-  updateDefaultFolder
+  updateNasFolder
 } from '../src/nas'
 
 describe('nas session storage', () => {
@@ -95,15 +95,27 @@ describe('nas session storage', () => {
     })
   })
 
-  describe('updateDefaultFolder', () => {
+  describe('updateNasFolder', () => {
     it('updates defaultFolder in existing session', () => {
       saveNasSession(
         { hostname: 'https://nas.local', username: 'user', sessionId: 'sid123' },
         tmpDir
       )
-      updateDefaultFolder('/SkyDock/Photos', tmpDir)
+      updateNasFolder('default', '/SkyDock/Photos', tmpDir)
       const session = loadNasSession(tmpDir)
       expect(session?.defaultFolder).toBe('/SkyDock/Photos')
+    })
+
+    it('keeps the backup folder apart from the upload folder', () => {
+      saveNasSession(
+        { hostname: 'https://nas.local', username: 'user', sessionId: 'sid123' },
+        tmpDir
+      )
+      updateNasFolder('default', '/SkyDock/Tandems', tmpDir)
+      updateNasFolder('backup', '/SkyDock/Rushes', tmpDir)
+      const session = loadNasSession(tmpDir)
+      expect(session?.defaultFolder).toBe('/SkyDock/Tandems')
+      expect(session?.backupFolder).toBe('/SkyDock/Rushes')
     })
   })
 })

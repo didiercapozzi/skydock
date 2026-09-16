@@ -19,6 +19,10 @@ type UploadTarget = {
   remoteDir: string | null
   destination: string | null
   groupIds: string[]
+  /* set when the folder holds more than this target should receive; unset sends the whole folder */
+  files?: string[]
+  /* false for a folder nobody is given a link to, such as the rushes backup */
+  share?: boolean
 }
 
 const LIST_CONCURRENCY = 4
@@ -152,30 +156,22 @@ const resolveUploadTargets = ({
   return dedupeTargets(targets)
 }
 
-/* Uploads every target of a scope as one job: the file counter runs across the whole scope, so a
-   destination upload reads `12 / 571`, not `12 / 40` restarting per group. The manifest is not
-   saved here — the caller owns that. */
-const uploadScope = async ({
+/* Uploads a set of targets as one job: the file counter runs across all of them, so a destination
+   upload reads `12 / 571`, not `12 / 40` restarting per group. The manifest is not saved here — the
+   caller owns that. */
+const uploadTargets = async ({
   outputDir,
-  manifest,
   session,
-  scope,
+  targets,
   onProgress,
   onCheck
 }: {
   outputDir: string
-  manifest: Manifest
   session: NasSession
-  scope: UploadScope
+  targets: UploadTarget[]
   onProgress?: (progress: UploadProgress & { groupIds: string[] }) => void
   onCheck?: (progress: CheckProgress) => void
 }) => {
-  const targets = resolveUploadTargets({
-    outputDir,
-    manifest,
-    defaultFolder: session.defaultFolder ?? null,
-    scope
-  })
   if (targets.length === 0) throw new Error('Nothing to upload yet — process it first.')
   const missing = targets.find((t) => t.remoteDir === null)
   if (missing)
@@ -199,14 +195,16 @@ const uploadScope = async ({
         password: '',
         localDir: target.localDir,
         remoteDir: target.remoteDir as string,
-        outputDir
+        outputDir,
+        files: target.files,
+        share: target.share
       },
       {
         onProgress: (progress) => onProgress?.({ ...progress, groupIds: target.groupIds }),
         onCheck
       }
     )
-    shareUrls.push({ target, shareUrl: result.shareUrl })
+    if (result.shareUrl) shareUrls.push({ target, shareUrl: result.shareUrl })
     files.push(...result.files)
     uploaded += result.uploaded
     skipped += result.skipped
@@ -214,5 +212,41 @@ const uploadScope = async ({
   return { targets, shareUrls, uploaded, skipped, files }
 }
 
-export { groupsInScope, listRemoteFiles, resolveUploadTargets, scopeKey, uploadScope }
+const uploadScope = async ({
+  outputDir,
+  manifest,
+  session,
+  scope,
+  onProgress,
+  onCheck
+}: {
+  outputDir: string
+  manifest: Manifest
+  session: NasSession
+  scope: UploadScope
+  onProgress?: (progress: UploadProgress & { groupIds: string[] }) => void
+  onCheck?: (progress: CheckProgress) => void
+}) =>
+  uploadTargets({
+    outputDir,
+    session,
+    targets: resolveUploadTargets({
+      outputDir,
+      manifest,
+      defaultFolder: session.defaultFolder ?? null,
+      scope
+    }),
+    onProgress,
+    onCheck
+  })
+
+export {
+  groupsInScope,
+  listRemoteFiles,
+  resolveUploadTargets,
+  scopeKey,
+  targetForGroup,
+  uploadScope,
+  uploadTargets
+}
 export type { UploadScope, UploadTarget }

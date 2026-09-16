@@ -7,7 +7,6 @@ export default [
   route('api/scan', 'routes/api.scan.ts'),
   route('api/upload-progress', 'routes/api.upload-progress.ts'),
   route('api/remote-files', 'routes/api.remote-files.ts'),
-  route('api/create-montage', 'routes/api.create-montage.ts'),
   route('api/file/*', 'routes/api.file.$.tsx'),
   route('api/thumb/*', 'routes/api.thumb.$.tsx')
 ] satisfies RouteConfig

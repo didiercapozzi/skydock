@@ -24,7 +24,8 @@ These hold everywhere, and most of the rules further down are consequences of th
   file. The camera's own storage is only ever read.
 - **A folder is only rebuilt by whoever owns it.** A jump's own folder can be emptied and rewritten,
   because only that jump is in it. A dropzone folder is shared by every day ever shot there, so it is
-  never wiped — files in it are replaced one by one.
+  never wiped — files in it are replaced one by one. A folder holding an edit keeps it: only the
+  media is rebuilt beside the work, because an edit is the one thing here that cannot be made again.
 - **Nothing is deleted without being replaced.** A folder that is rebuilt goes to a bin folder first,
   and the bin is never emptied automatically.
 - **A file's state is a fact that can be checked, not a flag someone has to remember to clear.** Every
@@ -45,17 +46,26 @@ more cameras have been copied off picks up the new files without disturbing the 
 The grouping is a guess, and the next step exists to correct it.
 
 **3. Sort.** On the board, each jump is filed under the dropzone it was shot at, or under Tandems with
-the passenger's name. This is the only step that needs a person.
+the passenger's name.
 
 **4. Process.** The files of a filed jump are copied into their delivery folder, renamed after the
 passenger or the dropzone and the time they were shot, cropped if a crop was set, and stamped so that
 the file's date matches its name.
 
-**5. Upload.** The delivery folder is sent to the club's network storage, and a share link comes back
-to give to the passenger.
+**5a. A dropzone is uploaded.** Its folder is sent to the club's network storage, and a share link
+comes back.
+
+**5b. A tandem is edited, then delivered.** A video project is written with the jump's clips already
+on the timeline and the render destination filled in; someone opens it, makes the edit and renders
+the film; then delivering sends the film and the photos to the passenger and the original videos to
+the backup.
+
+Sorting and the edit are the steps that need a person. Everything else is asked for with one press,
+always in the same place.
 
 Steps 4 and 5 need two tools present on the machine: one to write dates into the files, without which
 processing stops and says so, and one to cut video, without which a cropped file cannot be written.
+Rendering the film needs a video editor, which SkyDock never runs itself.
 
 ## Jumps
 
@@ -113,9 +123,17 @@ output/
 │   └── Tandems/
 │       └── Luc Favre/          a passenger: their name, as typed
 │           ├── videos/
-│           └── photos/
+│           ├── photos/
+│           ├── luc_favre_20260829.kdenlive    the editing project
+│           ├── luc_favre_20260829.mp4         the film, once someone has rendered it
+│           ├── luc_favre_20260829.photos.zip  for the passenger
+│           └── luc_favre_20260829.rushes.zip  the originals, for the backup
+├── templates/                  an editing template per folder, with the music and logos it uses
 └── .trash/                     folders replaced by a re-process, never emptied automatically
 ```
+
+Of what a passenger's folder holds, only the film and the photos archive are ever handed over. The
+project, the working folders and the archive of originals stay on the machine or go to the backup.
 
 Names are built from who the files are for, the relevant date, and the time each file was shot:
 `luc_favre_20260829_113015.mp4`, `yverdon_20260829_113015.mp4`. Accents and spaces are folded away
@@ -166,10 +184,13 @@ of the part worth keeping. Applying saves the crop and closes the preview; clear
 since clearing is usually the first half of setting a different crop. A file that belongs to no jump
 can be cropped just like one that does.
 
-**Acting.** The three steps are always offered in order and never out of it: **Process** a day of fun
-jumps or a tandem, then **Montage** a processed tandem, then **Upload**. A jump cannot be uploaded
-until everything in it has been processed; the card says how many files are waiting and the button
-stays out of reach until they are.
+**Acting.** A dropzone is **processed**, then **uploaded**. A tandem is **processed**, then given a
+**montage**, then **delivered** once someone has rendered the film. The steps are offered in order and
+never out of it, and a tandem row offers exactly one of them at a time, in the same place — so there is
+never a choice to make about what to press next. Once there is a project the row shows where it is and
+copies that path when clicked; until the film exists it says to edit and render it, and once it exists
+it shows the film's size. Nothing can be sent until
+everything in the jump has been processed; the card says how many files are waiting.
 
 **The header** holds what applies to the whole day's work: scanning for newly copied files, the state
 of the network storage and its default folder, the rows-or-grid choice, and what the three file states
@@ -207,11 +228,14 @@ disconnected opens the login rather than failing.
 
 **Choosing folders.** There is a default folder for anything without a home of its own, and each
 dropzone can name its own folder, browsed and picked from the app. A dropzone that names its own folder
-needs no default at all. Asking to upload with no folder to put the files in opens the browser for that
-card.
+needs no default at all. There is also a backup folder, chosen the same way, which is where the
+original videos of a tandem go. It is never guessed and never falls back to the default: putting
+gigabytes of unedited footage where a passenger can reach it is exactly what keeping them apart is
+for. Asking to send something with no folder to put it in opens the browser for whichever one is
+missing.
 
-**Uploading.** One upload covers one tandem, or an entire dropzone — every jump filed there and its
-loose files, in a single job. Files already on the storage are not sent again: a file with the same name
+**Uploading.** One upload covers an entire dropzone — every jump filed there and its loose files, in a
+single job. A tandem is not uploaded but delivered, which sends only what is meant for the passenger. Files already on the storage are not sent again: a file with the same name
 and the exact same size is checksummed on both sides, and only skipped if they match. Anything uncertain
 is uploaded, since sending a file twice costs time while skipping the wrong one costs the delivery. The
 app reports what it is doing throughout — first how many files it is checking, then how many it is
@@ -226,13 +250,61 @@ pressed.
 
 ## Montage
 
-A processed tandem can be turned into a video project ready to edit: the jump's videos are laid on the
-timeline of a template project in the order they were shot, and two archives are written alongside — the
-photos, for the passenger, and the original videos the edit came from, for the backup. Crops are already
-applied, so the timeline carries the cut footage.
+A processed tandem can be turned into a video project ready to edit. The jump's videos are laid on the
+first video track of a template, in the order they were shot — which track that is differs from one
+template to the next and is read from the template rather than assumed, because dropping the footage
+on the wrong track produces a film with nothing in it and no complaint. Crops are already applied, so
+the timeline carries the cut footage.
+
+The destination and format of the film are filled in, so the only work left in the editor is the edit
+itself and pressing render: nothing to type, no folder to find, and no film landing somewhere it then
+has to be moved from. The board names the project by its full path, spelled the way the machine
+running the editor knows it, and copies that path when clicked — SkyDock cannot open the editor
+itself, so the least it does is save the hunt for the folder.
+
+The project is checked to be a readable document before it is written. A montage that would not open
+is refused, with the reason, rather than produced and discovered later by someone expecting to start
+editing.
+
+**Templates.** A template is a folder holding its project and the music, logos and title images it
+uses. Its assets are referenced where they are, never copied for each passenger. Templates are picked
+up from wherever they are kept, and one that has travelled from another machine still finds its own
+assets, including the images inside title clips, which no other part of the project points at. When
+there is more than one template and none has been chosen, SkyDock asks rather than picking someone's
+branding for them.
+
+A template that arrives without some of the files it uses still produces a project — the edit can
+begin without the music — but the montage says which files are missing straight away, rather than
+leaving a silent film with holes in it to be discovered at the render.
+
+SkyDock can also be running somewhere other than the editor — on a machine that reaches the same files
+by a different path. The project is written with the paths the editor will understand.
 
 The montage is made once. Asking again for a tandem that already has a project is refused rather than
 overwriting an edit someone may have been working on.
+
+## Delivery
+
+Once the film is rendered, delivering a tandem archives its photos and its original videos, then sends
+the film and the photos archive to the passenger's folder and the archive of originals to the backup
+folder. The project and the working folders stay on the machine. The passenger's folder is the one that
+gets a share link; the backup folder never does.
+
+Delivering reports what it is doing throughout: first the archives being built, then what is already
+on the storage, then what is being sent.
+
+It refuses, each time saying which: a jump with no passenger; one whose files still need processing;
+one where no film has been rendered yet, naming the film it looked for; a film still being written,
+which it can tell because the size is still changing; no folder chosen for the passenger or for the
+backup; and a backup folder that is the passenger's own folder. A tandem whose camera produced no
+video at all is delivered without a film rather than being stuck. A film rendered under a different
+name, when it is the only one there, is taken as the film and renamed.
+
+Delivering again after a re-render sends what changed and leaves the rest; an archive still newer than
+everything in it is not built a second time.
+
+The film is taken on trust. Nothing checks that it was rendered from this project, or that it covers
+the whole jump.
 
 ## Not built
 
@@ -241,6 +313,10 @@ Worth knowing, so nobody goes looking:
 - **Nothing is emailed.** A share link is produced and copied by hand; there is no message to the
   passenger and no address is kept.
 - **The montage takes every photo.** Choosing which photos go to the passenger is not possible.
+- **Nothing renders the film.** A person opens the project, makes the edit and renders it. SkyDock
+  writes the project and takes over again afterwards, but it never runs the editor.
+- **Nothing notices a render finishing.** The board looks at the folder each time it is asked to do
+  something; there is no watching in the background.
 - **Video is played as-is.** There is no streaming or transcoding for preview, so a very large file is
   as heavy to open as it is on disk.
 - **Nothing comes in from outside the cameras.** A file can only reach SkyDock by being copied off a

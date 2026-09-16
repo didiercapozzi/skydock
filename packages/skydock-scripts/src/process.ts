@@ -57,6 +57,20 @@ const moveToTrash = (target: string, outputDir: string) => {
   fs.renameSync(target, path.join(trashDir, `${path.basename(target)}_${Date.now()}`))
 }
 
+/* Re-processing rebuilds a group's folder, and an edit someone made is the one thing in there
+   that cannot be made again. When the folder holds a project, only the media it is about to
+   rewrite is binned, and the project, the film and the archives are left where they are. */
+const binGroupMedia = (dir: string, outputDir: string) => {
+  if (!fs.existsSync(dir)) return false
+  const hasProject = fs.readdirSync(dir).some((entry) => entry.endsWith('.kdenlive'))
+  if (!hasProject) {
+    moveToTrash(dir, outputDir)
+    return false
+  }
+  for (const media of ['videos', 'photos']) moveToTrash(path.join(dir, media), outputDir)
+  return true
+}
+
 const getDestinationDir = (outputDir: string, destination: string) =>
   path.join(outputDir, 'processed', destination.replace(/[/\\]+/g, '_').trim() || 'destination')
 
@@ -115,7 +129,7 @@ const writeGroup = (
     }
     updateMetadata(written)
   } catch (e) {
-    if (!flat) moveToTrash(dir, outputDir)
+    if (!flat) binGroupMedia(dir, outputDir)
     throw e
   }
   group.processed = true
@@ -156,7 +170,7 @@ const processJumps = (options?: ProcessOptions) => {
   const manifest = loadManifest(manifestPath)
   if (!manifest) {
     console.error('[Process] ERROR: Manifest not found')
-    return { copied: 0, processedGroups: 0 }
+    return { copied: 0, processedGroups: 0, keptProjects: [] as string[] }
   }
 
   const filesInGroups = new Set(manifest.groups.flatMap((g) => g.files.map((f) => f.path)))
@@ -191,9 +205,10 @@ const processJumps = (options?: ProcessOptions) => {
   /* only ever bin a folder one group owns. A destination folder is shared by every day
      ever shot there, while the manifest only holds what the last scan found — rebuilding it
      would bin older days. A stale copy is removed one file at a time instead. */
+  const keptProjects: string[] = []
   for (const group of groups) {
     const { dir, flat } = getGroupProcessedDir(outputDir, group)
-    if (!flat) moveToTrash(dir, outputDir)
+    if (!flat && binGroupMedia(dir, outputDir)) keptProjects.push(group.id)
   }
 
   const namePools = new Map<string, Set<string>>()
@@ -255,8 +270,8 @@ const processJumps = (options?: ProcessOptions) => {
 
   console.log(`[Process] Done. Copied ${copied} file(s).`)
 
-  return { copied, processedGroups: groups.length }
+  return { copied, processedGroups: groups.length, keptProjects }
 }
 
-export { getDestinationDir, getGroupProcessedDir, isFlatGroup, processJumps }
+export { binGroupMedia, getDestinationDir, getGroupProcessedDir, isFlatGroup, processJumps }
 export type { ProcessOptions }
