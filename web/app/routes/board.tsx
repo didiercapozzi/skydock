@@ -248,7 +248,9 @@ const Thumb = ({
         ✂️
       </span>
     )}
-    <StatusDot status={status} />
+    {/* the dot rides along with the tick: a wall of unselected thumbnails stays a wall of
+        pictures, and the state comes back the moment a selection makes it worth knowing */}
+    {(picking || selected) && <StatusDot status={status} />}
   </div>
 )
 
@@ -356,16 +358,17 @@ const Fold = ({
 /* the first few thumbnails of a folded card, so a file can leave it without opening it */
 const Peek = ({
   files,
+  picking,
   onDragFile,
   statusOf
 }: {
   files: ManifestFile[]
+  picking: boolean
   onDragFile: WallHooks['onDragFile']
   statusOf: WallHooks['statusOf']
 }) => (
   <div className='mt-2 flex gap-1 overflow-hidden'>
     {files.slice(0, 4).map((file, index) => (
-      /* the dot goes here too: on a folded card of several hundred files it is the only sign */
       <span
         key={`${index}:${file.path}`}
         className='relative'>
@@ -377,7 +380,7 @@ const Peek = ({
           onDragStart={(e) => onDragFile(file, e)}
           className='h-8 w-11 rounded bg-gray-100 object-cover'
         />
-        <StatusDot status={statusOf(file)} />
+        {picking && <StatusDot status={statusOf(file)} />}
       </span>
     ))}
   </div>
@@ -1285,6 +1288,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                           ) : (
                             <Peek
                               files={group.files}
+                              picking={pickedFiles.length > 0}
                               onDragFile={startFileDrag}
                               statusOf={statusOf}
                             />
@@ -1532,6 +1536,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                         ) : (
                           <Peek
                             files={files}
+                            picking={pickedFiles.length > 0}
                             onDragFile={startFileDrag}
                             statusOf={statusOf}
                           />
@@ -1605,6 +1610,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                     ) : (
                       <Peek
                         files={stray}
+                        picking={pickedFiles.length > 0}
                         onDragFile={startFileDrag}
                         statusOf={statusOf}
                       />
@@ -1751,6 +1757,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                 ) : (
                   <Peek
                     files={group.files}
+                    picking={pickedFiles.length > 0}
                     onDragFile={startFileDrag}
                     statusOf={statusOf}
                   />

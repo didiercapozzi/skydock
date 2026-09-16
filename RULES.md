@@ -142,7 +142,10 @@ because that is how they land on disk.
 **Showing files.** A card of 25 files or fewer simply shows them — reaching a file costs no click. A
 bigger one is folded behind a button, still showing its first few thumbnails so a file can be dragged
 out without opening it. Files are listed as rows — thumbnail, name, whether it is cropped, time, size
-and state — or as a grid of thumbnails, whichever was chosen last.
+and state — or as a grid of thumbnails, whichever was chosen last. A thumbnail says only that it is
+cropped; its state appears, as a coloured dot, once a selection is under way — which is when it
+matters and when the marks are expected. The rows always say it, so the state is never more than a
+view away.
 
 **Filing.** Drag a jump onto a dropzone or onto Tandems. Drag a single file, or a selection, onto
 another jump to re-file it, onto a dropzone to deliver it there on its own, or onto Tandems to make it
