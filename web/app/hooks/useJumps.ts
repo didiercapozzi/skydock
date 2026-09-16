@@ -1,19 +1,10 @@
 import { useState } from 'react'
 import type { ManifestFile, ManifestGroup } from '../components/types'
-import { groupGroupsByDay } from '../components/utils'
 import { useSafeFetcher } from '../helpers/routing'
-
-type UseGroupsReturn = {
-  groups: ManifestGroup[]
-  groupsByDay: ReturnType<typeof groupGroupsByDay>
-  setGroups: (next: ManifestGroup[]) => void
-  updateGroups: (next: ManifestGroup[], fileUpdates?: ManifestFile[]) => void
-}
 
 const useGroups = (initialGroups: ManifestGroup[]) => {
   const [groups, setGroups] = useState<ManifestGroup[]>(initialGroups)
   const { submit } = useSafeFetcher()
-  const groupsByDay = groupGroupsByDay(groups)
 
   const updateGroups = (next: ManifestGroup[], fileUpdates?: ManifestFile[]) => {
     const withDirty = next.map((g) => {
@@ -49,8 +40,7 @@ const useGroups = (initialGroups: ManifestGroup[]) => {
     })
   }
 
-  return { groups, groupsByDay, setGroups, updateGroups }
+  return { groups, setGroups, updateGroups }
 }
 
 export { useGroups }
-export type { UseGroupsReturn }

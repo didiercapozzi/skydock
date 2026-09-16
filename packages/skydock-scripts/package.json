@@ -2,12 +2,8 @@
   "name": "@skydock/scripts",
   "private": true,
   "bin": {
-    "skydock-execute": "./src/execute.ts",
-    "skydock-process": "./src/process.ts",
-    "skydock-scan": "./src/scan.ts",
-    "skydock-simulate": "./src/simulate.ts",
-    "skydock-test": "./src/test-pipeline.ts",
-    "skydock-watcher": "./src/watcher.ts"
+    "skydock-copy": "./src/copy.ts",
+    "skydock-scan": "./src/scan.ts"
   },
   "type": "module",
   "exports": {
@@ -17,6 +13,7 @@
     }
   },
   "scripts": {
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

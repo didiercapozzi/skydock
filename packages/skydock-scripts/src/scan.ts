@@ -5,11 +5,9 @@ import {
   getManifestPath,
   getOutputDir,
   isCliModule,
-  sortFilesByMtime,
-  toISOString
+  sortFilesByMtime
 } from './utils'
 import { buildExifMap } from './lib/exif'
-import { scheduleIdle, writeStatus } from './status'
 import { loadManifest, saveManifest } from './manifest'
 import { computeFileId } from './fileId'
 import { reclusterGroups } from './clustering'
@@ -93,16 +91,7 @@ const scanFiles = async (originalDir: string, timeMap: Map<string, string>) => {
 }
 
 const createFreshManifest = (files: ManifestFile[], createdAt: string) => {
-  const manifest: Manifest = {
-    version: 1,
-    status: 'proposed',
-    date: new Date().toISOString().split('T')[0],
-    startDatetime: createdAt,
-    createdAt,
-    theory: [],
-    files,
-    groups: []
-  }
+  const manifest: Manifest = { version: 1, createdAt, files, groups: [] }
 
   reclusterGroups(manifest)
   return manifest
@@ -193,11 +182,9 @@ const scanMedia = async (options?: { outputDir?: string }) => {
   const manifestPath = getManifestPath(outputDir)
 
   if (!fs.existsSync(originalDir)) {
-    console.log('[Scan] No original_files directory found. Run processMedia first.')
+    console.log('[Scan] No original_files directory found. Run the camera copy first.')
     return { added: 0, removed: 0, moved: 0, unchanged: true, fileCount: 0, groupCount: 0 }
   }
-
-  writeStatus('scan', 'running', 'Scanning original_files', outputDir)
 
   const timeMap = buildTimeMap(findMediaFiles(originalDir))
   const diskFiles = await scanFiles(originalDir, timeMap)
@@ -207,25 +194,16 @@ const scanMedia = async (options?: { outputDir?: string }) => {
   if (!existing) {
     if (diskFiles.length === 0) {
       console.log('[Scan] No files found in original_files.')
-      writeStatus('scan', 'done', 'No files found', outputDir)
-      scheduleIdle('scan', 5000, outputDir)
       return { added: 0, removed: 0, moved: 0, unchanged: true, fileCount: 0, groupCount: 0 }
     }
 
     console.log(`[Scan] Creating new manifest with ${diskFiles.length} file(s).`)
-    const createdAt = toISOString()
+    const createdAt = new Date().toISOString()
     const manifest = createFreshManifest(diskFiles, createdAt)
     saveManifest(manifestPath, manifest)
 
     console.log(`[Scan] Found ${diskFiles.length} file(s) in ${manifest.groups.length} group(s).`)
     console.log(`[Scan] Manifest: ${manifestPath}`)
-    writeStatus(
-      'scan',
-      'done',
-      `Found ${diskFiles.length} files in ${manifest.groups.length} groups`,
-      outputDir
-    )
-    scheduleIdle('scan', 5000, outputDir)
     return {
       added: diskFiles.length,
       removed: 0,
@@ -240,8 +218,6 @@ const scanMedia = async (options?: { outputDir?: string }) => {
 
   if (added === 0 && removed === 0 && moved === 0) {
     console.log(`[Scan] No changes. ${existing.files.length} file(s) in manifest.`)
-    writeStatus('scan', 'done', `No changes, ${existing.files.length} files`, outputDir)
-    scheduleIdle('scan', 5000, outputDir)
     return {
       added: 0,
       removed: 0,
@@ -261,13 +237,6 @@ const scanMedia = async (options?: { outputDir?: string }) => {
     `[Scan] Manifest: ${manifest.files.length} file(s) in ${manifest.groups.length} group(s).`
   )
   console.log(`[Scan] Manifest: ${manifestPath}`)
-  writeStatus(
-    'scan',
-    'done',
-    `Merged ${manifest.files.length} files in ${manifest.groups.length} groups`,
-    outputDir
-  )
-  scheduleIdle('scan', 5000, outputDir)
   return {
     added,
     removed,

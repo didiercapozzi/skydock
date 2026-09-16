@@ -4,6 +4,9 @@ import { writeJsonAtomic } from './lib/fs'
 import { groupsFileSchema, manifestSchema } from './types'
 import type { GroupsFile, Manifest, ManifestFile } from './types'
 
+/* The registry of files and the jumps built out of it live in two files side by side: every file
+   is described once in manifest.json, and groups.json only points at them. A file therefore never
+   exists twice with two different truths. */
 const getGroupsPath = (manifestPath: string) => path.join(path.dirname(manifestPath), 'groups.json')
 
 const readGroupsFile = (groupsPath: string) => {
@@ -21,13 +24,10 @@ const resolveGroups = (files: ManifestFile[], groupsFile: GroupsFile | null) => 
   for (const f of files) if (f.id) byId.set(f.id, f)
   let dangling = 0
   const groups = groupsFile.groups.map((g) => ({
-    id: g.id,
-    label: g.label,
-    confirmed: g.confirmed,
+    ...g,
     processed: g.processed ?? undefined,
     passenger: g.passenger ?? undefined,
     publish: g.publish ?? undefined,
-    day: g.day,
     destination: g.destination ?? undefined,
     files: g.files
       .map((ref) => {
@@ -37,12 +37,11 @@ const resolveGroups = (files: ManifestFile[], groupsFile: GroupsFile | null) => 
           return null
         }
         const resolved: ManifestFile = { ...base }
+        /* the jump's own crop wins, and its absence clears whatever the registry entry had */
         if (ref.cropStart !== undefined) resolved.cropStart = ref.cropStart
         else delete resolved.cropStart
         if (ref.cropEnd !== undefined) resolved.cropEnd = ref.cropEnd
         else delete resolved.cropEnd
-        if (ref.keep !== undefined) resolved.keep = ref.keep
-        else delete resolved.keep
         return resolved
       })
       .filter((f): f is ManifestFile => f !== null)
@@ -51,98 +50,19 @@ const resolveGroups = (files: ManifestFile[], groupsFile: GroupsFile | null) => 
   return groups
 }
 
-/* Old manifests carry a bare `processedPath`. Having it used to mean "processed", so it becomes a
-   record stamped from the file's current values — with `size: 0, at: 0` marking it unverified,
-   which the first look at the disk then confirms or denies. */
-const migrateFile = (file: ManifestFile): ManifestFile => {
-  if (!file.processedPath || file.processed) {
-    const { processedPath: _legacy, ...rest } = file
-    return rest
-  }
-  const { processedPath, ...rest } = file
-  return {
-    ...rest,
-    processed: {
-      path: processedPath,
-      size: 0,
-      at: 0,
-      source: {
-        id: file.id,
-        size: file.size,
-        mtime: file.mtime,
-        cropStart: file.cropStart ?? null,
-        cropEnd: file.cropEnd ?? null
-      }
-    }
-  }
-}
-
 const loadManifest = (manifestPath: string) => {
   if (!fs.existsSync(manifestPath)) return null
   try {
     const raw = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'))
-
-    if (Array.isArray(raw.jumps)) {
-      const parsed = manifestSchema.parse({ ...raw, groups: raw.jumps })
-      const groupsPath = getGroupsPath(manifestPath)
-      if (!fs.existsSync(groupsPath)) {
-        const groupsFile: GroupsFile = {
-          groups: parsed.groups.map((g) => ({
-            id: g.id,
-            label: g.label,
-            confirmed: g.confirmed,
-            processed: g.processed ?? undefined,
-            passenger: g.passenger ?? undefined,
-            publish: g.publish ?? undefined,
-            day: g.day,
-            destination: g.destination ?? undefined,
-            files: g.files
-              .filter((f) => f.id)
-              .map((f) => ({
-                id: f.id!,
-                cropStart: f.cropStart ?? undefined,
-                cropEnd: f.cropEnd ?? undefined,
-                keep: f.keep ?? undefined
-              }))
-          }))
-        }
-        groupsFileSchema.parse(groupsFile)
-        writeJsonAtomic(groupsPath, groupsFile)
-
-        const newManifestRaw = {
-          version: parsed.version,
-          status: parsed.status,
-          date: parsed.date,
-          startDatetime: parsed.startDatetime,
-          createdAt: parsed.createdAt,
-          theory: parsed.theory,
-          files: parsed.files,
-          destinations: parsed.destinations ?? undefined,
-          cameraClockOffsetSeconds: parsed.cameraClockOffsetSeconds
-        }
-        manifestSchema.omit({ groups: true }).passthrough().parse(newManifestRaw)
-        writeJsonAtomic(manifestPath, newManifestRaw)
-      }
-      return parsed
-    }
-
-    const files: ManifestFile[] = (Array.isArray(raw.files) ? raw.files : []).map(migrateFile)
-    const groupsFile = readGroupsFile(getGroupsPath(manifestPath))
-    const groups = resolveGroups(files, groupsFile)
-
-    const manifest: Manifest = {
+    const files: ManifestFile[] = Array.isArray(raw.files) ? raw.files : []
+    const groups = resolveGroups(files, readGroupsFile(getGroupsPath(manifestPath)))
+    return manifestSchema.parse({
       version: raw.version ?? 1,
-      status: raw.status ?? (groups.length > 0 ? 'proposed' : 'empty'),
-      date: raw.date ?? new Date().toISOString().split('T')[0],
-      startDatetime: raw.startDatetime ?? new Date().toISOString(),
       createdAt: raw.createdAt ?? new Date().toISOString(),
-      theory: Array.isArray(raw.theory) ? raw.theory : [],
       files,
       groups,
-      destinations: raw.destinations ?? undefined,
-      cameraClockOffsetSeconds: raw.cameraClockOffsetSeconds ?? undefined
-    }
-    return manifestSchema.parse(manifest)
+      destinations: raw.destinations ?? undefined
+    })
   } catch {
     return null
   }
@@ -167,108 +87,35 @@ const statProcessedOutputs = (manifest: Manifest) => {
 
 const saveManifest = (manifestPath: string, manifest: Manifest) => {
   manifestSchema.parse(manifest)
-  const dir = path.dirname(manifestPath)
-  fs.mkdirSync(dir, { recursive: true })
+  fs.mkdirSync(path.dirname(manifestPath), { recursive: true })
 
   const groupsFile: GroupsFile = {
     groups: manifest.groups.map((g) => ({
-      id: g.id,
-      label: g.label,
-      confirmed: g.confirmed,
+      ...g,
       processed: g.processed ?? undefined,
       passenger: g.passenger ?? undefined,
       publish: g.publish ?? undefined,
-      day: g.day,
       destination: g.destination ?? undefined,
       files: g.files
         .filter((f) => f.id)
         .map((f) => ({
           id: f.id!,
           cropStart: f.cropStart ?? undefined,
-          cropEnd: f.cropEnd ?? undefined,
-          keep: f.keep ?? undefined
+          cropEnd: f.cropEnd ?? undefined
         }))
     }))
   }
   groupsFileSchema.parse(groupsFile)
-  const groupsPath = getGroupsPath(manifestPath)
-  writeJsonAtomic(groupsPath, groupsFile)
+  writeJsonAtomic(getGroupsPath(manifestPath), groupsFile)
 
   const raw = {
     version: manifest.version,
-    status: manifest.status,
-    date: manifest.date,
-    startDatetime: manifest.startDatetime,
     createdAt: manifest.createdAt,
-    theory: manifest.theory,
     files: manifest.files,
-    destinations: manifest.destinations ?? undefined,
-    cameraClockOffsetSeconds: manifest.cameraClockOffsetSeconds
+    destinations: manifest.destinations ?? undefined
   }
-  manifestSchema.omit({ groups: true }).passthrough().parse(raw)
+  manifestSchema.omit({ groups: true }).parse(raw)
   writeJsonAtomic(manifestPath, raw)
 }
 
-const normalizeManifest = (manifest: Manifest) => {
-  let changed = false
-  for (const group of manifest.groups) {
-    if (group.processed === null) {
-      delete group.processed
-      changed = true
-    }
-    if (group.passenger === null) {
-      delete group.passenger
-      changed = true
-    }
-    if (group.publish === null) {
-      delete group.publish
-      changed = true
-    }
-  }
-  if (manifest.cameraClockOffsetSeconds === null) {
-    delete manifest.cameraClockOffsetSeconds
-    changed = true
-  }
-  for (const file of [
-    ...manifest.files,
-    ...manifest.theory,
-    ...manifest.groups.flatMap((g) => g.files)
-  ]) {
-    if (file.id === null) {
-      delete file.id
-      changed = true
-    }
-    if (file.originalMtime === null) {
-      delete file.originalMtime
-      changed = true
-    }
-    if (file.cropStart === null) {
-      delete file.cropStart
-      changed = true
-    }
-    if (file.cropEnd === null) {
-      delete file.cropEnd
-      changed = true
-    }
-    if (file.keep === null) {
-      delete file.keep
-      changed = true
-    }
-    const legacy = file as unknown as Record<string, unknown>
-    if (legacy.thumbPath !== undefined) {
-      delete legacy.thumbPath
-      changed = true
-    }
-    if (legacy.filmstripDir !== undefined) {
-      delete legacy.filmstripDir
-      changed = true
-    }
-    if (legacy.keyframes !== undefined) {
-      delete legacy.keyframes
-      changed = true
-    }
-  }
-  return changed
-}
-
-export { loadManifest, normalizeManifest, saveManifest, statProcessedOutputs }
+export { loadManifest, saveManifest, statProcessedOutputs }

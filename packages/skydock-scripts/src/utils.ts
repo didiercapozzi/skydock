@@ -1,10 +1,9 @@
 import * as path from 'node:path'
 import * as childProcess from 'node:child_process'
 import { z } from 'zod'
-import { VIDEO_EXTENSIONS_SET, PHOTO_EXTENSIONS_SET, MEDIA_EXTENSIONS_SET } from './constants'
+import { VIDEO_EXTENSIONS_SET } from './constants'
 import type { ManifestFile } from './types'
-import { countFiles, fileMatchesExisting, findMediaFiles, hasMediaFiles, walkFiles } from './lib/fs'
-import { DEFAULT_MAX_FIND_DEPTH } from './lib/fs'
+import { DEFAULT_MAX_FIND_DEPTH, fileMatchesExisting, findMediaFiles, walkFiles } from './lib/fs'
 
 const hasCommand = (cmd: string) => {
   try {
@@ -17,8 +16,6 @@ const hasCommand = (cmd: string) => {
 
 const checkExiftool = () => hasCommand('exiftool')
 
-const sanitizeLabel = (label: string) => label.replace(/[^a-zA-Z0-9._-]/g, '_')
-
 const getExtension = (filePath: string) => {
   const base = filePath.split('/').pop() ?? filePath
   const dot = base.lastIndexOf('.')
@@ -26,10 +23,6 @@ const getExtension = (filePath: string) => {
 }
 
 const isVideoFile = (filePath: string) => VIDEO_EXTENSIONS_SET.has(getExtension(filePath))
-
-const isPhotoFile = (filePath: string) => PHOTO_EXTENSIONS_SET.has(getExtension(filePath))
-
-const isMediaFile = (filePath: string) => MEDIA_EXTENSIONS_SET.has(getExtension(filePath))
 
 const getOutputDir = () =>
   (typeof process !== 'undefined' && process.env?.SKYDOCK_OUTPUT_DIR) || '/workspace/output'
@@ -40,24 +33,6 @@ const getManifestPath = (outputDir?: string) =>
 const getStatusDir = (outputDir?: string) => path.join(outputDir || getOutputDir(), '.status')
 
 const sortFilesByMtime = (files: ManifestFile[]) => [...files].sort((a, b) => a.mtime - b.mtime)
-
-const getExtensionSafe = (filePath: string) => {
-  const ext = getExtension(filePath)
-  return ext || 'unknown'
-}
-
-const formatTimestamp = (epoch: number) => {
-  const date = new Date(epoch * 1000)
-  const y = date.getUTCFullYear()
-  const m = String(date.getUTCMonth() + 1).padStart(2, '0')
-  const d = String(date.getUTCDate()).padStart(2, '0')
-  const h = String(date.getUTCHours()).padStart(2, '0')
-  const min = String(date.getUTCMinutes()).padStart(2, '0')
-  const s = String(date.getUTCSeconds()).padStart(2, '0')
-  return `${y}${m}${d}_${h}${min}${s}`
-}
-
-const toISOString = (date?: Date) => (date || new Date()).toISOString()
 
 const isCliModule = (baseName: string) => {
   if (typeof process === 'undefined' || !process.argv) return false
@@ -80,24 +55,6 @@ const formatDay = (epoch: number) => {
     month: '2-digit',
     day: '2-digit'
   })
-  daySchema.parse(day)
-  return day
-}
-
-const formatTodayDeCh = () => formatDay(Math.floor(Date.now() / 1000))
-
-const dayToIso = (day: string) => {
-  const parsed = daySchema.safeParse(day)
-  if (!parsed.success) throw new Error(parsed.error.issues[0].message)
-  const [d, m, y] = parsed.data.split('.').map(Number)
-  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-}
-
-const isoToDay = (isoDate: string) => {
-  const m = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  if (!m) throw new Error('Invalid ISO date, expected YYYY-MM-DD')
-  const [, y, mon, d] = m
-  const day = `${d}.${mon}.${y}`
   daySchema.parse(day)
   return day
 }
@@ -185,33 +142,21 @@ const withRetry = async <T>(fn: () => Promise<T>, maxAttempts: number, delayMs =
 
 export {
   checkExiftool,
-  countFiles,
-  daySchema,
-  dayToIso,
   DEFAULT_MAX_FIND_DEPTH,
   fileMatchesExisting,
   findMediaFiles,
   formatDay,
-  formatTodayDeCh,
-  formatTimestamp,
   getExtension,
-  getExtensionSafe,
   getManifestPath,
   getOutputDir,
   getStatusDir,
   hasCommand,
-  hasMediaFiles,
   isCliModule,
-  isoToDay,
-  isMediaFile,
-  isPhotoFile,
   isVideoFile,
   mapWithLimit,
   parseDayEpoch,
   parseExiftoolCsv,
-  sanitizeLabel,
   sortFilesByMtime,
-  toISOString,
   walkFiles,
   withRetry
 }

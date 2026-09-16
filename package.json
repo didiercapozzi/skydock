@@ -9,8 +9,8 @@
   "type": "module",
   "scripts": {
     "check": "npm run typecheck && npm run format:check && npm run lint",
+    "copy": "npx tsx packages/skydock-scripts/src/copy.ts",
     "dev": "npm run dev --workspace=@workspace/web",
-    "execute": "npx tsx packages/skydock-scripts/src/execute.ts",
     "fc": "npm run format && npm run check",
     "format": "oxfmt --config oxfmt.config.ts .",
     "format:check": "oxfmt --config oxfmt.config.ts --check .",
@@ -20,11 +20,9 @@
     "opencode:logout": "opencode providers logout opencode-go",
     "opencode:models": "opencode models opencode-go",
     "predev": "npx --yes kill-port 5173 || true",
-    "process": "npx tsx packages/skydock-scripts/src/process.ts",
     "scan": "npx tsx packages/skydock-scripts/src/scan.ts",
-    "simulate": "npx tsx packages/skydock-scripts/src/simulate.ts",
-    "typecheck": "npm run typecheck --workspaces --if-present",
-    "watcher": "npx tsx packages/skydock-scripts/src/watcher.ts"
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
     "@react-router/dev": "^8.3.1",

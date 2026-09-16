@@ -1,4 +1,3 @@
-import type { Dispatch, SetStateAction } from 'react'
 import { useRef, useState } from 'react'
 import type { VideoRef } from '../components/preview-drawer'
 import type { ManifestFile, ManifestGroup, PreviewState } from '../components/types'
@@ -10,27 +9,16 @@ type VideoState = {
   duration: number
 }
 
-type UsePreviewReturn = {
-  preview: PreviewState
-  videoState: VideoState
-  handlePreview: (file: ManifestFile, groupId: string) => void
-  handleVideoSeek: (time: number) => void
-  handleVideoApply: (range: { cropStart: number | null; cropEnd: number | null }) => void
-  handleVideoRef: (ref: VideoRef) => void
-  setVideoState: (next: Partial<VideoState>) => void
-  closePreview: () => void
-  setPreview: Dispatch<SetStateAction<PreviewState>>
-}
+type CropRange = { cropStart: number | null; cropEnd: number | null }
+
+/* `LOOSE` stands where a jump id would go, for a file that belongs to no jump: its crop has no
+   group reference to live on, so it is saved on the registry entry instead. */
+const LOOSE = 'loose'
 
 const usePreview = (
   groups: ManifestGroup[],
-  unassignedFiles: ManifestFile[],
   onGroupsChange: (next: ManifestGroup[]) => void,
-  /* a file in no group has no group ref to hold its crop, so the caller says where to put it */
-  onFileCrop?: (
-    file: ManifestFile,
-    range: { cropStart: number | null; cropEnd: number | null }
-  ) => void
+  onFileCrop: (file: ManifestFile, range: CropRange) => void
 ) => {
   const [preview, setPreview] = useState<PreviewState>(null)
   const videoRefRef = useRef<VideoRef | null>(null)
@@ -46,10 +34,7 @@ const usePreview = (
   }
 
   const handlePreview = (file: ManifestFile, groupId: string) => {
-    const files =
-      groupId === 'unassigned'
-        ? unassignedFiles
-        : (groups.find((g) => g.id === groupId)?.files ?? [file])
+    const files = groups.find((g) => g.id === groupId)?.files ?? [file]
     const found = files.findIndex((f) => f.path === file.path)
     setVideoStateRaw({
       crop: { cropStart: file.cropStart ?? null, cropEnd: file.cropEnd ?? null },
@@ -74,36 +59,28 @@ const usePreview = (
      card behind it — where the ✂ and the status have just changed — is what you see next.
      `Reset crop` comes through here too, with an empty range; that is a clearing rather than a
      commit, so it leaves the drawer open to set a new one. */
-  const committed = (range: { cropStart: number | null; cropEnd: number | null }) =>
-    range.cropStart !== null || range.cropEnd !== null
+  const committed = (range: CropRange) => range.cropStart !== null || range.cropEnd !== null
 
-  const handleVideoApply = (range: { cropStart: number | null; cropEnd: number | null }) => {
+  const handleVideoApply = (range: CropRange) => {
     if (!preview) return
     const file = preview.files[preview.index]
     if (!file) return
-    const targetId = preview.groupId
-    if (targetId === 'unassigned') return
-    /* a lone file belongs to no group: its crop lives on the registry entry, and mapping over
-       groups here used to quietly discard it */
-    if (targetId === 'loose') {
-      onFileCrop?.(file, range)
-      setVideoStateRaw((prev) => ({ ...prev, crop: range }))
-      if (committed(range)) closePreview()
-      return
-    }
-    const next = groups.map((g) =>
-      g.id !== targetId
-        ? g
-        : {
-            ...g,
-            files: g.files.map((f) =>
-              f.path === file.path
-                ? { ...f, cropStart: range.cropStart, cropEnd: range.cropEnd }
-                : f
-            )
-          }
-    )
-    onGroupsChange(next as never)
+    if (preview.groupId === LOOSE) onFileCrop(file, range)
+    else
+      onGroupsChange(
+        groups.map((g) =>
+          g.id !== preview.groupId
+            ? g
+            : {
+                ...g,
+                files: g.files.map((f) =>
+                  f.path === file.path
+                    ? { ...f, cropStart: range.cropStart, cropEnd: range.cropEnd }
+                    : f
+                )
+              }
+        )
+      )
     setVideoStateRaw((prev) => ({ ...prev, crop: range }))
     if (committed(range)) closePreview()
   }
@@ -125,5 +102,4 @@ const usePreview = (
   }
 }
 
-export { usePreview }
-export type { UsePreviewReturn, VideoState }
+export { LOOSE, usePreview }

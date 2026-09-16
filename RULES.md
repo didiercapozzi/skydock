@@ -39,8 +39,10 @@ These hold everywhere, and most of the rules further down are consequences of th
 Re-inserting the same camera costs nothing: a file already there with the same contents is skipped,
 and one whose contents differ is copied again, because the camera has overwritten it.
 
-**2. Find the jumps.** SkyDock reads each file's capture time and groups files shot close together
-into jumps. This is a guess, and the next step exists to correct it.
+**2. Find the jumps.** Scanning reads each file's capture time and groups files shot close together
+into jumps. It is asked for from the board, and it can be asked for again at any point: a scan after
+more cameras have been copied off picks up the new files without disturbing the work already done.
+The grouping is a guess, and the next step exists to correct it.
 
 **3. Sort.** On the board, each jump is filed under the dropzone it was shot at, or under Tandems with
 the passenger's name. This is the only step that needs a person.
@@ -64,7 +66,8 @@ starts a new jump. This runs when files are first scanned, and again when new fi
   processable on its own, but not pretending to be a jump.
 - The guess can be corrected by hand: two jumps can be **merged**, files can be **dragged from one
   jump to another**, and loose files can be **regrouped** — re-run the same half-hour rule over
-  everything sitting unsorted, without disturbing jumps already filed.
+  everything sitting unsorted, without disturbing jumps already filed. A jump that should not exist is
+  undone by sending its files back to the sorting area; a jump with nothing left in it is gone.
 - Re-scanning keeps the work already done. Where a file is filed, its crop, and what has been made
   from it all survive; only what the disk actually measures — the file's size, time and contents — is
   taken fresh. A file that genuinely changed therefore invalidates what was made from it, while a file
@@ -75,9 +78,10 @@ starts a new jump. This runs when files are first scanned, and again when new fi
 - A file's capture time is read from the camera's own metadata when it is scanned, falling back to the
   file's timestamp when there is none. From then on that recorded time is what SkyDock uses — for
   grouping, for ordering, and for naming.
-- A jump's time can be corrected: pick the time its first file should have, and every file in the jump
-  shifts by the same amount, keeping the gaps between them. The original is remembered, so the
-  correction can be undone.
+- A jump's time can be corrected, which is what a camera whose clock was never set needs: click the
+  jump's time on the board and say when it really started. Every file in the jump shifts by the same
+  amount, so the gaps between them — and therefore their order — are untouched. The date can be
+  corrected the same way, and correcting either only changes what SkyDock has recorded, never the file.
 - **A jump's date names a tandem's files; a file's own date names a fun jump's.** A tandem is one
   event delivered to one person, so all of it carries the jump's date. A dropzone folder holds every
   day ever shot there, so each file carries the day it was actually shot.
@@ -164,6 +168,11 @@ jumps or a tandem, then **Montage** a processed tandem, then **Upload**. A jump 
 until everything in it has been processed; the card says how many files are waiting and the button
 stays out of reach until they are.
 
+**The header** holds what applies to the whole day's work: scanning for newly copied files, the state
+of the network storage and its default folder, the rows-or-grid choice, and what the three file states
+mean. With nothing scanned yet, the board is a single Scan button and the instruction to copy the
+cameras first.
+
 ## File status
 
 Every file is in one of three states, each of which SkyDock can verify:
@@ -222,16 +231,6 @@ applied, so the timeline carries the cut footage.
 The montage is made once. Asking again for a tandem that already has a project is refused rather than
 overwriting an edit someone may have been working on.
 
-## The classic view
-
-The original screen is still there, and still the only place to do a few things: run a scan to pick up
-newly copied files, import a file into an existing jump, create or rename a dropzone, copy one file into
-two jumps, delete a jump, and change a jump's date. It also processes everything at once, and shows
-whether a montage has already been made.
-
-Everything else — sorting, passenger names, per-file state, per-dropzone folders, and uploading — is on
-the board, which is the screen to use.
-
 ## Not built
 
 Worth knowing, so nobody goes looking:
@@ -241,5 +240,9 @@ Worth knowing, so nobody goes looking:
 - **The montage takes every photo.** Choosing which photos go to the passenger is not possible.
 - **Video is played as-is.** There is no streaming or transcoding for preview, so a very large file is
   as heavy to open as it is on disk.
+- **Nothing comes in from outside the cameras.** A file can only reach SkyDock by being copied off a
+  camera and scanned; there is no way to drop an arbitrary file into a jump.
+- **A file is in one place at a time.** It can be moved between jumps, but not put in two at once.
+- **A dropzone can be created, not renamed or removed.** Its name is what its folder is called.
 - **One known collision.** A loose file and a jump's file filed to the same dropzone and shot in the
   same second can be given the same name, and the second one written wins.

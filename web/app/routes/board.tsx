@@ -24,7 +24,7 @@ import { useSafeFetcher } from '../helpers/routing'
 import { setFileView, useFileView } from '../hooks/useFileView'
 import type { FileView } from '../hooks/useFileView'
 import { useGroups } from '../hooks/useJumps'
-import { usePreview } from '../hooks/usePreview'
+import { LOOSE, usePreview } from '../hooks/usePreview'
 import { useUploadProgress } from '../hooks/useUploadProgress'
 import type { UploadProgressState } from '../hooks/useUploadProgress'
 import type { Route } from './+types/board'
@@ -52,6 +52,21 @@ const remoteFilesSchema = z.union([
 
 /* a listing plus when it was taken, so the newest of several answers wins */
 type CheckedListing = RemoteListing & { at: number }
+
+const scanResultSchema = z.object({
+  added: z.number(),
+  removed: z.number(),
+  moved: z.number(),
+  unchanged: z.boolean(),
+  fileCount: z.number(),
+  groupCount: z.number()
+})
+
+/* what a scan found, in the words the board uses for it */
+const scanNote = (scan: z.infer<typeof scanResultSchema>) =>
+  scan.unchanged
+    ? `Scan: nothing new — ${scan.fileCount} files in ${scan.groupCount} jumps`
+    : `Scan: +${scan.added} new, −${scan.removed} gone, ${scan.moved} moved — ${scan.fileCount} files in ${scan.groupCount} jumps`
 
 const montageResponseSchema = z.object({
   ok: z.boolean().optional(),
@@ -125,10 +140,11 @@ const MONTHS = [
   'December'
 ]
 
+const pad = (n: number) => String(n).padStart(2, '0')
+
 /* local calendar day, and a label built without Intl so the server and the client agree */
 const dayOfMtime = (mtime: number) => {
   const d = new Date(mtime * 1000)
-  const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
@@ -143,6 +159,21 @@ const dayLabel = (day: string) => {
   const [year, month, date] = day.split('-').map(Number)
   if (!year || !month || !date) return day
   return `${date} ${MONTHS[month - 1]} ${year}`
+}
+
+/* what a datetime-local field wants, in the reader's own timezone */
+const toLocalInput = (epoch: number) => {
+  const d = new Date(epoch * 1000)
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+const fromLocalInput = (value: string) => {
+  const [date, time] = value.split('T')
+  const [year, month, day] = (date ?? '').split('-').map(Number)
+  const [hours, minutes, seconds] = (time ?? '').split(':').map(Number)
+  if (!year || !month || !day || !Number.isFinite(hours) || !Number.isFinite(minutes)) return null
+  const at = new Date(year, month - 1, day, hours, minutes, Number.isFinite(seconds) ? seconds : 0)
+  return Math.floor(at.getTime() / 1000)
 }
 
 const passengerName = (group: ManifestGroup) =>
@@ -234,6 +265,70 @@ type WallHooks = {
   /* one function decides every file's state, so rows, dots and the Upload gate cannot disagree */
   statusOf: (file: ManifestFile) => FileStatus
   view: FileView
+}
+
+/* A jump's start time, and the way to correct it. Cameras run on their own clocks and some of them
+   are wrong; setting the start moves every file in the jump by the same amount, so the order inside
+   it is never disturbed (RULES, Times and dates). */
+const JumpTime = ({
+  start,
+  disabled,
+  onShift
+}: {
+  start: number
+  disabled: boolean
+  onShift: (anchorEpoch: number) => void
+}) => {
+  const [draft, setDraft] = useState<string | null>(null)
+  if (draft === null)
+    return (
+      <button
+        type='button'
+        disabled={disabled}
+        onClick={(e) => {
+          e.stopPropagation()
+          setDraft(toLocalInput(start))
+        }}
+        title='Wrong camera clock? Set when this jump really started — every file in it moves with it'
+        className='rounded px-1 font-mono hover:bg-gray-100 disabled:opacity-60'>
+        {formatTime(start)}
+      </button>
+    )
+  const commit = () => {
+    const anchor = fromLocalInput(draft)
+    setDraft(null)
+    if (anchor !== null && anchor !== start) onShift(anchor)
+  }
+  return (
+    <span
+      onClick={(e) => e.stopPropagation()}
+      className='flex flex-wrap items-center gap-1'>
+      <input
+        type='datetime-local'
+        step='1'
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit()
+          if (e.key === 'Escape') setDraft(null)
+        }}
+        className='rounded border border-gray-300 px-1 py-0.5 text-xs'
+      />
+      <button
+        type='button'
+        onClick={commit}
+        className='rounded bg-gray-900 px-2 py-0.5 text-[11px] font-semibold text-white'>
+        Set
+      </button>
+      <button
+        type='button'
+        onClick={() => setDraft(null)}
+        className='text-[11px] text-gray-500 underline'>
+        cancel
+      </button>
+    </span>
+  )
 }
 
 /* Hide / Show N files — absent entirely on a card small enough not to need folding */
@@ -481,6 +576,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const [uploading, setUploading] = useState<string | null>(null)
   const [outputs, setOutputs] = useState<Record<string, OutputFact>>(loaderData.outputs)
   const [remoteAfterUpload, setRemoteAfterUpload] = useState<CheckedListing | null>(null)
+  /* the first scan is what creates the manifest, so this is state and not read from the loader */
+  const [hasManifest, setHasManifest] = useState(loaderData.hasManifest)
   const view = useFileView()
   const fetcher = useSafeFetcher()
   /* NAS answers must not land in the groups effect below, so they get their own fetcher */
@@ -500,7 +597,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     setLoose((current) => current.map((f) => (f.path === file.path ? cropped : f)))
     updateGroups(groups, [cropped])
   }
-  const preview = usePreview(groups, [], updateGroups, cropLoneFile)
+  const preview = usePreview(groups, updateGroups, cropLoneFile)
   const progress = useUploadProgress(uploading)
 
   /* derived, never stored: the loader is the first paint and the fetcher is the live truth */
@@ -536,7 +633,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           })
           .optional(),
         uploaded: z.number().optional(),
-        skipped: z.number().optional()
+        skipped: z.number().optional(),
+        scan: scanResultSchema.optional()
       })
       .safeParse(fetcher.data)
     if (answered.success) {
@@ -547,7 +645,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         outputs: freshOutputs,
         remote: freshRemote,
         uploaded,
-        skipped
+        skipped,
+        scan: scanned
       } = answered.data
       queueMicrotask(() => {
         setGroups(saved)
@@ -556,14 +655,18 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         if (freshOutputs) setOutputs(freshOutputs)
         /* an upload answers with the listing taken right after it */
         if (freshRemote) setRemoteAfterUpload(freshRemote)
+        /* a scan may be the first thing that ever put a manifest there */
+        if (scanned) setHasManifest(true)
         setBusy(null)
         setUploading(null)
         setNote(
-          uploaded === undefined
-            ? null
-            : `Uploaded ${uploaded} file${uploaded === 1 ? '' : 's'}${
+          uploaded !== undefined
+            ? `Uploaded ${uploaded} file${uploaded === 1 ? '' : 's'}${
                 skipped ? ` · ${skipped} already on the NAS` : ''
               }`
+            : scanned
+              ? scanNote(scanned)
+              : null
         )
       })
       return
@@ -578,6 +681,13 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       if (refused.success) setNote(refused.data.globalErrors?.[0] ?? 'Request failed')
     })
   }, [fetcher.data, setGroups])
+
+  const scanning = busy === 'scan'
+  const scan = () => {
+    setNote(null)
+    setBusy('scan')
+    fetcher.submit({ url: '/api/scan', actionArgs: {} })
+  }
 
   const unsorted = groups.filter((g) => !g.destination)
   const locations = places.filter((d) => d.name !== TANDEMS)
@@ -621,6 +731,15 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     )
     setPicked([])
     updateGroups(next)
+  }
+
+  const shiftJump = (groupId: string, anchorEpoch: number) => {
+    setNote(null)
+    setBusy('shift')
+    fetcher.submit({
+      url: '/api/manifest',
+      actionArgs: { intent: 'shift-group-time', groupId, anchorEpoch }
+    })
   }
 
   const setPassenger = (groupId: string, firstname: string, lastname: string) => {
@@ -915,19 +1034,21 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     }
   }
 
-  if (!loaderData.hasManifest) {
+  if (!hasManifest) {
     return (
       <main className='mx-auto max-w-5xl p-6'>
-        <h1 className='text-xl font-semibold'>No manifest found</h1>
+        <h1 className='text-xl font-semibold'>Nothing here yet</h1>
         <p className='mt-2 text-sm text-gray-600'>
-          Copy the cameras, then run a scan from the{' '}
-          <a
-            href='/classic'
-            className='underline'>
-            classic view
-          </a>
-          .
+          Copy the cameras into the output folder, then scan to find the jumps.
         </p>
+        {note && <p className='mt-3 text-sm text-amber-900'>{note}</p>}
+        <button
+          type='button'
+          disabled={scanning}
+          onClick={scan}
+          className='mt-4 rounded bg-teal-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50'>
+          {scanning ? 'Scanning…' : 'Scan'}
+        </button>
       </main>
     )
   }
@@ -950,6 +1071,14 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           {unsorted.length} to sort
         </span>
         <span className='ml-auto flex flex-wrap items-center gap-2 text-xs'>
+          <button
+            type='button'
+            disabled={scanning}
+            onClick={scan}
+            title='Look through the output folder for files the manifest does not know about yet'
+            className='rounded border border-gray-300 bg-white px-2 py-0.5 font-semibold disabled:opacity-50'>
+            {scanning ? 'Scanning…' : 'Scan'}
+          </button>
           <span
             className={`h-2 w-2 rounded-full ${nasConnected ? 'bg-green-500' : 'bg-gray-300'}`}
           />
@@ -1004,11 +1133,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             ))}
           </span>
           <StatusLegend />
-          <a
-            href='/classic'
-            className='text-gray-500 underline'>
-            classic view
-          </a>
         </span>
       </header>
 
@@ -1128,9 +1252,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                               className='cursor-grab px-1 text-gray-400 select-none'>
                               ≡
                             </span>
-                            <span className='font-mono'>
-                              {formatTime(minFileMtime(group.files) ?? 0)}
-                            </span>
+                            <JumpTime
+                              start={minFileMtime(group.files) ?? 0}
+                              disabled={busy !== null}
+                              onShift={(anchor) => shiftJump(group.id, anchor)}
+                            />
                             <span className='truncate text-xs whitespace-nowrap text-gray-500'>
                               {videos.length > 0 &&
                                 `${videos.length} video${videos.length > 1 ? 's' : ''}`}
@@ -1176,7 +1302,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                         {...wall}
                         files={dayLoose}
                         lane={dayLoose}
-                        onPreview={(file) => preview.handlePreview(file, 'loose')}
+                        onPreview={(file) => preview.handlePreview(file, LOOSE)}
                       />
                     </div>
                   )}
@@ -1400,7 +1526,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                             onPreview={(file) => {
                               const group = owner.get(file.path)
                               if (group) openPreview(group, file)
-                              else preview.handlePreview(file, 'loose')
+                              else preview.handlePreview(file, LOOSE)
                             }}
                           />
                         ) : (
@@ -1474,7 +1600,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                         {...wall}
                         files={stray}
                         lane={stray}
-                        onPreview={(file) => preview.handlePreview(file, 'loose')}
+                        onPreview={(file) => preview.handlePreview(file, LOOSE)}
                       />
                     ) : (
                       <Peek
@@ -1548,8 +1674,12 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                       {passengerName(group)} <span className='text-xs text-gray-400'>✎</span>
                     </button>
                   )}
-                  <span className='font-mono text-xs text-gray-500'>
-                    {formatTime(minFileMtime(group.files) ?? 0)}
+                  <span className='text-xs text-gray-500'>
+                    <JumpTime
+                      start={minFileMtime(group.files) ?? 0}
+                      disabled={busy !== null}
+                      onShift={(anchor) => shiftJump(group.id, anchor)}
+                    />
                   </span>
                   <span className='text-xs text-gray-500'>{group.files.length} files</span>
                   {!passengerName(group) && (

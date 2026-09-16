@@ -32,7 +32,6 @@ const makeLocal = (contents: Record<string, string>) => {
 const group = (over: Partial<ManifestGroup>): ManifestGroup => ({
   id: 'group_1',
   label: 'yverdon',
-  confirmed: true,
   day: '29.08.2026',
   files: [{ path: '/src/a.mp4', size: 5, mtime: 1_700_000_000, filename: 'a.mp4', id: 'f1' }],
   processed: true,
@@ -42,11 +41,7 @@ const group = (over: Partial<ManifestGroup>): ManifestGroup => ({
 const manifestOf = (groups: ManifestGroup[], over: Partial<Manifest> = {}): Manifest =>
   ({
     version: 1,
-    status: 'confirmed',
-    date: '29.08.2026',
-    startDatetime: '',
     createdAt: '',
-    theory: [],
     files: [],
     groups,
     destinations: [{ name: 'Yverdon' }],

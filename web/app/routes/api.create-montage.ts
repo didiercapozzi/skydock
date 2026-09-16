@@ -78,9 +78,7 @@ const loader = async ({ request }: Route.LoaderArgs) => {
   )
 
   /* the rushes are the originals the edit came from, kept off the passenger's folder */
-  const rushes = group.files.filter(
-    (f) => f.keep !== false && isVideoFile(f.path) && fs.existsSync(f.path)
-  )
+  const rushes = group.files.filter((f) => isVideoFile(f.path) && fs.existsSync(f.path))
   const rushesZip = await zipFiles(
     path.join(groupDir, `${baseName}.rushes.zip`),
     rushes.map((f) => ({ file: f.path, name: f.filename }))

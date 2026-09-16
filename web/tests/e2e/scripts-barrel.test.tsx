@@ -4,7 +4,6 @@ import * as scripts from '@skydock/scripts'
 describe('scripts barrel browser import', () => {
   test('barrel evaluates in browser without touching node builtins', () => {
     expect(typeof scripts.mergeGroups).toBe('function')
-    expect(typeof scripts.moveFilesBetweenGroups).toBe('function')
     expect(typeof scripts.reclusterGroups).toBe('function')
   })
 
@@ -12,14 +11,12 @@ describe('scripts barrel browser import', () => {
     const left = {
       id: 'group_1',
       label: 'Group 1',
-      confirmed: true,
       day: '01.01.2025',
       files: [{ path: '/a.mp4', size: 1, mtime: 100, filename: 'a.mp4' }]
     }
     const right = {
       id: 'group_2',
       label: 'Group 2',
-      confirmed: false,
       day: '01.01.2025',
       files: [
         { path: '/a.mp4', size: 1, mtime: 100, filename: 'a.mp4' },
@@ -30,14 +27,12 @@ describe('scripts barrel browser import', () => {
     expect(next.length).toBe(1)
     expect(next[0].id).toBe('group_1')
     expect(next[0].files.map((f) => f.path)).toEqual(['/b.mp4', '/a.mp4'])
-    expect(next[0].confirmed).toBe(false)
   })
 
   test('group schema keeps passenger and publish fields', () => {
     const group = {
       id: 'group_1',
       label: 'Group 1',
-      confirmed: false,
       day: '01.01.2025',
       files: [],
       passenger: { firstname: 'John', lastname: 'Doe' },
@@ -91,7 +86,6 @@ describe('scripts barrel browser import', () => {
     const left = {
       id: 'group_1',
       label: 'Group 1',
-      confirmed: false,
       day: '01.01.2025',
       passenger: { firstname: 'John', lastname: 'Doe' },
       publish: { shareUrl: 'https://example.com/sharing/old' },
@@ -100,7 +94,6 @@ describe('scripts barrel browser import', () => {
     const right = {
       id: 'group_2',
       label: 'Group 2',
-      confirmed: false,
       day: '01.01.2025',
       files: []
     }

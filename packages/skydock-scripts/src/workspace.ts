@@ -1,4 +1,4 @@
-import type { ManifestFile, ManifestGroup, ManifestPassenger } from './types'
+import type { ManifestGroup, ManifestPassenger } from './types'
 
 const hasCompletePassenger = (passenger: ManifestPassenger | null | undefined) => {
   if (!passenger) return false
@@ -45,54 +45,6 @@ const toFileStem = (raw: string, fallback: string) =>
     .replace(/[^a-z0-9._-]+/g, '_')
     .replace(/^_+|_+$/g, '') || fallback
 
-const moveFilesBetweenGroups = (
-  groups: ManifestGroup[],
-  files: ManifestFile[],
-  fileGroups: Record<string, string[]>,
-  targetGroupId: string,
-  action: 'move' | 'copy'
-) => {
-  const byPath = new Map<string, ManifestFile>()
-  for (const g of groups) for (const f of g.files) byPath.set(f.path, f)
-  for (const f of files) if (!byPath.has(f.path)) byPath.set(f.path, f)
-  const allPaths = Object.values(fileGroups).flat()
-  return groups.map((g) => {
-    const sourcePaths = fileGroups[g.id]
-    let next =
-      sourcePaths && action === 'move'
-        ? g.files.filter((f) => !sourcePaths.includes(f.path))
-        : g.files
-    if (g.id === targetGroupId) {
-      const additions: ManifestFile[] = []
-      for (const p of allPaths) {
-        const f = byPath.get(p)
-        if (f && !next.some((x) => x.path === f.path)) additions.push({ ...f })
-      }
-      next = [...next, ...additions]
-    }
-    return next === g.files ? g : { ...g, files: next }
-  })
-}
-
-const reorderFilesInGroup = (
-  groups: ManifestGroup[],
-  groupId: string,
-  paths: string[],
-  toIndex: number
-) =>
-  groups.map((g) => {
-    if (g.id !== groupId) return g
-    const moved = g.files.filter((f) => paths.includes(f.path))
-    if (moved.length === 0) return g
-    const remaining = g.files.filter((f) => !paths.includes(f.path))
-    const draggedBefore = g.files.slice(0, toIndex).filter((f) => paths.includes(f.path)).length
-    const insertAt = Math.max(0, toIndex - draggedBefore)
-    return {
-      ...g,
-      files: [...remaining.slice(0, insertAt), ...moved, ...remaining.slice(insertAt)]
-    }
-  })
-
 const mergeGroups = (groups: ManifestGroup[], leftId: string, rightId: string) => {
   if (leftId === rightId) return groups
   const left = groups.find((g) => g.id === leftId)
@@ -108,7 +60,6 @@ const mergeGroups = (groups: ManifestGroup[], leftId: string, rightId: string) =
         ? {
             ...g,
             files,
-            confirmed: left.confirmed && right.confirmed,
             processed: false,
             passenger: left.passenger ?? right.passenger ?? undefined,
             publish: undefined
@@ -168,8 +119,6 @@ export {
   hasCompletePassenger,
   makeFileName,
   mergeGroups,
-  moveFilesBetweenGroups,
-  reorderFilesInGroup,
   resolveDestinationPath,
   toFileStem
 }

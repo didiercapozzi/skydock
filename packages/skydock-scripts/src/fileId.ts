@@ -1,6 +1,5 @@
 import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
-import { loadManifest, normalizeManifest, saveManifest } from './manifest'
 
 const ID_HEX_LENGTH = 16
 
@@ -14,18 +13,4 @@ const computeFileId = async (filePath: string) => {
   })
 }
 
-const ensureManifestFileIds = async (manifestPath: string) => {
-  const manifest = loadManifest(manifestPath)
-  if (!manifest) return
-  let changed = false
-  for (const file of manifest.files) {
-    if (!file.id && fs.existsSync(file.path)) {
-      file.id = await computeFileId(file.path)
-      changed = true
-    }
-  }
-  if (normalizeManifest(manifest)) changed = true
-  if (changed) saveManifest(manifestPath, manifest)
-}
-
-export { computeFileId, ensureManifestFileIds }
+export { computeFileId }

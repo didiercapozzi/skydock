@@ -5,7 +5,7 @@ import {
   clearUploadProgress,
   destinationSchema,
   ensureNasSession,
-  executeMedia,
+  processJumps,
   getOutputDir,
   groupFromFiles,
   groupsInScope,
@@ -23,8 +23,8 @@ import {
   uploadScope,
   writeUploadProgress
 } from '@skydock/scripts'
-import type { Manifest } from '@skydock/scripts'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
+import { boardAnswer } from '../helpers/manifest'
 
 const actionArgs = z.object({
   intent: z.enum([
@@ -49,18 +49,6 @@ const actionArgs = z.object({
   rightId: z.string().optional(),
   anchorEpoch: z.number().optional()
 })
-
-/* Every mutation answers with the same three things, because the board's per-file status is
-   computed from all of them: the groups, the files belonging to no group, and what the disk says
-   about each processed copy. Leaving `looseFiles` out of an answer left lone files stale. */
-const answer = (manifest: Manifest) => {
-  const grouped = new Set(manifest.groups.flatMap((g) => g.files.map((f) => f.id ?? f.path)))
-  return {
-    groups: manifest.groups,
-    looseFiles: manifest.files.filter((f) => !grouped.has(f.id ?? f.path)),
-    outputs: statProcessedOutputs(manifest)
-  }
-}
 
 const passengerOf = (group: { passenger?: { firstname: string; lastname: string } }) =>
   group.passenger ? `${group.passenger.firstname} ${group.passenger.lastname}` : ''
@@ -93,7 +81,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         }
       }
       saveManifest(manifestPath, manifest)
-      return answer(manifest)
+      return boardAnswer(manifest)
     }
     if (data.intent === 'shift-group-time') {
       if (!data.groupId) {
@@ -121,7 +109,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         shiftFiles(manifest, ids, offset)
       }
       saveManifest(manifestPath, manifest)
-      return answer(manifest)
+      return boardAnswer(manifest)
     }
     if (data.intent === 'regroup-loose') {
       const made = regroupLooseFiles(manifest)
@@ -130,7 +118,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         return errors.toResponse(422)
       }
       saveManifest(manifestPath, manifest)
-      return answer(manifest)
+      return boardAnswer(manifest)
     }
     if (data.intent === 'move-files') {
       const ids = new Set(data.fileIds ?? [])
@@ -190,12 +178,12 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         groupFromFiles(manifest, picked, data.destination)
       }
       saveManifest(manifestPath, manifest)
-      return answer(manifest)
+      return boardAnswer(manifest)
     }
     if (data.intent === 'process') {
       const requestedGroups = data.groupIds ?? (data.groupId ? [data.groupId] : undefined)
       try {
-        executeMedia({
+        processJumps({
           manifestPath,
           outputDir: getOutputDir(),
           groupIds: requestedGroups && requestedGroups.length > 0 ? requestedGroups : undefined,
@@ -206,7 +194,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         return errors.toResponse(422)
       }
       const updated = loadManifest(manifestPath)
-      return answer(updated ?? manifest)
+      return boardAnswer(updated ?? manifest)
     }
     if (data.intent === 'upload-group') {
       const scope = {
@@ -331,11 +319,10 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         )
         saveManifest(manifestPath, saved)
         return {
-          ...answer(saved),
+          ...boardAnswer(saved),
           /* taken right after the upload, by the session that did it — the board gets the new
              truth without having to go and ask for it */
           remote: await listRemoteFiles(saved, session),
-          destinations,
           uploaded: result.uploaded,
           skipped: result.skipped
         }
@@ -404,7 +391,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
     saveManifest(manifestPath, manifest)
     /* answer with what was saved, so the board redraws destinations from the server rather than
        trusting its own optimistic copy — the same rule every other mutation follows (RULES, The board) */
-    return { ...answer(manifest), destinations: manifest.destinations ?? [] }
+    return boardAnswer(manifest)
   }
 })
 

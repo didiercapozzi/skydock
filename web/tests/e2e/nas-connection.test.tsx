@@ -9,41 +9,45 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
   return { ...actual, loadManifest: vi.fn(() => null) }
 })
 
-import Home from '../../app/routes/home'
+import Board from '../../app/routes/board'
 
-const renderHome = async (
-  manifest: unknown,
-  actions: Record<string, (args: { request: Request }) => Promise<unknown>> = {}
-) => {
-  const defaultAction = async () => ({ ok: true })
+const emptyBoard = {
+  groups: [],
+  looseFiles: [],
+  destinations: [],
+  outputs: {},
+  remote: null,
+  hasManifest: true,
+  nas: { connected: false, hostname: null, defaultFolder: null }
+}
+
+const renderBoard = async () => {
   const Stub = createRoutesStub([
-    { path: '/', Component: Home, loader: () => ({ manifest }) },
-    { path: '/api/manifest', action: actions['/api/manifest'] ?? defaultAction },
-    { path: '/api/nas', action: actions['/api/nas'] ?? defaultAction }
+    { path: '/', Component: Board, loader: () => emptyBoard },
+    { path: '/api/manifest', action: async () => ({ ok: true }) },
+    { path: '/api/nas', action: async () => ({ ok: true }) }
   ])
   return render(createElement(Stub, { initialEntries: ['/'] }))
 }
 
 describe('NAS connection', () => {
-  test('shows disconnected state and Connect link on mount', async () => {
-    await renderHome(null)
-    await expect.element(page.getByText('NAS Disconnected')).toBeInTheDocument()
-    await expect.element(page.getByText('Connect')).toBeInTheDocument()
+  test('offers to connect while no session exists', async () => {
+    await renderBoard()
+    await expect.element(page.getByRole('button', { name: 'Connect the NAS' })).toBeInTheDocument()
   })
 
-  test('Connect link opens connection dialog', async () => {
-    await renderHome(null)
-    await userEvent.click(page.getByText('Connect'))
+  test('the connect button opens the connection dialog', async () => {
+    await renderBoard()
+    await userEvent.click(page.getByRole('button', { name: 'Connect the NAS' }))
     await expect.element(page.getByText('Connect to NAS')).toBeInTheDocument()
     await expect.element(page.getByRole('textbox', { name: 'NAS Hostname' })).toBeInTheDocument()
     await expect.element(page.getByRole('textbox', { name: 'Username' })).toBeInTheDocument()
     await expect.element(page.getByRole('textbox', { name: 'Password' })).toBeInTheDocument()
-    await page.screenshot({ path: './playwright-screenshots/nas-connection-dialog.png' })
   })
 
-  test('Cancel closes connection dialog', async () => {
-    await renderHome(null)
-    await userEvent.click(page.getByText('Connect'))
+  test('Cancel closes the connection dialog', async () => {
+    await renderBoard()
+    await userEvent.click(page.getByRole('button', { name: 'Connect the NAS' }))
     await expect.element(page.getByText('Connect to NAS')).toBeInTheDocument()
     await userEvent.click(page.getByText('Cancel'))
     await expect.poll(() => document.querySelector('[data-connection-dialog]') === null).toBe(true)
