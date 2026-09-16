@@ -7,6 +7,7 @@ import {
   executeMedia,
   getGroupProcessedDir,
   getOutputDir,
+  groupFromFiles,
   loadNasSession,
   loadManifest,
   manifestFileSchema,
@@ -36,6 +37,7 @@ const actionArgs = z.object({
   groupIds: z.array(z.string()).optional(),
   fileIds: z.array(z.string()).optional(),
   targetGroupId: z.string().optional(),
+  newGroup: z.boolean().optional(),
   destination: z.string().optional(),
   groups: z.array(manifestGroupSchema).optional(),
   fileUpdates: z.array(manifestFileSchema).optional(),
@@ -135,7 +137,10 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
           }
         }
         delete file.processedPath
-        if (data.destination) file.destination = data.destination
+        /* a file that lands in a group takes its destination from that group, never its own —
+           `file.destination` is what marks a lone file (§13.1) */
+        if (data.destination && !data.newGroup && !data.targetGroupId)
+          file.destination = data.destination
         else delete file.destination
       }
       const moved = manifest.groups.flatMap((g) => g.files).filter((f) => f.id && ids.has(f.id))
@@ -156,6 +161,19 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         }
         target.files = [...target.files, ...uniqueMoved].sort((a, b) => a.mtime - b.mtime)
         target.processed = undefined
+      }
+      if (data.newGroup) {
+        /* loose files are not in `uniqueMoved` (it only sees group refs), so resolve every
+           requested id from the registry and keep the group ref when there is one, for its crop */
+        const refs = new Map(uniqueMoved.flatMap((f) => (f.id ? [[f.id, f] as const] : [])))
+        const picked = manifest.files.flatMap((f) =>
+          f.id && ids.has(f.id) ? [refs.get(f.id) ?? f] : []
+        )
+        if (picked.length === 0) {
+          errors.addGlobalError('Those files are no longer in the manifest.')
+          return errors.toResponse(422)
+        }
+        groupFromFiles(manifest, picked, data.destination)
       }
       saveManifest(manifestPath, manifest)
       const stillGrouped = new Set(

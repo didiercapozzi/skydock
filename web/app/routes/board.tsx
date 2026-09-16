@@ -6,6 +6,7 @@ import {
 } from '@skydock/scripts'
 import { useEffect, useState } from 'react'
 import { z } from 'zod'
+import { ComparisonDialog } from '../components/comparison-dialog'
 import { PreviewDrawer } from '../components/preview-drawer'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
 import { formatSize, formatTime, getThumbUrl, isVideoFile, minFileMtime } from '../components/utils'
@@ -72,13 +73,18 @@ const MONTHS = [
 ]
 
 /* local calendar day, and a label built without Intl so the server and the client agree */
-const dayOf = (group: ManifestGroup) => {
-  const min = minFileMtime(group.files)
-  if (min === null) return group.day
-  const d = new Date(min * 1000)
+const dayOfMtime = (mtime: number) => {
+  const d = new Date(mtime * 1000)
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
+
+const dayOf = (group: ManifestGroup) => {
+  const min = minFileMtime(group.files)
+  return min === null ? group.day : dayOfMtime(min)
+}
+
+const dayOfFile = (file: ManifestFile) => dayOfMtime(file.mtime)
 
 const dayLabel = (day: string) => {
   const [year, month, date] = day.split('-').map(Number)
@@ -93,25 +99,31 @@ const isTandem = (group: ManifestGroup) => group.destination === TANDEMS
 const videosOf = (files: ManifestFile[]) => files.filter((f) => isVideoFile(f.path))
 const photosOf = (files: ManifestFile[]) => files.filter((f) => !isVideoFile(f.path))
 
-/* A jump of ordinary size shows its files straight away — reaching one should cost no click.
-   Only a card big enough to bury the page stays folded. */
-const AUTO_OPEN_MAX = 40
-const defaultOpen = (group: ManifestGroup) => group.files.length <= AUTO_OPEN_MAX
+/* A card of ordinary size shows its files straight away and carries no fold button at all —
+   reaching a file costs no click. Past this many, an open card buries everything under it, so it
+   folds by default and gains Hide / Show N files. */
+const FOLD_MIN = 25
+const foldable = (files: ManifestFile[]) => files.length > FOLD_MIN
 
-/* a shift-click range runs across every file shown under one day, in the order drawn */
-const dayLane = (dayGroups: ManifestGroup[]) => dayGroups.flatMap((g) => g.files)
+const CAPTION = 'text-[11px] font-semibold tracking-wide text-gray-500 uppercase'
+
+const byMtime = (files: ManifestFile[]) => [...files].sort((a, b) => a.mtime - b.mtime)
+
+const byMin = (groups: ManifestGroup[]) =>
+  [...groups].sort((a, b) => (minFileMtime(a.files) ?? 0) - (minFileMtime(b.files) ?? 0))
 
 const Thumb = ({
   file,
   selected,
-  selecting,
+  picking,
   onClick,
   onDragStart,
   small
 }: {
   file: ManifestFile
   selected: boolean
-  selecting: boolean
+  /* a selection is under way somewhere on the board — every thumbnail shows its mark */
+  picking: boolean
   onClick: (e: React.MouseEvent) => void
   onDragStart?: (e: React.DragEvent) => void
   small?: boolean
@@ -133,7 +145,7 @@ const Thumb = ({
         className='h-full w-full object-cover'
       />
     </button>
-    {(selecting || selected) && (
+    {(picking || selected) && (
       <span
         className={`pointer-events-none absolute -top-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full border text-[9px] leading-none ${
           selected
@@ -146,6 +158,118 @@ const Thumb = ({
   </div>
 )
 
+/* what every thumbnail wall needs from the board: what is picked, and where clicks and drags go */
+type WallHooks = {
+  picked: string[]
+  onFile: (
+    file: ManifestFile,
+    lane: ManifestFile[],
+    e: React.MouseEvent,
+    onPreview: () => void
+  ) => void
+  onDragFile: (file: ManifestFile, e?: React.DragEvent) => void
+}
+
+/* Hide / Show N files — absent entirely on a card small enough not to need folding */
+const Fold = ({
+  files,
+  open,
+  onToggle
+}: {
+  files: ManifestFile[]
+  open: boolean
+  onToggle: () => void
+}) =>
+  foldable(files) ? (
+    <button
+      type='button'
+      onClick={(e) => {
+        e.stopPropagation()
+        onToggle()
+      }}
+      className='rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600'>
+      {open ? 'Hide' : `Show ${files.length} files`}
+    </button>
+  ) : null
+
+/* the first few thumbnails of a folded card, so a file can leave it without opening it */
+const Peek = ({
+  files,
+  onDragFile
+}: {
+  files: ManifestFile[]
+  onDragFile: WallHooks['onDragFile']
+}) => (
+  <div className='mt-2 flex gap-1 overflow-hidden'>
+    {files.slice(0, 4).map((file, index) => (
+      <img
+        key={`${index}:${file.path}`}
+        src={getThumbUrl(file.path, 0.5, 80)}
+        alt=''
+        loading='lazy'
+        draggable
+        onDragStart={(e) => onDragFile(file, e)}
+        className='h-8 w-11 rounded bg-gray-100 object-cover'
+      />
+    ))}
+  </div>
+)
+
+/* one wall of thumbnails; `lane` is the run a shift-click range covers */
+const Wall = ({
+  files,
+  lane,
+  onPreview,
+  split,
+  picked,
+  onFile,
+  onDragFile
+}: WallHooks & {
+  files: ManifestFile[]
+  lane: ManifestFile[]
+  onPreview: (file: ManifestFile) => void
+  split?: boolean
+}) => {
+  const strip = (list: ManifestFile[], small?: boolean) => (
+    <div className='mt-1 flex flex-wrap gap-1'>
+      {list.map((file, index) => (
+        <Thumb
+          key={`${index}:${file.path}`}
+          file={file}
+          small={small}
+          selected={!!file.id && picked.includes(file.id)}
+          picking={picked.length > 0}
+          onClick={(e) => onFile(file, lane, e, () => onPreview(file))}
+          onDragStart={(e) => onDragFile(file, e)}
+        />
+      ))}
+    </div>
+  )
+  if (!split) return strip(files)
+  const videos = videosOf(files)
+  const photos = photosOf(files)
+  return (
+    <div className='space-y-3'>
+      {videos.length > 0 && (
+        <div>
+          <p className={CAPTION}>
+            {videos.length} video{videos.length > 1 ? 's' : ''}
+          </p>
+          {strip(videos)}
+        </div>
+      )}
+      {photos.length > 0 && (
+        <div>
+          <p className={CAPTION}>
+            {photos.length} photo{photos.length > 1 ? 's' : ''}
+          </p>
+          {strip(photos, true)}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const Board = ({ loaderData }: Route.ComponentProps) => {
   const { groups, setGroups, updateGroups } = useGroups(loaderData.groups)
   const [busy, setBusy] = useState<string | null>(null)
@@ -155,9 +279,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const [picked, setPicked] = useState<string[]>([])
   const [pickedFiles, setPickedFiles] = useState<string[]>([])
   const [anchor, setAnchor] = useState<string | null>(null)
-  const [selecting, setSelecting] = useState(false)
   const [toggled, setToggled] = useState<string[]>([])
   const [overTarget, setOverTarget] = useState<string | null>(null)
+  const [comparing, setComparing] = useState(false)
+  /* which tandem's name is being typed — a named passenger reads as a title, not a form */
+  const [renaming, setRenaming] = useState<string | null>(null)
   const [loose, setLoose] = useState<ManifestFile[]>(loaderData.looseFiles)
   const [newPlace, setNewPlace] = useState('')
   const [places, setPlaces] = useState<Destination[]>(loaderData.destinations)
@@ -196,6 +322,14 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const unsorted = groups.filter((g) => !g.destination)
   const locations = places.filter((d) => d.name !== TANDEMS)
   const tandems = groups.filter(isTandem)
+  /* a loose file that carries a destination is shown inside that card, not in the sorting area —
+     it is a real lone file destined for that folder (§13.1), not something still to sort */
+  const sorting = loose.filter((f) => !f.destination)
+  const looseIn = (destination: string) => loose.filter((f) => f.destination === destination)
+  /* the sorting area is read a shooting day at a time, newest first, like the location cards */
+  const sortDays = [...new Set([...unsorted.map(dayOf), ...sorting.map(dayOfFile)])]
+    .sort()
+    .reverse()
 
   const saveDestinations = (next: Destination[]) => {
     setPlaces(next)
@@ -240,7 +374,12 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
   const run = (
     label: string,
-    args: { groupId?: string; groupIds?: string[]; intent: 'process' | 'upload-group' }
+    args: {
+      groupId?: string
+      groupIds?: string[]
+      destination?: string
+      intent: 'process' | 'upload-group'
+    }
   ) => {
     setNote(null)
     setBusy(label)
@@ -266,8 +405,23 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const openPreview = (group: ManifestGroup, file: ManifestFile) =>
     preview.handlePreview(file, group.id)
 
-  /* files leave their jump and are re-filed server-side, so the answer is the truth */
-  const moveFiles = (ids: string[], destination: string | null) => {
+  /* two jumps that turn out to be one: the server merges them and answers with the saved list */
+  const mergeTwo = (leftId: string, rightId: string, anchorEpoch: number) => {
+    setComparing(false)
+    setPicked([])
+    setNote(null)
+    setBusy('merge')
+    fetcher.submit({
+      url: '/api/manifest',
+      actionArgs: { intent: 'merge-groups', leftId, rightId, anchorEpoch }
+    })
+  }
+
+  /* files leave their jump and are re-filed server-side, so the answer is the truth.
+     `newGroup` gathers them into a jump of their own — what a tandem needs, since the passenger
+     name lives on a group; without it the files would land as lone files and fall back to the
+     sorting area, which is not what dropping them on Tandems means. */
+  const moveFiles = (ids: string[], destination: string | null, newGroup?: boolean) => {
     if (ids.length === 0) return
     setNote(null)
     setBusy('move')
@@ -278,7 +432,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       actionArgs: {
         intent: 'move-files',
         fileIds: ids,
-        destination: destination ?? undefined
+        destination: destination ?? undefined,
+        ...(newGroup ? { newGroup: true } : {})
       }
     })
   }
@@ -303,7 +458,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       setPickedFiles([...new Set([...pickedFiles, ...range])])
       return
     }
-    if (selecting || e.ctrlKey || e.metaKey || pickedFiles.length > 0) {
+    if (e.ctrlKey || e.metaKey || pickedFiles.length > 0) {
       setPickedFiles(
         pickedFiles.includes(id) ? pickedFiles.filter((x) => x !== id) : [...pickedFiles, id]
       )
@@ -314,53 +469,29 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     onPreview()
   }
 
-  const stopSelecting = () => {
-    setSelecting(false)
+  const clearFiles = () => {
     setPickedFiles([])
     setAnchor(null)
   }
 
-  /* one button turns picking on, so it never depends on knowing the ctrl-click trick */
-  const SelectButton = ({ files }: { files: ManifestFile[] }) => {
-    const ids = files.flatMap((f) => (f.id ? [f.id] : []))
-    const allPicked = ids.length > 0 && ids.every((id) => pickedFiles.includes(id))
-    if (!selecting) {
-      return (
-        <button
-          type='button'
-          onClick={() => setSelecting(true)}
-          className='rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600'>
-          Select
-        </button>
-      )
-    }
-    return (
-      <button
-        type='button'
-        onClick={() =>
-          setPickedFiles(
-            allPicked
-              ? pickedFiles.filter((id) => !ids.includes(id))
-              : [...new Set([...pickedFiles, ...ids])]
-          )
-        }
-        className='rounded border border-teal-600 bg-teal-50 px-2 py-0.5 text-xs font-semibold text-teal-800'>
-        {allPicked ? 'None' : `All ${ids.length}`}
-      </button>
-    )
-  }
+  const isOpen = (key: string, files: ManifestFile[]) =>
+    toggled.includes(key) ? foldable(files) : !foldable(files)
+
+  const toggle = (key: string) =>
+    setToggled(toggled.includes(key) ? toggled.filter((k) => k !== key) : [...toggled, key])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null
       /* never steal Delete or Backspace from the passenger name fields */
       if (target && /^(INPUT|TEXTAREA)$/.test(target.tagName)) return
+      /* while comparing, Escape closes the dialog and nothing else reaches the board */
+      if (comparing) {
+        if (e.key === 'Escape') queueMicrotask(() => setComparing(false))
+        return
+      }
       if (e.key === 'Escape') {
-        queueMicrotask(() => {
-          setSelecting(false)
-          setPickedFiles([])
-          setAnchor(null)
-        })
+        queueMicrotask(clearFiles)
         return
       }
       if (e.key !== 'Delete' && e.key !== 'Backspace') return
@@ -379,6 +510,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     setDragged([])
     setDraggedFiles(pickedFiles.includes(file.id) ? pickedFiles : [file.id])
   }
+
+  /* every wall of thumbnails needs the same three things from the board */
+  const wall = { picked: pickedFiles, onFile: clickFile, onDragFile: startFileDrag }
 
   /* Only the zone under the pointer lights up, and only when it takes what is being carried.
      onDragLeave also fires when the pointer crosses a child, so `contains` stops the flicker. */
@@ -431,7 +565,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       onDrop: (e: React.DragEvent) => {
         e.preventDefault()
         setOverTarget(null)
-        if (draggedFiles.length > 0) moveFiles(draggedFiles, destination)
+        if (draggedFiles.length > 0) moveFiles(draggedFiles, destination, destination === TANDEMS)
         else if (dragged.length > 0) assign(dragged, destination)
         setDragged([])
         setDraggedFiles([])
@@ -464,7 +598,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         setDraggedFiles([])
         setDragged([])
       }}
-      className='mx-auto max-w-6xl p-4 pb-24'>
+      className='mx-auto max-w-[1700px] p-4'>
       <header className='flex flex-wrap items-center gap-3 border-b border-gray-200 pb-3'>
         <span className='text-base font-bold'>
           Sky<span className='text-teal-700'>Dock</span>
@@ -476,7 +610,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         <a
           href='/classic'
           className='ml-auto text-sm text-gray-500 underline'>
-          classic view (scan, NAS, compare)
+          classic view (scan, NAS, calibration)
         </a>
       </header>
 
@@ -484,439 +618,576 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         <p className='mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900'>{note}</p>
       )}
 
-      <section
-        {...dropTarget(null)}
-        className={`mt-4 rounded-xl border bg-white p-4 ${
-          overTarget === 'sort' ? 'border-dashed border-teal-500' : 'border-gray-200'
-        }`}>
-        <div className='flex flex-wrap items-baseline gap-3'>
-          <h2 className='text-sm font-semibold'>To sort</h2>
-          <span className='text-xs text-gray-500'>
-            {unsorted.length > 0 || loose.length > 0
-              ? 'drag a jump onto a location below, or pick a few and use the buttons'
-              : 'nothing left'}
-          </span>
-          <span className='ml-auto text-xs text-gray-500'>
-            To pick single files, use <b>Select</b> on any card below.
-          </span>
-        </div>
-        <div className='mt-3 space-y-2'>
-          {unsorted.map((group) => {
-            const open = toggled.includes(group.id) ? !defaultOpen(group) : defaultOpen(group)
-            const videos = videosOf(group.files)
-            const photos = photosOf(group.files)
-            const toggle = () =>
-              setToggled(
-                toggled.includes(group.id)
-                  ? toggled.filter((id) => id !== group.id)
-                  : [...toggled, group.id]
+      {/* two panes that scroll on their own: what is left to sort on the left, where it goes on
+          the right, so a jump never has to be dragged across a scrolling page */}
+      <div className='mt-4 grid gap-4 lg:h-[calc(100vh-7.5rem)] lg:grid-cols-2'>
+        <div className='pb-24 lg:h-full lg:overflow-y-auto lg:pr-1 lg:pb-4'>
+          <section
+            {...dropTarget(null)}
+            className={`rounded-xl border bg-white p-4 ${
+              overTarget === 'sort' ? 'border-dashed border-teal-500' : 'border-gray-200'
+            }`}>
+            <div className='flex flex-wrap items-baseline gap-3'>
+              <h2 className='text-sm font-semibold'>To sort</h2>
+              <span className='text-xs text-gray-500'>
+                {sortDays.length > 0
+                  ? 'drag a jump onto a card on the right, or tick a few and use the buttons'
+                  : 'nothing left'}
+              </span>
+              {sorting.length > 0 && (
+                <button
+                  type='button'
+                  disabled={busy !== null}
+                  onClick={() => {
+                    setNote(null)
+                    setBusy('regroup')
+                    fetcher.submit({
+                      url: '/api/manifest',
+                      actionArgs: { intent: 'regroup-loose' }
+                    })
+                  }}
+                  title='Cluster every loose file back into jumps by capture time, like the scan does'
+                  className='rounded border border-gray-300 bg-white px-2 py-0.5 text-xs font-semibold disabled:opacity-50'>
+                  {busy === 'regroup' ? 'Regrouping…' : `Regroup ${sorting.length} loose`}
+                </button>
+              )}
+              <span className='ml-auto text-xs text-gray-500'>
+                Files: click to preview · ⌘/ctrl-click to pick · shift-click for a range
+              </span>
+            </div>
+            {sortDays.map((day) => {
+              const dayGroups = byMin(unsorted.filter((g) => dayOf(g) === day))
+              const dayLoose = byMtime(sorting.filter((f) => dayOfFile(f) === day))
+              const dayFiles = dayGroups.reduce((n, g) => n + g.files.length, 0) + dayLoose.length
+              return (
+                <div
+                  key={day}
+                  className='mt-4'>
+                  {/* the day stays on screen while its jumps scroll past, so a card is never
+                      read against the wrong date */}
+                  <div className='sticky top-0 z-10 -mx-4 flex flex-wrap items-baseline gap-2 border-b border-gray-100 bg-white px-4 py-1'>
+                    <b className='text-xs'>{dayLabel(day)}</b>
+                    <span className='text-xs text-gray-500'>
+                      {dayGroups.length > 0 &&
+                        `${dayGroups.length} jump${dayGroups.length > 1 ? 's' : ''} · `}
+                      {dayFiles} file{dayFiles > 1 ? 's' : ''}
+                      {dayLoose.length > 0 && ` · ${dayLoose.length} loose`}
+                    </span>
+                  </div>
+                  <div className='mt-2 space-y-2'>
+                    {dayGroups.map((group) => {
+                      const open = isOpen(group.id, group.files)
+                      const videos = videosOf(group.files)
+                      const photos = photosOf(group.files)
+                      const dragJump = () =>
+                        setDragged(picked.includes(group.id) ? picked : [group.id])
+                      return (
+                        <div
+                          key={group.id}
+                          draggable={!open}
+                          onDragStart={dragJump}
+                          onDragEnd={() => {
+                            setDragged([])
+                            setOverTarget(null)
+                          }}
+                          {...groupDropTarget(group.id)}
+                          className={`rounded-lg border p-2 ${open ? '' : 'cursor-grab'} ${
+                            overTarget === `group:${group.id}`
+                              ? 'border-dashed border-teal-500'
+                              : picked.includes(group.id)
+                                ? 'border-teal-600 bg-teal-50'
+                                : 'border-gray-200'
+                          }`}>
+                          <div
+                            onClick={() => {
+                              if (foldable(group.files)) toggle(group.id)
+                            }}
+                            className={`flex items-center gap-2 text-sm ${
+                              foldable(group.files) ? 'cursor-pointer' : ''
+                            }`}>
+                            <input
+                              type='checkbox'
+                              checked={picked.includes(group.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={() =>
+                                setPicked(
+                                  picked.includes(group.id)
+                                    ? picked.filter((id) => id !== group.id)
+                                    : [...picked, group.id]
+                                )
+                              }
+                            />
+                            {/* an open card is not draggable by its body — this handle is, so a jump can
+                          be filed without folding it first */}
+                            <span
+                              draggable
+                              onDragStart={(e) => {
+                                e.stopPropagation()
+                                dragJump()
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              title='Drag this jump onto a card on the right'
+                              className='cursor-grab px-1 text-gray-400 select-none'>
+                              ≡
+                            </span>
+                            <span className='font-mono'>
+                              {formatTime(minFileMtime(group.files) ?? 0)}
+                            </span>
+                            <span className='truncate text-xs whitespace-nowrap text-gray-500'>
+                              {videos.length > 0 &&
+                                `${videos.length} video${videos.length > 1 ? 's' : ''}`}
+                              {videos.length > 0 && photos.length > 0 && ' · '}
+                              {photos.length > 0 &&
+                                `${photos.length} photo${photos.length > 1 ? 's' : ''}`}
+                            </span>
+                            <span className='ml-auto'>
+                              <Fold
+                                files={group.files}
+                                open={open}
+                                onToggle={() => toggle(group.id)}
+                              />
+                            </span>
+                          </div>
+                          {open ? (
+                            <div className='mt-2'>
+                              <Wall
+                                {...wall}
+                                files={group.files}
+                                lane={group.files}
+                                split
+                                onPreview={(file) => openPreview(group, file)}
+                              />
+                            </div>
+                          ) : (
+                            <Peek
+                              files={group.files}
+                              onDragFile={startFileDrag}
+                            />
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {dayLoose.length > 0 && (
+                    <div className='mt-2 rounded-lg border border-dashed border-gray-200 p-2'>
+                      <p className='text-xs text-gray-500'>
+                        {dayLoose.length} loose file{dayLoose.length > 1 ? 's' : ''} — in no jump
+                      </p>
+                      <Wall
+                        {...wall}
+                        files={dayLoose}
+                        lane={dayLoose}
+                        onPreview={(file) => preview.handlePreview(file, 'loose')}
+                      />
+                    </div>
+                  )}
+                </div>
               )
-            return (
+            })}
+            {picked.length > 0 && (
+              /* sticks to the foot of the pane: the ticked jumps can be anywhere in a long
+                 column, and a bar that scrolled away with them was a bar nobody found */
+              <div className='sticky bottom-0 z-30 mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-gray-900 p-2 text-sm text-white shadow-lg'>
+                <b className='px-1'>{picked.length} selected</b>
+                <button
+                  type='button'
+                  disabled={picked.length !== 2}
+                  onClick={() => setComparing(true)}
+                  title={
+                    picked.length === 2
+                      ? 'Look at both jumps side by side, and merge them if they are one'
+                      : 'Compare works on exactly two jumps — tick two'
+                  }
+                  className='rounded bg-white px-3 py-1 font-semibold text-gray-900 disabled:opacity-40'>
+                  {picked.length === 2 ? 'Compare' : `Compare (${picked.length}/2)`}
+                </button>
+                <span className='opacity-70'>set all to</span>
+                {locations.map((d) => (
+                  <button
+                    key={d.name}
+                    type='button'
+                    onClick={() => assign(picked, d.name)}
+                    className='rounded bg-white/15 px-3 py-1'>
+                    {d.name}
+                  </button>
+                ))}
+                <button
+                  type='button'
+                  onClick={() => assign(picked, TANDEMS)}
+                  className='rounded bg-white/15 px-3 py-1'>
+                  {TANDEMS}
+                </button>
+                <button
+                  type='button'
+                  onClick={() => setPicked([])}
+                  className='ml-auto underline'>
+                  clear
+                </button>
+              </div>
+            )}
+          </section>
+        </div>
+
+        <div className='pb-24 lg:h-full lg:overflow-y-auto lg:pr-1 lg:pb-4'>
+          <div className='flex flex-wrap items-center gap-3'>
+            <h2 className='text-xs font-semibold tracking-widest text-gray-500 uppercase'>
+              Fun jumps · one folder per dropzone
+            </h2>
+            <span className='flex items-center gap-2'>
+              <input
+                type='text'
+                value={newPlace}
+                placeholder='New location'
+                onChange={(e) => setNewPlace(e.target.value)}
+                className='w-36 rounded border border-gray-300 px-2 py-1 text-sm'
+              />
+              <button
+                type='button'
+                onClick={() => addPlace(newPlace)}
+                className='rounded border border-gray-300 bg-white px-3 py-1 text-xs font-semibold'>
+                Add
+              </button>
+            </span>
+          </div>
+          <div className='mt-2 grid gap-4 2xl:grid-cols-2'>
+            {locations.map((destination) => {
+              const inside = groups.filter((g) => g.destination === destination.name)
+              const lone = looseIn(destination.name)
+              const days = [...new Set([...inside.map(dayOf), ...lone.map(dayOfFile)])]
+                .sort()
+                .reverse()
+              return (
+                <section
+                  key={destination.name}
+                  {...dropTarget(destination.name)}
+                  className={`rounded-xl border bg-white p-4 ${
+                    overTarget === `dest:${destination.name}`
+                      ? 'border-dashed border-teal-500'
+                      : 'border-gray-200'
+                  }`}>
+                  <div className='flex items-baseline gap-2'>
+                    <h3 className='font-semibold'>{destination.name}</h3>
+                    <span className='ml-auto text-xs text-gray-500'>
+                      {inside.reduce((n, g) => n + g.files.length, 0) + lone.length} files
+                    </span>
+                  </div>
+                  <p className='mt-1 font-mono text-[11px] text-gray-400'>
+                    processed/{destination.name}/ · every file lands here directly
+                  </p>
+                  {days.length === 0 && (
+                    <p className='mt-3 text-xs text-gray-400'>Drag jumps or files here.</p>
+                  )}
+                  {days.map((day) => {
+                    const dayGroups = inside.filter((g) => dayOf(g) === day)
+                    const dayLone = lone.filter((f) => dayOfFile(f) === day)
+                    /* a day row mixes whole jumps and lone files — on disk they are the same
+                       flat folder (§13.1), so they are drawn as one run of thumbnails */
+                    const files = byMtime([...dayGroups.flatMap((g) => g.files), ...dayLone])
+                    const owner = new Map(
+                      dayGroups.flatMap((g) => g.files.map((f) => [f.path, g] as const))
+                    )
+                    const key = `${destination.name}:${day}`
+                    const pending =
+                      dayGroups.some((g) => !g.processed) || dayLone.some((f) => !f.processedPath)
+                    return (
+                      <div
+                        key={day}
+                        className='mt-3 border-t border-gray-100 pt-3'>
+                        <div className='flex flex-wrap items-center gap-2'>
+                          <b className='text-xs'>{dayLabel(day)}</b>
+                          <span className='text-xs text-gray-500'>
+                            {files.length} file{files.length > 1 ? 's' : ''}
+                            {dayLone.length > 0 && ` · ${dayLone.length} lone`}
+                          </span>
+                          <Fold
+                            files={files}
+                            open={isOpen(key, files)}
+                            onToggle={() => toggle(key)}
+                          />
+                          {pending ? (
+                            <button
+                              type='button'
+                              disabled={busy !== null}
+                              /* lone files belong to no group, so a day holding any of them is
+                                 processed by destination scope instead of by group ids (§6.1) */
+                              onClick={() =>
+                                run(
+                                  key,
+                                  dayLone.length > 0
+                                    ? { intent: 'process', destination: destination.name }
+                                    : {
+                                        intent: 'process',
+                                        groupIds: dayGroups.map((g) => g.id)
+                                      }
+                                )
+                              }
+                              className='ml-auto rounded bg-teal-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50'>
+                              {busy === key ? 'Processing…' : 'Process'}
+                            </button>
+                          ) : (
+                            <span className='ml-auto text-xs text-green-700'>✓ processed</span>
+                          )}
+                        </div>
+                        {isOpen(key, files) ? (
+                          <Wall
+                            {...wall}
+                            files={files}
+                            lane={files}
+                            onPreview={(file) => {
+                              const group = owner.get(file.path)
+                              if (group) openPreview(group, file)
+                              else preview.handlePreview(file, 'loose')
+                            }}
+                          />
+                        ) : (
+                          <Peek
+                            files={files}
+                            onDragFile={startFileDrag}
+                          />
+                        )}
+                      </div>
+                    )
+                  })}
+                </section>
+              )
+            })}
+          </div>
+
+          <h2 className='mt-6 text-xs font-semibold tracking-widest text-gray-500 uppercase'>
+            Tandems · one folder per passenger
+          </h2>
+          <section
+            {...dropTarget(TANDEMS)}
+            className={`mt-2 rounded-xl border bg-gray-50 p-4 ${
+              overTarget === `dest:${TANDEMS}` ? 'border-dashed border-teal-500' : 'border-gray-200'
+            }`}>
+            <p className='font-mono text-[11px] text-gray-400'>
+              processed/Tandems/{'{passenger}'}/ · videos/ + photos/ · film + photos.zip for the
+              passenger, rushes.zip for the backup
+            </p>
+            {tandems.length === 0 && looseIn(TANDEMS).length === 0 && (
+              <p className='mt-3 text-xs text-gray-400'>
+                Drag tandem jumps here — or files, which become a tandem of their own.
+              </p>
+            )}
+            {/* files filed to Tandems that belong to no passenger yet — they cannot be processed
+                as they are, since the folder is named after the passenger, so they are shown
+                here with the one button that fixes them rather than left invisible */}
+            {looseIn(TANDEMS).length > 0 &&
+              (() => {
+                const stray = looseIn(TANDEMS)
+                const key = 'tandems:stray'
+                return (
+                  <div className='mt-3 rounded-lg border border-amber-300 bg-amber-50 p-2'>
+                    <div className='flex flex-wrap items-center gap-2'>
+                      <b className='text-xs text-amber-900'>
+                        {stray.length} file{stray.length > 1 ? 's' : ''} with no passenger yet
+                      </b>
+                      <button
+                        type='button'
+                        disabled={busy !== null}
+                        onClick={() =>
+                          moveFiles(
+                            stray.flatMap((f) => (f.id ? [f.id] : [])),
+                            TANDEMS,
+                            true
+                          )
+                        }
+                        className='rounded bg-teal-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50'>
+                        Make them a tandem
+                      </button>
+                      <span className='ml-auto flex items-center gap-2'>
+                        <Fold
+                          files={stray}
+                          open={isOpen(key, stray)}
+                          onToggle={() => toggle(key)}
+                        />
+                      </span>
+                    </div>
+                    {isOpen(key, stray) ? (
+                      <Wall
+                        {...wall}
+                        files={stray}
+                        lane={stray}
+                        onPreview={(file) => preview.handlePreview(file, 'loose')}
+                      />
+                    ) : (
+                      <Peek
+                        files={stray}
+                        onDragFile={startFileDrag}
+                      />
+                    )}
+                  </div>
+                )
+              })()}
+            {tandems.map((group) => (
               <div
                 key={group.id}
-                draggable={!open}
-                onDragStart={() => setDragged(picked.includes(group.id) ? picked : [group.id])}
-                onDragEnd={() => {
-                  setDragged([])
-                  setOverTarget(null)
-                }}
+                /* each passenger row takes files of its own, so a shot filmed on the wrong
+                   jump joins the right tandem instead of starting a new one */
                 {...groupDropTarget(group.id)}
-                className={`rounded-lg border p-2 ${open ? '' : 'cursor-grab'} ${
+                className={`mt-3 rounded-lg border bg-white p-3 ${
                   overTarget === `group:${group.id}`
                     ? 'border-dashed border-teal-500'
-                    : picked.includes(group.id)
-                      ? 'border-teal-600 bg-teal-50'
-                      : 'border-gray-200'
+                    : 'border-gray-200'
                 }`}>
-                <div
-                  onClick={toggle}
-                  className='flex cursor-pointer items-center gap-2 text-sm'>
-                  <input
-                    type='checkbox'
-                    checked={picked.includes(group.id)}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={() =>
-                      setPicked(
-                        picked.includes(group.id)
-                          ? picked.filter((id) => id !== group.id)
-                          : [...picked, group.id]
-                      )
-                    }
-                  />
-                  <span className='font-mono'>{formatTime(minFileMtime(group.files) ?? 0)}</span>
-                  <span className='truncate text-xs whitespace-nowrap text-gray-500'>
-                    {videos.length > 0 && `${videos.length} video${videos.length > 1 ? 's' : ''}`}
-                    {videos.length > 0 && photos.length > 0 && ' · '}
-                    {photos.length > 0 && `${photos.length} photo${photos.length > 1 ? 's' : ''}`}
-                  </span>
-                  {open && (
-                    <span onClick={(e) => e.stopPropagation()}>
-                      <SelectButton files={group.files} />
-                    </span>
-                  )}
-                  <button
-                    type='button'
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      toggle()
-                    }}
-                    className='ml-auto rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600'>
-                    {open
-                      ? 'Hide'
-                      : `Show ${group.files.length} ${photos.length > videos.length ? 'photos' : 'files'}`}
-                  </button>
-                </div>
-                {!open && (
-                  <div className='mt-2 flex gap-1 overflow-hidden'>
-                    {group.files.slice(0, 4).map((file, index) => (
-                      <img
-                        key={`${index}:${file.path}`}
-                        src={getThumbUrl(file.path, 0.5, 80)}
-                        alt=''
-                        loading='lazy'
-                        draggable
-                        onDragStart={(e) => startFileDrag(file, e)}
-                        className='h-8 w-11 rounded bg-gray-100 object-cover'
+                <div className='flex flex-wrap items-center gap-2'>
+                  {/* a named passenger is the card's title and only turns back into a form when
+                      clicked — two permanent input boxes read as an unfinished form and gave no
+                      sign that the name had been saved */}
+                  {renaming === group.id || !passengerName(group) ? (
+                    <span className='flex flex-wrap items-center gap-2'>
+                      <input
+                        type='text'
+                        autoFocus={renaming === group.id}
+                        defaultValue={group.passenger?.firstname ?? ''}
+                        placeholder='First name'
+                        onBlur={(e) =>
+                          setPassenger(
+                            group.id,
+                            e.target.value.trim(),
+                            group.passenger?.lastname ?? ''
+                          )
+                        }
+                        className='w-28 rounded border border-gray-300 px-2 py-1 text-sm'
                       />
-                    ))}
-                  </div>
-                )}
-                {open && (
-                  <div className='mt-2 space-y-3'>
-                    {videos.length > 0 && (
-                      <div>
-                        <p className='text-[11px] font-semibold tracking-wide text-gray-500 uppercase'>
-                          {videos.length} video{videos.length > 1 ? 's' : ''}
-                        </p>
-                        <div className='mt-1 flex flex-wrap gap-1'>
-                          {videos.map((file, index) => (
-                            <Thumb
-                              key={`v:${index}:${file.path}`}
-                              file={file}
-                              selected={!!file.id && pickedFiles.includes(file.id)}
-                              selecting={selecting}
-                              onClick={(e) =>
-                                clickFile(file, videos, e, () => openPreview(group, file))
-                              }
-                              onDragStart={(e) => startFileDrag(file, e)}
-                            />
-                          ))}
-                        </div>
-                      </div>
+                      <input
+                        type='text'
+                        defaultValue={group.passenger?.lastname ?? ''}
+                        placeholder='Last name'
+                        onBlur={(e) =>
+                          setPassenger(
+                            group.id,
+                            group.passenger?.firstname ?? '',
+                            e.target.value.trim()
+                          )
+                        }
+                        className='w-28 rounded border border-gray-300 px-2 py-1 text-sm'
+                      />
+                      {renaming === group.id && (
+                        <button
+                          type='button'
+                          onClick={() => setRenaming(null)}
+                          className='rounded bg-gray-900 px-3 py-1 text-xs font-semibold text-white'>
+                          Done
+                        </button>
+                      )}
+                    </span>
+                  ) : (
+                    <button
+                      type='button'
+                      onClick={() => setRenaming(group.id)}
+                      title='Click to change the passenger name'
+                      className='rounded px-1 text-base font-semibold text-gray-900 hover:bg-gray-100'>
+                      {passengerName(group)} <span className='text-xs text-gray-400'>✎</span>
+                    </button>
+                  )}
+                  <span className='font-mono text-xs text-gray-500'>
+                    {formatTime(minFileMtime(group.files) ?? 0)}
+                  </span>
+                  <span className='text-xs text-gray-500'>{group.files.length} files</span>
+                  {!passengerName(group) && (
+                    <span className='text-xs text-amber-700'>name needed before processing</span>
+                  )}
+                  <Fold
+                    files={group.files}
+                    open={isOpen(group.id, group.files)}
+                    onToggle={() => toggle(group.id)}
+                  />
+                  <span className='ml-auto flex items-center gap-2'>
+                    {!group.processed && (
+                      <button
+                        type='button'
+                        disabled={busy !== null || !passengerName(group)}
+                        onClick={() => run(group.id, { intent: 'process', groupId: group.id })}
+                        className='rounded bg-teal-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50'>
+                        {busy === group.id ? 'Processing…' : 'Process'}
+                      </button>
                     )}
-                    {photos.length > 0 && (
-                      <div>
-                        <p className='text-[11px] font-semibold tracking-wide text-gray-500 uppercase'>
-                          {photos.length} photo{photos.length > 1 ? 's' : ''}
-                        </p>
-                        <div className='mt-1 flex flex-wrap gap-1'>
-                          {photos.map((file, index) => (
-                            <Thumb
-                              key={`p:${index}:${file.path}`}
-                              file={file}
-                              small
-                              selected={!!file.id && pickedFiles.includes(file.id)}
-                              selecting={selecting}
-                              onClick={(e) =>
-                                clickFile(file, photos, e, () => openPreview(group, file))
-                              }
-                              onDragStart={(e) => startFileDrag(file, e)}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-        {loose.length > 0 && (
-          <div className='mt-3 border-t border-gray-100 pt-3'>
-            <div className='flex flex-wrap items-center gap-2'>
-              <p className='text-xs text-gray-500'>
-                {loose.length} loose file{loose.length > 1 ? 's' : ''} — not in any jump. Pick them
-                and file them below.
-              </p>
-              <button
-                type='button'
-                disabled={busy !== null}
-                onClick={() => {
-                  setNote(null)
-                  setBusy('regroup')
-                  fetcher.submit({
-                    url: '/api/manifest',
-                    actionArgs: { intent: 'regroup-loose' }
-                  })
-                }}
-                title='Cluster them back into jumps by their capture time, like the scan does'
-                className='rounded border border-gray-300 bg-white px-2 py-0.5 text-xs font-semibold disabled:opacity-50'>
-                {busy === 'regroup' ? 'Regrouping…' : 'Regroup into jumps'}
-              </button>
-            </div>
-            <div className='mt-2 flex flex-wrap gap-1'>
-              {loose.map((file, index) => (
-                <Thumb
-                  key={`loose:${index}:${file.path}`}
-                  file={file}
-                  selected={!!file.id && pickedFiles.includes(file.id)}
-                  selecting={selecting}
-                  onClick={(e) =>
-                    clickFile(file, loose, e, () => preview.handlePreview(file, 'loose'))
-                  }
-                  onDragStart={() => startFileDrag(file)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-        {picked.length > 0 && (
-          <div className='mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-gray-900 p-2 text-sm text-white'>
-            <b className='px-1'>{picked.length} selected</b>
-            <span className='opacity-70'>set all to</span>
-            {locations.map((d) => (
-              <button
-                key={d.name}
-                type='button'
-                onClick={() => assign(picked, d.name)}
-                className='rounded bg-white/15 px-3 py-1'>
-                {d.name}
-              </button>
-            ))}
-            <button
-              type='button'
-              onClick={() => assign(picked, TANDEMS)}
-              className='rounded bg-white/15 px-3 py-1'>
-              {TANDEMS}
-            </button>
-            <button
-              type='button'
-              onClick={() => setPicked([])}
-              className='ml-auto underline'>
-              clear
-            </button>
-          </div>
-        )}
-      </section>
-
-      <div className='mt-6 flex flex-wrap items-center gap-3'>
-        <h2 className='text-xs font-semibold tracking-widest text-gray-500 uppercase'>
-          Fun jumps · one folder per dropzone
-        </h2>
-        <span className='flex items-center gap-2'>
-          <input
-            type='text'
-            value={newPlace}
-            placeholder='New location'
-            onChange={(e) => setNewPlace(e.target.value)}
-            className='w-36 rounded border border-gray-300 px-2 py-1 text-sm'
-          />
-          <button
-            type='button'
-            onClick={() => addPlace(newPlace)}
-            className='rounded border border-gray-300 bg-white px-3 py-1 text-xs font-semibold'>
-            Add
-          </button>
-        </span>
-      </div>
-      <div className='mt-2 grid gap-4 md:grid-cols-2'>
-        {locations.map((destination) => {
-          const inside = groups.filter((g) => g.destination === destination.name)
-          const days = [...new Set(inside.map(dayOf))].sort().reverse()
-          return (
-            <section
-              key={destination.name}
-              {...dropTarget(destination.name)}
-              className={`rounded-xl border bg-white p-4 ${
-                overTarget === `dest:${destination.name}`
-                  ? 'border-dashed border-teal-500'
-                  : 'border-gray-200'
-              }`}>
-              <div className='flex items-baseline gap-2'>
-                <h3 className='font-semibold'>{destination.name}</h3>
-                <span className='ml-auto text-xs text-gray-500'>
-                  {inside.reduce((n, g) => n + g.files.length, 0)} files
-                </span>
-              </div>
-              <p className='mt-1 font-mono text-[11px] text-gray-400'>
-                processed/{destination.name}/ · every file lands here directly
-              </p>
-              {days.length === 0 && <p className='mt-3 text-xs text-gray-400'>Drag jumps here.</p>}
-              {days.map((day) => {
-                const dayGroups = inside.filter((g) => dayOf(g) === day)
-                const unprocessed = dayGroups.filter((g) => !g.processed)
-                return (
-                  <div
-                    key={day}
-                    className='mt-3 border-t border-gray-100 pt-3'>
-                    <div className='flex flex-wrap items-center gap-2'>
-                      <b className='text-xs'>{dayLabel(day)}</b>
-                      <span className='text-xs text-gray-500'>
-                        {dayGroups.reduce((n, g) => n + g.files.length, 0)} files
-                      </span>
-                      <SelectButton files={dayLane(dayGroups)} />
-                      {unprocessed.length > 0 ? (
+                    {group.processed && (
+                      <>
                         <button
                           type='button'
                           disabled={busy !== null}
-                          onClick={() =>
-                            run(day, {
-                              intent: 'process',
-                              groupIds: unprocessed.map((g) => g.id)
-                            })
-                          }
-                          className='ml-auto rounded bg-teal-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50'>
-                          {busy === day ? 'Processing…' : 'Process'}
+                          onClick={() => createMontage(group)}
+                          className='rounded border border-gray-300 bg-white px-3 py-1 text-xs font-semibold disabled:opacity-50'>
+                          Montage
                         </button>
-                      ) : (
-                        <span className='ml-auto text-xs text-green-700'>✓ processed</span>
-                      )}
-                    </div>
-                    <div className='mt-2 flex flex-wrap gap-1'>
-                      {dayGroups.flatMap((group) =>
-                        group.files.map((file, index) => (
-                          <Thumb
-                            key={`${group.id}:${index}:${file.path}`}
-                            file={file}
-                            selected={!!file.id && pickedFiles.includes(file.id)}
-                            selecting={selecting}
-                            onClick={(e) =>
-                              clickFile(file, dayLane(dayGroups), e, () => openPreview(group, file))
-                            }
-                            onDragStart={() => startFileDrag(file)}
-                          />
-                        ))
-                      )}
-                    </div>
+                        <button
+                          type='button'
+                          disabled={busy !== null || !loaderData.nas.connected}
+                          title={
+                            loaderData.nas.connected
+                              ? 'Send to the NAS'
+                              : 'Connect the NAS from the classic view first'
+                          }
+                          onClick={() =>
+                            run(group.id, { intent: 'upload-group', groupId: group.id })
+                          }
+                          className='rounded bg-teal-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50'>
+                          Upload
+                        </button>
+                      </>
+                    )}
+                  </span>
+                </div>
+                {isOpen(group.id, group.files) ? (
+                  <div className='mt-2'>
+                    <Wall
+                      {...wall}
+                      files={group.files}
+                      lane={group.files}
+                      split
+                      onPreview={(file) => openPreview(group, file)}
+                    />
                   </div>
-                )
-              })}
-            </section>
-          )
-        })}
+                ) : (
+                  <Peek
+                    files={group.files}
+                    onDragFile={startFileDrag}
+                  />
+                )}
+              </div>
+            ))}
+          </section>
+        </div>
       </div>
 
-      <h2 className='mt-6 text-xs font-semibold tracking-widest text-gray-500 uppercase'>
-        Tandems · one folder per passenger
-      </h2>
-      <section
-        {...dropTarget(TANDEMS)}
-        className={`mt-2 rounded-xl border bg-gray-50 p-4 ${
-          overTarget === `dest:${TANDEMS}` ? 'border-dashed border-teal-500' : 'border-gray-200'
-        }`}>
-        <p className='font-mono text-[11px] text-gray-400'>
-          processed/Tandems/{'{passenger}'}/ · videos/ + photos/ · film + photos.zip for the
-          passenger, rushes.zip for the backup
-        </p>
-        {tandems.length === 0 && (
-          <p className='mt-3 text-xs text-gray-400'>Drag tandem jumps here.</p>
-        )}
-        {tandems.map((group) => (
-          <div
-            key={group.id}
-            className='mt-3 border-t border-gray-200 pt-3'>
-            <div className='flex flex-wrap items-center gap-2'>
-              <span className='font-mono text-xs'>
-                {formatTime(minFileMtime(group.files) ?? 0)}
-              </span>
-              <input
-                type='text'
-                defaultValue={group.passenger?.firstname ?? ''}
-                placeholder='First name'
-                onBlur={(e) =>
-                  setPassenger(group.id, e.target.value.trim(), group.passenger?.lastname ?? '')
-                }
-                className='w-28 rounded border border-gray-300 px-2 py-1 text-sm'
-              />
-              <input
-                type='text'
-                defaultValue={group.passenger?.lastname ?? ''}
-                placeholder='Last name'
-                onBlur={(e) =>
-                  setPassenger(group.id, group.passenger?.firstname ?? '', e.target.value.trim())
-                }
-                className='w-28 rounded border border-gray-300 px-2 py-1 text-sm'
-              />
-              <span className='text-xs text-gray-500'>{group.files.length} files</span>
-              <span className='ml-auto flex items-center gap-2'>
-                <SelectButton files={group.files} />
-                {!group.processed && (
-                  <button
-                    type='button'
-                    disabled={busy !== null || !passengerName(group)}
-                    onClick={() => run(group.id, { intent: 'process', groupId: group.id })}
-                    className='rounded bg-teal-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50'>
-                    {busy === group.id ? 'Processing…' : 'Process'}
-                  </button>
-                )}
-                {group.processed && (
-                  <>
-                    <button
-                      type='button'
-                      disabled={busy !== null}
-                      onClick={() => createMontage(group)}
-                      className='rounded border border-gray-300 bg-white px-3 py-1 text-xs font-semibold disabled:opacity-50'>
-                      Montage
-                    </button>
-                    <button
-                      type='button'
-                      disabled={busy !== null || !loaderData.nas.connected}
-                      title={
-                        loaderData.nas.connected
-                          ? 'Send to the NAS'
-                          : 'Connect the NAS from the classic view first'
-                      }
-                      onClick={() => run(group.id, { intent: 'upload-group', groupId: group.id })}
-                      className='rounded bg-teal-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50'>
-                      Upload
-                    </button>
-                  </>
-                )}
-              </span>
-            </div>
-            <div className='mt-2 flex flex-wrap gap-1'>
-              {group.files.map((file, index) => (
-                <Thumb
-                  key={`${index}:${file.path}`}
-                  file={file}
-                  selected={!!file.id && pickedFiles.includes(file.id)}
-                  selecting={selecting}
-                  onClick={(e) => clickFile(file, group.files, e, () => openPreview(group, file))}
-                  onDragStart={() => startFileDrag(file)}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-      </section>
-
-      {(selecting || pickedFiles.length > 0) && (
+      {pickedFiles.length > 0 && (
         <div className='fixed inset-x-0 bottom-0 z-40 border-t border-gray-700 bg-gray-900 p-3 text-sm text-white'>
-          <div className='mx-auto flex max-w-6xl flex-wrap items-center gap-3'>
+          <div className='mx-auto flex max-w-[1700px] flex-wrap items-center gap-3'>
             <b>
-              {pickedFiles.length === 0
-                ? 'Click the files you want'
-                : `${pickedFiles.length} file${pickedFiles.length > 1 ? 's' : ''} selected`}
+              {pickedFiles.length} file{pickedFiles.length > 1 ? 's' : ''} selected
             </b>
             <button
               type='button'
-              disabled={busy !== null || pickedFiles.length === 0}
+              disabled={busy !== null}
               onClick={() => moveFiles(pickedFiles, null)}
               className='rounded bg-teal-600 px-3 py-1 font-semibold disabled:opacity-40'>
               Remove — back to sorting
             </button>
             <span className='text-xs opacity-60'>
-              or drag them onto another card · shift-click for a range
+              or drag them onto another card · ⌘/ctrl-click to add · shift-click for a range ·
+              Delete removes
             </span>
             <button
               type='button'
-              onClick={stopSelecting}
+              onClick={clearFiles}
               className='ml-auto rounded bg-white px-3 py-1 font-semibold text-gray-900'>
               Done
             </button>
           </div>
         </div>
+      )}
+
+      {comparing && picked.length === 2 && (
+        <ComparisonDialog
+          groups={groups}
+          leftGroupId={picked[0]}
+          rightGroupId={picked[1]}
+          onClose={() => setComparing(false)}
+          onMerge={mergeTwo}
+        />
       )}
 
       {preview.preview && preview.preview.files[preview.preview.index] && (

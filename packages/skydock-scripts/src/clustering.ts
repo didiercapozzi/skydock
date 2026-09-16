@@ -162,6 +162,27 @@ const reclusterGroups = (manifest: Manifest, preservedIds?: Set<string>) => {
 /* Re-clusters only the files that sit in no group — the sorting area — so pulling files
    out of a destination does not permanently destroy the grouping the scan found.
    Groups already assigned to a destination are never touched. */
+/* a jump made on the spot out of files the user dropped somewhere — the only way loose files
+   can become a tandem, which needs a group to carry the passenger name */
+const groupFromFiles = (manifest: Manifest, files: ManifestFile[], destination?: string) => {
+  if (files.length === 0) return null
+  const sorted = sortFilesByMtime(files)
+  const used = new Set(manifest.groups.map((g) => g.id))
+  let idx = 1
+  while (used.has(`group_${idx}`)) idx++
+  const id = `group_${idx}`
+  const group: ManifestGroup = {
+    id,
+    label: id,
+    confirmed: false,
+    day: formatDay(Math.min(...sorted.map((f) => f.mtime))),
+    files: sorted,
+    ...(destination ? { destination } : {})
+  }
+  manifest.groups.push(group)
+  return group
+}
+
 const regroupLooseFiles = (manifest: Manifest) => {
   const grouped = new Set<string>()
   for (const group of manifest.groups)
@@ -171,16 +192,6 @@ const regroupLooseFiles = (manifest: Manifest) => {
     manifest.files.filter((f) => f.id && !grouped.has(f.id) && !f.destination)
   )
   if (loose.length === 0) return 0
-
-  const usedIds = new Set(manifest.groups.map((g) => g.id))
-  let nextIdx = 1
-  const getNextId = () => {
-    while (usedIds.has(`group_${nextIdx}`)) nextIdx++
-    const id = `group_${nextIdx}`
-    usedIds.add(id)
-    nextIdx++
-    return id
-  }
 
   const batches: ManifestFile[][] = []
   let current: ManifestFile[] = []
@@ -195,18 +206,7 @@ const regroupLooseFiles = (manifest: Manifest) => {
   }
   if (current.length > 0) batches.push(current)
 
-  for (const files of batches) {
-    let minMtime = Infinity
-    for (const f of files) if (f.mtime < minMtime) minMtime = f.mtime
-    const id = getNextId()
-    manifest.groups.push({
-      id,
-      label: id,
-      confirmed: false,
-      day: formatDay(minMtime),
-      files
-    })
-  }
+  for (const files of batches) groupFromFiles(manifest, files)
   return batches.length
 }
 
@@ -224,4 +224,4 @@ const shiftFiles = (manifest: Manifest, ids: Set<string>, offsetSeconds: number)
   }
 }
 
-export { reclusterGroups, regroupLooseFiles, shiftFiles }
+export { groupFromFiles, reclusterGroups, regroupLooseFiles, shiftFiles }
