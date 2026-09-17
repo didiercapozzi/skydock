@@ -67,13 +67,16 @@ Two small scripts bridge it, using the fact that `output/` is the same folder on
 # on the host, once — leave it running
 ./scripts/open-on-host.sh
 
-# in the container
-SKYDOCK_EDITOR_COMMAND=/workspace/scripts/editor-bridge.sh npm run dev
+# in the container — `dev` with the bridge already pointed at
+npm run dev:bridge
 ```
 
 The container writes the project it wants opened into `output/.editor-requests`; the host script
 sees the line, turns the container's `/workspace` into wherever the repo actually is, and opens it
 there. `SKYDOCK_EDITOR` picks a different editor, `SKYDOCK_EDITOR_QUEUE` a different file.
+
+`dev:bridge` is only `SKYDOCK_EDITOR_COMMAND=/workspace/scripts/editor-bridge.sh npm run dev`, so
+setting the variable by hand does the same thing.
 
 ## Checks
 
