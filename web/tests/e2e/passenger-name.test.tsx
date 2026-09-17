@@ -3,7 +3,7 @@ import { describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 
-import { PassengerName } from '../../app/components/tandem-card'
+import { PassengerCard, PassengerName } from '../../app/components/tandem-card'
 import type { ManifestGroup } from '../../app/components/types'
 
 /* Typing a first name and then moving to the last name used to record the passenger there and
@@ -70,5 +70,90 @@ describe('naming a passenger', () => {
 
     await expect.element(page.getByLabelText('First name')).toHaveValue('Chloé')
     await expect.element(page.getByLabelText('Last name')).toHaveValue('Perret')
+  })
+})
+
+/* A name is read off a form or a face, so a card that offers only a pair of counts is asking
+   somebody to remember what they saw on another screen. And a name read wrong has to be
+   changeable: it is the folder the passenger gets. */
+describe('the card a passenger is named on', () => {
+  const withFiles = (passenger?: { firstname: string; lastname: string }): ManifestGroup => ({
+    id: 'g1',
+    label: 'jump',
+    day: '08.08.2026',
+    destination: 'Tandems',
+    passenger,
+    files: [
+      { path: '/o/GX01.MP4', size: 1, mtime: 1, filename: 'GX01.MP4', id: 'v1' },
+      { path: '/o/GX02.MP4', size: 1, mtime: 2, filename: 'GX02.MP4', id: 'v2' }
+    ]
+  })
+
+  const renderCard = async (group: ManifestGroup, naming = false) => {
+    const onRename = vi.fn()
+    const onName = vi.fn()
+    await render(
+      createElement(PassengerCard, {
+        group,
+        who: group.passenger
+          ? `${group.passenger.firstname} ${group.passenger.lastname}`.trim()
+          : '',
+        naming,
+        dropTarget: {},
+        onOpen: vi.fn(),
+        onRename,
+        onName
+      })
+    )
+    return { onRename, onName }
+  }
+
+  test('shows frames off the clips, so there is something to name it from', async () => {
+    await renderCard(withFiles())
+
+    await expect.element(page.getByAltText(/frame from this tandem/i).first()).toBeVisible()
+  })
+
+  test('asks for the name while there is not one', async () => {
+    await renderCard(withFiles())
+
+    await expect.element(page.getByLabelText('First name')).toBeVisible()
+  })
+
+  /* the name is the folder, and a name can be read wrong */
+  test('offers to change a name that is already set', async () => {
+    const { onRename } = await renderCard(withFiles({ firstname: 'Luc', lastname: 'Favre' }))
+
+    await expect.element(page.getByText('Luc Favre')).toBeVisible()
+    await userEvent.click(page.getByRole('button', { name: 'rename' }))
+
+    expect(onRename).toHaveBeenCalled()
+  })
+
+  test('comes back with the name already in it when changing one', async () => {
+    await renderCard(withFiles({ firstname: 'Luc', lastname: 'Favre' }), true)
+
+    await expect.element(page.getByLabelText('First name')).toHaveValue('Luc')
+    await expect.element(page.getByLabelText('Last name')).toHaveValue('Favre')
+  })
+
+  /* changing it after the files have been prepared means preparing them again, into a new folder */
+  test('says what changing a prepared name costs', async () => {
+    await renderCard({ ...withFiles({ firstname: 'Luc', lastname: 'Favre' }), processed: true }, true)
+
+    await expect.element(page.getByText(/preparing it again/i)).toBeVisible()
+  })
+
+  test('says more when it has already been delivered', async () => {
+    await renderCard(
+      {
+        ...withFiles({ firstname: 'Luc', lastname: 'Favre' }),
+        processed: true,
+        delivered: { at: 1 }
+      },
+      true
+    )
+
+    await expect.element(page.getByText(/stays on the storage under the old name/i)).toBeVisible()
   })
 })

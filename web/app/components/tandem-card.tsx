@@ -3,6 +3,7 @@ import { useState } from 'react'
 import type { UploadProgressState } from '../hooks/useUploadProgress'
 import { Go, Mini } from './buttons'
 import { kindOf } from './file-list'
+import { getFileUrl, getThumbUrl } from './utils'
 import type { ManifestGroup } from './types'
 
 /* A tandem cannot be processed until it has a name, because the name *is* the folder the passenger
@@ -57,12 +58,43 @@ const PassengerName = ({
 
 /* One passenger in the Tandems grid: who it is, what is in it, and the one thing to do next —
    which is the same sentence the tandem itself offers, said small. */
+/* A few frames off the clips, which is how you tell who a tandem belongs to. A name is read off a
+   form or a face, so asking for one beside a pair of counts is asking somebody to remember what
+   they saw on another screen. Videos first, and only then photos, because a face is more likely in
+   the footage than in a burst of canopy shots. */
+const PassengerFrames = ({ group, alt }: { group: ManifestGroup; alt: string }) => {
+  const shown = [...group.files]
+    .sort((a, b) => Number(kindOf(b) === 'video') - Number(kindOf(a) === 'video'))
+    .slice(0, 4)
+  if (shown.length === 0) return null
+  return (
+    /* four across, sharing the width — fixed widths spilled the last one off the card */
+    <span className='mt-1.5 mb-0.5 grid grid-cols-4 gap-1'>
+      {shown.map((file) => (
+        <img
+          key={file.id ?? file.path}
+          src={kindOf(file) === 'video' ? getThumbUrl(file.path, 0.5, 160) : getFileUrl(file.path)}
+          alt={alt}
+          loading='lazy'
+          className='h-[42px] w-full min-w-0 rounded-[4px] bg-line-2 object-cover'
+        />
+      ))}
+    </span>
+  )
+}
+
+/* One passenger in the Tandems grid: who it is, what is in it, and the one thing to do next —
+   which is the same sentence the tandem itself offers, said small.
+
+   The card is a div rather than a button. It used to be a button with the name's inputs inside it,
+   which is not allowed and made every keystroke a click on the card underneath. */
 const PassengerCard = ({
   group,
   who,
   naming,
   dropTarget,
   onOpen,
+  onRename,
   onName
 }: {
   group: ManifestGroup
@@ -70,39 +102,70 @@ const PassengerCard = ({
   naming: boolean
   dropTarget: Record<string, unknown>
   onOpen: () => void
+  onRename: () => void
   onName: (firstname: string, lastname: string) => void
 }) => {
   const videos = group.files.filter((f) => kindOf(f) === 'video').length
   /* The same rule the folder uses. "Has some text in it" is not the same as "has a name": a
      passenger with only a first name has no folder to go to, so the card keeps asking. */
   const complete = hasCompletePassenger(group.passenger)
+  const editing = naming || !complete
   return (
-    <button
-      type='button'
+    <div
       {...dropTarget}
-      onClick={onOpen}
-      className='block w-full rounded-[10px] border border-line bg-pane p-3 text-left hover:border-accent'>
-      {naming || !complete ? (
-        <PassengerName
-          group={group}
-          onSave={onName}
-        />
+      className='rounded-[10px] border border-line bg-pane p-3 text-left focus-within:border-accent hover:border-accent'>
+      {editing ? (
+        <>
+          <PassengerName
+            group={group}
+            onSave={onName}
+          />
+          {/* The name is the folder, so changing it moves where everything goes. What is already
+              prepared belongs to the old folder and has to be prepared again; what is already on
+              the storage stays there under the old name, because SkyDock never deletes from it. */}
+          {complete && (group.processed || group.delivered) && (
+            <p className='mt-1 text-[11.5px] text-changed'>
+              {group.delivered
+                ? 'Already delivered — a new name means preparing and delivering again, and the old folder stays on the storage under the old name.'
+                : 'Already prepared — a new name means preparing it again, into the new folder.'}
+            </p>
+          )}
+        </>
       ) : (
-        <h3 className='mb-0.5 text-[14.5px] font-semibold tracking-[-0.01em]'>{who}</h3>
+        <span className='flex items-baseline gap-1.5'>
+          <h3 className='min-w-0 flex-1 truncate text-[14.5px] font-semibold tracking-[-0.01em]'>
+            {who}
+          </h3>
+          {/* a name read off a form can be read wrong, and the folder is named after it */}
+          <button
+            type='button'
+            onClick={onRename}
+            title='Change this name'
+            className='flex-none border-0 bg-transparent p-0 text-[11.5px] text-ink-3 underline hover:text-accent'>
+            rename
+          </button>
+        </span>
       )}
+      <PassengerFrames
+        group={group}
+        alt={editing ? 'A frame from this tandem, to tell who it is' : who}
+      />
       <p className='text-[12px] text-ink-2'>
         {videos} video{videos === 1 ? '' : 's'} · {group.files.length - videos} photos
       </p>
-      <p className='mt-2.5 text-[11.5px] font-semibold text-accent'>
+      <button
+        type='button'
+        onClick={onOpen}
+        className='mt-2.5 border-0 bg-transparent p-0 text-[11.5px] font-semibold text-accent'>
         {!complete
-          ? 'Name it →'
+          ? 'Open to see the clips →'
           : group.delivered
             ? '✓ delivered'
             : group.processed
               ? 'Next: montage →'
               : 'Next: process →'}
-      </p>
-    </button>
+      </button>
+    </div>
   )
 }
 

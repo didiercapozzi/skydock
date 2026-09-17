@@ -166,6 +166,12 @@ Filing a jump answers one question: who is this for?
 - **Tandems** is for jumps that belong to a passenger. Each passenger gets a folder of their own,
   named as typed, with videos and photos kept apart inside it. Two jumps for the same passenger share
   that folder. A tandem cannot be processed until it has a name, since the name _is_ the folder.
+  A tandem waiting for one shows a few frames off its own clips beside the two fields, because a name
+  is read off a face or a form and nobody should have to remember what they saw on another screen.
+  **A name can always be changed afterwards**, for the same reason: it can be read wrong. Changing one
+  says what it costs — what was already prepared belongs to the old folder and has to be prepared
+  again, and what has already been delivered stays on the storage under the old name, since SkyDock
+  never deletes from there.
 - **A loose file can be filed to a dropzone too**, without belonging to any jump. It is delivered
   exactly like a fun jump's files, because on disk they end up side by side.
 - A jump can also be processed without being filed at all, in which case it gets a folder of its own

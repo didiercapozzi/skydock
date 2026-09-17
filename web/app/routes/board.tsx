@@ -1218,6 +1218,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                         onOpen={() =>
                           who ? setPlace({ kind: 'pax', name: who }) : setRenaming(group.id)
                         }
+                        onRename={() => setRenaming(group.id)}
                         onName={(firstname, lastname) => {
                           setPassenger(group.id, firstname, lastname)
                           setRenaming(null)
