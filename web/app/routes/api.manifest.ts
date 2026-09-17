@@ -439,6 +439,17 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         errors.addGlobalError('Upload needs a group or a destination.')
         return errors.toResponse(422)
       }
+      /* A tandem's files reach the storage by delivering (RULES, Network storage), because they do
+         not all go to the same folder. The board never offers this for one, so anything arriving
+         here asked for it by name and is told why rather than left with an upload that quietly
+         covered nothing. */
+      const asked = groupsInScope(manifest, scope)
+      if (asked.length > 0 && asked.every(isTandem)) {
+        errors.addGlobalError(
+          'Use Deliver for a tandem: its film and photos go to the passenger and its original videos to the backup, which an upload of the whole folder cannot do.'
+        )
+        return errors.toResponse(422)
+      }
       /* a stored session is only a session if DSM still takes it — this is also what lets an
          expired one refresh itself instead of failing the upload (RULES, Network storage) */
       const session = await ensureNasSession()

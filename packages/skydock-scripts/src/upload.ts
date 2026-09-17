@@ -4,6 +4,7 @@ import { getDestinationDir, getGroupProcessedDir, isFlatGroup } from './process'
 import { publishJump } from './publish'
 import type { CheckProgress, UploadProgress, UploadVerdict } from './publish'
 import { listNasFiles } from './nas'
+import { isTandem } from './tandem'
 import type { NasSession } from './nas'
 import { mapWithLimit } from './utils'
 import type { Manifest, ManifestGroup } from './types'
@@ -135,7 +136,13 @@ const resolveUploadTargets = ({
   defaultFolder: string | null
   scope: UploadScope
 }) => {
-  const groups = groupsInScope(manifest, scope)
+  /* A tandem's files go to the storage by delivering (RULES, Network storage). Not because they
+     are not uploaded — they are — but because they do not all go to the same place: the film and
+     the photos to the passenger, the originals to the backup. This upload sends a folder whole,
+     which would put the project, the working copies and the originals in with the passenger's.
+     Refusing here rather than at the one button that exists means no later caller routes around
+     it. */
+  const groups = groupsInScope(manifest, scope).filter((g) => !isTandem(g))
   const targets = groups.map((g) => targetForGroup(g, outputDir, manifest, defaultFolder))
   /* a destination can also hold lone files, which belong to no group and would otherwise
      never be uploaded at all */

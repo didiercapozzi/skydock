@@ -5,7 +5,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { ensureShareLink } from '../src/nas'
 import { planUpload } from '../src/publish'
-import { resolveUploadTargets } from '../src/upload'
+import { resolveUploadTargets, targetForGroup } from '../src/upload'
 import type { Manifest, ManifestGroup } from '../src/types'
 import { createTmpDir, jsonResponse, nasStubs, seen, stubFetch } from './fixtures'
 
@@ -171,6 +171,8 @@ describe('resolveUploadTargets', () => {
     expect(target.localDir).toBe('/out/processed/Yverdon')
   })
 
+  /* Still where a passenger's folder goes — delivering asks for this target directly, which is the
+     only way a tandem ever reaches the storage. */
   it('gives a tandem its passenger folder inside the destination', () => {
     const manifest = manifestOf([
       group({
@@ -179,13 +181,37 @@ describe('resolveUploadTargets', () => {
         passenger: { firstname: 'Luc', lastname: 'Favre' }
       })
     ])
-    const [target] = resolveUploadTargets({
+    const target = targetForGroup(manifest.groups[0], outputDir, manifest, '/nas')
+    expect(target.remoteDir).toBe('/nas/Tandems/Luc Favre')
+  })
+
+  /* An upload sends a folder whole, and a passenger's holds the project, the working copies and
+     the archive of the originals as well as the film. RULES says a tandem is delivered and not
+     uploaded; this is the code saying it too, wherever the scope came from. */
+  it('leaves a tandem out of an upload, however it was asked for', () => {
+    const manifest = manifestOf([
+      group({ destination: 'Yverdon' }),
+      group({
+        id: 'group_2',
+        destination: 'Tandems',
+        passenger: { firstname: 'Luc', lastname: 'Favre' }
+      })
+    ])
+    const byId = resolveUploadTargets({
       outputDir,
       manifest,
       defaultFolder: '/nas',
-      scope: { groupIds: ['group_2'] }
+      scope: { groupIds: ['group_1', 'group_2'] }
     })
-    expect(target.remoteDir).toBe('/nas/Tandems/Luc Favre')
+    expect(byId.map((t) => t.key)).toEqual(['group:group_1'])
+
+    const byDestination = resolveUploadTargets({
+      outputDir,
+      manifest,
+      defaultFolder: '/nas',
+      scope: { destination: 'Tandems' }
+    })
+    expect(byDestination).toEqual([])
   })
 
   it('treats two fun jumps in one destination as a single upload', () => {

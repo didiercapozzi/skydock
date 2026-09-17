@@ -345,7 +345,14 @@ for. Asking to send something with no folder to put it in opens the browser for 
 missing.
 
 **Uploading.** One upload covers an entire dropzone — every jump filed there and its loose files, in a
-single job. A tandem is not uploaded but delivered, which sends only what is meant for the passenger. Files already on the storage are not sent again: a file with the same name
+single job, sending the folder whole.
+
+A tandem's files reach the storage too, but by delivering rather than by that upload, because they do
+not all go to the same place: the film and the photos to the passenger's folder, the original videos
+to the backup. Sending a passenger's folder whole would put the project, the working copies and the
+originals in with them, so asking to upload a tandem is refused and says why.
+
+Files already on the storage are not sent again: a file with the same name
 and the exact same size is checksummed on both sides, and only skipped if they match. Anything uncertain
 is uploaded, since sending a file twice costs time while skipping the wrong one costs the delivery. The
 app reports what it is doing throughout — first how many files it is checking, then how many it is
