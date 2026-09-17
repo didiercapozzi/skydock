@@ -31,6 +31,10 @@ These hold everywhere, and most of the rules further down are consequences of th
 - **A file's state is a fact that can be checked, not a flag someone has to remember to clear.** Every
   claim SkyDock makes about a file — it has been processed, it is on the network storage — is backed
   by evidence it can re-examine.
+- **Nothing on the network storage is ever deleted by SkyDock.** It uploads files and creates folders,
+  and re-uploading replaces a file of the same name — but taking something off the storage is done by a
+  person, in the storage's own interface. There is no button for it here and no way to reach one.
+  SkyDock's part is to notice that it happened.
 - **Uncertainty never destroys a fact.** When SkyDock cannot tell — the storage did not answer, a
   check failed — it keeps what it last proved rather than guessing the worse case.
 
@@ -202,14 +206,27 @@ cameras first.
 Every file is in one of three states, each of which SkyDock can verify:
 
 - **local** — nothing current has been made from it. Either it has never been processed, or it has been
-  cropped, re-timed or replaced since, which leaves what was made from it out of date. There is no
-  separate "stale" state on purpose: a file whose source has moved on is simply not processed.
+  cropped, re-timed or replaced since, which leaves what was made from it out of date.
+
+  > **Decided, not yet built.** These two are to be told apart on the board: a file that was prepared and
+  > then changed reads as **changed** rather than plain _local_, because "never prepared" and "prepared,
+  > then altered" are not the same situation to be in. It stays a derived fact, not a stored flag —
+  > preparing it again makes the copy current and the distinction disappears on its own.
+
 - **processed** — a copy exists that was made from the file exactly as it is now.
 - **uploaded** — that copy is on the network storage, proved by comparing checksums on both sides.
 
 A file falls back to **local** when anything it was made from has changed, or when the copy is missing
 or a different size. It falls back to **processed** when the copy that was uploaded is no longer the
 copy on disk, or when the storage was asked and does not have it.
+
+**Uploaded is the end of editing.** SkyDock never deletes from the network storage, so it cannot take an
+old copy back; changing a file after it has gone up would leave the two disagreeing for good. Cropping,
+re-timing, moving and renaming therefore belong before processing, and are closed once a file is uploaded.
+
+> **Decided, not yet built.** The board is to stop offering those edits on an uploaded file rather than
+> refusing them afterwards — its time not clickable, its row not draggable, its crop dialog read-only —
+> and to say plainly that the way back is to take the file off the storage, over there.
 
 Two rules keep this honest:
 
@@ -218,6 +235,11 @@ Two rules keep this honest:
   same file.
 - **Not knowing is not evidence.** Storage that was never asked, a folder whose listing failed, a size
   the storage would not report — none of these demote a file.
+
+  > **Decided, not yet built.** A file that went to the storage _inside an archive_ is covered by the
+  > same rule. Nothing can look inside a zip, so a listing that does not find it has learned nothing —
+  > it must never be read as the file being gone. A tandem's photos and original videos travel this way,
+  > which is what makes them count as uploaded at all: the archive was built from exactly those bytes.
 
 ## Network storage
 
@@ -244,9 +266,15 @@ sending and how far through the current one it is, and finally how many were alr
 **Share links.** A folder's link is reused if it already has a working one, so re-uploading does not
 invalidate the link a passenger already has. Only a folder with no usable link gets a new one.
 
-**Noticing deletions.** A file deleted directly on the storage stops counting as uploaded. SkyDock looks
-when the board opens, again right after an upload, and whenever the check button in the header is
-pressed.
+**Removing things.** SkyDock never deletes anything on the storage. A file that should not be there is
+removed by hand, in the storage's own interface — which is also the only place a mistake can be undone,
+since nothing here can put it back except sending it again.
+
+**Noticing deletions.** What SkyDock does instead is notice. A file it can no longer find stops counting
+as uploaded and goes back to being merely processed, ready to be sent again; the file on this machine is
+untouched either way. It looks when the board opens, again right after an upload, and whenever the check
+button in the header is pressed. Between those moments it says what it last proved, not what is true
+this second.
 
 ## Montage
 
