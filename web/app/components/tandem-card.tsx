@@ -1,3 +1,4 @@
+import { hasCompletePassenger } from '@skydock/scripts'
 import { useState } from 'react'
 import type { UploadProgressState } from '../hooks/useUploadProgress'
 import { Go, Mini } from './buttons'
@@ -27,6 +28,14 @@ const PassengerName = ({
   return (
     <span
       onClick={(e) => e.stopPropagation()}
+      /* Saved when the name is finished, not when one half of it is. Saving on each field's own
+         blur meant that moving from the first name to the last name recorded a passenger with no
+         last name — which hid the inputs behind the name it had just invented, and left a jump the
+         folder rule reads as a place rather than a person. */
+      onBlur={(e) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+        save()
+      }}
       className='flex flex-wrap items-center gap-1'>
       {NAME_FIELDS.map((field) => (
         <input
@@ -36,7 +45,9 @@ const PassengerName = ({
           placeholder={field.label}
           aria-label={field.label}
           onChange={(e) => setName({ ...name, [field.key]: e.target.value })}
-          onBlur={save}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') save()
+          }}
           className='w-24 rounded-[5px] border border-line bg-pane px-1.5 py-0.5 text-[12px]'
         />
       ))}
@@ -62,13 +73,16 @@ const PassengerCard = ({
   onName: (firstname: string, lastname: string) => void
 }) => {
   const videos = group.files.filter((f) => kindOf(f) === 'video').length
+  /* The same rule the folder uses. "Has some text in it" is not the same as "has a name": a
+     passenger with only a first name has no folder to go to, so the card keeps asking. */
+  const complete = hasCompletePassenger(group.passenger)
   return (
     <button
       type='button'
       {...dropTarget}
       onClick={onOpen}
       className='block w-full rounded-[10px] border border-line bg-pane p-3 text-left hover:border-accent'>
-      {naming || !who ? (
+      {naming || !complete ? (
         <PassengerName
           group={group}
           onSave={onName}
@@ -80,7 +94,7 @@ const PassengerCard = ({
         {videos} video{videos === 1 ? '' : 's'} · {group.files.length - videos} photos
       </p>
       <p className='mt-2.5 text-[11.5px] font-semibold text-accent'>
-        {!who
+        {!complete
           ? 'Name it →'
           : group.delivered
             ? '✓ delivered'

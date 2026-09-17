@@ -6,6 +6,16 @@ const hasCompletePassenger = (passenger: ManifestPassenger | null | undefined) =
   return passenger.firstname.trim() !== '' && passenger.lastname.trim() !== ''
 }
 
+/* Somebody started typing a name and did not finish. It is not a passenger — there is no folder to
+   put them in — and it is not a place either, so nothing downstream can do anything sensible with
+   it. Worth its own name because "no name" and "half a name" want different answers: the first is
+   a jump nobody has claimed yet, the second is a jump waiting on one more word. */
+const hasPartialPassenger = (passenger: ManifestPassenger | null | undefined) => {
+  if (!passenger) return false
+  const started = passenger.firstname.trim() !== '' || passenger.lastname.trim() !== ''
+  return started && !hasCompletePassenger(passenger)
+}
+
 const formatGroupDay = (mtime: number) => {
   const d = new Date(mtime * 1000)
   const month = String(d.getMonth() + 1).padStart(2, '0')
@@ -120,6 +130,7 @@ export {
   formatCaptureTime,
   formatGroupDay,
   hasCompletePassenger,
+  hasPartialPassenger,
   makeFileName,
   mergeGroups,
   resolveDestinationPath,

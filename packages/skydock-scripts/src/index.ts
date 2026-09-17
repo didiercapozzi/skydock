@@ -13,6 +13,11 @@ export { buildGroupBaseName, hasCompletePassenger, mergeGroups } from './workspa
 
 export { loadManifest, saveManifest, statProcessedOutputs } from './manifest'
 
+/* only where each clip's proxy has got to — building them shells out to ffmpeg, so the routes
+   import that side of it directly */
+export { statProxies } from './proxy'
+export type { ProxyFact } from './proxy'
+
 export { groupsInScope, listRemoteFiles, scopeKey, uploadScope } from './upload'
 
 export {

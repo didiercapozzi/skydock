@@ -11,6 +11,7 @@ import {
   buildPassengerFolder,
   formatGroupDay,
   hasCompletePassenger,
+  hasPartialPassenger,
   makeFileName,
   toFileStem
 } from './workspace'
@@ -224,6 +225,17 @@ const processJumps = (options?: ProcessOptions) => {
         ? groupIds.includes(g.id)
         : !options?.destination || g.destination === options.destination)
   )
+
+  /* A passenger's name half entered is not a passenger and not a place either: the rule that
+     decides the folder sees no complete name, reads the jump as a place, and delivers it flat with
+     every file named after the destination. What makes a jump a tandem is that somebody is in it,
+     so a name that has been started and not finished is the thing to refuse — whatever the
+     destination happens to be called. */
+  const halfNamed = groups.filter((g) => hasPartialPassenger(g.passenger))
+  if (halfNamed.length > 0)
+    throw new Error(
+      `Give ${halfNamed.length === 1 ? 'this passenger' : `these ${halfNamed.length} passengers`} a first and last name before processing — the name is the folder they get.`
+    )
 
   /* only ever bin a folder one group owns. A destination folder is shared by every day
      ever shot there, while the manifest only holds what the last scan found — rebuilding it

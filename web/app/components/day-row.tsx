@@ -1,4 +1,4 @@
-import type { StatusContext } from '@skydock/scripts'
+import type { ProxyFact, StatusContext } from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
 import { Mini } from './buttons'
 import { FileList, KindBadges, matchesKind } from './file-list'
@@ -20,6 +20,7 @@ type Props = {
   shape: FileShape
   picked: string[]
   statusContext: (file: ManifestFile) => StatusContext
+  proxies: Record<string, ProxyFact>
   deliveredName: (file: ManifestFile) => string | null
   onToggle: () => void
   onKind: (kind: Kind) => void
@@ -311,6 +312,7 @@ const DayRow = ({
   shape,
   picked,
   statusContext,
+  proxies,
   deliveredName,
   onToggle,
   onKind,
@@ -469,6 +471,7 @@ const DayRow = ({
                     shape={shape}
                     picked={picked}
                     statusContext={statusContext}
+                    proxies={proxies}
                     onFile={onFile}
                     onDragFile={onDragFile}
                     deliveredName={deliveredName}
@@ -484,6 +487,7 @@ const DayRow = ({
               shape={shape}
               picked={picked}
               statusContext={statusContext}
+              proxies={proxies}
               onFile={onFile}
               onDragFile={onDragFile}
               deliveredName={deliveredName}
@@ -507,6 +511,7 @@ const DayRow = ({
                 shape={shape}
                 picked={picked}
                 statusContext={statusContext}
+                proxies={proxies}
                 onFile={onFile}
                 onDragFile={onDragFile}
                 deliveredName={deliveredName}

@@ -1,5 +1,5 @@
 import { fileChanged, fileStatus } from '@skydock/scripts'
-import type { StatusContext } from '@skydock/scripts'
+import type { ProxyFact, StatusContext } from '@skydock/scripts'
 import { useState } from 'react'
 import { StatusChip, StatusDot } from './file-status'
 import type { ShownStatus } from './file-status'
@@ -21,6 +21,9 @@ type Props = {
   shape: FileShape
   picked: string[]
   statusContext: (file: ManifestFile) => StatusContext
+  /* where each clip's proxy has got to, keyed by the clip's path — read off the disk by the
+     server, because the record alone cannot know someone emptied the folder */
+  proxies: Record<string, ProxyFact>
   onFile: (file: ManifestFile, lane: ManifestFile[], e: React.MouseEvent) => void
   onDragFile: (file: ManifestFile, e?: React.DragEvent) => void
   /* the name the file has once a copy exists — what goes to the NAS and what the passenger sees */
@@ -70,12 +73,49 @@ const CropFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) =
   )
 }
 
+/* Whether the small copy exists yet. Only clips have one, and it is worth saying out loud: a card
+   where none of them built looks exactly like a card still building, and until this was on screen
+   the only way to tell was to read the server's log. `own` is a clip already small enough to be its
+   own proxy — finished, with nothing left to make. */
+const PROXY_FLAG: Record<ProxyFact['state'], { label: string; title: string; className: string }> =
+  {
+    ready: {
+      label: 'proxy',
+      title: 'Proxy ready — the crop bar plays it, and the editor opens on it',
+      className: 'border border-proc bg-proc-soft text-proc'
+    },
+    own: {
+      label: 'proxy',
+      title: 'Small enough already — this clip is its own proxy, nothing to build',
+      className: 'border border-line bg-line-2 text-ink-3'
+    },
+    none: {
+      label: 'no proxy',
+      title:
+        'No proxy yet — it is built behind the scan. Meanwhile the clip plays as it is and the editor makes its own.',
+      className: 'border border-dashed border-local bg-local-soft text-local'
+    }
+  }
+
+const ProxyFlag = ({ fact }: { fact?: ProxyFact }) => {
+  if (!fact) return null
+  const { label, title, className } = PROXY_FLAG[fact.state]
+  return (
+    <span
+      title={title}
+      className={`flex-none rounded px-1.5 font-mono text-[10px] leading-4 font-semibold whitespace-nowrap ${className}`}>
+      {label}
+    </span>
+  )
+}
+
 const Row = ({
   file,
   lane,
   picked,
   locked,
   status,
+  proxy,
   name,
   onFile,
   onDragFile
@@ -85,6 +125,7 @@ const Row = ({
   picked: boolean
   locked: boolean
   status: ShownStatus
+  proxy?: ProxyFact
   name: string | null
   onFile: Props['onFile']
   onDragFile: Props['onDragFile']
@@ -137,6 +178,7 @@ const Row = ({
         {file.filename}
       </span>
     )}
+    <ProxyFlag fact={proxy} />
     <CropFlag
       file={file}
       applied={status === 'processed' || status === 'uploaded'}
@@ -166,6 +208,7 @@ const Tile = ({
   picked,
   locked,
   status,
+  proxy,
   selecting,
   onFile,
   onDragFile
@@ -175,6 +218,7 @@ const Tile = ({
   picked: boolean
   locked: boolean
   status: ReturnType<typeof fileStatus>
+  proxy?: ProxyFact
   selecting: boolean
   onFile: Props['onFile']
   onDragFile: Props['onDragFile']
@@ -185,7 +229,9 @@ const Tile = ({
     draggable={!locked}
     onDragStart={locked ? undefined : (e) => onDragFile(file, e)}
     onClick={(e) => onFile(file, lane, e)}
-    title={`${file.filename} · ${formatTime(file.mtime)} · ${formatSize(file.size)} · ${status}`}
+    title={`${file.filename} · ${formatTime(file.mtime)} · ${formatSize(file.size)} · ${status}${
+      proxy?.state === 'none' ? ' · no proxy yet' : ''
+    }`}
     className={`relative aspect-[4/3] max-w-full overflow-hidden rounded-[5px] border-2 bg-line-2 p-0 ${
       picked ? 'border-pick' : 'border-transparent'
     }`}>
@@ -201,6 +247,14 @@ const Tile = ({
       </i>
     )}
     {locked && <span className='absolute right-1 bottom-1 text-[10px]'>🔒</span>}
+    {/* only the clip still waiting is marked here — a proxy that exists is the ordinary case, and
+        a grid is where hundreds of stills are culled, so it stays as quiet as it can */}
+    {proxy?.state === 'none' && (
+      <span
+        title={PROXY_FLAG.none.title}
+        className='pointer-events-none absolute bottom-1 left-1 h-2 w-2 rounded-full border border-dashed border-white bg-local shadow-[0_0_0_1.5px_rgba(0,0,0,0.45)]'
+      />
+    )}
     {selecting && <StatusDot status={status} />}
   </button>
 )
@@ -263,6 +317,7 @@ const FileList = ({
   shape,
   picked,
   statusContext,
+  proxies,
   onFile,
   onDragFile,
   deliveredName,
@@ -294,6 +349,7 @@ const FileList = ({
               picked={Boolean(file.id && picked.includes(file.id))}
               locked={locked}
               status={shownStatus(file, context)}
+              proxy={proxies[file.path]}
               name={deliveredName(file)}
               onFile={onFile}
               onDragFile={onDragFile}
@@ -306,6 +362,7 @@ const FileList = ({
               picked={Boolean(file.id && picked.includes(file.id))}
               locked={locked}
               status={fileStatus(file, context)}
+              proxy={proxies[file.path]}
               selecting={selecting}
               onFile={onFile}
               onDragFile={onDragFile}

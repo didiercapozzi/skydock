@@ -56,6 +56,33 @@ than inside it, because a card of clips takes minutes, and everything works with
 a clip with no proxy yet simply plays as it always did. A clip already smaller than a proxy would be
 is its own.
 
+Every clip says whether it has one, beside its name: **proxy** when it is there, **no proxy** while it
+is not, and nothing at all for a photo, which never has one. A clip already small enough to be its own
+reads as having one, because it has — there is nothing left to make. The header counts how many are
+still without, and says nothing once they all have one. All of it is read off the disk rather than off
+what the last pass recorded, so emptying the folder shows up as what it is instead of every clip going
+on claiming a copy that is gone.
+
+**The graphics card does it when there is one.** Unpacking a card of 4K clips is the expensive half,
+so what matters is that the card decodes as well as encodes — measured on two clips, eleven seconds
+against three minutes. Which card is used is worked out by trying one, with the settings it will
+really be given, rather than by asking what it supports: an encoder a machine lists is not one it can
+necessarily run, and one that accepts a trial of nothing can still refuse every clip. With no card
+that answers, the processor does it, slower and no differently otherwise.
+
+A proxy a card made is larger than one the processor made — two to three times, for the same picture,
+because making every frame a keyframe is what costs and hardware spends more bits doing it. That is
+the trade: minutes of waiting against gigabytes of working files that never leave the machine.
+
+Each proxy is recorded the moment it is made, not when the run finishes. A card of clips is twenty
+minutes of work, and whoever started it may never see it end — a copy nobody wrote down is a copy
+nobody uses, which is how the crop bar came to drag 4K originals through the browser with twenty
+finished proxies sitting unused.
+
+A clip whose proxy cannot be made is named, **and so is the reason it could not** — once, since when
+this fails it usually fails the same way on every clip on the card. A card that cannot be proxied is
+still a card that can be sorted, processed and delivered.
+
 Proxies are never shown. They are not footage, so nothing lists them, counts them or offers them to
 be sorted, and they never leave this machine: they are kept away from the folders that go to the
 storage, so what reaches a passenger or the backup is the same as it was before they existed.
@@ -66,6 +93,11 @@ the passenger's name.
 **4. Process.** The files of a filed jump are copied into their delivery folder, renamed after the
 passenger or the dropzone and the time they were shot, cropped if a crop was set, and stamped so that
 the file's date matches its name.
+
+A passenger's name half entered stops this, saying which name is unfinished. Half a name is neither a
+person nor a place: it has no folder to go to, and the rule that picks the folder would read the jump
+as a place and deliver it flat under the dropzone's name. What makes a jump a tandem is that somebody
+is in it, so a name begun and not finished is the thing to refuse.
 
 **5a. A dropzone is uploaded.** Its folder is sent to the club's network storage, and a share link
 comes back.
@@ -455,8 +487,9 @@ Worth knowing, so nobody goes looking:
   the project and takes over again afterwards, but it never drives the edit or the render.
 - **Nothing notices a render finishing.** The board looks at the folder each time it is asked to do
   something; there is no watching in the background.
-- **Nothing shows a proxy being made.** They appear as they are finished, on the next thing the board
-  is asked to do; there is no progress to watch and no way to ask for one on its own.
+- **Nothing watches a proxy being made.** The board says which clips have one and how many are still
+  without, but only as of the last time it was drawn: they appear on the next thing it is asked to do,
+  and there is no live progress and no way to ask for one on its own.
 - **Nothing comes in from outside the cameras.** A file can only reach SkyDock by being copied off a
   camera and scanned; there is no way to drop an arbitrary file into a jump.
 - **A file is in one place at a time.** It can be moved between jumps, but not put in two at once.

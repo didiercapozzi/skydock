@@ -21,22 +21,20 @@ const PROXY_WIDTH = 640
 
 const PROXY_MIN_WIDTH = 1000
 
-/* `-g 1` makes every frame a keyframe. That is what the editor's proxies do and what makes both
-   halves of this work: scrubbing lands instantly, and a crop can be taken out of the proxy with a
-   stream copy that cuts exactly where it was asked to. */
-const PROXY_ARGS = [
-  '-c:v',
-  'libx264',
-  '-crf',
-  '20',
-  '-preset',
-  'veryfast',
+/* Shared by every encoder. `-g 1` makes every frame a keyframe: that is what the editor's own
+   proxies do and what makes both halves of this work — scrubbing lands instantly, and a crop can be
+   taken out of the proxy with a stream copy that cuts exactly where it was asked to.
+
+   `-f mp4` is not decoration: the file is written under a temporary name ending in `.part`, and
+   ffmpeg picks the container from the extension unless it is told. Without this it refuses every
+   clip before encoding a frame — "unable to choose an output format" — and every proxy fails. */
+const CONTAINER_ARGS = [
+  '-f',
+  'mp4',
   '-g',
   '1',
   '-bf',
   '0',
-  '-pix_fmt',
-  'yuv420p',
   '-c:a',
   'aac',
   '-b:a',
@@ -44,6 +42,79 @@ const PROXY_ARGS = [
   '-movflags',
   '+faststart'
 ]
+
+/* Which encoder this machine can actually use. Decoding is the expensive half — a card of 4K HEVC
+   clips spends its time unpacking them, not writing the small copy — so what matters most is that
+   the graphics card does the decode too. Measured on one 148-second clip: 165s on the processor,
+   under 10s on the card.
+
+   Hardware all-intra costs more bits than x264 does for the same picture, so the quality knob is
+   set per encoder rather than shared. */
+type ProxyEncoder = 'nvenc' | 'vaapi' | 'cpu'
+
+const DRI_DEVICE = () => process.env.SKYDOCK_DRI_DEVICE?.trim() || '/dev/dri/renderD128'
+
+/* `-tune ull` is what lets NVENC make every frame a keyframe at all: without it the driver refuses
+   `-g 1` outright — "Gop Length should be greater than number of B frames + 1" — and `-g 2` gives
+   every *other* frame, which is not the same thing and breaks cutting a crop out with a copy. It
+   costs bits: NVENC needs a much higher qp than the others to land on the same file size.
+
+   No `-pix_fmt` on the hardware paths. The frames are in the card's own memory, and naming a pixel
+   format makes ffmpeg insert a conversion it cannot link to — "impossible to convert between the
+   formats supported by the filter". */
+const ENCODER_ARGS: Record<ProxyEncoder, string[]> = {
+  nvenc: ['-c:v', 'h264_nvenc', '-preset', 'p4', '-tune', 'ull', '-rc', 'constqp', '-qp', '36'],
+  vaapi: ['-c:v', 'h264_vaapi', '-qp', '30'],
+  cpu: ['-c:v', 'libx264', '-crf', '20', '-preset', 'veryfast', '-pix_fmt', 'yuv420p']
+}
+
+/* Being listed by ffmpeg is not the same as working: the encoder is compiled in whether or not the
+   card, its driver and its device node are all reachable. NVENC in particular is listed and then
+   fails at "device creation" when the driver libraries are missing, which is exactly the state a
+   container is in until it is given them.
+
+   The trial carries the same settings the real thing does, `-g 1` included. One that leaves them
+   out proves only that the encoder exists: NVENC passed exactly such a trial and then refused
+   every clip on the card, because what it objects to is the all-intra setting and nothing else. */
+const canEncode = (args: string[], before: string[] = []) => {
+  try {
+    childProcess.execSync(
+      `ffmpeg -hide_banner -loglevel error ${before.join(' ')} -f lavfi -i color=black:s=320x240:d=0.2 ${args.join(' ')} ${TRIAL_ARGS.join(' ')} -f null - `,
+      { stdio: 'ignore', timeout: 20_000 }
+    )
+    return true
+  } catch {
+    return false
+  }
+}
+
+const detectEncoder = (): ProxyEncoder => {
+  const asked = process.env.SKYDOCK_PROXY_ENCODER?.trim().toLowerCase()
+  if (asked === 'cpu' || asked === 'vaapi' || asked === 'nvenc') return asked
+  if (!hasCommand('ffmpeg')) return 'cpu'
+  if (canEncode(ENCODER_ARGS.nvenc)) return 'nvenc'
+  if (
+    fs.existsSync(DRI_DEVICE()) &&
+    canEncode(
+      [...ENCODER_ARGS.vaapi, '-vf', 'format=nv12,hwupload'],
+      ['-vaapi_device', DRI_DEVICE()]
+    )
+  )
+    return 'vaapi'
+  return 'cpu'
+}
+
+let encoder: ProxyEncoder | null = null
+
+const proxyEncoder = () => (encoder ??= detectEncoder())
+
+/* only for tests and for saying which one was picked in a log line */
+const setProxyEncoder = (next: ProxyEncoder | null) => {
+  encoder = next
+}
+
+/* everything the real command sets, minus the container, since a trial writes to nothing */
+const TRIAL_ARGS = CONTAINER_ARGS.filter((a, i) => a !== '-f' && CONTAINER_ARGS[i - 1] !== '-f')
 
 const getProxyDir = (outputDir?: string) => path.join(outputDir || getOutputDir(), 'proxies')
 
@@ -59,36 +130,98 @@ const getCutProxyDir = (outputDir: string, groupId: string) =>
 const getProxyPath = (file: ManifestFile, outputDir?: string) =>
   file.id ? path.join(getProxyDir(outputDir), `${file.id}.mp4`) : null
 
-const videoWidth = (src: string) => {
+/* Width, height and how the clip is meant to be turned. A phone or a 360 camera records sideways
+   and records the turn beside it, so the frame on disk is not the frame anyone sees. */
+const videoShape = (src: string) => {
   if (!hasCommand('ffprobe')) return null
   try {
     const out = childProcess.execSync(
-      `ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 "${src.replace(/(["$`\\])/g, '\\$1')}"`,
+      `ffprobe -v error -select_streams v:0 -show_entries stream=width,height:stream_side_data=rotation -of default=nw=1 "${src.replace(/(["$`\\])/g, '\\$1')}"`,
       { encoding: 'utf-8' }
     )
-    const width = Number.parseInt(out.trim().split(/\r?\n/)[0] ?? '', 10)
-    return Number.isFinite(width) ? width : null
+    const read = (key: string) => {
+      const line = out.split(/\r?\n/).find((l) => l.startsWith(`${key}=`))
+      const value = Number.parseInt(line?.slice(key.length + 1) ?? '', 10)
+      return Number.isFinite(value) ? value : null
+    }
+    const width = read('width')
+    const height = read('height')
+    if (width === null || height === null) return null
+    /* a quarter turn either way swaps what counts as the wide edge */
+    const turned = Math.abs(read('rotation') ?? 0) % 180 === 90
+    return { width, height, turned }
   } catch {
     return null
   }
 }
 
+/* How wide the clip looks to someone watching it, which is the number the proxy has to shrink. */
+const shownWidth = (shape: { width: number; height: number; turned: boolean }) =>
+  shape.turned ? shape.height : shape.width
+
+/* The processor's scaler is handed frames ffmpeg has already turned the right way up, so asking
+   for a 640-wide frame is the whole of it. A graphics card is handed them as they sit on disk and
+   the turn stays as a note on the side, so the edge to shrink is whichever one ends up across —
+   get this wrong and a sideways clip comes out three times the size it was asked for, which is
+   what happened to every 360 camera clip on the first card through. */
+const scaleFilter = (shape: { turned: boolean } | null, hardware: boolean) => {
+  if (!hardware) return `scale=${PROXY_WIDTH}:-2`
+  return shape?.turned ? `scale_vaapi=w=-2:h=${PROXY_WIDTH}` : `scale_vaapi=w=${PROXY_WIDTH}:h=-2`
+}
+
+/* ffmpeg signs off with "Conversion failed!", which says only that it did — the diagnosis is the
+   line above it, naming the setting it would not accept. So the sign-offs are dropped and the last
+   line that actually gives a reason is kept. */
+const NOISE = [/^Conversion failed!?$/i, /^Error opening output file/i, /^Terminating thread/i]
+
+const NAMES_A_REASON = /failed|invalid|unable|impossible|not (supported|implemented)/i
+
+const lastComplaint = (stderr: string) => {
+  const lines = stderr
+    .split('\n')
+    .map((l) => l.trim().replace(/^\[[^\]]+\]\s*/, ''))
+    .filter((l) => l !== '' && !NOISE.some((n) => n.test(l)))
+  const named = lines.filter((l) => NAMES_A_REASON.test(l))
+  return named[named.length - 1] ?? lines[lines.length - 1] ?? 'ffmpeg failed with no output'
+}
+
 /* Written to a temporary name and moved into place, so an interrupted run leaves nothing that
-   looks finished — the next pass would otherwise skip a half-written proxy forever. */
-const buildProxy = (src: string, dest: string) => {
-  if (!hasCommand('ffmpeg')) return false
+   looks finished — the next pass would otherwise skip a half-written proxy forever.
+
+   Why it failed comes back with the answer. This used to be thrown away three times over — stderr
+   to /dev/null, stdio ignored, the error swallowed — so when every clip on a card failed, the app
+   could say only that it had. */
+const buildProxy = (src: string, dest: string, shape: ReturnType<typeof videoShape> = null) => {
+  if (!hasCommand('ffmpeg')) return { ok: false as const, reason: 'ffmpeg is not installed' }
+  const quote = (p: string) => `"${p.replace(/(["$`\\])/g, '\\$1')}"`
+  const pick = proxyEncoder()
+  /* NVENC scales on the card with cuda; VAAPI with its own filter. The processor path is left
+     exactly as it was, turn and all, because ffmpeg has already done that part for it. */
+  const decode =
+    pick === 'nvenc'
+      ? ['-hwaccel', 'cuda', '-hwaccel_output_format', 'cuda']
+      : pick === 'vaapi'
+        ? ['-hwaccel', 'vaapi', '-hwaccel_output_format', 'vaapi', '-vaapi_device', DRI_DEVICE()]
+        : []
+  const filter =
+    pick === 'nvenc'
+      ? shape?.turned
+        ? `scale_cuda=w=-2:h=${PROXY_WIDTH}`
+        : `scale_cuda=w=${PROXY_WIDTH}:h=-2`
+      : scaleFilter(shape, pick === 'vaapi')
   const partial = `${dest}.part`
   fs.mkdirSync(path.dirname(dest), { recursive: true })
   try {
     childProcess.execSync(
-      `ffmpeg -y -i "${src.replace(/(["$`\\])/g, '\\$1')}" -vf scale=${PROXY_WIDTH}:-2 ${PROXY_ARGS.join(' ')} "${partial.replace(/(["$`\\])/g, '\\$1')}" 2>/dev/null`,
-      { stdio: 'ignore' }
+      `ffmpeg -y ${decode.join(' ')} -i ${quote(src)} -vf ${filter} ${ENCODER_ARGS[pick].join(' ')} ${CONTAINER_ARGS.join(' ')} ${quote(partial)}`,
+      { stdio: ['ignore', 'ignore', 'pipe'] }
     )
     fs.renameSync(partial, dest)
-    return true
-  } catch {
+    return { ok: true as const }
+  } catch (e) {
     if (fs.existsSync(partial)) fs.unlinkSync(partial)
-    return false
+    const stderr = (e as { stderr?: Buffer | string }).stderr
+    return { ok: false as const, reason: lastComplaint(stderr ? String(stderr) : '') }
   }
 }
 
@@ -118,15 +251,23 @@ const proxyIsCurrent = (file: ManifestFile, outputDir?: string) => {
 
 const needsProxy = (file: ManifestFile) => isVideoFile(file.path) && !!file.id
 
-type ProxyReport = { built: number; skipped: number; failed: string[] }
+/* `reason` is why the failures failed — one line, because when proxies break they break for the
+   same reason on every clip, and 27 copies of it is not 27 pieces of information. */
+type ProxyReport = { built: number; skipped: number; failed: string[]; reason?: string }
 
 /* Runs over everything and records what it made on the registry entry. Resumable by construction:
    a clip whose proxy is already there is passed over, so an interrupted run costs only the clip it
-   was on. It never throws — a card that cannot be proxied is still a card that can be sorted. */
+   was on. It never throws — a card that cannot be proxied is still a card that can be sorted.
+
+   `onBuilt` fires as each one lands, so the caller can write the record down then rather than at
+   the end. A card of clips is twenty minutes of transcoding, and a run that only saves when it
+   finishes leaves every proxy it has already made unrecorded — which is how the crop bar came to
+   drag 4K originals through the browser with twenty small copies sitting unused on disk. */
 const ensureProxies = (
   manifest: Manifest,
   outputDir?: string,
-  onProgress?: (done: number, total: number, filename: string) => void
+  onProgress?: (done: number, total: number, filename: string) => void,
+  onBuilt?: () => void
 ) => {
   const report: ProxyReport = { built: 0, skipped: 0, failed: [] }
   const candidates = manifest.files.filter(needsProxy)
@@ -137,24 +278,33 @@ const ensureProxies = (
     const proxyPath = getProxyPath(file, outputDir)
     if (!proxyPath) return
     if (fs.existsSync(proxyPath)) {
-      file.proxy = proxyPath
+      if (file.proxy !== proxyPath) {
+        file.proxy = proxyPath
+        onBuilt?.()
+      }
       report.skipped++
       return
     }
     if (!fs.existsSync(file.path)) return
-    const width = videoWidth(file.path)
+    const shape = videoShape(file.path)
     /* already smaller than the proxy would be — the clip is its own proxy */
-    if (width !== null && width <= PROXY_MIN_WIDTH) {
-      file.proxy = file.path
+    if (shape !== null && shownWidth(shape) <= PROXY_MIN_WIDTH) {
+      if (file.proxy !== file.path) {
+        file.proxy = file.path
+        onBuilt?.()
+      }
       report.skipped++
       return
     }
-    if (buildProxy(file.path, proxyPath)) {
+    const built = buildProxy(file.path, proxyPath, shape)
+    if (built.ok) {
       file.proxy = proxyPath
       report.built++
+      onBuilt?.()
     } else {
       delete file.proxy
       report.failed.push(file.filename)
+      report.reason ??= built.reason
     }
   })
   onProgress?.(candidates.length, candidates.length, '')
@@ -175,12 +325,19 @@ const buildMissingProxies = async (outputDir?: string) => {
     const manifestPath = getManifestPath(dir)
     const manifest = loadManifest(manifestPath)
     if (!manifest) return { built: 0, skipped: 0, failed: [] }
-    const report = ensureProxies(manifest, dir)
-    if (report.built > 0 || report.skipped > 0) saveManifest(manifestPath, manifest)
+    /* written down as each one lands: whoever asked for this may never see it finish, and a
+       proxy nobody recorded is a proxy nobody uses */
+    const report = ensureProxies(manifest, dir, undefined, () =>
+      saveManifest(manifestPath, manifest)
+    )
     if (report.built > 0)
-      console.log(`[Proxy] Built ${report.built} proxy file(s) in ${dir}/proxies`)
+      console.log(
+        `[Proxy] Built ${report.built} proxy file(s) in ${dir}/proxies using ${proxyEncoder()}`
+      )
     if (report.failed.length > 0)
-      console.warn(`[Proxy] Could not build: ${report.failed.join(', ')}`)
+      console.warn(
+        `[Proxy] Could not build ${report.failed.length} of ${report.failed.length + report.built + report.skipped}: ${report.reason}\n[Proxy] ${report.failed.join(', ')}`
+      )
     return report
   })()
   try {
@@ -188,6 +345,31 @@ const buildMissingProxies = async (outputDir?: string) => {
   } finally {
     running = null
   }
+}
+
+/* Where each clip's proxy has got to, and which file to actually play, keyed by the clip's path.
+
+   Read off the disk rather than off the record. `file.proxy` is written only when a whole pass
+   finishes, so a card half way through a twenty-minute build has proxies sitting there that the
+   record knows nothing about — and the crop bar would drag the 4K original through the browser
+   while the small copy went unused. Emptying the folder is the same problem the other way round
+   (RULES, Principles — a state is a fact that can be checked).
+
+   `own` is a clip already smaller than a proxy would be. It is finished, not pending: there is
+   nothing left to make, which is a different thing from having nothing yet. */
+type ProxyFact = { state: 'ready' | 'own' | 'none'; play: string }
+
+const statProxies = (manifest: Manifest, outputDir?: string) => {
+  const facts: Record<string, ProxyFact> = {}
+  for (const file of manifest.files) {
+    if (!needsProxy(file)) continue
+    const proxyPath = getProxyPath(file, outputDir)
+    if (file.proxy === file.path) facts[file.path] = { state: 'own', play: file.path }
+    else if (proxyPath && fs.existsSync(proxyPath))
+      facts[file.path] = { state: 'ready', play: proxyPath }
+    else facts[file.path] = { state: 'none', play: file.path }
+  }
+  return facts
 }
 
 /* How far along the whole card is, for a line the board can show without polling anything. */
@@ -203,6 +385,8 @@ export {
   buildMissingProxies,
   buildProxy,
   cropProxy,
+  proxyEncoder,
+  setProxyEncoder,
   ensureProxies,
   getCutProxyDir,
   getProxyDir,
@@ -211,6 +395,7 @@ export {
   proxyCounts,
   proxyIsCurrent,
   PROXY_MIN_WIDTH,
-  PROXY_WIDTH
+  PROXY_WIDTH,
+  statProxies
 }
-export type { ProxyReport }
+export type { ProxyEncoder, ProxyFact, ProxyReport }

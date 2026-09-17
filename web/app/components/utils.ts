@@ -1,4 +1,5 @@
 import { getOutputDir, isVideoFile as isVideoFileFromScripts } from '@skydock/scripts'
+import type { ProxyFact } from '@skydock/scripts'
 import type { ManifestFile, ManifestGroup } from './types'
 
 const isVideoFile = (filename: string) => isVideoFileFromScripts(filename)
@@ -91,8 +92,13 @@ const getFileUrl = (filePath: string) => `/api/file${relativeToOutput(filePath)}
    once one has been made, and the crop bar scrubs against that instead of dragging a 4K file
    through the browser a frame at a time. Same duration and same frame rate, so a crop set here
    means the same instant in the clip itself. Until the proxy exists, the clip plays as it always
-   did. */
-const getPlaybackUrl = (file: ManifestFile) => getFileUrl(file.proxy ?? file.path)
+   did.
+
+   The server's look at the disk decides, and the record on the file is only the fallback: a build
+   still in progress has copies on disk that nothing has written down yet, and playing the original
+   because of that is exactly the lag a proxy exists to remove. */
+const getPlaybackUrl = (file: ManifestFile, fact?: ProxyFact) =>
+  getFileUrl(fact?.play ?? file.proxy ?? file.path)
 
 const getThumbUrl = (filePath: string, seekSeconds: number, width = 80) =>
   `/api/thumb${relativeToOutput(filePath)}?seek=${seekSeconds.toFixed(1)}&width=${width}`

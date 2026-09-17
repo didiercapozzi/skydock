@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     privileged: true
+    runtime: nvidia
     devices:
       - /dev/dri:/dev/dri
     volumes:
@@ -15,6 +16,10 @@ services:
     environment:
       - SSH_AUTH_SOCK=/ssh-agent
       - CLAUDE_CONFIG_DIR=/workspace/.claude
+      # `video` is the one that matters — it carries NVENC and NVDEC. `compute` brings CUDA, which
+      # the hardware scaler needs, and `utility` brings nvidia-smi for checking it is all there.
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
     env_file:
       - ../.env
     command: sleep infinity

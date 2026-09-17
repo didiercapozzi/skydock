@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Go, Mini } from './buttons'
 import { Spacer } from './modal'
+import type { ProxyFact } from '@skydock/scripts'
 import type { ManifestFile } from './types'
 import {
   clock,
@@ -48,6 +49,7 @@ const PreviewDrawer = ({
   files,
   index,
   status,
+  proxy,
   onClose,
   onPrevious,
   onNext,
@@ -67,6 +69,8 @@ const PreviewDrawer = ({
   index: number
   /* what the file reads as right now — the same word its row shows */
   status?: string
+  /* the server's look at whether this clip has its small copy, and which file to play */
+  proxy?: ProxyFact
   onClose: () => void
   onPrevious: () => void
   onNext: () => void
@@ -106,7 +110,7 @@ const PreviewDrawer = ({
 
   if (!file) return null
 
-  const fileUrl = getPlaybackUrl(file)
+  const fileUrl = getPlaybackUrl(file, proxy)
   const video = isVideoFile(file.filename)
   const from = cropStart ?? 0
   const to = cropEnd ?? duration

@@ -3,16 +3,18 @@ import {
   ensureNasSession,
   fileStatus,
   getOutputDir,
+  hasCompletePassenger,
   isoDay,
   listRemoteFiles,
   loadManifest,
   manifestFileSchema,
   manifestGroupSchema,
   statProcessedOutputs,
+  statProxies,
   statTandemArtifacts,
   uploadGate
 } from '@skydock/scripts'
-import type { OutputFact, RemoteListing } from '@skydock/scripts'
+import type { OutputFact, ProxyFact, RemoteListing } from '@skydock/scripts'
 import { Fragment, useEffect, useState } from 'react'
 import { z } from 'zod'
 import { Go, Mini, Seg } from '../components/buttons'
@@ -187,6 +189,9 @@ const loader = async (_args: Route.LoaderArgs) => {
     /* what the disk says about each processed copy — the record alone cannot know someone
        emptied processed/ (RULES, File status) */
     outputs: manifest ? statProcessedOutputs(manifest) : {},
+    /* which clips have their small copy yet — built behind the scan, so this is a fresh look
+       every time the board is drawn (RULES, The workflow) */
+    proxies: manifest ? statProxies(manifest, outputDir) : {},
     /* and what each tandem's folder holds: nothing tells SkyDock when the editor finishes, so a
        film is only ever noticed by looking (RULES, Delivery) */
     tandems: manifest ? statTandemArtifacts(manifest, outputDir) : {},
@@ -277,7 +282,10 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   >(null)
   const [dialogOpenedOn, setDialogOpenedOn] = useState<unknown>(null)
   const [uploading, setUploading] = useState<string | null>(null)
-  const [outputs, setOutputs] = useState<Record<string, OutputFact>>(loaderData.outputs)
+  const [outputs, setOutputs] = useState<Record<string, OutputFact>>(loaderData.outputs ?? {})
+  /* `?? {}` because a board with no manifest has no clips to know anything about, and one map
+     arriving empty is not a reason for the whole screen to fail to draw */
+  const [proxies, setProxies] = useState<Record<string, ProxyFact>>(loaderData.proxies ?? {})
   const [tandemFacts, setTandemFacts] = useState<TandemFacts>(loaderData.tandems)
   const [remoteAfterUpload, setRemoteAfterUpload] = useState<CheckedListing | null>(null)
   /* the first scan is what creates the manifest, so this is state and not read from the loader */
@@ -333,6 +341,12 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         outputs: z
           .record(z.string(), z.object({ exists: z.boolean(), size: z.number() }))
           .optional(),
+        proxies: z
+          .record(
+            z.string(),
+            z.object({ state: z.enum(['ready', 'own', 'none']), play: z.string() })
+          )
+          .optional(),
         tandems: z.record(z.string(), tandemFactSchema).optional(),
         remote: z
           .object({
@@ -361,6 +375,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         looseFiles,
         destinations,
         outputs: freshOutputs,
+        proxies: freshProxies,
         tandems: freshTandems,
         remote: freshRemote,
         uploaded,
@@ -373,6 +388,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         if (looseFiles) setLoose(looseFiles)
         if (destinations) setPlaces(destinations)
         if (freshOutputs) setOutputs(freshOutputs)
+        if (freshProxies) setProxies(freshProxies)
         if (freshTandems) setTandemFacts(freshTandems)
         /* an upload answers with the listing taken right after it */
         if (freshRemote) setRemoteAfterUpload(freshRemote)
@@ -672,6 +688,13 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     output: outputs[file.path],
     remote
   })
+  /* how many clips have their small copy, out of the ones that want one */
+  const proxyFacts = Object.values(proxies)
+  const proxyProgress = {
+    ready: proxyFacts.filter((f) => f.state !== 'none').length,
+    waiting: proxyFacts.filter((f) => f.state === 'none').length,
+    total: proxyFacts.length
+  }
   const statusOf = (file: ManifestFile) => fileStatus(file, statusContext(file))
   const gateFor = (files: ManifestFile[]) => uploadGate(files, statusContext)
 
@@ -943,6 +966,17 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             className='rounded-md border border-line bg-pane px-[11px] py-[5px] text-[12.5px] font-medium hover:border-ink-3 disabled:opacity-40'>
             {scanning ? 'Scanning…' : 'Rescan cameras'}
           </button>
+          {/* Only while some clip is still without one. They are built behind whatever asked for
+              them and nothing watches them arrive, so this is how far along the last look was —
+              a card where none of them ever build used to be indistinguishable from one still
+              working. */}
+          {proxyProgress.waiting > 0 && (
+            <span
+              title={`${proxyProgress.ready} of ${proxyProgress.total} clips have their small copy. They are built in the background; the count catches up whenever the board is redrawn.`}
+              className='inline-flex items-center gap-1.5 rounded-full border border-line bg-pane px-2.5 py-[3px] font-mono text-[12px] text-ink-2 tabular-nums'>
+              proxies {proxyProgress.ready}/{proxyProgress.total}
+            </span>
+          )}
           <span className='inline-flex items-center gap-[7px] rounded-full border border-line bg-pane py-[3px] pr-2.5 pl-2 text-[12px]'>
             <span
               className={`h-[7px] w-[7px] flex-none rounded-full ${
@@ -1120,6 +1154,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                       shape={view}
                       picked={pickedFiles}
                       statusContext={statusContext}
+                      proxies={proxies}
                       deliveredName={deliveredName}
                       onToggle={() => setOpenDay(shownDay === day ? null : day)}
                       onKind={setKind}
@@ -1213,7 +1248,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                           facts={tandemFacts[group.id]}
                           busy={busy}
                           blocked={gateFor(group.files)}
-                          named={Boolean(passengerOf(group))}
+                          named={hasCompletePassenger(group.passenger)}
                           onProcess={() => send(group.id, { intent: 'process', groupId: group.id })}
                           onMontage={() => createMontage(group)}
                           onOpenMontage={() => openMontage(group)}
@@ -1232,6 +1267,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                           shape={view}
                           picked={pickedFiles}
                           statusContext={statusContext}
+                          proxies={proxies}
                           onFile={fileLane}
                           onDragFile={startFileDrag}
                           deliveredName={deliveredName}
@@ -1308,6 +1344,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           files={preview.preview.files}
           index={preview.preview.index}
           status={statusOf(preview.preview.files[preview.preview.index])}
+          proxy={proxies[preview.preview.files[preview.preview.index]?.path ?? '']}
           onClose={preview.closePreview}
           onPrevious={() =>
             preview.setPreview((p) => (p ? { ...p, index: Math.max(0, p.index - 1) } : p))
