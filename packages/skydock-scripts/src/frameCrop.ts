@@ -19,6 +19,11 @@ const evenSize = (value: number) => Math.max(2, Math.round(value / 2) * 2)
 
 const evenOffset = (value: number) => Math.max(0, Math.round(value / 2) * 2)
 
+/* A bound rounds *down*. Rounding the frame's own size to the nearest even number can round it up —
+   a 1079-high clip would be reported as 1080 and a crop allowed to reach past its last row, which
+   ffmpeg refuses. */
+const evenBound = (value: number) => Math.max(2, Math.floor(value / 2) * 2)
+
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 
 /* The whole frame, which is what no rectangle at all means. */
@@ -71,13 +76,13 @@ const withRatio = (
    it. The offsets are snapped too: an odd `x` on a 4:2:0 picture is not representable, and ffmpeg
    rounding it for us would move the rectangle away from where it was drawn. */
 const cropToPixels = (crop: FrameCrop, frameWidth: number, frameHeight: number) => {
-  const width = Math.min(evenSize(crop.width * frameWidth), evenSize(frameWidth))
-  const height = Math.min(evenSize(crop.height * frameHeight), evenSize(frameHeight))
+  const width = Math.min(evenSize(crop.width * frameWidth), evenBound(frameWidth))
+  const height = Math.min(evenSize(crop.height * frameHeight), evenBound(frameHeight))
   return {
     width,
     height,
-    x: Math.min(evenOffset(crop.x * frameWidth), evenSize(frameWidth) - width),
-    y: Math.min(evenOffset(crop.y * frameHeight), evenSize(frameHeight) - height)
+    x: Math.min(evenOffset(crop.x * frameWidth), evenBound(frameWidth) - width),
+    y: Math.min(evenOffset(crop.y * frameHeight), evenBound(frameHeight) - height)
   }
 }
 
@@ -86,7 +91,7 @@ const cropToPixels = (crop: FrameCrop, frameWidth: number, frameHeight: number) 
    timeline is not a mix of sizes. `scale` is second: cutting first means fewer pixels to resize. */
 const cropFilter = (crop: FrameCrop, frameWidth: number, frameHeight: number) => {
   const box = cropToPixels(crop, frameWidth, frameHeight)
-  const out = { width: evenSize(frameWidth), height: evenSize(frameHeight) }
+  const out = { width: evenBound(frameWidth), height: evenBound(frameHeight) }
   const cut = `crop=${box.width}:${box.height}:${box.x}:${box.y}`
   return box.width === out.width && box.height === out.height
     ? cut

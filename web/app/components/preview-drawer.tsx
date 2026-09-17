@@ -2,6 +2,7 @@ import { fitRatio, FrameCropper } from './frame-cropper'
 import { useEffect, useRef, useState } from 'react'
 import { Go, Mini } from './buttons'
 import { Spacer } from './modal'
+import { cropToPixels, isWholeFrame } from '@skydock/scripts'
 import type { FrameCrop, ProxyFact } from '@skydock/scripts'
 import type { ManifestFile } from './types'
 import {
@@ -161,10 +162,22 @@ const PreviewDrawer = ({
   const video = isVideoFile(file.filename)
   const from = cropStart ?? 0
   const to = cropEnd ?? duration
-  /* what is on screen against what is on the file: the one tells you there is something to save */
+  /* What is on screen against what is on the file: the one tells you there is something to save.
+     Both halves count. Watching only the trim left the button dead after a rectangle had been
+     dragged, which reads as "it did not work" — and the rectangle is the half with no other way
+     of telling. */
+  const sameRectangle =
+    isWholeFrame(frame) === isWholeFrame(file.frame) &&
+    (isWholeFrame(frame) ||
+      (frame?.x === file.frame?.x &&
+        frame?.y === file.frame?.y &&
+        frame?.width === file.frame?.width &&
+        frame?.height === file.frame?.height))
   const dirty =
-    (cropStart ?? null) !== (file.cropStart ?? null) || (cropEnd ?? null) !== (file.cropEnd ?? null)
-  const saved = file.cropStart != null || file.cropEnd != null
+    (cropStart ?? null) !== (file.cropStart ?? null) ||
+    (cropEnd ?? null) !== (file.cropEnd ?? null) ||
+    !sameRectangle
+  const saved = file.cropStart != null || file.cropEnd != null || !isWholeFrame(file.frame)
 
   const toggle = () => {
     const v = videoRef.current
@@ -345,6 +358,20 @@ const PreviewDrawer = ({
                   ? 'Drag the rectangle to move it, a corner to resize. What is dimmed is cut away.'
                   : 'Cut a mount or a finger out of the corner. Same keeps the shape the clip already has.'}
               </div>
+              {/* What is left, in pixels, and what it is stretched back to. A crop is put back to
+                  the size the clip came at, so a small rectangle is a big upscale — which looks
+                  soft, and nothing else on screen would say so. */}
+              {framing && frame && (
+                <div className='mt-1 font-mono text-[11.5px] text-ink-3'>
+                  {(() => {
+                    const box = cropToPixels(frame, shape.width, shape.height)
+                    const stretch = shape.width / box.width
+                    return `${box.width}×${box.height} → ${shape.width}×${shape.height}${
+                      stretch > 1.6 ? ` · ${stretch.toFixed(1)}× upscale, will look soft` : ''
+                    }`
+                  })()}
+                </div>
+              )}
               {framing && onFrameApplyToJump && (
                 <div className='mt-1.5'>
                   <Mini
@@ -358,9 +385,19 @@ const PreviewDrawer = ({
 
             <Panel title='On the file'>
               <div className='text-[12px] text-ink-2'>
-                {saved
-                  ? `Crop saved: ${clock(file.cropStart ?? 0)} – ${clock(file.cropEnd ?? duration)}. It is applied the next time this file is prepared.`
-                  : 'No crop — the file goes out as shot.'}
+                {/* both halves, separately, because a rectangle cannot be read off a row and a
+                    panel saying only "crop saved" leaves you guessing which one it meant */}
+                {!saved
+                  ? 'No crop — the file goes out as shot.'
+                  : [
+                      file.cropStart != null || file.cropEnd != null
+                        ? `Trimmed to ${clock(file.cropStart ?? 0)} – ${clock(file.cropEnd ?? duration)}.`
+                        : null,
+                      !isWholeFrame(file.frame) ? 'Frame cropped.' : null,
+                      'Applied the next time this file is prepared.'
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
               </div>
             </Panel>
           </div>
@@ -372,6 +409,8 @@ const PreviewDrawer = ({
               disabled={!saved && !dirty}
               onClick={() => {
                 onCropChange({ cropStart: null, cropEnd: null })
+                /* both halves, because one Reset that left the other behind would be a trap */
+                onFrameChange(null)
                 onApply({ cropStart: null, cropEnd: null })
               }}>
               Reset crop

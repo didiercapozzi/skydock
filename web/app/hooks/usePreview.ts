@@ -67,13 +67,14 @@ const usePreview = (
      card behind it — where the ✂ and the status have just changed — is what you see next.
      `Reset crop` comes through here too, with an empty range; that is a clearing rather than a
      commit, so it leaves the drawer open to set a new one. */
-  const committed = (range: CropRange) => range.cropStart !== null || range.cropEnd !== null
+  const committed = (range: CropRange) =>
+    range.cropStart !== null || range.cropEnd !== null || frame !== null
 
   const handleVideoApply = (range: CropRange) => {
     if (!preview) return
     const file = preview.files[preview.index]
     if (!file) return
-    if (preview.groupId === LOOSE) onFileCrop(file, range)
+    if (preview.groupId === LOOSE) onFileCrop(file, range, frame)
     else
       onGroupsChange(
         groups.map((g) =>
@@ -83,7 +84,7 @@ const usePreview = (
                 ...g,
                 files: g.files.map((f) =>
                   f.path === file.path
-                    ? { ...f, cropStart: range.cropStart, cropEnd: range.cropEnd }
+                    ? { ...f, cropStart: range.cropStart, cropEnd: range.cropEnd, frame }
                     : f
                 )
               }
@@ -95,25 +96,11 @@ const usePreview = (
 
   /* The rectangle is saved as it is dragged, not on a separate press: it is drawn on the picture,
      so what is on screen already is the commit. `null` clears it back to the whole frame. */
+  /* Dragged, not saved. The rectangle used to persist on every movement while the Save button —
+     which only ever watched the trim — stayed dead, so a crop that had in fact been written looked
+     like one that had failed. Both halves of a crop are drafts until the same press now. */
   const handleFrameChange = (next: FrameCrop | null) => {
-    if (!preview) return
-    const file = preview.files[preview.index]
-    if (!file) return
     setFrame(next)
-    if (preview.groupId === LOOSE) {
-      onFileCrop(file, { cropStart: file.cropStart ?? null, cropEnd: file.cropEnd ?? null }, next)
-      return
-    }
-    onGroupsChange(
-      groups.map((g) =>
-        g.id !== preview.groupId
-          ? g
-          : {
-              ...g,
-              files: g.files.map((f) => (f.path === file.path ? { ...f, frame: next } : f))
-            }
-      )
-    )
   }
 
   /* A mount is mounted badly for the whole jump, so one rectangle usually wants to be all of them.

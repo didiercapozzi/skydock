@@ -73,6 +73,14 @@ describe('turning fractions into pixels', () => {
     for (const n of [box.x, box.y, box.width, box.height]) expect(n % 2).toBe(0)
   })
 
+  /* the frame's own size rounds down, never up: a 1079-high clip reported as 1080 would let a
+     crop reach past its last row, which ffmpeg refuses */
+  it('never claims more rows than an odd-sized frame has', () => {
+    const box = cropToPixels({ x: 0, y: 0, width: 1, height: 1 }, 1921, 1079)
+    expect(box.width).toBeLessThanOrEqual(1920)
+    expect(box.height).toBeLessThanOrEqual(1078)
+  })
+
   it('never runs off the edge of the frame', () => {
     const box = cropToPixels({ x: 0.9, y: 0.9, width: 0.5, height: 0.5 }, 1920, 1080)
     expect(box.x + box.width).toBeLessThanOrEqual(1920)

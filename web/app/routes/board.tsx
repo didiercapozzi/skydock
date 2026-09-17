@@ -5,6 +5,7 @@ import {
   getOutputDir,
   hasCompletePassenger,
   isoDay,
+  isVideoFile,
   listRemoteFiles,
   loadManifest,
   manifestFileSchema,
@@ -1215,9 +1216,18 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                         who={who}
                         naming={renaming === group.id}
                         dropTarget={groupDropTarget(group.id)}
-                        onOpen={() =>
-                          who ? setPlace({ kind: 'pax', name: who }) : setRenaming(group.id)
-                        }
+                        /* A named tandem has a place of its own to open. One still waiting for a
+                           name has none — the places are keyed by the passenger — so the clips
+                           themselves are what opens, which is what the name is read from. */
+                        onOpen={() => {
+                          if (who) {
+                            setPlace({ kind: 'pax', name: who })
+                            return
+                          }
+                          const first =
+                            group.files.find((f) => isVideoFile(f.path)) ?? group.files[0]
+                          if (first) preview.handlePreview(first, group.id)
+                        }}
                         onRename={() => setRenaming(group.id)}
                         onName={(firstname, lastname) => {
                           setPassenger(group.id, firstname, lastname)

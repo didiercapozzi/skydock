@@ -1,4 +1,4 @@
-import { fileChanged, fileStatus } from '@skydock/scripts'
+import { fileChanged, fileStatus, isWholeFrame } from '@skydock/scripts'
 import type { ProxyFact, StatusContext } from '@skydock/scripts'
 import { useState } from 'react'
 import { StatusChip, StatusDot } from './file-status'
@@ -109,6 +109,30 @@ const ProxyFlag = ({ fact }: { fact?: ProxyFact }) => {
   )
 }
 
+/* The trim shows as a range on the row; the rectangle had nothing, which is why a crop that was
+   set could not be told from one that was not without opening the file. It reads as the share of
+   the picture kept, because "cropped" alone does not say how much. Solid once it has been applied,
+   dashed while it is still only saved — the same distinction the trim makes. */
+const FrameFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) => {
+  if (isWholeFrame(file.frame)) return null
+  const kept = Math.round((file.frame!.width + file.frame!.height) * 50)
+  return (
+    <span
+      title={
+        applied
+          ? `Frame cropped when this file was prepared — about ${kept}% of the picture, keeping its shape`
+          : `Frame crop saved — about ${kept}% of the picture, keeping its shape. Applied at the next Prepare.`
+      }
+      className={`flex-none rounded px-1.5 font-mono text-[10px] leading-4 font-semibold whitespace-nowrap ${
+        applied
+          ? 'border border-accent bg-accent text-white'
+          : 'border border-dashed border-local bg-local-soft text-local'
+      }`}>
+      ▣ {kept}%
+    </span>
+  )
+}
+
 const Row = ({
   file,
   lane,
@@ -179,6 +203,10 @@ const Row = ({
       </span>
     )}
     <ProxyFlag fact={proxy} />
+    <FrameFlag
+      file={file}
+      applied={status === 'processed' || status === 'uploaded'}
+    />
     <CropFlag
       file={file}
       applied={status === 'processed' || status === 'uploaded'}
@@ -231,7 +259,7 @@ const Tile = ({
     onClick={(e) => onFile(file, lane, e)}
     title={`${file.filename} · ${formatTime(file.mtime)} · ${formatSize(file.size)} · ${status}${
       proxy?.state === 'none' ? ' · no proxy yet' : ''
-    }`}
+    }${isWholeFrame(file.frame) ? '' : ' · frame cropped'}`}
     className={`relative aspect-[4/3] max-w-full overflow-hidden rounded-[5px] border-2 bg-line-2 p-0 ${
       picked ? 'border-pick' : 'border-transparent'
     }`}>
@@ -247,6 +275,14 @@ const Tile = ({
       </i>
     )}
     {locked && <span className='absolute right-1 bottom-1 text-[10px]'>🔒</span>}
+    {/* a rectangle is invisible on a thumbnail of the whole frame, so it is said rather than shown */}
+    {!isWholeFrame(file.frame) && (
+      <span
+        title='The frame is cropped'
+        className='absolute top-1 left-1 rounded-[3px] bg-black/[0.66] px-1 font-mono text-[9px] text-white'>
+        ▣
+      </span>
+    )}
     {/* only the clip still waiting is marked here — a proxy that exists is the ordinary case, and
         a grid is where hundreds of stills are culled, so it stays as quiet as it can */}
     {proxy?.state === 'none' && (
