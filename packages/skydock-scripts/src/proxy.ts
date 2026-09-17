@@ -47,6 +47,13 @@ const PROXY_ARGS = [
 
 const getProxyDir = (outputDir?: string) => path.join(outputDir || getOutputDir(), 'proxies')
 
+/* The cut proxies of one jump. Kept here rather than beside the copies they belong to, because a
+   passenger's folder is walked whole when it is uploaded — anything left in there goes to the
+   storage. A proxy is a working file: it never leaves this machine, and the montage reaches it by
+   an absolute path, so where it sits is nobody's business but ours. */
+const getCutProxyDir = (outputDir: string, groupId: string) =>
+  path.join(getProxyDir(outputDir), 'cut', groupId)
+
 /* Keyed by what the file *is*, not where it sits: the same clip copied twice off the same card is
    one proxy, and moving a file does not orphan it. */
 const getProxyPath = (file: ManifestFile, outputDir?: string) =>
@@ -197,6 +204,7 @@ export {
   buildProxy,
   cropProxy,
   ensureProxies,
+  getCutProxyDir,
   getProxyDir,
   getProxyPath,
   needsProxy,

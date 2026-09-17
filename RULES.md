@@ -56,6 +56,10 @@ than inside it, because a card of clips takes minutes, and everything works with
 a clip with no proxy yet simply plays as it always did. A clip already smaller than a proxy would be
 is its own.
 
+Proxies are never shown. They are not footage, so nothing lists them, counts them or offers them to
+be sorted, and they never leave this machine: they are kept away from the folders that go to the
+storage, so what reaches a passenger or the backup is the same as it was before they existed.
+
 **3. Sort.** On the board, each jump is filed under the dropzone it was shot at, or under Tandems with
 the passenger's name.
 
@@ -147,12 +151,12 @@ output/
 │       └── Luc Favre/          a passenger: their name, as typed
 │           ├── videos/
 │           ├── photos/
-│           ├── proxy/                         a small copy of each clip, cut the same way
 │           ├── luc_favre_20260829.kdenlive    the editing project
 │           ├── luc_favre_20260829.mp4         the film, once someone has rendered it
 │           ├── luc_favre_20260829.photos.zip  for the passenger
 │           └── luc_favre_20260829.rushes.zip  the originals, for the backup
 ├── proxies/                    a small copy of every clip, named after what the clip is
+│   └── cut/                    and one per jump cut to match the copies it was processed into
 ├── templates/                  an editing template per folder, with the music and logos it uses
 └── .trash/                     folders replaced by a re-process, never emptied automatically
 ```

@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { ensureProxies, getProxyPath, needsProxy, proxyCounts } from '../src/proxy'
+import { ensureProxies, getCutProxyDir, getProxyPath, needsProxy, proxyCounts } from '../src/proxy'
 import type { Manifest, ManifestFile } from '../src/types'
 import { createTmpDir, execSyncMock, writeTempFile } from './fixtures'
 
@@ -142,5 +142,46 @@ describe('proxies', () => {
     expect(proxyCounts(manifest, outputDir)).toEqual({ ready: 0, total: 2 })
     ensureProxies(manifest, outputDir)
     expect(proxyCounts(manifest, outputDir)).toEqual({ ready: 2, total: 2 })
+  })
+})
+
+/* A passenger's folder is walked whole when it is uploaded, so anything left in there goes to the
+   storage. Proxies are working files and must never be among them — this is the guarantee, not an
+   implementation detail, so it is pinned here rather than left to whoever next moves a path. */
+describe('proxies stay out of what gets delivered', () => {
+  let outputDir: string
+
+  beforeEach(() => {
+    outputDir = createTmpDir('skydock-proxy-delivery-')
+    execSyncMock.mockImplementation(toolsPresent())
+  })
+
+  afterEach(() => {
+    fs.rmSync(outputDir, { recursive: true, force: true })
+    vi.clearAllMocks()
+  })
+
+  it('writes a jump\u2019s cut proxies under the output folder, not beside the copies', () => {
+    const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
+    const manifest = manifestOf([fileEntry(src, 'abc123')])
+    ensureProxies(manifest, outputDir)
+    const file = manifest.files[0]
+
+    const cut = path.join(getCutProxyDir(outputDir, 'group_1'), 'luc_favre_20260829_113015.mp4')
+    fs.mkdirSync(path.dirname(cut), { recursive: true })
+    fs.copyFileSync(file.proxy!, cut)
+
+    expect(cut.startsWith(path.join(outputDir, 'proxies'))).toBe(true)
+    expect(cut).not.toContain(path.join('processed', 'Tandems'))
+  })
+
+  /* the import proxies live under their own folder too, which no scan and no upload ever reads */
+  it('keeps the imported ones out of processed entirely', () => {
+    const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
+    const manifest = manifestOf([fileEntry(src, 'abc123')])
+    ensureProxies(manifest, outputDir)
+
+    expect(manifest.files[0].proxy).toBe(path.join(outputDir, 'proxies', 'abc123.mp4'))
+    expect(fs.existsSync(path.join(outputDir, 'processed'))).toBe(false)
   })
 })

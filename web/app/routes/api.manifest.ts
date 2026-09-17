@@ -32,6 +32,7 @@ import {
 import { deliverTandem } from '../../../packages/skydock-scripts/src/deliver'
 import { openInEditor } from '../../../packages/skydock-scripts/src/editor'
 import { createMontageProject } from '../../../packages/skydock-scripts/src/montage'
+import { getCutProxyDir } from '../../../packages/skydock-scripts/src/proxy'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 import { boardAnswer } from '../helpers/manifest'
 
@@ -265,9 +266,12 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
           baseName,
           title: passengerOf(group).trim() || group.label,
           template: data.template,
-          /* the proxy that was cut beside each copy, when processing managed to make one */
+          /* the proxy processing cut for each copy, when it managed to make one */
           clips: videos.map((file) => {
-            const proxy = path.join(groupDir, 'proxy', `${path.parse(file).name}.mp4`)
+            const proxy = path.join(
+              getCutProxyDir(outputDir, group.id),
+              `${path.parse(file).name}.mp4`
+            )
             return fs.existsSync(proxy) ? { path: file, proxy } : { path: file }
           })
         })

@@ -2,7 +2,7 @@ import * as childProcess from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { loadManifest, saveManifest } from './manifest'
-import { cropProxy } from './proxy'
+import { cropProxy, getCutProxyDir } from './proxy'
 import type { ManifestFile, ManifestGroup } from './types'
 import { getManifestPath, getOutputDir, hasCommand, isVideoFile, parseDayEpoch } from './utils'
 import {
@@ -68,7 +68,7 @@ const binGroupMedia = (dir: string, outputDir: string) => {
     moveToTrash(dir, outputDir)
     return false
   }
-  for (const media of ['videos', 'photos', 'proxy']) moveToTrash(path.join(dir, media), outputDir)
+  for (const media of ['videos', 'photos']) moveToTrash(path.join(dir, media), outputDir)
   return true
 }
 
@@ -96,10 +96,14 @@ const getGroupProcessedDir = (outputDir: string, group: ManifestGroup) => {
 /* The proxy that belongs to the copy just written, cut the same way it was. Only where a montage
    can happen — a dropzone folder never becomes a project, so a proxy there would be litter. It is
    a stream copy out of the import proxy, not a second transcode, so it costs almost nothing; and
-   when it cannot be made the montage simply opens on the full clips as it always did. */
-const writeProxyBeside = (file: ManifestFile, dest: string, groupDir: string) => {
+   when it cannot be made the montage simply opens on the full clips as it always did.
+
+   It is written away from the copy it belongs to, under the output folder's own proxies, because
+   a passenger's folder goes to the storage whole and a working file has no business going with
+   it. */
+const writeCutProxy = (file: ManifestFile, dest: string, outputDir: string, groupId: string) => {
   if (!isVideoFile(file.path) || !file.proxy || !fs.existsSync(file.proxy)) return null
-  const target = path.join(groupDir, 'proxy', `${path.parse(dest).name}.mp4`)
+  const target = path.join(getCutProxyDir(outputDir, groupId), `${path.parse(dest).name}.mp4`)
   const cropped = file.cropStart != null && file.cropEnd != null
   if (cropped) {
     if (!cropProxy(file.proxy, target, file.cropStart!, file.cropEnd!)) return null
@@ -142,7 +146,7 @@ const writeGroup = (
         : baseName
       const dest = path.join(targetDir, makeFileName(stem, file.mtime, ext, usedNames))
       copyMedia(file, dest, buildFsTime(flat ? file.mtime : dayEpoch, file.mtime))
-      if (!flat) writeProxyBeside(file, dest, dir)
+      if (!flat) writeCutProxy(file, dest, outputDir, group.id)
       record(file, dest)
       written.push(dest)
     }
@@ -228,6 +232,8 @@ const processJumps = (options?: ProcessOptions) => {
   for (const group of groups) {
     const { dir, flat } = getGroupProcessedDir(outputDir, group)
     if (!flat && binGroupMedia(dir, outputDir)) keptProjects.push(group.id)
+    /* the cut proxies are of the copies about to be rewritten, so they go with them */
+    if (!flat) moveToTrash(getCutProxyDir(outputDir, group.id), outputDir)
   }
 
   const namePools = new Map<string, Set<string>>()
