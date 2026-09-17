@@ -16,6 +16,22 @@ set -eu
 
 project="$1"
 queue="${SKYDOCK_EDITOR_QUEUE:-${SKYDOCK_OUTPUT_DIR:-/workspace/output}/.editor-requests}"
+watcher="$(dirname "$queue")/.editor-watcher"
 
 mkdir -p "$(dirname "$queue")"
 printf '%s\n' "$project" >>"$queue"
+
+# Writing the line always succeeds, which is the trouble: from in here there is no way to see the
+# host's processes, so a request nobody is listening for looks exactly like one that worked, and
+# the board reports an editor opening that never will. The host script keeps `.editor-watcher`
+# fresh while it runs, so its absence — or its age — is the one thing this side can check. Saying
+# so on the way out is what turns a silence into something to act on.
+if [ ! -e "$watcher" ]; then
+  echo "nothing on the host is watching for it — run ./scripts/open-on-host.sh there" >&2
+  exit 1
+fi
+
+if [ -n "$(find "$watcher" -mmin +2 2>/dev/null)" ]; then
+  echo "the host watcher stopped checking in — is ./scripts/open-on-host.sh still running there?" >&2
+  exit 1
+fi

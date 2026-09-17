@@ -1,5 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { z } from 'zod'
 import { writeJsonAtomic } from './lib/fs'
 import { groupsFileSchema, manifestSchema } from './types'
 import type { GroupsFile, Manifest, ManifestFile } from './types'
@@ -9,13 +10,46 @@ import type { GroupsFile, Manifest, ManifestFile } from './types'
    exists twice with two different truths. */
 const getGroupsPath = (manifestPath: string) => path.join(path.dirname(manifestPath), 'groups.json')
 
+/* A groups file that is there but cannot be understood is the one case where answering "no jumps"
+   is worse than answering nothing: the next scan re-clusters from an empty slate, mints fresh ids
+   and files none of them, so a day of sorting is gone with no message. Refusing is recoverable —
+   the file is still on disk and can be looked at. Quietly agreeing is not. */
+class UnreadableGroups extends Error {}
+
+/* Decoding the text inside the schema, so reading a file is one check instead of a parse and then a
+   validation with a gap between them where the value is whatever JSON.parse happened to return. */
+const jsonText = z.string().transform((text, ctx) => {
+  try {
+    return JSON.parse(text)
+  } catch (e) {
+    ctx.addIssue({ code: 'custom', message: e instanceof Error ? e.message : String(e) })
+    return z.NEVER
+  }
+})
+
+/* Whether the file failed as JSON or failed as a jumps file makes no difference to what follows —
+   either way it cannot be read — so there is one schema and one way out. */
+const groupsTextSchema = jsonText.pipe(groupsFileSchema)
+
+/* What is actually on disk: the registry, without the jumps, which live in their own file and are
+   put back by resolveGroups. The three defaults are what an older or half-written manifest is
+   allowed to be missing. */
+const storedManifestSchema = jsonText.pipe(
+  manifestSchema.omit({ groups: true }).extend({
+    version: manifestSchema.shape.version.default(1),
+    createdAt: manifestSchema.shape.createdAt.default(() => new Date().toISOString()),
+    files: manifestSchema.shape.files.default([])
+  })
+)
+
 const readGroupsFile = (groupsPath: string) => {
   if (!fs.existsSync(groupsPath)) return null
-  try {
-    return groupsFileSchema.parse(JSON.parse(fs.readFileSync(groupsPath, 'utf-8')))
-  } catch {
-    return null
-  }
+  const parsed = groupsTextSchema.safeParse(fs.readFileSync(groupsPath, 'utf-8'))
+  if (!parsed.success)
+    throw new UnreadableGroups(
+      `${groupsPath} cannot be read as a jumps file, so it will not be read as having none:\n${z.prettifyError(parsed.error)}`
+    )
+  return parsed.data
 }
 
 const resolveGroups = (files: ManifestFile[], groupsFile: GroupsFile | null) => {
@@ -54,20 +88,15 @@ const resolveGroups = (files: ManifestFile[], groupsFile: GroupsFile | null) => 
 
 const loadManifest = (manifestPath: string) => {
   if (!fs.existsSync(manifestPath)) return null
-  try {
-    const raw = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'))
-    const files: ManifestFile[] = Array.isArray(raw.files) ? raw.files : []
-    const groups = resolveGroups(files, readGroupsFile(getGroupsPath(manifestPath)))
-    return manifestSchema.parse({
-      version: raw.version ?? 1,
-      createdAt: raw.createdAt ?? new Date().toISOString(),
-      files,
-      groups,
-      destinations: raw.destinations ?? undefined
-    })
-  } catch {
-    return null
-  }
+  const stored = storedManifestSchema.safeParse(fs.readFileSync(manifestPath, 'utf-8'))
+  /* a manifest that cannot be read at all is "no manifest", which is safe: the registry describes
+     files that are still on the card and a scan builds it again */
+  if (!stored.success) return null
+  /* jumps that cannot be read are not "no jumps", so that refusal travels out of here rather than
+     being flattened into the same answer */
+  const groups = resolveGroups(stored.data.files, readGroupsFile(getGroupsPath(manifestPath)))
+  const manifest: Manifest = { ...stored.data, groups }
+  return manifest
 }
 
 /* What the disk currently says about each processed copy, keyed by source path. The record alone

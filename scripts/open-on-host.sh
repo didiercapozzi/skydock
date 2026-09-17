@@ -28,6 +28,22 @@ fi
 mkdir -p "$(dirname "$queue")" 2>/dev/null || true
 [ -e "$queue" ] || : >>"$queue" 2>/dev/null || true
 
+# The container has no way to see whether this is running, so it is told: a file kept fresh for as
+# long as the watcher is up. Its age is the message, not its presence — a file merely created once
+# would outlive the script and go on promising something nobody is doing. The refresher watches
+# this script rather than trusting a trap, because the trap does not run while the shell sits in
+# the `tail` pipeline below, and it would not run at all if the terminal were closed from under it.
+watcher="$(dirname "$queue")/.editor-watcher"
+me=$$
+(
+  while kill -0 "$me" 2>/dev/null; do
+    touch "$watcher" 2>/dev/null || true
+    sleep 10
+  done
+  rm -f "$watcher" 2>/dev/null
+) &
+trap 'rm -f "$watcher" 2>/dev/null' EXIT INT TERM
+
 echo "Watching $queue"
 echo "Opening with $editor — leave this running."
 

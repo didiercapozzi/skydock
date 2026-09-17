@@ -7,11 +7,19 @@ import { z } from 'zod'
 
    Absent means the whole frame, which is not the same as a rectangle covering all of it: the whole
    frame is copied as it is, while any rectangle at all has to be encoded again. */
+/* Clamped rather than rejected. A fraction is arrived at by dividing pixels by pixels, so a hair
+   over 1 is an ordinary result of floating point rather than a broken value — and refusing it here
+   used to take the whole jumps file down with it. Nothing is lost by pulling it back into range. */
+const fraction = z
+  .number()
+  .refine((n) => Number.isFinite(n), 'must be a number')
+  .transform((n) => Math.min(1, Math.max(0, n)))
+
 const frameCropSchema = z.object({
-  x: z.number().min(0).max(1),
-  y: z.number().min(0).max(1),
-  width: z.number().min(0).max(1),
-  height: z.number().min(0).max(1)
+  x: fraction,
+  y: fraction,
+  width: fraction,
+  height: fraction
 })
 
 /* What processing wrote for this file, and the exact inputs that produced it. Change any of those

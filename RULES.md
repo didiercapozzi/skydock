@@ -22,12 +22,17 @@ These hold everywhere, and most of the rules further down are consequences of th
 - **The originals are never touched.** Processing copies; it never moves, renames or deletes what the
   cameras produced. Correcting a jump's time changes what SkyDock has recorded about a file, not the
   file. The camera's own storage is only ever read.
-- **A folder is only rebuilt by whoever owns it.** A jump's own folder can be emptied and rewritten,
-  because only that jump is in it. A dropzone folder is shared by every day ever shot there, so it is
-  never wiped — files in it are replaced one by one. A folder holding an edit keeps it: only the
-  media is rebuilt beside the work, because an edit is the one thing here that cannot be made again.
-- **Nothing is deleted without being replaced.** A folder that is rebuilt goes to a bin folder first,
-  and the bin is never emptied automatically.
+- **A folder is only rebuilt by whoever owns it.** A jump's own folder can be rewritten, because only
+  that jump is in it. A dropzone folder is shared by every day ever shot there, so it is never
+  tidied — files in it are replaced one by one, and a day SkyDock no longer knows about is left
+  alone. A folder holding an edit keeps it: the media is rebuilt beside the work, because an edit is
+  the one thing here that cannot be made again.
+- **Preparing again is the ordinary way of working.** Prepare a jump, look at it, correct a time or a
+  name, prepare it again. The second pass writes over the first and leaves nothing aside: a copy is
+  made from an original that has not moved, so what it replaces is a copy of the same file. What no
+  longer belongs is removed — a clip whose time was corrected, or that was taken out of the jump,
+  leaves a copy behind under a name nobody expects, and a file nobody expects is one that would be
+  delivered anyway. The edit, the film and the archives are not media and are never touched.
 - **A file's state is a fact that can be checked, not a flag someone has to remember to clear.** Every
   claim SkyDock makes about a file — it has been processed, it is on the network storage — is backed
   by evidence it can re-examine.
@@ -195,8 +200,7 @@ output/
 │           └── luc_favre_20260829.rushes.zip  the originals, for the backup
 ├── proxies/                    a small copy of every clip, named after what the clip is
 │   └── cut/                    and one per jump cut to match the copies it was processed into
-├── templates/                  an editing template per folder, with the music and logos it uses
-└── .trash/                     folders replaced by a re-process, never emptied automatically
+└── templates/                  an editing template per folder, with the music and logos it uses
 ```
 
 Of what a passenger's folder holds, only the film and the photos archive are ever handed over. The

@@ -98,25 +98,28 @@ const updateMetadata = (files: string[]) => {
   }
 }
 
-const moveToTrash = (target: string, outputDir: string) => {
-  if (!fs.existsSync(target)) return
-  const trashDir = path.join(outputDir, '.trash')
-  fs.mkdirSync(trashDir, { recursive: true })
-  fs.renameSync(target, path.join(trashDir, `${path.basename(target)}_${Date.now()}`))
+/* Preparing again writes over what is there. Nothing is moved aside first: a copy is made from an
+   original that has not moved, so the thing being replaced is a copy of the same file, and keeping
+   the old one only left a folder of near-duplicates nobody was going to look through.
+
+   What has to go is the copy whose name is no longer generated — a clip whose time was corrected
+   leaves one behind, and a file nobody expects is a file that would be delivered anyway. So the
+   names just written are the folder's contents, and anything else under them is removed.
+
+   Only ever for a folder one group owns. A dropzone folder holds every day ever shot there, and
+   the manifest only knows what the last scan found, so pruning it would take older days with it.
+   The project, the film and the archives are left alone: they sit beside the media rather than in
+   it, and an edit is the one thing here that cannot be made again. */
+const pruneTo = (folder: string, kept: Set<string>) => {
+  if (!fs.existsSync(folder)) return
+  for (const entry of fs.readdirSync(folder)) {
+    if (kept.has(entry)) continue
+    fs.rmSync(path.join(folder, entry), { recursive: true, force: true })
+  }
 }
 
-/* Re-processing rebuilds a group's folder, and an edit someone made is the one thing in there
-   that cannot be made again. When the folder holds a project, only the media it is about to
-   rewrite is binned, and the project, the film and the archives are left where they are. */
-const binGroupMedia = (dir: string, outputDir: string) => {
-  if (!fs.existsSync(dir)) return false
-  const hasProject = fs.readdirSync(dir).some((entry) => entry.endsWith('.kdenlive'))
-  if (!hasProject) {
-    moveToTrash(dir, outputDir)
-    return false
-  }
-  for (const media of ['videos', 'photos']) moveToTrash(path.join(dir, media), outputDir)
-  return true
+const pruneStaleMedia = (dir: string, kept: Set<string>) => {
+  for (const media of ['videos', 'photos']) pruneTo(path.join(dir, media), kept)
 }
 
 const getDestinationDir = (outputDir: string, destination: string) =>
@@ -202,25 +205,33 @@ const writeGroup = (
 ) => {
   const { dir, baseName, dayEpoch, flat } = getGroupProcessedDir(outputDir, group)
   const written: string[] = []
-  try {
-    for (const file of group.files) {
-      if (!fs.existsSync(file.path)) continue
-      const targetDir = flat ? dir : path.join(dir, isVideoFile(file.path) ? 'videos' : 'photos')
-      fs.mkdirSync(targetDir, { recursive: true })
-      const ext = path.extname(file.path).slice(1).toLowerCase()
-      const stem = flat
-        ? `${toFileStem(group.destination!, 'destination')}_${formatGroupDay(file.mtime)}`
-        : baseName
-      const dest = path.join(targetDir, makeFileName(stem, file.mtime, ext, usedNames))
-      copyMedia(file, dest, buildFsTime(flat ? file.mtime : dayEpoch, file.mtime))
-      if (!flat) writeCutProxy(file, dest, outputDir, group.id)
-      record(file, dest)
-      written.push(dest)
-    }
-    updateMetadata(written)
-  } catch (e) {
-    if (!flat) binGroupMedia(dir, outputDir)
-    throw e
+  /* Whatever gets copied before something goes wrong stays where it is. Preparing is the most
+     expensive thing SkyDock does, and the folder is not what says a copy is current — the per-file
+     record is, and a file that was never recorded already reads as unprepared. So stopping part
+     way costs the files it did not reach, and nothing more. */
+  for (const file of group.files) {
+    if (!fs.existsSync(file.path)) continue
+    const targetDir = flat ? dir : path.join(dir, isVideoFile(file.path) ? 'videos' : 'photos')
+    fs.mkdirSync(targetDir, { recursive: true })
+    const ext = path.extname(file.path).slice(1).toLowerCase()
+    const stem = flat
+      ? `${toFileStem(group.destination!, 'destination')}_${formatGroupDay(file.mtime)}`
+      : baseName
+    const dest = path.join(targetDir, makeFileName(stem, file.mtime, ext, usedNames))
+    copyMedia(file, dest, buildFsTime(flat ? file.mtime : dayEpoch, file.mtime))
+    if (!flat) writeCutProxy(file, dest, outputDir, group.id)
+    record(file, dest)
+    written.push(dest)
+  }
+  updateMetadata(written)
+  if (!flat) {
+    const names = written.map((entry) => path.basename(entry))
+    pruneStaleMedia(dir, new Set(names))
+    /* a cut proxy is of the copy it is named after, so the same names decide both */
+    pruneTo(
+      getCutProxyDir(outputDir, group.id),
+      new Set(names.map((n) => `${path.parse(n).name}.mp4`))
+    )
   }
   group.processed = true
   delete group.publish
@@ -260,7 +271,7 @@ const processJumps = (options?: ProcessOptions) => {
   const manifest = loadManifest(manifestPath)
   if (!manifest) {
     console.error('[Process] ERROR: Manifest not found')
-    return { copied: 0, processedGroups: 0, keptProjects: [] as string[] }
+    return { copied: 0, processedGroups: 0 }
   }
 
   const filesInGroups = new Set(manifest.groups.flatMap((g) => g.files.map((f) => f.path)))
@@ -302,17 +313,6 @@ const processJumps = (options?: ProcessOptions) => {
     throw new Error(
       `Give ${halfNamed.length === 1 ? 'this passenger' : `these ${halfNamed.length} passengers`} a first and last name before processing — the name is the folder they get.`
     )
-
-  /* only ever bin a folder one group owns. A destination folder is shared by every day
-     ever shot there, while the manifest only holds what the last scan found — rebuilding it
-     would bin older days. A stale copy is removed one file at a time instead. */
-  const keptProjects: string[] = []
-  for (const group of groups) {
-    const { dir, flat } = getGroupProcessedDir(outputDir, group)
-    if (!flat && binGroupMedia(dir, outputDir)) keptProjects.push(group.id)
-    /* the cut proxies are of the copies about to be rewritten, so they go with them */
-    if (!flat) moveToTrash(getCutProxyDir(outputDir, group.id), outputDir)
-  }
 
   const namePools = new Map<string, Set<string>>()
   const poolFor = (dir: string) => {
@@ -374,8 +374,8 @@ const processJumps = (options?: ProcessOptions) => {
 
   console.log(`[Process] Done. Copied ${copied} file(s).`)
 
-  return { copied, processedGroups: groups.length, keptProjects }
+  return { copied, processedGroups: groups.length }
 }
 
-export { binGroupMedia, getDestinationDir, getGroupProcessedDir, isFlatGroup, processJumps }
+export { getDestinationDir, getGroupProcessedDir, isFlatGroup, processJumps, pruneStaleMedia }
 export type { ProcessOptions }

@@ -33,8 +33,7 @@ output/
 ├── manifest.json      the registry of files
 ├── groups.json        the jumps, pointing at files in the registry
 ├── processed/         what gets delivered
-├── .status/           the network-storage session and the progress of a running upload
-└── .trash/            folders replaced by a re-process, never emptied automatically
+└── .status/           the network-storage session and the progress of a running upload
 ```
 
 ## Configuration
