@@ -388,3 +388,69 @@ describe('montage — a template that arrived without its files', () => {
     expect(result.missingAssets).toContain('gone.mp3')
   })
 })
+
+/* A proxied clip is the whole point of pre-generating them: the editor opens on the small copy
+   instead of transcoding every GoPro clip itself, and swaps back to the clip to render. Getting
+   any one of these three properties wrong leaves a project that opens on the wrong thing — or
+   renders from it, which nobody notices until the film is delivered. */
+describe('montage — clips that have a proxy', () => {
+  const buildWithProxy = (clips: { path: string; proxy?: string }[]) => {
+    const { outputDir, groupDir, templatePath } = setup(twoAudioOneMutedTemplate)
+    const result = createMontageProject({
+      groupDir,
+      outputDir,
+      baseName: 'luc_favre_20260802',
+      title: 'Luc Favre',
+      templatePath,
+      clips: clips.map((c) => ({
+        path: path.join(groupDir, 'videos', c.path),
+        ...(c.proxy ? { proxy: path.join(groupDir, 'proxy', c.proxy) } : {})
+      }))
+    })
+    return { ...result, groupDir, xml: fs.readFileSync(result.projectPath, 'utf-8') }
+  }
+
+  /* the properties of one generated chain, read the way the editor reads them */
+  const chainProps = (xml: string, id: string) => {
+    const doc = parsed(xml)
+    const chains = [doc.mlt.chain].flat().filter(Boolean)
+    const chain = chains.find((c: Record<string, string>) => c['@_id'] === id)
+    const props: Record<string, string> = {}
+    for (const p of [chain.property].flat()) props[p['@_name']] = String(p['#text'] ?? p)
+    return props
+  }
+
+  it('plays the proxy and keeps the clip itself as the original', () => {
+    const { xml, groupDir } = buildWithProxy([{ path: 'a.mp4', proxy: 'a.mp4' }])
+    const props = chainProps(xml, 'chain_skydock_0')
+    expect(props.resource).toBe(path.join(groupDir, 'proxy', 'a.mp4'))
+    expect(props['kdenlive:proxy']).toBe(path.join(groupDir, 'proxy', 'a.mp4'))
+    expect(props['kdenlive:originalurl']).toBe(path.join(groupDir, 'videos', 'a.mp4'))
+  })
+
+  /* `-` is how a project says this clip has no proxy; leaving the property out entirely makes the
+     editor go looking for one to generate */
+  it('says so plainly when a clip has none', () => {
+    const { xml, groupDir } = buildWithProxy([{ path: 'a.mp4' }])
+    const props = chainProps(xml, 'chain_skydock_0')
+    expect(props.resource).toBe(path.join(groupDir, 'videos', 'a.mp4'))
+    expect(props['kdenlive:proxy']).toBe('-')
+    expect(props['kdenlive:originalurl']).toBeUndefined()
+  })
+
+  it('takes each clip on its own, so one missing proxy does not cost the others theirs', () => {
+    const { xml } = buildWithProxy([{ path: 'a.mp4', proxy: 'a.mp4' }, { path: 'b.mp4' }])
+    expect(chainProps(xml, 'chain_skydock_0')['kdenlive:proxy']).toContain('/proxy/a.mp4')
+    expect(chainProps(xml, 'chain_skydock_1')['kdenlive:proxy']).toBe('-')
+    expect(entriesOf(xml, 'playlist6')).toEqual(['chain_skydock_0', 'chain_skydock_1'])
+  })
+
+  /* the editor runs where the files are, not where SkyDock is */
+  it('writes the proxy path the way the editing machine knows it', () => {
+    process.env.SKYDOCK_HOST_OUTPUT_DIR = '/home/capo/Documents/skydock/output'
+    const { xml } = buildWithProxy([{ path: 'a.mp4', proxy: 'a.mp4' }])
+    const props = chainProps(xml, 'chain_skydock_0')
+    expect(props['kdenlive:proxy']).toContain('/home/capo/Documents/skydock/output')
+    expect(props['kdenlive:originalurl']).toContain('/home/capo/Documents/skydock/output')
+  })
+})

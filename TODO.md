@@ -45,14 +45,13 @@ write is inferred from a real saved project, not tested — kdenlive is not inst
 devcontainer. Confirm it once by hand; if it does not, the project and the film share a name in one
 folder, so kdenlive's own default already lands in the right place.
 
-### Deferred
-
-**Pre-generate the proxies.** kdenlive transcodes every GoPro clip on first open, which is a long
-wait before any editing starts. SkyDock could produce them in advance with the template's own proxy
-settings and point `kdenlive:proxy` at them. Worth its own change once the template process is
-settled.
-
 ## Done
+
+- **Pre-generate the proxies.** Scanning builds a small H.264 copy of every clip; the crop bar plays
+  it, and the montage points `kdenlive:proxy` at the copy cut to match each processed clip, so the
+  editor opens ready to work instead of transcoding first. The bundled template's proxy profile was
+  changed from ProRes to x264 to match — one file serves the browser and the editor, and no browser
+  plays ProRes.
 
 - **Montage, delivery and the board's tandem row** — process, write the project, deliver the film and
   photos to the passenger and the rushes to a backup folder.

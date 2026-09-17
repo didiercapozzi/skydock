@@ -7,7 +7,7 @@ import {
   dateLabel,
   formatSize,
   formatTime,
-  getFileUrl,
+  getPlaybackUrl,
   getThumbUrl,
   isVideoFile
 } from './utils'
@@ -106,7 +106,7 @@ const PreviewDrawer = ({
 
   if (!file) return null
 
-  const fileUrl = getFileUrl(file.path)
+  const fileUrl = getPlaybackUrl(file)
   const video = isVideoFile(file.filename)
   const from = cropStart ?? 0
   const to = cropEnd ?? duration

@@ -265,7 +265,11 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
           baseName,
           title: passengerOf(group).trim() || group.label,
           template: data.template,
-          clips: videos.map((file) => ({ path: file }))
+          /* the proxy that was cut beside each copy, when processing managed to make one */
+          clips: videos.map((file) => {
+            const proxy = path.join(groupDir, 'proxy', `${path.parse(file).name}.mp4`)
+            return fs.existsSync(proxy) ? { path: file, proxy } : { path: file }
+          })
         })
         group.montage = {
           projectPath: made.projectPath,

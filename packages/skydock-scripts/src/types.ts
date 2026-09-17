@@ -39,7 +39,10 @@ const manifestFileSchema = z.object({
   /* set only on a file belonging to no jump — it is what makes it a lone file */
   destination: z.string().optional(),
   processed: processedRecordSchema.optional(),
-  uploaded: uploadedRecordSchema.optional()
+  uploaded: uploadedRecordSchema.optional(),
+  /* the small all-intra copy the crop bar scrubs against and the editor opens on, or the file
+     itself when it is already small enough to be its own proxy */
+  proxy: z.string().optional()
 })
 
 /* groups.json holds references, not copies: an id plus whatever this jump changed about the file */

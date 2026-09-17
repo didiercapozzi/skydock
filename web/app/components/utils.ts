@@ -1,5 +1,5 @@
 import { getOutputDir, isVideoFile as isVideoFileFromScripts } from '@skydock/scripts'
-import type { ManifestGroup } from './types'
+import type { ManifestFile, ManifestGroup } from './types'
 
 const isVideoFile = (filename: string) => isVideoFileFromScripts(filename)
 
@@ -87,6 +87,13 @@ const relativeToOutput = (filePath: string) => {
 
 const getFileUrl = (filePath: string) => `/api/file${relativeToOutput(filePath)}`
 
+/* What to play, which is not always what the file is. A clip has a small all-intra copy beside it
+   once one has been made, and the crop bar scrubs against that instead of dragging a 4K file
+   through the browser a frame at a time. Same duration and same frame rate, so a crop set here
+   means the same instant in the clip itself. Until the proxy exists, the clip plays as it always
+   did. */
+const getPlaybackUrl = (file: ManifestFile) => getFileUrl(file.proxy ?? file.path)
+
 const getThumbUrl = (filePath: string, seekSeconds: number, width = 80) =>
   `/api/thumb${relativeToOutput(filePath)}?seek=${seekSeconds.toFixed(1)}&width=${width}`
 
@@ -100,6 +107,7 @@ export {
   formatTime,
   getFileUrl,
   getGroupDate,
+  getPlaybackUrl,
   getThumbUrl,
   isVideoFile,
   minFileMtime,

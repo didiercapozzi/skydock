@@ -2,6 +2,7 @@ import * as childProcess from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { loadManifest, saveManifest } from './manifest'
+import { cropProxy } from './proxy'
 import type { ManifestFile, ManifestGroup } from './types'
 import { getManifestPath, getOutputDir, hasCommand, isVideoFile, parseDayEpoch } from './utils'
 import {
@@ -67,7 +68,7 @@ const binGroupMedia = (dir: string, outputDir: string) => {
     moveToTrash(dir, outputDir)
     return false
   }
-  for (const media of ['videos', 'photos']) moveToTrash(path.join(dir, media), outputDir)
+  for (const media of ['videos', 'photos', 'proxy']) moveToTrash(path.join(dir, media), outputDir)
   return true
 }
 
@@ -90,6 +91,23 @@ const getGroupProcessedDir = (outputDir: string, group: ManifestGroup) => {
     ? buildPassengerFolder(group.passenger, baseName)
     : baseName
   return { dir: path.join(parent, folder), baseName, dayEpoch, flat: false }
+}
+
+/* The proxy that belongs to the copy just written, cut the same way it was. Only where a montage
+   can happen — a dropzone folder never becomes a project, so a proxy there would be litter. It is
+   a stream copy out of the import proxy, not a second transcode, so it costs almost nothing; and
+   when it cannot be made the montage simply opens on the full clips as it always did. */
+const writeProxyBeside = (file: ManifestFile, dest: string, groupDir: string) => {
+  if (!isVideoFile(file.path) || !file.proxy || !fs.existsSync(file.proxy)) return null
+  const target = path.join(groupDir, 'proxy', `${path.parse(dest).name}.mp4`)
+  const cropped = file.cropStart != null && file.cropEnd != null
+  if (cropped) {
+    if (!cropProxy(file.proxy, target, file.cropStart!, file.cropEnd!)) return null
+  } else {
+    fs.mkdirSync(path.dirname(target), { recursive: true })
+    fs.copyFileSync(file.proxy, target)
+  }
+  return target
 }
 
 const copyMedia = (file: ManifestFile, dest: string, time: Date) => {
@@ -124,6 +142,7 @@ const writeGroup = (
         : baseName
       const dest = path.join(targetDir, makeFileName(stem, file.mtime, ext, usedNames))
       copyMedia(file, dest, buildFsTime(flat ? file.mtime : dayEpoch, file.mtime))
+      if (!flat) writeProxyBeside(file, dest, dir)
       record(file, dest)
       written.push(dest)
     }

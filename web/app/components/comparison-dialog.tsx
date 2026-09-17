@@ -4,7 +4,7 @@ import { VideoCropper } from './video-cropper'
 import {
   formatSize,
   formatTime,
-  getFileUrl,
+  getPlaybackUrl,
   getGroupDate,
   getThumbUrl,
   isVideoFile,
@@ -127,7 +127,7 @@ const ComparisonDialog = ({
     onVideoRef: (ref: VideoRef) => void
   ) => {
     if (!file) return null
-    const fileUrl = getFileUrl(file.path)
+    const fileUrl = getPlaybackUrl(file)
     return (
       <div className='flex flex-col gap-2'>
         <div className='flex h-[200px] items-center justify-center overflow-hidden rounded-lg bg-[#0b0f13]'>

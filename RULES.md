@@ -49,6 +49,13 @@ into jumps. It is asked for from the board, and it can be asked for again at any
 more cameras have been copied off picks up the new files without disturbing the work already done.
 The grouping is a guess, and the next step exists to correct it.
 
+Scanning also makes a **proxy** of every clip: a small copy, the same length and running at the same
+speed, which the crop bar plays instead of dragging a 4K file through the browser a frame at a time,
+and which the editor later opens on instead of making its own. They are built behind the scan rather
+than inside it, because a card of clips takes minutes, and everything works without them meanwhile —
+a clip with no proxy yet simply plays as it always did. A clip already smaller than a proxy would be
+is its own.
+
 **3. Sort.** On the board, each jump is filed under the dropzone it was shot at, or under Tandems with
 the passenger's name.
 
@@ -140,10 +147,12 @@ output/
 │       └── Luc Favre/          a passenger: their name, as typed
 │           ├── videos/
 │           ├── photos/
+│           ├── proxy/                         a small copy of each clip, cut the same way
 │           ├── luc_favre_20260829.kdenlive    the editing project
 │           ├── luc_favre_20260829.mp4         the film, once someone has rendered it
 │           ├── luc_favre_20260829.photos.zip  for the passenger
 │           └── luc_favre_20260829.rushes.zip  the originals, for the backup
+├── proxies/                    a small copy of every clip, named after what the clip is
 ├── templates/                  an editing template per folder, with the music and logos it uses
 └── .trash/                     folders replaced by a re-process, never emptied automatically
 ```
@@ -241,8 +250,9 @@ removed back to the sorting area, by button or by pressing Delete.
 on either side, then merge them if they are the same jump. Merging asks which date the result should
 keep.
 
-**Cropping.** Clicking a file opens it. The picture fills the left of the dialog with the timeline
-under it; the right side says what is being decided — where the trim starts and ends and how much of
+**Cropping.** Clicking a file opens it, playing its proxy when there is one — same length, same
+speed, so a trim set here is the same instant of the clip itself. The picture fills the left of the
+dialog with the timeline under it; the right side says what is being decided — where the trim starts and ends and how much of
 the file that keeps, how the picture would be turned, how it would be framed, and what is on the file
 already. The file's name, when it was shot, its size and its state are along the top with the way to
 step to the next file; along the bottom are the ways out, and saving is offered only once something
@@ -358,6 +368,14 @@ template to the next and is read from the template rather than assumed, because 
 on the wrong track produces a film with nothing in it and no complaint. Crops are already applied, so
 the timeline carries the cut footage.
 
+**It opens on the proxies.** Each clip on the timeline points at the small copy made when the card
+was scanned, cut to the same length as the clip beside it, with the clip itself recorded as what the
+edit is really of. So the editor opens ready to work instead of transcoding every clip first, which
+is the longest wait between asking for a montage and being able to touch it — and it swaps back to
+the clips on its own to render, so the film is made from the footage and not from the proxies. A clip
+whose proxy could not be made is laid on the timeline as it is, and the editor makes its own the way
+it always did.
+
 The destination and format of the film are filled in, so the only work left in the editor is the edit
 itself and pressing render: nothing to type, no folder to find, and no film landing somewhere it then
 has to be moved from.
@@ -426,8 +444,8 @@ Worth knowing, so nobody goes looking:
   the project and takes over again afterwards, but it never drives the edit or the render.
 - **Nothing notices a render finishing.** The board looks at the folder each time it is asked to do
   something; there is no watching in the background.
-- **Video is played as-is.** There is no streaming or transcoding for preview, so a very large file is
-  as heavy to open as it is on disk.
+- **Nothing shows a proxy being made.** They appear as they are finished, on the next thing the board
+  is asked to do; there is no progress to watch and no way to ask for one on its own.
 - **Nothing comes in from outside the cameras.** A file can only reach SkyDock by being copied off a
   camera and scanned; there is no way to drop an arbitrary file into a jump.
 - **A file is in one place at a time.** It can be moved between jumps, but not put in two at once.

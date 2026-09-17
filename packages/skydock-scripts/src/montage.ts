@@ -6,7 +6,10 @@ import { z } from 'zod'
 import { toHostPath } from './hostPath'
 import { walkFiles } from './lib/fs'
 
-const montageClipSchema = z.object({ path: z.string() })
+/* `proxy` is the small copy of this same clip, cut the same way. When there is one the editor opens
+   on it instead of transcoding the clip itself, which is the longest wait before an edit can start;
+   it swaps back to `path` on its own to render. */
+const montageClipSchema = z.object({ path: z.string(), proxy: z.string().optional() })
 
 const montageOptionsSchema = z.object({
   groupDir: z.string(),
@@ -247,7 +250,25 @@ const createMontageProject = (rawOptions: MontageOptions) => {
     mlt.splice(firstPlaylist + index, 0, {
       chain: [
         { property: [{ '#text': 'pause' }], ':@': { '@_name': 'eof' } },
-        { property: [{ '#text': toHost(clip.path) }], ':@': { '@_name': 'resource' } },
+        /* MLT plays whatever `resource` names, so a proxied clip points there and keeps the clip
+           itself in `kdenlive:originalurl` — which is how the editor knows what to render from.
+           A bare `-` is how a project says this clip has no proxy. */
+        {
+          property: [{ '#text': toHost(clip.proxy ?? clip.path) }],
+          ':@': { '@_name': 'resource' }
+        },
+        {
+          property: [{ '#text': clip.proxy ? toHost(clip.proxy) : '-' }],
+          ':@': { '@_name': 'kdenlive:proxy' }
+        },
+        ...(clip.proxy
+          ? [
+              {
+                property: [{ '#text': toHost(clip.path) }],
+                ':@': { '@_name': 'kdenlive:originalurl' }
+              }
+            ]
+          : []),
         { property: [{ '#text': 'avformat' }], ':@': { '@_name': 'mlt_service' } },
         { property: [{ '#text': '1' }], ':@': { '@_name': 'seekable' } },
         {

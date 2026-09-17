@@ -11,6 +11,7 @@ import { buildExifMap } from './lib/exif'
 import { loadManifest, saveManifest } from './manifest'
 import { computeFileId } from './fileId'
 import { reclusterGroups } from './clustering'
+import { buildMissingProxies } from './proxy'
 import type { Manifest, ManifestFile, ManifestGroup } from './types'
 
 type ScanResult = {
@@ -248,7 +249,11 @@ const scanMedia = async (options?: { outputDir?: string }) => {
 }
 
 if (isCliModule('scan')) {
-  scanMedia().catch(console.error)
+  /* from a terminal the proxies are built in front of you rather than behind the answer, because
+     there is no board here to show them arriving later */
+  scanMedia()
+    .then(() => buildMissingProxies())
+    .catch(console.error)
 }
 
 export { scanMedia }
