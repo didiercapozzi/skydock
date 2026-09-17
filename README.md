@@ -75,8 +75,26 @@ The container writes the project it wants opened into `output/.editor-requests`;
 sees the line, turns the container's `/workspace` into wherever the repo actually is, and opens it
 there. `SKYDOCK_EDITOR` picks a different editor, `SKYDOCK_EDITOR_QUEUE` a different file.
 
-`dev:bridge` is only `SKYDOCK_EDITOR_COMMAND=/workspace/scripts/editor-bridge.sh npm run dev`, so
-setting the variable by hand does the same thing.
+`dev:bridge` is `umask 000 && SKYDOCK_EDITOR_COMMAND=/workspace/scripts/editor-bridge.sh npm run dev`
+— the variable points SkyDock at the bridge, and the umask is explained below.
+
+**The two sides are not the same user.** The container runs as root; on the host you are yourself.
+Everything SkyDock writes into `output/` is therefore owned by root, and the editor running on the
+host would get it read-only. Opening a project works, and so does playing its clips — but saving the
+edit and rendering the film both write, and both would be refused, the second one only at the end of
+a render. So `dev:bridge` sets `umask 000` as well: what it writes stays root-owned but is writable
+by everyone, which is what lets the editor on the host save and render into it. That is a
+development-machine trade — permissive modes under `output/` — and it is the reason the bridge
+script exists at all. `open-on-host.sh` still warns if it opens something it cannot write, which
+catches whatever was written before this.
+
+Files from before that are already root-owned need taking once, on the host:
+
+```sh
+sudo chmod -R a+rwX output/
+```
+
+The packaged desktop build has none of this, since there is only one user in it.
 
 ## Checks
 
