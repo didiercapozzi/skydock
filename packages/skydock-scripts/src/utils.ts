@@ -49,6 +49,15 @@ const parseDayEpoch = (day?: string) => {
   return Math.floor(new Date(y, m - 1, d).getTime() / 1000)
 }
 
+/* The manifest writes a day the way the club reads it, `DD.MM.YYYY`. Anything that needs to sort
+   days, or use one as a key, needs it the other way round — so the one translation lives here
+   rather than being re-derived wherever a day is grouped. Returns '' for anything unrecognised,
+   which callers treat as "no day recorded". */
+const isoDay = (stored: string) => {
+  const parts = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(stored.trim())
+  return parts ? `${parts[3]}-${parts[2]}-${parts[1]}` : ''
+}
+
 const formatDay = (epoch: number) => {
   const day = new Date(epoch * 1000).toLocaleDateString('de-CH', {
     year: 'numeric',
@@ -146,6 +155,7 @@ export {
   fileMatchesExisting,
   findMediaFiles,
   formatDay,
+  isoDay,
   getExtension,
   getManifestPath,
   getOutputDir,

@@ -39,10 +39,11 @@ output/
 
 ## Configuration
 
-| Variable                   | Purpose                                                 | Default                     |
-| -------------------------- | ------------------------------------------------------- | --------------------------- |
-| `SKYDOCK_OUTPUT_DIR`       | Where originals, the registry and delivery folders live | `/workspace/output`         |
-| `SKYDOCK_MONTAGE_TEMPLATE` | The kdenlive project a montage is built from            | `templates/tandem.kdenlive` |
+| Variable                   | Purpose                                                                                                                                                                  | Default                             |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------- |
+| `SKYDOCK_OUTPUT_DIR`       | Where originals, the registry and delivery folders live                                                                                                                  | `/workspace/output`                 |
+| `SKYDOCK_MONTAGE_TEMPLATE` | The kdenlive project a montage is built from                                                                                                                             | the one template under `templates/` |
+| `SKYDOCK_EDITOR_COMMAND`   | What opens a montage — read as a shell command line, with the project appended as its last argument. Quotes group, so `sh -c "… \"$0\" …"` works and `$0` is the project | `kdenlive`                          |
 
 That is the whole of it — **the network storage is not configured here.** Host, user and password are
 entered on the board, and the session is kept in `output/.status/`, with the password encrypted. No
@@ -53,6 +54,26 @@ credentials are read from the environment and none are written into the registry
 - `exiftool` — required: processing stamps dates into the files and stops without it.
 - `ffmpeg` / `ffprobe` — required to write a cropped video and to make thumbnails.
 - `kdenlive` is **not** required to produce a montage project, only to open and render one.
+
+### Opening the editor from the development container
+
+Installed as a desktop app, SkyDock runs on the machine kdenlive is on and starts it directly —
+nothing to set up. The development container is the awkward case: it has no kdenlive and no way to
+reach the one outside it, so pressing **Montage** there reports that it cannot open anything.
+
+Two small scripts bridge it, using the fact that `output/` is the same folder on both sides:
+
+```sh
+# on the host, once — leave it running
+./scripts/open-on-host.sh
+
+# in the container
+SKYDOCK_EDITOR_COMMAND=/workspace/scripts/editor-bridge.sh npm run dev
+```
+
+The container writes the project it wants opened into `output/.editor-requests`; the host script
+sees the line, turns the container's `/workspace` into wherever the repo actually is, and opens it
+there. `SKYDOCK_EDITOR` picks a different editor, `SKYDOCK_EDITOR_QUEUE` a different file.
 
 ## Checks
 

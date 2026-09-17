@@ -1,4 +1,4 @@
-const GROUP_GAP_SECONDS = 1800
+const GROUP_GAP_SECONDS = 900
 
 const VIDEO_EXTENSIONS = ['mp4', 'mov', 'avi', 'mkv', 'mts', 'm4v', '3gp']
 

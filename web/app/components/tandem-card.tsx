@@ -1,0 +1,382 @@
+import { useState } from 'react'
+import type { UploadProgressState } from '../hooks/useUploadProgress'
+import { Go, Mini } from './buttons'
+import { kindOf } from './file-list'
+import type { ManifestGroup } from './types'
+
+/* A tandem cannot be processed until it has a name, because the name *is* the folder the passenger
+   gets (RULES, Dropzones and tandems). Both halves behave identically, so they are one field
+   described twice rather than two fields written out twice. */
+const NAME_FIELDS = [
+  { key: 'firstname', label: 'First name' },
+  { key: 'lastname', label: 'Last name' }
+] as const
+
+const PassengerName = ({
+  group,
+  onSave
+}: {
+  group: ManifestGroup
+  onSave: (firstname: string, lastname: string) => void
+}) => {
+  const [name, setName] = useState({
+    firstname: group.passenger?.firstname ?? '',
+    lastname: group.passenger?.lastname ?? ''
+  })
+  const save = () => onSave(name.firstname.trim(), name.lastname.trim())
+  return (
+    <span
+      onClick={(e) => e.stopPropagation()}
+      className='flex flex-wrap items-center gap-1'>
+      {NAME_FIELDS.map((field) => (
+        <input
+          key={field.key}
+          type='text'
+          value={name[field.key]}
+          placeholder={field.label}
+          aria-label={field.label}
+          onChange={(e) => setName({ ...name, [field.key]: e.target.value })}
+          onBlur={save}
+          className='w-24 rounded-[5px] border border-line bg-pane px-1.5 py-0.5 text-[12px]'
+        />
+      ))}
+    </span>
+  )
+}
+
+/* One passenger in the Tandems grid: who it is, what is in it, and the one thing to do next —
+   which is the same sentence the tandem itself offers, said small. */
+const PassengerCard = ({
+  group,
+  who,
+  naming,
+  dropTarget,
+  onOpen,
+  onName
+}: {
+  group: ManifestGroup
+  who: string
+  naming: boolean
+  dropTarget: Record<string, unknown>
+  onOpen: () => void
+  onName: (firstname: string, lastname: string) => void
+}) => {
+  const videos = group.files.filter((f) => kindOf(f) === 'video').length
+  return (
+    <button
+      type='button'
+      {...dropTarget}
+      onClick={onOpen}
+      className='block w-full rounded-[10px] border border-line bg-pane p-3 text-left hover:border-accent'>
+      {naming || !who ? (
+        <PassengerName
+          group={group}
+          onSave={onName}
+        />
+      ) : (
+        <h3 className='mb-0.5 text-[14.5px] font-semibold tracking-[-0.01em]'>{who}</h3>
+      )}
+      <p className='text-[12px] text-ink-2'>
+        {videos} video{videos === 1 ? '' : 's'} · {group.files.length - videos} photos
+      </p>
+      <p className='mt-2.5 text-[11.5px] font-semibold text-accent'>
+        {!who
+          ? 'Name it →'
+          : group.delivered
+            ? '✓ delivered'
+            : group.processed
+              ? 'Next: montage →'
+              : 'Next: process →'}
+      </p>
+    </button>
+  )
+}
+
+const formatFilmSize = (bytes: number) =>
+  bytes > 1024 ** 3 ? `${(bytes / 1024 ** 3).toFixed(1)} GB` : `${Math.round(bytes / 1024 ** 2)} MB`
+
+const dirOf = (remotePath: string) => {
+  const cut = remotePath.lastIndexOf('/')
+  return cut <= 0 ? '/' : remotePath.slice(0, cut)
+}
+
+const nameOf = (remotePath: string) => remotePath.slice(remotePath.lastIndexOf('/') + 1)
+
+type TandemFact = {
+  project: boolean
+  projectPath: string
+  film: { size: number; mtime: number } | null
+  baseName: string
+}
+
+/* The editor is opened by hand — SkyDock runs where it cannot start an application on the machine
+   you are sitting at — so the least it can do is say exactly which file, spelled the way that
+   machine knows it, and hand it over without anyone reading a path off the screen. */
+const ProjectPath = ({ path: projectPath }: { path: string }) => {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(projectPath)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      /* clipboard access can be refused; the full path is in the tooltip either way */
+    }
+  }
+  return (
+    <button
+      type='button'
+      onClick={copy}
+      title={`${projectPath}\n\nClick to copy`}
+      className='max-w-[22rem] truncate border-0 bg-transparent p-0 font-mono text-[11px] text-ink-3 hover:text-accent'>
+      {copied ? '✓ copied' : `${projectPath} ⧉`}
+    </button>
+  )
+}
+
+/* One step at a time, always in the same place. The three are distinct and never offered out of
+   order (RULES, The board): Process copies and crops here, Montage writes the project the editor
+   opens, Deliver hands over what was rendered. Deliver stays enabled with no film yet, because a
+   disabled button cannot say why — and pressing it is also how the board looks again, there being
+   nothing that notices a render finishing. */
+const TandemActions = ({
+  group,
+  facts,
+  busy,
+  blocked,
+  named,
+  onProcess,
+  onMontage,
+  onOpenMontage,
+  onDeliver
+}: {
+  group: ManifestGroup
+  facts?: TandemFact
+  busy: string | null
+  blocked: { blocked: boolean; message: string | null }
+  named: boolean
+  onProcess: () => void
+  onMontage: () => void
+  onOpenMontage: () => void
+  onDeliver: () => void
+}) => {
+  const working = busy !== null
+  const deliverKey = `deliver:${group.id}`
+  if (!group.processed)
+    return (
+      <span className='ml-auto flex flex-wrap items-center gap-1.5'>
+        <Go
+          disabled={working || !named}
+          onClick={onProcess}>
+          {busy === group.id ? 'Processing…' : 'Process'}
+        </Go>
+      </span>
+    )
+  if (!facts?.project)
+    return (
+      <span className='ml-auto flex flex-wrap items-center gap-1.5'>
+        <Go
+          disabled={working}
+          title='Write the kdenlive project — clips laid out, render destination set — and open it'
+          onClick={onMontage}>
+          {busy === group.id ? 'Writing…' : 'Montage'}
+        </Go>
+      </span>
+    )
+  return (
+    <span className='ml-auto flex flex-wrap items-center gap-2'>
+      <ProjectPath path={facts.projectPath} />
+      <Mini
+        disabled={working}
+        title='Open this project in the editor'
+        onClick={onOpenMontage}>
+        {busy === `open:${group.id}` ? 'Opening…' : 'Open in kdenlive'}
+      </Mini>
+      {facts.film ? (
+        <span className='text-[12px] text-ink-2'>film {formatFilmSize(facts.film.size)}</span>
+      ) : (
+        <span className='text-[12px] text-ink-3'>edit and render it</span>
+      )}
+      <Go
+        disabled={working || blocked.blocked}
+        title={
+          blocked.message ??
+          'Zip the photos and the rushes, then send the film and the photos to the passenger'
+        }
+        onClick={onDeliver}>
+        {busy === deliverKey ? 'Delivering…' : group.delivered ? 'Deliver again' : 'Deliver'}
+      </Go>
+    </span>
+  )
+}
+
+/* The one upload strip, wherever an upload is happening — the same shape in a day header, a tandem
+   header or on its own, so it is recognised before it is read. */
+const UploadStrip = ({ progress }: { progress: UploadProgressState }) => {
+  const percent =
+    progress.totalBytes > 0
+      ? Math.min(100, Math.round((progress.bytesUploaded / progress.totalBytes) * 100))
+      : 0
+  const shell =
+    'flex flex-wrap items-center gap-2.5 rounded-lg border px-3 py-2 text-[12.5px] text-ink-2'
+  if (progress.state === 'archiving')
+    return (
+      <div className={`${shell} border-accent bg-accent-soft`}>
+        Zipping the {progress.filename.replace('.zip', '')} —{' '}
+        <b className='font-mono text-ink tabular-nums'>
+          {progress.fileIndex}/{progress.totalFiles}
+        </b>{' '}
+        files
+      </div>
+    )
+  if (progress.state === 'checking')
+    return (
+      <div className={`${shell} border-accent bg-accent-soft`}>
+        Checking what is already there —{' '}
+        <b className='font-mono text-ink tabular-nums'>
+          {progress.checked ?? 0}/{progress.totalFiles}
+        </b>
+      </div>
+    )
+  if (progress.state === 'error')
+    return (
+      <div className={`${shell} border-dashed border-local bg-local-soft text-local`}>
+        Upload failed: {progress.error}
+      </div>
+    )
+  if (progress.state === 'done')
+    return (
+      <div className={`${shell} border-up bg-up-soft`}>
+        <span className='font-semibold text-up'>✓ uploaded</span>
+        {progress.skipped ? <span>{progress.skipped} already there</span> : null}
+      </div>
+    )
+  return (
+    <div className={`${shell} border-accent bg-accent-soft`}>
+      <span className='flex-[1_1_140px] truncate'>
+        <b className='font-mono text-ink tabular-nums'>
+          {progress.fileIndex + 1}/{progress.totalFiles}
+        </b>{' '}
+        · {progress.filename}
+      </span>
+      <span className='h-1.5 max-w-[260px] flex-[1_1_160px] overflow-hidden rounded-[3px] bg-black/10'>
+        <i
+          className='block h-full bg-accent transition-[width] duration-100 ease-linear'
+          style={{ width: `${percent}%` }}
+        />
+      </span>
+      <span className='w-[38px] text-right font-mono text-[11.5px] tabular-nums'>{percent}%</span>
+    </div>
+  )
+}
+
+/* Once it is delivered, what matters is what is on the NAS — not the files it was made from. One
+   parcel per folder up there, each listing exactly what is in it. That is what makes a delivered
+   tandem worth opening months later. */
+const NasCard = ({
+  title,
+  dir,
+  tag,
+  items,
+  shareUrl
+}: {
+  title: string
+  dir: string
+  tag: string
+  items: { icon: string; name: string; size: number; what: string }[]
+  shareUrl?: string
+}) => (
+  <div className='mt-2.5 overflow-hidden rounded-[9px] border border-line'>
+    <div className='flex flex-wrap items-center gap-2 border-b border-line bg-ground px-3 py-[9px] text-[13px]'>
+      <b className='font-semibold'>{title}</b>
+      <span className='text-ink-3'>→</span>
+      <code className='rounded-[3px] bg-line-2 px-1.5 py-px font-mono text-[11.5px] text-ink'>
+        {dir}
+      </code>
+      <span className='ml-auto text-[12px] text-ink-2'>{tag}</span>
+    </div>
+    <div className='px-1.5 py-1'>
+      {items.map((item) => (
+        <div
+          key={item.name}
+          className='flex items-center gap-2.5 rounded-[5px] p-1.5 hover:bg-line-2'>
+          <span className='w-[15px] flex-none text-center text-accent'>{item.icon}</span>
+          <code className='font-mono text-[11.5px]'>{item.name}</code>
+          <span className='text-[12px] text-ink-2'>{formatFilmSize(item.size)}</span>
+          <span className='mr-2.5 ml-auto text-[12px] text-ink-2'>{item.what}</span>
+        </div>
+      ))}
+      {shareUrl && (
+        <div className='mt-1 flex items-center gap-2.5 border-t border-line-2 px-1.5 pt-2 pb-1.5'>
+          <span className='w-[15px] flex-none text-center'>🔗</span>
+          <a
+            href={shareUrl}
+            target='_blank'
+            rel='noreferrer'
+            className='truncate font-mono text-[11px] text-accent underline'>
+            {shareUrl}
+          </a>
+        </div>
+      )}
+    </div>
+  </div>
+)
+
+const DeliveredCards = ({ group }: { group: ManifestGroup }) => {
+  const record = group.delivered
+  if (!record) return null
+  const passenger = [
+    record.film && {
+      icon: '▶',
+      name: nameOf(record.film.remotePath),
+      size: record.film.size,
+      what: 'the film'
+    },
+    record.photos && {
+      icon: '🗜',
+      name: nameOf(record.photos.remotePath),
+      size: record.photos.size,
+      what: 'the photos'
+    }
+  ].filter((x): x is { icon: string; name: string; size: number; what: string } => Boolean(x))
+  const anchor = record.film ?? record.photos
+  return (
+    <>
+      {anchor && passenger.length > 0 && (
+        <NasCard
+          title='For the passenger'
+          dir={dirOf(anchor.remotePath)}
+          tag='ready to hand over'
+          items={passenger}
+          shareUrl={record.shareUrl ?? group.publish?.shareUrl}
+        />
+      )}
+      {record.rushes && (
+        <NasCard
+          title='Backup'
+          dir={dirOf(record.rushes.remotePath)}
+          tag='never shared'
+          items={[
+            {
+              icon: '🗜',
+              name: nameOf(record.rushes.remotePath),
+              size: record.rushes.size,
+              what: 'the originals'
+            }
+          ]}
+        />
+      )}
+    </>
+  )
+}
+
+export {
+  DeliveredCards,
+  PassengerCard,
+  PassengerName,
+  ProjectPath,
+  TandemActions,
+  UploadStrip,
+  formatFilmSize
+}
+export type { TandemFact }

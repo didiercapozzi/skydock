@@ -7,6 +7,27 @@ implemented as rules, not guessed from the mockup code.
 > Mockup ≠ production code. Re-implement in the project's own stack, components and styling.
 > Start with a plan (data model, components, routes) and wait for approval before editing.
 
+**Status — 2026-09-17.** The layout below is now the real board, down to the palette: the mockup's
+tokens, IBM Plex, the 13.5px base and the dark theme are the app's own stylesheet, so a colour or a
+size changed in one is changed in the other by hand in one place. Built: the places menu, the
+accordion days, the one file shape with rows and thumbnails, the badges, paging, the delivered name
+beside the camera name, the `changed` state, Find a file, and the NAS cards on a delivered tandem.
+Both the app and this mockup carry an Auto/Light/Dark switch writing the same `data-theme`
+attribute, so the two can be pinned to one theme and held side by side. The dialogs are in the
+palette too: one modal shell carries the connect, folder-browser and comparison dialogs, the preview
+is the mockup's centred stage with its facts column beside it, and the cropper is lit for the dark
+stage it sits on. No stock Tailwind colour remains anywhere in the app.
+
+Still only in the mockup, each because it needs server work: per-file and multi-file re-timing,
+ungrouping without losing the prepared copies, a NAS check that promotes a file by checksum, rotating
+and aspect-cropping a photo, downloading back from the NAS, and archiving without uploading. Two
+more are front-end: `Next to sort →`, and a Regroup that re-runs the rule over unlocked jumps rather
+than only over loose files. The day header's jump chips, the days toolbar with collapse/expand, and
+the preview's full side panel are built — rotate and frame are drawn there but held shut. A clip's badge shows `▶` without its length, because no duration is
+stored yet. The crop dialog also still opens on an uploaded file.
+
+The mockup stays ahead of the app wherever we are still deciding — it is not frozen.
+
 ## Places (left menu, always pinned)
 
 - **Unsorted jumps** · **Dropzones** (e.g. Yverdon, Gruyère) · **Tandems** (All passengers + one entry per passenger).

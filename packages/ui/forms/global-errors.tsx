@@ -3,7 +3,7 @@ const GlobalErrors = ({ errors }: { readonly errors: readonly string[] }) =>
     <div
       role='alert'
       aria-live='assertive'
-      className='rounded-md border border-destructive/30 bg-destructive/10 p-4 text-destructive'>
+      className='rounded-md bg-destructive/10 px-2.5 py-[7px] text-[12.5px] text-destructive'>
       {errors.map((error, index) => (
         <p key={index}>{error}</p>
       ))}

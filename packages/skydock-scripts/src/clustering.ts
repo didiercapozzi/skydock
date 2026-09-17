@@ -2,8 +2,12 @@ import { GROUP_GAP_SECONDS } from './constants'
 import type { Manifest, ManifestFile, ManifestGroup } from './types'
 import { formatDay, sortFilesByMtime } from './utils'
 
-/* The rule that makes a jump: files in capture order, cut wherever the gap to the next one reaches
-   half an hour. A run of a single file is not a jump — it stays loose (RULES, Jumps). */
+/* The rule that makes a jump: files in capture order, cut wherever the gap from one file to the
+   *next* reaches GROUP_GAP_SECONDS. The gap is measured between neighbours, never from the first
+   file of the run — so a jump goes on for as long as the filming does, and can cover far more than
+   that gap in total, while a single pause longer than it ends the jump however briefly the filming
+   had been going. A run of a single file is not a jump: callers drop those, leaving them loose
+   (RULES, Jumps). */
 const splitByGap = (files: ManifestFile[]) => {
   const batches: ManifestFile[][] = []
   let current: ManifestFile[] = []
@@ -20,10 +24,17 @@ const splitByGap = (files: ManifestFile[]) => {
   return batches
 }
 
+/* The day a jump belongs to: the day it started. It is stored rather than worked out from the
+   files each time, because a file dragged in from another day joins the jump — it does not drag
+   the jump to its own day with it (RULES, Jumps). Whatever changes a whole jump's time changes
+   this with it. */
+const dayOfFiles = (files: ManifestFile[]) =>
+  files.length === 0 ? '' : formatDay(Math.min(...files.map((f) => f.mtime)))
+
 const buildGroup = (files: ManifestFile[], id: string, label: string): ManifestGroup => ({
   id,
   label,
-  day: formatDay(Math.min(...files.map((f) => f.mtime))),
+  day: dayOfFiles(files),
   files
 })
 
@@ -104,7 +115,8 @@ const regroupLooseFiles = (manifest: Manifest) => {
   const loose = manifest.files.filter((f) => f.id && !grouped.has(f.id) && !f.destination)
   if (loose.length === 0) return 0
 
-  const batches = splitByGap(loose)
+  /* a run of one is not a jump, the same as on a scan — it stays loose (RULES, Jumps) */
+  const batches = splitByGap(loose).filter((files) => files.length > 1)
   for (const files of batches) groupFromFiles(manifest, files)
   return batches.length
 }
@@ -120,6 +132,10 @@ const shiftFiles = (manifest: Manifest, ids: Set<string>, offsetSeconds: number)
   }
   for (const file of manifest.files) shiftOne(file)
   for (const group of manifest.groups) for (const file of group.files) shiftOne(file)
+  /* re-timing a jump can carry it into another day, and the day it is filed under has to follow */
+  for (const group of manifest.groups) {
+    if (group.files.some((f) => shifted.has(f))) group.day = dayOfFiles(group.files)
+  }
 }
 
-export { groupFromFiles, reclusterGroups, regroupLooseFiles, shiftFiles }
+export { dayOfFiles, groupFromFiles, reclusterGroups, regroupLooseFiles, shiftFiles }

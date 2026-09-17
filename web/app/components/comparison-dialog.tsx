@@ -130,7 +130,7 @@ const ComparisonDialog = ({
     const fileUrl = getFileUrl(file.path)
     return (
       <div className='flex flex-col gap-2'>
-        <div className='bg-gray-950 rounded-lg overflow-hidden flex items-center justify-center h-[200px]'>
+        <div className='flex h-[200px] items-center justify-center overflow-hidden rounded-lg bg-[#0b0f13]'>
           {isVideoFile(file.filename) ? (
             <PreviewVideo
               src={fileUrl}
@@ -167,14 +167,14 @@ const ComparisonDialog = ({
   return (
     <div
       data-comparison-dialog='true'
-      className='fixed inset-0 z-50 flex items-center justify-center bg-black/50'>
-      <div className='bg-white rounded-xl shadow-2xl w-[90vw] max-h-[90vh] flex flex-col overflow-hidden'>
-        <div className='px-6 py-4 border-b border-gray-200 flex items-center justify-between'>
-          <h2 className='text-lg font-semibold text-gray-900'>Compare Groups</h2>
+      className='fixed inset-0 z-40 grid place-items-center bg-[rgba(8,12,16,0.5)] p-4'>
+      <div className='flex max-h-[90vh] w-[90vw] flex-col overflow-hidden rounded-xl border border-line bg-pane text-ink shadow-[0_20px_60px_rgba(0,0,0,0.35)]'>
+        <div className='flex items-center justify-between border-b border-line px-4 py-[13px]'>
+          <h2 className='m-0 text-[14px] font-semibold'>Compare Groups</h2>
           <button
             type='button'
             onClick={onClose}
-            className='text-gray-400 hover:text-gray-600'>
+            className='text-ink-3 hover:text-ink'>
             <svg
               className='w-5 h-5'
               fill='none'
@@ -238,7 +238,7 @@ const ComparisonDialog = ({
             renderPreview={renderPreview}
           />
 
-          <div className='w-px bg-gray-200' />
+          <div className='w-px bg-line' />
 
           <ComparePanel
             group={rightGroup}
@@ -288,19 +288,19 @@ const ComparisonDialog = ({
           />
         </div>
 
-        <div className='px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-3'>
+        <div className='flex items-center justify-end gap-2 border-t border-line px-4 py-[11px]'>
           <button
             type='button'
             data-action='merge'
             disabled={leftGroup.processed === true || rightGroup.processed === true}
             onClick={handleMergeClick}
-            className='px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
+            className='rounded-[5px] border border-accent bg-accent px-3 py-1 text-[12px] font-semibold text-white hover:brightness-110 disabled:cursor-default disabled:opacity-45'>
             Merge
           </button>
           <button
             type='button'
             onClick={onClose}
-            className='px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors'>
+            className='rounded-[5px] border border-line bg-pane px-2 py-[3px] text-[11.5px] text-ink-2 hover:border-ink-3 hover:text-ink'>
             Close
           </button>
         </div>
@@ -309,14 +309,14 @@ const ComparisonDialog = ({
       {showDatePopup && (
         <div
           data-merge-date-popup='true'
-          className='absolute inset-0 z-10 flex items-center justify-center bg-black/50'>
-          <div className='bg-white rounded-xl shadow-2xl w-[380px] p-6'>
-            <h3 className='text-base font-semibold text-gray-900 mb-1'>Merge date</h3>
-            <p className='text-sm text-gray-500 mb-4'>
+          className='absolute inset-0 z-10 grid place-items-center bg-[rgba(8,12,16,0.5)] p-4'>
+          <div className='w-[380px] rounded-xl border border-line bg-pane p-4 text-ink shadow-[0_20px_60px_rgba(0,0,0,0.35)]'>
+            <h3 className='mb-1 text-[14px] font-semibold'>Merge date</h3>
+            <p className='mb-3.5 text-[12.5px] text-ink-2'>
               Which date should the merged jump have? The chosen jump keeps its times.
             </p>
             <div className='space-y-2 mb-4'>
-              <label className='flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer'>
+              <label className='flex cursor-pointer flex-row items-center gap-2 rounded-lg border border-line px-3 py-2 hover:bg-line-2'>
                 <input
                   type='radio'
                   name='merge-date'
@@ -324,11 +324,11 @@ const ComparisonDialog = ({
                   checked={dateChoice === 'left'}
                   onChange={() => setDateChoice('left')}
                 />
-                <span className='text-sm text-gray-700'>
+                <span className='text-[12.5px] text-ink'>
                   {leftGroup.label} — {getGroupDate(leftGroup)}
                 </span>
               </label>
-              <label className='flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer'>
+              <label className='flex cursor-pointer flex-row items-center gap-2 rounded-lg border border-line px-3 py-2 hover:bg-line-2'>
                 <input
                   type='radio'
                   name='merge-date'
@@ -336,11 +336,11 @@ const ComparisonDialog = ({
                   checked={dateChoice === 'right'}
                   onChange={() => setDateChoice('right')}
                 />
-                <span className='text-sm text-gray-700'>
+                <span className='text-[12.5px] text-ink'>
                   {rightGroup.label} — {getGroupDate(rightGroup)}
                 </span>
               </label>
-              <label className='flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer'>
+              <label className='flex cursor-pointer flex-row items-center gap-2 rounded-lg border border-line px-3 py-2 hover:bg-line-2'>
                 <input
                   type='radio'
                   name='merge-date'
@@ -348,7 +348,7 @@ const ComparisonDialog = ({
                   checked={dateChoice === 'custom'}
                   onChange={() => setDateChoice('custom')}
                 />
-                <span className='text-sm text-gray-700'>Custom</span>
+                <span className='text-[12.5px] text-ink'>Custom</span>
               </label>
               {dateChoice === 'custom' && (
                 <div className='flex gap-2 pl-7'>
@@ -357,14 +357,14 @@ const ComparisonDialog = ({
                     data-custom-date='true'
                     value={customDate}
                     onChange={(e) => setCustomDate(e.target.value)}
-                    className='px-2 py-1.5 text-sm border border-gray-300 rounded-lg'
+                    className='rounded-md border border-line bg-ground px-[9px] py-1.5 text-[13px] text-ink'
                   />
                   <input
                     type='time'
                     data-custom-time='true'
                     value={customTime}
                     onChange={(e) => setCustomTime(e.target.value)}
-                    className='px-2 py-1.5 text-sm border border-gray-300 rounded-lg'
+                    className='rounded-md border border-line bg-ground px-[9px] py-1.5 text-[13px] text-ink'
                   />
                 </div>
               )}
@@ -375,14 +375,14 @@ const ComparisonDialog = ({
                 data-action='merge-confirm'
                 disabled={anchor === null}
                 onClick={handleMergeConfirm}
-                className='px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
+                className='rounded-[5px] border border-accent bg-accent px-3 py-1 text-[12px] font-semibold text-white hover:brightness-110 disabled:cursor-default disabled:opacity-45'>
                 Confirm merge
               </button>
               <button
                 type='button'
                 data-action='merge-cancel'
                 onClick={() => setShowDatePopup(false)}
-                className='px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors'>
+                className='rounded-[5px] border border-line bg-pane px-2 py-[3px] text-[11.5px] text-ink-2 hover:border-ink-3 hover:text-ink'>
                 Cancel
               </button>
             </div>
@@ -442,14 +442,14 @@ const ComparePanel = ({
     <div
       data-compare-side={side}
       className='flex-1 flex flex-col overflow-hidden min-w-0'>
-      <div className='px-4 py-3 bg-gray-50 border-b border-gray-200'>
+      <div className='border-b border-line bg-ground px-3 py-2.5'>
         <div className='flex items-center justify-between mb-2'>
           <div className='flex items-center gap-2'>
             <button
               type='button'
               data-action={`group-prev-${side}`}
               onClick={onGroupPrev}
-              className='w-6 h-6 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded transition-colors'>
+              className='flex h-6 w-6 items-center justify-center rounded text-ink-2 hover:bg-line-2 hover:text-ink'>
               <svg
                 className='w-4 h-4'
                 fill='none'
@@ -463,12 +463,12 @@ const ComparePanel = ({
                 />
               </svg>
             </button>
-            <h3 className='font-semibold text-sm text-gray-800 min-w-0 truncate'>{group.label}</h3>
+            <h3 className='min-w-0 truncate text-[13px] font-semibold'>{group.label}</h3>
             <button
               type='button'
               data-action={`group-next-${side}`}
               onClick={onGroupNext}
-              className='w-6 h-6 flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded transition-colors'>
+              className='flex h-6 w-6 items-center justify-center rounded text-ink-2 hover:bg-line-2 hover:text-ink'>
               <svg
                 className='w-4 h-4'
                 fill='none'
@@ -483,11 +483,11 @@ const ComparePanel = ({
               </svg>
             </button>
           </div>
-          <span className='text-xs text-gray-500 tabular-nums'>
+          <span className='font-mono text-[11px] text-ink-3 tabular-nums'>
             {groupIndex + 1} / {groups.length}
           </span>
         </div>
-        <p className='text-xs text-gray-500'>
+        <p className='text-[12px] text-ink-2'>
           {group.files.length} files • {formatTime(group.files[0]?.mtime ?? 0)} —{' '}
           {formatTime(group.files[group.files.length - 1]?.mtime ?? 0)}
         </p>
@@ -501,12 +501,12 @@ const ComparePanel = ({
             onClick={() => onFileIndexChange(i)}
             className={`px-3 py-2 rounded-lg cursor-pointer transition-colors ${
               i === fileIndex
-                ? 'bg-blue-50 ring-1 ring-blue-400'
-                : 'hover:bg-gray-50 border border-transparent hover:border-gray-200'
+                ? 'border border-pick bg-pick-soft'
+                : 'border border-transparent hover:bg-line-2'
             }`}>
             <div className='flex items-center justify-between'>
-              <span className='font-mono text-xs text-gray-700 truncate'>{f.filename}</span>
-              <span className='text-gray-400 text-xs tabular-nums shrink-0 ml-2'>
+              <span className='truncate font-mono text-[11.5px]'>{f.filename}</span>
+              <span className='ml-2 shrink-0 font-mono text-[11px] text-ink-3 tabular-nums'>
                 {formatSize(f.size)}
               </span>
             </div>
@@ -515,7 +515,7 @@ const ComparePanel = ({
       </div>
 
       {file && (
-        <div className='shrink-0 border-t border-gray-200 p-3 h-[320px] flex flex-col'>
+        <div className='flex h-[320px] shrink-0 flex-col border-t border-line p-3'>
           <div className='flex-1 min-h-0'>
             {renderPreview(
               file,
@@ -528,9 +528,9 @@ const ComparePanel = ({
               onVideoRef
             )}
           </div>
-          <p className='text-xs text-gray-500 mt-2 shrink-0'>
+          <p className='mt-2 shrink-0 text-[12px] text-ink-2'>
             File {fileIndex + 1} of {group.files.length}:{' '}
-            <span className='font-mono text-gray-700'>{file.filename}</span>
+            <span className='font-mono text-ink'>{file.filename}</span>
           </p>
         </div>
       )}

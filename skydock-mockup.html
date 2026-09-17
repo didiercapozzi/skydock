@@ -2107,6 +2107,27 @@
           Thumbnails
         </button>
       </div>
+      <div
+        class="seg"
+        role="group"
+        aria-label="Theme"
+        id="theme">
+        <button
+          data-theme-pick="auto"
+          aria-pressed="true">
+          Auto
+        </button>
+        <button
+          data-theme-pick="light"
+          aria-pressed="false">
+          Light
+        </button>
+        <button
+          data-theme-pick="dark"
+          aria-pressed="false">
+          Dark
+        </button>
+      </div>
     </span>
   </div>
 
@@ -2136,6 +2157,39 @@
 <script>
   ;(function () {
     'use strict'
+
+    /* Auto follows the machine; the other two say so regardless of it. The app carries the same
+       switch, writing the same attribute, so the two can be pinned to one theme and held side by
+       side — which is the only way to tell a real difference from a different machine setting. */
+    ;(function theme() {
+      const KEY = 'skydock.theme'
+      const apply = (t) => {
+        if (t === 'auto') document.documentElement.removeAttribute('data-theme')
+        else document.documentElement.setAttribute('data-theme', t)
+        document.querySelectorAll('[data-theme-pick]').forEach((b) => {
+          b.setAttribute('aria-pressed', b.dataset.themePick === t ? 'true' : 'false')
+        })
+      }
+      let saved = 'auto'
+      try {
+        const stored = localStorage.getItem(KEY)
+        if (stored === 'light' || stored === 'dark') saved = stored
+      } catch (e) {}
+      document.addEventListener('DOMContentLoaded', () => {
+        apply(saved)
+        document.querySelectorAll('[data-theme-pick]').forEach((b) => {
+          b.addEventListener('click', () => {
+            const t = b.dataset.themePick
+            try {
+              if (t === 'auto') localStorage.removeItem(KEY)
+              else localStorage.setItem(KEY, t)
+            } catch (e) {}
+            apply(t)
+          })
+        })
+      })
+      apply(saved)
+    })()
 
     const GAP = 1800
     const DAY1 = Date.UTC(2026, 7, 1, 8, 0, 0) / 1000

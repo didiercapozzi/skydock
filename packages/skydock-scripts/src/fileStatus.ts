@@ -72,6 +72,13 @@ const fileStatus = (file: ManifestFile, context?: StatusContext): FileStatus => 
   return remoteMatches(file, context?.remote) ? 'uploaded' : 'processed'
 }
 
+/* "Never prepared" and "prepared, then altered" both read `local`, because in both cases there is
+   no current copy — but they are not the same situation to be in, and the board says which. The
+   distinction is derived from what is already recorded, never stored: preparing the file again
+   makes the copy current and it disappears on its own. */
+const fileChanged = (file: ManifestFile, context?: StatusContext) =>
+  Boolean(file.processed) && fileStatus(file, context) === 'local'
+
 const scopeStatus = (files: ManifestFile[], context?: (file: ManifestFile) => StatusContext) => {
   const counts = { local: 0, processed: 0, uploaded: 0, total: files.length }
   for (const file of files) counts[fileStatus(file, context?.(file))] += 1
@@ -93,5 +100,5 @@ const uploadGate = (files: ManifestFile[], context?: (file: ManifestFile) => Sta
   }
 }
 
-export { fileStatus, scopeStatus, uploadGate }
+export { fileChanged, fileStatus, scopeStatus, uploadGate }
 export type { FileStatus, OutputFact, RemoteListing, StatusContext }

@@ -1,59 +1,57 @@
 import type { FileStatus } from '@skydock/scripts'
 
-/* local — only the original exists; nothing has been made from it yet, or what was made is out of
-   date because the file was cropped, retimed or replaced since.
+/* local — only the original exists; nothing has been made from it yet.
+   changed — a copy was made and the file has been cropped, retimed or replaced since, so the copy
+   is stale. It is not a fourth stored state: it is `local` with a copy already on disk (RULES).
    processed — a renamed copy of the current file exists in output/processed.
    uploaded — that copy is on the NAS, proved by a matching md5 (RULES, File status). */
-const LABELS: Record<FileStatus, string> = {
+type ShownStatus = FileStatus | 'changed'
+
+const LABELS: Record<ShownStatus, string> = {
   local: 'local',
+  changed: 'changed',
   processed: 'processed',
   uploaded: 'uploaded'
 }
 
-const TITLES: Record<FileStatus, string> = {
-  local: 'Not processed yet — or changed since it was',
+const TITLES: Record<ShownStatus, string> = {
+  local: 'Not processed yet',
+  changed: 'Prepared once and changed since — it needs preparing again before it can go anywhere',
   processed: 'Processed, not on the NAS yet',
   uploaded: 'On the NAS'
 }
 
-const CHIP: Record<FileStatus, string> = {
-  local: 'border-gray-300 bg-gray-100 text-gray-600',
-  processed: 'border-amber-300 bg-amber-50 text-amber-800',
-  uploaded: 'border-green-300 bg-green-50 text-green-800'
+/* Each state keeps its own colour and the tint made for it. Only `changed` is outlined, because it
+   is the one that is asking to be dealt with rather than simply reporting where a file has got to. */
+const CHIP: Record<ShownStatus, string> = {
+  local: 'bg-local-soft text-local px-[7px]',
+  changed: 'bg-changed-soft text-changed border border-dashed border-changed-line px-1.5',
+  processed: 'bg-proc-soft text-proc px-[7px]',
+  uploaded: 'bg-up-soft text-up px-[7px]'
 }
 
 const DOT: Record<FileStatus, string> = {
-  local: 'bg-gray-400',
-  processed: 'bg-amber-500',
-  uploaded: 'bg-green-600'
+  local: 'bg-local',
+  processed: 'bg-proc',
+  uploaded: 'bg-up'
 }
 
-const StatusChip = ({ status }: { status: FileStatus }) => (
+const StatusChip = ({ status }: { status: ShownStatus }) => (
   <span
     title={TITLES[status]}
-    className={`rounded-full border px-1.5 py-0.5 text-[10px] leading-none font-medium ${CHIP[status]}`}>
+    className={`rounded-full py-px text-[10px] font-semibold tracking-[0.04em] uppercase ${CHIP[status]}`}>
     {LABELS[status]}
   </span>
 )
 
+/* On a thumbnail there is no room for a word, and the ring in the panel colour keeps the dot
+   legible whatever the picture under it happens to be. */
 const StatusDot = ({ status }: { status: FileStatus }) => (
   <span
     title={TITLES[status]}
-    className={`pointer-events-none absolute -top-1 -right-1 h-3 w-3 rounded-full border border-white ${DOT[status]}`}
+    className={`pointer-events-none absolute top-1 right-1 h-2 w-2 rounded-full shadow-[0_0_0_1.5px_var(--color-pane)] ${DOT[status]}`}
   />
 )
 
-const StatusLegend = () => (
-  <span className='flex items-center gap-2 text-[11px] text-gray-500'>
-    {(['local', 'processed', 'uploaded'] as const).map((status) => (
-      <span
-        key={status}
-        className='flex items-center gap-1'>
-        <span className={`h-2 w-2 rounded-full ${DOT[status]}`} />
-        {LABELS[status]}
-      </span>
-    ))}
-  </span>
-)
-
-export { StatusChip, StatusDot, StatusLegend }
+export { StatusChip, StatusDot }
+export type { ShownStatus }

@@ -3,6 +3,7 @@ import {
   ensureNasSession,
   fileStatus,
   getOutputDir,
+  isoDay,
   listRemoteFiles,
   loadManifest,
   manifestFileSchema,
@@ -11,26 +12,56 @@ import {
   statTandemArtifacts,
   uploadGate
 } from '@skydock/scripts'
-import type { FileStatus, OutputFact, RemoteListing } from '@skydock/scripts'
-import { useEffect, useState } from 'react'
+import type { OutputFact, RemoteListing } from '@skydock/scripts'
+import { Fragment, useEffect, useState } from 'react'
 import { z } from 'zod'
+import { Go, Mini, Seg } from '../components/buttons'
+import { Callout } from '../components/callout'
 import { ComparisonDialog } from '../components/comparison-dialog'
 import { ConnectionDialog } from '../components/connection-dialog'
+import { DayRow } from '../components/day-row'
+import { FileList, KindBadges } from '../components/file-list'
+import type { Kind } from '../components/file-list'
 import { NasFolderBrowser } from '../components/nas-folder-browser'
-import { StatusChip, StatusDot, StatusLegend } from '../components/file-status'
+import { PlacesTree, placeKey, placeLabel, passengerOf } from '../components/places-tree'
+import type { Place } from '../components/places-tree'
 import { PreviewDrawer } from '../components/preview-drawer'
+import {
+  DeliveredCards,
+  PassengerCard,
+  TandemActions,
+  UploadStrip
+} from '../components/tandem-card'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
-import { formatSize, formatTime, getThumbUrl, isVideoFile, minFileMtime } from '../components/utils'
+import { formatTime, minFileMtime } from '../components/utils'
 import { useSafeFetcher } from '../helpers/routing'
 import { setFileView, useFileView } from '../hooks/useFileView'
-import type { FileView } from '../hooks/useFileView'
 import { useGroups } from '../hooks/useJumps'
 import { LOOSE, usePreview } from '../hooks/usePreview'
+import { useTheme, setTheme } from '../hooks/useTheme'
 import { useUploadProgress } from '../hooks/useUploadProgress'
-import type { UploadProgressState } from '../hooks/useUploadProgress'
+import type { actionArgs as manifestArgs } from './api.manifest'
 import type { Route } from './+types/board'
 
+/* every board edit goes to the same endpoint; this is what that endpoint accepts, taken from the
+   endpoint itself rather than restated here */
+type ManifestArgs = z.infer<typeof manifestArgs>
+
 const TANDEMS = 'Tandems'
+
+const VIEWS = [
+  ['rows', 'Rows'],
+  ['grid', 'Thumbnails']
+] as const
+
+/* Auto is what the machine says. The other two exist because that signal is invisible and is not
+   always the machine you think it is — a browser preview inside an editor follows the editor's
+   theme, not the desktop's, which is enough to make two windows of the same design disagree. */
+const THEMES = [
+  ['auto', 'Auto'],
+  ['light', 'Light'],
+  ['dark', 'Dark']
+] as const
 
 const nasSuccessSchema = z.object({
   connected: z.boolean(),
@@ -78,12 +109,34 @@ const scanResultSchema = z.object({
 /* what a scan found, in the words the board uses for it */
 /* A template that came without its music and logos still produces a project, and the holes only
    show up at the render — so they are said out loud the moment the montage is made. */
-const montageNote = ({ clips, missingAssets }: { clips: number; missingAssets: string[] }) =>
-  missingAssets.length === 0
-    ? `Montage ready — ${clips} clip${clips === 1 ? '' : 's'} on the timeline`
-    : `Montage ready — ${clips} clip${clips === 1 ? '' : 's'}, but the template is missing ${missingAssets.length} file${
-        missingAssets.length === 1 ? '' : 's'
-      }: ${missingAssets.join(', ')}`
+const montageNote = ({
+  clips,
+  missingAssets,
+  opened,
+  openCommand,
+  openReason
+}: {
+  clips: number
+  missingAssets: string[]
+  opened?: boolean
+  openCommand?: string
+  openReason?: string
+}) => {
+  /* naming the command is what turns "nothing happened" into something that can be looked into:
+     it is the one part of this the board knows and the person at the screen cannot see */
+  const with_ = openCommand ? ` with ${openCommand}` : ''
+  if (clips === 0 && opened) return `Opening it${with_}…`
+  const made = `Montage ready — ${clips} clip${clips === 1 ? '' : 's'} on the timeline`
+  const holes =
+    missingAssets.length === 0
+      ? ''
+      : `, but the template is missing ${missingAssets.length} file${
+          missingAssets.length === 1 ? '' : 's'
+        }: ${missingAssets.join(', ')}`
+  /* whether the editor came up is part of what just happened, not a separate thing to go and check */
+  const editor = opened ? ` · opening it${with_}` : openReason ? ` · ${openReason}` : ''
+  return `${made}${holes}${editor}`
+}
 
 const scanNote = (scan: z.infer<typeof scanResultSchema>) =>
   scan.unchanged
@@ -166,10 +219,11 @@ const dayOfMtime = (mtime: number) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
-const dayOf = (group: ManifestGroup) => {
-  const min = minFileMtime(group.files)
-  return min === null ? group.day : dayOfMtime(min)
-}
+/* A jump is filed under the day it started, which the jump carries. It is not worked out from the
+   files here: a file dragged in from another day joins the jump, and a jump that swallowed one
+   would otherwise jump to that file's day and take everything in it along (RULES, Jumps). Only a
+   jump with no day recorded falls back to its earliest file. */
+const dayOf = (group: ManifestGroup) => isoDay(group.day) || dayOfMtime(minFileMtime(group.files))
 
 const dayOfFile = (file: ManifestFile) => dayOfMtime(file.mtime)
 
@@ -179,523 +233,14 @@ const dayLabel = (day: string) => {
   return `${date} ${MONTHS[month - 1]} ${year}`
 }
 
-/* what a datetime-local field wants, in the reader's own timezone */
-const toLocalInput = (epoch: number) => {
-  const d = new Date(epoch * 1000)
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-}
-
-const fromLocalInput = (value: string) => {
-  const [date, time] = value.split('T')
-  const [year, month, day] = (date ?? '').split('-').map(Number)
-  const [hours, minutes, seconds] = (time ?? '').split(':').map(Number)
-  if (!year || !month || !day || !Number.isFinite(hours) || !Number.isFinite(minutes)) return null
-  const at = new Date(year, month - 1, day, hours, minutes, Number.isFinite(seconds) ? seconds : 0)
-  return Math.floor(at.getTime() / 1000)
-}
-
-const passengerName = (group: ManifestGroup) =>
-  group.passenger ? `${group.passenger.firstname} ${group.passenger.lastname}`.trim() : ''
-
 /* which card a jump is shown in — not the same question as whether it is a passenger's tandem,
    which needs a name and is what the server gates montage and delivery on */
 const inTandemsCard = (group: ManifestGroup) => group.destination === TANDEMS
-const videosOf = (files: ManifestFile[]) => files.filter((f) => isVideoFile(f.path))
-const photosOf = (files: ManifestFile[]) => files.filter((f) => !isVideoFile(f.path))
 
-/* A card of ordinary size shows its files straight away and carries no fold button at all —
-   reaching a file costs no click. Past this many, an open card buries everything under it, so it
-   folds by default and gains Hide / Show N files. */
-const FOLD_MIN = 25
-const foldable = (files: ManifestFile[]) => files.length > FOLD_MIN
-
-const CAPTION = 'text-[11px] font-semibold tracking-wide text-gray-500 uppercase'
-
-const byMtime = (files: ManifestFile[]) => [...files].sort((a, b) => a.mtime - b.mtime)
-
-const byMin = (groups: ManifestGroup[]) =>
-  [...groups].sort((a, b) => (minFileMtime(a.files) ?? 0) - (minFileMtime(b.files) ?? 0))
-
-const Thumb = ({
-  file,
-  selected,
-  picking,
-  status,
-  onClick,
-  onDragStart,
-  small
-}: {
-  file: ManifestFile
-  selected: boolean
-  /* a selection is under way somewhere on the board — every thumbnail shows its mark */
-  picking: boolean
-  status: FileStatus
-  onClick: (e: React.MouseEvent) => void
-  onDragStart?: (e: React.DragEvent) => void
-  small?: boolean
-}) => (
-  <div className='relative'>
-    <button
-      type='button'
-      draggable={onDragStart !== undefined}
-      onDragStart={onDragStart}
-      onClick={onClick}
-      title={`${file.filename} · ${formatTime(file.mtime)} · ${formatSize(file.size)}`}
-      className={`block overflow-hidden rounded border-2 bg-gray-100 ${
-        small ? 'h-10 w-10' : 'h-12 w-16'
-      } ${selected ? 'border-teal-600 ring-2 ring-teal-200' : 'border-gray-200'}`}>
-      <img
-        src={getThumbUrl(file.path, 0.5, small ? 80 : 120)}
-        alt={file.filename}
-        loading='lazy'
-        className='h-full w-full object-cover'
-      />
-    </button>
-    {(picking || selected) && (
-      <span
-        className={`pointer-events-none absolute -top-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full border text-[9px] leading-none ${
-          selected
-            ? 'border-teal-600 bg-teal-600 text-white'
-            : 'border-gray-400 bg-white text-white'
-        }`}>
-        ✓
-      </span>
-    )}
-    {file.cropStart != null && file.cropEnd != null && (
-      <span
-        title={`Cropped ${file.cropStart.toFixed(1)}s → ${file.cropEnd.toFixed(1)}s`}
-        className='pointer-events-none absolute right-0 bottom-0 rounded-tl bg-black/60 px-0.5 text-[9px] leading-none'>
-        ✂️
-      </span>
-    )}
-    {/* the dot rides along with the tick: a wall of unselected thumbnails stays a wall of
-        pictures, and the state comes back the moment a selection makes it worth knowing */}
-    {(picking || selected) && <StatusDot status={status} />}
-  </div>
-)
-
-/* what every thumbnail wall needs from the board: what is picked, and where clicks and drags go */
-type WallHooks = {
-  picked: string[]
-  onFile: (
-    file: ManifestFile,
-    lane: ManifestFile[],
-    e: React.MouseEvent,
-    onPreview: () => void
-  ) => void
-  onDragFile: (file: ManifestFile, e?: React.DragEvent) => void
-  /* one function decides every file's state, so rows, dots and the Upload gate cannot disagree */
-  statusOf: (file: ManifestFile) => FileStatus
-  view: FileView
-}
-
-/* A jump's start time, and the way to correct it. Cameras run on their own clocks and some of them
-   are wrong; setting the start moves every file in the jump by the same amount, so the order inside
-   it is never disturbed (RULES, Times and dates). */
-const JumpTime = ({
-  start,
-  disabled,
-  onShift
-}: {
-  start: number
-  disabled: boolean
-  onShift: (anchorEpoch: number) => void
-}) => {
-  const [draft, setDraft] = useState<string | null>(null)
-  if (draft === null)
-    return (
-      <button
-        type='button'
-        disabled={disabled}
-        onClick={(e) => {
-          e.stopPropagation()
-          setDraft(toLocalInput(start))
-        }}
-        title='Wrong camera clock? Set when this jump really started — every file in it moves with it'
-        className='rounded px-1 font-mono hover:bg-gray-100 disabled:opacity-60'>
-        {formatTime(start)}
-      </button>
-    )
-  const commit = () => {
-    const anchor = fromLocalInput(draft)
-    setDraft(null)
-    if (anchor !== null && anchor !== start) onShift(anchor)
-  }
-  return (
-    <span
-      onClick={(e) => e.stopPropagation()}
-      className='flex flex-wrap items-center gap-1'>
-      <input
-        type='datetime-local'
-        step='1'
-        autoFocus
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') commit()
-          if (e.key === 'Escape') setDraft(null)
-        }}
-        className='rounded border border-gray-300 px-1 py-0.5 text-xs'
-      />
-      <button
-        type='button'
-        onClick={commit}
-        className='rounded bg-gray-900 px-2 py-0.5 text-[11px] font-semibold text-white'>
-        Set
-      </button>
-      <button
-        type='button'
-        onClick={() => setDraft(null)}
-        className='text-[11px] text-gray-500 underline'>
-        cancel
-      </button>
-    </span>
-  )
-}
-
-/* Hide / Show N files — absent entirely on a card small enough not to need folding */
-const Fold = ({
-  files,
-  open,
-  onToggle
-}: {
-  files: ManifestFile[]
-  open: boolean
-  onToggle: () => void
-}) =>
-  foldable(files) ? (
-    <button
-      type='button'
-      onClick={(e) => {
-        e.stopPropagation()
-        onToggle()
-      }}
-      className='rounded border border-gray-300 bg-white px-2 py-0.5 text-xs text-gray-600'>
-      {open ? 'Hide' : `Show ${files.length} files`}
-    </button>
-  ) : null
-
-/* the first few thumbnails of a folded card, so a file can leave it without opening it */
-const Peek = ({
-  files,
-  picking,
-  onDragFile,
-  statusOf
-}: {
-  files: ManifestFile[]
-  picking: boolean
-  onDragFile: WallHooks['onDragFile']
-  statusOf: WallHooks['statusOf']
-}) => (
-  <div className='mt-2 flex gap-1 overflow-hidden'>
-    {files.slice(0, 4).map((file, index) => (
-      <span
-        key={`${index}:${file.path}`}
-        className='relative'>
-        <img
-          src={getThumbUrl(file.path, 0.5, 80)}
-          alt=''
-          loading='lazy'
-          draggable
-          onDragStart={(e) => onDragFile(file, e)}
-          className='h-8 w-11 rounded bg-gray-100 object-cover'
-        />
-        {picking && <StatusDot status={statusOf(file)} />}
-      </span>
-    ))}
-  </div>
-)
-
-/* One file as a row: what it is, when it was shot, how big, and where it has got to. */
-const FileLine = ({
-  file,
-  selected,
-  picking,
-  status,
-  onClick,
-  onDragStart
-}: {
-  file: ManifestFile
-  selected: boolean
-  picking: boolean
-  status: FileStatus
-  onClick: (e: React.MouseEvent) => void
-  onDragStart: (e: React.DragEvent) => void
-}) => (
-  <li>
-    <button
-      type='button'
-      draggable
-      onDragStart={onDragStart}
-      onClick={onClick}
-      className={`flex w-full items-center gap-2 rounded border px-1.5 py-1 text-left ${
-        selected ? 'border-teal-600 bg-teal-50' : 'border-transparent hover:bg-gray-50'
-      }`}>
-      {(picking || selected) && (
-        <span
-          className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border text-[8px] leading-none ${
-            selected ? 'border-teal-600 bg-teal-600 text-white' : 'border-gray-400 bg-white'
-          }`}>
-          ✓
-        </span>
-      )}
-      <img
-        src={getThumbUrl(file.path, 0.5, 80)}
-        alt=''
-        loading='lazy'
-        className='h-7 w-10 shrink-0 rounded bg-gray-100 object-cover'
-      />
-      <span className='min-w-0 flex-1 truncate font-mono text-[11px] text-gray-700'>
-        {file.filename}
-      </span>
-      {file.cropStart != null && file.cropEnd != null && (
-        <span
-          title={`Cropped ${file.cropStart.toFixed(1)}s → ${file.cropEnd.toFixed(1)}s`}
-          className='shrink-0 text-[10px]'>
-          ✂️
-        </span>
-      )}
-      <span className='shrink-0 font-mono text-[11px] text-gray-500'>{formatTime(file.mtime)}</span>
-      <span className='w-16 shrink-0 text-right text-[11px] text-gray-400 tabular-nums'>
-        {formatSize(file.size)}
-      </span>
-      <StatusChip status={status} />
-    </button>
-  </li>
-)
-
-/* what an upload is doing right now: the dedup pass first, then the bytes. Without the checking
-   line a re-upload looks frozen while the NAS hashes hundreds of files. */
-const formatFilmSize = (bytes: number) =>
-  bytes > 1024 ** 3 ? `${(bytes / 1024 ** 3).toFixed(1)} GB` : `${Math.round(bytes / 1024 ** 2)} MB`
-
-/* The editor is opened by hand — SkyDock runs where it cannot start an application on the machine
-   you are sitting at — so the least it can do is say exactly which file, spelled the way that
-   machine knows it, and hand it over without anyone reading a path off the screen. */
-const ProjectPath = ({ path: projectPath }: { path: string }) => {
-  const [copied, setCopied] = useState(false)
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(projectPath)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      /* clipboard access can be refused; the full path is in the tooltip either way */
-    }
-  }
-  return (
-    <button
-      type='button'
-      onClick={copy}
-      title={`${projectPath}\n\nClick to copy`}
-      className='max-w-[22rem] truncate font-mono text-[11px] text-gray-400 hover:text-teal-700'>
-      {copied ? '✓ copied' : `${projectPath} ⧉`}
-    </button>
-  )
-}
-
-/* One step at a time, always in the same place. The three are distinct and never offered out of
-   order (RULES, The board): Process copies and crops here, Montage writes the project the editor
-   opens, Deliver hands over what was rendered. Deliver stays enabled with no film yet, because a
-   disabled button cannot say why — and pressing it is also how the board looks again, there being
-   nothing that notices a render finishing. */
-const TandemActions = ({
-  group,
-  facts,
-  busy,
-  blocked,
-  named,
-  onProcess,
-  onMontage,
-  onDeliver
-}: {
-  group: ManifestGroup
-  facts?: {
-    project: boolean
-    projectPath: string
-    film: { size: number; mtime: number } | null
-    baseName: string
-  }
-  busy: string | null
-  blocked: { blocked: boolean; message: string | null }
-  named: boolean
-  onProcess: () => void
-  onMontage: () => void
-  onDeliver: () => void
-}) => {
-  const working = busy !== null
-  const deliverKey = `deliver:${group.id}`
-  if (!group.processed)
-    return (
-      <span className='ml-auto flex items-center gap-2'>
-        <button
-          type='button'
-          disabled={working || !named}
-          onClick={onProcess}
-          className='rounded bg-teal-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50'>
-          {busy === group.id ? 'Processing…' : 'Process'}
-        </button>
-      </span>
-    )
-  if (!facts?.project)
-    return (
-      <span className='ml-auto flex items-center gap-2'>
-        <button
-          type='button'
-          disabled={working}
-          title='Write the kdenlive project, with the clips laid out and the render destination set'
-          onClick={onMontage}
-          className='rounded bg-teal-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50'>
-          {busy === group.id ? 'Writing…' : 'Montage'}
-        </button>
-      </span>
-    )
-  return (
-    <span className='ml-auto flex items-center gap-2'>
-      <ProjectPath path={facts.projectPath} />
-      {facts.film ? (
-        <span className='text-[11px] text-gray-500'>film {formatFilmSize(facts.film.size)}</span>
-      ) : (
-        <span className='text-[11px] text-gray-400'>edit and render it</span>
-      )}
-      {group.delivered && <span className='text-[11px] text-green-700'>✓ delivered</span>}
-      <button
-        type='button'
-        disabled={working || blocked.blocked}
-        title={
-          blocked.message ??
-          'Zip the photos and the rushes, then send the film and the photos to the passenger'
-        }
-        onClick={onDeliver}
-        className='rounded bg-teal-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50'>
-        {busy === deliverKey ? 'Delivering…' : group.delivered ? 'Deliver again' : 'Deliver'}
-      </button>
-      {group.publish?.shareUrl && (
-        <a
-          href={group.publish.shareUrl}
-          target='_blank'
-          rel='noreferrer'
-          className='text-[11px] text-teal-700 underline'>
-          share link
-        </a>
-      )}
-    </span>
-  )
-}
-
-const UploadStrip = ({ progress }: { progress: UploadProgressState }) => {
-  const percent =
-    progress.totalBytes > 0
-      ? Math.min(100, Math.round((progress.bytesUploaded / progress.totalBytes) * 100))
-      : 0
-  if (progress.state === 'archiving')
-    return (
-      <p className='mt-1 text-[11px] text-gray-500'>
-        Zipping the {progress.filename.replace('.zip', '')} — {progress.fileIndex}/
-        {progress.totalFiles} files
-      </p>
-    )
-  if (progress.state === 'checking')
-    return (
-      <p className='mt-1 text-[11px] text-gray-500'>
-        Checking what is already there — {progress.checked ?? 0}/{progress.totalFiles}
-      </p>
-    )
-  if (progress.state === 'error')
-    return <p className='mt-1 text-[11px] text-red-700'>Upload failed: {progress.error}</p>
-  if (progress.state === 'done')
-    return (
-      <p className='mt-1 text-[11px] text-green-700'>
-        ✓ uploaded{progress.skipped ? ` · ${progress.skipped} already there` : ''}
-      </p>
-    )
-  return (
-    <div className='mt-1'>
-      <p className='truncate text-[11px] text-gray-500'>
-        Uploading {progress.fileIndex + 1}/{progress.totalFiles} · {progress.filename} {percent}%
-      </p>
-      <div className='mt-0.5 h-1 w-full overflow-hidden rounded bg-gray-200'>
-        <div
-          className='h-full bg-teal-600'
-          style={{ width: `${percent}%` }}
-        />
-      </div>
-    </div>
-  )
-}
-
-/* one wall of thumbnails; `lane` is the run a shift-click range covers */
-const Wall = ({
-  files,
-  lane,
-  onPreview,
-  split,
-  picked,
-  onFile,
-  onDragFile,
-  statusOf,
-  view
-}: WallHooks & {
-  files: ManifestFile[]
-  lane: ManifestFile[]
-  onPreview: (file: ManifestFile) => void
-  split?: boolean
-}) => {
-  const strip = (list: ManifestFile[], small?: boolean) =>
-    view === 'rows' ? (
-      <ul className='mt-1 space-y-0.5'>
-        {list.map((file, index) => (
-          <FileLine
-            key={`${index}:${file.path}`}
-            file={file}
-            selected={!!file.id && picked.includes(file.id)}
-            picking={picked.length > 0}
-            status={statusOf(file)}
-            onClick={(e) => onFile(file, lane, e, () => onPreview(file))}
-            onDragStart={(e) => onDragFile(file, e)}
-          />
-        ))}
-      </ul>
-    ) : (
-      <div className='mt-1 flex flex-wrap gap-1'>
-        {list.map((file, index) => (
-          <Thumb
-            key={`${index}:${file.path}`}
-            file={file}
-            small={small}
-            selected={!!file.id && picked.includes(file.id)}
-            picking={picked.length > 0}
-            status={statusOf(file)}
-            onClick={(e) => onFile(file, lane, e, () => onPreview(file))}
-            onDragStart={(e) => onDragFile(file, e)}
-          />
-        ))}
-      </div>
-    )
-  if (!split) return strip(files)
-  const videos = videosOf(files)
-  const photos = photosOf(files)
-  return (
-    <div className='space-y-3'>
-      {videos.length > 0 && (
-        <div>
-          <p className={CAPTION}>
-            {videos.length} video{videos.length > 1 ? 's' : ''}
-          </p>
-          {strip(videos)}
-        </div>
-      )}
-      {photos.length > 0 && (
-        <div>
-          <p className={CAPTION}>
-            {photos.length} photo{photos.length > 1 ? 's' : ''}
-          </p>
-          {strip(photos, true)}
-        </div>
-      )}
-    </div>
-  )
-}
+/* the name the file has once a copy exists — what goes to the NAS and what the passenger sees.
+   A file whose source moved on shows its camera name again, because the name it will get is
+   derived from the time and the crop that just changed. */
+const baseName = (full: string) => full.slice(full.lastIndexOf('/') + 1)
 
 const Board = ({ loaderData }: Route.ComponentProps) => {
   const { groups, setGroups, updateGroups } = useGroups(loaderData.groups)
@@ -706,13 +251,24 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const [picked, setPicked] = useState<string[]>([])
   const [pickedFiles, setPickedFiles] = useState<string[]>([])
   const [anchor, setAnchor] = useState<string | null>(null)
-  const [toggled, setToggled] = useState<string[]>([])
+  /* which place fills the pane, and which of its days is open — one at a time, remembered per
+     place so switching back lands where you left it */
+  const [place, setPlace] = useState<Place>({ kind: 'sort' })
+  const [openDays, setOpenDays] = useState<Record<string, string | null>>({})
+  /* Folding jumps is a standing choice, not something remembered per jump: collapse them once and
+     every day opened afterwards opens folded too. `foldJumps` is that choice and `unfolded` holds
+     the jumps told to differ from it, so one jump opened by hand does not undo the rest. */
+  const [foldJumps, setFoldJumps] = useState(false)
+  const [unfolded, setUnfolded] = useState<string[]>([])
+  /* videos, photos or both: one filter for the whole board, so the badge pressed in a dropzone is
+     still pressed in a tandem */
+  const [kind, setKind] = useState<Kind>('all')
+  const [query, setQuery] = useState('')
   const [overTarget, setOverTarget] = useState<string | null>(null)
   const [comparing, setComparing] = useState(false)
   /* which tandem's name is being typed — a named passenger reads as a title, not a form */
   const [renaming, setRenaming] = useState<string | null>(null)
   const [loose, setLoose] = useState<ManifestFile[]>(loaderData.looseFiles)
-  const [newPlace, setNewPlace] = useState('')
   const [places, setPlaces] = useState<Destination[]>(loaderData.destinations)
   /* one value, so two dialogs can never be open at once; `destination` set means the folder is
      being chosen for that card rather than as the global default */
@@ -727,6 +283,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   /* the first scan is what creates the manifest, so this is state and not read from the loader */
   const [hasManifest, setHasManifest] = useState(loaderData.hasManifest)
   const view = useFileView()
+  const theme = useTheme()
   const fetcher = useSafeFetcher()
   /* NAS answers must not land in the groups effect below, so they get their own fetcher */
   const nasFetcher = useSafeFetcher()
@@ -786,7 +343,15 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           .optional(),
         uploaded: z.number().optional(),
         skipped: z.number().optional(),
-        montage: z.object({ clips: z.number(), missingAssets: z.array(z.string()) }).optional(),
+        montage: z
+          .object({
+            clips: z.number(),
+            missingAssets: z.array(z.string()),
+            opened: z.boolean().optional(),
+            openCommand: z.string().optional(),
+            openReason: z.string().optional()
+          })
+          .optional(),
         scan: scanResultSchema.optional()
       })
       .safeParse(fetcher.data)
@@ -840,6 +405,18 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     })
   }, [fetcher.data, setGroups])
 
+  /* Every edit is the same three steps — clear the last message, mark what is working, ask the
+     server — so they are written once. `label` is what `busy` is compared against to decide which
+     button says it is running. */
+  const manifest = (actionArgs: ManifestArgs) =>
+    fetcher.submit({ url: '/api/manifest', actionArgs })
+
+  const send = (label: string, actionArgs: ManifestArgs) => {
+    setNote(null)
+    setBusy(label)
+    manifest(actionArgs)
+  }
+
   const scanning = busy === 'scan'
   const scan = () => {
     setNote(null)
@@ -848,30 +425,21 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   }
 
   const unsorted = groups.filter((g) => !g.destination)
-  const locations = places.filter((d) => d.name !== TANDEMS)
   const tandems = groups.filter(inTandemsCard)
   /* a loose file that carries a destination is shown inside that card, not in the sorting area —
      it is a real lone file destined for that folder (RULES, Dropzones and tandems), not something still to sort */
   const sorting = loose.filter((f) => !f.destination)
   const looseIn = (destination: string) => loose.filter((f) => f.destination === destination)
-  /* the sorting area is read a shooting day at a time, newest first, like the location cards */
-  const sortDays = [...new Set([...unsorted.map(dayOf), ...sorting.map(dayOfFile)])]
-    .sort()
-    .reverse()
 
   const saveDestinations = (next: Destination[]) => {
     setPlaces(next)
-    fetcher.submit({
-      url: '/api/manifest',
-      actionArgs: { intent: 'save-groups', groups, destinations: next }
-    })
+    manifest({ intent: 'save-groups', groups, destinations: next })
   }
 
   const addPlace = (name: string) => {
     const trimmed = name.trim()
     if (!trimmed || places.some((d) => d.name === trimmed)) return
     saveDestinations([...places, { name: trimmed }])
-    setNewPlace('')
   }
 
   const assign = (ids: string[], destination: string | null) => {
@@ -891,14 +459,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     updateGroups(next)
   }
 
-  const shiftJump = (groupId: string, anchorEpoch: number) => {
-    setNote(null)
-    setBusy('shift')
-    fetcher.submit({
-      url: '/api/manifest',
-      actionArgs: { intent: 'shift-group-time', groupId, anchorEpoch }
-    })
-  }
+  const shiftJump = (groupId: string, anchorEpoch: number) =>
+    send('shift', { intent: 'shift-group-time', groupId, anchorEpoch })
 
   const setPassenger = (groupId: string, firstname: string, lastname: string) => {
     const next = groups.map((g) =>
@@ -907,20 +469,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         : g
     )
     updateGroups(next)
-  }
-
-  const run = (
-    label: string,
-    args: {
-      groupId?: string
-      groupIds?: string[]
-      destination?: string
-      intent: 'process' | 'upload-group'
-    }
-  ) => {
-    setNote(null)
-    setBusy(label)
-    fetcher.submit({ url: '/api/manifest', actionArgs: args })
   }
 
   const openConnect = () => {
@@ -975,17 +523,15 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       setDialog({ kind: 'folder' })
       return
     }
-    setNote(null)
-    setBusy(key)
     setUploading(key)
-    fetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'upload-group', ...scope } })
+    send(key, { intent: 'upload-group', ...scope })
   }
 
-  const createMontage = (group: ManifestGroup) => {
-    setNote(null)
-    setBusy(group.id)
-    fetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'montage', groupId: group.id } })
-  }
+  const createMontage = (group: ManifestGroup) =>
+    send(group.id, { intent: 'montage', groupId: group.id })
+
+  const openMontage = (group: ManifestGroup) =>
+    send(`open:${group.id}`, { intent: 'open-montage', groupId: group.id })
 
   /* the same shape as an upload: open whichever choice is missing rather than firing a request the
      server would only refuse. The backup folder has no fallback — putting the rushes in a
@@ -1004,45 +550,34 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       return
     }
     const key = `deliver:${group.id}`
-    setNote(null)
-    setBusy(key)
     setUploading(key)
-    fetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'deliver', groupId: group.id } })
+    send(key, { intent: 'deliver', groupId: group.id })
   }
-
-  const openPreview = (group: ManifestGroup, file: ManifestFile) =>
-    preview.handlePreview(file, group.id)
 
   /* two jumps that turn out to be one: the server merges them and answers with the saved list */
   const mergeTwo = (leftId: string, rightId: string, anchorEpoch: number) => {
     setComparing(false)
     setPicked([])
-    setNote(null)
-    setBusy('merge')
-    fetcher.submit({
-      url: '/api/manifest',
-      actionArgs: { intent: 'merge-groups', leftId, rightId, anchorEpoch }
-    })
+    send('merge', { intent: 'merge-groups', leftId, rightId, anchorEpoch })
   }
 
   /* files leave their jump and are re-filed server-side, so the answer is the truth.
      `newGroup` gathers them into a jump of their own — what a tandem needs, since the passenger
      name lives on a group; without it the files would land as lone files and fall back to the
      sorting area, which is not what dropping them on Tandems means. */
-  const moveFiles = (ids: string[], destination: string | null, newGroup?: boolean) => {
+  const moveFiles = (
+    ids: string[],
+    where: { destination?: string | null; targetGroupId?: string; newGroup?: boolean }
+  ) => {
     if (ids.length === 0) return
-    setNote(null)
-    setBusy('move')
     setPickedFiles([])
     setAnchor(null)
-    fetcher.submit({
-      url: '/api/manifest',
-      actionArgs: {
-        intent: 'move-files',
-        fileIds: ids,
-        destination: destination ?? undefined,
-        ...(newGroup ? { newGroup: true } : {})
-      }
+    send('move', {
+      intent: 'move-files',
+      fileIds: ids,
+      ...(where.targetGroupId ? { targetGroupId: where.targetGroupId } : {}),
+      ...(where.destination ? { destination: where.destination } : {}),
+      ...(where.newGroup ? { newGroup: true } : {})
     })
   }
 
@@ -1082,12 +617,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     setAnchor(null)
   }
 
-  const isOpen = (key: string, files: ManifestFile[]) =>
-    toggled.includes(key) ? foldable(files) : !foldable(files)
-
-  const toggle = (key: string) =>
-    setToggled(toggled.includes(key) ? toggled.filter((k) => k !== key) : [...toggled, key])
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null
@@ -1105,11 +634,18 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       if (e.key !== 'Delete' && e.key !== 'Backspace') return
       if (pickedFiles.length === 0) return
       e.preventDefault()
-      queueMicrotask(() => moveFiles(pickedFiles, null))
+      queueMicrotask(() => moveFiles(pickedFiles, { destination: null }))
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   })
+
+  /* a whole jump, picked up by its line: dropping it on a place files every file in it at once,
+     and on Tandems that is what makes the jump a passenger's (RULES, Dropzones and tandems) */
+  const startJumpDrag = (groupId: string) => {
+    setDraggedFiles([])
+    setDragged([groupId])
+  }
 
   const startFileDrag = (file: ManifestFile, e?: React.DragEvent) => {
     if (!file.id) return
@@ -1141,15 +677,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
   const checkRemote = () => remoteFetcher.load({ url: '/api/remote-files' })
 
-  /* every wall of thumbnails needs the same things from the board */
-  const wall = {
-    picked: pickedFiles,
-    onFile: clickFile,
-    onDragFile: startFileDrag,
-    statusOf,
-    view
-  }
-
   /* Only the zone under the pointer lights up, and only when it takes what is being carried.
      onDragLeave also fires when the pointer crosses a child, so `contains` stops the flicker. */
   const leaveTarget = (key: string) => (e: React.DragEvent) => {
@@ -1157,9 +684,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     setOverTarget((current) => (current === key ? null : current))
   }
 
-  /* a jump card accepts files dropped from anywhere, so a photo can change jump */
-  const groupDropTarget = (groupId: string) => {
-    const key = `group:${groupId}`
+  /* A jump accepts files dropped from anywhere, so a photo can change jump. The same jump is a
+     target in more than one place at once — its line and its chip in the day header — so each says
+     which it is: one key per thing on screen, or lighting one would light them all. */
+  const groupDropTarget = (groupId: string, scope: 'group' | 'chip' = 'group') => {
+    const key = `${scope}:${groupId}`
     return {
       onDragOver: (e: React.DragEvent) => {
         if (draggedFiles.length === 0) return
@@ -1173,21 +702,16 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         if (draggedFiles.length === 0) return
         e.preventDefault()
         e.stopPropagation()
-        setNote(null)
-        setBusy('move')
-        setPickedFiles([])
-        setAnchor(null)
-        fetcher.submit({
-          url: '/api/manifest',
-          actionArgs: { intent: 'move-files', fileIds: draggedFiles, targetGroupId: groupId }
-        })
+        moveFiles(draggedFiles, { targetGroupId: groupId })
         setDraggedFiles([])
       }
     }
   }
 
-  const dropTarget = (destination: string | null) => {
-    const key = destination === null ? 'sort' : `dest:${destination}`
+  /* `key` names the thing on screen that lights up, which is not always the destination: the same
+     dropzone is a target in the menu and on its own card, and each has to light on its own. */
+  const dropTarget = (destination: string | null, named?: string) => {
+    const key = named ?? (destination === null ? 'sort' : `dest:${destination}`)
     /* the sorting area takes files back; a destination card takes whole jumps as well */
     const accepts =
       destination === null ? draggedFiles.length > 0 : dragged.length > 0 || draggedFiles.length > 0
@@ -1201,32 +725,201 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       onDrop: (e: React.DragEvent) => {
         e.preventDefault()
         setOverTarget(null)
-        if (draggedFiles.length > 0) moveFiles(draggedFiles, destination, destination === TANDEMS)
+        if (draggedFiles.length > 0)
+          moveFiles(draggedFiles, { destination, newGroup: destination === TANDEMS })
         else if (dragged.length > 0) assign(dragged, destination)
         setDragged([])
         setDraggedFiles([])
       }
     }
   }
+  /* what a file is called on disk once a copy exists; null while there is none to name */
+  const deliveredName = (file: ManifestFile) =>
+    file.processed && statusOf(file) !== 'local' ? baseName(file.processed.path) : null
+
+  const fileLane = (file: ManifestFile, lane: ManifestFile[], e: React.MouseEvent) =>
+    clickFile(file, lane, e, () => preview.handlePreview(file, groupOfFile(file)?.id ?? LOOSE))
+
+  const groupOfFile = (file: ManifestFile) =>
+    groups.find((g) => g.files.some((f) => (f.id ?? f.path) === (file.id ?? file.path)))
+
+  const selectAll = (files: ManifestFile[]) => {
+    const ids = files.flatMap((f) => (f.id ? [f.id] : []))
+    const every = ids.length > 0 && ids.every((id) => pickedFiles.includes(id))
+    setPickedFiles(
+      every ? pickedFiles.filter((id) => !ids.includes(id)) : [...new Set([...pickedFiles, ...ids])]
+    )
+  }
+
+  /* a day is the unit everywhere: one open at a time, remembered for the place you are in */
+  const key = placeKey(place)
+  const openDay = openDays[key]
+  const setOpenDay = (day: string | null) => setOpenDays({ ...openDays, [key]: day })
+
+  /* A jump chip opens its day and lands on that jump. The scroll waits two frames because the
+     jump it is scrolling to does not exist until the day it is in has been drawn. */
+  const openAt = (day: string, anchor: string) => {
+    setOpenDay(day)
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        document.getElementById(`at-${anchor}`)?.scrollIntoView({ block: 'start' })
+      )
+    )
+  }
+
+  const placeGroups =
+    place.kind === 'sort'
+      ? unsorted
+      : place.kind === 'dz'
+        ? groups.filter((g) => g.destination === place.name)
+        : place.kind === 'tandems'
+          ? tandems
+          : tandems.filter((g) => passengerOf(g) === place.name)
+  const placeLoose =
+    place.kind === 'sort' ? sorting : place.kind === 'dz' ? looseIn(place.name) : []
+
+  /* Finding one file among a day's worth of them. It narrows what is drawn and nothing else — a
+     jump left with no match drops out of view rather than showing as empty, and the counts in the
+     menu go on counting everything, because what is there has not changed. */
+  const matches = (file: ManifestFile) => {
+    if (!query.trim()) return true
+    const needle = query.trim().toLowerCase()
+    const out = deliveredName(file)
+    return (
+      file.filename.toLowerCase().includes(needle) ||
+      Boolean(out && out.toLowerCase().includes(needle))
+    )
+  }
+  const shownGroups = query.trim()
+    ? placeGroups
+        .map((g) => ({ ...g, files: g.files.filter(matches) }))
+        .filter((g) => g.files.length > 0)
+    : placeGroups
+  const shownLoose = placeLoose.filter(matches)
+
+  const days = [...new Set([...shownGroups.map(dayOf), ...shownLoose.map(dayOfFile)])]
+    .sort()
+    .reverse()
+  /* the newest day with work left is the one worth opening; a place with nothing to do opens closed */
+  const defaultDay = days.find((d) =>
+    [
+      ...shownGroups.filter((g) => dayOf(g) === d).flatMap((g) => g.files),
+      ...shownLoose.filter((f) => dayOfFile(f) === d)
+    ].some((f) => statusOf(f) !== 'uploaded')
+  )
+  const shownDay = key in openDays ? openDay : (defaultDay ?? days[0] ?? null)
+
+  const jumpShut = (groupId: string) => foldJumps !== unfolded.includes(groupId)
+  /* the jumps of whichever day is open — what tells Collapse and Expand whether there is anything
+     left for them to do */
+  const openDayJumps =
+    place.kind === 'sort' && shownDay
+      ? shownGroups.filter((g) => dayOf(g) === shownDay).map((g) => g.id)
+      : []
+  const foldAll = (fold: boolean) => {
+    setFoldJumps(fold)
+    setUnfolded([])
+  }
+
+  const unnamed = tandems.filter((g) => !passengerOf(g))
+  const named = tandems.filter((g) => passengerOf(g))
+
+  const placeDrop = (target: Place) => {
+    const key = placeKey(target)
+    const props =
+      target.kind === 'sort'
+        ? dropTarget(null, key)
+        : target.kind === 'dz'
+          ? dropTarget(target.name, key)
+          : dropTarget(TANDEMS, key)
+    return { ...props, 'data-place': key }
+  }
+
+  const dayAction = (day: string, dayGroups: ManifestGroup[], dayLoose: ManifestFile[]) => {
+    if (place.kind !== 'dz') return null
+    const files = [...dayGroups.flatMap((g) => g.files), ...dayLoose]
+    const gate = gateFor(files)
+    const label = `${place.name}:${day}`
+    if (gate.blocked)
+      return (
+        <Go
+          disabled={busy !== null}
+          onClick={() =>
+            send(
+              label,
+              dayLoose.length > 0
+                ? { intent: 'process', destination: place.name }
+                : { intent: 'process', groupIds: dayGroups.map((g) => g.id) }
+            )
+          }>
+          {busy === label ? 'Preparing…' : 'Prepare'}
+        </Go>
+      )
+    if (files.every((f) => statusOf(f) === 'uploaded'))
+      return <span className='text-[12px] font-semibold text-up'>✓ sent</span>
+    return (
+      <Go
+        disabled={busy !== null}
+        onClick={() => requestUpload({ destination: place.name }, `dest:${place.name}`)}>
+        {busy === `dest:${place.name}` ? 'Sending…' : 'Send to the club'}
+      </Go>
+    )
+  }
 
   if (!hasManifest) {
     return (
       <main className='mx-auto max-w-5xl p-6'>
-        <h1 className='text-xl font-semibold'>Nothing here yet</h1>
-        <p className='mt-2 text-sm text-gray-600'>
+        <h1 className='text-[15px] font-bold tracking-[-0.02em]'>Nothing here yet</h1>
+        <p className='mt-2 text-[12.5px] text-ink-2'>
           Copy the cameras into the output folder, then scan to find the jumps.
         </p>
-        {note && <p className='mt-3 text-sm text-amber-900'>{note}</p>}
+        {note && <Callout tone='warn'>{note}</Callout>}
         <button
           type='button'
           disabled={scanning}
           onClick={scan}
-          className='mt-4 rounded bg-teal-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50'>
+          className='mt-4 rounded-md border border-accent bg-accent px-[11px] py-[5px] text-[12.5px] font-medium text-white disabled:opacity-40'>
           {scanning ? 'Scanning…' : 'Scan'}
         </button>
       </main>
     )
   }
+
+  /* the storage strip: one row of links, all of which look and behave alike, so they are described
+     once and drawn in a loop rather than written out five times */
+  const nasLinks: {
+    label: string
+    title?: string
+    disabled?: boolean
+    onClick: () => void
+  }[] = nasConnected
+    ? [
+        {
+          label: defaultFolder ?? 'no default folder',
+          title: 'The folder used by anything without a folder of its own',
+          onClick: () => setDialog({ kind: 'folder' })
+        },
+        {
+          label: backupFolder ? `backup ${backupFolder}` : 'no backup folder',
+          title: 'Where the original videos are archived — never a folder a passenger can see',
+          onClick: () => setDialog({ kind: 'folder', target: 'backup' })
+        },
+        {
+          label:
+            remoteFetcher.state !== 'idle'
+              ? 'checking…'
+              : remoteCheckedAt
+                ? `⟳ checked ${formatTime(remoteCheckedAt)}`
+                : '⟳ check',
+          title: 'Ask the NAS what it holds now — a file deleted there stops reading as uploaded',
+          disabled: remoteFetcher.state !== 'idle',
+          onClick: checkRemote
+        },
+        { label: 'disconnect', onClick: disconnect }
+      ]
+    : [{ label: 'Connect the NAS', onClick: openConnect }]
+
+  const placeFiles = placeGroups.reduce((n, g) => n + g.files.length, 0) + placeLoose.length
 
   return (
     <main
@@ -1236,707 +929,339 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         setDraggedFiles([])
         setDragged([])
       }}
-      className='mx-auto max-w-[1700px] p-4'>
-      <header className='flex flex-wrap items-center gap-3 border-b border-gray-200 pb-3'>
-        <span className='text-base font-bold'>
-          Sky<span className='text-teal-700'>Dock</span>
+      className='flex h-screen flex-col'>
+      <header className='flex flex-wrap items-center gap-[13px] border-b border-line bg-pane px-4 py-[9px]'>
+        <span className='text-[15px] font-bold tracking-[-0.02em]'>
+          Sky<span className='text-accent'>Dock</span>
         </span>
-        <span className='text-sm text-gray-500'>
-          {groups.length} jumps · {groups.reduce((n, g) => n + g.files.length, 0)} files ·{' '}
-          {unsorted.length} to sort
-        </span>
-        <span className='ml-auto flex flex-wrap items-center gap-2 text-xs'>
+        <span className='ml-auto flex flex-wrap items-center gap-2'>
           <button
             type='button'
             disabled={scanning}
             onClick={scan}
             title='Look through the output folder for files the manifest does not know about yet'
-            className='rounded border border-gray-300 bg-white px-2 py-0.5 font-semibold disabled:opacity-50'>
-            {scanning ? 'Scanning…' : 'Scan'}
+            className='rounded-md border border-line bg-pane px-[11px] py-[5px] text-[12.5px] font-medium hover:border-ink-3 disabled:opacity-40'>
+            {scanning ? 'Scanning…' : 'Rescan cameras'}
           </button>
-          <span
-            className={`h-2 w-2 rounded-full ${nasConnected ? 'bg-green-500' : 'bg-gray-300'}`}
-          />
-          {nasConnected ? (
-            <>
-              <span className='text-gray-600'>{nasHost ?? 'NAS'}</span>
-              <button
-                type='button'
-                onClick={() => setDialog({ kind: 'folder' })}
-                title='The folder used by anything without a folder of its own'
-                className='rounded border border-gray-300 bg-white px-2 py-0.5 font-mono text-[11px]'>
-                {defaultFolder ?? 'no default folder'}
-              </button>
-              <button
-                type='button'
-                onClick={() => setDialog({ kind: 'folder', target: 'backup' })}
-                title='Where the original videos are archived — never a folder a passenger can see'
-                className='rounded border border-gray-300 bg-white px-2 py-0.5 font-mono text-[11px]'>
-                {backupFolder ? `backup ${backupFolder}` : 'no backup folder'}
-              </button>
-              <button
-                type='button'
-                disabled={remoteFetcher.state !== 'idle'}
-                onClick={checkRemote}
-                title='Ask the NAS what it holds now — a file deleted there stops reading as uploaded'
-                className='rounded border border-gray-300 bg-white px-2 py-0.5 disabled:opacity-50'>
-                {remoteFetcher.state !== 'idle'
-                  ? 'Checking…'
-                  : remoteCheckedAt
-                    ? `⟳ checked ${formatTime(remoteCheckedAt)}`
-                    : '⟳ check NAS'}
-              </button>
-              <button
-                type='button'
-                onClick={disconnect}
-                className='text-gray-500 underline'>
-                disconnect
-              </button>
-            </>
-          ) : (
-            <button
-              type='button'
-              onClick={openConnect}
-              className='rounded bg-teal-700 px-3 py-1 font-semibold text-white'>
-              Connect the NAS
-            </button>
-          )}
-          <span className='flex overflow-hidden rounded border border-gray-300'>
-            {(['rows', 'grid'] as const).map((mode) => (
-              <button
-                key={mode}
-                type='button'
-                onClick={() => setFileView(mode)}
-                className={`px-2 py-0.5 ${
-                  view === mode ? 'bg-gray-900 text-white' : 'bg-white text-gray-600'
-                }`}>
-                {mode}
-              </button>
+          <span className='inline-flex items-center gap-[7px] rounded-full border border-line bg-pane py-[3px] pr-2.5 pl-2 text-[12px]'>
+            <span
+              className={`h-[7px] w-[7px] flex-none rounded-full ${
+                nasConnected ? 'bg-up' : 'bg-ink-3'
+              }`}
+            />
+            {nasConnected && <b className='font-semibold'>{nasHost ?? 'NAS'}</b>}
+            {nasLinks.map((link, i) => (
+              <Fragment key={link.label}>
+                {(i > 0 || nasConnected) && <span className='text-line'>|</span>}
+                <button
+                  type='button'
+                  title={link.title}
+                  disabled={link.disabled}
+                  onClick={link.onClick}
+                  className='border-0 bg-transparent p-0 text-[12px] text-accent underline disabled:opacity-40'>
+                  {link.label}
+                </button>
+              </Fragment>
             ))}
           </span>
-          <StatusLegend />
+          <Seg
+            label='How files are shown'
+            value={view}
+            options={VIEWS}
+            onPick={setFileView}
+          />
+          <Seg
+            label='Theme'
+            value={theme}
+            options={THEMES}
+            onPick={setTheme}
+          />
         </span>
       </header>
 
-      {note && (
-        <p className='mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900'>{note}</p>
-      )}
+      <div className='grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] min-[781px]:grid-cols-[262px_minmax(0,1fr)] min-[781px]:grid-rows-[minmax(0,1fr)]'>
+        <PlacesTree
+          place={place}
+          destinations={places}
+          groups={groups}
+          looseFiles={loose}
+          statusContext={statusContext}
+          unnamedTandems={unnamed.length}
+          onPick={(next) => {
+            setPlace(next)
+            setQuery('')
+            clearFiles()
+          }}
+          onAddPlace={addPlace}
+          dropTarget={placeDrop}
+          overTarget={overTarget}
+        />
 
-      {/* two panes that scroll on their own: what is left to sort on the left, where it goes on
-          the right, so a jump never has to be dragged across a scrolling page */}
-      <div className='mt-4 grid gap-4 lg:h-[calc(100vh-7.5rem)] lg:grid-cols-2'>
-        <div className='pb-24 lg:h-full lg:overflow-y-auto lg:pr-1 lg:pb-4'>
-          <section
-            {...dropTarget(null)}
-            className={`rounded-xl border bg-white p-4 ${
-              overTarget === 'sort' ? 'border-dashed border-teal-500' : 'border-gray-200'
-            }`}>
-            <div className='flex flex-wrap items-baseline gap-3'>
-              <h2 className='text-sm font-semibold'>To sort</h2>
-              <span className='text-xs text-gray-500'>
-                {sortDays.length > 0
-                  ? 'drag a jump onto a card on the right, or tick a few and use the buttons'
-                  : 'nothing left'}
-              </span>
-              {sorting.length > 0 && (
-                <button
-                  type='button'
-                  disabled={busy !== null}
-                  onClick={() => {
-                    setNote(null)
-                    setBusy('regroup')
-                    fetcher.submit({
-                      url: '/api/manifest',
-                      actionArgs: { intent: 'regroup-loose' }
-                    })
-                  }}
-                  title='Cluster every loose file back into jumps by capture time, like the scan does'
-                  className='rounded border border-gray-300 bg-white px-2 py-0.5 text-xs font-semibold disabled:opacity-50'>
-                  {busy === 'regroup' ? 'Regrouping…' : `Regroup ${sorting.length} loose`}
-                </button>
-              )}
-              <span className='ml-auto text-xs text-gray-500'>
-                Files: click to preview · ⌘/ctrl-click to pick · shift-click for a range
-              </span>
-            </div>
-            {sortDays.map((day) => {
-              const dayGroups = byMin(unsorted.filter((g) => dayOf(g) === day))
-              const dayLoose = byMtime(sorting.filter((f) => dayOfFile(f) === day))
-              const dayFiles = dayGroups.reduce((n, g) => n + g.files.length, 0) + dayLoose.length
-              return (
-                <div
-                  key={day}
-                  className='mt-4'>
-                  {/* the day stays on screen while its jumps scroll past, so a card is never
-                      read against the wrong date */}
-                  <div className='sticky top-0 z-10 -mx-4 flex flex-wrap items-baseline gap-2 border-b border-gray-100 bg-white px-4 py-1'>
-                    <b className='text-xs'>{dayLabel(day)}</b>
-                    <span className='text-xs text-gray-500'>
-                      {dayGroups.length > 0 &&
-                        `${dayGroups.length} jump${dayGroups.length > 1 ? 's' : ''} · `}
-                      {dayFiles} file{dayFiles > 1 ? 's' : ''}
-                      {dayLoose.length > 0 && ` · ${dayLoose.length} loose`}
-                    </span>
-                  </div>
-                  <div className='mt-2 space-y-2'>
-                    {dayGroups.map((group) => {
-                      const open = isOpen(group.id, group.files)
-                      const videos = videosOf(group.files)
-                      const photos = photosOf(group.files)
-                      const dragJump = () =>
-                        setDragged(picked.includes(group.id) ? picked : [group.id])
-                      return (
-                        <div
-                          key={group.id}
-                          draggable={!open}
-                          onDragStart={dragJump}
-                          onDragEnd={() => {
-                            setDragged([])
-                            setOverTarget(null)
-                          }}
-                          {...groupDropTarget(group.id)}
-                          className={`rounded-lg border p-2 ${open ? '' : 'cursor-grab'} ${
-                            overTarget === `group:${group.id}`
-                              ? 'border-dashed border-teal-500'
-                              : picked.includes(group.id)
-                                ? 'border-teal-600 bg-teal-50'
-                                : 'border-gray-200'
-                          }`}>
-                          <div
-                            onClick={() => {
-                              if (foldable(group.files)) toggle(group.id)
-                            }}
-                            className={`flex items-center gap-2 text-sm ${
-                              foldable(group.files) ? 'cursor-pointer' : ''
-                            }`}>
-                            <input
-                              type='checkbox'
-                              checked={picked.includes(group.id)}
-                              onClick={(e) => e.stopPropagation()}
-                              onChange={() =>
-                                setPicked(
-                                  picked.includes(group.id)
-                                    ? picked.filter((id) => id !== group.id)
-                                    : [...picked, group.id]
-                                )
-                              }
-                            />
-                            {/* an open card is not draggable by its body — this handle is, so a jump can
-                          be filed without folding it first */}
-                            <span
-                              draggable
-                              onDragStart={(e) => {
-                                e.stopPropagation()
-                                dragJump()
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                              title='Drag this jump onto a card on the right'
-                              className='cursor-grab px-1 text-gray-400 select-none'>
-                              ≡
-                            </span>
-                            <JumpTime
-                              start={minFileMtime(group.files) ?? 0}
-                              disabled={busy !== null}
-                              onShift={(anchor) => shiftJump(group.id, anchor)}
-                            />
-                            <span className='truncate text-xs whitespace-nowrap text-gray-500'>
-                              {videos.length > 0 &&
-                                `${videos.length} video${videos.length > 1 ? 's' : ''}`}
-                              {videos.length > 0 && photos.length > 0 && ' · '}
-                              {photos.length > 0 &&
-                                `${photos.length} photo${photos.length > 1 ? 's' : ''}`}
-                            </span>
-                            <span className='ml-auto'>
-                              <Fold
-                                files={group.files}
-                                open={open}
-                                onToggle={() => toggle(group.id)}
-                              />
-                            </span>
-                          </div>
-                          {open ? (
-                            <div className='mt-2'>
-                              <Wall
-                                {...wall}
-                                files={group.files}
-                                lane={group.files}
-                                split
-                                onPreview={(file) => openPreview(group, file)}
-                              />
-                            </div>
-                          ) : (
-                            <Peek
-                              files={group.files}
-                              picking={pickedFiles.length > 0}
-                              onDragFile={startFileDrag}
-                              statusOf={statusOf}
-                            />
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                  {dayLoose.length > 0 && (
-                    <div className='mt-2 rounded-lg border border-dashed border-gray-200 p-2'>
-                      <p className='text-xs text-gray-500'>
-                        {dayLoose.length} loose file{dayLoose.length > 1 ? 's' : ''} — in no jump
-                      </p>
-                      <Wall
-                        {...wall}
-                        files={dayLoose}
-                        lane={dayLoose}
-                        onPreview={(file) => preview.handlePreview(file, LOOSE)}
-                      />
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-            {picked.length > 0 && (
-              /* sticks to the foot of the pane: the ticked jumps can be anywhere in a long
-                 column, and a bar that scrolled away with them was a bar nobody found */
-              <div className='sticky bottom-0 z-30 mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-gray-900 p-2 text-sm text-white shadow-lg'>
-                <b className='px-1'>{picked.length} selected</b>
-                <button
-                  type='button'
-                  disabled={picked.length !== 2}
-                  onClick={() => setComparing(true)}
-                  title={
-                    picked.length === 2
-                      ? 'Look at both jumps side by side, and merge them if they are one'
-                      : 'Compare works on exactly two jumps — tick two'
-                  }
-                  className='rounded bg-white px-3 py-1 font-semibold text-gray-900 disabled:opacity-40'>
-                  {picked.length === 2 ? 'Compare' : `Compare (${picked.length}/2)`}
-                </button>
-                <span className='opacity-70'>set all to</span>
-                {locations.map((d) => (
-                  <button
-                    key={d.name}
-                    type='button'
-                    onClick={() => assign(picked, d.name)}
-                    className='rounded bg-white/15 px-3 py-1'>
-                    {d.name}
-                  </button>
-                ))}
-                <button
-                  type='button'
-                  onClick={() => assign(picked, TANDEMS)}
-                  className='rounded bg-white/15 px-3 py-1'>
-                  {TANDEMS}
-                </button>
-                <button
-                  type='button'
-                  onClick={() => setPicked([])}
-                  className='ml-auto underline'>
-                  clear
-                </button>
-              </div>
-            )}
-          </section>
-        </div>
-
-        <div className='pb-24 lg:h-full lg:overflow-y-auto lg:pr-1 lg:pb-4'>
-          <div className='flex flex-wrap items-center gap-3'>
-            <h2 className='text-xs font-semibold tracking-widest text-gray-500 uppercase'>
-              Fun jumps · one folder per dropzone
-            </h2>
-            <span className='flex items-center gap-2'>
-              <input
-                type='text'
-                value={newPlace}
-                placeholder='New location'
-                onChange={(e) => setNewPlace(e.target.value)}
-                className='w-36 rounded border border-gray-300 px-2 py-1 text-sm'
-              />
+        <section className='flex min-h-0 min-w-0 flex-col bg-ground'>
+          <div className='flex flex-wrap items-center gap-[9px] border-b border-line bg-pane px-[18px] pt-2.5 pb-[9px]'>
+            {place.kind === 'pax' && (
               <button
                 type='button'
-                onClick={() => addPlace(newPlace)}
-                className='rounded border border-gray-300 bg-white px-3 py-1 text-xs font-semibold'>
-                Add
+                onClick={() => setPlace({ kind: 'tandems' })}
+                className='rounded-[5px] border border-line bg-pane px-2 py-0.5 text-[12px] text-ink-2'>
+                ↰ Tandems
               </button>
+            )}
+            <span className='text-[12.5px] text-ink-3'>
+              {place.kind === 'pax' && 'Tandems / '}
+              <b className='text-[15px] font-semibold text-ink'>{placeLabel(place)}</b>
             </span>
-          </div>
-          <div className='mt-2 grid gap-4 2xl:grid-cols-2'>
-            {locations.map((destination) => {
-              const inside = groups.filter((g) => g.destination === destination.name)
-              const lone = looseIn(destination.name)
-              const days = [...new Set([...inside.map(dayOf), ...lone.map(dayOfFile)])]
-                .sort()
-                .reverse()
-              /* a changed file reads `local` again, and nothing leaves until it is processed */
-              const gate = gateFor([...inside.flatMap((g) => g.files), ...lone])
-              return (
-                <section
-                  key={destination.name}
-                  {...dropTarget(destination.name)}
-                  className={`rounded-xl border bg-white p-4 ${
-                    overTarget === `dest:${destination.name}`
-                      ? 'border-dashed border-teal-500'
-                      : 'border-gray-200'
-                  }`}>
-                  <div className='flex flex-wrap items-baseline gap-2'>
-                    <h3 className='font-semibold'>{destination.name}</h3>
-                    <span className='text-xs text-gray-500'>
-                      {inside.reduce((n, g) => n + g.files.length, 0) + lone.length} files
-                    </span>
-                    {(inside.length > 0 || lone.length > 0) && (
-                      <button
-                        type='button'
-                        disabled={busy !== null || gate.blocked}
-                        onClick={() =>
-                          requestUpload(
-                            { destination: destination.name },
-                            `dest:${destination.name}`
-                          )
-                        }
-                        title={
-                          gate.message ??
-                          'Send this dropzone to the NAS — files already there are skipped'
-                        }
-                        className='ml-auto rounded bg-teal-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50'>
-                        {busy === `dest:${destination.name}` ? 'Uploading…' : 'Upload'}
-                      </button>
-                    )}
-                  </div>
-                  {gate.blocked && (
-                    <p className='mt-1 text-[11px] text-amber-700'>
-                      {gate.message} — process before uploading
-                    </p>
-                  )}
-                  <p className='mt-1 font-mono text-[11px] text-gray-400'>
-                    processed/{destination.name}/ · every file lands here directly
-                  </p>
-                  <div className='mt-1 flex flex-wrap items-center gap-2'>
-                    <span className='text-[11px] text-gray-400'>NAS</span>
-                    <button
-                      type='button'
-                      onClick={() => setDialog({ kind: 'folder', destination: destination.name })}
-                      title='Choose the NAS folder this dropzone uploads into'
-                      className='rounded border border-gray-300 bg-white px-2 py-0.5 font-mono text-[11px]'>
-                      {folderFor(destination.name) ?? 'choose a folder'}
-                    </button>
-                    {destination.path && (
-                      <button
-                        type='button'
-                        onClick={() =>
-                          saveDestinations(
-                            places.map((d) =>
-                              d.name === destination.name
-                                ? { name: d.name, shareUrl: d.shareUrl }
-                                : d
-                            )
-                          )
-                        }
-                        title='Fall back to the default upload folder'
-                        className='text-[11px] text-gray-500 underline'>
-                        clear
-                      </button>
-                    )}
-                    {destination.shareUrl && (
-                      <a
-                        href={destination.shareUrl}
-                        target='_blank'
-                        rel='noreferrer'
-                        className='text-[11px] text-teal-700 underline'>
-                        share link
-                      </a>
-                    )}
-                  </div>
-                  {uploading === `dest:${destination.name}` && progress && (
-                    <UploadStrip progress={progress} />
-                  )}
-                  {days.length === 0 && (
-                    <p className='mt-3 text-xs text-gray-400'>Drag jumps or files here.</p>
-                  )}
-                  {days.map((day) => {
-                    const dayGroups = inside.filter((g) => dayOf(g) === day)
-                    const dayLone = lone.filter((f) => dayOfFile(f) === day)
-                    /* a day row mixes whole jumps and lone files — on disk they are the same
-                       flat folder (RULES, Dropzones and tandems), so they are drawn as one run of thumbnails */
-                    const files = byMtime([...dayGroups.flatMap((g) => g.files), ...dayLone])
-                    const owner = new Map(
-                      dayGroups.flatMap((g) => g.files.map((f) => [f.path, g] as const))
-                    )
-                    const key = `${destination.name}:${day}`
-                    /* the day needs processing when any of its files reads `local` — the same
-                       fact the chips show, rather than a second opinion from a group flag */
-                    const pending = files.some((f) => statusOf(f) === 'local')
-                    return (
-                      <div
-                        key={day}
-                        className='mt-3 border-t border-gray-100 pt-3'>
-                        <div className='flex flex-wrap items-center gap-2'>
-                          <b className='text-xs'>{dayLabel(day)}</b>
-                          <span className='text-xs text-gray-500'>
-                            {files.length} file{files.length > 1 ? 's' : ''}
-                            {dayLone.length > 0 && ` · ${dayLone.length} lone`}
-                          </span>
-                          <Fold
-                            files={files}
-                            open={isOpen(key, files)}
-                            onToggle={() => toggle(key)}
-                          />
-                          {pending ? (
-                            <button
-                              type='button'
-                              disabled={busy !== null}
-                              /* lone files belong to no group, so a day holding any of them is
-                                 processed by destination scope instead of by group ids (RULES, What lands on disk) */
-                              onClick={() =>
-                                run(
-                                  key,
-                                  dayLone.length > 0
-                                    ? { intent: 'process', destination: destination.name }
-                                    : {
-                                        intent: 'process',
-                                        groupIds: dayGroups.map((g) => g.id)
-                                      }
-                                )
-                              }
-                              className='ml-auto rounded bg-teal-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50'>
-                              {busy === key ? 'Processing…' : 'Process'}
-                            </button>
-                          ) : (
-                            <span className='ml-auto text-xs text-green-700'>✓ processed</span>
-                          )}
-                        </div>
-                        {isOpen(key, files) ? (
-                          <Wall
-                            {...wall}
-                            files={files}
-                            lane={files}
-                            onPreview={(file) => {
-                              const group = owner.get(file.path)
-                              if (group) openPreview(group, file)
-                              else preview.handlePreview(file, LOOSE)
-                            }}
-                          />
-                        ) : (
-                          <Peek
-                            files={files}
-                            picking={pickedFiles.length > 0}
-                            onDragFile={startFileDrag}
-                            statusOf={statusOf}
-                          />
-                        )}
-                      </div>
-                    )
-                  })}
-                </section>
-              )
-            })}
+            <span className='text-[12px] text-ink-2'>
+              {place.kind === 'dz'
+                ? `${days.length} day${days.length === 1 ? '' : 's'} · ${placeFiles} files`
+                : place.kind === 'sort'
+                  ? `${placeGroups.length} jump${placeGroups.length === 1 ? '' : 's'} · ${placeFiles} files`
+                  : `${placeFiles} file${placeFiles === 1 ? '' : 's'}`}
+            </span>
+            <span className='flex-1' />
+            <label className='flex items-center gap-1.5 rounded-md border border-line bg-ground px-[9px] py-[3px]'>
+              <span
+                aria-hidden='true'
+                className='text-[12px] text-ink-3'>
+                ⌕
+              </span>
+              <input
+                type='text'
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder='Find a file'
+                aria-label='Find a file'
+                className='w-[140px] border-0 bg-transparent text-[12.5px] outline-none placeholder:text-ink-3 max-[780px]:w-[100px]'
+              />
+            </label>
           </div>
 
-          <h2 className='mt-6 text-xs font-semibold tracking-widest text-gray-500 uppercase'>
-            Tandems · one folder per passenger
-          </h2>
-          <section
-            {...dropTarget(TANDEMS)}
-            className={`mt-2 rounded-xl border bg-gray-50 p-4 ${
-              overTarget === `dest:${TANDEMS}` ? 'border-dashed border-teal-500' : 'border-gray-200'
-            }`}>
-            <p className='font-mono text-[11px] text-gray-400'>
-              processed/Tandems/{'{passenger}'}/ · videos/ + photos/ · film + photos.zip for the
-              passenger, rushes.zip for the backup
+          {place.kind === 'dz' && (
+            <div className='flex flex-wrap items-center gap-[9px] border-b border-line bg-pane px-[18px] py-[7px] text-[12px] text-ink-2'>
+              <span>
+                Goes to{' '}
+                <code className='rounded-[3px] bg-line-2 px-[5px] py-px font-mono text-[11.5px] text-ink'>
+                  {folderFor(place.name) ?? 'no folder yet'}
+                </code>
+              </span>
+              <span className='ml-auto flex items-center gap-2'>
+                <Mini onClick={() => setDialog({ kind: 'folder', destination: place.name })}>
+                  {folderFor(place.name) ? 'Change folder' : 'Choose a folder'}
+                </Mini>
+              </span>
+            </div>
+          )}
+
+          {note && (
+            <p className='border-b border-line bg-accent-soft px-[18px] py-[7px] text-[12.5px] text-ink-2'>
+              {note}
             </p>
-            {tandems.length === 0 && looseIn(TANDEMS).length === 0 && (
-              <p className='mt-3 text-xs text-gray-400'>
-                Drag tandem jumps here — or files, which become a tandem of their own.
-              </p>
-            )}
-            {/* files filed to Tandems that belong to no passenger yet — they cannot be processed
-                as they are, since the folder is named after the passenger, so they are shown
-                here with the one button that fixes them rather than left invisible */}
-            {looseIn(TANDEMS).length > 0 &&
-              (() => {
-                const stray = looseIn(TANDEMS)
-                const key = 'tandems:stray'
-                return (
-                  <div className='mt-3 rounded-lg border border-amber-300 bg-amber-50 p-2'>
-                    <div className='flex flex-wrap items-center gap-2'>
-                      <b className='text-xs text-amber-900'>
-                        {stray.length} file{stray.length > 1 ? 's' : ''} with no passenger yet
-                      </b>
-                      <button
-                        type='button'
+          )}
+
+          <div className='flex-1 overflow-y-auto px-[18px] pt-1 pb-10'>
+            {(place.kind === 'sort' || place.kind === 'dz') && (
+              <div className='mt-2'>
+                {days.length > 0 && (
+                  <div className='mb-2 flex flex-wrap items-center gap-1.5'>
+                    <span className='mr-auto text-[12px] text-ink-2'>
+                      {place.kind === 'sort'
+                        ? `${placeGroups.length} jump${placeGroups.length === 1 ? '' : 's'}`
+                        : `${days.length} day${days.length === 1 ? '' : 's'}`}{' '}
+                      · {shownDay ? `${dayLabel(shownDay)} open` : 'all closed'}
+                    </span>
+                    <Mini
+                      disabled={openDayJumps.length === 0 || openDayJumps.every(jumpShut)}
+                      title='Fold jumps down to their names — days opened afterwards open folded too'
+                      onClick={() => foldAll(true)}>
+                      Collapse jumps
+                    </Mini>
+                    <Mini
+                      disabled={openDayJumps.length === 0 || !openDayJumps.some(jumpShut)}
+                      title='Show the files of every jump, and of days opened afterwards'
+                      onClick={() => foldAll(false)}>
+                      Expand jumps
+                    </Mini>
+                    <Mini
+                      disabled={shownDay === null}
+                      title='Fold every day down to one line'
+                      onClick={() => setOpenDay(null)}>
+                      Close all days
+                    </Mini>
+                    {place.kind === 'sort' && sorting.length > 0 && (
+                      <Mini
                         disabled={busy !== null}
-                        onClick={() =>
-                          moveFiles(
-                            stray.flatMap((f) => (f.id ? [f.id] : [])),
-                            TANDEMS,
-                            true
-                          )
-                        }
-                        className='rounded bg-teal-700 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50'>
-                        Make them a tandem
-                      </button>
-                      <span className='ml-auto flex items-center gap-2'>
-                        <Fold
-                          files={stray}
-                          open={isOpen(key, stray)}
-                          onToggle={() => toggle(key)}
-                        />
-                      </span>
-                    </div>
-                    {isOpen(key, stray) ? (
-                      <Wall
-                        {...wall}
-                        files={stray}
-                        lane={stray}
-                        onPreview={(file) => preview.handlePreview(file, LOOSE)}
-                      />
-                    ) : (
-                      <Peek
-                        files={stray}
-                        picking={pickedFiles.length > 0}
-                        onDragFile={startFileDrag}
-                        statusOf={statusOf}
-                      />
+                        title='Run the gap rule again over every loose file here'
+                        onClick={() => send('regroup', { intent: 'regroup-loose' })}>
+                        {busy === 'regroup' ? 'Regrouping…' : `Regroup ${sorting.length} loose`}
+                      </Mini>
                     )}
                   </div>
-                )
-              })()}
-            {tandems.map((group) => (
-              <div
-                key={group.id}
-                /* each passenger row takes files of its own, so a shot filmed on the wrong
-                   jump joins the right tandem instead of starting a new one */
-                {...groupDropTarget(group.id)}
-                className={`mt-3 rounded-lg border bg-white p-3 ${
-                  overTarget === `group:${group.id}`
-                    ? 'border-dashed border-teal-500'
-                    : 'border-gray-200'
-                }`}>
-                <div className='flex flex-wrap items-center gap-2'>
-                  {/* a named passenger is the card's title and only turns back into a form when
-                      clicked — two permanent input boxes read as an unfinished form and gave no
-                      sign that the name had been saved */}
-                  {renaming === group.id || !passengerName(group) ? (
-                    <span className='flex flex-wrap items-center gap-2'>
-                      <input
-                        type='text'
-                        autoFocus={renaming === group.id}
-                        defaultValue={group.passenger?.firstname ?? ''}
-                        placeholder='First name'
-                        onBlur={(e) =>
-                          setPassenger(
-                            group.id,
-                            e.target.value.trim(),
-                            group.passenger?.lastname ?? ''
-                          )
-                        }
-                        className='w-28 rounded border border-gray-300 px-2 py-1 text-sm'
-                      />
-                      <input
-                        type='text'
-                        defaultValue={group.passenger?.lastname ?? ''}
-                        placeholder='Last name'
-                        onBlur={(e) =>
-                          setPassenger(
-                            group.id,
-                            group.passenger?.firstname ?? '',
-                            e.target.value.trim()
-                          )
-                        }
-                        className='w-28 rounded border border-gray-300 px-2 py-1 text-sm'
-                      />
-                      {renaming === group.id && (
-                        <button
-                          type='button'
-                          onClick={() => setRenaming(null)}
-                          className='rounded bg-gray-900 px-3 py-1 text-xs font-semibold text-white'>
-                          Done
-                        </button>
-                      )}
-                    </span>
-                  ) : (
-                    <button
-                      type='button'
-                      onClick={() => setRenaming(group.id)}
-                      title='Click to change the passenger name'
-                      className='rounded px-1 text-base font-semibold text-gray-900 hover:bg-gray-100'>
-                      {passengerName(group)} <span className='text-xs text-gray-400'>✎</span>
-                    </button>
-                  )}
-                  <span className='text-xs text-gray-500'>
-                    <JumpTime
-                      start={minFileMtime(group.files) ?? 0}
-                      disabled={busy !== null}
-                      onShift={(anchor) => shiftJump(group.id, anchor)}
-                    />
-                  </span>
-                  <span className='text-xs text-gray-500'>{group.files.length} files</span>
-                  {!passengerName(group) && (
-                    <span className='text-xs text-amber-700'>name needed before processing</span>
-                  )}
-                  <Fold
-                    files={group.files}
-                    open={isOpen(group.id, group.files)}
-                    onToggle={() => toggle(group.id)}
-                  />
-                  <TandemActions
-                    group={group}
-                    facts={tandemFacts[group.id]}
-                    busy={busy}
-                    blocked={gateFor(group.files)}
-                    named={passengerName(group) !== ''}
-                    onProcess={() => run(group.id, { intent: 'process', groupId: group.id })}
-                    onMontage={() => createMontage(group)}
-                    onDeliver={() => deliver(group)}
-                  />
-                </div>
-                {uploading === `deliver:${group.id}` && progress && (
-                  <UploadStrip progress={progress} />
                 )}
-                {isOpen(group.id, group.files) ? (
-                  <div className='mt-2'>
-                    <Wall
-                      {...wall}
-                      files={group.files}
-                      lane={group.files}
-                      split
-                      onPreview={(file) => openPreview(group, file)}
-                    />
+                {days.length === 0 && (
+                  <div className='rounded-[9px] border border-dashed border-line bg-pane px-4 py-7 text-center text-ink-3'>
+                    {query.trim()
+                      ? 'Nothing here matches that.'
+                      : 'Nothing here. Drag a jump onto this place in the menu to file it.'}
                   </div>
-                ) : (
-                  <Peek
-                    files={group.files}
-                    picking={pickedFiles.length > 0}
-                    onDragFile={startFileDrag}
-                    statusOf={statusOf}
-                  />
                 )}
+                {days.map((day) => {
+                  const dayGroups = shownGroups.filter((g) => dayOf(g) === day)
+                  const dayLoose = shownLoose.filter((f) => dayOfFile(f) === day)
+                  return (
+                    <DayRow
+                      key={day}
+                      day={day}
+                      label={dayLabel(day)}
+                      groups={dayGroups}
+                      looseFiles={dayLoose}
+                      open={shownDay === day}
+                      grouped={place.kind === 'sort'}
+                      kind={kind}
+                      shape={view}
+                      picked={pickedFiles}
+                      statusContext={statusContext}
+                      deliveredName={deliveredName}
+                      onToggle={() => setOpenDay(shownDay === day ? null : day)}
+                      onKind={setKind}
+                      onFile={fileLane}
+                      onDragFile={startFileDrag}
+                      onSelectAll={selectAll}
+                      onShiftJump={shiftJump}
+                      onOpenAt={openAt}
+                      overTarget={overTarget}
+                      isJumpShut={jumpShut}
+                      onDragJump={startJumpDrag}
+                      onToggleJump={(id) =>
+                        setUnfolded(
+                          unfolded.includes(id)
+                            ? unfolded.filter((x) => x !== id)
+                            : [...unfolded, id]
+                        )
+                      }
+                      groupDropTarget={groupDropTarget}
+                      dragging={draggedFiles.length > 0}
+                      action={dayAction(day, dayGroups, dayLoose)}
+                      strip={
+                        place.kind === 'dz' && uploading === `dest:${place.name}` && progress ? (
+                          <UploadStrip progress={progress} />
+                        ) : null
+                      }
+                      busy={busy !== null}
+                    />
+                  )
+                })}
               </div>
-            ))}
-          </section>
-        </div>
+            )}
+
+            {place.kind === 'tandems' && (
+              <>
+                {unnamed.length > 0 && (
+                  <Callout tone='warn'>
+                    <b className='text-ink'>
+                      {unnamed.length} tandem{unnamed.length === 1 ? '' : 's'} with no passenger
+                      yet.
+                    </b>{' '}
+                    Open one to give it a name — it is the folder the passenger gets.
+                  </Callout>
+                )}
+                <div className='my-2.5 grid grid-cols-[repeat(auto-fill,minmax(236px,1fr))] gap-2.5'>
+                  {[...unnamed, ...named].map((group) => {
+                    const who = passengerOf(group)
+                    return (
+                      <PassengerCard
+                        key={group.id}
+                        group={group}
+                        who={who}
+                        naming={renaming === group.id}
+                        dropTarget={groupDropTarget(group.id)}
+                        onOpen={() =>
+                          who ? setPlace({ kind: 'pax', name: who }) : setRenaming(group.id)
+                        }
+                        onName={(firstname, lastname) => {
+                          setPassenger(group.id, firstname, lastname)
+                          setRenaming(null)
+                        }}
+                      />
+                    )
+                  })}
+                </div>
+              </>
+            )}
+
+            {place.kind === 'pax' &&
+              named
+                .filter((g) => passengerOf(g) === place.name)
+                .map((group) => (
+                  <div key={group.id}>
+                    {group.delivered && <DeliveredCards group={group} />}
+                    <div
+                      {...groupDropTarget(group.id)}
+                      className='mt-2 mb-3.5 rounded-[9px] border border-line bg-pane'>
+                      <div className='flex flex-wrap items-center gap-[9px] border-b border-line-2 px-3 py-[9px]'>
+                        <span className='font-mono text-[12.5px] font-semibold tabular-nums'>
+                          {formatTime(minFileMtime(group.files) ?? 0)}
+                        </span>
+                        <KindBadges
+                          files={group.files}
+                          kind={kind}
+                          withAll={false}
+                          onPick={setKind}
+                        />
+                        <Mini onClick={() => selectAll(group.files)}>Select all</Mini>
+                        <TandemActions
+                          group={group}
+                          facts={tandemFacts[group.id]}
+                          busy={busy}
+                          blocked={gateFor(group.files)}
+                          named={Boolean(passengerOf(group))}
+                          onProcess={() => send(group.id, { intent: 'process', groupId: group.id })}
+                          onMontage={() => createMontage(group)}
+                          onOpenMontage={() => openMontage(group)}
+                          onDeliver={() => deliver(group)}
+                        />
+                        {uploading === `deliver:${group.id}` && progress && (
+                          <span className='mt-0.5 flex-[1_1_100%]'>
+                            <UploadStrip progress={progress} />
+                          </span>
+                        )}
+                      </div>
+                      <div className='p-[9px]'>
+                        <FileList
+                          files={group.files}
+                          kind={kind === 'all' ? 'video' : kind}
+                          shape={view}
+                          picked={pickedFiles}
+                          statusContext={statusContext}
+                          onFile={fileLane}
+                          onDragFile={startFileDrag}
+                          deliveredName={deliveredName}
+                          selecting={pickedFiles.length > 0}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+          </div>
+        </section>
       </div>
 
       {pickedFiles.length > 0 && (
-        <div className='fixed inset-x-0 bottom-0 z-40 border-t border-gray-700 bg-gray-900 p-3 text-sm text-white'>
-          <div className='mx-auto flex max-w-[1700px] flex-wrap items-center gap-3'>
-            <b>
-              {pickedFiles.length} file{pickedFiles.length > 1 ? 's' : ''} selected
-            </b>
-            <button
-              type='button'
-              disabled={busy !== null}
-              onClick={() => moveFiles(pickedFiles, null)}
-              className='rounded bg-teal-600 px-3 py-1 font-semibold disabled:opacity-40'>
-              Remove — back to sorting
-            </button>
-            <span className='text-xs opacity-60'>
-              or drag them onto another card · ⌘/ctrl-click to add · shift-click for a range ·
-              Delete removes
-            </span>
+        <div className='fixed inset-x-0 bottom-0 z-20 flex flex-wrap items-center gap-2.5 bg-ink px-4 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom,0px))] text-ground'>
+          <b className='font-semibold'>
+            {pickedFiles.length} file{pickedFiles.length > 1 ? 's' : ''} selected
+          </b>
+          <span className='text-[11.5px] opacity-60'>
+            drag them onto a place in the menu · ⌘/ctrl-click to add · shift-click for a range ·
+            Delete sends them back
+          </span>
+          <span className='ml-auto flex gap-2'>
             <button
               type='button'
               onClick={clearFiles}
-              className='ml-auto rounded bg-white px-3 py-1 font-semibold text-gray-900'>
-              Done
+              className='rounded-[5px] border border-white/30 bg-white/10 px-2.5 py-1 text-[12px] hover:bg-white/20'>
+              Clear (Esc)
             </button>
-          </div>
+          </span>
         </div>
       )}
 
@@ -1982,6 +1307,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         <PreviewDrawer
           files={preview.preview.files}
           index={preview.preview.index}
+          status={statusOf(preview.preview.files[preview.preview.index])}
           onClose={preview.closePreview}
           onPrevious={() =>
             preview.setPreview((p) => (p ? { ...p, index: Math.max(0, p.index - 1) } : p))

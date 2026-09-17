@@ -1,3 +1,4 @@
+import { dayOfFiles } from './clustering'
 import type { ManifestGroup, ManifestPassenger } from './types'
 
 const hasCompletePassenger = (passenger: ManifestPassenger | null | undefined) => {
@@ -60,6 +61,8 @@ const mergeGroups = (groups: ManifestGroup[], leftId: string, rightId: string) =
         ? {
             ...g,
             files,
+            /* one jump now, starting when the earlier of the two started */
+            day: dayOfFiles(files),
             processed: false,
             passenger: left.passenger ?? right.passenger ?? undefined,
             publish: undefined

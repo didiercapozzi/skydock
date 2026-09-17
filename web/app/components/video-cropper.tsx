@@ -8,6 +8,9 @@ type VideoCropperProps = {
   cropEnd: number | null
   zoom: number
   readOnly?: boolean
+  /* inside the preview the trim readouts and the buttons live in the side panel and the footer, so
+     the timeline shows only the timeline and nothing is offered twice */
+  compact?: boolean
   thumbSrc?: (seekSeconds: number) => string
   onSeek: (time: number) => void
   onCropChange: (range: { cropStart: number | null; cropEnd: number | null }) => void
@@ -28,6 +31,7 @@ const VideoCropper = ({
   cropEnd,
   zoom,
   readOnly = false,
+  compact = false,
   thumbSrc,
   onSeek,
   onCropChange,
@@ -164,20 +168,25 @@ const VideoCropper = ({
     <div
       data-video-cropper='true'
       className='w-full select-none'>
-      <div className='flex items-center gap-2 mb-2 text-xs text-gray-500'>
+      {/* the cropper sits on the dark stage, so its own controls are lit from the same side */}
+      <div className='mb-2 flex items-center gap-2.5 font-mono text-[11.5px] text-white/70 tabular-nums'>
         <span data-zoom-display='true'>{zoomClamped.toFixed(1)}x</span>
         {zoomClamped !== 1 && (
           <button
             type='button'
             data-action='reset-zoom'
             onClick={handleBarResetZoom}
-            className='px-1.5 py-0.5 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors'>
+            className='rounded border border-white/30 bg-white/10 px-2 py-0.5 text-[11.5px] text-white hover:bg-white/20'>
             Reset
           </button>
         )}
-        <span data-current-time='true'>{currentTime.toFixed(2)}s</span>
-        <span>/</span>
-        <span data-duration='true'>{safeDuration.toFixed(2)}s</span>
+        {!compact && (
+          <>
+            <span data-current-time='true'>{currentTime.toFixed(2)}s</span>
+            <span>/</span>
+            <span data-duration='true'>{safeDuration.toFixed(2)}s</span>
+          </>
+        )}
       </div>
       <div
         ref={barRef}
@@ -185,7 +194,7 @@ const VideoCropper = ({
         onPointerDown={handleBarDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        className='relative h-12 bg-gray-100 border border-gray-200 rounded-lg overflow-hidden cursor-crosshair'>
+        className='relative h-12 cursor-crosshair overflow-hidden rounded-md border border-white/20 bg-white/[0.08]'>
         {thumbs.length > 0 && (
           <div
             data-thumbs='true'
@@ -208,13 +217,13 @@ const VideoCropper = ({
           data-playhead='true'
           className='absolute top-0 bottom-0 w-4 -ml-2 cursor-ew-resize z-30 pointer-events-none'
           style={{ left: `${playheadPct}%` }}>
-          <div className='absolute left-1/2 top-0 bottom-0 w-0.5 -ml-px bg-blue-600 pointer-events-none' />
+          <div className='pointer-events-none absolute top-0 bottom-0 left-1/2 -ml-px w-0.5 bg-white' />
         </div>
         {!readOnly && startPct !== null && (
           <div
             data-crop-start-handle='true'
             onPointerDown={handleCropHandleDown('start')}
-            className='absolute top-0 bottom-0 w-3 -ml-1.5 bg-amber-500 rounded cursor-ew-resize z-20 hover:bg-amber-600 transition-colors'
+            className='absolute top-0 bottom-0 z-20 -ml-1.5 w-3 cursor-ew-resize rounded bg-accent hover:brightness-110'
             style={{ left: `${startPct}%` }}
           />
         )}
@@ -222,14 +231,14 @@ const VideoCropper = ({
           <div
             data-crop-end-handle='true'
             onPointerDown={handleCropHandleDown('end')}
-            className='absolute top-0 bottom-0 w-3 -ml-1.5 bg-amber-500 rounded cursor-ew-resize z-20 hover:bg-amber-600 transition-colors'
+            className='absolute top-0 bottom-0 z-20 -ml-1.5 w-3 cursor-ew-resize rounded bg-accent hover:brightness-110'
             style={{ left: `${endPct}%` }}
           />
         )}
         {!readOnly && startPct !== null && endPct !== null && (
           <div
             data-crop-range='true'
-            className='absolute top-0 bottom-0 bg-amber-200/50 border-x border-amber-500'
+            className='absolute top-0 bottom-0 border-x border-accent bg-accent/30'
             style={{
               left: `${Math.min(startPct, endPct)}%`,
               width: `${Math.abs(endPct - startPct)}%`
@@ -237,27 +246,27 @@ const VideoCropper = ({
           />
         )}
       </div>
-      {!readOnly && (
-        <div className='flex gap-2 mt-3'>
+      {!readOnly && !compact && (
+        <div className='mt-3 flex flex-wrap gap-2'>
           <button
             type='button'
             data-action='start-here'
             onClick={handleStartHere}
-            className='px-3 py-1.5 text-sm bg-gray-100 rounded hover:bg-gray-200 transition-colors'>
+            className='rounded-[5px] border border-white/30 bg-white/10 px-2.5 py-1 text-[12px] text-white hover:bg-white/20'>
             Start here
           </button>
           <button
             type='button'
             data-action='end-here'
             onClick={handleEndHere}
-            className='px-3 py-1.5 text-sm bg-gray-100 rounded hover:bg-gray-200 transition-colors'>
+            className='rounded-[5px] border border-white/30 bg-white/10 px-2.5 py-1 text-[12px] text-white hover:bg-white/20'>
             End here
           </button>
           <button
             type='button'
             data-action='apply'
             onClick={handleApply}
-            className='px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors'>
+            className='rounded-[5px] border border-accent bg-accent px-2.5 py-1 text-[12px] font-semibold text-white hover:brightness-110'>
             Apply
           </button>
           {hasCrop && (
@@ -265,7 +274,7 @@ const VideoCropper = ({
               type='button'
               data-action='reset-crop'
               onClick={handleResetCrop}
-              className='px-3 py-1.5 text-sm bg-gray-100 rounded hover:bg-gray-200 transition-colors'>
+              className='rounded-[5px] border border-white/30 bg-white/10 px-2.5 py-1 text-[12px] text-white hover:bg-white/20'>
               Reset crop
             </button>
           )}

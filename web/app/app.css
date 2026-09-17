@@ -1,19 +1,152 @@
 @import 'tailwindcss';
 
+/* The palette, the type and the spacing of `skydock-mockup.html`, which is the approved design.
+   Every colour in the app comes from here — no stock Tailwind palette anywhere — so the two can be
+   held side by side and compared. Changing a value here changes it everywhere it is used. */
 @theme {
-  --font-sans:
-    'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-    'Segoe UI Symbol', 'Noto Color Emoji';
-  --font-mono:
-    ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* the three surfaces: the page behind, the panels on it, the menu rail beside them */
+  --color-ground: #f2f4f6;
+  --color-pane: #ffffff;
+  --color-rail: #eaedf1;
+
+  /* type, loudest to quietest */
+  --color-ink: #171c22;
+  --color-ink-2: #545e6b;
+  --color-ink-3: #8b95a2;
+
+  /* borders: the one you see, and the one that only separates */
+  --color-line: #dde2e8;
+  --color-line-2: #eef1f4;
+
+  /* the app's own colour, and the colour of a selection */
+  --color-accent: #0f6f68;
+  --color-accent-soft: #e3f2f0;
+  --color-pick: #2563eb;
+  --color-pick-soft: #e6eefc;
+
+  /* the three file states, each with the tint its chip sits on */
+  --color-local: #a4560a;
+  --color-local-soft: #fbeddc;
+  --color-proc: #0f6f68;
+  --color-proc-soft: #dcefec;
+  --color-up: #1c7a3e;
+  --color-up-soft: #ddf0e2;
+
+  /* uploaded, and therefore closed to editing */
+  --color-lock: #7a4fb5;
+  --color-lock-soft: #efe7fa;
+
+  /* prepared once and changed since — an amber that is not any of the three states */
+  --color-changed: #9a3412;
+  --color-changed-soft: #fde6d3;
+  --color-changed-line: #c2703a;
+
+  --shadow-card: 0 1px 2px rgba(20, 28, 38, 0.06), 0 4px 14px rgba(20, 28, 38, 0.05);
+
+  /* The shared form package names its colours by role rather than by shade, so that whatever uses
+     it supplies the palette. These are that supply. They point at the tokens above rather than
+     repeating their values, so dark follows without a second set. */
+  --color-foreground: var(--color-ink);
+  --color-muted-foreground: var(--color-ink-2);
+  --color-destructive: var(--color-local);
+}
+
+/* Dark is the same design with the surfaces inverted and the accents lifted, so it is the same
+   tokens redefined rather than a second set of classes. Every utility reads the variable.
+
+   Two ways in, and `data-theme` wins over the machine's own setting — the selector carrying it is
+   more specific than a bare `:root`. That is what makes the choice in the header stick, and what
+   lets this be held beside `skydock-mockup.html`, which is built the same way. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-ground: #101418;
+    --color-pane: #171c22;
+    --color-rail: #131820;
+    --color-ink: #e7ecf1;
+    --color-ink-2: #9aa5b2;
+    --color-ink-3: #6b7683;
+    --color-line: #262d36;
+    --color-line-2: #1f252d;
+    --color-accent: #3fb3a6;
+    --color-accent-soft: #14312e;
+    --color-pick: #5b8dee;
+    --color-pick-soft: #182640;
+    --color-local: #d99544;
+    --color-local-soft: #33260f;
+    --color-proc: #3fb3a6;
+    --color-proc-soft: #14312e;
+    --color-up: #57b877;
+    --color-up-soft: #15301e;
+    --color-lock: #b191e2;
+    --color-lock-soft: #241a33;
+    --color-changed: #f0a97a;
+    --color-changed-soft: #3a2113;
+    --color-changed-line: #a4633a;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.3);
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --color-ground: #101418;
+  --color-pane: #171c22;
+  --color-rail: #131820;
+  --color-ink: #e7ecf1;
+  --color-ink-2: #9aa5b2;
+  --color-ink-3: #6b7683;
+  --color-line: #262d36;
+  --color-line-2: #1f252d;
+  --color-accent: #3fb3a6;
+  --color-accent-soft: #14312e;
+  --color-pick: #5b8dee;
+  --color-pick-soft: #182640;
+  --color-local: #d99544;
+  --color-local-soft: #33260f;
+  --color-proc: #3fb3a6;
+  --color-proc-soft: #14312e;
+  --color-up: #57b877;
+  --color-up-soft: #15301e;
+  --color-lock: #b191e2;
+  --color-lock-soft: #241a33;
+  --color-changed: #f0a97a;
+  --color-changed-soft: #3a2113;
+  --color-changed-line: #a4633a;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.3);
+
+  color-scheme: dark;
 }
 
 html,
 body {
-  @apply bg-gray-50 text-gray-900 antialiased;
+  height: 100%;
+}
 
-  @media (prefers-color-scheme: dark) {
-    @apply bg-gray-950 text-gray-100;
-    color-scheme: dark;
-  }
+body {
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  /* the mockup's own base: everything else is sized relative to reading this comfortably */
+  font-size: 13.5px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-pick);
+  outline-offset: 2px;
+  border-radius: 4px;
 }

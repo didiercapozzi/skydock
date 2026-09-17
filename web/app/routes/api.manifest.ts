@@ -30,6 +30,7 @@ import {
 /* both reach the filesystem and the NAS, so they are imported straight from the package rather
    than through the barrel the board also reads */
 import { deliverTandem } from '../../../packages/skydock-scripts/src/deliver'
+import { openInEditor } from '../../../packages/skydock-scripts/src/editor'
 import { createMontageProject } from '../../../packages/skydock-scripts/src/montage'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 import { boardAnswer } from '../helpers/manifest'
@@ -38,6 +39,7 @@ const actionArgs = z.object({
   intent: z.enum([
     'save-groups',
     'merge-groups',
+    'open-montage',
     'process',
     'upload-group',
     'montage',
@@ -122,6 +124,24 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       saveManifest(manifestPath, manifest)
       return boardAnswer(manifest)
     }
+    /* the project is already there — this is the way back into it */
+    if (data.intent === 'open-montage') {
+      const group = manifest.groups.find((g) => g.id === data.groupId)
+      if (!group?.montage) {
+        errors.addGlobalError('This tandem has no project yet — make its montage first.')
+        return errors.toResponse(422)
+      }
+      const opened = await openInEditor(group.montage.projectPath)
+      if (!opened.opened) {
+        errors.addGlobalError(opened.reason ?? 'Could not open the editor.')
+        return errors.toResponse(422)
+      }
+      return {
+        ...boardAnswer(manifest),
+        montage: { clips: 0, missingAssets: [], opened: true, openCommand: opened.command }
+      }
+    }
+
     if (data.intent === 'regroup-loose') {
       const made = regroupLooseFiles(manifest)
       if (made === 0) {
@@ -255,9 +275,17 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
           at: Math.floor(Date.now() / 1000)
         }
         saveManifest(manifestPath, manifest)
+        /* writing the project and opening it are one press: the project exists to be edited */
+        const opened = await openInEditor(made.projectPath)
         return {
           ...boardAnswer(manifest),
-          montage: { clips: made.clips, missingAssets: made.missingAssets }
+          montage: {
+            clips: made.clips,
+            missingAssets: made.missingAssets,
+            opened: opened.opened,
+            openCommand: opened.command,
+            openReason: opened.reason
+          }
         }
       } catch (e) {
         errors.addGlobalError(e instanceof Error ? e.message : String(e))

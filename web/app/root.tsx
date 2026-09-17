@@ -16,13 +16,17 @@ export const links: Route.LinksFunction = () => [
   },
   {
     rel: 'stylesheet',
-    href: 'https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap'
+    href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap'
   }
 ]
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang='en'>
+    /* the script below sets data-theme before React hydrates, so the server's html tag is
+       deliberately one attribute behind the client's */
+    <html
+      lang='en'
+      suppressHydrationWarning>
       <head>
         <meta charSet='utf-8' />
         <meta
@@ -31,6 +35,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
         />
         <Meta />
         <Links />
+        {/* Before the first paint, so a reader who chose a theme never sees the other one first.
+            It only ever sets an attribute the stylesheet already knows how to read. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('skydock.theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}"
+          }}
+        />
       </head>
       <body>
         {children}

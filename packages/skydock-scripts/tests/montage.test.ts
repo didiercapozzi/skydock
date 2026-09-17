@@ -6,7 +6,7 @@ import { XMLParser, XMLValidator } from 'fast-xml-parser'
 import { createMontageProject, listMontageTemplates } from '../src/montage'
 import { createTmpDir } from './fixtures'
 
-const REPO_TEMPLATE = path.join(__dirname, '..', '..', '..', 'templates', 'tandem.kdenlive')
+const REPO_TEMPLATE = path.join(__dirname, '..', '..', '..', 'templates', 'epco-template.kdenlive')
 
 afterEach(() => {
   delete process.env.SKYDOCK_HOST_OUTPUT_DIR

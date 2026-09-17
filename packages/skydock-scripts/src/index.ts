@@ -6,8 +6,8 @@ export { destinationSchema, manifestFileSchema, manifestGroupSchema } from './ty
 
 export { groupFromFiles, reclusterGroups, regroupLooseFiles, shiftFiles } from './clustering'
 
-export { fileStatus, uploadGate } from './fileStatus'
-export type { FileStatus, OutputFact, RemoteListing } from './fileStatus'
+export { fileChanged, fileStatus, uploadGate } from './fileStatus'
+export type { FileStatus, OutputFact, RemoteListing, StatusContext } from './fileStatus'
 
 export { buildGroupBaseName, hasCompletePassenger, mergeGroups } from './workspace'
 
@@ -37,7 +37,7 @@ export {
   updateNasFolder
 } from './nas'
 
-export { getOutputDir, isVideoFile } from './utils'
+export { getOutputDir, isVideoFile, isoDay } from './utils'
 
 export { scanMedia } from './scan'
 export { getGroupProcessedDir, processJumps } from './process'

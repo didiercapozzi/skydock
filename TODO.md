@@ -3,24 +3,13 @@
 ## Rework the kdenlive template process
 
 The montage now writes a project kdenlive can open, but the way templates themselves are supplied,
-chosen and checked is still the weak part. Three things found while getting the first real tandem
-through show why.
+chosen and checked is still the weak part. What is left is below.
 
-**The committed default template is incomplete.** `templates/tandem.kdenlive` references four files
-that were never committed beside it:
-
-```
-template files/ASHUTOSH - Destiny.mp3
-template files/Sky_MBB_&_ASHUTOSH_…mp3
-template files/logo-epco.png
-epco template files/romandieparachutisme.kdenlivetitle
-```
-
-Any montage that falls back to it opens with no music, no logo and a broken title. That is exactly
-what happened to the first real tandem, because there was no `output/templates/` for it to find.
-Decide one of: commit the assets alongside it, ship no default at all and refuse until a template is
-installed, or keep it as a deliberately bare "no branding" template and say so. Refusing is probably
-right — a default nobody chose is how someone's branding goes out by accident.
+**The bundled template is complete.** `templates/epco-template.kdenlive` now ships with the music,
+logo and outro icons it references, under `templates/template files/`. It is found by listing the
+folder rather than by a filename written into the code, so replacing it is a matter of dropping a
+different one in — and several there is refused the same way several in `output/templates/` is.
+The old `tandem.kdenlive`, which referenced four files that were never committed beside it, is gone.
 
 **A template can be for a different kdenlive than the one in use.** The committed template is MLT
 7.18 / kdenlive 23.08; the machine that will edit runs 26.04.3. It opened, but nothing checks, and a

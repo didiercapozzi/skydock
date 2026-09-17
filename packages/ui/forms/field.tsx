@@ -7,11 +7,11 @@ const FormField = ({ field, label, description, className, children }: FormField
   const descriptionId = description ? `${formField.id}-desc` : undefined
 
   return (
-    <div className={['flex flex-col gap-1.5', className].filter(Boolean).join(' ')}>
+    <div className={['flex flex-col gap-1', className].filter(Boolean).join(' ')}>
       {label ? (
         <label
           htmlFor={formField.id}
-          className='text-sm font-medium text-foreground'>
+          className='text-[12px] text-muted-foreground'>
           {label}
         </label>
       ) : null}
@@ -28,14 +28,14 @@ const FormField = ({ field, label, description, className, children }: FormField
       {description && !formField.error ? (
         <p
           id={descriptionId}
-          className='text-xs text-muted-foreground'>
+          className='text-[11px] text-muted-foreground'>
           {description}
         </p>
       ) : null}
       {formField.error ? (
         <span
           id={errorId}
-          className='text-xs font-medium text-destructive'
+          className='text-[11.5px] font-medium text-destructive'
           role='alert'>
           {formField.error}
         </span>

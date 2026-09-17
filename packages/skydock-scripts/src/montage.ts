@@ -84,8 +84,7 @@ const repoTemplateDir = () =>
 /* A template is a folder holding its own project and the music, logos and title images it uses, so
    the assets are stored once and referenced, never copied per passenger. A bare `.kdenlive` sitting
    in the folder counts too, for a template that needs nothing beside it. */
-const listMontageTemplates = (outputDir: string) => {
-  const dir = path.join(outputDir, 'templates')
+const templatesIn = (dir: string) => {
   const kdenliveIn = (folder: string) =>
     fs
       .readdirSync(folder, { withFileTypes: true })
@@ -107,6 +106,8 @@ const listMontageTemplates = (outputDir: string) => {
   }
 }
 
+const listMontageTemplates = (outputDir: string) => templatesIn(path.join(outputDir, 'templates'))
+
 /* Chosen, or the only one there — never the first of several, because picking a template silently
    is picking someone's branding silently. */
 const resolveTemplate = (options: z.infer<typeof montageOptionsSchema>) => {
@@ -125,8 +126,13 @@ const resolveTemplate = (options: z.infer<typeof montageOptionsSchema>) => {
   if (available.length === 1) return available[0].path
   if (available.length > 1)
     throw new Error(`Choose a montage template: ${available.map((t) => t.name).join(', ')}`)
-  const fallback = path.join(repoTemplateDir(), 'tandem.kdenlive')
-  if (fs.existsSync(fallback)) return fallback
+  /* The one that ships with SkyDock, found the same way rather than by a name written in here — a
+     template is replaced by dropping a different one in beside it, and a name in the code would
+     quietly keep using the old one. Several there is as ambiguous as several in the output folder. */
+  const bundled = templatesIn(repoTemplateDir())
+  if (bundled.length === 1) return bundled[0].path
+  if (bundled.length > 1)
+    throw new Error(`Choose a montage template: ${bundled.map((t) => t.name).join(', ')}`)
   throw new Error(`No montage template found — add one under ${options.outputDir}/templates`)
 }
 
