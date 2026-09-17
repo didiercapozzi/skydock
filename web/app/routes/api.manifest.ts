@@ -626,7 +626,8 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
             ...manifest.files[idx],
             destination: update.destination,
             cropStart: update.cropStart,
-            cropEnd: update.cropEnd
+            cropEnd: update.cropEnd,
+            frame: update.frame
           }
         }
       }

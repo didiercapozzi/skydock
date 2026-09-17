@@ -2,7 +2,9 @@ import * as childProcess from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { loadManifest, saveManifest } from './manifest'
-import { cropProxy, getCutProxyDir } from './proxy'
+import { cropFilter, isWholeFrame } from './frameCrop'
+import { cropProxy, getCutProxyDir, proxyEncoder, videoShape } from './proxy'
+import type { ProxyEncoder } from './proxy'
 import type { ManifestFile, ManifestGroup } from './types'
 import { getManifestPath, getOutputDir, hasCommand, isVideoFile, parseDayEpoch } from './utils'
 import {
@@ -23,13 +25,57 @@ type ProcessOptions = {
   destination?: string
 }
 
-const cropVideo = (src: string, dest: string, cropStart: number, cropEnd: number) => {
+const quote = (value: string) => `"${value.replace(/(["$`\\])/g, '\\$1')}"`
+
+/* Cutting the ends off a clip moves no pixels, so the stream is copied: instant, and not a frame
+   of quality lost. Cutting the frame cannot be: the picture itself changes, so it has to be
+   encoded again, and that is the one thing here that costs real time.
+
+   Delivery is encoded for quality, not for speed. These are the files a passenger is given and the
+   ones the montage is cut from — nothing like the proxies, which are throwaway and can be coarse. */
+const DELIVERY_ARGS: Record<ProxyEncoder, string[]> = {
+  nvenc: ['-c:v', 'h264_nvenc', '-preset', 'p6', '-rc', 'vbr', '-cq', '20', '-b:v', '0'],
+  vaapi: ['-c:v', 'h264_vaapi', '-qp', '20'],
+  cpu: ['-c:v', 'libx264', '-crf', '18', '-preset', 'medium', '-pix_fmt', 'yuv420p']
+}
+
+const timeArgs = (cropStart?: number | null, cropEnd?: number | null) =>
+  cropStart != null && cropEnd != null
+    ? `-ss ${cropStart} -t ${(cropEnd - cropStart).toFixed(6)}`
+    : ''
+
+/* The ends only: copied, never re-encoded. */
+const trimVideo = (src: string, dest: string, cropStart: number, cropEnd: number) => {
   if (!hasCommand('ffmpeg')) return false
-  const duration = (cropEnd - cropStart).toFixed(6)
   try {
     childProcess.execSync(
-      `ffmpeg -y -ss ${cropStart} -i "${src}" -t ${duration} -c copy -avoid_negative_ts make_zero "${dest}" 2>/dev/null`,
+      `ffmpeg -y ${timeArgs(cropStart, cropEnd)} -i ${quote(src)} -c copy -avoid_negative_ts make_zero ${quote(dest)} 2>/dev/null`,
       { stdio: 'ignore' }
+    )
+    return true
+  } catch {
+    return false
+  }
+}
+
+/* The frame, and the ends with it if both were set. Decoding on the card where there is one, the
+   same as the proxies, because unpacking 4K HEVC is what takes the time either way. */
+const recodeVideo = (
+  src: string,
+  dest: string,
+  filter: string,
+  cropStart?: number | null,
+  cropEnd?: number | null
+) => {
+  if (!hasCommand('ffmpeg')) return false
+  const pick = proxyEncoder()
+  /* the filter cuts in software: `crop` and `scale` have hardware twins, but naming the rectangle
+     in pixels of the source frame is the same arithmetic either way and this keeps one code path */
+  const decode = pick === 'nvenc' ? '-hwaccel cuda' : pick === 'vaapi' ? '-hwaccel vaapi' : ''
+  try {
+    childProcess.execSync(
+      `ffmpeg -y ${decode} ${timeArgs(cropStart, cropEnd)} -i ${quote(src)} -vf ${filter} ${DELIVERY_ARGS[pick].join(' ')} -c:a copy ${quote(dest)}`,
+      { stdio: ['ignore', 'ignore', 'pipe'] }
     )
     return true
   } catch {
@@ -105,8 +151,18 @@ const getGroupProcessedDir = (outputDir: string, group: ManifestGroup) => {
 const writeCutProxy = (file: ManifestFile, dest: string, outputDir: string, groupId: string) => {
   if (!isVideoFile(file.path) || !file.proxy || !fs.existsSync(file.proxy)) return null
   const target = path.join(getCutProxyDir(outputDir, groupId), `${path.parse(dest).name}.mp4`)
-  const cropped = file.cropStart != null && file.cropEnd != null
-  if (cropped) {
+  const trimmed = file.cropStart != null && file.cropEnd != null
+  /* The frame has to be cut out of the proxy as well. The editor opens on these, so a proxy still
+     showing the mount in the corner would have somebody editing a picture that is not the one
+     about to be rendered. The rectangle is fractions of the frame, which is why it applies to a
+     640-wide copy as readily as to the clip. */
+  if (!isWholeFrame(file.frame)) {
+    const shape = videoShape(file.proxy)
+    if (!shape) return null
+    const filter = cropFilter(file.frame!, shape.width, shape.height)
+    return recodeVideo(file.proxy, target, filter, file.cropStart, file.cropEnd) ? target : null
+  }
+  if (trimmed) {
     if (!cropProxy(file.proxy, target, file.cropStart!, file.cropEnd!)) return null
   } else {
     fs.mkdirSync(path.dirname(target), { recursive: true })
@@ -116,8 +172,18 @@ const writeCutProxy = (file: ManifestFile, dest: string, outputDir: string, grou
 }
 
 const copyMedia = (file: ManifestFile, dest: string, time: Date) => {
-  if (isVideoFile(file.path) && file.cropStart != null && file.cropEnd != null) {
-    if (!cropVideo(file.path, dest, file.cropStart, file.cropEnd)) {
+  const video = isVideoFile(file.path)
+  const trimmed = file.cropStart != null && file.cropEnd != null
+  const framed = video && !isWholeFrame(file.frame)
+  if (framed) {
+    const shape = videoShape(file.path)
+    if (!shape)
+      throw new Error(`Cannot read the size of ${file.filename}: install ffprobe to crop its frame`)
+    const filter = cropFilter(file.frame!, shape.width, shape.height)
+    if (!recodeVideo(file.path, dest, filter, file.cropStart, file.cropEnd))
+      throw new Error(`ffmpeg could not crop the frame of ${file.filename}: install ffmpeg`)
+  } else if (video && trimmed) {
+    if (!trimVideo(file.path, dest, file.cropStart!, file.cropEnd!)) {
       throw new Error(
         `ffmpeg crop failed for ${file.filename} ${file.cropStart}→${file.cropEnd}: install ffmpeg or check range`
       )
@@ -297,7 +363,8 @@ const processJumps = (options?: ProcessOptions) => {
         size: source.size,
         mtime: source.mtime,
         cropStart: source.cropStart ?? null,
-        cropEnd: source.cropEnd ?? null
+        cropEnd: source.cropEnd ?? null,
+        frame: source.frame ?? null
       }
     }
     delete file.uploaded

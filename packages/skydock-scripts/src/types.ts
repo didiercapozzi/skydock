@@ -1,5 +1,19 @@
 import { z } from 'zod'
 
+/* The part of the picture to keep, as fractions of the whole rather than pixels. Fractions because
+   the rectangle is drawn on the proxy — a 640-wide copy of a 4K clip — and has to mean the same
+   thing on the clip itself, whatever either one's size. A mount in the corner of the frame is the
+   reason this exists: the obstacle is cut away and what is left keeps the shape it had.
+
+   Absent means the whole frame, which is not the same as a rectangle covering all of it: the whole
+   frame is copied as it is, while any rectangle at all has to be encoded again. */
+const frameCropSchema = z.object({
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  width: z.number().min(0).max(1),
+  height: z.number().min(0).max(1)
+})
+
 /* What processing wrote for this file, and the exact inputs that produced it. Change any of those
    inputs — recrop it, shift its time, replace the bytes — and the copy on disk is no longer this
    file's copy, which is how the board knows a file dropped back to `local` without anyone having
@@ -13,7 +27,8 @@ const processedRecordSchema = z.object({
     size: z.number(),
     mtime: z.number(),
     cropStart: z.number().nullable().optional(),
-    cropEnd: z.number().nullable().optional()
+    cropEnd: z.number().nullable().optional(),
+    frame: frameCropSchema.nullable().optional()
   })
 })
 
@@ -36,6 +51,7 @@ const manifestFileSchema = z.object({
   id: z.string().optional(),
   cropStart: z.number().nullable().optional(),
   cropEnd: z.number().nullable().optional(),
+  frame: frameCropSchema.nullable().optional(),
   /* set only on a file belonging to no jump — it is what makes it a lone file */
   destination: z.string().optional(),
   processed: processedRecordSchema.optional(),
@@ -49,7 +65,8 @@ const manifestFileSchema = z.object({
 const groupFileRefSchema = z.object({
   id: z.string(),
   cropStart: z.number().nullable().optional(),
-  cropEnd: z.number().nullable().optional()
+  cropEnd: z.number().nullable().optional(),
+  frame: frameCropSchema.nullable().optional()
 })
 
 const passengerSchema = z.object({
@@ -116,6 +133,7 @@ const manifestSchema = z.object({
   destinations: destinationsSchema.optional()
 })
 
+type FrameCrop = z.infer<typeof frameCropSchema>
 type ManifestFile = z.infer<typeof manifestFileSchema>
 type ManifestGroup = z.infer<typeof manifestGroupSchema>
 type ManifestPassenger = z.infer<typeof passengerSchema>
@@ -123,10 +141,19 @@ type Manifest = z.infer<typeof manifestSchema>
 type GroupsFile = z.infer<typeof groupsFileSchema>
 type Destination = z.infer<typeof destinationSchema>
 
-export type { Destination, GroupsFile, Manifest, ManifestFile, ManifestGroup, ManifestPassenger }
+export type {
+  Destination,
+  FrameCrop,
+  GroupsFile,
+  Manifest,
+  ManifestFile,
+  ManifestGroup,
+  ManifestPassenger
+}
 
 export {
   deliveredRecordSchema,
+  frameCropSchema,
   destinationSchema,
   destinationsSchema,
   groupFileRefSchema,

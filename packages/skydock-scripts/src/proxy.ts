@@ -387,6 +387,7 @@ export {
   cropProxy,
   proxyEncoder,
   setProxyEncoder,
+  videoShape,
   ensureProxies,
   getCutProxyDir,
   getProxyDir,

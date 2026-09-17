@@ -17,10 +17,28 @@ vi.mock('node:child_process', async (importOriginal) => {
    151 passing tests had nothing to say about it, because they all built their own paths instead of
    asking what processing actually wrote. These ask. */
 
-const tools = (cmd: string | Buffer) => {
-  if (String(cmd).startsWith('command -v')) return Buffer.from('/usr/bin/x')
+const tools = (cmd: string | Buffer, opts?: { encoding?: string }) => {
+  const line = String(cmd)
+  if (line.startsWith('command -v')) return Buffer.from('/usr/bin/x')
+  /* a 4K 16:9 clip, which is what the crop arithmetic is measured against */
+  if (line.startsWith('ffprobe')) {
+    const shape = 'width=3840\nheight=2160\n'
+    return opts?.encoding ? shape : Buffer.from(shape)
+  }
+  /* whatever ffmpeg is asked to write, it writes — the command itself is what is asserted on */
+  if (line.startsWith('ffmpeg')) {
+    const out = [...line.matchAll(/"([^"]+)"/g)].map((m) => m[1]).pop()
+    if (out) {
+      fs.mkdirSync(path.dirname(out), { recursive: true })
+      fs.writeFileSync(out, Buffer.from('media'))
+    }
+  }
   return Buffer.from('')
 }
+
+/* every ffmpeg the pass ran, so what it asked for is visible rather than inferred */
+const ffmpegCalls = () =>
+  execSyncMock.mock.calls.map((c) => String(c[0])).filter((l) => l.startsWith('ffmpeg'))
 
 const DAY = '08.08.2026'
 
@@ -181,5 +199,91 @@ describe('a jump filed nowhere', () => {
     processJumps({ manifestPath, outputDir })
 
     expect(delivered()).toEqual([path.join('jump_20260808', 'videos', 'jump_20260808_090909.mp4')])
+  })
+})
+
+/* Cutting a mount out of the corner of the frame. The rectangle is held as fractions so it means
+   the same on the 640-wide proxy it is drawn on and on the 4K clip it is cut from, and what comes
+   out keeps the shape and the size the clip came at. */
+describe('cropping the frame', () => {
+  const framed = { x: 0.1, y: 0, width: 0.9, height: 0.9 }
+
+  it('cuts the rectangle and comes back out at the size the clip came at', () => {
+    const { manifestPath } = write({
+      destination: 'Yverdon',
+      files: [{ ...clip('GX010001.MP4', 0), frame: framed }]
+    })
+
+    processJumps({ manifestPath, outputDir })
+
+    const cmd = ffmpegCalls().find((l) => l.includes('crop=')) ?? ''
+    expect(cmd).toContain('crop=3456:1944:384:0')
+    expect(cmd).toContain('scale=3840:2160')
+  })
+
+  /* the picture itself changes, so a stream copy cannot do it — this is the one thing in
+     processing that costs real time, and saying so out loud is the point of the test */
+  it('encodes again rather than copying, because the picture changed', () => {
+    const { manifestPath } = write({
+      destination: 'Yverdon',
+      files: [{ ...clip('GX010001.MP4', 0), frame: framed }]
+    })
+
+    processJumps({ manifestPath, outputDir })
+
+    const cmd = ffmpegCalls().find((l) => l.includes('crop=')) ?? ''
+    expect(cmd).not.toContain('-c copy')
+    expect(cmd).toMatch(/-c:v (libx264|h264_nvenc|h264_vaapi)/)
+  })
+
+  /* trimming the ends still moves no pixels, so it still copies */
+  it('still copies the stream when only the ends were trimmed', () => {
+    const { manifestPath } = write({
+      destination: 'Yverdon',
+      files: [{ ...clip('GX010001.MP4', 0), cropStart: 1, cropEnd: 4 }]
+    })
+
+    processJumps({ manifestPath, outputDir })
+
+    const cmd = ffmpegCalls().find((l) => l.includes('-ss')) ?? ''
+    expect(cmd).toContain('-c copy')
+    expect(cmd).not.toContain('crop=')
+  })
+
+  it('does both at once when both were set', () => {
+    const { manifestPath } = write({
+      destination: 'Yverdon',
+      files: [{ ...clip('GX010001.MP4', 0), frame: framed, cropStart: 1, cropEnd: 4 }]
+    })
+
+    processJumps({ manifestPath, outputDir })
+
+    const cmd = ffmpegCalls().find((l) => l.includes('crop=')) ?? ''
+    expect(cmd).toContain('-ss 1')
+    expect(cmd).toContain('-t 3.000000')
+    expect(cmd).toContain('crop=3456:1944:384:0')
+  })
+
+  /* a rectangle covering the whole frame is not a crop: the file is copied untouched */
+  it('copies the file untouched when the rectangle covers everything', () => {
+    const { manifestPath } = write({
+      destination: 'Yverdon',
+      files: [{ ...clip('GX010001.MP4', 0), frame: { x: 0, y: 0, width: 1, height: 1 } }]
+    })
+
+    processJumps({ manifestPath, outputDir })
+
+    expect(ffmpegCalls().some((l) => l.includes('crop='))).toBe(false)
+  })
+
+  it('leaves a photo alone — a frame crop is for clips', () => {
+    const { manifestPath } = write({
+      destination: 'Yverdon',
+      files: [{ ...clip('G0010002.JPG', 1), frame: framed }]
+    })
+
+    processJumps({ manifestPath, outputDir })
+
+    expect(ffmpegCalls().some((l) => l.includes('crop='))).toBe(false)
   })
 })

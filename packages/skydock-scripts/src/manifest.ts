@@ -42,6 +42,8 @@ const resolveGroups = (files: ManifestFile[], groupsFile: GroupsFile | null) => 
         else delete resolved.cropStart
         if (ref.cropEnd !== undefined) resolved.cropEnd = ref.cropEnd
         else delete resolved.cropEnd
+        if (ref.frame !== undefined) resolved.frame = ref.frame
+        else delete resolved.frame
         return resolved
       })
       .filter((f): f is ManifestFile => f !== null)
@@ -101,7 +103,8 @@ const saveManifest = (manifestPath: string, manifest: Manifest) => {
         .map((f) => ({
           id: f.id!,
           cropStart: f.cropStart ?? undefined,
-          cropEnd: f.cropEnd ?? undefined
+          cropEnd: f.cropEnd ?? undefined,
+          frame: f.frame ?? undefined
         }))
     }))
   }

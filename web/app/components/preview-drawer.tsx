@@ -1,7 +1,8 @@
+import { fitRatio, FrameCropper } from './frame-cropper'
 import { useEffect, useRef, useState } from 'react'
 import { Go, Mini } from './buttons'
 import { Spacer } from './modal'
-import type { ProxyFact } from '@skydock/scripts'
+import type { FrameCrop, ProxyFact } from '@skydock/scripts'
 import type { ManifestFile } from './types'
 import {
   clock,
@@ -43,13 +44,28 @@ const V = ({ children }: { children: React.ReactNode }) => (
 const NOT_YET =
   'Not built yet: preparing a file copies its video stream as it is, which cannot turn or reframe a picture.'
 
-const RATIOS = ['None', 'Same', '9:16', '4:5', '1:1', '16:9', 'Free']
+type RatioOption = { label: string; ratio: number | null; title: string }
+
+/* `Same` is the one that matters most: a clip with a mount in the corner is cropped and stays the
+   shape it was, which is what keeps a 16:9 jump 16:9 all the way to the passenger. */
+const RATIOS: RatioOption[] = [
+  { label: 'None', ratio: null, title: 'No crop — the whole picture goes out as shot' },
+  { label: 'Same', ratio: null, title: 'Keep the shape this clip already has' },
+  { label: '9:16', ratio: 9 / 16, title: 'Upright, for a phone' },
+  { label: '4:5', ratio: 4 / 5, title: 'Portrait' },
+  { label: '1:1', ratio: 1, title: 'Square' },
+  { label: '16:9', ratio: 16 / 9, title: 'Widescreen' },
+  { label: 'Free', ratio: null, title: 'Drag the corners to any shape' }
+]
 
 const PreviewDrawer = ({
   files,
   index,
   status,
   proxy,
+  frame,
+  onFrameChange,
+  onFrameApplyToJump,
   onClose,
   onPrevious,
   onNext,
@@ -71,6 +87,11 @@ const PreviewDrawer = ({
   status?: string
   /* the server's look at whether this clip has its small copy, and which file to play */
   proxy?: ProxyFact
+  /* the part of the picture to keep, or nothing for the whole of it */
+  frame?: FrameCrop | null
+  onFrameChange: (frame: FrameCrop | null) => void
+  /* every other clip in the jump gets the same rectangle; absent for a file in no jump */
+  onFrameApplyToJump?: () => void
   onClose: () => void
   onPrevious: () => void
   onNext: () => void
@@ -89,6 +110,11 @@ const PreviewDrawer = ({
   const file = files[index]
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [playing, setPlaying] = useState(false)
+  /* the clip's own pixel size, read off the video once it has loaded — a ratio is measured against
+     the picture, and until it is known the rectangle cannot be shaped */
+  const [shape, setShape] = useState({ width: 16, height: 9 })
+  const [shown, setShown] = useState('None')
+  const [ratio, setRatio] = useState<number | null>(null)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -111,6 +137,27 @@ const PreviewDrawer = ({
   if (!file) return null
 
   const fileUrl = getPlaybackUrl(file, proxy)
+  /* a rectangle is on screen whenever there is one to show; `None` takes it away */
+  const framing = frame != null && shown !== 'None'
+
+  /* `Same` and `Free` are the clip's own shape and no shape at all; the rest are named ratios.
+     Picking one reshapes the rectangle there and then, so the shape is never a promise the
+     rectangle has yet to keep. */
+  const pickRatio = (option: RatioOption) => {
+    setShown(option.label)
+    if (option.label === 'None') {
+      setRatio(null)
+      onFrameChange(null)
+      return
+    }
+    const next = option.label === 'Free' ? null : (option.ratio ?? shape.width / shape.height)
+    setRatio(next)
+    onFrameChange(
+      next === null
+        ? (frame ?? fitRatio(shape.width / shape.height, shape.width, shape.height))
+        : fitRatio(next, shape.width, shape.height)
+    )
+  }
   const video = isVideoFile(file.filename)
   const from = cropStart ?? 0
   const to = cropEnd ?? duration
@@ -173,17 +220,32 @@ const PreviewDrawer = ({
           <div className='min-w-0 bg-[#0b0f13] p-3.5'>
             <div className='grid h-[min(46vh,380px)] place-items-center overflow-hidden'>
               {video ? (
-                <video
-                  ref={videoRef}
-                  src={fileUrl}
-                  onPlay={() => setPlaying(true)}
-                  onPause={() => setPlaying(false)}
-                  onLoadedMetadata={(e) => {
-                    const v = e.currentTarget
-                    if (v.duration && Number.isFinite(v.duration)) onDurationChange(v.duration)
-                  }}
-                  className='max-h-full max-w-full rounded-md'
-                />
+                /* the rectangle is drawn on the picture, so it is laid over a box the video
+                   fills rather than over the whole panel — the panel is letterboxed and a
+                   rectangle measured against it would mean the wrong part of the frame */
+                <span className='relative inline-block max-h-full max-w-full leading-none'>
+                  <video
+                    ref={videoRef}
+                    src={fileUrl}
+                    onPlay={() => setPlaying(true)}
+                    onPause={() => setPlaying(false)}
+                    onLoadedMetadata={(e) => {
+                      const v = e.currentTarget
+                      if (v.duration && Number.isFinite(v.duration)) onDurationChange(v.duration)
+                      if (v.videoWidth && v.videoHeight)
+                        setShape({ width: v.videoWidth, height: v.videoHeight })
+                    }}
+                    className='max-h-[min(46vh,380px)] max-w-full rounded-md'
+                  />
+                  {framing && (
+                    <FrameCropper
+                      crop={frame}
+                      ratio={ratio}
+                      frame={shape}
+                      onChange={onFrameChange}
+                    />
+                  )}
+                </span>
               ) : (
                 <img
                   src={fileUrl}
@@ -268,19 +330,30 @@ const PreviewDrawer = ({
 
             <Panel title='Frame'>
               <div className='flex flex-wrap gap-1.5'>
-                {RATIOS.map((ratio) => (
+                {RATIOS.map((option) => (
                   <Mini
-                    key={ratio}
-                    disabled
-                    title={NOT_YET}
-                    onClick={() => {}}>
-                    {ratio}
+                    key={option.label}
+                    aria-pressed={shown === option.label}
+                    title={option.title}
+                    onClick={() => pickRatio(option)}>
+                    {option.label}
                   </Mini>
                 ))}
               </div>
               <div className='mt-1 text-[12px] text-ink-2'>
-                Drag the frame to move it, a corner to resize.
+                {framing
+                  ? 'Drag the rectangle to move it, a corner to resize. What is dimmed is cut away.'
+                  : 'Cut a mount or a finger out of the corner. Same keeps the shape the clip already has.'}
               </div>
+              {framing && onFrameApplyToJump && (
+                <div className='mt-1.5'>
+                  <Mini
+                    title='Give every other clip in this jump the same rectangle — a badly mounted camera is badly mounted for the whole jump'
+                    onClick={onFrameApplyToJump}>
+                    Apply to the whole jump
+                  </Mini>
+                </div>
+              )}
             </Panel>
 
             <Panel title='On the file'>

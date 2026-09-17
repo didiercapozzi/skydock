@@ -1,3 +1,5 @@
+import { isVideoFile } from '@skydock/scripts'
+import type { FrameCrop } from '@skydock/scripts'
 import { useRef, useState } from 'react'
 import type { VideoRef } from '../components/preview-drawer'
 import type { ManifestFile, ManifestGroup, PreviewState } from '../components/types'
@@ -18,9 +20,14 @@ const LOOSE = 'loose'
 const usePreview = (
   groups: ManifestGroup[],
   onGroupsChange: (next: ManifestGroup[]) => void,
-  onFileCrop: (file: ManifestFile, range: CropRange) => void
+  /* a lone file's crop has no group reference to live on, so it is saved on the registry entry —
+     the frame goes the same way */
+  onFileCrop: (file: ManifestFile, range: CropRange, frame?: FrameCrop | null) => void
 ) => {
   const [preview, setPreview] = useState<PreviewState>(null)
+  /* the rectangle on screen, held here rather than read back off the snapshot the drawer was
+     opened with — that snapshot never learns about a rectangle set after it was taken */
+  const [frame, setFrame] = useState<FrameCrop | null>(null)
   const videoRefRef = useRef<VideoRef | null>(null)
   const [videoState, setVideoStateRaw] = useState<VideoState>({
     crop: { cropStart: null, cropEnd: null },
@@ -42,6 +49,7 @@ const usePreview = (
       currentTime: 0,
       duration: 0
     })
+    setFrame(file.frame ?? null)
     setPreview({ files, index: found === -1 ? 0 : found, groupId })
   }
 
@@ -85,6 +93,43 @@ const usePreview = (
     if (committed(range)) closePreview()
   }
 
+  /* The rectangle is saved as it is dragged, not on a separate press: it is drawn on the picture,
+     so what is on screen already is the commit. `null` clears it back to the whole frame. */
+  const handleFrameChange = (next: FrameCrop | null) => {
+    if (!preview) return
+    const file = preview.files[preview.index]
+    if (!file) return
+    setFrame(next)
+    if (preview.groupId === LOOSE) {
+      onFileCrop(file, { cropStart: file.cropStart ?? null, cropEnd: file.cropEnd ?? null }, next)
+      return
+    }
+    onGroupsChange(
+      groups.map((g) =>
+        g.id !== preview.groupId
+          ? g
+          : {
+              ...g,
+              files: g.files.map((f) => (f.path === file.path ? { ...f, frame: next } : f))
+            }
+      )
+    )
+  }
+
+  /* A mount is mounted badly for the whole jump, so one rectangle usually wants to be all of them.
+     Only the clips get it — a photo has no frame crop — and it replaces whatever each had. */
+  const handleFrameApplyToJump = () => {
+    if (!preview || preview.groupId === LOOSE) return
+    if (!preview.files[preview.index]) return
+    onGroupsChange(
+      groups.map((g) =>
+        g.id !== preview.groupId
+          ? g
+          : { ...g, files: g.files.map((f) => (isVideoFile(f.path) ? { ...f, frame } : f)) }
+      )
+    )
+  }
+
   const handleVideoRef = (ref: VideoRef) => {
     videoRefRef.current = ref
   }
@@ -95,6 +140,9 @@ const usePreview = (
     handlePreview,
     handleVideoSeek,
     handleVideoApply,
+    frame,
+    handleFrameChange,
+    handleFrameApplyToJump,
     handleVideoRef,
     setVideoState,
     closePreview,

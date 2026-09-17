@@ -295,10 +295,24 @@ step to the next file; along the bottom are the ways out, and saving is offered 
 has actually changed, which the dialog says out loud. A file that belongs to no jump can be cropped
 just like one that does, and a row shows the crop it is carrying and whether it has been applied yet.
 
-> **Drawn, not built.** Turning a picture and reframing it are shown in that dialog and cannot be
-> used, because preparing a file copies its video through untouched and neither can be done without
-> re-encoding it. They are drawn because they are part of the decision, and held shut rather than
-> left out so that what is missing is visible.
+**Cropping the frame.** A mount, a strut or a finger in the corner of the picture is cut away by
+dragging a rectangle over the video: what is dimmed goes, what is inside it stays. The rectangle holds
+the shape the clip already has unless another is chosen, so a 16:9 jump is still 16:9 when the
+passenger gets it — that is the point of it. What is left is put back to the size the clip came at, so
+a 4K clip stays 4K and a timeline is not a mix of sizes.
+
+Set on one clip it can be given to every other clip in the same jump in one press, because a badly
+mounted camera is badly mounted for the whole jump. It is for clips only — a photo has no frame crop.
+
+This is the one thing in preparing a file that cannot be done by copying. Trimming the ends moves no
+pixels, so the file is copied and nothing is lost; cutting the frame changes the picture, so the clip
+is encoded again — for quality rather than for speed, on the graphics card where there is one — and a
+card of clips takes minutes rather than seconds. The small copy the editor opens on is cut to match,
+or somebody would be editing a picture that is not the one about to be rendered.
+
+> **Drawn, not built.** Turning a picture is shown in that dialog and cannot be used, because it
+> cannot be done without re-encoding and nothing yet asks for it. It is drawn because it is part of
+> the decision, and held shut rather than left out so that what is missing is visible.
 
 **Acting.** Each day and each tandem offers exactly one next step, in the same place, and never offers
 them out of order. A dropzone day is **prepared**, then **sent**. A tandem is **processed**, then given
@@ -504,4 +518,4 @@ Worth knowing, so nobody goes looking:
 - **Nothing comes back down from the storage.** SkyDock uploads and lists; it never downloads.
 - **Archiving is part of delivering.** The zips are written as a tandem is delivered and cannot be
   made on their own, nor backed up as plain files instead of a zip.
-- **A picture cannot be turned or reframed.** See the note under Cropping.
+- **A picture cannot be turned.** See the note under Cropping. Reframing it can.

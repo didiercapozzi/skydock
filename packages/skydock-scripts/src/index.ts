@@ -1,8 +1,25 @@
 /* What the web app may import. Everything else in this package is internal to it — the tests reach
    into the modules directly, so this stays exactly as wide as the app needs. */
 
-export type { Destination, Manifest, ManifestFile, ManifestGroup } from './types'
-export { destinationSchema, manifestFileSchema, manifestGroupSchema } from './types'
+export type { Destination, FrameCrop, Manifest, ManifestFile, ManifestGroup } from './types'
+export {
+  destinationSchema,
+  frameCropSchema,
+  manifestFileSchema,
+  manifestGroupSchema
+} from './types'
+
+/* arithmetic only — the board draws the rectangle with the same functions processing cuts it with,
+   because two ideas of "which pixels" would disagree and the disagreement would be invisible */
+export {
+  containCrop,
+  cropFilter,
+  cropToPixels,
+  fitRatio,
+  FULL_FRAME,
+  isWholeFrame,
+  withRatio
+} from './frameCrop'
 
 export { groupFromFiles, reclusterGroups, regroupLooseFiles, shiftFiles } from './clustering'
 

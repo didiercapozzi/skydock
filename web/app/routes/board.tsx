@@ -14,7 +14,7 @@ import {
   statTandemArtifacts,
   uploadGate
 } from '@skydock/scripts'
-import type { OutputFact, ProxyFact, RemoteListing } from '@skydock/scripts'
+import type { FrameCrop, OutputFact, ProxyFact, RemoteListing } from '@skydock/scripts'
 import { Fragment, useEffect, useState } from 'react'
 import { z } from 'zod'
 import { Go, Mini, Seg } from '../components/buttons'
@@ -304,9 +304,15 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
      uncropped file. */
   const cropLoneFile = (
     file: ManifestFile,
-    range: { cropStart: number | null; cropEnd: number | null }
+    range: { cropStart: number | null; cropEnd: number | null },
+    frame?: FrameCrop | null
   ) => {
-    const cropped = { ...file, cropStart: range.cropStart, cropEnd: range.cropEnd }
+    const cropped = {
+      ...file,
+      cropStart: range.cropStart,
+      cropEnd: range.cropEnd,
+      ...(frame !== undefined ? { frame } : {})
+    }
     setLoose((current) => current.map((f) => (f.path === file.path ? cropped : f)))
     updateGroups(groups, [cropped])
   }
@@ -1345,6 +1351,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           index={preview.preview.index}
           status={statusOf(preview.preview.files[preview.preview.index])}
           proxy={proxies[preview.preview.files[preview.preview.index]?.path ?? '']}
+          frame={preview.frame}
+          onFrameChange={preview.handleFrameChange}
+          onFrameApplyToJump={
+            preview.preview.groupId === LOOSE ? undefined : preview.handleFrameApplyToJump
+          }
           onClose={preview.closePreview}
           onPrevious={() =>
             preview.setPreview((p) => (p ? { ...p, index: Math.max(0, p.index - 1) } : p))

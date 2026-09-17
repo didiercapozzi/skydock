@@ -16,7 +16,11 @@ type RemoteListing = { dirs: string[]; sizes: Record<string, number | null> }
 type StatusContext = {
   /* the crop in force where the file is drawn: a group ref's crop for a grouped file, the
      registry entry's own for a lone file */
-  crop?: { cropStart?: number | null; cropEnd?: number | null }
+  crop?: {
+    cropStart?: number | null
+    cropEnd?: number | null
+    frame?: { x: number; y: number; width: number; height: number } | null
+  }
   output?: OutputFact
   remote?: RemoteListing | null
 }
@@ -26,7 +30,24 @@ const dirOf = (remotePath: string) => {
   return cut <= 0 ? '/' : remotePath.slice(0, cut)
 }
 
-/* every input that decided what `execute` wrote — bytes, capture time, crop range */
+/* Two rectangles are the same rectangle, with no rectangle at all counting as the whole frame —
+   so drawing one that happens to cover everything does not make a processed copy look stale. */
+const sameFrame = (
+  left: { x: number; y: number; width: number; height: number } | null | undefined,
+  right: { x: number; y: number; width: number; height: number } | null | undefined
+) => {
+  const whole = (c: typeof left) => !c || (c.x <= 0 && c.y <= 0 && c.width >= 1 && c.height >= 1)
+  if (whole(left) && whole(right)) return true
+  if (!left || !right) return false
+  return (
+    left.x === right.x &&
+    left.y === right.y &&
+    left.width === right.width &&
+    left.height === right.height
+  )
+}
+
+/* every input that decided what `execute` wrote — bytes, capture time, crop range, frame */
 const sourceMatches = (file: ManifestFile, context?: StatusContext) => {
   const record = file.processed
   if (!record) return false
@@ -36,7 +57,8 @@ const sourceMatches = (file: ManifestFile, context?: StatusContext) => {
     record.source.size === file.size &&
     record.source.mtime === file.mtime &&
     (record.source.cropStart ?? null) === (crop.cropStart ?? null) &&
-    (record.source.cropEnd ?? null) === (crop.cropEnd ?? null)
+    (record.source.cropEnd ?? null) === (crop.cropEnd ?? null) &&
+    sameFrame(record.source.frame, crop.frame)
   )
 }
 
