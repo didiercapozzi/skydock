@@ -244,11 +244,23 @@ not evidence.
   select-all for the kind on screen, and the stage button. Only one kind is on screen at a time.
 - **The film sits above the card, not below it.** Once it exists it is the most important thing on the
   page — the one thing here that cannot be made again — so it is not at the bottom of 500 photos.
-- **Once delivered, the card folds to a record.** One line — `🔒 515 files on the NAS — 500 photos in
-luc_favre.photos.zip, 15 original videos in luc_favre_20260801.zip.` — with **Show the files** beside
-  it, and **Hide the files** on the header once open. Nothing is hidden; it stops presenting 515 rows
-  nobody can change. The header's action reads `Upload again…`, and `Select all` is gone while folded
-  because there is nothing to select.
+- **Once delivered, the page stops being about the source files and becomes about the NAS.** It shows
+  **one card per folder up there**, each listing exactly what is in it, with **Download** on every line:
+
+  | Card                                     | Holds                                                                                                 | Tag                   |
+  | ---------------------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------- |
+  | **For Luc Favre** → `/volume1/Luc Favre` | `luc_favre.mp4` · `luc_favre.photos.zip` · the share link                                             | shared with Luc Favre |
+  | **Backup** → `/volume1/backup`           | `luc_favre_20260801.zip` — or the originals listed one by one, when the backup is kept as plain files | never shared          |
+
+  Download fetches a copy back; the one on the NAS stays where it is. This is what makes a delivered
+  tandem useful months later: the two folders, and a way to get either of them again.
+
+- **The explainer goes.** "One passenger is one folder…" is about _filing_ files into a tandem — once it
+  is delivered there is nothing left to file, so the page stops teaching and starts reporting.
+- **The film strip goes too**, since the passenger's card already lists the film.
+- **The 515 source files become a footnote**, not a card: `🔒 Made from 515 files on this machine —
+15 videos, 500 photos. All on the NAS, so none of them can be changed.` with **Show them**. Nothing is
+  hidden; it stops being the main event. The header's action reads `Upload again…`.
 - **Dropzone days lock but do not fold.** Their files close to changes exactly as a tandem's do, but a
   dropzone folder is the running record of every day ever shot there — it is where you go to _find_ old
   footage, so collapsing sent days would hurt the thing it is for. A tandem is one finished job; a

@@ -717,6 +717,64 @@
     border: 1px dashed #c2703a;
     padding: 0 6px;
   }
+  .navcard {
+    margin: 10px 0 0;
+  }
+  /* the flex rule for .pitem is scoped to .modal, where it had to out-specify .modal label */
+  .navcard .pitem {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 6px;
+    border-radius: 5px;
+  }
+  .navcard .pitem:hover {
+    background: var(--line-2);
+  }
+  .navcard .pitem code {
+    font-family: var(--mono);
+    font-size: 11.5px;
+  }
+  .navcard .pitem .fixed {
+    width: 15px;
+    text-align: center;
+    flex: none;
+  }
+  .navcard .dir {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink);
+    background: var(--line-2);
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+  .navcard .pitem .what {
+    margin-left: auto;
+    margin-right: 10px;
+  }
+  .navcard .linkrow {
+    border-top: 1px solid var(--line-2);
+    margin-top: 4px;
+    padding-top: 8px;
+  }
+  .navcard .linkrow code {
+    font-size: 11px;
+    color: var(--accent);
+  }
+  .navcard .linkrow .spacer {
+    flex: 1;
+  }
+  .sourcenote {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin: 14px 0 0;
+    padding: 8px 12px;
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+    font-size: 12.5px;
+    color: var(--ink-3);
+  }
   .closedcard {
     display: flex;
     align-items: center;
@@ -5076,15 +5134,19 @@
         const pics = j.files.filter((f) => f.kind === 'photo')
         const ready = j.files.every((f) => f.status !== 'local')
 
-        const note = document.createElement('p')
-        note.className = 'note'
-        note.innerHTML =
-          '<b>One passenger is one folder.</b> Everything dropped here joins this tandem — the ' +
-          'half-hour rule has no say once a jump has a name, so a second camera or a late clip never becomes a ' +
-          'separate section under ' +
-          n.name +
-          '.'
-        s.appendChild(note)
+        /* The explainer is about filing files into a tandem. Once it is delivered there is nothing
+           left to file, so it goes — the page stops teaching and starts reporting. */
+        if (!j.sent) {
+          const note = document.createElement('p')
+          note.className = 'note'
+          note.innerHTML =
+            '<b>One passenger is one folder.</b> Everything dropped here joins this tandem — the ' +
+            'half-hour rule has no say once a jump has a name, so a second camera or a late clip never becomes a ' +
+            'separate section under ' +
+            n.name +
+            '.'
+          s.appendChild(note)
+        }
 
         /* One card, and the header says which half of it you are looking at. 15 clips and 500 stills
          are two different jobs — cutting the film, then culling the photos — and nobody does both
@@ -5095,8 +5157,108 @@
         const opt2 = state.parcel
         const backName2 = slug(who) + '_' + dayStamp(minT(j))
 
+        /* Once it is delivered, what matters is what is on the NAS — not the 515 files it was made
+           from. Two cards, one per folder up there, each listing exactly what is in it and offering it
+           back. The source files become a footnote you can still open. */
+        if (j.sent) {
+          const zipOf2 = (list) => Math.round(list.reduce((n2, f) => n2 + f.size, 0) * 0.98)
+          const plainBackup = j.backedUp && j.backedUp.as === 'folder'
+
+          const nasCard = (title, dir, tag, items) => {
+            const c = document.createElement('div')
+            c.className = 'parcel navcard'
+            c.innerHTML =
+              '<div class="ph"><b></b><span class="arrow">→</span><code class="dir"></code>' +
+              '<span class="meta ptag">' +
+              tag +
+              '</span></div><div class="pitems"></div>'
+            c.querySelector('b').textContent = title
+            c.querySelector('.dir').textContent = dir || 'nowhere yet'
+            const body = c.querySelector('.pitems')
+            items.forEach((it) => {
+              const row = document.createElement('div')
+              row.className = 'pitem'
+              row.innerHTML =
+                '<span class="fixed">' +
+                it.icon +
+                '</span><code></code>' +
+                '<span class="meta"></span><span class="meta what"></span>'
+              row.querySelector('code').textContent = it.name
+              row.querySelectorAll('.meta')[0].textContent = size(it.size)
+              row.querySelector('.what').textContent = it.what
+              const get = document.createElement('button')
+              get.className = 'mini'
+              get.type = 'button'
+              get.textContent = 'Download'
+              get.title = 'Fetch it back from ' + dir
+              get.addEventListener('click', () =>
+                toast(
+                  'Downloading ' +
+                    it.name +
+                    ' (' +
+                    size(it.size) +
+                    ') from ' +
+                    dir +
+                    ' — the copy on the NAS stays where it is.'
+                )
+              )
+              row.appendChild(get)
+              body.appendChild(row)
+            })
+            return c
+          }
+
+          const paxCard = nasCard('For ' + who, j.sent.dir, 'shared with ' + who, [
+            { icon: '▶', name: j.film.name, size: j.film.size, what: 'the film' },
+            {
+              icon: '🗜',
+              name: slug(who) + '.photos.zip',
+              size: zipOf2(pics),
+              what: plural(pics.length, 'photo')
+            }
+          ])
+          const linkRow = document.createElement('div')
+          linkRow.className = 'pitem linkrow'
+          linkRow.innerHTML =
+            '<span class="fixed">🔗</span><code></code><span class="spacer"></span>'
+          linkRow.querySelector('code').textContent = j.sent.share
+          const copy = document.createElement('button')
+          copy.className = 'mini'
+          copy.type = 'button'
+          copy.textContent = 'Copy share link'
+          copy.addEventListener('click', () => toast('Share link copied: ' + j.sent.share))
+          linkRow.appendChild(copy)
+          paxCard.querySelector('.pitems').appendChild(linkRow)
+          s.appendChild(paxCard)
+
+          if (j.backedUp) {
+            s.appendChild(
+              nasCard(
+                'Backup',
+                j.backedUp.where,
+                'never shared',
+                plainBackup
+                  ? vids.map((f) => ({
+                      icon: '▶',
+                      name: nameOf(f) || f.name,
+                      size: f.size,
+                      what: 'original'
+                    }))
+                  : [
+                      {
+                        icon: '🗜',
+                        name: backName2 + '.zip',
+                        size: j.backedUp.size,
+                        what: plural(vids.length, 'original video')
+                      }
+                    ]
+              )
+            )
+          }
+        }
+
         /* the film, once it exists: the one thing here nobody can make again */
-        if (j.film) {
+        if (j.film && !j.sent) {
           const strip = document.createElement('div')
           strip.className = 'filmstrip' + (j.sent ? ' done' : '')
           strip.innerHTML =
@@ -5245,34 +5407,29 @@
          becomes a record. It folds to one line rather than disappearing — nothing is hidden, it just
          stops presenting 515 rows nobody can change. */
         if (j.sent && j.folded) {
-          const sum = document.createElement('div')
-          sum.className = 'closedcard'
-          sum.innerHTML =
-            '<span class="lockmark">🔒</span><span></span><span class="spacer"></span>'
+          /* The two cards above already say what is on the NAS. What is left is where it came
+             from — a footnote, not a card, and still openable. */
+          const sum = document.createElement('p')
+          sum.className = 'sourcenote'
+          sum.innerHTML = '<span class="lockmark">🔒</span><span></span>'
           sum.querySelector('span:nth-child(2)').textContent =
+            'Made from ' +
             plural(j.files.length, 'file') +
-            ' on the NAS — ' +
+            ' on this machine — ' +
+            plural(vids.length, 'video') +
+            ', ' +
             plural(pics.length, 'photo') +
-            ' in ' +
-            slug(who) +
-            '.photos.zip, ' +
-            plural(vids.length, 'original video') +
-            (opt2.backupAs === 'zip' ? ' in ' + backName2 + '.zip' : ' in the backup folder') +
-            '.'
+            '. All on the NAS, so none of them can be changed.'
           const open = document.createElement('button')
           open.className = 'mini'
           open.type = 'button'
-          open.textContent = 'Show the files'
+          open.textContent = 'Show them'
           open.addEventListener('click', () => {
             j.folded = false
             render()
           })
           sum.appendChild(open)
-          body.appendChild(sum)
-          card.appendChild(head)
-          card.appendChild(body)
-          dropOn(card, { kind: 'pax', name: n.name })
-          s.appendChild(card)
+          s.appendChild(sum)
           return
         }
         if (!shown.length) {
