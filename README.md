@@ -81,16 +81,23 @@ there. `SKYDOCK_EDITOR` picks a different editor, `SKYDOCK_EDITOR_QUEUE` a diffe
 Everything SkyDock writes into `output/` is therefore owned by root, and the editor running on the
 host would get it read-only. Opening a project works, and so does playing its clips — but saving the
 edit and rendering the film both write, and both would be refused, the second one only at the end of
-a render. So `dev:bridge` sets `umask 000` as well: what it writes stays root-owned but is writable
-by everyone, which is what lets the editor on the host save and render into it. That is a
-development-machine trade — permissive modes under `output/` — and it is the reason the bridge
-script exists at all. `open-on-host.sh` still warns if it opens something it cannot write, which
-catches whatever was written before this.
+a render. Two things answer that, and they answer different halves of it.
 
-Files from before that are already root-owned need taking once, on the host:
+`dev:bridge` sets `umask 000`, so what SkyDock writes from then on is writable by everybody. That is
+a development-machine trade — permissive modes under `output/` — and it covers the folders the
+editor only reads, the proxies above all.
+
+The jump being opened gets more than that: the bridge hands its folder over, `chown`ing it to
+whoever owns the repo, which on a bind mount is the host user. Being allowed to write a file and
+owning it are not the same thing — an editor may decline a project belonging to somebody else
+whatever the mode says, and anything written before the umask was set is still the old `0644`. The
+container runs as root, so it can settle this rather than leave it to be discovered at a save.
+`open-on-host.sh` still warns if it opens something it cannot write, which catches the rest.
+
+Nothing else under `output/` is handed over, so old files stay as they are. To take the lot once:
 
 ```sh
-sudo chmod -R a+rwX output/
+sudo chown -R "$USER" output/
 ```
 
 The packaged desktop build has none of this, since there is only one user in it.

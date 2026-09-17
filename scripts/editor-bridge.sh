@@ -15,8 +15,19 @@
 set -eu
 
 project="$1"
+root="$(cd "$(dirname "$0")/.." && pwd)"
 queue="${SKYDOCK_EDITOR_QUEUE:-${SKYDOCK_OUTPUT_DIR:-/workspace/output}/.editor-requests}"
 watcher="$(dirname "$queue")/.editor-watcher"
+
+# The jump's folder is handed to whoever will be editing it. Making it writable by everybody is not
+# the same as giving it away: an editor may decline a project that belongs to somebody else however
+# the mode reads, and anything written here before the umask was set is still the old 0644. This
+# side runs as root, so the question can be settled instead of argued about. Whoever owns the repo
+# is whoever will open the project — it was checked out on the host, not in here.
+owner="$(stat -c '%u:%g' "$root" 2>/dev/null || echo '')"
+if [ -n "$owner" ]; then
+  chown -R "$owner" "$(dirname "$project")" 2>/dev/null || true
+fi
 
 mkdir -p "$(dirname "$queue")"
 printf '%s\n' "$project" >>"$queue"
