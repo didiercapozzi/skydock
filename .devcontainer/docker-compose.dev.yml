@@ -4,7 +4,9 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     privileged: true
-    runtime: nvidia
+    runtime: ${SKYDOCK_DOCKER_RUNTIME:-runc}
+    # No `devices:` entry: `privileged` above already grants the whole of /dev, so naming
+    # /dev/dri added nothing — and it is fatal on a machine that has no such path at all.
     devices:
       - /dev/dri:/dev/dri
     volumes:
