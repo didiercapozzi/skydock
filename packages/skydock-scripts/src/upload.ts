@@ -30,7 +30,7 @@ type UploadTarget = {
 const LIST_CONCURRENCY = 4
 
 /* every file a tandem's upload put on the storage, whichever parcel it went in */
-const deliveredFiles = (record: ManifestGroup['delivered']) =>
+const uploadedFiles = (record: ManifestGroup['uploaded']) =>
   record
     ? [record.film, record.photos, record.rushes, ...(record.originals ?? [])].filter(
         (f): f is NonNullable<typeof f> => f !== undefined
@@ -46,10 +46,10 @@ const listRemoteFiles = async (manifest: Manifest, session: NasSession) => {
   const wanted = [
     ...new Set([
       ...manifest.files.flatMap((f) => (f.uploaded ? [parentOf(f.uploaded.remotePath)] : [])),
-      /* and wherever a tandem's upload put its film, photos and originals — a delivered tandem is
-         only delivered while those are still there */
+      /* and wherever a tandem's upload put its film, photos and originals — an uploaded tandem is
+         only uploaded while those are still there */
       ...manifest.groups.flatMap((g) =>
-        deliveredFiles(g.delivered).map((f) => parentOf(f.remotePath))
+        uploadedFiles(g.uploaded).map((f) => parentOf(f.remotePath))
       )
     ])
   ]
@@ -71,11 +71,11 @@ const listRemoteFiles = async (manifest: Manifest, session: NasSession) => {
    folder that answered counts — a listing that failed is not evidence of anything, so it takes
    nothing away (RULES, File status). */
 const goneFromStorage = (
-  record: ManifestGroup['delivered'],
+  record: ManifestGroup['uploaded'],
   remote: { dirs: string[]; sizes: Record<string, number | null> } | null
 ) =>
   remote
-    ? deliveredFiles(record).filter((f) => {
+    ? uploadedFiles(record).filter((f) => {
         if (!remote.dirs.includes(parentOf(f.remotePath))) return false
         const size = remote.sizes[f.remotePath]
         return size === undefined || (size !== null && size !== f.size)
@@ -164,7 +164,7 @@ const resolveUploadTargets = ({
   defaultFolder: string | null
   scope: UploadScope
 }) => {
-  /* A tandem's files go to the storage by delivering (RULES, Network storage). Not because they
+  /* A tandem's files go to the storage by uploading the tandem (RULES, Network storage). Not because they
      are not uploaded — they are — but because they do not all go to the same place: the film and
      the photos to the passenger, the originals to the backup. This upload sends a folder whole,
      which would put the project, the working copies and the originals in with the passenger's.
@@ -276,7 +276,7 @@ const uploadScope = async ({
   })
 
 export {
-  deliveredFiles,
+  uploadedFiles,
   goneFromStorage,
   groupsInScope,
   listRemoteFiles,

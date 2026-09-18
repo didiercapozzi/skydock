@@ -7,7 +7,7 @@ import type { TandemFact } from './tandem-card'
 import type { ManifestGroup } from './types'
 import { formatFilmSize, hhmm, isVideoFile, plural } from './utils'
 
-/* What delivering a tandem will do, laid out before it is done: two parcels, and the whole question
+/* What uploading a tandem will do, laid out before it is done: two parcels, and the whole question
    is what belongs in each. The passenger gets the film and the photos and nothing else; the backup
    gets the originals, never shared. Both folders are shown, and either can be changed from here. */
 
@@ -87,7 +87,7 @@ const BACKUP_AS = [
   ['folder', 'Plain files']
 ] as const
 
-const DeliverDialog = ({
+const UploadDialog = ({
   who,
   group,
   facts,
@@ -98,7 +98,7 @@ const DeliverDialog = ({
   onPickBackup,
   onPickPassenger,
   onClose,
-  onDeliver
+  onUpload
 }: {
   who: string
   group: ManifestGroup
@@ -111,7 +111,7 @@ const DeliverDialog = ({
   onPickBackup: () => void
   onPickPassenger: () => void
   onClose: () => void
-  onDeliver: () => void
+  onUpload: () => void
 }) => {
   const videos = group.files.filter((f) => isVideoFile(f.path))
   const photos = group.files.filter((f) => !isVideoFile(f.path))
@@ -135,7 +135,7 @@ const DeliverDialog = ({
       : !backupFolder && videos.length > 0
         ? 'Choose the backup folder first — it is never guessed'
         : null
-  const delivered = group.delivered
+  const uploaded = group.uploaded
 
   return (
     <Modal
@@ -153,8 +153,8 @@ const DeliverDialog = ({
           <Go
             disabled={blocked !== null}
             title={blocked ?? 'Build the archives, then send each parcel to its folder'}
-            onClick={onDeliver}>
-            {delivered ? 'Upload again' : 'Upload'}
+            onClick={onUpload}>
+            {uploaded ? 'Upload again' : 'Upload'}
           </Go>
         </>
       }>
@@ -165,8 +165,8 @@ const DeliverDialog = ({
           pickTitle='Where the original videos are kept — never shared'
           onPick={onPickBackup}
           tag={
-            delivered?.rushes || delivered?.originals ? (
-              <span className='font-semibold text-up'>✓ archived {hhmm(delivered.at)}</span>
+            uploaded?.rushes || uploaded?.originals ? (
+              <span className='font-semibold text-up'>✓ archived {hhmm(uploaded.at)}</span>
             ) : (
               'ready now · never shared'
             )
@@ -196,8 +196,8 @@ const DeliverDialog = ({
         pickTitle={`Where ${who}’s folder goes — the one that gets a share link`}
         onPick={onPickPassenger}
         tag={
-          delivered ? (
-            <span className='font-semibold text-up'>✓ uploaded {hhmm(delivered.at)}</span>
+          uploaded ? (
+            <span className='font-semibold text-up'>✓ uploaded {hhmm(uploaded.at)}</span>
           ) : waitingForFilm ? (
             'waiting for the film'
           ) : (
@@ -256,4 +256,4 @@ const DeliverDialog = ({
   )
 }
 
-export { DeliverDialog }
+export { UploadDialog }

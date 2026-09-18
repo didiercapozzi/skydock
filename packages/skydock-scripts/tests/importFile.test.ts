@@ -109,7 +109,8 @@ describe('adding a file from the computer', () => {
     const after = loadManifest(manifestPath())!
     expect(after.files).toHaveLength(1)
     expect(after.groups[0]?.files.map((f) => f.filename)).toEqual(['clip.mp4'])
-    expect(fs.readdirSync(path.join(outputDir, '.incoming'))).toEqual([])
+    /* nothing is left behind of the arrival, not even the folder it arrived in */
+    expect(fs.existsSync(path.join(outputDir, '.incoming'))).toBe(false)
   })
 
   it('says so, and changes nothing, when it is already exactly there', async () => {

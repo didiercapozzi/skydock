@@ -55,8 +55,8 @@ const DEFAULT_BACKUP: BackupOptions = { backupAs: 'zip', filmToBackup: false }
 
 /* Everything that happens once the edit is done: the two archives the passenger and the backup
    need, then two uploads that keep them apart. The manifest is not saved here — the caller owns
-   that, because a delivery runs long enough that the copy loaded before it started is stale. */
-const deliverTandem = async ({
+   that, because it runs long enough that the copy loaded before it started is stale. */
+const uploadTandem = async ({
   outputDir,
   manifest,
   group,
@@ -171,7 +171,8 @@ const deliverTandem = async ({
     film,
     photosZip,
     rushesZip,
-    delivered: {
+    /* what the tandem now records as its upload: where each parcel went, and the passenger's link */
+    record: {
       at: Math.floor(Date.now() / 1000),
       shareUrl,
       film: film ? verdictFor(result.files, film) : undefined,
@@ -188,5 +189,5 @@ const deliverTandem = async ({
   }
 }
 
-export { DEFAULT_BACKUP, deliverTandem }
+export { DEFAULT_BACKUP, uploadTandem }
 export type { BackupOptions }

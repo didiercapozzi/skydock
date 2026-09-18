@@ -41,21 +41,34 @@ const RENDER_PROFILE = 'MP4-H264/AAC'
 
 const RENDER_CATEGORY = 'generic'
 
-type XmlNode = Record<string, unknown>
+/* An XML node as the parser hands it back with the order preserved: one key is the tag, holding the
+   children in order, `:@` holds the attributes, and a text node is `#text`. The shape is recursive,
+   which is the one place a type has to be written down beside its schema. */
+type XmlNode = { [key: string]: string | Record<string, string> | XmlNode[] }
+const xmlNodeSchema: z.ZodType<XmlNode> = z.lazy(() =>
+  z.record(
+    z.string(),
+    z.union([z.string(), z.record(z.string(), z.string()), z.array(xmlNodeSchema)])
+  )
+)
+const xmlDocumentSchema = z.array(xmlNodeSchema)
 
 const tagOf = (node: XmlNode) => Object.keys(node).find((k) => k !== ':@') ?? ''
 const childrenOf = (node: XmlNode) => {
   const value = node[tagOf(node)]
-  return Array.isArray(value) ? (value as XmlNode[]) : []
+  return Array.isArray(value) ? value : []
 }
-const attrsOf = (node: XmlNode) => (node[':@'] ?? {}) as Record<string, string>
+/* the node's own attribute record, so that writing to it writes into the document */
+const attrsOf = (node: XmlNode) => {
+  const attrs = node[':@']
+  return attrs !== undefined && typeof attrs === 'object' && !Array.isArray(attrs) ? attrs : {}
+}
 const propsOf = (node: XmlNode) => childrenOf(node).filter((c) => tagOf(c) === 'property')
 const propOf = (node: XmlNode, name: string) =>
   propsOf(node).find((p) => attrsOf(p)['@_name'] === name)
 const textOf = (node: XmlNode | undefined) => {
-  if (!node) return ''
-  const first = childrenOf(node)[0] as { '#text'?: string } | undefined
-  return first?.['#text'] ?? ''
+  const text = node ? childrenOf(node)[0]?.['#text'] : undefined
+  return typeof text === 'string' ? text : ''
 }
 const setProp = (node: XmlNode, name: string, value: string) => {
   const existing = propOf(node, name)
@@ -169,7 +182,9 @@ const createMontageProject = (rawOptions: MontageOptions) => {
      cannot be added without both. */
   const toHost = (target: string) => encodeXml(toHostPath(target, options.outputDir))
 
-  const document = new XMLParser(XML_OPTIONS).parse(fs.readFileSync(template, 'utf-8')) as XmlNode[]
+  const document = xmlDocumentSchema.parse(
+    new XMLParser(XML_OPTIONS).parse(fs.readFileSync(template, 'utf-8'))
+  )
   const mltNode = document.find((n) => tagOf(n) === 'mlt')
   if (!mltNode) throw new Error(`Template is not an MLT document: ${template}`)
   const mlt = childrenOf(mltNode)
@@ -306,11 +321,11 @@ const createMontageProject = (rawOptions: MontageOptions) => {
   /* The template's own declaration is preserved through the parse and written back out, so adding
      one here made every project start with two — which is not XML, and is why none of them ever
      opened. One is added only when the template had none. */
-  const built = new XMLBuilder({
-    ...XML_OPTIONS,
-    format: true,
-    suppressEmptyNode: true
-  }).build(document) as string
+  const built = z
+    .string()
+    .parse(
+      new XMLBuilder({ ...XML_OPTIONS, format: true, suppressEmptyNode: true }).build(document)
+    )
   const xml = built.startsWith('<?xml') ? built : `<?xml version='1.0' encoding='utf-8'?>\n${built}`
 
   /* The editor parses this before it does anything else, so a project that is not a document is

@@ -1,4 +1,10 @@
-import { filmNameOf, hasCompletePassenger, lastSegment, parentOf } from '@skydock/scripts'
+import {
+  filmNameOf,
+  hasCompletePassenger,
+  lastSegment,
+  parentOf,
+  tandemUploadKey
+} from '@skydock/scripts'
 import { useState } from 'react'
 import type { UploadProgressState } from '../hooks/useUploadProgress'
 import { Go, Mini } from './buttons'
@@ -227,9 +233,9 @@ const PassengerCard = ({
           {/* The name is the folder, so changing it moves where everything goes. What is already
               prepared belongs to the old folder and has to be prepared again; what is already on
               the storage stays there under the old name, because SkyDock never deletes from it. */}
-          {complete && (group.processed || group.delivered) && (
+          {complete && (group.processed || group.uploaded) && (
             <p className='mt-1 text-[11.5px] text-changed'>
-              {group.delivered
+              {group.uploaded
                 ? 'Already uploaded — a new name means processing and uploading again, and the old folder stays on the storage under the old name.'
                 : 'Already processed — a new name means processing it again, into the new folder.'}
             </p>
@@ -274,7 +280,7 @@ const PassengerCard = ({
         className='mt-2.5 border-0 bg-transparent p-0 text-[11.5px] font-semibold text-accent'>
         {!complete
           ? 'Open to see the clips →'
-          : group.delivered
+          : group.uploaded
             ? '✓ uploaded'
             : group.processed
               ? 'Next: montage →'
@@ -387,7 +393,7 @@ const TandemActions = ({
   onProcess,
   onMontage,
   onOpenMontage,
-  onDeliver,
+  onUpload,
   onFree
 }: {
   group: ManifestGroup
@@ -398,12 +404,12 @@ const TandemActions = ({
   onProcess: () => void
   onMontage: () => void
   onOpenMontage: () => void
-  onDeliver: () => void
+  onUpload: () => void
   /* offered once it is uploaded: delete it from this machine, on proof the storage holds it */
   onFree?: () => void
 }) => {
   const working = busy !== null
-  const deliverKey = `deliver:${group.id}`
+  const uploadKey = tandemUploadKey(group.id)
   if (!group.processed)
     return (
       <span className='ml-auto flex flex-wrap items-center gap-1.5'>
@@ -436,7 +442,7 @@ const TandemActions = ({
       </Mini>
       {/* the film itself is shown above the tandem once it exists */}
       {!facts.film && <span className='text-[12px] text-ink-3'>edit and render it</span>}
-      {group.delivered && onFree && (
+      {group.uploaded && onFree && (
         <Mini
           disabled={working}
           title='Delete it from this machine — only once the storage is proved to hold every file'
@@ -450,8 +456,8 @@ const TandemActions = ({
           blocked.message ??
           'Zip the photos and the rushes, then send the film and the photos to the passenger'
         }
-        onClick={onDeliver}>
-        {busy === deliverKey ? 'Uploading…' : group.delivered ? 'Upload again…' : 'Upload…'}
+        onClick={onUpload}>
+        {busy === uploadKey ? 'Uploading…' : group.uploaded ? 'Upload again…' : 'Upload…'}
       </Go>
     </span>
   )
@@ -517,8 +523,8 @@ const UploadStrip = ({ progress }: { progress: UploadProgressState }) => {
   )
 }
 
-/* Once it is delivered, what matters is what is on the NAS — not the files it was made from. One
-   parcel per folder up there, each listing exactly what is in it. That is what makes a delivered
+/* Once it is uploaded, what matters is what is on the NAS — not the files it was made from. One
+   parcel per folder up there, each listing exactly what is in it. That is what makes an uploaded
    tandem worth opening months later. */
 const NasCard = ({
   title,
@@ -583,8 +589,8 @@ const GoneFromStorage = ({ gone, at }: { gone: { remotePath: string }[]; at?: nu
     </p>
   )
 
-const DeliveredCards = ({ group }: { group: ManifestGroup }) => {
-  const record = group.delivered
+const UploadedCards = ({ group }: { group: ManifestGroup }) => {
+  const record = group.uploaded
   if (!record) return null
   const passenger = [
     record.film && {
@@ -651,7 +657,7 @@ const DeliveredCards = ({ group }: { group: ManifestGroup }) => {
 
 export {
   MakeTandem,
-  DeliveredCards,
+  UploadedCards,
   GoneFromStorage,
   FilmStrip,
   PassengerCard,

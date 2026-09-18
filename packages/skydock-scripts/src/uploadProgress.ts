@@ -16,7 +16,7 @@ const uploadProgressStateSchema = z.object({
   totalBytes: z.number(),
   fileIndex: z.number(),
   totalFiles: z.number(),
-  /* `archiving` is delivery zipping the photos and the rushes, which moves gigabytes before a
+  /* `archiving` is a tandem's upload zipping the photos and the rushes, which moves gigabytes before a
      single byte reaches the NAS — without it the UI sits silent for minutes */
   state: z.enum(['archiving', 'checking', 'uploading', 'done', 'error']),
   checked: z.number().optional(),
@@ -24,8 +24,8 @@ const uploadProgressStateSchema = z.object({
   error: z.string().optional()
 })
 
-/* one place both sides name a delivery, so the poller cannot look for a scope nobody writes */
-const deliverScopeKey = (groupId: string) => `deliver:${groupId}`
+/* one place both sides name a tandem's upload, so the poller cannot look for a scope nobody writes */
+const tandemUploadKey = (groupId: string) => `tandem:${groupId}`
 type UploadProgressState = z.infer<typeof uploadProgressStateSchema>
 
 const getUploadProgressPath = (outputDir?: string) =>
@@ -56,7 +56,7 @@ const clearUploadProgress = (outputDir?: string) => {
 
 export {
   clearUploadProgress,
-  deliverScopeKey,
+  tandemUploadKey,
   getUploadProgressPath,
   readUploadProgress,
   uploadProgressStateSchema,

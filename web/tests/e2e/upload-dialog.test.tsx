@@ -11,7 +11,7 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
 
 import Board from '../../app/routes/board'
 
-/* Delivering is the one step that hands things to someone, so it shows what it is about to do
+/* Uploading a tandem is the one step that hands things to someone, so it shows what it is about to do
    before it does it: two parcels, both folders, and how the originals are kept. Nothing is sent
    until the dialog's own button is pressed. */
 
@@ -77,7 +77,7 @@ const board = {
   }
 }
 
-const delivered: unknown[] = []
+const requests: unknown[] = []
 
 const renderBoard = async (data: typeof board | Record<string, unknown> = board, open = true) => {
   const Stub = createRoutesStub([
@@ -85,7 +85,7 @@ const renderBoard = async (data: typeof board | Record<string, unknown> = board,
     {
       path: '/api/manifest',
       action: async ({ request }) => {
-        delivered.push(await request.json())
+        requests.push(await request.json())
         return { ok: true }
       }
     },
@@ -101,7 +101,7 @@ const renderBoard = async (data: typeof board | Record<string, unknown> = board,
 
 describe('uploading a tandem — the dialog first', () => {
   test('lays out both parcels and both folders before anything is sent', async () => {
-    delivered.length = 0
+    requests.length = 0
     await renderBoard()
     const dialog = page.getByRole('dialog', { name: 'Upload' })
     await expect.element(dialog).toBeInTheDocument()
@@ -113,8 +113,8 @@ describe('uploading a tandem — the dialog first', () => {
       .element(dialog.getByRole('button', { name: '/SkyDock/Tandems/Luc Favre' }))
       .toBeInTheDocument()
     await expect.element(dialog.getByText('16.0 GB to the backup · 3.0 GB to Luc Favre')).toBeInTheDocument()
-    await page.screenshot({ path: './playwright-screenshots/deliver-dialog.png' })
-    expect(delivered).toEqual([])
+    await page.screenshot({ path: './playwright-screenshots/upload-dialog.png' })
+    expect(requests).toEqual([])
   })
 
   test('adds the film to the backup, and says so, when it is ticked', async () => {
@@ -136,13 +136,13 @@ describe('uploading a tandem — the dialog first', () => {
   })
 
   test('sends the upload, with the choice, only from its own button', async () => {
-    delivered.length = 0
+    requests.length = 0
     await renderBoard()
     const dialog = page.getByRole('dialog', { name: 'Upload' })
     await userEvent.click(dialog.getByRole('button', { name: 'Upload', exact: true }))
     await vi.waitFor(() =>
-      expect(delivered).toContainEqual({
-        intent: 'deliver',
+      expect(requests).toContainEqual({
+        intent: 'upload-tandem',
         groupId: 'g1',
         backup: { backupAs: 'zip', filmToBackup: false }
       })
@@ -166,7 +166,7 @@ describe('an uploaded tandem, checked against the storage', () => {
     groups: [
       {
         ...board.groups[0],
-        delivered: {
+        uploaded: {
           at: 1_785_010_000,
           film: record(`${dir}/luc_favre_20260801.mp4`, 3 * GB),
           photos: record(`${dir}/luc_favre_20260801.photos.zip`, 5 * 1024 ** 2)
@@ -216,7 +216,7 @@ describe('freeing an uploaded tandem', () => {
     groups: [
       {
         ...board.groups[0],
-        delivered: {
+        uploaded: {
           at: 1_785_010_000,
           film: sent(`${dir}/luc_favre_20260801.mp4`, 3 * GB),
           photos: sent(`${dir}/luc_favre_20260801.photos.zip`, 5 * 1024 ** 2)
@@ -234,16 +234,16 @@ describe('freeing an uploaded tandem', () => {
   }
 
   test('asks first, saying what is proved and what is deleted, then sends it', async () => {
-    delivered.length = 0
+    requests.length = 0
     await renderBoard(uploaded, false)
     await userEvent.click(page.getByRole('button', { name: 'Free up space…' }))
     const dialog = page.getByRole('dialog', { name: 'Free up space' })
     await expect.element(dialog.getByText(/hashed here and by the storage/)).toBeInTheDocument()
     await expect.element(dialog.getByText(/the 3 originals/)).toBeInTheDocument()
-    expect(delivered).toEqual([])
+    expect(requests).toEqual([])
     await userEvent.click(dialog.getByRole('button', { name: /Check and free/ }))
     await vi.waitFor(() =>
-      expect(delivered).toContainEqual({ intent: 'free-tandem', groupId: 'g1' })
+      expect(requests).toContainEqual({ intent: 'free-tandem', groupId: 'g1' })
     )
   })
 
@@ -274,7 +274,7 @@ describe('emailing the passenger their link', () => {
   const LINK = 'https://nas.local/sharing/AbC123'
   const linked = {
     ...board,
-    groups: [{ ...board.groups[0], delivered: { at: 1_785_010_000, shareUrl: LINK } }]
+    groups: [{ ...board.groups[0], uploaded: { at: 1_785_010_000, shareUrl: LINK } }]
   }
 
   const openEmail = async () => {
@@ -295,7 +295,7 @@ describe('emailing the passenger their link', () => {
   })
 
   test('opens a new Gmail message, addressed and titled, with nothing to connect', async () => {
-    delivered.length = 0
+    requests.length = 0
     const opened: string[] = []
     const open = window.open
     window.open = ((url?: string | URL) => {
@@ -317,7 +317,7 @@ describe('emailing the passenger their link', () => {
       window.open = open
     }
     /* nothing is sent from here */
-    expect(delivered).toEqual([])
+    expect(requests).toEqual([])
   })
 
   test('offers the computer\'s own mail program too, for anyone not on Gmail', async () => {
@@ -370,7 +370,7 @@ describe('the tandems on the storage', () => {
   })
 
   test('emails it from its entry, and says on the list that it was sent', async () => {
-    delivered.length = 0
+    requests.length = 0
     await renderBoard(listed, false)
     await userEvent.click(page.getByRole('button', { name: /All passengers/ }))
     await userEvent.click(page.getByRole('button', { name: 'Email…' }))
@@ -380,7 +380,7 @@ describe('the tandems on the storage', () => {
     await userEvent.fill(dialog.getByLabelText('To'), 'ana@example.com')
     await userEvent.click(dialog.getByRole('button', { name: 'Mark as sent' }))
     await vi.waitFor(() =>
-      expect(delivered).toContainEqual({
+      expect(requests).toContainEqual({
         intent: 'mark-emailed',
         emailed: { folder: `${DIR}/Ana Roth`, sent: true, to: 'ana@example.com' }
       })

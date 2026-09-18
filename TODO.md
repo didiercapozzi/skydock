@@ -4,90 +4,18 @@ RULES.md was rewritten to describe only what the app does. The code grew feature
 the same treatment. Each item below is one change that can be done and reviewed on its own; none of
 them changes behaviour, so none of them touches RULES.md.
 
-## 1. Comments say what the logic is, not what it was — done
+## Open
 
-Every comment that told history, described a state of the work or explained a fix by contrast with
-the old code was rewritten or deleted, in the code and in the tests. The rule is in CODING.md; keep
-to it.
+Nothing from the cleaning plan is open. What the cleaning turned up, and did not do because it is
+not cleaning:
 
-## 2. One helper, one place — done
-
-Paths live in `packages/skydock-scripts/src/paths.ts`, running a tool and reading its complaint in
-`tools.ts`, `sizeOf` and the passenger's name beside their neighbours in `utils.ts` and
-`workspace.ts`, and the display helpers (`pad`, `hhmm`, `localeDate`, `plural`, `formatFilmSize`)
-in `web/app/components/utils.ts`. `importFile.ts` keeps its own `pad`; it is the one place on that
-side that needs it.
-
-## 3. `board.tsx` is 1,950 lines
-
-It holds the loader, every dialog's wiring, drag and drop, the storage check, the file import, folding
-state and the whole layout. Split it along the lines RULES.md already draws, each piece a hook or a
-component with its own file:
-
-- `useBoardState` — groups, loose files, places, outputs, proxies, tandem facts, and the one effect
-  that reads every server answer
-- `useDragAndDrop` — `dragged`, `draggedFiles`, `overTarget`, `groupDropTarget`, `dropTarget`,
-  `placeDrop`, and the drop from the computer
-- `useDaysAndJumps` — open days, folded jumps, `openAt`, `toggleDay`, `toggleJump`
-- `useSelection` — picked files and jumps, `clickFile`, `selectAll`, Escape and Delete
-- `BoardHeader`, `PlacePane`, `TandemPage`, `DialogHost` — the layout, each in its own file
-- the `importDropped` loop and `importNote` — with the import route, not the page
-
-The answer schema the board parses (`groups`, `looseFiles`, `freed`, `imported`, `storage`, …) is
-declared once in `board.tsx` and mirrored by hand in `api.manifest.ts`'s returns. Declare it once in
-`@skydock/scripts` and have both sides use it.
-
-## 4. `api.manifest.ts` is one 800-line handler
-
-One `intent` switch holds fourteen actions. Each intent becomes its own function in its own file under
-`web/app/routes/manifest/`, with the shared preamble (load the manifest, work out the frozen tandems,
-the refusal helper) in one place. The `deliver` and `upload-group` intents share their progress
-reporting nearly line for line; extract it.
-
-## 5. Two names for one thing
-
-The board says **Upload**; the code still says **deliver** (`deliverTandem`, `delivered`, `deliver`
-intent, `DeliverDialog`, `deliver-dialog.tsx`, `deliverScopeKey`). Rename the code to the word the rules
-use — `uploadTandem`, `uploaded` record — with a migration for the record's key in saved manifests.
-Likewise `groups` (code) against **jumps** (rules) is old and everywhere; leave it, but stop adding to it.
-
-## 6. Casts and lint bypasses — mostly done
-
-No lint bypass is left, and every cast on an event target, a state default or an empty array is
-gone. What remains: the four in `packages/skydock-scripts/src/montage.ts`, where the XML parser
-hands back untyped nodes — a Zod schema for the node shape would replace them — and the
-`as Parameters<typeof action>[0]` in the route tests.
-
-## 7. Tests that test the code, not the rules
-
-Reworked in the same change as the rules; what is left:
-
-- `web/tests/e2e/video-cropper.test.tsx` drives the cropper with its own synthetic events in places;
-  redo the drag tests with `userEvent` as CODING.md asks
-- `packages/skydock-scripts/tests/publish.test.ts` and `nas.test.ts` still check details of the
-  storage's protocol (retries, session ids, header lengths). Keep one test per rule ("a file already
-  there is not sent again", "the session renews itself") and drop the rest
-- there is no test that a **dropzone day** is processed and uploaded end to end from the board, nor that
-  the board refuses to upload while files need processing; both are rules
-
-## 8. Smaller things
-
-- `skydock-mockup.html` is the design the board was built from. It has drifted from the app in places
-  (delivery dialog wording, email, storage list). Either bring it back in step or note in its header
-  that the app is now the reference.
-- `packages/ui/routing/generated/central-auth.ts` — is it used?
-- `web/app/components/comparison-dialog.tsx` (576 lines) builds its own modal shell instead of `Modal`.
-- The scripts package's `index.ts` barrel re-exports in three styles; one list, sorted.
-- `output/.incoming/` is left behind after an import; remove it when empty.
-
-## 9. Effects — done for now
-
-CODING.md now says when an effect is allowed, following the React documentation. The board adopts
-the server's answer during render; the preview and the comparison hand the way to seek a video up
-through a callback ref. The seven effects left each talk to something outside React: two window key
-listeners, a `ResizeObserver`, a non-passive wheel listener, the progress poll, and two single
-requests on arrival — the board's wait on processing already running, and the folder browser's
-first listing — each with a guard.
+- **Comparing two jumps has no way in.** RULES (The board, Comparing) says two jumps can be picked and
+  compared side by side, then merged. The comparison dialog and the merge exist and are wired, but
+  nothing on the board picks two jumps any more, so the dialog never opens. Either put the picking
+  back or take the rule and the dialog out.
+- `packages/ui/routing/generate-public-routes.test.ts` points at `apps/central-auth`, a folder from
+  another project, and the ui package has no test script, so it never runs. Its generated fixture
+  was removed; the test itself and `generate-public-routes.ts` are only there for each other.
 
 ## Carried over
 
@@ -98,3 +26,73 @@ Still wanted, not cleaning:
   editor's.
 - Restoring tandems from the storage's list after a rescan from scratch, by recording each tandem's file
   identities in the list.
+
+## Done
+
+### 1. Comments say what the logic is, not what it was
+
+Every comment that told history, described a state of the work or explained a fix by contrast with
+the old code was rewritten or deleted, in the code and in the tests. The rule is in CODING.md.
+
+### 2. One helper, one place
+
+Paths live in `packages/skydock-scripts/src/paths.ts`, running a tool and reading its complaint in
+`tools.ts`, `sizeOf` and the passenger's name beside their neighbours in `utils.ts` and
+`workspace.ts`, and the display helpers (`pad`, `hhmm`, `localeDate`, `plural`, `formatFilmSize`)
+in `web/app/components/utils.ts`.
+
+### 3. `board.tsx` split
+
+From 1,950 lines to 780. The route keeps its loader and the composition; the rest is:
+
+- hooks — `useBoardState` (the manifest as the board knows it, adopting every server answer),
+  `useNas` (the session and what the storage holds), `useSelection` (picked files, Escape and
+  Delete), `useDragAndDrop` (what is in the air and where it may land), `useDaysAndJumps` (open days,
+  folded jumps, `openAt`)
+- components — `BoardHeader`, `PlacePane`, `DaysPane`, `TandemsGrid`, `TandemPage`, `SelectionBar`,
+  `DialogHost`, `PreviewHost`
+- helpers — `helpers/jumps.ts` (the Tandems place, a jump's day, its folder on the storage),
+  `helpers/notes.ts` (the one line the board says after a change), `helpers/status.ts` (a file's
+  status from what is known), `helpers/import.ts` (the copy loop for files from the computer)
+
+The answer every change is met with is declared once, `boardAnswerSchema` in `@skydock/scripts`:
+the board parses it and every server intent is typed to return it. Declaring it once caught a real
+slip — the rename in item 5 had made a tandem's upload record and the count of uploaded files the
+same word on the server's answer.
+
+### 4. `api.manifest.ts` split
+
+One handler dispatches by intent to `web/app/routes/manifest/`: one file per intent, `args.ts` for
+what the board may send, `change.ts` for what every intent is handed (the manifest, where it is, the
+frozen tandems, one way to refuse), `storage.ts` for recording on the storage's list, and
+`progress.ts` for the progress both kinds of upload report, written once.
+
+### 5. One word for one thing
+
+The code says **upload** where the board does: `uploadTandem`, the `upload-tandem` intent,
+`UploadDialog`, `UploadedCards`, `tandemUploadKey`, and a tandem's `uploaded` record. A jumps file
+written under the old name is still read, and written back under the new one. `groups` stays.
+
+### 6. Casts and lint bypasses
+
+None left in the app or the scripts. The XML nodes the montage reads are described by a schema, the
+route tests hand the action the arguments the framework would, and the video cropper is driven with
+the real mouse.
+
+### 7. Tests that test the rules
+
+`publish.test.ts` and `nas.test.ts` keep one test per rule of the storage; the cropper's drags use
+`userEvent`; a dropzone day is processed and uploaded end to end from the board, and the board is
+seen refusing to upload while a file still needs processing.
+
+### 8. Smaller things
+
+The mockup says in its header that the app is the reference. The unused generated route contract is
+gone. The comparison dialog is built on `Modal`. The scripts barrel is one sorted list. The import's
+holding folder is removed once the file has arrived.
+
+### 9. Effects
+
+CODING.md says when an effect is allowed, following the React documentation. The seven effects left
+each talk to something outside React — window key listeners, a `ResizeObserver`, a non-passive wheel
+listener, the progress poll, and two single requests on arrival — each with a guard.

@@ -5,7 +5,7 @@ import { Mini } from './buttons'
 import { localeDate } from './utils'
 
 /* Every tandem the storage holds, from its own list: the ones still on this machine and the ones
-   freed from it or delivered from another one. Each says who it was for, when it went up, whether
+   freed from it or uploaded from another one. Each says who it was for, when it went up, whether
    the passenger was emailed, and where its link and its backup are. */
 
 /* the day of the jump, 01.08.2026, read the way the list writes it */

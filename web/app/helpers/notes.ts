@@ -1,0 +1,50 @@
+import type { ImportOutcome, MontageNote, ScanResult } from '@skydock/scripts'
+import { formatFilmSize, localeDate, plural } from '../components/utils'
+
+/* What the board says in its one line after a change, in the board's words. */
+
+/* A template that came without its music and logos still produces a project, and the holes only
+   show up at the render — so they are said out loud the moment the montage is made. */
+const montageNote = ({ clips, missingAssets, opened, openCommand, openReason }: MontageNote) => {
+  /* naming the command is what turns "nothing happened" into something that can be looked into:
+     it is the one part of this the board knows and the person at the screen cannot see */
+  const with_ = openCommand ? ` with ${openCommand}` : ''
+  if (clips === 0 && opened) return `Opening it${with_}…`
+  const made = `Montage ready — ${plural(clips, 'clip')} on the timeline`
+  const holes =
+    missingAssets.length === 0
+      ? ''
+      : `, but the template is missing ${plural(missingAssets.length, 'file')}: ${missingAssets.join(', ')}`
+  /* whether the editor came up is part of what just happened, not a separate thing to go and check */
+  const editor = opened ? ` · opening it${with_}` : openReason ? ` · ${openReason}` : ''
+  return `${made}${holes}${editor}`
+}
+
+/* what a drop from the computer came to, in one line */
+const importNote = ({ added, moved, there, failed, where }: ImportOutcome) =>
+  [
+    added > 0 ? `Added ${plural(added, 'file')} to ${where}` : null,
+    /* already on the board: moved here, the way a drag on the board would have */
+    moved.length === 1
+      ? `Moved ${moved[0]!.name} from ${moved[0]!.from} to ${where}`
+      : moved.length > 1
+        ? `Moved ${moved.length} files already on the board to ${where}`
+        : null,
+    there > 0 ? `${there} already in ${where}` : null,
+    failed.length > 0 ? `not added — ${failed.join('; ')}` : null
+  ]
+    .filter(Boolean)
+    .join(' · ') || 'Nothing was added'
+
+const scanNote = (scan: ScanResult) =>
+  scan.unchanged
+    ? `Scan: nothing new — ${scan.fileCount} files in ${scan.groupCount} jumps`
+    : `Scan: +${scan.added} new, −${scan.removed} gone, ${scan.moved} moved — ${scan.fileCount} files in ${scan.groupCount} jumps`
+
+const uploadedNote = (uploaded: number, skipped?: number) =>
+  `Uploaded ${plural(uploaded, 'file')}${skipped ? ` · ${skipped} already on the NAS` : ''}`
+
+const freedNote = ({ files, bytes }: { files: number; bytes: number }) =>
+  `On the storage only. ${plural(files, 'file')} freed from this machine on ${localeDate(Date.now() / 1000)} — ${formatFilmSize(bytes)} given back. The project is kept here; everything else is on the storage, as above.`
+
+export { freedNote, importNote, montageNote, scanNote, uploadedNote }

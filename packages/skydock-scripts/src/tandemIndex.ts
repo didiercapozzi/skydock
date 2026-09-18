@@ -15,7 +15,7 @@ import { isVideoFile } from './utils'
 /* The storage's own list of tandems: one small file in the Tandems folder, one entry per passenger
    folder, saying who it was for, when it went up, where its link, film, photos and backup are, and
    whether the passenger was emailed. It is what lets the board show every tandem the storage holds —
-   including the ones freed from this machine, or delivered from another one.
+   including the ones freed from this machine, or uploaded from another one.
 
    Written by read-then-write: the latest file is read, only this tandem's entry is changed, and it is
    written back. Two machines using SkyDock keep each other's entries that way; the only thing that
@@ -109,7 +109,7 @@ const upsert = (index: TandemIndex, entry: Partial<TandemEntry> & { folder: stri
    photos went, and the list lives in the folder above it — the Tandems folder. Nothing that was not
    uploaded has an entry. */
 const entryOfTandem = (group: ManifestGroup) => {
-  const record = group.delivered
+  const record = group.uploaded
   const sent = record?.film ?? record?.photos
   if (!record || !sent || !group.passenger) return null
   const folder = parentOf(sent.remotePath)

@@ -171,7 +171,7 @@ describe('where an upload goes', () => {
     expect(target.localDir).toBe('/out/processed/Yverdon')
   })
 
-  /* Still where a passenger's folder goes — delivering asks for this target directly, which is the
+  /* Still where a passenger's folder goes — uploading a tandem asks for this target directly, which is the
      only way a tandem ever reaches the storage. */
   it('gives a tandem its passenger folder inside the destination', () => {
     const manifest = manifestOf([
@@ -186,7 +186,7 @@ describe('where an upload goes', () => {
   })
 
   /* An upload sends a folder whole, and a passenger's holds the project, the working copies and
-     the archive of the originals as well as the film. RULES says a tandem is delivered and not
+     the archive of the originals as well as the film. RULES says a tandem is uploaded and not
      uploaded; this is the code saying it too, wherever the scope came from. */
   it('leaves a tandem out of an upload, however it was asked for', () => {
     const manifest = manifestOf([

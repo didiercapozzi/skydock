@@ -74,6 +74,23 @@ describe('filing survives being written down and read back', () => {
   })
 })
 
+describe('a tandem uploaded before the record was called uploaded', () => {
+  it('is still read as uploaded', () => {
+    saveManifest(manifestPath, filed())
+    const groupsPath = path.join(outputDir, 'groups.json')
+    const stored = JSON.parse(fs.readFileSync(groupsPath, 'utf-8'))
+    stored.groups[0].delivered = { at: 1, shareUrl: 'https://nas/sharing/abc' }
+    fs.writeFileSync(groupsPath, JSON.stringify(stored))
+
+    const read = loadManifest(manifestPath)!
+    expect(read.groups[0]?.uploaded).toEqual({ at: 1, shareUrl: 'https://nas/sharing/abc' })
+
+    /* and written back under its name, so the old one does not live on */
+    saveManifest(manifestPath, read)
+    expect(fs.readFileSync(groupsPath, 'utf-8')).not.toContain('delivered')
+  })
+})
+
 describe('a groups file that cannot be understood', () => {
   /* Returning "no jumps" for a file that plainly holds some is the worst answer available: the
      next scan re-clusters from nothing, mints new ids and files nothing, and a day of sorting is

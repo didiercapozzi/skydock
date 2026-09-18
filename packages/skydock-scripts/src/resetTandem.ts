@@ -84,7 +84,7 @@ const takeBack = (
     const {
       processed: _processed,
       publish: _publish,
-      delivered: _delivered,
+      uploaded: _delivered,
       montage: _montage,
       ...rest
     } = g

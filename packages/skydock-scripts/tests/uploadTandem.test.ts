@@ -3,8 +3,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs'
 import * as http from 'node:http'
 import * as path from 'node:path'
-import { deliverTandem } from '../src/deliver'
-import type { BackupOptions } from '../src/deliver'
+import { uploadTandem } from '../src/uploadTandem'
+import type { BackupOptions } from '../src/uploadTandem'
 import { statTandemArtifacts, tandemArtifacts } from '../src/tandem'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
 import { saveNasSession } from '../src/nas'
@@ -79,7 +79,7 @@ const scene = (options: SceneOptions = {}) => {
     noPassenger = false
   } = options
   const passenger = noPassenger ? undefined : { firstname: 'Luc', lastname: 'Favre' }
-  const outputDir = createTmpDir('skydock-deliver-')
+  const outputDir = createTmpDir('skydock-upload-tandem-')
   const originals = path.join(outputDir, 'original_files')
   const groupDir = path.join(outputDir, 'processed', 'Tandems', 'Luc Favre')
   fs.mkdirSync(path.join(groupDir, 'videos'), { recursive: true })
@@ -157,7 +157,7 @@ const session = (url: string, overrides: Partial<NasSession> = {}): NasSession =
   ...overrides
 })
 
-const deliver = async (
+const upload = async (
   options: SceneOptions = {},
   sessionOverrides: Partial<NasSession> = {},
   backup?: BackupOptions
@@ -168,7 +168,7 @@ const deliver = async (
   /* uploads run with no password, reusing the session on disk — the same way the app does */
   saveNasSession({ hostname: server.url, username: 'u', sessionId: 'sid' }, built.outputDir)
   try {
-    const result = await deliverTandem({
+    const result = await uploadTandem({
       outputDir: built.outputDir,
       manifest: built.manifest,
       group: built.group,
@@ -183,7 +183,7 @@ const deliver = async (
 
 describe('uploading a tandem — what the passenger gets', () => {
   it('sends the film and the photos, and nothing else', async () => {
-    const { uploads } = await deliver()
+    const { uploads } = await upload()
     const toPassenger = uploads
       .filter((u) => u.dest === '/SkyDock/Tandems/Luc Favre')
       .map((u) => u.name)
@@ -191,27 +191,27 @@ describe('uploading a tandem — what the passenger gets', () => {
   })
 
   it('never puts the rushes in the passenger’s folder', async () => {
-    const { uploads } = await deliver()
+    const { uploads } = await upload()
     const toPassenger = uploads.filter((u) => u.dest === '/SkyDock/Tandems/Luc Favre')
     expect(toPassenger.map((u) => u.name)).not.toContain('luc_favre_20260802.rushes.zip')
   })
 
   it('never hands over the project or the working folders', async () => {
-    const { uploads } = await deliver()
+    const { uploads } = await upload()
     const names = uploads.map((u) => u.name)
     expect(names.some((n) => n.endsWith('.kdenlive'))).toBe(false)
     expect(names.some((n) => n.startsWith('luc_favre_20260802_'))).toBe(false)
   })
 
   it('sends the rushes to the backup folder instead', async () => {
-    const { uploads } = await deliver()
+    const { uploads } = await upload()
     expect(uploads.filter((u) => u.dest === '/Backup').map((u) => u.name)).toEqual([
       'luc_favre_20260802.rushes.zip'
     ])
   })
 
   it('asks for a link on the passenger folder only', async () => {
-    await deliver()
+    await upload()
     const shares = seen
       .map((call) => new URL(call.url, 'http://stub').searchParams)
       .filter((p) => p.get('api') === 'SYNO.FileStation.Sharing')
@@ -220,19 +220,17 @@ describe('uploading a tandem — what the passenger gets', () => {
   })
 
   it('records what went where', async () => {
-    const { result } = await deliver()
-    expect(result.delivered.shareUrl).toContain('/sharing/abc')
-    expect(result.delivered.film?.remotePath).toBe(
-      '/SkyDock/Tandems/Luc Favre/luc_favre_20260802.mp4'
-    )
-    expect(result.delivered.rushes?.remotePath).toBe('/Backup/luc_favre_20260802.rushes.zip')
+    const { result } = await upload()
+    expect(result.record.shareUrl).toContain('/sharing/abc')
+    expect(result.record.film?.remotePath).toBe('/SkyDock/Tandems/Luc Favre/luc_favre_20260802.mp4')
+    expect(result.record.rushes?.remotePath).toBe('/Backup/luc_favre_20260802.rushes.zip')
   })
 })
 
 describe('uploading a tandem — what is refused', () => {
   const fails = async (options: SceneOptions, overrides: Partial<NasSession> = {}) => {
     try {
-      await deliver(options, overrides)
+      await upload(options, overrides)
       return null
     } catch (e) {
       return e instanceof Error ? e.message : String(e)
@@ -258,7 +256,7 @@ describe('uploading a tandem — what is refused', () => {
     stubDsm()
     saveNasSession({ hostname: server.url, username: 'u', sessionId: 'sid' }, built.outputDir)
     await expect(
-      deliverTandem({
+      uploadTandem({
         outputDir: built.outputDir,
         manifest: built.manifest,
         group: built.group,
@@ -281,13 +279,13 @@ describe('uploading a tandem — what is refused', () => {
 
 describe('uploading a tandem — the awkward cases', () => {
   it('adopts a film rendered under a different name', async () => {
-    const { uploads, groupDir } = await deliver({ film: 'GARGASSON Donald.mp4' })
+    const { uploads, groupDir } = await upload({ film: 'GARGASSON Donald.mp4' })
     expect(fs.existsSync(path.join(groupDir, 'luc_favre_20260802.mp4'))).toBe(true)
     expect(uploads.map((u) => u.name)).toContain('luc_favre_20260802.mp4')
   })
 
   it('uploads a tandem whose camera died, with no film at all', async () => {
-    const { uploads } = await deliver({ film: null, videos: 0 })
+    const { uploads } = await upload({ film: null, videos: 0 })
     expect(
       uploads.filter((u) => u.dest === '/SkyDock/Tandems/Luc Favre').map((u) => u.name)
     ).toEqual(['luc_favre_20260802.photos.zip'])
@@ -323,17 +321,17 @@ describe('uploading a tandem — how the backup is kept', () => {
     ) as string[]
 
   it('puts a copy of the film inside the zip when asked', async () => {
-    const { groupDir } = await deliver({}, {}, { backupAs: 'zip', filmToBackup: true })
+    const { groupDir } = await upload({}, {}, { backupAs: 'zip', filmToBackup: true })
     expect(contents(groupDir)).toEqual(['GX018570.MP4', 'GX018571.MP4', 'luc_favre_20260802.mp4'])
   })
 
   it('leaves the film out of the zip otherwise', async () => {
-    const { groupDir } = await deliver()
+    const { groupDir } = await upload()
     expect(contents(groupDir)).toEqual(['GX018570.MP4', 'GX018571.MP4'])
   })
 
   it('sends the originals as plain files into a folder of their own, with no zip', async () => {
-    const { uploads, groupDir, result } = await deliver(
+    const { uploads, groupDir, result } = await upload(
       {},
       {},
       { backupAs: 'folder', filmToBackup: false }
@@ -346,20 +344,18 @@ describe('uploading a tandem — how the backup is kept', () => {
     ).toEqual(['GX018570.MP4', 'GX018571.MP4'])
     expect(uploads.some((u) => u.name.endsWith('.rushes.zip'))).toBe(false)
     expect(fs.existsSync(path.join(groupDir, 'luc_favre_20260802.rushes.zip'))).toBe(false)
-    expect(result.delivered.originals?.map((o) => o.remotePath).sort()).toEqual([
+    expect(result.record.originals?.map((o) => o.remotePath).sort()).toEqual([
       '/Backup/luc_favre_20260802/GX018570.MP4',
       '/Backup/luc_favre_20260802/GX018571.MP4'
     ])
   })
 
   it('puts the film beside them, and still gives it to the passenger', async () => {
-    const { uploads, result } = await deliver({}, {}, { backupAs: 'folder', filmToBackup: true })
+    const { uploads, result } = await upload({}, {}, { backupAs: 'folder', filmToBackup: true })
     expect(
       uploads.filter((u) => u.dest === '/Backup/luc_favre_20260802').map((u) => u.name)
     ).toContain('luc_favre_20260802.mp4')
-    expect(result.delivered.film?.remotePath).toBe(
-      '/SkyDock/Tandems/Luc Favre/luc_favre_20260802.mp4'
-    )
-    expect(result.delivered.originals).toHaveLength(3)
+    expect(result.record.film?.remotePath).toBe('/SkyDock/Tandems/Luc Favre/luc_favre_20260802.mp4')
+    expect(result.record.originals).toHaveLength(3)
   })
 })

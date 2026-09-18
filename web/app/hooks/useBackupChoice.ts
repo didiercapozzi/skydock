@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
-/* How a delivery keeps the originals — one zip or plain files, with or without a copy of the film.
+/* How a tandem's upload keeps the originals — one zip or plain files, with or without a copy of the film.
    It is one choice for the whole club rather than a question per passenger, so it is remembered and
    the next tandem opens with it already made. Read through `useSyncExternalStore` for the same
    reason as the file view: the server renders the default, and the stored choice follows in the

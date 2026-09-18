@@ -170,7 +170,7 @@ describe('a tandem’s entry', () => {
         { id: 'v', path: '/o/GX01.MP4', filename: 'GX01.MP4', size: 1, mtime: 1 },
         { id: 'p', path: '/o/G001.JPG', filename: 'G001.JPG', size: 1, mtime: 1 }
       ],
-      delivered: {
+      uploaded: {
         at: 500,
         shareUrl: 'https://nas/s/1',
         film: { remotePath: `${DIR}/Luc Favre/luc.mp4`, md5: 'x', size: 1, localPath: '/l', at: 1 },

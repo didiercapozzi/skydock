@@ -1,24 +1,16 @@
 /* What the web app may import. Everything else in this package is internal to it — the tests reach
-   into the modules directly, so this stays exactly as wide as the app needs. */
-
-export type {
-  Destination,
-  FrameCrop,
-  Manifest,
-  ManifestFile,
-  ManifestGroup,
-  Rotation
-} from './types'
-export {
-  destinationSchema,
-  frameCropSchema,
-  manifestFileSchema,
-  manifestGroupSchema
-} from './types'
-
+   into the modules directly, so this stays exactly as wide as the app needs. What shells out or
+   reaches the filesystem behind a click — building proxies, uploading a tandem, importing a file,
+   freeing, taking back — is imported by the routes straight from its module, so none of it can
+   reach the browser bundle. */
+import { boardAnswerSchema, importOutcomeSchema } from './boardAnswer'
+import type { BoardAnswer, ImportOutcome, MontageNote, ScanResult, TandemFact } from './boardAnswer'
+import { groupFromFiles, reclusterGroups, regroupLooseFiles, shiftFiles } from './clustering'
+import { fileChanged, fileStatus, uploadGate } from './fileStatus'
+import type { FileStatus, OutputFact, RemoteListing, StatusContext } from './fileStatus'
 /* arithmetic only — the board draws the rectangle with the same functions processing cuts it with,
    because two ideas of "which pixels" would disagree and the disagreement would be invisible */
-export {
+import {
   containCrop,
   cropFilter,
   cropToPixels,
@@ -32,47 +24,8 @@ export {
   turnedSize,
   withRatio
 } from './frameCrop'
-
-export { groupFromFiles, reclusterGroups, regroupLooseFiles, shiftFiles } from './clustering'
-
-export { fileChanged, fileStatus, uploadGate } from './fileStatus'
-export type { FileStatus, OutputFact, RemoteListing, StatusContext } from './fileStatus'
-
-export {
-  buildGroupBaseName,
-  buildPassengerFolder,
-  hasCompletePassenger,
-  mergeGroups,
-  passengerName,
-  passengerOf
-} from './workspace'
-
-export { loadManifest, saveManifest, statProcessedOutputs } from './manifest'
-
-/* only where each clip's proxy has got to — building them shells out to ffmpeg, so the routes
-   import that side of it directly */
-export { statProxies } from './proxy'
-export type { ProxyFact } from './proxy'
-
-export {
-  goneFromStorage,
-  groupsInScope,
-  listRemoteFiles,
-  scopeKey,
-  tandemsRemoteDir,
-  uploadScope
-} from './upload'
-
-export {
-  clearUploadProgress,
-  deliverScopeKey,
-  readUploadProgress,
-  uploadProgressStateSchema,
-  writeUploadProgress
-} from './uploadProgress'
-export type { UploadProgressState } from './uploadProgress'
-
-export {
+import { loadManifest, saveManifest, statProcessedOutputs } from './manifest'
+import {
   clearNasSession,
   dsmCreateFolder,
   dsmListFolder,
@@ -84,15 +37,20 @@ export {
   loginWithSession,
   updateNasFolder
 } from './nas'
-
-export { getOutputDir, isVideoFile, isoDay } from './utils'
-
-export { scanMedia } from './scan'
-export { getGroupProcessedDir, processingNow, processJumps, whenProcessed } from './process'
-
-/* only the facts a tandem row shows — delivering one pulls in archiving and uploading, which the
-   routes import directly so none of it can reach the browser bundle */
-export {
+import {
+  dayInFrench,
+  defaultPassengerEmail,
+  gmailComposeUrl,
+  mailtoUrl,
+  renderPassengerEmail
+} from './passengerEmail'
+import type { PassengerEmail } from './passengerEmail'
+import { lastSegment, parentOf } from './paths'
+import { getGroupProcessedDir, processingNow, processJumps, whenProcessed } from './process'
+import { statProxies } from './proxy'
+import type { ProxyFact } from './proxy'
+import { scanMedia } from './scan'
+import {
   EDIT_LOCKED,
   filmNameOf,
   frozenTandems,
@@ -103,14 +61,151 @@ export {
   sameEditedGroup,
   statTandemArtifacts
 } from './tandem'
+import { tandemEntrySchema, tandemIndexSchema } from './tandemEntry'
+import type { TandemEntry, TandemIndex } from './tandemEntry'
+import {
+  destinationSchema,
+  frameCropSchema,
+  manifestFileSchema,
+  manifestGroupSchema
+} from './types'
+import type {
+  Destination,
+  FrameCrop,
+  Manifest,
+  ManifestFile,
+  ManifestGroup,
+  Rotation
+} from './types'
+import {
+  goneFromStorage,
+  groupsInScope,
+  listRemoteFiles,
+  scopeKey,
+  tandemsRemoteDir,
+  uploadScope
+} from './upload'
+import {
+  clearUploadProgress,
+  readUploadProgress,
+  tandemUploadKey,
+  uploadProgressStateSchema,
+  writeUploadProgress
+} from './uploadProgress'
+import type { UploadProgressState } from './uploadProgress'
+import { getOutputDir, isoDay, isVideoFile } from './utils'
+import {
+  buildGroupBaseName,
+  buildPassengerFolder,
+  hasCompletePassenger,
+  mergeGroups,
+  passengerName,
+  passengerOf
+} from './workspace'
+
 export {
+  boardAnswerSchema,
+  buildGroupBaseName,
+  buildPassengerFolder,
+  clearNasSession,
+  clearUploadProgress,
+  containCrop,
+  cropFilter,
+  cropToPixels,
   dayInFrench,
   defaultPassengerEmail,
+  destinationSchema,
+  dsmCreateFolder,
+  dsmListFolder,
+  dsmLogin,
+  dsmLogout,
+  dsmValidateSession,
+  EDIT_LOCKED,
+  ensureNasSession,
+  fileChanged,
+  fileStatus,
+  filmNameOf,
+  fitRatio,
+  frameCropSchema,
+  frozenTandems,
+  FULL_FRAME,
+  getGroupProcessedDir,
+  getOutputDir,
   gmailComposeUrl,
+  goneFromStorage,
+  groupFromFiles,
+  groupsInScope,
+  hasCompletePassenger,
+  hasEdit,
+  importOutcomeSchema,
+  isoDay,
+  isQuarterTurn,
+  isTandem,
+  isVideoFile,
+  isWholeFrame,
+  lastSegment,
+  listRemoteFiles,
+  loadManifest,
+  loadNasSession,
+  loginWithSession,
   mailtoUrl,
-  renderPassengerEmail
-} from './passengerEmail'
-export type { PassengerEmail } from './passengerEmail'
-export { tandemEntrySchema, tandemIndexSchema } from './tandemEntry'
-export type { TandemEntry, TandemIndex } from './tandemEntry'
-export { lastSegment, parentOf } from './paths'
+  manifestFileSchema,
+  manifestGroupSchema,
+  mergeGroups,
+  parentOf,
+  passengerName,
+  passengerOf,
+  photosNameOf,
+  pictureFilter,
+  processingNow,
+  processJumps,
+  readUploadProgress,
+  reclusterGroups,
+  regroupLooseFiles,
+  renderPassengerEmail,
+  ROTATIONS,
+  rushesNameOf,
+  sameEditedGroup,
+  saveManifest,
+  scanMedia,
+  scopeKey,
+  shiftFiles,
+  statProcessedOutputs,
+  statProxies,
+  statTandemArtifacts,
+  tandemEntrySchema,
+  tandemIndexSchema,
+  tandemsRemoteDir,
+  tandemUploadKey,
+  turnBy,
+  turnedSize,
+  updateNasFolder,
+  uploadGate,
+  uploadProgressStateSchema,
+  uploadScope,
+  whenProcessed,
+  withRatio,
+  writeUploadProgress
+}
+export type {
+  BoardAnswer,
+  Destination,
+  FileStatus,
+  FrameCrop,
+  ImportOutcome,
+  Manifest,
+  ManifestFile,
+  ManifestGroup,
+  MontageNote,
+  OutputFact,
+  PassengerEmail,
+  ProxyFact,
+  RemoteListing,
+  Rotation,
+  ScanResult,
+  StatusContext,
+  TandemEntry,
+  TandemFact,
+  TandemIndex,
+  UploadProgressState
+}

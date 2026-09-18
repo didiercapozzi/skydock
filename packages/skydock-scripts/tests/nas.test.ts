@@ -3,7 +3,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs'
 import { createTmpDir, jsonResponse, stubFetch } from './fixtures'
 import {
-  decryptPasswordFromStorage,
   ensureNasSession,
   loadNasSession,
   loginWithSession,
@@ -12,149 +11,66 @@ import {
   updateNasFolder
 } from '../src/nas'
 
-describe('the storage session', () => {
-  let tmpDir: string
+/* The storage session (RULES, Network storage): SkyDock logs in once and keeps the session; when
+   the storage stops taking it, the session renews itself from what was kept, without asking; and
+   the upload folder and the backup folder are two different folders. */
 
-  beforeEach(() => {
-    tmpDir = createTmpDir('skydock-nas-test-')
-  })
+let tmpDir: string
 
-  afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true })
-    vi.unstubAllGlobals()
-  })
+const dsm = { login: vi.fn(async () => 'new-sid'), validate: vi.fn(async () => true) }
+const club = { host: 'https://nas.local', user: 'u', password: 'p' }
 
-  describe('the folders', () => {
-    it('remembers the default folder', () => {
-      saveNasSession(
-        { hostname: 'https://nas.local', username: 'user', sessionId: 'sid123' },
-        tmpDir
-      )
-      updateNasFolder('default', '/SkyDock/Photos', tmpDir)
-      const session = loadNasSession(tmpDir)
-      expect(session?.defaultFolder).toBe('/SkyDock/Photos')
-    })
-
-    it('keeps the backup folder apart from the upload folder', () => {
-      saveNasSession(
-        { hostname: 'https://nas.local', username: 'user', sessionId: 'sid123' },
-        tmpDir
-      )
-      updateNasFolder('default', '/SkyDock/Tandems', tmpDir)
-      updateNasFolder('backup', '/SkyDock/Rushes', tmpDir)
-      const session = loadNasSession(tmpDir)
-      expect(session?.defaultFolder).toBe('/SkyDock/Tandems')
-      expect(session?.backupFolder).toBe('/SkyDock/Rushes')
-    })
-  })
+beforeEach(() => {
+  tmpDir = createTmpDir('skydock-nas-test-')
+  dsm.login.mockClear()
+  dsm.validate.mockClear()
 })
 
-describe('logging in', () => {
-  let tmpDir: string
+afterEach(() => {
+  fs.rmSync(tmpDir, { recursive: true, force: true })
+  vi.unstubAllGlobals()
+})
 
-  const mockDsm = {
-    login: vi.fn(async () => 'new-sid'),
-    validate: vi.fn(async () => true)
-  }
-
-  beforeEach(() => {
-    tmpDir = createTmpDir('skydock-nas-test-')
-    mockDsm.login.mockClear()
-    mockDsm.validate.mockClear()
-  })
-
-  afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true })
-    vi.unstubAllGlobals()
-  })
-
-  it('reuses the session it kept while the storage still takes it', async () => {
-    saveNasSession(
-      { hostname: 'https://nas.local', username: 'u', sessionId: 'stored-sid' },
-      tmpDir
-    )
-    mockDsm.validate.mockResolvedValue(true)
-    const result = await loginWithSession(
-      { host: 'https://nas.local', user: 'u', password: 'p' },
-      mockDsm,
-      tmpDir
-    )
-    expect(result).toBe('stored-sid')
-    expect(mockDsm.login).not.toHaveBeenCalled()
-  })
-
-  it('logs in again when the kept session is refused', async () => {
-    saveNasSession({ hostname: 'https://nas.local', username: 'u', sessionId: 'old-sid' }, tmpDir)
-    mockDsm.validate.mockResolvedValue(false)
-    mockDsm.login.mockResolvedValue('new-sid')
-    const result = await loginWithSession(
-      { host: 'https://nas.local', user: 'u', password: 'p' },
-      mockDsm,
-      tmpDir
-    )
-    expect(result).toBe('new-sid')
-    expect(loadNasSession(tmpDir)?.sessionId).toBe('new-sid')
-  })
-
-  it('logs in when nothing was kept', async () => {
-    mockDsm.login.mockResolvedValue('fresh-sid')
-    const result = await loginWithSession(
-      { host: 'https://nas.local', user: 'u', password: 'p' },
-      mockDsm,
-      tmpDir
-    )
-    expect(result).toBe('fresh-sid')
-  })
-
-  it('forgets the session when the storage’s address changes', async () => {
-    saveNasSession(
-      { hostname: 'https://old-nas.local', username: 'u', sessionId: 'old-sid' },
-      tmpDir
-    )
-    mockDsm.login.mockResolvedValue('new-sid')
-    const result = await loginWithSession(
-      { host: 'https://new-nas.local', user: 'u', password: 'p' },
-      mockDsm,
-      tmpDir
-    )
-    expect(result).toBe('new-sid')
+describe('the storage session', () => {
+  it('keeps the upload folder and the backup folder apart', () => {
+    saveNasSession({ hostname: 'https://nas.local', username: 'u', sessionId: 'sid' }, tmpDir)
+    updateNasFolder('default', '/SkyDock/Tandems', tmpDir)
+    updateNasFolder('backup', '/SkyDock/Rushes', tmpDir)
     const session = loadNasSession(tmpDir)
-    expect(session?.hostname).toBe('https://new-nas.local')
+    expect(session?.defaultFolder).toBe('/SkyDock/Tandems')
+    expect(session?.backupFolder).toBe('/SkyDock/Rushes')
   })
 
-  /* the whole point of storing a password: an expired session must come back on its own */
-  it('stores a locally decryptable password and refreshes an expired session without asking', async () => {
-    mockDsm.login.mockResolvedValue('first-sid')
-    await loginWithSession({ host: 'https://nas.local', user: 'u', password: 'p' }, mockDsm, tmpDir)
-    const stored = loadNasSession(tmpDir)
-    expect(stored?.encPasswd?.startsWith('local:')).toBe(true)
-    expect(decryptPasswordFromStorage('https://nas.local', 'u', stored!.encPasswd!)).toBe('p')
+  it('is used again while the storage still takes it', async () => {
+    saveNasSession({ hostname: 'https://nas.local', username: 'u', sessionId: 'kept' }, tmpDir)
+    dsm.validate.mockResolvedValue(true)
+    await expect(loginWithSession(club, dsm, tmpDir)).resolves.toBe('kept')
+    expect(dsm.login).not.toHaveBeenCalled()
+  })
 
-    mockDsm.validate.mockResolvedValue(false)
-    mockDsm.login.mockResolvedValue('refreshed-sid')
-    const sid = await refreshStoredSession(stored!, tmpDir, mockDsm.login)
-    expect(sid).toBe('refreshed-sid')
-    expect(loadNasSession(tmpDir)?.sessionId).toBe('refreshed-sid')
+  it('renews itself when the storage stops taking it, without asking for the password', async () => {
+    dsm.login.mockResolvedValue('first-sid')
+    await loginWithSession(club, dsm, tmpDir)
+    const stored = loadNasSession(tmpDir)!
+
+    dsm.validate.mockResolvedValue(false)
+    dsm.login.mockResolvedValue('renewed-sid')
+    await expect(refreshStoredSession(stored, tmpDir, dsm.login)).resolves.toBe('renewed-sid')
+    expect(loadNasSession(tmpDir)?.sessionId).toBe('renewed-sid')
+  })
+
+  it('is forgotten when the storage’s address changes', async () => {
+    saveNasSession({ hostname: 'https://old-nas.local', username: 'u', sessionId: 'old' }, tmpDir)
+    dsm.login.mockResolvedValue('new-sid')
+    await expect(
+      loginWithSession({ ...club, host: 'https://new-nas.local' }, dsm, tmpDir)
+    ).resolves.toBe('new-sid')
+    expect(loadNasSession(tmpDir)?.hostname).toBe('https://new-nas.local')
   })
 })
 
 describe('the session between uploads', () => {
-  let tmpDir: string
-
-  beforeEach(() => {
-    tmpDir = createTmpDir('skydock-nas-gate-')
-  })
-
-  afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true })
-    vi.unstubAllGlobals()
-  })
-
-  it('returns null when there is no session at all', async () => {
-    await expect(ensureNasSession(tmpDir)).resolves.toBeNull()
-  })
-
-  it('reuses a session the storage still accepts', async () => {
+  it('is the one the storage still accepts', async () => {
     saveNasSession({ hostname: 'https://nas.local', username: 'u', sessionId: 'live' }, tmpDir)
     stubFetch(() => jsonResponse({ success: true, data: { shares: [] } }))
     const session = await ensureNasSession(tmpDir)

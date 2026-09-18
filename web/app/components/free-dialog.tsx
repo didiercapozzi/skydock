@@ -26,7 +26,7 @@ const FreeDialog = ({
   onClose: () => void
   onConfirm: () => void
 }) => {
-  const record = group.delivered
+  const record = group.uploaded
   const sent = record
     ? [record.film, record.photos, record.rushes, ...(record.originals ?? [])].filter(
         (f): f is NonNullable<typeof f> => f !== undefined

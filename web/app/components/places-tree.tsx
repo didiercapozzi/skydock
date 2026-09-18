@@ -1,6 +1,7 @@
 import { fileStatus, passengerName, passengerOf } from '@skydock/scripts'
 import { useState } from 'react'
 import type { StatusContext } from '@skydock/scripts'
+import { TANDEMS } from '../helpers/jumps'
 import type { Destination, ManifestFile, ManifestGroup } from './types'
 
 /* Where a file can be: the sorting area, a dropzone, or a passenger. One place is selected at a
@@ -26,8 +27,6 @@ type Props = {
   /* the place something was just filed under, lit for a moment so the eye can follow it there */
   flashPlace?: string | null
 }
-
-const TANDEMS = 'Tandems'
 
 const placeKey = (place: Place) => `${place.kind}:${'name' in place ? place.name : ''}`
 const samePlace = (a: Place, b: Place) => placeKey(a) === placeKey(b)

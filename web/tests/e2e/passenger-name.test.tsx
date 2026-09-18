@@ -146,7 +146,7 @@ describe('the card a passenger is named on', () => {
       {
         ...withFiles({ firstname: 'Luc', lastname: 'Favre' }),
         processed: true,
-        delivered: { at: 1 }
+        uploaded: { at: 1 }
       },
       true
     )

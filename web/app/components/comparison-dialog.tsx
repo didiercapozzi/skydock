@@ -1,4 +1,6 @@
 import { useRef, useState } from 'react'
+import { Go, Mini } from './buttons'
+import { Modal, Spacer } from './modal'
 import type { ManifestGroup } from './types'
 import { VideoCropper } from './video-cropper'
 import {
@@ -165,151 +167,125 @@ const ComparisonDialog = ({
   }
 
   return (
-    <div
+    <Modal
       data-comparison-dialog='true'
-      className='fixed inset-0 z-40 grid place-items-center bg-[rgba(8,12,16,0.5)] p-4'>
-      <div className='flex max-h-[90vh] w-[90vw] flex-col overflow-hidden rounded-xl border border-line bg-pane text-ink shadow-[0_20px_60px_rgba(0,0,0,0.35)]'>
-        <div className='flex items-center justify-between border-b border-line px-4 py-[13px]'>
-          <h2 className='m-0 text-[14px] font-semibold'>Compare Groups</h2>
-          <button
-            type='button'
-            onClick={onClose}
-            className='text-ink-3 hover:text-ink'>
-            <svg
-              className='w-5 h-5'
-              fill='none'
-              viewBox='0 0 24 24'
-              stroke='currentColor'
-              strokeWidth={2}>
-              <path
-                strokeLinecap='round'
-                strokeLinejoin='round'
-                d='M6 18L18 6M6 6l12 12'
-              />
-            </svg>
-          </button>
-        </div>
-
-        <div className='flex-1 flex overflow-hidden'>
-          <ComparePanel
-            group={leftGroup}
-            groups={groups}
-            fileIndex={leftFileIndex}
-            onFileIndexChange={setLeftFileIndex}
-            duration={leftDuration}
-            currentTime={leftCurrentTime}
-            zoom={leftZoom}
-            onSeek={(t) => {
-              setLeftCurrentTime(t)
-              leftVideoRefRef.current?.seek(t)
-            }}
-            onDurationChange={setLeftDuration}
-            onZoomChange={setLeftZoom}
-            onVideoRef={(ref) => {
-              leftVideoRefRef.current = ref
-            }}
-            onGroupPrev={() =>
-              navigate(
-                -1,
-                currentLeftId,
-                leftGroupIndex,
-                currentRightId,
-                setCurrentLeftId,
-                setLeftFileIndex,
-                setLeftDuration,
-                setLeftCurrentTime,
-                setLeftZoom
-              )
-            }
-            onGroupNext={() =>
-              navigate(
-                1,
-                currentLeftId,
-                leftGroupIndex,
-                currentRightId,
-                setCurrentLeftId,
-                setLeftFileIndex,
-                setLeftDuration,
-                setLeftCurrentTime,
-                setLeftZoom
-              )
-            }
-            side='left'
-            renderPreview={renderPreview}
-          />
-
-          <div className='w-px bg-line' />
-
-          <ComparePanel
-            group={rightGroup}
-            groups={groups}
-            fileIndex={rightFileIndex}
-            onFileIndexChange={setRightFileIndex}
-            duration={rightDuration}
-            currentTime={rightCurrentTime}
-            zoom={rightZoom}
-            onSeek={(t) => {
-              setRightCurrentTime(t)
-              rightVideoRefRef.current?.seek(t)
-            }}
-            onDurationChange={setRightDuration}
-            onZoomChange={setRightZoom}
-            onVideoRef={(ref) => {
-              rightVideoRefRef.current = ref
-            }}
-            onGroupPrev={() =>
-              navigate(
-                -1,
-                currentRightId,
-                rightGroupIndex,
-                currentLeftId,
-                setCurrentRightId,
-                setRightFileIndex,
-                setRightDuration,
-                setRightCurrentTime,
-                setRightZoom
-              )
-            }
-            onGroupNext={() =>
-              navigate(
-                1,
-                currentRightId,
-                rightGroupIndex,
-                currentLeftId,
-                setCurrentRightId,
-                setRightFileIndex,
-                setRightDuration,
-                setRightCurrentTime,
-                setRightZoom
-              )
-            }
-            side='right'
-            renderPreview={renderPreview}
-          />
-        </div>
-
-        <div className='flex items-center justify-end gap-2 border-t border-line px-4 py-[11px]'>
-          <button
-            type='button'
-            data-action='merge'
+      label='Compare jumps'
+      title='Compare jumps'
+      full
+      onClose={onClose}
+      footer={
+        <>
+          <Spacer />
+          <Mini onClick={onClose}>Close</Mini>
+          <Go
             disabled={leftGroup.processed === true || rightGroup.processed === true}
-            onClick={handleMergeClick}
-            className='rounded-[5px] border border-accent bg-accent px-3 py-1 text-[12px] font-semibold text-white hover:brightness-110 disabled:cursor-default disabled:opacity-45'>
+            onClick={handleMergeClick}>
             Merge
-          </button>
-          <button
-            type='button'
-            onClick={onClose}
-            className='rounded-[5px] border border-line bg-pane px-2 py-[3px] text-[11.5px] text-ink-2 hover:border-ink-3 hover:text-ink'>
-            Close
-          </button>
-        </div>
+          </Go>
+        </>
+      }>
+      <div className='flex-1 flex overflow-hidden'>
+        <ComparePanel
+          group={leftGroup}
+          groups={groups}
+          fileIndex={leftFileIndex}
+          onFileIndexChange={setLeftFileIndex}
+          duration={leftDuration}
+          currentTime={leftCurrentTime}
+          zoom={leftZoom}
+          onSeek={(t) => {
+            setLeftCurrentTime(t)
+            leftVideoRefRef.current?.seek(t)
+          }}
+          onDurationChange={setLeftDuration}
+          onZoomChange={setLeftZoom}
+          onVideoRef={(ref) => {
+            leftVideoRefRef.current = ref
+          }}
+          onGroupPrev={() =>
+            navigate(
+              -1,
+              currentLeftId,
+              leftGroupIndex,
+              currentRightId,
+              setCurrentLeftId,
+              setLeftFileIndex,
+              setLeftDuration,
+              setLeftCurrentTime,
+              setLeftZoom
+            )
+          }
+          onGroupNext={() =>
+            navigate(
+              1,
+              currentLeftId,
+              leftGroupIndex,
+              currentRightId,
+              setCurrentLeftId,
+              setLeftFileIndex,
+              setLeftDuration,
+              setLeftCurrentTime,
+              setLeftZoom
+            )
+          }
+          side='left'
+          renderPreview={renderPreview}
+        />
+
+        <div className='w-px bg-line' />
+
+        <ComparePanel
+          group={rightGroup}
+          groups={groups}
+          fileIndex={rightFileIndex}
+          onFileIndexChange={setRightFileIndex}
+          duration={rightDuration}
+          currentTime={rightCurrentTime}
+          zoom={rightZoom}
+          onSeek={(t) => {
+            setRightCurrentTime(t)
+            rightVideoRefRef.current?.seek(t)
+          }}
+          onDurationChange={setRightDuration}
+          onZoomChange={setRightZoom}
+          onVideoRef={(ref) => {
+            rightVideoRefRef.current = ref
+          }}
+          onGroupPrev={() =>
+            navigate(
+              -1,
+              currentRightId,
+              rightGroupIndex,
+              currentLeftId,
+              setCurrentRightId,
+              setRightFileIndex,
+              setRightDuration,
+              setRightCurrentTime,
+              setRightZoom
+            )
+          }
+          onGroupNext={() =>
+            navigate(
+              1,
+              currentRightId,
+              rightGroupIndex,
+              currentLeftId,
+              setCurrentRightId,
+              setRightFileIndex,
+              setRightDuration,
+              setRightCurrentTime,
+              setRightZoom
+            )
+          }
+          side='right'
+          renderPreview={renderPreview}
+        />
       </div>
 
       {showDatePopup && (
         <div
           data-merge-date-popup='true'
-          className='absolute inset-0 z-10 grid place-items-center bg-[rgba(8,12,16,0.5)] p-4'>
+          className='fixed inset-0 z-50 grid place-items-center bg-[rgba(8,12,16,0.5)] p-4'>
           <div className='w-[380px] rounded-xl border border-line bg-pane p-4 text-ink shadow-[0_20px_60px_rgba(0,0,0,0.35)]'>
             <h3 className='mb-1 text-[14px] font-semibold'>Merge date</h3>
             <p className='mb-3.5 text-[12.5px] text-ink-2'>
@@ -370,26 +346,17 @@ const ComparisonDialog = ({
               )}
             </div>
             <div className='flex items-center justify-end gap-3'>
-              <button
-                type='button'
-                data-action='merge-confirm'
+              <Mini onClick={() => setShowDatePopup(false)}>Cancel</Mini>
+              <Go
                 disabled={anchor === null}
-                onClick={handleMergeConfirm}
-                className='rounded-[5px] border border-accent bg-accent px-3 py-1 text-[12px] font-semibold text-white hover:brightness-110 disabled:cursor-default disabled:opacity-45'>
+                onClick={handleMergeConfirm}>
                 Confirm merge
-              </button>
-              <button
-                type='button'
-                data-action='merge-cancel'
-                onClick={() => setShowDatePopup(false)}
-                className='rounded-[5px] border border-line bg-pane px-2 py-[3px] text-[11.5px] text-ink-2 hover:border-ink-3 hover:text-ink'>
-                Cancel
-              </button>
+              </Go>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </Modal>
   )
 }
 

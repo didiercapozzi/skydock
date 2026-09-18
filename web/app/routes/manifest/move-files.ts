@@ -1,0 +1,34 @@
+import { saveManifest } from '@skydock/scripts'
+import { moveFiles } from '../../../../packages/skydock-scripts/src/moveFiles'
+import { boardAnswer } from '../../helpers/manifest'
+import type { Intent } from './change'
+
+/* Files go from wherever they are into a jump, a new jump or a place — the one move a drag on the
+   board and a drop from the computer both make (RULES, Jumps). */
+const moveFilesIntent: Intent = ({
+  data,
+  manifest,
+  manifestPath,
+  frozen,
+  frozenFiles,
+  refuse,
+  refuseFrozen
+}) => {
+  const ids = new Set(data.fileIds ?? [])
+  if (ids.size === 0) return refuse('Select at least one file to move.')
+  if ([...ids].some((id) => frozenFiles.has(id)) || frozen.has(data.targetGroupId ?? ''))
+    return refuseFrozen()
+  try {
+    moveFiles(manifest, ids, {
+      targetGroupId: data.targetGroupId,
+      newGroup: data.newGroup,
+      destination: data.destination
+    })
+  } catch (e) {
+    return refuse(e instanceof Error ? e.message : String(e))
+  }
+  saveManifest(manifestPath, manifest)
+  return boardAnswer(manifest)
+}
+
+export { moveFilesIntent }

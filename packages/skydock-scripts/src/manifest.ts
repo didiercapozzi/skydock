@@ -2,7 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { z } from 'zod'
 import { writeJsonAtomic } from './lib/fs'
-import { groupsFileSchema, manifestSchema } from './types'
+import { groupsFileSchema, manifestSchema, tandemUploadSchema } from './types'
 import type { GroupsFile, Manifest, ManifestFile } from './types'
 
 /* The registry of files and the jumps built out of it live in two files side by side: every file
@@ -28,8 +28,19 @@ const jsonText = z.string().transform((text, ctx) => {
 })
 
 /* Whether the file failed as JSON or failed as a jumps file makes no difference to what follows —
-   either way it cannot be read — so there is one schema and one way out. */
-const groupsTextSchema = jsonText.pipe(groupsFileSchema)
+   either way it cannot be read — so there is one schema and one way out. A jumps file written when
+   a tandem's upload was recorded under the name "delivered" is read as the same record. */
+const storedGroupSchema = groupsFileSchema.shape.groups.element.extend({
+  delivered: tandemUploadSchema.optional()
+})
+const groupsTextSchema = jsonText.pipe(
+  z.object({ groups: z.array(storedGroupSchema) }).transform(({ groups }): GroupsFile => ({
+    groups: groups.map(({ delivered, ...group }) => ({
+      ...group,
+      uploaded: group.uploaded ?? delivered
+    }))
+  }))
+)
 
 /* What is actually on disk: the registry, without the jumps, which live in their own file and are
    put back by resolveGroups. The three defaults are what an older or half-written manifest is

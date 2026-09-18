@@ -37,7 +37,7 @@ const TakeBackDialog = ({
   const copies = files.filter((f) => f.processed).length
   const project = facts.some((f) => f?.project)
   const film = facts.find((f) => f?.film)?.film
-  const uploaded = groups.some((g) => g.delivered)
+  const uploaded = groups.some((g) => g.uploaded)
   const reset = mode === 'reset'
 
   return (

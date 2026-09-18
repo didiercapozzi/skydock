@@ -8,7 +8,7 @@ import { hasCommand } from './utils'
 import { hasCompletePassenger } from './workspace'
 
 /* A tandem is one jump delivered to one person: a passenger's name is what gives it a folder of its
-   own with the videos and photos kept apart, and that shape is what montage and delivery need. */
+   own with the videos and photos kept apart, and that shape is what montage and upload need. */
 const isTandem = (group: ManifestGroup) => hasCompletePassenger(group.passenger)
 
 const filmNameOf = (baseName: string) => `${baseName}.mp4`
@@ -84,7 +84,7 @@ const frozenTandems = (manifest: Manifest, outputDir: string) =>
   new Set(manifest.groups.filter((g) => g.freed || hasEdit(outputDir, g)).map((g) => g.id))
 
 /* everything about a jump that decides what its copies are and where they go — bookkeeping such as
-   whether it was processed or delivered is not part of it */
+   whether it was processed or uploaded is not part of it */
 const editedShape = (group: ManifestGroup) =>
   JSON.stringify({
     label: group.label,

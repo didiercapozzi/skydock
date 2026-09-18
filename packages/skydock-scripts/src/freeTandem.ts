@@ -11,7 +11,7 @@ import { getGroupProcessedDir, isFlatGroup } from './process'
 import { getCutProxyDir } from './proxy'
 import { isTandem } from './tandem'
 import type { Manifest, ManifestFile } from './types'
-import { deliveredFiles } from './upload'
+import { uploadedFiles } from './upload'
 import { isVideoFile, sizeOf } from './utils'
 import { lastSegment } from './paths'
 
@@ -73,7 +73,7 @@ const proveOnStorage = async (
   if (!group) throw new Error('Tandem not found.')
   if (!isTandem(group) || isFlatGroup(group)) throw new Error('Only a tandem can be freed.')
   if (group.freed) throw new Error('This tandem is already freed from this machine.')
-  const record = group.delivered
+  const record = group.uploaded
   if (!record) throw new Error('Upload this tandem first — nothing of it is on the storage yet.')
 
   const dir = getGroupProcessedDir(outputDir, group).dir
@@ -95,7 +95,7 @@ const proveOnStorage = async (
   if (videos.length > 0 && !record.film) problems.push('the film was never uploaded')
 
   /* every file that went up: the same bytes here and on the storage as when it was sent */
-  const sent = deliveredFiles(record)
+  const sent = uploadedFiles(record)
   for (const file of sent) {
     const label = lastSegment(file.remotePath)
     if (!fs.existsSync(file.localPath) || sizeOf(file.localPath) !== file.size) {

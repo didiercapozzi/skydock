@@ -93,7 +93,7 @@ const setup = async () => {
         passenger: { firstname: 'Luc', lastname: 'Favre' },
         processed: true,
         files,
-        delivered: {
+        uploaded: {
           at: 1,
           film: sent(film, `${PAX}/luc.mp4`),
           photos: sent(photosZip, `${PAX}/luc.photos.zip`),
@@ -106,9 +106,9 @@ const setup = async () => {
   /* by default the storage holds exactly what was sent */
   const onStorage = Object.fromEntries(
     [
-      manifest.groups[0]!.delivered!.film!,
-      manifest.groups[0]!.delivered!.photos!,
-      manifest.groups[0]!.delivered!.rushes!
+      manifest.groups[0]!.uploaded!.film!,
+      manifest.groups[0]!.uploaded!.photos!,
+      manifest.groups[0]!.uploaded!.rushes!
     ].map((f) => [f.remotePath, f.md5])
   )
   return { manifest, folder, film, originals, onStorage }
@@ -149,7 +149,7 @@ describe('freeing an uploaded tandem', () => {
     expect(manifest.groups[0]?.freed?.bytes).toBeGreaterThan(0)
     expect(manifest.files.every((f) => f.freed)).toBe(true)
     /* the record of what was sent where is kept */
-    expect(manifest.groups[0]?.delivered?.film?.remotePath).toBe(`${PAX}/luc.mp4`)
+    expect(manifest.groups[0]?.uploaded?.film?.remotePath).toBe(`${PAX}/luc.mp4`)
   })
 
   it('refuses, deleting nothing, when the storage does not hold what was sent', async () => {
@@ -186,7 +186,7 @@ describe('freeing an uploaded tandem', () => {
 
   it('refuses a tandem that was never uploaded', async () => {
     const { manifest } = await setup()
-    delete manifest.groups[0]!.delivered
+    delete manifest.groups[0]!.uploaded
     await expect(free(manifest)).rejects.toThrow(/Upload this tandem first/)
   })
 

@@ -185,6 +185,11 @@ const importFile = async ({
     return { filename: file.filename, outcome: 'added' }
   } finally {
     fs.rmSync(partial, { force: true })
+    /* the holding folder is only there while a file is arriving; one another arrival is using, or
+       has already removed, is left alone */
+    try {
+      if (fs.readdirSync(incoming).length === 0) fs.rmdirSync(incoming)
+    } catch {}
   }
 }
 

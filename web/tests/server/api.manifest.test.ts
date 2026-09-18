@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { EDIT_LOCKED, getGroupProcessedDir, loadManifest, saveManifest } from '@skydock/scripts'
 import type { Manifest, ManifestFile, ManifestGroup } from '@skydock/scripts'
 import { action } from '../../app/routes/api.manifest'
-import { createTmpDir } from './fixtures'
+import { createTmpDir, routeArgs } from './fixtures'
 
 /* Nearly every change the board makes goes through this one route, and none of it was covered.
    These drive the action the way the board does — a real request against a real manifest on disk —
@@ -62,13 +62,15 @@ describe('changes made on the board', () => {
   }
 
   const send = async (body: Record<string, unknown>) =>
-    await action({
-      request: new Request('http://localhost/api/manifest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      })
-    } as Parameters<typeof action>[0])
+    await action(
+      routeArgs(
+        new Request('http://localhost/api/manifest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        })
+      )
+    )
 
   it('refuses everything before a scan has ever run', async () => {
     const res = refusal(await send({ intent: 'save-groups' }))
@@ -172,7 +174,7 @@ describe('changes made on the board', () => {
     })
 
     /* a file that leaves its jump is not the file that was processed and sent, so what was recorded
-       about it goes with it — otherwise the board would show it as delivered from a folder it is no
+       about it goes with it — otherwise the board would show it as uploaded from a folder it is no
        longer part of */
     it('drops what was recorded about a file that moves', async () => {
       const moved = file({
@@ -286,7 +288,7 @@ describe('changes made on the board', () => {
           destination: 'Tandems',
           passenger: { firstname: 'Luc', lastname: 'Favre' },
           processed: true,
-          delivered: { at: 1 },
+          uploaded: { at: 1 },
           files: [file({ id: 'a' })]
         })
       ])

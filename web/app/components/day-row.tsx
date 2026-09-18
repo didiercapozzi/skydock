@@ -570,3 +570,4 @@ const DayRow = ({
 }
 
 export { DayRow }
+export type { Props as DayRowProps }

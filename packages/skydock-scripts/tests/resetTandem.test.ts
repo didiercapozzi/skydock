@@ -50,7 +50,7 @@ const setup = () => {
       passenger: luc,
       processed: true,
       publish: { shareUrl: 'https://nas/s/1' },
-      delivered: { at: 1 },
+      uploaded: { at: 1 },
       files: [a]
     },
     /* a second jump of the same passenger, in the same folder */
@@ -127,7 +127,7 @@ describe('resetting a tandem', () => {
     for (const id of ['g1', 'g2']) {
       const g = manifest.groups.find((x) => x.id === id)!
       expect(g.processed).toBeUndefined()
-      expect(g.delivered).toBeUndefined()
+      expect(g.uploaded).toBeUndefined()
       expect(g.publish).toBeUndefined()
     }
     expect(manifest.files.find((f) => f.id === 'GX01.MP4')?.processed).toBeUndefined()
