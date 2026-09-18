@@ -181,7 +181,7 @@ const deliver = async (
   }
 }
 
-describe('deliver — what the passenger gets', () => {
+describe('uploading a tandem — what the passenger gets', () => {
   it('sends the film and the photos, and nothing else', async () => {
     const { uploads } = await deliver()
     const toPassenger = uploads
@@ -219,7 +219,7 @@ describe('deliver — what the passenger gets', () => {
     expect(shares).not.toContain('/Backup')
   })
 
-  it('records what was handed over', async () => {
+  it('records what went where', async () => {
     const { result } = await deliver()
     expect(result.delivered.shareUrl).toContain('/sharing/abc')
     expect(result.delivered.film?.remotePath).toBe(
@@ -229,7 +229,7 @@ describe('deliver — what the passenger gets', () => {
   })
 })
 
-describe('deliver — what it refuses', () => {
+describe('uploading a tandem — what is refused', () => {
   const fails = async (options: SceneOptions, overrides: Partial<NasSession> = {}) => {
     try {
       await deliver(options, overrides)
@@ -279,14 +279,14 @@ describe('deliver — what it refuses', () => {
   })
 })
 
-describe('deliver — the awkward cases', () => {
+describe('uploading a tandem — the awkward cases', () => {
   it('adopts a film rendered under a different name', async () => {
     const { uploads, groupDir } = await deliver({ film: 'GARGASSON Donald.mp4' })
     expect(fs.existsSync(path.join(groupDir, 'luc_favre_20260802.mp4'))).toBe(true)
     expect(uploads.map((u) => u.name)).toContain('luc_favre_20260802.mp4')
   })
 
-  it('delivers a tandem whose camera died, with no film at all', async () => {
+  it('uploads a tandem whose camera died, with no film at all', async () => {
     const { uploads } = await deliver({ film: null, videos: 0 })
     expect(
       uploads.filter((u) => u.dest === '/SkyDock/Tandems/Luc Favre').map((u) => u.name)
@@ -316,7 +316,7 @@ describe('tandem artifacts — what the board is told', () => {
 
 /* How the originals are kept is chosen once for the club: one zip, or the clips as they are — and
    either way a copy of the film can go with them. */
-describe('deliver — how the backup is kept', () => {
+describe('uploading a tandem — how the backup is kept', () => {
   const contents = (groupDir: string) =>
     JSON.parse(
       fs.readFileSync(path.join(groupDir, 'luc_favre_20260802.rushes.zip.contents'), 'utf-8')

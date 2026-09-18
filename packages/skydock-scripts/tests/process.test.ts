@@ -123,8 +123,8 @@ describe('where a tandem lands', () => {
     ])
   })
 
-  /* the regression, exactly as it happened: a first name typed, the last name never reached */
-  it('refuses a tandem with only half a name rather than delivering it as a place', async () => {
+  /* half a name is neither a person nor a place, and a place is what the folder rule would make of it */
+  it('refuses a tandem with only half a name rather than filing it as a place', async () => {
     const { manifestPath } = write({
       destination: 'Tandems',
       passenger: { firstname: 'Luc', lastname: '' },
@@ -149,7 +149,7 @@ describe('where a tandem lands', () => {
     expect(delivered()).toEqual([path.join('Yverdon', 'yverdon_20260808_090909.mp4')])
   })
 
-  /* what the bug produced, named so it can never come back unnoticed */
+  /* a file named after the Tandems folder is what a half-named tandem filed as a place would be called */
   it('never writes a file named after the Tandems folder itself', async () => {
     const { manifestPath } = write({
       destination: 'Tandems',
@@ -294,7 +294,7 @@ describe('cropping the frame', () => {
    and edits go on being saved. So the pass has to be something that can be waited on, and what it
    saves at the end has to be added to the manifest as it is then — not the one it read at the
    start, written back over everything done since. */
-describe('while a preparation is running', () => {
+describe('while a processing is running', () => {
   it('keeps an edit saved in the meantime', async () => {
     const { manifestPath } = write({
       destination: 'Tandems',
@@ -319,7 +319,7 @@ describe('while a preparation is running', () => {
     expect(after.files[0]?.processed?.path).toMatch(/luc_favre_20260808_090909\.mp4$/)
   })
 
-  it('does not call a jump prepared when it was changed while its copies were written', async () => {
+  it('does not call a jump processed when it was changed while its copies were written', async () => {
     const { manifestPath } = write({
       destination: 'Tandems',
       passenger: { firstname: 'Luc', lastname: 'Favre' },

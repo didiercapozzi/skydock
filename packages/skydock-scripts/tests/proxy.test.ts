@@ -23,9 +23,8 @@ vi.mock('node:child_process', async (importOriginal) => {
 const CONTAINERS = new Set(['mp4', 'mov', 'mkv', 'webm', 'avi'])
 
 /* ffmpeg refuses before encoding a frame when it cannot tell what container to write, and it tells
-   from the output's extension unless `-f` says otherwise. A fake that writes whatever it is asked
-   to hides that, which is exactly how every proxy on a real card came to fail while every test
-   passed: the temporary name ends in `.part`, and nothing named the format. */
+   from the output's extension unless `-f` says otherwise. The fake refuses the same way, so a proxy
+   written to a temporary name has to name its format. */
 const ffmpegWouldRefuse = (line: string, out: string) => {
   if (/(^|\s)-f\s+\w+/.test(line)) return null
   const extension = out.split('.').pop()?.toLowerCase() ?? ''
@@ -371,7 +370,7 @@ describe('a build still in progress', () => {
    graphics card has to do the decode, not just the encode. Being listed by ffmpeg is not the same
    as working: NVENC is compiled in and then fails at "device creation" when the driver libraries
    are missing, which is the state a container is in until it is given them. */
-describe('which encoder gets used', () => {
+describe('the graphics card or the processor', () => {
   let outputDir: string
 
   beforeEach(() => {
@@ -444,7 +443,7 @@ describe('which encoder gets used', () => {
 
 /* Two things the graphics cards taught us the hard way, both of which look like details and both
    of which stopped every clip on a real card from building. */
-describe('the settings the cards insist on', () => {
+describe('what a card is asked for', () => {
   let outputDir: string
 
   beforeEach(() => {

@@ -6,11 +6,8 @@ import { page, userEvent } from 'vitest/browser'
 import { PassengerCard, PassengerName } from '../../app/components/tandem-card'
 import type { ManifestGroup } from '../../app/components/types'
 
-/* Typing a first name and then moving to the last name used to record the passenger there and
-   then — with no last name. The card replaced the inputs with the half name it had just invented,
-   so the last name could not be typed at all, and a jump with half a name is one the folder rule
-   reads as a place: it delivered the tandem flat, with every file named after the dropzone. One
-   bug, and the two halves of it looked unrelated.
+/* A passenger's name is saved whole or not at all. Half a name is what the folder rule reads as a
+   place, so moving from the first name to the last must record nothing yet.
 
    The real browser is what decides here: this is about where focus goes and when blur fires, and
    a synthesised event would prove nothing. */
@@ -137,14 +134,14 @@ describe('the card a passenger is named on', () => {
     await expect.element(page.getByLabelText('Last name')).toHaveValue('Favre')
   })
 
-  /* changing it after the files have been prepared means preparing them again, into a new folder */
-  test('says what changing a prepared name costs', async () => {
+  /* changing it after the files have been processed means processing them again, into a new folder */
+  test('says what changing a processed name costs', async () => {
     await renderCard({ ...withFiles({ firstname: 'Luc', lastname: 'Favre' }), processed: true }, true)
 
     await expect.element(page.getByText(/processing it again/i)).toBeVisible()
   })
 
-  test('says more when it has already been delivered', async () => {
+  test('says more when it has already been uploaded', async () => {
     await renderCard(
       {
         ...withFiles({ firstname: 'Luc', lastname: 'Favre' }),

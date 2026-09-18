@@ -29,7 +29,7 @@ const renderCropper = async (props: Partial<Parameters<typeof VideoCropper>[0]> 
   return { onSeek, onCropChange, onApply, onZoomChange }
 }
 
-describe('VideoCropper - 9.6 seek clamps', () => {
+describe('trimming — the playhead stays inside the clip', () => {
   test('click beyond bar clamps to 0 and duration', async () => {
     const onSeek = vi.fn()
     await render(
@@ -128,7 +128,7 @@ describe('VideoCropper - 9.6 seek clamps', () => {
   })
 })
 
-describe('VideoCropper - 9.6 time from bounding rect', () => {
+describe('trimming — where a click lands in time', () => {
   test('time from position via rect', async () => {
     const onSeek = vi.fn()
     await render(
@@ -172,7 +172,7 @@ describe('VideoCropper - 9.6 time from bounding rect', () => {
   })
 })
 
-describe('VideoCropper - 9.6 wheel zoom centered', () => {
+describe('trimming — zooming the timeline', () => {
   test('wheel zoom changes zoom and keeps cursor time', async () => {
     const onZoomChange = vi.fn()
     const onSeek = vi.fn()
@@ -294,7 +294,7 @@ describe('VideoCropper - 9.6 wheel zoom centered', () => {
   })
 })
 
-describe('VideoCropper - 9.6 pointer drag markers', () => {
+describe('trimming — dragging the ends', () => {
   test('drag start handle updates cropStart', async () => {
     const { onCropChange } = await renderCropper({
       duration: 10,
@@ -386,7 +386,7 @@ describe('VideoCropper - 9.6 pointer drag markers', () => {
   })
 })
 
-describe('VideoCropper - 9.6 Start/End here and Apply', () => {
+describe('trimming — start and end at the playhead', () => {
   test('Start here and End here set crop points', async () => {
     const { onCropChange } = await renderCropper({
       currentTime: 3.5,
@@ -421,7 +421,7 @@ describe('VideoCropper - 9.6 Start/End here and Apply', () => {
   })
 })
 
-describe('VideoCropper - 9.6 thumbnail filmstrip', () => {
+describe('trimming — the filmstrip', () => {
   test('renders thumbnails spanning the visible range when thumbSrc provided', async () => {
     await renderCropper({
       duration: 16,

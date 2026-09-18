@@ -1,7 +1,6 @@
 import type { ManifestFile } from './types'
 
-/* Deliberately free of node imports: the board imports this through the package barrel, and
-   `web/tests/e2e/scripts-barrel.test.tsx` asserts the barrel evaluates in a browser. */
+/* Free of node imports: the board runs this in the browser. */
 
 type FileStatus = 'local' | 'processed' | 'uploaded'
 

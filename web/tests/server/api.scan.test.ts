@@ -11,7 +11,7 @@ type Answer = {
   looseFiles?: unknown[]
 }
 
-describe('api/scan (truthful, no UI mock)', () => {
+describe('scanning', () => {
   let tmpDir: string
   let originalOutputDir: string | undefined
 

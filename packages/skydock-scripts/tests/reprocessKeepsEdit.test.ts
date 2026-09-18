@@ -109,7 +109,7 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-describe('preparing a tandem that has already been prepared', () => {
+describe('processing a tandem again', () => {
   it('leaves the edit, the film and the archives where they are', async () => {
     await prepare([clip('GX01.MP4', AT)])
     addEdit()

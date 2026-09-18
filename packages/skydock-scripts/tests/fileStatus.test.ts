@@ -37,7 +37,7 @@ const uploaded = (over: Partial<ManifestFile> = {}) =>
 
 const onDisk = { exists: true, size: 90 }
 
-describe('fileStatus', () => {
+describe('a file’s state', () => {
   it('is local with no record at all', () => {
     expect(fileStatus(base())).toBe('local')
   })
@@ -69,7 +69,7 @@ describe('fileStatus', () => {
     expect(fileStatus(processed(), { output: { exists: true, size: 12 } })).toBe('local')
   })
 
-  it('trusts a migrated record that does not know its own size', () => {
+  it('does not demote a copy whose size was never recorded', () => {
     const legacy = processed()
     legacy.processed!.size = 0
     expect(fileStatus(legacy, { output: { exists: true, size: 4321 } })).toBe('processed')
@@ -91,7 +91,7 @@ describe('fileStatus', () => {
   })
 
   /* the three ways of knowing nothing — none of them may destroy a proven upload */
-  it('stays uploaded when the NAS was never asked', () => {
+  it('stays uploaded when the storage was never asked', () => {
     expect(fileStatus(uploaded(), { output: onDisk, remote: null })).toBe('uploaded')
   })
 
@@ -100,7 +100,7 @@ describe('fileStatus', () => {
     expect(fileStatus(uploaded(), { output: onDisk, remote })).toBe('uploaded')
   })
 
-  it('stays uploaded when DSM reported no size for it', () => {
+  it('stays uploaded when the storage reported no size for it', () => {
     const remote = { dirs: ['/home/Yverdon'], sizes: { '/home/Yverdon/a.mp4': null } }
     expect(fileStatus(uploaded(), { output: onDisk, remote })).toBe('uploaded')
   })
@@ -118,11 +118,11 @@ describe('fileStatus', () => {
 
 /* a turn is part of what the copy was made from, like the trim and the frame */
 describe('a turned file', () => {
-  it('reads as changed once turned after it was prepared', () => {
+  it('reads as changed once turned after it was processed', () => {
     expect(fileStatus(processed({ rotation: 90 }), { output: onDisk })).toBe('local')
   })
 
-  it('reads as prepared when the copy was made turned the same way', () => {
+  it('reads as processed when the copy was made turned the same way', () => {
     const turned = processed({ rotation: 90 })
     turned.processed!.source.rotation = 90
     expect(fileStatus(turned, { output: onDisk })).toBe('processed')
@@ -138,7 +138,7 @@ describe('a turned file', () => {
   })
 })
 
-describe('scopeStatus and uploadGate', () => {
+describe('what blocks an upload', () => {
   const files = [base(), processed(), uploaded()]
   const context = (file: ManifestFile) => ({
     output: file.processed ? onDisk : undefined,

@@ -1,688 +1,461 @@
 # RULES — what SkyDock does
 
-> The single source of truth for how SkyDock behaves. It describes the app, not the code: how media
-> gets from a camera to a passenger, and what the app promises along the way. The code and its tests
-> are the authority on _how_ that is done.
+> The single source of truth for how SkyDock behaves. It describes the app in plain words — what a
+> person sees and what the app promises — never how the code does it. The code and its tests are the
+> authority on _how_.
 
 ## What SkyDock is
 
 SkyDock is the media workflow of a skydiving dropzone. Cameras come back full of videos and photos
-from a day of jumping; SkyDock copies them off, works out which files belong to which jump, and lets
+from a day of jumping. SkyDock copies them off, works out which files belong to which jump, and lets
 the instructor file each jump under the dropzone it was shot at or the passenger it belongs to. It
-then renames and crops the files into a tidy folder per jump and sends them to the club's network
-storage, ready to hand to the passenger.
+then renames and crops the files into a tidy folder per jump, puts them on the club's network
+storage, and helps hand them to the passenger.
 
-Cameras are treated as plain storage. SkyDock does not care which camera a file came from, only when
-it was shot.
+Cameras are plain storage. SkyDock does not care which camera a file came from, only when it was shot.
 
 ## Principles
 
-These hold everywhere, and most of the rules further down are consequences of them.
+Everything below follows from these.
 
-- **The originals are never touched.** Processing copies; it never moves, renames or deletes what the
-  cameras produced. Correcting a jump's time changes what SkyDock has recorded about a file, not the
-  file. The camera's own storage is only ever read.
-- **A folder is only rebuilt by whoever owns it.** A jump's own folder can be rewritten, because only
-  that jump is in it. A dropzone folder is shared by every day ever shot there, so it is never
-  tidied — files in it are replaced one by one, and a day SkyDock no longer knows about is left
-  alone. A folder holding an edit keeps it: the media is rebuilt beside the work, because an edit is
-  the one thing here that cannot be made again.
-- **Processing again is the ordinary way of working.** Process a jump, look at it, correct a time or a
-  name, process it again. The second pass writes over the first and leaves nothing aside: a copy is
-  made from an original that has not moved, so what it replaces is a copy of the same file. What no
-  longer belongs is removed — a clip whose time was corrected, or that was taken out of the jump,
-  leaves a copy behind under a name nobody expects, and a file nobody expects is one that would be
-  delivered anyway. The edit, the film and the archives are not media and are never touched.
-- **A file's state is a fact that can be checked, not a flag someone has to remember to clear.** Every
-  claim SkyDock makes about a file — it has been processed, it is on the network storage — is backed
-  by evidence it can re-examine.
-- **Nothing on the network storage is ever deleted by SkyDock.** It uploads files and creates folders,
-  and re-uploading replaces a file of the same name — but taking something off the storage is done by a
-  person, in the storage's own interface. There is no button for it here and no way to reach one.
-  SkyDock's part is to notice that it happened.
-- **Uncertainty never destroys a fact.** When SkyDock cannot tell — the storage did not answer, a
-  check failed — it keeps what it last proved rather than guessing the worse case.
+- **The originals are never touched.** Processing makes copies. It never moves, renames or deletes a
+  file that came off a camera. Correcting a jump's time changes what SkyDock has recorded, not the file.
+  The camera's own storage is only ever read.
+- **A folder is rebuilt only by whoever owns it.** A passenger's folder can be rewritten, because only
+  that passenger is in it. A dropzone folder is shared by every day ever shot there, so it is never
+  wiped: files in it are replaced one by one, and a day SkyDock no longer knows about is left alone.
+- **An edit is the one thing that cannot be made again.** Footage can be copied again, archives rebuilt,
+  a film re-rendered. The hours spent editing exist once. Every rule about a tandem with an edit
+  protects that.
+- **Processing again is the normal way of working.** Process, look, correct a time or a name, process
+  again. The second pass writes over the first and leaves nothing aside, and removes any copy whose
+  name is no longer produced, so nothing stale is left to be handed over.
+- **A file's state is a fact that can be checked, not a flag to remember.** Every claim SkyDock makes
+  about a file — processed, on the storage — is backed by evidence it can look at again.
+- **Nothing on the network storage is ever deleted by SkyDock.** It uploads and creates folders; a
+  re-upload replaces a file of the same name. Taking something off the storage is done by a person, in
+  the storage's own interface. SkyDock's part is to notice.
+- **Not knowing is not evidence.** When the storage did not answer or a check failed, SkyDock keeps what
+  it last proved rather than assuming the worst.
+- **Uncertainty costs time, never a delivery.** When SkyDock cannot tell whether two files are the same,
+  it sends the file again. When it cannot prove a copy is on the storage, it will not delete the local one.
 
 ## The workflow
 
 **1. Copy off the cameras.** Every file is copied into a folder named after the day it was shot.
-Re-inserting the same camera costs nothing: a file already there with the same contents is skipped,
-and one whose contents differ is copied again, because the camera has overwritten it.
+Inserting the same camera again costs nothing: a file already there with the same contents is skipped.
 
-**2. Find the jumps.** Scanning reads each file's capture time and groups files shot close together
-into jumps. It is asked for from the board, and it can be asked for again at any point: a scan after
-more cameras have been copied off picks up the new files without disturbing the work already done.
-The grouping is a guess, and the next step exists to correct it.
+**2. Scan.** SkyDock reads each file's capture time and groups files shot close together into jumps.
+A scan can be asked for at any time; one run after more cameras were copied off picks up the new files
+without disturbing the work already done. The grouping is a guess, and the board exists to correct it.
 
-Scanning also makes a **proxy** of every clip: a small copy, the same length and running at the same
-speed, which the crop bar plays instead of dragging a 4K file through the browser a frame at a time,
-and which the editor later opens on instead of making its own. They are built behind the scan rather
-than inside it, because a card of clips takes minutes, and everything works without them meanwhile —
-a clip with no proxy yet simply plays as it always did. A clip already smaller than a proxy would be
-is its own.
+A scan also makes a **proxy** of every clip: a small copy, the same length at the same speed, which the
+board plays instead of the full clip and which the editor later opens on. Proxies are made in the
+background; everything works without them, and a clip without one simply plays as it is. Each clip
+says whether it has one. Proxies are working files: never listed, never sorted, never uploaded.
 
-Every clip says whether it has one, beside its name: **proxy** when it is there, **no proxy** while it
-is not, and nothing at all for a photo, which never has one. A clip already small enough to be its own
-reads as having one, because it has — there is nothing left to make. The header counts how many are
-still without, and says nothing once they all have one. All of it is read off the disk rather than off
-what the last pass recorded, so emptying the folder shows up as what it is instead of every clip going
-on claiming a copy that is gone.
+Proxies are made on the graphics card when the machine has one that works, and on the processor
+otherwise. A clip whose proxy cannot be made is named, with the reason, and can still be sorted,
+processed and uploaded.
 
-**The graphics card does it when there is one.** Unpacking a card of 4K clips is the expensive half,
-so what matters is that the card decodes as well as encodes — measured on two clips, eleven seconds
-against three minutes. Which card is used is worked out by trying one, with the settings it will
-really be given, rather than by asking what it supports: an encoder a machine lists is not one it can
-necessarily run, and one that accepts a trial of nothing can still refuse every clip. With no card
-that answers, the processor does it, slower and no differently otherwise.
-
-A card is also tried on its own for resizing, which is a separate part of it that some drivers do not
-offer at all. One that decodes and encodes but cannot resize still does both, and the processor
-shrinks each frame in between — most of the saving kept, instead of every clip on the card failing.
-
-A proxy a card made is larger than one the processor made — two to three times, for the same picture,
-because making every frame a keyframe is what costs and hardware spends more bits doing it. That is
-the trade: minutes of waiting against gigabytes of working files that never leave the machine.
-
-Each proxy is recorded the moment it is made, not when the run finishes. A card of clips is twenty
-minutes of work, and whoever started it may never see it end — a copy nobody wrote down is a copy
-nobody uses, which is how the crop bar came to drag 4K originals through the browser with twenty
-finished proxies sitting unused.
-
-A clip whose proxy cannot be made is named, **and so is the reason it could not** — once, since when
-this fails it usually fails the same way on every clip on the card. The reason given is the first
-thing that went wrong, not the last: one stage failing makes every stage after it fail too, and the
-last of those only says that it had nothing to work with. A card that cannot be proxied is
-still a card that can be sorted, processed and delivered.
-
-Proxies are never shown. They are not footage, so nothing lists them, counts them or offers them to
-be sorted, and they never leave this machine: they are kept away from the folders that go to the
-storage, so what reaches a passenger or the backup is the same as it was before they existed.
-
-**3. Sort.** On the board, each jump is filed under the dropzone it was shot at, or under Tandems with
-the passenger's name.
+**3. Sort.** On the board, each jump is filed under a dropzone or under Tandems with a passenger's name.
 
 **4. Process.** The files of a filed jump are copied into their delivery folder, renamed after the
-passenger or the dropzone and the time they were shot, cropped if a crop was set, and stamped so that
-the file's date matches its name.
+passenger or the dropzone and the time they were shot, cropped and turned as asked, and stamped so that
+each file's date matches its name.
 
-A passenger's name half entered stops this, saying which name is unfinished. Half a name is neither a
-person nor a place: it has no folder to go to, and the rule that picks the folder would read the jump
-as a place and deliver it flat under the dropzone's name. What makes a jump a tandem is that somebody
-is in it, so a name begun and not finished is the thing to refuse.
+**5. Hand over.** A dropzone folder is **uploaded** to the storage whole, and gets a share link. A
+tandem is given a **montage** — an editing project with its clips already on the timeline — someone
+edits and renders the film, and the tandem is then **uploaded**: the film and the photos to the
+passenger's folder, the original videos to the backup folder. Finally the passenger is **emailed**
+their link.
 
-**5a. A dropzone is uploaded.** Its folder is uploaded's network storage, and a share link
-comes back.
+Sorting and editing are the steps that need a person. Everything else is one press, always in the
+same place.
 
-**5b. A tandem is edited, then delivered.** A video project is written with the jump's clips already
-on the timeline and the render destination filled in; someone opens it, makes the edit and renders
-the film; then delivering sends the film and the photos to the passenger and the original videos to
-the backup.
-
-Sorting and the edit are the steps that need a person. Everything else is asked for with one press,
-always in the same place.
-
-Steps 4 and 5 need two tools present on the machine: one to write dates into the files, without which
-processing stops and says so, and one to cut video, without which a cropped file cannot be written.
-Rendering the film needs a video editor, which SkyDock never runs itself.
+Processing needs two tools on the machine: one that writes dates into files, and one that cuts and
+encodes video. Rendering the film needs the video editor, which SkyDock opens but never runs itself.
 
 ## Jumps
 
-A jump is a run of files with no long pause in it. The pause is measured **from each file to the
-next one**, not from the file the jump started with: as long as each file follows the one before it
-within the set gap, the jump goes on, so a jump can cover hours in total. The first gap longer than
-that ends the jump, however short the filming had been. This runs when files are first scanned, and
-again when new files appear.
+A jump is a run of files with no long pause in it. The pause is measured from each file to the next,
+so a jump can last hours as long as filming never stops for longer than the gap. The first gap longer
+than that ends the jump. The gap is **fifteen minutes**; it is a setting, and every scan applies the
+current setting to everything, including jumps that were split or merged by hand.
 
-That gap is **fifteen minutes**. It is a setting rather than a fact about the sport. Changing it
-changes the rule everywhere it is applied, and since every scan re-applies the rule to everything,
-the next scan re-cuts the jumps by the new gap — including jumps that had been split or merged by
-hand. What survives that is where each file is filed, its crop, and what has been made from it: a
-re-cut jump inherits the filing of whichever jump most of its files came from.
-
-- A file with no neighbours does not become a jump of one. It stays **loose**: visible, sortable, and
-  processable on its own, but not pretending to be a jump.
-- The guess can be corrected by hand: two jumps can be **merged**, files can be **dragged from one
-  jump to another**, and loose files can be **regrouped** — re-run the same gap rule over everything
-  sitting unsorted, without disturbing jumps already filed. A jump that should not exist is
-  undone by sending its files back to the sorting area; a jump with nothing left in it is gone.
-- Re-scanning keeps the work already done. Where a file is filed, its crop, and what has been made
-  from it all survive; only what the disk actually measures — the file's size, time and contents — is
-  taken fresh. A file that genuinely changed therefore invalidates what was made from it, while a file
-  that merely sat there keeps everything.
+- A file with no neighbours is not a jump of one. It stays **loose**: visible, sortable and processable
+  on its own.
+- The guess can be corrected by hand. Two jumps can be **merged**; files can be **dragged** from one
+  jump to another, or back to the sorting area; loose files can be **regrouped** by running the gap
+  rule again over everything still unsorted. A jump with nothing left in it disappears.
+- A scan keeps the work already done: where a file is filed, its crop and turn, and what has been made
+  from it. Only what the disk measures — size, time, contents — is read fresh. A file whose contents
+  changed invalidates what was made from it; a file that merely sat there keeps everything.
 
 ## Times and dates
 
-- A file's capture time is read from the camera's own metadata when it is scanned, falling back to the
-  file's timestamp when there is none. From then on that recorded time is what SkyDock uses — for
-  grouping, for ordering, and for naming.
-- A jump's time can be corrected, which is what a camera whose clock was never set needs: click the
-  jump's time on the board and say when it really started. Every file in the jump shifts by the same
-  amount, so the gaps between them — and therefore their order — are untouched. The date can be
-  corrected the same way, and correcting either only changes what SkyDock has recorded, never the file.
-- **A whole jump is re-timed, never one file of it.** The correction exists for a camera whose clock
-  was wrong, which is wrong for everything it shot; moving one file on its own would change its order
-  within the jump, which is the one thing the shift is careful not to do.
-- **A jump's date names a tandem's files; a file's own date names a fun jump's.** A tandem is one
-  event delivered to one person, so all of it carries the jump's date. A dropzone folder holds every
-  day ever shot there, so each file carries the day it was actually shot.
+- A file's capture time comes from the camera's own metadata, or from the file's timestamp when there
+  is none. That recorded time is what SkyDock uses for grouping, ordering and naming.
+- A jump's time can be corrected, for a camera whose clock was never set: say when the jump really
+  started, and every file in it shifts by the same amount. The gaps between files, and therefore their
+  order, do not change. The date is corrected the same way.
+- **A whole jump is re-timed, never one file of it.** A wrong clock is wrong for everything it shot.
+- **A tandem's files carry the jump's date; a dropzone's files carry their own.** A tandem is one event
+  for one person. A dropzone folder holds many days, so each file says which day it was shot.
 
-## Dropzones and tandems
+## Places: dropzones and tandems
 
 Filing a jump answers one question: who is this for?
 
-- **A dropzone** (Yverdon, Colombier, …) is a place. Its jumps are fun jumps, they belong to no
-  particular person, and their files all live directly in that dropzone's folder — no folder per jump,
-  no splitting videos from photos. Several days of jumping share the folder, which is exactly why it
-  is never wiped and rebuilt.
-- **Tandems** is for jumps that belong to a passenger. Each passenger gets a folder of their own,
-  named as typed, with videos and photos kept apart inside it. Two jumps for the same passenger share
-  that folder. A tandem cannot be processed until it has a name, since the name _is_ the folder.
-  A tandem waiting for one shows a few frames off its own clips beside the two fields, because a name
-  is read off a face or a form and nobody should have to remember what they saw on another screen.
-  **A name can always be changed afterwards**, for the same reason: it can be read wrong. Changing one
-  says what it costs — what was already processed belongs to the old folder and has to be processed
-  again, and what has already been delivered stays on the storage under the old name, since SkyDock
-  never deletes from there.
-- **A loose file can be filed to a dropzone too**, without belonging to any jump. It is delivered
-  exactly like a fun jump's files, because on disk they end up side by side.
-- A jump can also be processed without being filed at all, in which case it gets a folder of its own
-  named after the jump and its date.
+- **A dropzone** (Yverdon, Colombier, …) is a place. Its jumps belong to nobody in particular, and their
+  files all sit directly in the dropzone's folder: no folder per jump, videos and photos together. Many
+  days share the folder, which is why it is never wiped.
+- **Tandems** is for jumps that belong to a passenger. Each passenger gets a folder of their own, named
+  as typed, with videos and photos kept apart inside it. Two jumps for the same passenger share the
+  folder. A tandem cannot be processed until it has a first and last name, because the name is the
+  folder; half a name is refused and the board says which half is missing.
+- **A name can be changed afterwards**, because a name read off a form can be read wrong. Changing one
+  says what it costs: what was processed belongs to the old folder and must be processed again, and what
+  was already uploaded stays on the storage under the old name.
+- **A loose file can be filed to a dropzone** without belonging to any jump; it is handled exactly like
+  a dropzone jump's files.
+- A jump can be processed without being filed at all; it then gets a folder named after the jump and
+  its date.
 
 ## What lands on disk
 
 ```
 output/
-├── original_files/             every file as it came off the camera, in a folder per day
-├── processed/                  what gets delivered
-│   ├── Yverdon/                a dropzone: flat, shared by every day shot there
+├── original_files/           every file as it came off the camera, one folder per day
+├── processed/                what gets handed over
+│   ├── Yverdon/              a dropzone: flat, shared by every day shot there
 │   │   └── yverdon_20260829_113015.mp4
 │   └── Tandems/
-│       └── Luc Favre/          a passenger: their name, as typed
-│           ├── videos/
-│           ├── photos/
+│       └── Luc Favre/        a passenger, named as typed
+│           ├── videos/  photos/
 │           ├── luc_favre_20260829.kdenlive    the editing project
-│           ├── luc_favre_20260829.mp4         the film, once someone has rendered it
+│           ├── luc_favre_20260829.mp4         the film, once rendered
 │           ├── luc_favre_20260829.photos.zip  for the passenger
 │           └── luc_favre_20260829.rushes.zip  the originals, for the backup
-├── proxies/                    a small copy of every clip, named after what the clip is
-│   └── cut/                    and one per jump cut to match the copies it was processed into
-└── templates/                  an editing template per folder, with the music and logos it uses
+├── proxies/                  the small copies, and one per jump cut to match its processed clips
+└── templates/                one editing template per folder, with the music and logos it uses
 ```
 
-Of what a passenger's folder holds, only the film and the photos archive are ever handed over. The
-project, the working folders and the archive of originals stay on the machine or go to the backup.
+Of a passenger's folder, only the film and the photos archive are handed over. The project and the
+working copies stay on the machine; the originals go to the backup.
 
-Names are built from who the files are for, the relevant date, and the time each file was shot:
-`luc_favre_20260829_113015.mp4`, `yverdon_20260829_113015.mp4`. Accents and spaces are folded away
-(`Chloé Perret` becomes `chloe_perret`), and two files shot in the same second get a counter.
-Re-processing writes to the same folder as before — never a second folder with a number after it.
+Names are built from who the files are for, the date, and the time shot: `luc_favre_20260829_113015.mp4`,
+`yverdon_20260829_113015.mp4`. Accents and spaces are folded away in file names (`Chloé Perret` becomes
+`chloe_perret`) but not in folder names, and two files shot in the same second get a counter.
+Processing again writes to the same folder, never a numbered second one.
 
-Removing a file from a jump deletes the copy that was made from it, so nothing stale is left behind
-to be delivered.
+Taking a file out of a jump deletes the copy made from it, so nothing stale is left to hand over.
 
 ## The board
 
-The board is the everyday screen. A menu of **places** is pinned down the left — everywhere a file can
-be — and the place picked there fills the pane beside it. Only that pane scrolls, so the menu is never
-scrolled away from and a file can always be dragged to anywhere it might go. On a narrow screen the
-menu becomes a single strip of places across the top rather than a column eating half the width.
+The board is the everyday screen. A menu of **places** — everywhere a file can be — is pinned down the
+left, and the place picked there fills the pane beside it. Only the pane scrolls, so a file can always
+be dragged to any place. On a narrow screen the menu becomes a strip across the top.
 
-**The places.** _Unsorted jumps_, one entry per dropzone, and _Tandems_ with an entry per named
-passenger under it. Each says how many files are in it and carries a bar showing how much of it is
-still only local, how much is processed and how much has been sent — because a count alone never
-answers "what is left". Every place is also somewhere files can be dropped.
+**The places.** _Unsorted jumps_, one entry per dropzone, and _Tandems_ with one entry per named
+passenger. Each says how many files it holds and shows how much of it is still local, processed or
+uploaded. Every place takes files dropped on it. A passenger is listed once, however many jumps they
+have.
 
-**Days.** Unsorted jumps and a dropzone both show days, newest first. Each day opens and closes on
-its own — opening one leaves the others as they are — and which are open is remembered per place.
-Clicking anywhere on a day bar that is not a button opens or closes it; all days closed is a valid
-state. An open day's header stays pinned while its files scroll, and inside it each jump's line pins directly beneath that header, so what is being looked at
-always says which day and which jump it belongs to. The day opened by default is the newest with work
-still left in it.
+**Days.** Unsorted jumps and a dropzone show days, newest first. Each day opens and closes on its own,
+and which days are open is remembered per place. Clicking anywhere on a day's bar that is not a button
+opens or closes it. On arrival, the newest day with work left in it is open. An open day's header stays
+pinned while its files scroll, and inside it each jump's line pins beneath the header, so what is on
+screen always says which day and which jump it belongs to.
 
-**The days toolbar.** Above the days: how many jumps or days are here and which are open, and
-with it _Collapse jumps_ and _Expand jumps_, and _Close all days_. Folding jumps is a standing
-choice rather than something done to one day: jumps start folded, so a day opens as the list of its
-jumps, and every day opened afterwards opens the same way until they are expanded — and after that,
-open until they are collapsed again. Landing on a jump from its chip opens its day and that jump alone: every other jump folds, so what the chip was pressed for is what is on screen. A jump is folded or opened on its own by clicking
-anywhere on its line that is not a button, and the others stay as they are. Folding changes only
-what is on screen; nothing about the files moves.
+**Jumps in a day.** Unsorted jumps keep their jumps, named by position in the day ("Jump 1", "Jump 2")
+with the time each started. Jumps start folded, so a day opens as a list of its jumps; _Expand jumps_
+and _Collapse jumps_ open or fold them all, and that choice holds for days opened afterwards. A single
+jump opens or folds by clicking anywhere on its line that is not a button, leaving the others as they
+are. A dropzone has no jumps: its files are flat, and a jump stops meaning anything once filed there.
+A day's loose files sit below its jumps, marked as belonging to none.
 
-**Getting to a jump.** A day's header carries one chip per jump in it, with how many files that jump
-holds, and a chip for the day's loose files when it has any. The chips are there whether the day is
-open or closed: clicking one opens the day and lands on that jump, so reaching any jump of any day is
-a single click. A jump's chip is also somewhere files can be dropped, which is how a file moves to a
-jump in a day that is not the one on screen. A dropzone has no chips, because it has no jumps.
+**Jump chips.** A day's header carries one chip per jump, with its file count, and one for the day's
+loose files. Clicking a chip opens the day and that jump alone, folding the others, and lands on it.
+A chip also takes dropped files, which is how a file moves to a jump in another day.
 
-**Which day a jump belongs to.** A jump is filed under the day it started, and it keeps that day.
-Dropping a file from another day into a jump puts the file in that jump — it does not move the jump,
-and everything already in it stays where it was. Re-timing a whole jump, or merging two, does move
-it, because then the jump itself has changed when it happened.
+**Which day a jump belongs to.** A jump is filed under the day it started and keeps that day. Dropping a
+file from another day into it does not move the jump. Re-timing a jump or merging two does, because the
+jump itself changed. A jump that runs past midnight says that it spans days.
 
-A jump shows one time: when it started. Anything else beside its name reads as a second answer to
-the same question, and the files under it already say where the jump gets to — the span it covers is
-there to be asked for rather than always on show. That start is the one thing that can be corrected.
-A jump whose files fall on more than one day dates it and says that it spans days. A jump can do that honestly by running past midnight; it
-can also mean a camera's clock is wrong. Either way the times shown are the times on the files, and
-setting the start moves every file in the jump by the same difference — so the editor opening on
-the date of the earliest file is the jump's own start, not a mistake.
+**Showing files.** Every file is shown the same way: as rows — tick, thumbnail, name, crop, time, size,
+state — or as a grid of thumbnails, whichever was chosen last, for the whole board. Once a copy exists,
+the name shown is the copy's name, the one the passenger sees, with the camera's name kept beside it.
+Long lists are drawn a page at a time. Every day and every tandem carries badges saying how many videos
+and photos it holds; they show one kind, the other, or all — all being both side by side, videos in one
+column and photos in the other, stacked on a narrow screen. A badge for a kind with nothing in it is
+shown but cannot be chosen.
 
-**Jumps, or not.** Unsorted keeps its jumps, because the half-hour rule made them and they can still
-be corrected — a jump is named by its position in the day, with the times it spans beside it, and
-setting that start time moves the whole jump. A dropzone has no jumps: its files are written flat, and
-a jump stops meaning anything once they are filed there. A day's loose files sit below its jumps,
-marked as being in none.
+**Finding.** A box in the pane's heading narrows what is drawn, matching either name a file has. It
+changes only what is shown; a jump with nothing matching drops out of view, and the menu's counts still
+count everything.
 
-**Showing files.** One shape for every file, so nothing shifts position from one line to the next: as
-rows — tick, thumbnail, name, crop, time, size, state — or as a grid of thumbnails, whichever was
-chosen last, for the whole board. Once a copy exists the name shown is the one that copy carries, the
-name that goes to the storage and that the passenger sees, with the camera's own name kept quietly
-beside it so a file can still be traced to the card it came off. A long list is drawn a page at a time
-with a button for more, because a tandem of five hundred photos must not put five hundred things on
-screen before they have been asked for. Every day's header, open or closed, and every tandem's carries
-badges saying how many videos and how many photos it holds, and they show one kind, the other, or all — all being the two side by side, videos in one column and photos in the other, each with its own order and its own "show more", stacked on a narrow screen —
-fifteen clips and five hundred stills are two different jobs. They are there even when one kind is
-absent, so every header reads the same; a kind with nothing in it is shown but cannot be chosen. Once a selection is under way, every thumbnail carries a
-ring in its corner that fills green with a tick once it is picked, and a picked row is ticked in the
-same green; a row always says a file's state in words, and a thumbnail says it on hover.
+**Selecting.** Click to preview; ctrl- or cmd-click to pick; shift-click to take a range — a shift-click
+never previews, and with no range started it picks that file and starts one. Once anything is picked,
+plain clicks add and remove, and Escape clears. Picked thumbnails get a green ring with a tick; picked
+rows a green tick and background. A selection can be sent back to the sorting area by button or Delete.
 
-**Finding.** A box in the pane's heading narrows what is drawn in the place being looked at, matching
-either name a file has. It only changes what is shown: a jump left with nothing matching drops out of
-view rather than appearing empty, and the counts in the menu go on counting everything, because what
-is there has not changed.
+**Filing.** Drag a jump or a selection onto a place in the menu to file it there, or onto another jump to
+move it. While something is carried, every place that would take it is outlined and the one under the
+pointer is filled in. Dropping onto a passenger joins that passenger's tandem, never a new one.
 
-**Filing.** Drag a jump or a selection onto a place in the menu to file it there, or onto another jump
-to move it. While something is being carried, everywhere that would take it is outlined, and the one thing under
-the pointer is filled in — the first says where it could go, the second says where it is going. A
-place that would not take what is being carried shows neither.
-Dropping onto a passenger in the menu joins that passenger's tandem; it never starts a new one.
+**Making a tandem from a jump.** An unsorted jump can become a tandem from its own line: ask for it,
+type the passenger's name beside a few frames of the jump, and it is filed under Tandems with that name
+in one step. Only a complete name saves, and only when confirmed; Escape or Cancel changes nothing. A
+name that is already a passenger's, however capitalised, says it will join their tandem and saves the
+name exactly as already written. The place the jump went lights up briefly in the menu.
 
-An unsorted jump can also be made a tandem from its own line, without dragging: ask for it there, type
-the passenger's name beside a few frames of the jump, and it is filed under Tandems with that name in
-one step. Only a complete name saves, and only when confirmed — leaving the fields saves nothing, and
-cancelling or Escape puts the line back with nothing changed. A name that is already a passenger's, however it is capitalised,
-says before saving that it will join their tandem, and saving files the jump under that passenger
-exactly as their name is already written, because one passenger is one folder. The menu lists each
-passenger once, however many jumps are theirs. Where the jump went lights up briefly in the menu, and
-the board stays where it was so sorting can carry on.
+**Tandems without a name** stay visible and say how many are waiting for one.
 
-Tandems with no passenger yet stay visible and say how many are waiting for a name, rather than
-quietly hiding.
+**Adding files from the computer.** A video or a photo from anywhere on the computer can be dropped
+onto the board: onto a passenger to join their tandem, onto a dropzone to be filed there loose, onto
+Unsorted jumps to wait there, or anywhere on a place's page to go to that place. It is copied into the
+originals under the day it was taken, keeping its name unless a different file already has it that
+day. From then on it is a file like any other. A file already on the board, whatever it is now called,
+is recognised by its contents and moved to where it was dropped, exactly as a drag would move it; one
+already there is left alone. What is not a video or a photo is refused, and so is a drop on a tandem that
+has an edit or lives on the storage only. The board says what came of the drop.
 
-**Adding files from the computer.** A video or a photo from anywhere on the computer — a clip off a
-phone, a photo someone sent — can be dragged onto the board and dropped where it belongs: onto a
-passenger, in the menu or on their tandem, to join that tandem; onto a dropzone, to be filed there as a
-lone file; onto Unsorted jumps, to wait there to be sorted. Dropped anywhere on a place's page, it
-goes to that place. It is simply copied: into the originals, under the day it was taken — its own
-date when it carries one, otherwise the date the computer gives it — keeping its own name unless that
-name is taken by a different file that day. From then on it is a file like any other, and a scan
-finds it where it is. A file already on the board is recognised by its content, whatever it is called:
-it is not copied a second time — a file is in one place at a time — but moved to where it was dropped,
-exactly as a drag on the board would move it. One already exactly there is left as it is, and one in a
-tandem that has an edit or lives on the storage only stays where it is. A file that is not a video or
-a photo is refused, and so is a drop on a tandem that has an edit or lives on the storage only. The
-board says what came of the drop: how many were added, what was moved from where, what was already
-there, and why anything was not.
+**Comparing.** Pick two jumps to compare them side by side, stepping through the files of each, then
+merge them if they are the same jump. Merging asks which date the result keeps.
 
-**Selecting.** One gesture: click to preview, ctrl- or cmd-click to pick a file, shift-click to take a
-range — shift-click never previews: with no range started yet, it picks that file and starts one
-there. Once anything is picked, plain clicks add and remove, and Escape clears. A selection can be
-removed back to the sorting area, by button or by pressing Delete.
+**The header** holds what applies to the whole board: scanning, the storage with its folders and a way
+to check what it holds now, rows or grid, and light or dark. With nothing scanned yet, the board is a
+single Scan button and the instruction to copy the cameras first.
 
-**Comparing.** Tick two jumps and compare them side by side, stepping through every jump independently
-on either side, then merge them if they are the same jump. Merging asks which date the result should
-keep.
+**Light and dark.** The board follows the machine by default and can be pinned light or dark. The
+choice is remembered on that machine and applied before the first thing is drawn.
 
-**Cropping.** Clicking a file opens it, playing its proxy when there is one — same length, same
-speed, so a trim set here is the same instant of the clip itself. The picture fills the left of the
-dialog with the timeline under it; the right side says what is being decided — where the trim starts and ends and how much of
-the file that keeps, how the picture is turned, how it is framed, and what is on the file
-already. The file's name, when it was shot, its size and its state are along the top with the way to
-step to the next file; along the bottom are the ways out, and saving is offered only once something
-has actually changed, which the dialog says out loud. A file that belongs to no jump can be cropped
-just like one that does, and a row shows the crop it is carrying and whether it has been applied yet.
+## Cropping and turning
 
-**Cropping the frame.** A mount, a strut or a finger in the corner of the picture is cut away by
-dragging a rectangle over the video: what is dimmed goes, what is inside it stays. The rectangle holds
-the shape the clip already has unless another is chosen, so a 16:9 jump is still 16:9 when the
-passenger gets it — that is the point of it. What is left is put back to the size the clip came at, so
-a 4K clip stays 4K and a timeline is not a mix of sizes.
+Clicking a file opens it, playing its proxy when there is one. The picture fills the left of the dialog
+with the timeline under it; the right side says what is being decided: the trim, the turn, the frame,
+and what is already on the file. The top names the file and lets you step to the next; the bottom holds
+Save, offered only once something changed, and Reset, which clears everything at once. A loose file is
+cropped the same way as one in a jump.
 
-Set on one clip it can be given to every other clip in the same jump in one press, because a badly
-mounted camera is badly mounted for the whole jump. It is for clips only — a photo has no frame crop.
+**Trimming.** Drag the ends of the timeline, or set the start and end at the playhead. Trimming moves no
+pixels: the clip is copied with its ends cut off, losing nothing.
 
-This is the one thing in processing a file that cannot be done by copying. Trimming the ends moves no
-pixels, so the file is copied and nothing is lost; cutting the frame changes the picture, so the clip
-is encoded again — for quality rather than for speed, on the graphics card where there is one, and on the processor for any clip the card cannot do, so it works on every machine — and a
-card of clips takes minutes rather than seconds. The small copy the editor opens on is cut to match,
-or somebody would be editing a picture that is not the one about to be rendered.
+**Framing.** A mount, a strut or a finger in a corner is cut away by dragging a rectangle over the
+picture: what is dimmed goes. The rectangle keeps the shape the clip already has unless another is
+chosen, so a 16:9 jump is still 16:9 when handed over, and what is left is put back to the size the clip
+came at, so a 4K clip stays 4K. Set on one clip, the rectangle can be given to every clip in the jump in
+one press. Photos have no frame.
 
-**Turning the picture.** A camera mounted sideways or upside down gives a picture on its side, and
-it is turned in the same dialog: a quarter turn clockwise at a time, by button or by pressing R, or
-back to as shot. The picture on screen turns with it, and takes the shape it will come out in — a
-quarter turn makes a clip portrait, and the frame is then drawn on the turned picture and fitted
-again at the shape it had. A turn is something to save, like a trim or a frame, and saved on the jump
-the file is in. Set on one file it can be given to every file of the same kind in the jump in one
-press — clips to clips, photos to photos, since the two can come off different cameras.
+**Turning.** A camera mounted sideways or upside down is put right a quarter turn at a time, clockwise,
+by button or by pressing R, or back to as shot. The picture on screen turns with it and takes the shape
+it will come out in — a quarter turn makes a clip portrait — and a rectangle on it is fitted again. The
+turn can be given to every file of the same kind in the jump in one press: clips to clips, photos to
+photos, since the two can come off different cameras.
 
-Clips and photos are turned differently, each the way that loses nothing it need not. A clip is
-encoded again, turned — with its frame cut from the turned picture in the same pass — and the small
-copy the editor opens on is turned to match. A photo keeps every pixel: it is turned by the
-orientation it carries, which every viewer and browser follows. A row shows the turn beside the crop,
-dashed until it has been applied, and a thumbnail shows the picture turned. Turning a file after it
-was processed makes its copy out of date, like any other change to it.
+**What it costs.** A trim alone copies the file. A frame or a turn changes the picture, so a clip is
+encoded again — for quality rather than speed, on the graphics card when there is one and on the
+processor otherwise, so it works on every machine — and the proxy the editor opens on is cut and turned
+to match. A photo is turned without touching its pixels, by the orientation it carries, which every
+viewer follows.
 
-**Acting.** Each day and each tandem offers exactly one next step, in the same place, and never offers
-them out of order. A dropzone day is **processed**, then **uploaded**. A tandem is **processed**, then given
-a **montage**, then **uploaded** once someone has rendered the film — the step is called
-Upload on the board, because that is what it does from where the user sits: puts the tandem on the
-storage. Once there is a project the
-tandem shows where it is and copies that path when clicked; until the film exists it says to edit and
-render it. Once the film exists it is shown above the tandem, standing out from everything else there:
-its name, how long it runs — which tells a whole jump from a test render of its first minute — its
-size, and when it was rendered. It can be watched right there, or opened on its own by its name, so
-the render is checked before it goes to anyone; a film rendered again is the one that plays. Nothing can be sent until everything in it has
-been processed, and what is waiting is said plainly. An uploaded tandem shows the folders on the
-storage instead of the files it was made from.
+Rows show the trim, the frame and the turn beside the name, dashed until applied and solid after.
+Thumbnails show the picture turned. Any of these set after a file was processed makes its copy out of
+date.
 
-**Uploaded is what the storage holds, not what was once recorded.** Each time the board looks at the
-storage it also looks where every tandem's film, photos and originals went. While they are all still
-there, the tandem reads as uploaded. Delete any of them over there — or leave one the wrong size — and
-the tandem reads as not uploaded again, says which files are no longer on the storage, and offers to
-upload them again. A folder the storage did not answer for takes nothing away.
+## Acting
 
-Processing runs on the machine, not in the page: closing or refreshing the page does not
-stop it, and the board stays usable while it runs. A page opened while it is running says so, keeps
-the tandem at _Processing…_ and everything else waiting, and updates itself when it is done. One
-processing runs at a time; asking for another meanwhile is refused and says why. Edits made while it
-runs are kept — and a jump changed while its copies were being written is not marked processed, since
-those copies are of what it was.
+Each day and each tandem offers exactly one next step, always in the same place, and never out of
+order. A dropzone day is **processed**, then **uploaded**. A tandem is **processed**, then given a
+**montage**, then **uploaded** once the film is rendered.
 
-**The header** holds what applies to the whole day's work: scanning for newly copied files, the state
-of the network storage with its folders and a way to ask it what it holds now, the rows-or-grid
-choice, and whether the board is light or dark. With nothing scanned yet, the board is a single Scan
-button and the instruction to copy the cameras first.
+**Processing** runs on the machine, not in the page: closing or refreshing the page does not stop it,
+and the board stays usable meanwhile. A page opened while processing runs says so and updates itself
+when it is done. One processing runs at a time; asking for another is refused. Edits made meanwhile are
+kept, and a jump changed while its copies were being written is not marked processed.
 
-**Light and dark.** The board follows the machine by default, and can be told to be light or dark
-instead. The choice is remembered on that machine and applied before the first thing is drawn, so
-the board is never briefly the wrong one. It is a choice worth offering because what the machine
-reports is invisible and is not always the machine it appears to be — a browser preview inside an
-editor follows the editor, not the desktop — and because being able to pin it is what makes two
-windows comparable.
+**Nothing is uploaded until everything in it is processed**, and what is waiting is said plainly.
+
+**The film.** Once rendered, the film shows above its tandem: its name, how long it runs, its size, and
+when it was rendered. It can be watched there or opened on its own, so the render is checked before it
+goes to anyone. A film rendered again is the one that plays.
 
 ## File status
 
 Every file is in one of three states, each of which SkyDock can verify:
 
-- **local** — nothing current has been made from it. Either it has never been processed, or it has been
-  cropped, re-timed or replaced since, which leaves what was made from it out of date.
-
-  The board tells these two apart: a file that was processed and then changed reads as **changed**
-  rather than plain _local_, because "never processed" and "processed, then altered" are not the same
-  situation to be in. It stays a derived fact, not a stored flag — processing it again makes the copy
-  current and the distinction disappears on its own.
-
+- **local** — nothing current has been made from it. Either it was never processed, or it was cropped,
+  turned, re-timed or replaced since. The board shows the second case as **changed**, because "never
+  processed" and "processed, then altered" are different situations to be in.
 - **processed** — a copy exists that was made from the file exactly as it is now.
-- **uploaded** — that copy is on the network storage, proved by comparing checksums on both sides.
+- **uploaded** — that copy is on the storage, proved by matching checksums on both sides.
 
-A file falls back to **local** when anything it was made from has changed, or when the copy is missing
-or a different size. It falls back to **processed** when the copy that was uploaded is no longer the
-copy on disk, or when the storage was asked and does not have it.
+A file falls back to local when anything it was made from changed, or its copy is missing or a different
+size. It falls back to processed when the storage was asked and does not have it. A file that went to
+the storage inside an archive counts as uploaded while the archive is there.
 
-**Uploaded is the end of editing.** SkyDock never deletes from the network storage, so it cannot take an
-old copy back; changing a file after it has gone up would leave the two disagreeing for good. Cropping,
-re-timing, moving and renaming therefore belong before processing, and are closed once a file is uploaded.
-They are closed too, for the whole tandem, once it has an edit (see Montage).
+**Uploaded is the end of editing.** SkyDock cannot take an old copy back from the storage, so a file
+that has gone up cannot be cropped, turned, re-timed, moved or renamed here. It shows a lock and says
+why; the way back is to remove it from the storage, over there.
 
-The board marks an uploaded file with a padlock and will not let it be dragged. **Partly built:** the
-crop dialog still opens on one and still saves, so the rule is announced there without yet being
-enforced. What is left is to make the crop read-only and to say plainly that the way back is to take
-the file off the storage, over there.
-
-Two rules keep this honest:
-
-- **Being listed can take a claim away, never grant one.** Only an upload, which compares checksums on
-  both sides, can mark a file as uploaded. A matching name and size is not proof that two files are the
-  same file.
-- **Not knowing is not evidence.** Storage that was never asked, a folder whose listing failed, a size
-  the storage would not report — none of these demote a file.
-
-  > **Decided, not yet built.** A file that went to the storage _inside an archive_ is covered by the
-  > same rule. Nothing can look inside a zip, so a listing that does not find it has learned nothing —
-  > it must never be read as the file being gone. A tandem's photos and original videos travel this way,
-  > which is what makes them count as uploaded at all: the archive was built from exactly those bytes.
+Two rules keep this honest. **Being listed can take a claim away, never grant one**: only an upload,
+which compares checksums, marks a file uploaded. **Not knowing is not evidence**: a folder that was
+never listed, a listing that failed or a size the storage would not report demote nothing.
 
 ## Network storage
 
-**Connecting.** The dropzone's storage is reached with a hostname, username and password, entered once.
-The session is kept, and when it expires it renews itself from the stored password rather than asking
-again. The password is kept encrypted, and the plain one is never written down. Asking to upload while
-disconnected opens the login rather than failing.
+**Connecting.** The storage is reached with a hostname, username and password, entered once. The
+session is kept and renews itself from the stored password when it expires. The password is kept
+encrypted and the plain one is never written down. Asking to upload while disconnected opens the login.
 
-**Choosing folders.** There is a default folder for anything without a home of its own, and each
-dropzone can name its own folder, browsed and picked from the app. A dropzone that names its own folder
-needs no default at all. There is also a backup folder, chosen the same way, which is where the
-original videos of a tandem go. It is never guessed and never falls back to the default: putting
-gigabytes of unedited footage where a passenger can reach it is exactly what keeping them apart is
-for. Asking to send something with no folder to put it in opens the browser for whichever one is
-missing.
+**Folders.** There is a default folder for anything without a home of its own, and each dropzone can
+name a folder of its own, browsed and picked from the app. There is also a backup folder for tandems'
+original videos; it is never guessed and never falls back to the default, because putting unedited
+footage where a passenger can reach it is exactly what keeping the two apart prevents. Asking to upload
+with a folder missing opens the picker for that folder.
 
-**Uploading.** One upload covers an entire dropzone — every jump filed there and its loose files, in a
-single job, sending the folder whole.
+**Uploading a dropzone.** One upload covers the whole dropzone — every jump filed there and its loose
+files — sending the folder whole. A tandem cannot be uploaded this way, because its files go to two
+places; asking is refused and says why.
 
-A tandem's files reach the storage too, but by delivering rather than by that upload, because they do
-not all go to the same place: the film and the photos to the passenger's folder, the original videos
-to the backup. Sending a passenger's folder whole would put the project, the working copies and the
-originals in with them, so asking to upload a tandem is refused and says why.
+**Skipping what is there.** A file with the same name and size on the storage is checksummed on both
+sides and skipped only if they match. Anything uncertain is sent. The board reports what is happening
+throughout: how many files are being checked, which one is being sent and how far it is, and how many
+were already there.
 
-Files already on the storage are not sent again: a file with the same name
-and the exact same size is checksummed on both sides, and only skipped if they match. Anything uncertain
-is uploaded, since sending a file twice costs time while skipping the wrong one costs the delivery. The
-app reports what it is doing throughout — first how many files it is checking, then how many it is
-sending and how far through the current one it is, and finally how many were already there.
+**Share links.** A folder's link is reused while it works, so uploading again does not change the link a
+passenger already has.
 
-**Share links.** A folder's link is reused if it already has a working one, so re-uploading does not
-invalidate the link a passenger already has. Only a folder with no usable link gets a new one.
-
-**Removing things.** SkyDock never deletes anything on the storage. A file that should not be there is
-removed by hand, in the storage's own interface — which is also the only place a mistake can be undone,
-since nothing here can put it back except sending it again.
-
-**Noticing deletions.** What SkyDock does instead is notice. A file it can no longer find stops counting
-as uploaded and goes back to being merely processed, ready to be sent again; the file on this machine is
-untouched either way. It looks when the board opens, again right after an upload, and whenever the check
-button in the header is pressed. Between those moments it says what it last proved, not what is true
-this second.
+**Noticing deletions.** SkyDock looks at the storage when the board opens, right after an upload, and
+when the check button is pressed. A file it can no longer find stops counting as uploaded and is ready to
+be sent again; the local file is untouched. Between those moments the board says what it last proved.
 
 ## Montage
 
-A processed tandem can be turned into a video project ready to edit. The jump's videos are laid on the
-first video track of a template, in the order they were shot — which track that is differs from one
-template to the next and is read from the template rather than assumed, because dropping the footage
-on the wrong track produces a film with nothing in it and no complaint. Crops are already applied, so
-the timeline carries the cut footage.
+A processed tandem can be turned into an editing project. Its videos are laid on the template's first
+video track in the order shot, crops and turns already applied, each clip playing from its proxy with
+the real clip recorded as what the edit is of, so the editor opens ready to work and renders from the
+footage. The film's destination and format are filled in, so what is left is the edit and pressing
+render.
 
-**It opens on the proxies.** Each clip on the timeline points at the small copy made when the card
-was scanned, cut to the same length as the clip beside it, with the clip itself recorded as what the
-edit is really of. So the editor opens ready to work instead of transcoding every clip first, which
-is the longest wait between asking for a montage and being able to touch it — and it swaps back to
-the clips on its own to render, so the film is made from the footage and not from the proxies. A clip
-whose proxy could not be made is laid on the timeline as it is, and the editor makes its own the way
-it always did.
-
-The destination and format of the film are filled in, so the only work left in the editor is the edit
-itself and pressing render: nothing to type, no folder to find, and no film landing somewhere it then
-has to be moved from.
-
-**Making the montage opens it.** Writing the project and opening the editor on it are one press, and a
-tandem that already has a project offers a way straight back into it. Which command opens it is a
-setting, because it depends on where SkyDock is running: installed on the machine someone edits on,
-the editor is simply there; running somewhere that cannot reach it, there is nothing to open and the
-board says so instead of failing the montage. It says which command it used, and if that command
-started and gave up, what it said on its way out — a montage whose editor never appears is otherwise
-a silence nobody can act on. The project's full path is still named and still copies
-when clicked, which is what is left when the editor cannot be reached from here.
-
-The project is checked to be a readable document before it is written. A montage that would not open
-is refused, with the reason, rather than produced and discovered later by someone expecting to start
-editing.
+**Making the montage opens it.** Writing the project and opening the editor are one press, and a tandem
+with a project offers a way back into it. Which command opens the editor is a setting. When the editor
+cannot be reached from where SkyDock runs, the board says so and still names the project's path, which
+copies when clicked. A project that would not open is refused with the reason.
 
 **Templates.** A template is a folder holding its project and the music, logos and title images it
-uses. Its assets are referenced where they are, never copied for each passenger. Templates are picked
-up from wherever they are kept, and one that has travelled from another machine still finds its own
-assets, including the images inside title clips, which no other part of the project points at. When
-there is more than one template and none has been chosen, SkyDock asks rather than picking someone's
-branding for them.
+uses, referenced where they are. A template that travelled from another machine still finds its files.
+With more than one template and none chosen, SkyDock asks. A template missing some of its files still
+gives a project, and the montage names what is missing straight away.
 
-A template that arrives without some of the files it uses still produces a project — the edit can
-begin without the music — but the montage says which files are missing straight away, rather than
-leaving a silent film with holes in it to be discovered at the render.
+**The montage is made once.** Asking again for a tandem that has a project is refused.
 
-SkyDock can also be running somewhere other than the editor — on a machine that reaches the same files
-by a different path. The project is written with the paths the editor will understand.
+**An edit freezes the tandem.** The project points at the tandem's copies by name and at moments inside
+them, and lives in the folder the passenger's name makes; any change would break it silently. So once
+a tandem has a project, nothing about it changes here: no trim, frame or turn, no file in or out, no
+re-timing, no new name, no other jump joining the passenger, no processing again. Its files show a lock
+and say why. Previewing, opening the project and uploading go on. Changes are made in the editor.
+Resetting the tandem, or deleting the project, lifts the lock.
 
-The montage is made once. Asking again for a tandem that already has a project is refused rather than
-overwriting an edit someone may have been working on.
+## Taking a tandem back
 
-**An edit freezes the tandem.** The project points at the tandem's copies by name and at moments
-inside each of them, and it lives in the folder the passenger's name makes. Trimming a clip would move
-every cut made on it, re-timing or removing one would leave the editor looking for a file that is gone,
-and a new name would move the folder — and the editor would say nothing about any of it. So once a
-tandem has a project, SkyDock changes nothing about it: no trimming or reframing of its videos or
-photos, no files moved in or out, no re-timing, no new name, no other jump joining that passenger, and
-no processing again. Its files show a lock and say why; the request is refused on the server too, so
-the page is not what holds the line. Previewing, opening the project and delivering go on as before.
-Changes are made in the editor from then on. Resetting the tandem, or deleting the project, lifts the
-lock.
+A tandem can be **reset** or **deleted** from its page. Either applies to the whole passenger, because
+one passenger is one folder, and each asks first, saying what goes and what stays, naming the edit on
+its own when there is one.
 
-**Taking a tandem back.** A tandem can be reset or deleted from its own page, and either one applies
-to the whole passenger — every jump of theirs — because one passenger is one folder. Each asks first,
-saying what will be deleted and what will be kept, and names the edit on its own when there is one,
-because it is the one thing that cannot be made again.
+- **Reset** returns the tandem to before processing: the copies, the working copies, the project, the
+  film and the archives are deleted, and with them the record of what was uploaded. The name, every
+  crop, frame and turn, and every corrected time are kept. This is how an edit is started over.
+- **Delete** undoes the tandem: the same is deleted, and the jumps go back to Unsorted with no name and
+  nothing decided about them, each file on the time its camera gave it.
 
-- **Reset** puts the tandem back to before processing. Everything made from it on this machine is
-  deleted: the processed copies, the working copies made for the editor, the project, the film and the
-  archives, and with them the record of what was uploaded. Everything decided about it is kept: the
-  name, every crop and frame, and every corrected time. It stays under Tandems, ready to process
-  again. This is how an edit is started over.
-- **Delete** undoes the tandem. The same things are deleted, and so is everything decided about it:
-  its jumps go back to Unsorted jumps with no name, no crop and no frame, each file on the time its
-  camera gave it.
+Neither touches the originals or the storage, and neither can run while the tandem is being processed.
 
-Neither touches the originals, and neither deletes anything from the storage: what was uploaded stays
-there until someone removes it by hand. Neither can happen while the tandem is being processed.
+## Uploading a tandem
 
-## Delivery
-
-Once the film is rendered, delivering a tandem archives its photos and its original videos, then sends
+Once the film is rendered, uploading a tandem archives its photos and its original videos, then sends
 the film and the photos archive to the passenger's folder and the originals to the backup folder. The
-project and the working folders stay on the machine. The passenger's folder is the one that gets a
-share link; the backup folder never does.
+passenger's folder gets a share link; the backup never does.
 
-**Uploading a tandem shows what it will do first.** Asking to upload one opens the two parcels side by side — the
-backup, and the passenger's — each with the folder it goes to, what it holds, and how big it is, with
-the totals underneath. Either folder can be chosen or changed from there, and the dialog comes back
-once it is. Nothing is sent until the dialog's own button is pressed; until the film is rendered that
+**The dialog first.** Asking to upload shows the two parcels side by side — the backup and the
+passenger's — each with its folder, what it holds and how big it is. Either folder can be chosen from
+there. Nothing is sent until the dialog's own button is pressed, and until the film is rendered that
 button stays shut and says why.
 
-**How the backup is kept is a choice**, made once for the whole club and remembered, so the next
-tandem opens with it already made: the originals as one zip — one object to move, which cannot arrive
-half-copied — or as plain files in a folder of their own named after the tandem, which can be browsed
-on the storage and one clip pulled out without unpacking the rest. Either way a copy of the film can
-go with them. The passenger's parcel never changes: the film and the photos, nothing else.
+**How the backup is kept** is chosen once for the whole club and remembered: the originals as one zip,
+or as plain files in a folder named after the tandem. Either way a copy of the film can go with them.
+The passenger's parcel is always the film and the photos, nothing else.
 
-Delivering reports what it is doing throughout: first the archives being built, then what is already
-on the storage, then what is being sent.
+**Refusals**, each named: no passenger; files still to process; no film yet, naming the film looked
+for; a film still being written; no passenger folder or no backup folder; a backup folder that is the
+passenger's own. A tandem with no video at all is uploaded without a film. A film rendered under a
+different name, when it is the only one there, is taken as the film.
 
-It refuses, each time saying which: a jump with no passenger; one whose files still need processing;
-one where no film has been rendered yet, naming the film it looked for; a film still being written,
-which it can tell because the size is still changing; no folder chosen for the passenger or for the
-backup; and a backup folder that is the passenger's own folder. A tandem whose camera produced no
-video at all is delivered without a film rather than being stuck. A film rendered under a different
-name, when it is the only one there, is taken as the film and renamed.
+Uploading again after a re-render sends what changed and leaves the rest. An archive holding exactly
+what it should, newer than everything in it, is not built again. The film is taken on trust: nothing
+checks that it was rendered from this project.
 
-Delivering again after a re-render sends what changed and leaves the rest; an archive that holds
-exactly what it is asked to and is still newer than all of it is not built a second time. Asking for
-the film in the backup, or leaving it out, is a different archive and is built again.
+## Freeing space
 
-The film is taken on trust. Nothing checks that it was rendered from this project, or that it covers
-the whole jump.
+Once a tandem is uploaded, everything of it on this machine can be deleted — originals, copies, working
+copies, film and archives — leaving only the project and the record of what went where. It asks first,
+and deletes nothing until all of this is proved:
 
-**Freeing up space.** Once a tandem is uploaded, everything of it on this machine can be deleted —
-the originals, the processed copies, the working copies made for the editor, the film and the zips —
-leaving only the project and the record of what went where. It asks first, saying what will be proved
-and what will be deleted, and it deletes nothing until all of it is proved:
-
-- every file that went up is hashed here and hashed by the storage, and both match what was sent;
-- the originals are exactly what the backup holds — the files inside the backup zip, which still holds
-  exactly them and is newer than all of them, or the files sent one by one and proved themselves;
-- the photos are exactly what the passenger's zip holds;
+- every file that went up has the same checksum here and on the storage as when it was sent;
+- the originals are exactly what the backup holds;
+- the photos are exactly what the passenger's archive holds;
 - nothing about the tandem changed since it was uploaded.
 
-If any of it fails, nothing is deleted, and the refusal names each file that failed. It needs the
-storage to be reachable, because the proof is the storage's own checksum. Only a passenger with a
-single jump can be freed for now.
+If any check fails, nothing is deleted and each failing file is named. The storage must be reachable.
+Only a passenger with a single jump can be freed.
 
-A freed tandem lives on the storage only. The moment it is freed, the board says so once — how many
-files, and how much room it gave back. From then on it reads as uploaded and shows what the storage
-holds instead of its files. It cannot be processed, edited, reset, deleted
-or uploaded again from here, and a rescan keeps it as it is rather than dropping files that are gone on
-purpose. Should anything of it later disappear from the storage, the board says so, as for any uploaded
-tandem — by then the storage was the only copy.
+A freed tandem lives on the storage only. The board says so once, with how much room came back. It
+reads as uploaded, shows what the storage holds instead of its files, and cannot be processed, edited,
+reset, deleted or uploaded again from here. A scan keeps it as it is. If something of it later
+disappears from the storage, the board says so, as for any uploaded tandem.
 
-**The storage's list of tandems.** The Tandems folder on the storage holds a list of every tandem
-uploaded into it: who it was for and the day of the jump, how many videos and photos, when it went up,
-its share link, where its film, photos and backup are, whether it has been freed from the machine that
-made it, and whether the passenger has been emailed — and to which address. The Tandems page shows
-that list under the passengers on this board, so every tandem the storage holds is there, including
-those this machine no longer has and those uploaded from another machine; each can be emailed from
-there, and one still on this board can be opened.
+## The storage's list of tandems
 
-The list follows the work, and never stands in for it. It is updated after every upload and after
-every freeing, and when the passenger's email is marked as sent — which is said by hand, since
-sending happens in someone's own mail, and can be taken back. Each change reads the latest list first
-and alters only its own tandem, so two machines using SkyDock keep each other's entries. If the list
-cannot be written, the upload or the freeing still stands and the board says the list did not follow;
-if it cannot be read, it is never written over, and the board says so.
+The Tandems folder on the storage holds a list of every tandem uploaded into it: who it was for, the
+day, how many videos and photos, when it went up, its share link, where its film, photos and backup
+are, whether it was freed, and whether the passenger was emailed and to which address. The Tandems page
+shows this list under the passengers on the board, so every tandem the storage holds is there, including
+ones this machine no longer has and ones uploaded from another machine. Each can be emailed from there,
+and one still on this board can be opened.
 
-**Telling the passenger.** Once a tandem has a share link, its page offers to email the passenger
-their link, and freeing a tandem opens the email straight away, since it is the one thing left to do.
-The email is already written — in French, greeting the passenger by name, saying what is ready and
-from which day, with one button to their folder and the link again as text — and shown exactly as it
-will arrive. Every word can be changed before it goes; the signature is the club's, the same on every
-email, and is remembered.
+The list follows the work and never replaces it. It is updated after every upload, every freeing, and
+when the email is marked as sent. Each change reads the latest list first and alters only its own
+tandem, so several machines keep each other's entries. If the list cannot be written, the upload still
+stands and the board says the list did not follow. A list that cannot be read is never written over.
 
-Nothing is sent from SkyDock itself, and there is nothing to connect or set up. One press copies the
-email, laid out as shown, and opens a new message with the passenger's address — when it has been
-typed — and the subject already filled in: in Gmail, or in the mail program the computer uses
-(Outlook, Apple Mail, Thunderbird…). The email is pasted into it and sent from there; whichever was
-used last is offered first. The email can also just be copied, with the subject and the link each
-copyable on their own. The link always comes from what the upload recorded, never from what was
-typed.
+## Telling the passenger
+
+Once a tandem has a share link, its page offers to email the passenger, and freeing a tandem opens
+the email straight away. The email is written already, in French: it greets the passenger by name,
+says what is ready and from which day, and has one button to their folder with the link repeated as
+text. It is shown exactly as it will arrive, every word can be changed, and the signature is the club's,
+remembered for every email.
+
+SkyDock sends nothing itself and needs nothing set up. One press copies the email, laid out, and opens a
+new message — in Gmail or in the computer's own mail program, whichever was used last — with the address
+and subject filled in; the email is pasted in and sent from there. The email, the subject and the link
+can also be copied on their own. The link always comes from what the upload recorded. Marking the
+email as sent records it on the storage's list, and can be undone.
 
 ## Not built
 
 Worth knowing, so nobody goes looking:
 
-- **SkyDock never sends email itself.** It processes it, and a person sends it from their own mail.
-- **The montage takes every photo.** Choosing which photos go to the passenger is not possible.
-- **Nothing renders the film.** A person makes the edit and renders it. SkyDock opens the editor on
-  the project and takes over again afterwards, but it never drives the edit or the render.
-- **Nothing notices a render finishing.** The board looks at the folder each time it is asked to do
-  something; there is no watching in the background.
-- **Nothing watches a proxy being made.** The board says which clips have one and how many are still
-  without, but only as of the last time it was drawn: they appear on the next thing it is asked to do,
-  and there is no live progress and no way to ask for one on its own.
-- **A file is in one place at a time.** It can be moved between jumps, but not put in two at once.
-- **A dropzone can be created, not renamed or removed.** Its name is what its folder is called.
+- **SkyDock never sends email.** A person sends it from their own mail.
+- **The montage takes every photo.** There is no choosing which photos the passenger gets.
+- **Nothing renders the film, and nothing notices a render finishing.** The board looks at the folder
+  each time it is asked to do something.
+- **Nothing shows a proxy being made.** Proxies appear on the next thing the board is asked to do.
+- **A file is in one place at a time.** It cannot be in two jumps at once.
+- **A dropzone can be created, not renamed or removed.**
+- **A single file cannot be re-timed.** Only a whole jump.
+- **Nothing comes back down from the storage** except its list of tandems.
+- **Archives are made only by uploading a tandem.** The originals cannot be backed up ahead of the film.
 - **One known collision.** A loose file and a jump's file filed to the same dropzone and shot in the
-  same second can be given the same name, and the second one written wins.
-- **A single file's time cannot be corrected.** Only a whole jump's, which moves everything in it.
-- **Ungrouping a jump undoes what was made from it.** Taking files out of a jump deletes their
-  processed copies and clears what was recorded about them, so the work has to be done again.
-- **Asking the storage what it holds can only take a claim away.** It cannot notice that a file
-  already up there is the right one and mark it uploaded; only an upload proves that.
-- **Nothing comes back down from the storage**, but its list of tandems. SkyDock uploads and lists;
-  the one file it reads back is that list.
-- **Archiving is part of delivering.** The zips are written as a tandem is delivered and cannot be
-  made on their own. The originals cannot be backed up on their own ahead of the film either: the
-  backup goes with the delivery.
+  same second get the same name, and the second one written wins.

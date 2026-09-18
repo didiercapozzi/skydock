@@ -25,8 +25,8 @@ const makeRequest = (headers: Record<string, string> = {}) =>
 
 const makeParams = (splat: string) => ({ '*': splat })
 
-describe('api/file loader', () => {
-  test('returns 404 for non-existent file', async () => {
+describe('playing a file', () => {
+  test('says when the file is not there', async () => {
     const res = await loader({
       params: makeParams('test-stream/nope.mp4'),
       request: makeRequest()
@@ -34,7 +34,7 @@ describe('api/file loader', () => {
     expect(res.status).toBe(404)
   })
 
-  test('serves file with 200 and correct headers', async () => {
+  test('plays a file whole', async () => {
     const res = await loader({
       params: makeParams('test-stream/test-video.mp4'),
       request: makeRequest()
@@ -47,7 +47,7 @@ describe('api/file loader', () => {
     expect(body.byteLength).toBe(1024)
   })
 
-  test('serves range request with 206', async () => {
+  test('plays from the middle of a clip', async () => {
     const res = await loader({
       params: makeParams('test-stream/test-video.mp4'),
       request: makeRequest({ range: 'bytes=0-511' })
@@ -59,7 +59,7 @@ describe('api/file loader', () => {
     expect(body.byteLength).toBe(512)
   })
 
-  test('stream completes without error on normal read', async () => {
+  test('plays to the end', async () => {
     const res = await loader({
       params: makeParams('test-stream/test-video.mp4'),
       request: makeRequest()
@@ -74,7 +74,7 @@ describe('api/file loader', () => {
     expect(totalBytes).toBe(1024)
   })
 
-  test('stream does not crash when reader cancels mid-transfer', async () => {
+  test('is closed mid-play without harm', async () => {
     const res = await loader({
       params: makeParams('test-stream/test-video.mp4'),
       request: makeRequest()
@@ -86,7 +86,7 @@ describe('api/file loader', () => {
     await new Promise((r) => setTimeout(r, 50))
   })
 
-  test('stream does not crash when range reader cancels', async () => {
+  test('is closed mid-seek without harm', async () => {
     const res = await loader({
       params: makeParams('test-stream/test-video.mp4'),
       request: makeRequest({ range: 'bytes=100-1023' })

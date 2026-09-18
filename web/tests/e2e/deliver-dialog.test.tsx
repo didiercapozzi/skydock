@@ -99,7 +99,7 @@ const renderBoard = async (data: typeof board | Record<string, unknown> = board,
   return screen
 }
 
-describe('the delivery dialog', () => {
+describe('uploading a tandem — the dialog first', () => {
   test('lays out both parcels and both folders before anything is sent', async () => {
     delivered.length = 0
     await renderBoard()
@@ -135,7 +135,7 @@ describe('the delivery dialog', () => {
     await userEvent.click(dialog.getByRole('button', { name: 'One zip' }))
   })
 
-  test('sends the delivery, with the choice, only from its own button', async () => {
+  test('sends the upload, with the choice, only from its own button', async () => {
     delivered.length = 0
     await renderBoard()
     const dialog = page.getByRole('dialog', { name: 'Upload' })

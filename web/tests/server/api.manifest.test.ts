@@ -33,7 +33,7 @@ const group = (over: Partial<ManifestGroup> & { id: string }): ManifestGroup => 
   ...over
 })
 
-describe('api/manifest', () => {
+describe('changes made on the board', () => {
   let tmpDir: string
   let previousOutputDir: string | undefined
 
@@ -76,7 +76,7 @@ describe('api/manifest', () => {
     expect(res.globalErrors?.[0]).toContain('No manifest')
   })
 
-  describe('merge-groups', () => {
+  describe('merging two jumps', () => {
     it('makes two jumps one, keeping every file', async () => {
       writeManifest([
         group({
@@ -117,14 +117,14 @@ describe('api/manifest', () => {
       expect(times[1] - times[0]).toBe(100)
     })
 
-    it('needs both jumps named', async () => {
+    it('needs two jumps', async () => {
       writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
       const res = refusal(await send({ intent: 'merge-groups', leftId: 'group_1' }))
       expect(res.globalErrors?.[0]).toContain('two group ids')
     })
   })
 
-  describe('shift-group-time', () => {
+  describe('re-timing a jump', () => {
     it('moves every file by the same amount, so the jump keeps its shape', async () => {
       writeManifest([
         group({
@@ -155,7 +155,7 @@ describe('api/manifest', () => {
     })
   })
 
-  describe('move-files', () => {
+  describe('moving files', () => {
     it('re-files a file into another jump', async () => {
       writeManifest([
         group({ id: 'group_1', files: [file({ id: 'a' }), file({ id: 'b' })] }),
@@ -199,7 +199,7 @@ describe('api/manifest', () => {
     })
   })
 
-  describe('regroup-loose', () => {
+  describe('regrouping loose files', () => {
     it('says so rather than pretending, when there is nothing loose to regroup', async () => {
       writeManifest([group({ id: 'group_1', files: [file({ id: 'a' }), file({ id: 'b' })] })])
       const res = refusal(await send({ intent: 'regroup-loose' }))
@@ -207,7 +207,7 @@ describe('api/manifest', () => {
     })
   })
 
-  describe('upload-group', () => {
+  describe('uploading a dropzone', () => {
     it('needs something to upload', async () => {
       writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
       const res = refusal(await send({ intent: 'upload-group' }))
@@ -216,7 +216,7 @@ describe('api/manifest', () => {
 
     /* the reason this route was worth covering at all: a tandem's files go to two different
        folders, and an upload sends one whole */
-    it('refuses a tandem and says to deliver it instead', async () => {
+    it('refuses a tandem, which is uploaded from its own page', async () => {
       writeManifest([
         group({
           id: 'group_1',
@@ -234,7 +234,7 @@ describe('api/manifest', () => {
     })
   })
 
-  describe('montage', () => {
+  describe('the montage', () => {
     it('is only for a tandem', async () => {
       writeManifest([
         group({
@@ -248,7 +248,7 @@ describe('api/manifest', () => {
       expect(res.success).toBe(false)
     })
 
-    it('will not start one before the files have been prepared', async () => {
+    it('will not start one before the files have been processed', async () => {
       writeManifest([
         group({
           id: 'group_1',
@@ -262,7 +262,7 @@ describe('api/manifest', () => {
     })
   })
 
-  describe('open-montage', () => {
+  describe('opening the project', () => {
     it('has nothing to open before a montage was made', async () => {
       writeManifest([
         group({
@@ -277,7 +277,7 @@ describe('api/manifest', () => {
     })
   })
 
-  describe('free-tandem', () => {
+  describe('freeing space', () => {
     /* the proof is the storage's own checksum, so without it nothing is deleted */
     it('refuses without the NAS, and deletes nothing', async () => {
       writeManifest([
@@ -295,7 +295,7 @@ describe('api/manifest', () => {
     })
   })
 
-  describe('mark-emailed', () => {
+  describe('marking the email as sent', () => {
     /* the list is kept on the storage, so saying the email went needs the storage */
     it('refuses without the NAS', async () => {
       writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
@@ -309,7 +309,7 @@ describe('api/manifest', () => {
     })
   })
 
-  describe('save-groups', () => {
+  describe('saving the board', () => {
     it('needs the list it is meant to save', async () => {
       writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
       const res = refusal(await send({ intent: 'save-groups' }))

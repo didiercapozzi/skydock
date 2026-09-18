@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { action } from '../../app/routes/api.nas'
 import { createTmpDir, jsonResponse, stubFetch } from './fixtures'
 
-describe('api/nas file persistence (truthful, no UI mock)', () => {
+describe('connecting to the storage', () => {
   let tmpDir: string
   let originalOutputDir: string | undefined
 
@@ -28,7 +28,7 @@ describe('api/nas file persistence (truthful, no UI mock)', () => {
     return JSON.parse(fs.readFileSync(p, 'utf-8')) as Record<string, unknown>
   }
 
-  it('connect creates nas.json and preserves defaultFolder on reconnect', async () => {
+  it('keeps the session, and the default folder when connecting again', async () => {
     stubFetch((url) => {
       if (url.includes('method=login'))
         return jsonResponse({ success: true, data: { sid: 'sid-1' } })
@@ -86,7 +86,7 @@ describe('api/nas file persistence (truthful, no UI mock)', () => {
     expect(loadSessionFile()?.sessionId).toBe('sid-2')
   })
 
-  it('list-folder returns real folders via list_share for root and list for subfolders', async () => {
+  it('browses the storage’s folders, at the root and below', async () => {
     stubFetch((url) => {
       if (url.includes('method=login'))
         return jsonResponse({ success: true, data: { sid: 'real-sid-1' } })
@@ -150,7 +150,7 @@ describe('api/nas file persistence (truthful, no UI mock)', () => {
     )
   })
 
-  it('list-folder with network failure returns session expired but does not delete nas.json', async () => {
+  it('says the session expired when the storage cannot be reached, and forgets nothing', async () => {
     stubFetch((url) => {
       if (url.includes('method=login'))
         return jsonResponse({ success: true, data: { sid: 'real-sid-2' } })
@@ -184,7 +184,7 @@ describe('api/nas file persistence (truthful, no UI mock)', () => {
     expect(loadSessionFile()).not.toBeNull()
   })
 
-  it('status with network failure returns disconnected but does not delete file', async () => {
+  it('reads as disconnected when the storage cannot be reached, and forgets nothing', async () => {
     stubFetch((url) => {
       if (url.includes('method=login'))
         return jsonResponse({ success: true, data: { sid: 'real-sid-3' } })
@@ -218,7 +218,7 @@ describe('api/nas file persistence (truthful, no UI mock)', () => {
     expect(loadSessionFile()).not.toBeNull()
   })
 
-  it('regression: valid real sid via list_share allows list-folder without session expired', async () => {
+  it('browses with a session the storage still accepts', async () => {
     stubFetch((url) => {
       if (url.includes('method=login'))
         return jsonResponse({ success: true, data: { sid: 'real-sid-123' } })
@@ -279,7 +279,7 @@ describe('api/nas file persistence (truthful, no UI mock)', () => {
     expect((invalidRes as { globalErrors?: string[] }).globalErrors?.[0]).toMatch(/Session expired/)
   })
 
-  it('create-folder creates and returns updated folder list', async () => {
+  it('creates a folder and lists it', async () => {
     stubFetch((url) => {
       if (url.includes('method=login'))
         return jsonResponse({ success: true, data: { sid: 'real-sid-create' } })

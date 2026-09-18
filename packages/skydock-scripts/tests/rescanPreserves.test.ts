@@ -24,9 +24,7 @@ describe('rescan preserves what the registry knows', () => {
     vi.clearAllMocks()
   })
 
-  /* Pushing the bare disk entry used to drop `destination` and every processed/uploaded record
-     from EVERY file whenever a scan added or removed one — so a single new file un-sorted the
-     whole board and reset its status. */
+  /* a scan keeps what SkyDock decided about every file and reads only what the disk measures */
   it('keeps destination, crop and the processed record when a new file appears', async () => {
     const origDir = path.join(outputDir, 'original_files')
     writeTempFile(origDir, 'DJI_0001.MP4')

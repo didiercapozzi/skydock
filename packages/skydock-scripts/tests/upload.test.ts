@@ -48,7 +48,7 @@ const manifestOf = (groups: ManifestGroup[], over: Partial<Manifest> = {}): Mani
     ...over
   }) as Manifest
 
-describe('planUpload', () => {
+describe('skipping what is already on the storage', () => {
   it('skips a file whose name, size and MD5 all match, and uploads the rest', async () => {
     const dir = makeLocal({ 'videos/same.mp4': 'identical', 'videos/new.mp4': 'fresh' })
     const stub = nasStubs({
@@ -106,7 +106,7 @@ describe('planUpload', () => {
     fs.rmSync(dir, { recursive: true, force: true })
   })
 
-  it('uploads when the NAS cannot produce a digest — uncertainty never means skip', async () => {
+  it('sends the file when the storage cannot checksum it — uncertainty never means skip', async () => {
     const dir = makeLocal({ 'a.mp4': 'aaaa' })
     const stub = nasStubs({ files: { '/nas/jump': [{ name: 'a.mp4', size: 4 }] }, md5: {} })
     stubFetch((url) => stub(url) ?? jsonResponse({ success: true }))
@@ -132,7 +132,7 @@ describe('planUpload', () => {
   })
 })
 
-describe('ensureShareLink', () => {
+describe('share links', () => {
   it('reuses a live link for the same folder and never creates a second one', async () => {
     const stub = nasStubs({ links: [{ url: '/sharing/kept', path: '/nas/jump', status: 'valid' }] })
     stubFetch((url) => stub(url) ?? jsonResponse({ success: true }))
@@ -156,7 +156,7 @@ describe('ensureShareLink', () => {
   })
 })
 
-describe('resolveUploadTargets', () => {
+describe('where an upload goes', () => {
   const outputDir = '/out'
 
   it('sends a flat fun jump to the destination folder itself, with no per-jump subfolder', () => {

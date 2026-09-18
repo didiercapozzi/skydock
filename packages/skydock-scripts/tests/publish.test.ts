@@ -68,8 +68,8 @@ const startUploadServer = (
   })
 }
 
-describe('dsmLogin', () => {
-  it('returns sid on version 6 success', async () => {
+describe('logging in to the storage', () => {
+  it('is given a session on success', async () => {
     stubFetch((url) => {
       expect(url).toMatch(/version=(7|6)/)
       return loginSuccess('sid-6')
@@ -79,14 +79,14 @@ describe('dsmLogin', () => {
     ).resolves.toBe('sid-6')
   })
 
-  it('throws when DSM login returns failure', async () => {
+  it('fails when the storage refuses the login', async () => {
     stubFetch(() => loginFailure())
     await expect(
       dsmLogin({ host: 'https://nas.local:5001', user: 'u', password: 'p' })
     ).rejects.toThrow(/DSM login failed/)
   })
 
-  it('throws when DSM login fails (network error)', async () => {
+  it('fails when the storage cannot be reached', async () => {
     stubFetch(() => {
       throw new Error('network down')
     })
@@ -96,8 +96,8 @@ describe('dsmLogin', () => {
   })
 })
 
-describe('publishJump', () => {
-  it('uploads every file, creates a share link and keeps session alive', async () => {
+describe('uploading a folder', () => {
+  it('sends every file, makes a share link and keeps the session', async () => {
     const dir = makeTmpTree()
     const out = createTmpDir('skydock-publish-nas-')
     const server = await startUploadServer(() => ({ status: 200, body: { success: true } }))
@@ -186,7 +186,7 @@ describe('publishJump', () => {
     }
   })
 
-  it('keeps session and throws when an upload fails', async () => {
+  it('keeps the session and fails when a file cannot be sent', async () => {
     const dir = makeTmpTree()
     const out = createTmpDir('skydock-publish-nas-')
     const server = await startUploadServer(() => ({
@@ -217,7 +217,7 @@ describe('publishJump', () => {
     }
   })
 
-  it('throws when sharing returns no link', async () => {
+  it('fails when no share link comes back', async () => {
     const dir = makeTmpTree()
     const out = createTmpDir('skydock-publish-nas-')
     const server = await startUploadServer(() => ({ status: 200, body: { success: true } }))
@@ -285,7 +285,7 @@ describe('publishJump', () => {
     }
   })
 
-  it('streams large files with exact Content-Length and monotonic progress', async () => {
+  it('reports progress that only goes forward on a large file', async () => {
     const dir = createTmpDir('skydock-publish-big-')
     const out = createTmpDir('skydock-publish-nas-')
     const fileSize = 64 * 1024 * 1024
@@ -335,7 +335,7 @@ describe('publishJump', () => {
     }
   })
 
-  it('retries failed uploads', async () => {
+  it('tries a file again when sending it fails once', async () => {
     const dir = makeTmpTree()
     const out = createTmpDir('skydock-publish-nas-')
     const server = await startUploadServer((calls) =>
@@ -368,7 +368,7 @@ describe('publishJump', () => {
     }
   })
 
-  it('keeps stored session alive after successful upload (does not logout reused SID)', async () => {
+  it('keeps the session for the next upload', async () => {
     const dir = makeTmpTree()
     const out = createTmpDir('skydock-publish-nas-')
     const { saveNasSession } = await import('../src/nas')

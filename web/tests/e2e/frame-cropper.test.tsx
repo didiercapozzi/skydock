@@ -81,9 +81,8 @@ describe('the rectangle that says what to keep', () => {
      to a point outside the element to prove it here only fights the browser. */
 })
 
-/* The rectangle is the half of a crop with no other way of telling it happened: a trim shows on the
-   row, a rectangle does not. Saving used to watch the trim alone, so dragging a rectangle left the
-   button dead while the crop had in fact been written — success that looked exactly like failure.
+/* A rectangle on its own is something to save: it is the half of a crop with no other way of telling
+   it happened, since a trim shows on the row and a rectangle does not.
 
    Declared out here rather than inside the describe: Fast Refresh only instruments components at
    module scope, and one using hooks inside a function body trips over its own missing runtime. */
@@ -123,7 +122,7 @@ describe('saving a crop that is only a rectangle', () => {
   })
 
   /* Picking a shape only puts the rectangle up at full size, which is not yet a crop — nothing has
-     been cut. Taking a corner in is what there is to save, and that used to leave Save dead. */
+     been cut. Taking a corner in is what there is to save. */
   test('choosing a shape alone is not yet a crop', async () => {
     await render(createElement(Drawer, {}))
 

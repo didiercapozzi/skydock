@@ -8,10 +8,8 @@ import { containCrop, fitRatio } from '../src/frameCrop'
 import type { Manifest, ManifestFile } from '../src/types'
 import { createTmpDir } from './fixtures'
 
-/* These are written against the guarantee, not against the code: where a jump is filed and who it
-   belongs to must survive everything, because losing it means a day's sorting done again. The
-   tests that existed checked each piece against its own implementation and never the seam between
-   them — which is how a value the cropper can produce came to erase every jump on the card. */
+/* Where a jump is filed and who it belongs to survives being written down and read back, whatever
+   the crop on it: losing it means a day's sorting done again. */
 
 let outputDir: string
 let manifestPath: string

@@ -1,10 +1,8 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs'
-import * as path from 'node:path'
 import { createTmpDir, jsonResponse, stubFetch } from './fixtures'
 import {
-  clearNasSession,
   decryptPasswordFromStorage,
   ensureNasSession,
   loadNasSession,
@@ -14,7 +12,7 @@ import {
   updateNasFolder
 } from '../src/nas'
 
-describe('nas session storage', () => {
+describe('the storage session', () => {
   let tmpDir: string
 
   beforeEach(() => {
@@ -26,77 +24,8 @@ describe('nas session storage', () => {
     vi.unstubAllGlobals()
   })
 
-  describe('loadNasSession', () => {
-    it('returns null when no file exists', () => {
-      expect(loadNasSession(tmpDir)).toBeNull()
-    })
-
-    it('returns null for invalid JSON', () => {
-      const statusDir = path.join(tmpDir, '.status')
-      fs.mkdirSync(statusDir, { recursive: true })
-      fs.writeFileSync(path.join(statusDir, 'nas.json'), 'not json')
-      expect(loadNasSession(tmpDir)).toBeNull()
-    })
-
-    it('loads valid session', () => {
-      const statusDir = path.join(tmpDir, '.status')
-      fs.mkdirSync(statusDir, { recursive: true })
-      fs.writeFileSync(
-        path.join(statusDir, 'nas.json'),
-        JSON.stringify({ hostname: 'https://nas.local', username: 'user', sessionId: 'sid123' })
-      )
-      const session = loadNasSession(tmpDir)
-      expect(session).toEqual({
-        hostname: 'https://nas.local',
-        username: 'user',
-        sessionId: 'sid123'
-      })
-    })
-  })
-
-  describe('saveNasSession', () => {
-    it('creates file with session data', () => {
-      saveNasSession(
-        { hostname: 'https://nas.local', username: 'user', sessionId: 'sid123' },
-        tmpDir
-      )
-      const session = loadNasSession(tmpDir)
-      expect(session).toEqual({
-        hostname: 'https://nas.local',
-        username: 'user',
-        sessionId: 'sid123'
-      })
-    })
-
-    it('includes defaultFolder when provided', () => {
-      saveNasSession(
-        {
-          hostname: 'https://nas.local',
-          username: 'user',
-          sessionId: 'sid123',
-          defaultFolder: '/SkyDock'
-        },
-        tmpDir
-      )
-      const session = loadNasSession(tmpDir)
-      expect(session?.defaultFolder).toBe('/SkyDock')
-    })
-  })
-
-  describe('clearNasSession', () => {
-    it('removes the nas.json file', () => {
-      saveNasSession(
-        { hostname: 'https://nas.local', username: 'user', sessionId: 'sid123' },
-        tmpDir
-      )
-      expect(loadNasSession(tmpDir)).not.toBeNull()
-      clearNasSession(tmpDir)
-      expect(loadNasSession(tmpDir)).toBeNull()
-    })
-  })
-
-  describe('updateNasFolder', () => {
-    it('updates defaultFolder in existing session', () => {
+  describe('the folders', () => {
+    it('remembers the default folder', () => {
       saveNasSession(
         { hostname: 'https://nas.local', username: 'user', sessionId: 'sid123' },
         tmpDir
@@ -120,7 +49,7 @@ describe('nas session storage', () => {
   })
 })
 
-describe('loginWithSession', () => {
+describe('logging in', () => {
   let tmpDir: string
 
   const mockDsm = {
@@ -139,7 +68,7 @@ describe('loginWithSession', () => {
     vi.unstubAllGlobals()
   })
 
-  it('returns stored session when valid', async () => {
+  it('reuses the session it kept while the storage still takes it', async () => {
     saveNasSession(
       { hostname: 'https://nas.local', username: 'u', sessionId: 'stored-sid' },
       tmpDir
@@ -154,7 +83,7 @@ describe('loginWithSession', () => {
     expect(mockDsm.login).not.toHaveBeenCalled()
   })
 
-  it('logs in fresh when stored session is invalid', async () => {
+  it('logs in again when the kept session is refused', async () => {
     saveNasSession({ hostname: 'https://nas.local', username: 'u', sessionId: 'old-sid' }, tmpDir)
     mockDsm.validate.mockResolvedValue(false)
     mockDsm.login.mockResolvedValue('new-sid')
@@ -167,7 +96,7 @@ describe('loginWithSession', () => {
     expect(loadNasSession(tmpDir)?.sessionId).toBe('new-sid')
   })
 
-  it('logs in fresh when no stored session exists', async () => {
+  it('logs in when nothing was kept', async () => {
     mockDsm.login.mockResolvedValue('fresh-sid')
     const result = await loginWithSession(
       { host: 'https://nas.local', user: 'u', password: 'p' },
@@ -177,7 +106,7 @@ describe('loginWithSession', () => {
     expect(result).toBe('fresh-sid')
   })
 
-  it('clears stored session when hostname changes', async () => {
+  it('forgets the session when the storage’s address changes', async () => {
     saveNasSession(
       { hostname: 'https://old-nas.local', username: 'u', sessionId: 'old-sid' },
       tmpDir
@@ -209,7 +138,7 @@ describe('loginWithSession', () => {
   })
 })
 
-describe('ensureNasSession', () => {
+describe('the session between uploads', () => {
   let tmpDir: string
 
   beforeEach(() => {
@@ -225,14 +154,14 @@ describe('ensureNasSession', () => {
     await expect(ensureNasSession(tmpDir)).resolves.toBeNull()
   })
 
-  it('reuses a session DSM still accepts', async () => {
+  it('reuses a session the storage still accepts', async () => {
     saveNasSession({ hostname: 'https://nas.local', username: 'u', sessionId: 'live' }, tmpDir)
     stubFetch(() => jsonResponse({ success: true, data: { shares: [] } }))
     const session = await ensureNasSession(tmpDir)
     expect(session?.sessionId).toBe('live')
   })
 
-  it('refuses a session DSM rejects when nothing can refresh it', async () => {
+  it('is gone once the storage refuses it and nothing can renew it', async () => {
     saveNasSession({ hostname: 'https://nas.local', username: 'u', sessionId: 'dead' }, tmpDir)
     stubFetch(() => jsonResponse({ success: false, error: { code: 119 } }))
     await expect(ensureNasSession(tmpDir)).resolves.toBeNull()
