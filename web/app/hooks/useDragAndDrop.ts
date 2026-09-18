@@ -1,11 +1,11 @@
 import { passengerName, passengerOf } from '@skydock/scripts'
 import { useState } from 'react'
-import type { Place } from '../components/places-tree'
-import { placeKey } from '../components/places-tree'
 import type { Passenger } from '../components/tandem-card'
 import type { ManifestFile, ManifestGroup } from '../components/types'
 import { fromComputer } from '../helpers/import'
 import { TANDEMS, inTandemsCard } from '../helpers/jumps'
+import { placeKey } from '../helpers/places'
+import type { Place } from '../helpers/places'
 
 type Move = { destination?: string | null; targetGroupId?: string; newGroup?: boolean }
 
@@ -112,7 +112,7 @@ const useDragAndDrop = ({
     const incoming = into
       ? { target: `group:${into.hostId}`, where: passengerName(into.passenger) }
       : destination === null
-        ? { target: 'sort', where: 'Unsorted jumps' }
+        ? { target: 'sort', where: 'Unsorted' }
         : destination === TANDEMS
           ? null
           : { target: `dest:${destination}`, where: destination }
@@ -144,7 +144,9 @@ const useDragAndDrop = ({
     }
   }
 
-  /* a place in the menu; dropping on a passenger means "this is theirs too": it joins their tandem */
+  /* A folder on the left. A camera day takes things back to the sorting area, as Unsorted does; a
+     passenger means "this is theirs too", so it joins their tandem; All passengers and No name yet
+     start a tandem of its own. What the storage holds is not somewhere a file can be put. */
   const placeDrop = (target: Place) => {
     const key = placeKey(target)
     const host =
@@ -152,9 +154,9 @@ const useDragAndDrop = ({
         ? groups.find((g) => inTandemsCard(g) && passengerOf(g) === target.name)
         : undefined
     const props =
-      host && frozen.has(host.id)
+      target.kind === 'storage' || (host && frozen.has(host.id))
         ? {}
-        : target.kind === 'sort'
+        : target.kind === 'sort' || target.kind === 'day'
           ? dropTarget(null, key)
           : target.kind === 'dz'
             ? dropTarget(target.name, key)

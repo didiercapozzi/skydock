@@ -69,8 +69,8 @@ const DialogHost = ({
   onFree: (group: ManifestGroup) => void
   onTakeBack: (mode: TakeBackMode, group: ManifestGroup) => void
   comparing: {
-    open: boolean
-    picked: string[]
+    /* the two jumps side by side, when two are being compared */
+    pair: [string, string] | null
     onClose: () => void
     onMerge: (leftId: string, rightId: string, anchorEpoch: number) => void
   }
@@ -200,11 +200,11 @@ const DialogHost = ({
           )
         })()}
 
-      {comparing.open && comparing.picked.length === 2 && (
+      {comparing.pair && (
         <ComparisonDialog
           groups={groups}
-          leftGroupId={comparing.picked[0]}
-          rightGroupId={comparing.picked[1]}
+          leftGroupId={comparing.pair[0]}
+          rightGroupId={comparing.pair[1]}
           onClose={comparing.onClose}
           onMerge={comparing.onMerge}
         />

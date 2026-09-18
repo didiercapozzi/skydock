@@ -27,8 +27,12 @@ type Props = {
   /* where each clip's proxy has got to, keyed by the clip's path — read off the disk by the
      server, because the record alone cannot know someone emptied the folder */
   proxies: Record<string, ProxyFact>
+  /* a click picks, as in a file manager; a double-click or Enter opens the file */
   onFile: (file: ManifestFile, lane: ManifestFile[], e: Modifiers) => void
+  onOpen: (file: ManifestFile) => void
   onDragFile: (file: ManifestFile, e?: React.DragEvent) => void
+  /* what the files are put in order by — their time, their name or how far along they are */
+  sortKey: (file: ManifestFile) => string | number
   /* the name the file has once a copy exists — what goes to the NAS and what the passenger sees */
   deliveredName: (file: ManifestFile) => string | null
   selecting: boolean
@@ -39,6 +43,27 @@ const PAGE = { rows: 40, grid: 120 }
 
 const kindOf = (file: ManifestFile) => (isVideoFile(file.path) ? 'video' : 'photo')
 const matchesKind = (file: ManifestFile, kind: Kind) => kind === 'all' || kindOf(file) === kind
+
+const byKey =
+  (key: (file: ManifestFile) => string | number) => (a: ManifestFile, b: ManifestFile) => {
+    const x = key(a)
+    const y = key(b)
+    return x < y ? -1 : x > y ? 1 : a.mtime - b.mtime
+  }
+
+/* The files as they are drawn: one run of the kind asked for, or — for everything, where there are
+   both — the clips and then the stills, each in its own column. The board steps through files with
+   the arrow keys in this same order, so what is next is what is below. */
+const lanesOf = (
+  files: ManifestFile[],
+  kind: Kind,
+  key: (file: ManifestFile) => string | number
+) => {
+  const sorted = files.filter((f) => matchesKind(f, kind)).sort(byKey(key))
+  const videos = sorted.filter((f) => kindOf(f) === 'video')
+  const photos = sorted.filter((f) => kindOf(f) === 'photo')
+  return kind === 'all' && videos.length > 0 && photos.length > 0 ? [videos, photos] : [sorted]
+}
 
 /* Why a file can no longer be changed here, if it cannot. Uploaded is the end of editing: SkyDock
    never deletes from the storage, so it could not take the old copy back, and changing this one would
@@ -202,6 +227,7 @@ const Row = ({
   proxy,
   name,
   onFile,
+  onOpen,
   onDragFile
 }: {
   file: ManifestFile
@@ -212,17 +238,25 @@ const Row = ({
   proxy?: ProxyFact
   name: string | null
   onFile: Props['onFile']
+  onOpen: Props['onOpen']
   onDragFile: Props['onDragFile']
 }) => (
   <div
     role='button'
     tabIndex={0}
     aria-selected={picked}
+    data-file={file.id ?? file.path}
     draggable={!locked}
     onDragStart={locked ? undefined : (e) => onDragFile(file, e)}
     onClick={(e) => onFile(file, lane, e)}
+    onDoubleClick={() => onOpen(file)}
     onKeyDown={(e) => {
-      if (e.key !== 'Enter' && e.key !== ' ') return
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        e.stopPropagation()
+        onOpen(file)
+      }
+      if (e.key !== ' ') return
       e.preventDefault()
       onFile(file, lane, e)
     }}
@@ -304,6 +338,7 @@ const Tile = ({
   proxy,
   selecting,
   onFile,
+  onOpen,
   onDragFile
 }: {
   file: ManifestFile
@@ -314,14 +349,23 @@ const Tile = ({
   proxy?: ProxyFact
   selecting: boolean
   onFile: Props['onFile']
+  onOpen: Props['onOpen']
   onDragFile: Props['onDragFile']
 }) => (
   <button
     type='button'
     aria-selected={picked}
+    data-file={file.id ?? file.path}
     draggable={!locked}
     onDragStart={locked ? undefined : (e) => onDragFile(file, e)}
     onClick={(e) => onFile(file, lane, e)}
+    onDoubleClick={() => onOpen(file)}
+    onKeyDown={(e) => {
+      if (e.key !== 'Enter') return
+      e.preventDefault()
+      e.stopPropagation()
+      onOpen(file)
+    }}
     title={`${file.filename} · ${formatTime(file.mtime)} · ${formatSize(file.size)} · ${status}${
       proxy?.state === 'none' ? ' · no proxy yet' : ''
     }${isWholeFrame(file.frame) ? '' : ' · frame cropped'}${file.rotation ? ` · turned ${file.rotation}°` : ''}`}
@@ -423,21 +467,20 @@ const KindBadges = ({
   )
 }
 
-/* one kind, or everything in one run: the list itself, a page at a time */
+/* one run of files, already in order: the list itself, a page at a time */
 const Lane = ({
-  files,
-  kind,
+  lane,
   shape,
   picked,
   statusContext,
   proxies,
   onFile,
+  onOpen,
   onDragFile,
   deliveredName,
   selecting
-}: Props) => {
+}: Omit<Props, 'files' | 'kind' | 'sortKey'> & { lane: ManifestFile[] }) => {
   const [shown, setShown] = useState(PAGE[shape])
-  const lane = files.filter((f) => matchesKind(f, kind)).sort((a, b) => a.mtime - b.mtime)
   if (lane.length === 0) {
     return <p className='px-[7px] py-1 text-[12px] text-ink-3'>Nothing here.</p>
   }
@@ -465,6 +508,7 @@ const Lane = ({
               proxy={proxies[file.path]}
               name={deliveredName(file)}
               onFile={onFile}
+              onOpen={onOpen}
               onDragFile={onDragFile}
             />
           ) : (
@@ -478,6 +522,7 @@ const Lane = ({
               proxy={proxies[file.path]}
               selecting={selecting}
               onFile={onFile}
+              onOpen={onOpen}
               onDragFile={onDragFile}
             />
           )
@@ -513,31 +558,32 @@ const Lane = ({
 /* Videos and photos are two different jobs, so showing all of them is showing both side by side: the
    clips in one column, the stills in the other, each in its own order and with its own "show more".
    Picking a range stays within a column, since a range across the two would mean nothing. One kind
-   picked is that kind alone; a list of only one kind is simply that list. On a narrow screen the
-   two columns stack. */
-const FileList = (props: Props) => {
-  const { files, kind } = props
-  const videos = files.filter((f) => kindOf(f) === 'video').length
-  const photos = files.length - videos
-  if (kind !== 'all' || videos === 0 || photos === 0) return <Lane {...props} />
+   picked is that kind alone; a list of only one kind is simply that list. Where the pane is narrow
+   the two columns stack. */
+const FileList = ({ files, kind, sortKey, ...rest }: Props) => {
+  const lanes = lanesOf(files, kind, sortKey)
+  if (lanes.length === 1)
+    return (
+      <Lane
+        {...rest}
+        lane={lanes[0] ?? []}
+      />
+    )
   return (
-    <div className='grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2'>
-      {(
-        [
-          ['video', 'Videos', videos],
-          ['photo', 'Photos', photos]
-        ] as const
-      ).map(([only, label, count]) => (
+    <div className='grid grid-cols-1 gap-x-4 gap-y-3 @3xl:grid-cols-2'>
+      {lanes.map((lane, i) => (
         <div
-          key={only}
+          key={i}
           className='min-w-0'>
           <div className='mb-1 flex items-baseline gap-1.5 px-[7px] text-[11px] font-semibold tracking-[0.04em] text-ink-3 uppercase'>
-            {label}
-            <span className='font-mono font-normal tracking-normal tabular-nums'>{count}</span>
+            {i === 0 ? 'Videos' : 'Photos'}
+            <span className='font-mono font-normal tracking-normal tabular-nums'>
+              {lane.length}
+            </span>
           </div>
           <Lane
-            {...props}
-            kind={only}
+            {...rest}
+            lane={lane}
           />
         </div>
       ))}
@@ -545,5 +591,5 @@ const FileList = (props: Props) => {
   )
 }
 
-export { FileList, KindBadges, lockReason, matchesKind, kindOf }
+export { FileList, KindBadges, kindOf, lanesOf, lockReason, matchesKind, shownStatus }
 export type { FileShape, Kind, Modifiers }

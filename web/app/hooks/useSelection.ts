@@ -2,96 +2,135 @@ import { useEffect, useState } from 'react'
 import type { Modifiers } from '../components/file-list'
 import type { ManifestFile } from '../components/types'
 
-/* Which files are picked, and which two jumps are being compared. A plain click previews while
-   nothing is picked and extends the picking once it started; shift takes a range; ⌘/ctrl adds one;
-   Escape clears; Delete sends the picked files back to the sorting area. */
-const useSelection = ({ onDelete }: { onDelete: (ids: string[]) => void }) => {
-  const [picked, setPicked] = useState<string[]>([])
+/* What is selected, the way a file manager has it: a click selects a file, ⌘/ctrl-click adds or
+   removes one, shift-click takes a range, and a double-click or Enter opens it. A jump can be
+   selected instead, by its line. The arrow keys step through the files in the order they are drawn,
+   Escape clears, Delete sends what is selected back to Unsorted, and ⌘A takes every file on screen.
+   Two jumps can be put side by side to compare. */
+const useSelection = ({
+  order,
+  paused,
+  onOpen,
+  onDelete
+}: {
+  /* the files on screen, in the order they are drawn */
+  order: ManifestFile[]
+  /* a dialog or the preview has the keyboard */
+  paused: boolean
+  onOpen: (file: ManifestFile) => void
+  onDelete: (ids: string[]) => void
+}) => {
   const [pickedFiles, setPickedFiles] = useState<string[]>([])
   const [anchor, setAnchor] = useState<string | null>(null)
-  const [comparing, setComparing] = useState(false)
+  const [pickedJump, setPickedJump] = useState<string | null>(null)
+  const [comparing, setComparing] = useState<[string, string] | null>(null)
 
-  const clickFile = (
-    file: ManifestFile,
-    lane: ManifestFile[],
-    e: Modifiers,
-    onPreview: () => void
-  ) => {
+  const pickOnly = (ids: string[], from: string | null) => {
+    setPickedFiles(ids)
+    setAnchor(from)
+    setPickedJump(null)
+  }
+
+  const idsOf = (files: ManifestFile[]) => files.flatMap((f) => (f.id ? [f.id] : []))
+
+  const rangeTo = (id: string, within: string[]) => {
+    const from = anchor ? within.indexOf(anchor) : -1
+    const to = within.indexOf(id)
+    if (from === -1 || to === -1) return null
+    return within.slice(Math.min(from, to), Math.max(from, to) + 1)
+  }
+
+  const clickFile = (file: ManifestFile, lane: ManifestFile[], e: Modifiers) => {
     const id = file.id
     if (!id) {
-      onPreview()
+      onOpen(file)
       return
     }
-    const ids = lane.flatMap((f) => (f.id ? [f.id] : []))
-    /* Shift is always picking, never previewing. With a start already in this row it takes the
-       range; with none yet — the first shift-click on the board, or the start was in another row —
-       it picks this one and makes it the start. */
+    setPickedJump(null)
     if (e.shiftKey) {
-      if (anchor && ids.includes(anchor)) {
-        const from = ids.indexOf(anchor)
-        const to = ids.indexOf(id)
-        const range = ids.slice(Math.min(from, to), Math.max(from, to) + 1)
-        setPickedFiles([...new Set([...pickedFiles, ...range])])
-      } else {
-        setPickedFiles(pickedFiles.includes(id) ? pickedFiles : [...pickedFiles, id])
-        setAnchor(id)
-      }
+      const range = rangeTo(id, idsOf(lane))
+      setPickedFiles(range ? [...new Set([...pickedFiles, ...range])] : [...pickedFiles, id])
+      if (!range) setAnchor(id)
       return
     }
-    if (e.ctrlKey || e.metaKey || pickedFiles.length > 0) {
+    if (e.ctrlKey || e.metaKey) {
       setPickedFiles(
         pickedFiles.includes(id) ? pickedFiles.filter((x) => x !== id) : [...pickedFiles, id]
       )
       setAnchor(id)
       return
     }
-    setAnchor(id)
-    onPreview()
+    pickOnly([id], id)
   }
 
-  const clearFiles = () => {
+  const selectJump = (groupId: string) => {
     setPickedFiles([])
     setAnchor(null)
+    setPickedJump(pickedJump === groupId ? null : groupId)
   }
 
-  const selectAll = (files: ManifestFile[]) => {
-    const ids = files.flatMap((f) => (f.id ? [f.id] : []))
-    const every = ids.length > 0 && ids.every((id) => pickedFiles.includes(id))
-    setPickedFiles(
-      every ? pickedFiles.filter((id) => !ids.includes(id)) : [...new Set([...pickedFiles, ...ids])]
-    )
+  const selectFiles = (files: ManifestFile[]) => {
+    const ids = idsOf(files)
+    pickOnly(ids, ids[0] ?? null)
   }
 
-  /* the keys are the window's, so this is a listener on it */
+  const clear = () => pickOnly([], null)
+
+  /* the keys belong to the window, so this listens there */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      /* never steal Delete or Backspace from the passenger name fields */
-      if (e.target instanceof HTMLElement && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return
-      /* while comparing, Escape closes the dialog and nothing else reaches the board */
+      if (paused) return
+      /* never take a key from a field being typed in */
+      if (e.target instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName))
+        return
       if (comparing) {
-        if (e.key === 'Escape') queueMicrotask(() => setComparing(false))
+        if (e.key === 'Escape') setComparing(null)
         return
       }
+      const ids = idsOf(order)
       if (e.key === 'Escape') {
-        queueMicrotask(clearFiles)
+        clear()
         return
       }
-      if (e.key !== 'Delete' && e.key !== 'Backspace') return
-      if (pickedFiles.length === 0) return
+      if ((e.key === 'Delete' || e.key === 'Backspace') && pickedFiles.length > 0) {
+        e.preventDefault()
+        onDelete(pickedFiles)
+        return
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
+        e.preventDefault()
+        pickOnly(ids, ids[0] ?? null)
+        return
+      }
+      if (e.key === 'Enter' && pickedFiles.length === 1) {
+        const file = order.find((f) => f.id === pickedFiles[0])
+        if (file) onOpen(file)
+        return
+      }
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
       e.preventDefault()
-      queueMicrotask(() => onDelete(pickedFiles))
+      const at = anchor ? ids.indexOf(anchor) : -1
+      const next = ids[Math.max(0, Math.min(ids.length - 1, at + (e.key === 'ArrowDown' ? 1 : -1)))]
+      if (!next) return
+      if (e.shiftKey) {
+        setPickedFiles([...new Set([...pickedFiles, next])])
+        setAnchor(next)
+      } else pickOnly([next], next)
+      document
+        .querySelector(`[data-file="${CSS.escape(next)}"]`)
+        ?.scrollIntoView({ block: 'nearest' })
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   })
 
   return {
-    picked,
-    setPicked,
     pickedFiles,
-    clearFiles,
+    pickedJump,
     clickFile,
-    selectAll,
+    selectJump,
+    selectFiles,
+    clear,
     comparing,
     setComparing
   }

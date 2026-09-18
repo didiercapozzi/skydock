@@ -1,0 +1,1933 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1" />
+    <title>SkyDock — folders proposal</title>
+    <!--
+  A proposal for the board: one screen that works like a file browser.
+
+  Three panes, no folding, no chips, no day toggles.
+    left    a folder tree — Cameras (the days as they came off the cameras), Dropzones, Tandems,
+            Storage — each folder saying how much of it is still to do
+    middle  the folder's files, all of them, as a list or as thumbnails, grouped by jump or by day
+            with headers that stay put while you scroll; a jump is filed from its own header in one
+            click, or by dragging it onto a folder
+    right   an inspector for whatever is selected — one file, a jump, a whole folder — with the one
+            next step for it and everything decided about it, so nothing has to be opened to be
+            looked at
+
+  This page is data-driven: click around, drag a jump onto a folder, pick a jump and name it.
+  Nothing here talks to the app; the point is the shape of the screen and the number of clicks.
+-->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
+    <style>
+      :root {
+        --ground: #f2f4f6;
+        --pane: #ffffff;
+        --rail: #eaedf1;
+        --ink: #171c22;
+        --ink-2: #545e6b;
+        --ink-3: #8b95a2;
+        --line: #dde2e8;
+        --line-2: #eef1f4;
+        --accent: #0f6f68;
+        --accent-soft: #e3f2f0;
+        --pick: #2563eb;
+        --pick-soft: #e6eefc;
+        --local: #a4560a;
+        --local-soft: #fbeddc;
+        --proc: #0f6f68;
+        --proc-soft: #dcefec;
+        --up: #1c7a3e;
+        --up-soft: #ddf0e2;
+        --lock: #7a4fb5;
+        --lock-soft: #efe7fa;
+        --shadow: 0 1px 2px rgba(20, 28, 38, 0.06), 0 4px 14px rgba(20, 28, 38, 0.05);
+        --ui: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+        --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --ground: #101418;
+          --pane: #171c22;
+          --rail: #131820;
+          --ink: #e7ecf1;
+          --ink-2: #9aa5b2;
+          --ink-3: #6b7683;
+          --line: #262d36;
+          --line-2: #1f252d;
+          --accent: #3fb3a6;
+          --accent-soft: #14312e;
+          --pick: #5b8dee;
+          --pick-soft: #182640;
+          --local: #d99544;
+          --local-soft: #33260f;
+          --proc: #3fb3a6;
+          --proc-soft: #14312e;
+          --up: #57b877;
+          --up-soft: #15301e;
+          --lock: #b191e2;
+          --lock-soft: #241a33;
+          --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.3);
+        }
+      }
+      :root[data-theme='dark'] {
+        --ground: #101418;
+        --pane: #171c22;
+        --rail: #131820;
+        --ink: #e7ecf1;
+        --ink-2: #9aa5b2;
+        --ink-3: #6b7683;
+        --line: #262d36;
+        --line-2: #1f252d;
+        --accent: #3fb3a6;
+        --accent-soft: #14312e;
+        --pick: #5b8dee;
+        --pick-soft: #182640;
+        --local: #d99544;
+        --local-soft: #33260f;
+        --proc: #3fb3a6;
+        --proc-soft: #14312e;
+        --up: #57b877;
+        --up-soft: #15301e;
+        --lock: #b191e2;
+        --lock-soft: #241a33;
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.3);
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--ground);
+        color: var(--ink);
+        font-family: var(--ui);
+        font-size: 13px;
+        line-height: 1.45;
+        -webkit-font-smoothing: antialiased;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      button,
+      input,
+      select {
+        font: inherit;
+        color: inherit;
+      }
+      button {
+        cursor: pointer;
+      }
+      :focus-visible {
+        outline: 2px solid var(--pick);
+        outline-offset: 2px;
+        border-radius: 4px;
+      }
+
+      .app {
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr);
+        height: 100%;
+      }
+
+      /* ---------- header ---------- */
+      .top {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 14px;
+        background: var(--pane);
+        border-bottom: 1px solid var(--line);
+      }
+      .logo {
+        font-weight: 700;
+        font-size: 15px;
+        letter-spacing: -0.02em;
+      }
+      .logo b {
+        color: var(--accent);
+      }
+      .top .grow {
+        flex: 1;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 3px 10px 3px 8px;
+        font-size: 12px;
+        background: var(--pane);
+      }
+      .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--up);
+      }
+      .pill a {
+        color: var(--accent);
+        text-decoration: underline;
+        cursor: pointer;
+      }
+      .btn {
+        border: 1px solid var(--line);
+        background: var(--pane);
+        border-radius: 6px;
+        padding: 5px 11px;
+        font-size: 12.5px;
+        font-weight: 500;
+      }
+      .btn:hover {
+        border-color: var(--ink-3);
+      }
+      .btn.go {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+        font-weight: 600;
+      }
+      .btn.go:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      .btn.mini {
+        padding: 3px 8px;
+        font-size: 11.5px;
+        color: var(--ink-2);
+      }
+      .seg {
+        display: inline-flex;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .seg button {
+        border: 0;
+        background: var(--pane);
+        padding: 4px 9px;
+        font-size: 12px;
+        color: var(--ink-2);
+      }
+      .seg button[aria-pressed='true'] {
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-weight: 600;
+      }
+
+      /* ---------- the proposal note ---------- */
+      .note {
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+        padding: 9px 14px;
+        background: var(--accent-soft);
+        border-bottom: 1px solid var(--line);
+        font-size: 12.5px;
+        color: var(--ink-2);
+      }
+      .note b {
+        color: var(--ink);
+      }
+      .note ul {
+        margin: 3px 0 0;
+        padding-left: 18px;
+        columns: 2;
+        column-gap: 28px;
+      }
+      .note li {
+        break-inside: avoid;
+        margin-bottom: 2px;
+      }
+      .note button {
+        margin-left: auto;
+        flex: none;
+      }
+      .note[hidden] {
+        display: none;
+      }
+
+      /* ---------- the three panes ---------- */
+      .panes {
+        display: grid;
+        grid-template-columns: 250px minmax(0, 1fr) 300px;
+        min-height: 0;
+      }
+      @media (max-width: 1100px) {
+        .panes {
+          grid-template-columns: 220px minmax(0, 1fr) 260px;
+        }
+      }
+
+      /* tree */
+      .tree {
+        background: var(--rail);
+        border-right: 1px solid var(--line);
+        overflow-y: auto;
+        padding: 8px 8px 20px;
+      }
+      .tree h2 {
+        margin: 12px 8px 4px;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+        font-weight: 600;
+      }
+      .tree h2:first-child {
+        margin-top: 2px;
+      }
+      .node {
+        display: block;
+        width: 100%;
+        text-align: left;
+        border: 1px solid transparent;
+        background: transparent;
+        border-radius: 6px;
+        padding: 5px 8px 4px;
+        color: var(--ink);
+      }
+      .node:hover {
+        background: var(--line-2);
+      }
+      .node[aria-current='true'] {
+        background: var(--pane);
+        border-color: var(--line);
+        box-shadow: var(--shadow);
+      }
+      .node.child {
+        padding-left: 24px;
+      }
+      .node.over {
+        border: 1px dashed var(--pick);
+        background: var(--pick-soft);
+      }
+      .node .row {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .node .glyph {
+        width: 16px;
+        color: var(--ink-3);
+        text-align: center;
+        flex: none;
+      }
+      .node[aria-current='true'] .glyph {
+        color: var(--accent);
+      }
+      .node .name {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .node[aria-current='true'] .name {
+        font-weight: 600;
+      }
+      .node .n {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--ink-3);
+      }
+      .node .todo {
+        font-size: 10.5px;
+        font-weight: 600;
+        color: var(--local);
+        background: var(--local-soft);
+        border-radius: 999px;
+        padding: 0 6px;
+      }
+      .bar {
+        display: flex;
+        height: 3px;
+        border-radius: 2px;
+        overflow: hidden;
+        background: var(--line-2);
+        margin: 4px 0 0 23px;
+      }
+      .bar i {
+        display: block;
+        height: 100%;
+      }
+      .bar .l {
+        background: var(--local);
+      }
+      .bar .p {
+        background: var(--proc);
+      }
+      .bar .u {
+        background: var(--up);
+      }
+
+      /* content */
+      .content {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        min-height: 0;
+        background: var(--ground);
+      }
+      .crumbs {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 9px 16px 7px;
+        background: var(--pane);
+        border-bottom: 1px solid var(--line);
+        flex-wrap: wrap;
+      }
+      .crumbs .path {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12.5px;
+        color: var(--ink-3);
+      }
+      .crumbs .path b {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--ink);
+      }
+      .crumbs .path button {
+        border: 0;
+        background: none;
+        padding: 0;
+        color: var(--accent);
+      }
+      .crumbs .count {
+        font-size: 12px;
+        color: var(--ink-2);
+      }
+      .crumbs .tools {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .find {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 3px 9px;
+        background: var(--ground);
+      }
+      .find input {
+        border: 0;
+        background: transparent;
+        outline: none;
+        width: 130px;
+        font-size: 12.5px;
+      }
+      .find input::placeholder {
+        color: var(--ink-3);
+      }
+      select.tool {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--pane);
+        padding: 4px 6px;
+        font-size: 12px;
+        color: var(--ink-2);
+      }
+
+      /* what is left, at a glance */
+      .left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 16px;
+        background: var(--pane);
+        border-bottom: 1px solid var(--line);
+        font-size: 12px;
+        color: var(--ink-2);
+        flex-wrap: wrap;
+      }
+      .chip {
+        border: 1px solid var(--line);
+        background: var(--ground);
+        border-radius: 999px;
+        padding: 2px 10px;
+        font-size: 12px;
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .chip.todo {
+        border-color: var(--local);
+        color: var(--local);
+        background: var(--local-soft);
+      }
+      .chip.ok {
+        border-color: var(--up);
+        color: var(--up);
+        background: var(--up-soft);
+      }
+      .chip:hover {
+        filter: brightness(0.96);
+      }
+      .left .msg {
+        margin-left: auto;
+        color: var(--ink-3);
+      }
+
+      .files {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0 16px 40px;
+      }
+
+      /* group headers pin under the toolbar */
+      .grp {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        margin: 12px -6px 4px;
+        background: var(--pane);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        cursor: grab;
+      }
+      .grp.picked {
+        border-color: var(--pick);
+        background: var(--pick-soft);
+      }
+      .grp .t {
+        font-family: var(--mono);
+        font-weight: 600;
+        font-size: 12.5px;
+      }
+      .grp .name {
+        font-weight: 600;
+      }
+      .grp .meta {
+        color: var(--ink-3);
+        font-size: 12px;
+      }
+      .grp .spacer {
+        flex: 1;
+      }
+      .grp .file-to {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .grp .tag {
+        font-size: 11px;
+        padding: 1px 7px;
+        border-radius: 999px;
+      }
+      .tag.local {
+        color: var(--local);
+        background: var(--local-soft);
+      }
+      .tag.proc {
+        color: var(--proc);
+        background: var(--proc-soft);
+      }
+      .tag.up {
+        color: var(--up);
+        background: var(--up-soft);
+      }
+      .tag.lock {
+        color: var(--lock);
+        background: var(--lock-soft);
+      }
+      .grp.day {
+        top: 0;
+      }
+      .grp.day .t {
+        font-family: var(--ui);
+        font-size: 13px;
+      }
+
+      /* list view */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--pane);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      thead th {
+        background: var(--pane);
+        text-align: left;
+        font-size: 10.5px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+        font-weight: 600;
+        padding: 6px 8px;
+        border-bottom: 1px solid var(--line);
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      thead th.sorted::after {
+        content: ' ▾';
+        color: var(--accent);
+      }
+      tbody tr {
+        border-bottom: 1px solid var(--line-2);
+        cursor: default;
+      }
+      tbody tr:last-child {
+        border-bottom: 0;
+      }
+      tbody tr:hover {
+        background: var(--line-2);
+      }
+      tbody tr.picked {
+        background: var(--pick-soft);
+      }
+      tbody tr.picked td:first-child {
+        box-shadow: inset 3px 0 0 var(--pick);
+      }
+      td {
+        padding: 4px 8px;
+        vertical-align: middle;
+        font-size: 12.5px;
+        white-space: nowrap;
+      }
+      td.name {
+        white-space: normal;
+      }
+      td .cam {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--ink-3);
+      }
+      td .fn {
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+      .thumb {
+        width: 54px;
+        height: 32px;
+        border-radius: 4px;
+        background: linear-gradient(135deg, #6f8fb3, #2d4d75);
+        display: inline-grid;
+        place-items: center;
+        color: #fff;
+        font-size: 11px;
+        flex: none;
+      }
+      .thumb.photo {
+        background: linear-gradient(135deg, #b39a6f, #75552d);
+      }
+      .thumb.turned {
+        transform: rotate(90deg);
+        width: 32px;
+        height: 54px;
+      }
+      .st {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
+      }
+      .st i {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+      .st.local i {
+        background: var(--local);
+      }
+      .st.proc i {
+        background: var(--proc);
+      }
+      .st.up i {
+        background: var(--up);
+      }
+      .st.lock i {
+        background: var(--lock);
+      }
+      .edits {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--ink-2);
+        letter-spacing: 0.04em;
+      }
+      .edits .d {
+        color: var(--ink-3);
+        border-bottom: 1px dashed currentColor;
+      }
+      td.tick {
+        width: 26px;
+        color: var(--ink-3);
+      }
+      tr.picked td.tick {
+        color: var(--pick);
+      }
+
+      /* grid view */
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 8px;
+        padding: 6px;
+        background: var(--pane);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+      .tile {
+        border: 2px solid transparent;
+        border-radius: 8px;
+        padding: 5px;
+        cursor: default;
+      }
+      .tile:hover {
+        background: var(--line-2);
+      }
+      .tile.picked {
+        border-color: var(--pick);
+        background: var(--pick-soft);
+      }
+      .tile .thumb {
+        width: 100%;
+        height: 84px;
+      }
+      .tile .thumb.turned {
+        transform: none;
+        width: 100%;
+        height: 84px;
+      }
+      .tile .fn {
+        font-family: var(--mono);
+        font-size: 11px;
+        margin-top: 4px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .tile .st {
+        margin-top: 2px;
+        font-size: 11px;
+      }
+
+      .empty {
+        border: 1px dashed var(--line);
+        border-radius: 9px;
+        padding: 28px;
+        text-align: center;
+        color: var(--ink-3);
+        margin-top: 12px;
+        background: var(--pane);
+      }
+
+      /* inspector */
+      .inspector {
+        background: var(--pane);
+        border-left: 1px solid var(--line);
+        overflow-y: auto;
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .inspector h3 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .inspector .sub {
+        color: var(--ink-3);
+        font-size: 12px;
+      }
+      .inspector .big {
+        width: 100%;
+        height: 150px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #6f8fb3, #2d4d75);
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-size: 26px;
+      }
+      .inspector .big.photo {
+        background: linear-gradient(135deg, #b39a6f, #75552d);
+      }
+      .inspector .big.turned {
+        height: 210px;
+        width: 60%;
+        margin: 0 auto;
+      }
+      .facts {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 3px 10px;
+        font-size: 12.5px;
+      }
+      .facts dt {
+        color: var(--ink-3);
+      }
+      .facts dd {
+        margin: 0;
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+      .step {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px 12px;
+        background: var(--ground);
+      }
+      .step h4 {
+        margin: 0 0 4px;
+        font-size: 10.5px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+      }
+      .step p {
+        margin: 0 0 8px;
+        font-size: 12.5px;
+        color: var(--ink-2);
+      }
+      .steps {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        font-size: 11.5px;
+        color: var(--ink-3);
+        margin-bottom: 8px;
+        flex-wrap: wrap;
+      }
+      .steps span {
+        padding: 1px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+      }
+      .steps span.done {
+        color: var(--up);
+        border-color: var(--up);
+        background: var(--up-soft);
+      }
+      .steps span.now {
+        color: var(--accent);
+        border-color: var(--accent);
+        font-weight: 600;
+      }
+      .actions {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        font-size: 12px;
+        color: var(--ink-2);
+      }
+      .field input {
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--ground);
+        padding: 5px 9px;
+        font-size: 13px;
+        color: var(--ink);
+      }
+      .hint {
+        font-size: 12px;
+        color: var(--ink-3);
+      }
+      .lockbox {
+        border-left: 3px solid var(--lock);
+        background: var(--lock-soft);
+        padding: 7px 10px;
+        border-radius: 0 6px 6px 0;
+        font-size: 12px;
+        color: var(--ink-2);
+      }
+      .film {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 8px;
+      }
+      .film .thumb {
+        width: 64px;
+        height: 40px;
+      }
+      .film .fn {
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+      .kbd {
+        font-family: var(--mono);
+        font-size: 11px;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        padding: 0 4px;
+        color: var(--ink-2);
+      }
+      .toast {
+        position: fixed;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--ink);
+        color: var(--ground);
+        padding: 8px 14px;
+        border-radius: 8px;
+        font-size: 12.5px;
+        box-shadow: var(--shadow);
+        opacity: 0;
+        transition: opacity 0.2s;
+        pointer-events: none;
+      }
+      .toast.on {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="top">
+        <span class="logo">Sky<b>Dock</b></span>
+        <span class="grow"></span>
+        <button class="btn">Rescan cameras</button>
+        <span class="pill"
+          ><span class="dot"></span><b>nas.local</b> <span style="color: var(--line)">|</span>
+          <a>/SkyDock</a> <span style="color: var(--line)">|</span> <a>backup /Backup</a>
+          <span style="color: var(--line)">|</span> <a>⟳ checked 15:24</a></span
+        >
+        <span
+          class="seg"
+          id="viewSeg"
+          ><button
+            aria-pressed="true"
+            data-view="list">
+            List</button
+          ><button data-view="grid">Thumbnails</button></span
+        >
+        <button
+          class="btn mini"
+          id="noteBtn"
+          title="What this proposal changes">
+          ?
+        </button>
+      </header>
+
+      <section
+        class="note"
+        id="note">
+        <div>
+          <b>Proposal — the board as a file browser.</b> One screen, three panes, nothing to unfold.
+          <ul>
+            <li>
+              <b>Folders on the left</b>, like any file manager: Cameras (the days, as copied off),
+              Dropzones, Tandems, Storage. Each says how much of it is still to do.
+            </li>
+            <li>
+              <b>Everything in the folder is on screen</b>, grouped by jump or day with headers that
+              stay put while you scroll. No day toggles, no folded jumps, no chips.
+            </li>
+            <li>
+              <b>Filing is one click</b> from a jump's own header (<i>File to ▾</i>), or a drag onto
+              a folder. Naming a passenger happens in the inspector, without leaving the day.
+            </li>
+            <li>
+              <b>The inspector on the right</b> shows whatever is selected — a file, a jump, the
+              whole folder — with its one next step. Click to look, double-click to open the
+              cropper.
+            </li>
+            <li>
+              <b>The next step is always in the same place</b>: the folder's button at the top
+              right, and the selection's in the inspector. What is left is listed above the files as
+              clickable chips.
+            </li>
+            <li>
+              Keyboard as in a file manager: <span class="kbd">↑↓</span> move,
+              <span class="kbd">⇧</span>/<span class="kbd">⌘</span> pick,
+              <span class="kbd">↵</span> open, <span class="kbd">⌫</span> send back,
+              <span class="kbd">⌘A</span> all.
+            </li>
+          </ul>
+        </div>
+        <button
+          class="btn mini"
+          onclick="document.getElementById('note').hidden = true">
+          Hide
+        </button>
+      </section>
+
+      <div class="panes">
+        <nav
+          class="tree"
+          id="tree"></nav>
+        <main class="content">
+          <div
+            class="crumbs"
+            id="crumbs"></div>
+          <div
+            class="left"
+            id="leftStrip"></div>
+          <div
+            class="files"
+            id="files"></div>
+        </main>
+        <aside
+          class="inspector"
+          id="inspector"></aside>
+      </div>
+    </div>
+    <div
+      class="toast"
+      id="toast"></div>
+
+    <script>
+      /* ---------- sample data: what a Saturday looks like ---------- */
+      const V = (id, cam, t, extra = {}) => ({ id, kind: 'video', cam, t, size: 1.9, ...extra })
+      const P = (id, cam, t, extra = {}) => ({ id, kind: 'photo', cam, t, size: 0.006, ...extra })
+      const mk = (n, base, t0, status = 'local', extra = {}) =>
+        Array.from({ length: n }, (_, i) =>
+          i % 3 === 2
+            ? P(`${base}p${i}`, `G00${1000 + i}.JPG`, t0 + i * 41, { status, ...extra })
+            : V(`${base}v${i}`, `GX0${1000 + i}.MP4`, t0 + i * 41, { status, ...extra })
+        )
+
+      const day = (y, m, d) => new Date(y, m - 1, d).getTime() / 1000
+
+      const data = {
+        jumps: [
+          {
+            id: 'j1',
+            day: '2026-09-13',
+            label: 'Jump 1',
+            t: day(2026, 9, 13) + 2 * 3600 + 7 * 60 + 4,
+            place: null,
+            files: mk(14, 'a', day(2026, 9, 13) + 7624)
+          },
+          {
+            id: 'j2',
+            day: '2026-09-13',
+            label: 'Jump 2',
+            t: day(2026, 9, 13) + 11 * 3600 + 40 * 60,
+            place: null,
+            files: mk(9, 'b', day(2026, 9, 13) + 42000, 'local', { turned: true })
+          },
+          {
+            id: 'j3',
+            day: '2026-09-12',
+            label: 'Jump 1',
+            t: day(2026, 9, 12) + 9 * 3600 + 3 * 60,
+            place: null,
+            files: mk(32, 'c', day(2026, 9, 12) + 32580)
+          },
+          {
+            id: 'y1',
+            day: '2026-09-06',
+            label: 'Jump 1',
+            t: day(2026, 9, 6) + 10 * 3600,
+            place: 'dz:Yverdon',
+            files: mk(11, 'y', day(2026, 9, 6) + 36000, 'up')
+          },
+          {
+            id: 'y2',
+            day: '2026-09-06',
+            label: 'Jump 2',
+            t: day(2026, 9, 6) + 14 * 3600,
+            place: 'dz:Yverdon',
+            files: mk(7, 'z', day(2026, 9, 6) + 50400, 'proc')
+          },
+          {
+            id: 'y3',
+            day: '2026-08-29',
+            label: 'Jump 1',
+            t: day(2026, 8, 29) + 11 * 3600,
+            place: 'dz:Yverdon',
+            files: mk(9, 'w', day(2026, 8, 29) + 39600, 'up')
+          },
+          {
+            id: 'c1',
+            day: '2026-08-22',
+            label: 'Jump 1',
+            t: day(2026, 8, 22) + 9 * 3600,
+            place: 'dz:Colombier',
+            files: mk(13, 'q', day(2026, 8, 22) + 32400, 'up')
+          },
+          {
+            id: 't1',
+            day: '2026-09-13',
+            label: 'Jump 3',
+            t: day(2026, 9, 13) + 15 * 3600 + 12 * 60,
+            place: 'pax:Luc Favre',
+            passenger: { first: 'Luc', last: 'Favre' },
+            step: 'montage',
+            files: mk(12, 'l', day(2026, 9, 13) + 54720, 'proc', { trim: true })
+          },
+          {
+            id: 't2',
+            day: '2026-09-13',
+            label: 'Jump 4',
+            t: day(2026, 9, 13) + 16 * 3600 + 30 * 60,
+            place: 'pax:Chloé Perret',
+            passenger: { first: 'Chloé', last: 'Perret' },
+            step: 'process',
+            files: mk(10, 'k', day(2026, 9, 13) + 59400, 'local')
+          },
+          {
+            id: 't3',
+            day: '2026-09-13',
+            label: 'Jump 5',
+            t: day(2026, 9, 13) + 17 * 3600 + 5 * 60,
+            place: 'pax:',
+            passenger: null,
+            step: 'name',
+            files: mk(8, 'n', day(2026, 9, 13) + 61500, 'local')
+          }
+        ],
+        loose: [
+          ...mk(3, 'x', day(2026, 9, 13) + 20 * 3600).map((f) => ({
+            ...f,
+            day: '2026-09-13',
+            place: null
+          })),
+          ...mk(2, 'u', day(2026, 9, 6) + 12 * 3600, 'up').map((f) => ({
+            ...f,
+            day: '2026-09-06',
+            place: 'dz:Yverdon'
+          }))
+        ],
+        storage: [
+          {
+            who: 'Vincent Bernet',
+            day: '13.09.2026',
+            videos: 14,
+            photos: 19,
+            up: '18.09.2026',
+            emailed: true,
+            here: false
+          },
+          {
+            who: 'Luc Favre',
+            day: '13.09.2026',
+            videos: 8,
+            photos: 4,
+            up: '—',
+            emailed: false,
+            here: true
+          }
+        ]
+      }
+
+      const state = {
+        folder: 'cam',
+        view: 'list',
+        group: 'jump',
+        sort: 't',
+        picked: new Set(),
+        pickedJump: null,
+        query: '',
+        naming: { first: '', last: '' }
+      }
+
+      /* ---------- helpers ---------- */
+      const MONTHS = [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December'
+      ]
+      const pad = (n) => String(n).padStart(2, '0')
+      const hhmm = (t) => {
+        const d = new Date(t * 1000)
+        return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+      }
+      const dayLabel = (iso) => {
+        const [y, m, d] = iso.split('-').map(Number)
+        return `${d} ${MONTHS[m - 1]} ${y}`
+      }
+      const shortDay = (iso) => {
+        const [, m, d] = iso.split('-').map(Number)
+        return `${d} ${MONTHS[m - 1].slice(0, 3)}`
+      }
+      const gb = (n) => (n >= 1 ? `${n.toFixed(1)} GB` : `${Math.round(n * 1000)} MB`)
+      const fold = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, '_')
+      const STATUS = {
+        local: ['local', 'local'],
+        proc: ['proc', 'processed'],
+        up: ['up', 'uploaded'],
+        lock: ['lock', 'locked']
+      }
+
+      /* the name a file gets once processed: who it is for, the date, the time shot */
+      const copyName = (f, known) => {
+        const jump = known ?? jumpOf(f.id)
+        const who = jump?.passenger
+          ? fold(`${jump.passenger.first} ${jump.passenger.last}`)
+          : (jump?.place ?? f.place ?? '').replace('dz:', '').toLowerCase() || null
+        if (!who || f.status === 'local') return null
+        const d = new Date(f.t * 1000)
+        return `${who}_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}.${f.kind === 'video' ? 'mp4' : 'jpg'}`
+      }
+
+      const placeOf = (j) => j.place ?? null
+      const jumpsIn = (folder) => {
+        if (folder === 'cam') return data.jumps.filter((j) => !j.place)
+        if (folder.startsWith('cam:'))
+          return data.jumps.filter((j) => !j.place && j.day === folder.slice(4))
+        if (folder === 'dz') return data.jumps.filter((j) => j.place?.startsWith('dz:'))
+        if (folder === 'pax') return data.jumps.filter((j) => j.place?.startsWith('pax:'))
+        return data.jumps.filter((j) => j.place === folder)
+      }
+      const looseIn = (folder) => {
+        if (folder === 'cam') return data.loose.filter((f) => !f.place)
+        if (folder.startsWith('cam:'))
+          return data.loose.filter((f) => !f.place && f.day === folder.slice(4))
+        if (folder === 'dz') return data.loose.filter((f) => f.place?.startsWith('dz:'))
+        return data.loose.filter((f) => f.place === folder)
+      }
+      const filesIn = (folder) => [...jumpsIn(folder).flatMap((j) => j.files), ...looseIn(folder)]
+      const counts = (files) =>
+        files.reduce((c, f) => ((c[f.status] = (c[f.status] ?? 0) + 1), c), {
+          local: 0,
+          proc: 0,
+          up: 0
+        })
+      const jumpOf = (fileId) => data.jumps.find((j) => j.files.some((f) => f.id === fileId))
+      const fileById = (id) =>
+        data.jumps
+          .flatMap((j) => j.files)
+          .concat(data.loose)
+          .find((f) => f.id === id)
+      const isFrozen = (j) => j?.step === 'montage' || j?.step === 'upload'
+      const dropzones = () =>
+        [
+          ...new Set(
+            data.jumps
+              .concat(data.loose)
+              .map((x) => x.place)
+              .filter((p) => p?.startsWith('dz:'))
+          )
+        ]
+          .map((p) => p.slice(3))
+          .sort()
+      const passengers = () =>
+        [
+          ...new Set(
+            data.jumps
+              .filter((j) => j.passenger)
+              .map((j) => `${j.passenger.first} ${j.passenger.last}`)
+          )
+        ].sort()
+
+      const toast = (msg) => {
+        const t = document.getElementById('toast')
+        t.textContent = msg
+        t.classList.add('on')
+        clearTimeout(toast.h)
+        toast.h = setTimeout(() => t.classList.remove('on'), 2200)
+      }
+
+      /* ---------- filing: one move, wherever it starts from ---------- */
+      const fileJump = (jumpId, place) => {
+        const j = data.jumps.find((x) => x.id === jumpId)
+        if (!j || isFrozen(j)) return toast('This tandem has an edit — change it in kdenlive.')
+        j.place = place
+        if (place?.startsWith('pax:')) {
+          const who = place.slice(4)
+          const [first, ...rest] = who.split(' ')
+          j.passenger = who ? { first, last: rest.join(' ') } : null
+          j.step = who ? 'process' : 'name'
+        } else {
+          j.passenger = null
+          j.step = null
+        }
+        for (const f of j.files) if (f.status !== 'up') f.status = 'local'
+        const label = !place
+          ? 'Unsorted'
+          : place.startsWith('dz:')
+            ? place.slice(3)
+            : place.slice(4) || 'Tandems (no name yet)'
+        toast(`${j.label} of ${shortDay(j.day)} filed to ${label}`)
+        state.pickedJump = null
+        render()
+      }
+      const fileFiles = (ids, place) => {
+        for (const id of ids) {
+          const j = jumpOf(id)
+          if (j) {
+            if (isFrozen(j)) continue
+            const i = j.files.findIndex((f) => f.id === id)
+            const [f] = j.files.splice(i, 1)
+            data.loose.push({ ...f, day: j.day, place, status: f.status === 'up' ? 'up' : 'local' })
+          } else {
+            const f = data.loose.find((x) => x.id === id)
+            if (f) {
+              f.place = place
+              if (f.status !== 'up') f.status = 'local'
+            }
+          }
+        }
+        data.jumps = data.jumps.filter((j) => j.files.length > 0)
+        state.picked.clear()
+        toast(`${ids.length} file${ids.length === 1 ? '' : 's'} moved`)
+        render()
+      }
+
+      /* ---------- tree ---------- */
+      const node = (key, glyph, name, files, { child = false, todo = 0 } = {}) => {
+        const c = counts(files)
+        const total = files.length || 1
+        const w = (n) => `${(n / total) * 100}%`
+        return `<button class="node ${child ? 'child' : ''}" data-folder="${key}" aria-current="${state.folder === key}" draggable="false">
+    <span class="row"><span class="glyph">${glyph}</span><span class="name">${name}</span>${todo ? `<span class="todo">${todo} to do</span>` : ''}<span class="n">${files.length}</span></span>
+    ${files.length ? `<span class="bar"><i class="l" style="width:${w(c.local)}"></i><i class="p" style="width:${w(c.proc)}"></i><i class="u" style="width:${w(c.up)}"></i></span>` : ''}
+  </button>`
+      }
+      const renderTree = () => {
+        const camDays = [
+          ...new Set(
+            jumpsIn('cam')
+              .map((j) => j.day)
+              .concat(looseIn('cam').map((f) => f.day))
+          )
+        ]
+          .sort()
+          .reverse()
+        const unnamed = data.jumps.filter((j) => j.place === 'pax:')
+        document.getElementById('tree').innerHTML = `
+    <h2>Cameras</h2>
+    ${node('cam', '▤', 'Unsorted', filesIn('cam'), { todo: jumpsIn('cam').length })}
+    ${camDays.map((d) => node(`cam:${d}`, '·', dayLabel(d), filesIn(`cam:${d}`), { child: true, todo: jumpsIn(`cam:${d}`).length })).join('')}
+    <h2>Dropzones</h2>
+    ${dropzones()
+      .map((dz) => {
+        const fs = filesIn(`dz:${dz}`)
+        return node(`dz:${dz}`, '⌂', dz, fs, {
+          todo: fs.filter((f) => f.status !== 'up').length ? 1 : 0
+        })
+      })
+      .join('')}
+    <button class="node" data-add="dz"><span class="row"><span class="glyph">+</span><span class="name" style="color:var(--ink-3)">New dropzone…</span></span></button>
+    <h2>Tandems</h2>
+    ${node('pax', '⚑', 'All passengers', filesIn('pax'), { todo: data.jumps.filter((j) => j.place?.startsWith('pax:') && j.step !== 'upload').length })}
+    ${unnamed.length ? node('pax:', '?', `No name yet`, filesIn('pax:'), { child: true, todo: unnamed.length }) : ''}
+    ${passengers()
+      .map((p) => {
+        const js = jumpsIn(`pax:${p}`)
+        return node(`pax:${p}`, '·', p, filesIn(`pax:${p}`), {
+          child: true,
+          todo: js.some((j) => j.step !== 'upload') ? 1 : 0
+        })
+      })
+      .join('')}
+    <h2>Storage</h2>
+    ${node('storage', '☁', 'On the storage', [], {})}
+  `
+        for (const el of document.querySelectorAll('.node[data-folder]')) {
+          el.addEventListener('click', () => {
+            state.folder = el.dataset.folder
+            state.picked.clear()
+            state.pickedJump = null
+            state.query = ''
+            render()
+          })
+          const key = el.dataset.folder
+          const takes = key === 'cam' || key.startsWith('dz:') || key.startsWith('pax:')
+          if (!takes) continue
+          el.addEventListener('dragover', (e) => {
+            e.preventDefault()
+            el.classList.add('over')
+          })
+          el.addEventListener('dragleave', () => el.classList.remove('over'))
+          el.addEventListener('drop', (e) => {
+            e.preventDefault()
+            el.classList.remove('over')
+            const carried = JSON.parse(e.dataTransfer.getData('text/plain') || '{}')
+            const place = key === 'cam' ? null : key
+            if (carried.jump) fileJump(carried.jump, place)
+            else if (carried.files) fileFiles(carried.files, place)
+          })
+        }
+        document.querySelector('[data-add="dz"]')?.addEventListener('click', () => {
+          const n = prompt('New dropzone')
+          if (n) {
+            data.loose.push({
+              id: `new${Date.now()}`,
+              kind: 'video',
+              cam: '',
+              t: 0,
+              size: 0,
+              status: 'up',
+              day: '',
+              place: `dz:${n}`,
+              ghost: true
+            })
+            render()
+          }
+        })
+      }
+
+      /* ---------- crumbs and the folder's one next step ---------- */
+      const folderName = (key) =>
+        key === 'cam'
+          ? 'Unsorted'
+          : key.startsWith('cam:')
+            ? dayLabel(key.slice(4))
+            : key === 'dz'
+              ? 'Dropzones'
+              : key === 'pax'
+                ? 'All passengers'
+                : key === 'pax:'
+                  ? 'No name yet'
+                  : key === 'storage'
+                    ? 'On the storage'
+                    : key.slice(key.indexOf(':') + 1)
+      const folderStep = (key) => {
+        const files = filesIn(key).filter((f) => !f.ghost)
+        if (key === 'storage' || key === 'cam' || key.startsWith('cam:')) return null
+        if (key.startsWith('pax:')) {
+          const js = jumpsIn(key)
+          const j = js[0]
+          if (!j) return null
+          if (j.step === 'name') return { label: 'Name the passenger first', disabled: true }
+          if (j.step === 'process')
+            return {
+              label: 'Process',
+              do: () => {
+                for (const f of files) f.status = 'proc'
+                j.step = 'montage'
+                toast(`${folderName(key)} processed — 12 files in videos/ and photos/`)
+                render()
+              }
+            }
+          if (j.step === 'montage')
+            return {
+              label: j.film ? 'Upload…' : 'Make the montage',
+              do: () => {
+                if (j.film) {
+                  for (const f of files) f.status = 'up'
+                  j.step = 'upload'
+                  toast('Uploaded — film and photos to the passenger, originals to the backup')
+                } else {
+                  j.film = true
+                  toast('Montage made and opened in kdenlive — the film appeared for this demo')
+                }
+                render()
+              }
+            }
+          if (j.step === 'upload')
+            return {
+              label: 'Email the passenger…',
+              do: () => toast('Opens the email, written in French, ready to paste')
+            }
+        }
+        if (key.startsWith('dz:')) {
+          const c = counts(files)
+          if (c.local)
+            return {
+              label: `Process ${c.local} file${c.local === 1 ? '' : 's'}`,
+              do: () => {
+                for (const f of files) if (f.status === 'local') f.status = 'proc'
+                toast(`${folderName(key)} processed`)
+                render()
+              }
+            }
+          if (c.proc)
+            return {
+              label: `Upload ${c.proc} file${c.proc === 1 ? '' : 's'}`,
+              do: () => {
+                for (const f of files) f.status = 'up'
+                toast(`${folderName(key)} uploaded — link reused`)
+                render()
+              }
+            }
+          return { label: '✓ all on the storage', disabled: true }
+        }
+        return null
+      }
+      const renderCrumbs = () => {
+        const key = state.folder
+        const parent = key.startsWith('cam:')
+          ? ['cam', 'Unsorted']
+          : key.startsWith('dz:')
+            ? ['dz', 'Dropzones']
+            : key.startsWith('pax:')
+              ? ['pax', 'Tandems']
+              : null
+        const files = filesIn(key).filter((f) => !f.ghost)
+        const js = jumpsIn(key)
+        const step = folderStep(key)
+        document.getElementById('crumbs').innerHTML = `
+    <span class="path">${parent ? `<button data-go="${parent[0]}">${parent[1]}</button><span>›</span>` : ''}<b>${folderName(key)}</b></span>
+    <span class="count">${key === 'storage' ? `${data.storage.length} tandems` : `${js.length ? `${js.length} jump${js.length === 1 ? '' : 's'} · ` : ''}${files.length} files · ${gb(files.reduce((n, f) => n + f.size, 0))}`}</span>
+    <span class="tools">
+      <label class="find"><span style="color:var(--ink-3)">⌕</span><input id="find" placeholder="Find a file" value="${state.query}" /></label>
+      <select class="tool" id="groupBy"><option value="jump" ${state.group === 'jump' ? 'selected' : ''}>Group by jump</option><option value="day" ${state.group === 'day' ? 'selected' : ''}>Group by day</option><option value="none" ${state.group === 'none' ? 'selected' : ''}>No groups</option></select>
+      ${step ? `<button class="btn go" id="folderStep" ${step.disabled ? 'disabled' : ''}>${step.label}</button>` : ''}
+    </span>`
+        document.querySelector('[data-go]')?.addEventListener('click', (e) => {
+          state.folder = e.target.dataset.go
+          state.picked.clear()
+          state.pickedJump = null
+          render()
+        })
+        document.getElementById('find').addEventListener('input', (e) => {
+          state.query = e.target.value
+          renderFiles()
+        })
+        document.getElementById('groupBy').addEventListener('change', (e) => {
+          state.group = e.target.value
+          renderFiles()
+        })
+        document.getElementById('folderStep')?.addEventListener('click', step?.do)
+      }
+
+      /* ---------- what is left, as chips ---------- */
+      const renderLeft = () => {
+        const key = state.folder
+        const el = document.getElementById('leftStrip')
+        const chips = []
+        if (key === 'cam' || key.startsWith('cam:')) {
+          const js = jumpsIn(key)
+          const ls = looseIn(key)
+          if (js.length)
+            chips.push(
+              `<button class="chip todo" data-pick-first>${js.length} jump${js.length === 1 ? '' : 's'} to file</button>`
+            )
+          if (ls.length)
+            chips.push(
+              `<button class="chip" data-regroup>${ls.length} loose file${ls.length === 1 ? '' : 's'} · regroup</button>`
+            )
+          if (!js.length && !ls.length)
+            chips.push(`<span class="chip ok">Nothing left to sort</span>`)
+          chips.push(
+            `<span class="msg">Drag a jump onto a folder on the left, or use <b>File to</b> on its line</span>`
+          )
+        } else if (key === 'pax' || key.startsWith('pax')) {
+          const js = jumpsIn(key)
+          const by = (s) => js.filter((j) => j.step === s).length
+          if (by('name'))
+            chips.push(`<button class="chip todo" data-go="pax:">${by('name')} to name</button>`)
+          if (by('process'))
+            chips.push(`<span class="chip todo">${by('process')} to process</span>`)
+          if (by('montage')) chips.push(`<span class="chip todo">${by('montage')} to edit</span>`)
+          if (by('upload')) chips.push(`<span class="chip ok">${by('upload')} uploaded</span>`)
+        } else if (key.startsWith('dz')) {
+          const c = counts(filesIn(key).filter((f) => !f.ghost))
+          if (c.local) chips.push(`<span class="chip todo">${c.local} to process</span>`)
+          if (c.proc) chips.push(`<span class="chip todo">${c.proc} to upload</span>`)
+          if (c.up) chips.push(`<span class="chip ok">${c.up} on the storage</span>`)
+        } else if (key === 'storage') {
+          chips.push(
+            `<span class="chip">${data.storage.filter((s) => !s.emailed).length} passenger still to email</span>`
+          )
+        }
+        el.innerHTML = chips.join('')
+        el.querySelector('[data-pick-first]')?.addEventListener('click', () => {
+          state.pickedJump = jumpsIn(key)[0]?.id ?? null
+          state.picked.clear()
+          render()
+          document.querySelector('.grp.picked')?.scrollIntoView({ block: 'start' })
+        })
+        el.querySelector('[data-regroup]')?.addEventListener('click', () =>
+          toast('Runs the gap rule again over the loose files')
+        )
+        el.querySelector('[data-go]')?.addEventListener('click', (e) => {
+          state.folder = e.currentTarget.dataset.go
+          render()
+        })
+      }
+
+      /* ---------- the files ---------- */
+      const placeOptions = (current) => `
+  <option value="" ${!current ? 'selected' : ''}>Unsorted</option>
+  <optgroup label="Dropzones">${dropzones()
+    .map((d) => `<option value="dz:${d}" ${current === `dz:${d}` ? 'selected' : ''}>${d}</option>`)
+    .join('')}</optgroup>
+  <optgroup label="Tandems">${passengers()
+    .map(
+      (p) => `<option value="pax:${p}" ${current === `pax:${p}` ? 'selected' : ''}>${p}</option>`
+    )
+    .join('')}<option value="pax:new">New passenger…</option></optgroup>`
+
+      const statusOf = (f, j) => (isFrozen(j) && f.status !== 'up' ? 'lock' : f.status)
+      const row = (f, j) => {
+        const [cls, word] = STATUS[statusOf(f, j)]
+        const name = copyName(f, j)
+        const edits = [f.trim ? '⟷' : '', f.frame ? '▭' : '', f.turned ? '↻90' : '']
+          .filter(Boolean)
+          .join(' ')
+        return `<tr data-file="${f.id}" class="${state.picked.has(f.id) ? 'picked' : ''}" draggable="true">
+    <td class="tick">${state.picked.has(f.id) ? '✓' : '○'}</td>
+    <td><span class="thumb ${f.kind} ${f.turned ? 'turned' : ''}">${f.kind === 'video' ? '▶' : '▣'}</span></td>
+    <td class="name">${name ? `<div class="fn">${name}</div><div class="cam">${f.cam}</div>` : `<div class="fn">${f.cam}</div>`}</td>
+    <td class="mono">${hhmm(f.t)}</td>
+    <td>${f.kind === 'video' ? `${gb(f.size)} · 0:${pad(30 + (f.t % 29))}` : gb(f.size)}</td>
+    <td><span class="edits">${edits ? `<span class="${f.status === 'local' ? 'd' : ''}">${edits}</span>` : '—'}</span></td>
+    <td><span class="st ${cls}"><i></i>${word}</span></td>
+  </tr>`
+      }
+      const tile = (f, j) => {
+        const [cls, word] = STATUS[statusOf(f, j)]
+        return `<div class="tile ${state.picked.has(f.id) ? 'picked' : ''}" data-file="${f.id}" draggable="true">
+    <span class="thumb ${f.kind} ${f.turned ? 'turned' : ''}">${f.kind === 'video' ? '▶' : '▣'}</span>
+    <div class="fn">${copyName(f, j) ?? f.cam}</div><span class="st ${cls}"><i></i>${word}</span></div>`
+      }
+      const table = (files, j) => {
+        const sorted = [...files].sort((a, b) =>
+          state.sort === 'status'
+            ? a.status.localeCompare(b.status)
+            : state.sort === 'name'
+              ? a.cam.localeCompare(b.cam)
+              : a.t - b.t
+        )
+        if (state.view === 'grid')
+          return `<div class="grid">${sorted.map((f) => tile(f, j)).join('')}</div>`
+        const th = (k, l) =>
+          `<th data-sort="${k}" class="${state.sort === k ? 'sorted' : ''}">${l}</th>`
+        return `<table><thead><tr><th></th><th></th>${th('name', 'Name')}${th('t', 'Time')}<th>Size · length</th><th>Edits</th>${th('status', 'Status')}</tr></thead><tbody>${sorted.map((f) => row(f, j)).join('')}</tbody></table>`
+      }
+      const groupHeader = (j) => {
+        const c = counts(j.files)
+        const vids = j.files.filter((f) => f.kind === 'video').length
+        const tag = isFrozen(j)
+          ? `<span class="tag lock">🔒 has an edit</span>`
+          : c.up === j.files.length
+            ? `<span class="tag up">uploaded</span>`
+            : c.local
+              ? `<span class="tag local">${c.local} to process</span>`
+              : `<span class="tag proc">processed</span>`
+        const who = j.passenger
+          ? `${j.passenger.first} ${j.passenger.last}`
+          : j.place === 'pax:'
+            ? 'no name yet'
+            : null
+        return `<div class="grp ${state.pickedJump === j.id ? 'picked' : ''}" data-jump="${j.id}" draggable="true">
+    <span class="t">${hhmm(j.t)}</span><span class="name">${state.folder.startsWith('pax') ? `${shortDay(j.day)} · ${j.label}` : j.label}</span>
+    <span class="meta">${vids} videos · ${j.files.length - vids} photos${who ? ` · ${who}` : ''}</span>${tag}<span class="spacer"></span>
+    ${isFrozen(j) ? '' : `<label class="file-to"><span class="meta">File to</span><select class="tool" data-file-jump="${j.id}">${placeOptions(j.place)}</select></label>`}
+    <button class="btn mini" data-pick-jump="${j.id}">Select jump</button>
+  </div>`
+      }
+      const dayHeader = (d, files) => {
+        const c = counts(files)
+        return `<div class="grp day" data-day="${d}"><span class="t">${dayLabel(d)}</span><span class="meta">${files.length} files</span>${c.local ? `<span class="tag local">${c.local} to process</span>` : c.proc ? `<span class="tag proc">${c.proc} to upload</span>` : `<span class="tag up">all uploaded</span>`}</div>`
+      }
+
+      const renderFiles = () => {
+        const key = state.folder
+        const el = document.getElementById('files')
+        if (key === 'storage') {
+          el.innerHTML = `<table style="margin-top:12px"><thead><tr><th>Passenger</th><th>Day</th><th>Holds</th><th>Uploaded</th><th>Emailed</th><th>Here</th><th></th></tr></thead><tbody>${data.storage.map((s) => `<tr><td><b>${s.who}</b></td><td>${s.day}</td><td>${s.videos} videos · ${s.photos} photos</td><td>${s.up}</td><td>${s.emailed ? '✓' : '—'}</td><td>${s.here ? 'on this board' : '🔒 storage only'}</td><td><button class="btn mini">Copy link</button> <button class="btn mini">Email…</button></td></tr>`).join('')}</tbody></table>`
+          return
+        }
+        const q = state.query.trim().toLowerCase()
+        const matches = (f, j) =>
+          !q || f.cam.toLowerCase().includes(q) || (copyName(f, j) ?? '').includes(q)
+        let js = jumpsIn(key)
+          .map((j) => ({ ...j, files: j.files.filter((f) => matches(f, j)) }))
+          .filter((j) => j.files.length)
+        let ls = looseIn(key).filter((f) => !f.ghost && matches(f, null))
+        if (!js.length && !ls.length) {
+          el.innerHTML = `<div class="empty">${q ? 'Nothing here matches that.' : 'Nothing here yet. Drag a jump onto this folder, or drop files from the computer.'}</div>`
+          return
+        }
+        let html = ''
+        if (state.group === 'none') html = table([...js.flatMap((j) => j.files), ...ls], null)
+        else if (state.group === 'day' || key.startsWith('dz:')) {
+          const days = [...new Set([...js.map((j) => j.day), ...ls.map((f) => f.day)])]
+            .sort()
+            .reverse()
+          for (const d of days) {
+            const files = [
+              ...js.filter((j) => j.day === d).flatMap((j) => j.files),
+              ...ls.filter((f) => f.day === d)
+            ]
+            html +=
+              dayHeader(d, files) +
+              (state.group === 'jump' && !key.startsWith('dz:')
+                ? js
+                    .filter((j) => j.day === d)
+                    .map((j) => groupHeader(j) + table(j.files, j))
+                    .join('')
+                : table(files, null))
+          }
+        } else {
+          for (const j of js.sort((a, b) => b.t - a.t)) html += groupHeader(j) + table(j.files, j)
+          if (ls.length)
+            html +=
+              `<div class="grp"><span class="name">Loose files</span><span class="meta">in no jump — filed on their own</span></div>` +
+              table(ls, null)
+        }
+        el.innerHTML = html
+        for (const r of el.querySelectorAll('[data-file]')) {
+          r.addEventListener('click', (e) => pick(r.dataset.file, e))
+          r.addEventListener('dblclick', () =>
+            toast('Opens the cropper: trim, frame, turn — Save when done')
+          )
+          r.addEventListener('dragstart', (e) => {
+            const ids = state.picked.has(r.dataset.file) ? [...state.picked] : [r.dataset.file]
+            e.dataTransfer.setData('text/plain', JSON.stringify({ files: ids }))
+          })
+        }
+        for (const g of el.querySelectorAll('[data-jump]')) {
+          g.addEventListener('dragstart', (e) =>
+            e.dataTransfer.setData('text/plain', JSON.stringify({ jump: g.dataset.jump }))
+          )
+          g.addEventListener('click', (e) => {
+            if (e.target.closest('select, button, label')) return
+            pickJump(g.dataset.jump)
+          })
+        }
+        for (const b of el.querySelectorAll('[data-pick-jump]'))
+          b.addEventListener('click', () => pickJump(b.dataset.pickJump))
+        for (const s of el.querySelectorAll('[data-file-jump]'))
+          s.addEventListener('change', (e) => {
+            const v = e.target.value
+            if (v === 'pax:new') {
+              state.pickedJump = s.dataset.fileJump
+              state.picked.clear()
+              fileJump(s.dataset.fileJump, 'pax:')
+              state.pickedJump = s.dataset.fileJump
+              render()
+              return
+            }
+            fileJump(s.dataset.fileJump, v || null)
+          })
+        for (const h of el.querySelectorAll('th[data-sort]'))
+          h.addEventListener('click', () => {
+            state.sort = h.dataset.sort
+            renderFiles()
+          })
+      }
+
+      const pick = (id, e) => {
+        state.pickedJump = null
+        if (e.shiftKey && pick.anchor) {
+          const ids = [...document.querySelectorAll('[data-file]')].map((r) => r.dataset.file)
+          const [a, b] = [ids.indexOf(pick.anchor), ids.indexOf(id)].sort((x, y) => x - y)
+          for (const x of ids.slice(a, b + 1)) state.picked.add(x)
+        } else if (e.metaKey || e.ctrlKey) {
+          state.picked.has(id) ? state.picked.delete(id) : state.picked.add(id)
+        } else {
+          state.picked.clear()
+          state.picked.add(id)
+        }
+        pick.anchor = id
+        renderFiles()
+        renderInspector()
+      }
+      const pickJump = (id) => {
+        state.picked.clear()
+        state.pickedJump = state.pickedJump === id ? null : id
+        renderFiles()
+        renderInspector()
+      }
+
+      /* ---------- the inspector ---------- */
+      const stepsOf = (j) => {
+        const order = ['name', 'process', 'montage', 'upload', 'email']
+        const at = order.indexOf(j.step ?? 'name')
+        const words = {
+          name: 'Named',
+          process: 'Processed',
+          montage: 'Edited',
+          upload: 'Uploaded',
+          email: 'Emailed'
+        }
+        return `<div class="steps">${order.map((s, i) => `<span class="${i < at ? 'done' : i === at ? 'now' : ''}">${i < at ? '✓ ' : ''}${words[s]}</span>`).join('')}</div>`
+      }
+      const renderInspector = () => {
+        const el = document.getElementById('inspector')
+        const key = state.folder
+        if (state.picked.size === 1) {
+          const id = [...state.picked][0]
+          const f = fileById(id)
+          const j = jumpOf(id)
+          const [cls, word] = STATUS[statusOf(f, j)]
+          const frozen = isFrozen(j) || f.status === 'up'
+          el.innerHTML = `
+      <h3>${copyName(f, j) ?? f.cam}</h3><div class="sub">${copyName(f, j) ? `camera name ${f.cam} · ` : ''}${f.kind}</div>
+      <div class="big ${f.kind} ${f.turned ? 'turned' : ''}">${f.kind === 'video' ? '▶' : '▣'}</div>
+      <dl class="facts"><dt>Shot</dt><dd>${dayLabel(f.day ?? j?.day)} ${hhmm(f.t)}</dd><dt>Size</dt><dd>${gb(f.size)}</dd>${f.kind === 'video' ? `<dt>Length</dt><dd>0:${pad(30 + (f.t % 29))} · proxy ready</dd>` : ''}<dt>In</dt><dd>${j ? `${j.label} of ${shortDay(j.day)}` : 'no jump'}</dd><dt>Status</dt><dd><span class="st ${cls}"><i></i>${word}</span></dd></dl>
+      ${
+        frozen
+          ? `<div class="lockbox">${isFrozen(j) ? 'This tandem has an edit — change it in kdenlive.' : 'Uploaded is the end of editing — take it off the storage to change it.'}</div>`
+          : `
+      <div class="step"><h4>Picture</h4><p>Trim ${f.trim ? 'set' : '—'} · frame ${f.frame ? 'set' : 'whole'} · turn ${f.turned ? '90°' : 'as shot'}</p>
+        <div class="actions"><button class="btn" onclick="toast('Opens the cropper on this file')">Crop / turn…</button><button class="btn mini" onclick="toast('Turned a quarter clockwise — the copy is now out of date')">↻ 90°</button></div></div>
+      <div class="step"><h4>Move</h4><label class="field">File to<select class="tool" id="fileOne">${placeOptions(j?.place ?? f.place)}</select></label>
+        <div class="actions" style="margin-top:6px"><button class="btn mini" onclick="fileFiles(['${id}'], null)">Send back to Unsorted (⌫)</button></div></div>`
+      }
+      <div class="hint">Double-click a file to open it · <span class="kbd">↑↓</span> to step through</div>`
+          el.querySelector('#fileOne')?.addEventListener('change', (e) =>
+            fileFiles([id], e.target.value || null)
+          )
+          return
+        }
+        if (state.picked.size > 1) {
+          const ids = [...state.picked]
+          const files = ids.map(fileById)
+          const c = counts(files)
+          el.innerHTML = `<h3>${ids.length} files selected</h3><div class="sub">${files.filter((f) => f.kind === 'video').length} videos · ${files.filter((f) => f.kind === 'photo').length} photos · ${gb(files.reduce((n, f) => n + f.size, 0))}</div>
+      <dl class="facts"><dt>Local</dt><dd>${c.local}</dd><dt>Processed</dt><dd>${c.proc}</dd><dt>Uploaded</dt><dd>${c.up}</dd></dl>
+      <div class="step"><h4>Move them</h4><label class="field">File to<select class="tool" id="fileMany">${placeOptions(undefined)}</select></label>
+        <div class="actions" style="margin-top:6px"><button class="btn mini" onclick="fileFiles(${JSON.stringify(ids)}, null)">Send back to Unsorted (⌫)</button><button class="btn mini" onclick="toast('Given to every file: the frame and the turn')">Same frame and turn…</button></div></div>
+      <div class="hint"><span class="kbd">esc</span> clears the selection</div>`
+          el.querySelector('#fileMany').addEventListener('change', (e) =>
+            fileFiles(ids, e.target.value || null)
+          )
+          return
+        }
+        if (state.pickedJump) {
+          const j = data.jumps.find((x) => x.id === state.pickedJump)
+          const c = counts(j.files)
+          const vids = j.files.filter((f) => f.kind === 'video').length
+          const named = j.passenger
+          el.innerHTML = `<h3>${j.label} · ${shortDay(j.day)}</h3><div class="sub">started ${hhmm(j.t)} · ${vids} videos · ${j.files.length - vids} photos · ${gb(j.files.reduce((n, f) => n + f.size, 0))}</div>
+      <div style="display:flex;gap:4px">${j.files
+        .slice(0, 4)
+        .map(
+          (f) =>
+            `<span class="thumb ${f.kind}" style="flex:1;height:44px">${f.kind === 'video' ? '▶' : '▣'}</span>`
+        )
+        .join('')}</div>
+      ${j.place?.startsWith('pax') ? stepsOf(j) : ''}
+      ${isFrozen(j) ? `<div class="lockbox">Has an edit — nothing about it changes here. Open it in kdenlive, or reset the tandem.</div>` : ''}
+      <div class="step"><h4>${j.place?.startsWith('pax') ? 'Passenger' : 'Where it goes'}</h4>
+        ${
+          j.place?.startsWith('pax') || j.place === 'pax:'
+            ? `
+          <p>${named ? 'The name is the folder the passenger gets.' : 'Type the name off the form — it becomes the folder, and the jump is filed in one step.'}</p>
+          <div style="display:flex;gap:6px"><label class="field" style="flex:1">First name<input id="nf" value="${j.passenger?.first ?? ''}" ${isFrozen(j) ? 'disabled' : ''}></label><label class="field" style="flex:1">Last name<input id="nl" value="${j.passenger?.last ?? ''}" ${isFrozen(j) ? 'disabled' : ''}></label></div>
+          <div class="actions" style="margin-top:8px">${isFrozen(j) ? '' : `<button class="btn go" id="saveName">${named ? 'Rename' : 'Name and file'}</button>`}<button class="btn mini" onclick="fileJump('${j.id}', null)">Back to Unsorted</button></div>
+          ${named && c.proc ? `<div class="hint" style="margin-top:6px">Renaming means processing again, into the new folder.</div>` : ''}`
+            : `<p>Drag it onto a folder on the left, or pick one here. A passenger's jump becomes their tandem.</p>
+          <label class="field">File to<select class="tool" id="fileJumpSel">${placeOptions(j.place)}</select></label>
+          <div class="actions" style="margin-top:8px">${dropzones()
+            .slice(0, 2)
+            .map(
+              (d) => `<button class="btn" onclick="fileJump('${j.id}', 'dz:${d}')">${d}</button>`
+            )
+            .join(
+              ''
+            )}<button class="btn" onclick="fileJump('${j.id}', 'pax:')">Tandem…</button></div>`
+        }
+      </div>
+      ${j.place?.startsWith('pax:') && j.passenger ? `<div class="step"><h4>Next step</h4>${folderStep(`pax:${j.passenger.first} ${j.passenger.last}`) ? `<div class="actions"><button class="btn go" id="jumpStep" ${folderStep(j.place).disabled ? 'disabled' : ''}>${folderStep(j.place).label}</button>${j.step === 'montage' ? `<button class="btn" onclick="toast('Opens the project in kdenlive')">Open in kdenlive</button>` : ''}</div>` : ''}${j.film ? `<div class="film" style="margin-top:8px"><span class="thumb">▶</span><div><div class="fn">${fold(j.passenger.first + ' ' + j.passenger.last)}_20260913.mp4</div><div class="sub">4:12 · 1.8 GB · rendered 18.09.2026 15:02</div></div></div>` : ''}</div>` : ''}
+      <div class="step"><h4>Time</h4><p>A wrong camera clock is wrong for the whole jump.</p><div class="actions"><button class="btn mini" onclick="toast('Asks when the jump really started; every file shifts by the same amount')">Correct the start…</button><button class="btn mini" onclick="toast('Compares it side by side with the jump before it, then merges if they are one')">Compare with previous…</button></div></div>
+      <div class="hint">Drag the jump's header onto a folder to file it</div>`
+          el.querySelector('#fileJumpSel')?.addEventListener('change', (e) =>
+            fileJump(j.id, e.target.value === 'pax:new' ? 'pax:' : e.target.value || null)
+          )
+          el.querySelector('#saveName')?.addEventListener('click', () => {
+            const first = el.querySelector('#nf').value.trim(),
+              last = el.querySelector('#nl').value.trim()
+            if (!first || !last)
+              return toast(
+                `The ${!first ? 'first' : 'last'} name is missing — half a name is not a folder`
+              )
+            const existing = passengers().find((p) => fold(p) === fold(`${first} ${last}`))
+            fileJump(j.id, `pax:${existing ?? `${first} ${last}`}`)
+            state.folder = `pax:${existing ?? `${first} ${last}`}`
+            render()
+            if (existing) toast(`Joined ${existing}'s tandem — one passenger is one folder`)
+          })
+          el.querySelector('#jumpStep')?.addEventListener('click', folderStep(j.place)?.do)
+          return
+        }
+        /* nothing picked: the folder itself */
+        const files = filesIn(key).filter((f) => !f.ghost)
+        const c = counts(files)
+        const js = jumpsIn(key)
+        const step = folderStep(key)
+        if (key === 'storage') {
+          el.innerHTML = `<h3>On the storage</h3><div class="sub">/SkyDock/Tandems · the storage's own list</div><p class="hint">Every tandem the storage holds, from this machine or another. Each can be emailed from here; one still on this board can be opened.</p>`
+          return
+        }
+        const j = key.startsWith('pax:') ? js[0] : null
+        el.innerHTML = `<h3>${folderName(key)}</h3><div class="sub">${js.length ? `${js.length} jump${js.length === 1 ? '' : 's'} · ` : ''}${files.length} files · ${gb(files.reduce((n, f) => n + f.size, 0))}</div>
+    <dl class="facts"><dt>Local</dt><dd>${c.local}</dd><dt>Processed</dt><dd>${c.proc}</dd><dt>Uploaded</dt><dd>${c.up}</dd>${key.startsWith('dz:') ? `<dt>Goes to</dt><dd>/SkyDock/${folderName(key)}</dd><dt>Link</dt><dd>${c.up ? 'nas.local/sharing/a8f2' : '—'}</dd>` : ''}</dl>
+    ${j ? stepsOf(j) : ''}
+    ${step ? `<div class="step"><h4>Next step</h4><p>${key.startsWith('dz:') ? 'A dropzone is processed, then uploaded whole — every day in it.' : j?.step === 'name' ? 'Select the jump below and type the name.' : j?.step === 'montage' && !j.film ? 'Processed. The montage lays the clips on the timeline and opens the editor.' : j?.step === 'montage' ? 'The film is rendered — upload sends it and the photos to the passenger, the originals to the backup.' : j?.step === 'upload' ? 'Uploaded. The passenger can be emailed their link, and the tandem freed from this machine.' : 'Process copies, renames and crops every file into the folder.'}</p><div class="actions"><button class="btn go" ${step.disabled ? 'disabled' : ''} id="stepBtn">${step.label}</button>${j?.step === 'montage' && j.film ? `<button class="btn" onclick="toast('Plays the film here, before it goes to anyone')">Watch the film</button>` : ''}${j?.step === 'upload' ? `<button class="btn" onclick="toast('Proves every file is on the storage, then deletes it here')">Free up space…</button>` : ''}</div></div>` : key === 'cam' || key.startsWith('cam:') ? `<div class="step"><h4>To do</h4><p>${js.length ? `${js.length} jump${js.length === 1 ? '' : 's'} to file. Select one, or drag it onto a folder.` : 'Nothing to sort.'}</p></div>` : ''}
+    ${j?.film ? `<div class="film"><span class="thumb">▶</span><div><div class="fn">${fold(j.passenger.first + ' ' + j.passenger.last)}_20260913.mp4</div><div class="sub">4:12 · 1.8 GB · rendered 18.09.2026 15:02</div></div></div>` : ''}
+    ${key.startsWith('pax:') && j?.step === 'upload' ? `<div class="step"><h4>Passenger</h4><p>Link ready — the email is written already, in French.</p><div class="actions"><button class="btn" onclick="toast('Copies the email and opens Gmail with the address and subject filled in')">Email ${j.passenger.first}…</button><button class="btn mini" onclick="toast('Link copied')">Copy link</button></div></div>` : ''}
+    <div class="hint">Select a file or a jump to see it here</div>`
+        el.querySelector('#stepBtn')?.addEventListener('click', step?.do)
+      }
+
+      /* ---------- keyboard, like a file manager ---------- */
+      window.addEventListener('keydown', (e) => {
+        if (e.target.matches('input, select')) return
+        const ids = [...document.querySelectorAll('[data-file]')].map((r) => r.dataset.file)
+        const cur = pick.anchor ? ids.indexOf(pick.anchor) : -1
+        if (e.key === 'Escape') {
+          state.picked.clear()
+          state.pickedJump = null
+          renderFiles()
+          renderInspector()
+        } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault()
+          const n =
+            ids[Math.max(0, Math.min(ids.length - 1, cur + (e.key === 'ArrowDown' ? 1 : -1)))]
+          if (n) {
+            pick(n, e)
+            document.querySelector(`[data-file="${n}"]`)?.scrollIntoView({ block: 'nearest' })
+          }
+        } else if (e.key === 'Enter' && state.picked.size === 1) toast('Opens the cropper')
+        else if ((e.key === 'Backspace' || e.key === 'Delete') && state.picked.size) {
+          e.preventDefault()
+          fileFiles([...state.picked], null)
+        } else if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+          e.preventDefault()
+          for (const id of ids) state.picked.add(id)
+          renderFiles()
+          renderInspector()
+        }
+      })
+      document.getElementById('viewSeg').addEventListener('click', (e) => {
+        const b = e.target.closest('button')
+        if (!b) return
+        state.view = b.dataset.view
+        for (const x of e.currentTarget.children) x.setAttribute('aria-pressed', x === b)
+        renderFiles()
+      })
+      document.getElementById('noteBtn').addEventListener('click', () => {
+        const n = document.getElementById('note')
+        n.hidden = !n.hidden
+      })
+
+      const render = () => {
+        renderTree()
+        renderCrumbs()
+        renderLeft()
+        renderFiles()
+        renderInspector()
+      }
+      render()
+    </script>
+  </body>
+</html>

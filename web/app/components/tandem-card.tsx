@@ -62,8 +62,6 @@ const PassengerName = ({
   )
 }
 
-/* One passenger in the Tandems grid: who it is, what is in it, and the one thing to do next —
-   which is the same sentence the tandem itself offers, said small. */
 /* A few frames off the clips, which is how you tell who a tandem belongs to. A name is read off a
    form or a face, so asking for one beside a pair of counts is asking somebody to remember what
    they saw on another screen. Videos first, and only then photos, because a face is more likely in
@@ -130,13 +128,16 @@ const fullName = (p: { firstname: string; lastname: string }) =>
 const MakeTandem = ({
   group,
   passengers,
+  framed = true,
   onSave,
   onCancel
 }: {
   group: ManifestGroup
   passengers: Passenger[]
+  /* where the jump's frames are already on show beside it, they are not drawn twice */
+  framed?: boolean
   onSave: (passenger: Passenger) => void
-  onCancel: () => void
+  onCancel?: () => void
 }) => {
   const [name, setName] = useState({ firstname: '', lastname: '' })
   const complete = hasCompletePassenger(name)
@@ -149,12 +150,14 @@ const MakeTandem = ({
   return (
     <span
       onClick={(e) => e.stopPropagation()}
-      className='order-2 flex flex-wrap items-center gap-1.5'>
-      <PassengerFrames
-        group={group}
-        alt=''
-        inline
-      />
+      className='flex flex-wrap items-center gap-1.5'>
+      {framed && (
+        <PassengerFrames
+          group={group}
+          alt=''
+          inline
+        />
+      )}
       {NAME_FIELDS.map((field, i) => (
         <input
           key={field.key}
@@ -162,12 +165,12 @@ const MakeTandem = ({
           value={name[field.key]}
           placeholder={field.label}
           aria-label={field.label}
-          autoFocus={i === 0}
+          autoFocus={framed && i === 0}
           onChange={(e) => setName({ ...name, [field.key]: e.target.value })}
           onKeyDown={(e) => {
             e.stopPropagation()
             if (e.key === 'Enter') save()
-            if (e.key === 'Escape') onCancel()
+            if (e.key === 'Escape') onCancel?.()
           }}
           className='w-28 rounded-[5px] border border-pick bg-pane px-[7px] py-0.5 text-[12px] text-ink'
         />
@@ -185,7 +188,7 @@ const MakeTandem = ({
         onClick={save}>
         {joins ? 'Join tandem' : 'Make tandem'}
       </Go>
-      <Mini onClick={onCancel}>Cancel</Mini>
+      {onCancel && <Mini onClick={onCancel}>Cancel</Mini>}
     </span>
   )
 }
@@ -661,6 +664,7 @@ export {
   GoneFromStorage,
   FilmStrip,
   PassengerCard,
+  PassengerFrames,
   PassengerName,
   ProjectPath,
   TandemActions,

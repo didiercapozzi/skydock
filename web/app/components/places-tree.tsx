@@ -1,51 +1,38 @@
-import { fileStatus, passengerName, passengerOf } from '@skydock/scripts'
+import { fileStatus, passengerOf } from '@skydock/scripts'
+import type { StatusContext, TandemEntry } from '@skydock/scripts'
 import { useState } from 'react'
-import type { StatusContext } from '@skydock/scripts'
-import { TANDEMS } from '../helpers/jumps'
+import { TANDEMS, dayOf, dayOfFile } from '../helpers/jumps'
+import { filesIn, groupsIn, looseIn, placeKey, placeLabel, samePlace } from '../helpers/places'
+import type { Place } from '../helpers/places'
 import type { Destination, ManifestFile, ManifestGroup } from './types'
 
-/* Where a file can be: the sorting area, a dropzone, or a passenger. One place is selected at a
-   time and its files fill the pane beside this. The menu never shows files itself — that is what
-   lets the whole day's shape stay on screen at once. */
-type Place =
-  | { kind: 'sort' }
-  | { kind: 'dz'; name: string }
-  | { kind: 'tandems' }
-  | { kind: 'pax'; name: string }
-
+/* The folders, down the left like any file manager's: the cameras' days still to sort, the
+   dropzones, the passengers, and the storage. Each says how many files it holds, how much of it is
+   local, processed or uploaded, and how much is still to do — so the state of the whole club is read
+   without opening anything. Pinned: only the files scroll, so any folder can take a drop. On a phone
+   it becomes one strip of folders across the top. */
 type Props = {
   place: Place
   destinations: Destination[]
   groups: ManifestGroup[]
   looseFiles: ManifestFile[]
+  storage: { tandems: TandemEntry[] } | null
   statusContext: (file: ManifestFile) => StatusContext
-  unnamedTandems: number
+  /* whether a tandem still has a step to take here */
+  tandemOpen: (group: ManifestGroup) => boolean
   onPick: (place: Place) => void
   onAddPlace: (name: string) => void
   dropTarget: (place: Place) => Record<string, unknown>
   overTarget: string | null
-  /* the place something was just filed under, lit for a moment so the eye can follow it there */
+  /* the folder something was just filed under, lit for a moment so the eye can follow it there */
   flashPlace?: string | null
 }
 
-const placeKey = (place: Place) => `${place.kind}:${'name' in place ? place.name : ''}`
-const samePlace = (a: Place, b: Place) => placeKey(a) === placeKey(b)
-
-/* what a place is called, wherever it is named — the menu entry and the heading above the files are
-   the same words by construction, not by being typed out twice */
-const placeLabel = (place: Place) =>
-  place.kind === 'sort'
-    ? 'Unsorted jumps'
-    : place.kind === 'tandems'
-      ? 'All passengers'
-      : place.name
-
-/* a passenger's name as it is shown, and as two jumps are recognised as the same person by */
 const Node = ({
   place,
-  label,
   glyph,
   files,
+  todo,
   child,
   current,
   statusContext,
@@ -55,9 +42,10 @@ const Node = ({
   flash
 }: {
   place: Place
-  label: string
   glyph: string
   files: ManifestFile[]
+  /* what is still owed there, in words: "3 to file", "7 to do" */
+  todo: string | null
   child?: boolean
   current: boolean
   statusContext: (file: ManifestFile) => StatusContext
@@ -66,11 +54,11 @@ const Node = ({
   over: boolean
   flash?: boolean
 }) => {
-  /* how much is still owed, at a glance: counts alone never answer "what is left" */
   const counts = { local: 0, processed: 0, uploaded: 0 }
   for (const file of files) counts[fileStatus(file, statusContext(file))] += 1
   const total = files.length || 1
   const width = (n: number) => `${(n / total) * 100}%`
+  const label = placeLabel(place)
   return (
     <button
       type='button'
@@ -87,7 +75,7 @@ const Node = ({
       <span className='flex items-center gap-2 max-[780px]:gap-1.5'>
         <span
           aria-hidden='true'
-          className={`w-3.5 flex-none ${current ? 'text-accent' : 'text-ink-3'}`}>
+          className={`w-3.5 flex-none text-center ${current ? 'text-accent' : 'text-ink-3'}`}>
           {glyph}
         </span>
         <span
@@ -95,6 +83,11 @@ const Node = ({
           title={label}>
           {label}
         </span>
+        {todo && (
+          <span className='flex-none rounded-full bg-local-soft px-1.5 text-[10.5px] font-semibold whitespace-nowrap text-local max-[780px]:hidden'>
+            {todo}
+          </span>
+        )}
         <span className='font-mono text-[11px] text-ink-3 tabular-nums'>{files.length}</span>
       </span>
       {files.length > 0 && (
@@ -123,15 +116,16 @@ const Heading = ({ children }: { children: string }) => (
   </h2>
 )
 
-/* Pinned: only the file pane scrolls, so the menu never scrolls away. On a phone it becomes one
-   strip of place chips across the top rather than a column eating half the screen. */
+const counted = (n: number, what: string) => (n > 0 ? `${n} ${what}` : null)
+
 const PlacesTree = ({
   place,
   destinations,
   groups,
   looseFiles,
+  storage,
   statusContext,
-  unnamedTandems,
+  tandemOpen,
   onPick,
   onAddPlace,
   dropTarget,
@@ -139,27 +133,37 @@ const PlacesTree = ({
   flashPlace
 }: Props) => {
   const [adding, setAdding] = useState('')
-  const filesOf = (list: ManifestGroup[]) => list.flatMap((g) => g.files)
-  const unsorted = [
-    ...filesOf(groups.filter((g) => !g.destination)),
-    ...looseFiles.filter((f) => !f.destination)
+  const files = (p: Place) => filesIn(p, groups, looseFiles)
+  /* still to file: every jump in the sorting area, and its loose files as one more thing to do */
+  const toFile = (p: Place) =>
+    counted(groupsIn(p, groups).length + (looseIn(p, looseFiles).length > 0 ? 1 : 0), 'to file')
+  const toDo = (p: Place) =>
+    counted(files(p).filter((f) => fileStatus(f, statusContext(f)) !== 'uploaded').length, 'to do')
+  const openTandems = (p: Place) =>
+    counted(groupsIn(p, groups).filter((g) => !g.freed && tandemOpen(g)).length, 'to do')
+  const days = [
+    ...new Set([
+      ...groups.filter((g) => !g.destination).map(dayOf),
+      ...looseFiles.filter((f) => !f.destination).map(dayOfFile)
+    ])
   ]
+    .sort()
+    .reverse()
   /* One entry per passenger, however many jumps they have: two jumps for the same person share one
      folder, so listing them twice would promise two folders that are really one. */
-  const byPassenger = new Map<string, ManifestFile[]>()
-  for (const g of groups) {
-    const who = passengerOf(g)
-    if (g.destination !== TANDEMS || !who) continue
-    byPassenger.set(who, [...(byPassenger.get(who) ?? []), ...g.files])
-  }
-  const named = [...byPassenger.entries()].sort(([a], [b]) => a.localeCompare(b))
-  const node = (p: Place, glyph: string, files: ManifestFile[], child?: boolean) => (
+  const passengers = [
+    ...new Set(
+      groups.filter((g) => g.destination === TANDEMS && passengerOf(g)).map((g) => passengerOf(g))
+    )
+  ].sort((a, b) => a.localeCompare(b))
+  const unnamed = groupsIn({ kind: 'unnamed' }, groups).length
+  const node = (p: Place, glyph: string, todo: string | null, child?: boolean) => (
     <Node
       key={placeKey(p)}
       place={p}
-      label={placeLabel(p)}
       glyph={glyph}
-      files={files}
+      files={files(p)}
+      todo={todo}
       child={child}
       current={samePlace(place, p)}
       statusContext={statusContext}
@@ -169,26 +173,24 @@ const PlacesTree = ({
       flash={flashPlace === placeKey(p)}
     />
   )
+  const notEmailed = storage?.tandems.filter((t) => !t.emailed).length ?? 0
   return (
     <nav
-      aria-label='Places'
+      aria-label='Folders'
       className='sticky top-0 self-start overflow-y-auto border-line bg-rail px-2 pt-2.5 pb-6 max-[780px]:z-[8] max-[780px]:flex max-[780px]:h-auto max-[780px]:items-center max-[780px]:gap-1.5 max-[780px]:overflow-x-auto max-[780px]:overflow-y-hidden max-[780px]:border-b max-[780px]:px-3 max-[780px]:py-2 min-[781px]:h-full min-[781px]:border-r'>
-      <Heading>To sort</Heading>
-      {node({ kind: 'sort' }, '◇', unsorted)}
+      <Heading>Cameras</Heading>
+      {node({ kind: 'sort' }, '▤', toFile({ kind: 'sort' }))}
+      {days.map((day) => node({ kind: 'day', day }, '·', toFile({ kind: 'day', day }), true))}
       <Heading>Dropzones</Heading>
       {destinations
         .filter((d) => d.name !== TANDEMS)
-        .map((d) =>
-          node({ kind: 'dz', name: d.name }, '▤', [
-            ...filesOf(groups.filter((g) => g.destination === d.name)),
-            ...looseFiles.filter((f) => f.destination === d.name)
-          ])
-        )}
+        .map((d) => node({ kind: 'dz', name: d.name }, '⌂', toDo({ kind: 'dz', name: d.name })))}
       <span className='mx-2 mt-1 flex gap-1 max-[780px]:hidden'>
         <input
           type='text'
           value={adding}
           placeholder='New dropzone'
+          aria-label='New dropzone'
           onChange={(e) => setAdding(e.target.value)}
           onKeyDown={(e) => {
             if (e.key !== 'Enter') return
@@ -208,16 +210,47 @@ const PlacesTree = ({
         </button>
       </span>
       <Heading>Tandems</Heading>
-      {node({ kind: 'tandems' }, '▤', filesOf(groups.filter((g) => g.destination === TANDEMS)))}
-      {named.map(([who, files]) => node({ kind: 'pax', name: who }, '◔', files, true))}
-      {unnamedTandems > 0 && (
-        <div className='mt-1 ml-[22px] text-[10.5px] font-semibold text-local max-[780px]:hidden'>
-          {unnamedTandems} waiting for a name
-        </div>
+      {node({ kind: 'tandems' }, '⚑', openTandems({ kind: 'tandems' }))}
+      {unnamed > 0 && node({ kind: 'unnamed' }, '?', counted(unnamed, 'to name'), true)}
+      {passengers.map((name) =>
+        node({ kind: 'pax', name }, '·', openTandems({ kind: 'pax', name }) && 'to do', true)
+      )}
+      {storage && (
+        <>
+          <Heading>Storage</Heading>
+          <button
+            type='button'
+            aria-current={place.kind === 'storage'}
+            onClick={() => onPick({ kind: 'storage' })}
+            className={`block w-full rounded-md border px-2 pt-1.5 pb-[5px] text-left text-ink max-[780px]:w-auto max-[780px]:flex-none max-[780px]:rounded-full max-[780px]:border-line max-[780px]:bg-pane max-[780px]:px-[11px] max-[780px]:py-[5px] ${
+              place.kind === 'storage'
+                ? 'border-line bg-pane shadow-card'
+                : 'border-transparent hover:bg-line-2'
+            }`}>
+            <span className='flex items-center gap-2'>
+              <span
+                aria-hidden='true'
+                className={`w-3.5 flex-none text-center ${place.kind === 'storage' ? 'text-accent' : 'text-ink-3'}`}>
+                ☁
+              </span>
+              <span
+                className={`min-w-0 flex-1 truncate ${place.kind === 'storage' ? 'font-semibold' : ''}`}>
+                On the storage
+              </span>
+              {notEmailed > 0 && (
+                <span className='flex-none rounded-full bg-local-soft px-1.5 text-[10.5px] font-semibold whitespace-nowrap text-local max-[780px]:hidden'>
+                  {notEmailed} to email
+                </span>
+              )}
+              <span className='font-mono text-[11px] text-ink-3 tabular-nums'>
+                {storage.tandems.length}
+              </span>
+            </span>
+          </button>
+        </>
       )}
     </nav>
   )
 }
 
-export { PlacesTree, passengerName, placeKey, placeLabel, samePlace, passengerOf }
-export type { Place }
+export { PlacesTree }
