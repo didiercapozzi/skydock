@@ -36,7 +36,9 @@ const actionArgs = z.object({
     /* files were just added from the computer: the board looks again, and says how it went */
     'imported',
     /* the passenger was emailed — or, taken back, was not — said on the storage's list */
-    'mark-emailed'
+    'mark-emailed',
+    /* tandems the storage's list names, put back on a board that has forgotten them */
+    'restore-tandems'
   ]),
   groupId: z.string().optional(),
   groupIds: z.array(z.string()).optional(),
@@ -51,6 +53,8 @@ const actionArgs = z.object({
   leftId: z.string().optional(),
   rightId: z.string().optional(),
   anchorEpoch: z.number().optional(),
+  /* which of the storage's tandems to put back, by their folder up there; absent is every one */
+  folders: z.array(z.string()).optional(),
   /* what a jump is called, when it is made or renamed */
   name: z.string().optional(),
   /* how a tandem's upload keeps the originals: one zip or plain files, with or without the film */

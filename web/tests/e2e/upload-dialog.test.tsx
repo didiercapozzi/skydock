@@ -606,3 +606,57 @@ describe('deleting a tandem that is already edited and rendered', () => {
     )
   })
 })
+
+/* A board scanned again from nothing has forgotten its tandems, and the storage's list has not: a
+   tandem whose files are here, waiting to be sorted, is offered back where the list names it. */
+describe('a tandem this board has forgotten', () => {
+  const DIR = '/SkyDock/Tandems'
+  const entry = (who: [string, string], ids: string[]) => ({
+    folder: `${DIR}/${who.join(' ')}`,
+    firstname: who[0],
+    lastname: who[1],
+    day: '25.07.2026',
+    videos: ids.length,
+    photos: 0,
+    uploadedAt: 1_785_010_000,
+    files: ids.map((id) => ({ id, filename: `${id}.MP4`, mtime: 1_785_000_000 }))
+  })
+  /* Ana Roth's two clips sit in a jump nobody filed; Luc Favre is still on the board as he was */
+  const forgot = {
+    ...board,
+    groups: [
+      ...board.groups,
+      {
+        id: 'g9',
+        label: 'g9',
+        day: '25.07.2026',
+        files: [file('a1', 'GX020001.MP4', GB), file('a2', 'GX020002.MP4', GB)]
+      }
+    ],
+    storage: {
+      dir: DIR,
+      problem: null,
+      tandems: [entry(['Ana', 'Roth'], ['a1', 'a2']), entry(['Luc', 'Favre'], ['v1', 'v2'])]
+    }
+  }
+
+  test('is offered back from the storage’s list, and only the one that was forgotten', async () => {
+    requests.length = 0
+    await renderBoard(forgot, false)
+    await userEvent.click(
+      page.getByRole('navigation', { name: 'Folders' }).getByRole('button', { name: /On the storage/ })
+    )
+
+    const restore = page.getByRole('button', { name: /^Restore · 2 files$/ })
+    await expect.element(restore).toBeInTheDocument()
+    expect(page.getByRole('button', { name: /^Restore ·/ }).elements()).toHaveLength(1)
+
+    await userEvent.click(restore)
+    await vi.waitFor(() =>
+      expect(requests).toContainEqual({
+        intent: 'restore-tandems',
+        folders: [`${DIR}/Ana Roth`]
+      })
+    )
+  })
+})

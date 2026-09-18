@@ -1,7 +1,7 @@
 import type { TandemEntry } from '@skydock/scripts'
 import { useState } from 'react'
 import { lastSegment } from '@skydock/scripts'
-import { Mini } from './buttons'
+import { Go, Mini } from './buttons'
 import { StorageFolder } from './storage-folder'
 import { localeDate } from './utils'
 
@@ -15,13 +15,18 @@ const jumpDay = (day: string) => day.replace(/^0/, '').replace(/\.0/, '.')
 const Row = ({
   entry,
   here,
+  waiting,
   onOpen,
-  onEmail
+  onEmail,
+  onRestore
 }: {
   entry: TandemEntry
   here: boolean
+  /* how many of its files are on this board waiting to be sorted — a board that forgot it */
+  waiting: number
   onOpen: () => void
   onEmail: () => void
+  onRestore: () => void
 }) => {
   const [copied, setCopied] = useState(false)
   /* its folder on the storage, listed under it: the film and photos, to be watched from here */
@@ -69,6 +74,13 @@ const Row = ({
           </span>
         ) : null}
         <span className='ml-auto flex flex-wrap items-center gap-1.5'>
+          {waiting > 0 && (
+            <Go
+              title={`Its files are on this board, waiting to be sorted: put them back together as ${entry.firstname} ${entry.lastname}’s tandem, at the times they had`}
+              onClick={onRestore}>
+              Restore · {waiting} file{waiting === 1 ? '' : 's'}
+            </Go>
+          )}
           <Mini
             title='List what its folder on the storage holds, and watch it from here'
             onClick={() => setWatching(!watching)}>
@@ -112,16 +124,23 @@ const Row = ({
 const StorageList = ({
   storage,
   isHere,
+  waitingFiles,
   onOpen,
-  onEmail
+  onEmail,
+  onRestore
 }: {
   storage: { dir: string; tandems: TandemEntry[]; problem: string | null } | null
   /* whether this tandem is still on this board, and the name to open it under */
   isHere: (entry: TandemEntry) => boolean
+  /* how many of a tandem's files are on this board, still to be sorted */
+  waitingFiles: (entry: TandemEntry) => number
   onOpen: (entry: TandemEntry) => void
   onEmail: (entry: TandemEntry) => void
+  /* put these tandems back on the board, by their folder on the storage */
+  onRestore: (folders: string[]) => void
 }) => {
   if (!storage) return null
+  const forgotten = storage.tandems.filter((t) => !isHere(t) && waitingFiles(t) > 0)
   const waiting = storage.tandems.filter((t) => !t.emailed).length
   return (
     <section className='mt-5'>
@@ -133,6 +152,18 @@ const StorageList = ({
         </span>
         <code className='ml-auto font-mono text-[11px] text-ink-3'>{storage.dir}</code>
       </div>
+      {/* a board scanned again from nothing: the storage remembers what it has forgotten */}
+      {forgotten.length > 1 && (
+        <p className='m-0 mb-2 flex flex-wrap items-center gap-2 rounded-r-md border-l-[3px] border-accent bg-accent-soft px-3 py-2 text-[12.5px] text-ink-2'>
+          <span className='flex-1'>
+            {forgotten.length} tandems on this list have their files on this board, waiting to be
+            sorted — this board has forgotten them.
+          </span>
+          <Go onClick={() => onRestore(forgotten.map((t) => t.folder))}>
+            Restore all {forgotten.length}
+          </Go>
+        </p>
+      )}
       {storage.problem ? (
         <p className='m-0 rounded-md bg-local-soft px-3 py-2 text-[12.5px] text-local'>
           The storage’s list of tandems could not be read: {storage.problem}
@@ -148,8 +179,10 @@ const StorageList = ({
               key={entry.folder}
               entry={entry}
               here={isHere(entry)}
+              waiting={isHere(entry) ? 0 : waitingFiles(entry)}
               onOpen={() => onOpen(entry)}
               onEmail={() => onEmail(entry)}
+              onRestore={() => onRestore([entry.folder])}
             />
           ))}
         </div>

@@ -65,6 +65,8 @@ import { useNas } from '../hooks/useNas'
 import { LOOSE, usePreview } from '../hooks/usePreview'
 import { useSelection } from '../hooks/useSelection'
 import { useUploadProgress } from '../hooks/useUploadProgress'
+import { templatesAnswerSchema } from '../../../packages/skydock-scripts/src/templateEntry'
+import { routingEngine } from '../helpers/routing'
 import type { Route } from './+types/board'
 
 const loader = async (_args: Route.LoaderArgs) => {
@@ -282,6 +284,14 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     place.kind === 'pax' && placeGroups.length === 1
       ? groups.find((g) => g.id === placeGroups[0]?.id)
       : undefined
+  /* the files still to be sorted — loose, or in a jump filed nowhere — by what they contain, which
+     is how the storage's list knows the files of a tandem this board may have forgotten */
+  const toSort = new Set(
+    [
+      ...loose.filter((f) => !f.destination),
+      ...groups.filter((g) => !g.destination).flatMap((g) => g.files)
+    ].flatMap((f) => (f.id ? [f.id] : []))
+  )
   /* A dropzone and a passenger are connected to their folder on the storage, which is listed under
      their own files. A passenger is found among every tandem, the finished ones too: theirs is
      exactly the folder worth watching from here once nothing of it is left on this machine. */
@@ -567,6 +577,22 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     send('merge', { intent: 'merge-groups', leftId, rightId, anchorEpoch })
   }
 
+  /* A template is somebody's branding, so which one is never decided here. With a single template
+     that is whole and close enough to the editor's kdenlive there is nothing to decide and the
+     montage is made at once; with several, or one with a hole or a warning, the person is shown
+     them first. */
+  const makeMontage = (groupId: string, template?: string) =>
+    send(groupId, { intent: 'montage', groupId, ...(template ? { template } : {}) })
+  const askMontage = async (group: ManifestGroup) => {
+    const parsed = templatesAnswerSchema.safeParse(
+      await routingEngine.loader({ url: '/api/templates' }).catch(() => null)
+    )
+    const only =
+      parsed.success && parsed.data.templates.length === 1 ? parsed.data.templates[0] : null
+    if (only && !only.gap && only.missing.length === 0) makeMontage(group.id, only.name)
+    else setDialog({ kind: 'templates', groupId: group.id })
+  }
+
   /* A dropzone is processed, then uploaded, as a whole (RULES, Acting). Processing asks only for
      what needs it — the jumps with a file to process, and the dropzone's loose files when one of
      them does — because a dropzone holds every day ever shot there. */
@@ -615,7 +641,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           blocked={gateFor(group.files)}
           named={hasCompletePassenger(group.passenger)}
           onProcess={() => send(group.id, { intent: 'process', groupId: group.id })}
-          onMontage={() => send(group.id, { intent: 'montage', groupId: group.id })}
+          onMontage={() => void askMontage(group)}
           onOpenMontage={() =>
             send(`open:${group.id}`, { intent: 'open-montage', groupId: group.id })
           }
@@ -931,6 +957,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       <BoardHeader
         scanning={board.scanning}
         onScan={board.scan}
+        onTemplates={() => setDialog({ kind: 'templates' })}
         proxies={board.proxyProgress}
         nas={{ connected: nas.connected, host: nas.host, links: nasLinks }}
       />
@@ -1004,6 +1031,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                   pickPlace({ kind: 'pax', name: `${entry.firstname} ${entry.lastname}`.trim() })
                 }
                 onEmail={(entry) => setDialog({ kind: 'email', folder: entry.folder })}
+                waitingFiles={(entry) => (entry.files ?? []).filter((f) => toSort.has(f.id)).length}
+                onRestore={(folders) => send('restore', { intent: 'restore-tandems', folders })}
               />
             </div>
           ) : (
@@ -1104,6 +1133,10 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           })
           /* a deleted tandem has no page left; its jumps are in Unsorted now */
           if (mode === 'delete') pickPlace({ kind: 'sort' })
+        }}
+        onMontage={(groupId, template) => {
+          setDialog(null)
+          makeMontage(groupId, template)
         }}
         onTrash={(files) => {
           setDialog(null)

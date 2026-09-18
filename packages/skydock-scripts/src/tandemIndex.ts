@@ -98,11 +98,23 @@ const updateTandemIndex = async (
   return index
 }
 
-/* this tandem's entry replaced, or added; what the change does not mention is kept */
+/* This tandem's entry replaced, or added; what the change does not mention is kept. The files are
+   added to rather than replaced: a passenger with two jumps is one folder and one entry, and the
+   second jump's upload must not make the list forget the first one's files. */
 const upsert = (index: TandemIndex, entry: Partial<TandemEntry> & { folder: string }) => {
   const at = index.tandems.findIndex((t) => t.folder === entry.folder)
-  if (at === -1) index.tandems.push(entrySchema.parse(entry))
-  else index.tandems[at] = entrySchema.parse({ ...index.tandems[at], ...entry })
+  if (at === -1) {
+    index.tandems.push(entrySchema.parse(entry))
+    return
+  }
+  const before = index.tandems[at]
+  const files = entry.files
+    ? [
+        ...(before?.files ?? []).filter((f) => !entry.files?.some((g) => g.id === f.id)),
+        ...entry.files
+      ]
+    : before?.files
+  index.tandems[at] = entrySchema.parse({ ...before, ...entry, ...(files ? { files } : {}) })
 }
 
 /* A tandem's entry, from what its upload recorded: the passenger's folder is where the film and the
@@ -127,7 +139,10 @@ const entryOfTandem = (group: ManifestGroup) => {
     photosZip: record.photos?.remotePath,
     backup:
       record.rushes?.remotePath ?? (firstOriginal ? parentOf(firstOriginal.remotePath) : undefined),
-    ...(group.freed ? { freedAt: group.freed.at } : {})
+    ...(group.freed ? { freedAt: group.freed.at } : {}),
+    files: group.files.flatMap((f) =>
+      f.id ? [{ id: f.id, filename: f.filename, mtime: f.mtime }] : []
+    )
   }
   return { dir: parentOf(folder), entry }
 }

@@ -3,7 +3,14 @@ import type { OutputFact, ProxyFact, TandemEntry, TandemFact } from '@skydock/sc
 import { useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
-import { freedNote, importNote, montageNote, scanNote, uploadedNote } from '../helpers/notes'
+import {
+  freedNote,
+  importNote,
+  montageNote,
+  restoredNote,
+  scanNote,
+  uploadedNote
+} from '../helpers/notes'
 import { useSafeFetcher } from '../helpers/routing'
 import type { actionArgs as manifestArgs } from '../routes/api.manifest'
 import { useGroups } from './useJumps'
@@ -92,6 +99,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
         scan: scanned,
         freed,
         imported,
+        restored,
         storage: listed,
         storageProblem
       } = answered.data
@@ -118,7 +126,9 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
                 ? importNote(imported)
                 : freed
                   ? freedNote(freed)
-                  : null
+                  : restored
+                    ? restoredNote(restored)
+                    : null
       /* the work stands even when the list could not follow it, and that is said alongside */
       setNote(storageProblem ? [said, storageProblem].filter(Boolean).join(' · ') : said)
     } else {

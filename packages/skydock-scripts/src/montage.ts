@@ -124,11 +124,19 @@ const templatesIn = (dir: string) => {
 
 const listMontageTemplates = (outputDir: string) => templatesIn(path.join(outputDir, 'templates'))
 
+/* The templates there are to choose from: the ones brought into the output folder, or — while there
+   are none — the one that ships with SkyDock, found the same way rather than by a name written in
+   here, so replacing it is dropping a different one in beside it. */
+const availableTemplates = (outputDir: string) => {
+  const own = listMontageTemplates(outputDir)
+  return own.length > 0 ? own : templatesIn(repoTemplateDir())
+}
+
 /* Chosen, or the only one there — never the first of several, because picking a template silently
    is picking someone's branding silently. */
 const resolveTemplate = (options: z.infer<typeof montageOptionsSchema>) => {
   if (options.templatePath) return options.templatePath
-  const available = listMontageTemplates(options.outputDir)
+  const available = availableTemplates(options.outputDir)
   if (options.template) {
     const chosen = available.find((t) => t.name === options.template)
     if (!chosen)
@@ -142,13 +150,6 @@ const resolveTemplate = (options: z.infer<typeof montageOptionsSchema>) => {
   if (available.length === 1) return available[0].path
   if (available.length > 1)
     throw new Error(`Choose a montage template: ${available.map((t) => t.name).join(', ')}`)
-  /* The one that ships with SkyDock, found the same way rather than by a name written in here — a
-     template is replaced by dropping a different one in beside it, and a name in the code would
-     quietly keep using the old one. Several there is as ambiguous as several in the output folder. */
-  const bundled = templatesIn(repoTemplateDir())
-  if (bundled.length === 1) return bundled[0].path
-  if (bundled.length > 1)
-    throw new Error(`Choose a montage template: ${bundled.map((t) => t.name).join(', ')}`)
   throw new Error(`No montage template found — add one under ${options.outputDir}/templates`)
 }
 
@@ -173,6 +174,68 @@ const findVideoTrackId = (mlt: XmlNode[], sequence: XmlNode) => {
   return playlist
 }
 
+/* Every file a template's project names: what its clips and its music play, and the images held
+   inside its title clips — those sit in the title's own escaped XML with the clip's resource left
+   empty, so they are read out of there. As the project spells them, entities decoded. */
+const TITLE_IMAGE = /content url="([^"]+)"/g
+
+const assetsNamedBy = (mlt: XmlNode[]) =>
+  mlt.flatMap((node) => {
+    if (tagOf(node) !== 'chain' && tagOf(node) !== 'producer') return []
+    const resource = textOf(propOf(node, 'resource'))
+    const played = resource && !resource.startsWith('0x') && resource !== 'black' ? [resource] : []
+    const inTitles = [...textOf(propOf(node, 'xmldata')).matchAll(TITLE_IMAGE)].map((m) => m[1]!)
+    return [...played, ...inTitles].map(decodeXml)
+  })
+
+/* Where one of those files is on this machine, or null. A template carries the machine it was made
+   on in its paths and gets copied to another: the root it recorded is used when it exists here, the
+   template's own folder otherwise, and anything still not found is looked up by name inside that
+   folder, which is where a template keeps what it needs. */
+const assetLocator = (template: string, mltNode: XmlNode) => {
+  const recordedRoot = attrsOf(mltNode)['@_root']
+  const templateDir = path.dirname(template)
+  const root = recordedRoot && fs.existsSync(recordedRoot) ? recordedRoot : templateDir
+  const byName = new Map(
+    (fs.existsSync(templateDir) ? walkFiles(templateDir) : []).map((f) => [path.basename(f), f])
+  )
+  return (asset: string) => {
+    const resolved = path.resolve(root, asset)
+    return {
+      resolved,
+      found: fs.existsSync(resolved) ? resolved : (byName.get(path.basename(asset)) ?? null)
+    }
+  }
+}
+
+const readTemplate = (template: string) => {
+  const document = xmlDocumentSchema.parse(
+    new XMLParser(XML_OPTIONS).parse(fs.readFileSync(template, 'utf-8'))
+  )
+  const mltNode = document.find((n) => tagOf(n) === 'mlt')
+  if (!mltNode) throw new Error(`Template is not an MLT document: ${template}`)
+  return { document, mltNode, mlt: childrenOf(mltNode) }
+}
+
+/* What a template is, read without making anything of it: which kdenlive wrote it, and every file
+   it names with whether that file is here. Asked when a template is brought in and when one is
+   offered, so a template with holes in it is known about before an edit is started on it. */
+const inspectTemplate = (template: string) => {
+  const { mltNode, mlt } = readTemplate(template)
+  const locate = assetLocator(template, mltNode)
+  const bin = nodeById(mlt, 'playlist', 'main_bin')
+  const version = bin ? textOf(propOf(bin, 'kdenlive:docproperties.kdenliveversion')) : ''
+  const assets = [...new Set(assetsNamedBy(mlt))].map((asset) => ({
+    name: path.basename(asset),
+    found: locate(asset).found !== null
+  }))
+  return {
+    version: version || null,
+    assets,
+    missing: assets.filter((a) => !a.found).map((a) => a.name)
+  }
+}
+
 const createMontageProject = (rawOptions: MontageOptions) => {
   const options = montageOptionsSchema.parse(rawOptions)
   const template = resolveTemplate(options)
@@ -182,42 +245,23 @@ const createMontageProject = (rawOptions: MontageOptions) => {
      cannot be added without both. */
   const toHost = (target: string) => encodeXml(toHostPath(target, options.outputDir))
 
-  const document = xmlDocumentSchema.parse(
-    new XMLParser(XML_OPTIONS).parse(fs.readFileSync(template, 'utf-8'))
-  )
-  const mltNode = document.find((n) => tagOf(n) === 'mlt')
-  if (!mltNode) throw new Error(`Template is not an MLT document: ${template}`)
-  const mlt = childrenOf(mltNode)
+  const { document, mltNode, mlt } = readTemplate(template)
+  const locate = assetLocator(template, mltNode)
 
-  /* the root recorded in the template points at the machine it was made on, which is not
-     necessarily a directory this one has — the template's own folder is what always exists */
-  const recordedRoot = attrsOf(mltNode)['@_root']
-  const templateRoot =
-    recordedRoot && fs.existsSync(recordedRoot) ? recordedRoot : path.dirname(template)
+  /* A template that arrives without the music, logos and title files it uses still produces a
+     project — one that opens with silence and holes in it, which nobody notices until the render.
+     What could not be found is collected and reported rather than passed over.
 
-  /* A template carries the machine it was made on in its asset paths, and gets copied to another
-     one. Anything still missing is looked up by name inside the template's own folder, which is
-     where a template keeps what it needs. */
-  const templateDir = path.dirname(template)
-  const byName = new Map(
-    (fs.existsSync(templateDir) ? walkFiles(templateDir) : []).map((f) => [path.basename(f), f])
-  )
-  /* Entities are left alone everywhere else in the document, so a path arrives here exactly as the
+     Entities are left alone everywhere else in the document, so a path arrives here exactly as the
      XML spells it — and one of the template's own music tracks has an `&` in its name. Looking that
      up on disk as `&amp;` finds nothing, so it is decoded to ask the filesystem and encoded again
      to go back into the document. */
-  /* A template that arrives without the music, logos and title files it uses still produces a
-     project — one that opens with silence and holes in it, which nobody notices until the render.
-     What could not be found is collected and reported rather than passed over. */
   const missingAssets: string[] = []
   const relocate = (asset: string) => {
     const decoded = decodeXml(asset)
-    const resolved = path.resolve(templateRoot, decoded)
-    if (fs.existsSync(resolved)) return toHost(resolved)
-    const named = byName.get(path.basename(decoded))
-    if (named) return toHost(named)
-    missingAssets.push(decoded)
-    return toHost(resolved)
+    const { resolved, found } = locate(decoded)
+    if (!found) missingAssets.push(decoded)
+    return toHost(found ?? resolved)
   }
 
   /* the template's own music, logo and title files keep working from the new folder */
@@ -235,7 +279,7 @@ const createMontageProject = (rawOptions: MontageOptions) => {
         node,
         'xmldata',
         textOf(titleData).replace(
-          /content url="([^"]+)"/g,
+          TITLE_IMAGE,
           (_, asset: string) => `content url="${relocate(asset)}"`
         )
       )
@@ -352,5 +396,11 @@ const createMontageProject = (rawOptions: MontageOptions) => {
   }
 }
 
-export { createMontageProject, listMontageTemplates, montageOptionsSchema }
+export {
+  availableTemplates,
+  createMontageProject,
+  inspectTemplate,
+  listMontageTemplates,
+  montageOptionsSchema
+}
 export type { MontageClip, MontageOptions }

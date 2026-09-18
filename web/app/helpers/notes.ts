@@ -47,4 +47,17 @@ const uploadedNote = (uploaded: number, skipped?: number) =>
 const freedNote = ({ files, bytes }: { files: number; bytes: number }) =>
   `On the storage only. ${plural(files, 'file')} freed from this machine on ${localeDate(Date.now() / 1000)} — ${formatFilmSize(bytes)} given back. The project is kept here; everything else is on the storage, as above.`
 
-export { freedNote, importNote, montageNote, scanNote, uploadedNote }
+/* tandems put back from the storage's list, and what is left to do about them */
+const restoredNote = (restored: { who: string; files: number; of: number }[]) => {
+  const partly = restored.filter((r) => r.files < r.of)
+  const who = restored.length === 1 ? `${restored[0]!.who}’s tandem` : `${restored.length} tandems`
+  return `Restored ${who} from the storage’s list — named again, at the times they had; process ${
+    restored.length === 1 ? 'it' : 'them'
+  } to carry on${
+    partly.length > 0
+      ? ` · ${partly.map((r) => `${r.who}: ${r.files} of ${r.of} files found here`).join('; ')}`
+      : ''
+  }`
+}
+
+export { freedNote, importNote, montageNote, restoredNote, scanNote, uploadedNote }

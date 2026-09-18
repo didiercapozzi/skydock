@@ -1,0 +1,62 @@
+import { dayOfFiles } from './clustering'
+import { moveFiles } from './moveFiles'
+import type { TandemEntry } from './tandemEntry'
+import type { Manifest } from './types'
+
+/* A board that has forgotten its tandems — the output folder scanned again from nothing, its record
+   of the jumps lost — gets them back from the storage's list. Every tandem uploaded is written down
+   up there with the files it was made of, each by what it contains; a scan from scratch gives every
+   file that same identity again, so the two can be matched whatever the files are now called.
+
+   What comes back is what was decided by a person and cannot be worked out again: which files are
+   one tandem, whose it is, and the times that were set right. What was made from them is not
+   claimed back — the copies are gone with the record of them, and "uploaded" is only ever said of a
+   copy proved on both sides — so a restored tandem is named and waits to be processed; uploading it
+   again skips what the storage already holds. */
+
+/* files still to be sorted: in no place, and in no jump that is in one */
+const freshIds = (manifest: Manifest) => {
+  const filed = new Set(
+    manifest.groups.filter((g) => g.destination).flatMap((g) => g.files.map((f) => f.id))
+  )
+  return new Set(
+    manifest.files.flatMap((f) => (f.id && !f.destination && !filed.has(f.id) ? [f.id] : []))
+  )
+}
+
+/* The files of a listed tandem that are on this board waiting to be sorted. A tandem whose files
+   are already filed somewhere is left to whoever filed them, and one freed from its machine has no
+   files here to find. */
+const restorableFiles = (manifest: Manifest, entry: TandemEntry) => {
+  const fresh = freshIds(manifest)
+  return (entry.files ?? []).filter((f) => fresh.has(f.id))
+}
+
+const restoreTandems = (manifest: Manifest, entries: TandemEntry[]) => {
+  const restored: { who: string; files: number; of: number }[] = []
+  for (const entry of entries) {
+    const found = restorableFiles(manifest, entry)
+    if (found.length === 0) continue
+    const ids = new Set(found.map((f) => f.id))
+    moveFiles(manifest, ids, { newGroup: true, destination: 'Tandems' })
+    const group = manifest.groups.find((g) => g.files.some((f) => f.id && ids.has(f.id)))
+    if (!group) continue
+    group.passenger = { firstname: entry.firstname, lastname: entry.lastname }
+    /* the times as the tandem had them, which may be ones a person set right */
+    const timeOf = new Map(found.map((f) => [f.id, f.mtime]))
+    for (const file of [...manifest.files, ...group.files]) {
+      const time = file.id ? timeOf.get(file.id) : undefined
+      if (time !== undefined) file.mtime = time
+    }
+    group.files.sort((a, b) => a.mtime - b.mtime)
+    group.day = dayOfFiles(group.files)
+    restored.push({
+      who: `${entry.firstname} ${entry.lastname}`.trim(),
+      files: found.length,
+      of: entry.files?.length ?? found.length
+    })
+  }
+  return restored
+}
+
+export { restorableFiles, restoreTandems }

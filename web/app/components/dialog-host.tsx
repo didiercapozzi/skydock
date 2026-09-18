@@ -6,6 +6,7 @@ import { EmailDialog } from './email-dialog'
 import { FreeDialog } from './free-dialog'
 import { NasFolderBrowser } from './nas-folder-browser'
 import { TakeBackDialog } from './take-back-dialog'
+import { TemplatesDialog } from './templates-dialog'
 import type { TakeBackMode } from './take-back-dialog'
 import { TrashDialog } from './trash-dialog'
 import type { Destination, ManifestFile, ManifestGroup } from './types'
@@ -29,6 +30,8 @@ type BoardDialog =
   | { kind: 'trash'; files: ManifestFile[] }
   /* a tandem on this board by its jump, or one the storage's list alone knows, by its folder */
   | { kind: 'email'; groupId?: string; folder?: string }
+  /* the editing templates — chosen between for this tandem's montage, or only looked over */
+  | { kind: 'templates'; groupId?: string }
 
 const DialogHost = ({
   dialog,
@@ -48,6 +51,7 @@ const DialogHost = ({
   onFree,
   onTakeBack,
   onTrash,
+  onMontage,
   comparing
 }: {
   dialog: BoardDialog
@@ -73,6 +77,7 @@ const DialogHost = ({
   onFree: (group: ManifestGroup) => void
   onTakeBack: (mode: TakeBackMode, group: ManifestGroup) => void
   onTrash: (files: ManifestFile[]) => void
+  onMontage: (groupId: string, template: string) => void
   comparing: {
     /* the two jumps side by side, when two are being compared */
     pair: [string, string] | null
@@ -212,6 +217,18 @@ const DialogHost = ({
           onConfirm={() => onTrash(dialog.files)}
         />
       )}
+
+      {dialog?.kind === 'templates' &&
+        (() => {
+          const tandem = groups.find((g) => g.id === dialog.groupId)
+          return (
+            <TemplatesDialog
+              who={tandem ? passengerOf(tandem) : undefined}
+              onClose={close}
+              onChoose={tandem ? (template) => onMontage(tandem.id, template) : undefined}
+            />
+          )
+        })()}
 
       {comparing.pair && (
         <ComparisonDialog

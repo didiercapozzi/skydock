@@ -464,8 +464,28 @@ copies when clicked. A project that would not open is refused with the reason.
 
 **Templates.** A template is a folder holding its project and the music, logos and title images it
 uses, referenced where they are. A template that travelled from another machine still finds its files.
-With more than one template and none chosen, SkyDock asks. A template missing some of its files still
-gives a project, and the montage names what is missing straight away.
+A template missing some of its files still gives a project, and the montage names what is missing
+straight away. Until one is brought in, the template that ships with SkyDock is the one there is.
+
+**Choosing one.** A template is somebody's branding, so which one a montage is made from is never
+decided for the person. With a single template that is whole, pressing Montage simply uses it. With
+several, the templates are shown to be chosen between, and nothing is made until one is; the one picked
+last time is already ticked, and still has to be confirmed. A template with a file missing, or made by
+a kdenlive far from the one that will open it, is shown first even when it is the only one.
+
+**The editor's kdenlive.** Each template says which kdenlive wrote it. One written by a newer kdenlive
+than the editor's is warned about, because the editor may refuse it or open it with pieces missing; one
+written years earlier is warned about more mildly, because it is converted on opening. A year or so
+either way says nothing. When the editor's version is not known — it is asked where it runs on this
+machine, and told by the host's watcher in the development container — nothing is warned on a guess.
+
+**Bringing one in.** The header's Templates lists them and takes a new one from the computer: a kdenlive
+archive — the editor's own Archive project, as .zip or .tar.gz, holding the project with everything it
+uses — or a project file on its own. It is unpacked aside and only given its place once a project is
+found in it, so a bad archive leaves nothing behind; an archive whose entries would land outside its
+folder is refused. Every file the project names is then looked for, and the ones not found are named:
+the template is kept either way, since an edit can start without the music. It is named after the
+archive unless given a name, and a template already there under that name is never replaced.
 
 **The montage is made once.** Asking again for a tandem that has a project is refused.
 
@@ -547,6 +567,18 @@ are, whether it was freed, and whether the passenger was emailed and to which ad
 storage_, in the menu once the storage is connected, shows this list, so every tandem the storage holds is there, including
 ones this machine no longer has and ones uploaded from another machine. Each can be emailed from there,
 and one still on this board can be opened.
+
+**Putting a forgotten tandem back.** The list also writes down which files each tandem is made of —
+each by what it contains, which is how a file is known whatever it is called — and the times they were
+given. A board scanned again from nothing has forgotten its tandems, and gives every file that same
+identity again; so a tandem on the list whose files are here, waiting to be sorted, is offered back
+where the list names it, one at a time or all at once. Restoring gathers those files into a tandem
+again under the passenger's name, at the times they had, including ones a person had set right. It
+comes back named and waiting to be processed: what was made from it is not claimed back, since
+uploaded is only ever said of a copy proved on both sides, and uploading again skips what the storage
+already holds. Files somebody has filed since are left where they were put; a tandem freed from its
+machine has no files here to find; one whose files are only partly here is restored with what there
+is, and says how many. A passenger's two jumps share one entry, which keeps the files of both.
 
 The list follows the work and never replaces it. It is updated after every upload, every freeing, and
 when the email is marked as sent. Each change reads the latest list first and alters only its own

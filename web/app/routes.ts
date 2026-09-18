@@ -6,6 +6,7 @@ export default [
   route('api/nas', 'routes/api.nas.ts'),
   route('api/scan', 'routes/api.scan.ts'),
   route('api/import', 'routes/api.import.ts'),
+  route('api/templates', 'routes/api.templates.ts'),
   route('api/upload-progress', 'routes/api.upload-progress.ts'),
   route('api/events', 'routes/api.events.ts'),
   route('api/remote-files', 'routes/api.remote-files.ts'),

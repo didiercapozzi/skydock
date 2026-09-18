@@ -53,6 +53,7 @@ credentials are read from the environment and none are written into the registry
 - `exiftool` — required: processing stamps dates into the files and stops without it.
 - `ffmpeg` / `ffprobe` — required to write a cropped video and to make thumbnails.
 - `kdenlive` is **not** required to produce a montage project, only to open and render one.
+- `tar` — only to bring in an editing template packed as `.tar.gz`; a `.zip` needs nothing.
 
 ### Opening the editor from the development container
 

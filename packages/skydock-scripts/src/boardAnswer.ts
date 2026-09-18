@@ -80,7 +80,9 @@ const boardAnswerSchema = z.object({
   /* the storage's list, as the change just wrote it — or why it could not be */
   storage: z.object({ dir: z.string(), tandems: z.array(tandemEntrySchema) }).optional(),
   storageProblem: z.string().optional(),
-  imported: importOutcomeSchema.optional()
+  imported: importOutcomeSchema.optional(),
+  /* tandems put back from the storage's list: whose, and how many of their files were found here */
+  restored: z.array(z.object({ who: z.string(), files: z.number(), of: z.number() })).optional()
 })
 
 type BoardAnswer = z.infer<typeof boardAnswerSchema>

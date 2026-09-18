@@ -24,11 +24,14 @@ type NasLink = { label: string; title?: string; disabled?: boolean; onClick: () 
 const BoardHeader = ({
   scanning,
   onScan,
+  onTemplates,
   proxies,
   nas
 }: {
   scanning: boolean
   onScan: () => void
+  /* the editing templates: looked over, and new ones brought in */
+  onTemplates: () => void
   proxies: { ready: number; waiting: number; total: number }
   nas: { connected: boolean; host: string | null; links: NasLink[] }
 }) => {
@@ -47,6 +50,13 @@ const BoardHeader = ({
           title='Look through the output folder for files the manifest does not know about yet'
           className='rounded-md border border-line bg-pane px-[11px] py-[5px] text-[12.5px] font-medium hover:border-ink-3 disabled:opacity-40'>
           {scanning ? 'Scanning…' : 'Rescan cameras'}
+        </button>
+        <button
+          type='button'
+          onClick={onTemplates}
+          title='The editing templates a montage is made from — look them over, or bring one in'
+          className='rounded-md border border-line bg-pane px-[11px] py-[5px] text-[12.5px] font-medium hover:border-ink-3'>
+          Templates…
         </button>
         {/* Only while some clip is still without one. They are built behind whatever asked for
             them and nothing watches them arrive, so this is how far along the last look was. */}

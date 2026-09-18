@@ -8,6 +8,7 @@ import type { Intent } from './manifest/change'
 import { freeTandemIntent } from './manifest/free-tandem'
 import { imported } from './manifest/imported'
 import { markEmailed } from './manifest/mark-emailed'
+import { restoreTandemsIntent } from './manifest/restore-tandems'
 import { mergeGroupsIntent } from './manifest/merge-groups'
 import { montage } from './manifest/montage'
 import { deleteJumpIntent } from './manifest/delete-jump'
@@ -44,7 +45,8 @@ const intents: Record<ActionData['intent'], Intent> = {
   'delete-tandem': deleteTandemIntent,
   'free-tandem': freeTandemIntent,
   imported,
-  'mark-emailed': markEmailed
+  'mark-emailed': markEmailed,
+  'restore-tandems': restoreTandemsIntent
 }
 
 const action = createValidatedFormAction<Route.ActionArgs>()({

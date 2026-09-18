@@ -45,10 +45,15 @@ watcher="$(dirname "$queue")/.editor-watcher"
 # One left behind by a run as root is a file only root can touch, and a heartbeat that cannot be
 # touched goes stale while this is plainly running. Removing it needs only the folder, which is yours.
 rm -f "$watcher" 2>/dev/null || true
+# What it keeps fresh is also where it says which editor this is: the container cannot ask an
+# editor it cannot reach, and SkyDock warns when a template was made by a kdenlive far from the one
+# that will open it. Asked once; an editor that will not say leaves the file empty, which is read
+# as "not known" and warns about nothing.
+version="$("$editor" --version 2>/dev/null | head -n 1 || true)"
 me=$$
 (
   while kill -0 "$me" 2>/dev/null; do
-    touch "$watcher" 2>/dev/null || true
+    printf '%s\n' "$version" >"$watcher" 2>/dev/null || true
     sleep 10
   done
   rm -f "$watcher" 2>/dev/null
