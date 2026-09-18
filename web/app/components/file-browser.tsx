@@ -26,7 +26,8 @@ type JumpControls = {
   frozen: Set<string>
   overTarget: string | null
   dropTarget: (groupId: string) => Record<string, unknown>
-  onSelect: (groupId: string) => void
+  /* a plain click selects the jump; ⌘/ctrl-click on a second one compares the two */
+  onSelect: (groupId: string, e?: Modifiers) => void
   onDrag: (groupId: string) => void
   /* a tandem's one next step, and what shows above its files */
   actions?: (group: ManifestGroup) => React.ReactNode
@@ -156,7 +157,12 @@ const JumpCard = ({
         e.stopPropagation()
         jump.onDrag(group.id)
       }}
-      onClick={() => {
+      onClick={(e) => {
+        /* a second jump asked for beside the selected one: compared, and nothing else changes */
+        if (group && (e.ctrlKey || e.metaKey) && jump.selected && jump.selected !== group.id) {
+          jump.onSelect(group.id, e)
+          return
+        }
         onOpen()
         if (group && jump.selected !== group.id) jump.onSelect(group.id)
       }}
@@ -167,7 +173,7 @@ const JumpCard = ({
       }}
       title={
         group && !frozen
-          ? 'Click to list its files · drop files here to move them into it · drag onto a folder to file the whole jump'
+          ? 'Click to list its files · ⌘/ctrl-click a second jump to compare the two · drop files here to move them into it · drag onto a folder to file the whole jump'
           : 'Click to list its files'
       }
       /* the loose card is not a jump and must not pass for one: dashed, flat, on the page's own

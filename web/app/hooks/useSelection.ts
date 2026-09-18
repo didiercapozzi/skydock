@@ -92,7 +92,13 @@ const useSelection = ({
     setAnchor(id)
   }
 
-  const selectJump = (groupId: string) => {
+  /* With one jump selected, ⌘/ctrl-clicking a second puts the two side by side — the one way two
+     jumps are ever picked at once, so it cannot happen on the way to looking at one. */
+  const selectJump = (groupId: string, e?: Modifiers) => {
+    if ((e?.ctrlKey || e?.metaKey) && pickedJump && pickedJump !== groupId) {
+      setComparing([pickedJump, groupId])
+      return
+    }
     setPickedFiles([])
     setAnchor(null)
     setPreviewed(null)

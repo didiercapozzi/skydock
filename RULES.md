@@ -295,7 +295,10 @@ Nothing is put in the bin while something is being processed.
 **Merging and making jumps by hand.** Two jumps that are really one are merged by picking the files of
 one — its panel selects them all in one press — and dropping them on the other's card; the jump left
 empty disappears. The files keep their own times, so the merged jump is dated by its earliest file.
-There is no side-by-side comparison. The other way round, several files picked in Fresh files — loose, or
+Two jumps can also be put side by side first: with one jump selected, ⌘- or ctrl-clicking a second
+opens the two next to each other, each playing its own clips, and from there they can be merged onto
+the start of either, or onto a time typed in — for two cameras on one jump, one of them on the wrong
+clock. The other way round, several files picked in Fresh files — loose, or
 taken out of a jump — are made a jump of their own. Making it asks for a name and for when it started,
 since files the gap rule missed are often files off a camera on the wrong clock: the start is filled in
 as shot, and setting it moves every file by the same amount, as correcting any jump's time does. Both

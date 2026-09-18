@@ -243,6 +243,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
   /* what the open folder holds, narrowed by what is typed in the search box */
   const family = familyOf(place)
+  /* whether the storage's list says this tandem's passenger was sent their link */
   const emailedOn = (group: ManifestGroup) =>
     board.storage?.tandems.find((t) => t.folder === folderOnStorage(group))?.emailed ?? null
 
@@ -534,7 +535,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     send('merge', { intent: 'merge-groups', leftId, rightId, anchorEpoch })
   }
 
-  /* whether the storage's list says this tandem's passenger was sent their link */
   /* A dropzone is processed, then uploaded, as a whole (RULES, Acting). Processing asks only for
      what needs it — the jumps with a file to process, and the dropzone's loose files when one of
      them does — because a dropzone holds every day ever shot there. */
