@@ -20,6 +20,8 @@ Everything below follows from these.
 
 - **The originals are never touched.** Processing makes copies. It never moves, renames or deletes a
   file that came off a camera. Correcting a jump's time changes what SkyDock has recorded, not the file.
+  The one exception is a person's own choice: an unsorted file can be put in the bin, which moves it
+  and erases nothing.
   The camera's own storage is only ever read.
 - **A folder is rebuilt only by whoever owns it.** A passenger's folder can be rewritten, because only
   that passenger is in it. A dropzone folder is shared by every day ever shot there, so it is never
@@ -99,7 +101,12 @@ current setting to everything, including jumps that were split or merged by hand
 - A jump's time can be corrected, for a camera whose clock was never set: say when the jump really
   started, and every file in it shifts by the same amount. The gaps between files, and therefore their
   order, do not change. The date is corrected the same way.
-- **A whole jump is re-timed, never one file of it.** A wrong clock is wrong for everything it shot.
+- **One file can be re-timed on its own**, for the file that is the exception — a clip from a second
+  camera on another clock, a photo off a phone. Its date and time are set from the inspector, and
+  nothing else moves: the file stays in its jump, the jump keeps the day it is filed under, as it does
+  when a file from another day is dropped into it, and only the order inside the jump changes. A loose
+  file goes to whichever day its new time falls on. A wrong clock is usually wrong for everything it
+  shot, which is what re-timing the whole jump is for.
 - **A tandem's files carry the jump's date; a dropzone's files carry their own.** A tandem is one event
   for one person. A dropzone folder holds many days, so each file says which day it was shot.
 
@@ -203,12 +210,13 @@ count everything.
 **Selecting.** Looking at a file and picking it are different things, so nothing is picked by accident
 on the way to looking. A click only previews: the file shows in the inspector and is marked as the one
 being looked at, and nothing is picked — however many files are picked already. A file is picked by
-its tick, by a double-click, or by ctrl- or cmd-click, each of which also takes it back off; shift-click
+its tick or by ctrl- or cmd-click, each of which also takes it back off; shift-click
 takes a range, and with no range started it picks that file and starts one. The arrow keys move the
 preview, and with shift add to the picks. Escape clears. A row's tick is always there; a thumbnail's
 appears under the pointer until something is picked, then on every thumbnail. Picked thumbnails get a
 green ring with a tick; picked rows a green tick and background. The picks — or, with none, the file
-being looked at — can be sent back to the sorting area by button or Delete.
+being looked at — can be sent back to the sorting area by button or Delete. Files already in the sorting
+area have nowhere further back to go, so there the same button and key offer the bin instead.
 
 **Filing.** Drag a jump or a selection onto a place in the menu to file it there, or onto another jump to
 move it. While something is carried, every place that would take it is outlined and the one under the
@@ -231,6 +239,18 @@ is recognised by its contents and moved to where it was dropped, exactly as a dr
 already there is left alone. What is not a video or a photo is refused, and so is a drop on a tandem that
 has an edit or lives on the storage only. The board says what came of the drop.
 
+**Putting files in the bin.** A test shot or footage of the ground can be got rid of, but only from
+Unsorted: a file filed somewhere is somebody's, and sending it back to Unsorted is the step that says it
+no longer is. Nothing goes without a warning first, saying how many files, how many videos and photos
+and how much space, and that these are originals nobody has been given yet — if the camera card has
+been wiped, the bin holds the only copy. Once confirmed, the files leave the board and the originals
+folder, so a scan does not bring them back; the copies and proxies made from them are deleted, since
+they have nothing left to come from. The files themselves are moved, not erased, into a folder of the
+bin named for that moment, keeping the day folder each came from. SkyDock never empties the bin, so
+nothing is lost for good and no space comes back until someone empties it by hand. There is no way back
+from the board: a file is recovered by moving it out of the bin into the originals and scanning again.
+Nothing is put in the bin while something is being processed.
+
 **Comparing.** Pick two jumps to compare them side by side, stepping through the files of each, then
 merge them if they are the same jump. Merging asks which date the result keeps.
 
@@ -243,8 +263,8 @@ choice is remembered on that machine and applied before the first thing is drawn
 
 ## Cropping and turning
 
-A file is opened from the inspector, or with Enter on the file being looked at, playing its proxy when
-there is one. The picture fills the left of the dialog
+A file is opened by double-clicking it, from the inspector, or with Enter on the file being looked at,
+playing its proxy when there is one. The picture fills the left of the dialog
 with the timeline under it; the right side says what is being decided: the trim, the turn, the frame,
 and what is already on the file. The top names the file and lets you step to the next; the bottom holds
 Save, offered only once something changed, and Reset, which clears everything at once. A loose file is
@@ -465,7 +485,6 @@ Worth knowing, so nobody goes looking:
 - **Nothing shows a proxy being made.** Proxies appear on the next thing the board is asked to do.
 - **A file is in one place at a time.** It cannot be in two jumps at once.
 - **A dropzone can be created, not renamed or removed.**
-- **A single file cannot be re-timed.** Only a whole jump.
 - **Nothing comes back down from the storage** except its list of tandems.
 - **Archives are made only by uploading a tandem.** The originals cannot be backed up ahead of the film.
 - **One known collision.** A loose file and a jump's file filed to the same dropzone and shot in the

@@ -127,6 +127,26 @@ describe('trimming — dragging the ends', () => {
   })
 })
 
+describe('trimming — the ends are there from the start', () => {
+  test('with nothing trimmed, both handles sit at the edges of the bar', async () => {
+    await renderCropper({ cropStart: null, cropEnd: null })
+    const box = bar().getBoundingClientRect()
+    const start = part('[data-crop-start-handle]').getBoundingClientRect()
+    const end = part('[data-crop-end-handle]').getBoundingClientRect()
+    expect(start.left - box.left).toBeLessThan(4)
+    expect(box.right - end.right).toBeLessThan(4)
+  })
+
+  test('the untouched end handle dragged left sets the end', async () => {
+    const { onCropChange } = await renderCropper({ cropStart: null, cropEnd: null })
+    await userEvent.dragAndDrop(page.elementLocator(part('[data-crop-end-handle]')), page.elementLocator(bar()), {
+      targetPosition: at(6)
+    })
+    await expect.poll(() => onCropChange.mock.calls.length).toBeGreaterThan(0)
+    expect(lastCall<{ cropEnd: number | null }>(onCropChange).cropEnd).toBeCloseTo(6, 0)
+  })
+})
+
 describe('trimming — start and end at the playhead', () => {
   test('Start here and End here take the playhead’s moment', async () => {
     const { onCropChange } = await renderCropper({ currentTime: 3.5 })

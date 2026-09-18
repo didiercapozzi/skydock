@@ -19,8 +19,12 @@ const actionArgs = z.object({
     'montage',
     'upload-tandem',
     'shift-group-time',
+    /* one file's time, corrected on its own */
+    'retime-file',
     'move-files',
     'regroup-loose',
+    /* unsorted files nobody wants, out of the originals and into the bin */
+    'trash-unsorted',
     /* back to before processing, keeping every decision — or undone altogether */
     'reset-tandem',
     'delete-tandem',

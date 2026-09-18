@@ -7,7 +7,8 @@ import { FreeDialog } from './free-dialog'
 import { NasFolderBrowser } from './nas-folder-browser'
 import { TakeBackDialog } from './take-back-dialog'
 import type { TakeBackMode } from './take-back-dialog'
-import type { Destination, ManifestGroup } from './types'
+import { TrashDialog } from './trash-dialog'
+import type { Destination, ManifestFile, ManifestGroup } from './types'
 import { UploadDialog } from './upload-dialog'
 import { TANDEMS, folderOnStorage } from '../helpers/jumps'
 import type { BackupChoice } from '../hooks/useBackupChoice'
@@ -24,6 +25,8 @@ type BoardDialog =
   | UploadDialogState
   | { kind: 'take-back'; mode: TakeBackMode; who: string }
   | { kind: 'free'; groupId: string }
+  /* unsorted files about to go to the bin */
+  | { kind: 'trash'; files: ManifestFile[] }
   /* a tandem on this board by its jump, or one the storage's list alone knows, by its folder */
   | { kind: 'email'; groupId?: string; folder?: string }
 
@@ -44,6 +47,7 @@ const DialogHost = ({
   onEmailed,
   onFree,
   onTakeBack,
+  onTrash,
   comparing
 }: {
   dialog: BoardDialog
@@ -68,6 +72,7 @@ const DialogHost = ({
   onEmailed: (folder: string, sent: boolean, to: string) => void
   onFree: (group: ManifestGroup) => void
   onTakeBack: (mode: TakeBackMode, group: ManifestGroup) => void
+  onTrash: (files: ManifestFile[]) => void
   comparing: {
     /* the two jumps side by side, when two are being compared */
     pair: [string, string] | null
@@ -199,6 +204,14 @@ const DialogHost = ({
             />
           )
         })()}
+
+      {dialog?.kind === 'trash' && (
+        <TrashDialog
+          files={dialog.files}
+          onClose={close}
+          onConfirm={() => onTrash(dialog.files)}
+        />
+      )}
 
       {comparing.pair && (
         <ComparisonDialog

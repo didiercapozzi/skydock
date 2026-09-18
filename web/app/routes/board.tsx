@@ -206,6 +206,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     groups.find((g) => g.files.some((f) => (f.id ?? f.path) === (file.id ?? file.path)))
   const openFile = (file: ManifestFile) =>
     preview.handlePreview(file, groupOfFile(file)?.id ?? LOOSE)
+  /* filed nowhere — neither as a lone file nor through its jump — and so free to go to the bin */
+  const inUnsorted = (file: ManifestFile) => !file.destination && !groupOfFile(file)?.destination
+  const fileById = (id: string) =>
+    [...groups.flatMap((g) => g.files), ...loose].find((f) => f.id === id)
+  const askTrash = (files: ManifestFile[]) => setDialog({ kind: 'trash', files })
 
   /* A tandem is uploaded while the storage still holds what was sent, and not a moment longer —
      the record says what went up, the listing says whether it is still there. Delete it over there
@@ -257,7 +262,16 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     order,
     paused: preview.preview !== null || dialog !== null,
     onOpen: openFile,
-    onDelete: (ids) => moveFiles(ids, { destination: null })
+    /* Delete sends filed files back to Unsorted; files already there have nowhere further back to
+       go, so for them it asks about the bin instead */
+    onDelete: (ids) => {
+      const files = ids.flatMap((id) => {
+        const found = fileById(id)
+        return found ? [found] : []
+      })
+      if (files.length > 0 && files.every(inUnsorted)) askTrash(files)
+      else moveFiles(ids, { destination: null })
+    }
   })
   const { pickedFiles } = selection
 
@@ -726,6 +740,17 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           }}
           onOpen={() => openFile(one)}
           onSendBack={() => moveFiles([one.id ?? ''], { destination: null })}
+          onTrash={inUnsorted(one) ? () => askTrash([one]) : undefined}
+          onRetime={
+            lockReason(one, context)
+              ? undefined
+              : (epoch) =>
+                  send('retime', {
+                    intent: 'retime-file',
+                    fileIds: [one.id ?? ''],
+                    anchorEpoch: epoch
+                  })
+          }
         />
       )
     }
@@ -743,6 +768,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             onFileTo: (target) => fileFilesTo(ids, target)
           }}
           onSendBack={() => moveFiles(ids, { destination: null })}
+          onTrash={picked.every(inUnsorted) ? () => askTrash(picked) : undefined}
           onClear={selection.clear}
         />
       )
@@ -1002,6 +1028,14 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           })
           /* a deleted tandem has no page left; its jumps are in Unsorted now */
           if (mode === 'delete') pickPlace({ kind: 'sort' })
+        }}
+        onTrash={(files) => {
+          setDialog(null)
+          selection.clear()
+          send('trash', {
+            intent: 'trash-unsorted',
+            fileIds: files.flatMap((f) => (f.id ? [f.id] : []))
+          })
         }}
         comparing={{
           pair: selection.comparing,

@@ -121,6 +121,9 @@ const VideoCropper = ({
     } catch {}
     draggingRef.current = which
     e.preventDefault()
+    /* pressing an end shows the frame under it — and a handle resting on the bar's edge must not
+       stop a click there from reaching the clip's first or last moment */
+    seekTo(timeFromPosition(e.clientX))
   }
 
   const handlePointerMove = (e: React.PointerEvent) => {
@@ -154,6 +157,15 @@ const VideoCropper = ({
   const playheadPct = positionFromTime(currentTime)
   const startPct = cropStart === null ? null : positionFromTime(cropStart)
   const endPct = cropEnd === null ? null : positionFromTime(cropEnd)
+  /* the stretches cut away — positions are already held to the bar, so zoomed in an end that sits
+     off the edge simply dims all or none of that side */
+  const keptFrom =
+    startPct === null ? null : endPct === null ? startPct : Math.min(startPct, endPct)
+  const keptTo = endPct === null ? null : startPct === null ? endPct : Math.max(startPct, endPct)
+  const cut = [
+    ...(keptFrom !== null && keptFrom > 0 ? [['before', 0, keptFrom] as const] : []),
+    ...(keptTo !== null && keptTo < 100 ? [['after', keptTo, 100] as const] : [])
+  ]
 
   const thumbs =
     thumbSrc && safeDuration > 0
@@ -219,26 +231,49 @@ const VideoCropper = ({
           style={{ left: `${playheadPct}%` }}>
           <div className='pointer-events-none absolute top-0 bottom-0 left-1/2 -ml-px w-0.5 bg-white' />
         </div>
-        {!readOnly && startPct !== null && (
+        {/* Both ends are always there to grab, sitting at the clip's own start and end until they
+            are moved — a trim is a drag from the edge, not a button to find first. One not yet set is
+            drawn fainter, since standing at the edge it cuts nothing. */}
+        {!readOnly &&
+          (
+            [
+              ['start', startPct ?? positionFromTime(0)],
+              ['end', endPct ?? positionFromTime(safeDuration)]
+            ] as const
+          ).map(([which, pct]) => {
+            const set = (which === 'start' ? startPct : endPct) !== null
+            return (
+              <div
+                key={which}
+                {...(which === 'start'
+                  ? { 'data-crop-start-handle': 'true' }
+                  : { 'data-crop-end-handle': 'true' })}
+                data-set={set}
+                onPointerDown={handleCropHandleDown(which)}
+                title={set ? undefined : `Drag to trim the ${which}`}
+                className={`absolute top-0 bottom-0 z-20 w-3 cursor-ew-resize rounded bg-accent hover:brightness-110 ${
+                  set ? '' : 'opacity-60 hover:opacity-100'
+                }`}
+                /* centred on its moment, but never half off the bar at either edge */
+                style={{ left: `clamp(0px, calc(${pct}% - 6px), calc(100% - 12px))` }}
+              />
+            )
+          })}
+        {/* What the trim throws away, shown going: everything before the start and after the end is
+            dimmed and blurred, each side as soon as its own end is set, so the part that stays is the
+            only part left sharp. Shown read-only too — it is what the file will be, not a control. */}
+        {cut.map(([side, from, to]) => (
           <div
-            data-crop-start-handle='true'
-            onPointerDown={handleCropHandleDown('start')}
-            className='absolute top-0 bottom-0 z-20 -ml-1.5 w-3 cursor-ew-resize rounded bg-accent hover:brightness-110'
-            style={{ left: `${startPct}%` }}
+            key={side}
+            data-crop-cut={side}
+            className='pointer-events-none absolute top-0 bottom-0 z-10 bg-black/55 backdrop-blur-[3px] backdrop-grayscale'
+            style={{ left: `${from}%`, width: `${to - from}%` }}
           />
-        )}
-        {!readOnly && endPct !== null && (
-          <div
-            data-crop-end-handle='true'
-            onPointerDown={handleCropHandleDown('end')}
-            className='absolute top-0 bottom-0 z-20 -ml-1.5 w-3 cursor-ew-resize rounded bg-accent hover:brightness-110'
-            style={{ left: `${endPct}%` }}
-          />
-        )}
+        ))}
         {!readOnly && startPct !== null && endPct !== null && (
           <div
             data-crop-range='true'
-            className='absolute top-0 bottom-0 border-x border-accent bg-accent/30'
+            className='pointer-events-none absolute top-0 bottom-0 border-x border-accent'
             style={{
               left: `${Math.min(startPct, endPct)}%`,
               width: `${Math.abs(endPct - startPct)}%`

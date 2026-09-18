@@ -138,4 +138,19 @@ const shiftFiles = (manifest: Manifest, ids: Set<string>, offsetSeconds: number)
   }
 }
 
-export { dayOfFiles, groupFromFiles, reclusterGroups, regroupLooseFiles, shiftFiles }
+/* One file put right on its own — a clip from a second camera on another clock, a photo off a phone
+   (RULES, Times and dates). It stays in its jump, and the jump keeps the day it is filed under, as it
+   does when a file from another day is dropped into it; only the order inside the jump moves. A lone
+   file simply goes with its new time, to whichever day that is. */
+const retimeFile = (manifest: Manifest, id: string, epoch: number) => {
+  const touched = [...manifest.files, ...manifest.groups.flatMap((g) => g.files)].filter(
+    (f) => f.id === id
+  )
+  if (touched.length === 0) return false
+  for (const file of touched) file.mtime = Math.round(epoch)
+  for (const group of manifest.groups)
+    if (group.files.some((f) => f.id === id)) group.files.sort((a, b) => a.mtime - b.mtime)
+  return true
+}
+
+export { dayOfFiles, groupFromFiles, reclusterGroups, regroupLooseFiles, retimeFile, shiftFiles }

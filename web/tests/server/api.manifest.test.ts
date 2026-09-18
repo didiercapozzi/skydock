@@ -453,4 +453,88 @@ describe('changes made on the board', () => {
       expect(res.groups[0]?.files[0]?.cropStart).toBe(1)
     })
   })
+
+  /* RULES, Times and dates: one file corrected on its own */
+  describe('re-timing one file', () => {
+    it('moves that file alone', async () => {
+      writeManifest([
+        group({ id: 'g1', files: [file({ id: 'a' }), file({ id: 'b', mtime: 1_754_000_060 })] })
+      ])
+
+      const res = answer(
+        await send({ intent: 'retime-file', fileIds: ['a'], anchorEpoch: 1_754_003_600 })
+      )
+
+      const files = res.groups[0]?.files ?? []
+      expect(files.find((f) => f.id === 'a')?.mtime).toBe(1_754_003_600)
+      expect(files.find((f) => f.id === 'b')?.mtime).toBe(1_754_000_060)
+    })
+
+    it('refuses an uploaded file', async () => {
+      const up = file({
+        id: 'a',
+        uploaded: { remotePath: '/x/a.mp4', md5: 'm', size: 10, localPath: '/p/a.mp4', at: 1 }
+      })
+      writeManifest([group({ id: 'g1', files: [up] })])
+
+      const res = refusal(
+        await send({ intent: 'retime-file', fileIds: ['a'], anchorEpoch: 1_754_003_600 })
+      )
+
+      expect(res.success).toBe(false)
+      expect(res.globalErrors?.[0]).toContain('uploaded')
+    })
+
+    it('refuses more than one file at a time', async () => {
+      writeManifest([group({ id: 'g1', files: [file({ id: 'a' }), file({ id: 'b' })] })])
+
+      const res = refusal(
+        await send({ intent: 'retime-file', fileIds: ['a', 'b'], anchorEpoch: 1_754_003_600 })
+      )
+
+      expect(res.success).toBe(false)
+    })
+  })
+
+  /* RULES, Putting files in the bin: only from Unsorted, moved and never erased */
+  describe('putting unsorted files in the bin', () => {
+    const onDisk = (id: string) => {
+      const p = path.join(tmpDir, 'original_files', '2026-08-01', `${id}.MP4`)
+      fs.mkdirSync(path.dirname(p), { recursive: true })
+      fs.writeFileSync(p, id)
+      return file({ id, path: p, filename: `${id}.MP4` })
+    }
+
+    it('takes the file off the board and moves it out of the originals', async () => {
+      const a = onDisk('a')
+      const b = onDisk('b')
+      writeManifest([group({ id: 'g1', files: [a, b] })])
+
+      const res = answer(await send({ intent: 'trash-unsorted', fileIds: ['a'] }))
+
+      expect(res.groups[0]?.files.map((f) => f.id)).toEqual(['b'])
+      expect(fs.existsSync(a.path)).toBe(false)
+      const bins = fs.readdirSync(path.join(tmpDir, '.trash'))
+      expect(fs.existsSync(path.join(tmpDir, '.trash', bins[0]!, '2026-08-01', 'a.MP4'))).toBe(true)
+    })
+
+    it('refuses a file that has been filed, and leaves it where it is', async () => {
+      const a = onDisk('a')
+      writeManifest([group({ id: 'g1', destination: 'Yverdon', files: [a] })])
+
+      const res = refusal(await send({ intent: 'trash-unsorted', fileIds: ['a'] }))
+
+      expect(res.success).toBe(false)
+      expect(res.globalErrors?.[0]).toContain('Unsorted')
+      expect(fs.existsSync(a.path)).toBe(true)
+    })
+
+    it('refuses when nothing was picked', async () => {
+      writeManifest([group({ id: 'g1', files: [onDisk('a')] })])
+
+      const res = refusal(await send({ intent: 'trash-unsorted', fileIds: [] }))
+
+      expect(res.success).toBe(false)
+    })
+  })
 })

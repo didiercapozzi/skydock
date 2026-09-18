@@ -335,7 +335,9 @@ const FilePanel = ({
   locked,
   fileTo,
   onOpen,
-  onSendBack
+  onSendBack,
+  onTrash,
+  onRetime
 }: {
   file: ManifestFile
   name: string | null
@@ -346,6 +348,10 @@ const FilePanel = ({
   fileTo: FileTo & { current: Target | null }
   onOpen: () => void
   onSendBack: () => void
+  /* in Unsorted there is nowhere to send it back to, so the way out is the bin */
+  onTrash?: () => void
+  /* when it was shot, corrected on its own; absent when the file is past changing */
+  onRetime?: (epoch: number) => void
 }) => {
   const video = isVideoFile(file.path)
   return (
@@ -379,7 +385,23 @@ const FilePanel = ({
       </button>
       <Facts
         rows={[
-          ['Shot', `${dateLabel(file.mtime)} ${hhmmss(file.mtime)}`],
+          [
+            'Shot',
+            onRetime ? (
+              <JumpSpan
+                key='shot'
+                from={file.mtime}
+                to={file.mtime}
+                withDate
+                disabled={false}
+                onShift={onRetime}
+                hint='only this file moves — the rest of the jump stays'
+                tip='Wrong time on this one file? Set when it was really shot'
+              />
+            ) : (
+              `${dateLabel(file.mtime)} ${hhmmss(file.mtime)}`
+            )
+          ],
           ['Size', formatSize(file.size)],
           ['In', jumpLabel ?? 'no jump — a loose file'],
           ...(video && proxy
@@ -388,7 +410,13 @@ const FilePanel = ({
                 string
               ][])
             : []),
-          ['Status', <StatusChip status={status} />]
+          [
+            'Status',
+            <StatusChip
+              key='status'
+              status={status}
+            />
+          ]
         ]}
       />
       {locked ? (
@@ -419,11 +447,15 @@ const FilePanel = ({
             onPick={fileTo.onFileTo}
           />
           <span>
-            <Mini onClick={onSendBack}>Send back to Unsorted (⌫)</Mini>
+            {onTrash ? (
+              <Mini onClick={onTrash}>Put in the bin… (⌫)</Mini>
+            ) : (
+              <Mini onClick={onSendBack}>Send back to Unsorted (⌫)</Mini>
+            )}
           </span>
         </Box>
       )}
-      <Hint>Double-click or ↵ opens it · ↑↓ step through · esc clears</Hint>
+      <Hint>Double-click or ↵ opens it · the tick picks it · ↑↓ step through · esc clears</Hint>
     </>
   )
 }
@@ -435,6 +467,7 @@ const ManyPanel = ({
   lockedCount,
   fileTo,
   onSendBack,
+  onTrash,
   onClear
 }: {
   files: ManifestFile[]
@@ -442,6 +475,8 @@ const ManyPanel = ({
   lockedCount: number
   fileTo: FileTo
   onSendBack: () => void
+  /* offered only when every one of them is in Unsorted */
+  onTrash?: () => void
   onClear: () => void
 }) => {
   const videos = files.filter((f) => isVideoFile(f.path)).length
@@ -467,11 +502,17 @@ const ManyPanel = ({
           onPick={fileTo.onFileTo}
         />
         <span className='flex flex-wrap gap-1.5'>
-          <Mini onClick={onSendBack}>Send back to Unsorted (⌫)</Mini>
+          {onTrash ? (
+            <Mini onClick={onTrash}>Put in the bin… (⌫)</Mini>
+          ) : (
+            <Mini onClick={onSendBack}>Send back to Unsorted (⌫)</Mini>
+          )}
           <Mini onClick={onClear}>Clear (esc)</Mini>
         </span>
       </Box>
-      <Hint>⌘/ctrl-click adds one · shift-click takes a range · ⌘A takes them all</Hint>
+      <Hint>
+        The tick or ⌘/ctrl-click picks one · shift-click takes a range · ⌘A takes them all
+      </Hint>
     </>
   )
 }

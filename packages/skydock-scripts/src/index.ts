@@ -5,7 +5,13 @@
    reach the browser bundle. */
 import { boardAnswerSchema, importOutcomeSchema } from './boardAnswer'
 import type { BoardAnswer, ImportOutcome, MontageNote, ScanResult, TandemFact } from './boardAnswer'
-import { groupFromFiles, reclusterGroups, regroupLooseFiles, shiftFiles } from './clustering'
+import {
+  groupFromFiles,
+  reclusterGroups,
+  regroupLooseFiles,
+  retimeFile,
+  shiftFiles
+} from './clustering'
 import { fileChanged, fileStatus, uploadGate } from './fileStatus'
 import type { FileStatus, OutputFact, RemoteListing, StatusContext } from './fileStatus'
 /* arithmetic only — the board draws the rectangle with the same functions processing cuts it with,
@@ -169,6 +175,7 @@ export {
   saveManifest,
   scanMedia,
   scopeKey,
+  retimeFile,
   shiftFiles,
   statProcessedOutputs,
   statProxies,

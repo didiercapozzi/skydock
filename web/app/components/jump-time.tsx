@@ -35,7 +35,9 @@ const JumpSpan = ({
   to,
   withDate,
   disabled,
-  onShift
+  onShift,
+  hint = 'every file in the jump moves with it',
+  tip = 'Wrong camera clock? Set when this jump really started — every file in it moves with it'
 }: {
   from: number
   to: number
@@ -44,6 +46,9 @@ const JumpSpan = ({
   withDate?: boolean
   disabled: boolean
   onShift: (anchorEpoch: number) => void
+  /* what setting it does — the same editor corrects one file, which moves nothing else */
+  hint?: string
+  tip?: string
 }) => {
   const [draft, setDraft] = useState<string | null>(null)
   const show = (at: number) => (withDate ? `${shortDate(at)} ${hhmmss(at)}` : hhmmss(at))
@@ -60,7 +65,7 @@ const JumpSpan = ({
             e.stopPropagation()
             setDraft(toLocalInput(from))
           }}
-          title='Wrong camera clock? Set when this jump really started — every file in it moves with it'
+          title={tip}
           className='cursor-text border-0 bg-transparent p-0 font-mono text-[12.5px] font-semibold text-ink underline decoration-dotted underline-offset-[3px] tabular-nums hover:text-accent disabled:opacity-60'>
           {show(from)}
         </button>
@@ -100,7 +105,7 @@ const JumpSpan = ({
         className='text-[11px] text-ink-3 underline'>
         cancel
       </button>
-      <span className='text-[11px] text-ink-3'>every file in the jump moves with it</span>
+      <span className='text-[11px] text-ink-3'>{hint}</span>
     </span>
   )
 }

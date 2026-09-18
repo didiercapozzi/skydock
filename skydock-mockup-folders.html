@@ -726,6 +726,257 @@
         margin-top: 2px;
         font-size: 11px;
       }
+      /* the file being looked at: outlined, never green — green means picked */
+      .tile.previewed,
+      tr.previewed td {
+        outline: 2px solid var(--ink-3);
+        outline-offset: -2px;
+      }
+      td.tick {
+        cursor: pointer;
+      }
+
+      /* ---------- Unsorted: a ribbon of days, then one filmstrip per jump ---------- */
+      .ribbon {
+        position: sticky;
+        top: 0;
+        z-index: 4;
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        padding: 10px 0 8px;
+        background: var(--ground);
+      }
+      .daytab {
+        flex: none;
+        display: grid;
+        grid-template-columns: auto auto;
+        align-items: baseline;
+        column-gap: 6px;
+        min-width: 118px;
+        padding: 7px 12px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--pane);
+        text-align: left;
+        cursor: pointer;
+      }
+      .daytab .dw {
+        color: var(--ink-3);
+        font-size: 12px;
+      }
+      .daytab .dd {
+        font-weight: 600;
+        font-size: 14px;
+      }
+      .daytab .dn {
+        grid-column: 1 / -1;
+        font-size: 11.5px;
+        color: var(--ink-2);
+      }
+      .daytab .dn b {
+        color: var(--local);
+        font-weight: 600;
+      }
+      .daytab[aria-current='true'] {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+        box-shadow: inset 0 -3px 0 var(--accent);
+      }
+      .daytab[aria-current='true'] .dd {
+        color: var(--accent);
+      }
+      .daytab.over {
+        border-color: var(--pick);
+        background: var(--pick-soft);
+      }
+      .dayhead {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        margin: 6px 0 10px;
+      }
+      .dayhead h2 {
+        margin: 0;
+        font-size: 22px;
+        letter-spacing: -0.01em;
+      }
+      .dayhead .meta {
+        color: var(--ink-3);
+        font-size: 13px;
+      }
+      .strip {
+        margin-bottom: 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--pane);
+        box-shadow: var(--shadow);
+      }
+      .strip.picked {
+        border-color: var(--pick);
+      }
+      .strip-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--line-2);
+      }
+      .strip-head .grip {
+        color: var(--ink-3);
+        cursor: grab;
+      }
+      .strip-head .meta {
+        color: var(--ink-3);
+        font-size: 12px;
+      }
+      .strip-head .spacer,
+      .when-edit .spacer {
+        flex: 1;
+      }
+      .when {
+        font-family: var(--mono);
+        font-size: 15px;
+        font-weight: 600;
+        padding: 2px 8px;
+        border: 1px dashed var(--line);
+        border-radius: 6px;
+        background: var(--ground);
+        cursor: pointer;
+      }
+      .when .pen {
+        color: var(--ink-3);
+        font-size: 12px;
+      }
+      .when:hover {
+        border-color: var(--accent);
+      }
+      .nudge {
+        display: inline-flex;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .nudge button {
+        border: 0;
+        background: var(--pane);
+        padding: 4px 9px;
+        font-size: 12px;
+        color: var(--ink-2);
+        cursor: pointer;
+      }
+      .nudge button + button {
+        border-left: 1px solid var(--line);
+      }
+      .nudge button:hover {
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+      .when-edit {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+        padding: 9px 12px;
+        background: var(--accent-soft);
+        border-bottom: 1px solid var(--line-2);
+        font-size: 12.5px;
+      }
+      .when-edit label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 600;
+      }
+      .when-edit input {
+        font: inherit;
+        font-family: var(--mono);
+        padding: 3px 6px;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+      }
+      .when-edit .meta {
+        color: var(--ink-2);
+        font-weight: 400;
+      }
+      /* rows inside a jump's card: the card is the frame, so the table drops its own */
+      .strip-rows table {
+        border: 0;
+        border-radius: 0 0 10px 10px;
+      }
+      .reel {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        padding: 10px;
+        scroll-snap-type: x proximity;
+      }
+      .frame {
+        position: relative;
+        flex: none;
+        width: 128px;
+        padding: 4px;
+        border: 2px solid transparent;
+        border-radius: 8px;
+        scroll-snap-align: start;
+        cursor: default;
+      }
+      .frame:hover {
+        background: var(--line-2);
+      }
+      .frame.picked {
+        border-color: var(--pick);
+        background: var(--pick-soft);
+      }
+      .frame.previewed {
+        outline: 2px solid var(--ink-3);
+        outline-offset: -2px;
+      }
+      .frame .thumb,
+      .frame .thumb.turned {
+        transform: none;
+        width: 100%;
+        height: 72px;
+      }
+      .frame .ft {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 3px;
+        font-size: 11px;
+        color: var(--ink-2);
+      }
+      .frame .mono {
+        font-family: var(--mono);
+      }
+      /* the tick is a button of its own: it shows under the pointer, and always once picked */
+      .frame .tick {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 0;
+        display: grid;
+        place-items: center;
+        font-size: 11px;
+        font-weight: 700;
+        color: transparent;
+        background: rgba(0, 0, 0, 0.25);
+        box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.9);
+        opacity: 0;
+        cursor: pointer;
+      }
+      .frame:hover .tick,
+      .frame.picked .tick {
+        opacity: 1;
+      }
+      .frame.picked .tick {
+        color: #fff;
+        background: var(--pick);
+      }
 
       .empty {
         border: 1px dashed var(--line);
@@ -945,9 +1196,11 @@
               Dropzones, Tandems, Storage. Each says how much of it is still to do.
             </li>
             <li>
-              <b>Everything in the folder is on screen</b>, grouped by jump, by day or as one list —
-              one button each in the heading — with headers that stay put while you scroll. Files
-              are always in the order shot. No day toggles, no folded jumps, no chips.
+              <b>Unsorted is one day at a time.</b> The days sit in a ribbon of tabs across the top,
+              the open one written large, so which day you are on is never in doubt. Each jump is a
+              filmstrip, read left to right in the order shot. <b>A wrong date is one click</b>:
+              <i>◀ day before</i> / <i>day after ▶</i>, or click the jump's time to type the day and
+              time — or drag the jump onto another day's tab.
             </li>
             <li>
               <b>Filing is one click</b> from a jump's own header (<i>File to ▾</i>), or a drag onto
@@ -1144,6 +1397,10 @@
         /* each kind of place remembers its own way of grouping, as the app does */
         group: { cam: 'jump', dz: 'day', pax: 'jump' },
         kind: 'all',
+        /* the file being looked at — a click looks, the tick picks, a double-click opens */
+        preview: null,
+        /* the jump whose date and time are open for correcting */
+        editing: null,
         picked: new Set(),
         pickedJump: null,
         query: '',
@@ -1177,6 +1434,19 @@
       const shortDay = (iso) => {
         const [, m, d] = iso.split('-').map(Number)
         return `${d} ${MONTHS[m - 1].slice(0, 3)}`
+      }
+      const longDay = (iso) => {
+        const [y, m, d] = iso.split('-').map(Number)
+        const weekday = new Date(y, m - 1, d).toLocaleDateString('en-GB', { weekday: 'long' })
+        return `${weekday} ${d} ${MONTHS[m - 1]} ${y}`
+      }
+      const weekdayShort = (iso) => {
+        const [y, m, d] = iso.split('-').map(Number)
+        return new Date(y, m - 1, d).toLocaleDateString('en-GB', { weekday: 'short' })
+      }
+      const isoOf = (t) => {
+        const d = new Date(t * 1000)
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
       }
       const gb = (n) => (n >= 1 ? `${n.toFixed(1)} GB` : `${Math.round(n * 1000)} MB`)
       const fold = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, '_')
@@ -1256,6 +1526,62 @@
         toast.h = setTimeout(() => t.classList.remove('on'), 2200)
       }
 
+      /* unsorted files nobody wants: warned, then moved to the bin — never erased */
+      const trash = (ids) => {
+        const files = ids.map(fileById).filter(Boolean)
+        const ok = confirm(
+          `Put ${files.length} file${files.length === 1 ? '' : 's'} (${gb(files.reduce((n, f) => n + f.size, 0))}) in the bin?\n\nThese are originals nobody has been given yet. They leave the board and are moved to output/.trash/ — only taken back out by hand.`
+        )
+        if (!ok) return
+        for (const j of data.jumps) j.files = j.files.filter((f) => !ids.includes(f.id))
+        data.jumps = data.jumps.filter((j) => j.files.length)
+        data.loose = data.loose.filter((f) => !ids.includes(f.id))
+        state.picked.clear()
+        state.preview = null
+        toast(`${files.length} in the bin`)
+        render()
+      }
+
+      /* the days Unsorted has something on, newest first — one tab each in the ribbon */
+      const unsortedDays = () =>
+        [...new Set([...jumpsIn('cam').map((j) => j.day), ...looseIn('cam').map((f) => f.day)])]
+          .sort()
+          .reverse()
+      const openDay = () => {
+        const days = unsortedDays()
+        const asked = state.folder.startsWith('cam:') ? state.folder.slice(4) : null
+        return asked && days.includes(asked) ? asked : days[0]
+      }
+
+      /* A camera with its clock wrong is wrong for everything it shot, so a jump moves whole:
+         every file by the same amount, their order untouched. */
+      const retimeJump = (jumpId, by) => {
+        const j = data.jumps.find((x) => x.id === jumpId)
+        state.editing = null
+        if (!j || !by) return render()
+        const from = j.day
+        j.t += by
+        for (const f of j.files) f.t += by
+        j.day = isoOf(j.t)
+        if (j.day === from) toast(`Now starts at ${hhmm(j.t)} — every file moved with it`)
+        else {
+          toast(`Moved to ${longDay(j.day)}`)
+          /* the day it left has nothing left to show: follow the jump there */
+          if (!jumpsIn(`cam:${from}`).length && !looseIn(`cam:${from}`).length)
+            state.folder = `cam:${j.day}`
+        }
+        render()
+      }
+      /* dropped on another day's tab: same time of day, that day */
+      const moveJumpToDay = (jumpId, iso) => {
+        const j = data.jumps.find((x) => x.id === jumpId)
+        if (!j || j.day === iso) return
+        const [y, m, d] = iso.split('-').map(Number)
+        const [fy, fm, fd] = j.day.split('-').map(Number)
+        const days = Math.round((new Date(y, m - 1, d) - new Date(fy, fm - 1, fd)) / 86400000)
+        retimeJump(jumpId, days * 86400)
+      }
+
       /* ---------- filing: one move, wherever it starts from ---------- */
       const fileJump = (jumpId, place) => {
         const j = data.jumps.find((x) => x.id === jumpId)
@@ -1298,6 +1624,7 @@
         }
         data.jumps = data.jumps.filter((j) => j.files.length > 0)
         state.picked.clear()
+        state.preview = null
         toast(`${ids.length} file${ids.length === 1 ? '' : 's'} moved`)
         render()
       }
@@ -1307,26 +1634,18 @@
         const c = counts(files)
         const total = files.length || 1
         const w = (n) => `${(n / total) * 100}%`
-        return `<button class="node ${child ? 'child' : ''}" data-folder="${key}" aria-current="${state.folder === key}" draggable="false">
+        /* Unsorted stays lit whichever of its days is open — the days are in the ribbon, not here */
+        const here = state.folder === key || (key === 'cam' && state.folder.startsWith('cam:'))
+        return `<button class="node ${child ? 'child' : ''}" data-folder="${key}" aria-current="${here}" draggable="false">
     <span class="row"><span class="glyph">${glyph}</span><span class="name">${name}</span>${todo ? `<span class="todo">${todo} to do</span>` : ''}<span class="n">${files.length}</span></span>
     ${files.length ? `<span class="bar"><i class="l" style="width:${w(c.local)}"></i><i class="p" style="width:${w(c.proc)}"></i><i class="u" style="width:${w(c.up)}"></i></span>` : ''}
   </button>`
       }
       const renderTree = () => {
-        const camDays = [
-          ...new Set(
-            jumpsIn('cam')
-              .map((j) => j.day)
-              .concat(looseIn('cam').map((f) => f.day))
-          )
-        ]
-          .sort()
-          .reverse()
         const unnamed = data.jumps.filter((j) => j.place === 'pax:')
         document.getElementById('tree').innerHTML = `
     <h2>Cameras</h2>
     ${node('cam', '▤', 'Unsorted', filesIn('cam'), { todo: jumpsIn('cam').length })}
-    ${camDays.map((d) => node(`cam:${d}`, '·', dayLabel(d), filesIn(`cam:${d}`), { child: true, todo: jumpsIn(`cam:${d}`).length })).join('')}
     <h2>Dropzones</h2>
     ${dropzones()
       .map((dz) => {
@@ -1356,6 +1675,7 @@
           el.addEventListener('click', () => {
             state.folder = el.dataset.folder
             state.picked.clear()
+            state.preview = null
             state.pickedJump = null
             state.query = ''
             render()
@@ -1398,7 +1718,8 @@
 
       /* ---------- crumbs and the folder's one next step ---------- */
       /* what each kind of place can be grouped by — the same table the app uses */
-      const GROUPINGS = { cam: ['jump', 'day', 'none'], dz: ['day', 'none'], pax: ['jump', 'none'] }
+      /* Unsorted is always one day at a time, chosen in the ribbon, so it has no "by day" of its own */
+      const GROUPINGS = { cam: ['jump', 'none'], dz: ['day', 'none'], pax: ['jump', 'none'] }
       const GROUP_LABEL = { jump: 'By jump', day: 'By day', none: 'One list' }
       const familyOf = (key) => key.split(':')[0]
       const groupingOf = (key) => {
@@ -1410,7 +1731,7 @@
         key === 'cam'
           ? 'Unsorted'
           : key.startsWith('cam:')
-            ? dayLabel(key.slice(4))
+            ? 'Unsorted'
             : key === 'dz'
               ? 'Dropzones'
               : key === 'pax'
@@ -1485,8 +1806,9 @@
       }
       const renderCrumbs = () => {
         const key = state.folder
+        /* Unsorted's day is said by the ribbon and the big date, not by a breadcrumb */
         const parent = key.startsWith('cam:')
-          ? ['cam', 'Unsorted']
+          ? null
           : key.startsWith('dz:')
             ? ['dz', 'Dropzones']
             : key.startsWith('pax:')
@@ -1529,6 +1851,7 @@
         document.querySelector('[data-go]')?.addEventListener('click', (e) => {
           state.folder = e.target.dataset.go
           state.picked.clear()
+          state.preview = null
           state.pickedJump = null
           render()
         })
@@ -1593,6 +1916,7 @@
         el.querySelector('[data-pick-first]')?.addEventListener('click', () => {
           state.pickedJump = jumpsIn(key)[0]?.id ?? null
           state.picked.clear()
+          state.preview = null
           render()
           document.querySelector('.grp.picked')?.scrollIntoView({ block: 'start' })
         })
@@ -1624,8 +1948,8 @@
         const edits = [f.trim ? '⟷' : '', f.frame ? '▭' : '', f.turned ? '↻90' : '']
           .filter(Boolean)
           .join(' ')
-        return `<tr data-file="${f.id}" class="${state.picked.has(f.id) ? 'picked' : ''}" draggable="true">
-    <td class="tick">${state.picked.has(f.id) ? '✓' : '○'}</td>
+        return `<tr data-file="${f.id}" class="${state.picked.has(f.id) ? 'picked' : ''} ${state.preview === f.id ? 'previewed' : ''}" draggable="true">
+    <td class="tick" data-tick="${f.id}" title="Pick">${state.picked.has(f.id) ? '✓' : '○'}</td>
     <td><span class="thumb ${f.kind} ${f.turned ? 'turned' : ''}">${f.kind === 'video' ? '▶' : '▣'}</span></td>
     <td class="name">${name ? `<div class="fn">${name}</div><div class="cam">${f.cam}</div>` : `<div class="fn">${f.cam}</div>`}</td>
     <td class="mono">${hhmm(f.t)}</td>
@@ -1636,7 +1960,7 @@
       }
       const tile = (f, j) => {
         const [cls, word] = STATUS[statusOf(f, j)]
-        return `<div class="tile ${state.picked.has(f.id) ? 'picked' : ''}" data-file="${f.id}" draggable="true">
+        return `<div class="tile ${state.picked.has(f.id) ? 'picked' : ''} ${state.preview === f.id ? 'previewed' : ''}" data-file="${f.id}" draggable="true">
     <span class="thumb ${f.kind} ${f.turned ? 'turned' : ''}">${f.kind === 'video' ? '▶' : '▣'}</span>
     <div class="fn">${copyName(f, j) ?? f.cam}</div><span class="st ${cls}"><i></i>${word}</span></div>`
       }
@@ -1674,6 +1998,139 @@
         return `<div class="grp day" data-day="${d}"><span class="t">${dayLabel(d)}</span><span class="meta">${files.length} files</span>${c.local ? `<span class="tag local">${c.local} to process</span>` : c.proc ? `<span class="tag proc">${c.proc} to upload</span>` : `<span class="tag up">all uploaded</span>`}</div>`
       }
 
+      /* ---------- Unsorted: one day at a time, each jump a filmstrip ---------- */
+      const frame = (f, j) => {
+        const [cls, word] = STATUS[statusOf(f, j)]
+        const picked = state.picked.has(f.id)
+        return `<div class="frame ${picked ? 'picked' : ''} ${state.preview === f.id ? 'previewed' : ''}" data-file="${f.id}" draggable="true" title="${f.cam} · ${word}">
+    <span class="thumb ${f.kind} ${f.turned ? 'turned' : ''}">${f.kind === 'video' ? '▶' : '▣'}</span>
+    <button class="tick" data-tick="${f.id}" aria-pressed="${picked}" aria-label="${picked ? 'Unpick' : 'Pick'}">✓</button>
+    <span class="ft"><span class="mono">${hhmm(f.t).slice(0, 5)}</span><span class="st ${cls}"><i></i></span></span>
+  </div>`
+      }
+      /* a jump's files as the header's switch says: rows down the page, or a filmstrip across it */
+      const film = (files, j) =>
+        state.view === 'list'
+          ? `<div class="strip-rows">${table(files, j)}</div>`
+          : `<div class="reel">${[...files]
+              .sort((a, b) => a.t - b.t)
+              .map((f) => frame(f, j))
+              .join('')}</div>`
+
+      const whenEditor = (j) => `<div class="when-edit">
+    <label>Day <input type="date" id="whenDay" value="${j.day}" /></label>
+    <label>Starts <input type="time" step="1" id="whenTime" value="${hhmm(j.t)}" /></label>
+    <span class="meta">Every file of the jump moves by the same amount; their order stays.</span>
+    <span class="spacer"></span>
+    <button class="btn mini" data-when-cancel>Cancel</button>
+    <button class="btn go" data-when-save="${j.id}">Move the jump</button>
+  </div>`
+
+      const stripOf = (j, n) => {
+        const c = counts(j.files)
+        const vids = j.files.filter((f) => f.kind === 'video').length
+        return `<section class="strip ${state.pickedJump === j.id ? 'picked' : ''}">
+    <div class="strip-head" data-jump="${j.id}" draggable="true">
+      <span class="grip" title="Drag onto a day above to move it there, or onto a folder to file it">⠿</span>
+      <button class="when" data-when="${j.id}" title="Correct the day or the time">${hhmm(j.t).slice(0, 5)} <span class="pen">✎</span></button>
+      <b>Jump ${n}</b>
+      <span class="meta">${vids} videos · ${j.files.length - vids} photos</span>
+      ${c.local ? `<span class="tag local">${c.local} to process</span>` : ''}
+      <span class="spacer"></span>
+      <span class="nudge" role="group" aria-label="Move by a day">
+        <button data-shift="${j.id}" data-by="-86400" title="The camera was a day ahead">◀ day before</button>
+        <button data-shift="${j.id}" data-by="86400" title="The camera was a day behind">day after ▶</button>
+      </span>
+      <label class="file-to"><span class="meta">File to</span><select class="tool" data-file-jump="${j.id}">${placeOptions(j.place)}</select></label>
+    </div>
+    ${state.editing === j.id ? whenEditor(j) : ''}
+    ${film(j.files, j)}
+  </section>`
+      }
+
+      const dayView = (matches, g) => {
+        const days = unsortedDays()
+        if (!days.length)
+          return `<div class="empty">Nothing left to sort. Copy more cameras off and rescan.</div>`
+        const d = openDay()
+        const tabs = days
+          .map((x) => {
+            const n = filesIn(`cam:${x}`).length
+            const todo = jumpsIn(`cam:${x}`).length
+            return `<button class="daytab" data-daytab="${x}" aria-current="${x === d}">
+      <span class="dw">${weekdayShort(x)}</span><span class="dd">${shortDay(x)}</span>
+      <span class="dn">${n} files${todo ? ` · <b>${todo} to file</b>` : ''}</span></button>`
+          })
+          .join('')
+        const js = jumpsIn(`cam:${d}`)
+          .map((j) => ({ ...j, files: j.files.filter((f) => matches(f, j)) }))
+          .filter((j) => j.files.length)
+          .sort((a, b) => a.t - b.t)
+        const ls = looseIn(`cam:${d}`).filter((f) => !f.ghost && matches(f, null))
+        const all = [...js.flatMap((j) => j.files), ...ls]
+        const size = all.reduce((n, f) => n + f.size, 0)
+        const body = !all.length
+          ? `<div class="empty">Nothing on this day matches that.</div>`
+          : g === 'none'
+            ? film(all, null)
+            : js
+                .map((j) =>
+                  stripOf(
+                    j,
+                    jumpsIn(`cam:${d}`)
+                      .sort((a, b) => a.t - b.t)
+                      .findIndex((x) => x.id === j.id) + 1
+                  )
+                )
+                .join('') +
+              (ls.length
+                ? `<section class="strip"><div class="strip-head"><b>Loose files</b><span class="meta">in no jump</span></div>${film(ls, null)}</section>`
+                : '')
+        return `<div class="ribbon" role="tablist" aria-label="Days">${tabs}</div>
+  <div class="dayhead"><h2>${longDay(d)}</h2><span class="meta">${js.length} jumps · ${all.length} files · ${gb(size)}</span></div>
+  ${body}`
+      }
+
+      /* the ribbon and the date controls: choosing a day, dropping a jump on one, correcting one */
+      const wireDay = (el) => {
+        for (const t of el.querySelectorAll('[data-daytab]')) {
+          t.addEventListener('click', () => {
+            state.folder = `cam:${t.dataset.daytab}`
+            state.preview = null
+            state.editing = null
+            render()
+          })
+          t.addEventListener('dragover', (e) => {
+            e.preventDefault()
+            t.classList.add('over')
+          })
+          t.addEventListener('dragleave', () => t.classList.remove('over'))
+          t.addEventListener('drop', (e) => {
+            e.preventDefault()
+            const carried = JSON.parse(e.dataTransfer.getData('text/plain') || '{}')
+            if (carried.jump) moveJumpToDay(carried.jump, t.dataset.daytab)
+          })
+        }
+        for (const b of el.querySelectorAll('[data-shift]'))
+          b.addEventListener('click', () => retimeJump(b.dataset.shift, Number(b.dataset.by)))
+        for (const b of el.querySelectorAll('[data-when]'))
+          b.addEventListener('click', () => {
+            state.editing = state.editing === b.dataset.when ? null : b.dataset.when
+            renderFiles()
+          })
+        el.querySelector('[data-when-cancel]')?.addEventListener('click', () => {
+          state.editing = null
+          renderFiles()
+        })
+        el.querySelector('[data-when-save]')?.addEventListener('click', (e) => {
+          const j = data.jumps.find((x) => x.id === e.currentTarget.dataset.whenSave)
+          const [y, m, d] = document.getElementById('whenDay').value.split('-').map(Number)
+          const [hh, mm, ss = 0] = document.getElementById('whenTime').value.split(':').map(Number)
+          const to = new Date(y, m - 1, d, hh, mm, ss).getTime() / 1000
+          retimeJump(j.id, Math.round(to - j.t))
+        })
+      }
+
       const renderFiles = () => {
         const key = state.folder
         const el = document.getElementById('files')
@@ -1686,6 +2143,12 @@
         const matches = (f, j) =>
           (state.kind === 'all' || f.kind === state.kind) &&
           (!q || f.cam.toLowerCase().includes(q) || (copyName(f, j) ?? '').includes(q))
+        if (familyOf(key) === 'cam') {
+          el.innerHTML = dayView(matches, g)
+          wireFiles(el)
+          wireDay(el)
+          return
+        }
         let js = jumpsIn(key)
           .map((j) => ({ ...j, files: j.files.filter((f) => matches(f, j)) }))
           .filter((j) => j.files.length)
@@ -1715,11 +2178,22 @@
               table(ls, null)
         }
         el.innerHTML = html
+        wireFiles(el)
+      }
+
+      /* every file and jump on screen: a click looks, the tick picks, a double-click opens */
+      const wireFiles = (el) => {
+        for (const t of el.querySelectorAll('[data-tick]'))
+          t.addEventListener('click', (e) => {
+            e.stopPropagation()
+            togglePick(t.dataset.tick)
+          })
         for (const r of el.querySelectorAll('[data-file]')) {
           r.addEventListener('click', (e) => pick(r.dataset.file, e))
-          r.addEventListener('dblclick', () =>
-            toast('Opens the cropper: trim, frame, turn — Save when done')
-          )
+          r.addEventListener('dblclick', (e) => {
+            if (!e.target.closest('[data-tick]'))
+              toast('Opens the cropper: trim, frame, turn — Save when done')
+          })
           r.addEventListener('dragstart', (e) => {
             const ids = state.picked.has(r.dataset.file) ? [...state.picked] : [r.dataset.file]
             e.dataTransfer.setData('text/plain', JSON.stringify({ files: ids }))
@@ -1742,6 +2216,7 @@
             if (v === 'pax:new') {
               state.pickedJump = s.dataset.fileJump
               state.picked.clear()
+              state.preview = null
               fileJump(s.dataset.fileJump, 'pax:')
               state.pickedJump = s.dataset.fileJump
               render()
@@ -1757,18 +2232,29 @@
           const ids = [...document.querySelectorAll('[data-file]')].map((r) => r.dataset.file)
           const [a, b] = [ids.indexOf(pick.anchor), ids.indexOf(id)].sort((x, y) => x - y)
           for (const x of ids.slice(a, b + 1)) state.picked.add(x)
+          state.preview = null
         } else if (e.metaKey || e.ctrlKey) {
           state.picked.has(id) ? state.picked.delete(id) : state.picked.add(id)
+          state.preview = null
         } else {
-          state.picked.clear()
-          state.picked.add(id)
+          /* a plain click only looks — nothing is picked on the way to looking */
+          state.preview = id
         }
+        pick.anchor = id
+        renderFiles()
+        renderInspector()
+      }
+      const togglePick = (id) => {
+        state.pickedJump = null
+        state.picked.has(id) ? state.picked.delete(id) : state.picked.add(id)
+        state.preview = null
         pick.anchor = id
         renderFiles()
         renderInspector()
       }
       const pickJump = (id) => {
         state.picked.clear()
+        state.preview = null
         state.pickedJump = state.pickedJump === id ? null : id
         renderFiles()
         renderInspector()
@@ -1790,8 +2276,10 @@
       const renderInspector = () => {
         const el = document.getElementById('inspector')
         const key = state.folder
-        if (state.picked.size === 1) {
-          const id = [...state.picked][0]
+        /* the file looked at, or else the one picked — whichever was done last */
+        const look = state.preview ?? (state.picked.size === 1 ? [...state.picked][0] : null)
+        if (look && fileById(look)) {
+          const id = look
           const f = fileById(id)
           const j = jumpOf(id)
           const [cls, word] = STATUS[statusOf(f, j)]
@@ -1807,9 +2295,9 @@
       <div class="step"><h4>Picture</h4><p>Trim ${f.trim ? 'set' : '—'} · frame ${f.frame ? 'set' : 'whole'} · turn ${f.turned ? '90°' : 'as shot'}</p>
         <div class="actions"><button class="btn" onclick="toast('Opens the cropper on this file')">Crop / turn…</button><button class="btn mini" onclick="toast('Turned a quarter clockwise — the copy is now out of date')">↻ 90°</button></div></div>
       <div class="step"><h4>Move</h4><label class="field">File to<select class="tool" id="fileOne">${placeOptions(j?.place ?? f.place)}</select></label>
-        <div class="actions" style="margin-top:6px"><button class="btn mini" onclick="fileFiles(['${id}'], null)">Send back to Unsorted (⌫)</button></div></div>`
+        <div class="actions" style="margin-top:6px">${familyOf(key) === 'cam' ? `<button class="btn mini" onclick="trash(['${id}'])">Put in the bin… (⌫)</button>` : `<button class="btn mini" onclick="fileFiles(['${id}'], null)">Send back to Unsorted (⌫)</button>`}</div></div>`
       }
-      <div class="hint">Double-click a file to open it · <span class="kbd">↑↓</span> to step through</div>`
+      <div class="hint">Click looks · the tick picks · double-click or <span class="kbd">↵</span> opens · <span class="kbd">↑↓</span> steps through</div>`
           el.querySelector('#fileOne')?.addEventListener('change', (e) =>
             fileFiles([id], e.target.value || null)
           )
@@ -1822,7 +2310,7 @@
           el.innerHTML = `<h3>${ids.length} files selected</h3><div class="sub">${files.filter((f) => f.kind === 'video').length} videos · ${files.filter((f) => f.kind === 'photo').length} photos · ${gb(files.reduce((n, f) => n + f.size, 0))}</div>
       <dl class="facts"><dt>Local</dt><dd>${c.local}</dd><dt>Processed</dt><dd>${c.proc}</dd><dt>Uploaded</dt><dd>${c.up}</dd></dl>
       <div class="step"><h4>Move them</h4><label class="field">File to<select class="tool" id="fileMany">${placeOptions(undefined)}</select></label>
-        <div class="actions" style="margin-top:6px"><button class="btn mini" onclick="fileFiles(${JSON.stringify(ids)}, null)">Send back to Unsorted (⌫)</button><button class="btn mini" onclick="toast('Given to every file: the frame and the turn')">Same frame and turn…</button></div></div>
+        <div class="actions" style="margin-top:6px">${familyOf(key) === 'cam' ? `<button class="btn mini" onclick='trash(${JSON.stringify(ids)})'>Put in the bin… (⌫)</button>` : `<button class="btn mini" onclick='fileFiles(${JSON.stringify(ids)}, null)'>Send back to Unsorted (⌫)</button>`}<button class="btn mini" onclick="toast('Given to every file: the frame and the turn')">Same frame and turn…</button></div></div>
       <div class="hint"><span class="kbd">esc</span> clears the selection</div>`
           el.querySelector('#fileMany').addEventListener('change', (e) =>
             fileFiles(ids, e.target.value || null)
@@ -1913,6 +2401,7 @@
         const cur = pick.anchor ? ids.indexOf(pick.anchor) : -1
         if (e.key === 'Escape') {
           state.picked.clear()
+          state.preview = null
           state.pickedJump = null
           renderFiles()
           renderInspector()
@@ -1924,10 +2413,15 @@
             pick(n, e)
             document.querySelector(`[data-file="${n}"]`)?.scrollIntoView({ block: 'nearest' })
           }
-        } else if (e.key === 'Enter' && state.picked.size === 1) toast('Opens the cropper')
-        else if ((e.key === 'Backspace' || e.key === 'Delete') && state.picked.size) {
+        } else if (e.key === 'Enter' && (state.preview || state.picked.size === 1))
+          toast('Opens the cropper')
+        else if (e.key === 'Backspace' || e.key === 'Delete') {
+          const ids = state.picked.size ? [...state.picked] : state.preview ? [state.preview] : []
+          if (!ids.length) return
           e.preventDefault()
-          fileFiles([...state.picked], null)
+          /* in Unsorted there is nowhere further back: the way out is the bin, with a warning */
+          if (familyOf(state.folder) === 'cam') trash(ids)
+          else fileFiles(ids, null)
         } else if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
           e.preventDefault()
           for (const id of ids) state.picked.add(id)

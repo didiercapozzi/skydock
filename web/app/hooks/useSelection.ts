@@ -3,9 +3,9 @@ import type { Modifiers } from '../components/file-list'
 import type { ManifestFile } from '../components/types'
 
 /* Looking and picking are two different things. A click only looks: the file shows in the
-   inspector and nothing is picked. A file is picked by its tick, by a double-click, by ⌘/ctrl-click,
-   or with shift for a range — so a picked set is never started by accident on the way to looking at
-   something. Enter opens what is being looked at. A jump can be selected instead, by its line. The
+   inspector and nothing is picked. A file is picked by its tick, by ⌘/ctrl-click, or with shift for
+   a range — so a picked set is never started by accident on the way to looking at something. A
+   double-click, or Enter, opens it in the cropper. A jump can be selected instead, by its line. The
    arrow keys step the look through the files in the order they are drawn (shift adds them to the
    picks), Escape clears, Delete sends the picks — or, with none, the file looked at — back to
    Unsorted, and ⌘A picks every file on screen. Two jumps can be put side by side to compare. */

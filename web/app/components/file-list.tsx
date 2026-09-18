@@ -27,9 +27,9 @@ type Props = {
   /* where each clip's proxy has got to, keyed by the clip's path — read off the disk by the
      server, because the record alone cannot know someone emptied the folder */
   proxies: Record<string, ProxyFact>
-  /* a click looks at a file, with modifiers it picks; Enter opens the file looked at */
+  /* a click looks at a file, with modifiers it picks; a double-click or Enter opens it */
   onFile: (file: ManifestFile, lane: ManifestFile[], e: Modifiers) => void
-  /* the tick, or a double-click: the one plain way to pick a file */
+  /* the tick: the one plain way to pick a file */
   onPick: (file: ManifestFile) => void
   onOpen: (file: ManifestFile) => void
   /* the file being looked at, which is shown apart from the picked ones */
@@ -276,7 +276,7 @@ const Row = ({
     draggable={!locked}
     onDragStart={locked ? undefined : (e) => onDragFile(file, e)}
     onClick={(e) => onFile(file, lane, e)}
-    onDoubleClick={() => onPick(file)}
+    onDoubleClick={() => onOpen(file)}
     onKeyDown={(e) => {
       if (e.key === 'Enter') {
         e.preventDefault()
@@ -408,7 +408,7 @@ const Tile = ({
     draggable={!locked}
     onDragStart={locked ? undefined : (e) => onDragFile(file, e)}
     onClick={(e) => onFile(file, lane, e)}
-    onDoubleClick={() => onPick(file)}
+    onDoubleClick={() => onOpen(file)}
     onKeyDown={(e) => {
       if (e.key === 'Enter') {
         e.preventDefault()

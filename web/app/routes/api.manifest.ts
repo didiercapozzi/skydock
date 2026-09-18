@@ -15,8 +15,10 @@ import { openMontage } from './manifest/open-montage'
 import { processIntent, processWait } from './manifest/process'
 import { regroupLoose } from './manifest/regroup-loose'
 import { saveGroups } from './manifest/save-groups'
+import { retimeFileIntent } from './manifest/retime-file'
 import { shiftGroupTime } from './manifest/shift-group-time'
 import { deleteTandemIntent, resetTandemIntent } from './manifest/take-back'
+import { trashUnsortedIntent } from './manifest/trash-unsorted'
 import { uploadGroup } from './manifest/upload-group'
 import { uploadTandemIntent } from './manifest/upload-tandem'
 
@@ -32,8 +34,10 @@ const intents: Record<ActionData['intent'], Intent> = {
   montage,
   'upload-tandem': uploadTandemIntent,
   'shift-group-time': shiftGroupTime,
+  'retime-file': retimeFileIntent,
   'move-files': moveFilesIntent,
   'regroup-loose': regroupLoose,
+  'trash-unsorted': trashUnsortedIntent,
   'reset-tandem': resetTandemIntent,
   'delete-tandem': deleteTandemIntent,
   'free-tandem': freeTandemIntent,
