@@ -1,0 +1,22 @@
+import { z } from 'zod'
+
+/* What a folder on the storage holds, as the board is told it. Kept apart from the code that asks
+   the storage, so the board can read the answer without carrying any of that with it. */
+const storageFileSchema = z.object({
+  name: z.string(),
+  path: z.string(),
+  size: z.number().nullable(),
+  mtime: z.number().nullable(),
+  kind: z.enum(['video', 'photo', 'other'])
+})
+
+const storageFolderSchema = z.discriminatedUnion('ok', [
+  z.object({ ok: z.literal(true), dir: z.string(), files: z.array(storageFileSchema) }),
+  z.object({ ok: z.literal(false), reason: z.string() })
+])
+
+type StorageFile = z.infer<typeof storageFileSchema>
+type StorageFolder = z.infer<typeof storageFolderSchema>
+
+export { storageFileSchema, storageFolderSchema }
+export type { StorageFile, StorageFolder }

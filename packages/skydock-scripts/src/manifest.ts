@@ -165,4 +165,4 @@ const saveManifest = (manifestPath: string, manifest: Manifest) => {
   writeJsonAtomic(manifestPath, raw)
 }
 
-export { loadManifest, saveManifest, statProcessedOutputs }
+export { getGroupsPath, loadManifest, saveManifest, statProcessedOutputs }

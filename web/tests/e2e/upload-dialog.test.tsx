@@ -359,7 +359,7 @@ describe('emailing the passenger their link', () => {
   })
 })
 
-/* The storage's own list of tandems, on the Tandems page: every tandem up there — this machine's
+/* The storage's own list of tandems, under On the storage: every tandem up there — this machine's
    and the ones it no longer has — with whether the passenger was emailed, and a way to say so. */
 describe('the tandems on the storage', () => {
   const DIR = '/SkyDock/Tandems'
@@ -388,9 +388,9 @@ describe('the tandems on the storage', () => {
   test('lists a tandem this machine no longer has, and whether its passenger was emailed', async () => {
     await renderBoard(listed, false)
     await userEvent.click(
-      page.getByRole('navigation', { name: 'Folders' }).getByRole('button', { name: /In progress/ })
+      page.getByRole('navigation', { name: 'Folders' }).getByRole('button', { name: /On the storage/ })
     )
-    await expect.element(page.getByText('On the storage')).toBeInTheDocument()
+    await expect.element(page.getByRole('region', { name: 'On the storage' })).toBeInTheDocument()
     await expect.element(page.getByText('Ana Roth')).toBeInTheDocument()
     await expect.element(page.getByText('not emailed', { exact: true })).toBeInTheDocument()
     await expect.element(page.getByText('🔒 storage only')).toBeInTheDocument()
@@ -400,7 +400,7 @@ describe('the tandems on the storage', () => {
     requests.length = 0
     await renderBoard(listed, false)
     await userEvent.click(
-      page.getByRole('navigation', { name: 'Folders' }).getByRole('button', { name: /In progress/ })
+      page.getByRole('navigation', { name: 'Folders' }).getByRole('button', { name: /On the storage/ })
     )
     await userEvent.click(page.getByRole('button', { name: 'Email…' }))
     const dialog = page.getByRole('dialog', { name: 'Email the passenger' })
@@ -444,11 +444,33 @@ describe('where every passenger has got to', () => {
     await expect.element(trail.getByText('Rendered — done')).toBeInTheDocument()
   })
 
-  test('marks the tandem’s card with the same step', async () => {
+  /* a passenger with two jumps has a card for each, and each says its own step */
+  test('marks each of a passenger’s tandem cards with its step', async () => {
+    const second = {
+      ...board.groups[0],
+      id: 'g2',
+      processed: false,
+      files: [{ ...files[0], id: 'v9', path: '/workspace/output/original_files/x/GX019999.MP4' }]
+    }
+    await renderBoard({ ...board, groups: [...board.groups, second] }, false)
+
+    const cards = page.getByRole('button', { name: /^Luc Favre, / })
+    await expect.poll(() => cards.elements().map((c) => c.textContent)).toEqual([
+      expect.stringContaining('to upload'),
+      expect.stringContaining('to process')
+    ])
+  })
+
+  /* a passenger with one tandem is that tandem: no card repeats what the panel says */
+  test('draws no card for a passenger’s only tandem, whose panel is already open', async () => {
     await renderBoard(board, false)
 
-    const card = page.getByRole('button', { name: /^Luc Favre, / })
-    await expect.poll(() => card.element().textContent).toContain('to upload')
+    await expect.element(page.getByRole('button', { name: /^Luc Favre, / })).not.toBeInTheDocument()
+    await expect
+      .element(page.getByRole('list', { name: 'Where this tandem has got to' }))
+      .toBeInTheDocument()
+    /* the panel's own way of acting on it is there without selecting anything */
+    await expect.element(page.getByRole('button', { name: /Select its 3 files/ })).toBeInTheDocument()
   })
 })
 
@@ -491,7 +513,7 @@ describe('a tandem with nothing left to do', () => {
     const Stub = createRoutesStub([{ path: '/', Component: Board, loader: () => freed(true) }])
     await render(createElement(Stub, { initialEntries: ['/'] }))
 
-    await expect.element(menu().getByRole('button', { name: /In progress/ })).toBeInTheDocument()
+    await expect.element(menu().getByRole('heading', { name: /Tandems/ })).toBeInTheDocument()
     await expect.element(menu().getByRole('button', { name: /Luc Favre/ })).not.toBeInTheDocument()
     /* still there, where every tandem on the storage is */
     await expect.poll(() => menu().element().textContent).toContain('On the storage')
@@ -504,5 +526,83 @@ describe('a tandem with nothing left to do', () => {
 
     const luc = menu().getByRole('button', { name: /Luc Favre/ })
     await expect.poll(() => luc.element().textContent).toContain('to email')
+  })
+})
+
+/* There is no page of every tandem: a tandem is worked on one passenger at a time. The Tandems
+   heading is where a jump is dropped to become one, and a click on it goes nowhere. */
+describe('the tandems in the menu', () => {
+  test('offers no overall view, only the passengers', async () => {
+    await renderBoard(board, false)
+    const menu = page.getByRole('navigation', { name: 'Folders' })
+
+    await expect.element(menu.getByRole('heading', { name: /Tandems/ })).toBeInTheDocument()
+    await expect.element(menu.getByRole('button', { name: /In progress/ })).not.toBeInTheDocument()
+    await expect.element(menu.getByRole('button', { name: /Luc Favre/ })).toBeInTheDocument()
+  })
+})
+
+/* The film is rendered in the editor, and the board hears of it by itself: the Rendered step ticks
+   and the board says so, with nothing pressed and nothing reloaded. */
+describe('a film the editor has just rendered', () => {
+  test('ticks the Rendered step by itself, and says the film is ready', async () => {
+    let stream: { onmessage: ((message: { data: string }) => void) | null } | null = null
+    const silent = globalThis.EventSource
+    vi.stubGlobal(
+      'EventSource',
+      class {
+        onmessage: ((message: { data: string }) => void) | null = null
+        close = () => {}
+        constructor() {
+          stream = this
+        }
+      }
+    )
+    const waiting = { ...board, tandems: { g1: { ...board.tandems.g1, film: null } } }
+    await renderBoard(waiting, false)
+    const trail = page.getByRole('list', { name: 'Where this tandem has got to' })
+    await expect
+      .poll(() => trail.element().querySelector('[aria-current="step"]')?.textContent)
+      .toContain('Rendered')
+
+    stream!.onmessage?.({
+      data: JSON.stringify({
+        kind: 'tandem',
+        groupId: 'g1',
+        who: 'Luc Favre',
+        fact: board.tandems.g1,
+        rendered: true
+      })
+    })
+
+    await expect
+      .poll(() => trail.element().querySelector('[aria-current="step"]')?.textContent)
+      .toContain('Uploaded')
+    await expect
+      .element(page.getByText('Luc Favre’s film is rendered — ready to upload'))
+      .toBeInTheDocument()
+    /* the stream goes back to the silent one every other test here is drawn with */
+    vi.stubGlobal('EventSource', silent)
+  })
+})
+
+/* A tandem can be deleted at whatever step it has reached — this one has an edit and a film — and
+   deleting asks first, saying what goes with it and that its files come back loose. */
+describe('deleting a tandem that is already edited and rendered', () => {
+  test('is offered on its panel, and says what goes and where the files go', async () => {
+    requests.length = 0
+    await renderBoard(board, false)
+
+    await userEvent.click(page.getByRole('button', { name: 'Delete tandem…' }))
+
+    const dialog = page.getByRole('dialog', { name: 'Delete tandem' })
+    await expect.element(dialog.getByText('Back to Fresh files, loose')).toBeInTheDocument()
+    await expect.element(dialog.getByText(/the kdenlive project — the edit itself/)).toBeInTheDocument()
+    await expect.element(dialog.getByText('3 files, loose, to be sorted again')).toBeInTheDocument()
+
+    await userEvent.click(dialog.getByRole('button', { name: 'Delete', exact: true }))
+    await vi.waitFor(() =>
+      expect(requests).toContainEqual({ intent: 'delete-tandem', groupId: 'g1' })
+    )
   })
 })

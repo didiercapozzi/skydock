@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { proxyFactSchema } from './boardAnswer'
+import { proxyFactSchema, tandemFactSchema } from './boardAnswer'
 
 /* What is happening to a file right now, said as it happens so the board can show it without
    asking. These are for the eyes only: what a file *is* — processed, proxied, uploaded — stays a
@@ -20,6 +20,16 @@ const liveEventSchema = z.discriminatedUnion('kind', [
     fileId: z.string(),
     ok: z.boolean(),
     proxy: z.object({ path: z.string(), fact: proxyFactSchema }).optional()
+  }),
+  /* What a tandem's folder holds, looked at again because it changed under nobody's hand here — the
+     editor saved a project, or finished rendering the film. `rendered` is a film that was not there,
+     or was not this one, the last time it was said. */
+  z.object({
+    kind: z.literal('tandem'),
+    groupId: z.string(),
+    who: z.string(),
+    fact: tandemFactSchema,
+    rendered: z.boolean()
   })
 ])
 
@@ -42,9 +52,8 @@ const bus = () => (globalThis.skydockLive ??= { listeners: new Set(), underWay: 
 
 const publish = (event: LiveEvent) => {
   const { listeners, underWay } = bus()
-  const key = `${event.work}:${event.fileId}`
-  if (event.kind === 'file') underWay.set(key, event)
-  else underWay.delete(key)
+  if (event.kind === 'file') underWay.set(`${event.work}:${event.fileId}`, event)
+  if (event.kind === 'file-done') underWay.delete(`${event.work}:${event.fileId}`)
   for (const listener of listeners) listener(event)
 }
 

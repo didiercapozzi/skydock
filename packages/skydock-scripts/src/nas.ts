@@ -51,7 +51,13 @@ const dsmSizedFileSchema = z
     name: z.string(),
     path: z.string(),
     isdir: z.boolean().optional(),
-    additional: z.object({ size: z.number().optional() }).passthrough().optional(),
+    additional: z
+      .object({
+        size: z.number().optional(),
+        time: z.object({ mtime: z.number().optional() }).passthrough().optional()
+      })
+      .passthrough()
+      .optional(),
     size: z.number().optional()
   })
   .passthrough()
@@ -348,7 +354,7 @@ const listNasFiles = async (host: string, sid: string, folderPath: string) => {
       version: '2',
       method: 'list',
       folder_path: cpath,
-      additional: '["size"]',
+      additional: '["size","time"]',
       filetype: 'file',
       _sid: sid
     })
@@ -360,7 +366,8 @@ const listNasFiles = async (host: string, sid: string, folderPath: string) => {
       .map((f) => ({
         name: f.name,
         path: normalizeNasPath(f.path),
-        size: f.additional?.size ?? f.size ?? null
+        size: f.additional?.size ?? f.size ?? null,
+        mtime: f.additional?.time?.mtime ?? null
       }))
   } catch {
     return []

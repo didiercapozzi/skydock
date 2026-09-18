@@ -56,7 +56,12 @@ type Props = {
   onDragFile: (file: ManifestFile, e?: React.DragEvent) => void
   jump: JumpControls
   /* by jump, the jumps are cards and one of them is open, its files listed under the cards */
-  cards?: { open: string | null; onOpen: (key: string) => void }
+  cards?: {
+    open: string | null
+    onOpen: (key: string) => void
+    /* the open one is the only one, and is described elsewhere: its files, without its card */
+    hidden?: boolean
+  }
   empty: string
 }
 
@@ -265,19 +270,21 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
     const open = cardSections.find((s) => s.key === cards.open) ?? cardSections[0]!
     return (
       <div className='@container'>
-        <div className='mt-3 grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-2'>
-          {cardSections.map((s) => (
-            <JumpCard
-              key={s.key}
-              section={s}
-              open={s.key === open.key}
-              statusOf={statusOf}
-              jump={jump}
-              strays={s.files.filter((f) => f.id && list.offGap.has(f.id)).length}
-              onOpen={() => cards.onOpen(s.key)}
-            />
-          ))}
-        </div>
+        {!cards.hidden && (
+          <div className='mt-3 grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-2'>
+            {cardSections.map((s) => (
+              <JumpCard
+                key={s.key}
+                section={s}
+                open={s.key === open.key}
+                statusOf={statusOf}
+                jump={jump}
+                strays={s.files.filter((f) => f.id && list.offGap.has(f.id)).length}
+                onOpen={() => cards.onOpen(s.key)}
+              />
+            ))}
+          </div>
+        )}
         <section
           aria-label={open.kind === 'jump' ? open.label : 'Loose files'}
           className='mt-3 flex flex-col gap-2'>

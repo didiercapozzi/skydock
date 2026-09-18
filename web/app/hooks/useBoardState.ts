@@ -63,7 +63,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   const [tandemFacts, setTandemFacts] = useState<Record<string, TandemFact>>(loaded.tandems)
   /* files being processed or proxied right now, and how far through; a proxy that lands is
      flagged at once, since the event carries what the server read off the disk */
-  const liveFiles = useLiveProgress(setProxies)
+  const liveFiles = useLiveProgress(setProxies, setTandemFacts, setNote)
   const [remoteAfterUpload, setRemoteAfterUpload] = useState<CheckedListing | null>(null)
   /* the storage's list of tandems, as the loader read it or as the last change wrote it */
   const [storage, setStorage] = useState(loaded.storage)

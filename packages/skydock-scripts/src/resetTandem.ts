@@ -1,6 +1,5 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { dayOfFiles } from './clustering'
 import { getGroupProcessedDir, isFlatGroup } from './process'
 import { getCutProxyDir } from './proxy'
 import { cameraTimes } from './scan'
@@ -14,9 +13,9 @@ import type { Manifest, ManifestGroup } from './types'
    copies, the cut proxies, the project, the film, the archives — and everything decided about it
    stays: the name, the crops, the frames, the turns, the corrected times. It is how an edit is started over.
 
-   Delete undoes the tandem altogether: the same folder goes, and so does everything decided about
-   it. Its jumps go back to be sorted with no name, no crop and no frame, each file on the time its
-   camera gave it.
+   Delete undoes the tandem altogether, at whatever step it has reached: the same folder goes, and
+   so does everything decided about it — the jumps themselves included. Its files go back to be
+   sorted loose, with no name, no crop and no frame, each on the time its camera gave it.
 
    Neither touches the originals, and neither deletes anything from the storage: SkyDock never does
    (RULES, Network storage). What was uploaded stays up there; only the record of it goes. */
@@ -79,6 +78,11 @@ const takeBack = (
     return rest
   })
   const taken = new Set(jumps.map((j) => j.id))
+  /* deleted, the jumps go too: what comes back is loose files, as off the camera */
+  if (forget) {
+    manifest.groups = manifest.groups.filter((g) => !taken.has(g.id))
+    return { groupIds: [...taken] }
+  }
   manifest.groups = manifest.groups.map((g) => {
     if (!taken.has(g.id)) return g
     const {
@@ -88,18 +92,7 @@ const takeBack = (
       montage: _montage,
       ...rest
     } = g
-    if (!forget) return rest
-    const files = rest.files.map((f) => {
-      const { processed: _p, uploaded: _u, ...ref } = undo(f)
-      return ref
-    })
-    return {
-      ...rest,
-      files,
-      day: dayOfFiles(files),
-      destination: undefined,
-      passenger: undefined
-    }
+    return rest
   })
   return { groupIds: [...taken] }
 }

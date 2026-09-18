@@ -23,16 +23,12 @@ const placeLabel = (place: Place) =>
   place.kind === 'sort'
     ? 'Fresh files'
     : place.kind === 'tandems'
-      ? 'In progress'
+      ? 'Tandems'
       : place.kind === 'unnamed'
         ? 'No name yet'
         : place.kind === 'storage'
           ? 'On the storage'
           : place.name
-
-/* the folder a folder sits in, for the path above the files */
-const placeParent = (place: Place): Place | null =>
-  place.kind === 'unnamed' || place.kind === 'pax' ? { kind: 'tandems' } : null
 
 /* the three families of folder, which is what decides how their files can be grouped */
 const familyOf = (place: Place) =>
@@ -75,5 +71,5 @@ const filesIn = (place: Place, groups: ManifestGroup[], loose: ManifestFile[]) =
   ...looseIn(place, loose)
 ]
 
-export { familyOf, filesIn, groupsIn, looseIn, placeKey, placeLabel, placeParent, samePlace }
+export { familyOf, filesIn, groupsIn, looseIn, placeKey, placeLabel, samePlace }
 export type { Place }

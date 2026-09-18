@@ -7,7 +7,7 @@ import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
 import { createTmpDir } from './fixtures'
 
 /* Two ways back from a tandem. Reset starts it over from before processing and keeps every decision
-   made about it; delete undoes it altogether and sends its jumps back to be sorted. Both take the
+   made about it; delete undoes it altogether and sends its files back to be sorted, loose. Both take the
    whole passenger, because the passenger is one folder — and neither ever reaches past that folder. */
 
 const CAMERA = Math.floor(new Date(2026, 7, 1, 9, 30, 0).getTime() / 1000)
@@ -144,30 +144,45 @@ describe('resetting a tandem', () => {
 })
 
 describe('deleting a tandem', () => {
-  it('sends its jumps back to be sorted, with no name and nothing made from them', () => {
+  it('sends its files back to be sorted, loose, with nothing made from them', () => {
     const { manifest, folder } = setup()
     deleteTandem(manifest, outputDir, 'g1')
-    for (const id of ['g1', 'g2']) {
-      const g = manifest.groups.find((x) => x.id === id)!
-      expect(g.destination).toBeUndefined()
-      expect(g.passenger).toBeUndefined()
-      expect(g.processed).toBeUndefined()
+    /* the passenger's jumps go with the tandem: what comes back is files in no jump */
+    expect(manifest.groups.map((g) => g.id)).not.toEqual(expect.arrayContaining(['g1', 'g2']))
+    const back = manifest.files.filter((f) => ['GX01.MP4', 'GX02.MP4'].includes(f.id!))
+    expect(back).toHaveLength(2)
+    for (const f of back) {
+      expect(f.destination).toBeUndefined()
+      expect(f.processed).toBeUndefined()
+      expect(f.uploaded).toBeUndefined()
     }
     expect(fs.existsSync(folder('Luc Favre'))).toBe(false)
   })
 
-  it('forgets the crops, the frames and the corrected times, on the jump and on the file', () => {
+  it('forgets the crops, the frames and the corrected times', () => {
     const { manifest } = setup()
     deleteTandem(manifest, outputDir, 'g1')
-    const ref = manifest.groups.find((g) => g.id === 'g1')!.files[0]!
     const file = manifest.files.find((f) => f.id === 'GX01.MP4')!
-    for (const f of [ref, file]) {
-      expect(f.cropStart).toBeUndefined()
-      expect(f.cropEnd).toBeUndefined()
-      expect(f.frame).toBeUndefined()
-      /* back on the time the camera gave it */
-      expect(f.mtime).toBe(CAMERA)
-    }
+    expect(file.cropStart).toBeUndefined()
+    expect(file.cropEnd).toBeUndefined()
+    expect(file.frame).toBeUndefined()
+    /* back on the time the camera gave it */
+    expect(file.mtime).toBe(CAMERA)
+  })
+
+  /* at whatever step: an edit, a film and an upload do not stand in the way of undoing it */
+  it('deletes a tandem that was edited, rendered and uploaded, leaving the storage alone', () => {
+    const { manifest, folder } = setup()
+    fs.mkdirSync(folder('Luc Favre'), { recursive: true })
+    fs.writeFileSync(path.join(folder('Luc Favre'), 'luc_favre_20260801.kdenlive'), '<mlt/>')
+    fs.writeFileSync(path.join(folder('Luc Favre'), 'luc_favre_20260801.mp4'), 'film')
+    manifest.groups.find((g) => g.id === 'g1')!.uploaded = { at: 1, shareUrl: 'https://nas/x' }
+
+    deleteTandem(manifest, outputDir, 'g1')
+
+    expect(fs.existsSync(folder('Luc Favre'))).toBe(false)
+    expect(manifest.groups.some((g) => g.id === 'g1')).toBe(false)
+    expect(manifest.files.find((f) => f.id === 'GX01.MP4')).toBeDefined()
   })
 
   it('leaves another passenger alone', () => {

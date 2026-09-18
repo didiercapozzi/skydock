@@ -89,5 +89,5 @@ type MontageNote = z.infer<typeof montageNoteSchema>
 type ScanResult = z.infer<typeof scanResultSchema>
 type TandemFact = z.infer<typeof tandemFactSchema>
 
-export { boardAnswerSchema, importOutcomeSchema, proxyFactSchema }
+export { boardAnswerSchema, importOutcomeSchema, proxyFactSchema, tandemFactSchema }
 export type { BoardAnswer, ImportOutcome, MontageNote, ScanResult, TandemFact }

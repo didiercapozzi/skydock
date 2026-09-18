@@ -45,7 +45,9 @@ const Files = ({ shape }: { shape: 'rows' | 'grid' }) => {
   const [proxies, setProxies] = useState<Record<string, ProxyFact>>({
     '/o/a.MP4': { state: 'none', play: '/o/a.MP4' }
   })
-  const live = useLiveProgress(setProxies)
+  const [, setTandems] = useState({})
+  const [, setNote] = useState<string | null>(null)
+  const live = useLiveProgress(setProxies, setTandems, setNote)
   return createElement(FileList, {
     files: [clip('a'), clip('b')],
     kind: 'all',

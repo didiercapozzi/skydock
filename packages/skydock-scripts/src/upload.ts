@@ -276,6 +276,7 @@ const uploadScope = async ({
   })
 
 export {
+  destBaseOf,
   uploadedFiles,
   goneFromStorage,
   groupsInScope,

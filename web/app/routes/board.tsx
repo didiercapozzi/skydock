@@ -5,6 +5,7 @@ import {
   getOutputDir,
   goneFromStorage,
   hasCompletePassenger,
+  lastSegment,
   listRemoteFiles,
   loadManifest,
   offGap,
@@ -35,6 +36,7 @@ import { Box, FilePanel, FolderPanel, JumpPanel, ManyPanel, Shell } from '../com
 import { PlacePane } from '../components/place-pane'
 import { PlacesTree } from '../components/places-tree'
 import { PreviewHost } from '../components/preview-host'
+import { StorageFolder } from '../components/storage-folder'
 import { StorageList } from '../components/storage-list'
 import { StepTrail } from '../components/tandem-steps'
 import type { Passenger } from '../components/tandem-card'
@@ -275,8 +277,38 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const listed = groups.filter((g) => !finished(g))
 
   const placeGroups = groupsIn(place, listed).map(asOnStorage)
+  /* the one tandem of the passenger whose page is open, when they have just the one */
+  const soleTandem =
+    place.kind === 'pax' && placeGroups.length === 1
+      ? groups.find((g) => g.id === placeGroups[0]?.id)
+      : undefined
+  /* A dropzone and a passenger are connected to their folder on the storage, which is listed under
+     their own files. A passenger is found among every tandem, the finished ones too: theirs is
+     exactly the folder worth watching from here once nothing of it is left on this machine. */
+  const storageWhere =
+    place.kind === 'dz'
+      ? { destination: place.name }
+      : place.kind === 'pax'
+        ? (() => {
+            const theirs = groups.find(
+              (g) => g.destination === TANDEMS && passengerOf(g) === place.name
+            )
+            return theirs ? { groupId: theirs.id } : null
+          })()
+        : null
   const placeLoose = looseIn(place, loose)
   const placeFiles = filesIn(place, listed, loose)
+  /* the delivered files this machine still holds, by name — copies that are really on the disk, and
+     a tandem's film — so each file on the storage can say whether it is here too */
+  const hereToo = new Set([
+    ...placeFiles.flatMap((f) =>
+      f.processed && board.outputs[f.path]?.exists ? [lastSegment(f.processed.path)] : []
+    ),
+    ...placeGroups.flatMap((g) => {
+      const film = board.tandemFacts[g.id]?.film
+      return film ? [lastSegment(film.path)] : []
+    })
+  ])
   const matches = (file: ManifestFile) => {
     if (!query.trim()) return true
     const needle = query.trim().toLowerCase()
@@ -716,7 +748,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           </Mini>
           <Mini
             disabled={busy !== null}
-            title='Undo the tandem — its jumps go back to Fresh files, without their name or crops'
+            title='Undo the tandem, at any step — its files go back to Fresh files, loose, without their name or crops'
             onClick={() => setDialog({ kind: 'take-back', mode: 'delete', who: place.name })}>
             Delete…
           </Mini>
@@ -794,9 +826,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         />
       )
     }
+    /* A passenger with one tandem is that tandem: opening the passenger is opening it, so its panel
+       is here without being asked for, and no card stands above its files saying the same things. */
     const jump = selection.pickedJump
       ? groups.find((g) => g.id === selection.pickedJump)
-      : undefined
+      : soleTandem
     if (jump) {
       const shown = asOnStorage(jump)
       return (
@@ -828,8 +862,17 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               ? undefined
               : (name) => renameJump(jump.id, name)
           }
+          /* A named tandem can be deleted at whatever step it has reached, through the dialog that
+             says what goes with it; only a freed one cannot, having nothing left here to put back.
+             Any other jump goes the plain way, which an edit or an upload closes. */
           onDelete={
-            jump.freed || frozen.has(jump.id) || jump.uploaded ? undefined : () => deleteJump(jump)
+            jump.freed
+              ? undefined
+              : jump.destination === TANDEMS && hasCompletePassenger(jump.passenger)
+                ? () => setDialog({ kind: 'take-back', mode: 'delete', who: passengerOf(jump) })
+                : frozen.has(jump.id) || jump.uploaded
+                  ? undefined
+                  : () => deleteJump(jump)
           }
         />
       )
@@ -911,7 +954,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
         <PlacePane
           place={place}
-          onPlace={pickPlace}
           summary={summary}
           files={placeFiles}
           query={query}
@@ -970,6 +1012,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               cards={
                 openCard
                   ? {
+                      hidden: soleTandem !== undefined,
                       open: openCard.key,
                       onOpen: (key) => {
                         setChosenCard(key)
@@ -1014,6 +1057,14 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                 above: tandemAbove,
                 progress: progressOf
               }}
+            />
+          )}
+          {nas.connected && storageWhere && (
+            <StorageFolder
+              key={placeKey(place)}
+              where={storageWhere}
+              stamp={board.remoteAfterUpload?.at}
+              hereToo={hereToo}
             />
           )}
         </PlacePane>

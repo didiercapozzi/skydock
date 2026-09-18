@@ -71,6 +71,7 @@ import {
   sameEditedGroup,
   statTandemArtifacts
 } from './tandem'
+import { watchTandems } from './tandemWatch'
 import { furthestBehind, TANDEM_STEPS, tandemSteps } from './tandemSteps'
 import type { TandemProgress, TandemStep } from './tandemSteps'
 import { tandemEntrySchema, tandemIndexSchema } from './tandemEntry'
@@ -118,6 +119,7 @@ import {
 } from './workspace'
 
 export {
+  watchTandems,
   liveEventSchema,
   publish,
   subscribe,

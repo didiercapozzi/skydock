@@ -72,7 +72,7 @@ const TakeBackDialog = ({
       </ul>
 
       <p className='m-0 text-[12.5px] font-semibold text-ink'>
-        {reset ? 'Kept, ready to process again' : 'Back to Fresh files'}
+        {reset ? 'Kept, ready to process again' : 'Back to Fresh files, loose'}
       </p>
       <ul className='m-0 flex list-none flex-col gap-1 p-0'>
         {reset ? (
@@ -85,8 +85,10 @@ const TakeBackDialog = ({
           </>
         ) : (
           <>
-            <Line mark='↺'>
-              {plural(groups.length, 'jump')}, {plural(files.length, 'file')}, to be sorted again
+            <Line mark='↺'>{plural(files.length, 'file')}, loose, to be sorted again</Line>
+            <Line mark='✕'>
+              {groups.length === 1 ? 'the jump itself' : `the ${groups.length} jumps themselves`} —
+              regrouping the loose files puts them back into jumps
             </Line>
             <Line mark='✕'>
               the name, every crop and frame, and every corrected time — each file goes back to the

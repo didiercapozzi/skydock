@@ -1,5 +1,5 @@
 import { liveEventSchema } from '@skydock/scripts'
-import type { ProxyFact } from '@skydock/scripts'
+import type { ProxyFact, TandemFact } from '@skydock/scripts'
 import { useEffect, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { routingEngine } from '../helpers/routing'
@@ -14,7 +14,12 @@ type LiveFile = { work: 'process' | 'proxy'; percent: number }
    Only ever a hint for the eyes. What a file is comes from the board's own answers; the one thing
    taken from here is a proxy that has just landed, which is a fact the server read off the disk and
    sent with the event, so the clip is flagged the moment it is ready. */
-const useLiveProgress = (onProxies: Dispatch<SetStateAction<Record<string, ProxyFact>>>) => {
+const useLiveProgress = (
+  onProxies: Dispatch<SetStateAction<Record<string, ProxyFact>>>,
+  /* what a tandem's folder holds, when it changed by the editor's hand — a film just rendered */
+  onTandems: Dispatch<SetStateAction<Record<string, TandemFact>>>,
+  onNote: Dispatch<SetStateAction<string | null>>
+) => {
   const [files, setFiles] = useState<Record<string, LiveFile>>({})
 
   useEffect(() => {
@@ -29,6 +34,11 @@ const useLiveProgress = (onProxies: Dispatch<SetStateAction<Record<string, Proxy
       const parsed = liveEventSchema.safeParse(raw)
       if (!parsed.success) return
       const event = parsed.data
+      if (event.kind === 'tandem') {
+        onTandems((now) => ({ ...now, [event.groupId]: event.fact }))
+        if (event.rendered) onNote(`${event.who}’s film is rendered — ready to upload`)
+        return
+      }
       if (event.kind === 'file') {
         setFiles((now) => ({
           ...now,
@@ -44,7 +54,7 @@ const useLiveProgress = (onProxies: Dispatch<SetStateAction<Record<string, Proxy
       if (landed) onProxies((now) => ({ ...now, [landed.path]: landed.fact }))
     }
     return () => source.close()
-  }, [onProxies])
+  }, [onProxies, onTandems, onNote])
 
   return files
 }

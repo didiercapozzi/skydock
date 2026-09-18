@@ -295,8 +295,12 @@ const JumpPanel = ({
           {onDelete && (
             <Mini
               onClick={onDelete}
-              title='The jump goes; its files are kept, loose in Fresh files, with their crops'>
-              Delete jump
+              title={
+                tandem && named
+                  ? 'Undo the tandem, whatever step it is at — its files go back to Fresh files, loose. Asks first.'
+                  : 'The jump goes; its files are kept, loose in Fresh files, with their crops'
+              }>
+              {tandem && named ? 'Delete tandem…' : 'Delete jump'}
             </Mini>
           )}
         </span>

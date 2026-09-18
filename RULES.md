@@ -96,8 +96,10 @@ current setting to everything, including jumps that were split or merged by hand
 - A jump that should not exist can be **deleted** from its panel, wherever it is filed. The jump goes
   and its files stay: back in Fresh files, loose, each on the day it was shot, keeping the trim, frame and
   turn set on it in the jump. What was made from them no longer matches and is deleted, so when there
-  are processed copies it asks first, saying how many. A tandem with an edit, a jump on the storage only,
-  and a jump already uploaded cannot be deleted. Regrouping puts loose files back into jumps.
+  are processed copies it asks first, saying how many. A dropzone's jump already uploaded cannot be
+  deleted, nor one on the storage only. A named tandem is deleted as a tandem instead — at any step,
+  and forgetting what was decided about it (Taking a tandem back). Regrouping puts loose files back
+  into jumps.
 - A scan keeps the work already done: where a file is filed, its crop and turn, and what has been made
   from it. Only what the disk measures — size, time, contents — is read fresh. A file whose contents
   changed invalidates what was made from it; a file that merely sat there keeps everything.
@@ -174,10 +176,14 @@ left, and the place picked there fills the pane beside it. Only the pane scrolls
 be dragged to any place. On a narrow screen the menu becomes a strip across the top.
 
 **The places.** Three, and nothing else: _Fresh files_, a single entry holding everything off the
-cameras that is not filed yet; _Destination_, with one entry per dropzone; and _Tandems_, with _In
-progress_ — every tandem that still has something to do — and one entry per named passenger. Each says
-how many files it holds and shows how much of it is still local, processed or uploaded. Every place
-takes files dropped on it. A passenger is listed once, however many jumps they have.
+cameras that is not filed yet; _Destination_, with one entry per dropzone; and _Tandems_, with one
+entry per named passenger. Each says how many files it holds and shows how much of it is still local,
+processed or uploaded. Every place takes files dropped on it. A passenger is listed once, however many
+jumps they have.
+
+There is no page of every tandem: a tandem is worked on one passenger at a time, so the way in is always
+a passenger. The _Tandems_ heading says how many still have something to do, and takes a jump dropped on
+it, which becomes a tandem waiting for its name; clicking it goes nowhere.
 
 A tandem that has been freed and has walked every step, its passenger emailed, has nothing left to do
 here: it leaves the Tandems, its passenger's entry with it, and is found in the storage's own list of
@@ -212,7 +218,9 @@ videos and photos it holds, how far it has got, and a few frames off it, so jump
 glance — the date in full, year and all, and the time to the minute. The loose files get one card of
 their own, always first, before the jumps, however many days they were shot on; it is drawn differently — dashed and
 flat — so it never passes for a jump, and it carries no date, since loose files share no one moment.
-One card is open at a time — the one last chosen, or else the first — and its files are listed under
+A passenger with a single tandem is that tandem: opening the passenger shows its panel at once, and no
+card is drawn above its files to say what the panel already says; with several jumps, the cards are how
+one is chosen. One card is open at a time — the one last chosen, or else the first — and its files are listed under
 the cards, drawn exactly as files are everywhere else. Nothing sits between the cards and the files
 but, for a tandem, its next step: what the jump is and what can be done to it — correcting when it
 started, making it a tandem, deleting it — is in the panel on the right, which choosing a card opens
@@ -314,6 +322,13 @@ only ever for the eyes: what a file _is_ still comes from what the board is told
 so a figure that never arrives costs a bar that lags and never a wrong status. Work started from the
 command line is not heard, only work the board started.
 
+**A finished render is noticed.** The film is rendered in the editor, and nothing tells SkyDock when
+it is done, so while a board is open the tandems' folders are looked at every couple of seconds. A film
+that has stopped growing and can be read is told to the board over the same line: the Rendered step
+ticks by itself and the board says the film is ready to upload, with nothing pressed. A film still being
+written, or one that sits still but cannot yet be read, is not a film yet. A project saved or removed
+by hand is noticed the same way. Freed tandems are not looked at; nothing of them is here.
+
 **The header** holds what applies to the whole board: scanning, the storage with its folders and a way
 to check what it holds now, rows or grid, and light or dark. With nothing scanned yet, the board is a
 single Scan button and the instruction to copy the cameras first.
@@ -406,6 +421,18 @@ original videos; it is never guessed and never falls back to the default, becaus
 footage where a passenger can reach it is exactly what keeping the two apart prevents. Asking to upload
 with a folder missing opens the picker for that folder.
 
+**A place is connected to its folder.** A dropzone's page and a passenger's page each end with what
+their folder on the storage holds — the very folder their uploads go to, and for a tandem already
+uploaded the one it actually went to — so what is up there is listed, and watched, from the board
+whether or not any of it is still on this machine: a freed tandem, last month's days at a dropzone.
+Each file says what it is, how big and from when, and whether it is here too or only on the storage.
+A video or a photo is played by clicking it, streamed from the storage through the board, so a film is
+scrubbed without being downloaded first; an archive is listed and not opened. The storage's list of
+tandems offers the same for each tandem it names, including ones this machine never held. The folder
+is asked for when the place is opened, after an upload, and when told to look again — never on a
+timer. All of it only reads: nothing is written to the storage, nothing is recorded from what is
+found, and only files inside the folders SkyDock uploads into are ever opened.
+
 **Uploading a dropzone.** One upload covers the whole dropzone — every jump filed there and its loose
 files — sending the folder whole. A tandem cannot be uploaded this way, because its files go to two
 places; asking is refused and says why.
@@ -451,15 +478,18 @@ Resetting the tandem, or deleting the project, lifts the lock.
 
 ## Taking a tandem back
 
-A tandem can be **reset** or **deleted** from its page. Either applies to the whole passenger, because
+A tandem can be **reset** or **deleted** from its passenger's page. Either applies to the whole passenger, because
 one passenger is one folder, and each asks first, saying what goes and what stays, naming the edit on
 its own when there is one.
 
 - **Reset** returns the tandem to before processing: the copies, the working copies, the project, the
   film and the archives are deleted, and with them the record of what was uploaded. The name, every
   crop, frame and turn, and every corrected time are kept. This is how an edit is started over.
-- **Delete** undoes the tandem: the same is deleted, and the jumps go back to Fresh files with no name and
-  nothing decided about them, each file on the time its camera gave it.
+- **Delete** undoes the tandem, at whatever step it has reached — named, processed, edited, rendered,
+  uploaded or emailed: the same is deleted, and its files go back to Fresh files loose, in no jump, with
+  no name and nothing decided about them, each on the time its camera gave it. Regrouping puts them
+  back into jumps. It is offered on the tandem's own panel as well as on the passenger's page. Only a
+  freed tandem cannot be deleted: nothing of it is left on this machine to put back.
 
 Neither touches the originals or the storage, and neither can run while the tandem is being processed.
 
@@ -513,8 +543,8 @@ disappears from the storage, the board says so, as for any uploaded tandem.
 
 The Tandems folder on the storage holds a list of every tandem uploaded into it: who it was for, the
 day, how many videos and photos, when it went up, its share link, where its film, photos and backup
-are, whether it was freed, and whether the passenger was emailed and to which address. The Tandems page
-shows this list under the passengers on the board, so every tandem the storage holds is there, including
+are, whether it was freed, and whether the passenger was emailed and to which address. _On the
+storage_, in the menu once the storage is connected, shows this list, so every tandem the storage holds is there, including
 ones this machine no longer has and ones uploaded from another machine. Each can be emailed from there,
 and one still on this board can be opened.
 
@@ -543,8 +573,7 @@ Worth knowing, so nobody goes looking:
 
 - **SkyDock never sends email.** A person sends it from their own mail.
 - **The montage takes every photo.** There is no choosing which photos the passenger gets.
-- **Nothing renders the film, and nothing notices a render finishing.** The board looks at the folder
-  each time it is asked to do something.
+- **Nothing renders the film.** The editor does, by a person's hand; SkyDock only notices.
 - **A file is in one place at a time.** It cannot be in two jumps at once.
 - **A dropzone can be created, not renamed or removed.**
 - **Nothing comes back down from the storage** except its list of tandems.

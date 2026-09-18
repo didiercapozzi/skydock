@@ -130,6 +130,33 @@ const Heading = ({ children }: { children: string }) => (
   </h2>
 )
 
+/* The Tandems heading is where a jump is dropped to become a tandem, and nothing more: there is no
+   page of every tandem, because a tandem is worked on one passenger at a time. So it takes a drop
+   and lights up under one, and a click does nothing. */
+const TandemsHeading = ({
+  todo,
+  over,
+  dropTarget
+}: {
+  todo: string | null
+  over: boolean
+  dropTarget: Record<string, unknown>
+}) => (
+  <h2
+    {...dropTarget}
+    title='Drop a jump here to make it a tandem'
+    className={`mx-0 mt-[15px] mb-1.5 flex items-center gap-2 rounded-md border px-2 py-0.5 text-[10px] font-semibold tracking-[0.1em] text-ink-3 uppercase max-[780px]:my-0 max-[780px]:flex-none ${
+      over ? 'border-dashed border-pick bg-pick-soft' : 'border-transparent'
+    }`}>
+    <span className='flex-1'>Tandems</span>
+    {todo && (
+      <span className='flex-none rounded-full bg-local-soft px-1.5 text-[10.5px] font-semibold tracking-normal whitespace-nowrap text-local normal-case max-[780px]:hidden'>
+        {todo}
+      </span>
+    )}
+  </h2>
+)
+
 const counted = (n: number, what: string) => (n > 0 ? `${n} ${what}` : null)
 
 const PlacesTree = ({
@@ -222,8 +249,11 @@ const PlacesTree = ({
           Add
         </button>
       </span>
-      <Heading>Tandems</Heading>
-      {node({ kind: 'tandems' }, '⚑', openTandems({ kind: 'tandems' }))}
+      <TandemsHeading
+        todo={openTandems({ kind: 'tandems' })}
+        over={overTarget === placeKey({ kind: 'tandems' })}
+        dropTarget={dropTarget({ kind: 'tandems' })}
+      />
       {unnamed > 0 && node({ kind: 'unnamed' }, '?', counted(unnamed, 'to name'), true)}
       {/* each passenger says the step they are at, so the list reads as a to-do list */}
       {passengers.map((name) => {

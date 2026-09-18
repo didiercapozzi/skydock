@@ -1,4 +1,4 @@
-import { subscribe } from '@skydock/scripts'
+import { getOutputDir, subscribe, watchTandems } from '@skydock/scripts'
 import type { Route } from './+types/api.events'
 
 /* What is happening to the files, sent as it happens: one stream the board keeps open, so a file
@@ -25,9 +25,12 @@ const loader = ({ request }: Route.LoaderArgs) => {
          nothing until something happens cannot tell a quiet stream from one that never opened */
       send(': listening\n\n')
       const unsubscribe = subscribe((event) => send(`data: ${JSON.stringify(event)}\n\n`))
+      /* while a board listens, the tandems' folders are looked at for a film the editor finished */
+      const stopWatching = watchTandems(getOutputDir())
       const heartbeat = setInterval(() => send(': still here\n\n'), HEARTBEAT_MS)
       request.signal.addEventListener('abort', () => {
         clearInterval(heartbeat)
+        stopWatching()
         unsubscribe()
         try {
           controller.close()

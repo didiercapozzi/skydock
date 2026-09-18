@@ -2,6 +2,7 @@ import type { TandemEntry } from '@skydock/scripts'
 import { useState } from 'react'
 import { lastSegment } from '@skydock/scripts'
 import { Mini } from './buttons'
+import { StorageFolder } from './storage-folder'
 import { localeDate } from './utils'
 
 /* Every tandem the storage holds, from its own list: the ones still on this machine and the ones
@@ -23,6 +24,8 @@ const Row = ({
   onEmail: () => void
 }) => {
   const [copied, setCopied] = useState(false)
+  /* its folder on the storage, listed under it: the film and photos, to be watched from here */
+  const [watching, setWatching] = useState(false)
   const copy = async () => {
     if (!entry.shareUrl) return
     try {
@@ -34,62 +37,74 @@ const Row = ({
     }
   }
   return (
-    <div className='flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line-2 px-3 py-2 last:border-b-0'>
-      <span className='min-w-[150px] flex-[1_1_160px]'>
-        <b className='text-[13px] font-semibold text-ink'>
-          {entry.firstname} {entry.lastname}
-        </b>
-        <span className='ml-2 text-[12px] text-ink-3'>jump {jumpDay(entry.day)}</span>
-      </span>
-      <span className='text-[12px] text-ink-2'>
-        {entry.videos} video{entry.videos === 1 ? '' : 's'} · {entry.photos} photo
-        {entry.photos === 1 ? '' : 's'}
-      </span>
-      <span className='text-[12px] text-ink-2'>uploaded {localeDate(entry.uploadedAt)}</span>
-      {entry.emailed ? (
-        <span
-          title={entry.emailed.to ? `Emailed to ${entry.emailed.to}` : undefined}
-          className='rounded-full bg-up-soft px-2 py-px text-[11px] font-semibold text-up'>
-          ✓ emailed {localeDate(entry.emailed.at)}
+    <div className='border-b border-line-2 last:border-b-0'>
+      <div className='flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2'>
+        <span className='min-w-[150px] flex-[1_1_160px]'>
+          <b className='text-[13px] font-semibold text-ink'>
+            {entry.firstname} {entry.lastname}
+          </b>
+          <span className='ml-2 text-[12px] text-ink-3'>jump {jumpDay(entry.day)}</span>
         </span>
-      ) : (
-        <span className='rounded-full bg-local-soft px-2 py-px text-[11px] font-semibold text-local'>
-          not emailed
+        <span className='text-[12px] text-ink-2'>
+          {entry.videos} video{entry.videos === 1 ? '' : 's'} · {entry.photos} photo
+          {entry.photos === 1 ? '' : 's'}
         </span>
+        <span className='text-[12px] text-ink-2'>uploaded {localeDate(entry.uploadedAt)}</span>
+        {entry.emailed ? (
+          <span
+            title={entry.emailed.to ? `Emailed to ${entry.emailed.to}` : undefined}
+            className='rounded-full bg-up-soft px-2 py-px text-[11px] font-semibold text-up'>
+            ✓ emailed {localeDate(entry.emailed.at)}
+          </span>
+        ) : (
+          <span className='rounded-full bg-local-soft px-2 py-px text-[11px] font-semibold text-local'>
+            not emailed
+          </span>
+        )}
+        {entry.freedAt ? (
+          <span
+            title='Freed from the machine that made it — the storage is the only copy'
+            className='rounded-full bg-line-2 px-2 py-px text-[11px] text-ink-2'>
+            🔒 storage only
+          </span>
+        ) : null}
+        <span className='ml-auto flex flex-wrap items-center gap-1.5'>
+          <Mini
+            title='List what its folder on the storage holds, and watch it from here'
+            onClick={() => setWatching(!watching)}>
+            {watching ? 'Hide files' : 'Watch…'}
+          </Mini>
+          {here && (
+            <Mini
+              title='Open it on this board'
+              onClick={onOpen}>
+              Open
+            </Mini>
+          )}
+          {entry.backup && (
+            <Mini
+              title={`The originals: ${entry.backup}`}
+              onClick={() =>
+                void navigator.clipboard?.writeText(entry.backup ?? '').catch(() => undefined)
+              }>
+              Backup · {lastSegment(entry.backup)}
+            </Mini>
+          )}
+          {entry.shareUrl && (
+            <Mini
+              title={entry.shareUrl}
+              onClick={() => void copy()}>
+              {copied ? '✓ copied' : 'Copy link'}
+            </Mini>
+          )}
+          {entry.shareUrl && <Mini onClick={onEmail}>Email…</Mini>}
+        </span>
+      </div>
+      {watching && (
+        <div className='px-3 pb-3'>
+          <StorageFolder where={{ folder: entry.folder }} />
+        </div>
       )}
-      {entry.freedAt ? (
-        <span
-          title='Freed from the machine that made it — the storage is the only copy'
-          className='rounded-full bg-line-2 px-2 py-px text-[11px] text-ink-2'>
-          🔒 storage only
-        </span>
-      ) : null}
-      <span className='ml-auto flex flex-wrap items-center gap-1.5'>
-        {here && (
-          <Mini
-            title='Open it on this board'
-            onClick={onOpen}>
-            Open
-          </Mini>
-        )}
-        {entry.backup && (
-          <Mini
-            title={`The originals: ${entry.backup}`}
-            onClick={() =>
-              void navigator.clipboard?.writeText(entry.backup ?? '').catch(() => undefined)
-            }>
-            Backup · {lastSegment(entry.backup)}
-          </Mini>
-        )}
-        {entry.shareUrl && (
-          <Mini
-            title={entry.shareUrl}
-            onClick={() => void copy()}>
-            {copied ? '✓ copied' : 'Copy link'}
-          </Mini>
-        )}
-        {entry.shareUrl && <Mini onClick={onEmail}>Email…</Mini>}
-      </span>
     </div>
   )
 }

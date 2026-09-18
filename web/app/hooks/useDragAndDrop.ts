@@ -115,7 +115,7 @@ const useDragAndDrop = ({
     const accepts =
       destination === null ? draggedFiles.length > 0 : dragged.length > 0 || draggedFiles.length > 0
     /* From the computer: into a passenger's tandem, a dropzone as lone files, or the sorting area.
-       In progress is not a place for a file — it has to be somebody's. */
+       The Tandems heading is not a place for a file — it has to be somebody's. */
     const incoming = into
       ? { target: `group:${into.hostId}`, where: passengerName(into.passenger) }
       : destination === null
@@ -152,7 +152,7 @@ const useDragAndDrop = ({
   }
 
   /* A folder on the left. A camera day takes things back to the sorting area, as Unsorted does; a
-     passenger means "this is theirs too", so it joins their tandem; In progress and No name yet
+     passenger means "this is theirs too", so it joins their tandem; the Tandems heading and No name yet
      start a tandem of its own. What the storage holds is not somewhere a file can be put. */
   const placeDrop = (target: Place) => {
     const key = placeKey(target)

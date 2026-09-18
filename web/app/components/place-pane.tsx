@@ -1,5 +1,5 @@
 import { fromComputer } from '../helpers/import'
-import { placeLabel, placeParent } from '../helpers/places'
+import { placeLabel } from '../helpers/places'
 import type { Place } from '../helpers/places'
 import type { Grouping } from '../helpers/sections'
 import { KindBadges } from './file-list'
@@ -18,7 +18,6 @@ const GROUPING_LABEL: Record<Grouping, string> = {
    the computer, for the folder it shows. */
 const PlacePane = ({
   place,
-  onPlace,
   summary,
   files,
   query,
@@ -35,7 +34,6 @@ const PlacePane = ({
   children
 }: {
   place: Place
-  onPlace: (place: Place) => void
   summary: string
   files: ManifestFile[]
   query: string
@@ -56,7 +54,6 @@ const PlacePane = ({
   onImport: (list: FileList, target: string, where: string) => void
   children: React.ReactNode
 }) => {
-  const parent = placeParent(place)
   const browsing = place.kind !== 'storage'
   return (
     <section
@@ -72,17 +69,6 @@ const PlacePane = ({
       className='flex min-h-0 min-w-0 flex-col bg-ground'>
       <div className='flex flex-wrap items-center gap-x-[9px] gap-y-1.5 border-b border-line bg-pane px-4 pt-2.5 pb-2'>
         <span className='flex items-center gap-1.5 text-[12.5px] text-ink-3'>
-          {parent && (
-            <>
-              <button
-                type='button'
-                onClick={() => onPlace(parent)}
-                className='border-0 bg-transparent p-0 text-[12.5px] text-accent hover:underline'>
-                {placeLabel(parent)}
-              </button>
-              <span aria-hidden='true'>›</span>
-            </>
-          )}
           <b className='text-[15px] font-semibold text-ink'>{placeLabel(place)}</b>
         </span>
         <span className='text-[12px] text-ink-2'>{summary}</span>
