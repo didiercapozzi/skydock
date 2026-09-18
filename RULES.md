@@ -75,6 +75,10 @@ really be given, rather than by asking what it supports: an encoder a machine li
 necessarily run, and one that accepts a trial of nothing can still refuse every clip. With no card
 that answers, the processor does it, slower and no differently otherwise.
 
+A card is also tried on its own for resizing, which is a separate part of it that some drivers do not
+offer at all. One that decodes and encodes but cannot resize still does both, and the processor
+shrinks each frame in between — most of the saving kept, instead of every clip on the card failing.
+
 A proxy a card made is larger than one the processor made — two to three times, for the same picture,
 because making every frame a keyframe is what costs and hardware spends more bits doing it. That is
 the trade: minutes of waiting against gigabytes of working files that never leave the machine.
@@ -85,7 +89,9 @@ nobody uses, which is how the crop bar came to drag 4K originals through the bro
 finished proxies sitting unused.
 
 A clip whose proxy cannot be made is named, **and so is the reason it could not** — once, since when
-this fails it usually fails the same way on every clip on the card. A card that cannot be proxied is
+this fails it usually fails the same way on every clip on the card. The reason given is the first
+thing that went wrong, not the last: one stage failing makes every stage after it fail too, and the
+last of those only says that it had nothing to work with. A card that cannot be proxied is
 still a card that can be sorted, processed and delivered.
 
 Proxies are never shown. They are not footage, so nothing lists them, counts them or offers them to

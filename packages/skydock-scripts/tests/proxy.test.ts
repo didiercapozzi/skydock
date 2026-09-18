@@ -459,12 +459,13 @@ describe('the settings the cards insist on', () => {
 
   /* a clip of its own each time, or the second call finds the first one's proxy already there and
      builds nothing — and the command asserted on would be the previous encoder's */
-  const commandFor = (encoder: 'nvenc' | 'vaapi' | 'cpu') => {
-    setProxyEncoder(encoder)
+  const commandFor = (encoder: 'nvenc' | 'vaapi' | 'cpu', cardScales = true) => {
+    setProxyEncoder(encoder, cardScales)
     execSyncMock.mockClear()
     execSyncMock.mockImplementation(toolsPresent())
-    const src = writeTempFile(outputDir, `original_files/${encoder}.MP4`)
-    ensureProxies(manifestOf([fileEntry(src, `id-${encoder}`)]), outputDir)
+    const name = `${encoder}${cardScales ? '' : '-noscale'}`
+    const src = writeTempFile(outputDir, `original_files/${name}.MP4`)
+    ensureProxies(manifestOf([fileEntry(src, `id-${name}`)]), outputDir)
     return (
       execSyncMock.mock.calls.map((c) => String(c[0])).find((l) => l.startsWith('ffmpeg -y')) ?? ''
     )
@@ -484,6 +485,52 @@ describe('the settings the cards insist on', () => {
     expect(commandFor('nvenc')).not.toContain('-pix_fmt')
     expect(commandFor('vaapi')).not.toContain('-pix_fmt')
     expect(commandFor('cpu')).toContain('-pix_fmt')
+  })
+
+  /* An Intel card that decoded and encoded fine had no video-processing unit, so every
+     `scale_vaapi` failed — "the requested VAProfile is not supported" — and so did every clip. Such
+     a card still decodes and encodes; the processor does the resize in between. */
+  it('resizes on the processor when the card cannot', () => {
+    const cmd = commandFor('vaapi', false)
+    expect(cmd).not.toContain('scale_vaapi')
+    expect(cmd).not.toContain('-hwaccel_output_format')
+    expect(cmd).toContain('-hwaccel vaapi')
+    expect(cmd).toContain('scale=640:-2,format=nv12,hwupload')
+    expect(cmd).toContain('-c:v h264_vaapi')
+    expect(cmd).toContain('-g 1')
+  })
+
+  it('keeps the whole job on a card that can scale', () => {
+    const cmd = commandFor('vaapi', true)
+    expect(cmd).toContain('scale_vaapi')
+    expect(cmd).toContain('-hwaccel_output_format vaapi')
+  })
+
+  /* One stage failing makes every stage after it fail too, each saying so. The last of those is a
+     consequence: the scaler above was reported as the encoder's "error code -22". */
+  it('reports the cause, not the stage that starved because of it', () => {
+    setProxyEncoder('vaapi')
+    execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
+      const line = String(cmd)
+      if (line.startsWith('command -v')) return Buffer.from('/usr/bin/x')
+      if (line.startsWith('ffprobe'))
+        return opts?.encoding
+          ? 'width=2704\nheight=1520\n'
+          : Buffer.from('width=2704\nheight=1520\n')
+      const failure = new Error('exit 251') as Error & { stderr: Buffer }
+      failure.stderr = Buffer.from(
+        '[Parsed_scale_vaapi_0 @ 0x1] Failed to create processing pipeline config: 12 (the requested VAProfile is not supported).\n' +
+          '[Parsed_scale_vaapi_0 @ 0x1] Failed to configure output pad on Parsed_scale_vaapi_0\n' +
+          '[vf#0:0 @ 0x2] Task finished with error code: -5 (Input/output error)\n' +
+          '[vost#0:0/h264_vaapi @ 0x3] Task finished with error code: -22 (Invalid argument)\n' +
+          '[vost#0:0/h264_vaapi @ 0x3] Terminating thread with return code -22 (Invalid argument)\n'
+      )
+      throw failure
+    })
+    const src = writeTempFile(outputDir, 'original_files/GX018633.MP4')
+    const report = ensureProxies(manifestOf([fileEntry(src, 'gx633')]), outputDir)
+    expect(report.reason).toContain('VAProfile is not supported')
+    expect(report.reason).not.toContain('-22')
   })
 
   /* A trial that leaves the real settings out proves only that the encoder exists. NVENC passed

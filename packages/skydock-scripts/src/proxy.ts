@@ -88,29 +88,47 @@ const canEncode = (args: string[], before: string[] = []) => {
   }
 }
 
-const detectEncoder = (): ProxyEncoder => {
+/* A VAAPI card that can encode cannot necessarily scale. Resizing on the card goes through its
+   video-processing unit, which is a separate entrypoint the driver may simply not offer — an Intel
+   iHD driver that decodes and encodes perfectly well answered every `scale_vaapi` with "the
+   requested VAProfile is not supported", and every clip on the card failed. So the scaler gets a
+   trial of its own, and a card without one still decodes and encodes while the processor does the
+   resize in between: 5 seconds of 2.7K HEVC in 2 seconds that way, against the 165s the processor
+   takes doing all of it. */
+const vaapiCanScale = () =>
+  canEncode(
+    [...ENCODER_ARGS.vaapi, '-vf', 'format=nv12,hwupload,scale_vaapi=w=160:h=-2'],
+    ['-vaapi_device', DRI_DEVICE()]
+  )
+
+type Detected = { encoder: ProxyEncoder; cardScales: boolean }
+
+const detectEncoder = (): Detected => {
   const asked = process.env.SKYDOCK_PROXY_ENCODER?.trim().toLowerCase()
-  if (asked === 'cpu' || asked === 'vaapi' || asked === 'nvenc') return asked
-  if (!hasCommand('ffmpeg')) return 'cpu'
-  if (canEncode(ENCODER_ARGS.nvenc)) return 'nvenc'
-  if (
+  const vaapiReady = () =>
     fs.existsSync(DRI_DEVICE()) &&
     canEncode(
       [...ENCODER_ARGS.vaapi, '-vf', 'format=nv12,hwupload'],
       ['-vaapi_device', DRI_DEVICE()]
     )
-  )
-    return 'vaapi'
-  return 'cpu'
+  if (asked === 'cpu' || asked === 'nvenc') return { encoder: asked, cardScales: true }
+  if (asked === 'vaapi') return { encoder: 'vaapi', cardScales: vaapiCanScale() }
+  if (!hasCommand('ffmpeg')) return { encoder: 'cpu', cardScales: false }
+  if (canEncode(ENCODER_ARGS.nvenc)) return { encoder: 'nvenc', cardScales: true }
+  if (vaapiReady()) return { encoder: 'vaapi', cardScales: vaapiCanScale() }
+  return { encoder: 'cpu', cardScales: false }
 }
 
-let encoder: ProxyEncoder | null = null
+let detected: Detected | null = null
 
-const proxyEncoder = () => (encoder ??= detectEncoder())
+const detection = () => (detected ??= detectEncoder())
 
-/* only for tests and for saying which one was picked in a log line */
-const setProxyEncoder = (next: ProxyEncoder | null) => {
-  encoder = next
+const proxyEncoder = () => detection().encoder
+
+/* only for tests and for saying which one was picked in a log line. A card is assumed to scale
+   unless a test says otherwise, which is what every card did until one did not. */
+const setProxyEncoder = (next: ProxyEncoder | null, cardScales = true) => {
+  detected = next === null ? null : { encoder: next, cardScales }
 }
 
 /* everything the real command sets, minus the container, since a trial writes to nothing */
@@ -169,10 +187,18 @@ const scaleFilter = (shape: { turned: boolean } | null, hardware: boolean) => {
   return shape?.turned ? `scale_vaapi=w=-2:h=${PROXY_WIDTH}` : `scale_vaapi=w=${PROXY_WIDTH}:h=-2`
 }
 
-/* ffmpeg signs off with "Conversion failed!", which says only that it did — the diagnosis is the
-   line above it, naming the setting it would not accept. So the sign-offs are dropped and the last
-   line that actually gives a reason is kept. */
-const NOISE = [/^Conversion failed!?$/i, /^Error opening output file/i, /^Terminating thread/i]
+/* ffmpeg signs off with "Conversion failed!", which says only that it did — the diagnosis is a
+   line further up, naming the setting it would not accept. So the sign-offs are dropped and the
+   first line that actually gives a reason is kept: once one stage fails, every stage after it
+   reports its own failure too, and the last of those is a consequence. A scaler that could not
+   start used to be reported as the encoder's "error code -22 (Invalid argument)", which pointed
+   at the wrong thing entirely. */
+const NOISE = [
+  /^Conversion failed!?$/i,
+  /^Error opening output file/i,
+  /^Terminating thread/i,
+  /^Task finished with error code/i
+]
 
 const NAMES_A_REASON = /failed|invalid|unable|impossible|not (supported|implemented)/i
 
@@ -182,7 +208,7 @@ const lastComplaint = (stderr: string) => {
     .map((l) => l.trim().replace(/^\[[^\]]+\]\s*/, ''))
     .filter((l) => l !== '' && !NOISE.some((n) => n.test(l)))
   const named = lines.filter((l) => NAMES_A_REASON.test(l))
-  return named[named.length - 1] ?? lines[lines.length - 1] ?? 'ffmpeg failed with no output'
+  return named[0] ?? lines[lines.length - 1] ?? 'ffmpeg failed with no output'
 }
 
 /* Written to a temporary name and moved into place, so an interrupted run leaves nothing that
@@ -194,21 +220,29 @@ const lastComplaint = (stderr: string) => {
 const buildProxy = (src: string, dest: string, shape: ReturnType<typeof videoShape> = null) => {
   if (!hasCommand('ffmpeg')) return { ok: false as const, reason: 'ffmpeg is not installed' }
   const quote = (p: string) => `"${p.replace(/(["$`\\])/g, '\\$1')}"`
-  const pick = proxyEncoder()
+  const { encoder: pick, cardScales } = detection()
+  /* A VAAPI card with no scaler decodes into ordinary memory instead, where ffmpeg turns the frame
+     the right way up exactly as it does for the processor path, and hands the resized frame back
+     to the card to encode. */
+  const vaapiHybrid = pick === 'vaapi' && !cardScales
   /* NVENC scales on the card with cuda; VAAPI with its own filter. The processor path is left
      exactly as it was, turn and all, because ffmpeg has already done that part for it. */
   const decode =
     pick === 'nvenc'
       ? ['-hwaccel', 'cuda', '-hwaccel_output_format', 'cuda']
-      : pick === 'vaapi'
-        ? ['-hwaccel', 'vaapi', '-hwaccel_output_format', 'vaapi', '-vaapi_device', DRI_DEVICE()]
-        : []
+      : vaapiHybrid
+        ? ['-hwaccel', 'vaapi', '-vaapi_device', DRI_DEVICE()]
+        : pick === 'vaapi'
+          ? ['-hwaccel', 'vaapi', '-hwaccel_output_format', 'vaapi', '-vaapi_device', DRI_DEVICE()]
+          : []
   const filter =
     pick === 'nvenc'
       ? shape?.turned
         ? `scale_cuda=w=-2:h=${PROXY_WIDTH}`
         : `scale_cuda=w=${PROXY_WIDTH}:h=-2`
-      : scaleFilter(shape, pick === 'vaapi')
+      : vaapiHybrid
+        ? `${scaleFilter(shape, false)},format=nv12,hwupload`
+        : scaleFilter(shape, pick === 'vaapi')
   const partial = `${dest}.part`
   fs.mkdirSync(path.dirname(dest), { recursive: true })
   try {
@@ -332,7 +366,9 @@ const buildMissingProxies = async (outputDir?: string) => {
     )
     if (report.built > 0)
       console.log(
-        `[Proxy] Built ${report.built} proxy file(s) in ${dir}/proxies using ${proxyEncoder()}`
+        `[Proxy] Built ${report.built} proxy file(s) in ${dir}/proxies using ${proxyEncoder()}${
+          proxyEncoder() === 'vaapi' && !detection().cardScales ? ' (resized on the processor)' : ''
+        }`
       )
     if (report.failed.length > 0)
       console.warn(
