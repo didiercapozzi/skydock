@@ -2,7 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { z } from 'zod'
 import { isArchiveFresh, sameContents } from './archive'
-import { uploadGate } from './fileStatus'
+import { outputKeyOf, uploadGate } from './fileStatus'
 import { hashFile } from './lib/fs'
 import { statProcessedOutputs } from './manifest'
 import { dsmFileMd5 } from './nas'
@@ -87,7 +87,7 @@ const proveOnStorage = async (
 
   /* nothing changed since it was prepared — a crop or a re-time since then is not on the storage */
   const outputs = statProcessedOutputs(manifest)
-  const gate = uploadGate(group.files, (file) => ({ output: outputs[file.path] }))
+  const gate = uploadGate(group.files, (file) => ({ output: outputs[outputKeyOf(file)] }))
   if (gate.blocked) throw new Error(`${gate.message} — it changed since it was uploaded.`)
 
   const videos = group.files.filter((f) => isVideoFile(f.path))
@@ -187,7 +187,13 @@ const freeTandem = async ({
   let bytes = 0
   const originals = path.join(outputDir, 'original_files')
   const proxies = path.join(outputDir, 'proxies')
+  /* An original another jump still holds — this one copied into it, or a copy of its own here — is
+     not this tandem's alone to delete: it stays, with its proxy, until the last jump holding it is
+     freed. Everything made from it for this tandem still goes. */
+  const heldElsewhere = (file: ManifestFile) =>
+    manifest.files.some((other) => other.path === file.path && other.id !== file.id && !other.freed)
   for (const file of group.files) {
+    if (heldElsewhere(file)) continue
     bytes += removeFile(originals, file.path)
     if (file.proxy && file.proxy !== file.path) bytes += removeFile(proxies, file.proxy)
   }

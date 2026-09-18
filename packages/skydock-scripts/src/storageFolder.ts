@@ -33,6 +33,23 @@ const storageDirOf = (
   return where.destination ? destBaseOf(where.destination, manifest, defaultFolder) : null
 }
 
+/* When a delivered file was shot, read off its name: `yverdon_20260913_013417.mp4`, a film named for
+   its day alone, `luc_favre_20260802.mp4`, or an archive, `luc_favre_20260802.photos.zip` — the time
+   as the machine that named it kept it. The storage's own date is when the file was put there, which
+   for anything uploaded before the upload kept dates is the upload's day, not the jump's. */
+const NAMED_TIME =
+  /_(\d{4})(\d{2})(\d{2})(?:_(\d{2})(\d{2})(\d{2}))?(?:_\d+)?(?:\.[a-z]+)?\.[^.]+$/i
+
+const shotFromName = (name: string) => {
+  const found = NAMED_TIME.exec(name)
+  if (!found) return null
+  const [year, month, day, hours, minutes, seconds] = found.slice(1).map((n) => Number(n ?? 0))
+  const at = new Date(year!, month! - 1, day!, hours, minutes, seconds)
+  /* a name whose digits are not a date is not a date: 20261399 must not become next spring */
+  if (at.getFullYear() !== year || at.getMonth() !== month! - 1 || at.getDate() !== day) return null
+  return Math.floor(at.getTime() / 1000)
+}
+
 const kindOf = (name: string): StorageFile['kind'] =>
   isVideoFile(name) ? 'video' : PHOTO.test(name) ? 'photo' : 'other'
 
@@ -41,7 +58,7 @@ const kindOf = (name: string): StorageFile['kind'] =>
 const listStorageFolder = async (session: NasSession, dir: string): Promise<StorageFile[]> => {
   const order = { video: 0, photo: 1, other: 2 }
   return (await listNasFiles(session.hostname, session.sessionId, dir))
-    .map((f) => ({ ...f, kind: kindOf(f.name) }))
+    .map((f) => ({ ...f, kind: kindOf(f.name), shot: shotFromName(f.name) }))
     .sort((a, b) => order[a.kind] - order[b.kind] || a.name.localeCompare(b.name))
 }
 
@@ -73,4 +90,4 @@ const openStorageFile = (session: NasSession, filePath: string, range?: string |
     range ? { headers: { Range: range } } : {}
   )
 
-export { listStorageFolder, openStorageFile, storageDirOf, withinStorage }
+export { listStorageFolder, openStorageFile, shotFromName, storageDirOf, withinStorage }

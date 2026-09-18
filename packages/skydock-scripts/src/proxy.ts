@@ -147,8 +147,11 @@ const getCutProxyDir = (outputDir: string, groupId: string) =>
 
 /* Keyed by what the file *is*, not where it sits: the same clip copied twice off the same card is
    one proxy, and moving a file does not orphan it. */
-const getProxyPath = (file: ManifestFile, outputDir?: string) =>
-  file.id ? path.join(getProxyDir(outputDir), `${file.id}.mp4`) : null
+const getProxyPath = (file: ManifestFile, outputDir?: string) => {
+  /* a copy is of the same clip as its original, so the two share the one proxy */
+  const clip = file.copyOf ?? file.id
+  return clip ? path.join(getProxyDir(outputDir), `${clip}.mp4`) : null
+}
 
 /* Width, height and how the clip is meant to be turned. A phone or a 360 camera records sideways
    and records the turn beside it, so the frame on disk is not the frame anyone sees. */

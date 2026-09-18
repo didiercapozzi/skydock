@@ -178,7 +178,7 @@ const JumpCard = ({
       }}
       title={
         group && !frozen
-          ? 'Click to list its files · ⌘/ctrl-click a second jump to compare the two · drop files here to move them into it · drag onto a folder to file the whole jump'
+          ? 'Click to list its files · ⌘/ctrl-click a second jump to compare the two · drop files here to move them into it, holding alt to copy them instead · drag onto a folder to file the whole jump'
           : 'Click to list its files'
       }
       /* the loose card is not a jump and must not pass for one: dashed, flat, on the page's own

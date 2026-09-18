@@ -18,9 +18,35 @@ type MoveTo = {
   startsAt?: number
 }
 
-const moveFiles = (manifest: Manifest, ids: Set<string>, to: MoveTo) => {
+/* A copy exists because a jump holds it. One that leaves for the sorting area with nowhere to be —
+   not into a jump, not filed to a place — is not sent back but simply ends: the original is
+   wherever it already is, and a second loose entry for it would be the same file listed twice. */
+const endCopies = (manifest: Manifest, ids: Set<string>) => {
+  const ending = manifest.files.filter((f) => f.id && ids.has(f.id) && f.copyOf)
+  for (const copy of ending) {
+    const output = copy.processed?.path
+    if (output && fs.existsSync(output)) {
+      try {
+        fs.unlinkSync(output)
+      } catch {
+        /* a processed copy that cannot be deleted is not worth failing over */
+      }
+    }
+  }
+  const gone = new Set(ending.map((f) => f.id))
+  manifest.files = manifest.files.filter((f) => !gone.has(f.id))
+  manifest.groups = manifest.groups
+    .map((g) => ({ ...g, files: g.files.filter((f) => !gone.has(f.id)) }))
+    .filter((g) => g.files.length > 0)
+  return new Set([...ids].filter((id) => !gone.has(id)))
+}
+
+const moveFiles = (manifest: Manifest, asked: Set<string>, to: MoveTo) => {
   if (to.targetGroupId && !manifest.groups.some((g) => g.id === to.targetGroupId))
     throw new Error('Target jump not found.')
+  const ids =
+    !to.targetGroupId && !to.newGroup && !to.destination ? endCopies(manifest, asked) : asked
+  if (ids.size === 0) return
 
   /* A file leaving its jump to stand alone keeps what was set on it there — its trim, frame and
      turn live on the jump's copy of it, and a lone file is its registry entry, so they are carried
@@ -78,6 +104,45 @@ const moveFiles = (manifest: Manifest, ids: Set<string>, to: MoveTo) => {
   }
 }
 
+/* Files copied into another jump, not moved: each stays where it is and the other jump gets an entry
+   of its own for the same original — its own trim, time, processed copy and upload — so a clip two
+   passengers share goes to both, each under their own name, with nothing doubled on the disk. It
+   arrives trimmed, framed and turned as it is where it was copied from, which is the likeliest thing
+   to want and can be changed there afterwards. A jump holds an original once: one it already has,
+   as itself or as a copy, is passed over. */
+const copyFiles = (manifest: Manifest, ids: Set<string>, targetGroupId: string) => {
+  const target = manifest.groups.find((g) => g.id === targetGroupId)
+  if (!target) throw new Error('Target jump not found.')
+  const taken = new Set(manifest.files.flatMap((f) => (f.id ? [f.id] : [])))
+  const held = new Set(target.files.map((f) => f.path))
+  /* each file as its jump has it, crop and all; one in no jump, as the registry has it */
+  const asHeld = new Map<string, ManifestFile>()
+  for (const f of manifest.files) if (f.id && ids.has(f.id)) asHeld.set(f.id, f)
+  for (const f of manifest.groups.flatMap((g) => g.files))
+    if (f.id && ids.has(f.id)) asHeld.set(f.id, f)
+
+  let copied = 0
+  for (const source of asHeld.values()) {
+    if (source.freed || held.has(source.path)) continue
+    const original = source.copyOf ?? source.id!
+    let n = 1
+    while (taken.has(`${original}~${n}`)) n++
+    const id = `${original}~${n}`
+    taken.add(id)
+    held.add(source.path)
+    const { processed: _p, uploaded: _u, destination: _d, freed: _f, ...kept } = source
+    const copy: ManifestFile = { ...kept, id, copyOf: original }
+    manifest.files.push(copy)
+    target.files.push({ ...copy })
+    copied++
+  }
+  if (copied > 0) {
+    target.files.sort((a, b) => a.mtime - b.mtime)
+    target.processed = undefined
+  }
+  return { copied, passedOver: asHeld.size - copied }
+}
+
 /* A jump that should not exist goes, and its files stay: loose in Unsorted, each on its own day,
    keeping their trim, frame and turn as any file leaving a jump does (RULES, Jumps). What was made
    from them is out of date and goes, as with any move. */
@@ -91,5 +156,5 @@ const deleteJump = (manifest: Manifest, groupId: string) => {
   return ids.size
 }
 
-export { deleteJump, moveFiles }
+export { copyFiles, deleteJump, moveFiles }
 export type { MoveTo }

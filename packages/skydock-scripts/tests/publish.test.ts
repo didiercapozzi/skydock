@@ -140,6 +140,23 @@ describe('uploading a folder', () => {
     expect(sentPath(server.uploads[0]!)).toBe('/SkyDock/Yverdon')
   })
 
+  /* Processing stamped each copy with when it was shot; the storage is told that date, or it would
+     date every file by the day it was sent, which is what anyone browsing it sorts by. */
+  it('sends each file with its own date, not the day it went up', async () => {
+    fs.rmSync(dir, { recursive: true, force: true })
+    dir = createTmpDir('skydock-publish-dated-')
+    const target = path.join(dir, 'yverdon_20260913_013417.mp4')
+    fs.writeFileSync(target, Buffer.from('dated'))
+    const shot = new Date(2026, 8, 13, 1, 34, 17)
+    fs.utimesSync(target, shot, shot)
+    storageAnswers()
+
+    await publish({ remoteDir: '/SkyDock/Yverdon' })
+
+    const said = server.uploads[0]!.body.toString('utf8').match(/name="mtime"\r\n\r\n(\d+)/)?.[1]
+    expect(Number(said)).toBe(shot.getTime())
+  })
+
   it('fails when a file cannot be sent, and keeps the session', async () => {
     answer = () => ({ success: false })
     storageAnswers()

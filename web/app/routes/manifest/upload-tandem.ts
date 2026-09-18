@@ -2,6 +2,7 @@ import {
   ensureNasSession,
   listRemoteFiles,
   loadManifest,
+  outputKeyOf,
   saveManifest,
   statProcessedOutputs,
   tandemUploadKey,
@@ -24,7 +25,7 @@ const uploadTandemIntent: Intent = async ({ data, manifest, manifestPath, output
   /* the same rule every upload uses: a film built from a copy that no longer matches its source is
      not this tandem's film */
   const outputs = statProcessedOutputs(manifest)
-  const gate = uploadGate(group.files, (file) => ({ output: outputs[file.path] }))
+  const gate = uploadGate(group.files, (file) => ({ output: outputs[outputKeyOf(file)] }))
   if (gate.blocked) return refuse(`${gate.message} — process before uploading.`)
   const report = uploadReporter({ scope: tandemUploadKey(group.id), groupId: group.id, outputDir })
   try {

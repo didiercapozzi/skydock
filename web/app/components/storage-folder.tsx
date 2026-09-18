@@ -4,7 +4,7 @@ import { useStorageFolder } from '../hooks/useStorageFolder'
 import type { StorageWhere } from '../hooks/useStorageFolder'
 import { Mini } from './buttons'
 import { Modal } from './modal'
-import { dateLabel, formatSize, plural } from './utils'
+import { dateLabel, formatSize, hhmm, plural } from './utils'
 
 /* A file on the storage is played through the board's own server, which holds the session; the
    path is the storage's, a piece at a time so a name with a space or an accent survives the trip. */
@@ -122,8 +122,22 @@ const StorageFolder = ({
                       {hereToo.has(file.name) ? 'here too' : 'only on the storage'}
                     </span>
                   )}
-                  <span className='w-[92px] flex-none text-right font-mono text-[11px] text-ink-3 tabular-nums'>
-                    {file.mtime ? dateLabel(file.mtime) : ''}
+                  {/* when it was shot, as its name says; the storage's own date is only a stand-in
+                      for a file not named by SkyDock, and says what it is */}
+                  <span
+                    title={
+                      file.shot
+                        ? 'Shot then, as its name says'
+                        : file.mtime
+                          ? 'Put on the storage then — its name does not say when it was shot'
+                          : undefined
+                    }
+                    className='w-[150px] flex-none text-right font-mono text-[11px] text-ink-3 tabular-nums'>
+                    {file.shot
+                      ? `${dateLabel(file.shot)} ${hhmm(file.shot)}`
+                      : file.mtime
+                        ? dateLabel(file.mtime)
+                        : ''}
                   </span>
                   <span className='w-[64px] flex-none text-right font-mono text-[11px] text-ink-3 tabular-nums'>
                     {file.size === null ? '' : formatSize(file.size)}

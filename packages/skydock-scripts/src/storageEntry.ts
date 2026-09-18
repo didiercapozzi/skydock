@@ -7,6 +7,8 @@ const storageFileSchema = z.object({
   path: z.string(),
   size: z.number().nullable(),
   mtime: z.number().nullable(),
+  /* when it was shot, as its name says — every file SkyDock delivers is named after that */
+  shot: z.number().nullable(),
   kind: z.enum(['video', 'photo', 'other'])
 })
 

@@ -499,7 +499,8 @@ const ManyPanel = ({
         </span>
       </Box>
       <Hint>
-        The tick or ⌘/ctrl-click picks one · shift-click takes a range · ⌘A takes them all
+        The tick or ⌘/ctrl-click picks one · shift-click takes a range · ⌘A takes them all · drag
+        them onto a jump to move them, holding alt to copy them there instead
       </Hint>
     </>
   )

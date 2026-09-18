@@ -124,5 +124,9 @@ const uploadGate = (files: ManifestFile[], context?: (file: ManifestFile) => Sta
   }
 }
 
-export { fileChanged, fileStatus, scopeStatus, uploadGate }
+/* What a file's processed copy is looked up by: the file's identity, not where its original sits,
+   because a copy shares its original's path and each of the two has a processed copy of its own. */
+const outputKeyOf = (file: { id?: string; path: string }) => file.id ?? file.path
+
+export { fileChanged, fileStatus, outputKeyOf, scopeStatus, uploadGate }
 export type { FileStatus, OutputFact, RemoteListing, StatusContext }

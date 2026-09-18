@@ -23,6 +23,8 @@ const actionArgs = z.object({
     /* one file's time, corrected on its own */
     'retime-file',
     'move-files',
+    /* the same files into another jump as well, staying where they are */
+    'copy-files',
     /* a jump that should not exist: it goes, its files stay, loose in Unsorted */
     'delete-jump',
     'regroup-loose',

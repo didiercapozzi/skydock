@@ -480,12 +480,13 @@ const runProcess = async (options?: ProcessOptions) => {
     return pool
   }
 
-  /* keyed by source path, holding the file as it was COPIED — a grouped file carries the group
+  /* keyed by the source's identity — a copy shares its original's path, and both may be written in
+     one pass — holding the file as it was COPIED — a grouped file carries the group
      ref's crop, which the registry entry does not, and that crop is part of what produced the
      output, so the stamp has to come from this object and not from `manifest.files` */
   const processedPaths = new Map<string, { dest: string; source: ManifestFile }>()
   const record = (source: ManifestFile, destPath: string) => {
-    processedPaths.set(source.path, { dest: destPath, source })
+    processedPaths.set(source.id ?? source.path, { dest: destPath, source })
   }
 
   const asAsked = new Map(groups.map((g) => [g.id, copiedAs(g)]))
@@ -522,7 +523,7 @@ const runProcess = async (options?: ProcessOptions) => {
     delete group.publish
   }
   for (const file of current.files) {
-    const written = processedPaths.get(file.path)
+    const written = processedPaths.get(file.id ?? file.path)
     if (!written) continue
     const { dest, source } = written
     file.processed = {

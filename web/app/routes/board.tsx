@@ -9,6 +9,7 @@ import {
   listRemoteFiles,
   loadManifest,
   offGap,
+  outputKeyOf,
   passengerName,
   passengerOf,
   processingNow,
@@ -212,10 +213,13 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   /* Deleting goes one step at a time: a file in a jump comes out of it and is loose; only a loose
      file in Unsorted, deleted again, goes to the bin. */
   const binnable = (file: ManifestFile) => inUnsorted(file) && !groupOfFile(file)
+  /* a copy has nowhere to be sent back to — its original is wherever it already is — so it ends */
   const backLabel = (files: ManifestFile[]) =>
-    files.every(inUnsorted)
-      ? `Take out of ${files.length === 1 ? 'its jump' : 'their jumps'} (⌫)`
-      : 'Send back to Fresh files (⌫)'
+    files.every((f) => f.copyOf)
+      ? `Remove ${files.length === 1 ? 'this copy' : 'these copies'} (⌫)`
+      : files.every(inUnsorted)
+        ? `Take out of ${files.length === 1 ? 'its jump' : 'their jumps'} (⌫)`
+        : 'Send back to Fresh files (⌫)'
   const fileById = (id: string) =>
     [...groups.flatMap((g) => g.files), ...loose].find((f) => f.id === id)
   const askTrash = (files: ManifestFile[]) => setDialog({ kind: 'trash', files })
@@ -312,7 +316,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
      a tandem's film — so each file on the storage can say whether it is here too */
   const hereToo = new Set([
     ...placeFiles.flatMap((f) =>
-      f.processed && board.outputs[f.path]?.exists ? [lastSegment(f.processed.path)] : []
+      f.processed && board.outputs[outputKeyOf(f)]?.exists ? [lastSegment(f.processed.path)] : []
     ),
     ...placeGroups.flatMap((g) => {
       const film = board.tandemFacts[g.id]?.film
@@ -386,10 +390,34 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const moveFiles = (ids: string[], where: Move) => {
     if (ids.length === 0) return
     selection.clear()
+    /* Copied into another jump, the files stay where they are as well — so one that cannot move can
+       still be copied: nothing about it changes. Only a freed one cannot, having no file here. */
+    if (where.copy && where.targetGroupId) {
+      const here = ids.filter((id) => !fileById(id)?.freed)
+      if (here.length === 0) setNote('Freed from this machine — there is no file here to copy.')
+      else if (frozen.has(where.targetGroupId)) setNote(EDIT_LOCKED)
+      else send('copy', { intent: 'copy-files', fileIds: here, targetGroupId: where.targetGroupId })
+      return
+    }
+    /* a file that cannot move is carried only so that it can be copied */
+    const locked = ids.filter((id) => {
+      const file = fileById(id)
+      return file && !frozenFiles.has(id) && lockReason(file, statusContext(file))
+    })
+    if (locked.length === ids.length) {
+      setNote(
+        'On the storage already, so it cannot move — hold alt while dropping to copy it instead.'
+      )
+      return
+    }
     /* a tandem with an edit neither gives files up nor takes them in */
-    const free = ids.filter((id) => !frozenFiles.has(id))
+    const free = ids.filter((id) => !frozenFiles.has(id) && !locked.includes(id))
     if (free.length === 0 || (where.targetGroupId && frozen.has(where.targetGroupId))) {
-      setNote(EDIT_LOCKED)
+      setNote(
+        free.length === 0 && where.targetGroupId
+          ? `${EDIT_LOCKED} Hold alt while dropping to copy it into the other jump instead.`
+          : EDIT_LOCKED
+      )
       return
     }
     send('move', {

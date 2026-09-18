@@ -93,6 +93,20 @@ current setting to everything, including jumps that were split or merged by hand
 - A file a jump holds against the gap rule — dragged in by hand, or re-timed away from the rest, so that
   a pause the rule would cut at separates it from the jump's longest run — carries a **gap** flag
   wherever it is drawn, and the jump's card says how many of its files do. The flag only says so; nothing is moved, since whoever put it there may be right.
+- **A file can be copied into another jump** as well as moved there, for what two jumps share — the
+  plane, the exit, the group photo, two passengers out of the same door. Dropped on the other jump, or
+  on a passenger in the menu, with alt or ctrl held, it stays where it was and the other jump gets a copy
+  of its own: trimmed, framed and turned as it was where it came from, then changed there without
+  touching the other; on its own time, so re-timing one jump leaves the other alone; and processed and
+  uploaded for that jump, under that passenger's name. The file says on its row that it is a copy. A jump
+  holds a clip once, so one it already has is passed over. A file that can no longer move — uploaded, or
+  in a tandem with an edit — can still be copied, since nothing about it changes; only one freed from
+  this machine cannot, having no file here.
+- A copy exists for the jump that holds it. Taken out of its jump it is not sent back but simply ends —
+  the original is wherever it already is — and it goes with its tandem when the tandem is deleted. A scan
+  leaves it in its jump rather than pulling it back beside its original, and it follows its original if
+  that file is moved, and goes if that file is gone. The original cannot be put in the bin while a jump
+  holds a copy of it, and freeing a tandem leaves on the disk any original another jump still holds.
 - A jump that should not exist can be **deleted** from its panel, wherever it is filed. The jump goes
   and its files stay: back in Fresh files, loose, each on the day it was shot, keeping the trim, frame and
   turn set on it in the jump. What was made from them no longer matches and is deleted, so when there
@@ -425,13 +439,19 @@ with a folder missing opens the picker for that folder.
 their folder on the storage holds — the very folder their uploads go to, and for a tandem already
 uploaded the one it actually went to — so what is up there is listed, and watched, from the board
 whether or not any of it is still on this machine: a freed tandem, last month's days at a dropzone.
-Each file says what it is, how big and from when, and whether it is here too or only on the storage.
+Each file says what it is, how big, when it was shot — read off its name, which SkyDock gives every
+file it delivers, since the storage's own date for anything sent before files kept theirs is the day it
+was sent — and whether it is here too or only on the storage. A file SkyDock did not name shows when it
+was put there instead, and says so.
 A video or a photo is played by clicking it, streamed from the storage through the board, so a film is
 scrubbed without being downloaded first; an archive is listed and not opened. The storage's list of
 tandems offers the same for each tandem it names, including ones this machine never held. The folder
 is asked for when the place is opened, after an upload, and when told to look again — never on a
 timer. All of it only reads: nothing is written to the storage, nothing is recorded from what is
 found, and only files inside the folders SkyDock uploads into are ever opened.
+
+**Files keep their date.** Every file is sent with its own date — the one processing stamped on it,
+which is when it was shot — so the storage lists and sorts it by that, not by the day it went up.
 
 **Uploading a dropzone.** One upload covers the whole dropzone — every jump filed there and its loose
 files — sending the folder whole. A tandem cannot be uploaded this way, because its files go to two
@@ -606,7 +626,8 @@ Worth knowing, so nobody goes looking:
 - **SkyDock never sends email.** A person sends it from their own mail.
 - **The montage takes every photo.** There is no choosing which photos the passenger gets.
 - **Nothing renders the film.** The editor does, by a person's hand; SkyDock only notices.
-- **A file is in one place at a time.** It cannot be in two jumps at once.
+- **Nothing is ever doubled on the disk.** A clip copied into another jump is still one original; each
+  jump it is in makes a processed copy of its own from it.
 - **A dropzone can be created, not renamed or removed.**
 - **Nothing comes back down from the storage** except its list of tandems.
 - **Archives are made only by uploading a tandem.** The originals cannot be backed up ahead of the film.

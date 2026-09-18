@@ -14,6 +14,15 @@ type Move = {
   /* for a new jump: what it is called and when it started */
   name?: string
   startsAt?: number
+  /* into the jump as a copy: the files stay where they are as well */
+  copy?: boolean
+}
+
+/* Alt or ctrl held while dropping copies instead of moving, as it does in a file manager — and the
+   pointer says so while it is held, with the plus a copy is always shown by. */
+const copying = (e: React.DragEvent) => e.altKey || e.ctrlKey
+const showIntent = (e: React.DragEvent) => {
+  e.dataTransfer.dropEffect = copying(e) ? 'copy' : 'move'
 }
 
 /* What is in the air and where it may land. A whole jump travels by its line; files travel by their
@@ -77,6 +86,7 @@ const useDragAndDrop = ({
         if (draggedFiles.length === 0 && !fromComputer(e)) return
         e.preventDefault()
         e.stopPropagation()
+        if (draggedFiles.length > 0) showIntent(e)
         setOverTarget(key)
       },
       onDragLeave: leaveTarget(key),
@@ -96,7 +106,7 @@ const useDragAndDrop = ({
         if (draggedFiles.length === 0) return
         e.preventDefault()
         e.stopPropagation()
-        moveFiles(draggedFiles, { targetGroupId: groupId })
+        moveFiles(draggedFiles, { targetGroupId: groupId, copy: copying(e) })
         setDraggedFiles([])
       }
     }
@@ -127,6 +137,8 @@ const useDragAndDrop = ({
       onDragOver: (e: React.DragEvent) => {
         if (!accepts && !(fromComputer(e) && incoming)) return
         e.preventDefault()
+        /* only a passenger's entry is a jump to copy into; a place has no jump to hold a copy */
+        if (into && draggedFiles.length > 0) showIntent(e)
         setOverTarget(key)
       },
       onDragLeave: leaveTarget(key),
@@ -141,7 +153,7 @@ const useDragAndDrop = ({
           moveFiles(
             draggedFiles,
             into
-              ? { targetGroupId: into.hostId }
+              ? { targetGroupId: into.hostId, copy: copying(e) }
               : { destination, newGroup: destination === TANDEMS }
           )
         else if (dragged.length > 0) assign(dragged, destination, into?.passenger)

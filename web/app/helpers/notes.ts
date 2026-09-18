@@ -47,6 +47,12 @@ const uploadedNote = (uploaded: number, skipped?: number) =>
 const freedNote = ({ files, bytes }: { files: number; bytes: number }) =>
   `On the storage only. ${plural(files, 'file')} freed from this machine on ${localeDate(Date.now() / 1000)} — ${formatFilmSize(bytes)} given back. The project is kept here; everything else is on the storage, as above.`
 
+/* files copied into another jump, which is then to be processed again */
+const copiedNote = ({ files, passedOver }: { files: number; passedOver: number }) =>
+  `Copied ${plural(files, 'file')} into the jump — ${files === 1 ? 'it stays' : 'they stay'} where ${
+    files === 1 ? 'it was' : 'they were'
+  } as well${passedOver > 0 ? ` · ${passedOver} already there` : ''}`
+
 /* tandems put back from the storage's list, and what is left to do about them */
 const restoredNote = (restored: { who: string; files: number; of: number }[]) => {
   const partly = restored.filter((r) => r.files < r.of)
@@ -60,4 +66,4 @@ const restoredNote = (restored: { who: string; files: number; of: number }[]) =>
   }`
 }
 
-export { freedNote, importNote, montageNote, restoredNote, scanNote, uploadedNote }
+export { copiedNote, freedNote, importNote, montageNote, restoredNote, scanNote, uploadedNote }

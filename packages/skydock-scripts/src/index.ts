@@ -14,7 +14,7 @@ import {
   shiftFiles,
   shiftGroupTo
 } from './clustering'
-import { fileChanged, fileStatus, uploadGate } from './fileStatus'
+import { fileChanged, fileStatus, outputKeyOf, uploadGate } from './fileStatus'
 import type { FileStatus, OutputFact, RemoteListing, StatusContext } from './fileStatus'
 /* arithmetic only — the board draws the rectangle with the same functions processing cuts it with,
    because two ideas of "which pixels" would disagree and the disagreement would be invisible */
@@ -119,6 +119,7 @@ import {
 } from './workspace'
 
 export {
+  outputKeyOf,
   watchTandems,
   liveEventSchema,
   publish,

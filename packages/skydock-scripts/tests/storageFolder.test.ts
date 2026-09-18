@@ -4,6 +4,7 @@ import type { NasSession } from '../src/nas'
 import {
   listStorageFolder,
   openStorageFile,
+  shotFromName,
   storageDirOf,
   withinStorage
 } from '../src/storageFolder'
@@ -138,5 +139,44 @@ describe('a file played off the storage', () => {
     expect(params.get('api')).toBe('SYNO.FileStation.Download')
     expect(params.get('mode')).toBe('open')
     expect(params.get('path')).toBe('["/SkyDock/Tandems/Luc Favre/luc.mp4"]')
+  })
+})
+
+/* The storage dates a file by when it was put there, which for everything uploaded so far is the
+   upload's day. When it was shot is in its name, which SkyDock gives every file it delivers. */
+describe('when a file on the storage was shot', () => {
+  const local = (y: number, mo: number, d: number, h = 0, mi = 0, se = 0) =>
+    Math.floor(new Date(y, mo - 1, d, h, mi, se).getTime() / 1000)
+
+  it('is read off a delivered clip or photo, to the second', () => {
+    expect(shotFromName('yverdon_20260913_013417.mp4')).toBe(local(2026, 9, 13, 1, 34, 17))
+    expect(shotFromName('luc_favre_20260802_090909.jpg')).toBe(local(2026, 8, 2, 9, 9, 9))
+  })
+
+  it('is read off one that shared its second with another, and got a number', () => {
+    expect(shotFromName('yverdon_20260913_013417_2.mp4')).toBe(local(2026, 9, 13, 1, 34, 17))
+  })
+
+  it('is the day, for a film and the archives, which are named for the day alone', () => {
+    expect(shotFromName('luc_favre_20260802.mp4')).toBe(local(2026, 8, 2))
+    expect(shotFromName('luc_favre_20260802.photos.zip')).toBe(local(2026, 8, 2))
+    expect(shotFromName('luc_favre_20260802.rushes.zip')).toBe(local(2026, 8, 2))
+  })
+
+  it('is not known for a file SkyDock did not name, nor for digits that are no date', () => {
+    expect(shotFromName('GX018664.MP4')).toBeNull()
+    expect(shotFromName('skydock-tandems.json')).toBeNull()
+    expect(shotFromName('yverdon_20261399_013417.mp4')).toBeNull()
+  })
+
+  it('is given with every file listed', async () => {
+    const stub = nasStubs({
+      files: { '/SkyDock/Yverdon': [{ name: 'yverdon_20260913_013417.mp4', size: 1 }] }
+    })
+    stubFetch((url) => stub(url) ?? new Response('{}'))
+
+    const [listed] = await listStorageFolder(session, '/SkyDock/Yverdon')
+
+    expect(listed?.shot).toBe(local(2026, 9, 13, 1, 34, 17))
   })
 })

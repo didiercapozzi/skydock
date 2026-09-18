@@ -5,6 +5,7 @@ import * as path from 'node:path'
 import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
 import { loadManifest, saveManifest } from '../src/manifest'
+import { copyFiles } from '../src/moveFiles'
 import { processingNow, processJumps } from '../src/process'
 import { setProxyEncoder } from '../src/proxy'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
@@ -526,5 +527,54 @@ describe('processing, said as it happens', () => {
     const late = listening()
     late.stop()
     expect(late.heard).toEqual([])
+  })
+})
+
+/* A clip two passengers share is copied into the second's jump, and each of them is handed it under
+   their own name: one original on the disk, two processed copies, each with a record of its own. */
+describe('processing a clip that two jumps hold', () => {
+  it('writes each passenger a copy under their own name, and records both', async () => {
+    const plane = clip('GX010001.MP4', 0)
+    const ana = clip('GX010009.MP4', 7200)
+    const manifest: Manifest = {
+      version: 1,
+      createdAt: '2026-08-08',
+      files: [plane, ana],
+      groups: [
+        {
+          id: 'g1',
+          label: 'g1',
+          day: DAY,
+          destination: 'Tandems',
+          passenger: { firstname: 'Luc', lastname: 'Favre' },
+          files: [plane]
+        },
+        {
+          id: 'g2',
+          label: 'g2',
+          day: DAY,
+          destination: 'Tandems',
+          passenger: { firstname: 'Ana', lastname: 'Roth' },
+          files: [ana]
+        }
+      ],
+      destinations: [{ name: 'Tandems' }]
+    }
+    copyFiles(manifest, new Set(['id0']), 'g2')
+    const manifestPath = path.join(outputDir, 'manifest.json')
+    saveManifest(manifestPath, manifest)
+
+    await processJumps({ manifestPath, outputDir })
+
+    expect(delivered()).toEqual([
+      path.join('Tandems', 'Ana Roth', 'videos', 'ana_roth_20260808_090909.mp4'),
+      path.join('Tandems', 'Ana Roth', 'videos', 'ana_roth_20260808_110909.mp4'),
+      path.join('Tandems', 'Luc Favre', 'videos', 'luc_favre_20260808_090909.mp4')
+    ])
+    const after = loadManifest(manifestPath)!
+    const recorded = after.files
+      .filter((f) => f.path === plane.path)
+      .map((f) => path.basename(path.dirname(path.dirname(f.processed?.path ?? ''))))
+    expect(recorded.sort()).toEqual(['Ana Roth', 'Luc Favre'])
   })
 })

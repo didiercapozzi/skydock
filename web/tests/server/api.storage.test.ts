@@ -120,7 +120,8 @@ describe('what a place’s folder on the storage holds', () => {
           path: `${DIR}/luc_favre.mp4`,
           size: 5000,
           mtime: 1_785_000_000,
-          kind: 'video'
+          kind: 'video',
+          shot: null
         }
       ]
     })

@@ -26,8 +26,10 @@ const splitByGap = (files: ManifestFile[]) => {
 
 /* The files a jump holds that the gap rule would not have put there — dragged in by hand, or
    re-timed away from the rest — so the board can flag them without moving anything. The jump is its
-   longest unbroken run; whatever a pause the rule cuts at separates from it is off the run. */
-const offGap = (files: ManifestFile[]) => {
+   longest unbroken run; whatever a pause the rule cuts at separates from it is off the run. A copy
+   is left out of it: it is off the run by being a copy, and says so with a flag of its own. */
+const offGap = (held: ManifestFile[]) => {
+  const files = held.filter((f) => !f.copyOf)
   const runs = splitByGap(files)
   if (runs.length < 2) return new Set<string>()
   const main = runs.reduce((a, b) => (b.length > a.length ? b : a))
@@ -77,8 +79,12 @@ const reclusterGroups = (manifest: Manifest) => {
   for (const group of manifest.groups)
     for (const file of group.files) if (file.id) previous.set(file.id, group)
 
+  /* A copy is in its jump because a person put it there, and sits at the same moment as the file it
+     is of — so the gap rule would pull it back beside its original, into a jump holding the same
+     clip twice. Copies are left out of the rule and put back where they were afterwards. */
+  const copies = manifest.files.filter((f) => f.copyOf)
   const mint = idMinter([])
-  manifest.groups = splitByGap(manifest.files)
+  manifest.groups = splitByGap(manifest.files.filter((f) => !f.copyOf))
     .filter((files) => files.length > 1)
     .map((files) => {
       const counts = new Map<ManifestGroup, number>()
@@ -108,6 +114,17 @@ const reclusterGroups = (manifest: Manifest) => {
         ...(keepsId && dominant?.name ? { name: dominant.name } : {})
       }
     })
+  /* each copy back into the jump that held it, as that jump had it; one whose jump is no more has
+     nowhere to be, and ends */
+  const homeless = new Set<string>()
+  for (const copy of copies) {
+    const was = copy.id ? previous.get(copy.id) : undefined
+    const home = was && manifest.groups.find((g) => g.id === was.id)
+    const held = was?.files.find((f) => f.id === copy.id)
+    if (home && held) home.files = [...home.files, held].sort((a, b) => a.mtime - b.mtime)
+    else if (copy.id && !copy.destination) homeless.add(copy.id)
+  }
+  if (homeless.size > 0) manifest.files = manifest.files.filter((f) => !f.id || !homeless.has(f.id))
 }
 
 /* A jump made on the spot out of files dropped somewhere — the only way loose files can become a

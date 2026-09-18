@@ -4,6 +4,7 @@ import {
   isTandem,
   listRemoteFiles,
   loadManifest,
+  outputKeyOf,
   saveManifest,
   scopeKey,
   statProcessedOutputs,
@@ -40,7 +41,7 @@ const uploadGroup: Intent = async ({ data, manifest, manifestPath, outputDir, re
     ...asked.flatMap((g) => g.files),
     ...(scope.destination ? manifest.files.filter((f) => f.destination === scope.destination) : [])
   ]
-  const gate = uploadGate(scopeFiles, (file) => ({ output: outputs[file.path] }))
+  const gate = uploadGate(scopeFiles, (file) => ({ output: outputs[outputKeyOf(file)] }))
   if (gate.blocked) return refuse(`${gate.message} — process before uploading.`)
   const report = uploadReporter({ scope: key, outputDir })
   try {

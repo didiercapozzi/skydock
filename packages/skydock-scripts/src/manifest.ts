@@ -1,6 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { z } from 'zod'
+import { outputKeyOf } from './fileStatus'
 import { writeJsonAtomic } from './lib/fs'
 import { groupsFileSchema, manifestSchema, tandemUploadSchema } from './types'
 import type { GroupsFile, Manifest, ManifestFile } from './types'
@@ -112,7 +113,7 @@ const loadManifest = (manifestPath: string) => {
   return manifest
 }
 
-/* What the disk currently says about each processed copy, keyed by source path. The record alone
+/* What the disk currently says about each processed copy, keyed by the file's identity. The record alone
    cannot know that someone emptied `processed/` or that a crop was re-rendered shorter, so the
    status is only trustworthy with this alongside it. One stat per processed file. */
 const statProcessedOutputs = (manifest: Manifest) => {
@@ -121,9 +122,9 @@ const statProcessedOutputs = (manifest: Manifest) => {
     if (!file.processed) continue
     try {
       const stat = fs.statSync(file.processed.path)
-      outputs[file.path] = { exists: true, size: stat.size }
+      outputs[outputKeyOf(file)] = { exists: true, size: stat.size }
     } catch {
-      outputs[file.path] = { exists: false, size: 0 }
+      outputs[outputKeyOf(file)] = { exists: false, size: 0 }
     }
   }
   return outputs

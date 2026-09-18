@@ -140,8 +140,10 @@ const entryOfTandem = (group: ManifestGroup) => {
     backup:
       record.rushes?.remotePath ?? (firstOriginal ? parentOf(firstOriginal.remotePath) : undefined),
     ...(group.freed ? { freedAt: group.freed.at } : {}),
+    /* by what each file contains — for a copy, that is the identity of the file it is a copy of,
+       which is the one a scan from nothing gives back */
     files: group.files.flatMap((f) =>
-      f.id ? [{ id: f.id, filename: f.filename, mtime: f.mtime }] : []
+      f.id ? [{ id: f.copyOf ?? f.id, filename: f.filename, mtime: f.mtime }] : []
     )
   }
   return { dir: parentOf(folder), entry }

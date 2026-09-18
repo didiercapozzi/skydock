@@ -159,6 +159,20 @@ const GapFlag = () => (
   </span>
 )
 
+/* A copy: the same clip is in another jump as well, and this entry is this jump's own — its own
+   trim, time and processed copy. Said on the file, because nothing else about it looks any different
+   and taking it out of the jump ends it rather than sending it back. */
+const COPY_TITLE =
+  'A copy — the same clip is in another jump too. This one has its own trim and time, and is processed for this jump. Taken out of the jump, it simply ends: the original stays where it is.'
+
+const CopyFlag = () => (
+  <span
+    title={COPY_TITLE}
+    className='flex-none rounded border border-line bg-line-2 px-1.5 font-mono text-[10px] leading-4 font-semibold whitespace-nowrap text-ink-2'>
+    ⧉ copy
+  </span>
+)
+
 const ProxyFlag = ({ fact }: { fact?: ProxyFact }) => {
   if (!fact) return null
   const { label, title, className } = PROXY_FLAG[fact.state]
@@ -321,8 +335,9 @@ const Row = ({
     aria-selected={picked}
     aria-current={previewed || undefined}
     data-file={file.id ?? file.path}
-    draggable={!locked}
-    onDragStart={locked ? undefined : (e) => onDragFile(file, e)}
+    /* a file that cannot move is still carried, because it can be copied into another jump */
+    draggable={!file.freed}
+    onDragStart={file.freed ? undefined : (e) => onDragFile(file, e)}
     onClick={(e) => onFile(file, lane, e)}
     onDoubleClick={() => onOpen(file)}
     onKeyDown={(e) => {
@@ -394,6 +409,7 @@ const Row = ({
       </span>
     )}
     <ProxyFlag fact={proxy} />
+    {file.copyOf && <CopyFlag />}
     {strayed && <GapFlag />}
     <FrameFlag
       file={file}
@@ -471,8 +487,9 @@ const Tile = ({
     aria-selected={picked}
     aria-current={previewed || undefined}
     data-file={file.id ?? file.path}
-    draggable={!locked}
-    onDragStart={locked ? undefined : (e) => onDragFile(file, e)}
+    /* a file that cannot move is still carried, because it can be copied into another jump */
+    draggable={!file.freed}
+    onDragStart={file.freed ? undefined : (e) => onDragFile(file, e)}
     onClick={(e) => onFile(file, lane, e)}
     onDoubleClick={() => onOpen(file)}
     onKeyDown={(e) => {
@@ -504,6 +521,13 @@ const Tile = ({
       </i>
     )}
     {locked && <span className='absolute right-1 bottom-1 text-[10px]'>🔒</span>}
+    {file.copyOf && (
+      <span
+        title={COPY_TITLE}
+        className='absolute top-1 left-1/2 -translate-x-1/2 rounded-[3px] bg-black/[0.66] px-1 font-mono text-[9px] text-white'>
+        ⧉
+      </span>
+    )}
     {strayed && (
       <span
         title={GAP_TITLE}

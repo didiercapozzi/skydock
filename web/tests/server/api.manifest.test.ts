@@ -485,6 +485,48 @@ describe('changes made on the board', () => {
     expect(res.groups[0]?.files.map((f) => f.mtime)).toEqual([1_754_100_000, 1_754_100_060])
   })
 
+  /* RULES, Jumps: a clip two jumps share is copied into the second, not moved */
+  describe('copying files into another jump', () => {
+    const two = () =>
+      writeManifest([
+        group({ id: 'g1', files: [file({ id: 'a' }), file({ id: 'b' })] }),
+        group({ id: 'g2', files: [file({ id: 'c', mtime: 1_754_007_200 })] })
+      ])
+
+    it('leaves them where they were and gives the other jump copies of its own', async () => {
+      two()
+
+      const res = answer(await send({ intent: 'copy-files', fileIds: ['a'], targetGroupId: 'g2' }))
+
+      const byId = Object.fromEntries(res.groups.map((g) => [g.id, g.files.map((f) => f.id)]))
+      expect(byId.g1).toEqual(['a', 'b'])
+      expect(byId.g2).toEqual(['a~1', 'c'])
+      expect(res.groups[1]?.files[0]).toMatchObject({ copyOf: 'a', path: '/src/a.mp4' })
+    })
+
+    it('says so when the jump already holds them', async () => {
+      two()
+      await send({ intent: 'copy-files', fileIds: ['a'], targetGroupId: 'g2' })
+
+      const again = refusal(
+        await send({ intent: 'copy-files', fileIds: ['a'], targetGroupId: 'g2' })
+      )
+
+      expect(again.globalErrors?.[0]).toContain('already holds')
+    })
+
+    it('ends a copy that is sent back, leaving the original in its jump', async () => {
+      two()
+      await send({ intent: 'copy-files', fileIds: ['a'], targetGroupId: 'g2' })
+
+      const res = answer(await send({ intent: 'move-files', fileIds: ['a~1'] }))
+
+      expect(res.looseFiles).toEqual([])
+      const byId = Object.fromEntries(res.groups.map((g) => [g.id, g.files.map((f) => f.id)]))
+      expect(byId).toEqual({ g1: ['a', 'b'], g2: ['c'] })
+    })
+  })
+
   /* RULES, Jumps: a jump deleted, its files kept, loose in Fresh files */
   describe('deleting a jump', () => {
     it('removes the jump and leaves every file loose in Fresh files', async () => {

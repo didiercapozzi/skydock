@@ -1,4 +1,4 @@
-import { fileStatus, lastSegment, uploadGate } from '@skydock/scripts'
+import { fileStatus, lastSegment, outputKeyOf, uploadGate } from '@skydock/scripts'
 import type { OutputFact, RemoteListing } from '@skydock/scripts'
 import type { ManifestFile } from '../components/types'
 
@@ -21,7 +21,7 @@ const fileFacts = ({
       frame: file.frame,
       rotation: file.rotation
     },
-    output: outputs[file.path],
+    output: outputs[outputKeyOf(file)],
     remote,
     inEdit: !!file.id && frozenFiles.has(file.id)
   })

@@ -154,6 +154,21 @@ describe('freeing an uploaded tandem', () => {
     expect(fs.readdirSync(folder)).toEqual(['luc.kdenlive'])
   })
 
+  /* a clip copied into another jump is not this tandem's alone to delete */
+  it('leaves on the disk an original another jump still holds a copy of', async () => {
+    const { manifest, originals, onStorage } = await setup()
+    withStorage(onStorage)
+    const shared = manifest.files[0]!
+    const copy = { ...shared, id: `${shared.id}~1`, copyOf: shared.id, processed: undefined }
+    /* a list of its own: the scene hands the registry and the tandem the same one */
+    manifest.files = [...manifest.files, copy]
+    manifest.groups.push({ id: 'g2', label: 'g2', day: '01.08.2026', files: [copy] })
+
+    await free(manifest)
+
+    expect(fs.readdirSync(originals)).toEqual(['GX01.MP4'])
+  })
+
   it('remembers that it lives on the storage only, and says every file is uploaded', async () => {
     const { manifest, onStorage } = await setup()
     withStorage(onStorage)

@@ -78,8 +78,10 @@ const takeBack = (
     return rest
   })
   const taken = new Set(jumps.map((j) => j.id))
-  /* deleted, the jumps go too: what comes back is loose files, as off the camera */
+  /* deleted, the jumps go too: what comes back is loose files, as off the camera — and a copy,
+     which only exists for the jump that held it, goes with its jump */
   if (forget) {
+    manifest.files = manifest.files.filter((f) => !(f.copyOf && f.id && ids.has(f.id)))
     manifest.groups = manifest.groups.filter((g) => !taken.has(g.id))
     return { groupIds: [...taken] }
   }

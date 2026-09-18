@@ -19,6 +19,12 @@ const trashUnsorted = (manifest: Manifest, ids: Set<string>, outputDir: string) 
   if (going.length === 0) throw new Error('Those files are no longer on the board.')
   if (going.some((f) => f.destination || filed.has(f.id ?? '')))
     throw new Error('Only files in Fresh files can be put in the bin — send them back there first.')
+  /* the bin takes the file off the disk, and a copy of it in a jump is of that very file */
+  const copied = going.find((f) => manifest.files.some((c) => c.copyOf === f.id))
+  if (copied)
+    throw new Error(
+      `${copied.filename} was copied into a jump, which still needs it — take the copy out first.`
+    )
 
   /* one folder per time the bin is asked for, keeping each file where it sat among the originals,
      so what went in together can be found together and put back where it came from */

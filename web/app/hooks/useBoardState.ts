@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
 import {
+  copiedNote,
   freedNote,
   importNote,
   montageNote,
@@ -100,6 +101,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
         freed,
         imported,
         restored,
+        copied: copiedFiles,
         storage: listed,
         storageProblem
       } = answered.data
@@ -128,7 +130,9 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
                   ? freedNote(freed)
                   : restored
                     ? restoredNote(restored)
-                    : null
+                    : copiedFiles
+                      ? copiedNote(copiedFiles)
+                      : null
       /* the work stands even when the list could not follow it, and that is said alongside */
       setNote(storageProblem ? [said, storageProblem].filter(Boolean).join(' · ') : said)
     } else {

@@ -132,6 +132,8 @@ const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => 
      any scan that added or removed one — so a single new file un-sorted every lone file. A file
      whose bytes or time really did change invalidates its own records through the new size/mtime. */
   for (const f of existing.files) {
+    /* a copy is looked at once its original has been, below */
+    if (f.copyOf) continue
     const disk = diskByPath.get(f.path)
     if (disk) {
       keptFiles.push({ ...f, ...disk })
@@ -154,6 +156,21 @@ const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => 
       continue
     }
     removed++
+  }
+  /* A copy is an entry of its own for a file that is on the disk once: it goes where its original
+     went — still there, moved, or gone — and keeps its own identity and its own time, which the
+     contents of the file could only give back as the original's. */
+  for (const copy of existing.files) {
+    if (!copy.copyOf) continue
+    const original = keptFiles.find((k) => !k.copyOf && k.id === copy.copyOf)
+    if (original)
+      keptFiles.push({
+        ...copy,
+        path: original.path,
+        filename: original.filename,
+        size: original.size
+      })
+    else removed++
   }
   const addedFiles = diskFiles.filter(
     (f) => !existingByPath.has(f.path) && !claimedDiskPaths.has(f.path)

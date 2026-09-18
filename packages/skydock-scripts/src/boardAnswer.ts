@@ -81,6 +81,8 @@ const boardAnswerSchema = z.object({
   storage: z.object({ dir: z.string(), tandems: z.array(tandemEntrySchema) }).optional(),
   storageProblem: z.string().optional(),
   imported: importOutcomeSchema.optional(),
+  /* files copied into another jump: how many, and how many it already held */
+  copied: z.object({ files: z.number(), passedOver: z.number() }).optional(),
   /* tandems put back from the storage's list: whose, and how many of their files were found here */
   restored: z.array(z.object({ who: z.string(), files: z.number(), of: z.number() })).optional()
 })

@@ -15,9 +15,9 @@ const folder = {
   ok: true,
   dir: DIR,
   files: [
-    { name: 'luc favre.mp4', path: `${DIR}/luc favre.mp4`, size: 3_000_000, mtime: 1_785_000_000, kind: 'video' },
-    { name: 'luc_1.jpg', path: `${DIR}/luc_1.jpg`, size: 90_000, mtime: 1_785_000_000, kind: 'photo' },
-    { name: 'luc.photos.zip', path: `${DIR}/luc.photos.zip`, size: 500_000, mtime: null, kind: 'other' }
+    { name: 'luc favre.mp4', path: `${DIR}/luc favre.mp4`, size: 3_000_000, mtime: 1_785_000_000, kind: 'video', shot: null },
+    { name: 'luc_1.jpg', path: `${DIR}/luc_1.jpg`, size: 90_000, mtime: 1_785_000_000, kind: 'photo', shot: null },
+    { name: 'luc.photos.zip', path: `${DIR}/luc.photos.zip`, size: 500_000, mtime: null, kind: 'other', shot: null }
   ]
 }
 
@@ -83,6 +83,24 @@ describe('a place’s folder on the storage', () => {
     await userEvent.click(page.getByRole('button', { name: 'Look again' }))
 
     await expect.poll(() => asked.length).toBeGreaterThan(before)
+  })
+
+  /* the storage dates a file by the day it was sent; its name says when it was shot */
+  test('dates each file by when it was shot, not by when it went up', async () => {
+    const shot = Math.floor(new Date(2026, 8, 13, 1, 34, 0).getTime() / 1000)
+    const sent = Math.floor(new Date(2026, 8, 18, 12, 0, 0).getTime() / 1000)
+    storageAnswers({
+      ok: true,
+      dir: DIR,
+      files: [
+        { name: 'yverdon_20260913_013400.mp4', path: `${DIR}/y.mp4`, size: 1, mtime: sent, kind: 'video', shot }
+      ]
+    })
+    await renderFolder()
+
+    const row = page.getByRole('button', { name: /yverdon_20260913_013400\.mp4/ })
+    await expect.poll(() => row.element().textContent).toContain('13 September 2026 01:34')
+    expect(row.element().textContent).not.toContain('18 September')
   })
 
   test('says why when the storage cannot answer', async () => {

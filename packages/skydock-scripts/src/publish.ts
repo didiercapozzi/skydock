@@ -92,8 +92,12 @@ const uploadFile = async (
   const boundary = `----SkyDock${crypto.randomBytes(8).toString('hex')}`
   const field = (name: string, value: string) =>
     `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`
+  /* The file's own date goes with it, in milliseconds as the storage takes it. Processing stamped
+     each copy with when it was shot, and without this the storage dates everything by the day it
+     was sent — which is what anyone browsing the folder then sorts by. */
   const preamble = Buffer.from(
     `${field('path', remoteDir)}${field('create_parents', 'true')}${field('overwrite', 'true')}` +
+      field('mtime', String(Math.floor(stat.mtimeMs))) +
       `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: application/octet-stream\r\n\r\n`,
     'utf8'
   )

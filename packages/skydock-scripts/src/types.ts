@@ -62,6 +62,12 @@ const manifestFileSchema = z.object({
   mtime: z.number(),
   filename: z.string(),
   id: z.string().optional(),
+  /* Set on a copy: the identity of the file it is a copy of. A clip two jumps share — the plane,
+     the exit, the group photo — is one original on the disk, and each jump it is in holds an entry
+     of its own for it, with its own trim, time, processed copy and upload. The first entry carries
+     the identity its contents give it; every further one is a copy, with an identity of its own
+     and this to say what it is of. Nothing on the disk is doubled. */
+  copyOf: z.string().optional(),
   cropStart: z.number().nullable().optional(),
   cropEnd: z.number().nullable().optional(),
   frame: frameCropSchema.nullable().optional(),
