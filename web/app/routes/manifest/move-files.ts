@@ -22,7 +22,9 @@ const moveFilesIntent: Intent = ({
     moveFiles(manifest, ids, {
       targetGroupId: data.targetGroupId,
       newGroup: data.newGroup,
-      destination: data.destination
+      destination: data.destination,
+      name: data.name,
+      startsAt: data.anchorEpoch
     })
   } catch (e) {
     return refuse(e instanceof Error ? e.message : String(e))

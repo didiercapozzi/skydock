@@ -77,7 +77,7 @@ describe('putting unsorted files in the bin', () => {
       [{ id: 'g1', label: 'jump', day: '12.09.2026', destination: 'Yverdon', files: [a] }]
     )
 
-    expect(() => trashUnsorted(manifest, new Set(['a']), out)).toThrow(/Unsorted/)
+    expect(() => trashUnsorted(manifest, new Set(['a']), out)).toThrow(/Fresh files/)
     expect(fs.existsSync(a.path)).toBe(true)
     expect(manifest.files).toHaveLength(1)
   })
@@ -85,7 +85,7 @@ describe('putting unsorted files in the bin', () => {
   it('refuses a loose file filed to a place', () => {
     const a = original('a', { destination: 'Yverdon' })
 
-    expect(() => trashUnsorted(board([a]), new Set(['a']), out)).toThrow(/Unsorted/)
+    expect(() => trashUnsorted(board([a]), new Set(['a']), out)).toThrow(/Fresh files/)
     expect(fs.existsSync(a.path)).toBe(true)
   })
 

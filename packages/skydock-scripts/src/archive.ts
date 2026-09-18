@@ -77,5 +77,5 @@ const writeArchive = async (
   return zipPath
 }
 
-export { isArchiveFresh, PHOTO_LEVEL, VIDEO_LEVEL, writeArchive }
+export { isArchiveFresh, PHOTO_LEVEL, sameContents, VIDEO_LEVEL, writeArchive }
 export type { ArchiveEntry, ArchiveProgress }

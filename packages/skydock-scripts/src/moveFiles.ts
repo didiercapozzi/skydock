@@ -1,5 +1,5 @@
 import * as fs from 'node:fs'
-import { groupFromFiles } from './clustering'
+import { groupFromFiles, shiftGroupTo } from './clustering'
 import type { Manifest, ManifestFile } from './types'
 
 /* Moving files on the board, in one place: dragged from one jump to another, onto a place, back to
@@ -13,11 +13,23 @@ type MoveTo = {
   newGroup?: boolean
   /* as lone files of this place; null or absent sends them back to be sorted */
   destination?: string | null
+  /* for a new jump: what it is called, and when it started — its files move with the start */
+  name?: string
+  startsAt?: number
 }
 
 const moveFiles = (manifest: Manifest, ids: Set<string>, to: MoveTo) => {
   if (to.targetGroupId && !manifest.groups.some((g) => g.id === to.targetGroupId))
     throw new Error('Target jump not found.')
+
+  /* A file leaving its jump to stand alone keeps what was set on it there — its trim, frame and
+     turn live on the jump's copy of it, and a lone file is its registry entry, so they are carried
+     across first. Without this, taking a file out of a jump quietly undid that work. */
+  if (!to.targetGroupId && !to.newGroup)
+    for (const copy of manifest.groups.flatMap((g) => g.files)) {
+      const entry = copy.id && ids.has(copy.id) && manifest.files.find((f) => f.id === copy.id)
+      if (entry) Object.assign(entry, copy)
+    }
 
   /* the files leave wherever they were, so their processed copies are stale */
   for (const file of manifest.files) {
@@ -59,9 +71,25 @@ const moveFiles = (manifest: Manifest, ids: Set<string>, to: MoveTo) => {
   }
   if (to.newGroup) {
     if (moving.length === 0) throw new Error('Those files are no longer in the manifest.')
-    groupFromFiles(manifest, moving, to.destination ?? undefined)
+    const group = groupFromFiles(manifest, moving, to.destination ?? undefined)
+    const name = to.name?.trim()
+    if (group && name) group.name = name
+    if (group && to.startsAt !== undefined) shiftGroupTo(manifest, group, to.startsAt)
   }
 }
 
-export { moveFiles }
+/* A jump that should not exist goes, and its files stay: loose in Unsorted, each on its own day,
+   keeping their trim, frame and turn as any file leaving a jump does (RULES, Jumps). What was made
+   from them is out of date and goes, as with any move. */
+const deleteJump = (manifest: Manifest, groupId: string) => {
+  const group = manifest.groups.find((g) => g.id === groupId)
+  if (!group) throw new Error('That jump is no longer on the board.')
+  const ids = new Set(group.files.flatMap((f) => (f.id ? [f.id] : [])))
+  moveFiles(manifest, ids, { destination: null })
+  /* a jump with no files left in it is gone already; one whose files had no ids is taken out too */
+  manifest.groups = manifest.groups.filter((g) => g.id !== groupId)
+  return ids.size
+}
+
+export { deleteJump, moveFiles }
 export type { MoveTo }

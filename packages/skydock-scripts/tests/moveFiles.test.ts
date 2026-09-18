@@ -15,6 +15,30 @@ const file = (id: string, extra: Partial<ManifestFile> = {}): ManifestFile => ({
 })
 
 describe('moving files', () => {
+  /* a lone file is its registry entry, so what was set on it in the jump is carried across */
+  it('keeps the crop a file had in its jump when it is taken out to stand alone', () => {
+    const manifest: Manifest = {
+      version: 1,
+      createdAt: 'x',
+      files: [file('a'), file('b')],
+      groups: [
+        {
+          id: 'g1',
+          label: 'jump',
+          day: '01.08.2026',
+          files: [file('a', { cropStart: 2, cropEnd: 5, rotation: 90 }), file('b')]
+        }
+      ]
+    }
+    moveFiles(manifest, new Set(['a']), { destination: null })
+    expect(manifest.groups[0]?.files.map((f) => f.id)).toEqual(['b'])
+    expect(manifest.files.find((f) => f.id === 'a')).toMatchObject({
+      cropStart: 2,
+      cropEnd: 5,
+      rotation: 90
+    })
+  })
+
   it('puts a loose file into the jump it is dragged onto', () => {
     const manifest: Manifest = {
       version: 1,

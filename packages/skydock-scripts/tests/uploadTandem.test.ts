@@ -4,7 +4,7 @@ import * as fs from 'node:fs'
 import * as http from 'node:http'
 import * as path from 'node:path'
 import { uploadTandem } from '../src/uploadTandem'
-import type { BackupOptions } from '../src/uploadTandem'
+import type { BackupOptions } from '../src/types'
 import { statTandemArtifacts, tandemArtifacts } from '../src/tandem'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
 import { saveNasSession } from '../src/nas'
@@ -313,7 +313,7 @@ describe('tandem artifacts — what the board is told', () => {
 })
 
 /* How the originals are kept is chosen once for the club: one zip, or the clips as they are — and
-   either way a copy of the film can go with them. */
+   either way a copy of the film, and the editing project, can go with them. */
 describe('uploading a tandem — how the backup is kept', () => {
   const contents = (groupDir: string) =>
     JSON.parse(
@@ -325,9 +325,35 @@ describe('uploading a tandem — how the backup is kept', () => {
     expect(contents(groupDir)).toEqual(['GX018570.MP4', 'GX018571.MP4', 'luc_favre_20260802.mp4'])
   })
 
-  it('leaves the film out of the zip otherwise', async () => {
+  /* the leaving-out holds for the project as much as for the film: the scene has both */
+  it('leaves the film and the project out of the zip otherwise', async () => {
     const { groupDir } = await upload()
     expect(contents(groupDir)).toEqual(['GX018570.MP4', 'GX018571.MP4'])
+  })
+
+  /* the edit exists nowhere else, so it can be kept with the footage it was made from */
+  it('puts the editing project inside the zip when asked', async () => {
+    const { groupDir } = await upload(
+      {},
+      {},
+      { backupAs: 'zip', filmToBackup: false, projectToBackup: true }
+    )
+    expect(contents(groupDir)).toEqual([
+      'GX018570.MP4',
+      'GX018571.MP4',
+      'luc_favre_20260802.kdenlive'
+    ])
+  })
+
+  it('never gives the project to the passenger, whatever is asked', async () => {
+    const { uploads } = await upload(
+      {},
+      {},
+      { backupAs: 'folder', filmToBackup: true, projectToBackup: true }
+    )
+    expect(
+      uploads.filter((u) => u.dest === '/SkyDock/Tandems/Luc Favre').map((u) => u.name)
+    ).not.toContain('luc_favre_20260802.kdenlive')
   })
 
   it('sends the originals as plain files into a folder of their own, with no zip', async () => {
@@ -348,6 +374,18 @@ describe('uploading a tandem — how the backup is kept', () => {
       '/Backup/luc_favre_20260802/GX018570.MP4',
       '/Backup/luc_favre_20260802/GX018571.MP4'
     ])
+  })
+
+  it('puts the project beside them when asked', async () => {
+    const { uploads, result } = await upload(
+      {},
+      {},
+      { backupAs: 'folder', filmToBackup: false, projectToBackup: true }
+    )
+    expect(
+      uploads.filter((u) => u.dest === '/Backup/luc_favre_20260802').map((u) => u.name)
+    ).toContain('luc_favre_20260802.kdenlive')
+    expect(result.record.originals).toHaveLength(3)
   })
 
   it('puts the film beside them, and still gives it to the passenger', async () => {

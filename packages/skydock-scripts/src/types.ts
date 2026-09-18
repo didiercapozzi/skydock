@@ -120,6 +120,10 @@ const tandemUploadSchema = z.object({
 const manifestGroupSchema = z.object({
   id: z.string(),
   label: z.string(),
+  /* What someone called the jump, shown instead of its place in the day. Only ever shown: a file's
+     name comes from the passenger or the dropzone, so naming a jump can never rename what is
+     delivered. */
+  name: z.string().optional(),
   files: z.array(manifestFileSchema),
   processed: z.boolean().nullable().optional(),
   passenger: passengerSchema.optional(),
@@ -134,6 +138,16 @@ const manifestGroupSchema = z.object({
 
 const groupsFileSchema = z.object({
   groups: z.array(manifestGroupSchema.extend({ files: z.array(groupFileRefSchema) }))
+})
+
+/* How a tandem's originals are kept, chosen once for the whole club. One zip is one object to move
+   and cannot arrive half-copied; plain files can be browsed on the storage and one clip pulled out
+   without unpacking the rest. Either way a copy of the film can go with them, and so can the editing
+   project — the one record of the edit, which exists nowhere else. */
+const backupOptionsSchema = z.object({
+  backupAs: z.enum(['zip', 'folder']),
+  filmToBackup: z.boolean(),
+  projectToBackup: z.boolean().default(false)
 })
 
 const destinationSchema = z.object({
@@ -154,6 +168,7 @@ const manifestSchema = z.object({
   destinations: destinationsSchema.optional()
 })
 
+type BackupOptions = z.input<typeof backupOptionsSchema>
 type FrameCrop = z.infer<typeof frameCropSchema>
 type Rotation = z.infer<typeof rotationSchema>
 type ManifestFile = z.infer<typeof manifestFileSchema>
@@ -164,6 +179,7 @@ type GroupsFile = z.infer<typeof groupsFileSchema>
 type Destination = z.infer<typeof destinationSchema>
 
 export type {
+  BackupOptions,
   Destination,
   FrameCrop,
   GroupsFile,
@@ -175,6 +191,7 @@ export type {
 }
 
 export {
+  backupOptionsSchema,
   tandemUploadSchema,
   frameCropSchema,
   destinationSchema,

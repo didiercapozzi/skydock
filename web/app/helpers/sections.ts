@@ -35,7 +35,7 @@ const jumpLabels = (groups: ManifestGroup[]) => {
   for (const day of byDay.values())
     [...day]
       .sort((a, b) => startOf(a) - startOf(b))
-      .forEach((g, i) => labels.set(g.id, passengerOf(g) || `Jump ${i + 1}`))
+      .forEach((g, i) => labels.set(g.id, passengerOf(g) || g.name || `Jump ${i + 1}`))
   return labels
 }
 
@@ -83,5 +83,16 @@ const sectionsOf = (
   })
 }
 
-export { GROUPINGS, jumpLabels, sectionsOf }
+/* By jump, the jumps become cards — and the loose files one card, always first, however many days
+   they were shot on. A card per day of loose files read as that many unnamed jumps; loose is one
+   thing, files in no jump, so it is one card, with no day of its own. */
+const cardsOf = (sections: Section[]) => {
+  const jumps = sections.filter((s) => s.kind === 'jump')
+  const loose = sections.flatMap((s) => (s.kind === 'loose' ? s.files : []))
+  return loose.length
+    ? [{ key: 'loose', kind: 'loose' as const, day: '', files: loose }, ...jumps]
+    : jumps
+}
+
+export { GROUPINGS, cardsOf, jumpLabels, sectionsOf }
 export type { Grouping, Section }

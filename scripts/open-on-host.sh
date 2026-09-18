@@ -20,6 +20,14 @@ if ! command -v "$editor" >/dev/null 2>&1; then
   exit 1
 fi
 
+# The editor opens on your desktop, and root has no way onto it — no display, no session — so an
+# editor started from here as root fails before it draws a window, and says so to nobody. Refusing
+# is the only useful thing to do; `sudo` is never needed, since the queue is read, not written.
+if [ "$(id -u)" = 0 ]; then
+  echo "Run this as yourself, not as root or with sudo: the editor has to open on your desktop." >&2
+  exit 1
+fi
+
 # The container runs as root and this script does not, so the queue is usually a root-owned file
 # that only root can append to. Creating it here is therefore a courtesy and never a requirement:
 # `tail -F` waits for a file that does not exist yet, and one root already made is one there is
@@ -34,6 +42,9 @@ mkdir -p "$(dirname "$queue")" 2>/dev/null || true
 # this script rather than trusting a trap, because the trap does not run while the shell sits in
 # the `tail` pipeline below, and it would not run at all if the terminal were closed from under it.
 watcher="$(dirname "$queue")/.editor-watcher"
+# One left behind by a run as root is a file only root can touch, and a heartbeat that cannot be
+# touched goes stale while this is plainly running. Removing it needs only the folder, which is yours.
+rm -f "$watcher" 2>/dev/null || true
 me=$$
 (
   while kill -0 "$me" 2>/dev/null; do
@@ -64,7 +75,17 @@ tail -n 0 -F "$queue" | while IFS= read -r line; do
       echo "  warning: $project is not writable by $(id -un) — the editor will not be able to save it" >&2
     [ -w "$(dirname "$project")" ] ||
       echo "  warning: $(dirname "$project") is not writable by $(id -un) — the render has nowhere to put the film" >&2
-    "$editor" "$project" >/dev/null 2>&1 &
+    # Whatever the editor says goes to a file rather than nowhere, and is shown if it fails: an
+    # editor that cannot start — no display, a sandbox that cannot see this folder — otherwise
+    # leaves nothing behind but a window that never appears.
+    (
+      log="$(mktemp)"
+      "$editor" "$project" >"$log" 2>&1 || {
+        echo "  $editor could not open $project:" >&2
+        tail -n 8 "$log" | sed 's/^/    /' >&2
+      }
+      rm -f "$log"
+    ) &
   else
     echo "Asked for $project, which is not here" >&2
   fi

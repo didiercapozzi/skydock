@@ -56,9 +56,9 @@ const placeOf = (manifest: Manifest, id: string) => {
   if (group) {
     if (isTandem(group) && group.passenger)
       return `${group.passenger.firstname} ${group.passenger.lastname}`.trim()
-    return group.destination ?? 'Unsorted jumps'
+    return group.destination ?? 'Fresh files'
   }
-  return manifest.files.find((f) => f.id === id)?.destination ?? 'Unsorted jumps'
+  return manifest.files.find((f) => f.id === id)?.destination ?? 'Fresh files'
 }
 
 /* A file already on the board, dropped in again: it is moved to where it was dropped this time, as

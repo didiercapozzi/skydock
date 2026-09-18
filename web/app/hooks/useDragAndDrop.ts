@@ -7,7 +7,14 @@ import { TANDEMS, inTandemsCard } from '../helpers/jumps'
 import { placeKey } from '../helpers/places'
 import type { Place } from '../helpers/places'
 
-type Move = { destination?: string | null; targetGroupId?: string; newGroup?: boolean }
+type Move = {
+  destination?: string | null
+  targetGroupId?: string
+  newGroup?: boolean
+  /* for a new jump: what it is called and when it started */
+  name?: string
+  startsAt?: number
+}
 
 /* What is in the air and where it may land. A whole jump travels by its line; files travel by their
    thumbnails, the picked ones together; and files from the computer travel as "Files". Only the zone
@@ -108,11 +115,11 @@ const useDragAndDrop = ({
     const accepts =
       destination === null ? draggedFiles.length > 0 : dragged.length > 0 || draggedFiles.length > 0
     /* From the computer: into a passenger's tandem, a dropzone as lone files, or the sorting area.
-       All passengers is not a place for a file — it has to be somebody's. */
+       In progress is not a place for a file — it has to be somebody's. */
     const incoming = into
       ? { target: `group:${into.hostId}`, where: passengerName(into.passenger) }
       : destination === null
-        ? { target: 'sort', where: 'Unsorted' }
+        ? { target: 'sort', where: 'Fresh files' }
         : destination === TANDEMS
           ? null
           : { target: `dest:${destination}`, where: destination }
@@ -145,7 +152,7 @@ const useDragAndDrop = ({
   }
 
   /* A folder on the left. A camera day takes things back to the sorting area, as Unsorted does; a
-     passenger means "this is theirs too", so it joins their tandem; All passengers and No name yet
+     passenger means "this is theirs too", so it joins their tandem; In progress and No name yet
      start a tandem of its own. What the storage holds is not somewhere a file can be put. */
   const placeDrop = (target: Place) => {
     const key = placeKey(target)
@@ -156,7 +163,7 @@ const useDragAndDrop = ({
     const props =
       target.kind === 'storage' || (host && frozen.has(host.id))
         ? {}
-        : target.kind === 'sort' || target.kind === 'day'
+        : target.kind === 'sort'
           ? dropTarget(null, key)
           : target.kind === 'dz'
             ? dropTarget(target.name, key)

@@ -105,7 +105,7 @@ describe('adding a file from the computer', () => {
     await add('clip.mp4', 'same', { kind: 'sort' })
     const again = await add('copy of clip.mp4', 'same', { kind: 'group', groupId: 'g1' })
 
-    expect(again).toMatchObject({ outcome: 'moved', from: 'Unsorted jumps' })
+    expect(again).toMatchObject({ outcome: 'moved', from: 'Fresh files' })
     const after = loadManifest(manifestPath())!
     expect(after.files).toHaveLength(1)
     expect(after.groups[0]?.files.map((f) => f.filename)).toEqual(['clip.mp4'])

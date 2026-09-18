@@ -63,7 +63,7 @@ reach the one outside it, so pressing **Montage** there reports that it cannot o
 Two small scripts bridge it, using the fact that `output/` is the same folder on both sides:
 
 ```sh
-# on the host, once — leave it running
+# on the host, once, as yourself — never with sudo — and leave it running
 ./scripts/open-on-host.sh
 
 # in the container — `dev` with the bridge already pointed at

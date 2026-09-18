@@ -33,7 +33,7 @@ const FolderOwed = ({
   onRegroup: () => void
   onPlace: (place: Place) => void
 }) => {
-  if (place.kind === 'sort' || place.kind === 'day') {
+  if (place.kind === 'sort') {
     if (groups.length === 0 && loose.length === 0)
       return <Owed tone='done'>Nothing left to sort</Owed>
     return (

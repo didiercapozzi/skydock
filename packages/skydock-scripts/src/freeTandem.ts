@@ -1,7 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { z } from 'zod'
-import { isArchiveFresh } from './archive'
+import { isArchiveFresh, sameContents } from './archive'
 import { uploadGate } from './fileStatus'
 import { hashFile } from './lib/fs'
 import { statProcessedOutputs } from './manifest'
@@ -134,8 +134,20 @@ const proveOnStorage = async (
           .filter((n) => !videos.some((v) => v.filename === n))
           .map((n) => ({ file: path.join(path.dirname(record.rushes!.localPath), n), name: n }))
       ]
-      if (!isArchiveFresh(record.rushes.localPath, entries))
+      /* What is proved here is that the originals are safe, so only they have to be older than
+         the zip. A film beside them in it is proved by its own checksum, and a project in it is
+         kept on this machine whatever happens — an edit saved again after the upload loses
+         nothing by being freed. */
+      const zipped = fs.existsSync(record.rushes.localPath)
+        ? fs.statSync(record.rushes.localPath).mtimeMs
+        : -Infinity
+      const changed = videos
+        .filter((v) => !fs.existsSync(v.path) || fs.statSync(v.path).mtimeMs > zipped)
+        .map((v) => v.filename)
+      if (!sameContents(record.rushes.localPath, entries))
         problems.push('the backup zip does not hold exactly these originals')
+      else if (changed.length > 0)
+        problems.push(`${changed.join(', ')} changed since the backup zip was made — upload again`)
     } else if (!videos.every((v) => sentLocally.has(v.path))) {
       problems.push('not every original is in the backup')
     }

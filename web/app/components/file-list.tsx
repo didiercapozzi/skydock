@@ -34,6 +34,8 @@ type Props = {
   onOpen: (file: ManifestFile) => void
   /* the file being looked at, which is shown apart from the picked ones */
   previewed: string | null
+  /* files in a jump the gap rule would not have put them in — flagged, not moved */
+  offGap: Set<string>
   onDragFile: (file: ManifestFile, e?: React.DragEvent) => void
   /* what the files are put in order by — their time, their name or how far along they are */
   sortKey: (file: ManifestFile) => string | number
@@ -140,6 +142,19 @@ const PROXY_FLAG: Record<ProxyFact['state'], { label: string; title: string; cla
       className: 'border border-dashed border-local bg-local-soft text-local'
     }
   }
+
+/* A file its jump holds against the gap rule — dragged in, or re-timed away from the rest. Only
+   said, never acted on: the person who put it there may well be right. */
+const GAP_TITLE =
+  'More than 15 minutes from the rest of its jump — the gap rule would not have put it here'
+
+const GapFlag = () => (
+  <span
+    title={GAP_TITLE}
+    className='flex-none rounded border border-dashed border-changed bg-changed-soft px-1.5 font-mono text-[10px] leading-4 font-semibold whitespace-nowrap text-changed'>
+    ⧗ gap
+  </span>
+)
 
 const ProxyFlag = ({ fact }: { fact?: ProxyFact }) => {
   if (!fact) return null
@@ -249,6 +264,7 @@ const Row = ({
   proxy,
   name,
   previewed,
+  offGap: strayed,
   onFile,
   onPick,
   onOpen,
@@ -262,6 +278,7 @@ const Row = ({
   proxy?: ProxyFact
   name: string | null
   previewed: boolean
+  offGap: boolean
   onFile: Props['onFile']
   onPick: Props['onPick']
   onOpen: Props['onOpen']
@@ -284,7 +301,7 @@ const Row = ({
         onOpen(file)
       }
       /* space ticks, as it would a checkbox */
-      if (e.key !== ' ') return
+      if (e.key !== ' ' || locked) return
       e.preventDefault()
       onPick(file)
     }}
@@ -295,24 +312,30 @@ const Row = ({
           ? 'border-ink-3 bg-line-2'
           : 'border-transparent hover:bg-line-2'
     }`}>
-    <button
-      type='button'
-      aria-label={picked ? 'Unpick' : 'Pick'}
-      aria-pressed={picked}
-      onClick={(e) => {
-        e.stopPropagation()
-        onPick(file)
-      }}
-      onDoubleClick={(e) => e.stopPropagation()}
-      /* transparent, not white, when not ticked, so it stays quiet on a dark panel as well as a
+    {/* a file that cannot move has nothing to be picked for, so it has no tick — only the room
+        one would take, so the rows stay in line */}
+    {locked ? (
+      <span className='h-3.5 w-3.5 flex-none' />
+    ) : (
+      <button
+        type='button'
+        aria-label={picked ? 'Unpick' : 'Pick'}
+        aria-pressed={picked}
+        onClick={(e) => {
+          e.stopPropagation()
+          onPick(file)
+        }}
+        onDoubleClick={(e) => e.stopPropagation()}
+        /* transparent, not white, when not ticked, so it stays quiet on a dark panel as well as a
          light one */
-      className={`grid h-3.5 w-3.5 flex-none place-items-center rounded-[3px] border-[1.5px] p-0 text-[9px] ${
-        picked
-          ? 'border-accent bg-accent text-white'
-          : 'border-line bg-transparent text-transparent hover:border-accent'
-      }`}>
-      ✓
-    </button>
+        className={`grid h-3.5 w-3.5 flex-none place-items-center rounded-[3px] border-[1.5px] p-0 text-[9px] ${
+          picked
+            ? 'border-accent bg-accent text-white'
+            : 'border-line bg-transparent text-transparent hover:border-accent'
+        }`}>
+        ✓
+      </button>
+    )}
     <span className='relative h-[30px] w-10 flex-none overflow-hidden rounded-[3px] bg-line-2'>
       <img
         src={isVideoFile(file.path) ? getThumbUrl(file.path, 0.5, 80) : getFileUrl(file.path)}
@@ -340,6 +363,7 @@ const Row = ({
       </span>
     )}
     <ProxyFlag fact={proxy} />
+    {strayed && <GapFlag />}
     <FrameFlag
       file={file}
       applied={status === 'processed' || status === 'uploaded'}
@@ -380,6 +404,7 @@ const Tile = ({
   proxy,
   selecting,
   previewed,
+  offGap: strayed,
   onFile,
   onPick,
   onOpen,
@@ -393,6 +418,7 @@ const Tile = ({
   proxy?: ProxyFact
   selecting: boolean
   previewed: boolean
+  offGap: boolean
   onFile: Props['onFile']
   onPick: Props['onPick']
   onOpen: Props['onOpen']
@@ -415,7 +441,7 @@ const Tile = ({
         e.stopPropagation()
         onOpen(file)
       }
-      if (e.key !== ' ') return
+      if (e.key !== ' ' || locked) return
       e.preventDefault()
       onPick(file)
     }}
@@ -438,6 +464,13 @@ const Tile = ({
       </i>
     )}
     {locked && <span className='absolute right-1 bottom-1 text-[10px]'>🔒</span>}
+    {strayed && (
+      <span
+        title={GAP_TITLE}
+        className='absolute top-1 left-1/2 -translate-x-1/2 rounded-[3px] border border-dashed border-changed bg-changed-soft px-1 font-mono text-[9px] font-semibold text-changed'>
+        ⧗
+      </span>
+    )}
     {/* a rectangle is invisible on a thumbnail of the whole frame, so it is said rather than shown */}
     {!isWholeFrame(file.frame) && (
       <span
@@ -454,11 +487,13 @@ const Tile = ({
         className='pointer-events-none absolute bottom-1 left-1 h-2 w-2 rounded-full border border-dashed border-white bg-local shadow-[0_0_0_1.5px_rgba(0,0,0,0.45)]'
       />
     )}
-    <PickMark
-      picked={picked}
-      selecting={selecting}
-      onPick={() => onPick(file)}
-    />
+    {!locked && (
+      <PickMark
+        picked={picked}
+        selecting={selecting}
+        onPick={() => onPick(file)}
+      />
+    )}
   </div>
 )
 
@@ -537,6 +572,7 @@ const Lane = ({
   onDragFile,
   deliveredName,
   previewed,
+  offGap,
   selecting
 }: Omit<Props, 'files' | 'kind' | 'sortKey'> & { lane: ManifestFile[] }) => {
   const [shown, setShown] = useState(PAGE[shape])
@@ -567,6 +603,7 @@ const Lane = ({
               proxy={proxies[file.path]}
               name={deliveredName(file)}
               previewed={Boolean(file.id && file.id === previewed)}
+              offGap={Boolean(file.id && offGap.has(file.id))}
               onFile={onFile}
               onPick={onPick}
               onOpen={onOpen}
@@ -583,6 +620,7 @@ const Lane = ({
               proxy={proxies[file.path]}
               selecting={selecting}
               previewed={Boolean(file.id && file.id === previewed)}
+              offGap={Boolean(file.id && offGap.has(file.id))}
               onFile={onFile}
               onPick={onPick}
               onOpen={onOpen}

@@ -5,7 +5,8 @@ import type { ArchiveProgress } from './archive'
 import type { CheckProgress, UploadProgress, UploadVerdict } from './publish'
 import type { NasSession } from './nas'
 import { filmNameOf, isTandem, photosNameOf, rushesNameOf, tandemArtifacts } from './tandem'
-import type { Manifest, ManifestGroup } from './types'
+import { backupOptionsSchema } from './types'
+import type { BackupOptions, Manifest, ManifestGroup } from './types'
 import { targetForGroup, uploadTargets } from './upload'
 import type { UploadTarget } from './upload'
 import { isVideoFile, sizeOf } from './utils'
@@ -46,12 +47,7 @@ const resolveFilm = async (artifacts: ReturnType<typeof tandemArtifacts>, hasVid
 const verdictFor = (files: UploadVerdict[], target: string) =>
   files.find((f) => f.localPath === target)
 
-/* How the originals are kept, chosen once for the whole club. One zip is one object to move and
-   cannot arrive half-copied; plain files can be browsed on the storage and one clip pulled out
-   without unpacking the rest. Either way a copy of the film can go with them. */
-type BackupOptions = { backupAs: 'zip' | 'folder'; filmToBackup: boolean }
-
-const DEFAULT_BACKUP: BackupOptions = { backupAs: 'zip', filmToBackup: false }
+const DEFAULT_BACKUP = backupOptionsSchema.parse({ backupAs: 'zip', filmToBackup: false })
 
 /* Everything that happens once the edit is done: the two archives the passenger and the backup
    need, then two uploads that keep them apart. The manifest is not saved here — the caller owns
@@ -114,11 +110,19 @@ const uploadTandem = async ({
     .map((f) => ({ file: f.path, name: f.filename }))
   const filmCopy =
     backup.filmToBackup && film ? [{ file: film, name: filmNameOf(artifacts.baseName) }] : []
+  /* The project goes as it is: it names the clips by where they sat when the edit was made, so from
+     the backup it reopens only with them put back there — it is kept as the record of the edit, which
+     is the one thing of a tandem that cannot be made again. */
+  const project = path.join(artifacts.dir, `${artifacts.baseName}.kdenlive`)
+  const projectCopy =
+    backup.projectToBackup && fs.existsSync(project)
+      ? [{ file: project, name: path.basename(project) }]
+      : []
   const rushesZip =
     backup.backupAs === 'zip'
       ? await writeArchive(
           path.join(artifacts.dir, rushesNameOf(artifacts.baseName)),
-          [...originals, ...filmCopy],
+          [...originals, ...filmCopy, ...projectCopy],
           {
             level: VIDEO_LEVEL,
             onProgress: (progress) => onArchive?.({ ...progress, name: 'rushes' })
@@ -131,7 +135,7 @@ const uploadTandem = async ({
   const backupDir = `${backupFolder}/${artifacts.baseName}`
   const plain =
     backup.backupAs === 'folder'
-      ? [...originals.map((o) => o.file), ...filmCopy.map((f) => f.file)]
+      ? [...originals, ...filmCopy, ...projectCopy].map((o) => o.file)
       : []
   const plainTargets: UploadTarget[] = [...new Set(plain.map((file) => path.dirname(file)))].map(
     (dir, index) => ({

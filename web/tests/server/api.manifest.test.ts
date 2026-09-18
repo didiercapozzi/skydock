@@ -454,6 +454,86 @@ describe('changes made on the board', () => {
     })
   })
 
+  /* RULES, Merging and making jumps by hand */
+  it('makes a jump in Fresh files from loose files picked by hand', async () => {
+    writeManifest([], [file({ id: 'a' }), file({ id: 'b', mtime: 1_754_000_060 })])
+
+    const res = answer(await send({ intent: 'move-files', fileIds: ['a', 'b'], newGroup: true }))
+
+    expect(res.groups).toHaveLength(1)
+    expect(res.groups[0]?.destination).toBeUndefined()
+    expect(res.groups[0]?.files.map((f) => f.id)).toEqual(['a', 'b'])
+    expect(res.looseFiles).toHaveLength(0)
+  })
+
+  /* the camera was on the wrong clock and the jump has a name: both are set as it is made, and the
+     gap between the files is kept */
+  it('makes the jump with the name and the start it was given', async () => {
+    writeManifest([], [file({ id: 'a' }), file({ id: 'b', mtime: 1_754_000_060 })])
+
+    const res = answer(
+      await send({
+        intent: 'move-files',
+        fileIds: ['a', 'b'],
+        newGroup: true,
+        name: 'Sunset load',
+        anchorEpoch: 1_754_100_000
+      })
+    )
+
+    expect(res.groups[0]?.name).toBe('Sunset load')
+    expect(res.groups[0]?.files.map((f) => f.mtime)).toEqual([1_754_100_000, 1_754_100_060])
+  })
+
+  /* RULES, Jumps: a jump deleted, its files kept, loose in Fresh files */
+  describe('deleting a jump', () => {
+    it('removes the jump and leaves every file loose in Fresh files', async () => {
+      writeManifest([
+        group({ id: 'g1', files: [file({ id: 'a' }), file({ id: 'b' })] }),
+        group({ id: 'g2', files: [file({ id: 'c' })] })
+      ])
+
+      const res = answer(await send({ intent: 'delete-jump', groupId: 'g1' }))
+
+      expect(res.groups.map((g) => g.id)).toEqual(['g2'])
+      expect(res.looseFiles.map((f) => f.id).sort()).toEqual(['a', 'b'])
+      expect(res.looseFiles.every((f) => !f.destination)).toBe(true)
+    })
+
+    it('keeps the crop a file had in the jump', async () => {
+      writeManifest(
+        [group({ id: 'g1', files: [file({ id: 'a', cropStart: 2, cropEnd: 5 })] })],
+        [file({ id: 'a' })]
+      )
+
+      const res = answer(await send({ intent: 'delete-jump', groupId: 'g1' }))
+
+      expect(res.looseFiles[0]).toMatchObject({ id: 'a', cropStart: 2, cropEnd: 5 })
+    })
+
+    it('takes a filed jump back to Fresh files too', async () => {
+      writeManifest([group({ id: 'g1', destination: 'Yverdon', files: [file({ id: 'a' })] })])
+
+      const res = answer(await send({ intent: 'delete-jump', groupId: 'g1' }))
+
+      expect(res.groups).toHaveLength(0)
+      expect(res.looseFiles[0]?.destination).toBeUndefined()
+    })
+
+    it('refuses a jump that has been uploaded', async () => {
+      const up = file({
+        id: 'a',
+        uploaded: { remotePath: '/x/a.mp4', md5: 'm', size: 10, localPath: '/p/a.mp4', at: 1 }
+      })
+      writeManifest([group({ id: 'g1', files: [up] })])
+
+      const res = refusal(await send({ intent: 'delete-jump', groupId: 'g1' }))
+
+      expect(res.success).toBe(false)
+      expect(res.globalErrors?.[0]).toContain('uploaded')
+    })
+  })
+
   /* RULES, Times and dates: one file corrected on its own */
   describe('re-timing one file', () => {
     it('moves that file alone', async () => {
@@ -496,7 +576,7 @@ describe('changes made on the board', () => {
     })
   })
 
-  /* RULES, Putting files in the bin: only from Unsorted, moved and never erased */
+  /* RULES, Putting files in the bin: only from Fresh files, moved and never erased */
   describe('putting unsorted files in the bin', () => {
     const onDisk = (id: string) => {
       const p = path.join(tmpDir, 'original_files', '2026-08-01', `${id}.MP4`)
@@ -525,7 +605,7 @@ describe('changes made on the board', () => {
       const res = refusal(await send({ intent: 'trash-unsorted', fileIds: ['a'] }))
 
       expect(res.success).toBe(false)
-      expect(res.globalErrors?.[0]).toContain('Unsorted')
+      expect(res.globalErrors?.[0]).toContain('Fresh files')
       expect(fs.existsSync(a.path)).toBe(true)
     })
 

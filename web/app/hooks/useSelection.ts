@@ -8,21 +8,30 @@ import type { ManifestFile } from '../components/types'
    double-click, or Enter, opens it in the cropper. A jump can be selected instead, by its line. The
    arrow keys step the look through the files in the order they are drawn (shift adds them to the
    picks), Escape clears, Delete sends the picks — or, with none, the file looked at — back to
-   Unsorted, and ⌘A picks every file on screen. Two jumps can be put side by side to compare. */
+   Unsorted, and ⌘A picks every file on screen. Two jumps can be put side by side to compare.
+
+   A file that cannot move is never picked, whichever way it is asked for: picking is choosing what
+   to move, so a picked file nothing can be done with only stands in the way of the ones that can. */
 const useSelection = ({
   order,
   paused,
+  pickable,
   onOpen,
   onDelete
 }: {
   /* the files on screen, in the order they are drawn */
   order: ManifestFile[]
+  /* whether a file can be picked at all — uploaded, freed, or in a tandem with an edit, it cannot */
+  pickable: (id: string) => boolean
   /* a dialog or the preview has the keyboard */
   paused: boolean
   onOpen: (file: ManifestFile) => void
   onDelete: (ids: string[]) => void
 }) => {
-  const [pickedFiles, setPickedFiles] = useState<string[]>([])
+  const [picks, setPickedFiles] = useState<string[]>([])
+  /* A file can stop being pickable while it is picked — the tandem it is in gets an edit, or goes up
+     to the storage — and then it simply stops being one of the picks. */
+  const pickedFiles = picks.filter(pickable)
   const [anchor, setAnchor] = useState<string | null>(null)
   const [pickedJump, setPickedJump] = useState<string | null>(null)
   const [comparing, setComparing] = useState<[string, string] | null>(null)
@@ -38,6 +47,7 @@ const useSelection = ({
 
   /* picking is the latest thing done, so the inspector turns to the picks */
   const togglePick = (id: string) => {
+    if (!pickedFiles.includes(id) && !pickable(id)) return
     setPickedFiles(
       pickedFiles.includes(id) ? pickedFiles.filter((x) => x !== id) : [...pickedFiles, id]
     )
@@ -51,6 +61,7 @@ const useSelection = ({
   }
 
   const idsOf = (files: ManifestFile[]) => files.flatMap((f) => (f.id ? [f.id] : []))
+  const pickableOf = (ids: string[]) => ids.filter(pickable)
 
   const rangeTo = (id: string, within: string[]) => {
     const from = anchor ? within.indexOf(anchor) : -1
@@ -68,7 +79,7 @@ const useSelection = ({
     setPickedJump(null)
     if (e.shiftKey) {
       const range = rangeTo(id, idsOf(lane))
-      setPickedFiles(range ? [...new Set([...pickedFiles, ...range])] : [...pickedFiles, id])
+      setPickedFiles(pickableOf([...new Set([...pickedFiles, ...(range ?? [id])])]))
       if (!range) setAnchor(id)
       setPreviewed(null)
       return
@@ -89,7 +100,7 @@ const useSelection = ({
   }
 
   const selectFiles = (files: ManifestFile[]) => {
-    const ids = idsOf(files)
+    const ids = pickableOf(idsOf(files))
     pickOnly(ids, ids[0] ?? null)
   }
 
@@ -119,7 +130,8 @@ const useSelection = ({
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
         e.preventDefault()
-        pickOnly(ids, ids[0] ?? null)
+        const all = pickableOf(ids)
+        pickOnly(all, all[0] ?? null)
         return
       }
       if (e.key === 'Enter' && targets.length === 1) {
@@ -133,7 +145,7 @@ const useSelection = ({
       const next = ids[Math.max(0, Math.min(ids.length - 1, at + (e.key === 'ArrowDown' ? 1 : -1)))]
       if (!next) return
       if (e.shiftKey) {
-        setPickedFiles([...new Set([...pickedFiles, next])])
+        setPickedFiles(pickableOf([...new Set([...pickedFiles, next])]))
         setPreviewed(null)
       } else setPreviewed(next)
       setAnchor(next)

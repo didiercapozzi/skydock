@@ -24,6 +24,21 @@ const splitByGap = (files: ManifestFile[]) => {
   return batches
 }
 
+/* The files a jump holds that the gap rule would not have put there — dragged in by hand, or
+   re-timed away from the rest — so the board can flag them without moving anything. The jump is its
+   longest unbroken run; whatever a pause the rule cuts at separates from it is off the run. */
+const offGap = (files: ManifestFile[]) => {
+  const runs = splitByGap(files)
+  if (runs.length < 2) return new Set<string>()
+  const main = runs.reduce((a, b) => (b.length > a.length ? b : a))
+  return new Set(
+    runs
+      .filter((run) => run !== main)
+      .flat()
+      .flatMap((f) => (f.id ? [f.id] : []))
+  )
+}
+
 /* The day a jump belongs to: the day it started. It is stored rather than worked out from the
    files each time, because a file dragged in from another day joins the jump — it does not drag
    the jump to its own day with it (RULES, Jumps). Whatever changes a whole jump's time changes
@@ -87,7 +102,10 @@ const reclusterGroups = (manifest: Manifest) => {
         ...buildGroup(files, id, dominant?.label ?? id),
         processed: dominant?.processed,
         passenger: dominant?.passenger,
-        destination: dominant?.destination
+        destination: dominant?.destination,
+        /* a name was given to one jump, so of a jump that split it stays with the half that is
+           still that jump */
+        ...(keepsId && dominant?.name ? { name: dominant.name } : {})
       }
     })
 }
@@ -138,6 +156,16 @@ const shiftFiles = (manifest: Manifest, ids: Set<string>, offsetSeconds: number)
   }
 }
 
+/* A jump moved so that its earliest file lands on the time asked for, and every other file by the
+   same amount — so the gaps between them, and their order, stay as they were (RULES, Times and
+   dates). */
+const shiftGroupTo = (manifest: Manifest, group: ManifestGroup, anchorEpoch: number) => {
+  if (group.files.length === 0) return
+  const offset = Math.round(anchorEpoch) - Math.min(...group.files.map((f) => f.mtime))
+  if (offset === 0) return
+  shiftFiles(manifest, new Set(group.files.flatMap((f) => (f.id ? [f.id] : []))), offset)
+}
+
 /* One file put right on its own — a clip from a second camera on another clock, a photo off a phone
    (RULES, Times and dates). It stays in its jump, and the jump keeps the day it is filed under, as it
    does when a file from another day is dropped into it; only the order inside the jump moves. A lone
@@ -153,4 +181,13 @@ const retimeFile = (manifest: Manifest, id: string, epoch: number) => {
   return true
 }
 
-export { dayOfFiles, groupFromFiles, reclusterGroups, regroupLooseFiles, retimeFile, shiftFiles }
+export {
+  dayOfFiles,
+  groupFromFiles,
+  offGap,
+  reclusterGroups,
+  regroupLooseFiles,
+  retimeFile,
+  shiftFiles,
+  shiftGroupTo
+}

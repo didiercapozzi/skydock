@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { pad, shortDate } from './utils'
+import { dateLabel, pad } from './utils'
 
 /* to the second, like every other time on the board: two files a second apart is the whole reason
    the order inside a jump is worth looking at */
@@ -51,7 +51,8 @@ const JumpSpan = ({
   tip?: string
 }) => {
   const [draft, setDraft] = useState<string | null>(null)
-  const show = (at: number) => (withDate ? `${shortDate(at)} ${hhmmss(at)}` : hhmmss(at))
+  /* the full date, year and all: a camera clock that is wrong is as often wrong by a year */
+  const show = (at: number) => (withDate ? `${dateLabel(at)} ${hhmmss(at)}` : hhmmss(at))
 
   if (draft === null)
     return (
@@ -110,4 +111,4 @@ const JumpSpan = ({
   )
 }
 
-export { JumpSpan, hhmmss }
+export { JumpSpan, fromLocalInput, hhmmss, toLocalInput }

@@ -30,7 +30,8 @@ const AT = 1_785_000_000
 
 let outputDir: string
 
-const setup = async () => {
+/* `projectInBackup`: the editing project was chosen to go into the backup zip with the originals */
+const setup = async ({ projectInBackup = false } = {}) => {
   const originals = path.join(outputDir, 'original_files', '2026-08-01')
   const folder = path.join(outputDir, 'processed', 'Tandems', 'Luc Favre')
   for (const d of [originals, path.join(folder, 'videos'), path.join(folder, 'photos')])
@@ -70,7 +71,8 @@ const setup = async () => {
     { file: files[1]!.processed!.path, name: 'luc_2.jpg' }
   ]))!
   const rushesZip = (await writeArchive(path.join(folder, 'luc.rushes.zip'), [
-    { file: files[0]!.path, name: 'GX01.MP4' }
+    { file: files[0]!.path, name: 'GX01.MP4' },
+    ...(projectInBackup ? [{ file: path.join(folder, 'luc.kdenlive'), name: 'luc.kdenlive' }] : [])
   ]))!
 
   const sent = (local: string, remote: string) => ({
@@ -142,6 +144,16 @@ describe('freeing an uploaded tandem', () => {
     expect(result.bytes).toBeGreaterThan(1000)
   })
 
+  /* the project in the backup is a second copy of the edit, not a stranger in the zip */
+  it('frees a tandem whose backup zip also holds the editing project', async () => {
+    const { manifest, folder, onStorage } = await setup({ projectInBackup: true })
+    withStorage(onStorage)
+
+    await free(manifest)
+
+    expect(fs.readdirSync(folder)).toEqual(['luc.kdenlive'])
+  })
+
   it('remembers that it lives on the storage only, and says every file is uploaded', async () => {
     const { manifest, onStorage } = await setup()
     withStorage(onStorage)
@@ -180,8 +192,21 @@ describe('freeing an uploaded tandem', () => {
     withStorage(onStorage)
     const later = new Date(Date.now() + 60_000)
     fs.utimesSync(path.join(originals, 'GX01.MP4'), later, later)
-    await expect(free(manifest)).rejects.toThrow(/backup zip does not hold exactly these originals/)
+    await expect(free(manifest)).rejects.toThrow(/GX01\.MP4 changed since the backup zip was made/)
     expect(fs.existsSync(path.join(originals, 'GX01.MP4'))).toBe(true)
+  })
+
+  /* The edit was saved again after the upload, so the backup holds an older one. Freeing keeps the
+     project here, so nothing is lost by it — what freeing has to prove is the originals. */
+  it('still frees when the project was saved again after it went into the backup', async () => {
+    const { manifest, folder, onStorage } = await setup({ projectInBackup: true })
+    withStorage(onStorage)
+    const later = new Date(Date.now() + 60_000)
+    fs.utimesSync(path.join(folder, 'luc.kdenlive'), later, later)
+
+    await free(manifest)
+
+    expect(fs.readdirSync(folder)).toEqual(['luc.kdenlive'])
   })
 
   it('refuses a tandem that was never uploaded', async () => {

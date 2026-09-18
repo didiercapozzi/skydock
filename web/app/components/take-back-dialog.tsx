@@ -72,7 +72,7 @@ const TakeBackDialog = ({
       </ul>
 
       <p className='m-0 text-[12.5px] font-semibold text-ink'>
-        {reset ? 'Kept, ready to process again' : 'Back to Unsorted jumps'}
+        {reset ? 'Kept, ready to process again' : 'Back to Fresh files'}
       </p>
       <ul className='m-0 flex list-none flex-col gap-1 p-0'>
         {reset ? (

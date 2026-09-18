@@ -10,6 +10,7 @@ import { imported } from './manifest/imported'
 import { markEmailed } from './manifest/mark-emailed'
 import { mergeGroupsIntent } from './manifest/merge-groups'
 import { montage } from './manifest/montage'
+import { deleteJumpIntent } from './manifest/delete-jump'
 import { moveFilesIntent } from './manifest/move-files'
 import { openMontage } from './manifest/open-montage'
 import { processIntent, processWait } from './manifest/process'
@@ -36,6 +37,7 @@ const intents: Record<ActionData['intent'], Intent> = {
   'shift-group-time': shiftGroupTime,
   'retime-file': retimeFileIntent,
   'move-files': moveFilesIntent,
+  'delete-jump': deleteJumpIntent,
   'regroup-loose': regroupLoose,
   'trash-unsorted': trashUnsortedIntent,
   'reset-tandem': resetTandemIntent,

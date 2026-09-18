@@ -1,17 +1,20 @@
 import {
   EDIT_LOCKED,
   ensureNasSession,
+  furthestBehind,
   getOutputDir,
   goneFromStorage,
   hasCompletePassenger,
   listRemoteFiles,
   loadManifest,
+  offGap,
   passengerName,
   passengerOf,
   processingNow,
   statProcessedOutputs,
   statProxies,
   statTandemArtifacts,
+  tandemSteps,
   tandemUploadKey,
   tandemsRemoteDir
 } from '@skydock/scripts'
@@ -28,20 +31,12 @@ import { FileBrowser } from '../components/file-browser'
 import { lanesOf, lockReason, shownStatus } from '../components/file-list'
 import type { Kind, Modifiers } from '../components/file-list'
 import { FolderOwed } from '../components/folder-owed'
-import {
-  Box,
-  FilePanel,
-  FolderPanel,
-  JumpPanel,
-  ManyPanel,
-  Shell,
-  StepTrail
-} from '../components/inspector'
+import { Box, FilePanel, FolderPanel, JumpPanel, ManyPanel, Shell } from '../components/inspector'
 import { PlacePane } from '../components/place-pane'
-import type { Target } from '../components/place-select'
 import { PlacesTree } from '../components/places-tree'
 import { PreviewHost } from '../components/preview-host'
 import { StorageList } from '../components/storage-list'
+import { StepTrail } from '../components/tandem-steps'
 import type { Passenger } from '../components/tandem-card'
 import {
   FilmStrip,
@@ -56,7 +51,7 @@ import { importFiles } from '../helpers/import'
 import { TANDEMS, folderOnStorage } from '../helpers/jumps'
 import { familyOf, filesIn, groupsIn, looseIn, placeKey, placeLabel } from '../helpers/places'
 import type { Place } from '../helpers/places'
-import { GROUPINGS, jumpLabels, sectionsOf } from '../helpers/sections'
+import { GROUPINGS, cardsOf, jumpLabels, sectionsOf } from '../helpers/sections'
 import type { Grouping } from '../helpers/sections'
 import { fileFacts } from '../helpers/status'
 import { setBackupChoice, useBackupChoice } from '../hooks/useBackupChoice'
@@ -158,6 +153,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
      holds in a tandem */
   const [kind, setKind] = useState<Kind>('all')
   const [query, setQuery] = useState('')
+  /* which jump card is open, by jump */
+  const [chosenCard, setChosenCard] = useState<string | null>(null)
   /* how each family of folder groups its files, remembered while the board is open */
   const [groupingBy, setGroupingBy] = useState<Record<'sort' | 'dz' | 'tandems', Grouping>>({
     sort: 'jump',
@@ -208,9 +205,30 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     preview.handlePreview(file, groupOfFile(file)?.id ?? LOOSE)
   /* filed nowhere — neither as a lone file nor through its jump — and so free to go to the bin */
   const inUnsorted = (file: ManifestFile) => !file.destination && !groupOfFile(file)?.destination
+  /* Deleting goes one step at a time: a file in a jump comes out of it and is loose; only a loose
+     file in Unsorted, deleted again, goes to the bin. */
+  const binnable = (file: ManifestFile) => inUnsorted(file) && !groupOfFile(file)
+  const backLabel = (files: ManifestFile[]) =>
+    files.every(inUnsorted)
+      ? `Take out of ${files.length === 1 ? 'its jump' : 'their jumps'} (⌫)`
+      : 'Send back to Fresh files (⌫)'
   const fileById = (id: string) =>
     [...groups.flatMap((g) => g.files), ...loose].find((f) => f.id === id)
   const askTrash = (files: ManifestFile[]) => setDialog({ kind: 'trash', files })
+  /* The jump goes; its files stay, loose in Unsorted, crops and all. Only processed copies are
+     lost — they no longer match where the files are — so that alone is asked about first. */
+  const deleteJump = (group: ManifestGroup) => {
+    const copies = group.files.filter((f) => f.processed).length
+    if (
+      copies > 0 &&
+      !window.confirm(
+        `Delete this jump? Its ${plural(group.files.length, 'file')} stay, loose in Fresh files, with their crops — but ${copies} processed ${copies === 1 ? 'copy' : 'copies'} will be deleted and have to be processed again.`
+      )
+    )
+      return
+    selection.clear()
+    send('delete-jump', { intent: 'delete-jump', groupId: group.id })
+  }
 
   /* A tandem is uploaded while the storage still holds what was sent, and not a moment longer —
      the record says what went up, the listing says whether it is still there. Delete it over there
@@ -225,9 +243,39 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
   /* what the open folder holds, narrowed by what is typed in the search box */
   const family = familyOf(place)
-  const placeGroups = groupsIn(place, groups).map(asOnStorage)
+  const emailedOn = (group: ManifestGroup) =>
+    board.storage?.tandems.find((t) => t.folder === folderOnStorage(group))?.emailed ?? null
+
+  /* Where each tandem has got to — one answer for its panel, its card and its passenger's entry in
+     the menu, so the three can never disagree. */
+  const progressOf = (group: ManifestGroup) =>
+    group.destination === TANDEMS
+      ? tandemSteps({
+          group: asOnStorage(group),
+          facts: board.tandemFacts[group.id],
+          emailed: Boolean(emailedOn(group))
+        })
+      : null
+
+  const passengerProgress = (name: string) =>
+    furthestBehind(
+      groups
+        .filter((g) => g.destination === TANDEMS && passengerOf(g) === name)
+        .flatMap((g) => {
+          const progress = progressOf(g)
+          return progress ? [progress] : []
+        })
+    )
+
+  /* A tandem freed and walked to its last step has nothing left to do here, so it leaves the
+     tandems — its passenger's entry too — and lives on in the storage's own list of tandems. */
+  const finished = (group: ManifestGroup) =>
+    Boolean(group.freed) && progressOf(group)?.next === null
+  const listed = groups.filter((g) => !finished(g))
+
+  const placeGroups = groupsIn(place, listed).map(asOnStorage)
   const placeLoose = looseIn(place, loose)
-  const placeFiles = filesIn(place, groups, loose)
+  const placeFiles = filesIn(place, listed, loose)
   const matches = (file: ManifestFile) => {
     if (!query.trim()) return true
     const needle = query.trim().toLowerCase()
@@ -251,25 +299,39 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         ? groupingBy[family]
         : (groupingOptions[0] ?? 'none')
   const sections = sectionsOf(place, grouping, shownGroups, shownLoose)
+  /* By jump, the jumps are cards and one is open: the one last chosen while it is still here, or
+     else the first. Only its files are on screen. */
+  const cardSections = cardsOf(sections)
+  /* files a jump holds against the gap rule, flagged where they are drawn */
+  const offGapFiles = new Set(groups.flatMap((g) => [...offGap(g.files)]))
+  const openCard =
+    grouping === 'jump'
+      ? (cardSections.find((s) => s.key === chosenCard) ?? cardSections[0])
+      : undefined
+  const onScreen = openCard ? [openCard] : sections
   /* files are in the order they were shot */
   const sortKey = (file: ManifestFile) => file.mtime
   /* every file on screen, in the order it is drawn, for the arrow keys to step through */
-  const order = sections.flatMap((s) =>
+  const order = onScreen.flatMap((s) =>
     s.kind === 'jump' && s.group.freed ? [] : lanesOf(s.files, kind, sortKey).flat()
   )
 
   const selection = useSelection({
     order,
+    pickable: (id) => {
+      const found = fileById(id)
+      return Boolean(found) && !lockReason(found!, statusContext(found!))
+    },
     paused: preview.preview !== null || dialog !== null,
     onOpen: openFile,
-    /* Delete sends filed files back to Unsorted; files already there have nowhere further back to
-       go, so for them it asks about the bin instead */
+    /* Delete takes files one step back: out of a jump or a place, to be loose in Unsorted; loose
+       files already there have nowhere further back to go, so for them it asks about the bin */
     onDelete: (ids) => {
       const files = ids.flatMap((id) => {
         const found = fileById(id)
         return found ? [found] : []
       })
-      if (files.length > 0 && files.every(inUnsorted)) askTrash(files)
+      if (files.length > 0 && files.every(binnable)) askTrash(files)
       else moveFiles(ids, { destination: null })
     }
   })
@@ -292,7 +354,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       fileIds: free,
       ...(where.targetGroupId ? { targetGroupId: where.targetGroupId } : {}),
       ...(where.destination ? { destination: where.destination } : {}),
-      ...(where.newGroup ? { newGroup: true } : {})
+      ...(where.newGroup ? { newGroup: true } : {}),
+      ...(where.name ? { name: where.name } : {}),
+      ...(where.startsAt !== undefined ? { anchorEpoch: where.startsAt } : {})
     })
     if (free.length < ids.length) setNote(`${EDIT_LOCKED} Its files stayed where they were.`)
   }
@@ -378,6 +442,15 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     updateGroups(next)
   }
 
+  /* only what the jump is called on the board — no file is named after it, so nothing processed
+     goes stale */
+  const renameJump = (groupId: string, name: string) => {
+    if (frozen.has(groupId)) return
+    updateGroups(
+      groups.map((g) => (g.id === groupId ? { ...g, name: name.trim() || undefined } : g))
+    )
+  }
+
   const shiftJump = (groupId: string, anchorEpoch: number) =>
     send('shift', { intent: 'shift-group-time', groupId, anchorEpoch })
 
@@ -390,51 +463,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       )
     ).values()
   ]
-  /* the passengers something can still join: one whose tandem has an edit takes nothing more */
-  const joinable = [
-    ...new Set(named.filter((g) => !frozen.has(g.id)).map((g) => passengerOf(g)))
-  ].sort((a, b) => a.localeCompare(b))
   const hostOf = (who: string) => named.find((g) => passengerOf(g) === who)
-
-  /* where a jump or a loose file is filed now, as the File to list names it */
-  const targetOfGroup = (group: ManifestGroup): Target | null =>
-    !group.destination
-      ? { kind: 'unsorted' }
-      : group.destination !== TANDEMS
-        ? { kind: 'dz', name: group.destination }
-        : passengerOf(group)
-          ? { kind: 'pax', name: passengerOf(group) }
-          : null
-  const targetOfFile = (file: ManifestFile): Target | null => {
-    const group = groupOfFile(file)
-    if (group) return targetOfGroup(group)
-    return file.destination ? { kind: 'dz', name: file.destination } : { kind: 'unsorted' }
-  }
-
-  /* one choice from the File to list files the whole jump, as a drag onto that folder would */
-  const fileJumpTo = (groupId: string, target: Target) => {
-    if (target.kind === 'unsorted') assign([groupId], null)
-    else if (target.kind === 'dz') {
-      assign([groupId], target.name)
-      flash({ kind: 'dz', name: target.name })
-    } else if (target.kind === 'pax') {
-      const host = hostOf(target.name)
-      if (host?.passenger) makeTandem(groupId, host.passenger)
-    } else {
-      /* a tandem with no name yet: it stays selected, so the name is typed straight away */
-      assign([groupId], TANDEMS)
-      selection.selectJump(groupId)
-      setNote('Filed under Tandems — type the passenger’s name on the right')
-    }
-  }
-  const fileFilesTo = (ids: string[], target: Target) => {
-    if (target.kind === 'unsorted') moveFiles(ids, { destination: null })
-    else if (target.kind === 'dz') moveFiles(ids, { destination: target.name })
-    else if (target.kind === 'pax') {
-      const host = hostOf(target.name)
-      if (host) moveFiles(ids, { targetGroupId: host.id })
-    } else moveFiles(ids, { destination: TANDEMS, newGroup: true })
-  }
 
   const openConnect = () => {
     nas.markDialogOpened()
@@ -506,9 +535,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   }
 
   /* whether the storage's list says this tandem's passenger was sent their link */
-  const emailedOn = (group: ManifestGroup) =>
-    board.storage?.tandems.find((t) => t.folder === folderOnStorage(group))?.emailed ?? null
-
   /* A dropzone is processed, then uploaded, as a whole (RULES, Acting). Processing asks only for
      what needs it — the jumps with a file to process, and the dropzone's loose files when one of
      them does — because a dropzone holds every day ever shot there. */
@@ -589,8 +615,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
      passengers has no single passenger, and the storage takes nothing */
   const paneHost = place.kind === 'pax' ? hostOf(place.name) : undefined
   const paneTarget =
-    place.kind === 'sort' || place.kind === 'day'
-      ? { target: 'sort', where: 'Unsorted' }
+    place.kind === 'sort'
+      ? { target: 'sort', where: 'Fresh files' }
       : place.kind === 'dz'
         ? { target: `dest:${place.name}`, where: place.name }
         : paneHost && !frozen.has(paneHost.id)
@@ -690,7 +716,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           </Mini>
           <Mini
             disabled={busy !== null}
-            title='Undo the tandem — its jumps go back to Unsorted, without their name or crops'
+            title='Undo the tandem — its jumps go back to Fresh files, without their name or crops'
             onClick={() => setDialog({ kind: 'take-back', mode: 'delete', who: place.name })}>
             Delete…
           </Mini>
@@ -732,15 +758,10 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           status={shownStatus(one, context)}
           proxy={board.proxies[one.path]}
           locked={lockReason(one, context)}
-          fileTo={{
-            current: targetOfFile(one),
-            places,
-            passengers: joinable,
-            onFileTo: (target) => fileFilesTo([one.id ?? ''], target)
-          }}
           onOpen={() => openFile(one)}
           onSendBack={() => moveFiles([one.id ?? ''], { destination: null })}
-          onTrash={inUnsorted(one) ? () => askTrash([one]) : undefined}
+          onTrash={binnable(one) ? () => askTrash([one]) : undefined}
+          backLabel={backLabel([one])}
           onRetime={
             lockReason(one, context)
               ? undefined
@@ -755,20 +776,20 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       )
     }
     if (picked.length > 1) {
-      const movable = picked.filter((f) => !lockReason(f, statusContext(f)))
-      const ids = movable.flatMap((f) => (f.id ? [f.id] : []))
+      const ids = picked.flatMap((f) => (f.id ? [f.id] : []))
       return (
         <ManyPanel
           files={picked}
           statusOf={statusOf}
-          lockedCount={picked.length - movable.length}
-          fileTo={{
-            places,
-            passengers: joinable,
-            onFileTo: (target) => fileFilesTo(ids, target)
-          }}
           onSendBack={() => moveFiles(ids, { destination: null })}
-          onTrash={picked.every(inUnsorted) ? () => askTrash(picked) : undefined}
+          onTrash={picked.every(binnable) ? () => askTrash(picked) : undefined}
+          backLabel={backLabel(picked)}
+          onMakeJump={
+            picked.every(inUnsorted)
+              ? (name, startsAt) =>
+                  moveFiles(ids, { destination: null, newGroup: true, name, startsAt })
+              : undefined
+          }
           onClear={selection.clear}
         />
       )
@@ -782,7 +803,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         <JumpPanel
           key={jump.id}
           group={shown}
-          label={labelOf(jump)}
+          label={labels.get(jump.id) ?? jump.label}
           facts={board.tandemFacts[jump.id]}
           emailed={Boolean(emailedOn(jump))}
           locked={
@@ -792,29 +813,24 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                 ? `${EDIT_LOCKED} Open it in kdenlive, or reset the tandem.`
                 : null
           }
-          busy={busy !== null}
           statusOf={statusOf}
           passengers={passengers}
-          fileTo={{
-            current: targetOfGroup(jump),
-            places,
-            passengers: joinable,
-            onFileTo: (target) => fileJumpTo(jump.id, target)
-          }}
-          compare={groups
-            .filter(
-              (g) =>
-                g.id !== jump.id &&
-                (g.destination ?? '') === (jump.destination ?? '') &&
-                !frozen.has(g.id) &&
-                g.files.length > 0
-            )
-            .map((g) => ({ id: g.id, label: labelOf(g) }))}
-          onShift={(at) => shiftJump(jump.id, at)}
           onMakeTandem={(passenger) => makeTandem(jump.id, passenger)}
           onName={(first, last) => setPassenger(jump.id, first, last)}
           onSelectFiles={() => selection.selectFiles(jump.files)}
-          onCompare={(other) => selection.setComparing([jump.id, other])}
+          onShift={
+            jump.freed || frozen.has(jump.id) || busy !== null
+              ? undefined
+              : (at) => shiftJump(jump.id, at)
+          }
+          onRename={
+            jump.destination === TANDEMS || jump.freed || frozen.has(jump.id)
+              ? undefined
+              : (name) => renameJump(jump.id, name)
+          }
+          onDelete={
+            jump.freed || frozen.has(jump.id) || jump.uploaded ? undefined : () => deleteJump(jump)
+          }
         />
       )
     }
@@ -852,7 +868,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               key={g.id}
               heading={labelOf(g)}>
               <StepTrail
-                group={g}
+                group={asOnStorage(g)}
                 facts={board.tandemFacts[g.id]}
                 emailed={Boolean(emailedOn(g))}
               />
@@ -880,11 +896,12 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         <PlacesTree
           place={place}
           destinations={places}
-          groups={groups}
+          groups={listed}
           looseFiles={loose}
           storage={board.storage}
           statusContext={statusContext}
           tandemOpen={(g) => !asOnStorage(g).uploaded}
+          passengerProgress={passengerProgress}
           onPick={pickPlace}
           onAddPlace={addPlace}
           dropTarget={drag.placeDrop}
@@ -950,6 +967,18 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           ) : (
             <FileBrowser
               sections={sections}
+              cards={
+                openCard
+                  ? {
+                      open: openCard.key,
+                      onOpen: (key) => {
+                        setChosenCard(key)
+                        /* the loose card is no jump: the inspector lets go of the last one */
+                        if (key === 'loose') selection.clear()
+                      }
+                    }
+                  : undefined
+              }
               kind={kind}
               shape={view}
               picked={pickedFiles}
@@ -963,6 +992,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               }
               onPick={selection.pickFile}
               previewed={selection.previewed}
+              offGap={offGapFiles}
               onOpen={openFile}
               onDragFile={drag.startFileDrag}
               empty={
@@ -970,24 +1000,18 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                   ? 'Nothing here matches that.'
                   : family === 'sort'
                     ? 'Nothing left to sort. Copy more cameras off and rescan to see their jumps here.'
-                    : 'Nothing here yet. Drag a jump onto this folder, pick it from a jump’s File to list, or drop files from the computer.'
+                    : 'Nothing here yet. Drag a jump onto this folder, or drop files from the computer.'
               }
               jump={{
                 selected: selection.pickedJump,
                 frozen,
                 overTarget: drag.overTarget,
-                busy: busy !== null,
-                places,
-                passengersFor: () => joinable,
-                targetOf: targetOfGroup,
                 dropTarget: (id) => drag.groupDropTarget(id),
                 onSelect: selection.selectJump,
                 onDrag: drag.startJumpDrag,
-                onShift: shiftJump,
-                onFileTo: fileJumpTo,
                 actions: tandemActions,
                 above: tandemAbove,
-                withDay: place.kind !== 'day'
+                progress: progressOf
               }}
             />
           )}

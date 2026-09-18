@@ -119,6 +119,7 @@ const UploadDialog = ({
   const baseName = facts?.baseName ?? group.label
   const zip = choice.backupAs === 'zip'
   const withFilm = choice.filmToBackup && film !== null
+  const withProject = choice.projectToBackup && Boolean(facts?.project)
 
   const originalsSize = videos.reduce((n, f) => n + f.size, 0)
   const backupSize = originalsSize + (withFilm && film ? film.size : 0)
@@ -175,8 +176,8 @@ const UploadDialog = ({
             name={zip ? rushesNameOf(baseName) : `${baseName}/`}
             size={formatFilmSize(backupSize)}
             what={`${plural(videos.length, 'original video')}${withFilm ? ' + the film' : ''}${
-              zip ? '' : ', as files'
-            }`}
+              withProject ? ' + the project' : ''
+            }${zip ? '' : ', as files'}`}
           />
           {film && (
             <Item
@@ -185,6 +186,15 @@ const UploadDialog = ({
               what='a copy of the film'
               off={!choice.filmToBackup}
               onToggle={(on) => onChoice({ ...choice, filmToBackup: on })}
+            />
+          )}
+          {/* the edit exists nowhere else, so it can be kept with the footage it was made from */}
+          {facts?.project && (
+            <Item
+              name={zip ? '… inside that zip' : '… in that folder'}
+              what='the kdenlive project'
+              off={!choice.projectToBackup}
+              onToggle={(on) => onChoice({ ...choice, projectToBackup: on })}
             />
           )}
         </Parcel>

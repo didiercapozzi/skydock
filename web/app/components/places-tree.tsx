@@ -1,13 +1,15 @@
 import { fileStatus, passengerOf } from '@skydock/scripts'
-import type { StatusContext, TandemEntry } from '@skydock/scripts'
+import type { StatusContext, TandemEntry, TandemProgress } from '@skydock/scripts'
 import { useState } from 'react'
-import { TANDEMS, dayOf, dayOfFile } from '../helpers/jumps'
+import { TANDEMS } from '../helpers/jumps'
 import { filesIn, groupsIn, looseIn, placeKey, placeLabel, samePlace } from '../helpers/places'
 import type { Place } from '../helpers/places'
+import { StepMeter } from './tandem-steps'
 import type { Destination, ManifestFile, ManifestGroup } from './types'
 
-/* The folders, down the left like any file manager's: the cameras' days still to sort, the
-   dropzones, the passengers, and the storage. Each says how many files it holds, how much of it is
+/* The folders, down the left like any file manager's: what is still to sort — and within it what a
+   camera's wrong clock dated in the future, to be checked — the dropzones, the passengers, and the
+   storage. Each says how many files it holds, how much of it is
    local, processed or uploaded, and how much is still to do — so the state of the whole club is read
    without opening anything. Pinned: only the files scroll, so any folder can take a drop. On a phone
    it becomes one strip of folders across the top. */
@@ -20,6 +22,8 @@ type Props = {
   statusContext: (file: ManifestFile) => StatusContext
   /* whether a tandem still has a step to take here */
   tandemOpen: (group: ManifestGroup) => boolean
+  /* where a passenger has got to — their jump furthest behind */
+  passengerProgress: (name: string) => TandemProgress | null
   onPick: (place: Place) => void
   onAddPlace: (name: string) => void
   dropTarget: (place: Place) => Record<string, unknown>
@@ -39,7 +43,8 @@ const Node = ({
   onPick,
   dropTarget,
   over,
-  flash
+  flash,
+  progress
 }: {
   place: Place
   glyph: string
@@ -53,6 +58,8 @@ const Node = ({
   dropTarget: (place: Place) => Record<string, unknown>
   over: boolean
   flash?: boolean
+  /* a passenger's way through their tandem, which says more than how many files are where */
+  progress?: TandemProgress | null
 }) => {
   const counts = { local: 0, processed: 0, uploaded: 0 }
   for (const file of files) counts[fileStatus(file, statusContext(file))] += 1
@@ -90,21 +97,28 @@ const Node = ({
         )}
         <span className='font-mono text-[11px] text-ink-3 tabular-nums'>{files.length}</span>
       </span>
-      {files.length > 0 && (
-        <span className='mt-1 ml-[22px] flex h-[3px] overflow-hidden rounded-sm bg-line-2 max-[780px]:hidden'>
-          <i
-            className='block h-full bg-local'
-            style={{ width: width(counts.local) }}
-          />
-          <i
-            className='block h-full bg-proc'
-            style={{ width: width(counts.processed) }}
-          />
-          <i
-            className='block h-full bg-up'
-            style={{ width: width(counts.uploaded) }}
-          />
-        </span>
+      {progress ? (
+        <StepMeter
+          progress={progress}
+          className='mt-1 ml-[22px] max-[780px]:hidden'
+        />
+      ) : (
+        files.length > 0 && (
+          <span className='mt-1 ml-[22px] flex h-[3px] overflow-hidden rounded-sm bg-line-2 max-[780px]:hidden'>
+            <i
+              className='block h-full bg-local'
+              style={{ width: width(counts.local) }}
+            />
+            <i
+              className='block h-full bg-proc'
+              style={{ width: width(counts.processed) }}
+            />
+            <i
+              className='block h-full bg-up'
+              style={{ width: width(counts.uploaded) }}
+            />
+          </span>
+        )
       )}
     </button>
   )
@@ -126,6 +140,7 @@ const PlacesTree = ({
   storage,
   statusContext,
   tandemOpen,
+  passengerProgress,
   onPick,
   onAddPlace,
   dropTarget,
@@ -141,14 +156,6 @@ const PlacesTree = ({
     counted(files(p).filter((f) => fileStatus(f, statusContext(f)) !== 'uploaded').length, 'to do')
   const openTandems = (p: Place) =>
     counted(groupsIn(p, groups).filter((g) => !g.freed && tandemOpen(g)).length, 'to do')
-  const days = [
-    ...new Set([
-      ...groups.filter((g) => !g.destination).map(dayOf),
-      ...looseFiles.filter((f) => !f.destination).map(dayOfFile)
-    ])
-  ]
-    .sort()
-    .reverse()
   /* One entry per passenger, however many jumps they have: two jumps for the same person share one
      folder, so listing them twice would promise two folders that are really one. */
   const passengers = [
@@ -157,7 +164,13 @@ const PlacesTree = ({
     )
   ].sort((a, b) => a.localeCompare(b))
   const unnamed = groupsIn({ kind: 'unnamed' }, groups).length
-  const node = (p: Place, glyph: string, todo: string | null, child?: boolean) => (
+  const node = (
+    p: Place,
+    glyph: string,
+    todo: string | null,
+    child?: boolean,
+    progress?: TandemProgress | null
+  ) => (
     <Node
       key={placeKey(p)}
       place={p}
@@ -171,6 +184,7 @@ const PlacesTree = ({
       dropTarget={dropTarget}
       over={overTarget === placeKey(p)}
       flash={flashPlace === placeKey(p)}
+      progress={progress}
     />
   )
   const notEmailed = storage?.tandems.filter((t) => !t.emailed).length ?? 0
@@ -178,10 +192,9 @@ const PlacesTree = ({
     <nav
       aria-label='Folders'
       className='sticky top-0 self-start overflow-y-auto border-line bg-rail px-2 pt-2.5 pb-6 max-[780px]:z-[8] max-[780px]:flex max-[780px]:h-auto max-[780px]:items-center max-[780px]:gap-1.5 max-[780px]:overflow-x-auto max-[780px]:overflow-y-hidden max-[780px]:border-b max-[780px]:px-3 max-[780px]:py-2 min-[781px]:h-full min-[781px]:border-r'>
-      <Heading>Cameras</Heading>
+      {/* what came off the cameras and is not filed yet: one entry, and the first thing on it */}
       {node({ kind: 'sort' }, '▤', toFile({ kind: 'sort' }))}
-      {days.map((day) => node({ kind: 'day', day }, '·', toFile({ kind: 'day', day }), true))}
-      <Heading>Dropzones</Heading>
+      <Heading>Destination</Heading>
       {destinations
         .filter((d) => d.name !== TANDEMS)
         .map((d) => node({ kind: 'dz', name: d.name }, '⌂', toDo({ kind: 'dz', name: d.name })))}
@@ -189,8 +202,8 @@ const PlacesTree = ({
         <input
           type='text'
           value={adding}
-          placeholder='New dropzone'
-          aria-label='New dropzone'
+          placeholder='New destination'
+          aria-label='New destination'
           onChange={(e) => setAdding(e.target.value)}
           onKeyDown={(e) => {
             if (e.key !== 'Enter') return
@@ -212,9 +225,11 @@ const PlacesTree = ({
       <Heading>Tandems</Heading>
       {node({ kind: 'tandems' }, '⚑', openTandems({ kind: 'tandems' }))}
       {unnamed > 0 && node({ kind: 'unnamed' }, '?', counted(unnamed, 'to name'), true)}
-      {passengers.map((name) =>
-        node({ kind: 'pax', name }, '·', openTandems({ kind: 'pax', name }) && 'to do', true)
-      )}
+      {/* each passenger says the step they are at, so the list reads as a to-do list */}
+      {passengers.map((name) => {
+        const progress = passengerProgress(name)
+        return node({ kind: 'pax', name }, '·', progress?.next?.todo ?? null, true, progress)
+      })}
       {storage && (
         <>
           <Heading>Storage</Heading>

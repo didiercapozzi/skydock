@@ -1,4 +1,4 @@
-import { saveManifest, shiftFiles } from '@skydock/scripts'
+import { saveManifest, shiftGroupTo } from '@skydock/scripts'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 
@@ -12,13 +12,7 @@ const shiftGroupTime: Intent = ({ data, manifest, manifestPath, frozen, refuse, 
   const target = manifest.groups.find((g) => g.id === data.groupId)
   if (!target) return refuse('Group not found.')
   if (target.files.length === 0) return refuse('Group has no files.')
-  const min = Math.min(...target.files.map((f) => f.mtime))
-  const offset = Math.round(data.anchorEpoch) - min
-  if (offset !== 0) {
-    const ids = new Set<string>()
-    for (const f of target.files) if (f.id) ids.add(f.id)
-    shiftFiles(manifest, ids, offset)
-  }
+  shiftGroupTo(manifest, target, data.anchorEpoch)
   saveManifest(manifestPath, manifest)
   return boardAnswer(manifest)
 }

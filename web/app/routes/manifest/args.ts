@@ -1,4 +1,5 @@
 import {
+  backupOptionsSchema,
   destinationSchema,
   importOutcomeSchema,
   manifestFileSchema,
@@ -22,6 +23,8 @@ const actionArgs = z.object({
     /* one file's time, corrected on its own */
     'retime-file',
     'move-files',
+    /* a jump that should not exist: it goes, its files stay, loose in Unsorted */
+    'delete-jump',
     'regroup-loose',
     /* unsorted files nobody wants, out of the originals and into the bin */
     'trash-unsorted',
@@ -48,8 +51,10 @@ const actionArgs = z.object({
   leftId: z.string().optional(),
   rightId: z.string().optional(),
   anchorEpoch: z.number().optional(),
+  /* what a jump is called, when it is made or renamed */
+  name: z.string().optional(),
   /* how a tandem's upload keeps the originals: one zip or plain files, with or without the film */
-  backup: z.object({ backupAs: z.enum(['zip', 'folder']), filmToBackup: z.boolean() }).optional(),
+  backup: backupOptionsSchema.optional(),
   emailed: z
     .object({ folder: z.string(), to: z.string().optional(), sent: z.boolean() })
     .optional(),

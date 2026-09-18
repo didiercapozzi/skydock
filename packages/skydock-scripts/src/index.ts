@@ -7,10 +7,12 @@ import { boardAnswerSchema, importOutcomeSchema } from './boardAnswer'
 import type { BoardAnswer, ImportOutcome, MontageNote, ScanResult, TandemFact } from './boardAnswer'
 import {
   groupFromFiles,
+  offGap,
   reclusterGroups,
   regroupLooseFiles,
   retimeFile,
-  shiftFiles
+  shiftFiles,
+  shiftGroupTo
 } from './clustering'
 import { fileChanged, fileStatus, uploadGate } from './fileStatus'
 import type { FileStatus, OutputFact, RemoteListing, StatusContext } from './fileStatus'
@@ -67,15 +69,19 @@ import {
   sameEditedGroup,
   statTandemArtifacts
 } from './tandem'
+import { furthestBehind, TANDEM_STEPS, tandemSteps } from './tandemSteps'
+import type { TandemProgress, TandemStep } from './tandemSteps'
 import { tandemEntrySchema, tandemIndexSchema } from './tandemEntry'
 import type { TandemEntry, TandemIndex } from './tandemEntry'
 import {
+  backupOptionsSchema,
   destinationSchema,
   frameCropSchema,
   manifestFileSchema,
   manifestGroupSchema
 } from './types'
 import type {
+  BackupOptions,
   Destination,
   FrameCrop,
   Manifest,
@@ -110,6 +116,10 @@ import {
 } from './workspace'
 
 export {
+  furthestBehind,
+  TANDEM_STEPS,
+  tandemSteps,
+  backupOptionsSchema,
   boardAnswerSchema,
   buildGroupBaseName,
   buildPassengerFolder,
@@ -175,8 +185,10 @@ export {
   saveManifest,
   scanMedia,
   scopeKey,
+  offGap,
   retimeFile,
   shiftFiles,
+  shiftGroupTo,
   statProcessedOutputs,
   statProxies,
   statTandemArtifacts,
@@ -195,6 +207,9 @@ export {
   writeUploadProgress
 }
 export type {
+  TandemProgress,
+  TandemStep,
+  BackupOptions,
   BoardAnswer,
   Destination,
   FileStatus,

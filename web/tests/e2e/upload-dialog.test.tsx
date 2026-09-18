@@ -10,6 +10,7 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
 })
 
 import Board from '../../app/routes/board'
+import { setBackupChoice } from '../../app/hooks/useBackupChoice'
 
 /* Uploading a tandem is the one step that hands things to someone, so it shows what it is about to do
    before it does it: two parcels, both folders, and how the originals are kept. Nothing is sent
@@ -120,10 +121,11 @@ describe('uploading a tandem — the dialog first', () => {
   test('adds the film to the backup, and says so, when it is ticked', async () => {
     await renderBoard()
     const dialog = page.getByRole('dialog', { name: 'Upload' })
-    await userEvent.click(dialog.getByRole('checkbox'))
+    const film = dialog.getByRole('checkbox', { name: /a copy of the film/ })
+    await userEvent.click(film)
     await expect.element(dialog.getByText('2 original videos + the film')).toBeInTheDocument()
     await expect.element(dialog.getByText('19.0 GB to the backup · 3.0 GB to Luc Favre')).toBeInTheDocument()
-    await userEvent.click(dialog.getByRole('checkbox'))
+    await userEvent.click(film)
   })
 
   test('keeps the originals as plain files when asked, in a folder of their own', async () => {
@@ -144,9 +146,32 @@ describe('uploading a tandem — the dialog first', () => {
       expect(requests).toContainEqual({
         intent: 'upload-tandem',
         groupId: 'g1',
-        backup: { backupAs: 'zip', filmToBackup: false }
+        backup: { backupAs: 'zip', filmToBackup: false, projectToBackup: false }
       })
     )
+  })
+
+  /* the edit exists nowhere else, so it can be kept with the originals — off until chosen */
+  test('keeps the editing project with the backup when it is ticked', async () => {
+    requests.length = 0
+    await renderBoard()
+    const dialog = page.getByRole('dialog', { name: 'Upload' })
+    const project = dialog.getByRole('checkbox', { name: /the kdenlive project/ })
+    await expect.element(project).not.toBeChecked()
+
+    await userEvent.click(project)
+
+    await expect.element(dialog.getByText('2 original videos + the project')).toBeInTheDocument()
+    await userEvent.click(dialog.getByRole('button', { name: 'Upload', exact: true }))
+    await vi.waitFor(() =>
+      expect(requests).toContainEqual({
+        intent: 'upload-tandem',
+        groupId: 'g1',
+        backup: { backupAs: 'zip', filmToBackup: false, projectToBackup: true }
+      })
+    )
+    /* the choice is remembered for the club, so it is put back for the tests that follow */
+    setBackupChoice({ backupAs: 'zip', filmToBackup: false, projectToBackup: false })
   })
 })
 
@@ -362,7 +387,9 @@ describe('the tandems on the storage', () => {
 
   test('lists a tandem this machine no longer has, and whether its passenger was emailed', async () => {
     await renderBoard(listed, false)
-    await userEvent.click(page.getByRole('button', { name: /All passengers/ }))
+    await userEvent.click(
+      page.getByRole('navigation', { name: 'Folders' }).getByRole('button', { name: /In progress/ })
+    )
     await expect.element(page.getByText('On the storage')).toBeInTheDocument()
     await expect.element(page.getByText('Ana Roth')).toBeInTheDocument()
     await expect.element(page.getByText('not emailed', { exact: true })).toBeInTheDocument()
@@ -372,7 +399,9 @@ describe('the tandems on the storage', () => {
   test('emails it from its entry, and says on the list that it was sent', async () => {
     requests.length = 0
     await renderBoard(listed, false)
-    await userEvent.click(page.getByRole('button', { name: /All passengers/ }))
+    await userEvent.click(
+      page.getByRole('navigation', { name: 'Folders' }).getByRole('button', { name: /In progress/ })
+    )
     await userEvent.click(page.getByRole('button', { name: 'Email…' }))
     const dialog = page.getByRole('dialog', { name: 'Email the passenger' })
     const preview = dialog.getByTitle('Email preview').element() as HTMLIFrameElement
@@ -385,5 +414,95 @@ describe('the tandems on the storage', () => {
         emailed: { folder: `${DIR}/Ana Roth`, sent: true, to: 'ana@example.com' }
       })
     )
+  })
+})
+
+/* Every passenger walks the same six steps, and the board says where each one is: on their entry in
+   the menu, on their tandem's card, and the whole way in the panel. Luc Favre here is processed,
+   edited and rendered — so the next thing is the upload. */
+describe('where every passenger has got to', () => {
+  test('says on the passenger’s entry in the menu which step is next', async () => {
+    await renderBoard(board, false)
+
+    const entry = page.getByRole('navigation', { name: 'Folders' }).getByRole('button', {
+      name: /Luc Favre/
+    })
+    await expect.poll(() => entry.element().textContent).toContain('to upload')
+    await expect
+      .element(entry.getByRole('img', { name: /Next: Upload it — 4 of 6 steps done/ }))
+      .toBeInTheDocument()
+  })
+
+  test('shows the whole way in the panel, with what to do next at the step it is at', async () => {
+    await renderBoard(board, false)
+
+    const trail = page.getByRole('list', { name: 'Where this tandem has got to' }).first()
+    await expect.element(trail).toBeInTheDocument()
+    await expect
+      .poll(() => trail.element().querySelector('[aria-current="step"]')?.textContent)
+      .toMatch(/Uploaded\s*Next: Upload it$/)
+    await expect.element(trail.getByText('Rendered — done')).toBeInTheDocument()
+  })
+
+  test('marks the tandem’s card with the same step', async () => {
+    await renderBoard(board, false)
+
+    const card = page.getByRole('button', { name: /^Luc Favre, / })
+    await expect.poll(() => card.element().textContent).toContain('to upload')
+  })
+})
+
+/* A tandem freed and walked to its last step — emailed, as the storage's list says — has nothing
+   left to do here. It leaves the tandems, and is found in the storage's own list. */
+describe('a tandem with nothing left to do', () => {
+  const DIR = '/SkyDock/Tandems'
+  const sent = (name: string) => ({
+    remotePath: `${DIR}/Luc Favre/${name}`,
+    md5: 'x',
+    size: 1,
+    localPath: '/local',
+    at: 1_785_010_000
+  })
+  const entry = (emailed: boolean) => ({
+    folder: `${DIR}/Luc Favre`,
+    firstname: 'Luc',
+    lastname: 'Favre',
+    day: '01.08.2026',
+    videos: 2,
+    photos: 1,
+    uploadedAt: 1_785_010_000,
+    shareUrl: 'https://nas.local/sharing/Luc',
+    ...(emailed ? { emailed: { at: 1_785_020_000 } } : {})
+  })
+  const freed = (emailed: boolean) => ({
+    ...board,
+    groups: [
+      {
+        ...board.groups[0],
+        freed: { at: 1_785_015_000, bytes: 16 * GB },
+        uploaded: { at: 1_785_010_000, film: sent('luc.mp4'), photos: sent('luc.photos.zip') }
+      }
+    ],
+    storage: { dir: DIR, problem: null, tandems: [entry(emailed)] }
+  })
+  const menu = () => page.getByRole('navigation', { name: 'Folders' })
+
+  test('leaves the tandems once it is freed and the passenger was emailed', async () => {
+    const Stub = createRoutesStub([{ path: '/', Component: Board, loader: () => freed(true) }])
+    await render(createElement(Stub, { initialEntries: ['/'] }))
+
+    await expect.element(menu().getByRole('button', { name: /In progress/ })).toBeInTheDocument()
+    await expect.element(menu().getByRole('button', { name: /Luc Favre/ })).not.toBeInTheDocument()
+    /* still there, where every tandem on the storage is */
+    await expect.poll(() => menu().element().textContent).toContain('On the storage')
+  })
+
+  /* freed alone is not done: the passenger still has to hear about it */
+  test('stays, saying what is left, while the passenger has not been emailed', async () => {
+    const Stub = createRoutesStub([{ path: '/', Component: Board, loader: () => freed(false) }])
+    await render(createElement(Stub, { initialEntries: ['/'] }))
+
+    const luc = menu().getByRole('button', { name: /Luc Favre/ })
+    await expect.poll(() => luc.element().textContent).toContain('to email')
   })
 })

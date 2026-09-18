@@ -18,7 +18,7 @@ const trashUnsorted = (manifest: Manifest, ids: Set<string>, outputDir: string) 
   const going = manifest.files.filter((f) => f.id && ids.has(f.id))
   if (going.length === 0) throw new Error('Those files are no longer on the board.')
   if (going.some((f) => f.destination || filed.has(f.id ?? '')))
-    throw new Error('Only files in Unsorted can be put in the bin — send them back there first.')
+    throw new Error('Only files in Fresh files can be put in the bin — send them back there first.')
 
   /* one folder per time the bin is asked for, keeping each file where it sat among the originals,
      so what went in together can be found together and put back where it came from */
