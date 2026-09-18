@@ -6,10 +6,14 @@ import {
   clearUploadProgress,
   deliverScopeKey,
   destinationSchema,
+  EDIT_LOCKED,
+  frozenTandems,
+  hasEdit,
   ensureNasSession,
   isTandem,
   processJumps,
   getGroupProcessedDir,
+  whenProcessed,
   getOutputDir,
   groupFromFiles,
   groupsInScope,
@@ -19,6 +23,7 @@ import {
   manifestGroupSchema,
   mergeGroups,
   regroupLooseFiles,
+  sameEditedGroup,
   saveManifest,
   scopeKey,
   shiftFiles,
@@ -42,6 +47,8 @@ const actionArgs = z.object({
     'merge-groups',
     'open-montage',
     'process',
+    /* a page that came back while something was being prepared waits here for it to finish */
+    'process-wait',
     'upload-group',
     'montage',
     'deliver',
@@ -61,7 +68,9 @@ const actionArgs = z.object({
   destinations: z.array(destinationSchema).optional(),
   leftId: z.string().optional(),
   rightId: z.string().optional(),
-  anchorEpoch: z.number().optional()
+  anchorEpoch: z.number().optional(),
+  /* how a delivery keeps the originals: one zip or plain files, with or without the film */
+  backup: z.object({ backupAs: z.enum(['zip', 'folder']), filmToBackup: z.boolean() }).optional()
 })
 
 const passengerOf = (group: { passenger?: { firstname: string; lastname: string } }) =>
@@ -76,7 +85,21 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       errors.addGlobalError('No manifest found. Run a scan first.')
       return errors.toResponse(422)
     }
+    /* A tandem with an edit is frozen (RULES, Montage): whatever the page sends, nothing that would
+       change its copies or its folder gets through — the page hiding the controls is a courtesy,
+       this is the rule. */
+    const frozen = frozenTandems(manifest, getOutputDir())
+    const frozenFiles = new Set(
+      manifest.groups
+        .filter((g) => frozen.has(g.id))
+        .flatMap((g) => g.files.flatMap((f) => (f.id ? [f.id] : [])))
+    )
+    const refuseFrozen = () => {
+      errors.addGlobalError(EDIT_LOCKED)
+      return errors.toResponse(422)
+    }
     if (data.intent === 'merge-groups') {
+      if (frozen.has(data.leftId ?? '') || frozen.has(data.rightId ?? '')) return refuseFrozen()
       if (!data.leftId || !data.rightId) {
         errors.addGlobalError('Merge needs two group ids.')
         return errors.toResponse(422)
@@ -98,6 +121,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       return boardAnswer(manifest)
     }
     if (data.intent === 'shift-group-time') {
+      if (frozen.has(data.groupId ?? '')) return refuseFrozen()
       if (!data.groupId) {
         errors.addGlobalError('Shift needs a group id.')
         return errors.toResponse(422)
@@ -158,6 +182,8 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         errors.addGlobalError('Select at least one file to move.')
         return errors.toResponse(422)
       }
+      if ([...ids].some((id) => frozenFiles.has(id)) || frozen.has(data.targetGroupId ?? ''))
+        return refuseFrozen()
       /* the files leave wherever they were, so their processed copies are stale */
       for (const file of manifest.files) {
         if (!file.id || !ids.has(file.id)) continue
@@ -214,8 +240,15 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
     }
     if (data.intent === 'process') {
       const requestedGroups = data.groupIds ?? (data.groupId ? [data.groupId] : undefined)
+      /* the same choice of jumps processing makes, so one with an edit is never written over */
+      const targets = manifest.groups.filter((g) =>
+        requestedGroups && requestedGroups.length > 0
+          ? requestedGroups.includes(g.id)
+          : !data.destination || g.destination === data.destination
+      )
+      if (targets.some((g) => frozen.has(g.id))) return refuseFrozen()
       try {
-        processJumps({
+        await processJumps({
           manifestPath,
           outputDir: getOutputDir(),
           groupIds: requestedGroups && requestedGroups.length > 0 ? requestedGroups : undefined,
@@ -227,6 +260,10 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       }
       const updated = loadManifest(manifestPath)
       return boardAnswer(updated ?? manifest)
+    }
+    if (data.intent === 'process-wait') {
+      await whenProcessed()
+      return boardAnswer(loadManifest(manifestPath) ?? manifest)
     }
     if (data.intent === 'montage') {
       const group = manifest.groups.find((g) => g.id === data.groupId)
@@ -329,6 +366,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
           manifest,
           group,
           session,
+          backup: data.backup,
           onArchive: (archive) =>
             writeUploadProgress(
               {
@@ -592,6 +630,20 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       errors.addGlobalError('Save needs groups.')
       return errors.toResponse(422)
     }
+    /* a frozen tandem has to arrive exactly as it is, and none of its files may be edited on the side */
+    for (const id of frozen) {
+      const before = manifest.groups.find((g) => g.id === id)
+      const incoming = data.groups.find((g) => g.id === id)
+      if (!before || !incoming || !sameEditedGroup(before, incoming)) return refuseFrozen()
+    }
+    /* nor may another jump be given that passenger's name: it would join the folder the edit is in */
+    for (const incoming of data.groups) {
+      if (frozen.has(incoming.id) || !hasEdit(getOutputDir(), incoming)) continue
+      const before = manifest.groups.find((g) => g.id === incoming.id)
+      if (!before || !sameEditedGroup(before, incoming)) return refuseFrozen()
+    }
+    if (data.fileUpdates?.some((u) => u.id && frozenFiles.has(u.id))) return refuseFrozen()
+
     /* Renaming a passenger, a label or a destination changes where the files are written, so the
        copies already on disk belong to a folder that is no longer this group's — the source is
        untouched, which is exactly what the stamp compares, so it has to be said explicitly. */

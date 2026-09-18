@@ -19,10 +19,26 @@ const sizeOf = (file: string) => {
   }
 }
 
-/* An archive is skipped when it is already newer than everything in it, so delivering a second time
-   after a re-render does not spend ten minutes rebuilding gigabytes that did not change. */
+/* What went into an archive, written beside it. Newer than every file in it is not enough to reuse
+   it: a film asked into the backup is older than the zip it was never part of. */
+const contentsOf = (zipPath: string) => `${zipPath}.contents`
+
+const namesOf = (entries: ArchiveEntry[]) => JSON.stringify(entries.map((entry) => entry.name))
+
+const sameContents = (zipPath: string, entries: ArchiveEntry[]) => {
+  try {
+    return fs.readFileSync(contentsOf(zipPath), 'utf-8') === namesOf(entries)
+  } catch {
+    return false
+  }
+}
+
+/* An archive is skipped when it holds exactly these files and is newer than all of them, so
+   delivering a second time after a re-render does not spend ten minutes rebuilding gigabytes that
+   did not change. */
 const isArchiveFresh = (zipPath: string, entries: ArchiveEntry[]) => {
   if (!fs.existsSync(zipPath) || entries.length === 0) return false
+  if (!sameContents(zipPath, entries)) return false
   const built = fs.statSync(zipPath).mtimeMs
   return entries.every((entry) => {
     try {
@@ -64,6 +80,7 @@ const writeArchive = async (
     for (const entry of entries) archive.file(entry.file, { name: entry.name })
     archive.finalize()
   })
+  fs.writeFileSync(contentsOf(zipPath), namesOf(entries))
   return zipPath
 }
 

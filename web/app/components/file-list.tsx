@@ -1,4 +1,4 @@
-import { fileChanged, fileStatus, isWholeFrame } from '@skydock/scripts'
+import { EDIT_LOCKED, fileChanged, fileStatus, isWholeFrame } from '@skydock/scripts'
 import type { ProxyFact, StatusContext } from '@skydock/scripts'
 import { useState } from 'react'
 import { StatusChip, StatusDot } from './file-status'
@@ -37,10 +37,14 @@ const PAGE = { rows: 40, grid: 120 }
 const kindOf = (file: ManifestFile) => (isVideoFile(file.path) ? 'video' : 'photo')
 const matchesKind = (file: ManifestFile, kind: Kind) => kind === 'all' || kindOf(file) === kind
 
-/* Uploaded is the end of editing: SkyDock never deletes from the storage, so it could not take the
-   old copy back, and changing this one would leave the two disagreeing for good. */
-const lockedFile = (file: ManifestFile, context: StatusContext) =>
-  fileStatus(file, context) === 'uploaded'
+/* Why a file can no longer be changed here, if it cannot. Uploaded is the end of editing: SkyDock
+   never deletes from the storage, so it could not take the old copy back, and changing this one would
+   leave the two disagreeing for good. A tandem with an edit is frozen whole, for the edit's sake. */
+const UPLOADED_LOCKED =
+  'On the NAS — cropping, re-timing and moving are closed. Take it off the NAS to change it.'
+
+const lockReason = (file: ManifestFile, context: StatusContext) =>
+  context.inEdit ? EDIT_LOCKED : fileStatus(file, context) === 'uploaded' ? UPLOADED_LOCKED : null
 
 const shownStatus = (file: ManifestFile, context: StatusContext): ShownStatus =>
   fileChanged(file, context) ? 'changed' : fileStatus(file, context)
@@ -147,7 +151,7 @@ const Row = ({
   file: ManifestFile
   lane: ManifestFile[]
   picked: boolean
-  locked: boolean
+  locked: string | null
   status: ShownStatus
   proxy?: ProxyFact
   name: string | null
@@ -214,7 +218,7 @@ const Row = ({
     {locked && (
       <span
         className='flex-none cursor-help text-[10px] opacity-55'
-        title='On the NAS — cropping, re-timing and moving are closed. Take it off the NAS to change it.'>
+        title={locked}>
         🔒
       </span>
     )}
@@ -244,7 +248,7 @@ const Tile = ({
   file: ManifestFile
   lane: ManifestFile[]
   picked: boolean
-  locked: boolean
+  locked: string | null
   status: ReturnType<typeof fileStatus>
   proxy?: ProxyFact
   selecting: boolean
@@ -386,7 +390,7 @@ const FileList = ({
         }>
         {drawn.map((file) => {
           const context = statusContext(file)
-          const locked = lockedFile(file, context)
+          const locked = lockReason(file, context)
           return shape === 'rows' ? (
             <Row
               key={file.id ?? file.path}
@@ -443,5 +447,5 @@ const FileList = ({
   )
 }
 
-export { FileList, KindBadges, lockedFile, matchesKind, kindOf }
+export { FileList, KindBadges, lockReason, matchesKind, kindOf }
 export type { Kind, FileShape }

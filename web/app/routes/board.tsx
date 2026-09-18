@@ -1,5 +1,7 @@
 import {
+  buildPassengerFolder,
   destinationSchema,
+  EDIT_LOCKED,
   ensureNasSession,
   fileStatus,
   getOutputDir,
@@ -12,6 +14,7 @@ import {
   manifestGroupSchema,
   statProcessedOutputs,
   statProxies,
+  processingNow,
   statTandemArtifacts,
   uploadGate
 } from '@skydock/scripts'
@@ -23,7 +26,8 @@ import { Callout } from '../components/callout'
 import { ComparisonDialog } from '../components/comparison-dialog'
 import { ConnectionDialog } from '../components/connection-dialog'
 import { DayRow } from '../components/day-row'
-import { FileList, KindBadges } from '../components/file-list'
+import { DeliverDialog } from '../components/deliver-dialog'
+import { FileList, KindBadges, lockReason } from '../components/file-list'
 import type { Kind } from '../components/file-list'
 import { NasFolderBrowser } from '../components/nas-folder-browser'
 import {
@@ -38,6 +42,7 @@ import { PreviewDrawer } from '../components/preview-drawer'
 import type { Passenger } from '../components/tandem-card'
 import {
   DeliveredCards,
+  FilmStrip,
   PassengerCard,
   TandemActions,
   UploadStrip
@@ -46,6 +51,7 @@ import type { Destination, ManifestFile, ManifestGroup } from '../components/typ
 import { formatTime, minFileMtime } from '../components/utils'
 import { useSafeFetcher } from '../helpers/routing'
 import { setFileView, useFileView } from '../hooks/useFileView'
+import { setBackupChoice, useBackupChoice } from '../hooks/useBackupChoice'
 import { useGroups } from '../hooks/useJumps'
 import { LOOSE, usePreview } from '../hooks/usePreview'
 import { useTheme, setTheme } from '../hooks/useTheme'
@@ -101,7 +107,14 @@ type CheckedListing = RemoteListing & { at: number }
 const tandemFactSchema = z.object({
   project: z.boolean(),
   projectPath: z.string(),
-  film: z.object({ size: z.number(), mtime: z.number() }).nullable(),
+  film: z
+    .object({
+      size: z.number(),
+      mtime: z.number(),
+      seconds: z.number().nullable(),
+      path: z.string()
+    })
+    .nullable(),
   baseName: z.string()
 })
 
@@ -205,7 +218,10 @@ const loader = async (_args: Route.LoaderArgs) => {
     tandems: manifest ? statTandemArtifacts(manifest, outputDir) : {},
     remote,
     hasManifest: manifest !== null,
-    nas
+    nas,
+    /* what is being prepared right now, if anything — a page loaded in the middle of it has to
+       show it still running rather than offer to start it again */
+    processing: processingNow()
   }
 }
 
@@ -257,8 +273,19 @@ const baseName = (full: string) => full.slice(full.lastIndexOf('/') + 1)
 
 const Board = ({ loaderData }: Route.ComponentProps) => {
   const { groups, setGroups, updateGroups } = useGroups(loaderData.groups)
-  const [busy, setBusy] = useState<string | null>(null)
-  const [note, setNote] = useState<string | null>(null)
+  /* A page loaded mid-preparation takes the work up where the server has it: that one tandem
+     says it is processing, everything else waits, and the board asks to hear when it is done. */
+  const running = loaderData.processing
+  const [busy, setBusy] = useState<string | null>(
+    running
+      ? running.groupIds.length === 1
+        ? (running.groupIds[0] ?? 'process')
+        : 'process'
+      : null
+  )
+  const [note, setNote] = useState<string | null>(
+    running ? 'Still preparing — the board updates itself when it is done' : null
+  )
   const [dragged, setDragged] = useState<string[]>([])
   const [draggedFiles, setDraggedFiles] = useState<string[]>([])
   const [picked, setPicked] = useState<string[]>([])
@@ -286,9 +313,15 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const [places, setPlaces] = useState<Destination[]>(loaderData.destinations)
   /* one value, so two dialogs can never be open at once; `destination` set means the folder is
      being chosen for that card rather than as the global default */
+  /* `back` is the dialog a folder was being chosen for, which it returns to once one is chosen */
+  type DeliverDialogState = { kind: 'deliver'; groupId: string }
   const [dialog, setDialog] = useState<
-    null | { kind: 'connect' } | { kind: 'folder'; destination?: string; target?: 'backup' }
+    | null
+    | { kind: 'connect' }
+    | { kind: 'folder'; destination?: string; target?: 'backup'; back?: DeliverDialogState }
+    | DeliverDialogState
   >(null)
+  const backupChoice = useBackupChoice()
   const [dialogOpenedOn, setDialogOpenedOn] = useState<unknown>(null)
   const [uploading, setUploading] = useState<string | null>(null)
   const [outputs, setOutputs] = useState<Record<string, OutputFact>>(loaderData.outputs ?? {})
@@ -296,6 +329,14 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
      arriving empty is not a reason for the whole screen to fail to draw */
   const [proxies, setProxies] = useState<Record<string, ProxyFact>>(loaderData.proxies ?? {})
   const [tandemFacts, setTandemFacts] = useState<TandemFacts>(loaderData.tandems)
+  /* A tandem with an edit is frozen (RULES, Montage). The server refuses any change to one; the
+     board simply never offers it. */
+  const frozen = new Set(groups.filter((g) => tandemFacts[g.id]?.project).map((g) => g.id))
+  const frozenFiles = new Set(
+    groups
+      .filter((g) => frozen.has(g.id))
+      .flatMap((g) => g.files.flatMap((f) => (f.id ? [f.id] : [])))
+  )
   const [remoteAfterUpload, setRemoteAfterUpload] = useState<CheckedListing | null>(null)
   /* the first scan is what creates the manifest, so this is state and not read from the loader */
   const [hasManifest, setHasManifest] = useState(loaderData.hasManifest)
@@ -436,6 +477,12 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     })
   }, [fetcher.data, setGroups])
 
+  /* once, on arriving while something was being prepared: its answer is the board as it ends */
+  useEffect(() => {
+    if (running) fetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'process-wait' } })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- on arrival only
+  }, [])
+
   /* Every edit is the same three steps — clear the last message, mark what is working, ask the
      server — so they are written once. `label` is what `busy` is compared against to decide which
      button says it is running. */
@@ -506,6 +553,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
   const makeTandem = (groupId: string, passenger: Passenger) => {
     const who = passengerName(passenger)
+    /* joining puts the jump in the folder the edit lives in */
+    if (groups.some((g) => frozen.has(g.id) && passengerOf(g) === who)) {
+      setNote(`${who}’s tandem has an edit — change it in kdenlive.`)
+      return
+    }
     const joining = groups.some(
       (g) => g.id !== groupId && g.destination === TANDEMS && passengerOf(g) === who
     )
@@ -520,6 +572,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     send('shift', { intent: 'shift-group-time', groupId, anchorEpoch })
 
   const setPassenger = (groupId: string, firstname: string, lastname: string) => {
+    if (frozen.has(groupId)) return
     const next = groups.map((g) =>
       g.id === groupId
         ? { ...g, passenger: firstname || lastname ? { firstname, lastname } : undefined }
@@ -556,7 +609,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           : [...places, { name: destination, path }]
       )
     }
-    setDialog(null)
+    setDialog(dialog?.kind === 'folder' && dialog.back ? dialog.back : null)
   }
 
   const folderFor = (destination: string) => {
@@ -593,22 +646,21 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   /* the same shape as an upload: open whichever choice is missing rather than firing a request the
      server would only refuse. The backup folder has no fallback — putting the rushes in a
      passenger's folder is the failure keeping them apart exists to prevent. */
+  /* Deliver opens what it is about to do — both parcels, both folders, how the originals are kept —
+     and only the dialog's own button sends anything. A missing folder is chosen from inside it. */
   const deliver = (group: ManifestGroup) => {
     if (!nasConnected) {
       openConnect()
       return
     }
-    if (!defaultFolder) {
-      setDialog({ kind: 'folder' })
-      return
-    }
-    if (!backupFolder) {
-      setDialog({ kind: 'folder', target: 'backup' })
-      return
-    }
+    setDialog({ kind: 'deliver', groupId: group.id })
+  }
+
+  const confirmDeliver = (group: ManifestGroup) => {
+    setDialog(null)
     const key = `deliver:${group.id}`
     setUploading(key)
-    send(key, { intent: 'deliver', groupId: group.id })
+    send(key, { intent: 'deliver', groupId: group.id, backup: backupChoice })
   }
 
   /* two jumps that turn out to be one: the server merges them and answers with the saved list */
@@ -629,13 +681,20 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     if (ids.length === 0) return
     setPickedFiles([])
     setAnchor(null)
+    /* a tandem with an edit neither gives files up nor takes them in */
+    const free = ids.filter((id) => !frozenFiles.has(id))
+    if (free.length === 0 || (where.targetGroupId && frozen.has(where.targetGroupId))) {
+      setNote(EDIT_LOCKED)
+      return
+    }
     send('move', {
       intent: 'move-files',
-      fileIds: ids,
+      fileIds: free,
       ...(where.targetGroupId ? { targetGroupId: where.targetGroupId } : {}),
       ...(where.destination ? { destination: where.destination } : {}),
       ...(where.newGroup ? { newGroup: true } : {})
     })
+    if (free.length < ids.length) setNote(`${EDIT_LOCKED} Its files stayed where they were.`)
   }
 
   /* plain click previews while nothing is picked, and extends the picking once it started */
@@ -727,7 +786,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const statusContext = (file: ManifestFile) => ({
     crop: { cropStart: file.cropStart, cropEnd: file.cropEnd },
     output: outputs[file.path],
-    remote
+    remote,
+    inEdit: !!file.id && frozenFiles.has(file.id)
   })
   /* how many clips have their small copy, out of the ones that want one */
   const proxyFacts = Object.values(proxies)
@@ -753,6 +813,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
      which it is: one key per thing on screen, or lighting one would light them all. */
   const groupDropTarget = (groupId: string, scope: 'group' | 'chip' = 'group') => {
     const key = `${scope}:${groupId}`
+    if (frozen.has(groupId)) return {}
     return {
       onDragOver: (e: React.DragEvent) => {
         if (draggedFiles.length === 0) return
@@ -918,13 +979,15 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     const host =
       target.kind === 'pax' ? named.find((g) => passengerOf(g) === target.name) : undefined
     const props =
-      target.kind === 'sort'
-        ? dropTarget(null, key)
-        : target.kind === 'dz'
-          ? dropTarget(target.name, key)
-          : host?.passenger
-            ? dropTarget(TANDEMS, key, { passenger: host.passenger, hostId: host.id })
-            : dropTarget(TANDEMS, key)
+      host && frozen.has(host.id)
+        ? {}
+        : target.kind === 'sort'
+          ? dropTarget(null, key)
+          : target.kind === 'dz'
+            ? dropTarget(target.name, key)
+            : host?.passenger
+              ? dropTarget(TANDEMS, key, { passenger: host.passenger, hostId: host.id })
+              : dropTarget(TANDEMS, key)
     return { ...props, 'data-place': key }
   }
 
@@ -1281,6 +1344,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                         group={group}
                         who={who}
                         naming={renaming === group.id}
+                        locked={frozen.has(group.id) ? EDIT_LOCKED : undefined}
                         dropTarget={groupDropTarget(group.id)}
                         /* A named tandem has a place of its own to open. One still waiting for a
                            name has none — the places are keyed by the passenger — so the clips
@@ -1312,6 +1376,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                 .map((group) => (
                   <div key={group.id}>
                     {group.delivered && <DeliveredCards group={group} />}
+                    {!group.delivered && <FilmStrip facts={tandemFacts[group.id]} />}
                     <div
                       {...groupDropTarget(group.id)}
                       className='mt-2 mb-3.5 rounded-[9px] border border-line bg-pane'>
@@ -1398,7 +1463,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           initialPath={
             dialog.destination
               ? (places.find((d) => d.name === dialog.destination)?.path ?? undefined)
-              : (defaultFolder ?? undefined)
+              : dialog.target === 'backup'
+                ? (backupFolder ?? undefined)
+                : (defaultFolder ?? undefined)
           }
           title={
             dialog.destination
@@ -1408,9 +1475,35 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                 : 'Default NAS upload folder'
           }
           onSelect={(path) => chooseFolder(path, dialog.destination, dialog.target)}
-          onClose={() => setDialog(null)}
+          onClose={() => setDialog(dialog.back ?? null)}
         />
       )}
+
+      {dialog?.kind === 'deliver' &&
+        (() => {
+          const group = groups.find((g) => g.id === dialog.groupId)
+          if (!group) return null
+          const tandems = folderFor(TANDEMS)
+          return (
+            <DeliverDialog
+              who={passengerOf(group)}
+              group={group}
+              facts={tandemFacts[group.id]}
+              backupFolder={backupFolder}
+              passengerFolder={
+                tandems ? `${tandems}/${buildPassengerFolder(group.passenger, group.label)}` : null
+              }
+              choice={backupChoice}
+              onChoice={setBackupChoice}
+              onPickBackup={() => setDialog({ kind: 'folder', target: 'backup', back: dialog })}
+              onPickPassenger={() =>
+                setDialog({ kind: 'folder', destination: TANDEMS, back: dialog })
+              }
+              onClose={() => setDialog(null)}
+              onDeliver={() => confirmDeliver(group)}
+            />
+          )
+        })()}
 
       {comparing && picked.length === 2 && (
         <ComparisonDialog
@@ -1453,6 +1546,10 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           onZoomChange={(zoom) => preview.setVideoState({ zoom })}
           onDurationChange={(duration) => preview.setVideoState({ duration })}
           onVideoRef={preview.handleVideoRef}
+          locked={(() => {
+            const shown = preview.preview.files[preview.preview.index]
+            return shown ? lockReason(shown, statusContext(shown)) : null
+          })()}
         />
       )}
     </main>

@@ -2,7 +2,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { saveManifest } from '@skydock/scripts'
+import { EDIT_LOCKED, getGroupProcessedDir, loadManifest, saveManifest } from '@skydock/scripts'
 import type { Manifest, ManifestFile, ManifestGroup } from '@skydock/scripts'
 import { action } from '../../app/routes/api.manifest'
 import { createTmpDir } from './fixtures'
@@ -302,6 +302,100 @@ describe('api/manifest', () => {
       expect(saved?.cropEnd).toBe(8)
       /* size is what the disk measures, not something a form gets to rewrite */
       expect(saved?.size).toBe(999)
+    })
+  })
+
+  /* Once there is an edit, the tandem is frozen: its project points at the copies by path and at
+     times inside them, and lives in the folder the name makes. Whatever the page sends, nothing
+     that would move any of that gets through — and deleting the project is what lifts it. */
+  describe('a tandem with an edit', () => {
+    const luc = () =>
+      group({
+        id: 'group_1',
+        destination: 'Tandems',
+        passenger: { firstname: 'Luc', lastname: 'Favre' },
+        processed: true,
+        files: [file({ id: 'a' }), file({ id: 'b', mtime: 1_754_000_060 })]
+      })
+    const other = () => group({ id: 'group_2', files: [file({ id: 'c', mtime: 1_754_003_000 })] })
+
+    const projectPath = () => {
+      const { dir, baseName } = getGroupProcessedDir(tmpDir, luc())
+      return path.join(dir, `${baseName}.kdenlive`)
+    }
+
+    beforeEach(() => {
+      writeManifest([luc(), other()])
+      fs.mkdirSync(path.dirname(projectPath()), { recursive: true })
+      fs.writeFileSync(projectPath(), '<mlt/>')
+    })
+
+    const refused = (res: unknown) => {
+      expect(refusal(res).globalErrors?.[0]).toBe(EDIT_LOCKED)
+      /* and nothing about it changed on disk */
+      expect(loadManifest(path.join(tmpDir, 'manifest.json'))?.groups[0]).toEqual(luc())
+    }
+
+    it('refuses a crop on one of its clips', async () => {
+      const cropped = luc()
+      cropped.files[0] = { ...cropped.files[0]!, cropStart: 1, cropEnd: 3 }
+      refused(await send({ intent: 'save-groups', groups: [cropped, other()] }))
+    })
+
+    it('refuses a new name, which would move the folder the edit is in', async () => {
+      refused(
+        await send({
+          intent: 'save-groups',
+          groups: [{ ...luc(), passenger: { firstname: 'Luc', lastname: 'Favrè' } }, other()]
+        })
+      )
+    })
+
+    it('refuses another jump joining that passenger', async () => {
+      refused(
+        await send({
+          intent: 'save-groups',
+          groups: [
+            luc(),
+            {
+              ...other(),
+              destination: 'Tandems',
+              passenger: { firstname: 'Luc', lastname: 'Favre' }
+            }
+          ]
+        })
+      )
+    })
+
+    it('refuses files moving out of it or into it', async () => {
+      refused(await send({ intent: 'move-files', fileIds: ['a'], destination: 'Yverdon' }))
+      refused(await send({ intent: 'move-files', fileIds: ['c'], targetGroupId: 'group_1' }))
+    })
+
+    it('refuses re-timing, merging and processing it again', async () => {
+      refused(
+        await send({ intent: 'shift-group-time', groupId: 'group_1', anchorEpoch: 1_754_009_000 })
+      )
+      refused(await send({ intent: 'merge-groups', leftId: 'group_2', rightId: 'group_1' }))
+      refused(await send({ intent: 'process', groupId: 'group_1' }))
+    })
+
+    it('still lets the rest of the board be saved around it', async () => {
+      const res = answer(
+        await send({
+          intent: 'save-groups',
+          groups: [luc(), { ...other(), destination: 'Yverdon' }]
+        })
+      )
+      expect(res.groups.find((g) => g.id === 'group_2')?.destination).toBe('Yverdon')
+    })
+
+    it('is lifted by deleting the project', async () => {
+      fs.rmSync(projectPath())
+      const cropped = luc()
+      cropped.files[0] = { ...cropped.files[0]!, cropStart: 1, cropEnd: 3 }
+      const res = answer(await send({ intent: 'save-groups', groups: [cropped, other()] }))
+      expect(res.groups[0]?.files[0]?.cropStart).toBe(1)
     })
   })
 })

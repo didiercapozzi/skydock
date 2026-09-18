@@ -9,7 +9,8 @@ import { createTmpDir, execSyncMock } from './fixtures'
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>()
-  return { ...actual, execSync: (await import('./fixtures')).execSyncMock }
+  const { execSyncMock, execViaSyncMock } = await import('./fixtures')
+  return { ...actual, execSync: execSyncMock, exec: execViaSyncMock }
 })
 
 /* Preparing a tandem again is the ordinary way of working: prepare it, look at it, correct a time
@@ -56,7 +57,7 @@ const clip = (name: string, at: number): ManifestFile => {
   return { path: source, size: 32, mtime: at, filename: name, id: name, proxy }
 }
 
-const prepare = (files: ManifestFile[], group?: Partial<ManifestGroup>) => {
+const prepare = async (files: ManifestFile[], group?: Partial<ManifestGroup>) => {
   const full: ManifestGroup = {
     id: 'g1',
     label: 'jump',
@@ -75,7 +76,7 @@ const prepare = (files: ManifestFile[], group?: Partial<ManifestGroup>) => {
   }
   const manifestPath = path.join(outputDir, 'manifest.json')
   saveManifest(manifestPath, manifest)
-  processJumps({ manifestPath, outputDir })
+  await processJumps({ manifestPath, outputDir })
 }
 
 const groupDir = () => path.join(outputDir, 'processed', 'Tandems', 'Luc Favre')
@@ -109,11 +110,11 @@ afterEach(() => {
 })
 
 describe('preparing a tandem that has already been prepared', () => {
-  it('leaves the edit, the film and the archives where they are', () => {
-    prepare([clip('GX01.MP4', AT)])
+  it('leaves the edit, the film and the archives where they are', async () => {
+    await prepare([clip('GX01.MP4', AT)])
     addEdit()
 
-    prepare([clip('GX01.MP4', AT)])
+    await prepare([clip('GX01.MP4', AT)])
 
     expect(inside(groupDir())).toEqual(
       expect.arrayContaining(['luc_favre.kdenlive', 'luc_favre.mp4', 'luc_favre.photos.zip'])
@@ -122,43 +123,43 @@ describe('preparing a tandem that has already been prepared', () => {
 
   /* the reason for pruning: a corrected time renames the copy, and the old name is a file nobody
      expects that would be delivered anyway */
-  it('is left with one copy per clip, not the old name as well', () => {
-    prepare([clip('GX01.MP4', AT)])
+  it('is left with one copy per clip, not the old name as well', async () => {
+    await prepare([clip('GX01.MP4', AT)])
     const first = inside(path.join(groupDir(), 'videos'))
     expect(first).toHaveLength(1)
 
     /* the same clip, its time corrected by a minute — which is a different name */
-    prepare([clip('GX01.MP4', AT + 60)])
+    await prepare([clip('GX01.MP4', AT + 60)])
 
     const second = inside(path.join(groupDir(), 'videos'))
     expect(second).toHaveLength(1)
     expect(second).not.toEqual(first)
   })
 
-  it('does the same for the cut proxies, which are named after the copies', () => {
-    prepare([clip('GX01.MP4', AT)])
-    prepare([clip('GX01.MP4', AT + 60)])
+  it('does the same for the cut proxies, which are named after the copies', async () => {
+    await prepare([clip('GX01.MP4', AT)])
+    await prepare([clip('GX01.MP4', AT + 60)])
 
     expect(inside(path.join(outputDir, 'proxies', 'cut', 'g1'))).toHaveLength(1)
   })
 
   /* what "no trash" means: the second pass writes over the first, and puts nothing aside */
-  it('keeps nothing aside — no bin, no copy of the copy', () => {
-    prepare([clip('GX01.MP4', AT), clip('GX02.MP4', AT + 5)])
+  it('keeps nothing aside — no bin, no copy of the copy', async () => {
+    await prepare([clip('GX01.MP4', AT), clip('GX02.MP4', AT + 5)])
     addEdit()
     const after = everything()
 
-    prepare([clip('GX01.MP4', AT), clip('GX02.MP4', AT + 5)])
+    await prepare([clip('GX01.MP4', AT), clip('GX02.MP4', AT + 5)])
 
     expect(everything()).toEqual(after)
     expect(fs.existsSync(path.join(outputDir, '.trash'))).toBe(false)
   })
 
-  it('takes a clip that was removed from the jump out of the folder', () => {
-    prepare([clip('GX01.MP4', AT), clip('GX02.MP4', AT + 5)])
+  it('takes a clip that was removed from the jump out of the folder', async () => {
+    await prepare([clip('GX01.MP4', AT), clip('GX02.MP4', AT + 5)])
     expect(inside(path.join(groupDir(), 'videos'))).toHaveLength(2)
 
-    prepare([clip('GX01.MP4', AT)])
+    await prepare([clip('GX01.MP4', AT)])
 
     expect(inside(path.join(groupDir(), 'videos'))).toHaveLength(1)
   })
@@ -166,12 +167,12 @@ describe('preparing a tandem that has already been prepared', () => {
   /* A dropzone folder is not one jump's to tidy: it holds every day ever shot there, while the
      manifest only knows what the last scan found. Pruning it by what was just written would take
      last week with it. */
-  it('never prunes a dropzone folder, which holds days no scan can see', () => {
+  it('never prunes a dropzone folder, which holds days no scan can see', async () => {
     const flat = path.join(outputDir, 'processed', 'Yverdon')
     fs.mkdirSync(flat, { recursive: true })
     fs.writeFileSync(path.join(flat, 'Yverdon_2026-07-01_101010.mp4'), 'older day')
 
-    prepare([clip('GX01.MP4', AT)], { destination: 'Yverdon', passenger: undefined })
+    await prepare([clip('GX01.MP4', AT)], { destination: 'Yverdon', passenger: undefined })
 
     expect(inside(flat)).toContain('Yverdon_2026-07-01_101010.mp4')
   })

@@ -2,14 +2,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { saveManifest } from '../src/manifest'
-import { processJumps } from '../src/process'
+import { loadManifest, saveManifest } from '../src/manifest'
+import { processingNow, processJumps } from '../src/process'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
 import { createTmpDir, execSyncMock } from './fixtures'
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>()
-  return { ...actual, execSync: (await import('./fixtures')).execSyncMock }
+  const { execSyncMock, execViaSyncMock } = await import('./fixtures')
+  return { ...actual, execSync: execSyncMock, exec: execViaSyncMock }
 })
 
 /* Where a file ends up is the whole of what SkyDock does, and nothing tested it. A tandem was
@@ -92,14 +93,14 @@ afterEach(() => {
 })
 
 describe('where a tandem lands', () => {
-  it('gives the passenger a folder of their name, with videos and photos apart', () => {
+  it('gives the passenger a folder of their name, with videos and photos apart', async () => {
     const { manifestPath } = write({
       destination: 'Tandems',
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [clip('GX010001.MP4', 0), clip('G0010002.JPG', 1)]
     })
 
-    processJumps({ manifestPath, outputDir })
+    await processJumps({ manifestPath, outputDir })
 
     expect(delivered()).toEqual([
       path.join('Tandems', 'Luc Favre', 'photos', 'luc_favre_20260808_090910.jpg'),
@@ -107,14 +108,14 @@ describe('where a tandem lands', () => {
     ])
   })
 
-  it('folds accents and spaces out of the file names, not out of the folder', () => {
+  it('folds accents and spaces out of the file names, not out of the folder', async () => {
     const { manifestPath } = write({
       destination: 'Tandems',
       passenger: { firstname: 'Chloé', lastname: 'Perret' },
       files: [clip('GX010001.MP4', 0)]
     })
 
-    processJumps({ manifestPath, outputDir })
+    await processJumps({ manifestPath, outputDir })
 
     expect(delivered()).toEqual([
       path.join('Tandems', 'Chloé Perret', 'videos', 'chloe_perret_20260808_090909.mp4')
@@ -122,53 +123,53 @@ describe('where a tandem lands', () => {
   })
 
   /* the regression, exactly as it happened: a first name typed, the last name never reached */
-  it('refuses a tandem with only half a name rather than delivering it as a place', () => {
+  it('refuses a tandem with only half a name rather than delivering it as a place', async () => {
     const { manifestPath } = write({
       destination: 'Tandems',
       passenger: { firstname: 'Luc', lastname: '' },
       files: [clip('GX010001.MP4', 0)]
     })
 
-    expect(() => processJumps({ manifestPath, outputDir })).toThrow(/first and last name/)
+    await expect(processJumps({ manifestPath, outputDir })).rejects.toThrow(/first and last name/)
     expect(delivered()).toEqual([])
   })
 
   /* Nobody is in it yet, so it is a place as far as the folder rule is concerned. That is right:
      what makes a jump a tandem is a passenger, not which column it is sitting in — the board is
      what asks for the name before it offers to process. */
-  it('treats a jump with nobody in it as a place, not a half tandem', () => {
+  it('treats a jump with nobody in it as a place, not a half tandem', async () => {
     const { manifestPath } = write({
       destination: 'Yverdon',
       files: [clip('GX010001.MP4', 0)]
     })
 
-    processJumps({ manifestPath, outputDir })
+    await processJumps({ manifestPath, outputDir })
 
     expect(delivered()).toEqual([path.join('Yverdon', 'yverdon_20260808_090909.mp4')])
   })
 
   /* what the bug produced, named so it can never come back unnoticed */
-  it('never writes a file named after the Tandems folder itself', () => {
+  it('never writes a file named after the Tandems folder itself', async () => {
     const { manifestPath } = write({
       destination: 'Tandems',
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [clip('GX010001.MP4', 0)]
     })
 
-    processJumps({ manifestPath, outputDir })
+    await processJumps({ manifestPath, outputDir })
 
     expect(delivered().some((f) => path.basename(f).startsWith('tandems_'))).toBe(false)
   })
 })
 
 describe('where a dropzone lands', () => {
-  it('puts every file flat in the dropzone folder, named after the place and its own time', () => {
+  it('puts every file flat in the dropzone folder, named after the place and its own time', async () => {
     const { manifestPath } = write({
       destination: 'Yverdon',
       files: [clip('GX010001.MP4', 0), clip('G0010002.JPG', 1)]
     })
 
-    processJumps({ manifestPath, outputDir })
+    await processJumps({ manifestPath, outputDir })
 
     expect(delivered()).toEqual([
       path.join('Yverdon', 'yverdon_20260808_090909.mp4'),
@@ -177,26 +178,26 @@ describe('where a dropzone lands', () => {
   })
 
   /* a dropzone folder is shared by every day ever shot there, so it never gains a sub-folder */
-  it('keeps a dropzone flat — no videos or photos folders', () => {
+  it('keeps a dropzone flat — no videos or photos folders', async () => {
     const { manifestPath } = write({
       destination: 'Yverdon',
       files: [clip('GX010001.MP4', 0)]
     })
 
-    processJumps({ manifestPath, outputDir })
+    await processJumps({ manifestPath, outputDir })
 
     expect(delivered().some((f) => f.includes('videos') || f.includes('photos'))).toBe(false)
   })
 })
 
 describe('a jump filed nowhere', () => {
-  it('gets a folder of its own, named after the jump and its date', () => {
+  it('gets a folder of its own, named after the jump and its date', async () => {
     const { manifestPath } = write({
       label: 'jump',
       files: [clip('GX010001.MP4', 0)]
     })
 
-    processJumps({ manifestPath, outputDir })
+    await processJumps({ manifestPath, outputDir })
 
     expect(delivered()).toEqual([path.join('jump_20260808', 'videos', 'jump_20260808_090909.mp4')])
   })
@@ -208,13 +209,13 @@ describe('a jump filed nowhere', () => {
 describe('cropping the frame', () => {
   const framed = { x: 0.1, y: 0, width: 0.9, height: 0.9 }
 
-  it('cuts the rectangle and comes back out at the size the clip came at', () => {
+  it('cuts the rectangle and comes back out at the size the clip came at', async () => {
     const { manifestPath } = write({
       destination: 'Yverdon',
       files: [{ ...clip('GX010001.MP4', 0), frame: framed }]
     })
 
-    processJumps({ manifestPath, outputDir })
+    await processJumps({ manifestPath, outputDir })
 
     const cmd = ffmpegCalls().find((l) => l.includes('crop=')) ?? ''
     expect(cmd).toContain('crop=3456:1944:384:0')
@@ -223,13 +224,13 @@ describe('cropping the frame', () => {
 
   /* the picture itself changes, so a stream copy cannot do it — this is the one thing in
      processing that costs real time, and saying so out loud is the point of the test */
-  it('encodes again rather than copying, because the picture changed', () => {
+  it('encodes again rather than copying, because the picture changed', async () => {
     const { manifestPath } = write({
       destination: 'Yverdon',
       files: [{ ...clip('GX010001.MP4', 0), frame: framed }]
     })
 
-    processJumps({ manifestPath, outputDir })
+    await processJumps({ manifestPath, outputDir })
 
     const cmd = ffmpegCalls().find((l) => l.includes('crop=')) ?? ''
     expect(cmd).not.toContain('-c copy')
@@ -237,26 +238,26 @@ describe('cropping the frame', () => {
   })
 
   /* trimming the ends still moves no pixels, so it still copies */
-  it('still copies the stream when only the ends were trimmed', () => {
+  it('still copies the stream when only the ends were trimmed', async () => {
     const { manifestPath } = write({
       destination: 'Yverdon',
       files: [{ ...clip('GX010001.MP4', 0), cropStart: 1, cropEnd: 4 }]
     })
 
-    processJumps({ manifestPath, outputDir })
+    await processJumps({ manifestPath, outputDir })
 
     const cmd = ffmpegCalls().find((l) => l.includes('-ss')) ?? ''
     expect(cmd).toContain('-c copy')
     expect(cmd).not.toContain('crop=')
   })
 
-  it('does both at once when both were set', () => {
+  it('does both at once when both were set', async () => {
     const { manifestPath } = write({
       destination: 'Yverdon',
       files: [{ ...clip('GX010001.MP4', 0), frame: framed, cropStart: 1, cropEnd: 4 }]
     })
 
-    processJumps({ manifestPath, outputDir })
+    await processJumps({ manifestPath, outputDir })
 
     const cmd = ffmpegCalls().find((l) => l.includes('crop=')) ?? ''
     expect(cmd).toContain('-ss 1')
@@ -265,25 +266,91 @@ describe('cropping the frame', () => {
   })
 
   /* a rectangle covering the whole frame is not a crop: the file is copied untouched */
-  it('copies the file untouched when the rectangle covers everything', () => {
+  it('copies the file untouched when the rectangle covers everything', async () => {
     const { manifestPath } = write({
       destination: 'Yverdon',
       files: [{ ...clip('GX010001.MP4', 0), frame: { x: 0, y: 0, width: 1, height: 1 } }]
     })
 
-    processJumps({ manifestPath, outputDir })
+    await processJumps({ manifestPath, outputDir })
 
     expect(ffmpegCalls().some((l) => l.includes('crop='))).toBe(false)
   })
 
-  it('leaves a photo alone — a frame crop is for clips', () => {
+  it('leaves a photo alone — a frame crop is for clips', async () => {
     const { manifestPath } = write({
       destination: 'Yverdon',
       files: [{ ...clip('G0010002.JPG', 1), frame: framed }]
     })
 
-    processJumps({ manifestPath, outputDir })
+    await processJumps({ manifestPath, outputDir })
 
     expect(ffmpegCalls().some((l) => l.includes('crop='))).toBe(false)
+  })
+})
+
+/* Preparing takes minutes, and the board is not frozen while it runs: the page can be refreshed,
+   and edits go on being saved. So the pass has to be something that can be waited on, and what it
+   saves at the end has to be added to the manifest as it is then — not the one it read at the
+   start, written back over everything done since. */
+describe('while a preparation is running', () => {
+  it('keeps an edit saved in the meantime', async () => {
+    const { manifestPath } = write({
+      destination: 'Tandems',
+      passenger: { firstname: 'Luc', lastname: 'Favre' },
+      files: [clip('GX010001.MP4', 0)]
+    })
+    /* the moment the copies are stamped is the last moment anything else could have been saved */
+    execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
+      if (String(cmd).startsWith('exiftool')) {
+        const meanwhile = loadManifest(manifestPath)!
+        meanwhile.destinations = [...(meanwhile.destinations ?? []), { name: 'Colombier' }]
+        saveManifest(manifestPath, meanwhile)
+      }
+      return tools(cmd, opts)
+    })
+
+    await processJumps({ manifestPath, outputDir })
+
+    const after = loadManifest(manifestPath)!
+    expect(after.destinations?.map((d) => d.name)).toContain('Colombier')
+    expect(after.groups[0]?.processed).toBe(true)
+    expect(after.files[0]?.processed?.path).toMatch(/luc_favre_20260808_090909\.mp4$/)
+  })
+
+  it('does not call a jump prepared when it was changed while its copies were written', async () => {
+    const { manifestPath } = write({
+      destination: 'Tandems',
+      passenger: { firstname: 'Luc', lastname: 'Favre' },
+      files: [clip('GX010001.MP4', 0)]
+    })
+    execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
+      if (String(cmd).startsWith('exiftool')) {
+        const meanwhile = loadManifest(manifestPath)!
+        meanwhile.groups[0]!.files[0]!.cropStart = 1
+        meanwhile.groups[0]!.files[0]!.cropEnd = 3
+        saveManifest(manifestPath, meanwhile)
+      }
+      return tools(cmd, opts)
+    })
+
+    await processJumps({ manifestPath, outputDir })
+
+    expect(loadManifest(manifestPath)!.groups[0]?.processed).not.toBe(true)
+  })
+
+  it('says what it is working on, and refuses to start a second one on top of it', async () => {
+    const { manifestPath } = write({
+      destination: 'Tandems',
+      passenger: { firstname: 'Luc', lastname: 'Favre' },
+      files: [clip('GX010001.MP4', 0)]
+    })
+
+    const first = processJumps({ manifestPath, outputDir, groupIds: ['g1'] })
+    expect(processingNow()).toEqual({ groupIds: ['g1'], destinations: [] })
+    await expect(processJumps({ manifestPath, outputDir })).rejects.toThrow(/Already preparing/)
+    await first
+
+    expect(processingNow()).toBeNull()
   })
 })

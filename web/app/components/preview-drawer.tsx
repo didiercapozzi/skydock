@@ -80,7 +80,8 @@ const PreviewDrawer = ({
   onApply,
   onZoomChange,
   onDurationChange,
-  onVideoRef
+  onVideoRef,
+  locked
 }: {
   files: ManifestFile[]
   index: number
@@ -107,6 +108,8 @@ const PreviewDrawer = ({
   onZoomChange: (zoom: number) => void
   onDurationChange: (duration: number) => void
   onVideoRef: (ref: VideoRef) => void
+  /* why this file cannot be changed any more, when it cannot — then it is only looked at */
+  locked?: string | null
 }) => {
   const file = files[index]
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -291,8 +294,8 @@ const PreviewDrawer = ({
                     compact
                     thumbSrc={(seek) => getThumbUrl(file.path, seek)}
                     onSeek={onSeek}
-                    onCropChange={onCropChange}
-                    onApply={onApply}
+                    onCropChange={locked ? () => {} : onCropChange}
+                    onApply={locked ? () => {} : onApply}
                     onZoomChange={onZoomChange}
                   />
                 </div>
@@ -309,7 +312,7 @@ const PreviewDrawer = ({
                 <KV>
                   Keeps <V>{clock(Math.max(0, to - from))}</V> of {clock(duration)}
                 </KV>
-                <div className='mt-1.5 flex flex-wrap gap-1.5'>
+                <div className={`mt-1.5 flex flex-wrap gap-1.5 ${locked ? 'hidden' : ''}`}>
                   <Mini onClick={() => onCropChange({ cropStart: currentTime, cropEnd })}>
                     Start at playhead
                   </Mini>
@@ -342,7 +345,7 @@ const PreviewDrawer = ({
             </Panel>
 
             <Panel title='Frame'>
-              <div className='flex flex-wrap gap-1.5'>
+              <div className={`flex flex-wrap gap-1.5 ${locked ? 'hidden' : ''}`}>
                 {RATIOS.map((option) => (
                   <Mini
                     key={option.label}
@@ -404,7 +407,8 @@ const PreviewDrawer = ({
         </div>
 
         <div className='flex flex-none flex-wrap items-center gap-2.5 border-t border-line px-3.5 py-2.5'>
-          {video && (
+          {locked && <span className='text-[11.5px] text-ink-2'>🔒 {locked}</span>}
+          {video && !locked && (
             <Mini
               disabled={!saved && !dirty}
               onClick={() => {
@@ -419,7 +423,7 @@ const PreviewDrawer = ({
           {dirty && <span className='text-[11.5px] font-semibold text-local'>Unsaved changes</span>}
           <Spacer />
           <Mini onClick={onClose}>Close</Mini>
-          {video && (
+          {video && !locked && (
             <Go
               disabled={!dirty}
               onClick={() => onApply({ cropStart, cropEnd })}>

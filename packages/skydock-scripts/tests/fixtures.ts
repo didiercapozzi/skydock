@@ -18,6 +18,21 @@ const writeTempFile = (dir: string, name: string, content?: Buffer) => {
 
 const execSyncMock = vi.fn()
 
+/* The slow commands run through `exec` so they do not hold the server; the tests still see every
+   command in one place, whichever way it was run. */
+const execViaSyncMock = (
+  cmd: string,
+  options: unknown,
+  callback: (error: Error | null, stdout: string, stderr: string) => void
+) => {
+  try {
+    execSyncMock(cmd, options)
+    queueMicrotask(() => callback(null, '', ''))
+  } catch (e) {
+    queueMicrotask(() => callback(e instanceof Error ? e : new Error(String(e)), '', ''))
+  }
+}
+
 const makeFfmpegMock = () => {
   return (cmd: string | Buffer) => {
     const cmdStr = String(cmd)
@@ -133,6 +148,7 @@ const nasStubs = ({
 export {
   createTmpDir,
   execSyncMock,
+  execViaSyncMock,
   jsonResponse,
   nasStubs,
   loginFailure,

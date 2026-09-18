@@ -23,6 +23,8 @@ type StatusContext = {
   }
   output?: OutputFact
   remote?: RemoteListing | null
+  /* the file belongs to a tandem that has an edit, which freezes it (RULES, Montage) */
+  inEdit?: boolean
 }
 
 const dirOf = (remotePath: string) => {

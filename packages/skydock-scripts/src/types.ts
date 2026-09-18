@@ -103,7 +103,9 @@ const deliveredRecordSchema = z.object({
   shareUrl: z.string().optional(),
   film: uploadedRecordSchema.optional(),
   photos: uploadedRecordSchema.optional(),
-  rushes: uploadedRecordSchema.optional()
+  rushes: uploadedRecordSchema.optional(),
+  /* the originals kept as plain files rather than one zip, with the film's copy if it went too */
+  originals: z.array(uploadedRecordSchema).optional()
 })
 
 const manifestGroupSchema = z.object({

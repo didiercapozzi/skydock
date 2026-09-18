@@ -1,4 +1,4 @@
-import { hasCompletePassenger } from '@skydock/scripts'
+import { filmNameOf, hasCompletePassenger } from '@skydock/scripts'
 import { useState } from 'react'
 import type { UploadProgressState } from '../hooks/useUploadProgress'
 import { Go, Mini } from './buttons'
@@ -193,6 +193,7 @@ const PassengerCard = ({
   group,
   who,
   naming,
+  locked,
   dropTarget,
   onOpen,
   onRename,
@@ -201,6 +202,8 @@ const PassengerCard = ({
   group: ManifestGroup
   who: string
   naming: boolean
+  /* why the name cannot change any more, when it cannot: an edit lives in the folder it names */
+  locked?: string
   dropTarget: Record<string, unknown>
   onOpen: () => void
   onRename: () => void
@@ -210,7 +213,7 @@ const PassengerCard = ({
   /* The same rule the folder uses. "Has some text in it" is not the same as "has a name": a
      passenger with only a first name has no folder to go to, so the card keeps asking. */
   const complete = hasCompletePassenger(group.passenger)
-  const editing = naming || !complete
+  const editing = !locked && (naming || !complete)
   return (
     <div
       {...dropTarget}
@@ -238,13 +241,21 @@ const PassengerCard = ({
             {who}
           </h3>
           {/* a name read off a form can be read wrong, and the folder is named after it */}
-          <button
-            type='button'
-            onClick={onRename}
-            title='Change this name'
-            className='flex-none border-0 bg-transparent p-0 text-[11.5px] text-ink-3 underline hover:text-accent'>
-            rename
-          </button>
+          {locked ? (
+            <span
+              title={locked}
+              className='flex-none cursor-help text-[11px] opacity-55'>
+              🔒
+            </span>
+          ) : (
+            <button
+              type='button'
+              onClick={onRename}
+              title='Change this name'
+              className='flex-none border-0 bg-transparent p-0 text-[11.5px] text-ink-3 underline hover:text-accent'>
+              rename
+            </button>
+          )}
         </span>
       )}
       <PassengerFrames
@@ -273,6 +284,66 @@ const PassengerCard = ({
 const formatFilmSize = (bytes: number) =>
   bytes > 1024 ** 3 ? `${(bytes / 1024 ** 3).toFixed(1)} GB` : `${Math.round(bytes / 1024 ** 2)} MB`
 
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+/* the film, once it exists: the one thing here nobody can make again — so it is said out loud, above
+   the tandem it came from, rather than as a size beside its buttons. How long it runs is what tells a
+   whole jump from a test render of its first minute. */
+const FilmStrip = ({ facts }: { facts?: TandemFact }) => {
+  const [watching, setWatching] = useState(false)
+  if (!facts?.film) return null
+  const { seconds, size, mtime } = facts.film
+  const at = new Date(mtime * 1000)
+  /* the render time in the address, so a film rendered again is fetched again rather than replayed
+     from the browser's copy of the last one */
+  const url = `${getFileUrl(facts.film.path)}?v=${mtime}`
+  return (
+    <div className='mt-2.5 rounded-[9px] border border-accent bg-accent-soft px-3 py-[9px]'>
+      <div className='flex flex-wrap items-center gap-2.5'>
+        <span
+          aria-hidden='true'
+          className='text-accent'>
+          ▶
+        </span>
+        {/* the name opens the film on its own, where the browser can also save it */}
+        <a
+          href={url}
+          target='_blank'
+          rel='noreferrer'
+          title='Open the film in a new tab'
+          className='font-mono text-[12.5px] font-bold text-ink hover:text-accent hover:underline'>
+          {filmNameOf(facts.baseName)}
+        </a>
+        <span className='text-[12px] text-ink-2'>
+          {[
+            seconds === null ? null : `${Math.floor(seconds / 60)}:${pad2(seconds % 60)}`,
+            formatFilmSize(size),
+            `rendered ${pad2(at.getHours())}:${pad2(at.getMinutes())}`
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </span>
+        <span className='ml-auto'>
+          <Mini
+            title={watching ? 'Close the player' : 'Watch the film here'}
+            onClick={() => setWatching(!watching)}>
+            {watching ? 'Close' : '▶ Watch'}
+          </Mini>
+        </span>
+      </div>
+      {/* watched where it is — the whole point is to check the render before it goes to anyone */}
+      {watching && (
+        <video
+          src={url}
+          controls
+          autoPlay
+          className='mt-2.5 max-h-[60vh] w-full rounded-md bg-black'
+        />
+      )}
+    </div>
+  )
+}
+
 const dirOf = (remotePath: string) => {
   const cut = remotePath.lastIndexOf('/')
   return cut <= 0 ? '/' : remotePath.slice(0, cut)
@@ -283,7 +354,7 @@ const nameOf = (remotePath: string) => remotePath.slice(remotePath.lastIndexOf('
 type TandemFact = {
   project: boolean
   projectPath: string
-  film: { size: number; mtime: number } | null
+  film: { size: number; mtime: number; seconds: number | null; path: string } | null
   baseName: string
 }
 
@@ -370,11 +441,8 @@ const TandemActions = ({
         onClick={onOpenMontage}>
         {busy === `open:${group.id}` ? 'Opening…' : 'Open in kdenlive'}
       </Mini>
-      {facts.film ? (
-        <span className='text-[12px] text-ink-2'>film {formatFilmSize(facts.film.size)}</span>
-      ) : (
-        <span className='text-[12px] text-ink-3'>edit and render it</span>
-      )}
+      {/* the film itself is shown above the tandem once it exists */}
+      {!facts.film && <span className='text-[12px] text-ink-3'>edit and render it</span>}
       <Go
         disabled={working || blocked.blocked}
         title={
@@ -544,6 +612,23 @@ const DeliveredCards = ({ group }: { group: ManifestGroup }) => {
           ]}
         />
       )}
+      {/* kept as plain files, each original is on the storage on its own */}
+      {record.originals && record.originals.length > 0 && (
+        <NasCard
+          title='Backup'
+          dir={dirOf(record.originals[0]!.remotePath)}
+          tag='never shared'
+          items={record.originals.map((original) => ({
+            icon: '▶',
+            name: nameOf(original.remotePath),
+            size: original.size,
+            what:
+              record.film && nameOf(original.remotePath) === nameOf(record.film.remotePath)
+                ? 'a copy of the film'
+                : 'original'
+          }))}
+        />
+      )}
     </>
   )
 }
@@ -551,6 +636,7 @@ const DeliveredCards = ({ group }: { group: ManifestGroup }) => {
 export {
   MakeTandem,
   DeliveredCards,
+  FilmStrip,
   PassengerCard,
   PassengerName,
   ProjectPath,

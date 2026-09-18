@@ -54,6 +54,13 @@ const resolveFilm = async (artifacts: ReturnType<typeof tandemArtifacts>, hasVid
 const verdictFor = (files: UploadVerdict[], target: string) =>
   files.find((f) => f.localPath === target)
 
+/* How the originals are kept, chosen once for the whole club. One zip is one object to move and
+   cannot arrive half-copied; plain files can be browsed on the storage and one clip pulled out
+   without unpacking the rest. Either way a copy of the film can go with them. */
+type BackupOptions = { backupAs: 'zip' | 'folder'; filmToBackup: boolean }
+
+const DEFAULT_BACKUP: BackupOptions = { backupAs: 'zip', filmToBackup: false }
+
 /* Everything that happens once the edit is done: the two archives the passenger and the backup
    need, then two uploads that keep them apart. The manifest is not saved here — the caller owns
    that, because a delivery runs long enough that the copy loaded before it started is stale. */
@@ -64,12 +71,14 @@ const deliverTandem = async ({
   session,
   onArchive,
   onProgress,
-  onCheck
+  onCheck,
+  backup = DEFAULT_BACKUP
 }: {
   outputDir: string
   manifest: Manifest
   group: ManifestGroup
   session: NasSession
+  backup?: BackupOptions
   onArchive?: (progress: ArchiveProgress & { name: string }) => void
   onProgress?: (progress: UploadProgress & { groupIds: string[] }) => void
   onCheck?: (progress: CheckProgress) => void
@@ -105,10 +114,41 @@ const deliverTandem = async ({
   )
 
   /* the rushes are the originals the edit came from, and they are the backup's business only */
-  const rushesZip = await writeArchive(
-    path.join(artifacts.dir, rushesNameOf(artifacts.baseName)),
-    videos.filter((f) => fs.existsSync(f.path)).map((f) => ({ file: f.path, name: f.filename })),
-    { level: VIDEO_LEVEL, onProgress: (progress) => onArchive?.({ ...progress, name: 'rushes' }) }
+  const originals = videos
+    .filter((f) => fs.existsSync(f.path))
+    .map((f) => ({ file: f.path, name: f.filename }))
+  const filmCopy =
+    backup.filmToBackup && film ? [{ file: film, name: filmNameOf(artifacts.baseName) }] : []
+  const rushesZip =
+    backup.backupAs === 'zip'
+      ? await writeArchive(
+          path.join(artifacts.dir, rushesNameOf(artifacts.baseName)),
+          [...originals, ...filmCopy],
+          {
+            level: VIDEO_LEVEL,
+            onProgress: (progress) => onArchive?.({ ...progress, name: 'rushes' })
+          }
+        )
+      : null
+  /* As plain files the originals go into a folder of their own, named like the archive would be,
+     so one backup folder can hold every tandem without their clips running together. They are sent
+     from wherever they sit, one target per folder, because they were never copied anywhere. */
+  const backupDir = `${backupFolder}/${artifacts.baseName}`
+  const plain =
+    backup.backupAs === 'folder'
+      ? [...originals.map((o) => o.file), ...filmCopy.map((f) => f.file)]
+      : []
+  const plainTargets: UploadTarget[] = [...new Set(plain.map((file) => path.dirname(file)))].map(
+    (dir, index) => ({
+      key: `backup:${group.id}:${index}`,
+      label: `${passenger.label} originals`,
+      localDir: dir,
+      remoteDir: backupDir,
+      destination: null,
+      groupIds: [group.id],
+      files: plain.filter((file) => path.dirname(file) === dir),
+      share: false
+    })
   )
 
   /* only what is the passenger's goes to the passenger: not the project, not the working folders,
@@ -127,6 +167,7 @@ const deliverTandem = async ({
       files: [rushesZip],
       share: false
     })
+  targets.push(...plainTargets)
 
   const result = await uploadTargets({ outputDir, session, targets, onProgress, onCheck })
   const shareUrl = result.shareUrls.find((s) => s.target.key === passenger.key)?.shareUrl
@@ -140,9 +181,17 @@ const deliverTandem = async ({
       shareUrl,
       film: film ? verdictFor(result.files, film) : undefined,
       photos: photosZip ? verdictFor(result.files, photosZip) : undefined,
-      rushes: rushesZip ? verdictFor(result.files, rushesZip) : undefined
+      rushes: rushesZip ? verdictFor(result.files, rushesZip) : undefined,
+      /* the film goes to the passenger too, so only what landed in the backup folder counts here */
+      originals:
+        plain.length > 0
+          ? result.files.filter(
+              (f) => plain.includes(f.localPath) && f.remotePath.startsWith(`${backupDir}/`)
+            )
+          : undefined
     }
   }
 }
 
-export { deliverTandem }
+export { DEFAULT_BACKUP, deliverTandem }
+export type { BackupOptions }

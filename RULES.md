@@ -347,9 +347,19 @@ or somebody would be editing a picture that is not the one about to be rendered.
 them out of order. A dropzone day is **prepared**, then **sent**. A tandem is **processed**, then given
 a **montage**, then **delivered** once someone has rendered the film. Once there is a project the
 tandem shows where it is and copies that path when clicked; until the film exists it says to edit and
-render it, and once it exists it shows the film's size. Nothing can be sent until everything in it has
+render it. Once the film exists it is shown above the tandem, standing out from everything else there:
+its name, how long it runs — which tells a whole jump from a test render of its first minute — its
+size, and when it was rendered. It can be watched right there, or opened on its own by its name, so
+the render is checked before it goes to anyone; a film rendered again is the one that plays. Nothing can be sent until everything in it has
 been prepared, and what is waiting is said plainly. A delivered tandem shows the folders on the
 storage instead of the files it was made from.
+
+Preparing or processing runs on the machine, not in the page: closing or refreshing the page does not
+stop it, and the board stays usable while it runs. A page opened while it is running says so, keeps
+the tandem at _Processing…_ and everything else waiting, and updates itself when it is done. One
+preparation runs at a time; asking for another meanwhile is refused and says why. Edits made while it
+runs are kept — and a jump changed while its copies were being written is not marked prepared, since
+those copies are of what it was.
 
 **The header** holds what applies to the whole day's work: scanning for newly copied files, the state
 of the network storage with its folders and a way to ask it what it holds now, the rows-or-grid
@@ -385,6 +395,7 @@ copy on disk, or when the storage was asked and does not have it.
 **Uploaded is the end of editing.** SkyDock never deletes from the network storage, so it cannot take an
 old copy back; changing a file after it has gone up would leave the two disagreeing for good. Cropping,
 re-timing, moving and renaming therefore belong before processing, and are closed once a file is uploaded.
+They are closed too, for the whole tandem, once it has an edit (see Montage).
 
 The board marks an uploaded file with a padlock and will not let it be dragged. **Partly built:** the
 crop dialog still opens on one and still saves, so the rule is announced there without yet being
@@ -496,12 +507,34 @@ by a different path. The project is written with the paths the editor will under
 The montage is made once. Asking again for a tandem that already has a project is refused rather than
 overwriting an edit someone may have been working on.
 
+**An edit freezes the tandem.** The project points at the tandem's copies by name and at moments
+inside each of them, and it lives in the folder the passenger's name makes. Trimming a clip would move
+every cut made on it, re-timing or removing one would leave the editor looking for a file that is gone,
+and a new name would move the folder — and the editor would say nothing about any of it. So once a
+tandem has a project, SkyDock changes nothing about it: no trimming or reframing of its videos or
+photos, no files moved in or out, no re-timing, no new name, no other jump joining that passenger, and
+no processing again. Its files show a lock and say why; the request is refused on the server too, so
+the page is not what holds the line. Previewing, opening the project and delivering go on as before.
+Changes are made in the editor from then on. Deleting the project lifts the lock.
+
 ## Delivery
 
 Once the film is rendered, delivering a tandem archives its photos and its original videos, then sends
-the film and the photos archive to the passenger's folder and the archive of originals to the backup
-folder. The project and the working folders stay on the machine. The passenger's folder is the one that
-gets a share link; the backup folder never does.
+the film and the photos archive to the passenger's folder and the originals to the backup folder. The
+project and the working folders stay on the machine. The passenger's folder is the one that gets a
+share link; the backup folder never does.
+
+**Delivering shows what it will do first.** Asking to deliver opens the two parcels side by side — the
+backup, and the passenger's — each with the folder it goes to, what it holds, and how big it is, with
+the totals underneath. Either folder can be chosen or changed from there, and the dialog comes back
+once it is. Nothing is sent until the dialog's own button is pressed; until the film is rendered that
+button stays shut and says why.
+
+**How the backup is kept is a choice**, made once for the whole club and remembered, so the next
+tandem opens with it already made: the originals as one zip — one object to move, which cannot arrive
+half-copied — or as plain files in a folder of their own named after the tandem, which can be browsed
+on the storage and one clip pulled out without unpacking the rest. Either way a copy of the film can
+go with them. The passenger's parcel never changes: the film and the photos, nothing else.
 
 Delivering reports what it is doing throughout: first the archives being built, then what is already
 on the storage, then what is being sent.
@@ -513,8 +546,9 @@ backup; and a backup folder that is the passenger's own folder. A tandem whose c
 video at all is delivered without a film rather than being stuck. A film rendered under a different
 name, when it is the only one there, is taken as the film and renamed.
 
-Delivering again after a re-render sends what changed and leaves the rest; an archive still newer than
-everything in it is not built a second time.
+Delivering again after a re-render sends what changed and leaves the rest; an archive that holds
+exactly what it is asked to and is still newer than all of it is not built a second time. Asking for
+the film in the backup, or leaving it out, is a different archive and is built again.
 
 The film is taken on trust. Nothing checks that it was rendered from this project, or that it covers
 the whole jump.
@@ -546,5 +580,6 @@ Worth knowing, so nobody goes looking:
   already up there is the right one and mark it uploaded; only an upload proves that.
 - **Nothing comes back down from the storage.** SkyDock uploads and lists; it never downloads.
 - **Archiving is part of delivering.** The zips are written as a tandem is delivered and cannot be
-  made on their own, nor backed up as plain files instead of a zip.
+  made on their own. The originals cannot be backed up on their own ahead of the film either: the
+  backup goes with the delivery.
 - **A picture cannot be turned.** See the note under Cropping. Reframing it can.

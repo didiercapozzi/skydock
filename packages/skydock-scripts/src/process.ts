@@ -27,6 +27,17 @@ type ProcessOptions = {
 
 const quote = (value: string) => `"${value.replace(/(["$`\\])/g, '\\$1')}"`
 
+/* Preparing is minutes of ffmpeg and gigabytes of copying, and the server is one thread. Run with
+   the blocking calls, it answered nothing until the last file was written — refreshing the page
+   meanwhile hung, and the request it cut off came back as an error page. Everything slow here waits
+   without holding the thread. */
+const shell = (line: string) =>
+  new Promise<void>((resolve, reject) => {
+    childProcess.exec(line, { maxBuffer: 64 * 1024 * 1024 }, (error) =>
+      error ? reject(error) : resolve()
+    )
+  })
+
 /* Cutting the ends off a clip moves no pixels, so the stream is copied: instant, and not a frame
    of quality lost. Cutting the frame cannot be: the picture itself changes, so it has to be
    encoded again, and that is the one thing here that costs real time.
@@ -45,12 +56,11 @@ const timeArgs = (cropStart?: number | null, cropEnd?: number | null) =>
     : ''
 
 /* The ends only: copied, never re-encoded. */
-const trimVideo = (src: string, dest: string, cropStart: number, cropEnd: number) => {
+const trimVideo = async (src: string, dest: string, cropStart: number, cropEnd: number) => {
   if (!hasCommand('ffmpeg')) return false
   try {
-    childProcess.execSync(
-      `ffmpeg -y ${timeArgs(cropStart, cropEnd)} -i ${quote(src)} -c copy -avoid_negative_ts make_zero ${quote(dest)} 2>/dev/null`,
-      { stdio: 'ignore' }
+    await shell(
+      `ffmpeg -y ${timeArgs(cropStart, cropEnd)} -i ${quote(src)} -c copy -avoid_negative_ts make_zero ${quote(dest)} 2>/dev/null`
     )
     return true
   } catch {
@@ -60,7 +70,7 @@ const trimVideo = (src: string, dest: string, cropStart: number, cropEnd: number
 
 /* The frame, and the ends with it if both were set. Decoding on the card where there is one, the
    same as the proxies, because unpacking 4K HEVC is what takes the time either way. */
-const recodeVideo = (
+const recodeVideo = async (
   src: string,
   dest: string,
   filter: string,
@@ -73,9 +83,8 @@ const recodeVideo = (
      in pixels of the source frame is the same arithmetic either way and this keeps one code path */
   const decode = pick === 'nvenc' ? '-hwaccel cuda' : pick === 'vaapi' ? '-hwaccel vaapi' : ''
   try {
-    childProcess.execSync(
-      `ffmpeg -y ${decode} ${timeArgs(cropStart, cropEnd)} -i ${quote(src)} -vf ${filter} ${DELIVERY_ARGS[pick].join(' ')} -c:a copy ${quote(dest)}`,
-      { stdio: ['ignore', 'ignore', 'pipe'] }
+    await shell(
+      `ffmpeg -y ${decode} ${timeArgs(cropStart, cropEnd)} -i ${quote(src)} -vf ${filter} ${DELIVERY_ARGS[pick].join(' ')} -c:a copy ${quote(dest)}`
     )
     return true
   } catch {
@@ -83,13 +92,12 @@ const recodeVideo = (
   }
 }
 
-const updateMetadata = (files: string[]) => {
+const updateMetadata = async (files: string[]) => {
   if (files.length === 0) return
   const paths = files.map((f) => `"${f.replace(/(["$`\\])/g, '\\$1')}"`).join(' ')
   try {
-    childProcess.execSync(
-      `exiftool -P -overwrite_original -m -q '-CreateDate<FileModifyDate' '-MediaCreateDate<FileModifyDate' '-TrackCreateDate<FileModifyDate' '-MediaModifyDate<FileModifyDate' '-TrackModifyDate<FileModifyDate' '-ModifyDate<FileModifyDate' '-DateTimeOriginal<FileModifyDate' '-CreationDate<FileModifyDate' ${paths}`,
-      { stdio: 'ignore' }
+    await shell(
+      `exiftool -P -overwrite_original -m -q '-CreateDate<FileModifyDate' '-MediaCreateDate<FileModifyDate' '-TrackCreateDate<FileModifyDate' '-MediaModifyDate<FileModifyDate' '-TrackModifyDate<FileModifyDate' '-ModifyDate<FileModifyDate' '-DateTimeOriginal<FileModifyDate' '-CreationDate<FileModifyDate' ${paths}`
     )
   } catch (e) {
     throw new Error(
@@ -151,7 +159,12 @@ const getGroupProcessedDir = (outputDir: string, group: ManifestGroup) => {
    It is written away from the copy it belongs to, under the output folder's own proxies, because
    a passenger's folder goes to the storage whole and a working file has no business going with
    it. */
-const writeCutProxy = (file: ManifestFile, dest: string, outputDir: string, groupId: string) => {
+const writeCutProxy = async (
+  file: ManifestFile,
+  dest: string,
+  outputDir: string,
+  groupId: string
+) => {
   if (!isVideoFile(file.path) || !file.proxy || !fs.existsSync(file.proxy)) return null
   const target = path.join(getCutProxyDir(outputDir, groupId), `${path.parse(dest).name}.mp4`)
   const trimmed = file.cropStart != null && file.cropEnd != null
@@ -163,18 +176,20 @@ const writeCutProxy = (file: ManifestFile, dest: string, outputDir: string, grou
     const shape = videoShape(file.proxy)
     if (!shape) return null
     const filter = cropFilter(file.frame!, shape.width, shape.height)
-    return recodeVideo(file.proxy, target, filter, file.cropStart, file.cropEnd) ? target : null
+    return (await recodeVideo(file.proxy, target, filter, file.cropStart, file.cropEnd))
+      ? target
+      : null
   }
   if (trimmed) {
     if (!cropProxy(file.proxy, target, file.cropStart!, file.cropEnd!)) return null
   } else {
     fs.mkdirSync(path.dirname(target), { recursive: true })
-    fs.copyFileSync(file.proxy, target)
+    await fs.promises.copyFile(file.proxy, target)
   }
   return target
 }
 
-const copyMedia = (file: ManifestFile, dest: string, time: Date) => {
+const copyMedia = async (file: ManifestFile, dest: string, time: Date) => {
   const video = isVideoFile(file.path)
   const trimmed = file.cropStart != null && file.cropEnd != null
   const framed = video && !isWholeFrame(file.frame)
@@ -183,21 +198,21 @@ const copyMedia = (file: ManifestFile, dest: string, time: Date) => {
     if (!shape)
       throw new Error(`Cannot read the size of ${file.filename}: install ffprobe to crop its frame`)
     const filter = cropFilter(file.frame!, shape.width, shape.height)
-    if (!recodeVideo(file.path, dest, filter, file.cropStart, file.cropEnd))
+    if (!(await recodeVideo(file.path, dest, filter, file.cropStart, file.cropEnd)))
       throw new Error(`ffmpeg could not crop the frame of ${file.filename}: install ffmpeg`)
   } else if (video && trimmed) {
-    if (!trimVideo(file.path, dest, file.cropStart!, file.cropEnd!)) {
+    if (!(await trimVideo(file.path, dest, file.cropStart!, file.cropEnd!))) {
       throw new Error(
         `ffmpeg crop failed for ${file.filename} ${file.cropStart}→${file.cropEnd}: install ffmpeg or check range`
       )
     }
   } else {
-    fs.copyFileSync(file.path, dest)
+    await fs.promises.copyFile(file.path, dest)
   }
   fs.utimesSync(dest, time, time)
 }
 
-const writeGroup = (
+const writeGroup = async (
   group: ManifestGroup,
   outputDir: string,
   usedNames: Set<string>,
@@ -218,12 +233,12 @@ const writeGroup = (
       ? `${toFileStem(group.destination!, 'destination')}_${formatGroupDay(file.mtime)}`
       : baseName
     const dest = path.join(targetDir, makeFileName(stem, file.mtime, ext, usedNames))
-    copyMedia(file, dest, buildFsTime(flat ? file.mtime : dayEpoch, file.mtime))
-    if (!flat) writeCutProxy(file, dest, outputDir, group.id)
+    await copyMedia(file, dest, buildFsTime(flat ? file.mtime : dayEpoch, file.mtime))
+    if (!flat) await writeCutProxy(file, dest, outputDir, group.id)
     record(file, dest)
     written.push(dest)
   }
-  updateMetadata(written)
+  await updateMetadata(written)
   if (!flat) {
     const names = written.map((entry) => path.basename(entry))
     pruneStaleMedia(dir, new Set(names))
@@ -239,7 +254,7 @@ const writeGroup = (
   return written.length
 }
 
-const writeLooseFiles = (
+const writeLooseFiles = async (
   destination: string,
   files: ManifestFile[],
   outputDir: string,
@@ -255,16 +270,62 @@ const writeLooseFiles = (
     const ext = path.extname(file.path).slice(1).toLowerCase()
     const name = makeFileName(`${stem}_${formatGroupDay(file.mtime)}`, file.mtime, ext, usedNames)
     const dest = path.join(dir, name)
-    copyMedia(file, dest, buildFsTime(file.mtime, file.mtime))
+    await copyMedia(file, dest, buildFsTime(file.mtime, file.mtime))
     record(file, dest)
     written.push(dest)
   }
-  updateMetadata(written)
+  await updateMetadata(written)
   console.log(`[Process] ${destination}: copied ${written.length} loose file(s) to ${dir}`)
   return written.length
 }
 
-const processJumps = (options?: ProcessOptions) => {
+/* What is being prepared right now. The server outlives the page that asked: a refresh drops the
+   request but not the work, so the page that comes back asks here rather than offering to start
+   the same thing a second time on top of it. */
+type Running = { groupIds: string[]; destinations: string[]; done: Promise<unknown> }
+let running: Running | null = null
+
+const processingNow = () =>
+  running ? { groupIds: running.groupIds, destinations: running.destinations } : null
+
+/* settles when what is running now has finished, however it ended */
+const whenProcessed = async () => {
+  await running?.done.catch(() => undefined)
+}
+
+/* the part of a jump that decides what its copies are — if any of it changed while they were
+   being written, what was written is not of this jump any more */
+const copiedAs = (group: ManifestGroup) =>
+  JSON.stringify(
+    group.files.map((f) => [
+      f.path,
+      f.mtime,
+      f.cropStart ?? null,
+      f.cropEnd ?? null,
+      f.frame ?? null
+    ])
+  )
+
+/* One preparation at a time: two at once would fight over the card and the disk, and over the
+   folders if they overlap. The second is refused and says so, rather than queued out of sight. */
+const processJumps = async (options?: ProcessOptions) => {
+  if (running) throw new Error('Already preparing — wait for it to finish, then try again.')
+  const job: Running = {
+    groupIds: options?.groupIds ?? [],
+    destinations: options?.destination ? [options.destination] : [],
+    done: Promise.resolve()
+  }
+  const done = runProcess(options)
+  job.done = done
+  running = job
+  try {
+    return await done
+  } finally {
+    if (running === job) running = null
+  }
+}
+
+const runProcess = async (options?: ProcessOptions) => {
   const outputDir = options?.outputDir || getOutputDir()
   const manifestPath = options?.manifestPath || getManifestPath(outputDir)
 
@@ -329,16 +390,17 @@ const processJumps = (options?: ProcessOptions) => {
     processedPaths.set(source.path, { dest: destPath, source })
   }
 
+  const asAsked = new Map(groups.map((g) => [g.id, copiedAs(g)]))
   let copied = 0
   for (const group of groups)
-    copied += writeGroup(
+    copied += await writeGroup(
       group,
       outputDir,
       poolFor(getGroupProcessedDir(outputDir, group).dir),
       record
     )
   for (const destination of destinations) {
-    copied += writeLooseFiles(
+    copied += await writeLooseFiles(
       destination,
       looseByDestination.get(destination) ?? [],
       outputDir,
@@ -349,8 +411,19 @@ const processJumps = (options?: ProcessOptions) => {
   /* Stamp each source with where it landed and what it was made from, so the board can tell a
      current copy from one whose source has moved on. A fresh copy is not the copy that went to
      the NAS, so the upload record goes — if the bytes are identical the next dedup pass restores
-     it without sending anything. */
-  for (const file of manifest.files) {
+     it without sending anything.
+
+     Into the manifest as it is now, not as it was when this began: the board went on being used
+     while the copies were written, and saving the old one back would undo every edit made
+     meanwhile. A jump changed in that time keeps its own state — its copies are of what it was. */
+  const current = loadManifest(manifestPath) ?? manifest
+  for (const group of current.groups) {
+    const asked = asAsked.get(group.id)
+    if (asked === undefined || asked !== copiedAs(group)) continue
+    group.processed = true
+    delete group.publish
+  }
+  for (const file of current.files) {
     const written = processedPaths.get(file.path)
     if (!written) continue
     const { dest, source } = written
@@ -370,12 +443,20 @@ const processJumps = (options?: ProcessOptions) => {
     delete file.uploaded
   }
 
-  if (groups.length > 0 || processedPaths.size > 0) saveManifest(manifestPath, manifest)
+  if (groups.length > 0 || processedPaths.size > 0) saveManifest(manifestPath, current)
 
   console.log(`[Process] Done. Copied ${copied} file(s).`)
 
   return { copied, processedGroups: groups.length }
 }
 
-export { getDestinationDir, getGroupProcessedDir, isFlatGroup, processJumps, pruneStaleMedia }
+export {
+  getDestinationDir,
+  getGroupProcessedDir,
+  isFlatGroup,
+  processingNow,
+  processJumps,
+  pruneStaleMedia,
+  whenProcessed
+}
 export type { ProcessOptions }

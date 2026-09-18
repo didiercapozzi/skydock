@@ -26,7 +26,12 @@ export { groupFromFiles, reclusterGroups, regroupLooseFiles, shiftFiles } from '
 export { fileChanged, fileStatus, uploadGate } from './fileStatus'
 export type { FileStatus, OutputFact, RemoteListing, StatusContext } from './fileStatus'
 
-export { buildGroupBaseName, hasCompletePassenger, mergeGroups } from './workspace'
+export {
+  buildGroupBaseName,
+  buildPassengerFolder,
+  hasCompletePassenger,
+  mergeGroups
+} from './workspace'
 
 export { loadManifest, saveManifest, statProcessedOutputs } from './manifest'
 
@@ -62,8 +67,18 @@ export {
 export { getOutputDir, isVideoFile, isoDay } from './utils'
 
 export { scanMedia } from './scan'
-export { getGroupProcessedDir, processJumps } from './process'
+export { getGroupProcessedDir, processingNow, processJumps, whenProcessed } from './process'
 
 /* only the facts a tandem row shows — delivering one pulls in archiving and uploading, which the
    routes import directly so none of it can reach the browser bundle */
-export { filmNameOf, isTandem, statTandemArtifacts } from './tandem'
+export {
+  EDIT_LOCKED,
+  filmNameOf,
+  frozenTandems,
+  hasEdit,
+  isTandem,
+  photosNameOf,
+  rushesNameOf,
+  sameEditedGroup,
+  statTandemArtifacts
+} from './tandem'

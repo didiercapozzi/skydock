@@ -4,6 +4,7 @@ import * as fs from 'node:fs'
 import * as http from 'node:http'
 import * as path from 'node:path'
 import { deliverTandem } from '../src/deliver'
+import type { BackupOptions } from '../src/deliver'
 import { statTandemArtifacts, tandemArtifacts } from '../src/tandem'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
 import { saveNasSession } from '../src/nas'
@@ -156,7 +157,11 @@ const session = (url: string, overrides: Partial<NasSession> = {}): NasSession =
   ...overrides
 })
 
-const deliver = async (options: SceneOptions = {}, sessionOverrides: Partial<NasSession> = {}) => {
+const deliver = async (
+  options: SceneOptions = {},
+  sessionOverrides: Partial<NasSession> = {},
+  backup?: BackupOptions
+) => {
   const built = scene(options)
   const server = await startUploadServer()
   stubDsm()
@@ -167,7 +172,8 @@ const deliver = async (options: SceneOptions = {}, sessionOverrides: Partial<Nas
       outputDir: built.outputDir,
       manifest: built.manifest,
       group: built.group,
-      session: session(server.url, sessionOverrides)
+      session: session(server.url, sessionOverrides),
+      backup
     })
     return { ...built, result, uploads: server.uploads }
   } finally {
@@ -305,5 +311,55 @@ describe('tandem artifacts — what the board is told', () => {
   it('leaves a jump that is not a tandem out of it', () => {
     const { outputDir, manifest } = scene({ noPassenger: true })
     expect(statTandemArtifacts(manifest, outputDir)).toEqual({})
+  })
+})
+
+/* How the originals are kept is chosen once for the club: one zip, or the clips as they are — and
+   either way a copy of the film can go with them. */
+describe('deliver — how the backup is kept', () => {
+  const contents = (groupDir: string) =>
+    JSON.parse(
+      fs.readFileSync(path.join(groupDir, 'luc_favre_20260802.rushes.zip.contents'), 'utf-8')
+    ) as string[]
+
+  it('puts a copy of the film inside the zip when asked', async () => {
+    const { groupDir } = await deliver({}, {}, { backupAs: 'zip', filmToBackup: true })
+    expect(contents(groupDir)).toEqual(['GX018570.MP4', 'GX018571.MP4', 'luc_favre_20260802.mp4'])
+  })
+
+  it('leaves the film out of the zip otherwise', async () => {
+    const { groupDir } = await deliver()
+    expect(contents(groupDir)).toEqual(['GX018570.MP4', 'GX018571.MP4'])
+  })
+
+  it('sends the originals as plain files into a folder of their own, with no zip', async () => {
+    const { uploads, groupDir, result } = await deliver(
+      {},
+      {},
+      { backupAs: 'folder', filmToBackup: false }
+    )
+    expect(
+      uploads
+        .filter((u) => u.dest === '/Backup/luc_favre_20260802')
+        .map((u) => u.name)
+        .sort()
+    ).toEqual(['GX018570.MP4', 'GX018571.MP4'])
+    expect(uploads.some((u) => u.name.endsWith('.rushes.zip'))).toBe(false)
+    expect(fs.existsSync(path.join(groupDir, 'luc_favre_20260802.rushes.zip'))).toBe(false)
+    expect(result.delivered.originals?.map((o) => o.remotePath).sort()).toEqual([
+      '/Backup/luc_favre_20260802/GX018570.MP4',
+      '/Backup/luc_favre_20260802/GX018571.MP4'
+    ])
+  })
+
+  it('puts the film beside them, and still gives it to the passenger', async () => {
+    const { uploads, result } = await deliver({}, {}, { backupAs: 'folder', filmToBackup: true })
+    expect(
+      uploads.filter((u) => u.dest === '/Backup/luc_favre_20260802').map((u) => u.name)
+    ).toContain('luc_favre_20260802.mp4')
+    expect(result.delivered.film?.remotePath).toBe(
+      '/SkyDock/Tandems/Luc Favre/luc_favre_20260802.mp4'
+    )
+    expect(result.delivered.originals).toHaveLength(3)
   })
 })
