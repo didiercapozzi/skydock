@@ -42,7 +42,9 @@ export {
   buildGroupBaseName,
   buildPassengerFolder,
   hasCompletePassenger,
-  mergeGroups
+  mergeGroups,
+  passengerName,
+  passengerOf
 } from './workspace'
 
 export { loadManifest, saveManifest, statProcessedOutputs } from './manifest'
@@ -111,3 +113,4 @@ export {
 export type { PassengerEmail } from './passengerEmail'
 export { tandemEntrySchema, tandemIndexSchema } from './tandemEntry'
 export type { TandemEntry, TandemIndex } from './tandemEntry'
+export { lastSegment, parentOf } from './paths'

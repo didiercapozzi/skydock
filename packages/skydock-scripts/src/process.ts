@@ -1,17 +1,10 @@
-import * as childProcess from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { loadManifest, saveManifest } from './manifest'
 import { isWholeFrame, orientationAfter, pictureFilter } from './frameCrop'
-import {
-  cropProxy,
-  DRI_DEVICE,
-  getCutProxyDir,
-  lastComplaint,
-  proxyEncoder,
-  videoShape
-} from './proxy'
+import { cropProxy, DRI_DEVICE, getCutProxyDir, proxyEncoder, videoShape } from './proxy'
 import type { ProxyEncoder } from './proxy'
+import { lastComplaint, quote, run } from './tools'
 import type { ManifestFile, ManifestGroup } from './types'
 import { getManifestPath, getOutputDir, hasCommand, isVideoFile, parseDayEpoch } from './utils'
 import {
@@ -32,18 +25,12 @@ type ProcessOptions = {
   destination?: string
 }
 
-const quote = (value: string) => `"${value.replace(/(["$`\\])/g, '\\$1')}"`
-
-/* Preparing is minutes of ffmpeg and gigabytes of copying, and the server is one thread. Run with
-   the blocking calls, it answered nothing until the last file was written — refreshing the page
-   meanwhile hung, and the request it cut off came back as an error page. Everything slow here waits
-   without holding the thread. */
-const shell = (line: string) =>
-  new Promise<string>((resolve, reject) => {
-    childProcess.exec(line, { maxBuffer: 64 * 1024 * 1024 }, (error, stdout) =>
-      error ? reject(error) : resolve(String(stdout ?? ''))
-    )
-  })
+/* a tool that has to succeed: what it printed, or the reason it did not */
+const shell = async (line: string) => {
+  const ran = await run(line)
+  if (!ran.ok) throw new Error(lastComplaint(ran.stderr))
+  return ran.stdout
+}
 
 /* The picture as it is watched: a clip carrying a turn in its metadata is shown turned, and the
    filters are handed frames already turned that way, so its sides are measured that way round. */
@@ -94,12 +81,10 @@ const trimVideo = async (src: string, dest: string, cropStart: number, cropEnd: 
 }
 
 /* ffmpeg's own words when it fails — the one line that says why, not the stage that gave up after */
-const runFfmpeg = (line: string) =>
-  new Promise<{ ok: true } | { ok: false; reason: string }>((resolve) => {
-    childProcess.exec(line, { maxBuffer: 64 * 1024 * 1024 }, (error, _stdout, stderr) =>
-      resolve(error ? { ok: false, reason: lastComplaint(String(stderr ?? '')) } : { ok: true })
-    )
-  })
+const runFfmpeg = async (line: string) => {
+  const ran = await run(line)
+  return ran.ok ? { ok: true as const } : { ok: false as const, reason: lastComplaint(ran.stderr) }
+}
 
 /* The picture changed — cut, turned, or both — and the ends with it if they were set. Decoding on the
    card where there is one, the same as the proxies, because unpacking 4K HEVC is what takes the time
@@ -148,7 +133,7 @@ const recodeVideo = async (
 
 const updateMetadata = async (files: string[]) => {
   if (files.length === 0) return
-  const paths = files.map((f) => `"${f.replace(/(["$`\\])/g, '\\$1')}"`).join(' ')
+  const paths = files.map(quote).join(' ')
   try {
     await shell(
       `exiftool -P -overwrite_original -m -q '-CreateDate<FileModifyDate' '-MediaCreateDate<FileModifyDate' '-TrackCreateDate<FileModifyDate' '-MediaModifyDate<FileModifyDate' '-TrackModifyDate<FileModifyDate' '-ModifyDate<FileModifyDate' '-DateTimeOriginal<FileModifyDate' '-CreationDate<FileModifyDate' ${paths}`

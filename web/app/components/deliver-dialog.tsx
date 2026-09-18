@@ -2,23 +2,14 @@ import { photosNameOf, rushesNameOf } from '@skydock/scripts'
 import type { BackupChoice } from '../hooks/useBackupChoice'
 import { Go, Mini, Seg } from './buttons'
 import { Modal, Spacer } from './modal'
-import { formatFilmSize } from './tandem-card'
+
 import type { TandemFact } from './tandem-card'
 import type { ManifestGroup } from './types'
-import { isVideoFile } from './utils'
+import { formatFilmSize, hhmm, isVideoFile, plural } from './utils'
 
 /* What delivering a tandem will do, laid out before it is done: two parcels, and the whole question
    is what belongs in each. The passenger gets the film and the photos and nothing else; the backup
    gets the originals, never shared. Both folders are shown, and either can be changed from here. */
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
-
-const pad2 = (n: number) => String(n).padStart(2, '0')
-
-const hhmm = (epoch: number) => {
-  const at = new Date(epoch * 1000)
-  return `${pad2(at.getHours())}:${pad2(at.getMinutes())}`
-}
 
 const Parcel = ({
   title,

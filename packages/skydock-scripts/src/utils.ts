@@ -1,3 +1,4 @@
+import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as childProcess from 'node:child_process'
 import { z } from 'zod'
@@ -149,6 +150,15 @@ const withRetry = async <T>(fn: () => Promise<T>, maxAttempts: number, delayMs =
   throw lastError ?? new Error('Retry failed with no attempts')
 }
 
+/* a file's size, or 0 for one that is not there */
+const sizeOf = (file: string) => {
+  try {
+    return fs.statSync(file).size
+  } catch {
+    return 0
+  }
+}
+
 export {
   checkExiftool,
   DEFAULT_MAX_FIND_DEPTH,
@@ -166,6 +176,7 @@ export {
   mapWithLimit,
   parseDayEpoch,
   parseExiftoolCsv,
+  sizeOf,
   sortFilesByMtime,
   walkFiles,
   withRetry

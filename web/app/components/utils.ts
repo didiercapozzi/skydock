@@ -46,6 +46,23 @@ const calendarDay = (epoch: number) => {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
 }
 
+const pad = (n: number) => String(n).padStart(2, '0')
+
+/* hours and minutes, for when something happened */
+const hhmm = (epoch: number) => {
+  const d = new Date(epoch * 1000)
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+/* the day, the short way the club writes it */
+const localeDate = (epoch: number) => new Date(epoch * 1000).toLocaleDateString('de-CH')
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
+
+/* gigabytes with a decimal, or whole megabytes: the sizes a film and an archive come in */
+const formatFilmSize = (bytes: number) =>
+  bytes > 1024 ** 3 ? `${(bytes / 1024 ** 3).toFixed(1)} GB` : `${Math.round(bytes / 1024 ** 2)} MB`
+
 /* minutes and seconds, for a length rather than a time of day */
 const clock = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${String(Math.floor(Math.max(0, seconds) % 60)).padStart(2, '0')}`
@@ -105,6 +122,11 @@ const getThumbUrl = (filePath: string, seekSeconds: number, width = 80) =>
 
 export {
   MONTHS,
+  formatFilmSize,
+  hhmm,
+  localeDate,
+  pad,
+  plural,
   calendarDay,
   clock,
   dateLabel,

@@ -2,11 +2,11 @@ import type { ProxyFact, StatusContext } from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
 import { Mini } from './buttons'
 import { FileList, KindBadges, matchesKind } from './file-list'
-import type { FileShape, Kind } from './file-list'
+import type { FileShape, Kind, Modifiers } from './file-list'
 import { MakeTandem } from './tandem-card'
 import type { Passenger } from './tandem-card'
 import type { ManifestFile, ManifestGroup } from './types'
-import { calendarDay, minFileMtime, shortDate } from './utils'
+import { calendarDay, minFileMtime, pad, shortDate } from './utils'
 
 /* A day, open or closed. Unsorted keeps its jumps because the half-hour rule made them and they
    can still be corrected; a dropzone has none, because its files are written flat and a jump means
@@ -26,7 +26,7 @@ type Props = {
   deliveredName: (file: ManifestFile) => string | null
   onToggle: () => void
   onKind: (kind: Kind) => void
-  onFile: (file: ManifestFile, lane: ManifestFile[], e: React.MouseEvent) => void
+  onFile: (file: ManifestFile, lane: ManifestFile[], e: Modifiers) => void
   onDragFile: (file: ManifestFile, e?: React.DragEvent) => void
   onSelectAll: (files: ManifestFile[]) => void
   onShiftJump: (groupId: string, anchorEpoch: number) => void
@@ -62,8 +62,6 @@ const DAY_HEAD_SCROLL = 'scroll-mt-[var(--dayhead,48px)]'
 
 /* the day's loose files are a place to land, like a jump, but they are not one */
 const LOOSE_ANCHOR = 'loose'
-
-const pad = (n: number) => String(n).padStart(2, '0')
 
 /* to the second, like every other time on the board: two files a second apart is the whole reason
    the order inside a jump is worth looking at */
@@ -272,7 +270,11 @@ const JumpLine = ({
          fields do something else, and nothing does while a name is being typed into it */
       onClick={(e) => {
         if (naming) return
-        if ((e.target as HTMLElement).closest('button, input, a, label, textarea')) return
+        if (
+          e.target instanceof HTMLElement &&
+          e.target.closest('button, input, a, label, textarea')
+        )
+          return
         onToggle()
       }}
       title={
@@ -406,7 +408,7 @@ const DayRow = ({
       <div
         ref={headRef}
         onClick={(e) => {
-          if ((e.target as HTMLElement).closest('button, input, a')) return
+          if (e.target instanceof HTMLElement && e.target.closest('button, input, a')) return
           onToggle()
         }}
         className={`flex flex-wrap items-center gap-2.5 bg-pane px-3 py-2 ${

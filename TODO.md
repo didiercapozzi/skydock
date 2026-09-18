@@ -4,33 +4,19 @@ RULES.md was rewritten to describe only what the app does. The code grew feature
 the same treatment. Each item below is one change that can be done and reviewed on its own; none of
 them changes behaviour, so none of them touches RULES.md.
 
-## 1. Comments say what the logic is, not what it was
+## 1. Comments say what the logic is, not what it was — done
 
-The new rule in CODING.md: a comment describes the logic beside it and why, never a state or a change.
-Sweep every comment and rewrite or delete the ones that:
+Every comment that told history, described a state of the work or explained a fix by contrast with
+the old code was rewritten or deleted, in the code and in the tests. The rule is in CODING.md; keep
+to it.
 
-- tell history ("used to", "no longer", "which is how … came to", "the bug was")
-- describe a state of the work ("partly built", "not yet", "for now")
-- explain a fix by contrast with the old code
+## 2. One helper, one place — done
 
-Known places: `web/app/hooks/usePreview.ts`, `web/app/routes/board.tsx` (the drop-on-passenger and
-delivery comments), `web/app/components/file-list.tsx`, `packages/skydock-scripts/src/proxy.ts`
-(encoder detection), `packages/skydock-scripts/src/process.ts`, `packages/skydock-scripts/src/upload.ts`.
-Test files too: several `describe` blocks open with the story of a regression.
-
-## 2. One helper, one place
-
-The same small helpers are written again in several files. Move each to `@skydock/scripts` (or
-`web/app/components/utils.ts` for display-only ones) and import it:
-
-- `nameOf` / `baseName` / `dirOf` / `parentOf` — the last segment or the parent of a path, in four files
-- `pad` / `pad2` / `hhmm` / `date` — time and date formatting, in five files
-- `plural` — in two dialogs
-- `sizeOf` — a file's size or 0, in three modules
-- `passengerOf` — in `places-tree.tsx` and again in `api.manifest.ts`
-- `quote`, `shell`, `runFfmpeg` — running ffmpeg and reading its complaint, once in `process.ts` and
-  once in `proxy.ts`; one module for "run a tool and keep what it said"
-- `formatFilmSize` lives in `tandem-card.tsx` and is imported by three dialogs; it belongs in `utils.ts`
+Paths live in `packages/skydock-scripts/src/paths.ts`, running a tool and reading its complaint in
+`tools.ts`, `sizeOf` and the passenger's name beside their neighbours in `utils.ts` and
+`workspace.ts`, and the display helpers (`pad`, `hhmm`, `localeDate`, `plural`, `formatFilmSize`)
+in `web/app/components/utils.ts`. `importFile.ts` keeps its own `pad`; it is the one place on that
+side that needs it.
 
 ## 3. `board.tsx` is 1,950 lines
 
@@ -65,11 +51,12 @@ intent, `DeliverDialog`, `deliver-dialog.tsx`, `deliverScopeKey`). Rename the co
 use — `uploadTandem`, `uploaded` record — with a migration for the record's key in saved manifests.
 Likewise `groups` (code) against **jumps** (rules) is old and everywhere; leave it, but stop adding to it.
 
-## 6. Casts and lint bypasses
+## 6. Casts and lint bypasses — mostly done
 
-18 `as` casts and 2 lint bypasses remain. Each cast is either a schema that should be parsed with Zod
-(`as Parameters<typeof action>[0]` in tests, `as HTMLElement` on event targets) or a type the compiler
-can be led to without it. Remove them one by one; CODING.md forbids both.
+No lint bypass is left, and every cast on an event target, a state default or an empty array is
+gone. What remains: the four in `packages/skydock-scripts/src/montage.ts`, where the XML parser
+hands back untyped nodes — a Zod schema for the node shape would replace them — and the
+`as Parameters<typeof action>[0]` in the route tests.
 
 ## 7. Tests that test the code, not the rules
 
@@ -80,7 +67,6 @@ Reworked in the same change as the rules; what is left:
 - `packages/skydock-scripts/tests/publish.test.ts` and `nas.test.ts` still check details of the
   storage's protocol (retries, session ids, header lengths). Keep one test per rule ("a file already
   there is not sent again", "the session renews itself") and drop the rest
-- `web/tests/server/api.nas.test.ts` names are the protocol's; rename to the rules' words
 - there is no test that a **dropzone day** is processed and uploaded end to end from the board, nor that
   the board refuses to upload while files need processing; both are rules
 
@@ -93,6 +79,15 @@ Reworked in the same change as the rules; what is left:
 - `web/app/components/comparison-dialog.tsx` (576 lines) builds its own modal shell instead of `Modal`.
 - The scripts package's `index.ts` barrel re-exports in three styles; one list, sorted.
 - `output/.incoming/` is left behind after an import; remove it when empty.
+
+## 9. Effects — done for now
+
+CODING.md now says when an effect is allowed, following the React documentation. The board adopts
+the server's answer during render; the preview and the comparison hand the way to seek a video up
+through a callback ref. The seven effects left each talk to something outside React: two window key
+listeners, a `ResizeObserver`, a non-passive wheel listener, the progress poll, and two single
+requests on arrival — the board's wait on processing already running, and the folder browser's
+first listing — each with a guard.
 
 ## Carried over
 

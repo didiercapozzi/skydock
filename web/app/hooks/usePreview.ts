@@ -102,11 +102,8 @@ const usePreview = (
     if (committed(range)) closePreview()
   }
 
-  /* The rectangle is saved as it is dragged, not on a separate press: it is drawn on the picture,
-     so what is on screen already is the commit. `null` clears it back to the whole frame. */
-  /* Dragged, not saved. The rectangle used to persist on every movement while the Save button —
-     which only ever watched the trim — stayed dead, so a crop that had in fact been written looked
-     like one that had failed. Both halves of a crop are drafts until the same press now. */
+  /* The rectangle is a draft until Save, like the trim: both halves of a crop are committed by the
+     same press. `null` clears it back to the whole frame. */
   const handleFrameChange = (next: FrameCrop | null) => {
     setFrame(next)
   }

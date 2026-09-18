@@ -562,7 +562,7 @@ const refreshStoredSession = async (
 ) => {
   const enc = stored.encPasswd
   if (!enc) throw new Error('No stored password to refresh session')
-  /* legacy only — nothing writes `dsm:` any more (see encryptPasswordForStorage); the blob is
+  /* a `dsm:` blob was sealed with the storage's own public key and cannot be opened here; it is
      replayed for the sessions that still carry one and replaced on the next interactive connect */
   if (enc.startsWith('dsm:')) {
     const cipher = enc.slice(4)

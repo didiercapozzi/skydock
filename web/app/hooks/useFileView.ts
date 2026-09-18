@@ -32,7 +32,7 @@ const setFileView = (view: FileView) => {
   for (const listener of listeners) listener()
 }
 
-const useFileView = () => useSyncExternalStore(subscribe, readStored, () => 'rows' as FileView)
+const useFileView = () => useSyncExternalStore(subscribe, readStored, (): FileView => 'rows')
 
 export { setFileView, useFileView }
 export type { FileView }

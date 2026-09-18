@@ -278,9 +278,9 @@ const publishJump = async (
     args.outputDir
   )
   const all = args.files ?? walkFiles(args.localDir)
-  const planned =
+  const planned: { upload: string[]; skip: UploadVerdict[] } =
     args.dedupe === false
-      ? { upload: [...all].sort(), skip: [] as UploadVerdict[] }
+      ? { upload: [...all].sort(), skip: [] }
       : await planUpload({
           host: args.host,
           sid,

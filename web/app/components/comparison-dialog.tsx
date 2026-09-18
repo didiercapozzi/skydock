@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { ManifestGroup } from './types'
 import { VideoCropper } from './video-cropper'
 import {
@@ -547,21 +547,16 @@ const PreviewVideo = ({
   onDurationChange: (d: number) => void
   onVideoRef: (ref: VideoRef) => void
 }) => {
-  const videoRef = useRef<HTMLVideoElement | null>(null)
-
-  useEffect(() => {
-    if (videoRef.current) {
-      onVideoRef({
-        seek: (time: number) => {
-          if (videoRef.current) videoRef.current.currentTime = time
-        }
-      })
-    }
-  }, [src, onVideoRef])
-
   return (
     <video
-      ref={videoRef}
+      /* the way to seek this element is handed up as soon as it exists */
+      ref={(el) =>
+        onVideoRef({
+          seek: (time: number) => {
+            if (el) el.currentTime = time
+          }
+        })
+      }
       controls
       src={src}
       onLoadedMetadata={(e) => {

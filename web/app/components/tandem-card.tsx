@@ -1,9 +1,9 @@
-import { filmNameOf, hasCompletePassenger } from '@skydock/scripts'
+import { filmNameOf, hasCompletePassenger, lastSegment, parentOf } from '@skydock/scripts'
 import { useState } from 'react'
 import type { UploadProgressState } from '../hooks/useUploadProgress'
 import { Go, Mini } from './buttons'
 import { kindOf } from './file-list'
-import { getFileUrl, getThumbUrl } from './utils'
+import { formatFilmSize, getFileUrl, getThumbUrl, hhmm, pad } from './utils'
 import type { ManifestGroup } from './types'
 
 /* A tandem cannot be processed until it has a name, because the name *is* the folder the passenger
@@ -34,7 +34,7 @@ const PassengerName = ({
          last name — which hid the inputs behind the name it had just invented, and left a jump the
          folder rule reads as a place rather than a person. */
       onBlur={(e) => {
-        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+        if (e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget)) return
         save()
       }}
       className='flex flex-wrap items-center gap-1'>
@@ -284,11 +284,6 @@ const PassengerCard = ({
   )
 }
 
-const formatFilmSize = (bytes: number) =>
-  bytes > 1024 ** 3 ? `${(bytes / 1024 ** 3).toFixed(1)} GB` : `${Math.round(bytes / 1024 ** 2)} MB`
-
-const pad2 = (n: number) => String(n).padStart(2, '0')
-
 /* the film, once it exists: the one thing here nobody can make again — so it is said out loud, above
    the tandem it came from, rather than as a size beside its buttons. How long it runs is what tells a
    whole jump from a test render of its first minute. */
@@ -296,7 +291,6 @@ const FilmStrip = ({ facts }: { facts?: TandemFact }) => {
   const [watching, setWatching] = useState(false)
   if (!facts?.film) return null
   const { seconds, size, mtime } = facts.film
-  const at = new Date(mtime * 1000)
   /* the render time in the address, so a film rendered again is fetched again rather than replayed
      from the browser's copy of the last one */
   const url = `${getFileUrl(facts.film.path)}?v=${mtime}`
@@ -319,9 +313,9 @@ const FilmStrip = ({ facts }: { facts?: TandemFact }) => {
         </a>
         <span className='text-[12px] text-ink-2'>
           {[
-            seconds === null ? null : `${Math.floor(seconds / 60)}:${pad2(seconds % 60)}`,
+            seconds === null ? null : `${Math.floor(seconds / 60)}:${pad(seconds % 60)}`,
             formatFilmSize(size),
-            `rendered ${pad2(at.getHours())}:${pad2(at.getMinutes())}`
+            `rendered ${hhmm(mtime)}`
           ]
             .filter(Boolean)
             .join(' · ')}
@@ -346,13 +340,6 @@ const FilmStrip = ({ facts }: { facts?: TandemFact }) => {
     </div>
   )
 }
-
-const dirOf = (remotePath: string) => {
-  const cut = remotePath.lastIndexOf('/')
-  return cut <= 0 ? '/' : remotePath.slice(0, cut)
-}
-
-const nameOf = (remotePath: string) => remotePath.slice(remotePath.lastIndexOf('/') + 1)
 
 type TandemFact = {
   project: boolean
@@ -590,7 +577,7 @@ const GoneFromStorage = ({ gone, at }: { gone: { remotePath: string }[]; at?: nu
       {at ? `Uploaded ${new Date(at * 1000).toLocaleDateString('de-CH')}, but ` : ''}
       {gone.length === 1 ? 'this is' : 'these are'} no longer on the storage:{' '}
       <code className='font-mono text-[11.5px]'>
-        {gone.map((f) => nameOf(f.remotePath)).join(', ')}
+        {gone.map((f) => lastSegment(f.remotePath)).join(', ')}
       </code>{' '}
       — upload again to put {gone.length === 1 ? 'it' : 'them'} back.
     </p>
@@ -602,13 +589,13 @@ const DeliveredCards = ({ group }: { group: ManifestGroup }) => {
   const passenger = [
     record.film && {
       icon: '▶',
-      name: nameOf(record.film.remotePath),
+      name: lastSegment(record.film.remotePath),
       size: record.film.size,
       what: 'the film'
     },
     record.photos && {
       icon: '🗜',
-      name: nameOf(record.photos.remotePath),
+      name: lastSegment(record.photos.remotePath),
       size: record.photos.size,
       what: 'the photos'
     }
@@ -619,7 +606,7 @@ const DeliveredCards = ({ group }: { group: ManifestGroup }) => {
       {anchor && passenger.length > 0 && (
         <NasCard
           title='For the passenger'
-          dir={dirOf(anchor.remotePath)}
+          dir={parentOf(anchor.remotePath)}
           tag='ready to hand over'
           items={passenger}
           shareUrl={record.shareUrl ?? group.publish?.shareUrl}
@@ -628,12 +615,12 @@ const DeliveredCards = ({ group }: { group: ManifestGroup }) => {
       {record.rushes && (
         <NasCard
           title='Backup'
-          dir={dirOf(record.rushes.remotePath)}
+          dir={parentOf(record.rushes.remotePath)}
           tag='never shared'
           items={[
             {
               icon: '🗜',
-              name: nameOf(record.rushes.remotePath),
+              name: lastSegment(record.rushes.remotePath),
               size: record.rushes.size,
               what: 'the originals'
             }
@@ -644,14 +631,15 @@ const DeliveredCards = ({ group }: { group: ManifestGroup }) => {
       {record.originals && record.originals.length > 0 && (
         <NasCard
           title='Backup'
-          dir={dirOf(record.originals[0]!.remotePath)}
+          dir={parentOf(record.originals[0]!.remotePath)}
           tag='never shared'
           items={record.originals.map((original) => ({
             icon: '▶',
-            name: nameOf(original.remotePath),
+            name: lastSegment(original.remotePath),
             size: original.size,
             what:
-              record.film && nameOf(original.remotePath) === nameOf(record.film.remotePath)
+              record.film &&
+              lastSegment(original.remotePath) === lastSegment(record.film.remotePath)
                 ? 'a copy of the film'
                 : 'original'
           }))}
@@ -670,7 +658,6 @@ export {
   PassengerName,
   ProjectPath,
   TandemActions,
-  UploadStrip,
-  formatFilmSize
+  UploadStrip
 }
 export type { Passenger, TandemFact }

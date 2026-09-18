@@ -11,6 +11,7 @@ import {
   hasCompletePassenger,
   isoDay,
   isVideoFile,
+  lastSegment,
   listRemoteFiles,
   loadManifest,
   manifestFileSchema,
@@ -30,7 +31,7 @@ import type {
   TandemEntry
 } from '@skydock/scripts'
 import { readTandemIndex } from '../../../packages/skydock-scripts/src/tandemIndex'
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
 import { Go, Mini, Seg } from '../components/buttons'
 import { Callout } from '../components/callout'
@@ -42,7 +43,7 @@ import { TakeBackDialog } from '../components/take-back-dialog'
 import { FreeDialog } from '../components/free-dialog'
 import type { TakeBackMode } from '../components/take-back-dialog'
 import { FileList, KindBadges, lockReason } from '../components/file-list'
-import type { Kind } from '../components/file-list'
+import type { Kind, Modifiers } from '../components/file-list'
 import { NasFolderBrowser } from '../components/nas-folder-browser'
 import {
   PlacesTree,
@@ -57,14 +58,13 @@ import type { Passenger } from '../components/tandem-card'
 import {
   DeliveredCards,
   FilmStrip,
-  formatFilmSize,
   GoneFromStorage,
   PassengerCard,
   TandemActions,
   UploadStrip
 } from '../components/tandem-card'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
-import { formatTime, minFileMtime } from '../components/utils'
+import { formatFilmSize, formatTime, minFileMtime, pad } from '../components/utils'
 import { useSafeFetcher } from '../helpers/routing'
 import { EmailDialog } from '../components/email-dialog'
 import { StorageList } from '../components/storage-list'
@@ -300,8 +300,6 @@ const MONTHS = [
   'December'
 ]
 
-const pad = (n: number) => String(n).padStart(2, '0')
-
 /* local calendar day, and a label built without Intl so the server and the client agree */
 const dayOfMtime = (mtime: number) => {
   const d = new Date(mtime * 1000)
@@ -329,8 +327,6 @@ const inTandemsCard = (group: ManifestGroup) => group.destination === TANDEMS
 /* the name the file has once a copy exists — what goes to the NAS and what the passenger sees.
    A file whose source moved on shows its camera name again, because the name it will get is
    derived from the time and the crop that just changed. */
-const baseName = (full: string) => full.slice(full.lastIndexOf('/') + 1)
-
 /* the passenger's folder on the storage — where its film and photos were sent — which is what
    the storage's list of tandems knows it by */
 const folderOnStorage = (group: ManifestGroup) => {
@@ -463,60 +459,62 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const connectSucceeded =
     nasAnswer.success && nasAnswer.data.connected && nasFetcher.data !== dialogOpenedOn
 
-  /* the server answers with the groups it saved, or with the reason it refused */
-  useEffect(() => {
-    if (!fetcher.data) return
-    const answered = z
+  /* The server answers every edit with the board as it saved it, or with the reason it refused. A
+     new answer is adopted the moment it is seen, during the render that sees it: the answer already
+     is the next state, and nothing about it needs the screen to have been drawn first. */
+  const [seenAnswer, setSeenAnswer] = useState<unknown>(null)
+  const answerSchema = z.object({
+    groups: z.array(manifestGroupSchema),
+    looseFiles: z.array(manifestFileSchema).optional(),
+    destinations: z.array(destinationSchema).optional(),
+    outputs: z.record(z.string(), z.object({ exists: z.boolean(), size: z.number() })).optional(),
+    proxies: z
+      .record(z.string(), z.object({ state: z.enum(['ready', 'own', 'none']), play: z.string() }))
+      .optional(),
+    tandems: z.record(z.string(), tandemFactSchema).optional(),
+    remote: z
       .object({
-        groups: z.array(manifestGroupSchema),
-        looseFiles: z.array(manifestFileSchema).optional(),
-        destinations: z.array(destinationSchema).optional(),
-        outputs: z
-          .record(z.string(), z.object({ exists: z.boolean(), size: z.number() }))
-          .optional(),
-        proxies: z
-          .record(
-            z.string(),
-            z.object({ state: z.enum(['ready', 'own', 'none']), play: z.string() })
-          )
-          .optional(),
-        tandems: z.record(z.string(), tandemFactSchema).optional(),
-        remote: z
-          .object({
-            dirs: z.array(z.string()),
-            sizes: z.record(z.string(), z.number().nullable()),
-            at: z.number()
-          })
-          .optional(),
-        uploaded: z.number().optional(),
-        skipped: z.number().optional(),
-        montage: z
-          .object({
-            clips: z.number(),
-            missingAssets: z.array(z.string()),
-            opened: z.boolean().optional(),
-            openCommand: z.string().optional(),
-            openReason: z.string().optional()
-          })
-          .optional(),
-        scan: scanResultSchema.optional(),
-        /* how much room freeing a tandem gave back, and how many files */
-        freed: z.object({ bytes: z.number(), files: z.number(), groupId: z.string() }).optional(),
-        /* the storage's list, as the change just wrote it — or why it could not be */
-        storage: z.object({ dir: z.string(), tandems: z.array(tandemEntrySchema) }).optional(),
-        storageProblem: z.string().optional(),
-        /* files just added from the computer */
-        imported: z
-          .object({
-            added: z.number(),
-            moved: z.array(z.object({ name: z.string(), from: z.string() })),
-            there: z.number(),
-            failed: z.array(z.string()),
-            where: z.string()
-          })
-          .optional()
+        dirs: z.array(z.string()),
+        sizes: z.record(z.string(), z.number().nullable()),
+        at: z.number()
       })
-      .safeParse(fetcher.data)
+      .optional(),
+    uploaded: z.number().optional(),
+    skipped: z.number().optional(),
+    montage: z
+      .object({
+        clips: z.number(),
+        missingAssets: z.array(z.string()),
+        opened: z.boolean().optional(),
+        openCommand: z.string().optional(),
+        openReason: z.string().optional()
+      })
+      .optional(),
+    scan: scanResultSchema.optional(),
+    /* how much room freeing a tandem gave back, and how many files */
+    freed: z.object({ bytes: z.number(), files: z.number(), groupId: z.string() }).optional(),
+    /* the storage's list, as the change just wrote it — or why it could not be */
+    storage: z.object({ dir: z.string(), tandems: z.array(tandemEntrySchema) }).optional(),
+    storageProblem: z.string().optional(),
+    /* files just added from the computer */
+    imported: z
+      .object({
+        added: z.number(),
+        moved: z.array(z.object({ name: z.string(), from: z.string() })),
+        there: z.number(),
+        failed: z.array(z.string()),
+        where: z.string()
+      })
+      .optional()
+  })
+  const refusalSchema = z
+    .object({ success: z.literal(false), globalErrors: z.array(z.string()).optional() })
+    .passthrough()
+  if (fetcher.data && fetcher.data !== seenAnswer) {
+    setSeenAnswer(fetcher.data)
+    const answered = answerSchema.safeParse(fetcher.data)
+    setBusy(null)
+    setUploading(null)
     if (answered.success) {
       const {
         groups: saved,
@@ -535,57 +533,50 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         storage: listed,
         storageProblem
       } = answered.data
-      queueMicrotask(() => {
-        setGroups(saved)
-        if (looseFiles) setLoose(looseFiles)
-        if (destinations) setPlaces(destinations)
-        if (freshOutputs) setOutputs(freshOutputs)
-        if (freshProxies) setProxies(freshProxies)
-        if (freshTandems) setTandemFacts(freshTandems)
-        /* an upload answers with the listing taken right after it */
-        if (freshRemote) setRemoteAfterUpload(freshRemote)
-        /* a scan may be the first thing that ever put a manifest there */
-        if (scanned) setHasManifest(true)
-        /* uploaded and freed: the one thing left is to tell the passenger, so that is offered */
-        if (freed) setDialog({ kind: 'email', groupId: freed.groupId })
-        if (listed) setStorage({ ...listed, problem: null })
-        setBusy(null)
-        setUploading(null)
-        const said =
-          uploaded !== undefined
-            ? `Uploaded ${uploaded} file${uploaded === 1 ? '' : 's'}${
-                skipped ? ` · ${skipped} already on the NAS` : ''
-              }`
-            : montage
-              ? montageNote(montage)
-              : scanned
-                ? scanNote(scanned)
-                : imported
-                  ? importNote(imported)
-                  : freed
-                    ? `On the storage only. ${freed.files} file${freed.files === 1 ? '' : 's'} freed from this machine on ${new Date().toLocaleDateString('de-CH')} — ${formatFilmSize(freed.bytes)} given back. The project is kept here; everything else is on the storage, as above.`
-                    : null
-        /* the work stands even when the list could not follow it, and that is said alongside */
-        setNote(storageProblem ? [said, storageProblem].filter(Boolean).join(' · ') : said)
-      })
-      return
-    }
-    const refused = z
-      .object({ success: z.literal(false), globalErrors: z.array(z.string()).optional() })
-      .passthrough()
-      .safeParse(fetcher.data)
-    queueMicrotask(() => {
-      setBusy(null)
-      setUploading(null)
+      setGroups(saved)
+      if (looseFiles) setLoose(looseFiles)
+      if (destinations) setPlaces(destinations)
+      if (freshOutputs) setOutputs(freshOutputs)
+      if (freshProxies) setProxies(freshProxies)
+      if (freshTandems) setTandemFacts(freshTandems)
+      /* an upload answers with the listing taken right after it */
+      if (freshRemote) setRemoteAfterUpload(freshRemote)
+      /* a scan may be the first thing that ever put a manifest there */
+      if (scanned) setHasManifest(true)
+      /* uploaded and freed: the one thing left is to tell the passenger, so that is offered */
+      if (freed) setDialog({ kind: 'email', groupId: freed.groupId })
+      if (listed) setStorage({ ...listed, problem: null })
+      const said =
+        uploaded !== undefined
+          ? `Uploaded ${uploaded} file${uploaded === 1 ? '' : 's'}${
+              skipped ? ` · ${skipped} already on the NAS` : ''
+            }`
+          : montage
+            ? montageNote(montage)
+            : scanned
+              ? scanNote(scanned)
+              : imported
+                ? importNote(imported)
+                : freed
+                  ? `On the storage only. ${freed.files} file${freed.files === 1 ? '' : 's'} freed from this machine on ${new Date().toLocaleDateString('de-CH')} — ${formatFilmSize(freed.bytes)} given back. The project is kept here; everything else is on the storage, as above.`
+                  : null
+      /* the work stands even when the list could not follow it, and that is said alongside */
+      setNote(storageProblem ? [said, storageProblem].filter(Boolean).join(' · ') : said)
+    } else {
+      const refused = refusalSchema.safeParse(fetcher.data)
       if (refused.success) setNote(refused.data.globalErrors?.[0] ?? 'Request failed')
-    })
-  }, [fetcher.data, setGroups])
+    }
+  }
 
-  /* once, on arriving while something was being prepared: its answer is the board as it ends */
+  /* Arriving while something is being processed: its answer is the board as it ends, asked for
+     once. Asking is a request to the machine, which is what an effect is for; the guard is what
+     keeps a re-render from asking again. */
+  const askedToWait = useRef(false)
   useEffect(() => {
-    if (running) fetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'process-wait' } })
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- on arrival only
-  }, [])
+    if (!running || askedToWait.current) return
+    askedToWait.current = true
+    fetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'process-wait' } })
+  }, [running, fetcher])
 
   /* Every edit is the same three steps — clear the last message, mark what is working, ask the
      server — so they are written once. `label` is what `busy` is compared against to decide which
@@ -787,13 +778,13 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     const files = [...list]
     if (files.length === 0) return
     setBusy('import')
-    const tally = {
-      added: 0,
-      moved: [] as { name: string; from: string }[],
-      there: 0,
-      failed: [] as string[],
-      where
-    }
+    const tally: {
+      added: number
+      moved: { name: string; from: string }[]
+      there: number
+      failed: string[]
+      where: string
+    } = { added: 0, moved: [], there: 0, failed: [], where }
     for (const [index, file] of files.entries()) {
       setNote(`Adding ${index + 1} of ${files.length} to ${where} — ${file.name}…`)
       const params = new URLSearchParams({
@@ -855,7 +846,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const clickFile = (
     file: ManifestFile,
     lane: ManifestFile[],
-    e: React.MouseEvent,
+    e: Modifiers,
     onPreview: () => void
   ) => {
     const id = file.id
@@ -898,9 +889,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null
       /* never steal Delete or Backspace from the passenger name fields */
-      if (target && /^(INPUT|TEXTAREA)$/.test(target.tagName)) return
+      if (e.target instanceof HTMLElement && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return
       /* while comparing, Escape closes the dialog and nothing else reaches the board */
       if (comparing) {
         if (e.key === 'Escape') queueMicrotask(() => setComparing(false))
@@ -984,7 +974,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   /* Only the zone under the pointer lights up, and only when it takes what is being carried.
      onDragLeave also fires when the pointer crosses a child, so `contains` stops the flicker. */
   const leaveTarget = (key: string) => (e: React.DragEvent) => {
-    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+    if (e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget)) return
     setOverTarget((current) => (current === key ? null : current))
   }
 
@@ -1074,9 +1064,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   }
   /* what a file is called on disk once a copy exists; null while there is none to name */
   const deliveredName = (file: ManifestFile) =>
-    file.processed && statusOf(file) !== 'local' ? baseName(file.processed.path) : null
+    file.processed && statusOf(file) !== 'local' ? lastSegment(file.processed.path) : null
 
-  const fileLane = (file: ManifestFile, lane: ManifestFile[], e: React.MouseEvent) =>
+  const fileLane = (file: ManifestFile, lane: ManifestFile[], e: Modifiers) =>
     clickFile(file, lane, e, () => preview.handlePreview(file, groupOfFile(file)?.id ?? LOOSE))
 
   const groupOfFile = (file: ManifestFile) =>
@@ -1188,8 +1178,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
   const placeDrop = (target: Place) => {
     const key = placeKey(target)
-    /* Dropping on a passenger used to make a new, nameless tandem beside theirs. It means the
-       opposite: this is theirs too. */
+    /* dropping on a passenger means "this is theirs too": it joins their tandem */
     const host =
       target.kind === 'pax' ? named.find((g) => passengerOf(g) === target.name) : undefined
     const props =
@@ -1760,7 +1749,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
       {dialog?.kind === 'folder' && (
         <NasFolderBrowser
-          open
           initialPath={
             dialog.destination
               ? (places.find((d) => d.name === dialog.destination)?.path ?? undefined)

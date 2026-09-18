@@ -88,7 +88,7 @@ const VideoCropper = ({
   const handleBarDown = (e: React.PointerEvent) => {
     if (draggingRef.current) return
     try {
-      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+      e.currentTarget.setPointerCapture(e.pointerId)
     } catch {}
     draggingRef.current = 'playhead'
     const t = timeFromPosition(e.clientX)
@@ -117,7 +117,7 @@ const VideoCropper = ({
 
   const handleCropHandleDown = (which: 'start' | 'end') => (e: React.PointerEvent) => {
     try {
-      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+      e.currentTarget.setPointerCapture(e.pointerId)
     } catch {}
     draggingRef.current = which
     e.preventDefault()
@@ -137,7 +137,7 @@ const VideoCropper = ({
 
   const handlePointerUp = (e: React.PointerEvent) => {
     try {
-      ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
+      e.currentTarget.releasePointerCapture(e.pointerId)
     } catch {}
     draggingRef.current = null
   }

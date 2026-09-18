@@ -123,6 +123,13 @@ const resolveDestinationPath = (
   return defaultFolder ? `${defaultFolder}/${destinationName}` : null
 }
 
+/* the passenger's name as one string, trimmed; empty for a jump with nobody in it */
+const passengerName = (passenger: ManifestPassenger | null | undefined) =>
+  passenger ? `${passenger.firstname} ${passenger.lastname}`.trim() : ''
+
+const passengerOf = (group: { passenger?: ManifestPassenger | null }) =>
+  passengerName(group.passenger)
+
 export {
   buildPassengerFolder,
   buildFsTime,
@@ -133,6 +140,8 @@ export {
   hasPartialPassenger,
   makeFileName,
   mergeGroups,
+  passengerName,
+  passengerOf,
   resolveDestinationPath,
   toFileStem
 }

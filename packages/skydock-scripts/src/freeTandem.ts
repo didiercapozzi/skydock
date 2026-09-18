@@ -1,5 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { z } from 'zod'
 import { isArchiveFresh } from './archive'
 import { uploadGate } from './fileStatus'
 import { hashFile } from './lib/fs'
@@ -11,7 +12,8 @@ import { getCutProxyDir } from './proxy'
 import { isTandem } from './tandem'
 import type { Manifest, ManifestFile } from './types'
 import { deliveredFiles } from './upload'
-import { isVideoFile } from './utils'
+import { isVideoFile, sizeOf } from './utils'
+import { lastSegment } from './paths'
 
 /* Once a tandem is on the storage and handed over, what is left of it here is gigabytes nobody needs
    on this machine: the originals, the prepared copies, the working copies, the film and the zips.
@@ -25,17 +27,6 @@ import { isVideoFile } from './utils'
    was, what was sent where, and that it now lives only on the storage. */
 
 type FreeResult = { groupId: string; fileIds: string[]; bytes: number; at: number }
-
-const sizeOf = (target: string) => {
-  try {
-    return fs.statSync(target).size
-  } catch {
-    return 0
-  }
-}
-
-/* the name the storage knows, for a message a person has to act on */
-const nameOf = (remotePath: string) => remotePath.slice(remotePath.lastIndexOf('/') + 1)
 
 /* Deleting only ever reaches what SkyDock made or copied, under the output folder — never the
    camera's own storage, which is mounted read-only anyway, and never anything outside. */
@@ -106,7 +97,7 @@ const proveOnStorage = async (
   /* every file that went up: the same bytes here and on the storage as when it was sent */
   const sent = deliveredFiles(record)
   for (const file of sent) {
-    const label = nameOf(file.remotePath)
+    const label = lastSegment(file.remotePath)
     if (!fs.existsSync(file.localPath) || sizeOf(file.localPath) !== file.size) {
       problems.push(`${label} changed here since it was uploaded`)
       continue
@@ -127,16 +118,16 @@ const proveOnStorage = async (
   const sentLocally = new Set(sent.map((f) => f.localPath))
   if (videos.length > 0) {
     if (record.rushes) {
-      const contents = (() => {
+      const listed = (() => {
         try {
-          return JSON.parse(
-            fs.readFileSync(`${record.rushes.localPath}.contents`, 'utf-8')
-          ) as unknown
+          return z
+            .array(z.string())
+            .safeParse(JSON.parse(fs.readFileSync(`${record.rushes.localPath}.contents`, 'utf-8')))
         } catch {
           return null
         }
       })()
-      const names = Array.isArray(contents) ? contents.filter((n) => typeof n === 'string') : []
+      const names = listed?.success ? listed.data : []
       const entries = [
         ...videos.map((f) => ({ file: f.path, name: f.filename })),
         ...names

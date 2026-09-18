@@ -1,6 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { getDestinationDir, getGroupProcessedDir, isFlatGroup } from './process'
+import { parentOf } from './paths'
 import { publishJump } from './publish'
 import type { CheckProgress, UploadProgress, UploadVerdict } from './publish'
 import { listNasFiles } from './nas'
@@ -36,11 +37,6 @@ const deliveredFiles = (record: ManifestGroup['delivered']) =>
       )
     : []
 
-const dirOfRemote = (remotePath: string) => {
-  const cut = remotePath.lastIndexOf('/')
-  return cut <= 0 ? '/' : remotePath.slice(0, cut)
-}
-
 /* What the NAS holds right now in the folders we have uploaded into, so a file deleted over there
    stops reading as uploaded. The folders come from the upload records themselves, not from the
    destination list — a tandem lives in `{destination}/{Passenger}/`, which listing the destination
@@ -49,11 +45,11 @@ const dirOfRemote = (remotePath: string) => {
 const listRemoteFiles = async (manifest: Manifest, session: NasSession) => {
   const wanted = [
     ...new Set([
-      ...manifest.files.flatMap((f) => (f.uploaded ? [dirOfRemote(f.uploaded.remotePath)] : [])),
+      ...manifest.files.flatMap((f) => (f.uploaded ? [parentOf(f.uploaded.remotePath)] : [])),
       /* and wherever a tandem's upload put its film, photos and originals — a delivered tandem is
          only delivered while those are still there */
       ...manifest.groups.flatMap((g) =>
-        deliveredFiles(g.delivered).map((f) => dirOfRemote(f.remotePath))
+        deliveredFiles(g.delivered).map((f) => parentOf(f.remotePath))
       )
     ])
   ]
@@ -80,7 +76,7 @@ const goneFromStorage = (
 ) =>
   remote
     ? deliveredFiles(record).filter((f) => {
-        if (!remote.dirs.includes(dirOfRemote(f.remotePath))) return false
+        if (!remote.dirs.includes(parentOf(f.remotePath))) return false
         const size = remote.sizes[f.remotePath]
         return size === undefined || (size !== null && size !== f.size)
       })

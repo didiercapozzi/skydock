@@ -12,6 +12,8 @@ import {
   hasEdit,
   ensureNasSession,
   isTandem,
+  parentOf,
+  passengerOf,
   processJumps,
   getGroupProcessedDir,
   whenProcessed,
@@ -41,7 +43,6 @@ import { moveFiles } from '../../../packages/skydock-scripts/src/moveFiles'
 import type { NasSession } from '../../../packages/skydock-scripts/src/nas'
 import {
   entryOfTandem,
-  parentOf,
   updateTandemIndex,
   upsert
 } from '../../../packages/skydock-scripts/src/tandemIndex'
@@ -122,9 +123,6 @@ const recordOnStorage = async (
     }
   }
 }
-
-const passengerOf = (group: { passenger?: { firstname: string; lastname: string } }) =>
-  group.passenger ? `${group.passenger.firstname} ${group.passenger.lastname}` : ''
 
 const action = createValidatedFormAction<Route.ActionArgs>()({
   schema: actionArgs,

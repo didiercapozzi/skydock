@@ -1,13 +1,12 @@
+import { lastSegment } from '@skydock/scripts'
 import { Go, Mini } from './buttons'
 import { Modal, Spacer } from './modal'
-import { formatFilmSize } from './tandem-card'
+import { formatFilmSize } from './utils'
 import type { ManifestGroup } from './types'
 
 /* Freeing an uploaded tandem deletes its originals from this machine, so the dialog says three
    things before anything happens: what is proved first, what is then deleted, and what it costs —
    the tandem cannot be processed or edited again from here. */
-
-const nameOf = (remotePath: string) => remotePath.slice(remotePath.lastIndexOf('/') + 1)
 
 const Line = ({ mark, children }: { mark: string; children: React.ReactNode }) => (
   <li className='flex gap-2 text-[12.5px] text-ink-2'>
@@ -63,7 +62,7 @@ const FreeDialog = ({
             <code className='font-mono text-[11.5px]'>
               {sent
                 .slice(0, 3)
-                .map((f) => nameOf(f.remotePath))
+                .map((f) => lastSegment(f.remotePath))
                 .join(', ')}
               {sent.length > 3 ? ` and ${sent.length - 3} more` : ''}
             </code>

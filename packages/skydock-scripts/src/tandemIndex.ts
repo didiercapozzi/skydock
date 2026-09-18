@@ -5,6 +5,7 @@ import * as path from 'node:path'
 import { z } from 'zod'
 import { dsmFetch, dsmRequestUrl, normalizeNasPath } from './nas'
 import type { NasSession } from './nas'
+import { parentOf } from './paths'
 import { uploadFile } from './publish'
 import { tandemEntrySchema as entrySchema, tandemIndexSchema as indexSchema } from './tandemEntry'
 import type { TandemEntry, TandemIndex } from './tandemEntry'
@@ -104,8 +105,6 @@ const upsert = (index: TandemIndex, entry: Partial<TandemEntry> & { folder: stri
   else index.tandems[at] = entrySchema.parse({ ...index.tandems[at], ...entry })
 }
 
-const parentOf = (remotePath: string) => remotePath.slice(0, remotePath.lastIndexOf('/')) || '/'
-
 /* A tandem's entry, from what its upload recorded: the passenger's folder is where the film and the
    photos went, and the list lives in the folder above it — the Tandems folder. Nothing that was not
    uploaded has an entry. */
@@ -133,5 +132,5 @@ const entryOfTandem = (group: ManifestGroup) => {
   return { dir: parentOf(folder), entry }
 }
 
-export { entryOfTandem, INDEX_NAME, parentOf, readTandemIndex, updateTandemIndex, upsert }
+export { entryOfTandem, INDEX_NAME, readTandemIndex, updateTandemIndex, upsert }
 export type { TandemEntry, TandemIndex }

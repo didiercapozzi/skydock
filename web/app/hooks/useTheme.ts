@@ -45,7 +45,7 @@ const setTheme = (theme: Theme) => {
 
 /* `useSyncExternalStore` rather than state for the reason given in useFileView: the server has no
    localStorage, so the server snapshot is the default and the first client paint agrees with it. */
-const useTheme = () => useSyncExternalStore(subscribe, readStored, () => 'auto' as Theme)
+const useTheme = () => useSyncExternalStore(subscribe, readStored, (): Theme => 'auto')
 
 export { applyTheme, setTheme, useTheme }
 export type { Theme }

@@ -11,6 +11,9 @@ import { formatSize, formatTime, getFileUrl, getThumbUrl, isVideoFile } from './
    filter left. */
 type Kind = 'all' | 'video' | 'photo'
 
+/* what a click on a file means depends on the keys held with it — a key press carries the same */
+type Modifiers = { shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }
+
 /* One shape for every file. A clip is not a different layout, only a badge inside the same square,
    so nothing shifts position between one row and the next. */
 type FileShape = 'rows' | 'grid'
@@ -24,7 +27,7 @@ type Props = {
   /* where each clip's proxy has got to, keyed by the clip's path — read off the disk by the
      server, because the record alone cannot know someone emptied the folder */
   proxies: Record<string, ProxyFact>
-  onFile: (file: ManifestFile, lane: ManifestFile[], e: React.MouseEvent) => void
+  onFile: (file: ManifestFile, lane: ManifestFile[], e: Modifiers) => void
   onDragFile: (file: ManifestFile, e?: React.DragEvent) => void
   /* the name the file has once a copy exists — what goes to the NAS and what the passenger sees */
   deliveredName: (file: ManifestFile) => string | null
@@ -221,7 +224,7 @@ const Row = ({
     onKeyDown={(e) => {
       if (e.key !== 'Enter' && e.key !== ' ') return
       e.preventDefault()
-      onFile(file, lane, e as unknown as React.MouseEvent)
+      onFile(file, lane, e)
     }}
     className={`flex h-[38px] w-full items-center gap-2.5 rounded-md border px-[7px] text-left ${
       picked ? 'border-accent bg-accent-soft' : 'border-transparent hover:bg-line-2'
@@ -543,4 +546,4 @@ const FileList = (props: Props) => {
 }
 
 export { FileList, KindBadges, lockReason, matchesKind, kindOf }
-export type { Kind, FileShape }
+export type { FileShape, Kind, Modifiers }

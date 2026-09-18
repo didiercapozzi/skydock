@@ -140,39 +140,6 @@ const PreviewDrawer = ({
   const [shown, setShown] = useState('None')
   const [ratio, setRatio] = useState<number | null>(null)
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-
-  /* R turns it a quarter clockwise, as the button does — never while a field has the keyboard */
-  const turnRef = useRef<(by: number) => void>(() => {})
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null
-      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return
-      if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault()
-        turnRef.current(90)
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
-
-  useEffect(() => {
-    if (videoRef.current) {
-      onVideoRef({
-        seek: (time: number) => {
-          if (videoRef.current) videoRef.current.currentTime = time
-        }
-      })
-    }
-  }, [file?.path, onVideoRef])
-
   /* The picture as it will come out: turned. Its shape is what the box on screen takes, what the
      rectangle is drawn over and measured against, and what "Same" means. */
   const turned = turnedSize(shape.width, shape.height, rotation)
@@ -191,8 +158,20 @@ const PreviewDrawer = ({
     }
     onRotate(next)
   }
+  /* Escape closes; R turns a quarter clockwise, as the button does — never while a field has the
+     keyboard. One listener on the window, renewed each render so it sees the latest turn. */
   useEffect(() => {
-    turnRef.current = turn
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+      if (e.target instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName))
+        return
+      if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault()
+        turn(90)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   })
 
   if (!file) return null
@@ -310,7 +289,15 @@ const PreviewDrawer = ({
                 }}>
                 {video ? (
                   <video
-                    ref={videoRef}
+                    /* the way to seek this element is handed up as soon as it exists */
+                    ref={(el) => {
+                      videoRef.current = el
+                      onVideoRef({
+                        seek: (time: number) => {
+                          if (el) el.currentTime = time
+                        }
+                      })
+                    }}
                     src={fileUrl}
                     onPlay={() => setPlaying(true)}
                     onPause={() => setPlaying(false)}

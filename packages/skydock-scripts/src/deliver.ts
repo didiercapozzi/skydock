@@ -8,17 +8,9 @@ import { filmNameOf, isTandem, photosNameOf, rushesNameOf, tandemArtifacts } fro
 import type { Manifest, ManifestGroup } from './types'
 import { targetForGroup, uploadTargets } from './upload'
 import type { UploadTarget } from './upload'
-import { isVideoFile } from './utils'
+import { isVideoFile, sizeOf } from './utils'
 
 const SETTLE_MS = 1500
-
-const sizeOf = (target: string) => {
-  try {
-    return fs.statSync(target).size
-  } catch {
-    return null
-  }
-}
 
 /* The editor writes the film under its final name while it renders, with no partial extension to
    look for — so the only way to tell a finished film from a growing one is to watch it. */
@@ -26,7 +18,7 @@ const settled = async (film: string) => {
   const before = sizeOf(film)
   await new Promise((resolve) => setTimeout(resolve, SETTLE_MS))
   const after = sizeOf(film)
-  return before !== null && after !== null && before === after && after > 0
+  return before === after && after > 0
 }
 
 const resolveFilm = async (artifacts: ReturnType<typeof tandemArtifacts>, hasVideos: boolean) => {

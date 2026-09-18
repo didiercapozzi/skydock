@@ -1,5 +1,6 @@
 import * as fs from 'node:fs'
 import { ZipArchive } from 'archiver'
+import { sizeOf } from './utils'
 
 type ArchiveEntry = { file: string; name: string }
 
@@ -10,14 +11,6 @@ type ArchiveProgress = { entries: number; totalEntries: number; bytes: number; t
 const VIDEO_LEVEL = 0
 
 const PHOTO_LEVEL = 1
-
-const sizeOf = (file: string) => {
-  try {
-    return fs.statSync(file).size
-  } catch {
-    return 0
-  }
-}
 
 /* What went into an archive, written beside it. Newer than every file in it is not enough to reuse
    it: a film asked into the backup is older than the zip it was never part of. */

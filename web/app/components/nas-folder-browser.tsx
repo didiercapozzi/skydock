@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
 import { useSafeFetcher } from '../helpers/routing'
 import { Go, Mini } from './buttons'
@@ -15,7 +15,6 @@ const folderErrorSchema = z
 type FolderItem = z.infer<typeof folderItemSchema>
 
 type Props = {
-  open: boolean
   onSelect: (path: string) => void
   onClose: () => void
   /* where to open — a destination that already has a folder starts at that folder, not at / */
@@ -24,10 +23,10 @@ type Props = {
   title?: string
 }
 
-const NasFolderBrowser = ({ open, onSelect, onClose, initialPath, title }: Props) => {
+const NasFolderBrowser = ({ onSelect, onClose, initialPath, title }: Props) => {
   const fetcher = useSafeFetcher()
-  const [currentPath, setCurrentPath] = useState('/')
-  const [selected, setSelected] = useState<string | null>(null)
+  const [currentPath, setCurrentPath] = useState(initialPath ?? '/')
+  const [selected, setSelected] = useState<string | null>(initialPath ?? null)
   const [newFolderName, setNewFolderName] = useState('')
   const [showCreateInput, setShowCreateInput] = useState(false)
 
@@ -54,19 +53,13 @@ const NasFolderBrowser = ({ open, onSelect, onClose, initialPath, title }: Props
     setShowCreateInput(false)
   }
 
+  /* the first listing is asked for once, when the dialog appears; browsing asks for the rest */
+  const listed = useRef(false)
   useEffect(() => {
-    if (open) {
-      load(initialPath ?? currentPath)
-      setSelected(initialPath ?? null)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initialPath])
-
-  useEffect(() => {
-    if (parsedFolders.success) setNewFolderName('')
-  }, [parsedFolders.success])
-
-  if (!open) return null
+    if (listed.current) return
+    listed.current = true
+    fetcher.submit({ url: '/api/nas', actionArgs: { intent: 'list-folder', path: currentPath } })
+  }, [fetcher, currentPath])
 
   const parentPath =
     currentPath === '/' ? null : currentPath.split('/').slice(0, -1).join('/') || '/'

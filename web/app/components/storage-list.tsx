@@ -1,17 +1,15 @@
 import type { TandemEntry } from '@skydock/scripts'
 import { useState } from 'react'
+import { lastSegment } from '@skydock/scripts'
 import { Mini } from './buttons'
+import { localeDate } from './utils'
 
 /* Every tandem the storage holds, from its own list: the ones still on this machine and the ones
    freed from it or delivered from another one. Each says who it was for, when it went up, whether
    the passenger was emailed, and where its link and its backup are. */
 
-const date = (epoch: number) => new Date(epoch * 1000).toLocaleDateString('de-CH')
-
 /* the day of the jump, 01.08.2026, read the way the list writes it */
 const jumpDay = (day: string) => day.replace(/^0/, '').replace(/\.0/, '.')
-
-const nameOf = (remotePath: string) => remotePath.slice(remotePath.lastIndexOf('/') + 1)
 
 const Row = ({
   entry,
@@ -47,12 +45,12 @@ const Row = ({
         {entry.videos} video{entry.videos === 1 ? '' : 's'} · {entry.photos} photo
         {entry.photos === 1 ? '' : 's'}
       </span>
-      <span className='text-[12px] text-ink-2'>uploaded {date(entry.uploadedAt)}</span>
+      <span className='text-[12px] text-ink-2'>uploaded {localeDate(entry.uploadedAt)}</span>
       {entry.emailed ? (
         <span
           title={entry.emailed.to ? `Emailed to ${entry.emailed.to}` : undefined}
           className='rounded-full bg-up-soft px-2 py-px text-[11px] font-semibold text-up'>
-          ✓ emailed {date(entry.emailed.at)}
+          ✓ emailed {localeDate(entry.emailed.at)}
         </span>
       ) : (
         <span className='rounded-full bg-local-soft px-2 py-px text-[11px] font-semibold text-local'>
@@ -80,7 +78,7 @@ const Row = ({
             onClick={() =>
               void navigator.clipboard?.writeText(entry.backup ?? '').catch(() => undefined)
             }>
-            Backup · {nameOf(entry.backup)}
+            Backup · {lastSegment(entry.backup)}
           </Mini>
         )}
         {entry.shareUrl && (

@@ -1,4 +1,4 @@
-import { fileStatus } from '@skydock/scripts'
+import { fileStatus, passengerName, passengerOf } from '@skydock/scripts'
 import { useState } from 'react'
 import type { StatusContext } from '@skydock/scripts'
 import type { Destination, ManifestFile, ManifestGroup } from './types'
@@ -42,11 +42,6 @@ const placeLabel = (place: Place) =>
       : place.name
 
 /* a passenger's name as it is shown, and as two jumps are recognised as the same person by */
-const passengerName = (passenger: ManifestGroup['passenger']) =>
-  passenger ? `${passenger.firstname} ${passenger.lastname}`.trim() : ''
-
-const passengerOf = (group: ManifestGroup) => passengerName(group.passenger)
-
 const Node = ({
   place,
   label,

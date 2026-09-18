@@ -1,3 +1,4 @@
+import { parentOf } from './paths'
 import type { ManifestFile } from './types'
 
 /* Free of node imports: the board runs this in the browser. */
@@ -25,11 +26,6 @@ type StatusContext = {
   remote?: RemoteListing | null
   /* the file belongs to a tandem that has an edit, which freezes it (RULES, Montage) */
   inEdit?: boolean
-}
-
-const dirOf = (remotePath: string) => {
-  const cut = remotePath.lastIndexOf('/')
-  return cut <= 0 ? '/' : remotePath.slice(0, cut)
 }
 
 /* Two rectangles are the same rectangle, with no rectangle at all counting as the whole frame —
@@ -80,7 +76,7 @@ const outputMatches = (file: ManifestFile, output?: OutputFact) => {
 const remoteMatches = (file: ManifestFile, remote?: RemoteListing | null) => {
   const record = file.uploaded
   if (!record || !remote) return true
-  if (!remote.dirs.includes(dirOf(record.remotePath))) return true
+  if (!remote.dirs.includes(parentOf(record.remotePath))) return true
   if (!(record.remotePath in remote.sizes)) return false
   const size = remote.sizes[record.remotePath]
   return size === null || size === record.size

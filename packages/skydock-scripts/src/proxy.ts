@@ -3,6 +3,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { loadManifest, saveManifest } from './manifest'
 import type { Manifest, ManifestFile } from './types'
+import { lastComplaint, quote, run } from './tools'
 import { getManifestPath, getOutputDir, hasCommand, isVideoFile } from './utils'
 
 /* A proxy is a small, all-intra copy of a clip. It exists twice over: the editor opens on proxies
@@ -154,7 +155,7 @@ const videoShape = (src: string) => {
   if (!hasCommand('ffprobe')) return null
   try {
     const out = childProcess.execSync(
-      `ffprobe -v error -select_streams v:0 -show_entries stream=width,height:stream_side_data=rotation -of default=nw=1 "${src.replace(/(["$`\\])/g, '\\$1')}"`,
+      `ffprobe -v error -select_streams v:0 -show_entries stream=width,height:stream_side_data=rotation -of default=nw=1 ${quote(src)}`,
       { encoding: 'utf-8' }
     )
     const read = (key: string) => {
@@ -187,45 +188,9 @@ const scaleFilter = (shape: { turned: boolean } | null, hardware: boolean) => {
   return shape?.turned ? `scale_vaapi=w=-2:h=${PROXY_WIDTH}` : `scale_vaapi=w=${PROXY_WIDTH}:h=-2`
 }
 
-/* ffmpeg signs off with "Conversion failed!", which says only that it did — the diagnosis is a
-   line further up, naming the setting it would not accept. So the sign-offs are dropped and the
-   first line that actually gives a reason is kept: once one stage fails, every stage after it
-   reports its own failure too, and the last of those is a consequence. A scaler that could not
-   start used to be reported as the encoder's "error code -22 (Invalid argument)", which pointed
-   at the wrong thing entirely. */
-const NOISE = [
-  /^Conversion failed!?$/i,
-  /^Error opening output file/i,
-  /^Terminating thread/i,
-  /^Task finished with error code/i
-]
-
-const NAMES_A_REASON = /failed|invalid|unable|impossible|not (supported|implemented)/i
-
-const lastComplaint = (stderr: string) => {
-  const lines = stderr
-    .split('\n')
-    .map((l) => l.trim().replace(/^\[[^\]]+\]\s*/, ''))
-    .filter((l) => l !== '' && !NOISE.some((n) => n.test(l)))
-  const named = lines.filter((l) => NAMES_A_REASON.test(l))
-  return named[0] ?? lines[lines.length - 1] ?? 'ffmpeg failed with no output'
-}
-
-/* Written to a temporary name and moved into place, so an interrupted run leaves nothing that
-   looks finished — the next pass would otherwise skip a half-written proxy forever.
-
-   Why it failed comes back with the answer. This used to be thrown away three times over — stderr
-   to /dev/null, stdio ignored, the error swallowed — so when every clip on a card failed, the app
-   could say only that it had. */
-/* A proxy is minutes of ffmpeg per clip, and a card is dozens of clips: run with the blocking call,
-   the server answered nothing until the last one was made — a scan, or one clip dragged in, froze
-   the whole board. So ffmpeg is waited on without holding the thread, and its complaint is kept. */
-const runFfmpeg = (line: string) =>
-  new Promise<{ ok: true } | { ok: false; stderr: string }>((resolve) => {
-    childProcess.exec(line, { maxBuffer: 64 * 1024 * 1024 }, (error, _stdout, stderr) =>
-      resolve(error ? { ok: false, stderr: String(stderr ?? '') } : { ok: true })
-    )
-  })
+/* Written to a temporary name and moved into place, so an interrupted run leaves nothing that looks
+   finished — the next pass would otherwise skip a half-written proxy forever. Why it failed comes
+   back with the answer. */
 
 const buildProxy = async (
   src: string,
@@ -233,7 +198,6 @@ const buildProxy = async (
   shape: ReturnType<typeof videoShape> = null
 ) => {
   if (!hasCommand('ffmpeg')) return { ok: false as const, reason: 'ffmpeg is not installed' }
-  const quote = (p: string) => `"${p.replace(/(["$`\\])/g, '\\$1')}"`
   const { encoder: pick, cardScales } = detection()
   /* A VAAPI card with no scaler decodes into ordinary memory instead, where ffmpeg turns the frame
      the right way up exactly as it does for the processor path, and hands the resized frame back
@@ -259,10 +223,10 @@ const buildProxy = async (
         : scaleFilter(shape, pick === 'vaapi')
   const partial = `${dest}.part`
   fs.mkdirSync(path.dirname(dest), { recursive: true })
-  const run = await runFfmpeg(
+  const ran = await run(
     `ffmpeg -y ${decode.join(' ')} -i ${quote(src)} -vf ${filter} ${ENCODER_ARGS[pick].join(' ')} ${CONTAINER_ARGS.join(' ')} ${quote(partial)}`
   )
-  if (run.ok) {
+  if (ran.ok) {
     try {
       fs.renameSync(partial, dest)
       return { ok: true as const }
@@ -271,7 +235,7 @@ const buildProxy = async (
     }
   }
   if (fs.existsSync(partial)) fs.unlinkSync(partial)
-  return { ok: false as const, reason: lastComplaint(run.stderr) }
+  return { ok: false as const, reason: lastComplaint(ran.stderr) }
 }
 
 /* The timeline carries the cut footage, so a proxy of the whole clip would not line up with it.
@@ -282,7 +246,7 @@ const cropProxy = (src: string, dest: string, cropStart: number, cropEnd: number
   fs.mkdirSync(path.dirname(dest), { recursive: true })
   try {
     childProcess.execSync(
-      `ffmpeg -y -ss ${cropStart} -i "${src.replace(/(["$`\\])/g, '\\$1')}" -t ${(cropEnd - cropStart).toFixed(6)} -c copy -avoid_negative_ts make_zero "${dest.replace(/(["$`\\])/g, '\\$1')}" 2>/dev/null`,
+      `ffmpeg -y -ss ${cropStart} -i ${quote(src)} -t ${(cropEnd - cropStart).toFixed(6)} -c copy -avoid_negative_ts make_zero ${quote(dest)} 2>/dev/null`,
       { stdio: 'ignore' }
     )
     return true
@@ -438,7 +402,6 @@ export {
   buildProxy,
   cropProxy,
   DRI_DEVICE,
-  lastComplaint,
   proxyEncoder,
   setProxyEncoder,
   videoShape,
