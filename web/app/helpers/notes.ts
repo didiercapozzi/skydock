@@ -47,6 +47,19 @@ const uploadedNote = (uploaded: number, skipped?: number) =>
 const freedNote = ({ files, bytes }: { files: number; bytes: number }) =>
   `On the storage only. ${plural(files, 'file')} freed from this machine on ${localeDate(Date.now() / 1000)} — ${formatFilmSize(bytes)} given back. The project is kept here; everything else is on the storage, as above.`
 
+const resetNote = ({
+  files,
+  jumps,
+  what
+}: {
+  files: number
+  jumps: number
+  what: 'times' | 'everything'
+}) =>
+  what === 'times'
+    ? `Times reset — ${plural(files, 'file')} back on the camera’s time; jumps, names and trims kept`
+    : `Fresh files reset — ${plural(files, 'file')} back as scanned, in ${plural(jumps, 'jump')}`
+
 /* files copied into another jump, which is then to be processed again */
 const copiedNote = ({ files, passedOver }: { files: number; passedOver: number }) =>
   `Copied ${plural(files, 'file')} into the jump — ${files === 1 ? 'it stays' : 'they stay'} where ${
@@ -66,4 +79,13 @@ const restoredNote = (restored: { who: string; files: number; of: number }[]) =>
   }`
 }
 
-export { copiedNote, freedNote, importNote, montageNote, restoredNote, scanNote, uploadedNote }
+export {
+  copiedNote,
+  resetNote,
+  freedNote,
+  importNote,
+  montageNote,
+  restoredNote,
+  scanNote,
+  uploadedNote
+}

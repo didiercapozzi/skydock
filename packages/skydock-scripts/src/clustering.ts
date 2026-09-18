@@ -24,29 +24,35 @@ const splitByGap = (files: ManifestFile[]) => {
   return batches
 }
 
-/* The files a jump holds that the gap rule would not have put there — dragged in by hand, or
-   re-timed away from the rest — so the board can flag them without moving anything. The jump is its
-   longest unbroken run; whatever a pause the rule cuts at separates from it is off the run. A copy
-   is left out of it: it is off the run by being a copy, and says so with a flag of its own. */
-const offGap = (held: ManifestFile[]) => {
-  const files = held.filter((f) => !f.copyOf)
-  const runs = splitByGap(files)
-  if (runs.length < 2) return new Set<string>()
-  const main = runs.reduce((a, b) => (b.length > a.length ? b : a))
-  return new Set(
-    runs
-      .filter((run) => run !== main)
-      .flat()
-      .flatMap((f) => (f.id ? [f.id] : []))
-  )
+/* The jump itself, among the files it holds: its longest unbroken run. Whatever a pause the rule
+   cuts at separates from that run was brought in — dragged from another jump, dropped in from the
+   computer, or re-timed away from the rest. A copy is never part of it: it was shot for another
+   jump, and says so with a flag of its own. A jump holding nothing but copies has only them. */
+const mainRun = (held: ManifestFile[]) => {
+  const own = held.filter((f) => !f.copyOf)
+  const runs = splitByGap(own.length > 0 ? own : held)
+  return runs.reduce<ManifestFile[]>((a, b) => (b.length > a.length ? b : a), [])
 }
+
+/* The files a jump holds that the gap rule would not have put there, so the board can flag them
+   without moving anything. */
+const offGap = (held: ManifestFile[]) => {
+  const main = new Set(mainRun(held))
+  return new Set(held.flatMap((f) => (f.id && !f.copyOf && !main.has(f) ? [f.id] : [])))
+}
+
+/* When a jump started: when its own run did. A file brought in from elsewhere — moved, added from
+   the computer, copied — was often shot well before or after, and does not say when this jump was:
+   the card's date, the jump's number, the day it is filed under and the time that gets corrected
+   all follow the run, so bringing a file in changes none of them and leaves nothing to set right. */
+const startOfFiles = (files: ManifestFile[]) => mainRun(files)[0]?.mtime ?? 0
 
 /* The day a jump belongs to: the day it started. It is stored rather than worked out from the
    files each time, because a file dragged in from another day joins the jump — it does not drag
    the jump to its own day with it (RULES, Jumps). Whatever changes a whole jump's time changes
    this with it. */
 const dayOfFiles = (files: ManifestFile[]) =>
-  files.length === 0 ? '' : formatDay(Math.min(...files.map((f) => f.mtime)))
+  files.length === 0 ? '' : formatDay(startOfFiles(files))
 
 const buildGroup = (files: ManifestFile[], id: string, label: string): ManifestGroup => ({
   id,
@@ -140,6 +146,16 @@ const groupFromFiles = (manifest: Manifest, files: ManifestFile[], destination?:
   return group
 }
 
+/* The files still to be sorted: in no place, and in no jump that is in one. */
+const freshIds = (manifest: Manifest) => {
+  const filed = new Set(
+    manifest.groups.filter((g) => g.destination).flatMap((g) => g.files.map((f) => f.id))
+  )
+  return new Set(
+    manifest.files.flatMap((f) => (f.id && !f.destination && !filed.has(f.id) ? [f.id] : []))
+  )
+}
+
 /* Re-clusters only the files sitting in no jump, so putting the sorting area back in order never
    disturbs a jump that has already been filed. */
 const regroupLooseFiles = (manifest: Manifest) => {
@@ -178,7 +194,7 @@ const shiftFiles = (manifest: Manifest, ids: Set<string>, offsetSeconds: number)
    dates). */
 const shiftGroupTo = (manifest: Manifest, group: ManifestGroup, anchorEpoch: number) => {
   if (group.files.length === 0) return
-  const offset = Math.round(anchorEpoch) - Math.min(...group.files.map((f) => f.mtime))
+  const offset = Math.round(anchorEpoch) - startOfFiles(group.files)
   if (offset === 0) return
   shiftFiles(manifest, new Set(group.files.flatMap((f) => (f.id ? [f.id] : []))), offset)
 }
@@ -200,11 +216,14 @@ const retimeFile = (manifest: Manifest, id: string, epoch: number) => {
 
 export {
   dayOfFiles,
+  freshIds,
   groupFromFiles,
   offGap,
   reclusterGroups,
   regroupLooseFiles,
   retimeFile,
   shiftFiles,
-  shiftGroupTo
+  shiftGroupTo,
+  splitByGap,
+  startOfFiles
 }

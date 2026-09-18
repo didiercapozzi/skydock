@@ -90,6 +90,14 @@ current setting to everything, including jumps that were split or merged by hand
 - The guess can be corrected by hand. Two jumps can be **merged**; files can be **dragged** from one
   jump to another, or back to the sorting area; loose files can be **regrouped** by running the gap
   rule again over everything still unsorted. A jump with nothing left in it disappears.
+- **A jump starts when its own run starts.** The jump is its longest unbroken run of files; a file
+  brought in from elsewhere — dragged from another jump, added from the computer, copied — was often
+  shot well before or after, and does not say when this jump was. So bringing a file in changes nothing
+  about the jump: the date and time on its card, its number among the jumps, the day it is filed under
+  and the start that gets corrected all keep following the run, and there is nothing to set right
+  afterwards. The file is still listed, and laid on a montage's timeline, where its own time puts it. A
+  file brought in from within the gap is part of the same filming, and then the jump does start with it.
+  A copy never counts, however close.
 - A file a jump holds against the gap rule — dragged in by hand, or re-timed away from the rest, so that
   a pause the rule would cut at separates it from the jump's longest run — carries a **gap** flag
   wherever it is drawn, and the jump's card says how many of its files do. The flag only says so; nothing is moved, since whoever put it there may be right.
@@ -107,9 +115,24 @@ current setting to everything, including jumps that were split or merged by hand
   leaves it in its jump rather than pulling it back beside its original, and it follows its original if
   that file is moved, and goes if that file is gone. The original cannot be put in the bin while a jump
   holds a copy of it, and freeing a tandem leaves on the disk any original another jump still holds.
+- **A file back in Fresh files is on its camera's time again.** A time is only ever corrected for the
+  jump a file is in — the whole jump moved to when it really happened, a clip fitted among the others —
+  and means nothing once the file is on its own; left on it, the file would sit under a day it was never
+  shot on. So a file taken out of its jump, sent back from a place, or left by a jump that was deleted
+  goes back to the time its camera gave it. Its trim, frame and turn are kept: those are about the clip.
+  A file that moves to another jump, or is filed to a place, keeps the time it was given.
+- **Fresh files can be reset**, by as much as is wanted, from one place that offers both and says what
+  each forgets and keeps — choosing is the asking first. _Times only_, for when a correction was the
+  mistake: every file still to be sorted goes back to its camera's time, and the jumps, their names and
+  every trim, frame and turn stay. _Everything, as just scanned_, for when the sorting has gone wrong
+  and starting over beats undoing it: the corrected times, the jumps made and named by hand, the copies
+  brought in and every trim, frame and turn are forgotten, and the gap rule alone makes the jumps.
+  Either way nothing filed to a dropzone or a passenger is touched, and no original is.
+- Gathering the loose files of Fresh files into jumps is a different thing and forgets nothing: it is
+  offered on the count of loose files, and only ever groups what is in no jump.
 - A jump that should not exist can be **deleted** from its panel, wherever it is filed. The jump goes
-  and its files stay: back in Fresh files, loose, each on the day it was shot, keeping the trim, frame and
-  turn set on it in the jump. What was made from them no longer matches and is deleted, so when there
+  and its files stay: back in Fresh files, loose, each on the day it was shot and at the time its camera
+  gave it, keeping the trim, frame and turn set on it in the jump. What was made from them no longer matches and is deleted, so when there
   are processed copies it asks first, saying how many. A dropzone's jump already uploaded cannot be
   deleted, nor one on the storage only. A named tandem is deleted as a tandem instead — at any step,
   and forgetting what was decided about it (Taking a tandem back). Regrouping puts loose files back

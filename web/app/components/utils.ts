@@ -1,4 +1,4 @@
-import { getOutputDir, isVideoFile as isVideoFileFromScripts } from '@skydock/scripts'
+import { getOutputDir, isVideoFile as isVideoFileFromScripts, startOfFiles } from '@skydock/scripts'
 import type { ProxyFact } from '@skydock/scripts'
 import type { ManifestFile, ManifestGroup } from './types'
 
@@ -89,11 +89,8 @@ const toDateInputValue = (epoch: number) => {
   return `${d.getFullYear()}-${month}-${day}`
 }
 
-const minFileMtime = (files: Array<{ mtime: number }>) => {
-  let min = Infinity
-  for (const f of files) if (f.mtime < min) min = f.mtime
-  return min === Infinity ? 0 : min
-}
+/* when a run of files started — which a copy brought in from another jump has no say in */
+const minFileMtime = startOfFiles
 
 const getGroupDate = (group: ManifestGroup) => group.day ?? ''
 

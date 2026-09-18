@@ -15,6 +15,7 @@ import {
   processingNow,
   statProcessedOutputs,
   statProxies,
+  startOfFiles,
   statTandemArtifacts,
   tandemSteps,
   tandemUploadKey,
@@ -223,6 +224,18 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const fileById = (id: string) =>
     [...groups.flatMap((g) => g.files), ...loose].find((f) => f.id === id)
   const askTrash = (files: ManifestFile[]) => setDialog({ kind: 'trash', files })
+  /* Fresh files put back, by as much as is chosen in the dialog, which says what each choice costs */
+  const resetFresh = () => {
+    const jumps = groups.filter((g) => !g.destination)
+    const files = [...jumps.flatMap((g) => g.files), ...loose.filter((f) => !f.destination)]
+    setDialog({
+      kind: 'reset-fresh',
+      files: files.length,
+      decided: files.filter(
+        (f) => f.cropStart != null || f.cropEnd != null || f.frame || f.rotation
+      ).length
+    })
+  }
   /* The jump goes; its files stay, loose in Unsorted, crops and all. Only processed copies are
      lost — they no longer match where the files are — so that alone is asked about first. */
   const deleteJump = (group: ManifestGroup) => {
@@ -812,7 +825,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     ])
   )
   const labelOf = (group: ManifestGroup) =>
-    `${labels.get(group.id) ?? group.label} · ${shortDate(Math.min(...group.files.map((f) => f.mtime)))}`
+    `${labels.get(group.id) ?? group.label} · ${shortDate(startOfFiles(group.files))}`
 
   const inspector = () => {
     const everyFile = [...groups.flatMap((g) => g.files), ...loose]
@@ -1034,6 +1047,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                   : undefined
               }
               onRegroup={() => send('regroup', { intent: 'regroup-loose' })}
+              onReset={resetFresh}
               onPlace={pickPlace}
             />
           }
@@ -1156,6 +1170,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           })
           /* a deleted tandem has no page left; its jumps are in Unsorted now */
           if (mode === 'delete') pickPlace({ kind: 'sort' })
+        }}
+        onResetFresh={(what) => {
+          setDialog(null)
+          selection.clear()
+          send('reset', { intent: 'reset-fresh', resetWhat: what })
         }}
         onMontage={(groupId, template) => {
           setDialog(null)

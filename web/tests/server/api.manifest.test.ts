@@ -485,6 +485,61 @@ describe('changes made on the board', () => {
     expect(res.groups[0]?.files.map((f) => f.mtime)).toEqual([1_754_100_000, 1_754_100_060])
   })
 
+  /* RULES, Jumps: Fresh files put back as a scan would first have left them */
+  describe('resetting Fresh files', () => {
+    it('forgets the jumps made and named by hand, and the trims, leaving what is filed alone', async () => {
+      writeManifest([
+        group({
+          id: 'g1',
+          name: 'Sunset load',
+          files: [
+            file({ id: 'a', cropStart: 1, cropEnd: 4 }),
+            file({ id: 'b', mtime: 1_754_000_060 })
+          ]
+        }),
+        group({
+          id: 'g2',
+          destination: 'Yverdon',
+          files: [file({ id: 'c', cropStart: 2, cropEnd: 3 })]
+        })
+      ])
+
+      const res = (await send({ intent: 'reset-fresh', resetWhat: 'everything' })) as Answer & {
+        reset: { files: number; jumps: number; what: string }
+      }
+
+      expect(res.reset).toEqual({ files: 2, jumps: 1, what: 'everything' })
+      const fresh = res.groups.find((g) => !g.destination)
+      expect(fresh?.name).toBeUndefined()
+      expect(fresh?.files[0]?.cropStart).toBeUndefined()
+      expect(res.groups.find((g) => g.destination === 'Yverdon')?.files[0]?.cropStart).toBe(2)
+    })
+
+    it('keeps the jump, its name and its trims when only the times are reset', async () => {
+      writeManifest([
+        group({
+          id: 'g1',
+          name: 'Sunset load',
+          files: [
+            file({ id: 'a', cropStart: 1, cropEnd: 4 }),
+            file({ id: 'b', mtime: 1_754_000_060 })
+          ]
+        })
+      ])
+
+      const res = answer(await send({ intent: 'reset-fresh', resetWhat: 'times' }))
+
+      expect(res.groups[0]).toMatchObject({ id: 'g1', name: 'Sunset load' })
+      expect(res.groups[0]?.files[0]).toMatchObject({ cropStart: 1, cropEnd: 4 })
+    })
+
+    it('says so when there is nothing in Fresh files', async () => {
+      writeManifest([group({ id: 'g2', destination: 'Yverdon', files: [file({ id: 'c' })] })])
+      const res = refusal(await send({ intent: 'reset-fresh' }))
+      expect(res.globalErrors?.[0]).toContain('nothing in Fresh files')
+    })
+  })
+
   /* RULES, Jumps: a clip two jumps share is copied into the second, not moved */
   describe('copying files into another jump', () => {
     const two = () =>

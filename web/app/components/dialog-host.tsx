@@ -5,6 +5,7 @@ import { ConnectionDialog } from './connection-dialog'
 import { EmailDialog } from './email-dialog'
 import { FreeDialog } from './free-dialog'
 import { NasFolderBrowser } from './nas-folder-browser'
+import { ResetFreshDialog } from './reset-fresh-dialog'
 import { TakeBackDialog } from './take-back-dialog'
 import { TemplatesDialog } from './templates-dialog'
 import type { TakeBackMode } from './take-back-dialog'
@@ -30,6 +31,8 @@ type BoardDialog =
   | { kind: 'trash'; files: ManifestFile[] }
   /* a tandem on this board by its jump, or one the storage's list alone knows, by its folder */
   | { kind: 'email'; groupId?: string; folder?: string }
+  /* Fresh files put back, by as much as is chosen there */
+  | { kind: 'reset-fresh'; files: number; decided: number }
   /* the editing templates — chosen between for this tandem's montage, or only looked over */
   | { kind: 'templates'; groupId?: string }
 
@@ -52,6 +55,7 @@ const DialogHost = ({
   onTakeBack,
   onTrash,
   onMontage,
+  onResetFresh,
   comparing
 }: {
   dialog: BoardDialog
@@ -78,6 +82,7 @@ const DialogHost = ({
   onTakeBack: (mode: TakeBackMode, group: ManifestGroup) => void
   onTrash: (files: ManifestFile[]) => void
   onMontage: (groupId: string, template: string) => void
+  onResetFresh: (what: 'times' | 'everything') => void
   comparing: {
     /* the two jumps side by side, when two are being compared */
     pair: [string, string] | null
@@ -215,6 +220,15 @@ const DialogHost = ({
           files={dialog.files}
           onClose={close}
           onConfirm={() => onTrash(dialog.files)}
+        />
+      )}
+
+      {dialog?.kind === 'reset-fresh' && (
+        <ResetFreshDialog
+          files={dialog.files}
+          decided={dialog.decided}
+          onClose={close}
+          onReset={onResetFresh}
         />
       )}
 

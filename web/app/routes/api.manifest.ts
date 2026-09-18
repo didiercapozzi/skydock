@@ -9,6 +9,7 @@ import { freeTandemIntent } from './manifest/free-tandem'
 import { imported } from './manifest/imported'
 import { markEmailed } from './manifest/mark-emailed'
 import { copyFilesIntent } from './manifest/copy-files'
+import { resetFreshIntent } from './manifest/reset-fresh'
 import { restoreTandemsIntent } from './manifest/restore-tandems'
 import { mergeGroupsIntent } from './manifest/merge-groups'
 import { montage } from './manifest/montage'
@@ -48,7 +49,8 @@ const intents: Record<ActionData['intent'], Intent> = {
   imported,
   'mark-emailed': markEmailed,
   'restore-tandems': restoreTandemsIntent,
-  'copy-files': copyFilesIntent
+  'copy-files': copyFilesIntent,
+  'reset-fresh': resetFreshIntent
 }
 
 const action = createValidatedFormAction<Route.ActionArgs>()({

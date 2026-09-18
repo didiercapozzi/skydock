@@ -2,7 +2,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { reclusterGroups } from '../src/clustering'
+import { reclusterGroups, shiftGroupTo, startOfFiles } from '../src/clustering'
 import { loadManifest, saveManifest } from '../src/manifest'
 import { copyFiles, moveFiles } from '../src/moveFiles'
 import { getProxyPath } from '../src/proxy'
@@ -215,5 +215,91 @@ describe('the original of a copy', () => {
     moveFiles(manifest, new Set(['plane']), { destination: null })
 
     expect(() => trashUnsorted(manifest, new Set(['plane']), dir!)).toThrow(/copied into a jump/)
+  })
+})
+
+/* A copy was shot for another jump and brought in, often from well before. It does not say when
+   this jump began — so copying a clip in leaves the jump's start, its day and the time that gets
+   corrected exactly as they were, and there is nothing to set right afterwards. */
+describe('a jump holding a copy from earlier', () => {
+  /* Luc's plane, from the day before, copied into Ana's jump */
+  const withEarlierCopy = () => {
+    const manifest = board()
+    const dayBefore = AT - 86_400
+    manifest.files[0]!.mtime = dayBefore
+    manifest.groups[0]!.files[0]!.mtime = dayBefore
+    copyFiles(manifest, new Set(['plane']), 'anas')
+    return { manifest, anas: manifest.groups.find((g) => g.id === 'anas')! }
+  }
+
+  it('still starts when its own files start', () => {
+    const { anas } = withEarlierCopy()
+    expect(startOfFiles(anas.files)).toBe(AT + 7200)
+  })
+
+  it('lists the copy first all the same, since it was shot first', () => {
+    const { anas } = withEarlierCopy()
+    expect(anas.files.map((f) => f.id)).toEqual(['plane~1', 'ana', 'ana2'])
+  })
+
+  /* the day is worked out again when a jump is re-timed, and must not become the copy's */
+  it('stays filed under its own day when it is re-timed', () => {
+    const { manifest, anas } = withEarlierCopy()
+
+    shiftGroupTo(manifest, anas, AT + 7200 + 600)
+
+    expect(anas.day).toBe('01.08.2026')
+  })
+
+  it('is re-timed from its own first file, the copy moving along with the rest', () => {
+    const { manifest, anas } = withEarlierCopy()
+    const copyWas = anas.files[0]!.mtime
+
+    shiftGroupTo(manifest, anas, AT + 7200 + 600)
+
+    expect(anas.files.find((f) => f.id === 'ana')?.mtime).toBe(AT + 7200 + 600)
+    expect(anas.files.find((f) => f.id === 'plane~1')?.mtime).toBe(copyWas + 600)
+  })
+
+  it('has only its copies to go by when it holds nothing else', () => {
+    expect(
+      startOfFiles([file('x~1', AT, { copyOf: 'x' }), file('y~1', AT + 5, { copyOf: 'y' })])
+    ).toBe(AT)
+  })
+})
+
+/* The same holds for any file brought in, not only a copy: one dragged from another jump, or added
+   from the computer, was often shot well before the jump it lands in. The jump is its own unbroken
+   run, and starts when that does. */
+describe('a jump holding a file brought in from well before', () => {
+  const broughtIn = () => {
+    const manifest = board()
+    /* Luc's exit clip, dragged into Ana's jump two hours later */
+    moveFiles(manifest, new Set(['luc']), { targetGroupId: 'anas' })
+    return { manifest, anas: manifest.groups.find((g) => g.id === 'anas')! }
+  }
+
+  it('still starts when its own run starts', () => {
+    const { anas } = broughtIn()
+    expect(anas.files.map((f) => f.id)).toEqual(['luc', 'ana', 'ana2'])
+    expect(startOfFiles(anas.files)).toBe(AT + 7200)
+  })
+
+  it('is re-timed from its own run, and stays on its own day', () => {
+    const { manifest, anas } = broughtIn()
+
+    shiftGroupTo(manifest, anas, AT + 7200 + 300)
+
+    expect(anas.files.find((f) => f.id === 'ana')?.mtime).toBe(AT + 7200 + 300)
+    expect(anas.day).toBe('01.08.2026')
+  })
+
+  /* close enough to be the same filming, it is the jump: five minutes before is when it began */
+  it('does start earlier when the file brought in is part of the same run', () => {
+    const manifest = board()
+    manifest.files.push(file('justBefore', AT + 7200 - 300))
+    moveFiles(manifest, new Set(['justBefore']), { targetGroupId: 'anas' })
+
+    expect(startOfFiles(manifest.groups.find((g) => g.id === 'anas')!.files)).toBe(AT + 7200 - 300)
   })
 })

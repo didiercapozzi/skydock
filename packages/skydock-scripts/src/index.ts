@@ -12,7 +12,8 @@ import {
   regroupLooseFiles,
   retimeFile,
   shiftFiles,
-  shiftGroupTo
+  shiftGroupTo,
+  startOfFiles
 } from './clustering'
 import { fileChanged, fileStatus, outputKeyOf, uploadGate } from './fileStatus'
 import type { FileStatus, OutputFact, RemoteListing, StatusContext } from './fileStatus'
@@ -119,6 +120,7 @@ import {
 } from './workspace'
 
 export {
+  startOfFiles,
   outputKeyOf,
   watchTandems,
   liveEventSchema,

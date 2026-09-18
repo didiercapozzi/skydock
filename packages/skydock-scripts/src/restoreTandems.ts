@@ -1,4 +1,4 @@
-import { dayOfFiles } from './clustering'
+import { dayOfFiles, freshIds } from './clustering'
 import { moveFiles } from './moveFiles'
 import type { TandemEntry } from './tandemEntry'
 import type { Manifest } from './types'
@@ -13,16 +13,6 @@ import type { Manifest } from './types'
    claimed back — the copies are gone with the record of them, and "uploaded" is only ever said of a
    copy proved on both sides — so a restored tandem is named and waits to be processed; uploading it
    again skips what the storage already holds. */
-
-/* files still to be sorted: in no place, and in no jump that is in one */
-const freshIds = (manifest: Manifest) => {
-  const filed = new Set(
-    manifest.groups.filter((g) => g.destination).flatMap((g) => g.files.map((f) => f.id))
-  )
-  return new Set(
-    manifest.files.flatMap((f) => (f.id && !f.destination && !filed.has(f.id) ? [f.id] : []))
-  )
-}
 
 /* The files of a listed tandem that are on this board waiting to be sorted. A tandem whose files
    are already filed somewhere is left to whoever filed them, and one freed from its machine has no

@@ -1,5 +1,6 @@
 import * as fs from 'node:fs'
 import { groupFromFiles, shiftGroupTo } from './clustering'
+import { cameraTimes } from './scan'
 import type { Manifest, ManifestFile } from './types'
 
 /* Moving files on the board, in one place: dragged from one jump to another, onto a place, back to
@@ -56,6 +57,16 @@ const moveFiles = (manifest: Manifest, asked: Set<string>, to: MoveTo) => {
       const entry = copy.id && ids.has(copy.id) && manifest.files.find((f) => f.id === copy.id)
       if (entry) Object.assign(entry, copy)
     }
+
+  /* Back to be sorted, a file is on the time its camera gave it. A time was only ever corrected for
+     the jump it was in — a whole jump moved to where it really happened, a clip fitted among the
+     others — and means nothing once the file is on its own; left on it, the file would be sorted
+     under a day it was never shot on. A file whose original cannot be asked keeps the time it has. */
+  if (!to.targetGroupId && !to.newGroup && !to.destination) {
+    const going = manifest.files.filter((f) => f.id && ids.has(f.id))
+    const times = cameraTimes(going.map((f) => f.path))
+    for (const file of going) file.mtime = times.get(file.path) || file.mtime
+  }
 
   /* the files leave wherever they were, so their processed copies are stale */
   for (const file of manifest.files) {

@@ -1,5 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { startOfFiles } from './clustering'
 import { loadManifest, saveManifest } from './manifest'
 import { isWholeFrame, orientationAfter, pictureFilter } from './frameCrop'
 import { cropProxy, DRI_DEVICE, getCutProxyDir, proxyEncoder, videoShape } from './proxy'
@@ -209,7 +210,7 @@ const isFlatGroup = (group: ManifestGroup) =>
   !hasCompletePassenger(group.passenger) && !!group.destination
 
 const getGroupProcessedDir = (outputDir: string, group: ManifestGroup) => {
-  const dayEpoch = parseDayEpoch(group.day) ?? Math.min(...group.files.map((f) => f.mtime))
+  const dayEpoch = parseDayEpoch(group.day) ?? startOfFiles(group.files)
   const baseName = buildGroupBaseName(group.passenger, group.label, dayEpoch)
   if (isFlatGroup(group)) {
     return { dir: getDestinationDir(outputDir, group.destination!), baseName, dayEpoch, flat: true }

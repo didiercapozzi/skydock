@@ -28,6 +28,8 @@ const actionArgs = z.object({
     /* a jump that should not exist: it goes, its files stay, loose in Unsorted */
     'delete-jump',
     'regroup-loose',
+    /* everything still in Fresh files, back as a scan would first have left it */
+    'reset-fresh',
     /* unsorted files nobody wants, out of the originals and into the bin */
     'trash-unsorted',
     /* back to before processing, keeping every decision — or undone altogether */
@@ -55,6 +57,8 @@ const actionArgs = z.object({
   leftId: z.string().optional(),
   rightId: z.string().optional(),
   anchorEpoch: z.number().optional(),
+  /* how much of Fresh files to reset: the times alone, or everything decided about it */
+  resetWhat: z.enum(['times', 'everything']).optional(),
   /* which of the storage's tandems to put back, by their folder up there; absent is every one */
   folders: z.array(z.string()).optional(),
   /* what a jump is called, when it is made or renamed */

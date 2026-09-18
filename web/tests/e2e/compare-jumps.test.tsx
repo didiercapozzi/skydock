@@ -144,3 +144,71 @@ describe('jumps as cards', () => {
     ])
   })
 })
+
+/* Fresh files can be put back by as much as is wanted: the times alone, or everything as just
+   scanned. The two are offered together, each saying what it forgets, and choosing is the asking. */
+describe('resetting Fresh files', () => {
+  const asked: unknown[] = []
+  const renderWithRequests = async () => {
+    asked.length = 0
+    const Stub = createRoutesStub([
+      { path: '/', Component: Board, loader: () => board },
+      {
+        path: '/api/manifest',
+        action: async ({ request }) => {
+          asked.push(await request.json())
+          return { ok: true }
+        }
+      }
+    ])
+    await render(createElement(Stub, { initialEntries: ['/'] }))
+  }
+
+  const dialog = () => page.getByRole('dialog', { name: 'Reset Fresh files' })
+
+  test('offers the times alone or everything, each saying what it forgets and keeps', async () => {
+    await renderWithRequests()
+
+    await userEvent.click(page.getByRole('button', { name: 'reset…' }))
+
+    await expect.element(dialog().getByRole('button', { name: /^Times only/ })).toBeInTheDocument()
+    await expect
+      .element(dialog().getByRole('button', { name: /^Everything, as just scanned/ }))
+      .toBeInTheDocument()
+    await expect
+      .element(dialog().getByText(/nothing filed to a dropzone or a passenger is touched/))
+      .toBeInTheDocument()
+    expect(asked).toEqual([])
+  })
+
+  test('resets only the times when that is chosen', async () => {
+    await renderWithRequests()
+    await userEvent.click(page.getByRole('button', { name: 'reset…' }))
+
+    await userEvent.click(dialog().getByRole('button', { name: /^Times only/ }))
+
+    await vi.waitFor(() =>
+      expect(asked).toContainEqual({ intent: 'reset-fresh', resetWhat: 'times' })
+    )
+  })
+
+  test('resets everything when that is chosen', async () => {
+    await renderWithRequests()
+    await userEvent.click(page.getByRole('button', { name: 'reset…' }))
+
+    await userEvent.click(dialog().getByRole('button', { name: /^Everything/ }))
+
+    await vi.waitFor(() =>
+      expect(asked).toContainEqual({ intent: 'reset-fresh', resetWhat: 'everything' })
+    )
+  })
+
+  test('does nothing when the dialog is closed', async () => {
+    await renderWithRequests()
+    await userEvent.click(page.getByRole('button', { name: 'reset…' }))
+
+    await userEvent.click(dialog().getByRole('button', { name: 'Close' }))
+
+    expect(asked).toEqual([])
+  })
+})

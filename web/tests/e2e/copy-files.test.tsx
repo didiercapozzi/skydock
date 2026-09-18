@@ -93,6 +93,31 @@ describe('dropping files on another jump', () => {
   })
 })
 
+/* Jump 2 holds a copy shot two hours before its own first file, and still says it started when its
+   own files did: copying a clip in changes nothing about when the jump was. */
+describe('a jump holding a copy from earlier', () => {
+  test('keeps its own start on its card, and its own number', async () => {
+    const earlier = {
+      ...board,
+      groups: [
+        board.groups[0],
+        {
+          ...board.groups[1],
+          files: [
+            file('plane~1', AT - 3600, { copyOf: 'plane', path: '/o/plane.MP4' }),
+            file('ana', AT + 7200)
+          ]
+        }
+      ]
+    }
+    const Stub = createRoutesStub([{ path: '/', Component: Board, loader: () => earlier }])
+    await render(createElement(Stub, { initialEntries: ['/'] }))
+
+    /* 12:00, when Ana's own clip was shot — not 09:00, when the copied plane was */
+    await expect.element(card(/^Jump 2, 1 August 2026 12:00/)).toBeInTheDocument()
+  })
+})
+
 describe('a copy in a jump', () => {
   test('says on the file that it is one', async () => {
     await renderBoard()

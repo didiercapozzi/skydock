@@ -19,6 +19,7 @@ const FolderOwed = ({
   busy,
   folder,
   onRegroup,
+  onReset,
   onPlace
 }: {
   place: Place
@@ -31,6 +32,8 @@ const FolderOwed = ({
   /* a dropzone's folder on the storage, and a way to choose it */
   folder?: { path: string | null; onChoose: () => void }
   onRegroup: () => void
+  /* everything still to be sorted, back as a scan would first have left it */
+  onReset: () => void
   onPlace: (place: Place) => void
 }) => {
   if (place.kind === 'sort') {
@@ -48,15 +51,23 @@ const FolderOwed = ({
                 <button
                   type='button'
                   disabled={busy}
-                  title='Run the gap rule again over every loose file here'
+                  title='Gather the loose files here into jumps, by the gap rule — nothing is forgotten'
                   onClick={onRegroup}
                   className='border-0 bg-transparent p-0 text-[12px] text-accent underline disabled:opacity-40'>
-                  regroup
+                  group them into jumps
                 </button>
               </>
             )}
           </Owed>
         )}
+        <button
+          type='button'
+          disabled={busy}
+          title='Put Fresh files back — the times alone, or everything as just scanned. Asks which first.'
+          onClick={onReset}
+          className='border-0 bg-transparent p-0 text-[12px] text-accent underline disabled:opacity-40'>
+          reset…
+        </button>
         <span className='ml-auto text-ink-3 max-[900px]:hidden'>
           Drag a jump onto a folder on the left, or use <b className='text-ink-2'>File to</b> on its
           line

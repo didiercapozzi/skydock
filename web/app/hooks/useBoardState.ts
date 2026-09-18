@@ -8,6 +8,7 @@ import {
   freedNote,
   importNote,
   montageNote,
+  resetNote,
   restoredNote,
   scanNote,
   uploadedNote
@@ -102,6 +103,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
         imported,
         restored,
         copied: copiedFiles,
+        reset: resetTo,
         storage: listed,
         storageProblem
       } = answered.data
@@ -132,7 +134,9 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
                     ? restoredNote(restored)
                     : copiedFiles
                       ? copiedNote(copiedFiles)
-                      : null
+                      : resetTo
+                        ? resetNote(resetTo)
+                        : null
       /* the work stands even when the list could not follow it, and that is said alongside */
       setNote(storageProblem ? [said, storageProblem].filter(Boolean).join(' · ') : said)
     } else {
