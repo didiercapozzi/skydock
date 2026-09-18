@@ -78,6 +78,8 @@ const resolveGroups = (files: ManifestFile[], groupsFile: GroupsFile | null) => 
         else delete resolved.cropEnd
         if (ref.frame !== undefined) resolved.frame = ref.frame
         else delete resolved.frame
+        if (ref.rotation !== undefined) resolved.rotation = ref.rotation
+        else delete resolved.rotation
         return resolved
       })
       .filter((f): f is ManifestFile => f !== null)
@@ -133,7 +135,9 @@ const saveManifest = (manifestPath: string, manifest: Manifest) => {
           id: f.id!,
           cropStart: f.cropStart ?? undefined,
           cropEnd: f.cropEnd ?? undefined,
-          frame: f.frame ?? undefined
+          frame: f.frame ?? undefined,
+          /* as shot is not written down */
+          rotation: f.rotation || undefined
         }))
     }))
   }

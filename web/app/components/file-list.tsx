@@ -71,8 +71,8 @@ const CropFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) =
     <span
       title={
         applied
-          ? 'Crop applied when this file was prepared'
-          : 'Crop saved — applied at the next Prepare'
+          ? 'Crop applied when this file was processed'
+          : 'Crop saved — applied at the next Process'
       }
       className={`flex-none rounded px-1.5 font-mono text-[10px] leading-4 font-semibold whitespace-nowrap ${
         applied
@@ -132,8 +132,8 @@ const FrameFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) 
     <span
       title={
         applied
-          ? `Frame cropped when this file was prepared — about ${kept}% of the picture, keeping its shape`
-          : `Frame crop saved — about ${kept}% of the picture, keeping its shape. Applied at the next Prepare.`
+          ? `Frame cropped when this file was processed — about ${kept}% of the picture, keeping its shape`
+          : `Frame crop saved — about ${kept}% of the picture, keeping its shape. Applied at the next Process.`
       }
       className={`flex-none rounded px-1.5 font-mono text-[10px] leading-4 font-semibold whitespace-nowrap ${
         applied
@@ -144,6 +144,34 @@ const FrameFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) 
     </span>
   )
 }
+
+/* The turn, the same way: solid once applied, dashed while only saved. */
+const TurnFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) => {
+  if (!file.rotation) return null
+  return (
+    <span
+      title={
+        applied
+          ? `Turned ${file.rotation}° when this file was processed`
+          : `Turned ${file.rotation}° — applied at the next Process`
+      }
+      className={`flex-none rounded px-1.5 font-mono text-[10px] leading-4 font-semibold whitespace-nowrap ${
+        applied
+          ? 'border border-accent bg-accent text-white'
+          : 'border border-dashed border-local bg-local-soft text-local'
+      }`}>
+      ↻ {file.rotation}°
+    </span>
+  )
+}
+
+/* A thumbnail shows the picture the way it will come out. A quarter-turned picture no longer fills
+   the same box, so it is scaled up by its shape to cover it again — a thumbnail is for recognising a
+   file, not for seeing all of it. */
+const turnedThumb = (rotation: ManifestFile['rotation']): React.CSSProperties | undefined =>
+  rotation
+    ? { transform: `rotate(${rotation}deg)${rotation % 180 ? ' scale(1.34)' : ''}` }
+    : undefined
 
 /* Picked or not, in the corner of every thumbnail once a selection is under way: an empty ring to
    say it can be picked, filled with the board's green and a tick once it is. A white edge and a
@@ -211,6 +239,7 @@ const Row = ({
         src={isVideoFile(file.path) ? getThumbUrl(file.path, 0.5, 80) : getFileUrl(file.path)}
         alt=''
         loading='lazy'
+        style={turnedThumb(file.rotation)}
         className='h-full w-full object-cover'
       />
       {isVideoFile(file.path) && (
@@ -237,6 +266,10 @@ const Row = ({
       applied={status === 'processed' || status === 'uploaded'}
     />
     <CropFlag
+      file={file}
+      applied={status === 'processed' || status === 'uploaded'}
+    />
+    <TurnFlag
       file={file}
       applied={status === 'processed' || status === 'uploaded'}
     />
@@ -288,7 +321,7 @@ const Tile = ({
     onClick={(e) => onFile(file, lane, e)}
     title={`${file.filename} · ${formatTime(file.mtime)} · ${formatSize(file.size)} · ${status}${
       proxy?.state === 'none' ? ' · no proxy yet' : ''
-    }${isWholeFrame(file.frame) ? '' : ' · frame cropped'}`}
+    }${isWholeFrame(file.frame) ? '' : ' · frame cropped'}${file.rotation ? ` · turned ${file.rotation}°` : ''}`}
     className={`relative aspect-[4/3] max-w-full overflow-hidden rounded-[5px] border-2 bg-line-2 p-0 ${
       picked ? 'border-accent' : 'border-transparent'
     }`}>
@@ -296,6 +329,7 @@ const Tile = ({
       src={isVideoFile(file.path) ? getThumbUrl(file.path, 0.5, 160) : getFileUrl(file.path)}
       alt=''
       loading='lazy'
+      style={turnedThumb(file.rotation)}
       className='absolute inset-0 h-full w-full object-cover'
     />
     {isVideoFile(file.path) && (

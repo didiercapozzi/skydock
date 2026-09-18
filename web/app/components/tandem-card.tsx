@@ -230,8 +230,8 @@ const PassengerCard = ({
           {complete && (group.processed || group.delivered) && (
             <p className='mt-1 text-[11.5px] text-changed'>
               {group.delivered
-                ? 'Already uploaded — a new name means preparing and uploading again, and the old folder stays on the storage under the old name.'
-                : 'Already prepared — a new name means preparing it again, into the new folder.'}
+                ? 'Already uploaded — a new name means processing and uploading again, and the old folder stays on the storage under the old name.'
+                : 'Already processed — a new name means processing it again, into the new folder.'}
             </p>
           )}
         </>

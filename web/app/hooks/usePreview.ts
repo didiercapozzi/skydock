@@ -1,5 +1,5 @@
 import { isVideoFile } from '@skydock/scripts'
-import type { FrameCrop } from '@skydock/scripts'
+import type { FrameCrop, Rotation } from '@skydock/scripts'
 import { useRef, useState } from 'react'
 import type { VideoRef } from '../components/preview-drawer'
 import type { ManifestFile, ManifestGroup, PreviewState } from '../components/types'
@@ -22,12 +22,19 @@ const usePreview = (
   onGroupsChange: (next: ManifestGroup[]) => void,
   /* a lone file's crop has no group reference to live on, so it is saved on the registry entry —
      the frame goes the same way */
-  onFileCrop: (file: ManifestFile, range: CropRange, frame?: FrameCrop | null) => void
+  onFileCrop: (
+    file: ManifestFile,
+    range: CropRange,
+    frame?: FrameCrop | null,
+    rotation?: Rotation
+  ) => void
 ) => {
   const [preview, setPreview] = useState<PreviewState>(null)
   /* the rectangle on screen, held here rather than read back off the snapshot the drawer was
      opened with — that snapshot never learns about a rectangle set after it was taken */
   const [frame, setFrame] = useState<FrameCrop | null>(null)
+  /* how far the picture is turned, a draft like the rectangle until it is saved */
+  const [rotation, setRotation] = useState<Rotation>(0)
   const videoRefRef = useRef<VideoRef | null>(null)
   const [videoState, setVideoStateRaw] = useState<VideoState>({
     crop: { cropStart: null, cropEnd: null },
@@ -50,6 +57,7 @@ const usePreview = (
       duration: 0
     })
     setFrame(file.frame ?? null)
+    setRotation(file.rotation ?? 0)
     setPreview({ files, index: found === -1 ? 0 : found, groupId })
   }
 
@@ -68,13 +76,13 @@ const usePreview = (
      `Reset crop` comes through here too, with an empty range; that is a clearing rather than a
      commit, so it leaves the drawer open to set a new one. */
   const committed = (range: CropRange) =>
-    range.cropStart !== null || range.cropEnd !== null || frame !== null
+    range.cropStart !== null || range.cropEnd !== null || frame !== null || rotation !== 0
 
   const handleVideoApply = (range: CropRange) => {
     if (!preview) return
     const file = preview.files[preview.index]
     if (!file) return
-    if (preview.groupId === LOOSE) onFileCrop(file, range, frame)
+    if (preview.groupId === LOOSE) onFileCrop(file, range, frame, rotation)
     else
       onGroupsChange(
         groups.map((g) =>
@@ -84,7 +92,7 @@ const usePreview = (
                 ...g,
                 files: g.files.map((f) =>
                   f.path === file.path
-                    ? { ...f, cropStart: range.cropStart, cropEnd: range.cropEnd, frame }
+                    ? { ...f, cropStart: range.cropStart, cropEnd: range.cropEnd, frame, rotation }
                     : f
                 )
               }
@@ -117,6 +125,27 @@ const usePreview = (
     )
   }
 
+  /* A camera on its side is on its side for the whole jump, so one turn usually wants to be all of
+     them — but only the files of the same kind as this one, since a jump's clips and its photos can
+     come off different cameras. It replaces whatever each had, and touches nothing else. */
+  const handleRotationApplyToJump = () => {
+    if (!preview || preview.groupId === LOOSE) return
+    const current = preview.files[preview.index]
+    if (!current) return
+    const sameKind = (f: ManifestFile) => isVideoFile(f.path) === isVideoFile(current.path)
+    onGroupsChange(
+      groups.map((g) =>
+        g.id !== preview.groupId
+          ? g
+          : { ...g, files: g.files.map((f) => (sameKind(f) ? { ...f, rotation } : f)) }
+      )
+    )
+  }
+
+  const handleRotate = (next: Rotation) => {
+    setRotation(next)
+  }
+
   const handleVideoRef = (ref: VideoRef) => {
     videoRefRef.current = ref
   }
@@ -128,8 +157,11 @@ const usePreview = (
     handleVideoSeek,
     handleVideoApply,
     frame,
+    rotation,
+    handleRotate,
     handleFrameChange,
     handleFrameApplyToJump,
+    handleRotationApplyToJump,
     handleVideoRef,
     setVideoState,
     closePreview,

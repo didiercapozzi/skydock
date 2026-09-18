@@ -96,6 +96,8 @@ const Drawer = ({ saved }: { saved?: FrameCrop | null }) => {
     index: 0,
     frame,
     onFrameChange: setFrame,
+    rotation: 0,
+    onRotate: () => {},
     onClose: () => {},
     onPrevious: () => {},
     onNext: () => {},

@@ -2,8 +2,15 @@ import * as childProcess from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { loadManifest, saveManifest } from './manifest'
-import { cropFilter, isWholeFrame } from './frameCrop'
-import { cropProxy, getCutProxyDir, proxyEncoder, videoShape } from './proxy'
+import { isWholeFrame, orientationAfter, pictureFilter } from './frameCrop'
+import {
+  cropProxy,
+  DRI_DEVICE,
+  getCutProxyDir,
+  lastComplaint,
+  proxyEncoder,
+  videoShape
+} from './proxy'
 import type { ProxyEncoder } from './proxy'
 import type { ManifestFile, ManifestGroup } from './types'
 import { getManifestPath, getOutputDir, hasCommand, isVideoFile, parseDayEpoch } from './utils'
@@ -32,11 +39,29 @@ const quote = (value: string) => `"${value.replace(/(["$`\\])/g, '\\$1')}"`
    meanwhile hung, and the request it cut off came back as an error page. Everything slow here waits
    without holding the thread. */
 const shell = (line: string) =>
-  new Promise<void>((resolve, reject) => {
-    childProcess.exec(line, { maxBuffer: 64 * 1024 * 1024 }, (error) =>
-      error ? reject(error) : resolve()
+  new Promise<string>((resolve, reject) => {
+    childProcess.exec(line, { maxBuffer: 64 * 1024 * 1024 }, (error, stdout) =>
+      error ? reject(error) : resolve(String(stdout ?? ''))
     )
   })
+
+/* The picture as it is watched: a clip carrying a turn in its metadata is shown turned, and the
+   filters are handed frames already turned that way, so its sides are measured that way round. */
+const shownShape = (src: string) => {
+  const shape = videoShape(src)
+  return shape && (shape.turned ? { width: shape.height, height: shape.width } : shape)
+}
+
+/* A photo is turned by its orientation tag, added to whatever turn it already carries: nothing is
+   re-encoded, so nothing is lost, and every viewer draws it the way the tag says. */
+const turnPhoto = async (dest: string, rotation: 90 | 180 | 270) => {
+  const current = Number.parseInt(
+    (await shell(`exiftool -n -s3 -Orientation ${quote(dest)}`)).trim(),
+    10
+  )
+  const next = orientationAfter(Number.isFinite(current) ? current : 1, rotation)
+  await shell(`exiftool -n -overwrite_original -q -Orientation=${next} ${quote(dest)}`)
+}
 
 /* Cutting the ends off a clip moves no pixels, so the stream is copied: instant, and not a frame
    of quality lost. Cutting the frame cannot be: the picture itself changes, so it has to be
@@ -68,8 +93,23 @@ const trimVideo = async (src: string, dest: string, cropStart: number, cropEnd: 
   }
 }
 
-/* The frame, and the ends with it if both were set. Decoding on the card where there is one, the
-   same as the proxies, because unpacking 4K HEVC is what takes the time either way. */
+/* ffmpeg's own words when it fails — the one line that says why, not the stage that gave up after */
+const runFfmpeg = (line: string) =>
+  new Promise<{ ok: true } | { ok: false; reason: string }>((resolve) => {
+    childProcess.exec(line, { maxBuffer: 64 * 1024 * 1024 }, (error, _stdout, stderr) =>
+      resolve(error ? { ok: false, reason: lastComplaint(String(stderr ?? '')) } : { ok: true })
+    )
+  })
+
+/* The picture changed — cut, turned, or both — and the ends with it if they were set. Decoding on the
+   card where there is one, the same as the proxies, because unpacking 4K HEVC is what takes the time
+   either way.
+
+   The filter works in ordinary memory: `crop` and `scale` have hardware twins, but naming the
+   rectangle in pixels of the source frame is the same arithmetic either way and this keeps one code
+   path. An Intel or AMD card's encoder only takes frames that are on the card, so there they are
+   handed back up before encoding — without that, every clip that needed its picture changed failed
+   there, turned or cropped, with nothing more to say than that it had. */
 const recodeVideo = async (
   src: string,
   dest: string,
@@ -77,19 +117,33 @@ const recodeVideo = async (
   cropStart?: number | null,
   cropEnd?: number | null
 ) => {
-  if (!hasCommand('ffmpeg')) return false
-  const pick = proxyEncoder()
-  /* the filter cuts in software: `crop` and `scale` have hardware twins, but naming the rectangle
-     in pixels of the source frame is the same arithmetic either way and this keeps one code path */
-  const decode = pick === 'nvenc' ? '-hwaccel cuda' : pick === 'vaapi' ? '-hwaccel vaapi' : ''
-  try {
-    await shell(
-      `ffmpeg -y ${decode} ${timeArgs(cropStart, cropEnd)} -i ${quote(src)} -vf ${filter} ${DELIVERY_ARGS[pick].join(' ')} -c:a copy ${quote(dest)}`
+  if (!hasCommand('ffmpeg')) return { ok: false as const, reason: 'ffmpeg is not installed' }
+  const run = (pick: ProxyEncoder) => {
+    const decode =
+      pick === 'nvenc'
+        ? '-hwaccel cuda'
+        : pick === 'vaapi'
+          ? `-vaapi_device ${DRI_DEVICE()} -hwaccel vaapi`
+          : ''
+    const chain = pick === 'vaapi' ? `${filter},format=nv12,hwupload` : filter
+    return runFfmpeg(
+      `ffmpeg -y ${decode} ${timeArgs(cropStart, cropEnd)} -i ${quote(src)} -vf ${chain} ${DELIVERY_ARGS[pick].join(' ')} -c:a copy ${quote(dest)}`
     )
-    return true
-  } catch {
-    return false
   }
+  /* A graphics card is the fast way, not the only one. Whatever the card, its driver or the clip's
+     format, a clip it cannot do is done again on the processor — slower, and certain wherever
+     ffmpeg is — so no machine is ever left unable to deliver a turned or cropped clip. */
+  const pick = proxyEncoder()
+  const first = await run(pick)
+  if (first.ok || pick === 'cpu') return first
+  const again = await run('cpu')
+  if (again.ok) {
+    console.warn(
+      `[Process] ${path.basename(src)}: the graphics card could not (${first.reason}) — done on the processor`
+    )
+    return again
+  }
+  return { ok: false as const, reason: `${first.reason}; on the processor: ${again.reason}` }
 }
 
 const updateMetadata = async (files: string[]) => {
@@ -168,15 +222,16 @@ const writeCutProxy = async (
   if (!isVideoFile(file.path) || !file.proxy || !fs.existsSync(file.proxy)) return null
   const target = path.join(getCutProxyDir(outputDir, groupId), `${path.parse(dest).name}.mp4`)
   const trimmed = file.cropStart != null && file.cropEnd != null
-  /* The frame has to be cut out of the proxy as well. The editor opens on these, so a proxy still
-     showing the mount in the corner would have somebody editing a picture that is not the one
-     about to be rendered. The rectangle is fractions of the frame, which is why it applies to a
-     640-wide copy as readily as to the clip. */
-  if (!isWholeFrame(file.frame)) {
-    const shape = videoShape(file.proxy)
+  /* The frame has to be cut out of the proxy as well, and the picture turned the same way. The
+     editor opens on these, so a proxy still showing the mount in the corner, or lying on its side,
+     would have somebody editing a picture that is not the one about to be rendered. The rectangle
+     is fractions of the frame, which is why it applies to a 640-wide copy as readily as to the clip. */
+  if (!isWholeFrame(file.frame) || file.rotation) {
+    const shape = shownShape(file.proxy)
     if (!shape) return null
-    const filter = cropFilter(file.frame!, shape.width, shape.height)
-    return (await recodeVideo(file.proxy, target, filter, file.cropStart, file.cropEnd))
+    const filter = pictureFilter({ frame: file.frame, rotation: file.rotation, ...shape })
+    if (!filter) return null
+    return (await recodeVideo(file.proxy, target, filter, file.cropStart, file.cropEnd)).ok
       ? target
       : null
   }
@@ -192,14 +247,17 @@ const writeCutProxy = async (
 const copyMedia = async (file: ManifestFile, dest: string, time: Date) => {
   const video = isVideoFile(file.path)
   const trimmed = file.cropStart != null && file.cropEnd != null
-  const framed = video && !isWholeFrame(file.frame)
-  if (framed) {
-    const shape = videoShape(file.path)
+  /* the picture itself changes — cut, turned or both — so the clip is encoded again */
+  const reshaped = video && (!isWholeFrame(file.frame) || Boolean(file.rotation))
+  if (reshaped) {
+    const shape = shownShape(file.path)
     if (!shape)
-      throw new Error(`Cannot read the size of ${file.filename}: install ffprobe to crop its frame`)
-    const filter = cropFilter(file.frame!, shape.width, shape.height)
-    if (!(await recodeVideo(file.path, dest, filter, file.cropStart, file.cropEnd)))
-      throw new Error(`ffmpeg could not crop the frame of ${file.filename}: install ffmpeg`)
+      throw new Error(
+        `Cannot read the size of ${file.filename}: install ffprobe to crop or turn it`
+      )
+    const filter = pictureFilter({ frame: file.frame, rotation: file.rotation, ...shape })!
+    const made = await recodeVideo(file.path, dest, filter, file.cropStart, file.cropEnd)
+    if (!made.ok) throw new Error(`ffmpeg could not crop or turn ${file.filename}: ${made.reason}`)
   } else if (video && trimmed) {
     if (!(await trimVideo(file.path, dest, file.cropStart!, file.cropEnd!))) {
       throw new Error(
@@ -208,6 +266,7 @@ const copyMedia = async (file: ManifestFile, dest: string, time: Date) => {
     }
   } else {
     await fs.promises.copyFile(file.path, dest)
+    if (!video && file.rotation) await turnPhoto(dest, file.rotation)
   }
   fs.utimesSync(dest, time, time)
 }
@@ -302,14 +361,15 @@ const copiedAs = (group: ManifestGroup) =>
       f.mtime,
       f.cropStart ?? null,
       f.cropEnd ?? null,
-      f.frame ?? null
+      f.frame ?? null,
+      f.rotation ?? 0
     ])
   )
 
 /* One preparation at a time: two at once would fight over the card and the disk, and over the
    folders if they overlap. The second is refused and says so, rather than queued out of sight. */
 const processJumps = async (options?: ProcessOptions) => {
-  if (running) throw new Error('Already preparing — wait for it to finish, then try again.')
+  if (running) throw new Error('Already processing — wait for it to finish, then try again.')
   const job: Running = {
     groupIds: options?.groupIds ?? [],
     destinations: options?.destination ? [options.destination] : [],
@@ -437,7 +497,8 @@ const runProcess = async (options?: ProcessOptions) => {
         mtime: source.mtime,
         cropStart: source.cropStart ?? null,
         cropEnd: source.cropEnd ?? null,
-        frame: source.frame ?? null
+        frame: source.frame ?? null,
+        rotation: source.rotation ?? null
       }
     }
     delete file.uploaded

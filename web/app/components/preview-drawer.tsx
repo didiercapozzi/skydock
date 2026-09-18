@@ -2,8 +2,8 @@ import { fitRatio, FrameCropper } from './frame-cropper'
 import { useEffect, useRef, useState } from 'react'
 import { Go, Mini } from './buttons'
 import { Spacer } from './modal'
-import { cropToPixels, isWholeFrame } from '@skydock/scripts'
-import type { FrameCrop, ProxyFact } from '@skydock/scripts'
+import { cropToPixels, isQuarterTurn, isWholeFrame, turnBy, turnedSize } from '@skydock/scripts'
+import type { FrameCrop, ProxyFact, Rotation } from '@skydock/scripts'
 import type { ManifestFile } from './types'
 import {
   clock,
@@ -38,13 +38,6 @@ const V = ({ children }: { children: React.ReactNode }) => (
   <b className='font-semibold text-ink'>{children}</b>
 )
 
-/* Turning the footage and reframing it both mean re-encoding the picture, and preparing a file
-   copies its stream through untouched. They are drawn because they are part of the decision this
-   dialog is for, and held shut because the pipeline behind them has not been built yet — offering
-   a control that quietly does nothing would be worse than saying so. */
-const NOT_YET =
-  'Not built yet: preparing a file copies its video stream as it is, which cannot turn or reframe a picture.'
-
 type RatioOption = { label: string; ratio: number | null; title: string }
 
 /* `Same` is the one that matters most: a clip with a mount in the corner is cropped and stays the
@@ -58,6 +51,25 @@ const RATIOS: RatioOption[] = [
   { label: '16:9', ratio: 16 / 9, title: 'Widescreen' },
   { label: 'Free', ratio: null, title: 'Drag the corners to any shape' }
 ]
+
+/* The picture inside the box shaped like it will come out: as it is, or — for a quarter turn —
+   sized the other way round, so that once turned it fills the box exactly. In percentages of the
+   box, which is the turned shape: its width across becomes its height, and the other way round. */
+const pictureStyle = (
+  shape: { width: number; height: number },
+  rotation: Rotation
+): React.CSSProperties =>
+  isQuarterTurn(rotation)
+    ? {
+        width: `${(shape.width / shape.height) * 100}%`,
+        height: `${(shape.height / shape.width) * 100}%`,
+        transform: `translate(-50%, -50%) rotate(${rotation}deg)`
+      }
+    : {
+        width: '100%',
+        height: '100%',
+        transform: `translate(-50%, -50%) rotate(${rotation}deg)`
+      }
 
 const PreviewDrawer = ({
   files,
@@ -81,6 +93,9 @@ const PreviewDrawer = ({
   onZoomChange,
   onDurationChange,
   onVideoRef,
+  rotation,
+  onRotate,
+  onRotationApplyToJump,
   locked
 }: {
   files: ManifestFile[]
@@ -108,6 +123,11 @@ const PreviewDrawer = ({
   onZoomChange: (zoom: number) => void
   onDurationChange: (duration: number) => void
   onVideoRef: (ref: VideoRef) => void
+  /* how far the picture is turned clockwise — a draft, saved with the rest */
+  rotation: Rotation
+  onRotate: (rotation: Rotation) => void
+  /* every file of the same kind in the jump gets the same turn; absent for a file in no jump */
+  onRotationApplyToJump?: () => void
   /* why this file cannot be changed any more, when it cannot — then it is only looked at */
   locked?: string | null
 }) => {
@@ -128,6 +148,21 @@ const PreviewDrawer = ({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  /* R turns it a quarter clockwise, as the button does — never while a field has the keyboard */
+  const turnRef = useRef<(by: number) => void>(() => {})
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return
+      if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault()
+        turnRef.current(90)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   useEffect(() => {
     if (videoRef.current) {
       onVideoRef({
@@ -137,6 +172,28 @@ const PreviewDrawer = ({
       })
     }
   }, [file?.path, onVideoRef])
+
+  /* The picture as it will come out: turned. Its shape is what the box on screen takes, what the
+     rectangle is drawn over and measured against, and what "Same" means. */
+  const turned = turnedSize(shape.width, shape.height, rotation)
+  const quarter = isQuarterTurn(rotation)
+
+  /* A quarter turn swaps the picture's shape, so a rectangle on it is fitted again at the shape it
+     had — "Same" becoming the new shape — rather than left the wrong way round. */
+  const turn = (by: number) => {
+    if (locked) return
+    const next = turnBy(rotation, by)
+    if (frame && isQuarterTurn(next) !== quarter) {
+      const after = turnedSize(shape.width, shape.height, next)
+      const keep = shown === 'Same' || ratio === null ? after.width / after.height : ratio
+      if (shown === 'Same') setRatio(keep)
+      onFrameChange(fitRatio(keep, after.width, after.height))
+    }
+    onRotate(next)
+  }
+  useEffect(() => {
+    turnRef.current = turn
+  })
 
   if (!file) return null
 
@@ -154,12 +211,12 @@ const PreviewDrawer = ({
       onFrameChange(null)
       return
     }
-    const next = option.label === 'Free' ? null : (option.ratio ?? shape.width / shape.height)
+    const next = option.label === 'Free' ? null : (option.ratio ?? turned.width / turned.height)
     setRatio(next)
     onFrameChange(
       next === null
-        ? (frame ?? fitRatio(shape.width / shape.height, shape.width, shape.height))
-        : fitRatio(next, shape.width, shape.height)
+        ? (frame ?? fitRatio(turned.width / turned.height, turned.width, turned.height))
+        : fitRatio(next, turned.width, turned.height)
     )
   }
   const video = isVideoFile(file.filename)
@@ -179,8 +236,13 @@ const PreviewDrawer = ({
   const dirty =
     (cropStart ?? null) !== (file.cropStart ?? null) ||
     (cropEnd ?? null) !== (file.cropEnd ?? null) ||
-    !sameRectangle
-  const saved = file.cropStart != null || file.cropEnd != null || !isWholeFrame(file.frame)
+    !sameRectangle ||
+    rotation !== (file.rotation ?? 0)
+  const saved =
+    file.cropStart != null ||
+    file.cropEnd != null ||
+    !isWholeFrame(file.frame) ||
+    Boolean(file.rotation)
 
   const toggle = () => {
     const v = videoRef.current
@@ -235,11 +297,18 @@ const PreviewDrawer = ({
         <div className='grid min-h-0 grid-cols-1 overflow-auto sm:grid-cols-[minmax(0,1fr)_300px]'>
           <div className='min-w-0 bg-[#0b0f13] p-3.5'>
             <div className='grid h-[min(46vh,380px)] place-items-center overflow-hidden'>
-              {video ? (
-                /* the rectangle is drawn on the picture, so it is laid over a box the video
-                   fills rather than over the whole panel — the panel is letterboxed and a
-                   rectangle measured against it would mean the wrong part of the frame */
-                <span className='relative inline-block max-h-full max-w-full leading-none'>
+              {/* A box the shape of the picture as it will come out — turned — with the picture
+                  turned inside it, and the rectangle laid over the box: it is drawn on the
+                  turned picture, and measured against it. The panel itself is letterboxed, and a
+                  rectangle measured against that would mean the wrong part of the frame. */}
+              <span
+                /* not clipped: the rectangle's corner handles sit half outside the picture */
+                className='relative block'
+                style={{
+                  aspectRatio: `${turned.width} / ${turned.height}`,
+                  width: `min(100%, calc(min(46vh, 380px) * ${turned.width / turned.height}))`
+                }}>
+                {video ? (
                   <video
                     ref={videoRef}
                     src={fileUrl}
@@ -251,24 +320,31 @@ const PreviewDrawer = ({
                       if (v.videoWidth && v.videoHeight)
                         setShape({ width: v.videoWidth, height: v.videoHeight })
                     }}
-                    className='max-h-[min(46vh,380px)] max-w-full rounded-md'
+                    style={pictureStyle(shape, rotation)}
+                    className='absolute top-1/2 left-1/2 rounded-md transition-transform duration-150'
                   />
-                  {framing && (
-                    <FrameCropper
-                      crop={frame}
-                      ratio={ratio}
-                      frame={shape}
-                      onChange={onFrameChange}
-                    />
-                  )}
-                </span>
-              ) : (
-                <img
-                  src={fileUrl}
-                  alt={file.filename}
-                  className='max-h-full max-w-full rounded-md object-contain'
-                />
-              )}
+                ) : (
+                  <img
+                    src={fileUrl}
+                    alt={file.filename}
+                    onLoad={(e) => {
+                      const img = e.currentTarget
+                      if (img.naturalWidth && img.naturalHeight)
+                        setShape({ width: img.naturalWidth, height: img.naturalHeight })
+                    }}
+                    style={pictureStyle(shape, rotation)}
+                    className='absolute top-1/2 left-1/2 rounded-md transition-transform duration-150'
+                  />
+                )}
+                {video && framing && (
+                  <FrameCropper
+                    crop={frame}
+                    ratio={ratio}
+                    frame={turned}
+                    onChange={onFrameChange}
+                  />
+                )}
+              </span>
             </div>
             {video && (
               <>
@@ -325,66 +401,89 @@ const PreviewDrawer = ({
 
             <Panel title='Rotate'>
               <div className='flex flex-wrap items-center gap-1.5'>
-                <span className='min-w-[38px] font-mono text-[12px] font-semibold'>0°</span>
-                <Mini
-                  disabled
-                  title={NOT_YET}
-                  onClick={() => {}}>
-                  ↻ +90°
-                </Mini>
-                <Mini
-                  disabled
-                  title={NOT_YET}
-                  onClick={() => {}}>
-                  ↻ +180°
-                </Mini>
+                <span className='min-w-[38px] font-mono text-[12px] font-semibold'>
+                  {rotation}°
+                </span>
+                {!locked && (
+                  <>
+                    <Mini
+                      title='Turn a quarter clockwise (R)'
+                      onClick={() => turn(90)}>
+                      ↻ +90°
+                    </Mini>
+                    <Mini
+                      title='Turn upside down'
+                      onClick={() => turn(180)}>
+                      ↻ +180°
+                    </Mini>
+                    {rotation !== 0 && (
+                      <Mini
+                        title='Back to as shot'
+                        onClick={() => turn(360 - rotation)}>
+                        0°
+                      </Mini>
+                    )}
+                  </>
+                )}
               </div>
               <div className='mt-1 text-[12px] text-ink-2'>
-                For a camera mounted sideways or upside down.
+                For a camera mounted sideways or upside down
+                {quarter ? ' — a quarter turn makes it portrait.' : '.'}
               </div>
-            </Panel>
-
-            <Panel title='Frame'>
-              <div className={`flex flex-wrap gap-1.5 ${locked ? 'hidden' : ''}`}>
-                {RATIOS.map((option) => (
-                  <Mini
-                    key={option.label}
-                    aria-pressed={shown === option.label}
-                    title={option.title}
-                    onClick={() => pickRatio(option)}>
-                    {option.label}
-                  </Mini>
-                ))}
-              </div>
-              <div className='mt-1 text-[12px] text-ink-2'>
-                {framing
-                  ? 'Drag the rectangle to move it, a corner to resize. What is dimmed is cut away.'
-                  : 'Cut a mount or a finger out of the corner. Same keeps the shape the clip already has.'}
-              </div>
-              {/* What is left, in pixels, and what it is stretched back to. A crop is put back to
-                  the size the clip came at, so a small rectangle is a big upscale — which looks
-                  soft, and nothing else on screen would say so. */}
-              {framing && frame && (
-                <div className='mt-1 font-mono text-[11.5px] text-ink-3'>
-                  {(() => {
-                    const box = cropToPixels(frame, shape.width, shape.height)
-                    const stretch = shape.width / box.width
-                    return `${box.width}×${box.height} → ${shape.width}×${shape.height}${
-                      stretch > 1.6 ? ` · ${stretch.toFixed(1)}× upscale, will look soft` : ''
-                    }`
-                  })()}
-                </div>
-              )}
-              {framing && onFrameApplyToJump && (
+              {!locked && rotation !== 0 && onRotationApplyToJump && (
                 <div className='mt-1.5'>
                   <Mini
-                    title='Give every other clip in this jump the same rectangle — a badly mounted camera is badly mounted for the whole jump'
-                    onClick={onFrameApplyToJump}>
+                    title={`Turn every ${video ? 'clip' : 'photo'} in this jump the same way — a camera on its side is on its side for the whole jump`}
+                    onClick={onRotationApplyToJump}>
                     Apply to the whole jump
                   </Mini>
                 </div>
               )}
             </Panel>
+
+            {video && (
+              <Panel title='Frame'>
+                <div className={`flex flex-wrap gap-1.5 ${locked ? 'hidden' : ''}`}>
+                  {RATIOS.map((option) => (
+                    <Mini
+                      key={option.label}
+                      aria-pressed={shown === option.label}
+                      title={option.title}
+                      onClick={() => pickRatio(option)}>
+                      {option.label}
+                    </Mini>
+                  ))}
+                </div>
+                <div className='mt-1 text-[12px] text-ink-2'>
+                  {framing
+                    ? 'Drag the rectangle to move it, a corner to resize. What is dimmed is cut away.'
+                    : 'Cut a mount or a finger out of the corner. Same keeps the shape the clip already has.'}
+                </div>
+                {/* What is left, in pixels, and what it is stretched back to. A crop is put back to
+                  the size the clip came at, so a small rectangle is a big upscale — which looks
+                  soft, and nothing else on screen would say so. */}
+                {framing && frame && (
+                  <div className='mt-1 font-mono text-[11.5px] text-ink-3'>
+                    {(() => {
+                      const box = cropToPixels(frame, turned.width, turned.height)
+                      const stretch = turned.width / box.width
+                      return `${box.width}×${box.height} → ${turned.width}×${turned.height}${
+                        stretch > 1.6 ? ` · ${stretch.toFixed(1)}× upscale, will look soft` : ''
+                      }`
+                    })()}
+                  </div>
+                )}
+                {framing && onFrameApplyToJump && (
+                  <div className='mt-1.5'>
+                    <Mini
+                      title='Give every other clip in this jump the same rectangle — a badly mounted camera is badly mounted for the whole jump'
+                      onClick={onFrameApplyToJump}>
+                      Apply to the whole jump
+                    </Mini>
+                  </div>
+                )}
+              </Panel>
+            )}
 
             <Panel title='On the file'>
               <div className='text-[12px] text-ink-2'>
@@ -397,7 +496,8 @@ const PreviewDrawer = ({
                         ? `Trimmed to ${clock(file.cropStart ?? 0)} – ${clock(file.cropEnd ?? duration)}.`
                         : null,
                       !isWholeFrame(file.frame) ? 'Frame cropped.' : null,
-                      'Applied the next time this file is prepared.'
+                      file.rotation ? `Turned ${file.rotation}°.` : null,
+                      'Applied the next time this file is processed.'
                     ]
                       .filter(Boolean)
                       .join(' ')}
@@ -408,13 +508,14 @@ const PreviewDrawer = ({
 
         <div className='flex flex-none flex-wrap items-center gap-2.5 border-t border-line px-3.5 py-2.5'>
           {locked && <span className='text-[11.5px] text-ink-2'>🔒 {locked}</span>}
-          {video && !locked && (
+          {!locked && (
             <Mini
               disabled={!saved && !dirty}
               onClick={() => {
                 onCropChange({ cropStart: null, cropEnd: null })
-                /* both halves, because one Reset that left the other behind would be a trap */
+                /* every part, because one Reset that left another behind would be a trap */
                 onFrameChange(null)
+                onRotate(0)
                 onApply({ cropStart: null, cropEnd: null })
               }}>
               Reset crop
@@ -423,11 +524,11 @@ const PreviewDrawer = ({
           {dirty && <span className='text-[11.5px] font-semibold text-local'>Unsaved changes</span>}
           <Spacer />
           <Mini onClick={onClose}>Close</Mini>
-          {video && !locked && (
+          {!locked && (
             <Go
               disabled={!dirty}
               onClick={() => onApply({ cropStart, cropEnd })}>
-              Save crop
+              {video ? 'Save crop' : 'Save'}
             </Go>
           )}
         </div>

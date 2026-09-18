@@ -21,7 +21,14 @@ import {
   statTandemArtifacts,
   uploadGate
 } from '@skydock/scripts'
-import type { FrameCrop, OutputFact, ProxyFact, RemoteListing, TandemEntry } from '@skydock/scripts'
+import type {
+  FrameCrop,
+  OutputFact,
+  ProxyFact,
+  RemoteListing,
+  Rotation,
+  TandemEntry
+} from '@skydock/scripts'
 import { readTandemIndex } from '../../../packages/skydock-scripts/src/tandemIndex'
 import { Fragment, useEffect, useState } from 'react'
 import { z } from 'zod'
@@ -344,7 +351,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       : null
   )
   const [note, setNote] = useState<string | null>(
-    running ? 'Still preparing — the board updates itself when it is done' : null
+    running ? 'Still processing — the board updates itself when it is done' : null
   )
   const [dragged, setDragged] = useState<string[]>([])
   const [draggedFiles, setDraggedFiles] = useState<string[]>([])
@@ -423,13 +430,15 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const cropLoneFile = (
     file: ManifestFile,
     range: { cropStart: number | null; cropEnd: number | null },
-    frame?: FrameCrop | null
+    frame?: FrameCrop | null,
+    rotation?: Rotation
   ) => {
     const cropped = {
       ...file,
       cropStart: range.cropStart,
       cropEnd: range.cropEnd,
-      ...(frame !== undefined ? { frame } : {})
+      ...(frame !== undefined ? { frame } : {}),
+      ...(rotation !== undefined ? { rotation } : {})
     }
     setLoose((current) => current.map((f) => (f.path === file.path ? cropped : f)))
     updateGroups(groups, [cropped])
@@ -949,7 +958,13 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const remoteCheckedAt = newest?.at ?? null
 
   const statusContext = (file: ManifestFile) => ({
-    crop: { cropStart: file.cropStart, cropEnd: file.cropEnd },
+    /* everything decided about the picture — a copy made before any of it changed is out of date */
+    crop: {
+      cropStart: file.cropStart,
+      cropEnd: file.cropEnd,
+      frame: file.frame,
+      rotation: file.rotation
+    },
     output: outputs[file.path],
     remote,
     inEdit: !!file.id && frozenFiles.has(file.id)
@@ -1224,7 +1239,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                 : { intent: 'process', groupIds: dayGroups.map((g) => g.id) }
             )
           }>
-          {busy === label ? 'Preparing…' : 'Prepare'}
+          {busy === label ? 'Processing…' : 'Process'}
         </Go>
       )
     if (files.every((f) => statusOf(f) === 'uploaded'))
@@ -1233,7 +1248,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       <Go
         disabled={busy !== null}
         onClick={() => requestUpload({ destination: place.name }, `dest:${place.name}`)}>
-        {busy === `dest:${place.name}` ? 'Sending…' : 'Send to the club'}
+        {busy === `dest:${place.name}` ? 'Uploading…' : 'Upload'}
       </Go>
     )
   }
@@ -1916,6 +1931,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           onZoomChange={(zoom) => preview.setVideoState({ zoom })}
           onDurationChange={(duration) => preview.setVideoState({ duration })}
           onVideoRef={preview.handleVideoRef}
+          rotation={preview.rotation}
+          onRotate={preview.handleRotate}
+          onRotationApplyToJump={
+            preview.preview.groupId === LOOSE ? undefined : preview.handleRotationApplyToJump
+          }
           locked={(() => {
             const shown = preview.preview.files[preview.preview.index]
             return shown ? lockReason(shown, statusContext(shown)) : null

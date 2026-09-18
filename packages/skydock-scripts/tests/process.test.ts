@@ -4,6 +4,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { loadManifest, saveManifest } from '../src/manifest'
 import { processingNow, processJumps } from '../src/process'
+import { setProxyEncoder } from '../src/proxy'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
 import { createTmpDir, execSyncMock } from './fixtures'
 
@@ -348,9 +349,119 @@ describe('while a preparation is running', () => {
 
     const first = processJumps({ manifestPath, outputDir, groupIds: ['g1'] })
     expect(processingNow()).toEqual({ groupIds: ['g1'], destinations: [] })
-    await expect(processJumps({ manifestPath, outputDir })).rejects.toThrow(/Already preparing/)
+    await expect(processJumps({ manifestPath, outputDir })).rejects.toThrow(/Already processing/)
     await first
 
     expect(processingNow()).toBeNull()
+  })
+})
+
+/* Turning: a clip is encoded again, turned; a photo keeps its pixels and gets its orientation tag. */
+describe('turning a file', () => {
+  const exiftoolCalls = () =>
+    execSyncMock.mock.calls.map((c) => String(c[0])).filter((l) => l.startsWith('exiftool -n'))
+
+  it('encodes a turned clip again, turned, rather than copying it', async () => {
+    const { manifestPath } = write({
+      destination: 'Yverdon',
+      files: [{ ...clip('GX010001.MP4', 0), rotation: 90 }]
+    })
+
+    await processJumps({ manifestPath, outputDir })
+
+    const cmd = ffmpegCalls().find((l) => l.includes('transpose')) ?? ''
+    expect(cmd).toContain('-vf transpose=1')
+    expect(cmd).not.toContain('-c copy')
+  })
+
+  it('turns a photo by its orientation tag, without encoding it', async () => {
+    const { manifestPath } = write({
+      destination: 'Yverdon',
+      files: [{ ...clip('G0010002.JPG', 1), rotation: 90 }]
+    })
+
+    await processJumps({ manifestPath, outputDir })
+
+    expect(ffmpegCalls()).toEqual([])
+    expect(exiftoolCalls().some((l) => l.includes('-Orientation=6'))).toBe(true)
+  })
+
+  it('stamps the copy with the turn it was made with', async () => {
+    const { manifestPath } = write({
+      destination: 'Yverdon',
+      files: [{ ...clip('G0010002.JPG', 1), rotation: 180 }]
+    })
+
+    await processJumps({ manifestPath, outputDir })
+
+    const { loadManifest } = await import('../src/manifest')
+    expect(loadManifest(manifestPath)!.files[0]?.processed?.source.rotation).toBe(180)
+  })
+})
+
+/* An Intel or AMD card's encoder takes only frames that are on the card, so a picture changed in
+   ordinary memory is handed back up first — and when ffmpeg does fail, it is ffmpeg's reason that is
+   said, not "install ffmpeg". */
+describe('changing the picture on an Intel or AMD card', () => {
+  afterEach(() => setProxyEncoder(null))
+
+  it('hands the turned frames back to the card before encoding them', async () => {
+    setProxyEncoder('vaapi')
+    const { manifestPath } = write({
+      destination: 'Yverdon',
+      files: [{ ...clip('GX010001.MP4', 0), rotation: 90 }]
+    })
+
+    await processJumps({ manifestPath, outputDir })
+
+    const cmd = ffmpegCalls().find((l) => l.includes('transpose')) ?? ''
+    expect(cmd).toContain('-vaapi_device')
+    expect(cmd).toContain('-vf transpose=1,format=nv12,hwupload')
+    expect(cmd).toContain('h264_vaapi')
+  })
+
+  /* any card, any driver, any clip: what the card cannot do, the processor does */
+  it('does the clip on the processor when the graphics card cannot', async () => {
+    setProxyEncoder('vaapi')
+    execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
+      if (String(cmd).includes('h264_vaapi')) {
+        const failure = new Error('ffmpeg exited') as Error & { stderr: string }
+        failure.stderr = 'Failed to initialise VAAPI connection: -1 (unknown libva error).\n'
+        throw failure
+      }
+      return tools(cmd, opts)
+    })
+    const { manifestPath } = write({
+      destination: 'Yverdon',
+      files: [{ ...clip('GX010001.MP4', 0), rotation: 90 }]
+    })
+
+    await processJumps({ manifestPath, outputDir })
+
+    const turned = ffmpegCalls().filter((l) => l.includes('transpose'))
+    expect(turned).toHaveLength(2)
+    expect(turned[1]).toContain('libx264')
+    expect(turned[1]).not.toContain('hwupload')
+    expect(delivered()).toEqual([path.join('Yverdon', 'yverdon_20260808_090909.mp4')])
+  })
+
+  it('says what ffmpeg said when it fails', async () => {
+    execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
+      if (String(cmd).startsWith('ffmpeg') && String(cmd).includes('transpose')) {
+        const failure = new Error('ffmpeg exited') as Error & { stderr: string }
+        failure.stderr =
+          "Impossible to convert between the formats supported by the filter 'transpose'\nConversion failed!\n"
+        throw failure
+      }
+      return tools(cmd, opts)
+    })
+    const { manifestPath } = write({
+      destination: 'Yverdon',
+      files: [{ ...clip('GX010001.MP4', 0), rotation: 90 }]
+    })
+
+    await expect(processJumps({ manifestPath, outputDir })).rejects.toThrow(
+      /could not crop or turn GX010001\.MP4: Impossible to convert/
+    )
   })
 })

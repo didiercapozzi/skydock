@@ -98,7 +98,8 @@ const editedShape = (group: ManifestGroup) =>
       f.mtime,
       f.cropStart ?? null,
       f.cropEnd ?? null,
-      f.frame ?? null
+      f.frame ?? null,
+      f.rotation ?? 0
     ])
   })
 

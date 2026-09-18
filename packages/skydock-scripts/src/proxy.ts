@@ -437,6 +437,8 @@ export {
   buildMissingProxies,
   buildProxy,
   cropProxy,
+  DRI_DEVICE,
+  lastComplaint,
   proxyEncoder,
   setProxyEncoder,
   videoShape,

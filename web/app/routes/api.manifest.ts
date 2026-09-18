@@ -775,7 +775,8 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
             destination: update.destination,
             cropStart: update.cropStart,
             cropEnd: update.cropEnd,
-            frame: update.frame
+            frame: update.frame,
+            rotation: update.rotation
           }
         }
       }

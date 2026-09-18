@@ -116,6 +116,28 @@ describe('fileStatus', () => {
   })
 })
 
+/* a turn is part of what the copy was made from, like the trim and the frame */
+describe('a turned file', () => {
+  it('reads as changed once turned after it was prepared', () => {
+    expect(fileStatus(processed({ rotation: 90 }), { output: onDisk })).toBe('local')
+  })
+
+  it('reads as prepared when the copy was made turned the same way', () => {
+    const turned = processed({ rotation: 90 })
+    turned.processed!.source.rotation = 90
+    expect(fileStatus(turned, { output: onDisk })).toBe('processed')
+  })
+
+  it('takes the turn from where the file is drawn, like the crop', () => {
+    expect(
+      fileStatus(processed(), {
+        output: onDisk,
+        crop: { cropStart: null, cropEnd: null, rotation: 180 }
+      })
+    ).toBe('local')
+  })
+})
+
 describe('scopeStatus and uploadGate', () => {
   const files = [base(), processed(), uploaded()]
   const context = (file: ManifestFile) => ({

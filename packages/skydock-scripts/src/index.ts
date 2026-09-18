@@ -1,7 +1,14 @@
 /* What the web app may import. Everything else in this package is internal to it — the tests reach
    into the modules directly, so this stays exactly as wide as the app needs. */
 
-export type { Destination, FrameCrop, Manifest, ManifestFile, ManifestGroup } from './types'
+export type {
+  Destination,
+  FrameCrop,
+  Manifest,
+  ManifestFile,
+  ManifestGroup,
+  Rotation
+} from './types'
 export {
   destinationSchema,
   frameCropSchema,
@@ -17,7 +24,12 @@ export {
   cropToPixels,
   fitRatio,
   FULL_FRAME,
+  isQuarterTurn,
   isWholeFrame,
+  pictureFilter,
+  ROTATIONS,
+  turnBy,
+  turnedSize,
   withRatio
 } from './frameCrop'
 

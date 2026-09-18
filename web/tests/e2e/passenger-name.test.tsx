@@ -141,7 +141,7 @@ describe('the card a passenger is named on', () => {
   test('says what changing a prepared name costs', async () => {
     await renderCard({ ...withFiles({ firstname: 'Luc', lastname: 'Favre' }), processed: true }, true)
 
-    await expect.element(page.getByText(/preparing it again/i)).toBeVisible()
+    await expect.element(page.getByText(/processing it again/i)).toBeVisible()
   })
 
   test('says more when it has already been delivered', async () => {

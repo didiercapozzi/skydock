@@ -16,7 +16,7 @@ const LABELS: Record<ShownStatus, string> = {
 
 const TITLES: Record<ShownStatus, string> = {
   local: 'Not processed yet',
-  changed: 'Prepared once and changed since — it needs preparing again before it can go anywhere',
+  changed: 'Processed once and changed since — it needs processing again before it can go anywhere',
   processed: 'Processed, not on the NAS yet',
   uploaded: 'On the NAS'
 }

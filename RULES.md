@@ -27,8 +27,8 @@ These hold everywhere, and most of the rules further down are consequences of th
   tidied — files in it are replaced one by one, and a day SkyDock no longer knows about is left
   alone. A folder holding an edit keeps it: the media is rebuilt beside the work, because an edit is
   the one thing here that cannot be made again.
-- **Preparing again is the ordinary way of working.** Prepare a jump, look at it, correct a time or a
-  name, prepare it again. The second pass writes over the first and leaves nothing aside: a copy is
+- **Processing again is the ordinary way of working.** Process a jump, look at it, correct a time or a
+  name, process it again. The second pass writes over the first and leaves nothing aside: a copy is
   made from an original that has not moved, so what it replaces is a copy of the same file. What no
   longer belongs is removed — a clip whose time was corrected, or that was taken out of the jump,
   leaves a copy behind under a name nobody expects, and a file nobody expects is one that would be
@@ -110,7 +110,7 @@ person nor a place: it has no folder to go to, and the rule that picks the folde
 as a place and deliver it flat under the dropzone's name. What makes a jump a tandem is that somebody
 is in it, so a name begun and not finished is the thing to refuse.
 
-**5a. A dropzone is uploaded.** Its folder is sent to the club's network storage, and a share link
+**5a. A dropzone is uploaded.** Its folder is uploaded's network storage, and a share link
 comes back.
 
 **5b. A tandem is edited, then delivered.** A video project is written with the jump's clips already
@@ -180,7 +180,7 @@ Filing a jump answers one question: who is this for?
   A tandem waiting for one shows a few frames off its own clips beside the two fields, because a name
   is read off a face or a form and nobody should have to remember what they saw on another screen.
   **A name can always be changed afterwards**, for the same reason: it can be read wrong. Changing one
-  says what it costs — what was already prepared belongs to the old folder and has to be prepared
+  says what it costs — what was already processed belongs to the old folder and has to be processed
   again, and what has already been delivered stays on the storage under the old name, since SkyDock
   never deletes from there.
 - **A loose file can be filed to a dropzone too**, without belonging to any jump. It is delivered
@@ -229,7 +229,7 @@ menu becomes a single strip of places across the top rather than a column eating
 
 **The places.** _Unsorted jumps_, one entry per dropzone, and _Tandems_ with an entry per named
 passenger under it. Each says how many files are in it and carries a bar showing how much of it is
-still only local, how much is prepared and how much has been sent — because a count alone never
+still only local, how much is processed and how much has been sent — because a count alone never
 answers "what is left". Every place is also somewhere files can be dropped.
 
 **Days.** Unsorted jumps and a dropzone both show days, newest first. Each day opens and closes on
@@ -335,7 +335,7 @@ keep.
 **Cropping.** Clicking a file opens it, playing its proxy when there is one — same length, same
 speed, so a trim set here is the same instant of the clip itself. The picture fills the left of the
 dialog with the timeline under it; the right side says what is being decided — where the trim starts and ends and how much of
-the file that keeps, how the picture would be turned, how it would be framed, and what is on the file
+the file that keeps, how the picture is turned, how it is framed, and what is on the file
 already. The file's name, when it was shot, its size and its state are along the top with the way to
 step to the next file; along the bottom are the ways out, and saving is offered only once something
 has actually changed, which the dialog says out loud. A file that belongs to no jump can be cropped
@@ -350,18 +350,29 @@ a 4K clip stays 4K and a timeline is not a mix of sizes.
 Set on one clip it can be given to every other clip in the same jump in one press, because a badly
 mounted camera is badly mounted for the whole jump. It is for clips only — a photo has no frame crop.
 
-This is the one thing in preparing a file that cannot be done by copying. Trimming the ends moves no
+This is the one thing in processing a file that cannot be done by copying. Trimming the ends moves no
 pixels, so the file is copied and nothing is lost; cutting the frame changes the picture, so the clip
-is encoded again — for quality rather than for speed, on the graphics card where there is one — and a
+is encoded again — for quality rather than for speed, on the graphics card where there is one, and on the processor for any clip the card cannot do, so it works on every machine — and a
 card of clips takes minutes rather than seconds. The small copy the editor opens on is cut to match,
 or somebody would be editing a picture that is not the one about to be rendered.
 
-> **Drawn, not built.** Turning a picture is shown in that dialog and cannot be used, because it
-> cannot be done without re-encoding and nothing yet asks for it. It is drawn because it is part of
-> the decision, and held shut rather than left out so that what is missing is visible.
+**Turning the picture.** A camera mounted sideways or upside down gives a picture on its side, and
+it is turned in the same dialog: a quarter turn clockwise at a time, by button or by pressing R, or
+back to as shot. The picture on screen turns with it, and takes the shape it will come out in — a
+quarter turn makes a clip portrait, and the frame is then drawn on the turned picture and fitted
+again at the shape it had. A turn is something to save, like a trim or a frame, and saved on the jump
+the file is in. Set on one file it can be given to every file of the same kind in the jump in one
+press — clips to clips, photos to photos, since the two can come off different cameras.
+
+Clips and photos are turned differently, each the way that loses nothing it need not. A clip is
+encoded again, turned — with its frame cut from the turned picture in the same pass — and the small
+copy the editor opens on is turned to match. A photo keeps every pixel: it is turned by the
+orientation it carries, which every viewer and browser follows. A row shows the turn beside the crop,
+dashed until it has been applied, and a thumbnail shows the picture turned. Turning a file after it
+was processed makes its copy out of date, like any other change to it.
 
 **Acting.** Each day and each tandem offers exactly one next step, in the same place, and never offers
-them out of order. A dropzone day is **prepared**, then **sent**. A tandem is **processed**, then given
+them out of order. A dropzone day is **processed**, then **uploaded**. A tandem is **processed**, then given
 a **montage**, then **uploaded** once someone has rendered the film — the step is called
 Upload on the board, because that is what it does from where the user sits: puts the tandem on the
 storage. Once there is a project the
@@ -370,7 +381,7 @@ render it. Once the film exists it is shown above the tandem, standing out from 
 its name, how long it runs — which tells a whole jump from a test render of its first minute — its
 size, and when it was rendered. It can be watched right there, or opened on its own by its name, so
 the render is checked before it goes to anyone; a film rendered again is the one that plays. Nothing can be sent until everything in it has
-been prepared, and what is waiting is said plainly. An uploaded tandem shows the folders on the
+been processed, and what is waiting is said plainly. An uploaded tandem shows the folders on the
 storage instead of the files it was made from.
 
 **Uploaded is what the storage holds, not what was once recorded.** Each time the board looks at the
@@ -379,11 +390,11 @@ there, the tandem reads as uploaded. Delete any of them over there — or leave 
 the tandem reads as not uploaded again, says which files are no longer on the storage, and offers to
 upload them again. A folder the storage did not answer for takes nothing away.
 
-Preparing or processing runs on the machine, not in the page: closing or refreshing the page does not
+Processing runs on the machine, not in the page: closing or refreshing the page does not
 stop it, and the board stays usable while it runs. A page opened while it is running says so, keeps
 the tandem at _Processing…_ and everything else waiting, and updates itself when it is done. One
-preparation runs at a time; asking for another meanwhile is refused and says why. Edits made while it
-runs are kept — and a jump changed while its copies were being written is not marked prepared, since
+processing runs at a time; asking for another meanwhile is refused and says why. Edits made while it
+runs are kept — and a jump changed while its copies were being written is not marked processed, since
 those copies are of what it was.
 
 **The header** holds what applies to the whole day's work: scanning for newly copied files, the state
@@ -405,9 +416,9 @@ Every file is in one of three states, each of which SkyDock can verify:
 - **local** — nothing current has been made from it. Either it has never been processed, or it has been
   cropped, re-timed or replaced since, which leaves what was made from it out of date.
 
-  The board tells these two apart: a file that was prepared and then changed reads as **changed**
-  rather than plain _local_, because "never prepared" and "prepared, then altered" are not the same
-  situation to be in. It stays a derived fact, not a stored flag — preparing it again makes the copy
+  The board tells these two apart: a file that was processed and then changed reads as **changed**
+  rather than plain _local_, because "never processed" and "processed, then altered" are not the same
+  situation to be in. It stays a derived fact, not a stored flag — processing it again makes the copy
   current and the distinction disappears on its own.
 
 - **processed** — a copy exists that was made from the file exactly as it is now.
@@ -597,7 +608,7 @@ The film is taken on trust. Nothing checks that it was rendered from this projec
 the whole jump.
 
 **Freeing up space.** Once a tandem is uploaded, everything of it on this machine can be deleted —
-the originals, the prepared copies, the working copies made for the editor, the film and the zips —
+the originals, the processed copies, the working copies made for the editor, the film and the zips —
 leaving only the project and the record of what went where. It asks first, saying what will be proved
 and what will be deleted, and it deletes nothing until all of it is proved:
 
@@ -652,7 +663,7 @@ typed.
 
 Worth knowing, so nobody goes looking:
 
-- **SkyDock never sends email itself.** It prepares it, and a person sends it from their own mail.
+- **SkyDock never sends email itself.** It processes it, and a person sends it from their own mail.
 - **The montage takes every photo.** Choosing which photos go to the passenger is not possible.
 - **Nothing renders the film.** A person makes the edit and renders it. SkyDock opens the editor on
   the project and takes over again afterwards, but it never drives the edit or the render.
@@ -675,4 +686,3 @@ Worth knowing, so nobody goes looking:
 - **Archiving is part of delivering.** The zips are written as a tandem is delivered and cannot be
   made on their own. The originals cannot be backed up on their own ahead of the film either: the
   backup goes with the delivery.
-- **A picture cannot be turned.** See the note under Cropping. Reframing it can.

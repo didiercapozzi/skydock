@@ -26,6 +26,10 @@ const frameCropSchema = z.object({
    inputs — recrop it, shift its time, replace the bytes — and the copy on disk is no longer this
    file's copy, which is how the board knows a file dropped back to `local` without anyone having
    to remember to clear a flag. */
+/* How far the picture is turned clockwise, for a camera mounted sideways or upside down. Absent
+   is as shot. */
+const rotationSchema = z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)])
+
 const processedRecordSchema = z.object({
   path: z.string(),
   size: z.number(),
@@ -36,7 +40,8 @@ const processedRecordSchema = z.object({
     mtime: z.number(),
     cropStart: z.number().nullable().optional(),
     cropEnd: z.number().nullable().optional(),
-    frame: frameCropSchema.nullable().optional()
+    frame: frameCropSchema.nullable().optional(),
+    rotation: rotationSchema.nullable().optional()
   })
 })
 
@@ -60,6 +65,7 @@ const manifestFileSchema = z.object({
   cropStart: z.number().nullable().optional(),
   cropEnd: z.number().nullable().optional(),
   frame: frameCropSchema.nullable().optional(),
+  rotation: rotationSchema.nullable().optional(),
   /* set only on a file belonging to no jump — it is what makes it a lone file */
   destination: z.string().optional(),
   processed: processedRecordSchema.optional(),
@@ -76,7 +82,8 @@ const groupFileRefSchema = z.object({
   id: z.string(),
   cropStart: z.number().nullable().optional(),
   cropEnd: z.number().nullable().optional(),
-  frame: frameCropSchema.nullable().optional()
+  frame: frameCropSchema.nullable().optional(),
+  rotation: rotationSchema.nullable().optional()
 })
 
 const passengerSchema = z.object({
@@ -148,6 +155,7 @@ const manifestSchema = z.object({
 })
 
 type FrameCrop = z.infer<typeof frameCropSchema>
+type Rotation = z.infer<typeof rotationSchema>
 type ManifestFile = z.infer<typeof manifestFileSchema>
 type ManifestGroup = z.infer<typeof manifestGroupSchema>
 type ManifestPassenger = z.infer<typeof passengerSchema>
@@ -162,7 +170,8 @@ export type {
   Manifest,
   ManifestFile,
   ManifestGroup,
-  ManifestPassenger
+  ManifestPassenger,
+  Rotation
 }
 
 export {
@@ -179,5 +188,6 @@ export {
   passengerSchema,
   processedRecordSchema,
   publishSchema,
+  rotationSchema,
   uploadedRecordSchema
 }

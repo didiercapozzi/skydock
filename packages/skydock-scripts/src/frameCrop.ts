@@ -1,4 +1,4 @@
-import type { FrameCrop } from './types'
+import type { FrameCrop, Rotation } from './types'
 
 /* Cutting a mount or a finger out of the corner of a frame, and keeping the shape of what is left.
    The rectangle arrives as fractions of the whole picture because it is drawn on the proxy — a
@@ -98,4 +98,74 @@ const cropFilter = (crop: FrameCrop, frameWidth: number, frameHeight: number) =>
     : `${cut},scale=${out.width}:${out.height}`
 }
 
-export { containCrop, cropFilter, cropToPixels, fitRatio, FULL_FRAME, isWholeFrame, withRatio }
+/* Turning the picture, for a camera mounted sideways or upside down: a quarter turn at a time,
+   clockwise, as it should be watched. */
+const ROTATIONS: readonly Rotation[] = [0, 90, 180, 270]
+
+/* a turn added to a turn, back to 0 after a full circle */
+const turnBy = (rotation: Rotation | null | undefined, by: number): Rotation => {
+  const next = ((((rotation ?? 0) + by) % 360) + 360) % 360
+  return ROTATIONS.find((r) => r === next) ?? 0
+}
+
+/* a quarter turn swaps which edge is across */
+const isQuarterTurn = (rotation: Rotation | null | undefined) => (rotation ?? 0) % 180 !== 0
+
+const turnedSize = (width: number, height: number, rotation: Rotation | null | undefined) =>
+  isQuarterTurn(rotation) ? { width: height, height: width } : { width, height }
+
+/* ffmpeg's way of turning a picture: transpose for a quarter turn either way, both flips for half */
+const ROTATE_FILTER: Record<Rotation, string | null> = {
+  0: null,
+  90: 'transpose=1',
+  180: 'hflip,vflip',
+  270: 'transpose=2'
+}
+
+/* Everything done to the picture, in the order it is seen: turned first, then the rectangle cut out
+   of the turned picture — it was drawn on the turned picture — and put back to that picture's size.
+   A quarter-turned 4K clip comes out as a 2160-wide portrait clip. Null when nothing is done to it. */
+const pictureFilter = ({
+  frame,
+  rotation,
+  width,
+  height
+}: {
+  frame: FrameCrop | null | undefined
+  rotation: Rotation | null | undefined
+  width: number
+  height: number
+}) => {
+  const turn = ROTATE_FILTER[rotation ?? 0]
+  const shown = turnedSize(width, height, rotation)
+  const parts = [
+    turn,
+    isWholeFrame(frame) ? null : cropFilter(frame!, shown.width, shown.height)
+  ].filter((p): p is string => p !== null)
+  return parts.length > 0 ? parts.join(',') : null
+}
+
+/* A photo is turned by the orientation it carries, not by re-encoding it: nothing is lost, and every
+   viewer and browser draws it the way the tag says. The four plain orientations, keyed by how far
+   each is turned clockwise; a mirrored one keeps its mirror and is treated as upright. */
+const ORIENTATION_OF: Record<Rotation, number> = { 0: 1, 90: 6, 180: 3, 270: 8 }
+const TURN_OF: Record<number, Rotation> = { 1: 0, 6: 90, 3: 180, 8: 270 }
+
+const orientationAfter = (current: number | null | undefined, rotation: Rotation) =>
+  ORIENTATION_OF[turnBy(TURN_OF[current ?? 1] ?? 0, rotation)]
+
+export {
+  containCrop,
+  cropFilter,
+  cropToPixels,
+  fitRatio,
+  FULL_FRAME,
+  isQuarterTurn,
+  isWholeFrame,
+  orientationAfter,
+  pictureFilter,
+  ROTATIONS,
+  turnBy,
+  turnedSize,
+  withRatio
+}

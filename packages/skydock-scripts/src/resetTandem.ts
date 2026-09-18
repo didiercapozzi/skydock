@@ -12,7 +12,7 @@ import type { Manifest, ManifestGroup } from './types'
 
    Reset puts it back to before processing: everything made from it on this machine goes — the
    copies, the cut proxies, the project, the film, the archives — and everything decided about it
-   stays: the name, the crops, the frames, the corrected times. It is how an edit is started over.
+   stays: the name, the crops, the frames, the turns, the corrected times. It is how an edit is started over.
 
    Delete undoes the tandem altogether: the same folder goes, and so does everything decided about
    it. Its jumps go back to be sorted with no name, no crop and no frame, each file on the time its
@@ -68,7 +68,8 @@ const takeBack = (
           mtime: times.get(file.path) ?? file.mtime,
           cropStart: undefined,
           cropEnd: undefined,
-          frame: undefined
+          frame: undefined,
+          rotation: undefined
         }
       : file
 

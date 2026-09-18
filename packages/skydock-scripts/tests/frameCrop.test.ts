@@ -6,6 +6,10 @@ import {
   cropToPixels,
   fitRatio,
   isWholeFrame,
+  orientationAfter,
+  pictureFilter,
+  turnBy,
+  turnedSize,
   withRatio
 } from '../src/frameCrop'
 
@@ -114,5 +118,53 @@ describe('the filter the clip is cut with', () => {
     const [, w, h] = /crop=(\d+):(\d+)/.exec(filter)!.map(Number)
     expect(w / h).toBeCloseTo(1920 / 1080, 1)
     expect(filter).toContain('scale=1920:1080')
+  })
+})
+
+/* Turning the picture: a quarter turn at a time, clockwise, applied before the rectangle — which is
+   drawn on the turned picture — so a quarter-turned clip comes out portrait. */
+describe('turning the picture', () => {
+  it('goes round a quarter at a time and comes back to as shot', () => {
+    expect(turnBy(0, 90)).toBe(90)
+    expect(turnBy(270, 90)).toBe(0)
+    expect(turnBy(90, 180)).toBe(270)
+    expect(turnBy(undefined, 180)).toBe(180)
+  })
+
+  it('swaps which edge is across on a quarter turn, and only then', () => {
+    expect(turnedSize(3840, 2160, 90)).toEqual({ width: 2160, height: 3840 })
+    expect(turnedSize(3840, 2160, 180)).toEqual({ width: 3840, height: 2160 })
+  })
+
+  it('asks ffmpeg for the turn alone when there is no rectangle', () => {
+    expect(pictureFilter({ frame: null, rotation: 90, width: 3840, height: 2160 })).toBe(
+      'transpose=1'
+    )
+    expect(pictureFilter({ frame: null, rotation: 180, width: 3840, height: 2160 })).toBe(
+      'hflip,vflip'
+    )
+    expect(pictureFilter({ frame: null, rotation: 270, width: 3840, height: 2160 })).toBe(
+      'transpose=2'
+    )
+    expect(pictureFilter({ frame: null, rotation: 0, width: 3840, height: 2160 })).toBeNull()
+  })
+
+  it('turns first, then cuts the rectangle out of the turned picture and keeps it portrait', () => {
+    const filter = pictureFilter({
+      frame: { x: 0, y: 0.1, width: 1, height: 0.9 },
+      rotation: 90,
+      width: 3840,
+      height: 2160
+    })
+    /* measured against 2160 × 3840, and put back to that size */
+    expect(filter).toBe('transpose=1,crop=2160:3456:0:384,scale=2160:3840')
+  })
+
+  it('turns a photo by its orientation tag, on top of whatever turn it already carries', () => {
+    expect(orientationAfter(1, 90)).toBe(6)
+    expect(orientationAfter(6, 90)).toBe(3)
+    expect(orientationAfter(8, 90)).toBe(1)
+    expect(orientationAfter(null, 180)).toBe(3)
+    expect(orientationAfter(3, 180)).toBe(1)
   })
 })

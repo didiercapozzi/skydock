@@ -20,6 +20,7 @@ type StatusContext = {
     cropStart?: number | null
     cropEnd?: number | null
     frame?: { x: number; y: number; width: number; height: number } | null
+    rotation?: 0 | 90 | 180 | 270 | null
   }
   output?: OutputFact
   remote?: RemoteListing | null
@@ -60,7 +61,9 @@ const sourceMatches = (file: ManifestFile, context?: StatusContext) => {
     record.source.mtime === file.mtime &&
     (record.source.cropStart ?? null) === (crop.cropStart ?? null) &&
     (record.source.cropEnd ?? null) === (crop.cropEnd ?? null) &&
-    sameFrame(record.source.frame, crop.frame)
+    sameFrame(record.source.frame, crop.frame) &&
+    /* turned since it was prepared is changed since it was prepared */
+    (record.source.rotation ?? 0) === (crop.rotation ?? 0)
   )
 }
 
