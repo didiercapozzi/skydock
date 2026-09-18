@@ -2,6 +2,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { subscribe } from '../src/live'
+import type { LiveEvent } from '../src/live'
 import { loadManifest, saveManifest } from '../src/manifest'
 import { processingNow, processJumps } from '../src/process'
 import { setProxyEncoder } from '../src/proxy'
@@ -463,5 +465,66 @@ describe('changing the picture on an Intel or AMD card', () => {
     await expect(processJumps({ manifestPath, outputDir })).rejects.toThrow(
       /could not crop or turn GX010001\.MP4: Impossible to convert/
     )
+  })
+})
+
+/* While a jump is processed, each of its files says so as it happens — that it began and how it
+   ended, with how far through in between — so the board shows it on the file without asking. */
+describe('processing, said as it happens', () => {
+  const listening = () => {
+    const heard: LiveEvent[] = []
+    const stop = subscribe((event) => heard.push(event))
+    return { heard, stop }
+  }
+
+  it('says of every file that it began, and that it ended well', async () => {
+    const { manifestPath } = write({
+      destination: 'Tandems',
+      passenger: { firstname: 'Luc', lastname: 'Favre' },
+      files: [clip('GX010001.MP4', 0), clip('G0010002.JPG', 1)]
+    })
+    const { heard, stop } = listening()
+
+    await processJumps({ manifestPath, outputDir })
+    stop()
+
+    /* one after the other, never two at once: a file ends before the next begins */
+    expect(
+      heard.map((e) => `${e.kind} ${e.fileId}${e.kind === 'file-done' ? ` ${e.ok}` : ''}`)
+    ).toEqual(['file id0', 'file-done id0 true', 'file id1', 'file-done id1 true'])
+  })
+
+  it('asks ffmpeg to say where it is, on the clips it has to write itself', async () => {
+    const { manifestPath } = write({
+      destination: 'Tandems',
+      passenger: { firstname: 'Luc', lastname: 'Favre' },
+      files: [{ ...clip('GX010001.MP4', 0), cropStart: 2, cropEnd: 8 }]
+    })
+
+    await processJumps({ manifestPath, outputDir })
+
+    expect(ffmpegCalls()[0]).toContain('-progress pipe:1 -nostats')
+  })
+
+  it('says so when a file could not be processed, and nothing is left reading as under way', async () => {
+    execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
+      if (String(cmd).startsWith('ffmpeg')) throw new Error('ffmpeg exited with code 1')
+      return tools(cmd, opts)
+    })
+    const { manifestPath } = write({
+      destination: 'Tandems',
+      passenger: { firstname: 'Luc', lastname: 'Favre' },
+      files: [{ ...clip('GX010001.MP4', 0), cropStart: 2, cropEnd: 8 }]
+    })
+    const { heard, stop } = listening()
+
+    await processJumps({ manifestPath, outputDir }).catch(() => undefined)
+    stop()
+
+    expect(heard.at(-1)).toEqual({ kind: 'file-done', work: 'process', fileId: 'id0', ok: false })
+    /* whoever starts listening now hears of nothing under way */
+    const late = listening()
+    late.stop()
+    expect(late.heard).toEqual([])
   })
 })

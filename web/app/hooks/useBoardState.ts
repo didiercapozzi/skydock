@@ -7,6 +7,7 @@ import { freedNote, importNote, montageNote, scanNote, uploadedNote } from '../h
 import { useSafeFetcher } from '../helpers/routing'
 import type { actionArgs as manifestArgs } from '../routes/api.manifest'
 import { useGroups } from './useJumps'
+import { useLiveProgress } from './useLiveProgress'
 
 /* every board edit goes to the same endpoint; this is what that endpoint accepts, taken from the
    endpoint itself rather than restated here */
@@ -60,6 +61,9 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   const [outputs, setOutputs] = useState<Record<string, OutputFact>>(loaded.outputs ?? {})
   const [proxies, setProxies] = useState<Record<string, ProxyFact>>(loaded.proxies ?? {})
   const [tandemFacts, setTandemFacts] = useState<Record<string, TandemFact>>(loaded.tandems)
+  /* files being processed or proxied right now, and how far through; a proxy that lands is
+     flagged at once, since the event carries what the server read off the disk */
+  const liveFiles = useLiveProgress(setProxies)
   const [remoteAfterUpload, setRemoteAfterUpload] = useState<CheckedListing | null>(null)
   /* the storage's list of tandems, as the loader read it or as the last change wrote it */
   const [storage, setStorage] = useState(loaded.storage)
@@ -168,6 +172,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     outputs,
     proxies,
     proxyProgress,
+    liveFiles,
     tandemFacts,
     remoteAfterUpload,
     storage,

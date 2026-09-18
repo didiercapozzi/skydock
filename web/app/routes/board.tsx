@@ -986,6 +986,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               statusContext={statusContext}
               statusOf={statusOf}
               proxies={board.proxies}
+              live={board.liveFiles}
               deliveredName={deliveredName}
               onFile={(file: ManifestFile, lane: ManifestFile[], e: Modifiers) =>
                 selection.clickFile(file, lane, e)

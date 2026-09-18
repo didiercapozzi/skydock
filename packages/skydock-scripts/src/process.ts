@@ -4,7 +4,8 @@ import { loadManifest, saveManifest } from './manifest'
 import { isWholeFrame, orientationAfter, pictureFilter } from './frameCrop'
 import { cropProxy, DRI_DEVICE, getCutProxyDir, proxyEncoder, videoShape } from './proxy'
 import type { ProxyEncoder } from './proxy'
-import { lastComplaint, quote, run } from './tools'
+import { following } from './live'
+import { lastComplaint, quote, run, runWatched } from './tools'
 import type { ManifestFile, ManifestGroup } from './types'
 import { getManifestPath, getOutputDir, hasCommand, isVideoFile, parseDayEpoch } from './utils'
 import {
@@ -67,23 +68,52 @@ const timeArgs = (cropStart?: number | null, cropEnd?: number | null) =>
     ? `-ss ${cropStart} -t ${(cropEnd - cropStart).toFixed(6)}`
     : ''
 
+type OnPercent = (percent: number) => void
+
+/* how long what is being written runs for, when that is the trim rather than the clip */
+const trimSeconds = (cropStart?: number | null, cropEnd?: number | null) =>
+  cropStart != null && cropEnd != null ? cropEnd - cropStart : null
+
 /* The ends only: copied, never re-encoded. */
-const trimVideo = async (src: string, dest: string, cropStart: number, cropEnd: number) => {
+const trimVideo = async (
+  src: string,
+  dest: string,
+  cropStart: number,
+  cropEnd: number,
+  onPercent?: OnPercent
+) => {
   if (!hasCommand('ffmpeg')) return false
-  try {
-    await shell(
-      `ffmpeg -y ${timeArgs(cropStart, cropEnd)} -i ${quote(src)} -c copy -avoid_negative_ts make_zero ${quote(dest)} 2>/dev/null`
-    )
-    return true
-  } catch {
-    return false
-  }
+  const ran = await runWatched(
+    `ffmpeg -y ${timeArgs(cropStart, cropEnd)} -i ${quote(src)} -c copy -avoid_negative_ts make_zero ${quote(dest)} 2>/dev/null`,
+    onPercent,
+    trimSeconds(cropStart, cropEnd)
+  )
+  return ran.ok
 }
 
 /* ffmpeg's own words when it fails — the one line that says why, not the stage that gave up after */
-const runFfmpeg = async (line: string) => {
-  const ran = await run(line)
+const runFfmpeg = async (line: string, onPercent?: OnPercent, seconds?: number | null) => {
+  const ran = await runWatched(line, onPercent, seconds)
   return ran.ok ? { ok: true as const } : { ok: false as const, reason: lastComplaint(ran.stderr) }
+}
+
+/* A whole file copied as it is. The copy is left to the system, which is the fast way and says
+   nothing while it works — so how far it has got is read off the size of what it has written. */
+const copyWhole = async (src: string, dest: string, onPercent?: OnPercent) => {
+  const total = onPercent ? fs.statSync(src).size : 0
+  const watch =
+    onPercent && total > 0
+      ? setInterval(() => {
+          fs.stat(dest, (error, stats) => {
+            if (!error) onPercent(Math.min(99, Math.floor((stats.size / total) * 100)))
+          })
+        }, 500)
+      : null
+  try {
+    await fs.promises.copyFile(src, dest)
+  } finally {
+    if (watch) clearInterval(watch)
+  }
 }
 
 /* The picture changed — cut, turned, or both — and the ends with it if they were set. Decoding on the
@@ -100,7 +130,8 @@ const recodeVideo = async (
   dest: string,
   filter: string,
   cropStart?: number | null,
-  cropEnd?: number | null
+  cropEnd?: number | null,
+  onPercent?: OnPercent
 ) => {
   if (!hasCommand('ffmpeg')) return { ok: false as const, reason: 'ffmpeg is not installed' }
   const run = (pick: ProxyEncoder) => {
@@ -112,7 +143,9 @@ const recodeVideo = async (
           : ''
     const chain = pick === 'vaapi' ? `${filter},format=nv12,hwupload` : filter
     return runFfmpeg(
-      `ffmpeg -y ${decode} ${timeArgs(cropStart, cropEnd)} -i ${quote(src)} -vf ${chain} ${DELIVERY_ARGS[pick].join(' ')} -c:a copy ${quote(dest)}`
+      `ffmpeg -y ${decode} ${timeArgs(cropStart, cropEnd)} -i ${quote(src)} -vf ${chain} ${DELIVERY_ARGS[pick].join(' ')} -c:a copy ${quote(dest)}`,
+      onPercent,
+      trimSeconds(cropStart, cropEnd)
     )
   }
   /* A graphics card is the fast way, not the only one. Whatever the card, its driver or the clip's
@@ -229,7 +262,7 @@ const writeCutProxy = async (
   return target
 }
 
-const copyMedia = async (file: ManifestFile, dest: string, time: Date) => {
+const copyMedia = async (file: ManifestFile, dest: string, time: Date, onPercent?: OnPercent) => {
   const video = isVideoFile(file.path)
   const trimmed = file.cropStart != null && file.cropEnd != null
   /* the picture itself changes — cut, turned or both — so the clip is encoded again */
@@ -241,19 +274,38 @@ const copyMedia = async (file: ManifestFile, dest: string, time: Date) => {
         `Cannot read the size of ${file.filename}: install ffprobe to crop or turn it`
       )
     const filter = pictureFilter({ frame: file.frame, rotation: file.rotation, ...shape })!
-    const made = await recodeVideo(file.path, dest, filter, file.cropStart, file.cropEnd)
+    const made = await recodeVideo(file.path, dest, filter, file.cropStart, file.cropEnd, onPercent)
     if (!made.ok) throw new Error(`ffmpeg could not crop or turn ${file.filename}: ${made.reason}`)
   } else if (video && trimmed) {
-    if (!(await trimVideo(file.path, dest, file.cropStart!, file.cropEnd!))) {
+    if (!(await trimVideo(file.path, dest, file.cropStart!, file.cropEnd!, onPercent))) {
       throw new Error(
         `ffmpeg crop failed for ${file.filename} ${file.cropStart}→${file.cropEnd}: install ffmpeg or check range`
       )
     }
   } else {
-    await fs.promises.copyFile(file.path, dest)
+    await copyWhole(file.path, dest, onPercent)
     if (!video && file.rotation) await turnPhoto(dest, file.rotation)
   }
   fs.utimesSync(dest, time, time)
+}
+
+/* One file written, said as it goes: that it began, how far through it is, and how it ended —
+   ended only once everything that belongs to the copy is there, its cut proxy included. */
+const writeOne = async (
+  file: ManifestFile,
+  dest: string,
+  time: Date,
+  after?: () => Promise<unknown>
+) => {
+  const live = following('process', file.id)
+  try {
+    await copyMedia(file, dest, time, live.at)
+    await after?.()
+    live.done(true)
+  } catch (e) {
+    live.done(false)
+    throw e
+  }
 }
 
 const writeGroup = async (
@@ -277,8 +329,9 @@ const writeGroup = async (
       ? `${toFileStem(group.destination!, 'destination')}_${formatGroupDay(file.mtime)}`
       : baseName
     const dest = path.join(targetDir, makeFileName(stem, file.mtime, ext, usedNames))
-    await copyMedia(file, dest, buildFsTime(flat ? file.mtime : dayEpoch, file.mtime))
-    if (!flat) await writeCutProxy(file, dest, outputDir, group.id)
+    await writeOne(file, dest, buildFsTime(flat ? file.mtime : dayEpoch, file.mtime), async () => {
+      if (!flat) await writeCutProxy(file, dest, outputDir, group.id)
+    })
     record(file, dest)
     written.push(dest)
   }
@@ -314,7 +367,7 @@ const writeLooseFiles = async (
     const ext = path.extname(file.path).slice(1).toLowerCase()
     const name = makeFileName(`${stem}_${formatGroupDay(file.mtime)}`, file.mtime, ext, usedNames)
     const dest = path.join(dir, name)
-    await copyMedia(file, dest, buildFsTime(file.mtime, file.mtime))
+    await writeOne(file, dest, buildFsTime(file.mtime, file.mtime))
     record(file, dest)
     written.push(dest)
   }

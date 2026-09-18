@@ -53,6 +53,8 @@ import {
   renderPassengerEmail
 } from './passengerEmail'
 import type { PassengerEmail } from './passengerEmail'
+import { liveEventSchema, publish, subscribe } from './live'
+import type { LiveEvent } from './live'
 import { lastSegment, parentOf } from './paths'
 import { getGroupProcessedDir, processingNow, processJumps, whenProcessed } from './process'
 import { statProxies } from './proxy'
@@ -116,6 +118,9 @@ import {
 } from './workspace'
 
 export {
+  liveEventSchema,
+  publish,
+  subscribe,
   furthestBehind,
   TANDEM_STEPS,
   tandemSteps,
@@ -207,6 +212,7 @@ export {
   writeUploadProgress
 }
 export type {
+  LiveEvent,
   TandemProgress,
   TandemStep,
   BackupOptions,

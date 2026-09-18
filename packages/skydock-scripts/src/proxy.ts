@@ -3,7 +3,8 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { loadManifest, saveManifest } from './manifest'
 import type { Manifest, ManifestFile } from './types'
-import { lastComplaint, quote, run } from './tools'
+import { following } from './live'
+import { lastComplaint, quote, runWatched } from './tools'
 import { getManifestPath, getOutputDir, hasCommand, isVideoFile } from './utils'
 
 /* A proxy is a small, all-intra copy of a clip. It exists twice over: the editor opens on proxies
@@ -195,7 +196,9 @@ const scaleFilter = (shape: { turned: boolean } | null, hardware: boolean) => {
 const buildProxy = async (
   src: string,
   dest: string,
-  shape: ReturnType<typeof videoShape> = null
+  shape: ReturnType<typeof videoShape> = null,
+  /* how far through the clip it is, for whoever is watching */
+  onPercent?: (percent: number) => void
 ) => {
   if (!hasCommand('ffmpeg')) return { ok: false as const, reason: 'ffmpeg is not installed' }
   const { encoder: pick, cardScales } = detection()
@@ -223,8 +226,9 @@ const buildProxy = async (
         : scaleFilter(shape, pick === 'vaapi')
   const partial = `${dest}.part`
   fs.mkdirSync(path.dirname(dest), { recursive: true })
-  const ran = await run(
-    `ffmpeg -y ${decode.join(' ')} -i ${quote(src)} -vf ${filter} ${ENCODER_ARGS[pick].join(' ')} ${CONTAINER_ARGS.join(' ')} ${quote(partial)}`
+  const ran = await runWatched(
+    `ffmpeg -y ${decode.join(' ')} -i ${quote(src)} -vf ${filter} ${ENCODER_ARGS[pick].join(' ')} ${CONTAINER_ARGS.join(' ')} ${quote(partial)}`,
+    onPercent
   )
   if (ran.ok) {
     try {
@@ -310,15 +314,20 @@ const ensureProxies = async (
       report.skipped++
       continue
     }
-    const built = await buildProxy(file.path, proxyPath, shape)
+    /* said as it goes, and what the clip plays from now on said with its landing, so the board
+       flags it without asking */
+    const live = following('proxy', file.id)
+    const built = await buildProxy(file.path, proxyPath, shape, live.at)
     if (built.ok) {
       file.proxy = proxyPath
       report.built++
       onBuilt?.()
+      live.done(true, { path: file.path, fact: { state: 'ready', play: proxyPath } })
     } else {
       delete file.proxy
       report.failed.push(file.filename)
       report.reason ??= built.reason
+      live.done(false)
     }
   }
   onProgress?.(candidates.length, candidates.length, '')

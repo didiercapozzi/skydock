@@ -301,6 +301,16 @@ since files the gap rule missed are often files off a camera on the wrong clock:
 as shot, and setting it moves every file by the same amount, as correcting any jump's time does. Both
 can be left as they are.
 
+**Work shown as it happens.** A file being processed, and a clip whose proxy is being made, shows how
+far through it is on the file itself — a bar and a percentage where its status stands, on a row and on
+a thumbnail alike — moving as the work goes, with nothing reloaded and nothing asked: the board keeps
+one line open to the machine and hears it. A clip is flagged as having its proxy the moment it lands.
+A board opened, or reconnected, in the middle of a run starts with what is already under way. The
+figure is a percentage of what is being written, so a trimmed clip counts against its trim. This is
+only ever for the eyes: what a file _is_ still comes from what the board is told when the work ends,
+so a figure that never arrives costs a bar that lags and never a wrong status. Work started from the
+command line is not heard, only work the board started.
+
 **The header** holds what applies to the whole board: scanning, the storage with its folders and a way
 to check what it holds now, rows or grid, and light or dark. With nothing scanned yet, the board is a
 single Scan button and the instruction to copy the cameras first.
@@ -532,7 +542,6 @@ Worth knowing, so nobody goes looking:
 - **The montage takes every photo.** There is no choosing which photos the passenger gets.
 - **Nothing renders the film, and nothing notices a render finishing.** The board looks at the folder
   each time it is asked to do something.
-- **Nothing shows a proxy being made.** Proxies appear on the next thing the board is asked to do.
 - **A file is in one place at a time.** It cannot be in two jumps at once.
 - **A dropzone can be created, not renamed or removed.**
 - **Nothing comes back down from the storage** except its list of tandems.

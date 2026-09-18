@@ -11,6 +11,8 @@ import {
   setProxyEncoder,
   statProxies
 } from '../src/proxy'
+import { subscribe } from '../src/live'
+import type { LiveEvent } from '../src/live'
 import type { Manifest, ManifestFile } from '../src/types'
 import { createTmpDir, execSyncMock, writeTempFile } from './fixtures'
 
@@ -121,6 +123,33 @@ describe('proxies', () => {
     expect(report.built).toBe(1)
     expect(manifest.files[0].proxy).toBe(path.join(outputDir, 'proxies', 'abc123.mp4'))
     expect(fs.existsSync(manifest.files[0].proxy!)).toBe(true)
+  })
+
+  /* the clip is flagged on the board the moment its proxy lands, so the landing says what the
+     clip plays from now on */
+  it('says as it happens that a proxy is being made, and what the clip plays once it lands', async () => {
+    execSyncMock.mockImplementation(toolsPresent())
+    const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
+    const manifest = manifestOf([fileEntry(src, 'abc123')])
+    const heard: LiveEvent[] = []
+    const stop = subscribe((event) => heard.push(event))
+
+    await ensureProxies(manifest, outputDir)
+    stop()
+
+    expect(heard).toEqual([
+      { kind: 'file', work: 'proxy', fileId: 'abc123', percent: 0 },
+      {
+        kind: 'file-done',
+        work: 'proxy',
+        fileId: 'abc123',
+        ok: true,
+        proxy: {
+          path: src,
+          fact: { state: 'ready', play: path.join(outputDir, 'proxies', 'abc123.mp4') }
+        }
+      }
+    ])
   })
 
   /* The expensive half of this must not be paid twice — a second scan over a card that is already

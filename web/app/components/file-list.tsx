@@ -3,6 +3,7 @@ import type { ProxyFact, StatusContext } from '@skydock/scripts'
 import { useState } from 'react'
 import { StatusChip } from './file-status'
 import type { ShownStatus } from './file-status'
+import type { LiveFile } from '../hooks/useLiveProgress'
 import type { ManifestFile } from './types'
 import { formatSize, formatTime, getFileUrl, getThumbUrl, isVideoFile } from './utils'
 
@@ -42,6 +43,8 @@ type Props = {
   /* the name the file has once a copy exists — what goes to the NAS and what the passenger sees */
   deliveredName: (file: ManifestFile) => string | null
   selecting: boolean
+  /* files being processed or proxied right now, by file, and how far through */
+  live?: Record<string, LiveFile>
 }
 
 /* A card of 500 photos must not put 500 things on screen before they have been asked for. */
@@ -255,6 +258,32 @@ const PickMark = ({
   </button>
 )
 
+/* A file being worked on, said where the file is: what is being done and how far through, moving
+   as it goes. It stands where the status would — until the work ends the status is about to
+   change anyway — and once it ends the status is back, read from the board's own answer. */
+const LIVE_WORK = { process: 'Processing', proxy: 'Proxy' }
+
+const LiveBar = ({ live, filename }: { live: LiveFile; filename: string }) => (
+  <span
+    role='progressbar'
+    aria-label={`${LIVE_WORK[live.work]} ${filename}`}
+    aria-valuemin={0}
+    aria-valuemax={100}
+    aria-valuenow={live.percent}
+    title={`${LIVE_WORK[live.work]} — ${live.percent}%`}
+    className='flex w-full items-center gap-1.5'>
+    <span className='h-1 min-w-0 flex-1 overflow-hidden rounded-sm bg-line-2'>
+      <i
+        className={`block h-full transition-[width] duration-500 ${live.work === 'process' ? 'bg-proc' : 'bg-accent'}`}
+        style={{ width: `${live.percent}%` }}
+      />
+    </span>
+    <span className='flex-none font-mono text-[10.5px] text-ink-2 tabular-nums'>
+      {live.percent}%
+    </span>
+  </span>
+)
+
 const Row = ({
   file,
   lane,
@@ -262,6 +291,7 @@ const Row = ({
   locked,
   status,
   proxy,
+  live,
   name,
   previewed,
   offGap: strayed,
@@ -276,6 +306,7 @@ const Row = ({
   locked: string | null
   status: ShownStatus
   proxy?: ProxyFact
+  live?: LiveFile
   name: string | null
   previewed: boolean
   offGap: boolean
@@ -390,7 +421,14 @@ const Row = ({
       {formatSize(file.size)}
     </span>
     <span className='flex w-[76px] flex-none justify-end'>
-      <StatusChip status={status} />
+      {live ? (
+        <LiveBar
+          live={live}
+          filename={file.filename}
+        />
+      ) : (
+        <StatusChip status={status} />
+      )}
     </span>
   </div>
 )
@@ -402,6 +440,7 @@ const Tile = ({
   locked,
   status,
   proxy,
+  live,
   selecting,
   previewed,
   offGap: strayed,
@@ -416,6 +455,7 @@ const Tile = ({
   locked: string | null
   status: ReturnType<typeof fileStatus>
   proxy?: ProxyFact
+  live?: LiveFile
   selecting: boolean
   previewed: boolean
   offGap: boolean
@@ -486,6 +526,15 @@ const Tile = ({
         title={PROXY_FLAG.none.title}
         className='pointer-events-none absolute bottom-1 left-1 h-2 w-2 rounded-full border border-dashed border-white bg-local shadow-[0_0_0_1.5px_rgba(0,0,0,0.45)]'
       />
+    )}
+    {/* over the foot of the picture, on a dark band so the figures read on any frame */}
+    {live && (
+      <span className='pointer-events-none absolute inset-x-0 bottom-0 bg-black/[0.66] px-1 py-[3px] [&_span]:text-white'>
+        <LiveBar
+          live={live}
+          filename={file.filename}
+        />
+      </span>
     )}
     {!locked && (
       <PickMark
@@ -573,7 +622,8 @@ const Lane = ({
   deliveredName,
   previewed,
   offGap,
-  selecting
+  selecting,
+  live
 }: Omit<Props, 'files' | 'kind' | 'sortKey'> & { lane: ManifestFile[] }) => {
   const [shown, setShown] = useState(PAGE[shape])
   if (lane.length === 0) {
@@ -601,6 +651,7 @@ const Lane = ({
               locked={locked}
               status={shownStatus(file, context)}
               proxy={proxies[file.path]}
+              live={file.id ? live?.[file.id] : undefined}
               name={deliveredName(file)}
               previewed={Boolean(file.id && file.id === previewed)}
               offGap={Boolean(file.id && offGap.has(file.id))}
@@ -618,6 +669,7 @@ const Lane = ({
               locked={locked}
               status={fileStatus(file, context)}
               proxy={proxies[file.path]}
+              live={file.id ? live?.[file.id] : undefined}
               selecting={selecting}
               previewed={Boolean(file.id && file.id === previewed)}
               offGap={Boolean(file.id && offGap.has(file.id))}

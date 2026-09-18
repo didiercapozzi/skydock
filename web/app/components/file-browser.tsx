@@ -4,6 +4,7 @@ import { cardsOf } from '../helpers/sections'
 import type { Section } from '../helpers/sections'
 import { FileList, kindOf } from './file-list'
 import type { FileShape, Kind, Modifiers } from './file-list'
+import type { LiveFile } from '../hooks/useLiveProgress'
 import { StepMeter } from './tandem-steps'
 import type { ManifestFile, ManifestGroup } from './types'
 import {
@@ -43,6 +44,8 @@ type Props = {
   statusContext: (file: ManifestFile) => StatusContext
   statusOf: (file: ManifestFile) => FileStatus
   proxies: Record<string, ProxyFact>
+  /* files being processed or proxied right now, and how far through */
+  live?: Record<string, LiveFile>
   deliveredName: (file: ManifestFile) => string | null
   onFile: (file: ManifestFile, lane: ManifestFile[], e: Modifiers) => void
   onPick: (file: ManifestFile) => void
