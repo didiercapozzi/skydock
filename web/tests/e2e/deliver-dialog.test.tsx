@@ -267,3 +267,69 @@ describe('freeing an uploaded tandem', () => {
       await expect.element(page.getByRole('button', { name })).not.toBeInTheDocument()
   })
 })
+
+/* Telling the passenger: the email is written and laid out already, shown as it will arrive, and
+   copied into a new Gmail message that is already addressed and titled. */
+describe('emailing the passenger their link', () => {
+  const LINK = 'https://nas.local/sharing/AbC123'
+  const linked = {
+    ...board,
+    groups: [{ ...board.groups[0], delivered: { at: 1_785_010_000, shareUrl: LINK } }]
+  }
+
+  const openEmail = async () => {
+    await userEvent.click(page.getByRole('button', { name: 'Email Luc…' }))
+    return page.getByRole('dialog', { name: 'Email the passenger' })
+  }
+
+  test('shows the email as it will arrive, with the link, already written in French', async () => {
+    await renderBoard(linked, false)
+    const dialog = await openEmail()
+    await expect
+      .element(dialog.getByLabelText('Subject'))
+      .toHaveValue('Ta vidéo et tes photos de ton saut en tandem')
+    const preview = dialog.getByTitle('Email preview').element() as HTMLIFrameElement
+    expect(preview.srcdoc).toContain('Bonjour Luc,')
+    expect(preview.srcdoc).toContain(LINK)
+    await page.screenshot({ path: './playwright-screenshots/email-dialog.png' })
+  })
+
+  test('opens a new Gmail message, addressed and titled, with nothing to connect', async () => {
+    delivered.length = 0
+    const opened: string[] = []
+    const open = window.open
+    window.open = ((url?: string | URL) => {
+      opened.push(String(url))
+      return null
+    }) as typeof window.open
+    try {
+      await renderBoard(linked, false)
+      const dialog = await openEmail()
+      await userEvent.fill(dialog.getByLabelText('To'), 'luc@example.com')
+      await userEvent.click(dialog.getByRole('button', { name: 'Copy & open Gmail' }))
+      /* the email is copied first, and Gmail opened once it is */
+      await vi.waitFor(() => expect(opened).toHaveLength(1))
+      const url = new URL(opened[0]!)
+      expect(url.host).toBe('mail.google.com')
+      expect(url.searchParams.get('to')).toBe('luc@example.com')
+      expect(url.searchParams.get('su')).toBe('Ta vidéo et tes photos de ton saut en tandem')
+    } finally {
+      window.open = open
+    }
+    /* nothing is sent from here */
+    expect(delivered).toEqual([])
+  })
+
+  test('offers the computer\'s own mail program too, for anyone not on Gmail', async () => {
+    await renderBoard(linked, false)
+    const dialog = await openEmail()
+    await expect
+      .element(dialog.getByRole('button', { name: 'Copy & open my mail app' }))
+      .toBeInTheDocument()
+  })
+
+  test('is not offered before there is a link to send', async () => {
+    await renderBoard(board, false)
+    await expect.element(page.getByRole('button', { name: 'Email Luc…' })).not.toBeInTheDocument()
+  })
+})

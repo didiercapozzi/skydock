@@ -29,7 +29,11 @@ const execViaSyncMock = (
     execSyncMock(cmd, options)
     queueMicrotask(() => callback(null, '', ''))
   } catch (e) {
-    queueMicrotask(() => callback(e instanceof Error ? e : new Error(String(e)), '', ''))
+    /* what a failing command said is its stderr, as a real `exec` hands it back */
+    const stderr = (e as { stderr?: Buffer | string }).stderr
+    queueMicrotask(() =>
+      callback(e instanceof Error ? e : new Error(String(e)), '', stderr ? String(stderr) : '')
+    )
   }
 }
 

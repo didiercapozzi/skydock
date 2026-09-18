@@ -268,12 +268,19 @@ const JumpLine = ({
         e.stopPropagation()
         onDrag()
       }}
+      /* the whole line folds and unfolds the jump, like the arrow at its start — only its buttons and
+         fields do something else, and nothing does while a name is being typed into it */
+      onClick={(e) => {
+        if (naming) return
+        if ((e.target as HTMLElement).closest('button, input, a, label, textarea')) return
+        onToggle()
+      }}
       title={
         draggable
-          ? 'Drag this line onto a dropzone or Tandems to file the whole jump · drop files here to add them'
-          : undefined
+          ? 'Click to fold or unfold · drag this line onto a dropzone or Tandems to file the whole jump · drop files here to add them'
+          : 'Click to fold or unfold'
       }
-      className={`sticky ${DAY_HEAD} ${DAY_HEAD_SCROLL} z-[3] -mx-[9px] flex flex-wrap items-center gap-2 px-[11px] pt-2 pb-[5px] text-[11px] ${
+      className={`sticky ${DAY_HEAD} ${DAY_HEAD_SCROLL} z-[3] -mx-[9px] flex cursor-pointer flex-wrap items-center gap-2 px-[11px] pt-2 pb-[5px] text-[11px] ${
         over ? 'bg-pick-soft text-pick' : 'bg-pane text-ink-3'
       } ${shut ? 'opacity-85' : ''}`}>
       <button

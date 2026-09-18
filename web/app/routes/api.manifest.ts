@@ -16,7 +16,6 @@ import {
   getGroupProcessedDir,
   whenProcessed,
   getOutputDir,
-  groupFromFiles,
   groupsInScope,
   listRemoteFiles,
   loadManifest,
@@ -38,6 +37,7 @@ import {
 import { deliverTandem } from '../../../packages/skydock-scripts/src/deliver'
 import { deleteTandem, resetTandem } from '../../../packages/skydock-scripts/src/resetTandem'
 import { freeTandem, markFreed } from '../../../packages/skydock-scripts/src/freeTandem'
+import { moveFiles } from '../../../packages/skydock-scripts/src/moveFiles'
 import { openInEditor } from '../../../packages/skydock-scripts/src/editor'
 import { createMontageProject } from '../../../packages/skydock-scripts/src/montage'
 import { getCutProxyDir } from '../../../packages/skydock-scripts/src/proxy'
@@ -62,7 +62,9 @@ const actionArgs = z.object({
     'reset-tandem',
     'delete-tandem',
     /* delete it from this machine, once the storage is proved to hold it all */
-    'free-tandem'
+    'free-tandem',
+    /* files were just added from the computer: the board looks again, and says how it went */
+    'imported'
   ]),
   groupId: z.string().optional(),
   groupIds: z.array(z.string()).optional(),
@@ -78,7 +80,16 @@ const actionArgs = z.object({
   rightId: z.string().optional(),
   anchorEpoch: z.number().optional(),
   /* how a delivery keeps the originals: one zip or plain files, with or without the film */
-  backup: z.object({ backupAs: z.enum(['zip', 'folder']), filmToBackup: z.boolean() }).optional()
+  backup: z.object({ backupAs: z.enum(['zip', 'folder']), filmToBackup: z.boolean() }).optional(),
+  imported: z
+    .object({
+      added: z.number(),
+      moved: z.array(z.object({ name: z.string(), from: z.string() })),
+      there: z.number(),
+      failed: z.array(z.string()),
+      where: z.string()
+    })
+    .optional()
 })
 
 const passengerOf = (group: { passenger?: { firstname: string; lastname: string } }) =>
@@ -106,6 +117,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       errors.addGlobalError(EDIT_LOCKED)
       return errors.toResponse(422)
     }
+    if (data.intent === 'imported') return { ...boardAnswer(manifest), imported: data.imported }
     if (data.intent === 'free-tandem') {
       /* the proof is the storage's own checksum, so it has to be reachable */
       const session = await ensureNasSession()
@@ -132,7 +144,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         saveManifest(manifestPath, saved)
         return {
           ...boardAnswer(saved),
-          freed: { bytes: result.bytes, files: result.fileIds.length }
+          freed: { bytes: result.bytes, files: result.fileIds.length, groupId: result.groupId }
         }
       } catch (e) {
         errors.addGlobalError(e instanceof Error ? e.message : String(e))
@@ -245,56 +257,15 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       }
       if ([...ids].some((id) => frozenFiles.has(id)) || frozen.has(data.targetGroupId ?? ''))
         return refuseFrozen()
-      /* the files leave wherever they were, so their processed copies are stale */
-      for (const file of manifest.files) {
-        if (!file.id || !ids.has(file.id)) continue
-        const output = file.processed?.path
-        if (output && fs.existsSync(output)) {
-          try {
-            fs.unlinkSync(output)
-          } catch {
-            /* a copy we cannot delete is not worth failing the move over */
-          }
-        }
-        delete file.processed
-        delete file.uploaded
-        /* a file that lands in a group takes its destination from that group, never its own —
-           `file.destination` is what marks a lone file (RULES, Dropzones and tandems) */
-        if (data.destination && !data.newGroup && !data.targetGroupId)
-          file.destination = data.destination
-        else delete file.destination
-      }
-      const moved = manifest.groups.flatMap((g) => g.files).filter((f) => f.id && ids.has(f.id))
-      const seen = new Set<string>()
-      const uniqueMoved = moved.filter((f) => {
-        if (!f.id || seen.has(f.id)) return false
-        seen.add(f.id)
-        return true
-      })
-      manifest.groups = manifest.groups
-        .map((g) => ({ ...g, files: g.files.filter((f) => !f.id || !ids.has(f.id)) }))
-        .filter((g) => g.files.length > 0 || g.id === data.targetGroupId)
-      if (data.targetGroupId) {
-        const target = manifest.groups.find((g) => g.id === data.targetGroupId)
-        if (!target) {
-          errors.addGlobalError('Target jump not found.')
-          return errors.toResponse(422)
-        }
-        target.files = [...target.files, ...uniqueMoved].sort((a, b) => a.mtime - b.mtime)
-        target.processed = undefined
-      }
-      if (data.newGroup) {
-        /* loose files are not in `uniqueMoved` (it only sees group refs), so resolve every
-           requested id from the registry and keep the group ref when there is one, for its crop */
-        const refs = new Map(uniqueMoved.flatMap((f) => (f.id ? [[f.id, f] as const] : [])))
-        const picked = manifest.files.flatMap((f) =>
-          f.id && ids.has(f.id) ? [refs.get(f.id) ?? f] : []
-        )
-        if (picked.length === 0) {
-          errors.addGlobalError('Those files are no longer in the manifest.')
-          return errors.toResponse(422)
-        }
-        groupFromFiles(manifest, picked, data.destination)
+      try {
+        moveFiles(manifest, ids, {
+          targetGroupId: data.targetGroupId,
+          newGroup: data.newGroup,
+          destination: data.destination
+        })
+      } catch (e) {
+        errors.addGlobalError(e instanceof Error ? e.message : String(e))
+        return errors.toResponse(422)
       }
       saveManifest(manifestPath, manifest)
       return boardAnswer(manifest)

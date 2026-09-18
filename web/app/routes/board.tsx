@@ -56,6 +56,7 @@ import {
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
 import { formatTime, minFileMtime } from '../components/utils'
 import { useSafeFetcher } from '../helpers/routing'
+import { EmailDialog } from '../components/email-dialog'
 import { setFileView, useFileView } from '../hooks/useFileView'
 import { setBackupChoice, useBackupChoice } from '../hooks/useBackupChoice'
 import { useGroups } from '../hooks/useJumps'
@@ -166,6 +167,34 @@ const montageNote = ({
   const editor = opened ? ` · opening it${with_}` : openReason ? ` · ${openReason}` : ''
   return `${made}${holes}${editor}`
 }
+
+/* what a drop from the computer came to, in one line */
+const importNote = ({
+  added,
+  moved,
+  there,
+  failed,
+  where
+}: {
+  added: number
+  moved: { name: string; from: string }[]
+  there: number
+  failed: string[]
+  where: string
+}) =>
+  [
+    added > 0 ? `Added ${added} file${added === 1 ? '' : 's'} to ${where}` : null,
+    /* already on the board: moved here, the way a drag on the board would have */
+    moved.length === 1
+      ? `Moved ${moved[0]!.name} from ${moved[0]!.from} to ${where}`
+      : moved.length > 1
+        ? `Moved ${moved.length} files already on the board to ${where}`
+        : null,
+    there > 0 ? `${there} already in ${where}` : null,
+    failed.length > 0 ? `not added — ${failed.join('; ')}` : null
+  ]
+    .filter(Boolean)
+    .join(' · ') || 'Nothing was added'
 
 const scanNote = (scan: z.infer<typeof scanResultSchema>) =>
   scan.unchanged
@@ -328,6 +357,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     | DeliverDialogState
     | { kind: 'take-back'; mode: TakeBackMode; who: string }
     | { kind: 'free'; groupId: string }
+    | { kind: 'email'; groupId: string }
   >(null)
   const backupChoice = useBackupChoice()
   const [dialogOpenedOn, setDialogOpenedOn] = useState<unknown>(null)
@@ -434,7 +464,17 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           .optional(),
         scan: scanResultSchema.optional(),
         /* how much room freeing a tandem gave back, and how many files */
-        freed: z.object({ bytes: z.number(), files: z.number() }).optional()
+        freed: z.object({ bytes: z.number(), files: z.number(), groupId: z.string() }).optional(),
+        /* files just added from the computer */
+        imported: z
+          .object({
+            added: z.number(),
+            moved: z.array(z.object({ name: z.string(), from: z.string() })),
+            there: z.number(),
+            failed: z.array(z.string()),
+            where: z.string()
+          })
+          .optional()
       })
       .safeParse(fetcher.data)
     if (answered.success) {
@@ -450,7 +490,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         skipped,
         montage,
         scan: scanned,
-        freed
+        freed,
+        imported
       } = answered.data
       queueMicrotask(() => {
         setGroups(saved)
@@ -463,6 +504,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         if (freshRemote) setRemoteAfterUpload(freshRemote)
         /* a scan may be the first thing that ever put a manifest there */
         if (scanned) setHasManifest(true)
+        /* uploaded and freed: the one thing left is to tell the passenger, so that is offered */
+        if (freed) setDialog({ kind: 'email', groupId: freed.groupId })
         setBusy(null)
         setUploading(null)
         setNote(
@@ -474,9 +517,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               ? montageNote(montage)
               : scanned
                 ? scanNote(scanned)
-                : freed
-                  ? `On the storage only. ${freed.files} file${freed.files === 1 ? '' : 's'} freed from this machine on ${new Date().toLocaleDateString('de-CH')} — ${formatFilmSize(freed.bytes)} given back. The project is kept here; everything else is on the storage, as above.`
-                  : null
+                : imported
+                  ? importNote(imported)
+                  : freed
+                    ? `On the storage only. ${freed.files} file${freed.files === 1 ? '' : 's'} freed from this machine on ${new Date().toLocaleDateString('de-CH')} — ${formatFilmSize(freed.bytes)} given back. The project is kept here; everything else is on the storage, as above.`
+                    : null
         )
       })
       return
@@ -689,6 +734,56 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
      `newGroup` gathers them into a jump of their own — what a tandem needs, since the passenger
      name lives on a group; without it the files would land as lone files and fall back to the
      sorting area, which is not what dropping them on Tandems means. */
+  /* Files dragged in from the computer, as opposed to files moved about on the board: the browser
+     says so by carrying "Files". Each one is copied to this machine in turn — its bytes sent to the
+     server beside it — and once all are in, the board looks again and says how it went. */
+  const fromComputer = (e: React.DragEvent) => e.dataTransfer.types.includes('Files')
+
+  const importDropped = async (list: FileList, target: string, where: string) => {
+    const files = [...list]
+    if (files.length === 0) return
+    setBusy('import')
+    const tally = {
+      added: 0,
+      moved: [] as { name: string; from: string }[],
+      there: 0,
+      failed: [] as string[],
+      where
+    }
+    for (const [index, file] of files.entries()) {
+      setNote(`Adding ${index + 1} of ${files.length} to ${where} — ${file.name}…`)
+      const params = new URLSearchParams({
+        target,
+        filename: file.name,
+        lastModified: String(file.lastModified)
+      })
+      try {
+        const res = await fetch(`/api/import?${params.toString()}`, { method: 'POST', body: file })
+        const answer = z
+          .object({
+            ok: z.boolean(),
+            outcome: z.enum(['added', 'moved', 'there', 'kept']).optional(),
+            filename: z.string().optional(),
+            from: z.string().optional(),
+            reason: z.string().optional(),
+            error: z.string().optional()
+          })
+          .safeParse(await res.json())
+        const said = answer.success ? answer.data : null
+        if (!said?.ok) tally.failed.push(`${file.name}: ${said?.error ?? 'refused'}`)
+        else if (said.outcome === 'moved')
+          tally.moved.push({ name: said.filename ?? file.name, from: said.from ?? 'elsewhere' })
+        else if (said.outcome === 'there') tally.there += 1
+        else if (said.outcome === 'kept')
+          tally.failed.push(`${file.name} stayed where it is: ${said.reason ?? 'it cannot move'}`)
+        else tally.added += 1
+      } catch {
+        tally.failed.push(`${file.name}: the copy was cut off`)
+      }
+    }
+    manifest({ intent: 'imported', imported: tally })
+  }
+
   const moveFiles = (
     ids: string[],
     where: { destination?: string | null; targetGroupId?: string; newGroup?: boolean }
@@ -725,11 +820,20 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       return
     }
     const ids = lane.flatMap((f) => (f.id ? [f.id] : []))
-    if (e.shiftKey && anchor && ids.includes(anchor)) {
-      const from = ids.indexOf(anchor)
-      const to = ids.indexOf(id)
-      const range = ids.slice(Math.min(from, to), Math.max(from, to) + 1)
-      setPickedFiles([...new Set([...pickedFiles, ...range])])
+    /* Shift is always picking, never previewing. With a start already in this row it takes the
+       range; with none yet — the first shift-click on the board, or the start was in another row —
+       it picks this one and makes it the start. It used to fall through to a plain click, so the
+       first shift-click of all opened the preview and only the second one picked. */
+    if (e.shiftKey) {
+      if (anchor && ids.includes(anchor)) {
+        const from = ids.indexOf(anchor)
+        const to = ids.indexOf(id)
+        const range = ids.slice(Math.min(from, to), Math.max(from, to) + 1)
+        setPickedFiles([...new Set([...pickedFiles, ...range])])
+      } else {
+        setPickedFiles(pickedFiles.includes(id) ? pickedFiles : [...pickedFiles, id])
+        setAnchor(id)
+      }
       return
     }
     if (e.ctrlKey || e.metaKey || pickedFiles.length > 0) {
@@ -842,7 +946,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     if (frozen.has(groupId)) return {}
     return {
       onDragOver: (e: React.DragEvent) => {
-        if (draggedFiles.length === 0) return
+        if (draggedFiles.length === 0 && !fromComputer(e)) return
         e.preventDefault()
         e.stopPropagation()
         setOverTarget(key)
@@ -850,6 +954,17 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       onDragLeave: leaveTarget(key),
       onDrop: (e: React.DragEvent) => {
         setOverTarget(null)
+        if (fromComputer(e) && e.dataTransfer.files.length > 0) {
+          e.preventDefault()
+          e.stopPropagation()
+          const group = groups.find((g) => g.id === groupId)
+          void importDropped(
+            e.dataTransfer.files,
+            `group:${groupId}`,
+            (group && passengerOf(group)) || group?.label || 'this jump'
+          )
+          return
+        }
         if (draggedFiles.length === 0) return
         e.preventDefault()
         e.stopPropagation()
@@ -871,9 +986,18 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     /* the sorting area takes files back; a destination card takes whole jumps as well */
     const accepts =
       destination === null ? draggedFiles.length > 0 : dragged.length > 0 || draggedFiles.length > 0
+    /* From the computer: into a passenger's tandem, a dropzone as lone files, or the sorting area.
+       All passengers is not a place for a file — it has to be somebody's. */
+    const incoming = into
+      ? { target: `group:${into.hostId}`, where: passengerName(into.passenger) }
+      : destination === null
+        ? { target: 'sort', where: 'Unsorted jumps' }
+        : destination === TANDEMS
+          ? null
+          : { target: `dest:${destination}`, where: destination }
     return {
       onDragOver: (e: React.DragEvent) => {
-        if (!accepts) return
+        if (!accepts && !(fromComputer(e) && incoming)) return
         e.preventDefault()
         setOverTarget(key)
       },
@@ -881,6 +1005,10 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       onDrop: (e: React.DragEvent) => {
         e.preventDefault()
         setOverTarget(null)
+        if (fromComputer(e) && e.dataTransfer.files.length > 0) {
+          if (incoming) void importDropped(e.dataTransfer.files, incoming.target, incoming.where)
+          return
+        }
         if (draggedFiles.length > 0)
           moveFiles(
             draggedFiles,
@@ -1016,6 +1144,19 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               : dropTarget(TANDEMS, key)
     return { ...props, 'data-place': key }
   }
+
+  /* where a file from the computer dropped anywhere on the page goes — the place it shows; the
+     Tandems grid has no single passenger, so it takes nothing there */
+  const paneHost =
+    place.kind === 'pax' ? named.find((g) => passengerOf(g) === place.name) : undefined
+  const paneTarget =
+    place.kind === 'sort'
+      ? { target: 'sort', where: 'Unsorted jumps' }
+      : place.kind === 'dz'
+        ? { target: `dest:${place.name}`, where: place.name }
+        : paneHost && !frozen.has(paneHost.id)
+          ? { target: `group:${paneHost.id}`, where: passengerOf(paneHost) }
+          : null
 
   const dayAction = (day: string, dayGroups: ManifestGroup[], dayLoose: ManifestFile[]) => {
     if (place.kind !== 'dz') return null
@@ -1191,7 +1332,17 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           flashPlace={flashPlace}
         />
 
-        <section className='flex min-h-0 min-w-0 flex-col bg-ground'>
+        <section
+          /* the page itself takes files from the computer, for whichever place it shows */
+          onDragOver={(e) => {
+            if (fromComputer(e) && paneTarget) e.preventDefault()
+          }}
+          onDrop={(e) => {
+            if (!fromComputer(e) || !paneTarget || e.dataTransfer.files.length === 0) return
+            e.preventDefault()
+            void importDropped(e.dataTransfer.files, paneTarget.target, paneTarget.where)
+          }}
+          className='flex min-h-0 min-w-0 flex-col bg-ground'>
           <div className='flex flex-wrap items-center gap-[9px] border-b border-line bg-pane px-[18px] pt-2.5 pb-[9px]'>
             {place.kind === 'pax' && (
               <button
@@ -1213,6 +1364,21 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                   : `${placeFiles} file${placeFiles === 1 ? '' : 's'}`}
             </span>
             <span className='flex-1' />
+            {/* the passenger's link, by email — once there is a link to send */}
+            {place.kind === 'pax' &&
+              (() => {
+                const linked = groups.find(
+                  (g) =>
+                    passengerOf(g) === place.name && (g.delivered?.shareUrl ?? g.publish?.shareUrl)
+                )
+                return linked ? (
+                  <Mini
+                    title='Send the passenger their link'
+                    onClick={() => setDialog({ kind: 'email', groupId: linked.id })}>
+                    Email {linked.passenger?.firstname ?? ''}…
+                  </Mini>
+                ) : null
+              })()}
             {/* the two ways back from a tandem, for the whole passenger — each asks first */}
             {place.kind === 'pax' &&
               !groups.some((g) => passengerOf(g) === place.name && g.freed) && (
@@ -1559,6 +1725,20 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               }
               onClose={() => setDialog(null)}
               onDeliver={() => confirmDeliver(group)}
+            />
+          )
+        })()}
+
+      {dialog?.kind === 'email' &&
+        (() => {
+          const group = groups.find((g) => g.id === dialog.groupId)
+          const shareUrl = group?.delivered?.shareUrl ?? group?.publish?.shareUrl
+          if (!group || !shareUrl) return null
+          return (
+            <EmailDialog
+              group={group}
+              shareUrl={shareUrl}
+              onClose={() => setDialog(null)}
             />
           )
         })()}

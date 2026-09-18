@@ -30,12 +30,6 @@ const CHIP: Record<ShownStatus, string> = {
   uploaded: 'bg-up-soft text-up px-[7px]'
 }
 
-const DOT: Record<FileStatus, string> = {
-  local: 'bg-local',
-  processed: 'bg-proc',
-  uploaded: 'bg-up'
-}
-
 const StatusChip = ({ status }: { status: ShownStatus }) => (
   <span
     title={TITLES[status]}
@@ -44,14 +38,5 @@ const StatusChip = ({ status }: { status: ShownStatus }) => (
   </span>
 )
 
-/* On a thumbnail there is no room for a word, and the ring in the panel colour keeps the dot
-   legible whatever the picture under it happens to be. */
-const StatusDot = ({ status }: { status: FileStatus }) => (
-  <span
-    title={TITLES[status]}
-    className={`pointer-events-none absolute top-1 right-1 h-2 w-2 rounded-full shadow-[0_0_0_1.5px_var(--color-pane)] ${DOT[status]}`}
-  />
-)
-
-export { StatusChip, StatusDot }
+export { StatusChip }
 export type { ShownStatus }

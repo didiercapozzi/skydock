@@ -217,7 +217,21 @@ const lastComplaint = (stderr: string) => {
    Why it failed comes back with the answer. This used to be thrown away three times over — stderr
    to /dev/null, stdio ignored, the error swallowed — so when every clip on a card failed, the app
    could say only that it had. */
-const buildProxy = (src: string, dest: string, shape: ReturnType<typeof videoShape> = null) => {
+/* A proxy is minutes of ffmpeg per clip, and a card is dozens of clips: run with the blocking call,
+   the server answered nothing until the last one was made — a scan, or one clip dragged in, froze
+   the whole board. So ffmpeg is waited on without holding the thread, and its complaint is kept. */
+const runFfmpeg = (line: string) =>
+  new Promise<{ ok: true } | { ok: false; stderr: string }>((resolve) => {
+    childProcess.exec(line, { maxBuffer: 64 * 1024 * 1024 }, (error, _stdout, stderr) =>
+      resolve(error ? { ok: false, stderr: String(stderr ?? '') } : { ok: true })
+    )
+  })
+
+const buildProxy = async (
+  src: string,
+  dest: string,
+  shape: ReturnType<typeof videoShape> = null
+) => {
   if (!hasCommand('ffmpeg')) return { ok: false as const, reason: 'ffmpeg is not installed' }
   const quote = (p: string) => `"${p.replace(/(["$`\\])/g, '\\$1')}"`
   const { encoder: pick, cardScales } = detection()
@@ -245,18 +259,19 @@ const buildProxy = (src: string, dest: string, shape: ReturnType<typeof videoSha
         : scaleFilter(shape, pick === 'vaapi')
   const partial = `${dest}.part`
   fs.mkdirSync(path.dirname(dest), { recursive: true })
-  try {
-    childProcess.execSync(
-      `ffmpeg -y ${decode.join(' ')} -i ${quote(src)} -vf ${filter} ${ENCODER_ARGS[pick].join(' ')} ${CONTAINER_ARGS.join(' ')} ${quote(partial)}`,
-      { stdio: ['ignore', 'ignore', 'pipe'] }
-    )
-    fs.renameSync(partial, dest)
-    return { ok: true as const }
-  } catch (e) {
-    if (fs.existsSync(partial)) fs.unlinkSync(partial)
-    const stderr = (e as { stderr?: Buffer | string }).stderr
-    return { ok: false as const, reason: lastComplaint(stderr ? String(stderr) : '') }
+  const run = await runFfmpeg(
+    `ffmpeg -y ${decode.join(' ')} -i ${quote(src)} -vf ${filter} ${ENCODER_ARGS[pick].join(' ')} ${CONTAINER_ARGS.join(' ')} ${quote(partial)}`
+  )
+  if (run.ok) {
+    try {
+      fs.renameSync(partial, dest)
+      return { ok: true as const }
+    } catch (e) {
+      return { ok: false as const, reason: e instanceof Error ? e.message : String(e) }
+    }
   }
+  if (fs.existsSync(partial)) fs.unlinkSync(partial)
+  return { ok: false as const, reason: lastComplaint(run.stderr) }
 }
 
 /* The timeline carries the cut footage, so a proxy of the whole clip would not line up with it.
@@ -298,7 +313,7 @@ type ProxyReport = { built: number; skipped: number; failed: string[]; reason?: 
    the end. A card of clips is twenty minutes of transcoding, and a run that only saves when it
    finishes leaves every proxy it has already made unrecorded — which is how the crop bar came to
    drag 4K originals through the browser with twenty small copies sitting unused on disk. */
-const ensureProxies = (
+const ensureProxies = async (
   manifest: Manifest,
   outputDir?: string,
   onProgress?: (done: number, total: number, filename: string) => void,
@@ -308,19 +323,19 @@ const ensureProxies = (
   const candidates = manifest.files.filter(needsProxy)
   if (candidates.length === 0 || !hasCommand('ffmpeg')) return report
 
-  candidates.forEach((file, index) => {
+  for (const [index, file] of candidates.entries()) {
     onProgress?.(index, candidates.length, file.filename)
     const proxyPath = getProxyPath(file, outputDir)
-    if (!proxyPath) return
+    if (!proxyPath) continue
     if (fs.existsSync(proxyPath)) {
       if (file.proxy !== proxyPath) {
         file.proxy = proxyPath
         onBuilt?.()
       }
       report.skipped++
-      return
+      continue
     }
-    if (!fs.existsSync(file.path)) return
+    if (!fs.existsSync(file.path)) continue
     const shape = videoShape(file.path)
     /* already smaller than the proxy would be — the clip is its own proxy */
     if (shape !== null && shownWidth(shape) <= PROXY_MIN_WIDTH) {
@@ -329,9 +344,9 @@ const ensureProxies = (
         onBuilt?.()
       }
       report.skipped++
-      return
+      continue
     }
-    const built = buildProxy(file.path, proxyPath, shape)
+    const built = await buildProxy(file.path, proxyPath, shape)
     if (built.ok) {
       file.proxy = proxyPath
       report.built++
@@ -341,7 +356,7 @@ const ensureProxies = (
       report.failed.push(file.filename)
       report.reason ??= built.reason
     }
-  })
+  }
   onProgress?.(candidates.length, candidates.length, '')
   return report
 }
@@ -362,7 +377,7 @@ const buildMissingProxies = async (outputDir?: string) => {
     if (!manifest) return { built: 0, skipped: 0, failed: [] }
     /* written down as each one lands: whoever asked for this may never see it finish, and a
        proxy nobody recorded is a proxy nobody uses */
-    const report = ensureProxies(manifest, dir, undefined, () =>
+    const report = await ensureProxies(manifest, dir, undefined, () =>
       saveManifest(manifestPath, manifest)
     )
     if (report.built > 0)

@@ -16,7 +16,8 @@ import { createTmpDir, execSyncMock, writeTempFile } from './fixtures'
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>()
-  return { ...actual, execSync: (await import('./fixtures')).execSyncMock }
+  const { execSyncMock, execViaSyncMock } = await import('./fixtures')
+  return { ...actual, execSync: execSyncMock, exec: execViaSyncMock }
 })
 
 const CONTAINERS = new Set(['mp4', 'mov', 'mkv', 'webm', 'avi'])
@@ -99,24 +100,24 @@ describe('proxies', () => {
     setProxyEncoder(null)
   })
 
-  it('is for clips, not pictures', () => {
+  it('is for clips, not pictures', async () => {
     expect(needsProxy(fileEntry('/a/GX010023.MP4', 'v1'))).toBe(true)
     expect(needsProxy(fileEntry('/a/GOPR1100.JPG', 'p1'))).toBe(false)
   })
 
   /* Keyed by content, so the same clip copied off the same card twice is one proxy and moving a
      file does not orphan the one it already has. */
-  it('names a proxy after what the clip is, not where it sits', () => {
+  it('names a proxy after what the clip is, not where it sits', async () => {
     const proxy = getProxyPath(fileEntry('/anywhere/GX010023.MP4', 'abc123'), outputDir)
     expect(proxy).toBe(path.join(outputDir, 'proxies', 'abc123.mp4'))
   })
 
-  it('builds one per clip and records it on the file', () => {
+  it('builds one per clip and records it on the file', async () => {
     execSyncMock.mockImplementation(toolsPresent())
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123')])
 
-    const report = ensureProxies(manifest, outputDir)
+    const report = await ensureProxies(manifest, outputDir)
 
     expect(report.built).toBe(1)
     expect(manifest.files[0].proxy).toBe(path.join(outputDir, 'proxies', 'abc123.mp4'))
@@ -125,14 +126,14 @@ describe('proxies', () => {
 
   /* The expensive half of this must not be paid twice — a second scan over a card that is already
      proxied should cost nothing. */
-  it('passes over a clip that already has one', () => {
+  it('passes over a clip that already has one', async () => {
     execSyncMock.mockImplementation(toolsPresent())
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123')])
-    ensureProxies(manifest, outputDir)
+    await ensureProxies(manifest, outputDir)
     execSyncMock.mockClear()
 
-    const again = ensureProxies(manifest, outputDir)
+    const again = await ensureProxies(manifest, outputDir)
 
     expect(again.built).toBe(0)
     expect(again.skipped).toBe(1)
@@ -140,12 +141,12 @@ describe('proxies', () => {
   })
 
   /* Scaling up is not a proxy. A clip already smaller than the threshold is its own. */
-  it('leaves a clip that is already small alone, and says it is its own proxy', () => {
+  it('leaves a clip that is already small alone, and says it is its own proxy', async () => {
     execSyncMock.mockImplementation(toolsPresent(640))
     const src = writeTempFile(outputDir, 'original_files/small.mp4')
     const manifest = manifestOf([fileEntry(src, 'small1')])
 
-    ensureProxies(manifest, outputDir)
+    await ensureProxies(manifest, outputDir)
 
     expect(manifest.files[0].proxy).toBe(src)
     expect(fs.existsSync(path.join(outputDir, 'proxies', 'small1.mp4'))).toBe(false)
@@ -153,12 +154,12 @@ describe('proxies', () => {
 
   /* No encoder is not a broken card: everything else still works, and the crop bar falls back to
      the clip itself. */
-  it('does nothing and complains about nothing when there is no ffmpeg', () => {
+  it('does nothing and complains about nothing when there is no ffmpeg', async () => {
     execSyncMock.mockImplementation(noTools)
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123')])
 
-    const report = ensureProxies(manifest, outputDir)
+    const report = await ensureProxies(manifest, outputDir)
 
     expect(report).toEqual({ built: 0, skipped: 0, failed: [] })
     expect(manifest.files[0].proxy).toBeUndefined()
@@ -167,7 +168,7 @@ describe('proxies', () => {
   /* Every clip on the first real card failed, and all the app could say was which ones. The reason
      was discarded three times over on the way out — stderr to /dev/null, stdio ignored, the error
      swallowed — so the only way to find it was to run ffmpeg by hand. */
-  it('says why a clip failed, not just that it did', () => {
+  it('says why a clip failed, not just that it did', async () => {
     execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
       const line = String(cmd)
       if (line.startsWith('command -v')) return Buffer.from('/usr/bin/x')
@@ -179,7 +180,7 @@ describe('proxies', () => {
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123')])
 
-    const report = ensureProxies(manifest, outputDir)
+    const report = await ensureProxies(manifest, outputDir)
 
     expect(report.failed).toEqual(['GX010023.MP4'])
     expect(report.reason).toBe('No space left on device')
@@ -187,7 +188,7 @@ describe('proxies', () => {
   })
 
   /* a half-written proxy that looks finished would be skipped forever after */
-  it('leaves nothing behind when a build fails', () => {
+  it('leaves nothing behind when a build fails', async () => {
     execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
       const line = String(cmd)
       if (line.startsWith('command -v')) return Buffer.from('/usr/bin/x')
@@ -198,12 +199,12 @@ describe('proxies', () => {
       throw new Error('interrupted')
     })
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
-    ensureProxies(manifestOf([fileEntry(src, 'abc123')]), outputDir)
+    await ensureProxies(manifestOf([fileEntry(src, 'abc123')]), outputDir)
 
     expect(fs.readdirSync(path.join(outputDir, 'proxies'))).toEqual([])
   })
 
-  it('counts how far along a card is', () => {
+  it('counts how far along a card is', async () => {
     execSyncMock.mockImplementation(toolsPresent())
     const one = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const two = writeTempFile(outputDir, 'original_files/GX010024.MP4')
@@ -214,7 +215,7 @@ describe('proxies', () => {
     ])
 
     expect(proxyCounts(manifest, outputDir)).toEqual({ ready: 0, total: 2 })
-    ensureProxies(manifest, outputDir)
+    await ensureProxies(manifest, outputDir)
     expect(proxyCounts(manifest, outputDir)).toEqual({ ready: 2, total: 2 })
   })
 })
@@ -237,10 +238,10 @@ describe('proxies stay out of what gets delivered', () => {
     setProxyEncoder(null)
   })
 
-  it('writes a jump\u2019s cut proxies under the output folder, not beside the copies', () => {
+  it('writes a jump\u2019s cut proxies under the output folder, not beside the copies', async () => {
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123')])
-    ensureProxies(manifest, outputDir)
+    await ensureProxies(manifest, outputDir)
     const file = manifest.files[0]
 
     const cut = path.join(getCutProxyDir(outputDir, 'group_1'), 'luc_favre_20260829_113015.mp4')
@@ -252,10 +253,10 @@ describe('proxies stay out of what gets delivered', () => {
   })
 
   /* the import proxies live under their own folder too, which no scan and no upload ever reads */
-  it('keeps the imported ones out of processed entirely', () => {
+  it('keeps the imported ones out of processed entirely', async () => {
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123')])
-    ensureProxies(manifest, outputDir)
+    await ensureProxies(manifest, outputDir)
 
     expect(manifest.files[0].proxy).toBe(path.join(outputDir, 'proxies', 'abc123.mp4'))
     expect(fs.existsSync(path.join(outputDir, 'processed'))).toBe(false)
@@ -280,17 +281,17 @@ describe('what the board is told about each proxy', () => {
     setProxyEncoder(null)
   })
 
-  it('marks a clip that has one, and says nothing about pictures', () => {
+  it('marks a clip that has one, and says nothing about pictures', async () => {
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123'), fileEntry('/a/GOPR1100.JPG', 'pic1')])
-    ensureProxies(manifest, outputDir)
+    await ensureProxies(manifest, outputDir)
 
     expect(statProxies(manifest, outputDir)).toEqual({
       [src]: { state: 'ready', play: path.join(outputDir, 'proxies', 'abc123.mp4') }
     })
   })
 
-  it('marks a clip that has none yet', () => {
+  it('marks a clip that has none yet', async () => {
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123')])
 
@@ -298,20 +299,20 @@ describe('what the board is told about each proxy', () => {
     expect(statProxies(manifest, outputDir)).toEqual({ [src]: { state: 'none', play: src } })
   })
 
-  it('tells a clip that is its own proxy from one still waiting', () => {
+  it('tells a clip that is its own proxy from one still waiting', async () => {
     execSyncMock.mockImplementation(toolsPresent(640))
     const src = writeTempFile(outputDir, 'original_files/small.mp4')
     const manifest = manifestOf([fileEntry(src, 'small1')])
-    ensureProxies(manifest, outputDir)
+    await ensureProxies(manifest, outputDir)
 
     expect(statProxies(manifest, outputDir)).toEqual({ [src]: { state: 'own', play: src } })
   })
 
   /* the record outliving the file is exactly the case a flag has to survive */
-  it('says none once the folder has been emptied, whatever the record claims', () => {
+  it('says none once the folder has been emptied, whatever the record claims', async () => {
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123')])
-    ensureProxies(manifest, outputDir)
+    await ensureProxies(manifest, outputDir)
     expect(manifest.files[0].proxy).toBeDefined()
 
     fs.rmSync(path.join(outputDir, 'proxies'), { recursive: true, force: true })
@@ -339,7 +340,7 @@ describe('a build still in progress', () => {
     setProxyEncoder(null)
   })
 
-  it('plays a proxy that exists even though no record mentions it', () => {
+  it('plays a proxy that exists even though no record mentions it', async () => {
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123')])
     /* built by somebody else's pass, which has not saved anything yet */
@@ -351,13 +352,13 @@ describe('a build still in progress', () => {
     expect(statProxies(manifest, outputDir)[src]).toEqual({ state: 'ready', play: proxyPath })
   })
 
-  it('writes the record down as each one lands, not once at the end', () => {
+  it('writes the record down as each one lands, not once at the end', async () => {
     const one = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const two = writeTempFile(outputDir, 'original_files/GX010024.MP4')
     const manifest = manifestOf([fileEntry(one, 'abc123'), fileEntry(two, 'def456')])
 
     const saves: number[] = []
-    ensureProxies(manifest, outputDir, undefined, () =>
+    await ensureProxies(manifest, outputDir, undefined, () =>
       saves.push(manifest.files.filter((f) => f.proxy).length)
     )
 
@@ -389,55 +390,55 @@ describe('which encoder gets used', () => {
   const ffmpegCalls = () =>
     execSyncMock.mock.calls.map((c) => String(c[0])).filter((l) => l.startsWith('ffmpeg -y'))
 
-  const runOne = () => {
+  const runOne = async () => {
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
-    ensureProxies(manifestOf([fileEntry(src, 'abc123')]), outputDir)
+    await ensureProxies(manifestOf([fileEntry(src, 'abc123')]), outputDir)
     return ffmpegCalls()[0] ?? ''
   }
 
-  it('takes the graphics card when it works, and decodes on it too', () => {
+  it('takes the graphics card when it works, and decodes on it too', async () => {
     execSyncMock.mockImplementation(toolsPresent())
-    const cmd = runOne()
+    const cmd = await runOne()
     expect(cmd).toContain('h264_nvenc')
     expect(cmd).toContain('-hwaccel cuda')
   })
 
-  it('falls back to the processor when no card answers', () => {
+  it('falls back to the processor when no card answers', async () => {
     execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
       const line = String(cmd)
       /* the probe of nothing fails for every card, as it does with no driver libraries */
       if (line.includes('-f lavfi')) throw new Error('Device creation failed')
       return toolsPresent()(cmd, opts)
     })
-    const cmd = runOne()
+    const cmd = await runOne()
     expect(cmd).toContain('libx264')
     expect(cmd).not.toContain('-hwaccel')
   })
 
-  it('can be told which one to use', () => {
+  it('can be told which one to use', async () => {
     process.env.SKYDOCK_PROXY_ENCODER = 'cpu'
     execSyncMock.mockImplementation(toolsPresent())
-    expect(runOne()).toContain('libx264')
+    expect(await runOne()).toContain('libx264')
   })
 
   /* A 360 camera stores its frames sideways and notes the turn beside them. The processor is handed
      frames already turned the right way up; a card is not. Shrinking the wrong edge made every one
      of those clips come out three times the size it was asked for. */
-  it('shrinks the edge that ends up across, on a clip stored sideways', () => {
+  it('shrinks the edge that ends up across, on a clip stored sideways', async () => {
     execSyncMock.mockImplementation(toolsPresent(2560, true))
-    expect(runOne()).toContain('h=640')
+    expect(await runOne()).toContain('h=640')
   })
 
-  it('shrinks the width on a clip stored the right way up', () => {
+  it('shrinks the width on a clip stored the right way up', async () => {
     execSyncMock.mockImplementation(toolsPresent(3840, false))
-    expect(runOne()).toContain('w=640')
+    expect(await runOne()).toContain('w=640')
   })
 
   /* the processor path has not changed: ffmpeg turns the frame first, so width is the whole of it */
-  it('leaves the processor path asking for a 640-wide frame', () => {
+  it('leaves the processor path asking for a 640-wide frame', async () => {
     setProxyEncoder('cpu')
     execSyncMock.mockImplementation(toolsPresent(2560, true))
-    expect(runOne()).toContain('scale=640:-2')
+    expect(await runOne()).toContain('scale=640:-2')
   })
 })
 
@@ -459,13 +460,13 @@ describe('the settings the cards insist on', () => {
 
   /* a clip of its own each time, or the second call finds the first one's proxy already there and
      builds nothing — and the command asserted on would be the previous encoder's */
-  const commandFor = (encoder: 'nvenc' | 'vaapi' | 'cpu', cardScales = true) => {
+  const commandFor = async (encoder: 'nvenc' | 'vaapi' | 'cpu', cardScales = true) => {
     setProxyEncoder(encoder, cardScales)
     execSyncMock.mockClear()
     execSyncMock.mockImplementation(toolsPresent())
     const name = `${encoder}${cardScales ? '' : '-noscale'}`
     const src = writeTempFile(outputDir, `original_files/${name}.MP4`)
-    ensureProxies(manifestOf([fileEntry(src, `id-${name}`)]), outputDir)
+    await ensureProxies(manifestOf([fileEntry(src, `id-${name}`)]), outputDir)
     return (
       execSyncMock.mock.calls.map((c) => String(c[0])).find((l) => l.startsWith('ffmpeg -y')) ?? ''
     )
@@ -473,25 +474,25 @@ describe('the settings the cards insist on', () => {
 
   /* NVENC refuses `-g 1` outright without this — "Gop Length should be greater than number of B
      frames + 1" — and `-g 2` gives every other frame, which will not cut with a copy. */
-  it('asks NVENC for the mode that lets every frame be a keyframe', () => {
-    const cmd = commandFor('nvenc')
+  it('asks NVENC for the mode that lets every frame be a keyframe', async () => {
+    const cmd = await commandFor('nvenc')
     expect(cmd).toContain('-tune ull')
     expect(cmd).toContain('-g 1')
   })
 
   /* naming a pixel format makes ffmpeg insert a conversion it cannot link to the card's memory:
      "impossible to convert between the formats supported by the filter" */
-  it('never names a pixel format on a hardware path', () => {
-    expect(commandFor('nvenc')).not.toContain('-pix_fmt')
-    expect(commandFor('vaapi')).not.toContain('-pix_fmt')
-    expect(commandFor('cpu')).toContain('-pix_fmt')
+  it('never names a pixel format on a hardware path', async () => {
+    expect(await commandFor('nvenc')).not.toContain('-pix_fmt')
+    expect(await commandFor('vaapi')).not.toContain('-pix_fmt')
+    expect(await commandFor('cpu')).toContain('-pix_fmt')
   })
 
   /* An Intel card that decoded and encoded fine had no video-processing unit, so every
      `scale_vaapi` failed — "the requested VAProfile is not supported" — and so did every clip. Such
      a card still decodes and encodes; the processor does the resize in between. */
-  it('resizes on the processor when the card cannot', () => {
-    const cmd = commandFor('vaapi', false)
+  it('resizes on the processor when the card cannot', async () => {
+    const cmd = await commandFor('vaapi', false)
     expect(cmd).not.toContain('scale_vaapi')
     expect(cmd).not.toContain('-hwaccel_output_format')
     expect(cmd).toContain('-hwaccel vaapi')
@@ -500,15 +501,15 @@ describe('the settings the cards insist on', () => {
     expect(cmd).toContain('-g 1')
   })
 
-  it('keeps the whole job on a card that can scale', () => {
-    const cmd = commandFor('vaapi', true)
+  it('keeps the whole job on a card that can scale', async () => {
+    const cmd = await commandFor('vaapi', true)
     expect(cmd).toContain('scale_vaapi')
     expect(cmd).toContain('-hwaccel_output_format vaapi')
   })
 
   /* One stage failing makes every stage after it fail too, each saying so. The last of those is a
      consequence: the scaler above was reported as the encoder's "error code -22". */
-  it('reports the cause, not the stage that starved because of it', () => {
+  it('reports the cause, not the stage that starved because of it', async () => {
     setProxyEncoder('vaapi')
     execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
       const line = String(cmd)
@@ -528,18 +529,18 @@ describe('the settings the cards insist on', () => {
       throw failure
     })
     const src = writeTempFile(outputDir, 'original_files/GX018633.MP4')
-    const report = ensureProxies(manifestOf([fileEntry(src, 'gx633')]), outputDir)
+    const report = await ensureProxies(manifestOf([fileEntry(src, 'gx633')]), outputDir)
     expect(report.reason).toContain('VAProfile is not supported')
     expect(report.reason).not.toContain('-22')
   })
 
   /* A trial that leaves the real settings out proves only that the encoder exists. NVENC passed
      exactly such a trial and then refused every clip, because `-g 1` is what it objected to. */
-  it('tries the encoder with the settings it will really be given', () => {
+  it('tries the encoder with the settings it will really be given', async () => {
     setProxyEncoder(null)
     execSyncMock.mockImplementation(toolsPresent())
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
-    ensureProxies(manifestOf([fileEntry(src, 'abc123')]), outputDir)
+    await ensureProxies(manifestOf([fileEntry(src, 'abc123')]), outputDir)
     const trial = execSyncMock.mock.calls
       .map((c) => String(c[0]))
       .find((l) => l.includes('-f lavfi'))
@@ -548,7 +549,7 @@ describe('the settings the cards insist on', () => {
   })
 
   /* "Conversion failed!" says only that it did; the diagnosis is the line above it */
-  it('reports the line that gives a reason, not ffmpeg\u2019s sign-off', () => {
+  it('reports the line that gives a reason, not ffmpeg\u2019s sign-off', async () => {
     setProxyEncoder('cpu')
     execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
       const line = String(cmd)
@@ -566,7 +567,7 @@ describe('the settings the cards insist on', () => {
       throw failure
     })
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
-    const report = ensureProxies(manifestOf([fileEntry(src, 'abc123')]), outputDir)
+    const report = await ensureProxies(manifestOf([fileEntry(src, 'abc123')]), outputDir)
 
     expect(report.reason).toContain('Gop Length')
     expect(report.reason).not.toContain('Conversion failed')

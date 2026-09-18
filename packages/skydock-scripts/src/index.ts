@@ -82,3 +82,11 @@ export {
   sameEditedGroup,
   statTandemArtifacts
 } from './tandem'
+export {
+  dayInFrench,
+  defaultPassengerEmail,
+  gmailComposeUrl,
+  mailtoUrl,
+  renderPassengerEmail
+} from './passengerEmail'
+export type { PassengerEmail } from './passengerEmail'

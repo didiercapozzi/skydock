@@ -243,8 +243,9 @@ still left in it.
 with it _Collapse jumps_ and _Expand jumps_, and _Close all days_. Folding jumps is a standing
 choice rather than something done to one day: jumps start folded, so a day opens as the list of its
 jumps, and every day opened afterwards opens the same way until they are expanded — and after that,
-open until they are collapsed again. Landing on a jump from its chip opens that jump. A jump can still be folded or opened on its own from its
-line, and doing so is an exception to that choice rather than an end to it. Folding changes only
+open until they are collapsed again. Landing on a jump from its chip opens that jump. A jump can still be folded or opened on its own by
+clicking anywhere on its line that is not a button, and doing so is an exception to that choice
+rather than an end to it. Folding changes only
 what is on screen; nothing about the files moves.
 
 **Getting to a jump.** A day's header carries one chip per jump in it, with how many files that jump
@@ -281,8 +282,9 @@ with a button for more, because a tandem of five hundred photos must not put fiv
 screen before they have been asked for. Every day's header, open or closed, and every tandem's carries
 badges saying how many videos and how many photos it holds, and they show one kind or the other —
 fifteen clips and five hundred stills are two different jobs. They are there even when one kind is
-absent, so every header reads the same; a kind with nothing in it is shown but cannot be chosen. A thumbnail shows its state as a coloured dot once a selection is under way, which is when it
-matters; a row always says it in words.
+absent, so every header reads the same; a kind with nothing in it is shown but cannot be chosen. Once a selection is under way, every thumbnail carries a
+ring in its corner that fills green with a tick once it is picked, and a picked row is ticked in the
+same green; a row always says a file's state in words, and a thumbnail says it on hover.
 
 **Finding.** A box in the pane's heading narrows what is drawn in the place being looked at, matching
 either name a file has. It only changes what is shown: a jump left with nothing matching drops out of
@@ -307,8 +309,24 @@ the board stays where it was so sorting can carry on.
 Tandems with no passenger yet stay visible and say how many are waiting for a name, rather than
 quietly hiding.
 
+**Adding files from the computer.** A video or a photo from anywhere on the computer — a clip off a
+phone, a photo someone sent — can be dragged onto the board and dropped where it belongs: onto a
+passenger, in the menu or on their tandem, to join that tandem; onto a dropzone, to be filed there as a
+lone file; onto Unsorted jumps, to wait there to be sorted. Dropped anywhere on a place's page, it
+goes to that place. It is simply copied: into the originals, under the day it was taken — its own
+date when it carries one, otherwise the date the computer gives it — keeping its own name unless that
+name is taken by a different file that day. From then on it is a file like any other, and a scan
+finds it where it is. A file already on the board is recognised by its content, whatever it is called:
+it is not copied a second time — a file is in one place at a time — but moved to where it was dropped,
+exactly as a drag on the board would move it. One already exactly there is left as it is, and one in a
+tandem that has an edit or lives on the storage only stays where it is. A file that is not a video or
+a photo is refused, and so is a drop on a tandem that has an edit or lives on the storage only. The
+board says what came of the drop: how many were added, what was moved from where, what was already
+there, and why anything was not.
+
 **Selecting.** One gesture: click to preview, ctrl- or cmd-click to pick a file, shift-click to take a
-range. Once anything is picked, plain clicks add and remove, and Escape clears. A selection can be
+range — shift-click never previews: with no range started yet, it picks that file and starts one
+there. Once anything is picked, plain clicks add and remove, and Escape clears. A selection can be
 removed back to the sorting area, by button or by pressing Delete.
 
 **Comparing.** Tick two jumps and compare them side by side, stepping through every jump independently
@@ -601,12 +619,26 @@ or uploaded again from here, and a rescan keeps it as it is rather than dropping
 purpose. Should anything of it later disappear from the storage, the board says so, as for any uploaded
 tandem — by then the storage was the only copy.
 
+**Telling the passenger.** Once a tandem has a share link, its page offers to email the passenger
+their link, and freeing a tandem opens the email straight away, since it is the one thing left to do.
+The email is already written — in French, greeting the passenger by name, saying what is ready and
+from which day, with one button to their folder and the link again as text — and shown exactly as it
+will arrive. Every word can be changed before it goes; the signature is the club's, the same on every
+email, and is remembered.
+
+Nothing is sent from SkyDock itself, and there is nothing to connect or set up. One press copies the
+email, laid out as shown, and opens a new message with the passenger's address — when it has been
+typed — and the subject already filled in: in Gmail, or in the mail program the computer uses
+(Outlook, Apple Mail, Thunderbird…). The email is pasted into it and sent from there; whichever was
+used last is offered first. The email can also just be copied, with the subject and the link each
+copyable on their own. The link always comes from what the upload recorded, never from what was
+typed.
+
 ## Not built
 
 Worth knowing, so nobody goes looking:
 
-- **Nothing is emailed.** A share link is produced and copied by hand; there is no message to the
-  passenger and no address is kept.
+- **SkyDock never sends email itself.** It prepares it, and a person sends it from their own mail.
 - **The montage takes every photo.** Choosing which photos go to the passenger is not possible.
 - **Nothing renders the film.** A person makes the edit and renders it. SkyDock opens the editor on
   the project and takes over again afterwards, but it never drives the edit or the render.
@@ -615,8 +647,6 @@ Worth knowing, so nobody goes looking:
 - **Nothing watches a proxy being made.** The board says which clips have one and how many are still
   without, but only as of the last time it was drawn: they appear on the next thing it is asked to do,
   and there is no live progress and no way to ask for one on its own.
-- **Nothing comes in from outside the cameras.** A file can only reach SkyDock by being copied off a
-  camera and scanned; there is no way to drop an arbitrary file into a jump.
 - **A file is in one place at a time.** It can be moved between jumps, but not put in two at once.
 - **A dropzone can be created, not renamed or removed.** Its name is what its folder is called.
 - **One known collision.** A loose file and a jump's file filed to the same dropzone and shot in the

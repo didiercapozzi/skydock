@@ -1,7 +1,7 @@
 import { EDIT_LOCKED, fileChanged, fileStatus, isWholeFrame } from '@skydock/scripts'
 import type { ProxyFact, StatusContext } from '@skydock/scripts'
 import { useState } from 'react'
-import { StatusChip, StatusDot } from './file-status'
+import { StatusChip } from './file-status'
 import type { ShownStatus } from './file-status'
 import type { ManifestFile } from './types'
 import { formatSize, formatTime, getFileUrl, getThumbUrl, isVideoFile } from './utils'
@@ -145,6 +145,23 @@ const FrameFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) 
   )
 }
 
+/* Picked or not, in the corner of every thumbnail once a selection is under way: an empty ring to
+   say it can be picked, filled with the board's green and a tick once it is. A white edge and a
+   soft shadow keep it legible over any picture. It replaces the coloured status dot that stood
+   there — orange on most of a card, and easily taken for a warning — the state is still in the
+   thumbnail's title, and on every row. */
+const PickMark = ({ picked }: { picked: boolean }) => (
+  <span
+    aria-hidden='true'
+    className={`pointer-events-none absolute top-1.5 right-1.5 grid h-[18px] w-[18px] place-items-center rounded-full text-[11px] leading-none font-bold transition-colors duration-100 ${
+      picked
+        ? 'bg-accent text-white shadow-[0_0_0_2px_#fff,0_1px_4px_rgba(0,0,0,0.35)]'
+        : 'bg-black/20 text-transparent shadow-[inset_0_0_0_1.5px_rgba(255,255,255,0.92),0_1px_3px_rgba(0,0,0,0.3)]'
+    }`}>
+    ✓
+  </span>
+)
+
 const Row = ({
   file,
   lane,
@@ -179,13 +196,13 @@ const Row = ({
       onFile(file, lane, e as unknown as React.MouseEvent)
     }}
     className={`flex h-[38px] w-full items-center gap-2.5 rounded-md border px-[7px] text-left ${
-      picked ? 'border-pick bg-pick-soft' : 'border-transparent hover:bg-line-2'
+      picked ? 'border-accent bg-accent-soft' : 'border-transparent hover:bg-line-2'
     }`}>
     <span
       /* the tick is only ever drawn once it is ticked — transparent, not white, so it stays
          invisible on a dark panel as well as a light one */
       className={`grid h-3.5 w-3.5 flex-none place-items-center rounded-[3px] border-[1.5px] text-[9px] ${
-        picked ? 'border-pick bg-pick text-white' : 'border-line text-transparent'
+        picked ? 'border-accent bg-accent text-white' : 'border-line text-transparent'
       }`}>
       ✓
     </span>
@@ -273,7 +290,7 @@ const Tile = ({
       proxy?.state === 'none' ? ' · no proxy yet' : ''
     }${isWholeFrame(file.frame) ? '' : ' · frame cropped'}`}
     className={`relative aspect-[4/3] max-w-full overflow-hidden rounded-[5px] border-2 bg-line-2 p-0 ${
-      picked ? 'border-pick' : 'border-transparent'
+      picked ? 'border-accent' : 'border-transparent'
     }`}>
     <img
       src={isVideoFile(file.path) ? getThumbUrl(file.path, 0.5, 160) : getFileUrl(file.path)}
@@ -303,7 +320,7 @@ const Tile = ({
         className='pointer-events-none absolute bottom-1 left-1 h-2 w-2 rounded-full border border-dashed border-white bg-local shadow-[0_0_0_1.5px_rgba(0,0,0,0.45)]'
       />
     )}
-    {selecting && <StatusDot status={status} />}
+    {selecting && <PickMark picked={picked} />}
   </button>
 )
 
