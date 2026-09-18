@@ -85,6 +85,8 @@ const remoteMatches = (file: ManifestFile, remote?: RemoteListing | null) => {
 }
 
 const fileStatus = (file: ManifestFile, context?: StatusContext): FileStatus => {
+  /* freed only once the storage was proved to hold it, so that is where it is */
+  if (file.freed) return 'uploaded'
   if (!file.processed) return 'local'
   if (!sourceMatches(file, context)) return 'local'
   if (!outputMatches(file, context?.output)) return 'local'

@@ -43,8 +43,16 @@ const matchesKind = (file: ManifestFile, kind: Kind) => kind === 'all' || kindOf
 const UPLOADED_LOCKED =
   'On the NAS — cropping, re-timing and moving are closed. Take it off the NAS to change it.'
 
+const FREED_LOCKED = 'Freed from this machine — it is on the storage only now.'
+
 const lockReason = (file: ManifestFile, context: StatusContext) =>
-  context.inEdit ? EDIT_LOCKED : fileStatus(file, context) === 'uploaded' ? UPLOADED_LOCKED : null
+  file.freed
+    ? FREED_LOCKED
+    : context.inEdit
+      ? EDIT_LOCKED
+      : fileStatus(file, context) === 'uploaded'
+        ? UPLOADED_LOCKED
+        : null
 
 const shownStatus = (file: ManifestFile, context: StatusContext): ShownStatus =>
   fileChanged(file, context) ? 'changed' : fileStatus(file, context)

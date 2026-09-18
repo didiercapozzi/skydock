@@ -8,6 +8,7 @@ import {
   destinationSchema,
   EDIT_LOCKED,
   frozenTandems,
+  processingNow,
   hasEdit,
   ensureNasSession,
   isTandem,
@@ -35,6 +36,8 @@ import {
 /* both reach the filesystem and the NAS, so they are imported straight from the package rather
    than through the barrel the board also reads */
 import { deliverTandem } from '../../../packages/skydock-scripts/src/deliver'
+import { deleteTandem, resetTandem } from '../../../packages/skydock-scripts/src/resetTandem'
+import { freeTandem, markFreed } from '../../../packages/skydock-scripts/src/freeTandem'
 import { openInEditor } from '../../../packages/skydock-scripts/src/editor'
 import { createMontageProject } from '../../../packages/skydock-scripts/src/montage'
 import { getCutProxyDir } from '../../../packages/skydock-scripts/src/proxy'
@@ -54,7 +57,12 @@ const actionArgs = z.object({
     'deliver',
     'shift-group-time',
     'move-files',
-    'regroup-loose'
+    'regroup-loose',
+    /* back to before processing, keeping every decision — or undone altogether */
+    'reset-tandem',
+    'delete-tandem',
+    /* delete it from this machine, once the storage is proved to hold it all */
+    'free-tandem'
   ]),
   groupId: z.string().optional(),
   groupIds: z.array(z.string()).optional(),
@@ -97,6 +105,59 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
     const refuseFrozen = () => {
       errors.addGlobalError(EDIT_LOCKED)
       return errors.toResponse(422)
+    }
+    if (data.intent === 'free-tandem') {
+      /* the proof is the storage's own checksum, so it has to be reachable */
+      const session = await ensureNasSession()
+      if (!session) {
+        errors.addGlobalError(
+          'Connect the NAS first — freeing needs it to prove it holds the files.'
+        )
+        return errors.toResponse(422)
+      }
+      if (processingNow()) {
+        errors.addGlobalError('Something is being processed — wait for it to finish.')
+        return errors.toResponse(422)
+      }
+      try {
+        const result = await freeTandem({
+          manifest,
+          outputDir: getOutputDir(),
+          groupId: data.groupId ?? '',
+          session
+        })
+        /* checking gigabytes takes a while; whatever was saved meanwhile is kept */
+        const saved = loadManifest(manifestPath) ?? manifest
+        markFreed(saved, result)
+        saveManifest(manifestPath, saved)
+        return {
+          ...boardAnswer(saved),
+          freed: { bytes: result.bytes, files: result.fileIds.length }
+        }
+      } catch (e) {
+        errors.addGlobalError(e instanceof Error ? e.message : String(e))
+        return errors.toResponse(422)
+      }
+    }
+    if (data.intent === 'reset-tandem' || data.intent === 'delete-tandem') {
+      /* its folder is being written right now; taking it away underneath would leave half of it */
+      const running = processingNow()
+      if (
+        running &&
+        (running.groupIds.length === 0 || running.groupIds.includes(data.groupId ?? ''))
+      ) {
+        errors.addGlobalError('This tandem is being processed — wait for it to finish.')
+        return errors.toResponse(422)
+      }
+      try {
+        const take = data.intent === 'reset-tandem' ? resetTandem : deleteTandem
+        take(manifest, getOutputDir(), data.groupId ?? '')
+      } catch (e) {
+        errors.addGlobalError(e instanceof Error ? e.message : String(e))
+        return errors.toResponse(422)
+      }
+      saveManifest(manifestPath, manifest)
+      return boardAnswer(manifest)
     }
     if (data.intent === 'merge-groups') {
       if (frozen.has(data.leftId ?? '') || frozen.has(data.rightId ?? '')) return refuseFrozen()
@@ -354,7 +415,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       const outputs = statProcessedOutputs(manifest)
       const gate = uploadGate(group.files, (file) => ({ output: outputs[file.path] }))
       if (gate.blocked) {
-        errors.addGlobalError(`${gate.message} — process before delivering.`)
+        errors.addGlobalError(`${gate.message} — process before uploading.`)
         return errors.toResponse(422)
       }
       const key = deliverScopeKey(group.id)
@@ -447,7 +508,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
           skipped: result.skipped
         }
       } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Delivery failed.'
+        const msg = err instanceof Error ? err.message : 'Upload failed.'
         writeUploadProgress(
           {
             scope: key,
@@ -484,7 +545,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       const asked = groupsInScope(manifest, scope)
       if (asked.length > 0 && asked.every(isTandem)) {
         errors.addGlobalError(
-          'Use Deliver for a tandem: its film and photos go to the passenger and its original videos to the backup, which an upload of the whole folder cannot do.'
+          'Upload a tandem from its own card: its film and photos go to the passenger and its original videos to the backup, which an upload of the whole folder cannot do.'
         )
         return errors.toResponse(422)
       }

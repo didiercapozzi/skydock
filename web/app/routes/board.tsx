@@ -1,5 +1,6 @@
 import {
   buildPassengerFolder,
+  goneFromStorage,
   destinationSchema,
   EDIT_LOCKED,
   ensureNasSession,
@@ -27,6 +28,9 @@ import { ComparisonDialog } from '../components/comparison-dialog'
 import { ConnectionDialog } from '../components/connection-dialog'
 import { DayRow } from '../components/day-row'
 import { DeliverDialog } from '../components/deliver-dialog'
+import { TakeBackDialog } from '../components/take-back-dialog'
+import { FreeDialog } from '../components/free-dialog'
+import type { TakeBackMode } from '../components/take-back-dialog'
 import { FileList, KindBadges, lockReason } from '../components/file-list'
 import type { Kind } from '../components/file-list'
 import { NasFolderBrowser } from '../components/nas-folder-browser'
@@ -43,6 +47,8 @@ import type { Passenger } from '../components/tandem-card'
 import {
   DeliveredCards,
   FilmStrip,
+  formatFilmSize,
+  GoneFromStorage,
   PassengerCard,
   TandemActions,
   UploadStrip
@@ -320,6 +326,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     | { kind: 'connect' }
     | { kind: 'folder'; destination?: string; target?: 'backup'; back?: DeliverDialogState }
     | DeliverDialogState
+    | { kind: 'take-back'; mode: TakeBackMode; who: string }
+    | { kind: 'free'; groupId: string }
   >(null)
   const backupChoice = useBackupChoice()
   const [dialogOpenedOn, setDialogOpenedOn] = useState<unknown>(null)
@@ -331,7 +339,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const [tandemFacts, setTandemFacts] = useState<TandemFacts>(loaderData.tandems)
   /* A tandem with an edit is frozen (RULES, Montage). The server refuses any change to one; the
      board simply never offers it. */
-  const frozen = new Set(groups.filter((g) => tandemFacts[g.id]?.project).map((g) => g.id))
+  const frozen = new Set(
+    groups.filter((g) => g.freed || tandemFacts[g.id]?.project).map((g) => g.id)
+  )
   const frozenFiles = new Set(
     groups
       .filter((g) => frozen.has(g.id))
@@ -422,7 +432,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             openReason: z.string().optional()
           })
           .optional(),
-        scan: scanResultSchema.optional()
+        scan: scanResultSchema.optional(),
+        /* how much room freeing a tandem gave back, and how many files */
+        freed: z.object({ bytes: z.number(), files: z.number() }).optional()
       })
       .safeParse(fetcher.data)
     if (answered.success) {
@@ -437,7 +449,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         uploaded,
         skipped,
         montage,
-        scan: scanned
+        scan: scanned,
+        freed
       } = answered.data
       queueMicrotask(() => {
         setGroups(saved)
@@ -461,7 +474,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               ? montageNote(montage)
               : scanned
                 ? scanNote(scanned)
-                : null
+                : freed
+                  ? `On the storage only. ${freed.files} file${freed.files === 1 ? '' : 's'} freed from this machine on ${new Date().toLocaleDateString('de-CH')} — ${formatFilmSize(freed.bytes)} given back. The project is kept here; everything else is on the storage, as above.`
+                  : null
         )
       })
       return
@@ -781,6 +796,17 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   )
   const newest = seen.length === 0 ? null : seen.reduce((a, b) => (a.at >= b.at ? a : b))
   const remote: RemoteListing | null = newest
+
+  /* A tandem is uploaded while the storage still holds what was sent, and not a moment longer —
+     the record says what went up, the listing says whether it is still there. Delete it over there
+     and the tandem reads as not uploaded again, with what went missing named. */
+  const goneById = Object.fromEntries(
+    groups.map((g) => [g.id, goneFromStorage(g.delivered, remote)])
+  )
+  const asOnStorage = (group: ManifestGroup) =>
+    group.delivered && (goneById[group.id]?.length ?? 0) > 0
+      ? { ...group, delivered: undefined }
+      : group
   const remoteCheckedAt = newest?.at ?? null
 
   const statusContext = (file: ManifestFile) => ({
@@ -1187,6 +1213,28 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                   : `${placeFiles} file${placeFiles === 1 ? '' : 's'}`}
             </span>
             <span className='flex-1' />
+            {/* the two ways back from a tandem, for the whole passenger — each asks first */}
+            {place.kind === 'pax' &&
+              !groups.some((g) => passengerOf(g) === place.name && g.freed) && (
+                <span className='flex items-center gap-1.5'>
+                  <Mini
+                    disabled={busy !== null}
+                    title='Back to before processing — keeps the name, the crops, the frames and the times'
+                    onClick={() =>
+                      setDialog({ kind: 'take-back', mode: 'reset', who: place.name })
+                    }>
+                    Reset…
+                  </Mini>
+                  <Mini
+                    disabled={busy !== null}
+                    title='Undo the tandem — its jumps go back to Unsorted, without their name or crops'
+                    onClick={() =>
+                      setDialog({ kind: 'take-back', mode: 'delete', who: place.name })
+                    }>
+                    Delete…
+                  </Mini>
+                </span>
+              )}
             <label className='flex items-center gap-1.5 rounded-md border border-line bg-ground px-[9px] py-[3px]'>
               <span
                 aria-hidden='true'
@@ -1341,7 +1389,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                     return (
                       <PassengerCard
                         key={group.id}
-                        group={group}
+                        group={asOnStorage(group)}
                         who={who}
                         naming={renaming === group.id}
                         locked={frozen.has(group.id) ? EDIT_LOCKED : undefined}
@@ -1373,56 +1421,66 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             {place.kind === 'pax' &&
               named
                 .filter((g) => passengerOf(g) === place.name)
+                .map(asOnStorage)
                 .map((group) => (
                   <div key={group.id}>
+                    <GoneFromStorage
+                      gone={goneById[group.id] ?? []}
+                      at={groups.find((g) => g.id === group.id)?.delivered?.at}
+                    />
                     {group.delivered && <DeliveredCards group={group} />}
                     {!group.delivered && <FilmStrip facts={tandemFacts[group.id]} />}
-                    <div
-                      {...groupDropTarget(group.id)}
-                      className='mt-2 mb-3.5 rounded-[9px] border border-line bg-pane'>
-                      <div className='flex flex-wrap items-center gap-[9px] border-b border-line-2 px-3 py-[9px]'>
-                        <span className='font-mono text-[12.5px] font-semibold tabular-nums'>
-                          {formatTime(minFileMtime(group.files) ?? 0)}
-                        </span>
-                        <KindBadges
-                          files={group.files}
-                          kind={kind}
-                          withAll={false}
-                          onPick={setKind}
-                        />
-                        <Mini onClick={() => selectAll(group.files)}>Select all</Mini>
-                        <TandemActions
-                          group={group}
-                          facts={tandemFacts[group.id]}
-                          busy={busy}
-                          blocked={gateFor(group.files)}
-                          named={hasCompletePassenger(group.passenger)}
-                          onProcess={() => send(group.id, { intent: 'process', groupId: group.id })}
-                          onMontage={() => createMontage(group)}
-                          onOpenMontage={() => openMontage(group)}
-                          onDeliver={() => deliver(group)}
-                        />
-                        {uploading === `deliver:${group.id}` && progress && (
-                          <span className='mt-0.5 flex-[1_1_100%]'>
-                            <UploadStrip progress={progress} />
+                    {!group.freed && (
+                      <div
+                        {...groupDropTarget(group.id)}
+                        className='mt-2 mb-3.5 rounded-[9px] border border-line bg-pane'>
+                        <div className='flex flex-wrap items-center gap-[9px] border-b border-line-2 px-3 py-[9px]'>
+                          <span className='font-mono text-[12.5px] font-semibold tabular-nums'>
+                            {formatTime(minFileMtime(group.files) ?? 0)}
                           </span>
-                        )}
+                          <KindBadges
+                            files={group.files}
+                            kind={kind}
+                            withAll={false}
+                            onPick={setKind}
+                          />
+                          <Mini onClick={() => selectAll(group.files)}>Select all</Mini>
+                          <TandemActions
+                            group={group}
+                            facts={tandemFacts[group.id]}
+                            busy={busy}
+                            blocked={gateFor(group.files)}
+                            named={hasCompletePassenger(group.passenger)}
+                            onProcess={() =>
+                              send(group.id, { intent: 'process', groupId: group.id })
+                            }
+                            onMontage={() => createMontage(group)}
+                            onOpenMontage={() => openMontage(group)}
+                            onDeliver={() => deliver(group)}
+                            onFree={() => setDialog({ kind: 'free', groupId: group.id })}
+                          />
+                          {uploading === `deliver:${group.id}` && progress && (
+                            <span className='mt-0.5 flex-[1_1_100%]'>
+                              <UploadStrip progress={progress} />
+                            </span>
+                          )}
+                        </div>
+                        <div className='p-[9px]'>
+                          <FileList
+                            files={group.files}
+                            kind={kind === 'all' ? 'video' : kind}
+                            shape={view}
+                            picked={pickedFiles}
+                            statusContext={statusContext}
+                            proxies={proxies}
+                            onFile={fileLane}
+                            onDragFile={startFileDrag}
+                            deliveredName={deliveredName}
+                            selecting={pickedFiles.length > 0}
+                          />
+                        </div>
                       </div>
-                      <div className='p-[9px]'>
-                        <FileList
-                          files={group.files}
-                          kind={kind === 'all' ? 'video' : kind}
-                          shape={view}
-                          picked={pickedFiles}
-                          statusContext={statusContext}
-                          proxies={proxies}
-                          onFile={fileLane}
-                          onDragFile={startFileDrag}
-                          deliveredName={deliveredName}
-                          selecting={pickedFiles.length > 0}
-                        />
-                      </div>
-                    </div>
+                    )}
                   </div>
                 ))}
           </div>
@@ -1487,7 +1545,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           return (
             <DeliverDialog
               who={passengerOf(group)}
-              group={group}
+              group={asOnStorage(group)}
               facts={tandemFacts[group.id]}
               backupFolder={backupFolder}
               passengerFolder={
@@ -1501,6 +1559,48 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               }
               onClose={() => setDialog(null)}
               onDeliver={() => confirmDeliver(group)}
+            />
+          )
+        })()}
+
+      {dialog?.kind === 'free' &&
+        (() => {
+          const group = groups.find((g) => g.id === dialog.groupId)
+          if (!group) return null
+          return (
+            <FreeDialog
+              who={passengerOf(group)}
+              group={group}
+              onClose={() => setDialog(null)}
+              onConfirm={() => {
+                setDialog(null)
+                send(`free:${group.id}`, { intent: 'free-tandem', groupId: group.id })
+              }}
+            />
+          )
+        })()}
+
+      {dialog?.kind === 'take-back' &&
+        (() => {
+          const theirs = groups.filter((g) => passengerOf(g) === dialog.who)
+          const first = theirs[0]
+          if (!first) return null
+          return (
+            <TakeBackDialog
+              mode={dialog.mode}
+              who={dialog.who}
+              groups={theirs.map(asOnStorage)}
+              facts={theirs.map((g) => tandemFacts[g.id])}
+              onClose={() => setDialog(null)}
+              onConfirm={() => {
+                setDialog(null)
+                send('take-back', {
+                  intent: dialog.mode === 'reset' ? 'reset-tandem' : 'delete-tandem',
+                  groupId: first.id
+                })
+                /* a deleted tandem has no page left; its jumps are in Unsorted now */
+                if (dialog.mode === 'delete') setPlace({ kind: 'sort' })
+              }}
             />
           )
         })()}

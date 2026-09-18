@@ -230,7 +230,7 @@ const PassengerCard = ({
           {complete && (group.processed || group.delivered) && (
             <p className='mt-1 text-[11.5px] text-changed'>
               {group.delivered
-                ? 'Already delivered — a new name means preparing and delivering again, and the old folder stays on the storage under the old name.'
+                ? 'Already uploaded — a new name means preparing and uploading again, and the old folder stays on the storage under the old name.'
                 : 'Already prepared — a new name means preparing it again, into the new folder.'}
             </p>
           )}
@@ -258,10 +258,13 @@ const PassengerCard = ({
           )}
         </span>
       )}
-      <PassengerFrames
-        group={group}
-        alt={editing ? 'A frame from this tandem, to tell who it is' : who}
-      />
+      {/* a freed tandem has no clips left here to take a frame from */}
+      {!group.freed && (
+        <PassengerFrames
+          group={group}
+          alt={editing ? 'A frame from this tandem, to tell who it is' : who}
+        />
+      )}
       <p className='text-[12px] text-ink-2'>
         {videos} video{videos === 1 ? '' : 's'} · {group.files.length - videos} photos
       </p>
@@ -272,7 +275,7 @@ const PassengerCard = ({
         {!complete
           ? 'Open to see the clips →'
           : group.delivered
-            ? '✓ delivered'
+            ? '✓ uploaded'
             : group.processed
               ? 'Next: montage →'
               : 'Next: process →'}
@@ -397,7 +400,8 @@ const TandemActions = ({
   onProcess,
   onMontage,
   onOpenMontage,
-  onDeliver
+  onDeliver,
+  onFree
 }: {
   group: ManifestGroup
   facts?: TandemFact
@@ -408,6 +412,8 @@ const TandemActions = ({
   onMontage: () => void
   onOpenMontage: () => void
   onDeliver: () => void
+  /* offered once it is uploaded: delete it from this machine, on proof the storage holds it */
+  onFree?: () => void
 }) => {
   const working = busy !== null
   const deliverKey = `deliver:${group.id}`
@@ -443,6 +449,14 @@ const TandemActions = ({
       </Mini>
       {/* the film itself is shown above the tandem once it exists */}
       {!facts.film && <span className='text-[12px] text-ink-3'>edit and render it</span>}
+      {group.delivered && onFree && (
+        <Mini
+          disabled={working}
+          title='Delete it from this machine — only once the storage is proved to hold every file'
+          onClick={onFree}>
+          {busy === `free:${group.id}` ? 'Checking the storage…' : 'Free up space…'}
+        </Mini>
+      )}
       <Go
         disabled={working || blocked.blocked}
         title={
@@ -450,7 +464,7 @@ const TandemActions = ({
           'Zip the photos and the rushes, then send the film and the photos to the passenger'
         }
         onClick={onDeliver}>
-        {busy === deliverKey ? 'Delivering…' : group.delivered ? 'Deliver again' : 'Deliver'}
+        {busy === deliverKey ? 'Uploading…' : group.delivered ? 'Upload again…' : 'Upload…'}
       </Go>
     </span>
   )
@@ -568,6 +582,20 @@ const NasCard = ({
   </div>
 )
 
+/* Uploaded, then gone from the storage: the tandem reads as not uploaded again, and this says why —
+   silently dropping the tick would look like SkyDock had forgotten, not like the files had gone. */
+const GoneFromStorage = ({ gone, at }: { gone: { remotePath: string }[]; at?: number }) =>
+  gone.length === 0 ? null : (
+    <p className='mt-2.5 mb-0 rounded-md bg-changed-soft px-3 py-2 text-[12.5px] text-changed'>
+      {at ? `Uploaded ${new Date(at * 1000).toLocaleDateString('de-CH')}, but ` : ''}
+      {gone.length === 1 ? 'this is' : 'these are'} no longer on the storage:{' '}
+      <code className='font-mono text-[11.5px]'>
+        {gone.map((f) => nameOf(f.remotePath)).join(', ')}
+      </code>{' '}
+      — upload again to put {gone.length === 1 ? 'it' : 'them'} back.
+    </p>
+  )
+
 const DeliveredCards = ({ group }: { group: ManifestGroup }) => {
   const record = group.delivered
   if (!record) return null
@@ -636,6 +664,7 @@ const DeliveredCards = ({ group }: { group: ManifestGroup }) => {
 export {
   MakeTandem,
   DeliveredCards,
+  GoneFromStorage,
   FilmStrip,
   PassengerCard,
   PassengerName,

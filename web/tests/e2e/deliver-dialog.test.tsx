@@ -79,9 +79,9 @@ const board = {
 
 const delivered: unknown[] = []
 
-const renderBoard = async () => {
+const renderBoard = async (data: typeof board | Record<string, unknown> = board, open = true) => {
   const Stub = createRoutesStub([
-    { path: '/', Component: Board, loader: () => board },
+    { path: '/', Component: Board, loader: () => data },
     {
       path: '/api/manifest',
       action: async ({ request }) => {
@@ -95,7 +95,7 @@ const renderBoard = async () => {
   ])
   const screen = await render(createElement(Stub, { initialEntries: ['/'] }))
   await userEvent.click(page.getByRole('button', { name: /Luc Favre/ }).first())
-  await userEvent.click(page.getByRole('button', { name: 'Deliver', exact: true }))
+  if (open) await userEvent.click(page.getByRole('button', { name: 'Upload…', exact: true }))
   return screen
 }
 
@@ -103,7 +103,7 @@ describe('the delivery dialog', () => {
   test('lays out both parcels and both folders before anything is sent', async () => {
     delivered.length = 0
     await renderBoard()
-    const dialog = page.getByRole('dialog', { name: 'Deliver' })
+    const dialog = page.getByRole('dialog', { name: 'Upload' })
     await expect.element(dialog).toBeInTheDocument()
     await expect.element(dialog.getByText('luc_favre_20260801.rushes.zip')).toBeInTheDocument()
     await expect.element(dialog.getByText('luc_favre_20260801.mp4')).toBeInTheDocument()
@@ -119,7 +119,7 @@ describe('the delivery dialog', () => {
 
   test('adds the film to the backup, and says so, when it is ticked', async () => {
     await renderBoard()
-    const dialog = page.getByRole('dialog', { name: 'Deliver' })
+    const dialog = page.getByRole('dialog', { name: 'Upload' })
     await userEvent.click(dialog.getByRole('checkbox'))
     await expect.element(dialog.getByText('2 original videos + the film')).toBeInTheDocument()
     await expect.element(dialog.getByText('19.0 GB to the backup · 3.0 GB to Luc Favre')).toBeInTheDocument()
@@ -128,7 +128,7 @@ describe('the delivery dialog', () => {
 
   test('keeps the originals as plain files when asked, in a folder of their own', async () => {
     await renderBoard()
-    const dialog = page.getByRole('dialog', { name: 'Deliver' })
+    const dialog = page.getByRole('dialog', { name: 'Upload' })
     await userEvent.click(dialog.getByRole('button', { name: 'Plain files' }))
     await expect.element(dialog.getByText('luc_favre_20260801/')).toBeInTheDocument()
     await expect.element(dialog.getByText('2 original videos, as files')).toBeInTheDocument()
@@ -138,8 +138,8 @@ describe('the delivery dialog', () => {
   test('sends the delivery, with the choice, only from its own button', async () => {
     delivered.length = 0
     await renderBoard()
-    const dialog = page.getByRole('dialog', { name: 'Deliver' })
-    await userEvent.click(dialog.getByRole('button', { name: 'Deliver', exact: true }))
+    const dialog = page.getByRole('dialog', { name: 'Upload' })
+    await userEvent.click(dialog.getByRole('button', { name: 'Upload', exact: true }))
     await vi.waitFor(() =>
       expect(delivered).toContainEqual({
         intent: 'deliver',
@@ -147,5 +147,123 @@ describe('the delivery dialog', () => {
         backup: { backupAs: 'zip', filmToBackup: false }
       })
     )
+  })
+})
+
+/* Uploaded is what the storage holds, not what was once recorded: delete the files over there and
+   the tandem reads as not uploaded again, and says what went missing. */
+describe('an uploaded tandem, checked against the storage', () => {
+  const dir = '/SkyDock/Tandems/Luc Favre'
+  const record = (remotePath: string, size: number) => ({
+    remotePath,
+    md5: 'x',
+    size,
+    localPath: '/local',
+    at: 1_785_010_000
+  })
+  const uploaded = (sizes: Record<string, number | null>) => ({
+    ...board,
+    groups: [
+      {
+        ...board.groups[0],
+        delivered: {
+          at: 1_785_010_000,
+          film: record(`${dir}/luc_favre_20260801.mp4`, 3 * GB),
+          photos: record(`${dir}/luc_favre_20260801.photos.zip`, 5 * 1024 ** 2)
+        }
+      }
+    ],
+    remote: { dirs: [dir], sizes, at: 1_785_020_000 }
+  })
+
+  test('stays uploaded while the storage still has it', async () => {
+    await renderBoard(
+      uploaded({
+        [`${dir}/luc_favre_20260801.mp4`]: 3 * GB,
+        [`${dir}/luc_favre_20260801.photos.zip`]: 5 * 1024 ** 2
+      }),
+      false
+    )
+    await expect
+      .element(page.getByRole('button', { name: 'Upload again…', exact: true }))
+      .toBeInTheDocument()
+    await expect.element(page.getByText(/no longer on the storage/)).not.toBeInTheDocument()
+  })
+
+  test('reads as not uploaded once the files are gone, and names them', async () => {
+    await renderBoard(uploaded({ [`${dir}/luc_favre_20260801.photos.zip`]: 5 * 1024 ** 2 }), false)
+    await expect
+      .element(page.getByRole('button', { name: 'Upload…', exact: true }))
+      .toBeInTheDocument()
+    await expect.element(page.getByText(/no longer on the storage/)).toBeInTheDocument()
+    await expect.element(page.getByText('luc_favre_20260801.mp4').first()).toBeInTheDocument()
+  })
+})
+
+/* Freeing an uploaded tandem: offered only once it is up there, never without asking, and what is
+   left afterwards says it lives on the storage only. */
+describe('freeing an uploaded tandem', () => {
+  const dir = '/SkyDock/Tandems/Luc Favre'
+  const sent = (remotePath: string, size: number) => ({
+    remotePath,
+    md5: 'x',
+    size,
+    localPath: '/local',
+    at: 1_785_010_000
+  })
+  const uploaded = {
+    ...board,
+    groups: [
+      {
+        ...board.groups[0],
+        delivered: {
+          at: 1_785_010_000,
+          film: sent(`${dir}/luc_favre_20260801.mp4`, 3 * GB),
+          photos: sent(`${dir}/luc_favre_20260801.photos.zip`, 5 * 1024 ** 2)
+        }
+      }
+    ],
+    remote: {
+      dirs: [dir],
+      sizes: {
+        [`${dir}/luc_favre_20260801.mp4`]: 3 * GB,
+        [`${dir}/luc_favre_20260801.photos.zip`]: 5 * 1024 ** 2
+      },
+      at: 1_785_020_000
+    }
+  }
+
+  test('asks first, saying what is proved and what is deleted, then sends it', async () => {
+    delivered.length = 0
+    await renderBoard(uploaded, false)
+    await userEvent.click(page.getByRole('button', { name: 'Free up space…' }))
+    const dialog = page.getByRole('dialog', { name: 'Free up space' })
+    await expect.element(dialog.getByText(/hashed here and by the storage/)).toBeInTheDocument()
+    await expect.element(dialog.getByText(/the 3 originals/)).toBeInTheDocument()
+    expect(delivered).toEqual([])
+    await userEvent.click(dialog.getByRole('button', { name: /Check and free/ }))
+    await vi.waitFor(() =>
+      expect(delivered).toContainEqual({ intent: 'free-tandem', groupId: 'g1' })
+    )
+  })
+
+  test('is not offered before the tandem is uploaded', async () => {
+    await renderBoard(board, false)
+    await expect.element(page.getByRole('button', { name: 'Free up space…' })).not.toBeInTheDocument()
+  })
+
+  test('once freed, says it lives on the storage only, and offers nothing that would change it', async () => {
+    const files = uploaded.groups[0]!.files.map((f) => ({ ...f, freed: true }))
+    await renderBoard(
+      {
+        ...uploaded,
+        groups: [{ ...uploaded.groups[0]!, files, freed: { at: 1_785_030_000, bytes: 19 * GB } }]
+      },
+      false
+    )
+    /* what freeing gave back is said once, when it happens — not on every visit */
+    await expect.element(page.getByText(/given back/)).not.toBeInTheDocument()
+    for (const name of ['Reset…', 'Delete…', 'Free up space…', 'Upload again…'])
+      await expect.element(page.getByRole('button', { name })).not.toBeInTheDocument()
   })
 })

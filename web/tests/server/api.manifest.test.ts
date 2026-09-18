@@ -230,7 +230,7 @@ describe('api/manifest', () => {
       const res = refusal(await send({ intent: 'upload-group', groupId: 'group_1' }))
 
       expect(res.success).toBe(false)
-      expect(res.globalErrors?.[0]).toContain('Deliver')
+      expect(res.globalErrors?.[0]).toContain('from its own card')
     })
   })
 
@@ -274,6 +274,24 @@ describe('api/manifest', () => {
       ])
       const res = refusal(await send({ intent: 'open-montage', groupId: 'group_1' }))
       expect(res.globalErrors?.[0]).toContain('no project yet')
+    })
+  })
+
+  describe('free-tandem', () => {
+    /* the proof is the storage's own checksum, so without it nothing is deleted */
+    it('refuses without the NAS, and deletes nothing', async () => {
+      writeManifest([
+        group({
+          id: 'group_1',
+          destination: 'Tandems',
+          passenger: { firstname: 'Luc', lastname: 'Favre' },
+          processed: true,
+          delivered: { at: 1 },
+          files: [file({ id: 'a' })]
+        })
+      ])
+      const res = refusal(await send({ intent: 'free-tandem', groupId: 'group_1' }))
+      expect(res.globalErrors?.[0]).toContain('Connect the NAS')
     })
   })
 
@@ -388,6 +406,27 @@ describe('api/manifest', () => {
         })
       )
       expect(res.groups.find((g) => g.id === 'group_2')?.destination).toBe('Yverdon')
+    })
+
+    /* resetting is the way to start the edit over, so the lock never stands in its way */
+    it('can still be reset, which takes the edit with it and keeps the name and crops', async () => {
+      const cropped = luc()
+      cropped.files[0] = { ...cropped.files[0]!, cropStart: 1, cropEnd: 3 }
+      writeManifest([cropped, other()])
+      const res = answer(await send({ intent: 'reset-tandem', groupId: 'group_1' }))
+      expect(fs.existsSync(projectPath())).toBe(false)
+      const g = res.groups.find((x) => x.id === 'group_1')
+      expect(g?.processed).toBeUndefined()
+      expect(g?.passenger).toEqual({ firstname: 'Luc', lastname: 'Favre' })
+      expect(g?.files[0]?.cropStart).toBe(1)
+    })
+
+    it('can be deleted, which sends its jump back to be sorted', async () => {
+      const res = answer(await send({ intent: 'delete-tandem', groupId: 'group_1' }))
+      expect(fs.existsSync(projectPath())).toBe(false)
+      const g = res.groups.find((x) => x.id === 'group_1')
+      expect(g?.destination).toBeUndefined()
+      expect(g?.passenger).toBeUndefined()
     })
 
     it('is lifted by deleting the project', async () => {

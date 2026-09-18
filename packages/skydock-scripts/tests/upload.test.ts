@@ -5,7 +5,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { ensureShareLink } from '../src/nas'
 import { planUpload } from '../src/publish'
-import { resolveUploadTargets, targetForGroup } from '../src/upload'
+import { goneFromStorage, resolveUploadTargets, targetForGroup } from '../src/upload'
 import type { Manifest, ManifestGroup } from '../src/types'
 import { createTmpDir, jsonResponse, nasStubs, seen, stubFetch } from './fixtures'
 
@@ -274,5 +274,55 @@ describe('resolveUploadTargets', () => {
       scope: { groupIds: ['group_1'] }
     })
     expect(target.remoteDir).toBeNull()
+  })
+})
+
+/* A tandem is uploaded while the storage holds what was sent. Only a folder that answered is
+   evidence: a listing that failed must not make an upload disappear. */
+describe('what of an upload the storage no longer has', () => {
+  const sent = (remotePath: string, size: number) => ({
+    remotePath,
+    md5: 'x',
+    size,
+    localPath: '/local',
+    at: 1
+  })
+  const record = {
+    at: 1,
+    film: sent('/Pax/Luc Favre/luc.mp4', 300),
+    photos: sent('/Pax/Luc Favre/luc.photos.zip', 50),
+    rushes: sent('/Backup/luc.rushes.zip', 900)
+  }
+
+  it('finds nothing gone while everything is still there', () => {
+    const remote = {
+      dirs: ['/Pax/Luc Favre', '/Backup'],
+      sizes: {
+        '/Pax/Luc Favre/luc.mp4': 300,
+        '/Pax/Luc Favre/luc.photos.zip': 50,
+        '/Backup/luc.rushes.zip': 900
+      }
+    }
+    expect(goneFromStorage(record, remote)).toEqual([])
+  })
+
+  it('names a file deleted over there, and one that is not the size that was sent', () => {
+    const remote = {
+      dirs: ['/Pax/Luc Favre', '/Backup'],
+      sizes: { '/Pax/Luc Favre/luc.photos.zip': 49, '/Backup/luc.rushes.zip': 900 }
+    }
+    expect(goneFromStorage(record, remote).map((f) => f.remotePath)).toEqual([
+      '/Pax/Luc Favre/luc.mp4',
+      '/Pax/Luc Favre/luc.photos.zip'
+    ])
+  })
+
+  it('takes nothing away for a folder that did not answer, or a size it did not give', () => {
+    const remote = {
+      dirs: ['/Pax/Luc Favre'],
+      sizes: { '/Pax/Luc Favre/luc.mp4': null, '/Pax/Luc Favre/luc.photos.zip': 50 }
+    }
+    expect(goneFromStorage(record, remote)).toEqual([])
+    expect(goneFromStorage(record, null)).toEqual([])
   })
 })

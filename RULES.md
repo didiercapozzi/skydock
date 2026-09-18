@@ -345,14 +345,22 @@ or somebody would be editing a picture that is not the one about to be rendered.
 
 **Acting.** Each day and each tandem offers exactly one next step, in the same place, and never offers
 them out of order. A dropzone day is **prepared**, then **sent**. A tandem is **processed**, then given
-a **montage**, then **delivered** once someone has rendered the film. Once there is a project the
+a **montage**, then **uploaded** once someone has rendered the film — the step is called
+Upload on the board, because that is what it does from where the user sits: puts the tandem on the
+storage. Once there is a project the
 tandem shows where it is and copies that path when clicked; until the film exists it says to edit and
 render it. Once the film exists it is shown above the tandem, standing out from everything else there:
 its name, how long it runs — which tells a whole jump from a test render of its first minute — its
 size, and when it was rendered. It can be watched right there, or opened on its own by its name, so
 the render is checked before it goes to anyone; a film rendered again is the one that plays. Nothing can be sent until everything in it has
-been prepared, and what is waiting is said plainly. A delivered tandem shows the folders on the
+been prepared, and what is waiting is said plainly. An uploaded tandem shows the folders on the
 storage instead of the files it was made from.
+
+**Uploaded is what the storage holds, not what was once recorded.** Each time the board looks at the
+storage it also looks where every tandem's film, photos and originals went. While they are all still
+there, the tandem reads as uploaded. Delete any of them over there — or leave one the wrong size — and
+the tandem reads as not uploaded again, says which files are no longer on the storage, and offers to
+upload them again. A folder the storage did not answer for takes nothing away.
 
 Preparing or processing runs on the machine, not in the page: closing or refreshing the page does not
 stop it, and the board stays usable while it runs. A page opened while it is running says so, keeps
@@ -515,7 +523,25 @@ tandem has a project, SkyDock changes nothing about it: no trimming or reframing
 photos, no files moved in or out, no re-timing, no new name, no other jump joining that passenger, and
 no processing again. Its files show a lock and say why; the request is refused on the server too, so
 the page is not what holds the line. Previewing, opening the project and delivering go on as before.
-Changes are made in the editor from then on. Deleting the project lifts the lock.
+Changes are made in the editor from then on. Resetting the tandem, or deleting the project, lifts the
+lock.
+
+**Taking a tandem back.** A tandem can be reset or deleted from its own page, and either one applies
+to the whole passenger — every jump of theirs — because one passenger is one folder. Each asks first,
+saying what will be deleted and what will be kept, and names the edit on its own when there is one,
+because it is the one thing that cannot be made again.
+
+- **Reset** puts the tandem back to before processing. Everything made from it on this machine is
+  deleted: the processed copies, the working copies made for the editor, the project, the film and the
+  archives, and with them the record of what was uploaded. Everything decided about it is kept: the
+  name, every crop and frame, and every corrected time. It stays under Tandems, ready to process
+  again. This is how an edit is started over.
+- **Delete** undoes the tandem. The same things are deleted, and so is everything decided about it:
+  its jumps go back to Unsorted jumps with no name, no crop and no frame, each file on the time its
+  camera gave it.
+
+Neither touches the originals, and neither deletes anything from the storage: what was uploaded stays
+there until someone removes it by hand. Neither can happen while the tandem is being processed.
 
 ## Delivery
 
@@ -524,7 +550,7 @@ the film and the photos archive to the passenger's folder and the originals to t
 project and the working folders stay on the machine. The passenger's folder is the one that gets a
 share link; the backup folder never does.
 
-**Delivering shows what it will do first.** Asking to deliver opens the two parcels side by side — the
+**Uploading a tandem shows what it will do first.** Asking to upload one opens the two parcels side by side — the
 backup, and the passenger's — each with the folder it goes to, what it holds, and how big it is, with
 the totals underneath. Either folder can be chosen or changed from there, and the dialog comes back
 once it is. Nothing is sent until the dialog's own button is pressed; until the film is rendered that
@@ -552,6 +578,28 @@ the film in the backup, or leaving it out, is a different archive and is built a
 
 The film is taken on trust. Nothing checks that it was rendered from this project, or that it covers
 the whole jump.
+
+**Freeing up space.** Once a tandem is uploaded, everything of it on this machine can be deleted —
+the originals, the prepared copies, the working copies made for the editor, the film and the zips —
+leaving only the project and the record of what went where. It asks first, saying what will be proved
+and what will be deleted, and it deletes nothing until all of it is proved:
+
+- every file that went up is hashed here and hashed by the storage, and both match what was sent;
+- the originals are exactly what the backup holds — the files inside the backup zip, which still holds
+  exactly them and is newer than all of them, or the files sent one by one and proved themselves;
+- the photos are exactly what the passenger's zip holds;
+- nothing about the tandem changed since it was uploaded.
+
+If any of it fails, nothing is deleted, and the refusal names each file that failed. It needs the
+storage to be reachable, because the proof is the storage's own checksum. Only a passenger with a
+single jump can be freed for now.
+
+A freed tandem lives on the storage only. The moment it is freed, the board says so once — how many
+files, and how much room it gave back. From then on it reads as uploaded and shows what the storage
+holds instead of its files. It cannot be processed, edited, reset, deleted
+or uploaded again from here, and a rescan keeps it as it is rather than dropping files that are gone on
+purpose. Should anything of it later disappear from the storage, the board says so, as for any uploaded
+tandem — by then the storage was the only copy.
 
 ## Not built
 

@@ -28,6 +28,14 @@ type UploadTarget = {
 
 const LIST_CONCURRENCY = 4
 
+/* every file a tandem's upload put on the storage, whichever parcel it went in */
+const deliveredFiles = (record: ManifestGroup['delivered']) =>
+  record
+    ? [record.film, record.photos, record.rushes, ...(record.originals ?? [])].filter(
+        (f): f is NonNullable<typeof f> => f !== undefined
+      )
+    : []
+
 const dirOfRemote = (remotePath: string) => {
   const cut = remotePath.lastIndexOf('/')
   return cut <= 0 ? '/' : remotePath.slice(0, cut)
@@ -40,9 +48,14 @@ const dirOfRemote = (remotePath: string) => {
    folder only counts as checked when its listing came back: an unchecked folder demotes nothing. */
 const listRemoteFiles = async (manifest: Manifest, session: NasSession) => {
   const wanted = [
-    ...new Set(
-      manifest.files.flatMap((f) => (f.uploaded ? [dirOfRemote(f.uploaded.remotePath)] : []))
-    )
+    ...new Set([
+      ...manifest.files.flatMap((f) => (f.uploaded ? [dirOfRemote(f.uploaded.remotePath)] : [])),
+      /* and wherever a tandem's upload put its film, photos and originals — a delivered tandem is
+         only delivered while those are still there */
+      ...manifest.groups.flatMap((g) =>
+        deliveredFiles(g.delivered).map((f) => dirOfRemote(f.remotePath))
+      )
+    ])
   ]
   const sizes: Record<string, number | null> = {}
   const dirs: string[] = []
@@ -57,6 +70,21 @@ const listRemoteFiles = async (manifest: Manifest, session: NasSession) => {
   })
   return { dirs, sizes, at: Math.floor(Date.now() / 1000) }
 }
+
+/* What of a tandem's upload the storage no longer has: gone, or not the size that was sent. Only a
+   folder that answered counts — a listing that failed is not evidence of anything, so it takes
+   nothing away (RULES, File status). */
+const goneFromStorage = (
+  record: ManifestGroup['delivered'],
+  remote: { dirs: string[]; sizes: Record<string, number | null> } | null
+) =>
+  remote
+    ? deliveredFiles(record).filter((f) => {
+        if (!remote.dirs.includes(dirOfRemote(f.remotePath))) return false
+        const size = remote.sizes[f.remotePath]
+        return size === undefined || (size !== null && size !== f.size)
+      })
+    : []
 
 const scopeKey = (scope: UploadScope) => {
   if (scope.destination) return `dest:${scope.destination}`
@@ -248,6 +276,8 @@ const uploadScope = async ({
   })
 
 export {
+  deliveredFiles,
+  goneFromStorage,
   groupsInScope,
   listRemoteFiles,
   resolveUploadTargets,

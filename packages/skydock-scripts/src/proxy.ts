@@ -283,7 +283,8 @@ const proxyIsCurrent = (file: ManifestFile, outputDir?: string) => {
   return !!proxyPath && fs.existsSync(proxyPath)
 }
 
-const needsProxy = (file: ManifestFile) => isVideoFile(file.path) && !!file.id
+/* a freed clip is on the storage only — there is nothing here to make a small copy of */
+const needsProxy = (file: ManifestFile) => isVideoFile(file.path) && !!file.id && !file.freed
 
 /* `reason` is why the failures failed — one line, because when proxies break they break for the
    same reason on every clip, and 27 copies of it is not 27 pieces of information. */

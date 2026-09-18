@@ -40,7 +40,7 @@ export { loadManifest, saveManifest, statProcessedOutputs } from './manifest'
 export { statProxies } from './proxy'
 export type { ProxyFact } from './proxy'
 
-export { groupsInScope, listRemoteFiles, scopeKey, uploadScope } from './upload'
+export { goneFromStorage, groupsInScope, listRemoteFiles, scopeKey, uploadScope } from './upload'
 
 export {
   clearUploadProgress,

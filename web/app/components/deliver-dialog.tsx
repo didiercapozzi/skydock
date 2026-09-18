@@ -148,7 +148,7 @@ const DeliverDialog = ({
 
   return (
     <Modal
-      label='Deliver'
+      label='Upload'
       title={who}
       wide
       onClose={onClose}
@@ -163,7 +163,7 @@ const DeliverDialog = ({
             disabled={blocked !== null}
             title={blocked ?? 'Build the archives, then send each parcel to its folder'}
             onClick={onDeliver}>
-            {delivered ? 'Deliver again' : 'Deliver'}
+            {delivered ? 'Upload again' : 'Upload'}
           </Go>
         </>
       }>
@@ -257,7 +257,7 @@ const DeliverDialog = ({
       <p className='m-0 rounded-r-md border-l-[3px] border-local bg-local-soft px-3 py-[9px] text-[12px] text-ink-2'>
         <b className='text-ink'>Set once, reused after that.</b> Both folders and the choices above
         are remembered, so the next tandem opens with this already filled in — until you change it
-        again. The archives are only built once, too: deliver again after a re-render and they are
+        again. The archives are only built once, too: upload again after a re-render and they are
         reused unless something in them changed. The project and the working folders never leave
         this machine.
       </p>

@@ -79,8 +79,9 @@ const EDIT_LOCKED = 'This tandem has an edit — change it in kdenlive.'
 const hasEdit = (outputDir: string, group: ManifestGroup) =>
   isTandem(group) && tandemArtifacts(outputDir, group).project
 
+/* a freed tandem is closed too: nothing of it is left here to change */
 const frozenTandems = (manifest: Manifest, outputDir: string) =>
-  new Set(manifest.groups.filter((g) => hasEdit(outputDir, g)).map((g) => g.id))
+  new Set(manifest.groups.filter((g) => g.freed || hasEdit(outputDir, g)).map((g) => g.id))
 
 /* everything about a jump that decides what its copies are and where they go — bookkeeping such as
    whether it was processed or delivered is not part of it */

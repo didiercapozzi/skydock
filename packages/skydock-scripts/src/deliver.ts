@@ -83,8 +83,11 @@ const deliverTandem = async ({
   onProgress?: (progress: UploadProgress & { groupIds: string[] }) => void
   onCheck?: (progress: CheckProgress) => void
 }) => {
-  if (!isTandem(group)) throw new Error('Only a tandem is delivered — give it a passenger first.')
-  if (!group.processed) throw new Error('Process this tandem before delivering it.')
+  if (!isTandem(group))
+    throw new Error('Only a tandem is uploaded this way — give it a passenger first.')
+  if (!group.processed) throw new Error('Process this tandem before uploading it.')
+  if (group.freed)
+    throw new Error('This tandem lives only on the storage now — nothing here to upload.')
   const artifacts = tandemArtifacts(outputDir, group)
   if (!fs.existsSync(artifacts.dir)) throw new Error('Processed files not found. Process it again.')
 
@@ -154,7 +157,7 @@ const deliverTandem = async ({
   /* only what is the passenger's goes to the passenger: not the project, not the working folders,
      and above all not the rushes */
   const forPassenger = [film, photosZip].filter((f): f is string => f !== null)
-  if (forPassenger.length === 0) throw new Error('Nothing to deliver — no film and no photos.')
+  if (forPassenger.length === 0) throw new Error('Nothing to upload — no film and no photos.')
   const targets: UploadTarget[] = [{ ...passenger, files: forPassenger }]
   if (rushesZip)
     targets.push({

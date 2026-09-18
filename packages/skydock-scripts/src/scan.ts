@@ -59,6 +59,13 @@ const getCaptureEpoch = (filepath: string, timeMap: Map<string, string>) => {
   }
 }
 
+/* The time each camera gave its files, read again from the originals — what a file's time was
+   before anybody corrected it. */
+const cameraTimes = (paths: string[]) => {
+  const timeMap = buildTimeMap(paths)
+  return new Map(paths.map((filepath) => [filepath, getCaptureEpoch(filepath, timeMap)]))
+}
+
 const HASH_POOL_SIZE = 4
 
 const scanFiles = async (originalDir: string, timeMap: Map<string, string>) => {
@@ -128,6 +135,11 @@ const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => 
     const disk = diskByPath.get(f.path)
     if (disk) {
       keptFiles.push({ ...f, ...disk })
+      continue
+    }
+    /* freed on purpose once the storage held it: not being on disk is the point, not a loss */
+    if (f.freed) {
+      keptFiles.push(f)
       continue
     }
     const candidates = (f.id && diskPathsById.get(f.id)) || []
@@ -256,5 +268,5 @@ if (isCliModule('scan')) {
     .catch(console.error)
 }
 
-export { scanMedia }
+export { cameraTimes, scanMedia }
 export type { ScanResult }

@@ -66,7 +66,9 @@ const manifestFileSchema = z.object({
   uploaded: uploadedRecordSchema.optional(),
   /* the small all-intra copy the crop bar scrubs against and the editor opens on, or the file
      itself when it is already small enough to be its own proxy */
-  proxy: z.string().optional()
+  proxy: z.string().optional(),
+  /* deleted from this machine once the storage was proved to hold it — the record stays */
+  freed: z.boolean().optional()
 })
 
 /* groups.json holds references, not copies: an id plus whatever this jump changed about the file */
@@ -117,6 +119,8 @@ const manifestGroupSchema = z.object({
   publish: publishSchema.optional(),
   montage: montageRecordSchema.optional(),
   delivered: deliveredRecordSchema.optional(),
+  /* everything of it deleted from this machine, bar the project, once the storage held it all */
+  freed: z.object({ at: z.number(), bytes: z.number() }).optional(),
   day: z.string(),
   destination: z.string().optional()
 })
