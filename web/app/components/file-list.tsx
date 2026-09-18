@@ -27,9 +27,13 @@ type Props = {
   /* where each clip's proxy has got to, keyed by the clip's path — read off the disk by the
      server, because the record alone cannot know someone emptied the folder */
   proxies: Record<string, ProxyFact>
-  /* a click picks, as in a file manager; a double-click or Enter opens the file */
+  /* a click looks at a file, with modifiers it picks; Enter opens the file looked at */
   onFile: (file: ManifestFile, lane: ManifestFile[], e: Modifiers) => void
+  /* the tick, or a double-click: the one plain way to pick a file */
+  onPick: (file: ManifestFile) => void
   onOpen: (file: ManifestFile) => void
+  /* the file being looked at, which is shown apart from the picked ones */
+  previewed: string | null
   onDragFile: (file: ManifestFile, e?: React.DragEvent) => void
   /* what the files are put in order by — their time, their name or how far along they are */
   sortKey: (file: ManifestFile) => string | number
@@ -206,16 +210,34 @@ const turnedThumb = (rotation: ManifestFile['rotation']): React.CSSProperties | 
    soft shadow keep it legible over any picture. It replaces the coloured status dot that stood
    there — orange on most of a card, and easily taken for a warning — the state is still in the
    thumbnail's title, and on every row. */
-const PickMark = ({ picked }: { picked: boolean }) => (
-  <span
-    aria-hidden='true'
-    className={`pointer-events-none absolute top-1.5 right-1.5 grid h-[18px] w-[18px] place-items-center rounded-full text-[11px] leading-none font-bold transition-colors duration-100 ${
+/* The tick on a thumbnail is a button of its own, since clicking the picture only looks at it.
+   Always there once something is picked; before that it appears under the pointer, so the grid
+   stays quiet until picking starts. */
+const PickMark = ({
+  picked,
+  selecting,
+  onPick
+}: {
+  picked: boolean
+  selecting: boolean
+  onPick: () => void
+}) => (
+  <button
+    type='button'
+    aria-label={picked ? 'Unpick' : 'Pick'}
+    aria-pressed={picked}
+    onClick={(e) => {
+      e.stopPropagation()
+      onPick()
+    }}
+    onDoubleClick={(e) => e.stopPropagation()}
+    className={`absolute top-1.5 right-1.5 grid h-[18px] w-[18px] place-items-center rounded-full border-0 p-0 text-[11px] leading-none font-bold transition-[colors,opacity] duration-100 ${
       picked
         ? 'bg-accent text-white shadow-[0_0_0_2px_#fff,0_1px_4px_rgba(0,0,0,0.35)]'
         : 'bg-black/20 text-transparent shadow-[inset_0_0_0_1.5px_rgba(255,255,255,0.92),0_1px_3px_rgba(0,0,0,0.3)]'
-    }`}>
+    } ${selecting || picked ? '' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'}`}>
     ✓
-  </span>
+  </button>
 )
 
 const Row = ({
@@ -226,7 +248,9 @@ const Row = ({
   status,
   proxy,
   name,
+  previewed,
   onFile,
+  onPick,
   onOpen,
   onDragFile
 }: {
@@ -237,7 +261,9 @@ const Row = ({
   status: ShownStatus
   proxy?: ProxyFact
   name: string | null
+  previewed: boolean
   onFile: Props['onFile']
+  onPick: Props['onPick']
   onOpen: Props['onOpen']
   onDragFile: Props['onDragFile']
 }) => (
@@ -245,32 +271,48 @@ const Row = ({
     role='button'
     tabIndex={0}
     aria-selected={picked}
+    aria-current={previewed || undefined}
     data-file={file.id ?? file.path}
     draggable={!locked}
     onDragStart={locked ? undefined : (e) => onDragFile(file, e)}
     onClick={(e) => onFile(file, lane, e)}
-    onDoubleClick={() => onOpen(file)}
+    onDoubleClick={() => onPick(file)}
     onKeyDown={(e) => {
       if (e.key === 'Enter') {
         e.preventDefault()
         e.stopPropagation()
         onOpen(file)
       }
+      /* space ticks, as it would a checkbox */
       if (e.key !== ' ') return
       e.preventDefault()
-      onFile(file, lane, e)
+      onPick(file)
     }}
     className={`flex h-[38px] w-full items-center gap-2.5 rounded-md border px-[7px] text-left ${
-      picked ? 'border-accent bg-accent-soft' : 'border-transparent hover:bg-line-2'
+      picked
+        ? 'border-accent bg-accent-soft'
+        : previewed
+          ? 'border-ink-3 bg-line-2'
+          : 'border-transparent hover:bg-line-2'
     }`}>
-    <span
-      /* the tick is only ever drawn once it is ticked — transparent, not white, so it stays
-         invisible on a dark panel as well as a light one */
-      className={`grid h-3.5 w-3.5 flex-none place-items-center rounded-[3px] border-[1.5px] text-[9px] ${
-        picked ? 'border-accent bg-accent text-white' : 'border-line text-transparent'
+    <button
+      type='button'
+      aria-label={picked ? 'Unpick' : 'Pick'}
+      aria-pressed={picked}
+      onClick={(e) => {
+        e.stopPropagation()
+        onPick(file)
+      }}
+      onDoubleClick={(e) => e.stopPropagation()}
+      /* transparent, not white, when not ticked, so it stays quiet on a dark panel as well as a
+         light one */
+      className={`grid h-3.5 w-3.5 flex-none place-items-center rounded-[3px] border-[1.5px] p-0 text-[9px] ${
+        picked
+          ? 'border-accent bg-accent text-white'
+          : 'border-line bg-transparent text-transparent hover:border-accent'
       }`}>
       ✓
-    </span>
+    </button>
     <span className='relative h-[30px] w-10 flex-none overflow-hidden rounded-[3px] bg-line-2'>
       <img
         src={isVideoFile(file.path) ? getThumbUrl(file.path, 0.5, 80) : getFileUrl(file.path)}
@@ -337,7 +379,9 @@ const Tile = ({
   status,
   proxy,
   selecting,
+  previewed,
   onFile,
+  onPick,
   onOpen,
   onDragFile
 }: {
@@ -348,29 +392,38 @@ const Tile = ({
   status: ReturnType<typeof fileStatus>
   proxy?: ProxyFact
   selecting: boolean
+  previewed: boolean
   onFile: Props['onFile']
+  onPick: Props['onPick']
   onOpen: Props['onOpen']
   onDragFile: Props['onDragFile']
 }) => (
-  <button
-    type='button'
+  /* a div rather than a button, so its tick can be a button of its own */
+  <div
+    role='button'
+    tabIndex={0}
     aria-selected={picked}
+    aria-current={previewed || undefined}
     data-file={file.id ?? file.path}
     draggable={!locked}
     onDragStart={locked ? undefined : (e) => onDragFile(file, e)}
     onClick={(e) => onFile(file, lane, e)}
-    onDoubleClick={() => onOpen(file)}
+    onDoubleClick={() => onPick(file)}
     onKeyDown={(e) => {
-      if (e.key !== 'Enter') return
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        e.stopPropagation()
+        onOpen(file)
+      }
+      if (e.key !== ' ') return
       e.preventDefault()
-      e.stopPropagation()
-      onOpen(file)
+      onPick(file)
     }}
     title={`${file.filename} · ${formatTime(file.mtime)} · ${formatSize(file.size)} · ${status}${
       proxy?.state === 'none' ? ' · no proxy yet' : ''
     }${isWholeFrame(file.frame) ? '' : ' · frame cropped'}${file.rotation ? ` · turned ${file.rotation}°` : ''}`}
-    className={`relative aspect-[4/3] max-w-full overflow-hidden rounded-[5px] border-2 bg-line-2 p-0 ${
-      picked ? 'border-accent' : 'border-transparent'
+    className={`group relative aspect-[4/3] max-w-full cursor-pointer overflow-hidden rounded-[5px] border-2 bg-line-2 p-0 ${
+      picked ? 'border-accent' : previewed ? 'border-ink-3' : 'border-transparent'
     }`}>
     <img
       src={isVideoFile(file.path) ? getThumbUrl(file.path, 0.5, 160) : getFileUrl(file.path)}
@@ -401,8 +454,12 @@ const Tile = ({
         className='pointer-events-none absolute bottom-1 left-1 h-2 w-2 rounded-full border border-dashed border-white bg-local shadow-[0_0_0_1.5px_rgba(0,0,0,0.45)]'
       />
     )}
-    {selecting && <PickMark picked={picked} />}
-  </button>
+    <PickMark
+      picked={picked}
+      selecting={selecting}
+      onPick={() => onPick(file)}
+    />
+  </div>
 )
 
 const KindBadges = ({
@@ -475,9 +532,11 @@ const Lane = ({
   statusContext,
   proxies,
   onFile,
+  onPick,
   onOpen,
   onDragFile,
   deliveredName,
+  previewed,
   selecting
 }: Omit<Props, 'files' | 'kind' | 'sortKey'> & { lane: ManifestFile[] }) => {
   const [shown, setShown] = useState(PAGE[shape])
@@ -507,7 +566,9 @@ const Lane = ({
               status={shownStatus(file, context)}
               proxy={proxies[file.path]}
               name={deliveredName(file)}
+              previewed={Boolean(file.id && file.id === previewed)}
               onFile={onFile}
+              onPick={onPick}
               onOpen={onOpen}
               onDragFile={onDragFile}
             />
@@ -521,7 +582,9 @@ const Lane = ({
               status={fileStatus(file, context)}
               proxy={proxies[file.path]}
               selecting={selecting}
+              previewed={Boolean(file.id && file.id === previewed)}
               onFile={onFile}
+              onPick={onPick}
               onOpen={onOpen}
               onDragFile={onDragFile}
             />

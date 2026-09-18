@@ -6,23 +6,11 @@ import { KindBadges } from './file-list'
 import type { Kind } from './file-list'
 import type { ManifestFile } from './types'
 
-/* How the files of a folder are put in order. */
-type SortBy = 'time' | 'name' | 'status'
-
 const GROUPING_LABEL: Record<Grouping, string> = {
   jump: 'By jump',
   day: 'By day',
   none: 'One list'
 }
-
-const SORT_LABEL: Record<SortBy, string> = {
-  time: 'Time shot',
-  name: 'Name',
-  status: 'Status'
-}
-
-const TOOL =
-  'rounded-md border border-line bg-pane px-1.5 py-[3px] text-[12px] text-ink-2 hover:border-ink-3'
 
 /* The folder that is open: the path to it, what it holds, the ways of finding and arranging its
    files, and — always at the top right — the one thing the folder as a whole asks for next. Under
@@ -36,7 +24,6 @@ const PlacePane = ({
   query,
   onQuery,
   grouping,
-  sort,
   kind,
   step,
   tools,
@@ -54,7 +41,6 @@ const PlacePane = ({
   query: string
   onQuery: (query: string) => void
   grouping: { value: Grouping; options: readonly Grouping[]; onChange: (g: Grouping) => void }
-  sort: { value: SortBy; onChange: (s: SortBy) => void }
   kind: { value: Kind; onChange: (k: Kind) => void }
   /* the folder's next step, when it has one */
   step?: React.ReactNode
@@ -125,40 +111,29 @@ const PlacePane = ({
                 withAll
                 onPick={kind.onChange}
               />
-              <select
-                aria-label='Group'
-                value={grouping.value}
-                onChange={(e) => {
-                  const picked = grouping.options.find((g) => g === e.target.value)
-                  if (picked) grouping.onChange(picked)
-                }}
-                className={TOOL}>
-                {grouping.options.map((g) => (
-                  <option
-                    key={g}
-                    value={g}>
-                    {GROUPING_LABEL[g]}
-                  </option>
-                ))}
-              </select>
-              <select
-                aria-label='Sort by'
-                value={sort.value}
-                onChange={(e) => {
-                  const picked = (['time', 'name', 'status'] as const).find(
-                    (s) => s === e.target.value
-                  )
-                  if (picked) sort.onChange(picked)
-                }}
-                className={TOOL}>
-                {(['time', 'name', 'status'] as const).map((s) => (
-                  <option
-                    key={s}
-                    value={s}>
-                    {SORT_LABEL[s]}
-                  </option>
-                ))}
-              </select>
+              {/* every way of arranging the folder in plain sight, one press each — a place with
+                  only one way has nothing to choose */}
+              {grouping.options.length > 1 && (
+                <span
+                  role='group'
+                  aria-label='Group'
+                  className='flex overflow-hidden rounded-md border border-line'>
+                  {grouping.options.map((g) => (
+                    <button
+                      key={g}
+                      type='button'
+                      aria-pressed={grouping.value === g}
+                      onClick={() => grouping.onChange(g)}
+                      className={`px-[11px] py-[5px] text-[12px] ${
+                        grouping.value === g
+                          ? 'bg-accent-soft font-semibold text-accent'
+                          : 'bg-pane text-ink-2 hover:text-ink'
+                      }`}>
+                      {GROUPING_LABEL[g]}
+                    </button>
+                  ))}
+                </span>
+              )}
             </>
           )}
           {step}
@@ -211,4 +186,3 @@ const Owed = ({
 }
 
 export { Owed, PlacePane }
-export type { SortBy }

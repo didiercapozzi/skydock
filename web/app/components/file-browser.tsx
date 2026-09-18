@@ -45,7 +45,9 @@ type Props = {
   proxies: Record<string, ProxyFact>
   deliveredName: (file: ManifestFile) => string | null
   onFile: (file: ManifestFile, lane: ManifestFile[], e: Modifiers) => void
+  onPick: (file: ManifestFile) => void
   onOpen: (file: ManifestFile) => void
+  previewed: string | null
   onDragFile: (file: ManifestFile, e?: React.DragEvent) => void
   jump: JumpControls
   empty: string

@@ -191,14 +191,24 @@ and photos it holds; they show one kind, the other, or all — all being both si
 column and photos in the other, stacked on a narrow screen. A badge for a kind with nothing in it is
 shown but cannot be chosen.
 
+**Arranging.** The pane's heading has one button per way of arranging the place — by jump, by day, or
+as one list, whichever that place offers — so every choice is in sight and a single press away. Each
+kind of place remembers its own choice while the board is open. Files are always in the order they
+were shot.
+
 **Finding.** A box in the pane's heading narrows what is drawn, matching either name a file has. It
 changes only what is shown; a jump with nothing matching drops out of view, and the menu's counts still
 count everything.
 
-**Selecting.** Click to preview; ctrl- or cmd-click to pick; shift-click to take a range — a shift-click
-never previews, and with no range started it picks that file and starts one. Once anything is picked,
-plain clicks add and remove, and Escape clears. Picked thumbnails get a green ring with a tick; picked
-rows a green tick and background. A selection can be sent back to the sorting area by button or Delete.
+**Selecting.** Looking at a file and picking it are different things, so nothing is picked by accident
+on the way to looking. A click only previews: the file shows in the inspector and is marked as the one
+being looked at, and nothing is picked — however many files are picked already. A file is picked by
+its tick, by a double-click, or by ctrl- or cmd-click, each of which also takes it back off; shift-click
+takes a range, and with no range started it picks that file and starts one. The arrow keys move the
+preview, and with shift add to the picks. Escape clears. A row's tick is always there; a thumbnail's
+appears under the pointer until something is picked, then on every thumbnail. Picked thumbnails get a
+green ring with a tick; picked rows a green tick and background. The picks — or, with none, the file
+being looked at — can be sent back to the sorting area by button or Delete.
 
 **Filing.** Drag a jump or a selection onto a place in the menu to file it there, or onto another jump to
 move it. While something is carried, every place that would take it is outlined and the one under the
@@ -233,7 +243,8 @@ choice is remembered on that machine and applied before the first thing is drawn
 
 ## Cropping and turning
 
-Clicking a file opens it, playing its proxy when there is one. The picture fills the left of the dialog
+A file is opened from the inspector, or with Enter on the file being looked at, playing its proxy when
+there is one. The picture fills the left of the dialog
 with the timeline under it; the right side says what is being decided: the trim, the turn, the frame,
 and what is already on the file. The top names the file and lets you step to the next; the bottom holds
 Save, offered only once something changed, and Reset, which clears everything at once. A loose file is

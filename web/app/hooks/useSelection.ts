@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 import type { Modifiers } from '../components/file-list'
 import type { ManifestFile } from '../components/types'
 
-/* What is selected, the way a file manager has it: a click selects a file, ⌘/ctrl-click adds or
-   removes one, shift-click takes a range, and a double-click or Enter opens it. A jump can be
-   selected instead, by its line. The arrow keys step through the files in the order they are drawn,
-   Escape clears, Delete sends what is selected back to Unsorted, and ⌘A takes every file on screen.
-   Two jumps can be put side by side to compare. */
+/* Looking and picking are two different things. A click only looks: the file shows in the
+   inspector and nothing is picked. A file is picked by its tick, by a double-click, by ⌘/ctrl-click,
+   or with shift for a range — so a picked set is never started by accident on the way to looking at
+   something. Enter opens what is being looked at. A jump can be selected instead, by its line. The
+   arrow keys step the look through the files in the order they are drawn (shift adds them to the
+   picks), Escape clears, Delete sends the picks — or, with none, the file looked at — back to
+   Unsorted, and ⌘A picks every file on screen. Two jumps can be put side by side to compare. */
 const useSelection = ({
   order,
   paused,
@@ -24,11 +26,28 @@ const useSelection = ({
   const [anchor, setAnchor] = useState<string | null>(null)
   const [pickedJump, setPickedJump] = useState<string | null>(null)
   const [comparing, setComparing] = useState<[string, string] | null>(null)
+  /* the file being looked at, which is not the same as picked */
+  const [previewed, setPreviewed] = useState<string | null>(null)
 
   const pickOnly = (ids: string[], from: string | null) => {
     setPickedFiles(ids)
     setAnchor(from)
     setPickedJump(null)
+    setPreviewed(null)
+  }
+
+  /* picking is the latest thing done, so the inspector turns to the picks */
+  const togglePick = (id: string) => {
+    setPickedFiles(
+      pickedFiles.includes(id) ? pickedFiles.filter((x) => x !== id) : [...pickedFiles, id]
+    )
+    setAnchor(id)
+    setPickedJump(null)
+    setPreviewed(null)
+  }
+
+  const pickFile = (file: ManifestFile) => {
+    if (file.id) togglePick(file.id)
   }
 
   const idsOf = (files: ManifestFile[]) => files.flatMap((f) => (f.id ? [f.id] : []))
@@ -51,21 +70,21 @@ const useSelection = ({
       const range = rangeTo(id, idsOf(lane))
       setPickedFiles(range ? [...new Set([...pickedFiles, ...range])] : [...pickedFiles, id])
       if (!range) setAnchor(id)
+      setPreviewed(null)
       return
     }
     if (e.ctrlKey || e.metaKey) {
-      setPickedFiles(
-        pickedFiles.includes(id) ? pickedFiles.filter((x) => x !== id) : [...pickedFiles, id]
-      )
-      setAnchor(id)
+      togglePick(id)
       return
     }
-    pickOnly([id], id)
+    setPreviewed(id)
+    setAnchor(id)
   }
 
   const selectJump = (groupId: string) => {
     setPickedFiles([])
     setAnchor(null)
+    setPreviewed(null)
     setPickedJump(pickedJump === groupId ? null : groupId)
   }
 
@@ -92,9 +111,10 @@ const useSelection = ({
         clear()
         return
       }
-      if ((e.key === 'Delete' || e.key === 'Backspace') && pickedFiles.length > 0) {
+      const targets = pickedFiles.length ? pickedFiles : previewed ? [previewed] : []
+      if ((e.key === 'Delete' || e.key === 'Backspace') && targets.length > 0) {
         e.preventDefault()
-        onDelete(pickedFiles)
+        onDelete(targets)
         return
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
@@ -102,8 +122,8 @@ const useSelection = ({
         pickOnly(ids, ids[0] ?? null)
         return
       }
-      if (e.key === 'Enter' && pickedFiles.length === 1) {
-        const file = order.find((f) => f.id === pickedFiles[0])
+      if (e.key === 'Enter' && targets.length === 1) {
+        const file = order.find((f) => f.id === targets[0])
         if (file) onOpen(file)
         return
       }
@@ -114,8 +134,9 @@ const useSelection = ({
       if (!next) return
       if (e.shiftKey) {
         setPickedFiles([...new Set([...pickedFiles, next])])
-        setAnchor(next)
-      } else pickOnly([next], next)
+        setPreviewed(null)
+      } else setPreviewed(next)
+      setAnchor(next)
       document
         .querySelector(`[data-file="${CSS.escape(next)}"]`)
         ?.scrollIntoView({ block: 'nearest' })
@@ -127,7 +148,9 @@ const useSelection = ({
   return {
     pickedFiles,
     pickedJump,
+    previewed,
     clickFile,
+    pickFile,
     selectJump,
     selectFiles,
     clear,

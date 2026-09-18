@@ -12,7 +12,7 @@
   Three panes, no folding, no chips, no day toggles.
     left    a folder tree — Cameras (the days as they came off the cameras), Dropzones, Tandems,
             Storage — each folder saying how much of it is still to do
-    middle  the folder's files, all of them, as a list or as thumbnails, grouped by jump or by day
+    middle  the folder's files, all of them, as a list or as thumbnails, grouped by jump, by day or as one list
             with headers that stay put while you scroll; a jump is filed from its own header in one
             click, or by dragging it onto a folder
     right   an inspector for whatever is selected — one file, a jump, a whole folder — with the one
@@ -221,6 +221,15 @@
         background: var(--accent-soft);
         color: var(--accent);
         font-weight: 600;
+      }
+      .seg button:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      .seg button .n {
+        font-family: var(--mono, ui-monospace, monospace);
+        font-size: 11px;
+        color: var(--ink-3);
       }
 
       /* ---------- the proposal note ---------- */
@@ -576,12 +585,7 @@
         font-weight: 600;
         padding: 6px 8px;
         border-bottom: 1px solid var(--line);
-        cursor: pointer;
         white-space: nowrap;
-      }
-      thead th.sorted::after {
-        content: ' ▾';
-        color: var(--accent);
       }
       tbody tr {
         border-bottom: 1px solid var(--line-2);
@@ -941,8 +945,9 @@
               Dropzones, Tandems, Storage. Each says how much of it is still to do.
             </li>
             <li>
-              <b>Everything in the folder is on screen</b>, grouped by jump or day with headers that
-              stay put while you scroll. No day toggles, no folded jumps, no chips.
+              <b>Everything in the folder is on screen</b>, grouped by jump, by day or as one list —
+              one button each in the heading — with headers that stay put while you scroll. Files
+              are always in the order shot. No day toggles, no folded jumps, no chips.
             </li>
             <li>
               <b>Filing is one click</b> from a jump's own header (<i>File to ▾</i>), or a drag onto
@@ -1136,8 +1141,9 @@
       const state = {
         folder: 'cam',
         view: 'list',
-        group: 'jump',
-        sort: 't',
+        /* each kind of place remembers its own way of grouping, as the app does */
+        group: { cam: 'jump', dz: 'day', pax: 'jump' },
+        kind: 'all',
         picked: new Set(),
         pickedJump: null,
         query: '',
@@ -1391,6 +1397,15 @@
       }
 
       /* ---------- crumbs and the folder's one next step ---------- */
+      /* what each kind of place can be grouped by — the same table the app uses */
+      const GROUPINGS = { cam: ['jump', 'day', 'none'], dz: ['day', 'none'], pax: ['jump', 'none'] }
+      const GROUP_LABEL = { jump: 'By jump', day: 'By day', none: 'One list' }
+      const familyOf = (key) => key.split(':')[0]
+      const groupingOf = (key) => {
+        const options = GROUPINGS[familyOf(key)] ?? []
+        const chosen = state.group[familyOf(key)]
+        return options.includes(chosen) ? chosen : (options[0] ?? 'none')
+      }
       const folderName = (key) =>
         key === 'cam'
           ? 'Unsorted'
@@ -1485,7 +1500,30 @@
     <span class="count">${key === 'storage' ? `${data.storage.length} tandems` : `${js.length ? `${js.length} jump${js.length === 1 ? '' : 's'} · ` : ''}${files.length} files · ${gb(files.reduce((n, f) => n + f.size, 0))}`}</span>
     <span class="tools">
       <label class="find"><span style="color:var(--ink-3)">⌕</span><input id="find" placeholder="Find a file" value="${state.query}" /></label>
-      <select class="tool" id="groupBy"><option value="jump" ${state.group === 'jump' ? 'selected' : ''}>Group by jump</option><option value="day" ${state.group === 'day' ? 'selected' : ''}>Group by day</option><option value="none" ${state.group === 'none' ? 'selected' : ''}>No groups</option></select>
+      ${
+        files.length
+          ? `<span class="seg" role="group" aria-label="Videos or photos">${[
+              ['all', 'All', files.length],
+              ['video', 'Videos', files.filter((f) => f.kind === 'video').length],
+              ['photo', 'Photos', files.filter((f) => f.kind === 'photo').length]
+            ]
+              .map(
+                ([k, l, n]) =>
+                  `<button data-kind="${k}" aria-pressed="${state.kind === k}" ${n === 0 && state.kind !== k ? 'disabled' : ''}>${l} <span class="n">${n}</span></button>`
+              )
+              .join('')}</span>`
+          : ''
+      }
+      ${
+        (GROUPINGS[familyOf(key)] ?? []).length > 1
+          ? `<span class="seg" role="group" aria-label="Group">${GROUPINGS[familyOf(key)]
+              .map(
+                (g) =>
+                  `<button data-group="${g}" aria-pressed="${groupingOf(key) === g}">${GROUP_LABEL[g]}</button>`
+              )
+              .join('')}</span>`
+          : ''
+      }
       ${step ? `<button class="btn go" id="folderStep" ${step.disabled ? 'disabled' : ''}>${step.label}</button>` : ''}
     </span>`
         document.querySelector('[data-go]')?.addEventListener('click', (e) => {
@@ -1498,10 +1536,16 @@
           state.query = e.target.value
           renderFiles()
         })
-        document.getElementById('groupBy').addEventListener('change', (e) => {
-          state.group = e.target.value
-          renderFiles()
-        })
+        for (const b of document.querySelectorAll('#crumbs [data-group]'))
+          b.addEventListener('click', () => {
+            state.group[familyOf(key)] = b.dataset.group
+            render()
+          })
+        for (const b of document.querySelectorAll('#crumbs [data-kind]'))
+          b.addEventListener('click', () => {
+            state.kind = b.dataset.kind
+            render()
+          })
         document.getElementById('folderStep')?.addEventListener('click', step?.do)
       }
 
@@ -1597,18 +1641,11 @@
     <div class="fn">${copyName(f, j) ?? f.cam}</div><span class="st ${cls}"><i></i>${word}</span></div>`
       }
       const table = (files, j) => {
-        const sorted = [...files].sort((a, b) =>
-          state.sort === 'status'
-            ? a.status.localeCompare(b.status)
-            : state.sort === 'name'
-              ? a.cam.localeCompare(b.cam)
-              : a.t - b.t
-        )
+        /* always in the order shot — there is nothing to sort by */
+        const sorted = [...files].sort((a, b) => a.t - b.t)
         if (state.view === 'grid')
           return `<div class="grid">${sorted.map((f) => tile(f, j)).join('')}</div>`
-        const th = (k, l) =>
-          `<th data-sort="${k}" class="${state.sort === k ? 'sorted' : ''}">${l}</th>`
-        return `<table><thead><tr><th></th><th></th>${th('name', 'Name')}${th('t', 'Time')}<th>Size · length</th><th>Edits</th>${th('status', 'Status')}</tr></thead><tbody>${sorted.map((f) => row(f, j)).join('')}</tbody></table>`
+        return `<table><thead><tr><th></th><th></th><th>Name</th><th>Time</th><th>Size · length</th><th>Edits</th><th>Status</th></tr></thead><tbody>${sorted.map((f) => row(f, j)).join('')}</tbody></table>`
       }
       const groupHeader = (j) => {
         const c = counts(j.files)
@@ -1645,8 +1682,10 @@
           return
         }
         const q = state.query.trim().toLowerCase()
+        const g = groupingOf(key)
         const matches = (f, j) =>
-          !q || f.cam.toLowerCase().includes(q) || (copyName(f, j) ?? '').includes(q)
+          (state.kind === 'all' || f.kind === state.kind) &&
+          (!q || f.cam.toLowerCase().includes(q) || (copyName(f, j) ?? '').includes(q))
         let js = jumpsIn(key)
           .map((j) => ({ ...j, files: j.files.filter((f) => matches(f, j)) }))
           .filter((j) => j.files.length)
@@ -1656,8 +1695,8 @@
           return
         }
         let html = ''
-        if (state.group === 'none') html = table([...js.flatMap((j) => j.files), ...ls], null)
-        else if (state.group === 'day' || key.startsWith('dz:')) {
+        if (g === 'none') html = table([...js.flatMap((j) => j.files), ...ls], null)
+        else if (g === 'day') {
           const days = [...new Set([...js.map((j) => j.day), ...ls.map((f) => f.day)])]
             .sort()
             .reverse()
@@ -1666,14 +1705,7 @@
               ...js.filter((j) => j.day === d).flatMap((j) => j.files),
               ...ls.filter((f) => f.day === d)
             ]
-            html +=
-              dayHeader(d, files) +
-              (state.group === 'jump' && !key.startsWith('dz:')
-                ? js
-                    .filter((j) => j.day === d)
-                    .map((j) => groupHeader(j) + table(j.files, j))
-                    .join('')
-                : table(files, null))
+            html += dayHeader(d, files) + table(files, null)
           }
         } else {
           for (const j of js.sort((a, b) => b.t - a.t)) html += groupHeader(j) + table(j.files, j)
@@ -1716,11 +1748,6 @@
               return
             }
             fileJump(s.dataset.fileJump, v || null)
-          })
-        for (const h of el.querySelectorAll('th[data-sort]'))
-          h.addEventListener('click', () => {
-            state.sort = h.dataset.sort
-            renderFiles()
           })
       }
 

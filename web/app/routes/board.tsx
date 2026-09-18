@@ -38,7 +38,6 @@ import {
   StepTrail
 } from '../components/inspector'
 import { PlacePane } from '../components/place-pane'
-import type { SortBy } from '../components/place-pane'
 import type { Target } from '../components/place-select'
 import { PlacesTree } from '../components/places-tree'
 import { PreviewHost } from '../components/preview-host'
@@ -144,9 +143,6 @@ const loader = async (_args: Route.LoaderArgs) => {
   }
 }
 
-/* the order of how far along a file is, for sorting by it: what still needs work first */
-const STATUS_RANK = { changed: 0, local: 1, processed: 2, uploaded: 3 }
-
 const Board = ({ loaderData }: Route.ComponentProps) => {
   const [dialog, setDialog] = useState<BoardDialog>(null)
   /* uploaded and freed: the one thing left is to tell the passenger, so that is offered */
@@ -162,7 +158,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
      holds in a tandem */
   const [kind, setKind] = useState<Kind>('all')
   const [query, setQuery] = useState('')
-  const [sort, setSort] = useState<SortBy>('time')
   /* how each family of folder groups its files, remembered while the board is open */
   const [groupingBy, setGroupingBy] = useState<Record<'sort' | 'dz' | 'tandems', Grouping>>({
     sort: 'jump',
@@ -251,12 +246,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         ? groupingBy[family]
         : (groupingOptions[0] ?? 'none')
   const sections = sectionsOf(place, grouping, shownGroups, shownLoose)
-  const sortKey = (file: ManifestFile) =>
-    sort === 'name'
-      ? (deliveredName(file) ?? file.filename).toLowerCase()
-      : sort === 'status'
-        ? STATUS_RANK[shownStatus(file, statusContext(file))]
-        : file.mtime
+  /* files are in the order they were shot */
+  const sortKey = (file: ManifestFile) => file.mtime
   /* every file on screen, in the order it is drawn, for the arrow keys to step through */
   const order = sections.flatMap((s) =>
     s.kind === 'jump' && s.group.freed ? [] : lanesOf(s.files, kind, sortKey).flat()
@@ -704,11 +695,17 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     `${labels.get(group.id) ?? group.label} · ${shortDate(Math.min(...group.files.map((f) => f.mtime)))}`
 
   const inspector = () => {
+    const everyFile = [...groups.flatMap((g) => g.files), ...loose]
     const picked = pickedFiles.flatMap((id) => {
-      const found = [...groups.flatMap((g) => g.files), ...loose].find((f) => f.id === id)
+      const found = everyFile.find((f) => f.id === id)
       return found ? [found] : []
     })
-    const one = picked.length === 1 ? picked[0] : undefined
+    /* the file looked at last, or else the one picked — whichever was done most recently, since
+       picking clears the look */
+    const previewed = selection.previewed
+      ? everyFile.find((f) => f.id === selection.previewed)
+      : undefined
+    const one = previewed ?? (picked.length === 1 ? picked[0] : undefined)
     if (one) {
       const group = groupOfFile(one)
       const context = statusContext(one)
@@ -881,7 +878,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             options: groupingOptions,
             onChange: (g) => family !== 'storage' && setGroupingBy({ ...groupingBy, [family]: g })
           }}
-          sort={{ value: sort, onChange: setSort }}
           kind={{ value: kind, onChange: setKind }}
           step={place.kind === 'dz' ? dropzoneStep(place.name) : undefined}
           tools={paxTools}
@@ -939,6 +935,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               onFile={(file: ManifestFile, lane: ManifestFile[], e: Modifiers) =>
                 selection.clickFile(file, lane, e)
               }
+              onPick={selection.pickFile}
+              previewed={selection.previewed}
               onOpen={openFile}
               onDragFile={drag.startFileDrag}
               empty={
