@@ -333,3 +333,57 @@ describe('emailing the passenger their link', () => {
     await expect.element(page.getByRole('button', { name: 'Email Luc…' })).not.toBeInTheDocument()
   })
 })
+
+/* The storage's own list of tandems, on the Tandems page: every tandem up there — this machine's
+   and the ones it no longer has — with whether the passenger was emailed, and a way to say so. */
+describe('the tandems on the storage', () => {
+  const DIR = '/SkyDock/Tandems'
+  const listed = {
+    ...board,
+    storage: {
+      dir: DIR,
+      problem: null,
+      tandems: [
+        {
+          folder: `${DIR}/Ana Roth`,
+          firstname: 'Ana',
+          lastname: 'Roth',
+          day: '28.07.2026',
+          videos: 12,
+          photos: 40,
+          uploadedAt: 1_785_000_000,
+          shareUrl: 'https://nas.local/sharing/Ana',
+          backup: '/Backup/ana_roth_20260728.rushes.zip',
+          freedAt: 1_785_100_000
+        }
+      ]
+    }
+  }
+
+  test('lists a tandem this machine no longer has, and whether its passenger was emailed', async () => {
+    await renderBoard(listed, false)
+    await userEvent.click(page.getByRole('button', { name: /All passengers/ }))
+    await expect.element(page.getByText('On the storage')).toBeInTheDocument()
+    await expect.element(page.getByText('Ana Roth')).toBeInTheDocument()
+    await expect.element(page.getByText('not emailed', { exact: true })).toBeInTheDocument()
+    await expect.element(page.getByText('🔒 storage only')).toBeInTheDocument()
+  })
+
+  test('emails it from its entry, and says on the list that it was sent', async () => {
+    delivered.length = 0
+    await renderBoard(listed, false)
+    await userEvent.click(page.getByRole('button', { name: /All passengers/ }))
+    await userEvent.click(page.getByRole('button', { name: 'Email…' }))
+    const dialog = page.getByRole('dialog', { name: 'Email the passenger' })
+    const preview = dialog.getByTitle('Email preview').element() as HTMLIFrameElement
+    expect(preview.srcdoc).toContain('Bonjour Ana,')
+    await userEvent.fill(dialog.getByLabelText('To'), 'ana@example.com')
+    await userEvent.click(dialog.getByRole('button', { name: 'Mark as sent' }))
+    await vi.waitFor(() =>
+      expect(delivered).toContainEqual({
+        intent: 'mark-emailed',
+        emailed: { folder: `${DIR}/Ana Roth`, sent: true, to: 'ana@example.com' }
+      })
+    )
+  })
+})

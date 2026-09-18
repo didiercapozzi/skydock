@@ -40,7 +40,14 @@ export { loadManifest, saveManifest, statProcessedOutputs } from './manifest'
 export { statProxies } from './proxy'
 export type { ProxyFact } from './proxy'
 
-export { goneFromStorage, groupsInScope, listRemoteFiles, scopeKey, uploadScope } from './upload'
+export {
+  goneFromStorage,
+  groupsInScope,
+  listRemoteFiles,
+  scopeKey,
+  tandemsRemoteDir,
+  uploadScope
+} from './upload'
 
 export {
   clearUploadProgress,
@@ -90,3 +97,5 @@ export {
   renderPassengerEmail
 } from './passengerEmail'
 export type { PassengerEmail } from './passengerEmail'
+export { tandemEntrySchema, tandemIndexSchema } from './tandemEntry'
+export type { TandemEntry, TandemIndex } from './tandemEntry'

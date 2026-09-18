@@ -1,5 +1,7 @@
 import {
   buildPassengerFolder,
+  tandemEntrySchema,
+  tandemsRemoteDir,
   goneFromStorage,
   destinationSchema,
   EDIT_LOCKED,
@@ -19,7 +21,8 @@ import {
   statTandemArtifacts,
   uploadGate
 } from '@skydock/scripts'
-import type { FrameCrop, OutputFact, ProxyFact, RemoteListing } from '@skydock/scripts'
+import type { FrameCrop, OutputFact, ProxyFact, RemoteListing, TandemEntry } from '@skydock/scripts'
+import { readTandemIndex } from '../../../packages/skydock-scripts/src/tandemIndex'
 import { Fragment, useEffect, useState } from 'react'
 import { z } from 'zod'
 import { Go, Mini, Seg } from '../components/buttons'
@@ -57,6 +60,7 @@ import type { Destination, ManifestFile, ManifestGroup } from '../components/typ
 import { formatTime, minFileMtime } from '../components/utils'
 import { useSafeFetcher } from '../helpers/routing'
 import { EmailDialog } from '../components/email-dialog'
+import { StorageList } from '../components/storage-list'
 import { setFileView, useFileView } from '../hooks/useFileView'
 import { setBackupChoice, useBackupChoice } from '../hooks/useBackupChoice'
 import { useGroups } from '../hooks/useJumps'
@@ -220,6 +224,7 @@ const loader = async (_args: Route.LoaderArgs) => {
   /* the first look at the NAS happens here rather than on mount: the page then arrives already
      correct, and the Refresh button re-runs the same check through /api/remote-files */
   let remote: { dirs: string[]; sizes: Record<string, number | null>; at: number } | null = null
+  let storage: { dir: string; tandems: TandemEntry[]; problem: string | null } | null = null
   try {
     const session = await ensureNasSession()
     if (session) {
@@ -229,7 +234,19 @@ const loader = async (_args: Route.LoaderArgs) => {
         defaultFolder: session.defaultFolder ?? null,
         backupFolder: session.backupFolder ?? null
       }
-      if (manifest) remote = await listRemoteFiles(manifest, session)
+      if (manifest) {
+        remote = await listRemoteFiles(manifest, session)
+        /* the storage's own list of tandems — every one it holds, from here or from elsewhere */
+        const dir = tandemsRemoteDir(manifest, session.defaultFolder ?? null)
+        if (dir)
+          storage = await readTandemIndex(session, dir)
+            .then((index) => ({ dir, tandems: index.tandems, problem: null as string | null }))
+            .catch((e: unknown) => ({
+              dir,
+              tandems: [],
+              problem: e instanceof Error ? e.message : String(e)
+            }))
+      }
     }
   } catch {
     nas = { connected: false, hostname: null, defaultFolder: null, backupFolder: null }
@@ -252,6 +269,7 @@ const loader = async (_args: Route.LoaderArgs) => {
        film is only ever noticed by looking (RULES, Delivery) */
     tandems: manifest ? statTandemArtifacts(manifest, outputDir) : {},
     remote,
+    storage,
     hasManifest: manifest !== null,
     nas,
     /* what is being prepared right now, if anything — a page loaded in the middle of it has to
@@ -306,6 +324,13 @@ const inTandemsCard = (group: ManifestGroup) => group.destination === TANDEMS
    derived from the time and the crop that just changed. */
 const baseName = (full: string) => full.slice(full.lastIndexOf('/') + 1)
 
+/* the passenger's folder on the storage — where its film and photos were sent — which is what
+   the storage's list of tandems knows it by */
+const folderOnStorage = (group: ManifestGroup) => {
+  const sent = group.delivered?.film ?? group.delivered?.photos
+  return sent ? sent.remotePath.slice(0, sent.remotePath.lastIndexOf('/')) : null
+}
+
 const Board = ({ loaderData }: Route.ComponentProps) => {
   const { groups, setGroups, updateGroups } = useGroups(loaderData.groups)
   /* A page loaded mid-preparation takes the work up where the server has it: that one tandem
@@ -329,7 +354,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   /* which place fills the pane, and which of its days is open — one at a time, remembered per
      place so switching back lands where you left it */
   const [place, setPlace] = useState<Place>({ kind: 'sort' })
-  const [openDays, setOpenDays] = useState<Record<string, string | null>>({})
+  const [openDays, setOpenDays] = useState<Record<string, string[]>>({})
   /* Folding jumps is a standing choice, not something remembered per jump: collapse them once and
      every day opened afterwards opens folded too. `foldJumps` is that choice and `unfolded` holds
      the jumps told to differ from it, so one jump opened by hand does not undo the rest. Folded
@@ -357,7 +382,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     | DeliverDialogState
     | { kind: 'take-back'; mode: TakeBackMode; who: string }
     | { kind: 'free'; groupId: string }
-    | { kind: 'email'; groupId: string }
+    /* a tandem on this board by its jump, or one the storage's list alone knows, by its folder */
+    | { kind: 'email'; groupId?: string; folder?: string }
   >(null)
   const backupChoice = useBackupChoice()
   const [dialogOpenedOn, setDialogOpenedOn] = useState<unknown>(null)
@@ -378,6 +404,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       .flatMap((g) => g.files.flatMap((f) => (f.id ? [f.id] : [])))
   )
   const [remoteAfterUpload, setRemoteAfterUpload] = useState<CheckedListing | null>(null)
+  /* the storage's list of tandems, as the loader read it or as the last change wrote it */
+  const [storage, setStorage] = useState(loaderData.storage)
   /* the first scan is what creates the manifest, so this is state and not read from the loader */
   const [hasManifest, setHasManifest] = useState(loaderData.hasManifest)
   const view = useFileView()
@@ -465,6 +493,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         scan: scanResultSchema.optional(),
         /* how much room freeing a tandem gave back, and how many files */
         freed: z.object({ bytes: z.number(), files: z.number(), groupId: z.string() }).optional(),
+        /* the storage's list, as the change just wrote it — or why it could not be */
+        storage: z.object({ dir: z.string(), tandems: z.array(tandemEntrySchema) }).optional(),
+        storageProblem: z.string().optional(),
         /* files just added from the computer */
         imported: z
           .object({
@@ -491,7 +522,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         montage,
         scan: scanned,
         freed,
-        imported
+        imported,
+        storage: listed,
+        storageProblem
       } = answered.data
       queueMicrotask(() => {
         setGroups(saved)
@@ -506,9 +539,10 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         if (scanned) setHasManifest(true)
         /* uploaded and freed: the one thing left is to tell the passenger, so that is offered */
         if (freed) setDialog({ kind: 'email', groupId: freed.groupId })
+        if (listed) setStorage({ ...listed, problem: null })
         setBusy(null)
         setUploading(null)
-        setNote(
+        const said =
           uploaded !== undefined
             ? `Uploaded ${uploaded} file${uploaded === 1 ? '' : 's'}${
                 skipped ? ` · ${skipped} already on the NAS` : ''
@@ -522,7 +556,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                   : freed
                     ? `On the storage only. ${freed.files} file${freed.files === 1 ? '' : 's'} freed from this machine on ${new Date().toLocaleDateString('de-CH')} — ${formatFilmSize(freed.bytes)} given back. The project is kept here; everything else is on the storage, as above.`
                     : null
-        )
+        /* the work stands even when the list could not follow it, and that is said alongside */
+        setNote(storageProblem ? [said, storageProblem].filter(Boolean).join(' · ') : said)
       })
       return
     }
@@ -1040,20 +1075,21 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     )
   }
 
-  /* a day is the unit everywhere: one open at a time, remembered for the place you are in */
+  /* Days open and close on their own — opening one leaves the others as they are — and which are
+     open is remembered for the place you are in. */
   const key = placeKey(place)
-  const openDay = openDays[key]
-  const setOpenDay = (day: string | null) => setOpenDays({ ...openDays, [key]: day })
+  const setOpen = (days: string[]) => setOpenDays({ ...openDays, [key]: days })
 
-  /* A jump chip opens its day and lands on that jump, unfolded — landing on a folded jump would
-     show its name and nothing it was asked for. The scroll waits two frames because the jump it is
-     scrolling to does not exist until the day it is in has been drawn. */
+  /* A jump chip is asking for that one jump: its day opens, and it is the only jump left unfolded,
+     so what the chip was pressed for is what is on screen. Opening and folding anywhere else leaves
+     the others alone; the chip is the one place that picks. The scroll waits two frames because the
+     jump it is scrolling to does not exist until the day it is in has been drawn. */
   const openAt = (day: string, anchor: string) => {
-    setOpenDay(day)
-    if (groups.some((g) => g.id === anchor) && jumpShut(anchor))
-      setUnfolded(
-        unfolded.includes(anchor) ? unfolded.filter((id) => id !== anchor) : [...unfolded, anchor]
-      )
+    if (!shownDays.includes(day)) setOpen([...shownDays, day])
+    if (groups.some((g) => g.id === anchor)) {
+      setFoldJumps(true)
+      setUnfolded([anchor])
+    }
     requestAnimationFrame(() =>
       requestAnimationFrame(() =>
         document.getElementById(`at-${anchor}`)?.scrollIntoView({ block: 'start' })
@@ -1101,19 +1137,28 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       ...shownLoose.filter((f) => dayOfFile(f) === d)
     ].some((f) => statusOf(f) !== 'uploaded')
   )
-  const shownDay = key in openDays ? openDay : (defaultDay ?? days[0] ?? null)
+  /* until something is opened or closed here, the newest day with work left in it is open */
+  const firstDay = defaultDay ?? days[0]
+  const shownDays = openDays[key] ?? (firstDay ? [firstDay] : [])
+  const toggleDay = (day: string) =>
+    setOpen(shownDays.includes(day) ? shownDays.filter((d) => d !== day) : [...shownDays, day])
 
   const jumpShut = (groupId: string) => foldJumps !== unfolded.includes(groupId)
-  /* the jumps of whichever day is open — what tells Collapse and Expand whether there is anything
-     left for them to do */
+  /* the jumps of the days that are open — what tells Collapse and Expand whether there is
+     anything left for them to do */
   const openDayJumps =
-    place.kind === 'sort' && shownDay
-      ? shownGroups.filter((g) => dayOf(g) === shownDay).map((g) => g.id)
+    place.kind === 'sort'
+      ? shownGroups.filter((g) => shownDays.includes(dayOf(g))).map((g) => g.id)
       : []
   const foldAll = (fold: boolean) => {
     setFoldJumps(fold)
     setUnfolded([])
   }
+  /* each jump opens and folds on its own; the others stay as they are */
+  const toggleJump = (groupId: string) =>
+    setUnfolded(
+      unfolded.includes(groupId) ? unfolded.filter((x) => x !== groupId) : [...unfolded, groupId]
+    )
 
   const unnamed = tandems.filter((g) => !passengerOf(g))
   const named = tandems.filter((g) => passengerOf(g))
@@ -1157,6 +1202,10 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         : paneHost && !frozen.has(paneHost.id)
           ? { target: `group:${paneHost.id}`, where: passengerOf(paneHost) }
           : null
+
+  /* whether the storage's list says this tandem's passenger was sent their link */
+  const emailedOn = (group: ManifestGroup) =>
+    storage?.tandems.find((t) => t.folder === folderOnStorage(group))?.emailed ?? null
 
   const dayAction = (day: string, dayGroups: ManifestGroup[], dayLoose: ManifestFile[]) => {
     if (place.kind !== 'dz') return null
@@ -1373,9 +1422,15 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                 )
                 return linked ? (
                   <Mini
-                    title='Send the passenger their link'
+                    title={
+                      emailedOn(linked)
+                        ? 'The storage’s list says the link was sent — open it to send it again'
+                        : 'Send the passenger their link'
+                    }
                     onClick={() => setDialog({ kind: 'email', groupId: linked.id })}>
-                    Email {linked.passenger?.firstname ?? ''}…
+                    {emailedOn(linked)
+                      ? '✓ Emailed · again…'
+                      : `Email ${linked.passenger?.firstname ?? ''}…`}
                   </Mini>
                 ) : null
               })()}
@@ -1449,7 +1504,12 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                       {place.kind === 'sort'
                         ? `${placeGroups.length} jump${placeGroups.length === 1 ? '' : 's'}`
                         : `${days.length} day${days.length === 1 ? '' : 's'}`}{' '}
-                      · {shownDay ? `${dayLabel(shownDay)} open` : 'all closed'}
+                      ·{' '}
+                      {shownDays.length === 0
+                        ? 'all closed'
+                        : shownDays.length === 1
+                          ? `${dayLabel(shownDays[0]!)} open`
+                          : `${shownDays.length} days open`}
                     </span>
                     <Mini
                       disabled={openDayJumps.length === 0 || openDayJumps.every(jumpShut)}
@@ -1464,9 +1524,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                       Expand jumps
                     </Mini>
                     <Mini
-                      disabled={shownDay === null}
+                      disabled={shownDays.length === 0}
                       title='Fold every day down to one line'
-                      onClick={() => setOpenDay(null)}>
+                      onClick={() => setOpen([])}>
                       Close all days
                     </Mini>
                     {place.kind === 'sort' && sorting.length > 0 && (
@@ -1496,7 +1556,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                       label={dayLabel(day)}
                       groups={dayGroups}
                       looseFiles={dayLoose}
-                      open={shownDay === day}
+                      open={shownDays.includes(day)}
                       grouped={place.kind === 'sort'}
                       kind={kind}
                       shape={view}
@@ -1504,7 +1564,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                       statusContext={statusContext}
                       proxies={proxies}
                       deliveredName={deliveredName}
-                      onToggle={() => setOpenDay(shownDay === day ? null : day)}
+                      onToggle={() => toggleDay(day)}
                       onKind={setKind}
                       onFile={fileLane}
                       onDragFile={startFileDrag}
@@ -1516,13 +1576,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                       onDragJump={startJumpDrag}
                       passengers={passengers}
                       onMakeTandem={makeTandem}
-                      onToggleJump={(id) =>
-                        setUnfolded(
-                          unfolded.includes(id)
-                            ? unfolded.filter((x) => x !== id)
-                            : [...unfolded, id]
-                        )
-                      }
+                      onToggleJump={toggleJump}
                       groupDropTarget={groupDropTarget}
                       dragging={draggedFiles.length > 0}
                       action={dayAction(day, dayGroups, dayLoose)}
@@ -1581,6 +1635,14 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                     )
                   })}
                 </div>
+                <StorageList
+                  storage={storage}
+                  isHere={(entry) => groups.some((g) => folderOnStorage(g) === entry.folder)}
+                  onOpen={(entry) =>
+                    setPlace({ kind: 'pax', name: `${entry.firstname} ${entry.lastname}`.trim() })
+                  }
+                  onEmail={(entry) => setDialog({ kind: 'email', folder: entry.folder })}
+                />
               </>
             )}
 
@@ -1607,7 +1669,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                           <KindBadges
                             files={group.files}
                             kind={kind}
-                            withAll={false}
+                            withAll
                             onPick={setKind}
                           />
                           <Mini onClick={() => selectAll(group.files)}>Select all</Mini>
@@ -1634,7 +1696,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                         <div className='p-[9px]'>
                           <FileList
                             files={group.files}
-                            kind={kind === 'all' ? 'video' : kind}
+                            kind={kind}
                             shape={view}
                             picked={pickedFiles}
                             statusContext={statusContext}
@@ -1731,13 +1793,41 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
       {dialog?.kind === 'email' &&
         (() => {
-          const group = groups.find((g) => g.id === dialog.groupId)
-          const shareUrl = group?.delivered?.shareUrl ?? group?.publish?.shareUrl
-          if (!group || !shareUrl) return null
+          /* a tandem on this board is drafted from its files; one the storage alone knows, from
+             what its list says */
+          const group = dialog.groupId ? groups.find((g) => g.id === dialog.groupId) : undefined
+          const folder = dialog.folder ?? (group ? folderOnStorage(group) : null)
+          const entry = folder ? storage?.tandems.find((t) => t.folder === folder) : undefined
+          const shareUrl = group?.delivered?.shareUrl ?? group?.publish?.shareUrl ?? entry?.shareUrl
+          const about = group
+            ? {
+                firstname: group.passenger?.firstname ?? '',
+                day: group.day,
+                hasFilm: group.files.some((f) => isVideoFile(f.path)),
+                photos: group.files.filter((f) => !isVideoFile(f.path)).length
+              }
+            : entry
+              ? {
+                  firstname: entry.firstname,
+                  day: entry.day,
+                  hasFilm: entry.videos > 0,
+                  photos: entry.photos
+                }
+              : null
+          if (!about || !shareUrl) return null
           return (
             <EmailDialog
-              group={group}
-              shareUrl={shareUrl}
+              key={folder ?? dialog.groupId}
+              about={{ ...about, shareUrl }}
+              emailed={entry?.emailed ?? null}
+              canRecord={Boolean(entry && folder)}
+              onRecord={(sent, to) =>
+                folder &&
+                send('email', {
+                  intent: 'mark-emailed',
+                  emailed: { folder, sent, ...(to.trim() ? { to: to.trim() } : {}) }
+                })
+              }
               onClose={() => setDialog(null)}
             />
           )

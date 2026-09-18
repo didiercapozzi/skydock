@@ -10,8 +10,6 @@ import type { MailApp } from '../hooks/useMailApp'
 import { setSignature, useSignature } from '../hooks/useSignature'
 import { Go, Mini } from './buttons'
 import { Field, INPUT, Modal, Spacer } from './modal'
-import type { ManifestGroup } from './types'
-import { isVideoFile } from './utils'
 
 /* The passenger's link, ready to go. The email is written and laid out already, and shown exactly as
    it will arrive; one press copies it and opens a new Gmail message with the address and subject
@@ -49,23 +47,35 @@ const copyText = async (text: string) => {
   }
 }
 
+/* What the email is about — a tandem on this machine, or one the storage's list alone knows. */
+type EmailSubject = {
+  firstname: string
+  day: string
+  hasFilm: boolean
+  photos: number
+  shareUrl: string
+}
+
+const sentLabel = (at: number) => new Date(at * 1000).toLocaleDateString('de-CH')
+
 const EmailDialog = ({
-  group,
-  shareUrl,
+  about,
+  emailed,
+  canRecord,
+  onRecord,
   onClose
 }: {
-  group: ManifestGroup
-  shareUrl: string
+  about: EmailSubject
+  /* whether the storage's list says it was sent, and to whom */
+  emailed?: { at: number; to?: string } | null
+  /* whether it can be said on the list at all — only once the tandem is on it */
+  canRecord: boolean
+  onRecord: (sent: boolean, to: string) => void
   onClose: () => void
 }) => {
-  const firstname = group.passenger?.firstname ?? ''
-  const drafted = defaultPassengerEmail({
-    firstname,
-    day: group.day,
-    hasFilm: group.files.some((f) => isVideoFile(f.path)),
-    photos: group.files.filter((f) => !isVideoFile(f.path)).length
-  })
-  const [to, setTo] = useState('')
+  const { firstname, shareUrl } = about
+  const drafted = defaultPassengerEmail(about)
+  const [to, setTo] = useState(emailed?.to ?? '')
   const [subject, setSubject] = useState(drafted.subject)
   const [body, setBody] = useState(drafted.body)
   /* the signature is the club's, the same on every email, so it is remembered */
@@ -108,6 +118,25 @@ const EmailDialog = ({
       onClose={onClose}
       footer={
         <>
+          {/* whether it went is only known once someone says so — sending happens in their mail */}
+          {canRecord &&
+            (emailed ? (
+              <span className='flex items-center gap-2 text-[12px] font-semibold text-up'>
+                ✓ Sent {sentLabel(emailed.at)}
+                {emailed.to ? ` to ${emailed.to}` : ''}
+                <Mini
+                  title='It was not sent after all'
+                  onClick={() => onRecord(false, to)}>
+                  Undo
+                </Mini>
+              </span>
+            ) : (
+              <Mini
+                title='Say on the storage’s list that the passenger has their link'
+                onClick={() => onRecord(true, to)}>
+                Mark as sent
+              </Mini>
+            ))}
           <Spacer />
           <Mini onClick={onClose}>Close</Mini>
           <Mini
@@ -188,3 +217,4 @@ const EmailDialog = ({
 }
 
 export { EmailDialog }
+export type { EmailSubject }

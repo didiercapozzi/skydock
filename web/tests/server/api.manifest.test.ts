@@ -295,6 +295,20 @@ describe('api/manifest', () => {
     })
   })
 
+  describe('mark-emailed', () => {
+    /* the list is kept on the storage, so saying the email went needs the storage */
+    it('refuses without the NAS', async () => {
+      writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
+      const res = refusal(
+        await send({
+          intent: 'mark-emailed',
+          emailed: { folder: '/SkyDock/Tandems/Luc Favre', sent: true }
+        })
+      )
+      expect(res.globalErrors?.[0]).toContain('Connect the NAS')
+    })
+  })
+
   describe('save-groups', () => {
     it('needs the list it is meant to save', async () => {
       writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])

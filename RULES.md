@@ -232,20 +232,19 @@ passenger under it. Each says how many files are in it and carries a bar showing
 still only local, how much is prepared and how much has been sent — because a count alone never
 answers "what is left". Every place is also somewhere files can be dropped.
 
-**Days.** Unsorted jumps and a dropzone both show days, newest first, one open at a time, and which
-one is open is remembered per place. Clicking anywhere on a day bar that is not a button opens or
-closes it; all days closed is a valid state. The open day's header stays pinned while its files
-scroll, and inside it each jump's line pins directly beneath that header, so what is being looked at
+**Days.** Unsorted jumps and a dropzone both show days, newest first. Each day opens and closes on
+its own — opening one leaves the others as they are — and which are open is remembered per place.
+Clicking anywhere on a day bar that is not a button opens or closes it; all days closed is a valid
+state. An open day's header stays pinned while its files scroll, and inside it each jump's line pins directly beneath that header, so what is being looked at
 always says which day and which jump it belongs to. The day opened by default is the newest with work
 still left in it.
 
-**The days toolbar.** Above the days: how many jumps or days are here and which day is open, and
+**The days toolbar.** Above the days: how many jumps or days are here and which are open, and
 with it _Collapse jumps_ and _Expand jumps_, and _Close all days_. Folding jumps is a standing
 choice rather than something done to one day: jumps start folded, so a day opens as the list of its
 jumps, and every day opened afterwards opens the same way until they are expanded — and after that,
-open until they are collapsed again. Landing on a jump from its chip opens that jump. A jump can still be folded or opened on its own by
-clicking anywhere on its line that is not a button, and doing so is an exception to that choice
-rather than an end to it. Folding changes only
+open until they are collapsed again. Landing on a jump from its chip opens its day and that jump alone: every other jump folds, so what the chip was pressed for is what is on screen. A jump is folded or opened on its own by clicking
+anywhere on its line that is not a button, and the others stay as they are. Folding changes only
 what is on screen; nothing about the files moves.
 
 **Getting to a jump.** A day's header carries one chip per jump in it, with how many files that jump
@@ -280,7 +279,7 @@ name that goes to the storage and that the passenger sees, with the camera's own
 beside it so a file can still be traced to the card it came off. A long list is drawn a page at a time
 with a button for more, because a tandem of five hundred photos must not put five hundred things on
 screen before they have been asked for. Every day's header, open or closed, and every tandem's carries
-badges saying how many videos and how many photos it holds, and they show one kind or the other —
+badges saying how many videos and how many photos it holds, and they show one kind, the other, or all — all being the two side by side, videos in one column and photos in the other, each with its own order and its own "show more", stacked on a narrow screen —
 fifteen clips and five hundred stills are two different jobs. They are there even when one kind is
 absent, so every header reads the same; a kind with nothing in it is shown but cannot be chosen. Once a selection is under way, every thumbnail carries a
 ring in its corner that fills green with a tick once it is picked, and a picked row is ticked in the
@@ -619,6 +618,21 @@ or uploaded again from here, and a rescan keeps it as it is rather than dropping
 purpose. Should anything of it later disappear from the storage, the board says so, as for any uploaded
 tandem — by then the storage was the only copy.
 
+**The storage's list of tandems.** The Tandems folder on the storage holds a list of every tandem
+uploaded into it: who it was for and the day of the jump, how many videos and photos, when it went up,
+its share link, where its film, photos and backup are, whether it has been freed from the machine that
+made it, and whether the passenger has been emailed — and to which address. The Tandems page shows
+that list under the passengers on this board, so every tandem the storage holds is there, including
+those this machine no longer has and those uploaded from another machine; each can be emailed from
+there, and one still on this board can be opened.
+
+The list follows the work, and never stands in for it. It is updated after every upload and after
+every freeing, and when the passenger's email is marked as sent — which is said by hand, since
+sending happens in someone's own mail, and can be taken back. Each change reads the latest list first
+and alters only its own tandem, so two machines using SkyDock keep each other's entries. If the list
+cannot be written, the upload or the freeing still stands and the board says the list did not follow;
+if it cannot be read, it is never written over, and the board says so.
+
 **Telling the passenger.** Once a tandem has a share link, its page offers to email the passenger
 their link, and freeing a tandem opens the email straight away, since it is the one thing left to do.
 The email is already written — in French, greeting the passenger by name, saying what is ready and
@@ -656,7 +670,8 @@ Worth knowing, so nobody goes looking:
   processed copies and clears what was recorded about them, so the work has to be done again.
 - **Asking the storage what it holds can only take a claim away.** It cannot notice that a file
   already up there is the right one and mark it uploaded; only an upload proves that.
-- **Nothing comes back down from the storage.** SkyDock uploads and lists; it never downloads.
+- **Nothing comes back down from the storage**, but its list of tandems. SkyDock uploads and lists;
+  the one file it reads back is that list.
 - **Archiving is part of delivering.** The zips are written as a tandem is delivered and cannot be
   made on their own. The originals cannot be backed up on their own ahead of the film either: the
   backup goes with the delivery.

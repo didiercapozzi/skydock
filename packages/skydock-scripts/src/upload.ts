@@ -109,6 +109,10 @@ const destBaseOf = (
   resolveDestinationPath(destination, manifest.destinations ?? [], defaultFolder) ??
   (destination && defaultFolder ? `${defaultFolder}/${destination}` : null)
 
+/* the Tandems folder on the storage, where every passenger's folder goes — and the list of them */
+const tandemsRemoteDir = (manifest: Manifest, defaultFolder: string | null) =>
+  destBaseOf('Tandems', manifest, defaultFolder)
+
 /* Where one group's processed folder goes on the NAS.
    A flat fun jump has NO folder of its own: `getGroupProcessedDir` hands back the whole
    destination folder, shared by every day ever shot there, so appending the group's base name
@@ -282,6 +286,7 @@ export {
   listRemoteFiles,
   resolveUploadTargets,
   scopeKey,
+  tandemsRemoteDir,
   targetForGroup,
   uploadScope,
   uploadTargets

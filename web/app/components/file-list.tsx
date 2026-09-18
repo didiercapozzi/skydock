@@ -386,7 +386,8 @@ const KindBadges = ({
   )
 }
 
-const FileList = ({
+/* one kind, or everything in one run: the list itself, a page at a time */
+const Lane = ({
   files,
   kind,
   shape,
@@ -469,6 +470,41 @@ const FileList = ({
         </div>
       )}
     </>
+  )
+}
+
+/* Videos and photos are two different jobs, so showing all of them is showing both side by side: the
+   clips in one column, the stills in the other, each in its own order and with its own "show more".
+   Picking a range stays within a column, since a range across the two would mean nothing. One kind
+   picked is that kind alone; a list of only one kind is simply that list. On a narrow screen the
+   two columns stack. */
+const FileList = (props: Props) => {
+  const { files, kind } = props
+  const videos = files.filter((f) => kindOf(f) === 'video').length
+  const photos = files.length - videos
+  if (kind !== 'all' || videos === 0 || photos === 0) return <Lane {...props} />
+  return (
+    <div className='grid grid-cols-1 gap-x-4 gap-y-3 md:grid-cols-2'>
+      {(
+        [
+          ['video', 'Videos', videos],
+          ['photo', 'Photos', photos]
+        ] as const
+      ).map(([only, label, count]) => (
+        <div
+          key={only}
+          className='min-w-0'>
+          <div className='mb-1 flex items-baseline gap-1.5 px-[7px] text-[11px] font-semibold tracking-[0.04em] text-ink-3 uppercase'>
+            {label}
+            <span className='font-mono font-normal tracking-normal tabular-nums'>{count}</span>
+          </div>
+          <Lane
+            {...props}
+            kind={only}
+          />
+        </div>
+      ))}
+    </div>
   )
 }
 

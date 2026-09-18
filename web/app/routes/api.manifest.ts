@@ -38,6 +38,14 @@ import { deliverTandem } from '../../../packages/skydock-scripts/src/deliver'
 import { deleteTandem, resetTandem } from '../../../packages/skydock-scripts/src/resetTandem'
 import { freeTandem, markFreed } from '../../../packages/skydock-scripts/src/freeTandem'
 import { moveFiles } from '../../../packages/skydock-scripts/src/moveFiles'
+import type { NasSession } from '../../../packages/skydock-scripts/src/nas'
+import {
+  entryOfTandem,
+  parentOf,
+  updateTandemIndex,
+  upsert
+} from '../../../packages/skydock-scripts/src/tandemIndex'
+import type { TandemIndex } from '../../../packages/skydock-scripts/src/tandemIndex'
 import { openInEditor } from '../../../packages/skydock-scripts/src/editor'
 import { createMontageProject } from '../../../packages/skydock-scripts/src/montage'
 import { getCutProxyDir } from '../../../packages/skydock-scripts/src/proxy'
@@ -64,7 +72,9 @@ const actionArgs = z.object({
     /* delete it from this machine, once the storage is proved to hold it all */
     'free-tandem',
     /* files were just added from the computer: the board looks again, and says how it went */
-    'imported'
+    'imported',
+    /* the passenger was emailed — or, taken back, was not — said on the storage's list */
+    'mark-emailed'
   ]),
   groupId: z.string().optional(),
   groupIds: z.array(z.string()).optional(),
@@ -81,6 +91,9 @@ const actionArgs = z.object({
   anchorEpoch: z.number().optional(),
   /* how a delivery keeps the originals: one zip or plain files, with or without the film */
   backup: z.object({ backupAs: z.enum(['zip', 'folder']), filmToBackup: z.boolean() }).optional(),
+  emailed: z
+    .object({ folder: z.string(), to: z.string().optional(), sent: z.boolean() })
+    .optional(),
   imported: z
     .object({
       added: z.number(),
@@ -91,6 +104,24 @@ const actionArgs = z.object({
     })
     .optional()
 })
+
+/* The storage's list of tandems changes after the work it describes, and never instead of it: if the
+   list cannot be written, the upload or the freeing still stands, and the board says the list did not
+   follow. The answer carries the list as it now is, for the board to show. */
+const recordOnStorage = async (
+  session: NasSession,
+  dir: string,
+  change: (index: TandemIndex) => void
+) => {
+  try {
+    const index = await updateTandemIndex(session, dir, change)
+    return { storage: { dir, tandems: index.tandems } }
+  } catch (e) {
+    return {
+      storageProblem: `the storage’s list of tandems was not updated: ${e instanceof Error ? e.message : String(e)}`
+    }
+  }
+}
 
 const passengerOf = (group: { passenger?: { firstname: string; lastname: string } }) =>
   group.passenger ? `${group.passenger.firstname} ${group.passenger.lastname}` : ''
@@ -117,6 +148,26 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       errors.addGlobalError(EDIT_LOCKED)
       return errors.toResponse(422)
     }
+    if (data.intent === 'mark-emailed') {
+      const session = await ensureNasSession()
+      if (!session || !data.emailed) {
+        errors.addGlobalError('Connect the NAS first — the list of tandems is kept there.')
+        return errors.toResponse(422)
+      }
+      const { folder, to, sent } = data.emailed
+      let known = true
+      const listing = await recordOnStorage(session, parentOf(folder), (index) => {
+        const entry = index.tandems.find((t) => t.folder === folder)
+        if (!entry) known = false
+        else if (sent) entry.emailed = { at: Math.floor(Date.now() / 1000), ...(to ? { to } : {}) }
+        else delete entry.emailed
+      })
+      if (!known) {
+        errors.addGlobalError('This tandem is not on the storage’s list — upload it first.')
+        return errors.toResponse(422)
+      }
+      return { ...boardAnswer(manifest), ...listing }
+    }
     if (data.intent === 'imported') return { ...boardAnswer(manifest), imported: data.imported }
     if (data.intent === 'free-tandem') {
       /* the proof is the storage's own checksum, so it has to be reachable */
@@ -142,8 +193,15 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
         const saved = loadManifest(manifestPath) ?? manifest
         markFreed(saved, result)
         saveManifest(manifestPath, saved)
+        /* the storage's list says it is the only copy now */
+        const freedGroup = saved.groups.find((g) => g.id === result.groupId)
+        const listed = freedGroup ? entryOfTandem(freedGroup) : null
+        const listing = listed
+          ? await recordOnStorage(session, listed.dir, (index) => upsert(index, listed.entry))
+          : {}
         return {
           ...boardAnswer(saved),
+          ...listing,
           freed: { bytes: result.bytes, files: result.fileIds.length, groupId: result.groupId }
         }
       } catch (e) {
@@ -472,8 +530,14 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
           outputDir
         )
         saveManifest(manifestPath, saved)
+        /* the storage's own list of tandems follows the upload */
+        const listed = target ? entryOfTandem(target) : null
+        const listing = listed
+          ? await recordOnStorage(session, listed.dir, (index) => upsert(index, listed.entry))
+          : {}
         return {
           ...boardAnswer(saved),
+          ...listing,
           remote: await listRemoteFiles(saved, session),
           uploaded: result.uploaded,
           skipped: result.skipped
