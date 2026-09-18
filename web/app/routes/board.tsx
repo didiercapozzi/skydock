@@ -355,6 +355,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     grouping === 'jump'
       ? (cardSections.find((s) => s.key === chosenCard) ?? cardSections[0])
       : undefined
+  /* The jump whose card is open — the one last chosen, or else the first. Its files are what is
+     listed and its card is the one lit, so it is also the jump the panel describes and the one a
+     second jump is compared with: one answer to "which jump is this about", not two. */
+  const openJump =
+    openCard?.kind === 'jump' ? groups.find((g) => g.id === openCard.group.id) : undefined
   const onScreen = openCard ? [openCard] : sections
   /* files are in the order they were shot */
   const sortKey = (file: ManifestFile) => file.mtime
@@ -541,11 +546,12 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     setDialog({ kind: 'connect' })
   }
 
-  /* the two session folders go through the NAS session; a dropzone's own folder is part of the
-     workspace, so it is saved with the destinations list like any other board edit */
+  /* A place's folder is part of the workspace, so it is saved with the destinations list like any
+     other board edit; the backup folder belongs to no place, and is kept with the storage session. */
   const chooseFolder = (path: string, destination?: string, target?: 'backup') => {
-    if (destination === undefined) nas.selectFolder(path, target ?? 'default')
-    else {
+    if (destination === undefined) {
+      if (target === 'backup') nas.selectFolder(path, 'backup')
+    } else {
       const known = places.some((d) => d.name === destination)
       saveDestinations(
         known
@@ -571,10 +577,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     }
     if (scope.destination && !folderFor(scope.destination)) {
       setDialog({ kind: 'folder', destination: scope.destination })
-      return
-    }
-    if (!scope.destination && !nas.defaultFolder) {
-      setDialog({ kind: 'folder' })
       return
     }
     board.setUploading(key)
@@ -728,18 +730,10 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     )
   }
 
+  /* Only what is about the storage as a whole. Which folder is whose is said where it matters: a
+     place's folder on the place, the backup folder in the upload that uses it. */
   const nasLinks: NasLink[] = nas.connected
     ? [
-        {
-          label: nas.defaultFolder ?? 'no default folder',
-          title: 'The folder used by anything without a folder of its own',
-          onClick: () => setDialog({ kind: 'folder' })
-        },
-        {
-          label: nas.backupFolder ? `backup ${nas.backupFolder}` : 'no backup folder',
-          title: 'Where the original videos are archived — never a folder a passenger can see',
-          onClick: () => setDialog({ kind: 'folder', target: 'backup' })
-        },
         {
           label: nas.checking
             ? 'checking…'
@@ -882,9 +876,10 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     }
     /* A passenger with one tandem is that tandem: opening the passenger is opening it, so its panel
        is here without being asked for, and no card stands above its files saying the same things. */
-    const jump = selection.pickedJump
-      ? groups.find((g) => g.id === selection.pickedJump)
-      : soleTandem
+    const jump =
+      (selection.pickedJump ? groups.find((g) => g.id === selection.pickedJump) : undefined) ??
+      openJump ??
+      soleTandem
     if (jump) {
       const shown = asOnStorage(jump)
       return (
@@ -1104,11 +1099,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                     : 'Nothing here yet. Drag a jump onto this folder, or drop files from the computer.'
               }
               jump={{
-                selected: selection.pickedJump,
+                selected: selection.pickedJump ?? openJump?.id ?? null,
                 frozen,
                 overTarget: drag.overTarget,
                 dropTarget: (id) => drag.groupDropTarget(id),
-                onSelect: selection.selectJump,
+                onSelect: (groupId, e) => selection.selectJump(groupId, e, openJump?.id),
                 onDrag: drag.startJumpDrag,
                 actions: tandemActions,
                 above: tandemAbove,

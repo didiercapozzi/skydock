@@ -94,9 +94,11 @@ const useSelection = ({
 
   /* With one jump selected, ⌘/ctrl-clicking a second puts the two side by side — the one way two
      jumps are ever picked at once, so it cannot happen on the way to looking at one. */
-  const selectJump = (groupId: string, e?: Modifiers) => {
-    if ((e?.ctrlKey || e?.metaKey) && pickedJump && pickedJump !== groupId) {
-      setComparing([pickedJump, groupId])
+  const selectJump = (groupId: string, e?: Modifiers, open?: string) => {
+    /* the jump already open counts as selected, whether or not it was ever clicked */
+    const first = pickedJump ?? open
+    if ((e?.ctrlKey || e?.metaKey) && first && first !== groupId) {
+      setComparing([first, groupId])
       return
     }
     setPickedFiles([])

@@ -53,7 +53,7 @@ describe('making a jump of files picked in Fresh files', () => {
     expect(made(manifest).name).toBe('4-way formation')
   })
 
-  /* a jump nobody named is called by its place in the day, like every jump a scan finds */
+  /* a jump nobody named is called by its place among the jumps, like every jump a scan finds */
   it('leaves a jump with no name when none is given', () => {
     const manifest = unsorted()
 

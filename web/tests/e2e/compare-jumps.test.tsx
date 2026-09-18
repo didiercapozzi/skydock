@@ -79,14 +79,68 @@ describe('comparing two jumps', () => {
     await expect.element(comparison()).not.toBeInTheDocument()
   })
 
-  /* with no jump selected there is nothing to compare the clicked one with */
-  test('needs a jump selected first', async () => {
+  /* the jump whose card is open is the one it is about, whether or not it was ever clicked */
+  test('compares with the jump already open, without it having to be clicked first', async () => {
     await renderBoard()
 
     await userEvent.keyboard('{Control>}')
     await userEvent.click(card(/^Jump 2, /))
     await userEvent.keyboard('{/Control}')
 
-    await expect.element(comparison()).not.toBeInTheDocument()
+    await expect.element(comparison()).toBeInTheDocument()
+  })
+})
+
+/* One jump's card is always open — the one last chosen, or else the first — with its files listed
+   under the cards. The panel on the right describes that same jump: a lit card beside a panel about
+   something else was two answers to which jump this is about. */
+describe('the jump whose card is open', () => {
+  test('is the one the panel describes, before anything is clicked', async () => {
+    await renderBoard()
+
+    const panel = page.getByRole('complementary')
+    await expect.element(panel.getByRole('button', { name: 'Jump 1', exact: true })).toBeInTheDocument()
+    await expect.element(panel.getByRole('button', { name: /Select its 2 files/ })).toBeInTheDocument()
+  })
+
+  test('changes with the card that is opened', async () => {
+    await renderBoard()
+
+    await userEvent.click(card(/^Jump 2, /))
+
+    const panel = page.getByRole('complementary')
+    await expect.element(panel.getByRole('button', { name: 'Jump 2', exact: true })).toBeInTheDocument()
+  })
+})
+
+/* Four jumps over two days are Jump 1 to Jump 4, oldest first: a number that started again each day
+   gave two jumps the same name, and the cards run the way the numbers do. */
+describe('jumps as cards', () => {
+  const DAY2 = AT + 86_400
+  const days = {
+    ...board,
+    groups: [
+      { ...jump('late2', DAY2 + 3600), day: '02.08.2026' },
+      jump('early1', AT),
+      { ...jump('early2', DAY2), day: '02.08.2026' },
+      jump('late1', AT + 3600)
+    ]
+  }
+
+  test('are numbered straight through the days and drawn oldest first', async () => {
+    const Stub = createRoutesStub([{ path: '/', Component: Board, loader: () => days }])
+    await render(createElement(Stub, { initialEntries: ['/'] }))
+
+    await expect.element(card(/^Jump 4, /)).toBeInTheDocument()
+    const drawn = page
+      .getByRole('button', { name: /^Jump \d, / })
+      .elements()
+      .map((el) => el.getAttribute('aria-label')?.slice(0, 22))
+    expect(drawn).toEqual([
+      'Jump 1, 1 August 2026 ',
+      'Jump 2, 1 August 2026 ',
+      'Jump 3, 2 August 2026 ',
+      'Jump 4, 2 August 2026 '
+    ])
   })
 })

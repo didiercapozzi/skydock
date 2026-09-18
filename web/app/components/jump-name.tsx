@@ -5,7 +5,7 @@ import { Go, Mini } from './buttons'
 import { fromLocalInput, toLocalInput } from './jump-time'
 import { INPUT } from './modal'
 
-/* Blank is an answer too: a jump nobody named is called by its place in the day, as every jump the
+/* Blank is an answer too: a jump nobody named is called by its place among the jumps, as every jump the
    scan finds is. */
 const jumpFormSchema = z.object({
   name: z.string().trim().max(60, 'Keep it under 60 characters'),
@@ -53,7 +53,7 @@ const JumpForm = ({
       <FormField
         field={form.fields.name}
         label='Name'
-        description='Leave it empty to call it by its place in the day'>
+        description='Leave it empty to call it by its place among the jumps'>
         {(control) => (
           <input
             {...control}

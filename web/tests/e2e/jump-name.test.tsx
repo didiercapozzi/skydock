@@ -73,7 +73,7 @@ describe('making a jump of files picked in Fresh files', () => {
     expect(onMakeJump).toHaveBeenCalledWith('Sunset load', expected)
   })
 
-  /* both can be left alone: the jump is then called by its place in the day, at the time shot */
+  /* both can be left alone: the jump is then called by its place among the jumps, at the time shot */
   test('leaving both as they are still makes the jump', async () => {
     const { onMakeJump } = await renderPicked()
     await userEvent.click(page.getByRole('button', { name: /Make a jump of these/ }))

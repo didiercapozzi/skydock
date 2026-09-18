@@ -126,7 +126,7 @@ const tandemUploadSchema = z.object({
 const manifestGroupSchema = z.object({
   id: z.string(),
   label: z.string(),
-  /* What someone called the jump, shown instead of its place in the day. Only ever shown: a file's
+  /* What someone called the jump, shown instead of its place among the jumps. Only ever shown: a file's
      name comes from the passenger or the dropzone, so naming a jump can never rename what is
      delivered. */
   name: z.string().optional(),

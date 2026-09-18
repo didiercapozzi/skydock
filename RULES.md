@@ -220,14 +220,16 @@ The menu lists no days: a date is only what a camera's clock said, and a clock t
 a day that means nothing. Days are still there to be seen: each card carries its date, and a place can
 be arranged by day, each day's header pinned while its files scroll.
 
-**Jumps as cards.** Fresh files keeps its jumps, named by position in the day ("Jump 1", "Jump 2"); a
+**Jumps as cards.** Fresh files keeps its jumps, named by position among them ("Jump 1", "Jump 2"),
+counted oldest first straight through the days, so four jumps are Jump 1 to Jump 4 whichever days they
+fell on and no two share a name; a
 passenger's jump is named after the passenger. Any other jump can be given a name of its own by
 clicking its name in its panel, the way its start is set by clicking the start; emptying the name
-puts back its place in the day. A name is only what the
+puts back its place among the jumps. A name is only what the
 board calls the jump — no file is named after it, so renaming never makes anything stale — and it is
 kept through a scan; when a scan finds a named jump was really two, the name stays with the half that
 is still that jump. Arranged by jump, every jump is a card, side by side,
-newest day first and in the order they happened within it: its name, its date and start time, how many
+oldest first, in the order they happened, the way their numbers run: its name, its date and start time, how many
 videos and photos it holds, how far it has got, and a few frames off it, so jumps can be told apart at a
 glance — the date in full, year and all, and the time to the minute. The loose files get one card of
 their own, always first, before the jumps, however many days they were shot on; it is drawn differently — dashed and
@@ -317,7 +319,10 @@ Nothing is put in the bin while something is being processed.
 **Merging and making jumps by hand.** Two jumps that are really one are merged by picking the files of
 one — its panel selects them all in one press — and dropping them on the other's card; the jump left
 empty disappears. The files keep their own times, so the merged jump is dated by its earliest file.
-Two jumps can also be put side by side first: with one jump selected, ⌘- or ctrl-clicking a second
+The jump whose card is open is the jump the board is about: its card is lit, its files are the ones
+listed, and the panel on the right describes it — before anything is clicked as much as after.
+
+Two jumps can also be put side by side first: with one jump open, ⌘- or ctrl-clicking a second
 opens the two next to each other, each playing its own clips, and from there they can be merged onto
 the start of either, or onto a time typed in — for two cameras on one jump, one of them on the wrong
 clock. The other way round, several files picked in Fresh files — loose, or
@@ -429,11 +434,15 @@ never listed, a listing that failed or a size the storage would not report demot
 session is kept and renews itself from the stored password when it expires. The password is kept
 encrypted and the plain one is never written down. Asking to upload while disconnected opens the login.
 
-**Folders.** There is a default folder for anything without a home of its own, and each dropzone can
-name a folder of its own, browsed and picked from the app. There is also a backup folder for tandems'
-original videos; it is never guessed and never falls back to the default, because putting unedited
-footage where a passenger can reach it is exactly what keeping the two apart prevents. Asking to upload
-with a folder missing opens the picker for that folder.
+**Folders.** Every place is connected to a folder of its own on the storage — each dropzone to one, and
+Tandems to the one the passengers' folders go into — browsed and picked from the app, on the place
+itself. There is no folder for everything else, because there is nothing else: whatever is uploaded
+belongs to a place. There is also a backup folder for tandems' original videos, picked from the upload
+that uses it; it is never guessed, because putting unedited footage where a passenger can reach it is
+exactly what keeping the two apart prevents. Asking to upload with a folder missing opens the picker
+for that folder. The header says only what is about the storage as a whole: whether it is connected,
+to what, a way to ask it again what it holds, and a way to disconnect. A default folder set on a
+machine before places had their own is still honoured for a place that was never given one.
 
 **A place is connected to its folder.** A dropzone's page and a passenger's page each end with what
 their folder on the storage holds — the very folder their uploads go to, and for a tandem already

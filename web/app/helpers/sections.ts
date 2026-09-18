@@ -25,23 +25,22 @@ type Section =
 
 const startOf = (group: ManifestGroup) => minFileMtime(group.files) ?? 0
 
-/* A jump is named by its place in its day — "Jump 2" — which says why these files are together
-   where a bare time only ever said when. The numbers are positions, not identities: file one away
-   and the rest renumber. A passenger's jump is named after the passenger. */
-const jumpLabels = (groups: ManifestGroup[]) => {
-  const labels = new Map<string, string>()
-  const byDay = new Map<string, ManifestGroup[]>()
-  for (const g of groups) byDay.set(dayOf(g), [...(byDay.get(dayOf(g)) ?? []), g])
-  for (const day of byDay.values())
-    [...day]
-      .sort((a, b) => startOf(a) - startOf(b))
-      .forEach((g, i) => labels.set(g.id, passengerOf(g) || g.name || `Jump ${i + 1}`))
-  return labels
-}
+/* A jump is named by its place among the jumps — "Jump 2" — which says why these files are together
+   where a bare time only ever said when. Counted over every jump there, oldest first and straight
+   through the days, so four jumps are Jump 1 to Jump 4 whichever days they fell on: a number that
+   started again each day gave two jumps the same name. The numbers are positions, not identities:
+   file one away and the rest renumber. A passenger's jump is named after the passenger, and one
+   given a name keeps it. */
+const jumpLabels = (groups: ManifestGroup[]) =>
+  new Map(
+    [...groups]
+      .sort(oldestFirst)
+      .map((g, i) => [g.id, passengerOf(g) || g.name || `Jump ${i + 1}`] as const)
+  )
 
-/* newest day first; within a day, in the order the jumps happened */
-const newestFirst = (a: ManifestGroup, b: ManifestGroup) =>
-  dayOf(b).localeCompare(dayOf(a)) || startOf(a) - startOf(b)
+/* in the order the jumps happened: the oldest day first, and within a day by when each started */
+const oldestFirst = (a: ManifestGroup, b: ManifestGroup) =>
+  dayOf(a).localeCompare(dayOf(b)) || startOf(a) - startOf(b)
 
 const sectionsOf = (
   place: Place,
@@ -65,10 +64,11 @@ const sectionsOf = (
     }))
   const labels = jumpLabels(shownGroups)
   const withLoose = familyOf(place) === 'sort'
-  return days.flatMap((day): Section[] => {
+  /* by jump, the cards run the way the numbers do: the oldest jump first */
+  return [...days].reverse().flatMap((day): Section[] => {
     const jumps = shownGroups
       .filter((g) => dayOf(g) === day)
-      .sort(newestFirst)
+      .sort(oldestFirst)
       .map((group): Section => ({
         key: `jump:${group.id}`,
         kind: 'jump',
