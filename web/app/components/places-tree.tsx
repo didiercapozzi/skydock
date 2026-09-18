@@ -23,6 +23,8 @@ type Props = {
   onAddPlace: (name: string) => void
   dropTarget: (place: Place) => Record<string, unknown>
   overTarget: string | null
+  /* the place something was just filed under, lit for a moment so the eye can follow it there */
+  flashPlace?: string | null
 }
 
 const TANDEMS = 'Tandems'
@@ -39,8 +41,11 @@ const placeLabel = (place: Place) =>
       ? 'All passengers'
       : place.name
 
-const passengerOf = (group: ManifestGroup) =>
-  group.passenger ? `${group.passenger.firstname} ${group.passenger.lastname}`.trim() : ''
+/* a passenger's name as it is shown, and as two jumps are recognised as the same person by */
+const passengerName = (passenger: ManifestGroup['passenger']) =>
+  passenger ? `${passenger.firstname} ${passenger.lastname}`.trim() : ''
+
+const passengerOf = (group: ManifestGroup) => passengerName(group.passenger)
 
 const Node = ({
   place,
@@ -52,7 +57,8 @@ const Node = ({
   statusContext,
   onPick,
   dropTarget,
-  over
+  over,
+  flash
 }: {
   place: Place
   label: string
@@ -64,6 +70,7 @@ const Node = ({
   onPick: (place: Place) => void
   dropTarget: (place: Place) => Record<string, unknown>
   over: boolean
+  flash?: boolean
 }) => {
   /* how much is still owed, at a glance: counts alone never answer "what is left" */
   const counts = { local: 0, processed: 0, uploaded: 0 }
@@ -82,7 +89,7 @@ const Node = ({
           : current
             ? 'border-line bg-pane shadow-card'
             : 'border-transparent hover:bg-line-2'
-      } ${child ? 'pl-[22px] max-[780px]:pl-[11px]' : ''}`}>
+      } ${child ? 'pl-[22px] max-[780px]:pl-[11px]' : ''} ${flash ? 'animate-[placeflash_1.8s_ease-out]' : ''}`}>
       <span className='flex items-center gap-2 max-[780px]:gap-1.5'>
         <span
           aria-hidden='true'
@@ -134,7 +141,8 @@ const PlacesTree = ({
   onPick,
   onAddPlace,
   dropTarget,
-  overTarget
+  overTarget,
+  flashPlace
 }: Props) => {
   const [adding, setAdding] = useState('')
   const filesOf = (list: ManifestGroup[]) => list.flatMap((g) => g.files)
@@ -142,9 +150,15 @@ const PlacesTree = ({
     ...filesOf(groups.filter((g) => !g.destination)),
     ...looseFiles.filter((f) => !f.destination)
   ]
-  const named = groups
-    .filter((g) => g.destination === TANDEMS && passengerOf(g))
-    .sort((a, b) => passengerOf(a).localeCompare(passengerOf(b)))
+  /* One entry per passenger, however many jumps they have: two jumps for the same person share one
+     folder, so listing them twice would promise two folders that are really one. */
+  const byPassenger = new Map<string, ManifestFile[]>()
+  for (const g of groups) {
+    const who = passengerOf(g)
+    if (g.destination !== TANDEMS || !who) continue
+    byPassenger.set(who, [...(byPassenger.get(who) ?? []), ...g.files])
+  }
+  const named = [...byPassenger.entries()].sort(([a], [b]) => a.localeCompare(b))
   const node = (p: Place, glyph: string, files: ManifestFile[], child?: boolean) => (
     <Node
       key={placeKey(p)}
@@ -158,6 +172,7 @@ const PlacesTree = ({
       onPick={onPick}
       dropTarget={dropTarget}
       over={overTarget === placeKey(p)}
+      flash={flashPlace === placeKey(p)}
     />
   )
   return (
@@ -200,7 +215,7 @@ const PlacesTree = ({
       </span>
       <Heading>Tandems</Heading>
       {node({ kind: 'tandems' }, '▤', filesOf(groups.filter((g) => g.destination === TANDEMS)))}
-      {named.map((g) => node({ kind: 'pax', name: passengerOf(g) }, '◔', g.files, true))}
+      {named.map(([who, files]) => node({ kind: 'pax', name: who }, '◔', files, true))}
       {unnamedTandems > 0 && (
         <div className='mt-1 ml-[22px] text-[10.5px] font-semibold text-local max-[780px]:hidden'>
           {unnamedTandems} waiting for a name
@@ -210,5 +225,5 @@ const PlacesTree = ({
   )
 }
 
-export { PlacesTree, placeKey, placeLabel, samePlace, passengerOf }
+export { PlacesTree, passengerName, placeKey, placeLabel, samePlace, passengerOf }
 export type { Place }

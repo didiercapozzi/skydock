@@ -26,9 +26,16 @@ import { DayRow } from '../components/day-row'
 import { FileList, KindBadges } from '../components/file-list'
 import type { Kind } from '../components/file-list'
 import { NasFolderBrowser } from '../components/nas-folder-browser'
-import { PlacesTree, placeKey, placeLabel, passengerOf } from '../components/places-tree'
+import {
+  PlacesTree,
+  passengerName,
+  passengerOf,
+  placeKey,
+  placeLabel
+} from '../components/places-tree'
 import type { Place } from '../components/places-tree'
 import { PreviewDrawer } from '../components/preview-drawer'
+import type { Passenger } from '../components/tandem-card'
 import {
   DeliveredCards,
   PassengerCard,
@@ -263,8 +270,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const [openDays, setOpenDays] = useState<Record<string, string | null>>({})
   /* Folding jumps is a standing choice, not something remembered per jump: collapse them once and
      every day opened afterwards opens folded too. `foldJumps` is that choice and `unfolded` holds
-     the jumps told to differ from it, so one jump opened by hand does not undo the rest. */
-  const [foldJumps, setFoldJumps] = useState(false)
+     the jumps told to differ from it, so one jump opened by hand does not undo the rest. Folded
+     to start with: a day opens as its list of jumps, and the one wanted is opened from there. */
+  const [foldJumps, setFoldJumps] = useState(true)
   const [unfolded, setUnfolded] = useState<string[]>([])
   /* videos, photos or both: one filter for the whole board, so the badge pressed in a dropzone is
      still pressed in a tandem */
@@ -465,21 +473,47 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     saveDestinations([...places, { name: trimmed }])
   }
 
-  const assign = (ids: string[], destination: string | null) => {
-    if (destination && !places.some((d) => d.name === destination)) {
-      saveDestinations([...places, { name: destination }])
-    }
+  /* Filing, and for a tandem naming, in one save — a jump filed under Tandems and then named is two
+     saves with a nameless tandem in between, which is exactly the state the menu then has to call
+     out as waiting. */
+  const assign = (ids: string[], destination: string | null, passenger?: Passenger) => {
+    const nextPlaces =
+      destination && !places.some((d) => d.name === destination)
+        ? [...places, { name: destination }]
+        : undefined
+    if (nextPlaces) setPlaces(nextPlaces)
     const next = groups.map((g) =>
       ids.includes(g.id)
         ? {
             ...g,
             destination: destination ?? undefined,
-            passenger: destination === TANDEMS ? (g.passenger ?? undefined) : undefined
+            passenger: destination === TANDEMS ? (passenger ?? g.passenger ?? undefined) : undefined
           }
         : g
     )
     setPicked([])
-    updateGroups(next)
+    updateGroups(next, undefined, nextPlaces)
+  }
+
+  /* The menu entry something was just filed under lights up for a moment, so the eye can follow the
+     jump there from the line it left. */
+  const [flashPlace, setFlashPlace] = useState<string | null>(null)
+  const flash = (place: Place) => {
+    const key = placeKey(place)
+    setFlashPlace(key)
+    setTimeout(() => setFlashPlace((current) => (current === key ? null : current)), 1800)
+  }
+
+  const makeTandem = (groupId: string, passenger: Passenger) => {
+    const who = passengerName(passenger)
+    const joining = groups.some(
+      (g) => g.id !== groupId && g.destination === TANDEMS && passengerOf(g) === who
+    )
+    assign([groupId], TANDEMS, passenger)
+    setNote(
+      joining ? `Joined ${who}’s tandem — one passenger is one folder` : `Filed as ${who}’s tandem`
+    )
+    flash({ kind: 'pax', name: who })
   }
 
   const shiftJump = (groupId: string, anchorEpoch: number) =>
@@ -740,7 +774,12 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
   /* `key` names the thing on screen that lights up, which is not always the destination: the same
      dropzone is a target in the menu and on its own card, and each has to light on its own. */
-  const dropTarget = (destination: string | null, named?: string) => {
+  const dropTarget = (
+    destination: string | null,
+    named?: string,
+    /* a named passenger: what is dropped joins them rather than starting a tandem of its own */
+    into?: { passenger: Passenger; hostId: string }
+  ) => {
     const key = named ?? (destination === null ? 'sort' : `dest:${destination}`)
     /* the sorting area takes files back; a destination card takes whole jumps as well */
     const accepts =
@@ -756,8 +795,13 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         e.preventDefault()
         setOverTarget(null)
         if (draggedFiles.length > 0)
-          moveFiles(draggedFiles, { destination, newGroup: destination === TANDEMS })
-        else if (dragged.length > 0) assign(dragged, destination)
+          moveFiles(
+            draggedFiles,
+            into
+              ? { targetGroupId: into.hostId }
+              : { destination, newGroup: destination === TANDEMS }
+          )
+        else if (dragged.length > 0) assign(dragged, destination, into?.passenger)
         setDragged([])
         setDraggedFiles([])
       }
@@ -786,10 +830,15 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const openDay = openDays[key]
   const setOpenDay = (day: string | null) => setOpenDays({ ...openDays, [key]: day })
 
-  /* A jump chip opens its day and lands on that jump. The scroll waits two frames because the
-     jump it is scrolling to does not exist until the day it is in has been drawn. */
+  /* A jump chip opens its day and lands on that jump, unfolded — landing on a folded jump would
+     show its name and nothing it was asked for. The scroll waits two frames because the jump it is
+     scrolling to does not exist until the day it is in has been drawn. */
   const openAt = (day: string, anchor: string) => {
     setOpenDay(day)
+    if (groups.some((g) => g.id === anchor) && jumpShut(anchor))
+      setUnfolded(
+        unfolded.includes(anchor) ? unfolded.filter((id) => id !== anchor) : [...unfolded, anchor]
+      )
     requestAnimationFrame(() =>
       requestAnimationFrame(() =>
         document.getElementById(`at-${anchor}`)?.scrollIntoView({ block: 'start' })
@@ -853,15 +902,29 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
   const unnamed = tandems.filter((g) => !passengerOf(g))
   const named = tandems.filter((g) => passengerOf(g))
+  /* each passenger once, however many jumps they have */
+  const passengers = [
+    ...new Map(
+      named.flatMap((g): [string, Passenger][] =>
+        g.passenger ? [[passengerOf(g), g.passenger]] : []
+      )
+    ).values()
+  ]
 
   const placeDrop = (target: Place) => {
     const key = placeKey(target)
+    /* Dropping on a passenger used to make a new, nameless tandem beside theirs. It means the
+       opposite: this is theirs too. */
+    const host =
+      target.kind === 'pax' ? named.find((g) => passengerOf(g) === target.name) : undefined
     const props =
       target.kind === 'sort'
         ? dropTarget(null, key)
         : target.kind === 'dz'
           ? dropTarget(target.name, key)
-          : dropTarget(TANDEMS, key)
+          : host?.passenger
+            ? dropTarget(TANDEMS, key, { passenger: host.passenger, hostId: host.id })
+            : dropTarget(TANDEMS, key)
     return { ...props, 'data-place': key }
   }
 
@@ -1036,6 +1099,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           onAddPlace={addPlace}
           dropTarget={placeDrop}
           overTarget={overTarget}
+          flashPlace={flashPlace}
         />
 
         <section className='flex min-h-0 min-w-0 flex-col bg-ground'>
@@ -1173,6 +1237,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                       overTarget={overTarget}
                       isJumpShut={jumpShut}
                       onDragJump={startJumpDrag}
+                      passengers={passengers}
+                      onMakeTandem={makeTandem}
                       onToggleJump={(id) =>
                         setUnfolded(
                           unfolded.includes(id)

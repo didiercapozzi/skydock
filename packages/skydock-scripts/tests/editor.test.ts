@@ -43,7 +43,9 @@ describe('opening the project in the editor', () => {
 
   it('runs a quoted shell command, giving it the project as $0', async () => {
     const log = path.join(dir, 'editor.log')
-    process.env.SKYDOCK_EDITOR_COMMAND = `sh -c "printf '%s' \"$0\" > ${log}"`
+    /* String.raw, so the backslashes reach the setting the way someone would type them — a plain
+       template literal turns \" into " and the command never had escaped quotes at all */
+    process.env.SKYDOCK_EDITOR_COMMAND = String.raw`sh -c "printf '%s' \"$0\" > ${log}"`
 
     const result = await openInEditor(project)
     expect(result.opened).toBe(true)

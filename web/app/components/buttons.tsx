@@ -61,8 +61,8 @@ const Seg = <T extends string>({
         type='button'
         aria-pressed={value === option}
         onClick={() => onPick(option)}
-        className={`bg-pane px-[11px] py-[5px] text-[12px] ${
-          value === option ? 'bg-accent-soft font-semibold text-accent' : 'text-ink-2'
+        className={`px-[11px] py-[5px] text-[12px] ${
+          value === option ? 'bg-accent-soft font-semibold text-accent' : 'bg-pane text-ink-2'
         }`}>
         {text}
       </button>

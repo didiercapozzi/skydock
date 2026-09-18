@@ -19,5 +19,21 @@
   "editor.defaultFormatter": "oxc.oxc-vscode",
   "files.exclude": {
     "**/.git": false
+  },
+  "search.exclude": {
+    "**/node_modules/*/**": true,
+    "**/bower_components": true,
+    "**/.react-router": true,
+    "**/*.code-search": true,
+    "**/.agents": true,
+    "**/__traces__": true,
+    "**/.vitest": true,
+    "**/playwright-screenshots": true,
+    "**/storybook-static": true,
+    ".claude": true,
+    "**/db_mount": true,
+    "**/.windsurf": true,
+    "**/.git/*/**": true,
+    "**/build": true
   }
 }

@@ -308,8 +308,14 @@ const KindBadges = ({
 }) => {
   const videos = files.filter((f) => kindOf(f) === 'video').length
   const photos = files.length - videos
-  if (videos === 0 || photos === 0) return null
-  const active: Kind = withAll ? kind : kind === 'photo' ? 'photo' : 'video'
+  /* Shown on every header, even where one kind is absent, so every header reads the same and says
+     what is in it at a glance. A kind with nothing in it is on show but cannot be picked. */
+  if (files.length === 0) return null
+  const active: Kind = withAll
+    ? kind
+    : kind === 'photo' || (kind === 'all' && videos === 0)
+      ? 'photo'
+      : 'video'
   const options: [Kind, string, number][] = withAll
     ? [
         ['all', 'All', files.length],
@@ -330,9 +336,13 @@ const KindBadges = ({
           key={value}
           type='button'
           aria-pressed={active === value}
+          disabled={count === 0 && active !== value}
+          title={
+            value === 'all' ? 'Show everything' : `Show only the ${count} ${label.toLowerCase()}`
+          }
           onClick={() => onPick(value)}
-          className={`inline-flex items-center gap-1.5 bg-pane px-[11px] py-[5px] text-[12px] ${
-            active === value ? 'bg-accent-soft font-semibold text-accent' : 'text-ink-2'
+          className={`inline-flex items-center gap-1.5 px-[11px] py-[5px] text-[12px] disabled:cursor-default disabled:opacity-45 ${
+            active === value ? 'bg-accent-soft font-semibold text-accent' : 'bg-pane text-ink-2'
           }`}>
           {label}
           <span

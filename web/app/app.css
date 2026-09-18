@@ -120,33 +120,47 @@
   color-scheme: dark;
 }
 
-html,
-body {
-  height: 100%;
+/* In the base layer, not bare: CSS outside a layer beats every Tailwind utility, so a bare
+   `button { font: inherit; color: inherit }` quietly overrode the size, font and colour of every
+   button on the board — chips, badges and Mini buttons all came out as body text. */
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    background: var(--color-ground);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    /* the mockup's own base: everything else is sized relative to reading this comfortably */
+    font-size: 13.5px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button,
+  input {
+    font: inherit;
+    color: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-pick);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
 }
 
-body {
-  background: var(--color-ground);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-  /* the mockup's own base: everything else is sized relative to reading this comfortably */
-  font-size: 13.5px;
-  line-height: 1.45;
-  -webkit-font-smoothing: antialiased;
-}
-
-button,
-input {
-  font: inherit;
-  color: inherit;
-}
-
-button {
-  cursor: pointer;
-}
-
-:focus-visible {
-  outline: 2px solid var(--color-pick);
-  outline-offset: 2px;
-  border-radius: 4px;
+/* the menu entry a jump was just filed under, lit for a moment so the eye can follow it there */
+@keyframes placeflash {
+  0%,
+  40% {
+    background: var(--color-accent-soft);
+    border-color: var(--color-accent);
+  }
 }

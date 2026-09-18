@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Mini } from './buttons'
 import { FileList, KindBadges, matchesKind } from './file-list'
 import type { FileShape, Kind } from './file-list'
+import { MakeTandem } from './tandem-card'
+import type { Passenger } from './tandem-card'
 import type { ManifestFile, ManifestGroup } from './types'
 import { calendarDay, minFileMtime, shortDate } from './utils'
 
@@ -38,6 +40,9 @@ type Props = {
   onToggleJump: (groupId: string) => void
   /* picking up a whole jump, to file it somewhere in one go */
   onDragJump: (groupId: string) => void
+  /* making a jump a passenger's tandem from its own line; offered only where jumps are sorted */
+  passengers: Passenger[]
+  onMakeTandem?: (groupId: string, passenger: Passenger) => void
   groupDropTarget: (groupId: string, scope?: 'group' | 'chip') => Record<string, unknown>
   /* which single thing on the whole board the pointer is over, if anything */
   overTarget: string | null
@@ -202,7 +207,7 @@ const Chip = ({
       className={`rounded-full border px-2 py-px font-mono text-[11px] tabular-nums ${
         dashed && !over ? 'border-dashed' : ''
       } ${look}`}>
-      <b className='font-sans text-[11px] font-semibold'>{children}</b>
+      <b>{children}</b>
       <span className={`ml-1 ${over ? 'text-white/70' : 'text-ink-3'}`}>{count}</span>
     </button>
   )
@@ -223,13 +228,19 @@ const JumpLine = ({
   onSelectAll,
   onShiftJump,
   dropTarget,
-  busy
+  busy,
+  passengers,
+  onMakeTandem
 }: {
   group: ManifestGroup
   index: number
   picked: string[]
   shut: boolean
   over: boolean
+  /* who already has a tandem, so a name typed here can join one instead of making a second */
+  passengers: Passenger[]
+  /* only in the sorting area, where a jump is still waiting to be filed */
+  onMakeTandem?: (groupId: string, passenger: Passenger) => void
   /* only where a jump can still be filed: once it is in a dropzone there is nowhere to take it */
   draggable: boolean
   onToggle: () => void
@@ -245,10 +256,12 @@ const JumpLine = ({
   /* Two bare times are only readable as a span while they are on the same day. A jump that runs
      past midnight, or that holds a file dragged in from another day, has to date both ends. */
   const spansDays = calendarDay(from) !== calendarDay(to)
+  const [naming, setNaming] = useState(false)
   return (
     <div
       {...dropTarget}
-      draggable={draggable}
+      /* a drag that starts in a text field would carry the jump off mid-word */
+      draggable={draggable && !naming}
       /* only the line itself is the handle — dragging a button inside it would mean something else */
       onDragStart={(e) => {
         if (e.target !== e.currentTarget) return
@@ -292,11 +305,31 @@ const JumpLine = ({
         </span>
       )}
       <span className='order-1 h-px flex-1 bg-line-2' />
-      <span className='order-2 flex flex-wrap items-center gap-1.5'>
-        <Mini onClick={() => onSelectAll(group.files)}>
-          {all ? 'Unselect jump' : 'Select jump'}
-        </Mini>
-      </span>
+      {naming && onMakeTandem ? (
+        <MakeTandem
+          group={group}
+          passengers={passengers}
+          onSave={(passenger) => {
+            setNaming(false)
+            onMakeTandem(group.id, passenger)
+          }}
+          onCancel={() => setNaming(false)}
+        />
+      ) : (
+        <span className='order-2 flex flex-wrap items-center gap-1.5'>
+          {onMakeTandem && (
+            <Mini
+              disabled={busy}
+              title='Make this jump a passenger’s tandem — type their name here'
+              onClick={() => setNaming(true)}>
+              Tandem…
+            </Mini>
+          )}
+          <Mini onClick={() => onSelectAll(group.files)}>
+            {all ? 'Unselect jump' : 'Select jump'}
+          </Mini>
+        </span>
+      )}
     </div>
   )
 }
@@ -325,6 +358,8 @@ const DayRow = ({
   isJumpShut,
   onToggleJump,
   onDragJump,
+  passengers,
+  onMakeTandem,
   groupDropTarget,
   overTarget,
   action,
@@ -390,14 +425,12 @@ const DayRow = ({
           </span>
         </button>
         <span className='kindslot'>
-          {open && (
-            <KindBadges
-              files={files}
-              kind={kind}
-              withAll
-              onPick={onKind}
-            />
-          )}
+          <KindBadges
+            files={files}
+            kind={kind}
+            withAll
+            onPick={onKind}
+          />
         </span>
         {grouped && (
           <span className='flex flex-wrap gap-1'>
@@ -463,6 +496,8 @@ const DayRow = ({
                   onShiftJump={onShiftJump}
                   dropTarget={groupDropTarget(group.id)}
                   busy={busy}
+                  passengers={passengers}
+                  onMakeTandem={grouped ? onMakeTandem : undefined}
                 />
                 {!isJumpShut(group.id) && (
                   <FileList

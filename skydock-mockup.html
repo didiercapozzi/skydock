@@ -786,6 +786,55 @@
   .closedcard .spacer {
     flex: 1;
   }
+  /* Making a tandem from the jump itself: the line's right-hand side turns into the name. */
+  .tform {
+    order: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-family: var(--ui);
+    cursor: default;
+  }
+  .tform input {
+    width: 112px;
+    border: 1px solid var(--pick);
+    border-radius: 5px;
+    background: var(--pane);
+    color: var(--ink);
+    padding: 2px 7px;
+    font-size: 12px;
+  }
+  .tform .tframes {
+    display: flex;
+    gap: 3px;
+  }
+  .tform .tframes span {
+    width: 34px;
+    height: 24px;
+    border-radius: 3px;
+    display: block;
+  }
+  .tform .thint {
+    font-size: 11px;
+    color: var(--ink-3);
+    min-width: 128px;
+  }
+  .tform .thint.joins {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  /* the menu entry a jump just went to, so the eye follows it there */
+  .node.flash {
+    animation: nodeflash 1.8s ease-out;
+  }
+  @keyframes nodeflash {
+    0%,
+    40% {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+    }
+  }
   .lockmark {
     font-size: 10px;
     flex: none;
@@ -2399,6 +2448,9 @@
 
     const state = {
       node: { kind: 'sort' },
+      /* the jump whose passenger is being typed on its own line, and what has been typed so far */
+      naming: null,
+      nameDraft: { first: '', last: '' },
       picked: new Set(),
       pickedJumps: new Set(),
       anchor: null,
@@ -2942,6 +2994,98 @@
       state.anchor = null
       render()
       toast('Moved ' + plural(moving.length, 'file') + ' to ' + where + '.')
+    }
+
+    /* The menu entry something was just filed under lights up for a moment. */
+    const flashNode = (label) => {
+      const hit = [...document.querySelectorAll('#tree .node')].find(
+        (b) => b.querySelector('.name')?.textContent === label
+      )
+      if (!hit) return
+      hit.classList.remove('flash')
+      void hit.offsetWidth
+      hit.classList.add('flash')
+    }
+
+    /* Name the passenger on the jump's own line. Frames of the jump sit beside the fields, because a
+       name is read off a face or a form. A name already used joins that passenger — one passenger is
+       one folder — and says so before anything is saved. */
+    const tandemForm = (j) => {
+      const f = document.createElement('span')
+      f.className = 'tform'
+      f.innerHTML =
+        '<span class="tframes" title="From this jump"></span>' +
+        '<input id="tf-first" type="text" placeholder="First name" aria-label="First name">' +
+        '<input id="tf-last" type="text" placeholder="Last name" aria-label="Last name">' +
+        '<span class="thint"></span>' +
+        '<button class="go" type="button" data-ok>Make tandem</button>' +
+        '<button class="mini" type="button" data-x>Cancel</button>'
+      const frames = f.querySelector('.tframes')
+      const step = Math.max(1, Math.floor(j.files.length / 4))
+      j.files
+        .filter((_, i) => i % step === 0)
+        .slice(0, 4)
+        .forEach((file) => {
+          const s = document.createElement('span')
+          s.style.background = art(file.t)
+          frames.appendChild(s)
+        })
+      const first = f.querySelector('#tf-first')
+      const last = f.querySelector('#tf-last')
+      const hint = f.querySelector('.thint')
+      const ok = f.querySelector('[data-ok]')
+      first.value = state.nameDraft.first
+      last.value = state.nameDraft.last
+      const full = () => (first.value.trim() + ' ' + last.value.trim()).trim()
+      const existing = () =>
+        namedTandems().find((x) => x.passenger.toLowerCase() === full().toLowerCase())
+      const update = () => {
+        state.nameDraft = { first: first.value, last: last.value }
+        const complete = first.value.trim() && last.value.trim()
+        const host = complete && existing()
+        ok.disabled = !complete
+        ok.textContent = host ? 'Join tandem' : 'Make tandem'
+        hint.classList.toggle('joins', !!host)
+        hint.textContent = host
+          ? 'Joins ' + host.passenger + "'s tandem"
+          : complete
+            ? 'A new passenger folder'
+            : 'First and last name'
+      }
+      const cancel = () => {
+        state.naming = null
+        render()
+      }
+      const save = () => {
+        if (ok.disabled) return
+        const name = full()
+        const host = existing()
+        state.naming = null
+        if (host) {
+          moveJumps(new Set([j.id]), { kind: 'pax', name: host.passenger })
+          flashNode(host.passenger)
+          return
+        }
+        j.dest = 'Tandems'
+        j.passenger = name
+        j.locked = false
+        render()
+        toast('Filed as ' + name + "'s tandem.")
+        flashNode(name)
+      }
+      ;[first, last].forEach((input) => {
+        input.addEventListener('input', update)
+        input.addEventListener('keydown', (e) => {
+          e.stopPropagation()
+          if (e.key === 'Enter') save()
+          if (e.key === 'Escape') cancel()
+        })
+      })
+      ok.addEventListener('click', save)
+      f.querySelector('[data-x]').addEventListener('click', cancel)
+      f.addEventListener('mousedown', (e) => e.stopPropagation())
+      update()
+      return f
     }
 
     const moveJumps = (ids, target) => {
@@ -4918,7 +5062,7 @@
               r.appendChild(chev)
               /* same for an hour line: anywhere that isn't a button folds or unfolds it */
               r.addEventListener('click', (e) => {
-                if (e.target.closest('button, input, .timeedit')) return
+                if (e.target.closest('button, input, .timeedit, .tform')) return
                 chev.click()
               })
             }
@@ -5059,8 +5203,27 @@
                   b.addEventListener('click', fn)
                   r.appendChild(b)
                 }
+                /* Naming it here is the whole of making a tandem: the jump is on screen, so is who
+                   is in it, and nothing needs dragging or finding again on another page. */
+                if (state.naming === j.id) {
+                  r.draggable = false
+                  r.appendChild(tandemForm(j))
+                  body.appendChild(r)
+                  if (!shut) filesInto(body, j.files, j.id, null, true)
+                  return
+                }
                 const pickedHere = j.files.filter((f) => state.picked.has(f.id)).length
                 const idx = dayJumps.indexOf(j)
+                hourBtn(
+                  'Tandem…',
+                  "Make this jump a passenger's tandem — type their name here",
+                  () => {
+                    state.naming = j.id
+                    state.nameDraft = { first: '', last: '' }
+                    render()
+                    requestAnimationFrame(() => document.getElementById('tf-first')?.focus())
+                  }
+                )
                 hourBtn(
                   'Split',
                   pickedHere && pickedHere < j.files.length

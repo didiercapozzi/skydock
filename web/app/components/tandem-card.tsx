@@ -62,11 +62,34 @@ const PassengerName = ({
    form or a face, so asking for one beside a pair of counts is asking somebody to remember what
    they saw on another screen. Videos first, and only then photos, because a face is more likely in
    the footage than in a burst of canopy shots. */
-const PassengerFrames = ({ group, alt }: { group: ManifestGroup; alt: string }) => {
+const PassengerFrames = ({
+  group,
+  alt,
+  inline
+}: {
+  group: ManifestGroup
+  alt: string
+  /* on a jump's own line rather than on a card: the same frames, in a row the height of the line */
+  inline?: boolean
+}) => {
   const shown = [...group.files]
     .sort((a, b) => Number(kindOf(b) === 'video') - Number(kindOf(a) === 'video'))
     .slice(0, 4)
   if (shown.length === 0) return null
+  if (inline)
+    return (
+      <span className='flex gap-[3px]'>
+        {shown.map((file) => (
+          <img
+            key={file.id ?? file.path}
+            src={kindOf(file) === 'video' ? getThumbUrl(file.path, 0.5, 80) : getFileUrl(file.path)}
+            alt={alt}
+            loading='lazy'
+            className='h-6 w-[34px] rounded-[3px] bg-line-2 object-cover'
+          />
+        ))}
+      </span>
+    )
   return (
     /* four across, sharing the width — fixed widths spilled the last one off the card */
     <span className='mt-1.5 mb-0.5 grid grid-cols-4 gap-1'>
@@ -79,6 +102,84 @@ const PassengerFrames = ({ group, alt }: { group: ManifestGroup; alt: string }) 
           className='h-[42px] w-full min-w-0 rounded-[4px] bg-line-2 object-cover'
         />
       ))}
+    </span>
+  )
+}
+
+type Passenger = NonNullable<ManifestGroup['passenger']>
+
+const fullName = (p: { firstname: string; lastname: string }) =>
+  `${p.firstname.trim()} ${p.lastname.trim()}`.trim()
+
+/* Making a tandem from the jump itself: its line turns into the passenger's name. The jump and who
+   is in it are both on screen, so nothing has to be dragged, or found again on another page.
+
+   Unlike the name on a card, this is never saved by clicking away. Leaving a card's name half-typed
+   costs nothing; leaving here would have filed the jump somewhere by accident. So it is saved by
+   Enter or the button, and Escape puts the line back as it was.
+
+   A name that is already a passenger's joins them — one passenger is one folder — and says so
+   before anything is saved. The comparison ignores case; what is saved is the name as it already
+   is, so the two jumps do not end up in two folders spelled two ways. */
+const MakeTandem = ({
+  group,
+  passengers,
+  onSave,
+  onCancel
+}: {
+  group: ManifestGroup
+  passengers: Passenger[]
+  onSave: (passenger: Passenger) => void
+  onCancel: () => void
+}) => {
+  const [name, setName] = useState({ firstname: '', lastname: '' })
+  const complete = hasCompletePassenger(name)
+  const typed = fullName(name).toLowerCase()
+  const joins = complete ? passengers.find((p) => fullName(p).toLowerCase() === typed) : undefined
+  const save = () => {
+    if (!complete) return
+    onSave(joins ?? { firstname: name.firstname.trim(), lastname: name.lastname.trim() })
+  }
+  return (
+    <span
+      onClick={(e) => e.stopPropagation()}
+      className='order-2 flex flex-wrap items-center gap-1.5'>
+      <PassengerFrames
+        group={group}
+        alt=''
+        inline
+      />
+      {NAME_FIELDS.map((field, i) => (
+        <input
+          key={field.key}
+          type='text'
+          value={name[field.key]}
+          placeholder={field.label}
+          aria-label={field.label}
+          autoFocus={i === 0}
+          onChange={(e) => setName({ ...name, [field.key]: e.target.value })}
+          onKeyDown={(e) => {
+            e.stopPropagation()
+            if (e.key === 'Enter') save()
+            if (e.key === 'Escape') onCancel()
+          }}
+          className='w-28 rounded-[5px] border border-pick bg-pane px-[7px] py-0.5 text-[12px] text-ink'
+        />
+      ))}
+      <span
+        className={`min-w-[128px] text-[11px] ${joins ? 'font-semibold text-accent' : 'text-ink-3'}`}>
+        {joins
+          ? `Joins ${fullName(joins)}’s tandem`
+          : complete
+            ? 'A new passenger folder'
+            : 'First and last name'}
+      </span>
+      <Go
+        disabled={!complete}
+        onClick={save}>
+        {joins ? 'Join tandem' : 'Make tandem'}
+      </Go>
+      <Mini onClick={onCancel}>Cancel</Mini>
     </span>
   )
 }
@@ -448,6 +549,7 @@ const DeliveredCards = ({ group }: { group: ManifestGroup }) => {
 }
 
 export {
+  MakeTandem,
   DeliveredCards,
   PassengerCard,
   PassengerName,
@@ -456,4 +558,4 @@ export {
   UploadStrip,
   formatFilmSize
 }
-export type { TandemFact }
+export type { Passenger, TandemFact }

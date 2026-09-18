@@ -1,12 +1,20 @@
 import { useState } from 'react'
-import type { ManifestFile, ManifestGroup } from '../components/types'
+import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
 import { useSafeFetcher } from '../helpers/routing'
 
 const useGroups = (initialGroups: ManifestGroup[]) => {
   const [groups, setGroups] = useState<ManifestGroup[]>(initialGroups)
   const { submit } = useSafeFetcher()
 
-  const updateGroups = (next: ManifestGroup[], fileUpdates?: ManifestFile[]) => {
+  /* `destinations` rides along when an edit also adds a place. Saving the place separately raced
+     this save: its answer carried the groups as they were before, and the board took that answer
+     over the edit it had just shown — a jump filed under Tandems for the first time sprang straight
+     back into Unsorted. One save, carrying both, has nothing to race. */
+  const updateGroups = (
+    next: ManifestGroup[],
+    fileUpdates?: ManifestFile[],
+    destinations?: Destination[]
+  ) => {
     const withDirty = next.map((g) => {
       const prev = groups.find((p) => p.id === g.id)
       if (!prev?.processed) return g
@@ -35,7 +43,8 @@ const useGroups = (initialGroups: ManifestGroup[]) => {
       actionArgs: {
         intent: 'save-groups',
         groups: withDirty,
-        ...(fileUpdates ? { fileUpdates } : {})
+        ...(fileUpdates ? { fileUpdates } : {}),
+        ...(destinations ? { destinations } : {})
       }
     })
   }

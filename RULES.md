@@ -241,8 +241,9 @@ still left in it.
 
 **The days toolbar.** Above the days: how many jumps or days are here and which day is open, and
 with it _Collapse jumps_ and _Expand jumps_, and _Close all days_. Folding jumps is a standing
-choice rather than something done to one day: collapse them and every day opened afterwards opens
-folded too, until they are expanded again. A jump can still be folded or opened on its own from its
+choice rather than something done to one day: jumps start folded, so a day opens as the list of its
+jumps, and every day opened afterwards opens the same way until they are expanded — and after that,
+open until they are collapsed again. Landing on a jump from its chip opens that jump. A jump can still be folded or opened on its own from its
 line, and doing so is an exception to that choice rather than an end to it. Folding changes only
 what is on screen; nothing about the files moves.
 
@@ -277,9 +278,10 @@ chosen last, for the whole board. Once a copy exists the name shown is the one t
 name that goes to the storage and that the passenger sees, with the camera's own name kept quietly
 beside it so a file can still be traced to the card it came off. A long list is drawn a page at a time
 with a button for more, because a tandem of five hundred photos must not put five hundred things on
-screen before they have been asked for. Where a place holds both videos and photos, badges say how
-many of each and show one kind or the other — fifteen clips and five hundred stills are two different
-jobs. A thumbnail shows its state as a coloured dot once a selection is under way, which is when it
+screen before they have been asked for. Every day's header, open or closed, and every tandem's carries
+badges saying how many videos and how many photos it holds, and they show one kind or the other —
+fifteen clips and five hundred stills are two different jobs. They are there even when one kind is
+absent, so every header reads the same; a kind with nothing in it is shown but cannot be chosen. A thumbnail shows its state as a coloured dot once a selection is under way, which is when it
 matters; a row always says it in words.
 
 **Finding.** A box in the pane's heading narrows what is drawn in the place being looked at, matching
@@ -291,6 +293,17 @@ is there has not changed.
 to move it. While something is being carried, everywhere that would take it is outlined, and the one thing under
 the pointer is filled in — the first says where it could go, the second says where it is going. A
 place that would not take what is being carried shows neither.
+Dropping onto a passenger in the menu joins that passenger's tandem; it never starts a new one.
+
+An unsorted jump can also be made a tandem from its own line, without dragging: ask for it there, type
+the passenger's name beside a few frames of the jump, and it is filed under Tandems with that name in
+one step. Only a complete name saves, and only when confirmed — leaving the fields saves nothing, and
+cancelling or Escape puts the line back with nothing changed. A name that is already a passenger's, however it is capitalised,
+says before saving that it will join their tandem, and saving files the jump under that passenger
+exactly as their name is already written, because one passenger is one folder. The menu lists each
+passenger once, however many jumps are theirs. Where the jump went lights up briefly in the menu, and
+the board stays where it was so sorting can carry on.
+
 Tandems with no passenger yet stay visible and say how many are waiting for a name, rather than
 quietly hiding.
 
