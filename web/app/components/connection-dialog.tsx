@@ -13,28 +13,37 @@ const connectionSchema = z.object({
   password: z
     .string()
     .min(1, 'Password is required')
-    .min(3, 'Password must be at least 3 characters')
+    .min(3, 'Password must be at least 3 characters'),
+  /* asked for only once the storage says the account uses 2-step verification */
+  otp: z.union([z.literal(''), z.string().regex(/^\d{6}$/, 'The code is 6 digits')])
 })
 
 /* the footer's Connect lives outside the form element, and this is how it still submits it */
 const FORM_ID = 'nas-connect'
 
 type ConnectionDialogProps = {
-  onConnect: (host: string, user: string, password: string) => void
+  onConnect: (host: string, user: string, password: string, otp?: string) => void
   onCancel: () => void
   error?: string
+  /* why the storage wants the account's 2-step code, once it has asked for it */
+  codeAsked?: string
 }
 
-const ConnectionDialog = ({ onConnect, onCancel, error }: ConnectionDialogProps) => {
+const ConnectionDialog = ({ onConnect, onCancel, error, codeAsked }: ConnectionDialogProps) => {
   const submit: SubmitFunction = async (target) => {
     const parsed = connectionSchema.safeParse(target)
     if (!parsed.success) return
-    onConnect(parsed.data.host, parsed.data.user, parsed.data.password)
+    onConnect(
+      parsed.data.host,
+      parsed.data.user,
+      parsed.data.password,
+      parsed.data.otp || undefined
+    )
   }
 
   const form = useForm({
     schema: connectionSchema,
-    defaultValues: { host: '', user: '', password: '' },
+    defaultValues: { host: '', user: '', password: '', otp: '' },
     submit
   })
 
@@ -103,6 +112,33 @@ const ConnectionDialog = ({ onConnect, onCancel, error }: ConnectionDialogProps)
             />
           )}
         </FormField>
+        {/* An account with 2-step verification: the code is asked for once, and this machine is
+            then trusted by the storage, so the session renews itself without it. */}
+        {codeAsked && (
+          <FormField
+            field={form.fields.otp}
+            label='2-step verification code'>
+            {(control) => (
+              <>
+                <input
+                  {...control}
+                  type='text'
+                  inputMode='numeric'
+                  autoComplete='one-time-code'
+                  maxLength={6}
+                  placeholder='123456'
+                  autoFocus
+                  className={`w-full font-mono tracking-[0.3em] ${INPUT}`}
+                />
+                <span
+                  role='status'
+                  className='mt-1 block text-[12px] text-ink-2'>
+                  {codeAsked}
+                </span>
+              </>
+            )}
+          </FormField>
+        )}
       </Form>
     </Modal>
   )

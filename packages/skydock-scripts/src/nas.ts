@@ -12,14 +12,19 @@ const nasSessionSchema = z.object({
   defaultFolder: z.string().optional(),
   /* where the original videos are archived, kept apart from anything a passenger can see */
   backupFolder: z.string().optional(),
-  encPasswd: z.string().optional()
+  encPasswd: z.string().optional(),
+  /* this machine, as the storage trusts it after a login with a 2-step code: a later login naming
+     it needs no code, so the session goes on renewing itself */
+  deviceId: z.string().optional()
 })
 type NasSession = z.infer<typeof nasSessionSchema>
 
 const nasLoginConfigSchema = z.object({
   host: z.string(),
   user: z.string(),
-  password: z.string()
+  password: z.string(),
+  /* the 6-digit code of an account with 2-step verification */
+  otp: z.string().optional()
 })
 
 const dsmResponseSchema = z
@@ -33,7 +38,8 @@ const dsmResponseSchema = z
 
 const dsmSidResponseSchema = z.object({
   success: z.literal(true),
-  data: z.object({ sid: z.string() }).passthrough()
+  /* `did` comes back when this machine asked to be trusted */
+  data: z.object({ sid: z.string(), did: z.string().optional() }).passthrough()
 })
 
 const dsmFileEntrySchema = z.object({
@@ -101,7 +107,9 @@ const dsmEncryptionInfoSchema = z
 const dsmConfigSchema = z.object({
   host: z.string(),
   user: z.string(),
-  password: z.string()
+  password: z.string(),
+  otp: z.string().optional(),
+  deviceId: z.string().optional()
 })
 type DsmConfig = z.infer<typeof dsmConfigSchema>
 
@@ -199,6 +207,21 @@ const dsmApiErrorMessage = (body: z.infer<typeof dsmResponseSchema>) => {
   return `DSM login failed: ${map[code] ?? `DSM error ${code}`}: ${JSON.stringify(body)}`
 }
 
+/* A login the storage refused, with the code it gave. 403 and 406 are an account with 2-step
+   verification asking for its code; 404 is a code it did not accept. */
+class DsmLoginError extends Error {
+  constructor(
+    message: string,
+    readonly code: number | undefined
+  ) {
+    super(message)
+  }
+}
+
+/* the account asks for its 2-step code — none was given, or the one given was not accepted */
+const needsCode = (e: unknown) =>
+  e instanceof DsmLoginError && (e.code === 403 || e.code === 404 || e.code === 406)
+
 const dsmLoginAttempt = async (config: DsmConfig, version: string) => {
   const body = await dsmFetch(config.host, {
     api: 'SYNO.API.Auth',
@@ -207,14 +230,21 @@ const dsmLoginAttempt = async (config: DsmConfig, version: string) => {
     session: 'FileStation',
     format: 'sid',
     account: config.user,
-    passwd: config.password
+    passwd: config.password,
+    /* with a code, this machine asks to be trusted, so the next login needs none */
+    ...(config.otp
+      ? { otp_code: config.otp, enable_device_token: 'yes', device_name: 'SkyDock' }
+      : {}),
+    ...(config.deviceId ? { device_id: config.deviceId } : {})
   })
   const parsed = dsmSidResponseSchema.safeParse(body)
-  if (parsed.success) return parsed.data.data.sid
-  throw new Error(dsmApiErrorMessage(body))
+  if (parsed.success) return { sid: parsed.data.data.sid, deviceId: parsed.data.data.did }
+  throw new DsmLoginError(dsmApiErrorMessage(body), body.error?.code)
 }
 
-const dsmLogin = async (config: DsmConfig): Promise<string> => {
+/* API versions differ between DSM releases: one the storage does not know is passed over for the
+   next, and anything else — a wrong password, a code asked for — is the answer. */
+const dsmLogin = async (config: DsmConfig) => {
   const versions = ['7', '6', '3']
   let lastErr: Error | null = null
   for (const v of versions) {
@@ -222,15 +252,11 @@ const dsmLogin = async (config: DsmConfig): Promise<string> => {
       return await dsmLoginAttempt(config, v)
     } catch (e) {
       lastErr = e instanceof Error ? e : new Error(String(e))
-      const msg = lastErr.message
-      if (
-        msg.includes('not supported') ||
-        msg.includes('102') ||
-        msg.includes('103') ||
-        msg.includes('104')
-      )
-        continue
-      if (msg.includes('400') && v !== versions[versions.length - 1]) continue
+      const code = e instanceof DsmLoginError ? e.code : undefined
+      if (code === 102 || code === 103 || code === 104) continue
+      if (code === 400 && v !== versions[versions.length - 1]) continue
+      if (code === undefined && lastErr.message.includes('not supported')) continue
+      throw lastErr
     }
   }
   throw lastErr ?? new Error('DSM login failed: no version succeeded')
@@ -541,7 +567,7 @@ const ensureShareLink = async (host: string, sid: string, remotePath: string) =>
   (await findShareLink(host, sid, remotePath)) ?? (await createShareLink(host, sid, remotePath))
 
 type DsmAuth = {
-  login: (config: DsmConfig) => Promise<string>
+  login: (config: DsmConfig) => Promise<{ sid: string; deviceId?: string }>
   validate: (host: string, sid: string) => Promise<boolean>
 }
 
@@ -580,7 +606,7 @@ const updateNasFolder = (kind: 'default' | 'backup', folder: string, configDir?:
 const refreshStoredSession = async (
   stored: NasSession,
   configDir?: string,
-  login: (config: DsmConfig) => Promise<string> = dsmLogin
+  login: DsmAuth['login'] = dsmLogin
 ) => {
   const enc = stored.encPasswd
   if (!enc) throw new Error('No stored password to refresh session')
@@ -604,9 +630,17 @@ const refreshStoredSession = async (
     return sid
   }
   const plain = decryptPasswordFromStorage(stored.hostname, stored.username, enc)
-  const sid = await login({ host: stored.hostname, user: stored.username, password: plain })
+  const { sid, deviceId } = await login({
+    host: stored.hostname,
+    user: stored.username,
+    password: plain,
+    deviceId: stored.deviceId
+  })
   const newEnc = encryptPasswordForStorage(stored.hostname, stored.username, plain)
-  saveNasSession({ ...stored, sessionId: sid, encPasswd: newEnc }, configDir)
+  saveNasSession(
+    { ...stored, sessionId: sid, encPasswd: newEnc, deviceId: deviceId ?? stored.deviceId },
+    configDir
+  )
   return sid
 }
 
@@ -617,7 +651,7 @@ const loginWithSession = async (
 ) => {
   const parsed = nasLoginConfigSchema.safeParse(config)
   if (!parsed.success) throw new Error('Invalid login config')
-  const { host, user, password } = parsed.data
+  const { host, user, password, otp } = parsed.data
 
   const stored = loadNasSession(configDir)
   const canReuse = stored && stored.hostname === host && stored.username === user
@@ -627,17 +661,21 @@ const loginWithSession = async (
       return await refreshStoredSession(stored, configDir, dsm.login)
     } catch {}
   }
-  if (canReuse) clearNasSession(configDir)
   if (!password) throw new Error('Session expired. Please reconnect to NAS.')
-  const sid = await dsm.login({ host, user, password })
-  const encPasswd = encryptPasswordForStorage(host, user, password)
+  /* The same account on the same storage keeps what was chosen for it — its folders, and the trust
+     a 2-step code earned this machine — so a login that has to be tried again with its code loses
+     nothing on the way. Another storage or account starts afresh but for the upload folder. */
+  const kept = canReuse && stored ? stored : undefined
+  const { sid, deviceId } = await dsm.login({ host, user, password, otp, deviceId: kept?.deviceId })
   saveNasSession(
     {
       hostname: host,
       username: user,
       sessionId: sid,
       defaultFolder: stored?.defaultFolder,
-      encPasswd
+      backupFolder: kept?.backupFolder,
+      encPasswd: encryptPasswordForStorage(host, user, password),
+      deviceId: deviceId ?? kept?.deviceId
     },
     configDir
   )
@@ -672,6 +710,7 @@ const ensureNasSession = async (configDir?: string) => {
 }
 
 export {
+  DsmLoginError,
   clearNasSession,
   createShareLink,
   decryptPasswordFromStorage,
@@ -696,6 +735,7 @@ export {
   listShareLinks,
   loadNasSession,
   loginWithSession,
+  needsCode,
   normalizeNasPath,
   refreshStoredSession,
   saveNasSession,

@@ -68,7 +68,8 @@ const DialogHost = ({
   nas: {
     connectSucceeded: boolean
     error: string | undefined
-    connect: (host: string, user: string, password: string) => void
+    connect: (host: string, user: string, password: string, otp?: string) => void
+    codeAsked?: string
     defaultFolder: string | null
     backupFolder: string | null
   }
@@ -105,6 +106,7 @@ const DialogHost = ({
           onConnect={nas.connect}
           onCancel={close}
           error={nas.error}
+          codeAsked={nas.codeAsked}
         />
       )}
 

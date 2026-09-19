@@ -29,6 +29,42 @@ describe('connecting to the storage', () => {
     return JSON.parse(fs.readFileSync(p, 'utf-8')) as Record<string, unknown>
   }
 
+  /* an account with 2-step verification: asked for its code, then connected with it */
+  it('asks for the 2-step code of an account that uses one, then connects with it', async () => {
+    stubFetch((url) => {
+      const params = new URL(url).searchParams
+      if (params.get('method') === 'login')
+        return params.get('otp_code') === '123456'
+          ? jsonResponse({ success: true, data: { sid: 'sid-2fa', did: 'trusted' } })
+          : jsonResponse({ success: false, error: { code: 403 } })
+      return jsonResponse({ success: false })
+    })
+    const connect = (otp?: string) =>
+      action({
+        request: new Request('http://localhost/api/nas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            intent: 'connect',
+            host: 'https://nas.local:5001',
+            user: 'admin',
+            password: 'secret',
+            ...(otp ? { otp } : {})
+          })
+        })
+      }) as unknown as Promise<Record<string, unknown>>
+
+    const asked = await connect()
+    expect(asked).toMatchObject({
+      success: false,
+      fieldErrors: { otp: expect.stringMatching(/2-step/) }
+    })
+
+    const connected = await connect('123456')
+    expect(connected.connected).toBe(true)
+    expect(loadSessionFile()).toMatchObject({ sessionId: 'sid-2fa', deviceId: 'trusted' })
+  })
+
   it('keeps the session, and the default folder when connecting again', async () => {
     stubFetch((url) => {
       if (url.includes('method=login'))

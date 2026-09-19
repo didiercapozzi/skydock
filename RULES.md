@@ -499,6 +499,10 @@ never listed, a listing that failed or a size the storage would not report demot
 **Connecting.** The storage is reached with a hostname, username and password, entered once. The
 session is kept and renews itself from the stored password when it expires. The password is kept
 encrypted and the plain one is never written down. Asking to upload while disconnected opens the login.
+An account with 2-step verification is asked for its code when the storage wants it, in the same
+login, with what was already typed kept. Logging in with the code has the storage trust this machine,
+so the session goes on renewing itself without a code, as for any account; connecting again to the
+same account keeps its folders.
 
 **Folders.** Every place is connected to a folder of its own on the storage — each dropzone to one, and
 Tandems to the one the passengers' folders go into — browsed and picked from the app, on the place

@@ -8,6 +8,7 @@ import {
   ensureNasSession,
   loadNasSession,
   loginWithSession,
+  needsCode,
   updateNasFolder
 } from '@skydock/scripts'
 import { z } from 'zod'
@@ -25,6 +26,8 @@ const actionArgs = z.object({
   host: z.string().optional(),
   user: z.string().optional(),
   password: z.string().optional(),
+  /* the 6-digit code of an account with 2-step verification, once the storage has asked for it */
+  otp: z.string().optional(),
   path: z.string().optional(),
   name: z.string().optional(),
   /* which folder is being chosen: where uploads go, or where the original videos are kept */
@@ -58,7 +61,7 @@ const action = createValidatedFormAction()({
       }
       try {
         await loginWithSession(
-          { host: data.host, user: data.user, password: data.password },
+          { host: data.host, user: data.user, password: data.password, otp: data.otp || undefined },
           { login: dsmLogin, validate: dsmValidateSession }
         )
         const session = loadNasSession()
@@ -69,7 +72,16 @@ const action = createValidatedFormAction()({
           defaultFolder: session!.defaultFolder
         }
       } catch (err) {
-        errors.addGlobalError(err instanceof Error ? err.message : 'Login failed.')
+        /* an account with 2-step verification: the dialog asks for the code, and says so plainly
+           rather than handing over what the storage said */
+        if (needsCode(err))
+          errors.addFieldError(
+            'otp',
+            data.otp
+              ? 'That code was not accepted — enter the one your authenticator app shows now.'
+              : 'This account uses 2-step verification — enter the 6-digit code from your authenticator app.'
+          )
+        else errors.addGlobalError(err instanceof Error ? err.message : 'Login failed.')
         return errors.toResponse(422)
       }
     }

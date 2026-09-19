@@ -45,6 +45,7 @@ import {
   ensureNasSession,
   loadNasSession,
   loginWithSession,
+  needsCode,
   updateNasFolder
 } from './nas'
 import {
@@ -176,6 +177,7 @@ export {
   loadManifest,
   loadNasSession,
   loginWithSession,
+  needsCode,
   mailtoUrl,
   manifestFileSchema,
   manifestGroupSchema,

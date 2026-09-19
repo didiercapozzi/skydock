@@ -12,7 +12,13 @@ const nasSuccessSchema = z.object({
   backupFolder: z.string().nullish()
 })
 
-const nasErrorSchema = z.object({ globalErrors: z.array(z.string()).optional() }).passthrough()
+const nasErrorSchema = z
+  .object({
+    globalErrors: z.array(z.string()).optional(),
+    /* the storage asked for the 2-step code of the account, or did not accept the one given */
+    fieldErrors: z.object({ otp: z.string().optional() }).passthrough().optional()
+  })
+  .passthrough()
 
 const remoteFilesSchema = z.union([
   z.object({
@@ -52,15 +58,16 @@ const useNas = (loaded: NasLoaded, remoteAfterUpload: CheckedListing | null) => 
   const backupFolder = answer.success ? (answer.data.backupFolder ?? null) : loaded.nas.backupFolder
   const refused = nasErrorSchema.safeParse(nasFetcher.data)
   const error = !answer.success && refused.success ? refused.data.globalErrors?.[0] : undefined
+  const codeAsked = !answer.success && refused.success ? refused.data.fieldErrors?.otp : undefined
   /* the connection dialog closes itself once a *new* answer says we are connected */
   const connectSucceeded =
     answer.success && answer.data.connected && nasFetcher.data !== dialogOpenedOn
   const markDialogOpened = () => setDialogOpenedOn(nasFetcher.data)
 
-  const connect = (hostname: string, user: string, password: string) =>
+  const connect = (hostname: string, user: string, password: string, otp?: string) =>
     nasFetcher.submit({
       url: '/api/nas',
-      actionArgs: { intent: 'connect', host: hostname, user, password }
+      actionArgs: { intent: 'connect', host: hostname, user, password, ...(otp ? { otp } : {}) }
     })
   const disconnect = () =>
     nasFetcher.submit({ url: '/api/nas', actionArgs: { intent: 'disconnect' } })
@@ -86,6 +93,7 @@ const useNas = (loaded: NasLoaded, remoteAfterUpload: CheckedListing | null) => 
     defaultFolder,
     backupFolder,
     error,
+    codeAsked,
     connectSucceeded,
     markDialogOpened,
     connect,

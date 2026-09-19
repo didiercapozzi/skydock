@@ -53,3 +53,47 @@ describe('NAS connection', () => {
     await expect.poll(() => document.querySelector('[data-connection-dialog]') === null).toBe(true)
   })
 })
+
+/* An account with 2-step verification (RULES, Network storage): the storage asks for the code, the
+   dialog asks for it in turn, keeping what was already typed, and connects with it. */
+describe('NAS connection — 2-step verification', () => {
+  test('asks for the code when the storage wants one, and connects with it', async () => {
+    const sent: Record<string, unknown>[] = []
+    const Stub = createRoutesStub([
+      { path: '/', Component: Board, loader: () => emptyBoard },
+      { path: '/api/manifest', action: async () => ({ ok: true }) },
+      {
+        path: '/api/nas',
+        action: async ({ request }) => {
+          const body = (await request.json()) as Record<string, unknown>
+          sent.push(body)
+          return body.otp
+            ? { connected: true, hostname: 'https://nas.local:5001', username: 'admin' }
+            : {
+                success: false,
+                status: 422,
+                fieldErrors: {
+                  otp: 'This account uses 2-step verification — enter the 6-digit code from your authenticator app.'
+                }
+              }
+        }
+      }
+    ])
+    await render(createElement(Stub, { initialEntries: ['/'] }))
+    await userEvent.click(page.getByRole('button', { name: 'Connect the NAS' }))
+    await userEvent.fill(page.getByRole('textbox', { name: 'NAS Hostname' }), 'https://nas.local:5001')
+    await userEvent.fill(page.getByRole('textbox', { name: 'Username' }), 'admin')
+    await userEvent.fill(page.getByRole('textbox', { name: 'Password' }), 'secret')
+    await userEvent.click(page.getByRole('button', { name: 'Connect', exact: true }))
+
+    const code = page.getByRole('textbox', { name: '2-step verification code' })
+    await expect.element(code).toBeVisible()
+    await expect.element(page.getByText(/uses 2-step verification/)).toBeVisible()
+
+    await userEvent.fill(code, '123456')
+    await userEvent.click(page.getByRole('button', { name: 'Connect', exact: true }))
+
+    await expect.poll(() => sent.at(-1)).toMatchObject({ intent: 'connect', user: 'admin', otp: '123456' })
+    await expect.poll(() => document.querySelector('[data-connection-dialog]') === null).toBe(true)
+  })
+})

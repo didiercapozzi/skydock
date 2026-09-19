@@ -4,13 +4,16 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { createTmpDir, jsonResponse, stubFetch } from './fixtures'
 import {
+  dsmLogin,
   ensureNasSession,
   loadNasSession,
   loginWithSession,
+  needsCode,
   refreshStoredSession,
   saveNasSession,
   updateNasFolder
 } from '../src/nas'
+import type { DsmConfig } from '../src/nas'
 
 /* The storage session (RULES, Network storage): SkyDock logs in once and keeps the session; when
    the storage stops taking it, the session renews itself from what was kept, without asking; and
@@ -18,7 +21,12 @@ import {
 
 let tmpDir: string
 
-const dsm = { login: vi.fn(async () => 'new-sid'), validate: vi.fn(async () => true) }
+const dsm = {
+  login: vi.fn(async (_config: DsmConfig): Promise<{ sid: string; deviceId?: string }> => ({
+    sid: 'new-sid'
+  })),
+  validate: vi.fn(async () => true)
+}
 const club = { host: 'https://nas.local', user: 'u', password: 'p' }
 
 beforeEach(() => {
@@ -50,23 +58,91 @@ describe('the storage session', () => {
   })
 
   it('renews itself when the storage stops taking it, without asking for the password', async () => {
-    dsm.login.mockResolvedValue('first-sid')
+    dsm.login.mockResolvedValue({ sid: 'first-sid' })
     await loginWithSession(club, dsm, tmpDir)
     const stored = loadNasSession(tmpDir)!
 
     dsm.validate.mockResolvedValue(false)
-    dsm.login.mockResolvedValue('renewed-sid')
+    dsm.login.mockResolvedValue({ sid: 'renewed-sid' })
     await expect(refreshStoredSession(stored, tmpDir, dsm.login)).resolves.toBe('renewed-sid')
     expect(loadNasSession(tmpDir)?.sessionId).toBe('renewed-sid')
   })
 
   it('is forgotten when the storage’s address changes', async () => {
     saveNasSession({ hostname: 'https://old-nas.local', username: 'u', sessionId: 'old' }, tmpDir)
-    dsm.login.mockResolvedValue('new-sid')
+    dsm.login.mockResolvedValue({ sid: 'new-sid' })
     await expect(
       loginWithSession({ ...club, host: 'https://new-nas.local' }, dsm, tmpDir)
     ).resolves.toBe('new-sid')
     expect(loadNasSession(tmpDir)?.hostname).toBe('https://new-nas.local')
+  })
+})
+
+/* An account with 2-step verification (RULES, Network storage): the code is asked for at the first
+   login, the storage is asked to trust this machine, and from then on the session renews itself
+   without a code, as it does for any other account. */
+describe('an account with 2-step verification', () => {
+  /* a storage that wants a code unless this machine is one it trusts */
+  const guarded = (heard: URLSearchParams[]) =>
+    stubFetch((url) => {
+      const params = new URL(url).searchParams
+      heard.push(params)
+      if (params.get('device_id') === 'trusted' || params.get('otp_code') === '123456')
+        return jsonResponse({
+          success: true,
+          data: { sid: 'sid-2fa', ...(params.get('otp_code') ? { did: 'trusted' } : {}) }
+        })
+      return jsonResponse({
+        success: false,
+        error: { code: params.get('otp_code') ? 404 : 403, errors: { types: [{ type: 'otp' }] } }
+      })
+    })
+
+  it('is told apart from a wrong password, so the code can be asked for', async () => {
+    guarded([])
+    const refused = await dsmLogin(club).catch((e: unknown) => e)
+    expect(needsCode(refused)).toBe(true)
+  })
+
+  it('logs in with the code and has this machine trusted from then on', async () => {
+    const heard: URLSearchParams[] = []
+    guarded(heard)
+    await expect(dsmLogin({ ...club, otp: '123456' })).resolves.toEqual({
+      sid: 'sid-2fa',
+      deviceId: 'trusted'
+    })
+    expect(heard.at(-1)?.get('enable_device_token')).toBe('yes')
+  })
+
+  it('keeps the trust, and renews the session later with no code', async () => {
+    const heard: URLSearchParams[] = []
+    guarded(heard)
+    await loginWithSession(
+      { ...club, otp: '123456' },
+      { login: dsmLogin, validate: async () => false },
+      tmpDir
+    )
+    expect(loadNasSession(tmpDir)?.deviceId).toBe('trusted')
+
+    await expect(refreshStoredSession(loadNasSession(tmpDir)!, tmpDir)).resolves.toBe('sid-2fa')
+    expect(heard.at(-1)?.get('otp_code')).toBeNull()
+    expect(heard.at(-1)?.get('device_id')).toBe('trusted')
+  })
+
+  /* the first try has no code and is refused; the folders chosen before must survive it */
+  it('loses none of the chosen folders on the way', async () => {
+    saveNasSession(
+      {
+        ...{ hostname: club.host, username: club.user, sessionId: 'old' },
+        backupFolder: '/Backup'
+      },
+      tmpDir
+    )
+    guarded([])
+    const noValid = { login: dsmLogin, validate: async () => false }
+    await expect(loginWithSession(club, noValid, tmpDir)).rejects.toSatisfy(needsCode)
+    await loginWithSession({ ...club, otp: '123456' }, noValid, tmpDir)
+    expect(loadNasSession(tmpDir)?.backupFolder).toBe('/Backup')
   })
 })
 
