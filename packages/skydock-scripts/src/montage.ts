@@ -5,11 +5,18 @@ import { XMLBuilder, XMLParser, XMLValidator } from 'fast-xml-parser'
 import { z } from 'zod'
 import { toHostPath } from './hostPath'
 import { walkFiles } from './lib/fs'
+import { jsonText } from './lib/json'
+import { mediaSeconds } from './lib/media'
 
 /* `proxy` is the small copy of this same clip, cut the same way. When there is one the editor opens
    on it instead of transcoding the clip itself, which is the longest wait before an edit can start;
    it swaps back to `path` on its own to render. */
-const montageClipSchema = z.object({ path: z.string(), proxy: z.string().optional() })
+const montageClipSchema = z.object({
+  path: z.string(),
+  proxy: z.string().optional(),
+  /* how long it lasts, when known already; otherwise it is read off the file */
+  seconds: z.number().optional()
+})
 
 const montageOptionsSchema = z.object({
   groupDir: z.string(),
@@ -236,6 +243,57 @@ const inspectTemplate = (template: string) => {
   }
 }
 
+/* The frames per second the project runs at, off its profile — every position in the timeline is
+   counted in these. */
+const fpsOf = (mlt: XmlNode[]) => {
+  const profile = mlt.find((n) => tagOf(n) === 'profile')
+  const num = Number(profile ? attrsOf(profile)['@_frame_rate_num'] : NaN)
+  const den = Number(profile ? attrsOf(profile)['@_frame_rate_den'] : NaN)
+  return num > 0 && den > 0 ? num / den : 25
+}
+
+/* A time as a project writes it — a frame count, or hours:minutes:seconds.milliseconds — in frames */
+const framesOf = (time: string | undefined, fps: number) => {
+  if (!time) return 0
+  if (/^\d+$/.test(time)) return Number(time)
+  const [h = '0', m = '0', sec = '0'] = time.split(':')
+  return Math.round((Number(h) * 3600 + Number(m) * 60 + Number(sec)) * fps)
+}
+
+/* how many frames a track already holds, so what is added after it starts where it ends */
+const lengthOf = (playlist: XmlNode, fps: number) =>
+  childrenOf(playlist).reduce((sum, child) => {
+    const attrs = attrsOf(child)
+    if (tagOf(child) === 'blank') return sum + framesOf(attrs['@_length'], fps)
+    if (tagOf(child) === 'entry')
+      return sum + framesOf(attrs['@_out'], fps) - framesOf(attrs['@_in'], fps) + 1
+    return sum
+  }, 0)
+
+/* The timeline's tracks bottom to top, as kdenlive counts them when it names a clip in a group:
+   the black background it keeps underneath is not one of them. */
+const timelineTracks = (mlt: XmlNode[], sequence: XmlNode) =>
+  tracksOf(sequence).flatMap((track) => {
+    const producer = attrsOf(track)['@_producer']
+    const node = producer ? nodeById(mlt, 'tractor', producer) : undefined
+    return node ? [node] : []
+  })
+
+/* A1 — the audio track right under V1, where a clip's own sound goes, linked to its picture. None
+   when the track under V1 is not an audio one. */
+const findAudioUnderVideo = (mlt: XmlNode[], sequence: XmlNode, videoTrackId: string) => {
+  const tracks = timelineTracks(mlt, sequence)
+  const v1 = tracks.findIndex((t) => attrsOf(tracksOf(t)[0] ?? {})['@_producer'] === videoTrackId)
+  const under = v1 > 0 ? tracks[v1 - 1] : undefined
+  if (!under || !isAudioTrack(under)) return null
+  const playlist = attrsOf(tracksOf(under)[0] ?? {})['@_producer']
+  const node = playlist ? nodeById(mlt, 'playlist', playlist) : undefined
+  return node ? { playlist: node, position: v1 - 1, videoPosition: v1 } : null
+}
+
+/* kdenlive keeps its groups as a list of trees; a clip in one is named by track and first frame */
+const groupsSchema = jsonText.pipe(z.array(z.unknown()))
+
 const createMontageProject = (rawOptions: MontageOptions) => {
   const options = montageOptionsSchema.parse(rawOptions)
   const template = resolveTemplate(options)
@@ -303,48 +361,119 @@ const createMontageProject = (rawOptions: MontageOptions) => {
   let nextId = Math.max(0, ...usedIds) + 1
   const firstPlaylist = mlt.findIndex((n) => tagOf(n) === 'playlist')
 
+  /* Each clip goes on V1 with its own sound on A1 beneath it, the two linked, as kdenlive itself
+     leaves a clip whose audio has been restored: moved, cut or deleted together, the sound there to
+     be heard the moment A1 is. That needs to know where each clip starts, so how long each lasts;
+     a clip whose length cannot be read, or a template with no audio track under V1, puts the clips
+     on V1 alone, sound inside, as before. */
+  const fps = fpsOf(mlt)
+  const a1 = findAudioUnderVideo(mlt, sequence, videoTrackId)
+  const frames = options.clips.map((clip) => {
+    const seconds = clip.seconds ?? mediaSeconds(clip.proxy ?? clip.path)
+    return seconds === null ? null : Math.max(1, Math.floor(seconds * fps))
+  })
+  const linked = a1 !== null && frames.every((f) => f !== null)
+
+  /* the clip as the bin holds it, or as one track plays it — picture only, or sound only */
+  const chainOf = (
+    clip: MontageClip,
+    id: string,
+    kdenliveId: number,
+    plays?: 'picture' | 'sound'
+  ) => ({
+    chain: [
+      { property: [{ '#text': 'pause' }], ':@': { '@_name': 'eof' } },
+      /* MLT plays whatever `resource` names, so a proxied clip points there and keeps the clip
+         itself in `kdenlive:originalurl` — which is how the editor knows what to render from.
+         A bare `-` is how a project says this clip has no proxy. */
+      {
+        property: [{ '#text': toHost(clip.proxy ?? clip.path) }],
+        ':@': { '@_name': 'resource' }
+      },
+      {
+        property: [{ '#text': clip.proxy ? toHost(clip.proxy) : '-' }],
+        ':@': { '@_name': 'kdenlive:proxy' }
+      },
+      ...(clip.proxy
+        ? [
+            {
+              property: [{ '#text': toHost(clip.path) }],
+              ':@': { '@_name': 'kdenlive:originalurl' }
+            }
+          ]
+        : []),
+      { property: [{ '#text': 'avformat' }], ':@': { '@_name': 'mlt_service' } },
+      { property: [{ '#text': '1' }], ':@': { '@_name': 'seekable' } },
+      {
+        property: [{ '#text': encodeXml(path.basename(clip.path)) }],
+        ':@': { '@_name': 'kdenlive:clipname' }
+      },
+      { property: [{ '#text': '0' }], ':@': { '@_name': 'kdenlive:clip_type' } },
+      { property: [{ '#text': String(kdenliveId) }], ':@': { '@_name': 'kdenlive:id' } },
+      ...(plays
+        ? [
+            {
+              property: [{ '#text': plays === 'picture' ? '1' : '0' }],
+              ':@': { '@_name': 'set.test_audio' }
+            },
+            {
+              property: [{ '#text': plays === 'sound' ? '1' : '0' }],
+              ':@': { '@_name': 'set.test_image' }
+            }
+          ]
+        : [])
+    ],
+    ':@': { '@_id': id }
+  })
+  const entryOf = (producer: string, kdenliveId: number, length: number | null) => ({
+    entry: [{ property: [{ '#text': String(kdenliveId) }], ':@': { '@_name': 'kdenlive:id' } }],
+    ':@': {
+      '@_producer': producer,
+      ...(length === null ? {} : { '@_in': '0', '@_out': String(length - 1) })
+    }
+  })
+
+  const groups: unknown[] = []
+  let at = lengthOf(track, fps)
+  if (linked && a1) {
+    const gap = at - lengthOf(a1.playlist, fps)
+    if (gap > 0) childrenOf(a1.playlist).push({ blank: [], ':@': { '@_length': String(gap) } })
+  }
+  const chains: XmlNode[] = []
   options.clips.forEach((clip, index) => {
     const producerId = `chain_skydock_${index}`
     const kdenliveId = nextId++
-    mlt.splice(firstPlaylist + index, 0, {
-      chain: [
-        { property: [{ '#text': 'pause' }], ':@': { '@_name': 'eof' } },
-        /* MLT plays whatever `resource` names, so a proxied clip points there and keeps the clip
-           itself in `kdenlive:originalurl` — which is how the editor knows what to render from.
-           A bare `-` is how a project says this clip has no proxy. */
-        {
-          property: [{ '#text': toHost(clip.proxy ?? clip.path) }],
-          ':@': { '@_name': 'resource' }
-        },
-        {
-          property: [{ '#text': clip.proxy ? toHost(clip.proxy) : '-' }],
-          ':@': { '@_name': 'kdenlive:proxy' }
-        },
-        ...(clip.proxy
-          ? [
-              {
-                property: [{ '#text': toHost(clip.path) }],
-                ':@': { '@_name': 'kdenlive:originalurl' }
-              }
-            ]
-          : []),
-        { property: [{ '#text': 'avformat' }], ':@': { '@_name': 'mlt_service' } },
-        { property: [{ '#text': '1' }], ':@': { '@_name': 'seekable' } },
-        {
-          property: [{ '#text': encodeXml(path.basename(clip.path)) }],
-          ':@': { '@_name': 'kdenlive:clipname' }
-        },
-        { property: [{ '#text': '0' }], ':@': { '@_name': 'kdenlive:clip_type' } },
-        { property: [{ '#text': String(kdenliveId) }], ':@': { '@_name': 'kdenlive:id' } }
-      ],
-      ':@': { '@_id': producerId }
-    })
+    const length = frames[index] ?? null
+    chains.push(chainOf(clip, producerId, kdenliveId))
     childrenOf(bin).push({ entry: [], ':@': { '@_producer': producerId } })
-    childrenOf(track).push({
-      entry: [{ property: [{ '#text': String(kdenliveId) }], ':@': { '@_name': 'kdenlive:id' } }],
-      ':@': { '@_producer': producerId }
+    if (!linked || !a1 || length === null) {
+      childrenOf(track).push(entryOf(producerId, kdenliveId, null))
+      return
+    }
+    chains.push(chainOf(clip, `${producerId}_picture`, kdenliveId, 'picture'))
+    chains.push(chainOf(clip, `${producerId}_sound`, kdenliveId, 'sound'))
+    childrenOf(track).push(entryOf(`${producerId}_picture`, kdenliveId, length))
+    childrenOf(a1.playlist).push(entryOf(`${producerId}_sound`, kdenliveId, length))
+    groups.push({
+      children: [
+        { data: `${a1.position}:${at}`, leaf: 'clip', type: 'Leaf' },
+        { data: `${a1.videoPosition}:${at}`, leaf: 'clip', type: 'Leaf' }
+      ],
+      type: 'AVSplit'
     })
+    at += length
   })
+  mlt.splice(firstPlaylist, 0, ...chains)
+  if (groups.length > 0) {
+    const kept = groupsSchema.safeParse(
+      textOf(propOf(sequence, 'kdenlive:sequenceproperties.groups'))
+    )
+    setProp(
+      sequence,
+      'kdenlive:sequenceproperties.groups',
+      JSON.stringify([...(kept.success ? kept.data : []), ...groups], null, 4)
+    )
+  }
 
   /* a project of its own, so kdenlive never shares the template's cache */
   const uuid = `{${randomUUID()}}`

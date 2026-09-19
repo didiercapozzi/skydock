@@ -547,7 +547,11 @@ be sent again; the local file is untouched. Between those moments the board says
 ## Montage
 
 A processed tandem can be turned into an editing project. Its videos are laid on the template's first
-video track in the order shot, crops and turns already applied, each clip playing from its proxy with
+video track in the order shot, each with its own sound on the audio track right under it, the two
+linked so they move, cut and go together — nobody restores a clip's audio by hand. That track is heard
+or not as the template has it. A template with no audio track under its first video track, or a clip
+whose length cannot be read, gets its clips with their sound inside, on the video track alone. Crops and
+turns are already applied, each clip playing from its proxy with
 the real clip recorded as what the edit is of, so the editor opens ready to work and renders from the
 footage. The film's destination and format are filled in, so what is left is the edit and pressing
 render.

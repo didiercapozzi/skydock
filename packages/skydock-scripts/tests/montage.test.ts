@@ -176,6 +176,126 @@ describe('montage — which track the jump lands on', () => {
   })
 })
 
+/* A jump's clip is laid on V1 with its own sound on A1 beneath it, the two linked — as kdenlive
+   leaves a clip whose audio was restored — so nobody restores the audio clip by clip. */
+describe('montage — each clip with its sound', () => {
+  const timed = (templateXml: string | undefined, clips: [string, number][]) => {
+    const { outputDir, groupDir, templatePath } = setup(templateXml)
+    const result = createMontageProject({
+      groupDir,
+      outputDir,
+      baseName: 'luc_favre_20260802',
+      title: 'Luc Favre',
+      templatePath,
+      clips: clips.map(([c, seconds]) => ({ path: path.join(groupDir, 'videos', c), seconds }))
+    })
+    return fs.readFileSync(result.projectPath, 'utf-8')
+  }
+  const sequenceOf = (xml: string) => {
+    const doc = parsed(xml).mlt
+    const tractors = [doc.tractor].flat()
+    return tractors.find((t: { property?: unknown }) =>
+      [t.property ?? []].flat().some((p: { '@_name': string }) => p['@_name'] === 'kdenlive:uuid')
+    )
+  }
+  const groupsOf = (xml: string) => {
+    const prop = [sequenceOf(xml).property]
+      .flat()
+      .find((p: { '@_name': string }) => p['@_name'] === 'kdenlive:sequenceproperties.groups')
+    return JSON.parse(prop['#text'])
+  }
+  const chainProps = (xml: string, id: string) => {
+    const chain = [parsed(xml).mlt.chain].flat().find((c: { '@_id': string }) => c['@_id'] === id)
+    return Object.fromEntries(
+      [chain.property]
+        .flat()
+        .map((p: { '@_name': string; '#text': string }) => [p['@_name'], p['#text']])
+    )
+  }
+
+  it('lays each clip on V1 and its sound on A1 beneath it, starting together', () => {
+    const xml = timed(twoAudioOneMutedTemplate, [
+      ['a.mp4', 2],
+      ['b.mp4', 3]
+    ])
+    expect(entriesOf(xml, 'playlist6')).toEqual([
+      'chain_skydock_0_picture',
+      'chain_skydock_1_picture'
+    ])
+    expect(entriesOf(xml, 'playlist4')).toEqual(['chain_skydock_0_sound', 'chain_skydock_1_sound'])
+  })
+
+  it('plays the picture alone on V1 and the sound alone on A1', () => {
+    const xml = timed(twoAudioOneMutedTemplate, [['a.mp4', 2]])
+    /* read back as numbers, the way the parser reads any value */
+    expect(chainProps(xml, 'chain_skydock_0_picture')).toMatchObject({
+      'set.test_audio': 1,
+      'set.test_image': 0
+    })
+    expect(chainProps(xml, 'chain_skydock_0_sound')).toMatchObject({
+      'set.test_audio': 0,
+      'set.test_image': 1
+    })
+  })
+
+  it('links each picture with its sound, so they move together', () => {
+    /* no frame rate in this template: 25 frames a second, so 2 s is 50 frames */
+    const xml = timed(twoAudioOneMutedTemplate, [
+      ['a.mp4', 2],
+      ['b.mp4', 3]
+    ])
+    expect(groupsOf(xml)).toEqual([
+      {
+        type: 'AVSplit',
+        children: [
+          { data: '2:0', leaf: 'clip', type: 'Leaf' },
+          { data: '3:0', leaf: 'clip', type: 'Leaf' }
+        ]
+      },
+      {
+        type: 'AVSplit',
+        children: [
+          { data: '2:50', leaf: 'clip', type: 'Leaf' },
+          { data: '3:50', leaf: 'clip', type: 'Leaf' }
+        ]
+      }
+    ])
+  })
+
+  /* the committed template opens V1 on a five-second title at 60 frames a second, and keeps a free,
+     unmuted audio track under A1 */
+  it('starts after what V1 already holds, with the sound held back as far', () => {
+    const xml = timed(undefined, [['a.mp4', 2]])
+    expect(groupsOf(xml)).toEqual([
+      {
+        type: 'AVSplit',
+        children: [
+          { data: '2:300', leaf: 'clip', type: 'Leaf' },
+          { data: '3:300', leaf: 'clip', type: 'Leaf' }
+        ]
+      }
+    ])
+    expect(xml).toMatch(/<playlist id="playlist2">[\s\S]*?<blank length="300"\/>/)
+  })
+
+  it('keeps V1 alone, sound inside, when a clip’s length cannot be read', () => {
+    const { xml } = build(twoAudioOneMutedTemplate, ['a.mp4'])
+    expect(entriesOf(xml, 'playlist6')).toEqual(['chain_skydock_0'])
+    expect(entriesOf(xml, 'playlist4')).toEqual([])
+  })
+})
+
+describe('montage — the committed template', () => {
+  /* an audio track of its own under A1, heard, empty — for whatever the edit needs besides the jump */
+  it('has a free audio track under A1 that is not muted', () => {
+    const xml = fs.readFileSync(REPO_TEMPLATE, 'utf-8')
+    const order = [...xml.matchAll(/<track producer="(tractor\d+)"\/>/g)].map((m) => m[1])
+    expect(order.slice(0, 3)).toEqual(['tractor0', 'tractor6', 'tractor1'])
+    expect(xml).toMatch(/<tractor id="tractor6"[\s\S]*?<track hide="video" producer="playlist8"\/>/)
+    expect(entriesOf(xml, 'playlist8')).toEqual([])
+  })
+})
+
 describe('montage — where the film goes', () => {
   it('records the render destination and format kdenlive reads', () => {
     const { xml, groupDir } = build(twoAudioOneMutedTemplate)

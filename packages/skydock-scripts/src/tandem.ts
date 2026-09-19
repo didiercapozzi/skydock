@@ -1,10 +1,9 @@
-import * as childProcess from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { toHostPath } from './hostPath'
 import { getGroupProcessedDir } from './process'
 import type { Manifest, ManifestGroup } from './types'
-import { hasCommand } from './utils'
+import { mediaSeconds } from './lib/media'
 import { hasCompletePassenger } from './workspace'
 
 /* A tandem is one jump delivered to one person: a passenger's name is what gives it a folder of its
@@ -35,19 +34,8 @@ const filmSeconds = (target: string, size: number, mtime: number) => {
   const key = `${target}\0${size}\0${mtime}`
   const known = durations.get(key)
   if (known !== undefined) return known
-  let seconds: number | null = null
-  if (hasCommand('ffprobe')) {
-    try {
-      const out = childProcess.execSync(
-        `ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "${target.replace(/(["$`\\])/g, '\\$1')}"`,
-        { encoding: 'utf-8' }
-      )
-      const parsed = Number.parseFloat(out.trim())
-      seconds = Number.isFinite(parsed) ? Math.round(parsed) : null
-    } catch {
-      seconds = null
-    }
-  }
+  const exact = mediaSeconds(target)
+  const seconds = exact === null ? null : Math.round(exact)
   durations.set(key, seconds)
   return seconds
 }
