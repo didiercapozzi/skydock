@@ -1,4 +1,4 @@
-import { fileStatus, passengerOf } from '@skydock/scripts'
+import { fileStatus, hasCompletePassenger, passengerOf } from '@skydock/scripts'
 import type { StatusContext, TandemEntry, TandemProgress } from '@skydock/scripts'
 import { useState } from 'react'
 import { TANDEMS } from '../helpers/jumps'
@@ -233,7 +233,9 @@ const PlacesTree = ({
      folder, so listing them twice would promise two folders that are really one. */
   const passengers = [
     ...new Set(
-      groups.filter((g) => g.destination === TANDEMS && passengerOf(g)).map((g) => passengerOf(g))
+      groups
+        .filter((g) => g.destination === TANDEMS && hasCompletePassenger(g.passenger))
+        .map((g) => passengerOf(g))
     )
   ].sort((a, b) => a.localeCompare(b))
   const unnamed = groupsIn({ kind: 'unnamed' }, groups).length

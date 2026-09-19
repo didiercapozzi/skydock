@@ -36,7 +36,8 @@ Everything below follows from these.
   protects that.
 - **Processing again is the normal way of working.** Process, look, correct a time or a name, process
   again. The second pass writes over the first and leaves nothing aside. In a passenger's folder it
-  removes any copy whose name is no longer produced; in a dropzone's folder, shared by every day, a copy
+  removes any copy none of the passenger's jumps produces any more — processing one of their jumps
+  never touches another's copies; in a dropzone's folder, shared by every day, a copy
   under a name no longer produced stays on the disk but is never handed over.
 - **A file's state is a fact that can be checked, not a flag to remember.** Every claim SkyDock makes
   about a file — processed, on the storage — is backed by evidence it can look at again.
@@ -90,9 +91,9 @@ the card. Nothing is deleted from a camera while a camera is being copied or any
 processed.
 
 **2. Scan.** SkyDock reads each file's capture time and groups files shot close together into jumps.
-A scan can be asked for at any time; one run after more cameras were copied off picks up the new files,
-and a scan that finds nothing new, moved or gone changes nothing. The grouping is a guess, and the board
-exists to correct it.
+A scan can be asked for at any time; one run after more cameras were copied off picks up the new files
+and leaves every jump already on the board as it is. The grouping is a guess, and the board exists to
+correct it.
 
 A scan also makes a **proxy** of every clip: a small copy, the same length at the same speed, which the
 board plays instead of the full clip and which the editor later opens on. Proxies are made in the
@@ -103,8 +104,9 @@ them once it runs again and a board connects, rather than waiting for the next s
 half written is cleared first.
 
 Proxies are made on the graphics card when the machine has one that works, and on the processor
-otherwise. A clip whose proxy cannot be made is shown as having none and is tried again on the next
-pass; the reason goes to the machine's log. It can still be sorted, processed and uploaded.
+otherwise. A clip whose proxy cannot be made says so where it is shown, with the reason, and is tried
+again on the next pass; it is not counted among the clips still waiting for one. It can still be sorted,
+processed and uploaded.
 
 **3. Sort.** On the board, each jump is filed under a dropzone or under Tandems with a passenger's name.
 
@@ -128,8 +130,10 @@ encodes video. Rendering the film needs the video editor, which SkyDock opens bu
 
 A jump is a run of files with no long pause in it. The pause is measured from each file to the next,
 so a jump can last hours as long as filming never stops for that long. The first pause of the gap or
-more ends the jump. The gap is **fifteen minutes**, and a scan that finds new, moved or missing files
-makes the jumps again by it over everything, including jumps that were split or merged by hand.
+more ends the jump. The gap is **fifteen minutes**. The first scan groups everything by it; after that,
+a scan groups only the files it had not seen, among themselves. A run of new files within the gap of a
+jump still in Fresh files joins that jump, so a card copied off in two goes ends up one jump; a jump
+already filed never grows by itself. Every jump already there keeps its files, however it was made.
 
 - A file with no neighbours is not a jump of one. It stays **loose**: visible, sortable and processable
   on its own.
@@ -185,9 +189,11 @@ makes the jumps again by it over everything, including jumps that were split or 
   deleted, nor one on the storage only. A named tandem is deleted as a tandem instead — at any step,
   and forgetting what was decided about it (Taking a tandem back). Regrouping puts loose files back
   into jumps.
-- A scan keeps the work already done: where a file is filed, its crop and turn, and what has been made
-  from it. Only what the disk measures — size, time, contents — is read fresh. A file whose contents
-  changed invalidates what was made from it; a file that merely sat there keeps everything.
+- A scan keeps the work already done: which jump a file is in, where it is filed, its crop and turn,
+  the time it was given, corrected or not, and what has been made from it and sent — a jump's copies,
+  project, upload and freeing. Only what the disk measures — size and contents — is read fresh. A file
+  whose contents changed is another file: it takes the time its camera gave it and invalidates what was
+  made from it; a file that merely sat there keeps everything.
 
 ## Times and dates
 
@@ -307,8 +313,7 @@ passenger's jump is named after the passenger. Any other jump can be given a nam
 clicking its name in its panel, the way its start is set by clicking the start; emptying the name
 puts back its place among the jumps. A name is only what the
 board calls the jump — no file is named after it, so renaming never makes anything stale — and it is
-kept through a scan; when a scan finds a named jump was really two, the name stays with the half that
-is still that jump. Arranged by jump, every jump is a card, side by side,
+kept through a scan. Arranged by jump, every jump is a card, side by side,
 newest first, so the numbers count down to Jump 1, the first jump of all: its name, its date and start time, how many
 videos and photos it holds, how far it has got, and a few frames off it, so jumps can be told apart at a
 glance — the date in full, year and all, and the time to the minute. The loose files get one card of
@@ -348,8 +353,8 @@ kind of place remembers its own choice while the board is open. Files are always
 were shot.
 
 **Finding.** A box in the pane's heading narrows what is drawn, matching either name a file has. It
-changes only what is shown; a jump with nothing matching drops out of view, and the menu's counts still
-count everything.
+changes only what is shown; a jump with nothing matching drops out of view, the jumps left keep their
+numbers, and the menu's counts still count everything.
 
 **Selecting.** Looking at a file and picking it are different things, so nothing is picked by accident
 on the way to looking. A click only previews: the file shows in the inspector and is marked as the one
@@ -378,7 +383,8 @@ in one step. Only a complete name saves, and only when confirmed; Escape or Canc
 name that is already a passenger's, however capitalised, says it will join their tandem and saves the
 name exactly as already written. The place the jump went lights up briefly in the menu.
 
-**Tandems without a name** stay visible and say how many are waiting for one.
+**Tandems without a name** stay visible and say how many are waiting for one. Half a name is not a name
+yet: such a tandem waits with them, not among the passengers.
 
 **Adding files from the computer.** A video or a photo from anywhere on the computer can be dropped
 onto the board: onto a passenger to join their tandem, onto a dropzone to be filed there loose, onto

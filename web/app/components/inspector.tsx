@@ -129,6 +129,8 @@ const TandemMaker = ({
       passengers={passengers}
       framed={false}
       onSave={onSave}
+      /* Cancel or Escape puts the button back and saves nothing (RULES, The board) */
+      onCancel={() => setMaking(false)}
     />
   ) : (
     <span>
@@ -397,10 +399,16 @@ const FilePanel = ({
           ['Size', formatSize(file.size)],
           ['In', jumpLabel ?? 'no jump — a loose file'],
           ...(video && proxy
-            ? ([['Proxy', proxy.state === 'none' ? 'not made yet' : 'ready']] satisfies [
-                string,
-                string
-              ][])
+            ? ([
+                [
+                  'Proxy',
+                  proxy.state !== 'none'
+                    ? 'ready'
+                    : proxy.reason
+                      ? `could not be made — ${proxy.reason}`
+                      : 'not made yet'
+                ]
+              ] satisfies [string, string][])
             : []),
           [
             'Status',

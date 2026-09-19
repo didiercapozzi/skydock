@@ -169,14 +169,18 @@ const CopyFlag = () => (
   </span>
 )
 
+/* a proxy that could not be made says so, with why — told apart from one that is still to come */
+const proxyFailedTitle = (reason: string) =>
+  `The proxy could not be made: ${reason}. It is tried again on the next pass; meanwhile the clip plays as it is.`
+
 const ProxyFlag = ({ fact }: { fact?: ProxyFact }) => {
   if (!fact) return null
   const { label, title, className } = PROXY_FLAG[fact.state]
   return (
     <span
-      title={title}
+      title={fact.reason ? proxyFailedTitle(fact.reason) : title}
       className={`flex-none rounded px-1.5 font-mono text-[10px] leading-4 font-semibold whitespace-nowrap ${className}`}>
-      {label}
+      {fact.reason ? 'proxy failed' : label}
     </span>
   )
 }
@@ -502,7 +506,7 @@ const Tile = ({
       onPick(file)
     }}
     title={`${file.filename} · ${formatTime(file.mtime)} · ${formatSize(file.size)} · ${status}${
-      proxy?.state === 'none' ? ' · no proxy yet' : ''
+      proxy?.state === 'none' ? (proxy.reason ? ' · proxy failed' : ' · no proxy yet') : ''
     }${isWholeFrame(file.frame) ? '' : ' · frame cropped'}${file.rotation ? ` · turned ${file.rotation}°` : ''}`}
     className={`group relative aspect-[4/3] max-w-full cursor-pointer overflow-hidden rounded-[5px] border-2 bg-line-2 p-0 ${
       picked ? 'border-accent' : previewed ? 'border-ink-3' : 'border-transparent'
@@ -549,7 +553,7 @@ const Tile = ({
         a grid is where hundreds of stills are culled, so it stays as quiet as it can */}
     {proxy?.state === 'none' && (
       <span
-        title={PROXY_FLAG.none.title}
+        title={proxy.reason ? proxyFailedTitle(proxy.reason) : PROXY_FLAG.none.title}
         className='pointer-events-none absolute bottom-1 left-1 h-2 w-2 rounded-full border border-dashed border-white bg-local shadow-[0_0_0_1.5px_rgba(0,0,0,0.45)]'
       />
     )}

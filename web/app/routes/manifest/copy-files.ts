@@ -19,10 +19,14 @@ const copyFilesIntent: Intent = ({
     return refuse('Pick files and a jump to copy them into.')
   if (frozen.has(data.targetGroupId)) return refuseFrozen()
   try {
-    const { copied, passedOver } = copyFiles(manifest, ids, data.targetGroupId)
+    const { copied, passedOver, freed } = copyFiles(manifest, ids, data.targetGroupId)
     if (copied === 0)
       return refuse(
-        passedOver > 0 ? 'That jump already holds those files.' : 'Those files are no longer here.'
+        passedOver > 0
+          ? 'That jump already holds those files.'
+          : freed > 0
+            ? 'Freed from this machine — it is on the storage only, with no file here to copy.'
+            : 'Those files are no longer here.'
       )
     saveManifest(manifestPath, manifest)
     return { ...boardAnswer(manifest), copied: { files: copied, passedOver } }

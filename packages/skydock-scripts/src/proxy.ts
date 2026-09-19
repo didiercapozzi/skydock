@@ -322,12 +322,14 @@ const ensureProxies = async (
     const live = following('proxy', file.id)
     const built = await buildProxy(file.path, proxyPath, shape, live.at)
     if (built.ok) {
+      proxyFailures().delete(file.path)
       file.proxy = proxyPath
       report.built++
       onBuilt?.()
       live.done(true, { path: file.path, fact: { state: 'ready', play: proxyPath } })
     } else {
       delete file.proxy
+      proxyFailures().set(file.path, built.reason)
       report.failed.push(file.filename)
       report.reason ??= built.reason
       live.done(false)
@@ -406,6 +408,15 @@ const resumeProxies = (outputDir?: string) => {
    `own` is a clip already smaller than a proxy would be. It is finished, not pending: there is
    nothing left to make, which is a different thing from having nothing yet. */
 
+/* Why each clip's proxy could not be made, by its path, while the server runs — so the board names
+   the failure with its reason rather than showing it as still to come. A pass that makes it clears
+   it; every pass tries again. */
+declare global {
+  var skydockProxyFailures: Map<string, string> | undefined
+}
+
+const proxyFailures = () => (globalThis.skydockProxyFailures ??= new Map())
+
 const statProxies = (manifest: Manifest, outputDir?: string) => {
   const facts: Record<string, ProxyFact> = {}
   for (const file of manifest.files) {
@@ -414,7 +425,10 @@ const statProxies = (manifest: Manifest, outputDir?: string) => {
     if (file.proxy === file.path) facts[file.path] = { state: 'own', play: file.path }
     else if (proxyPath && fs.existsSync(proxyPath))
       facts[file.path] = { state: 'ready', play: proxyPath }
-    else facts[file.path] = { state: 'none', play: file.path }
+    else {
+      const reason = proxyFailures().get(file.path)
+      facts[file.path] = { state: 'none', play: file.path, ...(reason ? { reason } : {}) }
+    }
   }
   return facts
 }

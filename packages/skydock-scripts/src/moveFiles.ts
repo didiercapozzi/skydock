@@ -133,8 +133,14 @@ const copyFiles = (manifest: Manifest, ids: Set<string>, targetGroupId: string) 
     if (f.id && ids.has(f.id)) asHeld.set(f.id, f)
 
   let copied = 0
+  /* one freed from this machine has no file here to copy */
+  let freed = 0
   for (const source of asHeld.values()) {
-    if (source.freed || held.has(source.path)) continue
+    if (source.freed) {
+      freed++
+      continue
+    }
+    if (held.has(source.path)) continue
     const original = source.copyOf ?? source.id!
     let n = 1
     while (taken.has(`${original}~${n}`)) n++
@@ -151,7 +157,7 @@ const copyFiles = (manifest: Manifest, ids: Set<string>, targetGroupId: string) 
     target.files.sort((a, b) => a.mtime - b.mtime)
     target.processed = undefined
   }
-  return { copied, passedOver: asHeld.size - copied }
+  return { copied, passedOver: asHeld.size - copied - freed, freed }
 }
 
 /* A jump that should not exist goes, and its files stay: loose in Unsorted, each on its own day,

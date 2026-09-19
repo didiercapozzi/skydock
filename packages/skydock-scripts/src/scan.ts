@@ -10,7 +10,7 @@ import {
 import { buildExifMap } from './lib/exif'
 import { loadManifest, saveManifest } from './manifest'
 import { computeFileId } from './fileId'
-import { reclusterGroups } from './clustering'
+import { groupNewFiles, reclusterGroups } from './clustering'
 import { buildMissingProxies } from './proxy'
 import type { ScanResult } from './boardAnswer'
 import type { Manifest, ManifestFile, ManifestGroup } from './types'
@@ -121,14 +121,20 @@ const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => 
   let moved = 0
   /* Keep what the registry knows and let the disk win on what the disk measures. The bare disk
      entry knows nothing of where a file is filed or what was made from it, so taking it alone would
-     un-sort every loose file whenever one file came or went. A file whose bytes or time really did
-     change invalidates its own records through the new size and time. */
+     un-sort every loose file whenever one file came or went. A file whose contents are the same keeps
+     the time it was given, corrected or not; one whose contents changed is another file, with the
+     time its camera gave it, and invalidates what was made from it through its new size and time. */
+  const kept = (f: ManifestFile, disk: ManifestFile) => ({
+    ...f,
+    ...disk,
+    ...(disk.id === f.id ? { mtime: f.mtime } : {})
+  })
   for (const f of existing.files) {
     /* a copy is looked at once its original has been, below */
     if (f.copyOf) continue
     const disk = diskByPath.get(f.path)
     if (disk) {
-      keptFiles.push({ ...f, ...disk })
+      keptFiles.push(kept(f, disk))
       continue
     }
     /* freed on purpose once the storage held it: not being on disk is the point, not a loss */
@@ -143,7 +149,7 @@ const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => 
     const movedDisk = freshPath ? diskByPath.get(freshPath) : undefined
     if (freshPath && movedDisk) {
       claimedDiskPaths.add(freshPath)
-      keptFiles.push({ ...f, ...movedDisk })
+      keptFiles.push(kept(f, movedDisk))
       moved++
       continue
     }
@@ -193,7 +199,7 @@ const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => 
     groups: keptGroups
   }
 
-  reclusterGroups(merged)
+  groupNewFiles(merged, addedFiles)
 
   return { manifest: merged, added: addedFiles.length, removed, moved }
 }

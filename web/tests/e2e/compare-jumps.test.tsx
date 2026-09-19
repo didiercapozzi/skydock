@@ -143,6 +143,17 @@ describe('jumps as cards', () => {
       'Jump 1, 1 August 2026 '
     ])
   })
+
+  /* a jump is named by its place among all the jumps, so hiding some leaves its number alone */
+  test('keep their numbers while a search hides the others', async () => {
+    const Stub = createRoutesStub([{ path: '/', Component: Board, loader: () => days }])
+    await render(createElement(Stub, { initialEntries: ['/'] }))
+
+    await userEvent.fill(page.getByRole('textbox', { name: 'Find a file' }), 'early2')
+
+    await expect.element(card(/^Jump 3, /)).toBeInTheDocument()
+    await expect.element(card(/^Jump 1, /)).not.toBeInTheDocument()
+  })
 })
 
 /* Fresh files can be put back by as much as is wanted: the times alone, or everything as just

@@ -339,7 +339,9 @@ const writeGroup = async (
   await updateMetadata(written)
   if (!flat) {
     const names = written.map((entry) => path.basename(entry))
-    pruneStaleMedia(dir, new Set(names))
+    /* A passenger's folder can hold more than this jump: their other jumps share it. What goes is a
+       copy nobody claims — neither written now, nor one of those other jumps' own. */
+    pruneStaleMedia(dir, usedNames)
     /* a cut proxy is of the copy it is named after, so the same names decide both */
     pruneTo(
       getCutProxyDir(outputDir, group.id),
@@ -487,6 +489,14 @@ const runProcess = async (options?: ProcessOptions) => {
   for (const file of [...manifest.files, ...manifest.groups.flatMap((g) => g.files)])
     if (file.freed && file.processed)
       poolFor(path.dirname(file.processed.path)).add(path.basename(file.processed.path))
+  /* A passenger's other jumps, not processed now, keep their copies in the folder this run writes
+     to: their names stay taken and their files stay put. */
+  const inRun = new Set(groups.map((g) => g.id))
+  for (const group of manifest.groups) {
+    if (inRun.has(group.id) || isFlatGroup(group)) continue
+    const pool = poolFor(getGroupProcessedDir(outputDir, group).dir)
+    for (const file of group.files) if (file.processed) pool.add(path.basename(file.processed.path))
+  }
 
   /* keyed by the source's identity — a copy shares its original's path, and both may be written in
      one pass — holding the file as it was COPIED — a grouped file carries the group

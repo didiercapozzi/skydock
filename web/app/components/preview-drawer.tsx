@@ -374,9 +374,11 @@ const PreviewDrawer = ({
                   <span
                     role='status'
                     className='absolute inset-0 grid place-items-center rounded-md bg-[#0b0f13] p-4 text-center text-[12.5px] text-white/80'>
-                    {proxy?.state === 'none'
-                      ? 'The browser cannot show this clip’s picture — it is in a format only the editor reads, such as 4K HEVC. Its proxy is being made, and the preview plays it as soon as it is ready.'
-                      : 'The browser cannot show this clip’s picture. It is copied, processed and uploaded all the same.'}
+                    {proxy?.state === 'none' && proxy.reason
+                      ? `The browser cannot show this clip’s picture, and its proxy could not be made: ${proxy.reason}. It is copied, processed and uploaded all the same.`
+                      : proxy?.state === 'none'
+                        ? 'The browser cannot show this clip’s picture — it is in a format only the editor reads, such as 4K HEVC. Its proxy is being made, and the preview plays it as soon as it is ready.'
+                        : 'The browser cannot show this clip’s picture. It is copied, processed and uploaded all the same.'}
                   </span>
                 )}
                 {video && framing && (

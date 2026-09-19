@@ -42,11 +42,14 @@ const jumpLabels = (groups: ManifestGroup[]) =>
 const oldestFirst = (a: ManifestGroup, b: ManifestGroup) =>
   dayOf(a).localeCompare(dayOf(b)) || startOf(a) - startOf(b)
 
+/* `numbered` is every jump of the place, whatever a search leaves on screen: a jump keeps its number
+   while others are hidden, so its card and its panel always agree. */
 const sectionsOf = (
   place: Place,
   grouping: Grouping,
   groups: ManifestGroup[],
-  loose: ManifestFile[]
+  loose: ManifestFile[],
+  numbered: ManifestGroup[] = groups
 ): Section[] => {
   const shownGroups = groups.filter((g) => g.files.length > 0 || g.freed)
   const all = [...shownGroups.flatMap((g) => g.files), ...loose]
@@ -62,7 +65,7 @@ const sectionsOf = (
         ...loose.filter((f) => dayOfFile(f) === day)
       ]
     }))
-  const labels = jumpLabels(shownGroups)
+  const labels = jumpLabels(numbered.filter((g) => g.files.length > 0 || g.freed))
   const withLoose = familyOf(place) === 'sort'
   /* by jump, the newest jump first: the numbers count down from the latest to Jump 1 */
   return days.flatMap((day): Section[] => {

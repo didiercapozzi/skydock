@@ -361,7 +361,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       : groupingOptions.includes(groupingBy[family])
         ? groupingBy[family]
         : (groupingOptions[0] ?? 'none')
-  const sections = sectionsOf(place, grouping, shownGroups, shownLoose)
+  const sections = sectionsOf(place, grouping, shownGroups, shownLoose, placeGroups)
   /* By jump, the jumps are cards and one is open: the one last chosen while it is still here, or
      else the first. Only its files are on screen. */
   const cardSections = cardsOf(sections)

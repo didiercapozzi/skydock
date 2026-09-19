@@ -152,6 +152,37 @@ describe('where a tandem lands', () => {
     expect(delivered()).toEqual([path.join('Yverdon', 'yverdon_20260808_090909.mp4')])
   })
 
+  /* one passenger, one folder: processing one of their jumps leaves the other's copies alone */
+  it('keeps a passenger\u2019s other jump in their folder when one jump is processed on its own', async () => {
+    const luc = { firstname: 'Luc', lastname: 'Favre' }
+    const { manifestPath } = write({
+      id: 'g1',
+      destination: 'Tandems',
+      passenger: luc,
+      files: [clip('GX010001.MP4', 0)]
+    })
+    const manifest = loadManifest(manifestPath)!
+    const later = clip('GX010002.MP4', 3600)
+    manifest.files = [...manifest.files, later]
+    manifest.groups.push({
+      id: 'g2',
+      label: 'jump',
+      day: DAY,
+      destination: 'Tandems',
+      passenger: luc,
+      files: [later]
+    })
+    saveManifest(manifestPath, manifest)
+
+    await processJumps({ manifestPath, outputDir, groupIds: ['g1'] })
+    await processJumps({ manifestPath, outputDir, groupIds: ['g2'] })
+
+    expect(delivered()).toEqual([
+      path.join('Tandems', 'Luc Favre', 'videos', 'luc_favre_20260808_090909.mp4'),
+      path.join('Tandems', 'Luc Favre', 'videos', 'luc_favre_20260808_100909.mp4')
+    ])
+  })
+
   /* a file named after the Tandems folder is what a half-named tandem filed as a place would be called */
   it('never writes a file named after the Tandems folder itself', async () => {
     const { manifestPath } = write({

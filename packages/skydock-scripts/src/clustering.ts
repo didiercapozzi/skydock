@@ -76,10 +76,9 @@ const idMinter = (taken: Iterable<string>) => {
   }
 }
 
-/* Rebuilds every jump from the registry. What was decided about a jump — its destination, its
-   passenger, whether it has been processed — follows the jump most of the new jump's files came
-   from, so a rescan does not throw that work away. The share link deliberately does not follow:
-   the jump's files changed, so the folder already published is stale (RULES, Network storage). */
+/* Builds every jump from the registry by the gap rule, for a board that has none yet. What was
+   decided about a jump — its destination, its passenger, whether it has been processed — follows
+   the jump most of the new jump's files came from. */
 const reclusterGroups = (manifest: Manifest) => {
   const previous = new Map<string, ManifestGroup>()
   for (const group of manifest.groups)
@@ -131,6 +130,30 @@ const reclusterGroups = (manifest: Manifest) => {
     else if (copy.id && !copy.destination) homeless.add(copy.id)
   }
   if (homeless.size > 0) manifest.files = manifest.files.filter((f) => !f.id || !homeless.has(f.id))
+}
+
+/* What a scan found that the board did not have is grouped on its own, by the gap rule, and the
+   jumps already there are left exactly as they are — sorted, merged, split, re-timed, processed,
+   uploaded (RULES, Jumps). A run of new files within the gap of a jump still in Fresh files joins
+   it, so a card copied off in two goes ends up one jump; a new file with no neighbours stays loose. */
+const groupNewFiles = (manifest: Manifest, added: ManifestFile[]) => {
+  const unfiled = manifest.groups.filter((g) => !g.destination)
+  for (const batch of splitByGap(added)) {
+    const first = batch[0]!.mtime
+    const last = batch[batch.length - 1]!.mtime
+    const near = unfiled.find((g) => {
+      const own = g.files.filter((f) => !f.copyOf).map((f) => f.mtime)
+      return (
+        own.length > 0 &&
+        first - Math.max(...own) < GROUP_GAP_SECONDS &&
+        Math.min(...own) - last < GROUP_GAP_SECONDS
+      )
+    })
+    if (near) {
+      near.files = sortFilesByMtime([...near.files, ...batch])
+      near.day = dayOfFiles(near.files)
+    } else if (batch.length > 1) groupFromFiles(manifest, batch)
+  }
 }
 
 /* A jump made on the spot out of files dropped somewhere — the only way loose files can become a
@@ -218,6 +241,7 @@ export {
   dayOfFiles,
   freshIds,
   groupFromFiles,
+  groupNewFiles,
   offGap,
   reclusterGroups,
   regroupLooseFiles,

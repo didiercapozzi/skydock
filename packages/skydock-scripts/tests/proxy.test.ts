@@ -241,6 +241,32 @@ describe('proxies', () => {
     expect(manifest.files[0].proxy).toBeUndefined()
   })
 
+  /* the board names a clip whose proxy could not be made, and why, until a later pass makes it */
+  it('tells the board a clip whose proxy failed, with the reason, until it is made', async () => {
+    globalThis.skydockProxyFailures = undefined
+    execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
+      const line = String(cmd)
+      if (line.startsWith('command -v')) return Buffer.from('/usr/bin/x')
+      if (line.startsWith('ffprobe')) return opts?.encoding ? '3840\n' : Buffer.from('3840\n')
+      const failure = new Error('ffmpeg exited with code 1') as Error & { stderr: Buffer }
+      failure.stderr = Buffer.from('No space left on device\n')
+      throw failure
+    })
+    const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
+    const manifest = manifestOf([fileEntry(src, 'abc123')])
+
+    await ensureProxies(manifest, outputDir)
+    expect(statProxies(manifest, outputDir)[src]).toMatchObject({
+      state: 'none',
+      reason: 'No space left on device'
+    })
+
+    execSyncMock.mockImplementation(toolsPresent())
+    await ensureProxies(manifest, outputDir)
+    expect(statProxies(manifest, outputDir)[src]).toMatchObject({ state: 'ready' })
+    expect(statProxies(manifest, outputDir)[src]?.reason).toBeUndefined()
+  })
+
   /* a half-written proxy that looks finished would be skipped forever after */
   it('leaves nothing behind when a build fails', async () => {
     execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {

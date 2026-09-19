@@ -1,4 +1,4 @@
-import { passengerOf } from '@skydock/scripts'
+import { hasCompletePassenger, passengerOf } from '@skydock/scripts'
 import type { ManifestFile, ManifestGroup } from '../components/types'
 import { TANDEMS } from './jumps'
 
@@ -53,7 +53,8 @@ const groupsIn = (place: Place, groups: ManifestGroup[]) => {
     case 'tandems':
       return groups.filter((g) => g.destination === TANDEMS)
     case 'unnamed':
-      return groups.filter((g) => g.destination === TANDEMS && !passengerOf(g))
+      /* half a name is no passenger yet: it waits here with the tandems that have none */
+      return groups.filter((g) => g.destination === TANDEMS && !hasCompletePassenger(g.passenger))
     case 'pax':
       return groups.filter((g) => g.destination === TANDEMS && passengerOf(g) === place.name)
     case 'storage':

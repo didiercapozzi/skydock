@@ -92,6 +92,115 @@ describe('a scan keeps the work already done', () => {
     expect(kept.destination).toBe('Yverdon')
   })
 
+  /* A scan that finds new files leaves every jump already on the board as it is (RULES, Jumps): the
+     new files are grouped among themselves, and join only a jump still being sorted. */
+  describe('the jumps already on the board', () => {
+    const origDir = () => path.join(outputDir, 'original_files')
+    const manifestPath = () => path.join(outputDir, 'manifest.json')
+    let fill = 0
+    const shoot = (name: string, minutes: number) => {
+      const target = writeTempFile(origDir(), name, Buffer.alloc(512, ++fill))
+      const when = new Date(2026, 7, 1, 10, minutes, 0)
+      fs.utimesSync(target, when, when)
+    }
+    const jumpOf = (name: string) =>
+      loadManifest(manifestPath())!.groups.find((g) => g.files.some((f) => f.filename === name))
+
+    /* two jumps two hours apart, read in once */
+    const twoJumps = async () => {
+      shoot('A1.MP4', 0)
+      shoot('A2.MP4', 1)
+      shoot('B1.MP4', 120)
+      shoot('B2.MP4', 121)
+      await scanMedia({ outputDir })
+      return loadManifest(manifestPath())!
+    }
+
+    it('keeps a jump merged by hand, and a time corrected by hand, when new files are found', async () => {
+      const manifest = await twoJumps()
+      const [a, b] = manifest.groups
+      a!.files = [...a!.files, ...b!.files]
+      manifest.groups = [a!]
+      const corrected = new Map(a!.files.map((f) => [f.id, f.mtime + 3600]))
+      for (const f of manifest.files) f.mtime = corrected.get(f.id) ?? f.mtime
+      saveManifest(manifestPath(), manifest)
+
+      shoot('C1.MP4', 400)
+      shoot('C2.MP4', 401)
+      await scanMedia({ outputDir })
+
+      const after = loadManifest(manifestPath())!
+      expect(
+        jumpOf('A1.MP4')
+          ?.files.map((f) => f.filename)
+          .sort()
+      ).toEqual(['A1.MP4', 'A2.MP4', 'B1.MP4', 'B2.MP4'])
+      for (const f of after.files.filter((f) => corrected.has(f.id)))
+        expect(f.mtime).toBe(corrected.get(f.id))
+      expect(jumpOf('C1.MP4')?.files.map((f) => f.filename)).toEqual(['C1.MP4', 'C2.MP4'])
+    })
+
+    it('keeps what a tandem went through — its upload, its montage, its freeing', async () => {
+      const manifest = await twoJumps()
+      const tandem = manifest.groups[0]!
+      Object.assign(tandem, {
+        destination: 'Tandems',
+        passenger: { firstname: 'Luc', lastname: 'Favre' },
+        uploaded: { at: 1, shareUrl: 'https://nas/sharing/luc' },
+        montage: {
+          projectPath: '/p.kdenlive',
+          filmPath: '/f.mp4',
+          template: 'epco',
+          clips: 2,
+          at: 1
+        },
+        freed: { at: 2, bytes: 10 }
+      })
+      saveManifest(manifestPath(), manifest)
+
+      shoot('C1.MP4', 400)
+      shoot('C2.MP4', 401)
+      await scanMedia({ outputDir })
+
+      expect(jumpOf('A1.MP4')).toMatchObject({
+        uploaded: { shareUrl: 'https://nas/sharing/luc' },
+        montage: { template: 'epco' },
+        freed: { bytes: 10 }
+      })
+    })
+
+    it('puts new files shot close to a jump still being sorted into that jump', async () => {
+      await twoJumps()
+      shoot('A3.MP4', 5)
+
+      await scanMedia({ outputDir })
+
+      expect(jumpOf('A3.MP4')?.files.map((f) => f.filename)).toEqual(['A1.MP4', 'A2.MP4', 'A3.MP4'])
+    })
+
+    it('never adds a new file to a jump that is already filed', async () => {
+      const manifest = await twoJumps()
+      manifest.groups[0]!.destination = 'Yverdon'
+      saveManifest(manifestPath(), manifest)
+      shoot('A3.MP4', 5)
+
+      await scanMedia({ outputDir })
+
+      expect(jumpOf('A1.MP4')?.files.map((f) => f.filename)).toEqual(['A1.MP4', 'A2.MP4'])
+      expect(jumpOf('A3.MP4')).toBeUndefined()
+    })
+
+    it('leaves a new file with no neighbours loose', async () => {
+      await twoJumps()
+      shoot('LONE.MP4', 600)
+
+      await scanMedia({ outputDir })
+
+      expect(jumpOf('LONE.MP4')).toBeUndefined()
+      expect(loadManifest(manifestPath())!.files.some((f) => f.filename === 'LONE.MP4')).toBe(true)
+    })
+  })
+
   /* A copy is an entry of its own for a file that is on the disk once. A scan reads the file's
      identity off its contents, which is the original's — so the copy has to keep its own, stay in
      its jump, and follow the original when that is moved. */

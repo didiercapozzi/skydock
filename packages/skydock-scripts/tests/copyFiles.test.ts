@@ -68,7 +68,11 @@ describe('copying files into another jump', () => {
   it('leaves the file where it was and gives the other jump an entry of its own for it', () => {
     const manifest = board()
 
-    expect(copyFiles(manifest, new Set(['plane']), 'anas')).toEqual({ copied: 1, passedOver: 0 })
+    expect(copyFiles(manifest, new Set(['plane']), 'anas')).toEqual({
+      copied: 1,
+      passedOver: 0,
+      freed: 0
+    })
 
     expect(idsIn(manifest, 'lucs')).toEqual(['plane', 'luc'])
     expect(idsIn(manifest, 'anas')).toEqual(['plane~1', 'ana', 'ana2'])
@@ -106,8 +110,29 @@ describe('copying files into another jump', () => {
     const manifest = board()
     copyFiles(manifest, new Set(['plane']), 'anas')
 
-    expect(copyFiles(manifest, new Set(['plane']), 'anas')).toEqual({ copied: 0, passedOver: 1 })
-    expect(copyFiles(manifest, new Set(['luc']), 'lucs')).toEqual({ copied: 0, passedOver: 1 })
+    expect(copyFiles(manifest, new Set(['plane']), 'anas')).toEqual({
+      copied: 0,
+      passedOver: 1,
+      freed: 0
+    })
+    expect(copyFiles(manifest, new Set(['luc']), 'lucs')).toEqual({
+      copied: 0,
+      passedOver: 1,
+      freed: 0
+    })
+  })
+
+  /* freed from this machine, a file has nothing here to copy — and is told apart from one already held */
+  it('copies nothing of a file freed from this machine, and says it was freed', () => {
+    const manifest = board()
+    for (const f of [...manifest.files, ...manifest.groups.flatMap((g) => g.files)])
+      if (f.id === 'plane') f.freed = true
+
+    expect(copyFiles(manifest, new Set(['plane']), 'anas')).toEqual({
+      copied: 0,
+      passedOver: 0,
+      freed: 1
+    })
   })
 
   it('copies a copy as a copy of the original, into a third jump', () => {

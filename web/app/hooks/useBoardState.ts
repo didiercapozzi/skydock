@@ -207,7 +207,8 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   const proxyFacts = Object.values(proxies)
   const proxyProgress = {
     ready: proxyFacts.filter((f) => f.state !== 'none').length,
-    waiting: proxyFacts.filter((f) => f.state === 'none').length,
+    /* a clip whose proxy failed is not waiting for one */
+    waiting: proxyFacts.filter((f) => f.state === 'none' && !f.reason).length,
     total: proxyFacts.length
   }
 

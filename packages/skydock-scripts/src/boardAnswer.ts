@@ -11,7 +11,12 @@ import { destinationSchema, manifestFileSchema, manifestGroupSchema } from './ty
 
 const outputFactSchema = z.object({ exists: z.boolean(), size: z.number() })
 
-const proxyFactSchema = z.object({ state: z.enum(['ready', 'own', 'none']), play: z.string() })
+/* `reason` is why the last try to make it failed; a clip with none and no reason is still waiting */
+const proxyFactSchema = z.object({
+  state: z.enum(['ready', 'own', 'none']),
+  play: z.string(),
+  reason: z.string().optional()
+})
 
 /* what a tandem's folder holds, taken fresh every time — the film is rendered outside SkyDock, so
    nothing else can know it has appeared */
