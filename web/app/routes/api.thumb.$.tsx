@@ -75,7 +75,11 @@ const loader = async ({
   const width = clampWidth(url.searchParams.get('width'))
 
   try {
-    const jpeg = await extractFrame(filePath, seek, width)
+    /* A clip shorter than the moment asked for has no frame there — a camera's timelapse opens with
+       clips of a fraction of a second — so its first frame is taken instead of none at all. */
+    const jpeg = await extractFrame(filePath, seek, width).catch((e: unknown) =>
+      seek > 0 && isVideoFile(filePath) ? extractFrame(filePath, 0, width) : Promise.reject(e)
+    )
     return new Response(new Uint8Array(jpeg), {
       headers: {
         'Cache-Control': 'public, max-age=31536000, immutable',

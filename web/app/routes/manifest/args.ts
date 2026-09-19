@@ -30,6 +30,8 @@ const actionArgs = z.object({
     'regroup-loose',
     /* everything still in Fresh files, back as a scan would first have left it */
     'reset-fresh',
+    /* a camera plugged in was copied off: the board looks again, and hears what came off */
+    'camera-copied',
     /* unsorted files nobody wants, out of the originals and into the bin */
     'trash-unsorted',
     /* back to before processing, keeping every decision — or undone altogether */
@@ -57,6 +59,16 @@ const actionArgs = z.object({
   leftId: z.string().optional(),
   rightId: z.string().optional(),
   anchorEpoch: z.number().optional(),
+  /* what came off a camera plugged in, and how its copy ended */
+  cameraCopied: z
+    .object({
+      camera: z.string(),
+      state: z.enum(['done', 'gone', 'failed', 'copying']),
+      copied: z.number(),
+      skipped: z.number(),
+      reason: z.string().optional()
+    })
+    .optional(),
   /* how much of Fresh files to reset: the times alone, or everything decided about it */
   resetWhat: z.enum(['times', 'everything']).optional(),
   /* which of the storage's tandems to put back, by their folder up there; absent is every one */

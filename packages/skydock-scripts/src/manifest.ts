@@ -3,6 +3,7 @@ import * as path from 'node:path'
 import { z } from 'zod'
 import { outputKeyOf } from './fileStatus'
 import { writeJsonAtomic } from './lib/fs'
+import { jsonText } from './lib/json'
 import { groupsFileSchema, manifestSchema, tandemUploadSchema } from './types'
 import type { GroupsFile, Manifest, ManifestFile } from './types'
 
@@ -16,17 +17,6 @@ const getGroupsPath = (manifestPath: string) => path.join(path.dirname(manifestP
    and files none of them, so a day of sorting is gone with no message. Refusing is recoverable —
    the file is still on disk and can be looked at. Quietly agreeing is not. */
 class UnreadableGroups extends Error {}
-
-/* Decoding the text inside the schema, so reading a file is one check instead of a parse and then a
-   validation with a gap between them where the value is whatever JSON.parse happened to return. */
-const jsonText = z.string().transform((text, ctx) => {
-  try {
-    return JSON.parse(text)
-  } catch (e) {
-    ctx.addIssue({ code: 'custom', message: e instanceof Error ? e.message : String(e) })
-    return z.NEVER
-  }
-})
 
 /* Whether the file failed as JSON or failed as a jumps file makes no difference to what follows —
    either way it cannot be read — so there is one schema and one way out. A jumps file written when

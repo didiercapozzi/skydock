@@ -1,30 +1,28 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { readExifMap } from './lib/exif'
+import { run, quote } from './tools'
 import { findMediaFiles, getOutputDir, isCliModule } from './utils'
-import { fileMatchesExisting } from './lib/fs'
-import { buildExifMap } from './lib/exif'
+
+/* Copying off a camera, into the originals: every file into a folder named after the day it was
+   shot, and never anything written back to the camera (RULES, The workflow). */
 
 type CopyOptions = {
   cameraDirs: string[]
   outputDir?: string
 }
 
+/* how far a camera's copy has got, for whoever is watching it */
+type CopyProgress = { done: number; total: number; copied: number; skipped: number }
+
 const parseDate = (raw: string) => {
   const match = raw.match(/^(\d{4}):(\d{2}):(\d{2})/)
   return match ? `${match[1]}-${match[2]}-${match[3]}` : null
 }
 
-const buildDateMap = (files: string[]) =>
-  buildExifMap(files, {
-    photoTags: ['-DateTimeOriginal'],
-    videoTags: ['-CreateDate'],
-    parse: parseDate
-  })
+const DATE_TAGS = { photoTags: ['-DateTimeOriginal'], videoTags: ['-CreateDate'], parse: parseDate }
 
-const getCaptureDate = (filepath: string, dateMap: Map<string, string>) => {
-  const mapped = dateMap.get(filepath)
-  if (mapped) return mapped
-  const stat = fs.statSync(filepath)
+const dayOfStat = (stat: fs.Stats) => {
   const date = new Date(stat.mtimeMs)
   const y = date.getFullYear()
   const m = String(date.getMonth() + 1).padStart(2, '0')
@@ -32,57 +30,119 @@ const getCaptureDate = (filepath: string, dateMap: Map<string, string>) => {
   return `${y}-${m}-${d}`
 }
 
-const copyFromCameras = (options: CopyOptions) => {
-  const outputDir = options.outputDir || getOutputDir()
-  const originalDir = path.join(outputDir, 'original_files')
+/* The names a file can have in its day's folder: its own, or its own with a number, which is what a
+   second camera's clip of the same name was given. */
+const namesFor = (dir: string, name: string) => {
+  const { name: stem, ext } = path.parse(name)
+  const numbered = new RegExp(
+    `^${stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_(\\d+)${ext.replace('.', '\\.')}$`
+  )
+  const there = fs.existsSync(dir) ? fs.readdirSync(dir) : []
+  return [name, ...there.filter((n) => numbered.test(n))]
+}
 
-  fs.mkdirSync(originalDir, { recursive: true })
-
-  let totalCopied = 0
-  let totalSkipped = 0
-
-  const allFiles: string[] = []
-  for (const camDir of options.cameraDirs) {
-    if (!fs.existsSync(camDir)) continue
-    allFiles.push(...findMediaFiles(camDir))
-  }
-
-  const dateMap = buildDateMap(allFiles)
-
-  for (const filepath of allFiles) {
-    const targetDate = getCaptureDate(filepath, dateMap)
-    const destDir = path.join(originalDir, targetDate)
-    fs.mkdirSync(destDir, { recursive: true })
-
-    if (fileMatchesExisting(filepath, destDir)) {
-      totalSkipped++
+/* Whether this file is already in the folder under one of its names. Same size and same time is the
+   same file — a copy keeps the time of the file it was made from — and only a file that matches in
+   size but not in time is read through to be sure. Plugging the same camera in again therefore reads
+   almost nothing, where comparing every byte read the whole card again. */
+const alreadyThere = async (src: string, srcStat: fs.Stats, dir: string) => {
+  for (const name of namesFor(dir, path.basename(src))) {
+    const existing = path.join(dir, name)
+    let stat: fs.Stats
+    try {
+      stat = fs.statSync(existing)
+    } catch {
       continue
     }
-
-    const destPath = path.join(destDir, path.basename(filepath))
-    fs.copyFileSync(filepath, destPath)
-    const srcStat = fs.statSync(filepath)
-    fs.utimesSync(destPath, srcStat.atime, srcStat.mtime)
-    totalCopied++
+    if (stat.size !== srcStat.size) continue
+    if (Math.floor(stat.mtimeMs / 1000) === Math.floor(srcStat.mtimeMs / 1000)) return true
+    if ((await run(`cmp -s ${quote(src)} ${quote(existing)}`)).ok) return true
   }
+  return false
+}
 
-  const msg = `Copied: ${totalCopied}, Skipped (existing): ${totalSkipped}`
-  console.log(`[Done] ${msg}`)
+/* Where a file new to this folder goes: under its own name, or — when a different file already has
+   that name, as the first clip of two cameras of the same make always does — under its name with the
+   next free number. An original is never written over. */
+const freeName = (dir: string, name: string) => {
+  const { name: stem, ext } = path.parse(name)
+  if (!fs.existsSync(path.join(dir, name))) return name
+  for (let n = 2; ; n++)
+    if (!fs.existsSync(path.join(dir, `${stem}_${n}${ext}`))) return `${stem}_${n}${ext}`
+}
 
-  return { copied: totalCopied, skipped: totalSkipped }
+class CameraGone extends Error {}
+
+/* One camera, copied without holding the thread. Each file is written under a temporary name and
+   only given its own once it is whole, so a card pulled out half way leaves nothing behind that
+   could be taken for an original; the copy then stops and says the camera went. */
+const copyCamera = async ({
+  cameraDir,
+  outputDir = getOutputDir(),
+  onProgress
+}: {
+  cameraDir: string
+  outputDir?: string
+  onProgress?: (progress: CopyProgress) => void
+}) => {
+  const originalDir = path.join(outputDir, 'original_files')
+  const files = findMediaFiles(cameraDir)
+  const days = await readExifMap(files, DATE_TAGS)
+  const progress: CopyProgress = { done: 0, total: files.length, copied: 0, skipped: 0 }
+  onProgress?.({ ...progress })
+
+  for (const src of files) {
+    let srcStat: fs.Stats
+    try {
+      srcStat = fs.statSync(src)
+    } catch {
+      throw new CameraGone('The camera was disconnected during the copy.')
+    }
+    const destDir = path.join(originalDir, days.get(src) ?? dayOfStat(srcStat))
+    fs.mkdirSync(destDir, { recursive: true })
+    if (await alreadyThere(src, srcStat, destDir)) progress.skipped++
+    else {
+      const dest = path.join(destDir, freeName(destDir, path.basename(src)))
+      const partial = `${dest}.part`
+      try {
+        await fs.promises.copyFile(src, partial)
+        fs.utimesSync(partial, srcStat.atime, srcStat.mtime)
+        fs.renameSync(partial, dest)
+      } catch (e) {
+        fs.rmSync(partial, { force: true })
+        if (!fs.existsSync(src))
+          throw new CameraGone('The camera was disconnected during the copy.')
+        throw e
+      }
+      progress.copied++
+    }
+    progress.done++
+    onProgress?.({ ...progress })
+  }
+  return progress
+}
+
+const copyFromCameras = async (options: CopyOptions) => {
+  let copied = 0
+  let skipped = 0
+  for (const cameraDir of options.cameraDirs) {
+    if (!fs.existsSync(cameraDir)) continue
+    const result = await copyCamera({ cameraDir, outputDir: options.outputDir })
+    copied += result.copied
+    skipped += result.skipped
+  }
+  console.log(`[Done] Copied: ${copied}, Skipped (existing): ${skipped}`)
+  return { copied, skipped }
 }
 
 if (isCliModule('copy')) {
-  const args = process.argv.slice(2)
-  const cameraDirs = args.filter((a) => !a.startsWith('-') && fs.existsSync(a))
-
+  const cameraDirs = process.argv.slice(2).filter((a) => !a.startsWith('-') && fs.existsSync(a))
   if (cameraDirs.length === 0) {
     console.error('Usage: skydock-copy <camera_dir> [camera_dir ...]')
     process.exit(1)
   }
-
-  copyFromCameras({ cameraDirs })
+  void copyFromCameras({ cameraDirs })
 }
 
-export { copyFromCameras }
-export type { CopyOptions }
+export { CameraGone, copyCamera, copyFromCameras }
+export type { CopyOptions, CopyProgress }

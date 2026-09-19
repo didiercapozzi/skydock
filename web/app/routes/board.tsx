@@ -995,6 +995,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         onScan={board.scan}
         onTemplates={() => setDialog({ kind: 'templates' })}
         proxies={board.proxyProgress}
+        camera={board.cameraCopy}
         nas={{ connected: nas.connected, host: nas.host, links: nasLinks }}
       />
 

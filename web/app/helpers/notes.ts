@@ -47,6 +47,30 @@ const uploadedNote = (uploaded: number, skipped?: number) =>
 const freedNote = ({ files, bytes }: { files: number; bytes: number }) =>
   `On the storage only. ${plural(files, 'file')} freed from this machine on ${localeDate(Date.now() / 1000)} — ${formatFilmSize(bytes)} given back. The project is kept here; everything else is on the storage, as above.`
 
+/* what came off a camera plugged in, in one line */
+const cameraNote = ({
+  camera,
+  state,
+  copied,
+  skipped,
+  reason
+}: {
+  camera: string
+  state: 'done' | 'gone' | 'failed' | 'copying'
+  copied: number
+  skipped: number
+  reason?: string
+}) => {
+  const tally = `${plural(copied, 'new file')} copied${skipped > 0 ? ` · ${skipped} already here` : ''}`
+  if (state === 'gone')
+    return `${camera} was unplugged during the copy — ${tally}; plug it in again for the rest`
+  if (state === 'failed')
+    return `Copying ${camera} stopped: ${reason ?? 'unknown reason'} — ${tally}`
+  return copied > 0
+    ? `Camera ${camera}: ${tally}, and scanned`
+    : `Camera ${camera}: nothing new${skipped > 0 ? ` — all ${skipped} files already here` : ''}`
+}
+
 const resetNote = ({
   files,
   jumps,
@@ -80,6 +104,7 @@ const restoredNote = (restored: { who: string; files: number; of: number }[]) =>
 }
 
 export {
+  cameraNote,
   copiedNote,
   resetNote,
   freedNote,

@@ -30,6 +30,18 @@ const liveEventSchema = z.discriminatedUnion('kind', [
     who: z.string(),
     fact: tandemFactSchema,
     rendered: z.boolean()
+  }),
+  /* A camera plugged in and being copied off, by the name it is mounted under: how far through its
+     files, how many were new and how many already here — and how it ended. */
+  z.object({
+    kind: z.literal('camera'),
+    camera: z.string(),
+    state: z.enum(['copying', 'done', 'gone', 'failed']),
+    done: z.number(),
+    total: z.number(),
+    copied: z.number(),
+    skipped: z.number(),
+    reason: z.string().optional()
   })
 ])
 
@@ -54,6 +66,10 @@ const publish = (event: LiveEvent) => {
   const { listeners, underWay } = bus()
   if (event.kind === 'file') underWay.set(`${event.work}:${event.fileId}`, event)
   if (event.kind === 'file-done') underWay.delete(`${event.work}:${event.fileId}`)
+  if (event.kind === 'camera') {
+    if (event.state === 'copying') underWay.set(`camera:${event.camera}`, event)
+    else underWay.delete(`camera:${event.camera}`)
+  }
   for (const listener of listeners) listener(event)
 }
 

@@ -26,6 +26,7 @@ const BoardHeader = ({
   onScan,
   onTemplates,
   proxies,
+  camera,
   nas
 }: {
   scanning: boolean
@@ -33,6 +34,8 @@ const BoardHeader = ({
   /* the editing templates: looked over, and new ones brought in */
   onTemplates: () => void
   proxies: { ready: number; waiting: number; total: number }
+  /* a camera plugged in and being copied off, while it is */
+  camera?: { camera: string; done: number; total: number; copied: number } | null
   nas: { connected: boolean; host: string | null; links: NasLink[] }
 }) => {
   const view = useFileView()
@@ -58,6 +61,31 @@ const BoardHeader = ({
           className='rounded-md border border-line bg-pane px-[11px] py-[5px] text-[12.5px] font-medium hover:border-ink-3'>
           Templates…
         </button>
+        {/* A camera plugged in is copied off by itself; this is it happening, file by file. */}
+        {camera && (
+          <span
+            role='progressbar'
+            aria-label={`Copying ${camera.camera}`}
+            aria-valuemin={0}
+            aria-valuemax={camera.total}
+            aria-valuenow={camera.done}
+            title={`Copying the camera ${camera.camera} into the originals — ${camera.copied} new so far. It is scanned when done.`}
+            className='inline-flex items-center gap-2 rounded-full border border-accent bg-accent-soft px-2.5 py-[3px] text-[12px] text-ink'>
+            <span aria-hidden='true'>📷</span>
+            <b className='font-semibold'>{camera.camera}</b>
+            <span className='h-1 w-16 overflow-hidden rounded-sm bg-line-2'>
+              <i
+                className='block h-full bg-accent transition-[width] duration-300'
+                style={{
+                  width: `${camera.total > 0 ? Math.round((camera.done / camera.total) * 100) : 0}%`
+                }}
+              />
+            </span>
+            <span className='font-mono text-[11.5px] text-ink-2 tabular-nums'>
+              {camera.done}/{camera.total}
+            </span>
+          </span>
+        )}
         {/* Only while some clip is still without one. They are built behind whatever asked for
             them and nothing watches them arrive, so this is how far along the last look was. */}
         {proxies.waiting > 0 && (

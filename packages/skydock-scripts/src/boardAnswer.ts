@@ -81,6 +81,16 @@ const boardAnswerSchema = z.object({
   storage: z.object({ dir: z.string(), tandems: z.array(tandemEntrySchema) }).optional(),
   storageProblem: z.string().optional(),
   imported: importOutcomeSchema.optional(),
+  /* what came off a camera plugged in, and how its copy ended */
+  cameraCopied: z
+    .object({
+      camera: z.string(),
+      state: z.enum(['done', 'gone', 'failed', 'copying']),
+      copied: z.number(),
+      skipped: z.number(),
+      reason: z.string().optional()
+    })
+    .optional(),
   /* Fresh files put back as scanned: how many files, in how many jumps */
   reset: z
     .object({ files: z.number(), jumps: z.number(), what: z.enum(['times', 'everything']) })

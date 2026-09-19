@@ -13,6 +13,9 @@ then renames and crops the files into a tidy folder per jump, puts them on the c
 storage, and helps hand them to the passenger.
 
 Cameras are plain storage. SkyDock does not care which camera a file came from, only when it was shot.
+Every time is on the local clock, whoever wrote it: a photo keeps its time that way, and so does a
+GoPro's video, but a DJI keeps a video's time in UTC, as the format says it should, so it is turned
+into local time — otherwise a DJI's clips would sit hours away from its own photos.
 
 ## Principles
 
@@ -45,7 +48,20 @@ Everything below follows from these.
 ## The workflow
 
 **1. Copy off the cameras.** Every file is copied into a folder named after the day it was shot.
-Inserting the same camera again costs nothing: a file already there with the same contents is skipped.
+Inserting the same camera again costs nothing: a file already there with the same contents is skipped,
+recognised by its size and time without being read again. An original is never written over: a second
+camera's clip that has the same name as one already there — two cameras of one make both start at the
+same number — is kept beside it under its name with a number. Each file is only given its name once it
+is whole, so a card pulled out half way leaves nothing behind that could be taken for an original.
+
+**Plugging a camera in is enough.** While SkyDock runs, a drive that is mounted with a DCIM folder at
+its root — where every camera keeps its pictures — is copied off by itself, then scanned, so its jumps
+are on the board with nobody pressing anything. The header shows the copy file by file, and the board
+says what came off once it is done: how many new files and how many already there. A camera is copied
+once for each time it is plugged in; one unplugged half way keeps what was copied whole, and plugging
+it in again copies the rest. Only one camera is copied at a time, in the order they came. A drive
+without a DCIM folder is not a camera and is never looked into, and nothing is ever written to a camera.
+Where cameras are mounted is a setting, and an empty one turns this off.
 
 **2. Scan.** SkyDock reads each file's capture time and groups files shot close together into jumps.
 A scan can be asked for at any time; one run after more cameras were copied off picks up the new files
@@ -275,7 +291,8 @@ jump itself changed. A jump that runs past midnight says that it spans days.
 
 **Showing files.** Every file is shown the same way: as rows — tick, thumbnail, name, crop, time, size,
 state — or as a grid of thumbnails, whichever was chosen last, for the whole board. Once a copy exists,
-the name shown is the copy's name, the one the passenger sees, with the camera's name kept beside it.
+the name shown is the copy's name, the one the passenger sees, with the camera's name kept beside it. A
+clip shorter than the moment its thumbnail is taken at shows its first frame.
 Long lists are drawn a page at a time. Every day and every tandem carries badges saying how many videos
 and photos it holds; they show one kind, the other, or all — all being both side by side, videos in one
 column and photos in the other, stacked on a narrow screen. A badge for a kind with nothing in it is
@@ -381,7 +398,10 @@ choice is remembered on that machine and applied before the first thing is drawn
 ## Cropping and turning
 
 A file is opened by double-clicking it, from the inspector, or with Enter on the file being looked at,
-playing its proxy when there is one. The picture fills the left of the dialog
+playing its proxy when there is one. A clip the browser cannot draw — 4K HEVC, as a DJI or a recent GoPro
+shoots — says so in place of its picture until its proxy is made, and then plays the proxy without being
+opened again. Space plays a clip and pauses it, whichever button was pressed last. The picture fills
+the left of the dialog
 with the timeline under it; the right side says what is being decided: the trim, the turn, the frame,
 and what is already on the file. The top names the file and lets you step to the next; the bottom holds
 Save, offered only once something changed, and Reset, which clears everything at once. A loose file is

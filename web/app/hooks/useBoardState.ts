@@ -7,6 +7,7 @@ import {
   copiedNote,
   freedNote,
   importNote,
+  cameraNote,
   montageNote,
   resetNote,
   restoredNote,
@@ -72,7 +73,8 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   const [tandemFacts, setTandemFacts] = useState<Record<string, TandemFact>>(loaded.tandems)
   /* files being processed or proxied right now, and how far through; a proxy that lands is
      flagged at once, since the event carries what the server read off the disk */
-  const liveFiles = useLiveProgress(setProxies, setTandemFacts, setNote)
+  const live = useLiveProgress(setProxies, setTandemFacts, setNote)
+  const liveFiles = live.files
   const [remoteAfterUpload, setRemoteAfterUpload] = useState<CheckedListing | null>(null)
   /* the storage's list of tandems, as the loader read it or as the last change wrote it */
   const [storage, setStorage] = useState(loaded.storage)
@@ -103,6 +105,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
         imported,
         restored,
         copied: copiedFiles,
+        cameraCopied,
         reset: resetTo,
         storage: listed,
         storageProblem
@@ -136,7 +139,9 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
                       ? copiedNote(copiedFiles)
                       : resetTo
                         ? resetNote(resetTo)
-                        : null
+                        : cameraCopied
+                          ? cameraNote(cameraCopied)
+                          : null
       /* the work stands even when the list could not follow it, and that is said alongside */
       setNote(storageProblem ? [said, storageProblem].filter(Boolean).join(' · ') : said)
     } else {
@@ -144,6 +149,29 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
       if (refused.success) setNote(refused.data.globalErrors?.[0] ?? 'Request failed')
     }
   }
+
+  /* A camera's copy has ended — its files are copied and scanned on the machine — so the board asks
+     for itself again, and hears what came off. A request to the machine is what an effect is for;
+     the number of the ending is the guard, so each ending asks once. */
+  const askedAfter = useRef(0)
+  useEffect(() => {
+    const ended = live.ended
+    if (!ended || askedAfter.current === ended.seq) return
+    askedAfter.current = ended.seq
+    fetcher.submit({
+      url: '/api/manifest',
+      actionArgs: {
+        intent: 'camera-copied',
+        cameraCopied: {
+          camera: ended.camera,
+          state: ended.state,
+          copied: ended.copied,
+          skipped: ended.skipped,
+          ...(ended.reason ? { reason: ended.reason } : {})
+        }
+      }
+    })
+  }, [live.ended, fetcher])
 
   /* Arriving while something is being processed: its answer is the board as it ends, asked for
      once. Asking is a request to the machine, which is what an effect is for; the guard is what
@@ -191,6 +219,8 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     proxies,
     proxyProgress,
     liveFiles,
+    /* a camera being copied off right now, as it goes */
+    cameraCopy: live.camera,
     tandemFacts,
     remoteAfterUpload,
     storage,

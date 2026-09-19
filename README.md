@@ -18,7 +18,8 @@ npm run dev            # the board, on http://localhost:5173
 
 Everything happens on the board: scanning, sorting, processing and uploading.
 
-Two command-line tools exist for the one step that happens before the app can see anything:
+A camera plugged in is copied off by itself while the board's server runs — see
+[RULES.md](./RULES.md), _Plugging a camera in is enough_. The command line does the same by hand:
 
 ```bash
 npm run copy -- /path/to/camera1 /path/to/camera2   # copy the cameras into output/original_files
@@ -42,6 +43,7 @@ output/
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------- |
 | `SKYDOCK_OUTPUT_DIR`       | Where originals, the registry and delivery folders live                                                                                                                  | `/workspace/output`                 |
 | `SKYDOCK_MONTAGE_TEMPLATE` | The kdenlive project a montage is built from                                                                                                                             | the one template under `templates/` |
+| `SKYDOCK_CAMERA_ROOTS`     | Where cameras get mounted, `:`-separated. A drive mounted under one with a `DCIM` folder is copied off by itself; empty turns it off                                     | `/mnt/osmo:/media:/run/media`       |
 | `SKYDOCK_EDITOR_COMMAND`   | What opens a montage — read as a shell command line, with the project appended as its last argument. Quotes group, so `sh -c "… \"$0\" …"` works and `$0` is the project | `kdenlive`                          |
 
 That is the whole of it — **the network storage is not configured here.** Host, user and password are

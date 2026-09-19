@@ -139,6 +139,11 @@ const PreviewDrawer = ({
   const [shape, setShape] = useState({ width: 16, height: 9 })
   const [shown, setShown] = useState('None')
   const [ratio, setRatio] = useState<number | null>(null)
+  /* A browser cannot draw every clip: 4K HEVC off a DJI or a recent GoPro plays its sound and no
+     picture, or nothing at all. The proxy is H.264 and always plays, and until it exists the preview
+     says so rather than showing a black box. Kept by the address that failed, so it is gone the
+     moment the proxy lands and the preview switches to it. */
+  const [unplayable, setUnplayable] = useState<string | null>(null)
 
   /* The picture as it will come out: turned. Its shape is what the box on screen takes, what the
      rectangle is drawn over and measured against, and what "Same" means. */
@@ -158,8 +163,21 @@ const PreviewDrawer = ({
     }
     onRotate(next)
   }
-  /* Escape closes; R turns a quarter clockwise, as the button does — never while a field has the
-     keyboard. One listener on the window, renewed each render so it sees the latest turn. */
+  const toggle = () => {
+    const v = videoRef.current
+    if (!v) return
+    if (v.paused) {
+      /* paused again before it got going, or nothing it can play: either way it is not playing */
+      v.play().catch(() => setPlaying(false))
+      setPlaying(true)
+    } else {
+      v.pause()
+      setPlaying(false)
+    }
+  }
+  /* Escape closes; R turns a quarter clockwise, as the button does; space plays and pauses a clip,
+     whichever button was pressed last — never while a field has the keyboard. One listener on the
+     window, renewed each render so it sees the latest turn. */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -169,6 +187,10 @@ const PreviewDrawer = ({
         e.preventDefault()
         turn(90)
       }
+      if (e.key === ' ' && videoRef.current) {
+        e.preventDefault()
+        toggle()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -177,6 +199,7 @@ const PreviewDrawer = ({
   if (!file) return null
 
   const fileUrl = getPlaybackUrl(file, proxy)
+  const cannotShow = unplayable === fileUrl
   /* a rectangle is on screen whenever there is one to show; `None` takes it away */
   const framing = frame != null && shown !== 'None'
 
@@ -222,18 +245,6 @@ const PreviewDrawer = ({
     file.cropEnd != null ||
     !isWholeFrame(file.frame) ||
     Boolean(file.rotation)
-
-  const toggle = () => {
-    const v = videoRef.current
-    if (!v) return
-    if (v.paused) {
-      void v.play()
-      setPlaying(true)
-    } else {
-      v.pause()
-      setPlaying(false)
-    }
-  }
 
   return (
     <div
@@ -306,7 +317,10 @@ const PreviewDrawer = ({
                       if (v.duration && Number.isFinite(v.duration)) onDurationChange(v.duration)
                       if (v.videoWidth && v.videoHeight)
                         setShape({ width: v.videoWidth, height: v.videoHeight })
+                      /* sound and no picture: the browser has no decoder for this video */ else
+                        setUnplayable(fileUrl)
                     }}
+                    onError={() => setUnplayable(fileUrl)}
                     style={pictureStyle(shape, rotation)}
                     className='absolute top-1/2 left-1/2 rounded-md transition-transform duration-150'
                   />
@@ -322,6 +336,15 @@ const PreviewDrawer = ({
                     style={pictureStyle(shape, rotation)}
                     className='absolute top-1/2 left-1/2 rounded-md transition-transform duration-150'
                   />
+                )}
+                {video && cannotShow && (
+                  <span
+                    role='status'
+                    className='absolute inset-0 grid place-items-center rounded-md bg-[#0b0f13] p-4 text-center text-[12.5px] text-white/80'>
+                    {proxy?.state === 'none'
+                      ? 'The browser cannot show this clip’s picture — it is in a format only the editor reads, such as 4K HEVC. Its proxy is being made, and the preview plays it as soon as it is ready.'
+                      : 'The browser cannot show this clip’s picture. It is copied, processed and uploaded all the same.'}
+                  </span>
                 )}
                 {video && framing && (
                   <FrameCropper

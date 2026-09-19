@@ -55,7 +55,7 @@ const Files = ({ shape }: { shape: 'rows' | 'grid' }) => {
     picked: [],
     statusContext: () => ({}),
     proxies,
-    live,
+    live: live.files,
     onFile: () => {},
     onPick: () => {},
     onOpen: () => {},

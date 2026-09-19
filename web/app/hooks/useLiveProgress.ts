@@ -1,11 +1,15 @@
 import { liveEventSchema } from '@skydock/scripts'
-import type { ProxyFact, TandemFact } from '@skydock/scripts'
+import type { LiveEvent, ProxyFact, TandemFact } from '@skydock/scripts'
 import { useEffect, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { routingEngine } from '../helpers/routing'
 
 /* what is being done to a file right now, and how far through it */
 type LiveFile = { work: 'process' | 'proxy'; percent: number }
+
+/* a camera being copied off, and how it ended — the ending numbered, so that two in a row are two */
+type CameraCopy = Extract<LiveEvent, { kind: 'camera' }>
+type CameraEnded = CameraCopy & { seq: number }
 
 /* What is happening to the files as it happens, heard over one stream the server keeps open — so a
    file being processed, or a proxy being made, shows how far along it is with nobody asking. The
@@ -21,6 +25,8 @@ const useLiveProgress = (
   onNote: Dispatch<SetStateAction<string | null>>
 ) => {
   const [files, setFiles] = useState<Record<string, LiveFile>>({})
+  const [camera, setCamera] = useState<CameraCopy | null>(null)
+  const [ended, setEnded] = useState<CameraEnded | null>(null)
 
   useEffect(() => {
     const source = new EventSource(routingEngine.href({ url: '/api/events' }))
@@ -37,6 +43,14 @@ const useLiveProgress = (
       if (event.kind === 'tandem') {
         onTandems((now) => ({ ...now, [event.groupId]: event.fact }))
         if (event.rendered) onNote(`${event.who}’s film is rendered — ready to upload`)
+        return
+      }
+      if (event.kind === 'camera') {
+        if (event.state === 'copying') setCamera(event)
+        else {
+          setCamera(null)
+          setEnded((before) => ({ ...event, seq: (before?.seq ?? 0) + 1 }))
+        }
         return
       }
       if (event.kind === 'file') {
@@ -56,8 +70,8 @@ const useLiveProgress = (
     return () => source.close()
   }, [onProxies, onTandems, onNote])
 
-  return files
+  return { files, camera, ended }
 }
 
 export { useLiveProgress }
-export type { LiveFile }
+export type { CameraCopy, CameraEnded, LiveFile }

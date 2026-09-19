@@ -8,6 +8,7 @@ import type { Intent } from './manifest/change'
 import { freeTandemIntent } from './manifest/free-tandem'
 import { imported } from './manifest/imported'
 import { markEmailed } from './manifest/mark-emailed'
+import { cameraCopied } from './manifest/camera-copied'
 import { copyFilesIntent } from './manifest/copy-files'
 import { resetFreshIntent } from './manifest/reset-fresh'
 import { restoreTandemsIntent } from './manifest/restore-tandems'
@@ -50,7 +51,8 @@ const intents: Record<ActionData['intent'], Intent> = {
   'mark-emailed': markEmailed,
   'restore-tandems': restoreTandemsIntent,
   'copy-files': copyFilesIntent,
-  'reset-fresh': resetFreshIntent
+  'reset-fresh': resetFreshIntent,
+  'camera-copied': cameraCopied
 }
 
 const action = createValidatedFormAction<Route.ActionArgs>()({
