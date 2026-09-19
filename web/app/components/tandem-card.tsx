@@ -5,6 +5,7 @@ import {
   parentOf,
   tandemUploadKey
 } from '@skydock/scripts'
+import type { TandemFact } from '@skydock/scripts'
 import { useState } from 'react'
 import type { UploadProgressState } from '../hooks/useUploadProgress'
 import { Go, Mini } from './buttons'
@@ -36,9 +37,9 @@ const PassengerName = ({
     <span
       onClick={(e) => e.stopPropagation()}
       /* Saved when the name is finished, not when one half of it is. Saving on each field's own
-         blur meant that moving from the first name to the last name recorded a passenger with no
-         last name — which hid the inputs behind the name it had just invented, and left a jump the
-         folder rule reads as a place rather than a person. */
+         blur would record a passenger with no last name on the way from the first name to the last
+         — hiding the inputs behind the name just invented, and leaving a jump the folder rule reads
+         as a place rather than a person. */
       onBlur={(e) => {
         if (e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget)) return
         save()
@@ -95,7 +96,7 @@ const PassengerFrames = ({
       </span>
     )
   return (
-    /* four across, sharing the width — fixed widths spilled the last one off the card */
+    /* four across, sharing the width, so the last one never spills off the card */
     <span className='mt-1.5 mb-0.5 grid grid-cols-4 gap-1'>
       {shown.map((file) => (
         <img
@@ -196,8 +197,8 @@ const MakeTandem = ({
 /* One passenger in the Tandems grid: who it is, what is in it, and the one thing to do next —
    which is the same sentence the tandem itself offers, said small.
 
-   The card is a div rather than a button. It used to be a button with the name's inputs inside it,
-   which is not allowed and made every keystroke a click on the card underneath. */
+   The card is a div rather than a button: the name's inputs sit inside it, and inputs inside a
+   button are not allowed and make every keystroke a click on the card underneath. */
 const PassengerCard = ({
   group,
   who,
@@ -348,13 +349,6 @@ const FilmStrip = ({ facts }: { facts?: TandemFact }) => {
       )}
     </div>
   )
-}
-
-type TandemFact = {
-  project: boolean
-  projectPath: string
-  film: { size: number; mtime: number; seconds: number | null; path: string } | null
-  baseName: string
 }
 
 /* The editor is opened by hand — SkyDock runs where it cannot start an application on the machine
@@ -670,4 +664,4 @@ export {
   TandemActions,
   UploadStrip
 }
-export type { Passenger, TandemFact }
+export type { Passenger }

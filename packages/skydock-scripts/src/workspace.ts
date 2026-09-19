@@ -115,7 +115,7 @@ const resolveDestinationPath = (
   destinationName: string | undefined,
   destinations: { name: string; path?: string }[],
   defaultFolder: string | null | undefined
-): string | null => {
+) => {
   if (!destinationName) return null
   const dest = destinations.find((d) => d.name === destinationName)
   if (!dest) return null

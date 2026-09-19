@@ -1,20 +1,11 @@
 import type { freeablePlace } from '@skydock/scripts'
 import { Go, Mini } from './buttons'
-import { Modal, Spacer } from './modal'
-import { formatFilmSize } from './utils'
+import { Line, Modal, Spacer } from './modal'
+import { formatFilmSize, plural } from './utils'
 
 /* Freeing a dropzone deletes its originals from this machine, and what went up of it is the copies,
    so the dialog says before anything happens what is proved, what is deleted — naming how many files
    were delivered trimmed, cropped or turned, whose cut-off parts go with them — and what stays. */
-
-const Line = ({ mark, children }: { mark: string; children: React.ReactNode }) => (
-  <li className='flex gap-2 text-[12.5px] text-ink-2'>
-    <span className='w-3 flex-none text-center'>{mark}</span>
-    <span>{children}</span>
-  </li>
-)
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
 const FreePlaceDialog = ({
   place,

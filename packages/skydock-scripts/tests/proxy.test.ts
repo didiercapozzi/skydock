@@ -208,7 +208,7 @@ describe('proxies', () => {
 
   /* No encoder is not a broken card: everything else still works, and the crop bar falls back to
      the clip itself. */
-  it('does nothing and complains about nothing when there is no ffmpeg', async () => {
+  it('does nothing and complains about nothing when the machine cannot encode video', async () => {
     execSyncMock.mockImplementation(noTools)
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123')])
@@ -307,7 +307,7 @@ describe('proxies stay out of what gets delivered', () => {
   })
 
   /* the import proxies live under their own folder too, which no scan and no upload ever reads */
-  it('keeps the imported ones out of processed entirely', async () => {
+  it('keeps the proxies out of what is handed over', async () => {
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123')])
     await ensureProxies(manifest, outputDir)
@@ -603,7 +603,7 @@ describe('what a card is asked for', () => {
   })
 
   /* "Conversion failed!" says only that it did; the diagnosis is the line above it */
-  it('reports the line that gives a reason, not ffmpeg\u2019s sign-off', async () => {
+  it('names the reason a clip’s proxy could not be made', async () => {
     setProxyEncoder('cpu')
     execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
       const line = String(cmd)

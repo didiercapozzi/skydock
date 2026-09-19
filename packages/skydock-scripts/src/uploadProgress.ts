@@ -2,6 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { z } from 'zod'
 import { writeJsonAtomic } from './lib/fs'
+import { jsonText } from './lib/json'
 import { getStatusDir } from './utils'
 
 /* Keyed by upload *scope* (`group:{id}` or `dest:{name}`), because one upload can cover a whole
@@ -33,10 +34,10 @@ const getUploadProgressPath = (outputDir?: string) =>
 
 const readUploadProgress = (outputDir?: string) => {
   try {
-    const raw = JSON.parse(fs.readFileSync(getUploadProgressPath(outputDir), 'utf-8'))
-    const parsed = uploadProgressStateSchema.safeParse(raw)
-    if (parsed.success) return parsed.data
-    return null
+    const parsed = jsonText
+      .pipe(uploadProgressStateSchema)
+      .safeParse(fs.readFileSync(getUploadProgressPath(outputDir), 'utf-8'))
+    return parsed.success ? parsed.data : null
   } catch {
     return null
   }

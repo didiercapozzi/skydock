@@ -49,7 +49,7 @@ const manifestOf = (groups: ManifestGroup[], over: Partial<Manifest> = {}): Mani
   }) as Manifest
 
 describe('skipping what is already on the storage', () => {
-  it('skips a file whose name, size and MD5 all match, and uploads the rest', async () => {
+  it('skips a file whose name, size and checksum all match, and uploads the rest', async () => {
     const dir = makeLocal({ 'videos/same.mp4': 'identical', 'videos/new.mp4': 'fresh' })
     const stub = nasStubs({
       files: { '/nas/jump/videos': [{ name: 'same.mp4', size: 'identical'.length }] },
@@ -73,7 +73,7 @@ describe('skipping what is already on the storage', () => {
     fs.rmSync(dir, { recursive: true, force: true })
   })
 
-  it('uploads a same-sized file whose MD5 differs', async () => {
+  it('uploads a same-sized file whose checksum differs', async () => {
     const dir = makeLocal({ 'a.mp4': 'aaaa' })
     const stub = nasStubs({
       files: { '/nas/jump': [{ name: 'a.mp4', size: 4 }] },
@@ -91,7 +91,7 @@ describe('skipping what is already on the storage', () => {
     fs.rmSync(dir, { recursive: true, force: true })
   })
 
-  it('never asks for an MD5 when the sizes already differ', async () => {
+  it('never asks for a checksum when the sizes already differ', async () => {
     const dir = makeLocal({ 'a.mp4': 'aaaaaaaa' })
     const stub = nasStubs({ files: { '/nas/jump': [{ name: 'a.mp4', size: 3 }] } })
     stubFetch((url) => stub(url) ?? jsonResponse({ success: true }))
@@ -159,7 +159,7 @@ describe('share links', () => {
 describe('where an upload goes', () => {
   const outputDir = '/out'
 
-  it('sends a flat fun jump to the destination folder itself, with no per-jump subfolder', () => {
+  it('sends a dropzone’s jump into the dropzone’s folder itself, with no folder per jump', () => {
     const manifest = manifestOf([group({ destination: 'Yverdon' })])
     const [target] = resolveUploadTargets({
       outputDir,
@@ -173,7 +173,7 @@ describe('where an upload goes', () => {
 
   /* Still where a passenger's folder goes — uploading a tandem asks for this target directly, which is the
      only way a tandem ever reaches the storage. */
-  it('gives a tandem its passenger folder inside the destination', () => {
+  it('gives a tandem its passenger’s folder inside the Tandems folder', () => {
     const manifest = manifestOf([
       group({
         id: 'group_2',
@@ -214,7 +214,7 @@ describe('where an upload goes', () => {
     expect(byDestination).toEqual([])
   })
 
-  it('treats two fun jumps in one destination as a single upload', () => {
+  it('uploads two jumps of one dropzone as a single upload', () => {
     const manifest = manifestOf([
       group({ id: 'group_1', destination: 'Yverdon' }),
       group({ id: 'group_2', destination: 'Yverdon' })
@@ -229,7 +229,7 @@ describe('where an upload goes', () => {
     expect(targets[0].groupIds.sort()).toEqual(['group_1', 'group_2'])
   })
 
-  it('covers a destination that holds nothing but lone files', () => {
+  it('covers a dropzone that holds nothing but loose files', () => {
     const manifest = manifestOf([], {
       files: [
         {
@@ -265,7 +265,7 @@ describe('where an upload goes', () => {
     expect(target.remoteDir).toBe('/volume1/dropzones/yverdon')
   })
 
-  it('reports an unresolvable folder rather than inventing one', () => {
+  it('says a folder is missing rather than guessing one', () => {
     const manifest = manifestOf([group({ destination: undefined })])
     const [target] = resolveUploadTargets({
       outputDir,

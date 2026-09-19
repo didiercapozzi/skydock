@@ -8,7 +8,7 @@ import { durationIn, positionIn, runWatched } from '../src/tools'
    figure comes from ffmpeg's own account of where it is, and reaches the board over one stream
    instead of being asked for. */
 
-describe('how far ffmpeg has got', () => {
+describe('how far a file being processed has got', () => {
   it('reads its position out of what it prints, the latest one when several arrive at once', () => {
     expect(positionIn('frame=10\nout_time_us=2500000\nprogress=continue\n')).toBe(2.5)
     expect(positionIn('out_time_us=1000000\nout_time_us=4000000\n')).toBe(4)

@@ -40,7 +40,8 @@ beforeEach(() => {
 afterEach(() => {
   fs.rmSync(media, { recursive: true, force: true })
   fs.rmSync(outputDir, { recursive: true, force: true })
-  delete process.env.SKYDOCK_CAMERA_ROOTS
+  /* back to the test run's own: no camera watched */
+  process.env.SKYDOCK_CAMERA_ROOTS = ''
 })
 
 describe('copying a camera off', () => {

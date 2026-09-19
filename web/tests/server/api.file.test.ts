@@ -1,14 +1,11 @@
 import * as fs from 'node:fs'
-import { describe, expect, test, vi, beforeEach, afterEach } from 'vitest'
+import * as path from 'node:path'
+import { describe, expect, test, beforeEach, afterEach } from 'vitest'
+import { getOutputDir } from '@skydock/scripts'
+import { loader } from '../../app/routes/api.file.$'
 
-vi.mock('@skydock/scripts', async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>
-  return { ...actual, getOutputDir: () => '/workspace/output' }
-})
-
-const { loader } = await import('../../app/routes/api.file.$')
-
-const TEST_DIR = '/workspace/output/test-stream'
+/* the output folder the test run gives every server test — never the real one */
+const TEST_DIR = path.join(getOutputDir(), 'test-stream')
 const TEST_FILE = `${TEST_DIR}/test-video.mp4`
 
 beforeEach(() => {

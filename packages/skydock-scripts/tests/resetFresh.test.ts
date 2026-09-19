@@ -187,7 +187,7 @@ describe('resetting Fresh files', () => {
 
 /* When the mistake was a correction, only the times go back: everything else that was decided stays. */
 describe('resetting only the times of Fresh files', () => {
-  it('puts every file back on its camera time, on the jump and in the registry', () => {
+  it('puts every file back on its camera time', () => {
     const manifest = board()
 
     expect(resetFreshTimes(manifest)).toEqual({ files: 3, jumps: 1 })

@@ -4,7 +4,15 @@
    freeing, taking back — is imported by the routes straight from its module, so none of it can
    reach the browser bundle. */
 import { boardAnswerSchema, importOutcomeSchema } from './boardAnswer'
-import type { BoardAnswer, ImportOutcome, MontageNote, ScanResult, TandemFact } from './boardAnswer'
+import type {
+  BoardAnswer,
+  ImportOutcome,
+  MontageNote,
+  OutputFact,
+  ProxyFact,
+  ScanResult,
+  TandemFact
+} from './boardAnswer'
 import {
   groupFromFiles,
   offGap,
@@ -16,8 +24,9 @@ import {
   startOfFiles
 } from './clustering'
 import { fileChanged, fileStatus, outputKeyOf, uploadGate } from './fileStatus'
-import type { FileStatus, OutputFact, RemoteListing, StatusContext } from './fileStatus'
+import type { FileStatus, RemoteListing, StatusContext } from './fileStatus'
 import { freeablePlace } from './freeable'
+import { jsonText } from './lib/json'
 /* arithmetic only — the board draws the rectangle with the same functions processing cuts it with,
    because two ideas of "which pixels" would disagree and the disagreement would be invisible */
 import {
@@ -61,7 +70,6 @@ import type { LiveEvent } from './live'
 import { lastSegment, parentOf } from './paths'
 import { getGroupProcessedDir, processingNow, processJumps, whenProcessed } from './process'
 import { statProxies } from './proxy'
-import type { ProxyFact } from './proxy'
 import { scanMedia } from './scan'
 import {
   EDIT_LOCKED,
@@ -123,6 +131,7 @@ import {
 
 export {
   freeablePlace,
+  jsonText,
   startOfFiles,
   outputKeyOf,
   watchTandems,

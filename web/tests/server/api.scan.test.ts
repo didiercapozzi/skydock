@@ -35,7 +35,7 @@ describe('scanning', () => {
       body: JSON.stringify({})
     })
 
-  it('scans original_files into a manifest, clustering what was shot together', async () => {
+  it('groups the files shot close together into one jump', async () => {
     const dayDir = path.join(tmpDir, 'original_files', '2026-08-24')
     fs.mkdirSync(dayDir, { recursive: true })
     fs.writeFileSync(path.join(dayDir, 'DJI_0001.MP4'), Buffer.from('scan-video-bytes'))
@@ -50,7 +50,7 @@ describe('scanning', () => {
     expect(fs.existsSync(path.join(tmpDir, 'manifest.json'))).toBe(true)
   })
 
-  it('returns unchanged result without original_files', async () => {
+  it('has nothing to scan before a camera was copied off', async () => {
     const res = (await action({ request: scanRequest() })) as unknown as Answer
     expect(res.scan.unchanged).toBe(true)
     expect(res.scan.fileCount).toBe(0)

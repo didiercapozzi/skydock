@@ -124,8 +124,8 @@ const copyWhole = async (src: string, dest: string, onPercent?: OnPercent) => {
    The filter works in ordinary memory: `crop` and `scale` have hardware twins, but naming the
    rectangle in pixels of the source frame is the same arithmetic either way and this keeps one code
    path. An Intel or AMD card's encoder only takes frames that are on the card, so there they are
-   handed back up before encoding — without that, every clip that needed its picture changed failed
-   there, turned or cropped, with nothing more to say than that it had. */
+   handed back up before encoding — otherwise every clip that needs its picture changed, turned or
+   cropped, fails there with nothing more to say than that it did. */
 const recodeVideo = async (
   src: string,
   dest: string,
@@ -181,7 +181,7 @@ const updateMetadata = async (files: string[]) => {
 
 /* Preparing again writes over what is there. Nothing is moved aside first: a copy is made from an
    original that has not moved, so the thing being replaced is a copy of the same file, and keeping
-   the old one only left a folder of near-duplicates nobody was going to look through.
+   the old one would only leave a folder of near-duplicates nobody is going to look through.
 
    What has to go is the copy whose name is no longer generated — a clip whose time was corrected
    leaves one behind, and a file nobody expects is a file that would be delivered anyway. So the

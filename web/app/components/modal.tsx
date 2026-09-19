@@ -65,4 +65,12 @@ const INPUT =
 
 const ERROR = 'rounded-md bg-local-soft px-2.5 py-[7px] text-[12.5px] text-local'
 
-export { ERROR, Field, INPUT, Modal, Spacer }
+/* one line of what a dialog proves, deletes or keeps, marked with what happens to it */
+const Line = ({ mark, children }: { mark: string; children: React.ReactNode }) => (
+  <li className='flex gap-2 text-[12.5px] text-ink-2'>
+    <span className='w-3 flex-none text-center'>{mark}</span>
+    <span>{children}</span>
+  </li>
+)
+
+export { ERROR, Field, INPUT, Line, Modal, Spacer }

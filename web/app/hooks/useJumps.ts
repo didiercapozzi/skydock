@@ -6,10 +6,10 @@ const useGroups = (initialGroups: ManifestGroup[]) => {
   const [groups, setGroups] = useState<ManifestGroup[]>(initialGroups)
   const { submit } = useSafeFetcher()
 
-  /* `destinations` rides along when an edit also adds a place. Saving the place separately raced
-     this save: its answer carried the groups as they were before, and the board took that answer
-     over the edit it had just shown — a jump filed under Tandems for the first time sprang straight
-     back into Unsorted. One save, carrying both, has nothing to race. */
+  /* `destinations` rides along when an edit also adds a place. Saved separately, the place's answer
+     would carry the groups as they were before and the board could take it over the edit it had just
+     shown — a jump filed under Tandems for the first time springing back into Fresh files. One save,
+     carrying both, has nothing to race. */
   const updateGroups = (
     next: ManifestGroup[],
     fileUpdates?: ManifestFile[],

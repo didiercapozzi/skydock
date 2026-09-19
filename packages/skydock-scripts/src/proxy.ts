@@ -1,6 +1,7 @@
 import * as childProcess from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import type { ProxyFact } from './boardAnswer'
 import { loadManifest, saveManifest } from './manifest'
 import type { Manifest, ManifestFile } from './types'
 import { following } from './live'
@@ -92,11 +93,10 @@ const canEncode = (args: string[], before: string[] = []) => {
 
 /* A VAAPI card that can encode cannot necessarily scale. Resizing on the card goes through its
    video-processing unit, which is a separate entrypoint the driver may simply not offer — an Intel
-   iHD driver that decodes and encodes perfectly well answered every `scale_vaapi` with "the
-   requested VAProfile is not supported", and every clip on the card failed. So the scaler gets a
-   trial of its own, and a card without one still decodes and encodes while the processor does the
-   resize in between: 5 seconds of 2.7K HEVC in 2 seconds that way, against the 165s the processor
-   takes doing all of it. */
+   iHD driver decodes and encodes perfectly well yet answers every `scale_vaapi` with "the requested
+   VAProfile is not supported". So the scaler gets a trial of its own, and a card without one still
+   decodes and encodes while the processor does the resize in between: 5 seconds of 2.7K HEVC in 2
+   seconds that way, against the 165s the processor takes doing all of it. */
 const vaapiCanScale = () =>
   canEncode(
     [...ENCODER_ARGS.vaapi, '-vf', 'format=nv12,hwupload,scale_vaapi=w=160:h=-2'],
@@ -128,7 +128,7 @@ const detection = () => (detected ??= detectEncoder())
 const proxyEncoder = () => detection().encoder
 
 /* only for tests and for saying which one was picked in a log line. A card is assumed to scale
-   unless a test says otherwise, which is what every card did until one did not. */
+   unless a test says otherwise, as most cards do. */
 const setProxyEncoder = (next: ProxyEncoder | null, cardScales = true) => {
   detected = next === null ? null : { encoder: next, cardScales }
 }
@@ -185,8 +185,8 @@ const shownWidth = (shape: { width: number; height: number; turned: boolean }) =
 /* The processor's scaler is handed frames ffmpeg has already turned the right way up, so asking
    for a 640-wide frame is the whole of it. A graphics card is handed them as they sit on disk and
    the turn stays as a note on the side, so the edge to shrink is whichever one ends up across —
-   get this wrong and a sideways clip comes out three times the size it was asked for, which is
-   what happened to every 360 camera clip on the first card through. */
+   get this wrong and a sideways clip, as a 360 camera records, comes out three times the size it
+   was asked for. */
 const scaleFilter = (shape: { turned: boolean } | null, hardware: boolean) => {
   if (!hardware) return `scale=${PROXY_WIDTH}:-2`
   return shape?.turned ? `scale_vaapi=w=-2:h=${PROXY_WIDTH}` : `scale_vaapi=w=${PROXY_WIDTH}:h=-2`
@@ -405,7 +405,6 @@ const resumeProxies = (outputDir?: string) => {
 
    `own` is a clip already smaller than a proxy would be. It is finished, not pending: there is
    nothing left to make, which is a different thing from having nothing yet. */
-type ProxyFact = { state: 'ready' | 'own' | 'none'; play: string }
 
 const statProxies = (manifest: Manifest, outputDir?: string) => {
   const facts: Record<string, ProxyFact> = {}
@@ -449,4 +448,4 @@ export {
   PROXY_WIDTH,
   statProxies
 }
-export type { ProxyEncoder, ProxyFact, ProxyReport }
+export type { ProxyEncoder, ProxyReport }

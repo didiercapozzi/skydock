@@ -95,7 +95,7 @@ const pushEntries = (stack: WalkItem[], dir: string, entries: fs.Dirent[]) => {
   }
 }
 
-const walkFiles = (dir: string): string[] => {
+const walkFiles = (dir: string) => {
   const results: string[] = []
   const stack: WalkItem[] = []
   try {

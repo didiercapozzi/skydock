@@ -3,6 +3,7 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { z } from 'zod'
+import { jsonText } from './lib/json'
 import { dsmFetch, dsmRequestUrl, normalizeNasPath } from './nas'
 import type { NasSession } from './nas'
 import { parentOf } from './paths'
@@ -67,14 +68,8 @@ const readTandemIndex = async (session: NasSession, dir: string): Promise<Tandem
   const res = await fetch(url.toString())
   const text = await res.text()
   if (!res.ok) throw new Error(`The storage answered ${res.status} for ${INDEX_NAME}.`)
-  const parsed = (() => {
-    try {
-      return indexSchema.safeParse(JSON.parse(text))
-    } catch {
-      return null
-    }
-  })()
-  if (!parsed?.success) throw new Error(`${INDEX_NAME} on the storage cannot be read.`)
+  const parsed = jsonText.pipe(indexSchema).safeParse(text)
+  if (!parsed.success) throw new Error(`${INDEX_NAME} on the storage cannot be read.`)
   return parsed.data
 }
 

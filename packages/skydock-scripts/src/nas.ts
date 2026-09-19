@@ -3,6 +3,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { z } from 'zod'
 import { writeJsonAtomic } from './lib/fs'
+import { jsonText } from './lib/json'
 import { getConfigDir, getStatusDir } from './utils'
 
 const nasSessionSchema = z.object({
@@ -129,9 +130,9 @@ const adoptLegacySession = () => {
   fs.unlinkSync(legacy)
 }
 
-const normalizeHost = (host: string): string => host.replace(/\/+$/, '')
+const normalizeHost = (host: string) => host.replace(/\/+$/, '')
 
-const dsmEntryUrl = (host: string): string => `${normalizeHost(host)}/webapi/entry.cgi`
+const dsmEntryUrl = (host: string) => `${normalizeHost(host)}/webapi/entry.cgi`
 
 const dsmRequestUrl = (host: string, params: Record<string, string>) =>
   new URL(`${dsmEntryUrl(host)}?${new URLSearchParams(params)}`)
@@ -262,7 +263,7 @@ const dsmLogin = async (config: DsmConfig) => {
   throw lastErr ?? new Error('DSM login failed: no version succeeded')
 }
 
-const dsmLogout = async (host: string, sid: string): Promise<void> => {
+const dsmLogout = async (host: string, sid: string) => {
   try {
     await dsmFetch(host, {
       api: 'SYNO.API.Auth',
@@ -338,8 +339,9 @@ const dsmGetEncryptionInfo = async (host: string) => {
 
 /* Always local AES. DSM's public key encrypts a password for one login request, not for storage:
    the stored `dsm:` ciphertext cannot be decrypted here and replaying it as `passwd` is not the
-   envelope DSM expects, so an expired session could never refresh itself silently. `dsm:` blobs
-   written by older versions are still read (see refreshStoredSession) and replaced on next connect. */
+   envelope DSM expects, so an expired session could never refresh itself silently. A session still
+   carrying a `dsm:` blob is replayed as it is (see refreshStoredSession) and the blob replaced at the
+   next connect. */
 const encryptPasswordForStorage = (host: string, user: string, plain: string) =>
   `local:${encryptLocal(host, user, plain)}`
 
@@ -353,7 +355,7 @@ type NasFolderEntry = z.infer<typeof dsmFileEntrySchema>
 
 type NasFileEntry = { name: string; path: string; size: number | null }
 
-const normalizeNasPath = (input: string): string => {
+const normalizeNasPath = (input: string) => {
   const trimmed = input.trim()
   if (trimmed === '' || trimmed === '/') return '/'
   const withSlash = trimmed.startsWith('/') ? trimmed : `/${trimmed}`
@@ -571,16 +573,16 @@ type DsmAuth = {
   validate: (host: string, sid: string) => Promise<boolean>
 }
 
-const loadNasSession = (configDir?: string): NasSession | null => {
+const loadNasSession = (configDir?: string) => {
   try {
     if (!configDir) adoptLegacySession()
-    return nasSessionSchema.parse(JSON.parse(fs.readFileSync(nasPath(configDir), 'utf-8')))
+    return jsonText.pipe(nasSessionSchema).parse(fs.readFileSync(nasPath(configDir), 'utf-8'))
   } catch {
     return null
   }
 }
 
-const saveNasSession = (session: NasSession, configDir?: string): void => {
+const saveNasSession = (session: NasSession, configDir?: string) => {
   nasSessionSchema.parse(session)
   const target = nasPath(configDir)
   fs.mkdirSync(path.dirname(target), { recursive: true })
@@ -588,7 +590,7 @@ const saveNasSession = (session: NasSession, configDir?: string): void => {
   fs.chmodSync(target, 0o600)
 }
 
-const clearNasSession = (configDir?: string): void => {
+const clearNasSession = (configDir?: string) => {
   const target = nasPath(configDir)
   if (fs.existsSync(target)) fs.unlinkSync(target)
 }
@@ -596,7 +598,7 @@ const clearNasSession = (configDir?: string): void => {
 /* Two folders are remembered: where uploads go, and where the original videos are kept. They are
    chosen the same way and never derived from each other — a backup that falls back to the upload
    folder puts gigabytes of rushes in a passenger's hands. */
-const updateNasFolder = (kind: 'default' | 'backup', folder: string, configDir?: string): void => {
+const updateNasFolder = (kind: 'default' | 'backup', folder: string, configDir?: string) => {
   const session = loadNasSession(configDir)
   if (!session) return
   const key = kind === 'backup' ? 'backupFolder' : 'defaultFolder'

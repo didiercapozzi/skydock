@@ -36,7 +36,7 @@ const storageDirOf = (
 /* When a delivered file was shot, read off its name: `yverdon_20260913_013417.mp4`, a film named for
    its day alone, `luc_favre_20260802.mp4`, or an archive, `luc_favre_20260802.photos.zip` — the time
    as the machine that named it kept it. The storage's own date is when the file was put there, which
-   for anything uploaded before the upload kept dates is the upload's day, not the jump's. */
+   for a file sent without its date is the upload's day, not the jump's. */
 const NAMED_TIME =
   /_(\d{4})(\d{2})(\d{2})(?:_(\d{2})(\d{2})(\d{2}))?(?:_\d+)?(?:\.[a-z]+)?\.[^.]+$/i
 

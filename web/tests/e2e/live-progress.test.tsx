@@ -124,7 +124,7 @@ describe('a proxy being made', () => {
   })
 })
 
-describe('the stream', () => {
+describe('the board’s line to the machine', () => {
   test('is closed when the board goes away', async () => {
     const screen = await render(createElement(Files, { shape: 'rows' }))
     const opened = stream

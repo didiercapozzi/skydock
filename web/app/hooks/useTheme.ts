@@ -1,9 +1,11 @@
 import { useSyncExternalStore } from 'react'
+import { z } from 'zod'
 
 /* Auto follows the machine; the other two say so regardless of it. Auto is the default because
    most of the time the machine is right — but it is an ambient signal the app cannot see and the
    reader cannot check, which is exactly why overriding it has to be possible. */
-type Theme = 'auto' | 'light' | 'dark'
+const themeSchema = z.enum(['auto', 'light', 'dark'])
+type Theme = z.infer<typeof themeSchema>
 
 const KEY = 'skydock.theme'
 
@@ -16,8 +18,8 @@ const subscribe = (listener: () => void) => {
 
 const readStored = (): Theme => {
   try {
-    const stored = localStorage.getItem(KEY)
-    return stored === 'light' || stored === 'dark' ? stored : 'auto'
+    const stored = themeSchema.safeParse(localStorage.getItem(KEY))
+    return stored.success ? stored.data : 'auto'
   } catch {
     return 'auto'
   }

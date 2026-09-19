@@ -1,12 +1,10 @@
 import { parentOf } from './paths'
+import type { OutputFact } from './boardAnswer'
 import type { ManifestFile } from './types'
 
 /* Free of node imports: the board runs this in the browser. */
 
 type FileStatus = 'local' | 'processed' | 'uploaded'
-
-/* What the disk says about a processed copy. */
-type OutputFact = { exists: boolean; size: number }
 
 /* What the NAS said, for the folders that answered. `dirs` is the set that was actually listed —
    a folder missing from it was never checked (or the call failed), which is not evidence of
@@ -129,4 +127,4 @@ const uploadGate = (files: ManifestFile[], context?: (file: ManifestFile) => Sta
 const outputKeyOf = (file: { id?: string; path: string }) => file.id ?? file.path
 
 export { fileChanged, fileStatus, outputKeyOf, scopeStatus, uploadGate }
-export type { FileStatus, OutputFact, RemoteListing, StatusContext }
+export type { FileStatus, RemoteListing, StatusContext }

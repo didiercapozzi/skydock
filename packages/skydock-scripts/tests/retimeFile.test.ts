@@ -16,7 +16,7 @@ const file = (id: string, mtime: number): ManifestFile => ({
 const T = 1_789_300_000
 
 describe('re-timing one file', () => {
-  it('changes that file and no other, in the registry and in its jump', () => {
+  it('changes that file and no other', () => {
     const manifest: Manifest = {
       version: 1,
       createdAt: 'x',

@@ -12,7 +12,7 @@ vi.mock('node:child_process', async (importOriginal) => {
   return { ...actual, execSync: (await import('./fixtures')).execSyncMock }
 })
 
-describe('rescan preserves what the registry knows', () => {
+describe('a scan keeps the work already done', () => {
   let outputDir: string
 
   beforeEach(() => {
@@ -26,7 +26,7 @@ describe('rescan preserves what the registry knows', () => {
   })
 
   /* a scan keeps what SkyDock decided about every file and reads only what the disk measures */
-  it('keeps destination, crop and the processed record when a new file appears', async () => {
+  it('keeps where a file is filed, its crop and what was made from it, when a new file is found', async () => {
     const origDir = path.join(outputDir, 'original_files')
     writeTempFile(origDir, 'DJI_0001.MP4')
     await scanMedia({ outputDir })

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Go, Mini } from './buttons'
 import { Modal, Spacer } from './modal'
+import type { VideoRef } from './preview-drawer'
 import type { ManifestGroup } from './types'
 import { VideoCropper } from './video-cropper'
 import {
@@ -14,10 +15,6 @@ import {
   toDateInputValue,
   toTimeInputValue
 } from './utils'
-
-type VideoRef = {
-  seek: (time: number) => void
-}
 
 const groupMinMtime = (group: ManifestGroup) => minFileMtime(group.files)
 

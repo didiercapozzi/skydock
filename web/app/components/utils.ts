@@ -1,8 +1,6 @@
-import { getOutputDir, isVideoFile as isVideoFileFromScripts, startOfFiles } from '@skydock/scripts'
+import { getOutputDir, isVideoFile, startOfFiles } from '@skydock/scripts'
 import type { ProxyFact } from '@skydock/scripts'
 import type { ManifestFile, ManifestGroup } from './types'
-
-const isVideoFile = (filename: string) => isVideoFileFromScripts(filename)
 
 /* Whole megabytes, and gigabytes once there would be four digits of them: the column is narrow and
    a tenth of a megabyte has never told anyone anything. */
@@ -105,8 +103,7 @@ const getFileUrl = (filePath: string) => `/api/file${relativeToOutput(filePath)}
 /* What to play, which is not always what the file is. A clip has a small all-intra copy beside it
    once one has been made, and the crop bar scrubs against that instead of dragging a 4K file
    through the browser a frame at a time. Same duration and same frame rate, so a crop set here
-   means the same instant in the clip itself. Until the proxy exists, the clip plays as it always
-   did.
+   means the same instant in the clip itself. Until the proxy exists, the clip itself plays.
 
    The server's look at the disk decides, and the record on the file is only the fallback: a build
    still in progress has copies on disk that nothing has written down yet, and playing the original

@@ -84,7 +84,7 @@ const resolveGroups = (files: ManifestFile[], groupsFile: GroupsFile | null) => 
         else delete resolved.rotation
         return resolved
       })
-      .filter((f): f is ManifestFile => f !== null)
+      .filter((f) => f !== null)
   }))
   if (dangling > 0) console.log(`[Manifest] Dropped ${dangling} dangling group file ref(s).`)
   return groups

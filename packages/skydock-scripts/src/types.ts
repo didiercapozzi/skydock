@@ -9,7 +9,7 @@ import { z } from 'zod'
    frame is copied as it is, while any rectangle at all has to be encoded again. */
 /* Clamped rather than rejected. A fraction is arrived at by dividing pixels by pixels, so a hair
    over 1 is an ordinary result of floating point rather than a broken value — and refusing it here
-   used to take the whole jumps file down with it. Nothing is lost by pulling it back into range. */
+   would refuse the whole jumps file with it. Nothing is lost by pulling it back into range. */
 const fraction = z
   .number()
   .refine((n) => Number.isFinite(n), 'must be a number')

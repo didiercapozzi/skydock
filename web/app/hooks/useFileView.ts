@@ -1,6 +1,8 @@
 import { useSyncExternalStore } from 'react'
+import { z } from 'zod'
 
-type FileView = 'rows' | 'grid'
+const fileViewSchema = z.enum(['rows', 'grid'])
+type FileView = z.infer<typeof fileViewSchema>
 
 const KEY = 'skydock.fileView'
 
@@ -17,7 +19,8 @@ const subscribe = (listener: () => void) => {
 
 const readStored = (): FileView => {
   try {
-    return sessionStorage.getItem(KEY) === 'grid' ? 'grid' : 'rows'
+    const stored = fileViewSchema.safeParse(sessionStorage.getItem(KEY))
+    return stored.success ? stored.data : 'rows'
   } catch {
     return 'rows'
   }

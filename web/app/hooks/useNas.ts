@@ -80,9 +80,7 @@ const useNas = (loaded: NasLoaded, remoteAfterUpload: CheckedListing | null) => 
      upload's own listing or a Refresh replaces it, newest wins. */
   const remoteAnswer = remoteFilesSchema.safeParse(remoteFetcher.data)
   const fresh = remoteAnswer.success && remoteAnswer.data.ok ? remoteAnswer.data : null
-  const seen: CheckedListing[] = [fresh, remoteAfterUpload, loaded.remote].filter(
-    (r): r is CheckedListing => r !== null
-  )
+  const seen: CheckedListing[] = [fresh, remoteAfterUpload, loaded.remote].filter((r) => r !== null)
   const newest = seen.length === 0 ? null : seen.reduce((a, b) => (a.at >= b.at ? a : b))
   const remote: RemoteListing | null = newest
   const checkRemote = () => remoteFetcher.load({ url: '/api/remote-files' })

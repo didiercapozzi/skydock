@@ -1,7 +1,7 @@
 import { Go, Mini } from './buttons'
-import { Modal, Spacer } from './modal'
+import { Line, Modal, Spacer } from './modal'
 import { formatFilmSize, plural } from './utils'
-import type { TandemFact } from './tandem-card'
+import type { TandemFact } from '@skydock/scripts'
 import type { ManifestGroup } from './types'
 
 /* Resetting or deleting a tandem throws away work, some of which only a person can make again — the
@@ -9,13 +9,6 @@ import type { ManifestGroup } from './types'
    one button that does it says which of the two it is. */
 
 type Mode = 'reset' | 'delete'
-
-const Line = ({ mark, children }: { mark: string; children: React.ReactNode }) => (
-  <li className='flex gap-2 text-[12.5px] text-ink-2'>
-    <span className='w-3 flex-none text-center'>{mark}</span>
-    <span>{children}</span>
-  </li>
-)
 
 const TakeBackDialog = ({
   mode,

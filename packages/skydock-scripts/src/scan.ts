@@ -12,16 +12,8 @@ import { loadManifest, saveManifest } from './manifest'
 import { computeFileId } from './fileId'
 import { reclusterGroups } from './clustering'
 import { buildMissingProxies } from './proxy'
+import type { ScanResult } from './boardAnswer'
 import type { Manifest, ManifestFile, ManifestGroup } from './types'
-
-type ScanResult = {
-  added: number
-  removed: number
-  moved: number
-  unchanged: boolean
-  fileCount: number
-  groupCount: number
-}
 
 const parseDateTime = (raw: string) => {
   const match = raw.match(/^(\d{4}):(\d{2}):(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/)
@@ -127,10 +119,10 @@ const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => 
   const keptFiles: ManifestFile[] = []
   let removed = 0
   let moved = 0
-  /* Keep what the registry knows and let the disk win on what the disk measures. Pushing the bare
-     disk entry dropped `destination`, the processed/uploaded records and `keep` from every file on
-     any scan that added or removed one — so a single new file un-sorted every lone file. A file
-     whose bytes or time really did change invalidates its own records through the new size/mtime. */
+  /* Keep what the registry knows and let the disk win on what the disk measures. The bare disk
+     entry knows nothing of where a file is filed or what was made from it, so taking it alone would
+     un-sort every loose file whenever one file came or went. A file whose bytes or time really did
+     change invalidates its own records through the new size and time. */
   for (const f of existing.files) {
     /* a copy is looked at once its original has been, below */
     if (f.copyOf) continue

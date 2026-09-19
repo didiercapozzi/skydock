@@ -30,7 +30,7 @@ const editorCommand = () => process.env[EDITOR_COMMAND]?.trim() || 'kdenlive'
    in a way that looks like the editor's fault rather than ours. Quotes group, a backslash takes the
    next character literally, and nothing else is interpreted — no globbing, no variables, no
    pipelines. Unbalanced quotes are a mistake worth naming rather than guessing at. */
-const tokenize = (command: string): string[] | null => {
+const tokenize = (command: string) => {
   const tokens: string[] = []
   let current = ''
   let held = false
@@ -74,7 +74,7 @@ const displayHint = () =>
     ? ''
     : ' — and there is no DISPLAY set here, so a window has nowhere to open'
 
-const openInEditor = async (projectPath: string): Promise<OpenResult> => {
+const openInEditor = async (projectPath: string) => {
   const command = editorCommand()
   if (!fs.existsSync(projectPath))
     return { opened: false, command, reason: `No project at ${projectPath}` }

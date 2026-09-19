@@ -33,7 +33,7 @@ const LIST_CONCURRENCY = 4
 const uploadedFiles = (record: ManifestGroup['uploaded']) =>
   record
     ? [record.film, record.photos, record.rushes, ...(record.originals ?? [])].filter(
-        (f): f is NonNullable<typeof f> => f !== undefined
+        (f) => f !== undefined
       )
     : []
 

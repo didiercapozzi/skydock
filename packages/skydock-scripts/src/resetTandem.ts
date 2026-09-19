@@ -36,12 +36,7 @@ const removable = (outputDir: string, dir: string) => {
   return target.startsWith(`${root}${path.sep}`) && target !== root
 }
 
-const takeBack = (
-  manifest: Manifest,
-  outputDir: string,
-  groupId: string,
-  forget: boolean
-): { groupIds: string[] } => {
+const takeBack = (manifest: Manifest, outputDir: string, groupId: string, forget: boolean) => {
   const group = manifest.groups.find((g) => g.id === groupId)
   if (!group) throw new Error('Tandem not found.')
   if (!isTandem(group)) throw new Error('Only a named tandem can be reset or deleted.')

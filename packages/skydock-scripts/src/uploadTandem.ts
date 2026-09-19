@@ -152,7 +152,7 @@ const uploadTandem = async ({
 
   /* only what is the passenger's goes to the passenger: not the project, not the working folders,
      and above all not the rushes */
-  const forPassenger = [film, photosZip].filter((f): f is string => f !== null)
+  const forPassenger = [film, photosZip].filter((f) => f !== null)
   if (forPassenger.length === 0) throw new Error('Nothing to upload — no film and no photos.')
   const targets: UploadTarget[] = [{ ...passenger, files: forPassenger }]
   if (rushesZip)

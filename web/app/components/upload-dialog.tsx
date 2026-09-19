@@ -3,7 +3,7 @@ import type { BackupChoice } from '../hooks/useBackupChoice'
 import { Go, Mini, Seg } from './buttons'
 import { Modal, Spacer } from './modal'
 
-import type { TandemFact } from './tandem-card'
+import type { TandemFact } from '@skydock/scripts'
 import type { ManifestGroup } from './types'
 import { formatFilmSize, hhmm, isVideoFile, plural } from './utils'
 

@@ -30,13 +30,13 @@ const renderBoard = async () => {
   return render(createElement(Stub, { initialEntries: ['/'] }))
 }
 
-describe('NAS connection', () => {
+describe('connecting to the storage', () => {
   test('offers to connect while no session exists', async () => {
     await renderBoard()
     await expect.element(page.getByRole('button', { name: 'Connect the NAS' })).toBeInTheDocument()
   })
 
-  test('the connect button opens the connection dialog', async () => {
+  test('Connect opens the login', async () => {
     await renderBoard()
     await userEvent.click(page.getByRole('button', { name: 'Connect the NAS' }))
     await expect.element(page.getByText('Connect to NAS')).toBeInTheDocument()
@@ -45,7 +45,7 @@ describe('NAS connection', () => {
     await expect.element(page.getByRole('textbox', { name: 'Password' })).toBeInTheDocument()
   })
 
-  test('Cancel closes the connection dialog', async () => {
+  test('Cancel closes the login', async () => {
     await renderBoard()
     await userEvent.click(page.getByRole('button', { name: 'Connect the NAS' }))
     await expect.element(page.getByText('Connect to NAS')).toBeInTheDocument()
@@ -56,7 +56,7 @@ describe('NAS connection', () => {
 
 /* An account with 2-step verification (RULES, Network storage): the storage asks for the code, the
    dialog asks for it in turn, keeping what was already typed, and connects with it. */
-describe('NAS connection — 2-step verification', () => {
+describe('connecting to the storage — 2-step verification', () => {
   test('asks for the code when the storage wants one, and connects with it', async () => {
     const sent: Record<string, unknown>[] = []
     const Stub = createRoutesStub([

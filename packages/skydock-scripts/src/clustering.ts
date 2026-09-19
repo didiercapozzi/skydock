@@ -54,7 +54,7 @@ const startOfFiles = (files: ManifestFile[]) => mainRun(files)[0]?.mtime ?? 0
 const dayOfFiles = (files: ManifestFile[]) =>
   files.length === 0 ? '' : formatDay(startOfFiles(files))
 
-const buildGroup = (files: ManifestFile[], id: string, label: string): ManifestGroup => ({
+const buildGroup = (files: ManifestFile[], id: string, label: string) => ({
   id,
   label,
   day: dayOfFiles(files),

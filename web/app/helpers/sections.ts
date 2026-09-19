@@ -28,7 +28,7 @@ const startOf = (group: ManifestGroup) => minFileMtime(group.files) ?? 0
 /* A jump is named by its place among the jumps — "Jump 2" — which says why these files are together
    where a bare time only ever said when. Counted over every jump there, oldest first and straight
    through the days, so four jumps are Jump 1 to Jump 4 whichever days they fell on: a number that
-   started again each day gave two jumps the same name. The numbers are positions, not identities:
+   started again each day would give two jumps the same name. The numbers are positions, not identities:
    file one away and the rest renumber. A passenger's jump is named after the passenger, and one
    given a name keeps it. */
 const jumpLabels = (groups: ManifestGroup[]) =>

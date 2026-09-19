@@ -1,19 +1,12 @@
 import { lastSegment } from '@skydock/scripts'
 import { Go, Mini } from './buttons'
-import { Modal, Spacer } from './modal'
+import { Line, Modal, Spacer } from './modal'
 import { formatFilmSize } from './utils'
 import type { ManifestGroup } from './types'
 
 /* Freeing an uploaded tandem deletes its originals from this machine, so the dialog says three
    things before anything happens: what is proved first, what is then deleted, and what it costs —
    the tandem cannot be processed or edited again from here. */
-
-const Line = ({ mark, children }: { mark: string; children: React.ReactNode }) => (
-  <li className='flex gap-2 text-[12.5px] text-ink-2'>
-    <span className='w-3 flex-none text-center'>{mark}</span>
-    <span>{children}</span>
-  </li>
-)
 
 const FreeDialog = ({
   who,
@@ -29,7 +22,7 @@ const FreeDialog = ({
   const record = group.uploaded
   const sent = record
     ? [record.film, record.photos, record.rushes, ...(record.originals ?? [])].filter(
-        (f): f is NonNullable<typeof f> => f !== undefined
+        (f) => f !== undefined
       )
     : []
   const originals = group.files.reduce((n, f) => n + f.size, 0)

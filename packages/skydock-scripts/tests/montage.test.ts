@@ -93,11 +93,11 @@ const parsed = (xml: string) => {
 describe('montage — a document the editor can open', () => {
   /* two declarations made every project ever generated unopenable, and regular expressions over the
      text could not see it: everything was present, the file just was not XML */
-  it('writes a project that parses', () => {
+  it('writes a project the editor can open', () => {
     expect(() => parsed(build(twoAudioOneMutedTemplate, ['a.mp4']).xml)).not.toThrow()
   })
 
-  it('writes a project that parses from the committed template too', () => {
+  it('writes a project the editor can open from the template that ships too', () => {
     expect(() => parsed(build(undefined, ['a.mp4']).xml)).not.toThrow()
   })
 
@@ -165,7 +165,7 @@ describe('montage — which track the jump lands on', () => {
     expect(entriesOf(xml, 'playlist8')).toEqual([])
   })
 
-  it('reads the committed template the same way it always did', () => {
+  it('lays the jump on the first video track of the template that ships', () => {
     const { videoTrackId, xml } = build(undefined, ['a.mp4'])
     expect(videoTrackId).toBe('playlist4')
     expect(entriesOf(xml, 'playlist4')).toContain('chain_skydock_0')
@@ -213,7 +213,7 @@ describe('montage — each clip with its sound', () => {
     )
   }
 
-  it('lays each clip on V1 and its sound on A1 beneath it, starting together', () => {
+  it('lays each clip on the first video track and its sound on the audio track under it, starting together', () => {
     const xml = timed(twoAudioOneMutedTemplate, [
       ['a.mp4', 2],
       ['b.mp4', 3]
@@ -225,7 +225,7 @@ describe('montage — each clip with its sound', () => {
     expect(entriesOf(xml, 'playlist4')).toEqual(['chain_skydock_0_sound', 'chain_skydock_1_sound'])
   })
 
-  it('plays the picture alone on V1 and the sound alone on A1', () => {
+  it('plays the picture alone on the video track and the sound alone on the audio track', () => {
     const xml = timed(twoAudioOneMutedTemplate, [['a.mp4', 2]])
     /* read back as numbers, the way the parser reads any value */
     expect(chainProps(xml, 'chain_skydock_0_picture')).toMatchObject({
@@ -264,7 +264,7 @@ describe('montage — each clip with its sound', () => {
 
   /* the committed template opens V1 on a five-second title at 60 frames a second, and keeps a free,
      unmuted audio track under A1 */
-  it('starts after what V1 already holds, with the sound held back as far', () => {
+  it('starts after what the video track already holds, with the sound held back as far', () => {
     const xml = timed(undefined, [['a.mp4', 2]])
     expect(groupsOf(xml)).toEqual([
       {
@@ -278,7 +278,7 @@ describe('montage — each clip with its sound', () => {
     expect(xml).toMatch(/<playlist id="playlist2">[\s\S]*?<blank length="300"\/>/)
   })
 
-  it('keeps V1 alone, sound inside, when a clip’s length cannot be read', () => {
+  it('keeps the clips on the video track alone, sound inside, when a clip’s length cannot be read', () => {
     const { xml } = build(twoAudioOneMutedTemplate, ['a.mp4'])
     expect(entriesOf(xml, 'playlist6')).toEqual(['chain_skydock_0'])
     expect(entriesOf(xml, 'playlist4')).toEqual([])
@@ -287,7 +287,7 @@ describe('montage — each clip with its sound', () => {
 
 describe('montage — the committed template', () => {
   /* an audio track of its own under A1, heard, empty — for whatever the edit needs besides the jump */
-  it('has a free audio track under A1 that is not muted', () => {
+  it('has a free audio track, heard, under the one the jump’s sound goes on', () => {
     const xml = fs.readFileSync(REPO_TEMPLATE, 'utf-8')
     const order = [...xml.matchAll(/<track producer="(tractor\d+)"\/>/g)].map((m) => m[1])
     expect(order.slice(0, 3)).toEqual(['tractor0', 'tractor6', 'tractor1'])
@@ -297,7 +297,7 @@ describe('montage — the committed template', () => {
 })
 
 describe('montage — where the film goes', () => {
-  it('records the render destination and format kdenlive reads', () => {
+  it('fills in where the film goes and its format', () => {
     const { xml, groupDir } = build(twoAudioOneMutedTemplate)
     expect(xml).toContain(
       `<property name="kdenlive:docproperties.renderurl">${path.join(groupDir, 'luc_favre_20260802.mp4')}</property>`
@@ -305,7 +305,7 @@ describe('montage — where the film goes', () => {
     expect(xml).toContain('"kdenlive:docproperties.renderprofile">MP4-H264/AAC<')
   })
 
-  it('writes no consumer, so nothing can render it behind our back', () => {
+  it('leaves nothing that would render the film without a person', () => {
     const { xml } = build(twoAudioOneMutedTemplate, ['a.mp4'])
     expect(xml).not.toContain('<consumer')
   })

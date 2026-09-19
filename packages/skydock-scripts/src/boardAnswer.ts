@@ -108,8 +108,18 @@ const boardAnswerSchema = z.object({
 type BoardAnswer = z.infer<typeof boardAnswerSchema>
 type ImportOutcome = z.infer<typeof importOutcomeSchema>
 type MontageNote = z.infer<typeof montageNoteSchema>
+type OutputFact = z.infer<typeof outputFactSchema>
+type ProxyFact = z.infer<typeof proxyFactSchema>
 type ScanResult = z.infer<typeof scanResultSchema>
 type TandemFact = z.infer<typeof tandemFactSchema>
 
 export { boardAnswerSchema, importOutcomeSchema, proxyFactSchema, tandemFactSchema }
-export type { BoardAnswer, ImportOutcome, MontageNote, ScanResult, TandemFact }
+export type {
+  BoardAnswer,
+  ImportOutcome,
+  MontageNote,
+  OutputFact,
+  ProxyFact,
+  ScanResult,
+  TandemFact
+}

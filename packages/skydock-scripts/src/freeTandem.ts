@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { isArchiveFresh, sameContents } from './archive'
 import { outputKeyOf, uploadGate } from './fileStatus'
 import { hashFile } from './lib/fs'
+import { jsonText } from './lib/json'
 import { statProcessedOutputs } from './manifest'
 import { dsmFileMd5 } from './nas'
 import type { NasSession } from './nas'
@@ -120,9 +121,9 @@ const proveOnStorage = async (
     if (record.rushes) {
       const listed = (() => {
         try {
-          return z
-            .array(z.string())
-            .safeParse(JSON.parse(fs.readFileSync(`${record.rushes.localPath}.contents`, 'utf-8')))
+          return jsonText
+            .pipe(z.array(z.string()))
+            .safeParse(fs.readFileSync(`${record.rushes.localPath}.contents`, 'utf-8'))
         } catch {
           return null
         }
@@ -181,7 +182,7 @@ const freeTandem = async ({
   outputDir: string
   groupId: string
   session: NasSession
-}): Promise<FreeResult> => {
+}) => {
   const { group, dir } = await proveOnStorage(manifest, outputDir, groupId, session)
 
   let bytes = 0

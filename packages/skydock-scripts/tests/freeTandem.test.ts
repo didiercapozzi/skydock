@@ -188,6 +188,17 @@ describe('freeing an uploaded tandem', () => {
     expect(fs.readdirSync(originals)).toHaveLength(2)
   })
 
+  /* one passenger is one folder: two jumps in it cannot be freed one at a time */
+  it('refuses a passenger with more than one jump, deleting nothing', async () => {
+    const { manifest, originals, onStorage } = await setup()
+    withStorage(onStorage)
+    const first = manifest.groups[0]!
+    manifest.groups.push({ ...first, id: 'g2', files: [], uploaded: undefined })
+
+    await expect(free(manifest)).rejects.toThrow(/more than one jump/)
+    expect(fs.readdirSync(originals)).toHaveLength(2)
+  })
+
   it('refuses when the storage cannot say', async () => {
     const { manifest, onStorage } = await setup()
     const { [`${PAX}/luc.photos.zip`]: _gone, ...rest } = onStorage

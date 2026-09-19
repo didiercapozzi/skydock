@@ -365,7 +365,7 @@ const createMontageProject = (rawOptions: MontageOptions) => {
      leaves a clip whose audio has been restored: moved, cut or deleted together, the sound there to
      be heard the moment A1 is. That needs to know where each clip starts, so how long each lasts;
      a clip whose length cannot be read, or a template with no audio track under V1, puts the clips
-     on V1 alone, sound inside, as before. */
+     on V1 alone, sound inside. */
   const fps = fpsOf(mlt)
   const a1 = findAudioUnderVideo(mlt, sequence, videoTrackId)
   const frames = options.clips.map((clip) => {

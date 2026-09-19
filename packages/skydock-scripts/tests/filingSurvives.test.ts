@@ -91,7 +91,7 @@ describe('a tandem uploaded before the record was called uploaded', () => {
   })
 })
 
-describe('a groups file that cannot be understood', () => {
+describe('the saved jumps, when they cannot be read', () => {
   /* Returning "no jumps" for a file that plainly holds some is the worst answer available: the
      next scan re-clusters from nothing, mints new ids and files nothing, and a day of sorting is
      gone with no message. Refusing is recoverable; quietly agreeing is not. */
@@ -120,14 +120,14 @@ describe('a groups file that cannot be understood', () => {
 
   /* Where it truly cannot be understood, refusing is the answer: the file is still on disk and can
      be looked at, while "no jumps" invites the next scan to throw the sorting away. */
-  it('refuses a jumps file whose shape is nothing like one', () => {
+  it('are never read as jumps when they are shaped like something else', () => {
     saveManifest(manifestPath, filed())
     fs.writeFileSync(path.join(outputDir, 'groups.json'), JSON.stringify({ groups: 'banana' }))
 
     expect(() => loadManifest(manifestPath)).toThrow(/jumps file/)
   })
 
-  it('is never read as "no jumps" when it is not even JSON', () => {
+  it('are never read as no jumps at all when the file is unreadable', () => {
     saveManifest(manifestPath, filed())
     fs.writeFileSync(path.join(outputDir, 'groups.json'), '{ this is not json')
 

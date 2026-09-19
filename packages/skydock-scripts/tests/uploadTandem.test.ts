@@ -195,7 +195,7 @@ describe('uploading a tandem — what the passenger gets', () => {
     expect(toPassenger.sort()).toEqual(['luc_favre_20260802.mp4', 'luc_favre_20260802.photos.zip'])
   })
 
-  it('never puts the rushes in the passenger’s folder', async () => {
+  it('never puts the originals in the passenger’s folder', async () => {
     const { uploads } = await upload()
     const toPassenger = uploads.filter((u) => u.dest === '/SkyDock/Tandems/Luc Favre')
     expect(toPassenger.map((u) => u.name)).not.toContain('luc_favre_20260802.rushes.zip')
@@ -208,7 +208,7 @@ describe('uploading a tandem — what the passenger gets', () => {
     expect(names.some((n) => n.startsWith('luc_favre_20260802_'))).toBe(false)
   })
 
-  it('sends the rushes to the backup folder instead', async () => {
+  it('sends the originals to the backup folder instead', async () => {
     const { uploads } = await upload()
     expect(uploads.filter((u) => u.dest === '/Backup').map((u) => u.name)).toEqual([
       'luc_favre_20260802.rushes.zip'
@@ -298,7 +298,7 @@ describe('uploading a tandem — the awkward cases', () => {
   })
 })
 
-describe('tandem artifacts — what the board is told', () => {
+describe('what the board knows of a tandem’s project and film', () => {
   it('sees the project and the film once they are there', () => {
     const { outputDir, manifest, group } = scene()
     const found = tandemArtifacts(outputDir, group)

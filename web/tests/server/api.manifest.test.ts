@@ -100,7 +100,7 @@ describe('changes made on the board', () => {
 
     /* two cameras on one jump, one of them on the wrong clock: the merged jump is put back on the
        time the right one says, and everything in it moves by the same amount */
-    it('re-times the merged jump onto the anchor it was given', async () => {
+    it('re-times the merged jump onto the start it was given', async () => {
       writeManifest([
         group({ id: 'group_1', files: [file({ id: 'a', mtime: 1_754_000_000 })] }),
         group({ id: 'group_2', files: [file({ id: 'c', mtime: 1_754_000_100 })] })
@@ -144,7 +144,7 @@ describe('changes made on the board', () => {
       expect(res.groups[0].files.map((f) => f.mtime)).toEqual([1_754_002_000, 1_754_002_090])
     })
 
-    it('refuses an anchor that is not a time', async () => {
+    it('refuses a start that is not a time', async () => {
       writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
       const res = refusal(await send({ intent: 'shift-group-time', groupId: 'group_1' }))
       expect(res.globalErrors?.[0]).toContain('anchor')
@@ -264,6 +264,27 @@ describe('changes made on the board', () => {
       const res = refusal(await send({ intent: 'montage', groupId: 'group_1' }))
       expect(res.success).toBe(false)
     })
+
+    /* an edit somebody has been working on is never written over */
+    it('is made once: asked again for a tandem that has a project, it is refused', async () => {
+      writeManifest([
+        group({
+          id: 'group_1',
+          destination: 'Tandems',
+          passenger: { firstname: 'Luc', lastname: 'Favre' },
+          processed: true,
+          files: [file({ id: 'a' })]
+        })
+      ])
+      const folder = path.join(tmpDir, 'processed', 'Tandems', 'Luc Favre')
+      fs.mkdirSync(folder, { recursive: true })
+      fs.writeFileSync(path.join(folder, 'the edit.kdenlive'), '<mlt/>')
+
+      const res = refusal(await send({ intent: 'montage', groupId: 'group_1' }))
+
+      expect(res.globalErrors?.[0]).toContain('already has a project')
+      expect(fs.readFileSync(path.join(folder, 'the edit.kdenlive'), 'utf-8')).toBe('<mlt/>')
+    })
   })
 
   describe('opening the project', () => {
@@ -283,7 +304,7 @@ describe('changes made on the board', () => {
 
   describe('freeing space', () => {
     /* the proof is the storage's own checksum, so without it nothing is deleted */
-    it('refuses without the NAS, and deletes nothing', async () => {
+    it('refuses while the storage cannot be reached, and deletes nothing', async () => {
       writeManifest([
         group({
           id: 'group_1',
@@ -301,7 +322,7 @@ describe('changes made on the board', () => {
 
   describe('marking the email as sent', () => {
     /* the list is kept on the storage, so saying the email went needs the storage */
-    it('refuses without the NAS', async () => {
+    it('refuses while the storage cannot be reached', async () => {
       writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
       const res = refusal(
         await send({

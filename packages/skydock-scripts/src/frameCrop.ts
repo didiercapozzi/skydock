@@ -13,8 +13,8 @@ import type { FrameCrop, Rotation } from './types'
    was delivered not quite what was drawn.
 
    Sizes and offsets round the same way but have different floors: a rectangle two pixels wide is
-   the smallest there is, while an offset of nothing is where most crops start. Rounding an offset
-   up to two was moving every crop that touched the top or the left edge. */
+   the smallest there is, while an offset of nothing is where most crops start: rounding an offset
+   up to two would move every crop that touches the top or the left edge. */
 const evenSize = (value: number) => Math.max(2, Math.round(value / 2) * 2)
 
 const evenOffset = (value: number) => Math.max(0, Math.round(value / 2) * 2)
@@ -37,7 +37,7 @@ const isWholeFrame = (crop: FrameCrop | null | undefined) =>
 /* Kept inside the picture whatever it was asked for, and never shrunk to nothing. A rectangle
    dragged off the edge is moved back in rather than clipped, so its shape survives — clipping
    would quietly change the aspect, which is the one thing this feature exists to preserve. */
-const containCrop = (crop: FrameCrop): FrameCrop => {
+const containCrop = (crop: FrameCrop) => {
   const width = Math.min(1, Math.max(0.01, crop.width))
   const height = Math.min(1, Math.max(0.01, crop.height))
   return {
@@ -51,7 +51,7 @@ const containCrop = (crop: FrameCrop): FrameCrop => {
 /* The largest rectangle of the wanted shape that fits, centred. `ratio` is width over height, and
    the shape is measured against the *picture*, not the fractions: a 16:9 frame's fractions are
    1×1, so a 16:9 rectangle inside it is also 1×1 rather than 16:9. */
-const fitRatio = (ratio: number, frameWidth: number, frameHeight: number): FrameCrop => {
+const fitRatio = (ratio: number, frameWidth: number, frameHeight: number) => {
   const frameRatio = frameWidth / frameHeight
   const width = ratio >= frameRatio ? 1 : ratio / frameRatio
   const height = ratio >= frameRatio ? frameRatio / ratio : 1
@@ -65,7 +65,7 @@ const withRatio = (
   frameWidth: number,
   frameHeight: number,
   drive: 'width' | 'height' = 'width'
-): FrameCrop => {
+) => {
   const frameRatio = frameWidth / frameHeight
   const width = drive === 'width' ? crop.width : (crop.height * ratio) / frameRatio
   const height = drive === 'width' ? (crop.width * frameRatio) / ratio : crop.height
@@ -103,7 +103,7 @@ const cropFilter = (crop: FrameCrop, frameWidth: number, frameHeight: number) =>
 const ROTATIONS: readonly Rotation[] = [0, 90, 180, 270]
 
 /* a turn added to a turn, back to 0 after a full circle */
-const turnBy = (rotation: Rotation | null | undefined, by: number): Rotation => {
+const turnBy = (rotation: Rotation | null | undefined, by: number) => {
   const next = ((((rotation ?? 0) + by) % 360) + 360) % 360
   return ROTATIONS.find((r) => r === next) ?? 0
 }

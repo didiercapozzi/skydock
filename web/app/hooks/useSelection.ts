@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Modifiers } from '../components/file-list'
 import type { ManifestFile } from '../components/types'
+import { typingInField } from '../helpers/keys'
 
 /* Looking and picking are two different things. A click only looks: the file shows in the
    inspector and nothing is picked. A file is picked by its tick, by ⌘/ctrl-click, or with shift for
@@ -119,8 +120,7 @@ const useSelection = ({
     const onKey = (e: KeyboardEvent) => {
       if (paused) return
       /* never take a key from a field being typed in */
-      if (e.target instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName))
-        return
+      if (typingInField(e)) return
       if (comparing) {
         if (e.key === 'Escape') setComparing(null)
         return

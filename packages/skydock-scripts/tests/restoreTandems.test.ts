@@ -95,7 +95,7 @@ describe('a tandem this board has forgotten', () => {
     expect(manifest.files.find((f) => f.id === 'other')?.mtime).toBe(CAMERA + 7200)
   })
 
-  it('gets back the times a person had set right, on the jump and in the registry', () => {
+  it('gets back the times a person had set right', () => {
     const manifest = forgotten()
 
     restoreTandems(manifest, [listed()])

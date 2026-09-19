@@ -5,7 +5,7 @@ import { StatusChip } from './file-status'
 import type { ShownStatus } from './file-status'
 import type { LiveFile } from '../hooks/useLiveProgress'
 import type { ManifestFile } from './types'
-import { formatSize, formatTime, getFileUrl, getThumbUrl, isVideoFile } from './utils'
+import { clock, formatSize, formatTime, getFileUrl, getThumbUrl, isVideoFile } from './utils'
 
 /* Videos and photos are two different jobs on a tandem — 15 clips to cut, 500 stills to cull — so
    the badges say which is on screen. The counts are always of everything there, never of what the
@@ -94,9 +94,6 @@ const lockReason = (file: ManifestFile, context: StatusContext) =>
 const shownStatus = (file: ManifestFile, context: StatusContext): ShownStatus =>
   fileChanged(file, context) ? 'changed' : fileStatus(file, context)
 
-const clock = (seconds: number) =>
-  `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`
-
 /* What was kept, not that something was. A crop is the one edit whose effect cannot be seen on the
    row itself, so the row says it in full — and says whether it has happened yet. */
 const CropFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) => {
@@ -123,9 +120,8 @@ const CropFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) =
 }
 
 /* Whether the small copy exists yet. Only clips have one, and it is worth saying out loud: a card
-   where none of them built looks exactly like a card still building, and until this was on screen
-   the only way to tell was to read the server's log. `own` is a clip already small enough to be its
-   own proxy — finished, with nothing left to make. */
+   where none of them built looks exactly like a card still building. `own` is a clip already small
+   enough to be its own proxy — finished, with nothing left to make. */
 const PROXY_FLAG: Record<ProxyFact['state'], { label: string; title: string; className: string }> =
   {
     ready: {
@@ -185,8 +181,8 @@ const ProxyFlag = ({ fact }: { fact?: ProxyFact }) => {
   )
 }
 
-/* The trim shows as a range on the row; the rectangle had nothing, which is why a crop that was
-   set could not be told from one that was not without opening the file. It reads as the share of
+/* The trim shows as a range on the row, and the rectangle beside it, so a crop that was set can be
+   told from one that was not without opening the file. It reads as the share of
    the picture kept, because "cropped" alone does not say how much. Solid once it has been applied,
    dashed while it is still only saved — the same distinction the trim makes. */
 const FrameFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) => {

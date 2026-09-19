@@ -75,12 +75,12 @@ describe('a file’s state', () => {
     expect(fileStatus(legacy, { output: { exists: true, size: 4321 } })).toBe('processed')
   })
 
-  it('is uploaded when the listed folder holds it at the right size', () => {
+  it('stays uploaded while the storage still holds it at the size sent', () => {
     const remote = { dirs: ['/home/Yverdon'], sizes: { '/home/Yverdon/a.mp4': 90 } }
     expect(fileStatus(uploaded(), { output: onDisk, remote })).toBe('uploaded')
   })
 
-  it('drops to processed when the listed folder no longer holds it', () => {
+  it('falls back to processed when the storage no longer holds it', () => {
     const remote = { dirs: ['/home/Yverdon'], sizes: {} }
     expect(fileStatus(uploaded(), { output: onDisk, remote })).toBe('processed')
   })
@@ -138,7 +138,7 @@ describe('a turned file', () => {
   })
 })
 
-describe('what blocks an upload', () => {
+describe('nothing is uploaded until everything in it is processed', () => {
   const files = [base(), processed(), uploaded()]
   const context = (file: ManifestFile) => ({
     output: file.processed ? onDisk : undefined,
@@ -162,7 +162,7 @@ describe('what blocks an upload', () => {
     })
   })
 
-  it('pluralises', () => {
+  it('says plainly how many files wait', () => {
     expect(uploadGate([base(), base()], context).message).toBe('2 files need processing')
   })
 

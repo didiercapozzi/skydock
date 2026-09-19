@@ -1,6 +1,7 @@
 import { fitRatio, FrameCropper } from './frame-cropper'
 import { useEffect, useRef, useState } from 'react'
 import { Go, Mini } from './buttons'
+import { typingInField } from '../helpers/keys'
 import { Spacer } from './modal'
 import { cropToPixels, isQuarterTurn, isWholeFrame, turnBy, turnedSize } from '@skydock/scripts'
 import type { FrameCrop, ProxyFact, Rotation } from '@skydock/scripts'
@@ -215,8 +216,7 @@ const PreviewDrawer = ({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
-      if (e.target instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName))
-        return
+      if (typingInField(e)) return
       if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault()
         turn(90)
@@ -258,8 +258,8 @@ const PreviewDrawer = ({
   const from = cropStart ?? 0
   const to = cropEnd ?? duration
   /* What is on screen against what is on the file: the one tells you there is something to save.
-     Both halves count. Watching only the trim left the button dead after a rectangle had been
-     dragged, which reads as "it did not work" — and the rectangle is the half with no other way
+     Both halves count: watching only the trim would leave the button dead after a rectangle had
+     been dragged, which reads as "it did not work" — and the rectangle is the half with no other way
      of telling. */
   const sameRectangle =
     isWholeFrame(frame) === isWholeFrame(file.frame) &&

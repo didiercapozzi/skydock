@@ -71,7 +71,7 @@ const freeDropzone = async ({
   outputDir: string
   destination: string
   session: NasSession
-}): Promise<DropzoneFreeResult> => {
+}) => {
   const { jumps, files, kept } = freeableIn(manifest, destination)
   if (files.length === 0)
     throw new Error(`Nothing of ${destination} is on the storage yet — upload it first.`)

@@ -1,4 +1,4 @@
-import { liveEventSchema } from '@skydock/scripts'
+import { jsonText, liveEventSchema } from '@skydock/scripts'
 import type { LiveEvent, ProxyFact, TandemFact } from '@skydock/scripts'
 import { useEffect, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
@@ -35,13 +35,7 @@ const useLiveProgress = (
   useEffect(() => {
     const source = new EventSource(routingEngine.href({ url: '/api/events' }))
     source.onmessage = (message) => {
-      let raw: unknown
-      try {
-        raw = JSON.parse(String(message.data))
-      } catch {
-        return
-      }
-      const parsed = liveEventSchema.safeParse(raw)
+      const parsed = jsonText.pipe(liveEventSchema).safeParse(String(message.data))
       if (!parsed.success) return
       const event = parsed.data
       if (event.kind === 'tandem') {

@@ -1,8 +1,10 @@
 import { useSyncExternalStore } from 'react'
+import { z } from 'zod'
 
 /* Which mail the passenger email is opened in — Gmail in the browser, or the computer's own mail
    program — remembered, so the one used last is the one offered first. */
-type MailApp = 'gmail' | 'mailto'
+const mailAppSchema = z.enum(['gmail', 'mailto'])
+type MailApp = z.infer<typeof mailAppSchema>
 
 const KEY = 'skydock.mailApp'
 
@@ -17,8 +19,8 @@ const subscribe = (listener: () => void) => {
 
 const readStored = (): MailApp => {
   try {
-    const stored = localStorage.getItem(KEY)
-    return stored === 'mailto' || stored === 'gmail' ? stored : chosen
+    const stored = mailAppSchema.safeParse(localStorage.getItem(KEY))
+    return stored.success ? stored.data : chosen
   } catch {
     return chosen
   }
