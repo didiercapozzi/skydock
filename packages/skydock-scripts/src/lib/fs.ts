@@ -6,6 +6,12 @@ import { MEDIA_EXTENSIONS_SET } from '../constants'
 
 const DEFAULT_MAX_FIND_DEPTH = 10
 
+/* A file of pictures or film, by its name. A name starting `._` is not one whatever it ends with:
+   it is the sidecar a Mac leaves beside every file it copies onto a card or a drive, a few hundred
+   bytes of Finder notes that no player can open. */
+const isMediaName = (name: string) =>
+  !name.startsWith('._') && MEDIA_EXTENSIONS_SET.has(path.extname(name).slice(1).toLowerCase())
+
 const findMediaFiles = (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH) => {
   const results: string[] = []
 
@@ -17,10 +23,7 @@ const findMediaFiles = (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH) => {
         const fullPath = path.join(currentDir, entry.name)
         if (entry.isDirectory()) {
           search(fullPath, depth + 1)
-        } else if (entry.isFile()) {
-          const ext = path.extname(entry.name).slice(1).toLowerCase()
-          if (MEDIA_EXTENSIONS_SET.has(ext)) results.push(fullPath)
-        }
+        } else if (entry.isFile() && isMediaName(entry.name)) results.push(fullPath)
       }
     } catch {}
   }
@@ -35,10 +38,7 @@ const hasMediaFiles = (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH) => {
     try {
       const entries = fs.readdirSync(currentDir, { withFileTypes: true })
       for (const entry of entries) {
-        if (entry.isFile()) {
-          const ext = path.extname(entry.name).slice(1).toLowerCase()
-          if (MEDIA_EXTENSIONS_SET.has(ext)) return true
-        }
+        if (entry.isFile() && isMediaName(entry.name)) return true
       }
       for (const entry of entries) {
         if (entry.isDirectory() && search(path.join(currentDir, entry.name), depth + 1)) {

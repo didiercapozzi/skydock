@@ -375,6 +375,26 @@ const buildMissingProxies = async (outputDir?: string) => {
   }
 }
 
+/* The server can be stopped half way through a card — restarted, or the machine put to sleep — and
+   the proxies it had not reached would then wait for the next scan, which may never come. So the
+   first board to connect to a server just started has them made, taking up where the last run
+   stopped; what that run left half written is cleared first, since nothing can still be writing it. */
+declare global {
+  var skydockProxiesResumed: boolean | undefined
+}
+
+const resumeProxies = (outputDir?: string) => {
+  if (globalThis.skydockProxiesResumed) return
+  globalThis.skydockProxiesResumed = true
+  const dir = getProxyDir(outputDir)
+  if (fs.existsSync(dir))
+    for (const name of fs.readdirSync(dir))
+      if (name.endsWith('.part')) fs.rmSync(path.join(dir, name), { force: true })
+  void buildMissingProxies(outputDir).catch((e: unknown) => {
+    console.error('[Proxy] resuming failed:', e instanceof Error ? e.message : String(e))
+  })
+}
+
 /* Where each clip's proxy has got to, and which file to actually play, keyed by the clip's path.
 
    Read off the disk rather than off the record. `file.proxy` is written only when a whole pass
@@ -411,6 +431,7 @@ const proxyCounts = (manifest: Manifest, outputDir?: string) => {
 
 export {
   buildMissingProxies,
+  resumeProxies,
   buildProxy,
   cropProxy,
   DRI_DEVICE,

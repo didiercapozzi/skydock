@@ -62,7 +62,9 @@ are on the board with nobody pressing anything. The header shows the copy file b
 says what came off once it is done: how many new files and how many already there. A camera is copied
 once for each time it is plugged in; one unplugged half way keeps what was copied whole, and plugging
 it in again copies the rest. Only one camera is copied at a time, in the order they came. A drive
-without a DCIM folder is not a camera and is never looked into, and copying never writes to a camera.
+without a DCIM folder is not a camera and is never looked into, and copying never writes to a camera. The
+`._` files a Mac leaves beside each clip on a card it has touched are not media, and are neither copied
+nor listed.
 Where cameras are mounted is a setting, and an empty one turns this off.
 
 **Seeing what is on a camera.** A camera plugged in is listed at the foot of the menu for as long as it
@@ -90,6 +92,9 @@ A scan also makes a **proxy** of every clip: a small copy, the same length at th
 board plays instead of the full clip and which the editor later opens on. Proxies are made in the
 background; everything works without them, and a clip without one simply plays as it is. Each clip
 says whether it has one. Proxies are working files: never listed, never sorted, never uploaded.
+A server stopped half way through making them — restarted, or the machine put to sleep — finishes
+them once it runs again and a board connects, rather than waiting for the next scan; what was left
+half written is cleared first.
 
 Proxies are made on the graphics card when the machine has one that works, and on the processor
 otherwise. A clip whose proxy cannot be made is named, with the reason, and can still be sorted,

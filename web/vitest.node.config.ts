@@ -9,10 +9,13 @@ export default mergeConfig(
     test: {
       include: ['tests/server/**/*.test.{ts,tsx}'],
       environment: 'node',
-      /* never the app's real settings or bin: a test that names no folder of its own writes here */
+      /* Never the app's real work, settings or bin, and never a real camera: a test that names no
+         folder of its own writes here, and a server started by a test watches no drive. */
       env: {
+        SKYDOCK_OUTPUT_DIR: path.join(os.tmpdir(), 'skydock-test-output'),
         SKYDOCK_CONFIG_DIR: path.join(os.tmpdir(), 'skydock-test-config'),
-        SKYDOCK_TRASH_DIR: path.join(os.tmpdir(), 'skydock-test-trash')
+        SKYDOCK_TRASH_DIR: path.join(os.tmpdir(), 'skydock-test-trash'),
+        SKYDOCK_CAMERA_ROOTS: ''
       }
     }
   })

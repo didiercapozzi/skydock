@@ -8,11 +8,13 @@ import {
   getProxyPath,
   needsProxy,
   proxyCounts,
+  resumeProxies,
   setProxyEncoder,
   statProxies
 } from '../src/proxy'
 import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
+import { saveManifest } from '../src/manifest'
 import type { Manifest, ManifestFile } from '../src/types'
 import { createTmpDir, execSyncMock, writeTempFile } from './fixtures'
 
@@ -154,6 +156,30 @@ describe('proxies', () => {
 
   /* The expensive half of this must not be paid twice — a second scan over a card that is already
      proxied should cost nothing. */
+  /* a server stopped half way through a card: the next one takes up where it stopped, rather than
+     leaving the rest of the card without proxies until somebody scans again */
+  it('are finished by the next server, what was left half written cleared first', async () => {
+    execSyncMock.mockImplementation(toolsPresent())
+    const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
+    saveManifest(path.join(outputDir, 'manifest.json'), manifestOf([fileEntry(src, 'abc123')]))
+    const stale = writeTempFile(outputDir, 'proxies/abc123.mp4.part')
+    globalThis.skydockProxiesResumed = undefined
+
+    resumeProxies(outputDir)
+
+    await expect.poll(() => fs.existsSync(path.join(outputDir, 'proxies', 'abc123.mp4'))).toBe(true)
+    expect(fs.existsSync(stale)).toBe(false)
+  })
+
+  it('are taken up once per server, not each time a board connects', async () => {
+    const stale = writeTempFile(outputDir, 'proxies/abc123.mp4.part')
+    globalThis.skydockProxiesResumed = true
+
+    resumeProxies(outputDir)
+
+    expect(fs.existsSync(stale)).toBe(true)
+  })
+
   it('passes over a clip that already has one', async () => {
     execSyncMock.mockImplementation(toolsPresent())
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')

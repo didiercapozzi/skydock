@@ -53,6 +53,18 @@ describe('copying a camera off', () => {
     expect(Math.floor(fs.statSync(day('GX010001.MP4')).mtimeMs / 1000)).toBe(DAY.getTime() / 1000)
   })
 
+  /* a card that has been through a Mac carries a `._` sidecar beside every clip: a few hundred
+     bytes of Finder notes, which no player opens and nobody wants among the originals */
+  it('leaves behind the sidecar files a Mac writes beside each clip', async () => {
+    const root = card('GOPRO', { 'GX010001.MP4': { bytes: 32, fill: 1, at: DAY } })
+    fs.writeFileSync(path.join(root, 'DCIM', '100GOPRO', '._GX010001.MP4'), Buffer.alloc(241, 0))
+
+    const result = await copyCamera({ cameraDir: path.join(root, 'DCIM'), outputDir })
+
+    expect(result).toMatchObject({ copied: 1, total: 1 })
+    expect(fs.existsSync(day('._GX010001.MP4'))).toBe(false)
+  })
+
   /* plugging the same camera in again costs nothing, and writes nothing */
   it('passes over what is already there without writing it again', async () => {
     const root = card('GOPRO', { 'GX010001.MP4': { bytes: 32, fill: 1, at: DAY } })

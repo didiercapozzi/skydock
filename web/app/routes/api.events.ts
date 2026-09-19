@@ -1,5 +1,6 @@
 import { getOutputDir, subscribe, watchTandems } from '@skydock/scripts'
 import { watchCameras } from '../../../packages/skydock-scripts/src/cameraWatch'
+import { resumeProxies } from '../../../packages/skydock-scripts/src/proxy'
 import type { Route } from './+types/api.events'
 
 /* What is happening to the files, sent as it happens: one stream the board keeps open, so a file
@@ -29,6 +30,8 @@ const loader = ({ request }: Route.LoaderArgs) => {
       /* a camera plugged in is copied off by itself — watched from the first board on, and for as long
          as the server runs */
       watchCameras(getOutputDir())
+      /* proxies a stopped server never finished are made now, not at the next scan */
+      resumeProxies(getOutputDir())
       /* while a board listens, the tandems' folders are looked at for a film the editor finished */
       const stopWatching = watchTandems(getOutputDir())
       const heartbeat = setInterval(() => send(': still here\n\n'), HEARTBEAT_MS)
