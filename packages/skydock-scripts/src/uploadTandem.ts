@@ -168,7 +168,7 @@ const uploadTandem = async ({
     })
   targets.push(...plainTargets)
 
-  const result = await uploadTargets({ outputDir, session, targets, onProgress, onCheck })
+  const result = await uploadTargets({ session, targets, onProgress, onCheck })
   const shareUrl = result.shareUrls.find((s) => s.target.key === passenger.key)?.shareUrl
   return {
     ...result,

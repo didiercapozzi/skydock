@@ -64,11 +64,11 @@ const sectionsOf = (
     }))
   const labels = jumpLabels(shownGroups)
   const withLoose = familyOf(place) === 'sort'
-  /* by jump, the cards run the way the numbers do: the oldest jump first */
-  return [...days].reverse().flatMap((day): Section[] => {
+  /* by jump, the newest jump first: the numbers count down from the latest to Jump 1 */
+  return days.flatMap((day): Section[] => {
     const jumps = shownGroups
       .filter((g) => dayOf(g) === day)
-      .sort(oldestFirst)
+      .sort((a, b) => oldestFirst(b, a))
       .map((group): Section => ({
         key: `jump:${group.id}`,
         kind: 'jump',

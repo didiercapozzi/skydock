@@ -10,8 +10,9 @@ import { scanMedia } from './scan'
    appeared with a DCIM folder at its root — where every camera keeps its pictures — is copied into
    the originals, then scanned, so its jumps are on the board with nobody pressing anything.
 
-   A drive without a DCIM folder is not a camera and is never looked into, and nothing is ever
-   written to the camera: it is only read. */
+   A drive without a DCIM folder is not a camera and is never looked into. Copying only reads the
+   camera; taking a file off it is a separate thing, asked for on its page and allowed only for a
+   file proved to be here already. */
 
 /* Where cameras get mounted. `/mnt/osmo` is the host's media folder as the development container
    sees it; `/media` and `/run/media` are where a desktop mounts removable drives. An empty setting
@@ -57,6 +58,8 @@ type Watch = {
   seen: Set<string>
   queue: string[]
   copying: boolean
+  /* the cameras last said to be plugged in, so a change is said once */
+  said: string
 }
 
 declare global {
@@ -64,7 +67,13 @@ declare global {
 }
 
 const watch = () =>
-  (globalThis.skydockCameraWatch ??= { timer: null, seen: new Set(), queue: [], copying: false })
+  (globalThis.skydockCameraWatch ??= {
+    timer: null,
+    seen: new Set(),
+    queue: [],
+    copying: false,
+    said: ''
+  })
 
 /* One camera at a time, in the order they were plugged in: two cards read at once are each read at
    half the speed, and their files would land interleaved. */
@@ -118,17 +127,32 @@ const lookForCameras = (outputDir: string, mountinfo?: string) => {
       state.queue.push(camera)
     }
   for (const camera of state.seen) if (!now.has(camera)) state.seen.delete(camera)
+  const mounted = [...now].sort()
+  if (mounted.join('\n') !== state.said) {
+    state.said = mounted.join('\n')
+    publish({
+      kind: 'cameras',
+      mounted: mounted.map((mount) => ({ camera: path.basename(mount), mount }))
+    })
+  }
   if (!state.copying && state.queue.length > 0) void copyNext(outputDir)
 }
 
-/* Started once, and kept for as long as the server runs — a camera plugged in with no board open is
-   still copied, and the board shows it the next time it is opened. A camera already plugged in when
-   this starts is copied too: what is already here is passed over, and costs next to nothing. */
+/* Kept for as long as the server runs — a camera plugged in with no board open is still copied, and
+   the board shows it the next time it is opened. A camera already plugged in when this starts is
+   copied too: what is already here is passed over, and costs next to nothing. Each start replaces
+   the look left running by the one before, so code loaded afresh is the code that looks; what has
+   been seen and what is being copied are kept, so nothing is copied twice. */
 const watchCameras = (outputDir: string) => {
   const state = watch()
-  if (state.timer || cameraRoots().length === 0) return
+  if (state.timer) clearInterval(state.timer)
+  state.timer = null
+  if (cameraRoots().length === 0) return
   lookForCameras(outputDir)
   state.timer = setInterval(() => lookForCameras(outputDir), EVERY_MS)
 }
 
-export { lookForCameras, mountedCameras, watchCameras }
+/* whether a camera is being copied right now — nothing is taken off one while it is read */
+const cameraCopying = () => watch().copying || watch().queue.length > 0
+
+export { cameraCopying, lookForCameras, mountedCameras, watchCameras }

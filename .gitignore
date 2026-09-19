@@ -3,6 +3,8 @@
 output/
 # the app's own settings: the storage connection, its password encrypted
 config/
+# the bin: files put aside, and a camera's files once deleted from it
+.trash/
 
 .claude/*
 !.claude/settings.json

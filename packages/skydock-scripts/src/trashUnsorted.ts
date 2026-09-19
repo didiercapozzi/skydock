@@ -1,7 +1,9 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { moveFile } from './lib/fs'
 import { getProxyPath } from './proxy'
 import type { Manifest } from './types'
+import { getTrashDir } from './utils'
 
 /* Files nobody wants — a test shot, footage of the ground — are put in the bin rather than deleted
    (RULES, Putting files in the bin). Only from Unsorted: a file that has been filed somewhere is
@@ -9,7 +11,12 @@ import type { Manifest } from './types'
    the originals folder, so a scan does not find it again, and nothing is erased: the bin is never
    emptied by SkyDock, and a file can be taken back out of it by hand. */
 
-const trashUnsorted = (manifest: Manifest, ids: Set<string>, outputDir: string) => {
+const trashUnsorted = async (
+  manifest: Manifest,
+  ids: Set<string>,
+  outputDir: string,
+  trashDir = getTrashDir()
+) => {
   const filed = new Set(
     manifest.groups
       .filter((g) => g.destination)
@@ -29,20 +36,13 @@ const trashUnsorted = (manifest: Manifest, ids: Set<string>, outputDir: string) 
   /* one folder per time the bin is asked for, keeping each file where it sat among the originals,
      so what went in together can be found together and put back where it came from */
   const originals = path.join(outputDir, 'original_files')
-  const bin = path.join(
-    outputDir,
-    '.trash',
-    `unsorted-${new Date().toISOString().replace(/[:.]/g, '-')}`
-  )
+  const bin = path.join(trashDir, `unsorted-${new Date().toISOString().replace(/[:.]/g, '-')}`)
 
   for (const file of going) {
     const within = path.relative(originals, file.path)
     const to = path.join(bin, within.startsWith('..') ? path.basename(file.path) : within)
     /* a file already gone from the disk simply leaves the board */
-    if (fs.existsSync(file.path)) {
-      fs.mkdirSync(path.dirname(to), { recursive: true })
-      fs.renameSync(file.path, to)
-    }
+    if (fs.existsSync(file.path)) await moveFile(file.path, to)
     /* what was made from it has nothing left to be made from: the copy and the proxy go */
     for (const made of [file.processed?.path, getProxyPath(file, outputDir)])
       if (made) fs.rmSync(made, { force: true })
@@ -56,7 +56,7 @@ const trashUnsorted = (manifest: Manifest, ids: Set<string>, outputDir: string) 
   return {
     count: going.length,
     bytes: going.reduce((n, f) => n + f.size, 0),
-    bin: path.relative(outputDir, bin)
+    bin
   }
 }
 

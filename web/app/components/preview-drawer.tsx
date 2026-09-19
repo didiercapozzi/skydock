@@ -38,6 +38,9 @@ const V = ({ children }: { children: React.ReactNode }) => (
   <b className='font-semibold text-ink'>{children}</b>
 )
 
+/* a share of the whole, as the preview says it: to the percent, and never 0% for something kept */
+const percent = (share: number) => `${Math.max(share > 0 ? 1 : 0, Math.round(share * 100))}%`
+
 type RatioOption = { label: string; ratio: number | null; title: string }
 
 /* `Same` is the one that matters most: a clip with a mount in the corner is cropped and stays the
@@ -51,6 +54,22 @@ const RATIOS: RatioOption[] = [
   { label: '16:9', ratio: 16 / 9, title: 'Widescreen' },
   { label: 'Free', ratio: null, title: 'Drag the corners to any shape' }
 ]
+
+/* The shape a rectangle already has, as the buttons name it: none for the whole picture, `Same` for
+   the picture's own shape, a named ratio, or `Free` for any other. Measured on the picture as it
+   comes out, turned, which is what the rectangle is a part of. */
+const savedShape = (
+  frame: FrameCrop | null | undefined,
+  turned: { width: number; height: number }
+) => {
+  if (!frame || isWholeFrame(frame)) return { label: 'None', ratio: null }
+  const aspect = (frame.width * turned.width) / (frame.height * turned.height)
+  const near = (r: number) => Math.abs(r - aspect) / r < 0.02
+  const own = turned.width / turned.height
+  if (near(own)) return { label: 'Same', ratio: own }
+  const named = RATIOS.find((o) => o.ratio !== null && near(o.ratio))
+  return named ? { label: named.label, ratio: named.ratio } : { label: 'Free', ratio: null }
+}
 
 /* The picture inside the box shaped like it will come out: as it is, or — for a quarter turn —
    sized the other way round, so that once turned it fills the box exactly. In percentages of the
@@ -137,8 +156,12 @@ const PreviewDrawer = ({
   /* the clip's own pixel size, read off the video once it has loaded — a ratio is measured against
      the picture, and until it is known the rectangle cannot be shaped */
   const [shape, setShape] = useState({ width: 16, height: 9 })
-  const [shown, setShown] = useState('None')
-  const [ratio, setRatio] = useState<number | null>(null)
+  /* the shape picked here, for the file it was picked on */
+  const [picked, setPicked] = useState<{
+    key: string
+    label: string
+    ratio: number | null
+  } | null>(null)
   /* A browser cannot draw every clip: 4K HEVC off a DJI or a recent GoPro plays its sound and no
      picture, or nothing at all. The proxy is H.264 and always plays, and until it exists the preview
      says so rather than showing a black box. Kept by the address that failed, so it is gone the
@@ -150,6 +173,17 @@ const PreviewDrawer = ({
   const turned = turnedSize(shape.width, shape.height, rotation)
   const quarter = isQuarterTurn(rotation)
 
+  /* Until a shape is picked, it is read off the rectangle the file already has: a frame saved
+     earlier opens drawn and pressed on its own shape, and the next file starts from its own rather
+     than from the last one's pick. */
+  const fileKey = file ? (file.id ?? file.path) : ''
+  const choice = picked?.key === fileKey ? picked : null
+  const hasShape = savedShape(frame, turned)
+  const shown = choice?.label ?? hasShape.label
+  const ratio = choice ? choice.ratio : hasShape.ratio
+  const pick = (label: string, next: number | null) =>
+    setPicked({ key: fileKey, label, ratio: next })
+
   /* A quarter turn swaps the picture's shape, so a rectangle on it is fitted again at the shape it
      had — "Same" becoming the new shape — rather than left the wrong way round. */
   const turn = (by: number) => {
@@ -158,7 +192,7 @@ const PreviewDrawer = ({
     if (frame && isQuarterTurn(next) !== quarter) {
       const after = turnedSize(shape.width, shape.height, next)
       const keep = shown === 'Same' || ratio === null ? after.width / after.height : ratio
-      if (shown === 'Same') setRatio(keep)
+      if (shown === 'Same') pick('Same', keep)
       onFrameChange(fitRatio(keep, after.width, after.height))
     }
     onRotate(next)
@@ -207,14 +241,13 @@ const PreviewDrawer = ({
      Picking one reshapes the rectangle there and then, so the shape is never a promise the
      rectangle has yet to keep. */
   const pickRatio = (option: RatioOption) => {
-    setShown(option.label)
     if (option.label === 'None') {
-      setRatio(null)
+      pick('None', null)
       onFrameChange(null)
       return
     }
     const next = option.label === 'Free' ? null : (option.ratio ?? turned.width / turned.height)
-    setRatio(next)
+    pick(option.label, next)
     onFrameChange(
       next === null
         ? (frame ?? fitRatio(turned.width / turned.height, turned.width, turned.height))
@@ -354,6 +387,16 @@ const PreviewDrawer = ({
                     onChange={onFrameChange}
                   />
                 )}
+                {/* how much of the picture the rectangle keeps, riding on its corner as it is
+                    dragged — out of the way of the handles, and never in the way of a drag */}
+                {video && framing && frame && (
+                  <span
+                    aria-hidden='true'
+                    style={{ left: `${frame.x * 100}%`, top: `${frame.y * 100}%` }}
+                    className='pointer-events-none absolute z-10 mt-1 ml-1 rounded-sm bg-black/70 px-1.5 py-px font-mono text-[10.5px] text-white tabular-nums'>
+                    {percent(frame.width)} × {percent(frame.height)}
+                  </span>
+                )}
               </span>
             </div>
             {video && (
@@ -397,6 +440,12 @@ const PreviewDrawer = ({
                 </KV>
                 <KV>
                   Keeps <V>{clock(Math.max(0, to - from))}</V> of {clock(duration)}
+                  {duration > 0 && (
+                    <>
+                      {' '}
+                      · <V>{percent(Math.max(0, to - from) / duration)}</V>
+                    </>
+                  )}
                 </KV>
                 <div className={`mt-1.5 flex flex-wrap gap-1.5 ${locked ? 'hidden' : ''}`}>
                   <Mini onClick={() => onCropChange({ cropStart: currentTime, cropEnd })}>
@@ -457,7 +506,7 @@ const PreviewDrawer = ({
                   {RATIOS.map((option) => (
                     <Mini
                       key={option.label}
-                      aria-pressed={shown === option.label}
+                      pressed={shown === option.label}
                       title={option.title}
                       onClick={() => pickRatio(option)}>
                       {option.label}
@@ -472,6 +521,12 @@ const PreviewDrawer = ({
                 {/* What is left, in pixels, and what it is stretched back to. A crop is put back to
                   the size the clip came at, so a small rectangle is a big upscale — which looks
                   soft, and nothing else on screen would say so. */}
+                {framing && frame && (
+                  <KV>
+                    Keeps <V>{percent(frame.width)}</V> across · <V>{percent(frame.height)}</V> down
+                    · <V>{percent(frame.width * frame.height)}</V> of the picture
+                  </KV>
+                )}
                 {framing && frame && (
                   <div className='mt-1 font-mono text-[11.5px] text-ink-3'>
                     {(() => {

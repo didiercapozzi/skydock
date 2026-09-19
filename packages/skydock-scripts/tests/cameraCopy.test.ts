@@ -1,8 +1,8 @@
 // @vitest-environment node
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { lookForCameras, mountedCameras } from '../src/cameraWatch'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { lookForCameras, mountedCameras, watchCameras } from '../src/cameraWatch'
 import { CameraGone, copyCamera } from '../src/copy'
 import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
@@ -228,5 +228,33 @@ describe('a camera plugged in', () => {
     /* a proxy still being built behind an earlier test may speak meanwhile; no camera does */
     expect(heard.filter((e) => e.kind === 'camera')).toEqual([])
     expect(fs.existsSync(path.join(outputDir, 'original_files'))).toBe(false)
+  })
+})
+
+/* The server keeps running while its code is loaded afresh, and the look left running by the old
+   code would go on doing what the old code did. So each start takes over from the one before. */
+describe('watching for cameras', () => {
+  afterEach(() => {
+    const state = globalThis.skydockCameraWatch
+    if (state?.timer) clearInterval(state.timer)
+    vi.useRealTimers()
+  })
+
+  it('takes over from a look left running before, rather than running beside it', () => {
+    vi.useFakeTimers()
+    process.env.SKYDOCK_CAMERA_ROOTS = media
+    let oldLooks = 0
+    globalThis.skydockCameraWatch = {
+      timer: setInterval(() => oldLooks++, 2000),
+      seen: new Set(),
+      queue: [],
+      copying: false,
+      said: ''
+    }
+
+    watchCameras(outputDir)
+    vi.advanceTimersByTime(10_000)
+
+    expect(oldLooks).toBe(0)
   })
 })

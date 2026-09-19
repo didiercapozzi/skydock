@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { TANDEMS } from '../helpers/jumps'
 import { filesIn, groupsIn, looseIn, placeKey, placeLabel, samePlace } from '../helpers/places'
 import type { Place } from '../helpers/places'
+import type { Mounted } from '../hooks/useLiveProgress'
 import { StepMeter } from './tandem-steps'
 import type { Destination, ManifestFile, ManifestGroup } from './types'
 
@@ -19,6 +20,8 @@ type Props = {
   groups: ManifestGroup[]
   looseFiles: ManifestFile[]
   storage: { tandems: TandemEntry[] } | null
+  /* the cameras plugged in right now */
+  cameras: Mounted[]
   statusContext: (file: ManifestFile) => StatusContext
   /* whether a tandem still has a step to take here */
   tandemOpen: (group: ManifestGroup) => boolean
@@ -157,6 +160,48 @@ const TandemsHeading = ({
   </h2>
 )
 
+/* an entry of the rail that is no folder of files: what the storage holds, a camera plugged in */
+const Entry = ({
+  glyph,
+  label,
+  current,
+  onClick,
+  badge = null,
+  count
+}: {
+  glyph: string
+  label: string
+  current: boolean
+  onClick: () => void
+  badge?: string | null
+  count?: number
+}) => (
+  <button
+    type='button'
+    aria-current={current}
+    onClick={onClick}
+    className={`block w-full rounded-md border px-2 pt-1.5 pb-[5px] text-left text-ink max-[780px]:w-auto max-[780px]:flex-none max-[780px]:rounded-full max-[780px]:border-line max-[780px]:bg-pane max-[780px]:px-[11px] max-[780px]:py-[5px] ${
+      current ? 'border-line bg-pane shadow-card' : 'border-transparent hover:bg-line-2'
+    }`}>
+    <span className='flex items-center gap-2'>
+      <span
+        aria-hidden='true'
+        className={`w-3.5 flex-none text-center ${current ? 'text-accent' : 'text-ink-3'}`}>
+        {glyph}
+      </span>
+      <span className={`min-w-0 flex-1 truncate ${current ? 'font-semibold' : ''}`}>{label}</span>
+      {badge && (
+        <span className='flex-none rounded-full bg-local-soft px-1.5 text-[10.5px] font-semibold whitespace-nowrap text-local max-[780px]:hidden'>
+          {badge}
+        </span>
+      )}
+      {count !== undefined && (
+        <span className='font-mono text-[11px] text-ink-3 tabular-nums'>{count}</span>
+      )}
+    </span>
+  </button>
+)
+
 const counted = (n: number, what: string) => (n > 0 ? `${n} ${what}` : null)
 
 const PlacesTree = ({
@@ -165,6 +210,7 @@ const PlacesTree = ({
   groups,
   looseFiles,
   storage,
+  cameras,
   statusContext,
   tandemOpen,
   passengerProgress,
@@ -218,7 +264,7 @@ const PlacesTree = ({
   return (
     <nav
       aria-label='Folders'
-      className='sticky top-0 self-start overflow-y-auto border-line bg-rail px-2 pt-2.5 pb-6 max-[780px]:z-[8] max-[780px]:flex max-[780px]:h-auto max-[780px]:items-center max-[780px]:gap-1.5 max-[780px]:overflow-x-auto max-[780px]:overflow-y-hidden max-[780px]:border-b max-[780px]:px-3 max-[780px]:py-2 min-[781px]:h-full min-[781px]:border-r'>
+      className='sticky top-0 self-start overflow-y-auto border-line min-[781px]:flex min-[781px]:flex-col bg-rail px-2 pt-2.5 pb-6 max-[780px]:z-[8] max-[780px]:flex max-[780px]:h-auto max-[780px]:items-center max-[780px]:gap-1.5 max-[780px]:overflow-x-auto max-[780px]:overflow-y-hidden max-[780px]:border-b max-[780px]:px-3 max-[780px]:py-2 min-[781px]:h-full min-[781px]:border-r'>
       {/* what came off the cameras and is not filed yet: one entry, and the first thing on it */}
       {node({ kind: 'sort' }, '▤', toFile({ kind: 'sort' }))}
       <Heading>Destination</Heading>
@@ -263,36 +309,31 @@ const PlacesTree = ({
       {storage && (
         <>
           <Heading>Storage</Heading>
-          <button
-            type='button'
-            aria-current={place.kind === 'storage'}
+          <Entry
+            glyph='☁'
+            label='On the storage'
+            current={place.kind === 'storage'}
             onClick={() => onPick({ kind: 'storage' })}
-            className={`block w-full rounded-md border px-2 pt-1.5 pb-[5px] text-left text-ink max-[780px]:w-auto max-[780px]:flex-none max-[780px]:rounded-full max-[780px]:border-line max-[780px]:bg-pane max-[780px]:px-[11px] max-[780px]:py-[5px] ${
-              place.kind === 'storage'
-                ? 'border-line bg-pane shadow-card'
-                : 'border-transparent hover:bg-line-2'
-            }`}>
-            <span className='flex items-center gap-2'>
-              <span
-                aria-hidden='true'
-                className={`w-3.5 flex-none text-center ${place.kind === 'storage' ? 'text-accent' : 'text-ink-3'}`}>
-                ☁
-              </span>
-              <span
-                className={`min-w-0 flex-1 truncate ${place.kind === 'storage' ? 'font-semibold' : ''}`}>
-                On the storage
-              </span>
-              {notEmailed > 0 && (
-                <span className='flex-none rounded-full bg-local-soft px-1.5 text-[10.5px] font-semibold whitespace-nowrap text-local max-[780px]:hidden'>
-                  {notEmailed} to email
-                </span>
-              )}
-              <span className='font-mono text-[11px] text-ink-3 tabular-nums'>
-                {storage.tandems.length}
-              </span>
-            </span>
-          </button>
+            badge={notEmailed > 0 ? `${notEmailed} to email` : null}
+            count={storage.tandems.length}
+          />
         </>
+      )}
+      {/* a camera is listed for as long as it is plugged in, and goes with it — at the foot of the
+          rail, apart from the folders of work */}
+      {cameras.length > 0 && (
+        <div className='min-[781px]:mt-auto min-[781px]:pt-4'>
+          <Heading>Camera</Heading>
+          {cameras.map((c) => (
+            <Entry
+              key={c.mount}
+              glyph='📷'
+              label={c.camera}
+              current={place.kind === 'camera' && place.name === c.mount}
+              onClick={() => onPick({ kind: 'camera', name: c.mount })}
+            />
+          ))}
+        </div>
       )}
     </nav>
   )

@@ -25,7 +25,9 @@ Everything below follows from these.
   file that came off a camera. Correcting a jump's time changes what SkyDock has recorded, not the file.
   The one exception is a person's own choice: an unsorted file can be put in the bin, which moves it
   and erases nothing.
-  The camera's own storage is only ever read.
+  A camera's own storage is only read, with one exception, also a person's choice: a file on a camera
+  plugged in can be taken off it once the network storage is proved to hold it, and it goes to the bin
+  too.
 - **A folder is rebuilt only by whoever owns it.** A passenger's folder can be rewritten, because only
   that passenger is in it. A dropzone folder is shared by every day ever shot there, so it is never
   wiped: files in it are replaced one by one, and a day SkyDock no longer knows about is left alone.
@@ -60,8 +62,25 @@ are on the board with nobody pressing anything. The header shows the copy file b
 says what came off once it is done: how many new files and how many already there. A camera is copied
 once for each time it is plugged in; one unplugged half way keeps what was copied whole, and plugging
 it in again copies the rest. Only one camera is copied at a time, in the order they came. A drive
-without a DCIM folder is not a camera and is never looked into, and nothing is ever written to a camera.
+without a DCIM folder is not a camera and is never looked into, and copying never writes to a camera.
 Where cameras are mounted is a setting, and an empty one turns this off.
+
+**Seeing what is on a camera.** A camera plugged in is listed at the foot of the menu for as long as it
+stays plugged in, and its page lists every file on its card, each saying how far it has got: not copied
+yet, copied here but not uploaded, or on the storage — copied read by the same rule the copy uses to
+pass a file over. Only a file on the storage can be picked and deleted from the camera, to make room on
+the card; the others have no tick. Deleting asks first, saying how many files and how much, and that
+they go to the bin, and the storage must be reachable. Then each file is read through and matched with
+what the storage holds by its bytes, never by its name, since every name changes on the way: it has to
+be a file on the board, known by its content, and the storage has to hold it. A tandem's original is
+held against the storage directly — the very file in the backup folder, or the very entry in the
+backup zip with that zip the one the storage holds. A dropzone's file never goes up as itself, only as
+the copy made from it, renamed and with its date written into it; so it is proved through that copy:
+the camera file is the original the copy was made from, and the copy on the storage is the one that was
+sent. A tandem's photo goes the same way, inside the passenger's photos zip. If any file is not proved,
+or is not on a camera plugged in now, nothing at all is deleted and each is named. What passes is moved
+off the card into a folder of the bin named after the camera and the moment, kept as it sat on the
+card. Nothing is deleted from a camera while a camera is being copied.
 
 **2. Scan.** SkyDock reads each file's capture time and groups files shot close together into jumps.
 A scan can be asked for at any time; one run after more cameras were copied off picks up the new files
@@ -268,7 +287,7 @@ puts back its place among the jumps. A name is only what the
 board calls the jump — no file is named after it, so renaming never makes anything stale — and it is
 kept through a scan; when a scan finds a named jump was really two, the name stays with the half that
 is still that jump. Arranged by jump, every jump is a card, side by side,
-oldest first, in the order they happened, the way their numbers run: its name, its date and start time, how many
+newest first, so the numbers count down to Jump 1, the first jump of all: its name, its date and start time, how many
 videos and photos it holds, how far it has got, and a few frames off it, so jumps can be told apart at a
 glance — the date in full, year and all, and the time to the minute. The loose files get one card of
 their own, always first, before the jumps, however many days they were shot on; it is drawn differently — dashed and
@@ -352,7 +371,8 @@ been wiped, the bin holds the only copy. Once confirmed, the files leave the boa
 folder, so a scan does not bring them back; the copies and proxies made from them are deleted, since
 they have nothing left to come from. The files themselves are moved, not erased, into a folder of the
 bin named for that moment, keeping the day folder each came from. SkyDock never empties the bin, so
-nothing is lost for good and no space comes back until someone empties it by hand. There is no way back
+nothing is lost for good and no space comes back until someone empties it by hand. The bin is a folder
+of its own, apart from the originals and the delivered copies; where it is is a setting. There is no way back
 from the board: a file is recovered by moving it out of the bin into the originals and scanning again.
 Nothing is put in the bin while something is being processed.
 
@@ -414,7 +434,10 @@ pixels: the clip is copied with its ends cut off, losing nothing.
 picture: what is dimmed goes. The rectangle keeps the shape the clip already has unless another is
 chosen, so a 16:9 jump is still 16:9 when handed over, and what is left is put back to the size the clip
 came at, so a 4K clip stays 4K. Set on one clip, the rectangle can be given to every clip in the jump in
-one press. Photos have no frame.
+one press. How much the rectangle keeps is said as it is dragged, in percent — across and down on the
+rectangle itself, and with the share of the picture beside it — and the trim says the share of the clip
+it keeps the same way. Opened again, a clip shows its rectangle where it was saved, with its shape marked as the one
+chosen; each clip opens on its own shape, never on the last one's. Photos have no frame.
 
 **Turning.** A camera mounted sideways or upside down is put right a quarter turn at a time, clockwise,
 by button or by pressing R, or back to as shot. The picture on screen turns with it and takes the shape

@@ -42,6 +42,7 @@ describe('changes made on the board', () => {
     previousOutputDir = process.env.SKYDOCK_OUTPUT_DIR
     process.env.SKYDOCK_OUTPUT_DIR = tmpDir
     process.env.SKYDOCK_CONFIG_DIR = tmpDir
+    process.env.SKYDOCK_TRASH_DIR = path.join(tmpDir, '.trash')
   })
 
   afterEach(() => {

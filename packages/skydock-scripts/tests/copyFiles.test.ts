@@ -208,13 +208,15 @@ describe('a copy that leaves its jump', () => {
 
 describe('the original of a copy', () => {
   /* the bin takes the file off the disk, and the copy is of that very file */
-  it('cannot be put in the bin while a jump holds a copy of it', () => {
+  it('cannot be put in the bin while a jump holds a copy of it', async () => {
     dir = createTmpDir('skydock-copies-')
     const manifest = board()
     copyFiles(manifest, new Set(['plane']), 'anas')
     moveFiles(manifest, new Set(['plane']), { destination: null })
 
-    expect(() => trashUnsorted(manifest, new Set(['plane']), dir!)).toThrow(/copied into a jump/)
+    await expect(
+      trashUnsorted(manifest, new Set(['plane']), dir, path.join(dir, 'bin'))
+    ).rejects.toThrow(/copied into a jump/)
   })
 })
 

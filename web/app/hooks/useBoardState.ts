@@ -225,6 +225,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     liveFiles,
     /* a camera being copied off right now, as it goes */
     cameraCopy: live.camera,
+    cameras: live.cameras,
     tandemFacts,
     remoteAfterUpload,
     storage,
@@ -242,5 +243,5 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   }
 }
 
-export { useBoardState }
+export { refusalSchema, useBoardState }
 export type { CheckedListing, ManifestArgs, Storage }

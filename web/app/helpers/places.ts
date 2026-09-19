@@ -3,8 +3,9 @@ import type { ManifestFile, ManifestGroup } from '../components/types'
 import { TANDEMS } from './jumps'
 
 /* Where a file can be, as the folders down the left of the board: the fresh files still to sort, a
-   dropzone, all the passengers, the ones still without a name, one passenger, and what the storage
-   itself holds. One is open at a time and its files fill the pane. */
+   dropzone, all the passengers, the ones still without a name, one passenger, what the storage
+   itself holds, and a camera plugged in, by where it is mounted. One is open at a time and its files
+   fill the pane. */
 type Place =
   | { kind: 'sort' }
   | { kind: 'dz'; name: string }
@@ -12,6 +13,7 @@ type Place =
   | { kind: 'unnamed' }
   | { kind: 'pax'; name: string }
   | { kind: 'storage' }
+  | { kind: 'camera'; name: string }
 
 const placeKey = (place: Place) => `${place.kind}:${'name' in place ? place.name : ''}`
 
@@ -28,7 +30,9 @@ const placeLabel = (place: Place) =>
         ? 'No name yet'
         : place.kind === 'storage'
           ? 'On the storage'
-          : place.name
+          : place.kind === 'camera'
+            ? `On the camera ${place.name.split('/').pop() ?? ''}`
+            : place.name
 
 /* the three families of folder, which is what decides how their files can be grouped */
 const familyOf = (place: Place) =>
@@ -36,7 +40,7 @@ const familyOf = (place: Place) =>
     ? 'sort'
     : place.kind === 'dz'
       ? 'dz'
-      : place.kind === 'storage'
+      : place.kind === 'storage' || place.kind === 'camera'
         ? 'storage'
         : 'tandems'
 
@@ -53,6 +57,7 @@ const groupsIn = (place: Place, groups: ManifestGroup[]) => {
     case 'pax':
       return groups.filter((g) => g.destination === TANDEMS && passengerOf(g) === place.name)
     case 'storage':
+    case 'camera':
       return []
   }
 }

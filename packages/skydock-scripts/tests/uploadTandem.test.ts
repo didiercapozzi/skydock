@@ -11,12 +11,15 @@ import { saveNasSession } from '../src/nas'
 import type { NasSession } from '../src/nas'
 import { createTmpDir, jsonResponse, loginSuccess, seen, stubFetch } from './fixtures'
 
+const configDir = process.env.SKYDOCK_CONFIG_DIR
+
 beforeEach(() => {
   seen.length = 0
 })
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  process.env.SKYDOCK_CONFIG_DIR = configDir
 })
 
 /* every upload this test makes, so what reached the passenger can be told from what did not */
@@ -165,8 +168,10 @@ const upload = async (
   const built = scene(options)
   const server = await startUploadServer()
   stubDsm()
-  /* uploads run with no password, reusing the session on disk — the same way the app does */
-  saveNasSession({ hostname: server.url, username: 'u', sessionId: 'sid' }, built.outputDir)
+  /* uploads run with no password, reusing the session kept in the config folder — the same way the
+     app does, and not in the output folder, which is where the upload once looked for it */
+  process.env.SKYDOCK_CONFIG_DIR = path.join(built.outputDir, 'config')
+  saveNasSession({ hostname: server.url, username: 'u', sessionId: 'sid' })
   try {
     const result = await uploadTandem({
       outputDir: built.outputDir,
@@ -254,7 +259,8 @@ describe('uploading a tandem — what is refused', () => {
     fs.writeFileSync(path.join(built.groupDir, 'take two.mp4'), Buffer.alloc(8))
     const server = await startUploadServer()
     stubDsm()
-    saveNasSession({ hostname: server.url, username: 'u', sessionId: 'sid' }, built.outputDir)
+    process.env.SKYDOCK_CONFIG_DIR = path.join(built.outputDir, 'config')
+    saveNasSession({ hostname: server.url, username: 'u', sessionId: 'sid' })
     await expect(
       uploadTandem({
         outputDir: built.outputDir,

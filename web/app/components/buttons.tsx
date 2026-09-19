@@ -11,6 +11,8 @@ type Props = {
   type?: 'button' | 'submit'
   form?: string
   onClick?: () => void
+  /* one of a run of choices, and the one that is on */
+  pressed?: boolean
 }
 
 const Go = ({ children, title, disabled, type = 'button', form, onClick }: Props) => (
@@ -25,14 +27,19 @@ const Go = ({ children, title, disabled, type = 'button', form, onClick }: Props
   </button>
 )
 
-const Mini = ({ children, title, disabled, type = 'button', form, onClick }: Props) => (
+const Mini = ({ children, title, disabled, type = 'button', form, onClick, pressed }: Props) => (
   <button
     type={type}
     form={form}
     title={title}
     disabled={disabled}
     onClick={onClick}
-    className='rounded-[5px] border border-line bg-pane px-2 py-[3px] text-[11.5px] text-ink-2 hover:border-ink-3 hover:text-ink disabled:cursor-default disabled:opacity-40'>
+    aria-pressed={pressed}
+    className={`rounded-[5px] border px-2 py-[3px] text-[11.5px] disabled:cursor-default disabled:opacity-40 ${
+      pressed
+        ? 'border-accent bg-accent-soft font-semibold text-ink'
+        : 'border-line bg-pane text-ink-2 hover:border-ink-3 hover:text-ink'
+    }`}>
     {children}
   </button>
 )

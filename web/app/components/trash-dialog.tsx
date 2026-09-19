@@ -50,9 +50,9 @@ const TrashDialog = ({
       <p className='m-0 rounded-r-md border-l-[3px] border-changed bg-changed-soft px-3 py-[9px] text-[12.5px] text-ink-2'>
         <b className='text-changed'>These are originals nobody has been given yet.</b> They leave
         the board and the originals folder, and a scan will not bring them back. They are moved, not
-        erased, to <span className='font-mono text-[11.5px]'>output/.trash/</span> — the only way
-        back is to take them out of there by hand. If the camera card has been wiped, that folder
-        holds the only copy.
+        erased, to <span className='font-mono text-[11.5px]'>.trash/</span> — the only way back is
+        to take them out of there by hand. If the camera card has been wiped, that folder holds the
+        only copy.
       </p>
       <p className='m-0 text-[12px] text-ink-3'>
         The bin is never emptied by SkyDock, so this frees no space until someone empties it.

@@ -9,8 +9,11 @@ export default mergeConfig(
     test: {
       include: ['tests/server/**/*.test.{ts,tsx}'],
       environment: 'node',
-      /* never the app's real settings: a test that names no folder of its own writes here */
-      env: { SKYDOCK_CONFIG_DIR: path.join(os.tmpdir(), 'skydock-test-config') }
+      /* never the app's real settings or bin: a test that names no folder of its own writes here */
+      env: {
+        SKYDOCK_CONFIG_DIR: path.join(os.tmpdir(), 'skydock-test-config'),
+        SKYDOCK_TRASH_DIR: path.join(os.tmpdir(), 'skydock-test-trash')
+      }
     }
   })
 )

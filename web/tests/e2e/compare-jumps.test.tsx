@@ -84,14 +84,14 @@ describe('comparing two jumps', () => {
     await renderBoard()
 
     await userEvent.keyboard('{Control>}')
-    await userEvent.click(card(/^Jump 2, /))
+    await userEvent.click(card(/^Jump 1, /))
     await userEvent.keyboard('{/Control}')
 
     await expect.element(comparison()).toBeInTheDocument()
   })
 })
 
-/* One jump's card is always open — the one last chosen, or else the first — with its files listed
+/* One jump's card is always open — the one last chosen, or else the first, the newest — with its files listed
    under the cards. The panel on the right describes that same jump: a lit card beside a panel about
    something else was two answers to which jump this is about. */
 describe('the jump whose card is open', () => {
@@ -99,22 +99,22 @@ describe('the jump whose card is open', () => {
     await renderBoard()
 
     const panel = page.getByRole('complementary')
-    await expect.element(panel.getByRole('button', { name: 'Jump 1', exact: true })).toBeInTheDocument()
+    await expect.element(panel.getByRole('button', { name: 'Jump 2', exact: true })).toBeInTheDocument()
     await expect.element(panel.getByRole('button', { name: /Select its 2 files/ })).toBeInTheDocument()
   })
 
   test('changes with the card that is opened', async () => {
     await renderBoard()
 
-    await userEvent.click(card(/^Jump 2, /))
+    await userEvent.click(card(/^Jump 1, /))
 
     const panel = page.getByRole('complementary')
-    await expect.element(panel.getByRole('button', { name: 'Jump 2', exact: true })).toBeInTheDocument()
+    await expect.element(panel.getByRole('button', { name: 'Jump 1', exact: true })).toBeInTheDocument()
   })
 })
 
-/* Four jumps over two days are Jump 1 to Jump 4, oldest first: a number that started again each day
-   gave two jumps the same name, and the cards run the way the numbers do. */
+/* Four jumps over two days are Jump 1 to Jump 4, counted oldest first: a number that started again
+   each day gave two jumps the same name. The cards are drawn newest first, counting down to Jump 1. */
 describe('jumps as cards', () => {
   const DAY2 = AT + 86_400
   const days = {
@@ -127,7 +127,7 @@ describe('jumps as cards', () => {
     ]
   }
 
-  test('are numbered straight through the days and drawn oldest first', async () => {
+  test('are numbered straight through the days and drawn newest first', async () => {
     const Stub = createRoutesStub([{ path: '/', Component: Board, loader: () => days }])
     await render(createElement(Stub, { initialEntries: ['/'] }))
 
@@ -137,10 +137,10 @@ describe('jumps as cards', () => {
       .elements()
       .map((el) => el.getAttribute('aria-label')?.slice(0, 22))
     expect(drawn).toEqual([
-      'Jump 1, 1 August 2026 ',
-      'Jump 2, 1 August 2026 ',
+      'Jump 4, 2 August 2026 ',
       'Jump 3, 2 August 2026 ',
-      'Jump 4, 2 August 2026 '
+      'Jump 2, 1 August 2026 ',
+      'Jump 1, 1 August 2026 '
     ])
   })
 })

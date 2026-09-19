@@ -21,7 +21,8 @@ import {
 const publishArgsSchema = dsmConfigSchema.extend({
   localDir: z.string(),
   remoteDir: z.string(),
-  outputDir: z.string().optional(),
+  /* where the storage connection is kept; the app's own config folder unless a test says otherwise */
+  configDir: z.string().optional(),
   dedupe: z.boolean().optional(),
   md5Concurrency: z.number().optional(),
   /* exactly what to send, when the folder holds more than the recipient should get — a passenger's
@@ -279,7 +280,7 @@ const publishJump = async (
   const sid = await loginWithSession(
     args,
     { login: dsmLogin, validate: dsmValidateSession },
-    args.outputDir
+    args.configDir
   )
   const all = args.files ?? walkFiles(args.localDir)
   const planned: { upload: string[]; skip: UploadVerdict[] } =

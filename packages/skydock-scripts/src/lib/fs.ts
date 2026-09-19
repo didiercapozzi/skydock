@@ -136,6 +136,31 @@ const writeJsonAtomic = (target: string, value: unknown) => {
   fs.renameSync(tmp, target)
 }
 
+/* A file moved to another folder, which may be on another drive — a camera's card, the bin on the
+   machine's disk. Within one drive it is renamed; across two it is copied whole under a temporary
+   name, given its own only once complete, and only then removed where it was, so a move cut off half
+   way leaves the file where it was and nothing that passes for it. */
+const moveFile = async (from: string, to: string) => {
+  fs.mkdirSync(path.dirname(to), { recursive: true })
+  try {
+    await fs.promises.rename(from, to)
+    return
+  } catch (e) {
+    if (!(e instanceof Error && 'code' in e && e.code === 'EXDEV')) throw e
+  }
+  const partial = `${to}.part`
+  try {
+    await fs.promises.copyFile(from, partial)
+    const stat = fs.statSync(from)
+    fs.utimesSync(partial, stat.atime, stat.mtime)
+    fs.renameSync(partial, to)
+  } catch (e) {
+    fs.rmSync(partial, { force: true })
+    throw e
+  }
+  await fs.promises.unlink(from)
+}
+
 export {
   countFiles,
   DEFAULT_MAX_FIND_DEPTH,
@@ -143,6 +168,7 @@ export {
   findMediaFiles,
   hashFile,
   hasMediaFiles,
+  moveFile,
   walkFiles,
   writeJsonAtomic
 }

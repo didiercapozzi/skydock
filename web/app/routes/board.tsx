@@ -28,6 +28,7 @@ import { useState } from 'react'
 import { BoardHeader } from '../components/board-header'
 import type { NasLink } from '../components/board-header'
 import { Go, Mini } from '../components/buttons'
+import { CameraFiles } from '../components/camera-files'
 import { Callout } from '../components/callout'
 import { DialogHost } from '../components/dialog-host'
 import type { BoardDialog } from '../components/dialog-host'
@@ -1036,6 +1037,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           groups={listed}
           looseFiles={loose}
           storage={board.storage}
+          cameras={board.cameras}
           statusContext={statusContext}
           tandemOpen={(g) => !asOnStorage(g).uploaded}
           passengerProgress={passengerProgress}
@@ -1090,7 +1092,13 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           note={note}
           incoming={paneTarget}
           onImport={(list, target, where) => void importDropped(list, target, where)}>
-          {place.kind === 'storage' ? (
+          {place.kind === 'camera' ? (
+            <CameraFiles
+              mount={place.name}
+              stamp={board.cameras.map((c) => c.mount).join('\n')}
+              onNote={board.setNote}
+            />
+          ) : place.kind === 'storage' ? (
             <div className='pt-3'>
               <StorageList
                 storage={board.storage}

@@ -117,7 +117,7 @@ describe('uploading a folder', () => {
       password: 'p',
       localDir: dir,
       remoteDir: '/SkyDock/jump',
-      outputDir: out,
+      configDir: out,
       ...extra
     })
 
@@ -179,7 +179,7 @@ describe('uploading a folder', () => {
         password: 'p',
         localDir: dir,
         remoteDir: '/SkyDock/jump',
-        outputDir: out
+        configDir: out
       },
       { onProgress: (p) => progress.push({ ...p }) }
     )

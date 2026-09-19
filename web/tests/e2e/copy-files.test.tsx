@@ -71,6 +71,7 @@ const card = (name: RegExp) => page.getByRole('button', { name })
 describe('dropping files on another jump', () => {
   test('copies them there when alt is held, leaving them where they were', async () => {
     await renderBoard()
+    await userEvent.click(card(/^Jump 1, /))
 
     await userEvent.keyboard('{Alt>}')
     await userEvent.dragAndDrop(row('luc\\.MP4'), card(/^Jump 2, /))
@@ -84,6 +85,7 @@ describe('dropping files on another jump', () => {
 
   test('moves them there with no key held, as it always did', async () => {
     await renderBoard()
+    await userEvent.click(card(/^Jump 1, /))
 
     await userEvent.dragAndDrop(row('luc\\.MP4'), card(/^Jump 2, /))
 

@@ -42,6 +42,11 @@ const liveEventSchema = z.discriminatedUnion('kind', [
     copied: z.number(),
     skipped: z.number(),
     reason: z.string().optional()
+  }),
+  /* the cameras plugged in right now, said each time one comes or goes */
+  z.object({
+    kind: z.literal('cameras'),
+    mounted: z.array(z.object({ camera: z.string(), mount: z.string() }))
   })
 ])
 
@@ -66,6 +71,8 @@ const publish = (event: LiveEvent) => {
   const { listeners, underWay } = bus()
   if (event.kind === 'file') underWay.set(`${event.work}:${event.fileId}`, event)
   if (event.kind === 'file-done') underWay.delete(`${event.work}:${event.fileId}`)
+  /* whoever starts listening hears which cameras are plugged in, not only the next change */
+  if (event.kind === 'cameras') underWay.set('cameras', event)
   if (event.kind === 'camera') {
     if (event.state === 'copying') underWay.set(`camera:${event.camera}`, event)
     else underWay.delete(`camera:${event.camera}`)

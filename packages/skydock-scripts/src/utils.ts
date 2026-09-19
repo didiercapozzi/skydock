@@ -38,6 +38,11 @@ const getStatusDir = (outputDir?: string) => path.join(outputDir || getOutputDir
 const getConfigDir = () =>
   (typeof process !== 'undefined' && process.env?.SKYDOCK_CONFIG_DIR) || '/workspace/config'
 
+/* The bin: what was put aside — files nobody wanted, and a camera's files once deleted from it — kept
+   out of the originals, so a scan never finds them again, and never emptied by the app. */
+const getTrashDir = () =>
+  (typeof process !== 'undefined' && process.env?.SKYDOCK_TRASH_DIR) || '/workspace/.trash'
+
 const sortFilesByMtime = (files: ManifestFile[]) => [...files].sort((a, b) => a.mtime - b.mtime)
 
 const isCliModule = (baseName: string) => {
@@ -175,6 +180,7 @@ export {
   getManifestPath,
   getOutputDir,
   getConfigDir,
+  getTrashDir,
   getStatusDir,
   hasCommand,
   isCliModule,

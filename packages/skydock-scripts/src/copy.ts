@@ -41,10 +41,10 @@ const namesFor = (dir: string, name: string) => {
   return [name, ...there.filter((n) => numbered.test(n))]
 }
 
-/* Whether this file is already in the folder under one of its names. Same size and same time is the
-   same file — a copy keeps the time of the file it was made from — and only a file that matches in
-   size but not in time is read through to be sure. Plugging the same camera in again therefore reads
-   almost nothing, where comparing every byte read the whole card again. */
+/* Where this file already is in the folder, under one of its names, or null. Same size and same time
+   is the same file — a copy keeps the time of the file it was made from — and only a file that
+   matches in size but not in time is read through to be sure. Plugging the same camera in again
+   therefore reads almost nothing, where comparing every byte read the whole card again. */
 const alreadyThere = async (src: string, srcStat: fs.Stats, dir: string) => {
   for (const name of namesFor(dir, path.basename(src))) {
     const existing = path.join(dir, name)
@@ -55,10 +55,10 @@ const alreadyThere = async (src: string, srcStat: fs.Stats, dir: string) => {
       continue
     }
     if (stat.size !== srcStat.size) continue
-    if (Math.floor(stat.mtimeMs / 1000) === Math.floor(srcStat.mtimeMs / 1000)) return true
-    if ((await run(`cmp -s ${quote(src)} ${quote(existing)}`)).ok) return true
+    if (Math.floor(stat.mtimeMs / 1000) === Math.floor(srcStat.mtimeMs / 1000)) return existing
+    if ((await run(`cmp -s ${quote(src)} ${quote(existing)}`)).ok) return existing
   }
-  return false
+  return null
 }
 
 /* Where a file new to this folder goes: under its own name, or — when a different file already has
@@ -144,5 +144,16 @@ if (isCliModule('copy')) {
   void copyFromCameras({ cameraDirs })
 }
 
-export { CameraGone, copyCamera, copyFromCameras }
+/* the day folder each of a camera's files belongs in among the originals */
+const dayFoldersOf = async (files: string[], outputDir: string) => {
+  const days = await readExifMap(files, DATE_TAGS)
+  return new Map(
+    files.map((file) => [
+      file,
+      path.join(outputDir, 'original_files', days.get(file) ?? dayOfStat(fs.statSync(file)))
+    ])
+  )
+}
+
+export { CameraGone, alreadyThere, copyCamera, copyFromCameras, dayFoldersOf }
 export type { CopyOptions, CopyProgress }

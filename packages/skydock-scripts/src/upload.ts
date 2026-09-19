@@ -196,13 +196,11 @@ const resolveUploadTargets = ({
    upload reads `12 / 571`, not `12 / 40` restarting per group. The manifest is not saved here — the
    caller owns that. */
 const uploadTargets = async ({
-  outputDir,
   session,
   targets,
   onProgress,
   onCheck
 }: {
-  outputDir: string
   session: NasSession
   targets: UploadTarget[]
   onProgress?: (progress: UploadProgress & { groupIds: string[] }) => void
@@ -231,7 +229,6 @@ const uploadTargets = async ({
         password: '',
         localDir: target.localDir,
         remoteDir: target.remoteDir as string,
-        outputDir,
         files: target.files,
         share: target.share
       },
@@ -264,7 +261,6 @@ const uploadScope = async ({
   onCheck?: (progress: CheckProgress) => void
 }) =>
   uploadTargets({
-    outputDir,
     session,
     targets: resolveUploadTargets({
       outputDir,

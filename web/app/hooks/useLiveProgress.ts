@@ -11,6 +11,9 @@ type LiveFile = { work: 'process' | 'proxy'; percent: number }
 type CameraCopy = Extract<LiveEvent, { kind: 'camera' }>
 type CameraEnded = CameraCopy & { seq: number }
 
+/* a camera plugged in right now: its name, and where it is mounted */
+type Mounted = Extract<LiveEvent, { kind: 'cameras' }>['mounted'][number]
+
 /* What is happening to the files as it happens, heard over one stream the server keeps open — so a
    file being processed, or a proxy being made, shows how far along it is with nobody asking. The
    browser reconnects by itself, and on connecting the server first says what is already under way.
@@ -27,6 +30,7 @@ const useLiveProgress = (
   const [files, setFiles] = useState<Record<string, LiveFile>>({})
   const [camera, setCamera] = useState<CameraCopy | null>(null)
   const [ended, setEnded] = useState<CameraEnded | null>(null)
+  const [cameras, setCameras] = useState<Mounted[]>([])
 
   useEffect(() => {
     const source = new EventSource(routingEngine.href({ url: '/api/events' }))
@@ -53,6 +57,10 @@ const useLiveProgress = (
         }
         return
       }
+      if (event.kind === 'cameras') {
+        setCameras(event.mounted)
+        return
+      }
       if (event.kind === 'file') {
         setFiles((now) => ({
           ...now,
@@ -70,8 +78,8 @@ const useLiveProgress = (
     return () => source.close()
   }, [onProxies, onTandems, onNote])
 
-  return { files, camera, ended }
+  return { files, camera, ended, cameras }
 }
 
 export { useLiveProgress }
-export type { CameraCopy, CameraEnded, LiveFile }
+export type { CameraCopy, CameraEnded, LiveFile, Mounted }

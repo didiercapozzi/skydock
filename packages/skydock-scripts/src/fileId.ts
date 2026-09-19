@@ -13,4 +13,4 @@ const computeFileId = async (filePath: string) => {
   })
 }
 
-export { computeFileId }
+export { ID_HEX_LENGTH, computeFileId }
