@@ -121,6 +121,18 @@ describe('what is on a camera', () => {
   })
 })
 
+describe('the camera page', () => {
+  it('lists the files on the card newest first', async () => {
+    const root = card({ 'GX01.MP4': 1, 'GX02.MP4': 2 })
+    const later = new Date(DAY.getTime() + 3600_000)
+    fs.utimesSync(onCard(root, 'GX02.MP4'), later, later)
+
+    const [camera] = await listCameras(outputDir, [root])
+
+    expect(camera?.files.map((f) => path.basename(f.name))).toEqual(['GX02.MP4', 'GX01.MP4'])
+  })
+})
+
 describe('deleting from a camera', () => {
   const setup = async () => {
     const root = card({ 'GX01.MP4': 1 })

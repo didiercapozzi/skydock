@@ -100,6 +100,29 @@ describe('what a folder on the storage holds', () => {
     ])
   })
 
+  it('lists each kind newest first, by when it was shot', async () => {
+    const stub = nasStubs({
+      files: {
+        '/SkyDock/Yverdon': [
+          { name: 'yverdon_20260801_100000.mp4', size: 1 },
+          { name: 'yverdon_20260802_090000.mp4', size: 1 },
+          { name: 'yverdon_20260801_120000.jpg', size: 1 },
+          { name: 'yverdon_20260803_080000.jpg', size: 1 }
+        ]
+      }
+    })
+    stubFetch((url) => stub(url) ?? new Response('{}'))
+
+    const files = await listStorageFolder(session, '/SkyDock/Yverdon')
+
+    expect(files.map((f) => f.name)).toEqual([
+      'yverdon_20260802_090000.mp4',
+      'yverdon_20260801_100000.mp4',
+      'yverdon_20260803_080000.jpg',
+      'yverdon_20260801_120000.jpg'
+    ])
+  })
+
   it('is empty, not an error, for a folder nothing was uploaded into yet', async () => {
     const stub = nasStubs({ files: {} })
     stubFetch((url) => stub(url) ?? new Response('{}'))

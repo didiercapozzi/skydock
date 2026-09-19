@@ -378,7 +378,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     openCard?.kind === 'jump' ? groups.find((g) => g.id === openCard.group.id) : undefined
   const onScreen = openCard ? [openCard] : sections
   /* files are in the order they were shot */
-  const sortKey = (file: ManifestFile) => file.mtime
+  /* every list newest first: the latest file shot at the top */
+  const sortKey = (file: ManifestFile) => -file.mtime
   /* every file on screen, in the order it is drawn, for the arrow keys to step through */
   const order = onScreen.flatMap((s) =>
     s.kind === 'jump' && s.group.freed ? [] : lanesOf(s.files, kind, sortKey).flat()

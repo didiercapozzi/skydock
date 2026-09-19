@@ -175,7 +175,8 @@ const listCamera = async (mount: string, outputDir: string) => {
       state: standingOf(manifest, file, stat.size, original)
     })
   }
-  return { camera: path.basename(mount), mount, files: listed }
+  /* newest first, as every list of files is */
+  return { camera: path.basename(mount), mount, files: listed.sort((a, b) => b.mtime - a.mtime) }
 }
 
 const listCameras = async (outputDir: string, mounts = mountedCameras()) =>

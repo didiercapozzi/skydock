@@ -223,3 +223,19 @@ describe('resetting Fresh files', () => {
     expect(asked).toEqual([])
   })
 })
+
+/* every list of files runs newest first: the latest file shot is at the top (RULES, The board) */
+describe('the files of a jump', () => {
+  test('are listed newest first', async () => {
+    await renderBoard()
+
+    await expect.element(page.getByText('g2b.MP4').first()).toBeInTheDocument()
+    await expect
+      .poll(() =>
+        [...document.querySelectorAll('[title*=".MP4"]')].map((el) =>
+          el.getAttribute('title')?.split(' · ')[0]
+        )
+      )
+      .toEqual(['g2b.MP4', 'g2a.MP4'])
+  })
+})

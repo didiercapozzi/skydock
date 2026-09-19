@@ -53,13 +53,18 @@ const shotFromName = (name: string) => {
 const kindOf = (name: string): StorageFile['kind'] =>
   isVideoFile(name) ? 'video' : PHOTO.test(name) ? 'photo' : 'other'
 
-/* the folder's files, films and clips first, each kind by name — which is by time, since a
-   delivered file is named after when it was shot */
+/* the folder's files, films and clips first, each kind newest first — by when it was shot, read off
+   its name, or else when it was put there */
 const listStorageFolder = async (session: NasSession, dir: string): Promise<StorageFile[]> => {
   const order = { video: 0, photo: 1, other: 2 }
   return (await listNasFiles(session.hostname, session.sessionId, dir))
     .map((f) => ({ ...f, kind: kindOf(f.name), shot: shotFromName(f.name) }))
-    .sort((a, b) => order[a.kind] - order[b.kind] || a.name.localeCompare(b.name))
+    .sort(
+      (a, b) =>
+        order[a.kind] - order[b.kind] ||
+        (b.shot ?? b.mtime ?? 0) - (a.shot ?? a.mtime ?? 0) ||
+        b.name.localeCompare(a.name)
+    )
 }
 
 /* The folders SkyDock uploads into, which are the only ones a file is ever opened from: the

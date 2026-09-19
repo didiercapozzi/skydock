@@ -349,8 +349,9 @@ shown but cannot be chosen.
 
 **Arranging.** The pane's heading has one button per way of arranging the place — by jump, by day, or
 as one list, whichever that place offers — so every choice is in sight and a single press away. Each
-kind of place remembers its own choice while the board is open. Files are always in the order they
-were shot.
+kind of place remembers its own choice while the board is open. Every list of files runs newest
+first, the latest shot at the top — on the board, in what a place's folder on the storage holds, and on
+a camera's page.
 
 **Finding.** A box in the pane's heading narrows what is drawn, matching either name a file has. It
 changes only what is shown; a jump with nothing matching drops out of view, the jumps left keep their
