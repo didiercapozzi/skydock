@@ -3,7 +3,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { z } from 'zod'
 import { writeJsonAtomic } from './lib/fs'
-import { getStatusDir } from './utils'
+import { getConfigDir, getStatusDir } from './utils'
 
 const nasSessionSchema = z.object({
   hostname: z.string(),
@@ -105,7 +105,21 @@ const dsmConfigSchema = z.object({
 })
 type DsmConfig = z.infer<typeof dsmConfigSchema>
 
-const nasPath = (outputDir?: string): string => path.join(getStatusDir(outputDir), 'nas.json')
+/* The connection is the app's own setting, not part of the work: it lives in the config folder, apart
+   from the footage and the records. */
+const nasPath = (configDir?: string) => path.join(configDir || getConfigDir(), 'nas.json')
+
+/* where the connection was kept before it had a folder of its own, taken over the first time it is
+   looked for so nobody has to connect again */
+const adoptLegacySession = () => {
+  const legacy = path.join(getStatusDir(), 'nas.json')
+  const target = nasPath()
+  if (fs.existsSync(target) || !fs.existsSync(legacy)) return
+  fs.mkdirSync(path.dirname(target), { recursive: true })
+  fs.copyFileSync(legacy, target)
+  fs.chmodSync(target, 0o600)
+  fs.unlinkSync(legacy)
+}
 
 const normalizeHost = (host: string): string => host.replace(/\/+$/, '')
 
@@ -531,40 +545,41 @@ type DsmAuth = {
   validate: (host: string, sid: string) => Promise<boolean>
 }
 
-const loadNasSession = (outputDir?: string): NasSession | null => {
+const loadNasSession = (configDir?: string): NasSession | null => {
   try {
-    return nasSessionSchema.parse(JSON.parse(fs.readFileSync(nasPath(outputDir), 'utf-8')))
+    if (!configDir) adoptLegacySession()
+    return nasSessionSchema.parse(JSON.parse(fs.readFileSync(nasPath(configDir), 'utf-8')))
   } catch {
     return null
   }
 }
 
-const saveNasSession = (session: NasSession, outputDir?: string): void => {
+const saveNasSession = (session: NasSession, configDir?: string): void => {
   nasSessionSchema.parse(session)
-  const target = nasPath(outputDir)
+  const target = nasPath(configDir)
   fs.mkdirSync(path.dirname(target), { recursive: true })
   writeJsonAtomic(target, session)
   fs.chmodSync(target, 0o600)
 }
 
-const clearNasSession = (outputDir?: string): void => {
-  const target = nasPath(outputDir)
+const clearNasSession = (configDir?: string): void => {
+  const target = nasPath(configDir)
   if (fs.existsSync(target)) fs.unlinkSync(target)
 }
 
 /* Two folders are remembered: where uploads go, and where the original videos are kept. They are
    chosen the same way and never derived from each other — a backup that falls back to the upload
    folder puts gigabytes of rushes in a passenger's hands. */
-const updateNasFolder = (kind: 'default' | 'backup', folder: string, outputDir?: string): void => {
-  const session = loadNasSession(outputDir)
+const updateNasFolder = (kind: 'default' | 'backup', folder: string, configDir?: string): void => {
+  const session = loadNasSession(configDir)
   if (!session) return
   const key = kind === 'backup' ? 'backupFolder' : 'defaultFolder'
-  saveNasSession({ ...session, [key]: folder }, outputDir)
+  saveNasSession({ ...session, [key]: folder }, configDir)
 }
 
 const refreshStoredSession = async (
   stored: NasSession,
-  outputDir?: string,
+  configDir?: string,
   login: (config: DsmConfig) => Promise<string> = dsmLogin
 ) => {
   const enc = stored.encPasswd
@@ -585,34 +600,34 @@ const refreshStoredSession = async (
     const parsedSid = dsmSidResponseSchema.safeParse(body)
     if (!parsedSid.success) throw new Error(dsmApiErrorMessage(body))
     const sid = parsedSid.data.data.sid
-    saveNasSession({ ...stored, sessionId: sid }, outputDir)
+    saveNasSession({ ...stored, sessionId: sid }, configDir)
     return sid
   }
   const plain = decryptPasswordFromStorage(stored.hostname, stored.username, enc)
   const sid = await login({ host: stored.hostname, user: stored.username, password: plain })
   const newEnc = encryptPasswordForStorage(stored.hostname, stored.username, plain)
-  saveNasSession({ ...stored, sessionId: sid, encPasswd: newEnc }, outputDir)
+  saveNasSession({ ...stored, sessionId: sid, encPasswd: newEnc }, configDir)
   return sid
 }
 
 const loginWithSession = async (
   config: z.infer<typeof nasLoginConfigSchema>,
   dsm: DsmAuth,
-  outputDir?: string
+  configDir?: string
 ) => {
   const parsed = nasLoginConfigSchema.safeParse(config)
   if (!parsed.success) throw new Error('Invalid login config')
   const { host, user, password } = parsed.data
 
-  const stored = loadNasSession(outputDir)
+  const stored = loadNasSession(configDir)
   const canReuse = stored && stored.hostname === host && stored.username === user
   if (canReuse && (await dsm.validate(host, stored.sessionId))) return stored.sessionId
   if (canReuse && stored && !password && stored.encPasswd) {
     try {
-      return await refreshStoredSession(stored, outputDir, dsm.login)
+      return await refreshStoredSession(stored, configDir, dsm.login)
     } catch {}
   }
-  if (canReuse) clearNasSession(outputDir)
+  if (canReuse) clearNasSession(configDir)
   if (!password) throw new Error('Session expired. Please reconnect to NAS.')
   const sid = await dsm.login({ host, user, password })
   const encPasswd = encryptPasswordForStorage(host, user, password)
@@ -624,21 +639,21 @@ const loginWithSession = async (
       defaultFolder: stored?.defaultFolder,
       encPasswd
     },
-    outputDir
+    configDir
   )
   return sid
 }
 
-const tryAutoRefreshSession = async (outputDir?: string) => {
-  const stored = loadNasSession(outputDir)
+const tryAutoRefreshSession = async (configDir?: string) => {
+  const stored = loadNasSession(configDir)
   if (!stored || !stored.encPasswd) return null
   try {
     const valid = await dsmValidateSession(stored.hostname, stored.sessionId)
     if (valid) return stored
   } catch {}
   try {
-    const sid = await refreshStoredSession(stored, outputDir)
-    return loadNasSession(outputDir) ?? { ...stored, sessionId: sid }
+    const sid = await refreshStoredSession(stored, configDir)
+    return loadNasSession(configDir) ?? { ...stored, sessionId: sid }
   } catch {}
   return null
 }
@@ -646,11 +661,11 @@ const tryAutoRefreshSession = async (outputDir?: string) => {
 /* The one gate every caller uses before touching the NAS: a stored session is only a session if
    DSM still accepts it, and a dead one refreshes itself silently from the stored password.
    Returns null when the user really does have to log in again. */
-const ensureNasSession = async (outputDir?: string) => {
-  const session = loadNasSession(outputDir)
+const ensureNasSession = async (configDir?: string) => {
+  const session = loadNasSession(configDir)
   if (!session) return null
   if (await dsmValidateSession(session.hostname, session.sessionId)) return session
-  const refreshed = await tryAutoRefreshSession(outputDir)
+  const refreshed = await tryAutoRefreshSession(configDir)
   if (refreshed && (await dsmValidateSession(refreshed.hostname, refreshed.sessionId)))
     return refreshed
   return null

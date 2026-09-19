@@ -17,6 +17,7 @@ import {
 } from './clustering'
 import { fileChanged, fileStatus, outputKeyOf, uploadGate } from './fileStatus'
 import type { FileStatus, OutputFact, RemoteListing, StatusContext } from './fileStatus'
+import { freeablePlace } from './freeable'
 /* arithmetic only — the board draws the rectangle with the same functions processing cuts it with,
    because two ideas of "which pixels" would disagree and the disagreement would be invisible */
 import {
@@ -120,6 +121,7 @@ import {
 } from './workspace'
 
 export {
+  freeablePlace,
   startOfFiles,
   outputKeyOf,
   watchTandems,

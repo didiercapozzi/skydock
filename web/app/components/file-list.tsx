@@ -383,13 +383,16 @@ const Row = ({
       </button>
     )}
     <span className='relative h-[30px] w-10 flex-none overflow-hidden rounded-[3px] bg-line-2'>
-      <img
-        src={isVideoFile(file.path) ? getThumbUrl(file.path, 0.5, 80) : getFileUrl(file.path)}
-        alt=''
-        loading='lazy'
-        style={turnedThumb(file.rotation)}
-        className='h-full w-full object-cover'
-      />
+      {/* a freed file is on the storage only: nothing here to draw it from */}
+      {!file.freed && (
+        <img
+          src={isVideoFile(file.path) ? getThumbUrl(file.path, 0.5, 80) : getFileUrl(file.path)}
+          alt=''
+          loading='lazy'
+          style={turnedThumb(file.rotation)}
+          className='h-full w-full object-cover'
+        />
+      )}
       {isVideoFile(file.path) && (
         <i className='absolute bottom-0.5 left-0.5 rounded-sm bg-black/[0.66] px-[3px] font-mono text-[8px] leading-[1.3] text-white not-italic'>
           ▶
@@ -508,13 +511,16 @@ const Tile = ({
     className={`group relative aspect-[4/3] max-w-full cursor-pointer overflow-hidden rounded-[5px] border-2 bg-line-2 p-0 ${
       picked ? 'border-accent' : previewed ? 'border-ink-3' : 'border-transparent'
     }`}>
-    <img
-      src={isVideoFile(file.path) ? getThumbUrl(file.path, 0.5, 160) : getFileUrl(file.path)}
-      alt=''
-      loading='lazy'
-      style={turnedThumb(file.rotation)}
-      className='absolute inset-0 h-full w-full object-cover'
-    />
+    {/* a freed file is on the storage only: nothing here to draw it from */}
+    {!file.freed && (
+      <img
+        src={isVideoFile(file.path) ? getThumbUrl(file.path, 0.5, 160) : getFileUrl(file.path)}
+        alt=''
+        loading='lazy'
+        style={turnedThumb(file.rotation)}
+        className='absolute inset-0 h-full w-full object-cover'
+      />
+    )}
     {isVideoFile(file.path) && (
       <i className='absolute bottom-1 left-1 rounded-[3px] bg-black/[0.66] px-1 font-mono text-[9px] text-white not-italic'>
         ▶

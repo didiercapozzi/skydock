@@ -356,11 +356,11 @@ const writeLooseFiles = async (
   destination: string,
   files: ManifestFile[],
   outputDir: string,
+  usedNames: Set<string>,
   record: (source: ManifestFile, destPath: string) => void
 ) => {
   const dir = getDestinationDir(outputDir, destination)
   const stem = toFileStem(destination, 'destination')
-  const usedNames = new Set<string>()
   const written: string[] = []
   for (const file of files) {
     if (!fs.existsSync(file.path)) continue
@@ -455,9 +455,11 @@ const runProcess = async (options?: ProcessOptions) => {
             ...looseByDestination.keys()
           ])
         ]
+  /* a jump freed from this machine has nothing here to make copies of */
   const groups = manifest.groups.filter(
     (g) =>
       g.files.length > 0 &&
+      !g.freed &&
       (groupIds.length > 0
         ? groupIds.includes(g.id)
         : !options?.destination || g.destination === options.destination)
@@ -480,6 +482,11 @@ const runProcess = async (options?: ProcessOptions) => {
     namePools.set(dir, pool)
     return pool
   }
+  /* A freed file's copy is on the storage only, under the name it was given here. That name stays
+     taken, or a new file shot in the same second would be given it and sent over the top of it. */
+  for (const file of [...manifest.files, ...manifest.groups.flatMap((g) => g.files)])
+    if (file.freed && file.processed)
+      poolFor(path.dirname(file.processed.path)).add(path.basename(file.processed.path))
 
   /* keyed by the source's identity — a copy shares its original's path, and both may be written in
      one pass — holding the file as it was COPIED — a grouped file carries the group
@@ -504,6 +511,7 @@ const runProcess = async (options?: ProcessOptions) => {
       destination,
       looseByDestination.get(destination) ?? [],
       outputDir,
+      poolFor(getDestinationDir(outputDir, destination)),
       record
     )
   }

@@ -631,6 +631,21 @@ reads as uploaded, shows what the storage holds instead of its files, and cannot
 reset, deleted or uploaded again from here. A scan keeps it as it is. If something of it later
 disappears from the storage, the board says so, as for any uploaded tandem.
 
+**A dropzone is freed the same way**, from its page, once some of it is on the storage. What goes up of
+a dropzone is its copies, never its originals, so what is proved is the copies: each one hashed here
+and by the storage, both matching what was sent. Then each copy, the original it was made from and its
+working copies are deleted. A jump is freed whole, once every file of it is on the storage; one with a
+file still to upload stays as it is, and so does a loose file not uploaded yet. The dialog says, before
+anything happens, how many files went up trimmed, cropped or turned: for those only the delivered part
+is left anywhere, and what was cut off goes with the original. It says how many jumps and loose files
+stay, too. If any check fails, nothing is deleted and each failing file is named; the storage must be
+reachable. An original another jump still holds stays until that jump is freed as well.
+
+A freed jump reads as the storage's alone, like a freed tandem, and a freed loose file stays listed,
+locked, without a picture. The dropzone's list of what its folder holds plays them from the storage.
+Neither is processed or uploaded again, and the name a freed file was given stays taken, so a new file
+is never delivered over it.
+
 ## The storage's list of tandems
 
 The Tandems folder on the storage holds a list of every tandem uploaded into it: who it was for, the

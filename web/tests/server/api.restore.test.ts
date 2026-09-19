@@ -85,6 +85,7 @@ beforeEach(() => {
   tmpDir = createTmpDir('skydock-api-restore-')
   previous = process.env.SKYDOCK_OUTPUT_DIR
   process.env.SKYDOCK_OUTPUT_DIR = tmpDir
+  process.env.SKYDOCK_CONFIG_DIR = tmpDir
   saveManifest(path.join(tmpDir, 'manifest.json'), forgotten())
   saveNasSession(
     {
@@ -127,7 +128,7 @@ describe('restoring tandems from the storage’s list', () => {
   })
 
   it('needs the storage, where the list is kept', async () => {
-    fs.rmSync(path.join(tmpDir, '.status'), { recursive: true, force: true })
+    fs.rmSync(path.join(tmpDir, 'nas.json'), { force: true })
     const said = await send({ intent: 'restore-tandems' })
     expect(said.globalErrors?.[0]).toContain('Connect the NAS first')
   })

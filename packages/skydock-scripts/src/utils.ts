@@ -33,6 +33,11 @@ const getManifestPath = (outputDir?: string) =>
 
 const getStatusDir = (outputDir?: string) => path.join(outputDir || getOutputDir(), '.status')
 
+/* The app's own settings — the storage connection — kept apart from the work it does: the output
+   folder holds footage and records, this holds how the app is set up. */
+const getConfigDir = () =>
+  (typeof process !== 'undefined' && process.env?.SKYDOCK_CONFIG_DIR) || '/workspace/config'
+
 const sortFilesByMtime = (files: ManifestFile[]) => [...files].sort((a, b) => a.mtime - b.mtime)
 
 const isCliModule = (baseName: string) => {
@@ -169,6 +174,7 @@ export {
   getExtension,
   getManifestPath,
   getOutputDir,
+  getConfigDir,
   getStatusDir,
   hasCommand,
   isCliModule,

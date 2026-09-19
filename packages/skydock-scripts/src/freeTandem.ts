@@ -233,5 +233,5 @@ const markFreed = (manifest: Manifest, result: FreeResult) => {
   )
 }
 
-export { freeTandem, markFreed }
+export { freeTandem, markFreed, removeFile, removeTree }
 export type { FreeResult }

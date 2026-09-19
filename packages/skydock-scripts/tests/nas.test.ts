@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs'
+import * as path from 'node:path'
 import { createTmpDir, jsonResponse, stubFetch } from './fixtures'
 import {
   ensureNasSession,
@@ -81,5 +82,48 @@ describe('the session between uploads', () => {
     saveNasSession({ hostname: 'https://nas.local', username: 'u', sessionId: 'dead' }, tmpDir)
     stubFetch(() => jsonResponse({ success: false, error: { code: 119 } }))
     await expect(ensureNasSession(tmpDir)).resolves.toBeNull()
+  })
+})
+
+/* The connection is the app's own setting, kept in the config folder apart from the work; one kept
+   with the work by an older version is taken over, so nobody has to connect again. */
+describe('where the connection is kept', () => {
+  const env = { output: process.env.SKYDOCK_OUTPUT_DIR, config: process.env.SKYDOCK_CONFIG_DIR }
+  const restore = (key: 'SKYDOCK_OUTPUT_DIR' | 'SKYDOCK_CONFIG_DIR', value: string | undefined) => {
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
+  let output: string
+  let config: string
+
+  beforeEach(() => {
+    output = path.join(tmpDir, 'output')
+    config = path.join(tmpDir, 'config')
+    process.env.SKYDOCK_OUTPUT_DIR = output
+    process.env.SKYDOCK_CONFIG_DIR = config
+  })
+
+  afterEach(() => {
+    restore('SKYDOCK_OUTPUT_DIR', env.output)
+    restore('SKYDOCK_CONFIG_DIR', env.config)
+  })
+
+  it('is kept in the config folder, not with the work', () => {
+    saveNasSession({ hostname: 'https://nas.local', username: 'u', sessionId: 'sid' })
+    expect(fs.existsSync(path.join(config, 'nas.json'))).toBe(true)
+    expect(fs.existsSync(output)).toBe(false)
+  })
+
+  it('takes over a connection kept with the work, without connecting again', () => {
+    const legacy = path.join(output, '.status', 'nas.json')
+    fs.mkdirSync(path.dirname(legacy), { recursive: true })
+    fs.writeFileSync(
+      legacy,
+      JSON.stringify({ hostname: 'https://nas.local', username: 'u', sessionId: 'old' })
+    )
+
+    expect(loadNasSession()?.sessionId).toBe('old')
+    expect(fs.existsSync(path.join(config, 'nas.json'))).toBe(true)
+    expect(fs.existsSync(legacy)).toBe(false)
   })
 })

@@ -1,4 +1,5 @@
 import {
+  freeablePlace,
   EDIT_LOCKED,
   ensureNasSession,
   furthestBehind,
@@ -207,8 +208,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
   const groupOfFile = (file: ManifestFile) =>
     groups.find((g) => g.files.some((f) => (f.id ?? f.path) === (file.id ?? file.path)))
+  /* a freed file has nothing here to show: it is played from the storage's list below instead */
   const openFile = (file: ManifestFile) =>
-    preview.handlePreview(file, groupOfFile(file)?.id ?? LOOSE)
+    file.freed ? undefined : preview.handlePreview(file, groupOfFile(file)?.id ?? LOOSE)
   /* filed nowhere — neither as a lone file nor through its jump — and so free to go to the bin */
   const inUnsorted = (file: ManifestFile) => !file.destination && !groupOfFile(file)?.destination
   /* Deleting goes one step at a time: a file in a jump comes out of it and is loose; only a loose
@@ -662,16 +664,44 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         </Go>
       )
     }
+    /* what is proved on the storage can be freed from here, whatever is still to upload */
+    const free =
+      freeableOf(name).files.length > 0 ? (
+        <Mini
+          disabled={busy !== null}
+          onClick={() =>
+            nas.connected ? setDialog({ kind: 'free-place', place: name }) : openConnect()
+          }>
+          {busy === `free:dz:${name}` ? 'Checking the storage…' : 'Free up space…'}
+        </Mini>
+      ) : null
     if (files.every((f) => statusOf(f) === 'uploaded'))
-      return <span className='text-[12px] font-semibold text-up'>✓ all on the storage</span>
+      return (
+        <>
+          {free}
+          <span className='text-[12px] font-semibold text-up'>✓ all on the storage</span>
+        </>
+      )
     return (
-      <Go
-        disabled={busy !== null}
-        onClick={() => requestUpload({ destination: name }, `dest:${name}`)}>
-        {busy === `dest:${name}` ? 'Uploading…' : 'Upload'}
-      </Go>
+      <>
+        {free}
+        <Go
+          disabled={busy !== null}
+          onClick={() => requestUpload({ destination: name }, `dest:${name}`)}>
+          {busy === `dest:${name}` ? 'Uploading…' : 'Upload'}
+        </Go>
+      </>
     )
   }
+
+  /* what of a dropzone is on the storage and could be deleted from here, by the board's own reading
+     of every file — the server proves it again, against the storage, before deleting anything */
+  const freeableOf = (name: string) =>
+    freeablePlace(
+      groupsIn({ kind: 'dz', name }, groups),
+      looseIn({ kind: 'dz', name }, loose),
+      (f) => statusOf(f) === 'uploaded'
+    )
 
   /* a tandem's line carries its one next step, and its upload while it runs */
   const tandemActions = (group: ManifestGroup) =>
@@ -1162,6 +1192,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         onFree={(group) => {
           setDialog(null)
           send(`free:${group.id}`, { intent: 'free-tandem', groupId: group.id })
+        }}
+        freeableOf={freeableOf}
+        onFreePlace={(place) => {
+          setDialog(null)
+          send(`free:dz:${place}`, { intent: 'free-dropzone', destination: place })
         }}
         onTakeBack={(mode, group) => {
           setDialog(null)

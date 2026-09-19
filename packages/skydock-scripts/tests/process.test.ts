@@ -192,6 +192,35 @@ describe('where a dropzone lands', () => {
 
     expect(delivered().some((f) => f.includes('videos') || f.includes('photos'))).toBe(false)
   })
+
+  /* the freed copy is on the storage under its name, and a new copy of that name would be sent
+     over the top of it */
+  it('never gives a new file the name of one freed to the storage', async () => {
+    const taken = path.join(outputDir, 'processed', 'Yverdon', 'yverdon_20260808_090909.mp4')
+    const gone: ManifestFile = {
+      ...clip('GX010001.MP4', 0),
+      id: 'gone',
+      freed: true,
+      processed: { path: taken, size: 5, at: 1, source: { id: 'gone', size: 32, mtime: AT } }
+    }
+    fs.rmSync(gone.path)
+    const { manifestPath } = write({ destination: 'Yverdon', files: [clip('DJI_0002.MP4', 0)] })
+    const manifest = loadManifest(manifestPath)!
+    manifest.files = [...manifest.files, gone]
+    manifest.groups.push({
+      id: 'freed',
+      label: 'freed',
+      day: DAY,
+      destination: 'Yverdon',
+      files: [gone],
+      freed: { at: 1, bytes: 0 }
+    })
+    saveManifest(manifestPath, manifest)
+
+    await processJumps({ manifestPath, outputDir })
+
+    expect(delivered()).toEqual([path.join('Yverdon', 'yverdon_20260808_090909_1.mp4')])
+  })
 })
 
 describe('a jump filed nowhere', () => {

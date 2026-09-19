@@ -39,6 +39,8 @@ const actionArgs = z.object({
     'delete-tandem',
     /* delete it from this machine, once the storage is proved to hold it all */
     'free-tandem',
+    /* what of a dropzone is proved on the storage, deleted from this machine */
+    'free-dropzone',
     /* files were just added from the computer: the board looks again, and says how it went */
     'imported',
     /* the passenger was emailed — or, taken back, was not — said on the storage's list */

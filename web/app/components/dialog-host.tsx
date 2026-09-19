@@ -1,9 +1,10 @@
 import { buildPassengerFolder, isVideoFile, passengerOf } from '@skydock/scripts'
-import type { TandemEntry, TandemFact } from '@skydock/scripts'
+import type { TandemEntry, TandemFact, freeablePlace } from '@skydock/scripts'
 import { ComparisonDialog } from './comparison-dialog'
 import { ConnectionDialog } from './connection-dialog'
 import { EmailDialog } from './email-dialog'
 import { FreeDialog } from './free-dialog'
+import { FreePlaceDialog } from './free-place-dialog'
 import { NasFolderBrowser } from './nas-folder-browser'
 import { ResetFreshDialog } from './reset-fresh-dialog'
 import { TakeBackDialog } from './take-back-dialog'
@@ -27,6 +28,8 @@ type BoardDialog =
   | UploadDialogState
   | { kind: 'take-back'; mode: TakeBackMode; who: string }
   | { kind: 'free'; groupId: string }
+  /* what of a dropzone is on the storage, about to be deleted from this machine */
+  | { kind: 'free-place'; place: string }
   /* unsorted files about to go to the bin */
   | { kind: 'trash'; files: ManifestFile[] }
   /* a tandem on this board by its jump, or one the storage's list alone knows, by its folder */
@@ -52,6 +55,8 @@ const DialogHost = ({
   storage,
   onEmailed,
   onFree,
+  freeableOf,
+  onFreePlace,
   onTakeBack,
   onTrash,
   onMontage,
@@ -79,6 +84,8 @@ const DialogHost = ({
   storage: { tandems: TandemEntry[] } | null
   onEmailed: (folder: string, sent: boolean, to: string) => void
   onFree: (group: ManifestGroup) => void
+  freeableOf: (place: string) => ReturnType<typeof freeablePlace>
+  onFreePlace: (place: string) => void
   onTakeBack: (mode: TakeBackMode, group: ManifestGroup) => void
   onTrash: (files: ManifestFile[]) => void
   onMontage: (groupId: string, template: string) => void
@@ -197,6 +204,15 @@ const DialogHost = ({
             />
           )
         })()}
+
+      {dialog?.kind === 'free-place' && (
+        <FreePlaceDialog
+          place={dialog.place}
+          freeable={freeableOf(dialog.place)}
+          onClose={close}
+          onConfirm={() => onFreePlace(dialog.place)}
+        />
+      )}
 
       {dialog?.kind === 'take-back' &&
         (() => {

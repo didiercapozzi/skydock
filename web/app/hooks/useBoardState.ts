@@ -6,6 +6,7 @@ import type { Destination, ManifestFile, ManifestGroup } from '../components/typ
 import {
   copiedNote,
   freedNote,
+  freedPlaceNote,
   importNote,
   cameraNote,
   montageNote,
@@ -102,6 +103,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
         montage,
         scan: scanned,
         freed,
+        freedPlace,
         imported,
         restored,
         copied: copiedFiles,
@@ -133,15 +135,17 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
                 ? importNote(imported)
                 : freed
                   ? freedNote(freed)
-                  : restored
-                    ? restoredNote(restored)
-                    : copiedFiles
-                      ? copiedNote(copiedFiles)
-                      : resetTo
-                        ? resetNote(resetTo)
-                        : cameraCopied
-                          ? cameraNote(cameraCopied)
-                          : null
+                  : freedPlace
+                    ? freedPlaceNote(freedPlace)
+                    : restored
+                      ? restoredNote(restored)
+                      : copiedFiles
+                        ? copiedNote(copiedFiles)
+                        : resetTo
+                          ? resetNote(resetTo)
+                          : cameraCopied
+                            ? cameraNote(cameraCopied)
+                            : null
       /* the work stands even when the list could not follow it, and that is said alongside */
       setNote(storageProblem ? [said, storageProblem].filter(Boolean).join(' · ') : said)
     } else {

@@ -170,12 +170,13 @@ const resolveUploadTargets = ({
      which would put the project, the working copies and the originals in with the passenger's.
      Refusing here rather than at the one button that exists means no later caller routes around
      it. */
-  const groups = groupsInScope(manifest, scope).filter((g) => !isTandem(g))
+  /* a jump freed from this machine is on the storage already, with nothing here to send */
+  const groups = groupsInScope(manifest, scope).filter((g) => !isTandem(g) && !g.freed)
   const targets = groups.map((g) => targetForGroup(g, outputDir, manifest, defaultFolder))
   /* a destination can also hold lone files, which belong to no group and would otherwise
      never be uploaded at all */
   if (scope.destination) {
-    const hasLone = manifest.files.some((f) => f.destination === scope.destination)
+    const hasLone = manifest.files.some((f) => f.destination === scope.destination && !f.freed)
     if (hasLone) {
       const base = destBaseOf(scope.destination, manifest, defaultFolder)
       targets.push({

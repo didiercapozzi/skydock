@@ -35,6 +35,7 @@ beforeEach(() => {
   tmpDir = createTmpDir('skydock-api-templates-')
   previous = process.env.SKYDOCK_OUTPUT_DIR
   process.env.SKYDOCK_OUTPUT_DIR = tmpDir
+  process.env.SKYDOCK_CONFIG_DIR = tmpDir
   fs.mkdirSync(path.join(tmpDir, 'templates', 'house'), { recursive: true })
   fs.writeFileSync(path.join(tmpDir, 'templates', 'house', 'house.kdenlive'), project)
 })

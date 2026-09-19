@@ -19,6 +19,7 @@ describe('scanning', () => {
     tmpDir = createTmpDir('skydock-api-scan-test-')
     originalOutputDir = process.env.SKYDOCK_OUTPUT_DIR
     process.env.SKYDOCK_OUTPUT_DIR = tmpDir
+    process.env.SKYDOCK_CONFIG_DIR = tmpDir
   })
 
   afterEach(() => {

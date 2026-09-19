@@ -88,6 +88,7 @@ beforeEach(() => {
   tmpDir = createTmpDir('skydock-api-storage-')
   previous = process.env.SKYDOCK_OUTPUT_DIR
   process.env.SKYDOCK_OUTPUT_DIR = tmpDir
+  process.env.SKYDOCK_CONFIG_DIR = tmpDir
   saveManifest(path.join(tmpDir, 'manifest.json'), manifest)
   saveNasSession(
     {
@@ -142,7 +143,7 @@ describe('what a place’s folder on the storage holds', () => {
   })
 
   it('says so when the storage is not connected', async () => {
-    fs.rmSync(path.join(tmpDir, '.status'), { recursive: true, force: true })
+    fs.rmSync(path.join(tmpDir, 'nas.json'), { force: true })
     expect(await ask({ groupId: 'g1' })).toEqual({
       ok: false,
       reason: 'The storage is not connected.'

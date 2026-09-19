@@ -5,6 +5,7 @@ import { actionArgs } from './manifest/args'
 import type { ActionData } from './manifest/args'
 import { changeOn } from './manifest/change'
 import type { Intent } from './manifest/change'
+import { freeDropzoneIntent } from './manifest/free-dropzone'
 import { freeTandemIntent } from './manifest/free-tandem'
 import { imported } from './manifest/imported'
 import { markEmailed } from './manifest/mark-emailed'
@@ -47,6 +48,7 @@ const intents: Record<ActionData['intent'], Intent> = {
   'reset-tandem': resetTandemIntent,
   'delete-tandem': deleteTandemIntent,
   'free-tandem': freeTandemIntent,
+  'free-dropzone': freeDropzoneIntent,
   imported,
   'mark-emailed': markEmailed,
   'restore-tandems': restoreTandemsIntent,

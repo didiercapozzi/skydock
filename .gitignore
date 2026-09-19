@@ -1,6 +1,8 @@
 .DS_Store
 .env
 output/
+# the app's own settings: the storage connection, its password encrypted
+config/
 
 .claude/*
 !.claude/settings.json

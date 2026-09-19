@@ -47,6 +47,19 @@ const uploadedNote = (uploaded: number, skipped?: number) =>
 const freedNote = ({ files, bytes }: { files: number; bytes: number }) =>
   `On the storage only. ${plural(files, 'file')} freed from this machine on ${localeDate(Date.now() / 1000)} — ${formatFilmSize(bytes)} given back. The project is kept here; everything else is on the storage, as above.`
 
+const freedPlaceNote = ({
+  place,
+  files,
+  bytes,
+  kept
+}: {
+  place: string
+  files: number
+  bytes: number
+  kept: number
+}) =>
+  `${place}: ${plural(files, 'file')} freed from this machine — ${formatFilmSize(bytes)} given back. They are on the storage only now, listed below.${kept > 0 ? ` ${kept} not all uploaded yet ${kept === 1 ? 'stays' : 'stay'} here.` : ''}`
+
 /* what came off a camera plugged in, in one line */
 const cameraNote = ({
   camera,
@@ -108,6 +121,7 @@ export {
   copiedNote,
   resetNote,
   freedNote,
+  freedPlaceNote,
   importNote,
   montageNote,
   restoredNote,

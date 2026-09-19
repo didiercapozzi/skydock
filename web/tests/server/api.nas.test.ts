@@ -13,6 +13,7 @@ describe('connecting to the storage', () => {
     tmpDir = createTmpDir('skydock-api-nas-test-')
     originalOutputDir = process.env.SKYDOCK_OUTPUT_DIR
     process.env.SKYDOCK_OUTPUT_DIR = tmpDir
+    process.env.SKYDOCK_CONFIG_DIR = tmpDir
   })
 
   afterEach(() => {
@@ -23,7 +24,7 @@ describe('connecting to the storage', () => {
   })
 
   const loadSessionFile = () => {
-    const p = path.join(tmpDir, '.status', 'nas.json')
+    const p = path.join(tmpDir, 'nas.json')
     if (!fs.existsSync(p)) return null
     return JSON.parse(fs.readFileSync(p, 'utf-8')) as Record<string, unknown>
   }
