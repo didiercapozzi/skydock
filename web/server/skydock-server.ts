@@ -150,6 +150,15 @@ const stopOn = (server: http.Server) => {
     setTimeout(() => process.exit(0), 2000).unref()
   }
   for (const signal of ['SIGTERM', 'SIGINT'] as const) process.on(signal, stop)
+  /* The app that started this can go without a word — killed, or gone down — and a server left
+     behind holds the port and goes on transcoding for nobody. Whoever starts it says so, and then
+     the end of what it is being sent is the end of it. Nothing is ever read from there. */
+  if (process.env.SKYDOCK_STOP_WITH_PARENT === '1') {
+    process.stdin.resume()
+    process.stdin.on('end', stop)
+    process.stdin.on('close', stop)
+    process.stdin.on('error', stop)
+  }
 }
 
 const start = async () => {

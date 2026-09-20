@@ -27,7 +27,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": ["binaries/node", "binaries/ffmpeg", "binaries/ffprobe"],
+    "externalBin": ["binaries/skydock-node", "binaries/skydock-ffmpeg", "binaries/skydock-ffprobe"],
     "resources": ["resources/**/*"],
     "linux": {
       "deb": {

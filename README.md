@@ -51,8 +51,10 @@ npm run tauri build     # the installer for this machine, in src-tauri/target/re
 npm run tauri dev       # the window, against a build
 ```
 
-What it needs to build: the Rust toolchain (`rustup`), `@tauri-apps/cli`, and on Linux
-`libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf`. Nothing binary is committed —
+What it needs to build is in the development container already: the Rust toolchain and the window's
+engine (`libwebkit2gtk-4.1-dev` and its like) are installed by
+[.devcontainer/Dockerfile.dev](.devcontainer/Dockerfile.dev), and `@tauri-apps/cli` comes with
+`npm install`. Nothing binary is committed —
 `node scripts/build-sidecar.mjs`, which Tauri runs first, builds the app, fetches the Node it ships
 with, and takes ffmpeg and ffprobe from `SKYDOCK_TOOLS_DIR` or from this machine.
 `node scripts/fetch-tools.mjs` fetches builds of those that need nothing beside them, which is what
@@ -67,6 +69,10 @@ An installer is made on the system it is for, so all three are built by
 - **macOS** — right-click the app, choose _Open_, then _Open_ again (or
   `xattr -dr com.apple.quarantine /Applications/SkyDock.app`).
 - **Windows** — SmartScreen: _More info_, then _Run anyway_.
+
+The programs the app carries are installed under SkyDock's own name — `skydock-node`,
+`skydock-ffmpeg`, `skydock-ffprobe` — so that a package never lands on the machine's own. The server
+ends when the app does, whatever ends the app.
 
 The server can also be run without the window, which is how it is checked:
 

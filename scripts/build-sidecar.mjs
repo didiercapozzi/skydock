@@ -54,10 +54,13 @@ const clear = (dir) => {
 }
 
 /* Tauri wants a program named after the system it is for, and drops the ending again when it packs
-   it. Windows keeps its .exe, which Tauri puts back after the name. */
+   it. Windows keeps its .exe, which Tauri puts back after the name.
+
+   Each carries SkyDock's name: a Linux package puts them where the machine keeps its own programs,
+   and a `node` or an `ffmpeg` of ours installed over somebody's own would be a poor way to arrive. */
 const placeProgram = (source, name, triple) => {
   const windows = triple.includes('windows')
-  const target = path.join(binaries, `${name}-${triple}${windows ? '.exe' : ''}`)
+  const target = path.join(binaries, `skydock-${name}-${triple}${windows ? '.exe' : ''}`)
   fs.copyFileSync(source, target)
   if (!windows) fs.chmodSync(target, 0o755)
   const digest = crypto.createHash('sha256').update(fs.readFileSync(target)).digest('hex')

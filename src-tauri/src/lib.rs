@@ -21,14 +21,15 @@ use tauri_plugin_shell::ShellExt;
 /// this by itself, and a server left behind holds the port and goes on working on nothing.
 struct Server(Mutex<Option<CommandChild>>);
 
-/// A program shipped with the app sits beside the app's own, whatever the system.
+/// A program shipped with the app sits beside the app's own, whatever the system, and carries
+/// SkyDock's name so that nothing of the machine's own is ever installed over.
 fn beside_exe(name: &str) -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
     let here = exe.parent()?;
     let called = if cfg!(windows) {
-        format!("{name}.exe")
+        format!("skydock-{name}.exe")
     } else {
-        name.to_string()
+        format!("skydock-{name}")
     };
     let target = here.join(called);
     target.exists().then_some(target)
@@ -86,6 +87,8 @@ fn work_folder(app: &tauri::AppHandle, config_dir: &Path) -> PathBuf {
 /// somebody else's.
 fn settings_for(app: &tauri::AppHandle, config_dir: &Path, output_dir: &Path) -> HashMap<String, String> {
     let mut told = HashMap::new();
+    /* the server ends when this app does, however this app ends */
+    told.insert("SKYDOCK_STOP_WITH_PARENT".into(), "1".into());
     told.insert(
         "SKYDOCK_OUTPUT_DIR".into(),
         output_dir.to_string_lossy().into_owned(),
@@ -159,7 +162,7 @@ async fn start_server(app: tauri::AppHandle) {
     let server = resources(&app).join("skydock-server.mjs");
     let spawned = app
         .shell()
-        .sidecar("node")
+        .sidecar("skydock-node")
         .map(|command| {
             command
                 .args([server.to_string_lossy().into_owned()])
