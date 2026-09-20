@@ -33,20 +33,12 @@ const versionGap = (template: string | null, editor: string | null): TemplateFac
   return opens.year - made.year >= 2 ? 'older' : null
 }
 
-/* Which kdenlive will open the projects. Where the editor is on this machine it is asked; where it
-   is reached through the development bridge it cannot be, so the host's watcher writes what it found
-   into the file it keeps fresh, and that is read instead. Not knowing is an answer: no warning is
-   made up from it. */
-const editorVersion = (outputDir: string) => {
-  const watcher = path.join(outputDir, '.editor-watcher')
-  try {
-    const said = fs.readFileSync(watcher, 'utf-8').trim()
-    if (parseVersion(said)) return said
-  } catch {
-    /* no watcher: the editor is asked directly */
-  }
+/* Which kdenlive will open the projects: whatever opens them is asked, whether that is the editor
+   itself or the command that reaches one on another machine. Not knowing is an answer — no warning
+   is made up from it. */
+const editorVersion = () => {
   const program = editorParts()?.[0]
-  if (!program || path.basename(program) === 'editor-bridge.sh') return null
+  if (!program) return null
   try {
     const said = childProcess
       .execFileSync(program, ['--version'], {
@@ -62,7 +54,7 @@ const editorVersion = (outputDir: string) => {
 }
 
 const listTemplates = (outputDir: string) => {
-  const editor = editorVersion(outputDir)
+  const editor = editorVersion()
   const templates = availableTemplates(outputDir).map((template): TemplateFact => {
     try {
       const { version, assets, missing } = inspectTemplate(template.path)

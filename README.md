@@ -33,11 +33,45 @@ the window is real but nothing of it touches the host's own session. The app mus
 once (`npm run tauri build`), since the window is the built app; what it shows is the development
 server, so reloading and the editor bridge work as they do in a browser.
 
-### The window on the host's own screen, and why it is not the way
+### The window on the host's own screen
 
-`npm run dev:window:host` puts the window on the host's X server instead, through the socket the
-container already has. It is kept because it may well work on another machine. It does not work on
-the one this was written on, and the measurements are worth keeping.
+Everything is said from the container; nothing runs on the machine outside it:
+
+```bash
+npm run build:host       # once — the app, built for the machine's own system
+npm run dev:window:host  # the window, over there, showing the development server
+```
+
+Said with no development server, the app runs on its own instead — its own server and work folder
+and all, exactly as an installed one does:
+
+```bash
+SKYDOCK_DEV_URL= npm run dev:window:host
+```
+
+Two things make that work, and both are worth knowing.
+
+**The command is run on the machine, not in here.** [scripts/host.sh](scripts/host.sh) hands it to
+a container of a moment which shares the machine's namespaces, becomes whoever owns the repo, and
+runs it on their display, with their session bus and the screen their session actually uses — which
+is rarely the one this container was handed. It reaches the machine through the docker socket the
+container already mounts: everything this can do, a privileged container with that socket could
+already do, and this makes it ordinary rather than possible.
+
+**The app is built for the machine, not for this container.** The two are different systems — this
+one is newer — and a program built in here borrows a C library and a web engine that the machine
+has not got. It starts by luck, draws the board and then answers nothing.
+[scripts/build-for-host.sh](scripts/build-for-host.sh) builds on an image of the machine's own
+system, read off the machine, into `src-tauri/target-host/` so the container's build stays where it
+is. The plain program is preferred to the AppImage for the same reason in miniature: an AppImage
+carries its own web engine but takes the codecs from the machine, and the two halves meet the
+moment a clip starts playing.
+
+### Drawing on the host's screen from inside the container, and why it is not the way
+
+Running the app _in_ the container and pointing it at the host's X server, through the socket the
+container already has, is the obvious thing to try and does not work here. The measurements are
+worth keeping.
 
 It used to take the host's session down every time — and with it VS Code, and with VS Code the
 container, which stops itself when VS Code goes. That part is fixed: an X client draws through
@@ -55,8 +89,8 @@ along the way: the card (software rendering and an empty `/dev/dri` change nothi
 the window code, and the WebKit flags (with and without them is the same). What remains is
 WebKitGTK against that particular X server, which is further than this is worth chasing.
 
-So: `npm run dev:window` for a window from inside the container, and the installed app on the host
-when the real thing is wanted.
+So: `npm run dev:window` for a window from inside the container, `npm run dev:window:host` to have
+the host open one, and the installed app when the real thing is wanted.
 
 A camera plugged in is copied off by itself while the board's server runs — see
 [RULES.md](./RULES.md), _Plugging a camera in is enough_. The command line does the same by hand:
@@ -155,22 +189,17 @@ Installed as a desktop app, SkyDock runs on the machine kdenlive is on and start
 nothing to set up. The development container is the awkward case: it has no kdenlive and no way to
 reach the one outside it, so pressing **Montage** there reports that it cannot open anything.
 
-Two small scripts bridge it, using the fact that `output/` is the same folder on both sides:
+One command bridges it, and nothing has to be running on the host:
 
 ```sh
-# on the host, once, as yourself — never with sudo — and leave it running
-./scripts/open-on-host.sh
-
-# in the container — `dev` with the bridge already pointed at
 npm run dev:bridge
 ```
 
-The container writes the project it wants opened into `output/.editor-requests`; the host script
-sees the line, turns the container's `/workspace` into wherever the repo actually is, and opens it
-there. `SKYDOCK_EDITOR` picks a different editor, `SKYDOCK_EDITOR_QUEUE` a different file.
-
-`dev:bridge` is `umask 000 && SKYDOCK_EDITOR_COMMAND=/workspace/scripts/editor-bridge.sh npm run dev`
-— the variable points SkyDock at the bridge, and the umask is explained below.
+`dev:bridge` is `umask 000 && SKYDOCK_EDITOR_COMMAND=/workspace/scripts/editor-on-host.sh npm run dev`
+— the variable points SkyDock at [scripts/editor-on-host.sh](scripts/editor-on-host.sh), which
+hands the project to [scripts/host.sh](scripts/host.sh) to open over there, as described above, in
+the machine's own terms: a path this container knows as `/workspace` is translated on the way.
+`SKYDOCK_HOST_EDITOR` picks a different editor. The umask is explained below.
 
 **The two sides are not the same user.** The container runs as root; on the host you are yourself.
 Everything SkyDock writes into `output/` is therefore owned by root, and the editor running on the
@@ -187,7 +216,6 @@ whoever owns the repo, which on a bind mount is the host user. Being allowed to 
 owning it are not the same thing — an editor may decline a project belonging to somebody else
 whatever the mode says, and anything written before the umask was set is still the old `0644`. The
 container runs as root, so it can settle this rather than leave it to be discovered at a save.
-`open-on-host.sh` still warns if it opens something it cannot write, which catches the rest.
 
 Nothing else under `output/` is handed over, so old files stay as they are. To take the lot once:
 
