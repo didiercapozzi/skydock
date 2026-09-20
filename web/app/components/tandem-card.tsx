@@ -388,6 +388,7 @@ const TandemActions = ({
   blocked,
   named,
   onProcess,
+  onCancelProcess,
   onMontage,
   onOpenMontage,
   onUpload,
@@ -399,6 +400,8 @@ const TandemActions = ({
   blocked: { blocked: boolean; message: string | null }
   named: boolean
   onProcess: () => void
+  /* stops the processing this tandem started, while it runs */
+  onCancelProcess?: () => void
   onMontage: () => void
   onOpenMontage: () => void
   onUpload: () => void
@@ -415,6 +418,7 @@ const TandemActions = ({
           onClick={onProcess}>
           {busy === group.id ? 'Processing…' : 'Process'}
         </Go>
+        {busy === group.id && onCancelProcess && <Mini onClick={onCancelProcess}>Cancel</Mini>}
       </span>
     )
   if (!facts?.project)

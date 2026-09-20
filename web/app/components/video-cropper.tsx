@@ -206,6 +206,11 @@ const VideoCropper = ({
         onPointerDown={handleBarDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        /* a drag the browser takes back — a lost capture, a gesture — ends like one let go */
+        onPointerCancel={handlePointerUp}
+        onLostPointerCapture={() => {
+          draggingRef.current = null
+        }}
         className='relative h-12 cursor-crosshair overflow-hidden rounded-md border border-white/20 bg-white/[0.08]'>
         {thumbs.length > 0 && (
           <div

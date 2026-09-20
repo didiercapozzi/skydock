@@ -1,5 +1,6 @@
 import { getOutputDir, subscribe, watchTandems } from '@skydock/scripts'
 import { watchCameras } from '../../../packages/skydock-scripts/src/cameraWatch'
+import { watchDisk } from '../../../packages/skydock-scripts/src/diskSpace'
 import { resumeProxies } from '../../../packages/skydock-scripts/src/proxy'
 import type { Route } from './+types/api.events'
 
@@ -32,6 +33,8 @@ const loader = ({ request }: Route.LoaderArgs) => {
       watchCameras(getOutputDir())
       /* proxies a stopped server never finished are made now, not at the next scan */
       resumeProxies(getOutputDir())
+      /* the room left on the disk, told to the board as it changes */
+      watchDisk(getOutputDir())
       /* while a board listens, the tandems' folders are looked at for a film the editor finished */
       const stopWatching = watchTandems(getOutputDir())
       const heartbeat = setInterval(() => send(': still here\n\n'), HEARTBEAT_MS)

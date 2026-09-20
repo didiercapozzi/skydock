@@ -121,3 +121,35 @@ describe('a clip whose proxy could not be made', () => {
     await expect.element(page.getByText('no proxy', { exact: true })).toBeVisible()
   })
 })
+
+/* What is being processed can be stopped from where it was started (RULES, Acting). */
+describe('processing a dropzone', () => {
+  test('offers Cancel while it runs, which asks for the processing to stop', async () => {
+    const dropzone = {
+      ...board,
+      groups: [{ ...tandem('g5', { firstname: '', lastname: '' }), destination: 'Yverdon' }],
+      destinations: [{ name: 'Yverdon' }]
+    }
+    const sent: { intent: string }[] = []
+    const Stub = createRoutesStub([
+      { path: '/', Component: Board, loader: () => dropzone },
+      {
+        path: '/api/manifest',
+        action: async ({ request }) => {
+          const body = (await request.json()) as { intent: string }
+          sent.push(body)
+          /* the processing never answers on its own; only the cancel does */
+          return body.intent === 'process' ? new Promise(() => {}) : { groups: dropzone.groups }
+        }
+      }
+    ])
+    await render(createElement(Stub, { initialEntries: ['/'] }))
+    await userEvent.click(page.getByRole('navigation', { name: 'Folders' }).getByText('Yverdon'))
+
+    await userEvent.click(page.getByRole('button', { name: 'Process', exact: true }))
+    await expect.element(page.getByRole('button', { name: 'Processing…' })).toBeVisible()
+
+    await userEvent.click(page.getByRole('button', { name: 'Cancel', exact: true }))
+    await expect.poll(() => sent.map((b) => b.intent)).toEqual(['process', 'cancel-process'])
+  })
+})

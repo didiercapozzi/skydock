@@ -2,6 +2,7 @@ import { fitRatio, FrameCropper } from './frame-cropper'
 import { useEffect, useRef, useState } from 'react'
 import { Go, Mini } from './buttons'
 import { typingInField } from '../helpers/keys'
+import { createScrub } from '../helpers/scrub'
 import { Spacer } from './modal'
 import { cropToPixels, isQuarterTurn, isWholeFrame, turnBy, turnedSize } from '@skydock/scripts'
 import type { FrameCrop, ProxyFact, Rotation } from '@skydock/scripts'
@@ -55,6 +56,12 @@ const RATIOS: RatioOption[] = [
   { label: '16:9', ratio: 16 / 9, title: 'Widescreen' },
   { label: 'Free', ratio: null, title: 'Drag the corners to any shape' }
 ]
+
+/* Whether this browser plays H.264, the format proxies are made in. Some do not — a browser built
+   without the licensed codecs, or an editor's built-in one — and then no clip can be shown at all,
+   which is worth saying as such rather than clip by clip. */
+const playsProxies = () =>
+  document.createElement('video').canPlayType('video/mp4; codecs="avc1.640028"') !== ''
 
 /* The shape a rectangle already has, as the buttons name it: none for the whole picture, `Same` for
    the picture's own shape, a named ratio, or `Free` for any other. Measured on the picture as it
@@ -168,6 +175,8 @@ const PreviewDrawer = ({
      says so rather than showing a black box. Kept by the address that failed, so it is gone the
      moment the proxy lands and the preview switches to it. */
   const [unplayable, setUnplayable] = useState<string | null>(null)
+  /* seeks while the timeline is dragged, sent one at a time so the picture keeps up */
+  const [scrub] = useState(createScrub)
 
   /* The picture as it will come out: turned. Its shape is what the box on screen takes, what the
      rectangle is drawn over and measured against, and what "Same" means. */
@@ -338,16 +347,20 @@ const PreviewDrawer = ({
                       videoRef.current = el
                       onVideoRef({
                         seek: (time: number) => {
-                          if (el) el.currentTime = time
+                          if (el) scrub.seek(el, time)
                         }
                       })
                     }}
+                    onSeeked={(e) => scrub.seeked(e.currentTarget)}
                     src={fileUrl}
                     onPlay={() => setPlaying(true)}
                     onPause={() => setPlaying(false)}
                     onLoadedMetadata={(e) => {
                       const v = e.currentTarget
                       if (v.duration && Number.isFinite(v.duration)) onDurationChange(v.duration)
+                      /* a trimmed clip starts where its trim does, as the copy made from it will */
+                      if (currentTime > 0 && Math.abs(v.currentTime - currentTime) > 0.05)
+                        scrub.seek(v, currentTime)
                       if (v.videoWidth && v.videoHeight)
                         setShape({ width: v.videoWidth, height: v.videoHeight })
                       /* sound and no picture: the browser has no decoder for this video */ else
@@ -374,11 +387,13 @@ const PreviewDrawer = ({
                   <span
                     role='status'
                     className='absolute inset-0 grid place-items-center rounded-md bg-[#0b0f13] p-4 text-center text-[12.5px] text-white/80'>
-                    {proxy?.state === 'none' && proxy.reason
-                      ? `The browser cannot show this clip’s picture, and its proxy could not be made: ${proxy.reason}. It is copied, processed and uploaded all the same.`
-                      : proxy?.state === 'none'
-                        ? 'The browser cannot show this clip’s picture — it is in a format only the editor reads, such as 4K HEVC. Its proxy is being made, and the preview plays it as soon as it is ready.'
-                        : 'The browser cannot show this clip’s picture. It is copied, processed and uploaded all the same.'}
+                    {!playsProxies()
+                      ? 'This browser cannot play H.264 video — the format every proxy is made in — so no clip can be shown here. Open the board in Chrome, Edge or Safari, or in Firefox with its video codecs installed, and the clips play.'
+                      : proxy?.state === 'none' && proxy.reason
+                        ? `The browser cannot show this clip’s picture, and its proxy could not be made: ${proxy.reason}. It is copied, processed and uploaded all the same.`
+                        : proxy?.state === 'none'
+                          ? 'The browser cannot show this clip’s picture — it is in a format only the editor reads, such as 4K HEVC. Its proxy is being made, and the preview plays it as soon as it is ready.'
+                          : 'The browser cannot show this clip’s picture. It is copied, processed and uploaded all the same.'}
                   </span>
                 )}
                 {video && framing && (

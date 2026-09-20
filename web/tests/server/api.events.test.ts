@@ -14,10 +14,11 @@ const open = () => {
   )
   const reader = response.body!.getReader()
   const decoder = new TextDecoder()
-  /* the next event, past the comment lines that only keep the stream open */
+  /* the next event, past the comment lines that only keep the stream open and the room left on the
+     disk, which every stream starts by saying */
   const next = async (): Promise<string> => {
     const text = decoder.decode((await reader.read()).value)
-    return text.startsWith(':') ? next() : text
+    return text.startsWith(':') || text.includes('"kind":"disk"') ? next() : text
   }
   return { response, next, reader, close: () => abort.abort() }
 }
@@ -67,7 +68,10 @@ describe('what is happening to the files, sent as it happens', () => {
     await reader.read()
     close()
 
-    expect((await reader.read()).done).toBe(true)
+    /* whatever was already on its way arrives, and then the stream ends */
+    let read = await reader.read()
+    while (!read.done) read = await reader.read()
+    expect(read.done).toBe(true)
     expect(globalThis.skydockLive?.listeners.size).toBe(0)
   })
 })

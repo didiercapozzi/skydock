@@ -104,6 +104,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
         scan: scanned,
         freed,
         freedPlace,
+        processCancelled,
         imported,
         restored,
         copied: copiedFiles,
@@ -137,15 +138,17 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
                   ? freedNote(freed)
                   : freedPlace
                     ? freedPlaceNote(freedPlace)
-                    : restored
-                      ? restoredNote(restored)
-                      : copiedFiles
-                        ? copiedNote(copiedFiles)
-                        : resetTo
-                          ? resetNote(resetTo)
-                          : cameraCopied
-                            ? cameraNote(cameraCopied)
-                            : null
+                    : processCancelled
+                      ? 'Processing cancelled. What was finished stays; the rest is left to process again.'
+                      : restored
+                        ? restoredNote(restored)
+                        : copiedFiles
+                          ? copiedNote(copiedFiles)
+                          : resetTo
+                            ? resetNote(resetTo)
+                            : cameraCopied
+                              ? cameraNote(cameraCopied)
+                              : null
       /* the work stands even when the list could not follow it, and that is said alongside */
       setNote(storageProblem ? [said, storageProblem].filter(Boolean).join(' · ') : said)
     } else {
@@ -227,6 +230,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     /* a camera being copied off right now, as it goes */
     cameraCopy: live.camera,
     cameras: live.cameras,
+    disk: live.disk,
     tandemFacts,
     remoteAfterUpload,
     storage,

@@ -11,6 +11,9 @@ type LiveFile = { work: 'process' | 'proxy'; percent: number }
 type CameraCopy = Extract<LiveEvent, { kind: 'camera' }>
 type CameraEnded = CameraCopy & { seq: number }
 
+/* the room left on the output folder's disk */
+type Disk = Omit<Extract<LiveEvent, { kind: 'disk' }>, 'kind'>
+
 /* a camera plugged in right now: its name, and where it is mounted */
 type Mounted = Extract<LiveEvent, { kind: 'cameras' }>['mounted'][number]
 
@@ -31,6 +34,7 @@ const useLiveProgress = (
   const [camera, setCamera] = useState<CameraCopy | null>(null)
   const [ended, setEnded] = useState<CameraEnded | null>(null)
   const [cameras, setCameras] = useState<Mounted[]>([])
+  const [disk, setDisk] = useState<Disk | null>(null)
 
   useEffect(() => {
     const source = new EventSource(routingEngine.href({ url: '/api/events' }))
@@ -49,6 +53,10 @@ const useLiveProgress = (
           setCamera(null)
           setEnded((before) => ({ ...event, seq: (before?.seq ?? 0) + 1 }))
         }
+        return
+      }
+      if (event.kind === 'disk') {
+        setDisk({ free: event.free, total: event.total, level: event.level })
         return
       }
       if (event.kind === 'cameras') {
@@ -72,8 +80,8 @@ const useLiveProgress = (
     return () => source.close()
   }, [onProxies, onTandems, onNote])
 
-  return { files, camera, ended, cameras }
+  return { files, camera, ended, cameras, disk }
 }
 
 export { useLiveProgress }
-export type { CameraCopy, CameraEnded, LiveFile, Mounted }
+export type { CameraCopy, CameraEnded, Disk, LiveFile, Mounted }

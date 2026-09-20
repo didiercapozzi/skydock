@@ -28,14 +28,8 @@ const PreviewHost = ({
       onFrameChange={preview.handleFrameChange}
       onFrameApplyToJump={open.groupId === LOOSE ? undefined : preview.handleFrameApplyToJump}
       onClose={preview.closePreview}
-      onPrevious={() =>
-        preview.setPreview((p) => (p ? { ...p, index: Math.max(0, p.index - 1) } : p))
-      }
-      onNext={() =>
-        preview.setPreview((p) =>
-          p ? { ...p, index: Math.min(p.files.length - 1, p.index + 1) } : p
-        )
-      }
+      onPrevious={() => preview.stepPreview(-1)}
+      onNext={() => preview.stepPreview(1)}
       cropStart={preview.videoState.crop.cropStart}
       cropEnd={preview.videoState.crop.cropEnd}
       zoom={preview.videoState.zoom}

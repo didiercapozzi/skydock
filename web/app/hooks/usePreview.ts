@@ -47,18 +47,35 @@ const usePreview = (
     setVideoStateRaw((prev) => ({ ...prev, ...next, crop: next.crop ? next.crop : prev.crop }))
   }
 
-  const handlePreview = (file: ManifestFile, groupId: string) => {
-    const files = groups.find((g) => g.id === groupId)?.files ?? [file]
-    const found = files.findIndex((f) => f.path === file.path)
+  /* A clip is shown as it stands: its own trim, frame and turn, and the playhead where its trim
+     starts — a trimmed clip begins there, which is where the copy made from it begins. */
+  const show = (file: ManifestFile) => {
     setVideoStateRaw({
       crop: { cropStart: file.cropStart ?? null, cropEnd: file.cropEnd ?? null },
       zoom: 1,
-      currentTime: 0,
+      currentTime: file.cropStart ?? 0,
       duration: 0
     })
     setFrame(file.frame ?? null)
     setRotation(file.rotation ?? 0)
+  }
+
+  const handlePreview = (file: ManifestFile, groupId: string) => {
+    const files = groups.find((g) => g.id === groupId)?.files ?? [file]
+    const found = files.findIndex((f) => f.path === file.path)
+    show(file)
     setPreview({ files, index: found === -1 ? 0 : found, groupId })
+  }
+
+  /* the file before or after this one in the jump, shown as it stands rather than carrying the
+     trim, frame and turn of the one just left */
+  const stepPreview = (by: number) => {
+    if (!preview) return
+    const index = Math.min(Math.max(preview.index + by, 0), preview.files.length - 1)
+    const file = preview.files[index]
+    if (!file || index === preview.index) return
+    show(file)
+    setPreview({ ...preview, index })
   }
 
   const handleVideoSeek = (time: number) => {
@@ -151,6 +168,7 @@ const usePreview = (
     preview,
     videoState,
     handlePreview,
+    stepPreview,
     handleVideoSeek,
     handleVideoApply,
     frame,

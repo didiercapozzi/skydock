@@ -18,7 +18,7 @@ import { montage } from './manifest/montage'
 import { deleteJumpIntent } from './manifest/delete-jump'
 import { moveFilesIntent } from './manifest/move-files'
 import { openMontage } from './manifest/open-montage'
-import { processIntent, processWait } from './manifest/process'
+import { cancelProcess, processIntent, processWait } from './manifest/process'
 import { regroupLoose } from './manifest/regroup-loose'
 import { saveGroups } from './manifest/save-groups'
 import { retimeFileIntent } from './manifest/retime-file'
@@ -36,6 +36,7 @@ const intents: Record<ActionData['intent'], Intent> = {
   'open-montage': openMontage,
   process: processIntent,
   'process-wait': processWait,
+  'cancel-process': cancelProcess,
   'upload-group': uploadGroup,
   montage,
   'upload-tandem': uploadTandemIntent,

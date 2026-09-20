@@ -1,4 +1,4 @@
-import { loadManifest, processJumps, whenProcessed } from '@skydock/scripts'
+import { cancelProcessing, loadManifest, processJumps, whenProcessed } from '@skydock/scripts'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 
@@ -40,4 +40,12 @@ const processWait: Intent = async ({ manifest, manifestPath }) => {
   return boardAnswer(loadManifest(manifestPath) ?? manifest)
 }
 
-export { processIntent, processWait }
+/* Stops what is being processed, and answers once it has stopped, with the board as the run left
+   it: the copies already finished stay on the disk, and nothing of the run counts as processed. */
+const cancelProcess: Intent = async ({ manifest, manifestPath, refuse }) => {
+  if (!cancelProcessing()) return refuse('Nothing is being processed.')
+  await whenProcessed()
+  return { ...boardAnswer(loadManifest(manifestPath) ?? manifest), processCancelled: true }
+}
+
+export { cancelProcess, processIntent, processWait }

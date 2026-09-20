@@ -2,6 +2,7 @@ import { Fragment } from 'react'
 import { Seg } from './buttons'
 import { setFileView, useFileView } from '../hooks/useFileView'
 import { setTheme, useTheme } from '../hooks/useTheme'
+import { formatSize } from './utils'
 
 const VIEWS = [
   ['rows', 'Rows'],
@@ -27,6 +28,7 @@ const BoardHeader = ({
   onTemplates,
   proxies,
   camera,
+  disk,
   nas
 }: {
   scanning: boolean
@@ -36,6 +38,8 @@ const BoardHeader = ({
   proxies: { ready: number; waiting: number; total: number }
   /* a camera plugged in and being copied off, while it is */
   camera?: { camera: string; done: number; total: number; copied: number } | null
+  /* the room left on the output folder's disk; said only once it runs low */
+  disk?: { free: number; level: 'ok' | 'low' | 'full' } | null
   nas: { connected: boolean; host: string | null; links: NasLink[] }
 }) => {
   const view = useFileView()
@@ -45,6 +49,24 @@ const BoardHeader = ({
       <span className='text-[15px] font-bold tracking-[-0.02em]'>
         Sky<span className='text-accent'>Dock</span>
       </span>
+      {disk && disk.level !== 'ok' && (
+        <span
+          role='alert'
+          title={
+            disk.level === 'full'
+              ? 'Copying a camera, making proxies, processing and saving the board all need room on this disk. Free some space: delete what you no longer need, or free uploaded jumps and tandems from here.'
+              : 'Free some space before the disk fills: copying a camera, making proxies and processing all need room.'
+          }
+          className={`rounded-full border px-2.5 py-0.5 text-[12px] font-semibold whitespace-nowrap ${
+            disk.level === 'full'
+              ? 'border-changed bg-changed text-white'
+              : 'border-local bg-local-soft text-local'
+          }`}>
+          {disk.level === 'full'
+            ? `⚠ Disk full — ${formatSize(disk.free)} left: copying, proxies and saving will fail`
+            : `⚠ Disk almost full — ${formatSize(disk.free)} left`}
+        </span>
+      )}
       <span className='ml-auto flex flex-wrap items-center gap-2'>
         <button
           type='button'
