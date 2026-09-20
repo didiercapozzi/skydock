@@ -68,6 +68,17 @@ RUN apt update && apt install -y --no-install-recommends \
     patchelf \
     && rm -rf /var/lib/apt/lists/*
 
+# A display of the container's own, and a way to watch it from the host: the app's window is drawn
+# here and served over VNC, rather than on the host's session — where a window from this privileged
+# container, holding every DRM card the machine has, has taken that session down.
+RUN apt update && apt install -y --no-install-recommends \
+    xvfb \
+    x11vnc \
+    novnc \
+    websockify \
+    openbox \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV CARGO_HOME=/usr/local/cargo \
     RUSTUP_HOME=/usr/local/rustup \
     PATH=/usr/local/cargo/bin:$PATH

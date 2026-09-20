@@ -13,6 +13,8 @@
     "copy": "npx tsx packages/skydock-scripts/src/copy.ts",
     "dev": "npm run dev --workspace=@workspace/web",
     "dev:bridge": "umask 000 && SKYDOCK_EDITOR_COMMAND=/workspace/scripts/editor-bridge.sh npm run dev",
+    "dev:window": "scripts/dev-window.sh",
+    "dev:window:host": "SKYDOCK_DEV_URL=${SKYDOCK_DEV_URL:-http://127.0.0.1:5173} src-tauri/target/release/skydock",
     "fc": "npm run format && npm run check",
     "format": "oxfmt --config oxfmt.config.ts .",
     "format:check": "oxfmt --config oxfmt.config.ts --check .",

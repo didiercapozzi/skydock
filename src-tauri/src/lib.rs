@@ -123,26 +123,37 @@ fn settings_for(app: &tauri::AppHandle, config_dir: &Path, output_dir: &Path) ->
     told
 }
 
-/// The window, once the server behind it answers. Made here rather than at startup so nobody is
-/// shown an error page for the second it takes the server to come up.
-fn show_board(app: &tauri::AppHandle, port: u16) {
-    let handle = app.clone();
-    let _ = app.run_on_main_thread(move || {
-        let address = format!("http://127.0.0.1:{port}");
-        match tauri::Url::parse(&address) {
-            Ok(parsed) => {
-                let built = WebviewWindowBuilder::new(&handle, "main", WebviewUrl::External(parsed))
-                    .title("SkyDock")
-                    .inner_size(1440.0, 900.0)
-                    .min_inner_size(900.0, 600.0)
-                    .build();
-                if let Err(e) = built {
-                    eprintln!("[SkyDock] the window could not be opened: {e}");
-                }
-            }
-            Err(e) => eprintln!("[SkyDock] {address} is not an address: {e}"),
+/// The window itself.
+///
+/// Called from a thread of its own, never from the app's own — making a window is a request to the
+/// app's loop and waits for it to be served, and a wait like that on the loop's own thread is a
+/// wait for itself. On Linux it simply hangs: the window is made and nothing comes back.
+fn open_window(app: &tauri::AppHandle, address: &str) {
+    let parsed = match tauri::Url::parse(address) {
+        Ok(parsed) => parsed,
+        Err(e) => {
+            eprintln!("[SkyDock] {address} is not an address: {e}");
+            return;
         }
-    });
+    };
+    let built = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(parsed))
+        .title("SkyDock")
+        .inner_size(1440.0, 900.0)
+        .min_inner_size(900.0, 600.0)
+        .build();
+    match built {
+        Ok(_) => println!("[SkyDock] the window is open on {address}"),
+        Err(e) => eprintln!("[SkyDock] the window could not be opened: {e}"),
+    }
+}
+
+/// A server already running, for working on the app itself: the development server is told where to
+/// keep its work and which editor to open, and this shows what it serves rather than starting a
+/// second one of its own.
+fn told_where() -> Option<String> {
+    let told = std::env::var("SKYDOCK_DEV_URL").ok()?;
+    let told = told.trim().to_string();
+    (!told.is_empty()).then_some(told)
 }
 
 /// Starts the server and waits for it to say which port it is on. Its own output is passed through,
@@ -186,11 +197,9 @@ async fn start_server(app: tauri::AppHandle) {
                 let said = String::from_utf8_lossy(&line).trim().to_string();
                 println!("{said}");
                 if let Some(port) = said.strip_prefix("SKYDOCK_READY ") {
-                    if !shown {
-                        if let Ok(port) = port.trim().parse::<u16>() {
-                            shown = true;
-                            show_board(&app, port);
-                        }
+                    if !shown && port.trim().parse::<u16>().is_ok() {
+                        shown = true;
+                        open_window(&app, &format!("http://127.0.0.1:{}", port.trim()));
                     }
                 }
             }
@@ -234,8 +243,18 @@ pub fn run() {
         .manage(Server(Mutex::new(None)))
         .setup(|app| {
             let handle = app.handle().clone();
-            /* off the main thread: it asks for the work folder, which is a dialog to wait on */
-            tauri::async_runtime::spawn(start_server(handle));
+            /* Off this thread, both of them: starting the server asks for the work folder, which is
+               a dialog to wait on, and the window itself is made from a thread the app's loop can
+               serve. */
+            tauri::async_runtime::spawn(async move {
+                match told_where() {
+                    Some(address) => {
+                        println!("[SkyDock] showing the server already running at {address}");
+                        open_window(&handle, &address);
+                    }
+                    None => start_server(handle).await,
+                }
+            });
             Ok(())
         })
         .build(tauri::generate_context!())

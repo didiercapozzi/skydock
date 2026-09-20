@@ -21,6 +21,43 @@ npm run dev            # the board, on http://localhost:5173
 
 Everything happens on the board: scanning, sorting, processing and uploading.
 
+To see the app as an app rather than a browser tab, without leaving the container:
+
+```bash
+npm run dev            # or dev:bridge, in one terminal
+npm run dev:window     # in another, then open http://localhost:6080/vnc.html on the host
+```
+
+`dev:window` gives SkyDock a display that belongs to the container and serves it to the host, so
+the window is real but nothing of it touches the host's own session. The app must have been built
+once (`npm run tauri build`), since the window is the built app; what it shows is the development
+server, so reloading and the editor bridge work as they do in a browser.
+
+### The window on the host's own screen, and why it is not the way
+
+`npm run dev:window:host` puts the window on the host's X server instead, through the socket the
+container already has. It is kept because it may well work on another machine. It does not work on
+the one this was written on, and the measurements are worth keeping.
+
+It used to take the host's session down every time — and with it VS Code, and with VS Code the
+container, which stops itself when VS Code goes. That part is fixed: an X client draws through
+MIT-SHM, and a shared-memory segment made in the container's own IPC namespace is nothing to the X
+server outside it, so every blit came back `BadShmSeg`. Chromium, and so Electron, tests for this
+and quietly falls back; WebKitGTK does not. `ipc: host` in `docker-compose.dev.yml` makes both sides
+mean the same thing, and the session has been steady since.
+
+What is left is that the window opens and the page never loads. Measured with the same binary, the
+same settings and the same server, seconds apart: on the container's own display the board renders;
+on the host's display the app makes no request at all. It is not wedged — its thread waits in
+`poll`, WebKit's own processes are up and idle, and it makes no system calls at all while it sits
+there — so what the desktop reports as "not responding" is a window that never paints. Ruled out
+along the way: the card (software rendering and an empty `/dev/dri` change nothing), a deadlock in
+the window code, and the WebKit flags (with and without them is the same). What remains is
+WebKitGTK against that particular X server, which is further than this is worth chasing.
+
+So: `npm run dev:window` for a window from inside the container, and the installed app on the host
+when the real thing is wanted.
+
 A camera plugged in is copied off by itself while the board's server runs — see
 [RULES.md](./RULES.md), _Plugging a camera in is enough_. The command line does the same by hand:
 

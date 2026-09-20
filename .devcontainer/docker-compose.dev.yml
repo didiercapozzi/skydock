@@ -4,11 +4,19 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     privileged: true
+    # The same shared memory as the machine outside. An X client draws through MIT-SHM, and a
+    # segment made in a container of its own is nothing to the X server on the host — every blit
+    # comes back BadShmSeg. That is what stands between a window of ours and the host's screen.
+    ipc: host
     runtime: ${SKYDOCK_DOCKER_RUNTIME:-runc}
     # No `devices:` entry: `privileged` above already grants the whole of /dev, so naming
     # /dev/dri added nothing — and it is fatal on a machine that has no such path at all.
     devices:
       - /dev/dri:/dev/dri
+    ports:
+      # The app's own window, watched from the host at http://localhost:6080/vnc.html — bound to
+      # the machine itself, since it is a display with no password on it.
+      - '127.0.0.1:6080:6080'
     volumes:
       - $SSH_AUTH_SOCK:/ssh-agent
       - /tmp/.X11-unix:/tmp/.X11-unix
