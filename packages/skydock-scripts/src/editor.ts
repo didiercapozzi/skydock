@@ -1,5 +1,7 @@
 import * as childProcess from 'node:child_process'
 import * as fs from 'node:fs'
+import * as os from 'node:os'
+import * as path from 'node:path'
 import { hasCommand } from './utils'
 
 /* Opening the editor is the one thing SkyDock does to the machine around it rather than to its own
@@ -23,7 +25,40 @@ const GRACE_MS = 1200
 
 type OpenResult = { opened: boolean; command: string; reason?: string }
 
-const editorCommand = () => process.env[EDITOR_COMMAND]?.trim() || 'kdenlive'
+/* Where the editor is when nobody has said, which is a different thing on each system. On Linux
+   kdenlive is a command like any other. On a Mac it is an application rather than a program on the
+   PATH, and the system opens it by name — which also hands the project to a copy already running.
+   On Windows it installs under whichever Program Files this machine has. */
+const MAC_APPS = [
+  '/Applications/kdenlive.app',
+  path.join(os.homedir(), 'Applications/kdenlive.app')
+]
+
+const WINDOWS_PLACES = () =>
+  [
+    [process.env.ProgramFiles, 'kdenlive', 'bin', 'kdenlive.exe'],
+    [process.env['ProgramFiles(x86)'], 'kdenlive', 'bin', 'kdenlive.exe'],
+    [process.env.LOCALAPPDATA, 'Programs', 'kdenlive', 'bin', 'kdenlive.exe']
+  ].flatMap(([home, ...rest]) => (home ? [path.join(home, ...(rest as string[]))] : []))
+
+/* the program and its arguments, as found on this machine — nothing to read as a command line */
+const editorHere = () => {
+  if (process.platform === 'darwin')
+    return ['open', '-a', MAC_APPS.find((app) => fs.existsSync(app)) ?? 'kdenlive']
+  if (process.platform === 'win32')
+    return [WINDOWS_PLACES().find((place) => fs.existsSync(place)) ?? 'kdenlive.exe']
+  return ['kdenlive']
+}
+
+const editorCommand = () => process.env[EDITOR_COMMAND]?.trim() || editorHere().join(' ')
+
+/* What to run: the setting read the way a shell reads a command line, or, when there is none, the
+   editor as it was found here — which is a program and its arguments already, and would only be
+   torn apart by reading it again. */
+const editorParts = () => {
+  const told = process.env[EDITOR_COMMAND]?.trim()
+  return told ? tokenize(told) : editorHere()
+}
 
 /* The setting is a command line, so it is read the way a shell reads one. Splitting on spaces
    instead tears `sh -c "..."` into pieces and hands the program half a quoted string, which fails
@@ -79,8 +114,8 @@ const openInEditor = async (projectPath: string) => {
   if (!fs.existsSync(projectPath))
     return { opened: false, command, reason: `No project at ${projectPath}` }
 
-  /* the first word is the program; the rest is however the setting wants it invoked */
-  const parts = tokenize(command)
+  /* the first word is the program; the rest is however it wants to be invoked */
+  const parts = editorParts()
   if (!parts)
     return {
       opened: false,
@@ -152,5 +187,5 @@ const openInEditor = async (projectPath: string) => {
   })
 }
 
-export { editorCommand, openInEditor, tokenize }
+export { editorCommand, editorParts, openInEditor, tokenize }
 export type { OpenResult }

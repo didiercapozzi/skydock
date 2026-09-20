@@ -11,6 +11,9 @@ board offers, and what it deliberately does not do. Read that first; this file i
 
 ## Running it
 
+There are two ways: the development server, which is what this repo is worked on with, and the
+installed app, which is what a dropzone gets.
+
 ```bash
 npm install
 npm run dev            # the board, on http://localhost:5173
@@ -37,16 +40,55 @@ output/
 └── .status/           the progress of a running upload
 ```
 
+## Building the installers
+
+The installed app is the same web app, served by a Node of its own on `127.0.0.1` inside a window
+([Tauri](https://tauri.app)). It carries that Node, ffmpeg and ffprobe, so nothing has to be
+installed on the machine it lands on.
+
+```bash
+npm run tauri build     # the installer for this machine, in src-tauri/target/release/bundle
+npm run tauri dev       # the window, against a build
+```
+
+What it needs to build: the Rust toolchain (`rustup`), `@tauri-apps/cli`, and on Linux
+`libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf`. Nothing binary is committed —
+`node scripts/build-sidecar.mjs`, which Tauri runs first, builds the app, fetches the Node it ships
+with, and takes ffmpeg and ffprobe from `SKYDOCK_TOOLS_DIR` or from this machine.
+`node scripts/fetch-tools.mjs` fetches builds of those that need nothing beside them, which is what
+a release does; it prints the folder to hand over.
+
+An installer is made on the system it is for, so all three are built by
+[.github/workflows/release.yml](.github/workflows/release.yml) on a tag (`v1.2.3`), which attaches
+`.dmg`, `.msi`, `.deb` and an AppImage to a draft release.
+
+**They are not signed yet**, so each system says so once:
+
+- **macOS** — right-click the app, choose _Open_, then _Open_ again (or
+  `xattr -dr com.apple.quarantine /Applications/SkyDock.app`).
+- **Windows** — SmartScreen: _More info_, then _Run anyway_.
+
+The server can also be run without the window, which is how it is checked:
+
+```bash
+npm run build && node scripts/build-server.mjs
+PORT=5199 node web/build/skydock-server.mjs     # prints SKYDOCK_READY <port>
+```
+
 ## Configuration
 
-| Variable                   | Purpose                                                                                                                                                                  | Default                             |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------- |
-| `SKYDOCK_OUTPUT_DIR`       | Where originals, the registry and delivery folders live                                                                                                                  | `/workspace/output`                 |
-| `SKYDOCK_CONFIG_DIR`       | The app's own settings, kept apart from the work — the storage connection                                                                                                | `/workspace/config`                 |
-| `SKYDOCK_TRASH_DIR`        | The bin: files put aside, and a camera's files once deleted from it. Never emptied by the app                                                                            | `/workspace/.trash`                 |
-| `SKYDOCK_MONTAGE_TEMPLATE` | The kdenlive project a montage is built from                                                                                                                             | the one template under `templates/` |
-| `SKYDOCK_CAMERA_ROOTS`     | Where cameras get mounted, `:`-separated. A drive mounted under one with a `DCIM` folder is copied off by itself; empty turns it off                                     | `/mnt/osmo:/media:/run/media`       |
-| `SKYDOCK_EDITOR_COMMAND`   | What opens a montage — read as a shell command line, with the project appended as its last argument. Quotes group, so `sh -c "… \"$0\" …"` works and `$0` is the project | `kdenlive`                          |
+| Variable                                                               | Purpose                                                                                                                                                                  | Default                                                                    |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
+| `SKYDOCK_OUTPUT_DIR`                                                   | Where originals, the registry and delivery folders live                                                                                                                  | `/workspace/output`                                                        |
+| `SKYDOCK_CONFIG_DIR`                                                   | The app's own settings, kept apart from the work — the storage connection                                                                                                | `/workspace/config`                                                        |
+| `SKYDOCK_TRASH_DIR`                                                    | The bin: files put aside, and a camera's files once deleted from it. Never emptied by the app                                                                            | `/workspace/.trash`                                                        |
+| `SKYDOCK_MONTAGE_TEMPLATE`                                             | The kdenlive project a montage is built from                                                                                                                             | the one template under `templates/`                                        |
+| `SKYDOCK_CAMERA_ROOTS`                                                 | Where cameras get mounted, separated the way this system separates paths. A drive there with a `DCIM` folder is copied off by itself; empty turns it off                 | Linux `/mnt/osmo:/media:/run/media`, macOS `/Volumes`, Windows every drive |
+| `SKYDOCK_EDITOR_COMMAND`                                               | What opens a montage — read as a shell command line, with the project appended as its last argument. Quotes group, so `sh -c "… \"$0\" …"` works and `$0` is the project | kdenlive, as each system keeps it                                          |
+| `SKYDOCK_FFMPEG_PATH`, `SKYDOCK_FFPROBE_PATH`, `SKYDOCK_EXIFTOOL_PATH` | Where each tool is. The installed app says; otherwise they are looked for on the PATH                                                                                    | found on the PATH                                                          |
+| `SKYDOCK_TEMPLATES_DIR`                                                | The templates the app itself ships with, as against a dropzone's own under `output/templates`                                                                            | `templates/` beside the code                                               |
+| `SKYDOCK_CLIENT_DIR`                                                   | The built page the packaged server serves                                                                                                                                | beside the server                                                          |
+| `PORT`                                                                 | The port the packaged server listens on, on `127.0.0.1` only. `0`, or unset, takes a free one and prints it                                                              | a free one                                                                 |
 
 That is the whole of it — **the network storage is not configured here.** Host, user and password are
 entered on the board, and the session is kept in `config/nas.json` — the config folder, apart from
@@ -56,8 +98,11 @@ and none are written into the registry.
 
 ## Requirements
 
-- `exiftool` — required: processing stamps dates into the files and stops without it.
-- `ffmpeg` / `ffprobe` — required to write a cropped video and to make thumbnails.
+- `exiftool` — processing stamps dates into the files and stops without it. The installers do not
+  carry it: on a Mac and on most Linux machines it is a Perl program that needs more than one file
+  beside it. Installed on the machine, it is found and used.
+- `ffmpeg` / `ffprobe` — required to write a cropped video and to make thumbnails. The installers
+  carry both.
 - `kdenlive` is **not** required to produce a montage project, only to open and render one.
 - `tar` — only to bring in an editing template packed as `.tar.gz`; a `.zip` needs nothing.
 

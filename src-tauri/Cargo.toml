@@ -1,0 +1,25 @@
+[package]
+name = "skydock"
+version = "0.1.0"
+description = "SkyDock — a dropzone's media, from the cameras to the passenger"
+authors = ["SkyDock"]
+edition = "2021"
+rust-version = "1.77.2"
+
+# The window and the installers are all the Rust side does: it starts the SkyDock server beside it
+# and shows what that serves. Everything the app knows how to do is in the server.
+[lib]
+name = "skydock_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-shell = "2"
+serde_json = "1"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-single-instance = "2"

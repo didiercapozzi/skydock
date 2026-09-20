@@ -1,0 +1,5 @@
+# built by cargo, and by the script that fetches what the app ships with
+/target
+/gen
+/binaries
+/resources

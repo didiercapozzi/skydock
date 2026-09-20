@@ -7,11 +7,12 @@ import type { LiveEvent } from '../src/live'
 import { saveManifest } from '../src/manifest'
 import { lookAtTandems } from '../src/tandemWatch'
 import type { Manifest } from '../src/types'
-import { createTmpDir, execSyncMock } from './fixtures'
+import { createTmpDir, execSyncMock, tellTools } from './fixtures'
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>()
-  return { ...actual, execSync: (await import('./fixtures')).execSyncMock }
+  const { execFileSyncMock, execFileViaSyncMock } = await import('./fixtures')
+  return { ...actual, execFileSync: execFileSyncMock, execFile: execFileViaSyncMock }
 })
 
 /* The film is rendered by the editor, and nothing tells SkyDock when it is done. While a board is
@@ -57,6 +58,7 @@ beforeEach(() => {
   }
   saveManifest(path.join(outputDir, 'manifest.json'), manifest)
   readable = true
+  tellTools()
   execSyncMock.mockImplementation((cmd: string | Buffer) => {
     const line = String(cmd)
     if (line.startsWith('ffprobe')) {
@@ -75,6 +77,7 @@ afterEach(() => {
   stop()
   fs.rmSync(outputDir, { recursive: true, force: true })
   vi.clearAllMocks()
+  vi.unstubAllEnvs()
 })
 
 describe('a film rendered by the editor', () => {

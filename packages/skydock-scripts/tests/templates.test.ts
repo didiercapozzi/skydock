@@ -3,7 +3,8 @@ import { execSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { zipSync, strToU8 } from 'fflate'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { availableTemplates } from '../src/montage'
 import { importTemplate, listTemplates, versionGap } from '../src/templates'
 import { createTmpDir } from './fixtures'
 
@@ -52,8 +53,25 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.unstubAllEnvs()
   fs.rmSync(outputDir, { recursive: true, force: true })
   fs.rmSync(incoming, { recursive: true, force: true })
+})
+
+/* The installed app carries the templates it ships with, and says where they are: a packaged app is
+   one file and has no folder beside it to count from. A dropzone's own are still what is used when
+   it has any. */
+describe('the templates the app itself carries', () => {
+  it('are where the app says they are', () => {
+    const shipped = path.join(incoming, 'shipped')
+    fs.mkdirSync(path.join(shipped, 'epco'), { recursive: true })
+    fs.writeFileSync(path.join(shipped, 'epco', 'epco.kdenlive'), project())
+    vi.stubEnv('SKYDOCK_TEMPLATES_DIR', shipped)
+
+    fs.rmSync(templatesDir(), { recursive: true, force: true })
+
+    expect(availableTemplates(outputDir).map((t) => t.name)).toEqual(['epco'])
+  })
 })
 
 describe('bringing a template in from a kdenlive archive', () => {

@@ -92,9 +92,18 @@ const minFileMtime = startOfFiles
 
 const getGroupDate = (group: ManifestGroup) => group.day ?? ''
 
+/* Where the machine keeps the work, as the board is told when it loads. It cannot be worked out
+   here: the installed app keeps it wherever it was asked to, which the browser has no way of
+   knowing, and every media address is a path inside it. */
+let outputRoot: string | null = null
+
+const setOutputRoot = (dir: string) => {
+  outputRoot = dir
+}
+
 /* the media routes serve everything under the output folder, addressed by its path inside it */
 const relativeToOutput = (filePath: string) => {
-  const outputDir = getOutputDir()
+  const outputDir = outputRoot ?? getOutputDir()
   return filePath.startsWith(outputDir) ? filePath.slice(outputDir.length) : filePath
 }
 
@@ -115,6 +124,7 @@ const getThumbUrl = (filePath: string, seekSeconds: number, width = 80) =>
   `/api/thumb${relativeToOutput(filePath)}?seek=${seekSeconds.toFixed(1)}&width=${width}`
 
 export {
+  setOutputRoot,
   MONTHS,
   formatFilmSize,
   hhmm,

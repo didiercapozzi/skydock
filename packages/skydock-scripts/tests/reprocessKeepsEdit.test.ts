@@ -5,12 +5,12 @@ import * as path from 'node:path'
 import { saveManifest } from '../src/manifest'
 import { processJumps } from '../src/process'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
-import { createTmpDir, execSyncMock } from './fixtures'
+import { createTmpDir, execSyncMock, tellTools } from './fixtures'
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>()
-  const { execSyncMock, execViaSyncMock } = await import('./fixtures')
-  return { ...actual, execSync: execSyncMock, exec: execViaSyncMock }
+  const { execFileSyncMock, execFileViaSyncMock } = await import('./fixtures')
+  return { ...actual, execFileSync: execFileSyncMock, execFile: execFileViaSyncMock }
 })
 
 /* Preparing a tandem again is the ordinary way of working: prepare it, look at it, correct a time
@@ -25,7 +25,6 @@ vi.mock('node:child_process', async (importOriginal) => {
 
 const tools = (cmd: string | Buffer, opts?: { encoding?: string }) => {
   const line = String(cmd)
-  if (line.startsWith('command -v')) return Buffer.from('/usr/bin/x')
   if (line.startsWith('ffprobe')) {
     const shape = 'width=3840\nheight=2160\n'
     return opts?.encoding ? shape : Buffer.from(shape)
@@ -101,6 +100,7 @@ const addEdit = () => {
 
 beforeEach(() => {
   outputDir = createTmpDir('skydock-reprocess-')
+  tellTools()
   execSyncMock.mockImplementation(tools)
 })
 

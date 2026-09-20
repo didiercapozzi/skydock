@@ -16,12 +16,12 @@ import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
 import { saveManifest } from '../src/manifest'
 import type { Manifest, ManifestFile } from '../src/types'
-import { createTmpDir, execSyncMock, writeTempFile } from './fixtures'
+import { createTmpDir, execSyncMock, tellTools, writeTempFile } from './fixtures'
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>()
-  const { execSyncMock, execViaSyncMock } = await import('./fixtures')
-  return { ...actual, execSync: execSyncMock, exec: execViaSyncMock }
+  const { execFileSyncMock, execFileViaSyncMock } = await import('./fixtures')
+  return { ...actual, execFileSync: execFileSyncMock, execFile: execFileViaSyncMock }
 })
 
 const CONTAINERS = new Set(['mp4', 'mov', 'mkv', 'webm', 'avi'])
@@ -43,7 +43,6 @@ const toolsPresent =
   (width = 3840, turned = false) =>
   (cmd: string | Buffer, opts?: { encoding?: string }) => {
     const line = String(cmd)
-    if (line.startsWith('command -v')) return Buffer.from('/usr/bin/x')
     if (line.startsWith('ffprobe')) {
       /* a turned clip is stored the other way round, as a phone or a 360 camera writes it */
       const shape = turned
@@ -69,11 +68,6 @@ const toolsPresent =
     return Buffer.from('')
   }
 
-const noTools = (cmd: string | Buffer) => {
-  if (String(cmd).startsWith('command -v')) throw new Error('command not found')
-  return Buffer.from('')
-}
-
 const manifestOf = (files: ManifestFile[]): Manifest => ({
   version: 1,
   createdAt: new Date().toISOString(),
@@ -94,12 +88,14 @@ describe('proxies', () => {
 
   beforeEach(() => {
     setProxyEncoder('cpu')
+    tellTools()
     outputDir = createTmpDir('skydock-proxy-')
   })
 
   afterEach(() => {
     fs.rmSync(outputDir, { recursive: true, force: true })
     vi.clearAllMocks()
+    vi.unstubAllEnvs()
     setProxyEncoder(null)
   })
 
@@ -209,7 +205,7 @@ describe('proxies', () => {
   /* No encoder is not a broken card: everything else still works, and the crop bar falls back to
      the clip itself. */
   it('does nothing and complains about nothing when the machine cannot encode video', async () => {
-    execSyncMock.mockImplementation(noTools)
+    tellTools(['ffmpeg', 'ffprobe', 'exiftool'])
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123')])
 
@@ -225,7 +221,6 @@ describe('proxies', () => {
   it('says why a clip failed, not just that it did', async () => {
     execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
       const line = String(cmd)
-      if (line.startsWith('command -v')) return Buffer.from('/usr/bin/x')
       if (line.startsWith('ffprobe')) return opts?.encoding ? '3840\n' : Buffer.from('3840\n')
       const failure = new Error('ffmpeg exited with code 1') as Error & { stderr: Buffer }
       failure.stderr = Buffer.from('some noise about the input\nNo space left on device\n')
@@ -246,7 +241,6 @@ describe('proxies', () => {
     globalThis.skydockProxyFailures = undefined
     execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
       const line = String(cmd)
-      if (line.startsWith('command -v')) return Buffer.from('/usr/bin/x')
       if (line.startsWith('ffprobe')) return opts?.encoding ? '3840\n' : Buffer.from('3840\n')
       const failure = new Error('ffmpeg exited with code 1') as Error & { stderr: Buffer }
       failure.stderr = Buffer.from('No space left on device\n')
@@ -271,7 +265,6 @@ describe('proxies', () => {
   it('leaves nothing behind when a build fails', async () => {
     execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
       const line = String(cmd)
-      if (line.startsWith('command -v')) return Buffer.from('/usr/bin/x')
       if (line.startsWith('ffprobe')) return opts?.encoding ? '3840\n' : Buffer.from('3840\n')
       const out = [...line.matchAll(/"([^"]+)"/g)].map((m) => m[1]).pop()!
       fs.mkdirSync(path.dirname(out), { recursive: true })
@@ -468,7 +461,9 @@ describe('the graphics card or the processor', () => {
 
   /* the commands a pass actually ran, so what it asked the machine to do is visible */
   const ffmpegCalls = () =>
-    execSyncMock.mock.calls.map((c) => String(c[0])).filter((l) => l.startsWith('ffmpeg -y'))
+    execSyncMock.mock.calls
+      .map((c) => String(c[0]))
+      .filter((l) => l.startsWith('ffmpeg') && !l.includes('lavfi'))
 
   const runOne = async () => {
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
@@ -548,7 +543,9 @@ describe('what a card is asked for', () => {
     const src = writeTempFile(outputDir, `original_files/${name}.MP4`)
     await ensureProxies(manifestOf([fileEntry(src, `id-${name}`)]), outputDir)
     return (
-      execSyncMock.mock.calls.map((c) => String(c[0])).find((l) => l.startsWith('ffmpeg -y')) ?? ''
+      execSyncMock.mock.calls
+        .map((c) => String(c[0]))
+        .find((l) => l.startsWith('ffmpeg') && !l.includes('lavfi')) ?? ''
     )
   }
 
@@ -593,7 +590,6 @@ describe('what a card is asked for', () => {
     setProxyEncoder('vaapi')
     execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
       const line = String(cmd)
-      if (line.startsWith('command -v')) return Buffer.from('/usr/bin/x')
       if (line.startsWith('ffprobe'))
         return opts?.encoding
           ? 'width=2704\nheight=1520\n'
@@ -633,7 +629,6 @@ describe('what a card is asked for', () => {
     setProxyEncoder('cpu')
     execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
       const line = String(cmd)
-      if (line.startsWith('command -v')) return Buffer.from('/usr/bin/x')
       if (line.startsWith('ffprobe'))
         return opts?.encoding
           ? 'width=3840\nheight=2160\n'

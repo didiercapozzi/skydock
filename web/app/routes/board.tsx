@@ -23,6 +23,7 @@ import {
   tandemsRemoteDir
 } from '@skydock/scripts'
 import type { FrameCrop, Rotation, TandemEntry } from '@skydock/scripts'
+import { diskSpace } from '../../../packages/skydock-scripts/src/diskSpace'
 import { readTandemIndex } from '../../../packages/skydock-scripts/src/tandemIndex'
 import { useState } from 'react'
 import { BoardHeader } from '../components/board-header'
@@ -52,7 +53,7 @@ import {
   UploadedCards
 } from '../components/tandem-card'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
-import { formatSize, formatTime, plural, shortDate } from '../components/utils'
+import { formatSize, formatTime, plural, setOutputRoot, shortDate } from '../components/utils'
 import { importFiles } from '../helpers/import'
 import { TANDEMS, folderOnStorage } from '../helpers/jumps'
 import { familyOf, filesIn, groupsIn, looseIn, placeKey, placeLabel } from '../helpers/places'
@@ -133,6 +134,10 @@ const loader = async (_args: Route.LoaderArgs) => {
     /* which clips have their small copy yet — built behind the scan, so this is a fresh look
        every time the board is drawn (RULES, Workflow) */
     proxies: manifest ? statProxies(manifest, outputDir) : {},
+    /* the room left on the disk, so a board opened on a full one says so from the first paint */
+    disk: diskSpace(outputDir),
+    /* where this machine keeps the work: every media address the board builds is a path inside it */
+    outputDir,
     /* and what each tandem's folder holds: nothing tells SkyDock when the editor finishes, so a
        film is only ever noticed by looking (RULES, Montage) */
     tandems: manifest ? statTandemArtifacts(manifest, outputDir) : {},
@@ -147,6 +152,8 @@ const loader = async (_args: Route.LoaderArgs) => {
 }
 
 const Board = ({ loaderData }: Route.ComponentProps) => {
+  /* told rather than assumed: an installed app keeps the work wherever it was asked to */
+  setOutputRoot(loaderData.outputDir)
   const [dialog, setDialog] = useState<BoardDialog>(null)
   /* uploaded and freed: the one thing left is to tell the passenger, so that is offered */
   const board = useBoardState(loaderData, (groupId) => setDialog({ kind: 'email', groupId }))
@@ -640,6 +647,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     else setDialog({ kind: 'templates', groupId: group.id })
   }
 
+  /* what is being processed is stopped; the answer comes once it has */
+  const cancelProcess = () => send('cancel-process', { intent: 'cancel-process' })
+
   /* A dropzone is processed, then uploaded, as a whole (RULES, Acting). Processing asks only for
      what needs it — the jumps with a file to process, and the dropzone's loose files when one of
      them does — because a dropzone holds every day ever shot there. */
@@ -652,18 +662,21 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       const jumps = groupsIn({ kind: 'dz', name }, groups).filter((g) => g.files.some(needs))
       const lone = looseIn({ kind: 'dz', name }, loose).some(needs)
       return (
-        <Go
-          disabled={busy !== null}
-          onClick={() =>
-            send(
-              label,
-              lone
-                ? { intent: 'process', destination: name }
-                : { intent: 'process', groupIds: jumps.map((g) => g.id) }
-            )
-          }>
-          {busy === label ? 'Processing…' : 'Process'}
-        </Go>
+        <>
+          <Go
+            disabled={busy !== null}
+            onClick={() =>
+              send(
+                label,
+                lone
+                  ? { intent: 'process', destination: name }
+                  : { intent: 'process', groupIds: jumps.map((g) => g.id) }
+              )
+            }>
+            {busy === label ? 'Processing…' : 'Process'}
+          </Go>
+          {busy === label && <Mini onClick={cancelProcess}>Cancel</Mini>}
+        </>
       )
     }
     /* what is proved on the storage can be freed from here, whatever is still to upload */
@@ -716,6 +729,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           blocked={gateFor(group.files)}
           named={hasCompletePassenger(group.passenger)}
           onProcess={() => send(group.id, { intent: 'process', groupId: group.id })}
+          onCancelProcess={cancelProcess}
           onMontage={() => void askMontage(group)}
           onOpenMontage={() =>
             send(`open:${group.id}`, { intent: 'open-montage', groupId: group.id })
@@ -1028,6 +1042,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         onTemplates={() => setDialog({ kind: 'templates' })}
         proxies={board.proxyProgress}
         camera={board.cameraCopy}
+        disk={board.disk ?? loaderData.disk}
         nas={{ connected: nas.connected, host: nas.host, links: nasLinks }}
       />
 

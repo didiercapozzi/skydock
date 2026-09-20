@@ -3,7 +3,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { Unzip, UnzipInflate } from 'fflate'
 import type { CameraFile } from './cameraEntry'
-import { cameraCopying, mountedCameras } from './cameraWatch'
+import { cameraCopying, cameraName, mountedCameras } from './cameraWatch'
 import { alreadyThere, dayFoldersOf } from './copy'
 import { ID_HEX_LENGTH } from './fileId'
 import { findMediaFiles, hashFile, moveFile } from './lib/fs'
@@ -176,7 +176,7 @@ const listCamera = async (mount: string, outputDir: string) => {
     })
   }
   /* newest first, as every list of files is */
-  return { camera: path.basename(mount), mount, files: listed.sort((a, b) => b.mtime - a.mtime) }
+  return { camera: cameraName(mount), mount, files: listed.sort((a, b) => b.mtime - a.mtime) }
 }
 
 const listCameras = async (outputDir: string, mounts = mountedCameras()) =>
@@ -245,7 +245,7 @@ const deleteFromCameras = async ({
   const bins = new Set<string>()
   for (const file of paths) {
     const mount = cameraOf(file)!
-    const bin = path.join(trashDir, `camera-${path.basename(mount)}-${stamp}`)
+    const bin = path.join(trashDir, `camera-${cameraName(mount)}-${stamp}`)
     bins.add(bin)
     bytes += fs.statSync(file).size
     await moveFile(file, path.join(bin, path.relative(mount, file)))

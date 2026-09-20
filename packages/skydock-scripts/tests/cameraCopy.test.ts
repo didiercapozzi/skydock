@@ -7,7 +7,7 @@ import { CameraGone, copyCamera } from '../src/copy'
 import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
 import { loadManifest } from '../src/manifest'
-import { createTmpDir } from './fixtures'
+import { createTmpDir, onPlatform } from './fixtures'
 
 /* A camera is copied off into the originals — by hand or by plugging it in. Real files, really
    copied: what matters is what ends up on the disk, and what never does. */
@@ -160,6 +160,29 @@ describe('which drives are cameras', () => {
     const camera = card('GOPRO', { 'GX010001.MP4': { bytes: 1, fill: 1, at: DAY } })
 
     expect(mountedCameras(mountinfo([camera]))).toEqual([])
+  })
+
+  /* macOS has no list of mounts to read: a drive is a folder in /Volumes, so that is what is
+     looked at — and the DCIM folder decides, exactly as it does everywhere else */
+  it('is a volume on a Mac, found without any list of mounts', () => {
+    process.env.SKYDOCK_CAMERA_ROOTS = media
+    const camera = card('GOPRO', { 'GX010001.MP4': { bytes: 1, fill: 1, at: DAY } })
+    fs.mkdirSync(path.join(media, 'Macintosh HD'), { recursive: true })
+
+    onPlatform('darwin', () => {
+      expect(mountedCameras()).toEqual([camera])
+    })
+  })
+
+  /* Windows gives a camera a drive letter of its own, so the drive itself is the camera rather
+     than something mounted under it */
+  it('is the drive itself on Windows', () => {
+    const camera = card('GOPRO', { 'GX010001.MP4': { bytes: 1, fill: 1, at: DAY } })
+    process.env.SKYDOCK_CAMERA_ROOTS = [camera, path.join(media, 'nothing')].join(path.delimiter)
+
+    onPlatform('win32', () => {
+      expect(mountedCameras()).toEqual([camera])
+    })
   })
 })
 

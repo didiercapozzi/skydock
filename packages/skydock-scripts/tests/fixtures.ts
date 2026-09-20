@@ -16,20 +16,61 @@ const writeTempFile = (dir: string, name: string, content?: Buffer) => {
   return filePath
 }
 
+/* What this machine has, as far as the app is concerned: it is told where each tool is, so a test
+   says which tools are there rather than depending on what the machine happens to have installed.
+   A tool that is there is a file that exists; one that is not is a place with nothing in it. */
+const TOOL_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-tools-'))
+
+const TOOL_ENV: Record<string, string> = {
+  ffmpeg: 'SKYDOCK_FFMPEG_PATH',
+  ffprobe: 'SKYDOCK_FFPROBE_PATH',
+  exiftool: 'SKYDOCK_EXIFTOOL_PATH'
+}
+
+const tellTools = (missing: string[] = []) => {
+  for (const [name, variable] of Object.entries(TOOL_ENV)) {
+    const target = path.join(TOOL_DIR, missing.includes(name) ? `no-${name}` : name)
+    if (!missing.includes(name) && !fs.existsSync(target)) fs.writeFileSync(target, '')
+    vi.stubEnv(variable, target)
+  }
+}
+
+/* The same code answering for another system, which is the only way to try all three from here. */
+const onPlatform = (name: string, look: () => void) => {
+  const real = Object.getOwnPropertyDescriptor(process, 'platform')!
+  Object.defineProperty(process, 'platform', { value: name, configurable: true })
+  try {
+    look()
+  } finally {
+    Object.defineProperty(process, 'platform', real)
+  }
+}
+
 const execSyncMock = vi.fn()
 
-/* The slow commands run through `exec` so they do not hold the server; the tests still see every
+/* A tool is handed its arguments one by one, never a line for a shell to take apart again. A test
+   still reads a call as the line it amounts to, with the paths quoted as they were. */
+const asLine = (program: string, args: readonly string[]) =>
+  [path.basename(program), ...args.map((arg) => (path.isAbsolute(arg) ? `"${arg}"` : arg))].join(
+    ' '
+  )
+
+const execFileSyncMock = (program: string, args: string[] = [], options?: unknown) =>
+  execSyncMock(asLine(program, args), options)
+
+/* The slow commands run through `execFile` so they do not hold the server; the tests still see every
    command in one place, whichever way it was run. */
-const execViaSyncMock = (
-  cmd: string,
+const execFileViaSyncMock = (
+  program: string,
+  args: string[],
   options: unknown,
   callback: (error: Error | null, stdout: string, stderr: string) => void
 ) => {
   try {
-    execSyncMock(cmd, options)
-    queueMicrotask(() => callback(null, '', ''))
+    const out = execSyncMock(asLine(program, args), options)
+    queueMicrotask(() => callback(null, out ? String(out) : '', ''))
   } catch (e) {
-    /* what a failing command said is its stderr, as a real `exec` hands it back */
+    /* what a failing command said is its stderr, as a real `execFile` hands it back */
     const stderr = (e as { stderr?: Buffer | string }).stderr
     queueMicrotask(() =>
       callback(e instanceof Error ? e : new Error(String(e)), '', stderr ? String(stderr) : '')
@@ -37,37 +78,7 @@ const execViaSyncMock = (
   }
 }
 
-const makeFfmpegMock = () => {
-  return (cmd: string | Buffer) => {
-    const cmdStr = String(cmd)
-    if (cmdStr.includes('command -v exiftool')) {
-      throw new Error('command not found')
-    }
-    return Buffer.from('')
-  }
-}
-
-const makeExiftoolMock = (timeMap?: Map<string, string>) => {
-  return (cmd: string | Buffer, opts?: { encoding?: string }) => {
-    const cmdStr = String(cmd)
-    if (cmdStr.includes('command -v exiftool')) {
-      if (!timeMap) throw new Error('command not found')
-      return Buffer.from('/usr/bin/exiftool')
-    }
-    if (cmdStr.includes('exiftool')) {
-      if (opts?.encoding === 'utf-8' && timeMap) {
-        const lines = ['SourceFile,DateTimeOriginal,CreateDate,MediaCreateDate']
-        for (const [file, tag] of timeMap) {
-          const exifDate = tag.replace(/-/g, ':').replace(' ', ' ')
-          lines.push(`"${file}","${exifDate}","${exifDate}","${exifDate}"`)
-        }
-        return lines.join('\n')
-      }
-      return Buffer.from('')
-    }
-    return Buffer.from('')
-  }
-}
+const makeFfmpegMock = () => () => Buffer.from('')
 
 const seen: SeenCall[] = []
 
@@ -151,17 +162,19 @@ const nasStubs = ({
 
 export {
   createTmpDir,
+  execFileSyncMock,
+  execFileViaSyncMock,
   execSyncMock,
-  execViaSyncMock,
   jsonResponse,
   nasStubs,
+  onPlatform,
   loginFailure,
   loginSuccess,
-  makeExiftoolMock,
   makeFfmpegMock,
   makeTmpTree,
   seen,
   stubFetch,
+  tellTools,
   writeTempFile
 }
 export type { FetchHandler, SeenCall }

@@ -1,9 +1,9 @@
 // @vitest-environment node
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { editorCommand, openInEditor, tokenize } from '../src/editor'
-import { createTmpDir } from './fixtures'
+import { editorCommand, editorParts, openInEditor, tokenize } from '../src/editor'
+import { createTmpDir, onPlatform } from './fixtures'
 
 /* SkyDock is installed on the machine someone edits on, where `kdenlive` is simply there. The
    development container has no kdenlive and no way to reach the one outside it, so the command is a
@@ -22,6 +22,7 @@ describe('opening the project in the editor', () => {
   afterEach(() => {
     if (saved === undefined) delete process.env.SKYDOCK_EDITOR_COMMAND
     else process.env.SKYDOCK_EDITOR_COMMAND = saved
+    vi.unstubAllEnvs()
     fs.rmSync(dir, { recursive: true, force: true })
   })
 
@@ -57,6 +58,21 @@ describe('opening the project in the editor', () => {
   it('defaults to kdenlive', () => {
     delete process.env.SKYDOCK_EDITOR_COMMAND
     expect(editorCommand()).toBe('kdenlive')
+  })
+
+  /* The editor is not a command on the PATH everywhere: on a Mac it is an application the system
+     opens by name, which also hands the project to a copy already running, and on Windows it is a
+     program installed under Program Files. Looking for `kdenlive` on the PATH finds neither. */
+  it('finds the editor where each system keeps it', () => {
+    delete process.env.SKYDOCK_EDITOR_COMMAND
+    const installed = path.join(dir, 'Programs', 'kdenlive', 'bin', 'kdenlive.exe')
+    fs.mkdirSync(path.dirname(installed), { recursive: true })
+    fs.writeFileSync(installed, '')
+    vi.stubEnv('LOCALAPPDATA', dir)
+
+    onPlatform('linux', () => expect(editorParts()).toEqual(['kdenlive']))
+    onPlatform('darwin', () => expect(editorParts()).toEqual(['open', '-a', 'kdenlive']))
+    onPlatform('win32', () => expect(editorParts()).toEqual([installed]))
   })
 
   it('runs the configured command against the project, and says so', async () => {

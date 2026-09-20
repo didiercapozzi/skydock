@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { PHOTO_EXTENSIONS_SET, VIDEO_EXTENSIONS_SET } from '../constants'
 import { run } from '../tools'
 import { jsonText } from './json'
-import { checkExiftool, getExtension, parseExiftoolCsv } from '../utils'
+import { checkExiftool, exiftoolPath, getExtension, parseExiftoolCsv } from '../utils'
 
 type BuildExifOptions = {
   photoTags: string[]
@@ -13,14 +13,11 @@ type BuildExifOptions = {
 
 const EXIF_BATCH_SIZE = 500
 
-const escapeShellArg = (value: string) => `"${value.replace(/(["$`\\])/g, '\\$1')}"`
-
+/* read a few hundred files at a time: one run of exiftool for many files is what makes reading a
+   card quick, and no list of arguments is allowed to grow past what a system will take */
 const batches = (files: string[]) =>
   Array.from({ length: Math.ceil(files.length / EXIF_BATCH_SIZE) }, (_, i) =>
-    files
-      .slice(i * EXIF_BATCH_SIZE, (i + 1) * EXIF_BATCH_SIZE)
-      .map(escapeShellArg)
-      .join(' ')
+    files.slice(i * EXIF_BATCH_SIZE, (i + 1) * EXIF_BATCH_SIZE)
   )
 
 const isVideo = (file: string) => VIDEO_EXTENSIONS_SET.has(getExtension(file))
@@ -40,7 +37,7 @@ const makersSchema = z.array(
 )
 
 const makersCommands = (files: string[]) =>
-  batches(files.filter(isVideo)).map((batch) => `exiftool -j -q -Make -Encoder ${batch}`)
+  batches(files.filter(isVideo)).map((batch) => ['-j', '-q', '-Make', '-Encoder', ...batch])
 
 const readMakers = (json: string, into: Set<string>) => {
   const parsed = jsonText.pipe(makersSchema).safeParse(json)
@@ -50,27 +47,36 @@ const readMakers = (json: string, into: Set<string>) => {
       into.add(file.SourceFile)
 }
 
-/* the exiftool command lines that read these files' tags, a batch at a time — photos and videos
-   apart, since each keeps its capture date under different tags, and the videos kept in UTC apart
-   from those kept on the camera's clock */
+/* what exiftool is asked for, a batch at a time — photos and videos apart, since each keeps its
+   capture date under different tags, and the videos kept in UTC apart from those kept on the
+   camera's clock */
 const exifCommands = (files: string[], options: BuildExifOptions, inUtc: Set<string>) => {
   const photos = files.filter((f) => PHOTO_EXTENSIONS_SET.has(getExtension(f)))
   const videos = files.filter(isVideo)
-  return [
-    [photos, options.photoTags, ''],
-    [videos.filter((f) => !inUtc.has(f)), options.videoTags, ''],
-    [videos.filter((f) => inUtc.has(f)), options.videoTags, '-api QuickTimeUTC=1 ']
-  ].flatMap(([targets, tags, api]) =>
+  const runs: { targets: string[]; tags: string[]; utc: boolean }[] = [
+    { targets: photos, tags: options.photoTags, utc: false },
+    { targets: videos.filter((f) => !inUtc.has(f)), tags: options.videoTags, utc: false },
+    { targets: videos.filter((f) => inUtc.has(f)), tags: options.videoTags, utc: true }
+  ]
+  return runs.flatMap(({ targets, tags, utc }) =>
     tags.length === 0
       ? []
-      : batches([...targets]).map(
-          (batch) => `exiftool ${api}-s3 ${[...tags].join(' ')} -csv ${batch}`
-        )
+      : batches(targets).map((batch) => [
+          ...(utc ? ['-api', 'QuickTimeUTC=1'] : []),
+          '-s3',
+          ...tags,
+          '-csv',
+          ...batch
+        ])
   )
 }
 
-const execSync = (line: string) =>
-  childProcess.execSync(line, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] })
+const execSync = (args: string[]) =>
+  childProcess.execFileSync(exiftoolPath(), args, {
+    encoding: 'utf-8',
+    maxBuffer: 64 * 1024 * 1024,
+    stdio: ['pipe', 'pipe', 'ignore']
+  })
 
 const readInto = (map: Map<string, string>, csv: string, options: BuildExifOptions) => {
   for (const [file, raw] of parseExiftoolCsv(csv)) {
@@ -83,14 +89,14 @@ const buildExifMap = (files: string[], options: BuildExifOptions) => {
   const map = new Map<string, string>()
   if (!checkExiftool() || files.length === 0) return map
   const inUtc = new Set<string>()
-  for (const line of makersCommands(files)) {
+  for (const args of makersCommands(files)) {
     try {
-      readMakers(execSync(line), inUtc)
+      readMakers(execSync(args), inUtc)
     } catch {}
   }
-  for (const line of exifCommands(files, options, inUtc)) {
+  for (const args of exifCommands(files, options, inUtc)) {
     try {
-      readInto(map, execSync(line), options)
+      readInto(map, execSync(args), options)
     } catch {}
   }
   return map
@@ -102,12 +108,12 @@ const readExifMap = async (files: string[], options: BuildExifOptions) => {
   const map = new Map<string, string>()
   if (!checkExiftool() || files.length === 0) return map
   const inUtc = new Set<string>()
-  for (const line of makersCommands(files)) {
-    const ran = await run(line)
+  for (const args of makersCommands(files)) {
+    const ran = await run(exiftoolPath(), args)
     if (ran.ok) readMakers(ran.stdout, inUtc)
   }
-  for (const line of exifCommands(files, options, inUtc)) {
-    const ran = await run(line)
+  for (const args of exifCommands(files, options, inUtc)) {
+    const ran = await run(exiftoolPath(), args)
     if (ran.ok) readInto(map, ran.stdout, options)
   }
   return map

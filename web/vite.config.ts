@@ -6,7 +6,13 @@ import babel from 'vite-plugin-babel'
 
 const ReactCompilerConfig = {/* ... */}
 
+/* The installed app carries the server as one file with no node_modules beside it, so a build puts
+   everything it uses inside it rather than leaving it to be found at runtime. A build only: the
+   development server reads the packages where they are, as it always did. */
+const building = process.argv.includes('build')
+
 export default defineConfig({
+  ssr: building ? { noExternal: true } : {},
   plugins: [
     tailwindcss(),
     reactRouter(),

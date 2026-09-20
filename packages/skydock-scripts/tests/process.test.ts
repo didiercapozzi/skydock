@@ -6,15 +6,15 @@ import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
 import { loadManifest, saveManifest } from '../src/manifest'
 import { copyFiles } from '../src/moveFiles'
-import { processingNow, processJumps } from '../src/process'
+import { cancelProcessing, processingNow, processJumps } from '../src/process'
 import { setProxyEncoder } from '../src/proxy'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
-import { createTmpDir, execSyncMock } from './fixtures'
+import { createTmpDir, execSyncMock, tellTools } from './fixtures'
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>()
-  const { execSyncMock, execViaSyncMock } = await import('./fixtures')
-  return { ...actual, execSync: execSyncMock, exec: execViaSyncMock }
+  const { execFileSyncMock, execFileViaSyncMock } = await import('./fixtures')
+  return { ...actual, execFileSync: execFileSyncMock, execFile: execFileViaSyncMock }
 })
 
 /* Where a file ends up is the whole of what SkyDock does, and nothing tested it. A tandem was
@@ -24,7 +24,6 @@ vi.mock('node:child_process', async (importOriginal) => {
 
 const tools = (cmd: string | Buffer, opts?: { encoding?: string }) => {
   const line = String(cmd)
-  if (line.startsWith('command -v')) return Buffer.from('/usr/bin/x')
   /* a 4K 16:9 clip, which is what the crop arithmetic is measured against */
   if (line.startsWith('ffprobe')) {
     const shape = 'width=3840\nheight=2160\n'
@@ -88,12 +87,14 @@ const delivered = () => {
 
 beforeEach(() => {
   outputDir = createTmpDir('skydock-process-')
+  tellTools()
   execSyncMock.mockImplementation(tools)
 })
 
 afterEach(() => {
   fs.rmSync(outputDir, { recursive: true, force: true })
   vi.clearAllMocks()
+  vi.unstubAllEnvs()
 })
 
 describe('where a tandem lands', () => {
@@ -636,5 +637,28 @@ describe('processing a clip that two jumps hold', () => {
       .filter((f) => f.path === plane.path)
       .map((f) => path.basename(path.dirname(path.dirname(f.processed?.path ?? ''))))
     expect(recorded.sort()).toEqual(['Ana Roth', 'Luc Favre'])
+  })
+})
+
+/* What is being processed can be stopped (RULES, Acting): the file under way is dropped rather than
+   left half written, nothing more is started, and the run records nothing as processed. */
+describe('cancelling what is being processed', () => {
+  it('stops the run, leaves no half-written copy, and records nothing as processed', async () => {
+    const { manifestPath } = write({
+      destination: 'Yverdon',
+      files: [clip('GX010001.MP4', 0), clip('GX010002.MP4', 1)]
+    })
+
+    const run = processJumps({ manifestPath, outputDir })
+    expect(cancelProcessing()).toBe(true)
+
+    await expect(run).rejects.toThrow(/cancelled/)
+    expect(delivered()).toEqual([])
+    expect(loadManifest(manifestPath)?.groups[0]?.processed).toBeFalsy()
+    expect(processingNow()).toBeNull()
+  })
+
+  it('says there is nothing to stop when nothing is being processed', () => {
+    expect(cancelProcessing()).toBe(false)
   })
 })

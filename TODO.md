@@ -4,6 +4,18 @@ What is still to do. What was done is in git, not here.
 
 ## Open
 
+### The installed app
+
+- Signing: unsigned installers warn on macOS and Windows. Needs an Apple Developer ID and Azure
+  Trusted Signing, both paid.
+- Updating: no updater yet — a new version is downloaded and installed over the old one.
+- Moving the work folder: it is asked for on the first run and remembered. There is no way to change
+  it afterwards but to edit the settings file.
+- exiftool does not travel with the installers, so a machine without it reads times off the files
+  rather than out of what the camera wrote.
+- The macOS and Windows installers have never been run: they are built by the workflow and have to be
+  tried on those machines.
+
 ### Code left out of the cleanup, because changing it could change behaviour (CODING.md)
 
 - Some endpoints are still called by a URL written by hand: file, thumbnail and storage-file links,

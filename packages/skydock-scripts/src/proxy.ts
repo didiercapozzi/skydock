@@ -5,8 +5,15 @@ import type { ProxyFact } from './boardAnswer'
 import { loadManifest, saveManifest } from './manifest'
 import type { Manifest, ManifestFile } from './types'
 import { following } from './live'
-import { lastComplaint, quote, runWatched } from './tools'
-import { getManifestPath, getOutputDir, hasCommand, isVideoFile } from './utils'
+import { lastComplaint, runWatched } from './tools'
+import {
+  ffmpegPath,
+  ffprobePath,
+  getManifestPath,
+  getOutputDir,
+  hasCommand,
+  isVideoFile
+} from './utils'
 
 /* A proxy is a small, all-intra copy of a clip. It exists twice over: the editor opens on proxies
    instead of transcoding every GoPro clip itself, which is the longest wait in the whole flow, and
@@ -81,8 +88,23 @@ const ENCODER_ARGS: Record<ProxyEncoder, string[]> = {
    every clip on the card, because what it objects to is the all-intra setting and nothing else. */
 const canEncode = (args: string[], before: string[] = []) => {
   try {
-    childProcess.execSync(
-      `ffmpeg -hide_banner -loglevel error ${before.join(' ')} -f lavfi -i color=black:s=320x240:d=0.2 ${args.join(' ')} ${TRIAL_ARGS.join(' ')} -f null - `,
+    childProcess.execFileSync(
+      ffmpegPath(),
+      [
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        ...before,
+        '-f',
+        'lavfi',
+        '-i',
+        'color=black:s=320x240:d=0.2',
+        ...args,
+        ...TRIAL_ARGS,
+        '-f',
+        'null',
+        '-'
+      ],
       { stdio: 'ignore', timeout: 20_000 }
     )
     return true
@@ -158,8 +180,19 @@ const getProxyPath = (file: ManifestFile, outputDir?: string) => {
 const videoShape = (src: string) => {
   if (!hasCommand('ffprobe')) return null
   try {
-    const out = childProcess.execSync(
-      `ffprobe -v error -select_streams v:0 -show_entries stream=width,height:stream_side_data=rotation -of default=nw=1 ${quote(src)}`,
+    const out = childProcess.execFileSync(
+      ffprobePath(),
+      [
+        '-v',
+        'error',
+        '-select_streams',
+        'v:0',
+        '-show_entries',
+        'stream=width,height:stream_side_data=rotation',
+        '-of',
+        'default=nw=1',
+        src
+      ],
       { encoding: 'utf-8' }
     )
     const read = (key: string) => {
@@ -230,7 +263,8 @@ const buildProxy = async (
   const partial = `${dest}.part`
   fs.mkdirSync(path.dirname(dest), { recursive: true })
   const ran = await runWatched(
-    `ffmpeg -y ${decode.join(' ')} -i ${quote(src)} -vf ${filter} ${ENCODER_ARGS[pick].join(' ')} ${CONTAINER_ARGS.join(' ')} ${quote(partial)}`,
+    ffmpegPath(),
+    ['-y', ...decode, '-i', src, '-vf', filter, ...ENCODER_ARGS[pick], ...CONTAINER_ARGS, partial],
     onPercent
   )
   if (ran.ok) {
@@ -252,8 +286,22 @@ const cropProxy = (src: string, dest: string, cropStart: number, cropEnd: number
   if (!hasCommand('ffmpeg')) return false
   fs.mkdirSync(path.dirname(dest), { recursive: true })
   try {
-    childProcess.execSync(
-      `ffmpeg -y -ss ${cropStart} -i ${quote(src)} -t ${(cropEnd - cropStart).toFixed(6)} -c copy -avoid_negative_ts make_zero ${quote(dest)} 2>/dev/null`,
+    childProcess.execFileSync(
+      ffmpegPath(),
+      [
+        '-y',
+        '-ss',
+        String(cropStart),
+        '-i',
+        src,
+        '-t',
+        (cropEnd - cropStart).toFixed(6),
+        '-c',
+        'copy',
+        '-avoid_negative_ts',
+        'make_zero',
+        dest
+      ],
       { stdio: 'ignore' }
     )
     return true

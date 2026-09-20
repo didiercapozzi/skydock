@@ -1,19 +1,59 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import * as childProcess from 'node:child_process'
 import { z } from 'zod'
 import { VIDEO_EXTENSIONS_SET } from './constants'
 import type { ManifestFile } from './types'
 import { DEFAULT_MAX_FIND_DEPTH, fileMatchesExisting, findMediaFiles, walkFiles } from './lib/fs'
 
-const hasCommand = (cmd: string) => {
-  try {
-    childProcess.execSync(`command -v ${cmd}`, { stdio: 'ignore' })
-    return true
-  } catch {
-    return false
-  }
+/* Where the tools are. The installed app carries its own ffmpeg, ffprobe and exiftool and says
+   where they are; anywhere else they are looked for on the machine's PATH, as they always were —
+   which is also why they are looked up by hand rather than asked of a shell: an app started from
+   the desktop has hardly any PATH, and no shell to ask. */
+const TOOL_ENV: Record<string, string> = {
+  ffmpeg: 'SKYDOCK_FFMPEG_PATH',
+  ffprobe: 'SKYDOCK_FFPROBE_PATH',
+  exiftool: 'SKYDOCK_EXIFTOOL_PATH'
 }
+
+/* what a program is called on this machine: `ffmpeg`, or `ffmpeg.exe` and its like on Windows */
+const programNames = (name: string) =>
+  process.platform === 'win32'
+    ? (process.env.PATHEXT ?? '.EXE;.CMD;.BAT')
+        .split(';')
+        .filter(Boolean)
+        .map((ext) => `${name}${ext.toLowerCase()}`)
+    : [name]
+
+const onPath = (name: string) => {
+  for (const dir of (process.env.PATH ?? '').split(path.delimiter).filter(Boolean))
+    for (const called of programNames(name)) {
+      const target = path.join(dir, called)
+      try {
+        if (fs.statSync(target).isFile()) return target
+      } catch {}
+    }
+  return null
+}
+
+const toolPath = (name: string) => {
+  const told = TOOL_ENV[name] ? process.env[TOOL_ENV[name]]?.trim() : undefined
+  /* Told where it is: that is the answer, there or not. The installed app carries its own tools
+     and must not quietly fall back on a different one it happens to find on the machine. */
+  if (told) return fs.existsSync(told) ? told : null
+  /* a command given as a path is that file, not a name to look for */
+  if (name.includes('/') || name.includes(path.sep)) return fs.existsSync(name) ? name : null
+  return onPath(name)
+}
+
+const hasCommand = (cmd: string) => toolPath(cmd) !== null
+
+/* The program to run for each tool: where it was found, or its plain name — a machine that keeps
+   one somewhere this lookup misses still gets a try. */
+const ffmpegPath = () => toolPath('ffmpeg') ?? 'ffmpeg'
+
+const ffprobePath = () => toolPath('ffprobe') ?? 'ffprobe'
+
+const exiftoolPath = () => toolPath('exiftool') ?? 'exiftool'
 
 const checkExiftool = () => hasCommand('exiftool')
 
@@ -170,6 +210,10 @@ const sizeOf = (file: string) => {
 }
 
 export {
+  toolPath,
+  ffmpegPath,
+  ffprobePath,
+  exiftoolPath,
   checkExiftool,
   DEFAULT_MAX_FIND_DEPTH,
   fileMatchesExisting,

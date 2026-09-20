@@ -1,14 +1,23 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import * as streams from 'node:stream/promises'
 import { startOfFiles } from './clustering'
 import { loadManifest, saveManifest } from './manifest'
 import { isWholeFrame, orientationAfter, pictureFilter } from './frameCrop'
 import { cropProxy, DRI_DEVICE, getCutProxyDir, proxyEncoder, videoShape } from './proxy'
 import type { ProxyEncoder } from './proxy'
 import { following } from './live'
-import { lastComplaint, quote, run, runWatched } from './tools'
+import { lastComplaint, run, runWatched, stoppable } from './tools'
 import type { ManifestFile, ManifestGroup } from './types'
-import { getManifestPath, getOutputDir, hasCommand, isVideoFile, parseDayEpoch } from './utils'
+import {
+  exiftoolPath,
+  ffmpegPath,
+  getManifestPath,
+  getOutputDir,
+  hasCommand,
+  isVideoFile,
+  parseDayEpoch
+} from './utils'
 import {
   buildFsTime,
   buildGroupBaseName,
@@ -27,9 +36,9 @@ type ProcessOptions = {
   destination?: string
 }
 
-/* a tool that has to succeed: what it printed, or the reason it did not */
-const shell = async (line: string) => {
-  const ran = await run(line)
+/* exiftool where it has to succeed: what it printed, or the reason it did not */
+const exif = async (args: string[]) => {
+  const ran = await run(exiftoolPath(), args)
   if (!ran.ok) throw new Error(lastComplaint(ran.stderr))
   return ran.stdout
 }
@@ -44,12 +53,9 @@ const shownShape = (src: string) => {
 /* A photo is turned by its orientation tag, added to whatever turn it already carries: nothing is
    re-encoded, so nothing is lost, and every viewer draws it the way the tag says. */
 const turnPhoto = async (dest: string, rotation: 90 | 180 | 270) => {
-  const current = Number.parseInt(
-    (await shell(`exiftool -n -s3 -Orientation ${quote(dest)}`)).trim(),
-    10
-  )
+  const current = Number.parseInt((await exif(['-n', '-s3', '-Orientation', dest])).trim(), 10)
   const next = orientationAfter(Number.isFinite(current) ? current : 1, rotation)
-  await shell(`exiftool -n -overwrite_original -q -Orientation=${next} ${quote(dest)}`)
+  await exif(['-n', '-overwrite_original', '-q', `-Orientation=${next}`, dest])
 }
 
 /* Cutting the ends off a clip moves no pixels, so the stream is copied: instant, and not a frame
@@ -66,8 +72,8 @@ const DELIVERY_ARGS: Record<ProxyEncoder, string[]> = {
 
 const timeArgs = (cropStart?: number | null, cropEnd?: number | null) =>
   cropStart != null && cropEnd != null
-    ? `-ss ${cropStart} -t ${(cropEnd - cropStart).toFixed(6)}`
-    : ''
+    ? ['-ss', String(cropStart), '-t', (cropEnd - cropStart).toFixed(6)]
+    : []
 
 type OnPercent = (percent: number) => void
 
@@ -85,7 +91,18 @@ const trimVideo = async (
 ) => {
   if (!hasCommand('ffmpeg')) return false
   const ran = await runWatched(
-    `ffmpeg -y ${timeArgs(cropStart, cropEnd)} -i ${quote(src)} -c copy -avoid_negative_ts make_zero ${quote(dest)} 2>/dev/null`,
+    ffmpegPath(),
+    [
+      '-y',
+      ...timeArgs(cropStart, cropEnd),
+      '-i',
+      src,
+      '-c',
+      'copy',
+      '-avoid_negative_ts',
+      'make_zero',
+      dest
+    ],
     onPercent,
     trimSeconds(cropStart, cropEnd)
   )
@@ -93,8 +110,8 @@ const trimVideo = async (
 }
 
 /* ffmpeg's own words when it fails — the one line that says why, not the stage that gave up after */
-const runFfmpeg = async (line: string, onPercent?: OnPercent, seconds?: number | null) => {
-  const ran = await runWatched(line, onPercent, seconds)
+const runFfmpeg = async (args: string[], onPercent?: OnPercent, seconds?: number | null) => {
+  const ran = await runWatched(ffmpegPath(), args, onPercent, seconds)
   return ran.ok ? { ok: true as const } : { ok: false as const, reason: lastComplaint(ran.stderr) }
 }
 
@@ -111,7 +128,10 @@ const copyWhole = async (src: string, dest: string, onPercent?: OnPercent) => {
         }, 500)
       : null
   try {
-    await fs.promises.copyFile(src, dest)
+    /* streamed rather than copied in one call, so a run that is cancelled stops mid-file */
+    await streams.pipeline(fs.createReadStream(src), fs.createWriteStream(dest), {
+      signal: stoppable().getStore()
+    })
   } finally {
     if (watch) clearInterval(watch)
   }
@@ -135,16 +155,28 @@ const recodeVideo = async (
   onPercent?: OnPercent
 ) => {
   if (!hasCommand('ffmpeg')) return { ok: false as const, reason: 'ffmpeg is not installed' }
-  const run = (pick: ProxyEncoder) => {
+  const encode = (pick: ProxyEncoder) => {
     const decode =
       pick === 'nvenc'
-        ? '-hwaccel cuda'
+        ? ['-hwaccel', 'cuda']
         : pick === 'vaapi'
-          ? `-vaapi_device ${DRI_DEVICE()} -hwaccel vaapi`
-          : ''
+          ? ['-vaapi_device', DRI_DEVICE(), '-hwaccel', 'vaapi']
+          : []
     const chain = pick === 'vaapi' ? `${filter},format=nv12,hwupload` : filter
     return runFfmpeg(
-      `ffmpeg -y ${decode} ${timeArgs(cropStart, cropEnd)} -i ${quote(src)} -vf ${chain} ${DELIVERY_ARGS[pick].join(' ')} -c:a copy ${quote(dest)}`,
+      [
+        '-y',
+        ...decode,
+        ...timeArgs(cropStart, cropEnd),
+        '-i',
+        src,
+        '-vf',
+        chain,
+        ...DELIVERY_ARGS[pick],
+        '-c:a',
+        'copy',
+        dest
+      ],
       onPercent,
       trimSeconds(cropStart, cropEnd)
     )
@@ -153,9 +185,9 @@ const recodeVideo = async (
      format, a clip it cannot do is done again on the processor — slower, and certain wherever
      ffmpeg is — so no machine is ever left unable to deliver a turned or cropped clip. */
   const pick = proxyEncoder()
-  const first = await run(pick)
+  const first = await encode(pick)
   if (first.ok || pick === 'cpu') return first
-  const again = await run('cpu')
+  const again = await encode('cpu')
   if (again.ok) {
     console.warn(
       `[Process] ${path.basename(src)}: the graphics card could not (${first.reason}) — done on the processor`
@@ -167,11 +199,22 @@ const recodeVideo = async (
 
 const updateMetadata = async (files: string[]) => {
   if (files.length === 0) return
-  const paths = files.map(quote).join(' ')
   try {
-    await shell(
-      `exiftool -P -overwrite_original -m -q '-CreateDate<FileModifyDate' '-MediaCreateDate<FileModifyDate' '-TrackCreateDate<FileModifyDate' '-MediaModifyDate<FileModifyDate' '-TrackModifyDate<FileModifyDate' '-ModifyDate<FileModifyDate' '-DateTimeOriginal<FileModifyDate' '-CreationDate<FileModifyDate' ${paths}`
-    )
+    await exif([
+      '-P',
+      '-overwrite_original',
+      '-m',
+      '-q',
+      '-CreateDate<FileModifyDate',
+      '-MediaCreateDate<FileModifyDate',
+      '-TrackCreateDate<FileModifyDate',
+      '-MediaModifyDate<FileModifyDate',
+      '-TrackModifyDate<FileModifyDate',
+      '-ModifyDate<FileModifyDate',
+      '-DateTimeOriginal<FileModifyDate',
+      '-CreationDate<FileModifyDate',
+      ...files
+    ])
   } catch (e) {
     throw new Error(
       `EXIF failed for ${path.basename(path.dirname(files[0]))}: ${e instanceof Error ? e.message : String(e)} — install exiftool`
@@ -305,8 +348,20 @@ const writeOne = async (
     live.done(true)
   } catch (e) {
     live.done(false)
+    /* a file cut off by a cancel is half written, and must not pass for a copy */
+    if (stoppable().getStore()?.aborted) fs.rmSync(dest, { force: true })
     throw e
   }
+}
+
+class ProcessingCancelled extends Error {}
+
+/* checked before each file: a run that was cancelled starts nothing more */
+const stopIfCancelled = () => {
+  if (stoppable().getStore()?.aborted)
+    throw new ProcessingCancelled(
+      'Processing was cancelled. What was not finished is left to process again.'
+    )
 }
 
 const writeGroup = async (
@@ -322,6 +377,7 @@ const writeGroup = async (
      record is, and a file that was never recorded already reads as unprepared. So stopping part
      way costs the files it did not reach, and nothing more. */
   for (const file of group.files) {
+    stopIfCancelled()
     if (!fs.existsSync(file.path)) continue
     const targetDir = flat ? dir : path.join(dir, isVideoFile(file.path) ? 'videos' : 'photos')
     fs.mkdirSync(targetDir, { recursive: true })
@@ -365,6 +421,7 @@ const writeLooseFiles = async (
   const stem = toFileStem(destination, 'destination')
   const written: string[] = []
   for (const file of files) {
+    stopIfCancelled()
     if (!fs.existsSync(file.path)) continue
     fs.mkdirSync(dir, { recursive: true })
     const ext = path.extname(file.path).slice(1).toLowerCase()
@@ -382,7 +439,12 @@ const writeLooseFiles = async (
 /* What is being prepared right now. The server outlives the page that asked: a refresh drops the
    request but not the work, so the page that comes back asks here rather than offering to start
    the same thing a second time on top of it. */
-type Running = { groupIds: string[]; destinations: string[]; done: Promise<unknown> }
+type Running = {
+  groupIds: string[]
+  destinations: string[]
+  done: Promise<unknown>
+  stop: AbortController
+}
 let running: Running | null = null
 
 const processingNow = () =>
@@ -414,16 +476,33 @@ const processJumps = async (options?: ProcessOptions) => {
   const job: Running = {
     groupIds: options?.groupIds ?? [],
     destinations: options?.destination ? [options.destination] : [],
-    done: Promise.resolve()
+    done: Promise.resolve(),
+    stop: new AbortController()
   }
-  const done = runProcess(options)
+  const done = stoppable().run(job.stop.signal, () => runProcess(options))
   job.done = done
   running = job
   try {
     return await done
+  } catch (e) {
+    /* whatever a cancel cut short — a command stopped, a copy cut off — is said as the cancel it is */
+    if (job.stop.signal.aborted && !(e instanceof ProcessingCancelled))
+      throw new ProcessingCancelled(
+        'Processing was cancelled. What was not finished is left to process again.'
+      )
+    throw e
   } finally {
     if (running === job) running = null
   }
+}
+
+/* Stops what is being processed: the file under way is dropped and nothing more is started; the
+   copies already finished stay on the disk, and the run records nothing as processed. False when
+   nothing was running. */
+const cancelProcessing = () => {
+  if (!running) return false
+  running.stop.abort()
+  return true
 }
 
 const runProcess = async (options?: ProcessOptions) => {
@@ -570,6 +649,7 @@ const runProcess = async (options?: ProcessOptions) => {
 }
 
 export {
+  cancelProcessing,
   getDestinationDir,
   getGroupProcessedDir,
   isFlatGroup,

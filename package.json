@@ -24,6 +24,7 @@
     "predev": "npx --yes kill-port 5173 || true",
     "scan": "npx tsx packages/skydock-scripts/src/scan.ts",
     "start": "npm run start --workspace=@workspace/web",
+    "tauri": "tauri",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },

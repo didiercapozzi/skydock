@@ -17,6 +17,23 @@ Every time is on the local clock, whoever wrote it: a photo keeps its time that 
 GoPro's video, but a DJI keeps a video's time in UTC, as the format says it should, so it is turned
 into local time — otherwise a DJI's clips would sit hours away from its own photos.
 
+## Where SkyDock runs
+
+SkyDock is installed on the machine the footage is edited on — a Mac, a Windows machine or a Linux
+one — and opens as a window of its own. Nothing else has to be installed with it: it carries the
+tools it needs to read and write video. The editor is the one exception, since it is somebody's
+editing program and not ours: a montage is prepared whether or not it is installed, and opening one
+needs it.
+
+The first time it is opened it asks where to keep its work, offering a folder of its own in the
+machine's videos. That answer is remembered, and everything below — the originals, the copies, the
+proxies, the record of it all — is under it. The bin is kept with the work, so putting a file aside
+never copies it from one disk to another; the app's own settings, the storage connection among them,
+are kept apart from the work.
+
+A camera is a drive with a `DCIM` folder at its top, wherever this machine mounts such things: a
+drive letter of its own on Windows, a volume on a Mac, a mount under the usual places on Linux.
+
 ## Principles
 
 Everything below follows from these.
@@ -251,7 +268,8 @@ output/
 ```
 
 The board's own record of the work sits at the top of the output folder. The bin and the app's own
-settings — the storage connection — live apart from it, each in a folder of its own that is a setting.
+settings — the storage connection — each live in a folder of their own: the bin with the work, so a
+file put aside is moved rather than copied across disks, and the settings apart from it.
 
 Of a passenger's folder, only the film and the photos archive are handed over. The project and the
 working copies stay on the machine; the originals go to the backup.
@@ -444,7 +462,10 @@ by hand is noticed the same way. Freed tandems are not looked at; nothing of the
 
 **The header** holds what applies to the whole board: scanning, the editing templates, a camera being
 copied off, how many clips still wait for their proxy, the storage — whether it is connected, to what, a
-way to check what it holds now, and a way to disconnect — rows or grid, and light or dark. With nothing scanned yet, the board is a
+way to check what it holds now, and a way to disconnect — rows or grid, and light or dark. It also warns
+when the disk the work is on runs out of room — almost full under five gigabytes left, saying how much,
+and full under one, saying that copying a camera, making proxies and saving will fail — and follows the
+disk while the board is open, whatever else on the machine is filling it. With nothing scanned yet, the board is a
 single Scan button and the instruction to copy the cameras first.
 
 **Light and dark.** The board follows the machine by default and can be pinned light or dark. The
@@ -455,14 +476,19 @@ choice is remembered on that machine and applied before the first thing is drawn
 A file is opened by double-clicking it, from the inspector, or with Enter on the file being looked at,
 playing its proxy when there is one. A clip the browser cannot draw — 4K HEVC, as a DJI or a recent GoPro
 shoots — says so in place of its picture until its proxy is made, and then plays the proxy without being
-opened again. Space plays a clip and pauses it, whichever button was pressed last. The picture fills
+opened again. A browser that cannot play H.264 — the format proxies are made in — can show no clip at
+all, and says so, naming the browsers that do. Space plays a clip and pauses it, whichever button was pressed last. The picture fills
 the left of the dialog
 with the timeline under it; the right side says what is being decided: the trim, the turn, the frame,
 and what is already on the file. The top names the file and lets you step to the next; the bottom holds
 Save, offered only once something changed, and Reset, which clears everything at once. A loose file is
 cropped the same way as one in a jump, with no jump to give its frame or turn to.
 
-**Trimming.** Drag the ends of the timeline, or set the start and end at the playhead. Trimming moves no
+**Trimming.** A clip already trimmed opens where its trim starts, which is the moment the copy made
+from it begins, and stepping to another clip opens that clip on its own trim, frame and turn — never
+those of the one just left. Dragging along the timeline moves the picture with the pointer, the frame following as
+fast as it can be drawn and never left stuck when the pointer stops. Drag the ends of the timeline, or
+set the start and end at the playhead. Trimming moves no
 pixels: the clip is copied with its ends cut off, losing nothing.
 
 **Framing.** A mount, a strut or a finger in a corner is cut away by dragging a rectangle over the
@@ -499,7 +525,10 @@ film is rendered. Freeing space is offered beside the upload once there is somet
 
 **Processing** runs on the machine, not in the page: closing or refreshing the page does not stop it,
 and the board stays usable meanwhile. A page opened while processing runs says so and updates itself
-when it is done. One processing runs at a time; asking for another is refused. Edits made meanwhile are
+when it is done. One processing runs at a time; asking for another is refused. What is being processed
+can be cancelled from where it was started: the file under way is dropped rather than left half written,
+nothing more is started, the copies already finished stay on the disk, and nothing of the run counts as
+processed, so processing again takes it up. Edits made meanwhile are
 kept, and a jump changed while its copies were being written is not marked processed.
 
 **Nothing is uploaded until everything in it is processed**, and what is waiting is said plainly.

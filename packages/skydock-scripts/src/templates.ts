@@ -3,11 +3,11 @@ import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { Unzip, UnzipInflate } from 'fflate'
-import { editorCommand, tokenize } from './editor'
+import { editorParts } from './editor'
 import { walkFiles } from './lib/fs'
 import { availableTemplates, inspectTemplate } from './montage'
 import type { TemplateFact } from './templateEntry'
-import { quote, run } from './tools'
+import { run } from './tools'
 
 /* The editing templates this machine has, what each is made of, and how one is brought in.
 
@@ -45,11 +45,11 @@ const editorVersion = (outputDir: string) => {
   } catch {
     /* no watcher: the editor is asked directly */
   }
-  const program = tokenize(editorCommand())?.[0]
+  const program = editorParts()?.[0]
   if (!program || path.basename(program) === 'editor-bridge.sh') return null
   try {
     const said = childProcess
-      .execSync(`${quote(program)} --version`, {
+      .execFileSync(program, ['--version'], {
         encoding: 'utf-8',
         timeout: 5000,
         stdio: ['ignore', 'pipe', 'ignore']
@@ -118,11 +118,11 @@ const unzipInto = async (archive: string, dir: string) => {
 }
 
 const untarInto = async (archive: string, dir: string) => {
-  const listed = await run(`tar -tf ${quote(archive)}`)
+  const listed = await run('tar', ['-tf', archive])
   if (!listed.ok) throw new Error('The archive cannot be read as a tar archive.')
   const bad = listed.stdout.split('\n').find((entry) => entry && escapes(entry))
   if (bad) throw new Error(`${bad} would land outside the template's folder`)
-  const unpacked = await run(`tar -xf ${quote(archive)} -C ${quote(dir)} --no-same-owner`)
+  const unpacked = await run('tar', ['-xf', archive, '-C', dir, '--no-same-owner'])
   if (!unpacked.ok) throw new Error('The archive could not be unpacked.')
 }
 

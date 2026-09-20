@@ -68,8 +68,16 @@ import type { PassengerEmail } from './passengerEmail'
 import { liveEventSchema, publish, subscribe } from './live'
 import type { LiveEvent } from './live'
 import { lastSegment, parentOf } from './paths'
-import { getGroupProcessedDir, processingNow, processJumps, whenProcessed } from './process'
+import {
+  cancelProcessing,
+  getGroupProcessedDir,
+  processingNow,
+  processJumps,
+  whenProcessed
+} from './process'
 import { statProxies } from './proxy'
+import { rememberOutputDir, resolveOutputDir } from './settings'
+import { stopTools } from './tools'
 import { scanMedia } from './scan'
 import {
   EDIT_LOCKED,
@@ -130,6 +138,9 @@ import {
 } from './workspace'
 
 export {
+  rememberOutputDir,
+  stopTools,
+  resolveOutputDir,
   freeablePlace,
   jsonText,
   startOfFiles,
@@ -196,6 +207,7 @@ export {
   passengerOf,
   photosNameOf,
   pictureFilter,
+  cancelProcessing,
   processingNow,
   processJumps,
   readUploadProgress,

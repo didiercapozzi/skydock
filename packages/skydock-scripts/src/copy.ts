@@ -1,8 +1,8 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { readExifMap } from './lib/exif'
-import { run, quote } from './tools'
-import { findMediaFiles, getOutputDir, isCliModule } from './utils'
+import { findMediaFiles, sameBytes } from './lib/fs'
+import { getOutputDir, isCliModule } from './utils'
 
 /* Copying off a camera, into the originals: every file into a folder named after the day it was
    shot, and never anything written back to the camera (RULES, The workflow). */
@@ -56,7 +56,7 @@ const alreadyThere = async (src: string, srcStat: fs.Stats, dir: string) => {
     }
     if (stat.size !== srcStat.size) continue
     if (Math.floor(stat.mtimeMs / 1000) === Math.floor(srcStat.mtimeMs / 1000)) return existing
-    if ((await run(`cmp -s ${quote(src)} ${quote(existing)}`)).ok) return existing
+    if (sameBytes(src, existing)) return existing
   }
   return null
 }

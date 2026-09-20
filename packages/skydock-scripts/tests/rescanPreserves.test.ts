@@ -5,11 +5,12 @@ import * as path from 'node:path'
 import { loadManifest, saveManifest } from '../src/manifest'
 import { copyFiles } from '../src/moveFiles'
 import { scanMedia } from '../src/scan'
-import { createTmpDir, execSyncMock, makeFfmpegMock, writeTempFile } from './fixtures'
+import { createTmpDir, execSyncMock, makeFfmpegMock, tellTools, writeTempFile } from './fixtures'
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>()
-  return { ...actual, execSync: (await import('./fixtures')).execSyncMock }
+  const { execFileSyncMock, execFileViaSyncMock } = await import('./fixtures')
+  return { ...actual, execFileSync: execFileSyncMock, execFile: execFileViaSyncMock }
 })
 
 describe('a scan keeps the work already done', () => {
@@ -17,12 +18,14 @@ describe('a scan keeps the work already done', () => {
 
   beforeEach(() => {
     outputDir = createTmpDir('skydock-rescan-')
+    tellTools(['exiftool'])
     execSyncMock.mockImplementation(makeFfmpegMock())
   })
 
   afterEach(() => {
     fs.rmSync(outputDir, { recursive: true, force: true })
     vi.clearAllMocks()
+    vi.unstubAllEnvs()
   })
 
   /* a scan keeps what SkyDock decided about every file and reads only what the disk measures */

@@ -5,11 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { copyFiles, deleteJump, moveFiles } from '../src/moveFiles'
 import { resetFresh, resetFreshTimes } from '../src/resetFresh'
 import type { Manifest, ManifestFile } from '../src/types'
-import { createTmpDir, execSyncMock, makeFfmpegMock } from './fixtures'
+import { createTmpDir, execSyncMock, makeFfmpegMock, tellTools } from './fixtures'
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>()
-  return { ...actual, execSync: (await import('./fixtures')).execSyncMock }
+  const { execFileSyncMock, execFileViaSyncMock } = await import('./fixtures')
+  return { ...actual, execFileSync: execFileSyncMock, execFile: execFileViaSyncMock }
 })
 
 /* Two ways back to how the cameras left things. A file sent back to be sorted is on the time its
@@ -64,12 +65,14 @@ const board = (): Manifest => {
 
 beforeEach(() => {
   dir = createTmpDir('skydock-reset-')
+  tellTools(['exiftool'])
   execSyncMock.mockImplementation(makeFfmpegMock())
 })
 
 afterEach(() => {
   fs.rmSync(dir, { recursive: true, force: true })
   vi.clearAllMocks()
+  vi.unstubAllEnvs()
 })
 
 describe('a file sent back to be sorted', () => {

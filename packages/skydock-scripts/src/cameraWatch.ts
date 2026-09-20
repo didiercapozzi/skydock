@@ -14,14 +14,35 @@ import { scanMedia } from './scan'
    camera; taking a file off it is a separate thing, asked for on its page and allowed only for a
    file proved to be here already. */
 
-/* Where cameras get mounted. `/mnt/osmo` is the host's media folder as the development container
-   sees it; `/media` and `/run/media` are where a desktop mounts removable drives. An empty setting
-   turns this off. */
-const cameraRoots = () =>
-  (process.env.SKYDOCK_CAMERA_ROOTS ?? '/mnt/osmo:/media:/run/media')
-    .split(':')
+/* Where cameras turn up, which is a different place on each system: a Linux desktop mounts a
+   removable drive under `/media` or `/run/media`, and `/mnt/osmo` is the host's media folder as the
+   development container sees it; macOS puts every drive in `/Volumes`; Windows gives each one a
+   letter of its own, so there every drive is a place to look.
+
+   Somewhere else can be named instead, several separated the way this system separates paths — not
+   by a colon, which is part of `C:\`. Naming nowhere turns this off. */
+const DEFAULT_ROOTS: Record<string, string[]> = {
+  darwin: ['/Volumes'],
+  linux: ['/mnt/osmo', '/media', '/run/media']
+}
+
+/* every drive letter this Windows machine has, which is where its cameras are */
+const windowsDrives = () =>
+  Array.from({ length: 26 }, (_, i) => `${String.fromCharCode(65 + i)}:${path.sep}`).filter(
+    (drive) => fs.existsSync(drive)
+  )
+
+const cameraRoots = () => {
+  const told = process.env.SKYDOCK_CAMERA_ROOTS
+  if (told === undefined)
+    return process.platform === 'win32'
+      ? windowsDrives()
+      : (DEFAULT_ROOTS[process.platform] ?? DEFAULT_ROOTS.linux)
+  return told
+    .split(path.delimiter)
     .map((root) => root.trim())
     .filter(Boolean)
+}
 
 const EVERY_MS = 2000
 
@@ -31,26 +52,52 @@ const unescapeMount = (field: string) =>
     String.fromCharCode(Number.parseInt(octal, 8))
   )
 
-/* The drives mounted under the roots that are cameras: a DCIM folder at the top, and nothing else
-   asked of them. Read off the system's own list of mounts, which says the moment one comes or goes. */
-const mountedCameras = (mountinfo = '/proc/self/mountinfo') => {
+/* What Linux has mounted under those places, read off the system's own list of mounts, which says
+   the moment one comes or goes. */
+const mountsUnder = (roots: string[], mountinfo = '/proc/self/mountinfo') => {
   let text: string
   try {
     text = fs.readFileSync(mountinfo, 'utf-8')
   } catch {
     return []
   }
-  const roots = cameraRoots().map((root) => path.resolve(root))
   const mounted = text.split('\n').flatMap((line) => {
     const point = line.split(' ')[4]
     return point ? [unescapeMount(point)] : []
   })
-  return [...new Set(mounted)].filter(
-    (point) =>
-      roots.some((root) => point.startsWith(`${root}${path.sep}`)) &&
-      fs.existsSync(path.join(point, 'DCIM'))
-  )
+  return mounted.filter((point) => roots.some((root) => point.startsWith(`${root}${path.sep}`)))
 }
+
+/* what macOS has in `/Volumes`: a drive is a folder there, and there is no list of mounts to read */
+const foldersUnder = (roots: string[]) =>
+  roots.flatMap((root) => {
+    try {
+      return fs
+        .readdirSync(root, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory() || entry.isSymbolicLink())
+        .map((entry) => path.join(root, entry.name))
+    } catch {
+      return []
+    }
+  })
+
+/* The drives that are cameras: a DCIM folder at the top, and nothing else asked of them. On Windows
+   the drive is the camera; everywhere else it is mounted somewhere under the places looked at. */
+const mountedCameras = (mountinfo?: string) => {
+  const roots = cameraRoots().map((root) => path.resolve(root))
+  if (roots.length === 0) return []
+  const drives =
+    process.platform === 'win32'
+      ? roots
+      : process.platform === 'darwin'
+        ? foldersUnder(roots)
+        : mountsUnder(roots, mountinfo)
+  return [...new Set(drives)].filter((point) => fs.existsSync(path.join(point, 'DCIM')))
+}
+
+/* What a camera is called: the name of where it is mounted — or, on Windows, its drive letter,
+   since a drive's root has no name of its own. */
+const cameraName = (mount: string) => path.basename(mount) || mount.replace(/[\\/]+$/, '')
 
 type Watch = {
   timer: ReturnType<typeof setInterval> | null
@@ -132,7 +179,7 @@ const lookForCameras = (outputDir: string, mountinfo?: string) => {
     state.said = mounted.join('\n')
     publish({
       kind: 'cameras',
-      mounted: mounted.map((mount) => ({ camera: path.basename(mount), mount }))
+      mounted: mounted.map((mount) => ({ camera: cameraName(mount), mount }))
     })
   }
   if (!state.copying && state.queue.length > 0) void copyNext(outputDir)
@@ -155,4 +202,4 @@ const watchCameras = (outputDir: string) => {
 /* whether a camera is being copied right now — nothing is taken off one while it is read */
 const cameraCopying = () => watch().copying || watch().queue.length > 0
 
-export { cameraCopying, lookForCameras, mountedCameras, watchCameras }
+export { cameraCopying, cameraName, lookForCameras, mountedCameras, watchCameras }

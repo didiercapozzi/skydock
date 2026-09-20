@@ -1,5 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import * as url from 'node:url'
 import { randomUUID } from 'node:crypto'
 import { XMLBuilder, XMLParser, XMLValidator } from 'fast-xml-parser'
 import { z } from 'zod'
@@ -101,8 +102,14 @@ const decodeXml = (value: string) =>
 const encodeXml = (value: string) =>
   XML_ENTITIES.reduce((out, [entity, char]) => out.split(char).join(entity), value)
 
-const repoTemplateDir = () =>
-  path.join(path.dirname(new URL(import.meta.url).pathname), '..', '..', '..', 'templates')
+/* The templates the app itself carries, as against the ones a dropzone brings in. The installed app
+   says where they are, since a packaged bundle is one file and has no folder of its own to count
+   from; run from the repo, they sit beside the code. */
+const repoTemplateDir = () => {
+  const told = process.env.SKYDOCK_TEMPLATES_DIR?.trim()
+  if (told) return told
+  return path.join(path.dirname(url.fileURLToPath(import.meta.url)), '..', '..', '..', 'templates')
+}
 
 /* A template is a folder holding its own project and the music, logos and title images it uses, so
    the assets are stored once and referenced, never copied per passenger. A bare `.kdenlive` sitting
