@@ -34,9 +34,14 @@ const montageNote = ({
 }
 
 /* what a drop from the computer came to, in one line */
-const importNote = ({ added, moved, there, failed, where }: ImportOutcome) =>
+const importNote = ({ added, moved, there, kept, failed, where }: ImportOutcome) =>
   [
-    added > 0 ? `Added ${plural(added, 'file')} to ${where}` : null,
+    /* named when it is one file, which is what a drop usually is */
+    added.length === 1
+      ? `${added[0]} has been added to ${where}`
+      : added.length > 1
+        ? `${plural(added.length, 'file')} have been added to ${where}`
+        : null,
     /* already on the board: moved here, the way a drag on the board would have */
     moved.length === 1
       ? `Moved ${moved[0]!.name} from ${moved[0]!.from} to ${where}`
@@ -44,6 +49,8 @@ const importNote = ({ added, moved, there, failed, where }: ImportOutcome) =>
         ? `Moved ${moved.length} files already on the board to ${where}`
         : null,
     there > 0 ? `${there} already in ${where}` : null,
+    /* nothing to do and a reason, which reads as itself rather than as a failure */
+    kept.length > 0 ? kept.join('; ') : null,
     failed.length > 0 ? `not added — ${failed.join('; ')}` : null
   ]
     .filter(Boolean)

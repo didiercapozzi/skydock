@@ -7,9 +7,11 @@ const fromComputer = (e: React.DragEvent) => e.dataTransfer.types.includes('File
 
 const importAnswerSchema = z.object({
   ok: z.boolean(),
-  outcome: z.enum(['added', 'moved', 'there', 'kept']).optional(),
+  outcome: z.enum(['added', 'moved', 'copied', 'there', 'kept']).optional(),
   filename: z.string().optional(),
   from: z.string().optional(),
+  /* where footage taken into a jump goes on living as well */
+  stays: z.string().optional(),
   reason: z.string().optional(),
   error: z.string().optional()
 })
@@ -23,7 +25,7 @@ const importFiles = async (
   onEach: (index: number, total: number, name: string) => void
 ) => {
   const files = [...list]
-  const tally: ImportOutcome = { added: 0, moved: [], there: 0, failed: [], where }
+  const tally: ImportOutcome = { added: [], moved: [], there: 0, kept: [], failed: [], where }
   for (const [index, file] of files.entries()) {
     onEach(index, files.length, file.name)
     const params = new URLSearchParams({
@@ -40,8 +42,9 @@ const importFiles = async (
         tally.moved.push({ name: said.filename ?? file.name, from: said.from ?? 'elsewhere' })
       else if (said.outcome === 'there') tally.there += 1
       else if (said.outcome === 'kept')
-        tally.failed.push(`${file.name} stayed where it is: ${said.reason ?? 'it cannot move'}`)
-      else tally.added += 1
+        tally.kept.push(`${file.name} stays where it is — ${said.reason ?? 'it cannot move'}`)
+      /* added, or already on the board and now in this jump as well — the same thing from here */ else
+        tally.added.push(said.filename ?? file.name)
     } catch {
       tally.failed.push(`${file.name}: the copy was cut off`)
     }

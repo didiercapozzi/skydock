@@ -132,6 +132,90 @@ describe('adding a file from the computer', () => {
     expect(after.groups).toHaveLength(0)
   })
 
+  /* A briefing is filmed once with every passenger of the day in it, so the same clip belongs to all
+     of their films. Dropped on a second tandem it joins that one and stays in the first: one original
+     on the disk, and each jump holding it as its own (RULES, Jumps). */
+  it('takes the same footage into another jump as well, leaving it in the one it is in', async () => {
+    setup({
+      groups: [
+        {
+          id: 'g1',
+          label: 'jump',
+          day: '01.08.2026',
+          destination: 'Tandems',
+          passenger: { firstname: 'Luc', lastname: 'Favre' },
+          files: []
+        },
+        {
+          id: 'g2',
+          label: 'jump',
+          day: '01.08.2026',
+          destination: 'Tandems',
+          passenger: { firstname: 'Juliana', lastname: 'Roth' },
+          files: []
+        }
+      ]
+    })
+    await add('briefing.mp4', 'the theory', { kind: 'group', groupId: 'g1' })
+
+    const again = await add('briefing.mp4', 'the theory', { kind: 'group', groupId: 'g2' })
+
+    expect(again).toMatchObject({ outcome: 'copied', stays: 'Luc Favre' })
+    const after = loadManifest(manifestPath())!
+    expect(after.groups.map((g) => g.files.map((f) => f.filename))).toEqual([
+      ['briefing.mp4'],
+      ['briefing.mp4']
+    ])
+    /* one original on the disk, held twice */
+    expect(new Set(after.groups.flatMap((g) => g.files.map((f) => f.path))).size).toBe(1)
+    expect(fs.readdirSync(path.join(outputDir, 'original_files', '2026-08-01'))).toEqual([
+      'briefing.mp4'
+    ])
+  })
+
+  /* An edit somewhere else is no obstacle: nothing about that jump changes. */
+  it('takes it into another jump even while the jump it is in has an edit', async () => {
+    setup({
+      groups: [
+        {
+          id: 'g1',
+          label: 'jump',
+          day: '01.08.2026',
+          destination: 'Tandems',
+          passenger: { firstname: 'Luc', lastname: 'Favre' },
+          files: []
+        },
+        {
+          id: 'g2',
+          label: 'jump',
+          day: '01.08.2026',
+          destination: 'Tandems',
+          passenger: { firstname: 'Juliana', lastname: 'Roth' },
+          files: []
+        }
+      ]
+    })
+    await add('briefing.mp4', 'the theory', { kind: 'group', groupId: 'g1' })
+    const folder = path.join(outputDir, 'processed', 'Tandems', 'Luc Favre')
+    fs.mkdirSync(folder, { recursive: true })
+    fs.writeFileSync(path.join(folder, 'luc.kdenlive'), '<mlt/>')
+
+    const again = await add('briefing.mp4', 'the theory', { kind: 'group', groupId: 'g2' })
+
+    expect(again).toMatchObject({ outcome: 'copied', stays: 'Luc Favre' })
+    expect(loadManifest(manifestPath())!.groups[0]?.files).toHaveLength(1)
+  })
+
+  it('says so, and changes nothing, when the jump already holds that footage', async () => {
+    setup()
+    await add('briefing.mp4', 'the theory', { kind: 'group', groupId: 'g1' })
+
+    const again = await add('briefing again.mp4', 'the theory', { kind: 'group', groupId: 'g1' })
+
+    expect(again.outcome).toBe('there')
+    expect(loadManifest(manifestPath())!.groups[0]?.files).toHaveLength(1)
+  })
+
   it('leaves it in a tandem that has an edit, and says why', async () => {
     setup()
     await add('clip.mp4', 'same', { kind: 'group', groupId: 'g1' })

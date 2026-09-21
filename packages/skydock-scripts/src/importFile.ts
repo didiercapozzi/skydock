@@ -7,7 +7,7 @@ import { MEDIA_EXTENSIONS_SET } from './constants'
 import { computeFileId } from './fileId'
 import { loadManifest, saveManifest } from './manifest'
 import { cameraTimes } from './scan'
-import { moveFiles } from './moveFiles'
+import { copyFiles, moveFiles } from './moveFiles'
 import { frozenTandems, isTandem } from './tandem'
 import type { Manifest, ManifestFile } from './types'
 import { getExtension } from './utils'
@@ -25,11 +25,12 @@ type ImportTarget =
   | { kind: 'destination'; name: string }
   | { kind: 'sort' }
 
-/* Added, moved there from somewhere else on the board, already exactly there, or kept where it is
-   for a reason — the board says which. */
+/* Added, moved there from somewhere else on the board, taken into a jump while staying in the one it
+   was already in, already exactly there, or kept where it is for a reason — the board says which. */
 type ImportResult =
   | { filename: string; outcome: 'added' }
   | { filename: string; outcome: 'moved'; from: string }
+  | { filename: string; outcome: 'copied'; stays: string }
   | { filename: string; outcome: 'there' }
   | { filename: string; outcome: 'kept'; reason: string }
 
@@ -61,10 +62,18 @@ const placeOf = (manifest: Manifest, id: string) => {
   return manifest.files.find((f) => f.id === id)?.destination ?? 'Fresh files'
 }
 
-/* A file already on the board, dropped in again: it is moved to where it was dropped this time, as
-   if it had been dragged there on the board — a file is in one place at a time, and a second drop
-   means "here", not "twice". */
-const moveExisting = (
+/* The same footage, dropped in again — the bytes are matched, whatever the file is called this time.
+   What that means depends on where it lands.
+
+   Dropped on a jump while it is already in another one, it joins this jump too and stays in that
+   one: the same clip belongs to several jumps often enough to be ordinary — a briefing filmed once
+   with every passenger of the day belongs to all of their films — and a jump holds it as its own,
+   with its own trim, off the one original on the disk (RULES, Jumps). Which is also why an edit
+   somewhere else is no obstacle: nothing about that jump changes.
+
+   Dropped anywhere else — a dropzone, the sorting area — it is a file on its own rather than a
+   jump's, so it moves there, as a drag on the board would have moved it. */
+const placeExisting = (
   manifest: Manifest,
   outputDir: string,
   file: ManifestFile,
@@ -72,19 +81,30 @@ const moveExisting = (
 ): ImportResult => {
   const id = file.id!
   const inGroup = manifest.groups.find((g) => g.files.some((f) => f.id === id))
+  /* a jump holds this footage whether as the file itself or as a copy of it, and both are the same
+     path on the disk */
+  const holds = (group: { files: { path: string }[] }) =>
+    group.files.some((f) => f.path === file.path)
+  const joining =
+    target.kind === 'group' ? manifest.groups.find((g) => g.id === target.groupId) : undefined
   const there =
     target.kind === 'group'
-      ? inGroup?.id === target.groupId
+      ? joining !== undefined && holds(joining)
       : !inGroup &&
         (target.kind === 'sort' ? !file.destination : file.destination === target.name.trim())
   if (there) return { filename: file.filename, outcome: 'there' }
   if (file.freed)
     return { filename: file.filename, outcome: 'kept', reason: 'it lives on the storage only' }
+  if (joining && inGroup) {
+    const stays = placeOf(manifest, id)
+    copyFiles(manifest, new Set([id]), joining.id)
+    return { filename: file.filename, outcome: 'copied', stays }
+  }
   if (inGroup && frozenTandems(manifest, outputDir).has(inGroup.id))
     return {
       filename: file.filename,
       outcome: 'kept',
-      reason: `it is in ${placeOf(manifest, id)}’s tandem, which has an edit`
+      reason: `${placeOf(manifest, id)}’s tandem has an edit, so nothing leaves it`
     }
   const from = placeOf(manifest, id)
   moveFiles(
@@ -153,8 +173,9 @@ const importFile = async ({
     const existing = manifest.files.find((f) => f.id === id)
     if (existing) {
       fs.rmSync(partial, { force: true })
-      const result = moveExisting(manifest, outputDir, existing, target)
-      if (result.outcome === 'moved') saveManifest(manifestPath, manifest)
+      const result = placeExisting(manifest, outputDir, existing, target)
+      if (result.outcome === 'moved' || result.outcome === 'copied')
+        saveManifest(manifestPath, manifest)
       return result
     }
 

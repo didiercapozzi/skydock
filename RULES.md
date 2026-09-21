@@ -409,10 +409,21 @@ yet: such a tandem waits with them, not among the passengers.
 onto the board: onto a passenger to join their tandem, onto a dropzone to be filed there loose, onto
 Fresh files to wait there, or anywhere on a place's page to go to that place. It is copied into the
 originals under the day it was taken, keeping its name unless a different file already has it that
-day. From then on it is a file like any other. A file already on the board, whatever it is now called,
-is recognised by its contents and moved to where it was dropped, exactly as a drag would move it; one
-already there is left alone. What is not a video or a photo is refused, and so is a drop on a tandem that
-has an edit or lives on the storage only. The board says what came of the drop.
+day. From then on it is a file like any other.
+
+Footage already on the board is recognised by its contents, whatever the file is now called, and what
+the drop means then depends on where it lands. **Dropped on a jump while it is already in another
+one, it joins this jump as well and stays in that one** — the same clip belongs to several jumps often
+enough to be ordinary, a briefing filmed once with every passenger of the day belonging to all of
+their films — and each jump holds it as its own, with its own trim, off the one original on the disk.
+An edit on the jump it is already in is no obstacle, since nothing about that jump changes. Dropped
+anywhere else — a dropzone, the sorting area, a place's page — it is a file on its own rather than a
+jump's, so it moves there as a drag on the board would have moved it, and a file the jump it is in
+will not let go of stays where it is with the reason said. Footage a jump already holds is left alone.
+
+What is not a video or a photo is refused, and so is a drop on a tandem that has an edit or lives on
+the storage only. The board says what came of the drop, and a file nothing happened to is not called
+a failure.
 
 **Putting files in the bin.** A test shot or footage of the ground can be got rid of, but only as a loose
 file in Fresh files: a file filed somewhere is somebody's, and one in a jump belongs with it, so taking it

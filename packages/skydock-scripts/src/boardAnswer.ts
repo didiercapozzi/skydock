@@ -62,9 +62,13 @@ const scanResultSchema = z.object({
 
 /* what a drop from the computer came to */
 const importOutcomeSchema = z.object({
-  added: z.number(),
+  /* what is now where it was dropped, by name: a file new to the board and footage that was already
+     on it and has joined a second jump are both, to whoever dropped it, added */
+  added: z.array(z.string()),
   moved: z.array(z.object({ name: z.string(), from: z.string() })),
   there: z.number(),
+  /* nothing happened to it and there is a reason, which is not the same thing as a failure */
+  kept: z.array(z.string()),
   failed: z.array(z.string()),
   where: z.string()
 })
