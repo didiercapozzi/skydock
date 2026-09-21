@@ -16,6 +16,7 @@
 #
 #   --detach              start it and come back; the window outlives this command
 #   --env NAME=VALUE      given to the command over there, repeatable
+#   --repo                print where this container's /workspace is on the machine, and stop
 #
 # A path the container knows as /workspace is handed over as the machine knows it, since the two
 # are the same bytes under different names.
@@ -37,6 +38,11 @@ while [ $# -gt 0 ]; do
     unit="$2"
     shift 2
     set -- --stop
+    break
+    ;;
+  --repo)
+    shift
+    set -- --repo
     break
     ;;
   --env)
@@ -68,6 +74,14 @@ repo="$(printf '%s' "$me" | jq -r '.Mounts[] | select(.Destination=="/workspace"
 [ -n "$repo" ] && [ "$repo" != "null" ] || {
   echo "This container's /workspace is not a folder of the machine's, so nothing there can be opened on it." >&2
   exit 1
+}
+
+# Asked only where the repo is on the machine, which is known by now and needs nothing run over
+# there: the same folder under two names, and anything that has to speak of it in the machine's
+# terms — a path inside a project, for one — needs both.
+[ "$1" != "--repo" ] || {
+  printf '%s\n' "$repo"
+  exit 0
 }
 
 # What runs over there, once the namespaces are the machine's own: become the owner of the repo,

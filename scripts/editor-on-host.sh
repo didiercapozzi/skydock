@@ -35,5 +35,23 @@ if [ -n "$owner" ]; then
   chown -R "$owner" "$(dirname "$project")" 2>/dev/null || true
 fi
 
+# And everything the project points at that lives in the repo: its music, its logos, the proxies it
+# plays from. Being allowed to read a file is not enough for a confined editor — kdenlive is a snap
+# on this machine, and a snap may read what is in somebody's home only where that somebody owns it,
+# whatever the mode says. Everything SkyDock writes from in here is owned by root, so the editor
+# opens the project and reports the music and the logo as missing.
+#
+# The project names them as the machine does, so where the repo is over there is asked for, and the
+# same files are found in here by the other name.
+repo="$("$here/host.sh" --repo 2>/dev/null || true)"
+if [ -n "$owner" ] && [ -n "$repo" ]; then
+  grep -o 'name="resource">[^<]*' "$project" | sed 's/^name="resource">//;s/&amp;/\&/g' |
+    while IFS= read -r asset; do
+      case "$asset" in
+      "$repo"/*) chown "$owner" "$here/..${asset#"$repo"}" 2>/dev/null || true ;;
+      esac
+    done
+fi
+
 # Detached: the editor is the machine's from here on, and outlives whatever asked for it.
 exec "$here/host.sh" --detach "$editor" "$project"

@@ -235,6 +235,13 @@ owning it are not the same thing — an editor may decline a project belonging t
 whatever the mode says, and anything written before the umask was set is still the old `0644`. The
 container runs as root, so it can settle this rather than leave it to be discovered at a save.
 
+A confined editor makes ownership the only thing that counts. kdenlive installed as a snap may read
+what is in your home **only where you own it**, whatever the mode says — a root-owned file at `0755`
+is refused, and the editor opens the project and reports the music and the logos as missing. So the
+bridge hands over what the project points at as well as the folder it sits in: its music, its logos,
+the proxies it plays from. Anything opened before that was handed over shows it missing until the
+project is opened again.
+
 Nothing else under `output/` is handed over, so old files stay as they are. To take the lot once:
 
 ```sh
