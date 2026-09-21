@@ -3,6 +3,7 @@ import * as path from 'node:path'
 import { getGroupProcessedDir, isFlatGroup } from './process'
 import { getCutProxyDir } from './proxy'
 import { cameraTimes } from './scan'
+import { keepProject } from './projectHistory'
 import { isTandem } from './tandem'
 import type { Manifest, ManifestGroup } from './types'
 
@@ -44,9 +45,13 @@ const takeBack = (manifest: Manifest, outputDir: string, groupId: string, forget
   /* its originals are gone from here, so there is nothing to start again from */
   if (jumps.some((j) => j.freed))
     throw new Error('This tandem lives only on the storage now — there is nothing here to reset.')
-  const dir = getGroupProcessedDir(outputDir, group).dir
+  const { dir, baseName } = getGroupProcessedDir(outputDir, group)
   if (!removable(outputDir, dir)) throw new Error(`Refusing to delete ${dir}.`)
 
+  /* Everything made on this machine goes, the project with it — so the project is copied aside
+     first. Taking a tandem back is deliberate and this does not stand in its way; it only means the
+     hours in the editor are still there afterwards, for whoever asks. */
+  keepProject(outputDir, dir, baseName)
   fs.rmSync(dir, { recursive: true, force: true })
   for (const jump of jumps)
     fs.rmSync(getCutProxyDir(outputDir, jump.id), { recursive: true, force: true })

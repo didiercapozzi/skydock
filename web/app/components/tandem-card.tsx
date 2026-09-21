@@ -443,6 +443,15 @@ const TandemActions = ({
       </Mini>
       {/* the film itself is shown above the tandem once it exists */}
       {!facts.film && <span className='text-[12px] text-ink-3'>edit and render it</span>}
+      {/* A tandem with an edit is prepared again like any other: the copies are rewritten under the
+          same names and the project is left where it is, so a trim or a frame corrected afterwards
+          can still reach the footage the editor plays (RULES, Montage). */}
+      <Mini
+        disabled={working}
+        title='Make the copies again from the originals — the project, the film and the archives are left alone'
+        onClick={onProcess}>
+        {busy === group.id ? 'Processing…' : 'Process again'}
+      </Mini>
       {group.uploaded && onFree && (
         <Mini
           disabled={working}

@@ -33,22 +33,16 @@ const readStored = () => {
   }
 }
 
-/* A field that is not there reads as not chosen, so a choice stored with only the kind and the film
-   is still that choice. Anything that does not make sense is the default rather than a guess. */
+/* A choice stored by an older board carries a third part, for a project that is now always kept: it
+   is read and dropped. Anything that does not make sense is the default rather than a guess. */
 const parse = (stored: string): BackupChoice => {
-  const [backupAs, film, project] = stored.split(':')
-  const parsed = backupOptionsSchema.safeParse({
-    backupAs,
-    filmToBackup: film === 'true',
-    projectToBackup: project === 'true'
-  })
-  return parsed.success
-    ? parsed.data
-    : { backupAs: 'zip', filmToBackup: false, projectToBackup: false }
+  const [backupAs, film] = stored.split(':')
+  const parsed = backupOptionsSchema.safeParse({ backupAs, filmToBackup: film === 'true' })
+  return parsed.success ? parsed.data : { backupAs: 'zip', filmToBackup: false }
 }
 
 const setBackupChoice = (choice: BackupChoice) => {
-  chosen = `${choice.backupAs}:${choice.filmToBackup}:${choice.projectToBackup}`
+  chosen = `${choice.backupAs}:${choice.filmToBackup}`
   try {
     localStorage.setItem(KEY, chosen)
   } catch {

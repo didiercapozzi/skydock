@@ -63,9 +63,13 @@ const montageOptionsSchema = z.object({
 type MontageClip = z.infer<typeof montageClipSchema>
 type MontageOptions = z.input<typeof montageOptionsSchema>
 
-const RENDER_PROFILE = 'MP4-H264/AAC'
+/* The film is rendered by the card rather than by the processor. A delivery film is encoded once and
+   watched, never re-encoded, so what matters is the hour it saves on a full-length tandem; kdenlive
+   ships this profile and shows it only where ffmpeg has the encoder, so on a machine without such a
+   card the dialog simply opens on its own list instead. */
+const RENDER_PROFILE = 'NVENC H264 VBR'
 
-const RENDER_CATEGORY = 'generic'
+const RENDER_CATEGORY = 'hw'
 
 /* The templates the app itself carries, as against the ones a dropzone brings in. The installed app
    says where they are, since a packaged bundle is one file and has no folder of its own to count

@@ -287,6 +287,30 @@ describe('changes made on the board', () => {
     })
   })
 
+  /* A trim corrected after the montage was made is no use until the copies are made again, and
+     preparing writes the copies and nothing else — the project sits beside them (RULES, Montage). */
+  describe('preparing a tandem that has an edit', () => {
+    it('is allowed, and leaves its project where it is', async () => {
+      writeManifest([
+        group({
+          id: 'group_1',
+          destination: 'Tandems',
+          passenger: { firstname: 'Luc', lastname: 'Favre' },
+          processed: true,
+          files: []
+        })
+      ])
+      const folder = path.join(tmpDir, 'processed', 'Tandems', 'Luc Favre')
+      fs.mkdirSync(folder, { recursive: true })
+      fs.writeFileSync(path.join(folder, 'luc.kdenlive'), '<mlt/>')
+
+      const res = answer(await send({ intent: 'process', groupId: 'group_1' }))
+
+      expect(res.groups).toHaveLength(1)
+      expect(fs.readFileSync(path.join(folder, 'luc.kdenlive'), 'utf-8')).toBe('<mlt/>')
+    })
+  })
+
   describe('opening the project', () => {
     it('has nothing to open before a montage was made', async () => {
       writeManifest([
@@ -429,12 +453,19 @@ describe('changes made on the board', () => {
       refused(await send({ intent: 'move-files', fileIds: ['c'], targetGroupId: 'group_1' }))
     })
 
-    it('refuses re-timing, merging and processing it again', async () => {
+    /* what would rename its copies or take one away, which the project calls them by */
+    it('refuses re-timing and merging it', async () => {
       refused(
         await send({ intent: 'shift-group-time', groupId: 'group_1', anchorEpoch: 1_754_009_000 })
       )
       refused(await send({ intent: 'merge-groups', leftId: 'group_2', rightId: 'group_1' }))
-      refused(await send({ intent: 'process', groupId: 'group_1' }))
+    })
+
+    /* but not preparing it again: that writes the copies under the same names and leaves the
+       project beside them, which is how a trim corrected afterwards reaches the footage */
+    it('lets it be prepared again', async () => {
+      const res = answer(await send({ intent: 'process', groupId: 'group_1' }))
+      expect(res.groups).toHaveLength(2)
     })
 
     it('still lets the rest of the board be saved around it', async () => {

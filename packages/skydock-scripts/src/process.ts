@@ -7,6 +7,7 @@ import { isWholeFrame, orientationAfter, pictureFilter } from './frameCrop'
 import { cropProxy, DRI_DEVICE, getCutProxyDir, proxyEncoder, videoShape } from './proxy'
 import type { ProxyEncoder } from './proxy'
 import { following } from './live'
+import { keepProject } from './projectHistory'
 import { lastComplaint, run, runWatched, stoppable } from './tools'
 import type { ManifestFile, ManifestGroup } from './types'
 import {
@@ -70,23 +71,30 @@ const DELIVERY_ARGS: Record<ProxyEncoder, string[]> = {
   cpu: ['-c:v', 'libx264', '-crf', '18', '-preset', 'medium', '-pix_fmt', 'yuv420p']
 }
 
-const timeArgs = (cropStart?: number | null, cropEnd?: number | null) =>
-  cropStart != null && cropEnd != null
-    ? ['-ss', String(cropStart), '-t', (cropEnd - cropStart).toFixed(6)]
-    : []
+/* A trim is two ends and either of them on its own is a trim: dragging the right handle alone says
+   "up to here", and the clip still starts where it starts. Asking for both made a one-ended trim
+   silently do nothing — the copy came out whole while everything else recorded it as cut. */
+const isTrimmed = (file: { cropStart?: number | null; cropEnd?: number | null }) =>
+  file.cropStart != null || file.cropEnd != null
+
+const timeArgs = (cropStart?: number | null, cropEnd?: number | null) => [
+  ...(cropStart != null ? ['-ss', String(cropStart)] : []),
+  ...(cropEnd != null ? ['-t', (cropEnd - (cropStart ?? 0)).toFixed(6)] : [])
+]
 
 type OnPercent = (percent: number) => void
 
-/* how long what is being written runs for, when that is the trim rather than the clip */
+/* how long what is being written runs for, when that is the trim rather than the clip. A trim with
+   no end runs to the end of the clip, whose length is not known here. */
 const trimSeconds = (cropStart?: number | null, cropEnd?: number | null) =>
-  cropStart != null && cropEnd != null ? cropEnd - cropStart : null
+  cropEnd != null ? cropEnd - (cropStart ?? 0) : null
 
 /* The ends only: copied, never re-encoded. */
 const trimVideo = async (
   src: string,
   dest: string,
-  cropStart: number,
-  cropEnd: number,
+  cropStart: number | null | undefined,
+  cropEnd: number | null | undefined,
   onPercent?: OnPercent
 ) => {
   if (!hasCommand('ffmpeg')) return false
@@ -283,7 +291,7 @@ const writeCutProxy = async (
 ) => {
   if (!isVideoFile(file.path) || !file.proxy || !fs.existsSync(file.proxy)) return null
   const target = path.join(getCutProxyDir(outputDir, groupId), `${path.parse(dest).name}.mp4`)
-  const trimmed = file.cropStart != null && file.cropEnd != null
+  const trimmed = isTrimmed(file)
   /* The frame has to be cut out of the proxy as well, and the picture turned the same way. The
      editor opens on these, so a proxy still showing the mount in the corner, or lying on its side,
      would have somebody editing a picture that is not the one about to be rendered. The rectangle
@@ -298,7 +306,7 @@ const writeCutProxy = async (
       : null
   }
   if (trimmed) {
-    if (!cropProxy(file.proxy, target, file.cropStart!, file.cropEnd!)) return null
+    if (!cropProxy(file.proxy, target, file.cropStart, file.cropEnd)) return null
   } else {
     fs.mkdirSync(path.dirname(target), { recursive: true })
     await fs.promises.copyFile(file.proxy, target)
@@ -308,7 +316,7 @@ const writeCutProxy = async (
 
 const copyMedia = async (file: ManifestFile, dest: string, time: Date, onPercent?: OnPercent) => {
   const video = isVideoFile(file.path)
-  const trimmed = file.cropStart != null && file.cropEnd != null
+  const trimmed = isTrimmed(file)
   /* the picture itself changes — cut, turned or both — so the clip is encoded again */
   const reshaped = video && (!isWholeFrame(file.frame) || Boolean(file.rotation))
   if (reshaped) {
@@ -321,7 +329,7 @@ const copyMedia = async (file: ManifestFile, dest: string, time: Date, onPercent
     const made = await recodeVideo(file.path, dest, filter, file.cropStart, file.cropEnd, onPercent)
     if (!made.ok) throw new Error(`ffmpeg could not crop or turn ${file.filename}: ${made.reason}`)
   } else if (video && trimmed) {
-    if (!(await trimVideo(file.path, dest, file.cropStart!, file.cropEnd!, onPercent))) {
+    if (!(await trimVideo(file.path, dest, file.cropStart, file.cropEnd, onPercent))) {
       throw new Error(
         `ffmpeg crop failed for ${file.filename} ${file.cropStart}→${file.cropEnd}: install ffmpeg or check range`
       )
@@ -371,6 +379,8 @@ const writeGroup = async (
   record: (source: ManifestFile, destPath: string) => void
 ) => {
   const { dir, baseName, dayEpoch, flat } = getGroupProcessedDir(outputDir, group)
+  /* the edit as it stands, copied aside before the copies underneath it are written again */
+  keepProject(outputDir, dir, baseName)
   const written: string[] = []
   /* Whatever gets copied before something goes wrong stays where it is. Preparing is the most
      expensive thing SkyDock does, and the folder is not what says a copy is current — the per-file

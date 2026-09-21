@@ -328,22 +328,19 @@ describe('uploading a tandem — how the backup is kept', () => {
 
   it('puts a copy of the film inside the zip when asked', async () => {
     const { groupDir } = await upload({}, {}, { backupAs: 'zip', filmToBackup: true })
-    expect(contents(groupDir)).toEqual(['GX018570.MP4', 'GX018571.MP4', 'luc_favre_20260802.mp4'])
+    /* the originals, then the film, then the project that always travels */
+    expect(contents(groupDir)).toEqual([
+      'GX018570.MP4',
+      'GX018571.MP4',
+      'luc_favre_20260802.mp4',
+      'luc_favre_20260802.kdenlive'
+    ])
   })
 
-  /* the leaving-out holds for the project as much as for the film: the scene has both */
-  it('leaves the film and the project out of the zip otherwise', async () => {
+  /* The edit exists nowhere else and weighs nothing beside the footage, so it always travels with
+     it — never a tick anybody can forget. The film is the one that is asked about. */
+  it('always puts the editing project inside the zip, and the film only when asked', async () => {
     const { groupDir } = await upload()
-    expect(contents(groupDir)).toEqual(['GX018570.MP4', 'GX018571.MP4'])
-  })
-
-  /* the edit exists nowhere else, so it can be kept with the footage it was made from */
-  it('puts the editing project inside the zip when asked', async () => {
-    const { groupDir } = await upload(
-      {},
-      {},
-      { backupAs: 'zip', filmToBackup: false, projectToBackup: true }
-    )
     expect(contents(groupDir)).toEqual([
       'GX018570.MP4',
       'GX018571.MP4',
@@ -352,11 +349,7 @@ describe('uploading a tandem — how the backup is kept', () => {
   })
 
   it('never gives the project to the passenger, whatever is asked', async () => {
-    const { uploads } = await upload(
-      {},
-      {},
-      { backupAs: 'folder', filmToBackup: true, projectToBackup: true }
-    )
+    const { uploads } = await upload({}, {}, { backupAs: 'folder', filmToBackup: true })
     expect(
       uploads.filter((u) => u.dest === '/SkyDock/Tandems/Luc Favre').map((u) => u.name)
     ).not.toContain('luc_favre_20260802.kdenlive')
@@ -373,25 +366,14 @@ describe('uploading a tandem — how the backup is kept', () => {
         .filter((u) => u.dest === '/Backup/luc_favre_20260802')
         .map((u) => u.name)
         .sort()
-    ).toEqual(['GX018570.MP4', 'GX018571.MP4'])
+    ).toEqual(['GX018570.MP4', 'GX018571.MP4', 'luc_favre_20260802.kdenlive'])
     expect(uploads.some((u) => u.name.endsWith('.rushes.zip'))).toBe(false)
     expect(fs.existsSync(path.join(groupDir, 'luc_favre_20260802.rushes.zip'))).toBe(false)
     expect(result.record.originals?.map((o) => o.remotePath).sort()).toEqual([
       '/Backup/luc_favre_20260802/GX018570.MP4',
-      '/Backup/luc_favre_20260802/GX018571.MP4'
+      '/Backup/luc_favre_20260802/GX018571.MP4',
+      '/Backup/luc_favre_20260802/luc_favre_20260802.kdenlive'
     ])
-  })
-
-  it('puts the project beside them when asked', async () => {
-    const { uploads, result } = await upload(
-      {},
-      {},
-      { backupAs: 'folder', filmToBackup: false, projectToBackup: true }
-    )
-    expect(
-      uploads.filter((u) => u.dest === '/Backup/luc_favre_20260802').map((u) => u.name)
-    ).toContain('luc_favre_20260802.kdenlive')
-    expect(result.record.originals).toHaveLength(3)
   })
 
   it('puts the film beside them, and still gives it to the passenger', async () => {
@@ -400,6 +382,7 @@ describe('uploading a tandem — how the backup is kept', () => {
       uploads.filter((u) => u.dest === '/Backup/luc_favre_20260802').map((u) => u.name)
     ).toContain('luc_favre_20260802.mp4')
     expect(result.record.film?.remotePath).toBe('/SkyDock/Tandems/Luc Favre/luc_favre_20260802.mp4')
-    expect(result.record.originals).toHaveLength(3)
+    /* the two originals, the film beside them, and the project that always travels */
+    expect(result.record.originals).toHaveLength(4)
   })
 })

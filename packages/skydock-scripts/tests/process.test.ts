@@ -316,6 +316,63 @@ describe('cropping the frame', () => {
     expect(cmd).not.toContain('crop=')
   })
 
+  /* A tandem is prepared again while its edit is open — a trim corrected after the montage was made
+     is no use until the copies are made again — so what processing writes over has to be the media
+     and nothing else (RULES, Montage). */
+  it('leaves the project, the film and the archives where they are when it prepares again', async () => {
+    const { manifestPath, group } = write({
+      destination: 'Tandems',
+      passenger: { firstname: 'Luc', lastname: 'Favre' },
+      files: [clip('GX010001.MP4', 0)]
+    })
+    await processJumps({ manifestPath, outputDir })
+    const folder = path.join(outputDir, 'processed', 'Tandems', 'Luc Favre')
+    const beside = [
+      'luc_favre_20260808.kdenlive',
+      'luc_favre_20260808.mp4',
+      'luc_favre_20260808.rushes.zip'
+    ]
+    for (const name of beside) fs.writeFileSync(path.join(folder, name), 'kept')
+    /* and something under the media that no clip produces any more, which does go */
+    fs.writeFileSync(path.join(folder, 'videos', 'left_over.mp4'), 'stale')
+
+    await processJumps({ manifestPath, outputDir, groupIds: [group.id] })
+
+    for (const name of beside) expect(fs.existsSync(path.join(folder, name))).toBe(true)
+    expect(fs.existsSync(path.join(folder, 'videos', 'left_over.mp4'))).toBe(false)
+  })
+
+  /* A trim is two ends and either of them on its own is a trim: dragging the right handle alone says
+     "up to here", and the clip still starts where it starts. Asking for both left a one-ended trim
+     doing nothing at all — the copy came out whole while the board, the record of what was processed
+     and the editing project all said it had been cut. */
+  it('cuts a clip trimmed at its end only', async () => {
+    const { manifestPath } = write({
+      destination: 'Yverdon',
+      files: [{ ...clip('GX010001.MP4', 0), cropEnd: 4 }]
+    })
+
+    await processJumps({ manifestPath, outputDir })
+
+    const cmd = ffmpegCalls().find((l) => l.includes('-t ')) ?? ''
+    expect(cmd).toContain('-t 4.000000')
+    expect(cmd).toContain('-c copy')
+    expect(cmd).not.toContain('-ss')
+  })
+
+  it('cuts a clip trimmed at its start only, and lets it run to its end', async () => {
+    const { manifestPath } = write({
+      destination: 'Yverdon',
+      files: [{ ...clip('GX010001.MP4', 0), cropStart: 2 }]
+    })
+
+    await processJumps({ manifestPath, outputDir })
+
+    const cmd = ffmpegCalls().find((l) => l.includes('-ss')) ?? ''
+    expect(cmd).toContain('-ss 2')
+    expect(cmd).not.toContain('-t ')
+  })
+
   it('does both at once when both were set', async () => {
     const { manifestPath } = write({
       destination: 'Yverdon',

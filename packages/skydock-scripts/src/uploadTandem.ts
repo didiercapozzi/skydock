@@ -110,14 +110,14 @@ const uploadTandem = async ({
     .map((f) => ({ file: f.path, name: f.filename }))
   const filmCopy =
     backup.filmToBackup && film ? [{ file: film, name: filmNameOf(artifacts.baseName) }] : []
-  /* The project goes as it is: it names the clips by where they sat when the edit was made, so from
-     the backup it reopens only with them put back there — it is kept as the record of the edit, which
-     is the one thing of a tandem that cannot be made again. */
+  /* The project always goes, whatever else was chosen: it names the clips by where they sat when the
+     edit was made, so from the backup it reopens only with them put back there — and it is the one
+     thing of a tandem that cannot be made again, weighed in hundreds of kilobytes against the
+     gigabytes it travels with. Nobody should have to remember to tick that. */
   const project = path.join(artifacts.dir, `${artifacts.baseName}.kdenlive`)
-  const projectCopy =
-    backup.projectToBackup && fs.existsSync(project)
-      ? [{ file: project, name: path.basename(project) }]
-      : []
+  const projectCopy = fs.existsSync(project)
+    ? [{ file: project, name: path.basename(project) }]
+    : []
   const rushesZip =
     backup.backupAs === 'zip'
       ? await writeArchive(

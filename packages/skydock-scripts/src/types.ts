@@ -178,8 +178,7 @@ const groupsFileSchema = z.object({
    project — the one record of the edit, which exists nowhere else. */
 const backupOptionsSchema = z.object({
   backupAs: z.enum(['zip', 'folder']),
-  filmToBackup: z.boolean(),
-  projectToBackup: z.boolean().default(false)
+  filmToBackup: z.boolean()
 })
 
 const destinationSchema = z.object({

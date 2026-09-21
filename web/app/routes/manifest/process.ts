@@ -4,23 +4,14 @@ import type { Intent } from './change'
 
 /* Process the jumps asked for — by id, by place, or all of them — and answer with the manifest as
    processing left it. */
-const processIntent: Intent = async ({
-  data,
-  manifest,
-  manifestPath,
-  outputDir,
-  frozen,
-  refuse,
-  refuseFrozen
-}) => {
+const processIntent: Intent = async ({ data, manifest, manifestPath, outputDir, refuse }) => {
   const requestedGroups = data.groupIds ?? (data.groupId ? [data.groupId] : undefined)
-  /* the same choice of jumps processing makes, so one with an edit is never written over */
-  const targets = manifest.groups.filter((g) =>
-    requestedGroups && requestedGroups.length > 0
-      ? requestedGroups.includes(g.id)
-      : !data.destination || g.destination === data.destination
-  )
-  if (targets.some((g) => frozen.has(g.id))) return refuseFrozen()
+  /* A tandem with an edit is prepared again like any other. Preparing writes the copies and nothing
+     else: the project, the film and the archives sit beside them and are left where they are, and
+     the copies keep the names the passenger and the clips' own times give them, which is what the
+     project calls them by. What can change is what those copies hold — a clip trimmed differently
+     comes out a different length — so the edit may want a look afterwards; that is the person's to
+     judge, and losing an afternoon to a trim nobody can apply is worse (RULES, Montage). */
   try {
     await processJumps({
       manifestPath,

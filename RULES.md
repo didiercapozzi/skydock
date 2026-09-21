@@ -266,7 +266,8 @@ output/
 │           ├── luc_favre_20260829.photos.zip  for the passenger
 │           └── luc_favre_20260829.rushes.zip  the originals, for the backup, when kept as one archive
 ├── proxies/                  the small copies, and for each tandem a set cut to match its processed clips
-└── templates/                one editing template per folder, with the music and logos it uses
+├── templates/                one editing template per folder, with the music and logos it uses
+└── .projects/                every version of each passenger's editing project, kept and never deleted
 ```
 
 The board's own record of the work sits at the top of the output folder. The bin and the app's own
@@ -501,7 +502,8 @@ cropped the same way as one in a jump, with no jump to give its frame or turn to
 from it begins, and stepping to another clip opens that clip on its own trim, frame and turn — never
 those of the one just left. Dragging along the timeline moves the picture with the pointer, the frame following as
 fast as it can be drawn and never left stuck when the pointer stops. Drag the ends of the timeline, or
-set the start and end at the playhead. Trimming moves no
+set the start and end at the playhead. Either end on its own is a trim: an end with no start runs
+from the clip's beginning, a start with no end runs to the clip's end. Trimming moves no
 pixels: the clip is copied with its ends cut off, losing nothing.
 
 **Framing.** A mount, a strut or a finger in a corner is cut away by dragging a rectangle over the
@@ -689,7 +691,9 @@ whose length cannot be read, gets its clips with their sound inside, on the vide
 turns are already applied, each clip playing from its proxy with
 the real clip recorded as what the edit is of, so the editor opens ready to work and renders from the
 footage. The film's destination and format are filled in, so what is left is the edit and pressing
-render.
+render — and the format asks for the graphics card's own encoder, since a delivery film is encoded
+once and watched, never encoded again. A machine whose editor has no such encoder is shown its own
+list instead.
 
 **The jump is marked on the clip, never cut into it.** Every clip is laid whole, and one with a jump
 in it carries the jump's moments as markers of its own — the exit, the opening, the canopy and the
@@ -745,11 +749,27 @@ archive unless given a name, and a template already there under that name is nev
 **The montage is made once.** Asking again for a tandem that has a project is refused.
 
 **An edit freezes the tandem.** The project points at the tandem's copies by name and at moments inside
-them, and lives in the folder the passenger's name makes; any change would break it silently. So once
-a tandem has a project, nothing about it changes here: no trim, frame or turn, no file in or out, no
-re-timing, no new name, no other jump joining the passenger, no processing again. Its files show a lock
-and say why. Previewing, opening the project and uploading go on. Changes are made in the editor.
-Resetting the tandem, or deleting the project, lifts the lock.
+them, and lives in the folder the passenger's name makes; a change to any of that would break it
+silently. So once a tandem has a project, what decides those names and which files there are is fixed:
+no trim, frame or turn, no file in or out, no re-timing, no new name, no other jump joining the
+passenger. Its files show a lock and say why. Previewing, opening the project and uploading go on.
+Changes are made in the editor. Resetting the tandem, or deleting the project, lifts the lock.
+
+**The edit is kept aside, every version of it.** Before SkyDock does anything to a tandem that could
+stand between the person and those hours — preparing it again, resetting it, deleting it — the project
+as it stands is copied into a folder of kept edits, under the passenger's folder name and the moment
+it was kept. What is kept is what changed, so pressing the same button twice leaves one version rather
+than two, and nothing there is ever deleted, not even when the tandem is: a project is a few hundred
+kilobytes beside the gigabytes it describes. It also travels with every backup, whatever else was
+chosen to go — the edit exists nowhere else, and a tick nobody remembers is no protection at all.
+
+**Preparing it again is allowed, and always was safe.** Preparing writes the copies and nothing else:
+the project, the film and the archives sit beside them and are left exactly where they are, and each
+copy keeps the name the passenger and the clip's own time give it — the name the project calls it by.
+So a tandem with an edit can be prepared again from its originals whenever what is on the disk is not
+what it should be. What changes is what those copies hold, so a clip whose trim was corrected comes
+out a different length and its place on the timeline may want a look; that is the editor's to judge,
+and an afternoon lost to a correction nobody can apply is worse.
 
 ## Taking a tandem back
 

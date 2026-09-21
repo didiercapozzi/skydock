@@ -123,7 +123,7 @@ describe('uploading a tandem — the dialog first', () => {
     const dialog = page.getByRole('dialog', { name: 'Upload' })
     const film = dialog.getByRole('checkbox', { name: /a copy of the film/ })
     await userEvent.click(film)
-    await expect.element(dialog.getByText('2 original videos + the film')).toBeInTheDocument()
+    await expect.element(dialog.getByText('2 original videos + the film + the project')).toBeInTheDocument()
     await expect.element(dialog.getByText('19.0 GB to the backup · 3.0 GB to Luc Favre')).toBeInTheDocument()
     await userEvent.click(film)
   })
@@ -133,7 +133,7 @@ describe('uploading a tandem — the dialog first', () => {
     const dialog = page.getByRole('dialog', { name: 'Upload' })
     await userEvent.click(dialog.getByRole('button', { name: 'Plain files' }))
     await expect.element(dialog.getByText('luc_favre_20260801/')).toBeInTheDocument()
-    await expect.element(dialog.getByText('2 original videos, as files')).toBeInTheDocument()
+    await expect.element(dialog.getByText('2 original videos + the project, as files')).toBeInTheDocument()
     await userEvent.click(dialog.getByRole('button', { name: 'One zip' }))
   })
 
@@ -146,32 +146,19 @@ describe('uploading a tandem — the dialog first', () => {
       expect(requests).toContainEqual({
         intent: 'upload-tandem',
         groupId: 'g1',
-        backup: { backupAs: 'zip', filmToBackup: false, projectToBackup: false }
+        backup: { backupAs: 'zip', filmToBackup: false }
       })
     )
   })
 
-  /* the edit exists nowhere else, so it can be kept with the originals — off until chosen */
-  test('keeps the editing project with the backup when it is ticked', async () => {
-    requests.length = 0
+  /* The edit exists nowhere else and weighs nothing beside the footage, so it goes every time and
+     is not a tick anybody can forget. */
+  test('keeps the editing project with the backup, without being asked', async () => {
     await renderBoard()
     const dialog = page.getByRole('dialog', { name: 'Upload' })
-    const project = dialog.getByRole('checkbox', { name: /the kdenlive project/ })
-    await expect.element(project).not.toBeChecked()
-
-    await userEvent.click(project)
 
     await expect.element(dialog.getByText('2 original videos + the project')).toBeInTheDocument()
-    await userEvent.click(dialog.getByRole('button', { name: 'Upload', exact: true }))
-    await vi.waitFor(() =>
-      expect(requests).toContainEqual({
-        intent: 'upload-tandem',
-        groupId: 'g1',
-        backup: { backupAs: 'zip', filmToBackup: false, projectToBackup: true }
-      })
-    )
-    /* the choice is remembered for the club, so it is put back for the tests that follow */
-    setBackupChoice({ backupAs: 'zip', filmToBackup: false, projectToBackup: false })
+    expect(dialog.getByRole('checkbox', { name: /the kdenlive project/ }).query()).toBeNull()
   })
 })
 
