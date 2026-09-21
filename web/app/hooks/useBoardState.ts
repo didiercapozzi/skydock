@@ -110,6 +110,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
         copied: copiedFiles,
         cameraCopied,
         reset: resetTo,
+        played,
         storage: listed,
         storageProblem
       } = answered.data
@@ -148,7 +149,9 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
                             ? resetNote(resetTo)
                             : cameraCopied
                               ? cameraNote(cameraCopied)
-                              : null
+                              : played
+                                ? `${played.filename} is playing in this machine’s own player`
+                                : null
       /* the work stands even when the list could not follow it, and that is said alongside */
       setNote(storageProblem ? [said, storageProblem].filter(Boolean).join(' · ') : said)
     } else {

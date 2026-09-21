@@ -13,7 +13,7 @@
     "check": "npm run typecheck && npm run format:check && npm run lint",
     "copy": "npx tsx packages/skydock-scripts/src/copy.ts",
     "dev": "npm run dev --workspace=@workspace/web",
-    "dev:bridge": "umask 000 && SKYDOCK_EDITOR_COMMAND=/workspace/scripts/editor-on-host.sh npm run dev",
+    "dev:bridge": "umask 000 && SKYDOCK_EDITOR_COMMAND=/workspace/scripts/editor-on-host.sh SKYDOCK_PLAYER_COMMAND=/workspace/scripts/play-on-host.sh npm run dev",
     "dev:window": "scripts/dev-window.sh",
     "dev:window:host": "scripts/window-on-host.sh",
     "fc": "npm run format && npm run check",

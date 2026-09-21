@@ -491,8 +491,21 @@ A file is opened by double-clicking it, from the inspector, or with Enter on the
 playing its proxy when there is one. A clip the browser cannot draw — 4K HEVC, as a DJI or a recent GoPro
 shoots — says so in place of its picture until its proxy is made, and then plays the proxy without being
 opened again. A browser that cannot play H.264 — the format proxies are made in — can show no clip at
-all, and says so, naming the browsers that do. Space plays a clip and pauses it, whichever button was pressed last. The picture fills
-the left of the dialog
+all, and says so, naming the browsers that do. Space plays a clip and pauses it, whichever button was pressed last.
+
+**Full screen.** The picture takes the whole screen on its own — the button, F, or a double-click on
+it — with the browser's own player under a clip so it can be watched rather than dragged, and the
+photo at its own size. There it shows the file itself rather than the small copy the timeline
+scrubs, since judging a picture by a copy 640 across is judging the copy; a clip this browser has no
+decoder for falls back to that copy and says so.
+
+**In the machine's own player.** A clip can also be handed to whatever plays videos on this machine,
+which opens it as it was shot whatever the browser can decode — one button, the file itself, nothing
+copied or converted first. A file this machine no longer holds is not offered: it is on the storage,
+and plays from the storage's own list. Escape comes back to the dialog, at the same moment
+of the clip. Nothing is decided there: the rectangle and the marks are for the dialog.
+
+The picture fills the left of the dialog
 with the timeline under it; the right side says what is being decided: the trim, the turn, the frame,
 and what is already on the file. The top names the file and lets you step to the next; the bottom holds
 Save, offered only once something changed, and Reset, which clears everything at once. A loose file is

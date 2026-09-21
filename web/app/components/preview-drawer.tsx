@@ -19,6 +19,7 @@ import {
   dateLabel,
   formatSize,
   formatTime,
+  getFileUrl,
   getPlaybackUrl,
   getThumbUrl,
   isVideoFile
@@ -135,6 +136,7 @@ const PreviewDrawer = ({
   onRotationApplyToJump,
   locked,
   onMomentChange,
+  onPlayOutside,
   tandem = false
 }: {
   files: ManifestFile[]
@@ -173,6 +175,8 @@ const PreviewDrawer = ({
   locked?: string | null
   /* one of the jump's moments, moved on the timeline */
   onMomentChange?: (which: 'exit' | 'opening' | 'canopy' | 'landing', seconds: number) => void
+  /* hand this file to the machine's own player; absent for a file this machine no longer holds */
+  onPlayOutside?: () => void
   /* Whether this clip's jump is a tandem, which decides where a cut starts from: a tandem is its own
      subject and is cut on the instant the camera's wearer left, a fun jump a second earlier, where
      the group is going out of the door ahead of whoever is filming. */
@@ -193,8 +197,15 @@ const PreviewDrawer = ({
   /* A browser cannot draw every clip: 4K HEVC off a DJI or a recent GoPro plays its sound and no
      picture, or nothing at all. The proxy is H.264 and always plays, and until it exists the preview
      says so rather than showing a black box. Kept by the address that failed, so it is gone the
-     moment the proxy lands and the preview switches to it. */
-  const [unplayable, setUnplayable] = useState<string | null>(null)
+     moment the proxy lands and the preview switches to it — and so that a clip its browser will not
+     draw full size is remembered apart from the small copy that does. */
+  const [unplayable, setUnplayable] = useState<string[]>([])
+  const cannotPlay = (url: string) => unplayable.includes(url)
+  const wontPlay = (url: string) =>
+    setUnplayable((were) => (were.includes(url) ? were : [...were, url]))
+  /* the picture on its own, filling the screen: for looking at it rather than deciding anything */
+  const [big, setBig] = useState(false)
+  const stage = useRef<HTMLDivElement | null>(null)
   /* seeks while the timeline is dragged, sent one at a time so the picture keeps up */
   const [scrub] = useState(createScrub)
 
@@ -227,6 +238,27 @@ const PreviewDrawer = ({
     }
     onRotate(next)
   }
+  /* The browser's own full screen where it is allowed — a page can only ask for it from a press —
+     and the whole window where it is not, which is the same picture at the same size in a window
+     that is already full. Either way one state says which, and leaving is Escape. */
+  const showBig = () => {
+    setBig(true)
+    void stage.current?.requestFullscreen?.().catch(() => undefined)
+  }
+  const leaveBig = () => {
+    setBig(false)
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined)
+  }
+  /* full screen is the browser's to give and to take away — F11, Escape, the window losing it —
+     so what it says is followed rather than assumed */
+  useEffect(() => {
+    const onChange = () => {
+      if (!document.fullscreenElement) setBig(false)
+    }
+    document.addEventListener('fullscreenchange', onChange)
+    return () => document.removeEventListener('fullscreenchange', onChange)
+  }, [])
+
   const toggle = () => {
     const v = videoRef.current
     if (!v) return
@@ -239,13 +271,22 @@ const PreviewDrawer = ({
       setPlaying(false)
     }
   }
-  /* Escape closes; R turns a quarter clockwise, as the button does; space plays and pauses a clip,
+  /* Escape leaves full screen, or closes when there is none to leave; F fills the screen with the
+     picture; R turns a quarter clockwise, as the button does; space plays and pauses a clip,
      whichever button was pressed last — never while a field has the keyboard. One listener on the
      window, renewed each render so it sees the latest turn. */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') {
+        if (big) leaveBig()
+        else onClose()
+      }
       if (typingInField(e)) return
+      if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault()
+        if (big) leaveBig()
+        else showBig()
+      }
       if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault()
         turn(90)
@@ -262,7 +303,6 @@ const PreviewDrawer = ({
   if (!file) return null
 
   const fileUrl = getPlaybackUrl(file, proxy)
-  const cannotShow = unplayable === fileUrl
   /* a rectangle is on screen whenever there is one to show; `None` takes it away */
   const framing = frame != null && shown !== 'None'
 
@@ -284,6 +324,16 @@ const PreviewDrawer = ({
     )
   }
   const video = isVideoFile(file.filename)
+  /* Full screen shows the file itself rather than the small copy the crop bar scrubs: a proxy is
+     640 across, which is what makes dragging a timeline answer at once and quite the wrong thing to
+     judge a picture by. A photo is already itself here, so only a clip has anywhere to go — and a
+     clip this browser has no decoder for falls back to the small copy, which is better than a black
+     rectangle, and says so. */
+  const fullUrl = video ? getFileUrl(file.path) : fileUrl
+  const fullSize = big && fullUrl !== fileUrl && !cannotPlay(fullUrl)
+  const playUrl = fullSize ? fullUrl : fileUrl
+  const shrunk = big && !fullSize && fullUrl !== fileUrl
+  const cannotShow = cannotPlay(playUrl)
   /* what the camera measured across this clip, for the graph under the timeline */
   const track = useJumpTrack(video ? file.path : null)
 
@@ -347,6 +397,18 @@ const PreviewDrawer = ({
             Next ›
           </Mini>
           <Mini
+            title={`See ${video ? 'the clip' : 'the photo'} full screen, at its own size (F)`}
+            onClick={showBig}>
+            ⛶ Full screen
+          </Mini>
+          {onPlayOutside && (
+            <Mini
+              title={`Open ${video ? 'the clip' : 'the photo'} in this machine's own player — the file as it was shot, whatever the browser can decode`}
+              onClick={onPlayOutside}>
+              ▶ Open in the player
+            </Mini>
+          )}
+          <Mini
             title='Close (Esc)'
             onClick={onClose}>
             ✕
@@ -355,7 +417,14 @@ const PreviewDrawer = ({
 
         <div className='grid min-h-0 grid-cols-1 overflow-auto sm:grid-cols-[minmax(0,1fr)_300px]'>
           <div className='min-w-0 bg-[#0b0f13] p-3.5'>
-            <div className='grid h-[min(46vh,380px)] place-items-center overflow-hidden'>
+            <div
+              ref={stage}
+              onDoubleClick={() => (big ? leaveBig() : showBig())}
+              className={
+                big
+                  ? 'fixed inset-0 z-50 grid place-items-center bg-black'
+                  : 'grid h-[min(46vh,380px)] place-items-center overflow-hidden'
+              }>
               {/* A box the shape of the picture as it will come out — turned — with the picture
                   turned inside it, and the rectangle laid over the box: it is drawn on the
                   turned picture, and measured against it. The panel itself is letterboxed, and a
@@ -365,7 +434,9 @@ const PreviewDrawer = ({
                 className='relative block'
                 style={{
                   aspectRatio: `${turned.width} / ${turned.height}`,
-                  width: `min(100%, calc(min(46vh, 380px) * ${turned.width / turned.height}))`
+                  width: big
+                    ? `min(100vw, calc(100vh * ${turned.width / turned.height}))`
+                    : `min(100%, calc(min(46vh, 380px) * ${turned.width / turned.height}))`
                 }}>
                 {video ? (
                   <video
@@ -380,7 +451,8 @@ const PreviewDrawer = ({
                     }}
                     onSeeked={(e) => scrub.seeked(e.currentTarget)}
                     onTimeUpdate={(e) => onTime?.(e.currentTarget.currentTime)}
-                    src={fileUrl}
+                    src={playUrl}
+                    controls={big}
                     onPlay={() => setPlaying(true)}
                     onPause={() => setPlaying(false)}
                     onLoadedMetadata={(e) => {
@@ -392,15 +464,15 @@ const PreviewDrawer = ({
                       if (v.videoWidth && v.videoHeight)
                         setShape({ width: v.videoWidth, height: v.videoHeight })
                       /* sound and no picture: the browser has no decoder for this video */ else
-                        setUnplayable(fileUrl)
+                        wontPlay(playUrl)
                     }}
-                    onError={() => setUnplayable(fileUrl)}
+                    onError={() => wontPlay(playUrl)}
                     style={pictureStyle(shape, rotation)}
                     className='absolute top-1/2 left-1/2 rounded-md transition-transform duration-150'
                   />
                 ) : (
                   <img
-                    src={fileUrl}
+                    src={playUrl}
                     alt={file.filename}
                     onLoad={(e) => {
                       const img = e.currentTarget
@@ -424,7 +496,7 @@ const PreviewDrawer = ({
                           : 'The browser cannot show this clip’s picture. It is copied, processed and uploaded all the same.'}
                   </span>
                 )}
-                {video && framing && (
+                {video && framing && !big && (
                   <FrameCropper
                     crop={frame}
                     ratio={ratio}
@@ -434,7 +506,7 @@ const PreviewDrawer = ({
                 )}
                 {/* how much of the picture the rectangle keeps, riding on its corner as it is
                     dragged — out of the way of the handles, and never in the way of a drag */}
-                {video && framing && frame && (
+                {video && framing && frame && !big && (
                   <span
                     aria-hidden='true'
                     style={{ left: `${frame.x * 100}%`, top: `${frame.y * 100}%` }}
@@ -443,6 +515,20 @@ const PreviewDrawer = ({
                   </span>
                 )}
               </span>
+              {big && (
+                <div className='absolute top-3 right-3 flex items-center gap-2'>
+                  {shrunk && (
+                    <span className='rounded-md bg-black/70 px-2 py-1 text-[11.5px] text-white/80'>
+                      This browser has no decoder for the clip itself — the small copy is playing
+                    </span>
+                  )}
+                  <Mini
+                    title='Leave full screen (Esc)'
+                    onClick={leaveBig}>
+                    ✕ Leave full screen
+                  </Mini>
+                </div>
+              )}
             </div>
             {video && (
               <>

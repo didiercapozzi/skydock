@@ -1293,6 +1293,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             moment: { which, seconds }
           })
         }
+        onPlayOutside={(file) =>
+          send(`play:${file.id ?? file.path}`, { intent: 'play-file', fileIds: [file.id ?? ''] })
+        }
       />
     </main>
   )

@@ -50,7 +50,9 @@ const actionArgs = z.object({
     /* the passenger was emailed — or, taken back, was not — said on the storage's list */
     'mark-emailed',
     /* tandems the storage's list names, put back on a board that has forgotten them */
-    'restore-tandems'
+    'restore-tandems',
+    /* a clip handed to the machine's own video player, to be watched at its full size */
+    'play-file'
   ]),
   groupId: z.string().optional(),
   groupIds: z.array(z.string()).optional(),
