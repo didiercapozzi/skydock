@@ -204,6 +204,45 @@ describe('a scan keeps the work already done', () => {
     })
   })
 
+  /* Being freed is the file not being here, never a mark a file carries about. */
+  describe('a file that was freed', () => {
+    /* a second file, so the scan has something to report and does not stop at "no changes" */
+    const board = async (freedName: string) => {
+      const origDir = path.join(outputDir, 'original_files')
+      writeTempFile(origDir, 'DJI_0001.MP4')
+      writeTempFile(origDir, 'DJI_0002.MP4', Buffer.alloc(512, 7))
+      await scanMedia({ outputDir })
+      const manifestPath = path.join(outputDir, 'manifest.json')
+      const manifest = loadManifest(manifestPath)!
+      manifest.files = manifest.files.map((f) =>
+        f.filename === freedName ? { ...f, freed: true } : f
+      )
+      saveManifest(manifestPath, manifest)
+      return { manifestPath, origDir }
+    }
+
+    it('stops saying a file lives on the storage only once it is back on this machine', async () => {
+      const { manifestPath, origDir } = await board('DJI_0001.MP4')
+      writeTempFile(origDir, 'DJI_0003.MP4', Buffer.alloc(512, 9))
+
+      await scanMedia({ outputDir })
+
+      const after = loadManifest(manifestPath)!
+      expect(after.files.find((f) => f.filename === 'DJI_0001.MP4')?.freed).toBeUndefined()
+    })
+
+    it('keeps a freed file as freed while there is nothing of it here', async () => {
+      const { manifestPath, origDir } = await board('DJI_0001.MP4')
+      fs.rmSync(path.join(origDir, 'DJI_0001.MP4'))
+      writeTempFile(origDir, 'DJI_0003.MP4', Buffer.alloc(512, 9))
+
+      await scanMedia({ outputDir })
+
+      const after = loadManifest(manifestPath)!
+      expect(after.files.find((f) => f.filename === 'DJI_0001.MP4')?.freed).toBe(true)
+    })
+  })
+
   /* A copy is an entry of its own for a file that is on the disk once. A scan reads the file's
      identity off its contents, which is the original's — so the copy has to keep its own, stay in
      its jump, and follow the original when that is moved. */
@@ -241,6 +280,21 @@ describe('a scan keeps the work already done', () => {
       expect(copy).toMatchObject({ id: `${shared.id}~1`, copyOf: shared.id, path: shared.path })
       /* and the original is still once, in the jump it was in */
       expect(after.files.filter((f) => f.path === shared.path)).toHaveLength(2)
+    })
+
+    it('stops saying a copy lives on the storage only once the file it points at is back', async () => {
+      const { manifestPath, shared, at } = await twoJumps()
+      const manifest = loadManifest(manifestPath)!
+      manifest.files = manifest.files.map((f) =>
+        f.copyOf === shared.id || f.id === shared.id ? { ...f, freed: true } : f
+      )
+      saveManifest(manifestPath, manifest)
+      at('C1.MP4', 5, 300)
+
+      await scanMedia({ outputDir })
+
+      const after = loadManifest(manifestPath)!
+      expect(after.files.filter((f) => f.path === shared.path).some((f) => f.freed)).toBe(false)
     })
 
     it('follows its original when the file is moved on the disk', async () => {

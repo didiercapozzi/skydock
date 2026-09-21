@@ -2,7 +2,9 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { readExifMap } from './lib/exif'
 import { findMediaFiles, sameBytes } from './lib/fs'
-import { getOutputDir, isCliModule } from './utils'
+import { loadManifest } from './manifest'
+import type { Manifest, ManifestFile } from './types'
+import { getManifestPath, getOutputDir, isCliModule } from './utils'
 
 /* Copying off a camera, into the originals: every file into a folder named after the day it was
    shot, and never anything written back to the camera (RULES, The workflow). */
@@ -30,15 +32,20 @@ const dayOfStat = (stat: fs.Stats) => {
   return `${y}-${m}-${d}`
 }
 
-/* The names a file can have in its day's folder: its own, or its own with a number, which is what a
-   second camera's clip of the same name was given. */
-const namesFor = (dir: string, name: string) => {
+/* Whether a name in the originals is one this camera file could have been filed under: its own, or
+   its own with a number, which is what a second camera's clip of the same name was given. */
+const isNameFor = (candidate: string, name: string) => {
   const { name: stem, ext } = path.parse(name)
   const numbered = new RegExp(
     `^${stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_(\\d+)${ext.replace('.', '\\.')}$`
   )
+  return candidate === name || numbered.test(candidate)
+}
+
+/* The names a file can have in its day's folder. */
+const namesFor = (dir: string, name: string) => {
   const there = fs.existsSync(dir) ? fs.readdirSync(dir) : []
-  return [name, ...there.filter((n) => numbered.test(n))]
+  return [name, ...there.filter((n) => n !== name && isNameFor(n, name))]
 }
 
 /* Where this file already is in the folder, under one of its names, or null. Same size and same time
@@ -61,6 +68,32 @@ const alreadyThere = async (src: string, srcStat: fs.Stats, dir: string) => {
   return null
 }
 
+/* A file this machine gave back is passed over like one that is here (RULES, The workflow). Freeing
+   deletes the original once the storage is proved to hold it and keeps the record, so plugging the
+   camera in again must not undo a choice already made.
+
+   Read without touching the card: the day it belongs to, the name it would be filed under, its size.
+   Not its time — the time kept for a file is the time it was shot, which may have been put right by
+   hand since, while the card still holds the time it was written. */
+const freedAlready = (board: ManifestFile[], src: string, srcStat: fs.Stats, dir: string) =>
+  board.some(
+    (f) =>
+      f.freed &&
+      f.size === srcStat.size &&
+      path.resolve(path.dirname(f.path)) === path.resolve(dir) &&
+      isNameFor(f.filename, path.basename(src))
+  )
+
+/* What the board knows, for the rule above. A jumps file that cannot be read stops a scan, on
+   purpose; it must not stop a card being copied, since the bytes are what there is to lose. */
+const loadBoard = (outputDir: string) => {
+  try {
+    return loadManifest(getManifestPath(outputDir))
+  } catch {
+    return null
+  }
+}
+
 /* Where a file new to this folder goes: under its own name, or — when a different file already has
    that name, as the first clip of two cameras of the same make always does — under its name with the
    next free number. An original is never written over. */
@@ -79,15 +112,21 @@ class CameraGone extends Error {}
 const copyCamera = async ({
   cameraDir,
   outputDir = getOutputDir(),
+  manifest = loadBoard(outputDir),
   onProgress
 }: {
   cameraDir: string
   outputDir?: string
+  manifest?: Manifest | null
   onProgress?: (progress: CopyProgress) => void
 }) => {
   const originalDir = path.join(outputDir, 'original_files')
   const files = findMediaFiles(cameraDir)
   const days = await readExifMap(files, DATE_TAGS)
+  /* a file is in the registry and in its jump, and either may carry the mark */
+  const board = manifest
+    ? [...manifest.files, ...manifest.groups.flatMap((g) => g.files)]
+    : ([] as ManifestFile[])
   const progress: CopyProgress = { done: 0, total: files.length, copied: 0, skipped: 0 }
   onProgress?.({ ...progress })
 
@@ -100,7 +139,9 @@ const copyCamera = async ({
     }
     const destDir = path.join(originalDir, days.get(src) ?? dayOfStat(srcStat))
     fs.mkdirSync(destDir, { recursive: true })
-    if (await alreadyThere(src, srcStat, destDir)) progress.skipped++
+    /* the mark first: it asks nothing of the disk */
+    if (freedAlready(board, src, srcStat, destDir) || (await alreadyThere(src, srcStat, destDir)))
+      progress.skipped++
     else {
       const dest = path.join(destDir, freeName(destDir, path.basename(src)))
       const partial = `${dest}.part`
@@ -155,5 +196,5 @@ const dayFoldersOf = async (files: string[], outputDir: string) => {
   )
 }
 
-export { CameraGone, alreadyThere, copyCamera, copyFromCameras, dayFoldersOf }
+export { CameraGone, alreadyThere, copyCamera, copyFromCameras, dayFoldersOf, freedAlready }
 export type { CopyOptions, CopyProgress }

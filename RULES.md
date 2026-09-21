@@ -71,7 +71,12 @@ Everything below follows from these.
 **1. Copy off the cameras.** Every photo and video is copied into a folder named after the day it was
 shot; a camera's other files, such as its small preview copies, are left on it.
 Inserting the same camera again costs nothing: a file already there with the same contents is skipped,
-recognised by its size and time without being read again. An original is never written over: a second
+recognised by its size and time without being read again. A file this machine has already given back is
+passed over the same way: freeing deletes the original here once the storage is proved to hold it, so
+plugging the camera in again does not undo a choice already made. That one is recognised without being
+read either — by the day it belongs to, the name it would be filed under, its own or its own with a
+number, and its size; not by its time, which is the time it was shot and may have been put right by hand
+since, while the card still holds the time it was written. An original is never written over: a second
 camera's clip that has the same name as one already there — two cameras of one make both start at the
 same number — is kept beside it under its name with a number. Each file is only given its name once it
 is whole, so a card pulled out half way leaves nothing behind that could be taken for an original.
@@ -594,7 +599,10 @@ Every file is in one of three states, each of which SkyDock can verify:
 A file falls back to local when anything it was made from changed, or its copy is missing or a different
 size. It falls back to processed when the storage was asked and does not have it. A file that went to
 the storage inside an archive counts as uploaded while the archive is there. A file freed from this
-machine reads as uploaded, since the storage is where it now is.
+machine reads as uploaded, since the storage is where it now is — and only for as long as it is gone.
+Being freed is the file not being here, never a mark it carries about: one back on this machine, however
+it came back, is read like any other. A jump that was freed stays freed, since what was made from it and
+delivered is gone all the same.
 
 **Footage that is nowhere is not listed.** A file freed from this machine has no original and no copy
 left here. If the storage is then asked about it and answers that it is not there, nothing of that file

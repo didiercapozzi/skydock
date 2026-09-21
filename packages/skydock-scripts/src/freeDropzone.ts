@@ -89,9 +89,15 @@ const freeDropzone = async ({
       (other) => other.path === file.path && !other.freed && !going.has(other.id)
     )
   let bytes = 0
+  /* its original stayed, so the file is still here: freed is the file not being here, and saying it
+     of one on the disk would lock it and have a camera pass it over */
+  const stayed = new Set<string>()
   for (const file of files) {
     bytes += removeFile(processed, file.processed?.path)
-    if (heldElsewhere(file)) continue
+    if (heldElsewhere(file)) {
+      if (file.id) stayed.add(file.id)
+      continue
+    }
     bytes += removeFile(originals, file.path)
     if (file.proxy && file.proxy !== file.path) bytes += removeFile(proxies, file.proxy)
   }
@@ -99,7 +105,7 @@ const freeDropzone = async ({
 
   const result = {
     groupIds: jumps.map((g) => g.id),
-    fileIds: files.flatMap((f) => (f.id ? [f.id] : [])),
+    fileIds: files.flatMap((f) => (f.id && !stayed.has(f.id) ? [f.id] : [])),
     bytes,
     at: Math.floor(Date.now() / 1000),
     kept

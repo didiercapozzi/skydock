@@ -124,8 +124,11 @@ const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => 
      un-sort every loose file whenever one file came or went. A file whose contents are the same keeps
      the time it was given, corrected or not; one whose contents changed is another file, with the
      time its camera gave it, and invalidates what was made from it through its new size and time. */
+  /* Being freed is the file not being here, never a mark it carries: one that is on the disk again,
+     however it came back, is read like any other file (RULES, File status). */
+  const here = ({ freed: _freed, ...rest }: ManifestFile) => rest
   const kept = (f: ManifestFile, disk: ManifestFile) => ({
-    ...f,
+    ...here(f),
     ...disk,
     ...(disk.id === f.id ? { mtime: f.mtime } : {})
   })
@@ -163,7 +166,7 @@ const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => 
     const original = keptFiles.find((k) => !k.copyOf && k.id === copy.copyOf)
     if (original)
       keptFiles.push({
-        ...copy,
+        ...(diskByPath.has(original.path) ? here(copy) : copy),
         path: original.path,
         filename: original.filename,
         size: original.size

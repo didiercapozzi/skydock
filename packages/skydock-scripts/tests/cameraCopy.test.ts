@@ -6,7 +6,9 @@ import { lookForCameras, mountedCameras, watchCameras } from '../src/cameraWatch
 import { CameraGone, copyCamera } from '../src/copy'
 import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
-import { loadManifest } from '../src/manifest'
+import { loadManifest, saveManifest } from '../src/manifest'
+import { scanMedia } from '../src/scan'
+import { getManifestPath } from '../src/utils'
 import { createTmpDir, onPlatform } from './fixtures'
 
 /* A camera is copied off into the originals — by hand or by plugging it in. Real files, really
@@ -103,6 +105,70 @@ describe('copying a camera off', () => {
       'GX010001.MP4',
       'GX010001_2.MP4'
     ])
+  })
+
+  /* freeing is deliberate: the original goes once the storage is proved to hold it, and the record
+     stays behind to say so. Plugging the camera in again must not undo that choice. */
+  const freeIt = async (filename: string) => {
+    await scanMedia({ outputDir })
+    const manifestPath = getManifestPath(outputDir)
+    const manifest = loadManifest(manifestPath)!
+    manifest.files = manifest.files.map((f) =>
+      f.filename === filename ? { ...f, freed: true } : f
+    )
+    saveManifest(manifestPath, manifest)
+    fs.rmSync(day(filename))
+  }
+
+  it('passes over a file this machine freed, rather than copying it off the camera again', async () => {
+    const root = card('GOPRO', { 'GX010001.MP4': { bytes: 32, fill: 1, at: DAY } })
+    await copyCamera({ cameraDir: path.join(root, 'DCIM'), outputDir })
+    await freeIt('GX010001.MP4')
+
+    const again = await copyCamera({ cameraDir: path.join(root, 'DCIM'), outputDir })
+
+    expect(again).toMatchObject({ copied: 0, skipped: 1 })
+    expect(fs.existsSync(day('GX010001.MP4'))).toBe(false)
+  })
+
+  it('knows a freed file under the numbered name a second camera’s clip was given', async () => {
+    const first = card('GOPRO_A', { 'GX010001.MP4': { bytes: 32, fill: 1, at: DAY } })
+    const second = card('GOPRO_B', { 'GX010001.MP4': { bytes: 48, fill: 2, at: DAY } })
+    await copyCamera({ cameraDir: path.join(first, 'DCIM'), outputDir })
+    await copyCamera({ cameraDir: path.join(second, 'DCIM'), outputDir })
+    await freeIt('GX010001_2.MP4')
+
+    const again = await copyCamera({ cameraDir: path.join(second, 'DCIM'), outputDir })
+
+    expect(again).toMatchObject({ copied: 0, skipped: 1 })
+    expect(fs.readdirSync(path.dirname(day('x')))).toEqual(['GX010001.MP4'])
+  })
+
+  it('copies a file that only shares a name and a size with one freed from another day', async () => {
+    const first = card('GOPRO_A', { 'GX010001.MP4': { bytes: 32, fill: 1, at: DAY } })
+    await copyCamera({ cameraDir: path.join(first, 'DCIM'), outputDir })
+    await freeIt('GX010001.MP4')
+    const later = new Date(2026, 7, 2, 10, 0, 0)
+    const second = card('GOPRO_B', { 'GX010001.MP4': { bytes: 32, fill: 2, at: later } })
+
+    const result = await copyCamera({ cameraDir: path.join(second, 'DCIM'), outputDir })
+
+    expect(result).toMatchObject({ copied: 1 })
+    expect(
+      fs.existsSync(path.join(outputDir, 'original_files', '2026-08-02', 'GX010001.MP4'))
+    ).toBe(true)
+  })
+
+  it('copies a file of another size, whatever was freed under that name', async () => {
+    const first = card('GOPRO_A', { 'GX010001.MP4': { bytes: 32, fill: 1, at: DAY } })
+    await copyCamera({ cameraDir: path.join(first, 'DCIM'), outputDir })
+    await freeIt('GX010001.MP4')
+    const second = card('GOPRO_B', { 'GX010001.MP4': { bytes: 48, fill: 2, at: DAY } })
+
+    const result = await copyCamera({ cameraDir: path.join(second, 'DCIM'), outputDir })
+
+    expect(result).toMatchObject({ copied: 1 })
+    expect(fs.readFileSync(day('GX010001.MP4'))).toEqual(Buffer.alloc(48, 2))
   })
 
   /* a card pulled out half way leaves nothing that could be taken for an original */

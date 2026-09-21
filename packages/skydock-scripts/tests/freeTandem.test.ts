@@ -247,6 +247,29 @@ describe('freeing an uploaded tandem', () => {
     await expect(free(manifest)).rejects.toThrow(/Upload this tandem first/)
   })
 
+  /* the whole point of freeing: the card may still hold the original, and plugging it in must not
+     bring back what was deliberately let go */
+  it('leaves the originals on the camera when it is plugged in again, rather than copying them back', async () => {
+    const { manifest, onStorage } = await setup()
+    withStorage(onStorage)
+    await free(manifest)
+    saveManifest(path.join(outputDir, 'manifest.json'), manifest)
+    const card = path.join(outputDir, 'card', 'DCIM', '100GOPRO')
+    fs.mkdirSync(card, { recursive: true })
+    const clip = path.join(card, 'GX01.MP4')
+    fs.writeFileSync(clip, Buffer.alloc(400, 1))
+    const shot = new Date(2026, 7, 1, 10, 0, 0)
+    fs.utimesSync(clip, shot, shot)
+
+    const { copyCamera } = await import('../src/copy')
+    const result = await copyCamera({ cameraDir: path.dirname(path.dirname(card)), outputDir })
+
+    expect(result).toMatchObject({ copied: 0, skipped: 1 })
+    expect(fs.existsSync(path.join(outputDir, 'original_files', '2026-08-01', 'GX01.MP4'))).toBe(
+      false
+    )
+  })
+
   it('keeps a freed tandem through a later scan, rather than dropping its missing files', async () => {
     const { manifest, onStorage } = await setup()
     withStorage(onStorage)

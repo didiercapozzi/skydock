@@ -4,7 +4,7 @@ import * as path from 'node:path'
 import { Unzip, UnzipInflate } from 'fflate'
 import type { CameraFile } from './cameraEntry'
 import { cameraCopying, cameraName, mountedCameras } from './cameraWatch'
-import { alreadyThere, dayFoldersOf } from './copy'
+import { alreadyThere, dayFoldersOf, freedAlready } from './copy'
 import { ID_HEX_LENGTH } from './fileId'
 import { findMediaFiles, hashFile, moveFile } from './lib/fs'
 import { loadManifest } from './manifest'
@@ -142,17 +142,25 @@ const prover = (session: NasSession) => {
 const standingOf = (
   manifest: Manifest | null,
   file: string,
-  size: number,
+  stat: fs.Stats,
+  dir: string,
   original: string | null
 ) => {
-  const entries = (manifest ? entriesOf(manifest) : []).filter(({ file: f }) =>
-    original
-      ? f.path === original
-      : f.freed && f.filename === path.basename(file) && f.size === size
-  )
-  if (entries.some(({ file: f, group }) => f.freed || claimsOf(f, group).length > 0))
-    return 'stored' as const
-  return original ? ('copied' as const) : ('missing' as const)
+  const entries = manifest ? entriesOf(manifest) : []
+  /* gone from here but given back: the copy passes it over by the same rule, so the page says so */
+  if (!original)
+    return freedAlready(
+      entries.map(({ file: f }) => f),
+      file,
+      stat,
+      dir
+    )
+      ? ('stored' as const)
+      : ('missing' as const)
+  const mine = entries.filter(({ file: f }) => f.path === original)
+  return mine.some(({ file: f, group }) => f.freed || claimsOf(f, group).length > 0)
+    ? ('stored' as const)
+    : ('copied' as const)
 }
 
 const dcimOf = (mount: string) => path.join(mount, 'DCIM')
@@ -166,13 +174,14 @@ const listCamera = async (mount: string, outputDir: string) => {
   const listed: CameraFile[] = []
   for (const file of files) {
     const stat = fs.statSync(file)
-    const original = await alreadyThere(file, stat, folders.get(file) ?? '')
+    const dir = folders.get(file) ?? ''
+    const original = await alreadyThere(file, stat, dir)
     listed.push({
       path: file,
       name: path.relative(dcimOf(mount), file),
       size: stat.size,
       mtime: Math.floor(stat.mtimeMs / 1000),
-      state: standingOf(manifest, file, stat.size, original)
+      state: standingOf(manifest, file, stat, dir, original)
     })
   }
   /* newest first, as every list of files is */
