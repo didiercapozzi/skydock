@@ -35,8 +35,21 @@ const rotationSchema = z.union([z.literal(0), z.literal(90), z.literal(180), z.l
    it decides where the music starts, so it is never beyond argument. */
 const jumpMomentsSchema = z.object({
   exit: z.number(),
+  opening: z.number().optional(),
   canopy: z.number().optional(),
   landing: z.number().optional()
+})
+
+/* The same jump as a series, twice a second from the clip's first frame to its last: what the
+   camera felt in gravities, and — only when a camera was told where it was — how high it was in
+   metres and how fast it was moving in kilometres an hour. A moment the satellites had nothing to
+   say about is a gap, never a line ruled across it. */
+const jumpTrackSchema = z.object({
+  seconds: z.number(),
+  rate: z.number(),
+  force: z.array(z.number()),
+  altitude: z.array(z.number().nullable()).optional(),
+  speed: z.array(z.number().nullable()).optional()
 })
 
 const processedRecordSchema = z.object({
@@ -189,6 +202,8 @@ const manifestSchema = z.object({
 
 type BackupOptions = z.input<typeof backupOptionsSchema>
 type FrameCrop = z.infer<typeof frameCropSchema>
+type JumpMoments = z.infer<typeof jumpMomentsSchema>
+type JumpTrack = z.infer<typeof jumpTrackSchema>
 type Rotation = z.infer<typeof rotationSchema>
 type ManifestFile = z.infer<typeof manifestFileSchema>
 type ManifestGroup = z.infer<typeof manifestGroupSchema>
@@ -201,6 +216,8 @@ export type {
   BackupOptions,
   Destination,
   FrameCrop,
+  JumpMoments,
+  JumpTrack,
   GroupsFile,
   Manifest,
   ManifestFile,
@@ -218,6 +235,7 @@ export {
   groupFileRefSchema,
   groupsFileSchema,
   jumpMomentsSchema,
+  jumpTrackSchema,
   manifestFileSchema,
   manifestGroupSchema,
   manifestSchema,

@@ -67,7 +67,10 @@ const actionArgs = z.object({
   anchorEpoch: z.number().optional(),
   /* which of a clip's moments is being moved, and to when */
   moment: z
-    .object({ which: z.enum(['exit', 'canopy', 'landing']), seconds: z.number().min(0) })
+    .object({
+      which: z.enum(['exit', 'opening', 'canopy', 'landing']),
+      seconds: z.number().min(0)
+    })
     .optional(),
   /* what came off a camera plugged in, and how its copy ended */
   cameraCopied: z

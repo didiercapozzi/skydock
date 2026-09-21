@@ -22,11 +22,16 @@ const setMomentIntent: Intent = ({ data, manifest, manifestPath, refuse }) => {
   /* A jump happens in one order and a mark says when: the canopy cannot open before the door is
      left. Refusing is better than silently sorting them, since one of the two is wrong and only
      the person moving them knows which. */
-  const inOrder = [moved.exit, moved.canopy, moved.landing].filter((at) => at !== undefined)
+  const inOrder = [moved.exit, moved.opening, moved.canopy, moved.landing].filter(
+    (at) => at !== undefined
+  )
   if (inOrder.some((at, index) => index > 0 && at <= inOrder[index - 1]))
-    return refuse('The exit comes before the canopy, and the canopy before the ground.')
+    return refuse('A jump goes door, opening, canopy, ground — the marks have to say the same.')
 
-  file.moments = moved
+  /* every copy of the file, not only the registry's: a jump holds its own resolved copy, and the
+     board is answered out of those — a mark written to one of the two comes back looking unmoved */
+  for (const one of [file, ...manifest.groups.flatMap((g) => g.files)])
+    if (one.id === id) one.moments = moved
   saveManifest(manifestPath, manifest)
   return boardAnswer(manifest)
 }

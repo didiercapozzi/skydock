@@ -8,7 +8,9 @@ import { PreviewDrawer } from '../../app/components/preview-drawer'
    exit decides where the music starts, so it is never beyond argument (RULES, Where the jump is in
    a clip). */
 
-const clip = (moments: { exit: number; canopy?: number; landing?: number } | null | undefined) => ({
+type Moments = { exit: number; opening?: number; canopy?: number; landing?: number }
+
+const clip = (moments: Moments | null | undefined) => ({
   path: '/o/original_files/2026-09-13/GX018663.MP4',
   size: 1,
   mtime: 1,
@@ -19,10 +21,12 @@ const clip = (moments: { exit: number; canopy?: number; landing?: number } | nul
 
 const Drawer = ({
   moments,
-  onMomentChange
+  onMomentChange,
+  tandem = true
 }: {
-  moments: { exit: number; canopy?: number; landing?: number } | null | undefined
-  onMomentChange?: (which: 'exit' | 'canopy' | 'landing', seconds: number) => void
+  moments: Moments | null | undefined
+  onMomentChange?: (which: 'exit' | 'opening' | 'canopy' | 'landing', seconds: number) => void
+  tandem?: boolean
 }) =>
   createElement(PreviewDrawer, {
     files: [clip(moments)],
@@ -45,15 +49,19 @@ const Drawer = ({
     onZoomChange: () => {},
     onDurationChange: () => {},
     onVideoRef: () => {},
-    onMomentChange
+    onMomentChange,
+    tandem
   })
 
 describe('where the jump is in a clip', () => {
   test('is marked on the timeline, each moment in its place', async () => {
-    await render(createElement(Drawer, { moments: { exit: 38, canopy: 94, landing: 185 } }))
+    await render(
+      createElement(Drawer, { moments: { exit: 38, opening: 91, canopy: 94, landing: 185 } })
+    )
 
     for (const [which, at] of [
       ['exit', 38],
+      ['opening', 91],
       ['canopy', 94],
       ['landing', 185]
     ] as const) {
@@ -66,8 +74,23 @@ describe('where the jump is in a clip', () => {
   })
 
   test('is read out as well, so a moment can be gone to', async () => {
-    await render(createElement(Drawer, { moments: { exit: 38, canopy: 94 } }))
+    await render(createElement(Drawer, { moments: { exit: 38, opening: 91, canopy: 94 } }))
     await expect.element(page.getByRole('button', { name: /exit 0:38/i })).toBeVisible()
+    /* both ends of the canopy: the tug that ends the freefall and the canopy overhead after it */
+    await expect.element(page.getByRole('button', { name: /opening 1:31/i })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: /canopy 1:34/i })).toBeVisible()
+  })
+
+  /* A fun jump is filmed by somebody who follows the group out, so the jump is on screen a second
+     before their own camera leaves — and that second is where the cut starts (RULES, Where the jump
+     is in a clip). */
+  test('starts a fun jump a second before the camera left', async () => {
+    await render(createElement(Drawer, { moments: { exit: 38, canopy: 94 }, tandem: false }))
+    await expect.element(page.getByRole('button', { name: /exit 0:37/i })).toBeVisible()
+    const mark = document.querySelector('[data-moment=exit]')
+    const along = Number(/left: ([\d.]+)%/.exec(mark?.getAttribute('style') ?? '')?.[1])
+    expect(along).toBeCloseTo((37 / 191) * 100, 1)
+    /* only the exit leads; the canopy is where it was measured */
     await expect.element(page.getByRole('button', { name: /canopy 1:34/i })).toBeVisible()
   })
 
@@ -84,31 +107,52 @@ describe('where the jump is in a clip', () => {
     expect(document.body.textContent).not.toContain('No exit found')
   })
 
+})
+
+/* the exit dragged a quarter of the way along, and what that reported */
+const dragExit = async (tandem: boolean) => {
+  const moved = vi.fn()
+  /* one drawer at a time, since this is asked twice over in one test */
+  const drawer = await render(
+    createElement(Drawer, { moments: { exit: 38, canopy: 94 }, onMomentChange: moved, tandem })
+  )
+  const mark = drawer.container.querySelector('[data-moment=exit]')
+  if (!mark) throw new Error('the exit was not marked')
+  const bar = drawer.container.querySelector('[data-crop-bar]')
+  if (!bar) throw new Error('there is no timeline')
+  const box = bar.getBoundingClientRect()
+
+  mark.dispatchEvent(
+    new PointerEvent('pointerdown', { bubbles: true, clientX: box.left + box.width * 0.2 })
+  )
+  bar.dispatchEvent(
+    new PointerEvent('pointermove', { bubbles: true, clientX: box.left + box.width * 0.25 })
+  )
+  expect(moved).toHaveBeenCalled()
+  const said = moved.mock.calls[moved.mock.calls.length - 1] as [
+    'exit' | 'opening' | 'canopy' | 'landing',
+    number
+  ]
+  drawer.unmount()
+  return said
+}
+
+describe('a mark put right by hand', () => {
   /* A camera can be a second or two out, and the music is hung on this — so it is a mark to drag,
      not a verdict. */
   test('is dragged to where it should have been', async () => {
-    const moved = vi.fn()
-    await render(
-      createElement(Drawer, { moments: { exit: 38, canopy: 94 }, onMomentChange: moved })
-    )
-    const mark = document.querySelector('[data-moment=exit]')
-    if (!mark) throw new Error('the exit was not marked')
-    const bar = document.querySelector('[data-crop-bar]')
-    if (!bar) throw new Error('there is no timeline')
-    const box = bar.getBoundingClientRect()
-
-    mark.dispatchEvent(
-      new PointerEvent('pointerdown', { bubbles: true, clientX: box.left + box.width * 0.2 })
-    )
-    bar.dispatchEvent(
-      new PointerEvent('pointermove', { bubbles: true, clientX: box.left + box.width * 0.25 })
-    )
-
-    expect(moved).toHaveBeenCalled()
-    const [which, seconds] = moved.mock.calls[moved.mock.calls.length - 1]
+    const [which, seconds] = await dragExit(true)
     expect(which).toBe('exit')
     /* a quarter of the way along 191 seconds */
     expect(seconds).toBeGreaterThan(40)
     expect(seconds).toBeLessThan(56)
+  })
+
+  /* What is dragged on a fun jump is the cut, which runs a second ahead of the measurement. What is
+     written down is the measurement, or the lead would be eaten a second at a time. */
+  test('records the measurement, not the second of lead in front of it', async () => {
+    const [, asTandem] = await dragExit(true)
+    const [, asFunJump] = await dragExit(false)
+    expect(asFunJump).toBeCloseTo(asTandem + 1, 5)
   })
 })

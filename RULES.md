@@ -621,18 +621,50 @@ be sent again; the local file is untouched. Between those moments the board says
 
 ## Where the jump is in a clip
 
-A clip off a camera that records what it felt — a GoPro does, two hundred times a second — has its
-jump found in it: the second the plane was left, the second the canopy opened, and the second the
-ground arrived. Leaving an aeroplane is a few seconds of weightlessness and nothing else is; the
-canopy and the ground are the only seconds of a jump that weigh half again what standing still does.
+A clip off a camera that records what it felt — and the cameras here do, a GoPro two hundred times a
+second and a DJI once a frame — has its jump found in it: the moment the plane was left, the two ends
+of the canopy opening, and the moment the ground arrived. Leaving an aeroplane is a few seconds of
+weightlessness and nothing else is, so the exit is never in doubt. The canopy is a deceleration that
+lasts and has a canopy flying after it — a jumper tracking, turning or head-down weighs as much and
+longer, and only an opening is followed by a gravity held steady. It is marked twice, because a film
+wants both ends of it: the opening, which is the first tug and the end of the freefall, and the
+canopy, three or four seconds later where the deceleration has eased and one is flying overhead. The
+ground is the last second heavier than a canopy ride.
 
 Every clip is asked once, in the background, off the original — a copy keeps the picture and the
 sound, not what the camera felt. Most clips have no jump in them: a clip shot on the ground, one
-that never left the plane, one off a camera that writes nothing down. Saying so is the answer, kept
-so that nothing is asked twice, and it is never made up.
+that never left the plane, one off a camera that measures nothing. Saying so is the answer, kept so
+that nothing is asked twice, and it is never made up.
 
 What it is for: a jump is cut around those moments. What SkyDock finds is a starting point, shown
-where it can be seen and corrected, never a decision taken silently.
+where it can be seen and corrected, never a decision taken silently. A jump runs door, opening,
+canopy, ground, and a mark moved out of that order is refused — one of the two is wrong, and only
+the person moving them knows which.
+
+A mark says when the camera's own wearer left the plane, and a cut does not always start there. A
+tandem is the subject of its own film, so its cut starts at the instant itself. A fun jump is filmed
+by somebody who goes out after the group, so its cut starts a second earlier — the jump on screen
+begins before the camera leaves. Moving a mark moves the measurement; the second's lead follows it.
+
+## The jump on a graph
+
+A clip being looked at is drawn as well as marked: the force its camera felt, from the first frame
+to the last, with the parts of the jump shaded behind it — the plane, freefall, the opening, the
+canopy ride, the ground — and the marks in their places. The measurement is drawn as it stands and
+the jump's shape over it, since freefall buffets a camera hard enough to hide the shape of anything.
+
+It is tied to the frame on screen and dragged like the timeline: a point dragged along the graph
+moves the footage to that instant, and the graph reads out what that instant weighed and which part
+of the jump it belongs to. A number and the picture it belongs to are never apart.
+
+How high and how fast are drawn beside it whenever a camera wrote them down, in metres and in
+kilometres an hour. Only satellites know either: a camera told where it is says so a few times a
+second, and a camera with that switched off — or one that has no receiver at all — says nothing,
+which the graph states rather than drawing a line from nothing. A stretch where the receiver lost
+the sky is a gap in the line, not a line ruled across it. Nothing about a jump's height or speed is
+estimated, ever: an invented line is worse than an absent one.
+
+The drawing is read off the original when the clip is opened, and nothing about it is stored.
 
 ## Montage
 

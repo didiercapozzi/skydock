@@ -83,6 +83,12 @@ const usePreview = (
     videoRefRef.current?.seek(time)
   }
 
+  /* The footage moving on its own, which is playing it: where it has got to is where the timeline,
+     the graph and the clock all stand. It is told, never sent anywhere — sending a playing video to
+     where it already is stutters it. */
+  const handleVideoTime = (time: number) =>
+    setVideoStateRaw((prev) => (prev.currentTime === time ? prev : { ...prev, currentTime: time }))
+
   const closePreview = () => {
     videoRefRef.current = null
     setPreview(null)
@@ -170,6 +176,7 @@ const usePreview = (
     handlePreview,
     stepPreview,
     handleVideoSeek,
+    handleVideoTime,
     handleVideoApply,
     frame,
     rotation,

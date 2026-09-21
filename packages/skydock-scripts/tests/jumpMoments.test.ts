@@ -1,16 +1,24 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { accelerationIn, readFelt } from '../src/jumpMoments'
+import { cutFrom, readFelt } from '../src/jumpMoments'
 
 /* Where the jump is in a clip, read off what the camera felt. The numbers here are the shape of a
    real tandem, measured off jumps that were then checked frame by frame: a minute in the plane at
    one gravity, a few seconds of next to nothing at the door, fifty seconds of freefall at one
-   gravity again — drag against weight — the opening at two, a canopy ride, and the ground. */
+   gravity again — drag against weight — the opening at two, a canopy ride, and the ground.
+
+   The marks are instants, not seconds: the door is where the weight left one gravity, and the
+   canopy is where its opening eased — three or four seconds after the first tug, which is when the
+   frames show one flying. */
 
 const GRAVITY = 9.81
 
 /* one second of readings at the rate a GoPro writes them */
 const second = (gravities: number) => Array.from({ length: 200 }, () => gravities * GRAVITY)
+
+/* An opening lasts: three seconds of deceleration and more, which is what tells it from a hard turn
+   in freefall. The ground is one second of impact. */
+const OPENING = 3
 
 const jump = ({
   cabin = 40,
@@ -23,7 +31,7 @@ const jump = ({
     ...Array.from({ length: cabin }, () => second(1)).flat(),
     ...Array.from({ length: exit }, () => second(0.3)).flat(),
     ...Array.from({ length: freefall }, () => second(1)).flat(),
-    ...second(2.1),
+    ...Array.from({ length: OPENING }, () => second(2.1)).flat(),
     ...Array.from({ length: canopy }, () => second(1)).flat(),
     ...second(1.5),
     ...Array.from({ length: after }, () => second(1)).flat()
@@ -32,9 +40,35 @@ const jump = ({
 }
 
 describe('where the jump is in a clip', () => {
-  it('is the second the plane was left, the canopy opened, and the ground arrived', () => {
+  it('is the moment the plane was left, the canopy came open, and the ground arrived', () => {
     const { felt, seconds } = jump()
-    expect(readFelt(felt, seconds)).toEqual({ exit: 40, canopy: 96, landing: 187 })
+    const found = readFelt(felt, seconds)
+    expect(found?.exit).toBe(40)
+    /* the opening begins at 96 and is over by a few seconds later, which is the second mark */
+    expect(found?.canopy).toBeGreaterThan(96)
+    expect(found?.canopy).toBeLessThan(101)
+    expect(found?.landing).toBe(189)
+  })
+
+  /* The canopy is marked twice, because a film wants both: the tug that ends the freefall, and the
+     easing three or four seconds later where the canopy is overhead and flying. */
+  it('marks the tug that ends the freefall as well as the canopy above it', () => {
+    const { felt, seconds } = jump()
+    const found = readFelt(felt, seconds)
+    /* freefall runs to 96 and the opening begins there */
+    expect(found?.opening).toBeGreaterThanOrEqual(95)
+    expect(found?.opening).toBeLessThanOrEqual(97)
+    expect(found?.opening).toBeLessThan(found?.canopy ?? 0)
+  })
+
+  /* A clip whose canopy was never found has no opening either: the two are two ends of one thing. */
+  it('says nothing of an opening it never found the canopy of', () => {
+    const felt = [
+      ...Array.from({ length: 20 }, () => second(1)).flat(),
+      ...Array.from({ length: 6 }, () => second(0.3)).flat(),
+      ...Array.from({ length: 20 }, () => second(1)).flat()
+    ]
+    expect(readFelt(felt, felt.length / 200)?.opening).toBeUndefined()
   })
 
   /* Freefall weighs one gravity, the same as sitting in the plane — drag has caught up with
@@ -69,12 +103,54 @@ describe('where the jump is in a clip', () => {
       ...Array.from({ length: 5 }, () => second(0.3)).flat(),
       ...second(1.6) /* the drogue, five seconds after the door */,
       ...Array.from({ length: 45 }, () => second(1)).flat(),
-      ...second(2.1) /* the canopy */,
+      ...Array.from({ length: OPENING }, () => second(2.1)).flat(),
       ...Array.from({ length: 20 }, () => second(1)).flat()
     ]
     const found = readFelt(felt, felt.length / 200)
     expect(found?.exit).toBe(30)
-    expect(found?.canopy).toBe(81)
+    /* the opening begins at 81, and the drogue forty-five seconds before it is not one */
+    expect(found?.canopy).toBeGreaterThan(81)
+    expect(found?.canopy).toBeLessThan(86)
+  })
+
+  /* A sport jumper tracking away, or turning hard, weighs as much for a second as a tandem's canopy
+     does. What tells them apart is that an opening goes on. This is a jump that was marked wrongly
+     until it did: the manoeuvre at forty seconds, the opening at sixty. */
+  it('is not a hard turn in freefall', () => {
+    const felt = [
+      ...Array.from({ length: 12 }, () => second(1)).flat(),
+      ...Array.from({ length: 4 }, () => second(0.4)).flat(),
+      ...Array.from({ length: 24 }, () => second(1.1)).flat(),
+      ...second(1.45) /* one second of turning, and back to freefall */,
+      ...Array.from({ length: 19 }, () => second(1.1)).flat(),
+      ...Array.from({ length: 4 }, () => second(2)).flat() /* the canopy, at sixty */,
+      ...Array.from({ length: 20 }, () => second(1)).flat()
+    ]
+    const found = readFelt(felt, felt.length / 200)
+    expect(found?.exit).toBe(12)
+    /* the opening begins at 60; the second of turning at 40 is not an opening at all */
+    expect(found?.canopy).toBeGreaterThan(60)
+    expect(found?.canopy).toBeLessThan(66)
+  })
+
+  /* A jumper head-down and turning weighs two gravities for as long as they care to, which is what a
+     canopy weighs and far longer than one opens for. What tells them apart is what follows: only an
+     opening has a canopy flying on the other side of it. This is a jump that was marked at its
+     eighth second — in the middle of the flying — until that was asked. */
+  it('is the opening at the end of the flying, not the flying', () => {
+    const felt = [
+      ...Array.from({ length: 12 }, () => second(1)).flat(),
+      ...Array.from({ length: 4 }, () => second(0.4)).flat(),
+      ...Array.from({ length: 8 }, () => second(1.1)).flat(),
+      ...Array.from({ length: 40 }, () => second(2.2)).flat() /* head-down, and turning */,
+      ...Array.from({ length: 3 }, () => second(3)).flat() /* the opening */,
+      ...Array.from({ length: 20 }, () => second(1)).flat()
+    ]
+    const found = readFelt(felt, felt.length / 200)
+    expect(found?.exit).toBe(12)
+    /* the opening begins at 64, at the end of the flying, and its mark is where it eased */
+    expect(found?.canopy).toBeGreaterThanOrEqual(64)
+    expect(found?.canopy).toBeLessThan(70)
   })
 
   /* A clip cut before the canopy still has its exit, and says nothing it cannot see. */
@@ -86,65 +162,29 @@ describe('where the jump is in a clip', () => {
     ]
     expect(readFelt(felt, felt.length / 200)).toEqual({
       exit: 20,
+      opening: undefined,
       canopy: undefined,
       landing: undefined
     })
   })
 })
 
-/* What a GoPro writes is a stream of keys, each saying its own type, size and count, nested the same
-   way. These build one by hand — the accelerometer, and the scale that turns its counts into
-   motion — so that reading it is tested without a camera. */
-const entry = (key: string, type: string, size: number, count: number, body: Buffer) => {
-  const head = Buffer.alloc(8)
-  head.write(key.padEnd(4), 0, 'latin1')
-  head.write(type, 4, 'latin1')
-  head[5] = size
-  head.writeUInt16BE(count, 6)
-  const padding = Buffer.alloc((4 - (body.length % 4)) % 4)
-  return Buffer.concat([head, body, padding])
-}
+/* What is measured is when this camera's wearer became airborne. What an edit starts from is the
+   moment the jump begins on screen — and on a fun jump the group is out of the door a second before
+   whoever is filming them. A tandem is its own subject, and wants the instant itself. */
+describe('where a cut starts from', () => {
+  const moments = { exit: 38.6, canopy: 101.6, landing: 192.7 }
 
-const readings = (triples: [number, number, number][]) => {
-  const body = Buffer.alloc(triples.length * 6)
-  triples.forEach(([x, y, z], at) => {
-    body.writeInt16BE(x, at * 6)
-    body.writeInt16BE(y, at * 6 + 2)
-    body.writeInt16BE(z, at * 6 + 4)
-  })
-  return entry('ACCL', 's', 6, triples.length, body)
-}
-
-const scale = (by: number) => {
-  const body = Buffer.alloc(2)
-  body.writeInt16BE(by, 0)
-  return entry('SCAL', 's', 2, 1, body)
-}
-
-describe('what the camera wrote down', () => {
-  it('is read as motion, at the scale the camera says', () => {
-    const stream = Buffer.concat([
-      scale(418),
-      readings([
-        [4180, 0, 0],
-        [0, 0, 2090]
-      ])
-    ])
-    const felt = accelerationIn(stream)
-    expect(felt).toHaveLength(2)
-    expect(felt[0]).toBeCloseTo(10, 5)
-    expect(felt[1]).toBeCloseTo(5, 5)
+  it('is the measured instant on a tandem', () => {
+    expect(cutFrom(moments, true)).toBe(38.6)
   })
 
-  /* the measurements sit inside a container per device, so they are found by walking rather than
-     by reading at an offset */
-  it('is found however deeply it is wrapped', () => {
-    const inner = Buffer.concat([scale(100), readings([[100, 0, 0]])])
-    const stream = entry('DEVC', '\u0000', 1, inner.length, inner)
-    expect(accelerationIn(stream)).toEqual([1])
+  it('is a second before it on a fun jump', () => {
+    expect(cutFrom(moments, false)).toBeCloseTo(37.6, 5)
   })
 
-  it('reads nothing out of what is not a stream of measurements', () => {
-    expect(accelerationIn(Buffer.from('not a stream at all', 'latin1'))).toEqual([])
+  /* a clip whose jump begins in its first second has nowhere earlier to start */
+  it('never runs before the clip does', () => {
+    expect(cutFrom({ exit: 0.4 }, false)).toBe(0)
   })
 })

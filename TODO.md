@@ -6,8 +6,8 @@ What is still to do. What was done is in git, not here.
 
 ### The jump's moments, and what to build on them
 
-The exit, the canopy and the ground are found and shown (RULES, Where the jump is in a clip). What
-they were found for is not built yet, in the order worth doing:
+The exit, both ends of the canopy opening and the ground are found and shown (RULES, Where the jump
+is in a clip). What they were found for is not built yet, in the order worth doing:
 
 - **Markers in the project.** Write them as kdenlive guides when the montage is made. Cheapest of
   the lot and decides nothing — the editor simply stops scrubbing to find the moments.
@@ -17,10 +17,19 @@ they were found for is not built yet, in the order worth doing:
   for free — but only for clips that both have an exit.
 - **A suggested trim**: from a few seconds before the exit to a little after the ground, offered as
   a hollow ✂ to accept rather than applied.
-- **DJI clips have no marks.** A DJI writes what it felt into `dbgi` — protobuf, `dvtm_ow001.proto`,
-  no published schema — so nothing reads it yet. Until then those clips are marked by hand. The
-  sound was tried and dropped: on a GoPro freefall is the quietest, flattest part of the spectrum
-  and on a DJI the busiest, so no one threshold serves both, and a wrong mark is worse than none.
+- **A camera nobody has read yet** gets no marks, and is marked by hand. Both cameras here are read.
+  The sound was tried and dropped as a fallback for the rest: on a GoPro freefall is the quietest,
+  flattest part of the spectrum and on a DJI the busiest, so no one threshold serves both, and a
+  wrong mark is worse than none.
+- **The canopy on a freefly jump.** A jumper head-down and turning weighs what an opening weighs,
+  for longer, so nothing is claimed about the canopy or the ground there — the exit is still exact.
+  Telling them apart wants something besides how much a second weighs: the direction it pulls in,
+  which both cameras record, or the height, which neither does as things stand.
+- **Height and speed on the graph** (RULES, The jump on a graph) are drawn the moment a camera
+  writes them, and read off satellites alone. The GoPro here has its satellites switched off in its
+  settings — turning them on is the whole of what it takes, at some cost in battery. The DJI has no
+  receiver at all, so its clips will never carry either; its whole stream was searched, the debug
+  one included, and there is nothing in it but motion and exposure.
 
 ### The installed app
 

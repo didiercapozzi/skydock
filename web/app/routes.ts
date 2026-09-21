@@ -14,7 +14,8 @@ const routes = [
   route('api/storage-folder', 'routes/api.storage-folder.ts'),
   route('api/storage-file/*', 'routes/api.storage-file.$.ts'),
   route('api/file/*', 'routes/api.file.$.tsx'),
-  route('api/thumb/*', 'routes/api.thumb.$.tsx')
+  route('api/thumb/*', 'routes/api.thumb.$.tsx'),
+  route('api/track/*', 'routes/api.track.$.ts')
 ] satisfies RouteConfig
 
 export default routes

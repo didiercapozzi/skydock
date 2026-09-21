@@ -75,7 +75,8 @@ import {
   processJumps,
   whenProcessed
 } from './process'
-import { jumpMoments } from './jumpMoments'
+import { cutFrom, jumpMoments, RUN_UP } from './jumpMoments'
+import { jumpTrack } from './jumpTrack'
 import { statProxies } from './proxy'
 import { rememberOutputDir, resolveOutputDir } from './settings'
 import { stopTools } from './tools'
@@ -100,6 +101,7 @@ import {
   backupOptionsSchema,
   destinationSchema,
   frameCropSchema,
+  jumpTrackSchema,
   manifestFileSchema,
   manifestGroupSchema
 } from './types'
@@ -107,6 +109,8 @@ import type {
   BackupOptions,
   Destination,
   FrameCrop,
+  JumpMoments,
+  JumpTrack,
   Manifest,
   ManifestFile,
   ManifestGroup,
@@ -139,7 +143,10 @@ import {
 } from './workspace'
 
 export {
+  cutFrom,
   jumpMoments,
+  jumpTrack,
+  RUN_UP,
   rememberOutputDir,
   stopTools,
   resolveOutputDir,
@@ -201,6 +208,7 @@ export {
   loginWithSession,
   needsCode,
   mailtoUrl,
+  jumpTrackSchema,
   manifestFileSchema,
   manifestGroupSchema,
   mergeGroups,
@@ -253,6 +261,8 @@ export type {
   FileStatus,
   FrameCrop,
   ImportOutcome,
+  JumpMoments,
+  JumpTrack,
   Manifest,
   ManifestFile,
   ManifestGroup,

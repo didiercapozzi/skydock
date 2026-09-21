@@ -4,7 +4,14 @@ import { Go, Mini } from './buttons'
 import { typingInField } from '../helpers/keys'
 import { createScrub } from '../helpers/scrub'
 import { Spacer } from './modal'
-import { cropToPixels, isQuarterTurn, isWholeFrame, turnBy, turnedSize } from '@skydock/scripts'
+import {
+  cropToPixels,
+  cutFrom,
+  isQuarterTurn,
+  isWholeFrame,
+  turnBy,
+  turnedSize
+} from '@skydock/scripts'
 import type { FrameCrop, ProxyFact, Rotation } from '@skydock/scripts'
 import type { ManifestFile } from './types'
 import {
@@ -16,6 +23,8 @@ import {
   getThumbUrl,
   isVideoFile
 } from './utils'
+import { JumpGraph } from './jump-graph'
+import { useJumpTrack } from '../hooks/useJumpTrack'
 import { VideoCropper } from './video-cropper'
 
 type VideoRef = {
@@ -115,6 +124,7 @@ const PreviewDrawer = ({
   currentTime,
   duration,
   onSeek,
+  onTime,
   onCropChange,
   onApply,
   onZoomChange,
@@ -124,7 +134,8 @@ const PreviewDrawer = ({
   onRotate,
   onRotationApplyToJump,
   locked,
-  onMomentChange
+  onMomentChange,
+  tandem = false
 }: {
   files: ManifestFile[]
   index: number
@@ -146,6 +157,8 @@ const PreviewDrawer = ({
   currentTime: number
   duration: number
   onSeek: (time: number) => void
+  /* where the footage has got to by itself, as it plays */
+  onTime?: (time: number) => void
   onCropChange: (range: { cropStart: number | null; cropEnd: number | null }) => void
   onApply: (range: { cropStart: number | null; cropEnd: number | null }) => void
   onZoomChange: (zoom: number) => void
@@ -159,7 +172,11 @@ const PreviewDrawer = ({
   /* why this file cannot be changed any more, when it cannot — then it is only looked at */
   locked?: string | null
   /* one of the jump's moments, moved on the timeline */
-  onMomentChange?: (which: 'exit' | 'canopy' | 'landing', seconds: number) => void
+  onMomentChange?: (which: 'exit' | 'opening' | 'canopy' | 'landing', seconds: number) => void
+  /* Whether this clip's jump is a tandem, which decides where a cut starts from: a tandem is its own
+     subject and is cut on the instant the camera's wearer left, a fun jump a second earlier, where
+     the group is going out of the door ahead of whoever is filming. */
+  tandem?: boolean
 }) => {
   const file = files[index]
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -267,6 +284,13 @@ const PreviewDrawer = ({
     )
   }
   const video = isVideoFile(file.filename)
+  /* what the camera measured across this clip, for the graph under the timeline */
+  const track = useJumpTrack(video ? file.path : null)
+
+  /* Where a cut would start, which is the mark as it is shown and dragged: the measured instant on a
+     tandem, a second before it on a fun jump (RULES, Where the jump is in a clip). */
+  const cutAt = file.moments ? cutFrom(file.moments, tandem) : 0
+  const shownMoments = file.moments && { ...file.moments, exit: cutAt }
   const from = cropStart ?? 0
   const to = cropEnd ?? duration
   /* What is on screen against what is on the file: the one tells you there is something to save.
@@ -355,6 +379,7 @@ const PreviewDrawer = ({
                       })
                     }}
                     onSeeked={(e) => scrub.seeked(e.currentTarget)}
+                    onTimeUpdate={(e) => onTime?.(e.currentTarget.currentTime)}
                     src={fileUrl}
                     onPlay={() => setPlaying(true)}
                     onPause={() => setPlaying(false)}
@@ -442,12 +467,38 @@ const PreviewDrawer = ({
                     zoom={zoom}
                     compact
                     thumbSrc={(seek) => getThumbUrl(file.path, seek)}
-                    moments={file.moments}
-                    onMomentChange={locked ? undefined : onMomentChange}
+                    moments={shownMoments}
+                    onMomentChange={
+                      locked
+                        ? undefined
+                        : onMomentChange &&
+                          ((which, seconds) =>
+                            onMomentChange(
+                              which,
+                              /* dragged where the cut should start, kept as the instant it stands
+                                 for, so what is written down is still a measurement */
+                              which === 'exit'
+                                ? seconds + (file.moments?.exit ?? 0) - cutAt
+                                : seconds
+                            ))
+                    }
                     onSeek={onSeek}
                     onCropChange={locked ? () => {} : onCropChange}
                     onApply={locked ? () => {} : onApply}
                     onZoomChange={onZoomChange}
+                  />
+                </div>
+                {/* The jump itself, drawn against the same clip and dragged the same way: the force
+                    the camera felt, the phases behind it, and the height and speed when the camera
+                    knew them. It sits under the timeline because the two are read together. */}
+                <div className='mt-3'>
+                  <JumpGraph
+                    track={track.track}
+                    waiting={track.waiting}
+                    moments={shownMoments}
+                    currentTime={currentTime}
+                    duration={duration}
+                    onSeek={onSeek}
                   />
                 </div>
               </>
@@ -466,7 +517,8 @@ const PreviewDrawer = ({
                   <div className='flex flex-wrap gap-1.5'>
                     {(
                       [
-                        ['exit', file.moments.exit],
+                        ['exit', cutAt],
+                        ['opening', file.moments.opening],
                         ['canopy', file.moments.canopy],
                         ['landing', file.moments.landing]
                       ] as const

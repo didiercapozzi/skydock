@@ -1259,6 +1259,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         preview={preview}
         proxies={board.proxies}
         statusContext={statusContext}
+        tandem={hasCompletePassenger(
+          board.groups.find((g) => g.id === preview.preview?.groupId)?.passenger
+        )}
         onMomentChange={(file, which, seconds) =>
           send('moment', {
             intent: 'set-moment',

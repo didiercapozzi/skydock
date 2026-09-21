@@ -10,7 +10,8 @@ const PreviewHost = ({
   preview,
   proxies,
   statusContext,
-  onMomentChange
+  onMomentChange,
+  tandem
 }: {
   preview: ReturnType<typeof usePreview>
   proxies: Record<string, ProxyFact>
@@ -19,9 +20,11 @@ const PreviewHost = ({
      rather than waiting for a Save that trims something */
   onMomentChange: (
     file: ManifestFile,
-    which: 'exit' | 'canopy' | 'landing',
+    which: 'exit' | 'opening' | 'canopy' | 'landing',
     seconds: number
   ) => void
+  /* whether the jump being looked at is a tandem, which decides where its cut starts */
+  tandem: boolean
 }) => {
   const open = preview.preview
   const shown = open?.files[open.index]
@@ -44,6 +47,7 @@ const PreviewHost = ({
       currentTime={preview.videoState.currentTime}
       duration={preview.videoState.duration}
       onSeek={preview.handleVideoSeek}
+      onTime={preview.handleVideoTime}
       onCropChange={(crop) => preview.setVideoState({ crop })}
       onApply={preview.handleVideoApply}
       onZoomChange={(zoom) => preview.setVideoState({ zoom })}
@@ -54,6 +58,7 @@ const PreviewHost = ({
       onRotationApplyToJump={open.groupId === LOOSE ? undefined : preview.handleRotationApplyToJump}
       locked={lockReason(shown, statusContext(shown))}
       onMomentChange={(which, seconds) => onMomentChange(shown, which, seconds)}
+      tandem={tandem}
     />
   )
 }

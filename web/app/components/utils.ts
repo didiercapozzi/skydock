@@ -123,6 +123,9 @@ const getPlaybackUrl = (file: ManifestFile, fact?: ProxyFact) =>
 const getThumbUrl = (filePath: string, seekSeconds: number, width = 80) =>
   `/api/thumb${relativeToOutput(filePath)}?seek=${seekSeconds.toFixed(1)}&width=${width}`
 
+/* the graph is read off the original, which is where the camera's own measurements are */
+const getTrackUrl = (filePath: string) => `/api/track${relativeToOutput(filePath)}`
+
 export {
   setOutputRoot,
   MONTHS,
@@ -141,6 +144,7 @@ export {
   getGroupDate,
   getPlaybackUrl,
   getThumbUrl,
+  getTrackUrl,
   isVideoFile,
   minFileMtime,
   toDateInputValue,

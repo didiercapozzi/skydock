@@ -737,4 +737,52 @@ describe('changes made on the board', () => {
       expect(res.success).toBe(false)
     })
   })
+  /* A jump's marks are what a cut is built on, and the camera is a starting point rather than a
+     verdict (RULES, Where the jump is in a clip). */
+  describe('a mark on a jump', () => {
+    const marked = () =>
+      writeManifest([
+        group({
+          id: 'g1',
+          files: [file({ id: 'a', moments: { exit: 38, opening: 94, canopy: 97, landing: 185 } })]
+        })
+      ])
+
+    it('is moved to where the footage says it should be', async () => {
+      marked()
+
+      const res = answer(
+        await send({
+          intent: 'set-moment',
+          fileIds: ['a'],
+          moment: { which: 'opening', seconds: 95.5 }
+        })
+      )
+
+      expect(res.groups[0]?.files[0]?.moments?.opening).toBe(95.5)
+      /* and the rest of the jump is left as it was */
+      expect(res.groups[0]?.files[0]?.moments?.canopy).toBe(97)
+      const saved = loadManifest(path.join(tmpDir, 'manifest.json'))
+      expect(saved?.files[0]?.moments?.opening).toBe(95.5)
+    })
+
+    /* A canopy that opens before the plane was left is one of the two marks being wrong, and only
+       the person moving them knows which — so it is refused rather than quietly sorted. */
+    it('is refused where it would put the jump out of order', async () => {
+      marked()
+
+      const res = refusal(
+        await send({
+          intent: 'set-moment',
+          fileIds: ['a'],
+          moment: { which: 'opening', seconds: 20 }
+        })
+      )
+
+      expect(res.success).toBe(false)
+      expect(res.globalErrors?.[0]).toContain('door, opening, canopy, ground')
+      const saved = loadManifest(path.join(tmpDir, 'manifest.json'))
+      expect(saved?.files[0]?.moments?.opening).toBe(94)
+    })
+  })
 })

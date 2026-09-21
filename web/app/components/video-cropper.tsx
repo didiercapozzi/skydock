@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 /* The moments of the jump, in seconds: what the camera measured, or what somebody moved it to. */
-type Moment = 'exit' | 'canopy' | 'landing'
+type Moment = 'exit' | 'opening' | 'canopy' | 'landing'
 
 type Moments = Partial<Record<Moment, number>>
 
@@ -31,10 +31,13 @@ type VideoCropperProps = {
 const THUMB_COUNT = 8
 
 /* in the order they happen, which is the order they are drawn and read */
+/* The opening and the canopy are two ends of one thing and sit three or four seconds apart, which on
+   a three-minute bar is a few pixels: their labels are hung low so the pair can both be read. */
 const MOMENTS = [
-  { which: 'exit', label: 'exit' },
-  { which: 'canopy', label: 'canopy' },
-  { which: 'landing', label: 'landing' }
+  { which: 'exit', label: 'exit', low: false },
+  { which: 'opening', label: 'opening', low: true },
+  { which: 'canopy', label: 'canopy', low: false },
+  { which: 'landing', label: 'landing', low: true }
 ] as const
 
 const MAX_ZOOM = 10
@@ -267,11 +270,11 @@ const VideoCropper = ({
             dragged, since the exit is where the music will start and the camera is not always right.
             Above the trim's dimming, so a mark in a cut stretch is still visible. */}
         {(duration > 0 ? MOMENTS : [])
-          .flatMap(({ which, label }) => {
+          .flatMap(({ which, label, low }) => {
             const at = moments?.[which]
-            return at === undefined ? [] : [{ which, label, at }]
+            return at === undefined ? [] : [{ which, label, low, at }]
           })
-          .map(({ which, label, at }) => (
+          .map(({ which, label, low, at }) => (
             <div
               key={which}
               data-moment={which}
@@ -282,7 +285,10 @@ const VideoCropper = ({
               }`}
               style={{ left: `${positionFromTime(at)}%` }}>
               <div className='pointer-events-none absolute top-0 bottom-0 left-1/2 -ml-px w-0.5 bg-sky-300/90' />
-              <span className='pointer-events-none absolute top-0.5 left-1.5 rounded bg-sky-300/90 px-1 text-[9px] leading-[13px] font-medium text-black whitespace-nowrap'>
+              <span
+                className={`pointer-events-none absolute left-1.5 rounded bg-sky-300/90 px-1 text-[9px] leading-[13px] font-medium text-black whitespace-nowrap ${
+                  low ? 'bottom-0.5' : 'top-0.5'
+                }`}>
                 {label}
               </span>
             </div>
