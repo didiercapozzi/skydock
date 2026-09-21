@@ -44,6 +44,8 @@ const remoteListingSchema = z.object({
 const montageNoteSchema = z.object({
   clips: z.number(),
   missingAssets: z.array(z.string()),
+  /* what the template put at a fixed moment and the montage moved to the film's own ends */
+  repositioned: z.array(z.string()).optional(),
   opened: z.boolean().optional(),
   openCommand: z.string().optional(),
   openReason: z.string().optional()

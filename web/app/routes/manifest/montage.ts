@@ -26,16 +26,28 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
       .filter((e) => e.isFile())
       .map((e) => path.join(groupDir, 'videos', e.name))
       .sort()
+    /* which file each copy was made from, by the name the copy carries */
+    const copies = new Map(
+      group.files.flatMap((f) => (f.processed ? [[path.basename(f.processed.path), f]] : []))
+    )
     const made = createMontageProject({
       groupDir,
       outputDir,
       baseName,
       title: passengerOf(group).trim() || group.label,
       template: data.template,
-      /* the proxy processing cut for each copy, when it managed to make one */
+      /* Each copy with the proxy processing cut for it, when it managed to make one, and with what
+         the jump in it was measured at: a clip that holds a jump is laid cut at its moments (RULES,
+         Montage), and the moments belong to the file it was copied from. */
       clips: videos.map((file) => {
         const proxy = path.join(getCutProxyDir(outputDir, group.id), `${path.parse(file).name}.mp4`)
-        return fs.existsSync(proxy) ? { path: file, proxy } : { path: file }
+        const measured = copies.get(path.basename(file))
+        return {
+          path: file,
+          ...(fs.existsSync(proxy) ? { proxy } : {}),
+          moments: measured?.moments,
+          cropStart: measured?.cropStart
+        }
       })
     })
     group.montage = {
@@ -52,6 +64,7 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
       montage: {
         clips: made.clips,
         missingAssets: made.missingAssets,
+        repositioned: made.repositioned,
         opened: opened.opened,
         openCommand: opened.command,
         openReason: opened.reason

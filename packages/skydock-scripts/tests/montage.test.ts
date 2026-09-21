@@ -39,6 +39,37 @@ const twoAudioOneMutedTemplate = `<?xml version='1.0' encoding='utf-8'?>
 </mlt>
 `
 
+/* The same shape again, with what a template puts around the footage: music on the first audio
+   track, and above the footage an intro, a title in the middle and an end card. The numbers are the
+   shipped template's in miniature — furniture made for a film of a certain length, laid over a
+   montage that is as long as its footage. */
+const templateWithFurniture = `<?xml version='1.0' encoding='utf-8'?>
+<mlt root="/nowhere">
+ <producer id="producer0"><property name="resource">black</property></producer>
+ <producer id="music"><property name="resource">song.mp3</property></producer>
+ <producer id="intro"><property name="resource">logo.png</property></producer>
+ <producer id="middle"><property name="resource">title.png</property></producer>
+ <producer id="card"><property name="resource">card.png</property></producer>
+ <playlist id="playlist0"><entry producer="music" in="0" out="2499"/><blank length="100"/><entry producer="music" in="0" out="4999"/></playlist>
+ <playlist id="playlist1"/>
+ <playlist id="playlist2"/>
+ <playlist id="playlist3"/>
+ <playlist id="playlist4"/>
+ <playlist id="playlist5"/>
+ <playlist id="playlist6"/>
+ <playlist id="playlist7"/>
+ <playlist id="playlist8"><entry producer="intro" in="0" out="124"/><blank length="1000"/><entry producer="middle" in="0" out="124"/><blank length="3000"/><entry producer="card" in="0" out="124"/></playlist>
+ <playlist id="playlist9"/>
+ <tractor id="tractor0"><property name="kdenlive:audio_track">1</property><track hide="video" producer="playlist0"/><track hide="video" producer="playlist1"/></tractor>
+ <tractor id="tractor1"><property name="kdenlive:audio_track">1</property><track hide="video" producer="playlist2"/><track hide="video" producer="playlist3"/></tractor>
+ <tractor id="tractor2"><property name="kdenlive:audio_track">1</property><track hide="both" producer="playlist4"/><track hide="both" producer="playlist5"/></tractor>
+ <tractor id="tractor3"><track hide="audio" producer="playlist6"/><track hide="audio" producer="playlist7"/></tractor>
+ <tractor id="tractor4"><track hide="audio" producer="playlist8"/><track hide="audio" producer="playlist9"/></tractor>
+ <playlist id="main_bin"/>
+ <tractor id="tractor5"><property name="kdenlive:uuid">{25cd7034-f98e-4260-b8b3-f34fd91e8906}</property><track producer="producer0"/><track producer="tractor0"/><track producer="tractor1"/><track producer="tractor2"/><track producer="tractor3"/><track producer="tractor4"/></tractor>
+</mlt>
+`
+
 const audioOnlyTemplate = `<?xml version='1.0' encoding='utf-8'?>
 <mlt root="/nowhere">
  <playlist id="playlist0"/>
@@ -88,6 +119,28 @@ const parsed = (xml: string) => {
   const verdict = XMLValidator.validate(xml)
   if (verdict !== true) throw new Error(`${verdict.err.msg} (line ${verdict.err.line})`)
   return new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' }).parse(xml)
+}
+
+const sequenceOf = (xml: string) => {
+  const doc = parsed(xml).mlt
+  const tractors = [doc.tractor].flat()
+  return tractors.find((t: { property?: unknown }) =>
+    [t.property ?? []].flat().some((p: { '@_name': string }) => p['@_name'] === 'kdenlive:uuid')
+  )
+}
+const groupsOf = (xml: string) => {
+  const prop = [sequenceOf(xml).property]
+    .flat()
+    .find((p: { '@_name': string }) => p['@_name'] === 'kdenlive:sequenceproperties.groups')
+  return JSON.parse(prop['#text'])
+}
+const chainProps = (xml: string, id: string) => {
+  const chain = [parsed(xml).mlt.chain].flat().find((c: { '@_id': string }) => c['@_id'] === id)
+  return Object.fromEntries(
+    [chain.property]
+      .flat()
+      .map((p: { '@_name': string; '#text': string }) => [p['@_name'], p['#text']])
+  )
 }
 
 describe('montage — a document the editor can open', () => {
@@ -191,28 +244,6 @@ describe('montage — each clip with its sound', () => {
     })
     return fs.readFileSync(result.projectPath, 'utf-8')
   }
-  const sequenceOf = (xml: string) => {
-    const doc = parsed(xml).mlt
-    const tractors = [doc.tractor].flat()
-    return tractors.find((t: { property?: unknown }) =>
-      [t.property ?? []].flat().some((p: { '@_name': string }) => p['@_name'] === 'kdenlive:uuid')
-    )
-  }
-  const groupsOf = (xml: string) => {
-    const prop = [sequenceOf(xml).property]
-      .flat()
-      .find((p: { '@_name': string }) => p['@_name'] === 'kdenlive:sequenceproperties.groups')
-    return JSON.parse(prop['#text'])
-  }
-  const chainProps = (xml: string, id: string) => {
-    const chain = [parsed(xml).mlt.chain].flat().find((c: { '@_id': string }) => c['@_id'] === id)
-    return Object.fromEntries(
-      [chain.property]
-        .flat()
-        .map((p: { '@_name': string; '#text': string }) => [p['@_name'], p['#text']])
-    )
-  }
-
   it('lays each clip on the first video track and its sound on the audio track under it, starting together', () => {
     const xml = timed(twoAudioOneMutedTemplate, [
       ['a.mp4', 2],
@@ -572,5 +603,327 @@ describe('montage — clips that have a proxy', () => {
     const props = chainProps(xml, 'chain_skydock_0')
     expect(props['kdenlive:proxy']).toContain('/home/capo/Documents/skydock/output')
     expect(props['kdenlive:originalurl']).toContain('/home/capo/Documents/skydock/output')
+  })
+})
+
+/* Where the jump is in a clip is measured before any of this (RULES, Where the jump is in a clip),
+   and a montage lays the clip already cut at it. The numbers below are a real tandem's: a clip of
+   seven and a half minutes, the door left at 65 s, the canopy open at 120, the ground at 223. */
+describe('montage — the jump cut at its marks', () => {
+  /* the frames a second this template counts in, and the tandem's own moments */
+  const FPS = 25
+  const JUMP = { exit: 65, opening: 120.3, canopy: 123, landing: 223 }
+
+  const laid = (
+    clips: { name: string; seconds: number; moments?: typeof JUMP; cropStart?: number }[]
+  ) => {
+    const { outputDir, groupDir, templatePath } = setup(twoAudioOneMutedTemplate)
+    const result = createMontageProject({
+      groupDir,
+      outputDir,
+      baseName: 'luc_favre_20260802',
+      title: 'Luc Favre',
+      templatePath,
+      clips: clips.map(({ name, seconds, moments, cropStart }) => ({
+        path: path.join(groupDir, 'videos', name),
+        seconds,
+        moments,
+        cropStart
+      }))
+    })
+    return fs.readFileSync(result.projectPath, 'utf-8')
+  }
+
+  /* every entry of a playlist as the editor reads it: which producer, and which part of it */
+  const piecesOf = (xml: string, playlistId: string) => {
+    const open = new RegExp(`<playlist id="${playlistId}"\\s*(/?)>`).exec(xml)
+    if (!open || open[1] === '/') return []
+    const rest = xml.slice(open.index + open[0].length)
+    const body = rest.slice(0, rest.indexOf('</playlist>'))
+    return [...body.matchAll(/<entry producer="([^"]+)" in="(\d+)" out="(\d+)"/g)].map((m) => ({
+      producer: m[1],
+      in: Number(m[2]),
+      out: Number(m[3])
+    }))
+  }
+
+  const propOf = (xml: string, name: string) => {
+    const found = new RegExp(`<property name="${name}">([^<]*)</property>`).exec(xml)
+    return found ? found[1] : null
+  }
+
+  it('lays a clip with a jump in it cut at the exit, the opening and the ground', () => {
+    const xml = laid([{ name: 'jump.mp4', seconds: 455, moments: JUMP }])
+
+    const pieces = piecesOf(xml, 'playlist6')
+    expect(pieces).toHaveLength(4)
+    /* the cabin, then the exit and the freefall, then the canopy ride, then the landing */
+    expect(pieces.map((p) => p.in)).toEqual([
+      0,
+      JUMP.exit * FPS,
+      Math.round(JUMP.opening * FPS),
+      (JUMP.landing - 15) * FPS
+    ])
+    expect(pieces.every((p) => p.producer === 'chain_skydock_0_picture')).toBe(true)
+  })
+
+  it('loses nothing of the clip: the pieces run one after another and the film is as long as the footage', () => {
+    const xml = laid([
+      { name: 'jump.mp4', seconds: 455, moments: JUMP },
+      { name: 'after.mp4', seconds: 10 }
+    ])
+
+    const pieces = piecesOf(xml, 'playlist6')
+    const jump = pieces.filter((p) => p.producer.startsWith('chain_skydock_0'))
+    expect(jump[0].in).toBe(0)
+    expect(jump[jump.length - 1].out).toBe(455 * FPS - 1)
+    /* each piece begins where the one before it ended */
+    jump.slice(1).forEach((piece, index) => expect(piece.in).toBe(jump[index].out + 1))
+    /* and the clip after it is still there, whole */
+    expect(pieces.at(-1)).toMatchObject({ in: 0, out: 10 * FPS - 1 })
+  })
+
+  it('gives every piece its own sound under it, linked, so a piece and its sound go together', () => {
+    const xml = laid([{ name: 'jump.mp4', seconds: 455, moments: JUMP }])
+
+    const picture = piecesOf(xml, 'playlist6')
+    const sound = piecesOf(xml, 'playlist4')
+    expect(sound.map((p) => [p.in, p.out])).toEqual(picture.map((p) => [p.in, p.out]))
+    /* one pair of leaves per piece, each at the frame that piece starts on */
+    const groups = groupsOf(xml)
+    expect(groups).toHaveLength(4)
+    const startsOf = (which: number) =>
+      groups.map((g: { children: { data: string }[] }) =>
+        Number(g.children[which].data.split(':')[1])
+      )
+    expect(startsOf(1)).toEqual(picture.map((p) => p.in))
+    /* the sound's leaf names the same frame, on the track under it */
+    expect(startsOf(0)).toEqual(startsOf(1))
+  })
+
+  /* Most clips are not jumps: ground footage, a plane ride, a camera that measures nothing. Nothing
+     is cut and nothing is trimmed away for them. */
+  it('lays a clip with no jump in it whole, as it always was', () => {
+    const xml = laid([{ name: 'ground.mp4', seconds: 33 }])
+
+    expect(piecesOf(xml, 'playlist6')).toEqual([
+      { producer: 'chain_skydock_0_picture', in: 0, out: 33 * FPS - 1 }
+    ])
+    expect(groupsOf(xml)).toHaveLength(1)
+  })
+
+  it('writes the moments on the clip and as guides along the timeline', () => {
+    const xml = laid([{ name: 'jump.mp4', seconds: 455, moments: JUMP }])
+
+    const markers = JSON.parse(propOf(xml, 'kdenlive:markers') ?? '[]')
+    expect(markers.map((m: { comment: string }) => m.comment)).toEqual([
+      'the exit',
+      'the opening',
+      'the canopy',
+      'the ground'
+    ])
+    expect(markers[0].pos).toBe(JUMP.exit * FPS)
+
+    /* the same moments, counted from the start of the timeline rather than the start of the clip —
+       the same numbers here, since this template holds nothing before the footage */
+    const guides = JSON.parse(propOf(xml, 'kdenlive:sequenceproperties.guides') ?? '[]')
+    expect(guides.map((g: { pos: number }) => g.pos)).toEqual(
+      markers.map((m: { pos: number }) => m.pos)
+    )
+  })
+
+  /* A copy trimmed at the front is a different clip from the one the camera shot, and the moments
+     were measured on what the camera shot. */
+  it('shifts the moments by what was trimmed off the front of the clip', () => {
+    const xml = laid([{ name: 'jump.mp4', seconds: 425, moments: JUMP, cropStart: 30 }])
+
+    const markers = JSON.parse(propOf(xml, 'kdenlive:markers') ?? '[]')
+    expect(markers[0].pos).toBe((JUMP.exit - 30) * FPS)
+    expect(piecesOf(xml, 'playlist6')[1].in).toBe((JUMP.exit - 30) * FPS)
+  })
+
+  it('says nothing of a moment the copy does not reach', () => {
+    const xml = laid([{ name: 'jump.mp4', seconds: 122, moments: JUMP }])
+
+    const markers = JSON.parse(propOf(xml, 'kdenlive:markers') ?? '[]')
+    /* a copy cut at 122 s holds the exit and the opening, and neither the canopy nor the ground */
+    expect(markers.map((m: { comment: string }) => m.comment)).toEqual(['the exit', 'the opening'])
+    expect(piecesOf(xml, 'playlist6')).toHaveLength(3)
+  })
+
+  it('writes a project the editor can open', () => {
+    expect(() => parsed(laid([{ name: 'jump.mp4', seconds: 455, moments: JUMP }]))).not.toThrow()
+  })
+})
+
+/* A template is made for a film of a certain length and a montage is as long as its footage, so
+   what the template puts at the ends is put where the film's ends actually are (RULES, Montage). */
+describe('montage — the template’s furniture follows the film', () => {
+  const furnished = (clips: [string, number][]) => {
+    const { outputDir, groupDir, templatePath } = setup(templateWithFurniture)
+    const result = createMontageProject({
+      groupDir,
+      outputDir,
+      baseName: 'luc_favre_20260802',
+      title: 'Luc Favre',
+      templatePath,
+      clips: clips.map(([name, seconds]) => ({
+        path: path.join(groupDir, 'videos', name),
+        seconds
+      }))
+    })
+    return { ...result, xml: fs.readFileSync(result.projectPath, 'utf-8') }
+  }
+
+  /* one playlist read as the editor reads it: its blanks and its entries in order */
+  const trackOf = (xml: string, playlistId: string) => {
+    const open = new RegExp(`<playlist id="${playlistId}"\\s*(/?)>`).exec(xml)
+    if (!open || open[1] === '/') return []
+    const rest = xml.slice(open.index + open[0].length)
+    const body = rest.slice(0, rest.indexOf('</playlist>'))
+    /* an entry holding an effect is written open, and is still an entry */
+    return [...body.matchAll(/<(blank|entry)([^>]*?)\/?>/g)].map((m) => ({
+      what: m[1],
+      length: Number(/length="(\d+)"/.exec(m[2])?.[1] ?? 0),
+      in: Number(/in="(\d+)"/.exec(m[2])?.[1] ?? 0),
+      out: Number(/out="(\d+)"/.exec(m[2])?.[1] ?? 0)
+    }))
+  }
+
+  /* two clips of a hundred seconds: a film of 5000 frames, where the template's card sat at 4250 */
+  const FILM = 5000
+
+  it('moves the end card to follow the last clip, so the film ends on it', () => {
+    const { xml } = furnished([
+      ['a.mp4', 100],
+      ['b.mp4', 100]
+    ])
+
+    const titles = trackOf(xml, 'playlist8')
+    /* the blank before the card is widened, and the card itself is left as the template made it */
+    expect(titles.at(-2)).toMatchObject({ what: 'blank', length: 3750 })
+    expect(titles.at(-1)).toMatchObject({ what: 'entry', in: 0, out: 124 })
+    const start = titles
+      .slice(0, -1)
+      .reduce((sum, i) => sum + (i.what === 'blank' ? i.length : i.out - i.in + 1), 0)
+    expect(start).toBe(FILM)
+  })
+
+  it('leaves the titles in the middle where the template put them', () => {
+    const { xml } = furnished([
+      ['a.mp4', 100],
+      ['b.mp4', 100]
+    ])
+
+    expect(trackOf(xml, 'playlist8').slice(0, 3)).toEqual([
+      { what: 'entry', length: 0, in: 0, out: 124 },
+      { what: 'blank', length: 1000, in: 0, out: 0 },
+      { what: 'entry', length: 0, in: 0, out: 124 }
+    ])
+  })
+
+  it('cuts the music where the film ends', () => {
+    const { xml } = furnished([
+      ['a.mp4', 100],
+      ['b.mp4', 100]
+    ])
+
+    const music = trackOf(xml, 'playlist0')
+    const plays = music.reduce(
+      (sum, i) => sum + (i.what === 'blank' ? i.length : i.out - i.in + 1),
+      0
+    )
+    /* the film is the footage and the card that follows it */
+    expect(plays).toBe(FILM + 125)
+  })
+
+  it('says what it moved', () => {
+    const { repositioned } = furnished([['a.mp4', 100]])
+    expect(repositioned).toEqual(['the end card', 'the music'])
+  })
+
+  /* A film shorter than the template's own furniture cannot have its card pulled back without
+     putting it before a title that has not happened yet, so the card is left where it is — and the
+     music is still cut to where the last thing anybody sees ends, which is that card. */
+  it('leaves the end card alone when the film is shorter than the template’s furniture', () => {
+    const { xml, repositioned } = furnished([['a.mp4', 5]])
+
+    expect(repositioned).toEqual(['the music'])
+    expect(trackOf(xml, 'playlist8').at(-2)).toMatchObject({ what: 'blank', length: 3000 })
+    const music = trackOf(xml, 'playlist0')
+    const plays = music.reduce(
+      (sum, i) => sum + (i.what === 'blank' ? i.length : i.out - i.in + 1),
+      0
+    )
+    /* the card still ends at 4375, and the music now stops there instead of at 7600 */
+    expect(plays).toBe(4375)
+  })
+
+  /* kdenlive writes its projects indented, and the spaces between one tag and the next are part of
+     the document: read without knowing that, the last thing on a track is the newline after its last
+     clip and no template is ever recognised. Which is what happened to the one that ships. */
+  it('finds the furniture of a template written the way the editor writes one', () => {
+    const { outputDir, groupDir, templatePath } = setup(
+      templateWithFurniture.replace(/><(blank|entry)/g, '>\n  <$1')
+    )
+    const result = createMontageProject({
+      groupDir,
+      outputDir,
+      baseName: 'luc_favre_20260802',
+      title: 'Luc Favre',
+      templatePath,
+      clips: [{ path: path.join(groupDir, 'videos', 'a.mp4'), seconds: 100 }]
+    })
+
+    expect(result.repositioned).toEqual(['the end card', 'the music'])
+  })
+
+  it('writes a project the editor can open', () => {
+    expect(() => parsed(furnished([['a.mp4', 100]]).xml)).not.toThrow()
+  })
+})
+
+/* The same on every film, so it is not done by hand on every film (RULES, Montage). */
+describe('montage — how the film opens and closes', () => {
+  const fades = (clips: [string, number][]) => {
+    const { outputDir, groupDir, templatePath } = setup(templateWithFurniture)
+    const result = createMontageProject({
+      groupDir,
+      outputDir,
+      baseName: 'luc_favre_20260802',
+      title: 'Luc Favre',
+      templatePath,
+      clips: clips.map(([name, seconds]) => ({
+        path: path.join(groupDir, 'videos', name),
+        seconds
+      }))
+    })
+    return fs.readFileSync(result.projectPath, 'utf-8')
+  }
+
+  /* which effects sit where, read off the project: the fades kdenlive names in its own words */
+  const effects = (xml: string) =>
+    [...xml.matchAll(/<property name="kdenlive_id">([^<]+)<\/property>/g)].map((m) => m[1])
+
+  it('opens out of black and closes into black', () => {
+    const xml = fades([
+      ['a.mp4', 100],
+      ['b.mp4', 100]
+    ])
+
+    expect(effects(xml)).toContain('fade_from_black')
+    expect(effects(xml)).toContain('fade_to_black')
+    /* one of each, on the first piece laid and the last */
+    expect(effects(xml).filter((e) => e === 'fade_from_black')).toHaveLength(1)
+    expect(effects(xml).filter((e) => e === 'fade_to_black')).toHaveLength(1)
+  })
+
+  it('takes the music down where it ends rather than cutting it off', () => {
+    const xml = fades([['a.mp4', 100]])
+    expect(effects(xml)).toContain('volume')
+  })
+
+  it('writes a project the editor can open', () => {
+    expect(() => parsed(fades([['a.mp4', 100]]))).not.toThrow()
   })
 })

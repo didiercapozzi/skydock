@@ -5,9 +5,34 @@ import { randomUUID } from 'node:crypto'
 import { XMLBuilder, XMLParser, XMLValidator } from 'fast-xml-parser'
 import { z } from 'zod'
 import { toHostPath } from './hostPath'
+import {
+  attrsOf,
+  childrenOf,
+  decodeXml,
+  encodeXml,
+  fpsOf,
+  framesOf,
+  isAudioTrack,
+  lengthOf,
+  nodeById,
+  propOf,
+  setProp,
+  tagOf,
+  textOf,
+  timelineTracks,
+  tracksOf,
+  xmlDocumentSchema,
+  XML_OPTIONS
+} from './lib/mlt'
+import type { XmlNode } from './lib/mlt'
 import { walkFiles } from './lib/fs'
 import { jsonText } from './lib/json'
 import { mediaSeconds } from './lib/media'
+import { cutClip, markSchema } from './montageCuts'
+import { fadeFromBlack, fadeToBlack, musicFadeOut } from './montageFilters'
+import { followTheFilm, readFurniture } from './montageFurniture'
+import { jumpMomentsSchema } from './types'
+import type { Mark, Piece } from './montageCuts'
 
 /* `proxy` is the small copy of this same clip, cut the same way. When there is one the editor opens
    on it instead of transcoding the clip itself, which is the longest wait before an edit can start;
@@ -16,7 +41,12 @@ const montageClipSchema = z.object({
   path: z.string(),
   proxy: z.string().optional(),
   /* how long it lasts, when known already; otherwise it is read off the file */
-  seconds: z.number().optional()
+  seconds: z.number().optional(),
+  /* Where the jump is in this clip, and how much was trimmed off its front when the copy was made:
+     the moments are seconds into the clip as it was shot, and what the timeline holds is the copy,
+     so the two travel together or neither means anything. */
+  moments: jumpMomentsSchema.nullable().optional(),
+  cropStart: z.number().nullable().optional()
 })
 
 const montageOptionsSchema = z.object({
@@ -34,73 +64,9 @@ const montageOptionsSchema = z.object({
 type MontageClip = z.infer<typeof montageClipSchema>
 type MontageOptions = z.input<typeof montageOptionsSchema>
 
-/* kdenlive projects are MLT XML. Entities must be left alone: the title clips carry
-   escaped XML inside a property, and re-encoding them destroys the titles. */
-const XML_OPTIONS = {
-  ignoreAttributes: false,
-  attributeNamePrefix: '@_',
-  preserveOrder: true,
-  parseTagValue: false,
-  trimValues: false,
-  processEntities: false
-} as const
-
 const RENDER_PROFILE = 'MP4-H264/AAC'
 
 const RENDER_CATEGORY = 'generic'
-
-/* An XML node as the parser hands it back with the order preserved: one key is the tag, holding the
-   children in order, `:@` holds the attributes, and a text node is `#text`. The shape is recursive,
-   which is the one place a type has to be written down beside its schema. */
-type XmlNode = { [key: string]: string | Record<string, string> | XmlNode[] }
-const xmlNodeSchema: z.ZodType<XmlNode> = z.lazy(() =>
-  z.record(
-    z.string(),
-    z.union([z.string(), z.record(z.string(), z.string()), z.array(xmlNodeSchema)])
-  )
-)
-const xmlDocumentSchema = z.array(xmlNodeSchema)
-
-const tagOf = (node: XmlNode) => Object.keys(node).find((k) => k !== ':@') ?? ''
-const childrenOf = (node: XmlNode) => {
-  const value = node[tagOf(node)]
-  return Array.isArray(value) ? value : []
-}
-/* the node's own attribute record, so that writing to it writes into the document */
-const attrsOf = (node: XmlNode) => {
-  const attrs = node[':@']
-  return attrs !== undefined && typeof attrs === 'object' && !Array.isArray(attrs) ? attrs : {}
-}
-const propsOf = (node: XmlNode) => childrenOf(node).filter((c) => tagOf(c) === 'property')
-const propOf = (node: XmlNode, name: string) =>
-  propsOf(node).find((p) => attrsOf(p)['@_name'] === name)
-const textOf = (node: XmlNode | undefined) => {
-  const text = node ? childrenOf(node)[0]?.['#text'] : undefined
-  return typeof text === 'string' ? text : ''
-}
-const setProp = (node: XmlNode, name: string, value: string) => {
-  const existing = propOf(node, name)
-  if (existing) existing[tagOf(existing)] = [{ '#text': value }]
-  else childrenOf(node).push({ property: [{ '#text': value }], ':@': { '@_name': name } })
-}
-const nodeById = (nodes: XmlNode[], tag: string, id: string) =>
-  nodes.find((n) => tagOf(n) === tag && attrsOf(n)['@_id'] === id)
-const tracksOf = (node: XmlNode) => childrenOf(node).filter((c) => tagOf(c) === 'track')
-
-const XML_ENTITIES: [string, string][] = [
-  ['&amp;', '&'],
-  ['&lt;', '<'],
-  ['&gt;', '>'],
-  ['&quot;', '"'],
-  ['&apos;', "'"]
-]
-
-const decodeXml = (value: string) =>
-  XML_ENTITIES.reduce((out, [entity, char]) => out.split(entity).join(char), value)
-
-/* `&` first, so the ampersands the other entities introduce are not escaped twice */
-const encodeXml = (value: string) =>
-  XML_ENTITIES.reduce((out, [entity, char]) => out.split(char).join(entity), value)
 
 /* The templates the app itself carries, as against the ones a dropzone brings in. The installed app
    says where they are, since a packaged bundle is one file and has no folder of its own to count
@@ -166,11 +132,6 @@ const resolveTemplate = (options: z.infer<typeof montageOptionsSchema>) => {
     throw new Error(`Choose a montage template: ${available.map((t) => t.name).join(', ')}`)
   throw new Error(`No montage template found — add one under ${options.outputDir}/templates`)
 }
-
-/* kdenlive marks an audio track with `kdenlive:audio_track`, and only that. The `hide` attribute
-   cannot stand in for it: a muted, hidden audio track and a hidden video track both read
-   `hide="both"`, and mistaking one for the other drops the whole jump onto the titles track. */
-const isAudioTrack = (tractor: XmlNode) => textOf(propOf(tractor, 'kdenlive:audio_track')) === '1'
 
 /* V1 — the first video track of the timeline, which is where a template keeps its footage and its
    titles sit above. Which playlist that is differs per template, so it is read, not assumed. */
@@ -250,42 +211,6 @@ const inspectTemplate = (template: string) => {
   }
 }
 
-/* The frames per second the project runs at, off its profile — every position in the timeline is
-   counted in these. */
-const fpsOf = (mlt: XmlNode[]) => {
-  const profile = mlt.find((n) => tagOf(n) === 'profile')
-  const num = Number(profile ? attrsOf(profile)['@_frame_rate_num'] : NaN)
-  const den = Number(profile ? attrsOf(profile)['@_frame_rate_den'] : NaN)
-  return num > 0 && den > 0 ? num / den : 25
-}
-
-/* A time as a project writes it — a frame count, or hours:minutes:seconds.milliseconds — in frames */
-const framesOf = (time: string | undefined, fps: number) => {
-  if (!time) return 0
-  if (/^\d+$/.test(time)) return Number(time)
-  const [h = '0', m = '0', sec = '0'] = time.split(':')
-  return Math.round((Number(h) * 3600 + Number(m) * 60 + Number(sec)) * fps)
-}
-
-/* how many frames a track already holds, so what is added after it starts where it ends */
-const lengthOf = (playlist: XmlNode, fps: number) =>
-  childrenOf(playlist).reduce((sum, child) => {
-    const attrs = attrsOf(child)
-    if (tagOf(child) === 'blank') return sum + framesOf(attrs['@_length'], fps)
-    if (tagOf(child) === 'entry')
-      return sum + framesOf(attrs['@_out'], fps) - framesOf(attrs['@_in'], fps) + 1
-    return sum
-  }, 0)
-
-/* The timeline's tracks bottom to top, as kdenlive counts them when it names a clip in a group:
-   the black background it keeps underneath is not one of them. */
-const timelineTracks = (mlt: XmlNode[], sequence: XmlNode) =>
-  tracksOf(sequence).flatMap((track) => {
-    const producer = attrsOf(track)['@_producer']
-    const node = producer ? nodeById(mlt, 'tractor', producer) : undefined
-    return node ? [node] : []
-  })
-
 /* A1 — the audio track right under V1, where a clip's own sound goes, linked to its picture. None
    when the track under V1 is not an audio one. */
 const findAudioUnderVideo = (mlt: XmlNode[], sequence: XmlNode, videoTrackId: string) => {
@@ -300,6 +225,9 @@ const findAudioUnderVideo = (mlt: XmlNode[], sequence: XmlNode, videoTrackId: st
 
 /* kdenlive keeps its groups as a list of trees; a clip in one is named by track and first frame */
 const groupsSchema = jsonText.pipe(z.array(z.unknown()))
+
+/* and its guides as a list of moments, which is the shape a clip's own markers take too */
+const guidesSchema = jsonText.pipe(z.array(markSchema))
 
 const createMontageProject = (rawOptions: MontageOptions) => {
   const options = montageOptionsSchema.parse(rawOptions)
@@ -375,6 +303,9 @@ const createMontageProject = (rawOptions: MontageOptions) => {
      on V1 alone, sound inside. */
   const fps = fpsOf(mlt)
   const a1 = findAudioUnderVideo(mlt, sequence, videoTrackId)
+  /* Read while the template is still as it arrived: the track a clip's sound goes on is empty until
+     the jump is laid, and a jump's own sound is not the film's music. */
+  const furniture = readFurniture(mlt, sequence, videoTrackId, a1?.playlist ?? null)
   const frames = options.clips.map((clip) => {
     const seconds = clip.seconds ?? mediaSeconds(clip.proxy ?? clip.path)
     return seconds === null ? null : Math.max(1, Math.floor(seconds * fps))
@@ -432,11 +363,13 @@ const createMontageProject = (rawOptions: MontageOptions) => {
     ],
     ':@': { '@_id': id }
   })
-  const entryOf = (producer: string, kdenliveId: number, length: number | null) => ({
+  /* A piece of a clip on a track: which producer plays it and which part of it. A clip with no jump
+     in it is one piece the length of the clip, which is how it has always been laid. */
+  const entryOf = (producer: string, kdenliveId: number, piece: Piece | null) => ({
     entry: [{ property: [{ '#text': String(kdenliveId) }], ':@': { '@_name': 'kdenlive:id' } }],
     ':@': {
       '@_producer': producer,
-      ...(length === null ? {} : { '@_in': '0', '@_out': String(length - 1) })
+      ...(piece === null ? {} : { '@_in': String(piece.in), '@_out': String(piece.out) })
     }
   })
 
@@ -447,30 +380,90 @@ const createMontageProject = (rawOptions: MontageOptions) => {
     if (gap > 0) childrenOf(a1.playlist).push({ blank: [], ':@': { '@_length': String(gap) } })
   }
   const chains: XmlNode[] = []
+  const guides: Mark[] = []
+  /* every piece of picture as it was laid, so the film's own two ends can be found again */
+  const laid: { entry: XmlNode; piece: Piece }[] = []
   options.clips.forEach((clip, index) => {
     const producerId = `chain_skydock_${index}`
     const kdenliveId = nextId++
     const length = frames[index] ?? null
-    chains.push(chainOf(clip, producerId, kdenliveId))
+    const bare = chainOf(clip, producerId, kdenliveId)
+    chains.push(bare)
     childrenOf(bin).push({ entry: [], ':@': { '@_producer': producerId } })
     if (!linked || !a1 || length === null) {
       childrenOf(track).push(entryOf(producerId, kdenliveId, null))
       return
     }
+    /* Where the jump is in this clip, if it has one in it at all: the moments themselves, written
+       onto the clip and along the timeline, and the pieces the clip is cut into at them. */
+    const { pieces, marks } = cutClip({
+      moments: clip.moments,
+      cropStart: clip.cropStart,
+      length,
+      fps
+    })
+    const clipStart = at
+    if (marks.length > 0) {
+      setProp(bare, 'kdenlive:markers', JSON.stringify(marks, null, 4))
+      guides.push(...marks.map((mark) => ({ ...mark, pos: clipStart + mark.pos })))
+    }
     chains.push(chainOf(clip, `${producerId}_picture`, kdenliveId, 'picture'))
     chains.push(chainOf(clip, `${producerId}_sound`, kdenliveId, 'sound'))
-    childrenOf(track).push(entryOf(`${producerId}_picture`, kdenliveId, length))
-    childrenOf(a1.playlist).push(entryOf(`${producerId}_sound`, kdenliveId, length))
-    groups.push({
-      children: [
-        { data: `${a1.position}:${at}`, leaf: 'clip', type: 'Leaf' },
-        { data: `${a1.videoPosition}:${at}`, leaf: 'clip', type: 'Leaf' }
-      ],
-      type: 'AVSplit'
+    /* Every piece is a clip in its own right on the timeline: its own entry on each of the two
+       tracks, and its own pair of leaves saying the two are one, at the frame that piece starts on
+       rather than the frame the clip did. */
+    pieces.forEach((piece) => {
+      const shown = entryOf(`${producerId}_picture`, kdenliveId, piece)
+      laid.push({ entry: shown, piece })
+      childrenOf(track).push(shown)
+      childrenOf(a1.playlist).push(entryOf(`${producerId}_sound`, kdenliveId, piece))
+      groups.push({
+        children: [
+          { data: `${a1.position}:${at}`, leaf: 'clip', type: 'Leaf' },
+          { data: `${a1.videoPosition}:${at}`, leaf: 'clip', type: 'Leaf' }
+        ],
+        type: 'AVSplit'
+      })
+      at += piece.out - piece.in + 1
     })
-    at += length
   })
   mlt.splice(firstPlaylist, 0, ...chains)
+  /* the film is as long as the footage, and the template's ends follow it there */
+  const repositioned = followTheFilm(furniture, lengthOf(track, fps), fps)
+
+  /* Out of black into the first frame, into black out of the last, and the music quiet where it
+     ends. The same on every film, which is why it is not left to be done by hand each time. */
+  const first = laid[0]
+  const last = laid[laid.length - 1]
+  if (first) childrenOf(first.entry).push(fadeFromBlack('filter_skydock_in', first.piece, fps))
+  if (last) childrenOf(last.entry).push(fadeToBlack('filter_skydock_out', last.piece, fps))
+  const heard = furniture.music
+    ? childrenOf(furniture.music).filter((c) => tagOf(c) === 'entry')
+    : []
+  const ends = heard[heard.length - 1]
+  if (ends)
+    childrenOf(ends).push(
+      musicFadeOut(
+        'filter_skydock_music',
+        {
+          in: framesOf(attrsOf(ends)['@_in'], fps),
+          out: framesOf(attrsOf(ends)['@_out'], fps)
+        },
+        fps
+      )
+    )
+  /* The jump's moments along the timeline as well as on the clips, so the ruler says where the door
+     was left whichever clip is being looked at. Merged with whatever the template already keeps, one
+     to a frame, in the order they happen. */
+  if (guides.length > 0) {
+    const kept = guidesSchema.safeParse(
+      textOf(propOf(sequence, 'kdenlive:sequenceproperties.guides'))
+    )
+    const merged = [...(kept.success ? kept.data : []), ...guides]
+      .filter((guide, index, all) => all.findIndex((g) => g.pos === guide.pos) === index)
+      .sort((a, b) => a.pos - b.pos)
+    setProp(sequence, 'kdenlive:sequenceproperties.guides', JSON.stringify(merged, null, 4))
+  }
   if (groups.length > 0) {
     const kept = groupsSchema.safeParse(
       textOf(propOf(sequence, 'kdenlive:sequenceproperties.groups'))
@@ -528,7 +521,8 @@ const createMontageProject = (rawOptions: MontageOptions) => {
     clips: options.clips.length,
     /* the template's own files it could not find — the project is written anyway, because the edit
        can start without the music, but nobody should have to discover this at the render */
-    missingAssets: [...new Set(missingAssets)]
+    missingAssets: [...new Set(missingAssets)],
+    repositioned
   }
 }
 

@@ -678,6 +678,26 @@ the real clip recorded as what the edit is of, so the editor opens ready to work
 footage. The film's destination and format are filled in, so what is left is the edit and pressing
 render.
 
+**The jump is cut at its marks.** A clip with a jump in it is laid already cut where the jump changes:
+the cabin, then the exit and the freefall, then the canopy ride, then the landing and the ground. The
+landing begins a little before the ground, since a landing is the approach and the touchdown together.
+Nothing is lost — the pieces are the whole clip, in order and touching, so the film is as long as the
+footage and a piece is deleted rather than a cut hunted for. Each piece carries its own sound under it,
+linked as a whole clip's is. A clip with no jump in it — ground footage, a plane ride, a camera that
+measures nothing — is laid whole, and nothing is ever trimmed away for anybody. The moments go into the
+project as well, on the clip and as guides along the timeline, named as the board names them.
+
+**The template's furniture follows the film at its ends.** A template is made for a film of a certain
+length and a montage is as long as its footage, so the end card is moved to follow the last clip — the
+film ends on the card rather than on footage — and the music is cut to end with it. The intro stays
+where it is and the titles in the middle stay where the template put them. A template whose shape is
+not recognised is left exactly as it arrived rather than mangled, and what was moved is said when the
+montage is made.
+
+**How the film opens and closes.** It comes out of black on the first frame and goes into black on the
+last, and the music goes quiet where it ends instead of stopping dead. Nothing is sped up or slowed
+down: that is a choice about a particular canopy ride and belongs to whoever is watching it.
+
 **Making the montage opens it.** Writing the project and opening the editor are one press, and a tandem
 with a project offers a way back into it. Which command opens the editor is a setting. When the editor
 cannot be reached from where SkyDock runs, the board says so and still names the project's path, which

@@ -5,7 +5,14 @@ import { formatFilmSize, localeDate, plural } from '../components/utils'
 
 /* A template that came without its music and logos still produces a project, and the holes only
    show up at the render — so they are said out loud the moment the montage is made. */
-const montageNote = ({ clips, missingAssets, opened, openCommand, openReason }: MontageNote) => {
+const montageNote = ({
+  clips,
+  missingAssets,
+  repositioned,
+  opened,
+  openCommand,
+  openReason
+}: MontageNote) => {
   /* naming the command is what turns "nothing happened" into something that can be looked into:
      it is the one part of this the board knows and the person at the screen cannot see */
   const with_ = openCommand ? ` with ${openCommand}` : ''
@@ -15,9 +22,15 @@ const montageNote = ({ clips, missingAssets, opened, openCommand, openReason }: 
     missingAssets.length === 0
       ? ''
       : `, but the template is missing ${plural(missingAssets.length, 'file')}: ${missingAssets.join(', ')}`
+  /* A template is made for a film of a certain length and this one is as long as its footage, so
+     what was moved to the film's ends is said — silence means the template was left as it arrived. */
+  const moved =
+    repositioned === undefined || repositioned.length === 0
+      ? ''
+      : ` · ${repositioned.join(' and ')} follow the film`
   /* whether the editor came up is part of what just happened, not a separate thing to go and check */
   const editor = opened ? ` · opening it${with_}` : openReason ? ` · ${openReason}` : ''
-  return `${made}${holes}${editor}`
+  return `${made}${holes}${moved}${editor}`
 }
 
 /* what a drop from the computer came to, in one line */

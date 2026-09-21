@@ -9,14 +9,19 @@ What is still to do. What was done is in git, not here.
 The exit, both ends of the canopy opening and the ground are found and shown (RULES, Where the jump
 is in a clip). What they were found for is not built yet, in the order worth doing:
 
-- **Markers in the project.** Write them as kdenlive guides when the montage is made. Cheapest of
-  the lot and decides nothing — the editor simply stops scrubbing to find the moments.
-- **The music on the exit.** Place the template's music so it starts there rather than at zero.
+- **The music on the exit.** The montage cuts the music to end with the film (RULES, Montage); where
+  it _starts_ is still zero. A finished film changes track where the jump begins, which is a moment
+  SkyDock knows.
 - **Cameras synced on the exit.** Two cameras of one jump share that instant, so their offsets are
   arithmetic: the project could open with the angles already lined up. The hard part of editing,
   for free — but only for clips that both have an exit.
-- **A suggested trim**: from a few seconds before the exit to a little after the ground, offered as
-  a hollow ✂ to accept rather than applied.
+- **A suggested trim on the board**, from a few seconds before the exit to a little after the ground,
+  offered as a hollow ✂ to accept rather than applied. The montage now cuts a jump into its phases
+  instead, which is a different thing: it loses nothing and leaves the choosing to the editor.
+- **Speed, which is left alone on purpose.** Both finished films run the canopy ride at twice speed
+  and cut four or five half-speed highlights out of the freefall. Every boundary of those is a mark
+  SkyDock has, so it could be offered — but how fast a particular canopy ride should run is a
+  judgement about that ride, and a montage that guesses it is a montage somebody has to undo.
 - **A camera nobody has read yet** gets no marks, and is marked by hand. Both cameras here are read.
   The sound was tried and dropped as a fallback for the rest: on a GoPro freefall is the quietest,
   flattest part of the spectrum and on a DJI the busiest, so no one threshold serves both, and a
