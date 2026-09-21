@@ -112,6 +112,25 @@ describe('opening the project in the editor', () => {
     expect(result.reason).toContain('cannot open display')
   })
 
+  /* The command can be a bridge onto another machine, which takes a second or two to hand the
+     project over and see whether it was taken — a confinement refusing it, a library it has not
+     got. Called an opening before that answer comes back, the board says "opening it…" over a
+     window that never came. */
+  it('waits for a command that takes its time to say the editor never came up', async () => {
+    const stub = path.join(dir, 'slow-bridge')
+    fs.writeFileSync(
+      stub,
+      '#!/bin/sh\nsleep 1.6\necho "the machine would not start it" >&2\nexit 1\n'
+    )
+    fs.chmodSync(stub, 0o755)
+    process.env.SKYDOCK_EDITOR_COMMAND = stub
+
+    const result = await openInEditor(project)
+
+    expect(result.opened).toBe(false)
+    expect(result.reason).toContain('the machine would not start it')
+  })
+
   it('counts handing the file to an editor already open as opened', async () => {
     const stub = path.join(dir, 'handoff-editor')
     fs.writeFileSync(stub, '#!/bin/sh\nexit 0\n')

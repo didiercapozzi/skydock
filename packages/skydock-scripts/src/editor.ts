@@ -20,8 +20,14 @@ const EDITOR_COMMAND = 'SKYDOCK_EDITOR_COMMAND'
    that cannot run says so on an `error` event, and one that runs and gives up says so by exiting —
    so claiming success at the call is claiming something nobody checked. An editor still alive after
    this, or gone with nothing to complain about, is as good as it gets without waiting for a window
-   to appear. */
-const GRACE_MS = 1200
+   to appear.
+
+   Long enough for a command that opens the editor somewhere else to come back with what happened
+   over there: SKYDOCK_EDITOR_COMMAND can be a bridge onto the machine around this one, and a
+   bridge takes a couple of seconds to hand the project over and see whether it was taken. Cut
+   shorter, this says "opening it" and then learns nothing. It only ever waits the whole of it for
+   an editor that is still running, which is the case that has already gone right. */
+const GRACE_MS = 4000
 
 type OpenResult = { opened: boolean; command: string; reason?: string }
 

@@ -58,6 +58,14 @@ is rarely the one this container was handed. It reaches the machine through the 
 container already mounts: everything this can do, a privileged container with that socket could
 already do, and this makes it ordinary rather than possible.
 
+**The application is asked for by their session manager**, not started in that container of a
+moment. Started there it would carry that container's cgroup about with it, and a confined
+application — a snap, a flatpak — looks at that and refuses before it draws anything; kdenlive is a
+snap on this machine, and said so in a line about a cgroup directory it could not open. Handed to
+`systemd-run --user`, it is the machine's own application from the first instant, in their slice,
+and it outlives the container without one having to be left running. What it says goes to their
+journal. Interrupting this side stops it over there, as it always did.
+
 **The app is built for the machine, not for this container.** The two are different systems — this
 one is newer — and a program built in here borrows a C library and a web engine that the machine
 has not got. It starts by luck, draws the board and then answers nothing.
@@ -199,7 +207,17 @@ npm run dev:bridge
 — the variable points SkyDock at [scripts/editor-on-host.sh](scripts/editor-on-host.sh), which
 hands the project to [scripts/host.sh](scripts/host.sh) to open over there, as described above, in
 the machine's own terms: a path this container knows as `/workspace` is translated on the way.
-`SKYDOCK_HOST_EDITOR` picks a different editor. The umask is explained below.
+`SKYDOCK_HOST_EDITOR` picks a different editor. The umask is explained below. Nothing is installed
+or left running on the host for any of this — both scripts run in here.
+
+The board is told what came of it. The bridge waits a moment for the editor to fail before calling
+it an opening, so an editor that cannot start says why — the line it printed on its way out — rather
+than leaving "opening it…" over a window that never came. What it printed afterwards is in the
+machine's own journal:
+
+```sh
+scripts/host.sh journalctl --user -u 'skydock-*' -n 50
+```
 
 **The two sides are not the same user.** The container runs as root; on the host you are yourself.
 Everything SkyDock writes into `output/` is therefore owned by root, and the editor running on the
