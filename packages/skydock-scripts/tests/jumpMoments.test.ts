@@ -104,6 +104,41 @@ describe('where the jump is in a clip', () => {
     expect(readFelt(still, 120)).toBeNull()
   })
 
+  /* A camera held out on an arm feels the arm as well as the flight, so its exit is nowhere near as
+     light: the hand-held clip here reads 0.78 through the door where the same camera on a helmet
+     reads 0.43. The seconds below are that clip's own, and the jump in it is a jump. */
+  it('finds the door of a camera held out on an arm, where the dip is shallow', () => {
+    const felt = [
+      ...Array.from({ length: 84 }, () => second(1)).flat(),
+      /* the last seconds in the door, moving about the cabin */
+      ...[1.23, 1.08, 1.26].flatMap((g) => second(g)),
+      ...[0.67, 0.85, 0.83, 0.81, 0.77].flatMap((g) => second(g)),
+      /* freefall, with the arm swinging through it */
+      ...Array.from({ length: 40 }, (_, at) => second(at % 3 === 0 ? 1.3 : 1.05)).flat(),
+      ...Array.from({ length: OPENING }, () => second(2.2)).flat(),
+      ...Array.from({ length: 60 }, () => second(1)).flat(),
+      ...second(1.6),
+      ...Array.from({ length: 5 }, () => second(1)).flat()
+    ]
+
+    const found = readFelt(felt, felt.length / 200)
+
+    expect(found?.exit).toBeGreaterThanOrEqual(87)
+    expect(found?.exit).toBeLessThanOrEqual(88)
+    expect(found?.canopy).toBeDefined()
+  })
+
+  /* And the other side of that line: every clip on this machine with no jump in it weighs 0.89
+     through its lightest three seconds, so being shaken about is still not leaving an aeroplane. */
+  it('is not a clip that was only shaken about', () => {
+    const shaken = [
+      ...Array.from({ length: 30 }, () => second(1)).flat(),
+      ...Array.from({ length: 6 }, (_, at) => second(at % 2 === 0 ? 0.86 : 0.92)).flat(),
+      ...Array.from({ length: 60 }, () => second(1)).flat()
+    ]
+    expect(readFelt(shaken, shaken.length / 200)).toBeNull()
+  })
+
   /* A camera knocked about on the ground goes light for an instant. An aeroplane being left does
      not stop after an instant. */
   it('is not a camera being knocked about', () => {

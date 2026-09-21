@@ -47,11 +47,23 @@ const RUN_UP = 1
 const cutFrom = (moments: JumpMoments, tandem: boolean) =>
   tandem ? moments.exit : Math.max(0, moments.exit - RUN_UP)
 
-/* Leaving the plane, as the seconds around it average: well under a gravity for the few seconds it
-   takes the air to catch up. How deep the dip goes differs by camera and by how fast the aeroplane
-   was going — a GoPro on one jump floors at 0.2, a DJI on another at 0.43 — so what is asked of it
-   is the average of three seconds rather than any single second's depth. */
-const LEAVING = 0.7 * GRAVITY
+/* Leaving the plane, as the seconds around it average: under a gravity for the few seconds it takes
+   the air to catch up. How deep the dip goes differs by camera and by how fast the aeroplane was
+   going — a GoPro on one jump floors at 0.2, a DJI on another at 0.43 — so what is asked of it is
+   the average of three seconds rather than any single second's depth.
+
+   How light those three seconds are differs more than the floor does, because what a camera feels
+   is not only the flight. Held out on an arm, the arm is in the readings too: the hand-held clip
+   here reads 0.78 through its exit, while the same camera on a helmet reads 0.43 on the jump before
+   it. Every clip on this machine falls on one side or the other of that with room to spare —
+
+     a jump      0.36  0.40  0.41  0.43  0.49  0.51  0.58  0.78
+     no jump     0.89  0.89  0.92  0.94  0.95 … 1.04
+
+   and what follows the mark is what keeps a shaken clip from becoming a jump: the aeroplane has to
+   have weighed its gravity a moment before, and the canopy that ends a jump has to be found after
+   it. */
+const LEAVING = 0.82 * GRAVITY
 
 const FALLING_FOR = 3
 

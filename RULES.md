@@ -648,7 +648,10 @@ be sent again; the local file is untouched. Between those moments the board says
 A clip off a camera that records what it felt — and the cameras here do, a GoPro two hundred times a
 second and a DJI once a frame — has its jump found in it: the moment the plane was left, the two ends
 of the canopy opening, and the moment the ground arrived. Leaving an aeroplane is a few seconds of
-weightlessness and nothing else is, so the exit is never in doubt. The canopy is a deceleration that
+weightlessness and nothing else is, so the exit is never in doubt — though how light those seconds
+read depends on how the camera was carried, since one held out on an arm feels the arm as well as
+the flight, and what is asked of them allows for that and is still nowhere near what a clip with no
+jump in it reads. The canopy is a deceleration that
 lasts and has a canopy flying after it — a jumper tracking, turning or head-down weighs as much and
 longer, and only an opening is followed by a gravity held steady. It is marked twice, because a film
 wants both ends of it: the opening, which is the first tug and the end of the freefall, and the
