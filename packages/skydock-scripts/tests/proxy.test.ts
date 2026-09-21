@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import {
+  buildMissingProxies,
   ensureProxies,
   getCutProxyDir,
   getProxyPath,
@@ -14,7 +15,7 @@ import {
 } from '../src/proxy'
 import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
-import { saveManifest } from '../src/manifest'
+import { loadManifest, saveManifest } from '../src/manifest'
 import type { Manifest, ManifestFile } from '../src/types'
 import { createTmpDir, execSyncMock, tellTools, writeTempFile } from './fixtures'
 
@@ -450,6 +451,79 @@ describe('a build still in progress', () => {
 
     /* once per clip, each time with that clip already recorded */
     expect(saves).toEqual([1, 2])
+  })
+})
+
+/* A pass is half a minute of transcoding per clip, and the board goes on being used meanwhile: a
+   file is dragged in, a jump named, a clip trimmed. What a pass writes is the small copy it made and
+   nothing else — it must never put the manifest back as it was when it started. */
+describe('what else happened while the proxies were being made', () => {
+  let outputDir: string
+  let manifestPath: string
+
+  beforeEach(() => {
+    setProxyEncoder('cpu')
+    outputDir = createTmpDir('skydock-proxy-meanwhile-')
+    manifestPath = path.join(outputDir, 'manifest.json')
+    execSyncMock.mockImplementation(toolsPresent())
+  })
+
+  afterEach(() => {
+    fs.rmSync(outputDir, { recursive: true, force: true })
+    vi.clearAllMocks()
+    setProxyEncoder(null)
+  })
+
+  const filesNow = () => loadManifest(manifestPath)!.files
+
+  it('keeps a file that arrived after the pass read the manifest', async () => {
+    const one = writeTempFile(outputDir, 'original_files/GX010023.MP4')
+    const two = writeTempFile(outputDir, 'original_files/GX010024.MP4')
+    saveManifest(manifestPath, manifestOf([fileEntry(one, 'abc123')]))
+
+    /* the pass has the manifest as it was; the drop lands a moment later, as an import writes it */
+    const pass = buildMissingProxies(outputDir)
+    saveManifest(manifestPath, manifestOf([fileEntry(one, 'abc123'), fileEntry(two, 'def456')]))
+    await pass
+
+    expect(filesNow().map((f) => f.id)).toEqual(['abc123', 'def456'])
+  })
+
+  /* and it is not left without one: nobody else is coming back for it */
+  it('makes the small copy of a file that arrived while it was busy', async () => {
+    const one = writeTempFile(outputDir, 'original_files/GX010023.MP4')
+    const two = writeTempFile(outputDir, 'original_files/GX010024.MP4')
+    saveManifest(manifestPath, manifestOf([fileEntry(one, 'abc123')]))
+
+    const pass = buildMissingProxies(outputDir)
+    saveManifest(manifestPath, manifestOf([fileEntry(one, 'abc123'), fileEntry(two, 'def456')]))
+    const report = await pass
+
+    expect(report.built).toBe(2)
+    expect(fs.existsSync(path.join(outputDir, 'proxies', 'def456.mp4'))).toBe(true)
+    expect(filesNow().map((f) => f.proxy)).toEqual([
+      path.join(outputDir, 'proxies', 'abc123.mp4'),
+      path.join(outputDir, 'proxies', 'def456.mp4')
+    ])
+  })
+
+  it('leaves alone what it knows nothing about', async () => {
+    const one = writeTempFile(outputDir, 'original_files/GX010023.MP4')
+    saveManifest(manifestPath, manifestOf([fileEntry(one, 'abc123')]))
+
+    const pass = buildMissingProxies(outputDir)
+    /* somebody trims the very clip being proxied, and names its jump, while ffmpeg runs */
+    const meanwhile = manifestOf([{ ...fileEntry(one, 'abc123'), cropStart: 4, cropEnd: 9 }])
+    meanwhile.groups = [
+      { id: 'group_1', label: 'Jump 1', day: '2026-08-01', files: meanwhile.files }
+    ]
+    saveManifest(manifestPath, meanwhile)
+    await pass
+
+    const saved = loadManifest(manifestPath)!
+    expect(saved.files[0]!.cropStart).toBe(4)
+    expect(saved.groups.map((g) => g.id)).toEqual(['group_1'])
+    expect(saved.files[0]!.proxy).toBe(path.join(outputDir, 'proxies', 'abc123.mp4'))
   })
 })
 

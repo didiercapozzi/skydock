@@ -283,7 +283,14 @@ const buildProxy = async (
 /* The timeline carries the cut footage, so a proxy of the whole clip would not line up with it.
    Every frame is a keyframe, so the same cut comes out of the proxy as a stream copy — no second
    transcode, and the same frames as the processed copy. */
-const cropProxy = (src: string, dest: string, cropStart: number, cropEnd: number) => {
+/* Either end on its own is a trim: no start means from the beginning, no end means to the end of
+   the clip. */
+const cropProxy = (
+  src: string,
+  dest: string,
+  cropStart: number | null | undefined,
+  cropEnd: number | null | undefined
+) => {
   if (!hasCommand('ffmpeg')) return false
   fs.mkdirSync(path.dirname(dest), { recursive: true })
   try {
@@ -291,12 +298,10 @@ const cropProxy = (src: string, dest: string, cropStart: number, cropEnd: number
       ffmpegPath(),
       [
         '-y',
-        '-ss',
-        String(cropStart),
+        ...(cropStart != null ? ['-ss', String(cropStart)] : []),
         '-i',
         src,
-        '-t',
-        (cropEnd - cropStart).toFixed(6),
+        ...(cropEnd != null ? ['-t', (cropEnd - (cropStart ?? 0)).toFixed(6)] : []),
         '-c',
         'copy',
         '-avoid_negative_ts',
@@ -400,20 +405,58 @@ const ensureProxies = async (
    rather than starting again. */
 let running: Promise<ProxyReport> | null = null
 
+/* What a pass made, written into the manifest as it is on disk at that moment — never over it.
+
+   A proxy is half a minute of transcoding, and the board goes on working meanwhile: a file dragged
+   in, a jump named, a clip trimmed. All of that is saved by whoever did it, and saving the snapshot
+   this pass began with would quietly undo it — which is how two of four files dropped in together
+   came to be on the disk with no row on the board. So only what this pass is here to write is
+   carried over: the small copy it made, and the jump it looked for on the way. */
+const recordProxies = (manifestPath: string, pass: Manifest) => {
+  const current = loadManifest(manifestPath)
+  if (!current) return saveManifest(manifestPath, pass)
+  const made = new Map(pass.files.map((file) => [file.id ?? file.path, file]))
+  for (const file of current.files) {
+    const done = made.get(file.id ?? file.path)
+    if (!done) continue
+    if (done.proxy) file.proxy = done.proxy
+    /* a proxy that could not be made leaves no record behind — but only the disk may say that */ else if (
+      file.proxy &&
+      !fs.existsSync(file.proxy)
+    )
+      delete file.proxy
+    if (file.moments === undefined && done.moments !== undefined) file.moments = done.moments
+  }
+  saveManifest(manifestPath, current)
+}
+
 /* Loads, builds what is missing, saves. Kept apart from the scan itself because a scan should
-   answer at once — the proxies catch up behind it, and everything works without them meanwhile. */
+   answer at once — the proxies catch up behind it, and everything works without them meanwhile.
+
+   Once round again whenever something was built: a file that arrived while ffmpeg was busy is in
+   the manifest now but was not when this pass read it, and with one caller at a time nothing else
+   would come back for it. */
 const buildMissingProxies = async (outputDir?: string) => {
   if (running) return await running
   const dir = outputDir || getOutputDir()
   running = (async () => {
     const manifestPath = getManifestPath(dir)
-    const manifest = loadManifest(manifestPath)
-    if (!manifest) return { built: 0, skipped: 0, failed: [] }
-    /* written down as each one lands: whoever asked for this may never see it finish, and a
-       proxy nobody recorded is a proxy nobody uses */
-    const report = await ensureProxies(manifest, dir, undefined, () =>
-      saveManifest(manifestPath, manifest)
-    )
+    const report: ProxyReport = { built: 0, skipped: 0, failed: [] }
+    for (;;) {
+      const manifest = loadManifest(manifestPath)
+      if (!manifest) break
+      /* written down as each one lands: whoever asked for this may never see it finish, and a
+         proxy nobody recorded is a proxy nobody uses */
+      const pass = await ensureProxies(manifest, dir, undefined, () =>
+        recordProxies(manifestPath, manifest)
+      )
+      report.built += pass.built
+      report.skipped = pass.skipped
+      /* a clip the next round tries again is one clip that could not be made, not two */
+      report.failed = [...new Set([...report.failed, ...pass.failed])]
+      report.reason ??= pass.reason
+      if (pass.built === 0) break
+    }
     if (report.built > 0)
       console.log(
         `[Proxy] Built ${report.built} proxy file(s) in ${dir}/proxies using ${proxyEncoder()}${
