@@ -9,7 +9,7 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
   return { ...actual, loadManifest: vi.fn(() => null) }
 })
 
-import Board from '../../app/routes/board'
+import { boardRoute } from './board-route'
 
 /* The menu lists one entry per named passenger, and the tandems still waiting for a name together
    (RULES, The board). Half a name is not a name: that tandem waits with the others. */
@@ -47,7 +47,7 @@ const board = {
 
 describe('the passengers in the menu', () => {
   test('lists a tandem with half a name among those still waiting for one, not as a passenger', async () => {
-    const Stub = createRoutesStub([{ path: '/', Component: Board, loader: () => board }])
+    const Stub = createRoutesStub([boardRoute(() => board)])
     await render(createElement(Stub, { initialEntries: ['/'] }))
 
     const menu = page.getByRole('navigation', { name: 'Folders' })
@@ -68,7 +68,7 @@ describe('making a tandem from a jump', () => {
   const renderFresh = async () => {
     sent.length = 0
     const Stub = createRoutesStub([
-      { path: '/', Component: Board, loader: () => fresh },
+      boardRoute(() => fresh),
       {
         path: '/api/manifest',
         action: async ({ request }) => {
@@ -112,7 +112,7 @@ describe('a clip whose proxy could not be made', () => {
         '/o/g4b.MP4': { state: 'none', play: '/o/g4b.MP4' }
       }
     }
-    const Stub = createRoutesStub([{ path: '/', Component: Board, loader: () => failed }])
+    const Stub = createRoutesStub([boardRoute(() => failed)])
     await render(createElement(Stub, { initialEntries: ['/'] }))
 
     const flag = page.getByText('proxy failed')
@@ -132,7 +132,7 @@ describe('processing a dropzone', () => {
     }
     const sent: { intent: string }[] = []
     const Stub = createRoutesStub([
-      { path: '/', Component: Board, loader: () => dropzone },
+      boardRoute(() => dropzone),
       {
         path: '/api/manifest',
         action: async ({ request }) => {

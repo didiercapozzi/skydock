@@ -10,6 +10,7 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
 })
 
 import Board from '../../app/routes/board'
+import { boardRoute } from './board-route'
 
 /* Two jumps are put side by side by selecting one and ⌘/ctrl-clicking a second — for the two
    cameras of one jump, one of them on the wrong clock. Clicked in a real browser, with the key held
@@ -48,7 +49,7 @@ const board = {
 
 const renderBoard = async () => {
   const Stub = createRoutesStub([
-    { path: '/', Component: Board, loader: () => board },
+    boardRoute(() => board),
     { path: '/api/manifest', action: async () => ({ ok: true }) }
   ])
   await render(createElement(Stub, { initialEntries: ['/'] }))
@@ -128,7 +129,7 @@ describe('jumps as cards', () => {
   }
 
   test('are numbered straight through the days and drawn newest first', async () => {
-    const Stub = createRoutesStub([{ path: '/', Component: Board, loader: () => days }])
+    const Stub = createRoutesStub([boardRoute(() => days)])
     await render(createElement(Stub, { initialEntries: ['/'] }))
 
     await expect.element(card(/^Jump 4, /)).toBeInTheDocument()
@@ -146,7 +147,7 @@ describe('jumps as cards', () => {
 
   /* a jump is named by its place among all the jumps, so hiding some leaves its number alone */
   test('keep their numbers while a search hides the others', async () => {
-    const Stub = createRoutesStub([{ path: '/', Component: Board, loader: () => days }])
+    const Stub = createRoutesStub([boardRoute(() => days)])
     await render(createElement(Stub, { initialEntries: ['/'] }))
 
     await userEvent.fill(page.getByRole('textbox', { name: 'Find a file' }), 'early2')
@@ -163,7 +164,7 @@ describe('resetting Fresh files', () => {
   const renderWithRequests = async () => {
     asked.length = 0
     const Stub = createRoutesStub([
-      { path: '/', Component: Board, loader: () => board },
+      boardRoute(() => board),
       {
         path: '/api/manifest',
         action: async ({ request }) => {

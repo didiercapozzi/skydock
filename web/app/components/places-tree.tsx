@@ -2,9 +2,10 @@ import { fileStatus, hasCompletePassenger, passengerOf } from '@skydock/scripts'
 import type { StatusContext, TandemEntry, TandemProgress } from '@skydock/scripts'
 import { useState } from 'react'
 import { TANDEMS } from '../helpers/jumps'
-import { groupsIn, hereIn, looseIn, placeKey, placeLabel, samePlace } from '../helpers/places'
+import { groupsIn, hereIn, looseIn, placeKey, placeLabel } from '../helpers/places'
 import type { Place } from '../helpers/places'
 import type { Mounted } from '../hooks/useLiveProgress'
+import { PlaceLink } from './place-link'
 import { StepMeter } from './tandem-steps'
 import type { Destination, ManifestFile, ManifestGroup } from './types'
 
@@ -15,7 +16,6 @@ import type { Destination, ManifestFile, ManifestGroup } from './types'
    without opening anything. Pinned: only the files scroll, so any folder can take a drop. On a phone
    it becomes one strip of folders across the top. */
 type Props = {
-  place: Place
   destinations: Destination[]
   groups: ManifestGroup[]
   looseFiles: ManifestFile[]
@@ -27,7 +27,6 @@ type Props = {
   tandemOpen: (group: ManifestGroup) => boolean
   /* where a passenger has got to — their jump furthest behind */
   passengerProgress: (name: string) => TandemProgress | null
-  onPick: (place: Place) => void
   onAddPlace: (name: string) => void
   dropTarget: (place: Place) => Record<string, unknown>
   overTarget: string | null
@@ -41,9 +40,7 @@ const Node = ({
   files,
   todo,
   child,
-  current,
   statusContext,
-  onPick,
   dropTarget,
   over,
   flash,
@@ -55,9 +52,7 @@ const Node = ({
   /* what is still owed there, in words: "3 to file", "7 to do" */
   todo: string | null
   child?: boolean
-  current: boolean
   statusContext: (file: ManifestFile) => StatusContext
-  onPick: (place: Place) => void
   dropTarget: (place: Place) => Record<string, unknown>
   over: boolean
   flash?: boolean
@@ -70,60 +65,64 @@ const Node = ({
   const width = (n: number) => `${(n / total) * 100}%`
   const label = placeLabel(place)
   return (
-    <button
-      type='button'
-      aria-current={current}
+    <PlaceLink
+      place={place}
       {...dropTarget(place)}
-      onClick={() => onPick(place)}
-      className={`block w-full rounded-md border px-2 pt-1.5 pb-[5px] text-left text-ink max-[780px]:w-auto max-[780px]:flex-none max-[780px]:rounded-full max-[780px]:border-line max-[780px]:bg-pane max-[780px]:px-[11px] max-[780px]:py-[5px] ${
-        over
-          ? 'border-dashed border-pick bg-pick-soft'
-          : current
-            ? 'border-line bg-pane shadow-card'
-            : 'border-transparent hover:bg-line-2'
-      } ${child ? 'pl-[22px] max-[780px]:pl-[11px]' : ''} ${flash ? 'animate-[placeflash_1.8s_ease-out]' : ''}`}>
-      <span className='flex items-center gap-2 max-[780px]:gap-1.5'>
-        <span
-          aria-hidden='true'
-          className={`w-3.5 flex-none text-center ${current ? 'text-accent' : 'text-ink-3'}`}>
-          {glyph}
-        </span>
-        <span
-          className={`min-w-0 flex-1 truncate ${current ? 'font-semibold' : ''}`}
-          title={label}>
-          {label}
-        </span>
-        {todo && (
-          <span className='flex-none rounded-full bg-local-soft px-1.5 text-[10.5px] font-semibold whitespace-nowrap text-local max-[780px]:hidden'>
-            {todo}
+      className={(current) =>
+        `block w-full rounded-md border px-2 pt-1.5 pb-[5px] text-left text-ink max-[780px]:w-auto max-[780px]:flex-none max-[780px]:rounded-full max-[780px]:border-line max-[780px]:bg-pane max-[780px]:px-[11px] max-[780px]:py-[5px] ${
+          over
+            ? 'border-dashed border-pick bg-pick-soft'
+            : current
+              ? 'border-line bg-pane shadow-card'
+              : 'border-transparent hover:bg-line-2'
+        } ${child ? 'pl-[22px] max-[780px]:pl-[11px]' : ''} ${flash ? 'animate-[placeflash_1.8s_ease-out]' : ''}`
+      }>
+      {(current) => (
+        <>
+          <span className='flex items-center gap-2 max-[780px]:gap-1.5'>
+            <span
+              aria-hidden='true'
+              className={`w-3.5 flex-none text-center ${current ? 'text-accent' : 'text-ink-3'}`}>
+              {glyph}
+            </span>
+            <span
+              className={`min-w-0 flex-1 truncate ${current ? 'font-semibold' : ''}`}
+              title={label}>
+              {label}
+            </span>
+            {todo && (
+              <span className='flex-none rounded-full bg-local-soft px-1.5 text-[10.5px] font-semibold whitespace-nowrap text-local max-[780px]:hidden'>
+                {todo}
+              </span>
+            )}
+            <span className='font-mono text-[11px] text-ink-3 tabular-nums'>{files.length}</span>
           </span>
-        )}
-        <span className='font-mono text-[11px] text-ink-3 tabular-nums'>{files.length}</span>
-      </span>
-      {progress ? (
-        <StepMeter
-          progress={progress}
-          className='mt-1 ml-[22px] max-[780px]:hidden'
-        />
-      ) : (
-        files.length > 0 && (
-          <span className='mt-1 ml-[22px] flex h-[3px] overflow-hidden rounded-sm bg-line-2 max-[780px]:hidden'>
-            <i
-              className='block h-full bg-local'
-              style={{ width: width(counts.local) }}
+          {progress ? (
+            <StepMeter
+              progress={progress}
+              className='mt-1 ml-[22px] max-[780px]:hidden'
             />
-            <i
-              className='block h-full bg-proc'
-              style={{ width: width(counts.processed) }}
-            />
-            <i
-              className='block h-full bg-up'
-              style={{ width: width(counts.uploaded) }}
-            />
-          </span>
-        )
+          ) : (
+            files.length > 0 && (
+              <span className='mt-1 ml-[22px] flex h-[3px] overflow-hidden rounded-sm bg-line-2 max-[780px]:hidden'>
+                <i
+                  className='block h-full bg-local'
+                  style={{ width: width(counts.local) }}
+                />
+                <i
+                  className='block h-full bg-proc'
+                  style={{ width: width(counts.processed) }}
+                />
+                <i
+                  className='block h-full bg-up'
+                  style={{ width: width(counts.uploaded) }}
+                />
+              </span>
+            )
+          )}
+        </>
       )}
-    </button>
+    </PlaceLink>
   )
 }
 
@@ -162,50 +161,49 @@ const TandemsHeading = ({
 
 /* an entry of the rail that is no folder of files: what the storage holds, a camera plugged in */
 const Entry = ({
+  place,
   glyph,
   label,
-  current,
-  onClick,
   badge = null,
   count
 }: {
+  place: Place
   glyph: string
   label: string
-  current: boolean
-  onClick: () => void
   badge?: string | null
   count?: number
 }) => (
-  <button
-    type='button'
-    aria-current={current}
-    onClick={onClick}
-    className={`block w-full rounded-md border px-2 pt-1.5 pb-[5px] text-left text-ink max-[780px]:w-auto max-[780px]:flex-none max-[780px]:rounded-full max-[780px]:border-line max-[780px]:bg-pane max-[780px]:px-[11px] max-[780px]:py-[5px] ${
-      current ? 'border-line bg-pane shadow-card' : 'border-transparent hover:bg-line-2'
-    }`}>
-    <span className='flex items-center gap-2'>
-      <span
-        aria-hidden='true'
-        className={`w-3.5 flex-none text-center ${current ? 'text-accent' : 'text-ink-3'}`}>
-        {glyph}
-      </span>
-      <span className={`min-w-0 flex-1 truncate ${current ? 'font-semibold' : ''}`}>{label}</span>
-      {badge && (
-        <span className='flex-none rounded-full bg-local-soft px-1.5 text-[10.5px] font-semibold whitespace-nowrap text-local max-[780px]:hidden'>
-          {badge}
+  <PlaceLink
+    place={place}
+    className={(current) =>
+      `block w-full rounded-md border px-2 pt-1.5 pb-[5px] text-left text-ink max-[780px]:w-auto max-[780px]:flex-none max-[780px]:rounded-full max-[780px]:border-line max-[780px]:bg-pane max-[780px]:px-[11px] max-[780px]:py-[5px] ${
+        current ? 'border-line bg-pane shadow-card' : 'border-transparent hover:bg-line-2'
+      }`
+    }>
+    {(current) => (
+      <span className='flex items-center gap-2'>
+        <span
+          aria-hidden='true'
+          className={`w-3.5 flex-none text-center ${current ? 'text-accent' : 'text-ink-3'}`}>
+          {glyph}
         </span>
-      )}
-      {count !== undefined && (
-        <span className='font-mono text-[11px] text-ink-3 tabular-nums'>{count}</span>
-      )}
-    </span>
-  </button>
+        <span className={`min-w-0 flex-1 truncate ${current ? 'font-semibold' : ''}`}>{label}</span>
+        {badge && (
+          <span className='flex-none rounded-full bg-local-soft px-1.5 text-[10.5px] font-semibold whitespace-nowrap text-local max-[780px]:hidden'>
+            {badge}
+          </span>
+        )}
+        {count !== undefined && (
+          <span className='font-mono text-[11px] text-ink-3 tabular-nums'>{count}</span>
+        )}
+      </span>
+    )}
+  </PlaceLink>
 )
 
 const counted = (n: number, what: string) => (n > 0 ? `${n} ${what}` : null)
 
 const PlacesTree = ({
-  place,
   destinations,
   groups,
   looseFiles,
@@ -214,7 +212,6 @@ const PlacesTree = ({
   statusContext,
   tandemOpen,
   passengerProgress,
-  onPick,
   onAddPlace,
   dropTarget,
   overTarget,
@@ -253,9 +250,7 @@ const PlacesTree = ({
       files={files(p)}
       todo={todo}
       child={child}
-      current={samePlace(place, p)}
       statusContext={statusContext}
-      onPick={onPick}
       dropTarget={dropTarget}
       over={overTarget === placeKey(p)}
       flash={flashPlace === placeKey(p)}
@@ -312,10 +307,9 @@ const PlacesTree = ({
         <>
           <Heading>Storage</Heading>
           <Entry
+            place={{ kind: 'storage' }}
             glyph='☁'
             label='On the storage'
-            current={place.kind === 'storage'}
-            onClick={() => onPick({ kind: 'storage' })}
             badge={notEmailed > 0 ? `${notEmailed} to email` : null}
             count={storage.tandems.length}
           />
@@ -329,10 +323,9 @@ const PlacesTree = ({
           {cameras.map((c) => (
             <Entry
               key={c.mount}
+              place={{ kind: 'camera', name: c.mount }}
               glyph='📷'
               label={c.camera}
-              current={place.kind === 'camera' && place.name === c.mount}
-              onClick={() => onPick({ kind: 'camera', name: c.mount })}
             />
           ))}
         </div>

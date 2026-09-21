@@ -11,6 +11,7 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
 
 import Board from '../../app/routes/board'
 import { setBackupChoice } from '../../app/hooks/useBackupChoice'
+import { boardRoute } from './board-route'
 
 /* Uploading a tandem is the one step that hands things to someone, so it shows what it is about to do
    before it does it: two parcels, both folders, and how the originals are kept. Nothing is sent
@@ -82,7 +83,7 @@ const requests: unknown[] = []
 
 const renderBoard = async (data: typeof board | Record<string, unknown> = board, open = true) => {
   const Stub = createRoutesStub([
-    { path: '/', Component: Board, loader: () => data },
+    boardRoute(() => data),
     {
       path: '/api/manifest',
       action: async ({ request }) => {
@@ -95,7 +96,7 @@ const renderBoard = async (data: typeof board | Record<string, unknown> = board,
     { path: '/api/remote-files', loader: () => ({ ok: false, reason: 'test' }) }
   ])
   const screen = await render(createElement(Stub, { initialEntries: ['/'] }))
-  await userEvent.click(page.getByRole('button', { name: /Luc Favre/ }).first())
+  await userEvent.click(page.getByRole('link', { name: /Luc Favre/ }).first())
   if (open) await userEvent.click(page.getByRole('button', { name: 'Upload…', exact: true }))
   return screen
 }
@@ -375,7 +376,7 @@ describe('the tandems on the storage', () => {
   test('lists a tandem this machine no longer has, and whether its passenger was emailed', async () => {
     await renderBoard(listed, false)
     await userEvent.click(
-      page.getByRole('navigation', { name: 'Folders' }).getByRole('button', { name: /On the storage/ })
+      page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /On the storage/ })
     )
     await expect.element(page.getByRole('region', { name: 'On the storage' })).toBeInTheDocument()
     await expect.element(page.getByText('Ana Roth')).toBeInTheDocument()
@@ -387,7 +388,7 @@ describe('the tandems on the storage', () => {
     requests.length = 0
     await renderBoard(listed, false)
     await userEvent.click(
-      page.getByRole('navigation', { name: 'Folders' }).getByRole('button', { name: /On the storage/ })
+      page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /On the storage/ })
     )
     await userEvent.click(page.getByRole('button', { name: 'Email…' }))
     const dialog = page.getByRole('dialog', { name: 'Email the passenger' })
@@ -411,7 +412,7 @@ describe('where every passenger has got to', () => {
   test('says on the passenger’s entry in the menu which step is next', async () => {
     await renderBoard(board, false)
 
-    const entry = page.getByRole('navigation', { name: 'Folders' }).getByRole('button', {
+    const entry = page.getByRole('navigation', { name: 'Folders' }).getByRole('link', {
       name: /Luc Favre/
     })
     await expect.poll(() => entry.element().textContent).toContain('to upload')
@@ -497,21 +498,21 @@ describe('a tandem with nothing left to do', () => {
   const menu = () => page.getByRole('navigation', { name: 'Folders' })
 
   test('leaves the tandems once it is freed and the passenger was emailed', async () => {
-    const Stub = createRoutesStub([{ path: '/', Component: Board, loader: () => freed(true) }])
+    const Stub = createRoutesStub([boardRoute(() => freed(true))])
     await render(createElement(Stub, { initialEntries: ['/'] }))
 
     await expect.element(menu().getByRole('heading', { name: /Tandems/ })).toBeInTheDocument()
-    await expect.element(menu().getByRole('button', { name: /Luc Favre/ })).not.toBeInTheDocument()
+    await expect.element(menu().getByRole('link', { name: /Luc Favre/ })).not.toBeInTheDocument()
     /* still there, where every tandem on the storage is */
     await expect.poll(() => menu().element().textContent).toContain('On the storage')
   })
 
   /* freed alone is not done: the passenger still has to hear about it */
   test('stays, saying what is left, while the passenger has not been emailed', async () => {
-    const Stub = createRoutesStub([{ path: '/', Component: Board, loader: () => freed(false) }])
+    const Stub = createRoutesStub([boardRoute(() => freed(false))])
     await render(createElement(Stub, { initialEntries: ['/'] }))
 
-    const luc = menu().getByRole('button', { name: /Luc Favre/ })
+    const luc = menu().getByRole('link', { name: /Luc Favre/ })
     await expect.poll(() => luc.element().textContent).toContain('to email')
   })
 })
@@ -525,7 +526,7 @@ describe('the tandems in the menu', () => {
 
     await expect.element(menu.getByRole('heading', { name: /Tandems/ })).toBeInTheDocument()
     await expect.element(menu.getByRole('button', { name: /In progress/ })).not.toBeInTheDocument()
-    await expect.element(menu.getByRole('button', { name: /Luc Favre/ })).toBeInTheDocument()
+    await expect.element(menu.getByRole('link', { name: /Luc Favre/ })).toBeInTheDocument()
   })
 })
 
@@ -631,7 +632,7 @@ describe('a tandem this board has forgotten', () => {
     requests.length = 0
     await renderBoard(forgot, false)
     await userEvent.click(
-      page.getByRole('navigation', { name: 'Folders' }).getByRole('button', { name: /On the storage/ })
+      page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /On the storage/ })
     )
 
     const restore = page.getByRole('button', { name: /^Restore · 2 files$/ })

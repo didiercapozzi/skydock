@@ -10,6 +10,7 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
 })
 
 import Board from '../../app/routes/board'
+import { boardRoute } from './board-route'
 
 const emptyBoard = {
   groups: [],
@@ -23,7 +24,7 @@ const emptyBoard = {
 
 const renderBoard = async () => {
   const Stub = createRoutesStub([
-    { path: '/', Component: Board, loader: () => emptyBoard },
+    boardRoute(() => emptyBoard),
     { path: '/api/manifest', action: async () => ({ ok: true }) },
     { path: '/api/nas', action: async () => ({ ok: true }) }
   ])
@@ -60,7 +61,7 @@ describe('connecting to the storage — 2-step verification', () => {
   test('asks for the code when the storage wants one, and connects with it', async () => {
     const sent: Record<string, unknown>[] = []
     const Stub = createRoutesStub([
-      { path: '/', Component: Board, loader: () => emptyBoard },
+      boardRoute(() => emptyBoard),
       { path: '/api/manifest', action: async () => ({ ok: true }) },
       {
         path: '/api/nas',

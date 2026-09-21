@@ -9,7 +9,7 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
   return { ...actual, loadManifest: vi.fn(() => null) }
 })
 
-import Board from '../../app/routes/board'
+import { boardRoute } from './board-route'
 
 /* The board addresses a file by its path inside the folder this machine keeps the work in — which
    the machine tells it, since an installed app keeps the work wherever it was asked to. */
@@ -49,7 +49,7 @@ const board = {
 
 describe('the pictures the board shows', () => {
   test('are asked for by the path inside the folder this machine works in', async () => {
-    const Stub = createRoutesStub([{ path: '/', Component: Board, loader: () => board }])
+    const Stub = createRoutesStub([boardRoute(() => board)])
     await render(createElement(Stub, { initialEntries: ['/'] }))
 
     await expect.element(page.getByText('two.MP4').first()).toBeInTheDocument()

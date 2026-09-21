@@ -9,7 +9,7 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
   return { ...actual, loadManifest: vi.fn(() => null) }
 })
 
-import Board from '../../app/routes/board'
+import { boardRoute } from './board-route'
 
 /* A trimmed clip opens where its trim starts — the moment the copy made from it begins — and
    stepping to another clip opens that clip's own trim (RULES, Cropping and turning). */
@@ -54,7 +54,7 @@ const said = () => dialog().element().textContent ?? ''
 
 describe('a trimmed clip in the preview', () => {
   test('opens where its trim starts', async () => {
-    const Stub = createRoutesStub([{ path: '/', Component: Board, loader: () => board }])
+    const Stub = createRoutesStub([boardRoute(() => board)])
     await render(createElement(Stub, { initialEntries: ['/'] }))
 
     await userEvent.dblClick(page.getByRole('button', { name: /later\.MP4/ }).first())
@@ -64,7 +64,7 @@ describe('a trimmed clip in the preview', () => {
   })
 
   test('opens the next clip on its own trim, not the one just left', async () => {
-    const Stub = createRoutesStub([{ path: '/', Component: Board, loader: () => board }])
+    const Stub = createRoutesStub([boardRoute(() => board)])
     await render(createElement(Stub, { initialEntries: ['/'] }))
     await userEvent.dblClick(page.getByRole('button', { name: /early\.MP4/ }).first())
     await expect.poll(said).toContain('0:05 /')

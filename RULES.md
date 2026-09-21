@@ -288,7 +288,22 @@ file keeps the trim, frame and turn set on it in the jump.
 ## The board
 
 The board is the everyday screen. A menu of **places** — everywhere a file can be — is pinned down the
-left, and the place picked there fills the pane beside it. Only the pane scrolls, so a file can always
+left, and the place picked there fills the pane beside it.
+
+**Every folder has its own address**, and so has a file opened in it — the board's front page is the
+fresh files, `/dropzone/yverdon` is that dropzone, `/passenger/Lily DONZALLAZ` is hers, and
+`/dropzone/yverdon/file/<the file>` is that clip open in it. A folder in the menu is a link to its
+address, so picking one is going there: the back button walks the folders and the clips you looked
+at, a page reloaded comes back where it was, and an address can be kept or sent to somebody — a
+passenger's address opens their page on a board that no longer holds their tandem, showing what the
+storage has of them.
+
+How a folder is being looked at travels with its address too: which kind of file is shown, what is
+typed in the box, how the files are grouped, and which jump card is open. The kind of file shown is
+the one choice that belongs to the whole board rather than to a folder, so it follows you from one to
+the next; the rest stay behind with the folder they were set in. What is being decided and not yet
+saved — a trim, a rectangle, a turn — is in none of it: an address is somewhere to come back to, and
+a trim nobody saved is not. An address nobody recognises opens the fresh files rather than nothing. Only the pane scrolls, so a file can always
 be dragged to any place. On a narrow screen the menu becomes a strip across the top, and on a screen
 narrower than a laptop's the panel on the right is not shown.
 

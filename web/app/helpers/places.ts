@@ -1,19 +1,28 @@
 import { hasCompletePassenger, passengerOf } from '@skydock/scripts'
+import { z } from 'zod'
 import type { ManifestFile, ManifestGroup } from '../components/types'
 import { TANDEMS } from './jumps'
+import { routingEngine } from './routing'
+import type { BoardView } from './view'
 
 /* Where a file can be, as the folders down the left of the board: the fresh files still to sort, a
    dropzone, all the passengers, the ones still without a name, one passenger, what the storage
    itself holds, and a camera plugged in, by where it is mounted. One is open at a time and its files
    fill the pane. */
-type Place =
-  | { kind: 'sort' }
-  | { kind: 'dz'; name: string }
-  | { kind: 'tandems' }
-  | { kind: 'unnamed' }
-  | { kind: 'pax'; name: string }
-  | { kind: 'storage' }
-  | { kind: 'camera'; name: string }
+const placeSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('sort') }),
+  z.object({ kind: z.literal('dz'), name: z.string().min(1) }),
+  z.object({ kind: z.literal('tandems') }),
+  z.object({ kind: z.literal('unnamed') }),
+  z.object({ kind: z.literal('pax'), name: z.string().min(1) }),
+  z.object({ kind: z.literal('storage') }),
+  z.object({ kind: z.literal('camera'), name: z.string().min(1) })
+])
+
+type Place = z.infer<typeof placeSchema>
+
+/* the board opens on the fresh files, and falls back to them */
+const FRESH: Place = { kind: 'sort' }
 
 const placeKey = (place: Place) => `${place.kind}:${'name' in place ? place.name : ''}`
 
@@ -94,13 +103,71 @@ const stillHere = (place: Place, files: ManifestFile[]) =>
 const hereIn = (place: Place, groups: ManifestGroup[], loose: ManifestFile[]) =>
   stillHere(place, filesIn(place, groups, loose))
 
+/* Each folder's own address, in the words the folder is called by, so that an address can be read
+   and typed: /dropzone/yverdon, /passenger/Lily%20DONZALLAZ, /storage. One list, read both ways.
+   Fresh files is what the board opens on and has the plainest word of them. */
+const PLACE_WORDS = {
+  sort: 'fresh',
+  dz: 'dropzone',
+  tandems: 'tandems',
+  unnamed: 'no-name',
+  pax: 'passenger',
+  storage: 'storage',
+  camera: 'camera'
+} as const satisfies Record<Place['kind'], string>
+
+const paramsOfPlace = (place: Place) => ({
+  kind: PLACE_WORDS[place.kind],
+  name: 'name' in place ? place.name : undefined
+})
+
+const kindOfWord = (word: string | undefined) =>
+  Object.entries(PLACE_WORDS).find(([, known]) => known === word)?.[0]
+
+/* Which folder an address names, read the way anything from outside is read: an address is typed by
+   hand, kept from a board that has since been rearranged, or sent by somebody, so it is parsed and
+   not trusted. Anything that does not name a folder — a word nobody knows, a folder named without
+   the name it needs — is the board's front folder rather than nothing at all. */
+const placeFromParams = ({ kind, name }: { kind?: string; name?: string }) => {
+  const read = placeSchema.safeParse({ kind: kindOfWord(kind), name })
+  return read.success ? read.data : FRESH
+}
+
+/* Every address the board can be at, built from the folder rather than written out: a folder, and a
+   file open in it. Both carry how that folder is being looked at — which kind of file is shown,
+   what is being looked for, how it is grouped, which jump card is open — and what may be carried is
+   what those pages declare as their `searchParamsArgs`, so an address cannot hold anything the page
+   it names would not understand.
+
+   Nothing to say about the looking leaves the address plain: a folder is its own address, and only
+   a folder being looked at in some particular way carries more than its name. */
+const carried = (view: BoardView) =>
+  Object.values(view).some((value) => value !== undefined) ? view : undefined
+
+const placeHref = (place: Place, view: BoardView = {}) =>
+  routingEngine.href({
+    url: '/:kind/:name?',
+    params: paramsOfPlace(place),
+    searchParamsArgs: carried(view)
+  })
+
+const fileHref = (place: Place, fileId: string, view: BoardView = {}) =>
+  routingEngine.href({
+    url: '/:kind/:name?/file/:fileId',
+    params: { ...paramsOfPlace(place), fileId },
+    searchParamsArgs: carried(view)
+  })
+
 export {
   familyOf,
+  fileHref,
   filesIn,
   groupsIn,
   hereIn,
   holdsItsOwn,
   looseIn,
+  placeFromParams,
+  placeHref,
   placeKey,
   placeLabel,
   samePlace,

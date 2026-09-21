@@ -11,6 +11,7 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
 
 import Board from '../../app/routes/board'
 import { setTemplateChoice } from '../../app/hooks/useTemplateChoice'
+import { boardRoute } from './board-route'
 
 /* A template is somebody's branding, so which one a montage is made from is never decided for the
    person: one whole template is simply used, several are chosen between, and one with a hole in it
@@ -74,7 +75,7 @@ const machineHas = (templates: unknown[], onImport?: () => unknown) =>
 const renderBoard = async () => {
   requests.length = 0
   const Stub = createRoutesStub([
-    { path: '/', Component: Board, loader: () => board },
+    boardRoute(() => board),
     {
       path: '/api/manifest',
       action: async ({ request }) => {
@@ -85,7 +86,7 @@ const renderBoard = async () => {
   ])
   await render(createElement(Stub, { initialEntries: ['/'] }))
   await userEvent.click(
-    page.getByRole('navigation', { name: 'Folders' }).getByRole('button', { name: /Luc Favre/ })
+    page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /Luc Favre/ })
   )
 }
 

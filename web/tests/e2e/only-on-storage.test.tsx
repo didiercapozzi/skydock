@@ -9,7 +9,7 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
   return { ...actual, loadManifest: vi.fn(() => null) }
 })
 
-import Board from '../../app/routes/board'
+import { boardRoute } from './board-route'
 
 /* A dropzone's page is what this machine holds. A file freed from it is on the storage and nowhere
    else, and the storage's own list of that folder — under the dropzone's files — is where it is
@@ -72,9 +72,9 @@ const board = {
 }
 
 const openYverdon = async () => {
-  const Stub = createRoutesStub([{ path: '/', Component: Board, loader: () => board }])
+  const Stub = createRoutesStub([boardRoute(() => board)])
   await render(createElement(Stub, { initialEntries: ['/'] }))
-  await userEvent.click(page.getByRole('button', { name: /yverdon/ }).first())
+  await userEvent.click(page.getByRole('link', { name: /yverdon/ }).first())
 }
 
 describe('a dropzone shows what this machine holds', () => {

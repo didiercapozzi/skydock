@@ -9,7 +9,7 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
   return { ...actual, loadManifest: vi.fn(() => null) }
 })
 
-import Board from '../../app/routes/board'
+import { boardRoute } from './board-route'
 
 /* The header warns when the disk the work is on runs out of room (RULES, The board): nothing while
    there is plenty, almost full with how much is left, and full with what will fail. */
@@ -32,7 +32,7 @@ const boardWith = (disk: { free: number; total: number; level: 'ok' | 'low' | 'f
 })
 
 const renderWith = async (disk: Parameters<typeof boardWith>[0]) => {
-  const Stub = createRoutesStub([{ path: '/', Component: Board, loader: () => boardWith(disk) }])
+  const Stub = createRoutesStub([boardRoute(() => boardWith(disk))])
   await render(createElement(Stub, { initialEntries: ['/'] }))
   await expect.element(page.getByText('Dock')).toBeInTheDocument()
 }

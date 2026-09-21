@@ -1,7 +1,15 @@
-import { type RouteConfig, index, route } from '@react-router/dev/routes'
+import { type RouteConfig, index, layout, route } from '@react-router/dev/routes'
 
+/* The board is one screen with a rail of folders down the side, and every folder — and every file
+   opened in it — has its own address, so a page can be reloaded, kept or sent to somebody and comes
+   back showing the same thing. The board itself is the layout: it holds the data and draws the
+   screen, and these children carry what the address says — which folder, and which file is open in
+   it. */
 const routes = [
-  index('routes/board.tsx'),
+  layout('routes/board.tsx', [
+    index('routes/place.home.tsx'),
+    route(':kind/:name?', 'routes/place.tsx', [route('file/:fileId', 'routes/place.file.tsx')])
+  ]),
   route('api/manifest', 'routes/api.manifest.ts'),
   route('api/nas', 'routes/api.nas.ts'),
   route('api/scan', 'routes/api.scan.ts'),

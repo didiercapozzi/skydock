@@ -10,6 +10,7 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
 })
 
 import Board from '../../app/routes/board'
+import { boardRoute } from './board-route'
 
 /* A camera plugged in is copied off by itself, and the board shows it happening, file by file, then
    looks again and says what came off. The machine is stood in for by the stream it speaks on. */
@@ -48,7 +49,7 @@ const renderBoard = async () => {
     }
   )
   const Stub = createRoutesStub([
-    { path: '/', Component: Board, loader: () => board },
+    boardRoute(() => board),
     {
       path: '/api/manifest',
       action: async ({ request }) => {

@@ -9,7 +9,7 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
   return { ...actual, loadManifest: vi.fn(() => null) }
 })
 
-import Board from '../../app/routes/board'
+import { boardRoute } from './board-route'
 
 /* A dropzone's day is one unit of work (RULES, Workflow): its files are processed together, then
    uploaded together, and the board offers the one step the day is at — never an upload while a
@@ -57,7 +57,7 @@ const requests: unknown[] = []
 const openYverdon = async (data: ReturnType<typeof boardWith>) => {
   requests.length = 0
   const Stub = createRoutesStub([
-    { path: '/', Component: Board, loader: () => data },
+    boardRoute(() => data),
     {
       path: '/api/manifest',
       action: async ({ request }) => {
@@ -70,7 +70,7 @@ const openYverdon = async (data: ReturnType<typeof boardWith>) => {
     { path: '/api/remote-files', loader: () => ({ ok: false, reason: 'test' }) }
   ])
   await render(createElement(Stub, { initialEntries: ['/'] }))
-  await userEvent.click(page.getByRole('button', { name: /Yverdon/ }).first())
+  await userEvent.click(page.getByRole('link', { name: /Yverdon/ }).first())
 }
 
 describe('a dropzone day, from the board', () => {

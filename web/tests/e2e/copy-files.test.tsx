@@ -10,6 +10,7 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
 })
 
 import Board from '../../app/routes/board'
+import { boardRoute } from './board-route'
 
 /* A clip two jumps share is copied into the second rather than moved: dropped on the other jump with
    alt held, as in a file manager. Dragged in a real browser with the key really held — what decides
@@ -53,7 +54,7 @@ const requests: unknown[] = []
 const renderBoard = async () => {
   requests.length = 0
   const Stub = createRoutesStub([
-    { path: '/', Component: Board, loader: () => board },
+    boardRoute(() => board),
     {
       path: '/api/manifest',
       action: async ({ request }) => {
@@ -112,7 +113,7 @@ describe('a jump holding a copy from earlier', () => {
         }
       ]
     }
-    const Stub = createRoutesStub([{ path: '/', Component: Board, loader: () => earlier }])
+    const Stub = createRoutesStub([boardRoute(() => earlier)])
     await render(createElement(Stub, { initialEntries: ['/'] }))
 
     /* 12:00, when Ana's own clip was shot — not 09:00, when the copied plane was */

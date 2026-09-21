@@ -28,6 +28,8 @@ import type { FrameCrop, Rotation, TandemEntry } from '@skydock/scripts'
 import { diskSpace } from '../../../packages/skydock-scripts/src/diskSpace'
 import { readTandemIndex } from '../../../packages/skydock-scripts/src/tandemIndex'
 import { useState } from 'react'
+import { Outlet, useNavigate, useParams } from 'react-router'
+import type { ShouldRevalidateFunctionArgs } from 'react-router'
 import { BoardHeader } from '../components/board-header'
 import type { NasLink } from '../components/board-header'
 import { Go, Mini } from '../components/buttons'
@@ -37,7 +39,7 @@ import { DialogHost } from '../components/dialog-host'
 import type { BoardDialog } from '../components/dialog-host'
 import { FileBrowser } from '../components/file-browser'
 import { lanesOf, lockReason, shownStatus } from '../components/file-list'
-import type { Kind, Modifiers } from '../components/file-list'
+import type { Modifiers } from '../components/file-list'
 import { FolderOwed } from '../components/folder-owed'
 import { Box, FilePanel, FolderPanel, JumpPanel, ManyPanel, Shell } from '../components/inspector'
 import { PlacePane } from '../components/place-pane'
@@ -64,13 +66,14 @@ import {
   groupsIn,
   holdsItsOwn,
   looseIn,
+  placeFromParams,
+  placeHref,
   placeKey,
   placeLabel,
   stillHere
 } from '../helpers/places'
 import type { Place } from '../helpers/places'
 import { GROUPINGS, cardsOf, jumpLabels, sectionsOf } from '../helpers/sections'
-import type { Grouping } from '../helpers/sections'
 import { fileFacts } from '../helpers/status'
 import { setBackupChoice, useBackupChoice } from '../hooks/useBackupChoice'
 import { useBoardState } from '../hooks/useBoardState'
@@ -78,12 +81,19 @@ import { useDragAndDrop } from '../hooks/useDragAndDrop'
 import type { Move } from '../hooks/useDragAndDrop'
 import { useFileView } from '../hooks/useFileView'
 import { useNas } from '../hooks/useNas'
-import { LOOSE, usePreview } from '../hooks/usePreview'
+import { usePreview } from '../hooks/usePreview'
 import { useSelection } from '../hooks/useSelection'
 import { useUploadProgress } from '../hooks/useUploadProgress'
 import { templatesAnswerSchema } from '../../../packages/skydock-scripts/src/templateEntry'
-import { routingEngine } from '../helpers/routing'
+import { routingEngine, useSafeSearchParams } from '../helpers/routing'
+import { boardViewSchema } from '../helpers/view'
 import type { Route } from './+types/board'
+
+/* The board's data is read once and every change comes back in the answer the endpoint gives, so
+   walking the folders — a click on the rail, a clip opened, a filter — never asks the disk and the
+   storage all over again. A change made anywhere still does. */
+const shouldRevalidate = ({ formMethod, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) =>
+  formMethod ? defaultShouldRevalidate : false
 
 const loader = async (_args: Route.LoaderArgs) => {
   const outputDir = getOutputDir()
@@ -180,20 +190,16 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const backupChoice = useBackupChoice()
   const view = useFileView()
   const progress = useUploadProgress(board.uploading)
-  /* which folder fills the pane */
-  const [place, setPlace] = useState<Place>({ kind: 'sort' })
-  /* videos, photos or both: one filter for the whole board, so what was chosen in a dropzone still
-     holds in a tandem */
-  const [kind, setKind] = useState<Kind>('all')
-  const [query, setQuery] = useState('')
-  /* which jump card is open, by jump */
-  const [chosenCard, setChosenCard] = useState<string | null>(null)
-  /* how each family of folder groups its files, remembered while the board is open */
-  const [groupingBy, setGroupingBy] = useState<Record<'sort' | 'dz' | 'tandems', Grouping>>({
-    sort: 'jump',
-    dz: 'day',
-    tandems: 'jump'
-  })
+  /* Which folder fills the pane, which file is open in it, and how it is being looked at: all of it
+     read from the address rather than remembered here, so a board can be reloaded, gone back to or
+     sent to somebody and comes back showing the same thing (RULES, The board). */
+  const address = useParams()
+  const place = placeFromParams(address)
+  const goTo = useNavigate()
+  const { searchParams: looking, setSearchParams: look } = useSafeSearchParams(boardViewSchema)
+  const kind = looking.kind ?? 'all'
+  const query = looking.find ?? ''
+  const chosenCard = looking.card ?? null
 
   /* A tandem with an edit is frozen (RULES, Montage), and a freed one lives on the storage only.
      The server refuses any change to either; the board simply never offers it. */
@@ -230,13 +236,20 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     board.setLoose((current) => current.map((f) => (f.path === file.path ? cropped : f)))
     updateGroups(groups, [cropped])
   }
-  const preview = usePreview(groups, updateGroups, cropLoneFile)
+  const preview = usePreview({
+    groups,
+    loose,
+    place,
+    fileId: address.fileId,
+    view: looking,
+    onGroupsChange: updateGroups,
+    onFileCrop: cropLoneFile
+  })
 
   const groupOfFile = (file: ManifestFile) =>
     groups.find((g) => g.files.some((f) => (f.id ?? f.path) === (file.id ?? file.path)))
   /* a freed file has nothing here to show: it is played from the storage's list below instead */
-  const openFile = (file: ManifestFile) =>
-    file.freed ? undefined : preview.handlePreview(file, groupOfFile(file)?.id ?? LOOSE)
+  const openFile = (file: ManifestFile) => (file.freed ? undefined : preview.openPreview(file))
   /* filed nowhere — neither as a lone file nor through its jump — and so free to go to the bin */
   const inUnsorted = (file: ManifestFile) => !file.destination && !groupOfFile(file)?.destination
   /* Deleting goes one step at a time: a file in a jump comes out of it and is loose; only a loose
@@ -386,12 +399,16 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     : placeGroups
   const shownLoose = placeLoose.filter(matches)
   const groupingOptions = family === 'storage' ? GROUPINGS.sort : GROUPINGS[family]
+  /* what each family of folder does when the address says nothing */
+  const groupingBy = { sort: 'jump', dz: 'day', tandems: 'jump' } as const
   const grouping =
     family === 'storage'
       ? 'none'
-      : groupingOptions.includes(groupingBy[family])
-        ? groupingBy[family]
-        : (groupingOptions[0] ?? 'none')
+      : looking.by && groupingOptions.includes(looking.by)
+        ? looking.by
+        : groupingOptions.includes(groupingBy[family])
+          ? groupingBy[family]
+          : (groupingOptions[0] ?? 'none')
   const sections = sectionsOf(place, grouping, shownGroups, shownLoose, placeGroups)
   /* By jump, the jumps are cards and one is open: the one last chosen while it is still here, or
      else the first. Only its files are on screen. */
@@ -831,10 +848,12 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       ]
     : [{ label: 'Connect the NAS', onClick: openConnect }]
 
+  /* Where the board goes by itself: a jump filed somewhere lands its folder open. A click on the
+     rail is the link's own business (RULES, The board). */
   const pickPlace = (next: Place) => {
-    setPlace(next)
-    setQuery('')
     selection.clear()
+    /* the one filter that is the whole board's, not the folder's, goes with it (RULES, The board) */
+    goTo(placeHref(next, { kind: looking.kind }))
   }
 
   const summary =
@@ -1072,7 +1091,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
       <div className='grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] min-[781px]:grid-cols-[250px_minmax(0,1fr)] min-[781px]:grid-rows-[minmax(0,1fr)] min-[1101px]:grid-cols-[250px_minmax(0,1fr)_300px]'>
         <PlacesTree
-          place={place}
           destinations={places}
           groups={listed}
           looseFiles={loose}
@@ -1081,7 +1099,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           statusContext={statusContext}
           tandemOpen={(g) => !asOnStorage(g).uploaded}
           passengerProgress={passengerProgress}
-          onPick={pickPlace}
           onAddPlace={addPlace}
           dropTarget={drag.placeDrop}
           overTarget={drag.overTarget}
@@ -1093,13 +1110,13 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           summary={summary}
           files={placeFiles}
           query={query}
-          onQuery={setQuery}
+          onQuery={(find) => look({ find: find || undefined }, { replace: true })}
           grouping={{
             value: grouping,
             options: groupingOptions,
-            onChange: (g) => family !== 'storage' && setGroupingBy({ ...groupingBy, [family]: g })
+            onChange: (by) => look({ by })
           }}
-          kind={{ value: kind, onChange: setKind }}
+          kind={{ value: kind, onChange: (next) => look({ kind: next }) }}
           step={place.kind === 'dz' ? dropzoneStep(place.name) : undefined}
           tools={paxTools}
           left={
@@ -1160,7 +1177,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                       hidden: soleTandem !== undefined,
                       open: openCard.key,
                       onOpen: (key) => {
-                        setChosenCard(key)
+                        look({ card: key })
                         /* the loose card is no jump: the inspector lets go of the last one */
                         if (key === 'loose') selection.clear()
                       }
@@ -1297,10 +1314,13 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           send(`play:${file.id ?? file.path}`, { intent: 'play-file', fileIds: [file.id ?? ''] })
         }
       />
+      {/* what the address says — which folder, which file — is drawn above, from the address
+          itself; this is where the addresses themselves live */}
+      <Outlet />
     </main>
   )
 }
 
-export { loader }
+export { loader, shouldRevalidate }
 
 export default Board
