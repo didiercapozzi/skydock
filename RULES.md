@@ -183,7 +183,9 @@ already filed never grows by itself. Every jump already there keeps its files, h
   the original is wherever it already is — and it goes with its tandem when the tandem is deleted. A scan
   leaves it in its jump rather than pulling it back beside its original, and it follows its original if
   that file is moved, and goes if that file is gone. The original cannot be put in the bin while a jump
-  holds a copy of it, and freeing a tandem leaves on the disk any original another jump still holds.
+  holds a copy of it, and freeing a tandem leaves on the disk any original another jump still holds —
+  and such a file is not said to live on the storage only, because it does not: it is here, and it
+  can be copied into another jump, moved or dropped in again like any other.
 - **A file back in Fresh files is on its camera's time again.** A time is only ever corrected for the
   jump a file is in — the whole jump moved to when it really happened, a clip fitted among the others —
   and means nothing once the file is on its own; left on it, the file would sit under a day it was never
@@ -696,7 +698,9 @@ Nothing is lost — the pieces are the whole clip, in order and touching, so the
 footage and a piece is deleted rather than a cut hunted for. Each piece carries its own sound under it,
 linked as a whole clip's is. A clip with no jump in it — ground footage, a plane ride, a camera that
 measures nothing — is laid whole, and nothing is ever trimmed away for anybody. The moments go into the
-project as well, on the clip and as guides along the timeline, named as the board names them.
+project as well, named as the board names them: on the clip, where they travel with it however often
+it is moved or cut, and never along the timeline, where a mark stays behind the moment the clip it
+was about is moved.
 
 **The template's furniture follows the film at its ends.** A template is made for a film of a certain
 length and a montage is as long as its footage, so the end card is moved to follow the last clip — the

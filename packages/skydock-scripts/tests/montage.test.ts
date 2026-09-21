@@ -712,7 +712,7 @@ describe('montage — the jump cut at its marks', () => {
     expect(groupsOf(xml)).toHaveLength(1)
   })
 
-  it('writes the moments on the clip and as guides along the timeline', () => {
+  it('writes the moments on the clip, counted from the clip’s own start', () => {
     const xml = laid([{ name: 'jump.mp4', seconds: 455, moments: JUMP }])
 
     const markers = JSON.parse(propOf(xml, 'kdenlive:markers') ?? '[]')
@@ -723,13 +723,14 @@ describe('montage — the jump cut at its marks', () => {
       'the ground'
     ])
     expect(markers[0].pos).toBe(JUMP.exit * FPS)
+  })
 
-    /* the same moments, counted from the start of the timeline rather than the start of the clip —
-       the same numbers here, since this template holds nothing before the footage */
-    const guides = JSON.parse(propOf(xml, 'kdenlive:sequenceproperties.guides') ?? '[]')
-    expect(guides.map((g: { pos: number }) => g.pos)).toEqual(
-      markers.map((m: { pos: number }) => m.pos)
-    )
+  /* A guide is nailed to a frame of the film, so moving the clip it was about — which is the whole
+     of editing — leaves it behind pointing at nothing. The moments are the clip's, and go with it. */
+  it('puts nothing along the timeline, which a clip moving would leave behind', () => {
+    const xml = laid([{ name: 'jump.mp4', seconds: 455, moments: JUMP }])
+
+    expect(JSON.parse(propOf(xml, 'kdenlive:sequenceproperties.guides') ?? '[]')).toEqual([])
   })
 
   /* A copy trimmed at the front is a different clip from the one the camera shot, and the moments

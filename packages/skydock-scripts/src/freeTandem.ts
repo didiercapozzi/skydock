@@ -193,8 +193,15 @@ const freeTandem = async ({
      freed. Everything made from it for this tandem still goes. */
   const heldElsewhere = (file: ManifestFile) =>
     manifest.files.some((other) => other.path === file.path && other.id !== file.id && !other.freed)
+  /* and it is not said to live on the storage only either, because it does not: it is on the disk,
+     and a file the board calls gone is a file nothing can be done with — not copied into another
+     jump, not moved, not dropped in again */
+  const stayed = new Set<string>()
   for (const file of group.files) {
-    if (heldElsewhere(file)) continue
+    if (heldElsewhere(file)) {
+      if (file.id) stayed.add(file.id)
+      continue
+    }
     bytes += removeFile(originals, file.path)
     if (file.proxy && file.proxy !== file.path) bytes += removeFile(proxies, file.proxy)
   }
@@ -208,7 +215,7 @@ const freeTandem = async ({
 
   const result = {
     groupId: group.id,
-    fileIds: group.files.flatMap((f) => (f.id ? [f.id] : [])),
+    fileIds: group.files.flatMap((f) => (f.id && !stayed.has(f.id) ? [f.id] : [])),
     bytes,
     at: Math.floor(Date.now() / 1000)
   }
@@ -227,7 +234,7 @@ const markFreed = (manifest: Manifest, result: FreeResult) => {
     g.id === result.groupId
       ? {
           ...g,
-          files: g.files.map((f) => ({ ...f, freed: true })),
+          files: g.files.map((f) => (f.id && !ids.has(f.id) ? f : { ...f, freed: true })),
           freed: { at: result.at, bytes: result.bytes }
         }
       : g

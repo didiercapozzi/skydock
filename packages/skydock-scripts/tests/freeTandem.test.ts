@@ -167,6 +167,12 @@ describe('freeing an uploaded tandem', () => {
     await free(manifest)
 
     expect(fs.readdirSync(originals)).toEqual(['GX01.MP4'])
+    /* and it is not said to be on the storage only, since it is on the disk: a file the board calls
+       gone is one nothing can be done with — not copied into a jump, not moved, not dropped in again */
+    expect(manifest.files.find((f) => f.id === shared.id)?.freed).toBeUndefined()
+    expect(manifest.groups[0]?.files.find((f) => f.id === shared.id)?.freed).toBeUndefined()
+    /* the rest of the tandem went, and says so */
+    expect(manifest.files.filter((f) => f.freed).length).toBeGreaterThan(0)
   })
 
   it('remembers that it lives on the storage only, and says every file is uploaded', async () => {

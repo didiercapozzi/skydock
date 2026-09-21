@@ -100,11 +100,14 @@ const placeExisting = (
     copyFiles(manifest, new Set([id]), joining.id)
     return { filename: file.filename, outcome: 'copied', stays }
   }
+  /* The sorting area and a place are for a file on its own, so landing there means leaving the jump
+     it is in — which an edit forbids. Saying only that leaves somebody stuck: what they were after is
+     almost always this footage in another jump, and that is one drop away. */
   if (inGroup && frozenTandems(manifest, outputDir).has(inGroup.id))
     return {
       filename: file.filename,
       outcome: 'kept',
-      reason: `${placeOf(manifest, id)}’s tandem has an edit, so nothing leaves it`
+      reason: `${placeOf(manifest, id)}’s tandem has an edit, so nothing leaves it — drop it on a jump to put it in that jump as well`
     }
   const from = placeOf(manifest, id)
   moveFiles(

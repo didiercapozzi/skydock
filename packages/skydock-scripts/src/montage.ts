@@ -28,11 +28,11 @@ import type { XmlNode } from './lib/mlt'
 import { walkFiles } from './lib/fs'
 import { jsonText } from './lib/json'
 import { mediaSeconds } from './lib/media'
-import { cutClip, markSchema } from './montageCuts'
+import { cutClip } from './montageCuts'
 import { fadeFromBlack, fadeToBlack, musicFadeOut } from './montageFilters'
 import { followTheFilm, readFurniture } from './montageFurniture'
 import { jumpMomentsSchema } from './types'
-import type { Mark, Piece } from './montageCuts'
+import type { Piece } from './montageCuts'
 
 /* `proxy` is the small copy of this same clip, cut the same way. When there is one the editor opens
    on it instead of transcoding the clip itself, which is the longest wait before an edit can start;
@@ -226,9 +226,6 @@ const findAudioUnderVideo = (mlt: XmlNode[], sequence: XmlNode, videoTrackId: st
 /* kdenlive keeps its groups as a list of trees; a clip in one is named by track and first frame */
 const groupsSchema = jsonText.pipe(z.array(z.unknown()))
 
-/* and its guides as a list of moments, which is the shape a clip's own markers take too */
-const guidesSchema = jsonText.pipe(z.array(markSchema))
-
 const createMontageProject = (rawOptions: MontageOptions) => {
   const options = montageOptionsSchema.parse(rawOptions)
   const template = resolveTemplate(options)
@@ -380,7 +377,6 @@ const createMontageProject = (rawOptions: MontageOptions) => {
     if (gap > 0) childrenOf(a1.playlist).push({ blank: [], ':@': { '@_length': String(gap) } })
   }
   const chains: XmlNode[] = []
-  const guides: Mark[] = []
   /* every piece of picture as it was laid, so the film's own two ends can be found again */
   const laid: { entry: XmlNode; piece: Piece }[] = []
   options.clips.forEach((clip, index) => {
@@ -402,11 +398,10 @@ const createMontageProject = (rawOptions: MontageOptions) => {
       length,
       fps
     })
-    const clipStart = at
-    if (marks.length > 0) {
-      setProp(bare, 'kdenlive:markers', JSON.stringify(marks, null, 4))
-      guides.push(...marks.map((mark) => ({ ...mark, pos: clipStart + mark.pos })))
-    }
+    /* On the clip, never along the timeline. A guide is nailed to a frame of the film: move the clip
+       it was about — which is the whole of editing — and it stays behind pointing at nothing. A
+       marker belongs to the clip and goes where the clip goes, however often it is moved or cut. */
+    if (marks.length > 0) setProp(bare, 'kdenlive:markers', JSON.stringify(marks, null, 4))
     chains.push(chainOf(clip, `${producerId}_picture`, kdenliveId, 'picture'))
     chains.push(chainOf(clip, `${producerId}_sound`, kdenliveId, 'sound'))
     /* Every piece is a clip in its own right on the timeline: its own entry on each of the two
@@ -452,18 +447,6 @@ const createMontageProject = (rawOptions: MontageOptions) => {
         fps
       )
     )
-  /* The jump's moments along the timeline as well as on the clips, so the ruler says where the door
-     was left whichever clip is being looked at. Merged with whatever the template already keeps, one
-     to a frame, in the order they happen. */
-  if (guides.length > 0) {
-    const kept = guidesSchema.safeParse(
-      textOf(propOf(sequence, 'kdenlive:sequenceproperties.guides'))
-    )
-    const merged = [...(kept.success ? kept.data : []), ...guides]
-      .filter((guide, index, all) => all.findIndex((g) => g.pos === guide.pos) === index)
-      .sort((a, b) => a.pos - b.pos)
-    setProp(sequence, 'kdenlive:sequenceproperties.guides', JSON.stringify(merged, null, 4))
-  }
   if (groups.length > 0) {
     const kept = groupsSchema.safeParse(
       textOf(propOf(sequence, 'kdenlive:sequenceproperties.groups'))

@@ -225,6 +225,8 @@ describe('adding a file from the computer', () => {
 
     const again = await add('clip.mp4', 'same', { kind: 'sort' })
     expect(again).toMatchObject({ outcome: 'kept' })
+    /* and says the way through, since what was wanted is almost always this footage in a jump */
+    expect((again as { reason: string }).reason).toContain('drop it on a jump')
     expect(loadManifest(manifestPath())!.groups[0]?.files).toHaveLength(1)
   })
 
