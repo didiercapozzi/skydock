@@ -619,6 +619,21 @@ passenger already has.
 when the check button is pressed. A file it can no longer find stops counting as uploaded and is ready to
 be sent again; the local file is untouched. Between those moments the board says what it last proved.
 
+## Where the jump is in a clip
+
+A clip off a camera that records what it felt — a GoPro does, two hundred times a second — has its
+jump found in it: the second the plane was left, the second the canopy opened, and the second the
+ground arrived. Leaving an aeroplane is a few seconds of weightlessness and nothing else is; the
+canopy and the ground are the only seconds of a jump that weigh half again what standing still does.
+
+Every clip is asked once, in the background, off the original — a copy keeps the picture and the
+sound, not what the camera felt. Most clips have no jump in them: a clip shot on the ground, one
+that never left the plane, one off a camera that writes nothing down. Saying so is the answer, kept
+so that nothing is asked twice, and it is never made up.
+
+What it is for: a jump is cut around those moments. What SkyDock finds is a starting point, shown
+where it can be seen and corrected, never a decision taken silently.
+
 ## Montage
 
 A processed tandem can be turned into an editing project. Its videos are laid on the template's first

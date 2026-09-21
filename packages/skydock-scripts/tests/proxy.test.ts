@@ -425,10 +425,23 @@ describe('a build still in progress', () => {
     expect(statProxies(manifest, outputDir)[src]).toEqual({ state: 'ready', play: proxyPath })
   })
 
+  /* Asking a clip where its jump is costs a moment, and the answer for most clips is that there is
+     no jump in them. That answer is written down too, so no pass asks the same clip again. */
+  it('writes down that a clip has no jump in it, so it is not asked twice', async () => {
+    const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
+    const manifest = manifestOf([fileEntry(src, 'abc123')])
+
+    await ensureProxies(manifest, outputDir)
+
+    expect(manifest.files[0].moments).toBeNull()
+  })
+
   it('writes the record down as each one lands, not once at the end', async () => {
     const one = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const two = writeTempFile(outputDir, 'original_files/GX010024.MP4')
     const manifest = manifestOf([fileEntry(one, 'abc123'), fileEntry(two, 'def456')])
+    /* both already asked where their jump is, so what is counted here is the proxies alone */
+    for (const file of manifest.files) file.moments = null
 
     const saves: number[] = []
     await ensureProxies(manifest, outputDir, undefined, () =>

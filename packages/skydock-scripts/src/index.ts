@@ -75,6 +75,7 @@ import {
   processJumps,
   whenProcessed
 } from './process'
+import { jumpMoments } from './jumpMoments'
 import { statProxies } from './proxy'
 import { rememberOutputDir, resolveOutputDir } from './settings'
 import { stopTools } from './tools'
@@ -138,6 +139,7 @@ import {
 } from './workspace'
 
 export {
+  jumpMoments,
   rememberOutputDir,
   stopTools,
   resolveOutputDir,

@@ -30,6 +30,15 @@ const frameCropSchema = z.object({
    is as shot. */
 const rotationSchema = z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)])
 
+/* Where the jump is in a clip, in seconds from its start: the exit always, the canopy and the
+   ground when the clip goes that far. Found from what the camera felt, and correctable by hand —
+   it decides where the music starts, so it is never beyond argument. */
+const jumpMomentsSchema = z.object({
+  exit: z.number(),
+  canopy: z.number().optional(),
+  landing: z.number().optional()
+})
+
 const processedRecordSchema = z.object({
   path: z.string(),
   size: z.number(),
@@ -79,6 +88,10 @@ const manifestFileSchema = z.object({
   /* the small all-intra copy the crop bar scrubs against and the editor opens on, or the file
      itself when it is already small enough to be its own proxy */
   proxy: z.string().optional(),
+  /* Where the jump is in this clip, as the camera measured it: seconds to the exit, the canopy and
+     the ground. `null` is the answer for a clip that shows none of it — ground footage, or a camera
+     that writes nothing down — and it is kept, so nothing is asked twice. */
+  moments: jumpMomentsSchema.nullable().optional(),
   /* deleted from this machine once the storage was proved to hold it — the record stays */
   freed: z.boolean().optional()
 })
@@ -204,6 +217,7 @@ export {
   destinationsSchema,
   groupFileRefSchema,
   groupsFileSchema,
+  jumpMomentsSchema,
   manifestFileSchema,
   manifestGroupSchema,
   manifestSchema,

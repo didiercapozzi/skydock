@@ -1259,6 +1259,13 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         preview={preview}
         proxies={board.proxies}
         statusContext={statusContext}
+        onMomentChange={(file, which, seconds) =>
+          send('moment', {
+            intent: 'set-moment',
+            fileIds: [file.id ?? ''],
+            moment: { which, seconds }
+          })
+        }
       />
     </main>
   )

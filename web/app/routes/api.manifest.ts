@@ -22,6 +22,7 @@ import { cancelProcess, processIntent, processWait } from './manifest/process'
 import { regroupLoose } from './manifest/regroup-loose'
 import { saveGroups } from './manifest/save-groups'
 import { retimeFileIntent } from './manifest/retime-file'
+import { setMomentIntent } from './manifest/set-moment'
 import { shiftGroupTime } from './manifest/shift-group-time'
 import { deleteTandemIntent, resetTandemIntent } from './manifest/take-back'
 import { trashUnsortedIntent } from './manifest/trash-unsorted'
@@ -42,6 +43,7 @@ const intents: Record<ActionData['intent'], Intent> = {
   'upload-tandem': uploadTandemIntent,
   'shift-group-time': shiftGroupTime,
   'retime-file': retimeFileIntent,
+  'set-moment': setMomentIntent,
   'move-files': moveFilesIntent,
   'delete-jump': deleteJumpIntent,
   'regroup-loose': regroupLoose,

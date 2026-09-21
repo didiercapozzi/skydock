@@ -9,11 +9,19 @@ import { fileStatus } from '@skydock/scripts'
 const PreviewHost = ({
   preview,
   proxies,
-  statusContext
+  statusContext,
+  onMomentChange
 }: {
   preview: ReturnType<typeof usePreview>
   proxies: Record<string, ProxyFact>
   statusContext: (file: ManifestFile) => StatusContext
+  /* a mark on the timeline, corrected: where the jump is belongs to the file, so it is saved at once
+     rather than waiting for a Save that trims something */
+  onMomentChange: (
+    file: ManifestFile,
+    which: 'exit' | 'canopy' | 'landing',
+    seconds: number
+  ) => void
 }) => {
   const open = preview.preview
   const shown = open?.files[open.index]
@@ -45,6 +53,7 @@ const PreviewHost = ({
       onRotate={preview.handleRotate}
       onRotationApplyToJump={open.groupId === LOOSE ? undefined : preview.handleRotationApplyToJump}
       locked={lockReason(shown, statusContext(shown))}
+      onMomentChange={(which, seconds) => onMomentChange(shown, which, seconds)}
     />
   )
 }

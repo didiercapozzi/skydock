@@ -123,7 +123,8 @@ const PreviewDrawer = ({
   rotation,
   onRotate,
   onRotationApplyToJump,
-  locked
+  locked,
+  onMomentChange
 }: {
   files: ManifestFile[]
   index: number
@@ -157,6 +158,8 @@ const PreviewDrawer = ({
   onRotationApplyToJump?: () => void
   /* why this file cannot be changed any more, when it cannot — then it is only looked at */
   locked?: string | null
+  /* one of the jump's moments, moved on the timeline */
+  onMomentChange?: (which: 'exit' | 'canopy' | 'landing', seconds: number) => void
 }) => {
   const file = files[index]
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -439,6 +442,8 @@ const PreviewDrawer = ({
                     zoom={zoom}
                     compact
                     thumbSrc={(seek) => getThumbUrl(file.path, seek)}
+                    moments={file.moments}
+                    onMomentChange={locked ? undefined : onMomentChange}
                     onSeek={onSeek}
                     onCropChange={locked ? () => {} : onCropChange}
                     onApply={locked ? () => {} : onApply}
@@ -450,6 +455,39 @@ const PreviewDrawer = ({
           </div>
 
           <div className='flex flex-col gap-3.5 border-line p-3.5 max-sm:border-t sm:border-l'>
+            {/* Where the jump is, and what the marks on the timeline mean. Each one seeks there,
+                since the only way to tell a mark is right is to look at the frame under it. A clip
+                the camera said nothing about says so plainly — most clips are not jumps. */}
+            {video && file.moments !== undefined && (
+              <Panel title='The jump'>
+                {file.moments === null ? (
+                  <KV>No exit found — nothing to hang a cut on.</KV>
+                ) : (
+                  <div className='flex flex-wrap gap-1.5'>
+                    {(
+                      [
+                        ['exit', file.moments.exit],
+                        ['canopy', file.moments.canopy],
+                        ['landing', file.moments.landing]
+                      ] as const
+                    ).flatMap(([which, at]) =>
+                      at === undefined
+                        ? []
+                        : [
+                            <button
+                              key={which}
+                              type='button'
+                              onClick={() => onSeek(at)}
+                              title={`Go to the ${which}`}
+                              className='rounded-[5px] border border-line px-2 py-1 font-mono text-[11.5px] text-ink-2 hover:bg-surface-2'>
+                              {which} <V>{clock(at)}</V>
+                            </button>
+                          ]
+                    )}
+                  </div>
+                )}
+              </Panel>
+            )}
             {video && (
               <Panel title='Trim'>
                 <KV>

@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 
+/* The moments of the jump, in seconds: what the camera measured, or what somebody moved it to. */
+type Moment = 'exit' | 'canopy' | 'landing'
+
+type Moments = Partial<Record<Moment, number>>
+
 type VideoCropperProps = {
   duration: number
   currentTime: number
@@ -12,6 +17,11 @@ type VideoCropperProps = {
      the timeline shows only the timeline and nothing is offered twice */
   compact?: boolean
   thumbSrc?: (seekSeconds: number) => string
+  /* where the jump is in this clip; absent when nothing found it */
+  moments?: Moments | null
+  /* Given, the marks can be dragged: this is where the music will start, so it is never beyond
+     argument. Not given, they are shown and left alone. */
+  onMomentChange?: (which: Moment, seconds: number) => void
   onSeek: (time: number) => void
   onCropChange: (range: { cropStart: number | null; cropEnd: number | null }) => void
   onApply: (range: { cropStart: number | null; cropEnd: number | null }) => void
@@ -19,6 +29,13 @@ type VideoCropperProps = {
 }
 
 const THUMB_COUNT = 8
+
+/* in the order they happen, which is the order they are drawn and read */
+const MOMENTS = [
+  { which: 'exit', label: 'exit' },
+  { which: 'canopy', label: 'canopy' },
+  { which: 'landing', label: 'landing' }
+] as const
 
 const MAX_ZOOM = 10
 
@@ -33,13 +50,15 @@ const VideoCropper = ({
   readOnly = false,
   compact = false,
   thumbSrc,
+  moments,
+  onMomentChange,
   onSeek,
   onCropChange,
   onApply,
   onZoomChange
 }: VideoCropperProps) => {
   const barRef = useRef<HTMLDivElement | null>(null)
-  const draggingRef = useRef<'start' | 'end' | 'playhead' | null>(null)
+  const draggingRef = useRef<'start' | 'end' | 'playhead' | Moment | null>(null)
   const [viewOffset, setViewOffset] = useState(0)
 
   const safeDuration = duration || 1
@@ -115,6 +134,17 @@ const VideoCropper = ({
     return () => el.removeEventListener('wheel', handleWheel)
   }, [offset, vd, zoomClamped, safeDuration, onZoomChange])
 
+  const handleMomentDown = (which: Moment) => (e: React.PointerEvent) => {
+    if (!onMomentChange) return
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {}
+    draggingRef.current = which
+    e.preventDefault()
+    e.stopPropagation()
+    seekTo(timeFromPosition(e.clientX))
+  }
+
   const handleCropHandleDown = (which: 'start' | 'end') => (e: React.PointerEvent) => {
     try {
       e.currentTarget.setPointerCapture(e.pointerId)
@@ -135,6 +165,8 @@ const VideoCropper = ({
       onCropChange({ cropStart: clamp(t, 0, cropEnd ?? safeDuration), cropEnd })
     } else if (dragging === 'end') {
       onCropChange({ cropStart, cropEnd: clamp(t, cropStart ?? 0, safeDuration) })
+    } else if (dragging !== 'playhead') {
+      onMomentChange?.(dragging, clamp(t, 0, safeDuration))
     }
   }
 
@@ -230,6 +262,31 @@ const VideoCropper = ({
             ))}
           </div>
         )}
+        {/* Where the jump is: the door, the canopy, the ground. Drawn on the timeline rather than
+            written beside it, because their whole use is being seen against the footage — and
+            dragged, since the exit is where the music will start and the camera is not always right.
+            Above the trim's dimming, so a mark in a cut stretch is still visible. */}
+        {(duration > 0 ? MOMENTS : [])
+          .flatMap(({ which, label }) => {
+            const at = moments?.[which]
+            return at === undefined ? [] : [{ which, label, at }]
+          })
+          .map(({ which, label, at }) => (
+            <div
+              key={which}
+              data-moment={which}
+              onPointerDown={handleMomentDown(which)}
+              title={`${label} — ${at.toFixed(1)}s${onMomentChange ? ', drag to correct' : ''}`}
+              className={`absolute top-0 bottom-0 z-20 w-3 -ml-1.5 ${
+                onMomentChange ? 'cursor-ew-resize' : 'pointer-events-none'
+              }`}
+              style={{ left: `${positionFromTime(at)}%` }}>
+              <div className='pointer-events-none absolute top-0 bottom-0 left-1/2 -ml-px w-0.5 bg-sky-300/90' />
+              <span className='pointer-events-none absolute top-0.5 left-1.5 rounded bg-sky-300/90 px-1 text-[9px] leading-[13px] font-medium text-black whitespace-nowrap'>
+                {label}
+              </span>
+            </div>
+          ))}
         <div
           data-playhead='true'
           className='absolute top-0 bottom-0 w-4 -ml-2 cursor-ew-resize z-30 pointer-events-none'

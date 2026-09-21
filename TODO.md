@@ -4,6 +4,24 @@ What is still to do. What was done is in git, not here.
 
 ## Open
 
+### The jump's moments, and what to build on them
+
+The exit, the canopy and the ground are found and shown (RULES, Where the jump is in a clip). What
+they were found for is not built yet, in the order worth doing:
+
+- **Markers in the project.** Write them as kdenlive guides when the montage is made. Cheapest of
+  the lot and decides nothing — the editor simply stops scrubbing to find the moments.
+- **The music on the exit.** Place the template's music so it starts there rather than at zero.
+- **Cameras synced on the exit.** Two cameras of one jump share that instant, so their offsets are
+  arithmetic: the project could open with the angles already lined up. The hard part of editing,
+  for free — but only for clips that both have an exit.
+- **A suggested trim**: from a few seconds before the exit to a little after the ground, offered as
+  a hollow ✂ to accept rather than applied.
+- **DJI clips have no marks.** A DJI writes what it felt into `dbgi` — protobuf, `dvtm_ow001.proto`,
+  no published schema — so nothing reads it yet. Until then those clips are marked by hand. The
+  sound was tried and dropped: on a GoPro freefall is the quietest, flattest part of the spectrum
+  and on a DJI the busiest, so no one threshold serves both, and a wrong mark is worse than none.
+
 ### The installed app
 
 - Signing: unsigned installers warn on macOS and Windows. Needs an Apple Developer ID and Azure

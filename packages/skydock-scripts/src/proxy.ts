@@ -4,6 +4,7 @@ import * as path from 'node:path'
 import type { ProxyFact } from './boardAnswer'
 import { loadManifest, saveManifest } from './manifest'
 import type { Manifest, ManifestFile } from './types'
+import { jumpMoments } from './jumpMoments'
 import { following } from './live'
 import { lastComplaint, runWatched } from './tools'
 import {
@@ -344,6 +345,13 @@ const ensureProxies = async (
 
   for (const [index, file] of candidates.entries()) {
     onProgress?.(index, candidates.length, file.filename)
+    /* Where the jump is in this clip, while a clip is being looked at anyway. Asked of the original
+       once and written down either way: a quarter of a second, and the answer for most clips is
+       that there is no jump in them. */
+    if (file.moments === undefined && fs.existsSync(file.path)) {
+      file.moments = jumpMoments(file.path)
+      onBuilt?.()
+    }
     const proxyPath = getProxyPath(file, outputDir)
     if (!proxyPath) continue
     if (fs.existsSync(proxyPath)) {

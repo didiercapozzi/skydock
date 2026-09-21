@@ -24,6 +24,8 @@ const actionArgs = z.object({
     'shift-group-time',
     /* one file's time, corrected on its own */
     'retime-file',
+    /* where the jump is in a clip: a mark moved by hand */
+    'set-moment',
     'move-files',
     /* the same files into another jump as well, staying where they are */
     'copy-files',
@@ -63,6 +65,10 @@ const actionArgs = z.object({
   leftId: z.string().optional(),
   rightId: z.string().optional(),
   anchorEpoch: z.number().optional(),
+  /* which of a clip's moments is being moved, and to when */
+  moment: z
+    .object({ which: z.enum(['exit', 'canopy', 'landing']), seconds: z.number().min(0) })
+    .optional(),
   /* what came off a camera plugged in, and how its copy ended */
   cameraCopied: z
     .object({
