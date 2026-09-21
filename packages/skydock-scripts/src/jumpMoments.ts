@@ -146,15 +146,42 @@ const smoothedAt = (felt: number[], rate: number, over = SMOOTH_OVER) => {
   }
 }
 
-/* The instant a second was arrived at, rather than the second itself: back from the second that was
-   found, no further than the second before it, to the last moment the thing still weighed what it
-   had been weighing. */
-const arrivedAt = (felt: number[], rate: number, second: number, level: number) => {
+/* The instant the plane was left, rather than the second it happened in: the last moment the camera
+   still weighed what the aeroplane made it weigh.
+
+   The second that was found is the second whose *average* first fell, and the crossing can sit
+   anywhere inside it — a door left at its end reads as light on average while its first frames still
+   weigh a gravity, and marking the second's start then lands the exit up to a second early, with the
+   pair still standing in the door. So the search runs to the end of that second as well as back
+   through the one before, and takes the last moment at that weight: after it, nothing is holding the
+   camera up. The shove of pushing off is part of the exit and weighs more than a gravity, not less,
+   so it is on the right side of that line. */
+const leftAt = (felt: number[], rate: number, second: number, level: number) => {
   const smoothed = smoothedAt(felt, rate)
   const from = Math.round(second * rate)
   const earliest = Math.max(0, from - Math.round(rate))
-  for (let at = from; at >= earliest; at--)
+  const latest = Math.min(felt.length - 1, from + Math.round(rate))
+  for (let at = latest; at >= earliest; at--)
     if (smoothed(at) >= level) return Math.round((at / rate) * 10) / 10
+  return second
+}
+
+/* The ground is the other way round — the weight arrives rather than leaves — so it is the first
+   moment inside that second which weighs more than a canopy ride does. Smoothed the other way round
+   too: a window that looks back lands a fifth of a second after the impact, having waited for its
+   own average to catch up, so this one looks at what is about to happen instead. */
+const struckAt = (felt: number[], rate: number, second: number, level: number) => {
+  const span = Math.max(1, Math.round(SMOOTH_OVER * rate))
+  const ahead = (at: number) => {
+    const upto = Math.min(felt.length, at + span)
+    let sum = 0
+    for (let one = at; one < upto; one++) sum += felt[one]
+    return upto > at ? sum / (upto - at) : 0
+  }
+  const from = Math.round(second * rate)
+  const latest = Math.min(felt.length - 1, from + Math.round(rate))
+  for (let at = from; at <= latest; at++)
+    if (ahead(at) >= level) return Math.round((at / rate) * 10) / 10
   return second
 }
 
@@ -277,10 +304,10 @@ const readFelt = (felt: number[], seconds: number): JumpMoments | null => {
 
   const rate = felt.length / seconds
   return {
-    exit: arrivedAt(felt, rate, exit, STILL_ABOARD),
+    exit: leftAt(felt, rate, exit, STILL_ABOARD),
     opening: canopy === -1 ? undefined : beganAt(felt, rate, canopy),
     canopy: canopy === -1 ? undefined : easedAt(felt, rate, canopy),
-    landing: landing === undefined ? undefined : arrivedAt(felt, rate, landing, HEAVY)
+    landing: landing === undefined ? undefined : struckAt(felt, rate, landing, HEAVY)
   }
 }
 

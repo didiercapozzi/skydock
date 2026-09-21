@@ -28,11 +28,10 @@ import type { XmlNode } from './lib/mlt'
 import { walkFiles } from './lib/fs'
 import { jsonText } from './lib/json'
 import { mediaSeconds } from './lib/media'
-import { cutClip } from './montageCuts'
-import { fadeFromBlack, fadeToBlack, musicFadeOut } from './montageFilters'
+import { marksFor } from './montageMarks'
+import { fadeToBlack, musicFadeOut } from './montageFilters'
 import { followTheFilm, readFurniture } from './montageFurniture'
 import { jumpMomentsSchema } from './types'
-import type { Piece } from './montageCuts'
 
 /* `proxy` is the small copy of this same clip, cut the same way. When there is one the editor opens
    on it instead of transcoding the clip itself, which is the longest wait before an edit can start;
@@ -360,13 +359,11 @@ const createMontageProject = (rawOptions: MontageOptions) => {
     ],
     ':@': { '@_id': id }
   })
-  /* A piece of a clip on a track: which producer plays it and which part of it. A clip with no jump
-     in it is one piece the length of the clip, which is how it has always been laid. */
-  const entryOf = (producer: string, kdenliveId: number, piece: Piece | null) => ({
+  const entryOf = (producer: string, kdenliveId: number, length: number | null) => ({
     entry: [{ property: [{ '#text': String(kdenliveId) }], ':@': { '@_name': 'kdenlive:id' } }],
     ':@': {
       '@_producer': producer,
-      ...(piece === null ? {} : { '@_in': String(piece.in), '@_out': String(piece.out) })
+      ...(length === null ? {} : { '@_in': '0', '@_out': String(length - 1) })
     }
   })
 
@@ -377,8 +374,8 @@ const createMontageProject = (rawOptions: MontageOptions) => {
     if (gap > 0) childrenOf(a1.playlist).push({ blank: [], ':@': { '@_length': String(gap) } })
   }
   const chains: XmlNode[] = []
-  /* every piece of picture as it was laid, so the film's own two ends can be found again */
-  const laid: { entry: XmlNode; piece: Piece }[] = []
+  /* the picture as it was laid, clip by clip, so the film's own end can be found again */
+  const laid: { entry: XmlNode; length: number }[] = []
   options.clips.forEach((clip, index) => {
     const producerId = `chain_skydock_${index}`
     const kdenliveId = nextId++
@@ -390,48 +387,48 @@ const createMontageProject = (rawOptions: MontageOptions) => {
       childrenOf(track).push(entryOf(producerId, kdenliveId, null))
       return
     }
-    /* Where the jump is in this clip, if it has one in it at all: the moments themselves, written
-       onto the clip and along the timeline, and the pieces the clip is cut into at them. */
-    const { pieces, marks } = cutClip({
+    /* Where the jump is in this clip, marked on the clip and never cut into it: where the film
+       changes is the editor's decision, and a marker only says where the door was left. On the clip
+       rather than along the timeline, so it travels with the clip however often it is moved. */
+    const marks = marksFor({
       moments: clip.moments,
       cropStart: clip.cropStart,
       length,
       fps
     })
-    /* On the clip, never along the timeline. A guide is nailed to a frame of the film: move the clip
-       it was about — which is the whole of editing — and it stays behind pointing at nothing. A
-       marker belongs to the clip and goes where the clip goes, however often it is moved or cut. */
     if (marks.length > 0) setProp(bare, 'kdenlive:markers', JSON.stringify(marks, null, 4))
     chains.push(chainOf(clip, `${producerId}_picture`, kdenliveId, 'picture'))
     chains.push(chainOf(clip, `${producerId}_sound`, kdenliveId, 'sound'))
-    /* Every piece is a clip in its own right on the timeline: its own entry on each of the two
-       tracks, and its own pair of leaves saying the two are one, at the frame that piece starts on
-       rather than the frame the clip did. */
-    pieces.forEach((piece) => {
-      const shown = entryOf(`${producerId}_picture`, kdenliveId, piece)
-      laid.push({ entry: shown, piece })
-      childrenOf(track).push(shown)
-      childrenOf(a1.playlist).push(entryOf(`${producerId}_sound`, kdenliveId, piece))
-      groups.push({
-        children: [
-          { data: `${a1.position}:${at}`, leaf: 'clip', type: 'Leaf' },
-          { data: `${a1.videoPosition}:${at}`, leaf: 'clip', type: 'Leaf' }
-        ],
-        type: 'AVSplit'
-      })
-      at += piece.out - piece.in + 1
+    const shown = entryOf(`${producerId}_picture`, kdenliveId, length)
+    laid.push({ entry: shown, length })
+    childrenOf(track).push(shown)
+    childrenOf(a1.playlist).push(entryOf(`${producerId}_sound`, kdenliveId, length))
+    groups.push({
+      children: [
+        { data: `${a1.position}:${at}`, leaf: 'clip', type: 'Leaf' },
+        { data: `${a1.videoPosition}:${at}`, leaf: 'clip', type: 'Leaf' }
+      ],
+      type: 'AVSplit'
     })
+    at += length
   })
   mlt.splice(firstPlaylist, 0, ...chains)
   /* the film is as long as the footage, and the template's ends follow it there */
-  const repositioned = followTheFilm(furniture, lengthOf(track, fps), fps)
+  const filmEnd = lengthOf(track, fps)
+  const repositioned = followTheFilm(furniture, filmEnd, fps)
 
   /* Out of black into the first frame, into black out of the last, and the music quiet where it
      ends. The same on every film, which is why it is not left to be done by hand each time. */
-  const first = laid[0]
+  /* The film's opening is never touched: whatever comes first is the first thing anybody sees, and
+     a picture fading up from black is a choice about the film, not a fact about the footage. The
+     closing is taken down only where the footage is the last thing — a template with an end card
+     after it has made that choice already, and its card comes out of black on its own. */
+  const closesTheFilm = furniture.titles ? lengthOf(furniture.titles, fps) <= filmEnd : true
   const last = laid[laid.length - 1]
-  if (first) childrenOf(first.entry).push(fadeFromBlack('filter_skydock_in', first.piece, fps))
-  if (last) childrenOf(last.entry).push(fadeToBlack('filter_skydock_out', last.piece, fps))
+  if (last && closesTheFilm)
+    childrenOf(last.entry).push(
+      fadeToBlack('filter_skydock_out', { in: 0, out: last.length - 1 }, fps)
+    )
   const heard = furniture.music
     ? childrenOf(furniture.music).filter((c) => tagOf(c) === 'entry')
     : []

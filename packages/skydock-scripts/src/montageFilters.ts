@@ -1,11 +1,12 @@
-import type { Piece } from './montageCuts'
+/* which part of a clip a fade sits on, in the clip's own frames */
+type Piece = { in: number; out: number }
 
 /* The few effects a montage writes, in the shape kdenlive writes them — the one place in SkyDock
    that writes a filter at all.
 
-   Only what is the same on every film: it opens out of black, it closes into black, and the music
-   fades out rather than stopping dead. Nothing that is a judgement about a particular jump — no
-   speed changes, no ducking — because those are choices about a canopy ride nobody here has seen.
+   Only what is the same on every film: it closes into black, and the music fades out rather than
+   stopping dead. Nothing that is a judgement about a particular jump — no speed changes, no ducking,
+   no fading up from the first frame — because those are choices about a film nobody here has seen.
 
    Keyframes are written in frames, counted in the clip's own time, which is where the editor's own
    fades put them. */
@@ -21,19 +22,8 @@ const filterOf = (id: string, attrs: Record<string, string>, properties: [string
   ':@': { '@_id': id, ...attrs }
 })
 
-/* out of black at the very start of the film */
-const fadeFromBlack = (id: string, piece: Piece, fps: number) => {
-  const over = Math.max(1, Math.min(Math.round(FADE_SECONDS * fps), piece.out - piece.in))
-  return filterOf(id, { '@_out': String(piece.in + over) }, [
-    ['start', '1'],
-    ['level', '1'],
-    ['mlt_service', 'brightness'],
-    ['kdenlive_id', 'fade_from_black'],
-    ['alpha', `${piece.in}=0;${piece.in + over}=1`]
-  ])
-}
-
-/* and into black at its end */
+/* into black at the film's end. Nothing fades in: what comes first is the first thing anybody sees,
+   and fading it up is a choice about the film rather than a fact about the footage. */
 const fadeToBlack = (id: string, piece: Piece, fps: number) => {
   const over = Math.max(1, Math.min(Math.round(FADE_SECONDS * fps), piece.out - piece.in))
   return filterOf(id, { '@_in': String(piece.out - over), '@_out': String(piece.out) }, [
@@ -61,4 +51,4 @@ const musicFadeOut = (id: string, piece: Piece, fps: number) => {
   ])
 }
 
-export { fadeFromBlack, fadeToBlack, musicFadeOut }
+export { fadeToBlack, musicFadeOut }

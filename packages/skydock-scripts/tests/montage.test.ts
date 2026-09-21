@@ -607,9 +607,9 @@ describe('montage — clips that have a proxy', () => {
 })
 
 /* Where the jump is in a clip is measured before any of this (RULES, Where the jump is in a clip),
-   and a montage lays the clip already cut at it. The numbers below are a real tandem's: a clip of
-   seven and a half minutes, the door left at 65 s, the canopy open at 120, the ground at 223. */
-describe('montage — the jump cut at its marks', () => {
+   and a montage marks the clip with it. The numbers below are a real tandem's: the door left at
+   65 s, the canopy open at 120, the ground at 223. */
+describe('montage — the jump marked on the clip', () => {
   /* the frames a second this template counts in, and the tandem's own moments */
   const FPS = 25
   const JUMP = { exit: 65, opening: 120.3, canopy: 123, landing: 223 }
@@ -652,53 +652,41 @@ describe('montage — the jump cut at its marks', () => {
     return found ? found[1] : null
   }
 
-  it('lays a clip with a jump in it cut at the exit, the opening and the ground', () => {
+  /* Where the film changes is the editor's decision and theirs alone: the clip goes down whole and
+     the moments are marked on it. */
+  it('lays a clip with a jump in it whole, and never cuts it at the marks', () => {
     const xml = laid([{ name: 'jump.mp4', seconds: 455, moments: JUMP }])
 
-    const pieces = piecesOf(xml, 'playlist6')
-    expect(pieces).toHaveLength(4)
-    /* the cabin, then the exit and the freefall, then the canopy ride, then the landing */
-    expect(pieces.map((p) => p.in)).toEqual([
-      0,
-      JUMP.exit * FPS,
-      Math.round(JUMP.opening * FPS),
-      (JUMP.landing - 15) * FPS
+    expect(piecesOf(xml, 'playlist6')).toEqual([
+      { producer: 'chain_skydock_0_picture', in: 0, out: 455 * FPS - 1 }
     ])
-    expect(pieces.every((p) => p.producer === 'chain_skydock_0_picture')).toBe(true)
+    expect(groupsOf(xml)).toHaveLength(1)
   })
 
-  it('loses nothing of the clip: the pieces run one after another and the film is as long as the footage', () => {
+  it('lays the clips after it where they have always been laid', () => {
     const xml = laid([
       { name: 'jump.mp4', seconds: 455, moments: JUMP },
       { name: 'after.mp4', seconds: 10 }
     ])
 
     const pieces = piecesOf(xml, 'playlist6')
-    const jump = pieces.filter((p) => p.producer.startsWith('chain_skydock_0'))
-    expect(jump[0].in).toBe(0)
-    expect(jump[jump.length - 1].out).toBe(455 * FPS - 1)
-    /* each piece begins where the one before it ended */
-    jump.slice(1).forEach((piece, index) => expect(piece.in).toBe(jump[index].out + 1))
-    /* and the clip after it is still there, whole */
-    expect(pieces.at(-1)).toMatchObject({ in: 0, out: 10 * FPS - 1 })
+    expect(pieces).toHaveLength(2)
+    /* the jump whole, then the next clip whole after it */
+    expect(pieces[0]).toMatchObject({ in: 0, out: 455 * FPS - 1 })
+    expect(pieces[1]).toMatchObject({ in: 0, out: 10 * FPS - 1 })
   })
 
-  it('gives every piece its own sound under it, linked, so a piece and its sound go together', () => {
+  it('gives it its own sound under it, linked, as any other clip has', () => {
     const xml = laid([{ name: 'jump.mp4', seconds: 455, moments: JUMP }])
 
     const picture = piecesOf(xml, 'playlist6')
     const sound = piecesOf(xml, 'playlist4')
     expect(sound.map((p) => [p.in, p.out])).toEqual(picture.map((p) => [p.in, p.out]))
-    /* one pair of leaves per piece, each at the frame that piece starts on */
     const groups = groupsOf(xml)
-    expect(groups).toHaveLength(4)
-    const startsOf = (which: number) =>
-      groups.map((g: { children: { data: string }[] }) =>
-        Number(g.children[which].data.split(':')[1])
-      )
-    expect(startsOf(1)).toEqual(picture.map((p) => p.in))
-    /* the sound's leaf names the same frame, on the track under it */
-    expect(startsOf(0)).toEqual(startsOf(1))
+    expect(groups).toHaveLength(1)
+    /* both leaves name the same frame, one track apart */
+    const [under, over] = groups[0].children.map((c: { data: string }) => c.data.split(':')[1])
+    expect(under).toBe(over)
   })
 
   /* Most clips are not jumps: ground footage, a plane ride, a camera that measures nothing. Nothing
@@ -740,7 +728,12 @@ describe('montage — the jump cut at its marks', () => {
 
     const markers = JSON.parse(propOf(xml, 'kdenlive:markers') ?? '[]')
     expect(markers[0].pos).toBe((JUMP.exit - 30) * FPS)
-    expect(piecesOf(xml, 'playlist6')[1].in).toBe((JUMP.exit - 30) * FPS)
+    expect(markers.map((m: { comment: string }) => m.comment)).toEqual([
+      'the exit',
+      'the opening',
+      'the canopy',
+      'the ground'
+    ])
   })
 
   it('says nothing of a moment the copy does not reach', () => {
@@ -749,7 +742,7 @@ describe('montage — the jump cut at its marks', () => {
     const markers = JSON.parse(propOf(xml, 'kdenlive:markers') ?? '[]')
     /* a copy cut at 122 s holds the exit and the opening, and neither the canopy nor the ground */
     expect(markers.map((m: { comment: string }) => m.comment)).toEqual(['the exit', 'the opening'])
-    expect(piecesOf(xml, 'playlist6')).toHaveLength(3)
+    expect(piecesOf(xml, 'playlist6')).toHaveLength(1)
   })
 
   it('writes a project the editor can open', () => {
@@ -886,8 +879,8 @@ describe('montage — the template’s furniture follows the film', () => {
 
 /* The same on every film, so it is not done by hand on every film (RULES, Montage). */
 describe('montage — how the film opens and closes', () => {
-  const fades = (clips: [string, number][]) => {
-    const { outputDir, groupDir, templatePath } = setup(templateWithFurniture)
+  const fades = (clips: [string, number][], templateXml = templateWithFurniture) => {
+    const { outputDir, groupDir, templatePath } = setup(templateXml)
     const result = createMontageProject({
       groupDir,
       outputDir,
@@ -906,17 +899,37 @@ describe('montage — how the film opens and closes', () => {
   const effects = (xml: string) =>
     [...xml.matchAll(/<property name="kdenlive_id">([^<]+)<\/property>/g)].map((m) => m[1])
 
-  it('opens out of black and closes into black', () => {
-    const xml = fades([
-      ['a.mp4', 100],
-      ['b.mp4', 100]
-    ])
+  /* Whatever comes first is the first thing anybody sees, and fading it up is a choice about the
+     film rather than a fact about the footage. */
+  it('never fades the first video up', () => {
+    const xml = fades(
+      [
+        ['a.mp4', 100],
+        ['b.mp4', 100]
+      ],
+      twoAudioOneMutedTemplate
+    )
 
-    expect(effects(xml)).toContain('fade_from_black')
-    expect(effects(xml)).toContain('fade_to_black')
-    /* one of each, on the first piece laid and the last */
-    expect(effects(xml).filter((e) => e === 'fade_from_black')).toHaveLength(1)
+    expect(effects(xml)).not.toContain('fade_from_black')
+  })
+
+  it('closes into black when the footage is the last thing in the film', () => {
+    const xml = fades(
+      [
+        ['a.mp4', 100],
+        ['b.mp4', 100]
+      ],
+      twoAudioOneMutedTemplate
+    )
+
     expect(effects(xml).filter((e) => e === 'fade_to_black')).toHaveLength(1)
+  })
+
+  /* and not when a template's end card follows it, since that card comes out of black on its own */
+  it('leaves the closing to a template whose end card follows the film', () => {
+    const xml = fades([['a.mp4', 100]])
+
+    expect(effects(xml)).not.toContain('fade_to_black')
   })
 
   it('takes the music down where it ends rather than cutting it off', () => {

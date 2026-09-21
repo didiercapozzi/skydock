@@ -78,6 +78,26 @@ describe('where the jump is in a clip', () => {
     expect(readFelt(felt, seconds)?.exit).toBe(40)
   })
 
+  /* The second that is found is the second whose average first fell, and a door left in the middle
+     of it still weighs a gravity at its start. Marking the second's start puts the exit up to a
+     second early — on this jump, with the pair still standing in the door. */
+  it('is the moment inside that second when the weight went, not the second’s start', () => {
+    const felt = [
+      ...Array.from({ length: 40 }, () => second(1)).flat(),
+      /* the fortieth second: six tenths still aboard, a shove, then nothing */
+      ...second(1).slice(0, 120),
+      ...second(1.5).slice(0, 20),
+      ...second(0.3).slice(0, 60),
+      ...Array.from({ length: 30 }, () => second(0.3)).flat(),
+      ...Array.from({ length: 20 }, () => second(1)).flat()
+    ]
+
+    const found = readFelt(felt, felt.length / 200)
+
+    expect(found?.exit).toBeGreaterThanOrEqual(40.5)
+    expect(found?.exit).toBeLessThanOrEqual(40.8)
+  })
+
   /* A clip that never left the ground has no jump in it, and saying so is the answer wanted. */
   it('says nothing of a clip that shows no exit', () => {
     const still = Array.from({ length: 120 }, () => second(1)).flat()

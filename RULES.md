@@ -691,16 +691,12 @@ the real clip recorded as what the edit is of, so the editor opens ready to work
 footage. The film's destination and format are filled in, so what is left is the edit and pressing
 render.
 
-**The jump is cut at its marks.** A clip with a jump in it is laid already cut where the jump changes:
-the cabin, then the exit and the freefall, then the canopy ride, then the landing and the ground. The
-landing begins a little before the ground, since a landing is the approach and the touchdown together.
-Nothing is lost — the pieces are the whole clip, in order and touching, so the film is as long as the
-footage and a piece is deleted rather than a cut hunted for. Each piece carries its own sound under it,
-linked as a whole clip's is. A clip with no jump in it — ground footage, a plane ride, a camera that
-measures nothing — is laid whole, and nothing is ever trimmed away for anybody. The moments go into the
-project as well, named as the board names them: on the clip, where they travel with it however often
-it is moved or cut, and never along the timeline, where a mark stays behind the moment the clip it
-was about is moved.
+**The jump is marked on the clip, never cut into it.** Every clip is laid whole, and one with a jump
+in it carries the jump's moments as markers of its own — the exit, the opening, the canopy and the
+ground, named as the board names them. Where the film changes is the editor's decision and theirs
+alone; a marker only says where the door was left, and saves the scrubbing that finding it costs.
+They are the clip's own, so they travel with it however often it is moved, trimmed or cut, and they
+are never laid along the timeline, where a mark stays behind the moment the clip it was about moves.
 
 **The template's furniture follows the film at its ends.** A template is made for a film of a certain
 length and a montage is as long as its footage, so the end card is moved to follow the last clip — the
@@ -709,9 +705,12 @@ where it is and the titles in the middle stay where the template put them. A tem
 not recognised is left exactly as it arrived rather than mangled, and what was moved is said when the
 montage is made.
 
-**How the film opens and closes.** It comes out of black on the first frame and goes into black on the
-last, and the music goes quiet where it ends instead of stopping dead. Nothing is sped up or slowed
-down: that is a choice about a particular canopy ride and belongs to whoever is watching it.
+**How the film closes.** It goes into black on the last frame, and the music goes quiet where it ends
+instead of stopping dead. Nothing fades the first video up: whatever comes first is the first thing
+anybody sees, and fading it in is a choice about the film rather than a fact about the footage. Where
+the template closes the film itself — an end card after the footage — that edge is the template's and
+nothing is added to it, since such a card comes out of black on its own. Nothing is sped up or slowed
+down either: that is a choice about a particular canopy ride and belongs to whoever is watching it.
 
 **Making the montage opens it.** Writing the project and opening the editor are one press, and a tandem
 with a project offers a way back into it. Which command opens the editor is a setting. When the editor

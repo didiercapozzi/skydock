@@ -16,8 +16,8 @@ is in a clip). What they were found for is not built yet, in the order worth doi
   arithmetic: the project could open with the angles already lined up. The hard part of editing,
   for free — but only for clips that both have an exit.
 - **A suggested trim on the board**, from a few seconds before the exit to a little after the ground,
-  offered as a hollow ✂ to accept rather than applied. The montage now cuts a jump into its phases
-  instead, which is a different thing: it loses nothing and leaves the choosing to the editor.
+  offered as a hollow ✂ to accept rather than applied. The montage marks the moments on the clip and
+  cuts nothing: where the film changes is the editor's decision.
 - **Speed, which is left alone on purpose.** Both finished films run the canopy ride at twice speed
   and cut four or five half-speed highlights out of the freefall. Every boundary of those is a mark
   SkyDock has, so it could be offered — but how fast a particular canopy ride should run is a
