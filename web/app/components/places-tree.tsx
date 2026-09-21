@@ -2,7 +2,7 @@ import { fileStatus, hasCompletePassenger, passengerOf } from '@skydock/scripts'
 import type { StatusContext, TandemEntry, TandemProgress } from '@skydock/scripts'
 import { useState } from 'react'
 import { TANDEMS } from '../helpers/jumps'
-import { filesIn, groupsIn, looseIn, placeKey, placeLabel, samePlace } from '../helpers/places'
+import { groupsIn, hereIn, looseIn, placeKey, placeLabel, samePlace } from '../helpers/places'
 import type { Place } from '../helpers/places'
 import type { Mounted } from '../hooks/useLiveProgress'
 import { StepMeter } from './tandem-steps'
@@ -221,7 +221,7 @@ const PlacesTree = ({
   flashPlace
 }: Props) => {
   const [adding, setAdding] = useState('')
-  const files = (p: Place) => filesIn(p, groups, looseFiles)
+  const files = (p: Place) => hereIn(p, groups, looseFiles)
   /* still to file: every jump in the sorting area, and its loose files as one more thing to do */
   const toFile = (p: Place) =>
     counted(groupsIn(p, groups).length + (looseIn(p, looseFiles).length > 0 ? 1 : 0), 'to file')

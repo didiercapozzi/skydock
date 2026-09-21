@@ -77,5 +77,33 @@ const filesIn = (place: Place, groups: ManifestGroup[], loose: ManifestFile[]) =
   ...looseIn(place, loose)
 ]
 
-export { familyOf, filesIn, groupsIn, looseIn, placeKey, placeLabel, samePlace }
+/* A file freed from a dropzone is on the storage and nowhere else, and the storage's own list of
+   that folder — right under the dropzone's files — is where it is listed. Listing it up here as
+   well says the same thing twice, and says it in a row where every neighbour can be trimmed,
+   prepared, uploaded or freed and it can be none of them. So a dropzone and the sorting area show
+   what this machine holds, and what is only up there is only down there (RULES, Freeing space).
+
+   A passenger is not narrowed this way: their card is how a tandem is followed to the end, and a
+   freed one goes on showing what the storage holds of it. */
+const holdsItsOwn = (place: Place) => place.kind === 'dz' || place.kind === 'sort'
+
+const stillHere = (place: Place, files: ManifestFile[]) =>
+  holdsItsOwn(place) ? files.filter((f) => !f.freed) : files
+
+/* what a place holds on this machine, which is what its page and its folder in the rail count */
+const hereIn = (place: Place, groups: ManifestGroup[], loose: ManifestFile[]) =>
+  stillHere(place, filesIn(place, groups, loose))
+
+export {
+  familyOf,
+  filesIn,
+  groupsIn,
+  hereIn,
+  holdsItsOwn,
+  looseIn,
+  placeKey,
+  placeLabel,
+  samePlace,
+  stillHere
+}
 export type { Place }

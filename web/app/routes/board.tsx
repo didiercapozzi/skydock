@@ -58,7 +58,16 @@ import type { Destination, ManifestFile, ManifestGroup } from '../components/typ
 import { formatSize, formatTime, plural, setOutputRoot, shortDate } from '../components/utils'
 import { importFiles } from '../helpers/import'
 import { TANDEMS, folderOnStorage } from '../helpers/jumps'
-import { familyOf, filesIn, groupsIn, looseIn, placeKey, placeLabel } from '../helpers/places'
+import {
+  familyOf,
+  filesIn,
+  groupsIn,
+  holdsItsOwn,
+  looseIn,
+  placeKey,
+  placeLabel,
+  stillHere
+} from '../helpers/places'
 import type { Place } from '../helpers/places'
 import { GROUPINGS, cardsOf, jumpLabels, sectionsOf } from '../helpers/sections'
 import type { Grouping } from '../helpers/sections'
@@ -314,7 +323,13 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     Boolean(group.freed) && progressOf(group)?.next === null
   const listed = groups.filter((g) => !finished(g))
 
-  const placeGroups = groupsIn(place, listed).map(asOnStorage)
+  /* A dropzone's page is what this machine holds: its freed files are listed with the storage's own
+     files under them rather than twice over, and a jump with nothing left here goes the same way
+     (RULES, Freeing space). */
+  const placeGroups = groupsIn(place, listed)
+    .map(asOnStorage)
+    .map((group) => ({ ...group, files: stillHere(place, group.files) }))
+    .filter((group) => group.files.length > 0 || !holdsItsOwn(place))
   /* the one tandem of the passenger whose page is open, when they have just the one */
   const soleTandem =
     place.kind === 'pax' && placeGroups.length === 1
@@ -342,8 +357,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             return theirs ? { groupId: theirs.id } : null
           })()
         : null
-  const placeLoose = looseIn(place, loose)
-  const placeFiles = filesIn(place, listed, loose)
+  const placeLoose = stillHere(place, looseIn(place, loose))
+  const placeFiles = [...placeGroups.flatMap((g) => g.files), ...placeLoose]
   /* the delivered files this machine still holds, by name — copies that are really on the disk, and
      a tandem's film — so each file on the storage can say whether it is here too */
   const hereToo = new Set([

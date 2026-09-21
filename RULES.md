@@ -857,10 +857,14 @@ is left anywhere, and what was cut off goes with the original. It says how many 
 stay, too. If any check fails, nothing is deleted and each failing file is named; the storage must be
 reachable. An original another jump still holds stays until that jump is freed as well.
 
-A freed jump reads as the storage's alone, like a freed tandem, and a freed loose file stays listed,
-locked, without a picture — for as long as the storage still holds it (RULES, File status). The dropzone's list of what its folder holds plays them from the storage.
-Neither is processed or uploaded again, and the name a freed file was given stays taken, so a new file
-is never delivered over it.
+Once freed, a jump or a loose file leaves the dropzone's own list. It is on the storage and nowhere
+else, and the list of what that folder holds — under the dropzone's files — is where it is named and
+played from; listing it above as well would say the same thing twice, in a row where nothing can be
+done. What the page and the folder in the rail then count is what this machine holds, so what there
+is to work on is read at a glance. Neither is processed or uploaded again, and the name a freed file
+was given stays taken, so a new file is never delivered over it. A passenger is not narrowed this
+way: their card is how a tandem is followed to the end, and a freed one goes on showing what the
+storage holds of it.
 
 ## The storage's list of tandems
 
