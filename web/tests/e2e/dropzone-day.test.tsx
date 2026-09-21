@@ -39,7 +39,7 @@ const shot = (id: string, name: string, processed: boolean) => ({
 const boardWith = (files: ReturnType<typeof shot>[]) => ({
   groups: [],
   looseFiles: files,
-  destinations: [{ name: 'Yverdon' }],
+  destinations: [{ name: 'Yverdon', path: '/SkyDock/Yverdon' }],
   outputs: Object.fromEntries(
     files.flatMap((f) => (f.processed ? [[f.path, { exists: true, size: f.size }]] : []))
   ),
@@ -49,7 +49,7 @@ const boardWith = (files: ReturnType<typeof shot>[]) => ({
   storage: null,
   hasManifest: true,
   processing: null,
-  nas: { connected: true, hostname: 'nas.local', defaultFolder: '/SkyDock', backupFolder: '/Backup' }
+  nas: { connected: true, hostname: 'nas.local', backupFolder: '/Backup' }
 })
 
 const requests: unknown[] = []

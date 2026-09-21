@@ -32,7 +32,10 @@ const manifest: Manifest = {
       files: []
     }
   ],
-  destinations: [{ name: 'Tandems' }, { name: 'Yverdon' }]
+  destinations: [
+    { name: 'Tandems', path: '/SkyDock/Tandems' },
+    { name: 'Yverdon', path: '/SkyDock/Yverdon' }
+  ]
 }
 
 /* the storage: it knows the session, lists one folder, and hands out parts of one film */
@@ -94,8 +97,7 @@ beforeEach(() => {
     {
       hostname: 'https://nas.local:5001',
       username: 'u',
-      sessionId: 'sid',
-      defaultFolder: '/SkyDock'
+      sessionId: 'sid'
     },
     tmpDir
   )

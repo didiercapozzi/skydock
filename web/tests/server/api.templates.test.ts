@@ -50,7 +50,7 @@ describe('the editing templates', () => {
   it('are listed with the kdenlive that wrote each and the files each is missing', async () => {
     const said = await loader().json()
     expect(said.templates).toEqual([
-      { name: 'house', version: '24.12.1', assets: 1, missing: ['music.mp3'], gap: null }
+      { name: 'house', version: '24.12.1', assets: 1, missing: ['music.mp3'] }
     ])
   })
 

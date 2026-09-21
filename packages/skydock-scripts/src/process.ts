@@ -573,19 +573,25 @@ const runProcess = async (options?: ProcessOptions) => {
     namePools.set(dir, pool)
     return pool
   }
-  /* A freed file's copy is on the storage only, under the name it was given here. That name stays
-     taken, or a new file shot in the same second would be given it and sent over the top of it. */
-  for (const file of [...manifest.files, ...manifest.groups.flatMap((g) => g.files)])
-    if (file.freed && file.processed)
-      poolFor(path.dirname(file.processed.path)).add(path.basename(file.processed.path))
-  /* A passenger's other jumps, not processed now, keep their copies in the folder this run writes
-     to: their names stay taken and their files stay put. */
-  const inRun = new Set(groups.map((g) => g.id))
-  for (const group of manifest.groups) {
-    if (inRun.has(group.id) || isFlatGroup(group)) continue
-    const pool = poolFor(getGroupProcessedDir(outputDir, group).dir)
-    for (const file of group.files) if (file.processed) pool.add(path.basename(file.processed.path))
+  /* Every name a copy already carries stays taken, unless the file carrying it is being processed
+     now — then it takes its own name back, which is how processing again writes over itself. So a
+     passenger's other jumps keep their copies, a freed file keeps the name its copy has on the
+     storage, and a dropzone's jump processed on its own cannot be given the name a loose file shot
+     in the same second already has and sent over the top of it. */
+  const inRun = new Set([
+    ...groups.flatMap((g) => g.files.map((f) => f.id ?? f.path)),
+    ...destinations.flatMap((d) => (looseByDestination.get(d) ?? []).map((f) => f.id ?? f.path))
+  ])
+  /* the folder each copy belongs to is the one the run writes into, not the one it sits in: a
+     passenger's copies are under videos and photos, and the names are held for the folder above */
+  const hold = (file: ManifestFile, dir: string) => {
+    if (file.processed && !inRun.has(file.id ?? file.path))
+      poolFor(dir).add(path.basename(file.processed.path))
   }
+  for (const group of manifest.groups)
+    for (const file of group.files) hold(file, getGroupProcessedDir(outputDir, group).dir)
+  for (const file of manifest.files)
+    if (file.destination) hold(file, getDestinationDir(outputDir, file.destination))
 
   /* keyed by the source's identity — a copy shares its original's path, and both may be written in
      one pass — holding the file as it was COPIED — a grouped file carries the group

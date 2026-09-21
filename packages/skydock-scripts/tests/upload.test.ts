@@ -44,7 +44,10 @@ const manifestOf = (groups: ManifestGroup[], over: Partial<Manifest> = {}): Mani
     createdAt: '',
     files: [],
     groups,
-    destinations: [{ name: 'Yverdon' }],
+    destinations: [
+      { name: 'Yverdon', path: '/nas/Yverdon' },
+      { name: 'Tandems', path: '/nas/Tandems' }
+    ],
     ...over
   }) as Manifest
 
@@ -164,7 +167,6 @@ describe('where an upload goes', () => {
     const [target] = resolveUploadTargets({
       outputDir,
       manifest,
-      defaultFolder: '/nas',
       scope: { groupIds: ['group_1'] }
     })
     expect(target.remoteDir).toBe('/nas/Yverdon')
@@ -181,7 +183,7 @@ describe('where an upload goes', () => {
         passenger: { firstname: 'Luc', lastname: 'Favre' }
       })
     ])
-    const target = targetForGroup(manifest.groups[0], outputDir, manifest, '/nas')
+    const target = targetForGroup(manifest.groups[0], outputDir, manifest)
     expect(target.remoteDir).toBe('/nas/Tandems/Luc Favre')
   })
 
@@ -200,7 +202,6 @@ describe('where an upload goes', () => {
     const byId = resolveUploadTargets({
       outputDir,
       manifest,
-      defaultFolder: '/nas',
       scope: { groupIds: ['group_1', 'group_2'] }
     })
     expect(byId.map((t) => t.key)).toEqual(['group:group_1'])
@@ -208,7 +209,6 @@ describe('where an upload goes', () => {
     const byDestination = resolveUploadTargets({
       outputDir,
       manifest,
-      defaultFolder: '/nas',
       scope: { destination: 'Tandems' }
     })
     expect(byDestination).toEqual([])
@@ -222,7 +222,6 @@ describe('where an upload goes', () => {
     const targets = resolveUploadTargets({
       outputDir,
       manifest,
-      defaultFolder: '/nas',
       scope: { destination: 'Yverdon' }
     })
     expect(targets).toHaveLength(1)
@@ -245,7 +244,6 @@ describe('where an upload goes', () => {
     const targets = resolveUploadTargets({
       outputDir,
       manifest,
-      defaultFolder: '/nas',
       scope: { destination: 'Yverdon' }
     })
     expect(targets).toHaveLength(1)
@@ -259,7 +257,6 @@ describe('where an upload goes', () => {
     const [target] = resolveUploadTargets({
       outputDir,
       manifest,
-      defaultFolder: null,
       scope: { groupIds: ['group_1'] }
     })
     expect(target.remoteDir).toBe('/volume1/dropzones/yverdon')
@@ -270,7 +267,6 @@ describe('where an upload goes', () => {
     const [target] = resolveUploadTargets({
       outputDir,
       manifest,
-      defaultFolder: null,
       scope: { groupIds: ['group_1'] }
     })
     expect(target.remoteDir).toBeNull()

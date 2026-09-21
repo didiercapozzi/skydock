@@ -108,20 +108,12 @@ const buildFsTime = (groupMtime: number, captureMtime: number) => {
   )
 }
 
-/* A destination with a path of its own needs no default folder — that path IS the answer.
-   Only a path-less destination falls back to `{defaultFolder}/{name}`, so a null default is
-   reported as "no folder chosen" rather than producing an `undefined/Yverdon` path. */
+/* Every place is connected to a folder of its own: that path IS the answer, and a place without one
+   has nowhere to upload into, reported as "no folder chosen" rather than guessed at. */
 const resolveDestinationPath = (
   destinationName: string | undefined,
-  destinations: { name: string; path?: string }[],
-  defaultFolder: string | null | undefined
-) => {
-  if (!destinationName) return null
-  const dest = destinations.find((d) => d.name === destinationName)
-  if (!dest) return null
-  if (dest.path) return dest.path
-  return defaultFolder ? `${defaultFolder}/${destinationName}` : null
-}
+  destinations: { name: string; path?: string }[]
+) => destinations.find((d) => d.name === destinationName)?.path ?? null
 
 /* the passenger's name as one string, trimmed; empty for a jump with nobody in it */
 const passengerName = (passenger: ManifestPassenger | null | undefined) =>

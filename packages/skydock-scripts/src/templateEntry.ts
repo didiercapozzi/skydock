@@ -8,15 +8,10 @@ const templateFactSchema = z.object({
   version: z.string().nullable(),
   assets: z.number(),
   /* files the project names that are not here */
-  missing: z.array(z.string()),
-  /* how far its kdenlive is from the one that will open it, when that is worth saying */
-  gap: z.enum(['newer', 'older']).nullable()
+  missing: z.array(z.string())
 })
 
-const templatesAnswerSchema = z.object({
-  templates: z.array(templateFactSchema),
-  editorVersion: z.string().nullable()
-})
+const templatesAnswerSchema = z.object({ templates: z.array(templateFactSchema) })
 
 type TemplateFact = z.infer<typeof templateFactSchema>
 type TemplatesAnswer = z.infer<typeof templatesAnswerSchema>

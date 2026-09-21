@@ -43,7 +43,7 @@ const board = {
   storage: null,
   hasManifest: true,
   processing: null,
-  nas: { connected: false, hostname: null, defaultFolder: null, backupFolder: null },
+  nas: { connected: false, hostname: null, backupFolder: null },
   outputDir: OUTPUT
 }
 

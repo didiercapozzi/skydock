@@ -48,7 +48,7 @@ const board = {
   storage: null,
   hasManifest: true,
   processing: null,
-  nas: { connected: false, hostname: null, defaultFolder: null, backupFolder: null }
+  nas: { connected: false, hostname: null, backupFolder: null }
 }
 
 const template = (name: string, over: Record<string, unknown> = {}) => ({
@@ -56,7 +56,6 @@ const template = (name: string, over: Record<string, unknown> = {}) => ({
   version: '24.12.1',
   assets: 5,
   missing: [],
-  gap: null,
   ...over
 })
 
@@ -68,7 +67,7 @@ const machineHas = (templates: unknown[], onImport?: () => unknown) =>
     const said =
       init?.method === 'POST' && onImport
         ? onImport()
-        : { templates, editorVersion: 'kdenlive 24.12.3' }
+        : { templates }
     return new Response(JSON.stringify(said), { headers: { 'Content-Type': 'application/json' } })
   })
 
@@ -141,18 +140,6 @@ describe('making a montage', () => {
     expect(requests).toEqual([])
   })
 
-  test('says first when the only template was made by a newer kdenlive than the editor', async () => {
-    machineHas([template('epco', { version: '25.04.0', gap: 'newer' })])
-    await renderBoard()
-
-    await userEvent.click(page.getByRole('button', { name: 'Montage' }))
-
-    await expect
-      .element(dialog().getByText(/Made with kdenlive 25\.04\.0, newer than the 24\.12\.3/))
-      .toBeInTheDocument()
-    expect(requests).toEqual([])
-  })
-
   test('says first which files the only template is missing', async () => {
     machineHas([template('epco', { missing: ['logo-epco.png'] })])
     await renderBoard()
@@ -180,8 +167,7 @@ describe('the editing templates, from the header', () => {
   test('take in an archive, and show the template it made with what it is missing', async () => {
     machineHas([template('epco')], () => ({
       ok: true,
-      templates: [template('epco'), template('summer', { missing: ['intro.mp3'] })],
-      editorVersion: 'kdenlive 24.12.3'
+      templates: [template('epco'), template('summer', { missing: ['intro.mp3'] })]
     }))
     await renderBoard()
     await userEvent.click(page.getByRole('button', { name: 'Templates…' }))

@@ -81,9 +81,8 @@ const uploadTandem = async ({
 
   const backupFolder = session.backupFolder?.trim()
   if (!backupFolder) throw new Error('Choose a backup folder for the original videos.')
-  const passenger = targetForGroup(group, outputDir, manifest, session.defaultFolder ?? null)
-  if (!passenger.remoteDir)
-    throw new Error('Choose a NAS folder for this tandem, or set a default upload folder.')
+  const passenger = targetForGroup(group, outputDir, manifest)
+  if (!passenger.remoteDir) throw new Error('Choose a NAS folder for the tandems.')
   /* the one misconfiguration that undoes the whole point of keeping the rushes apart */
   if (passenger.remoteDir === backupFolder)
     throw new Error('The backup folder is the passenger folder — choose a different one.')

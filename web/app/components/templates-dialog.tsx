@@ -20,30 +20,19 @@ const importAnswerSchema = z.union([
 
 const nameSchema = z.object({ name: z.string().trim().max(60, 'Keep it under 60 characters') })
 
-/* what the kdenlive that wrote a template means for the one that will open it */
-const GAP = {
-  newer: (made: string, opens: string) =>
-    `Made with kdenlive ${made}, newer than the ${opens} that will open it — it may refuse the project, or open it with pieces missing.`,
-  older: (made: string, opens: string) =>
-    `Made with kdenlive ${made}; kdenlive ${opens} will convert it on opening — look it over before editing on it.`
-}
-
 const short = (version: string | null) => /\d+\.\d+(\.\d+)?/.exec(version ?? '')?.[0] ?? null
 
 const TemplateRow = ({
   template,
-  editorVersion,
   picked,
   onPick
 }: {
   template: TemplateFact
-  editorVersion: string | null
   /* absent when the templates are only being looked at, not chosen between */
   picked?: boolean
   onPick?: () => void
 }) => {
   const made = short(template.version)
-  const opens = short(editorVersion)
   return (
     <label
       className={`flex flex-col gap-1 rounded-lg border px-3 py-2 ${
@@ -76,11 +65,6 @@ const TemplateRow = ({
           {template.missing.length === 1 ? 'is' : 'are'} not here: {template.missing.join(', ')}.
           The edit can start without {template.missing.length === 1 ? 'it' : 'them'}, with a hole
           where each belongs.
-        </span>
-      )}
-      {template.gap && made && opens && (
-        <span className='rounded-r-md border-l-[3px] border-changed bg-changed-soft px-2.5 py-1.5 text-[12px] text-ink-2'>
-          {GAP[template.gap](made, opens)}
         </span>
       )}
     </label>
@@ -146,7 +130,7 @@ const TemplatesDialog = ({
       if (!parsed.success) setProblem('The template could not be brought in.')
       else if (!parsed.data.ok) setProblem(parsed.data.error)
       else {
-        setAnswer({ templates: parsed.data.templates, editorVersion: parsed.data.editorVersion })
+        setAnswer({ templates: parsed.data.templates })
         form.setFieldValue(form.fields.name, '')
       }
     } catch {
@@ -207,7 +191,6 @@ const TemplatesDialog = ({
           <TemplateRow
             key={template.name}
             template={template}
-            editorVersion={answer?.editorVersion ?? null}
             picked={onChoose ? template.name === picked : undefined}
             onPick={onChoose ? () => setPickedHere(template.name) : undefined}
           />

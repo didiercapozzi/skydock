@@ -20,7 +20,6 @@ const session: NasSession = {
   hostname: 'http://nas.test',
   username: 'u',
   sessionId: 'sid',
-  defaultFolder: '/SkyDock',
   backupFolder: '/Backup'
 }
 
@@ -166,7 +165,6 @@ describe('freeing a dropzone', () => {
     const targets = resolveUploadTargets({
       outputDir,
       manifest,
-      defaultFolder: null,
       scope: { destination: DZ }
     })
     expect(targets.flatMap((t) => t.groupIds)).toEqual(['half'])

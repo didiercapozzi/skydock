@@ -41,13 +41,11 @@ afterEach(() => {
 })
 
 describe('the storage session', () => {
-  it('keeps the upload folder and the backup folder apart', () => {
+  /* the one folder the session keeps: every place of work keeps its own with the place */
+  it('remembers the backup folder the originals are kept in', () => {
     saveNasSession({ hostname: 'https://nas.local', username: 'u', sessionId: 'sid' }, tmpDir)
-    updateNasFolder('default', '/SkyDock/Tandems', tmpDir)
-    updateNasFolder('backup', '/SkyDock/Rushes', tmpDir)
-    const session = loadNasSession(tmpDir)
-    expect(session?.defaultFolder).toBe('/SkyDock/Tandems')
-    expect(session?.backupFolder).toBe('/SkyDock/Rushes')
+    updateNasFolder('/SkyDock/Rushes', tmpDir)
+    expect(loadNasSession(tmpDir)?.backupFolder).toBe('/SkyDock/Rushes')
   })
 
   it('is used again while the storage still takes it', async () => {

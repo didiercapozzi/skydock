@@ -108,9 +108,8 @@ const loader = async (_args: Route.LoaderArgs) => {
   let nas: {
     connected: boolean
     hostname: string | null
-    defaultFolder: string | null
     backupFolder: string | null
-  } = { connected: false, hostname: null, defaultFolder: null, backupFolder: null }
+  } = { connected: false, hostname: null, backupFolder: null }
   /* the first look at the NAS happens here rather than on mount: the page then arrives already
      correct, and the Refresh button re-runs the same check through /api/remote-files */
   let remote: { dirs: string[]; sizes: Record<string, number | null>; at: number } | null = null
@@ -121,7 +120,6 @@ const loader = async (_args: Route.LoaderArgs) => {
       nas = {
         connected: true,
         hostname: session.hostname,
-        defaultFolder: session.defaultFolder ?? null,
         backupFolder: session.backupFolder ?? null
       }
       if (manifest) {
@@ -134,7 +132,7 @@ const loader = async (_args: Route.LoaderArgs) => {
           console.log(`[Board] Forgot ${forgotten.length} file(s) nowhere: ${forgotten.join(', ')}`)
         }
         /* the storage's own list of tandems — every one it holds, from here or from elsewhere */
-        const dir = tandemsRemoteDir(manifest, session.defaultFolder ?? null)
+        const dir = tandemsRemoteDir(manifest)
         if (dir)
           storage = await readTandemIndex(session, dir)
             .then((index) => ({ dir, tandems: index.tandems, problem: null as string | null }))
@@ -146,7 +144,7 @@ const loader = async (_args: Route.LoaderArgs) => {
       }
     }
   } catch {
-    nas = { connected: false, hostname: null, defaultFolder: null, backupFolder: null }
+    nas = { connected: false, hostname: null, backupFolder: null }
   }
   const grouped = new Set(
     (manifest?.groups ?? []).flatMap((g) => g.files.map((f) => f.id ?? f.path))
@@ -627,11 +625,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     setDialog(dialog?.kind === 'folder' && dialog.back ? dialog.back : null)
   }
 
-  const folderFor = (destination: string) => {
-    const known = places.find((d) => d.name === destination)
-    if (known?.path) return known.path
-    return nas.defaultFolder ? `${nas.defaultFolder}/${destination}` : null
-  }
+  const folderFor = (destination: string) =>
+    places.find((d) => d.name === destination)?.path ?? null
 
   /* the client opens whichever dialog is missing rather than firing a request the server would
      only refuse — but the server still decides, so the client never guesses a path */
@@ -684,7 +679,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     )
     const only =
       parsed.success && parsed.data.templates.length === 1 ? parsed.data.templates[0] : null
-    if (only && !only.gap && only.missing.length === 0) makeMontage(group.id, only.name)
+    if (only && only.missing.length === 0) makeMontage(group.id, only.name)
     else setDialog({ kind: 'templates', groupId: group.id })
   }
 

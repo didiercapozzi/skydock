@@ -10,7 +10,6 @@ const nasSessionSchema = z.object({
   hostname: z.string(),
   username: z.string(),
   sessionId: z.string(),
-  defaultFolder: z.string().optional(),
   /* where the original videos are archived, kept apart from anything a passenger can see */
   backupFolder: z.string().optional(),
   encPasswd: z.string().optional(),
@@ -595,14 +594,13 @@ const clearNasSession = (configDir?: string) => {
   if (fs.existsSync(target)) fs.unlinkSync(target)
 }
 
-/* Two folders are remembered: where uploads go, and where the original videos are kept. They are
-   chosen the same way and never derived from each other — a backup that falls back to the upload
-   folder puts gigabytes of rushes in a passenger's hands. */
-const updateNasFolder = (kind: 'default' | 'backup', folder: string, configDir?: string) => {
+/* One folder is remembered here: where a tandem's original videos are kept. Every place of work
+   keeps its own folder with the place, and a backup that fell back to one of those would put
+   gigabytes of rushes in a passenger's hands. */
+const updateNasFolder = (folder: string, configDir?: string) => {
   const session = loadNasSession(configDir)
   if (!session) return
-  const key = kind === 'backup' ? 'backupFolder' : 'defaultFolder'
-  saveNasSession({ ...session, [key]: folder }, configDir)
+  saveNasSession({ ...session, backupFolder: folder }, configDir)
 }
 
 const refreshStoredSession = async (
@@ -674,7 +672,6 @@ const loginWithSession = async (
       hostname: host,
       username: user,
       sessionId: sid,
-      defaultFolder: stored?.defaultFolder,
       backupFolder: kept?.backupFolder,
       encPasswd: encryptPasswordForStorage(host, user, password),
       deviceId: deviceId ?? kept?.deviceId

@@ -183,7 +183,7 @@ const backupOptionsSchema = z.object({
 
 const destinationSchema = z.object({
   name: z.string(),
-  /* the NAS folder this dropzone uploads into; absent means `{defaultFolder}/{name}` */
+  /* the NAS folder this dropzone uploads into; absent means none has been picked yet */
   path: z.string().optional(),
   /* the share link of that folder, kept so the board can hand it out without opening a group */
   shareUrl: z.string().optional()

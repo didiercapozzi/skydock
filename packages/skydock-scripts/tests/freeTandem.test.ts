@@ -21,7 +21,6 @@ const session: NasSession = {
   hostname: 'http://nas.test',
   username: 'u',
   sessionId: 'sid',
-  defaultFolder: '/SkyDock',
   backupFolder: '/Backup'
 }
 
@@ -103,7 +102,7 @@ const setup = async ({ projectInBackup = false } = {}) => {
         }
       }
     ],
-    destinations: [{ name: 'Tandems' }]
+    destinations: [{ name: 'Tandems', path: '/SkyDock/Tandems' }]
   }
   /* by default the storage holds exactly what was sent */
   const onStorage = Object.fromEntries(

@@ -70,7 +70,6 @@ const DialogHost = ({
     error: string | undefined
     connect: (host: string, user: string, password: string, otp?: string) => void
     codeAsked?: string
-    defaultFolder: string | null
     backupFolder: string | null
   }
   places: Destination[]
@@ -115,16 +114,12 @@ const DialogHost = ({
           initialPath={
             dialog.destination
               ? (places.find((d) => d.name === dialog.destination)?.path ?? undefined)
-              : dialog.target === 'backup'
-                ? (nas.backupFolder ?? undefined)
-                : (nas.defaultFolder ?? undefined)
+              : (nas.backupFolder ?? undefined)
           }
           title={
             dialog.destination
               ? `NAS folder for ${dialog.destination}`
-              : dialog.target === 'backup'
-                ? 'Folder for the original videos'
-                : 'Default NAS upload folder'
+              : 'Folder for the original videos'
           }
           onSelect={(path) => onChooseFolder(path, dialog.destination, dialog.target)}
           onClose={() => onDialog(dialog.back ?? null)}

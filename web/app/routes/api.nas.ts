@@ -49,8 +49,7 @@ const action = createValidatedFormAction()({
       return {
         connected: true as const,
         hostname: session.hostname,
-        username: session.username,
-        defaultFolder: session.defaultFolder
+        username: session.username
       }
     }
 
@@ -68,8 +67,7 @@ const action = createValidatedFormAction()({
         return {
           connected: true as const,
           hostname: session!.hostname,
-          username: session!.username,
-          defaultFolder: session!.defaultFolder
+          username: session!.username
         }
       } catch (err) {
         /* an account with 2-step verification: the dialog asks for the code, and says so plainly
@@ -158,14 +156,8 @@ const action = createValidatedFormAction()({
         errors.addGlobalError('Not connected.')
         return errors.toResponse(401)
       }
-      const kind = data.kind ?? 'default'
-      updateNasFolder(kind, data.path)
-      const updated = loadNasSession()
-      return {
-        connected: true as const,
-        defaultFolder: updated?.defaultFolder ?? null,
-        backupFolder: updated?.backupFolder ?? null
-      }
+      updateNasFolder(data.path)
+      return { connected: true as const, backupFolder: loadNasSession()?.backupFolder ?? null }
     }
 
     errors.addGlobalError('Unknown intent.')

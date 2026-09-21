@@ -253,6 +253,29 @@ describe('where a dropzone lands', () => {
 
     expect(delivered()).toEqual([path.join('Yverdon', 'yverdon_20260808_090909_1.mp4')])
   })
+
+  /* the loose file and the jump's file were shot in the same second: whichever is processed second
+     must be given a name of its own rather than written over the first */
+  it('never gives a jump’s file the name a loose file of the same second already has', async () => {
+    const lone: ManifestFile = { ...clip('DJI_0002.MP4', 0), id: 'lone', destination: 'Yverdon' }
+    /* the jump is not filed yet, so the first pass is the loose file on its own */
+    const { manifestPath } = write({ id: 'g1', files: [clip('GX010001.MP4', 0)] })
+    const manifest = loadManifest(manifestPath)!
+    manifest.files = [...manifest.files, lone]
+    saveManifest(manifestPath, manifest)
+    await processJumps({ manifestPath, outputDir, destination: 'Yverdon' })
+    const after = loadManifest(manifestPath)!
+    after.groups[0]!.destination = 'Yverdon'
+    saveManifest(manifestPath, after)
+
+    /* then the jump, on its own */
+    await processJumps({ manifestPath, outputDir, groupIds: ['g1'] })
+
+    expect(delivered()).toEqual([
+      path.join('Yverdon', 'yverdon_20260808_090909.mp4'),
+      path.join('Yverdon', 'yverdon_20260808_090909_1.mp4')
+    ])
+  })
 })
 
 describe('a jump filed nowhere', () => {

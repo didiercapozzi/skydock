@@ -8,7 +8,6 @@ const nasSuccessSchema = z.object({
   connected: z.boolean(),
   hostname: z.string().optional(),
   username: z.string().optional(),
-  defaultFolder: z.string().nullish(),
   backupFolder: z.string().nullish()
 })
 
@@ -34,7 +33,6 @@ type NasLoaded = {
   nas: {
     connected: boolean
     hostname: string | null
-    defaultFolder: string | null
     backupFolder: string | null
   }
   remote: CheckedListing | null
@@ -52,9 +50,6 @@ const useNas = (loaded: NasLoaded, remoteAfterUpload: CheckedListing | null) => 
   const answer = nasSuccessSchema.safeParse(nasFetcher.data)
   const connected = answer.success ? answer.data.connected : loaded.nas.connected
   const host = answer.success ? (answer.data.hostname ?? null) : loaded.nas.hostname
-  const defaultFolder = answer.success
-    ? (answer.data.defaultFolder ?? null)
-    : loaded.nas.defaultFolder
   const backupFolder = answer.success ? (answer.data.backupFolder ?? null) : loaded.nas.backupFolder
   const refused = nasErrorSchema.safeParse(nasFetcher.data)
   const error = !answer.success && refused.success ? refused.data.globalErrors?.[0] : undefined
@@ -88,7 +83,6 @@ const useNas = (loaded: NasLoaded, remoteAfterUpload: CheckedListing | null) => 
   return {
     connected,
     host,
-    defaultFolder,
     backupFolder,
     error,
     codeAsked,

@@ -18,7 +18,6 @@ const session: NasSession = {
   hostname: 'https://nas.local:5001',
   username: 'u',
   sessionId: 'sid',
-  defaultFolder: '/SkyDock',
   backupFolder: '/Backup'
 }
 
@@ -36,29 +35,29 @@ const manifest = (groups: ManifestGroup[] = [luc]): Manifest => ({
   createdAt: 'x',
   files: [],
   groups,
-  destinations: [{ name: 'Tandems' }, { name: 'Yverdon' }, { name: 'Colombier', path: '/Club/Col' }]
+  destinations: [
+    { name: 'Tandems', path: '/SkyDock/Tandems' },
+    { name: 'Yverdon', path: '/SkyDock/Yverdon' },
+    { name: 'Colombier', path: '/Club/Col' }
+  ]
 })
 
 afterEach(() => vi.unstubAllGlobals())
 
 describe('where a place’s folder is on the storage', () => {
   it('is, for a dropzone, the folder its days are uploaded into', () => {
-    expect(storageDirOf(manifest(), '/SkyDock', { destination: 'Yverdon' })).toBe(
-      '/SkyDock/Yverdon'
-    )
+    expect(storageDirOf(manifest(), { destination: 'Yverdon' })).toBe('/SkyDock/Yverdon')
   })
 
-  it('is the dropzone’s own folder when it was given one', () => {
-    expect(storageDirOf(manifest(), '/SkyDock', { destination: 'Colombier' })).toBe('/Club/Col')
+  it('is the folder that dropzone was given', () => {
+    expect(storageDirOf(manifest(), { destination: 'Colombier' })).toBe('/Club/Col')
   })
 
   it('is, for a tandem, the passenger’s folder under Tandems', () => {
-    expect(storageDirOf(manifest(), '/SkyDock', { groupId: 'g1' }, '/out')).toBe(
-      '/SkyDock/Tandems/Luc Favre'
-    )
+    expect(storageDirOf(manifest(), { groupId: 'g1' }, '/out')).toBe('/SkyDock/Tandems/Luc Favre')
   })
 
-  /* the default folder may be changed after the upload; the tandem is still where it was sent */
+  /* the Tandems folder may be changed after the upload; the tandem is still where it was sent */
   it('is, for a tandem already uploaded, the folder it actually went to', () => {
     const sent = {
       remotePath: '/Old/Tandems/Luc Favre/luc.mp4',
@@ -68,13 +67,12 @@ describe('where a place’s folder is on the storage', () => {
       at: 1
     }
     const uploaded = manifest([{ ...luc, uploaded: { at: 1, film: sent } }])
-    expect(storageDirOf(uploaded, '/SkyDock', { groupId: 'g1' }, '/out')).toBe(
-      '/Old/Tandems/Luc Favre'
-    )
+    expect(storageDirOf(uploaded, { groupId: 'g1' }, '/out')).toBe('/Old/Tandems/Luc Favre')
   })
 
   it('is nowhere while no folder has been chosen', () => {
-    expect(storageDirOf(manifest(), null, { destination: 'Yverdon' })).toBeNull()
+    const noFolder = { ...manifest(), destinations: [{ name: 'Yverdon' }] }
+    expect(storageDirOf(noFolder, { destination: 'Yverdon' })).toBeNull()
   })
 })
 

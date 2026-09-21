@@ -146,7 +146,7 @@ const scene = (options: SceneOptions = {}) => {
     createdAt: '2026-08-02',
     files,
     groups: [group],
-    destinations: [{ name: 'Tandems' }]
+    destinations: [{ name: 'Tandems', path: '/SkyDock/Tandems' }]
   }
   return { outputDir, groupDir, group, manifest }
 }
@@ -155,7 +155,6 @@ const session = (url: string, overrides: Partial<NasSession> = {}): NasSession =
   hostname: url,
   username: 'u',
   sessionId: 'sid',
-  defaultFolder: '/SkyDock',
   backupFolder: '/Backup',
   ...overrides
 })

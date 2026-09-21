@@ -19,7 +19,6 @@ const PHOTO = /\.(jpe?g|png|heic|webp|gif)$/i
    which is what stays true if the default folder is changed afterwards. */
 const storageDirOf = (
   manifest: Manifest,
-  defaultFolder: string | null,
   where: { destination?: string; groupId?: string },
   outputDir = getOutputDir()
 ) => {
@@ -28,9 +27,9 @@ const storageDirOf = (
     if (!group) return null
     const sent = group.uploaded?.film ?? group.uploaded?.photos
     if (sent) return sent.remotePath.slice(0, sent.remotePath.lastIndexOf('/'))
-    return targetForGroup(group, outputDir, manifest, defaultFolder).remoteDir
+    return targetForGroup(group, outputDir, manifest).remoteDir
   }
-  return where.destination ? destBaseOf(where.destination, manifest, defaultFolder) : null
+  return where.destination ? destBaseOf(where.destination, manifest) : null
 }
 
 /* When a delivered file was shot, read off its name: `yverdon_20260913_013417.mp4`, a film named for
@@ -67,15 +66,13 @@ const listStorageFolder = async (session: NasSession, dir: string): Promise<Stor
     )
 }
 
-/* The folders SkyDock uploads into, which are the only ones a file is ever opened from: the
-   default folder, each dropzone's own, and the backup folder. */
+/* The folders SkyDock uploads into, which are the only ones a file is ever opened from: each
+   place's own, and the backup folder. */
 const withinStorage = (manifest: Manifest, session: NasSession, filePath: string) => {
   const target = normalizeNasPath(filePath)
-  const roots = [
-    session.defaultFolder,
-    session.backupFolder,
-    ...(manifest.destinations ?? []).map((d) => d.path)
-  ].flatMap((root) => (root ? [normalizeNasPath(root)] : []))
+  const roots = [session.backupFolder, ...(manifest.destinations ?? []).map((d) => d.path)].flatMap(
+    (root) => (root ? [normalizeNasPath(root)] : [])
+  )
   return !target.includes('/../') && roots.some((root) => target.startsWith(`${root}/`))
 }
 

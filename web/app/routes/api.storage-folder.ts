@@ -28,7 +28,7 @@ const loader = async ({ request }: Route.LoaderArgs) => {
   if (!manifest) return answer({ ok: false, reason: 'Nothing has been scanned yet.' })
   const named =
     where.folder && withinStorage(manifest, session, `${where.folder}/.`) ? where.folder : null
-  const dir = named ?? storageDirOf(manifest, session.defaultFolder ?? null, where)
+  const dir = named ?? storageDirOf(manifest, where)
   if (!dir) return answer({ ok: false, reason: 'No folder on the storage has been chosen for it.' })
   return answer({ ok: true, dir, files: await listStorageFolder(session, dir) })
 }

@@ -5,7 +5,7 @@ import * as path from 'node:path'
 import { zipSync, strToU8 } from 'fflate'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { availableTemplates } from '../src/montage'
-import { importTemplate, listTemplates, versionGap } from '../src/templates'
+import { importTemplate, listTemplates } from '../src/templates'
 import { createTmpDir } from './fixtures'
 
 /* A template is brought in from a kdenlive archive — the project with the music, logos and titles
@@ -149,27 +149,5 @@ describe('bringing a template in from a kdenlive archive', () => {
     const other = path.join(incoming, 'notes.txt')
     fs.writeFileSync(other, 'x')
     await expect(bringIn(other)).rejects.toThrow(/\.zip or \.tar\.gz/)
-  })
-})
-
-describe('a template made by a kdenlive far from the one that opens it', () => {
-  it('is warned about when it is newer than the editor, which may not open it', () => {
-    expect(versionGap('25.04.1', 'kdenlive 24.12.3')).toBe('newer')
-    expect(versionGap('24.12.0', 'kdenlive 24.08.0')).toBe('newer')
-  })
-
-  it('is warned about when it is years older, and gets converted on opening', () => {
-    expect(versionGap('21.04.0', 'kdenlive 24.12.3')).toBe('older')
-  })
-
-  it('is left alone when it is close', () => {
-    expect(versionGap('24.12.1', 'kdenlive 24.12.3')).toBeNull()
-    expect(versionGap('23.08.0', 'kdenlive 24.12.3')).toBeNull()
-  })
-
-  /* not knowing is an answer: no warning is made up from it */
-  it('is never warned about on a guess', () => {
-    expect(versionGap(null, 'kdenlive 24.12.3')).toBeNull()
-    expect(versionGap('24.12.1', null)).toBeNull()
   })
 })

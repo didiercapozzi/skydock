@@ -94,20 +94,13 @@ const groupsInScope = (manifest: Manifest, scope: UploadScope) => {
   return manifest.groups.filter((g) => ids.has(g.id))
 }
 
-/* A group carrying a destination is the truth; the destinations list is only where custom paths
-   live. A destination missing from that list (never given a path, or added by a drop) therefore
-   behaves like a path-less one instead of becoming unuploadable. */
-const destBaseOf = (
-  destination: string | undefined,
-  manifest: Manifest,
-  defaultFolder: string | null
-) =>
-  resolveDestinationPath(destination, manifest.destinations ?? [], defaultFolder) ??
-  (destination && defaultFolder ? `${defaultFolder}/${destination}` : null)
+/* Every place is connected to a folder of its own; one that has not been given yet has nowhere to
+   upload into, and asking opens the picker rather than guessing a folder. */
+const destBaseOf = (destination: string | undefined, manifest: Manifest) =>
+  resolveDestinationPath(destination, manifest.destinations ?? [])
 
 /* the Tandems folder on the storage, where every passenger's folder goes — and the list of them */
-const tandemsRemoteDir = (manifest: Manifest, defaultFolder: string | null) =>
-  destBaseOf('Tandems', manifest, defaultFolder)
+const tandemsRemoteDir = (manifest: Manifest) => destBaseOf('Tandems', manifest)
 
 /* Where one group's processed folder goes on the NAS.
    A flat fun jump has NO folder of its own: `getGroupProcessedDir` hands back the whole
@@ -116,12 +109,11 @@ const tandemsRemoteDir = (manifest: Manifest, defaultFolder: string | null) =>
 const targetForGroup = (
   group: ManifestGroup,
   outputDir: string,
-  manifest: Manifest,
-  defaultFolder: string | null
+  manifest: Manifest
 ): UploadTarget => {
   const { dir } = getGroupProcessedDir(outputDir, group)
   const destination = group.destination ?? null
-  const base = destination ? destBaseOf(destination, manifest, defaultFolder) : defaultFolder
+  const base = destination ? destBaseOf(destination, manifest) : null
   const flat = isFlatGroup(group)
   return {
     key: `group:${group.id}`,
@@ -156,12 +148,10 @@ const dedupeTargets = (targets: UploadTarget[]) => {
 const resolveUploadTargets = ({
   outputDir,
   manifest,
-  defaultFolder,
   scope
 }: {
   outputDir: string
   manifest: Manifest
-  defaultFolder: string | null
   scope: UploadScope
 }) => {
   /* A tandem's files go to the storage by uploading the tandem (RULES, Network storage). Not because they
@@ -172,13 +162,13 @@ const resolveUploadTargets = ({
      it. */
   /* a jump freed from this machine is on the storage already, with nothing here to send */
   const groups = groupsInScope(manifest, scope).filter((g) => !isTandem(g) && !g.freed)
-  const targets = groups.map((g) => targetForGroup(g, outputDir, manifest, defaultFolder))
+  const targets = groups.map((g) => targetForGroup(g, outputDir, manifest))
   /* a destination can also hold lone files, which belong to no group and would otherwise
      never be uploaded at all */
   if (scope.destination) {
     const hasLone = manifest.files.some((f) => f.destination === scope.destination && !f.freed)
     if (hasLone) {
-      const base = destBaseOf(scope.destination, manifest, defaultFolder)
+      const base = destBaseOf(scope.destination, manifest)
       targets.push({
         key: `dest:${scope.destination}`,
         label: scope.destination,
@@ -262,12 +252,7 @@ const uploadScope = async ({
 }) =>
   uploadTargets({
     session,
-    targets: resolveUploadTargets({
-      outputDir,
-      manifest,
-      defaultFolder: session.defaultFolder ?? null,
-      scope
-    }),
+    targets: resolveUploadTargets({ outputDir, manifest, scope }),
     onProgress,
     onCheck
   })

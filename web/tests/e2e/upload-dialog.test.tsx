@@ -52,7 +52,7 @@ const board = {
     }
   ],
   looseFiles: [],
-  destinations: [{ name: 'Tandems' }],
+  destinations: [{ name: 'Tandems', path: '/SkyDock/Tandems' }],
   outputs: Object.fromEntries(files.map((f) => [f.path, { exists: true, size: f.size }])),
   proxies: {},
   tandems: {
@@ -74,7 +74,6 @@ const board = {
   nas: {
     connected: true,
     hostname: 'nas.local',
-    defaultFolder: '/SkyDock',
     backupFolder: '/Backup'
   }
 }

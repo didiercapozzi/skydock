@@ -65,7 +65,7 @@ describe('connecting to the storage', () => {
     expect(loadSessionFile()).toMatchObject({ sessionId: 'sid-2fa', deviceId: 'trusted' })
   })
 
-  it('keeps the session, and the default folder when connecting again', async () => {
+  it('keeps the session, and the backup folder when connecting again', async () => {
     stubFetch((url) => {
       if (url.includes('method=login'))
         return jsonResponse({ success: true, data: { sid: 'sid-1' } })
@@ -98,8 +98,8 @@ describe('connecting to the storage', () => {
       body: JSON.stringify({ intent: 'select-folder', path: '/video' })
     })
     const selectRes = (await action({ request: selectReq })) as unknown as Record<string, unknown>
-    expect((selectRes as { defaultFolder?: string }).defaultFolder).toBe('/video')
-    expect(loadSessionFile()?.defaultFolder).toBe('/video')
+    expect((selectRes as { backupFolder?: string }).backupFolder).toBe('/video')
+    expect(loadSessionFile()?.backupFolder).toBe('/video')
 
     stubFetch((url) => {
       if (url.includes('method=list_share')) return jsonResponse({ success: false })
@@ -119,7 +119,7 @@ describe('connecting to the storage', () => {
     })
     const res2 = (await action({ request: req2 })) as unknown as Record<string, unknown>
     expect((res2 as { connected?: boolean }).connected).toBe(true)
-    expect(loadSessionFile()?.defaultFolder).toBe('/video')
+    expect(loadSessionFile()?.backupFolder).toBe('/video')
     expect(loadSessionFile()?.sessionId).toBe('sid-2')
   })
 

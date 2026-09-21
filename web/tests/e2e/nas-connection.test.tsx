@@ -19,7 +19,7 @@ const emptyBoard = {
   outputs: {},
   remote: null,
   hasManifest: true,
-  nas: { connected: false, hostname: null, defaultFolder: null }
+  nas: { connected: false, hostname: null }
 }
 
 const renderBoard = async () => {

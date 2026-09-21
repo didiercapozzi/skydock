@@ -78,7 +78,7 @@ const forgotten = (): Manifest => ({
       files: [file('a', AT), file('b', AT + 60)]
     }
   ],
-  destinations: [{ name: 'Tandems' }]
+  destinations: [{ name: 'Tandems', path: '/SkyDock/Tandems' }]
 })
 
 beforeEach(() => {
@@ -91,8 +91,7 @@ beforeEach(() => {
     {
       hostname: 'https://nas.local:5001',
       username: 'u',
-      sessionId: 'sid',
-      defaultFolder: '/SkyDock'
+      sessionId: 'sid'
     },
     tmpDir
   )

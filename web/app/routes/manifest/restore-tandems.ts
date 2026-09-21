@@ -11,7 +11,7 @@ import type { Intent } from './change'
 const restoreTandemsIntent: Intent = async ({ data, manifest, manifestPath, refuse }) => {
   const session = await ensureNasSession()
   if (!session) return refuse('Connect the NAS first — the list of tandems is kept there.')
-  const dir = tandemsRemoteDir(manifest, session.defaultFolder ?? null)
+  const dir = tandemsRemoteDir(manifest)
   if (!dir) return refuse('Choose where tandems go on the storage first.')
   let listed
   try {
