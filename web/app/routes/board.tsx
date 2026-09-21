@@ -2,6 +2,7 @@ import {
   freeablePlace,
   EDIT_LOCKED,
   ensureNasSession,
+  forgetLostFiles,
   furthestBehind,
   getOutputDir,
   goneFromStorage,
@@ -10,6 +11,7 @@ import {
   listRemoteFiles,
   loadManifest,
   offGap,
+  saveManifest,
   outputKeyOf,
   passengerName,
   passengerOf,
@@ -105,6 +107,13 @@ const loader = async (_args: Route.LoaderArgs) => {
       }
       if (manifest) {
         remote = await listRemoteFiles(manifest, session)
+        /* footage that is nowhere is not listed: a freed file the storage no longer holds has
+           nothing left anywhere, so the app forgets it rather than offering a dead row */
+        const forgotten = forgetLostFiles(manifest, remote)
+        if (forgotten.length > 0) {
+          saveManifest(`${outputDir}/manifest.json`, manifest)
+          console.log(`[Board] Forgot ${forgotten.length} file(s) nowhere: ${forgotten.join(', ')}`)
+        }
         /* the storage's own list of tandems — every one it holds, from here or from elsewhere */
         const dir = tandemsRemoteDir(manifest, session.defaultFolder ?? null)
         if (dir)

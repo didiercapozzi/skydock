@@ -81,7 +81,8 @@ const remoteMatches = (file: ManifestFile, remote?: RemoteListing | null) => {
 }
 
 const fileStatus = (file: ManifestFile, context?: StatusContext): FileStatus => {
-  /* freed only once the storage was proved to hold it, so that is where it is */
+  /* freed only once the storage was proved to hold it, so that is where it is — and a freed file the
+     storage has since lost is not shown at all rather than described (RULES, File status) */
   if (file.freed) return 'uploaded'
   if (!file.processed) return 'local'
   if (!sourceMatches(file, context)) return 'local'

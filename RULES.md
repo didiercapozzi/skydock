@@ -566,7 +566,16 @@ Every file is in one of three states, each of which SkyDock can verify:
 A file falls back to local when anything it was made from changed, or its copy is missing or a different
 size. It falls back to processed when the storage was asked and does not have it. A file that went to
 the storage inside an archive counts as uploaded while the archive is there. A file freed from this
-machine always reads as uploaded; its absence from the storage is reported instead.
+machine reads as uploaded, since the storage is where it now is.
+
+**Footage that is nowhere is not listed.** A file freed from this machine has no original and no copy
+left here. If the storage is then asked about it and answers that it is not there, nothing of that file
+exists anywhere: SkyDock forgets it rather than offering a row that cannot be opened, prepared,
+uploaded or freed. The jump it was the last file of goes with it, unless the storage still holds what
+was delivered of that jump — a passenger's film outlives the rushes it was cut from. This takes away a
+record, never a file, and only ever with the storage's own answer in hand: a folder that was not
+listed, a call that failed, a file of another size, or an original still on this machine all leave
+everything as it was. It happens when the board is opened, silently.
 
 **Uploaded is the end of editing.** SkyDock cannot take an old copy back from the storage, so a file
 that has gone up cannot be cropped, turned, re-timed, moved or renamed here. It shows a lock and says
@@ -846,7 +855,7 @@ stay, too. If any check fails, nothing is deleted and each failing file is named
 reachable. An original another jump still holds stays until that jump is freed as well.
 
 A freed jump reads as the storage's alone, like a freed tandem, and a freed loose file stays listed,
-locked, without a picture. The dropzone's list of what its folder holds plays them from the storage.
+locked, without a picture — for as long as the storage still holds it (RULES, File status). The dropzone's list of what its folder holds plays them from the storage.
 Neither is processed or uploaded again, and the name a freed file was given stays taken, so a new file
 is never delivered over it.
 

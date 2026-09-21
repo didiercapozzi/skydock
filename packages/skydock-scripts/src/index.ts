@@ -25,6 +25,7 @@ import {
 } from './clustering'
 import { fileChanged, fileStatus, outputKeyOf, uploadGate } from './fileStatus'
 import type { FileStatus, RemoteListing, StatusContext } from './fileStatus'
+import { forgetLostFiles } from './forgetLost'
 import { freeablePlace } from './freeable'
 import { jsonText } from './lib/json'
 /* arithmetic only — the board draws the rectangle with the same functions processing cuts it with,
@@ -80,6 +81,7 @@ import { jumpTrack } from './jumpTrack'
 import { statProxies } from './proxy'
 import { rememberOutputDir, resolveOutputDir } from './settings'
 import { stopTools } from './tools'
+import { keepProject, keptProjectsDir } from './projectHistory'
 import { scanMedia } from './scan'
 import {
   EDIT_LOCKED,
@@ -184,6 +186,7 @@ export {
   fileStatus,
   filmNameOf,
   fitRatio,
+  forgetLostFiles,
   frameCropSchema,
   frozenTandems,
   FULL_FRAME,
@@ -228,6 +231,8 @@ export {
   rushesNameOf,
   sameEditedGroup,
   saveManifest,
+  keepProject,
+  keptProjectsDir,
   scanMedia,
   scopeKey,
   offGap,
