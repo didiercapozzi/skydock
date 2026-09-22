@@ -6,7 +6,10 @@ import { z } from 'zod'
 
 const DEFAULT_WIDTH = 80
 
-const widthSchema = z.number().int().min(16).max(240)
+/* Wide enough for the panel's own picture, which is drawn at 480 and asked for at that: a ceiling
+   below what is asked for is a picture stretched from eighty pixels, and nobody judges a frame on
+   that. Still a rescale, so it is kilobytes whatever the original weighs. */
+const widthSchema = z.number().int().min(16).max(960)
 const seekSchema = z.number().nonnegative()
 
 const clampWidth = (raw: string | null) => {
@@ -22,8 +25,9 @@ const clampSeek = (raw: string | null) => {
   return parsed.data
 }
 
-/* Videos are seeked to a keyframe; a photo is simply rescaled, so a card full of
-   photos costs a few kB each instead of the whole original. */
+/* Videos are seeked to a keyframe; a photo is simply rescaled, so a card full of photos costs a few
+   kB each instead of the whole original. A photo comes out the way it was taken: the turn a camera
+   wrote into it is applied here, as a browser applies it when it draws the file itself. */
 const extractFrame = (filePath: string, seek: number, width: number) =>
   new Promise<Buffer>((resolve, reject) => {
     const seekArgs = isVideoFile(filePath) ? ['-ss', String(seek), '-skip_frame', 'nokey'] : []

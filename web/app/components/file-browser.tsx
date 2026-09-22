@@ -7,15 +7,7 @@ import type { FileShape, Kind, Modifiers } from './file-list'
 import type { LiveFile } from '../hooks/useLiveProgress'
 import { StepMeter } from './tandem-steps'
 import type { ManifestFile, ManifestGroup } from './types'
-import {
-  dateLabel,
-  getFileUrl,
-  getThumbUrl,
-  isVideoFile,
-  hhmm,
-  minFileMtime,
-  plural
-} from './utils'
+import { dateLabel, getThumbUrl, hhmm, minFileMtime, plural } from './utils'
 
 /* A folder's files. By day, under headers that stay pinned while their files scroll by; as one list,
    all together. By jump, the jumps are cards side by side and one is open, its files listed under
@@ -28,7 +20,7 @@ type JumpControls = {
   dropTarget: (groupId: string) => Record<string, unknown>
   /* a plain click selects the jump; ⌘/ctrl-click on a second one compares the two */
   onSelect: (groupId: string, e?: Modifiers) => void
-  onDrag: (groupId: string) => void
+  onDrag: (groupId: string, e?: React.DragEvent) => void
   /* a tandem's one next step, and what shows above its files */
   actions?: (group: ManifestGroup) => React.ReactNode
   above?: (group: ManifestGroup) => React.ReactNode
@@ -160,7 +152,7 @@ const JumpCard = ({
       onDragStart={(e) => {
         if (!group || e.target !== e.currentTarget) return
         e.stopPropagation()
-        jump.onDrag(group.id)
+        jump.onDrag(group.id, e)
       }}
       onClick={(e) => {
         /* a second jump asked for beside the selected one: compared, and nothing else changes */
@@ -230,7 +222,7 @@ const JumpCard = ({
           {frames.map((f) => (
             <img
               key={f.id ?? f.path}
-              src={isVideoFile(f.path) ? getThumbUrl(f.path, 0.5, 120) : getFileUrl(f.path)}
+              src={getThumbUrl(f.path, 0.5, 120)}
               alt=''
               loading='lazy'
               draggable={false}

@@ -47,9 +47,20 @@ const useDragAndDrop = ({
   const [draggedFiles, setDraggedFiles] = useState<string[]>([])
   const [overTarget, setOverTarget] = useState<string | null>(null)
 
+  /* What is carried travels in here, not in the drag itself — the board is on both ends of it. The
+     drag is still handed what it is, because an engine handed nothing cancels the drag before it
+     starts: the window's own draws no card and never reaches a place, where a browser lets it by. */
+  const carrying = (e: React.DragEvent | undefined, said: string) => {
+    if (!e) return
+    e.dataTransfer.setData('text/plain', said)
+    e.dataTransfer.effectAllowed = 'copyMove'
+  }
+
   /* a whole jump, picked up by its line: dropping it on a place files every file in it at once,
      and on Tandems that is what makes the jump a passenger's (RULES, Jumps) */
-  const startJumpDrag = (groupId: string) => {
+  const startJumpDrag = (groupId: string, e?: React.DragEvent) => {
+    const jump = groups.find((g) => g.id === groupId)
+    carrying(e, (jump && passengerOf(jump)) || jump?.label || 'a jump')
     setDraggedFiles([])
     setDragged([groupId])
   }
@@ -58,8 +69,10 @@ const useDragAndDrop = ({
     if (!file.id) return
     /* a thumbnail sits inside a draggable jump card — only the file must travel */
     e?.stopPropagation()
+    const travelling = pickedFiles.includes(file.id) ? pickedFiles : [file.id]
+    carrying(e, travelling.length > 1 ? `${travelling.length} files` : file.filename)
     setDragged([])
-    setDraggedFiles(pickedFiles.includes(file.id) ? pickedFiles : [file.id])
+    setDraggedFiles(travelling)
   }
 
   /* dragend bubbles, so one handler clears the highlight however a drag ends */

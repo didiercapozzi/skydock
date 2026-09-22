@@ -7,14 +7,18 @@
 #
 #   SKYDOCK_PLAYER_COMMAND=/workspace/scripts/play-on-host.sh npm run dev
 #
-# which is what `npm run dev:bridge` is. The packaged app needs none of it: it runs where the player
-# is, and asks the machine to open the clip directly.
+# which is what `npm run dev` sets. The packaged app needs none of it: it runs where the player is,
+# and asks the machine to open the clip directly.
 #
 #   SKYDOCK_HOST_PLAYER   what plays a clip over there (default: the first of the players below)
 set -eu
 
 here="$(cd "$(dirname "$0")" && pwd)"
 clip="${1:?give the clip to play}"
+
+# Run somewhere that is not a container around a machine: there is no machine around it to hand the
+# clip to, and whatever plays videos is simply here.
+[ -S "${SKYDOCK_DOCKER_SOCKET:-/var/run/docker.sock}" ] || exec "${SKYDOCK_HOST_PLAYER:-xdg-open}" "$clip"
 
 # A player rather than "open this with whatever opens it". `xdg-open` starts the player and returns
 # at once, and what the session manager is asked to run here is a unit of its own: the moment the

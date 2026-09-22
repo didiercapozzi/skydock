@@ -123,6 +123,37 @@ fn settings_for(app: &tauri::AppHandle, config_dir: &Path, output_dir: &Path) ->
     told
 }
 
+/// How big the window draws everything. The board is laid out for the machine it is edited on, and
+/// the machine in the packing hall is across the room from whoever is reading it, so the whole of
+/// it scales — text, thumbnails and all — the way a browser's own zoom does.
+///
+/// `SKYDOCK_ZOOM` for a moment, `zoom` in the settings for always. Said either as a factor (`1.5`)
+/// or as the percentage anybody would say out loud (`150`). Anything outside half to triple size is
+/// somebody's slip, and is left at as-drawn.
+fn zoom_level(app: &tauri::AppHandle) -> f64 {
+    let remembered = || -> Option<f64> {
+        let config_dir = app.path().app_config_dir().ok()?;
+        let text = std::fs::read_to_string(config_dir.join("settings.json")).ok()?;
+        let settings: serde_json::Value = serde_json::from_str(&text).ok()?;
+        settings.get("zoom")?.as_f64()
+    };
+    let told = std::env::var("SKYDOCK_ZOOM")
+        .ok()
+        .and_then(|said| said.trim().parse::<f64>().ok())
+        .or_else(remembered);
+    let asked = match told {
+        Some(said) if said > 5.0 => said / 100.0,
+        Some(said) => said,
+        None => 1.0,
+    };
+    if (0.5..=3.0).contains(&asked) {
+        asked
+    } else {
+        eprintln!("[SkyDock] {asked} is not a size to draw at — showing it as it is.");
+        1.0
+    }
+}
+
 /// The window itself.
 ///
 /// Called from a thread of its own, never from the app's own — making a window is a request to the
@@ -140,9 +171,21 @@ fn open_window(app: &tauri::AppHandle, address: &str) {
         .title("SkyDock")
         .inner_size(1440.0, 900.0)
         .min_inner_size(900.0, 600.0)
+        // The page does its own dragging: filing a jump is dragging it onto a place, and a video is
+        // added by dropping it on the board. Left on, the window takes every drop before the page
+        // sees it, and neither works.
+        .disable_drag_drop_handler()
+        // ⌘/ctrl with + or −, and the wheel, as they do in any browser.
+        .zoom_hotkeys_enabled(true)
         .build();
     match built {
-        Ok(_) => println!("[SkyDock] the window is open on {address}"),
+        Ok(window) => {
+            let zoom = zoom_level(app);
+            if zoom != 1.0 {
+                let _ = window.set_zoom(zoom);
+            }
+            println!("[SkyDock] the window is open on {address}");
+        }
         Err(e) => eprintln!("[SkyDock] the window could not be opened: {e}"),
     }
 }

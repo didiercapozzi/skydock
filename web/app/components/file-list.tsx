@@ -5,7 +5,7 @@ import { StatusChip } from './file-status'
 import type { ShownStatus } from './file-status'
 import type { LiveFile } from '../hooks/useLiveProgress'
 import type { ManifestFile } from './types'
-import { clock, formatSize, formatTime, getFileUrl, getThumbUrl, isVideoFile } from './utils'
+import { clock, formatSize, formatTime, getThumbUrl, isVideoFile } from './utils'
 
 /* Videos and photos are two different jobs on a tandem — 15 clips to cut, 500 stills to cull — so
    the badges say which is on screen. The counts are always of everything there, never of what the
@@ -262,7 +262,6 @@ const PickMark = ({
       e.stopPropagation()
       onPick()
     }}
-    onDoubleClick={(e) => e.stopPropagation()}
     className={`absolute top-1.5 right-1.5 grid h-[18px] w-[18px] place-items-center rounded-full border-0 p-0 text-[11px] leading-none font-bold transition-[colors,opacity] duration-100 ${
       picked
         ? 'bg-accent text-white shadow-[0_0_0_2px_#fff,0_1px_4px_rgba(0,0,0,0.35)]'
@@ -339,7 +338,6 @@ const Row = ({
     draggable={!file.freed}
     onDragStart={file.freed ? undefined : (e) => onDragFile(file, e)}
     onClick={(e) => onFile(file, lane, e)}
-    onDoubleClick={() => onOpen(file)}
     onKeyDown={(e) => {
       if (e.key === 'Enter') {
         e.preventDefault()
@@ -371,7 +369,6 @@ const Row = ({
           e.stopPropagation()
           onPick(file)
         }}
-        onDoubleClick={(e) => e.stopPropagation()}
         /* transparent, not white, when not ticked, so it stays quiet on a dark panel as well as a
          light one */
         className={`grid h-3.5 w-3.5 flex-none place-items-center rounded-[3px] border-[1.5px] p-0 text-[9px] ${
@@ -386,7 +383,7 @@ const Row = ({
       {/* a freed file is on the storage only: nothing here to draw it from */}
       {!file.freed && (
         <img
-          src={isVideoFile(file.path) ? getThumbUrl(file.path, 0.5, 80) : getFileUrl(file.path)}
+          src={getThumbUrl(file.path, 0.5, 80)}
           alt=''
           loading='lazy'
           style={turnedThumb(file.rotation)}
@@ -494,7 +491,6 @@ const Tile = ({
     draggable={!file.freed}
     onDragStart={file.freed ? undefined : (e) => onDragFile(file, e)}
     onClick={(e) => onFile(file, lane, e)}
-    onDoubleClick={() => onOpen(file)}
     onKeyDown={(e) => {
       if (e.key === 'Enter') {
         e.preventDefault()
@@ -514,7 +510,7 @@ const Tile = ({
     {/* a freed file is on the storage only: nothing here to draw it from */}
     {!file.freed && (
       <img
-        src={isVideoFile(file.path) ? getThumbUrl(file.path, 0.5, 160) : getFileUrl(file.path)}
+        src={getThumbUrl(file.path, 0.5, 160)}
         alt=''
         loading='lazy'
         style={turnedThumb(file.rotation)}

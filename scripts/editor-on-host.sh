@@ -7,24 +7,19 @@
 #
 #   SKYDOCK_EDITOR_COMMAND=/workspace/scripts/editor-on-host.sh npm run dev
 #
-# which is what `npm run dev:bridge` is. Nothing has to be running on the host for this. The
-# packaged app needs none of it: it runs where the editor is, and starts it directly.
+# which is what `npm run dev` sets. Nothing has to be running on the host for this. The packaged app
+# needs none of it: it runs where the editor is, and starts it directly.
 #
 #   SKYDOCK_HOST_EDITOR   what opens a project over there (default: kdenlive)
 set -eu
 
 here="$(cd "$(dirname "$0")" && pwd)"
 editor="${SKYDOCK_HOST_EDITOR:-kdenlive}"
-
-# Asked what it is rather than to open something — SkyDock warns when a template was made by a
-# kdenlive far from the one that will open it, and that answer has to come back from over there.
-case "${1-}" in
--*)
-  exec "$here/host.sh" "$editor" "$@"
-  ;;
-esac
-
 project="${1:?give the project to open}"
+
+# Run somewhere that is not a container around a machine: there is no machine around it to hand the
+# project to, and the editor is simply here.
+[ -S "${SKYDOCK_DOCKER_SOCKET:-/var/run/docker.sock}" ] || exec "$editor" "$project"
 
 # The jump's folder is handed to whoever will be editing it. This side runs as root and the editor
 # does not: an editor may decline a project belonging to somebody else however the mode reads, and

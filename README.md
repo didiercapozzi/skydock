@@ -19,28 +19,23 @@ npm install
 npm run dev            # the board, on http://localhost:5173
 ```
 
-Everything happens on the board: scanning, sorting, processing and uploading.
-
-To see the app as an app rather than a browser tab, without leaving the container:
-
-```bash
-npm run dev            # or dev:bridge, in one terminal
-npm run dev:window     # in another, then open http://localhost:6080/vnc.html on the host
-```
-
-`dev:window` gives SkyDock a display that belongs to the container and serves it to the host, so
-the window is real but nothing of it touches the host's own session. The app must have been built
-once (`npm run tauri build`), since the window is the built app; what it shows is the development
-server, so reloading and the editor bridge work as they do in a browser.
+Everything happens on the board: scanning, sorting, processing and uploading. `dev` also points
+SkyDock at the editor and the video player on the machine around the container — see _Opening a
+montage from the container_ below — so a montage opens from a browser tab the way it would from the
+app.
 
 ### The window on the host's own screen
 
-Everything is said from the container; nothing runs on the machine outside it:
+To see the app as an app rather than a browser tab. Everything is said from the container; nothing
+runs on the machine outside it:
 
 ```bash
 npm run build:host       # once — the app, built for the machine's own system
 npm run dev:window:host  # the window, over there, showing the development server
 ```
+
+That is one command: the development server comes up with the window and goes down with it. One
+already running is used and left alone, so `npm run dev` in another terminal still works.
 
 Said with no development server, the app runs on its own instead — its own server and work folder
 and all, exactly as an installed one does:
@@ -48,6 +43,15 @@ and all, exactly as an installed one does:
 ```bash
 SKYDOCK_DEV_URL= npm run dev:window:host
 ```
+
+The window zooms with ⌘/ctrl and `+` or `−`, as a browser does. To open at a size rather than reach
+for it every time, say so — as a factor or as a percentage, half to triple size:
+
+```bash
+SKYDOCK_ZOOM=150 npm run dev:window:host
+```
+
+The installed app reads the same thing from `"zoom"` in its `settings.json`.
 
 Two things make that work, and both are worth knowing.
 
@@ -97,8 +101,8 @@ along the way: the card (software rendering and an empty `/dev/dri` change nothi
 the window code, and the WebKit flags (with and without them is the same). What remains is
 WebKitGTK against that particular X server, which is further than this is worth chasing.
 
-So: `npm run dev:window` for a window from inside the container, `npm run dev:window:host` to have
-the host open one, and the installed app when the real thing is wanted.
+So: `npm run dev:window:host` to have the host open a window, and the installed app when the real
+thing is wanted.
 
 A camera plugged in is copied off by itself while the board's server runs — see
 [RULES.md](./RULES.md), _Plugging a camera in is enough_. The command line does the same by hand:
@@ -191,24 +195,26 @@ and none are written into the registry.
 - `kdenlive` is **not** required to produce a montage project, only to open and render one.
 - `tar` — only to bring in an editing template packed as `.tar.gz`; a `.zip` needs nothing.
 
-### Opening the editor from the development container
+### Opening a montage from the container
 
 Installed as a desktop app, SkyDock runs on the machine kdenlive is on and starts it directly —
 nothing to set up. The development container is the awkward case: it has no kdenlive and no way to
-reach the one outside it, so pressing **Montage** there reports that it cannot open anything.
+reach the one outside it, so pressing **Montage** there would report that it cannot open anything.
 
-One command bridges it, and nothing has to be running on the host:
+`npm run dev` bridges it, with nothing extra to run and nothing left running on the host. It is
 
 ```sh
-npm run dev:bridge
+umask 000 && SKYDOCK_EDITOR_COMMAND=/workspace/scripts/editor-on-host.sh \
+  SKYDOCK_PLAYER_COMMAND=/workspace/scripts/play-on-host.sh npm run dev --workspace=@workspace/web
 ```
 
-`dev:bridge` is `umask 000 && SKYDOCK_EDITOR_COMMAND=/workspace/scripts/editor-on-host.sh npm run dev`
-— the variable points SkyDock at [scripts/editor-on-host.sh](scripts/editor-on-host.sh), which
-hands the project to [scripts/host.sh](scripts/host.sh) to open over there, as described above, in
-the machine's own terms: a path this container knows as `/workspace` is translated on the way.
-`SKYDOCK_HOST_EDITOR` picks a different editor. The umask is explained below. Nothing is installed
-or left running on the host for any of this — both scripts run in here.
+— the variables point SkyDock at [scripts/editor-on-host.sh](scripts/editor-on-host.sh) and
+[scripts/play-on-host.sh](scripts/play-on-host.sh), which hand the project or the clip to
+[scripts/host.sh](scripts/host.sh) to open over there, as described above, in the machine's own
+terms: a path this container knows as `/workspace` is translated on the way. `SKYDOCK_HOST_EDITOR`
+and `SKYDOCK_HOST_PLAYER` pick a different one of each. The umask is explained below. Run where
+there is no machine around the container — no docker socket — both simply start the program where
+they are, so `npm run dev` is right on a plain machine too.
 
 The board is told what came of it. The bridge waits a moment for the editor to fail before calling
 it an opening, so an editor that cannot start says why — the line it printed on its way out — rather
@@ -225,7 +231,7 @@ host would get it read-only. Opening a project works, and so does playing its cl
 edit and rendering the film both write, and both would be refused, the second one only at the end of
 a render. Two things answer that, and they answer different halves of it.
 
-`dev:bridge` sets `umask 000`, so what SkyDock writes from then on is writable by everybody. That is
+`dev` sets `umask 000`, so what SkyDock writes from then on is writable by everybody. That is
 a development-machine trade — permissive modes under `output/` — and it covers the folders the
 editor only reads, the proxies above all.
 

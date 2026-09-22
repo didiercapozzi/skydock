@@ -12,18 +12,22 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
 import { boardRoute } from './board-route'
 
 /* The board addresses a file by its path inside the folder this machine keeps the work in — which
-   the machine tells it, since an installed app keeps the work wherever it was asked to. */
+   the machine tells it, since an installed app keeps the work wherever it was asked to. Every
+   picture it draws is asked for at the size it is drawn at, a photo as much as a clip: a day of
+   photos drawn from the originals is tens of megabytes decoded to fill eighty pixels. */
 
 const OUTPUT = '/home/capo/Movies/SkyDock'
 const AT = Math.floor(new Date(2026, 7, 1, 10, 0, 0).getTime() / 1000)
 
-const clip = (id: string, at: number) => ({
-  id,
-  path: `${OUTPUT}/original_files/2026-08-01/${id}.MP4`,
-  filename: `${id}.MP4`,
+const shot = (name: string, at: number) => ({
+  id: name,
+  path: `${OUTPUT}/original_files/2026-08-01/${name}`,
+  filename: name,
   size: 1,
   mtime: at
 })
+
+const clip = (id: string, at: number) => shot(`${id}.MP4`, at)
 
 const board = {
   groups: [
@@ -31,7 +35,7 @@ const board = {
       id: 'g1',
       label: 'g1',
       day: '01.08.2026',
-      files: [clip('one', AT), clip('two', AT + 30)]
+      files: [clip('one', AT), clip('two', AT + 30), shot('G0091.JPG', AT + 60)]
     }
   ],
   looseFiles: [],
@@ -56,5 +60,19 @@ describe('the pictures the board shows', () => {
     await expect
       .poll(() => [...document.querySelectorAll('img')].map((img) => img.getAttribute('src')))
       .toContain('/api/thumb/original_files/2026-08-01/two.MP4?seek=0.5&width=80')
+  })
+
+  /* a photo used to be drawn from the original, a megabyte and a full decode for eighty pixels */
+  test('ask for a photo at the size it is drawn at, not the whole of it', async () => {
+    const Stub = createRoutesStub([boardRoute(() => board)])
+    await render(createElement(Stub, { initialEntries: ['/'] }))
+
+    await expect.element(page.getByText('G0091.JPG').first()).toBeInTheDocument()
+    const drawn = () =>
+      [...document.querySelectorAll('img')].map((img) => img.getAttribute('src') ?? '')
+    await expect
+      .poll(drawn)
+      .toContain('/api/thumb/original_files/2026-08-01/G0091.JPG?seek=0.5&width=80')
+    expect(drawn().some((src) => src.startsWith('/api/file/'))).toBe(false)
   })
 })

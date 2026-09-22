@@ -1,7 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Modifiers } from '../components/file-list'
 import type { ManifestFile } from '../components/types'
 import { typingInField } from '../helpers/keys'
+
+/* How long after a click a second one on the same file is the same gesture. The two are paired here
+   rather than listened for as a double-click, because a file can also be dragged and the engine the
+   app's own window draws with never pairs them on something draggable: the drag takes the second
+   press. Two clicks are two clicks everywhere. */
+const SECOND_CLICK_MS = 400
 
 /* Looking and picking are two different things. A click only looks: the file shows in the
    inspector and nothing is picked. A file is picked by its tick, by ⌘/ctrl-click, or with shift for
@@ -38,6 +44,8 @@ const useSelection = ({
   const [comparing, setComparing] = useState<[string, string] | null>(null)
   /* the file being looked at, which is not the same as picked */
   const [previewed, setPreviewed] = useState<string | null>(null)
+  /* the last plain click, waiting to see whether another one makes it an opening */
+  const lastClick = useRef<{ id: string; at: number } | null>(null)
 
   const pickOnly = (ids: string[], from: string | null) => {
     setPickedFiles(ids)
@@ -78,7 +86,9 @@ const useSelection = ({
       return
     }
     setPickedJump(null)
+    /* picking is not opening, so a click that picks starts no pair and continues none */
     if (e.shiftKey) {
+      lastClick.current = null
       const range = rangeTo(id, idsOf(lane))
       setPickedFiles(pickableOf([...new Set([...pickedFiles, ...(range ?? [id])])]))
       if (!range) setAnchor(id)
@@ -86,7 +96,16 @@ const useSelection = ({
       return
     }
     if (e.ctrlKey || e.metaKey) {
+      lastClick.current = null
       togglePick(id)
+      return
+    }
+    const before = lastClick.current
+    const now = Date.now()
+    lastClick.current = { id, at: now }
+    if (before?.id === id && now - before.at < SECOND_CLICK_MS) {
+      lastClick.current = null
+      onOpen(file)
       return
     }
     setPreviewed(id)
