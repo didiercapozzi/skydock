@@ -1278,6 +1278,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               where={storageWhere}
               stamp={board.remoteAfterUpload?.at}
               hereToo={hereToo}
+              onProblem={setNote}
               onBringBack={(file) => {
                 /* the board knows it by where it was sent, which is what its upload recorded */
                 const mine = [...groups.flatMap((g) => g.files), ...loose].find(

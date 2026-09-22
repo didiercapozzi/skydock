@@ -1,4 +1,10 @@
-import { ensureNasSession, getOutputDir, loadManifest } from '@skydock/scripts'
+import {
+  ensureNasSession,
+  getOutputDir,
+  listShareLinks,
+  liveShareLinks,
+  loadManifest
+} from '@skydock/scripts'
 import { z } from 'zod'
 import {
   listStorageFolder,
@@ -30,7 +36,13 @@ const loader = async ({ request }: Route.LoaderArgs) => {
     where.folder && withinStorage(manifest, session, `${where.folder}/.`) ? where.folder : null
   const dir = named ?? storageDirOf(manifest, where)
   if (!dir) return answer({ ok: false, reason: 'No folder on the storage has been chosen for it.' })
-  return answer({ ok: true, dir, files: await listStorageFolder(session, dir) })
+  /* which of them the storage hands out by a link of their own: one question for the whole folder,
+     since the storage lists every link it holds at once */
+  const links = liveShareLinks(
+    session.hostname,
+    await listShareLinks(session.hostname, session.sessionId).catch(() => [])
+  )
+  return answer({ ok: true, dir, files: await listStorageFolder(session, dir, links) })
 }
 
 export { loader, searchParamsArgs }

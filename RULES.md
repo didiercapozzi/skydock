@@ -61,7 +61,7 @@ Everything below follows from these.
 - **Nothing on the network storage is ever deleted by SkyDock.** It uploads and creates folders; a file
   asked to be sent again over one already there is moved into a bin first, never written over. Taking
   something off the storage is done by a person, in the storage's own interface. SkyDock's part is to
-  notice.
+  notice. A link is not a file: taking a link away leaves what it pointed at exactly where it was.
 - **Not knowing is not evidence.** When the storage did not answer or a check failed, SkyDock keeps what
   it last proved rather than assuming the worst.
 - **Uncertainty costs time, never a delivery.** When SkyDock cannot tell whether two files are the same,
@@ -723,6 +723,13 @@ note would change them.
 **Share links.** A folder's link is reused while it works, so uploading again does not change the link a
 passenger already has.
 
+Any one file on the storage can be handed out by a link of its own, from the row it is listed on: one
+jump somebody asks for, a single photo, the film alone, without giving away the folder around it. A
+live link the storage already has for that file is handed back rather than a second one made, and an
+expired one is no link at all. The link can be copied from the row, and taken away again from the
+same place — which takes nothing off the storage. Only a file in a folder SkyDock delivers into can
+be given one: a link is a way in, and anybody holding it fetches that file without a password.
+
 **Noticing deletions.** SkyDock looks at the storage when the board opens, right after an upload, and
 when the check button is pressed. A file it can no longer find stops counting as uploaded and is ready to
 be sent again; the local file is untouched. Between those moments the board says what it last proved.
@@ -1002,6 +1009,7 @@ Worth knowing, so nobody goes looking:
 - **Nothing is ever doubled on the disk.** A clip copied into another jump is still one original; each
   jump it is in makes a processed copy of its own from it.
 - **A dropzone can be created, not renamed or removed.**
-- **Nothing is brought back from the storage to keep.** Its list of tandems is read, and its videos and
-  photos are streamed to be watched, never saved here.
+- **Nothing comes back from the storage on its own.** Its list of tandems is read and its videos and
+  photos are streamed to be watched; a file is only saved here again when somebody asks for that one
+  file back.
 - **Archives are made only by uploading a tandem.** The originals cannot be backed up ahead of the film.

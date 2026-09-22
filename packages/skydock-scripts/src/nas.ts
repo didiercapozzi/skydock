@@ -625,17 +625,48 @@ const listShareLinks = async (host: string, sid: string) => {
 const isLiveShareLink = (link: z.infer<typeof dsmShareLinkSchema>) =>
   !!link.url && (link.status === undefined || link.status === 'valid')
 
-const findShareLink = async (host: string, sid: string, remotePath: string) => {
+/* The live link the storage holds for one path, whole: its address to hand out and the id it is
+   known by over there, which is the only thing a link can be taken away by. */
+const shareLinkFor = async (host: string, sid: string, remotePath: string) => {
   const wanted = normalizeNasPath(remotePath)
   try {
-    const links = await listShareLinks(host, sid)
-    const match = links.find(
-      (l) => isLiveShareLink(l) && l.path !== undefined && normalizeNasPath(l.path) === wanted
-    )
-    return match?.url ? absoluteShareUrl(host, match.url) : null
+    const found = liveShareLinks(host, await listShareLinks(host, sid)).get(wanted)
+    return found ?? null
   } catch {
     return null
   }
+}
+
+/* Every live link the storage holds, by the path it is for. One question answers a whole folder —
+   the storage lists all of its links at once — so a listing says which of its files can be handed
+   out without asking about them one at a time. A link the storage does not name is still a link: it
+   is handed out and reused like any other, and only taking it away needs its id. */
+const liveShareLinks = (host: string, links: z.infer<typeof dsmShareLinkSchema>[]) => {
+  const byPath = new Map<string, { id: string | null; url: string }>()
+  for (const link of links) {
+    if (!isLiveShareLink(link) || link.path === undefined || !link.url) continue
+    const where = normalizeNasPath(link.path)
+    if (!byPath.has(where))
+      byPath.set(where, { id: link.id ?? null, url: absoluteShareUrl(host, link.url) })
+  }
+  return byPath
+}
+
+const findShareLink = async (host: string, sid: string, remotePath: string) =>
+  (await shareLinkFor(host, sid, remotePath))?.url ?? null
+
+/* A link taken away. The storage knows a link by its own id and not by what it points at, so what
+   is removed is the link that was found for that file — and the file itself is untouched: a link is
+   a way in, not the thing it opens (RULES, Principles). */
+const removeShareLink = async (host: string, sid: string, id: string) => {
+  const body = await dsmFetch(host, {
+    api: 'SYNO.FileStation.Sharing',
+    method: 'delete',
+    version: '1',
+    id,
+    _sid: sid
+  })
+  return body.success === true
 }
 
 /* reuse before creating: re-processing and re-uploading a folder must not invalidate the link
@@ -810,12 +841,15 @@ export {
   listNasFiles,
   listNasFolder,
   listShareLinks,
+  liveShareLinks,
   loadNasSession,
   loginWithSession,
   needsCode,
   normalizeNasPath,
   refreshStoredSession,
+  removeShareLink,
   saveNasSession,
+  shareLinkFor,
   tryAutoRefreshSession,
   updateNasFolder
 }

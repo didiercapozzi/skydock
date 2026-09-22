@@ -7,6 +7,7 @@ import { saveNasSession } from '../../../packages/skydock-scripts/src/nas'
 import type { Manifest } from '@skydock/scripts'
 import { loader as fileLoader } from '../../app/routes/api.storage-file.$'
 import { loader as folderLoader } from '../../app/routes/api.storage-folder'
+import { action as linkAction } from '../../app/routes/api.share-link'
 import { createTmpDir, jsonResponse, routeArgs, stubFetch } from './fixtures'
 
 /* A place is connected to its folder on the storage: the board lists what is up there and plays it
@@ -17,6 +18,8 @@ const DIR = '/SkyDock/Tandems/Luc Favre'
 let tmpDir: string
 let previous: string | undefined
 let ranges: (string | null)[]
+let shared: string[]
+let links: { id: string; url: string; path: string; status: string }[]
 
 const manifest: Manifest = {
   version: 1,
@@ -38,9 +41,29 @@ const manifest: Manifest = {
   ]
 }
 
-/* the storage: it knows the session, lists one folder, and hands out parts of one film */
+/* the storage: it knows the session, lists one folder, hands out parts of one film, and keeps the
+   links it is asked for */
 const storage = (url: string, init?: RequestInit) => {
   const params = new URL(url).searchParams
+  if (params.get('api') === 'SYNO.FileStation.Sharing') {
+    shared.push(`${params.get('method')} ${params.get('id') ?? params.get('path') ?? ''}`)
+    if (params.get('method') === 'create') {
+      const made = {
+        id: 'L1',
+        url: '/sharing/abc',
+        path: params.get('path') ?? '',
+        status: 'valid'
+      }
+      links.push(made)
+      return jsonResponse({ success: true, data: { links: [made] } })
+    }
+    if (params.get('method') === 'delete') {
+      const at = links.findIndex((l) => l.id === params.get('id'))
+      if (at !== -1) links.splice(at, 1)
+      return jsonResponse({ success: true })
+    }
+    return jsonResponse({ success: true, data: { links, total: links.length } })
+  }
   if (params.get('api') === 'SYNO.FileStation.Download') {
     ranges.push(new Headers(init?.headers).get('range'))
     return new Response('part of the film', {
@@ -102,6 +125,8 @@ beforeEach(() => {
     tmpDir
   )
   ranges = []
+  shared = []
+  links = []
   stubFetch(storage)
 })
 
@@ -110,6 +135,59 @@ afterEach(() => {
   if (previous === undefined) delete process.env.SKYDOCK_OUTPUT_DIR
   else process.env.SKYDOCK_OUTPUT_DIR = previous
   vi.unstubAllGlobals()
+})
+
+/* A file on the storage can be handed out by a link of its own: anybody holding it fetches that one
+   file, so only a file in a folder SkyDock delivers into may be given one (RULES, Network storage). */
+describe('a file’s own link', () => {
+  const askLink = (intent: 'create' | 'remove', filePath: string) =>
+    linkAction(
+      routeArgs(
+        new Request('http://localhost/api/share-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ intent, path: filePath })
+        })
+      )
+    ).then((res) => (res instanceof Response ? res.json() : res))
+
+  it('is made for a file in a folder the club delivers into', async () => {
+    expect(await askLink('create', `${DIR}/luc_favre.mp4`)).toMatchObject({
+      path: `${DIR}/luc_favre.mp4`,
+      shareUrl: expect.stringContaining('/sharing/')
+    })
+  })
+
+  /* a second link to the same file is a second thing to keep track of and take away */
+  it('is not made twice: the one the storage already has is handed back', async () => {
+    const first = await askLink('create', `${DIR}/luc_favre.mp4`)
+
+    expect(await askLink('create', `${DIR}/luc_favre.mp4`)).toEqual(first)
+    expect(shared.filter((a) => a.startsWith('create'))).toHaveLength(1)
+  })
+
+  /* the storage knows a link by its own id, never by what it points at; and the file stays */
+  it('is taken away by the id the storage knows it by', async () => {
+    await askLink('create', `${DIR}/luc_favre.mp4`)
+
+    expect(await askLink('remove', `${DIR}/luc_favre.mp4`)).toEqual({
+      path: `${DIR}/luc_favre.mp4`,
+      shareUrl: null
+    })
+    expect(shared).toContain('delete L1')
+    expect(await ask({ groupId: 'g1' })).toMatchObject({ files: [{ shareUrl: null }] })
+  })
+
+  /* a link is a way in: anything outside the club's own folders is refused before the storage is
+     asked anything at all */
+  it('is refused for a path outside them, and the storage is not asked', async () => {
+    const asked = await askLink('create', '/SkyDock/../etc/passwd')
+
+    expect(asked).toMatchObject({
+      globalErrors: [expect.stringContaining('not in a folder SkyDock delivers into')]
+    })
+    expect(shared).toEqual([])
+  })
 })
 
 describe('what a place’s folder on the storage holds', () => {
@@ -124,7 +202,8 @@ describe('what a place’s folder on the storage holds', () => {
           size: 5000,
           mtime: 1_785_000_000,
           kind: 'video',
-          shot: null
+          shot: null,
+          shareUrl: null
         }
       ]
     })

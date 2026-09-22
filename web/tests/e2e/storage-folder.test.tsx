@@ -15,9 +15,9 @@ const folder = {
   ok: true,
   dir: DIR,
   files: [
-    { name: 'luc favre.mp4', path: `${DIR}/luc favre.mp4`, size: 3_000_000, mtime: 1_785_000_000, kind: 'video', shot: null },
-    { name: 'luc_1.jpg', path: `${DIR}/luc_1.jpg`, size: 90_000, mtime: 1_785_000_000, kind: 'photo', shot: null },
-    { name: 'luc.photos.zip', path: `${DIR}/luc.photos.zip`, size: 500_000, mtime: null, kind: 'other', shot: null }
+    { name: 'luc favre.mp4', path: `${DIR}/luc favre.mp4`, size: 3_000_000, mtime: 1_785_000_000, kind: 'video', shot: null, shareUrl: null },
+    { name: 'luc_1.jpg', path: `${DIR}/luc_1.jpg`, size: 90_000, mtime: 1_785_000_000, kind: 'photo', shot: null, shareUrl: 'https://nas.local/sharing/abc' },
+    { name: 'luc.photos.zip', path: `${DIR}/luc.photos.zip`, size: 500_000, mtime: null, kind: 'other', shot: null, shareUrl: null }
   ]
 }
 
@@ -36,6 +36,45 @@ afterEach(() => {
 
 const renderFolder = (hereToo?: Set<string>) =>
   render(createElement(StorageFolder, { where: { groupId: 'g1' }, hereToo }))
+
+/* A file on the storage can be handed out by a link of its own — one clip, one photo — without the
+   folder's link, which opens everything in it (RULES, Network storage). */
+describe('a file’s own link', () => {
+  test('is offered where there is none, and copied or taken away where there is', async () => {
+    storageAnswers(folder)
+    await renderFolder()
+
+    const list = page.getByRole('region', { name: 'On the storage' })
+    await expect.element(list.getByRole('button', { name: 'Copy the link' })).toBeVisible()
+    await expect.element(list.getByRole('button', { name: 'Remove the link' })).toBeVisible()
+    /* two files have none, so the offer is on both of them */
+    await expect.poll(() => list.getByRole('button', { name: 'Create a link' }).elements().length)
+      .toBe(2)
+  })
+
+  test('is asked of the storage for that one file, and shows on the row at once', async () => {
+    storageAnswers(folder)
+    await renderFolder()
+    const list = page.getByRole('region', { name: 'On the storage' })
+    await expect.element(list.getByRole('button', { name: 'Create a link' }).first()).toBeVisible()
+    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
+      asked.push(`${String(url)} ${String(init?.body ?? '')}`)
+      return new Response(
+        JSON.stringify({ path: `${DIR}/luc favre.mp4`, shareUrl: 'https://nas.local/sharing/new' }),
+        { headers: { 'Content-Type': 'application/json' } }
+      )
+    })
+
+    await userEvent.click(list.getByRole('button', { name: 'Create a link' }).first())
+
+    await expect
+      .poll(() => list.getByRole('button', { name: 'Copy the link' }).elements().length)
+      .toBe(2)
+    expect(asked.some((a) => a.includes('/api/share-link') && a.includes('"intent":"create"'))).toBe(
+      true
+    )
+  })
+})
 
 describe('a place’s folder on the storage', () => {
   test('lists what is up there, and says which of it is only there', async () => {
@@ -93,7 +132,15 @@ describe('a place’s folder on the storage', () => {
       ok: true,
       dir: DIR,
       files: [
-        { name: 'yverdon_20260913_013400.mp4', path: `${DIR}/y.mp4`, size: 1, mtime: sent, kind: 'video', shot }
+        {
+          name: 'yverdon_20260913_013400.mp4',
+          path: `${DIR}/y.mp4`,
+          size: 1,
+          mtime: sent,
+          kind: 'video',
+          shot,
+          shareUrl: null
+        }
       ]
     })
     await renderFolder()

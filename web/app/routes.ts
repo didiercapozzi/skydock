@@ -20,6 +20,7 @@ const routes = [
   route('api/events', 'routes/api.events.ts'),
   route('api/remote-files', 'routes/api.remote-files.ts'),
   route('api/storage-folder', 'routes/api.storage-folder.ts'),
+  route('api/share-link', 'routes/api.share-link.ts'),
   route('api/storage-file/*', 'routes/api.storage-file.$.ts'),
   route('api/file/*', 'routes/api.file.$.tsx'),
   route('api/thumb/*', 'routes/api.thumb.$.tsx'),

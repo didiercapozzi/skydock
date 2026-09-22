@@ -1,10 +1,16 @@
 import { useState } from 'react'
+import { z } from 'zod'
 import type { StorageFile } from '../../../packages/skydock-scripts/src/storageEntry'
+import { routingEngine } from '../helpers/routing'
+import { refusalSchema } from '../hooks/useBoardState'
 import { useStorageFolder } from '../hooks/useStorageFolder'
 import type { StorageWhere } from '../hooks/useStorageFolder'
 import { Mini } from './buttons'
 import { Modal } from './modal'
 import { dateLabel, formatSize, hhmm, plural } from './utils'
+
+/* what the storage answered about one file's link: the link it now has, or none */
+const linkAnswerSchema = z.object({ path: z.string(), shareUrl: z.string().nullable() })
 
 /* A file on the storage is played through the board's own server, which holds the session; the
    path is the storage's, a piece at a time so a name with a space or an accent survives the trip. */
@@ -41,6 +47,58 @@ const StoragePlayer = ({ file, onClose }: { file: StorageFile; onClose: () => vo
   </Modal>
 )
 
+/* One file handed out by a link of its own, or that link taken away. A link is a way in — anybody
+   holding it fetches that one file — so what it does is said on the button rather than in a dialog
+   nobody reads, and taking it away again is one press. The link is in the tooltip as well as the
+   clipboard, so a browser that refuses the clipboard still shows it. */
+const LinkButtons = ({
+  file,
+  shareUrl,
+  busy,
+  onLink
+}: {
+  file: StorageFile
+  shareUrl: string | null
+  busy: boolean
+  onLink: (file: StorageFile, intent: 'create' | 'remove') => void
+}) => {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    if (!shareUrl) return
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      /* the link is in the button's tooltip either way */
+    }
+  }
+  if (!shareUrl)
+    return (
+      <Mini
+        disabled={busy}
+        title='Give this one file a link — anybody holding it can fetch it, and nothing else in the folder'
+        onClick={() => onLink(file, 'create')}>
+        {busy ? 'Asking…' : 'Create a link'}
+      </Mini>
+    )
+  return (
+    <>
+      <Mini
+        title={shareUrl}
+        onClick={() => void copy()}>
+        {copied ? '✓ copied' : 'Copy the link'}
+      </Mini>
+      <Mini
+        disabled={busy}
+        title='Take the link away — the file stays where it is'
+        onClick={() => onLink(file, 'remove')}>
+        Remove the link
+      </Mini>
+    </>
+  )
+}
+
 /* What a place's folder on the storage holds, under the place's own files: a dropzone's folder, a
    passenger's — listed and played from here whether or not any of it is still on this machine. Each
    file says whether it is here too, because "only on the storage" is the one that cannot be made
@@ -49,7 +107,8 @@ const StorageFolder = ({
   where,
   stamp,
   hereToo,
-  onBringBack
+  onBringBack,
+  onProblem
 }: {
   where: StorageWhere
   /* changes when the folder is worth asking for again — after an upload */
@@ -61,9 +120,34 @@ const StorageFolder = ({
      longer holds. Absent where nothing can be fetched — a folder of a tandem this board never had,
      or a file it never sent. */
   onBringBack?: (file: StorageFile) => void
+  /* what the storage said when it would not do what was asked */
+  onProblem?: (problem: string) => void
 }) => {
   const [again, setAgain] = useState(0)
   const [playing, setPlaying] = useState<StorageFile | null>(null)
+  /* the links made and taken away since this folder was listed, by the file they are for: the row
+     answers at once rather than the whole folder being asked for again */
+  const [linked, setLinked] = useState<Record<string, string | null>>({})
+  const [asking, setAsking] = useState<string | null>(null)
+
+  const setLink = async (file: StorageFile, intent: 'create' | 'remove') => {
+    setAsking(file.path)
+    const raw = await routingEngine
+      .action({ url: '/api/share-link', actionArgs: { intent, path: file.path } })
+      .catch(() => null)
+    setAsking(null)
+    const done = linkAnswerSchema.safeParse(raw)
+    if (done.success) {
+      setLinked((was) => ({ ...was, [done.data.path]: done.data.shareUrl }))
+      return
+    }
+    const refused = refusalSchema.safeParse(raw)
+    onProblem?.(
+      refused.success
+        ? (refused.data.globalErrors?.[0] ?? 'The storage would not do that.')
+        : 'The storage would not do that.'
+    )
+  }
   const folder = useStorageFolder(where, `${String(stamp)}:${again}`)
   const files = folder?.ok ? folder.files : []
   const only = hereToo ? files.filter((f) => !hereToo.has(f.name)).length : 0
@@ -159,6 +243,12 @@ const StorageFolder = ({
                     Bring it back
                   </Mini>
                 )}
+                <LinkButtons
+                  file={file}
+                  shareUrl={file.path in linked ? (linked[file.path] ?? null) : file.shareUrl}
+                  busy={asking === file.path}
+                  onLink={(one, intent) => void setLink(one, intent)}
+                />
               </li>
             )
           })}

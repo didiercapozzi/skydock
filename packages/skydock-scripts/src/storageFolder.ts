@@ -57,13 +57,24 @@ const kindOf = (name: string): StorageFile['kind'] =>
    lists a folder leaves them out — there is nothing to play, and nothing to do with them here. */
 const OWN_RECORDS = new Set(['skydock-tandems.json', 'skydock-origins.json'])
 
-/* the folder's files, films and clips first, each kind newest first — by when it was shot, read off
-   its name, or else when it was put there */
-const listStorageFolder = async (session: NasSession, dir: string): Promise<StorageFile[]> => {
+/* The folder's files, films and clips first, each kind newest first — by when it was shot, read off
+   its name, or else when it was put there. Each says whether the storage hands it out by a link of
+   its own, which is one question for the whole folder: the storage lists every link it has at
+   once (RULES, Network storage). */
+const listStorageFolder = async (
+  session: NasSession,
+  dir: string,
+  links?: Map<string, { id: string; url: string }>
+): Promise<StorageFile[]> => {
   const order = { video: 0, photo: 1, other: 2 }
   return (await listNasFiles(session.hostname, session.sessionId, dir))
     .filter((f) => !OWN_RECORDS.has(f.name))
-    .map((f) => ({ ...f, kind: kindOf(f.name), shot: shotFromName(f.name) }))
+    .map((f) => ({
+      ...f,
+      kind: kindOf(f.name),
+      shot: shotFromName(f.name),
+      shareUrl: links?.get(normalizeNasPath(f.path))?.url ?? null
+    }))
     .sort(
       (a, b) =>
         order[a.kind] - order[b.kind] ||

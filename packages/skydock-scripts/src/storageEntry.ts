@@ -9,7 +9,10 @@ const storageFileSchema = z.object({
   mtime: z.number().nullable(),
   /* when it was shot, as its name says — every file SkyDock delivers is named after that */
   shot: z.number().nullable(),
-  kind: z.enum(['video', 'photo', 'other'])
+  kind: z.enum(['video', 'photo', 'other']),
+  /* the link the storage hands this one file out by, when it has one: anybody holding it can fetch
+     the file, and nothing else about the folder */
+  shareUrl: z.string().nullable()
 })
 
 const storageFolderSchema = z.discriminatedUnion('ok', [

@@ -9,6 +9,7 @@ import {
   withinStorage
 } from '../src/storageFolder'
 import type { Manifest, ManifestGroup } from '../src/types'
+import { liveShareLinks } from '../src/nas'
 import { nasStubs, stubFetch } from './fixtures'
 
 /* A dropzone and a tandem are connected to their folder on the storage: what is up there is listed
@@ -95,6 +96,32 @@ describe('what a folder on the storage holds', () => {
       ['video', 'luc_favre.mp4'],
       ['photo', 'b.jpg'],
       ['other', 'luc_favre.photos.zip']
+    ])
+  })
+
+  /* A file on the storage can be handed out by a link of its own, and the listing says which ones
+     already have one — asked of the storage once for the whole folder (RULES, Network storage). */
+  it('says which of its files the storage hands out by a link of their own', async () => {
+    const stub = nasStubs({
+      files: {
+        '/SkyDock/Yverdon': [
+          { name: 'shared.mp4', size: 1 },
+          { name: 'private.mp4', size: 1 }
+        ]
+      }
+    })
+    stubFetch((url) => stub(url) ?? new Response('{}'))
+    const links = liveShareLinks('https://nas.local:5001', [
+      { id: 'L1', url: '/sharing/abc', path: '/SkyDock/Yverdon/shared.mp4', status: 'valid' },
+      /* one that has expired is no link at all: it would be handed out and simply fail */
+      { id: 'L2', url: '/sharing/old', path: '/SkyDock/Yverdon/private.mp4', status: 'invalid' }
+    ])
+
+    const files = await listStorageFolder(session, '/SkyDock/Yverdon', links)
+
+    expect(files.map((f) => [f.name, f.shareUrl])).toEqual([
+      ['shared.mp4', 'https://nas.local:5001/sharing/abc'],
+      ['private.mp4', null]
     ])
   })
 
