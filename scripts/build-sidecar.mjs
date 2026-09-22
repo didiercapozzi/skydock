@@ -98,11 +98,7 @@ const fetchNode = async (triple) => {
 
 /* Where ffmpeg and ffprobe come from: a folder given for the purpose — which is how a release build
    hands over the ones it fetched — or the ones this machine has, which is right when the machine
-   being built on is the system being built for.
-
-   exiftool is not carried: on a Mac and on most Linux machines it is a Perl script that needs more
-   than one file beside it, and SkyDock works without it — the times then come off the files
-   themselves rather than out of what the camera wrote. A machine that has it installed is used. */
+   being built on is the system being built for. */
 const toolsFrom = () => {
   const told = process.env.SKYDOCK_TOOLS_DIR?.trim()
   return told ? path.resolve(told) : null
@@ -135,6 +131,66 @@ const fetchTools = (triple) => {
     )
 }
 
+/* ExifTool, which reads the dates and the turns inside files and writes them into what is handed
+   over. It is not one program but a program and the several hundred files it reads formats out of,
+   so it travels with the app's own files rather than beside its program.
+
+   Windows gets the build that carries its own Perl, since Windows has none. A Mac and a Linux
+   machine get the program itself — it is Perl, and runs on the one their system ships with; there
+   is no build for those that carries its own, and the only other way to arrive is an installer that
+   puts it on somebody's machine, which is the opposite of what this is for. */
+const EXIFTOOL_VERSION = '13.59'
+
+const EXIFTOOL_SOURCES = {
+  windows: {
+    from: `https://sourceforge.net/projects/exiftool/files/exiftool-${EXIFTOOL_VERSION}_64.zip/download`,
+    archive: 'exiftool.zip',
+    folder: `exiftool-${EXIFTOOL_VERSION}_64`,
+    /* the name it is packed under says what it does when it is double-clicked: waits for a key */
+    program: 'exiftool(-k).exe',
+    called: 'exiftool.exe',
+    beside: 'exiftool_files'
+  },
+  posix: {
+    from: `https://github.com/exiftool/exiftool/archive/refs/tags/${EXIFTOOL_VERSION}.tar.gz`,
+    archive: 'exiftool.tar.gz',
+    folder: `exiftool-${EXIFTOOL_VERSION}`,
+    program: 'exiftool',
+    called: 'exiftool',
+    beside: 'lib'
+  }
+}
+
+const fetchExiftool = async (triple) => {
+  const source = EXIFTOOL_SOURCES[triple.includes('windows') ? 'windows' : 'posix']
+  const into = path.join(resources, 'exiftool')
+  const staging = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-exiftool-'))
+  try {
+    const downloaded = path.join(staging, source.archive)
+    await download(source.from, downloaded)
+    run('tar', ['-xf', downloaded, '-C', staging], staging)
+    const unpacked = path.join(staging, source.folder)
+    clear(into)
+    const program = path.join(into, source.called)
+    fs.copyFileSync(path.join(unpacked, source.program), program)
+    if (!triple.includes('windows')) {
+      /* It arrives asking for whatever Perl is on the PATH, and an app opened from the desktop has
+         hardly any PATH — it would then be found, run, and read nothing, silently. Both systems
+         this goes to keep their Perl in the one place, so it is asked for there. */
+      const said = fs.readFileSync(program, 'utf-8')
+      fs.writeFileSync(program, said.replace(/^#![^\n]*\n/, '#!/usr/bin/perl\n'))
+      fs.chmodSync(program, 0o755)
+    }
+    fs.cpSync(path.join(unpacked, source.beside), path.join(into, source.beside), {
+      recursive: true
+    })
+    const digest = crypto.createHash('sha256').update(fs.readFileSync(program)).digest('hex')
+    console.log(`[SkyDock] exiftool ${EXIFTOOL_VERSION}\n           sha256 ${digest}`)
+  } finally {
+    fs.rmSync(staging, { recursive: true, force: true })
+  }
+}
+
 /* The app itself: the page a browser loads, the server that serves it, and the templates SkyDock
    ships with. */
 const buildApp = () => {
@@ -156,6 +212,7 @@ const buildApp = () => {
 const triple = targetTriple()
 console.log(`[SkyDock] packing for ${triple}`)
 buildApp()
+await fetchExiftool(triple)
 fs.mkdirSync(binaries, { recursive: true })
 await fetchNode(triple)
 fetchTools(triple)

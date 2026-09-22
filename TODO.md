@@ -43,10 +43,9 @@ is in a clip). What they were found for is not built yet, in the order worth doi
 - Updating: no updater yet — a new version is downloaded and installed over the old one.
 - Moving the work folder: it is asked for on the first run and remembered. There is no way to change
   it afterwards but to edit the settings file.
-- exiftool does not travel with the installers, so a machine without it reads times off the files
-  rather than out of what the camera wrote.
 - The macOS and Windows installers have never been run: they are built by the workflow and have to be
-  tried on those machines.
+  tried on those machines. The exiftool each carries is part of what has never been tried — the
+  Windows build brings its own Perl, and a Mac's is the system's own.
 
 ### Code left out of the cleanup, because changing it could change behaviour (CODING.md)
 

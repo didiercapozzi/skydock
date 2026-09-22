@@ -122,11 +122,23 @@ fn settings_for(app: &tauri::AppHandle, config_dir: &Path, output_dir: &Path) ->
     for (tool, variable) in [
         ("ffmpeg", "SKYDOCK_FFMPEG_PATH"),
         ("ffprobe", "SKYDOCK_FFPROBE_PATH"),
-        ("exiftool", "SKYDOCK_EXIFTOOL_PATH"),
     ] {
         if let Some(found) = beside_exe(tool) {
             told.insert(variable.into(), found.to_string_lossy().into_owned());
         }
+    }
+    /* ExifTool is a program and the several hundred files it reads formats out of, which have to
+       stay beside it, so it travels among the app's own files rather than beside its program. */
+    let exiftool = resources.join("exiftool").join(if cfg!(windows) {
+        "exiftool.exe"
+    } else {
+        "exiftool"
+    });
+    if exiftool.exists() {
+        told.insert(
+            "SKYDOCK_EXIFTOOL_PATH".into(),
+            exiftool.to_string_lossy().into_owned(),
+        );
     }
     told
 }

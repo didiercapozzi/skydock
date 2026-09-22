@@ -18,6 +18,7 @@
     "format": "oxfmt --config oxfmt.config.ts .",
     "format:check": "oxfmt --config oxfmt.config.ts --check .",
     "lint": "oxlint --config oxlint.config.ts .",
+    "release": "npx tsx scripts/release.ts",
     "scan": "npx tsx packages/skydock-scripts/src/scan.ts",
     "tauri": "tauri",
     "test": "npm run test --workspaces --if-present",

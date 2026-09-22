@@ -1,6 +1,10 @@
-# The installers, built on a tag: one machine of each kind, since an installer can only be made on
-# the system it is for. Ubuntu 22.04 rather than the newest, because a program built against an
-# older C library runs on the newer ones too and not the other way round.
+# The installers, built when a version is tagged: one machine of each kind, since an installer can
+# only be made on the system it is for. Ubuntu 22.04 rather than the newest, because a program built
+# against an older C library runs on the newer ones too and not the other way round.
+#
+# A tag is the whole trigger — `npm run release` makes one. Everything lands on a draft release that
+# nobody sees until it is published. Started by hand instead, it builds the same installers and
+# hangs them on the run itself, so a branch can be tried without releasing anything.
 name: Installers
 
 on:
@@ -9,7 +13,61 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  # What is being built, checked before four machines spend twenty minutes each on it.
+  version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.said.outputs.version }}
+      release: ${{ steps.draft.outputs.id }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: What the app says it is
+        id: said
+        shell: bash
+        run: |
+          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "SkyDock $version"
+
+      # A tag saying one thing and an app saying another is the mistake worth stopping for: the
+      # installers are named after the app, so nobody would see it until they were asked which
+      # version they have. `npm run release` moves both together.
+      - name: The tag and the app agree
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          if [ "${{ github.ref_name }}" != "v${{ steps.said.outputs.version }}" ]; then
+            echo "::error::the tag is ${{ github.ref_name }} but the app says ${{ steps.said.outputs.version }}"
+            exit 1
+          fi
+
+      # Somewhere for four machines to hang their installers. Made once, here, rather than by
+      # whichever of them finishes first — four at once would make four releases.
+      - name: Somewhere for the installers to land
+        id: draft
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          id=$(gh api "repos/${{ github.repository }}/releases/tags/$TAG" --jq .id 2>/dev/null || true)
+          if [ -z "$id" ]; then
+            id=$(gh api "repos/${{ github.repository }}/releases" \
+              -f tag_name="$TAG" \
+              -f name="SkyDock $TAG" \
+              -f body="Nobody has signed these: on macOS, open System Settings → Privacy & Security and choose Open Anyway the first time; on Windows, choose More info, then Run anyway." \
+              -F draft=true \
+              -F prerelease=false \
+              --jq .id)
+          fi
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+  installers:
+    needs: version
     permissions:
       contents: write
     strategy:
@@ -18,17 +76,21 @@ jobs:
         include:
           - platform: ubuntu-22.04
             target: ''
+            bundles: '--bundles deb,appimage'
           - platform: macos-latest
             target: 'aarch64-apple-darwin'
+            bundles: ''
           - platform: macos-latest
             target: 'x86_64-apple-darwin'
+            bundles: ''
           - platform: windows-latest
             target: ''
+            bundles: ''
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -41,6 +103,7 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
+          key: ${{ matrix.target }}
 
       - name: What a window needs on Linux
         if: matrix.platform == 'ubuntu-22.04'
@@ -50,19 +113,24 @@ jobs:
 
       - run: npm ci
 
+      # The machine SkyDock lands on has nothing installed on it, so everything it works with
+      # travels with it. These are the two that have to be fetched from somewhere that builds them
+      # needing nothing beside them; the build that follows reads this folder, and fetches the tool
+      # that reads and writes dates itself.
       - name: The media tools the app carries
         shell: bash
         run: echo "SKYDOCK_TOOLS_DIR=$(node scripts/fetch-tools.mjs)" >> "$GITHUB_ENV"
         env:
           TAURI_ENV_TARGET_TRIPLE: ${{ matrix.target }}
 
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: SkyDock ${{ github.ref_name }}
-          releaseBody: 'Unsigned: on macOS open it from the right-click menu the first time; on Windows choose More info, then Run anyway.'
-          releaseDraft: true
-          prerelease: false
-          args: ${{ matrix.target && format('--target {0}', matrix.target) || '' }}
+          releaseId: ${{ needs.version.outputs.release }}
+          # kept on the run as well as on the release, so a build started by hand is still something
+          # that can be downloaded and tried
+          uploadWorkflowArtifacts: true
+          uploadUpdaterJson: false
+          retryAttempts: 1
+          args: ${{ matrix.target && format('--target {0} ', matrix.target) || '' }}${{ matrix.bundles }}

@@ -20,10 +20,10 @@ into local time — otherwise a DJI's clips would sit hours away from its own ph
 ## Where SkyDock runs
 
 SkyDock is installed on the machine the footage is edited on — a Mac, a Windows machine or a Linux
-one — and opens as a window of its own. It carries the tools that read and write video. Two things
-must be installed on the machine: the tool that reads and writes the dates inside files — without
-it a scan falls back to the files' own timestamps and processing stops — and the editor, which is
-somebody's editing program and not ours: a montage is prepared whether or not it is installed, and
+one — and opens as a window of its own. It carries everything it works with: the tools that read and
+write video, and the one that reads and writes the dates inside files. A machine with nothing on it
+copies a card, finds the jumps, prepares the files and sends them on. One thing is somebody else's
+editing program and is not carried: a montage is prepared whether or not it is installed, and
 opening one needs it.
 
 The first time it is opened it asks where to keep its work, offering a folder of its own in the

@@ -177,16 +177,6 @@ with, and takes ffmpeg and ffprobe from `SKYDOCK_TOOLS_DIR` or from this machine
 `node scripts/fetch-tools.mjs` fetches builds of those that need nothing beside them, which is what
 a release does; it prints the folder to hand over.
 
-An installer is made on the system it is for, so all three are built by
-[.github/workflows/release.yml](.github/workflows/release.yml) on a tag (`v1.2.3`), which attaches
-`.dmg`, `.msi`, `.deb` and an AppImage to a draft release.
-
-**They are not signed yet**, so each system says so once:
-
-- **macOS** — right-click the app, choose _Open_, then _Open_ again (or
-  `xattr -dr com.apple.quarantine /Applications/SkyDock.app`).
-- **Windows** — SmartScreen: _More info_, then _Run anyway_.
-
 The programs the app carries are installed under SkyDock's own name — `skydock-node`,
 `skydock-ffmpeg`, `skydock-ffprobe` — so that a package never lands on the machine's own. The server
 ends when the app does, whatever ends the app.
@@ -197,6 +187,43 @@ The server can also be run without the window, which is how it is checked:
 npm run build && node scripts/build-server.mjs
 PORT=5199 node web/build/skydock-server.mjs     # prints SKYDOCK_READY <port>
 ```
+
+## Making a release
+
+An installer can only be made on the system it is for, so all four are made by
+[.github/workflows/release.yml](.github/workflows/release.yml) on four machines at once, and hung on
+a draft release: `.dmg` for both kinds of Mac, `.msi` and a setup `.exe` for Windows, `.deb` and an
+AppImage for Linux.
+
+A tag is the whole trigger, and one command makes one:
+
+```bash
+npm run release              # the next patch — 0.1.0 becomes 0.1.1
+npm run release minor        # 0.1.0 becomes 0.2.0
+npm run release 1.0.0        # exactly that
+npm run release -- --here    # everything but the push, to look at first
+```
+
+It refuses what cannot be taken back once pushed: work that was never committed, a tag that exists
+already, a branch that is not `main`. It runs the checks before the tag rather than after it, moves
+the version in the three files that state it — the app's own config, its `Cargo.toml` and the
+lockfile — and pushes the tag. The build then refuses outright to release a tag that says something
+other than the app does, so the two can never drift apart.
+
+Nothing is public until somebody presses publish on the draft. To try a build without releasing
+anything, start the workflow by hand from any branch: the same installers come out, attached to the
+run instead of to a release.
+
+**They are not signed**, so each system says so once:
+
+- **macOS** — the app is refused the first time; open System Settings → Privacy & Security and
+  choose _Open Anyway_ (or `xattr -dr com.apple.quarantine /Applications/SkyDock.app`).
+- **Windows** — SmartScreen: _More info_, then _Run anyway_.
+
+Signing them costs money rather than work: an Apple Developer ID (99 USD a year), which also buys
+notarisation and removes the warning entirely, and a certificate for Windows. Both are given to the
+build as secrets and nothing else changes — [macOS](https://v2.tauri.app/distribute/sign/macos/),
+[Windows](https://v2.tauri.app/distribute/sign/windows/).
 
 ## Configuration
 
@@ -221,11 +248,17 @@ and none are written into the registry.
 
 ## Requirements
 
-- `exiftool` — processing stamps dates into the files and stops without it. The installers do not
-  carry it: on a Mac and on most Linux machines it is a Perl program that needs more than one file
-  beside it. Installed on the machine, it is found and used.
-- `ffmpeg` / `ffprobe` — required to write a cropped video and to make thumbnails. The installers
-  carry both.
+The installers carry everything: nothing below has to be installed on the machine SkyDock lands on.
+Run from this repository instead, each is looked for on the PATH.
+
+- `ffmpeg` / `ffprobe` — to write a cropped video and to make thumbnails. Carried, one build per
+  system.
+- `exiftool` — processing stamps dates into the files and stops without it. Carried as well, though
+  it is a program and the several hundred files it reads formats out of rather than one file, so it
+  travels among the app's own rather than beside it. On Windows it brings its own Perl; on a Mac and
+  on Linux it runs on the one the system ships with, at `/usr/bin/perl`, which is where both keep it
+  — and it is asked for there rather than on the PATH, because an app opened from the desktop has
+  hardly any PATH and would otherwise find nothing and say nothing.
 - `kdenlive` is **not** required to produce a montage project, only to open and render one.
 - `tar` — only to bring in an editing template packed as `.tar.gz`; a `.zip` needs nothing.
 
