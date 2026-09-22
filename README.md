@@ -53,6 +53,20 @@ SKYDOCK_ZOOM=150 npm run dev:window:host
 
 The installed app reads the same thing from `"zoom"` in its `settings.json`.
 
+**What the window does with a dragged file is tested here, on the real engine.** The window is
+drawn by WebKitGTK and every other test runs in Chromium, and the two answer every question about
+dragging differently — a run of fixes once passed the whole suite and failed in the window, one
+after another. So [scripts/try-drop.sh](scripts/try-drop.sh) builds nothing and mocks nothing: it
+opens the real program on a display of its own, drags a real file onto it from a real GTK drag
+source ([scripts/drag-source.py](scripts/drag-source.py), standing in for a file manager) with a
+real pointer, and looks in the work folder. The container's WebKitGTK is the same version as the
+machine's, so what passes here passes there.
+
+```bash
+npm run build && npx tauri build --no-bundle   # once, and after any change to the window
+scripts/try-drop.sh                            # the drag, and whether the file arrived
+```
+
 Two things make that work, and both are worth knowing.
 
 **The command is run on the machine, not in here.** [scripts/host.sh](scripts/host.sh) hands it to

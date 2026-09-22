@@ -3,10 +3,10 @@ import * as http from 'node:http'
 import * as path from 'node:path'
 import * as url from 'node:url'
 import { Readable } from 'node:stream'
-import { pipeline } from 'node:stream/promises'
 import { createRequestHandler } from 'react-router'
 import type { ServerBuild } from 'react-router'
 import { cancelProcessing, rememberOutputDir, resolveOutputDir, stopTools } from '@skydock/scripts'
+import { letGo, sendAnswer, writeOut } from './answer'
 
 /* SkyDock as an installed program: the same app the development server runs, served by Node itself
    on this machine and nowhere else. The window the app opens is a browser pointed at it.
@@ -73,7 +73,7 @@ const sendBuilt = async (target: string, res: http.ServerResponse) => {
       ? 'public, max-age=31536000, immutable'
       : 'public, max-age=0, must-revalidate'
   })
-  await pipeline(fs.createReadStream(target), res)
+  await writeOut(fs.createReadStream(target), res)
 }
 
 const asRequest = (req: http.IncomingMessage, signal: AbortSignal) => {
@@ -92,21 +92,6 @@ const asRequest = (req: http.IncomingMessage, signal: AbortSignal) => {
       ? { body: Readable.toWeb(req) as ReadableStream<Uint8Array>, duplex: 'half' }
       : {})
   } as RequestInit & { duplex?: 'half' })
-}
-
-/* Sent on as it arrives rather than gathered up first: the board's live stream never ends, so
-   waiting for the whole of an answer would mean nothing ever reached the page. */
-const sendAnswer = async (answer: Response, res: http.ServerResponse) => {
-  const headers: Record<string, string | string[]> = {}
-  for (const [name, value] of answer.headers) if (name !== 'set-cookie') headers[name] = value
-  const cookies = answer.headers.getSetCookie()
-  if (cookies.length > 0) headers['set-cookie'] = cookies
-  res.writeHead(answer.status, headers)
-  if (!answer.body) {
-    res.end()
-    return
-  }
-  await pipeline(Readable.fromWeb(answer.body as never), res)
 }
 
 type Handler = ReturnType<typeof createRequestHandler>
@@ -168,7 +153,10 @@ const start = async () => {
   const handle = createRequestHandler(build, 'production')
   const server = http.createServer((req, res) => {
     answer(handle, req, res).catch((e: unknown) => {
+      /* the page let go, which is not something to say or to put right */
+      if (letGo(e)) return
       console.error('[SkyDock]', e instanceof Error ? e.message : String(e))
+      if (res.destroyed) return
       if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' })
       res.end('SkyDock could not answer that.')
     })

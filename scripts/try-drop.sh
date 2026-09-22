@@ -69,6 +69,10 @@ mkdir -p "$config/ch.skydock.app" "$output"
 # Where the work goes, written down before the app asks: answered once, it never asks again, and
 # nothing here is sitting in front of the dialog to answer it.
 printf '{"outputDir":"%s"}\n' "$output" >"$config/ch.skydock.app/settings.json"
+# A board with somewhere to drop on: an empty one shows a Scan button and takes no file. Fresh
+# files is the page it opens on, and Fresh files takes files from the computer.
+printf '{"version":1,"createdAt":"2026-08-01T00:00:00.000Z","files":[],"destinations":[{"name":"Yverdon"}]}\n' \
+  >"$output/manifest.json"
 WEBKIT_DISABLE_DMABUF_RENDERER=1 \
   WEBKIT_DISABLE_COMPOSITING_MODE=1 \
   LIBGL_ALWAYS_SOFTWARE=1 \

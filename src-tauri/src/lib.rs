@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use tauri::{DragDropEvent, Manager, RunEvent, WebviewEvent, WebviewUrl, WebviewWindowBuilder};
+use tauri::{DragDropEvent, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
@@ -207,29 +207,25 @@ fn open_window(app: &tauri::AppHandle, address: &str) {
 /// this passes them in, with where on the board they were let go, for the board to file them as it
 /// files a drop in any browser.
 ///
+/// It arrives as an event of the *window*: a window holding one webview has the toolkit answer for
+/// that webview, and hand the drag up rather than in. Listened for on the webview, it never comes.
+///
 /// The page measures in its own pixels: the drop is said in the screen's, so it is brought back
 /// through what the screen is drawn at and what the window is zoomed to.
 fn hand_drops_to_page(window: &tauri::WebviewWindow, zoom: f64) {
     let handle = window.clone();
-    window.on_webview_event(move |event| {
-        let WebviewEvent::DragDrop(drag) = event else {
+    /* A window holding one webview is told of the drop as a *window* event — the toolkit's own
+       handler answers for the webview and hands the drag up — so this listens to the window, not
+       to the webview, which is never told. */
+    window.on_window_event(move |event| {
+        let WindowEvent::DragDrop(drag) = event else {
             return;
         };
-        /* Said out loud, because a drag that never arrives and one that arrives empty look the
-           same from the board: nothing happens either way. */
-        match drag {
-            DragDropEvent::Enter { paths, position } => {
-                println!("[SkyDock] a drag came in with {} path(s) at {position:?}", paths.len())
-            }
-            DragDropEvent::Leave => println!("[SkyDock] the drag left"),
-            DragDropEvent::Drop { paths, position } => {
-                println!("[SkyDock] {} path(s) dropped at {position:?}", paths.len())
-            }
-            _ => {}
-        }
         let DragDropEvent::Drop { paths, position } = drag else {
             return;
         };
+        /* said, since a drop that goes nowhere is otherwise invisible from outside the window */
+        println!("[SkyDock] {} file(s) dropped on the board", paths.len());
         let told: Vec<String> = paths
             .iter()
             .map(|path| path.to_string_lossy().into_owned())
