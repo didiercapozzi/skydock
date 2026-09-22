@@ -477,7 +477,12 @@ empty disappears. The files keep their own times, so the merged jump is dated by
 Two jumps can also be put side by side first: with one jump open, ⌘- or ctrl-clicking a second
 opens the two next to each other, each playing its own clips, and from there they can be merged onto
 the start of either, or onto a time typed in — for two cameras on one jump, one of them on the wrong
-clock. The other way round, several files picked in Fresh files — loose, or
+clock. Each side is worked through from the keyboard as any list on the board is: up and down move
+along its files, Enter takes the one they are on, and left and right go to another jump on that
+side — never to the one the other side is already showing. Moving and taking are two things here,
+since taking a file plays it. Every time in there is said in full and to the minute, the day
+included: the clocks being compared are the whole point, and the seconds between them were never
+what anybody was reading. The other way round, several files picked in Fresh files — loose, or
 taken out of a jump — are made a jump of their own. Making it asks for a name and for when it started,
 since files the gap rule missed are often files off a camera on the wrong clock: the start is filled in
 as shot, and setting it moves every file by the same amount, as correcting any jump's time does. Both

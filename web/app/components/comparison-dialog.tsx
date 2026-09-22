@@ -1,15 +1,16 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Go, Mini } from './buttons'
 import { Modal, Spacer } from './modal'
 import type { VideoRef } from './preview-drawer'
 import type { ManifestGroup } from './types'
 import { VideoCropper } from './video-cropper'
 import {
+  dateLabel,
   formatSize,
-  formatTime,
   getPlaybackUrl,
   getGroupDate,
   getThumbUrl,
+  hhmm,
   isVideoFile,
   minFileMtime,
   toDateInputValue,
@@ -17,6 +18,20 @@ import {
 } from './utils'
 
 const groupMinMtime = (group: ManifestGroup) => minFileMtime(group.files)
+
+/* When something was shot, said in full and to the minute. Two cameras are compared here because
+   one of their clocks is wrong, so the day matters as much as the hour — and the second never did:
+   nobody sets a clock by it, and it is only ever noise between two times being read side by side. */
+const fullWhen = (epoch: number) => `${dateLabel(epoch)} ${hhmm(epoch)}`
+
+/* the run of a jump: the day and minute it starts, and where it ends — with the day again only if
+   it ran into the next one */
+const runOf = (files: ManifestGroup['files']) => {
+  const first = files[0]?.mtime ?? 0
+  const last = files[files.length - 1]?.mtime ?? 0
+  const sameDay = dateLabel(first) === dateLabel(last)
+  return `${fullWhen(first)} — ${sameDay ? hhmm(last) : fullWhen(last)}`
+}
 
 const ComparisonDialog = ({
   groups,
@@ -52,6 +67,15 @@ const ComparisonDialog = ({
   const [rightCurrentTime, setRightCurrentTime] = useState(0)
   const [rightZoom, setRightZoom] = useState(1)
   const rightVideoRefRef = useRef<VideoRef | null>(null)
+
+  /* Ready for the keyboard from the moment it opens, as every other list on the board is: the file
+     the left side is on takes the focus, so the arrows have somewhere to move from without anything
+     being clicked first. */
+  useEffect(() => {
+    document
+      .querySelector<HTMLElement>('[data-compare-side="left"] [data-compare-file][tabindex="0"]')
+      ?.focus()
+  }, [])
 
   const [showDatePopup, setShowDatePopup] = useState(false)
   const [dateChoice, setDateChoice] = useState<'left' | 'right' | 'custom'>('left')
@@ -401,6 +425,27 @@ const ComparePanel = ({
 }) => {
   const file = group.files[fileIndex]
   const groupIndex = groups.findIndex((j) => j.id === group.id)
+  const list = useRef<HTMLDivElement | null>(null)
+
+  const rowsIn = () => [
+    ...(list.current?.querySelectorAll<HTMLElement>('[data-compare-file]') ?? [])
+  ]
+
+  const focusRow = (e: React.KeyboardEvent, to: number) => {
+    e.preventDefault()
+    const rows = rowsIn()
+    const row = rows[Math.max(0, Math.min(rows.length - 1, to))]
+    row?.focus()
+    row?.scrollIntoView({ block: 'nearest' })
+  }
+
+  /* the jump under these keys changes, and with it every row: the first of the new one is where the
+     keyboard goes, or it would be left on a row that is no longer there */
+  const toAnotherJump = (e: React.KeyboardEvent, go: () => void) => {
+    e.preventDefault()
+    go()
+    requestAnimationFrame(() => rowsIn()[0]?.focus())
+  }
 
   return (
     <div
@@ -452,18 +497,45 @@ const ComparePanel = ({
           </span>
         </div>
         <p className='text-[12px] text-ink-2'>
-          {group.files.length} files • {formatTime(group.files[0]?.mtime ?? 0)} —{' '}
-          {formatTime(group.files[group.files.length - 1]?.mtime ?? 0)}
+          {group.files.length} files • {runOf(group.files)}
         </p>
       </div>
 
-      <div className='flex-1 overflow-y-auto p-3 space-y-1 min-h-0'>
+      {/* The files of this jump, worked through the way every other list on the board is: the arrows
+          move along it, Enter takes the one they are on, and left and right go to the next jump on
+          this side. Moving and taking are two things here rather than one, as they are nowhere else:
+          taking a file loads a clip, and walking past six of them would load six. */}
+      <div
+        role='listbox'
+        aria-label={`Files of ${group.label}`}
+        ref={list}
+        onKeyDown={(e) => {
+          const rows = rowsIn()
+          const at = rows.indexOf(document.activeElement as HTMLElement)
+          if (e.key === 'ArrowDown') focusRow(e, at + 1)
+          else if (e.key === 'ArrowUp') focusRow(e, at - 1)
+          else if (e.key === 'Home') focusRow(e, 0)
+          else if (e.key === 'End') focusRow(e, rows.length - 1)
+          else if (e.key === 'ArrowLeft') toAnotherJump(e, onGroupPrev)
+          else if (e.key === 'ArrowRight') toAnotherJump(e, onGroupNext)
+        }}
+        className='flex-1 overflow-y-auto p-3 space-y-1 min-h-0'>
         {group.files.map((f, i) => (
           <div
             key={f.path}
             data-compare-file='true'
+            role='option'
+            aria-selected={i === fileIndex}
+            /* only the one taken is tabbed to, so Tab goes from one side to the other rather than
+               through every clip of this one */
+            tabIndex={i === fileIndex ? 0 : -1}
             onClick={() => onFileIndexChange(i)}
-            className={`px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter' && e.key !== ' ') return
+              e.preventDefault()
+              onFileIndexChange(i)
+            }}
+            className={`px-3 py-2 rounded-lg cursor-pointer transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent ${
               i === fileIndex
                 ? 'border border-pick bg-pick-soft'
                 : 'border border-transparent hover:bg-line-2'
@@ -495,6 +567,8 @@ const ComparePanel = ({
           <p className='mt-2 shrink-0 text-[12px] text-ink-2'>
             File {fileIndex + 1} of {group.files.length}:{' '}
             <span className='font-mono text-ink'>{file.filename}</span>
+            {' · '}
+            <span className='text-ink'>{fullWhen(file.mtime)}</span>
           </p>
         </div>
       )}

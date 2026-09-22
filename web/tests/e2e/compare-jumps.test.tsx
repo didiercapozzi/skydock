@@ -92,6 +92,74 @@ describe('comparing two jumps', () => {
   })
 })
 
+/* The files of each side are worked through the way every other list on the board is: the arrows
+   move along, Enter takes the one they are on, and left and right go to the next jump on that side.
+   Moving and taking are two things here rather than one, because taking a file loads a clip and
+   walking past six of them would load six. Pressed in a real browser. */
+describe('the keyboard in the comparison', () => {
+  /* three jumps, because a side never moves onto the one the other side is showing: with two there
+     is nowhere for it to go */
+  const three = { ...board, groups: [jump('g1', AT), jump('g2', AT + 3600), jump('g3', AT + 7200)] }
+
+  const opened = async () => {
+    const Stub = createRoutesStub([
+      boardRoute(() => three),
+      { path: '/api/manifest', action: async () => ({ ok: true }) }
+    ])
+    await render(createElement(Stub, { initialEntries: ['/'] }))
+    await userEvent.click(card(/^Jump 1, /))
+    await userEvent.keyboard('{Control>}')
+    await userEvent.click(card(/^Jump 2, /))
+    await userEvent.keyboard('{/Control}')
+    await expect.element(comparison()).toBeInTheDocument()
+  }
+
+  const leftSide = () => comparison().getByRole('listbox').first()
+  const taken = () =>
+    [...leftSide().element().querySelectorAll('[role="option"]')].findIndex(
+      (row) => row.getAttribute('aria-selected') === 'true'
+    )
+  const under = () => document.activeElement?.textContent?.trim().slice(0, 8) ?? ''
+
+  test('starts on the file the left side is already on, with nothing clicked', async () => {
+    await opened()
+
+    await expect.poll(under).toContain('g1a')
+  })
+
+  test('moves along the list without loading anything', async () => {
+    await opened()
+    await expect.poll(under).toContain('g1a')
+
+    await userEvent.keyboard('{ArrowDown}')
+
+    await expect.poll(under).toContain('g1b')
+    /* still the first: moving is not taking */
+    expect(taken()).toBe(0)
+  })
+
+  test('takes the file the arrows are on, with Enter', async () => {
+    await opened()
+    await expect.poll(under).toContain('g1a')
+
+    await userEvent.keyboard('{ArrowDown}')
+    await userEvent.keyboard('{Enter}')
+
+    await expect.poll(taken).toBe(1)
+  })
+
+  test('goes to another jump on that side with left and right', async () => {
+    await opened()
+    await expect.poll(under).toContain('g1a')
+
+    await userEvent.keyboard('{ArrowRight}')
+
+    /* the next jump that is not the one the other side is showing, and the keyboard on its first
+       file — the row it was on is no longer there to stand on */
+    await expect.poll(under).toContain('g3a')
+  })
+})
+
 /* One jump's card is always open — the one last chosen, or else the first, the newest — with its files listed
    under the cards. The panel on the right describes that same jump: a lit card beside a panel about
    something else was two answers to which jump this is about. */
