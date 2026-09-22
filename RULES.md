@@ -135,7 +135,11 @@ leaves every filed jump as it is. The grouping is a guess, and the board exists 
 A scan also makes a **proxy** of every clip: a small copy, the same length at the same speed, which the
 board plays instead of the full clip and which the editor later opens on. Proxies are made in the
 background; everything works without them, and a clip without one simply plays as it is. Each clip
-says whether it has one. Proxies are working files: never listed, never sorted, never uploaded.
+says whether it has one. Proxies are working files: never listed, never sorted, never uploaded. The small square the board
+draws a file by is cut from the proxy once there is one — the same frame, at a third of the cost —
+and kept, so a jump opened again is drawn from what was already cut rather than from the footage. A
+file that changes is drawn again; the kept frames are a few kilobytes each and nothing is lost by
+deleting them.
 A server stopped half way through making them — restarted, or the machine put to sleep — finishes
 them once it runs again and a board connects, rather than waiting for the next scan; what was left
 half written is cleared first.
@@ -283,6 +287,7 @@ output/
 │           └── luc_favre_20260829.rushes.zip  the originals, for the backup, when kept as one archive
 ├── proxies/                  the small copies, and for each tandem a set cut to match its processed clips
 ├── templates/                one editing template per folder, with the music and logos it uses
+├── .thumbs/                  the frames the board draws, cut once and kept
 └── .projects/                every version of each passenger's editing project, kept and never deleted
 ```
 

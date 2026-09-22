@@ -7,7 +7,7 @@ import type { FileShape, Kind, Modifiers } from './file-list'
 import type { LiveFile } from '../hooks/useLiveProgress'
 import { StepMeter } from './tandem-steps'
 import type { ManifestFile, ManifestGroup } from './types'
-import { dateLabel, getThumbUrl, hhmm, minFileMtime, plural } from './utils'
+import { dateLabel, getPictureUrl, hhmm, minFileMtime, plural } from './utils'
 
 /* A folder's files. By day, under headers that stay pinned while their files scroll by; as one list,
    all together. By jump, the jumps are cards side by side and one is open, its files listed under
@@ -121,6 +121,7 @@ const JumpCard = ({
   open,
   statusOf,
   jump,
+  proxies,
   strays,
   onOpen
 }: {
@@ -128,6 +129,8 @@ const JumpCard = ({
   open: boolean
   statusOf: (file: ManifestFile) => FileStatus
   jump: JumpControls
+  /* where each clip's small copy is, so the card's frames are cut from it rather than from 4K */
+  proxies: Record<string, ProxyFact>
   /* how many of its files the gap rule would not have put in it */
   strays: number
   onOpen: () => void
@@ -222,7 +225,7 @@ const JumpCard = ({
           {frames.map((f) => (
             <img
               key={f.id ?? f.path}
-              src={getThumbUrl(f.path, 0.5, 120)}
+              src={getPictureUrl(f, proxies[f.path], 120)}
               alt=''
               loading='lazy'
               draggable={false}
@@ -271,6 +274,7 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
                 open={s.key === open.key}
                 statusOf={statusOf}
                 jump={jump}
+                proxies={list.proxies}
                 strays={s.files.filter((f) => f.id && list.offGap.has(f.id)).length}
                 onOpen={() => cards.onOpen(s.key)}
               />

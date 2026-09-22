@@ -11,7 +11,7 @@ import { StatusChip } from './file-status'
 import type { ShownStatus } from './file-status'
 import type { LiveFile } from '../hooks/useLiveProgress'
 import type { ManifestFile } from './types'
-import { clock, formatSize, formatTime, getThumbUrl, isVideoFile } from './utils'
+import { clock, formatSize, formatTime, getPictureUrl, isVideoFile } from './utils'
 
 /* Videos and photos are two different jobs on a tandem — 15 clips to cut, 500 stills to cull — so
    the badges say which is on screen. The counts are always of everything there, never of what the
@@ -385,7 +385,7 @@ const Row = ({
       {/* a freed file is on the storage only: nothing here to draw it from */}
       {!file.freed && (
         <img
-          src={getThumbUrl(file.path, 0.5, 80)}
+          src={getPictureUrl(file, proxy, 80)}
           alt=''
           loading='lazy'
           style={turnedThumb(file.rotation)}
@@ -512,7 +512,7 @@ const Tile = ({
     {/* a freed file is on the storage only: nothing here to draw it from */}
     {!file.freed && (
       <img
-        src={getThumbUrl(file.path, 0.5, 160)}
+        src={getPictureUrl(file, proxy, 160)}
         alt=''
         loading='lazy'
         style={turnedThumb(file.rotation)}

@@ -123,6 +123,14 @@ const getPlaybackUrl = (file: ManifestFile, fact?: ProxyFact) =>
 const getThumbUrl = (filePath: string, seekSeconds: number, width = 80) =>
   `/api/thumb${relativeToOutput(filePath)}?seek=${seekSeconds.toFixed(1)}&width=${width}`
 
+/* The picture a list draws, cut from the small copy when there is one. It is the same frame either
+   way — a proxy is the same clip at the same length — but cutting it out of a 4K original means
+   seeking a 4K original, which takes three times as long as the copy does. A jump of sixteen clips
+   is sixteen of those, six at a time, and that is the half second between opening a jump and seeing
+   it. What has no small copy yet, and every still, is cut from the file itself as before. */
+const getPictureUrl = (file: ManifestFile, fact: ProxyFact | undefined, width: number) =>
+  getThumbUrl(fact?.play ?? file.proxy ?? file.path, 0.5, width)
+
 /* the graph is read off the original, which is where the camera's own measurements are */
 const getTrackUrl = (filePath: string) => `/api/track${relativeToOutput(filePath)}`
 
@@ -142,6 +150,7 @@ export {
   formatTime,
   getFileUrl,
   getGroupDate,
+  getPictureUrl,
   getPlaybackUrl,
   getThumbUrl,
   getTrackUrl,

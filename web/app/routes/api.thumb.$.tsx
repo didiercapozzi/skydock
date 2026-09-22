@@ -1,5 +1,6 @@
 import { getOutputDir, isVideoFile } from '@skydock/scripts'
 import { spawn } from 'node:child_process'
+import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { z } from 'zod'
@@ -60,6 +61,41 @@ const extractFrame = (filePath: string, seek: number, width: number) =>
     })
   })
 
+/* Cut once and kept. Every frame on the board is an ffmpeg run, and a browser will only ask for six
+   at a time: a jump of sixteen clips is a second of squares filling in one after another, every time
+   that jump is opened. Kept, it is the one run and then a file read.
+
+   What it is a picture of is in its name — the file, when it was last written, how big it was, the
+   moment asked for and the width — so a clip that changed is never answered with the old frame and
+   nothing has to be cleared. They are a few kilobytes each and this never removes one: deleting the
+   folder loses nothing but the cutting. */
+const keptAt = (filePath: string, at: fs.Stats, seek: number, width: number) => {
+  const of = `${filePath}|${at.mtimeMs}|${at.size}|${seek}|${width}`
+  const named = crypto.createHash('sha1').update(of).digest('hex')
+  return path.join(getOutputDir(), '.thumbs', `${named}.jpg`)
+}
+
+/* written beside itself and moved into place, so a half-written frame is never read as one */
+const keep = (where: string, jpeg: Buffer) => {
+  try {
+    fs.mkdirSync(path.dirname(where), { recursive: true })
+    const tmp = `${where}.${process.pid}.part`
+    fs.writeFileSync(tmp, jpeg)
+    fs.renameSync(tmp, where)
+  } catch {
+    /* a folder that cannot be written to costs the keeping, never the picture */
+  }
+}
+
+const asJpeg = (jpeg: Buffer) =>
+  new Response(new Uint8Array(jpeg), {
+    headers: {
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'Content-Length': String(jpeg.length),
+      'Content-Type': 'image/jpeg'
+    }
+  })
+
 const loader = async ({
   params,
   request
@@ -78,19 +114,21 @@ const loader = async ({
   const seek = clampSeek(url.searchParams.get('seek'))
   const width = clampWidth(url.searchParams.get('width'))
 
+  const kept = keptAt(filePath, fs.statSync(filePath), seek, width)
+  try {
+    return asJpeg(fs.readFileSync(kept))
+  } catch {
+    /* not cut yet, or not kept: cut it now */
+  }
+
   try {
     /* A clip shorter than the moment asked for has no frame there — a camera's timelapse opens with
        clips of a fraction of a second — so its first frame is taken instead of none at all. */
     const jpeg = await extractFrame(filePath, seek, width).catch((e: unknown) =>
       seek > 0 && isVideoFile(filePath) ? extractFrame(filePath, 0, width) : Promise.reject(e)
     )
-    return new Response(new Uint8Array(jpeg), {
-      headers: {
-        'Cache-Control': 'public, max-age=31536000, immutable',
-        'Content-Length': String(jpeg.length),
-        'Content-Type': 'image/jpeg'
-      }
-    })
+    keep(kept, jpeg)
+    return asJpeg(jpeg)
   } catch {
     return new Response('Thumbnail unavailable', { status: 404 })
   }

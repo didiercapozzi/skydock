@@ -134,7 +134,8 @@ output/
 ├── manifest.json      the registry of files
 ├── groups.json        the jumps, pointing at files in the registry
 ├── processed/         what gets delivered
-└── .status/           the progress of a running upload
+├── .status/           the progress of a running upload
+└── .thumbs/           the frames the board draws, cut once and kept
 ```
 
 ## Building the installers
