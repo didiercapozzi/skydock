@@ -40,7 +40,11 @@ is in a clip). What they were found for is not built yet, in the order worth doi
 
 - Signing: unsigned installers warn on macOS and Windows. Needs an Apple Developer ID and Azure
   Trusted Signing, both paid.
-- Updating: no updater yet — a new version is downloaded and installed over the old one.
+- Updating works only once the repository is public and the signing key is a secret of it: an
+  installed SkyDock asks GitHub what the latest release is, and a private repository answers nothing
+  to a request with no token. Until then every copy stays where it is, quietly.
+- Updating passes by a `.deb`: only the AppImage can replace itself on Linux. A machine installed
+  from the package updates by downloading the next one.
 - Moving the work folder: it is asked for on the first run and remembered. There is no way to change
   it afterwards but to edit the settings file.
 - The macOS and Windows installers have never been run: they are built by the workflow and have to be

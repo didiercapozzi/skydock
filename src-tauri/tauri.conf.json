@@ -14,9 +14,18 @@
       "csp": null
     }
   },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/didiercapozzi/skydock/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQ0OEIwNkFERTM2NTAzRQpSV1ErVURiZWFyQklEUnBsREplbkt1bE9oRWtucENiZnNoZ1ZXeFZGd0FiNktWYWNnQUJqWHA0QQo="
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "category": "Video",
     "shortDescription": "A dropzone's media, from the cameras to the passenger",
     "longDescription": "SkyDock copies a dropzone's cameras, sorts what it finds into jumps, prepares the files, cuts a montage and sends each passenger their film.",

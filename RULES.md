@@ -26,6 +26,13 @@ copies a card, finds the jumps, prepares the files and sends them on. One thing 
 editing program and is not carried: a montage is prepared whether or not it is installed, and
 opening one needs it.
 
+**It keeps itself current.** On opening, SkyDock asks whether a newer one has been released and
+fetches it quietly if there is, then asks once: install it now, or next time. Saying yes is a
+restart, not a wait, since it is already down; saying no leaves everything as it was and asks again
+next time. Nothing is ever installed without being asked — a machine in the middle of somebody's day
+is no place for a version that changed by itself. A machine with no way out to the internet, or one
+that finds nothing, opens its board exactly as it always does.
+
 The first time it is opened it asks where to keep its work, offering a folder of its own in the
 machine's videos. That answer is remembered, and everything below — the originals, the copies, the
 proxies, the record of it all — is under it. The bin is kept with the work, so a file put aside from

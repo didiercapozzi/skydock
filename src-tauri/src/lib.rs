@@ -13,9 +13,11 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use tauri::{DragDropEvent, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent};
-use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+use tauri_plugin_updater::UpdaterExt;
 
 /// The server running behind the window, so that closing the app closes it too. Tauri does not do
 /// this by itself, and a server left behind holds the port and goes on working on nothing.
@@ -319,6 +321,74 @@ async fn start_server(app: tauri::AppHandle) {
     }
 }
 
+/// Whether there is a newer SkyDock, and if there is, fetching it and offering it.
+///
+/// It is fetched before anybody is asked, so that saying yes is a restart rather than a wait, and
+/// saying no has cost nothing. Nothing is installed without being asked: a dropzone's machine is in
+/// the middle of somebody's day, and a version that changed underneath them is how a day goes wrong
+/// in a way nobody can explain afterwards.
+///
+/// Every way this can fail is quiet. There is no release to find until this is a public repository,
+/// and a machine in a hangar with no internet must open its board exactly as it always does — an app
+/// that will not start because it could not ask about itself is worse than an old one.
+///
+/// Must not be called on the main thread: the question is asked there and waited for here.
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+async fn offer_update(app: tauri::AppHandle) {
+    /* A window showing a development server is somebody working on SkyDock, not somebody using it:
+       replacing the program under them is never what they asked for. */
+    if told_where().is_some() {
+        return;
+    }
+    let found = match app.updater() {
+        Ok(updater) => updater.check().await,
+        Err(e) => {
+            println!("[SkyDock] no way to ask about new versions: {e}");
+            return;
+        }
+    };
+    let update = match found {
+        Ok(Some(update)) => update,
+        Ok(None) => return,
+        Err(e) => {
+            println!("[SkyDock] could not ask about new versions: {e}");
+            return;
+        }
+    };
+    println!(
+        "[SkyDock] SkyDock {} is out — this is {}. Fetching it.",
+        update.version, update.current_version
+    );
+    let fetched = match update.download(|_, _| {}, || {}).await {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            println!("[SkyDock] SkyDock {} would not come down: {e}", update.version);
+            return;
+        }
+    };
+    let asked = app
+        .dialog()
+        .message(format!(
+            "SkyDock {} is ready to install. It takes a moment and the board comes back where it was.",
+            update.version
+        ))
+        .title("A new SkyDock")
+        .buttons(MessageDialogButtons::OkCancelCustom(
+            "Install now".into(),
+            "Next time".into(),
+        ))
+        .blocking_show();
+    if !asked {
+        println!("[SkyDock] SkyDock {} will be offered again next time", update.version);
+        return;
+    }
+    match update.install(fetched) {
+        /* the server is stopped on the way out, as it is however the app ends */
+        Ok(()) => app.restart(),
+        Err(e) => println!("[SkyDock] SkyDock {} would not install: {e}", update.version),
+    }
+}
+
 /// Stops the server, whatever brought the app to an end.
 fn stop_server(app: &tauri::AppHandle) {
     if let Some(child) = app.state::<Server>().0.lock().unwrap().take() {
@@ -335,12 +405,14 @@ pub fn run() {
        camera, so opening it again brings the window already there to the front. */
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     {
-        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.unminimize();
-                let _ = window.set_focus();
-            }
-        }));
+        builder = builder
+            .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.unminimize();
+                    let _ = window.set_focus();
+                }
+            }))
+            .plugin(tauri_plugin_updater::Builder::new().build());
     }
 
     builder
@@ -359,6 +431,13 @@ pub fn run() {
                     None => start_server(handle).await,
                 }
             });
+            /* Asked about on the way in and on a thread of its own, so the board opens while it is
+               being asked and nobody waits on an answer about a version. */
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
+            {
+                let asking = app.handle().clone();
+                tauri::async_runtime::spawn(offer_update(asking));
+            }
             Ok(())
         })
         .build(tauri::generate_context!())

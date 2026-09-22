@@ -126,11 +126,17 @@ jobs:
       - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # What an installed SkyDock checks a new version against before it will install it. Without
+          # these the build still makes installers, but nothing anybody has can update itself.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           releaseId: ${{ needs.version.outputs.release }}
           # kept on the run as well as on the release, so a build started by hand is still something
           # that can be downloaded and tried
           uploadWorkflowArtifacts: true
-          uploadUpdaterJson: false
+          # the list an installed SkyDock reads to know what is out. Each machine adds its own kind
+          # to the one already on the release, so the four of them end up in one list.
+          uploadUpdaterJson: true
           retryAttempts: 1
           args: ${{ matrix.target && format('--target {0} ', matrix.target) || '' }}${{ matrix.bundles }}
