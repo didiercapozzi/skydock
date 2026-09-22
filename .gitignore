@@ -6,8 +6,12 @@ config/
 # the bin: files put aside, and a camera's files once deleted from it
 .trash/
 
+# Claude Code's own state lives here — a live token, session transcripts, shell snapshots — so the
+# folder is kept out and only what belongs to the project is let back in
 .claude/*
 !.claude/settings.json
+!.claude/agents/
+!.claude/agents/**
 .sim/
 /node_modules/
 

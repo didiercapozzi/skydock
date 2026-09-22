@@ -126,6 +126,25 @@ npm run copy -- /path/to/camera1 /path/to/camera2   # copy the cameras into outp
 npm run scan                                       # find the jumps (the board's Scan button)
 ```
 
+## What the board can be asked to do
+
+[RULES.md](./RULES.md) says what the app does. What it does not say is how it is asked: every change
+goes through one of twenty-nine intents, each with its own file, its own words and its own way of
+refusing — and the same refusal is often enforced in seven places at once, which is the part nobody
+can hold in their head.
+
+[docs/the-board-from-the-inside.md](./docs/the-board-from-the-inside.md) is that map, and it is read
+out of the code rather than written down, so it cannot quietly stop being true:
+
+```bash
+npx tsx scripts/map-the-board.ts           # write it again
+npx tsx scripts/map-the-board.ts --check   # say whether it still matches the code
+```
+
+It is generated from the list of names a request is checked against, the table tying each name to
+its file, and those files' own comments and refusals — and it says so out loud when the three stop
+agreeing: a name nothing answers, or something answered that cannot be asked for.
+
 ## Output
 
 ```
