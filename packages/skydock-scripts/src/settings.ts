@@ -9,7 +9,9 @@ import { getConfigDir, getOutputDir } from './utils'
    folder. It is asked for once — the installed app asks on its first run — and remembered, because
    a day's footage is tens of gigabytes and which disk it lands on is a decision, not a default. */
 
-const settingsSchema = z.object({ outputDir: z.string().optional() })
+/* loose on purpose: the window keeps its own setting in the same file — how big it is drawn — and
+   remembering the work folder must not erase it */
+const settingsSchema = z.looseObject({ outputDir: z.string().optional() })
 
 type Settings = z.infer<typeof settingsSchema>
 

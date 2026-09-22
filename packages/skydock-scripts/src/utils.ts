@@ -79,9 +79,11 @@ const getConfigDir = () =>
   (typeof process !== 'undefined' && process.env?.SKYDOCK_CONFIG_DIR) || '/workspace/config'
 
 /* The bin: what was put aside — files nobody wanted, and a camera's files once deleted from it — kept
-   out of the originals, so a scan never finds them again, and never emptied by the app. */
+   out of the originals, so a scan never finds them again, and never emptied by the app. It sits with
+   the work, so a file put aside moves onto the same disk rather than across one. */
 const getTrashDir = () =>
-  (typeof process !== 'undefined' && process.env?.SKYDOCK_TRASH_DIR) || '/workspace/.trash'
+  (typeof process !== 'undefined' && process.env?.SKYDOCK_TRASH_DIR) ||
+  path.join(getOutputDir(), '.trash')
 
 const sortFilesByMtime = (files: ManifestFile[]) => [...files].sort((a, b) => a.mtime - b.mtime)
 

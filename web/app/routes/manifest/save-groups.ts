@@ -1,4 +1,10 @@
-import { hasEdit, passengerOf, sameEditedGroup, saveManifest } from '@skydock/scripts'
+import {
+  hasEdit,
+  passengerOf,
+  sameEditedGroup,
+  saveManifest,
+  UPLOADED_LOCKED
+} from '@skydock/scripts'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 
@@ -29,6 +35,22 @@ const saveGroups: Intent = ({
     if (!before || !sameEditedGroup(before, incoming)) return refuseFrozen()
   }
   if (data.fileUpdates?.some((u) => u.id && frozenFiles.has(u.id))) return refuseFrozen()
+  /* uploaded is the end of editing: the crop, the frame, the turn and the place of a file that has
+     gone up are closed here, whatever the page sends (RULES, File status) */
+  for (const update of data.fileUpdates ?? []) {
+    const current = manifest.files.find((f) =>
+      update.id ? f.id === update.id : f.path === update.path
+    )
+    if (!current || !(current.uploaded || current.freed)) continue
+    const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
+    const changed =
+      !same(update.cropStart, current.cropStart) ||
+      !same(update.cropEnd, current.cropEnd) ||
+      !same(update.frame, current.frame) ||
+      !same(update.rotation ?? 0, current.rotation ?? 0) ||
+      !same(update.destination, current.destination)
+    if (changed) return refuse(UPLOADED_LOCKED)
+  }
 
   /* Renaming a passenger, a label or a place changes where the files are written, so the copies
      already on disk belong to a folder that is no longer this group's — the source is untouched,

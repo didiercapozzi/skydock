@@ -532,15 +532,6 @@ const statProxies = (manifest: Manifest, outputDir?: string) => {
   return facts
 }
 
-/* How far along the whole card is, for a line the board can show without polling anything. */
-const proxyCounts = (manifest: Manifest, outputDir?: string) => {
-  const videos = manifest.files.filter(needsProxy)
-  return {
-    ready: videos.filter((f) => proxyIsCurrent(f, outputDir) || f.proxy === f.path).length,
-    total: videos.length
-  }
-}
-
 export {
   buildMissingProxies,
   resumeProxies,
@@ -555,7 +546,6 @@ export {
   getProxyDir,
   getProxyPath,
   needsProxy,
-  proxyCounts,
   proxyIsCurrent,
   PROXY_MIN_WIDTH,
   PROXY_WIDTH,

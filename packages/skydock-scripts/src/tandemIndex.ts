@@ -86,7 +86,10 @@ const updateTandemIndex = async (
   const local = path.join(staging, INDEX_NAME)
   try {
     fs.writeFileSync(local, JSON.stringify(indexSchema.parse(index), null, 2))
-    await uploadFile(session.hostname, session.sessionId, dir, local)
+    /* SkyDock's own list, replaced in place: it is the one thing up there that is written over */
+    await uploadFile(session.hostname, session.sessionId, dir, local, undefined, {
+      overwrite: true
+    })
   } finally {
     fs.rmSync(staging, { recursive: true, force: true })
   }

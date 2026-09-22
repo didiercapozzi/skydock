@@ -707,10 +707,10 @@ describe('montage — the jump marked on the clip', () => {
 
     const markers = JSON.parse(propOf(xml, 'kdenlive:markers') ?? '[]')
     expect(markers.map((m: { comment: string }) => m.comment)).toEqual([
-      'the exit',
-      'the opening',
-      'the canopy',
-      'the ground'
+      'exit',
+      'opening',
+      'canopy',
+      'ground'
     ])
     expect(markers[0].pos).toBe(JUMP.exit * FPS)
   })
@@ -731,10 +731,10 @@ describe('montage — the jump marked on the clip', () => {
     const markers = JSON.parse(propOf(xml, 'kdenlive:markers') ?? '[]')
     expect(markers[0].pos).toBe((JUMP.exit - 30) * FPS)
     expect(markers.map((m: { comment: string }) => m.comment)).toEqual([
-      'the exit',
-      'the opening',
-      'the canopy',
-      'the ground'
+      'exit',
+      'opening',
+      'canopy',
+      'ground'
     ])
   })
 
@@ -743,7 +743,7 @@ describe('montage — the jump marked on the clip', () => {
 
     const markers = JSON.parse(propOf(xml, 'kdenlive:markers') ?? '[]')
     /* a copy cut at 122 s holds the exit and the opening, and neither the canopy nor the ground */
-    expect(markers.map((m: { comment: string }) => m.comment)).toEqual(['the exit', 'the opening'])
+    expect(markers.map((m: { comment: string }) => m.comment)).toEqual(['exit', 'opening'])
     expect(piecesOf(xml, 'playlist6')).toHaveLength(1)
   })
 

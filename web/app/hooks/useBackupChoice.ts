@@ -12,8 +12,8 @@ type BackupChoice = Required<BackupOptions>
 
 const KEY = 'skydock.backup'
 
-/* kind, then the film, then the project: `zip:false:false` */
-const DEFAULT = 'zip:false:false'
+/* kind, then the film: `zip:false` */
+const DEFAULT = 'zip:false'
 
 /* what was chosen in this page, for a browser that will not store it */
 let chosen = DEFAULT

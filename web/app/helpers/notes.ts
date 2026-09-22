@@ -154,10 +154,6 @@ const broughtBackNote = ({ filename, original }: { filename: string; original: b
     ? `${filename} is back on this machine, as it was shot.`
     : `${filename} is back — the copy that was delivered, already cut, so its trim is cleared. Prepare it again from here.`
 
-/* what was up there is never written over: it is in the bin, under the moment it was replaced */
-const sentAgainNote = ({ filename, binned }: { filename: string; binned: string }) =>
-  `${filename} sent again — what was up there is in ${binned}.`
-
 export {
   broughtBackNote,
   cameraNote,
@@ -170,6 +166,5 @@ export {
   montageNote,
   restoredNote,
   scanNote,
-  sentAgainNote,
   uploadedNote
 }

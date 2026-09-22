@@ -19,7 +19,7 @@ import { deleteJumpIntent } from './manifest/delete-jump'
 import { moveFilesIntent } from './manifest/move-files'
 import { openMontage } from './manifest/open-montage'
 import { copyBackIntent } from './manifest/copy-back'
-import { bringBackIntent, uploadAgainIntent } from './manifest/from-storage'
+import { bringBackIntent } from './manifest/from-storage'
 import { playFile } from './manifest/play-file'
 import { cancelProcess, processIntent, processWait } from './manifest/process'
 import { regroupLoose } from './manifest/regroup-loose'
@@ -41,7 +41,6 @@ const intents: Record<ActionData['intent'], Intent> = {
   'play-file': playFile,
   'copy-back': copyBackIntent,
   'bring-back': bringBackIntent,
-  'upload-again': uploadAgainIntent,
   process: processIntent,
   'process-wait': processWait,
   'cancel-process': cancelProcess,

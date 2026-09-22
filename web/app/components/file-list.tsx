@@ -1,4 +1,10 @@
-import { EDIT_LOCKED, fileChanged, fileStatus, isWholeFrame } from '@skydock/scripts'
+import {
+  EDIT_LOCKED,
+  fileChanged,
+  fileStatus,
+  isWholeFrame,
+  UPLOADED_LOCKED
+} from '@skydock/scripts'
 import type { ProxyFact, StatusContext } from '@skydock/scripts'
 import { useState } from 'react'
 import { StatusChip } from './file-status'
@@ -74,12 +80,8 @@ const lanesOf = (
   return kind === 'all' && videos.length > 0 && photos.length > 0 ? [videos, photos] : [sorted]
 }
 
-/* Why a file can no longer be changed here, if it cannot. Uploaded is the end of editing: SkyDock
-   never deletes from the storage, so it could not take the old copy back, and changing this one would
-   leave the two disagreeing for good. A tandem with an edit is frozen whole, for the edit's sake. */
-const UPLOADED_LOCKED =
-  'On the NAS — cropping, re-timing and moving are closed. Take it off the NAS to change it.'
-
+/* Why a file can no longer be changed here, if it cannot: freed, frozen with its tandem's edit, or
+   uploaded — each the server's rule as much as the page's. */
 const FREED_LOCKED = 'Freed from this machine — it is on the storage only now.'
 
 const lockReason = (file: ManifestFile, context: StatusContext) =>

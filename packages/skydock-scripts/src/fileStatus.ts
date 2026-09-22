@@ -6,6 +6,12 @@ import type { ManifestFile } from './types'
 
 type FileStatus = 'local' | 'processed' | 'uploaded'
 
+/* Why an uploaded file can no longer be changed here. SkyDock never deletes from the storage, so
+   it could not take the old copy back, and changing this one would leave the two disagreeing for
+   good — the page hides the controls, and the server refuses the change (RULES, File status). */
+const UPLOADED_LOCKED =
+  'On the NAS — cropping, re-timing and moving are closed. Take it off the NAS to change it.'
+
 /* What the NAS said, for the folders that answered. `dirs` is the set that was actually listed —
    a folder missing from it was never checked (or the call failed), which is not evidence of
    anything. `sizes` maps a full remote path to its size, or null when DSM did not report one. */
@@ -127,5 +133,5 @@ const uploadGate = (files: ManifestFile[], context?: (file: ManifestFile) => Sta
    because a copy shares its original's path and each of the two has a processed copy of its own. */
 const outputKeyOf = (file: { id?: string; path: string }) => file.id ?? file.path
 
-export { fileChanged, fileStatus, outputKeyOf, scopeStatus, uploadGate }
+export { fileChanged, fileStatus, outputKeyOf, scopeStatus, uploadGate, UPLOADED_LOCKED }
 export type { FileStatus, RemoteListing, StatusContext }

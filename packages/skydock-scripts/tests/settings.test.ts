@@ -59,6 +59,18 @@ describe('where the work is kept', () => {
     expect(fs.existsSync(path.join(configDir, 'settings.json'))).toBe(true)
   })
 
+  /* the window keeps how big it is drawn in the same file, and must find it there afterwards */
+  it('keeps what else the settings hold when the folder is remembered', () => {
+    fs.writeFileSync(path.join(configDir, 'settings.json'), JSON.stringify({ zoom: 1.5 }))
+
+    rememberOutputDir('/movies/SkyDock', configDir)
+
+    expect(JSON.parse(fs.readFileSync(path.join(configDir, 'settings.json'), 'utf-8'))).toEqual({
+      zoom: 1.5,
+      outputDir: '/movies/SkyDock'
+    })
+  })
+
   it('reads as nothing chosen when the settings cannot be read', () => {
     fs.writeFileSync(path.join(configDir, 'settings.json'), 'not json at all')
 

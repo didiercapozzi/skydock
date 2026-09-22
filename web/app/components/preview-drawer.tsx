@@ -9,6 +9,7 @@ import {
   cutFrom,
   isQuarterTurn,
   isWholeFrame,
+  nameOfMoment,
   turnBy,
   turnedSize
 } from '@skydock/scripts'
@@ -616,9 +617,9 @@ const PreviewDrawer = ({
                               key={which}
                               type='button'
                               onClick={() => onSeek(at)}
-                              title={`Go to the ${which}`}
+                              title={`Go to the ${nameOfMoment(which)}`}
                               className='rounded-[5px] border border-line px-2 py-1 font-mono text-[11.5px] text-ink-2 hover:bg-surface-2'>
-                              {which} <V>{clock(at)}</V>
+                              {nameOfMoment(which)} <V>{clock(at)}</V>
                             </button>
                           ]
                     )}

@@ -985,11 +985,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                     anchorEpoch: epoch
                   })
           }
-          onUploadAgain={
-            one.id && nas.connected
-              ? () => send(`again:${one.id}`, { intent: 'upload-again', fileIds: [one.id ?? ''] })
-              : undefined
-          }
         />
       )
     }

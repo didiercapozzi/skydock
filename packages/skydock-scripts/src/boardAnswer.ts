@@ -124,10 +124,6 @@ const boardAnswerSchema = z.object({
      was delivered, which is all a dropzone ever sends */
   broughtBack: z
     .object({ filename: z.string(), original: z.boolean(), size: z.number() })
-    .optional(),
-  /* one file sent again over what was up there, which went into the bin first */
-  sentAgain: z
-    .object({ filename: z.string(), remotePath: z.string(), binned: z.string() })
     .optional()
 })
 

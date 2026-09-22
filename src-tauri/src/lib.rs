@@ -110,11 +110,6 @@ fn settings_for(app: &tauri::AppHandle, config_dir: &Path, output_dir: &Path) ->
         "SKYDOCK_CONFIG_DIR".into(),
         config_dir.to_string_lossy().into_owned(),
     );
-    /* the bin sits with the work, so a camera's files move onto the same disk rather than across one */
-    told.insert(
-        "SKYDOCK_TRASH_DIR".into(),
-        output_dir.join(".trash").to_string_lossy().into_owned(),
-    );
     let resources = resources(app);
     told.insert(
         "SKYDOCK_CLIENT_DIR".into(),

@@ -8,7 +8,6 @@ import {
   getCutProxyDir,
   getProxyPath,
   needsProxy,
-  proxyCounts,
   resumeProxies,
   setProxyEncoder,
   statProxies
@@ -276,21 +275,6 @@ describe('proxies', () => {
     await ensureProxies(manifestOf([fileEntry(src, 'abc123')]), outputDir)
 
     expect(fs.readdirSync(path.join(outputDir, 'proxies'))).toEqual([])
-  })
-
-  it('counts how far along a card is', async () => {
-    execSyncMock.mockImplementation(toolsPresent())
-    const one = writeTempFile(outputDir, 'original_files/GX010023.MP4')
-    const two = writeTempFile(outputDir, 'original_files/GX010024.MP4')
-    const manifest = manifestOf([
-      fileEntry(one, 'abc123'),
-      fileEntry(two, 'def456'),
-      fileEntry('/a/GOPR1100.JPG', 'pic1')
-    ])
-
-    expect(proxyCounts(manifest, outputDir)).toEqual({ ready: 0, total: 2 })
-    await ensureProxies(manifest, outputDir)
-    expect(proxyCounts(manifest, outputDir)).toEqual({ ready: 2, total: 2 })
   })
 })
 

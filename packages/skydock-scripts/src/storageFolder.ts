@@ -64,7 +64,7 @@ const OWN_RECORDS = new Set(['skydock-tandems.json', 'skydock-origins.json'])
 const listStorageFolder = async (
   session: NasSession,
   dir: string,
-  links?: Map<string, { id: string; url: string }>
+  links?: Map<string, { url: string }>
 ): Promise<StorageFile[]> => {
   const order = { video: 0, photo: 1, other: 2 }
   return (await listNasFiles(session.hostname, session.sessionId, dir))

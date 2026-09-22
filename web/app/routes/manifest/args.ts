@@ -55,9 +55,8 @@ const actionArgs = z.object({
     'play-file',
     /* files this machine gave back, copied off the camera again because they are wanted here */
     'copy-back',
-    /* one file fetched back off the storage, and one sent again over what is up there */
-    'bring-back',
-    'upload-again'
+    /* one file fetched back off the storage */
+    'bring-back'
   ]),
   groupId: z.string().optional(),
   /* files on a camera, by where they sit on its card */

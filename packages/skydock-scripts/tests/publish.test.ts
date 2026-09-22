@@ -5,7 +5,7 @@ import * as http from 'node:http'
 import { createHash } from 'node:crypto'
 import * as path from 'node:path'
 import { dsmLogin, saveNasSession } from '../src/nas'
-import { publishJump } from '../src/publish'
+import { binFor, publishJump } from '../src/publish'
 import {
   createTmpDir,
   jsonResponse,
@@ -224,6 +224,83 @@ describe('uploading a folder', () => {
   })
 
   /* nobody is handed a link to the backup folder */
+  /* Nothing on the storage is written over (RULES, Principles). A file already there under the
+     name about to be sent, holding other bytes — a clip prepared again after its trim was put right,
+     a film rendered again — goes into a bin on the storage first, and only then does the new one
+     land. If the storage will not move it, nothing lands on it. */
+  describe('a file already there under the same name', () => {
+    const video = () => path.join(dir, 'videos', 'a.mp4')
+    const REMOTE = '/SkyDock/jump/videos/a.mp4'
+
+    const storageHolding = (size: number, moves: 'work' | 'fail' = 'work') => {
+      const moved: { path: string; dest: string }[] = []
+      const stub = nasStubs({
+        files: { '/SkyDock/jump/videos': [{ name: 'a.mp4', size }] },
+        md5: { [REMOTE]: createHash('md5').update('video').digest('hex') }
+      })
+      stubFetch((url) => {
+        if (url.includes('method=login')) return loginSuccess('sid')
+        if (url.includes('SYNO.FileStation.CopyMove')) {
+          if (moves === 'fail') return jsonResponse({ success: false, error: { code: 1200 } })
+          const params = new URL(url, 'http://x').searchParams
+          if (params.get('method') === 'start') {
+            moved.push({
+              path: JSON.parse(params.get('path') ?? '[]')[0],
+              dest: JSON.parse(params.get('dest_folder_path') ?? '[]')[0]
+            })
+            return jsonResponse({ success: true, data: { taskid: 'task-1' } })
+          }
+          return jsonResponse({ success: true, data: { finished: true } })
+        }
+        if (url.includes('SYNO.FileStation.Sharing'))
+          return jsonResponse({ success: true, data: { links: [{ url: '/sharing/abc' }] } })
+        return stub(url) ?? jsonResponse({ success: true })
+      })
+      return moved
+    }
+
+    it('is put in the storage’s bin first, then the new one is sent', async () => {
+      const moved = storageHolding(99)
+
+      const result = await publish({ files: [video()] })
+
+      expect(moved).toHaveLength(1)
+      expect(moved[0]?.path).toBe(REMOTE)
+      expect(moved[0]?.dest).toMatch(
+        /^\/SkyDock\/jump\/\.skydock-trash\/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}$/
+      )
+      expect(sentNames(server.uploads)).toEqual(['a.mp4'])
+      expect(result).toMatchObject({ uploaded: 1, skipped: 0 })
+    })
+
+    /* the old file has to be safe before the new one lands, or a bad upload would leave neither */
+    it('is left untouched, and nothing is sent, when the storage would not put it aside', async () => {
+      storageHolding(99, 'fail')
+
+      await expect(publish({ files: [video()] })).rejects.toThrow(/would not put a\.mp4 aside/)
+      expect(server.uploads).toEqual([])
+    })
+
+    it('is neither moved nor sent when it holds the same bytes', async () => {
+      const moved = storageHolding(5)
+
+      const result = await publish({ files: [video()] })
+
+      expect(moved).toEqual([])
+      expect(server.uploads).toEqual([])
+      expect(result).toMatchObject({ uploaded: 0, skipped: 1 })
+    })
+
+    /* beside the folder the file was delivered into, never inside it, one folder per moment */
+    it('keeps the bin one step above the delivered folder, unless that is a share', () => {
+      const at = new Date(2026, 8, 22, 18, 40, 0)
+      expect(binFor('/home/Photos/Skydive/Yverdon/a.mp4', at)).toBe(
+        '/home/Photos/Skydive/.skydock-trash/2026-09-22T18-40-00'
+      )
+      expect(binFor('/photo/a.mp4', at)).toBe('/photo/.skydock-trash/2026-09-22T18-40-00')
+    })
+  })
+
   it('asks for no share link when told not to', async () => {
     storageAnswers()
     const result = await publish({ remoteDir: '/Backup', share: false })

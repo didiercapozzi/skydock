@@ -2,7 +2,13 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { EDIT_LOCKED, getGroupProcessedDir, loadManifest, saveManifest } from '@skydock/scripts'
+import {
+  EDIT_LOCKED,
+  getGroupProcessedDir,
+  loadManifest,
+  saveManifest,
+  UPLOADED_LOCKED
+} from '@skydock/scripts'
 import type { Manifest, ManifestFile, ManifestGroup } from '@skydock/scripts'
 import { action } from '../../app/routes/api.manifest'
 import { createTmpDir, routeArgs } from './fixtures'
@@ -175,14 +181,13 @@ describe('changes made on the board', () => {
       expect(byId.group_2?.sort()).toEqual(['b', 'c'])
     })
 
-    /* a file that leaves its jump is not the file that was processed and sent, so what was recorded
-       about it goes with it — otherwise the board would show it as uploaded from a folder it is no
-       longer part of */
+    /* a file that leaves its jump is not the file that was processed, so what was recorded about
+       it goes with it — otherwise the board would show a copy made for a folder it is no longer
+       part of */
     it('drops what was recorded about a file that moves', async () => {
       const moved = file({
         id: 'b',
-        processed: { path: '/out/b.mp4', size: 10, at: 1, source: { id: 'b', size: 10, mtime: 1 } },
-        uploaded: { remotePath: '/nas/b.mp4', md5: 'x', size: 10, localPath: '/out/b.mp4', at: 1 }
+        processed: { path: '/out/b.mp4', size: 10, at: 1, source: { id: 'b', size: 10, mtime: 1 } }
       })
       writeManifest([group({ id: 'group_1', files: [file({ id: 'a' }), moved] })])
 
@@ -192,8 +197,23 @@ describe('changes made on the board', () => {
 
       const still = res.looseFiles.find((f) => f.id === 'b')
       expect(still?.processed).toBeUndefined()
-      expect(still?.uploaded).toBeUndefined()
       expect(still?.destination).toBe('Yverdon')
+    })
+
+    /* uploaded is the end of editing: the page hides the tick, and this is the rule behind it */
+    it('refuses a file that is on the storage', async () => {
+      const up = file({
+        id: 'b',
+        uploaded: { remotePath: '/nas/b.mp4', md5: 'x', size: 10, localPath: '/out/b.mp4', at: 1 }
+      })
+      writeManifest([group({ id: 'group_1', files: [file({ id: 'a' }), up] })])
+
+      const res = refusal(
+        await send({ intent: 'move-files', fileIds: ['b'], destination: 'Yverdon' })
+      )
+
+      expect(res.globalErrors?.[0]).toBe(UPLOADED_LOCKED)
+      expect(loadManifest(path.join(tmpDir, 'manifest.json'))?.groups[0]?.files).toHaveLength(2)
     })
 
     it('needs at least one file', async () => {
@@ -383,6 +403,38 @@ describe('changes made on the board', () => {
       expect(saved?.cropEnd).toBe(8)
       /* size is what the disk measures, not something a form gets to rewrite */
       expect(saved?.size).toBe(999)
+    })
+
+    /* uploaded is the end of editing, whatever the page sends (RULES, File status) */
+    it('refuses a crop on a file that is on the storage, and changes nothing', async () => {
+      const up = file({
+        id: 'z',
+        destination: 'Yverdon',
+        cropStart: 2,
+        uploaded: { remotePath: '/nas/z.mp4', md5: 'x', size: 10, localPath: '/out/z.mp4', at: 1 }
+      })
+      writeManifest([], [up])
+
+      const res = refusal(
+        await send({ intent: 'save-groups', groups: [], fileUpdates: [{ ...up, cropStart: 5 }] })
+      )
+
+      expect(res.globalErrors?.[0]).toBe(UPLOADED_LOCKED)
+      expect(loadManifest(path.join(tmpDir, 'manifest.json'))?.files[0]?.cropStart).toBe(2)
+    })
+
+    it('saves an uploaded file sent back exactly as it is', async () => {
+      const up = file({
+        id: 'z',
+        destination: 'Yverdon',
+        cropStart: 2,
+        uploaded: { remotePath: '/nas/z.mp4', md5: 'x', size: 10, localPath: '/out/z.mp4', at: 1 }
+      })
+      writeManifest([], [up])
+
+      const res = answer(await send({ intent: 'save-groups', groups: [], fileUpdates: [up] }))
+
+      expect(res.looseFiles[0]?.cropStart).toBe(2)
     })
   })
 

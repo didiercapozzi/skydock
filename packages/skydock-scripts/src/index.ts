@@ -23,7 +23,7 @@ import {
   shiftGroupTo,
   startOfFiles
 } from './clustering'
-import { fileChanged, fileStatus, outputKeyOf, uploadGate } from './fileStatus'
+import { fileChanged, fileStatus, outputKeyOf, uploadGate, UPLOADED_LOCKED } from './fileStatus'
 import type { FileStatus, RemoteListing, StatusContext } from './fileStatus'
 import { forgetLostFiles } from './forgetLost'
 import { learnStorage } from './originIndex'
@@ -83,6 +83,8 @@ import {
   whenProcessed
 } from './process'
 import { cutFrom, jumpMoments, RUN_UP } from './jumpMoments'
+import { MOMENTS, nameOfMoment } from './moments'
+import type { Moment } from './moments'
 import { jumpTrack } from './jumpTrack'
 import { statProxies } from './proxy'
 import { rememberOutputDir, resolveOutputDir } from './settings'
@@ -225,6 +227,8 @@ export {
   manifestFileSchema,
   manifestGroupSchema,
   mergeGroups,
+  MOMENTS,
+  nameOfMoment,
   parentOf,
   passengerName,
   passengerOf,
@@ -262,6 +266,7 @@ export {
   turnedSize,
   updateNasFolder,
   uploadGate,
+  UPLOADED_LOCKED,
   uploadProgressStateSchema,
   uploadScope,
   whenProcessed,
@@ -283,6 +288,7 @@ export type {
   Manifest,
   ManifestFile,
   ManifestGroup,
+  Moment,
   MontageNote,
   OutputFact,
   PassengerEmail,

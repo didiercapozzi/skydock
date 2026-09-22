@@ -15,7 +15,6 @@ import {
   resetNote,
   restoredNote,
   scanNote,
-  sentAgainNote,
   uploadedNote
 } from '../helpers/notes'
 import { useSafeFetcher } from '../helpers/routing'
@@ -116,7 +115,6 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
         played,
         copiedBack,
         broughtBack,
-        sentAgain,
         storage: listed,
         storageProblem
       } = answered.data
@@ -161,9 +159,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
                                   ? copiedBackNote(copiedBack)
                                   : broughtBack
                                     ? broughtBackNote(broughtBack)
-                                    : sentAgain
-                                      ? sentAgainNote(sentAgain)
-                                      : null
+                                    : null
       /* the work stands even when the list could not follow it, and that is said alongside */
       setNote(storageProblem ? [said, storageProblem].filter(Boolean).join(' · ') : said)
     } else {

@@ -28,7 +28,6 @@ const publishArgsSchema = dsmConfigSchema.extend({
   remoteDir: z.string(),
   /* where the storage connection is kept; the app's own config folder unless a test says otherwise */
   configDir: z.string().optional(),
-  dedupe: z.boolean().optional(),
   md5Concurrency: z.number().optional(),
   /* exactly what to send, when the folder holds more than the recipient should get — a passenger's
      folder also holds the project and the rushes, and neither is theirs */
@@ -91,12 +90,16 @@ const readResponseJson = (res: http.IncomingMessage) =>
     res.on('error', reject)
   })
 
+/* One file sent. Nothing on the storage is written over by this: a file already there under that
+   name makes the storage refuse, and the upload has to have put it aside first (RULES, Principles).
+   Only SkyDock's own records — the lists it keeps up there — are replaced in place, and say so. */
 const uploadFile = async (
   host: string,
   sid: string,
   remoteDir: string,
   localPath: string,
-  onProgress?: (progress: UploadProgress) => void
+  onProgress?: (progress: UploadProgress) => void,
+  options?: { overwrite?: boolean }
 ) => {
   const filename = path.basename(localPath).replace(/"/g, '')
   const stat = fs.statSync(localPath)
@@ -109,7 +112,7 @@ const uploadFile = async (
      each copy with when it was shot, and without this the storage dates everything by the day it
      was sent — which is what anyone browsing the folder then sorts by. */
   const preamble = Buffer.from(
-    `${field('path', remoteDir)}${field('create_parents', 'true')}${field('overwrite', 'true')}` +
+    `${field('path', remoteDir)}${field('create_parents', 'true')}${field('overwrite', options?.overwrite ? 'true' : 'false')}` +
       field('mtime', String(Math.floor(stat.mtimeMs))) +
       `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: application/octet-stream\r\n\r\n`,
     'utf8'
@@ -200,6 +203,27 @@ const uploadFile = async (
   /* a retry re-reads the file, so each attempt hashes afresh and the winner's digest is returned */
   return { md5: await withRetry(sendOnce, 3, UPLOAD_RETRY_DELAY_MS), size: totalBytes }
 }
+
+/* Where a file of the same name goes before a different one lands: a bin on the storage, beside
+   the folder it was delivered into rather than inside it, which a passenger's link opens, one folder
+   per moment. SkyDock deletes nothing up there, so what a better copy replaces is put where it can
+   still be fetched from, and that bin is never emptied by SkyDock (RULES, Network storage). A
+   share's own recycle bin is not used: it can be switched off per share, and a NAS does not
+   reliably say whether it is there. */
+const BIN = '.skydock-trash'
+
+const stampOf = (at: Date) =>
+  `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}T${String(at.getHours()).padStart(2, '0')}-${String(at.getMinutes()).padStart(2, '0')}-${String(at.getSeconds()).padStart(2, '0')}`
+
+/* one step above the folder the file is in, unless that folder is a share, which has nothing above */
+const binFor = (remotePath: string, at: Date) => {
+  const folder = parentOf(remotePath)
+  const above = parentOf(folder)
+  return `${above === '/' || above === '' ? folder : above}/${BIN}/${stampOf(at)}`
+}
+
+const moveAside = async (host: string, sid: string, remotePath: string, at: Date) =>
+  await dsmCopyMove(host, sid, remotePath, binFor(remotePath, at))
 
 /* `path.relative(dir, dir)` is '', not '.', and joining that on produced a trailing slash —
    which DSM refuses with error 418, "illegal name or path". Only reachable since flat fun jumps
@@ -352,7 +376,14 @@ const planUpload = async ({
       : [{ remotePath, size, ...(learned.has(remotePath) ? { md5: learned.get(remotePath) } : {}) }]
   )
 
-  return { upload: upload.filter((file) => !already.has(file)).sort(), skip, copyOver, seen }
+  return {
+    upload: upload.filter((file) => !already.has(file)).sort(),
+    skip,
+    copyOver,
+    seen,
+    /* every file the folders were seen to hold, whatever it weighs: what a send must not land on */
+    held: [...remoteByPath.keys()]
+  }
 }
 
 const publishJump = async (
@@ -372,25 +403,16 @@ const publishJump = async (
     { login: dsmLogin, validate: dsmValidateSession },
     args.configDir
   )
-  const all = args.files ?? walkFiles(args.localDir)
-  const planned: {
-    upload: string[]
-    skip: UploadVerdict[]
-    copyOver?: CopyOver[]
-    seen?: Seen[]
-  } =
-    args.dedupe === false
-      ? { upload: [...all].sort(), skip: [] }
-      : await planUpload({
-          host: args.host,
-          sid,
-          localDir: args.localDir,
-          remoteDir: args.remoteDir,
-          concurrency: args.md5Concurrency,
-          onCheck: handlers?.onCheck,
-          files: args.files,
-          origins: args.origins
-        })
+  const planned = await planUpload({
+    host: args.host,
+    sid,
+    localDir: args.localDir,
+    remoteDir: args.remoteDir,
+    concurrency: args.md5Concurrency,
+    onCheck: handlers?.onCheck,
+    files: args.files,
+    origins: args.origins
+  })
 
   /* What the storage already holds is copied by the storage into the folder that wants it, and
      given the name that folder would have given it — nothing travels from here. A copy the storage
@@ -420,16 +442,27 @@ const publishJump = async (
   }
   planned.upload.push(...couldNotCopy)
 
+  /* A file whose name is already taken up there by different bytes — a clip prepared again after its
+     trim was put right, a film rendered again — is not written over: what is there is moved into the
+     bin first, and if the storage will not move it the upload stops here, saying which file. What
+     was sent before that stands, and the next upload finds it there. */
+  const held = new Set(planned.held)
+  const asideAt = new Date()
   const totalFiles = planned.upload.length
   const sent: UploadVerdict[] = []
   for (const [index, file] of planned.upload.entries()) {
     const remoteDir = remoteDirOf(args.localDir, args.remoteDir, file)
+    const remotePath = `${remoteDir}/${path.basename(file)}`
+    if (held.has(remotePath) && !(await moveAside(args.host, sid, remotePath, asideAt)))
+      throw new Error(
+        `The storage would not put ${lastSegment(remotePath)} aside, so it was not sent — what is up there is untouched.`
+      )
     const { md5, size } = await uploadFile(args.host, sid, remoteDir, file, (progress) =>
       handlers?.onProgress?.({ ...progress, fileIndex: index, totalFiles })
     )
     sent.push({
       localPath: file,
-      remotePath: `${remoteDir}/${path.basename(file)}`,
+      remotePath,
       md5,
       size,
       at: Math.floor(Date.now() / 1000)
@@ -448,5 +481,5 @@ const publishJump = async (
   }
 }
 
-export { planUpload, publishJump, uploadFile }
+export { binFor, planUpload, publishJump, uploadFile }
 export type { CheckProgress, PublishArgs, Seen, UploadProgress, UploadVerdict }
