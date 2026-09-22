@@ -1,8 +1,9 @@
 import { passengerName, passengerOf } from '@skydock/scripts'
 import { useState } from 'react'
 import type { Passenger } from '../components/tandem-card'
+import type { Dropped } from '../helpers/import'
 import type { ManifestFile, ManifestGroup } from '../components/types'
-import { fromComputer } from '../helpers/import'
+import { droppedIn, fromComputer } from '../helpers/import'
 import { TANDEMS, inTandemsCard } from '../helpers/jumps'
 import { placeKey } from '../helpers/places'
 import type { Place } from '../helpers/places'
@@ -41,7 +42,7 @@ const useDragAndDrop = ({
   pickedFiles: string[]
   moveFiles: (ids: string[], where: Move) => void
   assign: (ids: string[], destination: string | null, passenger?: Passenger) => void
-  importDropped: (list: FileList, target: string, where: string) => Promise<void>
+  importDropped: (list: Dropped[], target: string, where: string) => Promise<void>
 }) => {
   const [dragged, setDragged] = useState<string[]>([])
   const [draggedFiles, setDraggedFiles] = useState<string[]>([])
@@ -94,7 +95,10 @@ const useDragAndDrop = ({
   const groupDropTarget = (groupId: string, scope: 'group' | 'chip' = 'group') => {
     const key = `${scope}:${groupId}`
     if (frozen.has(groupId)) return {}
+    const jump = groups.find((g) => g.id === groupId)
     return {
+      'data-drop-target': `group:${groupId}`,
+      'data-drop-where': (jump && passengerOf(jump)) || jump?.label || 'this jump',
       onDragOver: (e: React.DragEvent) => {
         if (draggedFiles.length === 0 && !fromComputer(e)) return
         e.preventDefault()
@@ -105,12 +109,13 @@ const useDragAndDrop = ({
       onDragLeave: leaveTarget(key),
       onDrop: (e: React.DragEvent) => {
         setOverTarget(null)
-        if (fromComputer(e) && e.dataTransfer.files.length > 0) {
+        const carried = fromComputer(e) ? droppedIn(e) : []
+        if (carried.length > 0) {
           e.preventDefault()
           e.stopPropagation()
           const group = groups.find((g) => g.id === groupId)
           void importDropped(
-            e.dataTransfer.files,
+            carried,
             `group:${groupId}`,
             (group && passengerOf(group)) || group?.label || 'this jump'
           )
@@ -147,6 +152,12 @@ const useDragAndDrop = ({
           ? null
           : { target: `dest:${destination}`, where: destination }
     return {
+      /* What a file let go on this would join, said on the element itself: SkyDock's own window
+         hands the drop to the app rather than to the page, with where on the screen it happened,
+         so the board has only the point to find its way back from. */
+      ...(incoming
+        ? { 'data-drop-target': incoming.target, 'data-drop-where': incoming.where }
+        : {}),
       onDragOver: (e: React.DragEvent) => {
         if (!accepts && !(fromComputer(e) && incoming)) return
         e.preventDefault()
@@ -158,8 +169,9 @@ const useDragAndDrop = ({
       onDrop: (e: React.DragEvent) => {
         e.preventDefault()
         setOverTarget(null)
-        if (fromComputer(e) && e.dataTransfer.files.length > 0) {
-          if (incoming) void importDropped(e.dataTransfer.files, incoming.target, incoming.where)
+        const carried = fromComputer(e) ? droppedIn(e) : []
+        if (carried.length > 0) {
+          if (incoming) void importDropped(carried, incoming.target, incoming.where)
           return
         }
         if (draggedFiles.length > 0)

@@ -450,6 +450,11 @@ is left alone. What is not a video or a photo is refused, and so is a drop on a 
 or lives on the storage only. The board says what came of the drop, and a file nothing happened to is
 not called a failure.
 
+A file let go where nothing takes it — the header, the panel, the space around the work — is left
+where it was, and the board says where it could have gone. It is never opened over the board: a
+dropped video shown in the board's place is the board gone, and in SkyDock's own window there is no
+way back to it.
+
 **Putting files in the bin.** A test shot or footage of the ground can be got rid of, but only as a loose
 file in Fresh files: a file filed somewhere is somebody's, and one in a jump belongs with it, so taking it
 back to Fresh files, then out of its jump, are the steps that say it no longer does. A file copied into

@@ -1,4 +1,5 @@
-import { fromComputer } from '../helpers/import'
+import { droppedIn, fromComputer } from '../helpers/import'
+import type { Dropped } from '../helpers/import'
 import { placeLabel } from '../helpers/places'
 import type { Place } from '../helpers/places'
 import type { Grouping } from '../helpers/sections'
@@ -51,20 +52,26 @@ const PlacePane = ({
   note: string | null
   /* where a file from the computer dropped anywhere on the pane goes, if anywhere */
   incoming: { target: string; where: string } | null
-  onImport: (list: FileList, target: string, where: string) => void
+  onImport: (list: Dropped[], target: string, where: string) => void
   children: React.ReactNode
 }) => {
   const browsing = place.kind !== 'storage'
   return (
     <section
       aria-label={placeLabel(place)}
+      /* what a file let go anywhere on this page would join, for a drop the app hands over by
+         where it happened rather than by what it landed on */
+      {...(incoming
+        ? { 'data-drop-target': incoming.target, 'data-drop-where': incoming.where }
+        : {})}
       onDragOver={(e) => {
         if (fromComputer(e) && incoming) e.preventDefault()
       }}
       onDrop={(e) => {
-        if (!fromComputer(e) || !incoming || e.dataTransfer.files.length === 0) return
+        const carried = fromComputer(e) && incoming ? droppedIn(e) : []
+        if (!incoming || carried.length === 0) return
         e.preventDefault()
-        onImport(e.dataTransfer.files, incoming.target, incoming.where)
+        onImport(carried, incoming.target, incoming.where)
       }}
       className='flex min-h-0 min-w-0 flex-col bg-ground'>
       <div className='flex flex-wrap items-center gap-x-[9px] gap-y-1.5 border-b border-line bg-pane px-4 pt-2.5 pb-2'>

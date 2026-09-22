@@ -28,7 +28,7 @@ import {
 import type { FrameCrop, Rotation, TandemEntry } from '@skydock/scripts'
 import { diskSpace } from '../../../packages/skydock-scripts/src/diskSpace'
 import { readTandemIndex } from '../../../packages/skydock-scripts/src/tandemIndex'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet, useNavigate, useParams } from 'react-router'
 import type { ShouldRevalidateFunctionArgs } from 'react-router'
 import { BoardHeader } from '../components/board-header'
@@ -59,7 +59,8 @@ import {
 } from '../components/tandem-card'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
 import { formatSize, formatTime, plural, setOutputRoot, shortDate } from '../components/utils'
-import { importFiles } from '../helpers/import'
+import { fromComputer, importFiles } from '../helpers/import'
+import type { Dropped } from '../helpers/import'
 import { TANDEMS, folderOnStorage } from '../helpers/jumps'
 import {
   familyOf,
@@ -545,7 +546,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
   /* Files from the computer are copied one by one, the board saying which; once all are in, it
      looks again and hears how the whole drop went. */
-  const importDropped = async (list: FileList, target: string, where: string) => {
+  const importDropped = async (list: Dropped[], target: string, where: string) => {
     if (list.length === 0) return
     board.setBusy('import')
     const tally = await importFiles(list, target, where, (index, total, name) =>
@@ -555,6 +556,30 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   }
 
   const drag = useDragAndDrop({ groups, frozen, pickedFiles, moveFiles, assign, importDropped })
+
+  /* A file dragged in from the machine, when the board is SkyDock's own window. The engine there
+     tells the page a file was dropped and then refuses to say which — a page is not to be trusted
+     with where somebody's files are — so the app hands them over instead, with the point on screen
+     they were let go at. What is under that point says where they go, and nothing under it at all
+     is a drop that landed on no place, as it is in a browser. */
+  useEffect(() => {
+    const landed = (e: Event) => {
+      const said = (e as CustomEvent<{ paths?: string[]; x: number; y: number }>).detail
+      if (!said?.paths?.length) {
+        setNote('That drop came with nothing in it.')
+        return
+      }
+      const on = document.elementFromPoint(said.x, said.y)?.closest('[data-drop-target]')
+      const target = on?.getAttribute('data-drop-target')
+      if (!target) {
+        setNote('Drop a clip on a place, a passenger or a jump to add it.')
+        return
+      }
+      void importDropped(said.paths, target, on?.getAttribute('data-drop-where') ?? 'here')
+    }
+    window.addEventListener('skydock:drop', landed)
+    return () => window.removeEventListener('skydock:drop', landed)
+  })
 
   /* The folder something was just filed under lights up for a moment, so the eye can follow the
      jump there from the line it left. */
@@ -1089,6 +1114,20 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   return (
     <main
       onDragEnd={drag.endDrag}
+      /* The floor under every place that takes a drop, and a target itself for nothing: what is let
+         go where nothing takes it is left alone, and a file is told where it could have gone.
+         Whatever it was is caught here, without asking what it is, because the one thing that must
+         never happen does not depend on the answer: an engine handed a file nobody wanted opens it,
+         which in SkyDock's own window puts a video where the board was, with no way back to it. */
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault()
+        if (!fromComputer(e)) return
+        /* In SkyDock's own window the app is handing the same drop over by itself, paths and all,
+           so this one is already spoken for and says nothing. */
+        if ('__skydockDrops' in window) return
+        setNote('Drop a clip on a place, a passenger or a jump to add it.')
+      }}
       className='flex h-screen flex-col'>
       <BoardHeader
         scanning={board.scanning}

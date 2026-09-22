@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
+use tauri::{DragDropEvent, Manager, RunEvent, WebviewEvent, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
@@ -36,11 +36,24 @@ fn beside_exe(name: &str) -> Option<PathBuf> {
 }
 
 /// Where the app's own files are: the server, the built page, the templates it ships with.
+///
+/// Installed, they are where the installer put them. Built and then run where it was built — which
+/// is how the app is tried on a machine before anything is installed on it — they are beside the
+/// program, since that is where the build left them. Asking only the first is a program that starts
+/// and then cannot find its own server.
 fn resources(app: &tauri::AppHandle) -> PathBuf {
-    app.path()
-        .resource_dir()
-        .map(|dir| dir.join("resources"))
-        .unwrap_or_else(|_| PathBuf::from("resources"))
+    let installed = app.path().resource_dir().map(|dir| dir.join("resources")).ok();
+    let beside = std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|dir| dir.join("resources")));
+    for somewhere in [installed.clone(), beside] {
+        match somewhere {
+            Some(dir) if dir.is_dir() => return dir,
+            _ => {}
+        }
+    }
+    /* neither is there: the installed place is the one worth naming in what goes wrong */
+    installed.unwrap_or_else(|| PathBuf::from("resources"))
 }
 
 /// The folder SkyDock offers on its first run: the machine's videos folder, with a folder of its
@@ -171,12 +184,11 @@ fn open_window(app: &tauri::AppHandle, address: &str) {
         .title("SkyDock")
         .inner_size(1440.0, 900.0)
         .min_inner_size(900.0, 600.0)
-        // The page does its own dragging: filing a jump is dragging it onto a place, and a video is
-        // added by dropping it on the board. Left on, the window takes every drop before the page
-        // sees it, and neither works.
-        .disable_drag_drop_handler()
         // ⌘/ctrl with + or −, and the wheel, as they do in any browser.
         .zoom_hotkeys_enabled(true)
+        // So the board knows it is in here, and leaves a dropped file to the app rather than to the
+        // engine, which will not say what was dropped.
+        .initialization_script("window.__skydockDrops = true")
         .build();
     match built {
         Ok(window) => {
@@ -184,10 +196,56 @@ fn open_window(app: &tauri::AppHandle, address: &str) {
             if zoom != 1.0 {
                 let _ = window.set_zoom(zoom);
             }
+            hand_drops_to_page(&window, zoom);
             println!("[SkyDock] the window is open on {address}");
         }
         Err(e) => eprintln!("[SkyDock] the window could not be opened: {e}"),
     }
+}
+
+/// What was dropped on the window, handed to the board.
+///
+/// A video dragged in from the machine is the board's to file, and the board is a page. The engine
+/// the window draws with tells that page a file was dropped and then refuses to say which: it
+/// offers the address and hands over nothing at all, because a page is not somebody to trust with
+/// where a person's files are. The app is. The drop arrives here with the paths themselves, and
+/// this passes them in, with where on the board they were let go, for the board to file them as it
+/// files a drop in any browser.
+///
+/// The page measures in its own pixels: the drop is said in the screen's, so it is brought back
+/// through what the screen is drawn at and what the window is zoomed to.
+fn hand_drops_to_page(window: &tauri::WebviewWindow, zoom: f64) {
+    let handle = window.clone();
+    window.on_webview_event(move |event| {
+        let WebviewEvent::DragDrop(drag) = event else {
+            return;
+        };
+        /* Said out loud, because a drag that never arrives and one that arrives empty look the
+           same from the board: nothing happens either way. */
+        match drag {
+            DragDropEvent::Enter { paths, position } => {
+                println!("[SkyDock] a drag came in with {} path(s) at {position:?}", paths.len())
+            }
+            DragDropEvent::Leave => println!("[SkyDock] the drag left"),
+            DragDropEvent::Drop { paths, position } => {
+                println!("[SkyDock] {} path(s) dropped at {position:?}", paths.len())
+            }
+            _ => {}
+        }
+        let DragDropEvent::Drop { paths, position } = drag else {
+            return;
+        };
+        let told: Vec<String> = paths
+            .iter()
+            .map(|path| path.to_string_lossy().into_owned())
+            .collect();
+        let said = serde_json::to_string(&told).unwrap_or_else(|_| "[]".into());
+        let scale = handle.scale_factor().unwrap_or(1.0) * zoom;
+        let (x, y) = (position.x / scale, position.y / scale);
+        let _ = handle.eval(format!(
+            "window.dispatchEvent(new CustomEvent('skydock:drop',{{detail:{{paths:{said},x:{x},y:{y}}}}}))"
+        ));
+    });
 }
 
 /// A server already running, for working on the app itself: the development server is told where to
