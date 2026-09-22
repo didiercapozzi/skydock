@@ -15,9 +15,19 @@ import * as url from 'node:url'
 
 const here = path.dirname(url.fileURLToPath(import.meta.url))
 
+/* What evermeet says the current build of a program is, which is where it really is. */
+const evermeet = async (tool) => {
+  const said = await fetch(`https://evermeet.cx/ffmpeg/info/${tool}/release`)
+  if (!said.ok) throw new Error(`evermeet answered ${said.status} about ${tool}`)
+  const release = await said.json()
+  const url = release?.download?.zip?.url
+  if (!url) throw new Error(`evermeet says nothing about where to get ${tool}`)
+  return url
+}
+
 /* Where each system's static build comes from. Some pack both programs together and some one
    each, which is all that differs: whatever comes out of the archive, the two are found in it by
-   name. */
+   name. An address can be given as itself, or as a way of asking for the current one. */
 const SOURCES = {
   'x86_64-unknown-linux-gnu': {
     from: 'https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz',
@@ -28,13 +38,11 @@ const SOURCES = {
     archive: 'tar.xz'
   },
   'x86_64-apple-darwin': {
-    from: 'https://evermeet.cx/ffmpeg/getrelease/zip',
     archive: 'zip',
-    /* evermeet packs one program per archive, so ffprobe is fetched on its own */
-    each: {
-      ffmpeg: 'https://evermeet.cx/ffmpeg/getrelease/zip',
-      ffprobe: 'https://evermeet.cx/ffprobe/getrelease/zip'
-    }
+    /* evermeet packs one program per archive, so ffprobe is fetched on its own — and by the address
+       it gives for the release rather than its short one, which hands out ffmpeg whichever program
+       is asked of it, and so packed an ffmpeg named ffmpeg into what should have been ffprobe. */
+    each: { ffmpeg: evermeet, ffprobe: evermeet }
   },
   'aarch64-apple-darwin': {
     from: 'https://www.osxexperts.net/ffmpeg711arm.zip',
@@ -92,7 +100,7 @@ const fetchInto = async (triple, into) => {
     const staging = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-tools-'))
     try {
       const archive = path.join(staging, `tools.${source.archive}`)
-      await download(from, archive)
+      await download(typeof from === 'function' ? await from(tool) : from, archive)
       execFileSync('tar', ['-xf', archive, '-C', staging], { stdio: 'inherit' })
       fs.rmSync(archive, { force: true })
       for (const one of tool === 'both' ? ['ffmpeg', 'ffprobe'] : [tool])

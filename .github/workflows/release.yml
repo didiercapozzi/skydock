@@ -55,6 +55,9 @@ jobs:
         shell: bash
         run: |
           id=$(gh api "repos/${{ github.repository }}/releases/tags/$TAG" --jq .id 2>/dev/null || true)
+          # Asked about a release that is not there, gh prints the refusal itself and it lands here
+          # as if it were an answer. Only a number is one.
+          case "$id" in '' | *[!0-9]*) id='' ;; esac
           if [ -z "$id" ]; then
             id=$(gh api "repos/${{ github.repository }}/releases" \
               -f tag_name="$TAG" \
@@ -119,9 +122,28 @@ jobs:
       # that reads and writes dates itself.
       - name: The media tools the app carries
         shell: bash
-        run: echo "SKYDOCK_TOOLS_DIR=$(node scripts/fetch-tools.mjs)" >> "$GITHUB_ENV"
+        # In two lines rather than one: a fetch that fails inside the line that writes the answer
+        # takes the step's blame with it, and the build then fails much later over an empty folder.
+        run: |
+          told=$(node scripts/fetch-tools.mjs)
+          echo "SKYDOCK_TOOLS_DIR=$told" >> "$GITHUB_ENV"
         env:
           TAURI_ENV_TARGET_TRIPLE: ${{ matrix.target }}
+
+      # Without the key there is nothing to sign an update with, and asking to make one anyway stops
+      # the build outright — four red machines and no installers, over a thing that is not needed to
+      # make an installer at all. So the signature stands down and says so. What comes out installs
+      # exactly as it would have; it is only that nothing in the field will update itself to it. The
+      # public key stays in, so a copy installed from here still accepts a signed one later.
+      - name: Whether these can be signed for updating
+        id: signing
+        shell: bash
+        env:
+          KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if [ -n "$KEY" ]; then exit 0; fi
+          echo "::warning::No TAURI_SIGNING_PRIVATE_KEY in this repository's secrets — the installers are being made without the signature an installed SkyDock checks, so nothing will update itself to this version."
+          node -e "const f='src-tauri/tauri.conf.json',s=require('fs'),j=JSON.parse(s.readFileSync(f,'utf-8'));delete j.bundle.createUpdaterArtifacts;s.writeFileSync(f,JSON.stringify(j,null,2)+'\n')"
 
       - uses: tauri-apps/tauri-action@v1
         env:

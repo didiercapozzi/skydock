@@ -27,7 +27,7 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@babel/preset-typescript": "^8.0.1",
+    "@babel/preset-typescript": "^7.29.7",
     "@react-router/dev": "^8",
     "@tailwindcss/vite": "^4.3.3",
     "@types/archiver": "^8.0.0",
