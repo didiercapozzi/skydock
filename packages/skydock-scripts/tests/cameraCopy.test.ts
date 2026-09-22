@@ -3,7 +3,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { lookForCameras, mountedCameras, watchCameras } from '../src/cameraWatch'
-import { CameraGone, copyCamera } from '../src/copy'
+import { CameraGone, copyBack, copyCamera } from '../src/copy'
 import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
 import { loadManifest, saveManifest } from '../src/manifest'
@@ -129,6 +129,35 @@ describe('copying a camera off', () => {
 
     expect(again).toMatchObject({ copied: 0, skipped: 1 })
     expect(fs.existsSync(day('GX010001.MP4'))).toBe(false)
+  })
+
+  /* the one way back: freeing is undone by asking for that file, never by plugging the card in */
+  it('copies a freed file back when it is asked for by name, and it is a file again', async () => {
+    const root = card('GOPRO', { 'GX010001.MP4': { bytes: 32, fill: 1, at: DAY } })
+    await copyCamera({ cameraDir: path.join(root, 'DCIM'), outputDir })
+    await freeIt('GX010001.MP4')
+    const onCard = path.join(root, 'DCIM', '100GOPRO', 'GX010001.MP4')
+
+    const back = await copyBack({ paths: [onCard], outputDir })
+    await scanMedia({ outputDir })
+
+    expect(back).toMatchObject({ copied: 1, skipped: 0 })
+    expect(fs.existsSync(day('GX010001.MP4'))).toBe(true)
+    const entry = loadManifest(getManifestPath(outputDir))!.files.find(
+      (f) => f.filename === 'GX010001.MP4'
+    )
+    expect(entry?.freed).toBeUndefined()
+  })
+
+  it('leaves a file that is already here alone rather than copying it beside itself', async () => {
+    const root = card('GOPRO', { 'GX010001.MP4': { bytes: 32, fill: 1, at: DAY } })
+    await copyCamera({ cameraDir: path.join(root, 'DCIM'), outputDir })
+    const onCard = path.join(root, 'DCIM', '100GOPRO', 'GX010001.MP4')
+
+    const back = await copyBack({ paths: [onCard], outputDir })
+
+    expect(back).toMatchObject({ copied: 0, skipped: 1 })
+    expect(fs.readdirSync(path.dirname(day('x')))).toEqual(['GX010001.MP4'])
   })
 
   it('knows a freed file under the numbered name a second camera’s clip was given', async () => {

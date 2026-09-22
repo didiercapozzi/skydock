@@ -44,7 +44,7 @@ const file = (over: Partial<ManifestFile> = {}): ManifestFile => ({
 
 const manifestOf = (files: ManifestFile[], groups: ManifestGroup[] = []): Manifest => ({
   version: 1,
-  createdAt: 1_700_000_000,
+  createdAt: '2026-09-20',
   files,
   groups
 })

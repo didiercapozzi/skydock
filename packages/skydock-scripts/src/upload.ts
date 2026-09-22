@@ -2,8 +2,11 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { getDestinationDir, getGroupProcessedDir, isFlatGroup } from './process'
 import { parentOf } from './paths'
+import { deliveryFolders, readOriginIndex, recordOrigins } from './originIndex'
+import { originsOf } from './originEntry'
+import type { OriginIndex } from './originEntry'
 import { publishJump } from './publish'
-import type { CheckProgress, UploadProgress, UploadVerdict } from './publish'
+import type { CheckProgress, Seen, UploadProgress, UploadVerdict } from './publish'
 import { listNasFiles } from './nas'
 import { isTandem } from './tandem'
 import type { NasSession } from './nas'
@@ -50,7 +53,11 @@ const listRemoteFiles = async (manifest: Manifest, session: NasSession) => {
          only uploaded while those are still there */
       ...manifest.groups.flatMap((g) =>
         uploadedFiles(g.uploaded).map((f) => parentOf(f.remotePath))
-      )
+      ),
+      /* and every folder this club delivers into, uploaded into yet or not: a place pointed at a
+         folder that was already full of footage is worth looking at from the first day, since what
+         is up there is what an upload must not send a second time (RULES, Network storage) */
+      ...deliveryFolders(manifest, session)
     ])
   ]
   const sizes: Record<string, number | null> = {}
@@ -188,11 +195,17 @@ const resolveUploadTargets = ({
 const uploadTargets = async ({
   session,
   targets,
+  origins,
+  folders,
   onProgress,
   onCheck
 }: {
   session: NasSession
   targets: UploadTarget[]
+  /* where each file that may travel came from, by the path it travels as (RULES, Network storage) */
+  origins?: Map<string, { from?: string; cut?: [number, number] }>
+  /* every folder this club delivers into: what the storage's list of origins is kept above */
+  folders?: string[]
   onProgress?: (progress: UploadProgress & { groupIds: string[] }) => void
   onCheck?: (progress: CheckProgress) => void
 }) => {
@@ -209,8 +222,22 @@ const uploadTargets = async ({
 
   const shareUrls: { target: UploadTarget; shareUrl: string }[] = []
   const files: UploadVerdict[] = []
+  /* every file the storage was seen to hold in the folders this job touched, ours or not */
+  const seen: Seen[] = []
   let uploaded = 0
   let skipped = 0
+  /* The storage's own list of what it holds and where it came from, read once for the whole job. A
+     list that cannot be read stops nothing: with nothing known, every file is sent, which is the
+     safe way to be wrong. */
+  const where = folders ?? []
+  let known: OriginIndex | null = null
+  const theIndex = async () => {
+    known ??= await readOriginIndex(session, where).catch((): OriginIndex => ({
+      version: 1,
+      files: {}
+    }))
+    return known
+  }
   for (const target of targets) {
     const result = await publishJump(
       {
@@ -220,7 +247,15 @@ const uploadTargets = async ({
         localDir: target.localDir,
         remoteDir: target.remoteDir as string,
         files: target.files,
-        share: target.share
+        share: target.share,
+        ...(origins
+          ? {
+              origins: {
+                index: await theIndex(),
+                of: (localPath: string) => origins.get(localPath)
+              }
+            }
+          : {})
       },
       {
         onProgress: (progress) => onProgress?.({ ...progress, groupIds: target.groupIds }),
@@ -229,8 +264,35 @@ const uploadTargets = async ({
     )
     if (result.shareUrl) shareUrls.push({ target, shareUrl: result.shareUrl })
     files.push(...result.files)
+    seen.push(...result.seen)
     uploaded += result.uploaded
     skipped += result.skipped
+  }
+  /* What this job leaves behind for the next one: every file now known to be up there, with what it
+     was made from — and every file the folders were merely seen to hold, with what it weighs. A
+     folder SkyDock is pointed at, full of footage from before it ever looked, is learned that way,
+     and what is learned about one of them is never asked of the storage twice. It is the storage's
+     record and not this machine's, so a machine that never saw this upload knows it too. */
+  if (origins) {
+    const at = Math.floor(Date.now() / 1000)
+    const ours = new Set(files.map((file) => file.remotePath))
+    await recordOrigins(session, where, [
+      ...seen
+        .filter((file) => !ours.has(file.remotePath))
+        .map((file) => ({
+          remotePath: file.remotePath,
+          size: file.size,
+          at,
+          ...(file.md5 ? { md5: file.md5 } : {})
+        })),
+      ...files.map((file) => ({
+        remotePath: file.remotePath,
+        md5: file.md5,
+        size: file.size,
+        at: file.at,
+        ...origins.get(file.localPath)
+      }))
+    ])
   }
   return { targets, shareUrls, uploaded, skipped, files }
 }
@@ -253,6 +315,8 @@ const uploadScope = async ({
   uploadTargets({
     session,
     targets: resolveUploadTargets({ outputDir, manifest, scope }),
+    origins: originsOf(manifest),
+    folders: deliveryFolders(manifest, session),
     onProgress,
     onCheck
   })

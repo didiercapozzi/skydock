@@ -48,7 +48,8 @@ const StoragePlayer = ({ file, onClose }: { file: StorageFile; onClose: () => vo
 const StorageFolder = ({
   where,
   stamp,
-  hereToo
+  hereToo,
+  onBringBack
 }: {
   where: StorageWhere
   /* changes when the folder is worth asking for again — after an upload */
@@ -56,6 +57,10 @@ const StorageFolder = ({
   /* the names of the delivered files this machine still holds, where that is known: on a place's
      own page it is, and each file then says whether it is here too */
   hereToo?: Set<string>
+  /* Fetching one back onto this machine, for a file the board knows by its upload record and no
+     longer holds. Absent where nothing can be fetched — a folder of a tandem this board never had,
+     or a file it never sent. */
+  onBringBack?: (file: StorageFile) => void
 }) => {
   const [again, setAgain] = useState(0)
   const [playing, setPlaying] = useState<StorageFile | null>(null)
@@ -99,13 +104,15 @@ const StorageFolder = ({
           {files.map((file) => {
             const playable = file.kind !== 'other'
             return (
-              <li key={file.path}>
+              <li
+                key={file.path}
+                className='flex items-center gap-1.5'>
                 <button
                   type='button'
                   disabled={!playable}
                   onClick={() => setPlaying(file)}
                   title={playable ? 'Play it from the storage' : 'Kept on the storage'}
-                  className='flex h-[34px] w-full items-center gap-2.5 rounded-md border border-transparent bg-transparent px-[7px] text-left enabled:hover:bg-line-2 disabled:cursor-default'>
+                  className='flex h-[34px] min-w-0 flex-1 items-center gap-2.5 rounded-md border border-transparent bg-transparent px-[7px] text-left enabled:hover:bg-line-2 disabled:cursor-default'>
                   <span
                     aria-hidden='true'
                     className='w-3.5 flex-none text-center text-[11px] text-ink-3'>
@@ -143,6 +150,15 @@ const StorageFolder = ({
                     {file.size === null ? '' : formatSize(file.size)}
                   </span>
                 </button>
+                {/* the one thing that cannot be done from anywhere else: what is only up there is
+                    footage this machine no longer holds, and this is the way back */}
+                {onBringBack && hereToo && !hereToo.has(file.name) && (
+                  <Mini
+                    title='Fetch it back onto this machine'
+                    onClick={() => onBringBack(file)}>
+                    Bring it back
+                  </Mini>
+                )}
               </li>
             )
           })}

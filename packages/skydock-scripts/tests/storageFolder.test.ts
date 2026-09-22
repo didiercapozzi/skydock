@@ -98,6 +98,25 @@ describe('what a folder on the storage holds', () => {
     ])
   })
 
+  /* the list of tandems and the list of where each file came from are the app's own bookkeeping,
+     not somebody's footage: there is nothing to play and nothing to do with them here */
+  it('leaves out what SkyDock keeps there about the storage itself', async () => {
+    const stub = nasStubs({
+      files: {
+        '/SkyDock/Yverdon': [
+          { name: 'skydock-origins.json', size: 2 },
+          { name: 'skydock-tandems.json', size: 2 },
+          { name: 'yverdon_20260801_100000.mp4', size: 1 }
+        ]
+      }
+    })
+    stubFetch((url) => stub(url) ?? new Response('{}'))
+
+    const files = await listStorageFolder(session, '/SkyDock/Yverdon')
+
+    expect(files.map((f) => f.name)).toEqual(['yverdon_20260801_100000.mp4'])
+  })
+
   it('lists each kind newest first, by when it was shot', async () => {
     const stub = nasStubs({
       files: {

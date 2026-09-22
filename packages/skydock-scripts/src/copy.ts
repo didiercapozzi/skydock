@@ -106,6 +106,24 @@ const freeName = (dir: string, name: string) => {
 
 class CameraGone extends Error {}
 
+/* One file off a card into its day folder, written under a temporary name and given its own only
+   once it is whole — so a card pulled out half way leaves nothing behind that could be taken for an
+   original. Its own name, or its own with a number where that is taken by another file. */
+const copyOne = async (src: string, srcStat: fs.Stats, destDir: string) => {
+  const dest = path.join(destDir, freeName(destDir, path.basename(src)))
+  const partial = `${dest}.part`
+  try {
+    await fs.promises.copyFile(src, partial)
+    fs.utimesSync(partial, srcStat.atime, srcStat.mtime)
+    fs.renameSync(partial, dest)
+  } catch (e) {
+    fs.rmSync(partial, { force: true })
+    if (!fs.existsSync(src)) throw new CameraGone('The camera was disconnected during the copy.')
+    throw e
+  }
+  return dest
+}
+
 /* One camera, copied without holding the thread. Each file is written under a temporary name and
    only given its own once it is whole, so a card pulled out half way leaves nothing behind that
    could be taken for an original; the copy then stops and says the camera went. */
@@ -143,18 +161,44 @@ const copyCamera = async ({
     if (freedAlready(board, src, srcStat, destDir) || (await alreadyThere(src, srcStat, destDir)))
       progress.skipped++
     else {
-      const dest = path.join(destDir, freeName(destDir, path.basename(src)))
-      const partial = `${dest}.part`
-      try {
-        await fs.promises.copyFile(src, partial)
-        fs.utimesSync(partial, srcStat.atime, srcStat.mtime)
-        fs.renameSync(partial, dest)
-      } catch (e) {
-        fs.rmSync(partial, { force: true })
-        if (!fs.existsSync(src))
-          throw new CameraGone('The camera was disconnected during the copy.')
-        throw e
-      }
+      await copyOne(src, srcStat, destDir)
+      progress.copied++
+    }
+    progress.done++
+    onProgress?.({ ...progress })
+  }
+  return progress
+}
+
+/* Asked for by name, and only then. A file this machine gave back is not copied off the card again
+   by plugging it in — that is what freeing means, and the copy passes it over on purpose. This is
+   the way back for one that is wanted here again: the mark is taken no notice of, and a file that
+   is already on the disk is left alone rather than copied beside itself (RULES, Freeing space). */
+const copyBack = async ({
+  paths,
+  outputDir = getOutputDir(),
+  onProgress
+}: {
+  paths: string[]
+  outputDir?: string
+  onProgress?: (progress: CopyProgress) => void
+}) => {
+  const originalDir = path.join(outputDir, 'original_files')
+  const days = await readExifMap(paths, DATE_TAGS)
+  const progress: CopyProgress = { done: 0, total: paths.length, copied: 0, skipped: 0 }
+  onProgress?.({ ...progress })
+  for (const src of paths) {
+    let srcStat: fs.Stats
+    try {
+      srcStat = fs.statSync(src)
+    } catch {
+      throw new CameraGone('The camera was disconnected during the copy.')
+    }
+    const destDir = path.join(originalDir, days.get(src) ?? dayOfStat(srcStat))
+    fs.mkdirSync(destDir, { recursive: true })
+    if (await alreadyThere(src, srcStat, destDir)) progress.skipped++
+    else {
+      await copyOne(src, srcStat, destDir)
       progress.copied++
     }
     progress.done++
@@ -196,5 +240,13 @@ const dayFoldersOf = async (files: string[], outputDir: string) => {
   )
 }
 
-export { CameraGone, alreadyThere, copyCamera, copyFromCameras, dayFoldersOf, freedAlready }
+export {
+  CameraGone,
+  alreadyThere,
+  copyBack,
+  copyCamera,
+  copyFromCameras,
+  dayFoldersOf,
+  freedAlready
+}
 export type { CopyOptions, CopyProgress }

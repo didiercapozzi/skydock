@@ -117,7 +117,18 @@ const boardAnswerSchema = z.object({
   /* tandems put back from the storage's list: whose, and how many of their files were found here */
   restored: z.array(z.object({ who: z.string(), files: z.number(), of: z.number() })).optional(),
   /* a clip handed to the machine's own player, which is now showing it */
-  played: z.object({ filename: z.string() }).optional()
+  played: z.object({ filename: z.string() }).optional(),
+  /* files asked back off a camera after this machine had given them back */
+  copiedBack: z.object({ copied: z.number(), skipped: z.number() }).optional(),
+  /* one file fetched back off the storage: whether what came back is the original or the copy that
+     was delivered, which is all a dropzone ever sends */
+  broughtBack: z
+    .object({ filename: z.string(), original: z.boolean(), size: z.number() })
+    .optional(),
+  /* one file sent again over what was up there, which went into the bin first */
+  sentAgain: z
+    .object({ filename: z.string(), remotePath: z.string(), binned: z.string() })
+    .optional()
 })
 
 type BoardAnswer = z.infer<typeof boardAnswerSchema>

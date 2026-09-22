@@ -52,11 +52,17 @@ const shotFromName = (name: string) => {
 const kindOf = (name: string): StorageFile['kind'] =>
   isVideoFile(name) ? 'video' : PHOTO.test(name) ? 'photo' : 'other'
 
+/* What SkyDock keeps on the storage about the storage: the list of tandems and the list of where
+   each file came from. They are the app's own bookkeeping, not somebody's footage, so the page that
+   lists a folder leaves them out — there is nothing to play, and nothing to do with them here. */
+const OWN_RECORDS = new Set(['skydock-tandems.json', 'skydock-origins.json'])
+
 /* the folder's files, films and clips first, each kind newest first — by when it was shot, read off
    its name, or else when it was put there */
 const listStorageFolder = async (session: NasSession, dir: string): Promise<StorageFile[]> => {
   const order = { video: 0, photo: 1, other: 2 }
   return (await listNasFiles(session.hostname, session.sessionId, dir))
+    .filter((f) => !OWN_RECORDS.has(f.name))
     .map((f) => ({ ...f, kind: kindOf(f.name), shot: shotFromName(f.name) }))
     .sort(
       (a, b) =>

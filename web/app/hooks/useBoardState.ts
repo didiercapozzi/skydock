@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
 import {
+  broughtBackNote,
+  copiedBackNote,
   copiedNote,
   freedNote,
   freedPlaceNote,
@@ -13,6 +15,7 @@ import {
   resetNote,
   restoredNote,
   scanNote,
+  sentAgainNote,
   uploadedNote
 } from '../helpers/notes'
 import { useSafeFetcher } from '../helpers/routing'
@@ -111,6 +114,9 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
         cameraCopied,
         reset: resetTo,
         played,
+        copiedBack,
+        broughtBack,
+        sentAgain,
         storage: listed,
         storageProblem
       } = answered.data
@@ -151,7 +157,13 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
                               ? cameraNote(cameraCopied)
                               : played
                                 ? `${played.filename} is playing in this machine’s own player`
-                                : null
+                                : copiedBack
+                                  ? copiedBackNote(copiedBack)
+                                  : broughtBack
+                                    ? broughtBackNote(broughtBack)
+                                    : sentAgain
+                                      ? sentAgainNote(sentAgain)
+                                      : null
       /* the work stands even when the list could not follow it, and that is said alongside */
       setNote(storageProblem ? [said, storageProblem].filter(Boolean).join(' · ') : said)
     } else {

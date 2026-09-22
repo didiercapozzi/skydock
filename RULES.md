@@ -58,9 +58,10 @@ Everything below follows from these.
   under a name no longer produced stays on the disk but is never handed over.
 - **A file's state is a fact that can be checked, not a flag to remember.** Every claim SkyDock makes
   about a file — processed, on the storage — is backed by evidence it can look at again.
-- **Nothing on the network storage is ever deleted by SkyDock.** It uploads and creates folders; a
-  re-upload replaces a file of the same name. Taking something off the storage is done by a person, in
-  the storage's own interface. SkyDock's part is to notice.
+- **Nothing on the network storage is ever deleted by SkyDock.** It uploads and creates folders; a file
+  asked to be sent again over one already there is moved into a bin first, never written over. Taking
+  something off the storage is done by a person, in the storage's own interface. SkyDock's part is to
+  notice.
 - **Not knowing is not evidence.** When the storage did not answer or a check failed, SkyDock keeps what
   it last proved rather than assuming the worst.
 - **Uncertainty costs time, never a delivery.** When SkyDock cannot tell whether two files are the same,
@@ -105,8 +106,10 @@ Where cameras are mounted is a setting, and an empty one turns this off.
 stays plugged in, and its page lists every photo and video on its card, each saying how far it has got:
 not copied yet, copied here but not uploaded, or on the storage — copied read by the same rule the copy
 uses to pass a file over. Only a file on the storage can be picked and deleted from the camera, to make
-room on the card; the others have no tick. Deleting asks first, saying how many files and how much, and
-that they go to the bin, and the storage must be reachable. Then each file is read through and held
+room on the card; the others have no tick — and those same picks are what can be **copied back here**,
+which is the one thing that undoes a freeing and is never done by plugging the card in. Deleting asks
+first, saying how many files and how much, and that they go to the bin, and the storage must be
+reachable. Then each file is read through and held
 against what the storage holds by its bytes, never by its name, since every name changes on the way: it
 has to be a file the board knows by its content, and the storage has to hold what that file became.
 
@@ -679,6 +682,39 @@ sides and skipped only if they match. Anything uncertain is sent. The board repo
 throughout: how many files are being checked, which one is being sent and how far it is, and how many
 were already there.
 
+**And the same footage under another name.** Every name changes on the way out, and the same footage
+is delivered under a second name often enough: a clip whose time was put right, a passenger renamed,
+a jump filed to another dropzone. The storage keeps a list of what it holds and, for what SkyDock sent, where it came from, so
+that footage is recognised whatever it is called and whoever put it there — and what happens then depends on where its twin
+is. Already in the folder this one is going to, there is nothing to do: it is delivered, and counts
+as uploaded under the name it has there. In another folder, that is another delivery and this folder
+has to hold it too — a renamed passenger must not be handed a link to an empty folder — so the
+storage copies it to itself, and nothing travels from here. A copy the storage will not make is sent
+the ordinary way. The same original cut differently is other footage, and goes up as such. Nothing is
+read for any of this unless the list says the storage holds something from that original, and a list
+that cannot be read sends the file rather than skipping it.
+
+**Where each file came from.** The list is one small file, kept in the folder that holds the places'
+own folders — never inside one of them, which a passenger's link opens, and not at the top of a share
+beside everything else kept there. Where that is follows from those folders themselves, so it is
+never chosen and never has to be found. The backup folder has no say in it: it is often on another
+disk altogether, and reaching both would drag the list somewhere nobody would look — what is in it
+is listed and written down all the same. It is read before an upload and written after it,
+keeping every entry it did not make — another machine's included — and a list that cannot be read is
+never written over.
+
+It also holds what SkyDock did not put there. A place can be pointed at a folder that was full of
+footage long before SkyDock saw it, and the board asks the storage what is in those folders every
+time it opens, so what is found is written down: the file, and what it weighs. Nothing is fetched and
+nothing is hashed for that, and a list that would say what it already says is not written again. A
+digest is asked of the storage only when it would decide something — a file about to be sent weighs
+exactly what one of them weighs — and the storage hashes it on its own side, so nothing travels; the
+answer is kept, and the same question is never asked twice. A folder becomes known that way, a file
+at a time, as knowing it becomes worth anything. Each delivered file also carries its origin inside
+itself, written where the file keeps its own notes, so a copy that leaves SkyDock can still say what
+it was made from. Originals never carry it: what proves a file against a camera is its bytes, and a
+note would change them.
+
 **Share links.** A folder's link is reused while it works, so uploading again does not change the link a
 passenger already has.
 
@@ -894,6 +930,16 @@ anything happens, how many files went up trimmed, cropped or turned: for those o
 is left anywhere, and what was cut off goes with the original. It says how many jumps and loose files
 stay, too. If any check fails, nothing is deleted and each failing file is named; the storage must be
 reachable. An original another jump still holds stays until that jump is freed as well.
+
+**Asked for, it comes back.** Freeing is deliberate, and nothing undoes it by itself: plugging the
+camera in again passes the file over, and a scan leaves it as it is. It comes back only when somebody
+asks for that file — off the card it is still on, from its page there, or fetched off the storage from
+the list of what the folder holds. What comes back rejoins the jump it was in, by what it contains
+rather than by what it is called, and stops reading as freed; its delivered copy went with the
+freeing, so it is a file to prepare again. What the storage holds is not always the original: a
+tandem's originals go up as themselves and come back whole, while a dropzone only ever sends copies,
+so what comes back from one is the delivered copy, already cut — and then the trim, the frame and the
+turn are cleared rather than applied to it twice. The board says which of the two it was.
 
 Once freed, a jump or a loose file leaves the dropzone's own list: it is named and played from the list
 of what the folder holds, under the dropzone's files, and saying it twice would only add a row where

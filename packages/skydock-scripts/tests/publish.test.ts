@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs'
 import * as http from 'node:http'
+import { createHash } from 'node:crypto'
 import * as path from 'node:path'
 import { dsmLogin, saveNasSession } from '../src/nas'
 import { publishJump } from '../src/publish'
@@ -11,6 +12,7 @@ import {
   loginFailure,
   loginSuccess,
   makeTmpTree,
+  nasStubs,
   seen,
   stubFetch
 } from './fixtures'
@@ -227,5 +229,196 @@ describe('uploading a folder', () => {
     const result = await publish({ remoteDir: '/Backup', share: false })
     expect(result.shareUrl).toBeNull()
     expect(seen.some((c) => c.url.includes('SYNO.FileStation.Sharing'))).toBe(false)
+  })
+
+  /* Every name changes on the way out, so the same footage is delivered under a second name often
+     enough: a clip whose time was put right, a passenger renamed, a jump filed elsewhere. What the
+     storage says it already holds of that original is what keeps it from going up twice (RULES,
+     Network storage). */
+  describe('the same footage under another name', () => {
+    const md5Of = (file: string) => createHash('md5').update(fs.readFileSync(file)).digest('hex')
+    const already = (localPath: string, remotePath: string) => ({
+      index: {
+        version: 1 as const,
+        files: { [remotePath]: { from: 'b699e6', md5: md5Of(localPath), size: 5, at: 1 } }
+      },
+      of: () => ({ from: 'b699e6' })
+    })
+
+    it('is not sent again when it is already in the folder it is going to', async () => {
+      storageAnswers()
+      const film = path.join(dir, 'film.mp4')
+      fs.writeFileSync(film, Buffer.from('film'))
+
+      const result = await publish({
+        files: [film],
+        origins: already(film, '/SkyDock/jump/under_another_name.mp4')
+      })
+
+      expect(result).toMatchObject({ uploaded: 0, skipped: 1 })
+      expect(sentNames(server.uploads)).toEqual([])
+      expect(result.files[0]?.remotePath).toBe('/SkyDock/jump/under_another_name.mp4')
+    })
+
+    /* Another folder is another delivery — a passenger's own, a second dropzone — and that folder
+       has to hold it: a renamed passenger whose files were only "already up there" somewhere else
+       would be handed a share link to an empty folder. The storage copies it to itself instead, so
+       the folder holds it and nothing travels from here. */
+    it('is copied by the storage itself into the folder that wants it', async () => {
+      const copies: { from: string; to: string }[] = []
+      const renames: { path: string; name: string }[] = []
+      stubFetch((url) => {
+        if (url.includes('method=login')) return loginSuccess('sid')
+        if (url.includes('SYNO.FileStation.CopyMove')) {
+          const params = new URL(url, 'http://x').searchParams
+          if (params.get('method') === 'start') {
+            copies.push({
+              from: JSON.parse(params.get('path') ?? '[]')[0],
+              to: JSON.parse(params.get('dest_folder_path') ?? '[]')[0]
+            })
+            return jsonResponse({ success: true, data: { taskid: 'task-1' } })
+          }
+          return jsonResponse({ success: true, data: { finished: true } })
+        }
+        if (url.includes('SYNO.FileStation.Rename')) {
+          const params = new URL(url, 'http://x').searchParams
+          renames.push({ path: params.get('path') ?? '', name: params.get('name') ?? '' })
+          return jsonResponse({ success: true })
+        }
+        if (url.includes('SYNO.FileStation.Sharing'))
+          return jsonResponse({ success: true, data: { links: [{ url: '/sharing/abc' }] } })
+        return jsonResponse({ success: true })
+      })
+      const film = path.join(dir, 'film.mp4')
+      fs.writeFileSync(film, Buffer.from('film'))
+
+      const result = await publish({
+        files: [film],
+        origins: already(film, '/SkyDock/Epagny/epagny_20260920_100250.mp4')
+      })
+
+      expect(sentNames(server.uploads)).toEqual([])
+      expect(result).toMatchObject({ uploaded: 0, copied: 1 })
+      expect(copies).toEqual([
+        { from: '/SkyDock/Epagny/epagny_20260920_100250.mp4', to: '/SkyDock/jump' }
+      ])
+      expect(renames).toEqual([
+        { path: '/SkyDock/jump/epagny_20260920_100250.mp4', name: 'film.mp4' }
+      ])
+      expect(result.files[0]?.remotePath).toBe('/SkyDock/jump/film.mp4')
+    })
+
+    /* a copy the storage will not make is no reason for the folder to go without the file */
+    it('is sent after all when the storage will not copy it', async () => {
+      stubFetch((url) => {
+        if (url.includes('method=login')) return loginSuccess('sid')
+        if (url.includes('SYNO.FileStation.CopyMove'))
+          return jsonResponse({ success: false, error: { code: 1200 } })
+        if (url.includes('SYNO.FileStation.Sharing'))
+          return jsonResponse({ success: true, data: { links: [{ url: '/sharing/abc' }] } })
+        return jsonResponse({ success: true })
+      })
+      const film = path.join(dir, 'film.mp4')
+      fs.writeFileSync(film, Buffer.from('film'))
+
+      const result = await publish({
+        files: [film],
+        origins: already(film, '/SkyDock/Epagny/epagny_20260920_100250.mp4')
+      })
+
+      expect(result).toMatchObject({ uploaded: 1, copied: 0 })
+      expect(sentNames(server.uploads)).toEqual(['film.mp4'])
+    })
+
+    it('is sent when it is the same footage cut another way', async () => {
+      storageAnswers()
+      const film = path.join(dir, 'film.mp4')
+      fs.writeFileSync(film, Buffer.from('film'))
+      const stale = already(film, '/SkyDock/Epagny/epagny_20260920_100250.mp4')
+      stale.index.files['/SkyDock/Epagny/epagny_20260920_100250.mp4']!.md5 = 'cut-another-way'
+
+      const result = await publish({ files: [film], origins: stale })
+
+      expect(result).toMatchObject({ uploaded: 1 })
+      expect(sentNames(server.uploads)).toEqual(['film.mp4'])
+    })
+
+    /* A destination can be pointed at a folder that was full of footage long before SkyDock saw it.
+       Those files are in the list with what they weigh and nothing else, and one that weighs what
+       this file weighs is worth a single question to the storage — which hashes it on its own side,
+       and the answer is kept, so it is never asked twice. */
+    it('is recognised in a folder SkyDock never filled, by asking the storage once', async () => {
+      const asked: string[] = []
+      const film = path.join(dir, 'film.mp4')
+      fs.writeFileSync(film, Buffer.from('film'))
+      stubFetch((url) => {
+        if (url.includes('method=login')) return loginSuccess('sid')
+        if (url.includes('SYNO.FileStation.MD5')) {
+          const params = new URL(url, 'http://x').searchParams
+          if (params.get('method') === 'start') {
+            asked.push(params.get('file_path') ?? '')
+            return jsonResponse({ success: true, data: { taskid: 'md5-1' } })
+          }
+          return jsonResponse({
+            success: true,
+            data: { finished: true, md5: md5Of(film) }
+          })
+        }
+        if (url.includes('SYNO.FileStation.Sharing'))
+          return jsonResponse({ success: true, data: { links: [{ url: '/sharing/abc' }] } })
+        return jsonResponse({ success: true })
+      })
+
+      const result = await publish({
+        files: [film],
+        origins: {
+          index: {
+            version: 1,
+            files: { '/SkyDock/jump/from_before_skydock.mp4': { size: 4, at: 1 } }
+          },
+          of: () => ({ from: 'b699e6' })
+        }
+      })
+
+      expect(asked).toEqual(['/SkyDock/jump/from_before_skydock.mp4'])
+      expect(result).toMatchObject({ uploaded: 0, skipped: 1 })
+      expect(sentNames(server.uploads)).toEqual([])
+      expect(result.files[0]?.remotePath).toBe('/SkyDock/jump/from_before_skydock.mp4')
+    })
+
+    /* what the folders were seen to hold is what the next upload starts from */
+    it('comes back saying what the folder was seen to hold', async () => {
+      const stub = nasStubs({
+        files: { '/SkyDock/jump': [{ name: 'from_before_skydock.mp4', size: 99 }] }
+      })
+      stubFetch((url) => {
+        if (url.includes('method=login')) return loginSuccess('sid')
+        if (url.includes('SYNO.FileStation.Sharing'))
+          return jsonResponse({ success: true, data: { links: [{ url: '/sharing/abc' }] } })
+        return stub(url) ?? jsonResponse({ success: true })
+      })
+      const film = path.join(dir, 'film.mp4')
+      fs.writeFileSync(film, Buffer.from('film'))
+
+      const result = await publish({ files: [film] })
+
+      expect(result.seen).toEqual([
+        { remotePath: '/SkyDock/jump/from_before_skydock.mp4', size: 99 }
+      ])
+    })
+
+    /* a file the storage has nothing from is never read for this: reading is the expensive half */
+    it('is sent, unread, when the storage has nothing from that original', async () => {
+      storageAnswers()
+      const film = path.join(dir, 'film.mp4')
+      fs.writeFileSync(film, Buffer.from('film'))
+
+      const result = await publish({
+        files: [film],
+        origins: { index: { version: 1, files: {} }, of: () => ({ from: 'b699e6' }) }
+      })
+
+      expect(result).toMatchObject({ uploaded: 1 })
+    })
   })
 })

@@ -463,6 +463,82 @@ const dsmFileMd5 = async (
   }
 }
 
+const dsmMoveStatusSchema = z.object({ finished: z.boolean().optional() }).passthrough()
+
+/* A file moved or copied about on the storage, by the storage itself — one job, started and then
+   waited for, as a checksum is.
+
+   Moving is how a file gets out of the way without being deleted: SkyDock deletes nothing up there
+   (RULES, Principles), so what a better copy is about to replace is put somewhere it can still be
+   fetched from rather than written over. Copying is how footage the storage already holds reaches a
+   second folder that needs it — a passenger's own, a second dropzone — without a byte travelling
+   from here.
+
+   `overwrite: false` on purpose: neither may bury a file that is already there. */
+const dsmCopyMove = async (
+  host: string,
+  sid: string,
+  filePath: string,
+  toFolder: string,
+  options?: { pollMs?: number; timeoutMs?: number; keepSource?: boolean }
+) => {
+  const pollMs = options?.pollMs ?? MD5_POLL_MS
+  const deadline = Date.now() + (options?.timeoutMs ?? MD5_TIMEOUT_MS)
+  try {
+    const started = await dsmFetch(host, {
+      api: 'SYNO.FileStation.CopyMove',
+      version: '3',
+      method: 'start',
+      path: JSON.stringify([normalizeNasPath(filePath)]),
+      dest_folder_path: JSON.stringify([normalizeNasPath(toFolder)]),
+      remove_src: options?.keepSource ? 'false' : 'true',
+      overwrite: 'false',
+      create_parents: 'true',
+      _sid: sid
+    })
+    if (!started.success) return false
+    const task = dsmMd5StartSchema.safeParse(started.data)
+    /* a move that finished before it answered has nothing to wait for */
+    if (!task.success) return true
+    for (;;) {
+      const body = await dsmFetch(host, {
+        api: 'SYNO.FileStation.CopyMove',
+        version: '3',
+        method: 'status',
+        taskid: `"${task.data.taskid}"`,
+        _sid: sid
+      })
+      if (!body.success) return false
+      const status = dsmMoveStatusSchema.safeParse(body.data)
+      if (!status.success) return false
+      if (status.data.finished) return true
+      if (Date.now() > deadline) return false
+      await new Promise((resolve) => setTimeout(resolve, pollMs))
+    }
+  } catch {
+    return false
+  }
+}
+
+/* A file renamed where it lies. What the storage copied into a folder arrives under the name it had
+   in the folder it came from, and a delivered file's name says which place and which moment it
+   belongs to — so the copy is given the name that folder would have given it. */
+const dsmRenameFile = async (host: string, sid: string, filePath: string, name: string) => {
+  try {
+    const body = await dsmFetch(host, {
+      api: 'SYNO.FileStation.Rename',
+      version: '2',
+      method: 'rename',
+      path: normalizeNasPath(filePath),
+      name,
+      _sid: sid
+    })
+    return body.success === true
+  } catch {
+    return false
+  }
+}
+
 const dsmListFolder = async (host: string, sid: string, folderPath: string) => {
   const cpath = normalizeNasPath(folderPath)
   if (cpath === '/') {
@@ -719,8 +795,10 @@ export {
   dsmFetch,
   dsmFileMd5,
   dsmGetEncryptionInfo,
+  dsmCopyMove,
   dsmListFolder,
   dsmLogin,
+  dsmRenameFile,
   dsmLogout,
   dsmRequestUrl,
   dsmResponseSchema,

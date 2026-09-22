@@ -77,12 +77,15 @@ const Confirm = ({
 const CameraFiles = ({
   mount,
   stamp,
-  onNote
+  onNote,
+  onCopyBack
 }: {
   mount: string
   /* changes when the cameras plugged in change, which is when the card is worth reading again */
   stamp: unknown
   onNote: (note: string) => void
+  /* files this machine gave back, wanted here again: the board copies them off and looks again */
+  onCopyBack: (paths: string[]) => void
 }) => {
   const [answered, setAnswered] = useState<{ mount: string; listing: CameraListing | null } | null>(
     null
@@ -91,6 +94,8 @@ const CameraFiles = ({
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [asking, setAsking] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  /* bumped when the card's files change under us, which is when it is worth reading again */
+  const [readAgain, setReadAgain] = useState(0)
 
   /* the card is another drive, read once when the page opens and again when a camera comes or goes */
   useEffect(() => {
@@ -113,7 +118,7 @@ const CameraFiles = ({
     return () => {
       cancelled = true
     }
-  }, [mount, stamp])
+  }, [mount, stamp, readAgain])
 
   /* a listing of another camera is no listing of this one */
   const listing = answered?.mount === mount ? answered.listing : undefined
@@ -174,6 +179,17 @@ const CameraFiles = ({
               )
             }>
             {chosen.length === stored.length ? 'Pick none' : 'Pick every file on the storage'}
+          </Mini>
+        )}
+        {chosen.length > 0 && (
+          <Mini
+            title='Copy these back onto this machine — the one way back from having given them back'
+            onClick={() => {
+              onCopyBack(chosen.map((f) => f.path))
+              setPicked(new Set())
+              setReadAgain((n) => n + 1)
+            }}>
+            {`Copy ${plural(chosen.length, 'file')} back here`}
           </Mini>
         )}
         <Go

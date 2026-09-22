@@ -10,6 +10,8 @@ import type { BackupOptions, Manifest, ManifestGroup } from './types'
 import { targetForGroup, uploadTargets } from './upload'
 import type { UploadTarget } from './upload'
 import { isVideoFile, sizeOf } from './utils'
+import { originsOf } from './originEntry'
+import { deliveryFolders } from './originIndex'
 
 const SETTLE_MS = 1500
 
@@ -167,7 +169,14 @@ const uploadTandem = async ({
     })
   targets.push(...plainTargets)
 
-  const result = await uploadTargets({ session, targets, onProgress, onCheck })
+  const result = await uploadTargets({
+    session,
+    targets,
+    origins: originsOf(manifest),
+    folders: deliveryFolders(manifest, session),
+    onProgress,
+    onCheck
+  })
   const shareUrl = result.shareUrls.find((s) => s.target.key === passenger.key)?.shareUrl
   return {
     ...result,

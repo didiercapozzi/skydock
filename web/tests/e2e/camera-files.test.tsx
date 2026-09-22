@@ -56,7 +56,7 @@ afterEach(() => {
 describe('a camera plugged in', () => {
   test('says which files are on the storage, and only those can be picked', async () => {
     stubServer()
-    await render(createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {} }))
+    await render(createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack: () => {} }))
 
     await expect.element(page.getByText('DJI_0001.MP4')).toBeVisible()
     await expect.element(page.getByText('on the storage', { exact: true })).toBeVisible()
@@ -69,10 +69,27 @@ describe('a camera plugged in', () => {
         .not.toBeInTheDocument()
   })
 
+  /* Freeing is deliberate and plugging the card in does not undo it, so this is the one way back:
+     the files on the storage are the ones that can be asked for (RULES, Freeing space). */
+  test('copies a picked file back onto this machine when it is asked for', async () => {
+    stubServer()
+    const onCopyBack = vi.fn()
+    await render(
+      createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack })
+    )
+
+    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0001.MP4' }))
+    await userEvent.click(page.getByRole('button', { name: 'Copy 1 file back here' }))
+
+    expect(onCopyBack).toHaveBeenCalledWith([`${MOUNT}/DCIM/DJI_0001.MP4`])
+    /* nothing is deleted by asking for it back */
+    expect(sent).toEqual([])
+  })
+
   test('deletes a picked file from the camera only once it is confirmed', async () => {
     stubServer()
     const onNote = vi.fn()
-    await render(createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote }))
+    await render(createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote, onCopyBack: () => {} }))
 
     await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0001.MP4' }))
     await userEvent.click(page.getByRole('button', { name: 'Delete 1 file from the camera…' }))

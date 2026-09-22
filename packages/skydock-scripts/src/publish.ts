@@ -5,6 +5,9 @@ import * as https from 'node:https'
 import * as path from 'node:path'
 import { z } from 'zod'
 import { hashFile, walkFiles } from './lib/fs'
+import { alreadyUp, sameSizeUnknown, worthReading } from './originEntry'
+import type { OriginIndex } from './originEntry'
+import { lastSegment, parentOf } from './paths'
 import { mapWithLimit, withRetry } from './utils'
 import {
   dsmConfigSchema,
@@ -12,6 +15,8 @@ import {
   dsmLogin,
   dsmRequestUrl,
   dsmResponseSchema,
+  dsmCopyMove,
+  dsmRenameFile,
   dsmValidateSession,
   ensureShareLink,
   listNasFiles,
@@ -43,6 +48,13 @@ const uploadProgressSchema = z.object({
 type UploadProgress = z.infer<typeof uploadProgressSchema>
 
 type CheckProgress = { checked: number; total: number; filename: string }
+
+/* footage the storage already holds, wanted in another of its folders: it copies it to itself
+   rather than being sent it again */
+type CopyOver = { local: string; from: string; to: string; md5: string }
+
+/* a file the storage was seen to hold, whoever put it there */
+type Seen = { remotePath: string; size: number; md5?: string }
 
 /* one file proved to be on the NAS — either just sent, or found identical there */
 type UploadVerdict = {
@@ -212,7 +224,8 @@ const planUpload = async ({
   remoteDir,
   concurrency = MD5_CONCURRENCY,
   onCheck,
-  files: only
+  files: only,
+  origins
 }: {
   host: string
   sid: string
@@ -221,6 +234,13 @@ const planUpload = async ({
   concurrency?: number
   onCheck?: (progress: CheckProgress) => void
   files?: string[]
+  /* What the storage already holds, by what each file was made from — so the same footage is
+     recognised under the name it went up as, which is never the name it has here (RULES, Network
+     storage). */
+  origins?: {
+    index: OriginIndex
+    of: (localPath: string) => { from?: string; cut?: [number, number] } | undefined
+  }
 }) => {
   const files = only ?? walkFiles(localDir)
   const remoteDirs = [...new Set(files.map((f) => remoteDirOf(localDir, remoteDir, f)))]
@@ -267,11 +287,81 @@ const planUpload = async ({
         at: Math.floor(Date.now() / 1000)
       })
   })
-  return { upload: upload.sort(), skip }
+
+  /* And the same footage under another name, which the name-and-size pass cannot see: a clip whose
+     time was put right is delivered under another name, and every name changes again when a
+     passenger is renamed or a jump is filed elsewhere.
+
+     A file is only read for this when the storage holds something made from the same original, or
+     something that weighs exactly the same — reading is the expensive half, and most files are
+     neither. A file of that weight the storage has never been asked about is asked about now, once:
+     the storage hashes it on its own side, nothing travels, and what it answers is kept, so the
+     same question is never asked twice. That is how a folder full of footage from before SkyDock
+     ever saw it becomes known, a file at a time, as it becomes worth knowing.
+
+     What is done about a twin depends on where it is. In the folder this file is going to, it is
+     already delivered, under another name, and there is nothing to do but say so. In another
+     folder, it is another delivery — a passenger's own folder, a second dropzone — and that folder
+     has to hold it: the storage copies it to itself, which sends nothing from here. */
+  const learned = new Map<string, string>()
+  const worth = origins
+    ? upload.filter((file) =>
+        worthReading(origins.index, {
+          from: origins.of(file)?.from,
+          size: fs.statSync(file).size
+        })
+      )
+    : []
+  const twins = await mapWithLimit(worth, concurrency, async (file) => {
+    if (!origins) return null
+    const md5 = await hashFile(file)
+    const known = alreadyUp(origins.index, md5)
+    if (known) return { file, md5, remotePath: known.remotePath }
+    /* nothing known matches: the ones of the same weight are worth one question each */
+    for (const stranger of sameSizeUnknown(origins.index, fs.statSync(file).size)) {
+      const theirs = learned.get(stranger) ?? (await dsmFileMd5(host, sid, stranger))
+      if (theirs === null || theirs === undefined) continue
+      learned.set(stranger, theirs)
+      if (theirs.toLowerCase() === md5.toLowerCase()) return { file, md5, remotePath: stranger }
+    }
+    return null
+  })
+  const already = new Set<string>()
+  const copyOver: CopyOver[] = []
+  for (const twin of twins) {
+    if (!twin) continue
+    const remote = `${remoteDirOf(localDir, remoteDir, twin.file)}/${path.basename(twin.file)}`
+    already.add(twin.file)
+    if (parentOf(twin.remotePath) === parentOf(remote))
+      skip.push({
+        localPath: twin.file,
+        remotePath: twin.remotePath,
+        md5: twin.md5,
+        size: fs.statSync(twin.file).size,
+        at: Math.floor(Date.now() / 1000)
+      })
+    else copyOver.push({ local: twin.file, from: twin.remotePath, to: remote, md5: twin.md5 })
+  }
+
+  /* What the storage was seen to hold while this was worked out: every file in the folders this
+     upload touched, with what it weighs, and the digest of any that had to be asked about. A folder
+     SkyDock was pointed at is learned this way — by looking at it, not by being told about it. */
+  const seen = [...remoteByPath].flatMap(([remotePath, size]) =>
+    size === null
+      ? []
+      : [{ remotePath, size, ...(learned.has(remotePath) ? { md5: learned.get(remotePath) } : {}) }]
+  )
+
+  return { upload: upload.filter((file) => !already.has(file)).sort(), skip, copyOver, seen }
 }
 
 const publishJump = async (
-  args: PublishArgs,
+  args: PublishArgs & {
+    origins?: {
+      index: OriginIndex
+      of: (localPath: string) => { from?: string; cut?: [number, number] } | undefined
+    }
+  },
   handlers?: {
     onProgress?: (progress: UploadProgress) => void
     onCheck?: (progress: CheckProgress) => void
@@ -283,7 +373,12 @@ const publishJump = async (
     args.configDir
   )
   const all = args.files ?? walkFiles(args.localDir)
-  const planned: { upload: string[]; skip: UploadVerdict[] } =
+  const planned: {
+    upload: string[]
+    skip: UploadVerdict[]
+    copyOver?: CopyOver[]
+    seen?: Seen[]
+  } =
     args.dedupe === false
       ? { upload: [...all].sort(), skip: [] }
       : await planUpload({
@@ -293,8 +388,37 @@ const publishJump = async (
           remoteDir: args.remoteDir,
           concurrency: args.md5Concurrency,
           onCheck: handlers?.onCheck,
-          files: args.files
+          files: args.files,
+          origins: args.origins
         })
+
+  /* What the storage already holds is copied by the storage into the folder that wants it, and
+     given the name that folder would have given it — nothing travels from here. A copy the storage
+     will not make is simply sent instead: the file has to be there, and how it got there is no
+     promise to anybody. */
+  const copied: UploadVerdict[] = []
+  const couldNotCopy: string[] = []
+  for (const over of planned.copyOver ?? []) {
+    const ok =
+      (await dsmCopyMove(args.host, sid, over.from, parentOf(over.to), { keepSource: true })) &&
+      (lastSegment(over.from) === lastSegment(over.to) ||
+        (await dsmRenameFile(
+          args.host,
+          sid,
+          `${parentOf(over.to)}/${lastSegment(over.from)}`,
+          lastSegment(over.to)
+        )))
+    if (ok)
+      copied.push({
+        localPath: over.local,
+        remotePath: over.to,
+        md5: over.md5,
+        size: fs.statSync(over.local).size,
+        at: Math.floor(Date.now() / 1000)
+      })
+    else couldNotCopy.push(over.local)
+  }
+  planned.upload.push(...couldNotCopy)
 
   const totalFiles = planned.upload.length
   const sent: UploadVerdict[] = []
@@ -315,10 +439,14 @@ const publishJump = async (
     shareUrl: args.share === false ? null : await ensureShareLink(args.host, sid, args.remoteDir),
     uploaded: planned.upload.length,
     skipped: planned.skip.length,
-    /* every file now known to be on the NAS, sent or already there */
-    files: [...sent, ...planned.skip]
+    /* the storage's own copies: nothing was sent for these, and they are up there all the same */
+    copied: copied.length,
+    /* what the folders were seen to hold, this upload's own files included */
+    seen: planned.seen ?? [],
+    /* every file now known to be on the NAS, sent, copied there, or already there */
+    files: [...sent, ...copied, ...planned.skip]
   }
 }
 
 export { planUpload, publishJump, uploadFile }
-export type { CheckProgress, PublishArgs, UploadProgress, UploadVerdict }
+export type { CheckProgress, PublishArgs, Seen, UploadProgress, UploadVerdict }

@@ -500,6 +500,35 @@ describe('while a processing is running', () => {
   })
 })
 
+/* Every name changes on the way out, so a delivered file says inside itself what it was made from
+   — the original's content id — and can still say it wherever it ends up (RULES, Network storage). */
+describe('what a delivered file says it came from', () => {
+  const tagged = () =>
+    execSyncMock.mock.calls.map((c) => String(c[0])).filter((l) => l.includes('skydock:from='))
+
+  it('is the original it was made from, written into the copy itself', async () => {
+    const { manifestPath } = write({
+      destination: 'Yverdon',
+      files: [clip('GX010001.MP4', 0)]
+    })
+
+    await processJumps({ manifestPath, outputDir })
+
+    expect(tagged().some((l) => l.includes('skydock:from=id0'))).toBe(true)
+  })
+
+  it('is written into a photo the same way', async () => {
+    const { manifestPath } = write({
+      destination: 'Yverdon',
+      files: [clip('G0010002.JPG', 1)]
+    })
+
+    await processJumps({ manifestPath, outputDir })
+
+    expect(tagged().some((l) => l.includes('skydock:from='))).toBe(true)
+  })
+})
+
 /* Turning: a clip is encoded again, turned; a photo keeps its pixels and gets its orientation tag. */
 describe('turning a file', () => {
   const exiftoolCalls = () =>

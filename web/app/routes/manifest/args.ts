@@ -52,9 +52,16 @@ const actionArgs = z.object({
     /* tandems the storage's list names, put back on a board that has forgotten them */
     'restore-tandems',
     /* a clip handed to the machine's own video player, to be watched at its full size */
-    'play-file'
+    'play-file',
+    /* files this machine gave back, copied off the camera again because they are wanted here */
+    'copy-back',
+    /* one file fetched back off the storage, and one sent again over what is up there */
+    'bring-back',
+    'upload-again'
   ]),
   groupId: z.string().optional(),
+  /* files on a camera, by where they sit on its card */
+  paths: z.array(z.string()).optional(),
   groupIds: z.array(z.string()).optional(),
   fileIds: z.array(z.string()).optional(),
   targetGroupId: z.string().optional(),

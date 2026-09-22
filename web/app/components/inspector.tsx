@@ -322,7 +322,8 @@ const FilePanel = ({
   onSendBack,
   backLabel,
   onTrash,
-  onRetime
+  onRetime,
+  onUploadAgain
 }: {
   file: ManifestFile
   name: string | null
@@ -338,6 +339,9 @@ const FilePanel = ({
   onTrash?: () => void
   /* when it was shot, corrected on its own; absent when the file is past changing */
   onRetime?: (epoch: number) => void
+  /* Sent again over the one already up there — for a copy that was wrong when it went. What is
+     there goes into the bin first; nothing is ever written over (RULES, Network storage). */
+  onUploadAgain?: () => void
 }) => {
   const video = isVideoFile(file.path)
   return (
@@ -437,6 +441,17 @@ const FilePanel = ({
             ) : (
               <Mini onClick={onSendBack}>{backLabel}</Mini>
             )}
+          </span>
+        </Box>
+      )}
+      {onUploadAgain && status === 'uploaded' && (
+        <Box heading='On the storage'>
+          <p className='m-0 text-[12px] text-ink-2'>
+            Prepared again since it went up? Send this copy over the one up there — what is there
+            now goes into the bin first, and nothing is written over.
+          </p>
+          <span>
+            <Mini onClick={onUploadAgain}>Upload again</Mini>
           </span>
         </Box>
       )}

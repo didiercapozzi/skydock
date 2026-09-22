@@ -26,6 +26,7 @@ import {
 import { fileChanged, fileStatus, outputKeyOf, uploadGate } from './fileStatus'
 import type { FileStatus, RemoteListing, StatusContext } from './fileStatus'
 import { forgetLostFiles } from './forgetLost'
+import { learnStorage } from './originIndex'
 import { freeablePlace } from './freeable'
 import { jsonText } from './lib/json'
 /* arithmetic only — the board draws the rectangle with the same functions processing cuts it with,
@@ -205,6 +206,7 @@ export {
   isVideoFile,
   isWholeFrame,
   lastSegment,
+  learnStorage,
   listRemoteFiles,
   loadManifest,
   loadNasSession,

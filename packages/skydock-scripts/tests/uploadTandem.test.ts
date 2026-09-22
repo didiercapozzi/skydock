@@ -209,7 +209,10 @@ describe('uploading a tandem — what the passenger gets', () => {
 
   it('sends the originals to the backup folder instead', async () => {
     const { uploads } = await upload()
-    expect(uploads.filter((u) => u.dest === '/Backup').map((u) => u.name)).toEqual([
+    /* what the tandem sends — the storage's own list of where its files came from is not a
+       delivery, and is kept in the share it delivered into (RULES, Network storage) */
+    const sent = uploads.filter((u) => u.name !== 'skydock-origins.json')
+    expect(sent.filter((u) => u.dest === '/Backup').map((u) => u.name)).toEqual([
       'luc_favre_20260802.rushes.zip'
     ])
   })

@@ -116,6 +116,8 @@ const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => 
   }
 
   const claimedDiskPaths = new Set<string>()
+  /* what was freed and is on the disk again, which is the one thing that undoes a freeing */
+  const returnedIds = new Set<string>()
   const keptFiles: ManifestFile[] = []
   let removed = 0
   let moved = 0
@@ -137,12 +139,26 @@ const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => 
     if (f.copyOf) continue
     const disk = diskByPath.get(f.path)
     if (disk) {
+      if (f.freed && f.id) returnedIds.add(f.id)
       keptFiles.push(kept(f, disk))
       continue
     }
-    /* freed on purpose once the storage held it: not being on disk is the point, not a loss */
+    /* Freed on purpose once the storage held it: not being on disk is the point, not a loss. It is
+       back only when somebody asked for it back, and then it may be back under a name with a number
+       — its own was taken while it was away — so it is looked for by what it contains rather than by
+       where it sat (RULES, Freeing space). */
     if (f.freed) {
-      keptFiles.push(f)
+      const back = ((f.id && diskPathsById.get(f.id)) || []).filter(
+        (p) => !existingByPath.has(p) && !claimedDiskPaths.has(p)
+      )
+      const returned = back.length === 1 ? diskByPath.get(back[0]!) : undefined
+      if (!returned) {
+        keptFiles.push(f)
+        continue
+      }
+      claimedDiskPaths.add(returned.path)
+      if (f.id) returnedIds.add(f.id)
+      keptFiles.push(kept(f, returned))
       continue
     }
     const candidates = (f.id && diskPathsById.get(f.id)) || []
@@ -177,7 +193,9 @@ const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => 
     (f) => !existingByPath.has(f.path) && !claimedDiskPaths.has(f.path)
   )
 
-  if (removed === 0 && addedFiles.length === 0 && moved === 0) {
+  /* a file asked back is a change like any other: it is here again, and the registry has to say so
+     rather than keeping the mark that says it is on the storage alone */
+  if (removed === 0 && addedFiles.length === 0 && moved === 0 && returnedIds.size === 0) {
     return { manifest: existing, added: 0, removed: 0, moved: 0 }
   }
 
@@ -192,7 +210,13 @@ const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => 
       f.id ? keptIds.has(f.id) : keptPaths.has(f.path)
     )
     if (filteredFiles.length > 0) {
-      keptGroups.push({ ...group, files: filteredFiles })
+      /* a jump lives on the storage only for as long as nothing of it is here: a file asked back
+         makes it a jump again, with the mark gone (RULES, Freeing space) */
+      const returned = group.freed && filteredFiles.some((f) => f.id && returnedIds.has(f.id))
+      const { freed: _gone, ...rest } = group
+      keptGroups.push(
+        returned ? { ...rest, files: filteredFiles } : { ...group, files: filteredFiles }
+      )
     }
   }
 
@@ -204,7 +228,7 @@ const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => 
 
   groupNewFiles(merged, addedFiles)
 
-  return { manifest: merged, added: addedFiles.length, removed, moved }
+  return { manifest: merged, added: addedFiles.length, removed, moved, returned: returnedIds.size }
 }
 
 const scanMedia = async (options?: { outputDir?: string }) => {
@@ -245,9 +269,11 @@ const scanMedia = async (options?: { outputDir?: string }) => {
     }
   }
 
-  const { manifest, added, removed, moved } = await mergeManifests(existing, diskFiles)
+  const { manifest, added, removed, moved, returned } = await mergeManifests(existing, diskFiles)
 
-  if (added === 0 && removed === 0 && moved === 0) {
+  /* a file asked back from the storage is here again, which the registry has to be told even when
+     nothing else about the disk changed (RULES, Freeing space) */
+  if (added === 0 && removed === 0 && moved === 0 && returned === 0) {
     console.log(`[Scan] No changes. ${existing.files.length} file(s) in manifest.`)
     return {
       added: 0,
@@ -260,7 +286,7 @@ const scanMedia = async (options?: { outputDir?: string }) => {
   }
 
   console.log(
-    `[Scan] Merging: +${added} new, -${removed} removed, ~${moved} moved, ${existing.files.length} existing.`
+    `[Scan] Merging: +${added} new, -${removed} removed, ~${moved} moved, ${returned} back, ${existing.files.length} existing.`
   )
   saveManifest(manifestPath, manifest)
 

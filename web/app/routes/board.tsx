@@ -8,6 +8,7 @@ import {
   goneFromStorage,
   hasCompletePassenger,
   lastSegment,
+  learnStorage,
   listRemoteFiles,
   loadManifest,
   offGap,
@@ -131,6 +132,16 @@ const loader = async (_args: Route.LoaderArgs) => {
           saveManifest(`${outputDir}/manifest.json`, manifest)
           console.log(`[Board] Forgot ${forgotten.length} file(s) nowhere: ${forgotten.join(', ')}`)
         }
+        /* What the storage holds is written into its own list, whoever put it there: a place can be
+           pointed at a folder that was full of footage long before SkyDock saw it, and an upload
+           must not send a second copy of what is already up there (RULES, Network storage). It is
+           the board's own reading of those folders, so it costs nothing more to look — and a
+           storage that will not have it written changes nothing about the board. */
+        await learnStorage(manifest, session, remote.sizes).catch((e: unknown) => {
+          console.warn(
+            `[Board] The storage's list of what it holds was not written: ${e instanceof Error ? e.message : String(e)}`
+          )
+        })
         /* the storage's own list of tandems — every one it holds, from here or from elsewhere */
         const dir = tandemsRemoteDir(manifest)
         if (dir)
@@ -949,6 +960,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                     anchorEpoch: epoch
                   })
           }
+          onUploadAgain={
+            one.id && nas.connected
+              ? () => send(`again:${one.id}`, { intent: 'upload-again', fileIds: [one.id ?? ''] })
+              : undefined
+          }
         />
       )
     }
@@ -1149,6 +1165,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               mount={place.name}
               stamp={board.cameras.map((c) => c.mount).join('\n')}
               onNote={board.setNote}
+              onCopyBack={(paths) => send('copy-back', { intent: 'copy-back', paths })}
             />
           ) : place.kind === 'storage' ? (
             <div className='pt-3'>
@@ -1222,6 +1239,17 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               where={storageWhere}
               stamp={board.remoteAfterUpload?.at}
               hereToo={hereToo}
+              onBringBack={(file) => {
+                /* the board knows it by where it was sent, which is what its upload recorded */
+                const mine = [...groups.flatMap((g) => g.files), ...loose].find(
+                  (f) => f.uploaded?.remotePath === file.path
+                )
+                if (!mine?.id) {
+                  setNote(`${file.name} was not sent from this machine, so it cannot come back.`)
+                  return
+                }
+                send(`back:${mine.id}`, { intent: 'bring-back', fileIds: [mine.id] })
+              }}
             />
           )}
         </PlacePane>

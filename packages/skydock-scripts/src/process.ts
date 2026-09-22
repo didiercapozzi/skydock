@@ -51,6 +51,29 @@ const shownShape = (src: string) => {
   return shape && (shape.turned ? { width: shape.height, height: shape.width } : shape)
 }
 
+/* What a delivered file was made from, written into the file itself: the content id of the
+   original. Every name changes on the way out, so a copy that leaves SkyDock — downloaded from the
+   storage, passed on, found again years later — can still say where it came from, and a storage
+   whose list was lost can be read back from the files themselves.
+
+   Written with exiftool rather than by the ffmpeg that made the file, so that it costs a moment
+   whatever the file weighs and touches nothing but the metadata: a quarter of a second on a
+   230 MB clip, with every stream left as it was. Remuxing to add a label would not be that — a DJI
+   clip carries a debug track that has no tag in an mp4 at all, so ffmpeg cannot write it back, and
+   a copy relabelled that way would come out short of what the camera recorded.
+
+   Only delivered copies carry it. An original never does: what is proved against a camera is the
+   bytes of the file on the card, and a tag would change them (RULES, Seeing what is on a camera). */
+const ORIGIN_TAG = 'skydock:from='
+
+const tagOrigin = async (dest: string, from: string | undefined) => {
+  if (!from || !hasCommand('exiftool')) return
+  /* the label is a courtesy: a file that could not take one is still the file that was asked for */
+  await exif(['-overwrite_original', '-q', `-Comment=${ORIGIN_TAG}${from}`, dest]).catch(
+    () => undefined
+  )
+}
+
 /* A photo is turned by its orientation tag, added to whatever turn it already carries: nothing is
    re-encoded, so nothing is lost, and every viewer draws it the way the tag says. */
 const turnPhoto = async (dest: string, rotation: 90 | 180 | 270) => {
@@ -338,6 +361,8 @@ const copyMedia = async (file: ManifestFile, dest: string, time: Date, onPercent
     await copyWhole(file.path, dest, onPercent)
     if (!video && file.rotation) await turnPhoto(dest, file.rotation)
   }
+  await tagOrigin(dest, file.copyOf ?? file.id)
+  /* last of all: the time it was shot, which the label would otherwise have moved to now */
   fs.utimesSync(dest, time, time)
 }
 

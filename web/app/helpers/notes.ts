@@ -136,8 +136,32 @@ const restoredNote = (restored: { who: string; files: number; of: number }[]) =>
   }`
 }
 
+/* Files asked back off a camera: they are here again, and they are where they always were — the
+   jump they were in, by what they contain (RULES, Freeing space). Their delivered copies went with
+   the freeing, so they are files to prepare again. */
+const copiedBackNote = ({ copied, skipped }: { copied: number; skipped: number }) =>
+  copied === 0
+    ? 'Nothing was copied back — every file asked for is already here.'
+    : `${plural(copied, 'file')} copied back off the camera${
+        skipped > 0 ? `, ${skipped} already here` : ''
+      } — ready to prepare again.`
+
+/* What came back off the storage, and what it is: a tandem's originals go up as themselves, a
+   dropzone's never do — so what returns from a dropzone is the copy that was delivered, already
+   trimmed and cropped, and the board says so rather than letting somebody find out later. */
+const broughtBackNote = ({ filename, original }: { filename: string; original: boolean }) =>
+  original
+    ? `${filename} is back on this machine, as it was shot.`
+    : `${filename} is back — the copy that was delivered, already cut, so its trim is cleared. Prepare it again from here.`
+
+/* what was up there is never written over: it is in the bin, under the moment it was replaced */
+const sentAgainNote = ({ filename, binned }: { filename: string; binned: string }) =>
+  `${filename} sent again — what was up there is in ${binned}.`
+
 export {
+  broughtBackNote,
   cameraNote,
+  copiedBackNote,
   copiedNote,
   resetNote,
   freedNote,
@@ -146,5 +170,6 @@ export {
   montageNote,
   restoredNote,
   scanNote,
+  sentAgainNote,
   uploadedNote
 }
