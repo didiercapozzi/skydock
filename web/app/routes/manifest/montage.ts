@@ -7,8 +7,8 @@ import { getCutProxyDir } from '../../../../packages/skydock-scripts/src/proxy'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 
-/* A processed tandem gets an editing project with its clips already on the timeline, and the
-   project is opened in the same press: it exists to be edited (RULES, Montage). */
+/* A processed tandem gets an editing project with its clips in the bin and empty tracks to lay them
+   on, and the project is opened in the same press: it exists to be edited (RULES, Montage). */
 const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse }) => {
   const group = manifest.groups.find((g) => g.id === data.groupId)
   if (!group) return refuse('Group not found.')
@@ -20,7 +20,7 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
   if (fs.readdirSync(groupDir).some((f) => f.endsWith('.kdenlive')))
     return refuse('This tandem already has a project — open it in kdenlive.')
   try {
-    /* the processed copies are already renamed and cropped — the timeline lays them out */
+    /* the processed copies are already renamed and cropped — the bin holds them as they are */
     const videos = fs
       .readdirSync(path.join(groupDir, 'videos'), { withFileTypes: true })
       .filter((e) => e.isFile())
@@ -37,8 +37,8 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
       title: passengerOf(group).trim() || group.label,
       template: data.template,
       /* Each copy with the proxy processing cut for it, when it managed to make one, and with what
-         the jump in it was measured at: a clip that holds a jump is laid cut at its moments (RULES,
-         Montage), and the moments belong to the file it was copied from. */
+         the jump in it was measured at: a clip that holds a jump carries its moments as markers
+         (RULES, Montage), and the moments belong to the file it was copied from. */
       clips: videos.map((file) => {
         const proxy = path.join(getCutProxyDir(outputDir, group.id), `${path.parse(file).name}.mp4`)
         const measured = copies.get(path.basename(file))
@@ -64,7 +64,6 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
       montage: {
         clips: made.clips,
         missingAssets: made.missingAssets,
-        repositioned: made.repositioned,
         opened: opened.opened,
         openCommand: opened.command,
         openReason: opened.reason

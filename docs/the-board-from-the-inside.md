@@ -177,7 +177,7 @@ The rule itself is in [RULES.md](../RULES.md), under _Montage_.
 
 | asked for | what it does | what it reaches |
 | --- | --- | --- |
-| `montage` | A processed tandem gets an editing project with its clips already on the timeline, and the project is opened in the same press: it exists to be edited (RULES, Montage). | writes the record, works outside the record |
+| `montage` | A processed tandem gets an editing project with its clips in the bin and empty tracks to lay them on, and the project is opened in the same press: it exists to be edited (RULES, Montage). | writes the record, works outside the record |
 
 <details><summary><code>montage</code> refuses</summary>
 

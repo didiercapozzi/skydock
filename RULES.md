@@ -171,7 +171,7 @@ passenger or the dropzone and the time they were shot, cropped and turned as ask
 each file's date matches its name.
 
 **5. Hand over.** A dropzone folder is **uploaded** whole and gets a share link. A tandem is given a
-**montage** — an editing project with its clips already on the timeline — someone edits and renders the
+**montage** — an editing project with its clips waiting in the bin — someone edits and renders the
 film, and the tandem is then **uploaded**: the film and the photos to the passenger's folder, the
 original videos to the backup folder. Finally the passenger is **emailed** their link.
 
@@ -198,7 +198,7 @@ already filed never grows by itself. Every jump already there keeps its files, h
   elsewhere, by a drag, from the computer or as a copy, was often shot well before or after and does not
   say when this jump was, so it changes nothing about the jump: its date and time, its number among the
   jumps, the day it is filed under and the start that gets corrected all keep following the run. The
-  file is still listed, and laid on a montage's timeline where its own time puts it. One brought in from
+  file is still listed, and placed among a montage's clips where its own time puts it. One brought in from
   within the gap is part of the same filming, and then the jump does start with it; a copy never counts.
 - A file a jump holds against the gap rule — dragged in, or re-timed away from the rest — carries a
   **gap** flag wherever it is drawn, and its jump's card says how many of its files do. The flag only
@@ -850,36 +850,26 @@ about it is stored.
 
 ## Montage
 
-A processed tandem can be turned into an editing project. Its videos are laid on the template's first
-video track in the order shot, each with its own sound on the audio track right under it, the two
-linked so they move, cut and go together — nobody restores a clip's audio by hand. That track is heard
-or not as the template has it. A template with no audio track under its first video track, or a clip
-whose length cannot be read, gets its clips with their sound inside, on the video track alone. Crops and
-turns are already applied, each clip playing from its proxy with
-the real clip recorded as what the edit is of, so the editor opens ready to work and renders from the
-footage. The film's destination and format are filled in, so what is left is the edit and pressing
-render — and the format asks for the graphics card's own encoder, since a delivery film is encoded
-once and watched, never encoded again. A machine whose editor has no such encoder is shown its own
-list instead.
+A processed tandem can be turned into an editing project, made from a copy of the chosen template
+and named after the passenger. The template is taken exactly as its owner made it: every track, title,
+photo and piece of music stays where it is, and nothing in it is moved, cut or faded. What the montage
+adds is room for the jump — two empty tracks of its own, a video track called **Jump** under every
+video track the template has, so the template's titles and logos stay on top of the footage, and an
+audio track called **Jump sound** right under it. The tandem's videos wait in the project's bin, in
+the order shot, and the person editing drags them onto those tracks: where each clip goes in the film,
+and how it opens and closes, is their decision. Crops and turns are already applied, each clip playing
+from its proxy with the real clip recorded as what the edit is of, so the editor opens ready to work and
+renders from the footage. The film's destination and format are filled in, so what is left is the edit
+and pressing render — and the format asks for the graphics card's own encoder, since a delivery film is
+encoded once and watched, never encoded again. A machine whose editor has no such encoder is shown its
+own list instead.
 
-**The jump is marked on the clip, never cut into it.** Every clip is laid whole, and one with a jump
-in it carries the jump's moments as markers of its own — the exit, the opening, the canopy and the
-ground, named as the board names them. Where the film changes is the editor's decision and theirs
-alone; a marker only says where the door was left, and saves the scrubbing that finding it costs.
-They are the clip's own, so they travel with it however often it is moved, trimmed or cut, and they
-are never laid along the timeline, where a mark stays behind the moment the clip it was about moves.
-
-**The template's furniture follows the film at its ends.** A template is made for a film of a certain
-length and a montage is as long as its footage, so the end card is moved to follow the last clip — the
-film ends on the card rather than on footage — and the music is cut to end with it. The intro stays
-where it is and the titles in the middle stay where the template put them. A template whose shape is
-not recognised is left exactly as it arrived rather than mangled, and what was moved is said when the
-montage is made.
-
-**How the film closes.** It goes into black on the last frame and the music goes quiet where it ends
-rather than stopping dead. Nothing fades the first video up, nothing is sped up or slowed down, and
-where the template closes the film itself with an end card that edge is left alone: each of those is a
-choice about a particular film, and belongs to whoever is editing it.
+**The jump is marked on the clip, never cut into it.** Every clip in the bin is whole, and one with a
+jump in it carries the jump's moments as markers of its own — the exit, the opening, the canopy and the
+ground, named as the board names them. A marker only says where the door was left, and saves the
+scrubbing that finding it costs. They are the clip's own, so they come with it when it is dragged onto
+the timeline and travel with it however often it is moved, trimmed or cut; they are never laid along the
+timeline, where a mark stays behind the moment the clip it was about moves.
 
 **Making the montage opens it.** Writing the project and opening the editor are one press, and a tandem
 with a project offers a way back into it. Which command opens the editor is told to SkyDock when it
@@ -888,7 +878,8 @@ cannot be reached from where SkyDock runs, the board says so and still names the
 copies when clicked. A project that would not open is refused with the reason.
 
 **Templates.** A template is a folder holding its project and the music, logos and title images it
-uses, referenced where they are. A template that travelled from another machine still finds its files.
+uses, referenced where they are. Bringing those files along is the template owner's part: a project
+that names them by paths relative to itself finds them wherever the folder goes. A template that travelled from another machine still finds its files.
 A template missing some of its files still gives a project, and the montage names what is missing
 straight away. Until one is brought in, the template that ships with SkyDock is the one there is.
 

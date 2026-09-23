@@ -40,9 +40,8 @@ const twoAudioOneMutedTemplate = `<?xml version='1.0' encoding='utf-8'?>
 `
 
 /* The same shape again, with what a template puts around the footage: music on the first audio
-   track, and above the footage an intro, a title in the middle and an end card. The numbers are the
-   shipped template's in miniature — furniture made for a film of a certain length, laid over a
-   montage that is as long as its footage. */
+   track, and above the footage an intro, a title in the middle and an end card — the shipped
+   template's in miniature. */
 const templateWithFurniture = `<?xml version='1.0' encoding='utf-8'?>
 <mlt root="/nowhere">
  <producer id="producer0"><property name="resource">black</property></producer>
@@ -201,129 +200,147 @@ describe('montage — a document the editor can open', () => {
   })
 })
 
-describe('montage — which track the jump lands on', () => {
-  it('uses the first video track of the template it was given, not a fixed one', () => {
-    const { videoTrackId, xml } = build(twoAudioOneMutedTemplate, ['a.mp4', 'b.mp4'])
-    expect(videoTrackId).toBe('playlist6')
-    expect(entriesOf(xml, 'playlist6')).toEqual(['chain_skydock_0', 'chain_skydock_1'])
-  })
+/* the tracks of the timeline bottom to top, by the tractor each one plays, black left out */
+const stackOf = (xml: string) =>
+  [sequenceOf(xml).track]
+    .flat()
+    .map((t: { '@_producer': string }) => t['@_producer'])
+    .filter((p: string) => p.startsWith('tractor') || p.startsWith('skydock'))
 
-  it('never mistakes a muted audio track for a video one', () => {
+const tractorProps = (xml: string, id: string) => {
+  const tractor = [parsed(xml).mlt.tractor].flat().find((t: { '@_id': string }) => t['@_id'] === id)
+  return Object.fromEntries(
+    [tractor.property ?? []]
+      .flat()
+      .map((p: { '@_name': string; '#text': string }) => [p['@_name'], p['#text']])
+  )
+}
+
+/* which track each composition of the timeline blends, by the tractor that track plays */
+const blendedOf = (xml: string) => {
+  const sequence = sequenceOf(xml)
+  const stack = [sequence.track].flat().map((t: { '@_producer': string }) => t['@_producer'])
+  return [sequence.transition ?? []].flat().map((t: { property: { '@_name': string }[] }) => {
+    const b = [t.property].flat().find((p) => p['@_name'] === 'b_track') as { '#text': number }
+    return stack[b['#text']]
+  })
+}
+
+/* The template is somebody's film, laid out their way: the montage leaves every track of it as it
+   was and adds two empty ones of its own for the jump to be dragged onto (RULES, Montage). */
+describe('montage — two empty tracks for the jump', () => {
+  it('adds a video track under every video track of the template, and its sound right under it', () => {
     const { xml } = build(twoAudioOneMutedTemplate, ['a.mp4'])
-    expect(entriesOf(xml, 'playlist4')).toEqual([])
+    expect(stackOf(xml)).toEqual([
+      'tractor0',
+      'tractor1',
+      'tractor2',
+      'skydock_jump_sound',
+      'skydock_jump',
+      'tractor3',
+      'tractor4'
+    ])
   })
 
-  it('leaves the titles track above the footage alone', () => {
-    const { xml } = build(twoAudioOneMutedTemplate, ['a.mp4'])
-    expect(entriesOf(xml, 'playlist8')).toEqual([])
+  it('names them, and knows the sound one for an audio track', () => {
+    const { xml } = build(twoAudioOneMutedTemplate)
+    expect(tractorProps(xml, 'skydock_jump')).toMatchObject({ 'kdenlive:track_name': 'Jump' })
+    expect(tractorProps(xml, 'skydock_jump')['kdenlive:audio_track']).toBeUndefined()
+    expect(tractorProps(xml, 'skydock_jump_sound')).toMatchObject({
+      'kdenlive:track_name': 'Jump sound',
+      'kdenlive:audio_track': 1
+    })
   })
 
-  it('lays the jump on the first video track of the template that ships', () => {
-    const { videoTrackId, xml } = build(undefined, ['a.mp4'])
-    expect(videoTrackId).toBe('playlist4')
-    expect(entriesOf(xml, 'playlist4')).toContain('chain_skydock_0')
+  it('leaves both empty, for the editor to lay the clips on', () => {
+    const { xml } = build(twoAudioOneMutedTemplate, ['a.mp4', 'b.mp4'])
+    expect(entriesOf(xml, 'skydock_jump_clips')).toEqual([])
+    expect(entriesOf(xml, 'skydock_jump_sound_clips')).toEqual([])
   })
 
-  it('refuses a template with no video track instead of guessing one', () => {
-    expect(() => build(audioOnlyTemplate)).toThrow(/no video track/)
+  it('leaves the template’s own tracks exactly as they were', () => {
+    const { xml } = build(templateWithFurniture, ['a.mp4'])
+    expect(entriesOf(xml, 'playlist0')).toEqual(['music', 'music'])
+    expect(entriesOf(xml, 'playlist8')).toEqual(['intro', 'middle', 'card'])
+    expect(entriesOf(xml, 'playlist6')).toEqual([])
+    expect(xml).toMatch(/<playlist id="playlist8">[\s\S]*?<blank length="3000"\/>/)
+  })
+
+  /* the template's titles are blended by number, and the number of the track they are on moves up
+     by two — left behind, they would be blended onto the wrong track */
+  it('keeps every composition of the template that ships on the track it blended', () => {
+    const before = fs.readFileSync(REPO_TEMPLATE, 'utf-8')
+    const { xml } = build(undefined, ['a.mp4'])
+    expect(blendedOf(xml).filter((t) => !t.startsWith('skydock'))).toEqual(blendedOf(before))
+  })
+
+  it('blends the jump in the order of the stack, so the template’s titles stay on top of it', () => {
+    const { xml } = build(undefined, ['a.mp4'])
+    const stack = stackOf(xml)
+    const blended = blendedOf(xml)
+    expect(blended).toContain('skydock_jump')
+    expect(blended).toContain('skydock_jump_sound')
+    const video = blended.filter((t) => ['skydock_jump', 'tractor2', 'tractor3'].includes(t))
+    expect(video).toEqual(['skydock_jump', 'tractor2', 'tractor3'])
+    expect(stack.indexOf('skydock_jump')).toBeLessThan(stack.indexOf('tractor2'))
+  })
+
+  it('keeps clips the template grouped together, on the tracks they were on', () => {
+    const grouped = twoAudioOneMutedTemplate.replace(
+      '<track producer="producer0"/>',
+      `<property name="kdenlive:sequenceproperties.groups">[{"type":"AVSplit","children":[{"data":"2:0","leaf":"clip","type":"Leaf"},{"data":"3:0","leaf":"clip","type":"Leaf"}]},{"type":"Normal","children":[{"data":"4:10","leaf":"clip","type":"Leaf"}]}]</property><track producer="producer0"/>`
+    )
+    const { xml } = build(grouped)
+    expect(
+      groupsOf(xml).map((g: { children: { data: string }[] }) => g.children.map((c) => c.data))
+    ).toEqual([['2:0', '5:0'], ['6:10']])
+  })
+
+  it('adds them on top of a template with no video track at all', () => {
+    const { xml } = build(audioOnlyTemplate)
+    expect(stackOf(xml)).toEqual(['tractor0', 'skydock_jump_sound', 'skydock_jump'])
+  })
+
+  it('writes a project the editor can open from the template that ships', () => {
+    expect(() => parsed(build(undefined, ['a.mp4', 'b.mp4']).xml)).not.toThrow()
   })
 })
 
-/* A jump's clip is laid on V1 with its own sound on A1 beneath it, the two linked — as kdenlive
-   leaves a clip whose audio was restored — so nobody restores the audio clip by clip. */
-describe('montage — each clip with its sound', () => {
-  const timed = (templateXml: string | undefined, clips: [string, number][]) => {
-    const { outputDir, groupDir, templatePath } = setup(templateXml)
-    const result = createMontageProject({
-      groupDir,
-      outputDir,
-      baseName: 'luc_favre_20260802',
-      title: 'Luc Favre',
-      templatePath,
-      clips: clips.map(([c, seconds]) => ({ path: path.join(groupDir, 'videos', c), seconds }))
-    })
-    return fs.readFileSync(result.projectPath, 'utf-8')
-  }
-  it('lays each clip on the first video track and its sound on the audio track under it, starting together', () => {
-    const xml = timed(twoAudioOneMutedTemplate, [
-      ['a.mp4', 2],
-      ['b.mp4', 3]
-    ])
-    expect(entriesOf(xml, 'playlist6')).toEqual([
-      'chain_skydock_0_picture',
-      'chain_skydock_1_picture'
-    ])
-    expect(entriesOf(xml, 'playlist4')).toEqual(['chain_skydock_0_sound', 'chain_skydock_1_sound'])
-  })
+/* entries anywhere on the timeline that play one of the tandem's clips */
+const laidOnTimeline = (xml: string) =>
+  [parsed(xml).mlt.playlist]
+    .flat()
+    .filter((p: { '@_id': string }) => p['@_id'] !== 'main_bin')
+    .flatMap((p: { entry?: unknown }) => [p.entry ?? []].flat())
+    .filter((e: { '@_producer': string }) => e['@_producer'].startsWith('chain_skydock'))
 
-  it('plays the picture alone on the video track and the sound alone on the audio track', () => {
-    const xml = timed(twoAudioOneMutedTemplate, [['a.mp4', 2]])
-    /* read back as numbers, the way the parser reads any value */
-    expect(chainProps(xml, 'chain_skydock_0_picture')).toMatchObject({
-      'set.test_audio': 1,
-      'set.test_image': 0
-    })
-    expect(chainProps(xml, 'chain_skydock_0_sound')).toMatchObject({
-      'set.test_audio': 0,
-      'set.test_image': 1
-    })
-  })
+const binOf = (xml: string) =>
+  [
+    [parsed(xml).mlt.playlist].flat().find((p: { '@_id': string }) => p['@_id'] === 'main_bin')
+      .entry
+  ]
+    .flat()
+    .map((e: { '@_producer': string }) => e['@_producer'])
 
-  it('links each picture with its sound, so they move together', () => {
-    /* no frame rate in this template: 25 frames a second, so 2 s is 50 frames */
-    const xml = timed(twoAudioOneMutedTemplate, [
-      ['a.mp4', 2],
-      ['b.mp4', 3]
-    ])
-    expect(groupsOf(xml)).toEqual([
-      {
-        type: 'AVSplit',
-        children: [
-          { data: '2:0', leaf: 'clip', type: 'Leaf' },
-          { data: '3:0', leaf: 'clip', type: 'Leaf' }
-        ]
-      },
-      {
-        type: 'AVSplit',
-        children: [
-          { data: '2:50', leaf: 'clip', type: 'Leaf' },
-          { data: '3:50', leaf: 'clip', type: 'Leaf' }
-        ]
-      }
+describe('montage — the clips wait in the bin', () => {
+  it('puts every clip in the bin, in the order shot', () => {
+    const { xml } = build(twoAudioOneMutedTemplate, ['a.mp4', 'b.mp4'])
+    expect(binOf(xml).filter((p: string) => p.startsWith('chain_skydock'))).toEqual([
+      'chain_skydock_0',
+      'chain_skydock_1'
     ])
   })
 
-  /* the committed template opens V1 on a five-second title at 60 frames a second, and keeps a free,
-     unmuted audio track under A1 */
-  it('starts after what the video track already holds, with the sound held back as far', () => {
-    const xml = timed(undefined, [['a.mp4', 2]])
-    expect(groupsOf(xml)).toEqual([
-      {
-        type: 'AVSplit',
-        children: [
-          { data: '2:300', leaf: 'clip', type: 'Leaf' },
-          { data: '3:300', leaf: 'clip', type: 'Leaf' }
-        ]
-      }
-    ])
-    expect(xml).toMatch(/<playlist id="playlist2">[\s\S]*?<blank length="300"\/>/)
+  /* where a clip goes in the film is the editor's decision and theirs alone */
+  it('lays none of them on the timeline', () => {
+    const { xml } = build(templateWithFurniture, ['a.mp4', 'b.mp4'])
+    expect(laidOnTimeline(xml)).toEqual([])
   })
 
-  it('keeps the clips on the video track alone, sound inside, when a clip’s length cannot be read', () => {
+  it('gives each clip in the bin its whole sound and picture', () => {
     const { xml } = build(twoAudioOneMutedTemplate, ['a.mp4'])
-    expect(entriesOf(xml, 'playlist6')).toEqual(['chain_skydock_0'])
-    expect(entriesOf(xml, 'playlist4')).toEqual([])
-  })
-})
-
-describe('montage — the committed template', () => {
-  /* an audio track of its own under A1, heard, empty — for whatever the edit needs besides the jump */
-  it('has a free audio track, heard, under the one the jump’s sound goes on', () => {
-    const xml = fs.readFileSync(REPO_TEMPLATE, 'utf-8')
-    const order = [...xml.matchAll(/<track producer="(tractor\d+)"\/>/g)].map((m) => m[1])
-    expect(order.slice(0, 3)).toEqual(['tractor0', 'tractor6', 'tractor1'])
-    expect(xml).toMatch(/<tractor id="tractor6"[\s\S]*?<track hide="video" producer="playlist8"\/>/)
-    expect(entriesOf(xml, 'playlist8')).toEqual([])
+    expect(chainProps(xml, 'chain_skydock_0')['set.test_audio']).toBeUndefined()
+    expect(chainProps(xml, 'chain_skydock_0')['set.test_image']).toBeUndefined()
   })
 })
 
@@ -595,7 +612,6 @@ describe('montage — clips that have a proxy', () => {
     const { xml } = buildWithProxy([{ path: 'a.mp4', proxy: 'a.mp4' }, { path: 'b.mp4' }])
     expect(chainProps(xml, 'chain_skydock_0')['kdenlive:proxy']).toContain('/proxy/a.mp4')
     expect(chainProps(xml, 'chain_skydock_1')['kdenlive:proxy']).toBe('-')
-    expect(entriesOf(xml, 'playlist6')).toEqual(['chain_skydock_0', 'chain_skydock_1'])
   })
 
   /* the editor runs where the files are, not where SkyDock is */
@@ -616,9 +632,7 @@ describe('montage — the jump marked on the clip', () => {
   const FPS = 25
   const JUMP = { exit: 65, opening: 120.3, canopy: 123, landing: 223 }
 
-  const laid = (
-    clips: { name: string; seconds: number; moments?: typeof JUMP; cropStart?: number }[]
-  ) => {
+  const marked = (clip: { seconds?: number; moments?: typeof JUMP; cropStart?: number }) => {
     const { outputDir, groupDir, templatePath } = setup(twoAudioOneMutedTemplate)
     const result = createMontageProject({
       groupDir,
@@ -626,320 +640,55 @@ describe('montage — the jump marked on the clip', () => {
       baseName: 'luc_favre_20260802',
       title: 'Luc Favre',
       templatePath,
-      clips: clips.map(({ name, seconds, moments, cropStart }) => ({
-        path: path.join(groupDir, 'videos', name),
-        seconds,
-        moments,
-        cropStart
-      }))
+      clips: [{ path: path.join(groupDir, 'videos', 'jump.mp4'), ...clip }]
     })
-    return fs.readFileSync(result.projectPath, 'utf-8')
+    const xml = fs.readFileSync(result.projectPath, 'utf-8')
+    const markers = chainProps(xml, 'chain_skydock_0')['kdenlive:markers']
+    return {
+      xml,
+      markers:
+        markers === undefined ? [] : (JSON.parse(markers) as { comment: string; pos: number }[])
+    }
   }
 
-  /* every entry of a playlist as the editor reads it: which producer, and which part of it */
-  const piecesOf = (xml: string, playlistId: string) => {
-    const open = new RegExp(`<playlist id="${playlistId}"\\s*(/?)>`).exec(xml)
-    if (!open || open[1] === '/') return []
-    const rest = xml.slice(open.index + open[0].length)
-    const body = rest.slice(0, rest.indexOf('</playlist>'))
-    return [...body.matchAll(/<entry producer="([^"]+)" in="(\d+)" out="(\d+)"/g)].map((m) => ({
-      producer: m[1],
-      in: Number(m[2]),
-      out: Number(m[3])
-    }))
-  }
-
-  const propOf = (xml: string, name: string) => {
-    const found = new RegExp(`<property name="${name}">([^<]*)</property>`).exec(xml)
-    return found ? found[1] : null
-  }
-
-  /* Where the film changes is the editor's decision and theirs alone: the clip goes down whole and
-     the moments are marked on it. */
-  it('lays a clip with a jump in it whole, and never cuts it at the marks', () => {
-    const xml = laid([{ name: 'jump.mp4', seconds: 455, moments: JUMP }])
-
-    expect(piecesOf(xml, 'playlist6')).toEqual([
-      { producer: 'chain_skydock_0_picture', in: 0, out: 455 * FPS - 1 }
-    ])
-    expect(groupsOf(xml)).toHaveLength(1)
-  })
-
-  it('lays the clips after it where they have always been laid', () => {
-    const xml = laid([
-      { name: 'jump.mp4', seconds: 455, moments: JUMP },
-      { name: 'after.mp4', seconds: 10 }
-    ])
-
-    const pieces = piecesOf(xml, 'playlist6')
-    expect(pieces).toHaveLength(2)
-    /* the jump whole, then the next clip whole after it */
-    expect(pieces[0]).toMatchObject({ in: 0, out: 455 * FPS - 1 })
-    expect(pieces[1]).toMatchObject({ in: 0, out: 10 * FPS - 1 })
-  })
-
-  it('gives it its own sound under it, linked, as any other clip has', () => {
-    const xml = laid([{ name: 'jump.mp4', seconds: 455, moments: JUMP }])
-
-    const picture = piecesOf(xml, 'playlist6')
-    const sound = piecesOf(xml, 'playlist4')
-    expect(sound.map((p) => [p.in, p.out])).toEqual(picture.map((p) => [p.in, p.out]))
-    const groups = groupsOf(xml)
-    expect(groups).toHaveLength(1)
-    /* both leaves name the same frame, one track apart */
-    const [under, over] = groups[0].children.map((c: { data: string }) => c.data.split(':')[1])
-    expect(under).toBe(over)
-  })
-
-  /* Most clips are not jumps: ground footage, a plane ride, a camera that measures nothing. Nothing
-     is cut and nothing is trimmed away for them. */
-  it('lays a clip with no jump in it whole, as it always was', () => {
-    const xml = laid([{ name: 'ground.mp4', seconds: 33 }])
-
-    expect(piecesOf(xml, 'playlist6')).toEqual([
-      { producer: 'chain_skydock_0_picture', in: 0, out: 33 * FPS - 1 }
-    ])
-    expect(groupsOf(xml)).toHaveLength(1)
-  })
-
+  /* on the clip in the bin, so they come with it wherever it is dragged, and stay with it however
+     often it is moved, trimmed or cut */
   it('writes the moments on the clip, counted from the clip’s own start', () => {
-    const xml = laid([{ name: 'jump.mp4', seconds: 455, moments: JUMP }])
-
-    const markers = JSON.parse(propOf(xml, 'kdenlive:markers') ?? '[]')
-    expect(markers.map((m: { comment: string }) => m.comment)).toEqual([
-      'exit',
-      'opening',
-      'canopy',
-      'ground'
-    ])
-    expect(markers[0].pos).toBe(JUMP.exit * FPS)
+    const { markers } = marked({ seconds: 455, moments: JUMP })
+    expect(markers.map((m) => m.comment)).toEqual(['exit', 'opening', 'canopy', 'ground'])
+    expect(markers[0]!.pos).toBe(JUMP.exit * FPS)
   })
 
   /* A guide is nailed to a frame of the film, so moving the clip it was about — which is the whole
      of editing — leaves it behind pointing at nothing. The moments are the clip's, and go with it. */
   it('puts nothing along the timeline, which a clip moving would leave behind', () => {
-    const xml = laid([{ name: 'jump.mp4', seconds: 455, moments: JUMP }])
-
-    expect(JSON.parse(propOf(xml, 'kdenlive:sequenceproperties.guides') ?? '[]')).toEqual([])
+    const { xml } = marked({ seconds: 455, moments: JUMP })
+    const guides = [sequenceOf(xml).property]
+      .flat()
+      .find((p: { '@_name': string }) => p['@_name'] === 'kdenlive:sequenceproperties.guides')
+    expect(guides).toBeUndefined()
   })
 
   /* A copy trimmed at the front is a different clip from the one the camera shot, and the moments
      were measured on what the camera shot. */
   it('shifts the moments by what was trimmed off the front of the clip', () => {
-    const xml = laid([{ name: 'jump.mp4', seconds: 425, moments: JUMP, cropStart: 30 }])
-
-    const markers = JSON.parse(propOf(xml, 'kdenlive:markers') ?? '[]')
-    expect(markers[0].pos).toBe((JUMP.exit - 30) * FPS)
-    expect(markers.map((m: { comment: string }) => m.comment)).toEqual([
-      'exit',
-      'opening',
-      'canopy',
-      'ground'
-    ])
+    const { markers } = marked({ seconds: 425, moments: JUMP, cropStart: 30 })
+    expect(markers[0]!.pos).toBe((JUMP.exit - 30) * FPS)
+    expect(markers.map((m) => m.comment)).toEqual(['exit', 'opening', 'canopy', 'ground'])
   })
 
   it('says nothing of a moment the copy does not reach', () => {
-    const xml = laid([{ name: 'jump.mp4', seconds: 122, moments: JUMP }])
-
-    const markers = JSON.parse(propOf(xml, 'kdenlive:markers') ?? '[]')
     /* a copy cut at 122 s holds the exit and the opening, and neither the canopy nor the ground */
-    expect(markers.map((m: { comment: string }) => m.comment)).toEqual(['exit', 'opening'])
-    expect(piecesOf(xml, 'playlist6')).toHaveLength(1)
+    const { markers } = marked({ seconds: 122, moments: JUMP })
+    expect(markers.map((m) => m.comment)).toEqual(['exit', 'opening'])
+  })
+
+  /* most clips are not jumps: ground footage, a plane ride, a camera that measures nothing */
+  it('marks nothing on a clip with no jump in it', () => {
+    expect(marked({ seconds: 33 }).markers).toEqual([])
   })
 
   it('writes a project the editor can open', () => {
-    expect(() => parsed(laid([{ name: 'jump.mp4', seconds: 455, moments: JUMP }]))).not.toThrow()
-  })
-})
-
-/* A template is made for a film of a certain length and a montage is as long as its footage, so
-   what the template puts at the ends is put where the film's ends actually are (RULES, Montage). */
-describe('montage — the template’s furniture follows the film', () => {
-  const furnished = (clips: [string, number][]) => {
-    const { outputDir, groupDir, templatePath } = setup(templateWithFurniture)
-    const result = createMontageProject({
-      groupDir,
-      outputDir,
-      baseName: 'luc_favre_20260802',
-      title: 'Luc Favre',
-      templatePath,
-      clips: clips.map(([name, seconds]) => ({
-        path: path.join(groupDir, 'videos', name),
-        seconds
-      }))
-    })
-    return { ...result, xml: fs.readFileSync(result.projectPath, 'utf-8') }
-  }
-
-  /* one playlist read as the editor reads it: its blanks and its entries in order */
-  const trackOf = (xml: string, playlistId: string) => {
-    const open = new RegExp(`<playlist id="${playlistId}"\\s*(/?)>`).exec(xml)
-    if (!open || open[1] === '/') return []
-    const rest = xml.slice(open.index + open[0].length)
-    const body = rest.slice(0, rest.indexOf('</playlist>'))
-    /* an entry holding an effect is written open, and is still an entry */
-    return [...body.matchAll(/<(blank|entry)([^>]*?)\/?>/g)].map((m) => ({
-      what: m[1],
-      length: Number(/length="(\d+)"/.exec(m[2])?.[1] ?? 0),
-      in: Number(/in="(\d+)"/.exec(m[2])?.[1] ?? 0),
-      out: Number(/out="(\d+)"/.exec(m[2])?.[1] ?? 0)
-    }))
-  }
-
-  /* two clips of a hundred seconds: a film of 5000 frames, where the template's card sat at 4250 */
-  const FILM = 5000
-
-  it('moves the end card to follow the last clip, so the film ends on it', () => {
-    const { xml } = furnished([
-      ['a.mp4', 100],
-      ['b.mp4', 100]
-    ])
-
-    const titles = trackOf(xml, 'playlist8')
-    /* the blank before the card is widened, and the card itself is left as the template made it */
-    expect(titles.at(-2)).toMatchObject({ what: 'blank', length: 3750 })
-    expect(titles.at(-1)).toMatchObject({ what: 'entry', in: 0, out: 124 })
-    const start = titles
-      .slice(0, -1)
-      .reduce((sum, i) => sum + (i.what === 'blank' ? i.length : i.out - i.in + 1), 0)
-    expect(start).toBe(FILM)
-  })
-
-  it('leaves the titles in the middle where the template put them', () => {
-    const { xml } = furnished([
-      ['a.mp4', 100],
-      ['b.mp4', 100]
-    ])
-
-    expect(trackOf(xml, 'playlist8').slice(0, 3)).toEqual([
-      { what: 'entry', length: 0, in: 0, out: 124 },
-      { what: 'blank', length: 1000, in: 0, out: 0 },
-      { what: 'entry', length: 0, in: 0, out: 124 }
-    ])
-  })
-
-  it('cuts the music where the film ends', () => {
-    const { xml } = furnished([
-      ['a.mp4', 100],
-      ['b.mp4', 100]
-    ])
-
-    const music = trackOf(xml, 'playlist0')
-    const plays = music.reduce(
-      (sum, i) => sum + (i.what === 'blank' ? i.length : i.out - i.in + 1),
-      0
-    )
-    /* the film is the footage and the card that follows it */
-    expect(plays).toBe(FILM + 125)
-  })
-
-  it('says what it moved', () => {
-    const { repositioned } = furnished([['a.mp4', 100]])
-    expect(repositioned).toEqual(['the end card', 'the music'])
-  })
-
-  /* A film shorter than the template's own furniture cannot have its card pulled back without
-     putting it before a title that has not happened yet, so the card is left where it is — and the
-     music is still cut to where the last thing anybody sees ends, which is that card. */
-  it('leaves the end card alone when the film is shorter than the template’s furniture', () => {
-    const { xml, repositioned } = furnished([['a.mp4', 5]])
-
-    expect(repositioned).toEqual(['the music'])
-    expect(trackOf(xml, 'playlist8').at(-2)).toMatchObject({ what: 'blank', length: 3000 })
-    const music = trackOf(xml, 'playlist0')
-    const plays = music.reduce(
-      (sum, i) => sum + (i.what === 'blank' ? i.length : i.out - i.in + 1),
-      0
-    )
-    /* the card still ends at 4375, and the music now stops there instead of at 7600 */
-    expect(plays).toBe(4375)
-  })
-
-  /* kdenlive writes its projects indented, and the spaces between one tag and the next are part of
-     the document: read without knowing that, the last thing on a track is the newline after its last
-     clip and no template is ever recognised. Which is what happened to the one that ships. */
-  it('finds the furniture of a template written the way the editor writes one', () => {
-    const { outputDir, groupDir, templatePath } = setup(
-      templateWithFurniture.replace(/><(blank|entry)/g, '>\n  <$1')
-    )
-    const result = createMontageProject({
-      groupDir,
-      outputDir,
-      baseName: 'luc_favre_20260802',
-      title: 'Luc Favre',
-      templatePath,
-      clips: [{ path: path.join(groupDir, 'videos', 'a.mp4'), seconds: 100 }]
-    })
-
-    expect(result.repositioned).toEqual(['the end card', 'the music'])
-  })
-
-  it('writes a project the editor can open', () => {
-    expect(() => parsed(furnished([['a.mp4', 100]]).xml)).not.toThrow()
-  })
-})
-
-/* The same on every film, so it is not done by hand on every film (RULES, Montage). */
-describe('montage — how the film opens and closes', () => {
-  const fades = (clips: [string, number][], templateXml = templateWithFurniture) => {
-    const { outputDir, groupDir, templatePath } = setup(templateXml)
-    const result = createMontageProject({
-      groupDir,
-      outputDir,
-      baseName: 'luc_favre_20260802',
-      title: 'Luc Favre',
-      templatePath,
-      clips: clips.map(([name, seconds]) => ({
-        path: path.join(groupDir, 'videos', name),
-        seconds
-      }))
-    })
-    return fs.readFileSync(result.projectPath, 'utf-8')
-  }
-
-  /* which effects sit where, read off the project: the fades kdenlive names in its own words */
-  const effects = (xml: string) =>
-    [...xml.matchAll(/<property name="kdenlive_id">([^<]+)<\/property>/g)].map((m) => m[1])
-
-  /* Whatever comes first is the first thing anybody sees, and fading it up is a choice about the
-     film rather than a fact about the footage. */
-  it('never fades the first video up', () => {
-    const xml = fades(
-      [
-        ['a.mp4', 100],
-        ['b.mp4', 100]
-      ],
-      twoAudioOneMutedTemplate
-    )
-
-    expect(effects(xml)).not.toContain('fade_from_black')
-  })
-
-  it('closes into black when the footage is the last thing in the film', () => {
-    const xml = fades(
-      [
-        ['a.mp4', 100],
-        ['b.mp4', 100]
-      ],
-      twoAudioOneMutedTemplate
-    )
-
-    expect(effects(xml).filter((e) => e === 'fade_to_black')).toHaveLength(1)
-  })
-
-  /* and not when a template's end card follows it, since that card comes out of black on its own */
-  it('leaves the closing to a template whose end card follows the film', () => {
-    const xml = fades([['a.mp4', 100]])
-
-    expect(effects(xml)).not.toContain('fade_to_black')
-  })
-
-  it('takes the music down where it ends rather than cutting it off', () => {
-    const xml = fades([['a.mp4', 100]])
-    expect(effects(xml)).toContain('volume')
-  })
-
-  it('writes a project the editor can open', () => {
-    expect(() => parsed(fades([['a.mp4', 100]]))).not.toThrow()
+    expect(() => parsed(marked({ seconds: 455, moments: JUMP }).xml)).not.toThrow()
   })
 })

@@ -11,26 +11,19 @@ import {
   decodeXml,
   encodeXml,
   fpsOf,
-  framesOf,
-  isAudioTrack,
-  lengthOf,
   nodeById,
   propOf,
   setProp,
   tagOf,
   textOf,
-  timelineTracks,
-  tracksOf,
   xmlDocumentSchema,
   XML_OPTIONS
 } from './lib/mlt'
 import type { XmlNode } from './lib/mlt'
 import { walkFiles } from './lib/fs'
-import { jsonText } from './lib/json'
 import { mediaSeconds } from './lib/media'
 import { marksFor } from './montageMarks'
-import { fadeToBlack, musicFadeOut } from './montageFilters'
-import { followTheFilm, readFurniture } from './montageFurniture'
+import { addJumpTracks } from './montageTracks'
 import { jumpMomentsSchema } from './types'
 
 /* `proxy` is the small copy of this same clip, cut the same way. When there is one the editor opens
@@ -56,8 +49,7 @@ const montageOptionsSchema = z.object({
   clips: z.array(montageClipSchema),
   /* a template folder's name, or a path straight to one — both only ever chosen, never guessed */
   template: z.string().optional(),
-  templatePath: z.string().optional(),
-  videoTrackId: z.string().optional()
+  templatePath: z.string().optional()
 })
 
 type MontageClip = z.infer<typeof montageClipSchema>
@@ -136,22 +128,6 @@ const resolveTemplate = (options: z.infer<typeof montageOptionsSchema>) => {
   throw new Error(`No montage template found — add one under ${options.outputDir}/templates`)
 }
 
-/* V1 — the first video track of the timeline, which is where a template keeps its footage and its
-   titles sit above. Which playlist that is differs per template, so it is read, not assumed. */
-const findVideoTrackId = (mlt: XmlNode[], sequence: XmlNode) => {
-  const tractors = tracksOf(sequence).flatMap((track) => {
-    const producer = attrsOf(track)['@_producer']
-    const node = producer ? nodeById(mlt, 'tractor', producer) : undefined
-    return node ? [node] : []
-  })
-  const video = tractors.find((t) => !isAudioTrack(t))
-  if (!video) throw new Error(`Template has ${tractors.length} audio tracks and no video track`)
-  const first = tracksOf(video)[0]
-  const playlist = first ? attrsOf(first)['@_producer'] : undefined
-  if (!playlist) throw new Error('Template video track holds no playlist')
-  return playlist
-}
-
 /* Every file a template's project names: what its clips and its music play, and the images held
    inside its title clips — those sit in the title's own escaped XML with the clip's resource left
    empty, so they are read out of there. As the project spells them, entities decoded. */
@@ -214,21 +190,6 @@ const inspectTemplate = (template: string) => {
   }
 }
 
-/* A1 — the audio track right under V1, where a clip's own sound goes, linked to its picture. None
-   when the track under V1 is not an audio one. */
-const findAudioUnderVideo = (mlt: XmlNode[], sequence: XmlNode, videoTrackId: string) => {
-  const tracks = timelineTracks(mlt, sequence)
-  const v1 = tracks.findIndex((t) => attrsOf(tracksOf(t)[0] ?? {})['@_producer'] === videoTrackId)
-  const under = v1 > 0 ? tracks[v1 - 1] : undefined
-  if (!under || !isAudioTrack(under)) return null
-  const playlist = attrsOf(tracksOf(under)[0] ?? {})['@_producer']
-  const node = playlist ? nodeById(mlt, 'playlist', playlist) : undefined
-  return node ? { playlist: node, position: v1 - 1, videoPosition: v1 } : null
-}
-
-/* kdenlive keeps its groups as a list of trees; a clip in one is named by track and first frame */
-const groupsSchema = jsonText.pipe(z.array(z.unknown()))
-
 const createMontageProject = (rawOptions: MontageOptions) => {
   const options = montageOptionsSchema.parse(rawOptions)
   const template = resolveTemplate(options)
@@ -286,39 +247,15 @@ const createMontageProject = (rawOptions: MontageOptions) => {
     (n) => tagOf(n) === 'tractor' && textOf(propOf(n, 'kdenlive:uuid')) !== ''
   )
   if (!sequence) throw new Error(`Template has no sequence: ${template}`)
-  const videoTrackId = options.videoTrackId ?? findVideoTrackId(mlt, sequence)
-  const track = nodeById(mlt, 'playlist', videoTrackId)
-  if (!track) throw new Error(`Template has no ${videoTrackId} track`)
 
   const usedIds = mlt
     .map((n) => Number(textOf(propOf(n, 'kdenlive:id'))))
     .filter((n) => Number.isFinite(n))
-  let nextId = Math.max(0, ...usedIds) + 1
-  const firstPlaylist = mlt.findIndex((n) => tagOf(n) === 'playlist')
-
-  /* Each clip goes on V1 with its own sound on A1 beneath it, the two linked, as kdenlive itself
-     leaves a clip whose audio has been restored: moved, cut or deleted together, the sound there to
-     be heard the moment A1 is. That needs to know where each clip starts, so how long each lasts;
-     a clip whose length cannot be read, or a template with no audio track under V1, puts the clips
-     on V1 alone, sound inside. */
+  const firstId = Math.max(0, ...usedIds) + 1
   const fps = fpsOf(mlt)
-  const a1 = findAudioUnderVideo(mlt, sequence, videoTrackId)
-  /* Read while the template is still as it arrived: the track a clip's sound goes on is empty until
-     the jump is laid, and a jump's own sound is not the film's music. */
-  const furniture = readFurniture(mlt, sequence, videoTrackId, a1?.playlist ?? null)
-  const frames = options.clips.map((clip) => {
-    const seconds = clip.seconds ?? mediaSeconds(clip.proxy ?? clip.path)
-    return seconds === null ? null : Math.max(1, Math.floor(seconds * fps))
-  })
-  const linked = a1 !== null && frames.every((f) => f !== null)
 
-  /* the clip as the bin holds it, or as one track plays it — picture only, or sound only */
-  const chainOf = (
-    clip: MontageClip,
-    id: string,
-    kdenliveId: number,
-    plays?: 'picture' | 'sound'
-  ) => ({
+  /* the clip as the bin holds it */
+  const chainOf = (clip: MontageClip, id: string, kdenliveId: number) => ({
     chain: [
       { property: [{ '#text': 'pause' }], ':@': { '@_name': 'eof' } },
       /* MLT plays whatever `resource` names, so a proxied clip points there and keeps the clip
@@ -347,117 +284,37 @@ const createMontageProject = (rawOptions: MontageOptions) => {
         ':@': { '@_name': 'kdenlive:clipname' }
       },
       { property: [{ '#text': '0' }], ':@': { '@_name': 'kdenlive:clip_type' } },
-      { property: [{ '#text': String(kdenliveId) }], ':@': { '@_name': 'kdenlive:id' } },
-      ...(plays
-        ? [
-            {
-              property: [{ '#text': plays === 'picture' ? '1' : '0' }],
-              ':@': { '@_name': 'set.test_audio' }
-            },
-            {
-              property: [{ '#text': plays === 'sound' ? '1' : '0' }],
-              ':@': { '@_name': 'set.test_image' }
-            }
-          ]
-        : [])
+      { property: [{ '#text': String(kdenliveId) }], ':@': { '@_name': 'kdenlive:id' } }
     ],
     ':@': { '@_id': id }
   })
-  const entryOf = (producer: string, kdenliveId: number, length: number | null) => ({
-    entry: [{ property: [{ '#text': String(kdenliveId) }], ':@': { '@_name': 'kdenlive:id' } }],
-    ':@': {
-      '@_producer': producer,
-      ...(length === null ? {} : { '@_in': '0', '@_out': String(length - 1) })
-    }
-  })
 
-  const groups: unknown[] = []
-  let at = lengthOf(track, fps)
-  if (linked && a1) {
-    const gap = at - lengthOf(a1.playlist, fps)
-    if (gap > 0) childrenOf(a1.playlist).push({ blank: [], ':@': { '@_length': String(gap) } })
-  }
-  const chains: XmlNode[] = []
-  /* the picture as it was laid, clip by clip, so the film's own end can be found again */
-  const laid: { entry: XmlNode; length: number }[] = []
-  options.clips.forEach((clip, index) => {
-    const producerId = `chain_skydock_${index}`
-    const kdenliveId = nextId++
-    const length = frames[index] ?? null
-    const bare = chainOf(clip, producerId, kdenliveId)
-    chains.push(bare)
-    childrenOf(bin).push({ entry: [], ':@': { '@_producer': producerId } })
-    if (!linked || !a1 || length === null) {
-      childrenOf(track).push(entryOf(producerId, kdenliveId, null))
-      return
-    }
-    /* Where the jump is in this clip, marked on the clip and never cut into it: where the film
-       changes is the editor's decision, and a marker only says where the door was left. On the clip
-       rather than along the timeline, so it travels with the clip however often it is moved. */
+  /* The clips go in the project's bin and nowhere else: where each one goes in the film is the
+     editor's to decide, by dragging it onto the tracks left empty for it. A clip with a jump in it
+     carries the jump's moments as markers of its own, which come with it onto the timeline and stay
+     with it however often it is moved, trimmed or cut. */
+  const chains = options.clips.map((clip, index) => {
+    const id = `chain_skydock_${index}`
+    const chain = chainOf(clip, id, firstId + index)
+    /* a moment past the end of the copy is not in it, so its length is read when there are moments
+       to place; with no length to go by, none is dropped */
+    const seconds = clip.moments ? (clip.seconds ?? mediaSeconds(clip.proxy ?? clip.path)) : null
     const marks = marksFor({
       moments: clip.moments,
       cropStart: clip.cropStart,
-      length,
+      length: seconds === null ? Number.POSITIVE_INFINITY : Math.floor(seconds * fps),
       fps
     })
-    if (marks.length > 0) setProp(bare, 'kdenlive:markers', JSON.stringify(marks, null, 4))
-    chains.push(chainOf(clip, `${producerId}_picture`, kdenliveId, 'picture'))
-    chains.push(chainOf(clip, `${producerId}_sound`, kdenliveId, 'sound'))
-    const shown = entryOf(`${producerId}_picture`, kdenliveId, length)
-    laid.push({ entry: shown, length })
-    childrenOf(track).push(shown)
-    childrenOf(a1.playlist).push(entryOf(`${producerId}_sound`, kdenliveId, length))
-    groups.push({
-      children: [
-        { data: `${a1.position}:${at}`, leaf: 'clip', type: 'Leaf' },
-        { data: `${a1.videoPosition}:${at}`, leaf: 'clip', type: 'Leaf' }
-      ],
-      type: 'AVSplit'
-    })
-    at += length
+    if (marks.length > 0) setProp(chain, 'kdenlive:markers', JSON.stringify(marks, null, 4))
+    childrenOf(bin).push({ entry: [], ':@': { '@_producer': id } })
+    return chain
   })
-  mlt.splice(firstPlaylist, 0, ...chains)
-  /* the film is as long as the footage, and the template's ends follow it there */
-  const filmEnd = lengthOf(track, fps)
-  const repositioned = followTheFilm(furniture, filmEnd, fps)
-
-  /* Out of black into the first frame, into black out of the last, and the music quiet where it
-     ends. The same on every film, which is why it is not left to be done by hand each time. */
-  /* The film's opening is never touched: whatever comes first is the first thing anybody sees, and
-     a picture fading up from black is a choice about the film, not a fact about the footage. The
-     closing is taken down only where the footage is the last thing — a template with an end card
-     after it has made that choice already, and its card comes out of black on its own. */
-  const closesTheFilm = furniture.titles ? lengthOf(furniture.titles, fps) <= filmEnd : true
-  const last = laid[laid.length - 1]
-  if (last && closesTheFilm)
-    childrenOf(last.entry).push(
-      fadeToBlack('filter_skydock_out', { in: 0, out: last.length - 1 }, fps)
-    )
-  const heard = furniture.music
-    ? childrenOf(furniture.music).filter((c) => tagOf(c) === 'entry')
-    : []
-  const ends = heard[heard.length - 1]
-  if (ends)
-    childrenOf(ends).push(
-      musicFadeOut(
-        'filter_skydock_music',
-        {
-          in: framesOf(attrsOf(ends)['@_in'], fps),
-          out: framesOf(attrsOf(ends)['@_out'], fps)
-        },
-        fps
-      )
-    )
-  if (groups.length > 0) {
-    const kept = groupsSchema.safeParse(
-      textOf(propOf(sequence, 'kdenlive:sequenceproperties.groups'))
-    )
-    setProp(
-      sequence,
-      'kdenlive:sequenceproperties.groups',
-      JSON.stringify([...(kept.success ? kept.data : []), ...groups], null, 4)
-    )
-  }
+  mlt.splice(
+    mlt.findIndex((n) => tagOf(n) === 'playlist'),
+    0,
+    ...chains
+  )
+  const tracks = addJumpTracks(mlt, sequence)
 
   /* a project of its own, so kdenlive never shares the template's cache */
   const uuid = `{${randomUUID()}}`
@@ -501,12 +358,11 @@ const createMontageProject = (rawOptions: MontageOptions) => {
     projectPath,
     filmPath,
     template,
-    videoTrackId,
     clips: options.clips.length,
     /* the template's own files it could not find — the project is written anyway, because the edit
        can start without the music, but nobody should have to discover this at the render */
     missingAssets: [...new Set(missingAssets)],
-    repositioned
+    tracks
   }
 }
 

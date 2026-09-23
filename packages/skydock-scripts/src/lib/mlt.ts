@@ -87,24 +87,6 @@ const fpsOf = (mlt: XmlNode[]) => {
   return num > 0 && den > 0 ? num / den : 25
 }
 
-/* A time as a project writes it — a frame count, or hours:minutes:seconds.milliseconds — in frames */
-const framesOf = (time: string | undefined, fps: number) => {
-  if (!time) return 0
-  if (/^\d+$/.test(time)) return Number(time)
-  const [h = '0', m = '0', sec = '0'] = time.split(':')
-  return Math.round((Number(h) * 3600 + Number(m) * 60 + Number(sec)) * fps)
-}
-
-/* how many frames a track already holds, so what is added after it starts where it ends */
-const lengthOf = (playlist: XmlNode, fps: number) =>
-  childrenOf(playlist).reduce((sum, child) => {
-    const attrs = attrsOf(child)
-    if (tagOf(child) === 'blank') return sum + framesOf(attrs['@_length'], fps)
-    if (tagOf(child) === 'entry')
-      return sum + framesOf(attrs['@_out'], fps) - framesOf(attrs['@_in'], fps) + 1
-    return sum
-  }, 0)
-
 /* The timeline's tracks bottom to top, as kdenlive counts them when it names a clip in a group:
    the black background it keeps underneath is not one of them. */
 const timelineTracks = (mlt: XmlNode[], sequence: XmlNode) =>
@@ -120,9 +102,7 @@ export {
   decodeXml,
   encodeXml,
   fpsOf,
-  framesOf,
   isAudioTrack,
-  lengthOf,
   nodeById,
   propOf,
   propsOf,
