@@ -242,6 +242,8 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     cameraCopy: live.camera,
     cameras: live.cameras,
     disk: live.disk,
+    /* how far through the one file a drop is copying in right now */
+    importing: live.importing,
     tandemFacts,
     remoteAfterUpload,
     storage,

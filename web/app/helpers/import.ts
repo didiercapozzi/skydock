@@ -1,5 +1,7 @@
+import { isMediaName } from '../../../packages/skydock-scripts/src/constants'
 import type { ImportOutcome } from '@skydock/scripts'
 import { z } from 'zod'
+import { routingEngine } from './routing'
 
 /* What the window can do that a browser tab cannot, offered by the app around the page: say where a
    dropped file already is. Nothing else of the app is reachable from here. */
@@ -38,11 +40,29 @@ const pathOf = (file: File) => {
   }
 }
 
-/* What was dropped, whichever the window could give: where the file is, or the file itself. */
-type Dropped = File | string
+/* Where a file already is, with what the drag could say about it without opening anything: enough
+   to name it and size it in the list, and to hand the server its address instead of its bytes. */
+type DroppedAt = { at: string; name: string; size: number }
 
-const nameOf = (what: Dropped) =>
-  typeof what === 'string' ? (what.split('/').pop() ?? what) : what.name
+/* A folder, which is not copied but opened out. Where its address is known the server finds what is
+   inside it, on the machine it was dragged from; where it is not — a browser, with no app around
+   the page — the engine names what is in it, and only through the object the drag itself handed
+   over, so that object is kept as it is and read out later. */
+type DroppedFolder = { folderAt: string } | { folder: FileSystemDirectoryEntry }
+
+/* What was dropped, whichever the window could give */
+type Dropped = File | DroppedAt | DroppedFolder
+
+const isFolder = (what: Dropped): what is DroppedFolder =>
+  !(what instanceof File) && ('folder' in what || 'folderAt' in what)
+
+const isDirectoryEntry = (entry: FileSystemEntry): entry is FileSystemDirectoryEntry =>
+  entry.isDirectory
+
+const isFileEntry = (entry: FileSystemEntry): entry is FileSystemFileEntry => entry.isFile
+
+/* One file about to be copied in: what to send, and what to call it while it is being sent. */
+type Coming = { what: File | string; name: string; size: number }
 
 const importAnswerSchema = z.object({
   ok: z.boolean(),
@@ -55,23 +75,112 @@ const importAnswerSchema = z.object({
   error: z.string().optional()
 })
 
+const droppedSchema = z.object({
+  files: z.array(z.object({ path: z.string(), name: z.string(), size: z.number() }))
+})
+
+/* A folder read out entry by entry. The engine names at most a hundred at a time and says so by
+   answering with none, so it is asked again until it does. */
+const entriesIn = (folder: FileSystemDirectoryEntry) =>
+  new Promise<FileSystemEntry[]>((resolve, reject) => {
+    const reader = folder.createReader()
+    const found: FileSystemEntry[] = []
+    const more = () =>
+      reader.readEntries((batch) => {
+        if (batch.length === 0) return resolve(found)
+        found.push(...batch)
+        more()
+      }, reject)
+    more()
+  })
+
+const fileOf = (entry: FileSystemFileEntry) =>
+  new Promise<File>((resolve, reject) => entry.file(resolve, reject))
+
+/* Every video and photo in a folder and in the folders inside it, as the engine will give them. */
+const filesUnder = async (folder: FileSystemDirectoryEntry): Promise<File[]> => {
+  const entries = await entriesIn(folder)
+  const found = await Promise.all(
+    entries.map((entry) =>
+      isDirectoryEntry(entry)
+        ? filesUnder(entry)
+        : isFileEntry(entry)
+          ? fileOf(entry).then((file) => [file])
+          : Promise.resolve([])
+    )
+  )
+  return found.flat()
+}
+
+/* What the machine holds inside the folders that were let go of: every video and photo, however
+   deep. Asked of the server, because the page cannot read a disk — and answered with nothing where
+   there is nobody to ask, which is not the same as a folder with nothing in it. */
+const whatIsIn = async (paths: string[]) => {
+  try {
+    const answer = await fetch(routingEngine.href({ url: '/api/dropped' }), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ paths })
+    })
+    const said = droppedSchema.safeParse(await answer.json())
+    return said.success ? said.data.files : []
+  } catch {
+    return []
+  }
+}
+
+/* Everything a drop really holds, named and sized, before anything is copied — so the board can
+   show the whole list and count it down as it goes.
+
+   Only a folder has to be opened out, and only a folder costs anything to work out: a file already
+   came with its name, its size and, in SkyDock's own window, its address. */
+const whatIsComing = async (list: Dropped[]): Promise<Coming[]> => {
+  const folders = list.flatMap((what) =>
+    isFolder(what) && 'folderAt' in what ? [what.folderAt] : []
+  )
+  const toRead = list.flatMap((what) => (isFolder(what) && 'folder' in what ? [what.folder] : []))
+  const [inside, ...opened] = await Promise.all([
+    folders.length > 0 ? whatIsIn(folders) : Promise.resolve([]),
+    ...toRead.map(filesUnder)
+  ])
+  return [
+    ...list.flatMap((what) =>
+      !(what instanceof File) && !isFolder(what)
+        ? [{ what: what.at, name: what.name, size: what.size }]
+        : []
+    ),
+    ...inside.map((file) => ({ what: file.path, name: file.name, size: file.size })),
+    ...[...list.filter((what) => what instanceof File), ...opened.flat()]
+      .filter((file) => isMediaName(file.name))
+      .map((file) => ({ what: file, name: file.name, size: file.size }))
+  ]
+}
+
+/* What this copy is called while it runs, so the server can say how far through it is and the board
+   knows which row that belongs to. A file has no id until its bytes have landed, and its name is no
+   name: two cards hold a GX010001.MP4 each. Where it is in the drop is the one thing both ends know
+   before anything is sent. */
+const tokenFor = (index: number) => `drop-${index}`
+
 /* Each file is copied to this machine in turn — its bytes sent to the import route beside where it
    goes, or its address when that is what the drop gave — and the tally of how it went is what the
    board is told once all are in. */
 const importFiles = async (
-  list: Dropped[],
+  list: Coming[],
   target: string,
   where: string,
-  onEach: (index: number, total: number, name: string) => void
+  /* said before each one is sent: which it is of how many, and how many have gone wrong so far */
+  onEach: (index: number, total: number, name: string, failed: number) => void
 ) => {
   const tally: ImportOutcome = { added: [], moved: [], there: 0, kept: [], failed: [], where }
-  for (const [index, what] of list.entries()) {
-    const name = nameOf(what)
-    onEach(index, list.length, name)
+  for (const [index, coming] of list.entries()) {
+    const { what, name, size } = coming
+    onEach(index, list.length, name, tally.failed.length)
+    const watching = { token: tokenFor(index), size: String(size) }
     const params = new URLSearchParams(
       typeof what === 'string'
-        ? { target, path: what }
-        : { target, filename: what.name, lastModified: String(what.lastModified) }
+        ? { target, path: what, ...watching }
+        : { target, filename: what.name, lastModified: String(what.lastModified), ...watching }
     )
     try {
       const res = await fetch(`/api/import?${params.toString()}`, {
@@ -95,10 +204,38 @@ const importFiles = async (
   return tally
 }
 
-/* Everything a drop offers, in the order it is worth having: where each file is, and the file
-   itself where that cannot be had. */
-const droppedIn = (e: React.DragEvent): Dropped[] =>
-  droppedFiles(e).map((file) => pathOf(file) ?? file)
+/* Everything a drop offers, taken while the drag's own objects are still alive — what is inside a
+   folder is read out afterwards, and by then they are gone.
 
-export { droppedFiles, droppedIn, fromComputer, importFiles, pathOf }
-export type { Dropped }
+   Whether a thing is a folder is the engine's to say, and it says so without opening anything. What
+   is not a folder is a file, and travels as its address where the window gives one and as its bytes
+   where it does not. */
+const droppedIn = (e: React.DragEvent): Dropped[] => {
+  const items = [...(e.dataTransfer.items ?? [])].filter((item) => item.kind === 'file')
+  if (items.length === 0)
+    return droppedFiles(e).map((file) => {
+      const address = pathOf(file)
+      return address ? { at: address, name: file.name, size: file.size } : file
+    })
+  return items.flatMap((item) => {
+    const file = item.getAsFile()
+    const entry = item.webkitGetAsEntry?.() ?? null
+    const address = file ? pathOf(file) : null
+    const folder: Dropped | null =
+      entry && isDirectoryEntry(entry)
+        ? address
+          ? { folderAt: address }
+          : { folder: entry }
+        : null
+    const carried: Dropped | null = file
+      ? address
+        ? { at: address, name: file.name, size: file.size }
+        : file
+      : null
+    const what = folder ?? carried
+    return what ? [what] : []
+  })
+}
+
+export { droppedFiles, droppedIn, fromComputer, importFiles, pathOf, tokenFor, whatIsComing }
+export type { Coming, Dropped }

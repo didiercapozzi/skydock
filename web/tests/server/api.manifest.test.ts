@@ -868,4 +868,76 @@ describe('changes made on the board', () => {
       expect(saved?.files[0]?.moments?.opening).toBe(94)
     })
   })
+
+  /* A place taken off the board: what was filed there comes back to Fresh files, and nothing is
+     deleted (RULES, Places). */
+  describe('removing a place', () => {
+    it('takes it off the board and puts its jumps back in Fresh files', async () => {
+      writeManifest([group({ id: 'group_1', destination: 'Yverdon', files: [file({ id: 'a' })] })])
+
+      const res = answer(await send({ intent: 'remove-destination', destination: 'Yverdon' }))
+
+      expect(res.groups).toHaveLength(1)
+      expect(res.groups[0].destination).toBeUndefined()
+      const saved = loadManifest(path.join(tmpDir, 'manifest.json'))
+      expect(saved?.destinations).toEqual([])
+    })
+
+    it('puts the loose files filed there back in Fresh files, loose', async () => {
+      writeManifest([], [file({ id: 'a', destination: 'Yverdon' })])
+
+      const res = answer(await send({ intent: 'remove-destination', destination: 'Yverdon' }))
+
+      expect(res.looseFiles).toHaveLength(1)
+      expect(res.looseFiles[0].destination).toBeUndefined()
+    })
+
+    /* uploaded is the end of editing: unfiling one would leave the board and the storage disagreeing */
+    it('is refused while anything there is on the storage', async () => {
+      writeManifest([
+        group({
+          id: 'group_1',
+          destination: 'Yverdon',
+          files: [
+            file({
+              id: 'a',
+              destination: 'Yverdon',
+              uploaded: {
+                remotePath: '/home/Yverdon/a.mp4',
+                md5: 'abc',
+                size: 10,
+                localPath: '/src/a.mp4',
+                at: 1_754_000_100
+              }
+            })
+          ]
+        })
+      ])
+
+      const res = refusal(await send({ intent: 'remove-destination', destination: 'Yverdon' }))
+
+      expect(res.success).toBe(false)
+      expect(res.globalErrors?.[0]).toContain('on the storage')
+      const saved = loadManifest(path.join(tmpDir, 'manifest.json'))
+      expect(saved?.groups[0]?.destination).toBe('Yverdon')
+    })
+
+    it('is refused for Tandems, which nobody made', async () => {
+      writeManifest([group({ id: 'group_1', destination: 'Tandems' })])
+
+      const res = refusal(await send({ intent: 'remove-destination', destination: 'Tandems' }))
+
+      expect(res.success).toBe(false)
+      expect(res.globalErrors?.[0]).toContain('Tandems')
+    })
+
+    it('is refused for a place that is not there', async () => {
+      writeManifest([])
+
+      const res = refusal(await send({ intent: 'remove-destination', destination: 'Colombier' }))
+
+      expect(res.success).toBe(false)
+      expect(res.globalErrors?.[0]).toContain('no longer on the board')
+    })
+  })
 })

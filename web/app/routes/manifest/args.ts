@@ -31,6 +31,8 @@ const actionArgs = z.object({
     'copy-files',
     /* a jump that should not exist: it goes, its files stay, loose in Unsorted */
     'delete-jump',
+    /* a place that should not exist: it goes, what was filed there is back in Fresh files */
+    'remove-destination',
     'regroup-loose',
     /* everything still in Fresh files, back as a scan would first have left it */
     'reset-fresh',

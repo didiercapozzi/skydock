@@ -9,7 +9,7 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
   return { ...actual, loadManifest: vi.fn(() => null) }
 })
 
-import { droppedFiles, fromComputer, pathOf } from '../../app/helpers/import'
+import { droppedFiles, droppedIn, fromComputer, pathOf, whatIsComing } from '../../app/helpers/import'
 import { boardRoute } from './board-route'
 
 /* A video from the computer, let go on the board (RULES, The board — Adding files from the
@@ -63,6 +63,24 @@ const machineTakes = () =>
       headers: { 'Content-Type': 'application/json' }
     })
   })
+
+/* the machine, taking its time over each file, so what the board shows while it works can be seen */
+const machineTakesItsTime = () => {
+  let letGo: (() => void) | null = null
+  const finish = () => letGo?.()
+  vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
+    const said = String(url)
+    if (!said.includes('/api/import')) return await realFetch(url, init)
+    asked.push(said)
+    await new Promise<void>((resolve) => {
+      letGo = resolve
+    })
+    return new Response(JSON.stringify({ ok: true, outcome: 'added', filename: 'a.mp4' }), {
+      headers: { 'Content-Type': 'application/json' }
+    })
+  })
+  return finish
+}
 
 afterEach(() => {
   vi.stubGlobal('fetch', realFetch)
@@ -209,5 +227,207 @@ describe('the files a drop hands over', () => {
 
   test('are none when the drag holds no file at all', () => {
     expect(handing([], [{ kind: 'string', getAsFile: () => null }])).toEqual([])
+  })
+})
+
+/* A whole folder let go of on the board is not itself copied: everything of ours inside it is, and
+   inside the folders inside it (RULES, Adding files from the computer). Nothing can originate a
+   drag of a real folder from the machine's own file manager, so what the engine hands over for one
+   is made here — an entry that says it is a directory, which is the whole of how a folder is known
+   from a file. */
+describe('a folder dragged in from the computer', () => {
+  const asDirectory = (name: string) => ({ isDirectory: true, isFile: false, name })
+
+  const lettingGoOf = (
+    items: { kind: string; getAsFile: () => File | null; webkitGetAsEntry?: () => unknown }[]
+  ) =>
+    droppedIn({ dataTransfer: { files: [], items } } as unknown as Parameters<typeof droppedIn>[0])
+
+  test('is handed over by its address, for the server to look inside', () => {
+    windowSays('/media/card')
+    expect(
+      lettingGoOf([
+        { kind: 'file', getAsFile: () => new File([], 'card'), webkitGetAsEntry: () => asDirectory('card') }
+      ])
+    ).toEqual([{ folderAt: '/media/card' }])
+  })
+
+  test('is kept as the engine gave it in a browser, which has no address to give', () => {
+    const entry = asDirectory('card')
+    expect(
+      lettingGoOf([
+        { kind: 'file', getAsFile: () => new File([], 'card'), webkitGetAsEntry: () => entry }
+      ])
+    ).toEqual([{ folder: entry }])
+  })
+
+  test('comes to the videos and photos inside it, each named and sized', async () => {
+    vi.stubGlobal('fetch', async (url: string | URL) =>
+      String(url).includes('/api/dropped')
+        ? new Response(
+            JSON.stringify({
+              files: [
+                { path: '/media/card/DCIM/GX010001.MP4', name: 'GX010001.MP4', size: 12 },
+                { path: '/media/card/DCIM/GX010002.MP4', name: 'GX010002.MP4', size: 34 }
+              ]
+            }),
+            { headers: { 'Content-Type': 'application/json' } }
+          )
+        : new Response('{}', { headers: { 'Content-Type': 'application/json' } })
+    )
+
+    expect(await whatIsComing([{ folderAt: '/media/card' }])).toEqual([
+      { what: '/media/card/DCIM/GX010001.MP4', name: 'GX010001.MP4', size: 12 },
+      { what: '/media/card/DCIM/GX010002.MP4', name: 'GX010002.MP4', size: 34 }
+    ])
+  })
+})
+
+/* What is about to be copied, said before it is: a drop of a card's worth of clips is something to
+   watch rather than something to wait out (RULES, Adding files from the computer). */
+describe('while a drop is being copied in', () => {
+  const carryingTwoClips = () => {
+    const carried = new DataTransfer()
+    carried.items.add(new File(['0'], 'GX010001.MP4', { type: 'video/mp4' }))
+    carried.items.add(new File(['0'], 'GX010002.MP4', { type: 'video/mp4' }))
+    return carried
+  }
+
+  test('the board lists what is coming, and where it is going', async () => {
+    const finish = machineTakesItsTime()
+    await openYverdon()
+
+    letGoOn(page.getByRole('region', { name: /Yverdon/ }).element(), carryingTwoClips)
+
+    const panel = page.getByRole('complementary', { name: /Adding 2 to Yverdon/ })
+    await expect.element(panel).toBeInTheDocument()
+    await expect.element(panel.getByText('GX010001.MP4')).toBeInTheDocument()
+    await expect.element(panel.getByText('GX010002.MP4')).toBeInTheDocument()
+    await expect
+      .element(panel.getByRole('progressbar', { name: 'Copied into Yverdon' }))
+      .toBeInTheDocument()
+    finish()
+  })
+})
+
+/* One long clip is minutes of nothing to look at unless the bar follows the copy itself, so the
+   server says how far through the file it is and the board draws it (RULES, Adding files from the
+   computer). The stream is stood in for here; what it feeds is the real event. */
+describe('while one large file is being copied in', () => {
+  let stream: { onmessage: ((message: { data: string }) => void) | null; close: () => void } | null
+
+  const theStreamOpens = () => {
+    stream = null
+    vi.stubGlobal(
+      'EventSource',
+      class {
+        onmessage: ((message: { data: string }) => void) | null = null
+        close = vi.fn()
+        constructor() {
+          stream = this
+        }
+      }
+    )
+  }
+
+  const serverSays = (event: unknown) => stream?.onmessage?.({ data: JSON.stringify(event) })
+
+  const carryingThreeClips = () => {
+    const carried = new DataTransfer()
+    for (const n of [1, 2, 3])
+      carried.items.add(new File(['x'.repeat(2048)], `GX01000${n}.MP4`, { type: 'video/mp4' }))
+    return carried
+  }
+
+  const carryingOneLongClip = () => {
+    const carried = new DataTransfer()
+    carried.items.add(new File(['x'.repeat(2048)], 'GX010001.MP4', { type: 'video/mp4' }))
+    return carried
+  }
+
+  test('the bar follows the file, not only the count of files', async () => {
+    theStreamOpens()
+    const finish = machineTakesItsTime()
+    await openYverdon()
+
+    letGoOn(page.getByRole('region', { name: /Yverdon/ }).element(), carryingOneLongClip)
+
+    const panel = page.getByRole('complementary', { name: /Adding 1 to Yverdon/ })
+    await expect.element(panel).toBeInTheDocument()
+    /* the copy the board is watching is named by where it is in the drop */
+    await expect.poll(() => asked[0]).toContain('token=drop-0')
+    await expect.poll(() => asked[0]).toContain('size=2048')
+
+    serverSays({ kind: 'import', token: 'drop-0', done: 1024, total: 2048, phase: 'copying' })
+    await expect.poll(() => panel.element().textContent).toContain('50%')
+
+    serverSays({ kind: 'import', token: 'drop-0', done: 1843, total: 2048, phase: 'copying' })
+    await expect.poll(() => panel.element().textContent).toContain('90%')
+
+    finish()
+  })
+
+  /* The whole drop and the one file are two different things to know. A card of fifty clips moves
+     the drop's bar by a fiftieth per file, which reads as nothing happening, so the file being
+     copied has a bar of its own that goes the whole way whatever else is coming. */
+  test('the file being copied has a bar of its own, whatever else is coming', async () => {
+    theStreamOpens()
+    const finish = machineTakesItsTime()
+    await openYverdon()
+
+    letGoOn(page.getByRole('region', { name: /Yverdon/ }).element(), carryingThreeClips)
+
+    const panel = page.getByRole('complementary', { name: /Adding 3 to Yverdon/ })
+    await expect.element(panel).toBeInTheDocument()
+
+    const its = page.getByRole('progressbar', { name: 'Copying GX010001.MP4' })
+    await expect.element(its).toHaveAttribute('aria-valuenow', '0')
+
+    serverSays({ kind: 'import', token: 'drop-0', done: 1536, total: 2048, phase: 'copying' })
+
+    /* three quarters through this file, though the drop as a whole is a quarter through */
+    await expect.element(its).toHaveAttribute('aria-valuenow', '75')
+    /* and only the one being copied has one */
+    expect(page.getByRole('progressbar', { name: /^Copying/ }).elements()).toHaveLength(1)
+
+    finish()
+  })
+
+  /* The bytes are all in and the file is being read — still something happening, and the bar stays
+     where it got to. It used to empty itself here, which read as a finished copy starting again. */
+  test('the bar stays full while what landed is being read', async () => {
+    theStreamOpens()
+    const finish = machineTakesItsTime()
+    await openYverdon()
+
+    letGoOn(page.getByRole('region', { name: /Yverdon/ }).element(), carryingOneLongClip)
+
+    const panel = page.getByRole('complementary', { name: /Adding 1 to Yverdon/ })
+    await expect.element(panel).toBeInTheDocument()
+    serverSays({ kind: 'import', token: 'drop-0', done: 1024, total: 2048, phase: 'copying' })
+    await expect.poll(() => panel.element().textContent).toContain('50%')
+
+    serverSays({ kind: 'import', token: 'drop-0', done: 2048, total: 2048, phase: 'reading' })
+
+    await expect.poll(() => panel.element().textContent).toContain('reading it…')
+    await expect.poll(() => panel.element().textContent).not.toContain('50%')
+    finish()
+  })
+
+  /* another window's drop, or one already over, says nothing about the row being drawn here */
+  test('an answer about some other copy is left out', async () => {
+    theStreamOpens()
+    const finish = machineTakesItsTime()
+    await openYverdon()
+
+    letGoOn(page.getByRole('region', { name: /Yverdon/ }).element(), carryingOneLongClip)
+
+    const panel = page.getByRole('complementary', { name: /Adding 1 to Yverdon/ })
+    await expect.element(panel).toBeInTheDocument()
+
+    serverSays({ kind: 'import', token: 'drop-7', done: 1024, total: 2048, phase: 'copying' })
+    await expect.poll(() => panel.element().textContent).not.toContain('50%')
+
+    finish()
   })
 })

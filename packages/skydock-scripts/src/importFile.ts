@@ -2,9 +2,11 @@ import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { pipeline } from 'node:stream/promises'
+import { Transform } from 'node:stream'
 import type { Readable } from 'node:stream'
 import { MEDIA_EXTENSIONS_SET } from './constants'
-import { computeFileId } from './fileId'
+import { idFromHash } from './fileId'
+import { publish } from './live'
 import { loadManifest, saveManifest } from './manifest'
 import { cameraTimes } from './scan'
 import { copyFiles, moveFiles } from './moveFiles'
@@ -120,12 +122,67 @@ const placeExisting = (
   return { filename: file.filename, outcome: 'moved', from }
 }
 
+/* How far through one file's bytes we are, said as they go by rather than asked for afterwards.
+
+   Said at most ten times a second: one long clip is tens of thousands of chunks, and a board told
+   about every one of them is a board doing nothing else. Without a token nobody is watching, and a
+   copy nobody is watching costs nothing to run.
+
+   The same bytes are hashed on their way past, which is what the file will be known by. Hashing
+   them here rather than reading the whole file back afterwards is the difference between a 1.2 GB
+   clip landing and a 1.2 GB clip landing and then being read again from end to end while the board
+   sits full and silent. */
+const counting = (token: string | undefined, total: number) => {
+  const hash = crypto.createHash('sha256')
+  let done = 0
+  let said = -1
+  let lastAt = 0
+  let over = false
+  const tell = (phase: 'copying' | 'reading' | 'done') => {
+    if (!token) return
+    said = done
+    publish({ kind: 'import', token, done, total, phase })
+  }
+  return {
+    through: new Transform({
+      transform(chunk: Buffer, _encoding, next) {
+        hash.update(chunk)
+        done += chunk.byteLength
+        const now = Date.now()
+        if (done !== said && now - lastAt >= 100) {
+          lastAt = now
+          tell('copying')
+        }
+        next(null, chunk)
+      }
+    }),
+    /* what it will be known by, off the bytes that have just gone past */
+    id: () => idFromHash(hash),
+    /* The copy is over and the reading of it has begun: still something happening, and the board is
+       told which, so a full bar is never a bar with nothing behind it. */
+    reading: () => {
+      done = total
+      tell('reading')
+    },
+    /* Nothing left to watch, whether it landed or failed: a bar left part full is a bar nothing
+       will ever fill. */
+    ended: () => {
+      if (over) return
+      over = true
+      done = total
+      tell('done')
+    }
+  }
+}
+
 const importFile = async ({
   outputDir,
   filename: asked,
   lastModified,
   body,
-  target
+  target,
+  token,
+  size
 }: {
   outputDir: string
   filename: string
@@ -133,6 +190,11 @@ const importFile = async ({
   lastModified: number
   body: Readable
   target: ImportTarget
+  /* what the page calls this copy while it is running, chosen before it sent anything: a file has
+     no id here until its bytes have landed and been read */
+  token?: string
+  /* how big it is, as the page or the machine already knew — nothing is said without it */
+  size?: number
 }): Promise<ImportResult> => {
   /* only a name, never a path, and only what SkyDock can show and deliver */
   const filename = path.basename(asked.replace(/\\/g, '/')).trim()
@@ -163,14 +225,16 @@ const importFile = async ({
   const incoming = path.join(outputDir, '.incoming')
   fs.mkdirSync(incoming, { recursive: true })
   const partial = path.join(incoming, `${crypto.randomBytes(8).toString('hex')}-${filename}`)
+  const counted = counting(size && size > 0 ? token : undefined, size ?? 0)
   try {
-    await pipeline(body, fs.createWriteStream(partial))
+    await pipeline(body, counted.through, fs.createWriteStream(partial))
+    counted.reading()
     const when = new Date(
       Number.isFinite(lastModified) && lastModified > 0 ? lastModified : Date.now()
     )
     fs.utimesSync(partial, when, when)
 
-    const id = await computeFileId(partial)
+    const id = counted.id()
     /* the manifest as it is now — receiving a clip takes a while */
     const manifest = checkTarget()
     const existing = manifest.files.find((f) => f.id === id)
@@ -208,6 +272,7 @@ const importFile = async ({
     saveManifest(manifestPath, manifest)
     return { filename: file.filename, outcome: 'added' }
   } finally {
+    counted.ended()
     fs.rmSync(partial, { force: true })
     /* the holding folder is only there while a file is arriving; one another arrival is using, or
        has already removed, is left alone */

@@ -35,6 +35,7 @@ import { BoardHeader } from '../components/board-header'
 import type { NasLink } from '../components/board-header'
 import { Go, Mini } from '../components/buttons'
 import { CameraFiles } from '../components/camera-files'
+import { ImportPanel } from '../components/import-panel'
 import { Callout } from '../components/callout'
 import { DialogHost } from '../components/dialog-host'
 import type { BoardDialog } from '../components/dialog-host'
@@ -59,8 +60,8 @@ import {
 } from '../components/tandem-card'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
 import { formatSize, formatTime, plural, setOutputRoot, shortDate } from '../components/utils'
-import { fromComputer, importFiles } from '../helpers/import'
-import type { Dropped } from '../helpers/import'
+import { fromComputer, importFiles, tokenFor, whatIsComing } from '../helpers/import'
+import type { Coming, Dropped } from '../helpers/import'
 import { TANDEMS, folderOnStorage } from '../helpers/jumps'
 import {
   familyOf,
@@ -544,16 +545,43 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     updateGroups(next, undefined, nextPlaces)
   }
 
-  /* Files from the computer are copied one by one, the board saying which; once all are in, it
-     looks again and hears how the whole drop went. */
+  /* What a drop is copying in, while it is: the whole list first, then one at a time. */
+  const [coming, setComing] = useState<{
+    where: string
+    files: Coming[]
+    done: number
+    failed: number
+  } | null>(null)
+
+  /* Files from the computer are copied one by one, the board showing the list and counting it down;
+     once all are in, it looks again and hears how the whole drop went. A folder is opened out
+     first, so what is shown is what is coming and not what was let go of. */
   const importDropped = async (list: Dropped[], target: string, where: string) => {
     if (list.length === 0) return
     board.setBusy('import')
-    const tally = await importFiles(list, target, where, (index, total, name) =>
-      setNote(`Adding ${index + 1} of ${total} to ${where} — ${name}…`)
+    setNote('Looking at what was dropped…')
+    const files = await whatIsComing(list)
+    if (files.length === 0) {
+      board.setBusy(null)
+      setNote('Nothing in that drop is a video or a photo SkyDock can show.')
+      return
+    }
+    setNote(null)
+    setComing({ where, files, done: 0, failed: 0 })
+    const tally = await importFiles(files, target, where, (index, _total, _name, failed) =>
+      setComing((now) => (now ? { ...now, done: index, failed } : now))
     )
+    setComing(null)
     board.manifest({ intent: 'imported', imported: tally })
   }
+
+  /* How far through the file being copied right now, as the server says it while the bytes land.
+     Only ever the one the board is already counting: an answer about some other copy — an older
+     drop, another window — says nothing about this row and is left out. */
+  const said = board.importing
+  const watching = coming && said && said.token === tokenFor(coming.done) ? said : null
+  const partCopied =
+    watching && watching.total > 0 ? Math.min(1, watching.done / watching.total) : 0
 
   const drag = useDragAndDrop({ groups, frozen, pickedFiles, moveFiles, assign, importDropped })
 
@@ -914,6 +942,17 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     </span>
   )
 
+  /* A dropzone can be taken off the board. Offered here rather than beside the folder's next step,
+     because a place with nothing in it has no next step and is exactly the one worth removing. */
+  const placeTools = place.kind === 'dz' && (
+    <Mini
+      disabled={busy !== null}
+      title='Take this place off the board — what is filed here goes back to Fresh files, and nothing is deleted'
+      onClick={() => setDialog({ kind: 'remove-place', place: place.name })}>
+      {busy === `remove:dz:${place.name}` ? 'Removing…' : 'Remove place…'}
+    </Mini>
+  )
+
   /* what each jump is called wherever it appears: its place in its day, or its passenger */
   const labels = new Map(
     [...new Set(groups.map((g) => g.destination ?? ''))].flatMap((dest) => [
@@ -1136,7 +1175,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           }}
           kind={{ value: kind, onChange: (next) => look({ kind: next }) }}
           step={place.kind === 'dz' ? dropzoneStep(place.name) : undefined}
-          tools={paxTools}
+          tools={paxTools || placeTools}
           left={
             <FolderOwed
               place={place}
@@ -1272,6 +1311,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         places={places}
         onChooseFolder={chooseFolder}
         groups={groups}
+        looseFiles={loose}
         asOnStorage={asOnStorage}
         facts={board.tandemFacts}
         folderFor={folderFor}
@@ -1293,6 +1333,12 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         onFreePlace={(place) => {
           setDialog(null)
           send(`free:dz:${place}`, { intent: 'free-dropzone', destination: place })
+        }}
+        onRemovePlace={(place) => {
+          setDialog(null)
+          send(`remove:dz:${place}`, { intent: 'remove-destination', destination: place })
+          /* the place it was showing is gone; what was in it is in Fresh files now */
+          pickPlace({ kind: 'sort' })
         }}
         onTakeBack={(mode, group) => {
           setDialog(null)
@@ -1345,6 +1391,16 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           send(`play:${file.id ?? file.path}`, { intent: 'play-file', fileIds: [file.id ?? ''] })
         }
       />
+      {coming && (
+        <ImportPanel
+          where={coming.where}
+          files={coming.files}
+          done={coming.done}
+          failed={coming.failed}
+          part={partCopied}
+          reading={watching?.phase === 'reading'}
+        />
+      )}
       {/* what the address says — which folder, which file — is drawn above, from the address
           itself; this is where the addresses themselves live */}
       <Outlet />

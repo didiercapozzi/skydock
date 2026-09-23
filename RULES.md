@@ -283,6 +283,14 @@ Filing a jump answers one question: who is this for?
   was already uploaded stays on the storage under the old name and no longer counts as uploaded here.
 - **A loose file can be filed to a dropzone** without belonging to any jump; it is handled exactly like
   a dropzone jump's files.
+- **A dropzone can be taken off the board**, for one made by mistake or one nobody shoots at any more.
+  It is asked for first, and nothing is deleted: every jump filed there comes back to Fresh files
+  whole — its files, its name, its trims, its marks — and every loose file filed there is loose in
+  Fresh files again, to be filed somewhere else. What was processed belonged to that dropzone's folder,
+  so it must be processed again wherever those jumps go next, exactly as when a name is changed. The
+  folder on the storage is left as it is, with everything in it and any link handed out of it: what is
+  up there is not this machine's to throw away. A dropzone holding anything already uploaded cannot be
+  removed — uploaded is the end of editing — and neither can Tandems, which nobody made.
 
 ## What lands on disk
 
@@ -453,7 +461,23 @@ is not a name yet, so such a tandem waits there, not among the passengers.
 onto the board: onto a passenger to join their tandem, onto a dropzone to be filed there loose, onto
 Fresh files to wait there, or anywhere on a place's page to go to that place. It is copied into the
 originals under the day it was taken, keeping its name unless a different file already has it that
-day. From then on it is a file like any other.
+day. From then on it is a file like any other. Several at once go together, to the same place.
+
+**A whole folder can be dropped** as readily as a file, and is not itself copied: every video and
+photo inside it is, and inside the folders inside it, however deep they go. A card copied to the
+computer, or a day's rushes in folders by camera, is therefore one drop. Whatever else is in there —
+notes, projects, a camera's own bookkeeping — is passed over and left where it is.
+
+**What is coming is said before it is copied.** A drop is worked out first, folders and all, and the
+board then lists what is about to go into the originals, marks each one as it lands and shows how far
+through it is — following the file being copied as its bytes arrive, not only the count of files, so
+a single long clip is a bar that moves rather than one that waits. The file being copied has a bar
+of its own beside the one for the whole drop, because a card of fifty clips moves the whole by a
+fiftieth at a time and that reads as nothing happening. Once a file's bytes are in it is read, which
+is quick beside the copy and is said as well, so a bar that has filled is never a bar with nothing
+behind it. Nothing is asked and nothing waits on an answer: the list is there to be watched, the
+way making the proxies and copying a camera off are. A drop holding nothing SkyDock can show says so
+and copies nothing.
 
 Footage already on the board is recognised by its contents, whatever the file is now called, and what
 the drop means depends on where it lands. **Dropped on a jump while it is already in another one, it

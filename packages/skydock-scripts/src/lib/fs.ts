@@ -1,15 +1,9 @@
 import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { MEDIA_EXTENSIONS_SET } from '../constants'
+import { isMediaName } from '../constants'
 
 const DEFAULT_MAX_FIND_DEPTH = 10
-
-/* A file of pictures or film, by its name. A name starting `._` is not one whatever it ends with:
-   it is the sidecar a Mac leaves beside every file it copies onto a card or a drive, a few hundred
-   bytes of Finder notes that no player can open. */
-const isMediaName = (name: string) =>
-  !name.startsWith('._') && MEDIA_EXTENSIONS_SET.has(path.extname(name).slice(1).toLowerCase())
 
 const findMediaFiles = (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH) => {
   const results: string[] = []

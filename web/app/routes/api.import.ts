@@ -26,15 +26,19 @@ const targetOf = (raw: string | null): ImportTarget | null => {
 }
 
 /* The file itself, however it was handed over: the bytes that came with the request, or the file at
-   the address they were dropped as. */
+   the address they were dropped as. How big it is comes with it — read off the machine where the
+   file is already there, and said by whoever is sending where it is not — so the board can be told
+   how far through one long clip a copy has got. */
 const handedOver = (request: Request, url: URL) => {
   const from = url.searchParams.get('path')
   if (from) {
-    if (!fs.existsSync(from) || !fs.statSync(from).isFile())
+    const said = fs.existsSync(from) ? fs.statSync(from) : null
+    if (!said?.isFile())
       throw new Error(`${path.basename(from)} is not a file this machine can read.`)
     return {
       filename: path.basename(from),
-      lastModified: fs.statSync(from).mtimeMs,
+      lastModified: said.mtimeMs,
+      size: said.size,
       body: fs.createReadStream(from)
     }
   }
@@ -43,6 +47,8 @@ const handedOver = (request: Request, url: URL) => {
   return {
     filename,
     lastModified: Number(url.searchParams.get('lastModified')),
+    size:
+      Number(url.searchParams.get('size')) || Number(request.headers.get('content-length')) || 0,
     body: Readable.fromWeb(request.body as NodeWebStream<Uint8Array>)
   }
 }
@@ -57,7 +63,8 @@ const action = async ({ request }: Route.ActionArgs) => {
     const result = await importFile({
       outputDir: getOutputDir(),
       ...carried,
-      target
+      target,
+      token: url.searchParams.get('token') ?? undefined
     })
     /* a clip needs its small copy for the crop bar and the editor, built behind the answer */
     void buildMissingProxies().catch(() => undefined)

@@ -50,6 +50,20 @@ const liveEventSchema = z.discriminatedUnion('kind', [
     total: z.number(),
     level: z.enum(['ok', 'low', 'full'])
   }),
+  /* One file being copied in from the computer, while it is. A drop of one long clip is minutes of
+     nothing to look at otherwise: the board has the list and the count from the start, and this is
+     how far through the one being copied it is. Named by a token the page chose before it sent
+     anything, because a file has no id here until its bytes have landed and been read. */
+  z.object({
+    kind: z.literal('import'),
+    token: z.string(),
+    done: z.number(),
+    total: z.number(),
+    /* copying it in, then reading what came — the date it was taken, the name it will be known by.
+       The reading is quick beside the copy and says nothing about how long it has left, but it is
+       not nothing, and a bar that sat full with no word would look stuck. `done` ends it. */
+    phase: z.enum(['copying', 'reading', 'done'])
+  }),
   /* the cameras plugged in right now, said each time one comes or goes */
   z.object({
     kind: z.literal('cameras'),
@@ -81,6 +95,11 @@ const publish = (event: LiveEvent) => {
   /* whoever starts listening hears which cameras are plugged in, not only the next change */
   if (event.kind === 'cameras') underWay.set('cameras', event)
   if (event.kind === 'disk') underWay.set('disk', event)
+  /* a copy under way is heard by a board opened in the middle of it; one that ended is not */
+  if (event.kind === 'import') {
+    if (event.phase === 'done') underWay.delete(`import:${event.token}`)
+    else underWay.set(`import:${event.token}`, event)
+  }
   if (event.kind === 'camera') {
     if (event.state === 'copying') underWay.set(`camera:${event.camera}`, event)
     else underWay.delete(`camera:${event.camera}`)

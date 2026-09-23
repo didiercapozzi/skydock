@@ -5,6 +5,7 @@ import { ConnectionDialog } from './connection-dialog'
 import { EmailDialog } from './email-dialog'
 import { FreeDialog } from './free-dialog'
 import { FreePlaceDialog } from './free-place-dialog'
+import { RemovePlaceDialog } from './remove-place-dialog'
 import { NasFolderBrowser } from './nas-folder-browser'
 import { ResetFreshDialog } from './reset-fresh-dialog'
 import { TakeBackDialog } from './take-back-dialog'
@@ -30,6 +31,8 @@ type BoardDialog =
   | { kind: 'free'; groupId: string }
   /* what of a dropzone is on the storage, about to be deleted from this machine */
   | { kind: 'free-place'; place: string }
+  /* a place about to be taken off the board, what was filed there going back to Fresh files */
+  | { kind: 'remove-place'; place: string }
   /* unsorted files about to go to the bin */
   | { kind: 'trash'; files: ManifestFile[] }
   /* a tandem on this board by its jump, or one the storage's list alone knows, by its folder */
@@ -46,6 +49,7 @@ const DialogHost = ({
   places,
   onChooseFolder,
   groups,
+  looseFiles,
   asOnStorage,
   facts,
   folderFor,
@@ -57,6 +61,7 @@ const DialogHost = ({
   onFree,
   freeableOf,
   onFreePlace,
+  onRemovePlace,
   onTakeBack,
   onTrash,
   onMontage,
@@ -75,6 +80,8 @@ const DialogHost = ({
   places: Destination[]
   onChooseFolder: (path: string, destination?: string, target?: 'backup') => void
   groups: ManifestGroup[]
+  /* files in no jump, needed to say what a place holds before it is taken off the board */
+  looseFiles: ManifestFile[]
   asOnStorage: (group: ManifestGroup) => ManifestGroup
   facts: Record<string, TandemFact>
   folderFor: (destination: string) => string | null
@@ -86,6 +93,7 @@ const DialogHost = ({
   onFree: (group: ManifestGroup) => void
   freeableOf: (place: string) => ReturnType<typeof freeablePlace>
   onFreePlace: (place: string) => void
+  onRemovePlace: (place: string) => void
   onTakeBack: (mode: TakeBackMode, group: ManifestGroup) => void
   onTrash: (files: ManifestFile[]) => void
   onMontage: (groupId: string, template: string) => void
@@ -208,6 +216,17 @@ const DialogHost = ({
           freeable={freeableOf(dialog.place)}
           onClose={close}
           onConfirm={() => onFreePlace(dialog.place)}
+        />
+      )}
+
+      {dialog?.kind === 'remove-place' && (
+        <RemovePlaceDialog
+          place={dialog.place}
+          jumps={groups.filter((g) => g.destination === dialog.place).length}
+          loose={looseFiles.filter((f) => f.destination === dialog.place).length}
+          linked={folderFor(dialog.place)}
+          onClose={close}
+          onConfirm={() => onRemovePlace(dialog.place)}
         />
       )}
 

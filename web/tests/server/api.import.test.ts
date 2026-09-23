@@ -2,7 +2,9 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { saveManifest } from '@skydock/scripts'
+import { loadManifest, saveManifest, subscribe } from '@skydock/scripts'
+import type { LiveEvent } from '@skydock/scripts'
+import { computeFileId } from '../../../packages/skydock-scripts/src/fileId'
 import { action } from '../../app/routes/api.import'
 import { createTmpDir } from './fixtures'
 
@@ -101,5 +103,149 @@ describe('a file added from the computer', () => {
     const said = await dropped({ target: 'sort' })
 
     expect(said).toMatchObject({ ok: false, error: 'Nothing to add.' })
+  })
+})
+
+/* One long clip is minutes of nothing to look at unless the copy says how far through it is, so it
+   says so as the bytes land (RULES, The board — Adding files from the computer). It is said by the
+   name the page chose before it sent anything, because a file has no id until it has landed. */
+describe('a file being copied in from the computer', () => {
+  let tmpDir: string
+  let was: string | undefined
+  let heard: LiveEvent[]
+  let stop: (() => void) | null = null
+
+  beforeEach(() => {
+    tmpDir = createTmpDir('skydock-api-import-live-')
+    was = process.env.SKYDOCK_OUTPUT_DIR
+    process.env.SKYDOCK_OUTPUT_DIR = tmpDir
+    process.env.SKYDOCK_CONFIG_DIR = tmpDir
+    saveManifest(path.join(tmpDir, 'manifest.json'), {
+      version: 1,
+      createdAt: '2026-08-01',
+      files: [],
+      groups: [],
+      destinations: [{ name: 'Yverdon' }]
+    })
+    heard = []
+    stop = subscribe((event) => heard.push(event))
+  })
+
+  afterEach(() => {
+    stop?.()
+    stop = null
+    fs.rmSync(tmpDir, { recursive: true, force: true })
+    if (was === undefined) delete process.env.SKYDOCK_OUTPUT_DIR
+    else process.env.SKYDOCK_OUTPUT_DIR = was
+  })
+
+  const imports = async (params: Record<string, string>, bytes: string) => {
+    const url = `http://localhost/api/import?${new URLSearchParams(params).toString()}`
+    const response = await action({
+      request: new Request(url, { method: 'POST', body: bytes, duplex: 'half' } as RequestInit),
+      params: {},
+      context: {} as never
+    } as never)
+    return (await response.json()) as Answer
+  }
+
+  const importEvents = () => heard.flatMap((event) => (event.kind === 'import' ? [event] : []))
+
+  it('says how far through it is, by the name the page gave that copy', async () => {
+    const clip = 'x'.repeat(4096)
+
+    const said = await imports(
+      {
+        target: 'sort',
+        filename: 'long.mp4',
+        lastModified: String(SHOT.getTime()),
+        token: 'drop-0',
+        size: String(clip.length)
+      },
+      clip
+    )
+
+    expect(said.ok).toBe(true)
+    const steps = importEvents()
+    expect(steps.length).toBeGreaterThan(0)
+    expect(steps.every((step) => step.token === 'drop-0')).toBe(true)
+    expect(steps.every((step) => step.total === clip.length)).toBe(true)
+    /* it ends full, whatever the throttle had got to on the way */
+    expect(steps.at(-1)?.done).toBe(clip.length)
+  })
+
+  it('says nothing at all when nobody asked to be told', async () => {
+    await imports(
+      { target: 'sort', filename: 'quiet.mp4', lastModified: String(SHOT.getTime()) },
+      'a clip'
+    )
+
+    expect(importEvents()).toEqual([])
+  })
+
+  /* a copy that is over is not one to watch: the board hears it ended and takes the bar away */
+  it('stops being under way once it has landed', async () => {
+    await imports(
+      {
+        target: 'sort',
+        filename: 'short.mp4',
+        lastModified: String(SHOT.getTime()),
+        token: 'drop-0',
+        size: '6'
+      },
+      'a clip'
+    )
+
+    const later: LiveEvent[] = []
+    const off = subscribe((event) => later.push(event))
+    off()
+    expect(later.flatMap((e) => (e.kind === 'import' ? [e] : []))).toEqual([])
+  })
+
+  /* The bytes are hashed on their way past rather than read back afterwards, which is what a file
+     is known by ever after — the same clip dropped twice is recognised, and a scan finding it on
+     disk must call it the same thing. Were these to differ, nothing would say so until a duplicate
+     quietly became a second file. */
+  it('is known by the same name as reading the whole file back would give', async () => {
+    const clip = 'x'.repeat(100_000)
+
+    await imports(
+      {
+        target: 'sort',
+        filename: 'long.mp4',
+        lastModified: String(SHOT.getTime()),
+        token: 'drop-0',
+        size: String(clip.length)
+      },
+      clip
+    )
+
+    const landed = path.join(tmpDir, 'original_files', '2026-08-01', 'long.mp4')
+    const saved = loadManifest(path.join(tmpDir, 'manifest.json'))
+    expect(saved?.files[0]?.id).toBe(await computeFileId(landed))
+  })
+
+  /* the copy, then the reading of what landed, then nothing left to watch */
+  it('says the copy is over before it says there is nothing left to watch', async () => {
+    const clip = 'x'.repeat(4096)
+
+    await imports(
+      {
+        target: 'sort',
+        filename: 'long.mp4',
+        lastModified: String(SHOT.getTime()),
+        token: 'drop-0',
+        size: String(clip.length)
+      },
+      clip
+    )
+
+    const phases = importEvents().map((step) => step.phase)
+    expect(phases.at(-1)).toBe('done')
+    expect(phases).toContain('reading')
+    expect(phases.indexOf('reading')).toBeLessThan(phases.lastIndexOf('done'))
+    /* and the bar is full from the moment the bytes are in, never emptied and filled again */
+    const fromReading = importEvents().slice(phases.indexOf('reading'))
+    expect(fromReading.every((step) => step.done === clip.length)).toBe(true)
   })
 })

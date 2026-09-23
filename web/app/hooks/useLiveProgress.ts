@@ -17,6 +17,9 @@ type Disk = Omit<Extract<LiveEvent, { kind: 'disk' }>, 'kind'>
 /* a camera plugged in right now: its name, and where it is mounted */
 type Mounted = Extract<LiveEvent, { kind: 'cameras' }>['mounted'][number]
 
+/* one file being copied in from the computer, by the name the page gave that copy */
+type Importing = Omit<Extract<LiveEvent, { kind: 'import' }>, 'kind'>
+
 /* What is happening to the files as it happens, heard over one stream the server keeps open — so a
    file being processed, or a proxy being made, shows how far along it is with nobody asking. The
    browser reconnects by itself, and on connecting the server first says what is already under way.
@@ -35,6 +38,7 @@ const useLiveProgress = (
   const [ended, setEnded] = useState<CameraEnded | null>(null)
   const [cameras, setCameras] = useState<Mounted[]>([])
   const [disk, setDisk] = useState<Disk | null>(null)
+  const [importing, setImporting] = useState<Importing | null>(null)
 
   useEffect(() => {
     const source = new EventSource(routingEngine.href({ url: '/api/events' }))
@@ -53,6 +57,13 @@ const useLiveProgress = (
           setCamera(null)
           setEnded((before) => ({ ...event, seq: (before?.seq ?? 0) + 1 }))
         }
+        return
+      }
+      if (event.kind === 'import') {
+        /* Kept until the copy is over, not until its bytes are: a file whose last byte has landed
+           is still being read, and a bar that emptied itself at that moment was the board saying a
+           finished copy had not started. */
+        setImporting(event.phase === 'done' ? null : event)
         return
       }
       if (event.kind === 'disk') {
@@ -80,8 +91,8 @@ const useLiveProgress = (
     return () => source.close()
   }, [onProxies, onTandems, onNote])
 
-  return { files, camera, ended, cameras, disk }
+  return { files, camera, ended, cameras, disk, importing }
 }
 
 export { useLiveProgress }
-export type { CameraCopy, CameraEnded, Disk, LiveFile, Mounted }
+export type { CameraCopy, CameraEnded, Disk, Importing, LiveFile, Mounted }

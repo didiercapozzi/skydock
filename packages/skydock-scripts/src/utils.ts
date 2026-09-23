@@ -1,7 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { z } from 'zod'
-import { VIDEO_EXTENSIONS_SET } from './constants'
+import { getExtension, VIDEO_EXTENSIONS_SET } from './constants'
 import type { ManifestFile } from './types'
 import { DEFAULT_MAX_FIND_DEPTH, fileMatchesExisting, findMediaFiles, walkFiles } from './lib/fs'
 
@@ -56,12 +56,6 @@ const ffprobePath = () => toolPath('ffprobe') ?? 'ffprobe'
 const exiftoolPath = () => toolPath('exiftool') ?? 'exiftool'
 
 const checkExiftool = () => hasCommand('exiftool')
-
-const getExtension = (filePath: string) => {
-  const base = filePath.split('/').pop() ?? filePath
-  const dot = base.lastIndexOf('.')
-  return dot === -1 ? '' : base.slice(dot + 1).toLowerCase()
-}
 
 const isVideoFile = (filePath: string) => VIDEO_EXTENSIONS_SET.has(getExtension(filePath))
 

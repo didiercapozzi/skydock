@@ -15,6 +15,7 @@ const routes = [
   route('api/scan', 'routes/api.scan.ts'),
   route('api/camera', 'routes/api.camera.ts'),
   route('api/import', 'routes/api.import.ts'),
+  route('api/dropped', 'routes/api.dropped.ts'),
   route('api/templates', 'routes/api.templates.ts'),
   route('api/upload-progress', 'routes/api.upload-progress.ts'),
   route('api/events', 'routes/api.events.ts'),
