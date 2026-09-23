@@ -1,5 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { stampOf } from './lib/clock'
 
 /* Every version of a passenger's editing project, kept aside.
 
@@ -16,9 +17,6 @@ const HISTORY = '.projects'
 const keptProjectsDir = (outputDir: string) => path.join(outputDir, HISTORY)
 
 /* the moment, as a name a folder can hold and a person can read: 2026-09-21T18-05-12 */
-const stampOf = (at: Date) =>
-  `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}T${String(at.getHours()).padStart(2, '0')}-${String(at.getMinutes()).padStart(2, '0')}-${String(at.getSeconds()).padStart(2, '0')}`
-
 const sameFile = (a: string, b: string) => {
   try {
     const left = fs.statSync(a)

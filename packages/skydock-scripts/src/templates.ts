@@ -3,7 +3,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { Unzip, UnzipInflate } from 'fflate'
 import { walkFiles } from './lib/fs'
-import { availableTemplates, inspectTemplate } from './montage'
+import { availableTemplates, defaultTemplate, DEFAULT_MARK, inspectTemplate } from './montage'
 import { relinkTemplate } from './templateLinks'
 import type { TemplateFact } from './templateEntry'
 import { run } from './tools'
@@ -14,19 +14,6 @@ import { run } from './tools'
    in — so none is ever picked silently unless somebody said which one is the usual, one brought in
    again replaces itself whole rather than half, and one with holes in it says so before an edit is
    started on it rather than at the render. */
-
-/* Which template a montage is made from when nobody is asked. Kept beside the templates rather than
-   in the app's own settings, since it names one of them and travels with them. */
-const DEFAULT_MARK = '.default'
-
-const defaultTemplate = (outputDir: string) => {
-  try {
-    const said = fs.readFileSync(path.join(outputDir, 'templates', DEFAULT_MARK), 'utf-8').trim()
-    return said || null
-  } catch {
-    return null
-  }
-}
 
 /* Named, or none — and a name nothing answers to is refused rather than remembered, since a default
    that is not there would be found out at the montage. */
@@ -203,5 +190,5 @@ const importTemplate = async ({
   return made
 }
 
-export { defaultTemplate, importTemplate, listTemplates, setDefaultTemplate }
+export { importTemplate, listTemplates, setDefaultTemplate }
 export type { Arriving }

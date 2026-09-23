@@ -87,6 +87,52 @@ const fpsOf = (mlt: XmlNode[]) => {
   return num > 0 && den > 0 ? num / den : 25
 }
 
+/* What a title clip names, inside the escaped XML it keeps in a property of its own. A title's
+   `resource` is empty, so nothing that reads resources alone ever reaches its images. */
+const TITLE_IMAGE = /content url="([^"]+)"/g
+
+/* Not every resource is a file: a colour is written `0x000000ff`, the empty clip is `black`, and a
+   producer may name nothing at all. */
+const isAssetPath = (resource: string) =>
+  resource !== '' && resource !== 'black' && !resource.startsWith('0x')
+
+/* Every file the document names, each handed to `say` — what a clip plays, what the music is, and
+   the images inside the titles. Answering with a string writes it back in that file's place;
+   answering null leaves it as it was.
+ *
+ * Values are handed over decoded and taken back decoded: the entities belong to the document, and
+ * re-encoding a title's escaped XML by hand is what destroys the titles. Reading every file a
+ * project names, moving a template's files to where they now are, and pointing a brought-in
+ * template at the copies that came with it are all this same walk. */
+const walkAssets = (mlt: XmlNode[], say: (asset: string) => string | null) => {
+  for (const node of mlt) {
+    if (tagOf(node) !== 'chain' && tagOf(node) !== 'producer') continue
+    const resource = textOf(propOf(node, 'resource'))
+    if (isAssetPath(resource)) {
+      const said = say(decodeXml(resource))
+      if (said !== null) setProp(node, 'resource', encodeXml(said))
+    }
+    const titles = propOf(node, 'xmldata')
+    const xmldata = textOf(titles)
+    if (!titles || !xmldata.includes('content url=')) continue
+    const written = xmldata.replace(TITLE_IMAGE, (whole, named: string) => {
+      const said = say(decodeXml(named))
+      return said === null ? whole : `content url="${encodeXml(said)}"`
+    })
+    if (written !== xmldata) setProp(node, 'xmldata', written)
+  }
+}
+
+/* The same walk, asking nothing of them: every file the document names, as it spells them. */
+const assetsIn = (mlt: XmlNode[]) => {
+  const named: string[] = []
+  walkAssets(mlt, (asset) => {
+    named.push(asset)
+    return null
+  })
+  return named
+}
+
 /* The timeline's tracks bottom to top, as kdenlive counts them when it names a clip in a group:
    the black background it keeps underneath is not one of them. */
 const timelineTracks = (mlt: XmlNode[], sequence: XmlNode) =>
@@ -97,6 +143,7 @@ const timelineTracks = (mlt: XmlNode[], sequence: XmlNode) =>
   })
 
 export {
+  assetsIn,
   attrsOf,
   childrenOf,
   decodeXml,
@@ -111,6 +158,7 @@ export {
   textOf,
   timelineTracks,
   tracksOf,
+  walkAssets,
   xmlDocumentSchema,
   XML_OPTIONS
 }

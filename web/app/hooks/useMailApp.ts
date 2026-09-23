@@ -1,42 +1,19 @@
-import { useSyncExternalStore } from 'react'
 import { z } from 'zod'
+import { remembered } from './remembered'
 
-/* Which mail the passenger email is opened in — Gmail in the browser, or the computer's own mail
-   program — remembered, so the one used last is the one offered first. */
 const mailAppSchema = z.enum(['gmail', 'mailto'])
 type MailApp = z.infer<typeof mailAppSchema>
 
-const KEY = 'skydock.mailApp'
+/* Which one opened the last email is which one opens the next: a club uses one or the other, and
+   being asked every time is being asked about somebody else's habit. */
+const app = remembered<MailApp>({
+  key: 'skydock.mailApp',
+  fallback: 'gmail',
+  from: (stored) => mailAppSchema.safeParse(stored).data ?? null
+})
 
-let chosen: MailApp = 'gmail'
-
-const listeners = new Set<() => void>()
-
-const subscribe = (listener: () => void) => {
-  listeners.add(listener)
-  return () => listeners.delete(listener)
-}
-
-const readStored = (): MailApp => {
-  try {
-    const stored = mailAppSchema.safeParse(localStorage.getItem(KEY))
-    return stored.success ? stored.data : chosen
-  } catch {
-    return chosen
-  }
-}
-
-const setMailApp = (app: MailApp) => {
-  chosen = app
-  try {
-    localStorage.setItem(KEY, app)
-  } catch {
-    /* a browser refusing storage still gets the choice, just not the memory */
-  }
-  for (const listener of listeners) listener()
-}
-
-const useMailApp = () => useSyncExternalStore(subscribe, readStored, (): MailApp => 'gmail')
+const setMailApp = app.set
+const useMailApp = app.use
 
 export { setMailApp, useMailApp }
 export type { MailApp }

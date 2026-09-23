@@ -13,6 +13,7 @@ import { copyFiles, moveFiles } from './moveFiles'
 import { frozenTandems, isTandem } from './tandem'
 import type { Manifest, ManifestFile } from './types'
 import { getExtension } from './utils'
+import { two } from './lib/clock'
 
 /* A file dragged in from the computer — a clip off a phone, a photo someone sent — joins the board the
    way a camera's file does: copied into original_files under the day it was taken, keeping its own
@@ -36,12 +37,10 @@ type ImportResult =
   | { filename: string; outcome: 'there' }
   | { filename: string; outcome: 'kept'; reason: string }
 
-const pad = (n: number) => String(n).padStart(2, '0')
-
 /* the folder a scan files it under: the local calendar day it was taken */
 const dayFolder = (epoch: number) => {
   const d = new Date(epoch * 1000)
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`
 }
 
 /* its own name, unless that name is already taken in that day by different bytes */

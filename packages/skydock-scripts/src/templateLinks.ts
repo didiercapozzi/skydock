@@ -2,16 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { XMLBuilder } from 'fast-xml-parser'
 import { z } from 'zod'
-import {
-  XML_OPTIONS,
-  attrsOf,
-  decodeXml,
-  encodeXml,
-  propOf,
-  setProp,
-  tagOf,
-  textOf
-} from './lib/mlt'
+import { XML_OPTIONS, attrsOf, walkAssets } from './lib/mlt'
 import { walkFiles } from './lib/fs'
 import { readTemplate } from './montage'
 
@@ -29,14 +20,6 @@ import { readTemplate } from './montage'
  * A file nothing was uploaded for is left exactly as the project wrote it: it is missing, which is
  * a thing to be told about, not a thing to be papered over with a path to nowhere.
  */
-
-/* what a title clip names, inside the escaped XML it keeps in a property of its own */
-const TITLE_IMAGE = /content url="([^"]+)"/g
-
-/* Not every resource is a file: kdenlive writes a colour as `0x000000ff` and the empty clip as
-   `black`, and a producer may name nothing at all. */
-const isFile = (resource: string) =>
-  resource !== '' && resource !== 'black' && !resource.startsWith('0x')
 
 /* Every file that came with the template, by the name it ends in — which is what a project names
    its files by, whatever folder they were in on the machine that made it. */
@@ -66,10 +49,9 @@ const relinkTemplate = (projectPath: string): Relinked => {
   const relinked: string[] = []
   const missing: string[] = []
 
-  /* Where this file is now, or null when it is to be left alone: not a file, already pointing at
-     what came with it, or nothing here answers to that name. */
+  /* Where this file is now, or null when it is to be left alone: already pointing at what came with
+     it, or nothing here answers to that name. */
   const wayToItsCopy = (named: string) => {
-    if (!isFile(named)) return null
     const name = path.basename(named)
     const here = beside.get(name)
     if (!here) {
@@ -82,21 +64,7 @@ const relinkTemplate = (projectPath: string): Relinked => {
     return way
   }
 
-  for (const node of mlt) {
-    if (tagOf(node) !== 'chain' && tagOf(node) !== 'producer') continue
-    const resource = textOf(propOf(node, 'resource'))
-    const moved = wayToItsCopy(decodeXml(resource))
-    if (moved !== null) setProp(node, 'resource', encodeXml(moved))
-
-    const titles = propOf(node, 'xmldata')
-    const xmldata = textOf(titles)
-    if (!titles || !xmldata.includes('content url=')) continue
-    const written = xmldata.replace(TITLE_IMAGE, (whole, named: string) => {
-      const way = wayToItsCopy(decodeXml(named))
-      return way === null ? whole : `content url="${encodeXml(way)}"`
-    })
-    if (written !== xmldata) setProp(node, 'xmldata', written)
-  }
+  walkAssets(mlt, wayToItsCopy)
 
   /* The folder the machine that made this counted from. Every file now says its own way from the
      project, so what is recorded here is one more thing that was true somewhere else — and left in

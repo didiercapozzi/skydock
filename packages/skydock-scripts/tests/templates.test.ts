@@ -4,13 +4,8 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { zipSync, strToU8 } from 'fflate'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { availableTemplates } from '../src/montage'
-import {
-  defaultTemplate,
-  importTemplate,
-  listTemplates,
-  setDefaultTemplate
-} from '../src/templates'
+import { availableTemplates, defaultTemplate } from '../src/montage'
+import { importTemplate, listTemplates, setDefaultTemplate } from '../src/templates'
 import { createTmpDir } from './fixtures'
 
 /* A template is brought in from a kdenlive archive — the project with the music, logos and titles

@@ -1,38 +1,14 @@
-import { useSyncExternalStore } from 'react'
+import { remembered } from './remembered'
 
 /* The signature under every passenger email — the club's, not the passenger's — so it is typed
-   once and remembered, the same way the backup choice is. */
-const KEY = 'skydock.signature'
+   once and remembered. */
+const signature = remembered<string>({
+  key: 'skydock.signature',
+  fallback: 'L’équipe tandem',
+  from: (stored) => stored
+})
 
-const DEFAULT = 'L’équipe tandem'
-
-let chosen = DEFAULT
-
-const listeners = new Set<() => void>()
-
-const subscribe = (listener: () => void) => {
-  listeners.add(listener)
-  return () => listeners.delete(listener)
-}
-
-const readStored = () => {
-  try {
-    return localStorage.getItem(KEY) ?? chosen
-  } catch {
-    return chosen
-  }
-}
-
-const setSignature = (signature: string) => {
-  chosen = signature
-  try {
-    localStorage.setItem(KEY, signature)
-  } catch {
-    /* a browser refusing storage still gets the signature, just not the memory */
-  }
-  for (const listener of listeners) listener()
-}
-
-const useSignature = () => useSyncExternalStore(subscribe, readStored, () => DEFAULT)
+const setSignature = signature.set
+const useSignature = signature.use
 
 export { setSignature, useSignature }

@@ -6,9 +6,9 @@ import { XMLBuilder, XMLParser, XMLValidator } from 'fast-xml-parser'
 import { z } from 'zod'
 import { toHostPath } from './hostPath'
 import {
+  assetsIn,
   attrsOf,
   childrenOf,
-  decodeXml,
   encodeXml,
   fpsOf,
   nodeById,
@@ -16,6 +16,7 @@ import {
   setProp,
   tagOf,
   textOf,
+  walkAssets,
   xmlDocumentSchema,
   XML_OPTIONS
 } from './lib/mlt'
@@ -109,12 +110,14 @@ const availableTemplates = (outputDir: string) => {
   return own.length > 0 ? own : templatesIn(repoTemplateDir())
 }
 
-/* The one somebody said is the usual, when there is one and it is still there. Said by a file that
-   names it, kept beside the templates: the montage asks the templates where they are, not the board,
-   so a montage made from the command line follows the same choice as one made by pressing Montage. */
-const markedDefault = (outputDir: string) => {
+/* The one somebody said is the usual, when there is one. Said by a file that names it, kept beside
+   the templates themselves: the montage asks them rather than the board, so a montage made from the
+   command line follows the same choice as one made by pressing Montage. */
+const DEFAULT_MARK = '.default'
+
+const defaultTemplate = (outputDir: string) => {
   try {
-    return fs.readFileSync(path.join(outputDir, 'templates', '.default'), 'utf-8').trim() || null
+    return fs.readFileSync(path.join(outputDir, 'templates', DEFAULT_MARK), 'utf-8').trim() || null
   } catch {
     return null
   }
@@ -135,27 +138,13 @@ const resolveTemplate = (options: z.infer<typeof montageOptionsSchema>) => {
   }
   const configured = process.env.SKYDOCK_MONTAGE_TEMPLATE
   if (configured && fs.existsSync(configured)) return configured
-  const usual = available.find((t) => t.name === markedDefault(options.outputDir))
+  const usual = available.find((t) => t.name === defaultTemplate(options.outputDir))
   if (usual) return usual.path
   if (available.length === 1) return available[0].path
   if (available.length > 1)
     throw new Error(`Choose a montage template: ${available.map((t) => t.name).join(', ')}`)
   throw new Error(`No montage template found — add one under ${options.outputDir}/templates`)
 }
-
-/* Every file a template's project names: what its clips and its music play, and the images held
-   inside its title clips — those sit in the title's own escaped XML with the clip's resource left
-   empty, so they are read out of there. As the project spells them, entities decoded. */
-const TITLE_IMAGE = /content url="([^"]+)"/g
-
-const assetsNamedBy = (mlt: XmlNode[]) =>
-  mlt.flatMap((node) => {
-    if (tagOf(node) !== 'chain' && tagOf(node) !== 'producer') return []
-    const resource = textOf(propOf(node, 'resource'))
-    const played = resource && !resource.startsWith('0x') && resource !== 'black' ? [resource] : []
-    const inTitles = [...textOf(propOf(node, 'xmldata')).matchAll(TITLE_IMAGE)].map((m) => m[1]!)
-    return [...played, ...inTitles].map(decodeXml)
-  })
 
 /* Where one of those files is on this machine, or null. A template carries the machine it was made
    on in its paths and gets copied to another: the root it recorded is used when it exists here, the
@@ -194,7 +183,7 @@ const inspectTemplate = (template: string) => {
   const locate = assetLocator(template, mltNode)
   const bin = nodeById(mlt, 'playlist', 'main_bin')
   const version = bin ? textOf(propOf(bin, 'kdenlive:docproperties.kdenliveversion')) : ''
-  const assets = [...new Set(assetsNamedBy(mlt))].map((asset) => ({
+  const assets = [...new Set(assetsIn(mlt))].map((asset) => ({
     name: path.basename(asset),
     found: locate(asset).found !== null
   }))
@@ -225,34 +214,14 @@ const createMontageProject = (rawOptions: MontageOptions) => {
      XML spells it — and one of the template's own music tracks has an `&` in its name. Looking that
      up on disk as `&amp;` finds nothing, so it is decoded to ask the filesystem and encoded again
      to go back into the document. */
+  /* the template's own music, logo and title files keep working from the new folder — the images
+     inside a title among them, which is the walk's business rather than this one's */
   const missingAssets: string[] = []
-  const relocate = (asset: string) => {
-    const decoded = decodeXml(asset)
-    const { resolved, found } = locate(decoded)
-    if (!found) missingAssets.push(decoded)
-    return toHost(found ?? resolved)
-  }
-
-  /* the template's own music, logo and title files keep working from the new folder */
-  for (const node of mlt) {
-    if (tagOf(node) !== 'chain' && tagOf(node) !== 'producer') continue
-    const resource = textOf(propOf(node, 'resource'))
-    if (resource && !resource.startsWith('0x') && resource !== 'black')
-      setProp(node, 'resource', relocate(resource))
-    /* A title clip keeps its images inside its own escaped XML, and its resource property is
-       empty — so nothing above reaches them. Miss these and the logos quietly vanish from the
-       outro of every montage. */
-    const titleData = propOf(node, 'xmldata')
-    if (titleData)
-      setProp(
-        node,
-        'xmldata',
-        textOf(titleData).replace(
-          TITLE_IMAGE,
-          (_, asset: string) => `content url="${relocate(asset)}"`
-        )
-      )
-  }
+  walkAssets(mlt, (asset) => {
+    const { resolved, found } = locate(asset)
+    if (!found) missingAssets.push(asset)
+    return toHostPath(found ?? resolved, options.outputDir)
+  })
   attrsOf(mltNode)['@_root'] = toHost(options.groupDir)
   attrsOf(mltNode)['@_title'] = encodeXml(options.title)
 
@@ -384,6 +353,8 @@ const createMontageProject = (rawOptions: MontageOptions) => {
 export {
   availableTemplates,
   createMontageProject,
+  defaultTemplate,
+  DEFAULT_MARK,
   inspectTemplate,
   listMontageTemplates,
   montageOptionsSchema,

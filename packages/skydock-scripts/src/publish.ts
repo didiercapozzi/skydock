@@ -7,6 +7,7 @@ import { z } from 'zod'
 import { hashFile, walkFiles } from './lib/fs'
 import { alreadyUp, sameSizeUnknown, worthReading } from './originEntry'
 import type { OriginIndex } from './originEntry'
+import { stampOf } from './lib/clock'
 import { lastSegment, parentOf } from './paths'
 import { mapWithLimit, withRetry } from './utils'
 import {
@@ -211,9 +212,6 @@ const uploadFile = async (
    share's own recycle bin is not used: it can be switched off per share, and a NAS does not
    reliably say whether it is there. */
 const BIN = '.skydock-trash'
-
-const stampOf = (at: Date) =>
-  `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}-${String(at.getDate()).padStart(2, '0')}T${String(at.getHours()).padStart(2, '0')}-${String(at.getMinutes()).padStart(2, '0')}-${String(at.getSeconds()).padStart(2, '0')}`
 
 /* one step above the folder the file is in, unless that folder is a share, which has nothing above */
 const binFor = (remotePath: string, at: Date) => {
