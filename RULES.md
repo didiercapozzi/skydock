@@ -547,8 +547,16 @@ when the tandem is uploaded. A project saved or removed by hand is noticed the s
 tandems are not looked at; nothing of them is here.
 
 **The header** holds what applies to the whole board: scanning, the editing templates, a camera being
-copied off, how many clips still wait for their proxy, the storage — whether it is connected, to what, a
-way to check what it holds now, and a way to disconnect — rows or grid, and light or dark. It also warns
+copied off, how many clips still wait for their proxy, the storage — whether it is connected, as whom
+and to what, a way to check what it holds now, and a way to disconnect — rows or grid, and light or
+dark. The storage is named the way somebody would say it, who and where: the account the session was
+opened with, and the machine's name without the scheme or the port it is reached on, which are how a
+machine reaches it and not something to read across the top of a screen. The settings that are chosen
+once and then only glanced at — rows or grid, light or dark, checking and disconnecting — are marks
+rather than words, each still answering to its own name. Disconnecting asks first: it changes nothing
+on the storage and nothing on this machine, but connecting again wants the password and, where the
+account has two-step verification, a code — a poor thing to have to find because a mark was clicked
+by mistake. It also warns
 when the disk the work is on runs out of room — almost full under five gigabytes left, saying how much,
 and full under one, saying that copying a camera, making proxies and saving will fail — and follows the
 disk while the board is open, whatever else on the machine is filling it. With nothing scanned yet, the board is a
@@ -628,6 +636,12 @@ Each dropzone and each tandem offers its next step, always in the same place, an
 A dropzone is **processed**, then **uploaded**, as a whole. A tandem is **processed**, then given a
 **montage**, then **uploaded**: the upload opens once there is a project, and sends nothing until the
 film is rendered. Freeing space is offered beside the upload once there is something to free.
+
+**A dropzone's step stands beside what it deals with**: in the row that says what the folder still
+owes — so many to process, so many to upload, so many on the storage — and not among the ways of
+looking at the folder. It says how many it will take, and it means every file in the folder that
+needs it: never the ones a search or a filter happens to be showing, and never a selection. A folder
+holding a day nobody is looking at is a folder whose day is processed all the same.
 
 **Processing** runs on the machine, not in the page: closing or refreshing the page does not stop it,
 and the board stays usable meanwhile. A page opened while processing runs says so and updates itself

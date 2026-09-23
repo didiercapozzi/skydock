@@ -5,6 +5,7 @@ import { ConnectionDialog } from './connection-dialog'
 import { EmailDialog } from './email-dialog'
 import { FreeDialog } from './free-dialog'
 import { FreePlaceDialog } from './free-place-dialog'
+import { DisconnectDialog } from './disconnect-dialog'
 import { RemovePlaceDialog } from './remove-place-dialog'
 import { NasFolderBrowser } from './nas-folder-browser'
 import { ResetFreshDialog } from './reset-fresh-dialog'
@@ -33,6 +34,8 @@ type BoardDialog =
   | { kind: 'free-place'; place: string }
   /* a place about to be taken off the board, what was filed there going back to Fresh files */
   | { kind: 'remove-place'; place: string }
+  /* the storage about to be let go of — a mark the size of a full stop, so it is asked first */
+  | { kind: 'disconnect' }
   /* unsorted files about to go to the bin */
   | { kind: 'trash'; files: ManifestFile[] }
   /* a tandem on this board by its jump, or one the storage's list alone knows, by its folder */
@@ -62,6 +65,7 @@ const DialogHost = ({
   freeableOf,
   onFreePlace,
   onRemovePlace,
+  onDisconnect,
   onTakeBack,
   onTrash,
   onMontage,
@@ -76,6 +80,9 @@ const DialogHost = ({
     connect: (host: string, user: string, password: string, otp?: string) => void
     codeAsked?: string
     backupFolder: string | null
+    /* who it is connected as and where, for the dialogs that name it */
+    host: string | null
+    user: string | null
   }
   places: Destination[]
   onChooseFolder: (path: string, destination?: string, target?: 'backup') => void
@@ -94,6 +101,7 @@ const DialogHost = ({
   freeableOf: (place: string) => ReturnType<typeof freeablePlace>
   onFreePlace: (place: string) => void
   onRemovePlace: (place: string) => void
+  onDisconnect: () => void
   onTakeBack: (mode: TakeBackMode, group: ManifestGroup) => void
   onTrash: (files: ManifestFile[]) => void
   onMontage: (groupId: string, template: string) => void
@@ -227,6 +235,15 @@ const DialogHost = ({
           linked={folderFor(dialog.place)}
           onClose={close}
           onConfirm={() => onRemovePlace(dialog.place)}
+        />
+      )}
+
+      {dialog?.kind === 'disconnect' && (
+        <DisconnectDialog
+          host={nas.host}
+          user={nas.user}
+          onClose={close}
+          onConfirm={onDisconnect}
         />
       )}
 

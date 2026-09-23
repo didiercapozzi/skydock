@@ -25,7 +25,7 @@ import {
   tandemUploadKey,
   tandemsRemoteDir
 } from '@skydock/scripts'
-import type { FrameCrop, Rotation, TandemEntry } from '@skydock/scripts'
+import type { FileStatus, FrameCrop, Rotation, TandemEntry } from '@skydock/scripts'
 import { diskSpace } from '../../../packages/skydock-scripts/src/diskSpace'
 import { readTandemIndex } from '../../../packages/skydock-scripts/src/tandemIndex'
 import { useState } from 'react'
@@ -111,8 +111,9 @@ const loader = async (_args: Route.LoaderArgs) => {
   let nas: {
     connected: boolean
     hostname: string | null
+    username: string | null
     backupFolder: string | null
-  } = { connected: false, hostname: null, backupFolder: null }
+  } = { connected: false, hostname: null, username: null, backupFolder: null }
   /* the first look at the NAS happens here rather than on mount: the page then arrives already
      correct, and the Refresh button re-runs the same check through /api/remote-files */
   let remote: { dirs: string[]; sizes: Record<string, number | null>; at: number } | null = null
@@ -123,6 +124,7 @@ const loader = async (_args: Route.LoaderArgs) => {
       nas = {
         connected: true,
         hostname: session.hostname,
+        username: session.username,
         backupFolder: session.backupFolder ?? null
       }
       if (manifest) {
@@ -157,7 +159,7 @@ const loader = async (_args: Route.LoaderArgs) => {
       }
     }
   } catch {
-    nas = { connected: false, hostname: null, backupFolder: null }
+    nas = { connected: false, hostname: null, username: null, backupFolder: null }
   }
   const grouped = new Set(
     (manifest?.groups ?? []).flatMap((g) => g.files.map((f) => f.id ?? f.path))
@@ -728,11 +730,17 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
   /* A dropzone is processed, then uploaded, as a whole (RULES, Acting). Processing asks only for
      what needs it — the jumps with a file to process, and the dropzone's loose files when one of
-     them does — because a dropzone holds every day ever shot there. */
+     them does — because a dropzone holds every day ever shot there.
+
+     Which is exactly why the step stands beside the counts of what is owed rather than up among
+     the ways of looking at the folder: what it acts on is everything in the folder that needs it,
+     and never what a search or a filter happens to be showing. Its name says how many, and its
+     title says in so many words which. */
   const dropzoneStep = (name: string) => {
     const files = filesIn({ kind: 'dz', name }, groups, loose)
     if (files.length === 0) return null
     const label = `dz:${name}`
+    const waiting = (state: FileStatus) => files.filter((f) => statusOf(f) === state).length
     if (gateFor(files).blocked) {
       const needs = (f: ManifestFile) => statusOf(f) === 'local'
       const jumps = groupsIn({ kind: 'dz', name }, groups).filter((g) => g.files.some(needs))
@@ -741,6 +749,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         <>
           <Go
             disabled={busy !== null}
+            title={`Make the copies that get handed over, for everything in ${name} that has none — ${plural(waiting('local'), 'file')}, whatever the search or the filter is showing.`}
             onClick={() =>
               send(
                 label,
@@ -749,7 +758,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                   : { intent: 'process', groupIds: jumps.map((g) => g.id) }
               )
             }>
-            {busy === label ? 'Processing…' : 'Process'}
+            {busy === label ? 'Processing…' : `Process ${plural(waiting('local'), 'file')}`}
           </Go>
           {busy === label && <Mini onClick={cancelProcess}>Cancel</Mini>}
         </>
@@ -760,6 +769,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       freeableOf(name).files.length > 0 ? (
         <Mini
           disabled={busy !== null}
+          title={`Delete from this machine what ${name} has on the storage, once the storage is proved to hold it. Asks first.`}
           onClick={() =>
             nas.connected ? setDialog({ kind: 'free-place', place: name }) : openConnect()
           }>
@@ -778,8 +788,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         {free}
         <Go
           disabled={busy !== null}
+          title={`Send everything in ${name} that is processed and not up there yet — ${plural(waiting('processed'), 'file')}, whatever the search or the filter is showing.`}
           onClick={() => requestUpload({ destination: name }, `dest:${name}`)}>
-          {busy === `dest:${name}` ? 'Uploading…' : 'Upload'}
+          {busy === `dest:${name}`
+            ? 'Uploading…'
+            : `Upload ${plural(waiting('processed'), 'file')}`}
         </Go>
       </>
     )
@@ -870,16 +883,21 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const nasLinks: NasLink[] = nas.connected
     ? [
         {
-          label: nas.checking
-            ? 'checking…'
-            : nas.remoteCheckedAt
-              ? `⟳ checked ${formatTime(nas.remoteCheckedAt)}`
-              : '⟳ check',
-          title: 'Ask the NAS what it holds now — a file deleted there stops reading as uploaded',
+          label: nas.checking ? 'Checking the storage…' : 'Check the storage again',
+          mark: '⟳',
+          title: `Ask the NAS what it holds now — a file deleted there stops reading as uploaded.${
+            nas.remoteCheckedAt ? ` Last checked ${formatTime(nas.remoteCheckedAt)}.` : ''
+          }`,
           disabled: nas.checking,
           onClick: nas.checkRemote
         },
-        { label: 'disconnect', onClick: nas.disconnect }
+        {
+          label: 'Disconnect the storage',
+          mark: '⏻',
+          /* asked first: it is a mark the size of a full stop, and the way back in wants a password
+             and a code off somebody's phone */
+          onClick: () => setDialog({ kind: 'disconnect' })
+        }
       ]
     : [{ label: 'Connect the NAS', onClick: openConnect }]
 
@@ -1143,7 +1161,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         proxies={board.proxyProgress}
         camera={board.cameraCopy}
         disk={board.disk ?? loaderData.disk}
-        nas={{ connected: nas.connected, host: nas.host, links: nasLinks }}
+        nas={{ connected: nas.connected, host: nas.host, user: nas.user, links: nasLinks }}
       />
 
       <div className='grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] min-[781px]:grid-cols-[250px_minmax(0,1fr)] min-[781px]:grid-rows-[minmax(0,1fr)] min-[1101px]:grid-cols-[250px_minmax(0,1fr)_300px]'>
@@ -1174,10 +1192,10 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             onChange: (by) => look({ by })
           }}
           kind={{ value: kind, onChange: (next) => look({ kind: next }) }}
-          step={place.kind === 'dz' ? dropzoneStep(place.name) : undefined}
           tools={paxTools || placeTools}
           left={
             <FolderOwed
+              actions={place.kind === 'dz' ? dropzoneStep(place.name) : undefined}
               place={place}
               groups={placeGroups}
               loose={placeLoose}
@@ -1333,6 +1351,10 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         onFreePlace={(place) => {
           setDialog(null)
           send(`free:dz:${place}`, { intent: 'free-dropzone', destination: place })
+        }}
+        onDisconnect={() => {
+          setDialog(null)
+          nas.disconnect()
         }}
         onRemovePlace={(place) => {
           setDialog(null)

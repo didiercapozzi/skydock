@@ -46,7 +46,12 @@ const Mini = ({ children, title, disabled, type = 'button', form, onClick, press
 
 /* A run of choices where exactly one is on: rows or thumbnails, auto or light or dark. The pressed
    one is filled rather than merely darker, because which one is on has to be readable at a glance
-   in either theme. */
+   in either theme.
+
+   Each option is what it is called and, where there is one, the mark that stands for it: the name
+   is what it is called to anyone reading the page out and what it says when hovered, and the mark
+   is all the room it takes. Eight words across the top for two settings is a header somebody has to
+   read before they can use it. */
 const Seg = <T extends string>({
   label,
   value,
@@ -55,23 +60,25 @@ const Seg = <T extends string>({
 }: {
   label: string
   value: T
-  options: readonly (readonly [T, string])[]
+  options: readonly (readonly [T, string] | readonly [T, string, string])[]
   onPick: (value: T) => void
 }) => (
   <span
     role='group'
     aria-label={label}
     className='flex overflow-hidden rounded-md border border-line'>
-    {options.map(([option, text]) => (
+    {options.map(([option, name, mark]) => (
       <button
         key={option}
         type='button'
         aria-pressed={value === option}
+        aria-label={mark ? name : undefined}
+        title={mark ? name : undefined}
         onClick={() => onPick(option)}
-        className={`px-[11px] py-[5px] text-[12px] ${
+        className={`py-[5px] text-[12px] ${mark ? 'w-8 text-center' : 'px-[11px]'} ${
           value === option ? 'bg-accent-soft font-semibold text-accent' : 'bg-pane text-ink-2'
         }`}>
-        {text}
+        {mark ?? name}
       </button>
     ))}
   </span>

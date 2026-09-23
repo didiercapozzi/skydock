@@ -18,6 +18,7 @@ const FolderOwed = ({
   statusOf,
   busy,
   folder,
+  actions,
   onRegroup,
   onReset,
   onPlace
@@ -31,6 +32,8 @@ const FolderOwed = ({
   busy: boolean
   /* a dropzone's folder on the storage, and a way to choose it */
   folder?: { path: string | null; onChoose: () => void }
+  /* what deals with what is owed, beside the counts it deals with — a folder's whole next step */
+  actions?: React.ReactNode
   onRegroup: () => void
   /* everything still to be sorted, back as a scan would first have left it */
   onReset: () => void
@@ -82,6 +85,7 @@ const FolderOwed = ({
         {count('local') > 0 && <Owed tone='todo'>{count('local')} to process</Owed>}
         {count('processed') > 0 && <Owed tone='todo'>{count('processed')} to upload</Owed>}
         {count('uploaded') > 0 && <Owed tone='done'>{count('uploaded')} on the storage</Owed>}
+        {actions}
         {folder && (
           <span className='ml-auto flex flex-wrap items-center gap-2'>
             Goes to

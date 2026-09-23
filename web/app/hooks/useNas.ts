@@ -33,6 +33,7 @@ type NasLoaded = {
   nas: {
     connected: boolean
     hostname: string | null
+    username: string | null
     backupFolder: string | null
   }
   remote: CheckedListing | null
@@ -50,6 +51,8 @@ const useNas = (loaded: NasLoaded, remoteAfterUpload: CheckedListing | null) => 
   const answer = nasSuccessSchema.safeParse(nasFetcher.data)
   const connected = answer.success ? answer.data.connected : loaded.nas.connected
   const host = answer.success ? (answer.data.hostname ?? null) : loaded.nas.hostname
+  /* who the storage was connected as — its own login asks for it, so the board says which it got */
+  const user = answer.success ? (answer.data.username ?? null) : loaded.nas.username
   const backupFolder = answer.success ? (answer.data.backupFolder ?? null) : loaded.nas.backupFolder
   const refused = nasErrorSchema.safeParse(nasFetcher.data)
   const error = !answer.success && refused.success ? refused.data.globalErrors?.[0] : undefined
@@ -83,6 +86,7 @@ const useNas = (loaded: NasLoaded, remoteAfterUpload: CheckedListing | null) => 
   return {
     connected,
     host,
+    user,
     backupFolder,
     error,
     codeAsked,

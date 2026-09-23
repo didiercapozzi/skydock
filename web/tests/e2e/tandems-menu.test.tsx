@@ -146,7 +146,7 @@ describe('processing a dropzone', () => {
     await render(createElement(Stub, { initialEntries: ['/'] }))
     await userEvent.click(page.getByRole('navigation', { name: 'Folders' }).getByText('Yverdon'))
 
-    await userEvent.click(page.getByRole('button', { name: 'Process', exact: true }))
+    await userEvent.click(page.getByRole('button', { name: /^Process \d+ file/ }))
     await expect.element(page.getByRole('button', { name: 'Processing…' })).toBeVisible()
 
     await userEvent.click(page.getByRole('button', { name: 'Cancel', exact: true }))

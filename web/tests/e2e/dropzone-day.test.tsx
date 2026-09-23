@@ -77,7 +77,7 @@ describe('a dropzone day, from the board', () => {
   test('is processed as one', async () => {
     await openYverdon(boardWith([shot('a', 'GX01.MP4', false), shot('b', 'GX02.MP4', false)]))
 
-    await userEvent.click(page.getByRole('button', { name: 'Process', exact: true }))
+    await userEvent.click(page.getByRole('button', { name: 'Process 2 files', exact: true }))
 
     await expect.poll(() => requests).toContainEqual({ intent: 'process', destination: 'Yverdon' })
   })
@@ -85,19 +85,40 @@ describe('a dropzone day, from the board', () => {
   test('is uploaded as one, once every file in it is processed', async () => {
     await openYverdon(boardWith([shot('a', 'GX01.MP4', true), shot('b', 'GX02.MP4', true)]))
 
-    await expect.element(page.getByRole('button', { name: 'Process', exact: true })).not.toBeInTheDocument()
-    await userEvent.click(page.getByRole('button', { name: 'Upload', exact: true }))
+    await expect
+      .element(page.getByRole('button', { name: /^Process/ }))
+      .not.toBeInTheDocument()
+    await userEvent.click(page.getByRole('button', { name: 'Upload 2 files', exact: true }))
 
     await expect
       .poll(() => requests)
       .toContainEqual({ intent: 'upload-group', destination: 'Yverdon' })
   })
 
+  /* The step stands beside the counts of what the folder still owes, not up among the ways of
+     looking at it: what it acts on is everything here that needs it, never what a search or a
+     filter happens to be showing. */
+  test('offers its step beside what the folder still owes', async () => {
+    await openYverdon(boardWith([shot('a', 'GX01.MP4', false), shot('b', 'GX02.MP4', false)]))
+    await expect.element(page.getByRole('region', { name: /Yverdon/ })).toBeInTheDocument()
+
+    /* the step and the count of what it deals with are in one row, so what it acts on is plain */
+    const row = page.getByRole('button', { name: 'Process 2 files' }).element().parentElement!
+    expect(row.textContent).toContain('2 to process')
+    /* and not up among the ways of looking at the folder */
+    expect(row.textContent).not.toContain('Find a file')
+
+    await page.screenshot({ path: './playwright-screenshots/dropzone-step.png' })
+  })
+
   test('cannot be uploaded while one of its files still needs processing', async () => {
     await openYverdon(boardWith([shot('a', 'GX01.MP4', true), shot('b', 'GX02.MP4', false)]))
 
-    await expect.element(page.getByRole('button', { name: 'Upload', exact: true })).not.toBeInTheDocument()
-    await expect.element(page.getByRole('button', { name: 'Process', exact: true })).toBeInTheDocument()
+    await expect.element(page.getByRole('button', { name: /^Upload/ })).not.toBeInTheDocument()
+    /* and it names the one file that needs it, not the two the folder holds */
+    await expect
+      .element(page.getByRole('button', { name: 'Process 1 file', exact: true }))
+      .toBeInTheDocument()
     expect(requests).toEqual([])
   })
 })

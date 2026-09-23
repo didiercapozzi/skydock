@@ -1,26 +1,37 @@
-import { Fragment } from 'react'
 import { Seg } from './buttons'
 import { setFileView, useFileView } from '../hooks/useFileView'
 import { setTheme, useTheme } from '../hooks/useTheme'
 import { formatSize } from './utils'
 
 const VIEWS = [
-  ['rows', 'Rows'],
-  ['grid', 'Thumbnails']
+  ['rows', 'Rows', '☰'],
+  ['grid', 'Thumbnails', '▦']
 ] as const
 
 /* Auto is what the machine says. The other two exist because that signal is invisible and is not
    always the machine you think it is — a browser preview inside an editor follows the editor's
    theme, not the desktop's, which is enough to make two windows of the same design disagree. */
 const THEMES = [
-  ['auto', 'Auto'],
-  ['light', 'Light'],
-  ['dark', 'Dark']
+  ['auto', 'Auto', '◐'],
+  ['light', 'Light', '☀'],
+  ['dark', 'Dark', '☾']
 ] as const
 
-/* the storage strip: one row of links, all of which look and behave alike, so they are described
-   once and drawn in a loop rather than written out five times */
-type NasLink = { label: string; title?: string; disabled?: boolean; onClick: () => void }
+/* The storage strip: one row of links, all of which look and behave alike, so they are described
+   once and drawn in a loop rather than written out five times. A link with a mark is drawn as the
+   mark alone and keeps its label as its name — what it is called when read out and when hovered. */
+type NasLink = {
+  label: string
+  mark?: string
+  title?: string
+  disabled?: boolean
+  onClick: () => void
+}
+
+/* The storage as somebody says it out loud: who, and where. The scheme and the port are how a
+   machine reaches it and say nothing anyone needs across the top of a screen — they are in the
+   title, with the rest of it, for whoever does. */
+const shortHost = (host: string) => host.replace(/^https?:\/\//, '').replace(/[:/].*$/, '')
 
 const BoardHeader = ({
   scanning,
@@ -40,7 +51,7 @@ const BoardHeader = ({
   camera?: { camera: string; done: number; total: number; copied: number } | null
   /* the room left on the output folder's disk; said only once it runs low */
   disk?: { free: number; level: 'ok' | 'low' | 'full' } | null
-  nas: { connected: boolean; host: string | null; links: NasLink[] }
+  nas: { connected: boolean; host: string | null; user: string | null; links: NasLink[] }
 }) => {
   const view = useFileView()
   const theme = useTheme()
@@ -117,25 +128,42 @@ const BoardHeader = ({
             proxies {proxies.ready}/{proxies.total}
           </span>
         )}
-        <span className='inline-flex items-center gap-[7px] rounded-full border border-line bg-pane py-[3px] pr-2.5 pl-2 text-[12px]'>
+        {/* Who the storage was connected as, and where: the same question a NAS asks at its own
+            login, answered on the board rather than left to be remembered. */}
+        <span
+          title={
+            nas.connected
+              ? `Connected to ${nas.host ?? 'the storage'}${nas.user ? ` as ${nas.user}` : ''}`
+              : 'Not connected to the storage'
+          }
+          className='inline-flex items-center gap-2 rounded-full border border-line bg-pane py-[3px] pr-1.5 pl-2 text-[12px]'>
           <span
             className={`h-[7px] w-[7px] flex-none rounded-full ${
               nas.connected ? 'bg-up' : 'bg-ink-3'
             }`}
           />
-          {nas.connected && <b className='font-semibold'>{nas.host ?? 'NAS'}</b>}
-          {nas.links.map((link, i) => (
-            <Fragment key={link.label}>
-              {(i > 0 || nas.connected) && <span className='text-line'>|</span>}
-              <button
-                type='button'
-                title={link.title}
-                disabled={link.disabled}
-                onClick={link.onClick}
-                className='border-0 bg-transparent p-0 text-[12px] text-accent underline disabled:opacity-40'>
-                {link.label}
-              </button>
-            </Fragment>
+          {nas.connected && (
+            <span className='max-w-[15rem] truncate'>
+              {nas.user && <b className='font-semibold'>{nas.user}</b>}
+              {nas.user && <span className='text-ink-3'>@</span>}
+              <span className='text-ink-2'>{shortHost(nas.host ?? 'the storage')}</span>
+            </span>
+          )}
+          {nas.links.map((link) => (
+            <button
+              key={link.label}
+              type='button'
+              aria-label={link.mark ? link.label : undefined}
+              title={link.title ?? link.label}
+              disabled={link.disabled}
+              onClick={link.onClick}
+              className={
+                link.mark
+                  ? 'flex h-5 w-5 flex-none items-center justify-center rounded-full border-0 bg-transparent p-0 text-[12.5px] text-ink-2 hover:bg-line-2 hover:text-ink disabled:opacity-40'
+                  : 'border-0 bg-transparent px-1 text-[12px] text-accent underline disabled:opacity-40'
+              }>
+              {link.mark ?? link.label}
+            </button>
           ))}
         </span>
         <Seg
