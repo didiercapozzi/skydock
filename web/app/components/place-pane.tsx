@@ -59,11 +59,7 @@ const PlacePane = ({
   return (
     <section
       aria-label={placeLabel(place)}
-      /* what a file let go anywhere on this page would join, for a drop the app hands over by
-         where it happened rather than by what it landed on */
-      {...(incoming
-        ? { 'data-drop-target': incoming.target, 'data-drop-where': incoming.where }
-        : {})}
+      /* a file let go anywhere on this page joins the folder it shows */
       onDragOver={(e) => {
         if (fromComputer(e) && incoming) e.preventDefault()
       }}

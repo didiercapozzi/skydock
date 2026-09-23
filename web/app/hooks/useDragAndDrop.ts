@@ -95,10 +95,7 @@ const useDragAndDrop = ({
   const groupDropTarget = (groupId: string, scope: 'group' | 'chip' = 'group') => {
     const key = `${scope}:${groupId}`
     if (frozen.has(groupId)) return {}
-    const jump = groups.find((g) => g.id === groupId)
     return {
-      'data-drop-target': `group:${groupId}`,
-      'data-drop-where': (jump && passengerOf(jump)) || jump?.label || 'this jump',
       onDragOver: (e: React.DragEvent) => {
         if (draggedFiles.length === 0 && !fromComputer(e)) return
         e.preventDefault()
@@ -152,12 +149,6 @@ const useDragAndDrop = ({
           ? null
           : { target: `dest:${destination}`, where: destination }
     return {
-      /* What a file let go on this would join, said on the element itself: SkyDock's own window
-         hands the drop to the app rather than to the page, with where on the screen it happened,
-         so the board has only the point to find its way back from. */
-      ...(incoming
-        ? { 'data-drop-target': incoming.target, 'data-drop-where': incoming.where }
-        : {}),
       onDragOver: (e: React.DragEvent) => {
         if (!accepts && !(fromComputer(e) && incoming)) return
         e.preventDefault()

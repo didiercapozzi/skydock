@@ -20,21 +20,44 @@ SkyDock at the editor and the video player on the machine around the container �
 montage from the container_ below — so a montage opens from a browser tab the way it would from the
 app.
 
-### The window on the host's own screen
+### The window
 
-To see the app as an app rather than a browser tab. Everything is said from the container; nothing
-runs on the machine outside it:
+To see the app as an app rather than a browser tab. The window is Electron — the same engine the
+board is tested in — so it opens on this container's own display, and what it does with a drag is
+what Chromium does:
 
 ```bash
-npm run build:host       # once — the app, built for the machine's own system
+npm run app            # the window, here, showing whatever `npm run dev` is serving
+```
+
+It shows the development server when one is told:
+
+```bash
+SKYDOCK_DEV_URL=http://127.0.0.1:5173 npm run app
+```
+
+and otherwise it is the app itself — its own server, its own work folder, asked for on the first
+run, exactly as an installed one.
+
+To see it on the machine around the container instead — its screen, its card, its file manager to
+drag a clip out of — it is run over there:
+
+```bash
+npm run installers       # once — the app, built for this system
 npm run dev:window:host  # the window, over there, showing the development server
 ```
+
+What runs over there is the unpacked build, and the engine's sandbox helper beside it has to be
+owned by root and setuid or the app refuses to start rather than run without a sandbox. Installing
+the package sets that; a build leaves it plain, so `dev:window:host` sets it before it opens the
+window. A machine whose kernel allows unprivileged user namespaces never gets that far — which is
+why the package sets it only where it is needed, and why the AppImage, which tests for the same
+thing and stands its sandbox down when it must, never runs into it.
 
 That is one command: the development server comes up with the window and goes down with it. One
 already running is used and left alone, so `npm run dev` in another terminal still works.
 
-Said with no development server, the app runs on its own instead — its own server and work folder
-and all, exactly as an installed one does:
+Said with no development server, the app runs on its own over there too:
 
 ```bash
 SKYDOCK_DEV_URL= npm run dev:window:host
@@ -49,19 +72,13 @@ SKYDOCK_ZOOM=150 npm run dev:window:host
 
 The installed app reads the same thing from `"zoom"` in its `settings.json`.
 
-**What the window does with a dragged file is tested here, on the real engine.** The window is
-drawn by WebKitGTK and every other test runs in Chromium, and the two answer every question about
-dragging differently — a run of fixes once passed the whole suite and failed in the window, one
-after another. So [scripts/try-drop.sh](../scripts/try-drop.sh) builds nothing and mocks nothing: it
-opens the real program on a display of its own, drags a real file onto it from a real GTK drag
-source ([scripts/drag-source.py](../scripts/drag-source.py), standing in for a file manager) with a
-real pointer, and looks in the work folder. The container's WebKitGTK is the same version as the
-machine's, so what passes here passes there.
-
-```bash
-npm run build && npx tauri build --no-bundle   # once, and after any change to the window
-scripts/try-drop.sh                            # the drag, and whether the file arrived
-```
+**A file dragged in from the machine is an ordinary drop.** The window is Chromium, so the page is
+handed the file itself, and the window is asked where that file already is — the server is on the
+same machine, and sending a jump's rushes through a request to reach a folder they are sitting in is
+a copy nobody asked for. The board's tests run in the same engine as the window, so a green suite
+means the window too. Only the address of a dropped file cannot be had in a browser, and
+[web/tests/e2e/drop-from-computer.test.tsx](../web/tests/e2e/drop-from-computer.test.tsx) covers both
+sides of that.
 
 Two things make that work, and both are worth knowing.
 
@@ -80,39 +97,31 @@ snap on this machine, and said so in a line about a cgroup directory it could no
 and it outlives the container without one having to be left running. What it says goes to their
 journal. Interrupting this side stops it over there, as it always did.
 
-**The app is built for the machine, not for this container.** The two are different systems — this
-one is newer — and a program built in here borrows a C library and a web engine that the machine
-has not got. It starts by luck, draws the board and then answers nothing.
-[scripts/build-for-host.sh](../scripts/build-for-host.sh) builds on an image of the machine's own
-system, read off the machine, into `src-tauri/target-host/` so the container's build stays where it
-is. The plain program is preferred to the AppImage for the same reason in miniature: an AppImage
-carries its own web engine but takes the codecs from the machine, and the two halves meet the
-moment a clip starts playing.
+**What runs over there is what `npm run installers` built** — `build/installers/linux-unpacked/`,
+or the AppImage beside it. It is built in here and run out there, which is the ordinary case for an
+Electron app: it carries its own engine, and the only thing it takes from the machine is the screen.
 
-### Drawing on the host's screen from inside the container, and why it is not the way
+### Drawing on the host's screen from inside the container
 
-Running the app _in_ the container and pointing it at the host's X server, through the socket the
-container already has, is the obvious thing to try and does not work here. The measurements are
-worth keeping.
+This used to take the host's session down every time — and with it VS Code, and with VS Code the
+container, which stops itself when VS Code goes. An X client draws through MIT-SHM, and a
+shared-memory segment made in the container's own IPC namespace is nothing to the X server outside
+it, so every blit came back `BadShmSeg`. Chromium tests for this and quietly falls back; WebKitGTK,
+which drew the window before Electron, did not. `ipc: host` in `docker-compose.dev.yml` makes both
+sides mean the same thing.
 
-It used to take the host's session down every time — and with it VS Code, and with VS Code the
-container, which stops itself when VS Code goes. That part is fixed: an X client draws through
-MIT-SHM, and a shared-memory segment made in the container's own IPC namespace is nothing to the X
-server outside it, so every blit came back `BadShmSeg`. Chromium, and so Electron, tests for this
-and quietly falls back; WebKitGTK does not. `ipc: host` in `docker-compose.dev.yml` makes both sides
-mean the same thing, and the session has been steady since.
+The other half of it was that the window opened and the page never loaded — measured, with the same
+binary and the same server, seconds apart: on the container's own display the board rendered, on the
+host's display the app made no request at all. That was WebKitGTK against that particular X server,
+and it went with WebKitGTK.
 
-What is left is that the window opens and the page never loads. Measured with the same binary, the
-same settings and the same server, seconds apart: on the container's own display the board renders;
-on the host's display the app makes no request at all. It is not wedged — its thread waits in
-`poll`, WebKit's own processes are up and idle, and it makes no system calls at all while it sits
-there — so what the desktop reports as "not responding" is a window that never paints. Ruled out
-along the way: the card (software rendering and an empty `/dev/dri` change nothing), a deadlock in
-the window code, and the WebKit flags (with and without them is the same). What remains is
-WebKitGTK against that particular X server, which is further than this is worth chasing.
+What is left is the card. This container is privileged and holds every DRM card the machine has, so
+the window asks for none of them in here (`app.disableHardwareAcceleration()` when `/.dockerenv` is
+there) and asks for them on a machine SkyDock is installed on, where the card is what plays the
+clips.
 
-So: `npm run dev:window:host` to have the host open a window, and the installed app when the real
-thing is wanted.
+So: `npm run app` for the window in here, `npm run dev:window:host` to see it on the machine's own
+screen, and the installed app when the real thing is wanted.
 
 A camera plugged in is copied off by itself while the board's server runs — see
 [RULES.md](../RULES.md), _Plugging a camera in is enough_. The command line does the same by hand:
@@ -156,31 +165,38 @@ output/
 ## Building the installers
 
 The installed app is the same web app, served by a Node of its own on `127.0.0.1` inside a window
-([Tauri](https://tauri.app)). It carries that Node, ffmpeg and ffprobe, so nothing has to be
+([Electron](https://electronjs.org)). The Node is Electron's own — the app's program, told to be
+Node and nothing else — and ffmpeg, ffprobe and ExifTool travel with it, so nothing has to be
 installed on the machine it lands on.
 
 ```bash
-npm run tauri build     # the installer for this machine, in src-tauri/target/release/bundle
-npm run tauri dev       # the window, against a build
+npm run app          # the window, from the source
+npm run pack         # everything the app carries, into build/resources
+npm run installers   # that, and then the installers, into build/installers
 ```
 
-What it needs to build is in the development container already: the Rust toolchain and the window's
-engine (`libwebkit2gtk-4.1-dev` and its like) are installed by
-[.devcontainer/Dockerfile.dev](../.devcontainer/Dockerfile.dev), and `@tauri-apps/cli` comes with
-`npm install`. Nothing binary is committed —
-`node scripts/build-sidecar.mjs`, which Tauri runs first, builds the app, fetches the Node it ships
-with, and takes ffmpeg and ffprobe from `SKYDOCK_TOOLS_DIR` or from this machine.
-`node scripts/fetch-tools.mjs` fetches builds of those that need nothing beside them, which is what
-a release does; it prints the folder to hand over.
+Nothing binary is committed. `npm run pack`
+([scripts/build-payload.ts](../scripts/build-payload.ts)) builds the page and the server, fetches
+ExifTool, and takes ffmpeg and ffprobe from `SKYDOCK_TOOLS_DIR` or from this machine;
+[scripts/fetch-tools.ts](../scripts/fetch-tools.ts) fetches builds of those two that need nothing
+beside them, which is what a release does — it prints the folder to hand over. The window itself is
+two TypeScript files built into what Electron runs by
+[scripts/build-shell.ts](../scripts/build-shell.ts); `npm run app` and `npm run installers` run it
+first.
 
-The programs the app carries are installed under SkyDock's own name — `skydock-node`,
-`skydock-ffmpeg`, `skydock-ffprobe` — so that a package never lands on the machine's own. The server
-ends when the app does, whatever ends the app.
+Everything the app carries sits in its own `resources/` folder, which is where
+[electron/main.ts](../electron/main.ts) looks for it — so nothing of SkyDock's is ever installed over
+a program of the machine's own. The server ends when the app does, whatever ends the app.
+
+What comes out, built here with this machine's ffmpeg rather than the static one a release fetches:
+a `.deb` of 112 MB and an AppImage of 138 MB. Most of it is the engine, and the engine is also the
+Node the server runs on — which is why the AppImage is smaller than it was when the app carried a
+Node of its own beside a different engine.
 
 The server can also be run without the window, which is how it is checked:
 
 ```bash
-npm run build && node scripts/build-server.mjs
+npm run build && npx tsx scripts/build-server.ts
 PORT=5199 node web/build/skydock-server.mjs     # prints SKYDOCK_READY <port>
 ```
 
@@ -202,9 +218,9 @@ npm run release -- --here    # everything but the push, to look at first
 
 It refuses what cannot be taken back once pushed: work that was never committed, a tag that exists
 already, a branch that is not `main`. It runs the checks before the tag rather than after it, moves
-the version in the three files that state it — the app's own config, its `Cargo.toml` and the
-lockfile — and pushes the tag. The build then refuses outright to release a tag that says something
-other than the app does, so the two can never drift apart.
+the version where the app states it — `package.json`, which is what the installers are named after —
+and pushes the tag. The build then refuses outright to release a tag that says something other than
+the app does, so the two can never drift apart.
 
 Nothing is public until somebody presses publish on the draft. To try a build without releasing
 anything, start the workflow by hand from any branch: the same installers come out, attached to the
@@ -212,41 +228,31 @@ run instead of to a release.
 
 ### Keeping the installed copies current
 
-An installed SkyDock asks GitHub on every start whether a newer release exists, fetches it quietly
-and offers it. It will only refuse to install something it cannot prove came from here: each
-installer is signed at build time, and the app carries the public half of that key.
+An installed SkyDock asks GitHub on every start whether a newer release exists. What it compares
+itself against is the list `electron-builder` writes onto the release — `latest-linux.yml`,
+`latest.yml`, `latest-mac.yml` — and what it checks before replacing itself is the length and the
+hash that list carries. There is no key to keep and none to lose.
 
-Two things have to be true before a single machine updates itself:
+- **The repository has to be public.** The app asks GitHub about the releases with no credentials,
+  which is the whole point — a token compiled into an app is a token anybody with the app has. Until
+  then the check fails, quietly and on purpose, and every copy stays where it is.
+- **Windows and Linux install it themselves** once the answer is yes: it is fetched first, so saying
+  yes is a restart rather than a wait. On Linux that is the AppImage; a machine installed from the
+  `.deb` is told and downloads the next one.
+- **A Mac says what is out and opens the downloads page.** Only an app signed with an Apple
+  Developer ID can replace itself there, and this one is not signed. Nothing else about a Mac is
+  different.
 
-- **The repository has to be public.** The app asks
-  `github.com/didiercapozzi/skydock/releases/latest/download/latest.json` with no credentials, which
-  is the whole point — a token compiled into an app is a token anybody with the app has. Until then
-  the check fails, quietly and on purpose, and every copy stays where it is.
-- **The build has to hold the private half of the signing key**, as two secrets of the repository:
-
-  ```bash
-  gh secret set TAURI_SIGNING_PRIVATE_KEY < config/skydock-updater.key
-  gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD --body ""
-  ```
-
-  The key was made with `npx tauri signer generate` and lives in `config/`, which git ignores. **Keep
-  a copy somewhere safe**: lose it and no installed SkyDock will ever accept another update, because
-  the copies in the field only trust that one. The public half is in `tauri.conf.json` and is meant
-  to be read.
-
-On Linux only the AppImage replaces itself; a machine installed from the `.deb` updates by
-downloading the next one. macOS and Windows update whichever way they were installed.
-
-**They are not signed**, so each system says so once:
+**The installers are not signed**, so each system says so once:
 
 - **macOS** — the app is refused the first time; open System Settings → Privacy & Security and
   choose _Open Anyway_ (or `xattr -dr com.apple.quarantine /Applications/SkyDock.app`).
 - **Windows** — SmartScreen: _More info_, then _Run anyway_.
 
 Signing them costs money rather than work: an Apple Developer ID (99 USD a year), which also buys
-notarisation and removes the warning entirely, and a certificate for Windows. Both are given to the
-build as secrets and nothing else changes — [macOS](https://v2.tauri.app/distribute/sign/macos/),
-[Windows](https://v2.tauri.app/distribute/sign/windows/).
+notarisation, removes the warning entirely and is what would let a Mac update itself; and a
+certificate for Windows. Both are given to the build as secrets and nothing else changes —
+[electron-builder on signing](https://www.electron.build/code-signing).
 
 ## Configuration
 

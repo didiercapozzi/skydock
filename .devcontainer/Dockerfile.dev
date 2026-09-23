@@ -32,6 +32,8 @@ RUN apt update && apt install -y --no-install-recommends \
     
 RUN sed -i 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && locale-gen en_US.UTF-8
     
+# What a window needs, which is what Chromium needs: the app's own is drawn by the same engine as
+# the browser the tests run in, so there is one set of these and not two.
 RUN apt update && apt install -y --no-install-recommends \
     libnspr4 \
     libnss3 \
@@ -54,20 +56,6 @@ RUN apt update && apt install -y --no-install-recommends \
     libwayland-client0 \
     && rm -rf /var/lib/apt/lists/*
     
-# What building the installable app needs: the window's engine and what it links against, and the
-# Rust toolchain the shell is written in. Only for building it — the app itself carries its own.
-RUN apt update && apt install -y --no-install-recommends \
-    build-essential \
-    pkg-config \
-    file \
-    libwebkit2gtk-4.1-dev \
-    libayatana-appindicator3-dev \
-    librsvg2-dev \
-    libxdo-dev \
-    libssl-dev \
-    patchelf \
-    && rm -rf /var/lib/apt/lists/*
-
 # A display of the container's own, and a way to watch it from the host: the app's window is drawn
 # here and served over VNC, rather than on the host's session — where a window from this privileged
 # container, holding every DRM card the machine has, has taken that session down.
@@ -79,14 +67,6 @@ RUN apt update && apt install -y --no-install-recommends \
     openbox \
     && rm -rf /var/lib/apt/lists/*
 
-ENV CARGO_HOME=/usr/local/cargo \
-    RUSTUP_HOME=/usr/local/rustup \
-    PATH=/usr/local/cargo/bin:$PATH
-
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-    sh -s -- -y --default-toolchain stable --profile minimal --no-modify-path && \
-    chmod -R a+rX /usr/local/cargo /usr/local/rustup
-
     # Install NodeJS
 RUN curl -fsSL https://deb.nodesource.com/setup_26.x | bash - && \
     apt install -y --no-install-recommends \
@@ -95,3 +75,18 @@ RUN curl -fsSL https://deb.nodesource.com/setup_26.x | bash - && \
     
 RUN npx playwright install --with-deps firefox chromium && \
         rm -rf /var/lib/apt/lists/*
+
+# The GitHub CLI, for starting a build of the installers without tagging a release and reading what
+# it came to. From its own repository, the way the project documents it for Debian: the key it signs
+# with, a source that trusts that key, and then the program.
+# https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian-ubuntu-linux-raspberry-pi-os-apt
+RUN mkdir -p -m 755 /etc/apt/keyrings && \
+    out=$(mktemp) && wget -nv -O"$out" https://cli.github.com/packages/githubcli-archive-keyring.gpg && \
+    cat "$out" > /etc/apt/keyrings/githubcli-archive-keyring.gpg && \
+    chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg && \
+    mkdir -p -m 755 /etc/apt/sources.list.d && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+        > /etc/apt/sources.list.d/github-cli.list && \
+    apt update && \
+    apt install -y --no-install-recommends gh && \
+    rm -rf /var/lib/apt/lists/*

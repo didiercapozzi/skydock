@@ -1,19 +1,21 @@
 import type { ImportOutcome } from '@skydock/scripts'
 import { z } from 'zod'
 
-/* Files dragged in from the computer, as opposed to files moved about on the board. Every engine
-   says it in its own words: one puts "Files" among the types, another — a drag out of the machine's
-   own file manager, into SkyDock's own window — carries the list of addresses instead, and the items
-   themselves are the plainest answer of the three. Asking only the first is why a clip dropped on
-   that window opened over the board rather than being taken into it: nothing recognised the drag,
-   so nothing stopped the engine doing what it does with a file nobody wanted. */
-const fromComputer = (e: React.DragEvent) =>
-  e.dataTransfer.types.includes('Files') ||
-  e.dataTransfer.types.includes('text/uri-list') ||
-  [...(e.dataTransfer.items ?? [])].some((item) => item.kind === 'file')
+/* What the window can do that a browser tab cannot, offered by the app around the page: say where a
+   dropped file already is. Nothing else of the app is reachable from here. */
+declare global {
+  interface Window {
+    skydock?: { pathOf: (file: File) => string | null }
+  }
+}
 
-/* The bytes a drop hands over, when it hands over any. One engine fills `files`; another leaves it
-   empty and holds the same clip in the items of the drag, to be asked for one at a time. */
+/* Files dragged in from the computer, as opposed to files moved about on the board: the drag says
+   so by carrying "Files". Recognising it is also what stops the engine doing what it otherwise does
+   with a file nobody wanted, which is to open it over the board. */
+const fromComputer = (e: React.DragEvent) => e.dataTransfer.types.includes('Files')
+
+/* The bytes a drop hands over. A browser gives them in `files`; where that is empty the same clip
+   is in the items of the drag, to be asked for one at a time. */
 const droppedFiles = (e: React.DragEvent) => {
   if (e.dataTransfer.files.length > 0) return [...e.dataTransfer.files]
   return [...(e.dataTransfer.items ?? [])]
@@ -24,29 +26,19 @@ const droppedFiles = (e: React.DragEvent) => {
     })
 }
 
-/* And where the file is, when that is all a drop hands over. SkyDock's own window gives no bytes at
-   all — only `text/uri-list`, the addresses of what was dragged — and a page cannot open a file by
-   its address. The machine can: the app's own server is on the very machine the file was dragged
-   from, so it is read from there instead. One address per line, comments and all, as the list
-   format has it; anything that is not a file on this machine is passed over. */
-const droppedPaths = (e: React.DragEvent) =>
-  e.dataTransfer
-    .getData('text/uri-list')
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line !== '' && !line.startsWith('#'))
-    .flatMap((line) => {
-      /* a bare path, where an engine gives one rather than an address */
-      if (line.startsWith('/')) return [line]
-      if (!line.startsWith('file://')) return []
-      try {
-        return [decodeURIComponent(new URL(line).pathname)]
-      } catch {
-        return []
-      }
-    })
+/* Where a dropped file already is, when the window will say. A page has only the bytes, and sending
+   forty gigabytes of rushes through a request to a server on the very same machine is a copy nobody
+   asked for: given the address, the server reads it where it lies. In a browser there is no address
+   to be had, and the bytes are what travel. */
+const pathOf = (file: File) => {
+  try {
+    return window.skydock?.pathOf(file) ?? null
+  } catch {
+    return null
+  }
+}
 
-/* What was dropped, whichever of the two the engine gave: the file itself, or where it is. */
+/* What was dropped, whichever the window could give: where the file is, or the file itself. */
 type Dropped = File | string
 
 const nameOf = (what: Dropped) =>
@@ -103,12 +95,10 @@ const importFiles = async (
   return tally
 }
 
-/* Everything a drop offers, in the order it is worth having: the bytes if there are any, and
-   otherwise where to find them. */
-const droppedIn = (e: React.DragEvent): Dropped[] => {
-  const files = droppedFiles(e)
-  return files.length > 0 ? files : droppedPaths(e)
-}
+/* Everything a drop offers, in the order it is worth having: where each file is, and the file
+   itself where that cannot be had. */
+const droppedIn = (e: React.DragEvent): Dropped[] =>
+  droppedFiles(e).map((file) => pathOf(file) ?? file)
 
-export { droppedFiles, droppedIn, droppedPaths, fromComputer, importFiles }
+export { droppedFiles, droppedIn, fromComputer, importFiles, pathOf }
 export type { Dropped }

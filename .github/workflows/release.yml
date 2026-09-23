@@ -20,7 +20,6 @@ jobs:
       contents: write
     outputs:
       version: ${{ steps.said.outputs.version }}
-      release: ${{ steps.draft.outputs.id }}
     steps:
       - uses: actions/checkout@v7
 
@@ -28,7 +27,7 @@ jobs:
         id: said
         shell: bash
         run: |
-          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          version=$(node -p "require('./package.json').version")
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "SkyDock $version"
 
@@ -44,31 +43,6 @@ jobs:
             exit 1
           fi
 
-      # Somewhere for four machines to hang their installers. Made once, here, rather than by
-      # whichever of them finishes first — four at once would make four releases.
-      - name: Somewhere for the installers to land
-        id: draft
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ github.ref_name }}
-        shell: bash
-        run: |
-          id=$(gh api "repos/${{ github.repository }}/releases/tags/$TAG" --jq .id 2>/dev/null || true)
-          # Asked about a release that is not there, gh prints the refusal itself and it lands here
-          # as if it were an answer. Only a number is one.
-          case "$id" in '' | *[!0-9]*) id='' ;; esac
-          if [ -z "$id" ]; then
-            id=$(gh api "repos/${{ github.repository }}/releases" \
-              -f tag_name="$TAG" \
-              -f name="SkyDock $TAG" \
-              -f body="Nobody has signed these: on macOS, open System Settings → Privacy & Security and choose Open Anyway the first time; on Windows, choose More info, then Run anyway." \
-              -F draft=true \
-              -F prerelease=false \
-              --jq .id)
-          fi
-          echo "id=$id" >> "$GITHUB_OUTPUT"
-
   installers:
     needs: version
     permissions:
@@ -79,16 +53,16 @@ jobs:
         include:
           - platform: ubuntu-22.04
             target: ''
-            bundles: '--bundles deb,appimage'
+            args: '--linux'
           - platform: macos-latest
             target: 'aarch64-apple-darwin'
-            bundles: ''
+            args: '--mac --arm64'
           - platform: macos-latest
             target: 'x86_64-apple-darwin'
-            bundles: ''
+            args: '--mac --x64'
           - platform: windows-latest
             target: ''
-            bundles: ''
+            args: '--win'
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v7
@@ -97,22 +71,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-
-      - name: Cache what cargo built
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: './src-tauri -> target'
-          key: ${{ matrix.target }}
-
-      - name: What a window needs on Linux
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - run: npm ci
 
@@ -125,40 +83,42 @@ jobs:
         # In two lines rather than one: a fetch that fails inside the line that writes the answer
         # takes the step's blame with it, and the build then fails much later over an empty folder.
         run: |
-          told=$(node scripts/fetch-tools.mjs)
+          told=$(npx tsx scripts/fetch-tools.ts)
           echo "SKYDOCK_TOOLS_DIR=$told" >> "$GITHUB_ENV"
         env:
-          TAURI_ENV_TARGET_TRIPLE: ${{ matrix.target }}
+          SKYDOCK_TARGET: ${{ matrix.target }}
 
-      # Without the key there is nothing to sign an update with, and asking to make one anyway stops
-      # the build outright — four red machines and no installers, over a thing that is not needed to
-      # make an installer at all. So the signature stands down and says so. What comes out installs
-      # exactly as it would have; it is only that nothing in the field will update itself to it. The
-      # public key stays in, so a copy installed from here still accepts a signed one later.
-      - name: Whether these can be signed for updating
-        id: signing
+      # Everything the app carries, then the installers themselves. A tagged run publishes them to
+      # the draft release the tag names; one started by hand keeps them on the run, to be downloaded
+      # and tried without releasing anything.
+      #
+      # Nothing here is signed. What an installed SkyDock checks before it replaces itself is the
+      # list the release carries and the length of what it downloaded, which this writes as it goes.
+      - name: What the app carries
         shell: bash
+        run: npm run pack
         env:
-          KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-        run: |
-          if [ -n "$KEY" ]; then exit 0; fi
-          echo "::warning::No TAURI_SIGNING_PRIVATE_KEY in this repository's secrets — the installers are being made without the signature an installed SkyDock checks, so nothing will update itself to this version."
-          node -e "const f='src-tauri/tauri.conf.json',s=require('fs'),j=JSON.parse(s.readFileSync(f,'utf-8'));delete j.bundle.createUpdaterArtifacts;s.writeFileSync(f,JSON.stringify(j,null,2)+'\n')"
+          SKYDOCK_TARGET: ${{ matrix.target }}
 
-      - uses: tauri-apps/tauri-action@v1
+      # The window's own two files, built from the TypeScript they are written in. The installers
+      # are made of this and nothing else: it is what `main` in package.json points at.
+      - name: The window itself
+        shell: bash
+        run: npm run shell
+
+      - name: The installers
+        shell: bash
+        run: npx electron-builder ${{ matrix.args }} ${{ startsWith(github.ref, 'refs/tags/') && '--publish always' || '--publish never' }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # What an installed SkyDock checks a new version against before it will install it. Without
-          # these the build still makes installers, but nothing anybody has can update itself.
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-artifact@v5
         with:
-          releaseId: ${{ needs.version.outputs.release }}
-          # kept on the run as well as on the release, so a build started by hand is still something
-          # that can be downloaded and tried
-          uploadWorkflowArtifacts: true
-          # the list an installed SkyDock reads to know what is out. Each machine adds its own kind
-          # to the one already on the release, so the four of them end up in one list.
-          uploadUpdaterJson: true
-          retryAttempts: 1
-          args: ${{ matrix.target && format('--target {0} ', matrix.target) || '' }}${{ matrix.bundles }}
+          name: skydock-${{ matrix.platform }}${{ matrix.target && format('-{0}', matrix.target) || '' }}
+          path: |
+            build/installers/*.deb
+            build/installers/*.AppImage
+            build/installers/*.dmg
+            build/installers/*.exe
+            build/installers/*.msi
+          if-no-files-found: ignore

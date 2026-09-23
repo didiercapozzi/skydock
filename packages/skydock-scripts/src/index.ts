@@ -142,7 +142,7 @@ import {
   writeUploadProgress
 } from './uploadProgress'
 import type { UploadProgressState } from './uploadProgress'
-import { getOutputDir, isoDay, isVideoFile } from './utils'
+import { ffmpegPath, getOutputDir, isoDay, isVideoFile } from './utils'
 import {
   buildGroupBaseName,
   buildPassengerFolder,
@@ -200,6 +200,7 @@ export {
   frozenTandems,
   FULL_FRAME,
   getGroupProcessedDir,
+  ffmpegPath,
   getOutputDir,
   gmailComposeUrl,
   goneFromStorage,

@@ -4,16 +4,15 @@
 #   npm run dev:window:host                    # the development server and the window, one command
 #   SKYDOCK_DEV_URL= npm run dev:window:host   # the app on its own: its server, its work folder
 #
-# A window drawn on the host's screen from inside the container opens and never loads its page, so
-# the app is run over there instead, by `scripts/host.sh`. Nothing has to be installed or left
-# running on the host.
+# The window can be opened in here — `npm run app` draws it on this container's own display — and
+# this is for seeing it on the machine itself: its screen, its card, its file manager to drag a clip
+# out of. The app is run over there by `scripts/host.sh`, which needs nothing installed on the host.
 #
 # The server it shows comes up with it, unless one is already answering — one already running is
 # used and left running, so `npm run dev` in another terminal still works the way it did.
 #
-# The AppImage where one is built, since it carries its own WebKit rather than borrowing the
-# machine's — a window bound to a WebKit of another version draws the board and then refuses every
-# click — and the built program otherwise. Build one with `npm run tauri build`.
+# What was built for the machine: `npm run installers` makes it, and what it leaves unpacked is what
+# runs here.
 set -eu
 
 # What SkyDock writes is written by root in here and read by whoever is at the screen out there.
@@ -22,25 +21,30 @@ umask 000
 here="$(cd "$(dirname "$0")" && pwd)"
 url="${SKYDOCK_DEV_URL-http://127.0.0.1:5173}"
 
-# What was built for the machine, and the plain program before the AppImage: the machine's own
-# WebKit then plays the clips with the machine's own codecs, where an AppImage brings half of that
-# with it and takes the other half from here — and the two halves meet when a video starts.
-# `npm run build:host` is what makes the one that belongs over there.
 app=''
 for candidate in \
-  "$here/../src-tauri/target-host/release/skydock" \
-  "$here/../src-tauri/target-host/release/bundle/appimage"/*.AppImage \
-  "$here/../src-tauri/target/release/skydock"; do
+  "$here/../build/installers/linux-unpacked/skydock" \
+  "$here/../build/installers"/*.AppImage; do
   [ -x "$candidate" ] && [ -z "$app" ] && app="$candidate"
 done
 
 [ -x "$app" ] || {
-  echo "SkyDock is not built yet — run 'npm run tauri build'." >&2
+  echo "SkyDock is not built yet — run 'npm run installers'." >&2
   exit 1
 }
 
 # said in the terms both sides share, since the machine knows this folder by another name
 app="$(cd "$(dirname "$app")" && pwd)/$(basename "$app")"
+
+# The engine's own sandbox helper has to be owned by root and setuid, or the app refuses to start
+# rather than run without a sandbox — and a build leaves it plain, since only an installer can set
+# it. Installing the package does this; running what was built does not, so it is done here. This
+# side is root and the folder is the machine's own, so it is the same file either side.
+sandbox="$(dirname "$app")/chrome-sandbox"
+if [ -f "$sandbox" ] && [ ! -u "$sandbox" ]; then
+  chown root:root "$sandbox" 2>/dev/null && chmod 4755 "$sandbox" 2>/dev/null ||
+    echo "Could not make $sandbox setuid root — the window may refuse to start." >&2
+fi
 
 answering() { curl -sfo /dev/null --max-time 1 "$url"; }
 

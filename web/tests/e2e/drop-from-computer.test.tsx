@@ -9,13 +9,17 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
   return { ...actual, loadManifest: vi.fn(() => null) }
 })
 
-import { droppedFiles, droppedPaths, fromComputer } from '../../app/helpers/import'
+import { droppedFiles, fromComputer, pathOf } from '../../app/helpers/import'
 import { boardRoute } from './board-route'
 
 /* A video from the computer, let go on the board (RULES, The board — Adding files from the
    computer). Where it lands decides where it goes, and where nothing takes it the board says so and
    keeps it: a file nobody wanted is what an engine opens, and an opened video over SkyDock's own
    window leaves no way back to the board.
+
+   In SkyDock's own window the file's address comes with it, and the address is what travels: the
+   server is on the same machine, and sending the bytes would be copying a jump's rushes to reach a
+   folder they are already sitting in. In a browser there is no address and the bytes are what go.
 
    Nothing can originate a drag from the machine's own file manager, so the drag is made here and
    the events are dispatched — the one thing in these tests that cannot be a real user action. What
@@ -62,8 +66,12 @@ const machineTakes = () =>
 
 afterEach(() => {
   vi.stubGlobal('fetch', realFetch)
+  vi.stubGlobal('skydock', undefined)
   asked.length = 0
 })
+
+/* the window around the board, which can say where a dropped file already is */
+const windowSays = (where: string) => vi.stubGlobal('skydock', { pathOf: () => where })
 
 const openYverdon = async () => {
   const Stub = createRoutesStub([
@@ -96,14 +104,6 @@ const letGoOn = (where: Element, carrying = carryingAClip) => {
   return dropped
 }
 
-/* what SkyDock's own window hands over: where the file is, and nothing of the file itself */
-const carryingAnAddress = () => {
-  const carried = new DataTransfer()
-  carried.setData('text/uri-list', 'file:///home/capo/Videos/from%20phone.mp4\r\n')
-  carried.setData('text/html', '<a href="file:///home/capo/Videos/from%20phone.mp4">from phone</a>')
-  return carried
-}
-
 describe('a clip dragged in from the computer', () => {
   test('is added to the place it is let go on', async () => {
     machineTakes()
@@ -116,52 +116,17 @@ describe('a clip dragged in from the computer', () => {
     expect(asked[0]).toContain('filename=from-phone.mp4')
   })
 
-  /* The window gives the page no bytes at all — only the address — and a page cannot open a file by
-     its address. The machine it is asked of is the machine the file was dragged from. */
-  test('is added by its address when that is all the window hands over', async () => {
+  /* Where the file already is beats a copy of it: the server is on this very machine. */
+  test('is taken by its address when the window says where it is', async () => {
     machineTakes()
+    windowSays('/home/capo/Videos/from phone.mp4')
     await openYverdon()
 
-    letGoOn(page.getByRole('region', { name: /Yverdon/ }).element(), carryingAnAddress)
+    letGoOn(page.getByRole('region', { name: /Yverdon/ }).element())
 
     await expect.poll(() => asked).toHaveLength(1)
     expect(asked[0]).toContain('target=dest%3AYverdon')
     expect(asked[0]).toContain('path=%2Fhome%2Fcapo%2FVideos%2Ffrom+phone.mp4')
-  })
-
-  /* In SkyDock's own window the engine says a file was dropped and refuses to say which, so the app
-     hands the paths over itself, with the point on screen they were let go at. What is under that
-     point is where they go. */
-  const handedOverAt = (where: Element, paths = ['/home/capo/Videos/from phone.mp4']) => {
-    const box = where.getBoundingClientRect()
-    window.dispatchEvent(
-      new CustomEvent('skydock:drop', {
-        detail: { paths, x: box.left + box.width / 2, y: box.top + box.height / 2 }
-      })
-    )
-  }
-
-  test('is added where it was let go, when the app hands it over itself', async () => {
-    machineTakes()
-    await openYverdon()
-
-    handedOverAt(page.getByRole('region', { name: /Yverdon/ }).element())
-
-    await expect.poll(() => asked).toHaveLength(1)
-    expect(asked[0]).toContain('target=dest%3AYverdon')
-    expect(asked[0]).toContain('path=%2Fhome%2Fcapo%2FVideos%2Ffrom+phone.mp4')
-  })
-
-  test('is kept when the app hands it over on nothing that takes it', async () => {
-    machineTakes()
-    await openYverdon()
-
-    handedOverAt(page.getByRole('complementary').element())
-
-    await expect
-      .element(page.getByText(/Drop a clip on a place, a passenger or a jump/))
-      .toBeInTheDocument()
-    expect(asked).toEqual([])
   })
 
   /* the whole of what keeps the board on screen: an engine opens what the page would not take */
@@ -197,60 +162,36 @@ describe('a clip dragged in from the computer', () => {
   })
 })
 
-/* Each engine says "there are files here" in its own words, and only one of them says "Files". A
-   drag out of the machine's own file manager into SkyDock's window carries the addresses instead —
-   the case the board used not to recognise, and so never stopped. */
+/* A drag carrying files says so, and that is what tells the board to stop the engine opening one. */
 describe('a drag the board has to recognise as files', () => {
-  const saying = (types: string[], items: { kind: string }[] = []) =>
-    fromComputer({ dataTransfer: { types, items } } as unknown as Parameters<
-      typeof fromComputer
-    >[0])
+  const saying = (types: string[]) =>
+    fromComputer({ dataTransfer: { types } } as unknown as Parameters<typeof fromComputer>[0])
 
-  test('says so when the engine lists the files themselves', () => {
+  test('says so when the drag lists files', () => {
     expect(saying(['Files'])).toBe(true)
   })
 
-  test('says so when the engine lists their addresses instead', () => {
-    expect(saying(['text/uri-list'])).toBe(true)
-  })
-
-  test('says so when only the items carried say what they are', () => {
-    expect(saying([], [{ kind: 'file' }])).toBe(true)
-  })
-
   test('says nothing of a drag that carries only words', () => {
-    expect(saying(['text/plain'], [{ kind: 'string' }])).toBe(false)
+    expect(saying(['text/plain'])).toBe(false)
   })
 })
 
-/* Where the files are, when where is all there is. */
-describe('the addresses a drop hands over', () => {
-  const listing = (uriList: string) =>
-    droppedPaths({
-      dataTransfer: { getData: () => uriList }
-    } as unknown as Parameters<typeof droppedPaths>[0])
+/* Where a dropped file is, which only the app around the board can say. */
+describe('the address of a dropped file', () => {
+  const clip = new File(['0'], 'from-phone.mp4', { type: 'video/mp4' })
 
-  test('are read off the list, one to a line, spaces and all', () => {
-    expect(listing('file:///home/capo/Videos/from%20phone.mp4\r\n')).toEqual([
-      '/home/capo/Videos/from phone.mp4'
-    ])
+  test('is what the window says, when there is a window to ask', () => {
+    windowSays('/home/capo/Videos/from phone.mp4')
+    expect(pathOf(clip)).toBe('/home/capo/Videos/from phone.mp4')
   })
 
-  test('leave out what the list only says about itself', () => {
-    expect(listing('# a comment\r\nfile:///a.mp4\r\n\r\nfile:///b.jpg')).toEqual([
-      '/a.mp4',
-      '/b.jpg'
-    ])
-  })
-
-  /* a link dragged off a web page is an address too, and not one this machine holds */
-  test('leave out an address that is not a file on this machine', () => {
-    expect(listing('https://example.com/clip.mp4')).toEqual([])
+  test('is nothing in a browser, where the bytes are all there is', () => {
+    expect(pathOf(clip)).toBeNull()
   })
 })
 
-/* And what it hands over is asked for the same way. One engine fills the list of files; another
-   leaves it empty and holds the same clip in the items of the drag, to be asked for one at a time. */
+/* And the bytes are asked for the same way wherever they come from: one engine fills the list of
+   files; another leaves it empty and holds the same clip in the items of the drag. */
 describe('the files a drop hands over', () => {
   const clip = new File(['0'], 'from-phone.mp4', { type: 'video/mp4' })
   const handing = (files: File[], items: { kind: string; getAsFile: () => File | null }[]) =>

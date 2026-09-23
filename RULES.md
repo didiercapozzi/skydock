@@ -26,12 +26,14 @@ copies a card, finds the jumps, prepares the files and sends them on. One thing 
 editing program and is not carried: a montage is prepared whether or not it is installed, and
 opening one needs it.
 
-**It keeps itself current.** On opening, SkyDock asks whether a newer one has been released and
-fetches it quietly if there is, then asks once: install it now, or next time. Saying yes is a
-restart, not a wait, since it is already down; saying no leaves everything as it was and asks again
-next time. Nothing is ever installed without being asked — a machine in the middle of somebody's day
-is no place for a version that changed by itself. A machine with no way out to the internet, or one
-that finds nothing, opens its board exactly as it always does.
+**It keeps itself current.** On opening, SkyDock asks whether a newer one has been released, and
+says so once if there is. On Windows and on Linux it fetches it quietly first and then asks: install
+it now, or next time — saying yes is a restart, not a wait, since it is already down. On a Mac it
+says which version is out and opens the page it comes from, because only an app signed for it can
+replace itself there. Saying no leaves everything as it was and asks again next time. Nothing is ever
+installed without being asked — a machine in the middle of somebody's day is no place for a version
+that changed by itself. A machine with no way out to the internet, or one that finds nothing, opens
+its board exactly as it always does.
 
 The first time it is opened it asks where to keep its work, offering a folder of its own in the
 machine's videos. That answer is remembered, and everything below — the originals, the copies, the
@@ -462,7 +464,8 @@ not called a failure.
 A file let go where nothing takes it — the header, the panel, the space around the work — is left
 where it was, and the board says where it could have gone. It is never opened over the board: a
 dropped video shown in the board's place is the board gone, and in SkyDock's own window there is no
-way back to it.
+way back to it. In that window a dropped file is taken where it already lies rather than copied in,
+since the app and the machine it came off are the same one.
 
 **Putting files in the bin.** A test shot or footage of the ground can be got rid of, but only as a loose
 file in Fresh files: a file filed somewhere is somebody's, and one in a jump belongs with it, so taking it

@@ -11,9 +11,9 @@ import {
   withVersion
 } from '../src/release'
 
-/* A release is a version moved in three files at once and a tag that agrees with them. What is
-   worth testing is the two ways that goes wrong: a version that moves in one file and not the
-   others, and a file that has been restructured so nothing is found to move at all. */
+/* A release is a version moved where the app says which one it is, and a tag that agrees with it.
+   What is worth testing is the two ways that goes wrong: a version moved to something that is not
+   one, and a file restructured so that nothing is found to move at all. */
 
 const repo = path.join(__dirname, '..', '..', '..')
 const real = (file: string) => fs.readFileSync(path.join(repo, file), 'utf-8')
@@ -38,18 +38,13 @@ describe('the version after this one', () => {
   })
 })
 
-describe('the three files that say which version this is', () => {
-  it('each say it today, so a release is never made from a file that has been restructured', () => {
+describe('the file that says which version this is', () => {
+  it('says it today, so a release is never made from a file that has been restructured', () => {
     for (const file of versionedFiles())
       expect(versionIn(real(file), file)).toMatch(/^\d+\.\d+\.\d+$/)
   })
 
-  it('all say the same one, since an installer named after one of them carries the others', () => {
-    const said = versionedFiles().map((file) => versionIn(real(file), file))
-    expect(new Set(said).size).toBe(1)
-  })
-
-  it('are each moved where they say it and nowhere else', () => {
+  it('is moved where it says it and nowhere else', () => {
     for (const file of versionedFiles()) {
       const before = real(file)
       const after = withVersion(before, file, '2.3.4')
@@ -58,22 +53,21 @@ describe('the three files that say which version this is', () => {
     }
   })
 
-  it('keep the lockfile talking about SkyDock and not about something else it lists', () => {
-    const after = withVersion(real('src-tauri/Cargo.lock'), 'src-tauri/Cargo.lock', '2.3.4')
-    expect(after).toContain('[[package]]\nname = "skydock"\nversion = "2.3.4"')
+  it('is the version the app is named after, and not one of the packages it lists', () => {
+    const after = withVersion(real('package.json'), 'package.json', '2.3.4')
+    expect(after).toContain('"version": "2.3.4"')
+    expect(after).toContain('"electron"')
   })
 
-  it('stop the release when one of them no longer says it', () => {
-    expect(() => versionIn('[package]\nname = "skydock"\n', 'src-tauri/Cargo.toml')).toThrow(
-      /no longer says/
+  it('stops the release when it no longer says it', () => {
+    expect(() => versionIn('{}', 'package.json')).toThrow(/no longer says/)
+    expect(() => withVersion('{}', 'package.json', '2.3.4')).toThrow(/no longer says/)
+  })
+
+  it('is not moved to something that is not a version', () => {
+    expect(() => withVersion(real('package.json'), 'package.json', 'latest')).toThrow(
+      /shape 1\.2\.3/
     )
-    expect(() => withVersion('{}', 'src-tauri/tauri.conf.json', '2.3.4')).toThrow(/no longer says/)
-  })
-
-  it('are not moved to something that is not a version', () => {
-    expect(() =>
-      withVersion(real('src-tauri/Cargo.toml'), 'src-tauri/Cargo.toml', 'latest')
-    ).toThrow(/shape 1\.2\.3/)
   })
 })
 

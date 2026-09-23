@@ -1,15 +1,22 @@
 {
-  "name": "@workspace",
+  "name": "skydock",
+  "version": "0.1.4",
   "private": true,
+  "description": "A dropzone's media, from the cameras to the passenger",
+  "author": {
+    "name": "Didier Capozzi",
+    "email": "capozzi.didier@gmail.com"
+  },
   "workspaces": [
     "web",
     "packages/skydock-scripts",
     "packages/ui"
   ],
   "type": "module",
+  "main": "build/electron/main.cjs",
   "scripts": {
+    "app": "npm run shell && electron . --no-sandbox",
     "build": "npm run build --workspace=@workspace/web",
-    "build:host": "scripts/build-for-host.sh",
     "check": "npm run typecheck && npm run format:check && npm run lint",
     "copy": "npx tsx packages/skydock-scripts/src/copy.ts",
     "dev": "umask 000 && SKYDOCK_EDITOR_COMMAND=/workspace/scripts/editor-on-host.sh SKYDOCK_PLAYER_COMMAND=/workspace/scripts/play-on-host.sh npm run dev --workspace=@workspace/web",
@@ -17,19 +24,77 @@
     "fc": "npm run format && npm run check",
     "format": "oxfmt --config oxfmt.config.ts .",
     "format:check": "oxfmt --config oxfmt.config.ts --check .",
+    "installers": "npm run pack && npm run shell && electron-builder",
     "lint": "oxlint --config oxlint.config.ts .",
+    "pack": "npx tsx scripts/build-payload.ts",
     "release": "npx tsx scripts/release.ts",
     "scan": "npx tsx packages/skydock-scripts/src/scan.ts",
-    "tauri": "tauri",
+    "shell": "npx tsx scripts/build-shell.ts",
     "test": "npm run test --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "tsc --noEmit && npm run typecheck --workspaces --if-present"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@react-router/dev": "^8.3.1",
-    "@tauri-apps/cli": "2.11.5",
+    "electron": "^44.4.4",
+    "electron-builder": "^26.15.3",
     "opencode-ai": "^1.18.23",
     "oxfmt": "^0.65.0",
     "oxlint": "^1.80.0",
     "tsx": "^4.23.13"
-  }
+  },
+  "build": {
+    "appId": "ch.skydock.app",
+    "productName": "SkyDock",
+    "directories": {
+      "buildResources": "packaging",
+      "output": "build/installers"
+    },
+    "files": [
+      "build/electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/resources",
+        "to": "."
+      }
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "didiercapozzi",
+        "repo": "skydock",
+        "releaseType": "draft"
+      }
+    ],
+    "linux": {
+      "target": [
+        "deb",
+        "AppImage"
+      ],
+      "category": "AudioVideo",
+      "synopsis": "A dropzone's media, from the cameras to the passenger",
+      "syncDesktopName": true
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.video"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "msi"
+      ]
+    },
+    "releaseInfo": {
+      "releaseNotes": "Nobody has signed these: on macOS, open System Settings → Privacy & Security and choose Open Anyway the first time; on Windows, choose More info, then Run anyway."
+    }
+  },
+  "desktopName": "skydock.desktop"
 }

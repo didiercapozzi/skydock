@@ -6,7 +6,7 @@ import * as url from 'node:url'
 /* The server the installed app runs: one file, with the app and everything it uses inside it, so it
    needs no node_modules beside it — nothing is installed on the machine it lands on but SkyDock.
    `react-router build` has to have run first: this is built around what it wrote.
-   Run: `node scripts/build-server.mjs` */
+   Run: `npx tsx scripts/build-server.ts` */
 
 const here = path.dirname(url.fileURLToPath(import.meta.url))
 const web = path.join(here, '..', 'web')

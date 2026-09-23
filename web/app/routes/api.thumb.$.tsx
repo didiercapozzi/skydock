@@ -1,4 +1,4 @@
-import { getOutputDir, isVideoFile } from '@skydock/scripts'
+import { ffmpegPath, getOutputDir, isVideoFile } from '@skydock/scripts'
 import { spawn } from 'node:child_process'
 import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
@@ -32,7 +32,8 @@ const clampSeek = (raw: string | null) => {
 const extractFrame = (filePath: string, seek: number, width: number) =>
   new Promise<Buffer>((resolve, reject) => {
     const seekArgs = isVideoFile(filePath) ? ['-ss', String(seek), '-skip_frame', 'nokey'] : []
-    const child = spawn('ffmpeg', [
+    /* the one the app carries, since a machine SkyDock was installed on has none of its own */
+    const child = spawn(ffmpegPath(), [
       '-hide_banner',
       '-loglevel',
       'error',

@@ -28,7 +28,7 @@ import {
 import type { FrameCrop, Rotation, TandemEntry } from '@skydock/scripts'
 import { diskSpace } from '../../../packages/skydock-scripts/src/diskSpace'
 import { readTandemIndex } from '../../../packages/skydock-scripts/src/tandemIndex'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Outlet, useNavigate, useParams } from 'react-router'
 import type { ShouldRevalidateFunctionArgs } from 'react-router'
 import { BoardHeader } from '../components/board-header'
@@ -556,30 +556,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   }
 
   const drag = useDragAndDrop({ groups, frozen, pickedFiles, moveFiles, assign, importDropped })
-
-  /* A file dragged in from the machine, when the board is SkyDock's own window. The engine there
-     tells the page a file was dropped and then refuses to say which — a page is not to be trusted
-     with where somebody's files are — so the app hands them over instead, with the point on screen
-     they were let go at. What is under that point says where they go, and nothing under it at all
-     is a drop that landed on no place, as it is in a browser. */
-  useEffect(() => {
-    const landed = (e: Event) => {
-      const said = (e as CustomEvent<{ paths?: string[]; x: number; y: number }>).detail
-      if (!said?.paths?.length) {
-        setNote('That drop came with nothing in it.')
-        return
-      }
-      const on = document.elementFromPoint(said.x, said.y)?.closest('[data-drop-target]')
-      const target = on?.getAttribute('data-drop-target')
-      if (!target) {
-        setNote('Drop a clip on a place, a passenger or a jump to add it.')
-        return
-      }
-      void importDropped(said.paths, target, on?.getAttribute('data-drop-where') ?? 'here')
-    }
-    window.addEventListener('skydock:drop', landed)
-    return () => window.removeEventListener('skydock:drop', landed)
-  })
 
   /* The folder something was just filed under lights up for a moment, so the eye can follow the
      jump there from the line it left. */
@@ -1118,9 +1094,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       onDrop={(e) => {
         e.preventDefault()
         if (!fromComputer(e)) return
-        /* In SkyDock's own window the app is handing the same drop over by itself, paths and all,
-           so this one is already spoken for and says nothing. */
-        if ('__skydockDrops' in window) return
         setNote('Drop a clip on a place, a passenger or a jump to add it.')
       }}
       className='flex h-screen flex-col'>

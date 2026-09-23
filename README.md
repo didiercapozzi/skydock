@@ -29,8 +29,10 @@ a day of footage is tens of gigabytes before anything is uploaded.
 Nothing else has to be installed. SkyDock carries the tools it works with. The one exception is the
 video editor, kdenlive, which you need only to render a tandem's film — see step 5.
 
-It keeps itself current: when a new version is out it fetches it quietly and asks once whether to
-install it now or next time. Nothing is ever installed without being asked.
+It keeps itself current: when a new version is out it says so once and asks. On Windows and Linux it
+fetches the new one first, so saying yes is a restart rather than a wait; on a Mac it opens the
+downloads page, since only an app signed for it can replace itself. Nothing is ever installed without
+being asked.
 
 ## A day at the dropzone
 

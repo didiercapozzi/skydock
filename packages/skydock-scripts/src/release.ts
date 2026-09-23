@@ -1,9 +1,7 @@
-/* Which version SkyDock is, and the three places that say so.
+/* Which version SkyDock is, and where it says so.
  *
- * An installer is named after the version in `tauri.conf.json`, the program itself carries the one
- * in `Cargo.toml`, and the lockfile keeps a copy of that. Move one and not the others and a v0.3.0
- * release hands somebody a 0.1.0 app — which nobody notices until they are asked which one they
- * have. So all three move together or none of them does, and a file that has stopped saying which
+ * One place says it: the installers are named after it, the app carries it, and what an installed
+ * SkyDock compares against a release is the same number. A file that has stopped saying which
  * version it is stops the release rather than being quietly skipped.
  */
 
@@ -13,9 +11,7 @@ const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/
    untouched: the rest of the file, including the other things called `version`, is none of our
    business. */
 const VERSION_IN = {
-  'src-tauri/tauri.conf.json': /("version":\s*")([^"]+)(")/,
-  'src-tauri/Cargo.toml': /(\[package\][\s\S]*?\nversion\s*=\s*")([^"]+)(")/,
-  'src-tauri/Cargo.lock': /(\[\[package\]\]\s*\nname = "skydock"\s*\nversion = ")([^"]+)(")/
+  'package.json': /("version":\s*")([^"]+)(")/
 }
 
 type Versioned = keyof typeof VERSION_IN

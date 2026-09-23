@@ -39,12 +39,16 @@ is in a clip). What they were found for is not built yet, in the order worth doi
 ### The installed app
 
 - Signing: unsigned installers warn on macOS and Windows. Needs an Apple Developer ID and Azure
-  Trusted Signing, both paid.
-- Updating works only once the repository is public and the signing key is a secret of it: an
-  installed SkyDock asks GitHub what the latest release is, and a private repository answers nothing
-  to a request with no token. Until then every copy stays where it is, quietly.
-- Updating passes by a `.deb`: only the AppImage can replace itself on Linux. A machine installed
-  from the package updates by downloading the next one.
+  Trusted Signing, both paid. The Apple one is also what would let a Mac update itself.
+- Updating works only once the repository is public: an installed SkyDock asks GitHub what the latest
+  release is, and a private repository answers nothing to a request with no token. Until then every
+  copy stays where it is, quietly.
+- Updating passes by a `.deb` and by a Mac: only the AppImage can replace itself on Linux, and only a
+  signed app can on macOS. Both are told what is out and download the next one themselves.
+- The window is Electron and has been run here, from the source and packaged, on a display of the
+  container's own. On the machine's own screen it starts once the engine's sandbox helper is setuid
+  root, which `npm run dev:window:host` now sets; what it does over there beyond starting — a clip
+  played on the machine's own card, a file dragged out of its own file manager — is still untried.
 - Moving the work folder: it is asked for on the first run and remembered. There is no way to change
   it afterwards but to edit the settings file.
 - The macOS and Windows installers have never been run: they are built by the workflow and have to be

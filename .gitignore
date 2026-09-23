@@ -15,18 +15,11 @@ config/
 .sim/
 /node_modules/
 
-# React Router
+# React Router, the window built for Electron, what the app carries, and the installers
 /.react-router/
 /build/
 web/build/
 
-# the installed app: what cargo builds, and what the build fetches for it to carry
-src-tauri/target/
-src-tauri/target-host/
-src-tauri/gen/
-src-tauri/binaries/
-src-tauri/resources/
-src-tauri/tools/
 
 opencode.jsonc
 opencodeT.jsonc
