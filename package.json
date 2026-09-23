@@ -24,13 +24,14 @@
     "fc": "npm run format && npm run check",
     "format": "oxfmt --config oxfmt.config.ts .",
     "format:check": "oxfmt --config oxfmt.config.ts --check .",
-    "installers": "npm run pack && npm run shell && electron-builder",
+    "installers": "npm run tools && SKYDOCK_TOOLS_DIR=\"$PWD/build/tools\" npm run pack && npm run shell && electron-builder --publish never",
     "lint": "oxlint --config oxlint.config.ts .",
     "pack": "npx tsx scripts/build-payload.ts",
     "release": "npx tsx scripts/release.ts",
     "scan": "npx tsx packages/skydock-scripts/src/scan.ts",
     "shell": "npx tsx scripts/build-shell.ts",
     "test": "npm run test --workspaces --if-present",
+    "tools": "npx tsx scripts/fetch-tools.ts build/tools",
     "typecheck": "tsc --noEmit && npm run typecheck --workspaces --if-present"
   },
   "dependencies": {

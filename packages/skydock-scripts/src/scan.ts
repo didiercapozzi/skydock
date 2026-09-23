@@ -236,10 +236,10 @@ const scanMedia = async (options?: { outputDir?: string }) => {
   const originalDir = path.join(outputDir, 'original_files')
   const manifestPath = getManifestPath(outputDir)
 
-  if (!fs.existsSync(originalDir)) {
-    console.log('[Scan] No original_files directory found. Run the camera copy first.')
-    return { added: 0, removed: 0, moved: 0, unchanged: true, fileCount: 0, groupCount: 0 }
-  }
+  /* A work folder that has just been chosen has nothing in it at all. The originals folder is made
+     here rather than waited for, so that a folder SkyDock has been pointed at looks like one it is
+     working in, and so the scan below has somewhere to look. */
+  fs.mkdirSync(originalDir, { recursive: true })
 
   const timeMap = buildTimeMap(findMediaFiles(originalDir))
   const diskFiles = await scanFiles(originalDir, timeMap)
@@ -247,15 +247,17 @@ const scanMedia = async (options?: { outputDir?: string }) => {
   const existing = loadManifest(manifestPath)
 
   if (!existing) {
-    if (diskFiles.length === 0) {
-      console.log('[Scan] No files found in original_files.')
-      return { added: 0, removed: 0, moved: 0, unchanged: true, fileCount: 0, groupCount: 0 }
-    }
-
-    console.log(`[Scan] Creating new manifest with ${diskFiles.length} file(s).`)
     const createdAt = new Date().toISOString()
     const manifest = createFreshManifest(diskFiles, createdAt)
+    /* Written even when the folder was empty. A scan that found nothing is still a scan, and the
+       registry is what the rest of SkyDock asks before it acts — without one, a file dropped on the
+       board is refused and told to run the scan that has just run. */
     saveManifest(manifestPath, manifest)
+
+    if (diskFiles.length === 0) {
+      console.log('[Scan] Nothing in original_files yet. Copy a camera off, then scan again.')
+      return { added: 0, removed: 0, moved: 0, unchanged: true, fileCount: 0, groupCount: 0 }
+    }
 
     console.log(`[Scan] Found ${diskFiles.length} file(s) in ${manifest.groups.length} group(s).`)
     console.log(`[Scan] Manifest: ${manifestPath}`)

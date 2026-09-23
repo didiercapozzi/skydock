@@ -110,9 +110,18 @@ const fetchInto = async (system: string, into: string) => {
   }
 }
 
+/* Both already there from an earlier build. They are eighty megabytes each and a release machine
+   starts with nothing, so this only ever answers yes on somebody's own machine: delete the folder
+   to be given the current builds again. */
+const alreadyThere = (system: string, into: string) =>
+  ['ffmpeg', 'ffprobe']
+    .map((tool) => path.join(into, forWindows(system) ? `${tool}.exe` : tool))
+    .every((target) => fs.existsSync(target))
+
 const system = process.argv[3]?.trim() || systemBuiltFor()
 const into = path.resolve(process.argv[2] ?? path.join(here, '..', 'build', 'tools'))
 fs.mkdirSync(into, { recursive: true })
-await fetchInto(system, into)
+if (alreadyThere(system, into)) console.error(`[SkyDock] already fetched, in ${into}`)
+else await fetchInto(system, into)
 /* the only thing on the output, so a workflow can read the folder straight off it */
 console.log(into)

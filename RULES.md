@@ -141,6 +141,11 @@ A scan can be asked for at any time; one run after more cameras were copied off 
 groups them among themselves — joining a jump still in Fresh files when they fall within its gap — and
 leaves every filed jump as it is. The grouping is a guess, and the board exists to correct it.
 
+A scan of a work folder nothing has been copied into yet finds nothing, and says so — but it settles
+the folder: the originals folder is made, and an empty record is written. A folder SkyDock has been
+pointed at is therefore a folder SkyDock is working in after one scan, whether or not anything has
+come off a camera, and a file can be dropped straight onto the board of a fresh install.
+
 A scan also makes a **proxy** of every clip: a small copy, the same length at the same speed, which the
 board plays instead of the full clip and which the editor later opens on. Proxies are made in the
 background; everything works without them, and a clip without one simply plays as it is. Each clip
