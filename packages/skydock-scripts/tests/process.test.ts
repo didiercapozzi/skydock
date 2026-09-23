@@ -661,7 +661,13 @@ describe('processing, said as it happens', () => {
 
     /* one after the other, never two at once: a file ends before the next begins */
     expect(
-      heard.map((e) => `${e.kind} ${e.fileId}${e.kind === 'file-done' ? ` ${e.ok}` : ''}`)
+      heard.map((e) =>
+        e.kind === 'file-done'
+          ? `file-done ${e.fileId} ${e.ok}`
+          : e.kind === 'file'
+            ? `file ${e.fileId}`
+            : /* anything else said while a file is being written is itself a failure */ e.kind
+      )
     ).toEqual(['file id0', 'file-done id0 true', 'file id1', 'file-done id1 true'])
   })
 

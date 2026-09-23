@@ -6,8 +6,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { action, loader } from '../../app/routes/api.templates'
 import { createTmpDir, routeArgs } from './fixtures'
 
-/* The editing templates, listed for the board and brought in from the computer: the archive's bytes
-   are the request's body, the way the board sends them. */
+/* The editing templates, listed for the board and brought in from the computer: the project and the
+   files it uses are handed over together, the way the board hands them over. */
 
 const project = `<?xml version='1.0' encoding='utf-8'?>
 <mlt root="/elsewhere">
@@ -19,17 +19,19 @@ const project = `<?xml version='1.0' encoding='utf-8'?>
 let tmpDir: string
 let previous: string | undefined
 
-const send = (filename: string, body: Uint8Array, name?: string) => {
-  const params = new URLSearchParams({ filename, ...(name ? { name } : {}) })
+const send = (
+  files: { filename: string; body: Uint8Array }[],
+  said: Record<string, string> = {}
+) => {
+  const form = new FormData()
+  for (const [key, value] of Object.entries(said)) form.set(key, value)
+  for (const file of files) form.append('files', new File([Buffer.from(file.body)], file.filename))
   return action(
-    routeArgs(
-      new Request(`http://localhost/api/templates?${params.toString()}`, {
-        method: 'POST',
-        body: new Blob([Buffer.from(body)])
-      })
-    )
+    routeArgs(new Request('http://localhost/api/templates', { method: 'POST', body: form }))
   ).then(async (res) => ({ status: res.status, said: await res.json() }))
 }
+
+const bytes = (text: string) => strToU8(text)
 
 beforeEach(() => {
   tmpDir = createTmpDir('skydock-api-templates-')
@@ -50,7 +52,7 @@ describe('the editing templates', () => {
   it('are listed with the kdenlive that wrote each and the files each is missing', async () => {
     const said = await loader().json()
     expect(said.templates).toEqual([
-      { name: 'house', version: '24.12.1', assets: 1, missing: ['music.mp3'] }
+      { name: 'house', version: '24.12.1', assets: 1, missing: ['music.mp3'], byDefault: false }
     ])
   })
 
@@ -60,20 +62,39 @@ describe('the editing templates', () => {
       'club/audio/music.mp3': strToU8('m')
     })
 
-    const { status, said } = await send('club.zip', archive)
+    const { status, said } = await send([{ filename: 'club.zip', body: archive }])
 
     expect(status).toBe(200)
     expect(said.template).toMatchObject({ name: 'club', missing: [] })
     expect(said.templates.map((t: { name: string }) => t.name)).toEqual(['club', 'house'])
   })
 
-  it('say why when an archive is refused', async () => {
-    const { status, said } = await send('house.zip', zipSync({ 'h/h.kdenlive': strToU8(project) }))
+  it('take in the project and the files it uses, chosen together', async () => {
+    const { status, said } = await send([
+      { filename: 'club.kdenlive', body: bytes(project) },
+      { filename: 'music.mp3', body: bytes('m') }
+    ])
+
+    expect(status).toBe(200)
+    expect(said.template).toMatchObject({ name: 'club', missing: [] })
+    expect(fs.existsSync(path.join(tmpDir, 'templates', 'club', 'music.mp3'))).toBe(true)
+  })
+
+  it('say why when nothing brought in is a template', async () => {
+    const { status, said } = await send([{ filename: 'notes.txt', body: bytes('x') }])
 
     expect(status).toBe(422)
-    expect(said).toEqual({
-      ok: false,
-      error: 'There is already a template called house — give this one another name.'
-    })
+    expect(said.ok).toBe(false)
+    expect(said.error).toMatch(/no kdenlive project/)
+  })
+
+  it('are told which one is the usual, and say so from then on', async () => {
+    const { status, said } = await send([], { byDefault: 'house' })
+
+    expect(status).toBe(200)
+    expect(said.templates.find((t: { name: string }) => t.name === 'house').byDefault).toBe(true)
+
+    const after = await send([], { byDefault: '' })
+    expect(after.said.templates.every((t: { byDefault: boolean }) => !t.byDefault)).toBe(true)
   })
 })

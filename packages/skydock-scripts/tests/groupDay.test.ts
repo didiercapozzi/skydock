@@ -49,7 +49,13 @@ describe('the day a jump is filed under', () => {
     const jump = group('gC', files)
     expect(isoDay(jump.day)).toBe('2026-09-13')
 
-    const manifest: Manifest = { version: 1, files, groups: [jump], destinations: [] } as Manifest
+    const manifest: Manifest = {
+      version: 1,
+      createdAt: '2026-09-13',
+      files,
+      groups: [jump],
+      destinations: []
+    }
     /* an hour later is the next day */
     shiftFiles(manifest, new Set(['c1', 'c2']), 60 * 60)
 
@@ -63,10 +69,11 @@ describe('the day a jump is filed under', () => {
     const b = group('gE', still)
     const manifest: Manifest = {
       version: 1,
+      createdAt: '2026-09-13',
       files: [...moved, ...still],
       groups: [a, b],
       destinations: []
-    } as Manifest
+    }
 
     shiftFiles(manifest, new Set(['d1']), 60 * 60)
 

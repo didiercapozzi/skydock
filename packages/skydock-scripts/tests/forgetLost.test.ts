@@ -109,7 +109,13 @@ describe('footage that is nowhere', () => {
           destination: 'Tandems',
           uploaded: {
             at: 1_700_000_300,
-            film: { remotePath: '/home/Tandems/Ana/film.mp4', md5: 'f', size: 10 }
+            film: {
+              remotePath: '/home/Tandems/Ana/film.mp4',
+              md5: 'f',
+              size: 10,
+              localPath: '/o/processed/Tandems/Ana/ana.mp4',
+              at: 1_700_000_300
+            }
           }
         })
       ]

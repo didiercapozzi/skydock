@@ -85,6 +85,8 @@ const templatesIn = (dir: string) => {
     return fs
       .readdirSync(dir, { withFileTypes: true })
       .flatMap((entry) => {
+        /* what the app keeps here about the templates is not one of them */
+        if (entry.name.startsWith('.')) return []
         if (entry.isFile() && entry.name.endsWith('.kdenlive'))
           return [{ name: entry.name.replace(/\.kdenlive$/, ''), path: path.join(dir, entry.name) }]
         if (!entry.isDirectory()) return []
@@ -107,8 +109,19 @@ const availableTemplates = (outputDir: string) => {
   return own.length > 0 ? own : templatesIn(repoTemplateDir())
 }
 
-/* Chosen, or the only one there — never the first of several, because picking a template silently
-   is picking someone's branding silently. */
+/* The one somebody said is the usual, when there is one and it is still there. Said by a file that
+   names it, kept beside the templates: the montage asks the templates where they are, not the board,
+   so a montage made from the command line follows the same choice as one made by pressing Montage. */
+const markedDefault = (outputDir: string) => {
+  try {
+    return fs.readFileSync(path.join(outputDir, 'templates', '.default'), 'utf-8').trim() || null
+  } catch {
+    return null
+  }
+}
+
+/* Chosen, or the usual one, or the only one there — never the first of several, because picking a
+   template nobody settled on is picking someone's branding for them. */
 const resolveTemplate = (options: z.infer<typeof montageOptionsSchema>) => {
   if (options.templatePath) return options.templatePath
   const available = availableTemplates(options.outputDir)
@@ -122,6 +135,8 @@ const resolveTemplate = (options: z.infer<typeof montageOptionsSchema>) => {
   }
   const configured = process.env.SKYDOCK_MONTAGE_TEMPLATE
   if (configured && fs.existsSync(configured)) return configured
+  const usual = available.find((t) => t.name === markedDefault(options.outputDir))
+  if (usual) return usual.path
   if (available.length === 1) return available[0].path
   if (available.length > 1)
     throw new Error(`Choose a montage template: ${available.map((t) => t.name).join(', ')}`)
@@ -371,6 +386,7 @@ export {
   createMontageProject,
   inspectTemplate,
   listMontageTemplates,
-  montageOptionsSchema
+  montageOptionsSchema,
+  readTemplate
 }
 export type { MontageClip, MontageOptions }

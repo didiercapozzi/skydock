@@ -6,7 +6,11 @@ import { XMLParser, XMLValidator } from 'fast-xml-parser'
 import { createMontageProject, listMontageTemplates } from '../src/montage'
 import { createTmpDir } from './fixtures'
 
-const REPO_TEMPLATE = path.join(__dirname, '..', '..', '..', 'templates', 'epco-template.kdenlive')
+/* A real kdenlive project rather than a made-up one: every track, transition and title a club's own
+   template has, with nobody's branding in it. SkyDock ships with no template, so this is a fixture
+   and not the app's — what it is here for is that a montage is made from what an editor really
+   writes, not from the small shapes the rest of these tests build by hand. */
+const REAL_TEMPLATE = path.join(__dirname, 'fixtures', 'house.kdenlive')
 
 afterEach(() => {
   delete process.env.SKYDOCK_HOST_OUTPUT_DIR
@@ -82,7 +86,7 @@ const setup = (templateXml?: string) => {
   const outputDir = createTmpDir('skydock-montage-')
   const groupDir = path.join(outputDir, 'processed', 'Tandems', 'Luc Favre')
   fs.mkdirSync(groupDir, { recursive: true })
-  if (templateXml === undefined) return { outputDir, groupDir, templatePath: REPO_TEMPLATE }
+  if (templateXml === undefined) return { outputDir, groupDir, templatePath: REAL_TEMPLATE }
   const templatePath = path.join(outputDir, 'templates', 'epco', 'epco.kdenlive')
   fs.mkdirSync(path.dirname(templatePath), { recursive: true })
   fs.writeFileSync(templatePath, templateXml)
@@ -112,33 +116,57 @@ const entriesOf = (xml: string, playlistId: string) => {
   return [...body.matchAll(/<entry producer="([^"]+)"/g)].map((m) => m[1])
 }
 
+/* The document as the plain parser hands it back: an attribute carries a prefix, a tag holds one
+   child or a list of them depending on how many there were, and text sits under `#text`. The
+   montage's own reader keeps the order instead and is a different shape altogether — this is the
+   editor's-eye view, which is what these tests are for. */
+type Said = { '@_name': string; '#text'?: string | number }
+type Part = {
+  '@_id'?: string
+  '@_producer'?: string
+  '@_title'?: string
+  '@_root'?: string
+  property?: Said | Said[]
+  track?: Part | Part[]
+  transition?: Part | Part[]
+  entry?: Part | Part[]
+  tractor?: Part | Part[]
+  chain?: Part | Part[]
+  playlist?: Part | Part[]
+}
+
+/* one or many or none, always as a list — which is the whole of what reading this shape takes */
+const many = <T>(held: T | T[] | undefined): T[] =>
+  held === undefined ? [] : Array.isArray(held) ? held : [held]
+
+const named = (part: Part | undefined, name: string) =>
+  many(part?.property).find((p) => p['@_name'] === name)
+
 /* The editor parses the project before it does anything else, so a document that is merely
    plausible is worth nothing — these read it the way kdenlive does rather than by matching text. */
 const parsed = (xml: string) => {
   const verdict = XMLValidator.validate(xml)
   if (verdict !== true) throw new Error(`${verdict.err.msg} (line ${verdict.err.line})`)
-  return new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' }).parse(xml)
+  const document: { mlt: Part } = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: '@_'
+  }).parse(xml)
+  return document
 }
 
-const sequenceOf = (xml: string) => {
-  const doc = parsed(xml).mlt
-  const tractors = [doc.tractor].flat()
-  return tractors.find((t: { property?: unknown }) =>
-    [t.property ?? []].flat().some((p: { '@_name': string }) => p['@_name'] === 'kdenlive:uuid')
-  )
-}
-const groupsOf = (xml: string) => {
-  const prop = [sequenceOf(xml).property]
-    .flat()
-    .find((p: { '@_name': string }) => p['@_name'] === 'kdenlive:sequenceproperties.groups')
-  return JSON.parse(prop['#text'])
-}
+const sequenceOf = (xml: string) =>
+  many(parsed(xml).mlt.tractor).find((t) => named(t, 'kdenlive:uuid') !== undefined)
+
+const groupsOf = (xml: string) =>
+  JSON.parse(String(named(sequenceOf(xml), 'kdenlive:sequenceproperties.groups')?.['#text']))
+
 const chainProps = (xml: string, id: string) => {
-  const chain = [parsed(xml).mlt.chain].flat().find((c: { '@_id': string }) => c['@_id'] === id)
+  const chain = many(parsed(xml).mlt.chain).find((c) => c['@_id'] === id)
   return Object.fromEntries(
-    [chain.property]
-      .flat()
-      .map((p: { '@_name': string; '#text': string }) => [p['@_name'], p['#text']])
+    many(chain?.property).map((p) => [
+      p['@_name'],
+      p['#text'] === undefined ? '' : String(p['#text'])
+    ])
   )
 }
 
@@ -149,7 +177,7 @@ describe('montage — a document the editor can open', () => {
     expect(() => parsed(build(twoAudioOneMutedTemplate, ['a.mp4']).xml)).not.toThrow()
   })
 
-  it('writes a project the editor can open from the template that ships too', () => {
+  it('writes a project the editor can open from a real kdenlive project too', () => {
     expect(() => parsed(build(undefined, ['a.mp4']).xml)).not.toThrow()
   })
 
@@ -184,46 +212,35 @@ describe('montage — a document the editor can open', () => {
   it('keeps the clip paths and the film destination readable after parsing', () => {
     const { projectPath, groupDir } = build(twoAudioOneMutedTemplate, ['a.mp4'])
     const doc = parsed(fs.readFileSync(projectPath, 'utf-8'))
-    const chains = [doc.mlt.chain].flat()
-    const resources = chains.flatMap((c) =>
-      [c.property]
-        .flat()
+    const resources = many(doc.mlt.chain).flatMap((c) =>
+      many(c.property)
         .filter((p) => p['@_name'] === 'resource')
         .map((p) => p['#text'])
     )
     expect(resources).toContain(path.join(groupDir, 'videos', 'a.mp4'))
-    const bin = [doc.mlt.playlist].flat().find((p) => p['@_id'] === 'main_bin')
-    const render = [bin.property]
-      .flat()
-      .find((p) => p['@_name'] === 'kdenlive:docproperties.renderurl')
-    expect(render['#text']).toBe(path.join(groupDir, 'luc_favre_20260802.mp4'))
+    const bin = many(doc.mlt.playlist).find((p) => p['@_id'] === 'main_bin')
+    expect(named(bin, 'kdenlive:docproperties.renderurl')?.['#text']).toBe(
+      path.join(groupDir, 'luc_favre_20260802.mp4')
+    )
   })
 })
 
 /* the tracks of the timeline bottom to top, by the tractor each one plays, black left out */
 const stackOf = (xml: string) =>
-  [sequenceOf(xml).track]
-    .flat()
-    .map((t: { '@_producer': string }) => t['@_producer'])
-    .filter((p: string) => p.startsWith('tractor') || p.startsWith('skydock'))
+  many(sequenceOf(xml)?.track)
+    .map((t) => t['@_producer'] ?? '')
+    .filter((p) => p.startsWith('tractor') || p.startsWith('skydock'))
 
 const tractorProps = (xml: string, id: string) => {
-  const tractor = [parsed(xml).mlt.tractor].flat().find((t: { '@_id': string }) => t['@_id'] === id)
-  return Object.fromEntries(
-    [tractor.property ?? []]
-      .flat()
-      .map((p: { '@_name': string; '#text': string }) => [p['@_name'], p['#text']])
-  )
+  const tractor = many(parsed(xml).mlt.tractor).find((t) => t['@_id'] === id)
+  return Object.fromEntries(many(tractor?.property).map((p) => [p['@_name'], p['#text']]))
 }
 
 /* which track each composition of the timeline blends, by the tractor that track plays */
 const blendedOf = (xml: string) => {
   const sequence = sequenceOf(xml)
-  const stack = [sequence.track].flat().map((t: { '@_producer': string }) => t['@_producer'])
-  return [sequence.transition ?? []].flat().map((t: { property: { '@_name': string }[] }) => {
-    const b = [t.property].flat().find((p) => p['@_name'] === 'b_track') as { '#text': number }
-    return stack[b['#text']]
-  })
+  const stack = many(sequence?.track).map((t) => t['@_producer'])
+  return many(sequence?.transition).map((t) => stack[Number(named(t, 'b_track')?.['#text'])] ?? '')
 }
 
 /* The template is somebody's film, laid out their way: the montage leaves every track of it as it
@@ -268,8 +285,8 @@ describe('montage — two empty tracks for the jump', () => {
 
   /* the template's titles are blended by number, and the number of the track they are on moves up
      by two — left behind, they would be blended onto the wrong track */
-  it('keeps every composition of the template that ships on the track it blended', () => {
-    const before = fs.readFileSync(REPO_TEMPLATE, 'utf-8')
+  it('keeps every composition of a real kdenlive project on the track it blended', () => {
+    const before = fs.readFileSync(REAL_TEMPLATE, 'utf-8')
     const { xml } = build(undefined, ['a.mp4'])
     expect(blendedOf(xml).filter((t) => !t.startsWith('skydock'))).toEqual(blendedOf(before))
   })
@@ -301,26 +318,22 @@ describe('montage — two empty tracks for the jump', () => {
     expect(stackOf(xml)).toEqual(['tractor0', 'skydock_jump_sound', 'skydock_jump'])
   })
 
-  it('writes a project the editor can open from the template that ships', () => {
+  it('writes a project the editor can open from a real kdenlive project', () => {
     expect(() => parsed(build(undefined, ['a.mp4', 'b.mp4']).xml)).not.toThrow()
   })
 })
 
 /* entries anywhere on the timeline that play one of the tandem's clips */
 const laidOnTimeline = (xml: string) =>
-  [parsed(xml).mlt.playlist]
-    .flat()
-    .filter((p: { '@_id': string }) => p['@_id'] !== 'main_bin')
-    .flatMap((p: { entry?: unknown }) => [p.entry ?? []].flat())
-    .filter((e: { '@_producer': string }) => e['@_producer'].startsWith('chain_skydock'))
+  many(parsed(xml).mlt.playlist)
+    .filter((p) => p['@_id'] !== 'main_bin')
+    .flatMap((p) => many(p.entry))
+    .filter((e) => e['@_producer']?.startsWith('chain_skydock'))
 
 const binOf = (xml: string) =>
-  [
-    [parsed(xml).mlt.playlist].flat().find((p: { '@_id': string }) => p['@_id'] === 'main_bin')
-      .entry
-  ]
-    .flat()
-    .map((e: { '@_producer': string }) => e['@_producer'])
+  many(many(parsed(xml).mlt.playlist).find((p) => p['@_id'] === 'main_bin')?.entry).map(
+    (e) => e['@_producer'] ?? ''
+  )
 
 describe('montage — the clips wait in the bin', () => {
   it('puts every clip in the bin, in the order shot', () => {
@@ -384,7 +397,7 @@ describe('montage — paths the editor can open', () => {
 
 describe('montage — the template survives the round trip', () => {
   it('keeps the title clips whole', () => {
-    const before = fs.readFileSync(REPO_TEMPLATE, 'utf-8')
+    const before = fs.readFileSync(REAL_TEMPLATE, 'utf-8')
     const { xml } = build(undefined, ['a.mp4'])
     const titlesIn = (s: string) => (s.match(/kdenlivetitle/g) ?? []).length
     expect(titlesIn(xml)).toBe(titlesIn(before))
@@ -582,11 +595,9 @@ describe('montage — clips that have a proxy', () => {
 
   /* the properties of one generated chain, read the way the editor reads them */
   const chainProps = (xml: string, id: string) => {
-    const doc = parsed(xml)
-    const chains = [doc.mlt.chain].flat().filter(Boolean)
-    const chain = chains.find((c: Record<string, string>) => c['@_id'] === id)
+    const chain = many(parsed(xml).mlt.chain).find((c) => c['@_id'] === id)
     const props: Record<string, string> = {}
-    for (const p of [chain.property].flat()) props[p['@_name']] = String(p['#text'] ?? p)
+    for (const p of many(chain?.property)) props[p['@_name']] = String(p['#text'] ?? '')
     return props
   }
 
@@ -663,9 +674,7 @@ describe('montage — the jump marked on the clip', () => {
      of editing — leaves it behind pointing at nothing. The moments are the clip's, and go with it. */
   it('puts nothing along the timeline, which a clip moving would leave behind', () => {
     const { xml } = marked({ seconds: 455, moments: JUMP })
-    const guides = [sequenceOf(xml).property]
-      .flat()
-      .find((p: { '@_name': string }) => p['@_name'] === 'kdenlive:sequenceproperties.guides')
+    const guides = named(sequenceOf(xml), 'kdenlive:sequenceproperties.guides')
     expect(guides).toBeUndefined()
   })
 

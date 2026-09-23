@@ -38,7 +38,7 @@
     "@vitest/browser-playwright": "^5.0.0",
     "babel-plugin-react-compiler": "^1.0.0",
     "tailwindcss": "^4.2.2",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "vite": "^8.2.2",
     "vitest-browser-react": "^2.3.0"
   }

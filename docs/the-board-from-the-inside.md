@@ -72,8 +72,8 @@ flowchart LR
 
 ## Every way in, in detail
 
-The arrows above are the ones worth remembering. These are all of them — **29**,
-of which **20** write the board's own record — grouped by the rule each one serves, in its own
+The arrows above are the ones worth remembering. These are all of them — **30**,
+of which **21** write the board's own record — grouped by the rule each one serves, in its own
 words. Worth reading when you are in one of them, not before.
 
 ### Cropping and turning
@@ -205,6 +205,25 @@ The rule itself is in [RULES.md](../RULES.md), under _Network storage_.
 - Not connected to NAS. Please connect first.
 - _whatever went wrong underneath, in its own words_
 - _a message naming the file or the jump_
+
+</details>
+
+### Places
+
+The rule itself is in [RULES.md](../RULES.md), under _Places_.
+
+| asked for | what it does | what it reaches |
+| --- | --- | --- |
+| `remove-destination` | A place taken off the board: what was filed there is back in Fresh files, keeping its jumps and everything decided about them (RULES, Places). | writes the record, works outside the record |
+
+<details><summary><code>remove-destination</code> refuses</summary>
+
+- Removing a place needs to know which one.
+- Tandems is not a place that can be removed.
+- That place is no longer on the board.
+- Something is being processed — wait for it to finish.
+- A tandem there has an edit — change it in kdenlive first.
+- Something there is on the storage — uploaded is the end of editing.
 
 </details>
 
@@ -420,7 +439,7 @@ is hard to hold in your head: the same sentence, said by everything that has to 
 `save-groups` · `merge-groups` · `shift-group-time` · `retime-file` · `move-files` · `copy-files` · `delete-jump`
 
 **Something is being processed — wait for it to finish.**
-`delete-jump` · `reset-fresh` · `trash-unsorted` · `free-tandem` · `free-dropzone`
+`delete-jump` · `remove-destination` · `reset-fresh` · `trash-unsorted` · `free-tandem` · `free-dropzone`
 
 **Group not found.**
 `montage` · `upload-tandem` · `shift-group-time`

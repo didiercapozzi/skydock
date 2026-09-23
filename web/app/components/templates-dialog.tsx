@@ -25,38 +25,55 @@ const short = (version: string | null) => /\d+\.\d+(\.\d+)?/.exec(version ?? '')
 const TemplateRow = ({
   template,
   picked,
-  onPick
+  onPick,
+  onUsual
 }: {
   template: TemplateFact
   /* absent when the templates are only being looked at, not chosen between */
   picked?: boolean
   onPick?: () => void
+  /* absent while a template is being brought in, when nothing is settled */
+  onUsual?: () => void
 }) => {
   const made = short(template.version)
   return (
-    <label
+    <div
       className={`flex flex-col gap-1 rounded-lg border px-3 py-2 ${
         picked ? 'border-accent bg-accent-soft' : 'border-line bg-ground'
-      } ${onPick ? 'cursor-pointer' : ''}`}>
+      }`}>
+      {/* the row picks the template; saying which one is the usual is its own thing to press, so it
+          sits beside the label rather than inside it, where pressing it would pick as well */}
       <span className='flex flex-wrap items-center gap-2'>
-        {onPick && (
-          <input
-            type='radio'
-            name='template'
-            checked={Boolean(picked)}
-            onChange={onPick}
-            className='flex-none'
-          />
-        )}
-        <b className='text-[13px] font-semibold text-ink'>{template.name}</b>
-        <span className='text-[12px] text-ink-3'>
-          {made ? `kdenlive ${made}` : 'kdenlive version not said'} ·{' '}
-          {plural(template.assets, 'file')}
-        </span>
-        {template.missing.length === 0 && template.assets > 0 && (
-          <span className='rounded-full bg-up-soft px-2 py-px text-[11px] font-semibold text-up'>
-            every file here
+        <label className={`flex flex-wrap items-center gap-2 ${onPick ? 'cursor-pointer' : ''}`}>
+          {onPick && (
+            <input
+              type='radio'
+              name='template'
+              checked={Boolean(picked)}
+              onChange={onPick}
+              className='flex-none'
+            />
+          )}
+          <b className='text-[13px] font-semibold text-ink'>{template.name}</b>
+          <span className='text-[12px] text-ink-3'>
+            {made ? `kdenlive ${made}` : 'kdenlive version not said'} ·{' '}
+            {plural(template.assets, 'file')}
           </span>
+          {template.missing.length === 0 && template.assets > 0 && (
+            <span className='rounded-full bg-up-soft px-2 py-px text-[11px] font-semibold text-up'>
+              every file here
+            </span>
+          )}
+        </label>
+        {template.byDefault && (
+          <span className='rounded-full bg-accent-soft px-2 py-px text-[11px] font-semibold text-accent'>
+            the usual one
+          </span>
+        )}
+        {onUsual && (
+          <Mini onClick={onUsual}>
+            {template.byDefault ? 'Stop using by default' : 'Use by default'}
+          </Mini>
         )}
       </span>
       {template.missing.length > 0 && (
@@ -67,13 +84,14 @@ const TemplateRow = ({
           where each belongs.
         </span>
       )}
-    </label>
+    </div>
   )
 }
 
 /* The editing templates: looked over, added to, and — when a tandem is waiting for its montage —
-   chosen between. A template is somebody's branding, so with several there is never a default
-   applied by itself; the one picked last time is only the one already ticked. */
+   chosen between. A template is somebody's branding, so nothing is applied by itself unless
+   somebody said which one is the usual; otherwise the one picked last time is only the one already
+   ticked. */
 const TemplatesDialog = ({
   who,
   onClose,
@@ -90,6 +108,7 @@ const TemplatesDialog = ({
   const [pickedHere, setPickedHere] = useState<string | null>(null)
   const remembered = useTemplateChoice()
   const fileInput = useRef<HTMLInputElement>(null)
+  const folderInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -109,34 +128,48 @@ const TemplatesDialog = ({
     }
   }, [])
 
-  /* picking a file is what brings it in; the form only holds the name it is to have */
-  const submit: SubmitFunction = async () => {
-    fileInput.current?.click()
-  }
-  const form = useForm({ schema: nameSchema, defaultValues: { name: '' }, submit })
-
-  const bringIn = async (file: File) => {
-    setProblem(null)
-    setBringing(file.name)
-    const params = new URLSearchParams({ filename: file.name })
-    const name = nameSchema.safeParse(form.values)
-    if (name.success && name.data.name) params.set('name', name.data.name)
+  const sendOff = async (body: FormData, done?: () => void) => {
     try {
-      const res = await fetch(
-        `${routingEngine.href({ url: '/api/templates' })}?${params.toString()}`,
-        { method: 'POST', body: file }
+      const parsed = importAnswerSchema.safeParse(
+        await routingEngine.upload({ url: '/api/templates', body })
       )
-      const parsed = importAnswerSchema.safeParse(await res.json())
-      if (!parsed.success) setProblem('The template could not be brought in.')
+      if (!parsed.success) setProblem('The templates could not be read.')
       else if (!parsed.data.ok) setProblem(parsed.data.error)
       else {
         setAnswer({ templates: parsed.data.templates })
-        form.setFieldValue(form.fields.name, '')
+        done?.()
       }
     } catch {
       setProblem('The copy was cut off — try again.')
     }
+  }
+
+  /* picking is what brings it in; the form only holds the name it is to have */
+  const submit: SubmitFunction = async () => {
+    folderInput.current?.click()
+  }
+  const form = useForm({ schema: nameSchema, defaultValues: { name: '' }, submit })
+
+  /* Everything that makes one template, handed over together: the project and the files it uses.
+     They are its own from then on — the project is rewritten to say where each of them is. */
+  const bringIn = async (files: File[]) => {
+    setProblem(null)
+    setBringing(files.map((f) => f.name).join(', '))
+    const body = new FormData()
+    const name = nameSchema.safeParse(form.values)
+    if (name.success && name.data.name) body.set('name', name.data.name)
+    /* the way down from the folder, when one was chosen, so what is laid out here keeps the shape
+       its owner gave it — `images/logo.png` stays `images/logo.png` */
+    for (const file of files) body.append('files', file, file.webkitRelativePath || file.name)
+    await sendOff(body, () => form.setFieldValue(form.fields.name, ''))
     setBringing(null)
+  }
+
+  /* Which one is the usual, or none when the one that was is said again. */
+  const makeItTheUsual = async (template: TemplateFact) => {
+    const body = new FormData()
+    body.set('byDefault', template.byDefault ? '' : template.name)
+    await sendOff(body)
   }
 
   const templates = answer?.templates ?? []
@@ -193,6 +226,7 @@ const TemplatesDialog = ({
             template={template}
             picked={onChoose ? template.name === picked : undefined}
             onPick={onChoose ? () => setPickedHere(template.name) : undefined}
+            onUsual={bringing ? undefined : () => void makeItTheUsual(template)}
           />
         ))}
       </div>
@@ -209,8 +243,12 @@ const TemplatesDialog = ({
           Bring a template in
         </h4>
         <p className='m-0 text-[12px] text-ink-2'>
-          A kdenlive archive — Project › Archive project, as .zip or .tar.gz — holds the project
-          with the music, logos and titles it uses. Every file it names is looked for once it is in.
+          <b>The folder kdenlive left</b> — Project › Archive project, which writes the project with
+          its <i>images</i> and <i>sounds</i> beside it — chosen whole. Or the one archive, if it
+          was packed as .zip or .tar.gz. Or the project and its files picked one by one. Each file
+          the project names is pointed at the copy brought in with it, so a template made on another
+          machine finds its own files here. Bringing one in under a name already there replaces it,
+          files and all.
         </p>
         <Form
           value={form}
@@ -218,7 +256,7 @@ const TemplatesDialog = ({
           <FormField
             field={form.fields.name}
             label='Name'
-            description='Leave it empty to name it after the archive'
+            description='Leave it empty to name it after the project'
             className='min-w-[220px] flex-1'>
             {(control) => (
               <input
@@ -231,19 +269,41 @@ const TemplatesDialog = ({
           <Go
             type='submit'
             disabled={bringing !== null}>
-            {bringing ? `Bringing in ${bringing}…` : 'Choose an archive…'}
+            {bringing ? `Bringing in ${bringing}…` : 'Choose the folder…'}
           </Go>
+          <Mini
+            disabled={bringing !== null}
+            onClick={() => fileInput.current?.click()}>
+            Choose files instead…
+          </Mini>
         </Form>
+        {/* Two ways in, because a browser will offer a folder or files but never both at once. What
+            comes off a folder carries each file's way down from it, which is how the project names
+            them and how they are laid out again here. */}
+        <input
+          ref={folderInput}
+          type='file'
+          multiple
+          // @ts-expect-error — the attribute that lets a folder be chosen, which React has no type for
+          webkitdirectory=''
+          aria-label='The folder kdenlive left'
+          className='hidden'
+          onChange={(e) => {
+            const chosen = [...(e.target.files ?? [])]
+            e.target.value = ''
+            if (chosen.length > 0) void bringIn(chosen)
+          }}
+        />
         <input
           ref={fileInput}
           type='file'
-          aria-label='Template archive'
-          accept='.zip,.tar.gz,.tgz,.tar,.kdenlive'
+          multiple
+          aria-label='The template and its files'
           className='hidden'
           onChange={(e) => {
-            const file = e.target.files?.[0]
+            const chosen = [...(e.target.files ?? [])]
             e.target.value = ''
-            if (file) void bringIn(file)
+            if (chosen.length > 0) void bringIn(chosen)
           }}
         />
       </section>

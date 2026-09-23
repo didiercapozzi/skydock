@@ -5,43 +5,76 @@ import * as path from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import type { ReadableStream as NodeWebStream } from 'node:stream/web'
+import { z } from 'zod'
 import { getOutputDir } from '@skydock/scripts'
-import { importTemplate, listTemplates } from '../../../packages/skydock-scripts/src/templates'
+import {
+  importTemplate,
+  listTemplates,
+  setDefaultTemplate
+} from '../../../packages/skydock-scripts/src/templates'
+import type { Arriving } from '../../../packages/skydock-scripts/src/templates'
 import type { Route } from './+types/api.templates'
 
 /* The editing templates this machine has — which kdenlive wrote each, whether every file it names
-   is here, and which kdenlive will open them — for choosing one and for being warned (RULES,
-   Montage). Read fresh each time: a template is a folder anyone may have changed by hand. */
+   is here, which one is the usual — for choosing one and for being warned (RULES, Montage). Read
+   fresh each time: a template is a folder anyone may have changed by hand. */
 const loader = () => Response.json(listTemplates(getOutputDir()))
 
-/* A template brought in from the computer: the archive's bytes are the body, its name and the name
-   the template is to have are in the address. It is written to a file of its own first, since an
-   archive is unpacked from the disk and not from a request, and that file is gone whatever happens. */
-const action = async ({ request }: Route.ActionArgs) => {
-  const url = new URL(request.url)
-  const filename = url.searchParams.get('filename')
-  if (!filename || !request.body)
-    return Response.json({ ok: false, error: 'Nothing to bring in.' }, { status: 400 })
-  const arrived = path.join(os.tmpdir(), `skydock-template-${crypto.randomUUID()}`)
-  try {
+/* A template arrives as its project and the files it uses, together in one go: each is written to a
+   file of its own first, since a template is laid out from the disk and not from a request, and
+   those files are gone whatever happens. Which one is the usual arrives the same way, being a thing
+   said about the templates rather than a file. */
+const formSchema = z.object({
+  name: z.string().trim().max(60).optional(),
+  byDefault: z.string().optional()
+})
+
+const held = async (files: File[]) => {
+  const arrived: Arriving[] = []
+  for (const file of files) {
+    const at = path.join(os.tmpdir(), `skydock-template-${crypto.randomUUID()}`)
     await pipeline(
-      Readable.fromWeb(request.body as NodeWebStream<Uint8Array>),
-      fs.createWriteStream(arrived)
+      Readable.fromWeb(file.stream() as NodeWebStream<Uint8Array>),
+      fs.createWriteStream(at)
     )
-    const template = await importTemplate({
-      outputDir: getOutputDir(),
-      archive: arrived,
-      filename,
-      name: url.searchParams.get('name') ?? undefined
+    arrived.push({ filename: file.name, at })
+  }
+  return arrived
+}
+
+const action = async ({ request }: Route.ActionArgs) => {
+  const outputDir = getOutputDir()
+  let arrived: Arriving[] = []
+  try {
+    const form = await request.formData()
+    const said = formSchema.safeParse({
+      name: form.get('name') ?? undefined,
+      byDefault: form.get('byDefault') ?? undefined
     })
-    return Response.json({ ok: true, template, ...listTemplates(getOutputDir()) })
+    if (!said.success)
+      return Response.json({ ok: false, error: 'Nothing to bring in.' }, { status: 400 })
+
+    /* saying which one is the usual is said on its own, with nothing brought in */
+    if (said.data.byDefault !== undefined)
+      return Response.json({
+        ok: true,
+        ...setDefaultTemplate(outputDir, said.data.byDefault || null)
+      })
+
+    const files = form.getAll('files').filter((entry): entry is File => entry instanceof File)
+    if (files.length === 0)
+      return Response.json({ ok: false, error: 'Nothing to bring in.' }, { status: 400 })
+
+    arrived = await held(files)
+    const template = await importTemplate({ outputDir, files: arrived, name: said.data.name })
+    return Response.json({ ok: true, template, ...listTemplates(outputDir) })
   } catch (e) {
     return Response.json(
       { ok: false, error: e instanceof Error ? e.message : String(e) },
       { status: 422 }
     )
   } finally {
-    fs.rmSync(arrived, { force: true })
+    for (const file of arrived) fs.rmSync(file.at, { force: true })
   }
 }
 

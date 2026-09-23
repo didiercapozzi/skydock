@@ -7,6 +7,8 @@ const templateFactSchema = z.object({
   /* the kdenlive that wrote the project, as the project says it; null when it does not */
   version: z.string().nullable(),
   assets: z.number(),
+  /* the one a montage is made from without anybody being asked */
+  byDefault: z.boolean(),
   /* files the project names that are not here */
   missing: z.array(z.string())
 })

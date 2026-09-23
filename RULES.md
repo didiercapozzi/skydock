@@ -881,22 +881,38 @@ copies when clicked. A project that would not open is refused with the reason.
 uses, referenced where they are. Bringing those files along is the template owner's part: a project
 that names them by paths relative to itself finds them wherever the folder goes. A template that travelled from another machine still finds its files.
 A template missing some of its files still gives a project, and the montage names what is missing
-straight away. Until one is brought in, the template that ships with SkyDock is the one there is.
+straight away. **SkyDock ships with none**: a template is somebody's branding and somebody's music,
+and neither is ours to hand out. Until one is brought in there is nothing to make a montage from, and
+pressing Montage says so and names where to put one.
 
 **Choosing one.** A template is somebody's branding, so which one a montage is made from is never
-decided for the person. With a single template that is whole, pressing Montage simply uses it. With
-several, the templates are shown to be chosen between, and nothing is made until one is; the one picked
-last time is already ticked, and still has to be confirmed. A template with a file missing is shown
+decided for the person — but it can be settled once. Any template can be marked **the usual one**,
+and from then on a montage is made from it without anybody being asked, however many there are; the
+mark is taken off the same way, and a montage made from the command line follows it too. Until one is
+marked: with a single template that is whole, pressing Montage simply uses it; with several, the
+templates are shown to be chosen between, and nothing is made until one is, with the one picked last
+time already ticked and still to be confirmed. A template with a file missing is shown
 first even when it is the only one. Each template says which kdenlive wrote it, which is shown beside
 its name and left at that: nothing is graded against the editor's own version.
 
-**Bringing one in.** The header's Templates lists them and takes a new one from the computer: a kdenlive
-archive — the editor's own Archive project, as .zip or .tar.gz, holding the project with everything it
-uses — or a project file on its own. It is unpacked aside and only given its place once a project is
-found in it, so a bad archive leaves nothing behind; an archive whose entries would land outside its
-folder is refused. Every file the project names is then looked for, and the ones not found are named:
-the template is kept either way, since an edit can start without the music. It is named after the
-archive unless given a name, and a template already there under that name is never replaced.
+**Bringing one in.** The header's Templates lists them and takes a new one from the computer, in
+whichever shape the editor left it: **the whole folder**, which is what Archive project writes when
+it copies — the project with its sounds and images in folders beside it — or the one archive, when it
+was packed as .zip or .tar.gz, or the project and its files picked one by one. A folder is taken as
+it stands, each file keeping its place inside it, and the folder itself is what the template is named
+after. Either way it is laid out aside and only given its place once a project is found in it, so
+nothing half-arrived is ever left behind; anything naming its way out of the folder is refused.
+
+**Its files are then its own.** A template is made on somebody's machine and names its music and its
+logos where they sat on that machine, so on the way in every file the project names is looked for
+among the files that came with it and written back as the way from the project to that file. The
+template then says where its files are in its own terms, and goes on saying it wherever the folder is
+copied afterwards. What nobody brought in is left exactly as the project wrote it and named as
+missing: the template is kept either way, since an edit can start without the music.
+
+It is named after the project unless given a name. **Brought in again under a name already there it
+replaces what was there, files and all** — an import is a whole template, and half of an old one
+mixed with half of a new one is nobody's.
 
 **The montage is made once.** Asking again for a tandem that has a project is refused.
 

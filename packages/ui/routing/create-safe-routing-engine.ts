@@ -239,6 +239,40 @@ const createSafeRoutingEngine = <const TRegister extends BaseRegister>(
     return readResponse<ActionResultOf<TRegister, TPage>>(response)
   }
 
+  /*
+   * What `action` cannot carry: files. It sends JSON, and bytes in JSON are a third bigger and held
+   * whole at both ends. This hands the request a form as it is — the browser sets the boundary, so
+   * no content type is named here — and reads the same answer back, typed the same way.
+   */
+  const upload = async <const TPage extends PageOf<TRegister>>(
+    args: SafeHrefArgs<TRegister, TPage> & {
+      body: FormData
+      headers?: HeadersInit
+      method?: 'POST' | 'PUT' | 'PATCH'
+    }
+  ) => {
+    const response = await fetch(resolveUrl(href(args)), {
+      method: args.method ?? 'POST',
+      headers: {
+        ...defaults.headers,
+        ...args.headers
+      },
+      body: args.body
+    })
+
+    /*
+     * A refused upload answers 422 with what was wrong with it, the way every other action here
+     * refuses, and that is the whole of what the caller wants to show. So the answer is read
+     * whether or not it was a yes, and only something that is no answer at all is thrown.
+     */
+    const answered = await response.text()
+    try {
+      return parseIsoDatesDeep(JSON.parse(answered)) as ActionResultOf<TRegister, TPage>
+    } catch {
+      throw new Error(answered || response.statusText)
+    }
+  }
+
   const parseSearchParams = <Schema extends z.ZodObject<z.ZodRawShape>>(
     schema: Schema,
     options:
@@ -294,7 +328,8 @@ const createSafeRoutingEngine = <const TRegister extends BaseRegister>(
     href,
     loader,
     parseFormData,
-    parseSearchParams
+    parseSearchParams,
+    upload
   }
 }
 

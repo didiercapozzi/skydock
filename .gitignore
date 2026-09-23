@@ -18,7 +18,15 @@ config/
 # React Router, the window built for Electron, what the app carries, and the installers
 /.react-router/
 /build/
+
+# a template is somebody's branding and somebody's music: a folder put here is carried into an
+# installer built on this machine, and is never committed
+/templates/
 web/build/
+
+# a template is somebody's branding and somebody's music: a folder put here is carried into an
+# installer built on this machine, and is never committed
+/templates/
 
 
 opencode.jsonc

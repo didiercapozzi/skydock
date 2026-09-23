@@ -1,0 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mlt root="/home/someone/club">
+ <chain id="c0"><property name="resource">sounds/Destiny.mp3</property></chain>
+</mlt>

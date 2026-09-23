@@ -56,17 +56,18 @@ const template = (name: string, over: Record<string, unknown> = {}) => ({
   version: '24.12.1',
   assets: 5,
   missing: [],
+  byDefault: false,
   ...over
 })
 
 const requests: unknown[] = []
 
 /* the machine behind the board: it lists the templates, and answers an archive sent to it */
-const machineHas = (templates: unknown[], onImport?: () => unknown) =>
+const machineHas = (templates: unknown[], onImport?: (body: FormData) => unknown) =>
   vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) => {
     const said =
       init?.method === 'POST' && onImport
-        ? onImport()
+        ? onImport(init.body as FormData)
         : { templates }
     return new Response(JSON.stringify(said), { headers: { 'Content-Type': 'application/json' } })
   })
@@ -173,7 +174,7 @@ describe('the editing templates, from the header', () => {
     await userEvent.click(page.getByRole('button', { name: 'Templates…' }))
 
     await userEvent.upload(
-      dialog().getByLabelText('Template archive'),
+      dialog().getByLabelText('The template and its files'),
       new File(['zip'], 'summer.zip', { type: 'application/zip' })
     )
 
@@ -189,12 +190,71 @@ describe('the editing templates, from the header', () => {
     await userEvent.click(page.getByRole('button', { name: 'Templates…' }))
 
     await userEvent.upload(
-      dialog().getByLabelText('Template archive'),
+      dialog().getByLabelText('The template and its files'),
       new File(['zip'], 'music.zip', { type: 'application/zip' })
     )
 
     await expect
       .element(dialog().getByRole('alert'))
       .toHaveTextContent('There is no kdenlive project in that archive.')
+  })
+
+  test('take in the project and the files it uses, chosen together', async () => {
+    const sent: File[][] = []
+    machineHas([template('epco')], (body) => {
+      sent.push(body.getAll('files').filter((f): f is File => f instanceof File))
+      return { ok: true, templates: [template('epco'), template('club')] }
+    })
+    await renderBoard()
+    await userEvent.click(page.getByRole('button', { name: 'Templates…' }))
+
+    await userEvent.upload(dialog().getByLabelText('The template and its files'), [
+      new File(['<mlt/>'], 'club.kdenlive'),
+      new File(['m'], 'music.mp3'),
+      new File(['l'], 'logo.png')
+    ])
+
+    await expect.element(dialog().getByText('club', { exact: true })).toBeInTheDocument()
+    expect(sent[0]?.map((f) => f.name)).toEqual(['club.kdenlive', 'music.mp3', 'logo.png'])
+  })
+
+  test('are told which one is the usual, and say which it is', async () => {
+    const sent: string[] = []
+    machineHas([template('epco'), template('summer')], (body) => {
+      sent.push(String(body.get('byDefault')))
+      return { ok: true, templates: [template('epco'), template('summer', { byDefault: true })] }
+    })
+    await renderBoard()
+    await userEvent.click(page.getByRole('button', { name: 'Templates…' }))
+
+    await userEvent.click(dialog().getByRole('button', { name: 'Use by default' }).nth(1))
+
+    await expect.element(dialog().getByText('the usual one')).toBeInTheDocument()
+    expect(sent).toEqual(['summer'])
+  })
+
+  /* what kdenlive's Archive project leaves: the project with its files in folders beside it */
+  test('take in the folder kdenlive left, each file under its way down from it', async () => {
+    const sent: string[] = []
+    machineHas([template('epco')], (body) => {
+      for (const [, value] of body.entries()) if (value instanceof File) sent.push(value.name)
+      return { ok: true, templates: [template('epco'), template('club')] }
+    })
+    await renderBoard()
+    await userEvent.click(page.getByRole('button', { name: 'Templates…' }))
+
+    /* a real folder on disk, the shape kdenlive leaves — which is the only way a browser will
+       hand one over, and the only way the ways down from it are real */
+    await userEvent.upload(
+      dialog().getByLabelText('The folder kdenlive left'),
+      'tests/e2e/fixtures/kdenlive-archive'
+    )
+
+    await expect.element(dialog().getByText('club', { exact: true })).toBeInTheDocument()
+    expect(sent.sort()).toEqual([
+      'kdenlive-archive/club.kdenlive',
+      'kdenlive-archive/images/logo.png',
+      'kdenlive-archive/sounds/Destiny.mp3'
+    ])
   })
 })
