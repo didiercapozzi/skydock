@@ -10,12 +10,14 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
 })
 
 import Board from '../../app/routes/board'
-import { setBackupChoice } from '../../app/hooks/useBackupChoice'
+import { DEFAULT_PLAN, stemOf } from '@skydock/scripts'
+import { setSendPlan } from '../../app/hooks/useSendPlan'
 import { boardRoute } from './board-route'
 
-/* Uploading a tandem is the one step that hands things to someone, so it shows what it is about to do
-   before it does it: two parcels, both folders, and how the originals are kept. Nothing is sent
-   until the dialog's own button is pressed. */
+/* Uploading a montage is the one step that hands things to someone, so it shows what it is about to
+   do before it does it, in two steps: what is zipped, with what that makes named as it will be, and
+   then which destinations each item goes to. Nothing is sent until the dialog's own button is
+   pressed. */
 
 const GB = 1024 ** 3
 
@@ -45,14 +47,18 @@ const board = {
       id: 'g1',
       label: 'jump',
       day: '01.08.2026',
-      destination: 'Tandems',
+      montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       processed: true,
       files
     }
   ],
   looseFiles: [],
-  destinations: [{ name: 'Tandems', path: '/SkyDock/Tandems' }],
+  destinations: [
+    { name: 'Tandems', path: '/SkyDock/Tandems' },
+    { name: 'Backup', path: '/Backup' },
+    { name: 'Yverdon', path: '/SkyDock/Yverdon' }
+  ],
   outputs: Object.fromEntries(files.map((f) => [f.path, { exists: true, size: f.size }])),
   proxies: {},
   tandems: {
@@ -100,65 +106,82 @@ const renderBoard = async (data: typeof board | Record<string, unknown> = board,
   return screen
 }
 
-describe('uploading a tandem — the dialog first', () => {
-  test('lays out both parcels and both folders before anything is sent', async () => {
+const STEM = stemOf({ id: 'g1', label: 'jump', day: '01.08.2026', montageJump: true, passenger: { firstname: 'Luc', lastname: 'Favre' }, files })
+
+const dialog = () => page.getByRole('dialog', { name: 'Upload' })
+const preview = () => dialog().getByLabelText('What will be sent')
+const place = (name: string) => dialog().getByRole('region', { name })
+
+describe('uploading a montage — what is zipped', () => {
+  test('shows what will be sent before anything is, each item named as it will be', async () => {
+    setSendPlan(DEFAULT_PLAN)
     requests.length = 0
     await renderBoard()
-    const dialog = page.getByRole('dialog', { name: 'Upload' })
-    await expect.element(dialog).toBeInTheDocument()
-    await expect.element(dialog.getByText('luc_favre_20260801.rushes.zip')).toBeInTheDocument()
-    await expect.element(dialog.getByText('luc_favre_20260801.mp4')).toBeInTheDocument()
-    await expect.element(dialog.getByText('luc_favre_20260801.photos.zip')).toBeInTheDocument()
-    await expect.element(dialog.getByRole('button', { name: '/Backup' })).toBeInTheDocument()
-    await expect
-      .element(dialog.getByRole('button', { name: '/SkyDock/Tandems/Luc Favre' }))
-      .toBeInTheDocument()
-    await expect.element(dialog.getByText('16.0 GB to the backup · 3.0 GB to Luc Favre')).toBeInTheDocument()
+
+    await expect.element(preview().getByText(`${STEM}.backup.videos.zip`)).toBeInTheDocument()
+    await expect.element(preview().getByText(`${STEM}.mp4`)).toBeInTheDocument()
+    await expect.element(preview().getByText('photos/', { exact: true })).toBeInTheDocument()
     await page.screenshot({ path: './playwright-screenshots/upload-dialog.png' })
     expect(requests).toEqual([])
   })
 
-  test('adds the film to the backup, and says so, when it is ticked', async () => {
+  test('names the zip for what it holds, and makes a zip each when asked', async () => {
+    setSendPlan(DEFAULT_PLAN)
     await renderBoard()
-    const dialog = page.getByRole('dialog', { name: 'Upload' })
-    const film = dialog.getByRole('checkbox', { name: /a copy of the film/ })
-    await userEvent.click(film)
-    await expect.element(dialog.getByText('2 original videos + the film + the project')).toBeInTheDocument()
-    await expect.element(dialog.getByText('19.0 GB to the backup · 3.0 GB to Luc Favre')).toBeInTheDocument()
-    await userEvent.click(film)
+
+    await userEvent.click(dialog().getByRole('checkbox', { name: /Photos/ }))
+    await expect.element(preview().getByText(`${STEM}.backup.full.zip`)).toBeInTheDocument()
+    await expect.element(preview().getByText('└ photos/ — 1 photo')).toBeInTheDocument()
+
+    await userEvent.click(dialog().getByRole('button', { name: 'into a zip each' }))
+    await expect.element(preview().getByText(`${STEM}.backup.videos.zip`)).toBeInTheDocument()
+    await expect.element(preview().getByText(`${STEM}.backup.photos.zip`)).toBeInTheDocument()
+  })
+})
+
+describe('uploading a montage — where it goes', () => {
+  test('puts an item in a destination, the same one in two, and takes it out again', async () => {
+    setSendPlan(DEFAULT_PLAN)
+    await renderBoard()
+    await userEvent.click(dialog().getByRole('button', { name: /Next: where it goes/ }))
+
+    await userEvent.selectOptions(dialog().getByLabelText(`Add ${STEM}.mp4 to`), 'Yverdon')
+    await expect.element(place('Yverdon').getByText(`${STEM}.mp4`)).toBeInTheDocument()
+    await expect.element(place('Tandems').getByText(`${STEM}.mp4`)).toBeInTheDocument()
+    await expect.element(place('Yverdon').getByText('🔗 share link')).toBeInTheDocument()
+
+    await userEvent.click(dialog().getByRole('button', { name: `Take ${STEM}.mp4 out of Yverdon` }))
+    await expect.element(place('Yverdon').getByText(`${STEM}.mp4`)).not.toBeInTheDocument()
   })
 
-  test('keeps the originals as plain files when asked, in a folder of their own', async () => {
+  test('takes an item dragged onto a destination', async () => {
+    setSendPlan(DEFAULT_PLAN)
     await renderBoard()
-    const dialog = page.getByRole('dialog', { name: 'Upload' })
-    await userEvent.click(dialog.getByRole('button', { name: 'Plain files' }))
-    await expect.element(dialog.getByText('luc_favre_20260801/')).toBeInTheDocument()
-    await expect.element(dialog.getByText('2 original videos + the project, as files')).toBeInTheDocument()
-    await userEvent.click(dialog.getByRole('button', { name: 'One zip' }))
+    await userEvent.click(dialog().getByRole('button', { name: /Next: where it goes/ }))
+
+    await userEvent.dragAndDrop(dialog().getByLabelText(`${STEM}.backup.videos.zip`), place('Yverdon'))
+
+    await expect.element(place('Yverdon').getByText(`${STEM}.backup.videos.zip`)).toBeInTheDocument()
   })
 
-  test('sends the upload, with the choice, only from its own button', async () => {
+  test('sends the upload, as it was arranged, only from its own button', async () => {
+    setSendPlan(DEFAULT_PLAN)
     requests.length = 0
     await renderBoard()
-    const dialog = page.getByRole('dialog', { name: 'Upload' })
-    await userEvent.click(dialog.getByRole('button', { name: 'Upload', exact: true }))
+    await userEvent.click(dialog().getByRole('button', { name: /Next: where it goes/ }))
+    expect(requests).toEqual([])
+
+    await userEvent.click(dialog().getByRole('button', { name: 'Upload', exact: true }))
     await vi.waitFor(() =>
       expect(requests).toContainEqual({
         intent: 'upload-tandem',
         groupId: 'g1',
-        backup: { backupAs: 'zip', filmToBackup: false }
+        plan: {
+          zip: { parts: ['videos', 'project'], each: false },
+          placed: { zip: ['Backup'], film: ['Tandems'], photos: ['Tandems'] }
+        }
       })
     )
-  })
-
-  /* The edit exists nowhere else and weighs nothing beside the footage, so it goes every time and
-     is not a tick anybody can forget. */
-  test('keeps the editing project with the backup, without being asked', async () => {
-    await renderBoard()
-    const dialog = page.getByRole('dialog', { name: 'Upload' })
-
-    await expect.element(dialog.getByText('2 original videos + the project')).toBeInTheDocument()
-    expect(dialog.getByRole('checkbox', { name: /the kdenlive project/ }).query()).toBeNull()
   })
 })
 
@@ -280,7 +303,7 @@ describe('freeing an uploaded tandem', () => {
   })
 })
 
-/* Telling the passenger: the email is written and laid out already, shown as it will arrive, and
+/* Sending the link: the email is written and laid out already, shown as it will arrive, and
    copied into a new Gmail message that is already addressed and titled. */
 describe('emailing the passenger their link', () => {
   const LINK = 'https://nas.local/sharing/AbC123'
@@ -291,7 +314,7 @@ describe('emailing the passenger their link', () => {
 
   const openEmail = async () => {
     await userEvent.click(page.getByRole('button', { name: 'Email Luc…' }))
-    return page.getByRole('dialog', { name: 'Email the passenger' })
+    return page.getByRole('dialog', { name: 'Email the link' })
   }
 
   test('shows the email as it will arrive, with the link, already written in French', async () => {
@@ -390,7 +413,7 @@ describe('the tandems on the storage', () => {
       page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /On the storage/ })
     )
     await userEvent.click(page.getByRole('button', { name: 'Email…' }))
-    const dialog = page.getByRole('dialog', { name: 'Email the passenger' })
+    const dialog = page.getByRole('dialog', { name: 'Email the link' })
     const preview = dialog.getByTitle('Email preview').element() as HTMLIFrameElement
     expect(preview.srcdoc).toContain('Bonjour Ana,')
     await userEvent.fill(dialog.getByLabelText('To'), 'ana@example.com')
@@ -423,7 +446,7 @@ describe('where every passenger has got to', () => {
   test('shows the whole way in the panel, with what to do next at the step it is at', async () => {
     await renderBoard(board, false)
 
-    const trail = page.getByRole('list', { name: 'Where this tandem has got to' }).first()
+    const trail = page.getByRole('list', { name: 'Where this montage has got to' }).first()
     await expect.element(trail).toBeInTheDocument()
     await expect
       .poll(() => trail.element().querySelector('[aria-current="step"]')?.textContent)
@@ -454,7 +477,7 @@ describe('where every passenger has got to', () => {
 
     await expect.element(page.getByRole('button', { name: /^Luc Favre, / })).not.toBeInTheDocument()
     await expect
-      .element(page.getByRole('list', { name: 'Where this tandem has got to' }))
+      .element(page.getByRole('list', { name: 'Where this montage has got to' }))
       .toBeInTheDocument()
     /* the panel's own way of acting on it is there without selecting anything */
     await expect.element(page.getByRole('button', { name: /Select its 3 files/ })).toBeInTheDocument()
@@ -500,7 +523,7 @@ describe('a tandem with nothing left to do', () => {
     const Stub = createRoutesStub([boardRoute(() => freed(true))])
     await render(createElement(Stub, { initialEntries: ['/'] }))
 
-    await expect.element(menu().getByRole('heading', { name: /Tandems/ })).toBeInTheDocument()
+    await expect.element(menu().getByRole('heading', { name: /Montages/ })).toBeInTheDocument()
     await expect.element(menu().getByRole('link', { name: /Luc Favre/ })).not.toBeInTheDocument()
     /* still there, where every tandem on the storage is */
     await expect.poll(() => menu().element().textContent).toContain('On the storage')
@@ -523,7 +546,7 @@ describe('the tandems in the menu', () => {
     await renderBoard(board, false)
     const menu = page.getByRole('navigation', { name: 'Folders' })
 
-    await expect.element(menu.getByRole('heading', { name: /Tandems/ })).toBeInTheDocument()
+    await expect.element(menu.getByRole('heading', { name: /Montages/ })).toBeInTheDocument()
     await expect.element(menu.getByRole('button', { name: /In progress/ })).not.toBeInTheDocument()
     await expect.element(menu.getByRole('link', { name: /Luc Favre/ })).toBeInTheDocument()
   })
@@ -547,7 +570,7 @@ describe('a film the editor has just rendered', () => {
     )
     const waiting = { ...board, tandems: { g1: { ...board.tandems.g1, film: null } } }
     await renderBoard(waiting, false)
-    const trail = page.getByRole('list', { name: 'Where this tandem has got to' })
+    const trail = page.getByRole('list', { name: 'Where this montage has got to' })
     await expect
       .poll(() => trail.element().querySelector('[aria-current="step"]')?.textContent)
       .toContain('Rendered')
@@ -580,9 +603,9 @@ describe('deleting a tandem that is already edited and rendered', () => {
     requests.length = 0
     await renderBoard(board, false)
 
-    await userEvent.click(page.getByRole('button', { name: 'Delete tandem…' }))
+    await userEvent.click(page.getByRole('button', { name: 'Delete montage…' }))
 
-    const dialog = page.getByRole('dialog', { name: 'Delete tandem' })
+    const dialog = page.getByRole('dialog', { name: 'Delete montage' })
     await expect.element(dialog.getByText('Back to Fresh files, loose')).toBeInTheDocument()
     await expect.element(dialog.getByText(/the kdenlive project — the edit itself/)).toBeInTheDocument()
     await expect.element(dialog.getByText('3 files, loose, to be sorted again')).toBeInTheDocument()

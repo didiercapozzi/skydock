@@ -1,4 +1,5 @@
 import { GROUP_GAP_SECONDS } from './constants'
+import { isFiled } from './filed'
 import type { Manifest, ManifestFile, ManifestGroup } from './types'
 import { formatDay, sortFilesByMtime } from './utils'
 
@@ -137,7 +138,7 @@ const reclusterGroups = (manifest: Manifest) => {
    uploaded (RULES, Jumps). A run of new files within the gap of a jump still in Fresh files joins
    it, so a card copied off in two goes ends up one jump; a new file with no neighbours stays loose. */
 const groupNewFiles = (manifest: Manifest, added: ManifestFile[]) => {
-  const unfiled = manifest.groups.filter((g) => !g.destination)
+  const unfiled = manifest.groups.filter((g) => !isFiled(g))
   for (const batch of splitByGap(added)) {
     const first = batch[0]!.mtime
     const last = batch[batch.length - 1]!.mtime
@@ -171,9 +172,7 @@ const groupFromFiles = (manifest: Manifest, files: ManifestFile[], destination?:
 
 /* The files still to be sorted: in no place, and in no jump that is in one. */
 const freshIds = (manifest: Manifest) => {
-  const filed = new Set(
-    manifest.groups.filter((g) => g.destination).flatMap((g) => g.files.map((f) => f.id))
-  )
+  const filed = new Set(manifest.groups.filter(isFiled).flatMap((g) => g.files.map((f) => f.id)))
   return new Set(
     manifest.files.flatMap((f) => (f.id && !f.destination && !filed.has(f.id) ? [f.id] : []))
   )

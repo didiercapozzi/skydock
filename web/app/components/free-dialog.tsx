@@ -62,7 +62,7 @@ const FreeDialog = ({
           </Line>
         )}
         <Line mark='✓'>the originals are exactly what the backup holds</Line>
-        <Line mark='✓'>nothing about the tandem changed since it was uploaded</Line>
+        <Line mark='✓'>nothing about the montage changed since it was uploaded</Line>
       </ul>
 
       <p className='m-0 text-[12.5px] font-semibold text-ink'>Then deleted from this machine</p>

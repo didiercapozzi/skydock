@@ -168,7 +168,7 @@ describe('the jump whose card is open', () => {
     await renderBoard()
 
     const panel = page.getByRole('complementary')
-    await expect.element(panel.getByRole('button', { name: 'Jump 2', exact: true })).toBeInTheDocument()
+    await expect.element(panel.getByRole('heading', { name: /^Jump 2\b/ })).toBeInTheDocument()
     await expect.element(panel.getByRole('button', { name: /Select its 2 files/ })).toBeInTheDocument()
   })
 
@@ -178,7 +178,7 @@ describe('the jump whose card is open', () => {
     await userEvent.click(card(/^Jump 1, /))
 
     const panel = page.getByRole('complementary')
-    await expect.element(panel.getByRole('button', { name: 'Jump 1', exact: true })).toBeInTheDocument()
+    await expect.element(panel.getByRole('heading', { name: /^Jump 1\b/ })).toBeInTheDocument()
   })
 })
 

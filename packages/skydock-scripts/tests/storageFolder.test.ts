@@ -26,7 +26,7 @@ const luc: ManifestGroup = {
   id: 'g1',
   label: 'g1',
   day: '01.08.2026',
-  destination: 'Tandems',
+  montageJump: true,
   passenger: { firstname: 'Luc', lastname: 'Favre' },
   files: []
 }
@@ -54,12 +54,33 @@ describe('where a place’s folder is on the storage', () => {
     expect(storageDirOf(manifest(), { destination: 'Colombier' })).toBe('/Club/Col')
   })
 
-  it('is, for a tandem, the passenger’s folder under Tandems', () => {
-    expect(storageDirOf(manifest(), { groupId: 'g1' }, '/out')).toBe('/SkyDock/Tandems/Luc Favre')
+  /* a montage belongs to no place until its upload says where it went */
+  it('is nowhere, for a montage not uploaded yet', () => {
+    expect(storageDirOf(manifest(), { groupId: 'g1' }, '/out')).toBeNull()
   })
 
-  /* the Tandems folder may be changed after the upload; the tandem is still where it was sent */
-  it('is, for a tandem already uploaded, the folder it actually went to', () => {
+  it('is, for a montage uploaded, the folder its film went to', () => {
+    const uploaded = manifest([
+      {
+        ...luc,
+        uploaded: {
+          at: 1,
+          sent: [
+            { name: 'luc.backup.videos.zip', holds: ['videos'], to: ['/Backup/Luc Favre'] },
+            {
+              name: 'luc.mp4',
+              holds: ['film'],
+              to: ['/SkyDock/Tandems/Luc Favre', '/SkyDock/Yverdon/Luc Favre']
+            }
+          ]
+        }
+      }
+    ])
+    expect(storageDirOf(uploaded, { groupId: 'g1' }, '/out')).toBe('/SkyDock/Tandems/Luc Favre')
+  })
+
+  /* an older record knows only where its film and photos went */
+  it('is, for a tandem uploaded before, the folder it actually went to', () => {
     const sent = {
       remotePath: '/Old/Tandems/Luc Favre/luc.mp4',
       md5: 'x',

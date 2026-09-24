@@ -35,8 +35,8 @@ const TakeBackDialog = ({
 
   return (
     <Modal
-      label={reset ? 'Reset tandem' : 'Delete tandem'}
-      title={reset ? `Reset ${who} to before processing` : `Delete ${who}’s tandem`}
+      label={reset ? 'Reset montage' : 'Delete montage'}
+      title={reset ? `Reset ${who} to before processing` : `Delete ${who}’s montage`}
       onClose={onClose}
       footer={
         <>

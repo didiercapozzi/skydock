@@ -30,9 +30,20 @@ const manifest: Manifest = {
       id: 'g1',
       label: 'g1',
       day: '01.08.2026',
-      destination: 'Tandems',
+      montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
-      files: []
+      files: [],
+      /* a montage belongs to no place: its folder is the one its film went to */
+      uploaded: {
+        at: 1,
+        film: {
+          remotePath: '/SkyDock/Tandems/Luc Favre/luc_favre.mp4',
+          md5: 'x',
+          size: 5000,
+          localPath: '/l',
+          at: 1
+        }
+      }
     }
   ],
   destinations: [
@@ -191,7 +202,7 @@ describe('a file’s own link', () => {
 })
 
 describe('what a place’s folder on the storage holds', () => {
-  it('lists a tandem’s folder, each file with what it is, how big and from when', async () => {
+  it('lists a montage’s folder, each file with what it is, how big and from when', async () => {
     expect(await ask({ groupId: 'g1' })).toEqual({
       ok: true,
       dir: DIR,

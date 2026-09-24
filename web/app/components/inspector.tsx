@@ -1,10 +1,9 @@
-import { hasCompletePassenger, isVideoFile } from '@skydock/scripts'
+import { hasCompletePassenger, isMontage, isVideoFile, passengerName } from '@skydock/scripts'
 import type { FileStatus, ProxyFact, TandemFact } from '@skydock/scripts'
 import { useState } from 'react'
 import { Go, Mini } from './buttons'
 import { StatusChip } from './file-status'
 import type { ShownStatus } from './file-status'
-import { TANDEMS } from '../helpers/jumps'
 import { JumpForm } from './jump-name'
 import { JumpSpan, hhmmss } from './jump-time'
 import { MakeTandem, PassengerFrames, PassengerName } from './tandem-card'
@@ -73,6 +72,14 @@ const tally = (files: ManifestFile[], statusOf: (file: ManifestFile) => FileStat
   ] satisfies [string, number][]
 }
 
+/* What making a montage of something takes: the montages there are, for a name to join, the place
+   that keeps what it holds when it is copied in rather than moved, and what to do with the name. */
+type MontageOffer = {
+  passengers: Passenger[]
+  keeps?: string
+  onMake: (passenger: Passenger) => void
+}
+
 const bytes = (files: ManifestFile[]) => formatSize(files.reduce((n, f) => n + f.size, 0))
 
 /* Nothing selected: the folder itself — what it holds, how far along it is, and anything the folder
@@ -103,21 +110,28 @@ const FolderPanel = ({
   </>
 )
 
-/* Making a tandem is a choice before it is a form: the name fields wait behind one button, so a jump
-   that is only being looked at, or filed, is not a pair of empty boxes asking for a name. */
+/* Making a montage is a choice before it is a form: the name waits behind one button, so what is only
+   being looked at, or filed, is not an empty box asking for a name. What a place already holds is
+   copied into the montage, and `keeps` names that place. */
 const TandemMaker = ({
-  group,
+  initial,
+  keeps,
+  what,
   passengers,
   onSave
 }: {
-  group: ManifestGroup
+  initial?: string
+  keeps?: string
+  /* what the montage is made of, said on the button: "these", "this" */
+  what?: string
   passengers: Passenger[]
   onSave: (passenger: Passenger) => void
 }) => {
   const [making, setMaking] = useState(false)
   return making ? (
     <MakeTandem
-      group={group}
+      initial={initial}
+      keeps={keeps}
       passengers={passengers}
       framed={false}
       onSave={onSave}
@@ -126,7 +140,9 @@ const TandemMaker = ({
     />
   ) : (
     <span>
-      <Mini onClick={() => setMaking(true)}>Make a tandem…</Mini>
+      <Mini onClick={() => setMaking(true)}>
+        {keeps ? 'Copy into a montage…' : what ? `Make a montage of ${what}…` : 'Make a montage…'}
+      </Mini>
     </span>
   )
 }
@@ -142,6 +158,7 @@ const JumpPanel = ({
   locked,
   statusOf,
   passengers,
+  keeps,
   onMakeTandem,
   onName,
   onSelectFiles,
@@ -156,12 +173,14 @@ const JumpPanel = ({
   locked: string | null
   statusOf: (file: ManifestFile) => FileStatus
   passengers: Passenger[]
+  /* the dropzone the jump is filed at, which keeps it: a montage gets copies of it */
+  keeps?: string
   onMakeTandem: (passenger: Passenger) => void
   onName: (firstname: string, lastname: string) => void
   onSelectFiles: () => void
   /* when it started, set right — every file moves with it; absent when the jump is past changing */
   onShift?: (anchorEpoch: number) => void
-  /* what it is called — absent for a tandem, whose name is its passenger's */
+  /* what it is called — absent where naming it makes it a montage, and for a montage itself */
   onRename?: (name: string) => void
   /* the jump goes and its files stay, loose in Unsorted; absent when it cannot */
   onDelete?: () => void
@@ -170,7 +189,7 @@ const JumpPanel = ({
   const from = minFileMtime(group.files) ?? 0
   const to = group.files.reduce((n, f) => Math.max(n, f.mtime), 0)
   const videos = group.files.filter((f) => isVideoFile(f.path)).length
-  const tandem = group.destination === TANDEMS
+  const tandem = isMontage(group)
   const named = hasCompletePassenger(group.passenger)
   const sub = `${plural(videos, 'video')} · ${plural(group.files.length - videos, 'photo')} · ${bytes(group.files)}`
   return (
@@ -234,7 +253,7 @@ const JumpPanel = ({
       {!group.freed && (
         <PassengerFrames
           group={group}
-          alt={tandem && !named ? 'A frame from this tandem, to tell who it is' : label}
+          alt={tandem && !named ? 'A frame from this montage, to tell who it is' : label}
         />
       )}
       {tandem && (
@@ -246,17 +265,15 @@ const JumpPanel = ({
       )}
       {locked && <Lock>{locked}</Lock>}
       {tandem ? (
-        <Box heading='Passenger'>
+        <Box heading='Montage'>
           {locked ? (
-            <p className='m-0 text-[13px] font-semibold'>
-              {group.passenger?.firstname} {group.passenger?.lastname}
-            </p>
+            <p className='m-0 text-[13px] font-semibold'>{passengerName(group.passenger)}</p>
           ) : (
             <>
               <p className='m-0 text-[12px] text-ink-2'>
                 {named
-                  ? 'The name is the folder the passenger gets.'
-                  : 'Type the name off the form — it becomes the passenger’s folder.'}
+                  ? 'The name is the folder, the file names and the film.'
+                  : 'Give it a name — a person, an event. It becomes the montage’s folder.'}
               </p>
               <PassengerName
                 key={group.id}
@@ -274,10 +291,11 @@ const JumpPanel = ({
           )}
         </Box>
       ) : (
-        <Box heading='Passenger'>
+        <Box heading='Montage'>
           <TandemMaker
             key={group.id}
-            group={group}
+            initial={group.name}
+            keeps={keeps}
             passengers={passengers}
             onSave={onMakeTandem}
           />
@@ -291,10 +309,10 @@ const JumpPanel = ({
               onClick={onDelete}
               title={
                 tandem && named
-                  ? 'Undo the tandem, whatever step it is at — its files go back to Fresh files, loose. Asks first.'
+                  ? 'Undo the montage, whatever step it is at — its files go back to Fresh files, loose. Asks first.'
                   : 'The jump goes; its files are kept, loose in Fresh files, with their crops'
               }>
-              {tandem && named ? 'Delete tandem…' : 'Delete jump'}
+              {tandem && named ? 'Delete montage…' : 'Delete jump'}
             </Mini>
           )}
         </span>
@@ -322,7 +340,8 @@ const FilePanel = ({
   onSendBack,
   backLabel,
   onTrash,
-  onRetime
+  onRetime,
+  montage
 }: {
   file: ManifestFile
   name: string | null
@@ -338,6 +357,8 @@ const FilePanel = ({
   onTrash?: () => void
   /* when it was shot, corrected on its own; absent when the file is past changing */
   onRetime?: (epoch: number) => void
+  /* made a montage on its own — copied in when a place keeps it; absent when it cannot be */
+  montage?: MontageOffer
 }) => {
   const video = isVideoFile(file.path)
   return (
@@ -440,6 +461,17 @@ const FilePanel = ({
           </span>
         </Box>
       )}
+      {montage && (
+        <Box heading='Montage'>
+          <TandemMaker
+            key={file.id}
+            keeps={montage.keeps}
+            what='this'
+            passengers={montage.passengers}
+            onSave={montage.onMake}
+          />
+        </Box>
+      )}
       <Hint>Double-click or ↵ opens it · the tick picks it · ↑↓ step through · esc clears</Hint>
     </>
   )
@@ -453,6 +485,8 @@ const ManyPanel = ({
   backLabel,
   onTrash,
   onMakeJump,
+  montages,
+  montage,
   onClear
 }: {
   files: ManifestFile[]
@@ -462,8 +496,13 @@ const ManyPanel = ({
   backLabel: string
   /* offered only when every one of them is in Unsorted */
   onTrash?: () => void
-  /* the same: gathered into a jump of their own, when the gap rule did not see them as one */
+  /* the same: gathered into a jump of their own, when the gap rule did not see them as one — or,
+     named, into a montage */
   onMakeJump?: (name: string, startsAt?: number) => void
+  /* the montages there are, for a name to join */
+  montages?: Passenger[]
+  /* elsewhere than Fresh files: copied into a montage, the place keeping its own */
+  montage?: MontageOffer
   onClear: () => void
 }) => {
   const [making, setMaking] = useState(false)
@@ -476,19 +515,29 @@ const ManyPanel = ({
       />
       <Facts rows={tally(files, statusOf).map(([name, n]) => [name, String(n)])} />
       {making && onMakeJump ? (
-        <Box heading='A jump of these'>
+        <Box heading='A jump or a montage of these'>
           <JumpForm
             startsAt={minFileMtime(files) ?? 0}
             submitLabel='Make the jump'
+            montages={montages ?? []}
             onSubmit={onMakeJump}
             onCancel={() => setMaking(false)}
           />
         </Box>
       ) : null}
+      {montage && (
+        <Box heading='Montage'>
+          <TandemMaker
+            keeps={montage.keeps}
+            passengers={montage.passengers}
+            onSave={montage.onMake}
+          />
+        </Box>
+      )}
       <Box heading='Move them'>
         <span className='flex flex-wrap gap-1.5'>
           {onMakeJump && !making && (
-            <Mini onClick={() => setMaking(true)}>Make a jump of these…</Mini>
+            <Mini onClick={() => setMaking(true)}>Make a jump or a montage of these…</Mini>
           )}
           {onTrash ? (
             <Mini onClick={onTrash}>Put in the bin… (⌫)</Mini>
@@ -507,3 +556,4 @@ const ManyPanel = ({
 }
 
 export { Box, FilePanel, FolderPanel, Hint, JumpPanel, ManyPanel, Shell, Title }
+export type { MontageOffer }

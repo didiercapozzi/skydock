@@ -147,7 +147,7 @@ describe('a scan keeps the work already done', () => {
       const manifest = await twoJumps()
       const tandem = manifest.groups[0]!
       Object.assign(tandem, {
-        destination: 'Tandems',
+        montageJump: true,
         passenger: { firstname: 'Luc', lastname: 'Favre' },
         uploaded: { at: 1, shareUrl: 'https://nas/sharing/luc' },
         montage: {

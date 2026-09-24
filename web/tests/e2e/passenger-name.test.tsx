@@ -6,8 +6,8 @@ import { page, userEvent } from 'vitest/browser'
 import { PassengerCard, PassengerName } from '../../app/components/tandem-card'
 import type { ManifestGroup } from '../../app/components/types'
 
-/* A passenger's name is saved whole or not at all. Half a name is what the folder rule reads as a
-   place, so moving from the first name to the last must record nothing yet.
+/* A montage is named once, by one name — a person, an event — and that name is its folder. It is
+   saved when the field is left or on Enter, and a single word is a whole name.
 
    The real browser is what decides here: this is about where focus goes and when blur fires, and
    a synthesised event would prove nothing. */
@@ -16,7 +16,7 @@ const group = (passenger?: { firstname: string; lastname: string }): ManifestGro
   id: 'g1',
   label: 'jump',
   day: '08.08.2026',
-  destination: 'Tandems',
+  montageJump: true,
   passenger,
   files: []
 })
@@ -27,58 +27,51 @@ const renderName = async (passenger?: { firstname: string; lastname: string }) =
   return { onSave }
 }
 
-describe('naming a passenger', () => {
-  test('moving from the first name to the last name saves nothing yet', async () => {
+describe('naming a montage', () => {
+  test('saves the name when focus leaves it', async () => {
     const { onSave } = await renderName()
 
-    await userEvent.fill(page.getByLabelText('First name'), 'Luc')
-    await userEvent.click(page.getByLabelText('Last name'))
-
-    expect(onSave).not.toHaveBeenCalled()
-    /* and both halves are still there to type into */
-    await expect.element(page.getByLabelText('First name')).toHaveValue('Luc')
-    await expect.element(page.getByLabelText('Last name')).toBeVisible()
-  })
-
-  test('saves once, with both halves, when focus leaves the name altogether', async () => {
-    const { onSave } = await renderName()
-
-    await userEvent.fill(page.getByLabelText('First name'), 'Luc')
-    await userEvent.fill(page.getByLabelText('Last name'), 'Favre')
+    await userEvent.fill(page.getByLabelText('Name'), 'Luc Favre')
     /* clicking away is what finishing looks like */
     await userEvent.click(document.body)
 
-    expect(onSave).toHaveBeenCalledTimes(1)
     expect(onSave).toHaveBeenCalledWith('Luc', 'Favre')
   })
 
   test('Enter saves without waiting to be clicked away from', async () => {
     const { onSave } = await renderName()
 
-    await userEvent.fill(page.getByLabelText('First name'), 'Luc')
-    await userEvent.fill(page.getByLabelText('Last name'), 'Favre')
+    await userEvent.fill(page.getByLabelText('Name'), 'Luc Favre')
     await userEvent.keyboard('{Enter}')
 
     expect(onSave).toHaveBeenCalledWith('Luc', 'Favre')
   })
 
-  test('a name already recorded comes back in its two halves', async () => {
+  test('takes a single word as a whole name', async () => {
+    const { onSave } = await renderName()
+
+    await userEvent.fill(page.getByLabelText('Name'), 'Boogie')
+    await userEvent.keyboard('{Enter}')
+
+    expect(onSave).toHaveBeenCalledWith('Boogie', '')
+  })
+
+  test('a name already recorded comes back whole', async () => {
     await renderName({ firstname: 'Chloé', lastname: 'Perret' })
 
-    await expect.element(page.getByLabelText('First name')).toHaveValue('Chloé')
-    await expect.element(page.getByLabelText('Last name')).toHaveValue('Perret')
+    await expect.element(page.getByLabelText('Name')).toHaveValue('Chloé Perret')
   })
 })
 
 /* A name is read off a form or a face, so a card that offers only a pair of counts is asking
    somebody to remember what they saw on another screen. And a name read wrong has to be
-   changeable: it is the folder the passenger gets. */
-describe('the card a passenger is named on', () => {
+   changeable: it is the montage's folder. */
+describe('the card a montage is named on', () => {
   const withFiles = (passenger?: { firstname: string; lastname: string }): ManifestGroup => ({
     id: 'g1',
     label: 'jump',
     day: '08.08.2026',
-    destination: 'Tandems',
+    montageJump: true,
     passenger,
     files: [
       { path: '/o/GX01.MP4', size: 1, mtime: 1, filename: 'GX01.MP4', id: 'v1' },
@@ -108,13 +101,13 @@ describe('the card a passenger is named on', () => {
   test('shows frames off the clips, so there is something to name it from', async () => {
     await renderCard(withFiles())
 
-    await expect.element(page.getByAltText(/frame from this tandem/i).first()).toBeVisible()
+    await expect.element(page.getByAltText(/frame from this montage/i).first()).toBeVisible()
   })
 
   test('asks for the name while there is not one', async () => {
     await renderCard(withFiles())
 
-    await expect.element(page.getByLabelText('First name')).toBeVisible()
+    await expect.element(page.getByLabelText('Name')).toBeVisible()
   })
 
   /* the name is the folder, and a name can be read wrong */
@@ -130,8 +123,7 @@ describe('the card a passenger is named on', () => {
   test('comes back with the name already in it when changing one', async () => {
     await renderCard(withFiles({ firstname: 'Luc', lastname: 'Favre' }), true)
 
-    await expect.element(page.getByLabelText('First name')).toHaveValue('Luc')
-    await expect.element(page.getByLabelText('Last name')).toHaveValue('Favre')
+    await expect.element(page.getByLabelText('Name')).toHaveValue('Luc Favre')
   })
 
   /* changing it after the files have been processed means processing them again, into a new folder */

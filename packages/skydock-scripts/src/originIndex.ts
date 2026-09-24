@@ -30,21 +30,13 @@ const NOT_THERE = 408
 
 const listingSchema = z.object({ files: z.array(z.object({ name: z.string() })).optional() })
 
-/* The places' own folders, which are the club's folders: each dropzone's, and the one the
-   passengers' folders sit in. The list of origins is kept above these and never in one of them.
-
-   The backup folder is deliberately not one of them. It is often somewhere else entirely — another
-   disk, another share — and letting it have a say would drag the list up to the top of a share to
-   reach them both, which is where nobody would look for it. */
+/* The destinations' own folders, which are the club's folders, and every folder SkyDock delivers
+   into: a montage's film and its backups go into destinations too. The list of origins is kept above
+   these and never in one of them, and what is found in any of them goes in it. */
 const placeFolders = (manifest: Manifest) =>
   (manifest.destinations ?? []).flatMap((place) => (place.path ? [place.path] : []))
 
-/* Every folder SkyDock delivers into, the backup one included: all of them are worth looking at,
-   and what is found in any of them goes in the list, wherever the list itself lives. */
-const deliveryFolders = (manifest: Manifest, session: NasSession) => [
-  ...placeFolders(manifest),
-  ...(session.backupFolder ? [session.backupFolder] : [])
-]
+const deliveryFolders = (manifest: Manifest) => placeFolders(manifest)
 
 const partsOf = (remotePath: string) => normalizeNasPath(remotePath).split('/').filter(Boolean)
 

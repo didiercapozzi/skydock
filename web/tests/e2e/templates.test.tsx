@@ -33,7 +33,7 @@ const board = {
       id: 'g1',
       label: 'g1',
       day: '01.08.2026',
-      destination: 'Tandems',
+      montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       processed: true,
       files: [clip]
@@ -106,7 +106,7 @@ describe('making a montage', () => {
     machineHas([template('epco')])
     await renderBoard()
 
-    await userEvent.click(page.getByRole('button', { name: 'Montage' }))
+    await userEvent.click(page.getByRole('button', { name: 'Make the project' }))
 
     await vi.waitFor(() =>
       expect(requests).toContainEqual({ intent: 'montage', groupId: 'g1', template: 'epco' })
@@ -118,7 +118,7 @@ describe('making a montage', () => {
     machineHas([template('epco'), template('summer')])
     await renderBoard()
 
-    await userEvent.click(page.getByRole('button', { name: 'Montage' }))
+    await userEvent.click(page.getByRole('button', { name: 'Make the project' }))
 
     const make = dialog().getByRole('button', { name: 'Make the montage' })
     await expect.element(make).toBeDisabled()
@@ -135,7 +135,7 @@ describe('making a montage', () => {
     machineHas([template('epco'), template('summer')])
     await renderBoard()
 
-    await userEvent.click(page.getByRole('button', { name: 'Montage' }))
+    await userEvent.click(page.getByRole('button', { name: 'Make the project' }))
 
     await expect.element(dialog().getByRole('radio', { name: /summer/ })).toBeChecked()
     expect(requests).toEqual([])
@@ -145,7 +145,7 @@ describe('making a montage', () => {
     machineHas([template('epco', { missing: ['logo-epco.png'] })])
     await renderBoard()
 
-    await userEvent.click(page.getByRole('button', { name: 'Montage' }))
+    await userEvent.click(page.getByRole('button', { name: 'Make the project' }))
 
     await expect.element(dialog().getByText(/not here: logo-epco\.png/)).toBeInTheDocument()
   })

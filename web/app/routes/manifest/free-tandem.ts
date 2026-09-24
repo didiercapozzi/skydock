@@ -1,4 +1,11 @@
-import { ensureNasSession, loadManifest, processingNow, saveManifest } from '@skydock/scripts'
+import {
+  ensureNasSession,
+  loadManifest,
+  processingNow,
+  saveManifest,
+  earlierTandemsDir,
+  tandemsRemoteDir
+} from '@skydock/scripts'
 import { freeTandem, markFreed } from '../../../../packages/skydock-scripts/src/freeTandem'
 import { entryOfTandem, upsert } from '../../../../packages/skydock-scripts/src/tandemIndex'
 import { boardAnswer } from '../../helpers/manifest'
@@ -20,9 +27,14 @@ const freeTandemIntent: Intent = async ({ data, manifest, manifestPath, outputDi
     saveManifest(manifestPath, saved)
     /* the storage's list says it is the only copy now */
     const freedGroup = saved.groups.find((g) => g.id === result.groupId)
-    const listed = freedGroup ? entryOfTandem(freedGroup) : null
+    const listed = freedGroup ? entryOfTandem(freedGroup, tandemsRemoteDir(saved)) : null
     const listing = listed
-      ? await recordOnStorage(session, listed.dir, (index) => upsert(index, listed.entry))
+      ? await recordOnStorage(
+          session,
+          listed.dir,
+          (index) => upsert(index, listed.entry),
+          earlierTandemsDir(saved)
+        )
       : {}
     return {
       ...boardAnswer(saved),

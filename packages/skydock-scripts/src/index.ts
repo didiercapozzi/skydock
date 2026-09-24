@@ -102,22 +102,27 @@ import {
   sameEditedGroup,
   statTandemArtifacts
 } from './tandem'
+import { DEFAULT_PLAN, itemsFrom, PARTS, planOf, sendItems, stemOf } from './sending'
+import type { PartFile, SendItem } from './sending'
 import { watchTandems } from './tandemWatch'
 import { furthestBehind, TANDEM_STEPS, tandemSteps } from './tandemSteps'
 import type { TandemProgress, TandemStep } from './tandemSteps'
 import { tandemEntrySchema, tandemIndexSchema } from './tandemEntry'
+import { folderOfUpload } from './tandemIndex'
 import type { TandemEntry, TandemIndex } from './tandemEntry'
 import {
-  backupOptionsSchema,
   destinationSchema,
+  sendPartSchema,
+  sendPlanSchema,
   frameCropSchema,
   jumpTrackSchema,
   manifestFileSchema,
   manifestGroupSchema
 } from './types'
 import type {
-  BackupOptions,
   Destination,
+  SendPart,
+  SendPlan,
   FrameCrop,
   JumpMoments,
   JumpTrack,
@@ -131,6 +136,7 @@ import {
   groupsInScope,
   listRemoteFiles,
   scopeKey,
+  earlierTandemsDir,
   tandemsRemoteDir,
   uploadScope
 } from './upload'
@@ -148,9 +154,13 @@ import {
   buildPassengerFolder,
   hasCompletePassenger,
   mergeGroups,
+  montageCalled,
+  passengerFrom,
   passengerName,
-  passengerOf
+  passengerOf,
+  MONTAGES_FOLDER
 } from './workspace'
+import { isFiled, isMontage } from './filed'
 
 export {
   cutFrom,
@@ -170,8 +180,19 @@ export {
   subscribe,
   furthestBehind,
   TANDEM_STEPS,
+  isFiled,
+  isMontage,
+  MONTAGES_FOLDER,
+  folderOfUpload,
   tandemSteps,
-  backupOptionsSchema,
+  sendPartSchema,
+  sendPlanSchema,
+  DEFAULT_PLAN,
+  itemsFrom,
+  PARTS,
+  planOf,
+  sendItems,
+  stemOf,
   boardAnswerSchema,
   buildGroupBaseName,
   buildPassengerFolder,
@@ -228,9 +249,11 @@ export {
   manifestFileSchema,
   manifestGroupSchema,
   mergeGroups,
+  montageCalled,
   MOMENTS,
   nameOfMoment,
   parentOf,
+  passengerFrom,
   passengerName,
   passengerOf,
   photosNameOf,
@@ -261,6 +284,7 @@ export {
   statTandemArtifacts,
   tandemEntrySchema,
   tandemIndexSchema,
+  earlierTandemsDir,
   tandemsRemoteDir,
   tandemUploadKey,
   turnBy,
@@ -278,7 +302,10 @@ export type {
   LiveEvent,
   TandemProgress,
   TandemStep,
-  BackupOptions,
+  PartFile,
+  SendItem,
+  SendPart,
+  SendPlan,
   BoardAnswer,
   Destination,
   FileStatus,

@@ -2,6 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { moveFile } from './lib/fs'
 import { getProxyPath } from './proxy'
+import { isFiled } from './filed'
 import type { Manifest } from './types'
 import { getTrashDir } from './utils'
 
@@ -18,9 +19,7 @@ const trashUnsorted = async (
   trashDir = getTrashDir()
 ) => {
   const filed = new Set(
-    manifest.groups
-      .filter((g) => g.destination)
-      .flatMap((g) => g.files.flatMap((f) => (f.id ? [f.id] : [])))
+    manifest.groups.filter(isFiled).flatMap((g) => g.files.flatMap((f) => (f.id ? [f.id] : [])))
   )
   const going = manifest.files.filter((f) => f.id && ids.has(f.id))
   if (going.length === 0) throw new Error('Those files are no longer on the board.')

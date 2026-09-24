@@ -2,7 +2,13 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { getDestinationDir, getGroupProcessedDir, isFlatGroup } from './process'
 import { parentOf } from './paths'
-import { deliveryFolders, readOriginIndex, recordOrigins } from './originIndex'
+import {
+  deliveryFolders,
+  originsDirOf,
+  placeFolders,
+  readOriginIndex,
+  recordOrigins
+} from './originIndex'
 import { originsOf } from './originEntry'
 import type { OriginIndex } from './originEntry'
 import { publishJump } from './publish'
@@ -32,12 +38,23 @@ type UploadTarget = {
 
 const LIST_CONCURRENCY = 4
 
-/* every file a tandem's upload put on the storage, whichever parcel it went in */
+/* every file a montage's upload put on the storage, once each — one zip holding both the videos and
+   the photos is recorded for both */
 const uploadedFiles = (record: ManifestGroup['uploaded']) =>
   record
-    ? [record.film, record.photos, record.rushes, ...(record.originals ?? [])].filter(
-        (f) => f !== undefined
-      )
+    ? [
+        ...new Map(
+          [
+            record.film,
+            record.photos,
+            record.rushes,
+            ...(record.originals ?? []),
+            ...(record.photoFiles ?? [])
+          ]
+            .filter((f) => f !== undefined)
+            .map((f) => [f.remotePath, f])
+        ).values()
+      ]
     : []
 
 /* What the NAS holds right now in the folders we have uploaded into, so a file deleted over there
@@ -57,7 +74,7 @@ const listRemoteFiles = async (manifest: Manifest, session: NasSession) => {
       /* and every folder this club delivers into, uploaded into yet or not: a place pointed at a
          folder that was already full of footage is worth looking at from the first day, since what
          is up there is what an upload must not send a second time (RULES, Network storage) */
-      ...deliveryFolders(manifest, session)
+      ...deliveryFolders(manifest)
     ])
   ]
   const sizes: Record<string, number | null> = {}
@@ -106,8 +123,15 @@ const groupsInScope = (manifest: Manifest, scope: UploadScope) => {
 const destBaseOf = (destination: string | undefined, manifest: Manifest) =>
   resolveDestinationPath(destination, manifest.destinations ?? [])
 
-/* the Tandems folder on the storage, where every passenger's folder goes — and the list of them */
-const tandemsRemoteDir = (manifest: Manifest) => destBaseOf('Tandems', manifest)
+/* Where the storage's list of montages is kept: beside the list of where each file came from, above
+   every destination's folder — montages go into any of them, so the list belongs to none. */
+const tandemsRemoteDir = (manifest: Manifest) => {
+  const folders = placeFolders(manifest)
+  return folders.length > 0 ? originsDirOf(folders) : null
+}
+
+/* where that list was kept before, when every tandem went into the Tandems folder */
+const earlierTandemsDir = (manifest: Manifest) => destBaseOf('Tandems', manifest)
 
 /* Where one group's processed folder goes on the NAS.
    A flat fun jump has NO folder of its own: `getGroupProcessedDir` hands back the whole
@@ -120,8 +144,8 @@ const targetForGroup = (
 ): UploadTarget => {
   const { dir } = getGroupProcessedDir(outputDir, group)
   const destination = group.destination ?? null
-  const base = destination ? destBaseOf(destination, manifest) : null
   const flat = isFlatGroup(group)
+  const base = destination ? destBaseOf(destination, manifest) : null
   return {
     key: `group:${group.id}`,
     label: group.label,
@@ -316,7 +340,7 @@ const uploadScope = async ({
     session,
     targets: resolveUploadTargets({ outputDir, manifest, scope }),
     origins: originsOf(manifest),
-    folders: deliveryFolders(manifest, session),
+    folders: deliveryFolders(manifest),
     onProgress,
     onCheck
   })
@@ -329,6 +353,7 @@ export {
   listRemoteFiles,
   resolveUploadTargets,
   scopeKey,
+  earlierTandemsDir,
   tandemsRemoteDir,
   targetForGroup,
   uploadScope,

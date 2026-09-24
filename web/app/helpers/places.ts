@@ -1,7 +1,6 @@
-import { hasCompletePassenger, passengerOf } from '@skydock/scripts'
+import { hasCompletePassenger, isFiled, isMontage, passengerOf } from '@skydock/scripts'
 import { z } from 'zod'
 import type { ManifestFile, ManifestGroup } from '../components/types'
-import { TANDEMS } from './jumps'
 import { routingEngine } from './routing'
 import type { BoardView } from './view'
 
@@ -34,7 +33,7 @@ const placeLabel = (place: Place) =>
   place.kind === 'sort'
     ? 'Fresh files'
     : place.kind === 'tandems'
-      ? 'Tandems'
+      ? 'Montages'
       : place.kind === 'unnamed'
         ? 'No name yet'
         : place.kind === 'storage'
@@ -56,16 +55,16 @@ const familyOf = (place: Place) =>
 const groupsIn = (place: Place, groups: ManifestGroup[]) => {
   switch (place.kind) {
     case 'sort':
-      return groups.filter((g) => !g.destination)
+      return groups.filter((g) => !isFiled(g))
     case 'dz':
       return groups.filter((g) => g.destination === place.name)
     case 'tandems':
-      return groups.filter((g) => g.destination === TANDEMS)
+      return groups.filter(isMontage)
     case 'unnamed':
-      /* half a name is no passenger yet: it waits here with the tandems that have none */
-      return groups.filter((g) => g.destination === TANDEMS && !hasCompletePassenger(g.passenger))
+      /* a montage nobody has named yet waits here */
+      return groups.filter((g) => isMontage(g) && !hasCompletePassenger(g.passenger))
     case 'pax':
-      return groups.filter((g) => g.destination === TANDEMS && passengerOf(g) === place.name)
+      return groups.filter((g) => isMontage(g) && passengerOf(g) === place.name)
     case 'storage':
     case 'camera':
       return []
@@ -104,17 +103,20 @@ const hereIn = (place: Place, groups: ManifestGroup[], loose: ManifestFile[]) =>
   stillHere(place, filesIn(place, groups, loose))
 
 /* Each folder's own address, in the words the folder is called by, so that an address can be read
-   and typed: /dropzone/yverdon, /passenger/Lily%20DONZALLAZ, /storage. One list, read both ways.
+   and typed: /dropzone/yverdon, /montage/Lily%20DONZALLAZ, /storage. One list, read both ways.
    Fresh files is what the board opens on and has the plainest word of them. */
 const PLACE_WORDS = {
   sort: 'fresh',
   dz: 'dropzone',
-  tandems: 'tandems',
+  tandems: 'montages',
   unnamed: 'no-name',
-  pax: 'passenger',
+  pax: 'montage',
   storage: 'storage',
   camera: 'camera'
 } as const satisfies Record<Place['kind'], string>
+
+/* The words addresses used before montages had the name, so a link kept or sent then still opens. */
+const EARLIER_WORDS: Record<string, Place['kind']> = { tandems: 'tandems', passenger: 'pax' }
 
 const paramsOfPlace = (place: Place) => ({
   kind: PLACE_WORDS[place.kind],
@@ -122,7 +124,8 @@ const paramsOfPlace = (place: Place) => ({
 })
 
 const kindOfWord = (word: string | undefined) =>
-  Object.entries(PLACE_WORDS).find(([, known]) => known === word)?.[0]
+  Object.entries(PLACE_WORDS).find(([, known]) => known === word)?.[0] ??
+  (word ? EARLIER_WORDS[word] : undefined)
 
 /* Which folder an address names, read the way anything from outside is read: an address is typed by
    hand, kept from a board that has since been rearranged, or sent by somebody, so it is parsed and

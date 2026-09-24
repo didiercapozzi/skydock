@@ -14,6 +14,8 @@ import { frozenTandems, isTandem } from './tandem'
 import type { Manifest, ManifestFile } from './types'
 import { getExtension } from './utils'
 import { two } from './lib/clock'
+import { isMontage } from './filed'
+import { passengerOf } from './workspace'
 
 /* A file dragged in from the computer — a clip off a phone, a photo someone sent — joins the board the
    way a camera's file does: copied into original_files under the day it was taken, keeping its own
@@ -56,9 +58,8 @@ const freeName = (dir: string, filename: string) => {
 const placeOf = (manifest: Manifest, id: string) => {
   const group = manifest.groups.find((g) => g.files.some((f) => f.id === id))
   if (group) {
-    if (isTandem(group) && group.passenger)
-      return `${group.passenger.firstname} ${group.passenger.lastname}`.trim()
-    return group.destination ?? 'Fresh files'
+    if (isTandem(group)) return passengerOf(group)
+    return group.destination ?? (isMontage(group) ? 'a montage' : 'Fresh files')
   }
   return manifest.files.find((f) => f.id === id)?.destination ?? 'Fresh files'
 }
@@ -108,7 +109,7 @@ const placeExisting = (
     return {
       filename: file.filename,
       outcome: 'kept',
-      reason: `${placeOf(manifest, id)}’s tandem has an edit, so nothing leaves it — drop it on a jump to put it in that jump as well`
+      reason: `${placeOf(manifest, id)}’s montage has an edit, so nothing leaves it — drop it on a jump to put it in that jump as well`
     }
   const from = placeOf(manifest, id)
   moveFiles(
@@ -199,9 +200,9 @@ const importFile = async ({
   const filename = path.basename(asked.replace(/\\/g, '/')).trim()
   if (!filename || filename.startsWith('.') || !MEDIA_EXTENSIONS_SET.has(getExtension(filename)))
     throw new Error(`${asked} is not a video or a photo SkyDock knows.`)
-  /* a lone file belongs to a place; Tandems is not one — a tandem file belongs to a passenger */
-  if (target.kind === 'destination' && (!target.name.trim() || target.name.trim() === 'Tandems'))
-    throw new Error('Drop it on a dropzone, a passenger or the sorting area.')
+  /* a lone file belongs to a place, and a place has a name */
+  if (target.kind === 'destination' && !target.name.trim())
+    throw new Error('Drop it on a dropzone, a montage or the sorting area.')
 
   const manifestPath = path.join(outputDir, 'manifest.json')
   const checkTarget = () => {
@@ -212,7 +213,7 @@ const importFile = async ({
       if (!group) throw new Error('That jump is no longer there.')
       if (frozenTandems(manifest, outputDir).has(group.id))
         throw new Error(
-          'This tandem has an edit, or lives on the storage only — nothing can join it.'
+          'This montage has an edit, or lives on the storage only — nothing can join it.'
         )
     }
     return manifest

@@ -19,7 +19,7 @@ const StepTrail = ({
   return (
     <div className='flex flex-col gap-1.5'>
       <ol
-        aria-label='Where this tandem has got to'
+        aria-label='Where this montage has got to'
         className='m-0 flex list-none flex-col p-0'>
         {steps.map((step, i) => {
           const now = i === at

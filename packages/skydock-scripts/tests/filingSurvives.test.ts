@@ -34,12 +34,12 @@ const filed = (extra: Partial<ManifestFile> = {}): Manifest => {
         id: 'jump_7',
         label: 'jump_7',
         day: '17.09.2026',
-        destination: 'Tandems',
+        destination: 'Yverdon',
         passenger: { firstname: 'Luc', lastname: 'Favre' },
         files: list
       }
     ],
-    destinations: [{ name: 'Tandems' }]
+    destinations: [{ name: 'Yverdon' }]
   }
 }
 
@@ -61,7 +61,7 @@ describe('filing survives being written down and read back', () => {
       saveManifest(manifestPath, filed({ frame }))
       const back = loadManifest(manifestPath)
       expect(back?.groups, `a rectangle at ${at} lost the jumps`).toHaveLength(1)
-      expect(back?.groups[0].destination, `a rectangle at ${at} lost the filing`).toBe('Tandems')
+      expect(back?.groups[0].destination, `a rectangle at ${at} lost the filing`).toBe('Yverdon')
     }
   })
 
@@ -69,7 +69,7 @@ describe('filing survives being written down and read back', () => {
     for (const ratio of [16 / 9, 9 / 16, 1, 4 / 5, 2, 1440 / 2560]) {
       const frame = fitRatio(ratio, 3840, 2160)
       saveManifest(manifestPath, filed({ frame }))
-      expect(loadManifest(manifestPath)?.groups[0].destination, `shape ${ratio}`).toBe('Tandems')
+      expect(loadManifest(manifestPath)?.groups[0].destination, `shape ${ratio}`).toBe('Yverdon')
     }
   })
 })
@@ -114,7 +114,7 @@ describe('the saved jumps, when they cannot be read', () => {
 
     const back = loadManifest(manifestPath)
     expect(back?.groups).toHaveLength(1)
-    expect(back?.groups[0].destination).toBe('Tandems')
+    expect(back?.groups[0].destination).toBe('Yverdon')
     expect(back?.groups[0].passenger?.lastname).toBe('Favre')
   })
 
@@ -149,7 +149,7 @@ describe('the saved jumps, when they cannot be read', () => {
       return
     }
     reclusterGroups(loaded!)
-    expect(loaded!.groups.map((g) => g.destination)).toEqual(['Tandems'])
+    expect(loaded!.groups.map((g) => g.destination)).toEqual(['Yverdon'])
     expect(loaded!.groups.map((g) => g.passenger?.lastname)).toEqual(['Favre'])
   })
 })

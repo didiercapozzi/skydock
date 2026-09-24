@@ -4,7 +4,8 @@ import * as fs from 'node:fs'
 import * as http from 'node:http'
 import * as path from 'node:path'
 import { uploadTandem } from '../src/uploadTandem'
-import type { BackupOptions } from '../src/types'
+import { stemOf } from '../src/sending'
+import type { SendPlan } from '../src/types'
 import { statTandemArtifacts, tandemArtifacts } from '../src/tandem'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
 import { saveNasSession } from '../src/nas'
@@ -136,7 +137,7 @@ const scene = (options: SceneOptions = {}) => {
     id: 'g1',
     label: 'jump',
     day: '02.08.2026',
-    destination: 'Tandems',
+    montageJump: true,
     passenger,
     processed,
     files
@@ -146,24 +147,25 @@ const scene = (options: SceneOptions = {}) => {
     createdAt: '2026-08-02',
     files,
     groups: [group],
-    destinations: [{ name: 'Tandems', path: '/SkyDock/Tandems' }]
+    destinations: [
+      { name: 'Tandems', path: '/SkyDock/Tandems' },
+      { name: 'Backup', path: '/Backup' },
+      { name: 'Yverdon' }
+    ]
   }
   return { outputDir, groupDir, group, manifest }
 }
 
-const session = (url: string, overrides: Partial<NasSession> = {}): NasSession => ({
-  hostname: url,
-  username: 'u',
-  sessionId: 'sid',
-  backupFolder: '/Backup',
-  ...overrides
-})
+const session = (url: string): NasSession => ({ hostname: url, username: 'u', sessionId: 'sid' })
 
-const upload = async (
-  options: SceneOptions = {},
-  sessionOverrides: Partial<NasSession> = {},
-  backup?: BackupOptions
-) => {
+/* the plan a club starts from: the originals and the project in one zip to the backup, the film and
+   the photos as they are to Tandems */
+const PLAN: SendPlan = {
+  zip: { parts: ['videos', 'project'], each: false },
+  placed: { zip: ['Backup'], film: ['Tandems'], photos: ['Tandems'] }
+}
+
+const upload = async (options: SceneOptions = {}, plan: SendPlan = PLAN) => {
   const built = scene(options)
   const server = await startUploadServer()
   stubDsm()
@@ -176,80 +178,167 @@ const upload = async (
       outputDir: built.outputDir,
       manifest: built.manifest,
       group: built.group,
-      session: session(server.url, sessionOverrides),
-      backup
+      session: session(server.url),
+      plan
     })
-    return { ...built, result, uploads: server.uploads }
+    /* what the montage sends — the storage's own list of where its files came from is not a
+       delivery (RULES, Network storage) */
+    const sent = server.uploads.filter((u) => u.name !== 'skydock-origins.json')
+    return { ...built, result, uploads: sent, stem: stemOf(built.group) }
   } finally {
     await server.close()
   }
 }
 
-describe('uploading a tandem — what the passenger gets', () => {
-  it('sends the film and the photos, and nothing else', async () => {
-    const { uploads } = await upload()
-    const toPassenger = uploads
-      .filter((u) => u.dest === '/SkyDock/Tandems/Luc Favre')
-      .map((u) => u.name)
-    expect(toPassenger.sort()).toEqual(['luc_favre_20260802.mp4', 'luc_favre_20260802.photos.zip'])
-  })
+const into = (uploads: { dest: string; name: string }[], dest: string) =>
+  uploads
+    .filter((u) => u.dest === dest)
+    .map((u) => u.name)
+    .sort()
 
-  it('never puts the originals in the passenger’s folder', async () => {
-    const { uploads } = await upload()
-    const toPassenger = uploads.filter((u) => u.dest === '/SkyDock/Tandems/Luc Favre')
-    expect(toPassenger.map((u) => u.name)).not.toContain('luc_favre_20260802.rushes.zip')
-  })
+const contents = (groupDir: string, name: string) =>
+  JSON.parse(fs.readFileSync(path.join(groupDir, '.send', `${name}.contents`), 'utf-8')) as string[]
 
-  it('never hands over the project or the working folders', async () => {
-    const { uploads } = await upload()
-    const names = uploads.map((u) => u.name)
-    expect(names.some((n) => n.endsWith('.kdenlive'))).toBe(false)
-    expect(names.some((n) => n.startsWith('luc_favre_20260802_'))).toBe(false)
-  })
-
-  it('sends the originals to the backup folder instead', async () => {
-    const { uploads } = await upload()
-    /* what the tandem sends — the storage's own list of where its files came from is not a
-       delivery, and is kept in the share it delivered into (RULES, Network storage) */
-    const sent = uploads.filter((u) => u.name !== 'skydock-origins.json')
-    expect(sent.filter((u) => u.dest === '/Backup').map((u) => u.name)).toEqual([
-      'luc_favre_20260802.rushes.zip'
+describe('uploading a montage — where each item goes', () => {
+  it('puts each item in the destinations it was put in, in a folder named after the montage', async () => {
+    const { uploads, stem } = await upload()
+    expect(into(uploads, '/SkyDock/Tandems/Luc Favre')).toEqual([`${stem}.mp4`])
+    expect(into(uploads, '/SkyDock/Tandems/Luc Favre/photos')).toEqual([
+      'luc_favre_20260802_113000.jpg',
+      'luc_favre_20260802_113001.jpg'
     ])
+    expect(into(uploads, '/Backup/Luc Favre')).toEqual([`${stem}.backup.videos.zip`])
   })
 
-  it('asks for a link on the passenger folder only', async () => {
+  it('sends the same item to every destination it was put in, built once', async () => {
+    const { uploads, stem } = await upload(
+      {},
+      {
+        ...PLAN,
+        placed: { ...PLAN.placed, film: ['Tandems', 'Backup'] }
+      }
+    )
+    expect(into(uploads, '/SkyDock/Tandems/Luc Favre')).toContain(`${stem}.mp4`)
+    expect(into(uploads, '/Backup/Luc Favre')).toContain(`${stem}.mp4`)
+  })
+
+  it('sends nothing that was put nowhere', async () => {
+    const { uploads } = await upload(
+      {},
+      { ...PLAN, placed: { zip: ['Backup'], film: ['Tandems'] } }
+    )
+    expect(uploads.some((u) => u.dest.endsWith('/photos'))).toBe(false)
+  })
+
+  it('asks for a link only where the film went', async () => {
     await upload()
     const shares = seen
       .map((call) => new URL(call.url, 'http://stub').searchParams)
       .filter((p) => p.get('api') === 'SYNO.FileStation.Sharing')
       .map((p) => p.get('path'))
-    expect(shares).not.toContain('/Backup')
+      .filter((p) => p !== null)
+    expect(shares.length).toBeGreaterThan(0)
+    expect(shares.every((p) => p.includes('/SkyDock/Tandems/Luc Favre'))).toBe(true)
   })
 
-  it('records what went where', async () => {
-    const { result } = await upload()
+  it('never sends the working copies of the videos', async () => {
+    const { uploads, stem } = await upload()
+    expect(uploads.filter((u) => u.name.endsWith('.mp4')).map((u) => u.name)).toEqual([
+      `${stem}.mp4`
+    ])
+  })
+
+  it('records what went where: each part’s first place, and every place', async () => {
+    const { result, stem } = await upload()
     expect(result.record.shareUrl).toContain('/sharing/abc')
-    expect(result.record.film?.remotePath).toBe('/SkyDock/Tandems/Luc Favre/luc_favre_20260802.mp4')
-    expect(result.record.rushes?.remotePath).toBe('/Backup/luc_favre_20260802.rushes.zip')
+    expect(result.record.film?.remotePath).toBe(`/SkyDock/Tandems/Luc Favre/${stem}.mp4`)
+    expect(result.record.rushes).toMatchObject({
+      remotePath: `/Backup/Luc Favre/${stem}.backup.videos.zip`,
+      holds: ['videos', 'project']
+    })
+    expect(result.record.photoFiles?.map((f) => f.remotePath).sort()).toEqual([
+      '/SkyDock/Tandems/Luc Favre/photos/luc_favre_20260802_113000.jpg',
+      '/SkyDock/Tandems/Luc Favre/photos/luc_favre_20260802_113001.jpg'
+    ])
+    expect(result.record.sent).toContainEqual({
+      name: `${stem}.mp4`,
+      holds: ['film'],
+      to: ['/SkyDock/Tandems/Luc Favre']
+    })
   })
 })
 
-describe('uploading a tandem — what is refused', () => {
-  const fails = async (options: SceneOptions, overrides: Partial<NasSession> = {}) => {
+describe('uploading a montage — what is zipped', () => {
+  it('puts the videos under videos/ and the project at the top of one zip', async () => {
+    const { groupDir, stem } = await upload()
+    expect(contents(groupDir, `${stem}.backup.videos.zip`)).toEqual([
+      'videos/GX018570.MP4',
+      'videos/GX018571.MP4',
+      `${stem}.kdenlive`
+    ])
+  })
+
+  it('makes one full zip, with videos/ and photos/, when both are zipped together', async () => {
+    const { groupDir, stem, uploads } = await upload(
+      {},
+      {
+        zip: { parts: ['videos', 'photos', 'project'], each: false },
+        placed: { zip: ['Backup'], film: ['Tandems'] }
+      }
+    )
+    expect(contents(groupDir, `${stem}.backup.full.zip`)).toEqual([
+      'videos/GX018570.MP4',
+      'videos/GX018571.MP4',
+      'photos/luc_favre_20260802_113000.jpg',
+      'photos/luc_favre_20260802_113001.jpg',
+      `${stem}.kdenlive`
+    ])
+    expect(into(uploads, '/Backup/Luc Favre')).toEqual([`${stem}.backup.full.zip`])
+  })
+
+  it('makes a zip each, the project with the videos', async () => {
+    const { uploads, stem } = await upload(
+      {},
+      {
+        zip: { parts: ['videos', 'photos', 'project'], each: true },
+        placed: { 'zip:videos': ['Backup'], 'zip:photos': ['Tandems'], film: ['Tandems'] }
+      }
+    )
+    expect(into(uploads, '/Backup/Luc Favre')).toEqual([`${stem}.backup.videos.zip`])
+    expect(into(uploads, '/SkyDock/Tandems/Luc Favre')).toEqual([
+      `${stem}.backup.photos.zip`,
+      `${stem}.mp4`
+    ])
+  })
+
+  it('sends the originals as they are, under videos/, when they are not zipped', async () => {
+    const { uploads } = await upload(
+      {},
+      {
+        zip: { parts: [], each: false },
+        placed: { videos: ['Backup'], film: ['Tandems'] }
+      }
+    )
+    expect(into(uploads, '/Backup/Luc Favre/videos')).toEqual(['GX018570.MP4', 'GX018571.MP4'])
+  })
+})
+
+describe('uploading a montage — what is refused', () => {
+  const fails = async (options: SceneOptions, plan: SendPlan = PLAN) => {
     try {
-      await upload(options, overrides)
+      await upload(options, plan)
       return null
     } catch (e) {
       return e instanceof Error ? e.message : String(e)
     }
   }
 
-  it('refuses a jump with no passenger', async () => {
-    expect(await fails({ noPassenger: true })).toMatch(/give it a passenger/)
+  it('refuses a jump with no name', async () => {
+    expect(await fails({ noPassenger: true })).toMatch(/give it a name/)
   })
 
   it('refuses one that was never processed', async () => {
-    expect(await fails({ processed: false })).toMatch(/Process this tandem/)
+    expect(await fails({ processed: false })).toMatch(/Process this montage/)
   })
 
   it('names the film it looked for when the render has not happened', async () => {
@@ -268,35 +357,35 @@ describe('uploading a tandem — what is refused', () => {
         outputDir: built.outputDir,
         manifest: built.manifest,
         group: built.group,
-        session: session(server.url)
+        session: session(server.url),
+        plan: PLAN
       })
     ).rejects.toThrow(/Several films here/)
     await server.close()
   })
 
-  it('refuses when no backup folder has been chosen', async () => {
-    expect(await fails({}, { backupFolder: undefined })).toMatch(/Choose a backup folder/)
+  it('refuses a destination that has no folder on the storage yet', async () => {
+    expect(await fails({}, { ...PLAN, placed: { ...PLAN.placed, film: ['Yverdon'] } })).toMatch(
+      /Choose a NAS folder for Yverdon/
+    )
   })
 
-  it('refuses a backup folder that is the passenger folder', async () => {
-    expect(await fails({}, { backupFolder: '/SkyDock/Tandems/Luc Favre' })).toMatch(
-      /backup folder is the passenger folder/
-    )
+  it('refuses when nothing was put anywhere', async () => {
+    expect(await fails({}, { ...PLAN, placed: {} })).toMatch(/at least one thing/)
   })
 })
 
-describe('uploading a tandem — the awkward cases', () => {
-  it('adopts a film rendered under a different name', async () => {
-    const { uploads, groupDir } = await upload({ film: 'GARGASSON Donald.mp4' })
+describe('uploading a montage — the awkward cases', () => {
+  it('adopts a film rendered under a different name, and sends it named after the montage', async () => {
+    const { uploads, groupDir, stem } = await upload({ film: 'GARGASSON Donald.mp4' })
     expect(fs.existsSync(path.join(groupDir, 'luc_favre_20260802.mp4'))).toBe(true)
-    expect(uploads.map((u) => u.name)).toContain('luc_favre_20260802.mp4')
+    expect(uploads.map((u) => u.name)).toContain(`${stem}.mp4`)
   })
 
-  it('uploads a tandem whose camera died, with no film at all', async () => {
+  it('uploads a montage whose camera died, with no film at all', async () => {
     const { uploads } = await upload({ film: null, videos: 0 })
-    expect(
-      uploads.filter((u) => u.dest === '/SkyDock/Tandems/Luc Favre').map((u) => u.name)
-    ).toEqual(['luc_favre_20260802.photos.zip'])
+    expect(into(uploads, '/SkyDock/Tandems/Luc Favre/photos')).toHaveLength(2)
+    expect(uploads.some((u) => u.name.endsWith('.mp4'))).toBe(false)
   })
 })
 
@@ -317,74 +406,5 @@ describe('what the board knows of a tandem’s project and film', () => {
   it('leaves a jump that is not a tandem out of it', () => {
     const { outputDir, manifest } = scene({ noPassenger: true })
     expect(statTandemArtifacts(manifest, outputDir)).toEqual({})
-  })
-})
-
-/* How the originals are kept is chosen once for the club: one zip, or the clips as they are — and
-   either way a copy of the film, and the editing project, can go with them. */
-describe('uploading a tandem — how the backup is kept', () => {
-  const contents = (groupDir: string) =>
-    JSON.parse(
-      fs.readFileSync(path.join(groupDir, 'luc_favre_20260802.rushes.zip.contents'), 'utf-8')
-    ) as string[]
-
-  it('puts a copy of the film inside the zip when asked', async () => {
-    const { groupDir } = await upload({}, {}, { backupAs: 'zip', filmToBackup: true })
-    /* the originals, then the film, then the project that always travels */
-    expect(contents(groupDir)).toEqual([
-      'GX018570.MP4',
-      'GX018571.MP4',
-      'luc_favre_20260802.mp4',
-      'luc_favre_20260802.kdenlive'
-    ])
-  })
-
-  /* The edit exists nowhere else and weighs nothing beside the footage, so it always travels with
-     it — never a tick anybody can forget. The film is the one that is asked about. */
-  it('always puts the editing project inside the zip, and the film only when asked', async () => {
-    const { groupDir } = await upload()
-    expect(contents(groupDir)).toEqual([
-      'GX018570.MP4',
-      'GX018571.MP4',
-      'luc_favre_20260802.kdenlive'
-    ])
-  })
-
-  it('never gives the project to the passenger, whatever is asked', async () => {
-    const { uploads } = await upload({}, {}, { backupAs: 'folder', filmToBackup: true })
-    expect(
-      uploads.filter((u) => u.dest === '/SkyDock/Tandems/Luc Favre').map((u) => u.name)
-    ).not.toContain('luc_favre_20260802.kdenlive')
-  })
-
-  it('sends the originals as plain files into a folder of their own, with no zip', async () => {
-    const { uploads, groupDir, result } = await upload(
-      {},
-      {},
-      { backupAs: 'folder', filmToBackup: false }
-    )
-    expect(
-      uploads
-        .filter((u) => u.dest === '/Backup/luc_favre_20260802')
-        .map((u) => u.name)
-        .sort()
-    ).toEqual(['GX018570.MP4', 'GX018571.MP4', 'luc_favre_20260802.kdenlive'])
-    expect(uploads.some((u) => u.name.endsWith('.rushes.zip'))).toBe(false)
-    expect(fs.existsSync(path.join(groupDir, 'luc_favre_20260802.rushes.zip'))).toBe(false)
-    expect(result.record.originals?.map((o) => o.remotePath).sort()).toEqual([
-      '/Backup/luc_favre_20260802/GX018570.MP4',
-      '/Backup/luc_favre_20260802/GX018571.MP4',
-      '/Backup/luc_favre_20260802/luc_favre_20260802.kdenlive'
-    ])
-  })
-
-  it('puts the film beside them, and still gives it to the passenger', async () => {
-    const { uploads, result } = await upload({}, {}, { backupAs: 'folder', filmToBackup: true })
-    expect(
-      uploads.filter((u) => u.dest === '/Backup/luc_favre_20260802').map((u) => u.name)
-    ).toContain('luc_favre_20260802.mp4')
-    expect(result.record.film?.remotePath).toBe('/SkyDock/Tandems/Luc Favre/luc_favre_20260802.mp4')
-    /* the two originals, the film beside them, and the project that always travels */
-    expect(result.record.originals).toHaveLength(4)
   })
 })

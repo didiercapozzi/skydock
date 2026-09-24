@@ -1,7 +1,7 @@
 import * as fs from 'node:fs'
 import { groupFromFiles, shiftGroupTo } from './clustering'
 import { cameraTimes } from './scan'
-import type { Manifest, ManifestFile } from './types'
+import type { Manifest, ManifestFile, ManifestPassenger } from './types'
 
 /* Moving files on the board, in one place: dragged from one jump to another, onto a place, back to
    the sorting area — or dropped in again from the computer onto somewhere else. A file is in one place
@@ -17,6 +17,9 @@ type MoveTo = {
   /* for a new jump: what it is called, and when it started — its files move with the start */
   name?: string
   startsAt?: number
+  /* the new jump is a montage — named by `passenger` when it has a name yet */
+  montage?: boolean
+  passenger?: ManifestPassenger
 }
 
 /* A copy exists because a jump holds it. One that leaves for the sorting area with nowhere to be —
@@ -82,7 +85,7 @@ const moveFiles = (manifest: Manifest, asked: Set<string>, to: MoveTo) => {
     delete file.processed
     delete file.uploaded
     /* a file that lands in a group takes its destination from that group, never its own —
-       `file.destination` is what marks a lone file (RULES, Dropzones and tandems) */
+       `file.destination` is what marks a lone file (RULES, Places) */
     if (to.destination && !to.newGroup && !to.targetGroupId) file.destination = to.destination
     else delete file.destination
   }
@@ -110,30 +113,26 @@ const moveFiles = (manifest: Manifest, asked: Set<string>, to: MoveTo) => {
     if (moving.length === 0) throw new Error('Those files are no longer in the manifest.')
     const group = groupFromFiles(manifest, moving, to.destination ?? undefined)
     const name = to.name?.trim()
-    if (group && name) group.name = name
+    if (group && to.montage) group.montageJump = true
+    if (group && to.passenger) group.passenger = to.passenger
+    else if (group && name) group.name = name
     if (group && to.startsAt !== undefined) shiftGroupTo(manifest, group, to.startsAt)
   }
 }
 
-/* Files copied into another jump, not moved: each stays where it is and the other jump gets an entry
-   of its own for the same original — its own trim, time, processed copy and upload — so a clip two
-   passengers share goes to both, each under their own name, with nothing doubled on the disk. It
-   arrives trimmed, framed and turned as it is where it was copied from, which is the likeliest thing
-   to want and can be changed there afterwards. A jump holds an original once: one it already has,
-   as itself or as a copy, is passed over. */
-const copyFiles = (manifest: Manifest, ids: Set<string>, targetGroupId: string) => {
-  const target = manifest.groups.find((g) => g.id === targetGroupId)
-  if (!target) throw new Error('Target jump not found.')
+/* The copies a set of files makes, each an entry of its own for the same original: its own id, trim,
+   time, processed copy and upload. Each is taken as its jump has it, crop and all — and one in no
+   jump as the registry has it. `held` is what the receiving jump already holds, by path: a jump
+   holds an original once, so one it already has, as itself or as a copy, is passed over, and a file
+   freed from this machine has no file here to copy. */
+const copiesOf = (manifest: Manifest, ids: Set<string>, held: Set<string>) => {
   const taken = new Set(manifest.files.flatMap((f) => (f.id ? [f.id] : [])))
-  const held = new Set(target.files.map((f) => f.path))
-  /* each file as its jump has it, crop and all; one in no jump, as the registry has it */
   const asHeld = new Map<string, ManifestFile>()
   for (const f of manifest.files) if (f.id && ids.has(f.id)) asHeld.set(f.id, f)
   for (const f of manifest.groups.flatMap((g) => g.files))
     if (f.id && ids.has(f.id)) asHeld.set(f.id, f)
 
-  let copied = 0
-  /* one freed from this machine has no file here to copy */
+  const copies: ManifestFile[] = []
   let freed = 0
   for (const source of asHeld.values()) {
     if (source.freed) {
@@ -148,16 +147,47 @@ const copyFiles = (manifest: Manifest, ids: Set<string>, targetGroupId: string) 
     taken.add(id)
     held.add(source.path)
     const { processed: _p, uploaded: _u, destination: _d, freed: _f, ...kept } = source
-    const copy: ManifestFile = { ...kept, id, copyOf: original }
-    manifest.files.push(copy)
-    target.files.push({ ...copy })
-    copied++
+    copies.push({ ...kept, id, copyOf: original })
   }
-  if (copied > 0) {
-    target.files.sort((a, b) => a.mtime - b.mtime)
+  manifest.files.push(...copies)
+  return { copies, passedOver: asHeld.size - copies.length - freed, freed }
+}
+
+/* Files copied into another jump, not moved: each stays where it is and the other jump gets an entry
+   of its own for the same original — its own trim, time, processed copy and upload — so a clip two
+   passengers share goes to both, each under their own name, with nothing doubled on the disk. It
+   arrives trimmed, framed and turned as it is where it was copied from, which is the likeliest thing
+   to want and can be changed there afterwards. A jump holds an original once: one it already has,
+   as itself or as a copy, is passed over. */
+const copyFiles = (manifest: Manifest, ids: Set<string>, targetGroupId: string) => {
+  const target = manifest.groups.find((g) => g.id === targetGroupId)
+  if (!target) throw new Error('Target jump not found.')
+  const { copies, passedOver, freed } = copiesOf(
+    manifest,
+    ids,
+    new Set(target.files.map((f) => f.path))
+  )
+  if (copies.length > 0) {
+    target.files = [...target.files, ...copies.map((c) => ({ ...c }))].sort(
+      (a, b) => a.mtime - b.mtime
+    )
     target.processed = undefined
   }
-  return { copied, passedOver: asHeld.size - copied - freed, freed }
+  return { copied: copies.length, passedOver, freed }
+}
+
+/* Files that already belong somewhere — a dropzone, another montage — made into a montage of their
+   own without leaving: copies, each as it is where it came from, gathered into a new jump filed
+   under that name (RULES, Making a montage). A name that is already a montage's joins it as a jump
+   of its own, keeping its own times, as a passenger's two jumps share one folder. */
+const copyIntoMontage = (manifest: Manifest, ids: Set<string>, passenger: ManifestPassenger) => {
+  const { copies, passedOver, freed } = copiesOf(manifest, ids, new Set())
+  const group = groupFromFiles(manifest, copies)
+  if (group) {
+    group.montageJump = true
+    group.passenger = passenger
+  }
+  return { copied: copies.length, passedOver, freed, groupId: group?.id }
 }
 
 /* A jump that should not exist goes, and its files stay: loose in Unsorted, each on its own day,
@@ -173,5 +203,5 @@ const deleteJump = (manifest: Manifest, groupId: string) => {
   return ids.size
 }
 
-export { copyFiles, deleteJump, moveFiles }
+export { copyFiles, copyIntoMontage, deleteJump, moveFiles }
 export type { MoveTo }

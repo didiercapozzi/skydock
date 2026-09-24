@@ -111,7 +111,7 @@ describe('restoring tandems from the storage’s list', () => {
 
     expect(said.restored).toEqual([{ who: 'Luc Favre', files: 2, of: 2 }])
     const saved = loadManifest(path.join(tmpDir, 'manifest.json'))
-    const tandem = saved?.groups.find((g) => g.destination === 'Tandems')
+    const tandem = saved?.groups.find((g) => g.montageJump)
     expect(tandem?.passenger).toEqual({ firstname: 'Luc', lastname: 'Favre' })
     expect(tandem?.files.map((f) => f.mtime)).toEqual([AT + 3600, AT + 3660])
   })

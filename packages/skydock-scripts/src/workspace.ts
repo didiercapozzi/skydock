@@ -1,19 +1,23 @@
 import { dayOfFiles } from './clustering'
+import { isMontage } from './filed'
 import type { ManifestGroup, ManifestPassenger } from './types'
 
-const hasCompletePassenger = (passenger: ManifestPassenger | null | undefined) => {
-  if (!passenger) return false
-  return passenger.firstname.trim() !== '' && passenger.lastname.trim() !== ''
-}
+/* Where montages are worked on, on this machine: each in a folder of its own inside this one. It
+   keeps the name tandems had, because a project names its clips by where they are, and moving them
+   would leave every edit pointing at nothing. */
+const MONTAGES_FOLDER = 'Tandems'
 
-/* Somebody started typing a name and did not finish. It is not a passenger — there is no folder to
-   put them in — and it is not a place either, so nothing downstream can do anything sensible with
-   it. Worth its own name because "no name" and "half a name" want different answers: the first is
-   a jump nobody has claimed yet, the second is a jump waiting on one more word. */
-const hasPartialPassenger = (passenger: ManifestPassenger | null | undefined) => {
-  if (!passenger) return false
-  const started = passenger.firstname.trim() !== '' || passenger.lastname.trim() !== ''
-  return started && !hasCompletePassenger(passenger)
+/* A montage is named by one name — "Luc Favre", "Boogie 2026" — and any name is a whole one: it is
+   the folder and the file names. */
+const hasCompletePassenger = (passenger: ManifestPassenger | null | undefined) =>
+  passengerName(passenger) !== ''
+
+/* The one name as the record keeps it. The record has two parts, as it always had, so nothing
+   already on the disk or in the storage's list needs reading another way: the name is cut at its
+   first space and joined again by `passengerName`, which gives it back exactly. */
+const passengerFrom = (name: string): ManifestPassenger => {
+  const [firstname = '', ...rest] = name.trim().split(/\s+/)
+  return { firstname, lastname: rest.join(' ') }
 }
 
 const formatGroupDay = (mtime: number) => {
@@ -122,6 +126,16 @@ const passengerName = (passenger: ManifestPassenger | null | undefined) =>
 const passengerOf = (group: { passenger?: ManifestPassenger | null }) =>
   passengerName(group.passenger)
 
+/* A name typed for a montage, as the record will keep it: one that is already a montage's, however
+   it is capitalised, is that montage — its jumps share one folder — and keeps the spelling it has. */
+const montageCalled = (groups: ManifestGroup[], name: string) => {
+  const typed = passengerName(passengerFrom(name)).toLowerCase()
+  return (
+    groups.find((g) => isMontage(g) && passengerOf(g).toLowerCase() === typed)?.passenger ??
+    passengerFrom(name)
+  )
+}
+
 export {
   buildPassengerFolder,
   buildFsTime,
@@ -129,11 +143,14 @@ export {
   formatCaptureTime,
   formatGroupDay,
   hasCompletePassenger,
-  hasPartialPassenger,
   makeFileName,
   mergeGroups,
+  montageCalled,
+  passengerFrom,
   passengerName,
   passengerOf,
+  isMontage,
+  MONTAGES_FOLDER,
   resolveDestinationPath,
   toFileStem
 }

@@ -11,6 +11,7 @@ import { imported } from './manifest/imported'
 import { markEmailed } from './manifest/mark-emailed'
 import { cameraCopied } from './manifest/camera-copied'
 import { copyFilesIntent } from './manifest/copy-files'
+import { makeMontageIntent } from './manifest/make-montage'
 import { resetFreshIntent } from './manifest/reset-fresh'
 import { restoreTandemsIntent } from './manifest/restore-tandems'
 import { mergeGroupsIntent } from './manifest/merge-groups'
@@ -64,6 +65,7 @@ const intents: Record<ActionData['intent'], Intent> = {
   'mark-emailed': markEmailed,
   'restore-tandems': restoreTandemsIntent,
   'copy-files': copyFilesIntent,
+  'make-montage': makeMontageIntent,
   'reset-fresh': resetFreshIntent,
   'camera-copied': cameraCopied
 }

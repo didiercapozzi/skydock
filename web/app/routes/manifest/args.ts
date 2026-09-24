@@ -1,9 +1,9 @@
 import {
-  backupOptionsSchema,
   destinationSchema,
   importOutcomeSchema,
   manifestFileSchema,
-  manifestGroupSchema
+  manifestGroupSchema,
+  sendPlanSchema
 } from '@skydock/scripts'
 import { z } from 'zod'
 
@@ -29,6 +29,8 @@ const actionArgs = z.object({
     'move-files',
     /* the same files into another jump as well, staying where they are */
     'copy-files',
+    /* picked files or a jump made a montage under one name: moved from Fresh files, copied otherwise */
+    'make-montage',
     /* a jump that should not exist: it goes, its files stay, loose in Unsorted */
     'delete-jump',
     /* a place that should not exist: it goes, what was filed there is back in Fresh files */
@@ -67,6 +69,8 @@ const actionArgs = z.object({
   fileIds: z.array(z.string()).optional(),
   targetGroupId: z.string().optional(),
   newGroup: z.boolean().optional(),
+  /* the new jump is a montage, waiting for its name */
+  montage: z.boolean().optional(),
   destination: z.string().optional(),
   template: z.string().optional(),
   groups: z.array(manifestGroupSchema).optional(),
@@ -96,10 +100,10 @@ const actionArgs = z.object({
   resetWhat: z.enum(['times', 'everything']).optional(),
   /* which of the storage's tandems to put back, by their folder up there; absent is every one */
   folders: z.array(z.string()).optional(),
-  /* what a jump is called, when it is made or renamed */
+  /* what a jump is called, when it is made or renamed — and a montage's one name, when it is made */
   name: z.string().optional(),
-  /* how a tandem's upload keeps the originals: one zip or plain files, with or without the film */
-  backup: backupOptionsSchema.optional(),
+  /* how a montage goes up: what is zipped, and which destinations each item goes to */
+  plan: sendPlanSchema.optional(),
   emailed: z
     .object({ folder: z.string(), to: z.string().optional(), sent: z.boolean() })
     .optional(),

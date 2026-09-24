@@ -106,7 +106,7 @@ describe('footage that is nowhere', () => {
       [
         jump([lost], {
           id: 'tandem-1',
-          destination: 'Tandems',
+          montageJump: true,
           uploaded: {
             at: 1_700_000_300,
             film: {

@@ -3,14 +3,14 @@ import { deleteTandem, resetTandem } from '../../../../packages/skydock-scripts/
 import type { Intent } from './change'
 import { boardAnswer } from '../../helpers/manifest'
 
-/* Back to before processing, keeping every decision — or undone altogether (RULES, Taking a tandem
+/* Back to before processing, keeping every decision — or undone altogether (RULES, Taking a montage
    back). Not while its folder is being written: taking it away underneath would leave half of it. */
 const takeBack =
   (take: typeof resetTandem): Intent =>
   ({ data, manifest, manifestPath, outputDir, refuse }) => {
     const running = processingNow()
     if (running && (running.groupIds.length === 0 || running.groupIds.includes(data.groupId ?? '')))
-      return refuse('This tandem is being processed — wait for it to finish.')
+      return refuse('This montage is being processed — wait for it to finish.')
     try {
       take(manifest, outputDir, data.groupId ?? '')
     } catch (e) {

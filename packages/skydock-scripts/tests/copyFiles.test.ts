@@ -216,11 +216,11 @@ describe('a copy that leaves its jump', () => {
     expect(manifest.files.find((f) => f.id === 'luc~1')).toMatchObject({ copyOf: 'luc' })
   })
 
-  it('goes with its tandem when the tandem is deleted, leaving the original where it is', () => {
+  it('goes with its montage when the montage is deleted, leaving the original where it is', () => {
     dir = createTmpDir('skydock-copies-')
     const manifest = board()
     const anas = manifest.groups.find((g) => g.id === 'anas')!
-    anas.destination = 'Tandems'
+    anas.montageJump = true
     anas.passenger = { firstname: 'Ana', lastname: 'Roth' }
     copyFiles(manifest, new Set(['plane']), 'anas')
 

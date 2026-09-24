@@ -90,7 +90,7 @@ const setup = async ({ projectInBackup = false } = {}) => {
         id: 'g1',
         label: 'jump',
         day: '01.08.2026',
-        destination: 'Tandems',
+        montageJump: true,
         passenger: { firstname: 'Luc', lastname: 'Favre' },
         processed: true,
         files,
@@ -243,7 +243,7 @@ describe('freeing an uploaded tandem', () => {
   it('refuses a tandem that was never uploaded', async () => {
     const { manifest } = await setup()
     delete manifest.groups[0]!.uploaded
-    await expect(free(manifest)).rejects.toThrow(/Upload this tandem first/)
+    await expect(free(manifest)).rejects.toThrow(/Upload this montage first/)
   })
 
   /* the whole point of freeing: the card may still hold the original, and plugging it in must not

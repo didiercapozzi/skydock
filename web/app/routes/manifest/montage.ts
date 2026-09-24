@@ -8,21 +8,21 @@ import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 
 /* A processed tandem gets an editing project, the template as its owner made it with the clips in
-   its bin, and the project is opened in the same press: it exists to be edited (RULES, Montage). */
+   its bin, and the project is opened in the same press: it exists to be edited (RULES, The editing project). */
 const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse }) => {
   const group = manifest.groups.find((g) => g.id === data.groupId)
   if (!group) return refuse('Group not found.')
-  if (!isTandem(group)) return refuse('Only a tandem gets a montage — give it a passenger first.')
-  if (!group.processed) return refuse('Process this tandem before making its montage.')
+  if (!isTandem(group)) return refuse('Only a named montage gets a project — give it a name first.')
+  if (!group.processed) return refuse('Process this montage before making its project.')
   const { dir: groupDir, baseName } = getGroupProcessedDir(outputDir, group)
   if (!fs.existsSync(groupDir)) return refuse('Processed folder not found. Process it again.')
-  /* an edit someone has been working on is never overwritten (RULES, Montage) */
+  /* an edit someone has been working on is never overwritten (RULES, The editing project) */
   if (fs.readdirSync(groupDir).some((f) => f.endsWith('.kdenlive')))
-    return refuse('This tandem already has a project — open it in kdenlive.')
+    return refuse('This montage already has a project — open it in kdenlive.')
   try {
     /* The processed copies are already renamed and cropped — the bin holds them as they are. A
        tandem with no video has no folder for them, and its film is made of its photos instead: they
-       go in the bin, so the editor opens on something to make it from (RULES, Montage). */
+       go in the bin, so the editor opens on something to make it from (RULES, The editing project). */
     const copiesIn = (media: string) => {
       const dir = path.join(groupDir, media)
       return fs.existsSync(dir)
@@ -47,7 +47,7 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
       template: data.template,
       /* Each copy with the proxy processing cut for it, when it managed to make one, and with what
          the jump in it was measured at: a clip that holds a jump carries its moments as markers
-         (RULES, Montage), and the moments belong to the file it was copied from. */
+         (RULES, The editing project), and the moments belong to the file it was copied from. */
       photos,
       clips: videos.map((file) => {
         const proxy = path.join(getCutProxyDir(outputDir, group.id), `${path.parse(file).name}.mp4`)

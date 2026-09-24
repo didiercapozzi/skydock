@@ -164,7 +164,7 @@ describe('a tandem’s entry', () => {
       id: 'g1',
       label: 'jump',
       day: '01.08.2026',
-      destination: 'Tandems',
+      montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [
         { id: 'v', path: '/o/GX01.MP4', filename: 'GX01.MP4', size: 1, mtime: 1 },
@@ -188,6 +188,32 @@ describe('a tandem’s entry', () => {
       shareUrl: 'https://nas/s/1',
       backup: '/Backup/luc.rushes.zip'
     })
+  })
+
+  /* the list lives above every destination; the montage is known by the folder its film went to */
+  it('is known by the folder its film went to, and kept in the list folder it is given', () => {
+    const group: ManifestGroup = {
+      id: 'g1',
+      label: 'jump',
+      day: '01.08.2026',
+      montageJump: true,
+      passenger: { firstname: 'Boogie', lastname: '2026' },
+      files: [{ id: 'v', path: '/o/GX01.MP4', filename: 'GX01.MP4', size: 1, mtime: 1 }],
+      uploaded: {
+        at: 500,
+        sent: [
+          { name: 'boogie.backup.videos.zip', holds: ['videos'], to: ['/Backup/Boogie 2026'] },
+          {
+            name: 'boogie.mp4',
+            holds: ['film'],
+            to: ['/Dropzones/Yverdon/Boogie 2026', '/Dropzones/Tandems/Boogie 2026']
+          }
+        ]
+      }
+    }
+    const listed = entryOfTandem(group, DIR)!
+    expect(listed.dir).toBe(DIR)
+    expect(listed.entry.folder).toBe('/Dropzones/Yverdon/Boogie 2026')
   })
 
   it('does not exist for a tandem that was never uploaded', () => {

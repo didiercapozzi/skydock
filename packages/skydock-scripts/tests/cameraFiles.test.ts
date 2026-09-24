@@ -197,7 +197,7 @@ describe('deleting from a camera', () => {
     const manifest = board([
       {
         ...dropzone([file]),
-        destination: 'Tandems',
+        montageJump: true,
         passenger: { firstname: 'Luc', lastname: 'Favre' },
         uploaded: { at: 1, rushes }
       }
@@ -225,7 +225,7 @@ describe('deleting from a camera', () => {
     const manifest = board([
       {
         ...dropzone([file]),
-        destination: 'Tandems',
+        montageJump: true,
         passenger: { firstname: 'Luc', lastname: 'Favre' },
         uploaded: { at: 1, rushes }
       }

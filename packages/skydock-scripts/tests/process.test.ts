@@ -100,7 +100,7 @@ afterEach(() => {
 describe('where a tandem lands', () => {
   it('gives the passenger a folder of their name, with videos and photos apart', async () => {
     const { manifestPath } = write({
-      destination: 'Tandems',
+      montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [clip('GX010001.MP4', 0), clip('G0010002.JPG', 1)]
     })
@@ -115,7 +115,7 @@ describe('where a tandem lands', () => {
 
   it('folds accents and spaces out of the file names, not out of the folder', async () => {
     const { manifestPath } = write({
-      destination: 'Tandems',
+      montageJump: true,
       passenger: { firstname: 'Chloé', lastname: 'Perret' },
       files: [clip('GX010001.MP4', 0)]
     })
@@ -127,16 +127,19 @@ describe('where a tandem lands', () => {
     ])
   })
 
-  /* half a name is neither a person nor a place, and a place is what the folder rule would make of it */
-  it('refuses a tandem with only half a name rather than filing it as a place', async () => {
+  /* a montage is named by one name, and a single word is a whole one */
+  it('gives a montage named by a single word a folder of its own', async () => {
     const { manifestPath } = write({
-      destination: 'Tandems',
-      passenger: { firstname: 'Luc', lastname: '' },
+      montageJump: true,
+      passenger: { firstname: 'Boogie', lastname: '' },
       files: [clip('GX010001.MP4', 0)]
     })
 
-    await expect(processJumps({ manifestPath, outputDir })).rejects.toThrow(/first and last name/)
-    expect(delivered()).toEqual([])
+    await processJumps({ manifestPath, outputDir })
+
+    expect(delivered()).toEqual([
+      path.join('Tandems', 'Boogie', 'videos', 'boogie_20260808_090909.mp4')
+    ])
   })
 
   /* Nobody is in it yet, so it is a place as far as the folder rule is concerned. That is right:
@@ -158,7 +161,7 @@ describe('where a tandem lands', () => {
     const luc = { firstname: 'Luc', lastname: 'Favre' }
     const { manifestPath } = write({
       id: 'g1',
-      destination: 'Tandems',
+      montageJump: true,
       passenger: luc,
       files: [clip('GX010001.MP4', 0)]
     })
@@ -169,7 +172,7 @@ describe('where a tandem lands', () => {
       id: 'g2',
       label: 'jump',
       day: DAY,
-      destination: 'Tandems',
+      montageJump: true,
       passenger: luc,
       files: [later]
     })
@@ -187,7 +190,7 @@ describe('where a tandem lands', () => {
   /* a file named after the Tandems folder is what a half-named tandem filed as a place would be called */
   it('never writes a file named after the Tandems folder itself', async () => {
     const { manifestPath } = write({
-      destination: 'Tandems',
+      montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [clip('GX010001.MP4', 0)]
     })
@@ -341,10 +344,10 @@ describe('cropping the frame', () => {
 
   /* A tandem is prepared again while its edit is open — a trim corrected after the montage was made
      is no use until the copies are made again — so what processing writes over has to be the media
-     and nothing else (RULES, Montage). */
+     and nothing else (RULES, The editing project). */
   it('leaves the project, the film and the archives where they are when it prepares again', async () => {
     const { manifestPath, group } = write({
-      destination: 'Tandems',
+      montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [clip('GX010001.MP4', 0)]
     })
@@ -441,7 +444,7 @@ describe('cropping the frame', () => {
 describe('while a processing is running', () => {
   it('keeps an edit saved in the meantime', async () => {
     const { manifestPath } = write({
-      destination: 'Tandems',
+      montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [clip('GX010001.MP4', 0)]
     })
@@ -465,7 +468,7 @@ describe('while a processing is running', () => {
 
   it('does not call a jump processed when it was changed while its copies were written', async () => {
     const { manifestPath } = write({
-      destination: 'Tandems',
+      montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [clip('GX010001.MP4', 0)]
     })
@@ -486,7 +489,7 @@ describe('while a processing is running', () => {
 
   it('says what it is working on, and refuses to start a second one on top of it', async () => {
     const { manifestPath } = write({
-      destination: 'Tandems',
+      montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [clip('GX010001.MP4', 0)]
     })
@@ -650,7 +653,7 @@ describe('processing, said as it happens', () => {
 
   it('says of every file that it began, and that it ended well', async () => {
     const { manifestPath } = write({
-      destination: 'Tandems',
+      montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [clip('GX010001.MP4', 0), clip('G0010002.JPG', 1)]
     })
@@ -673,7 +676,7 @@ describe('processing, said as it happens', () => {
 
   it('asks ffmpeg to say where it is, on the clips it has to write itself', async () => {
     const { manifestPath } = write({
-      destination: 'Tandems',
+      montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [{ ...clip('GX010001.MP4', 0), cropStart: 2, cropEnd: 8 }]
     })
@@ -689,7 +692,7 @@ describe('processing, said as it happens', () => {
       return tools(cmd, opts)
     })
     const { manifestPath } = write({
-      destination: 'Tandems',
+      montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [{ ...clip('GX010001.MP4', 0), cropStart: 2, cropEnd: 8 }]
     })
@@ -721,7 +724,7 @@ describe('processing a clip that two jumps hold', () => {
           id: 'g1',
           label: 'g1',
           day: DAY,
-          destination: 'Tandems',
+          montageJump: true,
           passenger: { firstname: 'Luc', lastname: 'Favre' },
           files: [plane]
         },
@@ -729,7 +732,7 @@ describe('processing a clip that two jumps hold', () => {
           id: 'g2',
           label: 'g2',
           day: DAY,
-          destination: 'Tandems',
+          montageJump: true,
           passenger: { firstname: 'Ana', lastname: 'Roth' },
           files: [ana]
         }

@@ -16,7 +16,7 @@ import type { Arriving } from '../../../packages/skydock-scripts/src/templates'
 import type { Route } from './+types/api.templates'
 
 /* The editing templates this machine has — which kdenlive wrote each, whether every file it names
-   is here, which one is the usual — for choosing one and for being warned (RULES, Montage). Read
+   is here, which one is the usual — for choosing one and for being warned (RULES, The editing project). Read
    fresh each time: a template is a folder anyone may have changed by hand. */
 const loader = () => Response.json(listTemplates(getOutputDir()))
 

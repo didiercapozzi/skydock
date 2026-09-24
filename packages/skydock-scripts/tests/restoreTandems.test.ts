@@ -36,7 +36,7 @@ const uploadedTandem = (): ManifestGroup => ({
   id: 'group_7',
   label: 'group_7',
   day: '01.08.2026',
-  destination: 'Tandems',
+  montageJump: true,
   passenger: { firstname: 'Luc', lastname: 'Favre' },
   processed: true,
   uploaded: { at: 5, film: sent('luc.mp4') },
@@ -88,7 +88,7 @@ describe('a tandem this board has forgotten', () => {
     const restored = restoreTandems(manifest, [listed()])
 
     expect(restored).toEqual([{ who: 'Luc Favre', files: 2, of: 2 }])
-    const tandem = manifest.groups.find((g) => g.destination === 'Tandems')
+    const tandem = manifest.groups.find((g) => g.montageJump)
     expect(tandem?.passenger).toEqual({ firstname: 'Luc', lastname: 'Favre' })
     expect(tandem?.files.map((f) => f.id)).toEqual(['a', 'b'])
     /* and nothing that was not its own */
@@ -100,7 +100,7 @@ describe('a tandem this board has forgotten', () => {
 
     restoreTandems(manifest, [listed()])
 
-    const tandem = manifest.groups.find((g) => g.destination === 'Tandems')
+    const tandem = manifest.groups.find((g) => g.montageJump)
     expect(tandem?.files.map((f) => f.mtime)).toEqual([CORRECTED, CORRECTED + 60])
     expect(manifest.files.find((f) => f.id === 'a')?.mtime).toBe(CORRECTED)
   })
@@ -111,7 +111,7 @@ describe('a tandem this board has forgotten', () => {
 
     restoreTandems(manifest, [listed()])
 
-    const tandem = manifest.groups.find((g) => g.destination === 'Tandems')
+    const tandem = manifest.groups.find((g) => g.montageJump)
     expect(tandem?.processed).toBeFalsy()
     expect(tandem?.uploaded).toBeUndefined()
   })

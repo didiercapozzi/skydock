@@ -173,18 +173,17 @@ describe('where an upload goes', () => {
     expect(target.localDir).toBe('/out/processed/Yverdon')
   })
 
-  /* Still where a passenger's folder goes — uploading a tandem asks for this target directly, which is the
-     only way a tandem ever reaches the storage. */
-  it('gives a tandem its passenger’s folder inside the Tandems folder', () => {
+  /* a montage belongs to no destination: its upload says where each thing goes */
+  it('gives a montage no folder of its own to be uploaded into as a place', () => {
     const manifest = manifestOf([
       group({
         id: 'group_2',
-        destination: 'Tandems',
+        montageJump: true,
         passenger: { firstname: 'Luc', lastname: 'Favre' }
       })
     ])
     const target = targetForGroup(manifest.groups[0], outputDir, manifest)
-    expect(target.remoteDir).toBe('/nas/Tandems/Luc Favre')
+    expect(target.remoteDir).toBeNull()
   })
 
   /* An upload sends a folder whole, and a passenger's holds the project, the working copies and
@@ -195,7 +194,7 @@ describe('where an upload goes', () => {
       group({ destination: 'Yverdon' }),
       group({
         id: 'group_2',
-        destination: 'Tandems',
+        montageJump: true,
         passenger: { firstname: 'Luc', lastname: 'Favre' }
       })
     ])
@@ -206,6 +205,7 @@ describe('where an upload goes', () => {
     })
     expect(byId.map((t) => t.key)).toEqual(['group:group_1'])
 
+    /* nor is a montage in the Tandems destination, which is a place like any other */
     const byDestination = resolveUploadTargets({
       outputDir,
       manifest,

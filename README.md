@@ -1,9 +1,9 @@
 # SkyDock
 
-> A dropzone's footage, from the cameras to the passenger.
+> A dropzone's footage, from the cameras to whoever it is for.
 
 Plug the cameras in at the end of the day. SkyDock copies the cards, works out which files belong to
-which jump, and takes each jump through to the passenger's inbox — renamed, cropped, uploaded to the
+which jump, and takes each jump through to whoever it is for — renamed, cropped, uploaded to the
 club's storage and sent on with a link.
 
 ## Getting it
@@ -27,7 +27,7 @@ you pick, and it offers one in your videos. It is asked once and remembered. Pic
 a day of footage is tens of gigabytes before anything is uploaded.
 
 Nothing else has to be installed. SkyDock carries the tools it works with. The one exception is the
-video editor, kdenlive, which you need only to render a tandem's film — see step 5.
+video editor, kdenlive, which you need only to render a montage's film — see step 5.
 
 It keeps itself current: when a new version is out it says so once and asks. On Windows and Linux it
 fetches the new one first, so saying yes is a restart rather than a wait; on a Mac it opens the
@@ -46,26 +46,30 @@ guess, and the board is there to correct it: two jumps can be merged, a file dra
 another, loose files regrouped, and a jump's time put right when a camera's clock was wrong. **Scan**
 in the header does it again at any time.
 
-**3. File each jump.** Drag a jump onto a **dropzone** — a day's ordinary work, everyone's together —
-or onto a **passenger** under Tandems, by name. That is the one decision the day actually needs, and
-nothing further happens to a jump until it is filed.
+**3. File each jump.** Drag a jump onto a **destination** — Yverdon, Tandems, any place, a day's
+ordinary work, everyone's together — or make it a **montage**, a film for someone: give the jump a name in its panel ("Luc Favre", "Boogie
+2026") and it is one. Picked files, or a single clip, become a montage the same way. Files that already
+belong to a dropzone are copied into the montage, trims and all, and the dropzone keeps its own. That
+is the one decision the day actually needs, and nothing further happens to a jump until it is filed.
 
 **4. Process.** One press per place. The files are copied into their delivery folder, renamed after
-the passenger or the dropzone and the time they were shot, cropped and turned the way you asked on
+the montage or the dropzone and the time they were shot, cropped and turned the way you asked on
 the board, and stamped so each file's date matches its name. The originals are never touched.
 
-**5. The film, for a tandem.** **Montage** builds an editing project with the clips already on the
-timeline, to whichever template you chose, and opens it in kdenlive. You edit and render it there —
+**5. The film, for a montage.** **Make the project** builds an editing project from whichever template
+you chose, with the clips waiting in its bin, and opens it in kdenlive. You edit and render it there —
 SkyDock prepares the project and opens the editor, and never renders anything itself. A dropzone
 needs none of this.
 
-**6. Upload.** A dropzone folder goes up whole and comes back with a share link. A tandem sends the
-film and the photos to the passenger's folder and the original videos to the backup. A file counts as
-uploaded only when both sides agree on its checksum.
+**6. Upload.** A destination's folder goes up whole and comes back with a share link. A montage is
+uploaded in two steps: first tick what to zip — the original videos, the photos, the film, the
+project, into one zip or a zip each — and see exactly what will be sent; then drag each item onto one
+destination or more. The one holding the film gets the share link. Both steps are remembered for the
+next montage. A file counts as uploaded only when both sides agree on its checksum.
 
-**7. Tell them, and get the room back.** A tandem's page offers the email — written already, in
-French, with their link, ready to look over before it is sent from Gmail or your own mail program.
-**Free** then deletes everything of that tandem from this machine, but only after proving the storage
+**7. Tell them, and get the room back.** A montage's page offers the email — written already, in
+French, with the link, ready to look over before it is sent from Gmail or your own mail program.
+**Free** then deletes everything of that montage from this machine, but only after proving the storage
 holds every byte of it; if one file fails, nothing is deleted and it says which. A dropzone frees the
 same way.
 
@@ -79,7 +83,8 @@ Under the folder you chose on the first run:
 
 ```
 original_files/   every file exactly as it came off the camera, one folder per day
-processed/        what gets handed over — one folder per dropzone, one per passenger
+processed/        what gets handed over — one folder per destination; each montage in one of its own,
+                  under Tandems/
 .trash/           anything put aside, and a card's files once deleted from it
 ```
 

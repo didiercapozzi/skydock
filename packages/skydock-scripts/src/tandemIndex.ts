@@ -44,7 +44,7 @@ const indexIsThere = async (session: NasSession, dir: string) => {
     _sid: session.sessionId
   })
   if (!body.success) {
-    /* no Tandems folder yet: nothing has been uploaded into it, so there is no list */
+    /* no such folder yet: nothing has been uploaded into it, so there is no list */
     if (body.error?.code === NOT_THERE) return false
     throw new Error(`The storage would not list ${dir} (${body.error?.code}).`)
   }
@@ -54,9 +54,18 @@ const indexIsThere = async (session: NasSession, dir: string) => {
 }
 
 /* Reads the list off the storage. No file yet is an empty list; a file that is there but cannot be
-   read is an error, never an empty list — writing back over it would throw away every entry in it. */
-const readTandemIndex = async (session: NasSession, dir: string): Promise<TandemIndex> => {
-  if (!(await indexIsThere(session, dir))) return { version: 1, tandems: [] }
+   read is an error, never an empty list — writing back over it would throw away every entry in it.
+   A list not yet in `dir` is read from `earlier`, where it was kept before montages belonged to no
+   place, and the first change writes it where it now lives. */
+const readTandemIndex = async (
+  session: NasSession,
+  dir: string,
+  earlier?: string | null
+): Promise<TandemIndex> => {
+  if (!(await indexIsThere(session, dir)))
+    return earlier && earlier !== dir
+      ? readTandemIndex(session, earlier)
+      : { version: 1, tandems: [] }
   const url = dsmRequestUrl(session.hostname, {
     api: 'SYNO.FileStation.Download',
     version: '2',
@@ -77,9 +86,10 @@ const readTandemIndex = async (session: NasSession, dir: string): Promise<Tandem
 const updateTandemIndex = async (
   session: NasSession,
   dir: string,
-  change: (index: TandemIndex) => void
+  change: (index: TandemIndex) => void,
+  earlier?: string | null
 ) => {
-  const index = await readTandemIndex(session, dir)
+  const index = await readTandemIndex(session, dir, earlier)
   change(index)
   index.tandems.sort((a, b) => b.uploadedAt - a.uploadedAt)
   const staging = fs.mkdtempSync(path.join(os.tmpdir(), `skydock-index-${crypto.randomUUID()}`))
@@ -115,14 +125,24 @@ const upsert = (index: TandemIndex, entry: Partial<TandemEntry> & { folder: stri
   index.tandems[at] = entrySchema.parse({ ...before, ...entry, ...(files ? { files } : {}) })
 }
 
-/* A tandem's entry, from what its upload recorded: the passenger's folder is where the film and the
-   photos went, and the list lives in the folder above it — the Tandems folder. Nothing that was not
-   uploaded has an entry. */
-const entryOfTandem = (group: ManifestGroup) => {
+/* The folder a montage is known by on the list: the one its film went to, which is the one with the
+   share link — or, when the film went up inside a zip or not at all, the first folder anything went
+   to. An older record, from before a montage chose where things go, knows its film and photos only. */
+const folderOfUpload = (record: NonNullable<ManifestGroup['uploaded']>) => {
+  const withFilm = record.sent?.find((item) => item.holds.includes('film'))
+  const first = withFilm?.to[0] ?? record.sent?.[0]?.to[0]
+  if (first) return first
+  const sent = record.film ?? record.photos
+  return sent ? parentOf(sent.remotePath) : null
+}
+
+/* A montage's entry, from what its upload recorded. The list lives above every destination's folder,
+   `listDir`; without one it is the folder above the montage's, where a tandem's always was. Nothing
+   that was not uploaded has an entry. */
+const entryOfTandem = (group: ManifestGroup, listDir?: string | null) => {
   const record = group.uploaded
-  const sent = record?.film ?? record?.photos
-  if (!record || !sent || !group.passenger) return null
-  const folder = parentOf(sent.remotePath)
+  const folder = record ? folderOfUpload(record) : null
+  if (!record || !folder || !group.passenger) return null
   const firstOriginal = record.originals?.[0]
   const entry: Partial<TandemEntry> & { folder: string } = {
     folder,
@@ -144,8 +164,8 @@ const entryOfTandem = (group: ManifestGroup) => {
       f.id ? [{ id: f.copyOf ?? f.id, filename: f.filename, mtime: f.mtime }] : []
     )
   }
-  return { dir: parentOf(folder), entry }
+  return { dir: listDir ?? parentOf(folder), entry }
 }
 
-export { entryOfTandem, INDEX_NAME, readTandemIndex, updateTandemIndex, upsert }
+export { entryOfTandem, folderOfUpload, INDEX_NAME, readTandemIndex, updateTandemIndex, upsert }
 export type { TandemEntry, TandemIndex }

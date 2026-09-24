@@ -25,6 +25,7 @@ const moveFilesIntent: Intent = ({
     moveFiles(manifest, ids, {
       targetGroupId: data.targetGroupId,
       newGroup: data.newGroup,
+      montage: data.montage,
       destination: data.destination,
       name: data.name,
       startsAt: data.anchorEpoch

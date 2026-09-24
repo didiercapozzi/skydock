@@ -11,9 +11,10 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
 
 import { boardRoute } from './board-route'
 
-/* Several files picked in Fresh files are made a jump of their own, and the new jump is selected as
-   soon as it is made, its panel open. Picked and made in a real browser, the answer the server's.
-   One loose file stays behind, so the loose files are still there to be the card left open. */
+/* Several files picked in Fresh files are made a jump of their own — left unnamed, since a name makes
+   them a montage — and the new jump is selected as soon as it is made, its panel open. Picked and
+   made in a real browser, the answer the server's. One loose file stays behind, so the loose files
+   are still there to be the card left open. */
 
 const AT = Math.floor(new Date(2026, 7, 1, 10, 0, 0).getTime() / 1000)
 
@@ -64,8 +65,7 @@ const makeJumpOfPicked = async () => {
     await userEvent.click(page.getByRole('button', { name }).last(), {
       modifiers: ['ControlOrMeta']
     })
-  await userEvent.click(page.getByRole('button', { name: /Make a jump of these/ }))
-  await userEvent.fill(page.getByLabelText('Name'), 'Sunset load')
+  await userEvent.click(page.getByRole('button', { name: /Make a jump or a montage of these/ }))
   await userEvent.click(page.getByRole('button', { name: 'Make the jump' }))
 }
 
@@ -77,15 +77,15 @@ describe('making a jump of files picked in Fresh files', () => {
     await renderBoard({
       groups: [
         EARLIER,
-        { id: 'g-new', label: 'g-new', day: '01.08.2026', name: 'Sunset load', files: PICKED }
+        { id: 'g-new', label: 'g-new', day: '01.08.2026', files: PICKED }
       ],
       looseFiles: [LEFT]
     })
 
     await makeJumpOfPicked()
 
-    await expect.element(card(/^Sunset load, /)).toHaveAttribute('aria-pressed', 'true')
-    await expect.element(details().getByRole('heading', { name: /Sunset load/ })).toBeVisible()
+    await expect.element(card(/^Jump 2, /)).toHaveAttribute('aria-pressed', 'true')
+    await expect.element(details().getByRole('heading', { name: /^Jump 2/ })).toBeVisible()
   })
 
   test('selects nothing when the jump could not be made', async () => {
@@ -94,7 +94,7 @@ describe('making a jump of files picked in Fresh files', () => {
     await makeJumpOfPicked()
 
     await expect
-      .element(page.getByRole('button', { name: /Make a jump of these/ }))
+      .element(page.getByRole('button', { name: /Make a jump or a montage of these/ }))
       .not.toBeInTheDocument()
     await expect.element(card(/^Loose files, /)).toHaveAttribute('aria-pressed', 'true')
     await expect.element(card(/^Morning load, /)).toHaveAttribute('aria-pressed', 'false')

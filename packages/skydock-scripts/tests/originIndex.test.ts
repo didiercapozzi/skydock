@@ -1,13 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import * as http from 'node:http'
-import {
-  deliveryFolders,
-  originsDirOf,
-  placeFolders,
-  readOriginIndex,
-  recordOrigins
-} from '../src/originIndex'
+import { deliveryFolders, originsDirOf, readOriginIndex, recordOrigins } from '../src/originIndex'
 import { alreadyUp, sameSizeUnknown, worthReading } from '../src/originEntry'
 import type { OriginIndex } from '../src/originEntry'
 import type { NasSession } from '../src/nas'
@@ -98,31 +92,23 @@ describe('where the list of origins lives', () => {
     expect(originsDirOf(['/home/Photos/Skydive/Yverdon', '/home/Colombier'])).toBe('/home')
   })
 
-  /* A backup folder is often on another disk altogether, and letting it have a say would drag the
-     list to the top of a share, where nobody would look for it. */
-  it('is not dragged away by a backup folder on another share', () => {
+  /* a montage's backups go into a destination like everything else, wherever that one is */
+  it('counts every destination as a folder delivered into, a backup on another share included', () => {
     const manifest = {
-      version: 1,
+      version: 2,
       createdAt: '2026-09-20',
       files: [],
       groups: [],
       destinations: [
         { name: 'yverdon', path: YVERDON },
-        { name: 'Tandems', path: '/home/Photos/Skydive/Tandems' }
+        { name: 'Backup', path: '/usbshare2/Skydive/tandems video originales' }
       ]
     }
-    const session: NasSession = {
-      hostname: 'h',
-      username: 'u',
-      sessionId: 's',
-      backupFolder: '/usbshare2/Skydive/tandems video originales'
-    }
 
-    expect(originsDirOf(placeFolders(manifest))).toBe('/home/Photos/Skydive')
-    /* it is still looked at, and what is in it still goes in the list */
-    expect(deliveryFolders(manifest, session)).toContain(
+    expect(deliveryFolders(manifest)).toEqual([
+      YVERDON,
       '/usbshare2/Skydive/tandems video originales'
-    )
+    ])
   })
 
   it('is the share itself for a club delivering into one of its folders', () => {

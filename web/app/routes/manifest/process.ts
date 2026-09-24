@@ -11,7 +11,7 @@ const processIntent: Intent = async ({ data, manifest, manifestPath, outputDir, 
      the copies keep the names the passenger and the clips' own times give them, which is what the
      project calls them by. What can change is what those copies hold — a clip trimmed differently
      comes out a different length — so the edit may want a look afterwards; that is the person's to
-     judge, and losing an afternoon to a trim nobody can apply is worse (RULES, Montage). */
+     judge, and losing an afternoon to a trim nobody can apply is worse (RULES, The editing project). */
   try {
     await processJumps({
       manifestPath,

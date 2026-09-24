@@ -35,4 +35,17 @@ const hasDestination = (manifest: Manifest, name: string) =>
   manifest.groups.some((group) => group.destination === name) ||
   manifest.files.some((file) => file.destination === name)
 
-export { hasDestination, removeDestination }
+/* The backup folder a board was given before a montage's backups went into destinations. It is kept
+   by becoming one — "Backup", or "Backup 2" when that name is some other folder's — so it is there to
+   drop a backup into, where it always went. Nothing is added when a destination is that folder
+   already. Says whether it added one. */
+const keepBackupAsPlace = (manifest: Manifest, backupFolder: string) => {
+  const places = manifest.destinations ?? []
+  if (places.some((place) => place.path === backupFolder)) return false
+  let name = 'Backup'
+  for (let n = 2; places.some((place) => place.name === name); n++) name = `Backup ${n}`
+  manifest.destinations = [...places, { name, path: backupFolder }]
+  return true
+}
+
+export { hasDestination, keepBackupAsPlace, removeDestination }

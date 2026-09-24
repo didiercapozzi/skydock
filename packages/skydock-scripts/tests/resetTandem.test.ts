@@ -46,7 +46,7 @@ const setup = () => {
       id: 'g1',
       label: 'jump',
       day: '01.08.2026',
-      destination: 'Tandems',
+      montageJump: true,
       passenger: luc,
       processed: true,
       publish: { shareUrl: 'https://nas/s/1' },
@@ -58,7 +58,7 @@ const setup = () => {
       id: 'g2',
       label: 'jump',
       day: '01.08.2026',
-      destination: 'Tandems',
+      montageJump: true,
       passenger: luc,
       processed: true,
       files: [b]
@@ -67,7 +67,7 @@ const setup = () => {
       id: 'g3',
       label: 'jump',
       day: '01.08.2026',
-      destination: 'Tandems',
+      montageJump: true,
       passenger: { firstname: 'Ana', lastname: 'Roth' },
       processed: true,
       files: [c]
@@ -116,7 +116,7 @@ describe('resetting a tandem', () => {
     resetTandem(manifest, outputDir, 'g1')
     const g1 = manifest.groups.find((g) => g.id === 'g1')!
     expect(g1.passenger).toEqual(luc)
-    expect(g1.destination).toBe('Tandems')
+    expect(g1.montageJump).toBe(true)
     expect(g1.files[0]).toMatchObject({ cropStart: 1, cropEnd: 4, mtime: CORRECTED })
     expect(g1.files[0]?.frame).toEqual({ x: 0.1, y: 0, width: 0.9, height: 0.9 })
   })
@@ -195,6 +195,6 @@ describe('deleting a tandem', () => {
   it('refuses a jump that is not a named tandem', () => {
     const { manifest } = setup()
     manifest.groups.push({ id: 'g4', label: 'jump', day: '01.08.2026', files: [] })
-    expect(() => deleteTandem(manifest, outputDir, 'g4')).toThrow(/named tandem/)
+    expect(() => deleteTandem(manifest, outputDir, 'g4')).toThrow(/named montage/)
   })
 })

@@ -29,9 +29,14 @@ import { getManifestPath, getTrashDir, isVideoFile } from './utils'
 
 type Uploaded = NonNullable<ManifestFile['uploaded']>
 
-/* What the records say puts a board file's content on the storage. A tandem's original travels as
-   itself — alone in the backup folder, or inside the backup zip under its own name — and a photo of a
-   tandem, or any file of a dropzone, travels as the copy made from it. */
+/* What the records say puts a board file's content on the storage. A montage's original travels as
+   itself — on its own, or inside a zip, under videos/ in one that says what it holds — and a photo of
+   a montage, or any file of a dropzone, travels as the copy made from it. */
+/* A file's name inside a zip: under its part's own folder in one that says what it holds, and at the
+   top of an older one, which held one part only. */
+const inZip = (record: Uploaded, part: 'videos' | 'photos', name: string) =>
+  record.holds ? `${part}/${name}` : name
+
 type Claim =
   | { kind: 'plain'; record: Uploaded }
   | { kind: 'zip'; record: Uploaded; name: string }
@@ -41,16 +46,34 @@ const claimsOf = (file: ManifestFile, group: ManifestGroup | undefined): Claim[]
   const sent = group?.uploaded
   if (group && sent && isTandem(group)) {
     if (isVideoFile(file.path)) {
-      const plain = sent.originals?.find((r) => r.localPath === file.path)
+      const plain = sent.originals?.find(
+        (r) => r.localPath === file.path || path.basename(r.localPath) === file.filename
+      )
+      const rushes = sent.rushes
       return [
         ...(plain ? [{ kind: 'plain' as const, record: plain }] : []),
-        ...(sent.rushes ? [{ kind: 'zip' as const, record: sent.rushes, name: file.filename }] : [])
+        ...(rushes
+          ? [{ kind: 'zip' as const, record: rushes, name: inZip(rushes, 'videos', file.filename) }]
+          : [])
       ]
     }
     const made = file.processed
-    return sent.photos && made && made.source.id === file.id
-      ? [{ kind: 'made', record: sent.photos, name: path.basename(made.path), copy: made.path }]
-      : []
+    if (!made || made.source.id !== file.id) return []
+    const name = path.basename(made.path)
+    const loose = sent.photoFiles?.find((r) => path.basename(r.localPath) === name)
+    return [
+      ...(loose ? [{ kind: 'made' as const, record: loose }] : []),
+      ...(sent.photos
+        ? [
+            {
+              kind: 'made' as const,
+              record: sent.photos,
+              name: inZip(sent.photos, 'photos', name),
+              copy: made.path
+            }
+          ]
+        : [])
+    ]
   }
   return file.uploaded &&
     file.processed &&

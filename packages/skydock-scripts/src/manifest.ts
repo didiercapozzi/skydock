@@ -5,7 +5,8 @@ import { outputKeyOf } from './fileStatus'
 import { writeJsonAtomic } from './lib/fs'
 import { jsonText } from './lib/json'
 import { groupsFileSchema, manifestSchema, tandemUploadSchema } from './types'
-import type { GroupsFile, Manifest, ManifestFile } from './types'
+import type { GroupsFile, Manifest, ManifestFile, ManifestGroup } from './types'
+import { MONTAGES_FOLDER } from './workspace'
 
 /* The registry of files and the jumps built out of it live in two files side by side: every file
    is described once in manifest.json, and groups.json only points at them. A file therefore never
@@ -90,6 +91,17 @@ const resolveGroups = (files: ManifestFile[], groupsFile: GroupsFile | null) => 
   return groups
 }
 
+/* The record as montages have it. Before them, a tandem was a jump filed under Tandems; from version 2
+   a montage is marked as one and belongs to no destination, and Tandems is a destination like any
+   other. The change is made once, on reading an older record, and written with its next save: a jump
+   filed under Tandems after that is filed there, not a montage. */
+const MANIFEST_VERSION = 2
+
+const asMontages = (groups: ManifestGroup[]) =>
+  groups.map(({ destination, ...group }) =>
+    destination === MONTAGES_FOLDER ? { ...group, montageJump: true } : { ...group, destination }
+  )
+
 const loadManifest = (manifestPath: string) => {
   if (!fs.existsSync(manifestPath)) return null
   const stored = storedManifestSchema.safeParse(fs.readFileSync(manifestPath, 'utf-8'))
@@ -99,7 +111,12 @@ const loadManifest = (manifestPath: string) => {
   /* jumps that cannot be read are not "no jumps", so that refusal travels out of here rather than
      being flattened into the same answer */
   const groups = resolveGroups(stored.data.files, readGroupsFile(getGroupsPath(manifestPath)))
-  const manifest: Manifest = { ...stored.data, groups }
+  const older = stored.data.version < MANIFEST_VERSION
+  const manifest: Manifest = {
+    ...stored.data,
+    version: Math.max(stored.data.version, MANIFEST_VERSION),
+    groups: older ? asMontages(groups) : groups
+  }
   return manifest
 }
 
@@ -156,4 +173,4 @@ const saveManifest = (manifestPath: string, manifest: Manifest) => {
   writeJsonAtomic(manifestPath, raw)
 }
 
-export { getGroupsPath, loadManifest, saveManifest, statProcessedOutputs }
+export { getGroupsPath, loadManifest, MANIFEST_VERSION, saveManifest, statProcessedOutputs }

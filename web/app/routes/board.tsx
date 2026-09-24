@@ -14,6 +14,9 @@ import {
   offGap,
   saveManifest,
   outputKeyOf,
+  isFiled,
+  isMontage,
+  montageCalled,
   passengerName,
   passengerOf,
   processingNow,
@@ -23,9 +26,11 @@ import {
   statTandemArtifacts,
   tandemSteps,
   tandemUploadKey,
+  earlierTandemsDir,
   tandemsRemoteDir
 } from '@skydock/scripts'
-import type { FileStatus, FrameCrop, Rotation, TandemEntry } from '@skydock/scripts'
+import type { FileStatus, FrameCrop, Rotation, SendPlan, TandemEntry } from '@skydock/scripts'
+import { keepBackupAsPlace } from '../../../packages/skydock-scripts/src/destinations'
 import { diskSpace } from '../../../packages/skydock-scripts/src/diskSpace'
 import { readTandemIndex } from '../../../packages/skydock-scripts/src/tandemIndex'
 import { useEffect, useState } from 'react'
@@ -62,7 +67,7 @@ import type { Destination, ManifestFile, ManifestGroup } from '../components/typ
 import { formatSize, formatTime, plural, setOutputRoot, shortDate } from '../components/utils'
 import { fromComputer, importFiles, tokenFor, whatIsComing } from '../helpers/import'
 import type { Coming, Dropped } from '../helpers/import'
-import { TANDEMS, folderOnStorage } from '../helpers/jumps'
+import { folderOnStorage } from '../helpers/jumps'
 import {
   familyOf,
   filesIn,
@@ -78,7 +83,7 @@ import {
 import type { Place } from '../helpers/places'
 import { GROUPINGS, cardsOf, jumpLabels, sectionsOf } from '../helpers/sections'
 import { fileFacts } from '../helpers/status'
-import { setBackupChoice, useBackupChoice } from '../hooks/useBackupChoice'
+import { setSendPlan, useSendPlan } from '../hooks/useSendPlan'
 import { useBoardState } from '../hooks/useBoardState'
 import { useDragAndDrop } from '../hooks/useDragAndDrop'
 import type { Move } from '../hooks/useDragAndDrop'
@@ -127,6 +132,9 @@ const loader = async (_args: Route.LoaderArgs) => {
         username: session.username,
         backupFolder: session.backupFolder ?? null
       }
+      /* a backup folder chosen before backups went into destinations becomes one (RULES, Places) */
+      if (manifest && session.backupFolder && keepBackupAsPlace(manifest, session.backupFolder))
+        saveManifest(`${outputDir}/manifest.json`, manifest)
       if (manifest) {
         remote = await listRemoteFiles(manifest, session)
         /* footage that is nowhere is not listed: a freed file the storage no longer holds has
@@ -149,7 +157,7 @@ const loader = async (_args: Route.LoaderArgs) => {
         /* the storage's own list of tandems — every one it holds, from here or from elsewhere */
         const dir = tandemsRemoteDir(manifest)
         if (dir)
-          storage = await readTandemIndex(session, dir)
+          storage = await readTandemIndex(session, dir, earlierTandemsDir(manifest))
             .then((index) => ({ dir, tandems: index.tandems, problem: null as string | null }))
             .catch((e: unknown) => ({
               dir,
@@ -180,7 +188,7 @@ const loader = async (_args: Route.LoaderArgs) => {
     /* where this machine keeps the work: every media address the board builds is a path inside it */
     outputDir,
     /* and what each tandem's folder holds: nothing tells SkyDock when the editor finishes, so a
-       film is only ever noticed by looking (RULES, Montage) */
+       film is only ever noticed by looking (RULES, The editing project) */
     tandems: manifest ? statTandemArtifacts(manifest, outputDir) : {},
     remote,
     storage,
@@ -200,7 +208,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const board = useBoardState(loaderData, (groupId) => setDialog({ kind: 'email', groupId }))
   const { groups, updateGroups, loose, places, setPlaces, busy, note, setNote, send } = board
   const nas = useNas(loaderData, board.remoteAfterUpload)
-  const backupChoice = useBackupChoice()
+  const sendPlan = useSendPlan()
   const view = useFileView()
   const progress = useUploadProgress(board.uploading)
   /* Which folder fills the pane, which file is open in it, and how it is being looked at: all of it
@@ -214,7 +222,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const query = looking.find ?? ''
   const chosenCard = looking.card ?? null
 
-  /* A tandem with an edit is frozen (RULES, Montage), and a freed one lives on the storage only.
+  /* A tandem with an edit is frozen (RULES, The editing project), and a freed one lives on the storage only.
      The server refuses any change to either; the board simply never offers it. */
   const frozen = new Set(
     groups.filter((g) => g.freed || board.tandemFacts[g.id]?.project).map((g) => g.id)
@@ -264,7 +272,10 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   /* a freed file has nothing here to show: it is played from the storage's list below instead */
   const openFile = (file: ManifestFile) => (file.freed ? undefined : preview.openPreview(file))
   /* filed nowhere — neither as a lone file nor through its jump — and so free to go to the bin */
-  const inUnsorted = (file: ManifestFile) => !file.destination && !groupOfFile(file)?.destination
+  const inUnsorted = (file: ManifestFile) => {
+    const group = groupOfFile(file)
+    return !file.destination && !(group && isFiled(group))
+  }
   /* Deleting goes one step at a time: a file in a jump comes out of it and is loose; only a loose
      file in Unsorted, deleted again, goes to the bin. */
   const binnable = (file: ManifestFile) => inUnsorted(file) && !groupOfFile(file)
@@ -280,7 +291,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const askTrash = (files: ManifestFile[]) => setDialog({ kind: 'trash', files })
   /* Fresh files put back, by as much as is chosen in the dialog, which says what each choice costs */
   const resetFresh = () => {
-    const jumps = groups.filter((g) => !g.destination)
+    const jumps = groups.filter((g) => !isFiled(g))
     const files = [...jumps.flatMap((g) => g.files), ...loose.filter((f) => !f.destination)]
     setDialog({
       kind: 'reset-fresh',
@@ -325,7 +336,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   /* Where each tandem has got to — one answer for its panel, its card and its passenger's entry in
      the menu, so the three can never disagree. */
   const progressOf = (group: ManifestGroup) =>
-    group.destination === TANDEMS
+    isMontage(group)
       ? tandemSteps({
           group: asOnStorage(group),
           facts: board.tandemFacts[group.id],
@@ -336,7 +347,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const passengerProgress = (name: string) =>
     furthestBehind(
       groups
-        .filter((g) => g.destination === TANDEMS && passengerOf(g) === name)
+        .filter((g) => isMontage(g) && passengerOf(g) === name)
         .flatMap((g) => {
           const progress = progressOf(g)
           return progress ? [progress] : []
@@ -366,7 +377,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const toSort = new Set(
     [
       ...loose.filter((f) => !f.destination),
-      ...groups.filter((g) => !g.destination).flatMap((g) => g.files)
+      ...groups.filter((g) => !isFiled(g)).flatMap((g) => g.files)
     ].flatMap((f) => (f.id ? [f.id] : []))
   )
   /* A dropzone and a passenger are connected to their folder on the storage, which is listed under
@@ -377,9 +388,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       ? { destination: place.name }
       : place.kind === 'pax'
         ? (() => {
-            const theirs = groups.find(
-              (g) => g.destination === TANDEMS && passengerOf(g) === place.name
-            )
+            const theirs = groups.find((g) => isMontage(g) && passengerOf(g) === place.name)
             return theirs ? { groupId: theirs.id } : null
           })()
         : null
@@ -525,6 +534,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       ...(where.targetGroupId ? { targetGroupId: where.targetGroupId } : {}),
       ...(where.destination ? { destination: where.destination } : {}),
       ...(where.newGroup ? { newGroup: true } : {}),
+      ...(where.montage ? { montage: true } : {}),
       ...(where.name ? { name: where.name } : {}),
       ...(where.startsAt !== undefined ? { anchorEpoch: where.startsAt } : {})
     })
@@ -542,10 +552,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     saveDestinations([...places, { name: trimmed }])
   }
 
-  /* Filing, and for a tandem naming, in one save — a jump filed under Tandems and then named is two
-     saves with a nameless tandem in between, which is exactly the state the menu then has to call
-     out as waiting. */
-  const assign = (ids: string[], destination: string | null, passenger?: Passenger) => {
+  /* Filing jumps under a destination — or back among the fresh files. A montage filed somewhere is
+     a montage no longer: it is that place's jump, with no name of its own. */
+  const assign = (ids: string[], destination: string | null) => {
     const nextPlaces =
       destination && !places.some((d) => d.name === destination)
         ? [...places, { name: destination }]
@@ -556,12 +565,30 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         ? {
             ...g,
             destination: destination ?? undefined,
-            passenger: destination === TANDEMS ? (passenger ?? g.passenger ?? undefined) : undefined
+            montageJump: undefined,
+            passenger: undefined
           }
         : g
     )
     updateGroups(next, undefined, nextPlaces)
   }
+
+  /* Jumps made a montage, and for a montage naming, in one save — made and then named is two saves
+     with a nameless montage in between, which is exactly the state the menu then has to call out as
+     waiting. */
+  const toMontage = (ids: string[], passenger?: Passenger) =>
+    updateGroups(
+      groups.map((g) =>
+        ids.includes(g.id)
+          ? {
+              ...g,
+              destination: undefined,
+              montageJump: true,
+              passenger: passenger ?? g.passenger ?? undefined
+            }
+          : g
+      )
+    )
 
   /* What a drop is copying in, while it is: the whole list first, then one at a time. */
   const [coming, setComing] = useState<{
@@ -601,7 +628,15 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const partCopied =
     watching && watching.total > 0 ? Math.min(1, watching.done / watching.total) : 0
 
-  const drag = useDragAndDrop({ groups, frozen, pickedFiles, moveFiles, assign, importDropped })
+  const drag = useDragAndDrop({
+    groups,
+    frozen,
+    pickedFiles,
+    moveFiles,
+    assign,
+    toMontage,
+    importDropped
+  })
 
   /* The folder something was just filed under lights up for a moment, so the eye can follow the
      jump there from the line it left. */
@@ -612,22 +647,76 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     setTimeout(() => setFlashPlace((current) => (current === key ? null : current)), 1800)
   }
 
-  const makeTandem = (groupId: string, passenger: Passenger) => {
-    const who = passengerName(passenger)
-    /* joining puts the jump in the folder the edit lives in */
-    if (groups.some((g) => frozen.has(g.id) && passengerOf(g) === who)) {
-      setNote(`${who}’s tandem has an edit — change it in kdenlive.`)
-      return
-    }
-    const joining = groups.some(
-      (g) => g.id !== groupId && g.destination === TANDEMS && passengerOf(g) === who
-    )
-    assign([groupId], TANDEMS, passenger)
+  /* A montage just made is gone to: its page opens once it is on the board, and its entry in the
+     menu lights up. It is known by its name, which is the server's to confirm — a montage the
+     server refused never appears, and nothing is opened. */
+  const [goingTo, setGoingTo] = useState<string | null>(null)
+  const arrived =
+    goingTo !== null &&
+    busy === null &&
+    groups.some((g) => isMontage(g) && passengerOf(g) === goingTo)
+  if (
+    goingTo !== null &&
+    busy === null &&
+    (!arrived || (place.kind === 'pax' && place.name === goingTo))
+  )
+    setGoingTo(null)
+  /* the page is an address, and the address is the browser's */
+  useEffect(() => {
+    if (arrived && goingTo) goTo(placeHref({ kind: 'pax', name: goingTo }))
+  }, [arrived, goingTo, goTo])
+
+  /* a montage with an edit takes nothing in: its project names its clips, and new ones are not */
+  const editedMontage = (who: string) => {
+    if (!groups.some((g) => frozen.has(g.id) && passengerOf(g) === who)) return false
+    setNote(`${who}’s montage has an edit — change it in kdenlive.`)
+    return true
+  }
+
+  const madeNote = (who: string, joining: boolean, copied: boolean) => {
     setNote(
-      joining ? `Joined ${who}’s tandem — one passenger is one folder` : `Filed as ${who}’s tandem`
+      `${joining ? `Joined ${who}’s montage` : `Made ${who}’s montage`}${copied ? ' — copied, the place keeps its own' : ''}`
     )
     flash({ kind: 'pax', name: who })
+    setGoingTo(who)
   }
+
+  const montageExists = (who: string) => groups.some((g) => isMontage(g) && passengerOf(g) === who)
+
+  /* A jump in Fresh files named: it is the montage, in one step. */
+  const makeTandem = (groupId: string, passenger: Passenger) => {
+    const who = passengerName(passenger)
+    if (editedMontage(who)) return
+    const joining = groups.some((g) => g.id !== groupId && isMontage(g) && passengerOf(g) === who)
+    toMontage([groupId], passenger)
+    madeNote(who, joining, false)
+  }
+
+  /* Picked files, one file, or a jump a place holds, made a montage. Whether they move or are copied
+     is the server's rule, not a key held: out of Fresh files they move, from anywhere else they are
+     copied and the place keeps its own (RULES, Making a montage). */
+  const montageOf = (files: ManifestFile[], passenger: Passenger, startsAt?: number) => {
+    const who = passengerName(passenger)
+    if (editedMontage(who)) return
+    const fileIds = files.flatMap((f) => (f.id ? [f.id] : []))
+    if (fileIds.length === 0) return
+    const joining = montageExists(who)
+    selection.clear()
+    send('make-montage', {
+      intent: 'make-montage',
+      fileIds,
+      name: who,
+      ...(startsAt !== undefined ? { anchorEpoch: startsAt } : {})
+    })
+    madeNote(who, joining, !files.every(inUnsorted))
+  }
+
+  /* what making a montage of something takes, from here: copied in, when a place keeps it */
+  const montageOffer = (files: ManifestFile[]) => ({
+    passengers,
+    keeps: files.every(inUnsorted) ? undefined : placeLabel(place),
+    onMake: (passenger: Passenger) => montageOf(files, passenger)
+  })
 
   const setPassenger = (groupId: string, firstname: string, lastname: string) => {
     if (frozen.has(groupId)) return
@@ -652,7 +741,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     send('shift', { intent: 'shift-group-time', groupId, anchorEpoch })
 
   /* each passenger once, however many jumps they have */
-  const named = groups.filter((g) => g.destination === TANDEMS && hasCompletePassenger(g.passenger))
+  const named = groups.filter((g) => isMontage(g) && hasCompletePassenger(g.passenger))
   const passengers = [
     ...new Map(
       named.flatMap((g): [string, Passenger][] =>
@@ -711,11 +800,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     setDialog({ kind: 'upload', groupId: group.id })
   }
 
-  const confirmUpload = (group: ManifestGroup) => {
+  const confirmUpload = (group: ManifestGroup, plan: SendPlan) => {
     setDialog(null)
     const key = tandemUploadKey(group.id)
     board.setUploading(key)
-    send(key, { intent: 'upload-tandem', groupId: group.id, backup: backupChoice })
+    send(key, { intent: 'upload-tandem', groupId: group.id, plan })
   }
 
   /* two jumps that turn out to be one: the server merges them and answers with the saved list */
@@ -825,7 +914,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
   /* a tandem's line carries its one next step, and its upload while it runs */
   const tandemActions = (group: ManifestGroup) =>
-    group.destination !== TANDEMS || group.freed ? null : (
+    !isMontage(group) || group.freed ? null : (
       <>
         <TandemActions
           group={group}
@@ -852,7 +941,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
   /* above a tandem's files: what went missing from the storage, what the storage holds, the film */
   const tandemAbove = (group: ManifestGroup) =>
-    group.destination !== TANDEMS ? null : (
+    !isMontage(group) ? null : (
       <div className='mb-2'>
         <GoneFromStorage
           gone={goneById[group.id] ?? []}
@@ -950,7 +1039,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           title={
             emailedOn(linked)
               ? 'The storage’s list says the link was sent — open it to send it again'
-              : 'Send the passenger their link'
+              : 'Send the link'
           }
           onClick={() => setDialog({ kind: 'email', groupId: linked.id })}>
           {emailedOn(linked) ? '✓ Emailed · again…' : `Email ${linked.passenger?.firstname ?? ''}…`}
@@ -967,7 +1056,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           </Mini>
           <Mini
             disabled={busy !== null}
-            title='Undo the tandem, at any step — its files go back to Fresh files, loose, without their name or crops'
+            title='Undo the montage, at any step — its files go back to Fresh files, loose, without their name or crops'
             onClick={() => setDialog({ kind: 'take-back', mode: 'delete', who: place.name })}>
             Delete…
           </Mini>
@@ -987,10 +1076,12 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     </Mini>
   )
 
-  /* what each jump is called wherever it appears: its place in its day, or its passenger */
+  /* what each jump is called wherever it appears: its place among the jumps where it is filed, or
+     its montage's name — the montages counted apart, belonging to no place */
+  const whereFiled = (g: ManifestGroup) => (isMontage(g) ? '\0montage' : (g.destination ?? ''))
   const labels = new Map(
-    [...new Set(groups.map((g) => g.destination ?? ''))].flatMap((dest) => [
-      ...jumpLabels(groups.filter((g) => (g.destination ?? '') === dest))
+    [...new Set(groups.map(whereFiled))].flatMap((dest) => [
+      ...jumpLabels(groups.filter((g) => whereFiled(g) === dest))
     ])
   )
   const labelOf = (group: ManifestGroup) =>
@@ -1034,6 +1125,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                     anchorEpoch: epoch
                   })
           }
+          montage={one.freed ? undefined : montageOffer([one])}
         />
       )
     }
@@ -1049,11 +1141,22 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           onMakeJump={
             picked.every(inUnsorted)
               ? (name, startsAt) => {
+                  /* named, they are a montage; left blank, a jump */
+                  if (name.trim()) {
+                    montageOf(picked, montageCalled(groups, name), startsAt)
+                    return
+                  }
                   const first = picked[0]
                   if (first?.id) setMakingJump({ file: first.id, from: groupOfFile(first)?.id })
-                  moveFiles(ids, { destination: null, newGroup: true, name, startsAt })
+                  moveFiles(ids, { destination: null, newGroup: true, startsAt })
                 }
               : undefined
+          }
+          montages={passengers}
+          montage={
+            picked.every(inUnsorted) || picked.some((f) => f.freed)
+              ? undefined
+              : montageOffer(picked)
           }
           onClear={selection.clear}
         />
@@ -1078,12 +1181,15 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             jump.freed
               ? 'Freed from this machine — it is on the storage only now.'
               : frozen.has(jump.id)
-                ? `${EDIT_LOCKED} Open it in kdenlive, or reset the tandem.`
+                ? `${EDIT_LOCKED} Open it in kdenlive, or reset the montage.`
                 : null
           }
           statusOf={statusOf}
           passengers={passengers}
-          onMakeTandem={(passenger) => makeTandem(jump.id, passenger)}
+          keeps={jump.destination}
+          onMakeTandem={(passenger) =>
+            jump.destination ? montageOf(jump.files, passenger) : makeTandem(jump.id, passenger)
+          }
           onName={(first, last) => setPassenger(jump.id, first, last)}
           onSelectFiles={() => selection.selectFiles(jump.files)}
           onShift={
@@ -1091,8 +1197,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               ? undefined
               : (at) => shiftJump(jump.id, at)
           }
+          /* in Fresh files, naming a jump makes it a montage, so there is one way to name it */
           onRename={
-            jump.destination === TANDEMS || jump.freed || frozen.has(jump.id)
+            !jump.destination || jump.freed || frozen.has(jump.id)
               ? undefined
               : (name) => renameJump(jump.id, name)
           }
@@ -1102,7 +1209,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           onDelete={
             jump.freed
               ? undefined
-              : jump.destination === TANDEMS && hasCompletePassenger(jump.passenger)
+              : isMontage(jump) && hasCompletePassenger(jump.passenger)
                 ? () => setDialog({ kind: 'take-back', mode: 'delete', who: passengerOf(jump) })
                 : frozen.has(jump.id) || jump.uploaded
                   ? undefined
@@ -1170,7 +1277,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       onDrop={(e) => {
         e.preventDefault()
         if (!fromComputer(e)) return
-        setNote('Drop a clip on a place, a passenger or a jump to add it.')
+        setNote('Drop a clip on a place, a montage or a jump to add it.')
       }}
       className='flex h-screen flex-col'>
       <BoardHeader
@@ -1352,8 +1459,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         asOnStorage={asOnStorage}
         facts={board.tandemFacts}
         folderFor={folderFor}
-        backup={backupChoice}
-        onBackup={setBackupChoice}
+        plan={sendPlan}
+        onPlan={setSendPlan}
         onUpload={confirmUpload}
         storage={board.storage}
         onEmailed={(folder, sent, to) =>

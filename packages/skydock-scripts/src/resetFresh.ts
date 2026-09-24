@@ -1,6 +1,7 @@
 import * as fs from 'node:fs'
 import { dayOfFiles, freshIds, groupFromFiles, splitByGap } from './clustering'
 import { cameraTimes } from './scan'
+import { isFiled } from './filed'
 import type { Manifest } from './types'
 
 /* Fresh files put back as a scan would first have left them, for when the sorting has gone wrong
@@ -21,7 +22,7 @@ const resetFreshTimes = (manifest: Manifest) => {
   if (fresh.size === 0) return null
   const isFresh = (f: { id?: string }) => Boolean(f.id && fresh.has(f.id))
   const times = cameraTimes(manifest.files.filter(isFresh).map((f) => f.path))
-  const jumps = manifest.groups.filter((g) => !g.destination)
+  const jumps = manifest.groups.filter((g) => !isFiled(g))
   for (const file of [...manifest.files, ...jumps.flatMap((g) => g.files)])
     if (isFresh(file)) file.mtime = times.get(file.path) || file.mtime
   for (const jump of jumps) {
@@ -67,7 +68,7 @@ const resetFresh = (manifest: Manifest) => {
   })
 
   /* every jump still to be sorted goes, and the gap rule makes them again */
-  manifest.groups = manifest.groups.filter((g) => g.destination)
+  manifest.groups = manifest.groups.filter(isFiled)
   const again = manifest.files.filter(isFresh)
   const jumps = splitByGap(again).filter((run) => run.length > 1)
   for (const run of jumps) groupFromFiles(manifest, run)

@@ -121,7 +121,8 @@ const copiedNote = ({ files, passedOver }: { files: number; passedOver: number }
 /* tandems put back from the storage's list, and what is left to do about them */
 const restoredNote = (restored: { who: string; files: number; of: number }[]) => {
   const partly = restored.filter((r) => r.files < r.of)
-  const who = restored.length === 1 ? `${restored[0]!.who}’s tandem` : `${restored.length} tandems`
+  const who =
+    restored.length === 1 ? `${restored[0]!.who}’s montage` : `${restored.length} montages`
   return `Restored ${who} from the storage’s list — named again, at the times they had; process ${
     restored.length === 1 ? 'it' : 'them'
   } to carry on${

@@ -240,7 +240,7 @@ const blendedOf = (xml: string) => {
 }
 
 /* The template is somebody's film, laid out their way: the montage adds nothing to its timeline, so
-   the tracks the editor finds are the template's own (RULES, Montage). */
+   the tracks the editor finds are the template's own (RULES, The editing project). */
 describe('montage — the template’s timeline, as its owner made it', () => {
   it('adds no track to it', () => {
     const { xml } = build(twoAudioOneMutedTemplate, ['a.mp4', 'b.mp4'])
@@ -296,7 +296,7 @@ const stillsOf = (xml: string) =>
     .map((p) => Object.fromEntries(many(p.property).map((q) => [q['@_name'], q['#text']])))
 
 /* A tandem whose camera caught no video is still a film somebody makes — of its photos — so they go
-   in the bin, written the way kdenlive writes a still of its own (RULES, Montage). */
+   in the bin, written the way kdenlive writes a still of its own (RULES, The editing project). */
 describe('montage — a film of photos', () => {
   it('puts the photos in the bin, in the order shot', () => {
     const { xml, photos } = build(twoAudioOneMutedTemplate, [], ['G0062266.JPG', 'G0062267.JPG'])
@@ -365,7 +365,7 @@ describe('montage — where the film goes', () => {
     expect(xml).toContain(
       `<property name="kdenlive:docproperties.renderurl">${path.join(groupDir, 'luc_favre_20260802.mp4')}</property>`
     )
-    /* the card's own encoder, not the processor's (RULES, Montage) */
+    /* the card's own encoder, not the processor's (RULES, The editing project) */
     expect(xml).toContain('"kdenlive:docproperties.renderprofile">NVENC H264 VBR<')
     expect(xml).toContain('"kdenlive:docproperties.rendercategory">hw<')
   })

@@ -30,7 +30,7 @@ const setup = (extra: Partial<Manifest> = {}) => {
         id: 'g1',
         label: 'jump',
         day: '01.08.2026',
-        destination: 'Tandems',
+        montageJump: true,
         passenger: { firstname: 'Luc', lastname: 'Favre' },
         processed: true,
         files: []
@@ -142,7 +142,7 @@ describe('adding a file from the computer', () => {
           id: 'g1',
           label: 'jump',
           day: '01.08.2026',
-          destination: 'Tandems',
+          montageJump: true,
           passenger: { firstname: 'Luc', lastname: 'Favre' },
           files: []
         },
@@ -150,7 +150,7 @@ describe('adding a file from the computer', () => {
           id: 'g2',
           label: 'jump',
           day: '01.08.2026',
-          destination: 'Tandems',
+          montageJump: true,
           passenger: { firstname: 'Juliana', lastname: 'Roth' },
           files: []
         }
@@ -181,7 +181,7 @@ describe('adding a file from the computer', () => {
           id: 'g1',
           label: 'jump',
           day: '01.08.2026',
-          destination: 'Tandems',
+          montageJump: true,
           passenger: { firstname: 'Luc', lastname: 'Favre' },
           files: []
         },
@@ -189,7 +189,7 @@ describe('adding a file from the computer', () => {
           id: 'g2',
           label: 'jump',
           day: '01.08.2026',
-          destination: 'Tandems',
+          montageJump: true,
           passenger: { firstname: 'Juliana', lastname: 'Roth' },
           files: []
         }
@@ -239,10 +239,10 @@ describe('adding a file from the computer', () => {
     await expect(add('notes.txt', 'x', { kind: 'sort' })).rejects.toThrow(/not a video or a photo/)
   })
 
-  it('refuses Tandems itself — a tandem file belongs to a passenger', async () => {
+  it('refuses a destination with no name', async () => {
     setup()
-    await expect(add('clip.mp4', 'x', { kind: 'destination', name: 'Tandems' })).rejects.toThrow(
-      /dropzone, a passenger or the sorting area/
+    await expect(add('clip.mp4', 'x', { kind: 'destination', name: '  ' })).rejects.toThrow(
+      /dropzone, a montage or the sorting area/
     )
   })
 

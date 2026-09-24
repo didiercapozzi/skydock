@@ -8,7 +8,7 @@ import {
   sortFilesByMtime
 } from './utils'
 import { buildExifMap } from './lib/exif'
-import { loadManifest, saveManifest } from './manifest'
+import { loadManifest, MANIFEST_VERSION, saveManifest } from './manifest'
 import { computeFileId } from './fileId'
 import { groupNewFiles, reclusterGroups } from './clustering'
 import { buildMissingProxies } from './proxy'
@@ -91,7 +91,7 @@ const scanFiles = async (originalDir: string, timeMap: Map<string, string>) => {
 }
 
 const createFreshManifest = (files: ManifestFile[], createdAt: string) => {
-  const manifest: Manifest = { version: 1, createdAt, files, groups: [] }
+  const manifest: Manifest = { version: MANIFEST_VERSION, createdAt, files, groups: [] }
 
   reclusterGroups(manifest)
   return manifest

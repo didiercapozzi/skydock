@@ -1,6 +1,7 @@
 import { dsmRequestUrl, listNasFiles, normalizeNasPath } from './nas'
 import type { NasSession } from './nas'
 import type { StorageFile } from './storageEntry'
+import { folderOfUpload } from './tandemIndex'
 import type { Manifest } from './types'
 import { destBaseOf, targetForGroup } from './upload'
 import { getOutputDir, isVideoFile } from './utils'
@@ -25,8 +26,8 @@ const storageDirOf = (
   if (where.groupId) {
     const group = manifest.groups.find((g) => g.id === where.groupId)
     if (!group) return null
-    const sent = group.uploaded?.film ?? group.uploaded?.photos
-    if (sent) return sent.remotePath.slice(0, sent.remotePath.lastIndexOf('/'))
+    /* a montage belongs to no place: its folder is the one its upload went to, once it has gone */
+    if (group.uploaded) return folderOfUpload(group.uploaded)
     return targetForGroup(group, outputDir, manifest).remoteDir
   }
   return where.destination ? destBaseOf(where.destination, manifest) : null

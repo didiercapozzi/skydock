@@ -67,6 +67,9 @@ const processedRecordSchema = z.object({
   })
 })
 
+/* What a montage has to send: its original videos, its photos, the film and the editing project. */
+const sendPartSchema = z.enum(['videos', 'photos', 'film', 'project'])
+
 /* What actually travelled to the NAS, proved equal on both sides by md5. Only the upload path
    writes this: a folder listing can say a file is gone, never that it is the right file. */
 const uploadedRecordSchema = z.object({
@@ -75,7 +78,10 @@ const uploadedRecordSchema = z.object({
   size: z.number(),
   /* which processed copy went up — re-processing writes a new one and invalidates this */
   localPath: z.string(),
-  at: z.number()
+  at: z.number(),
+  /* for a zip, what it holds — its videos under videos/, its photos under photos/. A zip recorded
+     without it is an older one: the videos at its top, or the photos alone. */
+  holds: z.array(sendPartSchema).optional()
 })
 
 const manifestFileSchema = z.object({
@@ -146,7 +152,14 @@ const tandemUploadSchema = z.object({
   photos: uploadedRecordSchema.optional(),
   rushes: uploadedRecordSchema.optional(),
   /* the originals kept as plain files rather than one zip, with the film's copy if it went too */
-  originals: z.array(uploadedRecordSchema).optional()
+  originals: z.array(uploadedRecordSchema).optional(),
+  /* the photos sent as plain files rather than in a zip */
+  photoFiles: z.array(uploadedRecordSchema).optional(),
+  /* Every item that went up and every folder it went to. The fields above are each part's first
+     place, which is what is proved and freed against; this is the whole of where things went. */
+  sent: z
+    .array(z.object({ name: z.string(), holds: z.array(sendPartSchema), to: z.array(z.string()) }))
+    .optional()
 })
 
 const manifestGroupSchema = z.object({
@@ -165,20 +178,23 @@ const manifestGroupSchema = z.object({
   /* everything of it deleted from this machine, bar the project, once the storage held it all */
   freed: z.object({ at: z.number(), bytes: z.number() }).optional(),
   day: z.string(),
-  destination: z.string().optional()
+  destination: z.string().optional(),
+  /* A jump of a montage: a film made for someone, named once. It belongs to no destination — where
+     its film and its backups go is chosen when it is uploaded. (`montage` is its editing project.) */
+  montageJump: z.boolean().optional()
 })
 
 const groupsFileSchema = z.object({
   groups: z.array(manifestGroupSchema.extend({ files: z.array(groupFileRefSchema) }))
 })
 
-/* How a tandem's originals are kept, chosen once for the whole club. One zip is one object to move
-   and cannot arrive half-copied; plain files can be browsed on the storage and one clip pulled out
-   without unpacking the rest. Either way a copy of the film can go with them, and so can the editing
-   project — the one record of the edit, which exists nowhere else. */
-const backupOptionsSchema = z.object({
-  backupAs: z.enum(['zip', 'folder']),
-  filmToBackup: z.boolean()
+/* How a montage goes up, in two steps (RULES, Uploading a montage): what is zipped — into one zip or
+   a zip each, the rest sent as it is — and which destinations each item that comes out of that is
+   put in. An item is named by its key: `zip` for the one zip, `zip:<part>` for a zip each, and the
+   part itself when it goes as it is. The same item can go to several destinations. */
+const sendPlanSchema = z.object({
+  zip: z.object({ parts: z.array(sendPartSchema), each: z.boolean() }),
+  placed: z.record(z.string(), z.array(z.string()))
 })
 
 const destinationSchema = z.object({
@@ -199,7 +215,8 @@ const manifestSchema = z.object({
   destinations: destinationsSchema.optional()
 })
 
-type BackupOptions = z.input<typeof backupOptionsSchema>
+type SendPart = z.infer<typeof sendPartSchema>
+type SendPlan = z.infer<typeof sendPlanSchema>
 type FrameCrop = z.infer<typeof frameCropSchema>
 type JumpMoments = z.infer<typeof jumpMomentsSchema>
 type JumpTrack = z.infer<typeof jumpTrackSchema>
@@ -212,7 +229,6 @@ type GroupsFile = z.infer<typeof groupsFileSchema>
 type Destination = z.infer<typeof destinationSchema>
 
 export type {
-  BackupOptions,
   Destination,
   FrameCrop,
   JumpMoments,
@@ -222,11 +238,14 @@ export type {
   ManifestFile,
   ManifestGroup,
   ManifestPassenger,
-  Rotation
+  Rotation,
+  SendPart,
+  SendPlan
 }
 
 export {
-  backupOptionsSchema,
+  sendPartSchema,
+  sendPlanSchema,
   tandemUploadSchema,
   frameCropSchema,
   destinationSchema,

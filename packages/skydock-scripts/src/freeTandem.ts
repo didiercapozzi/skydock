@@ -10,8 +10,9 @@ import { dsmFileMd5 } from './nas'
 import type { NasSession } from './nas'
 import { getGroupProcessedDir, isFlatGroup } from './process'
 import { getCutProxyDir } from './proxy'
+import { sendItems } from './sending'
 import { isTandem } from './tandem'
-import type { Manifest, ManifestFile } from './types'
+import type { Manifest, ManifestFile, SendPart } from './types'
 import { uploadedFiles } from './upload'
 import { isVideoFile, sizeOf } from './utils'
 import { lastSegment } from './paths'
@@ -71,11 +72,11 @@ const proveOnStorage = async (
   session: NasSession
 ) => {
   const group = manifest.groups.find((g) => g.id === groupId)
-  if (!group) throw new Error('Tandem not found.')
-  if (!isTandem(group) || isFlatGroup(group)) throw new Error('Only a tandem can be freed.')
-  if (group.freed) throw new Error('This tandem is already freed from this machine.')
+  if (!group) throw new Error('Montage not found.')
+  if (!isTandem(group) || isFlatGroup(group)) throw new Error('Only a montage can be freed.')
+  if (group.freed) throw new Error('This montage is already freed from this machine.')
   const record = group.uploaded
-  if (!record) throw new Error('Upload this tandem first — nothing of it is on the storage yet.')
+  if (!record) throw new Error('Upload this montage first — nothing of it is on the storage yet.')
 
   const dir = getGroupProcessedDir(outputDir, group).dir
   const sharing = manifest.groups.filter(
@@ -83,7 +84,7 @@ const proveOnStorage = async (
   )
   if (sharing.length > 0)
     throw new Error(
-      'This passenger has more than one jump in the same folder — only a single-jump tandem can be freed.'
+      'This montage has more than one jump in the same folder — only a single-jump montage can be freed.'
     )
 
   /* nothing changed since it was prepared — a crop or a re-time since then is not on the storage */
@@ -93,7 +94,10 @@ const proveOnStorage = async (
 
   const videos = group.files.filter((f) => isVideoFile(f.path))
   const problems: string[] = []
-  if (videos.length > 0 && !record.film) problems.push('the film was never uploaded')
+  const filmSent =
+    record.film !== undefined ||
+    [record.rushes, record.photos].some((zip) => zip?.holds?.includes('film'))
+  if (videos.length > 0 && !filmSent) problems.push('the film was never uploaded')
 
   /* every file that went up: the same bytes here and on the storage as when it was sent */
   const sent = uploadedFiles(record)
@@ -114,11 +118,28 @@ const proveOnStorage = async (
       problems.push(`${label} on the storage is not the file that was sent`)
   }
 
+  /* A zip that says what it holds holds exactly what the plan puts in such a zip, laid out the same
+     way — worked out again here from the montage as it stands. */
+  const expected = (holds: SendPart[]) =>
+    sendItems(group, outputDir, { parts: holds, each: false }).find((item) => item.zip)?.entries ??
+    []
+
   /* the originals: inside a zip that holds exactly them and is newer than all of them, or each one
      sent and proved on its own */
-  const sentLocally = new Set(sent.map((f) => f.localPath))
+  const sentNames = new Set(sent.map((f) => path.basename(f.localPath)))
   if (videos.length > 0) {
-    if (record.rushes) {
+    if (record.rushes?.holds) {
+      const zipped = fs.existsSync(record.rushes.localPath)
+        ? fs.statSync(record.rushes.localPath).mtimeMs
+        : -Infinity
+      const changed = videos
+        .filter((v) => !fs.existsSync(v.path) || fs.statSync(v.path).mtimeMs > zipped)
+        .map((v) => v.filename)
+      if (!sameContents(record.rushes.localPath, expected(record.rushes.holds)))
+        problems.push('the backup zip does not hold exactly these originals')
+      else if (changed.length > 0)
+        problems.push(`${changed.join(', ')} changed since the backup zip was made — upload again`)
+    } else if (record.rushes) {
       const listed = (() => {
         try {
           return jsonText
@@ -149,7 +170,7 @@ const proveOnStorage = async (
         problems.push('the backup zip does not hold exactly these originals')
       else if (changed.length > 0)
         problems.push(`${changed.join(', ')} changed since the backup zip was made — upload again`)
-    } else if (!videos.every((v) => sentLocally.has(v.path))) {
+    } else if (!videos.every((v) => sentNames.has(v.filename))) {
       problems.push('not every original is in the backup')
     }
   }
@@ -157,8 +178,23 @@ const proveOnStorage = async (
   /* the photos: the prepared copies are what the passenger's zip holds */
   const photos = group.files.filter((f) => !isVideoFile(f.path))
   if (photos.length > 0) {
-    if (!record.photos) problems.push('the photos were never uploaded')
-    else {
+    const copies = photos.flatMap((f) => (f.processed ? [path.basename(f.processed.path)] : []))
+    if (record.photos?.holds) {
+      /* only the photos have to be older than the zip: a project in it may be saved again since */
+      const zip = record.photos.localPath
+      const built = fs.existsSync(zip) ? fs.statSync(zip).mtimeMs : -Infinity
+      const stale = photos.some(
+        (f) =>
+          !f.processed ||
+          !fs.existsSync(f.processed.path) ||
+          fs.statSync(f.processed.path).mtimeMs > built
+      )
+      if (!sameContents(zip, expected(record.photos.holds)) || stale)
+        problems.push('the photos zip does not hold exactly these photos')
+    } else if (!record.photos) {
+      if (copies.length !== photos.length || !copies.every((name) => sentNames.has(name)))
+        problems.push('the photos were never uploaded')
+    } else {
       const entries = photos.flatMap((f) =>
         f.processed ? [{ file: f.processed.path, name: path.basename(f.processed.path) }] : []
       )

@@ -11,12 +11,12 @@ type TandemStep = (typeof TANDEM_STEPS)[number]
 
 /* what gets a tandem past the step it is at, in the words of the buttons that do it */
 const NEXT: Record<TandemStep, { todo: string; how: string }> = {
-  Named: { todo: 'to name', how: 'Type the passenger’s name' },
+  Named: { todo: 'to name', how: 'Give it a name' },
   Processed: { todo: 'to process', how: 'Process it' },
   Edited: { todo: 'to edit', how: 'Make the montage, then edit it in kdenlive' },
   Rendered: { todo: 'to render', how: 'Render the film in kdenlive' },
   Uploaded: { todo: 'to upload', how: 'Upload it' },
-  Emailed: { todo: 'to email', how: 'Email the passenger their link' }
+  Emailed: { todo: 'to email', how: 'Email the link' }
 }
 
 /* A freed tandem went through every step up to the upload, even with nothing of it left here to

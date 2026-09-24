@@ -1,13 +1,6 @@
-import { isoDay } from '@skydock/scripts'
+import { folderOfUpload, isoDay } from '@skydock/scripts'
 import type { ManifestFile, ManifestGroup } from '../components/types'
 import { MONTHS, minFileMtime, pad } from '../components/utils'
-
-/* the place whose jumps are passengers' tandems (RULES, Places) */
-const TANDEMS = 'Tandems'
-
-/* which card a jump is shown in — not the same question as whether it is a passenger's tandem,
-   which needs a name and is what the server gates montage and upload on */
-const inTandemsCard = (group: ManifestGroup) => group.destination === TANDEMS
 
 /* local calendar day, built without Intl so the server and the client agree */
 const dayOfMtime = (mtime: number) => {
@@ -29,11 +22,9 @@ const dayLabel = (day: string) => {
   return `${date} ${MONTHS[month - 1]} ${year}`
 }
 
-/* the passenger's folder on the storage — where its film and photos were sent — which is what
-   the storage's list of tandems knows it by */
-const folderOnStorage = (group: ManifestGroup) => {
-  const sent = group.uploaded?.film ?? group.uploaded?.photos
-  return sent ? sent.remotePath.slice(0, sent.remotePath.lastIndexOf('/')) : null
-}
+/* a montage's folder on the storage — the one its film went to — which is what the storage's list of
+   montages knows it by */
+const folderOnStorage = (group: ManifestGroup) =>
+  group.uploaded ? folderOfUpload(group.uploaded) : null
 
-export { TANDEMS, dayLabel, dayOf, dayOfFile, folderOnStorage, inTandemsCard }
+export { dayLabel, dayOf, dayOfFile, folderOnStorage }

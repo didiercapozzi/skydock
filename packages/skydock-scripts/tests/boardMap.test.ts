@@ -163,7 +163,7 @@ describe('an intent made by calling something else in the same file', () => {
 const intents: Record<ActionData['intent'], Intent> = {
   'reset-tandem': resetTandemIntent
 }`
-    const file = `/* Back to before processing, keeping every decision (RULES, Taking a tandem back). */
+    const file = `/* Back to before processing, keeping every decision (RULES, Taking a montage back). */
 const takeBack =
   (take) =>
   ({ manifestPath, manifest, refuse }) => {
@@ -178,7 +178,7 @@ export { resetTandemIntent }`
     const map = mapOfTheBoard({ args, api, sourceOf: () => file, known: KNOWN })
 
     const [intent] = map.intents
-    expect(intent?.rule).toBe('Taking a tandem back')
+    expect(intent?.rule).toBe('Taking a montage back')
     expect(intent?.refusals).toEqual([
       { said: 'This tandem is being processed — wait for it to finish.', sure: true }
     ])

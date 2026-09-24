@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
-import { hasDestination, removeDestination } from '../src/destinations'
+import { hasDestination, keepBackupAsPlace, removeDestination } from '../src/destinations'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
 
 /* A place taken off the board: what was filed there comes back to Fresh files, whole, and nothing
@@ -100,5 +100,27 @@ describe('a place removed from the board', () => {
     expect(hasDestination(manifest, 'Yverdon')).toBe(true)
     removeDestination(manifest, 'Yverdon')
     expect(hasDestination(manifest, 'Yverdon')).toBe(false)
+  })
+})
+
+/* A backup folder chosen before backups went into destinations becomes one, so it is still there to
+   drop a backup into (RULES, Places). */
+describe('a backup folder from before', () => {
+  it('becomes a destination called Backup', () => {
+    const manifest = manifestOf({ destinations: [{ name: 'Yverdon', path: '/nas/Yverdon' }] })
+    expect(keepBackupAsPlace(manifest, '/usb/originals')).toBe(true)
+    expect(manifest.destinations).toContainEqual({ name: 'Backup', path: '/usb/originals' })
+  })
+
+  it('is left alone when a destination is that folder already', () => {
+    const manifest = manifestOf({ destinations: [{ name: 'Archives', path: '/usb/originals' }] })
+    expect(keepBackupAsPlace(manifest, '/usb/originals')).toBe(false)
+    expect(manifest.destinations).toHaveLength(1)
+  })
+
+  it('takes another name when Backup is some other folder', () => {
+    const manifest = manifestOf({ destinations: [{ name: 'Backup', path: '/nas/Backup' }] })
+    keepBackupAsPlace(manifest, '/usb/originals')
+    expect(manifest.destinations).toContainEqual({ name: 'Backup 2', path: '/usb/originals' })
   })
 })

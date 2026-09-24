@@ -49,7 +49,7 @@ beforeEach(() => {
         id: 'g1',
         label: 'g1',
         day: '01.08.2026',
-        destination: 'Tandems',
+        montageJump: true,
         passenger: { firstname: 'Luc', lastname: 'Favre' },
         processed: true,
         files

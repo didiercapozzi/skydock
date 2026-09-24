@@ -55,19 +55,20 @@ describe('making a jump of files picked in Fresh files', () => {
   test('asks for a name and for when it started, the start filled in as shot', async () => {
     await renderPicked()
 
-    await userEvent.click(page.getByRole('button', { name: /Make a jump of these/ }))
+    await userEvent.click(page.getByRole('button', { name: /Make a jump or a montage of these/ }))
 
     await expect.element(page.getByLabelText('Name')).toHaveValue('')
     await expect.element(page.getByLabelText('Started')).toHaveValue(AT_FIELD)
   })
 
-  test('makes the jump with the name and the start it was given', async () => {
+  /* naming is making: named, they are a montage of that name */
+  test('makes a montage of that name, from the start it was given', async () => {
     const { onMakeJump } = await renderPicked()
-    await userEvent.click(page.getByRole('button', { name: /Make a jump of these/ }))
+    await userEvent.click(page.getByRole('button', { name: /Make a jump or a montage of these/ }))
 
     await userEvent.fill(page.getByLabelText('Name'), 'Sunset load')
     await userEvent.fill(page.getByLabelText('Started'), '2026-08-01T18:30')
-    await userEvent.click(page.getByRole('button', { name: 'Make the jump' }))
+    await userEvent.click(page.getByRole('button', { name: 'Make the montage' }))
 
     const expected = Math.floor(new Date(2026, 7, 1, 18, 30, 0).getTime() / 1000)
     expect(onMakeJump).toHaveBeenCalledWith('Sunset load', expected)
@@ -76,7 +77,7 @@ describe('making a jump of files picked in Fresh files', () => {
   /* both can be left alone: the jump is then called by its place among the jumps, at the time shot */
   test('leaving both as they are still makes the jump', async () => {
     const { onMakeJump } = await renderPicked()
-    await userEvent.click(page.getByRole('button', { name: /Make a jump of these/ }))
+    await userEvent.click(page.getByRole('button', { name: /Make a jump or a montage of these/ }))
 
     await userEvent.click(page.getByRole('button', { name: 'Make the jump' }))
 
@@ -85,7 +86,7 @@ describe('making a jump of files picked in Fresh files', () => {
 
   test('Escape makes nothing', async () => {
     const { onMakeJump } = await renderPicked()
-    await userEvent.click(page.getByRole('button', { name: /Make a jump of these/ }))
+    await userEvent.click(page.getByRole('button', { name: /Make a jump or a montage of these/ }))
 
     await userEvent.fill(page.getByLabelText('Name'), 'Sunset load')
     await userEvent.keyboard('{Escape}')

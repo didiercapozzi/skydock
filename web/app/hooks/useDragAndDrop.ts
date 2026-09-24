@@ -1,10 +1,9 @@
-import { passengerName, passengerOf } from '@skydock/scripts'
+import { isMontage, passengerName, passengerOf } from '@skydock/scripts'
 import { useState } from 'react'
 import type { Passenger } from '../components/tandem-card'
 import type { Dropped } from '../helpers/import'
 import type { ManifestFile, ManifestGroup } from '../components/types'
 import { droppedIn, fromComputer } from '../helpers/import'
-import { TANDEMS, inTandemsCard } from '../helpers/jumps'
 import { placeKey } from '../helpers/places'
 import type { Place } from '../helpers/places'
 
@@ -12,6 +11,8 @@ type Move = {
   destination?: string | null
   targetGroupId?: string
   newGroup?: boolean
+  /* the new jump is a montage, waiting for its name */
+  montage?: boolean
   /* for a new jump: what it is called and when it started */
   name?: string
   startsAt?: number
@@ -35,13 +36,16 @@ const useDragAndDrop = ({
   pickedFiles,
   moveFiles,
   assign,
+  toMontage,
   importDropped
 }: {
   groups: ManifestGroup[]
   frozen: Set<string>
   pickedFiles: string[]
   moveFiles: (ids: string[], where: Move) => void
-  assign: (ids: string[], destination: string | null, passenger?: Passenger) => void
+  assign: (ids: string[], destination: string | null) => void
+  /* jumps made a montage: joining a named one, or waiting for a name */
+  toMontage: (ids: string[], passenger?: Passenger) => void
   importDropped: (list: Dropped[], target: string, where: string) => Promise<void>
 }) => {
   const [dragged, setDragged] = useState<string[]>([])
@@ -57,8 +61,8 @@ const useDragAndDrop = ({
     e.dataTransfer.effectAllowed = 'copyMove'
   }
 
-  /* a whole jump, picked up by its line: dropping it on a place files every file in it at once,
-     and on Tandems that is what makes the jump a passenger's (RULES, Jumps) */
+  /* a whole jump, picked up by its line: dropping it on a place files every file in it at once, and
+     on the montages it makes the jump a montage (RULES, Jumps) */
   const startJumpDrag = (groupId: string, e?: React.DragEvent) => {
     const jump = groups.find((g) => g.id === groupId)
     carrying(e, (jump && passengerOf(jump)) || jump?.label || 'a jump')
@@ -128,26 +132,28 @@ const useDragAndDrop = ({
   }
 
   /* `key` names the thing on screen that lights up, which is not always the destination: the same
-     dropzone is a target in the menu and on its own card, and each has to light on its own. */
+     dropzone is a target in the menu and on its own card, and each has to light on its own. `to` is
+     where it lands: back among the fresh files, a destination, or the montages. */
   const dropTarget = (
-    destination: string | null,
+    to: { kind: 'sort' } | { kind: 'dz'; name: string } | { kind: 'montage' },
     named?: string,
-    /* a named passenger: what is dropped joins them rather than starting a tandem of its own */
+    /* a named montage: what is dropped joins it rather than starting a montage of its own */
     into?: { passenger: Passenger; hostId: string }
   ) => {
-    const key = named ?? (destination === null ? 'sort' : `dest:${destination}`)
+    const destination = to.kind === 'dz' ? to.name : null
+    const key = named ?? (to.kind === 'dz' ? `dest:${to.name}` : to.kind)
     /* the sorting area takes files back; a destination card takes whole jumps as well */
     const accepts =
-      destination === null ? draggedFiles.length > 0 : dragged.length > 0 || draggedFiles.length > 0
-    /* From the computer: into a passenger's tandem, a dropzone as lone files, or the sorting area.
-       The Tandems heading is not a place for a file — it has to be somebody's. */
+      to.kind === 'sort' ? draggedFiles.length > 0 : dragged.length > 0 || draggedFiles.length > 0
+    /* From the computer: into a montage, a dropzone as lone files, or the sorting area. The Montages
+       heading is not a place for a file — it has to be somebody's. */
     const incoming = into
       ? { target: `group:${into.hostId}`, where: passengerName(into.passenger) }
-      : destination === null
+      : to.kind === 'sort'
         ? { target: 'sort', where: 'Fresh files' }
-        : destination === TANDEMS
-          ? null
-          : { target: `dest:${destination}`, where: destination }
+        : to.kind === 'dz'
+          ? { target: `dest:${to.name}`, where: to.name }
+          : null
     return {
       onDragOver: (e: React.DragEvent) => {
         if (!accepts && !(fromComputer(e) && incoming)) return
@@ -170,34 +176,38 @@ const useDragAndDrop = ({
             draggedFiles,
             into
               ? { targetGroupId: into.hostId, copy: copying(e) }
-              : { destination, newGroup: destination === TANDEMS }
+              : to.kind === 'montage'
+                ? { newGroup: true, montage: true }
+                : { destination }
           )
-        else if (dragged.length > 0) assign(dragged, destination, into?.passenger)
+        else if (dragged.length > 0)
+          if (to.kind === 'montage') toMontage(dragged, into?.passenger)
+          else assign(dragged, destination)
         setDragged([])
         setDraggedFiles([])
       }
     }
   }
 
-  /* A folder on the left. A camera day takes things back to the sorting area, as Unsorted does; a
-     passenger means "this is theirs too", so it joins their tandem; the Tandems heading and No name yet
-     start a tandem of its own. What the storage holds is not somewhere a file can be put. */
+  /* A folder on the left. Fresh files takes things back to be sorted; a montage means "this is theirs
+     too", so it joins it; the Montages heading and No name yet start a montage of its own. What the
+     storage holds, and a camera, are not somewhere a file can be put. */
   const placeDrop = (target: Place) => {
     const key = placeKey(target)
     const host =
       target.kind === 'pax'
-        ? groups.find((g) => inTandemsCard(g) && passengerOf(g) === target.name)
+        ? groups.find((g) => isMontage(g) && passengerOf(g) === target.name)
         : undefined
     const props =
-      target.kind === 'storage' || (host && frozen.has(host.id))
+      target.kind === 'storage' || target.kind === 'camera' || (host && frozen.has(host.id))
         ? {}
         : target.kind === 'sort'
-          ? dropTarget(null, key)
+          ? dropTarget({ kind: 'sort' }, key)
           : target.kind === 'dz'
-            ? dropTarget(target.name, key)
+            ? dropTarget({ kind: 'dz', name: target.name }, key)
             : host?.passenger
-              ? dropTarget(TANDEMS, key, { passenger: host.passenger, hostId: host.id })
-              : dropTarget(TANDEMS, key)
+              ? dropTarget({ kind: 'montage' }, key, { passenger: host.passenger, hostId: host.id })
+              : dropTarget({ kind: 'montage' }, key)
     return { ...props, 'data-place': key }
   }
 

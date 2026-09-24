@@ -28,7 +28,7 @@ const uploadGroup: Intent = async ({ data, manifest, manifestPath, outputDir, re
   const asked = groupsInScope(manifest, scope)
   if (asked.length > 0 && asked.every(isTandem))
     return refuse(
-      'Upload a tandem from its own card: its film and photos go to the passenger and its original videos to the backup, which an upload of the whole folder cannot do.'
+      'Upload a montage from its own card: its film and photos go to its folder and its original videos to the backup, which an upload of the whole folder cannot do.'
     )
   /* a stored session is only a session if DSM still takes it — this is also what lets an expired
      one refresh itself instead of failing the upload */

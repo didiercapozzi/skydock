@@ -4,11 +4,11 @@ import { toHostPath } from './hostPath'
 import { getGroupProcessedDir } from './process'
 import type { Manifest, ManifestGroup } from './types'
 import { mediaSeconds } from './lib/media'
-import { hasCompletePassenger } from './workspace'
+import { hasCompletePassenger, isMontage } from './workspace'
 
 /* A tandem is one jump delivered to one person: a passenger's name is what gives it a folder of its
    own with the videos and photos kept apart, and that shape is what montage and upload need. */
-const isTandem = (group: ManifestGroup) => hasCompletePassenger(group.passenger)
+const isTandem = (group: ManifestGroup) => isMontage(group) && hasCompletePassenger(group.passenger)
 
 const filmNameOf = (baseName: string) => `${baseName}.mp4`
 
@@ -62,7 +62,7 @@ const tandemArtifacts = (outputDir: string, group: ManifestGroup) => {
    every cut, a re-timed or removed clip goes missing, a new name moves the folder — and the editor
    says nothing about any of it. So nothing about the tandem changes here any more; changes happen in
    the editor. The lock is the project's existence and nothing else, so deleting the project lifts it. */
-const EDIT_LOCKED = 'This tandem has an edit — change it in kdenlive.'
+const EDIT_LOCKED = 'This montage has an edit — change it in kdenlive.'
 
 const hasEdit = (outputDir: string, group: ManifestGroup) =>
   isTandem(group) && tandemArtifacts(outputDir, group).project

@@ -61,7 +61,7 @@ const prepare = async (files: ManifestFile[], group?: Partial<ManifestGroup>) =>
     id: 'g1',
     label: 'jump',
     day: '08.08.2026',
-    destination: 'Tandems',
+    montageJump: true,
     passenger: PASSENGER,
     ...group,
     files

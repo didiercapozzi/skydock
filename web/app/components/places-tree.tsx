@@ -1,7 +1,6 @@
-import { fileStatus, hasCompletePassenger, passengerOf } from '@skydock/scripts'
+import { fileStatus, hasCompletePassenger, isMontage, passengerOf } from '@skydock/scripts'
 import type { StatusContext, TandemEntry, TandemProgress } from '@skydock/scripts'
 import { useState } from 'react'
-import { TANDEMS } from '../helpers/jumps'
 import { groupsIn, hereIn, looseIn, placeKey, placeLabel } from '../helpers/places'
 import type { Place } from '../helpers/places'
 import type { Mounted } from '../hooks/useLiveProgress'
@@ -146,11 +145,11 @@ const TandemsHeading = ({
 }) => (
   <h2
     {...dropTarget}
-    title='Drop a jump here to make it a tandem'
+    title='Drop a jump here to make it a montage'
     className={`mx-0 mt-[15px] mb-1.5 flex items-center gap-2 rounded-md border px-2 py-0.5 text-[10px] font-semibold tracking-[0.1em] text-ink-3 uppercase max-[780px]:my-0 max-[780px]:flex-none ${
       over ? 'border-dashed border-pick bg-pick-soft' : 'border-transparent'
     }`}>
-    <span className='flex-1'>Tandems</span>
+    <span className='flex-1'>Montages</span>
     {todo && (
       <span className='flex-none rounded-full bg-local-soft px-1.5 text-[10.5px] font-semibold tracking-normal whitespace-nowrap text-local normal-case max-[780px]:hidden'>
         {todo}
@@ -234,7 +233,7 @@ const PlacesTree = ({
   const passengers = [
     ...new Set(
       groups
-        .filter((g) => g.destination === TANDEMS && hasCompletePassenger(g.passenger))
+        .filter((g) => isMontage(g) && hasCompletePassenger(g.passenger))
         .map((g) => passengerOf(g))
     )
   ].sort((a, b) => a.localeCompare(b))
@@ -267,10 +266,10 @@ const PlacesTree = ({
       className='sticky top-0 self-start overflow-y-auto border-line min-[781px]:flex min-[781px]:flex-col bg-rail px-2 pt-2.5 pb-6 max-[780px]:z-[8] max-[780px]:flex max-[780px]:h-auto max-[780px]:items-center max-[780px]:gap-1.5 max-[780px]:overflow-x-auto max-[780px]:overflow-y-hidden max-[780px]:border-b max-[780px]:px-3 max-[780px]:py-2 min-[781px]:h-full min-[781px]:border-r'>
       {/* what came off the cameras and is not filed yet: one entry, and the first thing on it */}
       {node({ kind: 'sort' }, '▤', toFile({ kind: 'sort' }))}
-      <Heading>Destination</Heading>
-      {destinations
-        .filter((d) => d.name !== TANDEMS)
-        .map((d) => node({ kind: 'dz', name: d.name }, '⌂', toDo({ kind: 'dz', name: d.name })))}
+      <Heading>Destinations</Heading>
+      {destinations.map((d) =>
+        node({ kind: 'dz', name: d.name }, '⌂', toDo({ kind: 'dz', name: d.name }))
+      )}
       <span className='mx-2 mt-1 flex gap-1 max-[780px]:hidden'>
         <input
           type='text'

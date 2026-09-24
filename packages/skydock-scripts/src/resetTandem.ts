@@ -39,12 +39,12 @@ const removable = (outputDir: string, dir: string) => {
 
 const takeBack = (manifest: Manifest, outputDir: string, groupId: string, forget: boolean) => {
   const group = manifest.groups.find((g) => g.id === groupId)
-  if (!group) throw new Error('Tandem not found.')
-  if (!isTandem(group)) throw new Error('Only a named tandem can be reset or deleted.')
+  if (!group) throw new Error('Montage not found.')
+  if (!isTandem(group)) throw new Error('Only a named montage can be reset or deleted.')
   const jumps = sharingFolder(manifest, outputDir, group)
   /* its originals are gone from here, so there is nothing to start again from */
   if (jumps.some((j) => j.freed))
-    throw new Error('This tandem lives only on the storage now — there is nothing here to reset.')
+    throw new Error('This montage lives only on the storage now — there is nothing here to reset.')
   const { dir, baseName } = getGroupProcessedDir(outputDir, group)
   if (!removable(outputDir, dir)) throw new Error(`Refusing to delete ${dir}.`)
 

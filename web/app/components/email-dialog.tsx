@@ -112,7 +112,7 @@ const EmailDialog = ({
 
   return (
     <Modal
-      label='Email the passenger'
+      label='Email the link'
       title={`Email ${firstname} their link`}
       wide
       onClose={onClose}
@@ -132,7 +132,7 @@ const EmailDialog = ({
               </span>
             ) : (
               <Mini
-                title='Say on the storage’s list that the passenger has their link'
+                title='Say on the storage’s list that they have their link'
                 onClick={() => onRecord(true, to)}>
                 Mark as sent
               </Mini>
@@ -164,7 +164,7 @@ const EmailDialog = ({
           type='email'
           value={to}
           autoFocus
-          placeholder='passenger@example.com — or type it in Gmail'
+          placeholder='name@example.com — or type it in Gmail'
           onChange={(e) => setTo(e.target.value)}
           className={INPUT}
         />

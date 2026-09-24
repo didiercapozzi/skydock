@@ -28,7 +28,7 @@ const restoreTandems = (manifest: Manifest, entries: TandemEntry[]) => {
     const found = restorableFiles(manifest, entry)
     if (found.length === 0) continue
     const ids = new Set(found.map((f) => f.id))
-    moveFiles(manifest, ids, { newGroup: true, destination: 'Tandems' })
+    moveFiles(manifest, ids, { newGroup: true, montage: true })
     const group = manifest.groups.find((g) => g.files.some((f) => f.id && ids.has(f.id)))
     if (!group) continue
     group.passenger = { firstname: entry.firstname, lastname: entry.lastname }

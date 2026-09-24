@@ -3,8 +3,11 @@ import {
   listRemoteFiles,
   loadManifest,
   outputKeyOf,
+  planOf,
   saveManifest,
   statProcessedOutputs,
+  earlierTandemsDir,
+  tandemsRemoteDir,
   tandemUploadKey,
   uploadGate
 } from '@skydock/scripts'
@@ -15,8 +18,8 @@ import type { Intent } from './change'
 import { uploadReporter } from './progress'
 import { recordOnStorage } from './storage'
 
-/* A tandem's film and photos go to the passenger's folder and its originals to the backup, and the
-   storage's own list of tandems follows (RULES, Uploading a tandem). */
+/* A montage goes up as its plan says — each item built once and sent to every destination it was put
+   in — and the storage's own list of montages follows (RULES, Uploading a montage). */
 const uploadTandemIntent: Intent = async ({ data, manifest, manifestPath, outputDir, refuse }) => {
   const group = manifest.groups.find((g) => g.id === data.groupId)
   if (!group) return refuse('Group not found.')
@@ -34,7 +37,7 @@ const uploadTandemIntent: Intent = async ({ data, manifest, manifestPath, output
       manifest,
       group,
       session,
-      backup: data.backup,
+      plan: planOf(data.plan),
       onArchive: report.onArchive,
       onCheck: report.onCheck,
       onProgress: report.onProgress
@@ -49,9 +52,14 @@ const uploadTandemIntent: Intent = async ({ data, manifest, manifestPath, output
     }
     report.done(result.skipped)
     saveManifest(manifestPath, saved)
-    const listed = target ? entryOfTandem(target) : null
+    const listed = target ? entryOfTandem(target, tandemsRemoteDir(saved)) : null
     const listing = listed
-      ? await recordOnStorage(session, listed.dir, (index) => upsert(index, listed.entry))
+      ? await recordOnStorage(
+          session,
+          listed.dir,
+          (index) => upsert(index, listed.entry),
+          earlierTandemsDir(saved)
+        )
       : {}
     return {
       ...boardAnswer(saved),

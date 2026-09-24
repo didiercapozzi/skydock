@@ -76,7 +76,7 @@ const Row = ({
         <span className='ml-auto flex flex-wrap items-center gap-1.5'>
           {waiting > 0 && (
             <Go
-              title={`Its files are on this board, waiting to be sorted: put them back together as ${entry.firstname} ${entry.lastname}’s tandem, at the times they had`}
+              title={`Its files are on this board, waiting to be sorted: put them back together as ${`${entry.firstname} ${entry.lastname}`.trim()}’s montage, at the times they had`}
               onClick={onRestore}>
               Restore · {waiting} file{waiting === 1 ? '' : 's'}
             </Go>
@@ -147,7 +147,7 @@ const StorageList = ({
       <div className='flex flex-wrap items-baseline gap-2 px-0.5 pb-1.5'>
         <h3 className='m-0 text-[13px] font-semibold text-ink'>On the storage</h3>
         <span className='text-[12px] text-ink-2'>
-          {storage.tandems.length} tandem{storage.tandems.length === 1 ? '' : 's'}
+          {storage.tandems.length} montage{storage.tandems.length === 1 ? '' : 's'}
           {waiting > 0 ? ` · ${waiting} not emailed yet` : ''}
         </span>
         <code className='ml-auto font-mono text-[11px] text-ink-3'>{storage.dir}</code>
@@ -156,7 +156,7 @@ const StorageList = ({
       {forgotten.length > 1 && (
         <p className='m-0 mb-2 flex flex-wrap items-center gap-2 rounded-r-md border-l-[3px] border-accent bg-accent-soft px-3 py-2 text-[12.5px] text-ink-2'>
           <span className='flex-1'>
-            {forgotten.length} tandems on this list have their files on this board, waiting to be
+            {forgotten.length} montages on this list have their files on this board, waiting to be
             sorted — this board has forgotten them.
           </span>
           <Go onClick={() => onRestore(forgotten.map((t) => t.folder))}>
@@ -166,11 +166,11 @@ const StorageList = ({
       )}
       {storage.problem ? (
         <p className='m-0 rounded-md bg-local-soft px-3 py-2 text-[12.5px] text-local'>
-          The storage’s list of tandems could not be read: {storage.problem}
+          The storage’s list of montages could not be read: {storage.problem}
         </p>
       ) : storage.tandems.length === 0 ? (
         <p className='m-0 rounded-[9px] border border-dashed border-line px-3 py-4 text-center text-[12.5px] text-ink-3'>
-          No tandem uploaded yet — each one is listed here once it is.
+          No montage uploaded yet — each one is listed here once it is.
         </p>
       ) : (
         <div className='overflow-hidden rounded-[9px] border border-line bg-pane'>

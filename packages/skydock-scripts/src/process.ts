@@ -25,8 +25,9 @@ import {
   buildPassengerFolder,
   formatGroupDay,
   hasCompletePassenger,
-  hasPartialPassenger,
+  isMontage,
   makeFileName,
+  MONTAGES_FOLDER,
   toFileStem
 } from './workspace'
 
@@ -280,8 +281,8 @@ const pruneStaleMedia = (dir: string, kept: Set<string>) => {
 const getDestinationDir = (outputDir: string, destination: string) =>
   path.join(outputDir, 'processed', destination.replace(/[/\\]+/g, '_').trim() || 'destination')
 
-const isFlatGroup = (group: ManifestGroup) =>
-  !hasCompletePassenger(group.passenger) && !!group.destination
+/* a destination's files lie flat in its folder, whatever it is called; a montage has a folder of its own */
+const isFlatGroup = (group: ManifestGroup) => !isMontage(group) && !!group.destination
 
 const getGroupProcessedDir = (outputDir: string, group: ManifestGroup) => {
   const dayEpoch = parseDayEpoch(group.day) ?? startOfFiles(group.files)
@@ -289,9 +290,11 @@ const getGroupProcessedDir = (outputDir: string, group: ManifestGroup) => {
   if (isFlatGroup(group)) {
     return { dir: getDestinationDir(outputDir, group.destination!), baseName, dayEpoch, flat: true }
   }
-  const parent = group.destination
-    ? getDestinationDir(outputDir, group.destination)
-    : path.join(outputDir, 'processed')
+  const parent = isMontage(group)
+    ? getDestinationDir(outputDir, MONTAGES_FOLDER)
+    : group.destination
+      ? getDestinationDir(outputDir, group.destination)
+      : path.join(outputDir, 'processed')
   const folder = hasCompletePassenger(group.passenger)
     ? buildPassengerFolder(group.passenger, baseName)
     : baseName
@@ -580,17 +583,6 @@ const runProcess = async (options?: ProcessOptions) => {
         ? groupIds.includes(g.id)
         : !options?.destination || g.destination === options.destination)
   )
-
-  /* A passenger's name half entered is not a passenger and not a place either: the rule that
-     decides the folder sees no complete name, reads the jump as a place, and delivers it flat with
-     every file named after the destination. What makes a jump a tandem is that somebody is in it,
-     so a name that has been started and not finished is the thing to refuse — whatever the
-     destination happens to be called. */
-  const halfNamed = groups.filter((g) => hasPartialPassenger(g.passenger))
-  if (halfNamed.length > 0)
-    throw new Error(
-      `Give ${halfNamed.length === 1 ? 'this passenger' : `these ${halfNamed.length} passengers`} a first and last name before processing — the name is the folder they get.`
-    )
 
   const namePools = new Map<string, Set<string>>()
   const poolFor = (dir: string) => {

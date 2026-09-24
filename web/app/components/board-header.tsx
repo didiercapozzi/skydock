@@ -65,7 +65,7 @@ const BoardHeader = ({
           role='alert'
           title={
             disk.level === 'full'
-              ? 'Copying a camera, making proxies, processing and saving the board all need room on this disk. Free some space: delete what you no longer need, or free uploaded jumps and tandems from here.'
+              ? 'Copying a camera, making proxies, processing and saving the board all need room on this disk. Free some space: delete what you no longer need, or free uploaded jumps and montages from here.'
               : 'Free some space before the disk fills: copying a camera, making proxies and processing all need room.'
           }
           className={`rounded-full border px-2.5 py-0.5 text-[12px] font-semibold whitespace-nowrap ${

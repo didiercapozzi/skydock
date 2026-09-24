@@ -3,6 +3,8 @@ import {
   hasCompletePassenger,
   lastSegment,
   parentOf,
+  passengerFrom,
+  passengerName,
   tandemUploadKey
 } from '@skydock/scripts'
 import type { TandemFact } from '@skydock/scripts'
@@ -13,14 +15,8 @@ import { kindOf } from './file-list'
 import { formatFilmSize, getFileUrl, getThumbUrl, hhmm, pad } from './utils'
 import type { ManifestGroup } from './types'
 
-/* A tandem cannot be processed until it has a name, because the name *is* the folder the passenger
-   gets (RULES, Dropzones and tandems). Both halves behave identically, so they are one field
-   described twice rather than two fields written out twice. */
-const NAME_FIELDS = [
-  { key: 'firstname', label: 'First name' },
-  { key: 'lastname', label: 'Last name' }
-] as const
-
+/* A montage is named once, by one name — "Luc Favre", "Boogie 2026" — and the name *is* the folder
+   it gets (RULES, Places). Saved when the field is left or on Enter. */
 const PassengerName = ({
   group,
   onSave
@@ -28,38 +24,25 @@ const PassengerName = ({
   group: ManifestGroup
   onSave: (firstname: string, lastname: string) => void
 }) => {
-  const [name, setName] = useState({
-    firstname: group.passenger?.firstname ?? '',
-    lastname: group.passenger?.lastname ?? ''
-  })
-  const save = () => onSave(name.firstname.trim(), name.lastname.trim())
+  const [name, setName] = useState(passengerName(group.passenger))
+  const save = () => {
+    const { firstname, lastname } = passengerFrom(name)
+    onSave(firstname, lastname)
+  }
   return (
-    <span
+    <input
+      type='text'
+      value={name}
+      placeholder='Name'
+      aria-label='Name'
       onClick={(e) => e.stopPropagation()}
-      /* Saved when the name is finished, not when one half of it is. Saving on each field's own
-         blur would record a passenger with no last name on the way from the first name to the last
-         — hiding the inputs behind the name just invented, and leaving a jump the folder rule reads
-         as a place rather than a person. */
-      onBlur={(e) => {
-        if (e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget)) return
-        save()
+      onChange={(e) => setName(e.target.value)}
+      onBlur={save}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') save()
       }}
-      className='flex flex-wrap items-center gap-1'>
-      {NAME_FIELDS.map((field) => (
-        <input
-          key={field.key}
-          type='text'
-          value={name[field.key]}
-          placeholder={field.label}
-          aria-label={field.label}
-          onChange={(e) => setName({ ...name, [field.key]: e.target.value })}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') save()
-          }}
-          className='w-24 rounded-[5px] border border-line bg-pane px-1.5 py-0.5 text-[12px]'
-        />
-      ))}
-    </span>
+      className='w-full max-w-[16rem] rounded-[5px] border border-line bg-pane px-1.5 py-0.5 text-[12px]'
+    />
   )
 }
 
@@ -113,81 +96,85 @@ const PassengerFrames = ({
 
 type Passenger = NonNullable<ManifestGroup['passenger']>
 
-const fullName = (p: { firstname: string; lastname: string }) =>
-  `${p.firstname.trim()} ${p.lastname.trim()}`.trim()
+/* Making a montage, named once, from what is on screen: the jump or the files and their name side by
+   side, so nothing has to be dragged, or found again on another page.
 
-/* Making a tandem from the jump itself: its line turns into the passenger's name. The jump and who
-   is in it are both on screen, so nothing has to be dragged, or found again on another page.
+   Never saved by clicking away: leaving here half-typed would have filed something by accident. So it
+   is saved by Enter or the button, and Escape puts things back as they were.
 
-   Unlike the name on a card, this is never saved by clicking away. Leaving a card's name half-typed
-   costs nothing; leaving here would have filed the jump somewhere by accident. So it is saved by
-   Enter or the button, and Escape puts the line back as it was.
+   A name that is already a montage's joins it — one name is one folder — and says so before anything
+   is saved. The comparison ignores case; what is saved is the name as it already is, so the two jumps
+   do not end up in two folders spelled two ways.
 
-   A name that is already a passenger's joins them — one passenger is one folder — and says so
-   before anything is saved. The comparison ignores case; what is saved is the name as it already
-   is, so the two jumps do not end up in two folders spelled two ways. */
+   What already belongs to a place is copied in rather than moved, and `keeps` names that place, so
+   the person knows before pressing that it keeps its own. */
 const MakeTandem = ({
   group,
+  initial = '',
+  keeps,
   passengers,
   framed = true,
   onSave,
   onCancel
 }: {
-  group: ManifestGroup
+  /* whose frames are shown beside the name; none when they are already on show */
+  group?: ManifestGroup
+  /* the name it starts with — a jump's own name, when it had one */
+  initial?: string
+  keeps?: string
   passengers: Passenger[]
-  /* where the jump's frames are already on show beside it, they are not drawn twice */
   framed?: boolean
   onSave: (passenger: Passenger) => void
   onCancel?: () => void
 }) => {
-  const [name, setName] = useState({ firstname: '', lastname: '' })
-  const complete = hasCompletePassenger(name)
-  const typed = fullName(name).toLowerCase()
-  const joins = complete ? passengers.find((p) => fullName(p).toLowerCase() === typed) : undefined
+  const [name, setName] = useState(initial)
+  const typed = passengerFrom(name)
+  const complete = hasCompletePassenger(typed)
+  const joins = complete
+    ? passengers.find((p) => passengerName(p).toLowerCase() === passengerName(typed).toLowerCase())
+    : undefined
   const save = () => {
     if (!complete) return
-    onSave(joins ?? { firstname: name.firstname.trim(), lastname: name.lastname.trim() })
+    onSave(joins ?? typed)
   }
+  const copied = keeps ? ` — copied, ${keeps} keeps its own` : ''
   return (
     <span
       onClick={(e) => e.stopPropagation()}
       className='flex flex-wrap items-center gap-1.5'>
-      {framed && (
+      {framed && group && (
         <PassengerFrames
           group={group}
           alt=''
           inline
         />
       )}
-      {NAME_FIELDS.map((field, i) => (
-        <input
-          key={field.key}
-          type='text'
-          value={name[field.key]}
-          placeholder={field.label}
-          aria-label={field.label}
-          autoFocus={framed && i === 0}
-          onChange={(e) => setName({ ...name, [field.key]: e.target.value })}
-          onKeyDown={(e) => {
-            e.stopPropagation()
-            if (e.key === 'Enter') save()
-            if (e.key === 'Escape') onCancel?.()
-          }}
-          className='w-28 rounded-[5px] border border-pick bg-pane px-[7px] py-0.5 text-[12px] text-ink'
-        />
-      ))}
+      <input
+        type='text'
+        value={name}
+        placeholder='Name'
+        aria-label='Name'
+        autoFocus
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          e.stopPropagation()
+          if (e.key === 'Enter') save()
+          if (e.key === 'Escape') onCancel?.()
+        }}
+        className='w-44 rounded-[5px] border border-pick bg-pane px-[7px] py-0.5 text-[12px] text-ink'
+      />
       <span
         className={`min-w-[128px] text-[11px] ${joins ? 'font-semibold text-accent' : 'text-ink-3'}`}>
         {joins
-          ? `Joins ${fullName(joins)}’s tandem`
+          ? `Joins ${passengerName(joins)}’s montage${copied}`
           : complete
-            ? 'A new passenger folder'
-            : 'First and last name'}
+            ? `A new montage${copied}`
+            : 'A name: a person, an event'}
       </span>
       <Go
         disabled={!complete}
         onClick={save}>
-        {joins ? 'Join tandem' : 'Make tandem'}
+        {joins ? 'Join montage' : keeps ? 'Copy into montage' : 'Make montage'}
       </Go>
       {onCancel && <Mini onClick={onCancel}>Cancel</Mini>}
     </span>
@@ -220,8 +207,7 @@ const PassengerCard = ({
   onName: (firstname: string, lastname: string) => void
 }) => {
   const videos = group.files.filter((f) => kindOf(f) === 'video').length
-  /* The same rule the folder uses. "Has some text in it" is not the same as "has a name": a
-     passenger with only a first name has no folder to go to, so the card keeps asking. */
+  /* the same rule the folder uses: a montage with no name has no folder to go to yet */
   const complete = hasCompletePassenger(group.passenger)
   const editing = !locked && (naming || !complete)
   return (
@@ -272,7 +258,7 @@ const PassengerCard = ({
       {!group.freed && (
         <PassengerFrames
           group={group}
-          alt={editing ? 'A frame from this tandem, to tell who it is' : who}
+          alt={editing ? 'A frame from this montage, to tell who it is' : who}
         />
       )}
       <p className='text-[12px] text-ink-2'>
@@ -377,7 +363,7 @@ const ProjectPath = ({ path: projectPath }: { path: string }) => {
 }
 
 /* One step at a time, always in the same place. The three are distinct and never offered out of
-   order (RULES, The board): Process copies and crops here, Montage writes the project the editor
+   order (RULES, The board): Process copies and crops here, Make the project writes the project the editor
    opens, Deliver hands over what was rendered. Deliver stays enabled with no film yet, because a
    disabled button cannot say why — and pressing it is also how the board looks again, there being
    nothing that notices a render finishing. */
@@ -428,7 +414,7 @@ const TandemActions = ({
           disabled={working}
           title='Write the kdenlive project — clips laid out, render destination set — and open it'
           onClick={onMontage}>
-          {busy === group.id ? 'Writing…' : 'Montage'}
+          {busy === group.id ? 'Writing…' : 'Make the project'}
         </Go>
       </span>
     )
@@ -445,7 +431,7 @@ const TandemActions = ({
       {!facts.film && <span className='text-[12px] text-ink-3'>edit and render it</span>}
       {/* A tandem with an edit is prepared again like any other: the copies are rewritten under the
           same names and the project is left where it is, so a trim or a frame corrected afterwards
-          can still reach the footage the editor plays (RULES, Montage). */}
+          can still reach the footage the editor plays (RULES, The editing project). */}
       <Mini
         disabled={working}
         title='Make the copies again from the originals — the project, the film and the archives are left alone'
@@ -464,7 +450,7 @@ const TandemActions = ({
         disabled={working || blocked.blocked}
         title={
           blocked.message ??
-          'Zip the photos and the rushes, then send the film and the photos to the passenger'
+          'Zip the photos and the rushes, then send the film and the photos to the montage’s folder'
         }
         onClick={onUpload}>
         {busy === uploadKey ? 'Uploading…' : group.uploaded ? 'Upload again…' : 'Upload…'}
@@ -621,7 +607,7 @@ const UploadedCards = ({ group }: { group: ManifestGroup }) => {
     <>
       {anchor && passenger.length > 0 && (
         <NasCard
-          title='For the passenger'
+          title='To hand over'
           dir={parentOf(anchor.remotePath)}
           tag='ready to hand over'
           items={passenger}

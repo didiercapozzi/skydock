@@ -57,9 +57,9 @@ describe('changes made on the board', () => {
     else process.env.SKYDOCK_OUTPUT_DIR = previousOutputDir
   })
 
-  const writeManifest = (groups: ManifestGroup[], files: ManifestFile[] = []) => {
+  const writeManifest = (groups: ManifestGroup[], files: ManifestFile[] = [], version = 1) => {
     const manifest: Manifest = {
-      version: 1,
+      version,
       createdAt: new Date().toISOString(),
       files: files.length > 0 ? files : groups.flatMap((g) => g.files),
       groups,
@@ -244,7 +244,7 @@ describe('changes made on the board', () => {
       writeManifest([
         group({
           id: 'group_1',
-          destination: 'Tandems',
+          montageJump: true,
           passenger: { firstname: 'Luc', lastname: 'Favre' },
           processed: true,
           files: [file({ id: 'a' })]
@@ -276,7 +276,7 @@ describe('changes made on the board', () => {
       writeManifest([
         group({
           id: 'group_1',
-          destination: 'Tandems',
+          montageJump: true,
           passenger: { firstname: 'Luc', lastname: 'Favre' },
           files: [file({ id: 'a' })]
         })
@@ -290,7 +290,7 @@ describe('changes made on the board', () => {
       writeManifest([
         group({
           id: 'group_1',
-          destination: 'Tandems',
+          montageJump: true,
           passenger: { firstname: 'Luc', lastname: 'Favre' },
           processed: true,
           files: [file({ id: 'a' })]
@@ -308,13 +308,13 @@ describe('changes made on the board', () => {
   })
 
   /* A trim corrected after the montage was made is no use until the copies are made again, and
-     preparing writes the copies and nothing else — the project sits beside them (RULES, Montage). */
+     preparing writes the copies and nothing else — the project sits beside them (RULES, The editing project). */
   describe('preparing a tandem that has an edit', () => {
     it('is allowed, and leaves its project where it is', async () => {
       writeManifest([
         group({
           id: 'group_1',
-          destination: 'Tandems',
+          montageJump: true,
           passenger: { firstname: 'Luc', lastname: 'Favre' },
           processed: true,
           files: []
@@ -336,7 +336,7 @@ describe('changes made on the board', () => {
       writeManifest([
         group({
           id: 'group_1',
-          destination: 'Tandems',
+          montageJump: true,
           passenger: { firstname: 'Luc', lastname: 'Favre' },
           files: [file({ id: 'a' })]
         })
@@ -352,7 +352,7 @@ describe('changes made on the board', () => {
       writeManifest([
         group({
           id: 'group_1',
-          destination: 'Tandems',
+          montageJump: true,
           passenger: { firstname: 'Luc', lastname: 'Favre' },
           processed: true,
           uploaded: { at: 1 },
@@ -445,7 +445,7 @@ describe('changes made on the board', () => {
     const luc = () =>
       group({
         id: 'group_1',
-        destination: 'Tandems',
+        montageJump: true,
         passenger: { firstname: 'Luc', lastname: 'Favre' },
         processed: true,
         files: [file({ id: 'a' }), file({ id: 'b', mtime: 1_754_000_060 })]
@@ -492,7 +492,7 @@ describe('changes made on the board', () => {
             luc(),
             {
               ...other(),
-              destination: 'Tandems',
+              montageJump: true,
               passenger: { firstname: 'Luc', lastname: 'Favre' }
             }
           ]
@@ -685,6 +685,63 @@ describe('changes made on the board', () => {
       expect(res.looseFiles).toEqual([])
       const byId = Object.fromEntries(res.groups.map((g) => [g.id, g.files.map((f) => f.id)]))
       expect(byId).toEqual({ g1: ['a', 'b'], g2: ['c'] })
+    })
+  })
+
+  /* RULES, Making a montage: moved from Fresh files, copied from anywhere else */
+  describe('making a montage', () => {
+    const board = () =>
+      writeManifest([
+        group({ id: 'fresh', files: [file({ id: 'a' }), file({ id: 'b' })] }),
+        group({
+          id: 'yv',
+          destination: 'Yverdon',
+          files: [file({ id: 'c', mtime: 1_754_007_200, cropStart: 3 })]
+        })
+      ])
+
+    it('moves files still in Fresh files into a montage of that name', async () => {
+      board()
+
+      const res = answer(
+        await send({ intent: 'make-montage', fileIds: ['a', 'b'], name: 'Luc Favre' })
+      )
+
+      const made = res.groups.find((g) => g.montageJump)
+      expect(made?.passenger).toEqual({ firstname: 'Luc', lastname: 'Favre' })
+      expect(made?.files.map((f) => f.id)).toEqual(['a', 'b'])
+      expect(res.groups.find((g) => g.id === 'fresh')).toBeUndefined()
+    })
+
+    it('copies files a dropzone holds, adjusted as they are, and leaves the dropzone its own', async () => {
+      board()
+
+      const res = answer(
+        await send({ intent: 'make-montage', fileIds: ['c'], name: 'Boogie 2026' })
+      )
+
+      const made = res.groups.find((g) => g.montageJump)
+      expect(made?.files[0]).toMatchObject({ copyOf: 'c', cropStart: 3 })
+      expect(res.groups.find((g) => g.id === 'yv')?.files.map((f) => f.id)).toEqual(['c'])
+    })
+
+    it('joins a montage that has the name already, however it is written', async () => {
+      board()
+      await send({ intent: 'make-montage', fileIds: ['a'], name: 'Luc Favre' })
+
+      const res = answer(await send({ intent: 'make-montage', fileIds: ['c'], name: 'luc favre' }))
+
+      const jumps = res.groups.filter((g) => g.montageJump)
+      expect(jumps.map((g) => g.passenger)).toEqual([
+        { firstname: 'Luc', lastname: 'Favre' },
+        { firstname: 'Luc', lastname: 'Favre' }
+      ])
+    })
+
+    it('asks for a name', async () => {
+      board()
+      const res = refusal(await send({ intent: 'make-montage', fileIds: ['a'], name: '  ' }))
+      expect(res.globalErrors?.[0]).toContain('name')
     })
   })
 
@@ -922,13 +979,17 @@ describe('changes made on the board', () => {
       expect(saved?.groups[0]?.destination).toBe('Yverdon')
     })
 
-    it('is refused for Tandems, which nobody made', async () => {
-      writeManifest([group({ id: 'group_1', destination: 'Tandems' })])
+    /* Tandems is a place like any other now; the montages are not a place at all */
+    it('takes Tandems off like any other place', async () => {
+      writeManifest(
+        [group({ id: 'group_1', destination: 'Tandems', files: [file({ id: 'a' })] })],
+        [],
+        2
+      )
 
-      const res = refusal(await send({ intent: 'remove-destination', destination: 'Tandems' }))
+      const res = answer(await send({ intent: 'remove-destination', destination: 'Tandems' }))
 
-      expect(res.success).toBe(false)
-      expect(res.globalErrors?.[0]).toContain('Tandems')
+      expect(res.groups[0]?.destination).toBeUndefined()
     })
 
     it('is refused for a place that is not there', async () => {

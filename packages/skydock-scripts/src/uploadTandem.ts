@@ -4,12 +4,14 @@ import { PHOTO_LEVEL, VIDEO_LEVEL, writeArchive } from './archive'
 import type { ArchiveProgress } from './archive'
 import type { CheckProgress, UploadProgress, UploadVerdict } from './publish'
 import type { NasSession } from './nas'
-import { filmNameOf, isTandem, photosNameOf, rushesNameOf, tandemArtifacts } from './tandem'
-import { backupOptionsSchema } from './types'
-import type { BackupOptions, Manifest, ManifestGroup } from './types'
-import { targetForGroup, uploadTargets } from './upload'
+import { sendItems } from './sending'
+import type { SendItem } from './sending'
+import { filmNameOf, isTandem, tandemArtifacts } from './tandem'
+import type { Manifest, ManifestGroup, SendPart, SendPlan } from './types'
+import { destBaseOf, uploadTargets } from './upload'
 import type { UploadTarget } from './upload'
 import { isVideoFile, sizeOf } from './utils'
+import { passengerName } from './workspace'
 import { originsOf } from './originEntry'
 import { deliveryFolders } from './originIndex'
 
@@ -46,160 +48,173 @@ const resolveFilm = async (artifacts: ReturnType<typeof tandemArtifacts>, hasVid
   return canonical
 }
 
-const verdictFor = (files: UploadVerdict[], target: string) =>
-  files.find((f) => f.localPath === target)
+/* Each item is made ready in a folder of its own beside the montage's, under the name it goes up
+   as: a zip built there, a single file linked there under its new name, a part's files linked into
+   videos/ or photos/. Linking takes no room and leaves the originals as they are; where a link cannot
+   be made — another disk — the file is copied. */
+const readyOf = (dir: string) => path.join(dir, '.send')
 
-const DEFAULT_BACKUP = backupOptionsSchema.parse({ backupAs: 'zip', filmToBackup: false })
+const linkInto = (file: string, to: string) => {
+  fs.mkdirSync(path.dirname(to), { recursive: true })
+  fs.rmSync(to, { force: true })
+  try {
+    fs.linkSync(file, to)
+  } catch {
+    fs.copyFileSync(file, to)
+  }
+  return to
+}
 
-/* Everything that happens once the edit is done: the two archives the passenger and the backup
-   need, then two uploads that keep them apart. The manifest is not saved here — the caller owns
-   that, because it runs long enough that the copy loaded before it started is stale. */
+/* the verdict for one file in one folder: the same file can go up to several */
+const verdictIn = (files: UploadVerdict[], localPath: string, remoteDir: string) =>
+  files.find((f) => f.localPath === localPath && f.remotePath.startsWith(`${remoteDir}/`))
+
+/* Everything that happens once the edit is done: the items the plan makes out of the montage, each
+   built once and sent to every destination it was put in, in a folder named after the montage. The
+   manifest is not saved here — the caller owns that, because it runs long enough that the copy
+   loaded before it started is stale. */
 const uploadTandem = async ({
   outputDir,
   manifest,
   group,
   session,
+  plan,
   onArchive,
   onProgress,
-  onCheck,
-  backup = DEFAULT_BACKUP
+  onCheck
 }: {
   outputDir: string
   manifest: Manifest
   group: ManifestGroup
   session: NasSession
-  backup?: BackupOptions
+  plan: SendPlan
   onArchive?: (progress: ArchiveProgress & { name: string }) => void
   onProgress?: (progress: UploadProgress & { groupIds: string[] }) => void
   onCheck?: (progress: CheckProgress) => void
 }) => {
   if (!isTandem(group))
-    throw new Error('Only a tandem is uploaded this way — give it a passenger first.')
-  if (!group.processed) throw new Error('Process this tandem before uploading it.')
+    throw new Error('Only a montage is uploaded this way — give it a name first.')
+  if (!group.processed) throw new Error('Process this montage before uploading it.')
   if (group.freed)
-    throw new Error('This tandem lives only on the storage now — nothing here to upload.')
+    throw new Error('This montage lives only on the storage now — nothing here to upload.')
   const artifacts = tandemArtifacts(outputDir, group)
   if (!fs.existsSync(artifacts.dir)) throw new Error('Processed files not found. Process it again.')
 
-  const backupFolder = session.backupFolder?.trim()
-  if (!backupFolder) throw new Error('Choose a backup folder for the original videos.')
-  const passenger = targetForGroup(group, outputDir, manifest)
-  if (!passenger.remoteDir) throw new Error('Choose a NAS folder for the tandems.')
-  /* the one misconfiguration that undoes the whole point of keeping the rushes apart */
-  if (passenger.remoteDir === backupFolder)
-    throw new Error('The backup folder is the passenger folder — choose a different one.')
-
   const videos = group.files.filter((f) => isVideoFile(f.path))
   const film = await resolveFilm(artifacts, videos.length > 0)
-
-  const photosDir = path.join(artifacts.dir, 'photos')
-  const photos = fs.existsSync(photosDir)
-    ? fs
-        .readdirSync(photosDir)
-        .sort()
-        .map((name) => ({ file: path.join(photosDir, name), name }))
-    : []
-  const photosZip = await writeArchive(
-    path.join(artifacts.dir, photosNameOf(artifacts.baseName)),
-    photos,
-    { level: PHOTO_LEVEL, onProgress: (progress) => onArchive?.({ ...progress, name: 'photos' }) }
+  const items = sendItems(group, outputDir, plan.zip, film).filter(
+    (item) => (plan.placed[item.key] ?? []).length > 0
   )
+  if (items.length === 0) throw new Error('Put at least one thing in a destination.')
 
-  /* the rushes are the originals the edit came from, and they are the backup's business only */
-  const originals = videos
-    .filter((f) => fs.existsSync(f.path))
-    .map((f) => ({ file: f.path, name: f.filename }))
-  const filmCopy =
-    backup.filmToBackup && film ? [{ file: film, name: filmNameOf(artifacts.baseName) }] : []
-  /* The project always goes, whatever else was chosen: it names the clips by where they sat when the
-     edit was made, so from the backup it reopens only with them put back there — and it is the one
-     thing of a tandem that cannot be made again, weighed in hundreds of kilobytes against the
-     gigabytes it travels with. Nobody should have to remember to tick that. */
-  const project = path.join(artifacts.dir, `${artifacts.baseName}.kdenlive`)
-  const projectCopy = fs.existsSync(project)
-    ? [{ file: project, name: path.basename(project) }]
-    : []
-  const rushesZip =
-    backup.backupAs === 'zip'
-      ? await writeArchive(
-          path.join(artifacts.dir, rushesNameOf(artifacts.baseName)),
-          [...originals, ...filmCopy, ...projectCopy],
-          {
-            level: VIDEO_LEVEL,
-            onProgress: (progress) => onArchive?.({ ...progress, name: 'rushes' })
-          }
-        )
-      : null
-  /* As plain files the originals go into a folder of their own, named like the archive would be,
-     so one backup folder can hold every tandem without their clips running together. They are sent
-     from wherever they sit, one target per folder, because they were never copied anywhere. */
-  const backupDir = `${backupFolder}/${artifacts.baseName}`
-  const plain =
-    backup.backupAs === 'folder'
-      ? [...originals, ...filmCopy, ...projectCopy].map((o) => o.file)
-      : []
-  const plainTargets: UploadTarget[] = [...new Set(plain.map((file) => path.dirname(file)))].map(
-    (dir, index) => ({
-      key: `backup:${group.id}:${index}`,
-      label: `${passenger.label} originals`,
-      localDir: dir,
-      remoteDir: backupDir,
-      destination: null,
-      groupIds: [group.id],
-      files: plain.filter((file) => path.dirname(file) === dir),
-      share: false
-    })
-  )
+  /* each destination the plan names, and the folder the montage gets inside it */
+  const folderName = path.basename(artifacts.dir)
+  const destinations = [...new Set(items.flatMap((item) => plan.placed[item.key] ?? []))]
+  const remoteOf = new Map<string, string>()
+  for (const destination of destinations) {
+    const base = destBaseOf(destination, manifest)
+    if (!base) throw new Error(`Choose a NAS folder for ${destination} first.`)
+    remoteOf.set(destination, `${base}/${folderName}`)
+  }
 
-  /* only what is the passenger's goes to the passenger: not the project, not the working folders,
-     and above all not the rushes */
-  const forPassenger = [film, photosZip].filter((f) => f !== null)
-  if (forPassenger.length === 0) throw new Error('Nothing to upload — no film and no photos.')
-  const targets: UploadTarget[] = [{ ...passenger, files: forPassenger }]
-  if (rushesZip)
-    targets.push({
-      key: `backup:${group.id}`,
-      label: `${passenger.label} rushes`,
-      localDir: artifacts.dir,
-      remoteDir: backupFolder,
-      destination: null,
-      groupIds: [group.id],
-      files: [rushesZip],
-      share: false
+  /* built once, whatever number of destinations it goes to */
+  const ready = readyOf(artifacts.dir)
+  fs.mkdirSync(ready, { recursive: true })
+  const built = new Map<string, string[]>()
+  for (const item of items) {
+    if (item.zip) {
+      const zip = await writeArchive(path.join(ready, item.name), item.entries, {
+        level: item.holds.every((part) => part === 'photos') ? PHOTO_LEVEL : VIDEO_LEVEL,
+        onProgress: (progress) => onArchive?.({ ...progress, name: item.name })
+      })
+      built.set(item.key, zip ? [zip] : [])
+    } else
+      built.set(
+        item.key,
+        item.entries.map((entry) => linkInto(entry.file, path.join(ready, entry.name)))
+      )
+  }
+
+  /* One target per folder up there: the montage's own folder in each destination, and its videos/
+     and photos/ inside it for the parts sent as they are. The folder holding the film is the one
+     with a share link, which is what is emailed. */
+  const targets: UploadTarget[] = destinations.flatMap((destination) => {
+    const remote = remoteOf.get(destination)!
+    const here = items.filter((item) => (plan.placed[item.key] ?? []).includes(destination))
+    const inFolder = (sub: string) =>
+      here.flatMap((item) => (built.get(item.key) ?? []).filter((f) => path.dirname(f) === sub))
+    return [
+      { sub: ready, remoteDir: remote, share: here.some((item) => item.holds.includes('film')) },
+      { sub: path.join(ready, 'videos'), remoteDir: `${remote}/videos`, share: false },
+      { sub: path.join(ready, 'photos'), remoteDir: `${remote}/photos`, share: false }
+    ].flatMap(({ sub, remoteDir, share }) => {
+      const files = inFolder(sub)
+      return files.length === 0
+        ? []
+        : [
+            {
+              key: `send:${group.id}:${destination}:${path.basename(sub)}`,
+              label: `${passengerName(group.passenger)} in ${destination}`,
+              localDir: sub,
+              remoteDir,
+              destination,
+              groupIds: [group.id],
+              files,
+              share
+            }
+          ]
     })
-  targets.push(...plainTargets)
+  })
 
   const result = await uploadTargets({
     session,
     targets,
     origins: originsOf(manifest),
-    folders: deliveryFolders(manifest, session),
+    folders: deliveryFolders(manifest),
     onProgress,
     onCheck
   })
-  const shareUrl = result.shareUrls.find((s) => s.target.key === passenger.key)?.shareUrl
+
+  /* What the montage records: each part's first place, which is what is proved and freed against,
+     and the whole of where everything went. */
+  const firstRemote = (item: SendItem) => remoteOf.get((plan.placed[item.key] ?? [])[0]!)!
+  const recordOf = (item: SendItem | undefined, file?: string) => {
+    if (!item) return undefined
+    const local = file ?? built.get(item.key)?.[0]
+    const at = local ? path.dirname(local) : ready
+    const remote = firstRemote(item) + (at === ready ? '' : `/${path.basename(at)}`)
+    const verdict = local ? verdictIn(result.files, local, remote) : undefined
+    return verdict && item.zip ? { ...verdict, holds: item.holds } : verdict
+  }
+  const zipHolding = (part: SendPart) => items.find((item) => item.zip && item.holds.includes(part))
+  const looseOf = (part: SendPart) => items.find((item) => !item.zip && item.key === part)
+  const eachFile = (part: SendPart) => {
+    const item = looseOf(part)
+    if (!item) return undefined
+    return (built.get(item.key) ?? []).flatMap((file) => {
+      const verdict = recordOf(item, file)
+      return verdict ? [verdict] : []
+    })
+  }
+  const sharing = result.shareUrls.find((s) => s.target.share)
   return {
     ...result,
     film,
-    photosZip,
-    rushesZip,
-    /* what the tandem now records as its upload: where each parcel went, and the passenger's link */
     record: {
       at: Math.floor(Date.now() / 1000),
-      shareUrl,
-      film: film ? verdictFor(result.files, film) : undefined,
-      photos: photosZip ? verdictFor(result.files, photosZip) : undefined,
-      rushes: rushesZip ? verdictFor(result.files, rushesZip) : undefined,
-      /* the film goes to the passenger too, so only what landed in the backup folder counts here */
-      originals:
-        plain.length > 0
-          ? result.files.filter(
-              (f) => plain.includes(f.localPath) && f.remotePath.startsWith(`${backupDir}/`)
-            )
-          : undefined
+      shareUrl: sharing?.shareUrl,
+      film: recordOf(looseOf('film')),
+      photos: recordOf(zipHolding('photos')),
+      rushes: recordOf(zipHolding('videos')),
+      originals: eachFile('videos'),
+      photoFiles: eachFile('photos'),
+      sent: items.map((item) => ({
+        name: item.name,
+        holds: item.holds,
+        to: (plan.placed[item.key] ?? []).map((destination) => remoteOf.get(destination)!)
+      }))
     }
   }
 }
 
-export { DEFAULT_BACKUP, uploadTandem }
-export type { BackupOptions }
+export { uploadTandem }

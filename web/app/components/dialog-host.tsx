@@ -15,8 +15,8 @@ import type { TakeBackMode } from './take-back-dialog'
 import { TrashDialog } from './trash-dialog'
 import type { Destination, ManifestFile, ManifestGroup } from './types'
 import { UploadDialog } from './upload-dialog'
-import { TANDEMS, folderOnStorage } from '../helpers/jumps'
-import type { BackupChoice } from '../hooks/useBackupChoice'
+import { folderOnStorage } from '../helpers/jumps'
+import type { SendPlan } from '@skydock/scripts'
 
 type UploadDialogState = { kind: 'upload'; groupId: string }
 
@@ -56,8 +56,8 @@ const DialogHost = ({
   asOnStorage,
   facts,
   folderFor,
-  backup,
-  onBackup,
+  plan,
+  onPlan,
   onUpload,
   storage,
   onEmailed,
@@ -92,9 +92,9 @@ const DialogHost = ({
   asOnStorage: (group: ManifestGroup) => ManifestGroup
   facts: Record<string, TandemFact>
   folderFor: (destination: string) => string | null
-  backup: BackupChoice
-  onBackup: (choice: BackupChoice) => void
-  onUpload: (group: ManifestGroup) => void
+  plan: SendPlan
+  onPlan: (plan: SendPlan) => void
+  onUpload: (group: ManifestGroup, plan: SendPlan) => void
   storage: { tandems: TandemEntry[] } | null
   onEmailed: (folder: string, sent: boolean, to: string) => void
   onFree: (group: ManifestGroup) => void
@@ -146,24 +146,19 @@ const DialogHost = ({
         (() => {
           const group = groups.find((g) => g.id === dialog.groupId)
           if (!group) return null
-          const tandems = folderFor(TANDEMS)
           return (
             <UploadDialog
-              who={passengerOf(group)}
+              who={buildPassengerFolder(group.passenger, group.label)}
               group={asOnStorage(group)}
               facts={facts[group.id]}
-              backupFolder={nas.backupFolder}
-              passengerFolder={
-                tandems ? `${tandems}/${buildPassengerFolder(group.passenger, group.label)}` : null
-              }
-              choice={backup}
-              onChoice={onBackup}
-              onPickBackup={() => onDialog({ kind: 'folder', target: 'backup', back: dialog })}
-              onPickPassenger={() =>
-                onDialog({ kind: 'folder', destination: TANDEMS, back: dialog })
+              places={places.map((p) => ({ ...p, path: folderFor(p.name) ?? undefined }))}
+              plan={plan}
+              onPlan={onPlan}
+              onPickFolder={(destination) =>
+                onDialog({ kind: 'folder', destination, back: dialog })
               }
               onClose={close}
-              onUpload={() => onUpload(group)}
+              onUpload={(asked) => onUpload(group, asked)}
             />
           )
         })()}

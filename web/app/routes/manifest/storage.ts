@@ -8,14 +8,15 @@ import type { TandemIndex } from '../../../../packages/skydock-scripts/src/tande
 const recordOnStorage = async (
   session: NasSession,
   dir: string,
-  change: (index: TandemIndex) => void
+  change: (index: TandemIndex) => void,
+  earlier?: string | null
 ) => {
   try {
-    const index = await updateTandemIndex(session, dir, change)
+    const index = await updateTandemIndex(session, dir, change, earlier)
     return { storage: { dir, tandems: index.tandems } }
   } catch (e) {
     return {
-      storageProblem: `the storage’s list of tandems was not updated: ${e instanceof Error ? e.message : String(e)}`
+      storageProblem: `the storage’s list of montages was not updated: ${e instanceof Error ? e.message : String(e)}`
     }
   }
 }

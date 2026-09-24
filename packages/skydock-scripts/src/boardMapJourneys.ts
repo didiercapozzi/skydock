@@ -47,8 +47,8 @@ const JOURNEYS: Journey[] = [
   storage -->|free-dropzone| room([room back])`
   },
   {
-    title: 'A passenger’s tandem',
-    said: 'One passenger is one folder, and the edit is the one thing that cannot be made again — which is why a tandem with a project stops accepting changes.',
+    title: 'A montage',
+    said: 'One name is one folder, and the edit is the one thing that cannot be made again — which is why a montage with a project stops accepting changes.',
     uses: ['save-groups', 'process', 'montage', 'upload-tandem', 'mark-emailed', 'free-tandem'],
     drawn: `flowchart LR
   jump[a jump] -->|save-groups| pax[filed under a passenger]

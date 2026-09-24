@@ -7,7 +7,7 @@ type Refusal = FormResult<typeof actionArgs>
 
 /* One change made on the board, as every intent sees it: what was asked, the manifest as it is on
    disk and where, one way to refuse, and the tandems no change may touch. A tandem with an edit is
-   frozen (RULES, Montage): whatever the page sends, nothing that would change its copies or its
+   frozen (RULES, The editing project): whatever the page sends, nothing that would change its copies or its
    folder gets through — the page hiding the controls is a courtesy, this is the rule. */
 type Change = {
   data: ActionData

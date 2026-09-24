@@ -4,7 +4,7 @@ import { montageNote } from '../../app/helpers/notes'
 
 /* What the board says once a montage is made — how much went in the bin, and whether the editor came
    up — and, when nothing was put in the bin, that an existing project is being opened again rather
-   than made (RULES, Montage). */
+   than made (RULES, The editing project). */
 describe('what the board says of a montage', () => {
   it('counts the clips put in the bin', () => {
     expect(
