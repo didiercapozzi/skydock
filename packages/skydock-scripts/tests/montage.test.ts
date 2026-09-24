@@ -93,7 +93,7 @@ const setup = (templateXml?: string) => {
   return { outputDir, groupDir, templatePath }
 }
 
-const build = (templateXml?: string, clips: string[] = []) => {
+const build = (templateXml?: string, clips: string[] = [], photos: string[] = []) => {
   const { outputDir, groupDir, templatePath } = setup(templateXml)
   const result = createMontageProject({
     groupDir,
@@ -101,7 +101,8 @@ const build = (templateXml?: string, clips: string[] = []) => {
     baseName: 'luc_favre_20260802',
     title: 'Luc Favre',
     templatePath,
-    clips: clips.map((c) => ({ path: path.join(groupDir, 'videos', c) }))
+    clips: clips.map((c) => ({ path: path.join(groupDir, 'videos', c) })),
+    photos: photos.map((p) => path.join(groupDir, 'photos', p))
   })
   return { ...result, outputDir, groupDir, xml: fs.readFileSync(result.projectPath, 'utf-8') }
 }
@@ -132,6 +133,7 @@ type Part = {
   entry?: Part | Part[]
   tractor?: Part | Part[]
   chain?: Part | Part[]
+  producer?: Part | Part[]
   playlist?: Part | Part[]
 }
 
@@ -224,17 +226,11 @@ describe('montage — a document the editor can open', () => {
     )
   })
 })
-
 /* the tracks of the timeline bottom to top, by the tractor each one plays, black left out */
 const stackOf = (xml: string) =>
   many(sequenceOf(xml)?.track)
     .map((t) => t['@_producer'] ?? '')
-    .filter((p) => p.startsWith('tractor') || p.startsWith('skydock'))
-
-const tractorProps = (xml: string, id: string) => {
-  const tractor = many(parsed(xml).mlt.tractor).find((t) => t['@_id'] === id)
-  return Object.fromEntries(many(tractor?.property).map((p) => [p['@_name'], p['#text']]))
-}
+    .filter((p) => p.startsWith('tractor'))
 
 /* which track each composition of the timeline blends, by the tractor that track plays */
 const blendedOf = (xml: string) => {
@@ -243,36 +239,12 @@ const blendedOf = (xml: string) => {
   return many(sequence?.transition).map((t) => stack[Number(named(t, 'b_track')?.['#text'])] ?? '')
 }
 
-/* The template is somebody's film, laid out their way: the montage leaves every track of it as it
-   was and adds two empty ones of its own for the jump to be dragged onto (RULES, Montage). */
-describe('montage — two empty tracks for the jump', () => {
-  it('adds a video track under every video track of the template, and its sound right under it', () => {
-    const { xml } = build(twoAudioOneMutedTemplate, ['a.mp4'])
-    expect(stackOf(xml)).toEqual([
-      'tractor0',
-      'tractor1',
-      'tractor2',
-      'skydock_jump_sound',
-      'skydock_jump',
-      'tractor3',
-      'tractor4'
-    ])
-  })
-
-  it('names them, and knows the sound one for an audio track', () => {
-    const { xml } = build(twoAudioOneMutedTemplate)
-    expect(tractorProps(xml, 'skydock_jump')).toMatchObject({ 'kdenlive:track_name': 'Jump' })
-    expect(tractorProps(xml, 'skydock_jump')['kdenlive:audio_track']).toBeUndefined()
-    expect(tractorProps(xml, 'skydock_jump_sound')).toMatchObject({
-      'kdenlive:track_name': 'Jump sound',
-      'kdenlive:audio_track': 1
-    })
-  })
-
-  it('leaves both empty, for the editor to lay the clips on', () => {
+/* The template is somebody's film, laid out their way: the montage adds nothing to its timeline, so
+   the tracks the editor finds are the template's own (RULES, Montage). */
+describe('montage — the template’s timeline, as its owner made it', () => {
+  it('adds no track to it', () => {
     const { xml } = build(twoAudioOneMutedTemplate, ['a.mp4', 'b.mp4'])
-    expect(entriesOf(xml, 'skydock_jump_clips')).toEqual([])
-    expect(entriesOf(xml, 'skydock_jump_sound_clips')).toEqual([])
+    expect(stackOf(xml)).toEqual(stackOf(twoAudioOneMutedTemplate))
   })
 
   it('leaves the template’s own tracks exactly as they were', () => {
@@ -283,23 +255,10 @@ describe('montage — two empty tracks for the jump', () => {
     expect(xml).toMatch(/<playlist id="playlist8">[\s\S]*?<blank length="3000"\/>/)
   })
 
-  /* the template's titles are blended by number, and the number of the track they are on moves up
-     by two — left behind, they would be blended onto the wrong track */
   it('keeps every composition of a real kdenlive project on the track it blended', () => {
     const before = fs.readFileSync(REAL_TEMPLATE, 'utf-8')
     const { xml } = build(undefined, ['a.mp4'])
-    expect(blendedOf(xml).filter((t) => !t.startsWith('skydock'))).toEqual(blendedOf(before))
-  })
-
-  it('blends the jump in the order of the stack, so the template’s titles stay on top of it', () => {
-    const { xml } = build(undefined, ['a.mp4'])
-    const stack = stackOf(xml)
-    const blended = blendedOf(xml)
-    expect(blended).toContain('skydock_jump')
-    expect(blended).toContain('skydock_jump_sound')
-    const video = blended.filter((t) => ['skydock_jump', 'tractor2', 'tractor3'].includes(t))
-    expect(video).toEqual(['skydock_jump', 'tractor2', 'tractor3'])
-    expect(stack.indexOf('skydock_jump')).toBeLessThan(stack.indexOf('tractor2'))
+    expect(blendedOf(xml)).toEqual(blendedOf(before))
   })
 
   it('keeps clips the template grouped together, on the tracks they were on', () => {
@@ -310,12 +269,7 @@ describe('montage — two empty tracks for the jump', () => {
     const { xml } = build(grouped)
     expect(
       groupsOf(xml).map((g: { children: { data: string }[] }) => g.children.map((c) => c.data))
-    ).toEqual([['2:0', '5:0'], ['6:10']])
-  })
-
-  it('adds them on top of a template with no video track at all', () => {
-    const { xml } = build(audioOnlyTemplate)
-    expect(stackOf(xml)).toEqual(['tractor0', 'skydock_jump_sound', 'skydock_jump'])
+    ).toEqual([['2:0', '3:0'], ['4:10']])
   })
 
   it('writes a project the editor can open from a real kdenlive project', () => {
@@ -334,6 +288,54 @@ const binOf = (xml: string) =>
   many(many(parsed(xml).mlt.playlist).find((p) => p['@_id'] === 'main_bin')?.entry).map(
     (e) => e['@_producer'] ?? ''
   )
+
+/* the stills a montage put in the bin, each by what kdenlive reads off it */
+const stillsOf = (xml: string) =>
+  many(parsed(xml).mlt.producer)
+    .filter((p) => String(p['@_id'] ?? '').startsWith('producer_skydock_photo'))
+    .map((p) => Object.fromEntries(many(p.property).map((q) => [q['@_name'], q['#text']])))
+
+/* A tandem whose camera caught no video is still a film somebody makes — of its photos — so they go
+   in the bin, written the way kdenlive writes a still of its own (RULES, Montage). */
+describe('montage — a film of photos', () => {
+  it('puts the photos in the bin, in the order shot', () => {
+    const { xml, photos } = build(twoAudioOneMutedTemplate, [], ['G0062266.JPG', 'G0062267.JPG'])
+    expect(photos).toBe(2)
+    expect(binOf(xml).filter((p: string) => p.startsWith('producer_skydock_photo'))).toEqual([
+      'producer_skydock_photo_0',
+      'producer_skydock_photo_1'
+    ])
+  })
+
+  it('writes each as kdenlive writes a still: read as an image, five seconds long', () => {
+    const { xml } = build(twoAudioOneMutedTemplate, [], ['G0062266.JPG'])
+    const [still] = stillsOf(xml)
+    expect(still).toMatchObject({
+      mlt_service: 'qimage',
+      'kdenlive:clip_type': 2,
+      'kdenlive:clipname': 'G0062266.JPG',
+      'kdenlive:duration': '00:00:05:00'
+    })
+    expect(String(still?.resource)).toMatch(/photos\/G0062266\.JPG$/)
+  })
+
+  it('numbers them on from the clips, so no two things in the bin share a name', () => {
+    const { xml } = build(twoAudioOneMutedTemplate, ['a.mp4'], ['G0062266.JPG'])
+    const ids = [...many(parsed(xml).mlt.chain), ...many(parsed(xml).mlt.producer)].map((n) =>
+      Number(many(n.property).find((q) => q['@_name'] === 'kdenlive:id')?.['#text'])
+    )
+    expect(new Set(ids.filter(Number.isFinite)).size).toBe(ids.filter(Number.isFinite).length)
+  })
+
+  it('leaves the timeline as the template made it, as clips do', () => {
+    const { xml } = build(twoAudioOneMutedTemplate, [], ['G0062266.JPG'])
+    expect(stackOf(xml)).toEqual(stackOf(twoAudioOneMutedTemplate))
+  })
+
+  it('writes a project the editor can open from a real kdenlive project', () => {
+    expect(() => parsed(build(undefined, [], ['G0062266.JPG']).xml)).not.toThrow()
+  })
+})
 
 describe('montage — the clips wait in the bin', () => {
   it('puts every clip in the bin, in the order shot', () => {

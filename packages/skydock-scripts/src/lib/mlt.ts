@@ -56,7 +56,6 @@ const setProp = (node: XmlNode, name: string, value: string) => {
 }
 const nodeById = (nodes: XmlNode[], tag: string, id: string) =>
   nodes.find((n) => tagOf(n) === tag && attrsOf(n)['@_id'] === id)
-const tracksOf = (node: XmlNode) => childrenOf(node).filter((c) => tagOf(c) === 'track')
 
 const XML_ENTITIES: [string, string][] = [
   ['&amp;', '&'],
@@ -72,11 +71,6 @@ const decodeXml = (value: string) =>
 /* `&` first, so the ampersands the other entities introduce are not escaped twice */
 const encodeXml = (value: string) =>
   XML_ENTITIES.reduce((out, [entity, char]) => out.split(char).join(entity), value)
-
-/* kdenlive marks an audio track with `kdenlive:audio_track`, and only that. The `hide` attribute
-   cannot stand in for it: a muted, hidden audio track and a hidden video track both read
-   `hide="both"`, and mistaking one for the other drops the whole jump onto the titles track. */
-const isAudioTrack = (tractor: XmlNode) => textOf(propOf(tractor, 'kdenlive:audio_track')) === '1'
 
 /* The frames per second the project runs at, off its profile — every position in the timeline is
    counted in these. */
@@ -133,15 +127,6 @@ const assetsIn = (mlt: XmlNode[]) => {
   return named
 }
 
-/* The timeline's tracks bottom to top, as kdenlive counts them when it names a clip in a group:
-   the black background it keeps underneath is not one of them. */
-const timelineTracks = (mlt: XmlNode[], sequence: XmlNode) =>
-  tracksOf(sequence).flatMap((track) => {
-    const producer = attrsOf(track)['@_producer']
-    const node = producer ? nodeById(mlt, 'tractor', producer) : undefined
-    return node ? [node] : []
-  })
-
 export {
   assetsIn,
   attrsOf,
@@ -149,15 +134,12 @@ export {
   decodeXml,
   encodeXml,
   fpsOf,
-  isAudioTrack,
   nodeById,
   propOf,
   propsOf,
   setProp,
   tagOf,
   textOf,
-  timelineTracks,
-  tracksOf,
   walkAssets,
   xmlDocumentSchema,
   XML_OPTIONS

@@ -24,7 +24,6 @@ import type { XmlNode } from './lib/mlt'
 import { walkFiles } from './lib/fs'
 import { mediaSeconds } from './lib/media'
 import { marksFor } from './montageMarks'
-import { addJumpTracks } from './montageTracks'
 import { jumpMomentsSchema } from './types'
 
 /* `proxy` is the small copy of this same clip, cut the same way. When there is one the editor opens
@@ -48,10 +47,16 @@ const montageOptionsSchema = z.object({
   baseName: z.string(),
   title: z.string(),
   clips: z.array(montageClipSchema),
+  /* Stills for the bin, beside the clips. A tandem whose camera caught no video is still a film
+     somebody makes — of its photos — and these are what it is made of. */
+  photos: z.array(z.string()).default([]),
   /* a template folder's name, or a path straight to one — both only ever chosen, never guessed */
   template: z.string().optional(),
   templatePath: z.string().optional()
 })
+
+/* how long kdenlive makes a still it is given, in seconds, before anyone stretches it */
+const PHOTO_SECONDS = 5
 
 type MontageClip = z.infer<typeof montageClipSchema>
 type MontageOptions = z.input<typeof montageOptionsSchema>
@@ -273,8 +278,36 @@ const createMontageProject = (rawOptions: MontageOptions) => {
     ':@': { '@_id': id }
   })
 
-  /* The clips go in the project's bin and nowhere else: where each one goes in the film is the
-     editor's to decide, by dragging it onto the tracks left empty for it. A clip with a jump in it
+  /* A still as the bin holds it — written the way kdenlive writes one itself: read by `qimage`, as
+     long as kdenlive makes a still it is given, a clip of kind 2. How long it stays on screen is the
+     editor's to stretch or cut on the timeline; this is only where it starts. */
+  const stillFrames = Math.round(PHOTO_SECONDS * fps)
+  const stillOf = (file: string, id: string, kdenliveId: number) => ({
+    producer: [
+      { property: [{ '#text': String(stillFrames) }], ':@': { '@_name': 'length' } },
+      { property: [{ '#text': 'pause' }], ':@': { '@_name': 'eof' } },
+      { property: [{ '#text': toHost(file) }], ':@': { '@_name': 'resource' } },
+      { property: [{ '#text': '25' }], ':@': { '@_name': 'ttl' } },
+      { property: [{ '#text': '1' }], ':@': { '@_name': 'aspect_ratio' } },
+      { property: [{ '#text': '1' }], ':@': { '@_name': 'seekable' } },
+      { property: [{ '#text': 'qimage' }], ':@': { '@_name': 'mlt_service' } },
+      { property: [{ '#text': '1' }], ':@': { '@_name': 'progressive' } },
+      {
+        property: [{ '#text': encodeXml(path.basename(file)) }],
+        ':@': { '@_name': 'kdenlive:clipname' }
+      },
+      {
+        property: [{ '#text': `00:00:${String(PHOTO_SECONDS).padStart(2, '0')}:00` }],
+        ':@': { '@_name': 'kdenlive:duration' }
+      },
+      { property: [{ '#text': '2' }], ':@': { '@_name': 'kdenlive:clip_type' } },
+      { property: [{ '#text': String(kdenliveId) }], ':@': { '@_name': 'kdenlive:id' } }
+    ],
+    ':@': { '@_id': id, '@_in': '0', '@_out': String(stillFrames - 1) }
+  })
+
+  /* The clips go in the project's bin and nowhere else: where each one goes in the film, and on which
+     of the template's tracks, is the editor's to decide. A clip with a jump in it
      carries the jump's moments as markers of its own, which come with it onto the timeline and stay
      with it however often it is moved, trimmed or cut. */
   const chains = options.clips.map((clip, index) => {
@@ -293,12 +326,18 @@ const createMontageProject = (rawOptions: MontageOptions) => {
     childrenOf(bin).push({ entry: [], ':@': { '@_producer': id } })
     return chain
   })
+  /* the stills after the clips, in the order shot, numbered on from them */
+  const stills = options.photos.map((file, index) => {
+    const id = `producer_skydock_photo_${index}`
+    childrenOf(bin).push({ entry: [], ':@': { '@_producer': id } })
+    return stillOf(file, id, firstId + options.clips.length + index)
+  })
   mlt.splice(
     mlt.findIndex((n) => tagOf(n) === 'playlist'),
     0,
-    ...chains
+    ...chains,
+    ...stills
   )
-  const tracks = addJumpTracks(mlt, sequence)
 
   /* a project of its own, so kdenlive never shares the template's cache */
   const uuid = `{${randomUUID()}}`
@@ -343,10 +382,10 @@ const createMontageProject = (rawOptions: MontageOptions) => {
     filmPath,
     template,
     clips: options.clips.length,
+    photos: options.photos.length,
     /* the template's own files it could not find — the project is written anyway, because the edit
        can start without the music, but nobody should have to discover this at the render */
-    missingAssets: [...new Set(missingAssets)],
-    tracks
+    missingAssets: [...new Set(missingAssets)]
   }
 }
 

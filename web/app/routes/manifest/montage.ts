@@ -7,8 +7,8 @@ import { getCutProxyDir } from '../../../../packages/skydock-scripts/src/proxy'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 
-/* A processed tandem gets an editing project with its clips in the bin and empty tracks to lay them
-   on, and the project is opened in the same press: it exists to be edited (RULES, Montage). */
+/* A processed tandem gets an editing project, the template as its owner made it with the clips in
+   its bin, and the project is opened in the same press: it exists to be edited (RULES, Montage). */
 const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse }) => {
   const group = manifest.groups.find((g) => g.id === data.groupId)
   if (!group) return refuse('Group not found.')
@@ -20,12 +20,21 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
   if (fs.readdirSync(groupDir).some((f) => f.endsWith('.kdenlive')))
     return refuse('This tandem already has a project — open it in kdenlive.')
   try {
-    /* the processed copies are already renamed and cropped — the bin holds them as they are */
-    const videos = fs
-      .readdirSync(path.join(groupDir, 'videos'), { withFileTypes: true })
-      .filter((e) => e.isFile())
-      .map((e) => path.join(groupDir, 'videos', e.name))
-      .sort()
+    /* The processed copies are already renamed and cropped — the bin holds them as they are. A
+       tandem with no video has no folder for them, and its film is made of its photos instead: they
+       go in the bin, so the editor opens on something to make it from (RULES, Montage). */
+    const copiesIn = (media: string) => {
+      const dir = path.join(groupDir, media)
+      return fs.existsSync(dir)
+        ? fs
+            .readdirSync(dir, { withFileTypes: true })
+            .filter((e) => e.isFile())
+            .map((e) => path.join(dir, e.name))
+            .sort()
+        : []
+    }
+    const videos = copiesIn('videos')
+    const photos = videos.length === 0 ? copiesIn('photos') : []
     /* which file each copy was made from, by the name the copy carries */
     const copies = new Map(
       group.files.flatMap((f) => (f.processed ? [[path.basename(f.processed.path), f]] : []))
@@ -39,6 +48,7 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
       /* Each copy with the proxy processing cut for it, when it managed to make one, and with what
          the jump in it was measured at: a clip that holds a jump carries its moments as markers
          (RULES, Montage), and the moments belong to the file it was copied from. */
+      photos,
       clips: videos.map((file) => {
         const proxy = path.join(getCutProxyDir(outputDir, group.id), `${path.parse(file).name}.mp4`)
         const measured = copies.get(path.basename(file))
@@ -63,6 +73,7 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
       ...boardAnswer(manifest),
       montage: {
         clips: made.clips,
+        photos: made.photos,
         missingAssets: made.missingAssets,
         opened: opened.opened,
         openCommand: opened.command,

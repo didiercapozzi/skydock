@@ -877,12 +877,13 @@ about it is stored.
 
 A processed tandem can be turned into an editing project, made from a copy of the chosen template
 and named after the passenger. The template is taken exactly as its owner made it: every track, title,
-photo and piece of music stays where it is, and nothing in it is moved, cut or faded. What the montage
-adds is room for the jump — two empty tracks of its own, a video track called **Jump** under every
-video track the template has, so the template's titles and logos stay on top of the footage, and an
-audio track called **Jump sound** right under it. The tandem's videos wait in the project's bin, in
-the order shot, and the person editing drags them onto those tracks: where each clip goes in the film,
-and how it opens and closes, is their decision. Crops and turns are already applied, each clip playing
+photo and piece of music stays where it is, and nothing in it is moved, cut or faded — and nothing is
+added to its timeline either, so the tracks the editor finds are the template's own. The tandem's
+videos wait in the project's bin, in the order shot, and the person editing drags them onto the
+template's tracks: where each clip goes in the film, on which track, and how it opens and closes, is
+their decision. A tandem with no video at all — a camera that died, or only stills taken — is still a
+film to make, of its photos: they wait in the bin instead, in the order shot, each a five-second still
+as kdenlive makes one, to be stretched or cut on the timeline. Crops and turns are already applied, each clip playing
 from its proxy with the real clip recorded as what the edit is of, so the editor opens ready to work and
 renders from the footage. The film's destination and format are filled in, so what is left is the edit
 and pressing render — and the format asks for the graphics card's own encoder, since a delivery film is

@@ -43,6 +43,8 @@ const remoteListingSchema = z.object({
 
 const montageNoteSchema = z.object({
   clips: z.number(),
+  /* stills put in the bin, for a tandem with no video to make its film of */
+  photos: z.number().optional(),
   missingAssets: z.array(z.string()),
   opened: z.boolean().optional(),
   openCommand: z.string().optional(),

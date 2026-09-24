@@ -5,12 +5,20 @@ import { formatFilmSize, localeDate, plural } from '../components/utils'
 
 /* A template that came without its music and logos still produces a project, and the holes only
    show up at the render — so they are said out loud the moment the montage is made. */
-const montageNote = ({ clips, missingAssets, opened, openCommand, openReason }: MontageNote) => {
+const montageNote = ({
+  clips,
+  photos = 0,
+  missingAssets,
+  opened,
+  openCommand,
+  openReason
+}: MontageNote) => {
   /* naming the command is what turns "nothing happened" into something that can be looked into:
      it is the one part of this the board knows and the person at the screen cannot see */
   const with_ = openCommand ? ` with ${openCommand}` : ''
-  if (clips === 0 && opened) return `Opening it${with_}…`
-  const made = `Montage ready — ${plural(clips, 'clip')} in the bin, and two empty tracks to lay them on`
+  /* nothing put in the bin is a project being opened again, not one being made */
+  if (clips === 0 && photos === 0 && opened) return `Opening it${with_}…`
+  const made = `Montage ready — ${clips > 0 ? plural(clips, 'clip') : plural(photos, 'photo')} in the bin`
   const holes =
     missingAssets.length === 0
       ? ''
