@@ -21,6 +21,9 @@ const cameraListingSchema = z.object({
      reading it through, byte for byte, which needs the camera readable as files; a camera read
      through KDE is copied off and listed, and its files are deleted on the camera itself. */
   deletable: z.boolean(),
+  /* Its files are still being gone over, and more are to come. A camera read through KDE is listed
+     from what its copy found, and a card that is still being copied has only been found so far. */
+  looking: z.boolean(),
   files: z.array(cameraFileSchema)
 })
 

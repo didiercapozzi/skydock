@@ -122,6 +122,16 @@ const CameraFiles = ({
 
   /* a listing of another camera is no listing of this one */
   const listing = answered?.mount === mount ? answered.listing : undefined
+
+  /* A camera still being gone over has more to come: it is looked at again every few seconds until
+     it is all there. Only what the copy has already found is read, so looking again costs nothing
+     of the camera. */
+  const looking = listing?.looking === true
+  useEffect(() => {
+    if (!looking) return
+    const again = setTimeout(() => setReadAgain((n) => n + 1), 3000)
+    return () => clearTimeout(again)
+  }, [looking, answered])
   const files = listing?.files ?? []
   /* what can be picked is what could be deleted — nothing, on a camera read through KDE */
   const stored = listing?.deletable ? files.filter((f) => f.state === 'stored') : []
@@ -169,6 +179,13 @@ const CameraFiles = ({
             {plural(files.length, 'file')} · {stored.length} on the storage
             {counted(files, 'copied', 'copied here, not uploaded yet')}
             {counted(files, 'missing', 'not copied yet')}
+          </span>
+        )}
+        {looking && (
+          <span
+            title='SkyDock is going over the camera, file by file, as it copies it. What it has been over is listed here; the rest follow on their own.'
+            className='rounded-full border border-accent bg-accent-soft px-2.5 py-px text-[11.5px] font-semibold text-accent'>
+            still going over the camera — {plural(files.length, 'file')} so far
           </span>
         )}
         {/* A camera with no drive to offer is read a request at a time. It works, and it is the
@@ -237,7 +254,9 @@ const CameraFiles = ({
         </p>
       ) : files.length === 0 && listing ? (
         <p className='m-0 rounded-[9px] border border-dashed border-line px-3 py-4 text-center text-[12.5px] text-ink-3'>
-          Nothing on the camera’s card.
+          {looking
+            ? 'Going over the camera — its files appear here as they are reached.'
+            : 'Nothing on the camera’s card.'}
         </p>
       ) : (
         <ul className='m-0 flex list-none flex-col gap-px rounded-lg border border-line bg-pane p-[7px]'>

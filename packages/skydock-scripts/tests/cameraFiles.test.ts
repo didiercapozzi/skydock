@@ -266,7 +266,8 @@ describe('deleting from a camera', () => {
       kde: [],
       asking: false,
       askUntil: 0,
-      askedAt: 0
+      askedAt: 0,
+      seenOn: {}
     }
 
     await expect(remove(root, manifest)).rejects.toThrow(/being copied/)

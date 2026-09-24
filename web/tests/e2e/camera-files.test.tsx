@@ -24,6 +24,7 @@ const listing = {
       mount: MOUNT,
       over: 'drive',
       deletable: true,
+      looking: false,
       files: [
         onCard('DJI_0001.MP4', 'stored'),
         onCard('DJI_0002.MP4', 'copied'),
@@ -119,6 +120,7 @@ describe('a camera that hands its files over', () => {
             mount: MOUNT,
             over: 'mtp',
             deletable: true,
+      looking: false,
             files: [onCard('GX010001.MP4', 'missing')]
           }
         ]
@@ -159,6 +161,7 @@ describe('a camera read through KDE', () => {
             mount: KDE,
             over: 'mtp',
             deletable: false,
+            looking: false,
             files: [onCard('GOPR0001.MP4', 'stored'), onCard('GOPR0002.MP4', 'missing')]
           }
         ]
@@ -175,5 +178,34 @@ describe('a camera read through KDE', () => {
     await expect
       .element(page.getByRole('button', { name: /Delete .*from the camera/ }))
       .not.toBeInTheDocument()
+  })
+})
+
+/* While the copy is still going over a camera read through KDE, what it has been over is listed and
+   the page says there is more to come (RULES, Seeing what is on a camera). */
+describe('a camera still being gone over', () => {
+  const KDE = 'mtp:/HERO5 Black/GoPro MTP Client Disk Volume'
+
+  test('lists what has been reached so far, and says the rest are coming', async () => {
+    vi.stubGlobal('fetch', async () =>
+      Response.json({
+        cameras: [
+          {
+            camera: 'HERO5 Black',
+            mount: KDE,
+            over: 'mtp',
+            deletable: false,
+            looking: true,
+            files: [onCard('GOPR0001.MP4', 'copied')]
+          }
+        ]
+      })
+    )
+    await render(
+      createElement(CameraFiles, { mount: KDE, stamp: 1, onNote: () => {}, onCopyBack: () => {} })
+    )
+
+    await expect.element(page.getByText('GOPR0001.MP4')).toBeVisible()
+    await expect.element(page.getByText(/still going over the camera — 1 file so far/)).toBeVisible()
   })
 })

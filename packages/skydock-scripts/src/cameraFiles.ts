@@ -8,12 +8,12 @@ import {
   cameraName,
   camerasSeenThroughKde,
   mountedCameras,
-  overMtp
+  overMtp,
+  seenOnCamera
 } from './cameraWatch'
 import { alreadyThere, dayFoldersOf, freedAlready } from './copy'
 import { ID_HEX_LENGTH } from './fileId'
-import { kioReader } from './kio'
-import { clipsUnder, givenBack, hereAlready, statEach } from './kioCamera'
+import { givenBack } from './kioCamera'
 import { findMediaFiles, hashFile, moveFile } from './lib/fs'
 import { loadManifest } from './manifest'
 import { dsmFileMd5 } from './nas'
@@ -190,45 +190,38 @@ const listCamera = async (mount: string, outputDir: string) => {
     mount,
     over: overMtp(mount) ? ('mtp' as const) : ('drive' as const),
     deletable: true,
+    looking: false,
     files: listed.sort((a, b) => b.mtime - a.mtime)
   }
 }
 
-/* A camera read through KDE, listed the same way: each clip by where it is on the camera, how big it
-   is and when it was written, and how far it has got — judged by the same records as a card's. */
-const listCameraThroughKde = async (camera: string, outputDir: string) => {
-  const reader = await kioReader()
-  if (!reader)
-    return {
-      camera: cameraName(camera),
-      mount: camera,
-      over: 'mtp' as const,
-      deletable: false,
-      files: []
-    }
-  const clips = await clipsUnder(reader, `${camera}/DCIM`)
-  const said = await statEach(reader, clips)
-  const here = hereAlready(outputDir)
+/* A camera read through KDE, listed from what its copy found rather than by asking it again: the
+   camera answers one question at a time, and a card of sixteen hundred clips is minutes of them. Every
+   such camera is copied the moment it is plugged in, so what it holds is known as soon as the copy
+   has been over it — and while the copy is still going, what it has been over so far is listed, and
+   the page says there is more to come. */
+const listCameraThroughKde = (camera: string, outputDir: string) => {
+  const seen = seenOnCamera(camera)
   const manifest = loadManifest(getManifestPath(outputDir))
-  const listed: CameraFile[] = clips.map((clip, at) => {
-    const file = said[at]
-    const size = file?.size ?? 0
-    const original = file ? here.find(clip.name, file) : null
-    return {
-      path: clip.url,
-      name: clip.url.slice(`${camera}/DCIM/`.length),
-      size,
-      /* The camera's own time where it gives one. A GoPro over MTP gives none, and then the copy
-         here, which was dated from the clip itself, is the next best; with neither, none. */
-      mtime: file?.mtime ?? (original ? Math.floor(fs.statSync(original).mtimeMs / 1000) : 0),
-      state: standingOf(manifest, original, (files) => givenBack(files, clip.name, size))
-    }
-  })
+  const listed: CameraFile[] = seen.clips.map((clip) => ({
+    path: clip.url,
+    name: clip.url.slice(`${camera}/DCIM/`.length),
+    size: clip.size,
+    /* The camera's own time where it gives one. A GoPro over MTP gives none, and then the copy
+       here, which was dated from the clip itself, is the next best; with neither, none. */
+    mtime:
+      clip.mtime ??
+      (clip.original && fs.existsSync(clip.original)
+        ? Math.floor(fs.statSync(clip.original).mtimeMs / 1000)
+        : 0),
+    state: standingOf(manifest, clip.original, (files) => givenBack(files, clip.name, clip.size))
+  }))
   return {
     camera: cameraName(camera),
     mount: camera,
     over: 'mtp' as const,
     deletable: false,
+    looking: !seen.done,
     files: listed.sort((a, b) => b.mtime - a.mtime)
   }
 }

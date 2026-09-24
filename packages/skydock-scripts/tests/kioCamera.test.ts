@@ -6,7 +6,9 @@ import { askKde, cameraName, lookForCameras, overMtp } from '../src/cameraWatch'
 import { CameraGone } from '../src/copy'
 import { fileIn, namesIn, readerFor } from '../src/kio'
 import type { KioReader } from '../src/kio'
+import { listCameras } from '../src/cameraFiles'
 import { copyOverKio, kioCameras } from '../src/kioCamera'
+import type { SeenClip } from '../src/kioCamera'
 import { createTmpDir } from './fixtures'
 
 /* A camera read through KDE: no drive, no path, only what `kioclient` says of it (RULES, Copying a
@@ -322,5 +324,58 @@ describe('a camera KDE reaches, plugged in', () => {
     await askKde(ask)
 
     expect(asked).toBe(1)
+  })
+})
+
+/* The camera answers one question at a time, and a card of sixteen hundred clips is minutes of them,
+   so its page is read from what the copy found rather than by asking it everything again (RULES,
+   Seeing what is on a camera). */
+describe('what the copy found on a camera read through KDE', () => {
+  const copied = async (over: Partial<KioReader> = {}) => {
+    const clips: SeenClip[] = []
+    await copyOverKio({
+      camera: CAMERA,
+      reader: reader(over),
+      outputDir,
+      onClip: (clip) => clips.push(clip)
+    })
+    return clips
+  }
+
+  it('is each clip, and the original here it now is', async () => {
+    onCamera('DCIM/190GOPRO/GOPR0001.MP4')
+
+    const first = await copied()
+    const again = await copied()
+
+    const here = path.join(outputDir, 'original_files', '2026-08-01', 'GOPR0001.MP4')
+    expect(first).toEqual([expect.objectContaining({ name: 'GOPR0001.MP4', original: here })])
+    /* found here the second time, the same original, and nothing fetched to know it */
+    expect(again).toEqual([expect.objectContaining({ name: 'GOPR0001.MP4', original: here })])
+  })
+
+  it('lists the camera without asking it anything', async () => {
+    process.env.SKYDOCK_CAMERA_ROOTS = device
+    onCamera('DCIM/190GOPRO/GOPR0001.MP4')
+    const clips = await copied()
+    await askKde(async () => [CAMERA])
+    globalThis.skydockCameraWatch!.seenOn[CAMERA] = { done: true, clips }
+
+    const [listing] = await listCameras(outputDir, [])
+
+    expect(listing).toMatchObject({ camera: 'HERO5 Black', looking: false, deletable: false })
+    expect(listing?.files).toEqual([
+      expect.objectContaining({ name: '190GOPRO/GOPR0001.MP4', state: 'copied' })
+    ])
+  })
+
+  it('says there is more to come while the copy is still going over it', async () => {
+    process.env.SKYDOCK_CAMERA_ROOTS = device
+    await askKde(async () => [CAMERA])
+    globalThis.skydockCameraWatch!.seenOn[CAMERA] = { done: false, clips: [] }
+
+    const [listing] = await listCameras(outputDir, [])
+
+    expect(listing).toMatchObject({ looking: true, files: [] })
   })
 })

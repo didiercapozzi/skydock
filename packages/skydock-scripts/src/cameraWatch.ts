@@ -4,6 +4,7 @@ import { CameraGone, copyCamera } from './copy'
 import type { CopyProgress } from './copy'
 import { kioReader } from './kio'
 import { camerasThroughKde, copyOverKio, isKioCamera, kioCameraName } from './kioCamera'
+import type { SeenClip } from './kioCamera'
 import { publish } from './live'
 import { buildMissingProxies } from './proxy'
 import { scanMedia } from './scan'
@@ -166,6 +167,9 @@ type Watch = {
   usb?: string | null
   askUntil: number
   askedAt: number
+  /* what each camera read through KDE was found to hold, as its copy went over it — and whether
+     that copy has been over all of it — kept while it stays plugged in */
+  seenOn: Record<string, { done: boolean; clips: SeenClip[] }>
 }
 
 declare global {
@@ -182,7 +186,8 @@ const watch = () =>
     kde: [],
     asking: false,
     askUntil: 0,
-    askedAt: 0
+    askedAt: 0,
+    seenOn: {}
   })
 
 /* One camera at a time, in the order they were plugged in: two cards read at once are each read at
@@ -233,7 +238,19 @@ const copyThroughKde = async (
 ) => {
   const reader = await kioReader()
   if (!reader) throw new CameraGone('KDE no longer reaches this camera.')
-  return copyOverKio({ camera, reader, outputDir, onProgress })
+  const seen = { done: false, clips: [] as SeenClip[] }
+  watch().seenOn[camera] = seen
+  try {
+    return await copyOverKio({
+      camera,
+      reader,
+      outputDir,
+      onProgress,
+      onClip: (clip) => seen.clips.push(clip)
+    })
+  } finally {
+    seen.done = true
+  }
 }
 
 /* The USB devices plugged in, by the nodes the system makes for them: cheap to read, and different
@@ -292,7 +309,11 @@ const lookForCameras = (outputDir: string, mountinfo?: string) => {
       state.seen.add(camera)
       state.queue.push(camera)
     }
-  for (const camera of state.seen) if (!now.has(camera)) state.seen.delete(camera)
+  for (const camera of state.seen)
+    if (!now.has(camera)) {
+      state.seen.delete(camera)
+      delete state.seenOn[camera]
+    }
   const mounted = [...now].sort()
   if (mounted.join('\n') !== state.said) {
     state.said = mounted.join('\n')
@@ -328,6 +349,9 @@ const cameraCopying = () => watch().copying || watch().queue.length > 0
 /* the cameras KDE last said it reaches, for the page that lists what is on each */
 const camerasSeenThroughKde = () => watch().kde
 
+/* what the copy found on a camera read through KDE, so far — nothing before its copy has begun */
+const seenOnCamera = (camera: string) => watch().seenOn[camera] ?? { done: false, clips: [] }
+
 export {
   askKde,
   cameraCopying,
@@ -336,5 +360,6 @@ export {
   lookForCameras,
   mountedCameras,
   overMtp,
+  seenOnCamera,
   watchCameras
 }

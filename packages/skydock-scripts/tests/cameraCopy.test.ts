@@ -438,7 +438,8 @@ describe('watching for cameras', () => {
       kde: [],
       asking: false,
       askUntil: 0,
-      askedAt: 0
+      askedAt: 0,
+      seenOn: {}
     }
 
     watchCameras(outputDir)

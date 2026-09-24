@@ -55,22 +55,20 @@ const clipsUnder = async (
   return found
 }
 
-/* How many clips are asked about at once: enough that a card is looked over in seconds rather than
-   a minute — each question is a program run — and few enough that the camera is not asked
-   everything together. */
+/* How many clips are asked about at once. Each question is a program of its own, so a few are
+   started together; the camera itself answers one at a time, so more would only queue. */
 const ASKED_AT_ONCE = 6
 
-/* How big each clip is and when it was written, asked a few at a time. What a plugging in again
-   costs is almost all this, so it is the part worth not doing one clip after another. */
-const statEach = async (reader: KioReader, clips: { url: string }[]) => {
-  const told: (KioFile | null)[] = []
-  for (let at = 0; at < clips.length; at += ASKED_AT_ONCE)
-    told.push(
-      ...(await Promise.all(
-        clips.slice(at, at + ASKED_AT_ONCE).map((clip) => reader.stat(clip.url))
-      ))
-    )
-  return told
+/* What a camera read through KDE was found to hold, clip by clip, as the copy went over it: how big
+   and when, and which original here it is, if any. Asking the camera is the slow part — a card of
+   sixteen hundred clips is minutes of questions answered one after another — so what the copy
+   learnt is kept, and the camera's page is read from it rather than asking everything again. */
+type SeenClip = {
+  url: string
+  name: string
+  size: number
+  mtime: number | null
+  original: string | null
 }
 
 /* What is here already, read once for a whole camera rather than once a clip: every original by the
@@ -122,16 +120,18 @@ const copyOverKio = async ({
   reader,
   outputDir = getOutputDir(),
   manifest = loadBoard(outputDir),
-  onProgress
+  onProgress,
+  onClip
 }: {
   camera: string
   reader: KioReader
   outputDir?: string
   manifest?: Manifest | null
   onProgress?: (progress: CopyProgress) => void
+  /* each clip as it is settled: here already, given back, or fetched just now */
+  onClip?: (clip: SeenClip) => void
 }) => {
   const clips = await clipsUnder(reader, `${camera}/DCIM`)
-  const told = await statEach(reader, clips)
   const here = hereAlready(outputDir)
   const board = manifest ? [...manifest.files, ...manifest.groups.flatMap((g) => g.files)] : []
   const progress: CopyProgress = { done: 0, total: clips.length, copied: 0, skipped: 0 }
@@ -140,14 +140,29 @@ const copyOverKio = async ({
   const incoming = path.join(outputDir, '.incoming')
   fs.mkdirSync(incoming, { recursive: true })
   try {
-    for (const [at, clip] of clips.entries()) {
-      const said = told[at] ?? null
-      if (said && (givenBack(board, clip.name, said.size) || here.find(clip.name, said)))
-        progress.skipped++
-      else if (await fetchInto(reader, clip, said, incoming, outputDir, here)) progress.copied++
-      else progress.skipped++
-      progress.done++
-      onProgress?.({ ...progress })
+    for (let at = 0; at < clips.length; at += ASKED_AT_ONCE) {
+      const batch = clips.slice(at, at + ASKED_AT_ONCE)
+      const told = await Promise.all(batch.map((clip) => reader.stat(clip.url)))
+      for (const [i, clip] of batch.entries()) {
+        const said = told[i] ?? null
+        const found = said ? here.find(clip.name, said) : null
+        if (said && (found || givenBack(board, clip.name, said.size))) {
+          progress.skipped++
+          onClip?.({ ...clip, size: said.size, mtime: said.mtime, original: found })
+        } else {
+          const fetched = await fetchInto(reader, clip, said, incoming, outputDir, here)
+          if (fetched.copied) progress.copied++
+          else progress.skipped++
+          onClip?.({
+            ...clip,
+            size: fetched.size,
+            mtime: said?.mtime ?? null,
+            original: fetched.at
+          })
+        }
+        progress.done++
+        onProgress?.({ ...progress })
+      }
     }
   } finally {
     try {
@@ -177,9 +192,10 @@ const fetchInto = async (
     throw new CameraGone('The camera stopped answering during the copy.')
   }
   if (said?.mtime) fs.utimesSync(partial, said.mtime, said.mtime)
-  if (here.named(clip.name, size).some((twin) => sameBytes(partial, twin.path))) {
+  const twin = here.named(clip.name, size).find((one) => sameBytes(partial, one.path))
+  if (twin) {
     fs.rmSync(partial, { force: true })
-    return false
+    return { copied: false, at: twin.path, size }
   }
   const day =
     (await readExifMap([partial], DATE_TAGS)).get(partial) ?? dayOfStat(fs.statSync(partial))
@@ -188,7 +204,7 @@ const fetchInto = async (
   const dest = path.join(dir, freeName(dir, clip.name))
   fs.renameSync(partial, dest)
   here.add(dest)
-  return true
+  return { copied: true, at: dest, size }
 }
 
 /* the cameras KDE can reach right now, through whatever reader this machine has */
@@ -202,6 +218,6 @@ export {
   hereAlready,
   isKioCamera,
   kioCameraName,
-  kioCameras,
-  statEach
+  kioCameras
 }
+export type { SeenClip }

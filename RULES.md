@@ -141,9 +141,12 @@ first, saying how many files and how much, and that they go to the bin, and the 
 reachable. Then each file is read through and held
 against what the storage holds by its bytes, never by its name, since every name changes on the way: it
 has to be a file the board knows by its content, and the storage has to hold what that file became.
-A camera read through KDE is listed the same way, but nothing is deleted from it here: the proof reads
-each file through, byte for byte, which needs the camera readable as files. Its page says to delete on
-the camera itself.
+A camera read through KDE is listed the same way, but from what its copy found rather than by asking
+it again: it answers one question at a time, and a card of sixteen hundred clips is minutes of them.
+It is copied the moment it is plugged in, so its page opens at once; while the copy is still going
+over it, what has been reached is listed and the page says the rest are coming, filling in on its own.
+Nothing is deleted from it here: the proof reads each file through, byte for byte, which needs the
+camera readable as files. Its page says to delete on the camera itself.
 
 | What the camera file is | What it is held against on the storage                                    |
 | ----------------------- | ------------------------------------------------------------------------- |
