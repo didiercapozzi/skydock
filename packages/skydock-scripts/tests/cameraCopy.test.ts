@@ -2,7 +2,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { lookForCameras, mountedCameras, watchCameras } from '../src/cameraWatch'
+import { lookForCameras, mountedCameras, overMtp, watchCameras } from '../src/cameraWatch'
 import { CameraGone, copyBack, copyCamera } from '../src/copy'
 import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
@@ -257,6 +257,60 @@ describe('which drives are cameras', () => {
     expect(mountedCameras(mountinfo([camera]))).toEqual([])
   })
 
+  /* A GoPro, and most cameras of the last few years, has no drive to offer at all: it speaks MTP,
+     and the desktop mounts it through gvfs. Each camera is then a folder inside that one mount, and
+     its pictures are inside one of its stores rather than at its own top — `HERO5 Black` holds
+     `GoPro MTP Client Disk Volume`, and that holds DCIM (RULES, Copying a camera off). */
+  describe('a camera that hands its files over rather than showing them', () => {
+    const handedOver = (device: string, store: string) => {
+      const gvfs = path.join(media, 'gvfs')
+      const root = path.join(gvfs, device, store)
+      fs.mkdirSync(path.join(root, 'DCIM', '100GOPRO'), { recursive: true })
+      fs.writeFileSync(path.join(root, 'DCIM', '100GOPRO', 'GX010001.MP4'), 'x')
+      return { gvfs, root }
+    }
+
+    /* A camera SkyDock was pointed at itself — mounted by jmtpfs, go-mtpfs or anything else that
+       hands an MTP camera over as files. The mount is the camera, and its stores are folders inside
+       it, exactly as they are on the device. */
+    it('is found in the store of a mount SkyDock was pointed at', () => {
+      const mounted = path.join(media, 'cameras', 'gopro')
+      const store = path.join(mounted, 'GoPro MTP Client Disk Volume')
+      fs.mkdirSync(path.join(store, 'DCIM', '100GOPRO'), { recursive: true })
+      fs.writeFileSync(path.join(store, 'DCIM', '100GOPRO', 'GX010001.MP4'), 'x')
+      process.env.SKYDOCK_CAMERA_ROOTS = path.join(media, 'cameras')
+
+      expect(mountedCameras(mountinfo([mounted]))).toEqual([store])
+    })
+
+    it('is found inside the store that holds its pictures', () => {
+      const { gvfs, root } = handedOver(
+        'mtp:host=%5Busb%3A003%2C011%5D',
+        'GoPro MTP Client Disk Volume'
+      )
+      process.env.SKYDOCK_CAMERA_ROOTS = gvfs
+
+      expect(mountedCameras(mountinfo([gvfs]))).toEqual([root])
+    })
+
+    /* the folder gvfs makes is looked into only while it is a live mount: one that is not is one
+       nobody has to wait on, and this runs every couple of seconds */
+    it('is not looked for while nothing is mounted there', () => {
+      const { gvfs } = handedOver('mtp:host=%5Busb%3A003%2C011%5D', 'GoPro MTP Client Disk Volume')
+      process.env.SKYDOCK_CAMERA_ROOTS = gvfs
+
+      expect(mountedCameras(mountinfo(['/proc']))).toEqual([])
+    })
+
+    it('says it hands its files over, which is why it is slower than a card', () => {
+      const gvfs = path.join(media, 'gvfs')
+      vi.stubEnv('XDG_RUNTIME_DIR', media)
+
+      expect(overMtp(path.join(gvfs, 'mtp:host=x', 'Store', 'DCIM'))).toBe(true)
+      expect(overMtp(path.join(media, 'GOPRO'))).toBe(false)
+    })
+  })
+
   /* macOS has no list of mounts to read: a drive is a folder in /Volumes, so that is what is
      looked at — and the DCIM folder decides, exactly as it does everywhere else */
   it('is a volume on a Mac, found without any list of mounts', () => {
@@ -380,7 +434,11 @@ describe('watching for cameras', () => {
       seen: new Set(),
       queue: [],
       copying: false,
-      said: ''
+      said: '',
+      kde: [],
+      asking: false,
+      askUntil: 0,
+      askedAt: 0
     }
 
     watchCameras(outputDir)

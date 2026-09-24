@@ -3,9 +3,18 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { Unzip, UnzipInflate } from 'fflate'
 import type { CameraFile } from './cameraEntry'
-import { cameraCopying, cameraName, mountedCameras } from './cameraWatch'
+import {
+  cameraCopying,
+  cameraName,
+  camerasSeenThroughKde,
+  mountedCameras,
+  overMtp
+} from './cameraWatch'
 import { alreadyThere, dayFoldersOf, freedAlready } from './copy'
 import { ID_HEX_LENGTH } from './fileId'
+import { kioReader } from './kio'
+import type { KioFile } from './kio'
+import { clipsUnder, givenBack, hereAlready } from './kioCamera'
 import { findMediaFiles, hashFile, moveFile } from './lib/fs'
 import { loadManifest } from './manifest'
 import { dsmFileMd5 } from './nas'
@@ -141,22 +150,14 @@ const prover = (session: NasSession) => {
    the page can say it at once. Deleting proves it again, the expensive way. */
 const standingOf = (
   manifest: Manifest | null,
-  file: string,
-  stat: fs.Stats,
-  dir: string,
-  original: string | null
+  original: string | null,
+  /* whether the records say this machine gave it back — asked the way its kind of camera asks it */
+  given: (files: ManifestFile[]) => boolean
 ) => {
   const entries = manifest ? entriesOf(manifest) : []
   /* gone from here but given back: the copy passes it over by the same rule, so the page says so */
   if (!original)
-    return freedAlready(
-      entries.map(({ file: f }) => f),
-      file,
-      stat,
-      dir
-    )
-      ? ('stored' as const)
-      : ('missing' as const)
+    return given(entries.map(({ file: f }) => f)) ? ('stored' as const) : ('missing' as const)
   const mine = entries.filter(({ file: f }) => f.path === original)
   return mine.some(({ file: f, group }) => f.freed || claimsOf(f, group).length > 0)
     ? ('stored' as const)
@@ -181,15 +182,73 @@ const listCamera = async (mount: string, outputDir: string) => {
       name: path.relative(dcimOf(mount), file),
       size: stat.size,
       mtime: Math.floor(stat.mtimeMs / 1000),
-      state: standingOf(manifest, file, stat, dir, original)
+      state: standingOf(manifest, original, (files) => freedAlready(files, file, stat, dir))
     })
   }
   /* newest first, as every list of files is */
-  return { camera: cameraName(mount), mount, files: listed.sort((a, b) => b.mtime - a.mtime) }
+  return {
+    camera: cameraName(mount),
+    mount,
+    over: overMtp(mount) ? ('mtp' as const) : ('drive' as const),
+    deletable: true,
+    files: listed.sort((a, b) => b.mtime - a.mtime)
+  }
+}
+
+/* How many questions are put to KDE at once when a camera read through it is listed: enough that a
+   card of clips is listed in seconds, few enough that the camera is not asked everything together. */
+const ASKED_AT_ONCE = 6
+
+/* A camera read through KDE, listed the same way: each clip by where it is on the camera, how big it
+   is and when it was written, and how far it has got — judged by the same records as a card's. */
+const listCameraThroughKde = async (camera: string, outputDir: string) => {
+  const reader = await kioReader()
+  if (!reader)
+    return {
+      camera: cameraName(camera),
+      mount: camera,
+      over: 'mtp' as const,
+      deletable: false,
+      files: []
+    }
+  const clips = await clipsUnder(reader, `${camera}/DCIM`)
+  const said: (KioFile | null)[] = []
+  for (let at = 0; at < clips.length; at += ASKED_AT_ONCE)
+    said.push(
+      ...(await Promise.all(
+        clips.slice(at, at + ASKED_AT_ONCE).map((clip) => reader.stat(clip.url))
+      ))
+    )
+  const here = hereAlready(outputDir)
+  const manifest = loadManifest(getManifestPath(outputDir))
+  const listed: CameraFile[] = clips.map((clip, at) => {
+    const file = said[at]
+    const size = file?.size ?? 0
+    const original = file ? here.find(clip.name, file) : null
+    return {
+      path: clip.url,
+      name: clip.url.slice(`${camera}/DCIM/`.length),
+      size,
+      /* The camera's own time where it gives one. A GoPro over MTP gives none, and then the copy
+         here, which was dated from the clip itself, is the next best; with neither, none. */
+      mtime: file?.mtime ?? (original ? Math.floor(fs.statSync(original).mtimeMs / 1000) : 0),
+      state: standingOf(manifest, original, (files) => givenBack(files, clip.name, size))
+    }
+  })
+  return {
+    camera: cameraName(camera),
+    mount: camera,
+    over: 'mtp' as const,
+    deletable: false,
+    files: listed.sort((a, b) => b.mtime - a.mtime)
+  }
 }
 
 const listCameras = async (outputDir: string, mounts = mountedCameras()) =>
-  Promise.all(mounts.map((mount) => listCamera(mount, outputDir)))
+  Promise.all([
+    ...mounts.map((mount) => listCamera(mount, outputDir)),
+    ...camerasSeenThroughKde().map((camera) => listCameraThroughKde(camera, outputDir))
+  ])
 
 /* All or nothing: every file asked for has to be on a camera plugged in now and proved to be on the
    storage, or nothing is touched and each file that is not is named. */

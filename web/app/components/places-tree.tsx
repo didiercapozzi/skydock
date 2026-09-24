@@ -165,16 +165,19 @@ const Entry = ({
   glyph,
   label,
   badge = null,
+  title,
   count
 }: {
   place: Place
   glyph: string
   label: string
   badge?: string | null
+  title?: string
   count?: number
 }) => (
   <PlaceLink
     place={place}
+    title={title}
     className={(current) =>
       `block w-full rounded-md border px-2 pt-1.5 pb-[5px] text-left text-ink max-[780px]:w-auto max-[780px]:flex-none max-[780px]:rounded-full max-[780px]:border-line max-[780px]:bg-pane max-[780px]:px-[11px] max-[780px]:py-[5px] ${
         current ? 'border-line bg-pane shadow-card' : 'border-transparent hover:bg-line-2'
@@ -326,6 +329,14 @@ const PlacesTree = ({
               place={{ kind: 'camera', name: c.mount }}
               glyph='📷'
               label={c.camera}
+              /* a camera with no drive to offer is read a request at a time, which is the whole of
+                 why it is slower than the same card in a reader */
+              badge={c.over === 'mtp' ? 'MTP' : null}
+              title={
+                c.over === 'mtp'
+                  ? `${c.camera} hands its files over rather than showing them as a drive, so reading it is slower than the same card in a reader.`
+                  : c.camera
+              }
             />
           ))}
         </div>

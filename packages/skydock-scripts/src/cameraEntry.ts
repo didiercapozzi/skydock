@@ -14,6 +14,13 @@ const cameraFileSchema = z.object({
 const cameraListingSchema = z.object({
   camera: z.string(),
   mount: z.string(),
+  /* how it hands its files over: as a drive the machine mounted, or by MTP — a camera with no
+     drive to offer, read a request at a time and so slower than the same card in a reader */
+  over: z.enum(['drive', 'mtp']),
+  /* Whether files can be taken off it from here. Deleting proves each file against the storage by
+     reading it through, byte for byte, which needs the camera readable as files; a camera read
+     through KDE is copied off and listed, and its files are deleted on the camera itself. */
+  deletable: z.boolean(),
   files: z.array(cameraFileSchema)
 })
 

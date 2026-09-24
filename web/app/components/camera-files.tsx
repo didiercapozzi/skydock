@@ -123,7 +123,8 @@ const CameraFiles = ({
   /* a listing of another camera is no listing of this one */
   const listing = answered?.mount === mount ? answered.listing : undefined
   const files = listing?.files ?? []
-  const stored = files.filter((f) => f.state === 'stored')
+  /* what can be picked is what could be deleted — nothing, on a camera read through KDE */
+  const stored = listing?.deletable ? files.filter((f) => f.state === 'stored') : []
   const chosen = stored.filter((f) => picked.has(f.path))
 
   const toggle = (file: CameraFile) => {
@@ -170,7 +171,24 @@ const CameraFiles = ({
             {counted(files, 'missing', 'not copied yet')}
           </span>
         )}
+        {/* A camera with no drive to offer is read a request at a time. It works, and it is the
+            same speed the file manager gets, but it is worth saying why it is not the speed of the
+            same card in a reader. */}
+        {listing?.over === 'mtp' && (
+          <span
+            title='This camera hands its files over one request at a time rather than showing its card as a drive. Everything works; it is slower than the same card in a reader, which is worth knowing before a full card.'
+            className='rounded-full border border-local bg-local-soft px-2.5 py-px text-[11.5px] font-semibold text-local'>
+            handed over, not a drive — slower than a card reader
+          </span>
+        )}
         <Spacer />
+        {listing && !listing.deletable && (
+          <span
+            title='Deleting proves each file against the storage by reading it through, byte for byte, which needs the camera readable as files. Delete them on the camera itself.'
+            className='text-[11.5px] text-ink-3'>
+            copied off and listed here — delete on the camera itself
+          </span>
+        )}
         {stored.length > 0 && (
           <Mini
             onClick={() =>
@@ -192,15 +210,17 @@ const CameraFiles = ({
             {`Copy ${plural(chosen.length, 'file')} back here`}
           </Mini>
         )}
-        <Go
-          disabled={chosen.length === 0 || deleting}
-          onClick={() => setAsking(true)}>
-          {deleting
-            ? 'Checking and deleting…'
-            : chosen.length > 0
-              ? `Delete ${plural(chosen.length, 'file')} from the camera…`
-              : 'Delete from the camera…'}
-        </Go>
+        {listing?.deletable !== false && (
+          <Go
+            disabled={chosen.length === 0 || deleting}
+            onClick={() => setAsking(true)}>
+            {deleting
+              ? 'Checking and deleting…'
+              : chosen.length > 0
+                ? `Delete ${plural(chosen.length, 'file')} from the camera…`
+                : 'Delete from the camera…'}
+          </Go>
+        )}
       </div>
       {problem && (
         <p
@@ -230,7 +250,7 @@ const CameraFiles = ({
                 }`}>
                 {/* only a file on the storage has a tick: nothing else could be deleted for it */}
                 <span className='w-4 flex-none'>
-                  {file.state === 'stored' && (
+                  {file.state === 'stored' && listing?.deletable && (
                     <input
                       type='checkbox'
                       aria-label={`Pick ${file.name}`}
@@ -247,7 +267,8 @@ const CameraFiles = ({
                   {STANDING[file.state].label}
                 </span>
                 <span className='w-[150px] flex-none text-right font-mono text-[11px] text-ink-3 tabular-nums'>
-                  {dateLabel(file.mtime)} {hhmm(file.mtime)}
+                  {/* a camera that gives no time for a file it has not handed over yet */}
+                  {file.mtime > 0 ? `${dateLabel(file.mtime)} ${hhmm(file.mtime)}` : '—'}
                 </span>
                 <span className='w-[64px] flex-none text-right font-mono text-[11px] text-ink-3 tabular-nums'>
                   {formatSize(file.size)}

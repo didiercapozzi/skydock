@@ -22,6 +22,8 @@ const listing = {
     {
       camera: 'OsmoNano',
       mount: MOUNT,
+      over: 'drive',
+      deletable: true,
       files: [
         onCard('DJI_0001.MP4', 'stored'),
         onCard('DJI_0002.MP4', 'copied'),
@@ -101,5 +103,77 @@ describe('a camera plugged in', () => {
     await expect.poll(() => sent).toEqual([{ paths: [`${MOUNT}/DCIM/DJI_0001.MP4`] }])
     await expect.poll(() => onNote.mock.calls.length).toBe(1)
     await expect.element(page.getByText('DJI_0001.MP4')).not.toBeInTheDocument()
+  })
+})
+
+/* A camera with no drive to offer — a GoPro, and most cameras of the last few years — hands its
+   files over one request at a time. Everything works; it is slower than the same card in a reader,
+   and the page says so rather than leaving somebody to wonder (RULES, Seeing what is on a camera). */
+describe('a camera that hands its files over', () => {
+  test('says so, and why it is slower', async () => {
+    vi.stubGlobal('fetch', async () =>
+      Response.json({
+        cameras: [
+          {
+            camera: 'GoPro MTP Client Disk Volume',
+            mount: MOUNT,
+            over: 'mtp',
+            deletable: true,
+            files: [onCard('GX010001.MP4', 'missing')]
+          }
+        ]
+      })
+    )
+    await render(
+      createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack: () => {} })
+    )
+
+    await expect.element(page.getByText(/slower than a card reader/)).toBeVisible()
+    /* and its files are listed like any other camera's */
+    await expect.element(page.getByText('GX010001.MP4')).toBeVisible()
+  })
+
+  test('says nothing of the sort for a card in a reader', async () => {
+    stubServer()
+    await render(
+      createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack: () => {} })
+    )
+
+    await expect.element(page.getByText('DJI_0001.MP4')).toBeVisible()
+    await expect.element(page.getByText(/slower than a card reader/)).not.toBeInTheDocument()
+  })
+})
+
+/* A camera read through KDE is listed and copied off like any other, but nothing is deleted from it
+   here: deleting proves each file against the storage by reading it through, byte for byte, which
+   needs the camera readable as files (RULES, Seeing what is on a camera). */
+describe('a camera read through KDE', () => {
+  const KDE = 'mtp:/HERO5 Black/GoPro MTP Client Disk Volume'
+
+  test('is listed, and says it is deleted from on the camera itself', async () => {
+    vi.stubGlobal('fetch', async () =>
+      Response.json({
+        cameras: [
+          {
+            camera: 'HERO5 Black',
+            mount: KDE,
+            over: 'mtp',
+            deletable: false,
+            files: [onCard('GOPR0001.MP4', 'stored'), onCard('GOPR0002.MP4', 'missing')]
+          }
+        ]
+      })
+    )
+    await render(
+      createElement(CameraFiles, { mount: KDE, stamp: 1, onNote: () => {}, onCopyBack: () => {} })
+    )
+
+    await expect.element(page.getByText('GOPR0001.MP4')).toBeVisible()
+    await expect.element(page.getByText(/delete on the camera itself/)).toBeVisible()
+    /* even a file on the storage cannot be picked, and there is nothing to delete with */
+    await expect.element(page.getByRole('checkbox')).not.toBeInTheDocument()
+    await expect
+      .element(page.getByRole('button', { name: /Delete .*from the camera/ }))
+      .not.toBeInTheDocument()
   })
 })

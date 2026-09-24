@@ -41,8 +41,10 @@ proxies, the record of it all — is under it. The bin is kept with the work, so
 this machine is moved, never copied from one disk to another; the app's own settings, the storage
 connection among them, are kept apart from the work.
 
-A camera is a drive with a `DCIM` folder at its top, wherever this machine mounts such things: a
-drive letter of its own on Windows, a volume on a Mac, a mount under the usual places on Linux.
+A camera is anything with a `DCIM` folder at its top, wherever this machine puts such things: a
+drive letter of its own on Windows, a volume on a Mac, a mount under the usual places on Linux — and,
+where a camera has no drive to offer at all, the folder the desktop makes for it when it hands its
+files over instead.
 
 ## Principles
 
@@ -101,9 +103,24 @@ Each file is only given its name once it is whole, so a card pulled out half way
 that could be taken for an original.
 
 **Plugging a camera in is enough.** Once a board has been opened, and from then on for as long as
-SkyDock runs, a drive that is mounted with a DCIM folder at its root — where every camera keeps its
+SkyDock runs, anything that turns up with a DCIM folder at its top — where every camera keeps its
 pictures — is copied off by itself, then scanned if anything new came off it, so its jumps are on the
-board with nobody pressing anything. The header shows the copy file by file, and the board
+board with nobody pressing anything.
+
+**A camera that hands its files over is a camera too.** Many cameras — a GoPro among them — never
+show their card as a drive: they answer for it one request at a time, and only one program at a time
+may ask. Such a camera keeps its pictures inside one of its stores rather than at its own top, so both
+are looked at and the DCIM decides. Where the desktop makes a folder for it, it is found in that
+folder. Where the desktop is KDE, which keeps the camera to itself and makes no folder, SkyDock asks
+KDE — the same way the file manager does, at the same speed — and it is named by the camera's own
+name. KDE is only asked for a while after something is plugged in or taken out, never every few
+seconds for as long as SkyDock runs. A clip is fetched whole into a holding place, dated from the copy
+here and filed like any other; one already here is known by its name, its size and its time before
+anything is fetched, so plugging the camera in again reads almost nothing. A camera read this way is
+slower than the same card in a reader, since nothing can be read ahead, and that is said where it is
+plugged in and on its page, because a camera that is merely slow and a camera that is stuck look alike.
+A desktop that neither makes a folder nor is KDE leaves such a camera unseen, and its card has to go in
+a reader. The header shows the copy file by file, and the board
 says what came off once it is done: how many new files and how many already there. A camera is copied
 once for each time it is plugged in; one unplugged half way keeps what was copied whole, and plugging
 it in again copies the rest. Only one camera is copied at a time, in the order they came. A drive
@@ -122,6 +139,9 @@ first, saying how many files and how much, and that they go to the bin, and the 
 reachable. Then each file is read through and held
 against what the storage holds by its bytes, never by its name, since every name changes on the way: it
 has to be a file the board knows by its content, and the storage has to hold what that file became.
+A camera read through KDE is listed the same way, but nothing is deleted from it here: the proof reads
+each file through, byte for byte, which needs the camera readable as files. Its page says to delete on
+the camera itself.
 
 | What the camera file is | What it is held against on the storage                                    |
 | ----------------------- | ------------------------------------------------------------------------- |

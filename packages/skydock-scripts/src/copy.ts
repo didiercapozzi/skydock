@@ -242,11 +242,16 @@ const dayFoldersOf = async (files: string[], outputDir: string) => {
 
 export {
   CameraGone,
+  DATE_TAGS,
   alreadyThere,
   copyBack,
   copyCamera,
   copyFromCameras,
   dayFoldersOf,
-  freedAlready
+  dayOfStat,
+  freeName,
+  freedAlready,
+  isNameFor,
+  loadBoard
 }
 export type { CopyOptions, CopyProgress }

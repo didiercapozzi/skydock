@@ -1,6 +1,9 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { CameraGone, copyCamera } from './copy'
+import type { CopyProgress } from './copy'
+import { kioReader } from './kio'
+import { camerasThroughKde, copyOverKio, isKioCamera, kioCameraName } from './kioCamera'
 import { publish } from './live'
 import { buildMissingProxies } from './proxy'
 import { scanMedia } from './scan'
@@ -26,6 +29,18 @@ const DEFAULT_ROOTS: Record<string, string[]> = {
   linux: ['/mnt/osmo', '/media', '/run/media']
 }
 
+/* Where a camera that is not a drive turns up. A GoPro, and most cameras of the last few years,
+   does not present its card as a disk at all: it speaks MTP, a protocol for handing files over one
+   request at a time, and the desktop mounts it through gvfs in a folder of the user's own. Each
+   camera is then a folder inside that one rather than a mount of its own, so it is found by looking
+   in rather than by reading the list of mounts. */
+const gvfsRoot = () => {
+  const runtime = process.env.XDG_RUNTIME_DIR?.trim()
+  const uid = typeof process.getuid === 'function' ? process.getuid() : null
+  const base = runtime || (uid === null ? null : `/run/user/${uid}`)
+  return base ? path.join(base, 'gvfs') : null
+}
+
 /* every drive letter this Windows machine has, which is where its cameras are */
 const windowsDrives = () =>
   Array.from({ length: 26 }, (_, i) => `${String.fromCharCode(65 + i)}:${path.sep}`).filter(
@@ -34,14 +49,15 @@ const windowsDrives = () =>
 
 const cameraRoots = () => {
   const told = process.env.SKYDOCK_CAMERA_ROOTS
-  if (told === undefined)
-    return process.platform === 'win32'
-      ? windowsDrives()
-      : (DEFAULT_ROOTS[process.platform] ?? DEFAULT_ROOTS.linux)
-  return told
-    .split(path.delimiter)
-    .map((root) => root.trim())
-    .filter(Boolean)
+  if (told !== undefined)
+    return told
+      .split(path.delimiter)
+      .map((root) => root.trim())
+      .filter(Boolean)
+  if (process.platform === 'win32') return windowsDrives()
+  if (process.platform !== 'linux') return (DEFAULT_ROOTS[process.platform] ?? []).slice()
+  const gvfs = gvfsRoot()
+  return gvfs ? [...DEFAULT_ROOTS.linux, gvfs] : [...DEFAULT_ROOTS.linux]
 }
 
 const EVERY_MS = 2000
@@ -52,21 +68,26 @@ const unescapeMount = (field: string) =>
     String.fromCharCode(Number.parseInt(octal, 8))
   )
 
-/* What Linux has mounted under those places, read off the system's own list of mounts, which says
-   the moment one comes or goes. */
-const mountsUnder = (roots: string[], mountinfo = '/proc/self/mountinfo') => {
+/* Everything this Linux machine has mounted, read off its own list, which says the moment one comes
+   or goes. */
+const mountsAt = (mountinfo = '/proc/self/mountinfo') => {
   let text: string
   try {
     text = fs.readFileSync(mountinfo, 'utf-8')
   } catch {
     return []
   }
-  const mounted = text.split('\n').flatMap((line) => {
+  return text.split('\n').flatMap((line) => {
     const point = line.split(' ')[4]
     return point ? [unescapeMount(point)] : []
   })
-  return mounted.filter((point) => roots.some((root) => point.startsWith(`${root}${path.sep}`)))
 }
+
+/* what is mounted under the places looked at — a drive the desktop mounted for somebody */
+const mountsUnder = (roots: string[], mountinfo?: string) =>
+  mountsAt(mountinfo).filter((point) =>
+    roots.some((root) => point.startsWith(`${root}${path.sep}`))
+  )
 
 /* what macOS has in `/Volumes`: a drive is a folder there, and there is no list of mounts to read */
 const foldersUnder = (roots: string[]) =>
@@ -81,23 +102,54 @@ const foldersUnder = (roots: string[]) =>
     }
   })
 
-/* The drives that are cameras: a DCIM folder at the top, and nothing else asked of them. On Windows
-   the drive is the camera; everywhere else it is mounted somewhere under the places looked at. */
+/* The cameras plugged in: a DCIM folder at the top, and nothing else asked of them. On Windows the
+   drive is the camera; on a Mac every drive is a folder in one place; on Linux a drive is a mount,
+   and a camera speaking MTP is a folder inside the one mount gvfs makes.
+
+   That last folder is only ever looked into when gvfs is mounted — a folder that is not a live
+   mount is one nobody has to wait on, and this runs every couple of seconds. */
 const mountedCameras = (mountinfo?: string) => {
   const roots = cameraRoots().map((root) => path.resolve(root))
   if (roots.length === 0) return []
+  const live = new Set(mountsAt(mountinfo))
   const drives =
     process.platform === 'win32'
       ? roots
       : process.platform === 'darwin'
         ? foldersUnder(roots)
-        : mountsUnder(roots, mountinfo)
-  return [...new Set(drives)].filter((point) => fs.existsSync(path.join(point, 'DCIM')))
+        : [
+            ...mountsUnder(roots, mountinfo),
+            /* a folder that is itself a mount holds cameras rather than being one: what a desktop
+               makes for the cameras it has been asked to hand over */
+            ...foldersUnder(roots.filter((root) => live.has(root)))
+          ]
+  return [...new Set(drives.flatMap(camerasAt))]
+}
+
+/* Where the DCIM is, which is the only thing that makes something a camera.
+
+   A card shows it at the top of the drive. A camera that hands its files over rather than showing
+   them offers one or more stores, each a folder, and keeps its pictures inside one of those —
+   `HERO5 Black` holds `GoPro MTP Client Disk Volume`, and that holds DCIM. So anything without a
+   DCIM of its own is looked into, one level, before it is passed over. */
+const camerasAt = (point: string) => {
+  if (fs.existsSync(path.join(point, 'DCIM'))) return [point]
+  return foldersUnder([point]).filter((store) => fs.existsSync(path.join(store, 'DCIM')))
+}
+
+/* Whether a camera hands its files over rather than showing them: it is under the folder gvfs
+   mounts, which is where a camera that has no drive to offer ends up. Worth saying, because it is
+   the whole of why such a camera is slower to read than a card in a reader. */
+const overMtp = (mount: string) => {
+  if (isKioCamera(mount)) return true
+  const gvfs = gvfsRoot()
+  return gvfs !== null && path.resolve(mount).startsWith(`${path.resolve(gvfs)}${path.sep}`)
 }
 
 /* What a camera is called: the name of where it is mounted — or, on Windows, its drive letter,
    since a drive's root has no name of its own. */
-const cameraName = (mount: string) => path.basename(mount) || mount.replace(/[\\/]+$/, '')
+const cameraName = (mount: string) =>
+  isKioCamera(mount) ? kioCameraName(mount) : path.basename(mount) || mount.replace(/[\\/]+$/, '')
 
 type Watch = {
   timer: ReturnType<typeof setInterval> | null
@@ -107,6 +159,13 @@ type Watch = {
   copying: boolean
   /* the cameras last said to be plugged in, so a change is said once */
   said: string
+  /* the cameras KDE last said it could reach, and whether it is being asked right now */
+  kde: string[]
+  asking: boolean
+  /* the USB devices last seen, and until when KDE is worth asking after they last changed */
+  usb?: string | null
+  askUntil: number
+  askedAt: number
 }
 
 declare global {
@@ -119,7 +178,11 @@ const watch = () =>
     seen: new Set(),
     queue: [],
     copying: false,
-    said: ''
+    said: '',
+    kde: [],
+    asking: false,
+    askUntil: 0,
+    askedAt: 0
   })
 
 /* One camera at a time, in the order they were plugged in: two cards read at once are each read at
@@ -129,17 +192,16 @@ const copyNext = async (outputDir: string) => {
   const cameraDir = state.queue.shift()
   if (!cameraDir || state.copying) return
   state.copying = true
-  const camera = path.basename(cameraDir)
+  const camera = cameraName(cameraDir)
   let last = { done: 0, total: 0, copied: 0, skipped: 0 }
+  const onProgress = (progress: CopyProgress) => {
+    last = progress
+    publish({ kind: 'camera', camera, state: 'copying', ...progress })
+  }
   try {
-    const result = await copyCamera({
-      cameraDir: path.join(cameraDir, 'DCIM'),
-      outputDir,
-      onProgress: (progress) => {
-        last = progress
-        publish({ kind: 'camera', camera, state: 'copying', ...progress })
-      }
-    })
+    const result = isKioCamera(cameraDir)
+      ? await copyThroughKde(cameraDir, outputDir, onProgress)
+      : await copyCamera({ cameraDir: path.join(cameraDir, 'DCIM'), outputDir, onProgress })
     /* only a copy that brought something new is worth a scan */
     if (result.copied > 0) {
       await scanMedia({ outputDir })
@@ -163,11 +225,68 @@ const copyNext = async (outputDir: string) => {
   }
 }
 
-/* One look at what is mounted. A camera that has appeared is queued; one that has gone is forgotten,
-   so plugging it in again copies what is new on it since. */
+/* a camera KDE reaches, copied through KDE — asked for its reader again, since it may be gone */
+const copyThroughKde = async (
+  camera: string,
+  outputDir: string,
+  onProgress: (progress: CopyProgress) => void
+) => {
+  const reader = await kioReader()
+  if (!reader) throw new CameraGone('KDE no longer reaches this camera.')
+  return copyOverKio({ camera, reader, outputDir, onProgress })
+}
+
+/* The USB devices plugged in, by the nodes the system makes for them: cheap to read, and different
+   the moment anything is plugged in or taken out. Nothing when there is no such folder to read. */
+const usbDevices = () => {
+  const root = '/dev/bus/usb'
+  try {
+    return fs
+      .readdirSync(root)
+      .flatMap((bus) => fs.readdirSync(path.join(root, bus)).map((device) => `${bus}/${device}`))
+      .sort()
+      .join(' ')
+  } catch {
+    return null
+  }
+}
+
+/* How long KDE is worth asking after the USB devices change: a camera takes a few seconds after it
+   is plugged in before KDE can reach it. And how often, where the devices cannot be read at all. */
+const ASK_FOR_MS = 15_000
+const ASK_EVERY_MS = 30_000
+
+/* KDE asked which cameras it reaches — only while that could have changed. Asking is a program run,
+   several for a camera, and a machine with nothing plugged in is not asked every couple of seconds
+   for ever: it is asked for a while after its USB devices change, and while nothing is being copied.
+   Where the devices cannot be read it is asked now and then instead. A question KDE does not
+   answer changes nothing. */
+const askKde = async (find = camerasThroughKde) => {
+  const state = watch()
+  if (state.asking || state.copying || cameraRoots().length === 0) return
+  const usb = usbDevices()
+  const at = Date.now()
+  if (usb !== state.usb) {
+    state.usb = usb
+    state.askUntil = at + ASK_FOR_MS
+  }
+  if (usb === null ? at - state.askedAt < ASK_EVERY_MS : at > state.askUntil) return
+  state.asking = true
+  state.askedAt = at
+  try {
+    state.kde = await find()
+  } catch {
+  } finally {
+    state.asking = false
+  }
+}
+
+/* One look at what is mounted, and at what KDE last said it reaches. A camera that has appeared is
+   queued; one that has gone is forgotten, so plugging it in again copies what is new on it since. */
 const lookForCameras = (outputDir: string, mountinfo?: string) => {
   const state = watch()
-  const now = new Set(mountedCameras(mountinfo))
+  void askKde()
+  const now = new Set([...mountedCameras(mountinfo), ...state.kde])
   for (const camera of now)
     if (!state.seen.has(camera)) {
       state.seen.add(camera)
@@ -179,7 +298,11 @@ const lookForCameras = (outputDir: string, mountinfo?: string) => {
     state.said = mounted.join('\n')
     publish({
       kind: 'cameras',
-      mounted: mounted.map((mount) => ({ camera: cameraName(mount), mount }))
+      mounted: mounted.map((mount) => ({
+        camera: cameraName(mount),
+        mount,
+        over: overMtp(mount) ? ('mtp' as const) : ('drive' as const)
+      }))
     })
   }
   if (!state.copying && state.queue.length > 0) void copyNext(outputDir)
@@ -202,4 +325,16 @@ const watchCameras = (outputDir: string) => {
 /* whether a camera is being copied right now — nothing is taken off one while it is read */
 const cameraCopying = () => watch().copying || watch().queue.length > 0
 
-export { cameraCopying, cameraName, lookForCameras, mountedCameras, watchCameras }
+/* the cameras KDE last said it reaches, for the page that lists what is on each */
+const camerasSeenThroughKde = () => watch().kde
+
+export {
+  askKde,
+  cameraCopying,
+  cameraName,
+  camerasSeenThroughKde,
+  lookForCameras,
+  mountedCameras,
+  overMtp,
+  watchCameras
+}

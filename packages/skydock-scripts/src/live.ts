@@ -64,10 +64,14 @@ const liveEventSchema = z.discriminatedUnion('kind', [
        not nothing, and a bar that sat full with no word would look stuck. `done` ends it. */
     phase: z.enum(['copying', 'reading', 'done'])
   }),
-  /* the cameras plugged in right now, said each time one comes or goes */
+  /* The cameras plugged in right now, said each time one comes or goes. `over` is how each one
+     hands its files over: a drive the machine mounted, or MTP — a camera with no drive to offer,
+     which is read a request at a time and is therefore slower than a card in a reader. */
   z.object({
     kind: z.literal('cameras'),
-    mounted: z.array(z.object({ camera: z.string(), mount: z.string() }))
+    mounted: z.array(
+      z.object({ camera: z.string(), mount: z.string(), over: z.enum(['drive', 'mtp']) })
+    )
   })
 ])
 
