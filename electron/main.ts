@@ -139,9 +139,10 @@ const zoomLevel = () => {
 const ZOOM_STEP: Record<string, number> = { '+': 0.1, '=': 0.1, '-': -0.1, _: -0.1 }
 
 /* ⌘/ctrl with + or − and 0, as they do in any browser. The engine does the zooming; which keys ask
-   for it is the window's own to say. */
+   for it is the window's own to say. Where it starts is the window's to say when it is made: a
+   factor set before the first page has loaded is lost to that page on some machines and not on
+   others. */
 const zoomHotkeys = (contents: WebContents, start: number) => {
-  contents.setZoomFactor(start)
   contents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown' || !(input.control || input.meta)) return
     const step = ZOOM_STEP[input.key]
@@ -156,6 +157,7 @@ const zoomHotkeys = (contents: WebContents, start: number) => {
    the passenger's email, a share link — belongs to the machine's own browser; opened in here it
    would be the board gone, with no way back to it. */
 const openWindow = (address: string) => {
+  const zoom = zoomLevel()
   const window = new BrowserWindow({
     title: 'SkyDock',
     width: 1440,
@@ -164,13 +166,16 @@ const openWindow = (address: string) => {
     minHeight: 600,
     autoHideMenuBar: true,
     backgroundColor: '#f2f4f6',
-    webPreferences: { preload: path.join(app.getAppPath(), 'build', 'electron', 'preload.cjs') }
+    webPreferences: {
+      preload: path.join(app.getAppPath(), 'build', 'electron', 'preload.cjs'),
+      zoomFactor: zoom
+    }
   })
   window.webContents.setWindowOpenHandler(({ url: asked }) => {
     if (/^https?:/.test(asked)) void shell.openExternal(asked)
     return { action: 'deny' }
   })
-  zoomHotkeys(window.webContents, zoomLevel())
+  zoomHotkeys(window.webContents, zoom)
   void window.loadURL(address)
   console.log(`[SkyDock] the window is open on ${address}`)
   return window

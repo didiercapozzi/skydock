@@ -57,11 +57,18 @@ thing and stands its sandbox down when it must, never runs into it.
 That is one command: the development server comes up with the window and goes down with it. One
 already running is used and left alone, so `npm run dev` in another terminal still works.
 
-Said with no development server, the app runs on its own over there too:
+Said with no development server, the app runs on its own over there too — its own server, its own
+work folder, exactly as an installed one does:
 
 ```bash
-SKYDOCK_DEV_URL= npm run dev:window:host
+npm run app:host                          # the whole app on the machine, drawn at 170%
+SKYDOCK_DEV_URL= npm run dev:window:host  # the same thing, said longhand
 ```
+
+The empty `SKYDOCK_DEV_URL=` is the whole of it: the script reads it with `${SKYDOCK_DEV_URL-…}`, the
+form that keeps an empty value rather than replacing it, so nothing is started in here and nothing in
+here is talked to. It matters for anything the machine can see and this container cannot — a camera
+on a cable above all.
 
 The window zooms with ⌘/ctrl and `+` or `−`, as a browser does. To open at a size rather than reach
 for it every time, say so — as a factor or as a percentage, half to triple size:
