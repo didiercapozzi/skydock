@@ -91,7 +91,16 @@ import {
   sameEditedGroup,
   statTandemArtifacts
 } from './tandem'
-import { DEFAULT_PLAN, itemsFrom, PARTS, planOf, stemOf } from './sending'
+import {
+  DEFAULT_PLAN,
+  itemsFrom,
+  PARTS,
+  planOf,
+  projectFolderOf,
+  slugOf,
+  stemOf,
+  zipNameOf
+} from './sending'
 import type { PartFile, SendItem } from './sending'
 import { watchTandems } from './tandemWatch'
 import { furthestBehind, tandemSteps } from './tandemSteps'
@@ -172,7 +181,10 @@ export {
   itemsFrom,
   PARTS,
   planOf,
+  projectFolderOf,
+  slugOf,
   stemOf,
+  zipNameOf,
   boardAnswerSchema,
   buildPassengerFolder,
   clearNasSession,

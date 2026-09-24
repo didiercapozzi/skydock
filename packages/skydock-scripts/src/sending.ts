@@ -12,15 +12,30 @@ import { formatCaptureTime, formatGroupDay, passengerName, toFileStem } from './
    builds it — so what is shown is what is built (RULES, Uploading a montage).
 
    A montage has four parts: its original videos, its photos, the film, and the editing project.
-   Step one ticks which go into a zip — into one zip, or a zip each — and whatever is not ticked goes
-   as it is. What comes out are the items: each one a zip or the part itself, named after the montage
-   and when it starts, and each put in one destination or more in step two. */
+   Step one makes zips out of them — each zip any of the parts, the same part in as many zips as
+   wanted — and every part can also go as it is. What comes out are the items: each zip and each
+   part, named after the montage and when it starts, each put in one destination or more in step two. */
 
 const PARTS = ['videos', 'photos', 'film', 'project'] as const satisfies readonly SendPart[]
 
-/* The plan a board has never been told: the originals and the project in one zip, the film and the
-   photos as they are, nothing put anywhere yet. */
-const DEFAULT_PLAN: SendPlan = { zip: { parts: ['videos', 'project'], each: false }, placed: {} }
+/* The plan a board has never been told: one full backup of the originals, the photos and the
+   project, nothing put anywhere yet. */
+const DEFAULT_PLAN: SendPlan = {
+  zips: [{ ending: 'full', parts: ['videos', 'photos', 'project'] }],
+  placed: {}
+}
+
+/* A name made of lowercase letters, digits and single dashes, from whatever was typed: "Boogie 2026"
+   is boogie-2026. While it is being typed a dash at the end stays, so the next word can follow it. */
+const slugOf = (text: string, typing = false) => {
+  const slug = text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-/, '')
+  return typing ? slug : slug.replace(/-$/, '')
+}
 
 /* `boogie_2026_20260801_153004`: the montage's name, the day of its jump — the day its film and its
    project are named for too — and the time the jump started. */
@@ -69,24 +84,14 @@ const partFiles = (group: ManifestGroup, outputDir: string, film: string | null)
   } satisfies Record<SendPart, PartFile[]>
 }
 
-/* One zip is named for what it is a backup of: its videos, its photos, or both — the full backup.
-   A zip each is named for the one part in it. */
-const zipNameOf = (stem: string, holds: SendPart[], each: boolean) => {
-  if (each) return `${stem}.backup.${holds[0]}.zip`
-  const videos = holds.includes('videos')
-  const photos = holds.includes('photos')
-  return `${stem}.backup.${videos && photos ? 'full' : videos ? 'videos' : photos ? 'photos' : 'full'}.zip`
-}
+/* A zip is named by the montage and the ending it was given, ….full.zip, or ….zip when it was given
+   none. */
+const zipNameOf = (stem: string, ending: string) => `${stem}${ending ? `.${ending}` : ''}.zip`
 
-/* A zip each is a zip per ticked part, except that the project goes in with the videos when both are
-   ticked: the edit and the clips it was cut from are one backup. */
-const zipGroups = (ticked: SendPart[], each: boolean): SendPart[][] => {
-  if (!each) return ticked.length > 0 ? [ticked] : []
-  const withVideos = ticked.includes('videos') && ticked.includes('project')
-  return ticked
-    .filter((part) => !(withVideos && part === 'project'))
-    .map((part) => (part === 'videos' && withVideos ? ['videos', 'project'] : [part]))
-}
+/* The folder a montage lands in inside a destination, unless it goes straight into its folder:
+   the one asked for, or the montage's name made into one. */
+const projectFolderOf = (group: ManifestGroup, plan: SendPlan) =>
+  plan.folder ?? (slugOf(passengerName(group.passenger)) || 'montage')
 
 type SendItem = {
   key: string
@@ -116,44 +121,58 @@ const itemOf = (
 })
 
 /* Every item a montage sends under this plan, in the order they are shown, from what each part is
-   made of. A part the montage has none of — no photos, no film rendered yet — is simply not among
-   them. Nothing here touches the disk, so the board works out the same items from what it knows. */
+   made of: the zips, then every part as it is. A part the montage has none of — no photos, no film
+   rendered yet — is simply not among them, nor is a zip left with nothing in it. Nothing here
+   touches the disk, so the board works out the same items from what it knows. */
 const itemsFrom = (
   files: Record<SendPart, PartFile[]>,
   stem: string,
-  zip: SendPlan['zip']
+  zips: SendPlan['zips']
 ): SendItem[] => {
   const present = PARTS.filter((part) => files[part].length > 0)
-  const ticked = present.filter((part) => zip.parts.includes(part))
-  const zips = zipGroups(ticked, zip.each).map((holds) =>
-    itemOf(
-      zip.each ? `zip:${holds[0]}` : 'zip',
-      zipNameOf(stem, holds, zip.each),
-      true,
-      holds,
-      holds.flatMap((part) => partEntries(part, files[part], stem))
-    )
-  )
-  const loose = present
-    .filter((part) => !ticked.includes(part))
-    .map((part) => {
-      const entries = partEntries(part, files[part], stem)
-      const name = part === 'videos' || part === 'photos' ? `${part}/` : entries[0]!.name
-      return itemOf(part, name, false, [part], entries)
-    })
-  return [...zips, ...loose]
+  const zipped = zips.flatMap((zip) => {
+    const holds = present.filter((part) => zip.parts.includes(part))
+    return holds.length === 0
+      ? []
+      : [
+          itemOf(
+            `zip:${zip.ending}`,
+            zipNameOf(stem, zip.ending),
+            true,
+            holds,
+            holds.flatMap((part) => partEntries(part, files[part], stem))
+          )
+        ]
+  })
+  const loose = present.map((part) => {
+    const entries = partEntries(part, files[part], stem)
+    const name = part === 'videos' || part === 'photos' ? `${part}/` : entries[0]!.name
+    return itemOf(part, name, false, [part], entries)
+  })
+  return [...zipped, ...loose]
 }
 
 /* The items a montage sends, from what is on this machine: the one answer the upload builds. */
 const sendItems = (
   group: ManifestGroup,
   outputDir: string,
-  zip: SendPlan['zip'],
+  zips: SendPlan['zips'],
   film: string | null = null
-) => itemsFrom(partFiles(group, outputDir, film), stemOf(group), zip)
+) => itemsFrom(partFiles(group, outputDir, film), stemOf(group), zips)
 
 /* The plan as it came from the page, read the way anything from outside is: parsed, never trusted. */
 const planOf = (value: unknown) => sendPlanSchema.safeParse(value).data ?? DEFAULT_PLAN
 
-export { DEFAULT_PLAN, itemsFrom, PARTS, partEntries, planOf, sendItems, stemOf, zipNameOf }
+export {
+  DEFAULT_PLAN,
+  itemsFrom,
+  PARTS,
+  partEntries,
+  planOf,
+  projectFolderOf,
+  sendItems,
+  slugOf,
+  stemOf,
+  zipNameOf
+}
 export type { PartFile, SendItem }

@@ -109,33 +109,79 @@ const renderBoard = async (data: typeof board | Record<string, unknown> = board,
 const STEM = stemOf({ id: 'g1', label: 'jump', day: '01.08.2026', montageJump: true, passenger: { firstname: 'Luc', lastname: 'Favre' }, files })
 
 const dialog = () => page.getByRole('dialog', { name: 'Upload' })
-const preview = () => dialog().getByLabelText('What will be sent')
+const zip = (ending: string) => dialog().getByRole('region', { name: `${STEM}.${ending}.zip` })
 const place = (name: string) => dialog().getByRole('region', { name })
+/* dragged onto a destination, scrolled into view first so nothing moves mid-drag */
+const dropOn = async (name: string, destination: string) => {
+  place(destination).element().scrollIntoView({ block: 'center' })
+  await userEvent.dragAndDrop(dialog().getByLabelText(name, { exact: true }), place(destination))
+}
+const next = () => userEvent.click(dialog().getByRole('button', { name: /Next: where it goes/ }))
 
-describe('uploading a montage — what is zipped', () => {
-  test('shows what will be sent before anything is, each item named as it will be', async () => {
+describe('uploading a montage — the zips', () => {
+  test('shows each zip with what is inside it, before anything is sent', async () => {
     setSendPlan(DEFAULT_PLAN)
     requests.length = 0
     await renderBoard()
 
-    await expect.element(preview().getByText(`${STEM}.backup.videos.zip`)).toBeInTheDocument()
-    await expect.element(preview().getByText(`${STEM}.mp4`)).toBeInTheDocument()
-    await expect.element(preview().getByText('photos/', { exact: true })).toBeInTheDocument()
+    await expect.element(zip('full').getByText('videos/', { exact: true })).toBeInTheDocument()
+    await expect.element(zip('full').getByText('GX010001.MP4')).toBeInTheDocument()
+    await expect.element(zip('full').getByText('photos/', { exact: true })).toBeInTheDocument()
+    await expect.element(zip('full').getByText(`${STEM}.kdenlive`)).toBeInTheDocument()
     await page.screenshot({ path: './playwright-screenshots/upload-dialog.png' })
     expect(requests).toEqual([])
   })
 
-  test('names the zip for what it holds, and makes a zip each when asked', async () => {
+  test('puts a part dragged onto the drop area into a new zip, the same part in two zips', async () => {
     setSendPlan(DEFAULT_PLAN)
     await renderBoard()
 
-    await userEvent.click(dialog().getByRole('checkbox', { name: /Photos/ }))
-    await expect.element(preview().getByText(`${STEM}.backup.full.zip`)).toBeInTheDocument()
-    await expect.element(preview().getByText('└ photos/ — 1 photo')).toBeInTheDocument()
+    await userEvent.dragAndDrop(
+      dialog().getByLabelText('Original photos', { exact: true }),
+      dialog().getByText('Drop here to make another zip')
+    )
 
-    await userEvent.click(dialog().getByRole('button', { name: 'into a zip each' }))
-    await expect.element(preview().getByText(`${STEM}.backup.videos.zip`)).toBeInTheDocument()
-    await expect.element(preview().getByText(`${STEM}.backup.photos.zip`)).toBeInTheDocument()
+    await expect.element(zip('photos').getByText('photos/', { exact: true })).toBeInTheDocument()
+    await expect.element(zip('full').getByText('photos/', { exact: true })).toBeInTheDocument()
+    await expect
+      .element(dialog().getByLabelText('Original photos', { exact: true }).getByText('in 2 zips'))
+      .toBeInTheDocument()
+  })
+
+  test('names a zip by the ending typed for it', async () => {
+    setSendPlan(DEFAULT_PLAN)
+    await renderBoard()
+
+    const ending = dialog().getByLabelText('Name ends with')
+    await userEvent.clear(ending)
+    await userEvent.type(ending, 'For Luc')
+
+    await expect.element(zip('for-luc')).toBeInTheDocument()
+    await expect.element(zip('for-luc').getByLabelText('Name ends with')).toHaveFocus()
+  })
+
+  test('names a zip given no ending after the montage alone', async () => {
+    setSendPlan(DEFAULT_PLAN)
+    await renderBoard()
+
+    await userEvent.clear(zip('full').getByLabelText('Name ends with'))
+
+    await expect
+      .element(dialog().getByRole('region', { name: `${STEM}.zip` }))
+      .toBeInTheDocument()
+  })
+
+  test('takes a part out of a zip, and a zip can be removed', async () => {
+    setSendPlan(DEFAULT_PLAN)
+    await renderBoard()
+
+    await userEvent.click(
+      dialog().getByRole('button', { name: `Take Original videos out of ${STEM}.full.zip` })
+    )
+    await expect.element(zip('full').getByText('videos/', { exact: true })).not.toBeInTheDocument()
+
+    await userEvent.click(dialog().getByRole('button', { name: `Remove ${STEM}.full.zip` }))
+    await expect.element(zip('full')).not.toBeInTheDocument()
   })
 })
 
@@ -143,9 +189,10 @@ describe('uploading a montage — where it goes', () => {
   test('puts an item in a destination, the same one in two, and takes it out again', async () => {
     setSendPlan(DEFAULT_PLAN)
     await renderBoard()
-    await userEvent.click(dialog().getByRole('button', { name: /Next: where it goes/ }))
+    await next()
 
-    await userEvent.selectOptions(dialog().getByLabelText(`Add ${STEM}.mp4 to`), 'Yverdon')
+    await userEvent.selectOptions(dialog().getByLabelText('Add a destination', { exact: true }), 'Yverdon')
+    await dropOn(`${STEM}.mp4`, 'Yverdon')
     await expect.element(place('Yverdon').getByText(`${STEM}.mp4`)).toBeInTheDocument()
     await expect.element(place('Tandems').getByText(`${STEM}.mp4`)).toBeInTheDocument()
     await expect.element(place('Yverdon').getByText('🔗 share link')).toBeInTheDocument()
@@ -154,21 +201,71 @@ describe('uploading a montage — where it goes', () => {
     await expect.element(place('Yverdon').getByText(`${STEM}.mp4`)).not.toBeInTheDocument()
   })
 
+  test('shows only the destinations in use, and adds another when asked', async () => {
+    setSendPlan(DEFAULT_PLAN)
+    await renderBoard()
+    await next()
+
+    await expect.element(place('Tandems')).toBeInTheDocument()
+    await expect.element(place('Yverdon')).not.toBeInTheDocument()
+    await userEvent.selectOptions(dialog().getByLabelText('Add a destination', { exact: true }), 'Yverdon')
+    await expect.element(place('Yverdon').getByText('drop here')).toBeInTheDocument()
+
+    await userEvent.click(dialog().getByRole('button', { name: 'Leave Tandems out of this upload' }))
+    await expect.element(place('Tandems')).not.toBeInTheDocument()
+  })
+
   test('takes an item dragged onto a destination', async () => {
     setSendPlan(DEFAULT_PLAN)
     await renderBoard()
-    await userEvent.click(dialog().getByRole('button', { name: /Next: where it goes/ }))
+    await next()
 
-    await userEvent.dragAndDrop(dialog().getByLabelText(`${STEM}.backup.videos.zip`), place('Yverdon'))
+    await userEvent.selectOptions(dialog().getByLabelText('Add a destination', { exact: true }), 'Yverdon')
+    await dropOn(`${STEM}.full.zip`, 'Yverdon')
 
-    await expect.element(place('Yverdon').getByText(`${STEM}.backup.videos.zip`)).toBeInTheDocument()
+    await expect.element(place('Yverdon').getByText(`${STEM}.full.zip`)).toBeInTheDocument()
+    await expect
+      .element(place('Yverdon').getByLabelText(`Inside ${STEM}.full.zip`).getByText('videos/', { exact: true }))
+      .toBeInTheDocument()
+  })
+
+  test('carries every picked item when one of them is dragged', async () => {
+    setSendPlan(DEFAULT_PLAN)
+    await renderBoard()
+    await next()
+
+    await userEvent.click(dialog().getByLabelText(`Pick ${STEM}.full.zip`))
+    await userEvent.click(dialog().getByLabelText(`Pick ${STEM}.mp4`))
+    await userEvent.selectOptions(dialog().getByLabelText('Add a destination', { exact: true }), 'Yverdon')
+    await dropOn(`${STEM}.mp4`, 'Yverdon')
+
+    await expect.element(place('Yverdon').getByText(`${STEM}.full.zip`)).toBeInTheDocument()
+    await expect.element(place('Yverdon').getByText(`${STEM}.mp4`)).toBeInTheDocument()
+  })
+
+  test('puts the items in the project folder, or straight into the destination’s folder', async () => {
+    setSendPlan(DEFAULT_PLAN)
+    await renderBoard()
+    await next()
+
+    await expect.element(place('Tandems').getByText('luc-favre/', { exact: true })).toBeInTheDocument()
+    await page.screenshot({ path: './playwright-screenshots/upload-dialog-where.png' })
+    await userEvent.click(
+      dialog()
+        .getByRole('group', { name: 'Where in Tandems' })
+        .getByRole('button', { name: 'In the root' })
+    )
+    await expect
+      .element(place('Tandems').getByText('luc-favre/', { exact: true }))
+      .not.toBeInTheDocument()
   })
 
   test('sends the upload, as it was arranged, only from its own button', async () => {
     setSendPlan(DEFAULT_PLAN)
     requests.length = 0
     await renderBoard()
-    await userEvent.click(dialog().getByRole('button', { name: /Next: where it goes/ }))
+    await next()
+    await userEvent.fill(dialog().getByLabelText('Project folder'), 'Boogie 2026')
     expect(requests).toEqual([])
 
     await userEvent.click(dialog().getByRole('button', { name: 'Upload', exact: true }))
@@ -177,8 +274,16 @@ describe('uploading a montage — where it goes', () => {
         intent: 'upload-tandem',
         groupId: 'g1',
         plan: {
-          zip: { parts: ['videos', 'project'], each: false },
-          placed: { zip: ['Backup'], film: ['Tandems'], photos: ['Tandems'] }
+          zips: DEFAULT_PLAN.zips,
+          placed: {
+            'zip:full': ['Backup'],
+            videos: [],
+            photos: ['Tandems'],
+            film: ['Tandems'],
+            project: []
+          },
+          inRoot: [],
+          folder: 'boogie-2026'
         }
       })
     )

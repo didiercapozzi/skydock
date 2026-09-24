@@ -4,7 +4,7 @@ import { PHOTO_LEVEL, VIDEO_LEVEL, writeArchive } from './archive'
 import type { ArchiveProgress } from './archive'
 import type { CheckProgress, UploadProgress, UploadVerdict } from './publish'
 import type { NasSession } from './nas'
-import { sendItems } from './sending'
+import { projectFolderOf, sendItems } from './sending'
 import type { SendItem } from './sending'
 import { filmNameOf, isTandem, tandemArtifacts } from './tandem'
 import type { Manifest, ManifestGroup, SendPart, SendPlan } from './types'
@@ -70,7 +70,7 @@ const verdictIn = (files: UploadVerdict[], localPath: string, remoteDir: string)
   files.find((f) => f.localPath === localPath && f.remotePath.startsWith(`${remoteDir}/`))
 
 /* Everything that happens once the edit is done: the items the plan makes out of the montage, each
-   built once and sent to every destination it was put in, in a folder named after the montage. The
+   built once and sent to every destination it was put in, in its project folder or straight in. The
    manifest is not saved here — the caller owns that, because it runs long enough that the copy
    loaded before it started is stale. */
 const uploadTandem = async ({
@@ -102,19 +102,20 @@ const uploadTandem = async ({
 
   const videos = group.files.filter((f) => isVideoFile(f.path))
   const film = await resolveFilm(artifacts, videos.length > 0)
-  const items = sendItems(group, outputDir, plan.zip, film).filter(
+  const items = sendItems(group, outputDir, plan.zips, film).filter(
     (item) => (plan.placed[item.key] ?? []).length > 0
   )
   if (items.length === 0) throw new Error('Put at least one thing in a destination.')
 
-  /* each destination the plan names, and the folder the montage gets inside it */
-  const folderName = path.basename(artifacts.dir)
+  /* each destination the plan names, and where in it the montage lands: straight in its folder, or
+     in the project folder inside it */
+  const folder = projectFolderOf(group, plan)
   const destinations = [...new Set(items.flatMap((item) => plan.placed[item.key] ?? []))]
   const remoteOf = new Map<string, string>()
   for (const destination of destinations) {
     const base = destBaseOf(destination, manifest)
     if (!base) throw new Error(`Choose a NAS folder for ${destination} first.`)
-    remoteOf.set(destination, `${base}/${folderName}`)
+    remoteOf.set(destination, plan.inRoot?.includes(destination) ? base : `${base}/${folder}`)
   }
 
   /* built once, whatever number of destinations it goes to */
@@ -135,7 +136,7 @@ const uploadTandem = async ({
       )
   }
 
-  /* One target per folder up there: the montage's own folder in each destination, and its videos/
+  /* One target per folder up there: where the montage lands in each destination, and its videos/
      and photos/ inside it for the parts sent as they are. The folder holding the film is the one
      with a share link, which is what is emailed. */
   const targets: UploadTarget[] = destinations.flatMap((destination) => {

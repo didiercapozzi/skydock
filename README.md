@@ -62,10 +62,11 @@ SkyDock prepares the project and opens the editor, and never renders anything it
 needs none of this.
 
 **6. Upload.** A destination's folder goes up whole and comes back with a share link. A montage is
-uploaded in two steps: first tick what to zip — the original videos, the photos, the film, the
-project, into one zip or a zip each — and see exactly what will be sent; then drag each item onto one
-destination or more. The one holding the film gets the share link. Both steps are remembered for the
-next montage. A file counts as uploaded only when both sides agree on its checksum.
+uploaded in two steps: first drag its parts — the original videos, the original photos, the project,
+the montage — onto zips of your own, the same part into several if you like, each zip showing what is
+inside; then drag the zips and the parts onto one destination or more, straight into its folder or
+into the project folder. The one holding the montage gets the share link. The zips and where things
+went are remembered for the next montage. A file counts as uploaded only when both sides agree on its checksum.
 
 **7. Tell them, and get the room back.** A montage's page offers the email — written already, in
 French, with the link, ready to look over before it is sent from Gmail or your own mail program.

@@ -1005,37 +1005,46 @@ Neither touches the originals or the storage, and neither can run while the mont
 ## Uploading a montage
 
 A montage belongs to no destination, so uploading it says where each thing goes. It has four parts to
-send: its **original videos**, its **photos** as prepared, **the film**, and **the editing project**.
-Uploading is two steps, in one dialog, and nothing is sent until its own button is pressed.
+send, each taken whole and never file by file: its **original videos**, its **original photos** as
+prepared, **the montage** itself (the rendered film), and **the kdenlive project**. A part the montage
+does not have — no photos, say — is simply not offered. Uploading is two steps, in one dialog, and
+nothing is sent until its own button is pressed.
 
-**1. What to zip.** Each part can be ticked to go into a zip, and what is ticked goes **into one zip**
-or **into a zip each**; what is not ticked is sent as it is. Beside the choice, what will be sent is
-shown exactly, each item named as it will be and each zip with what is inside it:
+**1. Make the zips.** Each part is dragged onto a zip, and a part
+dropped on the empty space makes a new zip. **The same part can go into several zips**, and each part
+says how many it is in. Every zip shows exactly what is inside it, as it will be laid out: the
+videos under `videos/` and the photos under `photos/`, each with its first files named, and the
+project and the montage at its top. A part can be taken out of a zip, a zip left empty goes, and a zip
+can be removed. Making no zip at all is fine.
 
-| Item                                          | Named                                                                       |
-| --------------------------------------------- | --------------------------------------------------------------------------- |
-| one zip of the videos and the photos          | `<name>_<date>_<time>.backup.full.zip`, with `videos/` and `photos/` inside |
-| one zip of the videos, or a zip each for them | `….backup.videos.zip`, with `videos/` inside                                |
-| the photos alone in a zip                     | `….backup.photos.zip`, with `photos/` inside                                |
-| the film alone in a zip                       | `….backup.film.zip`                                                         |
-| the film as it is                             | `<name>_<date>_<time>.mp4`                                                  |
-| the videos, or the photos, as they are        | their own files, in a `videos/` or `photos/` folder                         |
+A zip is named `<name>_<date>_<time>.<ending>.zip`: the ending is chosen for each zip, made of
+lowercase letters, digits and dashes, and no two zips end the same way. One zip can be given no ending
+at all, and is then `<name>_<date>_<time>.zip`. A new zip ends with the part
+it was started with. The date and the time are when the montage's first jump started. The project
+names the clips where they sat when the edit was made, so from a backup it reopens only with them put
+back there.
 
-The date and the time are when the montage's first jump started. The project goes into whichever zip
-it is ticked with — with the videos when there is a zip each — and at the zip's top, as does the film;
-as it is, it is `<name>_<date>_<time>.kdenlive`. It names the clips where they sat when the edit was
-made, so from a backup it reopens only with them put back there.
+**2. Where it goes.** Every zip, and every part as it is, is listed with its whole name, never cut
+short. Beside them are the destinations something is already in; any other is added with **+ Add a
+destination**, and one can be left out of the upload again, taking out whatever was in it. As they
+are, the videos go as the files of a `videos/` folder, the photos of a `photos/` folder, the montage as
+`<name>_<date>_<time>.mp4` and the project as `<name>_<date>_<time>.kdenlive`. Each is dragged onto one
+destination or more — several at once when they are ticked. **The
+same item can go to several**; it is built once and sent to each. Each destination shows exactly what
+will land in it, as a tree from its folder on the storage, and anything can be taken out again before
+sending.
 
-**2. Where it goes.** The items are listed beside every destination, and each is dragged onto one
-destination or more — or added to one from its own menu. **The same item can go to several**; it is
-built once and sent to each. Everything lands in a folder named after the montage inside the
-destination's folder, and can be taken out again before sending. A destination holding the film gets
-a share link on that folder, which is what is emailed; the others are never shared. An item put
-nowhere stays on this machine, and the dialog says so. A destination without a folder on the storage
-has its folder chosen from there.
+In each destination the items land either **straight in its folder** or **in the project folder**
+inside it. The project folder is one name for the whole upload, made of lowercase letters, digits and
+dashes — what is typed is made into one, so "Boogie 2026" is `boogie-2026` — and starts as the
+montage's name made that way. A destination holding the montage as it is gets a share link on where it
+landed, which is what is emailed; the others are never shared. An item put nowhere stays on this
+machine, and the dialog says so, except a part that goes up inside a zip. A destination without a
+folder on the storage has its folder chosen from there.
 
-Both steps are **remembered on this machine**: the next montage opens zipped the same way, with each
-kind of item already where it went last time.
+What was made is **remembered on this machine**: the next montage opens with the same zips, each item
+where it went last time, and each destination straight in its folder or not. The project folder is
+this montage's own.
 
 **Refusals**, each named: no name; files still to process; no film yet, naming the film looked for; a
 film still being written; nothing put anywhere; a destination with no folder on the storage. A montage

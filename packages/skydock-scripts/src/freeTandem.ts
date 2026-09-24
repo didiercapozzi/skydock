@@ -121,8 +121,8 @@ const proveOnStorage = async (
   /* A zip that says what it holds holds exactly what the plan puts in such a zip, laid out the same
      way — worked out again here from the montage as it stands. */
   const expected = (holds: SendPart[]) =>
-    sendItems(group, outputDir, { parts: holds, each: false }).find((item) => item.zip)?.entries ??
-    []
+    sendItems(group, outputDir, [{ ending: 'check', parts: holds }]).find((item) => item.zip)
+      ?.entries ?? []
 
   /* the originals: inside a zip that holds exactly them and is newer than all of them, or each one
      sent and proved on its own */

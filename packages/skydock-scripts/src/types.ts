@@ -188,13 +188,24 @@ const groupsFileSchema = z.object({
   groups: z.array(manifestGroupSchema.extend({ files: z.array(groupFileRefSchema) }))
 })
 
-/* How a montage goes up, in two steps (RULES, Uploading a montage): what is zipped — into one zip or
-   a zip each, the rest sent as it is — and which destinations each item that comes out of that is
-   put in. An item is named by its key: `zip` for the one zip, `zip:<part>` for a zip each, and the
-   part itself when it goes as it is. The same item can go to several destinations. */
+/* a name made of lowercase letters, digits and single dashes: a zip's ending, a project folder */
+const slugSchema = z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+
+/* How a montage goes up, in two steps (RULES, Uploading a montage): the zips made of its parts, each
+   named by its ending — none at all for one of them — and which destinations each item is put in. An item is named by its key:
+   `zip:<ending>` for a zip, and the part itself when it goes as it is. The same item can go to several
+   destinations, each either straight into its folder or into the project folder inside it. */
 const sendPlanSchema = z.object({
-  zip: z.object({ parts: z.array(sendPartSchema), each: z.boolean() }),
-  placed: z.record(z.string(), z.array(z.string()))
+  zips: z
+    .array(
+      z.object({ ending: slugSchema.or(z.literal('')), parts: z.array(sendPartSchema).min(1) })
+    )
+    .refine((zips) => new Set(zips.map((zip) => zip.ending)).size === zips.length),
+  placed: z.record(z.string(), z.array(z.string())),
+  /* the destinations whose items go straight into their folder rather than the project folder */
+  inRoot: z.array(z.string()).optional(),
+  /* the project folder, when it is not the one named after the montage */
+  folder: slugSchema.optional()
 })
 
 const destinationSchema = z.object({
