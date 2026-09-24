@@ -28,7 +28,7 @@ import {
 import type { FileStatus, FrameCrop, Rotation, TandemEntry } from '@skydock/scripts'
 import { diskSpace } from '../../../packages/skydock-scripts/src/diskSpace'
 import { readTandemIndex } from '../../../packages/skydock-scripts/src/tandemIndex'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet, useNavigate, useParams } from 'react-router'
 import type { ShouldRevalidateFunctionArgs } from 'react-router'
 import { BoardHeader } from '../components/board-header'
@@ -466,6 +466,22 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     }
   })
   const { pickedFiles } = selection
+
+  /* A jump made from picked files is opened as soon as it exists — its card, and with it its panel.
+     Its id is the server's to give, so the board knows it by its first file, once the answer has
+     that file in a jump it was not in before; a move that was refused leaves the file where it was,
+     and nothing opens. */
+  const [makingJump, setMakingJump] = useState<{ file: string; from?: string } | null>(null)
+  const made =
+    makingJump && busy === null
+      ? groups.find((g) => g.files.some((f) => f.id === makingJump.file))
+      : undefined
+  const toOpen = made && made.id !== makingJump?.from ? `jump:${made.id}` : null
+  if (makingJump && busy === null && (toOpen === null || chosenCard === toOpen)) setMakingJump(null)
+  /* the open card is part of the folder's address, and the address is the browser's */
+  useEffect(() => {
+    if (toOpen) look({ card: toOpen })
+  }, [toOpen, look])
 
   /* Files leave their jump and are re-filed server-side, so the answer is the truth. `newGroup`
      gathers them into a jump of their own — what a tandem needs, since the passenger name lives on
@@ -1032,8 +1048,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           backLabel={backLabel(picked)}
           onMakeJump={
             picked.every(inUnsorted)
-              ? (name, startsAt) =>
+              ? (name, startsAt) => {
+                  const first = picked[0]
+                  if (first?.id) setMakingJump({ file: first.id, from: groupOfFile(first)?.id })
                   moveFiles(ids, { destination: null, newGroup: true, name, startsAt })
+                }
               : undefined
           }
           onClear={selection.clear}

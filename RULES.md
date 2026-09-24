@@ -550,7 +550,8 @@ what anybody was reading. The other way round, several files picked in Fresh fil
 taken out of a jump — are made a jump of their own. Making it asks for a name and for when it started,
 since files the gap rule missed are often files off a camera on the wrong clock: the start is filled in
 as shot, and setting it moves every file by the same amount, as correcting any jump's time does. Both
-can be left as they are.
+can be left as they are. The new jump is selected as soon as it is made, its panel open, so whatever
+is done with it next is a single press away.
 
 **Work shown as it happens.** A file being processed, and a clip whose proxy is being made, shows how
 far through it is on the file itself — a bar and a percentage where its status stands, on a row and on
