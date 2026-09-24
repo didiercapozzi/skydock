@@ -55,6 +55,24 @@ const clipsUnder = async (
   return found
 }
 
+/* How many clips are asked about at once: enough that a card is looked over in seconds rather than
+   a minute — each question is a program run — and few enough that the camera is not asked
+   everything together. */
+const ASKED_AT_ONCE = 6
+
+/* How big each clip is and when it was written, asked a few at a time. What a plugging in again
+   costs is almost all this, so it is the part worth not doing one clip after another. */
+const statEach = async (reader: KioReader, clips: { url: string }[]) => {
+  const told: (KioFile | null)[] = []
+  for (let at = 0; at < clips.length; at += ASKED_AT_ONCE)
+    told.push(
+      ...(await Promise.all(
+        clips.slice(at, at + ASKED_AT_ONCE).map((clip) => reader.stat(clip.url))
+      ))
+    )
+  return told
+}
+
 /* What is here already, read once for a whole camera rather than once a clip: every original by the
    name it was filed under, with its size and time. A clip filed as `GOPR0001_2.MP4` because another
    camera had the name first is found under `GOPR0001.MP4` too. */
@@ -113,6 +131,7 @@ const copyOverKio = async ({
   onProgress?: (progress: CopyProgress) => void
 }) => {
   const clips = await clipsUnder(reader, `${camera}/DCIM`)
+  const told = await statEach(reader, clips)
   const here = hereAlready(outputDir)
   const board = manifest ? [...manifest.files, ...manifest.groups.flatMap((g) => g.files)] : []
   const progress: CopyProgress = { done: 0, total: clips.length, copied: 0, skipped: 0 }
@@ -121,8 +140,8 @@ const copyOverKio = async ({
   const incoming = path.join(outputDir, '.incoming')
   fs.mkdirSync(incoming, { recursive: true })
   try {
-    for (const clip of clips) {
-      const said = await reader.stat(clip.url)
+    for (const [at, clip] of clips.entries()) {
+      const said = told[at] ?? null
       if (said && (givenBack(board, clip.name, said.size) || here.find(clip.name, said)))
         progress.skipped++
       else if (await fetchInto(reader, clip, said, incoming, outputDir, here)) progress.copied++
@@ -183,5 +202,6 @@ export {
   hereAlready,
   isKioCamera,
   kioCameraName,
-  kioCameras
+  kioCameras,
+  statEach
 }

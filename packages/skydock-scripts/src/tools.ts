@@ -40,26 +40,30 @@ const stopTools = () => {
 /* what a command prints while it runs, for the one caller that wants to watch */
 type Listening = { stdout?: (text: string) => void; stderr?: (text: string) => void }
 
+/* What a program said and whether it ended well. What it printed is kept either way: some say all
+   they were asked and still end unhappily, and the caller is the one to judge what that is worth. */
 const run = (program: string, args: string[], listening?: Listening) =>
-  new Promise<{ ok: true; stdout: string } | { ok: false; stderr: string }>((resolve) => {
-    const child = childProcess.execFile(
-      program,
-      args,
-      { maxBuffer: 64 * 1024 * 1024, signal: stoppable().getStore() },
-      (error, stdout, stderr) =>
-        resolve(
-          error
-            ? { ok: false, stderr: String(stderr ?? '') }
-            : { ok: true, stdout: String(stdout ?? '') }
-        )
-    )
-    if (child) {
-      runningTools().add(child)
-      child.on('close', () => runningTools().delete(child))
+  new Promise<{ ok: true; stdout: string } | { ok: false; stdout: string; stderr: string }>(
+    (resolve) => {
+      const child = childProcess.execFile(
+        program,
+        args,
+        { maxBuffer: 64 * 1024 * 1024, signal: stoppable().getStore() },
+        (error, stdout, stderr) =>
+          resolve(
+            error
+              ? { ok: false, stdout: String(stdout ?? ''), stderr: String(stderr ?? '') }
+              : { ok: true, stdout: String(stdout ?? '') }
+          )
+      )
+      if (child) {
+        runningTools().add(child)
+        child.on('close', () => runningTools().delete(child))
+      }
+      if (listening?.stdout) child?.stdout?.on('data', (chunk) => listening.stdout?.(String(chunk)))
+      if (listening?.stderr) child?.stderr?.on('data', (chunk) => listening.stderr?.(String(chunk)))
     }
-    if (listening?.stdout) child?.stdout?.on('data', (chunk) => listening.stdout?.(String(chunk)))
-    if (listening?.stderr) child?.stderr?.on('data', (chunk) => listening.stderr?.(String(chunk)))
-  })
+  )
 
 /* Where ffmpeg has got to in what it is writing, in seconds: with `-progress` it prints its
    position about twice a second, several to a chunk when it is fast, so the last one counts. */

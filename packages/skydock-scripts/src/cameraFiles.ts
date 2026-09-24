@@ -13,8 +13,7 @@ import {
 import { alreadyThere, dayFoldersOf, freedAlready } from './copy'
 import { ID_HEX_LENGTH } from './fileId'
 import { kioReader } from './kio'
-import type { KioFile } from './kio'
-import { clipsUnder, givenBack, hereAlready } from './kioCamera'
+import { clipsUnder, givenBack, hereAlready, statEach } from './kioCamera'
 import { findMediaFiles, hashFile, moveFile } from './lib/fs'
 import { loadManifest } from './manifest'
 import { dsmFileMd5 } from './nas'
@@ -195,10 +194,6 @@ const listCamera = async (mount: string, outputDir: string) => {
   }
 }
 
-/* How many questions are put to KDE at once when a camera read through it is listed: enough that a
-   card of clips is listed in seconds, few enough that the camera is not asked everything together. */
-const ASKED_AT_ONCE = 6
-
 /* A camera read through KDE, listed the same way: each clip by where it is on the camera, how big it
    is and when it was written, and how far it has got — judged by the same records as a card's. */
 const listCameraThroughKde = async (camera: string, outputDir: string) => {
@@ -212,13 +207,7 @@ const listCameraThroughKde = async (camera: string, outputDir: string) => {
       files: []
     }
   const clips = await clipsUnder(reader, `${camera}/DCIM`)
-  const said: (KioFile | null)[] = []
-  for (let at = 0; at < clips.length; at += ASKED_AT_ONCE)
-    said.push(
-      ...(await Promise.all(
-        clips.slice(at, at + ASKED_AT_ONCE).map((clip) => reader.stat(clip.url))
-      ))
-    )
+  const said = await statEach(reader, clips)
   const here = hereAlready(outputDir)
   const manifest = loadManifest(getManifestPath(outputDir))
   const listed: CameraFile[] = clips.map((clip, at) => {

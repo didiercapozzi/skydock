@@ -48,7 +48,7 @@ const BoardHeader = ({
   onTemplates: () => void
   proxies: { ready: number; waiting: number; total: number }
   /* a camera plugged in and being copied off, while it is */
-  camera?: { camera: string; done: number; total: number; copied: number } | null
+  camera?: { camera: string; done: number; total: number; copied: number; skipped: number } | null
   /* the room left on the output folder's disk; said only once it runs low */
   disk?: { free: number; level: 'ok' | 'low' | 'full' } | null
   nas: { connected: boolean; host: string | null; user: string | null; links: NasLink[] }
@@ -117,6 +117,15 @@ const BoardHeader = ({
             <span className='font-mono text-[11.5px] text-ink-2 tabular-nums'>
               {camera.done}/{camera.total}
             </span>
+            {/* A camera plugged in again goes through every file on it, and a file already here
+                costs a look and not a copy. Said as it goes, so that looking over a card is never
+                taken for copying all of it again. */}
+            {camera.skipped > 0 && (
+              <span className='text-[11.5px] text-ink-3'>
+                {camera.copied > 0 ? `${camera.copied} new · ` : ''}
+                {camera.skipped} here already
+              </span>
+            )}
           </span>
         )}
         {/* Only while some clip is still without one. They are built behind whatever asked for

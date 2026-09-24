@@ -73,10 +73,9 @@ const readerFor = (program: string): KioReader => {
       const said = await ask(['ls', url])
       return said.ok ? namesIn(said.stdout) : []
     },
-    stat: async (url) => {
-      const said = await ask(['stat', url])
-      return said.ok ? fileIn(said.stdout) : null
-    },
+    /* Read whatever it ends with: an answer that says how big the file is is taken for what it
+       says. Thrown away, it would cost a clip fetched whole again only to find it was here. */
+    stat: async (url) => fileIn((await ask(['stat', url])).stdout),
     copy: async (url, to) => (await ask(['copy', url, path.resolve(to)])).ok
   }
 }

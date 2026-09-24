@@ -120,7 +120,9 @@ anything is fetched, so plugging the camera in again reads almost nothing. A cam
 slower than the same card in a reader, since nothing can be read ahead, and that is said where it is
 plugged in and on its page, because a camera that is merely slow and a camera that is stuck look alike.
 A desktop that neither makes a folder nor is KDE leaves such a camera unseen, and its card has to go in
-a reader. The header shows the copy file by file, and the board
+a reader. The header shows the copy file by file, and as it goes how many
+were here already — a camera plugged in again is looked over file by file, and a file already here
+costs a look and not a copy, so the looking must not be mistaken for copying it all again. The board
 says what came off once it is done: how many new files and how many already there. A camera is copied
 once for each time it is plugged in; one unplugged half way keeps what was copied whole, and plugging
 it in again copies the rest. Only one camera is copied at a time, in the order they came. A drive

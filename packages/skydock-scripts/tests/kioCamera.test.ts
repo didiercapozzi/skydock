@@ -4,7 +4,7 @@ import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { askKde, cameraName, lookForCameras, overMtp } from '../src/cameraWatch'
 import { CameraGone } from '../src/copy'
-import { fileIn, namesIn } from '../src/kio'
+import { fileIn, namesIn, readerFor } from '../src/kio'
 import type { KioReader } from '../src/kio'
 import { copyOverKio, kioCameras } from '../src/kioCamera'
 import { createTmpDir } from './fixtures'
@@ -120,6 +120,26 @@ describe('what kioclient says', () => {
     ].join('\n')
 
     expect(fileIn(gopro)).toEqual({ size: 2118308, mtime: null })
+  })
+
+  /* an answer that says how big a file is counts, however the program ends: thrown away, it would
+     cost a clip fetched whole again only to be found here already */
+  it('is taken at its word even when it ends unhappily', async () => {
+    const program = path.join(device, 'kioclient')
+    fs.writeFileSync(
+      program,
+      [
+        '#!/bin/sh',
+        "printf 'NAME  G0062266.JPG\\nSIZE  2118308\\nMODIFICATION_TIME  Thu Jan 1 01:00:00 1970\\n'",
+        'exit 1'
+      ].join('\n')
+    )
+    fs.chmodSync(program, 0o755)
+
+    expect(await readerFor(program).stat('mtp:/HERO5 Black/x/G0062266.JPG')).toEqual({
+      size: 2118308,
+      mtime: null
+    })
   })
 
   it('knows nothing of a file it cannot find a size for', () => {
