@@ -1,5 +1,6 @@
 import * as childProcess from 'node:child_process'
 import { hasCommand } from './utils'
+import { messageOf } from './lib/words'
 
 /* Starting something on the machine around SkyDock — the editor with a project, the player with a
    clip. It is the one thing SkyDock does outside its own folder, so it is kept in one place and
@@ -94,7 +95,7 @@ const startDetached = (parts: string[], target: string, command: string, setting
         stdio: ['ignore', 'ignore', 'pipe']
       })
     } catch (e) {
-      resolve({ opened: false, command, reason: e instanceof Error ? e.message : String(e) })
+      resolve({ opened: false, command, reason: messageOf(e) })
       return
     }
 

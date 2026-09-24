@@ -8,30 +8,20 @@ import {
   ensureNasSession,
   loadNasSession,
   loginWithSession,
-  needsCode,
-  updateNasFolder
+  needsCode
 } from '@skydock/scripts'
 import { z } from 'zod'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 
 const actionArgs = z.object({
-  intent: z.enum([
-    'status',
-    'connect',
-    'disconnect',
-    'list-folder',
-    'create-folder',
-    'select-folder'
-  ]),
+  intent: z.enum(['status', 'connect', 'disconnect', 'list-folder', 'create-folder']),
   host: z.string().optional(),
   user: z.string().optional(),
   password: z.string().optional(),
   /* the 6-digit code of an account with 2-step verification, once the storage has asked for it */
   otp: z.string().optional(),
   path: z.string().optional(),
-  name: z.string().optional(),
-  /* which folder is being chosen: where uploads go, or where the original videos are kept */
-  kind: z.enum(['default', 'backup']).optional()
+  name: z.string().optional()
 })
 
 const action = createValidatedFormAction()({
@@ -139,25 +129,6 @@ const action = createValidatedFormAction()({
         errors.addGlobalError(err instanceof Error ? err.message : 'Failed to create folder.')
         return errors.toResponse(422)
       }
-    }
-
-    if (data.intent === 'select-folder') {
-      if (!data.path) {
-        errors.addGlobalError('Folder path required.')
-        return errors.toResponse(422)
-      }
-      const session = await ensureNasSession()
-      if (!session) {
-        const raw = loadNasSession()
-        if (raw) {
-          errors.addGlobalError('Session expired. Please reconnect.')
-          return errors.toResponse(401)
-        }
-        errors.addGlobalError('Not connected.')
-        return errors.toResponse(401)
-      }
-      updateNasFolder(data.path)
-      return { connected: true as const, backupFolder: loadNasSession()?.backupFolder ?? null }
     }
 
     errors.addGlobalError('Unknown intent.')

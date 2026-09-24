@@ -10,8 +10,7 @@ import {
   loginWithSession,
   needsCode,
   refreshStoredSession,
-  saveNasSession,
-  updateNasFolder
+  saveNasSession
 } from '../src/nas'
 import type { DsmConfig } from '../src/nas'
 
@@ -41,13 +40,6 @@ afterEach(() => {
 })
 
 describe('the storage session', () => {
-  /* the one folder the session keeps: every place of work keeps its own with the place */
-  it('remembers the backup folder the originals are kept in', () => {
-    saveNasSession({ hostname: 'https://nas.local', username: 'u', sessionId: 'sid' }, tmpDir)
-    updateNasFolder('/SkyDock/Rushes', tmpDir)
-    expect(loadNasSession(tmpDir)?.backupFolder).toBe('/SkyDock/Rushes')
-  })
-
   it('is used again while the storage still takes it', async () => {
     saveNasSession({ hostname: 'https://nas.local', username: 'u', sessionId: 'kept' }, tmpDir)
     dsm.validate.mockResolvedValue(true)

@@ -7,8 +7,7 @@ import type { CheckedListing } from './useBoardState'
 const nasSuccessSchema = z.object({
   connected: z.boolean(),
   hostname: z.string().optional(),
-  username: z.string().optional(),
-  backupFolder: z.string().nullish()
+  username: z.string().optional()
 })
 
 const nasErrorSchema = z
@@ -34,7 +33,6 @@ type NasLoaded = {
     connected: boolean
     hostname: string | null
     username: string | null
-    backupFolder: string | null
   }
   remote: CheckedListing | null
 }
@@ -53,7 +51,6 @@ const useNas = (loaded: NasLoaded, remoteAfterUpload: CheckedListing | null) => 
   const host = answer.success ? (answer.data.hostname ?? null) : loaded.nas.hostname
   /* who the storage was connected as — its own login asks for it, so the board says which it got */
   const user = answer.success ? (answer.data.username ?? null) : loaded.nas.username
-  const backupFolder = answer.success ? (answer.data.backupFolder ?? null) : loaded.nas.backupFolder
   const refused = nasErrorSchema.safeParse(nasFetcher.data)
   const error = !answer.success && refused.success ? refused.data.globalErrors?.[0] : undefined
   const codeAsked = !answer.success && refused.success ? refused.data.fieldErrors?.otp : undefined
@@ -69,9 +66,6 @@ const useNas = (loaded: NasLoaded, remoteAfterUpload: CheckedListing | null) => 
     })
   const disconnect = () =>
     nasFetcher.submit({ url: '/api/nas', actionArgs: { intent: 'disconnect' } })
-  /* the two session folders — where uploads go and where the originals are kept */
-  const selectFolder = (path: string, kind: 'default' | 'backup') =>
-    nasFetcher.submit({ url: '/api/nas', actionArgs: { intent: 'select-folder', path, kind } })
 
   /* Only a listing that came back may demote a file; a NAS that was never asked, or that failed,
      leaves every proven upload alone (RULES, File status). The loader took the first look; an
@@ -87,14 +81,12 @@ const useNas = (loaded: NasLoaded, remoteAfterUpload: CheckedListing | null) => 
     connected,
     host,
     user,
-    backupFolder,
     error,
     codeAsked,
     connectSucceeded,
     markDialogOpened,
     connect,
     disconnect,
-    selectFolder,
     remote,
     remoteCheckedAt: newest?.at ?? null,
     checking: remoteFetcher.state !== 'idle',

@@ -25,26 +25,6 @@ const findMediaFiles = (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH) => {
   return results
 }
 
-const hasMediaFiles = (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH) => {
-  const search = (currentDir: string, depth: number) => {
-    if (depth > maxDepth) return false
-    try {
-      const entries = fs.readdirSync(currentDir, { withFileTypes: true })
-      for (const entry of entries) {
-        if (entry.isFile() && isMediaName(entry.name)) return true
-      }
-      for (const entry of entries) {
-        if (entry.isDirectory() && search(path.join(currentDir, entry.name), depth + 1)) {
-          return true
-        }
-      }
-    } catch {}
-    return false
-  }
-
-  return search(dir, 0)
-}
-
 /* Whether two files hold the same bytes, read a block at a time and given up on at the first
    difference — the whole of it only when they really are the same. Read here rather than asked of
    another program: it is the same work, and it needs nothing installed. */
@@ -180,7 +160,6 @@ export {
   fileMatchesExisting,
   findMediaFiles,
   hashFile,
-  hasMediaFiles,
   moveFile,
   sameBytes,
   walkFiles,

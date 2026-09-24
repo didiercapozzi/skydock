@@ -9,6 +9,7 @@ import { freshIds } from '../../../../packages/skydock-scripts/src/clustering'
 import { copyIntoMontage, moveFiles } from '../../../../packages/skydock-scripts/src/moveFiles'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
+import { messageOf } from '@skydock/scripts'
 
 /* Picked files, or a whole jump, made a montage under one name (RULES, Making a montage). Whether
    they move or are copied is not the person's to decide: files still in Fresh files belong nowhere
@@ -55,7 +56,7 @@ const makeMontageIntent: Intent = ({
     saveManifest(manifestPath, manifest)
     return { ...boardAnswer(manifest), copied: { files: copied, passedOver } }
   } catch (e) {
-    return refuse(e instanceof Error ? e.message : String(e))
+    return refuse(messageOf(e))
   }
 }
 

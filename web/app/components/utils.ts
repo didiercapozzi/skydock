@@ -38,12 +38,6 @@ const shortDate = (epoch: number) => {
   return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}`
 }
 
-/* the calendar day an instant falls on, for asking whether two of them are the same day */
-const calendarDay = (epoch: number) => {
-  const d = new Date(epoch * 1000)
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
-}
-
 const pad = (n: number) => String(n).padStart(2, '0')
 
 /* hours and minutes, for when something happened */
@@ -142,7 +136,6 @@ export {
   localeDate,
   pad,
   plural,
-  calendarDay,
   clock,
   dateLabel,
   shortDate,

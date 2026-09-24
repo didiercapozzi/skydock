@@ -8,6 +8,7 @@ import type { SeenClip } from './kioCamera'
 import { publish } from './live'
 import { buildMissingProxies } from './proxy'
 import { scanMedia } from './scan'
+import { messageOf } from './lib/words'
 
 /* A camera plugged in is copied off on its own. The machine mounts its card like any drive; while the
    board's server runs, the mounted drives are looked at every couple of seconds, and one that has
@@ -222,7 +223,7 @@ const copyNext = async (outputDir: string) => {
       camera,
       state: gone ? 'gone' : 'failed',
       ...last,
-      reason: e instanceof Error ? e.message : String(e)
+      reason: messageOf(e)
     })
   } finally {
     state.copying = false

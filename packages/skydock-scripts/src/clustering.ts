@@ -2,6 +2,7 @@ import { GROUP_GAP_SECONDS } from './constants'
 import { isFiled } from './filed'
 import type { Manifest, ManifestFile, ManifestGroup } from './types'
 import { formatDay, sortFilesByMtime } from './utils'
+import { idsOf } from './lib/words'
 
 /* The rule that makes a jump: files in capture order, cut wherever the gap from one file to the
    *next* reaches GROUP_GAP_SECONDS. The gap is measured between neighbours, never from the first
@@ -218,7 +219,7 @@ const shiftGroupTo = (manifest: Manifest, group: ManifestGroup, anchorEpoch: num
   if (group.files.length === 0) return
   const offset = Math.round(anchorEpoch) - startOfFiles(group.files)
   if (offset === 0) return
-  shiftFiles(manifest, new Set(group.files.flatMap((f) => (f.id ? [f.id] : []))), offset)
+  shiftFiles(manifest, new Set(idsOf(group.files)), offset)
 }
 
 /* One file put right on its own — a clip from a second camera on another clock, a photo off a phone

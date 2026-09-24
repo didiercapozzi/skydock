@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Modifiers } from '../components/file-list'
 import type { ManifestFile } from '../components/types'
 import { typingInField } from '../helpers/keys'
+import { idsOf } from '@skydock/scripts'
 
 /* How long after a click a second one on the same file is the same gesture. The two are paired here
    rather than listened for as a double-click, because a file can also be dragged and the engine the
@@ -69,7 +70,6 @@ const useSelection = ({
     if (file.id) togglePick(file.id)
   }
 
-  const idsOf = (files: ManifestFile[]) => files.flatMap((f) => (f.id ? [f.id] : []))
   const pickableOf = (ids: string[]) => ids.filter(pickable)
 
   const rangeTo = (id: string, within: string[]) => {

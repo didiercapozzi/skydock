@@ -5,6 +5,7 @@ import { getProxyPath } from './proxy'
 import { isFiled } from './filed'
 import type { Manifest } from './types'
 import { getTrashDir } from './utils'
+import { idsOf } from './lib/words'
 
 /* Files nobody wants — a test shot, footage of the ground — are put in the bin rather than deleted
    (RULES, Putting files in the bin). Only from Unsorted: a file that has been filed somewhere is
@@ -18,9 +19,7 @@ const trashUnsorted = async (
   outputDir: string,
   trashDir = getTrashDir()
 ) => {
-  const filed = new Set(
-    manifest.groups.filter(isFiled).flatMap((g) => g.files.flatMap((f) => (f.id ? [f.id] : [])))
-  )
+  const filed = new Set(manifest.groups.filter(isFiled).flatMap((g) => idsOf(g.files)))
   const going = manifest.files.filter((f) => f.id && ids.has(f.id))
   if (going.length === 0) throw new Error('Those files are no longer on the board.')
   if (going.some((f) => f.destination || filed.has(f.id ?? '')))

@@ -11,6 +11,7 @@ import { entryOfTandem, upsert } from '../../../../packages/skydock-scripts/src/
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 import { recordOnStorage } from './storage'
+import { messageOf } from '@skydock/scripts'
 
 /* Delete a tandem from this machine, once the storage is proved to hold all of it (RULES, Freeing
    space). The proof is the storage's own checksum, so it has to be reachable. */
@@ -42,7 +43,7 @@ const freeTandemIntent: Intent = async ({ data, manifest, manifestPath, outputDi
       freed: { bytes: result.bytes, files: result.fileIds.length, groupId: result.groupId }
     }
   } catch (e) {
-    return refuse(e instanceof Error ? e.message : String(e))
+    return refuse(messageOf(e))
   }
 }
 

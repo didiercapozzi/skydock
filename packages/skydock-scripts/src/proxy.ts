@@ -15,6 +15,7 @@ import {
   hasCommand,
   isVideoFile
 } from './utils'
+import { messageOf } from './lib/words'
 
 /* A proxy is a small, all-intra copy of a clip. It exists twice over: the editor opens on proxies
    instead of transcoding every GoPro clip itself, which is the longest wait in the whole flow, and
@@ -273,7 +274,7 @@ const buildProxy = async (
       fs.renameSync(partial, dest)
       return { ok: true as const }
     } catch (e) {
-      return { ok: false as const, reason: e instanceof Error ? e.message : String(e) }
+      return { ok: false as const, reason: messageOf(e) }
     }
   }
   if (fs.existsSync(partial)) fs.unlinkSync(partial)
@@ -314,13 +315,6 @@ const cropProxy = (
   } catch {
     return false
   }
-}
-
-/* What a proxy is of, so a stale one is not mistaken for a current one: the clip's own bytes never
-   change, but a file replaced on disk keeps its path and takes a new content id. */
-const proxyIsCurrent = (file: ManifestFile, outputDir?: string) => {
-  const proxyPath = getProxyPath(file, outputDir)
-  return !!proxyPath && fs.existsSync(proxyPath)
 }
 
 /* a freed clip is on the storage only — there is nothing here to make a small copy of */
@@ -492,7 +486,7 @@ const resumeProxies = (outputDir?: string) => {
     for (const name of fs.readdirSync(dir))
       if (name.endsWith('.part')) fs.rmSync(path.join(dir, name), { force: true })
   void buildMissingProxies(outputDir).catch((e: unknown) => {
-    console.error('[Proxy] resuming failed:', e instanceof Error ? e.message : String(e))
+    console.error('[Proxy] resuming failed:', messageOf(e))
   })
 }
 
@@ -546,7 +540,6 @@ export {
   getProxyDir,
   getProxyPath,
   needsProxy,
-  proxyIsCurrent,
   PROXY_MIN_WIDTH,
   PROXY_WIDTH,
   statProxies

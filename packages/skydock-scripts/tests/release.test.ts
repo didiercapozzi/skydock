@@ -2,14 +2,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { describe, it, expect } from 'vitest'
-import {
-  nextVersion,
-  tagOf,
-  versionIn,
-  versionOfTag,
-  versionedFiles,
-  withVersion
-} from '../src/release'
+import { nextVersion, tagOf, versionIn, versionedFiles, withVersion } from '../src/release'
 
 /* A release is a version moved where the app says which one it is, and a tag that agrees with it.
    What is worth testing is the two ways that goes wrong: a version moved to something that is not
@@ -74,6 +67,5 @@ describe('the file that says which version this is', () => {
 describe('the tag a release is made under', () => {
   it('is the version with a v in front, which is what the build checks the app against', () => {
     expect(tagOf('1.2.3')).toBe('v1.2.3')
-    expect(versionOfTag('v1.2.3')).toBe('1.2.3')
   })
 })

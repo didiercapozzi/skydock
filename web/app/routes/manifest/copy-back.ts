@@ -2,6 +2,7 @@ import { loadManifest, scanMedia } from '@skydock/scripts'
 import { copyBack } from '../../../../packages/skydock-scripts/src/copy'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
+import { messageOf } from '@skydock/scripts'
 
 /* Files this machine gave back, asked for again from the card they are still on.
 
@@ -20,7 +21,7 @@ const copyBackIntent: Intent = async ({ data, manifestPath, outputDir, refuse })
     if (!after) return refuse('The registry could not be read after copying.')
     return { ...boardAnswer(after), copiedBack: { copied: back.copied, skipped: back.skipped } }
   } catch (e) {
-    return refuse(e instanceof Error ? e.message : String(e))
+    return refuse(messageOf(e))
   }
 }
 

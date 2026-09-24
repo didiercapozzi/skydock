@@ -14,6 +14,7 @@ import {
 } from '../../../packages/skydock-scripts/src/templates'
 import type { Arriving } from '../../../packages/skydock-scripts/src/templates'
 import type { Route } from './+types/api.templates'
+import { messageOf } from '@skydock/scripts'
 
 /* The editing templates this machine has — which kdenlive wrote each, whether every file it names
    is here, which one is the usual — for choosing one and for being warned (RULES, The editing project). Read
@@ -69,10 +70,7 @@ const action = async ({ request }: Route.ActionArgs) => {
     const template = await importTemplate({ outputDir, files: arrived, name: said.data.name })
     return Response.json({ ok: true, template, ...listTemplates(outputDir) })
   } catch (e) {
-    return Response.json(
-      { ok: false, error: e instanceof Error ? e.message : String(e) },
-      { status: 422 }
-    )
+    return Response.json({ ok: false, error: messageOf(e) }, { status: 422 })
   } finally {
     for (const file of arrived) fs.rmSync(file.at, { force: true })
   }

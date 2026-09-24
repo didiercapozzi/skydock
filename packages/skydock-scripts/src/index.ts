@@ -14,9 +14,7 @@ import type {
   TandemFact
 } from './boardAnswer'
 import {
-  groupFromFiles,
   offGap,
-  reclusterGroups,
   regroupLooseFiles,
   retimeFile,
   shiftFiles,
@@ -29,18 +27,15 @@ import { forgetLostFiles } from './forgetLost'
 import { learnStorage } from './originIndex'
 import { freeablePlace } from './freeable'
 import { jsonText } from './lib/json'
+import { idsOf, messageOf } from './lib/words'
 /* arithmetic only — the board draws the rectangle with the same functions processing cuts it with,
    because two ideas of "which pixels" would disagree and the disagreement would be invisible */
 import {
   containCrop,
-  cropFilter,
   cropToPixels,
   fitRatio,
-  FULL_FRAME,
   isQuarterTurn,
   isWholeFrame,
-  pictureFilter,
-  ROTATIONS,
   turnBy,
   turnedSize,
   withRatio
@@ -61,17 +56,14 @@ import {
   loginWithSession,
   needsCode,
   removeShareLink,
-  shareLinkFor,
-  updateNasFolder
+  shareLinkFor
 } from './nas'
 import {
-  dayInFrench,
   defaultPassengerEmail,
   gmailComposeUrl,
   mailtoUrl,
   renderPassengerEmail
 } from './passengerEmail'
-import type { PassengerEmail } from './passengerEmail'
 import { liveEventSchema, publish, subscribe } from './live'
 import type { LiveEvent } from './live'
 import { lastSegment, parentOf } from './paths'
@@ -82,14 +74,13 @@ import {
   processJumps,
   whenProcessed
 } from './process'
-import { cutFrom, jumpMoments, RUN_UP } from './jumpMoments'
+import { cutFrom } from './jumpMoments'
 import { MOMENTS, nameOfMoment } from './moments'
 import type { Moment } from './moments'
 import { jumpTrack } from './jumpTrack'
 import { statProxies } from './proxy'
 import { rememberOutputDir, resolveOutputDir } from './settings'
 import { stopTools } from './tools'
-import { keepProject, keptProjectsDir } from './projectHistory'
 import { scanMedia } from './scan'
 import {
   EDIT_LOCKED,
@@ -97,24 +88,19 @@ import {
   frozenTandems,
   hasEdit,
   isTandem,
-  photosNameOf,
-  rushesNameOf,
   sameEditedGroup,
   statTandemArtifacts
 } from './tandem'
-import { DEFAULT_PLAN, itemsFrom, PARTS, planOf, sendItems, stemOf } from './sending'
+import { DEFAULT_PLAN, itemsFrom, PARTS, planOf, stemOf } from './sending'
 import type { PartFile, SendItem } from './sending'
 import { watchTandems } from './tandemWatch'
-import { furthestBehind, TANDEM_STEPS, tandemSteps } from './tandemSteps'
-import type { TandemProgress, TandemStep } from './tandemSteps'
-import { tandemEntrySchema, tandemIndexSchema } from './tandemEntry'
+import { furthestBehind, tandemSteps } from './tandemSteps'
+import type { TandemProgress } from './tandemSteps'
 import { folderOfUpload } from './tandemIndex'
-import type { TandemEntry, TandemIndex } from './tandemEntry'
+import type { TandemEntry } from './tandemEntry'
 import {
   destinationSchema,
-  sendPartSchema,
   sendPlanSchema,
-  frameCropSchema,
   jumpTrackSchema,
   manifestFileSchema,
   manifestGroupSchema
@@ -150,28 +136,26 @@ import {
 import type { UploadProgressState } from './uploadProgress'
 import { ffmpegPath, getOutputDir, isoDay, isVideoFile } from './utils'
 import {
-  buildGroupBaseName,
   buildPassengerFolder,
   hasCompletePassenger,
   mergeGroups,
   montageCalled,
   passengerFrom,
   passengerName,
-  passengerOf,
-  MONTAGES_FOLDER
+  passengerOf
 } from './workspace'
 import { isFiled, isMontage } from './filed'
 
 export {
   cutFrom,
-  jumpMoments,
   jumpTrack,
-  RUN_UP,
   rememberOutputDir,
   stopTools,
   resolveOutputDir,
   freeablePlace,
   jsonText,
+  idsOf,
+  messageOf,
   startOfFiles,
   outputKeyOf,
   watchTandems,
@@ -179,30 +163,23 @@ export {
   publish,
   subscribe,
   furthestBehind,
-  TANDEM_STEPS,
   isFiled,
   isMontage,
-  MONTAGES_FOLDER,
   folderOfUpload,
   tandemSteps,
-  sendPartSchema,
   sendPlanSchema,
   DEFAULT_PLAN,
   itemsFrom,
   PARTS,
   planOf,
-  sendItems,
   stemOf,
   boardAnswerSchema,
-  buildGroupBaseName,
   buildPassengerFolder,
   clearNasSession,
   clearUploadProgress,
   containCrop,
   createShareLink,
-  cropFilter,
   cropToPixels,
-  dayInFrench,
   defaultPassengerEmail,
   destinationSchema,
   dsmCreateFolder,
@@ -217,15 +194,12 @@ export {
   filmNameOf,
   fitRatio,
   forgetLostFiles,
-  frameCropSchema,
   frozenTandems,
-  FULL_FRAME,
   getGroupProcessedDir,
   ffmpegPath,
   getOutputDir,
   gmailComposeUrl,
   goneFromStorage,
-  groupFromFiles,
   groupsInScope,
   hasCompletePassenger,
   hasEdit,
@@ -256,22 +230,15 @@ export {
   passengerFrom,
   passengerName,
   passengerOf,
-  photosNameOf,
-  pictureFilter,
   cancelProcessing,
   processingNow,
   processJumps,
   readUploadProgress,
-  reclusterGroups,
   regroupLooseFiles,
   removeShareLink,
   renderPassengerEmail,
-  ROTATIONS,
-  rushesNameOf,
   sameEditedGroup,
   saveManifest,
-  keepProject,
-  keptProjectsDir,
   scanMedia,
   scopeKey,
   shareLinkFor,
@@ -282,14 +249,11 @@ export {
   statProcessedOutputs,
   statProxies,
   statTandemArtifacts,
-  tandemEntrySchema,
-  tandemIndexSchema,
   earlierTandemsDir,
   tandemsRemoteDir,
   tandemUploadKey,
   turnBy,
   turnedSize,
-  updateNasFolder,
   uploadGate,
   UPLOADED_LOCKED,
   uploadProgressStateSchema,
@@ -301,7 +265,6 @@ export {
 export type {
   LiveEvent,
   TandemProgress,
-  TandemStep,
   PartFile,
   SendItem,
   SendPart,
@@ -319,7 +282,6 @@ export type {
   Moment,
   MontageNote,
   OutputFact,
-  PassengerEmail,
   ProxyFact,
   RemoteListing,
   Rotation,
@@ -327,6 +289,5 @@ export type {
   StatusContext,
   TandemEntry,
   TandemFact,
-  TandemIndex,
   UploadProgressState
 }

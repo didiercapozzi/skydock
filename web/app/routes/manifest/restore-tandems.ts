@@ -8,6 +8,7 @@ import { restoreTandems } from '../../../../packages/skydock-scripts/src/restore
 import { readTandemIndex } from '../../../../packages/skydock-scripts/src/tandemIndex'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
+import { messageOf } from '@skydock/scripts'
 
 /* Tandems the storage's list names are put back on a board that has forgotten them: their files
    gathered again under the passenger's name, at the times they had (RULES, The storage's list of
@@ -22,7 +23,7 @@ const restoreTandemsIntent: Intent = async ({ data, manifest, manifestPath, refu
   try {
     listed = (await readTandemIndex(session, dir, earlierTandemsDir(manifest))).tandems
   } catch (e) {
-    return refuse(e instanceof Error ? e.message : String(e))
+    return refuse(messageOf(e))
   }
   const asked = data.folders ? listed.filter((t) => data.folders?.includes(t.folder)) : listed
   const restored = restoreTandems(manifest, asked)

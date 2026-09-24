@@ -65,7 +65,7 @@ describe('connecting to the storage', () => {
     expect(loadSessionFile()).toMatchObject({ sessionId: 'sid-2fa', deviceId: 'trusted' })
   })
 
-  it('keeps the session, and the backup folder when connecting again', async () => {
+  it('keeps the session, and a backup folder chosen before, when connecting again', async () => {
     stubFetch((url) => {
       if (url.includes('method=login'))
         return jsonResponse({ success: true, data: { sid: 'sid-1' } })
@@ -92,14 +92,11 @@ describe('connecting to the storage', () => {
       sessionId: 'sid-1'
     })
 
-    const selectReq = new Request('http://localhost/api/nas', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ intent: 'select-folder', path: '/video' })
-    })
-    const selectRes = (await action({ request: selectReq })) as unknown as Record<string, unknown>
-    expect((selectRes as { backupFolder?: string }).backupFolder).toBe('/video')
-    expect(loadSessionFile()?.backupFolder).toBe('/video')
+    /* a backup folder an older board chose, kept until it is made a destination */
+    fs.writeFileSync(
+      path.join(tmpDir, 'nas.json'),
+      JSON.stringify({ ...loadSessionFile(), backupFolder: '/video' })
+    )
 
     stubFetch((url) => {
       if (url.includes('method=list_share')) return jsonResponse({ success: false })

@@ -33,7 +33,6 @@ const showIntent = (e: React.DragEvent) => {
 const useDragAndDrop = ({
   groups,
   frozen,
-  pickedFiles,
   moveFiles,
   assign,
   toMontage,
@@ -41,7 +40,6 @@ const useDragAndDrop = ({
 }: {
   groups: ManifestGroup[]
   frozen: Set<string>
-  pickedFiles: string[]
   moveFiles: (ids: string[], where: Move) => void
   assign: (ids: string[], destination: string | null) => void
   /* jumps made a montage: joining a named one, or waiting for a name */
@@ -70,11 +68,12 @@ const useDragAndDrop = ({
     setDragged([groupId])
   }
 
-  const startFileDrag = (file: ManifestFile, e?: React.DragEvent) => {
+  /* the file, and the picks with it when it is one of them: they travel together */
+  const startFileDrag = (file: ManifestFile, picked: string[], e?: React.DragEvent) => {
     if (!file.id) return
     /* a thumbnail sits inside a draggable jump card — only the file must travel */
     e?.stopPropagation()
-    const travelling = pickedFiles.includes(file.id) ? pickedFiles : [file.id]
+    const travelling = picked.includes(file.id) ? picked : [file.id]
     carrying(e, travelling.length > 1 ? `${travelling.length} files` : file.filename)
     setDragged([])
     setDraggedFiles(travelling)

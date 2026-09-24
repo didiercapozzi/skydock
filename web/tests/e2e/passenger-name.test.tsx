@@ -1,9 +1,11 @@
 import { createElement } from 'react'
+import { createRoutesStub } from 'react-router'
 import { describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 
-import { PassengerCard, PassengerName } from '../../app/components/tandem-card'
+import { JumpPanel } from '../../app/components/inspector'
+import { PassengerName } from '../../app/components/tandem-card'
 import type { ManifestGroup } from '../../app/components/types'
 
 /* A montage is named once, by one name — a person, an event — and that name is its folder. It is
@@ -63,10 +65,10 @@ describe('naming a montage', () => {
   })
 })
 
-/* A name is read off a form or a face, so a card that offers only a pair of counts is asking
-   somebody to remember what they saw on another screen. And a name read wrong has to be
-   changeable: it is the montage's folder. */
-describe('the card a montage is named on', () => {
+/* A name is read off a form or a face, so the montage's panel shows a few frames beside the name.
+   And a name read wrong has to be changeable: it is the montage's folder, and changing it says what
+   that costs. */
+describe('the panel a montage is named on', () => {
   const withFiles = (passenger?: { firstname: string; lastname: string }): ManifestGroup => ({
     id: 'g1',
     label: 'jump',
@@ -79,69 +81,64 @@ describe('the card a montage is named on', () => {
     ]
   })
 
-  const renderCard = async (group: ManifestGroup, naming = false) => {
-    const onRename = vi.fn()
+  const renderPanel = async (group: ManifestGroup) => {
     const onName = vi.fn()
-    await render(
-      createElement(PassengerCard, {
-        group,
-        who: group.passenger
-          ? `${group.passenger.firstname} ${group.passenger.lastname}`.trim()
-          : '',
-        naming,
-        dropTarget: {},
-        onOpen: vi.fn(),
-        onRename,
-        onName
-      })
-    )
-    return { onRename, onName }
+    const Stub = createRoutesStub([
+      {
+        path: '/',
+        Component: () =>
+          createElement(JumpPanel, {
+            group,
+            label: 'jump',
+            emailed: false,
+            locked: null,
+            statusOf: () => 'local' as const,
+            passengers: [],
+            onMakeTandem: () => {},
+            onName,
+            onSelectFiles: () => {}
+          })
+      }
+    ])
+    await render(createElement(Stub, { initialEntries: ['/'] }))
+    return { onName }
   }
 
   test('shows frames off the clips, so there is something to name it from', async () => {
-    await renderCard(withFiles())
+    await renderPanel(withFiles())
 
     await expect.element(page.getByAltText(/frame from this montage/i).first()).toBeVisible()
   })
 
   test('asks for the name while there is not one', async () => {
-    await renderCard(withFiles())
+    await renderPanel(withFiles())
 
-    await expect.element(page.getByLabelText('Name')).toBeVisible()
+    await expect.element(page.getByLabelText('Name')).toHaveValue('')
   })
 
-  /* the name is the folder, and a name can be read wrong */
-  test('offers to change a name that is already set', async () => {
-    const { onRename } = await renderCard(withFiles({ firstname: 'Luc', lastname: 'Favre' }))
-
-    await expect.element(page.getByText('Luc Favre')).toBeVisible()
-    await userEvent.click(page.getByRole('button', { name: 'rename' }))
-
-    expect(onRename).toHaveBeenCalled()
-  })
-
-  test('comes back with the name already in it when changing one', async () => {
-    await renderCard(withFiles({ firstname: 'Luc', lastname: 'Favre' }), true)
+  test('keeps the name there to be changed, and saves the new one', async () => {
+    const { onName } = await renderPanel(withFiles({ firstname: 'Luc', lastname: 'Favre' }))
 
     await expect.element(page.getByLabelText('Name')).toHaveValue('Luc Favre')
+    await userEvent.fill(page.getByLabelText('Name'), 'Luc Favrod')
+    await userEvent.keyboard('{Enter}')
+
+    expect(onName).toHaveBeenCalledWith('Luc', 'Favrod')
   })
 
   /* changing it after the files have been processed means processing them again, into a new folder */
   test('says what changing a processed name costs', async () => {
-    await renderCard({ ...withFiles({ firstname: 'Luc', lastname: 'Favre' }), processed: true }, true)
+    await renderPanel({ ...withFiles({ firstname: 'Luc', lastname: 'Favre' }), processed: true })
 
     await expect.element(page.getByText(/processing it again/i)).toBeVisible()
   })
 
   test('says more when it has already been uploaded', async () => {
-    await renderCard(
-      {
-        ...withFiles({ firstname: 'Luc', lastname: 'Favre' }),
-        processed: true,
-        uploaded: { at: 1 }
-      },
-      true
-    )
+    await renderPanel({
+      ...withFiles({ firstname: 'Luc', lastname: 'Favre' }),
+      processed: true,
+      uploaded: { at: 1 }
+    })
 
     await expect.element(page.getByText(/stays on the storage under the old name/i)).toBeVisible()
   })

@@ -29,7 +29,6 @@ const Carried = () => {
   const drag = useDragAndDrop({
     groups: [GROUP],
     frozen: new Set<string>(),
-    pickedFiles: [],
     moveFiles: () => {},
     assign: () => {},
     toMontage: () => {},
@@ -47,7 +46,7 @@ const Carried = () => {
   return createElement(
     'div',
     null,
-    handle('the clip', (e) => drag.startFileDrag(LUC, e)),
+    handle('the clip', (e) => drag.startFileDrag(LUC, [], e)),
     handle('the jump', (e) => drag.startJumpDrag(GROUP.id, e)),
     createElement('output', {
       'data-testid': 'landing',

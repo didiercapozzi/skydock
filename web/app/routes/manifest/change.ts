@@ -2,6 +2,7 @@ import { EDIT_LOCKED, frozenTandems, getOutputDir } from '@skydock/scripts'
 import type { BoardAnswer, Manifest } from '@skydock/scripts'
 import type { FormResult } from '../../../../packages/ui/forms/types'
 import type { ActionData, actionArgs } from './args'
+import { idsOf } from '@skydock/scripts'
 
 type Refusal = FormResult<typeof actionArgs>
 
@@ -27,9 +28,7 @@ const changeOn = (manifest: Manifest, data: ActionData, refuse: (message: string
   const outputDir = getOutputDir()
   const frozen = frozenTandems(manifest, outputDir)
   const frozenFiles = new Set(
-    manifest.groups
-      .filter((g) => frozen.has(g.id))
-      .flatMap((g) => g.files.flatMap((f) => (f.id ? [f.id] : [])))
+    manifest.groups.filter((g) => frozen.has(g.id)).flatMap((g) => idsOf(g.files))
   )
   return {
     data,

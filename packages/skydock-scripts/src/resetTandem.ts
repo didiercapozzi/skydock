@@ -6,6 +6,7 @@ import { cameraTimes } from './scan'
 import { keepProject } from './projectHistory'
 import { isTandem } from './tandem'
 import type { Manifest, ManifestGroup } from './types'
+import { idsOf } from './lib/words'
 
 /* Two ways back from a tandem, both for the whole passenger — one passenger is one folder, so a
    jump cannot be taken back on its own without taking its folder from the others.
@@ -56,7 +57,7 @@ const takeBack = (manifest: Manifest, outputDir: string, groupId: string, forget
   for (const jump of jumps)
     fs.rmSync(getCutProxyDir(outputDir, jump.id), { recursive: true, force: true })
 
-  const ids = new Set(jumps.flatMap((j) => j.files.flatMap((f) => (f.id ? [f.id] : []))))
+  const ids = new Set(jumps.flatMap((j) => idsOf(j.files)))
   const times = forget
     ? cameraTimes(manifest.files.filter((f) => f.id && ids.has(f.id)).map((f) => f.path))
     : new Map<string, number>()

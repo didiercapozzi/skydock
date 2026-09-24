@@ -5,6 +5,7 @@ import {
 } from '../../../../packages/skydock-scripts/src/freeDropzone'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
+import { messageOf } from '@skydock/scripts'
 
 /* Delete what of a dropzone is on the storage from this machine, once the storage is proved to hold
    it (RULES, Freeing space). The proof is the storage's own checksum, so it has to be reachable. */
@@ -30,7 +31,7 @@ const freeDropzoneIntent: Intent = async ({ data, manifest, manifestPath, output
       }
     }
   } catch (e) {
-    return refuse(e instanceof Error ? e.message : String(e))
+    return refuse(messageOf(e))
   }
 }
 

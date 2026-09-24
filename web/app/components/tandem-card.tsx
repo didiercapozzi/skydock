@@ -181,105 +181,6 @@ const MakeTandem = ({
   )
 }
 
-/* One passenger in the Tandems grid: who it is, what is in it, and the one thing to do next —
-   which is the same sentence the tandem itself offers, said small.
-
-   The card is a div rather than a button: the name's inputs sit inside it, and inputs inside a
-   button are not allowed and make every keystroke a click on the card underneath. */
-const PassengerCard = ({
-  group,
-  who,
-  naming,
-  locked,
-  dropTarget,
-  onOpen,
-  onRename,
-  onName
-}: {
-  group: ManifestGroup
-  who: string
-  naming: boolean
-  /* why the name cannot change any more, when it cannot: an edit lives in the folder it names */
-  locked?: string
-  dropTarget: Record<string, unknown>
-  onOpen: () => void
-  onRename: () => void
-  onName: (firstname: string, lastname: string) => void
-}) => {
-  const videos = group.files.filter((f) => kindOf(f) === 'video').length
-  /* the same rule the folder uses: a montage with no name has no folder to go to yet */
-  const complete = hasCompletePassenger(group.passenger)
-  const editing = !locked && (naming || !complete)
-  return (
-    <div
-      {...dropTarget}
-      className='rounded-[10px] border border-line bg-pane p-3 text-left focus-within:border-accent hover:border-accent'>
-      {editing ? (
-        <>
-          <PassengerName
-            group={group}
-            onSave={onName}
-          />
-          {/* The name is the folder, so changing it moves where everything goes. What is already
-              prepared belongs to the old folder and has to be prepared again; what is already on
-              the storage stays there under the old name, because SkyDock never deletes from it. */}
-          {complete && (group.processed || group.uploaded) && (
-            <p className='mt-1 text-[11.5px] text-changed'>
-              {group.uploaded
-                ? 'Already uploaded — a new name means processing and uploading again, and the old folder stays on the storage under the old name.'
-                : 'Already processed — a new name means processing it again, into the new folder.'}
-            </p>
-          )}
-        </>
-      ) : (
-        <span className='flex items-baseline gap-1.5'>
-          <h3 className='min-w-0 flex-1 truncate text-[14.5px] font-semibold tracking-[-0.01em]'>
-            {who}
-          </h3>
-          {/* a name read off a form can be read wrong, and the folder is named after it */}
-          {locked ? (
-            <span
-              title={locked}
-              className='flex-none cursor-help text-[11px] opacity-55'>
-              🔒
-            </span>
-          ) : (
-            <button
-              type='button'
-              onClick={onRename}
-              title='Change this name'
-              className='flex-none border-0 bg-transparent p-0 text-[11.5px] text-ink-3 underline hover:text-accent'>
-              rename
-            </button>
-          )}
-        </span>
-      )}
-      {/* a freed tandem has no clips left here to take a frame from */}
-      {!group.freed && (
-        <PassengerFrames
-          group={group}
-          alt={editing ? 'A frame from this montage, to tell who it is' : who}
-        />
-      )}
-      <p className='text-[12px] text-ink-2'>
-        {videos} video{videos === 1 ? '' : 's'} · {group.files.length - videos} photos
-      </p>
-      <button
-        type='button'
-        onClick={onOpen}
-        className='mt-2.5 border-0 bg-transparent p-0 text-[11.5px] font-semibold text-accent'>
-        {!complete
-          ? 'Open to see the clips →'
-          : group.uploaded
-            ? '✓ uploaded'
-            : group.processed
-              ? 'Next: montage →'
-              : 'Next: process →'}
-      </button>
-    </div>
-  )
-}
-
 /* the film, once it exists: the one thing here nobody can make again — so it is said out loud, above
    the tandem it came from, rather than as a size beside its buttons. How long it runs is what tells a
    whole jump from a test render of its first minute. */
@@ -656,7 +557,6 @@ export {
   UploadedCards,
   GoneFromStorage,
   FilmStrip,
-  PassengerCard,
   PassengerFrames,
   PassengerName,
   ProjectPath,

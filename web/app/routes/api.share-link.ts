@@ -9,6 +9,7 @@ import {
 import { z } from 'zod'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 import { withinStorage } from '../../../packages/skydock-scripts/src/storageFolder'
+import { messageOf } from '@skydock/scripts'
 
 /* One file on the storage, handed out by a link of its own — or that link taken away again.
 
@@ -58,7 +59,7 @@ const action = createValidatedFormAction()({
         had?.url ?? (await createShareLink(session.hostname, session.sessionId, data.path))
       return { path: data.path, shareUrl: url }
     } catch (e) {
-      errors.addGlobalError(e instanceof Error ? e.message : String(e))
+      errors.addGlobalError(messageOf(e))
       return errors.toResponse(422)
     }
   }

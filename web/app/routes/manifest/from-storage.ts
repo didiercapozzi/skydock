@@ -2,6 +2,7 @@ import { ensureNasSession, saveManifest } from '@skydock/scripts'
 import { bringBack } from '../../../../packages/skydock-scripts/src/bringBack'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
+import { messageOf } from '@skydock/scripts'
 
 /* One file fetched back off the storage, for footage this machine no longer holds: freeing deleted
    the original once the storage was proved to have it, and this is the way back (RULES, Freeing
@@ -19,7 +20,7 @@ const bringBackIntent: Intent = async ({ data, manifest, manifestPath, refuse })
     saveManifest(manifestPath, manifest)
     return { ...boardAnswer(manifest), broughtBack: back }
   } catch (e) {
-    return refuse(e instanceof Error ? e.message : String(e))
+    return refuse(messageOf(e))
   }
 }
 

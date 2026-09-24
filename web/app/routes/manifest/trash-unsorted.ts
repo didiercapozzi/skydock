@@ -2,6 +2,7 @@ import { processingNow, saveManifest } from '@skydock/scripts'
 import { trashUnsorted } from '../../../../packages/skydock-scripts/src/trashUnsorted'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
+import { messageOf } from '@skydock/scripts'
 
 /* Unsorted files nobody wants go to the bin (RULES, Putting files in the bin). Not while something
    is being processed: a file taken away underneath would leave its copy half written. */
@@ -12,7 +13,7 @@ const trashUnsortedIntent: Intent = async ({ data, manifest, manifestPath, outpu
   try {
     await trashUnsorted(manifest, ids, outputDir)
   } catch (e) {
-    return refuse(e instanceof Error ? e.message : String(e))
+    return refuse(messageOf(e))
   }
   saveManifest(manifestPath, manifest)
   return boardAnswer(manifest)

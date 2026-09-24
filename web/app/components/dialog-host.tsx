@@ -1,6 +1,5 @@
 import { buildPassengerFolder, isVideoFile, passengerOf } from '@skydock/scripts'
 import type { TandemEntry, TandemFact, freeablePlace } from '@skydock/scripts'
-import { ComparisonDialog } from './comparison-dialog'
 import { ConnectionDialog } from './connection-dialog'
 import { EmailDialog } from './email-dialog'
 import { FreeDialog } from './free-dialog'
@@ -26,7 +25,7 @@ type UploadDialogState = { kind: 'upload'; groupId: string }
 type BoardDialog =
   | null
   | { kind: 'connect' }
-  | { kind: 'folder'; destination?: string; target?: 'backup'; back?: UploadDialogState }
+  | { kind: 'folder'; destination: string; back?: UploadDialogState }
   | UploadDialogState
   | { kind: 'take-back'; mode: TakeBackMode; who: string }
   | { kind: 'free'; groupId: string }
@@ -69,8 +68,7 @@ const DialogHost = ({
   onTakeBack,
   onTrash,
   onMontage,
-  onResetFresh,
-  comparing
+  onResetFresh
 }: {
   dialog: BoardDialog
   onDialog: (dialog: BoardDialog) => void
@@ -79,13 +77,12 @@ const DialogHost = ({
     error: string | undefined
     connect: (host: string, user: string, password: string, otp?: string) => void
     codeAsked?: string
-    backupFolder: string | null
     /* who it is connected as and where, for the dialogs that name it */
     host: string | null
     user: string | null
   }
   places: Destination[]
-  onChooseFolder: (path: string, destination?: string, target?: 'backup') => void
+  onChooseFolder: (path: string, destination: string) => void
   groups: ManifestGroup[]
   /* files in no jump, needed to say what a place holds before it is taken off the board */
   looseFiles: ManifestFile[]
@@ -106,12 +103,6 @@ const DialogHost = ({
   onTrash: (files: ManifestFile[]) => void
   onMontage: (groupId: string, template: string) => void
   onResetFresh: (what: 'times' | 'everything') => void
-  comparing: {
-    /* the two jumps side by side, when two are being compared */
-    pair: [string, string] | null
-    onClose: () => void
-    onMerge: (leftId: string, rightId: string, anchorEpoch: number) => void
-  }
 }) => {
   const close = () => onDialog(null)
   return (
@@ -127,17 +118,9 @@ const DialogHost = ({
 
       {dialog?.kind === 'folder' && (
         <NasFolderBrowser
-          initialPath={
-            dialog.destination
-              ? (places.find((d) => d.name === dialog.destination)?.path ?? undefined)
-              : (nas.backupFolder ?? undefined)
-          }
-          title={
-            dialog.destination
-              ? `NAS folder for ${dialog.destination}`
-              : 'Folder for the original videos'
-          }
-          onSelect={(path) => onChooseFolder(path, dialog.destination, dialog.target)}
+          initialPath={places.find((d) => d.name === dialog.destination)?.path ?? undefined}
+          title={`NAS folder for ${dialog.destination}`}
+          onSelect={(path) => onChooseFolder(path, dialog.destination)}
           onClose={() => onDialog(dialog.back ?? null)}
         />
       )}
@@ -287,16 +270,6 @@ const DialogHost = ({
             />
           )
         })()}
-
-      {comparing.pair && (
-        <ComparisonDialog
-          groups={groups}
-          leftGroupId={comparing.pair[0]}
-          rightGroupId={comparing.pair[1]}
-          onClose={comparing.onClose}
-          onMerge={comparing.onMerge}
-        />
-      )}
     </>
   )
 }

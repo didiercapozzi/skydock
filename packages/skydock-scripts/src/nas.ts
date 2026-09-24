@@ -96,14 +96,6 @@ const dsmShareEntrySchema = z.object({ name: z.string(), path: z.string() }).pas
 
 const dsmSharesSchema = z.object({ shares: z.array(dsmShareEntrySchema).optional() }).passthrough()
 
-const dsmEncryptionInfoSchema = z
-  .object({
-    public_key: z.string().optional(),
-    publicKey: z.string().optional(),
-    key: z.string().optional()
-  })
-  .passthrough()
-
 const dsmConfigSchema = z.object({
   host: z.string(),
   user: z.string(),
@@ -316,26 +308,6 @@ const decryptLocal = (host: string, user: string, encStr: string) => {
   return dec.toString('utf8')
 }
 
-const dsmGetEncryptionInfo = async (host: string) => {
-  try {
-    const body = await dsmFetch(host, {
-      api: 'SYNO.API.Encryption',
-      method: 'getinfo',
-      version: '1'
-    })
-    const parsed = dsmEncryptionInfoSchema.safeParse(body.data)
-    if (!parsed.success) return null
-    const raw = parsed.data.public_key ?? parsed.data.publicKey ?? parsed.data.key
-    if (!raw) return null
-    const pem = raw.includes('BEGIN PUBLIC KEY')
-      ? raw
-      : `-----BEGIN PUBLIC KEY-----\n${raw}\n-----END PUBLIC KEY-----`
-    return { publicKey: pem }
-  } catch {
-    return null
-  }
-}
-
 /* Always local AES. DSM's public key encrypts a password for one login request, not for storage:
    the stored `dsm:` ciphertext cannot be decrypted here and replaying it as `passwd` is not the
    envelope DSM expects, so an expired session could never refresh itself silently. A session still
@@ -351,8 +323,6 @@ const decryptPasswordFromStorage = (host: string, user: string, stored: string) 
 }
 
 type NasFolderEntry = z.infer<typeof dsmFileEntrySchema>
-
-type NasFileEntry = { name: string; path: string; size: number | null }
 
 const normalizeNasPath = (input: string) => {
   const trimmed = input.trim()
@@ -701,15 +671,6 @@ const clearNasSession = (configDir?: string) => {
   if (fs.existsSync(target)) fs.unlinkSync(target)
 }
 
-/* One folder is remembered here: where a tandem's original videos are kept. Every place of work
-   keeps its own folder with the place, and a backup that fell back to one of those would put
-   gigabytes of rushes in a passenger's hands. */
-const updateNasFolder = (folder: string, configDir?: string) => {
-  const session = loadNasSession(configDir)
-  if (!session) return
-  saveNasSession({ ...session, backupFolder: folder }, configDir)
-}
-
 const refreshStoredSession = async (
   stored: NasSession,
   configDir?: string,
@@ -825,7 +786,6 @@ export {
   dsmEntryUrl,
   dsmFetch,
   dsmFileMd5,
-  dsmGetEncryptionInfo,
   dsmCopyMove,
   dsmListFolder,
   dsmLogin,
@@ -850,7 +810,6 @@ export {
   removeShareLink,
   saveNasSession,
   shareLinkFor,
-  tryAutoRefreshSession,
-  updateNasFolder
+  tryAutoRefreshSession
 }
-export type { DsmAuth, DsmConfig, NasFileEntry, NasFolderEntry, NasSession }
+export type { DsmAuth, DsmConfig, NasFolderEntry, NasSession }

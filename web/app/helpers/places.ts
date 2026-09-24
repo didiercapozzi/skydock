@@ -25,8 +25,6 @@ const FRESH: Place = { kind: 'sort' }
 
 const placeKey = (place: Place) => `${place.kind}:${'name' in place ? place.name : ''}`
 
-const samePlace = (a: Place, b: Place) => placeKey(a) === placeKey(b)
-
 /* what a place is called, wherever it is named — the folder and the heading above its files are the
    same words by construction, not by being typed out twice */
 const placeLabel = (place: Place) =>
@@ -173,7 +171,6 @@ export {
   placeHref,
   placeKey,
   placeLabel,
-  samePlace,
   stillHere
 }
 export type { Place }

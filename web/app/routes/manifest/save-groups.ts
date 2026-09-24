@@ -7,6 +7,7 @@ import {
 } from '@skydock/scripts'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
+import { idsOf } from '@skydock/scripts'
 
 /* The board's own picture of the jumps, the places and each file's crop, saved as sent — bar what a
    frozen tandem forbids — and answered with what was saved, so the board redraws from the server
@@ -63,7 +64,7 @@ const saveGroups: Intent = ({
       before.destination !== incoming.destination ||
       passengerOf(before) !== passengerOf(incoming)
     if (!movedOutput) continue
-    const ids = new Set(incoming.files.flatMap((f) => (f.id ? [f.id] : [])))
+    const ids = new Set(idsOf(incoming.files))
     for (const file of manifest.files) {
       if (!file.id || !ids.has(file.id)) continue
       delete file.processed

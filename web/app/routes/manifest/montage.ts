@@ -6,6 +6,7 @@ import { createMontageProject } from '../../../../packages/skydock-scripts/src/m
 import { getCutProxyDir } from '../../../../packages/skydock-scripts/src/proxy'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
+import { messageOf } from '@skydock/scripts'
 
 /* A processed tandem gets an editing project, the template as its owner made it with the clips in
    its bin, and the project is opened in the same press: it exists to be edited (RULES, The editing project). */
@@ -81,7 +82,7 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
       }
     }
   } catch (e) {
-    return refuse(e instanceof Error ? e.message : String(e))
+    return refuse(messageOf(e))
   }
 }
 

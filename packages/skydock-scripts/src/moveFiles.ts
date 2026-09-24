@@ -2,6 +2,7 @@ import * as fs from 'node:fs'
 import { groupFromFiles, shiftGroupTo } from './clustering'
 import { cameraTimes } from './scan'
 import type { Manifest, ManifestFile, ManifestPassenger } from './types'
+import { idsOf } from './lib/words'
 
 /* Moving files on the board, in one place: dragged from one jump to another, onto a place, back to
    the sorting area — or dropped in again from the computer onto somewhere else. A file is in one place
@@ -126,7 +127,7 @@ const moveFiles = (manifest: Manifest, asked: Set<string>, to: MoveTo) => {
    holds an original once, so one it already has, as itself or as a copy, is passed over, and a file
    freed from this machine has no file here to copy. */
 const copiesOf = (manifest: Manifest, ids: Set<string>, held: Set<string>) => {
-  const taken = new Set(manifest.files.flatMap((f) => (f.id ? [f.id] : [])))
+  const taken = new Set(idsOf(manifest.files))
   const asHeld = new Map<string, ManifestFile>()
   for (const f of manifest.files) if (f.id && ids.has(f.id)) asHeld.set(f.id, f)
   for (const f of manifest.groups.flatMap((g) => g.files))
@@ -196,7 +197,7 @@ const copyIntoMontage = (manifest: Manifest, ids: Set<string>, passenger: Manife
 const deleteJump = (manifest: Manifest, groupId: string) => {
   const group = manifest.groups.find((g) => g.id === groupId)
   if (!group) throw new Error('That jump is no longer on the board.')
-  const ids = new Set(group.files.flatMap((f) => (f.id ? [f.id] : [])))
+  const ids = new Set(idsOf(group.files))
   moveFiles(manifest, ids, { destination: null })
   /* a jump with no files left in it is gone already; one whose files had no ids is taken out too */
   manifest.groups = manifest.groups.filter((g) => g.id !== groupId)

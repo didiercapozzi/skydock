@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
-import { fileStatus, scopeStatus, uploadGate } from '../src/fileStatus'
+import { fileStatus, uploadGate } from '../src/fileStatus'
 import type { ManifestFile } from '../src/types'
 
 const base = (over: Partial<ManifestFile> = {}): ManifestFile => ({
@@ -143,15 +143,6 @@ describe('nothing is uploaded until everything in it is processed', () => {
   const context = (file: ManifestFile) => ({
     output: file.processed ? onDisk : undefined,
     remote: { dirs: ['/home/Yverdon'], sizes: { '/home/Yverdon/a.mp4': 90 } }
-  })
-
-  it('counts each state', () => {
-    expect(scopeStatus(files, context)).toEqual({
-      local: 1,
-      processed: 1,
-      uploaded: 1,
-      total: 3
-    })
   })
 
   it('blocks the upload and names how many need processing', () => {

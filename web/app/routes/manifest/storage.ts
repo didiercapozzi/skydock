@@ -1,6 +1,7 @@
 import type { NasSession } from '../../../../packages/skydock-scripts/src/nas'
 import { updateTandemIndex } from '../../../../packages/skydock-scripts/src/tandemIndex'
 import type { TandemIndex } from '../../../../packages/skydock-scripts/src/tandemIndex'
+import { messageOf } from '@skydock/scripts'
 
 /* The storage's list of tandems changes after the work it describes, and never instead of it: if the
    list cannot be written, the upload or the freeing still stands, and the board says the list did not
@@ -16,7 +17,7 @@ const recordOnStorage = async (
     return { storage: { dir, tandems: index.tandems } }
   } catch (e) {
     return {
-      storageProblem: `the storage’s list of montages was not updated: ${e instanceof Error ? e.message : String(e)}`
+      storageProblem: `the storage’s list of montages was not updated: ${messageOf(e)}`
     }
   }
 }

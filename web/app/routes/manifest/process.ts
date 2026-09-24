@@ -1,6 +1,7 @@
 import { cancelProcessing, loadManifest, processJumps, whenProcessed } from '@skydock/scripts'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
+import { messageOf } from '@skydock/scripts'
 
 /* Process the jumps asked for — by id, by place, or all of them — and answer with the manifest as
    processing left it. */
@@ -20,7 +21,7 @@ const processIntent: Intent = async ({ data, manifest, manifestPath, outputDir, 
       destination: data.destination
     })
   } catch (e) {
-    return refuse(e instanceof Error ? e.message : String(e))
+    return refuse(messageOf(e))
   }
   return boardAnswer(loadManifest(manifestPath) ?? manifest)
 }

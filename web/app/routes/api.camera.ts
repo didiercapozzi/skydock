@@ -2,6 +2,7 @@ import { ensureNasSession, getOutputDir, loadManifest, processingNow } from '@sk
 import { z } from 'zod'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 import { deleteFromCameras, listCameras } from '../../../packages/skydock-scripts/src/cameraFiles'
+import { messageOf } from '@skydock/scripts'
 
 /* What is on the cameras plugged in, each file saying whether it is copied here, and on the storage. */
 const loader = async () => Response.json({ cameras: await listCameras(getOutputDir()) })
@@ -33,7 +34,7 @@ const action = createValidatedFormAction()({
       const deleted = await deleteFromCameras({ paths: data.paths, manifest, session })
       return { deleted, cameras: await listCameras(getOutputDir()) }
     } catch (e) {
-      errors.addGlobalError(e instanceof Error ? e.message : String(e))
+      errors.addGlobalError(messageOf(e))
       return errors.toResponse(422)
     }
   }

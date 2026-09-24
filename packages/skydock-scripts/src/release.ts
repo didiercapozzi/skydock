@@ -52,9 +52,7 @@ const withVersion = (text: string, file: Versioned, version: string) => {
    something the app does not. */
 const tagOf = (version: string) => `v${version}`
 
-const versionOfTag = (tag: string) => tag.replace(/^v/, '')
-
 const versionedFiles = () => Object.keys(VERSION_IN) as Versioned[]
 
-export { nextVersion, tagOf, versionIn, versionOfTag, versionedFiles, withVersion }
+export { nextVersion, tagOf, versionIn, versionedFiles, withVersion }
 export type { Versioned }

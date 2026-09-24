@@ -3,6 +3,7 @@ import * as path from 'node:path'
 import { Readable } from 'node:stream'
 import type { ReadableStream as NodeWebStream } from 'node:stream/web'
 import { getOutputDir } from '@skydock/scripts'
+import { messageOf } from '@skydock/scripts'
 /* server-only: it writes files and shells out, so it is imported here rather than through the barrel
    the browser evaluates */
 import { importFile } from '../../../packages/skydock-scripts/src/importFile'
@@ -70,10 +71,7 @@ const action = async ({ request }: Route.ActionArgs) => {
     void buildMissingProxies().catch(() => undefined)
     return Response.json({ ok: true, ...result })
   } catch (e) {
-    return Response.json(
-      { ok: false, error: e instanceof Error ? e.message : String(e) },
-      { status: 422 }
-    )
+    return Response.json({ ok: false, error: messageOf(e) }, { status: 422 })
   }
 }
 

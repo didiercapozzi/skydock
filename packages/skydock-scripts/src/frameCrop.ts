@@ -26,9 +26,6 @@ const evenBound = (value: number) => Math.max(2, Math.floor(value / 2) * 2)
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 
-/* The whole frame, which is what no rectangle at all means. */
-const FULL_FRAME: FrameCrop = { x: 0, y: 0, width: 1, height: 1 }
-
 /* A rectangle covering everything is the same as no rectangle: the picture is untouched, and
    saying so is what lets processing copy the file instead of encoding it again. */
 const isWholeFrame = (crop: FrameCrop | null | undefined) =>
@@ -159,7 +156,6 @@ export {
   cropFilter,
   cropToPixels,
   fitRatio,
-  FULL_FRAME,
   isQuarterTurn,
   isWholeFrame,
   orientationAfter,

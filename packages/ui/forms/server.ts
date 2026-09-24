@@ -84,11 +84,5 @@ const createValidatedFormAction =
     return action
   }
 
-const formSuccess = <TData>(data: TData, status: 200 | 201 = 200) => ({
-  success: true as const,
-  status,
-  data
-})
-
-export { createFormErrorBuilder, createValidatedFormAction, formSuccess }
+export { createFormErrorBuilder, createValidatedFormAction }
 export type { ValidatedContext }

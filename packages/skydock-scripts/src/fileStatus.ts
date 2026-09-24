@@ -108,12 +108,6 @@ const fileStatus = (file: ManifestFile, context?: StatusContext): FileStatus => 
 const fileChanged = (file: ManifestFile, context?: StatusContext) =>
   Boolean(file.processed) && fileStatus(file, context) === 'local'
 
-const scopeStatus = (files: ManifestFile[], context?: (file: ManifestFile) => StatusContext) => {
-  const counts = { local: 0, processed: 0, uploaded: 0, total: files.length }
-  for (const file of files) counts[fileStatus(file, context?.(file))] += 1
-  return counts
-}
-
 /* One rule, used by the board to disable the button and by the server to refuse the request. */
 const uploadGate = (files: ManifestFile[], context?: (file: ManifestFile) => StatusContext) => {
   const needProcessing = files.filter((f) => fileStatus(f, context?.(f)) === 'local').length
@@ -133,5 +127,5 @@ const uploadGate = (files: ManifestFile[], context?: (file: ManifestFile) => Sta
    because a copy shares its original's path and each of the two has a processed copy of its own. */
 const outputKeyOf = (file: { id?: string; path: string }) => file.id ?? file.path
 
-export { fileChanged, fileStatus, outputKeyOf, scopeStatus, uploadGate, UPLOADED_LOCKED }
+export { fileChanged, fileStatus, outputKeyOf, uploadGate, UPLOADED_LOCKED }
 export type { FileStatus, RemoteListing, StatusContext }

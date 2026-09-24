@@ -30,6 +30,7 @@ import {
   MONTAGES_FOLDER,
   toFileStem
 } from './workspace'
+import { messageOf } from './lib/words'
 
 type ProcessOptions = {
   manifestPath?: string
@@ -249,7 +250,7 @@ const updateMetadata = async (files: string[]) => {
     ])
   } catch (e) {
     throw new Error(
-      `EXIF failed for ${path.basename(path.dirname(files[0]))}: ${e instanceof Error ? e.message : String(e)} — install exiftool`
+      `EXIF failed for ${path.basename(path.dirname(files[0]))}: ${messageOf(e)} — install exiftool`
     )
   }
 }

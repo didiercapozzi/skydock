@@ -1,107 +1,49 @@
 import {
-  freeablePlace,
-  EDIT_LOCKED,
+  earlierTandemsDir,
   ensureNasSession,
   forgetLostFiles,
-  furthestBehind,
   getOutputDir,
-  goneFromStorage,
-  hasCompletePassenger,
-  lastSegment,
   learnStorage,
   listRemoteFiles,
   loadManifest,
-  offGap,
-  saveManifest,
-  outputKeyOf,
-  isFiled,
-  isMontage,
-  montageCalled,
-  passengerName,
-  passengerOf,
   processingNow,
+  saveManifest,
   statProcessedOutputs,
   statProxies,
-  startOfFiles,
   statTandemArtifacts,
-  tandemSteps,
-  tandemUploadKey,
-  earlierTandemsDir,
   tandemsRemoteDir
 } from '@skydock/scripts'
-import type { FileStatus, FrameCrop, Rotation, SendPlan, TandemEntry } from '@skydock/scripts'
+import type { TandemEntry } from '@skydock/scripts'
 import { keepBackupAsPlace } from '../../../packages/skydock-scripts/src/destinations'
 import { diskSpace } from '../../../packages/skydock-scripts/src/diskSpace'
 import { readTandemIndex } from '../../../packages/skydock-scripts/src/tandemIndex'
-import { useEffect, useState } from 'react'
-import { Outlet, useNavigate, useParams } from 'react-router'
+import { Outlet } from 'react-router'
 import type { ShouldRevalidateFunctionArgs } from 'react-router'
 import { BoardHeader } from '../components/board-header'
 import type { NasLink } from '../components/board-header'
-import { Go, Mini } from '../components/buttons'
-import { CameraFiles } from '../components/camera-files'
-import { ImportPanel } from '../components/import-panel'
 import { Callout } from '../components/callout'
 import { DialogHost } from '../components/dialog-host'
-import type { BoardDialog } from '../components/dialog-host'
-import { FileBrowser } from '../components/file-browser'
-import { lanesOf, lockReason, shownStatus } from '../components/file-list'
-import type { Modifiers } from '../components/file-list'
-import { FolderOwed } from '../components/folder-owed'
-import { Box, FilePanel, FolderPanel, JumpPanel, ManyPanel, Shell } from '../components/inspector'
-import { PlacePane } from '../components/place-pane'
+import { ImportPanel } from '../components/import-panel'
 import { PlacesTree } from '../components/places-tree'
-import { PreviewHost } from '../components/preview-host'
-import { StorageFolder } from '../components/storage-folder'
-import { StorageList } from '../components/storage-list'
-import { StepTrail } from '../components/tandem-steps'
-import type { Passenger } from '../components/tandem-card'
-import {
-  FilmStrip,
-  GoneFromStorage,
-  TandemActions,
-  UploadStrip,
-  UploadedCards
-} from '../components/tandem-card'
-import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
-import { formatSize, formatTime, plural, setOutputRoot, shortDate } from '../components/utils'
-import { fromComputer, importFiles, tokenFor, whatIsComing } from '../helpers/import'
-import type { Coming, Dropped } from '../helpers/import'
-import { folderOnStorage } from '../helpers/jumps'
-import {
-  familyOf,
-  filesIn,
-  groupsIn,
-  holdsItsOwn,
-  looseIn,
-  placeFromParams,
-  placeHref,
-  placeKey,
-  placeLabel,
-  stillHere
-} from '../helpers/places'
-import type { Place } from '../helpers/places'
-import { GROUPINGS, cardsOf, jumpLabels, sectionsOf } from '../helpers/sections'
-import { fileFacts } from '../helpers/status'
-import { setSendPlan, useSendPlan } from '../hooks/useSendPlan'
-import { useBoardState } from '../hooks/useBoardState'
-import { useDragAndDrop } from '../hooks/useDragAndDrop'
-import type { Move } from '../hooks/useDragAndDrop'
-import { useFileView } from '../hooks/useFileView'
-import { useNas } from '../hooks/useNas'
-import { usePreview } from '../hooks/usePreview'
-import { useSelection } from '../hooks/useSelection'
-import { useUploadProgress } from '../hooks/useUploadProgress'
-import { templatesAnswerSchema } from '../../../packages/skydock-scripts/src/templateEntry'
-import { routingEngine, useSafeSearchParams } from '../helpers/routing'
-import { boardViewSchema } from '../helpers/view'
+import { formatTime } from '../components/utils'
+import { fromComputer } from '../helpers/import'
+import { useBoardModel } from '../hooks/useBoardModel'
 import type { Route } from './+types/board'
+import { idsOf, messageOf } from '@skydock/scripts'
 
-/* The board's data is read once and every change comes back in the answer the endpoint gives, so
-   walking the folders — a click on the rail, a clip opened, a filter — never asks the disk and the
-   storage all over again. A change made anywhere still does. */
-const shouldRevalidate = ({ formMethod, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) =>
-  formMethod ? defaultShouldRevalidate : false
+/* The board's data is read once, and every change comes back in the answer the endpoint gives: the
+   board adopts that answer, so reading everything again — the disk, and the storage over the
+   network — would only be thrown away. Walking the folders never asks either. Connecting to the
+   storage, or leaving it, is the one change whose answer does not carry the board, so it is read
+   again then. */
+const shouldRevalidate = ({
+  formMethod,
+  formAction,
+  defaultShouldRevalidate
+}: ShouldRevalidateFunctionArgs) =>
+  formMethod !== undefined && formAction?.startsWith('/api/nas') === true
+    ? defaultShouldRevalidate
+    : false
 
 const loader = async (_args: Route.LoaderArgs) => {
   const outputDir = getOutputDir()
@@ -117,8 +59,7 @@ const loader = async (_args: Route.LoaderArgs) => {
     connected: boolean
     hostname: string | null
     username: string | null
-    backupFolder: string | null
-  } = { connected: false, hostname: null, username: null, backupFolder: null }
+  } = { connected: false, hostname: null, username: null }
   /* the first look at the NAS happens here rather than on mount: the page then arrives already
      correct, and the Refresh button re-runs the same check through /api/remote-files */
   let remote: { dirs: string[]; sizes: Record<string, number | null>; at: number } | null = null
@@ -129,8 +70,7 @@ const loader = async (_args: Route.LoaderArgs) => {
       nas = {
         connected: true,
         hostname: session.hostname,
-        username: session.username,
-        backupFolder: session.backupFolder ?? null
+        username: session.username
       }
       /* a backup folder chosen before backups went into destinations becomes one (RULES, Places) */
       if (manifest && session.backupFolder && keepBackupAsPlace(manifest, session.backupFolder))
@@ -151,7 +91,7 @@ const loader = async (_args: Route.LoaderArgs) => {
            storage that will not have it written changes nothing about the board. */
         await learnStorage(manifest, session, remote.sizes).catch((e: unknown) => {
           console.warn(
-            `[Board] The storage's list of what it holds was not written: ${e instanceof Error ? e.message : String(e)}`
+            `[Board] The storage's list of what it holds was not written: ${messageOf(e)}`
           )
         })
         /* the storage's own list of tandems — every one it holds, from here or from elsewhere */
@@ -162,12 +102,12 @@ const loader = async (_args: Route.LoaderArgs) => {
             .catch((e: unknown) => ({
               dir,
               tandems: [],
-              problem: e instanceof Error ? e.message : String(e)
+              problem: messageOf(e)
             }))
       }
     }
   } catch {
-    nas = { connected: false, hostname: null, username: null, backupFolder: null }
+    nas = { connected: false, hostname: null, username: null }
   }
   const grouped = new Set(
     (manifest?.groups ?? []).flatMap((g) => g.files.map((f) => f.id ?? f.path))
@@ -200,769 +140,14 @@ const loader = async (_args: Route.LoaderArgs) => {
   }
 }
 
+/* The board: one screen with the header across the top, the rail of folders down the side and the
+   dialogs over them. It is the layout — it holds what the whole board shares and hands it down —
+   and the folder the address names is drawn beside the rail by its own route, as is a file opened
+   in it (RULES, The board). */
 const Board = ({ loaderData }: Route.ComponentProps) => {
-  /* told rather than assumed: an installed app keeps the work wherever it was asked to */
-  setOutputRoot(loaderData.outputDir)
-  const [dialog, setDialog] = useState<BoardDialog>(null)
-  /* uploaded and freed: the one thing left is to tell the passenger, so that is offered */
-  const board = useBoardState(loaderData, (groupId) => setDialog({ kind: 'email', groupId }))
-  const { groups, updateGroups, loose, places, setPlaces, busy, note, setNote, send } = board
-  const nas = useNas(loaderData, board.remoteAfterUpload)
-  const sendPlan = useSendPlan()
-  const view = useFileView()
-  const progress = useUploadProgress(board.uploading)
-  /* Which folder fills the pane, which file is open in it, and how it is being looked at: all of it
-     read from the address rather than remembered here, so a board can be reloaded, gone back to or
-     sent to somebody and comes back showing the same thing (RULES, The board). */
-  const address = useParams()
-  const place = placeFromParams(address)
-  const goTo = useNavigate()
-  const { searchParams: looking, setSearchParams: look } = useSafeSearchParams(boardViewSchema)
-  const kind = looking.kind ?? 'all'
-  const query = looking.find ?? ''
-  const chosenCard = looking.card ?? null
-
-  /* A tandem with an edit is frozen (RULES, The editing project), and a freed one lives on the storage only.
-     The server refuses any change to either; the board simply never offers it. */
-  const frozen = new Set(
-    groups.filter((g) => g.freed || board.tandemFacts[g.id]?.project).map((g) => g.id)
-  )
-  const frozenFiles = new Set(
-    groups
-      .filter((g) => frozen.has(g.id))
-      .flatMap((g) => g.files.flatMap((f) => (f.id ? [f.id] : [])))
-  )
-  const { statusContext, statusOf, gateFor, deliveredName } = fileFacts({
-    outputs: board.outputs,
-    remote: nas.remote,
-    frozenFiles
-  })
-
-  /* A lone file's crop goes through the same save as everything else, on the registry entry — and
-     the board's own copy has to be updated with it, because `updateGroups` refreshes `groups` and
-     answers on its own fetcher: nothing here would otherwise hear about the saved loose files. */
-  const cropLoneFile = (
-    file: ManifestFile,
-    range: { cropStart: number | null; cropEnd: number | null },
-    frame?: FrameCrop | null,
-    rotation?: Rotation
-  ) => {
-    const cropped = {
-      ...file,
-      cropStart: range.cropStart,
-      cropEnd: range.cropEnd,
-      ...(frame !== undefined ? { frame } : {}),
-      ...(rotation !== undefined ? { rotation } : {})
-    }
-    board.setLoose((current) => current.map((f) => (f.path === file.path ? cropped : f)))
-    updateGroups(groups, [cropped])
-  }
-  const preview = usePreview({
-    groups,
-    loose,
-    place,
-    fileId: address.fileId,
-    view: looking,
-    onGroupsChange: updateGroups,
-    onFileCrop: cropLoneFile
-  })
-
-  const groupOfFile = (file: ManifestFile) =>
-    groups.find((g) => g.files.some((f) => (f.id ?? f.path) === (file.id ?? file.path)))
-  /* a freed file has nothing here to show: it is played from the storage's list below instead */
-  const openFile = (file: ManifestFile) => (file.freed ? undefined : preview.openPreview(file))
-  /* filed nowhere — neither as a lone file nor through its jump — and so free to go to the bin */
-  const inUnsorted = (file: ManifestFile) => {
-    const group = groupOfFile(file)
-    return !file.destination && !(group && isFiled(group))
-  }
-  /* Deleting goes one step at a time: a file in a jump comes out of it and is loose; only a loose
-     file in Unsorted, deleted again, goes to the bin. */
-  const binnable = (file: ManifestFile) => inUnsorted(file) && !groupOfFile(file)
-  /* a copy has nowhere to be sent back to — its original is wherever it already is — so it ends */
-  const backLabel = (files: ManifestFile[]) =>
-    files.every((f) => f.copyOf)
-      ? `Remove ${files.length === 1 ? 'this copy' : 'these copies'} (⌫)`
-      : files.every(inUnsorted)
-        ? `Take out of ${files.length === 1 ? 'its jump' : 'their jumps'} (⌫)`
-        : 'Send back to Fresh files (⌫)'
-  const fileById = (id: string) =>
-    [...groups.flatMap((g) => g.files), ...loose].find((f) => f.id === id)
-  const askTrash = (files: ManifestFile[]) => setDialog({ kind: 'trash', files })
-  /* Fresh files put back, by as much as is chosen in the dialog, which says what each choice costs */
-  const resetFresh = () => {
-    const jumps = groups.filter((g) => !isFiled(g))
-    const files = [...jumps.flatMap((g) => g.files), ...loose.filter((f) => !f.destination)]
-    setDialog({
-      kind: 'reset-fresh',
-      files: files.length,
-      decided: files.filter(
-        (f) => f.cropStart != null || f.cropEnd != null || f.frame || f.rotation
-      ).length
-    })
-  }
-  /* The jump goes; its files stay, loose in Unsorted, crops and all. Only processed copies are
-     lost — they no longer match where the files are — so that alone is asked about first. */
-  const deleteJump = (group: ManifestGroup) => {
-    const copies = group.files.filter((f) => f.processed).length
-    if (
-      copies > 0 &&
-      !window.confirm(
-        `Delete this jump? Its ${plural(group.files.length, 'file')} stay, loose in Fresh files, with their crops — but ${copies} processed ${copies === 1 ? 'copy' : 'copies'} will be deleted and have to be processed again.`
-      )
-    )
-      return
-    selection.clear()
-    send('delete-jump', { intent: 'delete-jump', groupId: group.id })
-  }
-
-  /* A tandem is uploaded while the storage still holds what was sent, and not a moment longer —
-     the record says what went up, the listing says whether it is still there. Delete it over there
-     and the tandem reads as not uploaded again, with what went missing named. */
-  const goneById = Object.fromEntries(
-    groups.map((g) => [g.id, goneFromStorage(g.uploaded, nas.remote)])
-  )
-  const asOnStorage = (group: ManifestGroup) =>
-    group.uploaded && (goneById[group.id]?.length ?? 0) > 0
-      ? { ...group, uploaded: undefined }
-      : group
-
-  /* what the open folder holds, narrowed by what is typed in the search box */
-  const family = familyOf(place)
-  /* whether the storage's list says this tandem's passenger was sent their link */
-  const emailedOn = (group: ManifestGroup) =>
-    board.storage?.tandems.find((t) => t.folder === folderOnStorage(group))?.emailed ?? null
-
-  /* Where each tandem has got to — one answer for its panel, its card and its passenger's entry in
-     the menu, so the three can never disagree. */
-  const progressOf = (group: ManifestGroup) =>
-    isMontage(group)
-      ? tandemSteps({
-          group: asOnStorage(group),
-          facts: board.tandemFacts[group.id],
-          emailed: Boolean(emailedOn(group))
-        })
-      : null
-
-  const passengerProgress = (name: string) =>
-    furthestBehind(
-      groups
-        .filter((g) => isMontage(g) && passengerOf(g) === name)
-        .flatMap((g) => {
-          const progress = progressOf(g)
-          return progress ? [progress] : []
-        })
-    )
-
-  /* A tandem freed and walked to its last step has nothing left to do here, so it leaves the
-     tandems — its passenger's entry too — and lives on in the storage's own list of tandems. */
-  const finished = (group: ManifestGroup) =>
-    Boolean(group.freed) && progressOf(group)?.next === null
-  const listed = groups.filter((g) => !finished(g))
-
-  /* A dropzone's page is what this machine holds: its freed files are listed with the storage's own
-     files under them rather than twice over, and a jump with nothing left here goes the same way
-     (RULES, Freeing space). */
-  const placeGroups = groupsIn(place, listed)
-    .map(asOnStorage)
-    .map((group) => ({ ...group, files: stillHere(place, group.files) }))
-    .filter((group) => group.files.length > 0 || !holdsItsOwn(place))
-  /* the one tandem of the passenger whose page is open, when they have just the one */
-  const soleTandem =
-    place.kind === 'pax' && placeGroups.length === 1
-      ? groups.find((g) => g.id === placeGroups[0]?.id)
-      : undefined
-  /* the files still to be sorted — loose, or in a jump filed nowhere — by what they contain, which
-     is how the storage's list knows the files of a tandem this board may have forgotten */
-  const toSort = new Set(
-    [
-      ...loose.filter((f) => !f.destination),
-      ...groups.filter((g) => !isFiled(g)).flatMap((g) => g.files)
-    ].flatMap((f) => (f.id ? [f.id] : []))
-  )
-  /* A dropzone and a passenger are connected to their folder on the storage, which is listed under
-     their own files. A passenger is found among every tandem, the finished ones too: theirs is
-     exactly the folder worth watching from here once nothing of it is left on this machine. */
-  const storageWhere =
-    place.kind === 'dz'
-      ? { destination: place.name }
-      : place.kind === 'pax'
-        ? (() => {
-            const theirs = groups.find((g) => isMontage(g) && passengerOf(g) === place.name)
-            return theirs ? { groupId: theirs.id } : null
-          })()
-        : null
-  const placeLoose = stillHere(place, looseIn(place, loose))
-  const placeFiles = [...placeGroups.flatMap((g) => g.files), ...placeLoose]
-  /* the delivered files this machine still holds, by name — copies that are really on the disk, and
-     a tandem's film — so each file on the storage can say whether it is here too */
-  const hereToo = new Set([
-    ...placeFiles.flatMap((f) =>
-      f.processed && board.outputs[outputKeyOf(f)]?.exists ? [lastSegment(f.processed.path)] : []
-    ),
-    ...placeGroups.flatMap((g) => {
-      const film = board.tandemFacts[g.id]?.film
-      return film ? [lastSegment(film.path)] : []
-    })
-  ])
-  const matches = (file: ManifestFile) => {
-    if (!query.trim()) return true
-    const needle = query.trim().toLowerCase()
-    const out = deliveredName(file)
-    return (
-      file.filename.toLowerCase().includes(needle) ||
-      Boolean(out && out.toLowerCase().includes(needle))
-    )
-  }
-  const shownGroups = query.trim()
-    ? placeGroups
-        .map((g) => ({ ...g, files: g.files.filter(matches) }))
-        .filter((g) => g.files.length > 0)
-    : placeGroups
-  const shownLoose = placeLoose.filter(matches)
-  const groupingOptions = family === 'storage' ? GROUPINGS.sort : GROUPINGS[family]
-  /* what each family of folder does when the address says nothing */
-  const groupingBy = { sort: 'jump', dz: 'day', tandems: 'jump' } as const
-  const grouping =
-    family === 'storage'
-      ? 'none'
-      : looking.by && groupingOptions.includes(looking.by)
-        ? looking.by
-        : groupingOptions.includes(groupingBy[family])
-          ? groupingBy[family]
-          : (groupingOptions[0] ?? 'none')
-  const sections = sectionsOf(place, grouping, shownGroups, shownLoose, placeGroups)
-  /* By jump, the jumps are cards and one is open: the one last chosen while it is still here, or
-     else the first. Only its files are on screen. */
-  const cardSections = cardsOf(sections)
-  /* files a jump holds against the gap rule, flagged where they are drawn */
-  const offGapFiles = new Set(groups.flatMap((g) => [...offGap(g.files)]))
-  const openCard =
-    grouping === 'jump'
-      ? (cardSections.find((s) => s.key === chosenCard) ?? cardSections[0])
-      : undefined
-  /* The jump whose card is open — the one last chosen, or else the first. Its files are what is
-     listed and its card is the one lit, so it is also the jump the panel describes and the one a
-     second jump is compared with: one answer to "which jump is this about", not two. */
-  const openJump =
-    openCard?.kind === 'jump' ? groups.find((g) => g.id === openCard.group.id) : undefined
-  const onScreen = openCard ? [openCard] : sections
-  /* files are in the order they were shot */
-  /* every list newest first: the latest file shot at the top */
-  const sortKey = (file: ManifestFile) => -file.mtime
-  /* every file on screen, in the order it is drawn, for the arrow keys to step through */
-  const order = onScreen.flatMap((s) =>
-    s.kind === 'jump' && s.group.freed ? [] : lanesOf(s.files, kind, sortKey).flat()
-  )
-
-  const selection = useSelection({
-    order,
-    pickable: (id) => {
-      const found = fileById(id)
-      return Boolean(found) && !lockReason(found!, statusContext(found!))
-    },
-    paused: preview.preview !== null || dialog !== null,
-    onOpen: openFile,
-    /* Delete takes files one step back: out of a jump or a place, to be loose in Unsorted; loose
-       files already there have nowhere further back to go, so for them it asks about the bin */
-    onDelete: (ids) => {
-      const files = ids.flatMap((id) => {
-        const found = fileById(id)
-        return found ? [found] : []
-      })
-      if (files.length > 0 && files.every(binnable)) askTrash(files)
-      else moveFiles(ids, { destination: null })
-    }
-  })
-  const { pickedFiles } = selection
-
-  /* A jump made from picked files is opened as soon as it exists — its card, and with it its panel.
-     Its id is the server's to give, so the board knows it by its first file, once the answer has
-     that file in a jump it was not in before; a move that was refused leaves the file where it was,
-     and nothing opens. */
-  const [makingJump, setMakingJump] = useState<{ file: string; from?: string } | null>(null)
-  const made =
-    makingJump && busy === null
-      ? groups.find((g) => g.files.some((f) => f.id === makingJump.file))
-      : undefined
-  const toOpen = made && made.id !== makingJump?.from ? `jump:${made.id}` : null
-  if (makingJump && busy === null && (toOpen === null || chosenCard === toOpen)) setMakingJump(null)
-  /* the open card is part of the folder's address, and the address is the browser's */
-  useEffect(() => {
-    if (toOpen) look({ card: toOpen })
-  }, [toOpen, look])
-
-  /* Files leave their jump and are re-filed server-side, so the answer is the truth. `newGroup`
-     gathers them into a jump of their own — what a tandem needs, since the passenger name lives on
-     a group; without it the files would land as lone files and fall back to the sorting area. */
-  const moveFiles = (ids: string[], where: Move) => {
-    if (ids.length === 0) return
-    selection.clear()
-    /* Copied into another jump, the files stay where they are as well — so one that cannot move can
-       still be copied: nothing about it changes. Only a freed one cannot, having no file here. */
-    if (where.copy && where.targetGroupId) {
-      const here = ids.filter((id) => !fileById(id)?.freed)
-      if (here.length === 0) setNote('Freed from this machine — there is no file here to copy.')
-      else if (frozen.has(where.targetGroupId)) setNote(EDIT_LOCKED)
-      else send('copy', { intent: 'copy-files', fileIds: here, targetGroupId: where.targetGroupId })
-      return
-    }
-    /* a file that cannot move is carried only so that it can be copied */
-    const locked = ids.filter((id) => {
-      const file = fileById(id)
-      return file && !frozenFiles.has(id) && lockReason(file, statusContext(file))
-    })
-    if (locked.length === ids.length) {
-      setNote(
-        'On the storage already, so it cannot move — hold alt while dropping to copy it instead.'
-      )
-      return
-    }
-    /* a tandem with an edit neither gives files up nor takes them in */
-    const free = ids.filter((id) => !frozenFiles.has(id) && !locked.includes(id))
-    if (free.length === 0 || (where.targetGroupId && frozen.has(where.targetGroupId))) {
-      setNote(
-        free.length === 0 && where.targetGroupId
-          ? `${EDIT_LOCKED} Hold alt while dropping to copy it into the other jump instead.`
-          : EDIT_LOCKED
-      )
-      return
-    }
-    send('move', {
-      intent: 'move-files',
-      fileIds: free,
-      ...(where.targetGroupId ? { targetGroupId: where.targetGroupId } : {}),
-      ...(where.destination ? { destination: where.destination } : {}),
-      ...(where.newGroup ? { newGroup: true } : {}),
-      ...(where.montage ? { montage: true } : {}),
-      ...(where.name ? { name: where.name } : {}),
-      ...(where.startsAt !== undefined ? { anchorEpoch: where.startsAt } : {})
-    })
-    if (free.length < ids.length) setNote(`${EDIT_LOCKED} Its files stayed where they were.`)
-  }
-
-  const saveDestinations = (next: Destination[]) => {
-    setPlaces(next)
-    board.manifest({ intent: 'save-groups', groups, destinations: next })
-  }
-
-  const addPlace = (name: string) => {
-    const trimmed = name.trim()
-    if (!trimmed || places.some((d) => d.name === trimmed)) return
-    saveDestinations([...places, { name: trimmed }])
-  }
-
-  /* Filing jumps under a destination — or back among the fresh files. A montage filed somewhere is
-     a montage no longer: it is that place's jump, with no name of its own. */
-  const assign = (ids: string[], destination: string | null) => {
-    const nextPlaces =
-      destination && !places.some((d) => d.name === destination)
-        ? [...places, { name: destination }]
-        : undefined
-    if (nextPlaces) setPlaces(nextPlaces)
-    const next = groups.map((g) =>
-      ids.includes(g.id)
-        ? {
-            ...g,
-            destination: destination ?? undefined,
-            montageJump: undefined,
-            passenger: undefined
-          }
-        : g
-    )
-    updateGroups(next, undefined, nextPlaces)
-  }
-
-  /* Jumps made a montage, and for a montage naming, in one save — made and then named is two saves
-     with a nameless montage in between, which is exactly the state the menu then has to call out as
-     waiting. */
-  const toMontage = (ids: string[], passenger?: Passenger) =>
-    updateGroups(
-      groups.map((g) =>
-        ids.includes(g.id)
-          ? {
-              ...g,
-              destination: undefined,
-              montageJump: true,
-              passenger: passenger ?? g.passenger ?? undefined
-            }
-          : g
-      )
-    )
-
-  /* What a drop is copying in, while it is: the whole list first, then one at a time. */
-  const [coming, setComing] = useState<{
-    where: string
-    files: Coming[]
-    done: number
-    failed: number
-  } | null>(null)
-
-  /* Files from the computer are copied one by one, the board showing the list and counting it down;
-     once all are in, it looks again and hears how the whole drop went. A folder is opened out
-     first, so what is shown is what is coming and not what was let go of. */
-  const importDropped = async (list: Dropped[], target: string, where: string) => {
-    if (list.length === 0) return
-    board.setBusy('import')
-    setNote('Looking at what was dropped…')
-    const files = await whatIsComing(list)
-    if (files.length === 0) {
-      board.setBusy(null)
-      setNote('Nothing in that drop is a video or a photo SkyDock can show.')
-      return
-    }
-    setNote(null)
-    setComing({ where, files, done: 0, failed: 0 })
-    const tally = await importFiles(files, target, where, (index, _total, _name, failed) =>
-      setComing((now) => (now ? { ...now, done: index, failed } : now))
-    )
-    setComing(null)
-    board.manifest({ intent: 'imported', imported: tally })
-  }
-
-  /* How far through the file being copied right now, as the server says it while the bytes land.
-     Only ever the one the board is already counting: an answer about some other copy — an older
-     drop, another window — says nothing about this row and is left out. */
-  const said = board.importing
-  const watching = coming && said && said.token === tokenFor(coming.done) ? said : null
-  const partCopied =
-    watching && watching.total > 0 ? Math.min(1, watching.done / watching.total) : 0
-
-  const drag = useDragAndDrop({
-    groups,
-    frozen,
-    pickedFiles,
-    moveFiles,
-    assign,
-    toMontage,
-    importDropped
-  })
-
-  /* The folder something was just filed under lights up for a moment, so the eye can follow the
-     jump there from the line it left. */
-  const [flashPlace, setFlashPlace] = useState<string | null>(null)
-  const flash = (target: Place) => {
-    const key = placeKey(target)
-    setFlashPlace(key)
-    setTimeout(() => setFlashPlace((current) => (current === key ? null : current)), 1800)
-  }
-
-  /* A montage just made is gone to: its page opens once it is on the board, and its entry in the
-     menu lights up. It is known by its name, which is the server's to confirm — a montage the
-     server refused never appears, and nothing is opened. */
-  const [goingTo, setGoingTo] = useState<string | null>(null)
-  const arrived =
-    goingTo !== null &&
-    busy === null &&
-    groups.some((g) => isMontage(g) && passengerOf(g) === goingTo)
-  if (
-    goingTo !== null &&
-    busy === null &&
-    (!arrived || (place.kind === 'pax' && place.name === goingTo))
-  )
-    setGoingTo(null)
-  /* the page is an address, and the address is the browser's */
-  useEffect(() => {
-    if (arrived && goingTo) goTo(placeHref({ kind: 'pax', name: goingTo }))
-  }, [arrived, goingTo, goTo])
-
-  /* a montage with an edit takes nothing in: its project names its clips, and new ones are not */
-  const editedMontage = (who: string) => {
-    if (!groups.some((g) => frozen.has(g.id) && passengerOf(g) === who)) return false
-    setNote(`${who}’s montage has an edit — change it in kdenlive.`)
-    return true
-  }
-
-  const madeNote = (who: string, joining: boolean, copied: boolean) => {
-    setNote(
-      `${joining ? `Joined ${who}’s montage` : `Made ${who}’s montage`}${copied ? ' — copied, the place keeps its own' : ''}`
-    )
-    flash({ kind: 'pax', name: who })
-    setGoingTo(who)
-  }
-
-  const montageExists = (who: string) => groups.some((g) => isMontage(g) && passengerOf(g) === who)
-
-  /* A jump in Fresh files named: it is the montage, in one step. */
-  const makeTandem = (groupId: string, passenger: Passenger) => {
-    const who = passengerName(passenger)
-    if (editedMontage(who)) return
-    const joining = groups.some((g) => g.id !== groupId && isMontage(g) && passengerOf(g) === who)
-    toMontage([groupId], passenger)
-    madeNote(who, joining, false)
-  }
-
-  /* Picked files, one file, or a jump a place holds, made a montage. Whether they move or are copied
-     is the server's rule, not a key held: out of Fresh files they move, from anywhere else they are
-     copied and the place keeps its own (RULES, Making a montage). */
-  const montageOf = (files: ManifestFile[], passenger: Passenger, startsAt?: number) => {
-    const who = passengerName(passenger)
-    if (editedMontage(who)) return
-    const fileIds = files.flatMap((f) => (f.id ? [f.id] : []))
-    if (fileIds.length === 0) return
-    const joining = montageExists(who)
-    selection.clear()
-    send('make-montage', {
-      intent: 'make-montage',
-      fileIds,
-      name: who,
-      ...(startsAt !== undefined ? { anchorEpoch: startsAt } : {})
-    })
-    madeNote(who, joining, !files.every(inUnsorted))
-  }
-
-  /* what making a montage of something takes, from here: copied in, when a place keeps it */
-  const montageOffer = (files: ManifestFile[]) => ({
-    passengers,
-    keeps: files.every(inUnsorted) ? undefined : placeLabel(place),
-    onMake: (passenger: Passenger) => montageOf(files, passenger)
-  })
-
-  const setPassenger = (groupId: string, firstname: string, lastname: string) => {
-    if (frozen.has(groupId)) return
-    const next = groups.map((g) =>
-      g.id === groupId
-        ? { ...g, passenger: firstname || lastname ? { firstname, lastname } : undefined }
-        : g
-    )
-    updateGroups(next)
-  }
-
-  /* only what the jump is called on the board — no file is named after it, so nothing processed
-     goes stale */
-  const renameJump = (groupId: string, name: string) => {
-    if (frozen.has(groupId)) return
-    updateGroups(
-      groups.map((g) => (g.id === groupId ? { ...g, name: name.trim() || undefined } : g))
-    )
-  }
-
-  const shiftJump = (groupId: string, anchorEpoch: number) =>
-    send('shift', { intent: 'shift-group-time', groupId, anchorEpoch })
-
-  /* each passenger once, however many jumps they have */
-  const named = groups.filter((g) => isMontage(g) && hasCompletePassenger(g.passenger))
-  const passengers = [
-    ...new Map(
-      named.flatMap((g): [string, Passenger][] =>
-        g.passenger ? [[passengerOf(g), g.passenger]] : []
-      )
-    ).values()
-  ]
-  const hostOf = (who: string) => named.find((g) => passengerOf(g) === who)
-
-  const openConnect = () => {
-    nas.markDialogOpened()
-    setDialog({ kind: 'connect' })
-  }
-
-  /* A place's folder is part of the workspace, so it is saved with the destinations list like any
-     other board edit; the backup folder belongs to no place, and is kept with the storage session. */
-  const chooseFolder = (path: string, destination?: string, target?: 'backup') => {
-    if (destination === undefined) {
-      if (target === 'backup') nas.selectFolder(path, 'backup')
-    } else {
-      const known = places.some((d) => d.name === destination)
-      saveDestinations(
-        known
-          ? places.map((d) => (d.name === destination ? { ...d, path } : d))
-          : [...places, { name: destination, path }]
-      )
-    }
-    setDialog(dialog?.kind === 'folder' && dialog.back ? dialog.back : null)
-  }
-
-  const folderFor = (destination: string) =>
-    places.find((d) => d.name === destination)?.path ?? null
-
-  /* the client opens whichever dialog is missing rather than firing a request the server would
-     only refuse — but the server still decides, so the client never guesses a path */
-  const requestUpload = (scope: { groupIds?: string[]; destination?: string }, key: string) => {
-    if (!nas.connected) {
-      openConnect()
-      return
-    }
-    if (scope.destination && !folderFor(scope.destination)) {
-      setDialog({ kind: 'folder', destination: scope.destination })
-      return
-    }
-    board.setUploading(key)
-    send(key, { intent: 'upload-group', ...scope })
-  }
-
-  /* Upload opens what it is about to do — both parcels, both folders, how the originals are kept —
-     and only the dialog's own button sends anything. A missing folder is chosen from inside it. */
-  const askUpload = (group: ManifestGroup) => {
-    if (!nas.connected) {
-      openConnect()
-      return
-    }
-    setDialog({ kind: 'upload', groupId: group.id })
-  }
-
-  const confirmUpload = (group: ManifestGroup, plan: SendPlan) => {
-    setDialog(null)
-    const key = tandemUploadKey(group.id)
-    board.setUploading(key)
-    send(key, { intent: 'upload-tandem', groupId: group.id, plan })
-  }
-
-  /* two jumps that turn out to be one: the server merges them and answers with the saved list */
-  const mergeTwo = (leftId: string, rightId: string, anchorEpoch: number) => {
-    selection.setComparing(null)
-    selection.clear()
-    send('merge', { intent: 'merge-groups', leftId, rightId, anchorEpoch })
-  }
-
-  /* A template is somebody's branding, so which one is never decided here. With a single template
-     that is whole and close enough to the editor's kdenlive there is nothing to decide and the
-     montage is made at once; with several, or one with a hole or a warning, the person is shown
-     them first. */
-  const makeMontage = (groupId: string, template?: string) =>
-    send(groupId, { intent: 'montage', groupId, ...(template ? { template } : {}) })
-  const askMontage = async (group: ManifestGroup) => {
-    const parsed = templatesAnswerSchema.safeParse(
-      await routingEngine.loader({ url: '/api/templates' }).catch(() => null)
-    )
-    const only =
-      parsed.success && parsed.data.templates.length === 1 ? parsed.data.templates[0] : null
-    if (only && only.missing.length === 0) makeMontage(group.id, only.name)
-    else setDialog({ kind: 'templates', groupId: group.id })
-  }
-
-  /* what is being processed is stopped; the answer comes once it has */
-  const cancelProcess = () => send('cancel-process', { intent: 'cancel-process' })
-
-  /* A dropzone is processed, then uploaded, as a whole (RULES, Acting). Processing asks only for
-     what needs it — the jumps with a file to process, and the dropzone's loose files when one of
-     them does — because a dropzone holds every day ever shot there.
-
-     Which is exactly why the step stands beside the counts of what is owed rather than up among
-     the ways of looking at the folder: what it acts on is everything in the folder that needs it,
-     and never what a search or a filter happens to be showing. Its name says how many, and its
-     title says in so many words which. */
-  const dropzoneStep = (name: string) => {
-    const files = filesIn({ kind: 'dz', name }, groups, loose)
-    if (files.length === 0) return null
-    const label = `dz:${name}`
-    const waiting = (state: FileStatus) => files.filter((f) => statusOf(f) === state).length
-    if (gateFor(files).blocked) {
-      const needs = (f: ManifestFile) => statusOf(f) === 'local'
-      const jumps = groupsIn({ kind: 'dz', name }, groups).filter((g) => g.files.some(needs))
-      const lone = looseIn({ kind: 'dz', name }, loose).some(needs)
-      return (
-        <>
-          <Go
-            disabled={busy !== null}
-            title={`Make the copies that get handed over, for everything in ${name} that has none — ${plural(waiting('local'), 'file')}, whatever the search or the filter is showing.`}
-            onClick={() =>
-              send(
-                label,
-                lone
-                  ? { intent: 'process', destination: name }
-                  : { intent: 'process', groupIds: jumps.map((g) => g.id) }
-              )
-            }>
-            {busy === label ? 'Processing…' : `Process ${plural(waiting('local'), 'file')}`}
-          </Go>
-          {busy === label && <Mini onClick={cancelProcess}>Cancel</Mini>}
-        </>
-      )
-    }
-    /* what is proved on the storage can be freed from here, whatever is still to upload */
-    const free =
-      freeableOf(name).files.length > 0 ? (
-        <Mini
-          disabled={busy !== null}
-          title={`Delete from this machine what ${name} has on the storage, once the storage is proved to hold it. Asks first.`}
-          onClick={() =>
-            nas.connected ? setDialog({ kind: 'free-place', place: name }) : openConnect()
-          }>
-          {busy === `free:dz:${name}` ? 'Checking the storage…' : 'Free up space…'}
-        </Mini>
-      ) : null
-    if (files.every((f) => statusOf(f) === 'uploaded'))
-      return (
-        <>
-          {free}
-          <span className='text-[12px] font-semibold text-up'>✓ all on the storage</span>
-        </>
-      )
-    return (
-      <>
-        {free}
-        <Go
-          disabled={busy !== null}
-          title={`Send everything in ${name} that is processed and not up there yet — ${plural(waiting('processed'), 'file')}, whatever the search or the filter is showing.`}
-          onClick={() => requestUpload({ destination: name }, `dest:${name}`)}>
-          {busy === `dest:${name}`
-            ? 'Uploading…'
-            : `Upload ${plural(waiting('processed'), 'file')}`}
-        </Go>
-      </>
-    )
-  }
-
-  /* what of a dropzone is on the storage and could be deleted from here, by the board's own reading
-     of every file — the server proves it again, against the storage, before deleting anything */
-  const freeableOf = (name: string) =>
-    freeablePlace(
-      groupsIn({ kind: 'dz', name }, groups),
-      looseIn({ kind: 'dz', name }, loose),
-      (f) => statusOf(f) === 'uploaded'
-    )
-
-  /* a tandem's line carries its one next step, and its upload while it runs */
-  const tandemActions = (group: ManifestGroup) =>
-    !isMontage(group) || group.freed ? null : (
-      <>
-        <TandemActions
-          group={group}
-          facts={board.tandemFacts[group.id]}
-          busy={busy}
-          blocked={gateFor(group.files)}
-          named={hasCompletePassenger(group.passenger)}
-          onProcess={() => send(group.id, { intent: 'process', groupId: group.id })}
-          onCancelProcess={cancelProcess}
-          onMontage={() => void askMontage(group)}
-          onOpenMontage={() =>
-            send(`open:${group.id}`, { intent: 'open-montage', groupId: group.id })
-          }
-          onUpload={() => askUpload(group)}
-          onFree={() => setDialog({ kind: 'free', groupId: group.id })}
-        />
-        {board.uploading === tandemUploadKey(group.id) && progress && (
-          <span className='mt-0.5 flex-[1_1_100%]'>
-            <UploadStrip progress={progress} />
-          </span>
-        )}
-      </>
-    )
-
-  /* above a tandem's files: what went missing from the storage, what the storage holds, the film */
-  const tandemAbove = (group: ManifestGroup) =>
-    !isMontage(group) ? null : (
-      <div className='mb-2'>
-        <GoneFromStorage
-          gone={goneById[group.id] ?? []}
-          at={groups.find((g) => g.id === group.id)?.uploaded?.at}
-        />
-        {group.uploaded && <UploadedCards group={group} />}
-        {!group.uploaded && <FilmStrip facts={board.tandemFacts[group.id]} />}
-      </div>
-    )
-
-  /* where a file from the computer dropped anywhere on the pane goes — the folder it shows; All
-     passengers has no single passenger, and the storage takes nothing */
-  const paneHost = place.kind === 'pax' ? hostOf(place.name) : undefined
-  const paneTarget =
-    place.kind === 'sort'
-      ? { target: 'sort', where: 'Fresh files' }
-      : place.kind === 'dz'
-        ? { target: `dest:${place.name}`, where: place.name }
-        : paneHost && !frozen.has(paneHost.id)
-          ? { target: `group:${paneHost.id}`, where: passengerOf(paneHost) }
-          : null
+  const model = useBoardModel(loaderData)
+  const { board, nas, drag, setDialog } = model
+  const { groups, loose, places, note, setNote, send } = board
 
   if (!board.hasManifest) {
     return (
@@ -983,8 +168,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     )
   }
 
-  /* Only what is about the storage as a whole. Which folder is whose is said where it matters: a
-     place's folder on the place, the backup folder in the upload that uses it. */
+  /* Only what is about the storage as a whole. Which folder is whose is said where it matters. */
   const nasLinks: NasLink[] = nas.connected
     ? [
         {
@@ -1004,275 +188,26 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           onClick: () => setDialog({ kind: 'disconnect' })
         }
       ]
-    : [{ label: 'Connect the NAS', onClick: openConnect }]
+    : [{ label: 'Connect the NAS', onClick: model.openConnect }]
 
-  /* Where the board goes by itself: a jump filed somewhere lands its folder open. A click on the
-     rail is the link's own business (RULES, The board). */
-  const pickPlace = (next: Place) => {
-    selection.clear()
-    /* the one filter that is the whole board's, not the folder's, goes with it (RULES, The board) */
-    goTo(placeHref(next, { kind: looking.kind }))
+  /* a dialog that ends in a change closes, then asks for it */
+  const closeThen = (then: () => void) => {
+    setDialog(null)
+    then()
   }
 
-  const summary =
-    place.kind === 'storage'
-      ? plural(board.storage?.tandems.length ?? 0, 'tandem')
-      : [
-          placeGroups.length && family !== 'dz' ? plural(placeGroups.length, 'jump') : null,
-          plural(placeFiles.length, 'file'),
-          formatSize(placeFiles.reduce((n, f) => n + f.size, 0))
-        ]
-          .filter(Boolean)
-          .join(' · ')
-
-  /* the passenger's link, by email — once there is a link to send */
-  const linked =
-    place.kind === 'pax'
-      ? groups.find(
-          (g) => passengerOf(g) === place.name && (g.uploaded?.shareUrl ?? g.publish?.shareUrl)
-        )
-      : undefined
-  const paxTools = place.kind === 'pax' && (
-    <span className='flex items-center gap-1.5'>
-      {linked && (
-        <Mini
-          title={
-            emailedOn(linked)
-              ? 'The storage’s list says the link was sent — open it to send it again'
-              : 'Send the link'
-          }
-          onClick={() => setDialog({ kind: 'email', groupId: linked.id })}>
-          {emailedOn(linked) ? '✓ Emailed · again…' : `Email ${linked.passenger?.firstname ?? ''}…`}
-        </Mini>
-      )}
-      {/* the two ways back from a tandem, for the whole passenger — each asks first */}
-      {!groups.some((g) => passengerOf(g) === place.name && g.freed) && (
-        <>
-          <Mini
-            disabled={busy !== null}
-            title='Back to before processing — keeps the name, the crops, the frames and the times'
-            onClick={() => setDialog({ kind: 'take-back', mode: 'reset', who: place.name })}>
-            Reset…
-          </Mini>
-          <Mini
-            disabled={busy !== null}
-            title='Undo the montage, at any step — its files go back to Fresh files, loose, without their name or crops'
-            onClick={() => setDialog({ kind: 'take-back', mode: 'delete', who: place.name })}>
-            Delete…
-          </Mini>
-        </>
-      )}
-    </span>
-  )
-
-  /* A dropzone can be taken off the board. Offered here rather than beside the folder's next step,
-     because a place with nothing in it has no next step and is exactly the one worth removing. */
-  const placeTools = place.kind === 'dz' && (
-    <Mini
-      disabled={busy !== null}
-      title='Take this place off the board — what is filed here goes back to Fresh files, and nothing is deleted'
-      onClick={() => setDialog({ kind: 'remove-place', place: place.name })}>
-      {busy === `remove:dz:${place.name}` ? 'Removing…' : 'Remove place…'}
-    </Mini>
-  )
-
-  /* what each jump is called wherever it appears: its place among the jumps where it is filed, or
-     its montage's name — the montages counted apart, belonging to no place */
-  const whereFiled = (g: ManifestGroup) => (isMontage(g) ? '\0montage' : (g.destination ?? ''))
-  const labels = new Map(
-    [...new Set(groups.map(whereFiled))].flatMap((dest) => [
-      ...jumpLabels(groups.filter((g) => whereFiled(g) === dest))
-    ])
-  )
-  const labelOf = (group: ManifestGroup) =>
-    `${labels.get(group.id) ?? group.label} · ${shortDate(startOfFiles(group.files))}`
-
-  const inspector = () => {
-    const everyFile = [...groups.flatMap((g) => g.files), ...loose]
-    const picked = pickedFiles.flatMap((id) => {
-      const found = everyFile.find((f) => f.id === id)
-      return found ? [found] : []
-    })
-    /* the file looked at last, or else the one picked — whichever was done most recently, since
-       picking clears the look */
-    const previewed = selection.previewed
-      ? everyFile.find((f) => f.id === selection.previewed)
-      : undefined
-    const one = previewed ?? (picked.length === 1 ? picked[0] : undefined)
-    if (one) {
-      const group = groupOfFile(one)
-      const context = statusContext(one)
-      return (
-        <FilePanel
-          key={one.id}
-          file={one}
-          name={deliveredName(one)}
-          jumpLabel={group ? labelOf(group) : null}
-          status={shownStatus(one, context)}
-          proxy={board.proxies[one.path]}
-          locked={lockReason(one, context)}
-          onOpen={() => openFile(one)}
-          onSendBack={() => moveFiles([one.id ?? ''], { destination: null })}
-          onTrash={binnable(one) ? () => askTrash([one]) : undefined}
-          backLabel={backLabel([one])}
-          onRetime={
-            lockReason(one, context)
-              ? undefined
-              : (epoch) =>
-                  send('retime', {
-                    intent: 'retime-file',
-                    fileIds: [one.id ?? ''],
-                    anchorEpoch: epoch
-                  })
-          }
-          montage={one.freed ? undefined : montageOffer([one])}
-        />
-      )
-    }
-    if (picked.length > 1) {
-      const ids = picked.flatMap((f) => (f.id ? [f.id] : []))
-      return (
-        <ManyPanel
-          files={picked}
-          statusOf={statusOf}
-          onSendBack={() => moveFiles(ids, { destination: null })}
-          onTrash={picked.every(binnable) ? () => askTrash(picked) : undefined}
-          backLabel={backLabel(picked)}
-          onMakeJump={
-            picked.every(inUnsorted)
-              ? (name, startsAt) => {
-                  /* named, they are a montage; left blank, a jump */
-                  if (name.trim()) {
-                    montageOf(picked, montageCalled(groups, name), startsAt)
-                    return
-                  }
-                  const first = picked[0]
-                  if (first?.id) setMakingJump({ file: first.id, from: groupOfFile(first)?.id })
-                  moveFiles(ids, { destination: null, newGroup: true, startsAt })
-                }
-              : undefined
-          }
-          montages={passengers}
-          montage={
-            picked.every(inUnsorted) || picked.some((f) => f.freed)
-              ? undefined
-              : montageOffer(picked)
-          }
-          onClear={selection.clear}
-        />
-      )
-    }
-    /* A passenger with one tandem is that tandem: opening the passenger is opening it, so its panel
-       is here without being asked for, and no card stands above its files saying the same things. */
-    const jump =
-      (selection.pickedJump ? groups.find((g) => g.id === selection.pickedJump) : undefined) ??
-      openJump ??
-      soleTandem
-    if (jump) {
-      const shown = asOnStorage(jump)
-      return (
-        <JumpPanel
-          key={jump.id}
-          group={shown}
-          label={labels.get(jump.id) ?? jump.label}
-          facts={board.tandemFacts[jump.id]}
-          emailed={Boolean(emailedOn(jump))}
-          locked={
-            jump.freed
-              ? 'Freed from this machine — it is on the storage only now.'
-              : frozen.has(jump.id)
-                ? `${EDIT_LOCKED} Open it in kdenlive, or reset the montage.`
-                : null
-          }
-          statusOf={statusOf}
-          passengers={passengers}
-          keeps={jump.destination}
-          onMakeTandem={(passenger) =>
-            jump.destination ? montageOf(jump.files, passenger) : makeTandem(jump.id, passenger)
-          }
-          onName={(first, last) => setPassenger(jump.id, first, last)}
-          onSelectFiles={() => selection.selectFiles(jump.files)}
-          onShift={
-            jump.freed || frozen.has(jump.id) || busy !== null
-              ? undefined
-              : (at) => shiftJump(jump.id, at)
-          }
-          /* in Fresh files, naming a jump makes it a montage, so there is one way to name it */
-          onRename={
-            !jump.destination || jump.freed || frozen.has(jump.id)
-              ? undefined
-              : (name) => renameJump(jump.id, name)
-          }
-          /* A named tandem can be deleted at whatever step it has reached, through the dialog that
-             says what goes with it; only a freed one cannot, having nothing left here to put back.
-             Any other jump goes the plain way, which an edit or an upload closes. */
-          onDelete={
-            jump.freed
-              ? undefined
-              : isMontage(jump) && hasCompletePassenger(jump.passenger)
-                ? () => setDialog({ kind: 'take-back', mode: 'delete', who: passengerOf(jump) })
-                : frozen.has(jump.id) || jump.uploaded
-                  ? undefined
-                  : () => deleteJump(jump)
-          }
-        />
-      )
-    }
-    const dz = place.kind === 'dz' ? places.find((d) => d.name === place.name) : undefined
-    return (
-      <FolderPanel
-        title={placeLabel(place)}
-        sub={summary}
-        files={placeFiles}
-        statusOf={statusOf}>
-        {place.kind === 'dz' && (
-          <Box heading='On the storage'>
-            <p className='m-0 font-mono text-[12px] break-all'>
-              {folderFor(place.name) ?? 'no folder yet'}
-            </p>
-            {dz?.shareUrl && (
-              <a
-                href={dz.shareUrl}
-                target='_blank'
-                rel='noreferrer'
-                className='truncate font-mono text-[11.5px] text-accent underline'>
-                {dz.shareUrl}
-              </a>
-            )}
-            <span>
-              <Mini onClick={() => setDialog({ kind: 'folder', destination: place.name })}>
-                {folderFor(place.name) ? 'Change folder' : 'Choose a folder'}
-              </Mini>
-            </span>
-          </Box>
-        )}
-        {family === 'tandems' &&
-          placeGroups.map((g) => (
-            <Box
-              key={g.id}
-              heading={labelOf(g)}>
-              <StepTrail
-                group={asOnStorage(g)}
-                facts={board.tandemFacts[g.id]}
-                emailed={Boolean(emailedOn(g))}
-              />
-            </Box>
-          ))}
-        {place.kind === 'storage' && board.storage && (
-          <p className='m-0 font-mono text-[12px] break-all text-ink-2'>{board.storage.dir}</p>
-        )}
-      </FolderPanel>
-    )
-  }
+  const partCopied =
+    model.watching && model.watching.total > 0
+      ? Math.min(1, model.watching.done / model.watching.total)
+      : 0
 
   return (
     <main
       onDragEnd={drag.endDrag}
       /* The floor under every place that takes a drop, and a target itself for nothing: what is let
-         go where nothing takes it is left alone, and a file is told where it could have gone.
-         Whatever it was is caught here, without asking what it is, because the one thing that must
-         never happen does not depend on the answer: an engine handed a file nobody wanted opens it,
-         which in SkyDock's own window puts a video where the board was, with no way back to it. */
+         go where nothing takes it is left alone, and a file is told where it could have gone. An
+         engine handed a file nobody wanted opens it, which in SkyDock's own window puts a video
+         where the board was, with no way back to it. */
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault()
@@ -1293,175 +228,36 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       <div className='grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] min-[781px]:grid-cols-[250px_minmax(0,1fr)] min-[781px]:grid-rows-[minmax(0,1fr)] min-[1101px]:grid-cols-[250px_minmax(0,1fr)_300px]'>
         <PlacesTree
           destinations={places}
-          groups={listed}
+          groups={model.listed}
           looseFiles={loose}
           storage={board.storage}
           cameras={board.cameras}
-          statusContext={statusContext}
-          tandemOpen={(g) => !asOnStorage(g).uploaded}
-          passengerProgress={passengerProgress}
-          onAddPlace={addPlace}
+          statusContext={model.statusContext}
+          tandemOpen={(g) => !model.asOnStorage(g).uploaded}
+          passengerProgress={model.passengerProgress}
+          onAddPlace={model.addPlace}
           dropTarget={drag.placeDrop}
           overTarget={drag.overTarget}
-          flashPlace={flashPlace}
+          flashPlace={model.flashPlace}
         />
-
-        <PlacePane
-          place={place}
-          summary={summary}
-          files={placeFiles}
-          query={query}
-          onQuery={(find) => look({ find: find || undefined }, { replace: true })}
-          grouping={{
-            value: grouping,
-            options: groupingOptions,
-            onChange: (by) => look({ by })
-          }}
-          kind={{ value: kind, onChange: (next) => look({ kind: next }) }}
-          tools={paxTools || placeTools}
-          left={
-            <FolderOwed
-              actions={place.kind === 'dz' ? dropzoneStep(place.name) : undefined}
-              place={place}
-              groups={placeGroups}
-              loose={placeLoose}
-              files={placeFiles}
-              facts={board.tandemFacts}
-              statusOf={statusOf}
-              busy={busy !== null}
-              folder={
-                place.kind === 'dz'
-                  ? {
-                      path: folderFor(place.name),
-                      onChoose: () => setDialog({ kind: 'folder', destination: place.name })
-                    }
-                  : undefined
-              }
-              onRegroup={() => send('regroup', { intent: 'regroup-loose' })}
-              onReset={resetFresh}
-              onPlace={pickPlace}
-            />
-          }
-          strip={
-            place.kind === 'dz' && board.uploading === `dest:${place.name}` && progress ? (
-              <UploadStrip progress={progress} />
-            ) : undefined
-          }
-          note={note}
-          incoming={paneTarget}
-          onImport={(list, target, where) => void importDropped(list, target, where)}>
-          {place.kind === 'camera' ? (
-            <CameraFiles
-              mount={place.name}
-              stamp={board.cameras.map((c) => c.mount).join('\n')}
-              onNote={board.setNote}
-              onCopyBack={(paths) => send('copy-back', { intent: 'copy-back', paths })}
-            />
-          ) : place.kind === 'storage' ? (
-            <div className='pt-3'>
-              <StorageList
-                storage={board.storage}
-                isHere={(entry) => groups.some((g) => folderOnStorage(g) === entry.folder)}
-                onOpen={(entry) =>
-                  pickPlace({ kind: 'pax', name: `${entry.firstname} ${entry.lastname}`.trim() })
-                }
-                onEmail={(entry) => setDialog({ kind: 'email', folder: entry.folder })}
-                waitingFiles={(entry) => (entry.files ?? []).filter((f) => toSort.has(f.id)).length}
-                onRestore={(folders) => send('restore', { intent: 'restore-tandems', folders })}
-              />
-            </div>
-          ) : (
-            <FileBrowser
-              sections={sections}
-              cards={
-                openCard
-                  ? {
-                      hidden: soleTandem !== undefined,
-                      open: openCard.key,
-                      onOpen: (key) => {
-                        look({ card: key })
-                        /* the loose card is no jump: the inspector lets go of the last one */
-                        if (key === 'loose') selection.clear()
-                      }
-                    }
-                  : undefined
-              }
-              kind={kind}
-              shape={view}
-              picked={pickedFiles}
-              sortKey={sortKey}
-              statusContext={statusContext}
-              statusOf={statusOf}
-              proxies={board.proxies}
-              live={board.liveFiles}
-              deliveredName={deliveredName}
-              onFile={(file: ManifestFile, lane: ManifestFile[], e: Modifiers) =>
-                selection.clickFile(file, lane, e)
-              }
-              onPick={selection.pickFile}
-              previewed={selection.previewed}
-              offGap={offGapFiles}
-              onOpen={openFile}
-              onDragFile={drag.startFileDrag}
-              empty={
-                query.trim()
-                  ? 'Nothing here matches that.'
-                  : family === 'sort'
-                    ? 'Nothing left to sort. Copy more cameras off and rescan to see their jumps here.'
-                    : 'Nothing here yet. Drag a jump onto this folder, or drop files from the computer.'
-              }
-              jump={{
-                selected: selection.pickedJump ?? openJump?.id ?? null,
-                frozen,
-                overTarget: drag.overTarget,
-                dropTarget: (id) => drag.groupDropTarget(id),
-                onSelect: (groupId, e) => selection.selectJump(groupId, e, openJump?.id),
-                onDrag: drag.startJumpDrag,
-                actions: tandemActions,
-                above: tandemAbove,
-                progress: progressOf
-              }}
-            />
-          )}
-          {nas.connected && storageWhere && (
-            <StorageFolder
-              key={placeKey(place)}
-              where={storageWhere}
-              stamp={board.remoteAfterUpload?.at}
-              hereToo={hereToo}
-              onProblem={setNote}
-              onBringBack={(file) => {
-                /* the board knows it by where it was sent, which is what its upload recorded */
-                const mine = [...groups.flatMap((g) => g.files), ...loose].find(
-                  (f) => f.uploaded?.remotePath === file.path
-                )
-                if (!mine?.id) {
-                  setNote(`${file.name} was not sent from this machine, so it cannot come back.`)
-                  return
-                }
-                send(`back:${mine.id}`, { intent: 'bring-back', fileIds: [mine.id] })
-              }}
-            />
-          )}
-        </PlacePane>
-
-        <Shell>{inspector()}</Shell>
+        {/* the folder the address names: its pane and the panel beside it */}
+        <Outlet context={model} />
       </div>
 
       <DialogHost
-        dialog={dialog}
+        dialog={model.dialog}
         onDialog={setDialog}
         nas={nas}
         places={places}
-        onChooseFolder={chooseFolder}
+        onChooseFolder={model.chooseFolder}
         groups={groups}
         looseFiles={loose}
-        asOnStorage={asOnStorage}
+        asOnStorage={model.asOnStorage}
         facts={board.tandemFacts}
-        folderFor={folderFor}
-        plan={sendPlan}
-        onPlan={setSendPlan}
-        onUpload={confirmUpload}
+        folderFor={model.folderFor}
+        plan={model.sendPlan}
+        onPlan={model.setSendPlan}
+        onUpload={model.confirmUpload}
         storage={board.storage}
         onEmailed={(folder, sent, to) =>
           send('email', {
@@ -1469,89 +265,59 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             emailed: { folder, sent, ...(to.trim() ? { to: to.trim() } : {}) }
           })
         }
-        onFree={(group) => {
-          setDialog(null)
-          send(`free:${group.id}`, { intent: 'free-tandem', groupId: group.id })
-        }}
-        freeableOf={freeableOf}
-        onFreePlace={(place) => {
-          setDialog(null)
-          send(`free:dz:${place}`, { intent: 'free-dropzone', destination: place })
-        }}
-        onDisconnect={() => {
-          setDialog(null)
-          nas.disconnect()
-        }}
-        onRemovePlace={(place) => {
-          setDialog(null)
-          send(`remove:dz:${place}`, { intent: 'remove-destination', destination: place })
-          /* the place it was showing is gone; what was in it is in Fresh files now */
-          pickPlace({ kind: 'sort' })
-        }}
-        onTakeBack={(mode, group) => {
-          setDialog(null)
-          send('take-back', {
-            intent: mode === 'reset' ? 'reset-tandem' : 'delete-tandem',
-            groupId: group.id
+        onFree={(group) =>
+          closeThen(() => send(`free:${group.id}`, { intent: 'free-tandem', groupId: group.id }))
+        }
+        freeableOf={model.freeableOf}
+        onFreePlace={(place) =>
+          closeThen(() => send(`free:dz:${place}`, { intent: 'free-dropzone', destination: place }))
+        }
+        onDisconnect={() => closeThen(nas.disconnect)}
+        onRemovePlace={(place) =>
+          closeThen(() => {
+            send(`remove:dz:${place}`, { intent: 'remove-destination', destination: place })
+            /* the place it was showing is gone; what was in it is in Fresh files now */
+            model.pickPlace({ kind: 'sort' })
           })
-          /* a deleted tandem has no page left; its jumps are in Unsorted now */
-          if (mode === 'delete') pickPlace({ kind: 'sort' })
-        }}
-        onResetFresh={(what) => {
-          setDialog(null)
-          selection.clear()
-          send('reset', { intent: 'reset-fresh', resetWhat: what })
-        }}
-        onMontage={(groupId, template) => {
-          setDialog(null)
-          makeMontage(groupId, template)
-        }}
-        onTrash={(files) => {
-          setDialog(null)
-          selection.clear()
-          send('trash', {
-            intent: 'trash-unsorted',
-            fileIds: files.flatMap((f) => (f.id ? [f.id] : []))
+        }
+        onTakeBack={(mode, group) =>
+          closeThen(() => {
+            send('take-back', {
+              intent: mode === 'reset' ? 'reset-tandem' : 'delete-tandem',
+              groupId: group.id
+            })
+            /* a deleted montage has no page left; its jumps are in Fresh files now */
+            if (mode === 'delete') model.pickPlace({ kind: 'sort' })
           })
-        }}
-        comparing={{
-          pair: selection.comparing,
-          onClose: () => selection.setComparing(null),
-          onMerge: mergeTwo
-        }}
+        }
+        onResetFresh={(what) =>
+          closeThen(() => {
+            model.clearSelection()
+            send('reset', { intent: 'reset-fresh', resetWhat: what })
+          })
+        }
+        onMontage={(groupId, template) => closeThen(() => model.makeMontage(groupId, template))}
+        onTrash={(files) =>
+          closeThen(() => {
+            model.clearSelection()
+            send('trash', {
+              intent: 'trash-unsorted',
+              fileIds: idsOf(files)
+            })
+          })
+        }
       />
 
-      <PreviewHost
-        preview={preview}
-        proxies={board.proxies}
-        statusContext={statusContext}
-        tandem={hasCompletePassenger(
-          board.groups.find((g) => g.id === preview.preview?.groupId)?.passenger
-        )}
-        onMomentChange={(file, which, seconds) =>
-          send('moment', {
-            intent: 'set-moment',
-            fileIds: [file.id ?? ''],
-            moment: { which, seconds }
-          })
-        }
-        onPlayOutside={(file) =>
-          send(`play:${file.id ?? file.path}`, { intent: 'play-file', fileIds: [file.id ?? ''] })
-        }
-      />
-      {coming && (
+      {model.coming && (
         <ImportPanel
-          where={coming.where}
-          files={coming.files}
-          done={coming.done}
-          failed={coming.failed}
+          where={model.coming.where}
+          files={model.coming.files}
+          done={model.coming.done}
+          failed={model.coming.failed}
           part={partCopied}
-          reading={watching?.phase === 'reading'}
+          reading={model.watching?.phase === 'reading'}
         />
       )}
-      {/* what the address says — which folder, which file — is drawn above, from the address
-          itself; this is where the addresses themselves live */}
-      <Outlet />
     </main>
   )
 }

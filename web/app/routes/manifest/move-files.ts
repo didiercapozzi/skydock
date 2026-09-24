@@ -2,6 +2,7 @@ import { saveManifest, UPLOADED_LOCKED } from '@skydock/scripts'
 import { moveFiles } from '../../../../packages/skydock-scripts/src/moveFiles'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
+import { messageOf } from '@skydock/scripts'
 
 /* Files go from wherever they are into a jump, a new jump or a place — the one move a drag on the
    board and a drop from the computer both make (RULES, Jumps). */
@@ -31,7 +32,7 @@ const moveFilesIntent: Intent = ({
       startsAt: data.anchorEpoch
     })
   } catch (e) {
-    return refuse(e instanceof Error ? e.message : String(e))
+    return refuse(messageOf(e))
   }
   saveManifest(manifestPath, manifest)
   return boardAnswer(manifest)
