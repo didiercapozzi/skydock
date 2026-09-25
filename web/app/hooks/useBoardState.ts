@@ -12,6 +12,7 @@ import type { Destination, ManifestFile, ManifestGroup } from '../components/typ
 import {
   broughtBackNote,
   copiedBackNote,
+  fromBinNote,
   copiedNote,
   freedNote,
   freedPlaceNote,
@@ -126,6 +127,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
         played,
         copiedBack,
         broughtBack,
+        fromBin,
         storage: listed,
         storageProblem
       } = answered.data
@@ -170,7 +172,9 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
                                   ? copiedBackNote(copiedBack)
                                   : broughtBack
                                     ? broughtBackNote(broughtBack)
-                                    : null
+                                    : fromBin
+                                      ? fromBinNote(fromBin)
+                                      : null
       /* the work stands even when the list could not follow it, and that is said alongside */
       setNote(storageProblem ? [said, storageProblem].filter(Boolean).join(' · ') : said)
     } else {

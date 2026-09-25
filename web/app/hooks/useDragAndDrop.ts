@@ -199,7 +199,10 @@ const useDragAndDrop = ({
         ? groups.find((g) => isMontage(g) && passengerOf(g) === target.name)
         : undefined
     const props =
-      target.kind === 'storage' || target.kind === 'camera' || (host && frozen.has(host.id))
+      target.kind === 'storage' ||
+      target.kind === 'camera' ||
+      target.kind === 'bin' ||
+      (host && frozen.has(host.id))
         ? {}
         : target.kind === 'sort'
           ? dropTarget({ kind: 'sort' }, key)

@@ -559,9 +559,16 @@ folder, so a scan does not bring them back; the copies and proxies made from the
 they have nothing left to come from. The files themselves are moved, not erased, into a folder of the
 bin named for that moment, keeping the day folder each came from. SkyDock never empties the bin, so
 nothing is lost for good and no space comes back until someone empties it by hand. The bin is a folder
-of its own beside the work, apart from the originals and the delivered copies. There is no way back
-from the board: a file is recovered by moving it out of the bin into the originals and scanning again.
-Nothing is put in the bin while something is being processed.
+of its own beside the work, apart from the originals and the delivered copies. Nothing is put in the
+bin while something is being processed.
+
+**Looking into the bin.** _Bin_, in the menu, shows everything in it — each time something was put
+aside, the latest first, saying whether it came from Fresh files or off a camera, and when — with each
+file's picture, name, time and size. Nothing can be deleted from there: the bin is emptied by hand,
+from the machine's own folders, and the page says which folder that is. Picked files can be **brought
+back to Fresh files**: each leaves the bin for the originals, under the day it was shot and never over
+a file already there, and is scanned in as any new file is. One whose footage is on the board already
+stays in the bin, and is named — bringing it back would make two of it.
 
 **Merging and making jumps by hand.** Two jumps that are really one are merged by picking the files of
 one — its panel selects them all in one press — and dropping them on the other's card; the jump left

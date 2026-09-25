@@ -60,10 +60,12 @@ const actionArgs = z.object({
     /* files this machine gave back, copied off the camera again because they are wanted here */
     'copy-back',
     /* one file fetched back off the storage */
-    'bring-back'
+    'bring-back',
+    /* files taken back out of the bin, into Fresh files */
+    'from-bin'
   ]),
   groupId: z.string().optional(),
-  /* files on a camera, by where they sit on its card */
+  /* files on a camera, by where they sit on its card — or in the bin */
   paths: z.array(z.string()).optional(),
   groupIds: z.array(z.string()).optional(),
   fileIds: z.array(z.string()).optional(),

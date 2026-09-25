@@ -282,5 +282,5 @@ const importFile = async ({
   }
 }
 
-export { importFile }
+export { dayFolder, freeName, importFile }
 export type { ImportResult, ImportTarget }

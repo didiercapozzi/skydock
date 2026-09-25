@@ -122,6 +122,8 @@ const boardAnswerSchema = z.object({
   played: z.object({ filename: z.string() }).optional(),
   /* files asked back off a camera after this machine had given them back */
   copiedBack: z.object({ copied: z.number(), skipped: z.number() }).optional(),
+  /* files taken back out of the bin: how many, and the names of those left there, already on the board */
+  fromBin: z.object({ back: z.number(), kept: z.array(z.string()) }).optional(),
   /* one file fetched back off the storage: whether what came back is the original or the copy that
      was delivered, which is all a dropzone ever sends */
   broughtBack: z

@@ -20,6 +20,7 @@ import { deleteJumpIntent } from './manifest/delete-jump'
 import { moveFilesIntent } from './manifest/move-files'
 import { openMontage } from './manifest/open-montage'
 import { copyBackIntent } from './manifest/copy-back'
+import { fromBinIntent } from './manifest/from-bin'
 import { bringBackIntent } from './manifest/from-storage'
 import { playFile } from './manifest/play-file'
 import { cancelProcess, processIntent, processWait } from './manifest/process'
@@ -43,6 +44,7 @@ const intents: Record<ActionData['intent'], Intent> = {
   'play-file': playFile,
   'copy-back': copyBackIntent,
   'bring-back': bringBackIntent,
+  'from-bin': fromBinIntent,
   process: processIntent,
   'process-wait': processWait,
   'cancel-process': cancelProcess,

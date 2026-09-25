@@ -150,8 +150,20 @@ const broughtBackNote = ({ filename, original }: { filename: string; original: b
     ? `${filename} is back on this machine, as it was shot.`
     : `${filename} is back — the copy that was delivered, already cut, so its trim is cleared. Prepare it again from here.`
 
+/* What came back out of the bin, and what stayed there because the board already has it. */
+const fromBinNote = ({ back, kept }: { back: number; kept: string[] }) =>
+  [
+    back > 0 ? `${plural(back, 'file')} back in Fresh files, out of the bin.` : null,
+    kept.length > 0
+      ? `${kept.join(', ')} ${kept.length === 1 ? 'is' : 'are'} on the board already, and stayed in the bin.`
+      : null
+  ]
+    .filter(Boolean)
+    .join(' ')
+
 export {
   broughtBackNote,
+  fromBinNote,
   cameraNote,
   copiedBackNote,
   copiedNote,

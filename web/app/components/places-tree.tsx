@@ -317,6 +317,14 @@ const PlacesTree = ({
           />
         </>
       )}
+      {/* what was put aside, to be looked through and brought back from — never emptied from here */}
+      <Heading>Bin</Heading>
+      <Entry
+        place={{ kind: 'bin' }}
+        glyph='🗑'
+        label='Bin'
+        title='What was put aside — look through it, and bring files back to Fresh files'
+      />
       {/* a camera is listed for as long as it is plugged in, and goes with it — at the foot of the
           rail, apart from the folders of work */}
       {cameras.length > 0 && (

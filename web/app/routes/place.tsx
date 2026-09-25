@@ -13,6 +13,7 @@ import type { FileStatus } from '@skydock/scripts'
 import { useEffect, useState } from 'react'
 import { Outlet, useNavigate, useParams } from 'react-router'
 import { Go, Mini } from '../components/buttons'
+import { BinFiles } from '../components/bin-files'
 import { CameraFiles } from '../components/camera-files'
 import { ComparisonDialog } from '../components/comparison-dialog'
 import { FileBrowser } from '../components/file-browser'
@@ -281,6 +282,12 @@ const Place = () => {
             stamp={board.cameras.map((c) => c.mount).join('\n')}
             onNote={setNote}
             onCopyBack={(paths) => send('copy-back', { intent: 'copy-back', paths })}
+          />
+        ) : place.kind === 'bin' ? (
+          <BinFiles
+            stamp={groups}
+            bringing={busy === 'from-bin'}
+            onBringBack={(paths) => send('from-bin', { intent: 'from-bin', paths })}
           />
         ) : place.kind === 'storage' ? (
           <div className='pt-3'>
