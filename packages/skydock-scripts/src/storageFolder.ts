@@ -1,7 +1,7 @@
 import { dsmRequestUrl, listNasFiles, normalizeNasPath } from './nas'
 import type { NasSession } from './nas'
 import type { StorageFile } from './storageEntry'
-import { folderOfUpload } from './tandemIndex'
+import { folderOfUpload } from './montageIndex'
 import type { Manifest } from './types'
 import { destBaseOf, targetForGroup } from './upload'
 import { getOutputDir, isVideoFile } from './utils'
@@ -53,10 +53,15 @@ const shotFromName = (name: string) => {
 const kindOf = (name: string): StorageFile['kind'] =>
   isVideoFile(name) ? 'video' : PHOTO.test(name) ? 'photo' : 'other'
 
-/* What SkyDock keeps on the storage about the storage: the list of tandems and the list of where
+/* What SkyDock keeps on the storage about the storage: the list of montages and the list of where
    each file came from. They are the app's own bookkeeping, not somebody's footage, so the page that
    lists a folder leaves them out — there is nothing to play, and nothing to do with them here. */
-const OWN_RECORDS = new Set(['skydock-tandems.json', 'skydock-origins.json'])
+/* under the name it has, and the one it had */
+const OWN_RECORDS = new Set([
+  'skydock-montages.json',
+  'skydock-tandems.json',
+  'skydock-origins.json'
+])
 
 /* The folder's files, films and clips first, each kind newest first — by when it was shot, read off
    its name, or else when it was put there. Each says whether the storage hands it out by a link of

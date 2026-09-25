@@ -353,16 +353,26 @@ const planUpload = async ({
   for (const twin of twins) {
     if (!twin) continue
     const remote = `${remoteDirOf(localDir, remoteDir, twin.file)}/${path.basename(twin.file)}`
-    already.add(twin.file)
-    if (parentOf(twin.remotePath) === parentOf(remote))
+    const size = fs.statSync(twin.file).size
+    if (parentOf(twin.remotePath) === parentOf(remote)) {
+      /* Delivered already under another name — if the folder, just listed, still holds it at this
+         weight. The list says what was put there once; the listing says what is there now, and a
+         file somebody deleted over there by hand is a file to send again, not one to call sent. */
+      if (remoteByPath.get(twin.remotePath) !== size) continue
+      already.add(twin.file)
       skip.push({
         localPath: twin.file,
         remotePath: twin.remotePath,
         md5: twin.md5,
-        size: fs.statSync(twin.file).size,
+        size,
         at: Math.floor(Date.now() / 1000)
       })
-    else copyOver.push({ local: twin.file, from: twin.remotePath, to: remote, md5: twin.md5 })
+    } else {
+      /* In another folder the storage copies it over itself; one that is no longer there is a copy
+         that fails, and the file is then sent after all — so the list cannot mislead this either. */
+      already.add(twin.file)
+      copyOver.push({ local: twin.file, from: twin.remotePath, to: remote, md5: twin.md5 })
+    }
   }
 
   /* What the storage was seen to hold while this was worked out: every file in the folders this
@@ -380,7 +390,9 @@ const planUpload = async ({
     copyOver,
     seen,
     /* every file the folders were seen to hold, whatever it weighs: what a send must not land on */
-    held: [...remoteByPath.keys()]
+    held: [...remoteByPath.keys()],
+    /* the folders whose listing came back, empty ones too: what the list can be put right about */
+    listed: remoteDirs
   }
 }
 
@@ -474,6 +486,10 @@ const publishJump = async (
     copied: copied.length,
     /* what the folders were seen to hold, this upload's own files included */
     seen: planned.seen ?? [],
+    /* the folders that were listed, and every file they held: what the storage's list is put
+       right against */
+    listed: planned.listed ?? [],
+    held: planned.held ?? [],
     /* every file now known to be on the NAS, sent, copied there, or already there */
     files: [...sent, ...copied, ...planned.skip]
   }

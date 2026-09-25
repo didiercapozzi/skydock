@@ -1,10 +1,17 @@
 // @vitest-environment node
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import * as http from 'node:http'
-import { deliveryFolders, originsDirOf, readOriginIndex, recordOrigins } from '../src/originIndex'
+import {
+  deliveryFolders,
+  originsDirOf,
+  readOriginIndex,
+  recordOrigins,
+  settleListsDir
+} from '../src/originIndex'
+import { loadNasSession, saveNasSession } from '../src/nas'
+import type { Manifest } from '../src/types'
+import { createTmpDir, startListStorage } from './fixtures'
 import { alreadyUp, sameSizeUnknown, worthReading } from '../src/originEntry'
 import type { OriginIndex } from '../src/originEntry'
-import type { NasSession } from '../src/nas'
 
 /* Where every file on the storage came from. Read off the storage, added to one upload at a time,
    written back — and never written over when it could not be read, since that would lose every
@@ -14,59 +21,25 @@ const YVERDON = '/home/Photos/Skydive/Yverdon'
 /* the club's own folders: its dropzones, and the one the passengers' folders sit in */
 const FOLDERS = [YVERDON, '/home/Photos/Skydive/Tandems', '/home/Photos/Skydive/Epagny']
 
-/* A storage that hands over the list it holds and keeps whatever list is uploaded to it, as the
-   list of tandems is tested against. */
+/* A storage that keeps SkyDock's list of what it holds above the club's folders, where it has
+   always been worked out to go. */
+const LIST = '/home/Photos/Skydive/skydock-origins.json'
+
 const startStorage = async (
   initial: OriginIndex | 'missing' | 'garbage',
-  { listing = 'works' }: { listing?: 'works' | 'fails' } = {}
+  options: { listing?: 'works' | 'fails' } = {}
 ) => {
-  let held: string | null =
-    initial === 'missing' ? null : initial === 'garbage' ? '{not json' : JSON.stringify(initial)
-  const server = http.createServer((req, res) => {
-    const chunks: Buffer[] = []
-    req.on('data', (c: Buffer) => chunks.push(c))
-    req.on('end', () => {
-      const body = Buffer.concat(chunks).toString('utf-8')
-      const file = /filename="skydock-origins\.json"[^\r]*\r\n[^\r]*\r\n\r\n([\s\S]*?)\r\n--/.exec(
-        body
-      )
-      if (file) held = file[1]!
-      res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ success: true }))
-    })
-  })
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()))
-  const address = server.address()
-  const url = `http://127.0.0.1:${typeof address === 'object' && address ? address.port : 0}`
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (target: string) => {
-      const params = new URL(target).searchParams
-      const json = (value: unknown) =>
-        new Response(JSON.stringify(value), { headers: { 'Content-Type': 'application/json' } })
-      if (params.get('api') === 'SYNO.FileStation.List') {
-        if (listing === 'fails') return json({ success: false, error: { code: 119 } })
-        return json({
-          success: true,
-          data: { files: held === null ? [] : [{ name: 'skydock-origins.json', isdir: false }] }
-        })
-      }
-      if (params.get('api') === 'SYNO.FileStation.Download') {
-        /* what a Synology behind its own proxy answers for a file that is not there */
-        if (held === null)
-          return new Response('<!DOCTYPE html><html>Bad Gateway</html>', { status: 502 })
-        return new Response(held)
-      }
-      throw new Error(`unexpected ${target}`)
-    })
+  const storage = await startListStorage(
+    initial === 'missing'
+      ? {}
+      : { [LIST]: initial === 'garbage' ? '{not json' : JSON.stringify(initial) },
+    options
   )
-  const session: NasSession = { hostname: url, username: 'u', sessionId: 'sid' }
-  return {
-    session,
-    held: () => (held === null ? null : (JSON.parse(held) as OriginIndex)),
-    raw: () => held,
-    close: () => new Promise<void>((resolve) => server.close(() => resolve()))
+  const heldAt = (at: string) => {
+    const text = storage.file(at)
+    return text === null ? null : (JSON.parse(text) as OriginIndex)
   }
+  return { ...storage, heldAt, held: () => heldAt(LIST), raw: () => storage.file(LIST) }
 }
 
 afterEach(() => {
@@ -208,6 +181,43 @@ describe('what an upload leaves behind', () => {
     }
   })
 
+  /* The listing is what is there now; the list only remembers. A file somebody deleted over there
+     by hand is forgotten once its folder is listed without it, or it would be called sent forever
+     and never go up again (RULES, Network storage). */
+  it('forgets a file the folder it was in, just listed, no longer holds', async () => {
+    const storage = await startStorage({
+      version: 1,
+      files: {
+        [`${YVERDON}/kept.mp4`]: sent('aaa', 'md5-a'),
+        [`${YVERDON}/deleted_by_hand.mp4`]: sent('bbb', 'md5-b')
+      }
+    })
+    try {
+      await recordOrigins(storage.session, FOLDERS, [], {
+        dirs: [YVERDON],
+        paths: [`${YVERDON}/kept.mp4`]
+      })
+
+      expect(Object.keys(storage.held()!.files)).toEqual([`${YVERDON}/kept.mp4`])
+    } finally {
+      await storage.close()
+    }
+  })
+
+  it('forgets nothing in a folder that was not listed', async () => {
+    const storage = await startStorage({
+      version: 1,
+      files: { '/home/Photos/Skydive/Colombier/one.mp4': sent('aaa', 'md5-a') }
+    })
+    try {
+      await recordOrigins(storage.session, FOLDERS, [], { dirs: [YVERDON], paths: [] })
+
+      expect(Object.keys(storage.held()!.files)).toEqual(['/home/Photos/Skydive/Colombier/one.mp4'])
+    } finally {
+      await storage.close()
+    }
+  })
+
   /* a list that is there but cannot be read is an error, never an empty list: writing back over it
      would throw away every entry in it */
   it('refuses to write over a list it could not read', async () => {
@@ -232,6 +242,69 @@ describe('what an upload leaves behind', () => {
           { remotePath: `${YVERDON}/two.mp4`, ...sent('bbb', 'md') }
         ])
       ).rejects.toThrow(/would not list/)
+    } finally {
+      await storage.close()
+    }
+  })
+})
+
+/* Where the lists live is worked out once and kept: a destination added later, whose folder sits
+   somewhere else, must not move them — a list that moved would start again empty (RULES, Network
+   storage). */
+describe('where the lists stay', () => {
+  const manifestWith = (paths: string[]): Manifest => ({
+    version: 1,
+    createdAt: '2026-09-25',
+    files: [],
+    groups: [],
+    destinations: paths.map((p, i) => ({ name: `Place ${i}`, path: p }))
+  })
+
+  it('is fixed the first time there are places, and does not move when one is added', () => {
+    const configDir = createTmpDir('skydock-lists-')
+    saveNasSession({ hostname: 'h', username: 'u', sessionId: 'sid' }, configDir)
+
+    settleListsDir(manifestWith(FOLDERS), configDir)
+    settleListsDir(manifestWith([...FOLDERS, '/usbshare2/Skydive/Backup']), configDir)
+
+    expect(loadNasSession(configDir)?.listsDir).toBe('/home/Photos/Skydive')
+  })
+
+  it('writes the list where it was fixed, whatever the folders now are', async () => {
+    const storage = await startStorage({ version: 1, files: {} })
+    try {
+      const session = { ...storage.session, listsDir: '/home/Photos/Skydive' }
+      await recordOrigins(
+        session,
+        [...FOLDERS, '/usbshare2/Skydive/Backup'],
+        [{ remotePath: `${YVERDON}/two.mp4`, ...sent('bbb', 'md5-b') }]
+      )
+
+      expect(Object.keys(storage.held()!.files)).toEqual([`${YVERDON}/two.mp4`])
+    } finally {
+      await storage.close()
+    }
+  })
+
+  it('finds a list where it was kept before its place was fixed, and moves it there', async () => {
+    const storage = await startStorage({
+      version: 1,
+      files: { [`${YVERDON}/one.mp4`]: sent('aaa', 'md5-a') }
+    })
+    try {
+      const session = { ...storage.session, listsDir: '/home/Photos' }
+      expect(Object.keys((await readOriginIndex(session, FOLDERS)).files)).toEqual([
+        `${YVERDON}/one.mp4`
+      ])
+
+      await recordOrigins(session, FOLDERS, [
+        { remotePath: `${YVERDON}/two.mp4`, ...sent('bbb', 'md5-b') }
+      ])
+
+      expect(
+        Object.keys(storage.heldAt('/home/Photos/skydock-origins.json')!.files).sort()
+      ).toEqual([`${YVERDON}/one.mp4`, `${YVERDON}/two.mp4`])
+      expect(storage.raw()).toBeNull()
     } finally {
       await storage.close()
     }

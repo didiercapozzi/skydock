@@ -42,7 +42,12 @@ const loader = async ({ request }: Route.LoaderArgs) => {
     session.hostname,
     await listShareLinks(session.hostname, session.sessionId).catch(() => [])
   )
-  return answer({ ok: true, dir, files: await listStorageFolder(session, dir, links) })
+  /* a folder the storage would not list is said to be unreadable, never shown as empty */
+  try {
+    return answer({ ok: true, dir, files: await listStorageFolder(session, dir, links) })
+  } catch {
+    return answer({ ok: false, reason: 'The storage could not be read — try again in a moment.' })
+  }
 }
 
 export { loader, searchParamsArgs }

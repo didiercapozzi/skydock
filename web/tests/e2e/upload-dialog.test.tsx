@@ -483,6 +483,7 @@ describe('the tandems on the storage', () => {
     storage: {
       dir: DIR,
       problem: null,
+      lost: { folders: [], links: [] },
       tandems: [
         {
           folder: `${DIR}/Ana Roth`,
@@ -529,6 +530,47 @@ describe('the tandems on the storage', () => {
         emailed: { folder: `${DIR}/Ana Roth`, sent: true, to: 'ana@example.com' }
       })
     )
+  })
+})
+
+/* The list remembers; the storage says what is there. A tandem whose link the storage no longer
+   honours, or whose folder it no longer holds, stays on the list for what it says — whether its
+   passenger was emailed, that it was freed — but offers nothing that is not there to offer. */
+describe('a tandem on the storage’s list that the storage no longer holds', () => {
+  const DIR = '/SkyDock/Tandems'
+  const ana = {
+    folder: `${DIR}/Ana Roth`,
+    firstname: 'Ana',
+    lastname: 'Roth',
+    day: '28.07.2026',
+    videos: 12,
+    photos: 40,
+    uploadedAt: 1_785_000_000,
+    shareUrl: 'https://nas.local/sharing/Ana'
+  }
+  const lostAs = (lost: { folders: string[]; links: string[] }) => ({
+    ...board,
+    storage: { dir: DIR, problem: null, lost, tandems: [ana] }
+  })
+  const openStorage = () =>
+    userEvent.click(
+      page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /On the storage/ })
+    )
+
+  test('offers no link to send or copy once the storage no longer honours it', async () => {
+    await renderBoard(lostAs({ folders: [], links: [ana.folder] }), false)
+    await openStorage()
+    await expect.element(page.getByText('Ana Roth')).toBeInTheDocument()
+    await expect.element(page.getByText('link gone')).toBeInTheDocument()
+    await expect.element(page.getByRole('button', { name: 'Email…' })).not.toBeInTheDocument()
+    await expect.element(page.getByRole('button', { name: 'Copy link' })).not.toBeInTheDocument()
+  })
+
+  test('says it is no longer on the storage once its folder is gone', async () => {
+    await renderBoard(lostAs({ folders: [ana.folder], links: [] }), false)
+    await openStorage()
+    await expect.element(page.getByText('no longer on the storage')).toBeInTheDocument()
+    await expect.element(page.getByRole('button', { name: 'Watch…' })).not.toBeInTheDocument()
   })
 })
 
@@ -620,7 +662,7 @@ describe('a tandem with nothing left to do', () => {
         uploaded: { at: 1_785_010_000, film: sent('luc.mp4'), photos: sent('luc.photos.zip') }
       }
     ],
-    storage: { dir: DIR, problem: null, tandems: [entry(emailed)] }
+    storage: { dir: DIR, problem: null, lost: { folders: [], links: [] }, tandems: [entry(emailed)] }
   })
   const menu = () => page.getByRole('navigation', { name: 'Folders' })
 
@@ -751,6 +793,7 @@ describe('a tandem this board has forgotten', () => {
     storage: {
       dir: DIR,
       problem: null,
+      lost: { folders: [], links: [] },
       tandems: [entry(['Ana', 'Roth'], ['a1', 'a2']), entry(['Luc', 'Favre'], ['v1', 'v2'])]
     }
   }

@@ -53,12 +53,27 @@ const startUploadServer = () => {
   )
 }
 
-const stubDsm = () =>
+/* a storage whose list of what it holds is there but garbled: one that cannot be written back */
+const stubDsm = ({ garbledList = false }: { garbledList?: boolean } = {}) =>
   stubFetch(async (url) => {
     if (url.includes('SYNO.API.Auth') && url.includes('method=login')) return loginSuccess('sid')
     if (url.includes('SYNO.API.Auth')) return jsonResponse({ success: true })
     if (url.includes('SYNO.FileStation.List'))
-      return jsonResponse({ success: true, data: { files: [] } })
+      return jsonResponse({
+        success: true,
+        data: {
+          files: garbledList
+            ? [
+                {
+                  name: 'skydock-origins.json',
+                  path: `${new URL(url).searchParams.get('folder_path')}/skydock-origins.json`,
+                  isdir: false
+                }
+              ]
+            : []
+        }
+      })
+    if (garbledList && url.includes('SYNO.FileStation.Download')) return new Response('{not json')
     if (url.includes('SYNO.FileStation.Sharing'))
       return jsonResponse({ success: true, data: { links: [{ url: '/sharing/abc' }] } })
     throw new Error(`unexpected call ${url}`)
@@ -165,10 +180,14 @@ const PLAN: SendPlan = {
   placed: { 'zip:videos': ['Backup'], film: ['Tandems'], photos: ['Tandems'] }
 }
 
-const upload = async (options: SceneOptions = {}, plan: SendPlan = PLAN) => {
+const upload = async (
+  options: SceneOptions = {},
+  plan: SendPlan = PLAN,
+  storage: { garbledList?: boolean } = {}
+) => {
   const built = scene(options)
   const server = await startUploadServer()
-  stubDsm()
+  stubDsm(storage)
   /* uploads run with no password, reusing the session kept in the config folder — the same way the
      app does, and not in the output folder, which is where the upload once looked for it */
   process.env.SKYDOCK_CONFIG_DIR = path.join(built.outputDir, 'config')
@@ -198,6 +217,17 @@ const into = (uploads: { dest: string; name: string }[], dest: string) =>
 
 const contents = (groupDir: string, name: string) =>
   JSON.parse(fs.readFileSync(path.join(groupDir, '.send', `${name}.contents`), 'utf-8')) as string[]
+
+/* The list of what the storage holds follows the upload and never stands in for it: footage that
+   went up is up, whether or not the list could be written (RULES, Network storage). */
+describe('uploading a montage — when the storage’s list will not follow', () => {
+  it('is done all the same, and says the list was not updated', async () => {
+    const { result, uploads } = await upload({}, PLAN, { garbledList: true })
+
+    expect(uploads.length).toBeGreaterThan(0)
+    expect(result.originsProblem).toMatch(/list of what it holds was not updated/)
+  })
+})
 
 describe('uploading a montage — where each item goes', () => {
   it('puts each item in the destinations it was put in, in the project folder named after the montage', async () => {

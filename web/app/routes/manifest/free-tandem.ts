@@ -3,11 +3,11 @@ import {
   loadManifest,
   processingNow,
   saveManifest,
-  earlierTandemsDir,
-  tandemsRemoteDir
+  earlierMontagesDirs,
+  montagesRemoteDir
 } from '@skydock/scripts'
 import { freeTandem, markFreed } from '../../../../packages/skydock-scripts/src/freeTandem'
-import { entryOfTandem, upsert } from '../../../../packages/skydock-scripts/src/tandemIndex'
+import { entryOfMontage, upsert } from '../../../../packages/skydock-scripts/src/montageIndex'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 import { recordOnStorage } from './storage'
@@ -28,13 +28,13 @@ const freeTandemIntent: Intent = async ({ data, manifest, manifestPath, outputDi
     saveManifest(manifestPath, saved)
     /* the storage's list says it is the only copy now */
     const freedGroup = saved.groups.find((g) => g.id === result.groupId)
-    const listed = freedGroup ? entryOfTandem(freedGroup, tandemsRemoteDir(saved)) : null
+    const listed = freedGroup ? entryOfMontage(freedGroup, montagesRemoteDir(saved, session)) : null
     const listing = listed
       ? await recordOnStorage(
           session,
           listed.dir,
           (index) => upsert(index, listed.entry),
-          earlierTandemsDir(saved)
+          earlierMontagesDirs(saved)
         )
       : {}
     return {

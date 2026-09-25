@@ -1,5 +1,5 @@
 import { fileStatus, hasCompletePassenger, isMontage, passengerOf } from '@skydock/scripts'
-import type { StatusContext, TandemEntry, TandemProgress } from '@skydock/scripts'
+import type { StatusContext, MontageEntry, TandemProgress } from '@skydock/scripts'
 import { useState } from 'react'
 import { groupsIn, hereIn, looseIn, placeKey, placeLabel } from '../helpers/places'
 import type { Place } from '../helpers/places'
@@ -18,7 +18,7 @@ type Props = {
   destinations: Destination[]
   groups: ManifestGroup[]
   looseFiles: ManifestFile[]
-  storage: { tandems: TandemEntry[] } | null
+  storage: { tandems: MontageEntry[] } | null
   /* the cameras plugged in right now */
   cameras: Mounted[]
   statusContext: (file: ManifestFile) => StatusContext

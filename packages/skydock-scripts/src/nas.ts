@@ -15,7 +15,9 @@ const nasSessionSchema = z.object({
   encPasswd: z.string().optional(),
   /* this machine, as the storage trusts it after a login with a 2-step code: a later login naming
      it needs no code, so the session goes on renewing itself */
-  deviceId: z.string().optional()
+  deviceId: z.string().optional(),
+  /* where SkyDock's own lists are kept on this storage, fixed the first time it was worked out */
+  listsDir: z.string().optional()
 })
 type NasSession = z.infer<typeof nasSessionSchema>
 
@@ -355,34 +357,49 @@ const listNasFolder = async (
     .map((f) => ({ name: f.name, path: normalizeNasPath(f.path), isdir: true }))
 }
 
-/* files with their byte size — the cheap half of the "is it already up there" question.
-   A folder that does not exist yet is not an error: it just holds nothing. */
+/* DSM's answer for a path that is not there */
+const NO_SUCH_PATH = 408
+
+/* The storage did not say what a folder holds — it did not answer, turned the question down, or
+   answered something that could not be read. Never the same as an empty folder: what is decided on
+   a listing — that a file is gone, that an entry is stale — is decided only on one that came back. */
+class StorageUnreadable extends Error {}
+
+/* Files with their byte size — the cheap half of the "is it already up there" question. A folder
+   that does not exist yet is not an error: it just holds nothing. Anything else that goes wrong is,
+   and is said, rather than read as a folder with nothing in it. */
 const listNasFiles = async (host: string, sid: string, folderPath: string) => {
   const cpath = normalizeNasPath(folderPath)
-  try {
-    const body = await dsmFetch(host, {
-      api: 'SYNO.FileStation.List',
-      version: '2',
-      method: 'list',
-      folder_path: cpath,
-      additional: '["size","time"]',
-      filetype: 'file',
-      _sid: sid
-    })
-    if (!body.success) return []
-    const parsed = dsmSizedFilesSchema.safeParse(body.data)
-    if (!parsed.success) return []
-    return (parsed.data.files ?? [])
-      .filter((f) => f.isdir !== true)
-      .map((f) => ({
-        name: f.name,
-        path: normalizeNasPath(f.path),
-        size: f.additional?.size ?? f.size ?? null,
-        mtime: f.additional?.time?.mtime ?? null
-      }))
-  } catch {
-    return []
+  const body = await dsmFetch(host, {
+    api: 'SYNO.FileStation.List',
+    version: '2',
+    method: 'list',
+    folder_path: cpath,
+    additional: '["size","time"]',
+    filetype: 'file',
+    _sid: sid
+  }).catch((e: unknown) => {
+    throw new StorageUnreadable(
+      `The storage did not answer for ${cpath}: ${e instanceof Error ? e.message : String(e)}`
+    )
+  })
+  if (!body.success) {
+    if (body.error?.code === NO_SUCH_PATH) return []
+    throw new StorageUnreadable(
+      `The storage would not list ${cpath}${body.error ? ` (DSM error ${body.error.code})` : ''}.`
+    )
   }
+  const parsed = dsmSizedFilesSchema.safeParse(body.data)
+  if (!parsed.success)
+    throw new StorageUnreadable(`The storage's listing of ${cpath} made no sense.`)
+  return (parsed.data.files ?? [])
+    .filter((f) => f.isdir !== true)
+    .map((f) => ({
+      name: f.name,
+      path: normalizeNasPath(f.path),
+      size: f.additional?.size ?? f.size ?? null,
+      mtime: f.additional?.time?.mtime ?? null
+    }))
 }
 
 const MD5_POLL_MS = 500
@@ -580,9 +597,11 @@ const listShareLinks = async (host: string, sid: string) => {
       limit: String(SHARE_PAGE_SIZE),
       _sid: sid
     })
-    if (!body.success) return links
+    /* a list cut short is not the storage's list: a link it left out would be taken for revoked */
+    if (!body.success) throw new StorageUnreadable('The storage would not list its share links.')
     const parsed = dsmShareListSchema.safeParse(body.data)
-    if (!parsed.success) return links
+    if (!parsed.success)
+      throw new StorageUnreadable('The storage’s list of share links made no sense.')
     const page = parsed.data.links ?? []
     links.push(...page)
     const total = parsed.data.total ?? links.length
@@ -742,7 +761,8 @@ const loginWithSession = async (
       sessionId: sid,
       backupFolder: kept?.backupFolder,
       encPasswd: encryptPasswordForStorage(host, user, password),
-      deviceId: deviceId ?? kept?.deviceId
+      deviceId: deviceId ?? kept?.deviceId,
+      listsDir: kept?.listsDir
     },
     configDir
   )
@@ -810,6 +830,8 @@ export {
   removeShareLink,
   saveNasSession,
   shareLinkFor,
-  tryAutoRefreshSession
+  tryAutoRefreshSession,
+  NO_SUCH_PATH,
+  StorageUnreadable
 }
 export type { DsmAuth, DsmConfig, NasFolderEntry, NasSession }

@@ -802,7 +802,9 @@ is delivered under a second name often enough: a clip whose time was put right, 
 a jump filed to another dropzone. The storage keeps a list of what it holds and, for what SkyDock sent, where it came from, so
 that footage is recognised whatever it is called and whoever put it there — and what happens then depends on where its twin
 is. Already in the folder this one is going to, there is nothing to do: it is delivered, and counts
-as uploaded under the name it has there. In another folder, that is another delivery and this folder
+as uploaded under the name it has there — but only when that folder, listed for this upload, shows it
+there at that weight. The list remembers what was put up once; the listing says what is there now, and
+a file somebody deleted up there by hand is sent again. In another folder, that is another delivery and this folder
 has to hold it too — a renamed montage must not be handed a link to an empty folder — so the
 storage copies it to itself, and nothing travels from here. A copy the storage will not make is sent
 the ordinary way. The same original cut differently is other footage, and goes up as such. Nothing is
@@ -811,10 +813,20 @@ that cannot be read sends the file rather than skipping it.
 
 **Where each file came from.** The list is one small file, kept in the folder that holds the places'
 own folders — never inside one of them, which a montage's link opens, and not at the top of a share
-beside everything else kept there. Where that is follows from those folders themselves, so it is
-never chosen and never has to be found. It is read before an upload and written after it,
-keeping every entry it did not make — another machine's included — and a list that cannot be read is
-never written over.
+beside everything else kept there. Where that is is worked out once, from those folders, the first
+time the storage is used, and kept with the connection: a place added later, whose folder sits
+somewhere else, does not move it, since a list that moved would start again empty. A list found where
+it was kept before is read from there, and moved to where it now lives the first time it changes. It
+is read before an upload and written after it, keeping every entry it did not make — another
+machine's included — and a list that cannot be read is never written over. If it cannot be written,
+the upload still stands and the board says the list did not follow.
+
+**The storage's own listing is the truth; the list only remembers.** It saves reading a file again
+and reaches folders this machine did not list, but it never says a file is up there that the storage
+does not show. Whenever a folder has just been listed — before an upload, or when the board opens —
+whatever the list says of a file that folder no longer holds is forgotten. A folder that was not
+listed is left as the list has it, and a folder the storage would not list is never taken for an
+empty one: nothing is forgotten, demoted or sent on the strength of a listing that failed.
 
 It also holds what SkyDock did not put there. A place can be pointed at a folder that was full of
 footage long before SkyDock saw it, and the board asks the storage what is in those folders every
@@ -1117,15 +1129,27 @@ follows it to the end, and a freed one goes on showing what the storage holds of
 
 ## The storage's list of montages
 
-The storage holds a list of every montage uploaded, kept beside the list of where each file came from —
-in the folder above every destination's folder, since a montage goes into any of them. It says who it
+The storage holds a list of every montage uploaded, kept in the same place as the list of where each
+file came from — a montage goes into any destination, so the list belongs to none. It says who it
 was for, the day, how many videos and photos, when it went up, its share link, where its film, photos
 and backup are, whether it was freed, and whether its link was emailed and to which address. A montage
-is known on it by the folder its film went to. The list a board kept before, in the Tandems folder, is
-read until the new one is written, so nothing listed there is lost. _On the
+is known on it by the folder its film went to. A list kept before — in the Tandems folder, or under
+the name it had while every montage was a tandem — is read until the new one is written, and is then
+put in the storage's bin, so nothing listed there is lost and there are never two lists telling
+different stories. A SkyDock older than this one still writes the old list, so every machine is
+brought up to date before a montage is uploaded from it. _On the
 storage_, in the menu once the storage is connected, shows this list, so every montage the storage holds is there, including
 ones this machine no longer has and ones uploaded from another machine. Each can be emailed from there,
 and one still on this board can be opened.
+
+**What the storage says for itself is asked of the storage.** The list keeps what the storage cannot
+say — who a montage was for, whether its passenger was emailed and at which address, that it was
+freed, which files it was made of. Whether its folder is still there and whether its link still works
+are asked of the storage each time the board opens and after every change to the list. A montage whose
+folder is gone is shown as no longer on the storage, and one whose link was revoked or has expired as
+having no link; neither offers what is not there — no link to copy or email, no folder to watch — and
+neither is taken off the list, the only place that says it was emailed or freed. A question the
+storage did not answer takes nothing away.
 
 **Putting a forgotten montage back.** The list also writes down which files each montage is made of — each
 by what it contains, which is how a file is known whatever it is called — and the times they were given.

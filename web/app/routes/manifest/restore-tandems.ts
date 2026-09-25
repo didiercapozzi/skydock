@@ -1,11 +1,11 @@
 import {
-  earlierTandemsDir,
+  earlierMontagesDirs,
   ensureNasSession,
   saveManifest,
-  tandemsRemoteDir
+  montagesRemoteDir
 } from '@skydock/scripts'
 import { restoreTandems } from '../../../../packages/skydock-scripts/src/restoreTandems'
-import { readTandemIndex } from '../../../../packages/skydock-scripts/src/tandemIndex'
+import { readMontageIndex } from '../../../../packages/skydock-scripts/src/montageIndex'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 import { messageOf } from '@skydock/scripts'
@@ -17,11 +17,11 @@ import { messageOf } from '@skydock/scripts'
 const restoreTandemsIntent: Intent = async ({ data, manifest, manifestPath, refuse }) => {
   const session = await ensureNasSession()
   if (!session) return refuse('Connect the NAS first — the list of montages is kept there.')
-  const dir = tandemsRemoteDir(manifest)
+  const dir = montagesRemoteDir(manifest, session)
   if (!dir) return refuse('Choose where montages go on the storage first.')
   let listed
   try {
-    listed = (await readTandemIndex(session, dir, earlierTandemsDir(manifest))).tandems
+    listed = (await readMontageIndex(session, dir, earlierMontagesDirs(manifest))).tandems
   } catch (e) {
     return refuse(messageOf(e))
   }

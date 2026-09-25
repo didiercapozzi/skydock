@@ -1,13 +1,14 @@
-import type { TandemEntry } from '@skydock/scripts'
+import type { MontageEntry, MontageLost } from '@skydock/scripts'
 import { useState } from 'react'
-import { lastSegment } from '@skydock/scripts'
+import { lastSegment, lostOf } from '@skydock/scripts'
 import { Go, Mini } from './buttons'
 import { StorageFolder } from './storage-folder'
 import { localeDate } from './utils'
 
-/* Every tandem the storage holds, from its own list: the ones still on this machine and the ones
-   freed from it or uploaded from another one. Each says who it was for, when it went up, whether
-   the passenger was emailed, and where its link and its backup are. */
+/* Every montage the storage's list names: the ones still on this machine and the ones freed from it
+   or uploaded from another one. Each says who it was for, when it went up, whether the passenger was
+   emailed, and where its link and its backup are — and, when the storage no longer holds its folder
+   or no longer honours its link, says that instead of offering what is not there. */
 
 /* the day of the jump, 01.08.2026, read the way the list writes it */
 const jumpDay = (day: string) => day.replace(/^0/, '').replace(/\.0/, '.')
@@ -15,13 +16,16 @@ const jumpDay = (day: string) => day.replace(/^0/, '').replace(/\.0/, '.')
 const Row = ({
   entry,
   here,
+  lost,
   waiting,
   onOpen,
   onEmail,
   onRestore
 }: {
-  entry: TandemEntry
+  entry: MontageEntry
   here: boolean
+  /* what the storage no longer holds of it: its folder, or only its link */
+  lost: 'folder' | 'link' | null
   /* how many of its files are on this board waiting to be sorted — a board that forgot it */
   waiting: number
   onOpen: () => void
@@ -73,6 +77,19 @@ const Row = ({
             🔒 storage only
           </span>
         ) : null}
+        {lost === 'folder' ? (
+          <span
+            title={`${entry.folder} is not on the storage any more — the list keeps what it said of it`}
+            className='rounded-full bg-local-soft px-2 py-px text-[11px] font-semibold text-local'>
+            no longer on the storage
+          </span>
+        ) : lost === 'link' ? (
+          <span
+            title='The storage no longer honours its link: revoked, or expired'
+            className='rounded-full bg-local-soft px-2 py-px text-[11px] font-semibold text-local'>
+            link gone
+          </span>
+        ) : null}
         <span className='ml-auto flex flex-wrap items-center gap-1.5'>
           {waiting > 0 && (
             <Go
@@ -81,11 +98,13 @@ const Row = ({
               Restore · {waiting} file{waiting === 1 ? '' : 's'}
             </Go>
           )}
-          <Mini
-            title='List what its folder on the storage holds, and watch it from here'
-            onClick={() => setWatching(!watching)}>
-            {watching ? 'Hide files' : 'Watch…'}
-          </Mini>
+          {lost !== 'folder' && (
+            <Mini
+              title='List what its folder on the storage holds, and watch it from here'
+              onClick={() => setWatching(!watching)}>
+              {watching ? 'Hide files' : 'Watch…'}
+            </Mini>
+          )}
           {here && (
             <Mini
               title='Open it on this board'
@@ -102,17 +121,17 @@ const Row = ({
               Backup · {lastSegment(entry.backup)}
             </Mini>
           )}
-          {entry.shareUrl && (
+          {entry.shareUrl && !lost && (
             <Mini
               title={entry.shareUrl}
               onClick={() => void copy()}>
               {copied ? '✓ copied' : 'Copy link'}
             </Mini>
           )}
-          {entry.shareUrl && <Mini onClick={onEmail}>Email…</Mini>}
+          {entry.shareUrl && !lost && <Mini onClick={onEmail}>Email…</Mini>}
         </span>
       </div>
-      {watching && (
+      {watching && lost !== 'folder' && (
         <div className='px-3 pb-3'>
           <StorageFolder where={{ folder: entry.folder }} />
         </div>
@@ -129,13 +148,18 @@ const StorageList = ({
   onEmail,
   onRestore
 }: {
-  storage: { dir: string; tandems: TandemEntry[]; problem: string | null } | null
+  storage: {
+    dir: string
+    tandems: MontageEntry[]
+    lost: MontageLost
+    problem: string | null
+  } | null
   /* whether this tandem is still on this board, and the name to open it under */
-  isHere: (entry: TandemEntry) => boolean
+  isHere: (entry: MontageEntry) => boolean
   /* how many of a tandem's files are on this board, still to be sorted */
-  waitingFiles: (entry: TandemEntry) => number
-  onOpen: (entry: TandemEntry) => void
-  onEmail: (entry: TandemEntry) => void
+  waitingFiles: (entry: MontageEntry) => number
+  onOpen: (entry: MontageEntry) => void
+  onEmail: (entry: MontageEntry) => void
   /* put these tandems back on the board, by their folder on the storage */
   onRestore: (folders: string[]) => void
 }) => {
@@ -179,6 +203,7 @@ const StorageList = ({
               key={entry.folder}
               entry={entry}
               here={isHere(entry)}
+              lost={lostOf(storage.lost, entry.folder)}
               waiting={isHere(entry) ? 0 : waitingFiles(entry)}
               onOpen={() => onOpen(entry)}
               onEmail={() => onEmail(entry)}

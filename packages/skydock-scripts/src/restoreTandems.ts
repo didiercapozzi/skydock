@@ -1,6 +1,6 @@
 import { dayOfFiles, freshIds } from './clustering'
 import { moveFiles } from './moveFiles'
-import type { TandemEntry } from './tandemEntry'
+import type { MontageEntry } from './montageEntry'
 import type { Manifest } from './types'
 
 /* A board that has forgotten its tandems — the output folder scanned again from nothing, its record
@@ -17,12 +17,12 @@ import type { Manifest } from './types'
 /* The files of a listed tandem that are on this board waiting to be sorted. A tandem whose files
    are already filed somewhere is left to whoever filed them, and one freed from its machine has no
    files here to find. */
-const restorableFiles = (manifest: Manifest, entry: TandemEntry) => {
+const restorableFiles = (manifest: Manifest, entry: MontageEntry) => {
   const fresh = freshIds(manifest)
   return (entry.files ?? []).filter((f) => fresh.has(f.id))
 }
 
-const restoreTandems = (manifest: Manifest, entries: TandemEntry[]) => {
+const restoreTandems = (manifest: Manifest, entries: MontageEntry[]) => {
   const restored: { who: string; files: number; of: number }[] = []
   for (const entry of entries) {
     const found = restorableFiles(manifest, entry)

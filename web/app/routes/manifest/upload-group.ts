@@ -93,7 +93,8 @@ const uploadGroup: Intent = async ({ data, manifest, manifestPath, outputDir, re
          without having to go and ask for it */
       remote: await listRemoteFiles(saved, session),
       uploaded: result.uploaded,
-      skipped: result.skipped
+      skipped: result.skipped,
+      ...(result.originsProblem ? { storageProblem: result.originsProblem } : {})
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Upload failed.'

@@ -60,12 +60,30 @@ const startUploadServer = (respond: () => { success: boolean }) => {
   )
 }
 
-/* the storage answering everything but the uploads themselves: login, a share link when asked */
-const storageAnswers = (link: string | null = '/sharing/abc') =>
+/* A folder listed as DSM lists one: what it holds, by name and size, and nothing where nothing is
+   held. `held` is the storage's folders by their path. */
+const listing = (url: string, held: Record<string, { name: string; size: number }[]> = {}) => {
+  const folder = new URL(url, 'http://x').searchParams.get('folder_path') ?? ''
+  const files = (held[folder] ?? []).map((f) => ({
+    name: f.name,
+    path: `${folder}/${f.name}`,
+    isdir: false,
+    additional: { size: f.size }
+  }))
+  return jsonResponse({ success: true, data: { files, total: files.length, offset: 0 } })
+}
+
+/* the storage answering everything but the uploads themselves: login, a share link when asked, and
+   what its folders hold */
+const storageAnswers = (
+  link: string | null = '/sharing/abc',
+  held: Record<string, { name: string; size: number }[]> = {}
+) =>
   stubFetch((url) => {
     if (url.includes('method=login')) return loginSuccess('sid')
     if (url.includes('SYNO.FileStation.Sharing'))
       return jsonResponse({ success: true, data: link ? { links: [{ url: link }] } : {} })
+    if (url.includes('SYNO.FileStation.List')) return listing(url, held)
     return jsonResponse({ success: true })
   })
 
@@ -202,6 +220,7 @@ describe('uploading a folder', () => {
         return jsonResponse({ success: true, data: { shares: [] } })
       if (url.includes('SYNO.FileStation.Sharing'))
         return jsonResponse({ success: true, data: { links: [{ url: '/sharing/kept' }] } })
+      if (url.includes('SYNO.FileStation.List')) return listing(url)
       throw new Error(`unexpected call ${url}`)
     })
     const result = await publish()
@@ -323,7 +342,9 @@ describe('uploading a folder', () => {
     })
 
     it('is not sent again when it is already in the folder it is going to', async () => {
-      storageAnswers()
+      storageAnswers('/sharing/abc', {
+        '/SkyDock/jump': [{ name: 'under_another_name.mp4', size: 4 }]
+      })
       const film = path.join(dir, 'film.mp4')
       fs.writeFileSync(film, Buffer.from('film'))
 
@@ -335,6 +356,22 @@ describe('uploading a folder', () => {
       expect(result).toMatchObject({ uploaded: 0, skipped: 1 })
       expect(sentNames(server.uploads)).toEqual([])
       expect(result.files[0]?.remotePath).toBe('/SkyDock/jump/under_another_name.mp4')
+    })
+
+    /* The list remembers what was put there once; the listing says what is there now. A file
+       somebody deleted by hand is a file to send again. */
+    it('is sent again when the folder no longer holds it, whatever the list remembers', async () => {
+      storageAnswers()
+      const film = path.join(dir, 'film.mp4')
+      fs.writeFileSync(film, Buffer.from('film'))
+
+      const result = await publish({
+        files: [film],
+        origins: already(film, '/SkyDock/jump/under_another_name.mp4')
+      })
+
+      expect(result).toMatchObject({ uploaded: 1, skipped: 0 })
+      expect(sentNames(server.uploads)).toEqual(['film.mp4'])
     })
 
     /* Another folder is another delivery — a passenger's own, a second dropzone — and that folder
@@ -364,6 +401,7 @@ describe('uploading a folder', () => {
         }
         if (url.includes('SYNO.FileStation.Sharing'))
           return jsonResponse({ success: true, data: { links: [{ url: '/sharing/abc' }] } })
+        if (url.includes('SYNO.FileStation.List')) return listing(url)
         return jsonResponse({ success: true })
       })
       const film = path.join(dir, 'film.mp4')
@@ -393,6 +431,7 @@ describe('uploading a folder', () => {
           return jsonResponse({ success: false, error: { code: 1200 } })
         if (url.includes('SYNO.FileStation.Sharing'))
           return jsonResponse({ success: true, data: { links: [{ url: '/sharing/abc' }] } })
+        if (url.includes('SYNO.FileStation.List')) return listing(url)
         return jsonResponse({ success: true })
       })
       const film = path.join(dir, 'film.mp4')
@@ -443,6 +482,8 @@ describe('uploading a folder', () => {
         }
         if (url.includes('SYNO.FileStation.Sharing'))
           return jsonResponse({ success: true, data: { links: [{ url: '/sharing/abc' }] } })
+        if (url.includes('SYNO.FileStation.List'))
+          return listing(url, { '/SkyDock/jump': [{ name: 'from_before_skydock.mp4', size: 4 }] })
         return jsonResponse({ success: true })
       })
 

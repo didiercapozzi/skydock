@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { tandemEntrySchema } from './tandemEntry'
+import { montageEntrySchema, montageLostSchema } from './montageEntry'
 import { destinationSchema, manifestFileSchema, manifestGroupSchema } from './types'
 
 /* Everything the board may be answered with, and the only shape the server answers a change with:
@@ -95,7 +95,9 @@ const boardAnswerSchema = z.object({
     .object({ place: z.string(), bytes: z.number(), files: z.number(), kept: z.number() })
     .optional(),
   /* the storage's list, as the change just wrote it — or why it could not be */
-  storage: z.object({ dir: z.string(), tandems: z.array(tandemEntrySchema) }).optional(),
+  storage: z
+    .object({ dir: z.string(), tandems: z.array(montageEntrySchema), lost: montageLostSchema })
+    .optional(),
   storageProblem: z.string().optional(),
   imported: importOutcomeSchema.optional(),
   /* what came off a camera plugged in, and how its copy ended */

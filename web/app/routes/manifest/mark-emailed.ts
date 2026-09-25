@@ -1,4 +1,9 @@
-import { earlierTandemsDir, ensureNasSession, parentOf, tandemsRemoteDir } from '@skydock/scripts'
+import {
+  earlierMontagesDirs,
+  ensureNasSession,
+  parentOf,
+  montagesRemoteDir
+} from '@skydock/scripts'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 import { recordOnStorage } from './storage'
@@ -13,14 +18,14 @@ const markEmailed: Intent = async ({ data, manifest, refuse }) => {
   let known = true
   const listing = await recordOnStorage(
     session,
-    tandemsRemoteDir(manifest) ?? parentOf(folder),
+    montagesRemoteDir(manifest, session) ?? parentOf(folder),
     (index) => {
       const entry = index.tandems.find((t) => t.folder === folder)
       if (!entry) known = false
       else if (sent) entry.emailed = { at: Math.floor(Date.now() / 1000), ...(to ? { to } : {}) }
       else delete entry.emailed
     },
-    earlierTandemsDir(manifest)
+    earlierMontagesDirs(manifest)
   )
   if (!known) return refuse('This montage is not on the storage’s list — upload it first.')
   return { ...boardAnswer(manifest), ...listing }

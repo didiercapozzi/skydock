@@ -17,12 +17,10 @@ folders; the others are traced in the code. Line numbers are as of commit `33386
    freed, processed, share link) always from the server, and the manifest reloaded just before any
    save. Fixes the out-of-date tab, long actions saving old state, and an uploaded jump being moved.
 3. **Half-written files** — zips and copies written as `.part` and renamed when complete; one upload
-   at a time, tracked on the server; a listing the NAS did not answer is an error, not an empty folder.
+   at a time, tracked on the server.
 4. **Check before deleting** — refuse to process when an original is missing; check each original's
    size and hash against its record before freeing it.
-5. **The storage's lists** — a file counts as already up only if the listing just taken holds it; a
-   list that cannot be written does not fail an upload.
-6. **Dead ends** — a camera copy skips a bad file and carries on; a failed process names the bad
+5. **Dead ends** — a camera copy skips a bad file and carries on; a failed process names the bad
    clip; names `.`, `..` and dots only are refused; an error explains itself instead of "Oops!".
 
 ### Can lose footage or all the sorting
@@ -46,11 +44,6 @@ folders; the others are traced in the code. Line numbers are as of commit `33386
   (`archive.ts:52,76`), so `isArchiveFresh` accepts a cut-off rebuild (`archive.ts:32-44`). The same
   happens when two uploads run at once. Fix: write `.part`, remove `.contents` first, rename at
   the end.
-- **A NAS that does not answer makes freed files forgotten for good.** [reproduced] `listNasFiles`
-  returns `[]` on every error (`nas.ts:371,383`), so the board loader's `forgetLostFiles` sees an
-  empty folder (`board.tsx:79-82`). Triggers: a timeout, a dropped session, a folder renamed on the
-  NAS. Fix: throw when the call fails or `success` is false, and keep "folder missing" (408) as empty
-  if wanted.
 - **Processing a montage again after an original was deleted by hand deletes its processed copy.**
   [reproduced] The missing original is skipped silently (`process.ts:420`), its copy's name is not
   reserved, and `pruneStaleMedia` deletes it (`process.ts:439`). The run reports success. Fix:
@@ -63,15 +56,6 @@ folders; the others are traced in the code. Line numbers are as of commit `33386
 
 ### Stuck for good, with no way out in the app
 
-- **A file deleted on the NAS can never be uploaded again.** [reproduced] The origin list is only
-  ever added to (`originIndex.ts:151-157`). `alreadyUp` trusts any same-md5 entry without checking
-  it is still there (`originEntry.ts:48-53`), so `planUpload` skips it (`publish.ts:357-364`). The
-  board shows "uploaded", then "gone", on every retry. Fix: accept a same-folder twin only if the
-  listing just taken (`remoteByPath`) holds it, and prune entries a listing shows are gone.
-- **An upload fails as a whole when the origin list cannot be read or written.** `recordOrigins`
-  is awaited unguarded (`upload.ts:300-319`). Everything was sent, but nothing is recorded, and
-  every retry fails the same way. Fix: catch it and report "the list did not follow", as
-  `recordOnStorage` does.
 - **One file missing on the NAS blocks freeing its whole dropzone.** `freeableIn` uses only the
   records, never the listing (`freeDropzone.ts:42`), and the proof is all or nothing. Fix: pass
   the listing in, or free what is proved and name the rest.
@@ -84,11 +68,9 @@ folders; the others are traced in the code. Line numbers are as of commit `33386
   montage files never get (`forgetLost.ts:26-27`). Bring-back answers "was not sent from this
   machine" (`bringBack.ts:89-90`), against RULES' "comes back whole". Fix: per-file records for
   montage files, or match on the montage's own record.
-- **The storage's list of montages can move.** Its folder is the deepest one above every destination
-  folder (`originIndex.ts:59-72`), so adding a destination can move it, silently when
-  `keepBackupAsPlace` runs on load. After that "On the storage" is empty or stale, "mark as emailed"
-  refuses (`mark-emailed.ts:25`), and a freed montage can never be written back. Fix: store the list's
-  location once, look in the previous one first, and add a way to rewrite the list from the manifest.
+- **No way to write the storage's list of montages again from this board.** A list lost or
+  emptied on the NAS stays so until each montage is uploaded, freed or emailed again. Fix: a way to
+  rewrite the list from the manifest.
 - **One bad file on a card stops the copy of every file after it, on every plug-in.** [reproduced]
   `copyOne` rethrows (`copy.ts:122,164`). A name that is too long or a read error does it. Fix: skip
   the file, count it, name it in the "done" note.
@@ -172,8 +154,8 @@ folders; the others are traced in the code. Line numbers are as of commit `33386
   folder, or keep the replaced version.
 - **A folder dropped from inside `output/` is imported as new originals** (`droppedMedia.ts`), and
   a drop on a place removed in another tab brings the place back (`importFile.ts:208-220`).
-- **A revoked share link keeps being emailed** (`dialog-host.tsx:156`), and a freed montage cannot
-  be uploaded again to get a new one. Fix: check the link when the email opens.
+- **A freed montage whose link was revoked cannot get a new one**: it cannot be uploaded again, and
+  the board now only says its link is gone.
 - **Two machines writing the storage's lists**: the last writer wins, and delivered names can
   collide, putting the other machine's file in the bin.
 - **Closing the window or "Install now" kills a running upload or process without asking**
@@ -196,6 +178,14 @@ the NAS; an interrupted upload retried; processing, which runs one at a time, ca
 reloads before saving; template paths pointing outside their folder; corrupt settings or NAS session.
 
 ## Done
+
+- **The storage's lists: reality wins.** A listing the NAS did not answer is an error, never an
+  empty folder, so nothing is forgotten, pruned or sent on it. A file counts as already up only when
+  the listing just taken holds it, entries for files gone from a listed folder are dropped, and a
+  list that cannot be written no longer fails an upload. The lists' place is fixed once and kept with
+  the connection; the montages list is now `skydock-montages.json`, moved over from
+  `skydock-tandems.json`. A montage whose folder or link is gone is shown so, and its link is not
+  offered for emailing.
 
 - **A whole folder dragged in.** Several files at once already works and is worth keeping. A folder
   dropped on the board should be taken the same way: every video and photo inside it, and inside the

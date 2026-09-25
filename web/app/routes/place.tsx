@@ -53,7 +53,7 @@ import { boardViewSchema } from '../helpers/view'
 import { useBoard } from '../hooks/useBoardModel'
 import type { BoardModel } from '../hooks/useBoardModel'
 import { useSelection } from '../hooks/useSelection'
-import { idsOf } from '@skydock/scripts'
+import { idsOf, lostOf } from '@skydock/scripts'
 
 /* A folder of the board, by its address: /dropzone/yverdon, /montage/Lily%20DONZALLAZ, /storage.
    The board around it is the layout — the rail, the dialogs, what the whole board shares — and this
@@ -545,7 +545,11 @@ const PlaceTools = ({ place }: { place: Place }) => {
   if (place.kind !== 'pax') return null
   const theirs = board.groups.filter((g) => passengerOf(g) === place.name)
   /* the link, by email — once there is a link to send */
-  const linked = theirs.find((g) => g.uploaded?.shareUrl ?? g.publish?.shareUrl)
+  const linked = theirs.find(
+    (g) =>
+      (g.uploaded?.shareUrl ?? g.publish?.shareUrl) &&
+      !lostOf(board.storage?.lost, folderOnStorage(g) ?? '')
+  )
   return (
     <span className='flex items-center gap-1.5'>
       {linked && (

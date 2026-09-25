@@ -1,5 +1,5 @@
 import { boardAnswerSchema } from '@skydock/scripts'
-import type { OutputFact, ProxyFact, TandemEntry, TandemFact } from '@skydock/scripts'
+import type { OutputFact, ProxyFact, MontageEntry, MontageLost, TandemFact } from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
@@ -29,7 +29,12 @@ type ManifestArgs = z.infer<typeof manifestArgs>
 /* a listing plus when it was taken, so the newest of several answers wins */
 type CheckedListing = { dirs: string[]; sizes: Record<string, number | null>; at: number }
 
-type Storage = { dir: string; tandems: TandemEntry[]; problem: string | null } | null
+type Storage = {
+  dir: string
+  tandems: MontageEntry[]
+  lost: MontageLost
+  problem: string | null
+} | null
 
 type Loaded = {
   groups: ManifestGroup[]
@@ -79,7 +84,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   const live = useLiveProgress(setProxies, setTandemFacts, setNote)
   const liveFiles = live.files
   const [remoteAfterUpload, setRemoteAfterUpload] = useState<CheckedListing | null>(null)
-  /* the storage's list of tandems, as the loader read it or as the last change wrote it */
+  /* the storage's list of montages, as the loader read it or as the last change wrote it */
   const [storage, setStorage] = useState(loaded.storage)
   /* the first scan is what creates the manifest, so this is state and not read from the loader */
   const [hasManifest, setHasManifest] = useState(loaded.hasManifest)

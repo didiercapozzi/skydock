@@ -1,5 +1,5 @@
-import { buildPassengerFolder, isVideoFile, passengerOf } from '@skydock/scripts'
-import type { TandemEntry, TandemFact, freeablePlace } from '@skydock/scripts'
+import { buildPassengerFolder, isVideoFile, lostOf, passengerOf } from '@skydock/scripts'
+import type { MontageEntry, MontageLost, TandemFact, freeablePlace } from '@skydock/scripts'
 import { ConnectionDialog } from './connection-dialog'
 import { EmailDialog } from './email-dialog'
 import { FreeDialog } from './free-dialog'
@@ -92,7 +92,7 @@ const DialogHost = ({
   plan: SendPlan
   onPlan: (plan: SendPlan) => void
   onUpload: (group: ManifestGroup, plan: SendPlan) => void
-  storage: { tandems: TandemEntry[] } | null
+  storage: { tandems: MontageEntry[]; lost: MontageLost } | null
   onEmailed: (folder: string, sent: boolean, to: string) => void
   onFree: (group: ManifestGroup) => void
   freeableOf: (place: string) => ReturnType<typeof freeablePlace>
@@ -153,7 +153,11 @@ const DialogHost = ({
           const group = dialog.groupId ? groups.find((g) => g.id === dialog.groupId) : undefined
           const folder = dialog.folder ?? (group ? folderOnStorage(group) : null)
           const entry = folder ? storage?.tandems.find((t) => t.folder === folder) : undefined
-          const shareUrl = group?.uploaded?.shareUrl ?? group?.publish?.shareUrl ?? entry?.shareUrl
+          /* a link the storage no longer honours is not one to send anybody */
+          const shareUrl =
+            folder && lostOf(storage?.lost, folder)
+              ? undefined
+              : (group?.uploaded?.shareUrl ?? group?.publish?.shareUrl ?? entry?.shareUrl)
           const about = group
             ? {
                 firstname: group.passenger?.firstname ?? '',

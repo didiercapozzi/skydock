@@ -1,5 +1,5 @@
 import {
-  earlierTandemsDir,
+  earlierMontagesDirs,
   ensureNasSession,
   forgetLostFiles,
   getOutputDir,
@@ -8,15 +8,16 @@ import {
   loadManifest,
   processingNow,
   saveManifest,
+  settleListsDir,
   statProcessedOutputs,
   statProxies,
   statTandemArtifacts,
-  tandemsRemoteDir
+  montagesRemoteDir
 } from '@skydock/scripts'
-import type { TandemEntry } from '@skydock/scripts'
+import type { MontageEntry, MontageLost } from '@skydock/scripts'
 import { keepBackupAsPlace } from '../../../packages/skydock-scripts/src/destinations'
 import { diskSpace } from '../../../packages/skydock-scripts/src/diskSpace'
-import { readTandemIndex } from '../../../packages/skydock-scripts/src/tandemIndex'
+import { lostOnStorage, readMontageIndex } from '../../../packages/skydock-scripts/src/montageIndex'
 import { Outlet } from 'react-router'
 import type { ShouldRevalidateFunctionArgs } from 'react-router'
 import { BoardHeader } from '../components/board-header'
@@ -63,7 +64,12 @@ const loader = async (_args: Route.LoaderArgs) => {
   /* the first look at the NAS happens here rather than on mount: the page then arrives already
      correct, and the Refresh button re-runs the same check through /api/remote-files */
   let remote: { dirs: string[]; sizes: Record<string, number | null>; at: number } | null = null
-  let storage: { dir: string; tandems: TandemEntry[]; problem: string | null } | null = null
+  let storage: {
+    dir: string
+    tandems: MontageEntry[]
+    lost: MontageLost
+    problem: string | null
+  } | null = null
   try {
     const session = await ensureNasSession()
     if (session) {
@@ -76,7 +82,10 @@ const loader = async (_args: Route.LoaderArgs) => {
       if (manifest && session.backupFolder && keepBackupAsPlace(manifest, session.backupFolder))
         saveManifest(`${outputDir}/manifest.json`, manifest)
       if (manifest) {
-        remote = await listRemoteFiles(manifest, session)
+        /* where SkyDock's lists are kept is fixed the first time there is a place to work it out
+           from, and never moves after (RULES, Network storage) */
+        const settled = settleListsDir(manifest) ?? session
+        remote = await listRemoteFiles(manifest, settled)
         /* footage that is nowhere is not listed: a freed file the storage no longer holds has
            nothing left anywhere, so the app forgets it rather than offering a dead row */
         const forgotten = forgetLostFiles(manifest, remote)
@@ -89,19 +98,27 @@ const loader = async (_args: Route.LoaderArgs) => {
            must not send a second copy of what is already up there (RULES, Network storage). It is
            the board's own reading of those folders, so it costs nothing more to look — and a
            storage that will not have it written changes nothing about the board. */
-        await learnStorage(manifest, session, remote.sizes).catch((e: unknown) => {
+        await learnStorage(manifest, settled, remote).catch((e: unknown) => {
           console.warn(
             `[Board] The storage's list of what it holds was not written: ${messageOf(e)}`
           )
         })
-        /* the storage's own list of tandems — every one it holds, from here or from elsewhere */
-        const dir = tandemsRemoteDir(manifest)
+        /* the storage's own list of montages — every one it holds, from here or from elsewhere */
+        const dir = montagesRemoteDir(manifest, settled)
         if (dir)
-          storage = await readTandemIndex(session, dir, earlierTandemsDir(manifest))
-            .then((index) => ({ dir, tandems: index.tandems, problem: null as string | null }))
+          storage = await readMontageIndex(settled, dir, earlierMontagesDirs(manifest))
+            .then(async (index) => ({
+              dir,
+              tandems: index.tandems,
+              /* what the list names that the storage no longer holds: the list remembers, the
+                 storage says what is there (RULES, Network storage) */
+              lost: await lostOnStorage(settled, index.tandems),
+              problem: null as string | null
+            }))
             .catch((e: unknown) => ({
               dir,
               tandems: [],
+              lost: { folders: [], links: [] },
               problem: messageOf(e)
             }))
       }

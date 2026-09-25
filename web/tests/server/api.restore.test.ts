@@ -44,7 +44,12 @@ const list = {
 const storage = (url: string) => {
   const params = new URL(url).searchParams
   if (params.get('api') === 'SYNO.FileStation.Download') return jsonResponse(list)
-  return jsonResponse({ success: true, data: { files: [{ name: 'skydock-tandems.json' }] } })
+  /* the list under the name it has, in whichever folder it is asked for */
+  const folder = params.get('folder_path') ?? ''
+  return jsonResponse({
+    success: true,
+    data: { files: [{ name: 'skydock-montages.json', path: `${folder}/skydock-montages.json` }] }
+  })
 }
 
 let tmpDir: string

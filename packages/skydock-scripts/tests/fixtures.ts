@@ -1,7 +1,10 @@
 import * as fs from 'node:fs'
+import * as http from 'node:http'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { vi } from 'vitest'
+import type { NasSession } from '../src/nas'
+import { lastSegment, parentOf } from '../src/paths'
 
 type SeenCall = { url: string; init: RequestInit }
 
@@ -160,6 +163,78 @@ const nasStubs = ({
   }
 }
 
+/* A storage that keeps files by their path: it lists a folder, hands a file over, keeps whatever is
+   uploaded to it and moves a file into another folder — what SkyDock's own lists on it need. Downloads
+   go through fetch and uploads through a plain http request, the same as the app. A name in `refuse`
+   is never kept, and a listing that `fails` is refused the way DSM refuses one. */
+const startListStorage = async (
+  initial: Record<string, string>,
+  { listing = 'works', refuse }: { listing?: 'works' | 'fails'; refuse?: string } = {}
+) => {
+  const held = new Map(Object.entries(initial))
+  const server = http.createServer((req, res) => {
+    const chunks: Buffer[] = []
+    req.on('data', (c: Buffer) => chunks.push(c))
+    req.on('end', () => {
+      const body = Buffer.concat(chunks).toString('utf-8')
+      const dest = /name="path"\r\n\r\n([^\r]*)/.exec(body)?.[1] ?? ''
+      /* the file part of the multipart upload: everything between its headers and the boundary */
+      const file = /filename="([^"]+)"[^\r]*\r\n[^\r]*\r\n\r\n([\s\S]*?)\r\n--/.exec(body)
+      const kept = file && file[1] !== refuse
+      if (file && kept) held.set(`${dest}/${file[1]!}`, file[2]!)
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify(kept ? { success: true } : { success: false, error: { code: 414 } }))
+    })
+  })
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', () => resolve()))
+  const address = server.address()
+  const url = `http://127.0.0.1:${typeof address === 'object' && address ? address.port : 0}`
+  const first = (list: string | null) => (JSON.parse(list ?? '[]') as string[])[0] ?? ''
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (target: string) => {
+      const params = new URL(target).searchParams
+      if (params.get('api') === 'SYNO.FileStation.List') {
+        if (listing === 'fails') return jsonResponse({ success: false, error: { code: 119 } })
+        const folder = params.get('folder_path')
+        const files = [...held]
+          .filter(([at]) => parentOf(at) === folder)
+          .map(([at, text]) => ({
+            name: lastSegment(at),
+            path: at,
+            isdir: false,
+            additional: { size: text.length }
+          }))
+        return jsonResponse({ success: true, data: { files, total: files.length, offset: 0 } })
+      }
+      if (params.get('api') === 'SYNO.FileStation.Download') {
+        const text = held.get(first(params.get('path')))
+        /* what a Synology behind its own proxy answers for a file that is not there */
+        if (text === undefined)
+          return new Response('<!DOCTYPE html><html>Bad Gateway</html>', { status: 502 })
+        return new Response(text)
+      }
+      if (params.get('api') === 'SYNO.FileStation.CopyMove') {
+        const from = first(params.get('path'))
+        const text = held.get(from)
+        if (text === undefined) return jsonResponse({ success: false, error: { code: 408 } })
+        held.delete(from)
+        held.set(`${first(params.get('dest_folder_path'))}/${lastSegment(from)}`, text)
+        return jsonResponse({ success: true })
+      }
+      throw new Error(`unexpected ${target}`)
+    })
+  )
+  const session: NasSession = { hostname: url, username: 'u', sessionId: 'sid' }
+  return {
+    session,
+    /* what the file at that path holds, as text; null when there is none */
+    file: (at: string) => held.get(at) ?? null,
+    paths: () => [...held.keys()].sort(),
+    close: () => new Promise<void>((resolve) => server.close(() => resolve()))
+  }
+}
+
 export {
   createTmpDir,
   execFileSyncMock,
@@ -173,6 +248,7 @@ export {
   makeFfmpegMock,
   makeTmpTree,
   seen,
+  startListStorage,
   stubFetch,
   tellTools,
   writeTempFile

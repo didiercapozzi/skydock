@@ -2,8 +2,8 @@
 import { describe, expect, it } from 'vitest'
 import { reclusterGroups } from '../src/clustering'
 import { restorableFiles, restoreTandems } from '../src/restoreTandems'
-import type { TandemEntry, TandemIndex } from '../src/tandemEntry'
-import { entryOfTandem, upsert } from '../src/tandemIndex'
+import type { MontageEntry, MontageIndex } from '../src/montageEntry'
+import { entryOfMontage, upsert } from '../src/montageIndex'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
 
 /* A board scanned again from nothing has forgotten its tandems; the storage's list has not. Every
@@ -43,9 +43,9 @@ const uploadedTandem = (): ManifestGroup => ({
   files: [file('a', CORRECTED), file('b', CORRECTED + 60)]
 })
 
-const listed = (): TandemEntry => {
-  const index: TandemIndex = { version: 1, tandems: [] }
-  upsert(index, entryOfTandem(uploadedTandem())!.entry)
+const listed = (): MontageEntry => {
+  const index: MontageIndex = { version: 1, tandems: [] }
+  upsert(index, entryOfMontage(uploadedTandem())!.entry)
   return index.tandems[0]!
 }
 
@@ -71,10 +71,10 @@ describe('the storage’s list of tandems', () => {
 
   /* one passenger is one folder and one entry, however many jumps */
   it('keeps the files of a passenger’s first jump when their second is uploaded', () => {
-    const index: TandemIndex = { version: 1, tandems: [] }
-    upsert(index, entryOfTandem(uploadedTandem())!.entry)
+    const index: MontageIndex = { version: 1, tandems: [] }
+    upsert(index, entryOfMontage(uploadedTandem())!.entry)
     const second = { ...uploadedTandem(), id: 'group_8', files: [file('c', CORRECTED + 9000)] }
-    upsert(index, entryOfTandem(second)!.entry)
+    upsert(index, entryOfMontage(second)!.entry)
 
     expect(index.tandems).toHaveLength(1)
     expect(index.tandems[0]?.files?.map((f) => f.id)).toEqual(['a', 'b', 'c'])

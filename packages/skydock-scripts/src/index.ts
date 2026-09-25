@@ -24,7 +24,7 @@ import {
 import { fileChanged, fileStatus, outputKeyOf, uploadGate, UPLOADED_LOCKED } from './fileStatus'
 import type { FileStatus, RemoteListing, StatusContext } from './fileStatus'
 import { forgetLostFiles } from './forgetLost'
-import { learnStorage } from './originIndex'
+import { learnStorage, settleListsDir } from './originIndex'
 import { freeablePlace } from './freeable'
 import { jsonText } from './lib/json'
 import { idsOf, messageOf } from './lib/words'
@@ -106,8 +106,9 @@ import type { PartFile, SendItem } from './sending'
 import { watchTandems } from './tandemWatch'
 import { furthestBehind, tandemSteps } from './tandemSteps'
 import type { TandemProgress } from './tandemSteps'
-import { folderOfUpload } from './tandemIndex'
-import type { TandemEntry } from './tandemEntry'
+import { folderOfUpload } from './montageIndex'
+import { lostOf } from './montageEntry'
+import type { MontageEntry, MontageLost } from './montageEntry'
 import {
   destinationSchema,
   sendPlanSchema,
@@ -132,8 +133,8 @@ import {
   groupsInScope,
   listRemoteFiles,
   scopeKey,
-  earlierTandemsDir,
-  tandemsRemoteDir,
+  earlierMontagesDirs,
+  montagesRemoteDir,
   uploadScope
 } from './upload'
 import {
@@ -224,10 +225,12 @@ export {
   isWholeFrame,
   lastSegment,
   learnStorage,
+  settleListsDir,
   listShareLinks,
   liveShareLinks,
   listRemoteFiles,
   loadManifest,
+  lostOf,
   loadNasSession,
   loginWithSession,
   needsCode,
@@ -263,8 +266,8 @@ export {
   statProxies,
   waitingForProxy,
   statTandemArtifacts,
-  earlierTandemsDir,
-  tandemsRemoteDir,
+  earlierMontagesDirs,
+  montagesRemoteDir,
   tandemUploadKey,
   turnBy,
   turnedSize,
@@ -301,7 +304,8 @@ export type {
   Rotation,
   ScanResult,
   StatusContext,
-  TandemEntry,
+  MontageEntry,
+  MontageLost,
   TandemFact,
   UploadProgressState
 }

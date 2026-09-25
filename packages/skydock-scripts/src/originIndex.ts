@@ -1,14 +1,10 @@
-import * as crypto from 'node:crypto'
-import * as fs from 'node:fs'
-import * as os from 'node:os'
-import * as path from 'node:path'
-import { z } from 'zod'
-import { jsonText } from './lib/json'
-import { dsmFetch, dsmRequestUrl, normalizeNasPath } from './nas'
+import { loadNasSession, normalizeNasPath, saveNasSession } from './nas'
 import type { NasSession } from './nas'
 import { originIndexSchema as indexSchema } from './originEntry'
 import type { OriginEntry, OriginIndex } from './originEntry'
-import { uploadFile } from './publish'
+import { parentOf } from './paths'
+import { findList, writeList } from './storageList'
+import type { ListPlace } from './storageList'
 import type { Manifest } from './types'
 
 /* Where every file on the storage came from: one small list, one entry per file SkyDock has put up
@@ -20,15 +16,10 @@ import type { Manifest } from './types'
    Only this machine's registry ties the two together, and only until it is lost; the list says it on
    the storage itself, where any machine can read it — so the same seconds never go up twice.
 
-   Written by read-then-write, as the list of tandems is: the latest is read, what this upload
+   Written by read-then-write, as the list of montages is: the latest is read, what this upload
    changes is changed, and it is written back. Two machines keep each other's entries that way. */
 
 const INDEX_NAME = 'skydock-origins.json'
-
-/* DSM error 408: no such file or folder */
-const NOT_THERE = 408
-
-const listingSchema = z.object({ files: z.array(z.object({ name: z.string() })).optional() })
 
 /* The destinations' own folders, which are the club's folders, and every folder SkyDock delivers
    into: a montage's film and its backups go into destinations too. The list of origins is kept above
@@ -71,66 +62,37 @@ const originsDirOf = (folders: string[]) => {
   return above.length > 0 ? `/${above.join('/')}` : shareOf(first.join('/'))
 }
 
-/* Whether the list is there at all, asked of the folder rather than of the file: asking for a file
-   that does not exist is not answered the same way by every NAS, while a folder listing says plainly
-   what is in it. A listing that fails is a failure, never "no list" — writing a new list over one
-   that could not be seen would throw away every entry in it. */
-const indexIsThere = async (session: NasSession, dir: string) => {
-  const body = await dsmFetch(session.hostname, {
-    api: 'SYNO.FileStation.List',
-    version: '2',
-    method: 'list',
-    folder_path: normalizeNasPath(dir),
-    filetype: 'file',
-    _sid: session.sessionId
-  })
-  if (!body.success) {
-    /* nothing has ever been uploaded into it, so there is no list */
-    if (body.error?.code === NOT_THERE) return false
-    throw new Error(`The storage would not list ${dir} (${body.error?.code}).`)
-  }
-  const listed = listingSchema.safeParse(body.data)
-  if (!listed.success) throw new Error(`The storage's listing of ${dir} cannot be read.`)
-  return (listed.data.files ?? []).some((f) => f.name === INDEX_NAME)
+/* Where the storage's lists live: worked out once, from the folders there are the first time the
+   storage is used, and kept with the connection. A destination added later whose folder sits
+   elsewhere must not move them — a list that moved would start again empty, and forget everything
+   it knew. */
+const listsDirOf = (session: NasSession, folders: string[]) =>
+  session.listsDir ?? originsDirOf(folders)
+
+/* the place fixed now, if it was not yet; nothing to fix while no place has a folder */
+const settleListsDir = (manifest: Manifest, configDir?: string) => {
+  const stored = loadNasSession(configDir)
+  const folders = placeFolders(manifest)
+  if (!stored || stored.listsDir || folders.length === 0) return stored
+  const settled = { ...stored, listsDir: originsDirOf(folders) }
+  saveNasSession(settled, configDir)
+  return settled
 }
+
+/* its own place, then the one worked out from today's folders, where it was kept before its place
+   was fixed */
+const placesOf = (session: NasSession, folders: string[]): ListPlace[] => [
+  { dir: listsDirOf(session, folders), name: INDEX_NAME },
+  { dir: originsDirOf(folders), name: INDEX_NAME }
+]
 
 const empty = (): OriginIndex => ({ version: 1, files: {} })
 
 /* Reads the list off the storage. No file yet is an empty list, which sends a file rather than
    skipping it — the safe way to be wrong. A file that is there but cannot be read is an error,
    never an empty list. */
-const readOriginIndex = async (session: NasSession, folders: string[]) => {
-  const dir = originsDirOf(folders)
-  if (!(await indexIsThere(session, dir))) return empty()
-  const url = dsmRequestUrl(session.hostname, {
-    api: 'SYNO.FileStation.Download',
-    version: '2',
-    method: 'download',
-    path: JSON.stringify([normalizeNasPath(`${dir}/${INDEX_NAME}`)]),
-    mode: 'download',
-    _sid: session.sessionId
-  })
-  const res = await fetch(url.toString())
-  const text = await res.text()
-  if (!res.ok) throw new Error(`The storage answered ${res.status} for ${INDEX_NAME}.`)
-  const parsed = jsonText.pipe(indexSchema).safeParse(text)
-  if (!parsed.success) throw new Error(`${INDEX_NAME} on the storage cannot be read.`)
-  return parsed.data
-}
-
-const writeIndex = async (session: NasSession, dir: string, index: OriginIndex) => {
-  const staging = fs.mkdtempSync(path.join(os.tmpdir(), `skydock-origins-${crypto.randomUUID()}`))
-  const local = path.join(staging, INDEX_NAME)
-  try {
-    fs.writeFileSync(local, JSON.stringify(indexSchema.parse(index), null, 2))
-    /* SkyDock's own list, replaced in place: it is the one thing up there that is written over */
-    await uploadFile(session.hostname, session.sessionId, dir, local, undefined, {
-      overwrite: true
-    })
-  } finally {
-    fs.rmSync(staging, { recursive: true, force: true })
-  }
-}
+const readOriginIndex = async (session: NasSession, folders: string[]) =>
+  (await findList(session, placesOf(session, folders), indexSchema))?.list ?? empty()
 
 /* What an upload leaves behind: read the latest list, put this job's files in it, write it back.
    Entries are replaced by path and everything else is kept, so two machines, two dropzones and a
@@ -140,11 +102,19 @@ const writeIndex = async (session: NasSession, dir: string, index: OriginIndex) 
 const recordOrigins = async (
   session: NasSession,
   folders: string[],
-  files: ({ remotePath: string } & OriginEntry)[]
+  files: ({ remotePath: string } & OriginEntry)[],
+  /* The folders whose listing just came back, and every file they held. What the list says of a
+     file in one of them that the listing no longer shows is dropped: somebody deleted it over
+     there, and a list that went on saying it was up would stop it ever being sent again. Folders
+     that were not listed — another machine's, or one the storage did not answer for — are left
+     exactly as they are. */
+  seen?: { dirs: string[]; paths: string[] }
 ) => {
-  if (files.length === 0) return 0
-  const dir = originsDirOf(folders)
-  const index = await readOriginIndex(session, folders)
+  const listed = new Set((seen?.dirs ?? []).map(normalizeNasPath))
+  if (files.length === 0 && listed.size === 0) return 0
+  const places = placesOf(session, folders)
+  const found = await findList(session, places, indexSchema)
+  const index = found?.list ?? empty()
   let changed = 0
   /* what is known about a file is added to, never taken away: a file merely seen in a listing must
      not forget the digest or the origin an earlier upload proved of it */
@@ -156,8 +126,17 @@ const recordOrigins = async (
     index.files[where] = after
     changed++
   }
+  const there = new Set([
+    ...(seen?.paths ?? []).map(normalizeNasPath),
+    ...files.map((file) => normalizeNasPath(file.remotePath))
+  ])
+  for (const where of Object.keys(index.files))
+    if (listed.has(parentOf(where)) && !there.has(where)) {
+      delete index.files[where]
+      changed++
+    }
   /* a list that says what it already said is not written again */
-  if (changed > 0) await writeIndex(session, dir, index)
+  if (changed > 0) await writeList(session, places[0]!, index, indexSchema, found?.from)
   return changed
 }
 
@@ -170,15 +149,17 @@ const recordOrigins = async (
 const learnStorage = async (
   manifest: Manifest,
   session: NasSession,
-  sizes: Record<string, number | null>
+  remote: { dirs: string[]; sizes: Record<string, number | null> }
 ) => {
   const at = Math.floor(Date.now() / 1000)
   return await recordOrigins(
     session,
     placeFolders(manifest),
-    Object.entries(sizes).flatMap(([remotePath, size]) =>
+    Object.entries(remote.sizes).flatMap(([remotePath, size]) =>
       size === null ? [] : [{ remotePath, size, at }]
-    )
+    ),
+    /* and what is no longer in the folders that answered is forgotten */
+    { dirs: remote.dirs, paths: Object.keys(remote.sizes) }
   )
 }
 
@@ -186,9 +167,11 @@ export {
   deliveryFolders,
   INDEX_NAME,
   learnStorage,
+  listsDirOf,
   originsDirOf,
   placeFolders,
   readOriginIndex,
-  recordOrigins
+  recordOrigins,
+  settleListsDir
 }
 export type { OriginEntry, OriginIndex }

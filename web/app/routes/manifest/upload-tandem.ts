@@ -6,12 +6,12 @@ import {
   planOf,
   saveManifest,
   statProcessedOutputs,
-  earlierTandemsDir,
-  tandemsRemoteDir,
+  earlierMontagesDirs,
+  montagesRemoteDir,
   tandemUploadKey,
   uploadGate
 } from '@skydock/scripts'
-import { entryOfTandem, upsert } from '../../../../packages/skydock-scripts/src/tandemIndex'
+import { entryOfMontage, upsert } from '../../../../packages/skydock-scripts/src/montageIndex'
 import { uploadTandem } from '../../../../packages/skydock-scripts/src/uploadTandem'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
@@ -52,18 +52,24 @@ const uploadTandemIntent: Intent = async ({ data, manifest, manifestPath, output
     }
     report.done(result.skipped)
     saveManifest(manifestPath, saved)
-    const listed = target ? entryOfTandem(target, tandemsRemoteDir(saved)) : null
+    const listed = target ? entryOfMontage(target, montagesRemoteDir(saved, session)) : null
     const listing = listed
       ? await recordOnStorage(
           session,
           listed.dir,
           (index) => upsert(index, listed.entry),
-          earlierTandemsDir(saved)
+          earlierMontagesDirs(saved)
         )
       : {}
+    /* either list may not have followed; the upload stands, and the board says which */
+    const problems = [
+      result.originsProblem,
+      'storageProblem' in listing ? listing.storageProblem : undefined
+    ].filter(Boolean)
     return {
       ...boardAnswer(saved),
       ...listing,
+      ...(problems.length > 0 ? { storageProblem: problems.join('; ') } : {}),
       remote: await listRemoteFiles(saved, session),
       uploaded: result.uploaded,
       skipped: result.skipped

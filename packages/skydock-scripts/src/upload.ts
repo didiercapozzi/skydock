@@ -16,6 +16,7 @@ import type { CheckProgress, Seen, UploadProgress, UploadVerdict } from './publi
 import { listNasFiles } from './nas'
 import { isTandem } from './tandem'
 import type { NasSession } from './nas'
+import { messageOf } from './lib/words'
 import { mapWithLimit } from './utils'
 import type { Manifest, ManifestGroup } from './types'
 import { resolveDestinationPath } from './workspace'
@@ -60,8 +61,8 @@ const uploadedFiles = (record: ManifestGroup['uploaded']) =>
 /* What the NAS holds right now in the folders we have uploaded into, so a file deleted over there
    stops reading as uploaded. The folders come from the upload records themselves, not from the
    destination list — a tandem lives in `{destination}/{Passenger}/`, which listing the destination
-   would miss. `listNasFiles` answers [] both for an empty folder and for a call that failed, so a
-   folder only counts as checked when its listing came back: an unchecked folder demotes nothing. */
+   would miss. A folder only counts as checked when its listing came back: one the storage would not
+   list is not an empty one, and an unchecked folder demotes nothing. */
 const listRemoteFiles = async (manifest: Manifest, session: NasSession) => {
   const wanted = [
     ...new Set([
@@ -123,15 +124,20 @@ const groupsInScope = (manifest: Manifest, scope: UploadScope) => {
 const destBaseOf = (destination: string | undefined, manifest: Manifest) =>
   resolveDestinationPath(destination, manifest.destinations ?? [])
 
-/* Where the storage's list of montages is kept: beside the list of where each file came from, above
-   every destination's folder — montages go into any of them, so the list belongs to none. */
-const tandemsRemoteDir = (manifest: Manifest) => {
+/* Where the storage's list of montages is kept: beside the list of where each file came from, in the
+   place fixed for SkyDock's lists — montages go into any destination, so the list belongs to none. */
+const montagesRemoteDir = (manifest: Manifest, session: NasSession) => {
   const folders = placeFolders(manifest)
-  return folders.length > 0 ? originsDirOf(folders) : null
+  return session.listsDir ?? (folders.length > 0 ? originsDirOf(folders) : null)
 }
 
-/* where that list was kept before, when every tandem went into the Tandems folder */
-const earlierTandemsDir = (manifest: Manifest) => destBaseOf('Tandems', manifest)
+/* where that list was kept before: above today's folders, before its place was fixed, and in the
+   Tandems folder, when every montage was a tandem and went there */
+const earlierMontagesDirs = (manifest: Manifest) => {
+  const folders = placeFolders(manifest)
+  const tandems = destBaseOf('Tandems', manifest)
+  return [...(folders.length > 0 ? [originsDirOf(folders)] : []), ...(tandems ? [tandems] : [])]
+}
 
 /* Where one group's processed folder goes on the NAS.
    A flat fun jump has NO folder of its own: `getGroupProcessedDir` hands back the whole
@@ -248,6 +254,8 @@ const uploadTargets = async ({
   const files: UploadVerdict[] = []
   /* every file the storage was seen to hold in the folders this job touched, ours or not */
   const seen: Seen[] = []
+  const listed: string[] = []
+  const held: string[] = []
   let uploaded = 0
   let skipped = 0
   /* The storage's own list of what it holds and where it came from, read once for the whole job. A
@@ -289,6 +297,8 @@ const uploadTargets = async ({
     if (result.shareUrl) shareUrls.push({ target, shareUrl: result.shareUrl })
     files.push(...result.files)
     seen.push(...result.seen)
+    listed.push(...result.listed)
+    held.push(...result.held)
     uploaded += result.uploaded
     skipped += result.skipped
   }
@@ -297,28 +307,45 @@ const uploadTargets = async ({
      folder SkyDock is pointed at, full of footage from before it ever looked, is learned that way,
      and what is learned about one of them is never asked of the storage twice. It is the storage's
      record and not this machine's, so a machine that never saw this upload knows it too. */
+  let originsProblem: string | undefined
   if (origins) {
     const at = Math.floor(Date.now() / 1000)
     const ours = new Set(files.map((file) => file.remotePath))
-    await recordOrigins(session, where, [
-      ...seen
-        .filter((file) => !ours.has(file.remotePath))
-        .map((file) => ({
+    /* The footage is up whatever becomes of the list: one the storage will not have written is
+       said, and the upload stays done. The next listing puts the list right. */
+    await recordOrigins(
+      session,
+      where,
+      [
+        ...seen
+          .filter((file) => !ours.has(file.remotePath))
+          .map((file) => ({
+            remotePath: file.remotePath,
+            size: file.size,
+            at,
+            ...(file.md5 ? { md5: file.md5 } : {})
+          })),
+        ...files.map((file) => ({
           remotePath: file.remotePath,
+          md5: file.md5,
           size: file.size,
-          at,
-          ...(file.md5 ? { md5: file.md5 } : {})
-        })),
-      ...files.map((file) => ({
-        remotePath: file.remotePath,
-        md5: file.md5,
-        size: file.size,
-        at: file.at,
-        ...origins.get(file.localPath)
-      }))
-    ])
+          at: file.at,
+          ...origins.get(file.localPath)
+        }))
+      ],
+      { dirs: listed, paths: held }
+    ).catch((e: unknown) => {
+      originsProblem = `the storage’s list of what it holds was not updated: ${messageOf(e)}`
+    })
   }
-  return { targets, shareUrls, uploaded, skipped, files }
+  return {
+    targets,
+    shareUrls,
+    uploaded,
+    skipped,
+    files,
+    ...(originsProblem ? { originsProblem } : {})
+  }
 }
 
 const uploadScope = async ({
@@ -347,14 +374,15 @@ const uploadScope = async ({
 
 export {
   destBaseOf,
+  LIST_CONCURRENCY,
   uploadedFiles,
   goneFromStorage,
   groupsInScope,
   listRemoteFiles,
   resolveUploadTargets,
   scopeKey,
-  earlierTandemsDir,
-  tandemsRemoteDir,
+  earlierMontagesDirs,
+  montagesRemoteDir,
   targetForGroup,
   uploadScope,
   uploadTargets
