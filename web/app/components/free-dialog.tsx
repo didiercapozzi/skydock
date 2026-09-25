@@ -4,9 +4,9 @@ import { Line, Modal, Spacer } from './modal'
 import { formatFilmSize } from './utils'
 import type { ManifestGroup } from './types'
 
-/* Freeing an uploaded tandem deletes its originals from this machine, so the dialog says three
+/* Freeing an uploaded montage deletes its originals from this machine, so the dialog says three
    things before anything happens: what is proved first, what is then deleted, and what it costs —
-   the tandem cannot be processed or edited again from here. */
+   the montage cannot be processed or edited again from here. */
 
 const FreeDialog = ({
   who,
@@ -81,7 +81,7 @@ const FreeDialog = ({
       </ul>
 
       <p className='m-0 rounded-r-md border-l-[3px] border-local bg-local-soft px-3 py-[9px] text-[12px] text-ink-2'>
-        After this the tandem lives on the storage only: it cannot be processed, edited or uploaded
+        After this the montage lives on the storage only: it cannot be processed, edited or uploaded
         again from here, and a rescan leaves it as it is. If any check fails, nothing at all is
         deleted, and it says which.
       </p>

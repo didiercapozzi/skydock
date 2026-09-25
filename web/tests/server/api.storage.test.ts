@@ -228,7 +228,7 @@ describe('what a place’s folder on the storage holds', () => {
     })
   })
 
-  /* a tandem the storage's list names and this board no longer holds */
+  /* a montage the storage's list names and this board no longer holds */
   it('lists a folder named outright, when it is one SkyDock uploads into', async () => {
     expect(await ask({ folder: DIR })).toMatchObject({ ok: true, dir: DIR })
     expect(await ask({ folder: '/homes/someone' })).toMatchObject({ ok: false })

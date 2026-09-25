@@ -97,15 +97,15 @@ describe('footage that is nowhere', () => {
     expect(manifest.groups[0]!.files.map((f) => f.id)).toEqual(['id-b'])
   })
 
-  /* the film outlives the rushes it was cut from: a tandem whose delivery is still on the storage
+  /* the film outlives the rushes it was cut from: a montage whose delivery is still on the storage
      keeps its folder even once every rush of it has gone */
-  it('keeps a tandem whose delivered film the storage still holds', () => {
+  it('keeps a montage whose delivered film the storage still holds', () => {
     const lost = file()
     const manifest = manifestOf(
       [lost],
       [
         jump([lost], {
-          id: 'tandem-1',
+          id: 'montage-1',
           montageJump: true,
           uploaded: {
             at: 1_700_000_300,

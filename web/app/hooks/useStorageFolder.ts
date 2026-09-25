@@ -3,7 +3,7 @@ import { storageFolderSchema } from '../../../packages/skydock-scripts/src/stora
 import type { StorageFolder } from '../../../packages/skydock-scripts/src/storageEntry'
 import { routingEngine } from '../helpers/routing'
 
-/* which folder on the storage: a dropzone's, a tandem's, or one the storage's own list names */
+/* which folder on the storage: a dropzone's, a montage's, or one the storage's own list names */
 type Where = { destination?: string; groupId?: string; folder?: string }
 
 /* What a place's folder on the storage holds, asked once when the place is opened and again when

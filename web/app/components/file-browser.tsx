@@ -1,11 +1,11 @@
-import type { FileStatus, ProxyFact, StatusContext, TandemProgress } from '@skydock/scripts'
+import type { FileStatus, ProxyFact, StatusContext, MontageProgress } from '@skydock/scripts'
 import { dayLabel } from '../helpers/jumps'
 import { cardsOf } from '../helpers/sections'
 import type { Section } from '../helpers/sections'
 import { FileList, kindOf } from './file-list'
 import type { FileShape, Kind, Modifiers } from './file-list'
 import type { LiveFile } from '../hooks/useLiveProgress'
-import { StepMeter } from './tandem-steps'
+import { StepMeter } from './montage-steps'
 import type { ManifestFile, ManifestGroup } from './types'
 import { dateLabel, getPictureUrl, hhmm, minFileMtime, plural } from './utils'
 
@@ -21,11 +21,11 @@ type JumpControls = {
   /* a plain click selects the jump; ⌘/ctrl-click on a second one compares the two */
   onSelect: (groupId: string, e?: Modifiers) => void
   onDrag: (groupId: string, e?: React.DragEvent) => void
-  /* a tandem's one next step, and what shows above its files */
+  /* a montage's one next step, and what shows above its files */
   actions?: (group: ManifestGroup) => React.ReactNode
   above?: (group: ManifestGroup) => React.ReactNode
-  /* where a tandem has got to; nothing for a jump that is not one */
-  progress?: (group: ManifestGroup) => TandemProgress | null
+  /* where a montage has got to; nothing for a jump that is not one */
+  progress?: (group: ManifestGroup) => MontageProgress | null
 }
 
 type Props = {
@@ -194,7 +194,7 @@ const JumpCard = ({
         {group?.freed ? (
           <Tag tone='lock'>storage only</Tag>
         ) : progress ? (
-          /* a tandem says the step it is at, which says more than its files' state */
+          /* a montage says the step it is at, which says more than its files' state */
           <Tag tone={progress.next ? 'local' : 'up'}>{progress.next?.todo ?? 'done'}</Tag>
         ) : frozen ? (
           <Tag tone='lock'>🔒 edit</Tag>
@@ -259,7 +259,7 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
 
   /* By jump: every jump a card side by side, and under them the open one's files. Nothing repeats
      the card in a bar above them — what the jump is, and what can be done to it, is in the panel on
-     the right. Only a tandem's next step stays here, beside the files it acts on. */
+     the right. Only a montage's next step stays here, beside the files it acts on. */
   const cardSections = cardsOf(sections)
   if (cards && cardSections.length > 0) {
     const open = cardSections.find((s) => s.key === cards.open) ?? cardSections[0]!

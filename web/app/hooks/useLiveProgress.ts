@@ -1,5 +1,5 @@
 import { jsonText, liveEventSchema } from '@skydock/scripts'
-import type { LiveEvent, ProxyFact, TandemFact } from '@skydock/scripts'
+import type { LiveEvent, ProxyFact, MontageFact } from '@skydock/scripts'
 import { useEffect, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { routingEngine } from '../helpers/routing'
@@ -29,8 +29,8 @@ type Importing = Omit<Extract<LiveEvent, { kind: 'import' }>, 'kind'>
    sent with the event, so the clip is flagged the moment it is ready. */
 const useLiveProgress = (
   onProxies: Dispatch<SetStateAction<Record<string, ProxyFact>>>,
-  /* what a tandem's folder holds, when it changed by the editor's hand — a film just rendered */
-  onTandems: Dispatch<SetStateAction<Record<string, TandemFact>>>,
+  /* what a montage's folder holds, when it changed by the editor's hand — a film just rendered */
+  onMontages: Dispatch<SetStateAction<Record<string, MontageFact>>>,
   onNote: Dispatch<SetStateAction<string | null>>
 ) => {
   const [files, setFiles] = useState<Record<string, LiveFile>>({})
@@ -46,8 +46,8 @@ const useLiveProgress = (
       const parsed = jsonText.pipe(liveEventSchema).safeParse(String(message.data))
       if (!parsed.success) return
       const event = parsed.data
-      if (event.kind === 'tandem') {
-        onTandems((now) => ({ ...now, [event.groupId]: event.fact }))
+      if (event.kind === 'montage') {
+        onMontages((now) => ({ ...now, [event.groupId]: event.fact }))
         if (event.rendered) onNote(`${event.who}’s film is rendered — ready to upload`)
         return
       }
@@ -89,7 +89,7 @@ const useLiveProgress = (
       if (landed) onProxies((now) => ({ ...now, [landed.path]: landed.fact }))
     }
     return () => source.close()
-  }, [onProxies, onTandems, onNote])
+  }, [onProxies, onMontages, onNote])
 
   return { files, camera, ended, cameras, disk, importing }
 }

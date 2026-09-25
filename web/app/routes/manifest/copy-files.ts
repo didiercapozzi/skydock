@@ -4,7 +4,7 @@ import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 import { messageOf } from '@skydock/scripts'
 
-/* Files copied into another jump, staying where they are as well (RULES, Jumps). A tandem with an
+/* Files copied into another jump, staying where they are as well (RULES, Jumps). A montage with an
    edit takes nothing in, a copy included: its project names its clips, and a new one is not among
    them. What is copied *from* may be frozen — copying changes nothing about it. */
 const copyFilesIntent: Intent = ({

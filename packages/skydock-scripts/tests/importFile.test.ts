@@ -11,7 +11,7 @@ import { createTmpDir } from './fixtures'
 
 /* A file dragged in from the computer joins the board the way a camera's file does: copied into
    original_files under the day it was taken, keeping its name, and written into the registry —
-   into the tandem, the dropzone or the sorting area it was dropped on. */
+   into the montage, the dropzone or the sorting area it was dropped on. */
 
 let outputDir: string
 
@@ -60,7 +60,7 @@ afterEach(() => {
 })
 
 describe('adding a file from the computer', () => {
-  it('copies it into the day it was taken, under its own name, and into the tandem', async () => {
+  it('copies it into the day it was taken, under its own name, and into the montage', async () => {
     setup()
     await add('IMG_0042.JPG', 'photo', { kind: 'group', groupId: 'g1' })
 
@@ -121,19 +121,19 @@ describe('adding a file from the computer', () => {
     expect(loadManifest(manifestPath())!.files[0]?.destination).toBe('Yverdon')
   })
 
-  it('takes it out of a tandem into a dropzone, as a drag on the board would', async () => {
+  it('takes it out of a montage into a dropzone, as a drag on the board would', async () => {
     setup()
     await add('clip.mp4', 'same', { kind: 'group', groupId: 'g1' })
     const again = await add('clip.mp4', 'same', { kind: 'destination', name: 'Yverdon' })
     expect(again).toMatchObject({ outcome: 'moved', from: 'Luc Favre' })
     const after = loadManifest(manifestPath())!
     expect(after.files[0]?.destination).toBe('Yverdon')
-    /* the tandem it left had nothing else, so it is gone, as after any move */
+    /* the montage it left had nothing else, so it is gone, as after any move */
     expect(after.groups).toHaveLength(0)
   })
 
   /* A briefing is filmed once with every passenger of the day in it, so the same clip belongs to all
-     of their films. Dropped on a second tandem it joins that one and stays in the first: one original
+     of their films. Dropped on a second montage it joins that one and stays in the first: one original
      on the disk, and each jump holding it as its own (RULES, Jumps). */
   it('takes the same footage into another jump as well, leaving it in the one it is in', async () => {
     setup({
@@ -216,7 +216,7 @@ describe('adding a file from the computer', () => {
     expect(loadManifest(manifestPath())!.groups[0]?.files).toHaveLength(1)
   })
 
-  it('leaves it in a tandem that has an edit, and says why', async () => {
+  it('leaves it in a montage that has an edit, and says why', async () => {
     setup()
     await add('clip.mp4', 'same', { kind: 'group', groupId: 'g1' })
     const folder = path.join(outputDir, 'processed', 'Tandems', 'Luc Favre')
@@ -246,7 +246,7 @@ describe('adding a file from the computer', () => {
     )
   })
 
-  it('refuses a tandem that has an edit, before writing anything', async () => {
+  it('refuses a montage that has an edit, before writing anything', async () => {
     setup()
     const folder = path.join(outputDir, 'processed', 'Tandems', 'Luc Favre')
     fs.mkdirSync(folder, { recursive: true })

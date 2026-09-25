@@ -228,7 +228,7 @@ describe('uploading a folder', () => {
     expect(seen.some((c) => c.url.includes('method=login'))).toBe(false)
   })
 
-  /* A tandem's folder holds the working trees, the project and the rushes as well as the two
+  /* A montage's folder holds the working trees, the project and the rushes as well as the two
      things the passenger gets, so what travels is named rather than walked. */
   it('sends only the files it was given, although the folder holds more', async () => {
     fs.writeFileSync(path.join(dir, 'film.mp4'), Buffer.from('film'))

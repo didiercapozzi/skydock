@@ -143,10 +143,10 @@ describe('a scan keeps the work already done', () => {
       expect(jumpOf('C1.MP4')?.files.map((f) => f.filename)).toEqual(['C1.MP4', 'C2.MP4'])
     })
 
-    it('keeps what a tandem went through — its upload, its montage, its freeing', async () => {
+    it('keeps what a montage went through — its upload, its montage, its freeing', async () => {
       const manifest = await twoJumps()
-      const tandem = manifest.groups[0]!
-      Object.assign(tandem, {
+      const montage = manifest.groups[0]!
+      Object.assign(montage, {
         montageJump: true,
         passenger: { firstname: 'Luc', lastname: 'Favre' },
         uploaded: { at: 1, shareUrl: 'https://nas/sharing/luc' },

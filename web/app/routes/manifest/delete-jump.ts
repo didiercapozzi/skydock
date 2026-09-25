@@ -3,7 +3,7 @@ import { deleteJump } from '../../../../packages/skydock-scripts/src/moveFiles'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 
-/* A jump is deleted and its files go back to Unsorted, loose (RULES, Jumps). Not a tandem with an
+/* A jump is deleted and its files go back to Unsorted, loose (RULES, Jumps). Not a montage with an
    edit, not one freed to the storage, not files already uploaded — uploaded is the end of editing —
    and not while something is being processed underneath it. */
 const deleteJumpIntent: Intent = ({

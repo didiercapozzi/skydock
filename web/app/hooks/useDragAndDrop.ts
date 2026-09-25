@@ -1,6 +1,6 @@
 import { isMontage, passengerName, passengerOf } from '@skydock/scripts'
 import { useState } from 'react'
-import type { Passenger } from '../components/tandem-card'
+import type { Passenger } from '../components/montage-card'
 import type { Dropped } from '../helpers/import'
 import type { ManifestFile, ManifestGroup } from '../components/types'
 import { droppedIn, fromComputer } from '../helpers/import'

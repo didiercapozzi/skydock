@@ -12,7 +12,7 @@ import type { Manifest, ManifestGroup } from '../src/types'
 import { liveShareLinks } from '../src/nas'
 import { nasStubs, stubFetch } from './fixtures'
 
-/* A dropzone and a tandem are connected to their folder on the storage: what is up there is listed
+/* A dropzone and a montage are connected to their folder on the storage: what is up there is listed
    and played from the board, whether or not any of it is still on this machine. Read-only. */
 
 const session: NasSession = {
@@ -80,7 +80,7 @@ describe('where a place’s folder is on the storage', () => {
   })
 
   /* an older record knows only where its film and photos went */
-  it('is, for a tandem uploaded before, the folder it actually went to', () => {
+  it('is, for a montage uploaded before, the folder it actually went to', () => {
     const sent = {
       remotePath: '/Old/Tandems/Luc Favre/luc.mp4',
       md5: 'x',
@@ -146,7 +146,7 @@ describe('what a folder on the storage holds', () => {
     ])
   })
 
-  /* the list of tandems and the list of where each file came from are the app's own bookkeeping,
+  /* the list of montages and the list of where each file came from are the app's own bookkeeping,
      not somebody's footage: there is nothing to play and nothing to do with them here */
   it('leaves out what SkyDock keeps there about the storage itself', async () => {
     const stub = nasStubs({

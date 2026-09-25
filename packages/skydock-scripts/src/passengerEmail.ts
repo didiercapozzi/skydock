@@ -1,4 +1,4 @@
-/* The email a passenger gets once their tandem is on the storage: a few warm lines, one button that
+/* The email a passenger gets once their montage is on the storage: a few warm lines, one button that
    opens their folder, and nothing to figure out. The same function draws the preview and builds
    what is sent, so what is looked at is exactly what arrives.
 
@@ -54,7 +54,7 @@ const defaultPassengerEmail = ({
       : 'Tes souvenirs'
   const ready = what.startsWith('Ta vidéo') && photos === 0 ? 'est prête' : 'sont prêtes'
   return {
-    subject: `${what} de ton saut en tandem`,
+    subject: `${what} de ton saut en montage`,
     body: [
       `Bonjour ${firstname.trim()},`,
       `Merci d’avoir sauté avec nous ! ${what} du ${dayInFrench(day)} ${ready}.`,
@@ -95,7 +95,7 @@ const renderPassengerEmail = ({ subject, body, signature, shareUrl }: PassengerE
 <tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(16,24,32,0.08);">
 <tr><td style="background:${ACCENT};padding:34px 32px 30px;">
-<div style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.72);">Saut en tandem</div>
+<div style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.72);">Saut en montage</div>
 <div style="margin-top:8px;font-size:26px;line-height:1.25;font-weight:700;color:#ffffff;">${escapeHtml(subject)}</div>
 </td></tr>
 <tr><td style="padding:32px 32px 8px;">${blocks}</td></tr>

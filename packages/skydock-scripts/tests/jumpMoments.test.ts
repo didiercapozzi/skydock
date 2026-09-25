@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { cutFrom, readFelt } from '../src/jumpMoments'
 
 /* Where the jump is in a clip, read off what the camera felt. The numbers here are the shape of a
-   real tandem, measured off jumps that were then checked frame by frame: a minute in the plane at
+   real montage, measured off jumps that were then checked frame by frame: a minute in the plane at
    one gravity, a few seconds of next to nothing at the door, fifty seconds of freefall at one
    gravity again — drag against weight — the opening at two, a canopy ride, and the ground.
 
@@ -168,7 +168,7 @@ describe('where the jump is in a clip', () => {
     expect(found?.canopy).toBeLessThan(86)
   })
 
-  /* A sport jumper tracking away, or turning hard, weighs as much for a second as a tandem's canopy
+  /* A sport jumper tracking away, or turning hard, weighs as much for a second as a montage's canopy
      does. What tells them apart is that an opening goes on. This is a jump that was marked wrongly
      until it did: the manoeuvre at forty seconds, the opening at sixty. */
   it('is not a hard turn in freefall', () => {
@@ -226,11 +226,11 @@ describe('where the jump is in a clip', () => {
 
 /* What is measured is when this camera's wearer became airborne. What an edit starts from is the
    moment the jump begins on screen — and on a fun jump the group is out of the door a second before
-   whoever is filming them. A tandem is its own subject, and wants the instant itself. */
+   whoever is filming them. A montage is its own subject, and wants the instant itself. */
 describe('where a cut starts from', () => {
   const moments = { exit: 38.6, canopy: 101.6, landing: 192.7 }
 
-  it('is the measured instant on a tandem', () => {
+  it('is the measured instant on a montage', () => {
     expect(cutFrom(moments, true)).toBe(38.6)
   })
 

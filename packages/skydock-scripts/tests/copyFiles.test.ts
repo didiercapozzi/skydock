@@ -6,7 +6,7 @@ import { reclusterGroups, shiftGroupTo, startOfFiles } from '../src/clustering'
 import { loadManifest, saveManifest } from '../src/manifest'
 import { copyFiles, moveFiles } from '../src/moveFiles'
 import { getProxyPath } from '../src/proxy'
-import { deleteTandem } from '../src/resetTandem'
+import { deleteMontage } from '../src/resetMontage'
 import { trashUnsorted } from '../src/trashUnsorted'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
 import { createTmpDir } from './fixtures'
@@ -224,7 +224,7 @@ describe('a copy that leaves its jump', () => {
     anas.passenger = { firstname: 'Ana', lastname: 'Roth' }
     copyFiles(manifest, new Set(['plane']), 'anas')
 
-    deleteTandem(manifest, dir, 'anas')
+    deleteMontage(manifest, dir, 'anas')
 
     expect(manifest.files.some((f) => f.id === 'plane~1')).toBe(false)
     expect(idsIn(manifest, 'lucs')).toEqual(['plane', 'luc'])

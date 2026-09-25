@@ -4,13 +4,13 @@ import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { writeArchive } from '../src/archive'
-import { freeTandem } from '../src/freeTandem'
+import { freeMontage } from '../src/freeMontage'
 import { loadManifest, saveManifest } from '../src/manifest'
 import type { NasSession } from '../src/nas'
 import type { Manifest, ManifestFile } from '../src/types'
 import { createTmpDir, nasStubs, stubFetch } from './fixtures'
 
-/* Freeing a tandem deletes gigabytes that exist nowhere else on this machine, so it only ever
+/* Freeing a montage deletes gigabytes that exist nowhere else on this machine, so it only ever
    happens on proof: every file that went up hashed here and hashed by the storage, both matching
    what was sent, and the originals shown to be exactly what the backup holds. Any doubt, and
    nothing at all is deleted. */
@@ -120,7 +120,7 @@ const withStorage = (hashes: Record<string, string>) => {
   stubFetch((url) => stub(url) ?? new Response('{}'))
 }
 
-const free = (manifest: Manifest) => freeTandem({ manifest, outputDir, groupId: 'g1', session })
+const free = (manifest: Manifest) => freeMontage({ manifest, outputDir, groupId: 'g1', session })
 
 beforeEach(() => {
   outputDir = createTmpDir('skydock-free-')
@@ -131,7 +131,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe('freeing an uploaded tandem', () => {
+describe('freeing an uploaded montage', () => {
   it('deletes the originals and everything made from them, and keeps the project', async () => {
     const { manifest, folder, originals, onStorage } = await setup()
     withStorage(onStorage)
@@ -144,7 +144,7 @@ describe('freeing an uploaded tandem', () => {
   })
 
   /* the project in the backup is a second copy of the edit, not a stranger in the zip */
-  it('frees a tandem whose backup zip also holds the editing project', async () => {
+  it('frees a montage whose backup zip also holds the editing project', async () => {
     const { manifest, folder, onStorage } = await setup({ projectInBackup: true })
     withStorage(onStorage)
 
@@ -153,13 +153,13 @@ describe('freeing an uploaded tandem', () => {
     expect(fs.readdirSync(folder)).toEqual(['luc.kdenlive'])
   })
 
-  /* a clip copied into another jump is not this tandem's alone to delete */
+  /* a clip copied into another jump is not this montage's alone to delete */
   it('leaves on the disk an original another jump still holds a copy of', async () => {
     const { manifest, originals, onStorage } = await setup()
     withStorage(onStorage)
     const shared = manifest.files[0]!
     const copy = { ...shared, id: `${shared.id}~1`, copyOf: shared.id, processed: undefined }
-    /* a list of its own: the scene hands the registry and the tandem the same one */
+    /* a list of its own: the scene hands the registry and the montage the same one */
     manifest.files = [...manifest.files, copy]
     manifest.groups.push({ id: 'g2', label: 'g2', day: '01.08.2026', files: [copy] })
 
@@ -170,7 +170,7 @@ describe('freeing an uploaded tandem', () => {
        gone is one nothing can be done with — not copied into a jump, not moved, not dropped in again */
     expect(manifest.files.find((f) => f.id === shared.id)?.freed).toBeUndefined()
     expect(manifest.groups[0]?.files.find((f) => f.id === shared.id)?.freed).toBeUndefined()
-    /* the rest of the tandem went, and says so */
+    /* the rest of the montage went, and says so */
     expect(manifest.files.filter((f) => f.freed).length).toBeGreaterThan(0)
   })
 
@@ -240,7 +240,7 @@ describe('freeing an uploaded tandem', () => {
     expect(fs.readdirSync(folder)).toEqual(['luc.kdenlive'])
   })
 
-  it('refuses a tandem that was never uploaded', async () => {
+  it('refuses a montage that was never uploaded', async () => {
     const { manifest } = await setup()
     delete manifest.groups[0]!.uploaded
     await expect(free(manifest)).rejects.toThrow(/Upload this montage first/)
@@ -269,7 +269,7 @@ describe('freeing an uploaded tandem', () => {
     )
   })
 
-  it('keeps a freed tandem through a later scan, rather than dropping its missing files', async () => {
+  it('keeps a freed montage through a later scan, rather than dropping its missing files', async () => {
     const { manifest, onStorage } = await setup()
     withStorage(onStorage)
     await free(manifest)

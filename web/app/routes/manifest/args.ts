@@ -20,7 +20,7 @@ const actionArgs = z.object({
     'cancel-process',
     'upload-group',
     'montage',
-    'upload-tandem',
+    'upload-montage',
     'shift-group-time',
     /* one file's time, corrected on its own */
     'retime-file',
@@ -43,18 +43,18 @@ const actionArgs = z.object({
     /* unsorted files nobody wants, out of the originals and into the bin */
     'trash-unsorted',
     /* back to before processing, keeping every decision — or undone altogether */
-    'reset-tandem',
-    'delete-tandem',
+    'reset-montage',
+    'delete-montage',
     /* delete it from this machine, once the storage is proved to hold it all */
-    'free-tandem',
+    'free-montage',
     /* what of a dropzone is proved on the storage, deleted from this machine */
     'free-dropzone',
     /* files were just added from the computer: the board looks again, and says how it went */
     'imported',
     /* the passenger was emailed — or, taken back, was not — said on the storage's list */
     'mark-emailed',
-    /* tandems the storage's list names, put back on a board that has forgotten them */
-    'restore-tandems',
+    /* montages the storage's list names, put back on a board that has forgotten them */
+    'restore-montages',
     /* a clip handed to the machine's own video player, to be watched at its full size */
     'play-file',
     /* files this machine gave back, copied off the camera again because they are wanted here */
@@ -98,7 +98,7 @@ const actionArgs = z.object({
     .optional(),
   /* how much of Fresh files to reset: the times alone, or everything decided about it */
   resetWhat: z.enum(['times', 'everything']).optional(),
-  /* which of the storage's tandems to put back, by their folder up there; absent is every one */
+  /* which of the storage's montages to put back, by their folder up there; absent is every one */
   folders: z.array(z.string()).optional(),
   /* what a jump is called, when it is made or renamed — and a montage's one name, when it is made */
   name: z.string().optional(),

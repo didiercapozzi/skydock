@@ -42,7 +42,7 @@ const board = {
   destinations: [{ name: 'Yverdon', path: '/SkyDock/Yverdon' }],
   outputs: {},
   proxies: {},
-  tandems: {},
+  montages: {},
   remote: null,
   storage: null,
   hasManifest: true,

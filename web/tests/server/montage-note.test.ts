@@ -12,7 +12,7 @@ describe('what the board says of a montage', () => {
     ).toBe('Montage ready — 3 clips in the bin · opening it with kdenlive')
   })
 
-  /* a tandem whose camera caught no video is made into a film of its photos */
+  /* a montage whose camera caught no video is made into a film of its photos */
   it('counts the photos when the film is to be made of photos', () => {
     expect(montageNote({ clips: 0, photos: 12, missingAssets: [], opened: true })).toBe(
       'Montage ready — 12 photos in the bin · opening it'

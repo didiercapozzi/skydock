@@ -238,9 +238,9 @@ describe('changes made on the board', () => {
       expect(res.globalErrors?.[0]).toContain('needs a group or a destination')
     })
 
-    /* the reason this route was worth covering at all: a tandem's files go to two different
+    /* the reason this route was worth covering at all: a montage's files go to two different
        folders, and an upload sends one whole */
-    it('refuses a tandem, which is uploaded from its own page', async () => {
+    it('refuses a montage, which is uploaded from its own page', async () => {
       writeManifest([
         group({
           id: 'group_1',
@@ -259,7 +259,7 @@ describe('changes made on the board', () => {
   })
 
   describe('the montage', () => {
-    it('is only for a tandem', async () => {
+    it('is only for a montage', async () => {
       writeManifest([
         group({
           id: 'group_1',
@@ -286,7 +286,7 @@ describe('changes made on the board', () => {
     })
 
     /* an edit somebody has been working on is never written over */
-    it('is made once: asked again for a tandem that has a project, it is refused', async () => {
+    it('is made once: asked again for a montage that has a project, it is refused', async () => {
       writeManifest([
         group({
           id: 'group_1',
@@ -333,7 +333,7 @@ describe('changes made on the board', () => {
 
   /* A trim corrected after the montage was made is no use until the copies are made again, and
      preparing writes the copies and nothing else — the project sits beside them (RULES, The editing project). */
-  describe('preparing a tandem that has an edit', () => {
+  describe('preparing a montage that has an edit', () => {
     it('is allowed, and leaves its project where it is', async () => {
       writeManifest([
         group({
@@ -383,7 +383,7 @@ describe('changes made on the board', () => {
           files: [file({ id: 'a' })]
         })
       ])
-      const res = refusal(await send({ intent: 'free-tandem', groupId: 'group_1' }))
+      const res = refusal(await send({ intent: 'free-montage', groupId: 'group_1' }))
       expect(res.globalErrors?.[0]).toContain('Connect the NAS')
     })
   })
@@ -462,10 +462,10 @@ describe('changes made on the board', () => {
     })
   })
 
-  /* Once there is an edit, the tandem is frozen: its project points at the copies by path and at
+  /* Once there is an edit, the montage is frozen: its project points at the copies by path and at
      times inside them, and lives in the folder the name makes. Whatever the page sends, nothing
      that would move any of that gets through — and deleting the project is what lifts it. */
-  describe('a tandem with an edit', () => {
+  describe('a montage with an edit', () => {
     const luc = () =>
       group({
         id: 'group_1',
@@ -559,7 +559,7 @@ describe('changes made on the board', () => {
       const cropped = luc()
       cropped.files[0] = { ...cropped.files[0]!, cropStart: 1, cropEnd: 3 }
       writeManifest([cropped, other()])
-      const res = answer(await send({ intent: 'reset-tandem', groupId: 'group_1' }))
+      const res = answer(await send({ intent: 'reset-montage', groupId: 'group_1' }))
       expect(fs.existsSync(projectPath())).toBe(false)
       const g = res.groups.find((x) => x.id === 'group_1')
       expect(g?.processed).toBeUndefined()
@@ -568,7 +568,7 @@ describe('changes made on the board', () => {
     })
 
     it('can be deleted, which sends its jump back to be sorted', async () => {
-      const res = answer(await send({ intent: 'delete-tandem', groupId: 'group_1' }))
+      const res = answer(await send({ intent: 'delete-montage', groupId: 'group_1' }))
       expect(fs.existsSync(projectPath())).toBe(false)
       const g = res.groups.find((x) => x.id === 'group_1')
       expect(g?.destination).toBeUndefined()

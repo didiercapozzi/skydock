@@ -1,7 +1,7 @@
 import {
   ensureNasSession,
   groupsInScope,
-  isTandem,
+  isNamedMontage,
   listRemoteFiles,
   loadManifest,
   outputKeyOf,
@@ -22,11 +22,11 @@ const uploadGroup: Intent = async ({ data, manifest, manifestPath, outputDir, re
   const key = scopeKey(scope)
   if (key === 'group:' && !scope.destination)
     return refuse('Upload needs a group or a destination.')
-  /* A tandem's files reach the storage by uploading the tandem, because they do not all go to the
+  /* A montage's files reach the storage by uploading the montage, because they do not all go to the
      same folder. The board never offers this for one, so anything arriving here asked for it by
      name and is told why rather than left with an upload that quietly covered nothing. */
   const asked = groupsInScope(manifest, scope)
-  if (asked.length > 0 && asked.every(isTandem))
+  if (asked.length > 0 && asked.every(isNamedMontage))
     return refuse(
       'Upload a montage from its own card: its film and photos go to its folder and its original videos to the backup, which an upload of the whole folder cannot do.'
     )

@@ -11,13 +11,13 @@ import type { NasSession } from './nas'
 import { getGroupProcessedDir, isFlatGroup } from './process'
 import { getCutProxyDir } from './proxy'
 import { sendItems } from './sending'
-import { isTandem } from './tandem'
+import { isNamedMontage } from './montageArtifacts'
 import type { Manifest, ManifestFile, SendPart } from './types'
 import { uploadedFiles } from './upload'
 import { isVideoFile, sizeOf } from './utils'
 import { lastSegment } from './paths'
 
-/* Once a tandem is on the storage and handed over, what is left of it here is gigabytes nobody needs
+/* Once a montage is on the storage and handed over, what is left of it here is gigabytes nobody needs
    on this machine: the originals, the prepared copies, the working copies, the film and the zips.
    Freeing it deletes all of that — but only when there is proof that the storage holds the same
    bytes, and that nothing here changed since they went up. Proof, not a record: every file that went
@@ -73,14 +73,14 @@ const proveOnStorage = async (
 ) => {
   const group = manifest.groups.find((g) => g.id === groupId)
   if (!group) throw new Error('Montage not found.')
-  if (!isTandem(group) || isFlatGroup(group)) throw new Error('Only a montage can be freed.')
+  if (!isNamedMontage(group) || isFlatGroup(group)) throw new Error('Only a montage can be freed.')
   if (group.freed) throw new Error('This montage is already freed from this machine.')
   const record = group.uploaded
   if (!record) throw new Error('Upload this montage first — nothing of it is on the storage yet.')
 
   const dir = getGroupProcessedDir(outputDir, group).dir
   const sharing = manifest.groups.filter(
-    (g) => g.id !== group.id && isTandem(g) && getGroupProcessedDir(outputDir, g).dir === dir
+    (g) => g.id !== group.id && isNamedMontage(g) && getGroupProcessedDir(outputDir, g).dir === dir
   )
   if (sharing.length > 0)
     throw new Error(
@@ -208,7 +208,7 @@ const proveOnStorage = async (
   return { group, dir }
 }
 
-const freeTandem = async ({
+const freeMontage = async ({
   manifest,
   outputDir,
   groupId,
@@ -225,8 +225,8 @@ const freeTandem = async ({
   const originals = path.join(outputDir, 'original_files')
   const proxies = path.join(outputDir, 'proxies')
   /* An original another jump still holds — this one copied into it, or a copy of its own here — is
-     not this tandem's alone to delete: it stays, with its proxy, until the last jump holding it is
-     freed. Everything made from it for this tandem still goes. */
+     not this montage's alone to delete: it stays, with its proxy, until the last jump holding it is
+     freed. Everything made from it for this montage still goes. */
   const heldElsewhere = (file: ManifestFile) =>
     manifest.files.some((other) => other.path === file.path && other.id !== file.id && !other.freed)
   /* and it is not said to live on the storage only either, because it does not: it is on the disk,
@@ -277,5 +277,5 @@ const markFreed = (manifest: Manifest, result: FreeResult) => {
   )
 }
 
-export { freeTandem, markFreed, removeFile, removeTree }
+export { freeMontage, markFreed, removeFile, removeTree }
 export type { FreeResult }

@@ -71,7 +71,7 @@ describe('a dropzone on the board', () => {
     destinations: [{ name: 'Yverdon' }],
     outputs: {},
     proxies: {},
-    tandems: {},
+    montages: {},
     remote: null,
     storage: null,
     hasManifest: true,

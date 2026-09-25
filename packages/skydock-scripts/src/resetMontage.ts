@@ -4,18 +4,18 @@ import { getGroupProcessedDir, isFlatGroup } from './process'
 import { getCutProxyDir } from './proxy'
 import { cameraTimes } from './scan'
 import { keepProject } from './projectHistory'
-import { isTandem } from './tandem'
+import { isNamedMontage } from './montageArtifacts'
 import type { Manifest, ManifestGroup } from './types'
 import { idsOf } from './lib/words'
 
-/* Two ways back from a tandem, both for the whole passenger — one passenger is one folder, so a
+/* Two ways back from a montage, both for the whole passenger — one passenger is one folder, so a
    jump cannot be taken back on its own without taking its folder from the others.
 
    Reset puts it back to before processing: everything made from it on this machine goes — the
    copies, the cut proxies, the project, the film, the archives — and everything decided about it
    stays: the name, the crops, the frames, the turns, the corrected times. It is how an edit is started over.
 
-   Delete undoes the tandem altogether, at whatever step it has reached: the same folder goes, and
+   Delete undoes the montage altogether, at whatever step it has reached: the same folder goes, and
    so does everything decided about it — the jumps themselves included. Its files go back to be
    sorted loose, with no name, no crop and no frame, each on the time its camera gave it.
 
@@ -26,7 +26,7 @@ import { idsOf } from './lib/words'
 const sharingFolder = (manifest: Manifest, outputDir: string, group: ManifestGroup) => {
   const dir = getGroupProcessedDir(outputDir, group).dir
   return manifest.groups.filter(
-    (g) => isTandem(g) && !isFlatGroup(g) && getGroupProcessedDir(outputDir, g).dir === dir
+    (g) => isNamedMontage(g) && !isFlatGroup(g) && getGroupProcessedDir(outputDir, g).dir === dir
   )
 }
 
@@ -41,7 +41,7 @@ const removable = (outputDir: string, dir: string) => {
 const takeBack = (manifest: Manifest, outputDir: string, groupId: string, forget: boolean) => {
   const group = manifest.groups.find((g) => g.id === groupId)
   if (!group) throw new Error('Montage not found.')
-  if (!isTandem(group)) throw new Error('Only a named montage can be reset or deleted.')
+  if (!isNamedMontage(group)) throw new Error('Only a named montage can be reset or deleted.')
   const jumps = sharingFolder(manifest, outputDir, group)
   /* its originals are gone from here, so there is nothing to start again from */
   if (jumps.some((j) => j.freed))
@@ -50,7 +50,7 @@ const takeBack = (manifest: Manifest, outputDir: string, groupId: string, forget
   if (!removable(outputDir, dir)) throw new Error(`Refusing to delete ${dir}.`)
 
   /* Everything made on this machine goes, the project with it — so the project is copied aside
-     first. Taking a tandem back is deliberate and this does not stand in its way; it only means the
+     first. Taking a montage back is deliberate and this does not stand in its way; it only means the
      hours in the editor are still there afterwards, for whoever asks. */
   keepProject(outputDir, dir, baseName)
   fs.rmSync(dir, { recursive: true, force: true })
@@ -100,10 +100,10 @@ const takeBack = (manifest: Manifest, outputDir: string, groupId: string, forget
   return { groupIds: [...taken] }
 }
 
-const resetTandem = (manifest: Manifest, outputDir: string, groupId: string) =>
+const resetMontage = (manifest: Manifest, outputDir: string, groupId: string) =>
   takeBack(manifest, outputDir, groupId, false)
 
-const deleteTandem = (manifest: Manifest, outputDir: string, groupId: string) =>
+const deleteMontage = (manifest: Manifest, outputDir: string, groupId: string) =>
   takeBack(manifest, outputDir, groupId, true)
 
-export { deleteTandem, resetTandem }
+export { deleteMontage, resetMontage }

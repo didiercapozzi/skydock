@@ -9,15 +9,15 @@ import {
   passengerName,
   passengerOf,
   startOfFiles,
-  tandemSteps,
-  tandemUploadKey
+  montageSteps,
+  montageUploadKey
 } from '@skydock/scripts'
 import type { FrameCrop, Rotation, SendPlan } from '@skydock/scripts'
 import { useEffect, useState } from 'react'
 import { useNavigate, useOutletContext, useParams } from 'react-router'
 import type { BoardDialog } from '../components/dialog-host'
 import { lockReason } from '../components/file-list'
-import type { Passenger } from '../components/tandem-card'
+import type { Passenger } from '../components/montage-card'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
 import { plural, setOutputRoot, shortDate } from '../components/utils'
 import { importFiles, tokenFor, whatIsComing } from '../helpers/import'
@@ -75,7 +75,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   /* A montage with an edit is frozen (RULES, The editing project), and a freed one lives on the
      storage only. The server refuses any change to either; the board simply never offers it. */
   const frozen = new Set(
-    groups.filter((g) => g.freed || board.tandemFacts[g.id]?.project).map((g) => g.id)
+    groups.filter((g) => g.freed || board.montageFacts[g.id]?.project).map((g) => g.id)
   )
   const frozenFiles = new Set(
     groups
@@ -116,14 +116,14 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       : group
   /* whether the storage's list says this montage's link was sent */
   const emailedOn = (group: ManifestGroup) =>
-    board.storage?.tandems.find((t) => t.folder === folderOnStorage(group))?.emailed ?? null
+    board.storage?.montages.find((t) => t.folder === folderOnStorage(group))?.emailed ?? null
   /* Where each montage has got to — one answer for its panel, its card and its entry in the menu,
      so the three can never disagree. */
   const progressOf = (group: ManifestGroup) =>
     isMontage(group)
-      ? tandemSteps({
+      ? montageSteps({
           group: asOnStorage(group),
-          facts: board.tandemFacts[group.id],
+          facts: board.montageFacts[group.id],
           emailed: Boolean(emailedOn(group))
         })
       : null
@@ -402,7 +402,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     setGoingTo(who)
   }
   /* A jump in Fresh files named: it is the montage, in one step. */
-  const makeTandem = (groupId: string, passenger: Passenger) => {
+  const nameMontage = (groupId: string, passenger: Passenger) => {
     const who = passengerName(passenger)
     if (editedMontage(who)) return
     const joining = groups.some((g) => g.id !== groupId && isMontage(g) && passengerOf(g) === who)
@@ -483,9 +483,9 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   }
   const confirmUpload = (group: ManifestGroup, plan: SendPlan) => {
     setDialog(null)
-    const key = tandemUploadKey(group.id)
+    const key = montageUploadKey(group.id)
     board.setUploading(key)
-    send(key, { intent: 'upload-tandem', groupId: group.id, plan })
+    send(key, { intent: 'upload-montage', groupId: group.id, plan })
   }
   /* A template is somebody's branding, so which one is never decided here. With a single template
      that is whole there is nothing to decide and the project is made at once; with several, or one
@@ -554,7 +554,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     importDropped,
     drag,
     flashPlace,
-    makeTandem,
+    nameMontage,
     montageOf,
     montageOffer,
     setPassenger,

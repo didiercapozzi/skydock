@@ -117,7 +117,7 @@ const StorageFolder = ({
      own page it is, and each file then says whether it is here too */
   hereToo?: Set<string>
   /* Fetching one back onto this machine, for a file the board knows by its upload record and no
-     longer holds. Absent where nothing can be fetched — a folder of a tandem this board never had,
+     longer holds. Absent where nothing can be fetched — a folder of a montage this board never had,
      or a file it never sent. */
   onBringBack?: (file: StorageFile) => void
   /* what the storage said when it would not do what was asked */

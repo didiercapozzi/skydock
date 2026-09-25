@@ -20,7 +20,7 @@ const markEmailed: Intent = async ({ data, manifest, refuse }) => {
     session,
     montagesRemoteDir(manifest, session) ?? parentOf(folder),
     (index) => {
-      const entry = index.tandems.find((t) => t.folder === folder)
+      const entry = index.montages.find((t) => t.folder === folder)
       if (!entry) known = false
       else if (sent) entry.emailed = { at: Math.floor(Date.now() / 1000), ...(to ? { to } : {}) }
       else delete entry.emailed

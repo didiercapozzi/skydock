@@ -15,7 +15,7 @@ import type { StorageFolder } from '../../../packages/skydock-scripts/src/storag
 import { routingEngine } from '../helpers/routing'
 import type { Route } from './+types/api.storage-folder'
 
-/* a dropzone by its name, a tandem by its jump — or, for a tandem the storage's list names and
+/* a dropzone by its name, a montage by its jump — or, for a montage the storage's list names and
    this board no longer holds, the folder the list gives */
 const searchParamsArgs = z.object({
   destination: z.string().optional(),

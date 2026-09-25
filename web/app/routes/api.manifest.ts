@@ -6,14 +6,14 @@ import type { ActionData } from './manifest/args'
 import { changeOn } from './manifest/change'
 import type { Intent } from './manifest/change'
 import { freeDropzoneIntent } from './manifest/free-dropzone'
-import { freeTandemIntent } from './manifest/free-tandem'
+import { freeMontageIntent } from './manifest/free-montage'
 import { imported } from './manifest/imported'
 import { markEmailed } from './manifest/mark-emailed'
 import { cameraCopied } from './manifest/camera-copied'
 import { copyFilesIntent } from './manifest/copy-files'
 import { makeMontageIntent } from './manifest/make-montage'
 import { resetFreshIntent } from './manifest/reset-fresh'
-import { restoreTandemsIntent } from './manifest/restore-tandems'
+import { restoreMontagesIntent } from './manifest/restore-montages'
 import { mergeGroupsIntent } from './manifest/merge-groups'
 import { montage } from './manifest/montage'
 import { deleteJumpIntent } from './manifest/delete-jump'
@@ -29,10 +29,10 @@ import { saveGroups } from './manifest/save-groups'
 import { retimeFileIntent } from './manifest/retime-file'
 import { setMomentIntent } from './manifest/set-moment'
 import { shiftGroupTime } from './manifest/shift-group-time'
-import { deleteTandemIntent, resetTandemIntent } from './manifest/take-back'
+import { deleteMontageIntent, resetMontageIntent } from './manifest/take-back'
 import { trashUnsortedIntent } from './manifest/trash-unsorted'
 import { uploadGroup } from './manifest/upload-group'
-import { uploadTandemIntent } from './manifest/upload-tandem'
+import { uploadMontageIntent } from './manifest/upload-montage'
 
 /* Every change the board makes comes through here, one intent at a time, each answered with the
    board's data (RULES, The board). */
@@ -48,7 +48,7 @@ const intents: Record<ActionData['intent'], Intent> = {
   'cancel-process': cancelProcess,
   'upload-group': uploadGroup,
   montage,
-  'upload-tandem': uploadTandemIntent,
+  'upload-montage': uploadMontageIntent,
   'shift-group-time': shiftGroupTime,
   'retime-file': retimeFileIntent,
   'set-moment': setMomentIntent,
@@ -57,13 +57,13 @@ const intents: Record<ActionData['intent'], Intent> = {
   'remove-destination': removeDestinationIntent,
   'regroup-loose': regroupLoose,
   'trash-unsorted': trashUnsortedIntent,
-  'reset-tandem': resetTandemIntent,
-  'delete-tandem': deleteTandemIntent,
-  'free-tandem': freeTandemIntent,
+  'reset-montage': resetMontageIntent,
+  'delete-montage': deleteMontageIntent,
+  'free-montage': freeMontageIntent,
   'free-dropzone': freeDropzoneIntent,
   imported,
   'mark-emailed': markEmailed,
-  'restore-tandems': restoreTandemsIntent,
+  'restore-montages': restoreMontagesIntent,
   'copy-files': copyFilesIntent,
   'make-montage': makeMontageIntent,
   'reset-fresh': resetFreshIntent,

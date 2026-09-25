@@ -51,7 +51,7 @@ const writeArchive = async (
   if (isArchiveFresh(zipPath, entries)) return zipPath
   const totalBytes = entries.reduce((sum, entry) => sum + sizeOf(entry.file), 0)
   const output = fs.createWriteStream(zipPath)
-  /* a tandem's rushes pass 4 GB, and a zip that silently truncates past that is the worst way
+  /* a montage's rushes pass 4 GB, and a zip that silently truncates past that is the worst way
      for this to fail — it looks like an uploaded backup and is not one */
   const archive = new ZipArchive({
     zlib: { level: options?.level ?? PHOTO_LEVEL },

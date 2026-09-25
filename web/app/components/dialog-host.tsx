@@ -1,5 +1,5 @@
 import { buildPassengerFolder, isVideoFile, lostOf, passengerOf } from '@skydock/scripts'
-import type { MontageEntry, MontageLost, TandemFact, freeablePlace } from '@skydock/scripts'
+import type { MontageEntry, MontageLost, MontageFact, freeablePlace } from '@skydock/scripts'
 import { ConnectionDialog } from './connection-dialog'
 import { EmailDialog } from './email-dialog'
 import { FreeDialog } from './free-dialog'
@@ -37,11 +37,11 @@ type BoardDialog =
   | { kind: 'disconnect' }
   /* unsorted files about to go to the bin */
   | { kind: 'trash'; files: ManifestFile[] }
-  /* a tandem on this board by its jump, or one the storage's list alone knows, by its folder */
+  /* a montage on this board by its jump, or one the storage's list alone knows, by its folder */
   | { kind: 'email'; groupId?: string; folder?: string }
   /* Fresh files put back, by as much as is chosen there */
   | { kind: 'reset-fresh'; files: number; decided: number }
-  /* the editing templates — chosen between for this tandem's montage, or only looked over */
+  /* the editing templates — chosen between for this montage's editing project, or only looked over */
   | { kind: 'templates'; groupId?: string }
 
 const DialogHost = ({
@@ -87,12 +87,12 @@ const DialogHost = ({
   /* files in no jump, needed to say what a place holds before it is taken off the board */
   looseFiles: ManifestFile[]
   asOnStorage: (group: ManifestGroup) => ManifestGroup
-  facts: Record<string, TandemFact>
+  facts: Record<string, MontageFact>
   folderFor: (destination: string) => string | null
   plan: SendPlan
   onPlan: (plan: SendPlan) => void
   onUpload: (group: ManifestGroup, plan: SendPlan) => void
-  storage: { tandems: MontageEntry[]; lost: MontageLost } | null
+  storage: { montages: MontageEntry[]; lost: MontageLost } | null
   onEmailed: (folder: string, sent: boolean, to: string) => void
   onFree: (group: ManifestGroup) => void
   freeableOf: (place: string) => ReturnType<typeof freeablePlace>
@@ -148,11 +148,11 @@ const DialogHost = ({
 
       {dialog?.kind === 'email' &&
         (() => {
-          /* a tandem on this board is drafted from its files; one the storage alone knows, from
+          /* a montage on this board is drafted from its files; one the storage alone knows, from
              what its list says */
           const group = dialog.groupId ? groups.find((g) => g.id === dialog.groupId) : undefined
           const folder = dialog.folder ?? (group ? folderOnStorage(group) : null)
-          const entry = folder ? storage?.tandems.find((t) => t.folder === folder) : undefined
+          const entry = folder ? storage?.montages.find((t) => t.folder === folder) : undefined
           /* a link the storage no longer honours is not one to send anybody */
           const shareUrl =
             folder && lostOf(storage?.lost, folder)
@@ -265,12 +265,12 @@ const DialogHost = ({
 
       {dialog?.kind === 'templates' &&
         (() => {
-          const tandem = groups.find((g) => g.id === dialog.groupId)
+          const montage = groups.find((g) => g.id === dialog.groupId)
           return (
             <TemplatesDialog
-              who={tandem ? passengerOf(tandem) : undefined}
+              who={montage ? passengerOf(montage) : undefined}
               onClose={close}
-              onChoose={tandem ? (template) => onMontage(tandem.id, template) : undefined}
+              onChoose={montage ? (template) => onMontage(montage.id, template) : undefined}
             />
           )
         })()}

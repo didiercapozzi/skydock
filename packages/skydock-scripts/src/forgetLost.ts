@@ -32,7 +32,7 @@ const missingOnStorage = (file: ManifestFile, remote: RemoteListing) => {
 const isLost = (file: ManifestFile, remote: RemoteListing) =>
   Boolean(file.id) && Boolean(file.freed) && missingOnStorage(file, remote) && !stillHere(file)
 
-/* A jump with nothing left in it goes with its files. A tandem does too, unless the storage still
+/* A jump with nothing left in it goes with its files. A montage does too, unless the storage still
    holds what was delivered of it — the film outlives the rushes it was cut from, and that delivery
    is the one thing about a passenger worth keeping a folder for. */
 const emptied = (group: ManifestGroup, remote: RemoteListing) =>

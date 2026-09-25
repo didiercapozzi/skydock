@@ -22,11 +22,11 @@ const clip = (moments: Moments | null | undefined) => ({
 const Drawer = ({
   moments,
   onMomentChange,
-  tandem = true
+  montage = true
 }: {
   moments: Moments | null | undefined
   onMomentChange?: (which: 'exit' | 'opening' | 'canopy' | 'landing', seconds: number) => void
-  tandem?: boolean
+  montage?: boolean
 }) =>
   createElement(PreviewDrawer, {
     files: [clip(moments)],
@@ -50,7 +50,7 @@ const Drawer = ({
     onDurationChange: () => {},
     onVideoRef: () => {},
     onMomentChange,
-    tandem
+    montage
   })
 
 describe('where the jump is in a clip', () => {
@@ -85,7 +85,7 @@ describe('where the jump is in a clip', () => {
      before their own camera leaves — and that second is where the cut starts (RULES, Where the jump
      is in a clip). */
   test('starts a fun jump a second before the camera left', async () => {
-    await render(createElement(Drawer, { moments: { exit: 38, canopy: 94 }, tandem: false }))
+    await render(createElement(Drawer, { moments: { exit: 38, canopy: 94 }, montage: false }))
     await expect.element(page.getByRole('button', { name: /exit 0:37/i })).toBeVisible()
     const mark = document.querySelector('[data-moment=exit]')
     const along = Number(/left: ([\d.]+)%/.exec(mark?.getAttribute('style') ?? '')?.[1])
@@ -110,11 +110,11 @@ describe('where the jump is in a clip', () => {
 })
 
 /* the exit dragged a quarter of the way along, and what that reported */
-const dragExit = async (tandem: boolean) => {
+const dragExit = async (montage: boolean) => {
   const moved = vi.fn()
   /* one drawer at a time, since this is asked twice over in one test */
   const drawer = await render(
-    createElement(Drawer, { moments: { exit: 38, canopy: 94 }, onMomentChange: moved, tandem })
+    createElement(Drawer, { moments: { exit: 38, canopy: 94 }, onMomentChange: moved, montage })
   )
   const mark = drawer.container.querySelector('[data-moment=exit]')
   if (!mark) throw new Error('the exit was not marked')
@@ -151,8 +151,8 @@ describe('a mark put right by hand', () => {
   /* What is dragged on a fun jump is the cut, which runs a second ahead of the measurement. What is
      written down is the measurement, or the lead would be eaten a second at a time. */
   test('records the measurement, not the second of lead in front of it', async () => {
-    const [, asTandem] = await dragExit(true)
+    const [, asMontage] = await dragExit(true)
     const [, asFunJump] = await dragExit(false)
-    expect(asFunJump).toBeCloseTo(asTandem + 1, 5)
+    expect(asFunJump).toBeCloseTo(asMontage + 1, 5)
   })
 })

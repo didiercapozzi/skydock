@@ -12,7 +12,7 @@ const PreviewHost = ({
   statusContext,
   onMomentChange,
   onPlayOutside,
-  tandem
+  montage
 }: {
   preview: ReturnType<typeof usePreview>
   proxies: Record<string, ProxyFact>
@@ -26,8 +26,8 @@ const PreviewHost = ({
   ) => void
   /* the file, handed to the machine's own player */
   onPlayOutside: (file: ManifestFile) => void
-  /* whether the jump being looked at is a tandem, which decides where its cut starts */
-  tandem: boolean
+  /* whether the jump being looked at is a montage, which decides where its cut starts */
+  montage: boolean
 }) => {
   const open = preview.preview
   const shown = open?.files[open.index]
@@ -62,7 +62,7 @@ const PreviewHost = ({
       locked={lockReason(shown, statusContext(shown))}
       onMomentChange={(which, seconds) => onMomentChange(shown, which, seconds)}
       onPlayOutside={shown.freed ? undefined : () => onPlayOutside(shown)}
-      tandem={tandem}
+      montage={montage}
     />
   )
 }

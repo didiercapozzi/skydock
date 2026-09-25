@@ -1,6 +1,6 @@
 /* What the web app may import. Everything else in this package is internal to it — the tests reach
    into the modules directly, so this stays exactly as wide as the app needs. What shells out or
-   reaches the filesystem behind a click — building proxies, uploading a tandem, importing a file,
+   reaches the filesystem behind a click — building proxies, uploading a montage, importing a file,
    freeing, taking back — is imported by the routes straight from its module, so none of it can
    reach the browser bundle. */
 import { boardAnswerSchema, importOutcomeSchema } from './boardAnswer'
@@ -11,7 +11,7 @@ import type {
   OutputFact,
   ProxyFact,
   ScanResult,
-  TandemFact
+  MontageFact
 } from './boardAnswer'
 import {
   offGap,
@@ -86,12 +86,12 @@ import { scanMedia } from './scan'
 import {
   EDIT_LOCKED,
   filmNameOf,
-  frozenTandems,
+  frozenMontages,
   hasEdit,
-  isTandem,
+  isNamedMontage,
   sameEditedGroup,
-  statTandemArtifacts
-} from './tandem'
+  statMontageArtifacts
+} from './montageArtifacts'
 import {
   DEFAULT_PLAN,
   itemsFrom,
@@ -103,9 +103,9 @@ import {
   zipNameOf
 } from './sending'
 import type { PartFile, SendItem } from './sending'
-import { watchTandems } from './tandemWatch'
-import { furthestBehind, tandemSteps } from './tandemSteps'
-import type { TandemProgress } from './tandemSteps'
+import { watchMontages } from './montageWatch'
+import { furthestBehind, montageSteps } from './montageSteps'
+import type { MontageProgress } from './montageSteps'
 import { folderOfUpload } from './montageIndex'
 import { lostOf } from './montageEntry'
 import type { MontageEntry, MontageLost } from './montageEntry'
@@ -140,7 +140,7 @@ import {
 import {
   clearUploadProgress,
   readUploadProgress,
-  tandemUploadKey,
+  montageUploadKey,
   uploadProgressStateSchema,
   writeUploadProgress
 } from './uploadProgress'
@@ -169,7 +169,7 @@ export {
   messageOf,
   startOfFiles,
   outputKeyOf,
-  watchTandems,
+  watchMontages,
   liveEventSchema,
   publish,
   subscribe,
@@ -177,7 +177,7 @@ export {
   isFiled,
   isMontage,
   folderOfUpload,
-  tandemSteps,
+  montageSteps,
   sendPlanSchema,
   DEFAULT_PLAN,
   itemsFrom,
@@ -208,7 +208,7 @@ export {
   filmNameOf,
   fitRatio,
   forgetLostFiles,
-  frozenTandems,
+  frozenMontages,
   getGroupProcessedDir,
   ffmpegPath,
   getOutputDir,
@@ -220,7 +220,7 @@ export {
   importOutcomeSchema,
   isoDay,
   isQuarterTurn,
-  isTandem,
+  isNamedMontage,
   isVideoFile,
   isWholeFrame,
   lastSegment,
@@ -265,10 +265,10 @@ export {
   statProcessedOutputs,
   statProxies,
   waitingForProxy,
-  statTandemArtifacts,
+  statMontageArtifacts,
   earlierMontagesDirs,
   montagesRemoteDir,
-  tandemUploadKey,
+  montageUploadKey,
   turnBy,
   turnedSize,
   uploadGate,
@@ -281,7 +281,7 @@ export {
 }
 export type {
   LiveEvent,
-  TandemProgress,
+  MontageProgress,
   PartFile,
   SendItem,
   SendPart,
@@ -306,6 +306,6 @@ export type {
   StatusContext,
   MontageEntry,
   MontageLost,
-  TandemFact,
+  MontageFact,
   UploadProgressState
 }

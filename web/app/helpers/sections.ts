@@ -9,10 +9,10 @@ import type { Place } from './places'
    in one list. A dropzone has no jumps — its files are flat — so it groups by day or not at all. */
 type Grouping = 'jump' | 'day' | 'none'
 
-const GROUPINGS: Record<'sort' | 'dz' | 'tandems', readonly Grouping[]> = {
+const GROUPINGS: Record<'sort' | 'dz' | 'montages', readonly Grouping[]> = {
   sort: ['jump', 'day', 'none'],
   dz: ['day', 'none'],
-  tandems: ['jump', 'none']
+  montages: ['jump', 'none']
 }
 
 /* One run of files under one header. A jump's header files and names it; a day's says what the day

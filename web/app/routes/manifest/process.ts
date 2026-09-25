@@ -7,7 +7,7 @@ import { messageOf } from '@skydock/scripts'
    processing left it. */
 const processIntent: Intent = async ({ data, manifest, manifestPath, outputDir, refuse }) => {
   const requestedGroups = data.groupIds ?? (data.groupId ? [data.groupId] : undefined)
-  /* A tandem with an edit is prepared again like any other. Preparing writes the copies and nothing
+  /* A montage with an edit is prepared again like any other. Preparing writes the copies and nothing
      else: the project, the film and the archives sit beside them and are left where they are, and
      the copies keep the names the passenger and the clips' own times give them, which is what the
      project calls them by. What can change is what those copies hold — a clip trimmed differently

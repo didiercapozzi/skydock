@@ -7,7 +7,7 @@ import { FileList } from '../../app/components/file-list'
 import type { ManifestFile } from '../../app/components/types'
 import { useSelection } from '../../app/hooks/useSelection'
 
-/* Picking is choosing what to move. A file in a tandem with an edit, or already on the storage,
+/* Picking is choosing what to move. A file in a montage with an edit, or already on the storage,
    cannot move — so it is never picked, and nothing is offered for it that it cannot do. Offering
    the tick and then saying "these cannot move" was a choice given only to be taken back. */
 
@@ -43,7 +43,7 @@ const renderList = (shape: 'rows' | 'grid') =>
     })
   )
 
-describe('a file in a tandem with an edit', () => {
+describe('a file in a montage with an edit', () => {
   test('has no tick to pick it by, on a row', async () => {
     await renderList('rows')
 
@@ -94,7 +94,7 @@ describe('picking files', () => {
     await expect.poll(picked).toBe('free')
   })
 
-  /* the Montage case: files picked, then their tandem gets an edit while they still are */
+  /* the Montage case: files picked, then their montage gets an edit while they still are */
   test('lets go of a file the moment it can no longer move', async () => {
     const screen = await render(createElement(Picks, { locked: [] }))
     await userEvent.click(page.getByRole('button', { name: 'Select its files' }))

@@ -33,7 +33,7 @@ const PreviewedFile = () => {
       preview={preview}
       proxies={board.proxies}
       statusContext={model.statusContext}
-      tandem={hasCompletePassenger(
+      montage={hasCompletePassenger(
         board.groups.find((g) => g.id === preview.preview?.groupId)?.passenger
       )}
       onMomentChange={(file, which, seconds) =>

@@ -1,14 +1,14 @@
 import { hasCompletePassenger, isMontage, isVideoFile, passengerName } from '@skydock/scripts'
-import type { FileStatus, ProxyFact, TandemFact } from '@skydock/scripts'
+import type { FileStatus, ProxyFact, MontageFact } from '@skydock/scripts'
 import { useState } from 'react'
 import { Go, Mini } from './buttons'
 import { StatusChip } from './file-status'
 import type { ShownStatus } from './file-status'
 import { JumpForm } from './jump-name'
 import { JumpSpan, hhmmss } from './jump-time'
-import { MakeTandem, PassengerFrames, PassengerName } from './tandem-card'
-import { StepTrail } from './tandem-steps'
-import type { Passenger } from './tandem-card'
+import { NameMontage, PassengerFrames, PassengerName } from './montage-card'
+import { StepTrail } from './montage-steps'
+import type { Passenger } from './montage-card'
 import type { ManifestFile, ManifestGroup } from './types'
 import { dateLabel, formatSize, getThumbUrl, minFileMtime, plural, shortDate } from './utils'
 
@@ -113,7 +113,7 @@ const FolderPanel = ({
 /* Making a montage is a choice before it is a form: the name waits behind one button, so what is only
    being looked at, or filed, is not an empty box asking for a name. What a place already holds is
    copied into the montage, and `keeps` names that place. */
-const TandemMaker = ({
+const MontageNamer = ({
   initial,
   keeps,
   what,
@@ -129,7 +129,7 @@ const TandemMaker = ({
 }) => {
   const [making, setMaking] = useState(false)
   return making ? (
-    <MakeTandem
+    <NameMontage
       initial={initial}
       keeps={keeps}
       passengers={passengers}
@@ -148,7 +148,7 @@ const TandemMaker = ({
 }
 
 /* A jump: when it started — set right here, every file moving with it — a few frames of it, and the
-   way to make it a passenger's tandem or delete it. It is filed by dragging it onto a place. A tandem
+   way to make it a passenger's montage or delete it. It is filed by dragging it onto a place. A montage
    shows how far it has got, and its name can be changed while nothing has been edited from it. */
 const JumpPanel = ({
   group,
@@ -159,7 +159,7 @@ const JumpPanel = ({
   statusOf,
   passengers,
   keeps,
-  onMakeTandem,
+  onNameMontage,
   onName,
   onSelectFiles,
   onShift,
@@ -168,14 +168,14 @@ const JumpPanel = ({
 }: {
   group: ManifestGroup
   label: string
-  facts?: TandemFact
+  facts?: MontageFact
   emailed: boolean
   locked: string | null
   statusOf: (file: ManifestFile) => FileStatus
   passengers: Passenger[]
   /* the dropzone the jump is filed at, which keeps it: a montage gets copies of it */
   keeps?: string
-  onMakeTandem: (passenger: Passenger) => void
+  onNameMontage: (passenger: Passenger) => void
   onName: (firstname: string, lastname: string) => void
   onSelectFiles: () => void
   /* when it started, set right — every file moves with it; absent when the jump is past changing */
@@ -189,7 +189,7 @@ const JumpPanel = ({
   const from = minFileMtime(group.files) ?? 0
   const to = group.files.reduce((n, f) => Math.max(n, f.mtime), 0)
   const videos = group.files.filter((f) => isVideoFile(f.path)).length
-  const tandem = isMontage(group)
+  const montage = isMontage(group)
   const named = hasCompletePassenger(group.passenger)
   const sub = `${plural(videos, 'video')} · ${plural(group.files.length - videos, 'photo')} · ${bytes(group.files)}`
   return (
@@ -253,10 +253,10 @@ const JumpPanel = ({
       {!group.freed && (
         <PassengerFrames
           group={group}
-          alt={tandem && !named ? 'A frame from this montage, to tell who it is' : label}
+          alt={montage && !named ? 'A frame from this montage, to tell who it is' : label}
         />
       )}
-      {tandem && (
+      {montage && (
         <StepTrail
           group={group}
           facts={facts}
@@ -264,7 +264,7 @@ const JumpPanel = ({
         />
       )}
       {locked && <Lock>{locked}</Lock>}
-      {tandem ? (
+      {montage ? (
         <Box heading='Montage'>
           {locked ? (
             <p className='m-0 text-[13px] font-semibold'>{passengerName(group.passenger)}</p>
@@ -292,12 +292,12 @@ const JumpPanel = ({
         </Box>
       ) : (
         <Box heading='Montage'>
-          <TandemMaker
+          <MontageNamer
             key={group.id}
             initial={group.name}
             keeps={keeps}
             passengers={passengers}
-            onSave={onMakeTandem}
+            onSave={onNameMontage}
           />
         </Box>
       )}
@@ -308,11 +308,11 @@ const JumpPanel = ({
             <Mini
               onClick={onDelete}
               title={
-                tandem && named
+                montage && named
                   ? 'Undo the montage, whatever step it is at — its files go back to Fresh files, loose. Asks first.'
                   : 'The jump goes; its files are kept, loose in Fresh files, with their crops'
               }>
-              {tandem && named ? 'Delete montage…' : 'Delete jump'}
+              {montage && named ? 'Delete montage…' : 'Delete jump'}
             </Mini>
           )}
         </span>
@@ -463,7 +463,7 @@ const FilePanel = ({
       )}
       {montage && (
         <Box heading='Montage'>
-          <TandemMaker
+          <MontageNamer
             key={file.id}
             keeps={montage.keeps}
             what='this'
@@ -527,7 +527,7 @@ const ManyPanel = ({
       ) : null}
       {montage && (
         <Box heading='Montage'>
-          <TandemMaker
+          <MontageNamer
             keeps={montage.keeps}
             passengers={montage.passengers}
             onSave={montage.onMake}

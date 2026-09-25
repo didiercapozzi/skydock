@@ -138,7 +138,7 @@ const PreviewDrawer = ({
   locked,
   onMomentChange,
   onPlayOutside,
-  tandem = false
+  montage = false
 }: {
   files: ManifestFile[]
   index: number
@@ -178,10 +178,10 @@ const PreviewDrawer = ({
   onMomentChange?: (which: 'exit' | 'opening' | 'canopy' | 'landing', seconds: number) => void
   /* hand this file to the machine's own player; absent for a file this machine no longer holds */
   onPlayOutside?: () => void
-  /* Whether this clip's jump is a tandem, which decides where a cut starts from: a tandem is its own
+  /* Whether this clip's jump is a montage, which decides where a cut starts from: a montage is its own
      subject and is cut on the instant the camera's wearer left, a fun jump a second earlier, where
      the group is going out of the door ahead of whoever is filming. */
-  tandem?: boolean
+  montage?: boolean
 }) => {
   const file = files[index]
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -339,8 +339,8 @@ const PreviewDrawer = ({
   const track = useJumpTrack(video ? file.path : null)
 
   /* Where a cut would start, which is the mark as it is shown and dragged: the measured instant on a
-     tandem, a second before it on a fun jump (RULES, Where the jump is in a clip). */
-  const cutAt = file.moments ? cutFrom(file.moments, tandem) : 0
+     montage, a second before it on a fun jump (RULES, Where the jump is in a clip). */
+  const cutAt = file.moments ? cutFrom(file.moments, montage) : 0
   const shownMoments = file.moments && { ...file.moments, exit: cutAt }
   const from = cropStart ?? 0
   const to = cropEnd ?? duration

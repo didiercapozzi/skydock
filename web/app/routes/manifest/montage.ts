@@ -2,7 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import {
   getGroupProcessedDir,
-  isTandem,
+  isNamedMontage,
   passengerOf,
   saveManifest,
   statProxies,
@@ -16,12 +16,13 @@ import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 import { messageOf } from '@skydock/scripts'
 
-/* A processed tandem gets an editing project, the template as its owner made it with the clips in
+/* A processed montage gets an editing project, the template as its owner made it with the clips in
    its bin, and the project is opened in the same press: it exists to be edited (RULES, The editing project). */
 const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse }) => {
   const group = manifest.groups.find((g) => g.id === data.groupId)
   if (!group) return refuse('Group not found.')
-  if (!isTandem(group)) return refuse('Only a named montage gets a project — give it a name first.')
+  if (!isNamedMontage(group))
+    return refuse('Only a named montage gets a project — give it a name first.')
   if (!group.processed) return refuse('Process this montage before making its project.')
   const { dir: groupDir, baseName } = getGroupProcessedDir(outputDir, group)
   if (!fs.existsSync(groupDir)) return refuse('Processed folder not found. Process it again.')
@@ -39,7 +40,7 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
     )
   try {
     /* The processed copies are already renamed and cropped — the bin holds them as they are. A
-       tandem with no video has no folder for them, and its film is made of its photos instead: they
+       montage with no video has no folder for them, and its film is made of its photos instead: they
        go in the bin, so the editor opens on something to make it from (RULES, The editing project). */
     const copiesIn = (media: string) => {
       const dir = path.join(groupDir, media)

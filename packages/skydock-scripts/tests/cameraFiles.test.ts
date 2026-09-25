@@ -181,9 +181,9 @@ describe('deleting from a camera', () => {
     expect(fs.existsSync(onCard(root, 'GX01.MP4'))).toBe(true)
   })
 
-  /* a tandem's original goes to the backup inside a zip: the entry in it is held against the camera
+  /* a montage's original goes to the backup inside a zip: the entry in it is held against the camera
      file, byte for byte, and the zip against the storage */
-  it('takes a tandem file off the card when the backup zip holds it, byte for byte', async () => {
+  it('takes a montage file off the card when the backup zip holds it, byte for byte', async () => {
     const { root, file } = await setup()
     const zip = path.join(outputDir, 'luc.rushes.zip')
     await writeArchive(zip, [{ file: file.path, name: file.filename }], { level: 0 })
@@ -209,7 +209,7 @@ describe('deleting from a camera', () => {
     expect(fs.existsSync(onCard(root, 'GX01.MP4'))).toBe(false)
   })
 
-  it('keeps a tandem file on the card when the backup zip holds a different file of that name', async () => {
+  it('keeps a montage file on the card when the backup zip holds a different file of that name', async () => {
     const { root, file } = await setup()
     const other = path.join(outputDir, 'other.MP4')
     fs.writeFileSync(other, Buffer.alloc(32, 7))

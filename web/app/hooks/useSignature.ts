@@ -4,7 +4,7 @@ import { remembered } from './remembered'
    once and remembered. */
 const signature = remembered<string>({
   key: 'skydock.signature',
-  fallback: 'L’équipe tandem',
+  fallback: 'L’équipe montage',
   from: (stored) => stored
 })
 

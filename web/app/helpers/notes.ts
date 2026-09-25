@@ -118,7 +118,7 @@ const copiedNote = ({ files, passedOver }: { files: number; passedOver: number }
     files === 1 ? 'it was' : 'they were'
   } as well${passedOver > 0 ? ` · ${passedOver} already there` : ''}`
 
-/* tandems put back from the storage's list, and what is left to do about them */
+/* montages put back from the storage's list, and what is left to do about them */
 const restoredNote = (restored: { who: string; files: number; of: number }[]) => {
   const partly = restored.filter((r) => r.files < r.of)
   const who =
@@ -142,7 +142,7 @@ const copiedBackNote = ({ copied, skipped }: { copied: number; skipped: number }
         skipped > 0 ? `, ${skipped} already here` : ''
       } — ready to prepare again.`
 
-/* What came back off the storage, and what it is: a tandem's originals go up as themselves, a
+/* What came back off the storage, and what it is: a montage's originals go up as themselves, a
    dropzone's never do — so what returns from a dropzone is the copy that was delivered, already
    trimmed and cropped, and the board says so rather than letting somebody find out later. */
 const broughtBackNote = ({ filename, original }: { filename: string; original: boolean }) =>

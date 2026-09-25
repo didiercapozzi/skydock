@@ -11,7 +11,7 @@ import {
   settleListsDir,
   statProcessedOutputs,
   statProxies,
-  statTandemArtifacts,
+  statMontageArtifacts,
   montagesRemoteDir
 } from '@skydock/scripts'
 import type { MontageEntry, MontageLost } from '@skydock/scripts'
@@ -66,7 +66,7 @@ const loader = async (_args: Route.LoaderArgs) => {
   let remote: { dirs: string[]; sizes: Record<string, number | null>; at: number } | null = null
   let storage: {
     dir: string
-    tandems: MontageEntry[]
+    montages: MontageEntry[]
     lost: MontageLost
     problem: string | null
   } | null = null
@@ -109,15 +109,15 @@ const loader = async (_args: Route.LoaderArgs) => {
           storage = await readMontageIndex(settled, dir, earlierMontagesDirs(manifest))
             .then(async (index) => ({
               dir,
-              tandems: index.tandems,
+              montages: index.montages,
               /* what the list names that the storage no longer holds: the list remembers, the
                  storage says what is there (RULES, Network storage) */
-              lost: await lostOnStorage(settled, index.tandems),
+              lost: await lostOnStorage(settled, index.montages),
               problem: null as string | null
             }))
             .catch((e: unknown) => ({
               dir,
-              tandems: [],
+              montages: [],
               lost: { folders: [], links: [] },
               problem: messageOf(e)
             }))
@@ -144,9 +144,9 @@ const loader = async (_args: Route.LoaderArgs) => {
     disk: diskSpace(outputDir),
     /* where this machine keeps the work: every media address the board builds is a path inside it */
     outputDir,
-    /* and what each tandem's folder holds: nothing tells SkyDock when the editor finishes, so a
+    /* and what each montage's folder holds: nothing tells SkyDock when the editor finishes, so a
        film is only ever noticed by looking (RULES, The editing project) */
-    tandems: manifest ? statTandemArtifacts(manifest, outputDir) : {},
+    montages: manifest ? statMontageArtifacts(manifest, outputDir) : {},
     remote,
     storage,
     hasManifest: manifest !== null,
@@ -250,7 +250,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           storage={board.storage}
           cameras={board.cameras}
           statusContext={model.statusContext}
-          tandemOpen={(g) => !model.asOnStorage(g).uploaded}
+          montageOpen={(g) => !model.asOnStorage(g).uploaded}
           passengerProgress={model.passengerProgress}
           onAddPlace={model.addPlace}
           dropTarget={drag.placeDrop}
@@ -270,7 +270,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         groups={groups}
         looseFiles={loose}
         asOnStorage={model.asOnStorage}
-        facts={board.tandemFacts}
+        facts={board.montageFacts}
         folderFor={model.folderFor}
         plan={model.sendPlan}
         onPlan={model.setSendPlan}
@@ -283,7 +283,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           })
         }
         onFree={(group) =>
-          closeThen(() => send(`free:${group.id}`, { intent: 'free-tandem', groupId: group.id }))
+          closeThen(() => send(`free:${group.id}`, { intent: 'free-montage', groupId: group.id }))
         }
         freeableOf={model.freeableOf}
         onFreePlace={(place) =>
@@ -300,7 +300,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         onTakeBack={(mode, group) =>
           closeThen(() => {
             send('take-back', {
-              intent: mode === 'reset' ? 'reset-tandem' : 'delete-tandem',
+              intent: mode === 'reset' ? 'reset-montage' : 'delete-montage',
               groupId: group.id
             })
             /* a deleted montage has no page left; its jumps are in Fresh files now */

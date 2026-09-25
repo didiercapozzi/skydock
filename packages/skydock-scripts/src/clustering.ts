@@ -159,7 +159,7 @@ const groupNewFiles = (manifest: Manifest, added: ManifestFile[]) => {
 }
 
 /* A jump made on the spot out of files dropped somewhere — the only way loose files can become a
-   tandem, which needs a jump to carry the passenger name. */
+   montage, which needs a jump to carry the passenger name. */
 const groupFromFiles = (manifest: Manifest, files: ManifestFile[], destination?: string) => {
   if (files.length === 0) return null
   const id = idMinter(manifest.groups.map((g) => g.id)).next()

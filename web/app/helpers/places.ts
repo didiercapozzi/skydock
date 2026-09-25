@@ -11,7 +11,7 @@ import type { BoardView } from './view'
 const placeSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('sort') }),
   z.object({ kind: z.literal('dz'), name: z.string().min(1) }),
-  z.object({ kind: z.literal('tandems') }),
+  z.object({ kind: z.literal('montages') }),
   z.object({ kind: z.literal('unnamed') }),
   z.object({ kind: z.literal('pax'), name: z.string().min(1) }),
   z.object({ kind: z.literal('storage') }),
@@ -30,7 +30,7 @@ const placeKey = (place: Place) => `${place.kind}:${'name' in place ? place.name
 const placeLabel = (place: Place) =>
   place.kind === 'sort'
     ? 'Fresh files'
-    : place.kind === 'tandems'
+    : place.kind === 'montages'
       ? 'Montages'
       : place.kind === 'unnamed'
         ? 'No name yet'
@@ -48,7 +48,7 @@ const familyOf = (place: Place) =>
       ? 'dz'
       : place.kind === 'storage' || place.kind === 'camera'
         ? 'storage'
-        : 'tandems'
+        : 'montages'
 
 const groupsIn = (place: Place, groups: ManifestGroup[]) => {
   switch (place.kind) {
@@ -56,7 +56,7 @@ const groupsIn = (place: Place, groups: ManifestGroup[]) => {
       return groups.filter((g) => !isFiled(g))
     case 'dz':
       return groups.filter((g) => g.destination === place.name)
-    case 'tandems':
+    case 'montages':
       return groups.filter(isMontage)
     case 'unnamed':
       /* a montage nobody has named yet waits here */
@@ -89,7 +89,7 @@ const filesIn = (place: Place, groups: ManifestGroup[], loose: ManifestFile[]) =
    prepared, uploaded or freed and it can be none of them. So a dropzone and the sorting area show
    what this machine holds, and what is only up there is only down there (RULES, Freeing space).
 
-   A passenger is not narrowed this way: their card is how a tandem is followed to the end, and a
+   A passenger is not narrowed this way: their card is how a montage is followed to the end, and a
    freed one goes on showing what the storage holds of it. */
 const holdsItsOwn = (place: Place) => place.kind === 'dz' || place.kind === 'sort'
 
@@ -106,7 +106,7 @@ const hereIn = (place: Place, groups: ManifestGroup[], loose: ManifestFile[]) =>
 const PLACE_WORDS = {
   sort: 'fresh',
   dz: 'dropzone',
-  tandems: 'montages',
+  montages: 'montages',
   unnamed: 'no-name',
   pax: 'montage',
   storage: 'storage',
@@ -114,7 +114,7 @@ const PLACE_WORDS = {
 } as const satisfies Record<Place['kind'], string>
 
 /* The words addresses used before montages had the name, so a link kept or sent then still opens. */
-const EARLIER_WORDS: Record<string, Place['kind']> = { tandems: 'tandems', passenger: 'pax' }
+const EARLIER_WORDS: Record<string, Place['kind']> = { tandems: 'montages', passenger: 'pax' }
 
 const paramsOfPlace = (place: Place) => ({
   kind: PLACE_WORDS[place.kind],

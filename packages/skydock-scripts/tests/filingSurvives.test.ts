@@ -74,7 +74,7 @@ describe('filing survives being written down and read back', () => {
   })
 })
 
-describe('a tandem uploaded before the record was called uploaded', () => {
+describe('a montage uploaded before the record was called uploaded', () => {
   it('is still read as uploaded', () => {
     saveManifest(manifestPath, filed())
     const groupsPath = path.join(outputDir, 'groups.json')

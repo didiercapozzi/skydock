@@ -187,9 +187,9 @@ describe('where an upload goes', () => {
   })
 
   /* An upload sends a folder whole, and a passenger's holds the project, the working copies and
-     the archive of the originals as well as the film. RULES says a tandem is uploaded and not
+     the archive of the originals as well as the film. RULES says a montage is uploaded and not
      uploaded; this is the code saying it too, wherever the scope came from. */
-  it('leaves a tandem out of an upload, however it was asked for', () => {
+  it('leaves a montage out of an upload, however it was asked for', () => {
     const manifest = manifestOf([
       group({ destination: 'Yverdon' }),
       group({
@@ -273,7 +273,7 @@ describe('where an upload goes', () => {
   })
 })
 
-/* A tandem is uploaded while the storage holds what was sent. Only a folder that answered is
+/* A montage is uploaded while the storage holds what was sent. Only a folder that answered is
    evidence: a listing that failed must not make an upload disappear. */
 describe('what of an upload the storage no longer has', () => {
   const sent = (remotePath: string, size: number) => ({

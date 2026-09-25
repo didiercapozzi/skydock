@@ -4,7 +4,7 @@ import type { ManifestFile } from '../components/types'
 
 /* What is known about each file, from which its status is read (RULES, File status): everything
    decided about the picture — a copy made before any of it changed is out of date — what the disk
-   says about the copy, what the storage holds, and whether its tandem is frozen by an edit. */
+   says about the copy, what the storage holds, and whether its montage is frozen by an edit. */
 const fileFacts = ({
   outputs,
   remote,

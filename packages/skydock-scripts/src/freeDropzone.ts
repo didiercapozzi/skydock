@@ -1,14 +1,14 @@
 import * as path from 'node:path'
 import { fileStatus, outputKeyOf } from './fileStatus'
 import { freeablePlace } from './freeable'
-import { removeFile, removeTree } from './freeTandem'
+import { removeFile, removeTree } from './freeMontage'
 import { hashFile } from './lib/fs'
 import { statProcessedOutputs } from './manifest'
 import { dsmFileMd5 } from './nas'
 import type { NasSession } from './nas'
 import { lastSegment } from './paths'
 import { getCutProxyDir } from './proxy'
-import { isTandem } from './tandem'
+import { isNamedMontage } from './montageArtifacts'
 import type { Manifest, ManifestFile } from './types'
 
 /* A dropzone holds every day ever shot there, and what went up of it is its processed copies. Once
@@ -37,7 +37,7 @@ const freeableIn = (manifest: Manifest, destination: string) => {
   const outputs = statProcessedOutputs(manifest)
   const inJumps = new Set(manifest.groups.flatMap((g) => g.files.map((f) => f.path)))
   return freeablePlace(
-    manifest.groups.filter((g) => g.destination === destination && !isTandem(g)),
+    manifest.groups.filter((g) => g.destination === destination && !isNamedMontage(g)),
     manifest.files.filter((f) => f.destination === destination && !inJumps.has(f.path)),
     (file) => fileStatus(file, { output: outputs[outputKeyOf(file)] }) === 'uploaded'
   )
@@ -114,7 +114,7 @@ const freeDropzone = async ({
   return result
 }
 
-/* written into whichever manifest is current when it is done, as for a tandem */
+/* written into whichever manifest is current when it is done, as for a montage */
 const markDropzoneFreed = (manifest: Manifest, result: DropzoneFreeResult) => {
   const ids = new Set(result.fileIds)
   const jumps = new Set(result.groupIds)

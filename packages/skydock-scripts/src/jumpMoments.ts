@@ -38,14 +38,14 @@ import type { JumpMoments } from './types'
 /* What is measured is the instant this camera's wearer was airborne — nothing else is in the
    readings. What an edit wants is the moment the jump begins on screen, and on a fun jump that is a
    second or so earlier: the group goes out of the door ahead of whoever is filming, and the push
-   off begins before the weight does. A tandem is its own subject and wants the instant itself.
+   off begins before the weight does. A montage is its own subject and wants the instant itself.
 
    So the measurement is kept as measured, and the second is taken off where a cut is made from it.
    Dragging the mark moves the measurement with it, so a clip that wants something else gets it. */
 const RUN_UP = 1
 
-const cutFrom = (moments: JumpMoments, tandem: boolean) =>
-  tandem ? moments.exit : Math.max(0, moments.exit - RUN_UP)
+const cutFrom = (moments: JumpMoments, montage: boolean) =>
+  montage ? moments.exit : Math.max(0, moments.exit - RUN_UP)
 
 /* Leaving the plane, as the seconds around it average: under a gravity for the few seconds it takes
    the air to catch up. How deep the dip goes differs by camera and by how fast the aeroplane was
@@ -82,7 +82,7 @@ const HEAVY = 1.4 * GRAVITY
 /* What tells a canopy opening from a turn in freefall: it lasts. An opening decelerates for three
    seconds and more; a sport jumper tracking or turning touches the same weight for one second and
    is back to freefall. Measured on a jump where four seconds of freefall manoeuvring read as heavily
-   as a tandem's canopy does — and the opening, forty seconds later, read heavier still for five
+   as a montage's canopy does — and the opening, forty seconds later, read heavier still for five
    seconds together. The ground needs no such test: nothing after a canopy is mistaken for it. */
 const OPENING_MEAN = 1.5 * GRAVITY
 
@@ -102,7 +102,7 @@ const LONGEST_FREEFALL = 80
    turning or flying head-down weighs anything but.
 
    This is what asking about the deceleration alone could not do. A camera flyer turning away from
-   his group stops as hard as a tandem's canopy does and for as long; a freefly jump held three
+   his group stops as hard as a montage's canopy does and for as long; a freefly jump held three
    gravities for half a minute and read as an opening at its eighth second. Both are answered by
    asking what came next. */
 const FLYING_FROM = 0.75 * GRAVITY
@@ -198,7 +198,7 @@ const struckAt = (felt: number[], rate: number, second: number, level: number) =
 }
 
 /* When the canopy is open, which is not when it began to open: the deceleration is what the camera
-   feels, and it runs for seconds — a tandem's on purpose, slowly. Looked at frame by frame, the
+   feels, and it runs for seconds — a montage's on purpose, slowly. Looked at frame by frame, the
    canopy is overhead and flying about when that deceleration has half gone from its hardest moment,
    which is three or four seconds after the first tug of it. Half of it rather than any fixed weight,
    because a fierce opening and a soft one end the same way and at different numbers. */
@@ -235,14 +235,14 @@ const easedAt = (felt: number[], rate: number, second: number) => {
 }
 
 /* The other end of the same opening: where it began, the first tug, with freefall on the near side
-   of it. A tandem's opening is drawn out on purpose and the two marks sit three or four seconds
+   of it. A montage's opening is drawn out on purpose and the two marks sit three or four seconds
    apart — the film wants both, since the deceleration is the moment the jump changes and the easing
    is where the canopy is flying.
 
    Read backwards from the hardest instant, as its easing is read forwards: the tug is the last
    moment the camera still weighed what freefall weighs. A quarter of the way up rather than at a
    gravity exactly, because freefall is never quite a gravity for long — buffeted, tracking, a
-   tandem's drogue holding the pair — and a mark asked to wait for exactly one would slide back
+   montage's drogue holding the pair — and a mark asked to wait for exactly one would slide back
    seconds into the freefall before it. */
 const JUST_BEGUN = 0.25
 
@@ -280,7 +280,7 @@ const readFelt = (felt: number[], seconds: number): JumpMoments | null => {
   /* A deceleration that lasts, with flying under a canopy on the other side of it. Neither half
      alone will do: a jump holds other decelerations that last — a camera flyer turning away from
      the group, a tracking dive pulled out of — and on the clips here those run to one and a half
-     gravities for three and four seconds, which is a tandem canopy's whole measure. Only an opening
+     gravities for three and four seconds, which is a montage canopy's whole measure. Only an opening
      is followed by a gravity, held. */
   const opening = (at: number) => {
     const during = weighed.slice(at, at + OPENING_FOR)

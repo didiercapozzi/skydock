@@ -99,7 +99,7 @@ const intentFiles = (api: string) => {
   if (opens === -1) return new Map<string, { symbol: string; file: string | null }>()
   const table = api.slice(api.indexOf('{', opens) + 1, api.indexOf('\n}', opens))
   const answered = new Map<string, { symbol: string; file: string | null }>()
-  /* `'free-tandem': freeTandemIntent` and `montage` alike: a name whose function is called the same
+  /* `'free-montage': freeMontageIntent` and `montage` alike: a name whose function is called the same
      thing is written once, and means the same as writing it twice */
   for (const found of table.matchAll(/'?([a-z][a-z-]*)'?\s*(?::\s*(\w+))?\s*(?:,|$)/gm)) {
     const symbol = found[2] ?? found[1] ?? ''

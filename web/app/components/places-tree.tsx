@@ -1,11 +1,11 @@
 import { fileStatus, hasCompletePassenger, isMontage, passengerOf } from '@skydock/scripts'
-import type { StatusContext, MontageEntry, TandemProgress } from '@skydock/scripts'
+import type { StatusContext, MontageEntry, MontageProgress } from '@skydock/scripts'
 import { useState } from 'react'
 import { groupsIn, hereIn, looseIn, placeKey, placeLabel } from '../helpers/places'
 import type { Place } from '../helpers/places'
 import type { Mounted } from '../hooks/useLiveProgress'
 import { PlaceLink } from './place-link'
-import { StepMeter } from './tandem-steps'
+import { StepMeter } from './montage-steps'
 import type { Destination, ManifestFile, ManifestGroup } from './types'
 
 /* The folders, down the left like any file manager's: what is still to sort — and within it what a
@@ -18,14 +18,14 @@ type Props = {
   destinations: Destination[]
   groups: ManifestGroup[]
   looseFiles: ManifestFile[]
-  storage: { tandems: MontageEntry[] } | null
+  storage: { montages: MontageEntry[] } | null
   /* the cameras plugged in right now */
   cameras: Mounted[]
   statusContext: (file: ManifestFile) => StatusContext
-  /* whether a tandem still has a step to take here */
-  tandemOpen: (group: ManifestGroup) => boolean
+  /* whether a montage still has a step to take here */
+  montageOpen: (group: ManifestGroup) => boolean
   /* where a passenger has got to — their jump furthest behind */
-  passengerProgress: (name: string) => TandemProgress | null
+  passengerProgress: (name: string) => MontageProgress | null
   onAddPlace: (name: string) => void
   dropTarget: (place: Place) => Record<string, unknown>
   overTarget: string | null
@@ -55,8 +55,8 @@ const Node = ({
   dropTarget: (place: Place) => Record<string, unknown>
   over: boolean
   flash?: boolean
-  /* a passenger's way through their tandem, which says more than how many files are where */
-  progress?: TandemProgress | null
+  /* a passenger's way through their montage, which says more than how many files are where */
+  progress?: MontageProgress | null
 }) => {
   const counts = { local: 0, processed: 0, uploaded: 0 }
   for (const file of files) counts[fileStatus(file, statusContext(file))] += 1
@@ -131,10 +131,10 @@ const Heading = ({ children }: { children: string }) => (
   </h2>
 )
 
-/* The Tandems heading is where a jump is dropped to become a tandem, and nothing more: there is no
-   page of every tandem, because a tandem is worked on one passenger at a time. So it takes a drop
+/* The Montages heading is where a jump is dropped to become a montage, and nothing more: there is no
+   page of every montage, because a montage is worked on one passenger at a time. So it takes a drop
    and lights up under one, and a click does nothing. */
-const TandemsHeading = ({
+const MontagesHeading = ({
   todo,
   over,
   dropTarget
@@ -212,7 +212,7 @@ const PlacesTree = ({
   storage,
   cameras,
   statusContext,
-  tandemOpen,
+  montageOpen,
   passengerProgress,
   onAddPlace,
   dropTarget,
@@ -226,8 +226,8 @@ const PlacesTree = ({
     counted(groupsIn(p, groups).length + (looseIn(p, looseFiles).length > 0 ? 1 : 0), 'to file')
   const toDo = (p: Place) =>
     counted(files(p).filter((f) => fileStatus(f, statusContext(f)) !== 'uploaded').length, 'to do')
-  const openTandems = (p: Place) =>
-    counted(groupsIn(p, groups).filter((g) => !g.freed && tandemOpen(g)).length, 'to do')
+  const openMontages = (p: Place) =>
+    counted(groupsIn(p, groups).filter((g) => !g.freed && montageOpen(g)).length, 'to do')
   /* One entry per passenger, however many jumps they have: two jumps for the same person share one
      folder, so listing them twice would promise two folders that are really one. */
   const passengers = [
@@ -243,7 +243,7 @@ const PlacesTree = ({
     glyph: string,
     todo: string | null,
     child?: boolean,
-    progress?: TandemProgress | null
+    progress?: MontageProgress | null
   ) => (
     <Node
       key={placeKey(p)}
@@ -259,7 +259,7 @@ const PlacesTree = ({
       progress={progress}
     />
   )
-  const notEmailed = storage?.tandems.filter((t) => !t.emailed).length ?? 0
+  const notEmailed = storage?.montages.filter((t) => !t.emailed).length ?? 0
   return (
     <nav
       aria-label='Folders'
@@ -294,10 +294,10 @@ const PlacesTree = ({
           Add
         </button>
       </span>
-      <TandemsHeading
-        todo={openTandems({ kind: 'tandems' })}
-        over={overTarget === placeKey({ kind: 'tandems' })}
-        dropTarget={dropTarget({ kind: 'tandems' })}
+      <MontagesHeading
+        todo={openMontages({ kind: 'montages' })}
+        over={overTarget === placeKey({ kind: 'montages' })}
+        dropTarget={dropTarget({ kind: 'montages' })}
       />
       {unnamed > 0 && node({ kind: 'unnamed' }, '?', counted(unnamed, 'to name'), true)}
       {/* each passenger says the step they are at, so the list reads as a to-do list */}
@@ -313,7 +313,7 @@ const PlacesTree = ({
             glyph='☁'
             label='On the storage'
             badge={notEmailed > 0 ? `${notEmailed} to email` : null}
-            count={storage.tandems.length}
+            count={storage.montages.length}
           />
         </>
       )}

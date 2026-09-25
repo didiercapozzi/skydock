@@ -18,7 +18,7 @@ import { findMediaFiles, hashFile, moveFile } from './lib/fs'
 import { loadManifest } from './manifest'
 import { dsmFileMd5 } from './nas'
 import type { NasSession } from './nas'
-import { isTandem } from './tandem'
+import { isNamedMontage } from './montageArtifacts'
 import type { Manifest, ManifestFile, ManifestGroup } from './types'
 import { getManifestPath, getTrashDir, isVideoFile } from './utils'
 
@@ -44,7 +44,7 @@ type Claim =
 
 const claimsOf = (file: ManifestFile, group: ManifestGroup | undefined): Claim[] => {
   const sent = group?.uploaded
-  if (group && sent && isTandem(group)) {
+  if (group && sent && isNamedMontage(group)) {
     if (isVideoFile(file.path)) {
       const plain = sent.originals?.find(
         (r) => r.localPath === file.path || path.basename(r.localPath) === file.filename

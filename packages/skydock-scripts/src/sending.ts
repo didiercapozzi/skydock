@@ -2,7 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { ArchiveEntry } from './archive'
 import { startOfFiles } from './clustering'
-import { filmNameOf, tandemArtifacts } from './tandem'
+import { filmNameOf, montageArtifacts } from './montageArtifacts'
 import { sendPlanSchema } from './types'
 import type { ManifestGroup, SendPart, SendPlan } from './types'
 import { isVideoFile, parseDayEpoch, sizeOf } from './utils'
@@ -58,7 +58,7 @@ const partEntries = (part: SendPart, files: PartFile[], stem: string): PartFile[
 /* What each part is made of on this machine, when there is any of it: the originals as they came off
    the cameras, the photos as they were prepared, the film as rendered and the project as edited. */
 const partFiles = (group: ManifestGroup, outputDir: string, film: string | null) => {
-  const artifacts = tandemArtifacts(outputDir, group)
+  const artifacts = montageArtifacts(outputDir, group)
   const photosDir = path.join(artifacts.dir, 'photos')
   const project = path.join(artifacts.dir, `${artifacts.baseName}.kdenlive`)
   const renderedFilm =

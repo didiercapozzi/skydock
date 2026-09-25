@@ -133,7 +133,7 @@ const publishSchema = z.object({
   shareUrl: z.string()
 })
 
-/* The editing project written for this tandem, and the template it came from — kept because the
+/* The editing project written for this montage, and the template it came from — kept because the
    template can be replaced later, and a film already handed over should still say what made it. */
 const montageRecordSchema = z.object({
   projectPath: z.string(),
@@ -144,8 +144,8 @@ const montageRecordSchema = z.object({
 })
 
 /* What was handed over, and to where. The film and the archives are not files off a camera, so
-   their state cannot ride on the per-file records — it belongs to the tandem. */
-const tandemUploadSchema = z.object({
+   their state cannot ride on the per-file records — it belongs to the montage. */
+const montageUploadSchema = z.object({
   at: z.number(),
   shareUrl: z.string().optional(),
   film: uploadedRecordSchema.optional(),
@@ -174,7 +174,7 @@ const manifestGroupSchema = z.object({
   passenger: passengerSchema.optional(),
   publish: publishSchema.optional(),
   montage: montageRecordSchema.optional(),
-  uploaded: tandemUploadSchema.optional(),
+  uploaded: montageUploadSchema.optional(),
   /* everything of it deleted from this machine, bar the project, once the storage held it all */
   freed: z.object({ at: z.number(), bytes: z.number() }).optional(),
   day: z.string(),
@@ -257,7 +257,7 @@ export type {
 export {
   sendPartSchema,
   sendPlanSchema,
-  tandemUploadSchema,
+  montageUploadSchema,
   frameCropSchema,
   destinationSchema,
   destinationsSchema,

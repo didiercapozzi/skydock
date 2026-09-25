@@ -47,7 +47,7 @@ const copyText = async (text: string) => {
   }
 }
 
-/* What the email is about — a tandem on this machine, or one the storage's list alone knows. */
+/* What the email is about — a montage on this machine, or one the storage's list alone knows. */
 type EmailSubject = {
   firstname: string
   day: string
@@ -68,7 +68,7 @@ const EmailDialog = ({
   about: EmailSubject
   /* whether the storage's list says it was sent, and to whom */
   emailed?: { at: number; to?: string } | null
-  /* whether it can be said on the list at all — only once the tandem is on it */
+  /* whether it can be said on the list at all — only once the montage is on it */
   canRecord: boolean
   onRecord: (sent: boolean, to: string) => void
   onClose: () => void

@@ -17,7 +17,7 @@ vi.mock('node:child_process', async (importOriginal) => {
   return { ...actual, execFileSync: execFileSyncMock, execFile: execFileViaSyncMock }
 })
 
-/* Where a file ends up is the whole of what SkyDock does, and nothing tested it. A tandem was
+/* Where a file ends up is the whole of what SkyDock does, and nothing tested it. A montage was
    delivered as though it were a dropzone — flat, every file named after the word "Tandems" — and
    151 passing tests had nothing to say about it, because they all built their own paths instead of
    asking what processing actually wrote. These ask. */
@@ -97,7 +97,7 @@ afterEach(() => {
   vi.unstubAllEnvs()
 })
 
-describe('where a tandem lands', () => {
+describe('where a montage lands', () => {
   it('gives the passenger a folder of their name, with videos and photos apart', async () => {
     const { manifestPath } = write({
       montageJump: true,
@@ -143,9 +143,9 @@ describe('where a tandem lands', () => {
   })
 
   /* Nobody is in it yet, so it is a place as far as the folder rule is concerned. That is right:
-     what makes a jump a tandem is a passenger, not which column it is sitting in — the board is
+     what makes a jump a montage is a passenger, not which column it is sitting in — the board is
      what asks for the name before it offers to process. */
-  it('treats a jump with nobody in it as a place, not a half tandem', async () => {
+  it('treats a jump with nobody in it as a place, not a half montage', async () => {
     const { manifestPath } = write({
       destination: 'Yverdon',
       files: [clip('GX010001.MP4', 0)]
@@ -187,7 +187,7 @@ describe('where a tandem lands', () => {
     ])
   })
 
-  /* a file named after the Tandems folder is what a half-named tandem filed as a place would be called */
+  /* a file named after the Tandems folder is what a half-named montage filed as a place would be called */
   it('never writes a file named after the Tandems folder itself', async () => {
     const { manifestPath } = write({
       montageJump: true,
@@ -342,7 +342,7 @@ describe('cropping the frame', () => {
     expect(cmd).not.toContain('crop=')
   })
 
-  /* A tandem is prepared again while its edit is open — a trim corrected after the montage was made
+  /* A montage is prepared again while its edit is open — a trim corrected after the montage was made
      is no use until the copies are made again — so what processing writes over has to be the media
      and nothing else (RULES, The editing project). */
   it('leaves the project, the film and the archives where they are when it prepares again', async () => {

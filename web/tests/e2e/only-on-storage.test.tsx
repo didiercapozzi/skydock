@@ -62,7 +62,7 @@ const board = {
   destinations: [{ name: 'yverdon', path: '/home/Photos/Skydive/Yverdon' }],
   outputs: {},
   proxies: {},
-  tandems: {},
+  montages: {},
   remote: null,
   storage: null,
   hasManifest: true,

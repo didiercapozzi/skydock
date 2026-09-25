@@ -277,7 +277,7 @@ describe('montage — the template’s timeline, as its owner made it', () => {
   })
 })
 
-/* entries anywhere on the timeline that play one of the tandem's clips */
+/* entries anywhere on the timeline that play one of the montage's clips */
 const laidOnTimeline = (xml: string) =>
   many(parsed(xml).mlt.playlist)
     .filter((p) => p['@_id'] !== 'main_bin')
@@ -295,7 +295,7 @@ const stillsOf = (xml: string) =>
     .filter((p) => String(p['@_id'] ?? '').startsWith('producer_skydock_photo'))
     .map((p) => Object.fromEntries(many(p.property).map((q) => [q['@_name'], q['#text']])))
 
-/* A tandem whose camera caught no video is still a film somebody makes — of its photos — so they go
+/* A montage whose camera caught no video is still a film somebody makes — of its photos — so they go
    in the bin, written the way kdenlive writes a still of its own (RULES, The editing project). */
 describe('montage — a film of photos', () => {
   it('puts the photos in the bin, in the order shot', () => {
@@ -638,10 +638,10 @@ describe('montage — clips that have a proxy', () => {
 })
 
 /* Where the jump is in a clip is measured before any of this (RULES, Where the jump is in a clip),
-   and a montage marks the clip with it. The numbers below are a real tandem's: the door left at
+   and a montage marks the clip with it. The numbers below are a real montage's: the door left at
    65 s, the canopy open at 120, the ground at 223. */
 describe('montage — the jump marked on the clip', () => {
-  /* the frames a second this template counts in, and the tandem's own moments */
+  /* the frames a second this template counts in, and the montage's own moments */
   const FPS = 25
   const JUMP = { exit: 65, opening: 120.3, canopy: 123, landing: 223 }
 

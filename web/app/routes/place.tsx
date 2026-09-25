@@ -7,7 +7,7 @@ import {
   offGap,
   outputKeyOf,
   passengerOf,
-  tandemUploadKey,
+  montageUploadKey,
   waitingForProxy
 } from '@skydock/scripts'
 import type { FileStatus } from '@skydock/scripts'
@@ -26,11 +26,11 @@ import { StorageList } from '../components/storage-list'
 import {
   FilmStrip,
   GoneFromStorage,
-  TandemActions,
+  MontageCardActions,
   UploadStrip,
   UploadedCards
-} from '../components/tandem-card'
-import { StepTrail } from '../components/tandem-steps'
+} from '../components/montage-card'
+import { StepTrail } from '../components/montage-steps'
 import type { ManifestFile, ManifestGroup } from '../components/types'
 import { formatSize, plural } from '../components/utils'
 import { folderOnStorage } from '../helpers/jumps'
@@ -67,7 +67,7 @@ const searchParamsArgs = boardViewSchema
 const sortKey = (file: ManifestFile) => -file.mtime
 
 /* what each family of folder does when the address says nothing */
-const GROUPING_BY = { sort: 'jump', dz: 'day', tandems: 'jump' } as const
+const GROUPING_BY = { sort: 'jump', dz: 'day', montages: 'jump' } as const
 
 /* The folder's own view of the board: what is in it, as the address asks for it. */
 const useFolder = (model: BoardModel, place: Place) => {
@@ -128,7 +128,7 @@ const Place = () => {
   const openJump =
     openCard?.kind === 'jump' ? groups.find((g) => g.id === openCard.group.id) : undefined
   /* a montage with a single jump is that jump: its panel is open without being asked for */
-  const soleTandem =
+  const soleMontage =
     place.kind === 'pax' && folder.groups.length === 1
       ? groups.find((g) => g.id === folder.groups[0]?.id)
       : undefined
@@ -184,7 +184,7 @@ const Place = () => {
 
   const summary =
     place.kind === 'storage'
-      ? plural(board.storage?.tandems.length ?? 0, 'montage')
+      ? plural(board.storage?.montages.length ?? 0, 'montage')
       : [
           folder.groups.length && family !== 'dz' ? plural(folder.groups.length, 'jump') : null,
           plural(folder.files.length, 'file'),
@@ -222,7 +222,7 @@ const Place = () => {
       f.processed && board.outputs[outputKeyOf(f)]?.exists ? [lastSegment(f.processed.path)] : []
     ),
     ...folder.groups.flatMap((g) => {
-      const film = board.tandemFacts[g.id]?.film
+      const film = board.montageFacts[g.id]?.film
       return film ? [lastSegment(film.path)] : []
     })
   ])
@@ -252,7 +252,7 @@ const Place = () => {
             groups={folder.groups}
             loose={folder.loose}
             files={folder.files}
-            facts={board.tandemFacts}
+            facts={board.montageFacts}
             statusOf={statusOf}
             busy={busy !== null}
             folder={
@@ -296,7 +296,7 @@ const Place = () => {
               }
               onEmail={(entry) => setDialog({ kind: 'email', folder: entry.folder })}
               waitingFiles={(entry) => (entry.files ?? []).filter((f) => toSort.has(f.id)).length}
-              onRestore={(folders) => send('restore', { intent: 'restore-tandems', folders })}
+              onRestore={(folders) => send('restore', { intent: 'restore-montages', folders })}
             />
           </div>
         ) : (
@@ -305,7 +305,7 @@ const Place = () => {
             cards={
               openCard
                 ? {
-                    hidden: soleTandem !== undefined,
+                    hidden: soleMontage !== undefined,
                     open: openCard.key,
                     onOpen: (key) => {
                       look({ card: key })
@@ -382,7 +382,7 @@ const Place = () => {
               ? groups.find((g) => g.id === selection.pickedJump)
               : undefined) ??
             openJump ??
-            soleTandem
+            soleMontage
           }
           summary={summary}
           onOpenFile={openFile}
@@ -485,9 +485,9 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
   if (!isMontage(group) || group.freed) return null
   return (
     <>
-      <TandemActions
+      <MontageCardActions
         group={group}
-        facts={board.tandemFacts[group.id]}
+        facts={board.montageFacts[group.id]}
         busy={board.busy}
         blocked={model.gateFor(group.files)}
         proxiesWaiting={waitingForProxy(group.files, board.proxies).length}
@@ -501,7 +501,7 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
         onUpload={() => model.askUpload(group)}
         onFree={() => model.setDialog({ kind: 'free', groupId: group.id })}
       />
-      {board.uploading === tandemUploadKey(group.id) && model.progress && (
+      {board.uploading === montageUploadKey(group.id) && model.progress && (
         <span className='mt-0.5 flex-[1_1_100%]'>
           <UploadStrip progress={model.progress} />
         </span>
@@ -521,7 +521,7 @@ const MontageAbove = ({ group }: { group: ManifestGroup }) => {
         at={model.board.groups.find((g) => g.id === group.id)?.uploaded?.at}
       />
       {group.uploaded && <UploadedCards group={group} />}
-      {!group.uploaded && <FilmStrip facts={model.board.tandemFacts[group.id]} />}
+      {!group.uploaded && <FilmStrip facts={model.board.montageFacts[group.id]} />}
     </div>
   )
 }
@@ -684,7 +684,7 @@ const Inspector = ({
         key={jump.id}
         group={model.asOnStorage(jump)}
         label={model.labels.get(jump.id) ?? jump.label}
-        facts={board.tandemFacts[jump.id]}
+        facts={board.montageFacts[jump.id]}
         emailed={Boolean(model.emailedOn(jump))}
         locked={
           jump.freed
@@ -696,10 +696,10 @@ const Inspector = ({
         statusOf={statusOf}
         passengers={model.passengers}
         keeps={jump.destination}
-        onMakeTandem={(passenger) =>
+        onNameMontage={(passenger) =>
           jump.destination
             ? model.montageOf(jump.files, passenger)
-            : model.makeTandem(jump.id, passenger)
+            : model.nameMontage(jump.id, passenger)
         }
         onName={(first, last) => model.setPassenger(jump.id, first, last)}
         onSelectFiles={() => selection.selectFiles(jump.files)}
@@ -756,14 +756,14 @@ const Inspector = ({
           </span>
         </Box>
       )}
-      {folder.family === 'tandems' &&
+      {folder.family === 'montages' &&
         folder.groups.map((g) => (
           <Box
             key={g.id}
             heading={model.labelOf(g)}>
             <StepTrail
               group={model.asOnStorage(g)}
-              facts={board.tandemFacts[g.id]}
+              facts={board.montageFacts[g.id]}
               emailed={Boolean(model.emailedOn(g))}
             />
           </Box>

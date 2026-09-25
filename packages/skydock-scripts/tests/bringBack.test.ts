@@ -71,7 +71,7 @@ afterEach(() => {
 })
 
 describe('a file fetched back off the storage', () => {
-  /* a tandem's originals go up as themselves, so what comes back is the original, whole */
+  /* a montage's originals go up as themselves, so what comes back is the original, whole */
   it('is the original again when the storage held the original', async () => {
     const original = Buffer.from('the whole clip as it was shot')
     storageHolds(original)

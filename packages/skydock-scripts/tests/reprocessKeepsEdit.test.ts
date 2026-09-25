@@ -13,7 +13,7 @@ vi.mock('node:child_process', async (importOriginal) => {
   return { ...actual, execFileSync: execFileSyncMock, execFile: execFileViaSyncMock }
 })
 
-/* Preparing a tandem again is the ordinary way of working: prepare it, look at it, correct a time
+/* Preparing a montage again is the ordinary way of working: prepare it, look at it, correct a time
    or a name, prepare it again. So the second pass has to leave the folder as if it were the first —
    and leave the edit alone, because the footage can be copied again from originals that have not
    moved, the archives rebuilt, the film re-rendered, but the hours someone spent choosing cuts
@@ -109,7 +109,7 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-describe('processing a tandem again', () => {
+describe('processing a montage again', () => {
   it('leaves the edit, the film and the archives where they are', async () => {
     await prepare([clip('GX01.MP4', AT)])
     addEdit()

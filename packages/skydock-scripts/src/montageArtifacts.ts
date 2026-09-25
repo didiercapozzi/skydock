@@ -6,9 +6,10 @@ import type { Manifest, ManifestGroup } from './types'
 import { mediaSeconds } from './lib/media'
 import { hasCompletePassenger, isMontage } from './workspace'
 
-/* A tandem is one jump delivered to one person: a passenger's name is what gives it a folder of its
+/* A montage is one jump delivered to one person: a passenger's name is what gives it a folder of its
    own with the videos and photos kept apart, and that shape is what montage and upload need. */
-const isTandem = (group: ManifestGroup) => isMontage(group) && hasCompletePassenger(group.passenger)
+const isNamedMontage = (group: ManifestGroup) =>
+  isMontage(group) && hasCompletePassenger(group.passenger)
 
 const filmNameOf = (baseName: string) => `${baseName}.mp4`
 
@@ -27,7 +28,7 @@ const statOrNull = (target: string) => {
 
 /* How long the film runs, which is what says at a glance that the render is the whole jump and not
    a test of the first minute. Asked of ffprobe once per film as it is on disk: the board looks at
-   every tandem each time it answers, and a film does not change length without changing size. */
+   every montage each time it answers, and a film does not change length without changing size. */
 const durations = new Map<string, number | null>()
 
 const filmSeconds = (target: string, size: number, mtime: number) => {
@@ -40,9 +41,9 @@ const filmSeconds = (target: string, size: number, mtime: number) => {
   return seconds
 }
 
-/* What a tandem's folder actually holds. Nothing tells SkyDock when the editor finishes, so the
+/* What a montage's folder actually holds. Nothing tells SkyDock when the editor finishes, so the
    disk is the only thing that can say whether a film has been rendered. */
-const tandemArtifacts = (outputDir: string, group: ManifestGroup) => {
+const montageArtifacts = (outputDir: string, group: ManifestGroup) => {
   const { dir, baseName } = getGroupProcessedDir(outputDir, group)
   const entries = fs.existsSync(dir) ? fs.readdirSync(dir) : []
   return {
@@ -57,18 +58,18 @@ const tandemArtifacts = (outputDir: string, group: ManifestGroup) => {
   }
 }
 
-/* Once there is an edit, the tandem is frozen. The project points at the copies by path, with its
+/* Once there is an edit, the montage is frozen. The project points at the copies by path, with its
    cuts as times inside each clip, and lives in the folder the passenger's name makes: a trim shifts
    every cut, a re-timed or removed clip goes missing, a new name moves the folder — and the editor
-   says nothing about any of it. So nothing about the tandem changes here any more; changes happen in
+   says nothing about any of it. So nothing about the montage changes here any more; changes happen in
    the editor. The lock is the project's existence and nothing else, so deleting the project lifts it. */
 const EDIT_LOCKED = 'This montage has an edit — change it in kdenlive.'
 
 const hasEdit = (outputDir: string, group: ManifestGroup) =>
-  isTandem(group) && tandemArtifacts(outputDir, group).project
+  isNamedMontage(group) && montageArtifacts(outputDir, group).project
 
-/* a freed tandem is closed too: nothing of it is left here to change */
-const frozenTandems = (manifest: Manifest, outputDir: string) =>
+/* a freed montage is closed too: nothing of it is left here to change */
+const frozenMontages = (manifest: Manifest, outputDir: string) =>
   new Set(manifest.groups.filter((g) => g.freed || hasEdit(outputDir, g)).map((g) => g.id))
 
 /* everything about a jump that decides what its copies are and where they go — bookkeeping such as
@@ -93,10 +94,10 @@ const editedShape = (group: ManifestGroup) =>
 
 const sameEditedGroup = (a: ManifestGroup, b: ManifestGroup) => editedShape(a) === editedShape(b)
 
-/* What the board shows on each tandem row, one readdir per tandem. The project's path is given as
+/* What the board shows on each montage row, one readdir per montage. The project's path is given as
    the machine running the editor knows it — the same translation the project itself is written
    with — so what the row shows is what has to be opened. */
-const statTandemArtifacts = (manifest: Manifest, outputDir: string) => {
+const statMontageArtifacts = (manifest: Manifest, outputDir: string) => {
   const artifacts: Record<
     string,
     {
@@ -108,8 +109,8 @@ const statTandemArtifacts = (manifest: Manifest, outputDir: string) => {
     }
   > = {}
   for (const group of manifest.groups) {
-    if (!isTandem(group)) continue
-    const found = tandemArtifacts(outputDir, group)
+    if (!isNamedMontage(group)) continue
+    const found = montageArtifacts(outputDir, group)
     artifacts[group.id] = {
       project: found.project,
       projectPath: toHostPath(path.join(found.dir, `${found.baseName}.kdenlive`), outputDir),
@@ -133,12 +134,12 @@ const statTandemArtifacts = (manifest: Manifest, outputDir: string) => {
 export {
   EDIT_LOCKED,
   filmNameOf,
-  frozenTandems,
+  frozenMontages,
   hasEdit,
-  isTandem,
+  isNamedMontage,
   photosNameOf,
   rushesNameOf,
   sameEditedGroup,
-  statTandemArtifacts,
-  tandemArtifacts
+  statMontageArtifacts,
+  montageArtifacts
 }

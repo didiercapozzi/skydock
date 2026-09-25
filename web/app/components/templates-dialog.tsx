@@ -88,7 +88,7 @@ const TemplateRow = ({
   )
 }
 
-/* The editing templates: looked over, added to, and — when a tandem is waiting for its montage —
+/* The editing templates: looked over, added to, and — when a montage is waiting for its editing project —
    chosen between. A template is somebody's branding, so nothing is applied by itself unless
    somebody said which one is the usual; otherwise the one picked last time is only the one already
    ticked. */

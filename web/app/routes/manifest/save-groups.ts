@@ -10,7 +10,7 @@ import type { Intent } from './change'
 import { idsOf } from '@skydock/scripts'
 
 /* The board's own picture of the jumps, the places and each file's crop, saved as sent — bar what a
-   frozen tandem forbids — and answered with what was saved, so the board redraws from the server
+   frozen montage forbids — and answered with what was saved, so the board redraws from the server
    rather than trusting its own optimistic copy (RULES, The board). */
 const saveGroups: Intent = ({
   data,
@@ -23,7 +23,7 @@ const saveGroups: Intent = ({
   refuseFrozen
 }) => {
   if (!data.groups) return refuse('Save needs groups.')
-  /* a frozen tandem has to arrive exactly as it is, and none of its files may be edited on the side */
+  /* a frozen montage has to arrive exactly as it is, and none of its files may be edited on the side */
   for (const id of frozen) {
     const before = manifest.groups.find((g) => g.id === id)
     const incoming = data.groups.find((g) => g.id === id)

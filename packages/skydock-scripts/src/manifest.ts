@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { outputKeyOf } from './fileStatus'
 import { writeJsonAtomic } from './lib/fs'
 import { jsonText } from './lib/json'
-import { groupsFileSchema, manifestSchema, tandemUploadSchema } from './types'
+import { groupsFileSchema, manifestSchema, montageUploadSchema } from './types'
 import type { GroupsFile, Manifest, ManifestFile, ManifestGroup } from './types'
 import { MONTAGES_FOLDER } from './workspace'
 
@@ -21,9 +21,9 @@ class UnreadableGroups extends Error {}
 
 /* Whether the file failed as JSON or failed as a jumps file makes no difference to what follows —
    either way it cannot be read — so there is one schema and one way out. A jumps file written when
-   a tandem's upload was recorded under the name "delivered" is read as the same record. */
+   a montage's upload was recorded under the name "delivered" is read as the same record. */
 const storedGroupSchema = groupsFileSchema.shape.groups.element.extend({
-  delivered: tandemUploadSchema.optional()
+  delivered: montageUploadSchema.optional()
 })
 const groupsTextSchema = jsonText.pipe(
   z.object({ groups: z.array(storedGroupSchema) }).transform(({ groups }): GroupsFile => ({
@@ -91,7 +91,7 @@ const resolveGroups = (files: ManifestFile[], groupsFile: GroupsFile | null) => 
   return groups
 }
 
-/* The record as montages have it. Before them, a tandem was a jump filed under Tandems; from version 2
+/* The record as montages have it. Before them, a passenger's film was a jump filed under Tandems; from version 2
    a montage is marked as one and belongs to no destination, and Tandems is a destination like any
    other. The change is made once, on reading an older record, and written with its next save: a jump
    filed under Tandems after that is filed there, not a montage. */

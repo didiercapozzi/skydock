@@ -1,8 +1,8 @@
-import { tandemSteps } from '@skydock/scripts'
-import type { TandemFact, TandemProgress } from '@skydock/scripts'
+import { montageSteps } from '@skydock/scripts'
+import type { MontageFact, MontageProgress } from '@skydock/scripts'
 import type { ManifestGroup } from './types'
 
-/* Where a tandem has got to, one step under the other the way it is walked: what is done ticked in
+/* Where a montage has got to, one step under the other the way it is walked: what is done ticked in
    green and joined up, the step it is at ringed, with what to do next right under it, and what is
    still to come greyed. The whole way is there at once, so nobody has to remember what comes after
    a render. */
@@ -12,10 +12,10 @@ const StepTrail = ({
   emailed
 }: {
   group: ManifestGroup
-  facts?: TandemFact
+  facts?: MontageFact
   emailed: boolean
 }) => {
-  const { steps, at, next } = tandemSteps({ group, facts, emailed })
+  const { steps, at, next } = montageSteps({ group, facts, emailed })
   return (
     <div className='flex flex-col gap-1.5'>
       <ol
@@ -70,13 +70,13 @@ const StepTrail = ({
 }
 
 /* The same way in one line, for where there is room for nothing more — a passenger in the menu, a
-   tandem's card: a segment per step, done in green and the one it is at in the colour of the words
+   montage's card: a segment per step, done in green and the one it is at in the colour of the words
    beside it that name it ("to render"), which say what the segments only show. */
 const StepMeter = ({
   progress,
   className = ''
 }: {
-  progress: TandemProgress
+  progress: MontageProgress
   className?: string
 }) => {
   const { steps, at, next } = progress

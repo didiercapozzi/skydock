@@ -40,7 +40,7 @@ const PlacePane = ({
   onQuery: (query: string) => void
   grouping: { value: Grouping; options: readonly Grouping[]; onChange: (g: Grouping) => void }
   kind: { value: Kind; onChange: (k: Kind) => void }
-  /* what else the folder offers — a passenger's email, taking a tandem back */
+  /* what else the folder offers — a passenger's email, taking a montage back */
   tools?: React.ReactNode
   /* what is still to do here, and anything that belongs to the folder, like its storage folder */
   left?: React.ReactNode

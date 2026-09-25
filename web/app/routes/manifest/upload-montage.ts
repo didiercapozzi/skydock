@@ -8,11 +8,11 @@ import {
   statProcessedOutputs,
   earlierMontagesDirs,
   montagesRemoteDir,
-  tandemUploadKey,
+  montageUploadKey,
   uploadGate
 } from '@skydock/scripts'
 import { entryOfMontage, upsert } from '../../../../packages/skydock-scripts/src/montageIndex'
-import { uploadTandem } from '../../../../packages/skydock-scripts/src/uploadTandem'
+import { uploadMontage } from '../../../../packages/skydock-scripts/src/uploadMontage'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 import { uploadReporter } from './progress'
@@ -20,19 +20,19 @@ import { recordOnStorage } from './storage'
 
 /* A montage goes up as its plan says — each item built once and sent to every destination it was put
    in — and the storage's own list of montages follows (RULES, Uploading a montage). */
-const uploadTandemIntent: Intent = async ({ data, manifest, manifestPath, outputDir, refuse }) => {
+const uploadMontageIntent: Intent = async ({ data, manifest, manifestPath, outputDir, refuse }) => {
   const group = manifest.groups.find((g) => g.id === data.groupId)
   if (!group) return refuse('Group not found.')
   const session = await ensureNasSession()
   if (!session) return refuse('Not connected to NAS. Please connect first.')
   /* the same rule every upload uses: a film built from a copy that no longer matches its source is
-     not this tandem's film */
+     not this montage's film */
   const outputs = statProcessedOutputs(manifest)
   const gate = uploadGate(group.files, (file) => ({ output: outputs[outputKeyOf(file)] }))
   if (gate.blocked) return refuse(`${gate.message} — process before uploading.`)
-  const report = uploadReporter({ scope: tandemUploadKey(group.id), groupId: group.id, outputDir })
+  const report = uploadReporter({ scope: montageUploadKey(group.id), groupId: group.id, outputDir })
   try {
-    const result = await uploadTandem({
+    const result = await uploadMontage({
       outputDir,
       manifest,
       group,
@@ -81,4 +81,4 @@ const uploadTandemIntent: Intent = async ({ data, manifest, manifestPath, output
   }
 }
 
-export { uploadTandemIntent }
+export { uploadMontageIntent }

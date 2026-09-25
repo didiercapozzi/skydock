@@ -1,5 +1,5 @@
 import { hasCompletePassenger } from '@skydock/scripts'
-import type { FileStatus, TandemFact } from '@skydock/scripts'
+import type { FileStatus, MontageFact } from '@skydock/scripts'
 import type { Place } from '../helpers/places'
 import { Mini } from './buttons'
 import { Owed } from './place-pane'
@@ -7,7 +7,7 @@ import type { ManifestFile, ManifestGroup } from './types'
 import { plural } from './utils'
 
 /* What is still owed in a folder, above its files: jumps to file in the sorting area, files to
-   process or upload in a dropzone, and where each tandem has got to. A count that can be dealt with
+   process or upload in a dropzone, and where each montage has got to. A count that can be dealt with
    from here is a button. */
 const FolderOwed = ({
   place,
@@ -27,7 +27,7 @@ const FolderOwed = ({
   groups: ManifestGroup[]
   loose: ManifestFile[]
   files: ManifestFile[]
-  facts: Record<string, TandemFact>
+  facts: Record<string, MontageFact>
   statusOf: (file: ManifestFile) => FileStatus
   busy: boolean
   /* a dropzone's folder on the storage, and a way to choose it */

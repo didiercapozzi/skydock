@@ -1,5 +1,5 @@
 import { processingNow, saveManifest } from '@skydock/scripts'
-import { deleteTandem, resetTandem } from '../../../../packages/skydock-scripts/src/resetTandem'
+import { deleteMontage, resetMontage } from '../../../../packages/skydock-scripts/src/resetMontage'
 import type { Intent } from './change'
 import { boardAnswer } from '../../helpers/manifest'
 import { messageOf } from '@skydock/scripts'
@@ -7,7 +7,7 @@ import { messageOf } from '@skydock/scripts'
 /* Back to before processing, keeping every decision — or undone altogether (RULES, Taking a montage
    back). Not while its folder is being written: taking it away underneath would leave half of it. */
 const takeBack =
-  (take: typeof resetTandem): Intent =>
+  (take: typeof resetMontage): Intent =>
   ({ data, manifest, manifestPath, outputDir, refuse }) => {
     const running = processingNow()
     if (running && (running.groupIds.length === 0 || running.groupIds.includes(data.groupId ?? '')))
@@ -21,7 +21,7 @@ const takeBack =
     return boardAnswer(manifest)
   }
 
-const resetTandemIntent = takeBack(resetTandem)
-const deleteTandemIntent = takeBack(deleteTandem)
+const resetMontageIntent = takeBack(resetMontage)
+const deleteMontageIntent = takeBack(deleteMontage)
 
-export { deleteTandemIntent, resetTandemIntent }
+export { deleteMontageIntent, resetMontageIntent }

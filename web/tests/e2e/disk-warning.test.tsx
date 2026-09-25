@@ -22,7 +22,7 @@ const boardWith = (disk: { free: number; total: number; level: 'ok' | 'low' | 'f
   destinations: [],
   outputs: {},
   proxies: {},
-  tandems: {},
+  montages: {},
   remote: null,
   storage: null,
   hasManifest: true,

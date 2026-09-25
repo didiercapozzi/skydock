@@ -5,8 +5,8 @@ import * as path from 'node:path'
 import { keepProject, keptProjectsDir } from '../src/projectHistory'
 import { createTmpDir } from './fixtures'
 
-/* An edit is hours of somebody's work and the one thing of a tandem that cannot be made again, so
-   the project as it stands is copied aside before SkyDock does anything to that tandem (RULES,
+/* An edit is hours of somebody's work and the one thing of a montage that cannot be made again, so
+   the project as it stands is copied aside before SkyDock does anything to that montage (RULES,
    Montage). */
 
 let outputDir: string
@@ -64,7 +64,7 @@ describe('the edit, kept aside', () => {
     ])
   })
 
-  it('keeps nothing for a tandem that has no edit yet', () => {
+  it('keeps nothing for a montage that has no edit yet', () => {
     expect(keepProject(outputDir, dir, BASE)).toBeNull()
     expect(kept()).toEqual([])
   })

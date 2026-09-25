@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { proxyFactSchema, tandemFactSchema } from './boardAnswer'
+import { proxyFactSchema, montageFactSchema } from './boardAnswer'
 
 /* What is happening to a file right now, said as it happens so the board can show it without
    asking. These are for the eyes only: what a file *is* — processed, proxied, uploaded — stays a
@@ -25,14 +25,14 @@ const liveEventSchema = z.discriminatedUnion('kind', [
     ok: z.boolean(),
     proxy: z.object({ path: z.string(), fact: proxyFactSchema }).optional()
   }),
-  /* What a tandem's folder holds, looked at again because it changed under nobody's hand here — the
+  /* What a montage's folder holds, looked at again because it changed under nobody's hand here — the
      editor saved a project, or finished rendering the film. `rendered` is a film that was not there,
      or was not this one, the last time it was said. */
   z.object({
-    kind: z.literal('tandem'),
+    kind: z.literal('montage'),
     groupId: z.string(),
     who: z.string(),
-    fact: tandemFactSchema,
+    fact: montageFactSchema,
     rendered: z.boolean()
   }),
   /* A camera plugged in and being copied off, by the name it is mounted under: how far through its

@@ -19,7 +19,7 @@ const recordOnStorage = async (
   try {
     const index = await updateMontageIndex(session, dir, change, earlier)
     return {
-      storage: { dir, tandems: index.tandems, lost: await lostOnStorage(session, index.tandems) }
+      storage: { dir, montages: index.montages, lost: await lostOnStorage(session, index.montages) }
     }
   } catch (e) {
     return {

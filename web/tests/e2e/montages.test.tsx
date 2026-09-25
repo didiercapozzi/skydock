@@ -47,7 +47,7 @@ const board = {
   destinations: [{ name: 'Yverdon' }, { name: 'Tandems' }],
   outputs: {},
   proxies: {},
-  tandems: {},
+  montages: {},
   remote: null,
   storage: null,
   hasManifest: true,
@@ -191,7 +191,7 @@ describe('a montage', () => {
     await expect.element(details().getByRole('combobox', { name: 'Delivered to' })).not.toBeInTheDocument()
   })
 
-  test('still opens at an address kept from when montages were tandems', async () => {
+  test('still opens at an address kept from before montages had the name', async () => {
     await renderBoard({ groups: withMontage.groups }, '/passenger/Boogie 2026', withMontage)
 
     await expect.element(pageHeading('Boogie 2026')).toBeVisible()

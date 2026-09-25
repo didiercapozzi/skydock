@@ -10,7 +10,7 @@ import { publish } from './live'
 import { loadManifest, saveManifest } from './manifest'
 import { cameraTimes } from './scan'
 import { copyFiles, moveFiles } from './moveFiles'
-import { frozenTandems, isTandem } from './tandem'
+import { frozenMontages, isNamedMontage } from './montageArtifacts'
 import type { Manifest, ManifestFile } from './types'
 import { getExtension } from './utils'
 import { two } from './lib/clock'
@@ -22,7 +22,7 @@ import { passengerOf } from './workspace'
    name, and written into the registry. Nothing more elaborate than a copy: the browser hands over the
    bytes, and this machine writes them where a scan would have found them.
 
-   Where it goes is where it was dropped: into a tandem, as a lone file of a dropzone, or loose in the
+   Where it goes is where it was dropped: into a montage, as a lone file of a dropzone, or loose in the
    sorting area. */
 
 type ImportTarget =
@@ -58,7 +58,7 @@ const freeName = (dir: string, filename: string) => {
 const placeOf = (manifest: Manifest, id: string) => {
   const group = manifest.groups.find((g) => g.files.some((f) => f.id === id))
   if (group) {
-    if (isTandem(group)) return passengerOf(group)
+    if (isNamedMontage(group)) return passengerOf(group)
     return group.destination ?? (isMontage(group) ? 'a montage' : 'Fresh files')
   }
   return manifest.files.find((f) => f.id === id)?.destination ?? 'Fresh files'
@@ -105,7 +105,7 @@ const placeExisting = (
   /* The sorting area and a place are for a file on its own, so landing there means leaving the jump
      it is in — which an edit forbids. Saying only that leaves somebody stuck: what they were after is
      almost always this footage in another jump, and that is one drop away. */
-  if (inGroup && frozenTandems(manifest, outputDir).has(inGroup.id))
+  if (inGroup && frozenMontages(manifest, outputDir).has(inGroup.id))
     return {
       filename: file.filename,
       outcome: 'kept',
@@ -211,7 +211,7 @@ const importFile = async ({
     if (target.kind === 'group') {
       const group = manifest.groups.find((g) => g.id === target.groupId)
       if (!group) throw new Error('That jump is no longer there.')
-      if (frozenTandems(manifest, outputDir).has(group.id))
+      if (frozenMontages(manifest, outputDir).has(group.id))
         throw new Error(
           'This montage has an edit, or lives on the storage only — nothing can join it.'
         )

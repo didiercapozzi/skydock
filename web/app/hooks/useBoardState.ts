@@ -1,5 +1,11 @@
 import { boardAnswerSchema } from '@skydock/scripts'
-import type { OutputFact, ProxyFact, MontageEntry, MontageLost, TandemFact } from '@skydock/scripts'
+import type {
+  OutputFact,
+  ProxyFact,
+  MontageEntry,
+  MontageLost,
+  MontageFact
+} from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
@@ -31,7 +37,7 @@ type CheckedListing = { dirs: string[]; sizes: Record<string, number | null>; at
 
 type Storage = {
   dir: string
-  tandems: MontageEntry[]
+  montages: MontageEntry[]
   lost: MontageLost
   problem: string | null
 } | null
@@ -42,7 +48,7 @@ type Loaded = {
   destinations: Destination[]
   outputs: Record<string, OutputFact>
   proxies: Record<string, ProxyFact>
-  tandems: Record<string, TandemFact>
+  montages: Record<string, MontageFact>
   storage: Storage
   hasManifest: boolean
   processing: { groupIds: string[] } | null
@@ -58,7 +64,7 @@ const refusalSchema = z
    answer already is the next state, and nothing about it needs the screen to have been drawn first. */
 const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   const { groups, setGroups, updateGroups } = useGroups(loaded.groups)
-  /* A page loaded mid-processing takes the work up where the server has it: that one tandem says it
+  /* A page loaded mid-processing takes the work up where the server has it: that one montage says it
      is processing, everything else waits, and the board asks to hear when it is done. */
   const running = loaded.processing
   const [busy, setBusy] = useState<string | null>(
@@ -78,10 +84,10 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
      arriving empty is not a reason for the whole screen to fail to draw */
   const [outputs, setOutputs] = useState<Record<string, OutputFact>>(loaded.outputs ?? {})
   const [proxies, setProxies] = useState<Record<string, ProxyFact>>(loaded.proxies ?? {})
-  const [tandemFacts, setTandemFacts] = useState<Record<string, TandemFact>>(loaded.tandems)
+  const [montageFacts, setMontageFacts] = useState<Record<string, MontageFact>>(loaded.montages)
   /* files being processed or proxied right now, and how far through; a proxy that lands is
      flagged at once, since the event carries what the server read off the disk */
-  const live = useLiveProgress(setProxies, setTandemFacts, setNote)
+  const live = useLiveProgress(setProxies, setMontageFacts, setNote)
   const liveFiles = live.files
   const [remoteAfterUpload, setRemoteAfterUpload] = useState<CheckedListing | null>(null)
   /* the storage's list of montages, as the loader read it or as the last change wrote it */
@@ -103,7 +109,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
         destinations,
         outputs: freshOutputs,
         proxies: freshProxies,
-        tandems: freshTandems,
+        montages: freshMontages,
         remote: freshRemote,
         uploaded,
         skipped,
@@ -128,7 +134,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
       if (destinations) setPlaces(destinations)
       if (freshOutputs) setOutputs(freshOutputs)
       if (freshProxies) setProxies(freshProxies)
-      if (freshTandems) setTandemFacts(freshTandems)
+      if (freshMontages) setMontageFacts(freshMontages)
       /* an upload answers with the listing taken right after it */
       if (freshRemote) setRemoteAfterUpload(freshRemote)
       /* a scan may be the first thing that ever put a manifest there */
@@ -249,7 +255,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     disk: live.disk,
     /* how far through the one file a drop is copying in right now */
     importing: live.importing,
-    tandemFacts,
+    montageFacts,
     remoteAfterUpload,
     storage,
     hasManifest,

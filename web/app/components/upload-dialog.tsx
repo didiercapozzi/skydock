@@ -1,5 +1,5 @@
 import { itemsFrom, PARTS, projectFolderOf, slugOf, stemOf, zipNameOf } from '@skydock/scripts'
-import type { PartFile, SendItem, SendPart, SendPlan, TandemFact } from '@skydock/scripts'
+import type { PartFile, SendItem, SendPart, SendPlan, MontageFact } from '@skydock/scripts'
 import { useState } from 'react'
 import { Go, Mini, Seg } from './buttons'
 import { INPUT, Modal, Spacer } from './modal'
@@ -29,7 +29,7 @@ const SHOWN = 3
 /* What each part of the montage is made of, as the board knows it: the originals, the photos as they
    were prepared, the montage and the project once they exist. The same parts the upload reads off
    the disk, so the items shown are the items built. */
-const partsOf = (group: ManifestGroup, facts?: TandemFact): Parts => ({
+const partsOf = (group: ManifestGroup, facts?: MontageFact): Parts => ({
   videos: group.files
     .filter((f) => isVideoFile(f.path))
     .map((f) => ({ file: f.path, name: f.filename, size: f.size })),
@@ -216,7 +216,7 @@ const UploadDialog = ({
 }: {
   who: string
   group: ManifestGroup
-  facts?: TandemFact
+  facts?: MontageFact
   places: Destination[]
   plan: SendPlan
   /* the plan as it now is, remembered for the next montage */

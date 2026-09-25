@@ -74,13 +74,13 @@ describe('where the list of origins lives', () => {
       groups: [],
       destinations: [
         { name: 'yverdon', path: YVERDON },
-        { name: 'Backup', path: '/usbshare2/Skydive/tandems video originales' }
+        { name: 'Backup', path: '/usbshare2/Skydive/montages video originales' }
       ]
     }
 
     expect(deliveryFolders(manifest)).toEqual([
       YVERDON,
-      '/usbshare2/Skydive/tandems video originales'
+      '/usbshare2/Skydive/montages video originales'
     ])
   })
 

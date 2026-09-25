@@ -48,34 +48,34 @@ const entry = (folder: string, firstname: string, uploadedAt: number) => ({
   uploadedAt
 })
 
-describe('the storage’s list of tandems', () => {
+describe('the storage’s list of montages', () => {
   it('is empty while nothing has been uploaded into the folder', async () => {
     const storage = await startStorage('missing')
     try {
-      expect(await readMontageIndex(storage.session, DIR)).toEqual({ version: 1, tandems: [] })
+      expect(await readMontageIndex(storage.session, DIR)).toEqual({ version: 1, montages: [] })
     } finally {
       await storage.close()
     }
   })
 
-  it('changes one tandem and keeps every other — another machine’s included', async () => {
+  it('changes one montage and keeps every other — another machine’s included', async () => {
     const storage = await startStorage({
       version: 1,
-      tandems: [entry(`${DIR}/Ana Roth`, 'Ana', 100)]
+      montages: [entry(`${DIR}/Ana Roth`, 'Ana', 100)]
     })
     try {
       await updateMontageIndex(storage.session, DIR, (index) =>
         upsert(index, entry(`${DIR}/Luc Favre`, 'Luc', 200))
       )
       await updateMontageIndex(storage.session, DIR, (index) => {
-        index.tandems.find((t) => t.folder === `${DIR}/Luc Favre`)!.emailed = {
+        index.montages.find((t) => t.folder === `${DIR}/Luc Favre`)!.emailed = {
           at: 300,
           to: 'luc@x.ch'
         }
       })
       const held = storage.held()!
-      expect(held.tandems.map((t) => t.firstname)).toEqual(['Luc', 'Ana'])
-      expect(held.tandems[0]?.emailed).toEqual({ at: 300, to: 'luc@x.ch' })
+      expect(held.montages.map((t) => t.firstname)).toEqual(['Luc', 'Ana'])
+      expect(held.montages[0]?.emailed).toEqual({ at: 300, to: 'luc@x.ch' })
     } finally {
       await storage.close()
     }
@@ -89,7 +89,7 @@ describe('the storage’s list of tandems', () => {
       await updateMontageIndex(storage.session, DIR, (index) =>
         upsert(index, entry(`${DIR}/Luc Favre`, 'Luc', 200))
       )
-      expect(storage.held()?.tandems.map((t) => t.firstname)).toEqual(['Luc'])
+      expect(storage.held()?.montages.map((t) => t.firstname)).toEqual(['Luc'])
     } finally {
       await storage.close()
     }
@@ -97,7 +97,7 @@ describe('the storage’s list of tandems', () => {
 
   it('never takes a folder it could not list for one with no list in it', async () => {
     const storage = await startStorage(
-      { version: 1, tandems: [entry(`${DIR}/Ana Roth`, 'Ana', 100)] },
+      { version: 1, montages: [entry(`${DIR}/Ana Roth`, 'Ana', 100)] },
       { listing: 'fails' }
     )
     try {
@@ -106,7 +106,7 @@ describe('the storage’s list of tandems', () => {
           upsert(index, entry(`${DIR}/Luc Favre`, 'Luc', 200))
         )
       ).rejects.toThrow(/would not list/)
-      expect(storage.held()?.tandems.map((t) => t.firstname)).toEqual(['Ana'])
+      expect(storage.held()?.montages.map((t) => t.firstname)).toEqual(['Ana'])
     } finally {
       await storage.close()
     }
@@ -126,8 +126,8 @@ describe('the storage’s list of tandems', () => {
   })
 })
 
-/* The list was called skydock-tandems.json while every montage was a tandem, and kept in the
-   Tandems folder before that. It moves over the first time it changes, and never leaves two lists
+/* The list was called skydock-tandems.json before montages had the name, with its entries under
+   `tandems`, and kept in the Tandems folder before that. It moves over the first time it changes, and never leaves two lists
    behind telling different stories. */
 describe('the list of montages under the name it had', () => {
   const OLD = `${DIR}/skydock-tandems.json`
@@ -137,7 +137,7 @@ describe('the list of montages under the name it had', () => {
     const storage = await startListStorage({ [OLD]: ana })
     try {
       const index = await readMontageIndex(storage.session, DIR)
-      expect(index.tandems.map((t) => t.firstname)).toEqual(['Ana'])
+      expect(index.montages.map((t) => t.firstname)).toEqual(['Ana'])
     } finally {
       await storage.close()
     }
@@ -150,7 +150,7 @@ describe('the list of montages under the name it had', () => {
         upsert(index, entry(`${DIR}/Luc Favre`, 'Luc', 200))
       )
 
-      expect(heldIn(storage.file(LIST))?.tandems.map((t) => t.firstname)).toEqual(['Luc', 'Ana'])
+      expect(heldIn(storage.file(LIST))?.montages.map((t) => t.firstname)).toEqual(['Luc', 'Ana'])
       expect(storage.file(OLD)).toBeNull()
       expect(storage.paths().filter((at) => at.includes('/.skydock-trash/'))).toHaveLength(1)
     } finally {
@@ -176,11 +176,11 @@ describe('the list of montages under the name it had', () => {
   it('gives way to the list under its own name when both are there', async () => {
     const storage = await startListStorage({
       [OLD]: ana,
-      [LIST]: JSON.stringify({ version: 1, tandems: [entry(`${DIR}/Luc Favre`, 'Luc', 200)] })
+      [LIST]: JSON.stringify({ version: 1, montages: [entry(`${DIR}/Luc Favre`, 'Luc', 200)] })
     })
     try {
       const index = await readMontageIndex(storage.session, DIR)
-      expect(index.tandems.map((t) => t.firstname)).toEqual(['Luc'])
+      expect(index.montages.map((t) => t.firstname)).toEqual(['Luc'])
     } finally {
       await storage.close()
     }
@@ -196,7 +196,7 @@ describe('the list of montages under the name it had', () => {
         [DIR]
       )
 
-      expect(heldIn(storage.file('/SkyDock/skydock-montages.json'))?.tandems).toHaveLength(2)
+      expect(heldIn(storage.file('/SkyDock/skydock-montages.json'))?.montages).toHaveLength(2)
       expect(storage.file(OLD)).toBeNull()
     } finally {
       await storage.close()
@@ -253,7 +253,7 @@ describe('what the storage no longer holds of the montages on its list', () => {
   })
 })
 
-describe('a tandem’s entry', () => {
+describe('a montage’s entry', () => {
   it('comes from what its upload recorded: its folder, its link, its film and its backup', () => {
     const group: ManifestGroup = {
       id: 'g1',
@@ -311,7 +311,7 @@ describe('a tandem’s entry', () => {
     expect(listed.entry.folder).toBe('/Dropzones/Yverdon/Boogie 2026')
   })
 
-  it('does not exist for a tandem that was never uploaded', () => {
+  it('does not exist for a montage that was never uploaded', () => {
     expect(
       entryOfMontage({ id: 'g', label: 'j', day: '01.08.2026', files: [] } as ManifestGroup)
     ).toBeNull()

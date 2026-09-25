@@ -8,7 +8,7 @@ import { saveNasSession } from '../../../packages/skydock-scripts/src/nas'
 import { action } from '../../app/routes/api.manifest'
 import { createTmpDir, jsonResponse, routeArgs, stubFetch } from './fixtures'
 
-/* Tandems the storage's list names are put back on a board that has forgotten them. The list is read
+/* Montages the storage's list names are put back on a board that has forgotten them. The list is read
    off the storage by the server, so what comes back is what the storage says. */
 
 const AT = 1_785_000_000
@@ -21,10 +21,10 @@ const file = (id: string, mtime: number): ManifestFile => ({
   mtime
 })
 
-/* the storage's list: Luc Favre's tandem, made of a and b, set an hour on from the camera's clock */
+/* the storage's list: Luc Favre's montage, made of a and b, set an hour on from the camera's clock */
 const list = {
   version: 1,
-  tandems: [
+  montages: [
     {
       folder: '/SkyDock/Tandems/Luc Favre',
       firstname: 'Luc',
@@ -110,30 +110,30 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe('restoring tandems from the storage’s list', () => {
-  it('puts a forgotten tandem back under its passenger’s name, and writes it down', async () => {
-    const said = await send({ intent: 'restore-tandems', folders: ['/SkyDock/Tandems/Luc Favre'] })
+describe('restoring montages from the storage’s list', () => {
+  it('puts a forgotten montage back under its passenger’s name, and writes it down', async () => {
+    const said = await send({ intent: 'restore-montages', folders: ['/SkyDock/Tandems/Luc Favre'] })
 
     expect(said.restored).toEqual([{ who: 'Luc Favre', files: 2, of: 2 }])
     const saved = loadManifest(path.join(tmpDir, 'manifest.json'))
-    const tandem = saved?.groups.find((g) => g.montageJump)
-    expect(tandem?.passenger).toEqual({ firstname: 'Luc', lastname: 'Favre' })
-    expect(tandem?.files.map((f) => f.mtime)).toEqual([AT + 3600, AT + 3660])
+    const montage = saved?.groups.find((g) => g.montageJump)
+    expect(montage?.passenger).toEqual({ firstname: 'Luc', lastname: 'Favre' })
+    expect(montage?.files.map((f) => f.mtime)).toEqual([AT + 3600, AT + 3660])
   })
 
-  it('restores every tandem on the list when none is named', async () => {
-    expect((await send({ intent: 'restore-tandems' })).restored).toHaveLength(1)
+  it('restores every montage on the list when none is named', async () => {
+    expect((await send({ intent: 'restore-montages' })).restored).toHaveLength(1)
   })
 
   it('says so when none of their files are waiting to be sorted here', async () => {
-    await send({ intent: 'restore-tandems' })
-    const again = await send({ intent: 'restore-tandems' })
+    await send({ intent: 'restore-montages' })
+    const again = await send({ intent: 'restore-montages' })
     expect(again.globalErrors?.[0]).toContain('waiting to be sorted')
   })
 
   it('needs the storage, where the list is kept', async () => {
     fs.rmSync(path.join(tmpDir, 'nas.json'), { force: true })
-    const said = await send({ intent: 'restore-tandems' })
+    const said = await send({ intent: 'restore-montages' })
     expect(said.globalErrors?.[0]).toContain('Connect the NAS first')
   })
 })

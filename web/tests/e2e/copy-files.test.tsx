@@ -41,7 +41,7 @@ const board = {
   destinations: [],
   outputs: {},
   proxies: {},
-  tandems: {},
+  montages: {},
   remote: null,
   storage: null,
   hasManifest: true,

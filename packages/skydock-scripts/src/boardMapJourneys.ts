@@ -49,23 +49,23 @@ const JOURNEYS: Journey[] = [
   {
     title: 'A montage',
     said: 'One name is one folder, and the edit is the one thing that cannot be made again — which is why a montage with a project stops accepting changes.',
-    uses: ['save-groups', 'process', 'montage', 'upload-tandem', 'mark-emailed', 'free-tandem'],
+    uses: ['save-groups', 'process', 'montage', 'upload-montage', 'mark-emailed', 'free-montage'],
     drawn: `flowchart LR
   jump[a jump] -->|save-groups| pax[filed under a passenger]
   pax -->|process| copies[copies in their folder]
   copies -->|montage| project[an editing project]
   project -->|the editor, by hand| film["the film, rendered"]
-  film -->|upload-tandem| storage[("their folder, and the backup")]
+  film -->|upload-montage| storage[("their folder, and the backup")]
   storage -->|mark-emailed| told(["told, with their link"])
-  storage -->|free-tandem| room([room back])`
+  storage -->|free-montage| room([room back])`
   },
   {
     title: 'Taking something back',
     said: 'Everything goes back one step at a time, and only a loose file in Fresh files — with nowhere further back to go — is ever offered the bin.',
-    uses: ['reset-tandem', 'delete-tandem', 'delete-jump', 'move-files', 'trash-unsorted'],
+    uses: ['reset-montage', 'delete-montage', 'delete-jump', 'move-files', 'trash-unsorted'],
     drawn: `flowchart LR
-  pax[a tandem] -->|reset-tandem| before[back to before processing]
-  pax -->|delete-tandem| loose[loose in Fresh files]
+  pax[a montage] -->|reset-montage| before[back to before processing]
+  pax -->|delete-montage| loose[loose in Fresh files]
   jump[a jump] -->|delete-jump| loose
   filed[a filed file] -->|move-files| loose
   loose -->|trash-unsorted| bin[("the bin, never emptied")]`

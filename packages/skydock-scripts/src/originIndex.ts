@@ -96,7 +96,7 @@ const readOriginIndex = async (session: NasSession, folders: string[]) =>
 
 /* What an upload leaves behind: read the latest list, put this job's files in it, write it back.
    Entries are replaced by path and everything else is kept, so two machines, two dropzones and a
-   tandem's parcels all add to the same list rather than replacing one another — and a tandem whose
+   montage's parcels all add to the same list rather than replacing one another — and a montage whose
    backup lives on another share writes to that share's list too, since that is where the reading
    will look for it. */
 const recordOrigins = async (

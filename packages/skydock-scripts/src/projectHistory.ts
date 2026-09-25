@@ -4,12 +4,12 @@ import { stampOf } from './lib/clock'
 
 /* Every version of a passenger's editing project, kept aside.
 
-   An edit is hours of somebody's work and the one thing of a tandem that cannot be made again. So
-   before SkyDock does anything to a tandem that could stand between the person and that work —
+   An edit is hours of somebody's work and the one thing of a montage that cannot be made again. So
+   before SkyDock does anything to a montage that could stand between the person and that work —
    preparing it again, resetting it, deleting it — the project as it stands at that moment is copied
    in here, under the passenger's folder name and the moment it was kept.
 
-   Nothing here is ever deleted, not even when the tandem is. A project is a few hundred kilobytes
+   Nothing here is ever deleted, not even when the montage is. A project is a few hundred kilobytes
    beside the gigabytes it describes, and the day somebody wants one back is the day it matters. */
 
 const HISTORY = '.projects'

@@ -14,7 +14,7 @@ import type { OriginIndex } from './originEntry'
 import { publishJump } from './publish'
 import type { CheckProgress, Seen, UploadProgress, UploadVerdict } from './publish'
 import { listNasFiles } from './nas'
-import { isTandem } from './tandem'
+import { isNamedMontage } from './montageArtifacts'
 import type { NasSession } from './nas'
 import { messageOf } from './lib/words'
 import { mapWithLimit } from './utils'
@@ -60,14 +60,14 @@ const uploadedFiles = (record: ManifestGroup['uploaded']) =>
 
 /* What the NAS holds right now in the folders we have uploaded into, so a file deleted over there
    stops reading as uploaded. The folders come from the upload records themselves, not from the
-   destination list — a tandem lives in `{destination}/{Passenger}/`, which listing the destination
+   destination list — a montage lives in `{destination}/{Passenger}/`, which listing the destination
    would miss. A folder only counts as checked when its listing came back: one the storage would not
    list is not an empty one, and an unchecked folder demotes nothing. */
 const listRemoteFiles = async (manifest: Manifest, session: NasSession) => {
   const wanted = [
     ...new Set([
       ...manifest.files.flatMap((f) => (f.uploaded ? [parentOf(f.uploaded.remotePath)] : [])),
-      /* and wherever a tandem's upload put its film, photos and originals — an uploaded tandem is
+      /* and wherever a montage's upload put its film, photos and originals — an uploaded montage is
          only uploaded while those are still there */
       ...manifest.groups.flatMap((g) =>
         uploadedFiles(g.uploaded).map((f) => parentOf(f.remotePath))
@@ -92,7 +92,7 @@ const listRemoteFiles = async (manifest: Manifest, session: NasSession) => {
   return { dirs, sizes, at: Math.floor(Date.now() / 1000) }
 }
 
-/* What of a tandem's upload the storage no longer has: gone, or not the size that was sent. Only a
+/* What of a montage's upload the storage no longer has: gone, or not the size that was sent. Only a
    folder that answered counts — a listing that failed is not evidence of anything, so it takes
    nothing away (RULES, File status). */
 const goneFromStorage = (
@@ -132,11 +132,11 @@ const montagesRemoteDir = (manifest: Manifest, session: NasSession) => {
 }
 
 /* where that list was kept before: above today's folders, before its place was fixed, and in the
-   Tandems folder, when every montage was a tandem and went there */
+   Tandems folder, where every montage went before montages belonged to no place */
 const earlierMontagesDirs = (manifest: Manifest) => {
   const folders = placeFolders(manifest)
-  const tandems = destBaseOf('Tandems', manifest)
-  return [...(folders.length > 0 ? [originsDirOf(folders)] : []), ...(tandems ? [tandems] : [])]
+  const earlier = destBaseOf('Tandems', manifest)
+  return [...(folders.length > 0 ? [originsDirOf(folders)] : []), ...(earlier ? [earlier] : [])]
 }
 
 /* Where one group's processed folder goes on the NAS.
@@ -191,14 +191,14 @@ const resolveUploadTargets = ({
   manifest: Manifest
   scope: UploadScope
 }) => {
-  /* A tandem's files go to the storage by uploading the tandem (RULES, Network storage). Not because they
+  /* A montage's files go to the storage by uploading the montage (RULES, Network storage). Not because they
      are not uploaded — they are — but because they do not all go to the same place: the film and
      the photos to the passenger, the originals to the backup. This upload sends a folder whole,
      which would put the project, the working copies and the originals in with the passenger's.
      Refusing here rather than at the one button that exists means no later caller routes around
      it. */
   /* a jump freed from this machine is on the storage already, with nothing here to send */
-  const groups = groupsInScope(manifest, scope).filter((g) => !isTandem(g) && !g.freed)
+  const groups = groupsInScope(manifest, scope).filter((g) => !isNamedMontage(g) && !g.freed)
   const targets = groups.map((g) => targetForGroup(g, outputDir, manifest))
   /* a destination can also hold lone files, which belong to no group and would otherwise
      never be uploaded at all */

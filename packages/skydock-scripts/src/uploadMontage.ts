@@ -6,7 +6,7 @@ import type { CheckProgress, UploadProgress, UploadVerdict } from './publish'
 import type { NasSession } from './nas'
 import { projectFolderOf, sendItems } from './sending'
 import type { SendItem } from './sending'
-import { filmNameOf, isTandem, tandemArtifacts } from './tandem'
+import { filmNameOf, isNamedMontage, montageArtifacts } from './montageArtifacts'
 import type { Manifest, ManifestGroup, SendPart, SendPlan } from './types'
 import { destBaseOf, uploadTargets } from './upload'
 import type { UploadTarget } from './upload'
@@ -26,10 +26,10 @@ const settled = async (film: string) => {
   return before === after && after > 0
 }
 
-const resolveFilm = async (artifacts: ReturnType<typeof tandemArtifacts>, hasVideos: boolean) => {
+const resolveFilm = async (artifacts: ReturnType<typeof montageArtifacts>, hasVideos: boolean) => {
   const canonical = path.join(artifacts.dir, filmNameOf(artifacts.baseName))
   if (!artifacts.film) {
-    /* a tandem whose camera died is photos only, and must not dead-end on a film it never had */
+    /* a montage whose camera died is photos only, and must not dead-end on a film it never had */
     if (!hasVideos) return null
     if (artifacts.strayFilms.length === 0)
       throw new Error(
@@ -73,7 +73,7 @@ const verdictIn = (files: UploadVerdict[], localPath: string, remoteDir: string)
    built once and sent to every destination it was put in, in its project folder or straight in. The
    manifest is not saved here — the caller owns that, because it runs long enough that the copy
    loaded before it started is stale. */
-const uploadTandem = async ({
+const uploadMontage = async ({
   outputDir,
   manifest,
   group,
@@ -92,12 +92,12 @@ const uploadTandem = async ({
   onProgress?: (progress: UploadProgress & { groupIds: string[] }) => void
   onCheck?: (progress: CheckProgress) => void
 }) => {
-  if (!isTandem(group))
+  if (!isNamedMontage(group))
     throw new Error('Only a montage is uploaded this way — give it a name first.')
   if (!group.processed) throw new Error('Process this montage before uploading it.')
   if (group.freed)
     throw new Error('This montage lives only on the storage now — nothing here to upload.')
-  const artifacts = tandemArtifacts(outputDir, group)
+  const artifacts = montageArtifacts(outputDir, group)
   if (!fs.existsSync(artifacts.dir)) throw new Error('Processed files not found. Process it again.')
 
   const videos = group.files.filter((f) => isVideoFile(f.path))
@@ -218,4 +218,4 @@ const uploadTandem = async ({
   }
 }
 
-export { uploadTandem }
+export { uploadMontage }

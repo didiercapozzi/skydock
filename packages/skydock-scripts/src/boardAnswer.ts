@@ -4,7 +4,7 @@ import { destinationSchema, manifestFileSchema, manifestGroupSchema } from './ty
 
 /* Everything the board may be answered with, and the only shape the server answers a change with:
    the jumps and the loose files always, what the disk says about each processed copy, which clips
-   have a proxy and what each tandem's folder holds — the per-file status and a tandem's next step
+   have a proxy and what each montage's folder holds — the per-file status and a montage's next step
    are computed from all of it, so answering with less leaves the board stale — and then whatever
    the change itself has to say. One schema for both sides, so the server cannot answer with a field
    the board would not read, nor the board wait for one the server never sends. */
@@ -18,9 +18,9 @@ const proxyFactSchema = z.object({
   reason: z.string().optional()
 })
 
-/* what a tandem's folder holds, taken fresh every time — the film is rendered outside SkyDock, so
+/* what a montage's folder holds, taken fresh every time — the film is rendered outside SkyDock, so
    nothing else can know it has appeared */
-const tandemFactSchema = z.object({
+const montageFactSchema = z.object({
   project: z.boolean(),
   projectPath: z.string(),
   film: z
@@ -43,7 +43,7 @@ const remoteListingSchema = z.object({
 
 const montageNoteSchema = z.object({
   clips: z.number(),
-  /* stills put in the bin, for a tandem with no video to make its film of */
+  /* stills put in the bin, for a montage with no video to make its film of */
   photos: z.number().optional(),
   missingAssets: z.array(z.string()),
   opened: z.boolean().optional(),
@@ -79,14 +79,14 @@ const boardAnswerSchema = z.object({
   destinations: z.array(destinationSchema).optional(),
   outputs: z.record(z.string(), outputFactSchema).optional(),
   proxies: z.record(z.string(), proxyFactSchema).optional(),
-  tandems: z.record(z.string(), tandemFactSchema).optional(),
+  montages: z.record(z.string(), montageFactSchema).optional(),
   remote: remoteListingSchema.optional(),
   /* how an upload went: how many files were sent, and how many were already there */
   uploaded: z.number().optional(),
   skipped: z.number().optional(),
   montage: montageNoteSchema.optional(),
   scan: scanResultSchema.optional(),
-  /* how much room freeing a tandem gave back, and how many files */
+  /* how much room freeing a montage gave back, and how many files */
   freed: z.object({ bytes: z.number(), files: z.number(), groupId: z.string() }).optional(),
   /* what was being processed was stopped on request */
   processCancelled: z.boolean().optional(),
@@ -96,7 +96,7 @@ const boardAnswerSchema = z.object({
     .optional(),
   /* the storage's list, as the change just wrote it — or why it could not be */
   storage: z
-    .object({ dir: z.string(), tandems: z.array(montageEntrySchema), lost: montageLostSchema })
+    .object({ dir: z.string(), montages: z.array(montageEntrySchema), lost: montageLostSchema })
     .optional(),
   storageProblem: z.string().optional(),
   imported: importOutcomeSchema.optional(),
@@ -116,7 +116,7 @@ const boardAnswerSchema = z.object({
     .optional(),
   /* files copied into another jump: how many, and how many it already held */
   copied: z.object({ files: z.number(), passedOver: z.number() }).optional(),
-  /* tandems put back from the storage's list: whose, and how many of their files were found here */
+  /* montages put back from the storage's list: whose, and how many of their files were found here */
   restored: z.array(z.object({ who: z.string(), files: z.number(), of: z.number() })).optional(),
   /* a clip handed to the machine's own player, which is now showing it */
   played: z.object({ filename: z.string() }).optional(),
@@ -135,9 +135,9 @@ type MontageNote = z.infer<typeof montageNoteSchema>
 type OutputFact = z.infer<typeof outputFactSchema>
 type ProxyFact = z.infer<typeof proxyFactSchema>
 type ScanResult = z.infer<typeof scanResultSchema>
-type TandemFact = z.infer<typeof tandemFactSchema>
+type MontageFact = z.infer<typeof montageFactSchema>
 
-export { boardAnswerSchema, importOutcomeSchema, proxyFactSchema, tandemFactSchema }
+export { boardAnswerSchema, importOutcomeSchema, proxyFactSchema, montageFactSchema }
 export type {
   BoardAnswer,
   ImportOutcome,
@@ -145,5 +145,5 @@ export type {
   OutputFact,
   ProxyFact,
   ScanResult,
-  TandemFact
+  MontageFact
 }

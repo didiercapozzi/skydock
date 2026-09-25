@@ -61,7 +61,7 @@ const board = {
   ],
   outputs: Object.fromEntries(files.map((f) => [f.path, { exists: true, size: f.size }])),
   proxies: {},
-  tandems: {
+  montages: {
     g1: {
       project: true,
       projectPath: '/output/processed/Tandems/Luc Favre/luc_favre_20260801.kdenlive',
@@ -271,7 +271,7 @@ describe('uploading a montage — where it goes', () => {
     await userEvent.click(dialog().getByRole('button', { name: 'Upload', exact: true }))
     await vi.waitFor(() =>
       expect(requests).toContainEqual({
-        intent: 'upload-tandem',
+        intent: 'upload-montage',
         groupId: 'g1',
         plan: {
           zips: DEFAULT_PLAN.zips,
@@ -291,8 +291,8 @@ describe('uploading a montage — where it goes', () => {
 })
 
 /* Uploaded is what the storage holds, not what was once recorded: delete the files over there and
-   the tandem reads as not uploaded again, and says what went missing. */
-describe('an uploaded tandem, checked against the storage', () => {
+   the montage reads as not uploaded again, and says what went missing. */
+describe('an uploaded montage, checked against the storage', () => {
   const dir = '/SkyDock/Tandems/Luc Favre'
   const record = (remotePath: string, size: number) => ({
     remotePath,
@@ -340,9 +340,9 @@ describe('an uploaded tandem, checked against the storage', () => {
   })
 })
 
-/* Freeing an uploaded tandem: offered only once it is up there, never without asking, and what is
+/* Freeing an uploaded montage: offered only once it is up there, never without asking, and what is
    left afterwards says it lives on the storage only. */
-describe('freeing an uploaded tandem', () => {
+describe('freeing an uploaded montage', () => {
   const dir = '/SkyDock/Tandems/Luc Favre'
   const sent = (remotePath: string, size: number) => ({
     remotePath,
@@ -383,11 +383,11 @@ describe('freeing an uploaded tandem', () => {
     expect(requests).toEqual([])
     await userEvent.click(dialog.getByRole('button', { name: /Check and free/ }))
     await vi.waitFor(() =>
-      expect(requests).toContainEqual({ intent: 'free-tandem', groupId: 'g1' })
+      expect(requests).toContainEqual({ intent: 'free-montage', groupId: 'g1' })
     )
   })
 
-  test('is not offered before the tandem is uploaded', async () => {
+  test('is not offered before the montage is uploaded', async () => {
     await renderBoard(board, false)
     await expect.element(page.getByRole('button', { name: 'Free up space…' })).not.toBeInTheDocument()
   })
@@ -427,7 +427,7 @@ describe('emailing the passenger their link', () => {
     const dialog = await openEmail()
     await expect
       .element(dialog.getByLabelText('Subject'))
-      .toHaveValue('Ta vidéo et tes photos de ton saut en tandem')
+      .toHaveValue('Ta vidéo et tes photos de ton saut en montage')
     const preview = dialog.getByTitle('Email preview').element() as HTMLIFrameElement
     expect(preview.srcdoc).toContain('Bonjour Luc,')
     expect(preview.srcdoc).toContain(LINK)
@@ -452,7 +452,7 @@ describe('emailing the passenger their link', () => {
       const url = new URL(opened[0]!)
       expect(url.host).toBe('mail.google.com')
       expect(url.searchParams.get('to')).toBe('luc@example.com')
-      expect(url.searchParams.get('su')).toBe('Ta vidéo et tes photos de ton saut en tandem')
+      expect(url.searchParams.get('su')).toBe('Ta vidéo et tes photos de ton saut en montage')
     } finally {
       window.open = open
     }
@@ -474,9 +474,9 @@ describe('emailing the passenger their link', () => {
   })
 })
 
-/* The storage's own list of tandems, under On the storage: every tandem up there — this machine's
+/* The storage's own list of montages, under On the storage: every montage up there — this machine's
    and the ones it no longer has — with whether the passenger was emailed, and a way to say so. */
-describe('the tandems on the storage', () => {
+describe('the montages on the storage', () => {
   const DIR = '/SkyDock/Tandems'
   const listed = {
     ...board,
@@ -484,7 +484,7 @@ describe('the tandems on the storage', () => {
       dir: DIR,
       problem: null,
       lost: { folders: [], links: [] },
-      tandems: [
+      montages: [
         {
           folder: `${DIR}/Ana Roth`,
           firstname: 'Ana',
@@ -501,7 +501,7 @@ describe('the tandems on the storage', () => {
     }
   }
 
-  test('lists a tandem this machine no longer has, and whether its passenger was emailed', async () => {
+  test('lists a montage this machine no longer has, and whether its passenger was emailed', async () => {
     await renderBoard(listed, false)
     await userEvent.click(
       page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /On the storage/ })
@@ -533,10 +533,10 @@ describe('the tandems on the storage', () => {
   })
 })
 
-/* The list remembers; the storage says what is there. A tandem whose link the storage no longer
+/* The list remembers; the storage says what is there. A montage whose link the storage no longer
    honours, or whose folder it no longer holds, stays on the list for what it says — whether its
    passenger was emailed, that it was freed — but offers nothing that is not there to offer. */
-describe('a tandem on the storage’s list that the storage no longer holds', () => {
+describe('a montage on the storage’s list that the storage no longer holds', () => {
   const DIR = '/SkyDock/Tandems'
   const ana = {
     folder: `${DIR}/Ana Roth`,
@@ -550,7 +550,7 @@ describe('a tandem on the storage’s list that the storage no longer holds', ()
   }
   const lostAs = (lost: { folders: string[]; links: string[] }) => ({
     ...board,
-    storage: { dir: DIR, problem: null, lost, tandems: [ana] }
+    storage: { dir: DIR, problem: null, lost, montages: [ana] }
   })
   const openStorage = () =>
     userEvent.click(
@@ -575,7 +575,7 @@ describe('a tandem on the storage’s list that the storage no longer holds', ()
 })
 
 /* Every passenger walks the same six steps, and the board says where each one is: on their entry in
-   the menu, on their tandem's card, and the whole way in the panel. Luc Favre here is processed,
+   the menu, on their montage's card, and the whole way in the panel. Luc Favre here is processed,
    edited and rendered — so the next thing is the upload. */
 describe('where every passenger has got to', () => {
   test('says on the passenger’s entry in the menu which step is next', async () => {
@@ -602,7 +602,7 @@ describe('where every passenger has got to', () => {
   })
 
   /* a passenger with two jumps has a card for each, and each says its own step */
-  test('marks each of a passenger’s tandem cards with its step', async () => {
+  test('marks each of a passenger’s montage cards with its step', async () => {
     const second = {
       ...board.groups[0],
       id: 'g2',
@@ -618,8 +618,8 @@ describe('where every passenger has got to', () => {
     ])
   })
 
-  /* a passenger with one tandem is that tandem: no card repeats what the panel says */
-  test('draws no card for a passenger’s only tandem, whose panel is already open', async () => {
+  /* a passenger with one montage is that montage: no card repeats what the panel says */
+  test('draws no card for a passenger’s only montage, whose panel is already open', async () => {
     await renderBoard(board, false)
 
     await expect.element(page.getByRole('button', { name: /^Luc Favre, / })).not.toBeInTheDocument()
@@ -631,9 +631,9 @@ describe('where every passenger has got to', () => {
   })
 })
 
-/* A tandem freed and walked to its last step — emailed, as the storage's list says — has nothing
-   left to do here. It leaves the tandems, and is found in the storage's own list. */
-describe('a tandem with nothing left to do', () => {
+/* A montage freed and walked to its last step — emailed, as the storage's list says — has nothing
+   left to do here. It leaves the montages, and is found in the storage's own list. */
+describe('a montage with nothing left to do', () => {
   const DIR = '/SkyDock/Tandems'
   const sent = (name: string) => ({
     remotePath: `${DIR}/Luc Favre/${name}`,
@@ -662,17 +662,17 @@ describe('a tandem with nothing left to do', () => {
         uploaded: { at: 1_785_010_000, film: sent('luc.mp4'), photos: sent('luc.photos.zip') }
       }
     ],
-    storage: { dir: DIR, problem: null, lost: { folders: [], links: [] }, tandems: [entry(emailed)] }
+    storage: { dir: DIR, problem: null, lost: { folders: [], links: [] }, montages: [entry(emailed)] }
   })
   const menu = () => page.getByRole('navigation', { name: 'Folders' })
 
-  test('leaves the tandems once it is freed and the passenger was emailed', async () => {
+  test('leaves the montages once it is freed and the passenger was emailed', async () => {
     const Stub = createRoutesStub([boardRoute(() => freed(true))])
     await render(createElement(Stub, { initialEntries: ['/'] }))
 
     await expect.element(menu().getByRole('heading', { name: /Montages/ })).toBeInTheDocument()
     await expect.element(menu().getByRole('link', { name: /Luc Favre/ })).not.toBeInTheDocument()
-    /* still there, where every tandem on the storage is */
+    /* still there, where every montage on the storage is */
     await expect.poll(() => menu().element().textContent).toContain('On the storage')
   })
 
@@ -686,9 +686,9 @@ describe('a tandem with nothing left to do', () => {
   })
 })
 
-/* There is no page of every tandem: a tandem is worked on one passenger at a time. The Tandems
+/* There is no page of every montage: a montage is worked on one passenger at a time. The Montages
    heading is where a jump is dropped to become one, and a click on it goes nowhere. */
-describe('the tandems in the menu', () => {
+describe('the montages in the menu', () => {
   test('offers no overall view, only the passengers', async () => {
     await renderBoard(board, false)
     const menu = page.getByRole('navigation', { name: 'Folders' })
@@ -715,7 +715,7 @@ describe('a film the editor has just rendered', () => {
         }
       }
     )
-    const waiting = { ...board, tandems: { g1: { ...board.tandems.g1, film: null } } }
+    const waiting = { ...board, montages: { g1: { ...board.montages.g1, film: null } } }
     await renderBoard(waiting, false)
     const trail = page.getByRole('list', { name: 'Where this montage has got to' })
     await expect
@@ -724,10 +724,10 @@ describe('a film the editor has just rendered', () => {
 
     stream!.onmessage?.({
       data: JSON.stringify({
-        kind: 'tandem',
+        kind: 'montage',
         groupId: 'g1',
         who: 'Luc Favre',
-        fact: board.tandems.g1,
+        fact: board.montages.g1,
         rendered: true
       })
     })
@@ -743,9 +743,9 @@ describe('a film the editor has just rendered', () => {
   })
 })
 
-/* A tandem can be deleted at whatever step it has reached — this one has an edit and a film — and
+/* A montage can be deleted at whatever step it has reached — this one has an edit and a film — and
    deleting asks first, saying what goes with it and that its files come back loose. */
-describe('deleting a tandem that is already edited and rendered', () => {
+describe('deleting a montage that is already edited and rendered', () => {
   test('is offered on its panel, and says what goes and where the files go', async () => {
     requests.length = 0
     await renderBoard(board, false)
@@ -759,14 +759,14 @@ describe('deleting a tandem that is already edited and rendered', () => {
 
     await userEvent.click(dialog.getByRole('button', { name: 'Delete', exact: true }))
     await vi.waitFor(() =>
-      expect(requests).toContainEqual({ intent: 'delete-tandem', groupId: 'g1' })
+      expect(requests).toContainEqual({ intent: 'delete-montage', groupId: 'g1' })
     )
   })
 })
 
-/* A board scanned again from nothing has forgotten its tandems, and the storage's list has not: a
-   tandem whose files are here, waiting to be sorted, is offered back where the list names it. */
-describe('a tandem this board has forgotten', () => {
+/* A board scanned again from nothing has forgotten its montages, and the storage's list has not: a
+   montage whose files are here, waiting to be sorted, is offered back where the list names it. */
+describe('a montage this board has forgotten', () => {
   const DIR = '/SkyDock/Tandems'
   const entry = (who: [string, string], ids: string[]) => ({
     folder: `${DIR}/${who.join(' ')}`,
@@ -794,7 +794,7 @@ describe('a tandem this board has forgotten', () => {
       dir: DIR,
       problem: null,
       lost: { folders: [], links: [] },
-      tandems: [entry(['Ana', 'Roth'], ['a1', 'a2']), entry(['Luc', 'Favre'], ['v1', 'v2'])]
+      montages: [entry(['Ana', 'Roth'], ['a1', 'a2']), entry(['Luc', 'Favre'], ['v1', 'v2'])]
     }
   }
 
@@ -812,7 +812,7 @@ describe('a tandem this board has forgotten', () => {
     await userEvent.click(restore)
     await vi.waitFor(() =>
       expect(requests).toContainEqual({
-        intent: 'restore-tandems',
+        intent: 'restore-montages',
         folders: [`${DIR}/Ana Roth`]
       })
     )

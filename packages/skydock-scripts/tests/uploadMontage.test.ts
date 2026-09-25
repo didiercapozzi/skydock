@@ -3,10 +3,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs'
 import * as http from 'node:http'
 import * as path from 'node:path'
-import { uploadTandem } from '../src/uploadTandem'
+import { uploadMontage } from '../src/uploadMontage'
 import { slugOf, stemOf } from '../src/sending'
 import type { SendPlan } from '../src/types'
-import { statTandemArtifacts, tandemArtifacts } from '../src/tandem'
+import { statMontageArtifacts, montageArtifacts } from '../src/montageArtifacts'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
 import { saveNasSession } from '../src/nas'
 import type { NasSession } from '../src/nas'
@@ -87,7 +87,7 @@ type SceneOptions = {
   noPassenger?: boolean
 }
 
-/* A tandem as it is the moment the edit is finished: processed copies in place, a project beside
+/* A montage as it is the moment the edit is finished: processed copies in place, a project beside
    them, and whatever the editor left behind. */
 const scene = (options: SceneOptions = {}) => {
   const {
@@ -98,7 +98,7 @@ const scene = (options: SceneOptions = {}) => {
     noPassenger = false
   } = options
   const passenger = noPassenger ? undefined : { firstname: 'Luc', lastname: 'Favre' }
-  const outputDir = createTmpDir('skydock-upload-tandem-')
+  const outputDir = createTmpDir('skydock-upload-montage-')
   const originals = path.join(outputDir, 'original_files')
   const groupDir = path.join(outputDir, 'processed', 'Tandems', 'Luc Favre')
   fs.mkdirSync(path.join(groupDir, 'videos'), { recursive: true })
@@ -193,7 +193,7 @@ const upload = async (
   process.env.SKYDOCK_CONFIG_DIR = path.join(built.outputDir, 'config')
   saveNasSession({ hostname: server.url, username: 'u', sessionId: 'sid' })
   try {
-    const result = await uploadTandem({
+    const result = await uploadMontage({
       outputDir: built.outputDir,
       manifest: built.manifest,
       group: built.group,
@@ -408,7 +408,7 @@ describe('uploading a montage — what is refused', () => {
     process.env.SKYDOCK_CONFIG_DIR = path.join(built.outputDir, 'config')
     saveNasSession({ hostname: server.url, username: 'u', sessionId: 'sid' })
     await expect(
-      uploadTandem({
+      uploadMontage({
         outputDir: built.outputDir,
         manifest: built.manifest,
         group: built.group,
@@ -444,22 +444,22 @@ describe('uploading a montage — the awkward cases', () => {
   })
 })
 
-describe('what the board knows of a tandem’s project and film', () => {
+describe('what the board knows of a montage’s project and film', () => {
   it('sees the project and the film once they are there', () => {
     const { outputDir, manifest, group } = scene()
-    const found = tandemArtifacts(outputDir, group)
+    const found = montageArtifacts(outputDir, group)
     expect(found.project).toBe(true)
     expect(found.film?.size).toBe(128)
-    expect(statTandemArtifacts(manifest, outputDir).g1.project).toBe(true)
+    expect(statMontageArtifacts(manifest, outputDir).g1.project).toBe(true)
   })
 
   it('reports no film before the render', () => {
     const { outputDir, group } = scene({ film: null })
-    expect(tandemArtifacts(outputDir, group).film).toBeNull()
+    expect(montageArtifacts(outputDir, group).film).toBeNull()
   })
 
-  it('leaves a jump that is not a tandem out of it', () => {
+  it('leaves a jump that is not a montage out of it', () => {
     const { outputDir, manifest } = scene({ noPassenger: true })
-    expect(statTandemArtifacts(manifest, outputDir)).toEqual({})
+    expect(statMontageArtifacts(manifest, outputDir)).toEqual({})
   })
 })

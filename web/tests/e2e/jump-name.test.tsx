@@ -114,7 +114,7 @@ const renderJump = async (group: ManifestGroup) => {
       locked: null,
       statusOf: () => LOCAL,
       passengers: [],
-      onMakeTandem: () => {},
+      onNameMontage: () => {},
       onName: () => {},
       onSelectFiles: () => {},
       onRename

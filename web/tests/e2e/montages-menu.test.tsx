@@ -16,7 +16,7 @@ import { boardRoute } from './board-route'
 
 const AT = Math.floor(new Date(2026, 7, 1, 10, 0, 0).getTime() / 1000)
 
-const tandem = (id: string, passenger: { firstname: string; lastname: string }) => ({
+const montage = (id: string, passenger: { firstname: string; lastname: string }) => ({
   id,
   label: id,
   day: '01.08.2026',
@@ -30,15 +30,15 @@ const tandem = (id: string, passenger: { firstname: string; lastname: string }) 
 
 const board = {
   groups: [
-    tandem('g1', { firstname: 'Luc', lastname: 'Favre' }),
-    tandem('g2', { firstname: 'Ana', lastname: '' }),
-    tandem('g6', { firstname: '', lastname: '' })
+    montage('g1', { firstname: 'Luc', lastname: 'Favre' }),
+    montage('g2', { firstname: 'Ana', lastname: '' }),
+    montage('g6', { firstname: '', lastname: '' })
   ],
   looseFiles: [],
   destinations: [{ name: 'Tandems' }],
   outputs: {},
   proxies: {},
-  tandems: {},
+  montages: {},
   remote: null,
   storage: null,
   hasManifest: true,
@@ -64,7 +64,7 @@ describe('the montages in the menu', () => {
 describe('making a montage from a jump', () => {
   const fresh = {
     ...board,
-    groups: [{ ...tandem('g3', { firstname: '', lastname: '' }), destination: undefined, montageJump: undefined }]
+    groups: [{ ...montage('g3', { firstname: '', lastname: '' }), destination: undefined, montageJump: undefined }]
   }
   const sent: unknown[] = []
   const renderFresh = async () => {
@@ -108,7 +108,7 @@ describe('a clip whose proxy could not be made', () => {
   test('says so on its row, with the reason', async () => {
     const failed = {
       ...board,
-      groups: [{ ...tandem('g4', { firstname: '', lastname: '' }), destination: undefined, montageJump: undefined }],
+      groups: [{ ...montage('g4', { firstname: '', lastname: '' }), destination: undefined, montageJump: undefined }],
       proxies: {
         '/o/g4a.MP4': { state: 'none', play: '/o/g4a.MP4', reason: 'No space left on device' },
         '/o/g4b.MP4': { state: 'none', play: '/o/g4b.MP4' }
@@ -129,7 +129,7 @@ describe('processing a dropzone', () => {
   test('offers Cancel while it runs, which asks for the processing to stop', async () => {
     const dropzone = {
       ...board,
-      groups: [{ ...tandem('g5', { firstname: '', lastname: '' }), destination: 'Yverdon', montageJump: undefined }],
+      groups: [{ ...montage('g5', { firstname: '', lastname: '' }), destination: 'Yverdon', montageJump: undefined }],
       destinations: [{ name: 'Yverdon' }]
     }
     const sent: { intent: string }[] = []

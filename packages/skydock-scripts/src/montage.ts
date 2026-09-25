@@ -47,7 +47,7 @@ const montageOptionsSchema = z.object({
   baseName: z.string(),
   title: z.string(),
   clips: z.array(montageClipSchema),
-  /* Stills for the bin, beside the clips. A tandem whose camera caught no video is still a film
+  /* Stills for the bin, beside the clips. A montage whose camera caught no video is still a film
      somebody makes — of its photos — and these are what it is made of. */
   photos: z.array(z.string()).default([]),
   /* a template folder's name, or a path straight to one — both only ever chosen, never guessed */
@@ -62,7 +62,7 @@ type MontageClip = z.infer<typeof montageClipSchema>
 type MontageOptions = z.input<typeof montageOptionsSchema>
 
 /* The film is rendered by the card rather than by the processor. A delivery film is encoded once and
-   watched, never re-encoded, so what matters is the hour it saves on a full-length tandem; kdenlive
+   watched, never re-encoded, so what matters is the hour it saves on a full-length montage; kdenlive
    ships this profile and shows it only where ffmpeg has the encoder, so on a machine without such a
    card the dialog simply opens on its own list instead. */
 const RENDER_PROFILE = 'NVENC H264 VBR'

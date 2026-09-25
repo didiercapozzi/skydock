@@ -13,7 +13,7 @@ import type { LiveFile } from '../hooks/useLiveProgress'
 import type { ManifestFile } from './types'
 import { clock, formatSize, formatTime, getPictureUrl, isVideoFile } from './utils'
 
-/* Videos and photos are two different jobs on a tandem — 15 clips to cut, 500 stills to cull — so
+/* Videos and photos are two different jobs on a montage — 15 clips to cut, 500 stills to cull — so
    the badges say which is on screen. The counts are always of everything there, never of what the
    filter left. */
 type Kind = 'all' | 'video' | 'photo'
@@ -80,7 +80,7 @@ const lanesOf = (
   return kind === 'all' && videos.length > 0 && photos.length > 0 ? [videos, photos] : [sorted]
 }
 
-/* Why a file can no longer be changed here, if it cannot: freed, frozen with its tandem's edit, or
+/* Why a file can no longer be changed here, if it cannot: freed, frozen with its montage's edit, or
    uploaded — each the server's rule as much as the page's. */
 const FREED_LOCKED = 'Freed from this machine — it is on the storage only now.'
 

@@ -3,7 +3,7 @@ import { isMontage } from './filed'
 import type { ManifestGroup, ManifestPassenger } from './types'
 
 /* Where montages are worked on, on this machine: each in a folder of its own inside this one. It
-   keeps the name tandems had, because a project names its clips by where they are, and moving them
+   keeps the name montages had, because a project names its clips by where they are, and moving them
    would leave every edit pointing at nothing. */
 const MONTAGES_FOLDER = 'Tandems'
 

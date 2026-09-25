@@ -2,7 +2,7 @@ import { createElement } from 'react'
 import { describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
-import { TandemActions } from '../../app/components/tandem-card'
+import { MontageCardActions } from '../../app/components/montage-card'
 import type { ManifestGroup } from '../../app/components/types'
 
 /* The editing project waits until every clip in it has its proxy, or has failed to get one: the
@@ -20,7 +20,7 @@ const processed: ManifestGroup = {
 
 const actions = (proxiesWaiting: number, onMontage = vi.fn()) =>
   render(
-    createElement(TandemActions, {
+    createElement(MontageCardActions, {
       group: processed,
       busy: null,
       blocked: { blocked: false, message: null },

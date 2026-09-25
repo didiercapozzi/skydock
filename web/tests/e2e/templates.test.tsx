@@ -43,7 +43,7 @@ const board = {
   destinations: [{ name: 'Tandems' }],
   outputs: { '/o/GX01.MP4': { exists: true, size: 1 } },
   proxies: {},
-  tandems: { g1: { project: false, projectPath: '/p/luc.kdenlive', film: null, baseName: 'luc' } },
+  montages: { g1: { project: false, projectPath: '/p/luc.kdenlive', film: null, baseName: 'luc' } },
   remote: null,
   storage: null,
   hasManifest: true,

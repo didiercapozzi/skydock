@@ -1,10 +1,10 @@
 import { Go, Mini } from './buttons'
 import { Line, Modal, Spacer } from './modal'
 import { formatFilmSize, plural } from './utils'
-import type { TandemFact } from '@skydock/scripts'
+import type { MontageFact } from '@skydock/scripts'
 import type { ManifestGroup } from './types'
 
-/* Resetting or deleting a tandem throws away work, some of which only a person can make again — the
+/* Resetting or deleting a montage throws away work, some of which only a person can make again — the
    edit above all. So the dialog says exactly what goes and what stays before anything does, and the
    one button that does it says which of the two it is. */
 
@@ -22,7 +22,7 @@ const TakeBackDialog = ({
   who: string
   /* every jump of the passenger, because they share the one folder */
   groups: ManifestGroup[]
-  facts: (TandemFact | undefined)[]
+  facts: (MontageFact | undefined)[]
   onClose: () => void
   onConfirm: () => void
 }) => {
@@ -73,7 +73,7 @@ const TakeBackDialog = ({
             <Line mark='✓'>the name, {who}</Line>
             <Line mark='✓'>every crop and frame, and every corrected time</Line>
             <Line mark='✓'>
-              {plural(groups.length, 'jump')}, {plural(files.length, 'file')}, still under Tandems
+              {plural(groups.length, 'jump')}, {plural(files.length, 'file')}, still under Montages
             </Line>
           </>
         ) : (

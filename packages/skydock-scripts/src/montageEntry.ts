@@ -4,7 +4,7 @@ import { z } from 'zod'
    board can read the list it is sent. */
 
 const montageEntrySchema = z.object({
-  /* the passenger's folder on the storage — what identifies the tandem */
+  /* the passenger's folder on the storage — what identifies the montage */
   folder: z.string(),
   firstname: z.string(),
   lastname: z.string(),
@@ -21,16 +21,21 @@ const montageEntrySchema = z.object({
   emailed: z.object({ at: z.number(), to: z.string().optional() }).optional(),
   /* freed from the machine that made it: the storage is the only copy since */
   freedAt: z.number().optional(),
-  /* Which files the tandem is made of — each by what it contains, which is what a file is known by
+  /* Which files the montage is made of — each by what it contains, which is what a file is known by
      whatever it is called and wherever it sits — and the time it was given, which may be one a
-     person set right. It is what lets the tandem be put back on a board that has forgotten it. */
+     person set right. It is what lets the montage be put back on a board that has forgotten it. */
   files: z.array(z.object({ id: z.string(), filename: z.string(), mtime: z.number() })).optional()
 })
 
-const montageIndexSchema = z.object({
-  version: z.literal(1),
-  tandems: z.array(montageEntrySchema)
-})
+/* The entries were under `tandems` before montages had the name; a list written then is read the
+   same, and written back under `montages`. */
+const montageIndexSchema = z.preprocess(
+  (value) =>
+    typeof value === 'object' && value !== null && 'tandems' in value && !('montages' in value)
+      ? { ...value, montages: value.tandems }
+      : value,
+  z.object({ version: z.literal(1), montages: z.array(montageEntrySchema) })
+)
 
 /* What the storage no longer holds of the montages its list names, asked of the storage itself:
    folders it does not have any more, and folders whose link it no longer honours — revoked, or

@@ -20,7 +20,7 @@ describe('the passenger email', () => {
       hasFilm: true,
       photos: 12
     })
-    expect(email.subject).toBe('Ta vidéo et tes photos de ton saut en tandem')
+    expect(email.subject).toBe('Ta vidéo et tes photos de ton saut en montage')
     expect(email.body).toContain('Bonjour Luc,')
     expect(email.body).toContain('du 1er août 2026 sont prêtes')
   })
@@ -41,7 +41,7 @@ describe('the passenger email', () => {
   /* pasted into a message, a whole page brings its <title> along as a stray first line */
   it('is copied as the email alone, with no page and no title around it', () => {
     const { fragment } = renderPassengerEmail({
-      subject: 'Ta vidéo et tes photos de ton saut en tandem',
+      subject: 'Ta vidéo et tes photos de ton saut en montage',
       body: 'Bonjour Luc,',
       signature: '',
       shareUrl: LINK
@@ -49,7 +49,7 @@ describe('the passenger email', () => {
     expect(fragment.startsWith('<table')).toBe(true)
     expect(fragment).not.toMatch(/<title|<html|<head|<body/)
     /* the subject is still shown once, as the heading inside the email */
-    expect(fragment.split('Ta vidéo et tes photos de ton saut en tandem')).toHaveLength(2)
+    expect(fragment.split('Ta vidéo et tes photos de ton saut en montage')).toHaveLength(2)
   })
 
   it('never lets what was typed turn into markup', () => {

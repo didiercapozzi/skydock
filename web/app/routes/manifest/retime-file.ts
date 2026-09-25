@@ -3,7 +3,7 @@ import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 
 /* One file's time corrected on its own (RULES, Times and dates). An uploaded file is past editing,
-   and a tandem with an edit takes no change at all. */
+   and a montage with an edit takes no change at all. */
 const retimeFileIntent: Intent = ({
   data,
   manifest,

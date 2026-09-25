@@ -160,7 +160,7 @@ const parseExiftoolCsv = (csv: string) => {
   return map
 }
 
-/* runs at most `limit` promises at a time and keeps the results in input order — a tandem of
+/* runs at most `limit` promises at a time and keeps the results in input order — a montage of
    several hundred files must not open several hundred DSM jobs at once */
 const mapWithLimit = async <T, R>(
   items: T[],

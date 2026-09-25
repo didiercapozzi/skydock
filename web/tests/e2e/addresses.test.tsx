@@ -42,7 +42,7 @@ const board = {
   destinations: [{ name: 'yverdon' }, { name: 'epagny' }],
   outputs: {},
   proxies: {},
-  tandems: {},
+  montages: {},
   remote: null,
   storage: null,
   hasManifest: true,

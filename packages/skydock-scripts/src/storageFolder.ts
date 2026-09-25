@@ -8,7 +8,7 @@ import { getOutputDir, isVideoFile } from './utils'
 
 /* A place on the board is connected to its folder on the storage: a dropzone to the folder its days
    are uploaded into, a passenger to their own. What is up there can be listed and played from the
-   board whether or not any of it is still on this machine — a freed tandem, last month's dropzone
+   board whether or not any of it is still on this machine — a freed montage, last month's dropzone
    days — because the storage is where the work ends up, and the board is where it is looked for.
 
    Read-only, all of it. SkyDock never deletes from the storage, and nothing here writes to it. */
@@ -16,7 +16,7 @@ import { getOutputDir, isVideoFile } from './utils'
 const PHOTO = /\.(jpe?g|png|heic|webp|gif)$/i
 
 /* Where a place's folder is on the storage: the very folder its uploads go to, worked out the same
-   way the upload works it out — and for a tandem already uploaded, the folder it actually went to,
+   way the upload works it out — and for a montage already uploaded, the folder it actually went to,
    which is what stays true if the default folder is changed afterwards. */
 const storageDirOf = (
   manifest: Manifest,

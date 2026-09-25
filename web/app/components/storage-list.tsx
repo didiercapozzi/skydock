@@ -150,28 +150,28 @@ const StorageList = ({
 }: {
   storage: {
     dir: string
-    tandems: MontageEntry[]
+    montages: MontageEntry[]
     lost: MontageLost
     problem: string | null
   } | null
-  /* whether this tandem is still on this board, and the name to open it under */
+  /* whether this montage is still on this board, and the name to open it under */
   isHere: (entry: MontageEntry) => boolean
-  /* how many of a tandem's files are on this board, still to be sorted */
+  /* how many of a montage's files are on this board, still to be sorted */
   waitingFiles: (entry: MontageEntry) => number
   onOpen: (entry: MontageEntry) => void
   onEmail: (entry: MontageEntry) => void
-  /* put these tandems back on the board, by their folder on the storage */
+  /* put these montages back on the board, by their folder on the storage */
   onRestore: (folders: string[]) => void
 }) => {
   if (!storage) return null
-  const forgotten = storage.tandems.filter((t) => !isHere(t) && waitingFiles(t) > 0)
-  const waiting = storage.tandems.filter((t) => !t.emailed).length
+  const forgotten = storage.montages.filter((t) => !isHere(t) && waitingFiles(t) > 0)
+  const waiting = storage.montages.filter((t) => !t.emailed).length
   return (
     <section className='mt-5'>
       <div className='flex flex-wrap items-baseline gap-2 px-0.5 pb-1.5'>
         <h3 className='m-0 text-[13px] font-semibold text-ink'>On the storage</h3>
         <span className='text-[12px] text-ink-2'>
-          {storage.tandems.length} montage{storage.tandems.length === 1 ? '' : 's'}
+          {storage.montages.length} montage{storage.montages.length === 1 ? '' : 's'}
           {waiting > 0 ? ` · ${waiting} not emailed yet` : ''}
         </span>
         <code className='ml-auto font-mono text-[11px] text-ink-3'>{storage.dir}</code>
@@ -192,13 +192,13 @@ const StorageList = ({
         <p className='m-0 rounded-md bg-local-soft px-3 py-2 text-[12.5px] text-local'>
           The storage’s list of montages could not be read: {storage.problem}
         </p>
-      ) : storage.tandems.length === 0 ? (
+      ) : storage.montages.length === 0 ? (
         <p className='m-0 rounded-[9px] border border-dashed border-line px-3 py-4 text-center text-[12.5px] text-ink-3'>
           No montage uploaded yet — each one is listed here once it is.
         </p>
       ) : (
         <div className='overflow-hidden rounded-[9px] border border-line bg-pane'>
-          {storage.tandems.map((entry) => (
+          {storage.montages.map((entry) => (
             <Row
               key={entry.folder}
               entry={entry}

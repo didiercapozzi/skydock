@@ -5,9 +5,9 @@ import {
   parentOf,
   passengerFrom,
   passengerName,
-  tandemUploadKey
+  montageUploadKey
 } from '@skydock/scripts'
-import type { TandemFact } from '@skydock/scripts'
+import type { MontageFact } from '@skydock/scripts'
 import { useState } from 'react'
 import type { UploadProgressState } from '../hooks/useUploadProgress'
 import { Go, Mini } from './buttons'
@@ -46,7 +46,7 @@ const PassengerName = ({
   )
 }
 
-/* A few frames off the clips, which is how you tell who a tandem belongs to. A name is read off a
+/* A few frames off the clips, which is how you tell who a montage belongs to. A name is read off a
    form or a face, so asking for one beside a pair of counts is asking somebody to remember what
    they saw on another screen. Videos first, and only then photos, because a face is more likely in
    the footage than in a burst of canopy shots. */
@@ -108,7 +108,7 @@ type Passenger = NonNullable<ManifestGroup['passenger']>
 
    What already belongs to a place is copied in rather than moved, and `keeps` names that place, so
    the person knows before pressing that it keeps its own. */
-const MakeTandem = ({
+const NameMontage = ({
   group,
   initial = '',
   keeps,
@@ -182,9 +182,9 @@ const MakeTandem = ({
 }
 
 /* the film, once it exists: the one thing here nobody can make again — so it is said out loud, above
-   the tandem it came from, rather than as a size beside its buttons. How long it runs is what tells a
+   the montage it came from, rather than as a size beside its buttons. How long it runs is what tells a
    whole jump from a test render of its first minute. */
-const FilmStrip = ({ facts }: { facts?: TandemFact }) => {
+const FilmStrip = ({ facts }: { facts?: MontageFact }) => {
   const [watching, setWatching] = useState(false)
   if (!facts?.film) return null
   const { seconds, size, mtime } = facts.film
@@ -268,7 +268,7 @@ const ProjectPath = ({ path: projectPath }: { path: string }) => {
    opens, Deliver hands over what was rendered. Deliver stays enabled with no film yet, because a
    disabled button cannot say why — and pressing it is also how the board looks again, there being
    nothing that notices a render finishing. */
-const TandemActions = ({
+const MontageCardActions = ({
   group,
   facts,
   busy,
@@ -283,14 +283,14 @@ const TandemActions = ({
   onFree
 }: {
   group: ManifestGroup
-  facts?: TandemFact
+  facts?: MontageFact
   busy: string | null
   blocked: { blocked: boolean; message: string | null }
   /* how many of its clips are still getting their proxy — the project waits for them */
   proxiesWaiting?: number
   named: boolean
   onProcess: () => void
-  /* stops the processing this tandem started, while it runs */
+  /* stops the processing this montage started, while it runs */
   onCancelProcess?: () => void
   onMontage: () => void
   onOpenMontage: () => void
@@ -299,7 +299,7 @@ const TandemActions = ({
   onFree?: () => void
 }) => {
   const working = busy !== null
-  const uploadKey = tandemUploadKey(group.id)
+  const uploadKey = montageUploadKey(group.id)
   if (!group.processed)
     return (
       <span className='ml-auto flex flex-wrap items-center gap-1.5'>
@@ -342,9 +342,9 @@ const TandemActions = ({
         onClick={onOpenMontage}>
         {busy === `open:${group.id}` ? 'Opening…' : 'Open in kdenlive'}
       </Mini>
-      {/* the film itself is shown above the tandem once it exists */}
+      {/* the film itself is shown above the montage once it exists */}
       {!facts.film && <span className='text-[12px] text-ink-3'>edit and render it</span>}
-      {/* A tandem with an edit is prepared again like any other: the copies are rewritten under the
+      {/* A montage with an edit is prepared again like any other: the copies are rewritten under the
           same names and the project is left where it is, so a trim or a frame corrected afterwards
           can still reach the footage the editor plays (RULES, The editing project). */}
       <Mini
@@ -374,7 +374,7 @@ const TandemActions = ({
   )
 }
 
-/* The one upload strip, wherever an upload is happening — the same shape in a day header, a tandem
+/* The one upload strip, wherever an upload is happening — the same shape in a day header, a montage
    header or on its own, so it is recognised before it is read. */
 const UploadStrip = ({ progress }: { progress: UploadProgressState }) => {
   const percent =
@@ -436,7 +436,7 @@ const UploadStrip = ({ progress }: { progress: UploadProgressState }) => {
 
 /* Once it is uploaded, what matters is what is on the NAS — not the files it was made from. One
    parcel per folder up there, each listing exactly what is in it. That is what makes an uploaded
-   tandem worth opening months later. */
+   montage worth opening months later. */
 const NasCard = ({
   title,
   dir,
@@ -486,7 +486,7 @@ const NasCard = ({
   </div>
 )
 
-/* Uploaded, then gone from the storage: the tandem reads as not uploaded again, and this says why —
+/* Uploaded, then gone from the storage: the montage reads as not uploaded again, and this says why —
    silently dropping the tick would look like SkyDock had forgotten, not like the files had gone. */
 const GoneFromStorage = ({ gone, at }: { gone: { remotePath: string }[]; at?: number }) =>
   gone.length === 0 ? null : (
@@ -567,14 +567,14 @@ const UploadedCards = ({ group }: { group: ManifestGroup }) => {
 }
 
 export {
-  MakeTandem,
+  NameMontage,
   UploadedCards,
   GoneFromStorage,
   FilmStrip,
   PassengerFrames,
   PassengerName,
   ProjectPath,
-  TandemActions,
+  MontageCardActions,
   UploadStrip
 }
 export type { Passenger }

@@ -28,7 +28,7 @@ type StatusContext = {
   }
   output?: OutputFact
   remote?: RemoteListing | null
-  /* the file belongs to a tandem that has an edit, which freezes it (RULES, The editing project) */
+  /* the file belongs to a montage that has an edit, which freezes it (RULES, The editing project) */
   inEdit?: boolean
 }
 

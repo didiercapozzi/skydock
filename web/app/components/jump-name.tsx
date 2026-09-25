@@ -5,7 +5,7 @@ import { Form, FormField, useForm } from '../../../packages/ui/forms'
 import { Go, Mini } from './buttons'
 import { fromLocalInput, toLocalInput } from './jump-time'
 import { INPUT } from './modal'
-import type { Passenger } from './tandem-card'
+import type { Passenger } from './montage-card'
 
 /* Blank is an answer too: a jump nobody named is called by its place among the jumps, as every jump the
    scan finds is. */

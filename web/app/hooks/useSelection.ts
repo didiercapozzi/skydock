@@ -29,7 +29,7 @@ const useSelection = ({
 }: {
   /* the files on screen, in the order they are drawn */
   order: ManifestFile[]
-  /* whether a file can be picked at all — uploaded, freed, or in a tandem with an edit, it cannot */
+  /* whether a file can be picked at all — uploaded, freed, or in a montage with an edit, it cannot */
   pickable: (id: string) => boolean
   /* a dialog or the preview has the keyboard */
   paused: boolean
@@ -37,7 +37,7 @@ const useSelection = ({
   onDelete: (ids: string[]) => void
 }) => {
   const [picks, setPickedFiles] = useState<string[]>([])
-  /* A file can stop being pickable while it is picked — the tandem it is in gets an edit, or goes up
+  /* A file can stop being pickable while it is picked — the montage it is in gets an edit, or goes up
      to the storage — and then it simply stops being one of the picks. */
   const pickedFiles = picks.filter(pickable)
   const [anchor, setAnchor] = useState<string | null>(null)

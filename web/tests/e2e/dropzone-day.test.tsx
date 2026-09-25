@@ -44,7 +44,7 @@ const boardWith = (files: ReturnType<typeof shot>[]) => ({
     files.flatMap((f) => (f.processed ? [[f.path, { exists: true, size: f.size }]] : []))
   ),
   proxies: {},
-  tandems: {},
+  montages: {},
   remote: null,
   storage: null,
   hasManifest: true,

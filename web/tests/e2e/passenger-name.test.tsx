@@ -5,7 +5,7 @@ import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 
 import { JumpPanel } from '../../app/components/inspector'
-import { PassengerName } from '../../app/components/tandem-card'
+import { PassengerName } from '../../app/components/montage-card'
 import type { ManifestGroup } from '../../app/components/types'
 
 /* A montage is named once, by one name — a person, an event — and that name is its folder. It is
@@ -94,7 +94,7 @@ describe('the panel a montage is named on', () => {
             locked: null,
             statusOf: () => 'local' as const,
             passengers: [],
-            onMakeTandem: () => {},
+            onNameMontage: () => {},
             onName,
             onSelectFiles: () => {}
           })

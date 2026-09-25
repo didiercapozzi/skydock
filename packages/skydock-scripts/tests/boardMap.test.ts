@@ -20,7 +20,7 @@ import { JOURNEYS, SPINE, journeysAdrift } from '../src/boardMapJourneys'
    catch. Everything below is the shapes the intents are really written in. */
 
 const KNOWN = {
-  EDIT_LOCKED: 'This tandem has an edit — change it in kdenlive.',
+  EDIT_LOCKED: 'This montage has an edit — change it in kdenlive.',
   UPLOADED_LOCKED: 'On the NAS — cropping, re-timing and moving are closed.'
 }
 
@@ -30,7 +30,7 @@ describe('the words above an intent', () => {
 /* a comment about the import, not about the work */
 import { deleteJump } from '../../../../packages/skydock-scripts/src/moveFiles'
 
-/* A jump is deleted and its files go back to Unsorted, loose (RULES, Jumps). Not a tandem with an
+/* A jump is deleted and its files go back to Unsorted, loose (RULES, Jumps). Not a montage with an
    edit, and not while something is being processed. */
 const deleteJumpIntent: Intent = ({ refuse }) => refuse('no')
 `
@@ -158,29 +158,29 @@ const intents: Record<ActionData['intent'], Intent> = {
 
 describe('an intent made by calling something else in the same file', () => {
   it('is read as the thing it calls, since that is where the work is', () => {
-    const args = `z.enum(['reset-tandem'])`
-    const api = `import { resetTandemIntent } from './manifest/take-back'
+    const args = `z.enum(['reset-montage'])`
+    const api = `import { resetMontageIntent } from './manifest/take-back'
 const intents: Record<ActionData['intent'], Intent> = {
-  'reset-tandem': resetTandemIntent
+  'reset-montage': resetMontageIntent
 }`
     const file = `/* Back to before processing, keeping every decision (RULES, Taking a montage back). */
 const takeBack =
   (take) =>
   ({ manifestPath, manifest, refuse }) => {
-    if (busy) return refuse('This tandem is being processed — wait for it to finish.')
+    if (busy) return refuse('This montage is being processed — wait for it to finish.')
     saveManifest(manifestPath, manifest)
   }
 
-const resetTandemIntent = takeBack(resetTandem)
+const resetMontageIntent = takeBack(resetMontage)
 
-export { resetTandemIntent }`
+export { resetMontageIntent }`
 
     const map = mapOfTheBoard({ args, api, sourceOf: () => file, known: KNOWN })
 
     const [intent] = map.intents
     expect(intent?.rule).toBe('Taking a montage back')
     expect(intent?.refusals).toEqual([
-      { said: 'This tandem is being processed — wait for it to finish.', sure: true }
+      { said: 'This montage is being processed — wait for it to finish.', sure: true }
     ])
     expect(intent?.reaches).toContain('writes the record')
   })

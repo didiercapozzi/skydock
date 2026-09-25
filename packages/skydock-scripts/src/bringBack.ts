@@ -15,7 +15,7 @@ import type { Manifest, ManifestFile } from './types'
    reused: it is fetched from where its upload record says it went, into the place its entry says it
    lived, and its entry stops reading as freed.
 
-   What comes back is what is up there, and that is not always the same thing. A tandem's originals
+   What comes back is what is up there, and that is not always the same thing. A montage's originals
    go up as themselves, so the original returns, whole, and everything decided about it still
    applies. A dropzone never sends originals — what went up is the copy that was delivered, already
    trimmed, cropped and turned — so what returns is that copy. It is told by its contents: the same

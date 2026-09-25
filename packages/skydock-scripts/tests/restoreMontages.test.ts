@@ -1,14 +1,14 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { reclusterGroups } from '../src/clustering'
-import { restorableFiles, restoreTandems } from '../src/restoreTandems'
+import { restorableFiles, restoreMontages } from '../src/restoreMontages'
 import type { MontageEntry, MontageIndex } from '../src/montageEntry'
 import { entryOfMontage, upsert } from '../src/montageIndex'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
 
-/* A board scanned again from nothing has forgotten its tandems; the storage's list has not. Every
-   tandem uploaded is written down with the files it was made of, each by what it contains, and a
-   scan from scratch gives every file that identity again — so the tandem is put back: the same
+/* A board scanned again from nothing has forgotten its montages; the storage's list has not. Every
+   montage uploaded is written down with the files it was made of, each by what it contains, and a
+   scan from scratch gives every file that identity again — so the montage is put back: the same
    files, under the same name, at the times they had. */
 
 /* 1 August 2026, 10:00 local, as the camera said — and an hour later, as a person set it right */
@@ -31,8 +31,8 @@ const sent = (name: string) => ({
   at: 1
 })
 
-/* Luc Favre's tandem as it was when it was uploaded: two clips, an hour on from the camera's clock */
-const uploadedTandem = (): ManifestGroup => ({
+/* Luc Favre's montage as it was when it was uploaded: two clips, an hour on from the camera's clock */
+const uploadedMontage = (): ManifestGroup => ({
   id: 'group_7',
   label: 'group_7',
   day: '01.08.2026',
@@ -44,9 +44,9 @@ const uploadedTandem = (): ManifestGroup => ({
 })
 
 const listed = (): MontageEntry => {
-  const index: MontageIndex = { version: 1, tandems: [] }
-  upsert(index, entryOfMontage(uploadedTandem())!.entry)
-  return index.tandems[0]!
+  const index: MontageIndex = { version: 1, montages: [] }
+  upsert(index, entryOfMontage(uploadedMontage())!.entry)
+  return index.montages[0]!
 }
 
 /* the same disk scanned from nothing: every file back on its camera time, in jumps nobody filed */
@@ -61,8 +61,8 @@ const forgotten = (): Manifest => {
   return manifest
 }
 
-describe('the storage’s list of tandems', () => {
-  it('writes down which files a tandem is made of, and the times they were given', () => {
+describe('the storage’s list of montages', () => {
+  it('writes down which files a montage is made of, and the times they were given', () => {
     expect(listed().files).toEqual([
       { id: 'a', filename: 'a.MP4', mtime: CORRECTED },
       { id: 'b', filename: 'b.MP4', mtime: CORRECTED + 60 }
@@ -71,26 +71,26 @@ describe('the storage’s list of tandems', () => {
 
   /* one passenger is one folder and one entry, however many jumps */
   it('keeps the files of a passenger’s first jump when their second is uploaded', () => {
-    const index: MontageIndex = { version: 1, tandems: [] }
-    upsert(index, entryOfMontage(uploadedTandem())!.entry)
-    const second = { ...uploadedTandem(), id: 'group_8', files: [file('c', CORRECTED + 9000)] }
+    const index: MontageIndex = { version: 1, montages: [] }
+    upsert(index, entryOfMontage(uploadedMontage())!.entry)
+    const second = { ...uploadedMontage(), id: 'group_8', files: [file('c', CORRECTED + 9000)] }
     upsert(index, entryOfMontage(second)!.entry)
 
-    expect(index.tandems).toHaveLength(1)
-    expect(index.tandems[0]?.files?.map((f) => f.id)).toEqual(['a', 'b', 'c'])
+    expect(index.montages).toHaveLength(1)
+    expect(index.montages[0]?.files?.map((f) => f.id)).toEqual(['a', 'b', 'c'])
   })
 })
 
-describe('a tandem this board has forgotten', () => {
+describe('a montage this board has forgotten', () => {
   it('is put back from the list: the same files, under the passenger’s name', () => {
     const manifest = forgotten()
 
-    const restored = restoreTandems(manifest, [listed()])
+    const restored = restoreMontages(manifest, [listed()])
 
     expect(restored).toEqual([{ who: 'Luc Favre', files: 2, of: 2 }])
-    const tandem = manifest.groups.find((g) => g.montageJump)
-    expect(tandem?.passenger).toEqual({ firstname: 'Luc', lastname: 'Favre' })
-    expect(tandem?.files.map((f) => f.id)).toEqual(['a', 'b'])
+    const montage = manifest.groups.find((g) => g.montageJump)
+    expect(montage?.passenger).toEqual({ firstname: 'Luc', lastname: 'Favre' })
+    expect(montage?.files.map((f) => f.id)).toEqual(['a', 'b'])
     /* and nothing that was not its own */
     expect(manifest.files.find((f) => f.id === 'other')?.mtime).toBe(CAMERA + 7200)
   })
@@ -98,10 +98,10 @@ describe('a tandem this board has forgotten', () => {
   it('gets back the times a person had set right', () => {
     const manifest = forgotten()
 
-    restoreTandems(manifest, [listed()])
+    restoreMontages(manifest, [listed()])
 
-    const tandem = manifest.groups.find((g) => g.montageJump)
-    expect(tandem?.files.map((f) => f.mtime)).toEqual([CORRECTED, CORRECTED + 60])
+    const montage = manifest.groups.find((g) => g.montageJump)
+    expect(montage?.files.map((f) => f.mtime)).toEqual([CORRECTED, CORRECTED + 60])
     expect(manifest.files.find((f) => f.id === 'a')?.mtime).toBe(CORRECTED)
   })
 
@@ -109,11 +109,11 @@ describe('a tandem this board has forgotten', () => {
   it('comes back named and waiting to be processed, never claimed as uploaded', () => {
     const manifest = forgotten()
 
-    restoreTandems(manifest, [listed()])
+    restoreMontages(manifest, [listed()])
 
-    const tandem = manifest.groups.find((g) => g.montageJump)
-    expect(tandem?.processed).toBeFalsy()
-    expect(tandem?.uploaded).toBeUndefined()
+    const montage = manifest.groups.find((g) => g.montageJump)
+    expect(montage?.processed).toBeFalsy()
+    expect(montage?.uploaded).toBeUndefined()
   })
 
   it('says how many of its files were found when some are no longer here', () => {
@@ -121,18 +121,18 @@ describe('a tandem this board has forgotten', () => {
     manifest.files = manifest.files.filter((f) => f.id !== 'b')
     reclusterGroups(manifest)
 
-    expect(restoreTandems(manifest, [listed()])).toEqual([{ who: 'Luc Favre', files: 1, of: 2 }])
+    expect(restoreMontages(manifest, [listed()])).toEqual([{ who: 'Luc Favre', files: 1, of: 2 }])
   })
 })
 
-describe('a tandem that is not to be restored', () => {
+describe('a montage that is not to be restored', () => {
   /* whoever filed them since knows better than a list */
   it('is left alone when its files are already filed somewhere', () => {
     const manifest = forgotten()
     for (const group of manifest.groups) group.destination = 'Yverdon'
 
     expect(restorableFiles(manifest, listed())).toEqual([])
-    expect(restoreTandems(manifest, [listed()])).toEqual([])
+    expect(restoreMontages(manifest, [listed()])).toEqual([])
     expect(manifest.groups.every((g) => g.destination === 'Yverdon')).toBe(true)
   })
 
@@ -140,19 +140,19 @@ describe('a tandem that is not to be restored', () => {
     const manifest: Manifest = {
       version: 1,
       createdAt: 'x',
-      files: uploadedTandem().files,
-      groups: [uploadedTandem()]
+      files: uploadedMontage().files,
+      groups: [uploadedMontage()]
     }
 
-    expect(restoreTandems(manifest, [listed()])).toEqual([])
+    expect(restoreMontages(manifest, [listed()])).toEqual([])
     expect(manifest.groups).toHaveLength(1)
   })
 
   /* written before the list knew the files, or freed from its machine: nothing here to find */
   it('is left alone when the list does not say which files it was, or none are here', () => {
     const { files: _files, ...old } = listed()
-    expect(restoreTandems(forgotten(), [old])).toEqual([])
+    expect(restoreMontages(forgotten(), [old])).toEqual([])
     const elsewhere = { ...listed(), files: [{ id: 'gone', filename: 'g.MP4', mtime: 1 }] }
-    expect(restoreTandems(forgotten(), [elsewhere])).toEqual([])
+    expect(restoreMontages(forgotten(), [elsewhere])).toEqual([])
   })
 })

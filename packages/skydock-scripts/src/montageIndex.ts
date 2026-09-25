@@ -25,7 +25,7 @@ import { isVideoFile, mapWithLimit } from './utils'
 
 const INDEX_NAME = 'skydock-montages.json'
 
-/* what the list was called while every montage was a tandem */
+/* what the list was called before montages had the name */
 const EARLIER_NAME = 'skydock-tandems.json'
 
 /* its own place under its own name first, then under the name it had; then each place it was kept
@@ -36,7 +36,7 @@ const placesOf = (dir: string, earlier: string[]): ListPlace[] =>
     { dir: at, name: EARLIER_NAME }
   ])
 
-const empty = (): MontageIndex => ({ version: 1, tandems: [] })
+const empty = (): MontageIndex => ({ version: 1, montages: [] })
 
 /* Reads the list off the storage. No file yet is an empty list; a file that is there but cannot be
    read is an error, never an empty list — writing back over it would throw away every entry in it. */
@@ -55,7 +55,7 @@ const updateMontageIndex = async (
   const found = await findList(session, places, indexSchema)
   const index = found?.list ?? empty()
   change(index)
-  index.tandems.sort((a, b) => b.uploadedAt - a.uploadedAt)
+  index.montages.sort((a, b) => b.uploadedAt - a.uploadedAt)
   await writeList(session, places[0]!, index, indexSchema, found?.from)
   return index
 }
@@ -64,24 +64,24 @@ const updateMontageIndex = async (
    which no longer have a live link. One question for every link, and one listing per folder the
    montages sit in, never one per montage. Only what the storage answered counts: a question that
    failed takes nothing away. */
-const lostOnStorage = async (session: NasSession, tandems: MontageEntry[]) => {
+const lostOnStorage = async (session: NasSession, montages: MontageEntry[]) => {
   const { hostname: host, sessionId: sid } = session
   const live = await listShareLinks(host, sid)
     .then((links) => liveShareLinks(host, links))
     .catch(() => null)
   const links = live
-    ? tandems.flatMap((t) =>
+    ? montages.flatMap((t) =>
         t.shareUrl && !live.has(normalizeNasPath(t.folder)) ? [t.folder] : []
       )
     : []
   const folders: string[] = []
-  const parents = [...new Set(tandems.map((t) => parentOf(normalizeNasPath(t.folder))))]
+  const parents = [...new Set(montages.map((t) => parentOf(normalizeNasPath(t.folder))))]
   await mapWithLimit(parents, LIST_CONCURRENCY, async (parent) => {
     const held = await listNasFolder(host, sid, parent)
       .then((entries) => new Set(entries.map((entry) => entry.name)))
       .catch(() => null)
     if (!held) return
-    for (const t of tandems)
+    for (const t of montages)
       if (parentOf(normalizeNasPath(t.folder)) === parent && !held.has(lastSegment(t.folder)))
         folders.push(t.folder)
   })
@@ -89,23 +89,23 @@ const lostOnStorage = async (session: NasSession, tandems: MontageEntry[]) => {
   return { folders, links: links.filter((folder) => !folders.includes(folder)) }
 }
 
-/* This tandem's entry replaced, or added; what the change does not mention is kept. The files are
+/* This montage's entry replaced, or added; what the change does not mention is kept. The files are
    added to rather than replaced: a passenger with two jumps is one folder and one entry, and the
    second jump's upload must not make the list forget the first one's files. */
 const upsert = (index: MontageIndex, entry: Partial<MontageEntry> & { folder: string }) => {
-  const at = index.tandems.findIndex((t) => t.folder === entry.folder)
+  const at = index.montages.findIndex((t) => t.folder === entry.folder)
   if (at === -1) {
-    index.tandems.push(entrySchema.parse(entry))
+    index.montages.push(entrySchema.parse(entry))
     return
   }
-  const before = index.tandems[at]
+  const before = index.montages[at]
   const files = entry.files
     ? [
         ...(before?.files ?? []).filter((f) => !entry.files?.some((g) => g.id === f.id)),
         ...entry.files
       ]
     : before?.files
-  index.tandems[at] = entrySchema.parse({ ...before, ...entry, ...(files ? { files } : {}) })
+  index.montages[at] = entrySchema.parse({ ...before, ...entry, ...(files ? { files } : {}) })
 }
 
 /* The folder a montage is known by on the list: the one its film went to, which is the one with the
@@ -120,7 +120,7 @@ const folderOfUpload = (record: NonNullable<ManifestGroup['uploaded']>) => {
 }
 
 /* A montage's entry, from what its upload recorded. The list lives above every destination's folder,
-   `listDir`; without one it is the folder above the montage's, where a tandem's always was. Nothing
+   `listDir`; without one it is the folder above the montage's, where a montage's always was. Nothing
    that was not uploaded has an entry. */
 const entryOfMontage = (group: ManifestGroup, listDir?: string | null) => {
   const record = group.uploaded
