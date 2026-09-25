@@ -265,6 +265,14 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       ...(where.startsAt !== undefined ? { anchorEpoch: where.startsAt } : {})
     })
     if (free.length < ids.length) setNote(`${EDIT_LOCKED} Its files stayed where they were.`)
+    /* A montage whose every file has just gone back to Fresh files is no longer anywhere to be: the
+       board follows the files there (RULES, Filing). */
+    const toFresh = !where.destination && !where.targetGroupId && !where.montage
+    if (toFresh && place.kind === 'pax') {
+      const theirs = groups.filter((g) => isMontage(g) && passengerOf(g) === place.name)
+      const left = theirs.flatMap((g) => g.files).filter((f) => !free.includes(f.id ?? ''))
+      if (theirs.length > 0 && left.length === 0) pickPlace({ kind: 'sort' })
+    }
   }
 
   const saveDestinations = (next: Destination[]) => {
@@ -360,7 +368,20 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   const said = board.importing
   const watching = coming && said && said.token === tokenFor(coming.done) ? said : null
 
-  const drag = useDragAndDrop({ groups, frozen, moveFiles, assign, toMontage, importDropped })
+  /* Something filed under a destination is followed there: its page opens, showing it where it now
+     is (RULES, Jumps). */
+  const drag = useDragAndDrop({
+    groups,
+    frozen,
+    moveFiles,
+    assign,
+    toMontage,
+    importDropped,
+    onFiled: (destination) => {
+      if (place.kind !== 'dz' || place.name !== destination)
+        pickPlace({ kind: 'dz', name: destination })
+    }
+  })
 
   /* The folder something was just filed under lights up for a moment, so the eye can follow the
      jump there from the line it left. */

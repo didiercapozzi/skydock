@@ -485,7 +485,6 @@ const ManyPanel = ({
   backLabel,
   onTrash,
   onMakeJump,
-  montages,
   montage,
   onClear
 }: {
@@ -496,12 +495,9 @@ const ManyPanel = ({
   backLabel: string
   /* offered only when every one of them is in Unsorted */
   onTrash?: () => void
-  /* the same: gathered into a jump of their own, when the gap rule did not see them as one — or,
-     named, into a montage */
-  onMakeJump?: (name: string, startsAt?: number) => void
-  /* the montages there are, for a name to join */
-  montages?: Passenger[]
-  /* elsewhere than Fresh files: copied into a montage, the place keeping its own */
+  /* the same: gathered into a jump of their own, when the gap rule did not see them as one */
+  onMakeJump?: (startsAt?: number) => void
+  /* made into a montage — moved out of Fresh files, copied from anywhere else */
   montage?: MontageOffer
   onClear: () => void
 }) => {
@@ -515,12 +511,12 @@ const ManyPanel = ({
       />
       <Facts rows={tally(files, statusOf).map(([name, n]) => [name, String(n)])} />
       {making && onMakeJump ? (
-        <Box heading='A jump or a montage of these'>
+        <Box heading='A jump of these'>
           <JumpForm
+            named={false}
             startsAt={minFileMtime(files) ?? 0}
             submitLabel='Make the jump'
-            montages={montages ?? []}
-            onSubmit={onMakeJump}
+            onSubmit={(_name, startsAt) => onMakeJump(startsAt)}
             onCancel={() => setMaking(false)}
           />
         </Box>
@@ -529,6 +525,7 @@ const ManyPanel = ({
         <Box heading='Montage'>
           <MontageNamer
             keeps={montage.keeps}
+            what='these'
             passengers={montage.passengers}
             onSave={montage.onMake}
           />
@@ -537,7 +534,7 @@ const ManyPanel = ({
       <Box heading='Move them'>
         <span className='flex flex-wrap gap-1.5'>
           {onMakeJump && !making && (
-            <Mini onClick={() => setMaking(true)}>Make a jump or a montage of these…</Mini>
+            <Mini onClick={() => setMaking(true)}>Make a jump of these…</Mini>
           )}
           {onTrash ? (
             <Mini onClick={onTrash}>Put in the bin… (⌫)</Mini>

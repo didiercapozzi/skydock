@@ -36,7 +36,8 @@ const useDragAndDrop = ({
   moveFiles,
   assign,
   toMontage,
-  importDropped
+  importDropped,
+  onFiled
 }: {
   groups: ManifestGroup[]
   frozen: Set<string>
@@ -45,6 +46,8 @@ const useDragAndDrop = ({
   /* jumps made a montage: joining a named one, or waiting for a name */
   toMontage: (ids: string[], passenger?: Passenger) => void
   importDropped: (list: Dropped[], target: string, where: string) => Promise<void>
+  /* what the board does once something from it is filed under a destination: goes there */
+  onFiled: (destination: string) => void
 }) => {
   const [dragged, setDragged] = useState<string[]>([])
   const [draggedFiles, setDraggedFiles] = useState<string[]>([])
@@ -182,6 +185,7 @@ const useDragAndDrop = ({
         else if (dragged.length > 0)
           if (to.kind === 'montage') toMontage(dragged, into?.passenger)
           else assign(dragged, destination)
+        if (destination && (draggedFiles.length > 0 || dragged.length > 0)) onFiled(destination)
         setDragged([])
         setDraggedFiles([])
       }

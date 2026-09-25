@@ -133,9 +133,9 @@ describe('picked files in Fresh files', () => {
       await userEvent.click(page.getByRole('button', { name }).last(), {
         modifiers: ['ControlOrMeta']
       })
-    await userEvent.click(page.getByRole('button', { name: /Make a jump or a montage of these/ }))
-    await userEvent.fill(page.getByLabelText('Name'), 'Boogie 2026')
-    await userEvent.click(page.getByRole('button', { name: 'Make the montage' }))
+    await userEvent.click(details().getByRole('button', { name: 'Make a montage of these…' }))
+    await userEvent.fill(details().getByRole('textbox', { name: 'Name' }), 'Boogie 2026')
+    await userEvent.click(details().getByRole('button', { name: 'Make montage' }))
 
     expect(sent[0]).toMatchObject({ intent: 'make-montage', fileIds: ['a', 'b'], name: 'Boogie 2026' })
     await expect.element(pageHeading('Boogie 2026')).toBeVisible()
@@ -189,5 +189,35 @@ describe('a montage', () => {
     await expect.element(menu.getByRole('link', { name: /Boogie 2026/ })).toBeVisible()
     await expect.element(menu.getByRole('link', { name: /Passengers/ })).toBeVisible()
     await expect.element(details().getByRole('combobox', { name: 'Delivered to' })).not.toBeInTheDocument()
+  })
+})
+
+/* A montage whose last files go back to Fresh files is left with nothing, so the board goes there with
+   them (RULES, Filing). */
+describe('a montage emptied', () => {
+  const at = (files: ReturnType<typeof file>[]) => {
+    const shown = { ...board, groups: [...board.groups, montage(['Boogie', '2026'], files)] }
+    return renderBoard({ groups: shown.groups }, '/montage/Boogie 2026', shown)
+  }
+  const fresh = () => page.getByRole('heading', { name: /^Fresh files/ })
+
+  test('goes back to Fresh files once its last file is sent back', async () => {
+    await at([file('m', AT)])
+    await userEvent.click(page.getByRole('button', { name: /m\.MP4/ }).first())
+
+    await userEvent.keyboard('{Delete}')
+
+    await vi.waitFor(() => expect(sent).toContainEqual(expect.objectContaining({ intent: 'move-files', fileIds: ['m'] })))
+    await expect.element(fresh()).toBeVisible()
+  })
+
+  test('stays on the montage while it still has files', async () => {
+    await at([file('m', AT), file('n', AT + 60)])
+    await userEvent.click(page.getByRole('button', { name: /m\.MP4/ }).first())
+
+    await userEvent.keyboard('{Delete}')
+
+    await vi.waitFor(() => expect(sent).toContainEqual(expect.objectContaining({ intent: 'move-files', fileIds: ['m'] })))
+    await expect.element(pageHeading('Boogie 2026')).toBeVisible()
   })
 })

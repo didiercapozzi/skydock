@@ -3,7 +3,6 @@ import {
   hasCompletePassenger,
   isMontage,
   lastSegment,
-  montageCalled,
   offGap,
   outputKeyOf,
   passengerOf,
@@ -658,22 +657,14 @@ const Inspector = ({
         backLabel={model.backLabel(picked)}
         onMakeJump={
           fresh
-            ? (name, startsAt) => {
-                /* named, they are a montage; left blank, a jump */
-                if (name.trim()) {
-                  model.montageOf(picked, montageCalled(board.groups, name), startsAt)
-                  return
-                }
+            ? (startsAt) => {
                 const first = picked[0]
                 if (first?.id) onMakingJump({ file: first.id, from: model.groupOfFile(first)?.id })
                 model.moveFiles(ids, { destination: null, newGroup: true, startsAt })
               }
             : undefined
         }
-        montages={model.passengers}
-        montage={
-          fresh || picked.some((f) => f.freed) ? undefined : model.montageOffer(picked, place)
-        }
+        montage={picked.some((f) => f.freed) ? undefined : model.montageOffer(picked, place)}
         onClear={selection.clear}
       />
     )

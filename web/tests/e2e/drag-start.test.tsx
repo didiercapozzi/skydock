@@ -32,7 +32,8 @@ const Carried = () => {
     moveFiles: () => {},
     assign: () => {},
     toMontage: () => {},
-    importDropped: async () => {}
+    importDropped: async () => {},
+    onFiled: () => {}
   })
   const handle = (label: string, onDragStart: (e: React.DragEvent) => void) =>
     createElement('div', {

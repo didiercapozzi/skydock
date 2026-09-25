@@ -52,47 +52,47 @@ const renderPicked = async () => {
 }
 
 describe('making a jump of files picked in Fresh files', () => {
-  test('asks for a name and for when it started, the start filled in as shot', async () => {
+  const makeJump = () => userEvent.click(page.getByRole('button', { name: /Make a jump of these/ }))
+
+  /* a name in Fresh files is a montage's, made by its own button: a jump made here has none */
+  test('asks only for when it started, filled in as shot', async () => {
     await renderPicked()
 
-    await userEvent.click(page.getByRole('button', { name: /Make a jump or a montage of these/ }))
+    await makeJump()
 
-    await expect.element(page.getByLabelText('Name')).toHaveValue('')
     await expect.element(page.getByLabelText('Started')).toHaveValue(AT_FIELD)
+    await expect.element(page.getByLabelText('Name')).not.toBeInTheDocument()
   })
 
-  /* naming is making: named, they are a montage of that name */
-  test('makes a montage of that name, from the start it was given', async () => {
+  test('makes the jump from the start it was given', async () => {
     const { onMakeJump } = await renderPicked()
-    await userEvent.click(page.getByRole('button', { name: /Make a jump or a montage of these/ }))
+    await makeJump()
 
-    await userEvent.fill(page.getByLabelText('Name'), 'Sunset load')
     await userEvent.fill(page.getByLabelText('Started'), '2026-08-01T18:30')
-    await userEvent.click(page.getByRole('button', { name: 'Make the montage' }))
+    await userEvent.click(page.getByRole('button', { name: 'Make the jump' }))
 
-    const expected = Math.floor(new Date(2026, 7, 1, 18, 30, 0).getTime() / 1000)
-    expect(onMakeJump).toHaveBeenCalledWith('Sunset load', expected)
+    expect(onMakeJump).toHaveBeenCalledWith(Math.floor(new Date(2026, 7, 1, 18, 30, 0).getTime() / 1000))
   })
 
-  /* both can be left alone: the jump is then called by its place among the jumps, at the time shot */
-  test('leaving both as they are still makes the jump', async () => {
+  /* the start can be left alone: the jump is then at the time shot */
+  test('leaving the start as it is still makes the jump', async () => {
     const { onMakeJump } = await renderPicked()
-    await userEvent.click(page.getByRole('button', { name: /Make a jump or a montage of these/ }))
+    await makeJump()
 
     await userEvent.click(page.getByRole('button', { name: 'Make the jump' }))
 
-    expect(onMakeJump).toHaveBeenCalledWith('', AT)
+    expect(onMakeJump).toHaveBeenCalledWith(AT)
   })
 
   test('Escape makes nothing', async () => {
     const { onMakeJump } = await renderPicked()
-    await userEvent.click(page.getByRole('button', { name: /Make a jump or a montage of these/ }))
+    await makeJump()
 
-    await userEvent.fill(page.getByLabelText('Name'), 'Sunset load')
+    await userEvent.click(page.getByLabelText('Started'))
     await userEvent.keyboard('{Escape}')
 
     expect(onMakeJump).not.toHaveBeenCalled()
-    await expect.element(page.getByLabelText('Name')).not.toBeInTheDocument()
+    await expect.element(page.getByLabelText('Started')).not.toBeInTheDocument()
   })
 })
 

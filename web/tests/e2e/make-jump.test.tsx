@@ -65,7 +65,7 @@ const makeJumpOfPicked = async () => {
     await userEvent.click(page.getByRole('button', { name }).last(), {
       modifiers: ['ControlOrMeta']
     })
-  await userEvent.click(page.getByRole('button', { name: /Make a jump or a montage of these/ }))
+  await userEvent.click(page.getByRole('button', { name: /Make a jump of these/ }))
   await userEvent.click(page.getByRole('button', { name: 'Make the jump' }))
 }
 
@@ -94,7 +94,7 @@ describe('making a jump of files picked in Fresh files', () => {
     await makeJumpOfPicked()
 
     await expect
-      .element(page.getByRole('button', { name: /Make a jump or a montage of these/ }))
+      .element(page.getByRole('button', { name: /Make a jump of these/ }))
       .not.toBeInTheDocument()
     await expect.element(card(/^Loose files, /)).toHaveAttribute('aria-pressed', 'true')
     await expect.element(card(/^Morning load, /)).toHaveAttribute('aria-pressed', 'false')

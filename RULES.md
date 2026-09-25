@@ -476,7 +476,10 @@ further back to go, are offered the bin. The button says which of these it will 
 
 **Filing.** Drag a jump or a selection onto a place in the menu to file it there, or onto another jump to
 move it. Dragging is the way: there is no list of places to pick from. While something is carried, the
-place or jump under the pointer lights up when it would take it. Dropping onto a montage joins that montage, never a new one.
+place or jump under the pointer lights up when it would take it. Something dropped on a destination is
+followed there: that destination's page opens, with what was just filed in it. Dropping onto a montage
+joins that montage, never a new one. A montage whose last files are taken back to Fresh files is left
+with nothing, so the board goes to Fresh files with them.
 
 **Making a montage.** A montage is named once, and naming is making. It is made from what is on
 screen, beside its name: a jump from its panel, several picked files, or a single file from its own
@@ -563,11 +566,12 @@ side — never to the one the other side is already showing. Moving and taking a
 since taking a file plays it. Every time in there is said in full and to the minute, the day
 included: the clocks being compared are the whole point, and the seconds between them were never
 what anybody was reading. The other way round, several files picked in Fresh files — loose, or
-taken out of a jump — are made a jump of their own. Making it asks for a name and for when it started,
-since files the gap rule missed are often files off a camera on the wrong clock: the start is filled in
-as shot, and setting it moves every file by the same amount, as correcting any jump's time does. Given
-a name, they are a montage of that name (Making a montage), and the button says so; left blank, they
-are just a jump. The start can be left as it is. The new jump is selected as soon as it is made, its
+taken out of a jump — can be made a jump of their own, or a montage, each by a button of its own that
+does only that. Making a jump asks only when it started, since files the gap rule missed are often
+files off a camera on the wrong clock: the start is filled in as shot, and setting it moves every file
+by the same amount, as correcting any jump's time does. It has no name — a name in Fresh files is a
+montage's — and the start can be left as it is. Making a montage asks for its name, as it does
+anywhere else (Making a montage). The new jump is selected as soon as it is made, its
 panel open, so whatever is done with it next is a single press away.
 
 **Work shown as it happens.** A file being processed, a clip whose proxy is being made, and a clip
