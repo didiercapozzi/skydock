@@ -57,11 +57,7 @@ const kindOf = (name: string): StorageFile['kind'] =>
    each file came from. They are the app's own bookkeeping, not somebody's footage, so the page that
    lists a folder leaves them out — there is nothing to play, and nothing to do with them here. */
 /* under the name it has, and the one it had */
-const OWN_RECORDS = new Set([
-  'skydock-montages.json',
-  'skydock-tandems.json',
-  'skydock-origins.json'
-])
+const OWN_RECORDS = new Set(['skydock-montages.json', 'skydock-origins.json'])
 
 /* The folder's files, films and clips first, each kind newest first — by when it was shot, read off
    its name, or else when it was put there. Each says whether the storage hands it out by a link of

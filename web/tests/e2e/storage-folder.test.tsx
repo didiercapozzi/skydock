@@ -9,7 +9,7 @@ import { StorageFolder } from '../../app/components/storage-folder'
    own files and played from there, whether or not any of it is still on this machine. The storage
    is stood in for; the list, the player and the address it plays from are the real thing. */
 
-const DIR = '/SkyDock/Tandems/Luc Favre'
+const DIR = '/SkyDock/Passengers/Luc Favre'
 
 const folder = {
   ok: true,
@@ -102,7 +102,7 @@ describe('a place’s folder on the storage', () => {
     await expect.element(player).toBeInTheDocument()
     const video = player.getByLabelText('luc favre.mp4').element() as HTMLVideoElement
     expect(new URL(video.src).pathname).toBe(
-      '/api/storage-file/SkyDock/Tandems/Luc%20Favre/luc%20favre.mp4'
+      '/api/storage-file/SkyDock/Passengers/Luc%20Favre/luc%20favre.mp4'
     )
   })
 

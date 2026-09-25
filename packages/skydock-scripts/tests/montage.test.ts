@@ -84,7 +84,7 @@ const audioOnlyTemplate = `<?xml version='1.0' encoding='utf-8'?>
 
 const setup = (templateXml?: string) => {
   const outputDir = createTmpDir('skydock-montage-')
-  const groupDir = path.join(outputDir, 'processed', 'Tandems', 'Luc Favre')
+  const groupDir = path.join(outputDir, 'processed', 'Montages', 'Luc Favre')
   fs.mkdirSync(groupDir, { recursive: true })
   if (templateXml === undefined) return { outputDir, groupDir, templatePath: REAL_TEMPLATE }
   const templatePath = path.join(outputDir, 'templates', 'epco', 'epco.kdenlive')
@@ -193,7 +193,7 @@ describe('montage — a document the editor can open', () => {
      left alone everywhere else in the document — so nothing escapes these but this */
   it('survives a passenger whose name contains an ampersand', () => {
     const outputDir = createTmpDir('skydock-amp-name-')
-    const groupDir = path.join(outputDir, 'processed', 'Tandems', 'Jean & Marie')
+    const groupDir = path.join(outputDir, 'processed', 'Montages', 'Jean & Marie')
     fs.mkdirSync(groupDir, { recursive: true })
     const templatePath = path.join(outputDir, 'templates', 'epco', 'epco.kdenlive')
     fs.mkdirSync(path.dirname(templatePath), { recursive: true })
@@ -386,7 +386,7 @@ describe('montage — paths the editor can open', () => {
     process.env.SKYDOCK_HOST_OUTPUT_DIR = '/home/capo/Documents/skydock/output'
     const { xml, outputDir } = build(twoAudioOneMutedTemplate, ['a.mp4'])
     expect(xml).toContain(
-      '/home/capo/Documents/skydock/output/processed/Tandems/Luc Favre/videos/a.mp4'
+      '/home/capo/Documents/skydock/output/processed/Montages/Luc Favre/videos/a.mp4'
     )
     expect(xml).not.toContain(outputDir)
   })

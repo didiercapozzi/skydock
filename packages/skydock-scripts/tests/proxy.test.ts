@@ -338,7 +338,7 @@ describe('proxies stay out of what gets delivered', () => {
     fs.copyFileSync(file.proxy!, cut)
 
     expect(cut.startsWith(path.join(outputDir, 'proxies'))).toBe(true)
-    expect(cut).not.toContain(path.join('processed', 'Tandems'))
+    expect(cut).not.toContain(path.join('processed', 'Montages'))
   })
 
   /* the import proxies live under their own folder too, which no scan and no upload ever reads */

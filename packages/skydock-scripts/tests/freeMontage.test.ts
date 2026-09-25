@@ -24,7 +24,7 @@ const session: NasSession = {
   backupFolder: '/Backup'
 }
 
-const PAX = '/SkyDock/Tandems/Luc Favre'
+const PAX = '/SkyDock/Passengers/Luc Favre'
 const AT = 1_785_000_000
 
 let outputDir: string
@@ -32,7 +32,7 @@ let outputDir: string
 /* `projectInBackup`: the editing project was chosen to go into the backup zip with the originals */
 const setup = async ({ projectInBackup = false } = {}) => {
   const originals = path.join(outputDir, 'original_files', '2026-08-01')
-  const folder = path.join(outputDir, 'processed', 'Tandems', 'Luc Favre')
+  const folder = path.join(outputDir, 'processed', 'Montages', 'Luc Favre')
   for (const d of [originals, path.join(folder, 'videos'), path.join(folder, 'photos')])
     fs.mkdirSync(d, { recursive: true })
 
@@ -102,7 +102,7 @@ const setup = async ({ projectInBackup = false } = {}) => {
         }
       }
     ],
-    destinations: [{ name: 'Tandems', path: '/SkyDock/Tandems' }]
+    destinations: [{ name: 'Passengers', path: '/SkyDock/Passengers' }]
   }
   /* by default the storage holds exactly what was sent */
   const onStorage = Object.fromEntries(

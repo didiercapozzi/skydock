@@ -44,7 +44,7 @@ const YVERDON_JUMP = {
 const board = {
   groups: [FRESH_JUMP, YVERDON_JUMP],
   looseFiles: [file('solo', AT + 9000)],
-  destinations: [{ name: 'Yverdon' }, { name: 'Tandems' }],
+  destinations: [{ name: 'Yverdon' }, { name: 'Passengers' }],
   outputs: {},
   proxies: {},
   montages: {},
@@ -181,19 +181,13 @@ describe('files a dropzone holds', () => {
 describe('a montage', () => {
   const withMontage = { ...board, groups: [...board.groups, montage(['Boogie', '2026'], [file('m', AT)])] }
 
-  /* a montage belongs to no place, and Tandems is a destination like Yverdon */
-  test('is listed among the montages, and Tandems among the destinations', async () => {
+  /* a montage belongs to no place, and Passengers is a destination like Yverdon */
+  test('is listed among the montages, and Passengers among the destinations', async () => {
     await renderBoard({ groups: withMontage.groups }, '/montage/Boogie 2026', withMontage)
 
     const menu = page.getByRole('navigation', { name: 'Folders' })
     await expect.element(menu.getByRole('link', { name: /Boogie 2026/ })).toBeVisible()
-    await expect.element(menu.getByRole('link', { name: /Tandems/ })).toBeVisible()
+    await expect.element(menu.getByRole('link', { name: /Passengers/ })).toBeVisible()
     await expect.element(details().getByRole('combobox', { name: 'Delivered to' })).not.toBeInTheDocument()
-  })
-
-  test('still opens at an address kept from before montages had the name', async () => {
-    await renderBoard({ groups: withMontage.groups }, '/passenger/Boogie 2026', withMontage)
-
-    await expect.element(pageHeading('Boogie 2026')).toBeVisible()
   })
 })

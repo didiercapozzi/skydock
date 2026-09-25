@@ -35,7 +35,7 @@ const board = {
     montage('g6', { firstname: '', lastname: '' })
   ],
   looseFiles: [],
-  destinations: [{ name: 'Tandems' }],
+  destinations: [{ name: 'Passengers' }],
   outputs: {},
   proxies: {},
   montages: {},

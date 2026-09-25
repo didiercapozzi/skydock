@@ -13,7 +13,7 @@ import { createTmpDir, jsonResponse, routeArgs, stubFetch } from './fixtures'
 /* A place is connected to its folder on the storage: the board lists what is up there and plays it
    from there, through its own server, which holds the session. Driven the way the board drives it. */
 
-const DIR = '/SkyDock/Tandems/Luc Favre'
+const DIR = '/SkyDock/Passengers/Luc Favre'
 
 let tmpDir: string
 let previous: string | undefined
@@ -37,7 +37,7 @@ const manifest: Manifest = {
       uploaded: {
         at: 1,
         film: {
-          remotePath: '/SkyDock/Tandems/Luc Favre/luc_favre.mp4',
+          remotePath: '/SkyDock/Passengers/Luc Favre/luc_favre.mp4',
           md5: 'x',
           size: 5000,
           localPath: '/l',
@@ -47,7 +47,7 @@ const manifest: Manifest = {
     }
   ],
   destinations: [
-    { name: 'Tandems', path: '/SkyDock/Tandems' },
+    { name: 'Passengers', path: '/SkyDock/Passengers' },
     { name: 'Yverdon', path: '/SkyDock/Yverdon' }
   ]
 }

@@ -19,7 +19,7 @@ import type { OriginIndex } from '../src/originEntry'
 
 const YVERDON = '/home/Photos/Skydive/Yverdon'
 /* the club's own folders: its dropzones, and the one the passengers' folders sit in */
-const FOLDERS = [YVERDON, '/home/Photos/Skydive/Tandems', '/home/Photos/Skydive/Epagny']
+const FOLDERS = [YVERDON, '/home/Photos/Skydive/Passengers', '/home/Photos/Skydive/Epagny']
 
 /* A storage that keeps SkyDock's list of what it holds above the club's folders, where it has
    always been worked out to go. */

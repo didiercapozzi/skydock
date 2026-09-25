@@ -36,7 +36,7 @@ const setup = (extra: Partial<Manifest> = {}) => {
         files: []
       }
     ],
-    destinations: [{ name: 'Tandems' }, { name: 'Yverdon' }],
+    destinations: [{ name: 'Passengers' }, { name: 'Yverdon' }],
     ...extra
   }
   saveManifest(manifestPath(), manifest)
@@ -196,7 +196,7 @@ describe('adding a file from the computer', () => {
       ]
     })
     await add('briefing.mp4', 'the theory', { kind: 'group', groupId: 'g1' })
-    const folder = path.join(outputDir, 'processed', 'Tandems', 'Luc Favre')
+    const folder = path.join(outputDir, 'processed', 'Montages', 'Luc Favre')
     fs.mkdirSync(folder, { recursive: true })
     fs.writeFileSync(path.join(folder, 'luc.kdenlive'), '<mlt/>')
 
@@ -219,7 +219,7 @@ describe('adding a file from the computer', () => {
   it('leaves it in a montage that has an edit, and says why', async () => {
     setup()
     await add('clip.mp4', 'same', { kind: 'group', groupId: 'g1' })
-    const folder = path.join(outputDir, 'processed', 'Tandems', 'Luc Favre')
+    const folder = path.join(outputDir, 'processed', 'Montages', 'Luc Favre')
     fs.mkdirSync(folder, { recursive: true })
     fs.writeFileSync(path.join(folder, 'luc.kdenlive'), '<mlt/>')
 
@@ -248,7 +248,7 @@ describe('adding a file from the computer', () => {
 
   it('refuses a montage that has an edit, before writing anything', async () => {
     setup()
-    const folder = path.join(outputDir, 'processed', 'Tandems', 'Luc Favre')
+    const folder = path.join(outputDir, 'processed', 'Montages', 'Luc Favre')
     fs.mkdirSync(folder, { recursive: true })
     fs.writeFileSync(path.join(folder, 'luc.kdenlive'), '<mlt/>')
     await expect(add('clip.mp4', 'x', { kind: 'group', groupId: 'g1' })).rejects.toThrow(/edit/)

@@ -4,9 +4,8 @@ import { z } from 'zod'
 import { outputKeyOf } from './fileStatus'
 import { writeJsonAtomic } from './lib/fs'
 import { jsonText } from './lib/json'
-import { groupsFileSchema, manifestSchema, montageUploadSchema } from './types'
-import type { GroupsFile, Manifest, ManifestFile, ManifestGroup } from './types'
-import { MONTAGES_FOLDER } from './workspace'
+import { groupsFileSchema, manifestSchema } from './types'
+import type { GroupsFile, Manifest, ManifestFile } from './types'
 
 /* The registry of files and the jumps built out of it live in two files side by side: every file
    is described once in manifest.json, and groups.json only points at them. A file therefore never
@@ -20,19 +19,8 @@ const getGroupsPath = (manifestPath: string) => path.join(path.dirname(manifestP
 class UnreadableGroups extends Error {}
 
 /* Whether the file failed as JSON or failed as a jumps file makes no difference to what follows —
-   either way it cannot be read — so there is one schema and one way out. A jumps file written when
-   a montage's upload was recorded under the name "delivered" is read as the same record. */
-const storedGroupSchema = groupsFileSchema.shape.groups.element.extend({
-  delivered: montageUploadSchema.optional()
-})
-const groupsTextSchema = jsonText.pipe(
-  z.object({ groups: z.array(storedGroupSchema) }).transform(({ groups }): GroupsFile => ({
-    groups: groups.map(({ delivered, ...group }) => ({
-      ...group,
-      uploaded: group.uploaded ?? delivered
-    }))
-  }))
-)
+   either way it cannot be read — so there is one schema and one way out. */
+const groupsTextSchema = jsonText.pipe(groupsFileSchema)
 
 /* What is actually on disk: the registry, without the jumps, which live in their own file and are
    put back by resolveGroups. The three defaults are what an older or half-written manifest is
@@ -91,16 +79,7 @@ const resolveGroups = (files: ManifestFile[], groupsFile: GroupsFile | null) => 
   return groups
 }
 
-/* The record as montages have it. Before them, a passenger's film was a jump filed under Tandems; from version 2
-   a montage is marked as one and belongs to no destination, and Tandems is a destination like any
-   other. The change is made once, on reading an older record, and written with its next save: a jump
-   filed under Tandems after that is filed there, not a montage. */
 const MANIFEST_VERSION = 2
-
-const asMontages = (groups: ManifestGroup[]) =>
-  groups.map(({ destination, ...group }) =>
-    destination === MONTAGES_FOLDER ? { ...group, montageJump: true } : { ...group, destination }
-  )
 
 const loadManifest = (manifestPath: string) => {
   if (!fs.existsSync(manifestPath)) return null
@@ -111,12 +90,7 @@ const loadManifest = (manifestPath: string) => {
   /* jumps that cannot be read are not "no jumps", so that refusal travels out of here rather than
      being flattened into the same answer */
   const groups = resolveGroups(stored.data.files, readGroupsFile(getGroupsPath(manifestPath)))
-  const older = stored.data.version < MANIFEST_VERSION
-  const manifest: Manifest = {
-    ...stored.data,
-    version: Math.max(stored.data.version, MANIFEST_VERSION),
-    groups: older ? asMontages(groups) : groups
-  }
+  const manifest: Manifest = { ...stored.data, groups }
   return manifest
 }
 

@@ -71,14 +71,14 @@ const prepare = async (files: ManifestFile[], group?: Partial<ManifestGroup>) =>
     createdAt: '2026-08-08',
     files,
     groups: [full],
-    destinations: [{ name: 'Tandems' }, { name: 'Yverdon' }]
+    destinations: [{ name: 'Passengers' }, { name: 'Yverdon' }]
   }
   const manifestPath = path.join(outputDir, 'manifest.json')
   saveManifest(manifestPath, manifest)
   await processJumps({ manifestPath, outputDir })
 }
 
-const groupDir = () => path.join(outputDir, 'processed', 'Tandems', 'Luc Favre')
+const groupDir = () => path.join(outputDir, 'processed', 'Montages', 'Luc Favre')
 
 const inside = (dir: string) => (fs.existsSync(dir) ? fs.readdirSync(dir).sort() : [])
 

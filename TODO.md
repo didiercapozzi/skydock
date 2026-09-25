@@ -64,7 +64,7 @@ folders; the others are traced in the code. Line numbers are as of commit `33386
   `save-groups.ts:45`, `delete-jump.ts:22`, `remove-destination.ts:26-30`). Only processing again
   clears it. Fix: have the server lock on the same live status as the board.
 - **A freed montage whose NAS copy is deleted stays forever.** Reset and delete refuse it
-  (`resetTandem.ts:47`, `delete-jump.ts:20`). `forgetLost` needs per-file upload records, which
+  (`resetMontage.ts:47`, `delete-jump.ts:20`). `forgetLost` needs per-file upload records, which
   montage files never get (`forgetLost.ts:26-27`). Bring-back answers "was not sent from this
   machine" (`bringBack.ts:89-90`), against RULES' "comes back whole". Fix: per-file records for
   montage files, or match on the montage's own record.
@@ -86,7 +86,7 @@ folders; the others are traced in the code. Line numbers are as of commit `33386
   next save makes that permanent. Fix: warn when the manifest has groups but `groups.json` is gone.
 - **Deleting a montage's originals by hand drops the jump at the next scan, and its `.kdenlive`
   then blocks any new montage for that name.** `hasEdit` looks for any project in the name's folder
-  (`tandem.ts:51`). Fix: keep a montage with an edit or an upload as a record with missing files,
+  (`montageArtifacts.ts:51`). Fix: keep a montage with an edit or an upload as a record with missing files,
   and tie the project check to the jump's own base name.
 
 ### Wrong or confusing, but recoverable
@@ -110,11 +110,11 @@ folders; the others are traced in the code. Line numbers are as of commit `33386
   `uploaded`. This breaks RULES' "uploaded is the end of editing". Fix: refuse jump-level changes to
   a jump with uploaded or freed files, and do not let them be dragged.
 - **Long actions save the manifest loaded before they started.** Bring-back (`from-storage.ts:19-20`),
-  restore-tandems, trash-unsorted and the board loader's NAS checks undo trims and renames made
+  restore-montages, trash-unsorted and the board loader's NAS checks undo trims and renames made
   meanwhile. Fix: reload just before saving.
 - **Names `..` and `.` escape their folder.** [reproduced] Only `/` and `\` are removed
   (`workspace.ts:50-53`, `process.ts:283`). A montage named `..` works in `output/processed`, and
-  freeing it removes everything there except `.kdenlive` files (`freeTandem.ts:245-249`), once the
+  freeing it removes everything there except `.kdenlive` files (`freeMontage.ts:245-249`), once the
   proof passes. Fix: refuse such names on the page and the server.
 - **Server errors are silent or take over the page.** save-groups refusals are never read
   (`useJumps.ts:7`), so a refused edit stays on screen. Uncaught errors show the bare "Oops!".
@@ -124,7 +124,7 @@ folders; the others are traced in the code. Line numbers are as of commit `33386
 - **Moving the work folder makes every file read as changed.** [reproduced] `processed.path` and
   freed paths are absolute. Fix: store paths relative to the work folder, or rebase them on a move.
 - **Deleting the film or a zip after upload blocks freeing** ("changed here since it was uploaded",
-  `freeTandem.ts:106`). Fix: allow freeing when the storage copy is proved and the local one is
+  `freeMontage.ts:106`). Fix: allow freeing when the storage copy is proved and the local one is
   simply gone.
 - **`saveManifest` writes two files one after the other** (`manifest.ts:163-173`). A crash between
   them drops new files from jumps without a word. There is no handling of a full disk or a denied

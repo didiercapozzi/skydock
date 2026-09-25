@@ -40,7 +40,7 @@ const board = {
     }
   ],
   looseFiles: [],
-  destinations: [{ name: 'Tandems' }],
+  destinations: [{ name: 'Passengers' }],
   outputs: { '/o/GX01.MP4': { exists: true, size: 1 } },
   proxies: {},
   montages: { g1: { project: false, projectPath: '/p/luc.kdenlive', film: null, baseName: 'luc' } },

@@ -21,7 +21,7 @@ const kept = () => {
 
 beforeEach(() => {
   outputDir = createTmpDir('skydock-history-')
-  dir = path.join(outputDir, 'processed', 'Tandems', 'Luc Favre')
+  dir = path.join(outputDir, 'processed', 'Montages', 'Luc Favre')
   fs.mkdirSync(dir, { recursive: true })
 })
 

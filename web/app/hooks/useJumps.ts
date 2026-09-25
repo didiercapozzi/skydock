@@ -8,7 +8,7 @@ const useGroups = (initialGroups: ManifestGroup[]) => {
 
   /* `destinations` rides along when an edit also adds a place. Saved separately, the place's answer
      would carry the groups as they were before and the board could take it over the edit it had just
-     shown — a jump filed under Tandems for the first time springing back into Fresh files. One save,
+     shown — a jump filed under a new place springing back into Fresh files. One save,
      carrying both, has nothing to race. */
   const updateGroups = (
     next: ManifestGroup[],

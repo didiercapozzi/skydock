@@ -296,7 +296,7 @@ describe('changes made on the board', () => {
           files: [file({ id: 'a' })]
         })
       ])
-      const folder = path.join(tmpDir, 'processed', 'Tandems', 'Luc Favre')
+      const folder = path.join(tmpDir, 'processed', 'Montages', 'Luc Favre')
       fs.mkdirSync(folder, { recursive: true })
       fs.writeFileSync(path.join(folder, 'the edit.kdenlive'), '<mlt/>')
 
@@ -318,14 +318,14 @@ describe('changes made on the board', () => {
           files: [file({ id: 'a' }), file({ id: 'b' })]
         })
       ])
-      fs.mkdirSync(path.join(tmpDir, 'processed', 'Tandems', 'Luc Favre', 'videos'), {
+      fs.mkdirSync(path.join(tmpDir, 'processed', 'Montages', 'Luc Favre', 'videos'), {
         recursive: true
       })
 
       const res = refusal(await send({ intent: 'montage', groupId: 'group_1' }))
 
       expect(res.globalErrors?.[0]).toContain('2 clips are still getting a proxy')
-      expect(fs.readdirSync(path.join(tmpDir, 'processed', 'Tandems', 'Luc Favre'))).toEqual([
+      expect(fs.readdirSync(path.join(tmpDir, 'processed', 'Montages', 'Luc Favre'))).toEqual([
         'videos'
       ])
     })
@@ -344,7 +344,7 @@ describe('changes made on the board', () => {
           files: []
         })
       ])
-      const folder = path.join(tmpDir, 'processed', 'Tandems', 'Luc Favre')
+      const folder = path.join(tmpDir, 'processed', 'Montages', 'Luc Favre')
       fs.mkdirSync(folder, { recursive: true })
       fs.writeFileSync(path.join(folder, 'luc.kdenlive'), '<mlt/>')
 
@@ -395,7 +395,7 @@ describe('changes made on the board', () => {
       const res = refusal(
         await send({
           intent: 'mark-emailed',
-          emailed: { folder: '/SkyDock/Tandems/Luc Favre', sent: true }
+          emailed: { folder: '/SkyDock/Passengers/Luc Favre', sent: true }
         })
       )
       expect(res.globalErrors?.[0]).toContain('Connect the NAS')
@@ -1003,15 +1003,15 @@ describe('changes made on the board', () => {
       expect(saved?.groups[0]?.destination).toBe('Yverdon')
     })
 
-    /* Tandems is a place like any other now; the montages are not a place at all */
-    it('takes Tandems off like any other place', async () => {
+    /* Passengers is a place like any other now; the montages are not a place at all */
+    it('takes Passengers off like any other place', async () => {
       writeManifest(
-        [group({ id: 'group_1', destination: 'Tandems', files: [file({ id: 'a' })] })],
+        [group({ id: 'group_1', destination: 'Passengers', files: [file({ id: 'a' })] })],
         [],
         2
       )
 
-      const res = answer(await send({ intent: 'remove-destination', destination: 'Tandems' }))
+      const res = answer(await send({ intent: 'remove-destination', destination: 'Passengers' }))
 
       expect(res.groups[0]?.destination).toBeUndefined()
     })

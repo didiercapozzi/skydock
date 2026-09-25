@@ -131,12 +131,10 @@ const montagesRemoteDir = (manifest: Manifest, session: NasSession) => {
   return session.listsDir ?? (folders.length > 0 ? originsDirOf(folders) : null)
 }
 
-/* where that list was kept before: above today's folders, before its place was fixed, and in the
-   Tandems folder, where every montage went before montages belonged to no place */
+/* where that list was kept before its place was fixed: above today's folders */
 const earlierMontagesDirs = (manifest: Manifest) => {
   const folders = placeFolders(manifest)
-  const earlier = destBaseOf('Tandems', manifest)
-  return [...(folders.length > 0 ? [originsDirOf(folders)] : []), ...(earlier ? [earlier] : [])]
+  return folders.length > 0 ? [originsDirOf(folders)] : []
 }
 
 /* Where one group's processed folder goes on the NAS.

@@ -14,7 +14,7 @@ import type { ManifestGroup } from '../src/types'
 /* The storage's own list of montages. Read off the storage, changed one entry at a time, written back
    — and never written over when it could not be read, since that would lose every other entry. */
 
-const DIR = '/SkyDock/Tandems'
+const DIR = '/SkyDock/Passengers'
 
 /* A storage that keeps the list of montages in DIR, under the name it has now. */
 const LIST = `${DIR}/skydock-montages.json`
@@ -126,68 +126,13 @@ describe('the storage’s list of montages', () => {
   })
 })
 
-/* The list was called skydock-tandems.json before montages had the name, with its entries under
-   `tandems`, and kept in the Tandems folder before that. It moves over the first time it changes, and never leaves two lists
-   behind telling different stories. */
-describe('the list of montages under the name it had', () => {
-  const OLD = `${DIR}/skydock-tandems.json`
-  const ana = JSON.stringify({ version: 1, tandems: [entry(`${DIR}/Ana Roth`, 'Ana', 100)] })
-
-  it('is read when there is no other', async () => {
-    const storage = await startListStorage({ [OLD]: ana })
-    try {
-      const index = await readMontageIndex(storage.session, DIR)
-      expect(index.montages.map((t) => t.firstname)).toEqual(['Ana'])
-    } finally {
-      await storage.close()
-    }
-  })
-
-  it('is written under its own name at the first change, and the old one put in the bin', async () => {
-    const storage = await startListStorage({ [OLD]: ana })
-    try {
-      await updateMontageIndex(storage.session, DIR, (index) =>
-        upsert(index, entry(`${DIR}/Luc Favre`, 'Luc', 200))
-      )
-
-      expect(heldIn(storage.file(LIST))?.montages.map((t) => t.firstname)).toEqual(['Luc', 'Ana'])
-      expect(storage.file(OLD)).toBeNull()
-      expect(storage.paths().filter((at) => at.includes('/.skydock-trash/'))).toHaveLength(1)
-    } finally {
-      await storage.close()
-    }
-  })
-
-  it('stays where it was when the new one cannot be written', async () => {
-    const storage = await startListStorage({ [OLD]: ana }, { refuse: 'skydock-montages.json' })
-    try {
-      await expect(
-        updateMontageIndex(storage.session, DIR, (index) =>
-          upsert(index, entry(`${DIR}/Luc Favre`, 'Luc', 200))
-        )
-      ).rejects.toThrow()
-
-      expect(storage.file(OLD)).toBe(ana)
-    } finally {
-      await storage.close()
-    }
-  }, 15_000)
-
-  it('gives way to the list under its own name when both are there', async () => {
-    const storage = await startListStorage({
-      [OLD]: ana,
-      [LIST]: JSON.stringify({ version: 1, montages: [entry(`${DIR}/Luc Favre`, 'Luc', 200)] })
-    })
-    try {
-      const index = await readMontageIndex(storage.session, DIR)
-      expect(index.montages.map((t) => t.firstname)).toEqual(['Luc'])
-    } finally {
-      await storage.close()
-    }
-  })
-
-  it('is found in a place it was kept before, and moved to its own', async () => {
-    const storage = await startListStorage({ [OLD]: ana })
+/* The list lives where SkyDock's lists were fixed to live. One kept somewhere else before that is
+   read from there, and moved the first time it changes, so there are never two lists telling
+   different stories. */
+describe('the list of montages kept somewhere else before', () => {
+  it('is found there, and moved to its own place', async () => {
+    const ana = JSON.stringify({ version: 1, montages: [entry(`${DIR}/Ana Roth`, 'Ana', 100)] })
+    const storage = await startListStorage({ [LIST]: ana })
     try {
       await updateMontageIndex(
         storage.session,
@@ -197,7 +142,7 @@ describe('the list of montages under the name it had', () => {
       )
 
       expect(heldIn(storage.file('/SkyDock/skydock-montages.json'))?.montages).toHaveLength(2)
-      expect(storage.file(OLD)).toBeNull()
+      expect(storage.file(LIST)).toBeNull()
     } finally {
       await storage.close()
     }
@@ -301,7 +246,7 @@ describe('a montage’s entry', () => {
           {
             name: 'boogie.mp4',
             holds: ['film'],
-            to: ['/Dropzones/Yverdon/Boogie 2026', '/Dropzones/Tandems/Boogie 2026']
+            to: ['/Dropzones/Yverdon/Boogie 2026', '/Dropzones/Passengers/Boogie 2026']
           }
         ]
       }

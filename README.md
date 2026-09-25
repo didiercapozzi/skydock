@@ -46,7 +46,7 @@ guess, and the board is there to correct it: two jumps can be merged, a file dra
 another, loose files regrouped, and a jump's time put right when a camera's clock was wrong. **Scan**
 in the header does it again at any time.
 
-**3. File each jump.** Drag a jump onto a **destination** — Yverdon, Tandems, any place, a day's
+**3. File each jump.** Drag a jump onto a **destination** — Yverdon, Colombier, any place, a day's
 ordinary work, everyone's together — or make it a **montage**, a film for someone: give the jump a name in its panel ("Luc Favre", "Boogie
 2026") and it is one. Picked files, or a single clip, become a montage the same way. Files that already
 belong to a dropzone are copied into the montage, trims and all, and the dropzone keeps its own. That
@@ -85,7 +85,7 @@ Under the folder you chose on the first run:
 ```
 original_files/   every file exactly as it came off the camera, one folder per day
 processed/        what gets handed over — one folder per destination; each montage in one of its own,
-                  under Tandems/
+                  under Montages/
 .trash/           anything put aside, and a card's files once deleted from it
 ```
 

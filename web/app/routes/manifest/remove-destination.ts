@@ -13,7 +13,7 @@ import type { Intent } from './change'
    Not a place holding anything already on the storage — uploaded is the end of editing, and unfiling
    an uploaded jump would leave the board saying it belongs nowhere while the storage says otherwise.
    Not while something is being processed, because what is being written is being written into that
-   place's folder. Tandems is a place like any other, and goes the same way. */
+   place's folder. */
 const removeDestinationIntent: Intent = ({ data, manifest, manifestPath, frozen, refuse }) => {
   const name = data.destination?.trim()
   if (!name) return refuse('Removing a place needs to know which one.')

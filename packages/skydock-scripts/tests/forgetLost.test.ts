@@ -110,10 +110,10 @@ describe('footage that is nowhere', () => {
           uploaded: {
             at: 1_700_000_300,
             film: {
-              remotePath: '/home/Tandems/Ana/film.mp4',
+              remotePath: '/home/Passengers/Ana/film.mp4',
               md5: 'f',
               size: 10,
-              localPath: '/o/processed/Tandems/Ana/ana.mp4',
+              localPath: '/o/processed/Montages/Ana/ana.mp4',
               at: 1_700_000_300
             }
           }
@@ -122,8 +122,8 @@ describe('footage that is nowhere', () => {
     )
 
     forgetLostFiles(manifest, {
-      dirs: ['/home/Yverdon', '/home/Tandems/Ana'],
-      sizes: { '/home/Tandems/Ana/film.mp4': 10 }
+      dirs: ['/home/Yverdon', '/home/Passengers/Ana'],
+      sizes: { '/home/Passengers/Ana/film.mp4': 10 }
     })
 
     expect(manifest.groups).toHaveLength(1)

@@ -190,18 +190,12 @@ const endingFor = (part: SendPart, taken: string[]) => {
   return free(1)
 }
 
-/* A plan never placed anywhere starts from what a club usually does: the montage and the photos to
-   Tandems, the zips to the Backup, when those destinations exist. */
-const suggested = (items: SendItem[], places: Destination[]) => {
-  const has = (name: string) => places.some((p) => p.name === name)
-  return Object.fromEntries(
-    items.flatMap((item) => {
-      if (!item.zip && item.key !== 'film' && item.key !== 'photos') return []
-      const to = item.zip ? 'Backup' : 'Tandems'
-      return has(to) ? [[item.key, [to]]] : []
-    })
-  )
-}
+/* A plan never placed anywhere starts with the zips in the Backup, when there is one: where the film
+   and the photos go is the club's to choose, and the plan remembers it from then on. */
+const suggested = (items: SendItem[], places: Destination[]) =>
+  places.some((p) => p.name === 'Backup')
+    ? Object.fromEntries(items.flatMap((item) => (item.zip ? [[item.key, ['Backup']]] : [])))
+    : {}
 
 const UploadDialog = ({
   who,

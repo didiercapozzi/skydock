@@ -113,17 +113,13 @@ const PLACE_WORDS = {
   camera: 'camera'
 } as const satisfies Record<Place['kind'], string>
 
-/* The words addresses used before montages had the name, so a link kept or sent then still opens. */
-const EARLIER_WORDS: Record<string, Place['kind']> = { tandems: 'montages', passenger: 'pax' }
-
 const paramsOfPlace = (place: Place) => ({
   kind: PLACE_WORDS[place.kind],
   name: 'name' in place ? place.name : undefined
 })
 
 const kindOfWord = (word: string | undefined) =>
-  Object.entries(PLACE_WORDS).find(([, known]) => known === word)?.[0] ??
-  (word ? EARLIER_WORDS[word] : undefined)
+  Object.entries(PLACE_WORDS).find(([, known]) => known === word)?.[0]
 
 /* Which folder an address names, read the way anything from outside is read: an address is typed by
    hand, kept from a board that has since been rearranged, or sent by somebody, so it is parsed and

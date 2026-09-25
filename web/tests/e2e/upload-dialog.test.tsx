@@ -28,7 +28,7 @@ const file = (id: string, name: string, size: number) => ({
   size,
   mtime: 1_785_000_000,
   processed: {
-    path: `/workspace/output/processed/Tandems/Luc Favre/x/${name}`,
+    path: `/workspace/output/processed/Montages/Luc Favre/x/${name}`,
     size,
     at: 1,
     source: { id, size, mtime: 1_785_000_000 }
@@ -55,7 +55,7 @@ const board = {
   ],
   looseFiles: [],
   destinations: [
-    { name: 'Tandems', path: '/SkyDock/Tandems' },
+    { name: 'Passengers', path: '/SkyDock/Passengers' },
     { name: 'Backup', path: '/Backup' },
     { name: 'Yverdon', path: '/SkyDock/Yverdon' }
   ],
@@ -64,12 +64,12 @@ const board = {
   montages: {
     g1: {
       project: true,
-      projectPath: '/output/processed/Tandems/Luc Favre/luc_favre_20260801.kdenlive',
+      projectPath: '/output/processed/Montages/Luc Favre/luc_favre_20260801.kdenlive',
       film: {
         size: 3 * GB,
         mtime: 1_785_003_600,
         seconds: 312,
-        path: '/workspace/output/processed/Tandems/Luc Favre/luc_favre_20260801.mp4'
+        path: '/workspace/output/processed/Montages/Luc Favre/luc_favre_20260801.mp4'
       },
       baseName: 'luc_favre_20260801'
     }
@@ -185,16 +185,22 @@ describe('uploading a montage — the zips', () => {
   })
 })
 
+/* where a club sends a montage's film and photos, chosen once and remembered from then on */
+const PLACED = {
+  ...DEFAULT_PLAN,
+  placed: { 'zip:full': ['Backup'], film: ['Passengers'], photos: ['Passengers'] }
+}
+
 describe('uploading a montage — where it goes', () => {
   test('puts an item in a destination, the same one in two, and takes it out again', async () => {
-    setSendPlan(DEFAULT_PLAN)
+    setSendPlan(PLACED)
     await renderBoard()
     await next()
 
     await userEvent.selectOptions(dialog().getByLabelText('Add a destination', { exact: true }), 'Yverdon')
     await dropOn(`${STEM}.mp4`, 'Yverdon')
     await expect.element(place('Yverdon').getByText(`${STEM}.mp4`)).toBeInTheDocument()
-    await expect.element(place('Tandems').getByText(`${STEM}.mp4`)).toBeInTheDocument()
+    await expect.element(place('Passengers').getByText(`${STEM}.mp4`)).toBeInTheDocument()
     await expect.element(place('Yverdon').getByText('🔗 share link')).toBeInTheDocument()
 
     await userEvent.click(dialog().getByRole('button', { name: `Take ${STEM}.mp4 out of Yverdon` }))
@@ -202,21 +208,21 @@ describe('uploading a montage — where it goes', () => {
   })
 
   test('shows only the destinations in use, and adds another when asked', async () => {
-    setSendPlan(DEFAULT_PLAN)
+    setSendPlan(PLACED)
     await renderBoard()
     await next()
 
-    await expect.element(place('Tandems')).toBeInTheDocument()
+    await expect.element(place('Passengers')).toBeInTheDocument()
     await expect.element(place('Yverdon')).not.toBeInTheDocument()
     await userEvent.selectOptions(dialog().getByLabelText('Add a destination', { exact: true }), 'Yverdon')
     await expect.element(place('Yverdon').getByText('drop here')).toBeInTheDocument()
 
-    await userEvent.click(dialog().getByRole('button', { name: 'Leave Tandems out of this upload' }))
-    await expect.element(place('Tandems')).not.toBeInTheDocument()
+    await userEvent.click(dialog().getByRole('button', { name: 'Leave Passengers out of this upload' }))
+    await expect.element(place('Passengers')).not.toBeInTheDocument()
   })
 
   test('takes an item dragged onto a destination', async () => {
-    setSendPlan(DEFAULT_PLAN)
+    setSendPlan(PLACED)
     await renderBoard()
     await next()
 
@@ -230,7 +236,7 @@ describe('uploading a montage — where it goes', () => {
   })
 
   test('carries every picked item when one of them is dragged', async () => {
-    setSendPlan(DEFAULT_PLAN)
+    setSendPlan(PLACED)
     await renderBoard()
     await next()
 
@@ -244,24 +250,24 @@ describe('uploading a montage — where it goes', () => {
   })
 
   test('puts the items in the project folder, or straight into the destination’s folder', async () => {
-    setSendPlan(DEFAULT_PLAN)
+    setSendPlan(PLACED)
     await renderBoard()
     await next()
 
-    await expect.element(place('Tandems').getByText('luc-favre/', { exact: true })).toBeInTheDocument()
+    await expect.element(place('Passengers').getByText('luc-favre/', { exact: true })).toBeInTheDocument()
     await page.screenshot({ path: './playwright-screenshots/upload-dialog-where.png' })
     await userEvent.click(
       dialog()
-        .getByRole('group', { name: 'Where in Tandems' })
+        .getByRole('group', { name: 'Where in Passengers' })
         .getByRole('button', { name: 'In the root' })
     )
     await expect
-      .element(place('Tandems').getByText('luc-favre/', { exact: true }))
+      .element(place('Passengers').getByText('luc-favre/', { exact: true }))
       .not.toBeInTheDocument()
   })
 
   test('sends the upload, as it was arranged, only from its own button', async () => {
-    setSendPlan(DEFAULT_PLAN)
+    setSendPlan(PLACED)
     requests.length = 0
     await renderBoard()
     await next()
@@ -278,8 +284,8 @@ describe('uploading a montage — where it goes', () => {
           placed: {
             'zip:full': ['Backup'],
             videos: [],
-            photos: ['Tandems'],
-            film: ['Tandems'],
+            photos: ['Passengers'],
+            film: ['Passengers'],
             project: []
           },
           inRoot: [],
@@ -293,7 +299,7 @@ describe('uploading a montage — where it goes', () => {
 /* Uploaded is what the storage holds, not what was once recorded: delete the files over there and
    the montage reads as not uploaded again, and says what went missing. */
 describe('an uploaded montage, checked against the storage', () => {
-  const dir = '/SkyDock/Tandems/Luc Favre'
+  const dir = '/SkyDock/Passengers/Luc Favre'
   const record = (remotePath: string, size: number) => ({
     remotePath,
     md5: 'x',
@@ -343,7 +349,7 @@ describe('an uploaded montage, checked against the storage', () => {
 /* Freeing an uploaded montage: offered only once it is up there, never without asking, and what is
    left afterwards says it lives on the storage only. */
 describe('freeing an uploaded montage', () => {
-  const dir = '/SkyDock/Tandems/Luc Favre'
+  const dir = '/SkyDock/Passengers/Luc Favre'
   const sent = (remotePath: string, size: number) => ({
     remotePath,
     md5: 'x',
@@ -477,7 +483,7 @@ describe('emailing the passenger their link', () => {
 /* The storage's own list of montages, under On the storage: every montage up there — this machine's
    and the ones it no longer has — with whether the passenger was emailed, and a way to say so. */
 describe('the montages on the storage', () => {
-  const DIR = '/SkyDock/Tandems'
+  const DIR = '/SkyDock/Passengers'
   const listed = {
     ...board,
     storage: {
@@ -537,7 +543,7 @@ describe('the montages on the storage', () => {
    honours, or whose folder it no longer holds, stays on the list for what it says — whether its
    passenger was emailed, that it was freed — but offers nothing that is not there to offer. */
 describe('a montage on the storage’s list that the storage no longer holds', () => {
-  const DIR = '/SkyDock/Tandems'
+  const DIR = '/SkyDock/Passengers'
   const ana = {
     folder: `${DIR}/Ana Roth`,
     firstname: 'Ana',
@@ -634,7 +640,7 @@ describe('where every passenger has got to', () => {
 /* A montage freed and walked to its last step — emailed, as the storage's list says — has nothing
    left to do here. It leaves the montages, and is found in the storage's own list. */
 describe('a montage with nothing left to do', () => {
-  const DIR = '/SkyDock/Tandems'
+  const DIR = '/SkyDock/Passengers'
   const sent = (name: string) => ({
     remotePath: `${DIR}/Luc Favre/${name}`,
     md5: 'x',
@@ -767,7 +773,7 @@ describe('deleting a montage that is already edited and rendered', () => {
 /* A board scanned again from nothing has forgotten its montages, and the storage's list has not: a
    montage whose files are here, waiting to be sorted, is offered back where the list names it. */
 describe('a montage this board has forgotten', () => {
-  const DIR = '/SkyDock/Tandems'
+  const DIR = '/SkyDock/Passengers'
   const entry = (who: [string, string], ids: string[]) => ({
     folder: `${DIR}/${who.join(' ')}`,
     firstname: who[0],

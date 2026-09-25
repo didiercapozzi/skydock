@@ -27,15 +27,10 @@ const montageEntrySchema = z.object({
   files: z.array(z.object({ id: z.string(), filename: z.string(), mtime: z.number() })).optional()
 })
 
-/* The entries were under `tandems` before montages had the name; a list written then is read the
-   same, and written back under `montages`. */
-const montageIndexSchema = z.preprocess(
-  (value) =>
-    typeof value === 'object' && value !== null && 'tandems' in value && !('montages' in value)
-      ? { ...value, montages: value.tandems }
-      : value,
-  z.object({ version: z.literal(1), montages: z.array(montageEntrySchema) })
-)
+const montageIndexSchema = z.object({
+  version: z.literal(1),
+  montages: z.array(montageEntrySchema)
+})
 
 /* What the storage no longer holds of the montages its list names, asked of the storage itself:
    folders it does not have any more, and folders whose link it no longer honours — revoked, or

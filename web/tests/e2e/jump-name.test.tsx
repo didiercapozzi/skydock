@@ -151,9 +151,9 @@ describe('renaming a jump', () => {
     const { onRename } = await renderJump(jump())
 
     await userEvent.click(page.getByRole('button', { name: 'Jump 1' }))
-    await userEvent.fill(page.getByLabelText('Name'), 'Tandem boogie')
+    await userEvent.fill(page.getByLabelText('Name'), 'Sunset boogie')
     await userEvent.keyboard('{Enter}')
 
-    expect(onRename).toHaveBeenCalledWith('Tandem boogie')
+    expect(onRename).toHaveBeenCalledWith('Sunset boogie')
   })
 })

@@ -295,19 +295,17 @@ already filed never grows by itself. Every jump already there keeps its files, h
 
 Filing a jump answers one question: where does it go?
 
-- **A destination** (Yverdon, Colombier, Tandems, …) is a place. Its jumps belong to nobody in
+- **A destination** (Yverdon, Colombier, …) is a place. Its jumps belong to nobody in
   particular, and their files all sit directly in its folder: no folder per jump, videos and photos
-  together. Many days share the folder, which is why it is never wiped. **Tandems is a destination
-  like any other**; nothing about it is special.
+  together. Many days share the folder, which is why it is never wiped. No destination is special,
+  whatever it is called.
 - **A montage** is a film made for someone: a tandem passenger, a boogie, a day at a dropzone. It
   belongs to no destination. It has **one name**, typed once — "Luc Favre", "Boogie 2026" — and a
   single word is a whole name. The name is its working folder on this machine, named as typed, with
   videos and photos kept apart inside it. Two jumps given the same name are one montage and share it.
   A montage cannot be processed until it has a name, because the name is the folder. **Where its film
   and its backups go is chosen when it is uploaded**, among the destinations (Uploading a montage).
-- **From before montages.** A board whose tandems were jumps filed under Tandems reads each of them as a
-  montage, once, the first time it is opened; Tandems stays, as the destination it now is, with its
-  folder on the storage. A backup folder chosen for tandems before becomes a destination called
+- **A backup folder chosen before backups went into destinations** becomes a destination called
   Backup, so a backup can go where it always went.
 - **A name can be changed afterwards**, because a name read off a form can be read wrong. Changing one
   says what it costs: what was processed belongs to the old folder and must be processed again, and what
@@ -321,8 +319,8 @@ Filing a jump answers one question: where does it go?
   so it must be processed again wherever those jumps go next, exactly as when a name is changed. The
   folder on the storage is left as it is, with everything in it and any link handed out of it: what is
   up there is not this machine's to throw away. A dropzone holding anything already uploaded cannot be
-  removed — uploaded is the end of editing. Tandems is taken off the same way; the montages are not a
-  place, and are never taken off as one.
+  removed — uploaded is the end of editing. The montages are not a place, and are never taken off as
+  one.
 
 ## What lands on disk
 
@@ -332,7 +330,7 @@ output/
 ├── processed/                what gets handed over
 │   ├── Yverdon/              a dropzone: flat, shared by every day shot there
 │   │   └── yverdon_20260829_113015.mp4
-│   └── Tandems/              a destination like Yverdon — and the montages' working folders
+│   └── Montages/             the montages' working folders
 │       └── Luc Favre/        a montage, named as typed: the name kept so its edit still opens
 │           ├── videos/  photos/
 │           ├── luc_favre_20260829.kdenlive    the editing project
@@ -371,8 +369,7 @@ files, `/dropzone/yverdon` is that dropzone, `/montage/Lily DONZALLAZ` is hers, 
 `/dropzone/yverdon/file/<the file>` is that clip open in it. A folder in the menu is a link, so picking
 one is going there: the back button walks the folders and clips looked at, a page reloaded comes back
 where it was, and an address can be kept or sent to somebody — a montage's opens its page even on a
-board that no longer holds it, showing what the storage has of it; one kept from when montages were
-called tandems, `/passenger/…`, still opens. One nobody recognises opens the fresh files rather than
+board that no longer holds it, showing what the storage has of it. One nobody recognises opens the fresh files rather than
 nothing. How a folder is being looked at travels with its address:
 what is typed in the box, how the files are grouped, which jump card is open. Which kind of file is
 shown belongs to the whole board instead, so it follows from one folder to the next. What is being
@@ -380,7 +377,7 @@ decided and not yet saved — a trim, a rectangle, a turn — is in none of it: 
 come back to, and a trim nobody saved is not.
 
 **The places.** Three places of work: _Fresh files_, a single entry holding everything off the
-cameras that is not filed yet; _Destinations_, one entry per destination — Tandems among them — and a field to add one; and
+cameras that is not filed yet; _Destinations_, one entry per destination, and a field to add one; and
 _Montages_, one entry per named montage and one for the montages still waiting for a name. Below them, once the storage is
 connected, is _On the storage_, its list of montages; at the foot, each camera plugged in, for as long
 as it stays plugged in. Each place of work says how many files it holds, how much of it is still local,
@@ -1064,7 +1061,9 @@ machine, and the dialog says so, except a part that goes up inside a zip. A dest
 folder on the storage has its folder chosen from there.
 
 What was made is **remembered on this machine**: the next montage opens with the same zips, each item
-where it went last time, and each destination straight in its folder or not. The project folder is
+where it went last time, and each destination straight in its folder or not. The very first time,
+the zips go to a destination called Backup when there is one, and nothing else is put anywhere:
+where the film and the photos go is the club's to choose. The project folder is
 this montage's own.
 
 **Refusals**, each named: no name; files still to process; no film yet, naming the film looked for; a
@@ -1133,11 +1132,9 @@ The storage holds a list of every montage uploaded, kept in the same place as th
 file came from — a montage goes into any destination, so the list belongs to none. It says who it
 was for, the day, how many videos and photos, when it went up, its share link, where its film, photos
 and backup are, whether it was freed, and whether its link was emailed and to which address. A montage
-is known on it by the folder its film went to. A list kept before — in the Tandems folder, or under
-the name it had while every montage was a tandem — is read until the new one is written, and is then
-put in the storage's bin, so nothing listed there is lost and there are never two lists telling
-different stories. A SkyDock older than this one still writes the old list, so every machine is
-brought up to date before a montage is uploaded from it. _On the
+is known on it by the folder its film went to. A list kept somewhere else before the lists' place was
+fixed is read from there until the new one is written, and is then put in the storage's bin, so
+nothing listed there is lost and there are never two lists telling different stories. _On the
 storage_, in the menu once the storage is connected, shows this list, so every montage the storage holds is there, including
 ones this machine no longer has and ones uploaded from another machine. Each can be emailed from there,
 and one still on this board can be opened.

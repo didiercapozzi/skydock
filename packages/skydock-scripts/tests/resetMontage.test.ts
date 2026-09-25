@@ -78,9 +78,9 @@ const setup = () => {
     createdAt: '2026-08-01',
     files: [a, b, c],
     groups,
-    destinations: [{ name: 'Tandems' }]
+    destinations: [{ name: 'Passengers' }]
   }
-  const folder = (who: string) => path.join(outputDir, 'processed', 'Tandems', who)
+  const folder = (who: string) => path.join(outputDir, 'processed', 'Montages', who)
   for (const who of ['Luc Favre', 'Ana Roth']) {
     fs.mkdirSync(path.join(folder(who), 'videos'), { recursive: true })
     fs.writeFileSync(path.join(folder(who), 'videos', 'copy.mp4'), 'copy')

@@ -24,7 +24,7 @@ const file = (id: string, mtime: number): ManifestFile => ({
 })
 
 const sent = (name: string) => ({
-  remotePath: `/SkyDock/Tandems/Luc Favre/${name}`,
+  remotePath: `/SkyDock/Passengers/Luc Favre/${name}`,
   md5: 'x',
   size: 1,
   localPath: '/l',

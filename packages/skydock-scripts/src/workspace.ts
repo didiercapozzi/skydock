@@ -2,10 +2,8 @@ import { dayOfFiles } from './clustering'
 import { isMontage } from './filed'
 import type { ManifestGroup, ManifestPassenger } from './types'
 
-/* Where montages are worked on, on this machine: each in a folder of its own inside this one. It
-   keeps the name montages had, because a project names its clips by where they are, and moving them
-   would leave every edit pointing at nothing. */
-const MONTAGES_FOLDER = 'Tandems'
+/* Where montages are worked on, on this machine: each in a folder of its own inside this one. */
+const MONTAGES_FOLDER = 'Montages'
 
 /* A montage is named by one name — "Luc Favre", "Boogie 2026" — and any name is a whole one: it is
    the folder and the file names. */

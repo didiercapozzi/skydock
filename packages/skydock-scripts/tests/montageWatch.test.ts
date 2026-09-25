@@ -35,7 +35,7 @@ const montagesTold = () => heard.flatMap((e) => (e.kind === 'montage' ? [e] : []
 
 beforeEach(() => {
   outputDir = createTmpDir('skydock-watch-')
-  folder = path.join(outputDir, 'processed', 'Tandems', 'Luc Favre')
+  folder = path.join(outputDir, 'processed', 'Montages', 'Luc Favre')
   fs.mkdirSync(folder, { recursive: true })
   fs.writeFileSync(path.join(folder, 'luc_favre_20260801.kdenlive'), '<mlt/>')
   const at = Math.floor(new Date(2026, 7, 1, 10, 0, 0).getTime() / 1000)

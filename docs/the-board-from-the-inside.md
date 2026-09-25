@@ -52,9 +52,9 @@ flowchart LR
   pax -->|process| copies[copies in their folder]
   copies -->|montage| project[an editing project]
   project -->|the editor, by hand| film["the film, rendered"]
-  film -->|upload-tandem| storage[("their folder, and the backup")]
+  film -->|upload-montage| storage[("their folder, and the backup")]
   storage -->|mark-emailed| told(["told, with their link"])
-  storage -->|free-tandem| room([room back])
+  storage -->|free-montage| room([room back])
 ```
 
 ### Taking something back
@@ -63,8 +63,8 @@ Everything goes back one step at a time, and only a loose file in Fresh files �
 
 ```mermaid
 flowchart LR
-  pax[a tandem] -->|reset-tandem| before[back to before processing]
-  pax -->|delete-tandem| loose[loose in Fresh files]
+  pax[a montage] -->|reset-montage| before[back to before processing]
+  pax -->|delete-montage| loose[loose in Fresh files]
   jump[a jump] -->|delete-jump| loose
   filed[a filed file] -->|move-files| loose
   loose -->|trash-unsorted| bin[("the bin, never emptied")]
@@ -98,11 +98,11 @@ The rule itself is in [RULES.md](../RULES.md), under _Freeing space_.
 
 | asked for | what it does | what it reaches |
 | --- | --- | --- |
-| `free-tandem` | Delete a tandem from this machine, once the storage is proved to hold all of it (RULES, Freeing space). | writes the record, needs the storage, writes the storage’s list, works outside the record |
+| `free-montage` | Delete a montage from this machine, once the storage is proved to hold all of it (RULES, Freeing space). | writes the record, needs the storage, writes the storage’s list, works outside the record |
 | `free-dropzone` | Delete what of a dropzone is on the storage from this machine, once the storage is proved to hold it (RULES, Freeing space). | writes the record, needs the storage, works outside the record |
 | `copy-back` | Files this machine gave back, asked for again from the card they are still on. | works outside the record |
 
-<details><summary><code>free-tandem</code> refuses</summary>
+<details><summary><code>free-montage</code> refuses</summary>
 
 - Connect the NAS first — freeing needs it to prove it holds the files.
 - Something is being processed — wait for it to finish.
@@ -142,7 +142,6 @@ The rule itself is in [RULES.md](../RULES.md), under _Jumps_.
 - Select at least one file to move.
 - On the NAS — cropping, re-timing and moving are closed. Take it off the NAS to change it.
 - _whatever went wrong underneath, in its own words_
-- This montage has an edit — change it in kdenlive.
 
 </details>
 
@@ -150,7 +149,6 @@ The rule itself is in [RULES.md](../RULES.md), under _Jumps_.
 
 - Pick files and a jump to copy them into.
 - _whatever went wrong underneath, in its own words_
-- This montage has an edit — change it in kdenlive.
 
 </details>
 
@@ -160,7 +158,6 @@ The rule itself is in [RULES.md](../RULES.md), under _Jumps_.
 - This jump is on the storage only — there is nothing here to move.
 - This jump is on the storage — uploaded is the end of editing.
 - Something is being processed — wait for it to finish.
-- This montage has an edit — change it in kdenlive.
 
 </details>
 
@@ -184,7 +181,6 @@ The rule itself is in [RULES.md](../RULES.md), under _Making a montage_.
 - Pick the files the montage is made of.
 - Give the montage a name.
 - _whatever went wrong underneath, in its own words_
-- This montage has an edit — change it in kdenlive.
 
 </details>
 
@@ -246,17 +242,17 @@ The rule itself is in [RULES.md](../RULES.md), under _Taking a montage back_.
 
 | asked for | what it does | what it reaches |
 | --- | --- | --- |
-| `reset-tandem` | Back to before processing, keeping every decision — or undone altogether (RULES, Taking a montage back). | writes the record, works outside the record |
-| `delete-tandem` | Back to before processing, keeping every decision — or undone altogether (RULES, Taking a montage back). | writes the record, works outside the record |
+| `reset-montage` | Back to before processing, keeping every decision — or undone altogether (RULES, Taking a montage back). | writes the record, works outside the record |
+| `delete-montage` | Back to before processing, keeping every decision — or undone altogether (RULES, Taking a montage back). | writes the record, works outside the record |
 
-<details><summary><code>reset-tandem</code> refuses</summary>
+<details><summary><code>reset-montage</code> refuses</summary>
 
 - This montage is being processed — wait for it to finish.
 - _whatever went wrong underneath, in its own words_
 
 </details>
 
-<details><summary><code>delete-tandem</code> refuses</summary>
+<details><summary><code>delete-montage</code> refuses</summary>
 
 - This montage is being processed — wait for it to finish.
 - _whatever went wrong underneath, in its own words_
@@ -269,13 +265,12 @@ The rule itself is in [RULES.md](../RULES.md), under _The board_.
 
 | asked for | what it does | what it reaches |
 | --- | --- | --- |
-| `save-groups` | The board's own picture of the jumps, the places and each file's crop, saved as sent — bar what a frozen tandem forbids — and answered with what was saved, so the board redraws from the server rather than trusting its own optimistic copy (RULES, The board). | writes the record |
+| `save-groups` | The board's own picture of the jumps, the places and each file's crop, saved as sent — bar what a frozen montage forbids — and answered with what was saved, so the board redraws from the server rather than trusting its own optimistic copy (RULES, The board). | writes the record |
 
 <details><summary><code>save-groups</code> refuses</summary>
 
 - Save needs groups.
 - On the NAS — cropping, re-timing and moving are closed. Take it off the NAS to change it.
-- This montage has an edit — change it in kdenlive.
 
 </details>
 
@@ -285,7 +280,7 @@ The rule itself is in [RULES.md](../RULES.md), under _The editing project_.
 
 | asked for | what it does | what it reaches |
 | --- | --- | --- |
-| `montage` | A processed tandem gets an editing project, the template as its owner made it with the clips in its bin, and the project is opened in the same press: it exists to be edited (RULES, The editing project). | writes the record, works outside the record |
+| `montage` | A processed montage gets an editing project, the template as its owner made it with the clips in its bin, and the project is opened in the same press: it exists to be edited (RULES, The editing project). | writes the record, works outside the record |
 
 <details><summary><code>montage</code> refuses</summary>
 
@@ -295,6 +290,7 @@ The rule itself is in [RULES.md](../RULES.md), under _The editing project_.
 - Processed folder not found. Process it again.
 - This montage already has a project — open it in kdenlive.
 - _whatever went wrong underneath, in its own words_
+- _a message naming the file or the jump_
 
 </details>
 
@@ -304,9 +300,9 @@ The rule itself is in [RULES.md](../RULES.md), under _The storage's list of mont
 
 | asked for | what it does | what it reaches |
 | --- | --- | --- |
-| `restore-tandems` | Tandems the storage's list names are put back on a board that has forgotten them: their files gathered again under the passenger's name, at the times they had (RULES, The storage's list of montages). | writes the record, needs the storage, works outside the record |
+| `restore-montages` | Montages the storage's list names are put back on a board that has forgotten them: their files gathered again under the passenger's name, at the times they had (RULES, The storage's list of montages). | writes the record, needs the storage, works outside the record |
 
-<details><summary><code>restore-tandems</code> refuses</summary>
+<details><summary><code>restore-montages</code> refuses</summary>
 
 - Connect the NAS first — the list of montages is kept there.
 - Choose where montages go on the storage first.
@@ -338,7 +334,6 @@ The rule itself is in [RULES.md](../RULES.md), under _Times and dates_.
 - Shift needs a valid anchor time.
 - Group not found.
 - Group has no files.
-- This montage has an edit — change it in kdenlive.
 
 </details>
 
@@ -348,7 +343,6 @@ The rule itself is in [RULES.md](../RULES.md), under _Times and dates_.
 - That is not a time.
 - This file is on the storage — uploaded is the end of editing.
 - That file is no longer on the board.
-- This montage has an edit — change it in kdenlive.
 
 </details>
 
@@ -358,9 +352,9 @@ The rule itself is in [RULES.md](../RULES.md), under _Uploading a montage_.
 
 | asked for | what it does | what it reaches |
 | --- | --- | --- |
-| `upload-tandem` | A montage goes up as its plan says — each item built once and sent to every destination it was put in — and the storage's own list of montages follows (RULES, Uploading a montage). | writes the record, needs the storage, writes the storage’s list, says how far it has got, works outside the record |
+| `upload-montage` | A montage goes up as its plan says — each item built once and sent to every destination it was put in — and the storage's own list of montages follows (RULES, Uploading a montage). | writes the record, needs the storage, writes the storage’s list, says how far it has got, works outside the record |
 
-<details><summary><code>upload-tandem</code> refuses</summary>
+<details><summary><code>upload-montage</code> refuses</summary>
 
 - Group not found.
 - Not connected to NAS. Please connect first.
@@ -403,7 +397,6 @@ The rule itself is in [RULES.md](../RULES.md), under _Where the jump is in a cli
 <details><summary><code>merge-groups</code> refuses</summary>
 
 - Merge needs two group ids.
-- This montage has an edit — change it in kdenlive.
 
 </details>
 
@@ -451,14 +444,11 @@ The rule itself is in [RULES.md](../RULES.md), under _Where the jump is in a cli
 One rule enforced in one place is easy to see. These are enforced in several, which is the part that
 is hard to hold in your head: the same sentence, said by everything that has to say it.
 
-**This montage has an edit — change it in kdenlive.**
-`save-groups` · `merge-groups` · `shift-group-time` · `retime-file` · `move-files` · `copy-files` · `make-montage` · `delete-jump`
-
 **Something is being processed — wait for it to finish.**
-`delete-jump` · `remove-destination` · `reset-fresh` · `trash-unsorted` · `free-tandem` · `free-dropzone`
+`delete-jump` · `remove-destination` · `reset-fresh` · `trash-unsorted` · `free-montage` · `free-dropzone`
 
 **Group not found.**
-`montage` · `upload-tandem` · `shift-group-time`
+`montage` · `upload-montage` · `shift-group-time`
 
 **That file is no longer on the board.**
 `retime-file` · `set-moment` · `play-file`
@@ -467,16 +457,16 @@ is hard to hold in your head: the same sentence, said by everything that has to 
 `save-groups` · `move-files`
 
 **Not connected to NAS. Please connect first.**
-`upload-group` · `upload-tandem`
+`upload-group` · `upload-montage`
 
 **This montage is being processed — wait for it to finish.**
-`reset-tandem` · `delete-tandem`
+`reset-montage` · `delete-montage`
 
 **Connect the NAS first — freeing needs it to prove it holds the files.**
-`free-tandem` · `free-dropzone`
+`free-montage` · `free-dropzone`
 
 **Connect the NAS first — the list of montages is kept there.**
-`mark-emailed` · `restore-tandems`
+`mark-emailed` · `restore-montages`
 
 **Nothing was asked for.**
 `copy-back` · `bring-back`

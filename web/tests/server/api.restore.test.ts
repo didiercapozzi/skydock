@@ -26,7 +26,7 @@ const list = {
   version: 1,
   montages: [
     {
-      folder: '/SkyDock/Tandems/Luc Favre',
+      folder: '/SkyDock/Passengers/Luc Favre',
       firstname: 'Luc',
       lastname: 'Favre',
       day: '25.07.2026',
@@ -83,7 +83,7 @@ const forgotten = (): Manifest => ({
       files: [file('a', AT), file('b', AT + 60)]
     }
   ],
-  destinations: [{ name: 'Tandems', path: '/SkyDock/Tandems' }]
+  destinations: [{ name: 'Passengers', path: '/SkyDock/Passengers' }]
 })
 
 beforeEach(() => {
@@ -112,7 +112,10 @@ afterEach(() => {
 
 describe('restoring montages from the storage’s list', () => {
   it('puts a forgotten montage back under its passenger’s name, and writes it down', async () => {
-    const said = await send({ intent: 'restore-montages', folders: ['/SkyDock/Tandems/Luc Favre'] })
+    const said = await send({
+      intent: 'restore-montages',
+      folders: ['/SkyDock/Passengers/Luc Favre']
+    })
 
     expect(said.restored).toEqual([{ who: 'Luc Favre', files: 2, of: 2 }])
     const saved = loadManifest(path.join(tmpDir, 'manifest.json'))

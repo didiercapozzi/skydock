@@ -18,7 +18,7 @@ vi.mock('node:child_process', async (importOriginal) => {
 })
 
 /* Where a file ends up is the whole of what SkyDock does, and nothing tested it. A montage was
-   delivered as though it were a dropzone — flat, every file named after the word "Tandems" — and
+   delivered as though it were a dropzone — flat, every file named after the word "Montages" — and
    151 passing tests had nothing to say about it, because they all built their own paths instead of
    asking what processing actually wrote. These ask. */
 
@@ -65,7 +65,7 @@ const write = (group: Partial<ManifestGroup> & { files: ManifestFile[] }) => {
     createdAt: '2026-08-08',
     files: full.files,
     groups: [full],
-    destinations: [{ name: 'Tandems' }, { name: 'Yverdon' }]
+    destinations: [{ name: 'Passengers' }, { name: 'Yverdon' }]
   }
   const manifestPath = path.join(outputDir, 'manifest.json')
   saveManifest(manifestPath, manifest)
@@ -108,8 +108,8 @@ describe('where a montage lands', () => {
     await processJumps({ manifestPath, outputDir })
 
     expect(delivered()).toEqual([
-      path.join('Tandems', 'Luc Favre', 'photos', 'luc_favre_20260808_090910.jpg'),
-      path.join('Tandems', 'Luc Favre', 'videos', 'luc_favre_20260808_090909.mp4')
+      path.join('Montages', 'Luc Favre', 'photos', 'luc_favre_20260808_090910.jpg'),
+      path.join('Montages', 'Luc Favre', 'videos', 'luc_favre_20260808_090909.mp4')
     ])
   })
 
@@ -123,7 +123,7 @@ describe('where a montage lands', () => {
     await processJumps({ manifestPath, outputDir })
 
     expect(delivered()).toEqual([
-      path.join('Tandems', 'Chloé Perret', 'videos', 'chloe_perret_20260808_090909.mp4')
+      path.join('Montages', 'Chloé Perret', 'videos', 'chloe_perret_20260808_090909.mp4')
     ])
   })
 
@@ -138,7 +138,7 @@ describe('where a montage lands', () => {
     await processJumps({ manifestPath, outputDir })
 
     expect(delivered()).toEqual([
-      path.join('Tandems', 'Boogie', 'videos', 'boogie_20260808_090909.mp4')
+      path.join('Montages', 'Boogie', 'videos', 'boogie_20260808_090909.mp4')
     ])
   })
 
@@ -182,13 +182,13 @@ describe('where a montage lands', () => {
     await processJumps({ manifestPath, outputDir, groupIds: ['g2'] })
 
     expect(delivered()).toEqual([
-      path.join('Tandems', 'Luc Favre', 'videos', 'luc_favre_20260808_090909.mp4'),
-      path.join('Tandems', 'Luc Favre', 'videos', 'luc_favre_20260808_100909.mp4')
+      path.join('Montages', 'Luc Favre', 'videos', 'luc_favre_20260808_090909.mp4'),
+      path.join('Montages', 'Luc Favre', 'videos', 'luc_favre_20260808_100909.mp4')
     ])
   })
 
-  /* a file named after the Tandems folder is what a half-named montage filed as a place would be called */
-  it('never writes a file named after the Tandems folder itself', async () => {
+  /* a file named after the Montages folder is what a half-named montage filed as a place would be called */
+  it('never writes a file named after the Montages folder itself', async () => {
     const { manifestPath } = write({
       montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
@@ -197,7 +197,7 @@ describe('where a montage lands', () => {
 
     await processJumps({ manifestPath, outputDir })
 
-    expect(delivered().some((f) => path.basename(f).startsWith('tandems_'))).toBe(false)
+    expect(delivered().some((f) => path.basename(f).startsWith('montages_'))).toBe(false)
   })
 })
 
@@ -352,7 +352,7 @@ describe('cropping the frame', () => {
       files: [clip('GX010001.MP4', 0)]
     })
     await processJumps({ manifestPath, outputDir })
-    const folder = path.join(outputDir, 'processed', 'Tandems', 'Luc Favre')
+    const folder = path.join(outputDir, 'processed', 'Montages', 'Luc Favre')
     const beside = [
       'luc_favre_20260808.kdenlive',
       'luc_favre_20260808.mp4',
@@ -737,7 +737,7 @@ describe('processing a clip that two jumps hold', () => {
           files: [ana]
         }
       ],
-      destinations: [{ name: 'Tandems' }]
+      destinations: [{ name: 'Passengers' }]
     }
     copyFiles(manifest, new Set(['id0']), 'g2')
     const manifestPath = path.join(outputDir, 'manifest.json')
@@ -746,9 +746,9 @@ describe('processing a clip that two jumps hold', () => {
     await processJumps({ manifestPath, outputDir })
 
     expect(delivered()).toEqual([
-      path.join('Tandems', 'Ana Roth', 'videos', 'ana_roth_20260808_090909.mp4'),
-      path.join('Tandems', 'Ana Roth', 'videos', 'ana_roth_20260808_110909.mp4'),
-      path.join('Tandems', 'Luc Favre', 'videos', 'luc_favre_20260808_090909.mp4')
+      path.join('Montages', 'Ana Roth', 'videos', 'ana_roth_20260808_090909.mp4'),
+      path.join('Montages', 'Ana Roth', 'videos', 'ana_roth_20260808_110909.mp4'),
+      path.join('Montages', 'Luc Favre', 'videos', 'luc_favre_20260808_090909.mp4')
     ])
     const after = loadManifest(manifestPath)!
     const recorded = after.files

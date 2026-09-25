@@ -37,7 +37,7 @@ const manifest = (groups: ManifestGroup[] = [luc]): Manifest => ({
   files: [],
   groups,
   destinations: [
-    { name: 'Tandems', path: '/SkyDock/Tandems' },
+    { name: 'Passengers', path: '/SkyDock/Passengers' },
     { name: 'Yverdon', path: '/SkyDock/Yverdon' },
     { name: 'Colombier', path: '/Club/Col' }
   ]
@@ -70,26 +70,26 @@ describe('where a place’s folder is on the storage', () => {
             {
               name: 'luc.mp4',
               holds: ['film'],
-              to: ['/SkyDock/Tandems/Luc Favre', '/SkyDock/Yverdon/Luc Favre']
+              to: ['/SkyDock/Passengers/Luc Favre', '/SkyDock/Yverdon/Luc Favre']
             }
           ]
         }
       }
     ])
-    expect(storageDirOf(uploaded, { groupId: 'g1' }, '/out')).toBe('/SkyDock/Tandems/Luc Favre')
+    expect(storageDirOf(uploaded, { groupId: 'g1' }, '/out')).toBe('/SkyDock/Passengers/Luc Favre')
   })
 
   /* an older record knows only where its film and photos went */
   it('is, for a montage uploaded before, the folder it actually went to', () => {
     const sent = {
-      remotePath: '/Old/Tandems/Luc Favre/luc.mp4',
+      remotePath: '/Old/Passengers/Luc Favre/luc.mp4',
       md5: 'x',
       size: 1,
       localPath: '/l',
       at: 1
     }
     const uploaded = manifest([{ ...luc, uploaded: { at: 1, film: sent } }])
-    expect(storageDirOf(uploaded, { groupId: 'g1' }, '/out')).toBe('/Old/Tandems/Luc Favre')
+    expect(storageDirOf(uploaded, { groupId: 'g1' }, '/out')).toBe('/Old/Passengers/Luc Favre')
   })
 
   it('is nowhere while no folder has been chosen', () => {
@@ -102,7 +102,7 @@ describe('what a folder on the storage holds', () => {
   it('lists its files, the films and clips first, saying what each is', async () => {
     const stub = nasStubs({
       files: {
-        '/SkyDock/Tandems/Luc Favre': [
+        '/SkyDock/Passengers/Luc Favre': [
           { name: 'luc_favre.photos.zip', size: 30 },
           { name: 'b.jpg', size: 20 },
           { name: 'luc_favre.mp4', size: 10 }
@@ -111,7 +111,7 @@ describe('what a folder on the storage holds', () => {
     })
     stubFetch((url) => stub(url) ?? new Response('{}'))
 
-    const files = await listStorageFolder(session, '/SkyDock/Tandems/Luc Favre')
+    const files = await listStorageFolder(session, '/SkyDock/Passengers/Luc Favre')
 
     expect(files.map((f) => [f.kind, f.name])).toEqual([
       ['video', 'luc_favre.mp4'],
@@ -153,7 +153,7 @@ describe('what a folder on the storage holds', () => {
       files: {
         '/SkyDock/Yverdon': [
           { name: 'skydock-origins.json', size: 2 },
-          { name: 'skydock-tandems.json', size: 2 },
+          { name: 'skydock-montages.json', size: 2 },
           { name: 'yverdon_20260801_100000.mp4', size: 1 }
         ]
       }
@@ -198,7 +198,7 @@ describe('what a folder on the storage holds', () => {
 describe('a file played off the storage', () => {
   it('is only ever one inside a folder SkyDock uploads into', () => {
     const m = manifest()
-    expect(withinStorage(m, session, '/SkyDock/Tandems/Luc Favre/luc.mp4')).toBe(true)
+    expect(withinStorage(m, session, '/SkyDock/Passengers/Luc Favre/luc.mp4')).toBe(true)
     expect(withinStorage(m, session, '/Club/Col/day.mp4')).toBe(true)
     expect(withinStorage(m, session, '/Backup/luc.rushes.zip')).toBe(true)
     expect(withinStorage(m, session, '/homes/someone/private.mp4')).toBe(false)
@@ -217,7 +217,7 @@ describe('a file played off the storage', () => {
 
     const answer = await openStorageFile(
       session,
-      '/SkyDock/Tandems/Luc Favre/luc.mp4',
+      '/SkyDock/Passengers/Luc Favre/luc.mp4',
       'bytes=100-199'
     )
 
@@ -226,7 +226,7 @@ describe('a file played off the storage', () => {
     const params = new URL(asked[0]!.url).searchParams
     expect(params.get('api')).toBe('SYNO.FileStation.Download')
     expect(params.get('mode')).toBe('open')
-    expect(params.get('path')).toBe('["/SkyDock/Tandems/Luc Favre/luc.mp4"]')
+    expect(params.get('path')).toBe('["/SkyDock/Passengers/Luc Favre/luc.mp4"]')
   })
 })
 
@@ -253,7 +253,7 @@ describe('when a file on the storage was shot', () => {
 
   it('is not known for a file SkyDock did not name, nor for digits that are no date', () => {
     expect(shotFromName('GX018664.MP4')).toBeNull()
-    expect(shotFromName('skydock-tandems.json')).toBeNull()
+    expect(shotFromName('skydock-montages.json')).toBeNull()
     expect(shotFromName('yverdon_20261399_013417.mp4')).toBeNull()
   })
 

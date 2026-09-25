@@ -100,7 +100,7 @@ const scene = (options: SceneOptions = {}) => {
   const passenger = noPassenger ? undefined : { firstname: 'Luc', lastname: 'Favre' }
   const outputDir = createTmpDir('skydock-upload-montage-')
   const originals = path.join(outputDir, 'original_files')
-  const groupDir = path.join(outputDir, 'processed', 'Tandems', 'Luc Favre')
+  const groupDir = path.join(outputDir, 'processed', 'Montages', 'Luc Favre')
   fs.mkdirSync(path.join(groupDir, 'videos'), { recursive: true })
   fs.mkdirSync(path.join(groupDir, 'photos'), { recursive: true })
   fs.mkdirSync(originals, { recursive: true })
@@ -163,7 +163,7 @@ const scene = (options: SceneOptions = {}) => {
     files,
     groups: [group],
     destinations: [
-      { name: 'Tandems', path: '/SkyDock/Tandems' },
+      { name: 'Passengers', path: '/SkyDock/Passengers' },
       { name: 'Backup', path: '/Backup' },
       { name: 'Yverdon' }
     ]
@@ -174,10 +174,10 @@ const scene = (options: SceneOptions = {}) => {
 const session = (url: string): NasSession => ({ hostname: url, username: 'u', sessionId: 'sid' })
 
 /* a plan a club might make: the originals and the project in one zip to the backup, the film and
-   the photos as they are to Tandems */
+   the photos as they are to Passengers */
 const PLAN: SendPlan = {
   zips: [{ ending: 'videos', parts: ['videos', 'project'] }],
-  placed: { 'zip:videos': ['Backup'], film: ['Tandems'], photos: ['Tandems'] }
+  placed: { 'zip:videos': ['Backup'], film: ['Passengers'], photos: ['Passengers'] }
 }
 
 const upload = async (
@@ -232,8 +232,8 @@ describe('uploading a montage — when the storage’s list will not follow', ()
 describe('uploading a montage — where each item goes', () => {
   it('puts each item in the destinations it was put in, in the project folder named after the montage', async () => {
     const { uploads, stem } = await upload()
-    expect(into(uploads, '/SkyDock/Tandems/luc-favre')).toEqual([`${stem}.mp4`])
-    expect(into(uploads, '/SkyDock/Tandems/luc-favre/photos')).toEqual([
+    expect(into(uploads, '/SkyDock/Passengers/luc-favre')).toEqual([`${stem}.mp4`])
+    expect(into(uploads, '/SkyDock/Passengers/luc-favre/photos')).toEqual([
       'luc_favre_20260802_113000.jpg',
       'luc_favre_20260802_113001.jpg'
     ])
@@ -245,17 +245,17 @@ describe('uploading a montage — where each item goes', () => {
       {},
       {
         ...PLAN,
-        placed: { ...PLAN.placed, film: ['Tandems', 'Backup'] }
+        placed: { ...PLAN.placed, film: ['Passengers', 'Backup'] }
       }
     )
-    expect(into(uploads, '/SkyDock/Tandems/luc-favre')).toContain(`${stem}.mp4`)
+    expect(into(uploads, '/SkyDock/Passengers/luc-favre')).toContain(`${stem}.mp4`)
     expect(into(uploads, '/Backup/luc-favre')).toContain(`${stem}.mp4`)
   })
 
   it('sends nothing that was put nowhere', async () => {
     const { uploads } = await upload(
       {},
-      { ...PLAN, placed: { 'zip:videos': ['Backup'], film: ['Tandems'] } }
+      { ...PLAN, placed: { 'zip:videos': ['Backup'], film: ['Passengers'] } }
     )
     expect(uploads.some((u) => u.dest.endsWith('/photos'))).toBe(false)
   })
@@ -268,7 +268,7 @@ describe('uploading a montage — where each item goes', () => {
       .map((p) => p.get('path'))
       .filter((p) => p !== null)
     expect(shares.length).toBeGreaterThan(0)
-    expect(shares.every((p) => p.includes('/SkyDock/Tandems/luc-favre'))).toBe(true)
+    expect(shares.every((p) => p.includes('/SkyDock/Passengers/luc-favre'))).toBe(true)
   })
 
   it('never sends the working copies of the videos', async () => {
@@ -281,34 +281,34 @@ describe('uploading a montage — where each item goes', () => {
   it('records what went where: each part’s first place, and every place', async () => {
     const { result, stem } = await upload()
     expect(result.record.shareUrl).toContain('/sharing/abc')
-    expect(result.record.film?.remotePath).toBe(`/SkyDock/Tandems/luc-favre/${stem}.mp4`)
+    expect(result.record.film?.remotePath).toBe(`/SkyDock/Passengers/luc-favre/${stem}.mp4`)
     expect(result.record.rushes).toMatchObject({
       remotePath: `/Backup/luc-favre/${stem}.videos.zip`,
       holds: ['videos', 'project']
     })
     expect(result.record.photoFiles?.map((f) => f.remotePath).sort()).toEqual([
-      '/SkyDock/Tandems/luc-favre/photos/luc_favre_20260802_113000.jpg',
-      '/SkyDock/Tandems/luc-favre/photos/luc_favre_20260802_113001.jpg'
+      '/SkyDock/Passengers/luc-favre/photos/luc_favre_20260802_113000.jpg',
+      '/SkyDock/Passengers/luc-favre/photos/luc_favre_20260802_113001.jpg'
     ])
     expect(result.record.sent).toContainEqual({
       name: `${stem}.mp4`,
       holds: ['film'],
-      to: ['/SkyDock/Tandems/luc-favre']
+      to: ['/SkyDock/Passengers/luc-favre']
     })
   })
 })
 
 describe('uploading a montage — where in a destination', () => {
   it('puts the items straight into a destination’s folder when asked', async () => {
-    const { uploads, stem } = await upload({}, { ...PLAN, inRoot: ['Tandems'] })
-    expect(into(uploads, '/SkyDock/Tandems')).toEqual([`${stem}.mp4`])
-    expect(into(uploads, '/SkyDock/Tandems/photos')).toHaveLength(2)
+    const { uploads, stem } = await upload({}, { ...PLAN, inRoot: ['Passengers'] })
+    expect(into(uploads, '/SkyDock/Passengers')).toEqual([`${stem}.mp4`])
+    expect(into(uploads, '/SkyDock/Passengers/photos')).toHaveLength(2)
     expect(into(uploads, '/Backup/luc-favre')).toEqual([`${stem}.videos.zip`])
   })
 
   it('names the project folder as asked', async () => {
     const { uploads, stem } = await upload({}, { ...PLAN, folder: 'boogie-2026' })
-    expect(into(uploads, '/SkyDock/Tandems/boogie-2026')).toEqual([`${stem}.mp4`])
+    expect(into(uploads, '/SkyDock/Passengers/boogie-2026')).toEqual([`${stem}.mp4`])
   })
 
   it('makes a folder name of lowercase letters, digits and dashes', () => {
@@ -333,7 +333,7 @@ describe('uploading a montage — what is zipped', () => {
       {},
       {
         zips: [{ ending: 'full', parts: ['videos', 'photos', 'project'] }],
-        placed: { 'zip:full': ['Backup'], film: ['Tandems'] }
+        placed: { 'zip:full': ['Backup'], film: ['Passengers'] }
       }
     )
     expect(contents(groupDir, `${stem}.full.zip`)).toEqual([
@@ -354,7 +354,7 @@ describe('uploading a montage — what is zipped', () => {
           { ending: 'full', parts: ['videos', 'photos', 'project'] },
           { ending: 'passenger', parts: ['film', 'photos'] }
         ],
-        placed: { 'zip:full': ['Backup'], 'zip:passenger': ['Tandems'] }
+        placed: { 'zip:full': ['Backup'], 'zip:passenger': ['Passengers'] }
       }
     )
     expect(contents(groupDir, `${stem}.passenger.zip`)).toEqual([
@@ -363,7 +363,7 @@ describe('uploading a montage — what is zipped', () => {
       `${stem}.mp4`
     ])
     expect(into(uploads, '/Backup/luc-favre')).toEqual([`${stem}.full.zip`])
-    expect(into(uploads, '/SkyDock/Tandems/luc-favre')).toEqual([`${stem}.passenger.zip`])
+    expect(into(uploads, '/SkyDock/Passengers/luc-favre')).toEqual([`${stem}.passenger.zip`])
   })
 
   it('sends the originals as they are, under videos/, when they are not zipped', async () => {
@@ -371,7 +371,7 @@ describe('uploading a montage — what is zipped', () => {
       {},
       {
         zips: [],
-        placed: { videos: ['Backup'], film: ['Tandems'] }
+        placed: { videos: ['Backup'], film: ['Passengers'] }
       }
     )
     expect(into(uploads, '/Backup/luc-favre/videos')).toEqual(['GX018570.MP4', 'GX018571.MP4'])
@@ -439,7 +439,7 @@ describe('uploading a montage — the awkward cases', () => {
 
   it('uploads a montage whose camera died, with no film at all', async () => {
     const { uploads } = await upload({ film: null, videos: 0 })
-    expect(into(uploads, '/SkyDock/Tandems/luc-favre/photos')).toHaveLength(2)
+    expect(into(uploads, '/SkyDock/Passengers/luc-favre/photos')).toHaveLength(2)
     expect(uploads.some((u) => u.name.endsWith('.mp4'))).toBe(false)
   })
 })

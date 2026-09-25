@@ -1,10 +1,7 @@
 // @vitest-environment node
-import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { loadManifest, saveManifest } from '../src/manifest'
 import { getGroupProcessedDir } from '../src/process'
-import { createTmpDir } from './fixtures'
 import { copyIntoMontage, moveFiles } from '../src/moveFiles'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
 import { stemOf } from '../src/sending'
@@ -60,7 +57,7 @@ const yverdon = (): Manifest => {
     ],
     destinations: [
       { name: 'Yverdon', path: '/nas/Yverdon' },
-      { name: 'Tandems', path: '/nas/Tandems' }
+      { name: 'Passengers', path: '/nas/Passengers' }
     ]
   }
 }
@@ -150,53 +147,14 @@ describe('making a montage of files a dropzone holds', () => {
   })
 })
 
-describe('a record from before montages', () => {
-  it('reads every jump filed under Tandems as a montage, once, and Tandems as a destination', () => {
-    const dir = createTmpDir('skydock-montage-')
-    const manifestPath = path.join(dir, 'manifest.json')
-    const older: Manifest = {
-      ...yverdon(),
-      version: 1,
-      groups: [
-        jump('t1', [file('loose', AT + 9000)], {
-          destination: 'Tandems',
-          passenger: passengerFrom('Luc Favre')
-        })
-      ]
-    }
-    saveManifest(manifestPath, older)
-
-    const read = loadManifest(manifestPath)!
-    expect(read.groups[0]).toMatchObject({ montageJump: true })
-    expect(read.groups[0]?.destination).toBeUndefined()
-    expect(read.destinations?.map((d) => d.name)).toContain('Tandems')
-
-    /* written back, it is read as it now is: a jump filed under Tandems afterwards stays filed there */
-    read.groups.push(jump('t2', [file('jump1', AT)], { destination: 'Tandems' }))
-    saveManifest(manifestPath, read)
-    const again = loadManifest(manifestPath)!
-    expect(again.groups.find((g) => g.id === 't2')).toMatchObject({ destination: 'Tandems' })
-    expect(again.groups.find((g) => g.id === 't2')?.montageJump).toBeUndefined()
-    fs.rmSync(dir, { recursive: true, force: true })
-  })
-})
-
-describe('Tandems as a destination', () => {
-  it('keeps its files flat in its folder, like any dropzone', () => {
-    const plain = jump('t2', [file('jump1', AT)], { destination: 'Tandems' })
-    expect(getGroupProcessedDir('/out', plain)).toMatchObject({
-      dir: path.join('/out', 'processed', 'Tandems'),
-      flat: true
-    })
-  })
-
-  it('keeps a montage in a folder of its own, where montages always were', () => {
+describe('where a montage is worked on', () => {
+  it('is a folder of its own, under the montages folder', () => {
     const montage = jump('m', [file('jump1', AT)], {
       montageJump: true,
       passenger: passengerFrom('Luc Favre')
     })
     expect(getGroupProcessedDir('/out', montage).dir).toBe(
-      path.join('/out', 'processed', 'Tandems', 'Luc Favre')
+      path.join('/out', 'processed', 'Montages', 'Luc Favre')
     )
   })
 })

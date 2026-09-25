@@ -25,16 +25,9 @@ import { isVideoFile, mapWithLimit } from './utils'
 
 const INDEX_NAME = 'skydock-montages.json'
 
-/* what the list was called before montages had the name */
-const EARLIER_NAME = 'skydock-tandems.json'
-
-/* its own place under its own name first, then under the name it had; then each place it was kept
-   before, under either */
+/* its own place first, then each place it was kept before */
 const placesOf = (dir: string, earlier: string[]): ListPlace[] =>
-  [dir, ...earlier].flatMap((at) => [
-    { dir: at, name: INDEX_NAME },
-    { dir: at, name: EARLIER_NAME }
-  ])
+  [dir, ...earlier].map((at) => ({ dir: at, name: INDEX_NAME }))
 
 const empty = (): MontageIndex => ({ version: 1, montages: [] })
 
@@ -151,7 +144,6 @@ const entryOfMontage = (group: ManifestGroup, listDir?: string | null) => {
 }
 
 export {
-  EARLIER_NAME,
   entryOfMontage,
   folderOfUpload,
   INDEX_NAME,

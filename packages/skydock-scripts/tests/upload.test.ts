@@ -46,7 +46,7 @@ const manifestOf = (groups: ManifestGroup[], over: Partial<Manifest> = {}): Mani
     groups,
     destinations: [
       { name: 'Yverdon', path: '/nas/Yverdon' },
-      { name: 'Tandems', path: '/nas/Tandems' }
+      { name: 'Passengers', path: '/nas/Passengers' }
     ],
     ...over
   }) as Manifest
@@ -205,11 +205,11 @@ describe('where an upload goes', () => {
     })
     expect(byId.map((t) => t.key)).toEqual(['group:group_1'])
 
-    /* nor is a montage in the Tandems destination, which is a place like any other */
+    /* nor is a montage in the Passengers destination, which is a place like any other */
     const byDestination = resolveUploadTargets({
       outputDir,
       manifest,
-      scope: { destination: 'Tandems' }
+      scope: { destination: 'Passengers' }
     })
     expect(byDestination).toEqual([])
   })
