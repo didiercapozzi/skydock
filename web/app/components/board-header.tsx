@@ -37,6 +37,7 @@ const BoardHeader = ({
   scanning,
   onScan,
   onTemplates,
+  onWorkFolder,
   proxies,
   camera,
   disk,
@@ -46,6 +47,8 @@ const BoardHeader = ({
   onScan: () => void
   /* the editing templates: looked over, and new ones brought in */
   onTemplates: () => void
+  /* the folder SkyDock works in, and another one to work in */
+  onWorkFolder: () => void
   proxies: { ready: number; waiting: number; total: number }
   /* a camera plugged in and being copied off, while it is */
   camera?: { camera: string; done: number; total: number; copied: number; skipped: number } | null
@@ -93,6 +96,13 @@ const BoardHeader = ({
           title='The editing templates a montage is made from — look them over, or bring one in'
           className='rounded-md border border-line bg-pane px-[11px] py-[5px] text-[12.5px] font-medium hover:border-ink-3'>
           Templates…
+        </button>
+        <button
+          type='button'
+          onClick={onWorkFolder}
+          title='The folder SkyDock keeps its work in — the originals, what is handed over, the board — and another one to work in'
+          className='rounded-md border border-line bg-pane px-[11px] py-[5px] text-[12.5px] font-medium hover:border-ink-3'>
+          Work folder…
         </button>
         {/* A camera plugged in is copied off by itself; this is it happening, file by file. */}
         {camera && (

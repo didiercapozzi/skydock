@@ -41,6 +41,14 @@ proxies, the record of it all — is under it. The bin is kept with the work, so
 this machine is moved, never copied from one disk to another; the app's own settings, the storage
 connection among them, are kept apart from the work.
 
+**Another work folder** can be chosen afterwards, from _Work folder_ at the top of the board, which says
+where the work is now. Nothing is copied or moved: SkyDock starts again in the folder chosen and the
+board opens on what it holds — empty, or the work already kept there — and that folder is remembered
+from then on. The folder left behind stays exactly as it is and can be chosen again; to take the work
+along, the folder is moved by hand first. It is chosen in SkyDock's own window only, and not while
+something is being written into the folder: an upload, a camera being copied, files coming in, a
+scan, or processing.
+
 A camera is anything with a `DCIM` folder at its top, wherever this machine puts such things: a
 drive letter of its own on Windows, a volume on a Mac, a mount under the usual places on Linux — and,
 where a camera has no drive to offer at all, the folder the desktop makes for it when it hands its

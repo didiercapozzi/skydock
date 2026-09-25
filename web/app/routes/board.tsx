@@ -236,6 +236,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         scanning={board.scanning}
         onScan={board.scan}
         onTemplates={() => setDialog({ kind: 'templates' })}
+        onWorkFolder={() => setDialog({ kind: 'work-folder' })}
         proxies={board.proxyProgress}
         camera={board.cameraCopy}
         disk={board.disk ?? loaderData.disk}
@@ -316,6 +317,21 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         onMontage={(groupId, template) => closeThen(() => model.makeMontage(groupId, template))}
         passengers={model.passengers}
         onNameMontage={(what, passenger) => closeThen(() => model.nameDropped(what, passenger))}
+        workFolder={{
+          folder: loaderData.outputDir,
+          /* the folder is not left while something is being written into it */
+          working: board.uploading
+            ? 'An upload is running'
+            : board.cameraCopy
+              ? 'A camera is being copied'
+              : model.coming
+                ? 'Files are being copied in'
+                : board.scanning
+                  ? 'A scan is running'
+                  : board.busy
+                    ? 'The board is busy'
+                    : null
+        }}
         onTrash={(files) =>
           closeThen(() => {
             model.clearSelection()

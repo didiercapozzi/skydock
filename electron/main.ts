@@ -12,7 +12,7 @@ import { spawn } from 'node:child_process'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { BrowserWindow, Menu, app, dialog, shell } from 'electron'
+import { BrowserWindow, Menu, app, dialog, ipcMain, shell } from 'electron'
 import type { WebContents } from 'electron'
 import updater from 'electron-updater'
 import { z } from 'zod'
@@ -200,9 +200,12 @@ const stopServer = () => {
 
    It is run by the app's own program, told to be Node and nothing else, so that nothing but SkyDock
    is installed on the machine and so that what the server is being sent can be ended when the app
-   ends. */
-const startServer = async () => {
-  const outputDir = await workFolder()
+   ends.
+
+   Given a folder and a window, it is the work moving to another folder: the server there is started
+   and the window already open is pointed at it, rather than a second one opened. */
+const startServer = async (folder?: string, into?: BrowserWindow) => {
+  const outputDir = folder ?? (await workFolder())
   fs.mkdirSync(outputDir, { recursive: true })
   const script = path.join(resourcesDir(), 'skydock-server.mjs')
   if (!fs.existsSync(script)) {
@@ -232,7 +235,9 @@ const startServer = async () => {
       const ready = /^SKYDOCK_READY (\d+)$/.exec(line.trim())
       if (!shown && ready) {
         shown = true
-        openWindow(`http://127.0.0.1:${ready[1]}`)
+        const address = `http://127.0.0.1:${ready[1]}`
+        if (into && !into.isDestroyed()) void into.loadURL(address)
+        else openWindow(address)
       }
     }
   })
@@ -304,6 +309,31 @@ const offerUpdate = () => {
   })
   void autoUpdater.checkForUpdates()
 }
+
+/* Another folder to work in, asked for from the board. Nothing is copied or moved: the server is
+   stopped and started again in the folder chosen, which it remembers from then on, and the window
+   shows the board that folder holds — empty, or the work already kept there. The folder left behind
+   stays exactly as it is, and can be chosen again. A development server keeps its own folder. */
+ipcMain.handle('work-folder:choose', async (event) => {
+  if (toldWhere())
+    return { refused: 'This window shows a development server, which keeps its own folder.' }
+  const window = BrowserWindow.fromWebContents(event.sender) ?? undefined
+  const current = settings().outputDir
+  const options = {
+    title: 'Where should SkyDock work from now on?',
+    defaultPath: current,
+    properties: ['openDirectory', 'createDirectory'] as ('openDirectory' | 'createDirectory')[]
+  }
+  const asked = window
+    ? await dialog.showOpenDialog(window, options)
+    : await dialog.showOpenDialog(options)
+  const chosen = asked.canceled ? undefined : asked.filePaths[0]
+  if (!chosen || (current && path.resolve(chosen) === path.resolve(current)))
+    return { chosen: null }
+  stopServer()
+  void startServer(chosen, window)
+  return { chosen }
+})
 
 /* One SkyDock at a time: a second one would fight the first over the same folder and the same
    camera, so opening it again brings the window already there to the front. */

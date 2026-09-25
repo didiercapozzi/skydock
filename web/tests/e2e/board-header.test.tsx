@@ -21,6 +21,7 @@ const header = (over: Partial<Parameters<typeof BoardHeader>[0]> = {}) =>
       scanning: false,
       onScan: () => {},
       onTemplates: () => {},
+      onWorkFolder: () => {},
       proxies: { ready: 48, waiting: 2, total: 50 },
       camera: null,
       disk: null,

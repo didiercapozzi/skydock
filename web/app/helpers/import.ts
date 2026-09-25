@@ -4,10 +4,11 @@ import { z } from 'zod'
 import { routingEngine } from './routing'
 
 /* What the window can do that a browser tab cannot, offered by the app around the page: say where a
-   dropped file already is. Nothing else of the app is reachable from here. */
+   dropped file already is, and move the work to another folder. Nothing else of the app is reachable
+   from here. */
 declare global {
   interface Window {
-    skydock?: { pathOf: (file: File) => string | null }
+    skydock?: { pathOf: (file: File) => string | null; chooseWorkFolder?: () => Promise<unknown> }
   }
 }
 

@@ -15,6 +15,7 @@ import type { TakeBackMode } from './take-back-dialog'
 import { TrashDialog } from './trash-dialog'
 import type { Destination, ManifestFile, ManifestGroup } from './types'
 import { UploadDialog } from './upload-dialog'
+import { WorkFolderDialog } from './work-folder-dialog'
 import { folderOnStorage } from '../helpers/jumps'
 import type { Passenger } from './montage-card'
 import type { SendPlan } from '@skydock/scripts'
@@ -47,6 +48,7 @@ type BoardDialog =
   | { kind: 'templates'; groupId?: string }
   /* what was dropped on the Montages heading, waiting for the montage's name */
   | { kind: 'name-montage'; groupId?: string; fileIds?: string[]; keeps?: string }
+  | { kind: 'work-folder' }
 
 const DialogHost = ({
   dialog,
@@ -74,6 +76,7 @@ const DialogHost = ({
   onMontage,
   passengers,
   onNameMontage,
+  workFolder,
   onResetFresh
 }: {
   dialog: BoardDialog
@@ -111,6 +114,8 @@ const DialogHost = ({
   /* the montages there are, for a name to join */
   passengers: Passenger[]
   onNameMontage: (what: { groupId?: string; fileIds?: string[] }, passenger: Passenger) => void
+  /* the folder SkyDock works in, and what is writing into it right now */
+  workFolder: { folder: string; working: string | null }
   onResetFresh: (what: 'times' | 'everything') => void
 }) => {
   const close = () => onDialog(null)
@@ -202,6 +207,14 @@ const DialogHost = ({
           keeps={dialog.keeps}
           passengers={passengers}
           onSave={(passenger) => onNameMontage(dialog, passenger)}
+          onClose={close}
+        />
+      )}
+
+      {dialog?.kind === 'work-folder' && (
+        <WorkFolderDialog
+          folder={workFolder.folder}
+          working={workFolder.working}
           onClose={close}
         />
       )}
