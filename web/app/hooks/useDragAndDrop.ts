@@ -11,8 +11,6 @@ type Move = {
   destination?: string | null
   targetGroupId?: string
   newGroup?: boolean
-  /* the new jump is a montage, waiting for its name */
-  montage?: boolean
   /* for a new jump: what it is called and when it started */
   name?: string
   startsAt?: number
@@ -37,14 +35,17 @@ const useDragAndDrop = ({
   assign,
   toMontage,
   importDropped,
+  askMontageName,
   onFiled
 }: {
   groups: ManifestGroup[]
   frozen: Set<string>
   moveFiles: (ids: string[], where: Move) => void
   assign: (ids: string[], destination: string | null) => void
-  /* jumps made a montage: joining a named one, or waiting for a name */
+  /* jumps made a montage: joining a named one */
   toMontage: (ids: string[], passenger?: Passenger) => void
+  /* a jump or files dropped on the Montages heading: the montage's name is asked for first */
+  askMontageName: (what: { groupId: string } | { fileIds: string[] }) => void
   importDropped: (list: Dropped[], target: string, where: string) => Promise<void>
   /* what the board does once something from it is filed under a destination: goes there */
   onFiled: (destination: string) => void
@@ -174,16 +175,12 @@ const useDragAndDrop = ({
           return
         }
         if (draggedFiles.length > 0)
-          moveFiles(
-            draggedFiles,
-            into
-              ? { targetGroupId: into.hostId, copy: copying(e) }
-              : to.kind === 'montage'
-                ? { newGroup: true, montage: true }
-                : { destination }
-          )
+          if (into) moveFiles(draggedFiles, { targetGroupId: into.hostId, copy: copying(e) })
+          else if (to.kind === 'montage') askMontageName({ fileIds: draggedFiles })
+          else moveFiles(draggedFiles, { destination })
         else if (dragged.length > 0)
-          if (to.kind === 'montage') toMontage(dragged, into?.passenger)
+          if (into) toMontage(dragged, into.passenger)
+          else if (to.kind === 'montage') askMontageName({ groupId: dragged[0]! })
           else assign(dragged, destination)
         if (destination && (draggedFiles.length > 0 || dragged.length > 0)) onFiled(destination)
         setDragged([])

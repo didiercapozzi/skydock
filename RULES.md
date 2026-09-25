@@ -387,8 +387,9 @@ and every one but Fresh files a whole jump; the storage's list and the cameras t
 is listed once, however many jumps it has.
 
 There is no page of every montage: a montage is worked on one at a time, so the way in is always its
-own entry. The _Montages_ heading says how many montages are not uploaded yet, and takes a jump
-dropped on it, which becomes a montage waiting for its name; clicking it goes nowhere. A montage that
+own entry. The _Montages_ heading says how many montages are not uploaded yet, and takes a jump or
+files dropped on it: the montage's name is asked for first, and nothing moves until it is saved —
+cancelled, what was dropped stays where it was. Clicking it goes nowhere. A montage that
 has been freed and has walked every step, its link emailed, has nothing left to do here: it leaves the
 Montages, its entry with it, and is found in the storage's own list. Whether it was emailed is read off
 that list, so while the storage cannot be reached, nothing leaves.
@@ -483,13 +484,13 @@ with nothing, so the board goes to Fresh files with them.
 
 **Making a montage.** A montage is named once, and naming is making. It is made from what is on
 screen, beside its name: a jump from its panel, several picked files, or a single file from its own
-panel. Asking comes first — the name only appears once asked for, starting from the jump's own name
+panel — or from what is dropped on the _Montages_ heading, which asks for the name in a dialog of its
+own. Asking comes first — the name only appears once asked for, starting from the jump's own name
 when it has one — and the name is saved by Enter or the button; Escape or Cancel changes nothing. A
 name that is already a montage's, however capitalised, says it will join that montage and saves the
 name exactly as already written: the new jump is a jump of that montage, keeping its own times. Once
-made, the montage's page opens and its entry lights up briefly in the menu. Montages without a name —
-a jump dropped on the heading — stay visible under _No name yet_, which says how many are waiting for
-one.
+made, the montage's page opens and its entry lights up briefly in the menu. A montage whose name was
+taken away stays visible under _No name yet_, which says how many are waiting for one.
 
 Whether the files move or are copied is SkyDock's to decide, never a key held. **Files in Fresh files
 move** into the montage: they belong nowhere yet, and a copy would leave them there still to sort.

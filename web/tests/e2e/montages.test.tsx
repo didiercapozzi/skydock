@@ -221,3 +221,52 @@ describe('a montage emptied', () => {
     await expect.element(pageHeading('Boogie 2026')).toBeVisible()
   })
 })
+
+/* What is dropped on the Montages heading becomes a montage, and a montage is its name: the name is
+   asked for before anything moves (RULES, Making a montage). */
+describe('dropped on the Montages heading', () => {
+  const heading = () =>
+    page.getByRole('navigation', { name: 'Folders' }).getByRole('heading', { name: /Montages/ })
+  const naming = () => page.getByRole('dialog', { name: 'Name the montage' })
+
+  test('a jump asks for the montage’s name, and saved, is that montage', async () => {
+    const named = { ...FRESH_JUMP, montageJump: true, passenger: { firstname: 'Luc', lastname: 'Favre' } }
+    await renderBoard({ groups: [named, YVERDON_JUMP] })
+
+    await userEvent.dragAndDrop(card(/^Sunset load, /), heading())
+    await userEvent.fill(naming().getByRole('textbox', { name: 'Name' }), 'Luc Favre')
+    await userEvent.click(naming().getByRole('button', { name: 'Make montage' }))
+
+    expect(sent[0]?.intent).toBe('save-groups')
+    expect((sent[0]?.groups as { id: string }[]).find((g) => g.id === 'g1')).toMatchObject({
+      montageJump: true,
+      passenger: { firstname: 'Luc', lastname: 'Favre' }
+    })
+    await expect.element(pageHeading('Luc Favre')).toBeVisible()
+  })
+
+  test('cancelled, changes nothing', async () => {
+    await renderBoard({ groups: board.groups })
+
+    await userEvent.dragAndDrop(card(/^Sunset load, /), heading())
+    await userEvent.click(naming().getByRole('button', { name: 'Cancel' }))
+
+    await expect.element(naming()).not.toBeInTheDocument()
+    expect(sent).toEqual([])
+    await expect.element(card(/^Sunset load, /)).toBeInTheDocument()
+  })
+
+  test('picked files ask the same, and are made a montage of that name', async () => {
+    await renderBoard({ groups: [YVERDON_JUMP, montage(['Boogie', '2026'], FRESH_JUMP.files)] })
+    await userEvent.click(card(/^Sunset load, /))
+    for (const name of [/a\.MP4/, /b\.MP4/])
+      await userEvent.click(page.getByRole('button', { name }).last(), { modifiers: ['ControlOrMeta'] })
+
+    await userEvent.dragAndDrop(page.getByRole('button', { name: /a\.MP4/ }).last(), heading())
+    await expect.element(naming().getByText('These 2 files become a montage once it has a name.')).toBeInTheDocument()
+    await userEvent.fill(naming().getByRole('textbox', { name: 'Name' }), 'Boogie 2026')
+    await userEvent.click(naming().getByRole('button', { name: 'Make montage' }))
+
+    expect(sent[0]).toMatchObject({ intent: 'make-montage', fileIds: ['a', 'b'], name: 'Boogie 2026' })
+  })
+})

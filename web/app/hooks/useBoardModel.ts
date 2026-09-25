@@ -260,14 +260,13 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       ...(where.targetGroupId ? { targetGroupId: where.targetGroupId } : {}),
       ...(where.destination ? { destination: where.destination } : {}),
       ...(where.newGroup ? { newGroup: true } : {}),
-      ...(where.montage ? { montage: true } : {}),
       ...(where.name ? { name: where.name } : {}),
       ...(where.startsAt !== undefined ? { anchorEpoch: where.startsAt } : {})
     })
     if (free.length < ids.length) setNote(`${EDIT_LOCKED} Its files stayed where they were.`)
     /* A montage whose every file has just gone back to Fresh files is no longer anywhere to be: the
        board follows the files there (RULES, Filing). */
-    const toFresh = !where.destination && !where.targetGroupId && !where.montage
+    const toFresh = !where.destination && !where.targetGroupId
     if (toFresh && place.kind === 'pax') {
       const theirs = groups.filter((g) => isMontage(g) && passengerOf(g) === place.name)
       const left = theirs.flatMap((g) => g.files).filter((f) => !free.includes(f.id ?? ''))
@@ -377,6 +376,21 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     assign,
     toMontage,
     importDropped,
+    askMontageName: (what) => {
+      if ('groupId' in what) {
+        setDialog({ kind: 'name-montage', groupId: what.groupId })
+        return
+      }
+      const files = what.fileIds.flatMap((id) => {
+        const found = fileById(id)
+        return found ? [found] : []
+      })
+      setDialog({
+        kind: 'name-montage',
+        fileIds: what.fileIds,
+        keeps: files.every(inUnsorted) ? undefined : placeLabel(place)
+      })
+    },
     onFiled: (destination) => {
       if (place.kind !== 'dz' || place.name !== destination)
         pickPlace({ kind: 'dz', name: destination })
@@ -447,6 +461,19 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       ...(startsAt !== undefined ? { anchorEpoch: startsAt } : {})
     })
     madeNote(who, joining, !files.every(inUnsorted))
+  }
+  /* What was dropped on the Montages heading, named: a jump is made the montage, files are made one
+     the way picked files are. */
+  const nameDropped = (what: { groupId?: string; fileIds?: string[] }, passenger: Passenger) => {
+    if (what.groupId) {
+      nameMontage(what.groupId, passenger)
+      return
+    }
+    const files = (what.fileIds ?? []).flatMap((id) => {
+      const found = fileById(id)
+      return found ? [found] : []
+    })
+    montageOf(files, passenger)
   }
   /* what making a montage of something takes, from the folder it is in: copied, when a place keeps it */
   const montageOffer = (files: ManifestFile[], from: Place) => ({
@@ -577,6 +604,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     flashPlace,
     nameMontage,
     montageOf,
+    nameDropped,
     montageOffer,
     setPassenger,
     renameJump,

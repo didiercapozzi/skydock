@@ -145,7 +145,7 @@ const MontagesHeading = ({
 }) => (
   <h2
     {...dropTarget}
-    title='Drop a jump here to make it a montage'
+    title='Drop a jump or files here to make a montage — its name is asked for first'
     className={`mx-0 mt-[15px] mb-1.5 flex items-center gap-2 rounded-md border px-2 py-0.5 text-[10px] font-semibold tracking-[0.1em] text-ink-3 uppercase max-[780px]:my-0 max-[780px]:flex-none ${
       over ? 'border-dashed border-pick bg-pick-soft' : 'border-transparent'
     }`}>

@@ -314,6 +314,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           })
         }
         onMontage={(groupId, template) => closeThen(() => model.makeMontage(groupId, template))}
+        passengers={model.passengers}
+        onNameMontage={(what, passenger) => closeThen(() => model.nameDropped(what, passenger))}
         onTrash={(files) =>
           closeThen(() => {
             model.clearSelection()

@@ -6,6 +6,7 @@ import { FreeDialog } from './free-dialog'
 import { FreePlaceDialog } from './free-place-dialog'
 import { DisconnectDialog } from './disconnect-dialog'
 import { RemovePlaceDialog } from './remove-place-dialog'
+import { NameMontageDialog } from './name-montage-dialog'
 import { NasFolderBrowser } from './nas-folder-browser'
 import { ResetFreshDialog } from './reset-fresh-dialog'
 import { TakeBackDialog } from './take-back-dialog'
@@ -15,6 +16,7 @@ import { TrashDialog } from './trash-dialog'
 import type { Destination, ManifestFile, ManifestGroup } from './types'
 import { UploadDialog } from './upload-dialog'
 import { folderOnStorage } from '../helpers/jumps'
+import type { Passenger } from './montage-card'
 import type { SendPlan } from '@skydock/scripts'
 
 type UploadDialogState = { kind: 'upload'; groupId: string }
@@ -43,6 +45,8 @@ type BoardDialog =
   | { kind: 'reset-fresh'; files: number; decided: number }
   /* the editing templates — chosen between for this montage's editing project, or only looked over */
   | { kind: 'templates'; groupId?: string }
+  /* what was dropped on the Montages heading, waiting for the montage's name */
+  | { kind: 'name-montage'; groupId?: string; fileIds?: string[]; keeps?: string }
 
 const DialogHost = ({
   dialog,
@@ -68,6 +72,8 @@ const DialogHost = ({
   onTakeBack,
   onTrash,
   onMontage,
+  passengers,
+  onNameMontage,
   onResetFresh
 }: {
   dialog: BoardDialog
@@ -102,6 +108,9 @@ const DialogHost = ({
   onTakeBack: (mode: TakeBackMode, group: ManifestGroup) => void
   onTrash: (files: ManifestFile[]) => void
   onMontage: (groupId: string, template: string) => void
+  /* the montages there are, for a name to join */
+  passengers: Passenger[]
+  onNameMontage: (what: { groupId?: string; fileIds?: string[] }, passenger: Passenger) => void
   onResetFresh: (what: 'times' | 'everything') => void
 }) => {
   const close = () => onDialog(null)
@@ -185,6 +194,17 @@ const DialogHost = ({
             />
           )
         })()}
+
+      {dialog?.kind === 'name-montage' && (
+        <NameMontageDialog
+          jump={dialog.groupId ? groups.find((g) => g.id === dialog.groupId) : undefined}
+          count={dialog.fileIds?.length}
+          keeps={dialog.keeps}
+          passengers={passengers}
+          onSave={(passenger) => onNameMontage(dialog, passenger)}
+          onClose={close}
+        />
+      )}
 
       {dialog?.kind === 'free' &&
         (() => {
