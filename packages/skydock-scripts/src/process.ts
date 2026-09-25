@@ -690,6 +690,7 @@ export {
   processingNow,
   processJumps,
   pruneStaleMedia,
-  whenProcessed
+  whenProcessed,
+  writeCutProxy
 }
 export type { ProcessOptions }

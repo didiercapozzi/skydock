@@ -16,7 +16,7 @@
   "main": "build/electron/main.cjs",
   "scripts": {
     "app": "npm run shell && electron . --no-sandbox",
-    "app:host": "SKYDOCK_DEV_URL= SKYDOCK_ZOOM=170 scripts/window-on-host.sh",
+    "app:host": "SKYDOCK_DEV_URL= SKYDOCK_ZOOM=100 scripts/window-on-host.sh",
     "build": "npm run build --workspace=@workspace/web",
     "check": "npm run typecheck && npm run format:check && npm run lint",
     "copy": "npx tsx packages/skydock-scripts/src/copy.ts",

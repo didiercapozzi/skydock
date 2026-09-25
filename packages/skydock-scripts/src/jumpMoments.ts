@@ -324,9 +324,10 @@ const readFelt = (felt: number[], seconds: number): JumpMoments | null => {
 }
 
 /* What this clip shows of the jump, as its camera measured it — or nothing, which is no failure and
-   needs no explaining. */
-const jumpMoments = (clip: string) => {
-  const written = telemetryOf(clip)
+   needs no explaining. How far through reading the clip it has got is said as it goes, for whoever
+   is showing it. */
+const jumpMoments = async (clip: string, onPercent?: (percent: number) => void) => {
+  const written = await telemetryOf(clip, onPercent)
   return written ? readFelt(READERS[written.kind](written.data), written.seconds) : null
 }
 

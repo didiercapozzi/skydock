@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { routingEngine } from '../helpers/routing'
 
-/* what is being done to a file right now, and how far through it */
-type LiveFile = { work: 'process' | 'proxy'; percent: number }
+/* what is being done to a file right now, and how far through it — in the words the events use */
+type LiveFile = Pick<Extract<LiveEvent, { kind: 'file' }>, 'work' | 'percent'>
 
 /* a camera being copied off, and how it ended — the ending numbered, so that two in a row are two */
 type CameraCopy = Extract<LiveEvent, { kind: 'camera' }>

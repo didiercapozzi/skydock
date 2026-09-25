@@ -14,22 +14,22 @@ const held = new Map<string, JumpTrack | null>()
 
 const KEEP = 40
 
-const trackOf = (filePath: string, mtime: number) => {
+const trackOf = async (filePath: string, mtime: number) => {
   const key = `${filePath}:${mtime}`
   if (held.has(key)) return held.get(key) ?? null
-  const track = jumpTrack(filePath)
+  const track = await jumpTrack(filePath)
   /* oldest out first, so a day of scrubbing does not grow without end */
   if (held.size >= KEEP) held.delete([...held.keys()][0])
   held.set(key, track)
   return track
 }
 
-const loader = ({ params }: { params: Record<string, string | undefined> }) => {
+const loader = async ({ params }: { params: Record<string, string | undefined> }) => {
   const filePath = path.join(getOutputDir(), params['*'] ?? '')
   const stat = fs.existsSync(filePath) ? fs.statSync(filePath) : null
   if (!stat?.isFile()) return new Response('Not found', { status: 404 })
   return Response.json(
-    { track: trackOf(filePath, stat.mtimeMs) },
+    { track: await trackOf(filePath, stat.mtimeMs) },
     { headers: { 'Cache-Control': 'no-store' } }
   )
 }

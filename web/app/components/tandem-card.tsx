@@ -273,6 +273,7 @@ const TandemActions = ({
   facts,
   busy,
   blocked,
+  proxiesWaiting = 0,
   named,
   onProcess,
   onCancelProcess,
@@ -285,6 +286,8 @@ const TandemActions = ({
   facts?: TandemFact
   busy: string | null
   blocked: { blocked: boolean; message: string | null }
+  /* how many of its clips are still getting their proxy — the project waits for them */
+  proxiesWaiting?: number
   named: boolean
   onProcess: () => void
   /* stops the processing this tandem started, while it runs */
@@ -311,9 +314,20 @@ const TandemActions = ({
   if (!facts?.project)
     return (
       <span className='ml-auto flex flex-wrap items-center gap-1.5'>
+        {/* The editor opens on proxies, and a project made before them opens on the full clips, so
+            it waits until each clip has one, or has failed to get one (RULES, The editing project). */}
+        {proxiesWaiting > 0 && (
+          <span className='text-[12px] text-ink-3'>
+            waiting for {proxiesWaiting === 1 ? '1 proxy' : `${proxiesWaiting} proxies`}
+          </span>
+        )}
         <Go
-          disabled={working}
-          title='Write the kdenlive project — clips laid out, render destination set — and open it'
+          disabled={working || proxiesWaiting > 0}
+          title={
+            proxiesWaiting > 0
+              ? `${proxiesWaiting === 1 ? '1 clip is' : `${proxiesWaiting} clips are`} still getting a proxy — the project can be made once each one has it, or has failed to`
+              : 'Write the kdenlive project — clips laid out, render destination set — and open it'
+          }
           onClick={onMontage}>
           {busy === group.id ? 'Writing…' : 'Make the project'}
         </Go>

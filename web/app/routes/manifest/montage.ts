@@ -1,8 +1,16 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { getGroupProcessedDir, isTandem, passengerOf, saveManifest } from '@skydock/scripts'
+import {
+  getGroupProcessedDir,
+  isTandem,
+  passengerOf,
+  saveManifest,
+  statProxies,
+  waitingForProxy
+} from '@skydock/scripts'
 import { openInEditor } from '../../../../packages/skydock-scripts/src/editor'
 import { createMontageProject } from '../../../../packages/skydock-scripts/src/montage'
+import { writeCutProxy } from '../../../../packages/skydock-scripts/src/process'
 import { getCutProxyDir } from '../../../../packages/skydock-scripts/src/proxy'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
@@ -20,6 +28,15 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
   /* an edit someone has been working on is never overwritten (RULES, The editing project) */
   if (fs.readdirSync(groupDir).some((f) => f.endsWith('.kdenlive')))
     return refuse('This montage already has a project — open it in kdenlive.')
+  /* The editor opens on proxies, and a project made before them opens on the full clips — the
+     slowest way there is to edit. So it waits until every clip has its proxy, or has failed to get
+     one: a clip whose proxy could not be made is settled, and opens as it is (RULES, The editing
+     project). */
+  const waiting = waitingForProxy(group.files, statProxies(manifest, outputDir))
+  if (waiting.length > 0)
+    return refuse(
+      `${waiting.length === 1 ? '1 clip is' : `${waiting.length} clips are`} still getting a proxy — the project is made once each one has it, or has failed to.`
+    )
   try {
     /* The processed copies are already renamed and cropped — the bin holds them as they are. A
        tandem with no video has no folder for them, and its film is made of its photos instead: they
@@ -40,26 +57,33 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
     const copies = new Map(
       group.files.flatMap((f) => (f.processed ? [[path.basename(f.processed.path), f]] : []))
     )
+    /* Each copy with the proxy processing cut for it, and with what the jump in it was measured
+       at, carried as markers — the moments belong to the file it was copied from (RULES, The
+       editing project). A montage processed before its proxies existed had none to cut from, and
+       would open on the full clips; the proxies are here now, so what is missing is cut here, the
+       same way processing would have. */
+    const clips = []
+    for (const file of videos) {
+      const proxy = path.join(getCutProxyDir(outputDir, group.id), `${path.parse(file).name}.mp4`)
+      const measured = copies.get(path.basename(file))
+      const source = measured && manifest.files.find((f) => f.id === measured.id)
+      if (!fs.existsSync(proxy) && measured && source?.proxy)
+        await writeCutProxy({ ...measured, proxy: source.proxy }, file, outputDir, group.id)
+      clips.push({
+        path: file,
+        ...(fs.existsSync(proxy) ? { proxy } : {}),
+        moments: measured?.moments,
+        cropStart: measured?.cropStart
+      })
+    }
     const made = createMontageProject({
       groupDir,
       outputDir,
       baseName,
       title: passengerOf(group).trim() || group.label,
       template: data.template,
-      /* Each copy with the proxy processing cut for it, when it managed to make one, and with what
-         the jump in it was measured at: a clip that holds a jump carries its moments as markers
-         (RULES, The editing project), and the moments belong to the file it was copied from. */
       photos,
-      clips: videos.map((file) => {
-        const proxy = path.join(getCutProxyDir(outputDir, group.id), `${path.parse(file).name}.mp4`)
-        const measured = copies.get(path.basename(file))
-        return {
-          path: file,
-          ...(fs.existsSync(proxy) ? { proxy } : {}),
-          moments: measured?.moments,
-          cropStart: measured?.cropStart
-        }
-      })
+      clips
     })
     group.montage = {
       projectPath: made.projectPath,

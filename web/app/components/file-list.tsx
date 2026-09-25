@@ -276,7 +276,11 @@ const PickMark = ({
 /* A file being worked on, said where the file is: what is being done and how far through, moving
    as it goes. It stands where the status would — until the work ends the status is about to
    change anyway — and once it ends the status is back, read from the board's own answer. */
-const LIVE_WORK = { process: 'Processing', proxy: 'Proxy' }
+const LIVE_WORK: Record<LiveFile['work'], string> = {
+  process: 'Processing',
+  proxy: 'Proxy',
+  moments: 'Finding the jump'
+}
 
 const LiveBar = ({ live, filename }: { live: LiveFile; filename: string }) => (
   <span

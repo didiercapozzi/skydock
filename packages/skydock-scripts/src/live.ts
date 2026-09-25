@@ -5,18 +5,22 @@ import { proxyFactSchema, tandemFactSchema } from './boardAnswer'
    asking. These are for the eyes only: what a file *is* — processed, proxied, uploaded — stays a
    fact read off the disk and the records (RULES, Principles), so an event that never arrives costs
    a bar that lags and never a wrong status. */
+/* The work done to one file that is shown on it while it runs: copying it for handing over, making
+   its small copy for playing, and finding where the jump is in it. */
+const workSchema = z.enum(['process', 'proxy', 'moments'])
+
 const liveEventSchema = z.discriminatedUnion('kind', [
   /* a file being worked on, and how far through it */
   z.object({
     kind: z.literal('file'),
-    work: z.enum(['process', 'proxy']),
+    work: workSchema,
     fileId: z.string(),
     percent: z.number()
   }),
   /* the work on it ended, well or not — and for a proxy that landed, what the clip now plays */
   z.object({
     kind: z.literal('file-done'),
-    work: z.enum(['process', 'proxy']),
+    work: workSchema,
     fileId: z.string(),
     ok: z.boolean(),
     proxy: z.object({ path: z.string(), fact: proxyFactSchema }).optional()
@@ -124,7 +128,7 @@ const subscribe = (listener: (event: LiveEvent) => void) => {
 
 /* One file's work, said from start to end: at once that it began, each step forward as it comes —
    never backward, never the same figure twice — and how it ended. */
-const following = (work: 'process' | 'proxy', fileId: string | undefined) => {
+const following = (work: z.infer<typeof workSchema>, fileId: string | undefined) => {
   let last = -1
   const at = (percent: number) => {
     if (!fileId || percent <= last) return

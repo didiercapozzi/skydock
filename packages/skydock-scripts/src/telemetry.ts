@@ -1,7 +1,7 @@
-import * as childProcess from 'node:child_process'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
+import { run, runWatched } from './tools'
 import { ffmpegPath, ffprobePath, hasCommand } from './utils'
 
 /* What a camera wrote down beside the picture, and how to read it.
@@ -24,23 +24,20 @@ const KINDS = [
 
 type Kind = (typeof KINDS)[number]['kind']
 
-const telemetryStream = (clip: string) => {
-  const asked = childProcess.execFileSync(
-    ffprobePath(),
-    [
-      '-v',
-      'error',
-      '-select_streams',
-      'd',
-      '-show_entries',
-      'stream=index:stream_tags=handler_name',
-      '-of',
-      'json',
-      clip
-    ],
-    { encoding: 'utf-8', maxBuffer: 8 * 1024 * 1024 }
-  )
-  const parsed: unknown = JSON.parse(asked)
+const telemetryStream = async (clip: string) => {
+  const asked = await run(ffprobePath(), [
+    '-v',
+    'error',
+    '-select_streams',
+    'd',
+    '-show_entries',
+    'stream=index:stream_tags=handler_name',
+    '-of',
+    'json',
+    clip
+  ])
+  if (!asked.ok) return null
+  const parsed: unknown = JSON.parse(asked.stdout)
   const streams =
     (parsed as { streams?: { index?: number; tags?: { handler_name?: string } }[] }).streams ?? []
   for (const { handler, kind } of KINDS) {
@@ -50,38 +47,41 @@ const telemetryStream = (clip: string) => {
   return null
 }
 
-const secondsOf = (clip: string) => {
-  try {
-    const said = childProcess.execFileSync(
-      ffprobePath(),
-      ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', clip],
-      { encoding: 'utf-8' }
-    )
-    const seconds = Number.parseFloat(said.trim())
-    return Number.isFinite(seconds) ? seconds : 0
-  } catch {
-    return 0
-  }
+const secondsOf = async (clip: string) => {
+  const said = await run(ffprobePath(), [
+    '-v',
+    'error',
+    '-show_entries',
+    'format=duration',
+    '-of',
+    'csv=p=0',
+    clip
+  ])
+  const seconds = said.ok ? Number.parseFloat(said.stdout.trim()) : 0
+  return Number.isFinite(seconds) ? seconds : 0
 }
 
-/* A clip's measurements, whole, with the camera they came from and how long the clip runs. A
-   quarter of a second for a clip of any size: the measurements are a stream of their own and the
-   picture is never decoded. */
-const telemetryOf = (clip: string) => {
+/* A clip's measurements, whole, with the camera they came from and how long the clip runs. The
+   measurements are a stream of their own and the picture is never decoded, but the stream is
+   copied out of the whole file, so a long clip takes a while — every step is a program waited for
+   rather than one that holds the thread, so the board goes on answering meanwhile, and the copy
+   says how far through the clip it has got. */
+const telemetryOf = async (clip: string, onPercent?: (percent: number) => void) => {
   if (!fs.existsSync(clip) || !hasCommand('ffmpeg') || !hasCommand('ffprobe')) return null
   let stream: { index: number; kind: Kind } | null = null
   try {
-    stream = telemetryStream(clip)
+    stream = await telemetryStream(clip)
   } catch {
     return null
   }
   if (!stream) return null
-  const seconds = secondsOf(clip)
+  const seconds = await secondsOf(clip)
   if (seconds <= 0) return null
   const staging = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-felt-'))
   const written = path.join(staging, 'felt.bin')
   try {
-    childProcess.execFileSync(
+    /* told how long the clip is: at this level of talk ffmpeg never says so itself */
+    const copied = await runWatched(
       ffmpegPath(),
       [
         '-v',
@@ -97,8 +97,10 @@ const telemetryOf = (clip: string) => {
         'data',
         written
       ],
-      { stdio: 'ignore' }
+      onPercent,
+      seconds
     )
+    if (!copied.ok) return null
     return { kind: stream.kind, seconds, data: fs.readFileSync(written) }
   } catch {
     return null

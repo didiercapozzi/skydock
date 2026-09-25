@@ -7,7 +7,8 @@ import {
   offGap,
   outputKeyOf,
   passengerOf,
-  tandemUploadKey
+  tandemUploadKey,
+  waitingForProxy
 } from '@skydock/scripts'
 import type { FileStatus } from '@skydock/scripts'
 import { useEffect, useState } from 'react'
@@ -489,6 +490,7 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
         facts={board.tandemFacts[group.id]}
         busy={board.busy}
         blocked={model.gateFor(group.files)}
+        proxiesWaiting={waitingForProxy(group.files, board.proxies).length}
         named={hasCompletePassenger(group.passenger)}
         onProcess={() => board.send(group.id, { intent: 'process', groupId: group.id })}
         onCancelProcess={model.cancelProcess}

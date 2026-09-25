@@ -129,6 +129,8 @@ describe('proxies', () => {
     execSyncMock.mockImplementation(toolsPresent())
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123')])
+    /* already asked where its jump is, so what is heard here is the proxy alone */
+    manifest.files[0].moments = null
     const heard: LiveEvent[] = []
     const stop = subscribe((event) => heard.push(event))
 
@@ -259,6 +261,35 @@ describe('proxies', () => {
     await ensureProxies(manifest, outputDir)
     expect(statProxies(manifest, outputDir)[src]).toMatchObject({ state: 'ready' })
     expect(statProxies(manifest, outputDir)[src]?.reason).toBeUndefined()
+  })
+
+  /* said as it happens, so a board open meanwhile knows the clip is settled — it plays as it is,
+     and a project waiting on its proxy waits no longer (RULES, The editing project) */
+  it('says as it happens that a proxy could not be made, and why', async () => {
+    globalThis.skydockProxyFailures = undefined
+    execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
+      const line = String(cmd)
+      if (line.startsWith('ffprobe')) return opts?.encoding ? '3840\n' : Buffer.from('3840\n')
+      const failure = new Error('ffmpeg exited with code 1') as Error & { stderr: Buffer }
+      failure.stderr = Buffer.from('No space left on device\n')
+      throw failure
+    })
+    const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
+    const manifest = manifestOf([fileEntry(src, 'abc123')])
+    manifest.files[0].moments = null
+    const heard: LiveEvent[] = []
+    const stop = subscribe((event) => heard.push(event))
+
+    await ensureProxies(manifest, outputDir)
+    stop()
+
+    expect(heard.at(-1)).toEqual({
+      kind: 'file-done',
+      work: 'proxy',
+      fileId: 'abc123',
+      ok: false,
+      proxy: { path: src, fact: { state: 'none', play: src, reason: 'No space left on device' } }
+    })
   })
 
   /* a half-written proxy that looks finished would be skipped forever after */
@@ -419,6 +450,39 @@ describe('a build still in progress', () => {
     await ensureProxies(manifest, outputDir)
 
     expect(manifest.files[0].moments).toBeNull()
+  })
+
+  /* Finding the jump reads through the whole clip, so it is said on the clip as it goes, the way
+     its proxy is, and ends before the proxy starts (RULES, Work shown as it happens). */
+  it('says as it happens that the jump in a clip is being found, before its proxy', async () => {
+    execSyncMock.mockImplementation(toolsPresent())
+    const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
+    const manifest = manifestOf([fileEntry(src, 'abc123')])
+    const heard: LiveEvent[] = []
+    const stop = subscribe((event) => heard.push(event))
+
+    await ensureProxies(manifest, outputDir)
+    stop()
+
+    const said = heard.flatMap((event) =>
+      event.kind === 'file' || event.kind === 'file-done' ? [`${event.kind}:${event.work}`] : []
+    )
+    expect(said.slice(0, 2)).toEqual(['file:moments', 'file-done:moments'])
+    expect(said.indexOf('file-done:moments')).toBeLessThan(said.indexOf('file:proxy'))
+  })
+
+  /* a clip already asked is not asked again, and nothing is said of it */
+  it('says nothing of the jump in a clip that was already asked', async () => {
+    const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
+    const manifest = manifestOf([fileEntry(src, 'abc123')])
+    manifest.files[0].moments = null
+    const heard: LiveEvent[] = []
+    const stop = subscribe((event) => heard.push(event))
+
+    await ensureProxies(manifest, outputDir)
+    stop()
+
+    expect(heard.some((event) => 'work' in event && event.work === 'moments')).toBe(false)
   })
 
   it('writes the record down as each one lands, not once at the end', async () => {

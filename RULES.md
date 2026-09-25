@@ -573,12 +573,14 @@ a name, they are a montage of that name (Making a montage), and the button says 
 are just a jump. The start can be left as it is. The new jump is selected as soon as it is made, its
 panel open, so whatever is done with it next is a single press away.
 
-**Work shown as it happens.** A file being processed, and a clip whose proxy is being made, shows how
-far through it is on the file itself — a bar and a percentage where its status stands, on a row and on
+**Work shown as it happens.** A file being processed, a clip whose proxy is being made, and a clip
+whose jump is being found, shows how far through it is on the file itself — a bar and a percentage where its status stands, on a row and on
 a thumbnail alike — moving as the work goes, with nothing reloaded and nothing asked: the board keeps
 one line open to the machine and hears it. A clip is flagged as having its proxy the moment it lands.
 A board opened, or reconnected, in the middle of a run starts with what is already under way. The
-figure is a percentage of what is being written, so a trimmed clip counts against its trim. This is
+figure is a percentage of what is being written, so a trimmed clip counts against its trim — or, while
+a jump is being found, of the clip being read through. Finding it never holds up the rest of the
+board: the clips are read one after another in the background, and the board goes on answering. This is
 only ever for the eyes: what a file _is_ still comes from what the board is told when the work ends,
 so a figure that never arrives costs a bar that lags and never a wrong status. Work started from the
 command line is not heard, only work the board started.
@@ -905,6 +907,13 @@ renders from the footage. The film's destination and format are filled in, so wh
 and pressing render — and the format asks for the graphics card's own encoder, since a delivery film is
 encoded once and watched, never encoded again. A machine whose editor has no such encoder is shown its
 own list instead.
+
+**The project waits for the proxies.** The editor opens on them, and a project made before they exist
+opens on the full clips — the slowest way there is to edit. So it cannot be made while any clip in the
+montage is still getting its proxy: the button says how many it is waiting for, and the machine refuses
+it too. A clip whose proxy was tried and could not be made does not hold it up — it is settled, and
+opens as it is — and the board hears of that the moment it happens. A montage processed before its
+proxies existed has them cut when the project is made, the same way processing would have.
 
 **The jump is marked on the clip, never cut into it.** Every clip in the bin is whole, and one with a
 jump in it carries the jump's moments as markers of its own — the exit, the opening, the canopy and the

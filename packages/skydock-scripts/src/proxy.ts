@@ -345,11 +345,19 @@ const ensureProxies = async (
   for (const [index, file] of candidates.entries()) {
     onProgress?.(index, candidates.length, file.filename)
     /* Where the jump is in this clip, while a clip is being looked at anyway. Asked of the original
-       once and written down either way: a quarter of a second, and the answer for most clips is
-       that there is no jump in them. */
+       once and written down either way — the answer for most clips is that there is no jump in them.
+       Reading it goes through the whole file, so it is said on the clip as it goes, and a reading
+       that fails is not written down: the clip is asked again next time rather than told it has no
+       jump. */
     if (file.moments === undefined && fs.existsSync(file.path)) {
-      file.moments = jumpMoments(file.path)
-      onBuilt?.()
+      const reading = following('moments', file.id)
+      try {
+        file.moments = await jumpMoments(file.path, reading.at)
+        reading.done(true)
+        onBuilt?.()
+      } catch {
+        reading.done(false)
+      }
     }
     const proxyPath = getProxyPath(file, outputDir)
     if (!proxyPath) continue
@@ -387,7 +395,12 @@ const ensureProxies = async (
       proxyFailures().set(file.path, built.reason)
       report.failed.push(file.filename)
       report.reason ??= built.reason
-      live.done(false)
+      /* the failure said with its reason, so the board knows the clip is settled — it plays as it
+         is, and a montage no longer waits on it — without reading everything again */
+      live.done(false, {
+        path: file.path,
+        fact: { state: 'none', play: file.path, reason: built.reason }
+      })
     }
   }
   onProgress?.(candidates.length, candidates.length, '')

@@ -79,6 +79,7 @@ import { MOMENTS, nameOfMoment } from './moments'
 import type { Moment } from './moments'
 import { jumpTrack } from './jumpTrack'
 import { statProxies } from './proxy'
+import { waitingForProxy } from './proxyWait'
 import { rememberOutputDir, resolveOutputDir } from './settings'
 import { stopTools } from './tools'
 import { scanMedia } from './scan'
@@ -260,6 +261,7 @@ export {
   shiftGroupTo,
   statProcessedOutputs,
   statProxies,
+  waitingForProxy,
   statTandemArtifacts,
   earlierTandemsDir,
   tandemsRemoteDir,

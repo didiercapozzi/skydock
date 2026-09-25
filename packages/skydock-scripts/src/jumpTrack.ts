@@ -60,8 +60,8 @@ const trackOf = (felt: number[], fixes: Fix[], seconds: number) => {
   return { seconds, rate: RATE, force, ...position }
 }
 
-const jumpTrack = (clip: string) => {
-  const written = telemetryOf(clip)
+const jumpTrack = async (clip: string) => {
+  const written = await telemetryOf(clip)
   if (!written) return null
   const position = POSITION[written.kind]
   return trackOf(

@@ -305,6 +305,30 @@ describe('changes made on the board', () => {
       expect(res.globalErrors?.[0]).toContain('already has a project')
       expect(fs.readFileSync(path.join(folder, 'the edit.kdenlive'), 'utf-8')).toBe('<mlt/>')
     })
+
+    /* The editor opens on proxies, and a project made before them opens on the full clips: it
+       waits until each clip has its proxy, or has failed to get one (RULES, The editing project). */
+    it('waits while a clip is still getting its proxy, and says how many', async () => {
+      writeManifest([
+        group({
+          id: 'group_1',
+          montageJump: true,
+          passenger: { firstname: 'Luc', lastname: 'Favre' },
+          processed: true,
+          files: [file({ id: 'a' }), file({ id: 'b' })]
+        })
+      ])
+      fs.mkdirSync(path.join(tmpDir, 'processed', 'Tandems', 'Luc Favre', 'videos'), {
+        recursive: true
+      })
+
+      const res = refusal(await send({ intent: 'montage', groupId: 'group_1' }))
+
+      expect(res.globalErrors?.[0]).toContain('2 clips are still getting a proxy')
+      expect(fs.readdirSync(path.join(tmpDir, 'processed', 'Tandems', 'Luc Favre'))).toEqual([
+        'videos'
+      ])
+    })
   })
 
   /* A trim corrected after the montage was made is no use until the copies are made again, and

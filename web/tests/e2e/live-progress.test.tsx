@@ -144,3 +144,37 @@ describe('the board’s line to the machine', () => {
     await expect.element(page.getByText('a.MP4')).toBeInTheDocument()
   })
 })
+
+/* Finding where the jump is in a clip reads through the whole of it, so it shows on the clip as it
+   goes, the way making its proxy does (RULES, Work shown as it happens). */
+describe('the jump in a clip being found', () => {
+  test('shows on the file, and moves as it goes', async () => {
+    await render(createElement(Files, { shape: 'rows' }))
+
+    says({ kind: 'file', work: 'moments', fileId: 'a', percent: 30 })
+    await expect.element(bar('Finding the jump a.MP4')).toHaveAttribute('aria-valuenow', '30')
+
+    says({ kind: 'file', work: 'moments', fileId: 'a', percent: 80 })
+    await expect.element(bar('Finding the jump a.MP4')).toHaveAttribute('aria-valuenow', '80')
+  })
+
+  test('shows on a thumbnail too', async () => {
+    await render(createElement(Files, { shape: 'grid' }))
+
+    says({ kind: 'file', work: 'moments', fileId: 'b', percent: 45 })
+
+    await expect.element(bar('Finding the jump b.MP4')).toHaveAttribute('aria-valuenow', '45')
+  })
+
+  test('gives way to the proxy once the jump is found', async () => {
+    await render(createElement(Files, { shape: 'rows' }))
+    says({ kind: 'file', work: 'moments', fileId: 'a', percent: 50 })
+    await expect.element(bar('Finding the jump a.MP4')).toBeInTheDocument()
+
+    says({ kind: 'file-done', work: 'moments', fileId: 'a', ok: true })
+    says({ kind: 'file', work: 'proxy', fileId: 'a', percent: 5 })
+
+    await expect.element(bar('Proxy a.MP4')).toHaveAttribute('aria-valuenow', '5')
+    await expect.element(bar('Finding the jump a.MP4')).not.toBeInTheDocument()
+  })
+})
