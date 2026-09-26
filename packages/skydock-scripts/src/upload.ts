@@ -12,7 +12,7 @@ import {
 import { originsOf } from './originEntry'
 import type { OriginIndex } from './originEntry'
 import { publishJump } from './publish'
-import type { CheckProgress, Seen, UploadProgress, UploadVerdict } from './publish'
+import type { CheckProgress, PlanProgress, Seen, UploadProgress, UploadVerdict } from './publish'
 import { listNasFiles } from './nas'
 import { isNamedMontage } from './montageArtifacts'
 import type { NasSession } from './nas'
@@ -20,6 +20,7 @@ import { messageOf } from './lib/words'
 import { mapWithLimit } from './utils'
 import type { Manifest, ManifestGroup } from './types'
 import { resolveDestinationPath } from './workspace'
+import { stopIfUploadCancelled } from './uploading'
 
 type UploadScope = { groupId?: string; groupIds?: string[]; destination?: string }
 
@@ -226,7 +227,8 @@ const uploadTargets = async ({
   origins,
   folders,
   onProgress,
-  onCheck
+  onCheck,
+  onPlan
 }: {
   session: NasSession
   targets: UploadTarget[]
@@ -236,6 +238,7 @@ const uploadTargets = async ({
   folders?: string[]
   onProgress?: (progress: UploadProgress & { groupIds: string[] }) => void
   onCheck?: (progress: CheckProgress) => void
+  onPlan?: (plan: PlanProgress) => void
 }) => {
   if (targets.length === 0) throw new Error('Nothing to upload yet — process it first.')
   const missing = targets.find((t) => t.remoteDir === null)
@@ -269,6 +272,7 @@ const uploadTargets = async ({
     return known
   }
   for (const target of targets) {
+    stopIfUploadCancelled()
     const result = await publishJump(
       {
         host: session.hostname,
@@ -289,7 +293,8 @@ const uploadTargets = async ({
       },
       {
         onProgress: (progress) => onProgress?.({ ...progress, groupIds: target.groupIds }),
-        onCheck
+        onCheck,
+        onPlan
       }
     )
     if (result.shareUrl) shareUrls.push({ target, shareUrl: result.shareUrl })
@@ -352,7 +357,8 @@ const uploadScope = async ({
   session,
   scope,
   onProgress,
-  onCheck
+  onCheck,
+  onPlan
 }: {
   outputDir: string
   manifest: Manifest
@@ -360,6 +366,7 @@ const uploadScope = async ({
   scope: UploadScope
   onProgress?: (progress: UploadProgress & { groupIds: string[] }) => void
   onCheck?: (progress: CheckProgress) => void
+  onPlan?: (plan: PlanProgress) => void
 }) =>
   uploadTargets({
     session,
@@ -367,7 +374,8 @@ const uploadScope = async ({
     origins: originsOf(manifest),
     folders: deliveryFolders(manifest),
     onProgress,
-    onCheck
+    onCheck,
+    onPlan
   })
 
 export {

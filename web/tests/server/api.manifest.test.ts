@@ -6,9 +6,12 @@ import {
   EDIT_LOCKED,
   getGroupProcessedDir,
   loadManifest,
+  runUpload,
   saveManifest,
+  uploadingNow,
   UPLOADED_LOCKED
 } from '@skydock/scripts'
+import { stopIfUploadCancelled } from '../../../packages/skydock-scripts/src/uploading'
 import type { Manifest, ManifestFile, ManifestGroup } from '@skydock/scripts'
 import { action } from '../../app/routes/api.manifest'
 import { createTmpDir, routeArgs } from './fixtures'
@@ -255,6 +258,52 @@ describe('changes made on the board', () => {
 
       expect(res.success).toBe(false)
       expect(res.globalErrors?.[0]).toContain('from its own card')
+    })
+  })
+
+  /* One upload at a time, going on whatever page asked for it, and stoppable at any moment from any
+     page (RULES, Uploading). */
+  describe('an upload going', () => {
+    /* an upload that runs until it is cancelled */
+    const going = () =>
+      runUpload({ key: 'montage:group_1', label: 'Luc Favre' }, async () => {
+        for (;;) {
+          stopIfUploadCancelled()
+          await new Promise((resolve) => setTimeout(resolve, 5))
+        }
+      })
+
+    it('is stopped when cancelled, and the board hears once it has stopped', async () => {
+      writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
+      const upload = going()
+      upload.catch(() => undefined)
+
+      const res = (await send({ intent: 'cancel-upload' })) as { uploadCancelled?: boolean }
+
+      expect(res.uploadCancelled).toBe(true)
+      expect(uploadingNow()).toBeNull()
+      await expect(upload).rejects.toThrow(/Upload cancelled/)
+    })
+
+    it('has nothing to cancel when nothing is uploading', async () => {
+      writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
+      const res = refusal(await send({ intent: 'cancel-upload' }))
+      expect(res.globalErrors?.[0]).toContain('Nothing is being uploaded')
+    })
+
+    it('is waited for by a page that comes back to it', async () => {
+      writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
+      const upload = going()
+      upload.catch(() => undefined)
+      const waiting = send({ intent: 'upload-wait' })
+      let answered = false
+      void waiting.then(() => (answered = true))
+      await new Promise((resolve) => setTimeout(resolve, 30))
+      expect(answered).toBe(false)
+
+      await send({ intent: 'cancel-upload' })
+
+      expect(answer(await waiting).groups).toHaveLength(1)
     })
   })
 

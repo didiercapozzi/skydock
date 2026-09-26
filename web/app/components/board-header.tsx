@@ -86,7 +86,7 @@ const BoardHeader = ({
           type='button'
           disabled={scanning}
           onClick={onScan}
-          title='Look through the output folder for files the manifest does not know about yet'
+          title='Copy what is new on every camera plugged in — what is here already is passed over — and look through the output folder for files the board does not know yet'
           className='rounded-md border border-line bg-pane px-[11px] py-[5px] text-[12.5px] font-medium hover:border-ink-3 disabled:opacity-40'>
           {scanning ? 'Scanning…' : 'Rescan cameras'}
         </button>

@@ -33,6 +33,7 @@ import { shiftGroupTime } from './manifest/shift-group-time'
 import { deleteMontageIntent, resetMontageIntent } from './manifest/take-back'
 import { trashUnsortedIntent } from './manifest/trash-unsorted'
 import { uploadGroup } from './manifest/upload-group'
+import { cancelUpload, uploadWait } from './manifest/upload-wait'
 import { uploadMontageIntent } from './manifest/upload-montage'
 
 /* Every change the board makes comes through here, one intent at a time, each answered with the
@@ -49,6 +50,8 @@ const intents: Record<ActionData['intent'], Intent> = {
   'process-wait': processWait,
   'cancel-process': cancelProcess,
   'upload-group': uploadGroup,
+  'upload-wait': uploadWait,
+  'cancel-upload': cancelUpload,
   montage,
   'upload-montage': uploadMontageIntent,
   'shift-group-time': shiftGroupTime,

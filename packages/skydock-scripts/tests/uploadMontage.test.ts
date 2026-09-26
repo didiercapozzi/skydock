@@ -9,6 +9,7 @@ import type { SendPlan } from '../src/types'
 import { statMontageArtifacts, montageArtifacts } from '../src/montageArtifacts'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
 import { saveNasSession } from '../src/nas'
+import { cancelUploading, runUpload, UploadCancelled, whenUploaded } from '../src/uploading'
 import type { NasSession } from '../src/nas'
 import { createTmpDir, jsonResponse, loginSuccess, seen, stubFetch } from './fixtures'
 
@@ -24,9 +25,10 @@ afterEach(() => {
 })
 
 /* every upload this test makes, so what reached the passenger can be told from what did not */
-const startUploadServer = () => {
+const startUploadServer = (onSending?: () => void) => {
   const uploads: { dest: string; name: string }[] = []
   const server = http.createServer((req, res) => {
+    onSending?.()
     const chunks: Buffer[] = []
     req.on('data', (c: string | Buffer) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)))
     req.on('end', () => {
@@ -375,6 +377,36 @@ describe('uploading a montage — what is zipped', () => {
       }
     )
     expect(into(uploads, '/Backup/luc-favre/videos')).toEqual(['GX018570.MP4', 'GX018571.MP4'])
+  })
+})
+
+describe('cancelling a montage upload', () => {
+  /* stopped while its first file is going up: that file is cut off, nothing else is sent, and
+     nothing of it is recorded */
+  it('stops sending at once, and records nothing', async () => {
+    const built = scene()
+    const server = await startUploadServer(() => cancelUploading())
+    stubDsm()
+    process.env.SKYDOCK_CONFIG_DIR = path.join(built.outputDir, 'config')
+    saveNasSession({ hostname: server.url, username: 'u', sessionId: 'sid' })
+    try {
+      const upload = runUpload({ key: 'montage:g1', label: 'Luc Favre' }, () =>
+        uploadMontage({
+          outputDir: built.outputDir,
+          manifest: built.manifest,
+          group: built.group,
+          session: session(server.url),
+          plan: PLAN
+        })
+      )
+
+      await expect(upload).rejects.toBeInstanceOf(UploadCancelled)
+      await whenUploaded()
+      expect(server.uploads.filter((u) => u.name !== 'skydock-origins.json')).toEqual([])
+      expect(built.group.uploaded).toBeUndefined()
+    } finally {
+      await server.close()
+    }
   })
 })
 

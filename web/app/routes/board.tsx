@@ -7,6 +7,7 @@ import {
   listRemoteFiles,
   loadManifest,
   processingNow,
+  uploadingNow,
   saveManifest,
   settleListsDir,
   statProcessedOutputs,
@@ -25,6 +26,7 @@ import type { NasLink } from '../components/board-header'
 import { Callout } from '../components/callout'
 import { DialogHost } from '../components/dialog-host'
 import { ImportPanel } from '../components/import-panel'
+import { UploadPanel } from '../components/upload-panel'
 import { PlacesTree } from '../components/places-tree'
 import { formatTime } from '../components/utils'
 import { fromComputer } from '../helpers/import'
@@ -153,7 +155,9 @@ const loader = async (_args: Route.LoaderArgs) => {
     nas,
     /* what is being processed right now, if anything — a page loaded in the middle of it has to
        show it still running rather than offer to start it again */
-    processing: processingNow()
+    processing: processingNow(),
+    /* and what is being uploaded: the same, for an upload — never offered a second time on top */
+    uploading: uploadingNow()
   }
 }
 
@@ -343,15 +347,29 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         }
       />
 
-      {model.coming && (
-        <ImportPanel
-          where={model.coming.where}
-          files={model.coming.files}
-          done={model.coming.done}
-          failed={model.coming.failed}
-          part={partCopied}
-          reading={model.watching?.phase === 'reading'}
-        />
+      {/* what is on its way, in the corner, whatever page is open: files being copied in, and the
+          upload going out — one above the other when both are */}
+      {(model.coming || board.uploading) && (
+        <div className='fixed right-4 bottom-4 z-40 flex flex-col items-end gap-2'>
+          {board.uploading && (
+            <UploadPanel
+              label={board.uploadLabel ?? ''}
+              progress={model.progress}
+              cancelling={board.cancelling}
+              onCancel={board.cancelUpload}
+            />
+          )}
+          {model.coming && (
+            <ImportPanel
+              where={model.coming.where}
+              files={model.coming.files}
+              done={model.coming.done}
+              failed={model.coming.failed}
+              part={partCopied}
+              reading={model.watching?.phase === 'reading'}
+            />
+          )}
+        </div>
       )}
     </main>
   )

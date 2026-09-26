@@ -2,7 +2,14 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { lookForCameras, mountedCameras, overMtp, watchCameras } from '../src/cameraWatch'
+import {
+  cameraCopying,
+  copyAgain,
+  lookForCameras,
+  mountedCameras,
+  overMtp,
+  watchCameras
+} from '../src/cameraWatch'
 import { CameraGone, copyBack, copyCamera } from '../src/copy'
 import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
@@ -219,6 +226,45 @@ describe('copying a camera off', () => {
     ).rejects.toBeInstanceOf(CameraGone)
 
     expect(fs.readdirSync(path.dirname(day('x')))).toEqual(['GX010001.MP4'])
+  })
+})
+
+/* A camera is copied when it is plugged in, and again whenever asked, without unplugging it — which
+   is how what went missing here comes back across (RULES, Copy off the cameras). */
+describe('copying a camera again while it stays plugged in', () => {
+  const copied = async () => {
+    await vi.waitFor(() => expect(cameraCopying()).toBe(false), { timeout: 5000 })
+  }
+
+  it('copies what is not here, and passes over what is', async () => {
+    const root = card('GOPRO', {
+      'GX01.MP4': { bytes: 32, fill: 1, at: DAY },
+      'GX02.MP4': { bytes: 32, fill: 2, at: DAY }
+    })
+    copyAgain(outputDir, root, [root])
+    await copied()
+    fs.rmSync(day('GX01.MP4'))
+    const kept = fs.statSync(day('GX02.MP4')).mtimeMs
+
+    copyAgain(outputDir, root, [root])
+    await copied()
+
+    expect(fs.readdirSync(day()).sort()).toEqual(['GX01.MP4', 'GX02.MP4'])
+    expect(fs.statSync(day('GX02.MP4')).mtimeMs).toBe(kept)
+  })
+
+  it('asks for nothing of a camera that is not plugged in', () => {
+    expect(copyAgain(outputDir, path.join(media, 'GONE'), [])).toBe(0)
+  })
+
+  it('does not queue a camera twice while it is being copied', async () => {
+    const root = card('GOPRO', { 'GX01.MP4': { bytes: 32, fill: 1, at: DAY } })
+
+    copyAgain(outputDir, root, [root])
+    copyAgain(outputDir, root, [root])
+
+    expect(globalThis.skydockCameraWatch?.queue).toEqual([])
+    await copied()
   })
 })
 

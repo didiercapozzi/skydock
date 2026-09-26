@@ -8,6 +8,7 @@ import { deleteFromCameras, listCameras } from '../src/cameraFiles'
 import { copyCamera } from '../src/copy'
 import { computeFileId } from '../src/fileId'
 import { saveManifest } from '../src/manifest'
+import { trashUnsorted } from '../src/trashUnsorted'
 import type { NasSession } from '../src/nas'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
 import { createTmpDir, nasStubs, stubFetch } from './fixtures'
@@ -101,22 +102,93 @@ afterEach(() => {
 })
 
 describe('what is on a camera', () => {
-  it('says of each file whether it is on the storage, only copied here, or not copied yet', async () => {
+  it('says of each file whether it is on the storage, only copied here, in the bin, or not copied yet', async () => {
     const root = card({ 'GX01.MP4': 1, 'GX02.MP4': 2 })
     await copyCamera({ cameraDir: path.join(root, 'DCIM'), outputDir })
     card({ 'GX03.MP4': 3 })
+    card({ 'GX04.MP4': 4 })
+    await copyCamera({ cameraDir: path.join(root, 'DCIM'), outputDir })
+    fs.rmSync(original('GX03.MP4'))
+    const unwanted = board([])
+    unwanted.files = [await entry('GX04.MP4')]
+    await trashUnsorted(unwanted, new Set([unwanted.files[0]!.id!]), outputDir, trashDir)
+    card({ 'GX05.MP4': 5 })
     const storage: Record<string, string> = {}
     saveManifest(
       path.join(outputDir, 'manifest.json'),
       board([dropzone([sentAsCopy(await entry('GX01.MP4'), storage), await entry('GX02.MP4')])])
     )
 
-    const [camera] = await listCameras(outputDir, [root])
+    const [camera] = await listCameras(outputDir, [root], trashDir)
 
     expect(camera?.files.map((f) => [path.basename(f.name), f.state])).toEqual([
       ['GX01.MP4', 'stored'],
       ['GX02.MP4', 'copied'],
-      ['GX03.MP4', 'missing']
+      ['GX03.MP4', 'missing'],
+      ['GX04.MP4', 'binned'],
+      ['GX05.MP4', 'missing']
+    ])
+  })
+})
+
+describe('what is on a camera, put in the bin', () => {
+  const binnedOne = async () => {
+    const root = card({ 'GX01.MP4': 1 })
+    await copyCamera({ cameraDir: path.join(root, 'DCIM'), outputDir })
+    const copies = board([])
+    copies.files = [await entry('GX01.MP4')]
+    const { bin } = await trashUnsorted(
+      copies,
+      new Set([copies.files[0]!.id!]),
+      outputDir,
+      trashDir
+    )
+    return { root, inBin: path.join(bin, '2026-08-01', 'GX01.MP4') }
+  }
+  const stateOf = async (root: string) =>
+    (await listCameras(outputDir, [root], trashDir))[0]?.files[0]?.state
+
+  it('knows a copy in the bin by its bytes, whatever it is called there', async () => {
+    const { root, inBin } = await binnedOne()
+    fs.renameSync(inBin, path.join(path.dirname(inBin), 'not wanted.MP4'))
+
+    expect(await stateOf(root)).toBe('binned')
+  })
+
+  it('does not take a file of the same name and size in the bin for its copy', async () => {
+    const { root, inBin } = await binnedOne()
+    fs.writeFileSync(inBin, Buffer.alloc(32, 9))
+
+    expect(await stateOf(root)).toBe('missing')
+  })
+
+  /* two folders of a card often hold files of the same name: the second copy is taken with _2, and
+     both are still known to be in the bin */
+  it('says a file is in the bin when its copy went there under a name taken with _2', async () => {
+    const root = card({})
+    const twice = (folder: string, fill: number) => {
+      const file = path.join(root, 'DCIM', folder, 'TIMELAPSE_0001.JPG')
+      fs.mkdirSync(path.dirname(file), { recursive: true })
+      fs.writeFileSync(file, Buffer.alloc(16 + fill, fill))
+      fs.utimesSync(file, DAY, DAY)
+    }
+    twice('001_0057', 1)
+    twice('001_0058', 2)
+    await copyCamera({ cameraDir: path.join(root, 'DCIM'), outputDir })
+    const copies = board([])
+    copies.files = await Promise.all(
+      ['TIMELAPSE_0001.JPG', 'TIMELAPSE_0001_2.JPG'].map(async (name) => ({
+        ...(await entry(name)),
+        size: fs.statSync(original(name)).size
+      }))
+    )
+    await trashUnsorted(copies, new Set(copies.files.map((f) => f.id!)), outputDir, trashDir)
+
+    const [camera] = await listCameras(outputDir, [root], trashDir)
+
+    expect(camera?.files.map((f) => [f.name, f.state]).sort()).toEqual([
+      ['001_0057/TIMELAPSE_0001.JPG', 'binned'],
+      ['001_0058/TIMELAPSE_0001.JPG', 'binned']
     ])
   })
 })
@@ -127,7 +199,7 @@ describe('the camera page', () => {
     const later = new Date(DAY.getTime() + 3600_000)
     fs.utimesSync(onCard(root, 'GX02.MP4'), later, later)
 
-    const [camera] = await listCameras(outputDir, [root])
+    const [camera] = await listCameras(outputDir, [root], trashDir)
 
     expect(camera?.files.map((f) => path.basename(f.name))).toEqual(['GX02.MP4', 'GX01.MP4'])
   })
@@ -143,7 +215,7 @@ describe('deleting from a camera', () => {
     deleteFromCameras({
       paths: [onCard(root, 'GX01.MP4')],
       manifest,
-      session,
+      connect: async () => session,
       trashDir,
       mounts: [root]
     })
@@ -178,6 +250,36 @@ describe('deleting from a camera', () => {
     withStorage({})
 
     await expect(remove(root, board([dropzone([file])]))).rejects.toThrow(/is not uploaded yet/)
+    expect(fs.existsSync(onCard(root, 'GX01.MP4'))).toBe(true)
+  })
+
+  it('takes a file off the card once its copy here was put in the bin, without the storage', async () => {
+    const { root, file } = await setup()
+    const manifest = board([])
+    manifest.files = [file]
+    await trashUnsorted(manifest, new Set([file.id!]), outputDir, trashDir)
+    const connect = vi.fn(async () => null)
+
+    await deleteFromCameras({
+      paths: [onCard(root, 'GX01.MP4')],
+      manifest,
+      connect,
+      trashDir,
+      mounts: [root]
+    })
+
+    expect(fs.existsSync(onCard(root, 'GX01.MP4'))).toBe(false)
+    expect(connect).not.toHaveBeenCalled()
+  })
+
+  it('keeps it on the card when what is in the bin under its name is a different file', async () => {
+    const { root, file } = await setup()
+    const manifest = board([])
+    manifest.files = [file]
+    fs.writeFileSync(file.path, Buffer.alloc(32, 9))
+    await trashUnsorted(manifest, new Set([file.id!]), outputDir, trashDir)
+
+    await expect(remove(root, manifest)).rejects.toThrow(/neither on the board nor in the bin/)
     expect(fs.existsSync(onCard(root, 'GX01.MP4'))).toBe(true)
   })
 
@@ -244,7 +346,7 @@ describe('deleting from a camera', () => {
       deleteFromCameras({
         paths: [elsewhere],
         manifest: board([]),
-        session,
+        connect: async () => session,
         trashDir,
         mounts: [card({})]
       })

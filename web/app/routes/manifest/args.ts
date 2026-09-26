@@ -19,6 +19,10 @@ const actionArgs = z.object({
     /* what is being processed, stopped */
     'cancel-process',
     'upload-group',
+    /* a page that came back while something was being uploaded waits here for it to finish */
+    'upload-wait',
+    /* what is being uploaded, stopped */
+    'cancel-upload',
     'montage',
     'upload-montage',
     'shift-group-time',

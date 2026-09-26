@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { writeJsonAtomic } from './lib/fs'
 import { jsonText } from './lib/json'
 import { getConfigDir, getStatusDir } from './utils'
+import { stopIfUploadCancelled, stopSignal, UploadCancelled } from './uploading'
 
 const nasSessionSchema = z.object({
   hostname: z.string(),
@@ -146,12 +147,19 @@ const dsmFetch = async (
 ) => {
   const controller = options.timeoutMs ? new AbortController() : null
   const timer = controller ? setTimeout(() => controller.abort(), options.timeoutMs) : null
+  /* the work this request is for can be stopped — an upload cancelled — and the request with it */
+  const stop = stopSignal()
+  const signals = [controller?.signal, stop].filter((s) => s !== undefined)
   try {
+    stopIfUploadCancelled()
     const url = dsmRequestUrl(host, params).toString()
     const init: DsmRequestInit = body
       ? { method: 'POST', headers: options.headers, body, duplex: options.duplex ?? 'half' }
       : {}
-    const res = await fetch(url, controller ? { ...init, signal: controller.signal } : init)
+    const res = await fetch(
+      url,
+      signals.length > 0 ? { ...init, signal: AbortSignal.any(signals) } : init
+    )
     let json: unknown = null
     try {
       json = await res.json()
@@ -164,6 +172,7 @@ const dsmFetch = async (
       throw new Error(`DSM invalid response at ${url}: ${JSON.stringify(json)}`)
     }
   } catch (err) {
+    if (stop?.aborted) throw new UploadCancelled()
     if (controller && err instanceof Error && err.name === 'AbortError') {
       throw new Error(`DSM request timed out after ${options.timeoutMs}ms`)
     }
@@ -445,7 +454,9 @@ const dsmFileMd5 = async (
       if (Date.now() > deadline) return null
       await new Promise((resolve) => setTimeout(resolve, pollMs))
     }
-  } catch {
+  } catch (e) {
+    /* a cancel is not an answer: it must not read as "not there, send it" */
+    if (e instanceof UploadCancelled) throw e
     return null
   }
 }

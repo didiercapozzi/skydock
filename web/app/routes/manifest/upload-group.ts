@@ -5,9 +5,12 @@ import {
   listRemoteFiles,
   loadManifest,
   outputKeyOf,
+  pastCancelling,
+  runUpload,
   saveManifest,
   scopeKey,
   statProcessedOutputs,
+  UploadCancelled,
   uploadGate,
   uploadScope
 } from '@skydock/scripts'
@@ -43,7 +46,37 @@ const uploadGroup: Intent = async ({ data, manifest, manifestPath, outputDir, re
   ]
   const gate = uploadGate(scopeFiles, (file) => ({ output: outputs[outputKeyOf(file)] }))
   if (gate.blocked) return refuse(`${gate.message} — process before uploading.`)
-  const report = uploadReporter({ scope: key, outputDir })
+  const label = scope.destination ?? asked.map((g) => g.label).join(', ')
+  /* one upload at a time: a second is refused before it touches what the first is showing */
+  try {
+    return await runUpload({ key, label }, () =>
+      send({ scope, key, label, manifest, manifestPath, outputDir, session })
+    )
+  } catch (err) {
+    if (err instanceof UploadCancelled)
+      return { ...boardAnswer(loadManifest(manifestPath) ?? manifest), uploadCancelled: true }
+    return refuse(err instanceof Error ? err.message : 'Upload failed.')
+  }
+}
+
+const send = async ({
+  scope,
+  key,
+  label,
+  manifest,
+  manifestPath,
+  outputDir,
+  session
+}: {
+  scope: Parameters<typeof uploadScope>[0]['scope']
+  key: string
+  label: string
+  manifest: Parameters<typeof uploadScope>[0]['manifest']
+  manifestPath: string
+  outputDir: string
+  session: NonNullable<Awaited<ReturnType<typeof ensureNasSession>>>
+}) => {
+  const report = uploadReporter({ scope: key, label, outputDir })
   try {
     const result = await uploadScope({
       outputDir,
@@ -51,6 +84,7 @@ const uploadGroup: Intent = async ({ data, manifest, manifestPath, outputDir, re
       session,
       scope,
       onCheck: report.onCheck,
+      onPlan: report.onPlan,
       onProgress: report.onProgress
     })
     /* it runs for minutes; anything saved meanwhile is on disk and must not be clobbered by the
@@ -91,15 +125,15 @@ const uploadGroup: Intent = async ({ data, manifest, manifestPath, outputDir, re
       ...boardAnswer(saved),
       /* taken right after the upload, by the session that did it — the board gets the new truth
          without having to go and ask for it */
-      remote: await listRemoteFiles(saved, session),
+      remote: await pastCancelling(() => listRemoteFiles(saved, session)),
       uploaded: result.uploaded,
       skipped: result.skipped,
       ...(result.originsProblem ? { storageProblem: result.originsProblem } : {})
     }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Upload failed.'
-    report.failed(msg)
-    return refuse(msg)
+    if (err instanceof UploadCancelled) report.cancelled()
+    else report.failed(err instanceof Error ? err.message : 'Upload failed.')
+    throw err
   }
 }
 

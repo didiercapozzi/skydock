@@ -5,16 +5,21 @@ import { messageOf } from '@skydock/scripts'
 /* server-only: it shells out to ffmpeg, so it is imported here rather than through the barrel the
    browser evaluates */
 import { buildMissingProxies } from '../../../packages/skydock-scripts/src/proxy'
+import { copyAgain } from '../../../packages/skydock-scripts/src/cameraWatch'
 import { boardAnswer } from '../helpers/manifest'
 
 const actionArgs = z.object({})
 
-/* A scan rewrites the whole registry, so it answers with the board's data like every other change
-   rather than leaving the page to guess what moved (RULES, The workflow). */
+/* Rescan cameras: every camera plugged in is copied again — what is already here is passed over, so
+   only what is missing comes across — and the output folder is scanned. A scan rewrites the whole
+   registry, so it answers with the board's data like every other change rather than leaving the page
+   to guess what moved (RULES, The workflow). The copy goes on behind the answer, shown in the header
+   as a camera being plugged in is, and scans what it brought when it ends. */
 const action = createValidatedFormAction()({
   schema: actionArgs,
   handler: async () => {
     const outputDir = getOutputDir()
+    copyAgain(outputDir)
     const result = await scanMedia({ outputDir })
     /* Proxies are built behind the answer, not inside it: transcoding a card of clips takes
        minutes, and everything works without them meanwhile — the crop bar falls back to the clip

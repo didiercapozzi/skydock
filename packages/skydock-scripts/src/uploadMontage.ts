@@ -2,7 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { PHOTO_LEVEL, VIDEO_LEVEL, writeArchive } from './archive'
 import type { ArchiveProgress } from './archive'
-import type { CheckProgress, UploadProgress, UploadVerdict } from './publish'
+import type { CheckProgress, PlanProgress, UploadProgress, UploadVerdict } from './publish'
 import type { NasSession } from './nas'
 import { projectFolderOf, sendItems } from './sending'
 import type { SendItem } from './sending'
@@ -14,6 +14,7 @@ import { isVideoFile, sizeOf } from './utils'
 import { passengerName } from './workspace'
 import { originsOf } from './originEntry'
 import { deliveryFolders } from './originIndex'
+import { stopIfUploadCancelled } from './uploading'
 
 const SETTLE_MS = 1500
 
@@ -81,7 +82,8 @@ const uploadMontage = async ({
   plan,
   onArchive,
   onProgress,
-  onCheck
+  onCheck,
+  onPlan
 }: {
   outputDir: string
   manifest: Manifest
@@ -91,6 +93,7 @@ const uploadMontage = async ({
   onArchive?: (progress: ArchiveProgress & { name: string }) => void
   onProgress?: (progress: UploadProgress & { groupIds: string[] }) => void
   onCheck?: (progress: CheckProgress) => void
+  onPlan?: (plan: PlanProgress) => void
 }) => {
   if (!isNamedMontage(group))
     throw new Error('Only a montage is uploaded this way — give it a name first.')
@@ -123,6 +126,7 @@ const uploadMontage = async ({
   fs.mkdirSync(ready, { recursive: true })
   const built = new Map<string, string[]>()
   for (const item of items) {
+    stopIfUploadCancelled()
     if (item.zip) {
       const zip = await writeArchive(path.join(ready, item.name), item.entries, {
         level: item.holds.every((part) => part === 'photos') ? PHOTO_LEVEL : VIDEO_LEVEL,
@@ -173,7 +177,8 @@ const uploadMontage = async ({
     origins: originsOf(manifest),
     folders: deliveryFolders(manifest),
     onProgress,
-    onCheck
+    onCheck,
+    onPlan
   })
 
   /* What the montage records: each part's first place, which is what is proved and freed against,

@@ -63,8 +63,8 @@ Everything below follows from these.
   The one exception is a person's own choice: an unsorted file can be put in the bin, which moves it
   and erases nothing.
   A camera's own storage is only read, with one exception, also a person's choice: a file on a camera
-  plugged in can be taken off it once the network storage is proved to hold it, and it goes to the bin
-  too.
+  plugged in can be taken off it once the network storage is proved to hold it, or once its copy here
+  has been put in the bin, and it goes to the bin too.
 - **A folder is rebuilt only by whoever owns it.** A montage's folder can be rewritten, because only
   that montage is in it. A dropzone folder is shared by every day ever shot there, so it is never
   wiped: files in it are replaced one by one, and a day SkyDock no longer knows about is left alone.
@@ -132,8 +132,11 @@ a reader. The header shows the copy file by file, and as it goes how many
 were here already — a camera plugged in again is looked over file by file, and a file already here
 costs a look and not a copy, so the looking must not be mistaken for copying it all again. The board
 says what came off once it is done: how many new files and how many already there. A camera is copied
-once for each time it is plugged in; one unplugged half way keeps what was copied whole, and plugging
-it in again copies the rest. Only one camera is copied at a time, in the order they came. A drive
+each time it is plugged in, and again whenever asked while it stays plugged in — from its page, which
+offers to copy what is not here yet, or with Rescan cameras, which copies every camera plugged in and
+then scans — so what went missing here comes back across without unplugging anything; a camera asked
+for while it is already being copied is left to that copy. One unplugged half way keeps what was
+copied whole, and plugging it in again copies the rest. Only one camera is copied at a time, in the order they came. A drive
 without a DCIM folder is not a camera and is never looked into, and copying never writes to a camera. The
 `._` files a Mac leaves beside each clip on a card it has touched are not media, and are neither copied
 nor listed.
@@ -141,20 +144,27 @@ Where cameras are mounted is told to SkyDock when it starts, and telling it noth
 
 **Seeing what is on a camera.** A camera plugged in is listed at the foot of the menu for as long as it
 stays plugged in, and its page lists every photo and video on its card, each saying how far it has got:
-not copied yet, copied here but not uploaded, or on the storage — copied read by the same rule the copy
-uses to pass a file over. Only a file on the storage can be picked and deleted from the camera, to make
-room on the card; the others have no tick — and those same picks are what can be **copied back here**,
-which is the one thing that undoes a freeing and is never done by plugging the card in. Deleting asks
-first, saying how many files and how much, and that they go to the bin, and the storage must be
-reachable. Then each file is read through and held
-against what the storage holds by its bytes, never by its name, since every name changes on the way: it
-has to be a file the board knows by its content, and the storage has to hold what that file became.
+not copied yet, copied here but not uploaded, copied here and then put in the bin, or on the storage —
+copied read by the same rule the copy uses to pass a file over, and in the bin read by the file's bytes,
+never its name, which the copy may have changed: only a file of the bin of the very same size is read
+through to be compared, so the rest of the card is not read at all, and what was read is remembered
+while it stays the same. Only a file on the storage, or one whose
+copy here was put in the bin, can be picked and deleted from the camera, to make room on the card; the
+others have no tick, since until a file is uploaded or thrown away the card is its other copy. The picks
+on the storage are also what can be **copied back here**, which is the one thing that undoes a freeing
+and is never done by plugging the card in. Deleting asks first, saying how many files and how much, and
+that they go to the bin. Then each file is read through and held by its bytes, never by its name:
+one in the bin against the files put in the bin from Fresh files, which has to hold that very content;
+one on the storage against what the storage holds, since every name changes on the way — it has to be a
+file the board knows by its content, and the storage has to hold what that file became. The storage has
+to be reachable only for those.
 A camera read through KDE is listed the same way, but from what its copy found rather than by asking
 it again: it answers one question at a time, and a card of sixteen hundred clips is minutes of them.
 It is copied the moment it is plugged in, so its page opens at once; while the copy is still going
 over it, what has been reached is listed and the page says the rest are coming, filling in on its own.
 Nothing is deleted from it here: the proof reads each file through, byte for byte, which needs the
-camera readable as files. Its page says to delete on the camera itself.
+camera readable as files — and for the same reason its page does not say which files are in the bin.
+Its page says to delete on the camera itself.
 
 | What the camera file is | What it is held against on the storage                                    |
 | ----------------------- | ------------------------------------------------------------------------- |
@@ -163,8 +173,8 @@ camera readable as files. Its page says to delete on the camera itself.
 | a dropzone's file       | the copy made from it, which is what went up — it never goes up as itself |
 
 If any file is not proved, or is not on a camera plugged in now, nothing at all is deleted and the files
-at fault are named — first any not on a camera plugged in, then any the storage could not be shown to
-hold. What passes is moved off the card into a folder of the bin named after the camera and the moment,
+at fault are named — first any not on a camera plugged in, then any neither in the bin nor shown to be on
+the storage. What passes is moved off the card into a folder of the bin named after the camera and the moment,
 kept as it sat on the card. A montage's file is proved through the archive kept here, so once the
 montage has been freed its files can no longer be proved and stay on the card. Nothing is deleted from
 a camera while one is being copied or anything is being processed.
@@ -557,7 +567,9 @@ and how much space, and that these are originals nobody has been given yet — i
 been wiped, the bin holds the only copy. Once confirmed, the files leave the board and the originals
 folder, so a scan does not bring them back; the copies and proxies made from them are deleted, since
 they have nothing left to come from. The files themselves are moved, not erased, into a folder of the
-bin named for that moment, keeping the day folder each came from. SkyDock never empties the bin, so
+bin named for that moment, keeping the day folder each came from. A file put in the bin this way is
+one nobody wants, so while its camera is plugged in it can also be deleted from the camera's card
+(Seeing what is on a camera). SkyDock never empties the bin, so
 nothing is lost for good and no space comes back until someone empties it by hand. The bin is a folder
 of its own beside the work, apart from the originals and the delivered copies. Nothing is put in the
 bin while something is being processed.
@@ -813,6 +825,20 @@ folder it was delivered into, under the moment it was replaced, and SkyDock neve
 If the storage will not move it aside, the upload stops there and says which file; what was already
 sent stands. The board reports what is happening throughout: how many files are being checked, which
 one is being sent and how far it is, and how many were already there.
+
+**One upload at a time, shown wherever you are.** Only one upload goes at a time — a dropzone or a
+montage — and while it goes no Upload is offered anywhere, each saying what is being uploaded. It is
+shown in the corner of the board, whatever page is open, in the same panel as files being copied in:
+every zip as it is made, then every file going to every folder up there, each marked waiting, being
+sent with how far it has got, sent, or already there. The upload belongs to the machine, not to the
+page: leaving the page, making another change meanwhile, reloading or reopening the window neither
+stops it nor offers it again — the board shows it still going and updates itself when it ends.
+
+**Cancelling an upload.** It can be cancelled at any moment from that panel, with nothing to confirm,
+since nothing is lost: the file being sent is cut off, nothing more is sent, and nothing of the upload
+is recorded — no file reads as uploaded, no link is kept. What had already gone up stays on the
+storage and is found there by the next upload, which does not send it again. A zip that was being made
+is thrown away, never left where it could pass for a finished one.
 
 **And the same footage under another name.** Every name changes on the way out, and the same footage
 is delivered under a second name often enough: a clip whose time was put right, a montage renamed,
@@ -1087,7 +1113,8 @@ where the film and the photos go is the club's to choose. The project folder is
 this montage's own.
 
 **Refusals**, each named: no name; files still to process; no film yet, naming the film looked for; a
-film still being written; nothing put anywhere; a destination with no folder on the storage. A montage
+film still being written; nothing put anywhere; a destination with no folder on the storage; another
+upload going, naming it. A montage
 with no video at all is uploaded without a film. A film rendered under a different name, when it is
 the only one there, is taken as the film, and goes up named after the montage.
 

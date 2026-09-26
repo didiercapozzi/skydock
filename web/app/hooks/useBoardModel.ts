@@ -509,7 +509,15 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   }
   /* the client opens whichever dialog is missing rather than firing a request the server would only
      refuse — but the server still decides, so the client never guesses a path */
+  /* the jumps an upload is of, named as the board names them */
+  const labelsOf = (ids: string[]) =>
+    groups
+      .filter((g) => ids.includes(g.id))
+      .map(labelOf)
+      .join(', ')
   const requestUpload = (scope: { groupIds?: string[]; destination?: string }, key: string) => {
+    /* one upload at a time: nothing is offered on top of one going */
+    if (board.uploading) return
     if (!nas.connected) {
       openConnect()
       return
@@ -518,11 +526,14 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       setDialog({ kind: 'folder', destination: scope.destination })
       return
     }
-    board.setUploading(key)
-    send(key, { intent: 'upload-group', ...scope })
+    board.sendUpload(
+      { key, label: scope.destination ?? labelsOf(scope.groupIds ?? []) },
+      { intent: 'upload-group', ...scope }
+    )
   }
   /* Upload opens what it is about to do, and only the dialog's own button sends anything. */
   const askUpload = (group: ManifestGroup) => {
+    if (board.uploading) return
     if (!nas.connected) {
       openConnect()
       return
@@ -531,9 +542,10 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   }
   const confirmUpload = (group: ManifestGroup, plan: SendPlan) => {
     setDialog(null)
-    const key = montageUploadKey(group.id)
-    board.setUploading(key)
-    send(key, { intent: 'upload-montage', groupId: group.id, plan })
+    board.sendUpload(
+      { key: montageUploadKey(group.id), label: passengerName(group.passenger) },
+      { intent: 'upload-montage', groupId: group.id, plan }
+    )
   }
   /* A template is somebody's branding, so which one is never decided here. With a single template
      that is whole there is nothing to decide and the project is made at once; with several, or one

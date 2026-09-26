@@ -279,7 +279,7 @@ const Place = () => {
         {place.kind === 'camera' ? (
           <CameraFiles
             mount={place.name}
-            stamp={board.cameras.map((c) => c.mount).join('\n')}
+            stamp={`${board.cameras.map((c) => c.mount).join('\n')}\n${board.cameraCopy?.state ?? ''}`}
             onNote={setNote}
             onCopyBack={(paths) => send('copy-back', { intent: 'copy-back', paths })}
           />
@@ -475,10 +475,16 @@ const DropzoneStep = ({ name }: { name: string }) => {
     <>
       {free}
       <Go
-        disabled={busy !== null}
-        title={`Send everything in ${name} that is processed and not up there yet — ${plural(waiting('processed'), 'file')}, whatever the search or the filter is showing.`}
+        disabled={busy !== null || model.board.uploading !== null}
+        title={
+          model.board.uploading && model.board.uploading !== `dest:${name}`
+            ? `Uploading ${model.board.uploadLabel} — wait for it, or cancel it`
+            : `Send everything in ${name} that is processed and not up there yet — ${plural(waiting('processed'), 'file')}, whatever the search or the filter is showing.`
+        }
         onClick={() => model.requestUpload({ destination: name }, `dest:${name}`)}>
-        {busy === `dest:${name}` ? 'Uploading…' : `Upload ${plural(waiting('processed'), 'file')}`}
+        {model.board.uploading === `dest:${name}`
+          ? 'Uploading…'
+          : `Upload ${plural(waiting('processed'), 'file')}`}
       </Go>
     </>
   )
@@ -495,6 +501,7 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
         group={group}
         facts={board.montageFacts[group.id]}
         busy={board.busy}
+        upload={board.uploading ? { key: board.uploading, label: board.uploadLabel ?? '' } : null}
         blocked={model.gateFor(group.files)}
         proxiesWaiting={waitingForProxy(group.files, board.proxies).length}
         named={hasCompletePassenger(group.passenger)}

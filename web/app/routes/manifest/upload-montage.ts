@@ -3,6 +3,10 @@ import {
   listRemoteFiles,
   loadManifest,
   outputKeyOf,
+  passengerName,
+  pastCancelling,
+  runUpload,
+  UploadCancelled,
   planOf,
   saveManifest,
   statProcessedOutputs,
@@ -30,8 +34,9 @@ const uploadMontageIntent: Intent = async ({ data, manifest, manifestPath, outpu
   const outputs = statProcessedOutputs(manifest)
   const gate = uploadGate(group.files, (file) => ({ output: outputs[outputKeyOf(file)] }))
   if (gate.blocked) return refuse(`${gate.message} — process before uploading.`)
-  const report = uploadReporter({ scope: montageUploadKey(group.id), groupId: group.id, outputDir })
-  try {
+  const key = montageUploadKey(group.id)
+  const label = passengerName(group.passenger)
+  const send = async (report: ReturnType<typeof uploadReporter>) => {
     const result = await uploadMontage({
       outputDir,
       manifest,
@@ -40,6 +45,7 @@ const uploadMontageIntent: Intent = async ({ data, manifest, manifestPath, outpu
       plan: planOf(data.plan),
       onArchive: report.onArchive,
       onCheck: report.onCheck,
+      onPlan: report.onPlan,
       onProgress: report.onProgress
     })
     /* it runs for minutes; anything saved meanwhile is on disk and must not be clobbered by the
@@ -52,32 +58,47 @@ const uploadMontageIntent: Intent = async ({ data, manifest, manifestPath, outpu
     }
     report.done(result.skipped)
     saveManifest(manifestPath, saved)
-    const listed = target ? entryOfMontage(target, montagesRemoteDir(saved, session)) : null
-    const listing = listed
-      ? await recordOnStorage(
-          session,
-          listed.dir,
-          (index) => upsert(index, listed.entry),
-          earlierMontagesDirs(saved)
-        )
-      : {}
-    /* either list may not have followed; the upload stands, and the board says which */
-    const problems = [
-      result.originsProblem,
-      'storageProblem' in listing ? listing.storageProblem : undefined
-    ].filter(Boolean)
-    return {
-      ...boardAnswer(saved),
-      ...listing,
-      ...(problems.length > 0 ? { storageProblem: problems.join('; ') } : {}),
-      remote: await listRemoteFiles(saved, session),
-      uploaded: result.uploaded,
-      skipped: result.skipped
-    }
+    return pastCancelling(async () => {
+      const listed = target ? entryOfMontage(target, montagesRemoteDir(saved, session)) : null
+      const listing = listed
+        ? await recordOnStorage(
+            session,
+            listed.dir,
+            (index) => upsert(index, listed.entry),
+            earlierMontagesDirs(saved)
+          )
+        : {}
+      /* either list may not have followed; the upload stands, and the board says which */
+      const problems = [
+        result.originsProblem,
+        'storageProblem' in listing ? listing.storageProblem : undefined
+      ].filter(Boolean)
+      return {
+        ...boardAnswer(saved),
+        ...listing,
+        ...(problems.length > 0 ? { storageProblem: problems.join('; ') } : {}),
+        remote: await listRemoteFiles(saved, session),
+        uploaded: result.uploaded,
+        skipped: result.skipped
+      }
+    })
+  }
+  /* one upload at a time: a second is refused before it touches what the first is showing */
+  try {
+    return await runUpload({ key, label }, async () => {
+      const report = uploadReporter({ scope: key, label, groupId: group.id, outputDir })
+      try {
+        return await send(report)
+      } catch (err) {
+        if (err instanceof UploadCancelled) report.cancelled()
+        else report.failed(err instanceof Error ? err.message : 'Upload failed.')
+        throw err
+      }
+    })
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Upload failed.'
-    report.failed(msg)
-    return refuse(msg)
+    if (err instanceof UploadCancelled)
+      return { ...boardAnswer(loadManifest(manifestPath) ?? manifest), uploadCancelled: true }
+    return refuse(err instanceof Error ? err.message : 'Upload failed.')
   }
 }
 

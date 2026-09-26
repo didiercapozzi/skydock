@@ -53,6 +53,7 @@ type Loaded = {
   storage: Storage
   hasManifest: boolean
   processing: { groupIds: string[] } | null
+  uploading: { key: string; label: string } | null
 }
 
 const refusalSchema = z
@@ -80,7 +81,10 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   )
   const [loose, setLoose] = useState<ManifestFile[]>(loaded.looseFiles)
   const [places, setPlaces] = useState<Destination[]>(loaded.destinations)
-  const [uploading, setUploading] = useState<string | null>(null)
+  /* A page loaded mid-upload takes it up the same way: the upload shows as going, no Upload is
+     offered on top of it, and the board asks to hear when it is done. */
+  const [upload, setUpload] = useState(loaded.uploading)
+  const [cancelling, setCancelling] = useState(false)
   /* `?? {}` because a board with no manifest has no clips to know anything about, and one map
      arriving empty is not a reason for the whole screen to fail to draw */
   const [outputs, setOutputs] = useState<Record<string, OutputFact>>(loaded.outputs ?? {})
@@ -96,13 +100,13 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   /* the first scan is what creates the manifest, so this is state and not read from the loader */
   const [hasManifest, setHasManifest] = useState(loaded.hasManifest)
   const fetcher = useSafeFetcher()
+  /* An upload goes by a request of its own, and so does stopping it or waiting for it: an edit made
+     meanwhile — a clip played, a file moved — neither drops it nor reads as its end. */
+  const jobs = useSafeFetcher()
 
-  const [seenAnswer, setSeenAnswer] = useState<unknown>(null)
-  if (fetcher.data && fetcher.data !== seenAnswer) {
-    setSeenAnswer(fetcher.data)
-    const answered = boardAnswerSchema.safeParse(fetcher.data)
-    setBusy(null)
-    setUploading(null)
+  /* a board answer, whichever request it answers */
+  const adopt = (data: unknown) => {
+    const answered = boardAnswerSchema.safeParse(data)
     if (answered.success) {
       const {
         groups: saved,
@@ -119,6 +123,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
         freed,
         freedPlace,
         processCancelled,
+        uploadCancelled,
         imported,
         restored,
         copied: copiedFiles,
@@ -158,29 +163,46 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
                     ? freedPlaceNote(freedPlace)
                     : processCancelled
                       ? 'Processing cancelled. What was finished stays; the rest is left to process again.'
-                      : restored
-                        ? restoredNote(restored)
-                        : copiedFiles
-                          ? copiedNote(copiedFiles)
-                          : resetTo
-                            ? resetNote(resetTo)
-                            : cameraCopied
-                              ? cameraNote(cameraCopied)
-                              : played
-                                ? `${played.filename} is playing in this machine’s own player`
-                                : copiedBack
-                                  ? copiedBackNote(copiedBack)
-                                  : broughtBack
-                                    ? broughtBackNote(broughtBack)
-                                    : fromBin
-                                      ? fromBinNote(fromBin)
-                                      : null
+                      : uploadCancelled
+                        ? 'Upload cancelled — nothing was recorded; what already went up is found there next time.'
+                        : restored
+                          ? restoredNote(restored)
+                          : copiedFiles
+                            ? copiedNote(copiedFiles)
+                            : resetTo
+                              ? resetNote(resetTo)
+                              : cameraCopied
+                                ? cameraNote(cameraCopied)
+                                : played
+                                  ? `${played.filename} is playing in this machine’s own player`
+                                  : copiedBack
+                                    ? copiedBackNote(copiedBack)
+                                    : broughtBack
+                                      ? broughtBackNote(broughtBack)
+                                      : fromBin
+                                        ? fromBinNote(fromBin)
+                                        : null
       /* the work stands even when the list could not follow it, and that is said alongside */
       setNote(storageProblem ? [said, storageProblem].filter(Boolean).join(' · ') : said)
     } else {
-      const refused = refusalSchema.safeParse(fetcher.data)
+      const refused = refusalSchema.safeParse(data)
       if (refused.success) setNote(refused.data.globalErrors?.[0] ?? 'Request failed')
     }
+  }
+
+  const [seenAnswer, setSeenAnswer] = useState<unknown>(null)
+  if (fetcher.data && fetcher.data !== seenAnswer) {
+    setSeenAnswer(fetcher.data)
+    setBusy(null)
+    adopt(fetcher.data)
+  }
+  /* only the upload's own answer — sent, refused, cancelled, or waited for — ends it here */
+  const [seenJob, setSeenJob] = useState<unknown>(null)
+  if (jobs.data && jobs.data !== seenJob) {
+    setSeenJob(jobs.data)
+    setUpload(null)
+    setCancelling(false)
+    adopt(jobs.data)
   }
 
   /* A camera's copy has ended — its files are copied and scanned on the machine — so the board asks
@@ -215,6 +237,28 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     askedToWait.current = true
     fetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'process-wait' } })
   }, [running, fetcher])
+
+  /* Arriving while something is being uploaded: the same, for the upload. */
+  const askedToWaitUpload = useRef(false)
+  useEffect(() => {
+    if (!loaded.uploading || askedToWaitUpload.current) return
+    askedToWaitUpload.current = true
+    jobs.submit({ url: '/api/manifest', actionArgs: { intent: 'upload-wait' } })
+  }, [loaded.uploading, jobs])
+
+  /* An upload asked for: one at a time, so none is sent while another is going. */
+  const sendUpload = (going: { key: string; label: string }, actionArgs: ManifestArgs) => {
+    if (upload) return
+    setNote(null)
+    setUpload(going)
+    jobs.submit({ url: '/api/manifest', actionArgs })
+  }
+  /* stopped at any moment; the answer comes once it has stopped */
+  const cancelUpload = () => {
+    if (!upload || cancelling) return
+    setCancelling(true)
+    jobs.submit({ url: '/api/manifest', actionArgs: { intent: 'cancel-upload' } })
+  }
 
   /* Every edit is the same three steps — clear the last message, mark what is working, ask the
      server — so they are written once. `label` is what `busy` is compared against to decide which
@@ -267,8 +311,12 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     setBusy,
     note,
     setNote,
-    uploading,
-    setUploading,
+    /* the key of what is being uploaded, and how the board names it */
+    uploading: upload?.key ?? null,
+    uploadLabel: upload?.label ?? null,
+    cancelling,
+    sendUpload,
+    cancelUpload,
     manifest,
     send,
     scan,

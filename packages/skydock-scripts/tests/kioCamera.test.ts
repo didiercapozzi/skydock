@@ -361,7 +361,7 @@ describe('what the copy found on a camera read through KDE', () => {
     await askKde(async () => [CAMERA])
     globalThis.skydockCameraWatch!.seenOn[CAMERA] = { done: true, clips }
 
-    const [listing] = await listCameras(outputDir, [])
+    const [listing] = await listCameras(outputDir, [], path.join(outputDir, 'bin'))
 
     expect(listing).toMatchObject({ camera: 'HERO5 Black', looking: false, deletable: false })
     expect(listing?.files).toEqual([
@@ -374,7 +374,7 @@ describe('what the copy found on a camera read through KDE', () => {
     await askKde(async () => [CAMERA])
     globalThis.skydockCameraWatch!.seenOn[CAMERA] = { done: false, clips: [] }
 
-    const [listing] = await listCameras(outputDir, [])
+    const [listing] = await listCameras(outputDir, [], path.join(outputDir, 'bin'))
 
     expect(listing).toMatchObject({ looking: true, files: [] })
   })

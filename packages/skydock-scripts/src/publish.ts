@@ -9,6 +9,7 @@ import { alreadyUp, sameSizeUnknown, worthReading } from './originEntry'
 import type { OriginIndex } from './originEntry'
 import { stampOf } from './lib/clock'
 import { lastSegment, parentOf } from './paths'
+import { stopIfUploadCancelled, stopSignal, UploadCancelled } from './uploading'
 import { mapWithLimit, withRetry } from './utils'
 import {
   dsmConfigSchema,
@@ -43,11 +44,18 @@ const uploadProgressSchema = z.object({
   bytesUploaded: z.number(),
   totalBytes: z.number(),
   fileIndex: z.number().optional(),
-  totalFiles: z.number().optional()
+  totalFiles: z.number().optional(),
+  /* the folder up there it is going into: one file can go to several */
+  to: z.string().optional()
 })
 type UploadProgress = z.infer<typeof uploadProgressSchema>
 
 type CheckProgress = { checked: number; total: number; filename: string }
+
+/* What one folder's upload is about to do, once it has looked: every file it will send, and every
+   one the storage already holds — so what is shown lists it all before a byte moves. */
+type PlannedFile = { name: string; size: number; to: string }
+type PlanProgress = { send: PlannedFile[]; there: PlannedFile[] }
 
 /* footage the storage already holds, wanted in another of its folders: it copies it to itself
    rather than being sent it again */
@@ -102,6 +110,7 @@ const uploadFile = async (
   onProgress?: (progress: UploadProgress) => void,
   options?: { overwrite?: boolean }
 ) => {
+  stopIfUploadCancelled()
   const filename = path.basename(localPath).replace(/"/g, '')
   const stat = fs.statSync(localPath)
   const totalBytes = stat.size
@@ -127,9 +136,17 @@ const uploadFile = async (
     new Promise<string>((resolve, reject) => {
       let settled = false
       const digest = crypto.createHash('md5')
+      /* a cancel cuts the file off where it is: the request is dropped, the storage keeps nothing */
+      const signal = stopSignal()
+      const cutOff = () => {
+        req.destroy()
+        nodeStream.destroy()
+        done(new UploadCancelled())
+      }
       const done = (err?: Error) => {
         if (settled) return
         settled = true
+        signal?.removeEventListener('abort', cutOff)
         if (err) reject(err)
         else resolve(digest.digest('hex'))
       }
@@ -183,6 +200,7 @@ const uploadFile = async (
       })
 
       const nodeStream = fs.createReadStream(localPath, { highWaterMark: 1024 * 1024 })
+      signal?.addEventListener('abort', cutOff, { once: true })
       nodeStream.on('error', (err) => {
         req.destroy()
         done(err)
@@ -406,6 +424,7 @@ const publishJump = async (
   handlers?: {
     onProgress?: (progress: UploadProgress) => void
     onCheck?: (progress: CheckProgress) => void
+    onPlan?: (plan: PlanProgress) => void
   }
 ) => {
   const sid = await loginWithSession(
@@ -431,6 +450,7 @@ const publishJump = async (
   const copied: UploadVerdict[] = []
   const couldNotCopy: string[] = []
   for (const over of planned.copyOver ?? []) {
+    stopIfUploadCancelled()
     const ok =
       (await dsmCopyMove(args.host, sid, over.from, parentOf(over.to), { keepSource: true })) &&
       (lastSegment(over.from) === lastSegment(over.to) ||
@@ -459,8 +479,22 @@ const publishJump = async (
   const held = new Set(planned.held)
   const asideAt = new Date()
   const totalFiles = planned.upload.length
+  const already = (verdict: UploadVerdict) => ({
+    name: lastSegment(verdict.remotePath),
+    size: verdict.size,
+    to: parentOf(verdict.remotePath)
+  })
+  handlers?.onPlan?.({
+    send: planned.upload.map((file) => ({
+      name: path.basename(file),
+      size: fs.statSync(file).size,
+      to: remoteDirOf(args.localDir, args.remoteDir, file)
+    })),
+    there: [...planned.skip, ...copied].map(already)
+  })
   const sent: UploadVerdict[] = []
   for (const [index, file] of planned.upload.entries()) {
+    stopIfUploadCancelled()
     const remoteDir = remoteDirOf(args.localDir, args.remoteDir, file)
     const remotePath = `${remoteDir}/${path.basename(file)}`
     if (held.has(remotePath) && !(await moveAside(args.host, sid, remotePath, asideAt)))
@@ -468,7 +502,7 @@ const publishJump = async (
         `The storage would not put ${lastSegment(remotePath)} aside, so it was not sent — what is up there is untouched.`
       )
     const { md5, size } = await uploadFile(args.host, sid, remoteDir, file, (progress) =>
-      handlers?.onProgress?.({ ...progress, fileIndex: index, totalFiles })
+      handlers?.onProgress?.({ ...progress, fileIndex: index, totalFiles, to: remoteDir })
     )
     sent.push({
       localPath: file,
@@ -496,4 +530,4 @@ const publishJump = async (
 }
 
 export { binFor, planUpload, publishJump, uploadFile }
-export type { CheckProgress, PublishArgs, Seen, UploadProgress, UploadVerdict }
+export type { CheckProgress, PlanProgress, PublishArgs, Seen, UploadProgress, UploadVerdict }

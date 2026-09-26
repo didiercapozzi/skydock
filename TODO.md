@@ -39,11 +39,6 @@ folders; the others are traced in the code. Line numbers are as of commit `33386
   `manifest.groups = data.groups` (`save-groups.ts:69`), and the board never reloads. An old copy
   drops freed, uploaded, processed and share-link records, and jumps made elsewhere, such as by a
   camera copy, vanish. Fix: save per jump, or refuse when the server's version has moved on.
-- **A half-written backup zip reads as current, gets uploaded, passes the proof, and the originals
-  are deleted.** [reproduced] `writeArchive` writes in place, and the old `.contents` stays
-  (`archive.ts:52,76`), so `isArchiveFresh` accepts a cut-off rebuild (`archive.ts:32-44`). The same
-  happens when two uploads run at once. Fix: write `.part`, remove `.contents` first, rename at
-  the end.
 - **Processing a montage again after an original was deleted by hand deletes its processed copy.**
   [reproduced] The missing original is skipped silently (`process.ts:420`), its copy's name is not
   reserved, and `pruneStaleMedia` deletes it (`process.ts:439`). The run reports success. Fix:
@@ -98,13 +93,11 @@ folders; the others are traced in the code. Line numbers are as of commit `33386
   search every day folder by name and size, as `hereAlready` does (`kioCamera.ts:82`).
 - **A file dragged in while the watcher copies the same card is duplicated.** [reproduced]
   `importFile` checks only the registry (`importFile.ts:240`). Fix: also check the day folder.
-- **Starting a second action discards the answer to the first.** They share one fetcher
-  (`useBoardState.ts:224-229`), and drag and add-place do not check `busy`. A running upload or
-  process looks stopped. Fix: a fetcher of its own for long jobs, or block sends while busy.
-- **Uploads are not tracked on the server.** A reloaded page offers Upload again, the second run
-  wipes the first's progress (`progress.ts:40`), and the zip is corrupted (see the zip above).
-  Take-back during an upload is not blocked either. Fix: a server record of running uploads, and
-  refuse a second one.
+- **Starting a second action discards the answer to the first.** Edits share one fetcher
+  (`useBoardState.ts`), and drag and add-place do not check `busy`, so a running process looks
+  stopped. Uploads now have a fetcher of their own; processing still does not. Fix: the same for
+  processing, or block sends while busy.
+- **Taking a montage back, or deleting it, is not blocked while it is being uploaded.**
 - **An uploaded jump can be moved to another place, and its upload record is erased.** [reproduced]
   The lock only covers file-level changes (`save-groups.ts:38-52`), and lines 55-67 then delete
   `uploaded`. This breaks RULES' "uploaded is the end of editing". Fix: refuse jump-level changes to
@@ -140,9 +133,8 @@ folders; the others are traced in the code. Line numbers are as of commit `33386
 - **Every scan re-hashes and re-reads exif for the whole library** (`scan.ts:64-86,244`, using
   `execFileSync`). The header sits at "copying" and deleting from the camera is refused until it
   ends. Fix: reuse the id when size and mtime are unchanged, and add a "scanning" phase.
-- **A camera copy that fails without an unplug is never retried** (`cameraWatch.ts:308-317`). On
-  KDE, a full local disk reads "The camera stopped answering" (`kioCamera.ts:190-192`). Fix: a
-  "copy again" button, and a true message.
+- **On KDE, a full local disk reads "The camera stopped answering"** (`kioCamera.ts:190-192`). Fix: a
+  true message.
 - **A camera clock reset to 2000 or 2016 merges shoots from different days**, and joins old
   unfiled jumps (`clustering.ts:160-176`). Fix: warn on impossible dates, and offer to split by file
   number.
@@ -178,6 +170,17 @@ the NAS; an interrupted upload retried; processing, which runs one at a time, ca
 reloads before saving; template paths pointing outside their folder; corrupt settings or NAS session.
 
 ## Done
+
+- **A camera is copied again without unplugging it.** Its page offers "Copy N files here" for what is
+  not here yet, and Rescan cameras copies every camera plugged in before it scans; what is here is
+  passed over.
+
+- **One upload at a time, shown and cancellable.** The server knows the upload going and refuses a
+  second; the board takes it up after leaving the page, another edit, a reload or the window
+  reopening, and shows it in the corner panel (the import panel's component) with every item. It can
+  be cancelled at any moment: the send is cut off, nothing is recorded, and a zip being made is
+  thrown away. Zips are built as `.part` and renamed only when whole, so a cut-off rebuild never
+  passes for a finished zip.
 
 - **The storage's lists: reality wins.** A listing the NAS did not answer is an error, never an
   empty folder, so nothing is forgotten, pruned or sent on it. A file counts as already up only when

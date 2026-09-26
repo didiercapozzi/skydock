@@ -1,14 +1,14 @@
 import { z } from 'zod'
 
 /* Free of node imports: the board reads these. What is on a camera plugged in — each file by where it
-   is on the card, and how far it has got: not copied here yet, copied here, or on the storage too,
-   which is the one that can be deleted from the camera. */
+   is on the card, and how far it has got: not copied here yet, copied here, copied here and then put
+   in the bin, or on the storage too — the last two are what can be deleted from the camera. */
 const cameraFileSchema = z.object({
   path: z.string(),
   name: z.string(),
   size: z.number(),
   mtime: z.number(),
-  state: z.enum(['missing', 'copied', 'stored'])
+  state: z.enum(['missing', 'copied', 'binned', 'stored'])
 })
 
 const cameraListingSchema = z.object({

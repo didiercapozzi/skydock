@@ -144,7 +144,15 @@ import {
   uploadProgressStateSchema,
   writeUploadProgress
 } from './uploadProgress'
-import type { UploadProgressState } from './uploadProgress'
+import type { UploadItem, UploadProgressState } from './uploadProgress'
+import {
+  cancelUploading,
+  pastCancelling,
+  runUpload,
+  UploadCancelled,
+  uploadingNow,
+  whenUploaded
+} from './uploading'
 import { ffmpegPath, getOutputDir, isoDay, isVideoFile } from './utils'
 import {
   buildPassengerFolder,
@@ -158,6 +166,12 @@ import {
 import { isFiled, isMontage } from './filed'
 
 export {
+  cancelUploading,
+  pastCancelling,
+  runUpload,
+  UploadCancelled,
+  uploadingNow,
+  whenUploaded,
   cutFrom,
   jumpTrack,
   rememberOutputDir,
@@ -307,5 +321,6 @@ export type {
   MontageEntry,
   MontageLost,
   MontageFact,
+  UploadItem,
   UploadProgressState
 }

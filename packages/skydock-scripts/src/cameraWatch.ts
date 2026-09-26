@@ -159,6 +159,8 @@ type Watch = {
   seen: Set<string>
   queue: string[]
   copying: boolean
+  /* the camera being copied now, so one asked for again meanwhile is not copied twice over */
+  current?: string
   /* the cameras last said to be plugged in, so a change is said once */
   said: string
   /* the cameras KDE last said it could reach, and whether it is being asked right now */
@@ -198,6 +200,7 @@ const copyNext = async (outputDir: string) => {
   const cameraDir = state.queue.shift()
   if (!cameraDir || state.copying) return
   state.copying = true
+  state.current = cameraDir
   const camera = cameraName(cameraDir)
   let last = { done: 0, total: 0, copied: 0, skipped: 0 }
   const onProgress = (progress: CopyProgress) => {
@@ -227,6 +230,7 @@ const copyNext = async (outputDir: string) => {
     })
   } finally {
     state.copying = false
+    state.current = undefined
     if (state.queue.length > 0) void copyNext(outputDir)
   }
 }
@@ -344,6 +348,19 @@ const watchCameras = (outputDir: string) => {
   state.timer = setInterval(() => lookForCameras(outputDir), EVERY_MS)
 }
 
+/* A camera copied again on request — one, or every camera plugged in — without unplugging it, the
+   same way plugging it in copies it: what is already here is passed over, so what comes across is
+   only what is missing, whatever the reason it is. One already waiting or being copied is left to that
+   copy. Says how many cameras were asked for. */
+const copyAgain = (outputDir: string, camera?: string, mounts = mountedCameras()) => {
+  const state = watch()
+  const now = [...mounts, ...state.kde]
+  const wanted = camera ? now.filter((c) => c === camera) : now
+  for (const c of wanted) if (c !== state.current && !state.queue.includes(c)) state.queue.push(c)
+  if (!state.copying && state.queue.length > 0) void copyNext(outputDir)
+  return wanted.length
+}
+
 /* whether a camera is being copied right now — nothing is taken off one while it is read */
 const cameraCopying = () => watch().copying || watch().queue.length > 0
 
@@ -358,6 +375,7 @@ export {
   cameraCopying,
   cameraName,
   camerasSeenThroughKde,
+  copyAgain,
   lookForCameras,
   mountedCameras,
   overMtp,

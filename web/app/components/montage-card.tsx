@@ -272,6 +272,7 @@ const MontageCardActions = ({
   group,
   facts,
   busy,
+  upload = null,
   blocked,
   proxiesWaiting = 0,
   named,
@@ -285,6 +286,8 @@ const MontageCardActions = ({
   group: ManifestGroup
   facts?: MontageFact
   busy: string | null
+  /* what is being uploaded, anywhere — one at a time, so no other upload is offered meanwhile */
+  upload?: { key: string; label: string } | null
   blocked: { blocked: boolean; message: string | null }
   /* how many of its clips are still getting their proxy — the project waits for them */
   proxiesWaiting?: number
@@ -362,13 +365,15 @@ const MontageCardActions = ({
         </Mini>
       )}
       <Go
-        disabled={working || blocked.blocked}
+        disabled={working || blocked.blocked || upload !== null}
         title={
-          blocked.message ??
-          'Zip the photos and the rushes, then send the film and the photos to the montage’s folder'
+          upload && upload.key !== uploadKey
+            ? `Uploading ${upload.label} — wait for it, or cancel it`
+            : (blocked.message ??
+              'Zip the photos and the rushes, then send the film and the photos to the montage’s folder')
         }
         onClick={onUpload}>
-        {busy === uploadKey ? 'Uploading…' : group.uploaded ? 'Upload again…' : 'Upload…'}
+        {upload?.key === uploadKey ? 'Uploading…' : group.uploaded ? 'Upload again…' : 'Upload…'}
       </Go>
     </span>
   )

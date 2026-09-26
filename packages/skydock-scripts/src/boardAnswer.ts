@@ -90,6 +90,8 @@ const boardAnswerSchema = z.object({
   freed: z.object({ bytes: z.number(), files: z.number(), groupId: z.string() }).optional(),
   /* what was being processed was stopped on request */
   processCancelled: z.boolean().optional(),
+  /* what was being uploaded was stopped on request, and nothing of it recorded */
+  uploadCancelled: z.boolean().optional(),
   /* how much room freeing a dropzone gave back, how many files, and how many stayed */
   freedPlace: z
     .object({ place: z.string(), bytes: z.number(), files: z.number(), kept: z.number() })

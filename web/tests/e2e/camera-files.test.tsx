@@ -5,11 +5,12 @@ import { page, userEvent } from 'vitest/browser'
 import { CameraFiles } from '../../app/components/camera-files'
 
 /* What is on a camera plugged in (RULES, Seeing what is on a camera): each file says whether it is
-   on the storage, only copied here, or not copied yet; only one on the storage can be picked, and
-   deleting asks first. The server is stubbed; the page is clicked the way a person clicks it. */
+   on the storage, only copied here, put in the bin, or not copied yet; only one on the storage or in
+   the bin can be picked, and deleting asks first. The server is stubbed; the page is clicked the way
+   a person clicks it. */
 
 const MOUNT = '/mnt/osmo/capo/OsmoNano'
-const onCard = (name: string, state: 'stored' | 'copied' | 'missing') => ({
+const onCard = (name: string, state: 'stored' | 'copied' | 'binned' | 'missing') => ({
   path: `${MOUNT}/DCIM/${name}`,
   name,
   size: 1_000_000,
@@ -28,7 +29,8 @@ const listing = {
       files: [
         onCard('DJI_0001.MP4', 'stored'),
         onCard('DJI_0002.MP4', 'copied'),
-        onCard('DJI_0003.MP4', 'missing')
+        onCard('DJI_0003.MP4', 'missing'),
+        onCard('DJI_0004.MP4', 'binned')
       ]
     }
   ]
@@ -57,7 +59,7 @@ afterEach(() => {
 })
 
 describe('a camera plugged in', () => {
-  test('says which files are on the storage, and only those can be picked', async () => {
+  test('says how far each file has got, and only those on the storage or in the bin can be picked', async () => {
     stubServer()
     await render(createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack: () => {} }))
 
@@ -65,7 +67,9 @@ describe('a camera plugged in', () => {
     await expect.element(page.getByText('on the storage', { exact: true })).toBeVisible()
     await expect.element(page.getByText('copied, not uploaded', { exact: true })).toBeVisible()
     await expect.element(page.getByText('not copied yet', { exact: true })).toBeVisible()
+    await expect.element(page.getByText('in the bin', { exact: true })).toBeVisible()
     await expect.element(page.getByRole('checkbox', { name: 'Pick DJI_0001.MP4' })).toBeVisible()
+    await expect.element(page.getByRole('checkbox', { name: 'Pick DJI_0004.MP4' })).toBeVisible()
     for (const name of ['DJI_0002.MP4', 'DJI_0003.MP4'])
       await expect
         .element(page.getByRole('checkbox', { name: `Pick ${name}` }))
@@ -87,6 +91,32 @@ describe('a camera plugged in', () => {
     expect(onCopyBack).toHaveBeenCalledWith([`${MOUNT}/DCIM/DJI_0001.MP4`])
     /* nothing is deleted by asking for it back */
     expect(sent).toEqual([])
+  })
+
+  test('deletes a file whose copy was put in the bin, with nothing to copy back', async () => {
+    stubServer()
+    await render(
+      createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack: () => {} })
+    )
+
+    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0004.MP4' }))
+    await expect.element(page.getByRole('button', { name: /back here/ })).not.toBeInTheDocument()
+    await userEvent.click(page.getByRole('button', { name: 'Delete 1 file from the camera…' }))
+    await userEvent.click(page.getByRole('button', { name: /Check and delete 1 file/ }))
+
+    await expect.poll(() => sent).toEqual([{ paths: [`${MOUNT}/DCIM/DJI_0004.MP4`] }])
+  })
+
+  /* a camera stays plugged in and is copied again when asked: only what is not here comes across */
+  test('copies what is not here yet when asked, without unplugging the camera', async () => {
+    stubServer()
+    const onNote = vi.fn()
+    await render(createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote, onCopyBack: () => {} }))
+
+    await userEvent.click(page.getByRole('button', { name: 'Copy 1 file here' }))
+
+    await expect.poll(() => sent).toEqual([{ copy: MOUNT }])
+    await expect.poll(() => onNote.mock.calls.length).toBe(1)
   })
 
   test('deletes a picked file from the camera only once it is confirmed', async () => {

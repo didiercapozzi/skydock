@@ -14,6 +14,7 @@ import {
 import { alreadyThere, dayFoldersOf, freedAlready } from './copy'
 import { ID_HEX_LENGTH } from './fileId'
 import { givenBack } from './kioCamera'
+import { listBin } from './bin'
 import { findMediaFiles, hashFile, moveFile } from './lib/fs'
 import { loadManifest } from './manifest'
 import { dsmFileMd5 } from './nas'
@@ -22,10 +23,11 @@ import { isNamedMontage } from './montageArtifacts'
 import type { Manifest, ManifestFile, ManifestGroup } from './types'
 import { getManifestPath, getTrashDir, isVideoFile } from './utils'
 
-/* What is on a camera plugged in, and taking off it what is already safe on the storage (RULES,
-   Seeing what is on a camera). A file leaves a camera only once the storage is proved to hold it —
-   by its bytes, not its name, since every name changes on the way — only from a drive that is a
-   camera, and never erased: it goes to the bin, like any file put aside. */
+/* What is on a camera plugged in, and taking off it what is no longer wanted there (RULES, Seeing
+   what is on a camera). A file leaves a camera only once it is proved to be on the storage, or its
+   copy here to have been put in the bin — by its bytes, not its name, since every name changes on
+   the way — only from a drive that is a camera, and never erased: it goes to the bin, like any file
+   put aside. */
 
 type Uploaded = NonNullable<ManifestFile['uploaded']>
 
@@ -168,6 +170,44 @@ const prover = (session: NasSession) => {
   }
 }
 
+/* The files put in the bin from Fresh files: copies of camera files nobody wanted. */
+const binnedCopies = (trashDir: string) =>
+  listBin(trashDir)
+    .filter((batch) => batch.from === 'fresh')
+    .flatMap((batch) => batch.files)
+
+type Content = { id: string; md5: string }
+
+/* What a file holds, read through once and remembered for as long as it keeps its size and its time:
+   the camera page asks it of the same few files each time it opens. */
+const known = new Map<string, Promise<Content | null>>()
+const contentOf = (file: string) => {
+  const stat = fs.statSync(file)
+  const key = `${file}\0${stat.size}\0${stat.mtimeMs}`
+  const found =
+    known.get(key) ??
+    fingerprint(file).catch(() => {
+      known.delete(key)
+      return null
+    })
+  known.set(key, found)
+  return found
+}
+
+/* Whether a camera file's copy is in the bin, by its bytes and never its name, which the copy may
+   have changed. Only a file of the bin of the very same size can be it, so only such a pair is ever
+   read through — the rest of the card is not read at all. */
+const binnedBy =
+  (bin: ReturnType<typeof binnedCopies>, read: (file: string) => Promise<Content | null>) =>
+  async (file: string, size: number) => {
+    const alike = bin.filter((f) => f.size === size)
+    if (alike.length === 0) return false
+    const camera = await read(file)
+    if (!camera) return false
+    for (const f of alike) if ((await read(f.path))?.id === camera.id) return true
+    return false
+  }
+
 /* Where a camera file stands, read the cheap way — by the records, not by reading it through — so
    the page can say it at once. Deleting proves it again, the expensive way. */
 const standingOf = (
@@ -190,21 +230,24 @@ const dcimOf = (mount: string) => path.join(mount, 'DCIM')
 
 /* Each file on the camera, and whether it is already copied here and on the storage — copied read
    the way copying reads it, so what the page says is copied is what a copy would pass over. */
-const listCamera = async (mount: string, outputDir: string) => {
+const listCamera = async (mount: string, outputDir: string, trashDir: string) => {
   const files = fs.existsSync(dcimOf(mount)) ? findMediaFiles(dcimOf(mount)) : []
   const folders = await dayFoldersOf(files, outputDir)
   const manifest = loadManifest(getManifestPath(outputDir))
+  const binned = binnedBy(binnedCopies(trashDir), contentOf)
   const listed: CameraFile[] = []
   for (const file of files) {
     const stat = fs.statSync(file)
     const dir = folders.get(file) ?? ''
     const original = await alreadyThere(file, stat, dir)
+    const state = standingOf(manifest, original, (files) => freedAlready(files, file, stat, dir))
     listed.push({
       path: file,
       name: path.relative(dcimOf(mount), file),
       size: stat.size,
       mtime: Math.floor(stat.mtimeMs / 1000),
-      state: standingOf(manifest, original, (files) => freedAlready(files, file, stat, dir))
+      /* one not here any more may have been put in the bin, which only its bytes can tell */
+      state: state === 'missing' && (await binned(file, stat.size)) ? 'binned' : state
     })
   }
   /* newest first, as every list of files is */
@@ -237,6 +280,7 @@ const listCameraThroughKde = (camera: string, outputDir: string) => {
       (clip.original && fs.existsSync(clip.original)
         ? Math.floor(fs.statSync(clip.original).mtimeMs / 1000)
         : 0),
+    /* its bytes cannot be read from here, so whether its copy went to the bin is not said */
     state: standingOf(manifest, clip.original, (files) => givenBack(files, clip.name, clip.size))
   }))
   return {
@@ -249,24 +293,30 @@ const listCameraThroughKde = (camera: string, outputDir: string) => {
   }
 }
 
-const listCameras = async (outputDir: string, mounts = mountedCameras()) =>
+const listCameras = async (
+  outputDir: string,
+  mounts = mountedCameras(),
+  trashDir = getTrashDir()
+) =>
   Promise.all([
-    ...mounts.map((mount) => listCamera(mount, outputDir)),
+    ...mounts.map((mount) => listCamera(mount, outputDir, trashDir)),
     ...camerasSeenThroughKde().map((camera) => listCameraThroughKde(camera, outputDir))
   ])
 
 /* All or nothing: every file asked for has to be on a camera plugged in now and proved to be on the
-   storage, or nothing is touched and each file that is not is named. */
+   storage, or its copy in the bin, or nothing is touched and each file that is not is named. A file
+   only copied here stays: until it is uploaded or put in the bin, the card is its other copy. */
 const deleteFromCameras = async ({
   paths,
   manifest,
-  session,
+  connect,
   trashDir = getTrashDir(),
   mounts = mountedCameras()
 }: {
   paths: string[]
   manifest: Manifest
-  session: NasSession
+  /* the storage, asked for only when a file uploaded needs it, and null when unreachable */
+  connect: () => Promise<NasSession | null>
   trashDir?: string
   mounts?: string[]
 }) => {
@@ -292,8 +342,16 @@ const deleteFromCameras = async ({
       `Nothing was deleted: ${strangers.map((f) => path.basename(f)).join(', ')} ${strangers.length === 1 ? 'is' : 'are'} not on a camera plugged in now.`
     )
 
-  const proves = prover(session)
+  let proving: Promise<ReturnType<typeof prover> | null> | null = null
+  const prove = () => {
+    proving ??= connect()
+      .catch(() => null)
+      .then((session) => (session ? prover(session) : null))
+    return proving
+  }
   const entries = entriesOf(manifest)
+  /* its copy in the bin is the very file off the card: the same content, read through now */
+  const binned = binnedBy(binnedCopies(trashDir), (file) => fingerprint(file).catch(() => null))
   const problems: string[] = []
   for (const file of paths) {
     const camera = await fingerprint(file)
@@ -302,9 +360,19 @@ const deleteFromCameras = async ({
     )
     const claims = mine.flatMap(({ file: f, group }) => claimsOf(f, group))
     const name = path.basename(file)
-    if (mine.length === 0) problems.push(`${name} is not on the board — copy it and scan first`)
-    else if (claims.length === 0) problems.push(`${name} is not uploaded yet`)
-    else {
+    if (claims.length === 0) {
+      if (await binned(file, fs.statSync(file).size)) continue
+      problems.push(
+        mine.length === 0
+          ? `${name} is neither on the board nor in the bin — copy it and scan first`
+          : `${name} is not uploaded yet, nor put in the bin`
+      )
+    } else {
+      const proves = await prove()
+      if (!proves) {
+        problems.push(`${name} is only on the storage — connect the NAS to prove it holds it`)
+        continue
+      }
       let proved = false
       for (const claim of claims) if (!proved) proved = await proves(claim, camera)
       if (!proved) problems.push(`${name} could not be matched with what the storage holds`)

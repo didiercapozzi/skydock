@@ -1,6 +1,7 @@
 import * as fs from 'node:fs'
 import { ZipArchive } from 'archiver'
 import { sizeOf } from './utils'
+import { stopIfUploadCancelled, stopSignal, UploadCancelled } from './uploading'
 
 type ArchiveEntry = { file: string; name: string }
 
@@ -49,30 +50,52 @@ const writeArchive = async (
 ) => {
   if (entries.length === 0) return null
   if (isArchiveFresh(zipPath, entries)) return zipPath
+  stopIfUploadCancelled()
   const totalBytes = entries.reduce((sum, entry) => sum + sizeOf(entry.file), 0)
-  const output = fs.createWriteStream(zipPath)
+  /* Built beside itself and given its name only once whole: a zip cut off half way — a cancel, a
+     full disk, the app closed — never sits under the name of a finished one, and the list of what
+     a finished one holds is never left beside a half-written one. */
+  const part = `${zipPath}.part`
+  const output = fs.createWriteStream(part)
   /* a montage's rushes pass 4 GB, and a zip that silently truncates past that is the worst way
      for this to fail — it looks like an uploaded backup and is not one */
   const archive = new ZipArchive({
     zlib: { level: options?.level ?? PHOTO_LEVEL },
     forceZip64: true
   })
-  await new Promise<void>((resolve, reject) => {
-    output.on('close', resolve)
-    output.on('error', reject)
-    archive.on('error', reject)
-    archive.on('progress', (progress) =>
-      options?.onProgress?.({
-        entries: progress.entries.processed,
-        totalEntries: entries.length,
-        bytes: progress.fs.processedBytes,
-        totalBytes
+  const signal = stopSignal()
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const cutOff = () => {
+        archive.abort()
+        output.destroy()
+        reject(new UploadCancelled())
+      }
+      signal?.addEventListener('abort', cutOff, { once: true })
+      output.on('close', () => {
+        signal?.removeEventListener('abort', cutOff)
+        resolve()
       })
-    )
-    archive.pipe(output)
-    for (const entry of entries) archive.file(entry.file, { name: entry.name })
-    archive.finalize()
-  })
+      output.on('error', reject)
+      archive.on('error', reject)
+      archive.on('progress', (progress) =>
+        options?.onProgress?.({
+          entries: progress.entries.processed,
+          totalEntries: entries.length,
+          bytes: progress.fs.processedBytes,
+          totalBytes
+        })
+      )
+      archive.pipe(output)
+      for (const entry of entries) archive.file(entry.file, { name: entry.name })
+      archive.finalize()
+    })
+  } catch (e) {
+    fs.rmSync(part, { force: true })
+    throw e
+  }
+  fs.rmSync(contentsOf(zipPath), { force: true })
+  fs.renameSync(part, zipPath)
   fs.writeFileSync(contentsOf(zipPath), namesOf(entries))
   return zipPath
 }

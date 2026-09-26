@@ -190,6 +190,8 @@ const withRetry = async <T>(fn: () => Promise<T>, maxAttempts: number, delayMs =
     try {
       return await fn()
     } catch (e) {
+      /* a cancel is what was asked for, not a failure to get past */
+      if (e instanceof Error && e.name === 'AbortError') throw e
       lastError = e instanceof Error ? e : new Error(String(e))
     }
   }
