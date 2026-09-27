@@ -1,3 +1,5 @@
+import { i18n } from '@lingui/core'
+import { msg, plural, t } from '@lingui/core/macro'
 import { useEffect, useState } from 'react'
 import {
   cameraDeletedSchema,
@@ -8,7 +10,7 @@ import { routingEngine } from '../helpers/routing'
 import { refusalSchema } from '../hooks/useBoardState'
 import { Go, Mini } from './buttons'
 import { Modal, Spacer } from './modal'
-import { dateLabel, formatFilmSize, formatSize, hhmm, plural } from './utils'
+import { dateLabel, formatFilmSize, formatSize, hhmm } from './utils'
 
 /* What is on a camera plugged in (RULES, Seeing what is on a camera): every file on its card, and
    how far it has got — not copied yet, copied here, put in the bin once copied, or on the storage
@@ -19,32 +21,35 @@ import { dateLabel, formatFilmSize, formatSize, hhmm, plural } from './utils'
 /* how far a camera file has got, as each row says it */
 const STANDING = {
   stored: {
-    label: 'on the storage',
+    label: msg`on the storage`,
     tone: 'bg-up-soft text-up',
-    title: 'Copied here and on the storage — can be deleted from the camera'
+    title: msg`Copied here and on the storage — can be deleted from the camera`
   },
   copied: {
-    label: 'copied, not uploaded',
+    label: msg`copied, not uploaded`,
     tone: 'bg-line-2 text-ink-2',
-    title:
-      'Copied here, not on the storage yet — upload it, or put it in the bin, before deleting it from the camera'
+    title: msg`Copied here, not on the storage yet — upload it, or put it in the bin, before deleting it from the camera`
   },
   binned: {
-    label: 'in the bin',
+    label: msg`in the bin`,
     tone: 'bg-line-2 text-ink-2',
-    title: 'Copied here and then put in the bin — can be deleted from the camera'
+    title: msg`Copied here and then put in the bin — can be deleted from the camera`
   },
   missing: {
-    label: 'not copied yet',
+    label: msg`not copied yet`,
     tone: 'bg-local-soft text-local',
-    title: 'Not copied here yet — it cannot be deleted from the camera'
+    title: msg`Not copied here yet — it cannot be deleted from the camera`
   }
 }
 
-const counted = (files: CameraFile[], state: CameraFile['state'], what: string) => {
-  const n = files.filter((f) => f.state === state).length
-  return n > 0 ? ` · ${n} ${what}` : ''
-}
+const counted = (files: CameraFile[], state: CameraFile['state']) =>
+  files.filter((f) => f.state === state).length
+
+/* a count said after the others, or nothing when there are none */
+const andAlso = (n: number, said: string) => (n > 0 ? ` · ${said}` : '')
+
+/* a file's box, read out */
+const pickLabel = (name: string) => t`Pick ${name}`
 
 const Confirm = ({
   camera,
@@ -56,30 +61,33 @@ const Confirm = ({
   files: CameraFile[]
   onClose: () => void
   onConfirm: () => void
-}) => (
-  <Modal
-    label='Delete from the camera'
-    title={`Delete from ${camera}`}
-    onClose={onClose}
-    footer={
-      <>
-        <Spacer />
-        <Mini onClick={onClose}>Close</Mini>
-        <Go onClick={onConfirm}>Check and delete {plural(files.length, 'file')} from the camera</Go>
-      </>
-    }>
-    <p className='m-0 text-[12.5px] text-ink-2'>
-      {plural(files.length, 'file')} — {formatFilmSize(files.reduce((n, f) => n + f.size, 0))} —
-      come off the camera’s card. Each is first read through and matched, by its bytes and not its
-      name, with what the storage holds or with its copy in the bin; if any one does not match,
-      nothing at all is deleted, and it says which.
-    </p>
-    <p className='m-0 rounded-r-md border-l-[3px] border-local bg-local-soft px-3 py-[9px] text-[12px] text-ink-2'>
-      They are not erased: they go to the bin, <span className='font-mono'>.trash/</span>, kept as
-      they sat on the card, and stay there until it is emptied by hand.
-    </p>
-  </Modal>
-)
+}) => {
+  const count = files.length
+  const size = formatFilmSize(files.reduce((n, f) => n + f.size, 0))
+  return (
+    <Modal
+      label={t`Delete from the camera`}
+      title={t`Delete from ${camera}`}
+      onClose={onClose}
+      footer={
+        <>
+          <Spacer />
+          <Mini onClick={onClose}>{t`Close`}</Mini>
+          <Go onClick={onConfirm}>
+            {t`Check and delete ${plural(count, { one: '# file', other: '# files' })} from the camera`}
+          </Go>
+        </>
+      }>
+      <p className='m-0 text-[12.5px] text-ink-2'>
+        {t`${plural(count, { one: '# file', other: '# files' })} — ${size} — come off the camera’s card. Each is first read through and matched, by its bytes and not its name, with what the storage holds or with its copy in the bin; if any one does not match, nothing at all is deleted, and it says which.`}
+      </p>
+      <p className='m-0 rounded-r-md border-l-[3px] border-local bg-local-soft px-3 py-[9px] text-[12px] text-ink-2'>
+        {t`They are not erased: they go to the bin,`} <span className='font-mono'>.trash/</span>
+        {t`, kept as they sat on the card, and stay there until it is emptied by hand.`}
+      </p>
+    </Modal>
+  )
+}
 
 const CameraFiles = ({
   mount,
@@ -115,7 +123,7 @@ const CameraFiles = ({
         const parsed = camerasAnswerSchema.safeParse(raw)
         if (cancelled) return
         if (!parsed.success) {
-          setProblem('What is on the camera could not be read.')
+          setProblem(t`What is on the camera could not be read.`)
           return
         }
         /* a read that worked puts right one that did not */
@@ -126,7 +134,7 @@ const CameraFiles = ({
         })
       })
       .catch(() => {
-        if (!cancelled) setProblem('What is on the camera could not be read.')
+        if (!cancelled) setProblem(t`What is on the camera could not be read.`)
       })
     return () => {
       cancelled = true
@@ -156,6 +164,15 @@ const CameraFiles = ({
   const missing = files.filter((f) => f.state === 'missing')
   /* only a file on the storage can have been given back, so only those are copied back here */
   const toCopyBack = chosen.filter((f) => f.state === 'stored')
+  /* named, so a translator reads what each one is */
+  const count = files.length
+  const onStorage = stored.length
+  const copiedHere = counted(files, 'copied')
+  const inBin = counted(files, 'binned')
+  const notCopied = counted(files, 'missing')
+  const toCopy = missing.length
+  const backCount = toCopyBack.length
+  const picks = chosen.length
 
   const toggle = (file: CameraFile) => {
     const next = new Set(picked)
@@ -175,8 +192,11 @@ const CameraFiles = ({
     setCopying(false)
     const refused = refusalSchema.safeParse(raw)
     if (refused.success)
-      setProblem(refused.data.globalErrors?.[0] ?? 'The camera could not be copied.')
-    else onNote(`Copying ${listing?.camera ?? 'the camera'} — the header shows how far it has got.`)
+      setProblem(refused.data.globalErrors?.[0] ?? t`The camera could not be copied.`)
+    else {
+      const camera = listing?.camera ?? t`the camera`
+      onNote(t`Copying ${camera} — the header shows how far it has got.`)
+    }
   }
 
   const deleteChosen = async () => {
@@ -191,46 +211,50 @@ const CameraFiles = ({
     if (done.success) {
       setAnswered({ mount, listing: done.data.cameras.find((c) => c.mount === mount) ?? null })
       setPicked(new Set())
+      const deleted = done.data.deleted.count
+      const size = formatFilmSize(done.data.deleted.bytes)
       onNote(
-        `${plural(done.data.deleted.count, 'file')} deleted from the camera — ${formatFilmSize(done.data.deleted.bytes)} — and put in the bin.`
+        t`${plural(deleted, { one: '# file', other: '# files' })} deleted from the camera — ${size} — and put in the bin.`
       )
       return
     }
     const refused = refusalSchema.safeParse(raw)
     setProblem(
       refused.success
-        ? (refused.data.globalErrors?.[0] ?? 'Nothing was deleted.')
-        : 'Nothing was deleted.'
+        ? (refused.data.globalErrors?.[0] ?? t`Nothing was deleted.`)
+        : t`Nothing was deleted.`
     )
   }
 
   return (
     <section
-      aria-label='On the camera'
+      aria-label={t`On the camera`}
       className='pt-3'>
       <div className='flex flex-wrap items-center gap-2 px-0.5 pb-1.5'>
         {listing && (
           <span className='text-[12px] text-ink-2'>
-            {plural(files.length, 'file')} · {stored.length} on the storage
-            {counted(files, 'copied', 'copied here, not uploaded yet')}
-            {counted(files, 'binned', 'in the bin')}
-            {counted(files, 'missing', 'not copied yet')}
+            {plural(count, { one: '# file', other: '# files' })} · {t`${onStorage} on the storage`}
+            {andAlso(copiedHere, t`${copiedHere} copied here, not uploaded yet`)}
+            {andAlso(inBin, t`${inBin} in the bin`)}
+            {andAlso(notCopied, t`${notCopied} not copied yet`)}
           </span>
         )}
         {/* a camera still being gone over is being copied already */}
         {missing.length > 0 && !looking && (
           <Mini
             disabled={copying}
-            title='Copy what is not on this machine yet, without unplugging the camera — what is here already is passed over'
+            title={t`Copy what is not on this machine yet, without unplugging the camera — what is here already is passed over`}
             onClick={() => void copyAgain()}>
-            {copying ? 'Asking…' : `Copy ${plural(missing.length, 'file')} here`}
+            {copying
+              ? t`Asking…`
+              : t`Copy ${plural(toCopy, { one: '# file', other: '# files' })} here`}
           </Mini>
         )}
         {looking && (
           <span
-            title='SkyDock is going over the camera, file by file, as it copies it. What it has been over is listed here; the rest follow on their own.'
+            title={t`SkyDock is going over the camera, file by file, as it copies it. What it has been over is listed here; the rest follow on their own.`}
             className='rounded-full border border-accent bg-accent-soft px-2.5 py-px text-[11.5px] font-semibold text-accent'>
-            still going over the camera — {plural(files.length, 'file')} so far
+            {t`still going over the camera — ${plural(count, { one: '# file', other: '# files' })} so far`}
           </span>
         )}
         {/* A camera with no drive to offer is read a request at a time. It works, and it is the
@@ -238,17 +262,17 @@ const CameraFiles = ({
             same card in a reader. */}
         {listing?.over === 'mtp' && (
           <span
-            title='This camera hands its files over one request at a time rather than showing its card as a drive. Everything works; it is slower than the same card in a reader, which is worth knowing before a full card.'
+            title={t`This camera hands its files over one request at a time rather than showing its card as a drive. Everything works; it is slower than the same card in a reader, which is worth knowing before a full card.`}
             className='rounded-full border border-local bg-local-soft px-2.5 py-px text-[11.5px] font-semibold text-local'>
-            handed over, not a drive — slower than a card reader
+            {t`handed over, not a drive — slower than a card reader`}
           </span>
         )}
         <Spacer />
         {listing && !listing.deletable && (
           <span
-            title='Deleting proves each file against the storage by reading it through, byte for byte, which needs the camera readable as files. Delete them on the camera itself.'
+            title={t`Deleting proves each file against the storage by reading it through, byte for byte, which needs the camera readable as files. Delete them on the camera itself.`}
             className='text-[11.5px] text-ink-3'>
-            copied off and listed here — delete on the camera itself
+            {t`copied off and listed here — delete on the camera itself`}
           </span>
         )}
         {pickable.length > 0 && (
@@ -258,18 +282,18 @@ const CameraFiles = ({
                 chosen.length === pickable.length ? new Set() : new Set(pickable.map((f) => f.path))
               )
             }>
-            {chosen.length === pickable.length ? 'Pick none' : 'Pick every file that can go'}
+            {chosen.length === pickable.length ? t`Pick none` : t`Pick every file that can go`}
           </Mini>
         )}
         {toCopyBack.length > 0 && (
           <Mini
-            title='Copy these back onto this machine — the one way back from having given them back'
+            title={t`Copy these back onto this machine — the one way back from having given them back`}
             onClick={() => {
               onCopyBack(toCopyBack.map((f) => f.path))
               setPicked(new Set())
               setReadAgain((n) => n + 1)
             }}>
-            {`Copy ${plural(toCopyBack.length, 'file')} back here`}
+            {t`Copy ${plural(backCount, { one: '# file', other: '# files' })} back here`}
           </Mini>
         )}
         {listing?.deletable !== false && (
@@ -277,10 +301,10 @@ const CameraFiles = ({
             disabled={chosen.length === 0 || deleting}
             onClick={() => setAsking(true)}>
             {deleting
-              ? 'Checking and deleting…'
+              ? t`Checking and deleting…`
               : chosen.length > 0
-                ? `Delete ${plural(chosen.length, 'file')} from the camera…`
-                : 'Delete from the camera…'}
+                ? t`Delete ${plural(picks, { one: '# file', other: '# files' })} from the camera…`
+                : t`Delete from the camera…`}
           </Go>
         )}
       </div>
@@ -292,23 +316,23 @@ const CameraFiles = ({
         </p>
       )}
       {answered === null && !problem ? (
-        <p className='m-0 px-0.5 text-[12.5px] text-ink-3'>Reading the camera…</p>
+        <p className='m-0 px-0.5 text-[12.5px] text-ink-3'>{t`Reading the camera…`}</p>
       ) : listing === null ? (
         <p className='m-0 rounded-md bg-local-soft px-3 py-2 text-[12.5px] text-local'>
-          This camera is not plugged in any more.
+          {t`This camera is not plugged in any more.`}
         </p>
       ) : files.length === 0 && listing ? (
         <p className='m-0 rounded-[9px] border border-dashed border-line px-3 py-4 text-center text-[12.5px] text-ink-3'>
           {looking
-            ? 'Going over the camera — its files appear here as they are reached.'
-            : 'Nothing on the camera’s card.'}
+            ? t`Going over the camera — its files appear here as they are reached.`
+            : t`Nothing on the camera’s card.`}
         </p>
       ) : (
         <ul className='m-0 flex list-none flex-col gap-px rounded-lg border border-line bg-pane p-[7px]'>
           {files.map((file) => (
             <li key={file.path}>
               <label
-                title={STANDING[file.state].title}
+                title={i18n._(STANDING[file.state].title)}
                 className={`flex h-[34px] w-full items-center gap-2.5 rounded-md px-[7px] ${
                   pickable.includes(file) ? 'cursor-pointer hover:bg-line-2' : ''
                 }`}>
@@ -317,7 +341,7 @@ const CameraFiles = ({
                   {pickable.includes(file) && (
                     <input
                       type='checkbox'
-                      aria-label={`Pick ${file.name}`}
+                      aria-label={pickLabel(file.name)}
                       checked={picked.has(file.path)}
                       onChange={() => toggle(file)}
                     />
@@ -328,7 +352,7 @@ const CameraFiles = ({
                 </span>
                 <span
                   className={`flex-none rounded-full px-[7px] py-px text-[11px] font-semibold whitespace-nowrap ${STANDING[file.state].tone}`}>
-                  {STANDING[file.state].label}
+                  {i18n._(STANDING[file.state].label)}
                 </span>
                 <span className='w-[150px] flex-none text-right font-mono text-[11px] text-ink-3 tabular-nums'>
                   {/* a camera that gives no time for a file it has not handed over yet */}

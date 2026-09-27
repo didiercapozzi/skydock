@@ -1,5 +1,6 @@
 import { fileStatus, hasCompletePassenger, isMontage, passengerOf } from '@skydock/scripts'
 import type { StatusContext, MontageEntry, MontageProgress } from '@skydock/scripts'
+import { t } from '@lingui/core/macro'
 import { useState } from 'react'
 import { groupsIn, hereIn, looseIn, placeKey, placeLabel } from '../helpers/places'
 import type { Place } from '../helpers/places'
@@ -145,11 +146,11 @@ const MontagesHeading = ({
 }) => (
   <h2
     {...dropTarget}
-    title='Drop a jump or files here to make a montage — its name is asked for first'
+    title={t`Drop a jump or files here to make a montage — its name is asked for first`}
     className={`mx-0 mt-[15px] mb-1.5 flex items-center gap-2 rounded-md border px-2 py-0.5 text-[10px] font-semibold tracking-[0.1em] text-ink-3 uppercase max-[780px]:my-0 max-[780px]:flex-none ${
       over ? 'border-dashed border-pick bg-pick-soft' : 'border-transparent'
     }`}>
-    <span className='flex-1'>Montages</span>
+    <span className='flex-1'>{t`Montages`}</span>
     {todo && (
       <span className='flex-none rounded-full bg-local-soft px-1.5 text-[10.5px] font-semibold tracking-normal whitespace-nowrap text-local normal-case max-[780px]:hidden'>
         {todo}
@@ -203,7 +204,8 @@ const Entry = ({
   </PlaceLink>
 )
 
-const counted = (n: number, what: string) => (n > 0 ? `${n} ${what}` : null)
+/* a count of what is owed, or nothing when there is none */
+const counted = (n: number, said: (n: number) => string) => (n > 0 ? said(n) : null)
 
 const PlacesTree = ({
   destinations,
@@ -223,11 +225,20 @@ const PlacesTree = ({
   const files = (p: Place) => hereIn(p, groups, looseFiles)
   /* still to file: every jump in the sorting area, and its loose files as one more thing to do */
   const toFile = (p: Place) =>
-    counted(groupsIn(p, groups).length + (looseIn(p, looseFiles).length > 0 ? 1 : 0), 'to file')
+    counted(
+      groupsIn(p, groups).length + (looseIn(p, looseFiles).length > 0 ? 1 : 0),
+      (count) => t`${count} to file`
+    )
   const toDo = (p: Place) =>
-    counted(files(p).filter((f) => fileStatus(f, statusContext(f)) !== 'uploaded').length, 'to do')
+    counted(
+      files(p).filter((f) => fileStatus(f, statusContext(f)) !== 'uploaded').length,
+      (count) => t`${count} to do`
+    )
   const openMontages = (p: Place) =>
-    counted(groupsIn(p, groups).filter((g) => !g.freed && montageOpen(g)).length, 'to do')
+    counted(
+      groupsIn(p, groups).filter((g) => !g.freed && montageOpen(g)).length,
+      (count) => t`${count} to do`
+    )
   /* One entry per passenger, however many jumps they have: two jumps for the same person share one
      folder, so listing them twice would promise two folders that are really one. */
   const passengers = [
@@ -262,11 +273,11 @@ const PlacesTree = ({
   const notEmailed = storage?.montages.filter((t) => !t.emailed).length ?? 0
   return (
     <nav
-      aria-label='Folders'
+      aria-label={t`Folders`}
       className='sticky top-0 self-start overflow-y-auto border-line min-[781px]:flex min-[781px]:flex-col bg-rail px-2 pt-2.5 pb-6 max-[780px]:z-[8] max-[780px]:flex max-[780px]:h-auto max-[780px]:items-center max-[780px]:gap-1.5 max-[780px]:overflow-x-auto max-[780px]:overflow-y-hidden max-[780px]:border-b max-[780px]:px-3 max-[780px]:py-2 min-[781px]:h-full min-[781px]:border-r'>
       {/* what came off the cameras and is not filed yet: one entry, and the first thing on it */}
       {node({ kind: 'sort' }, '▤', toFile({ kind: 'sort' }))}
-      <Heading>Destinations</Heading>
+      <Heading>{t`Destinations`}</Heading>
       {destinations.map((d) =>
         node({ kind: 'dz', name: d.name }, '⌂', toDo({ kind: 'dz', name: d.name }))
       )}
@@ -274,8 +285,8 @@ const PlacesTree = ({
         <input
           type='text'
           value={adding}
-          placeholder='New destination'
-          aria-label='New destination'
+          placeholder={t`New destination`}
+          aria-label={t`New destination`}
           onChange={(e) => setAdding(e.target.value)}
           onKeyDown={(e) => {
             if (e.key !== 'Enter') return
@@ -291,7 +302,7 @@ const PlacesTree = ({
             setAdding('')
           }}
           className='rounded-[5px] border border-line bg-pane px-2 py-0.5 text-[11.5px] text-ink-2 hover:border-ink-3 hover:text-ink'>
-          Add
+          {t`Add`}
         </button>
       </span>
       <MontagesHeading
@@ -299,7 +310,13 @@ const PlacesTree = ({
         over={overTarget === placeKey({ kind: 'montages' })}
         dropTarget={dropTarget({ kind: 'montages' })}
       />
-      {unnamed > 0 && node({ kind: 'unnamed' }, '?', counted(unnamed, 'to name'), true)}
+      {unnamed > 0 &&
+        node(
+          { kind: 'unnamed' },
+          '?',
+          counted(unnamed, (count) => t`${count} to name`),
+          true
+        )}
       {/* each passenger says the step they are at, so the list reads as a to-do list */}
       {passengers.map((name) => {
         const progress = passengerProgress(name)
@@ -307,45 +324,48 @@ const PlacesTree = ({
       })}
       {storage && (
         <>
-          <Heading>Storage</Heading>
+          <Heading>{t`Storage`}</Heading>
           <Entry
             place={{ kind: 'storage' }}
             glyph='☁'
-            label='On the storage'
-            badge={notEmailed > 0 ? `${notEmailed} to email` : null}
+            label={t`On the storage`}
+            badge={notEmailed > 0 ? t`${notEmailed} to email` : null}
             count={storage.montages.length}
           />
         </>
       )}
       {/* what was put aside, to be looked through and brought back from — never emptied from here */}
-      <Heading>Bin</Heading>
+      <Heading>{t`Bin`}</Heading>
       <Entry
         place={{ kind: 'bin' }}
         glyph='🗑'
-        label='Bin'
-        title='What was put aside — look through it, and bring files back to Fresh files'
+        label={t`Bin`}
+        title={t`What was put aside — look through it, and bring files back to Fresh files`}
       />
       {/* a camera is listed for as long as it is plugged in, and goes with it — at the foot of the
           rail, apart from the folders of work */}
       {cameras.length > 0 && (
         <div className='min-[781px]:mt-auto min-[781px]:pt-4'>
-          <Heading>Camera</Heading>
-          {cameras.map((c) => (
-            <Entry
-              key={c.mount}
-              place={{ kind: 'camera', name: c.mount }}
-              glyph='📷'
-              label={c.camera}
-              /* a camera with no drive to offer is read a request at a time, which is the whole of
+          <Heading>{t`Camera`}</Heading>
+          {cameras.map((c) => {
+            const camera = c.camera
+            return (
+              <Entry
+                key={c.mount}
+                place={{ kind: 'camera', name: c.mount }}
+                glyph='📷'
+                label={c.camera}
+                /* a camera with no drive to offer is read a request at a time, which is the whole of
                  why it is slower than the same card in a reader */
-              badge={c.over === 'mtp' ? 'MTP' : null}
-              title={
-                c.over === 'mtp'
-                  ? `${c.camera} hands its files over rather than showing them as a drive, so reading it is slower than the same card in a reader.`
-                  : c.camera
-              }
-            />
-          ))}
+                badge={c.over === 'mtp' ? 'MTP' : null}
+                title={
+                  c.over === 'mtp'
+                    ? t`${camera} hands its files over rather than showing them as a drive, so reading it is slower than the same card in a reader.`
+                    : camera
+                }
+              />
+            )
+          })}
         </div>
       )}
     </nav>

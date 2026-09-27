@@ -1,3 +1,4 @@
+import { plural, t } from '@lingui/core/macro'
 import { hasCompletePassenger, isMontage, isVideoFile, passengerName } from '@skydock/scripts'
 import type { FileStatus, ProxyFact, MontageFact } from '@skydock/scripts'
 import { useState } from 'react'
@@ -10,7 +11,7 @@ import { NameMontage, PassengerFrames, PassengerName } from './montage-card'
 import { StepTrail } from './montage-steps'
 import type { Passenger } from './montage-card'
 import type { ManifestFile, ManifestGroup } from './types'
-import { dateLabel, formatSize, getThumbUrl, minFileMtime, plural, shortDate } from './utils'
+import { dateLabel, formatSize, getThumbUrl, minFileMtime, shortDate } from './utils'
 
 /* The right-hand pane says everything about whatever is selected — one file, several, a jump, or
    the folder itself when nothing is — and offers what can be done with it, so nothing has to be
@@ -18,7 +19,7 @@ import { dateLabel, formatSize, getThumbUrl, minFileMtime, plural, shortDate } f
 
 const Shell = ({ children }: { children: React.ReactNode }) => (
   <aside
-    aria-label='Details'
+    aria-label={t`Details`}
     className='flex min-h-0 flex-col gap-3 overflow-y-auto border-l border-line bg-pane p-3.5 max-[1100px]:hidden'>
     {children}
   </aside>
@@ -66,9 +67,9 @@ const Hint = ({ children }: { children: React.ReactNode }) => (
 const tally = (files: ManifestFile[], statusOf: (file: ManifestFile) => FileStatus) => {
   const count = (s: FileStatus) => files.filter((f) => statusOf(f) === s).length
   return [
-    ['Local', count('local')],
-    ['Processed', count('processed')],
-    ['Uploaded', count('uploaded')]
+    [t`Local`, count('local')],
+    [t`Processed`, count('processed')],
+    [t`Uploaded`, count('uploaded')]
   ] satisfies [string, number][]
 }
 
@@ -106,7 +107,9 @@ const FolderPanel = ({
       <Facts rows={tally(files, statusOf).map(([name, n]) => [name, String(n)])} />
     )}
     {children}
-    <Hint>Select a file or a jump to see it here. Double-click a file to crop or turn it.</Hint>
+    <Hint>
+      {t`Select a file or a jump to see it here. Double-click a file to crop or turn it.`}
+    </Hint>
   </>
 )
 
@@ -128,6 +131,7 @@ const MontageNamer = ({
   onSave: (passenger: Passenger) => void
 }) => {
   const [making, setMaking] = useState(false)
+  const ofWhat = what ?? ''
   return making ? (
     <NameMontage
       initial={initial}
@@ -141,7 +145,11 @@ const MontageNamer = ({
   ) : (
     <span>
       <Mini onClick={() => setMaking(true)}>
-        {keeps ? 'Copy into a montage…' : what ? `Make a montage of ${what}…` : 'Make a montage…'}
+        {keeps
+          ? t`Copy into a montage…`
+          : what
+            ? t`Make a montage of ${ofWhat}…`
+            : t`Make a montage…`}
       </Mini>
     </span>
   )
@@ -191,14 +199,17 @@ const JumpPanel = ({
   const videos = group.files.filter((f) => isVideoFile(f.path)).length
   const montage = isMontage(group)
   const named = hasCompletePassenger(group.passenger)
-  const sub = `${plural(videos, 'video')} · ${plural(group.files.length - videos, 'photo')} · ${bytes(group.files)}`
+  const photos = group.files.length - videos
+  const size = bytes(group.files)
+  const sub = t`${plural(videos, { one: '# video', other: '# videos' })} · ${plural(photos, { one: '# photo', other: '# photos' })} · ${size}`
+  const fileCount = group.files.length
   return (
     <>
       {/* the name is changed where it is read, the way its start is */}
       {renaming && onRename ? (
         <JumpForm
           name={group.name}
-          submitLabel='Rename'
+          submitLabel={t`Rename`}
           onSubmit={(name) => {
             setRenaming(false)
             onRename(name)
@@ -215,7 +226,7 @@ const JumpPanel = ({
                 <button
                   type='button'
                   onClick={() => setRenaming(true)}
-                  title='Rename this jump'
+                  title={t`Rename this jump`}
                   className='cursor-text border-0 bg-transparent p-0 text-left font-[inherit] text-[inherit] text-ink underline decoration-dotted underline-offset-[3px] hover:text-accent'>
                   {label}
                 </button>
@@ -234,7 +245,7 @@ const JumpPanel = ({
       <Facts
         rows={[
           [
-            'Starts',
+            t`Starts`,
             onShift && group.files.length > 0 ? (
               <JumpSpan
                 key='starts'
@@ -253,7 +264,7 @@ const JumpPanel = ({
       {!group.freed && (
         <PassengerFrames
           group={group}
-          alt={montage && !named ? 'A frame from this montage, to tell who it is' : label}
+          alt={montage && !named ? t`A frame from this montage, to tell who it is` : label}
         />
       )}
       {montage && (
@@ -265,15 +276,15 @@ const JumpPanel = ({
       )}
       {locked && <Lock>{locked}</Lock>}
       {montage ? (
-        <Box heading='Montage'>
+        <Box heading={t`Montage`}>
           {locked ? (
             <p className='m-0 text-[13px] font-semibold'>{passengerName(group.passenger)}</p>
           ) : (
             <>
               <p className='m-0 text-[12px] text-ink-2'>
                 {named
-                  ? 'The name is the folder, the file names and the film.'
-                  : 'Give it a name — a person, an event. It becomes the montage’s folder.'}
+                  ? t`The name is the folder, the file names and the film.`
+                  : t`Give it a name — a person, an event. It becomes the montage’s folder.`}
               </p>
               <PassengerName
                 key={group.id}
@@ -283,15 +294,15 @@ const JumpPanel = ({
               {named && (group.processed || group.uploaded) && (
                 <p className='m-0 text-[11.5px] text-changed'>
                   {group.uploaded
-                    ? 'Already uploaded — a new name means processing and uploading again, and the old folder stays on the storage under the old name.'
-                    : 'Already processed — a new name means processing it again, into the new folder.'}
+                    ? t`Already uploaded — a new name means processing and uploading again, and the old folder stays on the storage under the old name.`
+                    : t`Already processed — a new name means processing it again, into the new folder.`}
                 </p>
               )}
             </>
           )}
         </Box>
       ) : (
-        <Box heading='Montage'>
+        <Box heading={t`Montage`}>
           <MontageNamer
             key={group.id}
             initial={group.name}
@@ -303,16 +314,18 @@ const JumpPanel = ({
       )}
       {!group.freed && group.files.length > 0 && (
         <span className='flex flex-wrap gap-1.5'>
-          <Mini onClick={onSelectFiles}>Select its {plural(group.files.length, 'file')}</Mini>
+          <Mini onClick={onSelectFiles}>
+            {t`Select its ${plural(fileCount, { one: '# file', other: '# files' })}`}
+          </Mini>
           {onDelete && (
             <Mini
               onClick={onDelete}
               title={
                 montage && named
-                  ? 'Undo the montage, whatever step it is at — its files go back to Fresh files, loose. Asks first.'
-                  : 'The jump goes; its files are kept, loose in Fresh files, with their crops'
+                  ? t`Undo the montage, whatever step it is at — its files go back to Fresh files, loose. Asks first.`
+                  : t`The jump goes; its files are kept, loose in Fresh files, with their crops`
               }>
-              {montage && named ? 'Delete montage…' : 'Delete jump'}
+              {montage && named ? t`Delete montage…` : t`Delete jump`}
             </Mini>
           )}
         </span>
@@ -361,16 +374,19 @@ const FilePanel = ({
   montage?: MontageOffer
 }) => {
   const video = isVideoFile(file.path)
+  const filename = file.filename
+  const turned = file.rotation ?? 0
+  const reason = proxy?.reason ?? ''
   return (
     <>
       <Title
         title={name ?? file.filename}
-        sub={name ? `from ${file.filename}` : video ? 'video' : 'photo'}
+        sub={name ? t`from ${filename}` : video ? t`video` : t`photo`}
       />
       <button
         type='button'
         onClick={onOpen}
-        title='Open it — trim, frame and turn'
+        title={t`Open it — trim, frame and turn`}
         className='relative aspect-video w-full overflow-hidden rounded-lg border-0 bg-line-2 p-0'>
         <img
           src={getThumbUrl(file.path, 0.5, 480)}
@@ -393,7 +409,7 @@ const FilePanel = ({
       <Facts
         rows={[
           [
-            'Shot',
+            t`Shot`,
             onRetime ? (
               <JumpSpan
                 key='shot'
@@ -402,29 +418,29 @@ const FilePanel = ({
                 withDate
                 disabled={false}
                 onShift={onRetime}
-                hint='only this file moves — the rest of the jump stays'
-                tip='Wrong time on this one file? Set when it was really shot'
+                hint={t`only this file moves — the rest of the jump stays`}
+                tip={t`Wrong time on this one file? Set when it was really shot`}
               />
             ) : (
               `${dateLabel(file.mtime)} ${hhmmss(file.mtime)}`
             )
           ],
-          ['Size', formatSize(file.size)],
-          ['In', jumpLabel ?? 'no jump — a loose file'],
+          [t`Size`, formatSize(file.size)],
+          [t`In`, jumpLabel ?? t`no jump — a loose file`],
           ...(video && proxy
             ? ([
                 [
-                  'Proxy',
+                  t`Proxy`,
                   proxy.state !== 'none'
-                    ? 'ready'
+                    ? t`ready`
                     : proxy.reason
-                      ? `could not be made — ${proxy.reason}`
-                      : 'not made yet'
+                      ? t`could not be made — ${reason}`
+                      : t`not made yet`
                 ]
               ] satisfies [string, string][])
             : []),
           [
-            'Status',
+            t`Status`,
             <StatusChip
               key='status'
               status={status}
@@ -435,26 +451,26 @@ const FilePanel = ({
       {locked ? (
         <Lock>{locked}</Lock>
       ) : (
-        <Box heading='Picture'>
+        <Box heading={t`Picture`}>
           <p className='m-0 text-[12px] text-ink-2'>
             {[
-              file.cropStart != null || file.cropEnd != null ? 'trimmed' : 'not trimmed',
-              video ? (file.frame ? 'framed' : 'whole frame') : null,
-              file.rotation ? `turned ${file.rotation}°` : 'as shot'
+              file.cropStart != null || file.cropEnd != null ? t`trimmed` : t`not trimmed`,
+              video ? (file.frame ? t`framed` : t`whole frame`) : null,
+              file.rotation ? t`turned ${turned}°` : t`as shot`
             ]
               .filter(Boolean)
               .join(' · ')}
           </p>
           <span>
-            <Go onClick={onOpen}>Crop and turn…</Go>
+            <Go onClick={onOpen}>{t`Crop and turn…`}</Go>
           </span>
         </Box>
       )}
       {!locked && (
-        <Box heading='Move'>
+        <Box heading={t`Move`}>
           <span>
             {onTrash ? (
-              <Mini onClick={onTrash}>Put in the bin… (⌫)</Mini>
+              <Mini onClick={onTrash}>{t`Put in the bin… (⌫)`}</Mini>
             ) : (
               <Mini onClick={onSendBack}>{backLabel}</Mini>
             )}
@@ -462,17 +478,17 @@ const FilePanel = ({
         </Box>
       )}
       {montage && (
-        <Box heading='Montage'>
+        <Box heading={t`Montage`}>
           <MontageNamer
             key={file.id}
             keeps={montage.keeps}
-            what='this'
+            what={t`this`}
             passengers={montage.passengers}
             onSave={montage.onMake}
           />
         </Box>
       )}
-      <Hint>Double-click or ↵ opens it · the tick picks it · ↑↓ step through · esc clears</Hint>
+      <Hint>{t`Double-click or ↵ opens it · the tick picks it · ↑↓ step through · esc clears`}</Hint>
     </>
   )
 }
@@ -503,50 +519,54 @@ const ManyPanel = ({
 }) => {
   const [making, setMaking] = useState(false)
   const videos = files.filter((f) => isVideoFile(f.path)).length
+  const photos = files.length - videos
+  const size = bytes(files)
   return (
     <>
       <Title
-        title={`${plural(files.length, 'file')} selected`}
-        sub={`${plural(videos, 'video')} · ${plural(files.length - videos, 'photo')} · ${bytes(files)}`}
+        title={plural(files.length, {
+          one: '# file selected',
+          other: '# files selected'
+        })}
+        sub={t`${plural(videos, { one: '# video', other: '# videos' })} · ${plural(photos, { one: '# photo', other: '# photos' })} · ${size}`}
       />
       <Facts rows={tally(files, statusOf).map(([name, n]) => [name, String(n)])} />
       {making && onMakeJump ? (
-        <Box heading='A jump of these'>
+        <Box heading={t`A jump of these`}>
           <JumpForm
             named={false}
             startsAt={minFileMtime(files) ?? 0}
-            submitLabel='Make the jump'
+            submitLabel={t`Make the jump`}
             onSubmit={(_name, startsAt) => onMakeJump(startsAt)}
             onCancel={() => setMaking(false)}
           />
         </Box>
       ) : null}
       {montage && (
-        <Box heading='Montage'>
+        <Box heading={t`Montage`}>
           <MontageNamer
             keeps={montage.keeps}
-            what='these'
+            what={t`these`}
             passengers={montage.passengers}
             onSave={montage.onMake}
           />
         </Box>
       )}
-      <Box heading='Move them'>
+      <Box heading={t`Move them`}>
         <span className='flex flex-wrap gap-1.5'>
           {onMakeJump && !making && (
-            <Mini onClick={() => setMaking(true)}>Make a jump of these…</Mini>
+            <Mini onClick={() => setMaking(true)}>{t`Make a jump of these…`}</Mini>
           )}
           {onTrash ? (
-            <Mini onClick={onTrash}>Put in the bin… (⌫)</Mini>
+            <Mini onClick={onTrash}>{t`Put in the bin… (⌫)`}</Mini>
           ) : (
             <Mini onClick={onSendBack}>{backLabel}</Mini>
           )}
-          <Mini onClick={onClear}>Clear (esc)</Mini>
+          <Mini onClick={onClear}>{t`Clear (esc)`}</Mini>
         </span>
       </Box>
       <Hint>
-        The tick or ⌘/ctrl-click picks one · shift-click takes a range · ⌘A takes them all · drag
-        them onto a jump to move them, holding alt to copy them there instead
+        {t`The tick or ⌘/ctrl-click picks one · shift-click takes a range · ⌘A takes them all · drag them onto a jump to move them, holding alt to copy them there instead`}
       </Hint>
     </>
   )

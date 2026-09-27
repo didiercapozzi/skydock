@@ -1,5 +1,6 @@
 import { buildPassengerFolder, isVideoFile, lostOf, passengerOf } from '@skydock/scripts'
 import type { MontageEntry, MontageLost, MontageFact, freeablePlace } from '@skydock/scripts'
+import { t } from '@lingui/core/macro'
 import { ConnectionDialog } from './connection-dialog'
 import { EmailDialog } from './email-dialog'
 import { FreeDialog } from './free-dialog'
@@ -130,14 +131,18 @@ const DialogHost = ({
         />
       )}
 
-      {dialog?.kind === 'folder' && (
-        <NasFolderBrowser
-          initialPath={places.find((d) => d.name === dialog.destination)?.path ?? undefined}
-          title={`NAS folder for ${dialog.destination}`}
-          onSelect={(path) => onChooseFolder(path, dialog.destination)}
-          onClose={() => onDialog(dialog.back ?? null)}
-        />
-      )}
+      {dialog?.kind === 'folder' &&
+        (() => {
+          const destination = dialog.destination
+          return (
+            <NasFolderBrowser
+              initialPath={places.find((d) => d.name === destination)?.path ?? undefined}
+              title={t`NAS folder for ${destination}`}
+              onSelect={(path) => onChooseFolder(path, dialog.destination)}
+              onClose={() => onDialog(dialog.back ?? null)}
+            />
+          )
+        })()}
 
       {dialog?.kind === 'upload' &&
         (() => {
@@ -166,7 +171,7 @@ const DialogHost = ({
              what its list says */
           const group = dialog.groupId ? groups.find((g) => g.id === dialog.groupId) : undefined
           const folder = dialog.folder ?? (group ? folderOnStorage(group) : null)
-          const entry = folder ? storage?.montages.find((t) => t.folder === folder) : undefined
+          const entry = folder ? storage?.montages.find((m) => m.folder === folder) : undefined
           /* a link the storage no longer honours is not one to send anybody */
           const shareUrl =
             folder && lostOf(storage?.lost, folder)

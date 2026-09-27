@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro'
 import { useState } from 'react'
 import { dateLabel, pad } from './utils'
 
@@ -36,8 +37,8 @@ const JumpSpan = ({
   withDate,
   disabled,
   onShift,
-  hint = 'every file in the jump moves with it',
-  tip = 'Wrong camera clock? Set when this jump really started — every file in it moves with it'
+  hint = t`every file in the jump moves with it`,
+  tip = t`Wrong camera clock? Set when this jump really started — every file in it moves with it`
 }: {
   from: number
   to: number
@@ -54,11 +55,13 @@ const JumpSpan = ({
   /* the full date, year and all: a camera clock that is wrong is as often wrong by a year */
   const show = (at: number) => (withDate ? `${dateLabel(at)} ${hhmmss(at)}` : hhmmss(at))
 
+  const start = show(from)
+  const end = show(to)
   if (draft === null)
     return (
       <span
         className='inline-flex flex-wrap items-center gap-1.5'
-        title={`This jump runs from ${show(from)} to ${show(to)}`}>
+        title={t`This jump runs from ${start} to ${end}`}>
         <button
           type='button'
           disabled={disabled}
@@ -68,7 +71,7 @@ const JumpSpan = ({
           }}
           title={tip}
           className='cursor-text border-0 bg-transparent p-0 font-mono text-[12.5px] font-semibold text-ink underline decoration-dotted underline-offset-[3px] tabular-nums hover:text-accent disabled:opacity-60'>
-          {show(from)}
+          {start}
         </button>
       </span>
     )
@@ -98,13 +101,13 @@ const JumpSpan = ({
         type='button'
         onClick={commit}
         className='rounded-[5px] border border-accent bg-accent px-3 py-1 text-[12px] font-semibold text-white'>
-        Set
+        {t`Set`}
       </button>
       <button
         type='button'
         onClick={() => setDraft(null)}
         className='text-[11px] text-ink-3 underline'>
-        cancel
+        {t`cancel`}
       </button>
       <span className='text-[11px] text-ink-3'>{hint}</span>
     </span>

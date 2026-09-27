@@ -1,3 +1,5 @@
+import { i18n } from '@lingui/core'
+import { msg } from '@lingui/core/macro'
 import { getOutputDir, isVideoFile, startOfFiles } from '@skydock/scripts'
 import type { ProxyFact } from '@skydock/scripts'
 import type { ManifestFile, ManifestGroup } from './types'
@@ -11,31 +13,35 @@ const formatSize = (bytes: number) => {
   return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb} MB`
 }
 
+/* the months, named in the language the app speaks */
 const MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December'
+  msg`January`,
+  msg`February`,
+  msg`March`,
+  msg`April`,
+  msg`May`,
+  msg`June`,
+  msg`July`,
+  msg`August`,
+  msg`September`,
+  msg`October`,
+  msg`November`,
+  msg`December`
 ]
 
-/* a day written out, built without Intl so the server and the client agree on it */
+const monthOf = (d: Date) => i18n._(MONTHS[d.getMonth()]!)
+
+/* a day written out, built without Intl so the server and the client agree on it — its month in the
+   language the app speaks */
 const dateLabel = (epoch: number) => {
   const d = new Date(epoch * 1000)
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
+  return `${d.getDate()} ${monthOf(d)} ${d.getFullYear()}`
 }
 
 /* just enough date to tell two days apart, for where a full one would not fit */
 const shortDate = (epoch: number) => {
   const d = new Date(epoch * 1000)
-  return `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)}`
+  return `${d.getDate()} ${monthOf(d).slice(0, 3)}`
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -49,6 +55,7 @@ const hhmm = (epoch: number) => {
 /* the day, the short way the club writes it */
 const localeDate = (epoch: number) => new Date(epoch * 1000).toLocaleDateString('de-CH')
 
+/* English only: every sentence that counts says so with Lingui's plural instead (RULES, Languages) */
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
 /* gigabytes with a decimal, or whole megabytes: the sizes a film and an archive come in */

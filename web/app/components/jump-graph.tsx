@@ -1,3 +1,5 @@
+import { i18n } from '@lingui/core'
+import { msg, t } from '@lingui/core/macro'
 import type { JumpMoments, JumpTrack } from '@skydock/scripts'
 import { useRef, useState } from 'react'
 import { clock } from './utils'
@@ -20,11 +22,11 @@ const FORCE_TO = 3
    they are for is reading the graph at a glance — the dip is the door, the long flat is freefall —
    and telling somebody dragging along it where they are. */
 const PHASES = [
-  { from: null, label: 'in the plane', fill: 'fill-ink-3/5' },
-  { from: 'exit', label: 'freefall', fill: 'fill-sky-400/10' },
-  { from: 'opening', label: 'the opening', fill: 'fill-amber-400/15' },
-  { from: 'canopy', label: 'under the canopy', fill: 'fill-emerald-400/10' },
-  { from: 'landing', label: 'on the ground', fill: 'fill-ink-3/5' }
+  { from: null, label: msg`in the plane`, fill: 'fill-ink-3/5' },
+  { from: 'exit', label: msg`freefall`, fill: 'fill-sky-400/10' },
+  { from: 'opening', label: msg`the opening`, fill: 'fill-amber-400/15' },
+  { from: 'canopy', label: msg`under the canopy`, fill: 'fill-emerald-400/10' },
+  { from: 'landing', label: msg`on the ground`, fill: 'fill-ink-3/5' }
 ] as const
 
 type Line = { at: (number | null)[]; low: number; high: number; stroke: string; faint?: boolean }
@@ -114,7 +116,9 @@ const JumpGraph = ({
   }
 
   if (waiting)
-    return <div className='font-mono text-[11px] text-ink-3'>Reading what the camera measured…</div>
+    return (
+      <div className='font-mono text-[11px] text-ink-3'>{t`Reading what the camera measured…`}</div>
+    )
   if (!track) return null
 
   const point = Math.min(
@@ -167,7 +171,7 @@ const JumpGraph = ({
       <div
         ref={frame}
         data-jump-graph='true'
-        aria-label='The jump against the clip'
+        aria-label={t`The jump against the clip`}
         onPointerDown={handleDown}
         onPointerMove={handleMove}
         onPointerUp={handleUp}
@@ -180,9 +184,9 @@ const JumpGraph = ({
           viewBox={`0 0 ${ALONG} ${HEIGHT}`}
           preserveAspectRatio='none'
           className='absolute inset-0'>
-          {shading.map(({ label, fill, from, upto }) => (
+          {shading.map(({ fill, from, upto }, index) => (
             <rect
-              key={label}
+              key={index}
               className={fill}
               x={(from / (seconds || 1)) * ALONG}
               width={Math.max(0, ((upto - from) / (seconds || 1)) * ALONG)}
@@ -231,15 +235,15 @@ const JumpGraph = ({
           {clock(currentTime)} ·{' '}
           <b className='font-semibold text-sky-500'>{(at(track.force, point) ?? 0).toFixed(2)} g</b>
           {shown === null ? '' : ` · ${Math.round(shown)} m`}
-          {fast === null ? '' : ` · ${Math.round(fast)} km/h`} · {phase.label}
+          {fast === null ? '' : ` · ${Math.round(fast)} km/h`} · {i18n._(phase.label)}
         </span>
         {track.altitude ? (
           <>
-            <span className='text-amber-500'>— height</span>
-            <span className='text-emerald-500'>— speed</span>
+            <span className='text-amber-500'>{t`— height`}</span>
+            <span className='text-emerald-500'>{t`— speed`}</span>
           </>
         ) : (
-          <span>no height or speed — this camera wrote none</span>
+          <span>{t`no height or speed — this camera wrote none`}</span>
         )}
       </div>
     </div>

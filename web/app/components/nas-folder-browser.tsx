@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro'
 import { useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
 import { useSafeFetcher } from '../helpers/routing'
@@ -68,22 +69,22 @@ const NasFolderBrowser = ({ onSelect, onClose, initialPath, title }: Props) => {
   return (
     <Modal
       data-nas-folder-dialog='true'
-      label={title ?? 'Choose NAS Folder'}
-      title={title ?? 'Choose NAS Folder'}
+      label={title ?? t`Choose NAS Folder`}
+      title={title ?? t`Choose NAS Folder`}
       onClose={onClose}
       footer={
         <>
           <Mini onClick={() => setShowCreateInput((v) => !v)}>
-            {showCreateInput ? 'Cancel' : '+ New folder'}
+            {showCreateInput ? t`Cancel` : t`+ New folder`}
           </Mini>
           <Spacer />
-          <Mini onClick={onClose}>Cancel</Mini>
+          <Mini onClick={onClose}>{t`Cancel`}</Mini>
           <Go
             disabled={!selected}
             onClick={() => {
               if (selected) onSelect(selected)
             }}>
-            Use this folder
+            {t`Use this folder`}
           </Go>
         </>
       }>
@@ -93,7 +94,7 @@ const NasFolderBrowser = ({ onSelect, onClose, initialPath, title }: Props) => {
           type='button'
           onClick={() => load('/')}
           className='border-0 bg-transparent px-0.5 text-[11.5px] text-accent underline'>
-          Shares
+          {t`Shares`}
         </button>
         {breadcrumbs
           .filter((b) => b !== '/')
@@ -126,8 +127,8 @@ const NasFolderBrowser = ({ onSelect, onClose, initialPath, title }: Props) => {
             type='text'
             value={newFolderName}
             onChange={(e) => setNewFolderName(e.target.value)}
-            placeholder='Folder name'
-            aria-label='New folder name'
+            placeholder={t`Folder name`}
+            aria-label={t`New folder name`}
             autoFocus
             className={`flex-1 ${INPUT}`}
             onKeyDown={(e) => {
@@ -137,7 +138,7 @@ const NasFolderBrowser = ({ onSelect, onClose, initialPath, title }: Props) => {
           <Mini
             disabled={!newFolderName.trim()}
             onClick={handleCreate}>
-            Create
+            {t`Create`}
           </Mini>
         </div>
       )}
@@ -153,7 +154,7 @@ const NasFolderBrowser = ({ onSelect, onClose, initialPath, title }: Props) => {
           </button>
         )}
         {fetcher.state !== 'idle' && folders.length === 0 ? (
-          <div className='px-4 py-4 text-center text-[12.5px] text-ink-3'>Loading…</div>
+          <div className='px-4 py-4 text-center text-[12.5px] text-ink-3'>{t`Loading…`}</div>
         ) : folders.length > 0 ? (
           folders.map((child) => (
             <button
@@ -173,14 +174,13 @@ const NasFolderBrowser = ({ onSelect, onClose, initialPath, title }: Props) => {
           ))
         ) : (
           <div className='px-4 py-4 text-center text-[12.5px] text-ink-3'>
-            No folders in here. Make one, or use this folder as it is.
+            {t`No folders in here. Make one, or use this folder as it is.`}
           </div>
         )}
       </div>
 
       <span className='text-[12px] text-ink-2'>
-        Click to choose, double-click to open. Nothing is guessed: a dropzone with no folder is
-        asked for one rather than filed somewhere sensible-looking.
+        {t`Click to choose, double-click to open. Nothing is guessed: a dropzone with no folder is asked for one rather than filed somewhere sensible-looking.`}
       </span>
     </Modal>
   )

@@ -1,3 +1,4 @@
+import { plural, t } from '@lingui/core/macro'
 import { NameMontage } from './montage-card'
 import type { Passenger } from './montage-card'
 import { Modal } from './modal'
@@ -24,13 +25,16 @@ const NameMontageDialog = ({
   onClose: () => void
 }) => (
   <Modal
-    label='Name the montage'
-    title='Name the montage'
+    label={t`Name the montage`}
+    title={t`Name the montage`}
     onClose={onClose}>
     <p className='m-0 text-[12.5px] text-ink-2'>
       {jump
-        ? 'This jump becomes a montage once it has a name.'
-        : `${count === 1 ? 'This file becomes' : `These ${count ?? 0} files become`} a montage once it has a name.`}
+        ? t`This jump becomes a montage once it has a name.`
+        : plural(count ?? 0, {
+            one: 'This file becomes a montage once it has a name.',
+            other: 'These # files become a montage once it has a name.'
+          })}
     </p>
     <NameMontage
       group={jump}

@@ -1,3 +1,6 @@
+import { i18n } from '@lingui/core'
+import type { MessageDescriptor } from '@lingui/core'
+import { msg, t } from '@lingui/core/macro'
 import { droppedIn, fromComputer } from '../helpers/import'
 import type { Dropped } from '../helpers/import'
 import { placeLabel } from '../helpers/places'
@@ -7,10 +10,10 @@ import { KindBadges } from './file-list'
 import type { Kind } from './file-list'
 import type { ManifestFile } from './types'
 
-const GROUPING_LABEL: Record<Grouping, string> = {
-  jump: 'By jump',
-  day: 'By day',
-  none: 'One list'
+const GROUPING_LABEL: Record<Grouping, MessageDescriptor> = {
+  jump: msg`By jump`,
+  day: msg`By day`,
+  none: msg`One list`
 }
 
 /* The folder that is open: the path to it, what it holds, the ways of finding and arranging its
@@ -86,8 +89,8 @@ const PlacePane = ({
                   type='text'
                   value={query}
                   onChange={(e) => onQuery(e.target.value)}
-                  placeholder='Find a file'
-                  aria-label='Find a file'
+                  placeholder={t`Find a file`}
+                  aria-label={t`Find a file`}
                   className='w-[130px] border-0 bg-transparent text-[12.5px] outline-none placeholder:text-ink-3 max-[780px]:w-[90px]'
                 />
               </label>
@@ -102,7 +105,7 @@ const PlacePane = ({
               {grouping.options.length > 1 && (
                 <span
                   role='group'
-                  aria-label='Group'
+                  aria-label={t`Group`}
                   className='flex overflow-hidden rounded-md border border-line'>
                   {grouping.options.map((g) => (
                     <button
@@ -115,7 +118,7 @@ const PlacePane = ({
                           ? 'bg-accent-soft font-semibold text-accent'
                           : 'bg-pane text-ink-2 hover:text-ink'
                       }`}>
-                      {GROUPING_LABEL[g]}
+                      {i18n._(GROUPING_LABEL[g])}
                     </button>
                   ))}
                 </span>

@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro'
 import { jsonText, liveEventSchema } from '@skydock/scripts'
 import type { LiveEvent, ProxyFact, MontageFact } from '@skydock/scripts'
 import { useEffect, useState } from 'react'
@@ -48,7 +49,8 @@ const useLiveProgress = (
       const event = parsed.data
       if (event.kind === 'montage') {
         onMontages((now) => ({ ...now, [event.groupId]: event.fact }))
-        if (event.rendered) onNote(`${event.who}’s film is rendered — ready to upload`)
+        const who = event.who
+        if (event.rendered) onNote(t`${who}’s film is rendered — ready to upload`)
         return
       }
       if (event.kind === 'camera') {

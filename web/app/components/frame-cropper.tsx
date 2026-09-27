@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro'
 import { containCrop, fitRatio, withRatio } from '@skydock/scripts'
 import type { FrameCrop } from '@skydock/scripts'
 import { useRef, useState } from 'react'
@@ -104,7 +105,7 @@ const FrameCropper = ({
       <div className='pointer-events-none absolute inset-0 bg-black/55' />
       <div
         role='presentation'
-        aria-label='Part of the picture to keep'
+        aria-label={t`Part of the picture to keep`}
         onPointerDown={start('move')}
         style={{
           left: `${crop.x * 100}%`,
@@ -120,7 +121,7 @@ const FrameCropper = ({
           <span
             key={corner}
             role='presentation'
-            aria-label={`Resize ${corner}`}
+            aria-label={t`Resize ${corner}`}
             onPointerDown={start(corner)}
             className={`absolute h-3 w-3 rounded-[2px] border border-ink bg-white ${style}`}
           />

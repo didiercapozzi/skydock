@@ -1,3 +1,6 @@
+import { i18n } from '@lingui/core'
+import type { MessageDescriptor } from '@lingui/core'
+import { msg, t } from '@lingui/core/macro'
 import {
   EDIT_LOCKED,
   fileChanged,
@@ -82,11 +85,11 @@ const lanesOf = (
 
 /* Why a file can no longer be changed here, if it cannot: freed, frozen with its montage's edit, or
    uploaded — each the server's rule as much as the page's. */
-const FREED_LOCKED = 'Freed from this machine — it is on the storage only now.'
+const FREED_LOCKED = msg`Freed from this machine — it is on the storage only now.`
 
 const lockReason = (file: ManifestFile, context: StatusContext) =>
   file.freed
-    ? FREED_LOCKED
+    ? i18n._(FREED_LOCKED)
     : context.inEdit
       ? EDIT_LOCKED
       : fileStatus(file, context) === 'uploaded'
@@ -101,14 +104,14 @@ const shownStatus = (file: ManifestFile, context: StatusContext): ShownStatus =>
 const CropFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) => {
   if (file.cropStart == null && file.cropEnd == null) return null
   const from = file.cropStart ?? 0
-  const range =
-    file.cropEnd != null ? `${clock(from)}–${clock(file.cropEnd)}` : `from ${clock(from)}`
+  const start = clock(from)
+  const range = file.cropEnd != null ? `${start}–${clock(file.cropEnd)}` : t`from ${start}`
   return (
     <span
       title={
         applied
-          ? 'Crop applied when this file was processed'
-          : 'Crop saved — applied at the next Process'
+          ? t`Crop applied when this file was processed`
+          : t`Crop saved — applied at the next Process`
       }
       className={`flex-none rounded px-1.5 font-mono text-[10px] leading-4 font-semibold whitespace-nowrap ${
         applied
@@ -124,65 +127,64 @@ const CropFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) =
 /* Whether the small copy exists yet. Only clips have one, and it is worth saying out loud: a card
    where none of them built looks exactly like a card still building. `own` is a clip already small
    enough to be its own proxy — finished, with nothing left to make. */
-const PROXY_FLAG: Record<ProxyFact['state'], { label: string; title: string; className: string }> =
-  {
-    ready: {
-      label: 'proxy',
-      title: 'Proxy ready — the crop bar plays it, and the editor opens on it',
-      className: 'border border-proc bg-proc-soft text-proc'
-    },
-    own: {
-      label: 'proxy',
-      title: 'Small enough already — this clip is its own proxy, nothing to build',
-      className: 'border border-line bg-line-2 text-ink-3'
-    },
-    none: {
-      label: 'no proxy',
-      title:
-        'No proxy yet — it is built behind the scan. Meanwhile the clip plays as it is and the editor makes its own.',
-      className: 'border border-dashed border-local bg-local-soft text-local'
-    }
+const PROXY_FLAG: Record<
+  ProxyFact['state'],
+  { label: MessageDescriptor; title: MessageDescriptor; className: string }
+> = {
+  ready: {
+    label: msg`proxy`,
+    title: msg`Proxy ready — the crop bar plays it, and the editor opens on it`,
+    className: 'border border-proc bg-proc-soft text-proc'
+  },
+  own: {
+    label: msg`proxy`,
+    title: msg`Small enough already — this clip is its own proxy, nothing to build`,
+    className: 'border border-line bg-line-2 text-ink-3'
+  },
+  none: {
+    label: msg`no proxy`,
+    title: msg`No proxy yet — it is built behind the scan. Meanwhile the clip plays as it is and the editor makes its own.`,
+    className: 'border border-dashed border-local bg-local-soft text-local'
   }
+}
 
 /* A file its jump holds against the gap rule — dragged in, or re-timed away from the rest. Only
    said, never acted on: the person who put it there may well be right. */
-const GAP_TITLE =
-  'More than 15 minutes from the rest of its jump — the gap rule would not have put it here'
+const GAP_TITLE = msg`More than 15 minutes from the rest of its jump — the gap rule would not have put it here`
 
 const GapFlag = () => (
   <span
-    title={GAP_TITLE}
+    title={i18n._(GAP_TITLE)}
     className='flex-none rounded border border-dashed border-changed bg-changed-soft px-1.5 font-mono text-[10px] leading-4 font-semibold whitespace-nowrap text-changed'>
-    ⧗ gap
+    ⧗ {t`gap`}
   </span>
 )
 
 /* A copy: the same clip is in another jump as well, and this entry is this jump's own — its own
    trim, time and processed copy. Said on the file, because nothing else about it looks any different
    and taking it out of the jump ends it rather than sending it back. */
-const COPY_TITLE =
-  'A copy — the same clip is in another jump too. This one has its own trim and time, and is processed for this jump. Taken out of the jump, it simply ends: the original stays where it is.'
+const COPY_TITLE = msg`A copy — the same clip is in another jump too. This one has its own trim and time, and is processed for this jump. Taken out of the jump, it simply ends: the original stays where it is.`
 
 const CopyFlag = () => (
   <span
-    title={COPY_TITLE}
+    title={i18n._(COPY_TITLE)}
     className='flex-none rounded border border-line bg-line-2 px-1.5 font-mono text-[10px] leading-4 font-semibold whitespace-nowrap text-ink-2'>
-    ⧉ copy
+    ⧉ {t`copy`}
   </span>
 )
 
 /* a proxy that could not be made says so, with why — told apart from one that is still to come */
 const proxyFailedTitle = (reason: string) =>
-  `The proxy could not be made: ${reason}. It is tried again on the next pass; meanwhile the clip plays as it is.`
+  t`The proxy could not be made: ${reason}. It is tried again on the next pass; meanwhile the clip plays as it is.`
 
 const ProxyFlag = ({ fact }: { fact?: ProxyFact }) => {
   if (!fact) return null
   const { label, title, className } = PROXY_FLAG[fact.state]
   return (
     <span
-      title={fact.reason ? proxyFailedTitle(fact.reason) : title}
+      title={fact.reason ? proxyFailedTitle(fact.reason) : i18n._(title)}
       className={`flex-none rounded px-1.5 font-mono text-[10px] leading-4 font-semibold whitespace-nowrap ${className}`}>
-      {fact.reason ? 'proxy failed' : label}
+      {fact.reason ? t`proxy failed` : i18n._(label)}
     </span>
   )
 }
@@ -198,8 +200,8 @@ const FrameFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) 
     <span
       title={
         applied
-          ? `Frame cropped when this file was processed — about ${kept}% of the picture, keeping its shape`
-          : `Frame crop saved — about ${kept}% of the picture, keeping its shape. Applied at the next Process.`
+          ? t`Frame cropped when this file was processed — about ${kept}% of the picture, keeping its shape`
+          : t`Frame crop saved — about ${kept}% of the picture, keeping its shape. Applied at the next Process.`
       }
       className={`flex-none rounded px-1.5 font-mono text-[10px] leading-4 font-semibold whitespace-nowrap ${
         applied
@@ -211,15 +213,18 @@ const FrameFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) 
   )
 }
 
+const turnedTitle = (turn: number) => t`turned ${turn}°`
+
 /* The turn, the same way: solid once applied, dashed while only saved. */
 const TurnFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) => {
   if (!file.rotation) return null
+  const turn = file.rotation
   return (
     <span
       title={
         applied
-          ? `Turned ${file.rotation}° when this file was processed`
-          : `Turned ${file.rotation}° — applied at the next Process`
+          ? t`Turned ${turn}° when this file was processed`
+          : t`Turned ${turn}° — applied at the next Process`
       }
       className={`flex-none rounded px-1.5 font-mono text-[10px] leading-4 font-semibold whitespace-nowrap ${
         applied
@@ -236,7 +241,9 @@ const TurnFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) =
    file, not for seeing all of it. */
 const turnedThumb = (rotation: ManifestFile['rotation']): React.CSSProperties | undefined =>
   rotation
-    ? { transform: `rotate(${rotation}deg)${rotation % 180 ? ' scale(1.34)' : ''}` }
+    ? {
+        transform: `rotate(${rotation}deg)${rotation % 180 ? ' scale(1.34)' : ''}`
+      }
     : undefined
 
 /* Picked or not, in the corner of every thumbnail once a selection is under way: an empty ring to
@@ -258,7 +265,7 @@ const PickMark = ({
 }) => (
   <button
     type='button'
-    aria-label={picked ? 'Unpick' : 'Pick'}
+    aria-label={picked ? t`Unpick` : t`Pick`}
     aria-pressed={picked}
     onClick={(e) => {
       e.stopPropagation()
@@ -276,20 +283,20 @@ const PickMark = ({
 /* A file being worked on, said where the file is: what is being done and how far through, moving
    as it goes. It stands where the status would — until the work ends the status is about to
    change anyway — and once it ends the status is back, read from the board's own answer. */
-const LIVE_WORK: Record<LiveFile['work'], string> = {
-  process: 'Processing',
-  proxy: 'Proxy',
-  moments: 'Finding the jump'
+const LIVE_WORK: Record<LiveFile['work'], MessageDescriptor> = {
+  process: msg`Processing`,
+  proxy: msg`Proxy`,
+  moments: msg`Finding the jump`
 }
 
 const LiveBar = ({ live, filename }: { live: LiveFile; filename: string }) => (
   <span
     role='progressbar'
-    aria-label={`${LIVE_WORK[live.work]} ${filename}`}
+    aria-label={`${i18n._(LIVE_WORK[live.work])} ${filename}`}
     aria-valuemin={0}
     aria-valuemax={100}
     aria-valuenow={live.percent}
-    title={`${LIVE_WORK[live.work]} — ${live.percent}%`}
+    title={`${i18n._(LIVE_WORK[live.work])} — ${live.percent}%`}
     className='flex w-full items-center gap-1.5'>
     <span className='h-1 min-w-0 flex-1 overflow-hidden rounded-sm bg-line-2'>
       <i
@@ -333,127 +340,130 @@ const Row = ({
   onPick: Props['onPick']
   onOpen: Props['onOpen']
   onDragFile: Props['onDragFile']
-}) => (
-  <div
-    role='button'
-    tabIndex={0}
-    aria-selected={picked}
-    aria-current={previewed || undefined}
-    data-file={file.id ?? file.path}
-    /* a file that cannot move is still carried, because it can be copied into another jump */
-    draggable={!file.freed}
-    onDragStart={file.freed ? undefined : (e) => onDragFile(file, e)}
-    onClick={(e) => onFile(file, lane, e)}
-    onKeyDown={(e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault()
-        e.stopPropagation()
-        onOpen(file)
-      }
-      /* space ticks, as it would a checkbox */
-      if (e.key !== ' ' || locked) return
-      e.preventDefault()
-      onPick(file)
-    }}
-    className={`flex h-[38px] w-full items-center gap-2.5 rounded-md border px-[7px] text-left ${
-      picked
-        ? 'border-accent bg-accent-soft'
-        : previewed
-          ? 'border-ink-3 bg-line-2'
-          : 'border-transparent hover:bg-line-2'
-    }`}>
-    {/* a file that cannot move has nothing to be picked for, so it has no tick — only the room
-        one would take, so the rows stay in line */}
-    {locked ? (
-      <span className='h-3.5 w-3.5 flex-none' />
-    ) : (
-      <button
-        type='button'
-        aria-label={picked ? 'Unpick' : 'Pick'}
-        aria-pressed={picked}
-        onClick={(e) => {
+}) => {
+  const filename = file.filename
+  return (
+    <div
+      role='button'
+      tabIndex={0}
+      aria-selected={picked}
+      aria-current={previewed || undefined}
+      data-file={file.id ?? file.path}
+      /* a file that cannot move is still carried, because it can be copied into another jump */
+      draggable={!file.freed}
+      onDragStart={file.freed ? undefined : (e) => onDragFile(file, e)}
+      onClick={(e) => onFile(file, lane, e)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
           e.stopPropagation()
-          onPick(file)
-        }}
-        /* transparent, not white, when not ticked, so it stays quiet on a dark panel as well as a
-         light one */
-        className={`grid h-3.5 w-3.5 flex-none place-items-center rounded-[3px] border-[1.5px] p-0 text-[9px] ${
-          picked
-            ? 'border-accent bg-accent text-white'
-            : 'border-line bg-transparent text-transparent hover:border-accent'
-        }`}>
-        ✓
-      </button>
-    )}
-    <span className='relative h-[30px] w-10 flex-none overflow-hidden rounded-[3px] bg-line-2'>
-      {/* a freed file is on the storage only: nothing here to draw it from */}
-      {!file.freed && (
-        <img
-          src={getPictureUrl(file, proxy, 80)}
-          alt=''
-          loading='lazy'
-          style={turnedThumb(file.rotation)}
-          className='h-full w-full object-cover'
-        />
-      )}
-      {isVideoFile(file.path) && (
-        <i className='absolute bottom-0.5 left-0.5 rounded-sm bg-black/[0.66] px-[3px] font-mono text-[8px] leading-[1.3] text-white not-italic'>
-          ▶
-        </i>
-      )}
-    </span>
-    <span
-      className='min-w-0 flex-1 truncate font-mono text-[11.5px]'
-      title={name ? `${name}  ·  from ${file.filename}` : file.filename}>
-      {name ?? file.filename}
-    </span>
-    {name && (
-      <span
-        className='max-w-[130px] flex-none truncate font-mono text-[10.5px] text-ink-3'
-        title='the name it came off the camera with'>
-        {file.filename}
-      </span>
-    )}
-    <ProxyFlag fact={proxy} />
-    {file.copyOf && <CopyFlag />}
-    {strayed && <GapFlag />}
-    <FrameFlag
-      file={file}
-      applied={status === 'processed' || status === 'uploaded'}
-    />
-    <CropFlag
-      file={file}
-      applied={status === 'processed' || status === 'uploaded'}
-    />
-    <TurnFlag
-      file={file}
-      applied={status === 'processed' || status === 'uploaded'}
-    />
-    {locked && (
-      <span
-        className='flex-none cursor-help text-[10px] opacity-55'
-        title={locked}>
-        🔒
-      </span>
-    )}
-    <span className='w-[62px] flex-none text-right font-mono text-[11px] text-ink-3 tabular-nums'>
-      {formatTime(file.mtime)}
-    </span>
-    <span className='w-[58px] flex-none text-right font-mono text-[11px] text-ink-3 tabular-nums'>
-      {formatSize(file.size)}
-    </span>
-    <span className='flex w-[76px] flex-none justify-end'>
-      {live ? (
-        <LiveBar
-          live={live}
-          filename={file.filename}
-        />
+          onOpen(file)
+        }
+        /* space ticks, as it would a checkbox */
+        if (e.key !== ' ' || locked) return
+        e.preventDefault()
+        onPick(file)
+      }}
+      className={`flex h-[38px] w-full items-center gap-2.5 rounded-md border px-[7px] text-left ${
+        picked
+          ? 'border-accent bg-accent-soft'
+          : previewed
+            ? 'border-ink-3 bg-line-2'
+            : 'border-transparent hover:bg-line-2'
+      }`}>
+      {/* a file that cannot move has nothing to be picked for, so it has no tick — only the room
+        one would take, so the rows stay in line */}
+      {locked ? (
+        <span className='h-3.5 w-3.5 flex-none' />
       ) : (
-        <StatusChip status={status} />
+        <button
+          type='button'
+          aria-label={picked ? t`Unpick` : t`Pick`}
+          aria-pressed={picked}
+          onClick={(e) => {
+            e.stopPropagation()
+            onPick(file)
+          }}
+          /* transparent, not white, when not ticked, so it stays quiet on a dark panel as well as a
+         light one */
+          className={`grid h-3.5 w-3.5 flex-none place-items-center rounded-[3px] border-[1.5px] p-0 text-[9px] ${
+            picked
+              ? 'border-accent bg-accent text-white'
+              : 'border-line bg-transparent text-transparent hover:border-accent'
+          }`}>
+          ✓
+        </button>
       )}
-    </span>
-  </div>
-)
+      <span className='relative h-[30px] w-10 flex-none overflow-hidden rounded-[3px] bg-line-2'>
+        {/* a freed file is on the storage only: nothing here to draw it from */}
+        {!file.freed && (
+          <img
+            src={getPictureUrl(file, proxy, 80)}
+            alt=''
+            loading='lazy'
+            style={turnedThumb(file.rotation)}
+            className='h-full w-full object-cover'
+          />
+        )}
+        {isVideoFile(file.path) && (
+          <i className='absolute bottom-0.5 left-0.5 rounded-sm bg-black/[0.66] px-[3px] font-mono text-[8px] leading-[1.3] text-white not-italic'>
+            ▶
+          </i>
+        )}
+      </span>
+      <span
+        className='min-w-0 flex-1 truncate font-mono text-[11.5px]'
+        title={name ? t`${name}  ·  from ${filename}` : file.filename}>
+        {name ?? file.filename}
+      </span>
+      {name && (
+        <span
+          className='max-w-[130px] flex-none truncate font-mono text-[10.5px] text-ink-3'
+          title={t`the name it came off the camera with`}>
+          {file.filename}
+        </span>
+      )}
+      <ProxyFlag fact={proxy} />
+      {file.copyOf && <CopyFlag />}
+      {strayed && <GapFlag />}
+      <FrameFlag
+        file={file}
+        applied={status === 'processed' || status === 'uploaded'}
+      />
+      <CropFlag
+        file={file}
+        applied={status === 'processed' || status === 'uploaded'}
+      />
+      <TurnFlag
+        file={file}
+        applied={status === 'processed' || status === 'uploaded'}
+      />
+      {locked && (
+        <span
+          className='flex-none cursor-help text-[10px] opacity-55'
+          title={locked}>
+          🔒
+        </span>
+      )}
+      <span className='w-[62px] flex-none text-right font-mono text-[11px] text-ink-3 tabular-nums'>
+        {formatTime(file.mtime)}
+      </span>
+      <span className='w-[58px] flex-none text-right font-mono text-[11px] text-ink-3 tabular-nums'>
+        {formatSize(file.size)}
+      </span>
+      <span className='flex w-[76px] flex-none justify-end'>
+        {live ? (
+          <LiveBar
+            live={live}
+            filename={file.filename}
+          />
+        ) : (
+          <StatusChip status={status} />
+        )}
+      </span>
+    </div>
+  )
+}
 
 const Tile = ({
   file,
@@ -508,8 +518,8 @@ const Tile = ({
       onPick(file)
     }}
     title={`${file.filename} · ${formatTime(file.mtime)} · ${formatSize(file.size)} · ${status}${
-      proxy?.state === 'none' ? (proxy.reason ? ' · proxy failed' : ' · no proxy yet') : ''
-    }${isWholeFrame(file.frame) ? '' : ' · frame cropped'}${file.rotation ? ` · turned ${file.rotation}°` : ''}`}
+      proxy?.state === 'none' ? ` · ${proxy.reason ? t`proxy failed` : t`no proxy yet`}` : ''
+    }${isWholeFrame(file.frame) ? '' : ` · ${t`frame cropped`}`}${file.rotation ? ` · ${turnedTitle(file.rotation)}` : ''}`}
     className={`group relative aspect-[4/3] max-w-full cursor-pointer overflow-hidden rounded-[5px] border-2 bg-line-2 p-0 ${
       picked ? 'border-accent' : previewed ? 'border-ink-3' : 'border-transparent'
     }`}>
@@ -531,14 +541,14 @@ const Tile = ({
     {locked && <span className='absolute right-1 bottom-1 text-[10px]'>🔒</span>}
     {file.copyOf && (
       <span
-        title={COPY_TITLE}
+        title={i18n._(COPY_TITLE)}
         className='absolute top-1 left-1/2 -translate-x-1/2 rounded-[3px] bg-black/[0.66] px-1 font-mono text-[9px] text-white'>
         ⧉
       </span>
     )}
     {strayed && (
       <span
-        title={GAP_TITLE}
+        title={i18n._(GAP_TITLE)}
         className='absolute top-1 left-1/2 -translate-x-1/2 rounded-[3px] border border-dashed border-changed bg-changed-soft px-1 font-mono text-[9px] font-semibold text-changed'>
         ⧗
       </span>
@@ -546,7 +556,7 @@ const Tile = ({
     {/* a rectangle is invisible on a thumbnail of the whole frame, so it is said rather than shown */}
     {!isWholeFrame(file.frame) && (
       <span
-        title='The frame is cropped'
+        title={t`The frame is cropped`}
         className='absolute top-1 left-1 rounded-[3px] bg-black/[0.66] px-1 font-mono text-[9px] text-white'>
         ▣
       </span>
@@ -555,7 +565,7 @@ const Tile = ({
         a grid is where hundreds of stills are culled, so it stays as quiet as it can */}
     {proxy?.state === 'none' && (
       <span
-        title={proxy.reason ? proxyFailedTitle(proxy.reason) : PROXY_FLAG.none.title}
+        title={proxy.reason ? proxyFailedTitle(proxy.reason) : i18n._(PROXY_FLAG.none.title)}
         className='pointer-events-none absolute bottom-1 left-1 h-2 w-2 rounded-full border border-dashed border-white bg-local shadow-[0_0_0_1.5px_rgba(0,0,0,0.45)]'
       />
     )}
@@ -599,30 +609,32 @@ const KindBadges = ({
     : kind === 'photo' || (kind === 'all' && videos === 0)
       ? 'photo'
       : 'video'
-  const options: [Kind, string, number][] = withAll
-    ? [
-        ['all', 'All', files.length],
-        ['video', 'Videos', videos],
-        ['photo', 'Photos', photos]
-      ]
-    : [
-        ['video', 'Videos', videos],
-        ['photo', 'Photos', photos]
-      ]
+  const all: [Kind, string, number, string] = ['all', t`All`, files.length, t`Show everything`]
+  const video: [Kind, string, number, string] = [
+    'video',
+    t`Videos`,
+    videos,
+    t`Show only the ${videos} videos`
+  ]
+  const photo: [Kind, string, number, string] = [
+    'photo',
+    t`Photos`,
+    photos,
+    t`Show only the ${photos} photos`
+  ]
+  const options = withAll ? [all, video, photo] : [video, photo]
   return (
     <span
       role='group'
-      aria-label='Videos or photos'
+      aria-label={t`Videos or photos`}
       className='flex overflow-hidden rounded-md border border-line'>
-      {options.map(([value, label, count]) => (
+      {options.map(([value, label, count, title]) => (
         <button
           key={value}
           type='button'
           aria-pressed={active === value}
           disabled={count === 0 && active !== value}
-          title={
-            value === 'all' ? 'Show everything' : `Show only the ${count} ${label.toLowerCase()}`
-          }
+          title={title}
           onClick={() => onPick(value)}
           className={`inline-flex items-center gap-1.5 px-[11px] py-[5px] text-[12px] disabled:cursor-default disabled:opacity-45 ${
             active === value ? 'bg-accent-soft font-semibold text-accent' : 'bg-pane text-ink-2'
@@ -659,10 +671,12 @@ const Lane = ({
 }: Omit<Props, 'files' | 'kind' | 'sortKey'> & { lane: ManifestFile[] }) => {
   const [shown, setShown] = useState(PAGE[shape])
   if (lane.length === 0) {
-    return <p className='px-[7px] py-1 text-[12px] text-ink-3'>Nothing here.</p>
+    return <p className='px-[7px] py-1 text-[12px] text-ink-3'>{t`Nothing here.`}</p>
   }
   const page = Math.min(shown, lane.length)
   const drawn = lane.slice(0, page)
+  const total = lane.length
+  const more = Math.min(PAGE[shape], lane.length - page)
   return (
     <>
       <div
@@ -716,14 +730,14 @@ const Lane = ({
       {lane.length > PAGE[shape] && (
         <div className='mt-[9px] flex flex-wrap items-center gap-2 border-t border-line-2 pt-2 text-[12px] text-ink-2'>
           <span className='mr-0.5 tabular-nums'>
-            <b className='font-semibold text-ink'>{page}</b> of {lane.length} shown
+            <b className='font-semibold text-ink'>{page}</b> {t`of ${total} shown`}
           </span>
           {page < lane.length && (
             <button
               type='button'
               onClick={() => setShown(page + PAGE[shape])}
               className='rounded-[5px] border border-line bg-pane px-2 py-[3px] text-[11.5px] text-ink-2 hover:border-ink-3 hover:text-ink'>
-              Show {Math.min(PAGE[shape], lane.length - page)} more
+              {t`Show ${more} more`}
             </button>
           )}
           {page > PAGE[shape] && (
@@ -731,7 +745,7 @@ const Lane = ({
               type='button'
               onClick={() => setShown(PAGE[shape])}
               className='rounded-[5px] border border-line bg-pane px-2 py-[3px] text-[11.5px] text-ink-2 hover:border-ink-3 hover:text-ink'>
-              Show fewer
+              {t`Show fewer`}
             </button>
           )}
         </div>
@@ -761,7 +775,7 @@ const FileList = ({ files, kind, sortKey, ...rest }: Props) => {
           key={i}
           className='min-w-0'>
           <div className='mb-1 flex items-baseline gap-1.5 px-[7px] text-[11px] font-semibold tracking-[0.04em] text-ink-3 uppercase'>
-            {i === 0 ? 'Videos' : 'Photos'}
+            {i === 0 ? t`Videos` : t`Photos`}
             <span className='font-mono font-normal tracking-normal tabular-nums'>
               {lane.length}
             </span>

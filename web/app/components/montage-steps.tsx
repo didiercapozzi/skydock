@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro'
 import { montageSteps } from '@skydock/scripts'
 import type { MontageFact, MontageProgress } from '@skydock/scripts'
 import type { ManifestGroup } from './types'
@@ -16,10 +17,11 @@ const StepTrail = ({
   emailed: boolean
 }) => {
   const { steps, at, next } = montageSteps({ group, facts, emailed })
+  const how = next?.how ?? ''
   return (
     <div className='flex flex-col gap-1.5'>
       <ol
-        aria-label='Where this montage has got to'
+        aria-label={t`Where this montage has got to`}
         className='m-0 flex list-none flex-col p-0'>
         {steps.map((step, i) => {
           const now = i === at
@@ -52,9 +54,11 @@ const StepTrail = ({
                     step.done ? 'text-up' : now ? 'font-semibold text-ink' : 'text-ink-3'
                   }`}>
                   {step.name}
-                  {step.done && <span className='sr-only'> — done</span>}
+                  {step.done && <span className='sr-only'> {t`— done`}</span>}
                 </span>
-                {now && next && <span className='text-[11.5px] text-accent'>Next: {next.how}</span>}
+                {now && next && (
+                  <span className='text-[11.5px] text-accent'>{t`Next: ${how}`}</span>
+                )}
               </span>
             </li>
           )
@@ -62,7 +66,7 @@ const StepTrail = ({
       </ol>
       {at === steps.length && (
         <p className='m-0 text-[12px] font-semibold text-up'>
-          Every step done — the passenger has their film.
+          {t`Every step done — the passenger has their film.`}
         </p>
       )}
     </div>
@@ -80,9 +84,11 @@ const StepMeter = ({
   className?: string
 }) => {
   const { steps, at, next } = progress
+  const total = steps.length
+  const how = next?.how ?? ''
   const said = next
-    ? `Next: ${next.how} — ${at} of ${steps.length} steps done`
-    : `Every step done — ${steps.length} of ${steps.length}`
+    ? t`Next: ${how} — ${at} of ${total} steps done`
+    : t`Every step done — ${total} of ${total}`
   return (
     <span
       role='img'

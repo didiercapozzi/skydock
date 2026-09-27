@@ -1,3 +1,6 @@
+import { i18n } from '@lingui/core'
+import type { MessageDescriptor } from '@lingui/core'
+import { msg, t } from '@lingui/core/macro'
 import { fitRatio, FrameCropper } from './frame-cropper'
 import { useEffect, useRef, useState } from 'react'
 import { Go, Mini } from './buttons'
@@ -54,18 +57,29 @@ const V = ({ children }: { children: React.ReactNode }) => (
 /* a share of the whole, as the preview says it: to the percent, and never 0% for something kept */
 const percent = (share: number) => `${Math.max(share > 0 ? 1 : 0, Math.round(share * 100))}%`
 
-type RatioOption = { label: string; ratio: number | null; title: string }
+/* `label` is how the code knows the shape; `name`, where there is one, is how it is said */
+type RatioOption = {
+  label: string
+  name?: MessageDescriptor
+  ratio: number | null
+  title: MessageDescriptor
+}
 
 /* `Same` is the one that matters most: a clip with a mount in the corner is cropped and stays the
    shape it was, which is what keeps a 16:9 jump 16:9 all the way to the passenger. */
 const RATIOS: RatioOption[] = [
-  { label: 'None', ratio: null, title: 'No crop — the whole picture goes out as shot' },
-  { label: 'Same', ratio: null, title: 'Keep the shape this clip already has' },
-  { label: '9:16', ratio: 9 / 16, title: 'Upright, for a phone' },
-  { label: '4:5', ratio: 4 / 5, title: 'Portrait' },
-  { label: '1:1', ratio: 1, title: 'Square' },
-  { label: '16:9', ratio: 16 / 9, title: 'Widescreen' },
-  { label: 'Free', ratio: null, title: 'Drag the corners to any shape' }
+  {
+    label: 'None',
+    name: msg`None`,
+    ratio: null,
+    title: msg`No crop — the whole picture goes out as shot`
+  },
+  { label: 'Same', name: msg`Same`, ratio: null, title: msg`Keep the shape this clip already has` },
+  { label: '9:16', ratio: 9 / 16, title: msg`Upright, for a phone` },
+  { label: '4:5', ratio: 4 / 5, title: msg`Portrait` },
+  { label: '1:1', ratio: 1, title: msg`Square` },
+  { label: '16:9', ratio: 16 / 9, title: msg`Widescreen` },
+  { label: 'Free', name: msg`Free`, ratio: null, title: msg`Drag the corners to any shape` }
 ]
 
 /* Whether this browser plays H.264, the format proxies are made in. Some do not — a browser built
@@ -360,6 +374,11 @@ const PreviewDrawer = ({
     (cropEnd ?? null) !== (file.cropEnd ?? null) ||
     !sameRectangle ||
     rotation !== (file.rotation ?? 0)
+  /* named, so a translator reads what each one is */
+  const proxyFailure = proxy?.reason ?? ''
+  const trimmedFrom = clock(file.cropStart ?? 0)
+  const trimmedTo = clock(file.cropEnd ?? duration)
+  const turnedBy = file.rotation ?? 0
   const saved =
     file.cropStart != null ||
     file.cropEnd != null ||
@@ -374,7 +393,7 @@ const PreviewDrawer = ({
         data-preview-drawer='true'
         role='dialog'
         aria-modal='true'
-        aria-label='Preview'
+        aria-label={t`Preview`}
         className='flex max-h-full w-[min(1040px,100%)] flex-col overflow-hidden rounded-xl bg-pane text-ink shadow-[0_20px_60px_rgba(0,0,0,0.4)]'>
         {/* head and foot stay put; only the body scrolls, so Save crop is never below the fold */}
         <div className='flex flex-none flex-wrap items-center gap-2.5 border-b border-line px-3.5 py-2.5'>
@@ -390,27 +409,35 @@ const PreviewDrawer = ({
           <Mini
             disabled={index === 0}
             onClick={onPrevious}>
-            ‹ Prev
+            {t`‹ Prev`}
           </Mini>
           <Mini
             disabled={index === files.length - 1}
             onClick={onNext}>
-            Next ›
+            {t`Next ›`}
           </Mini>
           <Mini
-            title={`See ${video ? 'the clip' : 'the photo'} full screen, at its own size (F)`}
+            title={
+              video
+                ? t`See the clip full screen, at its own size (F)`
+                : t`See the photo full screen, at its own size (F)`
+            }
             onClick={showBig}>
-            ⛶ Full screen
+            {t`⛶ Full screen`}
           </Mini>
           {onPlayOutside && (
             <Mini
-              title={`Open ${video ? 'the clip' : 'the photo'} in this machine's own player — the file as it was shot, whatever the browser can decode`}
+              title={
+                video
+                  ? t`Open the clip in this machine's own player — the file as it was shot, whatever the browser can decode`
+                  : t`Open the photo in this machine's own player — the file as it was shot, whatever the browser can decode`
+              }
               onClick={onPlayOutside}>
-              ▶ Open in the player
+              {t`▶ Open in the player`}
             </Mini>
           )}
           <Mini
-            title='Close (Esc)'
+            title={t`Close (Esc)`}
             onClick={onClose}>
             ✕
           </Mini>
@@ -489,12 +516,12 @@ const PreviewDrawer = ({
                     role='status'
                     className='absolute inset-0 grid place-items-center rounded-md bg-[#0b0f13] p-4 text-center text-[12.5px] text-white/80'>
                     {!playsProxies()
-                      ? 'This browser cannot play H.264 video — the format every proxy is made in — so no clip can be shown here. Open the board in Chrome, Edge or Safari, or in Firefox with its video codecs installed, and the clips play.'
+                      ? t`This browser cannot play H.264 video — the format every proxy is made in — so no clip can be shown here. Open the board in Chrome, Edge or Safari, or in Firefox with its video codecs installed, and the clips play.`
                       : proxy?.state === 'none' && proxy.reason
-                        ? `The browser cannot show this clip’s picture, and its proxy could not be made: ${proxy.reason}. It is copied, processed and uploaded all the same.`
+                        ? t`The browser cannot show this clip’s picture, and its proxy could not be made: ${proxyFailure}. It is copied, processed and uploaded all the same.`
                         : proxy?.state === 'none'
-                          ? 'The browser cannot show this clip’s picture — it is in a format only the editor reads, such as 4K HEVC. Its proxy is being made, and the preview plays it as soon as it is ready.'
-                          : 'The browser cannot show this clip’s picture. It is copied, processed and uploaded all the same.'}
+                          ? t`The browser cannot show this clip’s picture — it is in a format only the editor reads, such as 4K HEVC. Its proxy is being made, and the preview plays it as soon as it is ready.`
+                          : t`The browser cannot show this clip’s picture. It is copied, processed and uploaded all the same.`}
                   </span>
                 )}
                 {video && framing && !big && (
@@ -520,13 +547,13 @@ const PreviewDrawer = ({
                 <div className='absolute top-3 right-3 flex items-center gap-2'>
                   {shrunk && (
                     <span className='rounded-md bg-black/70 px-2 py-1 text-[11.5px] text-white/80'>
-                      This browser has no decoder for the clip itself — the small copy is playing
+                      {t`This browser has no decoder for the clip itself — the small copy is playing`}
                     </span>
                   )}
                   <Mini
-                    title='Leave full screen (Esc)'
+                    title={t`Leave full screen (Esc)`}
                     onClick={leaveBig}>
-                    ✕ Leave full screen
+                    {t`✕ Leave full screen`}
                   </Mini>
                 </div>
               )}
@@ -538,7 +565,7 @@ const PreviewDrawer = ({
                     type='button'
                     onClick={toggle}
                     className='min-w-[64px] rounded-[5px] border border-white/30 bg-white/10 px-2.5 py-1 text-[12px] text-white hover:bg-white/20'>
-                    {playing ? '❚❚ Pause' : '▶ Play'}
+                    {playing ? t`❚❚ Pause` : t`▶ Play`}
                   </button>
                   <span className='flex-1' />
                   <span className='min-w-[88px] text-right font-mono text-[11.5px] tabular-nums'>
@@ -597,9 +624,9 @@ const PreviewDrawer = ({
                 since the only way to tell a mark is right is to look at the frame under it. A clip
                 the camera said nothing about says so plainly — most clips are not jumps. */}
             {video && file.moments !== undefined && (
-              <Panel title='The jump'>
+              <Panel title={t`The jump`}>
                 {file.moments === null ? (
-                  <KV>No exit found — nothing to hang a cut on.</KV>
+                  <KV>{t`No exit found — nothing to hang a cut on.`}</KV>
                 ) : (
                   <div className='flex flex-wrap gap-1.5'>
                     {(
@@ -609,31 +636,32 @@ const PreviewDrawer = ({
                         ['canopy', file.moments.canopy],
                         ['landing', file.moments.landing]
                       ] as const
-                    ).flatMap(([which, at]) =>
-                      at === undefined
+                    ).flatMap(([which, at]) => {
+                      const moment = nameOfMoment(which)
+                      return at === undefined
                         ? []
                         : [
                             <button
                               key={which}
                               type='button'
                               onClick={() => onSeek(at)}
-                              title={`Go to the ${nameOfMoment(which)}`}
+                              title={t`Go to the ${moment}`}
                               className='rounded-[5px] border border-line px-2 py-1 font-mono text-[11.5px] text-ink-2 hover:bg-surface-2'>
-                              {nameOfMoment(which)} <V>{clock(at)}</V>
+                              {moment} <V>{clock(at)}</V>
                             </button>
                           ]
-                    )}
+                    })}
                   </div>
                 )}
               </Panel>
             )}
             {video && (
-              <Panel title='Trim'>
+              <Panel title={t`Trim`}>
                 <KV>
-                  Start <V>{clock(from)}</V> · End <V>{clock(to)}</V>
+                  {t`Start`} <V>{clock(from)}</V> · {t`End`} <V>{clock(to)}</V>
                 </KV>
                 <KV>
-                  Keeps <V>{clock(Math.max(0, to - from))}</V> of {clock(duration)}
+                  {t`Keeps`} <V>{clock(Math.max(0, to - from))}</V> {t`of`} {clock(duration)}
                   {duration > 0 && (
                     <>
                       {' '}
@@ -643,16 +671,16 @@ const PreviewDrawer = ({
                 </KV>
                 <div className={`mt-1.5 flex flex-wrap gap-1.5 ${locked ? 'hidden' : ''}`}>
                   <Mini onClick={() => onCropChange({ cropStart: currentTime, cropEnd })}>
-                    Start at playhead
+                    {t`Start at playhead`}
                   </Mini>
                   <Mini onClick={() => onCropChange({ cropStart, cropEnd: currentTime })}>
-                    End at playhead
+                    {t`End at playhead`}
                   </Mini>
                 </div>
               </Panel>
             )}
 
-            <Panel title='Rotate'>
+            <Panel title={t`Rotate`}>
               <div className='flex flex-wrap items-center gap-1.5'>
                 <span className='min-w-[38px] font-mono text-[12px] font-semibold'>
                   {rotation}°
@@ -660,18 +688,18 @@ const PreviewDrawer = ({
                 {!locked && (
                   <>
                     <Mini
-                      title='Turn a quarter clockwise (R)'
+                      title={t`Turn a quarter clockwise (R)`}
                       onClick={() => turn(90)}>
                       ↻ +90°
                     </Mini>
                     <Mini
-                      title='Turn upside down'
+                      title={t`Turn upside down`}
                       onClick={() => turn(180)}>
                       ↻ +180°
                     </Mini>
                     {rotation !== 0 && (
                       <Mini
-                        title='Back to as shot'
+                        title={t`Back to as shot`}
                         onClick={() => turn(360 - rotation)}>
                         0°
                       </Mini>
@@ -680,45 +708,51 @@ const PreviewDrawer = ({
                 )}
               </div>
               <div className='mt-1 text-[12px] text-ink-2'>
-                For a camera mounted sideways or upside down
-                {quarter ? ' — a quarter turn makes it portrait.' : '.'}
+                {quarter
+                  ? t`For a camera mounted sideways or upside down — a quarter turn makes it portrait.`
+                  : t`For a camera mounted sideways or upside down.`}
               </div>
               {!locked && rotation !== 0 && onRotationApplyToJump && (
                 <div className='mt-1.5'>
                   <Mini
-                    title={`Turn every ${video ? 'clip' : 'photo'} in this jump the same way — a camera on its side is on its side for the whole jump`}
+                    title={
+                      video
+                        ? t`Turn every clip in this jump the same way — a camera on its side is on its side for the whole jump`
+                        : t`Turn every photo in this jump the same way — a camera on its side is on its side for the whole jump`
+                    }
                     onClick={onRotationApplyToJump}>
-                    Apply to the whole jump
+                    {t`Apply to the whole jump`}
                   </Mini>
                 </div>
               )}
             </Panel>
 
             {video && (
-              <Panel title='Frame'>
+              <Panel title={t`Frame`}>
                 <div className={`flex flex-wrap gap-1.5 ${locked ? 'hidden' : ''}`}>
                   {RATIOS.map((option) => (
                     <Mini
                       key={option.label}
                       pressed={shown === option.label}
-                      title={option.title}
+                      title={i18n._(option.title)}
                       onClick={() => pickRatio(option)}>
-                      {option.label}
+                      {option.name ? i18n._(option.name) : option.label}
                     </Mini>
                   ))}
                 </div>
                 <div className='mt-1 text-[12px] text-ink-2'>
                   {framing
-                    ? 'Drag the rectangle to move it, a corner to resize. What is dimmed is cut away.'
-                    : 'Cut a mount or a finger out of the corner. Same keeps the shape the clip already has.'}
+                    ? t`Drag the rectangle to move it, a corner to resize. What is dimmed is cut away.`
+                    : t`Cut a mount or a finger out of the corner. Same keeps the shape the clip already has.`}
                 </div>
                 {/* What is left, in pixels, and what it is stretched back to. A crop is put back to
                   the size the clip came at, so a small rectangle is a big upscale — which looks
                   soft, and nothing else on screen would say so. */}
                 {framing && frame && (
                   <KV>
-                    Keeps <V>{percent(frame.width)}</V> across · <V>{percent(frame.height)}</V> down
-                    · <V>{percent(frame.width * frame.height)}</V> of the picture
+                    {t`Keeps`} <V>{percent(frame.width)}</V> {t`across`} ·{' '}
+                    <V>{percent(frame.height)}</V> {t`down`} ·{' '}
+                    <V>{percent(frame.width * frame.height)}</V> {t`of the picture`}
                   </KV>
                 )}
                 {framing && frame && (
@@ -726,8 +760,9 @@ const PreviewDrawer = ({
                     {(() => {
                       const box = cropToPixels(frame, turned.width, turned.height)
                       const stretch = turned.width / box.width
+                      const times = stretch.toFixed(1)
                       return `${box.width}×${box.height} → ${turned.width}×${turned.height}${
-                        stretch > 1.6 ? ` · ${stretch.toFixed(1)}× upscale, will look soft` : ''
+                        stretch > 1.6 ? ` · ${t`${times}× upscale, will look soft`}` : ''
                       }`
                     })()}
                   </div>
@@ -735,28 +770,28 @@ const PreviewDrawer = ({
                 {framing && onFrameApplyToJump && (
                   <div className='mt-1.5'>
                     <Mini
-                      title='Give every other clip in this jump the same rectangle — a badly mounted camera is badly mounted for the whole jump'
+                      title={t`Give every other clip in this jump the same rectangle — a badly mounted camera is badly mounted for the whole jump`}
                       onClick={onFrameApplyToJump}>
-                      Apply to the whole jump
+                      {t`Apply to the whole jump`}
                     </Mini>
                   </div>
                 )}
               </Panel>
             )}
 
-            <Panel title='On the file'>
+            <Panel title={t`On the file`}>
               <div className='text-[12px] text-ink-2'>
                 {/* both halves, separately, because a rectangle cannot be read off a row and a
                     panel saying only "crop saved" leaves you guessing which one it meant */}
                 {!saved
-                  ? 'No crop — the file goes out as shot.'
+                  ? t`No crop — the file goes out as shot.`
                   : [
                       file.cropStart != null || file.cropEnd != null
-                        ? `Trimmed to ${clock(file.cropStart ?? 0)} – ${clock(file.cropEnd ?? duration)}.`
+                        ? t`Trimmed to ${trimmedFrom} – ${trimmedTo}.`
                         : null,
-                      !isWholeFrame(file.frame) ? 'Frame cropped.' : null,
-                      file.rotation ? `Turned ${file.rotation}°.` : null,
-                      'Applied the next time this file is processed.'
+                      !isWholeFrame(file.frame) ? t`Frame cropped.` : null,
+                      file.rotation ? t`Turned ${turnedBy}°.` : null,
+                      t`Applied the next time this file is processed.`
                     ]
                       .filter(Boolean)
                       .join(' ')}
@@ -777,17 +812,19 @@ const PreviewDrawer = ({
                 onRotate(0)
                 onApply({ cropStart: null, cropEnd: null })
               }}>
-              Reset crop
+              {t`Reset crop`}
             </Mini>
           )}
-          {dirty && <span className='text-[11.5px] font-semibold text-local'>Unsaved changes</span>}
+          {dirty && (
+            <span className='text-[11.5px] font-semibold text-local'>{t`Unsaved changes`}</span>
+          )}
           <Spacer />
-          <Mini onClick={onClose}>Close</Mini>
+          <Mini onClick={onClose}>{t`Close`}</Mini>
           {!locked && (
             <Go
               disabled={!dirty}
               onClick={() => onApply({ cropStart, cropEnd })}>
-              {video ? 'Save crop' : 'Save'}
+              {video ? t`Save crop` : t`Save`}
             </Go>
           )}
         </div>

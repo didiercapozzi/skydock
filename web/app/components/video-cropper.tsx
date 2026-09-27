@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro'
 import { MOMENTS } from '@skydock/scripts'
 import type { Moment } from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
@@ -97,8 +98,7 @@ const VideoCropper = ({
   const positionFromTime = (time: number) => clamp((time - offset) / vd, 0, 1) * 100
 
   const seekTo = (time: number) => {
-    const t = clamp(time, 0, safeDuration)
-    onSeek(t)
+    onSeek(clamp(time, 0, safeDuration))
   }
 
   const handleBarResetZoom = () => {
@@ -113,8 +113,7 @@ const VideoCropper = ({
       e.currentTarget.setPointerCapture(e.pointerId)
     } catch {}
     draggingRef.current = 'playhead'
-    const t = timeFromPosition(e.clientX)
-    seekTo(t)
+    seekTo(timeFromPosition(e.clientX))
   }
 
   useEffect(() => {
@@ -162,14 +161,14 @@ const VideoCropper = ({
   const handlePointerMove = (e: React.PointerEvent) => {
     const dragging = draggingRef.current
     if (!dragging) return
-    const t = timeFromPosition(e.clientX)
-    seekTo(t)
+    const time = timeFromPosition(e.clientX)
+    seekTo(time)
     if (dragging === 'start') {
-      onCropChange({ cropStart: clamp(t, 0, cropEnd ?? safeDuration), cropEnd })
+      onCropChange({ cropStart: clamp(time, 0, cropEnd ?? safeDuration), cropEnd })
     } else if (dragging === 'end') {
-      onCropChange({ cropStart, cropEnd: clamp(t, cropStart ?? 0, safeDuration) })
+      onCropChange({ cropStart, cropEnd: clamp(time, cropStart ?? 0, safeDuration) })
     } else if (dragging !== 'playhead') {
-      onMomentChange?.(dragging, clamp(t, 0, safeDuration))
+      onMomentChange?.(dragging, clamp(time, 0, safeDuration))
     }
   }
 
@@ -205,8 +204,8 @@ const VideoCropper = ({
   const thumbs =
     thumbSrc && safeDuration > 0
       ? Array.from({ length: THUMB_COUNT }, (_, i) => {
-          const t = offset + ((i + 0.5) / THUMB_COUNT) * vd
-          const rounded = Math.round(t * 2) / 2
+          const time = offset + ((i + 0.5) / THUMB_COUNT) * vd
+          const rounded = Math.round(time * 2) / 2
           return { key: i, src: thumbSrc(rounded) }
         })
       : []
@@ -224,7 +223,7 @@ const VideoCropper = ({
             data-action='reset-zoom'
             onClick={handleBarResetZoom}
             className='rounded border border-white/30 bg-white/10 px-2 py-0.5 text-[11.5px] text-white hover:bg-white/20'>
-            Reset
+            {t`Reset`}
           </button>
         )}
         {!compact && (
@@ -274,25 +273,32 @@ const VideoCropper = ({
             const at = moments?.[which]
             return at === undefined ? [] : [{ which, label, low: HUNG_LOW[which], at }]
           })
-          .map(({ which, label, low, at }) => (
-            <div
-              key={which}
-              data-moment={which}
-              onPointerDown={handleMomentDown(which)}
-              title={`${label} — ${at.toFixed(1)}s${onMomentChange ? ', drag to correct' : ''}`}
-              className={`absolute top-0 bottom-0 z-20 w-3 -ml-1.5 ${
-                onMomentChange ? 'cursor-ew-resize' : 'pointer-events-none'
-              }`}
-              style={{ left: `${positionFromTime(at)}%` }}>
-              <div className='pointer-events-none absolute top-0 bottom-0 left-1/2 -ml-px w-0.5 bg-sky-300/90' />
-              <span
-                className={`pointer-events-none absolute left-1.5 rounded bg-sky-300/90 px-1 text-[9px] leading-[13px] font-medium text-black whitespace-nowrap ${
-                  low ? 'bottom-0.5' : 'top-0.5'
-                }`}>
-                {label}
-              </span>
-            </div>
-          ))}
+          .map(({ which, label, low, at }) => {
+            const seconds = at.toFixed(1)
+            return (
+              <div
+                key={which}
+                data-moment={which}
+                onPointerDown={handleMomentDown(which)}
+                title={
+                  onMomentChange
+                    ? t`${label} — ${seconds}s, drag to correct`
+                    : t`${label} — ${seconds}s`
+                }
+                className={`absolute top-0 bottom-0 z-20 w-3 -ml-1.5 ${
+                  onMomentChange ? 'cursor-ew-resize' : 'pointer-events-none'
+                }`}
+                style={{ left: `${positionFromTime(at)}%` }}>
+                <div className='pointer-events-none absolute top-0 bottom-0 left-1/2 -ml-px w-0.5 bg-sky-300/90' />
+                <span
+                  className={`pointer-events-none absolute left-1.5 rounded bg-sky-300/90 px-1 text-[9px] leading-[13px] font-medium text-black whitespace-nowrap ${
+                    low ? 'bottom-0.5' : 'top-0.5'
+                  }`}>
+                  {label}
+                </span>
+              </div>
+            )
+          })}
         <div
           data-playhead='true'
           className='absolute top-0 bottom-0 w-4 -ml-2 cursor-ew-resize z-30 pointer-events-none'
@@ -318,7 +324,13 @@ const VideoCropper = ({
                   : { 'data-crop-end-handle': 'true' })}
                 data-set={set}
                 onPointerDown={handleCropHandleDown(which)}
-                title={set ? undefined : `Drag to trim the ${which}`}
+                title={
+                  set
+                    ? undefined
+                    : which === 'start'
+                      ? t`Drag to trim the start`
+                      : t`Drag to trim the end`
+                }
                 className={`absolute top-0 bottom-0 z-20 w-3 cursor-ew-resize rounded bg-accent hover:brightness-110 ${
                   set ? '' : 'opacity-60 hover:opacity-100'
                 }`}
@@ -356,21 +368,21 @@ const VideoCropper = ({
             data-action='start-here'
             onClick={handleStartHere}
             className='rounded-[5px] border border-white/30 bg-white/10 px-2.5 py-1 text-[12px] text-white hover:bg-white/20'>
-            Start here
+            {t`Start here`}
           </button>
           <button
             type='button'
             data-action='end-here'
             onClick={handleEndHere}
             className='rounded-[5px] border border-white/30 bg-white/10 px-2.5 py-1 text-[12px] text-white hover:bg-white/20'>
-            End here
+            {t`End here`}
           </button>
           <button
             type='button'
             data-action='apply'
             onClick={handleApply}
             className='rounded-[5px] border border-accent bg-accent px-2.5 py-1 text-[12px] font-semibold text-white hover:brightness-110'>
-            Apply
+            {t`Apply`}
           </button>
           {hasCrop && (
             <button
@@ -378,7 +390,7 @@ const VideoCropper = ({
               data-action='reset-crop'
               onClick={handleResetCrop}
               className='rounded-[5px] border border-white/30 bg-white/10 px-2.5 py-1 text-[12px] text-white hover:bg-white/20'>
-              Reset crop
+              {t`Reset crop`}
             </button>
           )}
         </div>

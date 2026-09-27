@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro'
 import { useEffect, useState } from 'react'
 import { storageFolderSchema } from '../../../packages/skydock-scripts/src/storageEntry'
 import type { StorageFolder } from '../../../packages/skydock-scripts/src/storageEntry'
@@ -27,10 +28,10 @@ const useStorageFolder = (where: Where | null, stamp: unknown) => {
         answer(
           parsed.success
             ? parsed.data
-            : { ok: false, reason: 'The storage’s answer could not be read.' }
+            : { ok: false, reason: t`The storage’s answer could not be read.` }
         )
       })
-      .catch(() => answer({ ok: false, reason: 'The storage could not be reached.' }))
+      .catch(() => answer({ ok: false, reason: t`The storage could not be reached.` }))
     return () => {
       cancelled = true
     }

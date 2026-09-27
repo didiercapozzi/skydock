@@ -1,4 +1,5 @@
 import { isMontage, passengerName, passengerOf } from '@skydock/scripts'
+import { t } from '@lingui/core/macro'
 import { useState } from 'react'
 import type { Passenger } from '../components/montage-card'
 import type { Dropped } from '../helpers/import'
@@ -67,7 +68,7 @@ const useDragAndDrop = ({
      on the montages it makes the jump a montage (RULES, Jumps) */
   const startJumpDrag = (groupId: string, e?: React.DragEvent) => {
     const jump = groups.find((g) => g.id === groupId)
-    carrying(e, (jump && passengerOf(jump)) || jump?.label || 'a jump')
+    carrying(e, (jump && passengerOf(jump)) || jump?.label || t`a jump`)
     setDraggedFiles([])
     setDragged([groupId])
   }
@@ -78,7 +79,8 @@ const useDragAndDrop = ({
     /* a thumbnail sits inside a draggable jump card — only the file must travel */
     e?.stopPropagation()
     const travelling = picked.includes(file.id) ? picked : [file.id]
-    carrying(e, travelling.length > 1 ? `${travelling.length} files` : file.filename)
+    const count = travelling.length
+    carrying(e, count > 1 ? t`${count} files` : file.filename)
     setDragged([])
     setDraggedFiles(travelling)
   }
@@ -121,7 +123,7 @@ const useDragAndDrop = ({
           void importDropped(
             carried,
             `group:${groupId}`,
-            (group && passengerOf(group)) || group?.label || 'this jump'
+            (group && passengerOf(group)) || group?.label || t`this jump`
           )
           return
         }
@@ -153,7 +155,7 @@ const useDragAndDrop = ({
     const incoming = into
       ? { target: `group:${into.hostId}`, where: passengerName(into.passenger) }
       : to.kind === 'sort'
-        ? { target: 'sort', where: 'Fresh files' }
+        ? { target: 'sort', where: t`Fresh files` }
         : to.kind === 'dz'
           ? { target: `dest:${to.name}`, where: to.name }
           : null

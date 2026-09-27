@@ -1,10 +1,10 @@
+import { plural, t } from '@lingui/core/macro'
 import { hasCompletePassenger } from '@skydock/scripts'
 import type { FileStatus, MontageFact } from '@skydock/scripts'
 import type { Place } from '../helpers/places'
 import { Mini } from './buttons'
 import { Owed } from './place-pane'
 import type { ManifestFile, ManifestGroup } from './types'
-import { plural } from './utils'
 
 /* What is still owed in a folder, above its files: jumps to file in the sorting area, files to
    process or upload in a dropzone, and where each montage has got to. A count that can be dealt with
@@ -40,24 +40,28 @@ const FolderOwed = ({
   onPlace: (place: Place) => void
 }) => {
   if (place.kind === 'sort') {
+    const jumps = groups.length
+    const looseCount = loose.length
     if (groups.length === 0 && loose.length === 0)
-      return <Owed tone='done'>Nothing left to sort</Owed>
+      return <Owed tone='done'>{t`Nothing left to sort`}</Owed>
     return (
       <>
-        {groups.length > 0 && <Owed tone='todo'>{plural(groups.length, 'jump')} to file</Owed>}
+        {groups.length > 0 && (
+          <Owed tone='todo'>{t`${plural(jumps, { one: '# jump', other: '# jumps' })} to file`}</Owed>
+        )}
         {loose.length > 0 && (
           <Owed tone='plain'>
-            {plural(loose.length, 'loose file')}
+            {plural(looseCount, { one: '# loose file', other: '# loose files' })}
             {place.kind === 'sort' && (
               <>
                 {' · '}
                 <button
                   type='button'
                   disabled={busy}
-                  title='Gather the loose files here into jumps, by the gap rule — nothing is forgotten'
+                  title={t`Gather the loose files here into jumps, by the gap rule — nothing is forgotten`}
                   onClick={onRegroup}
                   className='border-0 bg-transparent p-0 text-[12px] text-accent underline disabled:opacity-40'>
-                  group them into jumps
+                  {t`group them into jumps`}
                 </button>
               </>
             )}
@@ -66,34 +70,37 @@ const FolderOwed = ({
         <button
           type='button'
           disabled={busy}
-          title='Put Fresh files back — the times alone, or everything as just scanned. Asks which first.'
+          title={t`Put Fresh files back — the times alone, or everything as just scanned. Asks which first.`}
           onClick={onReset}
           className='border-0 bg-transparent p-0 text-[12px] text-accent underline disabled:opacity-40'>
-          reset…
+          {t`reset…`}
         </button>
         <span className='ml-auto text-ink-3 max-[900px]:hidden'>
-          Drag a jump onto a folder on the left, or use <b className='text-ink-2'>File to</b> on its
-          line
+          {t`Drag a jump onto a folder on the left, or use`}{' '}
+          <b className='text-ink-2'>{t`File to`}</b> {t`on its line`}
         </span>
       </>
     )
   }
   if (place.kind === 'dz') {
     const count = (s: FileStatus) => files.filter((f) => statusOf(f) === s).length
+    const unprocessed = count('local')
+    const unsent = count('processed')
+    const onStorage = count('uploaded')
     return (
       <>
-        {count('local') > 0 && <Owed tone='todo'>{count('local')} to process</Owed>}
-        {count('processed') > 0 && <Owed tone='todo'>{count('processed')} to upload</Owed>}
-        {count('uploaded') > 0 && <Owed tone='done'>{count('uploaded')} on the storage</Owed>}
+        {unprocessed > 0 && <Owed tone='todo'>{t`${unprocessed} to process`}</Owed>}
+        {unsent > 0 && <Owed tone='todo'>{t`${unsent} to upload`}</Owed>}
+        {onStorage > 0 && <Owed tone='done'>{t`${onStorage} on the storage`}</Owed>}
         {actions}
         {folder && (
           <span className='ml-auto flex flex-wrap items-center gap-2'>
-            Goes to
+            {t`Goes to`}
             <code className='rounded-[3px] bg-line-2 px-[5px] py-px font-mono text-[11.5px] text-ink'>
-              {folder.path ?? 'no folder yet'}
+              {folder.path ?? t`no folder yet`}
             </code>
             <Mini onClick={folder.onChoose}>
-              {folder.path ? 'Change folder' : 'Choose a folder'}
+              {folder.path ? t`Change folder` : t`Choose a folder`}
             </Mini>
           </span>
         )}
@@ -116,14 +123,14 @@ const FolderOwed = ({
         <Owed
           tone='todo'
           onClick={place.kind === 'unnamed' ? undefined : () => onPlace({ kind: 'unnamed' })}>
-          {unnamed} to name
+          {t`${unnamed} to name`}
         </Owed>
       )}
-      {toProcess > 0 && <Owed tone='todo'>{toProcess} to process</Owed>}
-      {toEdit > 0 && <Owed tone='todo'>{toEdit} to edit</Owed>}
-      {toRender > 0 && <Owed tone='todo'>{toRender} to render</Owed>}
-      {toUpload > 0 && <Owed tone='todo'>{toUpload} to upload</Owed>}
-      {uploaded > 0 && <Owed tone='done'>{uploaded} uploaded</Owed>}
+      {toProcess > 0 && <Owed tone='todo'>{t`${toProcess} to process`}</Owed>}
+      {toEdit > 0 && <Owed tone='todo'>{t`${toEdit} to edit`}</Owed>}
+      {toRender > 0 && <Owed tone='todo'>{t`${toRender} to render`}</Owed>}
+      {toUpload > 0 && <Owed tone='todo'>{t`${toUpload} to upload`}</Owed>}
+      {uploaded > 0 && <Owed tone='done'>{t`${uploaded} uploaded`}</Owed>}
     </>
   )
 }

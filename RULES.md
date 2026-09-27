@@ -375,6 +375,17 @@ which is how processing again writes over itself, in the same folder and never a
 
 Taking a file out of a jump deletes the copy made from it, so nothing stale is left to hand over.
 
+## Languages
+
+SkyDock speaks **English, French and German**. It speaks the one chosen in the header — EN, FR or DE,
+each named in its own language — and, until one is chosen, the first language the machine asks for
+that it speaks, else English; the desktop window asks in the system's language by itself. The choice
+is kept on this machine, and the page is drawn again in it at once, from the server as well, so what
+the server says comes back in it too. What SkyDock writes to the disk or the storage is never
+translated — file and folder names, zip names, the storage's lists — nor is the passenger email,
+which is the club's own words and written in its own template. Every sentence the app shows is there
+in each language; one missing is a fault.
+
 ## The board
 
 The board is the everyday screen. A menu of **places** — everywhere a file can be — is pinned down the

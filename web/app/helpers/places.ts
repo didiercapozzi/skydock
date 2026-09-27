@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro'
 import { hasCompletePassenger, isFiled, isMontage, passengerOf } from '@skydock/scripts'
 import { z } from 'zod'
 import type { ManifestFile, ManifestGroup } from '../components/types'
@@ -26,21 +27,27 @@ const FRESH: Place = { kind: 'sort' }
 
 const placeKey = (place: Place) => `${place.kind}:${'name' in place ? place.name : ''}`
 
+/* a camera, by the last part of where it is mounted */
+const cameraLabel = (mount: string) => {
+  const camera = mount.split('/').pop() ?? ''
+  return t`On the camera ${camera}`
+}
+
 /* what a place is called, wherever it is named — the folder and the heading above its files are the
    same words by construction, not by being typed out twice */
 const placeLabel = (place: Place) =>
   place.kind === 'sort'
-    ? 'Fresh files'
+    ? t`Fresh files`
     : place.kind === 'montages'
-      ? 'Montages'
+      ? t`Montages`
       : place.kind === 'unnamed'
-        ? 'No name yet'
+        ? t`No name yet`
         : place.kind === 'storage'
-          ? 'On the storage'
+          ? t`On the storage`
           : place.kind === 'bin'
-            ? 'Bin'
+            ? t`Bin`
             : place.kind === 'camera'
-              ? `On the camera ${place.name.split('/').pop() ?? ''}`
+              ? cameraLabel(place.name)
               : place.name
 
 /* the three families of folder, which is what decides how their files can be grouped */

@@ -1,4 +1,15 @@
-import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router'
+import {
+  isRouteErrorResponse,
+  Links,
+  Meta,
+  Outlet,
+  Scripts,
+  ScrollRestoration,
+  useRouteLoaderData
+} from 'react-router'
+import { languageOf } from './helpers/language'
+import type { Language } from './helpers/language'
+import { speak } from './i18n'
 
 import type { Route } from './+types/root'
 import './app.css'
@@ -20,36 +31,49 @@ const links: Route.LinksFunction = () => [
   }
 ]
 
-const Layout = ({ children }: { children: React.ReactNode }) => (
-  /* the script below sets data-theme before React hydrates, so the server's html tag is
-       deliberately one attribute behind the client's */
-  <html
-    lang='en'
-    suppressHydrationWarning>
-    <head>
-      <meta charSet='utf-8' />
-      <meta
-        name='viewport'
-        content='width=device-width, initial-scale=1'
-      />
-      <Meta />
-      <Links />
-      {/* Before the first paint, so a reader who chose a theme never sees the other one first.
-            It only ever sets an attribute the stylesheet already knows how to read. */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html:
-            "try{var t=localStorage.getItem('skydock.theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}"
-        }}
-      />
-    </head>
-    <body>
-      {children}
-      <ScrollRestoration />
-      <Scripts />
-    </body>
-  </html>
-)
+/* The language the page is drawn in, worked out on the server for each request (RULES, Languages). */
+const loader = ({ request }: Route.LoaderArgs) => ({ language: languageOf(request) })
+
+/* speaking it before anything below is drawn, on the server and in the page alike */
+const useLanguage = (): Language => {
+  const language = useRouteLoaderData<typeof loader>('root')?.language ?? 'en'
+  speak(language)
+  return language
+}
+
+const Layout = ({ children }: { children: React.ReactNode }) => {
+  const language = useLanguage()
+  return (
+    /* the script below sets data-theme before React hydrates, so the server's html tag is
+         deliberately one attribute behind the client's */
+    <html
+      lang={language}
+      suppressHydrationWarning>
+      <head>
+        <meta charSet='utf-8' />
+        <meta
+          name='viewport'
+          content='width=device-width, initial-scale=1'
+        />
+        <Meta />
+        <Links />
+        {/* Before the first paint, so a reader who chose a theme never sees the other one first.
+              It only ever sets an attribute the stylesheet already knows how to read. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('skydock.theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}"
+          }}
+        />
+      </head>
+      <body>
+        {children}
+        <ScrollRestoration />
+        <Scripts />
+      </body>
+    </html>
+  )
+}
 
 const App = () => <Outlet />
 
@@ -80,5 +104,5 @@ const ErrorBoundary = ({ error }: Route.ErrorBoundaryProps) => {
   )
 }
 
-export { ErrorBoundary, Layout, links }
+export { ErrorBoundary, Layout, links, loader }
 export default App

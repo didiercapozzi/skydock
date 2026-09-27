@@ -1,3 +1,4 @@
+import { plural, t } from '@lingui/core/macro'
 import { useEffect, useRef, useState } from 'react'
 import { Go, Mini } from './buttons'
 import { Modal, Spacer } from './modal'
@@ -190,18 +191,18 @@ const ComparisonDialog = ({
   return (
     <Modal
       data-comparison-dialog='true'
-      label='Compare jumps'
-      title='Compare jumps'
+      label={t`Compare jumps`}
+      title={t`Compare jumps`}
       full
       onClose={onClose}
       footer={
         <>
           <Spacer />
-          <Mini onClick={onClose}>Close</Mini>
+          <Mini onClick={onClose}>{t`Close`}</Mini>
           <Go
             disabled={leftGroup.processed === true || rightGroup.processed === true}
             onClick={handleMergeClick}>
-            Merge
+            {t`Merge`}
           </Go>
         </>
       }>
@@ -214,9 +215,9 @@ const ComparisonDialog = ({
           duration={leftDuration}
           currentTime={leftCurrentTime}
           zoom={leftZoom}
-          onSeek={(t) => {
-            setLeftCurrentTime(t)
-            leftVideoRefRef.current?.seek(t)
+          onSeek={(time) => {
+            setLeftCurrentTime(time)
+            leftVideoRefRef.current?.seek(time)
           }}
           onDurationChange={setLeftDuration}
           onZoomChange={setLeftZoom}
@@ -263,9 +264,9 @@ const ComparisonDialog = ({
           duration={rightDuration}
           currentTime={rightCurrentTime}
           zoom={rightZoom}
-          onSeek={(t) => {
-            setRightCurrentTime(t)
-            rightVideoRefRef.current?.seek(t)
+          onSeek={(time) => {
+            setRightCurrentTime(time)
+            rightVideoRefRef.current?.seek(time)
           }}
           onDurationChange={setRightDuration}
           onZoomChange={setRightZoom}
@@ -308,9 +309,9 @@ const ComparisonDialog = ({
           data-merge-date-popup='true'
           className='fixed inset-0 z-50 grid place-items-center bg-[rgba(8,12,16,0.5)] p-4'>
           <div className='w-[380px] rounded-xl border border-line bg-pane p-4 text-ink shadow-[0_20px_60px_rgba(0,0,0,0.35)]'>
-            <h3 className='mb-1 text-[14px] font-semibold'>Merge date</h3>
+            <h3 className='mb-1 text-[14px] font-semibold'>{t`Merge date`}</h3>
             <p className='mb-3.5 text-[12.5px] text-ink-2'>
-              Which date should the merged jump have? The chosen jump keeps its times.
+              {t`Which date should the merged jump have? The chosen jump keeps its times.`}
             </p>
             <div className='space-y-2 mb-4'>
               <label className='flex cursor-pointer flex-row items-center gap-2 rounded-lg border border-line px-3 py-2 hover:bg-line-2'>
@@ -345,7 +346,7 @@ const ComparisonDialog = ({
                   checked={dateChoice === 'custom'}
                   onChange={() => setDateChoice('custom')}
                 />
-                <span className='text-[12.5px] text-ink'>Custom</span>
+                <span className='text-[12.5px] text-ink'>{t`Custom`}</span>
               </label>
               {dateChoice === 'custom' && (
                 <div className='flex gap-2 pl-7'>
@@ -367,11 +368,11 @@ const ComparisonDialog = ({
               )}
             </div>
             <div className='flex items-center justify-end gap-3'>
-              <Mini onClick={() => setShowDatePopup(false)}>Cancel</Mini>
+              <Mini onClick={() => setShowDatePopup(false)}>{t`Cancel`}</Mini>
               <Go
                 disabled={anchor === null}
                 onClick={handleMergeConfirm}>
-                Confirm merge
+                {t`Confirm merge`}
               </Go>
             </div>
           </div>
@@ -426,6 +427,11 @@ const ComparePanel = ({
   const file = group.files[fileIndex]
   const groupIndex = groups.findIndex((j) => j.id === group.id)
   const list = useRef<HTMLDivElement | null>(null)
+  /* named, so a translator reads what each one is */
+  const jump = group.label
+  const fileCount = group.files.length
+  const run = runOf(group.files)
+  const position = fileIndex + 1
 
   const rowsIn = () => [
     ...(list.current?.querySelectorAll<HTMLElement>('[data-compare-file]') ?? [])
@@ -497,7 +503,7 @@ const ComparePanel = ({
           </span>
         </div>
         <p className='text-[12px] text-ink-2'>
-          {group.files.length} files • {runOf(group.files)}
+          {plural(fileCount, { one: `# file • ${run}`, other: `# files • ${run}` })}
         </p>
       </div>
 
@@ -507,7 +513,7 @@ const ComparePanel = ({
           taking a file loads a clip, and walking past six of them would load six. */}
       <div
         role='listbox'
-        aria-label={`Files of ${group.label}`}
+        aria-label={t`Files of ${jump}`}
         ref={list}
         onKeyDown={(e) => {
           const rows = rowsIn()
@@ -565,7 +571,7 @@ const ComparePanel = ({
             )}
           </div>
           <p className='mt-2 shrink-0 text-[12px] text-ink-2'>
-            File {fileIndex + 1} of {group.files.length}:{' '}
+            {t`File ${position} of ${fileCount}:`}{' '}
             <span className='font-mono text-ink'>{file.filename}</span>
             {' · '}
             <span className='text-ink'>{fullWhen(file.mtime)}</span>

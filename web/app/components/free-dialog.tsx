@@ -1,4 +1,5 @@
 import { lastSegment } from '@skydock/scripts'
+import { plural, t } from '@lingui/core/macro'
 import { Go, Mini } from './buttons'
 import { Line, Modal, Spacer } from './modal'
 import { formatFilmSize } from './utils'
@@ -32,58 +33,57 @@ const FreeDialog = ({
     (n, f) => n + (f?.size ?? 0),
     0
   )
-  const about = originals + copies + parcels
+  const about = formatFilmSize(originals + copies + parcels)
+  const more = sent.length - 3
+  const count = group.files.length
+  const originalsSize = formatFilmSize(originals)
 
   return (
     <Modal
-      label='Free up space'
-      title={`Free up space — ${who}`}
+      label={t`Free up space`}
+      title={t`Free up space — ${who}`}
       onClose={onClose}
       footer={
         <>
           <Spacer />
-          <Mini onClick={onClose}>Close</Mini>
-          <Go onClick={onConfirm}>Check and free about {formatFilmSize(about)}</Go>
+          <Mini onClick={onClose}>{t`Close`}</Mini>
+          <Go onClick={onConfirm}>{t`Check and free about ${about}`}</Go>
         </>
       }>
-      <p className='m-0 text-[12.5px] font-semibold text-ink'>Proved first</p>
+      <p className='m-0 text-[12.5px] font-semibold text-ink'>{t`Proved first`}</p>
       <ul className='m-0 flex list-none flex-col gap-1 p-0'>
         {sent.length > 0 && (
           <Line mark='✓'>
-            each file that went up is hashed here and by the storage, and both must match what was
-            sent:{' '}
+            {t`each file that went up is hashed here and by the storage, and both must match what was sent:`}{' '}
             <code className='font-mono text-[11.5px]'>
               {sent
                 .slice(0, 3)
                 .map((f) => lastSegment(f.remotePath))
                 .join(', ')}
-              {sent.length > 3 ? ` and ${sent.length - 3} more` : ''}
+              {more > 0 ? t` and ${more} more` : ''}
             </code>
           </Line>
         )}
-        <Line mark='✓'>the originals are exactly what the backup holds</Line>
-        <Line mark='✓'>nothing about the montage changed since it was uploaded</Line>
+        <Line mark='✓'>{t`the originals are exactly what the backup holds`}</Line>
+        <Line mark='✓'>{t`nothing about the montage changed since it was uploaded`}</Line>
       </ul>
 
-      <p className='m-0 text-[12.5px] font-semibold text-ink'>Then deleted from this machine</p>
+      <p className='m-0 text-[12.5px] font-semibold text-ink'>{t`Then deleted from this machine`}</p>
       <ul className='m-0 flex list-none flex-col gap-1 p-0'>
         <Line mark='✕'>
-          the {group.files.length} original{group.files.length === 1 ? '' : 's'} (
-          {formatFilmSize(originals)})
+          {t`${plural(count, { one: 'the # original', other: 'the # originals' })} (${originalsSize})`}
         </Line>
-        <Line mark='✕'>the processed copies and the working copies made for the editor</Line>
-        <Line mark='✕'>the film and the zips</Line>
+        <Line mark='✕'>{t`the processed copies and the working copies made for the editor`}</Line>
+        <Line mark='✕'>{t`the film and the zips`}</Line>
       </ul>
 
-      <p className='m-0 text-[12.5px] font-semibold text-ink'>Kept</p>
+      <p className='m-0 text-[12.5px] font-semibold text-ink'>{t`Kept`}</p>
       <ul className='m-0 flex list-none flex-col gap-1 p-0'>
-        <Line mark='✓'>the kdenlive project, and the record of what went where</Line>
+        <Line mark='✓'>{t`the kdenlive project, and the record of what went where`}</Line>
       </ul>
 
       <p className='m-0 rounded-r-md border-l-[3px] border-local bg-local-soft px-3 py-[9px] text-[12px] text-ink-2'>
-        After this the montage lives on the storage only: it cannot be processed, edited or uploaded
-        again from here, and a rescan leaves it as it is. If any check fails, nothing at all is
-        deleted, and it says which.
+        {t`After this the montage lives on the storage only: it cannot be processed, edited or uploaded again from here, and a rescan leaves it as it is. If any check fails, nothing at all is deleted, and it says which.`}
       </p>
     </Modal>
   )

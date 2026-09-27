@@ -1,3 +1,4 @@
+import { plural, t } from '@lingui/core/macro'
 import type { MontageEntry, MontageLost } from '@skydock/scripts'
 import { useState } from 'react'
 import { lastSegment, lostOf } from '@skydock/scripts'
@@ -45,6 +46,15 @@ const Row = ({
       /* the link is in the button's tooltip either way */
     }
   }
+  /* named, so a translator reads what each one is */
+  const day = jumpDay(entry.day)
+  const { videos, photos, folder, backup } = entry
+  const uploadedOn = localeDate(entry.uploadedAt)
+  const emailedTo = entry.emailed?.to
+  const emailedOn = entry.emailed ? localeDate(entry.emailed.at) : ''
+  const who = `${entry.firstname} ${entry.lastname}`.trim()
+  const backupName = backup ? lastSegment(backup) : ''
+  const originals = backup ?? ''
   return (
     <div className='border-b border-line-2 last:border-b-0'>
       <div className='flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2'>
@@ -52,83 +62,83 @@ const Row = ({
           <b className='text-[13px] font-semibold text-ink'>
             {entry.firstname} {entry.lastname}
           </b>
-          <span className='ml-2 text-[12px] text-ink-3'>jump {jumpDay(entry.day)}</span>
+          <span className='ml-2 text-[12px] text-ink-3'>{t`jump ${day}`}</span>
         </span>
         <span className='text-[12px] text-ink-2'>
-          {entry.videos} video{entry.videos === 1 ? '' : 's'} · {entry.photos} photo
-          {entry.photos === 1 ? '' : 's'}
+          {plural(videos, { one: '# video', other: '# videos' })} ·{' '}
+          {plural(photos, { one: '# photo', other: '# photos' })}
         </span>
-        <span className='text-[12px] text-ink-2'>uploaded {localeDate(entry.uploadedAt)}</span>
+        <span className='text-[12px] text-ink-2'>{t`uploaded ${uploadedOn}`}</span>
         {entry.emailed ? (
           <span
-            title={entry.emailed.to ? `Emailed to ${entry.emailed.to}` : undefined}
+            title={emailedTo ? t`Emailed to ${emailedTo}` : undefined}
             className='rounded-full bg-up-soft px-2 py-px text-[11px] font-semibold text-up'>
-            ✓ emailed {localeDate(entry.emailed.at)}
+            ✓ {t`emailed ${emailedOn}`}
           </span>
         ) : (
           <span className='rounded-full bg-local-soft px-2 py-px text-[11px] font-semibold text-local'>
-            not emailed
+            {t`not emailed`}
           </span>
         )}
         {entry.freedAt ? (
           <span
-            title='Freed from the machine that made it — the storage is the only copy'
+            title={t`Freed from the machine that made it — the storage is the only copy`}
             className='rounded-full bg-line-2 px-2 py-px text-[11px] text-ink-2'>
-            🔒 storage only
+            🔒 {t`storage only`}
           </span>
         ) : null}
         {lost === 'folder' ? (
           <span
-            title={`${entry.folder} is not on the storage any more — the list keeps what it said of it`}
+            title={t`${folder} is not on the storage any more — the list keeps what it said of it`}
             className='rounded-full bg-local-soft px-2 py-px text-[11px] font-semibold text-local'>
-            no longer on the storage
+            {t`no longer on the storage`}
           </span>
         ) : lost === 'link' ? (
           <span
-            title='The storage no longer honours its link: revoked, or expired'
+            title={t`The storage no longer honours its link: revoked, or expired`}
             className='rounded-full bg-local-soft px-2 py-px text-[11px] font-semibold text-local'>
-            link gone
+            {t`link gone`}
           </span>
         ) : null}
         <span className='ml-auto flex flex-wrap items-center gap-1.5'>
           {waiting > 0 && (
             <Go
-              title={`Its files are on this board, waiting to be sorted: put them back together as ${`${entry.firstname} ${entry.lastname}`.trim()}’s montage, at the times they had`}
+              title={t`Its files are on this board, waiting to be sorted: put them back together as ${who}’s montage, at the times they had`}
               onClick={onRestore}>
-              Restore · {waiting} file{waiting === 1 ? '' : 's'}
+              {t`Restore · ${plural(waiting, { one: '# file', other: '# files' })}`}
             </Go>
           )}
           {lost !== 'folder' && (
             <Mini
-              title='List what its folder on the storage holds, and watch it from here'
+              title={t`List what its folder on the storage holds, and watch it from here`}
               onClick={() => setWatching(!watching)}>
-              {watching ? 'Hide files' : 'Watch…'}
+              {watching ? t`Hide files` : t`Watch…`}
             </Mini>
           )}
           {here && (
             <Mini
-              title='Open it on this board'
+              title={t`Open it on this board`}
               onClick={onOpen}>
-              Open
+              {t`Open`}
             </Mini>
           )}
           {entry.backup && (
             <Mini
-              title={`The originals: ${entry.backup}`}
+              title={t`The originals: ${originals}`}
               onClick={() =>
                 void navigator.clipboard?.writeText(entry.backup ?? '').catch(() => undefined)
               }>
-              Backup · {lastSegment(entry.backup)}
+              {t`Backup · ${backupName}`}
             </Mini>
           )}
           {entry.shareUrl && !lost && (
             <Mini
               title={entry.shareUrl}
               onClick={() => void copy()}>
-              {copied ? '✓ copied' : 'Copy link'}
+              {copied ? `✓ ${t`copied`}` : t`Copy link`}
             </Mini>
           )}
-          {entry.shareUrl && !lost && <Mini onClick={onEmail}>Email…</Mini>}
+          {entry.shareUrl && !lost && <Mini onClick={onEmail}>{t`Email…`}</Mini>}
         </span>
       </div>
       {watching && lost !== 'folder' && (
@@ -164,15 +174,18 @@ const StorageList = ({
   onRestore: (folders: string[]) => void
 }) => {
   if (!storage) return null
-  const forgotten = storage.montages.filter((t) => !isHere(t) && waitingFiles(t) > 0)
-  const waiting = storage.montages.filter((t) => !t.emailed).length
+  const forgotten = storage.montages.filter((m) => !isHere(m) && waitingFiles(m) > 0)
+  const waiting = storage.montages.filter((m) => !m.emailed).length
+  const count = storage.montages.length
+  const lostCount = forgotten.length
+  const problem = storage.problem ?? ''
   return (
     <section className='mt-5'>
       <div className='flex flex-wrap items-baseline gap-2 px-0.5 pb-1.5'>
-        <h3 className='m-0 text-[13px] font-semibold text-ink'>On the storage</h3>
+        <h3 className='m-0 text-[13px] font-semibold text-ink'>{t`On the storage`}</h3>
         <span className='text-[12px] text-ink-2'>
-          {storage.montages.length} montage{storage.montages.length === 1 ? '' : 's'}
-          {waiting > 0 ? ` · ${waiting} not emailed yet` : ''}
+          {plural(count, { one: '# montage', other: '# montages' })}
+          {waiting > 0 ? ` · ${t`${waiting} not emailed yet`}` : ''}
         </span>
         <code className='ml-auto font-mono text-[11px] text-ink-3'>{storage.dir}</code>
       </div>
@@ -180,21 +193,20 @@ const StorageList = ({
       {forgotten.length > 1 && (
         <p className='m-0 mb-2 flex flex-wrap items-center gap-2 rounded-r-md border-l-[3px] border-accent bg-accent-soft px-3 py-2 text-[12.5px] text-ink-2'>
           <span className='flex-1'>
-            {forgotten.length} montages on this list have their files on this board, waiting to be
-            sorted — this board has forgotten them.
+            {t`${lostCount} montages on this list have their files on this board, waiting to be sorted — this board has forgotten them.`}
           </span>
-          <Go onClick={() => onRestore(forgotten.map((t) => t.folder))}>
-            Restore all {forgotten.length}
+          <Go onClick={() => onRestore(forgotten.map((m) => m.folder))}>
+            {t`Restore all ${lostCount}`}
           </Go>
         </p>
       )}
       {storage.problem ? (
         <p className='m-0 rounded-md bg-local-soft px-3 py-2 text-[12.5px] text-local'>
-          The storage’s list of montages could not be read: {storage.problem}
+          {t`The storage’s list of montages could not be read: ${problem}`}
         </p>
       ) : storage.montages.length === 0 ? (
         <p className='m-0 rounded-[9px] border border-dashed border-line px-3 py-4 text-center text-[12.5px] text-ink-3'>
-          No montage uploaded yet — each one is listed here once it is.
+          {t`No montage uploaded yet — each one is listed here once it is.`}
         </p>
       ) : (
         <div className='overflow-hidden rounded-[9px] border border-line bg-pane'>

@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro'
 import { boardAnswerSchema } from '@skydock/scripts'
 import type {
   OutputFact,
@@ -77,7 +78,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
       : null
   )
   const [note, setNote] = useState<string | null>(
-    running ? 'Still processing — the board updates itself when it is done' : null
+    running ? t`Still processing — the board updates itself when it is done` : null
   )
   const [loose, setLoose] = useState<ManifestFile[]>(loaded.looseFiles)
   const [places, setPlaces] = useState<Destination[]>(loaded.destinations)
@@ -148,6 +149,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
       if (scanned) setHasManifest(true)
       if (freed) onFreed(freed.groupId)
       if (listed) setStorage({ ...listed, problem: null })
+      const playing = played?.filename ?? ''
       const said =
         uploaded !== undefined
           ? uploadedNote(uploaded, skipped)
@@ -162,9 +164,9 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
                   : freedPlace
                     ? freedPlaceNote(freedPlace)
                     : processCancelled
-                      ? 'Processing cancelled. What was finished stays; the rest is left to process again.'
+                      ? t`Processing cancelled. What was finished stays; the rest is left to process again.`
                       : uploadCancelled
-                        ? 'Upload cancelled — nothing was recorded; what already went up is found there next time.'
+                        ? t`Upload cancelled — nothing was recorded; what already went up is found there next time.`
                         : restored
                           ? restoredNote(restored)
                           : copiedFiles
@@ -174,7 +176,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
                               : cameraCopied
                                 ? cameraNote(cameraCopied)
                                 : played
-                                  ? `${played.filename} is playing in this machine’s own player`
+                                  ? t`${playing} is playing in this machine’s own player`
                                   : copiedBack
                                     ? copiedBackNote(copiedBack)
                                     : broughtBack
@@ -186,7 +188,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
       setNote(storageProblem ? [said, storageProblem].filter(Boolean).join(' · ') : said)
     } else {
       const refused = refusalSchema.safeParse(data)
-      if (refused.success) setNote(refused.data.globalErrors?.[0] ?? 'Request failed')
+      if (refused.success) setNote(refused.data.globalErrors?.[0] ?? t`Request failed`)
     }
   }
 

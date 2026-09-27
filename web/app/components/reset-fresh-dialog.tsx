@@ -1,6 +1,6 @@
+import { plural, t } from '@lingui/core/macro'
 import { Mini } from './buttons'
 import { Modal, Spacer } from './modal'
-import { plural } from './utils'
 
 /* One choice, said in full: what it puts back and what it leaves alone */
 const Choice = ({
@@ -43,35 +43,40 @@ const ResetFreshDialog = ({
   decided: number
   onClose: () => void
   onReset: (what: 'times' | 'everything') => void
-}) => (
-  <Modal
-    label='Reset Fresh files'
-    title={`Reset the ${plural(files, 'file')} in Fresh files`}
-    onClose={onClose}
-    footer={
-      <>
-        <Spacer />
-        <Mini onClick={onClose}>Close</Mini>
-      </>
-    }>
-    <Choice
-      title='Times only'
-      forgets='the times that were corrected — every file goes back to the time its camera gave it'
-      keeps='the jumps and their names, and every trim, frame and turn'
-      onChoose={() => onReset('times')}
-    />
-    <Choice
-      title='Everything, as just scanned'
-      forgets={`the corrected times, the jumps made and named by hand, any copies, and every trim, frame and turn${
-        decided > 0 ? ` — ${plural(decided, 'file')} ${decided === 1 ? 'has' : 'have'} one set` : ''
-      }. The gap rule makes the jumps again`}
-      keeps='nothing decided about these files'
-      onChoose={() => onReset('everything')}
-    />
-    <p className='m-0 rounded-r-md border-l-[3px] border-local bg-local-soft px-3 py-[9px] text-[12px] text-ink-2'>
-      Either way, nothing filed to a dropzone or a passenger is touched, and no original file is.
-    </p>
-  </Modal>
-)
+}) => {
+  /* how many already have something set, said only when some do */
+  const alreadySet =
+    decided > 0
+      ? plural(decided, { one: ' — # file has one set', other: ' — # files have one set' })
+      : ''
+  return (
+    <Modal
+      label={t`Reset Fresh files`}
+      title={t`Reset the ${plural(files, { one: '# file', other: '# files' })} in Fresh files`}
+      onClose={onClose}
+      footer={
+        <>
+          <Spacer />
+          <Mini onClick={onClose}>{t`Close`}</Mini>
+        </>
+      }>
+      <Choice
+        title={t`Times only`}
+        forgets={t`the times that were corrected — every file goes back to the time its camera gave it`}
+        keeps={t`the jumps and their names, and every trim, frame and turn`}
+        onChoose={() => onReset('times')}
+      />
+      <Choice
+        title={t`Everything, as just scanned`}
+        forgets={t`the corrected times, the jumps made and named by hand, any copies, and every trim, frame and turn${alreadySet}. The gap rule makes the jumps again`}
+        keeps={t`nothing decided about these files`}
+        onChoose={() => onReset('everything')}
+      />
+      <p className='m-0 rounded-r-md border-l-[3px] border-local bg-local-soft px-3 py-[9px] text-[12px] text-ink-2'>
+        {t`Either way, nothing filed to a dropzone or a passenger is touched, and no original file is.`}
+      </p>
+    </Modal>
+  )
+}
 
 export { ResetFreshDialog }

@@ -4,6 +4,7 @@ import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { BoardHeader } from '../../app/components/board-header'
 import { DisconnectDialog } from '../../app/components/disconnect-dialog'
+import { speak } from '../../app/i18n'
 
 /* The top of the board says who the storage is connected as and where, and offers what applies to
    the whole board: scanning, the templates, the connection, how files are drawn and how the app is
@@ -83,6 +84,33 @@ describe('the top of the board', () => {
     await expect
       .element(page.getByRole('button', { name: 'Thumbnails' }))
       .toHaveAttribute('aria-pressed', 'false')
+  })
+})
+
+/* The app speaks English, French and German, and says which it speaks (RULES, Languages). */
+describe('the language of the board', () => {
+  test('offers the three languages, each named in itself, and marks the one spoken', async () => {
+    await header()
+
+    await expect.element(page.getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'true')
+    await expect.element(page.getByRole('button', { name: 'Français' })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Deutsch' })).toBeVisible()
+  })
+
+  test('is drawn in French when French is spoken, and in German when German is', async () => {
+    try {
+      speak('fr')
+      const french = await header()
+      await expect.element(page.getByRole('button', { name: 'Relire les caméras' })).toBeVisible()
+      await expect.element(page.getByRole('button', { name: 'Français' })).toHaveAttribute('aria-pressed', 'true')
+      await french.unmount()
+
+      speak('de')
+      await header()
+      await expect.element(page.getByRole('button', { name: 'Kameras neu einlesen' })).toBeVisible()
+    } finally {
+      speak('en')
+    }
   })
 })
 

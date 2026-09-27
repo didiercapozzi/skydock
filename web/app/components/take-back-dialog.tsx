@@ -1,6 +1,7 @@
+import { plural, t } from '@lingui/core/macro'
 import { Go, Mini } from './buttons'
 import { Line, Modal, Spacer } from './modal'
-import { formatFilmSize, plural } from './utils'
+import { formatFilmSize } from './utils'
 import type { MontageFact } from '@skydock/scripts'
 import type { ManifestGroup } from './types'
 
@@ -32,70 +33,76 @@ const TakeBackDialog = ({
   const film = facts.find((f) => f?.film)?.film
   const uploaded = groups.some((g) => g.uploaded)
   const reset = mode === 'reset'
+  const jumpCount = groups.length
+  const fileCount = files.length
+  const filmSize = film ? formatFilmSize(film.size) : ''
+  const processed =
+    copies > 0
+      ? plural(copies, { one: 'the # processed copy', other: 'the # processed copies' })
+      : t`the processed folder`
 
   return (
     <Modal
-      label={reset ? 'Reset montage' : 'Delete montage'}
-      title={reset ? `Reset ${who} to before processing` : `Delete ${who}’s montage`}
+      label={reset ? t`Reset montage` : t`Delete montage`}
+      title={reset ? t`Reset ${who} to before processing` : t`Delete ${who}’s montage`}
       onClose={onClose}
       footer={
         <>
           <Spacer />
-          <Mini onClick={onClose}>Close</Mini>
-          <Go onClick={onConfirm}>{reset ? 'Reset' : 'Delete'}</Go>
+          <Mini onClick={onClose}>{t`Close`}</Mini>
+          <Go onClick={onConfirm}>{reset ? t`Reset` : t`Delete`}</Go>
         </>
       }>
-      <p className='m-0 text-[12.5px] font-semibold text-ink'>Deleted from this machine</p>
+      <p className='m-0 text-[12.5px] font-semibold text-ink'>{t`Deleted from this machine`}</p>
       <ul className='m-0 flex list-none flex-col gap-1 p-0'>
-        <Line mark='✕'>
-          {copies > 0
-            ? `the ${copies} processed ${copies === 1 ? 'copy' : 'copies'}`
-            : 'the processed folder'}
-          , and the working copies made for the editor
-        </Line>
+        <Line mark='✕'>{t`${processed}, and the working copies made for the editor`}</Line>
         {project && (
           <Line mark='✕'>
             <b className='text-changed'>
-              the kdenlive project — the edit itself, which cannot be undone
+              {t`the kdenlive project — the edit itself, which cannot be undone`}
             </b>
           </Line>
         )}
-        {film && <Line mark='✕'>the rendered film ({formatFilmSize(film.size)})</Line>}
-        {uploaded && <Line mark='✕'>the archives, and the record of what was uploaded</Line>}
+        {film && <Line mark='✕'>{t`the rendered film (${filmSize})`}</Line>}
+        {uploaded && <Line mark='✕'>{t`the archives, and the record of what was uploaded`}</Line>}
       </ul>
 
       <p className='m-0 text-[12.5px] font-semibold text-ink'>
-        {reset ? 'Kept, ready to process again' : 'Back to Fresh files, loose'}
+        {reset ? t`Kept, ready to process again` : t`Back to Fresh files, loose`}
       </p>
       <ul className='m-0 flex list-none flex-col gap-1 p-0'>
         {reset ? (
           <>
-            <Line mark='✓'>the name, {who}</Line>
-            <Line mark='✓'>every crop and frame, and every corrected time</Line>
+            <Line mark='✓'>{t`the name, ${who}`}</Line>
+            <Line mark='✓'>{t`every crop and frame, and every corrected time`}</Line>
             <Line mark='✓'>
-              {plural(groups.length, 'jump')}, {plural(files.length, 'file')}, still under Montages
+              {t`${plural(jumpCount, { one: '# jump', other: '# jumps' })}, ${plural(fileCount, { one: '# file', other: '# files' })}, still under Montages`}
             </Line>
           </>
         ) : (
           <>
-            <Line mark='↺'>{plural(files.length, 'file')}, loose, to be sorted again</Line>
-            <Line mark='✕'>
-              {groups.length === 1 ? 'the jump itself' : `the ${groups.length} jumps themselves`} —
-              regrouping the loose files puts them back into jumps
+            <Line mark='↺'>
+              {t`${plural(fileCount, { one: '# file', other: '# files' })}, loose, to be sorted again`}
             </Line>
             <Line mark='✕'>
-              the name, every crop and frame, and every corrected time — each file goes back to the
-              time its camera gave it
+              {plural(jumpCount, {
+                one: 'the jump itself — regrouping the loose files puts them back into jumps',
+                other:
+                  'the # jumps themselves — regrouping the loose files puts them back into jumps'
+              })}
+            </Line>
+            <Line mark='✕'>
+              {t`the name, every crop and frame, and every corrected time — each file goes back to the time its camera gave it`}
             </Line>
           </>
         )}
       </ul>
 
       <p className='m-0 rounded-r-md border-l-[3px] border-local bg-local-soft px-3 py-[9px] text-[12px] text-ink-2'>
-        The original files are never touched, and nothing is deleted from the storage:{' '}
+        {t`The original files are never touched, and nothing is deleted from the storage:`}{' '}
         {uploaded
-          ? 'what was uploaded stays there until someone removes it by hand.'
-          : 'SkyDock never deletes anything up there.'}
+          ? t`what was uploaded stays there until someone removes it by hand.`
+          : t`SkyDock never deletes anything up there.`}
       </p>
     </Modal>
   )

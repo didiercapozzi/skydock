@@ -1,8 +1,9 @@
+import { plural, t } from '@lingui/core/macro'
 import type { UploadItem, UploadProgressState } from '@skydock/scripts'
 import { Mini } from './buttons'
 import { ProgressPanel } from './progress-panel'
 import type { ProgressRow } from './progress-panel'
-import { formatSize, plural } from './utils'
+import { formatSize } from './utils'
 
 /* What an upload is sending, while it is (RULES, Uploading): every zip as it is made, then every
    file going to every folder up there, and where each has got to — shown from whatever page is open,
@@ -24,19 +25,19 @@ const rowOf = (item: UploadItem): ProgressRow => {
       return {
         ...base(item, where),
         at: 'now',
-        doing: 'Zipping',
-        note: `zipping · ${percent(item)}`
+        doing: t`Zipping`,
+        note: `${t`zipping`} · ${percent(item)}`
       }
     case 'zipped':
-      return { ...base(item, where), at: 'done', note: 'zipped' }
+      return { ...base(item, where), at: 'done', note: t`zipped` }
     case 'sending':
-      return { ...base(item, where), at: 'now', doing: 'Sending' }
+      return { ...base(item, where), at: 'now', doing: t`Sending` }
     case 'sent':
       return { ...base(item, where), at: 'done' }
     case 'there':
-      return { ...base(item, where), at: 'skipped', note: 'already there' }
+      return { ...base(item, where), at: 'skipped', note: t`already there` }
     case 'failed':
-      return { ...base(item, where), at: 'failed', note: 'not sent' }
+      return { ...base(item, where), at: 'failed', note: t`not sent` }
     default:
       return { ...base(item, where), at: 'later' }
   }
@@ -45,20 +46,23 @@ const rowOf = (item: UploadItem): ProgressRow => {
 const percent = (item: UploadItem) => `${Math.round((item.part ?? 0) * 100)}%`
 
 /* said under the list while nothing, or not everything, is listed yet */
-const phaseOf = (progress: UploadProgressState) =>
-  progress.state === 'checking'
-    ? progress.totalFiles > 0
-      ? `Looking at what the storage holds — ${progress.checked ?? 0} of ${progress.totalFiles}`
-      : 'Looking at what the storage holds…'
+const phaseOf = (progress: UploadProgressState) => {
+  const checked = progress.checked ?? 0
+  const totalFiles = progress.totalFiles
+  return progress.state === 'checking'
+    ? totalFiles > 0
+      ? t`Looking at what the storage holds — ${checked} of ${totalFiles}`
+      : t`Looking at what the storage holds…`
     : progress.state === 'archiving'
-      ? 'Making the zips…'
+      ? t`Making the zips…`
       : progress.state === 'cancelled'
-        ? 'Cancelled — nothing was recorded'
+        ? t`Cancelled — nothing was recorded`
         : progress.state === 'error'
-          ? (progress.error ?? 'The upload stopped')
+          ? (progress.error ?? t`The upload stopped`)
           : progress.state === 'done'
-            ? 'Done'
+            ? t`Done`
             : null
+}
 
 const UploadPanel = ({
   label,
@@ -78,14 +82,16 @@ const UploadPanel = ({
   const underWay = rows.find((r) => r.at === 'now')?.part ?? 0
   const through = rows.length > 0 ? Math.min(1, (finished + underWay) / rows.length) : 0
   const bytes = items.reduce((sum, item) => sum + item.size, 0)
-  const phase = progress ? phaseOf(progress) : 'Starting…'
+  const phase = progress ? phaseOf(progress) : t`Starting…`
+  const size = formatSize(bytes)
+  const count = rows.length
   return (
     <ProgressPanel
-      label={`Uploading ${label}`}
-      title={`Uploading ${label}`}
-      barLabel={`Uploaded of ${label}`}
-      doing='Sending'
-      barTitle={`${finished} of ${plural(rows.length, 'item')} on the storage — ${formatSize(bytes)} in all`}
+      label={t`Uploading ${label}`}
+      title={t`Uploading ${label}`}
+      barLabel={t`Uploaded of ${label}`}
+      doing={t`Sending`}
+      barTitle={t`${finished} of ${plural(count, { one: '# item', other: '# items' })} on the storage — ${size} in all`}
       through={through}
       rows={rows}
       footer={
@@ -93,9 +99,9 @@ const UploadPanel = ({
           <span className='min-w-0 flex-1 truncate text-ink-2'>{phase}</span>
           <Mini
             disabled={cancelling}
-            title='Stop it now — nothing of it is recorded, and what already went up is found there next time'
+            title={t`Stop it now — nothing of it is recorded, and what already went up is found there next time`}
             onClick={onCancel}>
-            {cancelling ? 'Cancelling…' : 'Cancel'}
+            {cancelling ? t`Cancelling…` : t`Cancel`}
           </Mini>
         </>
       }

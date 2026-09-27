@@ -1,7 +1,8 @@
 import { isVideoFile } from '@skydock/scripts'
+import { plural, t } from '@lingui/core/macro'
 import { Go, Mini } from './buttons'
 import { Modal, Spacer } from './modal'
-import { formatSize, plural } from './utils'
+import { formatSize } from './utils'
 import type { ManifestFile } from './types'
 
 /* An unsorted file has been handed to nobody: the copy here is the only one outside the camera's
@@ -19,23 +20,28 @@ const TrashDialog = ({
   const videos = files.filter((f) => isVideoFile(f.path)).length
   const photos = files.length - videos
   const size = files.reduce((n, f) => n + f.size, 0)
+  const kinds = [
+    videos && plural(videos, { one: '# video', other: '# videos' }),
+    photos && plural(photos, { one: '# photo', other: '# photos' })
+  ]
+    .filter(Boolean)
+    .join(t` and `)
+  const inAll = formatSize(size)
+  const count = files.length
   return (
     <Modal
-      label='Put in the bin'
-      title={`Put ${plural(files.length, 'file')} in the bin?`}
+      label={t`Put in the bin`}
+      title={t`Put ${plural(count, { one: '# file', other: '# files' })} in the bin?`}
       onClose={onClose}
       footer={
         <>
           <Spacer />
-          <Mini onClick={onClose}>Cancel</Mini>
-          <Go onClick={onConfirm}>Put in the bin</Go>
+          <Mini onClick={onClose}>{t`Cancel`}</Mini>
+          <Go onClick={onConfirm}>{t`Put in the bin`}</Go>
         </>
       }>
       <p className='m-0 text-[12.5px] text-ink-2'>
-        {[videos && plural(videos, 'video'), photos && plural(photos, 'photo')]
-          .filter(Boolean)
-          .join(' and ')}
-        , {formatSize(size)} in all
+        {t`${kinds}, ${inAll} in all`}
         {files.length <= 3 && (
           <>
             {' '}
@@ -48,14 +54,13 @@ const TrashDialog = ({
         .
       </p>
       <p className='m-0 rounded-r-md border-l-[3px] border-changed bg-changed-soft px-3 py-[9px] text-[12.5px] text-ink-2'>
-        <b className='text-changed'>These are originals nobody has been given yet.</b> They leave
-        the board and the originals folder, and a scan will not bring them back. They are moved, not
-        erased, to <span className='font-mono text-[11.5px]'>.trash/</span> — the only way back is
-        to take them out of there by hand. If the camera card has been wiped, that folder holds the
-        only copy.
+        <b className='text-changed'>{t`These are originals nobody has been given yet.`}</b>{' '}
+        {t`They leave the board and the originals folder, and a scan will not bring them back. They are moved, not erased, to`}{' '}
+        <span className='font-mono text-[11.5px]'>.trash/</span>{' '}
+        {t`— the only way back is to take them out of there by hand. If the camera card has been wiped, that folder holds the only copy.`}
       </p>
       <p className='m-0 text-[12px] text-ink-3'>
-        The bin is never emptied by SkyDock, so this frees no space until someone empties it.
+        {t`The bin is never emptied by SkyDock, so this frees no space until someone empties it.`}
       </p>
     </Modal>
   )

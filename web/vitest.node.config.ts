@@ -9,6 +9,7 @@ export default mergeConfig(
     test: {
       include: ['tests/server/**/*.test.{ts,tsx}'],
       environment: 'node',
+      setupFiles: ['./tests/server/setup.ts'],
       /* Never the app's real work, settings or bin, and never a real camera: a test that names no
          folder of its own writes here, and a server started by a test watches no drive. */
       env: {

@@ -1,3 +1,4 @@
+import { plural, t } from '@lingui/core/macro'
 import {
   filmNameOf,
   hasCompletePassenger,
@@ -33,8 +34,8 @@ const PassengerName = ({
     <input
       type='text'
       value={name}
-      placeholder='Name'
-      aria-label='Name'
+      placeholder={t`Name`}
+      aria-label={t`Name`}
       onClick={(e) => e.stopPropagation()}
       onChange={(e) => setName(e.target.value)}
       onBlur={save}
@@ -137,7 +138,8 @@ const NameMontage = ({
     if (!complete) return
     onSave(joins ?? typed)
   }
-  const copied = keeps ? ` — copied, ${keeps} keeps its own` : ''
+  const copied = keeps ? t` — copied, ${keeps} keeps its own` : ''
+  const joined = joins ? passengerName(joins) : ''
   return (
     <span
       onClick={(e) => e.stopPropagation()}
@@ -152,8 +154,8 @@ const NameMontage = ({
       <input
         type='text'
         value={name}
-        placeholder='Name'
-        aria-label='Name'
+        placeholder={t`Name`}
+        aria-label={t`Name`}
         autoFocus
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => {
@@ -166,17 +168,17 @@ const NameMontage = ({
       <span
         className={`min-w-[128px] text-[11px] ${joins ? 'font-semibold text-accent' : 'text-ink-3'}`}>
         {joins
-          ? `Joins ${passengerName(joins)}’s montage${copied}`
+          ? t`Joins ${joined}’s montage${copied}`
           : complete
-            ? `A new montage${copied}`
-            : 'A name: a person, an event'}
+            ? t`A new montage${copied}`
+            : t`A name: a person, an event`}
       </span>
       <Go
         disabled={!complete}
         onClick={save}>
-        {joins ? 'Join montage' : keeps ? 'Copy into montage' : 'Make montage'}
+        {joins ? t`Join montage` : keeps ? t`Copy into montage` : t`Make montage`}
       </Go>
-      {onCancel && <Mini onClick={onCancel}>Cancel</Mini>}
+      {onCancel && <Mini onClick={onCancel}>{t`Cancel`}</Mini>}
     </span>
   )
 }
@@ -191,6 +193,7 @@ const FilmStrip = ({ facts }: { facts?: MontageFact }) => {
   /* the render time in the address, so a film rendered again is fetched again rather than replayed
      from the browser's copy of the last one */
   const url = `${getFileUrl(facts.film.path)}?v=${mtime}`
+  const renderedAt = hhmm(mtime)
   return (
     <div className='mt-2.5 rounded-[9px] border border-accent bg-accent-soft px-3 py-[9px]'>
       <div className='flex flex-wrap items-center gap-2.5'>
@@ -204,7 +207,7 @@ const FilmStrip = ({ facts }: { facts?: MontageFact }) => {
           href={url}
           target='_blank'
           rel='noreferrer'
-          title='Open the film in a new tab'
+          title={t`Open the film in a new tab`}
           className='font-mono text-[12.5px] font-bold text-ink hover:text-accent hover:underline'>
           {filmNameOf(facts.baseName)}
         </a>
@@ -212,16 +215,16 @@ const FilmStrip = ({ facts }: { facts?: MontageFact }) => {
           {[
             seconds === null ? null : `${Math.floor(seconds / 60)}:${pad(seconds % 60)}`,
             formatFilmSize(size),
-            `rendered ${hhmm(mtime)}`
+            t`rendered ${renderedAt}`
           ]
             .filter(Boolean)
             .join(' · ')}
         </span>
         <span className='ml-auto'>
           <Mini
-            title={watching ? 'Close the player' : 'Watch the film here'}
+            title={watching ? t`Close the player` : t`Watch the film here`}
             onClick={() => setWatching(!watching)}>
-            {watching ? 'Close' : '▶ Watch'}
+            {watching ? t`Close` : t`▶ Watch`}
           </Mini>
         </span>
       </div>
@@ -256,9 +259,9 @@ const ProjectPath = ({ path: projectPath }: { path: string }) => {
     <button
       type='button'
       onClick={copy}
-      title={`${projectPath}\n\nClick to copy`}
+      title={`${projectPath}\n\n${t`Click to copy`}`}
       className='max-w-[22rem] truncate border-0 bg-transparent p-0 font-mono text-[11px] text-ink-3 hover:text-accent'>
-      {copied ? '✓ copied' : `${projectPath} ⧉`}
+      {copied ? t`✓ copied` : `${projectPath} ⧉`}
     </button>
   )
 }
@@ -303,15 +306,16 @@ const MontageCardActions = ({
 }) => {
   const working = busy !== null
   const uploadKey = montageUploadKey(group.id)
+  const uploading = upload?.label ?? ''
   if (!group.processed)
     return (
       <span className='ml-auto flex flex-wrap items-center gap-1.5'>
         <Go
           disabled={working || !named}
           onClick={onProcess}>
-          {busy === group.id ? 'Processing…' : 'Process'}
+          {busy === group.id ? t`Processing…` : t`Process`}
         </Go>
-        {busy === group.id && onCancelProcess && <Mini onClick={onCancelProcess}>Cancel</Mini>}
+        {busy === group.id && onCancelProcess && <Mini onClick={onCancelProcess}>{t`Cancel`}</Mini>}
       </span>
     )
   if (!facts?.project)
@@ -321,18 +325,21 @@ const MontageCardActions = ({
             it waits until each clip has one, or has failed to get one (RULES, The editing project). */}
         {proxiesWaiting > 0 && (
           <span className='text-[12px] text-ink-3'>
-            waiting for {proxiesWaiting === 1 ? '1 proxy' : `${proxiesWaiting} proxies`}
+            {plural(proxiesWaiting, {
+              one: 'waiting for # proxy',
+              other: 'waiting for # proxies'
+            })}
           </span>
         )}
         <Go
           disabled={working || proxiesWaiting > 0}
           title={
             proxiesWaiting > 0
-              ? `${proxiesWaiting === 1 ? '1 clip is' : `${proxiesWaiting} clips are`} still getting a proxy — the project can be made once each one has it, or has failed to`
-              : 'Write the kdenlive project — clips laid out, render destination set — and open it'
+              ? t`${plural(proxiesWaiting, { one: '# clip is', other: '# clips are' })} still getting a proxy — the project can be made once each one has it, or has failed to`
+              : t`Write the kdenlive project — clips laid out, render destination set — and open it`
           }
           onClick={onMontage}>
-          {busy === group.id ? 'Writing…' : 'Make the project'}
+          {busy === group.id ? t`Writing…` : t`Make the project`}
         </Go>
       </span>
     )
@@ -341,39 +348,39 @@ const MontageCardActions = ({
       <ProjectPath path={facts.projectPath} />
       <Mini
         disabled={working}
-        title='Open this project in the editor'
+        title={t`Open this project in the editor`}
         onClick={onOpenMontage}>
-        {busy === `open:${group.id}` ? 'Opening…' : 'Open in kdenlive'}
+        {busy === `open:${group.id}` ? t`Opening…` : t`Open in kdenlive`}
       </Mini>
       {/* the film itself is shown above the montage once it exists */}
-      {!facts.film && <span className='text-[12px] text-ink-3'>edit and render it</span>}
+      {!facts.film && <span className='text-[12px] text-ink-3'>{t`edit and render it`}</span>}
       {/* A montage with an edit is prepared again like any other: the copies are rewritten under the
           same names and the project is left where it is, so a trim or a frame corrected afterwards
           can still reach the footage the editor plays (RULES, The editing project). */}
       <Mini
         disabled={working}
-        title='Make the copies again from the originals — the project, the film and the archives are left alone'
+        title={t`Make the copies again from the originals — the project, the film and the archives are left alone`}
         onClick={onProcess}>
-        {busy === group.id ? 'Processing…' : 'Process again'}
+        {busy === group.id ? t`Processing…` : t`Process again`}
       </Mini>
       {group.uploaded && onFree && (
         <Mini
           disabled={working}
-          title='Delete it from this machine — only once the storage is proved to hold every file'
+          title={t`Delete it from this machine — only once the storage is proved to hold every file`}
           onClick={onFree}>
-          {busy === `free:${group.id}` ? 'Checking the storage…' : 'Free up space…'}
+          {busy === `free:${group.id}` ? t`Checking the storage…` : t`Free up space…`}
         </Mini>
       )}
       <Go
         disabled={working || blocked.blocked || upload !== null}
         title={
           upload && upload.key !== uploadKey
-            ? `Uploading ${upload.label} — wait for it, or cancel it`
+            ? t`Uploading ${uploading} — wait for it, or cancel it`
             : (blocked.message ??
-              'Zip the photos and the rushes, then send the film and the photos to the montage’s folder')
+              t`Zip the photos and the rushes, then send the film and the photos to the montage’s folder`)
         }
         onClick={onUpload}>
-        {upload?.key === uploadKey ? 'Uploading…' : group.uploaded ? 'Upload again…' : 'Upload…'}
+        {upload?.key === uploadKey ? t`Uploading…` : group.uploaded ? t`Upload again…` : t`Upload…`}
       </Go>
     </span>
   )
@@ -388,38 +395,44 @@ const UploadStrip = ({ progress }: { progress: UploadProgressState }) => {
       : 0
   const shell =
     'flex flex-wrap items-center gap-2.5 rounded-lg border px-3 py-2 text-[12.5px] text-ink-2'
-  if (progress.state === 'archiving')
+  if (progress.state === 'archiving') {
+    const zip = progress.filename.replace('.zip', '')
     return (
       <div className={`${shell} border-accent bg-accent-soft`}>
-        Zipping the {progress.filename.replace('.zip', '')} —{' '}
+        {t`Zipping the ${zip} —`}{' '}
         <b className='font-mono text-ink tabular-nums'>
           {progress.fileIndex}/{progress.totalFiles}
         </b>{' '}
-        files
+        {t`files`}
       </div>
     )
+  }
   if (progress.state === 'checking')
     return (
       <div className={`${shell} border-accent bg-accent-soft`}>
-        Checking what is already there —{' '}
+        {t`Checking what is already there —`}{' '}
         <b className='font-mono text-ink tabular-nums'>
           {progress.checked ?? 0}/{progress.totalFiles}
         </b>
       </div>
     )
-  if (progress.state === 'error')
+  if (progress.state === 'error') {
+    const error = progress.error ?? ''
     return (
       <div className={`${shell} border-dashed border-local bg-local-soft text-local`}>
-        Upload failed: {progress.error}
+        {t`Upload failed: ${error}`}
       </div>
     )
-  if (progress.state === 'done')
+  }
+  if (progress.state === 'done') {
+    const skipped = progress.skipped
     return (
       <div className={`${shell} border-up bg-up-soft`}>
-        <span className='font-semibold text-up'>✓ uploaded</span>
-        {progress.skipped ? <span>{progress.skipped} already there</span> : null}
+        <span className='font-semibold text-up'>{t`✓ uploaded`}</span>
+        {skipped ? <span>{t`${skipped} already there`}</span> : null}
       </div>
     )
+  }
   return (
     <div className={`${shell} border-accent bg-accent-soft`}>
       <span className='flex-[1_1_140px] truncate'>
@@ -493,17 +506,26 @@ const NasCard = ({
 
 /* Uploaded, then gone from the storage: the montage reads as not uploaded again, and this says why —
    silently dropping the tick would look like SkyDock had forgotten, not like the files had gone. */
-const GoneFromStorage = ({ gone, at }: { gone: { remotePath: string }[]; at?: number }) =>
-  gone.length === 0 ? null : (
+const GoneFromStorage = ({ gone, at }: { gone: { remotePath: string }[]; at?: number }) => {
+  if (gone.length === 0) return null
+  const uploadedOn = at ? new Date(at * 1000).toLocaleDateString('de-CH') : ''
+  return (
     <p className='mt-2.5 mb-0 rounded-md bg-changed-soft px-3 py-2 text-[12.5px] text-changed'>
-      {at ? `Uploaded ${new Date(at * 1000).toLocaleDateString('de-CH')}, but ` : ''}
-      {gone.length === 1 ? 'this is' : 'these are'} no longer on the storage:{' '}
+      {at ? t`Uploaded ${uploadedOn}, but ` : ''}
+      {plural(gone.length, {
+        one: 'this is no longer on the storage:',
+        other: 'these are no longer on the storage:'
+      })}{' '}
       <code className='font-mono text-[11.5px]'>
         {gone.map((f) => lastSegment(f.remotePath)).join(', ')}
       </code>{' '}
-      — upload again to put {gone.length === 1 ? 'it' : 'them'} back.
+      {plural(gone.length, {
+        one: '— upload again to put it back.',
+        other: '— upload again to put them back.'
+      })}
     </p>
   )
+}
 
 const UploadedCards = ({ group }: { group: ManifestGroup }) => {
   const record = group.uploaded
@@ -513,13 +535,13 @@ const UploadedCards = ({ group }: { group: ManifestGroup }) => {
       icon: '▶',
       name: lastSegment(record.film.remotePath),
       size: record.film.size,
-      what: 'the film'
+      what: t`the film`
     },
     record.photos && {
       icon: '🗜',
       name: lastSegment(record.photos.remotePath),
       size: record.photos.size,
-      what: 'the photos'
+      what: t`the photos`
     }
   ].filter((x): x is { icon: string; name: string; size: number; what: string } => Boolean(x))
   const anchor = record.film ?? record.photos
@@ -527,24 +549,24 @@ const UploadedCards = ({ group }: { group: ManifestGroup }) => {
     <>
       {anchor && passenger.length > 0 && (
         <NasCard
-          title='To hand over'
+          title={t`To hand over`}
           dir={parentOf(anchor.remotePath)}
-          tag='ready to hand over'
+          tag={t`ready to hand over`}
           items={passenger}
           shareUrl={record.shareUrl ?? group.publish?.shareUrl}
         />
       )}
       {record.rushes && (
         <NasCard
-          title='Backup'
+          title={t`Backup`}
           dir={parentOf(record.rushes.remotePath)}
-          tag='never shared'
+          tag={t`never shared`}
           items={[
             {
               icon: '🗜',
               name: lastSegment(record.rushes.remotePath),
               size: record.rushes.size,
-              what: 'the originals'
+              what: t`the originals`
             }
           ]}
         />
@@ -552,9 +574,9 @@ const UploadedCards = ({ group }: { group: ManifestGroup }) => {
       {/* kept as plain files, each original is on the storage on its own */}
       {record.originals && record.originals.length > 0 && (
         <NasCard
-          title='Backup'
+          title={t`Backup`}
           dir={parentOf(record.originals[0]!.remotePath)}
-          tag='never shared'
+          tag={t`never shared`}
           items={record.originals.map((original) => ({
             icon: '▶',
             name: lastSegment(original.remotePath),
@@ -562,8 +584,8 @@ const UploadedCards = ({ group }: { group: ManifestGroup }) => {
             what:
               record.film &&
               lastSegment(original.remotePath) === lastSegment(record.film.remotePath)
-                ? 'a copy of the film'
-                : 'original'
+                ? t`a copy of the film`
+                : t`original`
           }))}
         />
       )}

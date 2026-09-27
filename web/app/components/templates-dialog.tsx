@@ -1,3 +1,5 @@
+import { i18n } from '@lingui/core'
+import { msg, plural, t } from '@lingui/core/macro'
 import { useEffect, useRef, useState } from 'react'
 import type { SubmitFunction } from 'react-router'
 import { z } from 'zod'
@@ -11,14 +13,19 @@ import { routingEngine } from '../helpers/routing'
 import { setTemplateChoice, useTemplateChoice } from '../hooks/useTemplateChoice'
 import { Go, Mini } from './buttons'
 import { INPUT, Modal, Spacer } from './modal'
-import { plural } from './utils'
 
 const importAnswerSchema = z.union([
   templatesAnswerSchema.extend({ ok: z.literal(true) }),
   z.object({ ok: z.literal(false), error: z.string() })
 ])
 
-const nameSchema = z.object({ name: z.string().trim().max(60, 'Keep it under 60 characters') })
+/* the complaint is said in the language the app speaks when it is made, not when this file loads */
+const nameSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .max(60, { error: () => i18n._(msg`Keep it under 60 characters`) })
+})
 
 const short = (version: string | null) => /\d+\.\d+(\.\d+)?/.exec(version ?? '')?.[0] ?? null
 
@@ -36,6 +43,7 @@ const TemplateRow = ({
   onUsual?: () => void
 }) => {
   const made = short(template.version)
+  const missing = template.missing.join(', ')
   return (
     <div
       className={`flex flex-col gap-1 rounded-lg border px-3 py-2 ${
@@ -56,32 +64,32 @@ const TemplateRow = ({
           )}
           <b className='text-[13px] font-semibold text-ink'>{template.name}</b>
           <span className='text-[12px] text-ink-3'>
-            {made ? `kdenlive ${made}` : 'kdenlive version not said'} ·{' '}
-            {plural(template.assets, 'file')}
+            {made ? `kdenlive ${made}` : t`kdenlive version not said`} ·{' '}
+            {plural(template.assets, { one: '# file', other: '# files' })}
           </span>
           {template.missing.length === 0 && template.assets > 0 && (
             <span className='rounded-full bg-up-soft px-2 py-px text-[11px] font-semibold text-up'>
-              every file here
+              {t`every file here`}
             </span>
           )}
         </label>
         {template.byDefault && (
           <span className='rounded-full bg-accent-soft px-2 py-px text-[11px] font-semibold text-accent'>
-            the usual one
+            {t`the usual one`}
           </span>
         )}
         {onUsual && (
           <Mini onClick={onUsual}>
-            {template.byDefault ? 'Stop using by default' : 'Use by default'}
+            {template.byDefault ? t`Stop using by default` : t`Use by default`}
           </Mini>
         )}
       </span>
       {template.missing.length > 0 && (
         <span className='rounded-r-md border-l-[3px] border-local bg-local-soft px-2.5 py-1.5 text-[12px] text-ink-2'>
-          {plural(template.missing.length, 'file')} it uses{' '}
-          {template.missing.length === 1 ? 'is' : 'are'} not here: {template.missing.join(', ')}.
-          The edit can start without {template.missing.length === 1 ? 'it' : 'them'}, with a hole
-          where each belongs.
+          {plural(template.missing.length, {
+            one: `# file it uses is not here: ${missing}. The edit can start without it, with a hole where each belongs.`,
+            other: `# files it uses are not here: ${missing}. The edit can start without them, with a hole where each belongs.`
+          })}
         </span>
       )}
     </div>
@@ -118,10 +126,10 @@ const TemplatesDialog = ({
         const parsed = templatesAnswerSchema.safeParse(raw)
         if (cancelled) return
         if (parsed.success) setAnswer(parsed.data)
-        else setProblem('The templates could not be read.')
+        else setProblem(t`The templates could not be read.`)
       })
       .catch(() => {
-        if (!cancelled) setProblem('The templates could not be read.')
+        if (!cancelled) setProblem(t`The templates could not be read.`)
       })
     return () => {
       cancelled = true
@@ -133,14 +141,14 @@ const TemplatesDialog = ({
       const parsed = importAnswerSchema.safeParse(
         await routingEngine.upload({ url: '/api/templates', body })
       )
-      if (!parsed.success) setProblem('The templates could not be read.')
+      if (!parsed.success) setProblem(t`The templates could not be read.`)
       else if (!parsed.data.ok) setProblem(parsed.data.error)
       else {
         setAnswer({ templates: parsed.data.templates })
         done?.()
       }
     } catch {
-      setProblem('The copy was cut off — try again.')
+      setProblem(t`The copy was cut off — try again.`)
     }
   }
 
@@ -173,7 +181,7 @@ const TemplatesDialog = ({
   }
 
   const templates = answer?.templates ?? []
-  const names = templates.map((t) => t.name)
+  const names = templates.map((template) => template.name)
   /* the one ticked: picked here, else the one picked last time, else the only one there is */
   const picked =
     pickedHere && names.includes(pickedHere)
@@ -186,39 +194,39 @@ const TemplatesDialog = ({
 
   return (
     <Modal
-      label='Editing templates'
-      title={who ? `A template for ${who}’s montage` : 'Editing templates'}
+      label={t`Editing templates`}
+      title={who ? t`A template for ${who}’s montage` : t`Editing templates`}
       wide
       onClose={onClose}
       footer={
         <>
           <Spacer />
-          <Mini onClick={onClose}>Close</Mini>
+          <Mini onClick={onClose}>{t`Close`}</Mini>
           {onChoose && (
             <Go
               disabled={!picked}
-              title={picked ? undefined : 'Choose a template first'}
+              title={picked ? undefined : t`Choose a template first`}
               onClick={() => {
                 if (!picked) return
                 setTemplateChoice(picked)
                 onChoose(picked)
               }}>
-              Make the montage
+              {t`Make the montage`}
             </Go>
           )}
         </>
       }>
       {!answer && !problem && (
-        <p className='m-0 text-[12.5px] text-ink-3'>Reading the templates…</p>
+        <p className='m-0 text-[12.5px] text-ink-3'>{t`Reading the templates…`}</p>
       )}
       {answer && templates.length === 0 && (
         <p className='m-0 rounded-[9px] border border-dashed border-line px-3 py-4 text-center text-[12.5px] text-ink-3'>
-          No template yet — bring one in below.
+          {t`No template yet — bring one in below.`}
         </p>
       )}
       <div
         role={onChoose ? 'radiogroup' : undefined}
-        aria-label='Templates'
+        aria-label={t`Templates`}
         className='flex flex-col gap-1.5'>
         {templates.map((template) => (
           <TemplateRow
@@ -240,23 +248,21 @@ const TemplatesDialog = ({
 
       <section className='flex flex-col gap-2 rounded-lg border border-line bg-ground px-3 py-2.5'>
         <h4 className='m-0 text-[10.5px] font-semibold tracking-[0.08em] text-ink-3 uppercase'>
-          Bring a template in
+          {t`Bring a template in`}
         </h4>
         <p className='m-0 text-[12px] text-ink-2'>
-          <b>The folder kdenlive left</b> — Project › Archive project, which writes the project with
-          its <i>images</i> and <i>sounds</i> beside it — chosen whole. Or the one archive, if it
-          was packed as .zip or .tar.gz. Or the project and its files picked one by one. Each file
-          the project names is pointed at the copy brought in with it, so a template made on another
-          machine finds its own files here. Bringing one in under a name already there replaces it,
-          files and all.
+          <b>{t`The folder kdenlive left`}</b>{' '}
+          {t`— Project › Archive project, which writes the project with its`} <i>images</i> {t`and`}{' '}
+          <i>sounds</i>{' '}
+          {t`beside it — chosen whole. Or the one archive, if it was packed as .zip or .tar.gz. Or the project and its files picked one by one. Each file the project names is pointed at the copy brought in with it, so a template made on another machine finds its own files here. Bringing one in under a name already there replaces it, files and all.`}
         </p>
         <Form
           value={form}
           className='flex flex-wrap items-end gap-2'>
           <FormField
             field={form.fields.name}
-            label='Name'
-            description='Leave it empty to name it after the project'
+            label={t`Name`}
+            description={t`Leave it empty to name it after the project`}
             className='min-w-[220px] flex-1'>
             {(control) => (
               <input
@@ -269,12 +275,12 @@ const TemplatesDialog = ({
           <Go
             type='submit'
             disabled={bringing !== null}>
-            {bringing ? `Bringing in ${bringing}…` : 'Choose the folder…'}
+            {bringing ? t`Bringing in ${bringing}…` : t`Choose the folder…`}
           </Go>
           <Mini
             disabled={bringing !== null}
             onClick={() => fileInput.current?.click()}>
-            Choose files instead…
+            {t`Choose files instead…`}
           </Mini>
         </Form>
         {/* Two ways in, because a browser will offer a folder or files but never both at once. What
@@ -286,7 +292,7 @@ const TemplatesDialog = ({
           multiple
           // @ts-expect-error — the attribute that lets a folder be chosen, which React has no type for
           webkitdirectory=''
-          aria-label='The folder kdenlive left'
+          aria-label={t`The folder kdenlive left`}
           className='hidden'
           onChange={(e) => {
             const chosen = [...(e.target.files ?? [])]
@@ -298,7 +304,7 @@ const TemplatesDialog = ({
           ref={fileInput}
           type='file'
           multiple
-          aria-label='The template and its files'
+          aria-label={t`The template and its files`}
           className='hidden'
           onChange={(e) => {
             const chosen = [...(e.target.files ?? [])]

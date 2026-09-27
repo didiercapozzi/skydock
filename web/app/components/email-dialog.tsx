@@ -10,6 +10,8 @@ import {
   mailtoUrl,
   renderPassengerEmail
 } from '@skydock/scripts'
+import { i18n } from '@lingui/core'
+import { msg, t } from '@lingui/core/macro'
 import { useState } from 'react'
 import { cleanEmailHtml } from '../helpers/emailHtml'
 import { setMailApp, useMailApp } from '../hooks/useMailApp'
@@ -30,10 +32,10 @@ import { Field, INPUT, Modal, Spacer } from './modal'
 /* What the toolbar does to what is picked in the email: the browser's own editing, which every
    browser and this app's own window still carry. */
 const STYLES = [
-  ['bold', 'Bold', 'B'],
-  ['italic', 'Italic', 'I'],
-  ['insertUnorderedList', 'List', '•'],
-  ['removeFormat', 'Plain text', 'T̸']
+  ['bold', msg`Bold`, 'B'],
+  ['italic', msg`Italic`, 'I'],
+  ['insertUnorderedList', msg`List`, '•'],
+  ['removeFormat', msg`Plain text`, 'T̸']
 ] as const
 
 /* the part of the email being written in, when the caret is in one */
@@ -221,23 +223,26 @@ const EmailDialog = ({
   const other: MailApp = mailApp === 'gmail' ? 'mailto' : 'gmail'
   const label = (app: MailApp) =>
     copied === app
-      ? '✓ Copied — paste it into the message'
+      ? t`✓ Copied — paste it into the message`
       : app === 'gmail'
-        ? 'Copy & open Gmail'
-        : 'Copy & open my mail app'
+        ? t`Copy & open Gmail`
+        : t`Copy & open my mail app`
+  /* when it was said to have gone, and to whom */
+  const sentOn = emailed ? sentLabel(emailed.at) : ''
+  const sentTo = emailed?.to
 
   return (
     <Modal
-      label='Email the link'
-      title={`Email ${firstname} their link`}
+      label={t`Email the link`}
+      title={t`Email ${firstname} their link`}
       wide
       onClose={onClose}
       footer={
         writingTemplate ? (
           <>
-            <span className='text-[12px] text-ink-2'>Kept as it is written, for every email.</span>
+            <span className='text-[12px] text-ink-2'>{t`Kept as it is written, for every email.`}</span>
             <Spacer />
-            <Go onClick={closeTemplate}>Done — back to this email</Go>
+            <Go onClick={closeTemplate}>{t`Done — back to this email`}</Go>
           </>
         ) : (
           <>
@@ -245,32 +250,31 @@ const EmailDialog = ({
             {canRecord &&
               (emailed ? (
                 <span className='flex items-center gap-2 text-[12px] font-semibold text-up'>
-                  ✓ Sent {sentLabel(emailed.at)}
-                  {emailed.to ? ` to ${emailed.to}` : ''}
+                  ✓ {sentTo ? t`Sent ${sentOn} to ${sentTo}` : t`Sent ${sentOn}`}
                   <Mini
-                    title='It was not sent after all'
+                    title={t`It was not sent after all`}
                     onClick={() => onRecord(false, to)}>
-                    Undo
+                    {t`Undo`}
                   </Mini>
                 </span>
               ) : (
                 <Mini
-                  title='Say on the storage’s list that they have their link'
+                  title={t`Say on the storage’s list that they have their link`}
                   onClick={() => onRecord(true, to)}>
-                  Mark as sent
+                  {t`Mark as sent`}
                 </Mini>
               ))}
             <Spacer />
-            <Mini onClick={onClose}>Close</Mini>
+            <Mini onClick={onClose}>{t`Close`}</Mini>
             <Mini
-              title='Laid out as shown, to paste into any mail'
+              title={t`Laid out as shown, to paste into any mail`}
               onClick={() => void copy('email', copyEmail(fragment, text))}>
-              {copied === 'email' ? '✓ copied — paste it' : 'Copy email'}
+              {copied === 'email' ? t`✓ copied — paste it` : t`Copy email`}
             </Mini>
             {/* the one used last is the one offered first */}
             <Mini onClick={() => void openMail(other)}>{label(other)}</Mini>
             <Go
-              title='Copies the email and opens a new message, addressed and titled — paste it in, then press Send'
+              title={t`Copies the email and opens a new message, addressed and titled — paste it in, then press Send`}
               onClick={() => void openMail(mailApp)}>
               {label(mailApp)}
             </Go>
@@ -278,30 +282,28 @@ const EmailDialog = ({
         )
       }>
       <p className='m-0 rounded-r-md border-l-[3px] border-local bg-local-soft px-3 py-[9px] text-[12px] text-ink-2'>
-        <b className='text-ink'>Copy & open</b> puts the email below on the clipboard and opens a
-        new message with the address and the subject already filled in — in Gmail, or in the mail
-        program this computer uses (Outlook, Apple Mail, Thunderbird…). Click into the message,
-        paste it (Ctrl+V, or ⌘V on a Mac) and press Send. The one used last is offered first.
+        <b className='text-ink'>{t`Copy & open`}</b>{' '}
+        {t`puts the email below on the clipboard and opens a new message with the address and the subject already filled in — in Gmail, or in the mail program this computer uses (Outlook, Apple Mail, Thunderbird…). Click into the message, paste it (Ctrl+V, or ⌘V on a Mac) and press Send. The one used last is offered first.`}
       </p>
-      <Field label='To'>
+      <Field label={t`To`}>
         <input
           type='email'
           value={to}
           autoFocus
-          placeholder='name@example.com — or type it in Gmail'
+          placeholder={t`name@example.com — or type it in Gmail`}
           onChange={(e) => setTo(e.target.value)}
           className={INPUT}
         />
       </Field>
       {writingTemplate && (
         <p className='m-0 rounded-r-md border-l-[3px] border-accent bg-accent-soft px-3 py-[9px] text-[12px] text-ink-2'>
-          <b className='text-ink'>The template for every email.</b> What is written here is kept on
-          this machine and drafts every passenger’s email; each {'{variable}'} is filled from their
-          montage. A line whose variables are all empty for a montage — no film, no photos — is left
-          out of their email.
+          <b className='text-ink'>{t`The template for every email.`}</b>{' '}
+          {t`What is written here is kept on this machine and drafts every passenger’s email; each`}{' '}
+          {'{variable}'}{' '}
+          {t`is filled from their montage. A line whose variables are all empty for a montage — no film, no photos — is left out of their email.`}
         </p>
       )}
-      <Field label={writingTemplate ? 'Subject — for every email' : 'Subject'}>
+      <Field label={writingTemplate ? t`Subject — for every email` : t`Subject`}>
         <input
           type='text'
           value={writingTemplate ? template.subject : subject}
@@ -310,18 +312,18 @@ const EmailDialog = ({
         />
       </Field>
       <div className='flex flex-wrap items-center gap-2 text-[12px] text-ink-2'>
-        <span>Write in the email itself — the signature stays for every email</span>
+        <span>{t`Write in the email itself — the signature stays for every email`}</span>
         {/* pressed without taking the caret out of the email, so what is picked stays picked */}
         <span
           role='toolbar'
-          aria-label='Style'
+          aria-label={t`Style`}
           className='flex gap-1'>
           {STYLES.map(([command, name, mark]) => (
             <button
               key={command}
               type='button'
-              aria-label={name}
-              title={name}
+              aria-label={i18n._(name)}
+              title={i18n._(name)}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => style(command)}
               className={`w-7 rounded-[5px] border border-line bg-pane py-[2px] text-[12px] text-ink hover:border-ink-3 ${command === 'bold' ? 'font-bold' : command === 'italic' ? 'italic' : ''}`}>
@@ -330,18 +332,18 @@ const EmailDialog = ({
           ))}
           <button
             type='button'
-            aria-label='Link'
-            title='Link'
+            aria-label={t`Link`}
+            title={t`Link`}
             onMouseDown={(e) => e.preventDefault()}
             onClick={askLink}
             className='rounded-[5px] border border-line bg-pane px-2 py-[2px] text-[12px] text-ink hover:border-ink-3'>
-            Link
+            {t`Link`}
           </button>
         </span>
         {linking && (
           <span className='flex items-center gap-1'>
             <input
-              aria-label='Link address'
+              aria-label={t`Link address`}
               value={linking.href}
               autoFocus
               onChange={(e) => setLinking({ ...linking, href: e.target.value })}
@@ -351,52 +353,55 @@ const EmailDialog = ({
               }}
               className={`${INPUT} w-56 py-0.5 text-[12px]`}
             />
-            <Mini onClick={putLink}>Add link</Mini>
+            <Mini onClick={putLink}>{t`Add link`}</Mini>
           </span>
         )}
         {writingTemplate && (
           <select
-            aria-label='Put in a variable'
+            aria-label={t`Put in a variable`}
             value=''
             onChange={(e) => e.target.value && putVariable(e.target.value)}
             className='rounded-[5px] border border-line bg-pane px-1.5 py-0.5 text-[12px] text-ink-2'>
-            <option value=''>Put in a variable…</option>
-            {EMAIL_VARIABLES.map((variable) => (
-              <option
-                key={variable.name}
-                value={variable.name}>
-                {`{${variable.name}} — ${variable.about}${values[variable.name] ? ` · here “${values[variable.name]}”` : ' · empty here'}`}
-              </option>
-            ))}
+            <option value=''>{t`Put in a variable…`}</option>
+            {EMAIL_VARIABLES.map((variable) => {
+              const here = values[variable.name]
+              return (
+                <option
+                  key={variable.name}
+                  value={variable.name}>
+                  {`{${variable.name}} — ${variable.about}${here ? t` · here “${here}”` : t` · empty here`}`}
+                </option>
+              )
+            })}
           </select>
         )}
         <Spacer />
         {writingTemplate ? (
           <Mini
-            title='Put the template back as SkyDock first wrote it'
+            title={t`Put the template back as SkyDock first wrote it`}
             onClick={resetTemplate}>
-            Back to the first template
+            {t`Back to the first template`}
           </Mini>
         ) : (
           <Mini
-            title='Change the email every passenger gets, with the words that change as variables'
+            title={t`Change the email every passenger gets, with the words that change as variables`}
             onClick={openTemplate}>
-            Edit the template…
+            {t`Edit the template…`}
           </Mini>
         )}
         <Mini onClick={() => void copy('subject', copyText(subject))}>
-          {copied === 'subject' ? '✓ copied' : 'Copy subject'}
+          {copied === 'subject' ? t`✓ copied` : t`Copy subject`}
         </Mini>
         <Mini
           title={shareUrl}
           onClick={() => void copy('link', copyText(shareUrl))}>
-          {copied === 'link' ? '✓ copied' : 'Copy link'}
+          {copied === 'link' ? t`✓ copied` : t`Copy link`}
         </Mini>
       </div>
       {/* The email as it will arrive, written in where it can be. What is typed or pasted is read
           back cleaned; a paste brings its words and the few styles an email keeps, nothing else. */}
       <div
-        aria-label='Email preview'
+        aria-label={t`Email preview`}
         onInput={(e) => {
           written(e.target)
           keepCaret()

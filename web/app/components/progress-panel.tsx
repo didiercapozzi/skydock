@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro'
 import { formatSize } from './utils'
 
 /* The panel in the corner that says what is on its way and how far it has got — files being copied
@@ -28,6 +29,16 @@ const MARK: Record<Row['at'], string> = {
   skipped: '=',
   failed: '✕'
 }
+
+/* how far through one file, said of its size */
+const ofSize = (part: number, bytes: number) => {
+  const percent = Math.round(part * 100)
+  const size = formatSize(bytes)
+  return t`${percent}% of ${size}`
+}
+
+/* the one under way, read out: what is done to it, and its name */
+const underWay = (doing: string, name: string) => t`${doing} ${name}`
 
 const ProgressPanel = ({
   label,
@@ -107,7 +118,7 @@ const ProgressPanel = ({
               <span className='flex-none font-mono text-[10.5px] tabular-nums'>
                 {row.note ??
                   (row.at === 'now' && (row.part ?? 0) > 0
-                    ? `${Math.round((row.part ?? 0) * 100)}% of ${formatSize(row.size)}`
+                    ? ofSize(row.part ?? 0, row.size)
                     : formatSize(row.size))}
               </span>
             </span>
@@ -117,7 +128,7 @@ const ProgressPanel = ({
             {row.at === 'now' && (
               <span
                 role='progressbar'
-                aria-label={`${row.doing ?? doing} ${row.name}`}
+                aria-label={underWay(row.doing ?? doing, row.name)}
                 aria-valuemin={0}
                 aria-valuemax={100}
                 aria-valuenow={Math.round((row.part ?? 0) * 100)}

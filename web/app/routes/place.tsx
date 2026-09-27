@@ -10,6 +10,7 @@ import {
   waitingForProxy
 } from '@skydock/scripts'
 import type { FileStatus } from '@skydock/scripts'
+import { plural, t } from '@lingui/core/macro'
 import { useEffect, useState } from 'react'
 import { Outlet, useNavigate, useParams } from 'react-router'
 import { Go, Mini } from '../components/buttons'
@@ -32,7 +33,7 @@ import {
 } from '../components/montage-card'
 import { StepTrail } from '../components/montage-steps'
 import type { ManifestFile, ManifestGroup } from '../components/types'
-import { formatSize, plural } from '../components/utils'
+import { formatSize } from '../components/utils'
 import { folderOnStorage } from '../helpers/jumps'
 import {
   familyOf,
@@ -182,12 +183,15 @@ const Place = () => {
     if (toOpen) look({ card: toOpen })
   }, [toOpen, look])
 
+  const montages = board.storage?.montages.length ?? 0
+  const jumps = folder.groups.length
+  const fileCount = folder.files.length
   const summary =
     place.kind === 'storage'
-      ? plural(board.storage?.montages.length ?? 0, 'montage')
+      ? plural(montages, { one: '# montage', other: '# montages' })
       : [
-          folder.groups.length && family !== 'dz' ? plural(folder.groups.length, 'jump') : null,
-          plural(folder.files.length, 'file'),
+          jumps && family !== 'dz' ? plural(jumps, { one: '# jump', other: '# jumps' }) : null,
+          plural(fileCount, { one: '# file', other: '# files' }),
           formatSize(folder.files.reduce((n, f) => n + f.size, 0))
         ]
           .filter(Boolean)
@@ -197,7 +201,7 @@ const Place = () => {
   const paneHost = place.kind === 'pax' ? model.hostOf(place.name) : undefined
   const paneTarget =
     place.kind === 'sort'
-      ? { target: 'sort', where: 'Fresh files' }
+      ? { target: 'sort', where: t`Fresh files` }
       : place.kind === 'dz'
         ? { target: `dest:${place.name}`, where: place.name }
         : paneHost && !frozen.has(paneHost.id)
@@ -338,10 +342,10 @@ const Place = () => {
             onDragFile={(file, e) => model.drag.startFileDrag(file, selection.pickedFiles, e)}
             empty={
               query.trim()
-                ? 'Nothing here matches that.'
+                ? t`Nothing here matches that.`
                 : family === 'sort'
-                  ? 'Nothing left to sort. Copy more cameras off and rescan to see their jumps here.'
-                  : 'Nothing here yet. Drag a jump onto this folder, or drop files from the computer.'
+                  ? t`Nothing left to sort. Copy more cameras off and rescan to see their jumps here.`
+                  : t`Nothing here yet. Drag a jump onto this folder, or drop files from the computer.`
             }
             jump={{
               selected: selection.pickedJump ?? openJump?.id ?? null,
@@ -369,7 +373,8 @@ const Place = () => {
                 (f) => f.uploaded?.remotePath === file.path
               )
               if (!mine?.id) {
-                setNote(`${file.name} was not sent from this machine, so it cannot come back.`)
+                const name = file.name
+                setNote(t`${name} was not sent from this machine, so it cannot come back.`)
                 return
               }
               send(`back:${mine.id}`, { intent: 'bring-back', fileIds: [mine.id] })
@@ -427,6 +432,8 @@ const DropzoneStep = ({ name }: { name: string }) => {
   if (files.length === 0) return null
   const label = `dz:${name}`
   const waiting = (state: FileStatus) => files.filter((f) => statusOf(f) === state).length
+  const toProcess = waiting('local')
+  const toUpload = waiting('processed')
   if (gateFor(files).blocked) {
     const needs = (f: ManifestFile) => statusOf(f) === 'local'
     const jumps = groupsIn({ kind: 'dz', name }, board.groups).filter((g) => g.files.some(needs))
@@ -435,7 +442,7 @@ const DropzoneStep = ({ name }: { name: string }) => {
       <>
         <Go
           disabled={busy !== null}
-          title={`Make the copies that get handed over, for everything in ${name} that has none — ${plural(waiting('local'), 'file')}, whatever the search or the filter is showing.`}
+          title={t`Make the copies that get handed over, for everything in ${name} that has none — ${plural(toProcess, { one: '# file', other: '# files' })}, whatever the search or the filter is showing.`}
           onClick={() =>
             send(
               label,
@@ -444,9 +451,11 @@ const DropzoneStep = ({ name }: { name: string }) => {
                 : { intent: 'process', groupIds: jumps.map((g) => g.id) }
             )
           }>
-          {busy === label ? 'Processing…' : `Process ${plural(waiting('local'), 'file')}`}
+          {busy === label
+            ? t`Processing…`
+            : t`Process ${plural(toProcess, { one: '# file', other: '# files' })}`}
         </Go>
-        {busy === label && <Mini onClick={model.cancelProcess}>Cancel</Mini>}
+        {busy === label && <Mini onClick={model.cancelProcess}>{t`Cancel`}</Mini>}
       </>
     )
   }
@@ -455,22 +464,23 @@ const DropzoneStep = ({ name }: { name: string }) => {
     model.freeableOf(name).files.length > 0 ? (
       <Mini
         disabled={busy !== null}
-        title={`Delete from this machine what ${name} has on the storage, once the storage is proved to hold it. Asks first.`}
+        title={t`Delete from this machine what ${name} has on the storage, once the storage is proved to hold it. Asks first.`}
         onClick={() =>
           model.nas.connected
             ? model.setDialog({ kind: 'free-place', place: name })
             : model.openConnect()
         }>
-        {busy === `free:dz:${name}` ? 'Checking the storage…' : 'Free up space…'}
+        {busy === `free:dz:${name}` ? t`Checking the storage…` : t`Free up space…`}
       </Mini>
     ) : null
   if (files.every((f) => statusOf(f) === 'uploaded'))
     return (
       <>
         {free}
-        <span className='text-[12px] font-semibold text-up'>✓ all on the storage</span>
+        <span className='text-[12px] font-semibold text-up'>{t`✓ all on the storage`}</span>
       </>
     )
+  const uploadLabel = model.board.uploadLabel ?? ''
   return (
     <>
       {free}
@@ -478,13 +488,13 @@ const DropzoneStep = ({ name }: { name: string }) => {
         disabled={busy !== null || model.board.uploading !== null}
         title={
           model.board.uploading && model.board.uploading !== `dest:${name}`
-            ? `Uploading ${model.board.uploadLabel} — wait for it, or cancel it`
-            : `Send everything in ${name} that is processed and not up there yet — ${plural(waiting('processed'), 'file')}, whatever the search or the filter is showing.`
+            ? t`Uploading ${uploadLabel} — wait for it, or cancel it`
+            : t`Send everything in ${name} that is processed and not up there yet — ${plural(toUpload, { one: '# file', other: '# files' })}, whatever the search or the filter is showing.`
         }
         onClick={() => model.requestUpload({ destination: name }, `dest:${name}`)}>
         {model.board.uploading === `dest:${name}`
-          ? 'Uploading…'
-          : `Upload ${plural(waiting('processed'), 'file')}`}
+          ? t`Uploading…`
+          : t`Upload ${plural(toUpload, { one: '# file', other: '# files' })}`}
       </Go>
     </>
   )
@@ -550,9 +560,9 @@ const PlaceTools = ({ place }: { place: Place }) => {
     return (
       <Mini
         disabled={busy}
-        title='Take this place off the board — what is filed here goes back to Fresh files, and nothing is deleted'
+        title={t`Take this place off the board — what is filed here goes back to Fresh files, and nothing is deleted`}
         onClick={() => setDialog({ kind: 'remove-place', place: place.name })}>
-        {board.busy === `remove:dz:${place.name}` ? 'Removing…' : 'Remove place…'}
+        {board.busy === `remove:dz:${place.name}` ? t`Removing…` : t`Remove place…`}
       </Mini>
     )
   if (place.kind !== 'pax') return null
@@ -563,17 +573,18 @@ const PlaceTools = ({ place }: { place: Place }) => {
       (g.uploaded?.shareUrl ?? g.publish?.shareUrl) &&
       !lostOf(board.storage?.lost, folderOnStorage(g) ?? '')
   )
+  const firstname = linked?.passenger?.firstname ?? ''
   return (
     <span className='flex items-center gap-1.5'>
       {linked && (
         <Mini
           title={
             emailedOn(linked)
-              ? 'The storage’s list says the link was sent — open it to send it again'
-              : 'Send the link'
+              ? t`The storage’s list says the link was sent — open it to send it again`
+              : t`Send the link`
           }
           onClick={() => setDialog({ kind: 'email', groupId: linked.id })}>
-          {emailedOn(linked) ? '✓ Emailed · again…' : `Email ${linked.passenger?.firstname ?? ''}…`}
+          {emailedOn(linked) ? t`✓ Emailed · again…` : t`Email ${firstname}…`}
         </Mini>
       )}
       {/* the two ways back from a montage, for all of it — each asks first */}
@@ -581,15 +592,15 @@ const PlaceTools = ({ place }: { place: Place }) => {
         <>
           <Mini
             disabled={busy}
-            title='Back to before processing — keeps the name, the crops, the frames and the times'
+            title={t`Back to before processing — keeps the name, the crops, the frames and the times`}
             onClick={() => setDialog({ kind: 'take-back', mode: 'reset', who: place.name })}>
-            Reset…
+            {t`Reset…`}
           </Mini>
           <Mini
             disabled={busy}
-            title='Undo the montage, at any step — its files go back to Fresh files, loose, without their name or crops'
+            title={t`Undo the montage, at any step — its files go back to Fresh files, loose, without their name or crops`}
             onClick={() => setDialog({ kind: 'take-back', mode: 'delete', who: place.name })}>
-            Delete…
+            {t`Delete…`}
           </Mini>
         </>
       )}
@@ -684,6 +695,7 @@ const Inspector = ({
     )
   }
   if (jump) {
+    const editLocked = EDIT_LOCKED
     return (
       <JumpPanel
         key={jump.id}
@@ -693,9 +705,9 @@ const Inspector = ({
         emailed={Boolean(model.emailedOn(jump))}
         locked={
           jump.freed
-            ? 'Freed from this machine — it is on the storage only now.'
+            ? t`Freed from this machine — it is on the storage only now.`
             : frozen.has(jump.id)
-              ? `${EDIT_LOCKED} Open it in kdenlive, or reset the montage.`
+              ? t`${editLocked} Open it in kdenlive, or reset the montage.`
               : null
         }
         statusOf={statusOf}
@@ -741,9 +753,9 @@ const Inspector = ({
       files={folder.files}
       statusOf={statusOf}>
       {place.kind === 'dz' && (
-        <Box heading='On the storage'>
+        <Box heading={t`On the storage`}>
           <p className='m-0 font-mono text-[12px] break-all'>
-            {model.folderFor(place.name) ?? 'no folder yet'}
+            {model.folderFor(place.name) ?? t`no folder yet`}
           </p>
           {dz?.shareUrl && (
             <a
@@ -756,7 +768,7 @@ const Inspector = ({
           )}
           <span>
             <Mini onClick={() => setDialog({ kind: 'folder', destination: place.name })}>
-              {model.folderFor(place.name) ? 'Change folder' : 'Choose a folder'}
+              {model.folderFor(place.name) ? t`Change folder` : t`Choose a folder`}
             </Mini>
           </span>
         </Box>

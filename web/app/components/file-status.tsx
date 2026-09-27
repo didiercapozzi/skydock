@@ -1,3 +1,6 @@
+import { i18n } from '@lingui/core'
+import type { MessageDescriptor } from '@lingui/core'
+import { msg } from '@lingui/core/macro'
 import type { FileStatus } from '@skydock/scripts'
 
 /* local — only the original exists; nothing has been made from it yet.
@@ -7,18 +10,18 @@ import type { FileStatus } from '@skydock/scripts'
    uploaded — that copy is on the NAS, proved by a matching md5 (RULES, File status). */
 type ShownStatus = FileStatus | 'changed'
 
-const LABELS: Record<ShownStatus, string> = {
-  local: 'local',
-  changed: 'changed',
-  processed: 'processed',
-  uploaded: 'uploaded'
+const LABELS: Record<ShownStatus, MessageDescriptor> = {
+  local: msg`local`,
+  changed: msg`changed`,
+  processed: msg`processed`,
+  uploaded: msg`uploaded`
 }
 
-const TITLES: Record<ShownStatus, string> = {
-  local: 'Not processed yet',
-  changed: 'Processed once and changed since — it needs processing again before it can go anywhere',
-  processed: 'Processed, not on the NAS yet',
-  uploaded: 'On the NAS'
+const TITLES: Record<ShownStatus, MessageDescriptor> = {
+  local: msg`Not processed yet`,
+  changed: msg`Processed once and changed since — it needs processing again before it can go anywhere`,
+  processed: msg`Processed, not on the NAS yet`,
+  uploaded: msg`On the NAS`
 }
 
 /* Each state keeps its own colour and the tint made for it. Only `changed` is outlined, because it
@@ -32,9 +35,9 @@ const CHIP: Record<ShownStatus, string> = {
 
 const StatusChip = ({ status }: { status: ShownStatus }) => (
   <span
-    title={TITLES[status]}
+    title={i18n._(TITLES[status])}
     className={`rounded-full py-px text-[10px] font-semibold tracking-[0.04em] uppercase ${CHIP[status]}`}>
-    {LABELS[status]}
+    {i18n._(LABELS[status])}
   </span>
 )
 

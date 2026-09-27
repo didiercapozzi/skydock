@@ -1,21 +1,37 @@
+import { i18n } from '@lingui/core'
+import type { MessageDescriptor } from '@lingui/core'
+import { msg, t } from '@lingui/core/macro'
+import { keepLanguage, spokenNow } from '../helpers/language'
+import type { Language } from '../helpers/language'
 import { Seg } from './buttons'
 import { setFileView, useFileView } from '../hooks/useFileView'
 import { setTheme, useTheme } from '../hooks/useTheme'
 import { formatSize } from './utils'
 
 const VIEWS = [
-  ['rows', 'Rows', '☰'],
-  ['grid', 'Thumbnails', '▦']
+  ['rows', msg`Rows`, '☰'],
+  ['grid', msg`Thumbnails`, '▦']
 ] as const
 
 /* Auto is what the machine says. The other two exist because that signal is invisible and is not
    always the machine you think it is — a browser preview inside an editor follows the editor's
    theme, not the desktop's, which is enough to make two windows of the same design disagree. */
 const THEMES = [
-  ['auto', 'Auto', '◐'],
-  ['light', 'Light', '☀'],
-  ['dark', 'Dark', '☾']
+  ['auto', msg`Auto`, '◐'],
+  ['light', msg`Light`, '☀'],
+  ['dark', msg`Dark`, '☾']
 ] as const
+
+/* Each language named in itself, so it is found by whoever reads it (RULES, Languages). */
+const LANGUAGE_NAMES = [
+  ['en', 'English', 'EN'],
+  ['fr', 'Français', 'FR'],
+  ['de', 'Deutsch', 'DE']
+] as const satisfies readonly (readonly [Language, string, string])[]
+
+/* a choice's name said in the language the app speaks now */
+const said = <T extends string>(options: readonly (readonly [T, MessageDescriptor, string])[]) =>
+  options.map(([value, name, mark]) => [value, i18n._(name), mark] as const)
 
 /* The storage strip: one row of links, all of which look and behave alike, so they are described
    once and drawn in a loop rather than written out five times. A link with a mark is drawn as the
@@ -58,6 +74,19 @@ const BoardHeader = ({
 }) => {
   const view = useFileView()
   const theme = useTheme()
+  const language = spokenNow()
+  /* named, so a translator reads what each one is */
+  const left = disk ? formatSize(disk.free) : ''
+  const { camera: cameraName = '', copied = 0, skipped = 0 } = camera ?? {}
+  const { ready, total } = proxies
+  const host = nas.host ?? t`the storage`
+  const user = nas.user
+  /* kept for the server too, and the page drawn again in it, from the server — what is going on
+     there, an upload or a copy, is taken up again as after any reload */
+  const speakIn = (next: Language) => {
+    keepLanguage(next)
+    window.location.reload()
+  }
   return (
     <header className='flex flex-wrap items-center gap-[13px] border-b border-line bg-pane px-4 py-[9px]'>
       <span className='text-[15px] font-bold tracking-[-0.02em]'>
@@ -68,8 +97,8 @@ const BoardHeader = ({
           role='alert'
           title={
             disk.level === 'full'
-              ? 'Copying a camera, making proxies, processing and saving the board all need room on this disk. Free some space: delete what you no longer need, or free uploaded jumps and montages from here.'
-              : 'Free some space before the disk fills: copying a camera, making proxies and processing all need room.'
+              ? t`Copying a camera, making proxies, processing and saving the board all need room on this disk. Free some space: delete what you no longer need, or free uploaded jumps and montages from here.`
+              : t`Free some space before the disk fills: copying a camera, making proxies and processing all need room.`
           }
           className={`rounded-full border px-2.5 py-0.5 text-[12px] font-semibold whitespace-nowrap ${
             disk.level === 'full'
@@ -77,8 +106,8 @@ const BoardHeader = ({
               : 'border-local bg-local-soft text-local'
           }`}>
           {disk.level === 'full'
-            ? `⚠ Disk full — ${formatSize(disk.free)} left: copying, proxies and saving will fail`
-            : `⚠ Disk almost full — ${formatSize(disk.free)} left`}
+            ? t`⚠ Disk full — ${left} left: copying, proxies and saving will fail`
+            : t`⚠ Disk almost full — ${left} left`}
         </span>
       )}
       <span className='ml-auto flex flex-wrap items-center gap-2'>
@@ -86,33 +115,33 @@ const BoardHeader = ({
           type='button'
           disabled={scanning}
           onClick={onScan}
-          title='Copy what is new on every camera plugged in — what is here already is passed over — and look through the output folder for files the board does not know yet'
+          title={t`Copy what is new on every camera plugged in — what is here already is passed over — and look through the output folder for files the board does not know yet`}
           className='rounded-md border border-line bg-pane px-[11px] py-[5px] text-[12.5px] font-medium hover:border-ink-3 disabled:opacity-40'>
-          {scanning ? 'Scanning…' : 'Rescan cameras'}
+          {scanning ? t`Scanning…` : t`Rescan cameras`}
         </button>
         <button
           type='button'
           onClick={onTemplates}
-          title='The editing templates a montage is made from — look them over, or bring one in'
+          title={t`The editing templates a montage is made from — look them over, or bring one in`}
           className='rounded-md border border-line bg-pane px-[11px] py-[5px] text-[12.5px] font-medium hover:border-ink-3'>
-          Templates…
+          {t`Templates…`}
         </button>
         <button
           type='button'
           onClick={onWorkFolder}
-          title='The folder SkyDock keeps its work in — the originals, what is handed over, the board — and another one to work in'
+          title={t`The folder SkyDock keeps its work in — the originals, what is handed over, the board — and another one to work in`}
           className='rounded-md border border-line bg-pane px-[11px] py-[5px] text-[12.5px] font-medium hover:border-ink-3'>
-          Work folder…
+          {t`Work folder…`}
         </button>
         {/* A camera plugged in is copied off by itself; this is it happening, file by file. */}
         {camera && (
           <span
             role='progressbar'
-            aria-label={`Copying ${camera.camera}`}
+            aria-label={t`Copying ${cameraName}`}
             aria-valuemin={0}
             aria-valuemax={camera.total}
             aria-valuenow={camera.done}
-            title={`Copying the camera ${camera.camera} into the originals — ${camera.copied} new so far. It is scanned when done.`}
+            title={t`Copying the camera ${cameraName} into the originals — ${copied} new so far. It is scanned when done.`}
             className='inline-flex items-center gap-2 rounded-full border border-accent bg-accent-soft px-2.5 py-[3px] text-[12px] text-ink'>
             <span aria-hidden='true'>📷</span>
             <b className='font-semibold'>{camera.camera}</b>
@@ -132,8 +161,8 @@ const BoardHeader = ({
                 taken for copying all of it again. */}
             {camera.skipped > 0 && (
               <span className='text-[11.5px] text-ink-3'>
-                {camera.copied > 0 ? `${camera.copied} new · ` : ''}
-                {camera.skipped} here already
+                {copied > 0 ? t`${copied} new · ` : ''}
+                {t`${skipped} here already`}
               </span>
             )}
           </span>
@@ -142,9 +171,9 @@ const BoardHeader = ({
             them and nothing watches them arrive, so this is how far along the last look was. */}
         {proxies.waiting > 0 && (
           <span
-            title={`${proxies.ready} of ${proxies.total} clips have their small copy. They are built in the background; the count catches up whenever the board is redrawn.`}
+            title={t`${ready} of ${total} clips have their small copy. They are built in the background; the count catches up whenever the board is redrawn.`}
             className='inline-flex items-center gap-1.5 rounded-full border border-line bg-pane px-2.5 py-[3px] font-mono text-[12px] text-ink-2 tabular-nums'>
-            proxies {proxies.ready}/{proxies.total}
+            {t`proxies ${ready}/${total}`}
           </span>
         )}
         {/* Who the storage was connected as, and where: the same question a NAS asks at its own
@@ -152,8 +181,10 @@ const BoardHeader = ({
         <span
           title={
             nas.connected
-              ? `Connected to ${nas.host ?? 'the storage'}${nas.user ? ` as ${nas.user}` : ''}`
-              : 'Not connected to the storage'
+              ? user
+                ? t`Connected to ${host} as ${user}`
+                : t`Connected to ${host}`
+              : t`Not connected to the storage`
           }
           className='inline-flex items-center gap-2 rounded-full border border-line bg-pane py-[3px] pr-1.5 pl-2 text-[12px]'>
           <span
@@ -165,7 +196,7 @@ const BoardHeader = ({
             <span className='max-w-[15rem] truncate'>
               {nas.user && <b className='font-semibold'>{nas.user}</b>}
               {nas.user && <span className='text-ink-3'>@</span>}
-              <span className='text-ink-2'>{shortHost(nas.host ?? 'the storage')}</span>
+              <span className='text-ink-2'>{shortHost(host)}</span>
             </span>
           )}
           {nas.links.map((link) => (
@@ -186,16 +217,22 @@ const BoardHeader = ({
           ))}
         </span>
         <Seg
-          label='How files are shown'
+          label={t`How files are shown`}
           value={view}
-          options={VIEWS}
+          options={said(VIEWS)}
           onPick={setFileView}
         />
         <Seg
-          label='Theme'
+          label={t`Theme`}
           value={theme}
-          options={THEMES}
+          options={said(THEMES)}
           onPick={setTheme}
+        />
+        <Seg
+          label={t`Language`}
+          value={language}
+          options={LANGUAGE_NAMES}
+          onPick={speakIn}
         />
       </span>
     </header>

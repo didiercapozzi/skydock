@@ -1,21 +1,30 @@
+import { i18n } from '@lingui/core'
+import type { MessageDescriptor } from '@lingui/core'
+import { msg, t } from '@lingui/core/macro'
 import type { SubmitFunction } from 'react-router'
 import { z } from 'zod'
 import { Form, FormField, GlobalErrors, useForm } from '../../../packages/ui/forms'
 import { Go, Mini } from './buttons'
 import { INPUT, Modal, Spacer } from './modal'
 
+/* a complaint said in the language the app speaks when it is made, not when this file loads */
+const saying = (message: MessageDescriptor) => ({ error: () => i18n._(message) })
+
 const connectionSchema = z.object({
   host: z
     .string()
-    .min(1, 'Hostname is required')
-    .url('Must be a valid URL (e.g. https://nas.local:5001)'),
-  user: z.string().min(1, 'Username is required').min(2, 'Username must be at least 2 characters'),
+    .min(1, saying(msg`Hostname is required`))
+    .url(saying(msg`Must be a valid URL (e.g. https://nas.local:5001)`)),
+  user: z
+    .string()
+    .min(1, saying(msg`Username is required`))
+    .min(2, saying(msg`Username must be at least 2 characters`)),
   password: z
     .string()
-    .min(1, 'Password is required')
-    .min(3, 'Password must be at least 3 characters'),
+    .min(1, saying(msg`Password is required`))
+    .min(3, saying(msg`Password must be at least 3 characters`)),
   /* asked for only once the storage says the account uses 2-step verification */
-  otp: z.union([z.literal(''), z.string().regex(/^\d{6}$/, 'The code is 6 digits')])
+  otp: z.union([z.literal(''), z.string().regex(/^\d{6}$/, saying(msg`The code is 6 digits`))])
 })
 
 /* the footer's Connect lives outside the form element, and this is how it still submits it */
@@ -52,8 +61,8 @@ const ConnectionDialog = ({ onConnect, onCancel, error, codeAsked }: ConnectionD
   return (
     <Modal
       data-connection-dialog='true'
-      label='Connect to the NAS'
-      title='Connect to NAS'
+      label={t`Connect to the NAS`}
+      title={t`Connect to NAS`}
       onClose={form.isSubmitting ? undefined : onCancel}
       footer={
         <>
@@ -61,13 +70,13 @@ const ConnectionDialog = ({ onConnect, onCancel, error, codeAsked }: ConnectionD
           <Mini
             disabled={form.isSubmitting}
             onClick={onCancel}>
-            Cancel
+            {t`Cancel`}
           </Mini>
           <Go
             type='submit'
             form={FORM_ID}
             disabled={form.isSubmitting}>
-            {form.isSubmitting ? 'Connecting…' : 'Connect'}
+            {form.isSubmitting ? t`Connecting…` : t`Connect`}
           </Go>
         </>
       }>
@@ -78,7 +87,7 @@ const ConnectionDialog = ({ onConnect, onCancel, error, codeAsked }: ConnectionD
         className='flex flex-col gap-2.5'>
         <FormField
           field={form.fields.host}
-          label='NAS Hostname'>
+          label={t`NAS Hostname`}>
           {(control) => (
             <input
               {...control}
@@ -90,7 +99,7 @@ const ConnectionDialog = ({ onConnect, onCancel, error, codeAsked }: ConnectionD
         </FormField>
         <FormField
           field={form.fields.user}
-          label='Username'>
+          label={t`Username`}>
           {(control) => (
             <input
               {...control}
@@ -102,7 +111,7 @@ const ConnectionDialog = ({ onConnect, onCancel, error, codeAsked }: ConnectionD
         </FormField>
         <FormField
           field={form.fields.password}
-          label='Password'>
+          label={t`Password`}>
           {(control) => (
             <input
               {...control}
@@ -117,7 +126,7 @@ const ConnectionDialog = ({ onConnect, onCancel, error, codeAsked }: ConnectionD
         {codeAsked && (
           <FormField
             field={form.fields.otp}
-            label='2-step verification code'>
+            label={t`2-step verification code`}>
             {(control) => (
               <>
                 <input

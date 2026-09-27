@@ -1,3 +1,4 @@
+import { plural, t } from '@lingui/core/macro'
 import {
   EDIT_LOCKED,
   freeablePlace,
@@ -19,7 +20,7 @@ import type { BoardDialog } from '../components/dialog-host'
 import { lockReason } from '../components/file-list'
 import type { Passenger } from '../components/montage-card'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
-import { plural, setOutputRoot, shortDate } from '../components/utils'
+import { setOutputRoot, shortDate } from '../components/utils'
 import { importFiles, tokenFor, whatIsComing } from '../helpers/import'
 import type { Coming, Dropped } from '../helpers/import'
 import { folderOnStorage } from '../helpers/jumps'
@@ -100,10 +101,14 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   /* a copy has nowhere to be sent back to — its original is wherever it already is — so it ends */
   const backLabel = (files: ManifestFile[]) =>
     files.every((f) => f.copyOf)
-      ? `Remove ${files.length === 1 ? 'this copy' : 'these copies'} (⌫)`
+      ? files.length === 1
+        ? t`Remove this copy (⌫)`
+        : t`Remove these copies (⌫)`
       : files.every(inUnsorted)
-        ? `Take out of ${files.length === 1 ? 'its jump' : 'their jumps'} (⌫)`
-        : 'Send back to Fresh files (⌫)'
+        ? files.length === 1
+          ? t`Take out of its jump (⌫)`
+          : t`Take out of their jumps (⌫)`
+        : t`Send back to Fresh files (⌫)`
 
   /* A montage is uploaded while the storage still holds what was sent, and not a moment longer —
      the record says what went up, the listing says whether it is still there. */
@@ -116,7 +121,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       : group
   /* whether the storage's list says this montage's link was sent */
   const emailedOn = (group: ManifestGroup) =>
-    board.storage?.montages.find((t) => t.folder === folderOnStorage(group))?.emailed ?? null
+    board.storage?.montages.find((m) => m.folder === folderOnStorage(group))?.emailed ?? null
   /* Where each montage has got to — one answer for its panel, its card and its entry in the menu,
      so the three can never disagree. */
   const progressOf = (group: ManifestGroup) =>
@@ -208,10 +213,11 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
      lost — they no longer match where the files are — so that alone is asked about first. */
   const deleteJump = (group: ManifestGroup) => {
     const copies = group.files.filter((f) => f.processed).length
+    const files = group.files.length
     if (
       copies > 0 &&
       !window.confirm(
-        `Delete this jump? Its ${plural(group.files.length, 'file')} stay, loose in Fresh files, with their crops — but ${copies} processed ${copies === 1 ? 'copy' : 'copies'} will be deleted and have to be processed again.`
+        t`Delete this jump? Its ${plural(files, { one: '# file', other: '# files' })} stay, loose in Fresh files, with their crops — but ${plural(copies, { one: '# processed copy', other: '# processed copies' })} will be deleted and have to be processed again.`
       )
     )
       return
@@ -228,7 +234,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
        still be copied: nothing about it changes. Only a freed one cannot, having no file here. */
     if (where.copy && where.targetGroupId) {
       const here = ids.filter((id) => !fileById(id)?.freed)
-      if (here.length === 0) setNote('Freed from this machine — there is no file here to copy.')
+      if (here.length === 0) setNote(t`Freed from this machine — there is no file here to copy.`)
       else if (frozen.has(where.targetGroupId)) setNote(EDIT_LOCKED)
       else send('copy', { intent: 'copy-files', fileIds: here, targetGroupId: where.targetGroupId })
       return
@@ -240,7 +246,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     })
     if (locked.length === ids.length) {
       setNote(
-        'On the storage already, so it cannot move — hold alt while dropping to copy it instead.'
+        t`On the storage already, so it cannot move — hold alt while dropping to copy it instead.`
       )
       return
     }
@@ -249,7 +255,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     if (free.length === 0 || (where.targetGroupId && frozen.has(where.targetGroupId))) {
       setNote(
         free.length === 0 && where.targetGroupId
-          ? `${EDIT_LOCKED} Hold alt while dropping to copy it into the other jump instead.`
+          ? `${EDIT_LOCKED} ${t`Hold alt while dropping to copy it into the other jump instead.`}`
           : EDIT_LOCKED
       )
       return
@@ -263,7 +269,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       ...(where.name ? { name: where.name } : {}),
       ...(where.startsAt !== undefined ? { anchorEpoch: where.startsAt } : {})
     })
-    if (free.length < ids.length) setNote(`${EDIT_LOCKED} Its files stayed where they were.`)
+    if (free.length < ids.length) setNote(`${EDIT_LOCKED} ${t`Its files stayed where they were.`}`)
     /* A montage whose every file has just gone back to Fresh files is no longer anywhere to be: the
        board follows the files there (RULES, Filing). */
     const toFresh = !where.destination && !where.targetGroupId
@@ -347,11 +353,11 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   const importDropped = async (list: Dropped[], target: string, where: string) => {
     if (list.length === 0) return
     board.setBusy('import')
-    setNote('Looking at what was dropped…')
+    setNote(t`Looking at what was dropped…`)
     const files = await whatIsComing(list)
     if (files.length === 0) {
       board.setBusy(null)
-      setNote('Nothing in that drop is a video or a photo SkyDock can show.')
+      setNote(t`Nothing in that drop is a video or a photo SkyDock can show.`)
       return
     }
     setNote(null)
@@ -426,13 +432,12 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   /* a montage with an edit takes nothing in: its project names its clips, and new ones are not */
   const editedMontage = (who: string) => {
     if (!groups.some((g) => frozen.has(g.id) && passengerOf(g) === who)) return false
-    setNote(`${who}’s montage has an edit — change it in kdenlive.`)
+    setNote(t`${who}’s montage has an edit — change it in kdenlive.`)
     return true
   }
   const madeNote = (who: string, joining: boolean, copied: boolean) => {
-    setNote(
-      `${joining ? `Joined ${who}’s montage` : `Made ${who}’s montage`}${copied ? ' — copied, the place keeps its own' : ''}`
-    )
+    const made = joining ? t`Joined ${who}’s montage` : t`Made ${who}’s montage`
+    setNote(copied ? `${made} — ${t`copied, the place keeps its own`}` : made)
     flash({ kind: 'pax', name: who })
     setGoingTo(who)
   }

@@ -1,3 +1,4 @@
+import { plural, t } from '@lingui/core/macro'
 import type { FileStatus, ProxyFact, StatusContext, MontageProgress } from '@skydock/scripts'
 import { dayLabel } from '../helpers/jumps'
 import { cardsOf } from '../helpers/sections'
@@ -7,7 +8,7 @@ import type { FileShape, Kind, Modifiers } from './file-list'
 import type { LiveFile } from '../hooks/useLiveProgress'
 import { StepMeter } from './montage-steps'
 import type { ManifestFile, ManifestGroup } from './types'
-import { dateLabel, getPictureUrl, hhmm, minFileMtime, plural } from './utils'
+import { dateLabel, getPictureUrl, hhmm, minFileMtime } from './utils'
 
 /* A folder's files. By day, under headers that stay pinned while their files scroll by; as one list,
    all together. By jump, the jumps are cards side by side and one is open, its files listed under
@@ -76,14 +77,15 @@ const progressTag = (files: ManifestFile[], statusOf: (file: ManifestFile) => Fi
   const local = files.filter((f) => statusOf(f) === 'local').length
   const processed = files.filter((f) => statusOf(f) === 'processed').length
   if (files.length === 0) return null
-  if (local > 0) return <Tag tone='local'>{`${local} to process`}</Tag>
-  if (processed > 0) return <Tag tone='proc'>{`${processed} to upload`}</Tag>
-  return <Tag tone='up'>uploaded</Tag>
+  if (local > 0) return <Tag tone='local'>{t`${local} to process`}</Tag>
+  if (processed > 0) return <Tag tone='proc'>{t`${processed} to upload`}</Tag>
+  return <Tag tone='up'>{t`uploaded`}</Tag>
 }
 
 const counts = (files: ManifestFile[]) => {
   const videos = files.filter((f) => kindOf(f) === 'video').length
-  return `${plural(videos, 'video')} · ${plural(files.length - videos, 'photo')}`
+  const photos = files.length - videos
+  return t`${plural(videos, { one: '# video', other: '# videos' })} · ${plural(photos, { one: '# photo', other: '# photos' })}`
 }
 
 const HEAD =
@@ -102,10 +104,10 @@ const DayHeader = ({
 }) => (
   <div className={`${HEAD} border-line bg-pane`}>
     <span className='text-[13px] font-semibold text-ink'>
-      {loose ? 'Loose files' : dayLabel(day)}
+      {loose ? t`Loose files` : dayLabel(day)}
     </span>
     <span className='text-[12px] text-ink-3'>
-      {loose ? `${day ? `${dayLabel(day)} · ` : ''}in no jump · ` : ''}
+      {loose ? `${day ? `${dayLabel(day)} · ` : ''}${t`in no jump`} · ` : ''}
       {counts(files)}
     </span>
     {progressTag(files, statusOf)}
@@ -142,7 +144,7 @@ const JumpCard = ({
   const frames = group?.freed
     ? []
     : [...section.files].sort((a, b) => a.mtime - b.mtime).slice(0, 4)
-  const label = section.kind === 'jump' ? section.label : 'Loose files'
+  const label = section.kind === 'jump' ? section.label : t`Loose files`
   const progress = group ? (jump.progress?.(group) ?? null) : null
   return (
     <div
@@ -173,8 +175,8 @@ const JumpCard = ({
       }}
       title={
         group && !frozen
-          ? 'Click to list its files · ⌘/ctrl-click a second jump to compare the two · drop files here to move them into it, holding alt to copy them instead · drag onto a folder to file the whole jump'
-          : 'Click to list its files'
+          ? t`Click to list its files · ⌘/ctrl-click a second jump to compare the two · drop files here to move them into it, holding alt to copy them instead · drag onto a folder to file the whole jump`
+          : t`Click to list its files`
       }
       /* the loose card is not a jump and must not pass for one: dashed, flat, on the page's own
          ground rather than raised on white */
@@ -192,12 +194,12 @@ const JumpCard = ({
       <span className='flex items-baseline gap-1.5'>
         <b className='min-w-0 flex-1 truncate text-[13.5px] text-ink'>{label}</b>
         {group?.freed ? (
-          <Tag tone='lock'>storage only</Tag>
+          <Tag tone='lock'>{t`storage only`}</Tag>
         ) : progress ? (
           /* a montage says the step it is at, which says more than its files' state */
-          <Tag tone={progress.next ? 'local' : 'up'}>{progress.next?.todo ?? 'done'}</Tag>
+          <Tag tone={progress.next ? 'local' : 'up'}>{progress.next?.todo ?? t`done`}</Tag>
         ) : frozen ? (
-          <Tag tone='lock'>🔒 edit</Tag>
+          <Tag tone='lock'>{t`🔒 edit`}</Tag>
         ) : (
           progressTag(section.files, statusOf)
         )}
@@ -206,9 +208,13 @@ const JumpCard = ({
       {/* a file off the gap rule is flagged where it is, and its jump says so from the outside */}
       {strays > 0 && (
         <span
-          title={`${plural(strays, 'file')} more than 15 minutes from the rest of this jump — the gap rule would not have put ${strays === 1 ? 'it' : 'them'} here`}
+          title={plural(strays, {
+            one: '# file more than 15 minutes from the rest of this jump — the gap rule would not have put it here',
+            other:
+              '# files more than 15 minutes from the rest of this jump — the gap rule would not have put them here'
+          })}
           className='self-start rounded border border-dashed border-changed bg-changed-soft px-1.5 font-mono text-[10px] leading-4 font-semibold text-changed'>
-          ⧗ {strays} off the gap
+          ⧗ {t`${strays} off the gap`}
         </span>
       )}
       {/* a jump says when it started; loose files have no one moment, and say what they are */}
@@ -217,7 +223,7 @@ const JumpCard = ({
           {dateLabel(from)} · {hhmm(from)}
         </span>
       ) : (
-        <span className='text-[11.5px] text-ink-2 italic'>in no jump</span>
+        <span className='text-[11.5px] text-ink-2 italic'>{t`in no jump`}</span>
       )}
       <span className='text-[11.5px] text-ink-3'>{counts(section.files)}</span>
       {frames.length > 0 && (
@@ -282,7 +288,7 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
           </div>
         )}
         <section
-          aria-label={open.kind === 'jump' ? open.label : 'Loose files'}
+          aria-label={open.kind === 'jump' ? open.label : t`Loose files`}
           className='mt-3 flex flex-col gap-2'>
           {open.kind === 'jump' && jump.actions?.(open.group) && (
             <div className='flex flex-wrap items-center gap-2'>{jump.actions(open.group)}</div>

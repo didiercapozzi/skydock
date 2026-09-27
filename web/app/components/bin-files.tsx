@@ -1,3 +1,4 @@
+import { plural, t } from '@lingui/core/macro'
 import { useEffect, useState } from 'react'
 import { binAnswerSchema } from '../../../packages/skydock-scripts/src/binEntry'
 import type { BinBatch, BinFile } from '../../../packages/skydock-scripts/src/binEntry'
@@ -5,18 +6,25 @@ import { isVideoFile } from '@skydock/scripts'
 import { routingEngine } from '../helpers/routing'
 import { Go } from './buttons'
 import { Spacer } from './modal'
-import { dateLabel, formatSize, getThumbUrl, hhmm, plural } from './utils'
+import { dateLabel, formatSize, getThumbUrl, hhmm } from './utils'
 
 /* What the bin holds (RULES, Putting files in the bin): every file put aside, by when and from
    where, to be looked through and brought back to Fresh files. Nothing is deleted from here — the
    bin is emptied by hand, from the machine's own folders, or not at all. */
 
-const fromWhere = (batch: BinBatch) =>
-  batch.from === 'fresh'
-    ? 'Put in the bin from Fresh files'
+const fromWhere = (batch: BinBatch) => {
+  const camera = batch.camera
+  return batch.from === 'fresh'
+    ? t`Put in the bin from Fresh files`
     : batch.from === 'camera'
-      ? `Deleted from the camera ${batch.camera ?? ''}`.trim()
+      ? camera
+        ? t`Deleted from the camera ${camera}`
+        : t`Deleted from the camera`
       : batch.folder
+}
+
+/* a file's box, read out */
+const pickLabel = (name: string) => t`Pick ${name}`
 
 const BinFiles = ({
   stamp,
@@ -48,10 +56,10 @@ const BinFiles = ({
         if (parsed.success) {
           setAnswered(parsed.data)
           setAsked(new Set())
-        } else setProblem('What is in the bin could not be read.')
+        } else setProblem(t`What is in the bin could not be read.`)
       })
       .catch(() => {
-        if (!cancelled) setProblem('What is in the bin could not be read.')
+        if (!cancelled) setProblem(t`What is in the bin could not be read.`)
       })
     return () => {
       cancelled = true
@@ -63,6 +71,8 @@ const BinFiles = ({
     .filter((batch) => batch.files.length > 0)
   const files = batches.flatMap((b) => b.files)
   const chosen = files.filter((f) => picked.has(f.path))
+  const count = files.length
+  const picks = chosen.length
   const toggle = (file: BinFile) => {
     const next = new Set(picked)
     if (next.has(file.path)) next.delete(file.path)
@@ -72,18 +82,19 @@ const BinFiles = ({
 
   return (
     <section
-      aria-label='In the bin'
+      aria-label={t`In the bin`}
       className='pt-3'>
       <div className='flex flex-wrap items-center gap-2 px-0.5 pb-1.5'>
         {answered && (
           <span className='text-[12px] text-ink-2'>
-            {plural(files.length, 'file')} · {formatSize(files.reduce((n, f) => n + f.size, 0))}
+            {plural(count, { one: '# file', other: '# files' })} ·{' '}
+            {formatSize(files.reduce((n, f) => n + f.size, 0))}
           </span>
         )}
         <Spacer />
         <Go
           disabled={chosen.length === 0 || bringing}
-          title='Back into the originals, under the day each was shot, and into Fresh files'
+          title={t`Back into the originals, under the day each was shot, and into Fresh files`}
           onClick={() => {
             const paths = chosen.map((f) => f.path)
             onBringBack(paths)
@@ -91,15 +102,15 @@ const BinFiles = ({
             setPicked(new Set())
           }}>
           {bringing
-            ? 'Bringing back…'
+            ? t`Bringing back…`
             : chosen.length > 0
-              ? `Bring ${plural(chosen.length, 'file')} back to Fresh files`
-              : 'Bring back to Fresh files'}
+              ? t`Bring ${plural(picks, { one: '# file', other: '# files' })} back to Fresh files`
+              : t`Bring back to Fresh files`}
         </Go>
       </div>
       {answered && (
         <p className='m-0 mb-2 rounded-r-md border-l-[3px] border-line bg-line-2 px-3 py-[9px] text-[12px] text-ink-2'>
-          SkyDock never empties the bin. To delete these files for good, remove them yourself from{' '}
+          {t`SkyDock never empties the bin. To delete these files for good, remove them yourself from`}{' '}
           <code className='font-mono break-all text-ink'>{answered.dir}</code>
         </p>
       )}
@@ -111,10 +122,10 @@ const BinFiles = ({
         </p>
       )}
       {answered === null && !problem ? (
-        <p className='m-0 px-0.5 text-[12.5px] text-ink-3'>Looking in the bin…</p>
+        <p className='m-0 px-0.5 text-[12.5px] text-ink-3'>{t`Looking in the bin…`}</p>
       ) : answered && batches.length === 0 ? (
         <p className='m-0 rounded-[9px] border border-dashed border-line px-3 py-4 text-center text-[12.5px] text-ink-3'>
-          The bin is empty.
+          {t`The bin is empty.`}
         </p>
       ) : (
         batches.map((batch) => (
@@ -130,7 +141,7 @@ const BinFiles = ({
                   <label className='flex h-[44px] w-full cursor-pointer items-center gap-2.5 rounded-md px-[7px] hover:bg-line-2'>
                     <input
                       type='checkbox'
-                      aria-label={`Pick ${file.name}`}
+                      aria-label={pickLabel(file.name)}
                       checked={picked.has(file.path)}
                       onChange={() => toggle(file)}
                     />

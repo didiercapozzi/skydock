@@ -19,6 +19,7 @@ import type { MontageEntry, MontageLost } from '@skydock/scripts'
 import { keepBackupAsPlace } from '../../../packages/skydock-scripts/src/destinations'
 import { diskSpace } from '../../../packages/skydock-scripts/src/diskSpace'
 import { lostOnStorage, readMontageIndex } from '../../../packages/skydock-scripts/src/montageIndex'
+import { t } from '@lingui/core/macro'
 import { Outlet } from 'react-router'
 import type { ShouldRevalidateFunctionArgs } from 'react-router'
 import { BoardHeader } from '../components/board-header'
@@ -173,9 +174,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   if (!board.hasManifest) {
     return (
       <main className='mx-auto max-w-5xl p-6'>
-        <h1 className='text-[15px] font-bold tracking-[-0.02em]'>Nothing here yet</h1>
+        <h1 className='text-[15px] font-bold tracking-[-0.02em]'>{t`Nothing here yet`}</h1>
         <p className='mt-2 text-[12.5px] text-ink-2'>
-          Copy the cameras into the output folder, then scan to find the jumps.
+          {t`Copy the cameras into the output folder, then scan to find the jumps.`}
         </p>
         {note && <Callout tone='warn'>{note}</Callout>}
         <button
@@ -183,33 +184,34 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           disabled={board.scanning}
           onClick={board.scan}
           className='mt-4 rounded-md border border-accent bg-accent px-[11px] py-[5px] text-[12.5px] font-medium text-white disabled:opacity-40'>
-          {board.scanning ? 'Scanning…' : 'Scan'}
+          {board.scanning ? t`Scanning…` : t`Scan`}
         </button>
       </main>
     )
   }
 
   /* Only what is about the storage as a whole. Which folder is whose is said where it matters. */
+  const checkedAt = nas.remoteCheckedAt ? formatTime(nas.remoteCheckedAt) : null
   const nasLinks: NasLink[] = nas.connected
     ? [
         {
-          label: nas.checking ? 'Checking the storage…' : 'Check the storage again',
+          label: nas.checking ? t`Checking the storage…` : t`Check the storage again`,
           mark: '⟳',
-          title: `Ask the NAS what it holds now — a file deleted there stops reading as uploaded.${
-            nas.remoteCheckedAt ? ` Last checked ${formatTime(nas.remoteCheckedAt)}.` : ''
-          }`,
+          title: checkedAt
+            ? `${t`Ask the NAS what it holds now — a file deleted there stops reading as uploaded.`} ${t`Last checked ${checkedAt}.`}`
+            : t`Ask the NAS what it holds now — a file deleted there stops reading as uploaded.`,
           disabled: nas.checking,
           onClick: nas.checkRemote
         },
         {
-          label: 'Disconnect the storage',
+          label: t`Disconnect the storage`,
           mark: '⏻',
           /* asked first: it is a mark the size of a full stop, and the way back in wants a password
              and a code off somebody's phone */
           onClick: () => setDialog({ kind: 'disconnect' })
         }
       ]
-    : [{ label: 'Connect the NAS', onClick: model.openConnect }]
+    : [{ label: t`Connect the NAS`, onClick: model.openConnect }]
 
   /* a dialog that ends in a change closes, then asks for it */
   const closeThen = (then: () => void) => {
@@ -233,7 +235,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       onDrop={(e) => {
         e.preventDefault()
         if (!fromComputer(e)) return
-        setNote('Drop a clip on a place, a montage or a jump to add it.')
+        setNote(t`Drop a clip on a place, a montage or a jump to add it.`)
       }}
       className='flex h-screen flex-col'>
       <BoardHeader
@@ -325,15 +327,15 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           folder: loaderData.outputDir,
           /* the folder is not left while something is being written into it */
           working: board.uploading
-            ? 'An upload is running'
+            ? t`An upload is running`
             : board.cameraCopy
-              ? 'A camera is being copied'
+              ? t`A camera is being copied`
               : model.coming
-                ? 'Files are being copied in'
+                ? t`Files are being copied in`
                 : board.scanning
-                  ? 'A scan is running'
+                  ? t`A scan is running`
                   : board.busy
-                    ? 'The board is busy'
+                    ? t`The board is busy`
                     : null
         }}
         onTrash={(files) =>

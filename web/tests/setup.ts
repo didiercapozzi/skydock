@@ -1,5 +1,7 @@
 import { vi } from 'vitest'
 import '../app/app.css'
+/* every sentence is read in English here, as the tests are written */
+import '../app/i18n'
 
 if (typeof window !== 'undefined') {
   ;(window as unknown as Record<string, unknown>).__vite_plugin_react_preamble_installed__ = true

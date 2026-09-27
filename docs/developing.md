@@ -365,3 +365,19 @@ The packaged desktop build has none of this, since there is only one user in it.
 npm run format && npm run check   # typecheck, formatting, lint
 npm test                          # every suite: the pipeline, the server routes, the board
 ```
+
+## Translating
+
+SkyDock speaks English, French and German with [Lingui](https://lingui.dev). A sentence is written in
+English where it stands, with Lingui's core macros — `` t`…` `` for a sentence, `plural(n, { one, other })`
+for one that counts, `msg` for one kept in a constant and said later with `i18n._()` — and never with
+JSX `<Trans>`, which would need a provider around every test. Then:
+
+```sh
+npm run i18n:extract -w web   # gathers every sentence into web/app/locales/{en,fr,de}/messages.po
+```
+
+and the new `msgstr` lines of `fr` and `de` are filled in, in Poedit or by hand. The catalogs are
+compiled as they are imported, so there is no compile step; `web/tests/server/languages.test.ts`
+fails while any sentence has no French or German. Names a translator needs to read are given to the
+placeholders (`` t`${copied} new` ``, not `` t`${camera.copied} new` ``).

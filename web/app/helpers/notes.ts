@@ -1,5 +1,6 @@
 import type { ImportOutcome, MontageNote, ScanResult } from '@skydock/scripts'
-import { formatFilmSize, localeDate, plural } from '../components/utils'
+import { plural, t } from '@lingui/core/macro'
+import { formatFilmSize, localeDate } from '../components/utils'
 
 /* What the board says in its one line after a change, in the board's words. */
 
@@ -15,52 +16,79 @@ const montageNote = ({
 }: MontageNote) => {
   /* naming the command is what turns "nothing happened" into something that can be looked into:
      it is the one part of this the board knows and the person at the screen cannot see */
-  const with_ = openCommand ? ` with ${openCommand}` : ''
+  const command = openCommand
   /* nothing put in the bin is a project being opened again, not one being made */
-  if (clips === 0 && photos === 0 && opened) return `Opening it${with_}…`
-  const made = `Montage ready — ${clips > 0 ? plural(clips, 'clip') : plural(photos, 'photo')} in the bin`
+  if (clips === 0 && photos === 0 && opened)
+    return command ? t`Opening it with ${command}…` : t`Opening it…`
+  const made =
+    clips > 0
+      ? t`Montage ready — ${plural(clips, { one: '# clip', other: '# clips' })} in the bin`
+      : t`Montage ready — ${plural(photos, { one: '# photo', other: '# photos' })} in the bin`
+  const missing = missingAssets.length
+  const names = missingAssets.join(', ')
   const holes =
-    missingAssets.length === 0
+    missing === 0
       ? ''
-      : `, but the template is missing ${plural(missingAssets.length, 'file')}: ${missingAssets.join(', ')}`
+      : t`, but the template is missing ${plural(missing, { one: '# file', other: '# files' })}: ${names}`
   /* whether the editor came up is part of what just happened, not a separate thing to go and check */
-  const editor = opened ? ` · opening it${with_}` : openReason ? ` · ${openReason}` : ''
+  const editor = opened
+    ? command
+      ? ` · ${t`opening it with ${command}`}`
+      : ` · ${t`opening it`}`
+    : openReason
+      ? ` · ${openReason}`
+      : ''
   return `${made}${holes}${editor}`
 }
 
 /* what a drop from the computer came to, in one line */
-const importNote = ({ added, moved, there, kept, failed, where }: ImportOutcome) =>
-  [
-    /* named when it is one file, which is what a drop usually is */
-    added.length === 1
-      ? `${added[0]} has been added to ${where}`
-      : added.length > 1
-        ? `${plural(added.length, 'file')} have been added to ${where}`
-        : null,
-    /* already on the board: moved here, the way a drag on the board would have */
-    moved.length === 1
-      ? `Moved ${moved[0]!.name} from ${moved[0]!.from} to ${where}`
-      : moved.length > 1
-        ? `Moved ${moved.length} files already on the board to ${where}`
-        : null,
-    there > 0 ? `${there} already in ${where}` : null,
-    /* nothing to do and a reason, which reads as itself rather than as a failure */
-    kept.length > 0 ? kept.join('; ') : null,
-    failed.length > 0 ? `not added — ${failed.join('; ')}` : null
-  ]
-    .filter(Boolean)
-    .join(' · ') || 'Nothing was added'
+const importNote = ({ added, moved, there, kept, failed, where }: ImportOutcome) => {
+  const file = added[0]
+  const addedCount = added.length
+  const { name, from } = moved[0] ?? { name: '', from: '' }
+  const movedCount = moved.length
+  const reasons = failed.join('; ')
+  return (
+    [
+      /* named when it is one file, which is what a drop usually is */
+      addedCount === 1
+        ? t`${file} has been added to ${where}`
+        : addedCount > 1
+          ? t`${plural(addedCount, { one: '# file', other: '# files' })} have been added to ${where}`
+          : null,
+      /* already on the board: moved here, the way a drag on the board would have */
+      movedCount === 1
+        ? t`Moved ${name} from ${from} to ${where}`
+        : movedCount > 1
+          ? t`Moved ${movedCount} files already on the board to ${where}`
+          : null,
+      there > 0 ? t`${there} already in ${where}` : null,
+      /* nothing to do and a reason, which reads as itself rather than as a failure */
+      kept.length > 0 ? kept.join('; ') : null,
+      failed.length > 0 ? t`not added — ${reasons}` : null
+    ]
+      .filter(Boolean)
+      .join(' · ') || t`Nothing was added`
+  )
+}
 
-const scanNote = (scan: ScanResult) =>
-  scan.unchanged
-    ? `Scan: nothing new — ${scan.fileCount} files in ${scan.groupCount} jumps`
-    : `Scan: +${scan.added} new, −${scan.removed} gone, ${scan.moved} moved — ${scan.fileCount} files in ${scan.groupCount} jumps`
+const scanNote = (scan: ScanResult) => {
+  const { fileCount, groupCount, added, removed, moved } = scan
+  return scan.unchanged
+    ? t`Scan: nothing new — ${fileCount} files in ${groupCount} jumps`
+    : t`Scan: +${added} new, −${removed} gone, ${moved} moved — ${fileCount} files in ${groupCount} jumps`
+}
 
-const uploadedNote = (uploaded: number, skipped?: number) =>
-  `Uploaded ${plural(uploaded, 'file')}${skipped ? ` · ${skipped} already on the NAS` : ''}`
+const uploadedNote = (uploaded: number, skipped?: number) => {
+  const done = t`Uploaded ${plural(uploaded, { one: '# file', other: '# files' })}`
+  return skipped ? `${done} · ${t`${skipped} already on the NAS`}` : done
+}
 
-const freedNote = ({ files, bytes }: { files: number; bytes: number }) =>
-  `On the storage only. ${plural(files, 'file')} freed from this machine on ${localeDate(Date.now() / 1000)} — ${formatFilmSize(bytes)} given back. The project is kept here; everything else is on the storage, as above.`
+const freedNote = ({ files, bytes }: { files: number; bytes: number }) => {
+  const day = localeDate(Date.now() / 1000)
+  const size = formatFilmSize(bytes)
+  return t`On the storage only. ${plural(files, { one: '# file', other: '# files' })} freed from this machine on ${day} — ${size} given back. The project is kept here; everything else is on the storage, as above.`
+}
 
 const freedPlaceNote = ({
   place,
@@ -72,8 +100,15 @@ const freedPlaceNote = ({
   files: number
   bytes: number
   kept: number
-}) =>
-  `${place}: ${plural(files, 'file')} freed from this machine — ${formatFilmSize(bytes)} given back. They are on the storage only now, listed below.${kept > 0 ? ` ${kept} not all uploaded yet ${kept === 1 ? 'stays' : 'stay'} here.` : ''}`
+}) => {
+  const size = formatFilmSize(bytes)
+  const freed = t`${place}: ${plural(files, { one: '# file', other: '# files' })} freed from this machine — ${size} given back. They are on the storage only now, listed below.`
+  const stays = plural(kept, {
+    one: '# not all uploaded yet stays here.',
+    other: '# not all uploaded yet stay here.'
+  })
+  return kept > 0 ? `${freed} ${stays}` : freed
+}
 
 /* what came off a camera plugged in, in one line */
 const cameraNote = ({
@@ -89,14 +124,17 @@ const cameraNote = ({
   skipped: number
   reason?: string
 }) => {
-  const tally = `${plural(copied, 'new file')} copied${skipped > 0 ? ` · ${skipped} already here` : ''}`
+  const newCopied = t`${plural(copied, { one: '# new file', other: '# new files' })} copied`
+  const tally = skipped > 0 ? `${newCopied} · ${t`${skipped} already here`}` : newCopied
   if (state === 'gone')
-    return `${camera} was unplugged during the copy — ${tally}; plug it in again for the rest`
-  if (state === 'failed')
-    return `Copying ${camera} stopped: ${reason ?? 'unknown reason'} — ${tally}`
+    return t`${camera} was unplugged during the copy — ${tally}; plug it in again for the rest`
+  const why = reason ?? t`unknown reason`
+  if (state === 'failed') return t`Copying ${camera} stopped: ${why} — ${tally}`
   return copied > 0
-    ? `Camera ${camera}: ${tally}, and scanned`
-    : `Camera ${camera}: nothing new${skipped > 0 ? ` — all ${skipped} files already here` : ''}`
+    ? t`Camera ${camera}: ${tally}, and scanned`
+    : skipped > 0
+      ? t`Camera ${camera}: nothing new — all ${skipped} files already here`
+      : t`Camera ${camera}: nothing new`
 }
 
 const resetNote = ({
@@ -109,27 +147,31 @@ const resetNote = ({
   what: 'times' | 'everything'
 }) =>
   what === 'times'
-    ? `Times reset — ${plural(files, 'file')} back on the camera’s time; jumps, names and trims kept`
-    : `Fresh files reset — ${plural(files, 'file')} back as scanned, in ${plural(jumps, 'jump')}`
+    ? t`Times reset — ${plural(files, { one: '# file', other: '# files' })} back on the camera’s time; jumps, names and trims kept`
+    : t`Fresh files reset — ${plural(files, { one: '# file', other: '# files' })} back as scanned, in ${plural(jumps, { one: '# jump', other: '# jumps' })}`
 
 /* files copied into another jump, which is then to be processed again */
-const copiedNote = ({ files, passedOver }: { files: number; passedOver: number }) =>
-  `Copied ${plural(files, 'file')} into the jump — ${files === 1 ? 'it stays' : 'they stay'} where ${
-    files === 1 ? 'it was' : 'they were'
-  } as well${passedOver > 0 ? ` · ${passedOver} already there` : ''}`
+const copiedNote = ({ files, passedOver }: { files: number; passedOver: number }) => {
+  const done = plural(files, {
+    one: 'Copied # file into the jump — it stays where it was as well',
+    other: 'Copied # files into the jump — they stay where they were as well'
+  })
+  return passedOver > 0 ? `${done} · ${t`${passedOver} already there`}` : done
+}
 
 /* montages put back from the storage's list, and what is left to do about them */
 const restoredNote = (restored: { who: string; files: number; of: number }[]) => {
   const partly = restored.filter((r) => r.files < r.of)
-  const who =
-    restored.length === 1 ? `${restored[0]!.who}’s montage` : `${restored.length} montages`
-  return `Restored ${who} from the storage’s list — named again, at the times they had; process ${
-    restored.length === 1 ? 'it' : 'them'
-  } to carry on${
-    partly.length > 0
-      ? ` · ${partly.map((r) => `${r.who}: ${r.files} of ${r.of} files found here`).join('; ')}`
-      : ''
-  }`
+  const person = restored[0]?.who ?? ''
+  const count = restored.length
+  const done =
+    count === 1
+      ? t`Restored ${person}’s montage from the storage’s list — named again, at the times they had; process it to carry on`
+      : t`Restored ${count} montages from the storage’s list — named again, at the times they had; process them to carry on`
+  const found = partly
+    .map(({ who, files, of }) => t`${who}: ${files} of ${of} files found here`)
+    .join('; ')
+  return partly.length > 0 ? `${done} · ${found}` : done
 }
 
 /* Files asked back off a camera: they are here again, and they are where they always were — the
@@ -137,29 +179,36 @@ const restoredNote = (restored: { who: string; files: number; of: number }[]) =>
    the freeing, so they are files to prepare again. */
 const copiedBackNote = ({ copied, skipped }: { copied: number; skipped: number }) =>
   copied === 0
-    ? 'Nothing was copied back — every file asked for is already here.'
-    : `${plural(copied, 'file')} copied back off the camera${
-        skipped > 0 ? `, ${skipped} already here` : ''
-      } — ready to prepare again.`
+    ? t`Nothing was copied back — every file asked for is already here.`
+    : skipped > 0
+      ? t`${plural(copied, { one: '# file', other: '# files' })} copied back off the camera, ${skipped} already here — ready to prepare again.`
+      : t`${plural(copied, { one: '# file', other: '# files' })} copied back off the camera — ready to prepare again.`
 
 /* What came back off the storage, and what it is: a montage's originals go up as themselves, a
    dropzone's never do — so what returns from a dropzone is the copy that was delivered, already
    trimmed and cropped, and the board says so rather than letting somebody find out later. */
 const broughtBackNote = ({ filename, original }: { filename: string; original: boolean }) =>
   original
-    ? `${filename} is back on this machine, as it was shot.`
-    : `${filename} is back — the copy that was delivered, already cut, so its trim is cleared. Prepare it again from here.`
+    ? t`${filename} is back on this machine, as it was shot.`
+    : t`${filename} is back — the copy that was delivered, already cut, so its trim is cleared. Prepare it again from here.`
 
 /* What came back out of the bin, and what stayed there because the board already has it. */
-const fromBinNote = ({ back, kept }: { back: number; kept: string[] }) =>
-  [
-    back > 0 ? `${plural(back, 'file')} back in Fresh files, out of the bin.` : null,
+const fromBinNote = ({ back, kept }: { back: number; kept: string[] }) => {
+  const names = kept.join(', ')
+  return [
+    back > 0
+      ? t`${plural(back, { one: '# file', other: '# files' })} back in Fresh files, out of the bin.`
+      : null,
     kept.length > 0
-      ? `${kept.join(', ')} ${kept.length === 1 ? 'is' : 'are'} on the board already, and stayed in the bin.`
+      ? plural(kept.length, {
+          one: `${names} is on the board already, and stayed in the bin.`,
+          other: `${names} are on the board already, and stayed in the bin.`
+        })
       : null
   ]
     .filter(Boolean)
     .join(' ')
+}
 
 export {
   broughtBackNote,

@@ -1,3 +1,5 @@
+import { i18n } from '@lingui/core'
+import { msg, t } from '@lingui/core/macro'
 import type { SubmitFunction } from 'react-router'
 import { z } from 'zod'
 import { Form, FormField, useForm } from '../../../packages/ui/forms'
@@ -8,10 +10,13 @@ import { INPUT } from './modal'
 /* Blank is an answer too: a jump nobody named is called by its place among the jumps, as every jump the
    scan finds is. */
 const jumpFormSchema = z.object({
-  name: z.string().trim().max(60, 'Keep it under 60 characters'),
-  starts: z
+  name: z
     .string()
-    .refine((value) => value === '' || fromLocalInput(value) !== null, 'Set a date and a time')
+    .trim()
+    .max(60, { error: () => i18n._(msg`Keep it under 60 characters`) }),
+  starts: z.string().refine((value) => value === '' || fromLocalInput(value) !== null, {
+    error: () => i18n._(msg`Set a date and a time`)
+  })
 })
 
 /* What a jump is called, and — while it is being made — when it started. Both at once, because files
@@ -57,8 +62,8 @@ const JumpForm = ({
       {named && (
         <FormField
           field={form.fields.name}
-          label='Name'
-          description='Leave it empty to call it by its place among the jumps'>
+          label={t`Name`}
+          description={t`Leave it empty to call it by its place among the jumps`}>
           {(control) => (
             <input
               {...control}
@@ -72,8 +77,8 @@ const JumpForm = ({
       {startsAt !== undefined && (
         <FormField
           field={form.fields.starts}
-          label='Started'
-          description='Every file moves with it, keeping the gaps between them'>
+          label={t`Started`}
+          description={t`Every file moves with it, keeping the gaps between them`}>
           {(control) => (
             <input
               {...control}
@@ -86,7 +91,7 @@ const JumpForm = ({
       )}
       <span className='flex gap-1.5'>
         <Go type='submit'>{submitLabel}</Go>
-        <Mini onClick={onCancel}>Cancel</Mini>
+        <Mini onClick={onCancel}>{t`Cancel`}</Mini>
       </span>
     </Form>
   )

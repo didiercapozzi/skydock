@@ -1,3 +1,4 @@
+import { t } from '@lingui/core/macro'
 import type { Coming } from '../helpers/import'
 import { ProgressPanel } from './progress-panel'
 import { formatSize } from './utils'
@@ -32,13 +33,14 @@ const ImportPanel = ({
   /* the whole drop, counting the file under way for as much of itself as has landed — so one long
      clip on its own is a bar that moves rather than a bar that waits */
   const through = total > 0 ? Math.min(1, (done + part) / total) : 0
+  const size = formatSize(bytes)
   return (
     <ProgressPanel
-      label={`Adding ${total} to ${where}`}
-      title={`Adding to ${where}`}
-      barLabel={`Copied into ${where}`}
-      doing='Copying'
-      barTitle={`${done} of ${total} copied into the originals — ${formatSize(bytes)} in all`}
+      label={t`Adding ${total} to ${where}`}
+      title={t`Adding to ${where}`}
+      barLabel={t`Copied into ${where}`}
+      doing={t`Copying`}
+      barTitle={t`${done} of ${total} copied into the originals — ${size} in all`}
       through={through}
       rows={files.map((file, at) => ({
         key: file.what instanceof File ? `${file.name}:${at}` : file.what,
@@ -46,12 +48,12 @@ const ImportPanel = ({
         size: file.size,
         at: at < done ? 'done' : at === done ? 'now' : 'later',
         part: at === done ? part : undefined,
-        note: at === done && reading ? 'reading it…' : undefined
+        note: at === done && reading ? t`reading it…` : undefined
       }))}
       footer={
         failed > 0 ? (
           <span className='text-local'>
-            {failed} could not be added — the board will say why when the drop is done.
+            {t`${failed} could not be added — the board will say why when the drop is done.`}
           </span>
         ) : undefined
       }
