@@ -232,7 +232,10 @@ const UploadDialog = ({
   const zipItems = items.filter((item) => item.zip)
   const looseItems = items.filter((item) => !item.zip)
   const placed = Object.keys(plan.placed).length > 0 ? plan.placed : suggested(items, places)
-  const placesOf = (key: string) => placed[key] ?? []
+  /* where an item goes, among the destinations there are now: one remembered from an earlier
+     montage that has since been removed or renamed is no place to send anything, and is left out */
+  const placesOf = (key: string) =>
+    (placed[key] ?? []).filter((name) => places.some((p) => p.name === name))
   const inRoot = plan.inRoot ?? []
   const leave = (key: string) => setOver((current) => (current === key ? null : current))
 

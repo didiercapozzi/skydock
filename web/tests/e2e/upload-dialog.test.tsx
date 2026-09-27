@@ -266,6 +266,27 @@ describe('uploading a montage — where it goes', () => {
       .not.toBeInTheDocument()
   })
 
+  /* a plan remembered from an earlier montage can name a destination that has since gone */
+  test('leaves out a remembered destination that no longer exists', async () => {
+    setSendPlan({ ...DEFAULT_PLAN, placed: { film: ['Passengers', 'Gone'], 'zip:full': ['Gone'] } })
+    requests.length = 0
+    await renderBoard()
+    await next()
+
+    await expect.element(dialog().getByRole('button', { name: 'Upload', exact: true })).toBeEnabled()
+    await userEvent.click(dialog().getByRole('button', { name: 'Upload', exact: true }))
+    await vi.waitFor(() =>
+      expect(requests).toContainEqual(
+        expect.objectContaining({
+          intent: 'upload-montage',
+          plan: expect.objectContaining({
+            placed: expect.objectContaining({ film: ['Passengers'], 'zip:full': [] })
+          })
+        })
+      )
+    )
+  })
+
   test('sends the upload, as it was arranged, only from its own button', async () => {
     setSendPlan(PLACED)
     requests.length = 0

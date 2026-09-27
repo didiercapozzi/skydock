@@ -1107,7 +1107,8 @@ machine, and the dialog says so, except a part that goes up inside a zip. A dest
 folder on the storage has its folder chosen from there.
 
 What was made is **remembered on this machine**: the next montage opens with the same zips, each item
-where it went last time, and each destination straight in its folder or not. The very first time,
+where it went last time, and each destination straight in its folder or not. A destination remembered
+that has since been removed or renamed is simply left out. The very first time,
 the zips go to a destination called Backup when there is one, and nothing else is put anywhere:
 where the film and the photos go is the club's to choose. The project folder is
 this montage's own.
