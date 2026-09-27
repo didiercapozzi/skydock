@@ -2808,6 +2808,10 @@ msgid "Show {more} more"
 msgstr "Show {more} more"
 
 #: app/components/file-list.tsx
+msgid "Show all {total}"
+msgstr "Show all {total}"
+
+#: app/components/file-list.tsx
 msgid "Show everything"
 msgstr "Show everything"
 
@@ -3264,6 +3268,14 @@ msgstr "This jump runs from {start} to {end}"
 #: app/components/disconnect-dialog.tsx
 msgid "this machine forgets the connection"
 msgstr "this machine forgets the connection"
+
+#: app/components/board-header.tsx
+msgid "Thumbnail size"
+msgstr "Thumbnail size"
+
+#: app/components/board-header.tsx
+msgid "Thumbnail size — or Ctrl/⌘ and the mouse wheel over the thumbnails"
+msgstr "Thumbnail size — or Ctrl/⌘ and the mouse wheel over the thumbnails"
 
 #: app/components/board-header.tsx
 msgid "Thumbnails"

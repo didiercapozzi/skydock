@@ -472,7 +472,11 @@ because the jump itself changed.
 state — or as a grid of thumbnails, whichever was chosen last, for the whole board, until the window
 is closed. Once a copy exists, the name shown is the copy's name, the one that is handed over, with the
 camera's name kept beside it. A clip shorter than the moment its thumbnail is taken at shows its first
-frame. Long lists are drawn a page at a time. Every day and every jump says how many videos and photos
+frame. Long lists are drawn a page at a time — forty rows or a hundred and twenty thumbnails — with the
+next page, or all the rest at once, a press away. Thumbnails can be drawn smaller or bigger, from a
+wall of small ones to see a whole card at once to large ones to tell two near-identical shots apart:
+with a slider in the header while thumbnails are shown, or with Ctrl or ⌘ and the mouse wheel over
+them; the size is remembered on this machine, and a bigger thumbnail asks for a sharper picture. Every day and every jump says how many videos and photos
 it holds. The pane's heading carries badges for the place — how many videos and photos — that show one
 kind, the other, or all, the choice holding across the board; all is both side by side, videos in one
 column and photos in the other, stacked on a narrow screen. A badge for a kind with nothing in it is

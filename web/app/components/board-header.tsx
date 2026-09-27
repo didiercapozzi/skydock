@@ -5,6 +5,7 @@ import { keepLanguage, spokenNow } from '../helpers/language'
 import type { Language } from '../helpers/language'
 import { Seg } from './buttons'
 import { setFileView, useFileView } from '../hooks/useFileView'
+import { setTileSize, TILE_SIZE, useTileSize } from '../hooks/useTileSize'
 import { setTheme, useTheme } from '../hooks/useTheme'
 import { formatSize } from './utils'
 
@@ -73,6 +74,7 @@ const BoardHeader = ({
   nas: { connected: boolean; host: string | null; user: string | null; links: NasLink[] }
 }) => {
   const view = useFileView()
+  const tileSize = useTileSize()
   const theme = useTheme()
   const language = spokenNow()
   /* named, so a translator reads what each one is */
@@ -222,6 +224,26 @@ const BoardHeader = ({
           options={said(VIEWS)}
           onPick={setFileView}
         />
+        {/* how big the thumbnails are, while they are what is shown — Ctrl or ⌘ with the wheel over
+            them does the same */}
+        {view === 'grid' && (
+          <label
+            title={t`Thumbnail size — or Ctrl/⌘ and the mouse wheel over the thumbnails`}
+            className='inline-flex items-center gap-1.5 text-[12px] text-ink-3'>
+            <span aria-hidden='true'>▫</span>
+            <input
+              type='range'
+              aria-label={t`Thumbnail size`}
+              min={TILE_SIZE.min}
+              max={TILE_SIZE.max}
+              step={TILE_SIZE.step}
+              value={tileSize}
+              onChange={(e) => setTileSize(Number(e.target.value))}
+              className='w-24 accent-accent'
+            />
+            <span aria-hidden='true'>◻</span>
+          </label>
+        )}
         <Seg
           label={t`Theme`}
           value={theme}

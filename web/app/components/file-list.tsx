@@ -10,6 +10,7 @@ import {
 } from '@skydock/scripts'
 import type { ProxyFact, StatusContext } from '@skydock/scripts'
 import { useState } from 'react'
+import { pictureWidthFor, stepTileSize, useTileSize } from '../hooks/useTileSize'
 import { StatusChip } from './file-status'
 import type { ShownStatus } from './file-status'
 import type { LiveFile } from '../hooks/useLiveProgress'
@@ -476,6 +477,7 @@ const Tile = ({
   selecting,
   previewed,
   offGap: strayed,
+  picture,
   onFile,
   onPick,
   onOpen,
@@ -486,6 +488,8 @@ const Tile = ({
   picked: boolean
   locked: string | null
   status: ReturnType<typeof fileStatus>
+  /* how wide a picture to ask for, from how big the thumbnails are drawn */
+  picture: number
   proxy?: ProxyFact
   live?: LiveFile
   selecting: boolean
@@ -526,7 +530,7 @@ const Tile = ({
     {/* a freed file is on the storage only: nothing here to draw it from */}
     {!file.freed && (
       <img
-        src={getPictureUrl(file, proxy, 160)}
+        src={getPictureUrl(file, proxy, picture)}
         alt=''
         loading='lazy'
         style={turnedThumb(file.rotation)}
@@ -652,6 +656,19 @@ const KindBadges = ({
   )
 }
 
+/* Ctrl or ⌘ with the wheel over the thumbnails draws them bigger or smaller. A listener of the page's
+   own, since only one that is not passive can keep the wheel from zooming the whole window instead. */
+const zoomWithWheel = (grid: HTMLDivElement | null) => {
+  if (!grid) return
+  const onWheel = (e: WheelEvent) => {
+    if (!e.ctrlKey && !e.metaKey) return
+    e.preventDefault()
+    stepTileSize(e.deltaY < 0 ? 1 : -1)
+  }
+  grid.addEventListener('wheel', onWheel, { passive: false })
+  return () => grid.removeEventListener('wheel', onWheel)
+}
+
 /* one run of files, already in order: the list itself, a page at a time */
 const Lane = ({
   lane,
@@ -670,6 +687,7 @@ const Lane = ({
   live
 }: Omit<Props, 'files' | 'kind' | 'sortKey'> & { lane: ManifestFile[] }) => {
   const [shown, setShown] = useState(PAGE[shape])
+  const tileSize = useTileSize()
   if (lane.length === 0) {
     return <p className='px-[7px] py-1 text-[12px] text-ink-3'>{t`Nothing here.`}</p>
   }
@@ -680,10 +698,12 @@ const Lane = ({
   return (
     <>
       <div
-        className={
-          shape === 'rows'
-            ? 'flex flex-col gap-px'
-            : 'grid grid-cols-[repeat(auto-fill,minmax(84px,1fr))] gap-1.5'
+        ref={shape === 'grid' ? zoomWithWheel : undefined}
+        className={shape === 'rows' ? 'flex flex-col gap-px' : 'grid gap-1.5'}
+        style={
+          shape === 'grid'
+            ? { gridTemplateColumns: `repeat(auto-fill, minmax(${tileSize}px, 1fr))` }
+            : undefined
         }>
         {drawn.map((file) => {
           const context = statusContext(file)
@@ -719,6 +739,7 @@ const Lane = ({
               selecting={selecting}
               previewed={Boolean(file.id && file.id === previewed)}
               offGap={Boolean(file.id && offGap.has(file.id))}
+              picture={pictureWidthFor(tileSize)}
               onFile={onFile}
               onPick={onPick}
               onOpen={onOpen}
@@ -738,6 +759,15 @@ const Lane = ({
               onClick={() => setShown(page + PAGE[shape])}
               className='rounded-[5px] border border-line bg-pane px-2 py-[3px] text-[11.5px] text-ink-2 hover:border-ink-3 hover:text-ink'>
               {t`Show ${more} more`}
+            </button>
+          )}
+          {/* the rest in one go, for when looking through all of it is the point */}
+          {lane.length - page > PAGE[shape] && (
+            <button
+              type='button'
+              onClick={() => setShown(lane.length)}
+              className='rounded-[5px] border border-line bg-pane px-2 py-[3px] text-[11.5px] text-ink-2 hover:border-ink-3 hover:text-ink'>
+              {t`Show all ${total}`}
             </button>
           )}
           {page > PAGE[shape] && (
