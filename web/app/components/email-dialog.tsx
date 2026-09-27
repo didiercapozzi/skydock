@@ -1,10 +1,13 @@
 import {
+  asEmailHtml,
   defaultPassengerEmail,
+  htmlOfText,
   gmailComposeUrl,
   mailtoUrl,
   renderPassengerEmail
 } from '@skydock/scripts'
 import { useState } from 'react'
+import { cleanEmailHtml } from '../helpers/emailHtml'
 import { setMailApp, useMailApp } from '../hooks/useMailApp'
 import type { MailApp } from '../hooks/useMailApp'
 import { setSignature, useSignature } from '../hooks/useSignature'
@@ -14,7 +17,25 @@ import { Field, INPUT, Modal, Spacer } from './modal'
 /* The passenger's link, ready to go. The email is written and laid out already, and shown exactly as
    it will arrive; one press copies it and opens a new Gmail message with the address and subject
    filled in, so all that is left is to paste it in and press Send. Nothing to connect, nothing to
-   set up. Every word stays editable. */
+   set up. Every word stays editable: the message and the signature are written in the email itself,
+   as it will arrive, with bold, italic, lists and links. The heading, the button and the link are the
+   point of it and stay as they are. */
+
+/* What the toolbar does to what is picked in the email: the browser's own editing, which every
+   browser and this app's own window still carry. */
+const STYLES = [
+  ['bold', 'Bold', 'B'],
+  ['italic', 'Italic', 'I'],
+  ['insertUnorderedList', 'List', '•'],
+  ['removeFormat', 'Plain text', 'T̸']
+] as const
+
+/* the part of the email being written in, when the caret is in one */
+const editing = () => {
+  const at = window.getSelection()?.anchorNode
+  const element = at instanceof Element ? at : at?.parentElement
+  return element?.closest('[data-edit]') ?? null
+}
 
 /* On the clipboard as a laid-out email and as plain text both: pasted into Gmail — or any other mail
    program — it keeps the layout and the button, and one that takes only text still gets every word
@@ -79,8 +100,56 @@ const EmailDialog = ({
   const [subject, setSubject] = useState(drafted.subject)
   const [body, setBody] = useState(drafted.body)
   /* the signature is the club's, the same on every email, so it is remembered */
-  const signature = useSignature()
-  const { html, fragment, text } = renderPassengerEmail({ subject, body, signature, shareUrl })
+  /* kept on this machine, and cleaned again as it is read like anything written in the email */
+  const signature = cleanEmailHtml(asEmailHtml(useSignature()))
+  const { fragment, text } = renderPassengerEmail({ subject, body, signature, shareUrl })
+  /* What the email shown is laid out from. What is written in it is read from it as it is typed and
+     never laid back over it — that would move the caret — so it is laid again only when the heading
+     changes, from what has been written so far. */
+  const [laid, setLaid] = useState({ body, signature })
+  const shown = renderPassengerEmail({
+    subject,
+    body: laid.body,
+    signature: laid.signature,
+    shareUrl,
+    editable: true
+  }).fragment
+  const retitle = (next: string) => {
+    setSubject(next)
+    setLaid({ body, signature })
+  }
+  /* what was written, cleaned down to what an email carries, kept as it is typed */
+  const written = (target: EventTarget) => {
+    const part = target instanceof Element ? target.closest('[data-edit]') : null
+    if (!part) return
+    const cleaned = cleanEmailHtml(part.innerHTML)
+    if (part.getAttribute('data-edit') === 'signature') setSignature(cleaned)
+    else setBody(cleaned)
+  }
+  /* a link asked for: the words picked are kept, and the address is asked for beside the toolbar */
+  const [linking, setLinking] = useState<{ range: Range; href: string } | null>(null)
+  const style = (command: string) => {
+    if (!editing()) return
+    document.execCommand(command)
+    if (command === 'removeFormat') document.execCommand('unlink')
+  }
+  const askLink = () => {
+    const selection = window.getSelection()
+    if (!editing() || !selection || selection.rangeCount === 0) return
+    setLinking({ range: selection.getRangeAt(0).cloneRange(), href: 'https://' })
+  }
+  const putLink = () => {
+    if (!linking) return
+    const href = linking.href.trim()
+    const selection = window.getSelection()
+    setLinking(null)
+    if (!/^(https?:\/\/.+|mailto:.+)/.test(href) || !selection) return
+    selection.removeAllRanges()
+    selection.addRange(linking.range)
+    if (linking.range.collapsed)
+      document.execCommand('insertHTML', false, cleanEmailHtml(`<a href="${href}">${href}</a>`))
+    else document.execCommand('createLink', false, href)
+  }
 
   /* which of the copy buttons last worked, said on the button itself for a moment */
   const [copied, setCopied] = useState<string | null>(null)
@@ -173,28 +242,55 @@ const EmailDialog = ({
         <input
           type='text'
           value={subject}
-          onChange={(e) => setSubject(e.target.value)}
+          onChange={(e) => retitle(e.target.value)}
           className={INPUT}
         />
       </Field>
-      <Field label='Message'>
-        <textarea
-          value={body}
-          rows={6}
-          onChange={(e) => setBody(e.target.value)}
-          className={`${INPUT} resize-y leading-[1.45]`}
-        />
-      </Field>
-      <Field label='Signature — the same on every email'>
-        <textarea
-          value={signature}
-          rows={2}
-          onChange={(e) => setSignature(e.target.value)}
-          className={`${INPUT} resize-y leading-[1.45]`}
-        />
-      </Field>
-      <div className='flex items-center gap-2 text-[12px] text-ink-2'>
-        <span>As it will arrive</span>
+      <div className='flex flex-wrap items-center gap-2 text-[12px] text-ink-2'>
+        <span>Write in the email itself — the signature stays for every email</span>
+        {/* pressed without taking the caret out of the email, so what is picked stays picked */}
+        <span
+          role='toolbar'
+          aria-label='Style'
+          className='flex gap-1'>
+          {STYLES.map(([command, name, mark]) => (
+            <button
+              key={command}
+              type='button'
+              aria-label={name}
+              title={name}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => style(command)}
+              className={`w-7 rounded-[5px] border border-line bg-pane py-[2px] text-[12px] text-ink hover:border-ink-3 ${command === 'bold' ? 'font-bold' : command === 'italic' ? 'italic' : ''}`}>
+              {mark}
+            </button>
+          ))}
+          <button
+            type='button'
+            aria-label='Link'
+            title='Link'
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={askLink}
+            className='rounded-[5px] border border-line bg-pane px-2 py-[2px] text-[12px] text-ink hover:border-ink-3'>
+            Link
+          </button>
+        </span>
+        {linking && (
+          <span className='flex items-center gap-1'>
+            <input
+              aria-label='Link address'
+              value={linking.href}
+              autoFocus
+              onChange={(e) => setLinking({ ...linking, href: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') putLink()
+                if (e.key === 'Escape') setLinking(null)
+              }}
+              className={`${INPUT} w-56 py-0.5 text-[12px]`}
+            />
+            <Mini onClick={putLink}>Add link</Mini>
+          </span>
+        )}
         <Spacer />
         <Mini onClick={() => void copy('subject', copyText(subject))}>
           {copied === 'subject' ? '✓ copied' : 'Copy subject'}
@@ -205,12 +301,24 @@ const EmailDialog = ({
           {copied === 'link' ? '✓ copied' : 'Copy link'}
         </Mini>
       </div>
-      {/* sandboxed: the preview is only looked at, never run */}
-      <iframe
-        title='Email preview'
-        sandbox=''
-        srcDoc={html}
-        className='h-[460px] w-full flex-none rounded-lg border border-line bg-[#eef1f4]'
+      {/* The email as it will arrive, written in where it can be. What is typed or pasted is read
+          back cleaned; a paste brings its words and the few styles an email keeps, nothing else. */}
+      <div
+        aria-label='Email preview'
+        onInput={(e) => written(e.target)}
+        onPaste={(e) => {
+          if (!editing()) return
+          e.preventDefault()
+          const pasted = e.clipboardData.getData('text/html')
+          const plain = e.clipboardData.getData('text/plain')
+          document.execCommand(
+            'insertHTML',
+            false,
+            pasted ? cleanEmailHtml(pasted) : htmlOfText(plain.replace(/\n/g, '\n\n'))
+          )
+        }}
+        dangerouslySetInnerHTML={{ __html: shown }}
+        className='h-[460px] w-full flex-none overflow-y-auto rounded-lg border border-line bg-[#eef1f4] text-[#171c22]'
       />
     </Modal>
   )

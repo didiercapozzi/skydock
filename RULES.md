@@ -1216,8 +1216,12 @@ stands and the board says the list did not follow. A list that cannot be read is
 Once a montage has a share link, its page offers to email whoever it is for, and freeing a montage
 opens the email straight away. The email is written already, in French, for a tandem passenger — the
 film a montage is most often made for: it greets them by the first word of the montage's name, says
-what is ready and from which day, and has one button to the folder with the link repeated as text. It is shown exactly as it will arrive, every word can be changed, and the signature is the club's,
-remembered on this machine for every email.
+what is ready and from which day, and has one button to the folder with the link repeated as text. It is shown exactly as it will arrive, and the message and the signature are written in
+it, where they stand, with **bold**, _italic_, lists and links from a small toolbar. What is typed or
+pasted keeps only those — paragraphs, line breaks, bold, italic, lists and links to a page or an email
+address — and loses everything else, so text pasted from a document or a web page brings its words and
+never its fonts, colours or anything that runs. The heading, which is the subject, the button and the
+link cannot be written over. The signature is the club's, remembered on this machine for every email.
 
 SkyDock sends nothing itself and needs nothing set up. One press copies the email, laid out, and opens a
 new message — in Gmail or in the computer's own mail program, whichever was used last — with the address

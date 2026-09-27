@@ -59,10 +59,13 @@ import {
   shareLinkFor
 } from './nas'
 import {
+  asEmailHtml,
   defaultPassengerEmail,
   gmailComposeUrl,
+  htmlOfText,
   mailtoUrl,
-  renderPassengerEmail
+  renderPassengerEmail,
+  textOfEmailHtml
 } from './passengerEmail'
 import { liveEventSchema, publish, subscribe } from './live'
 import type { LiveEvent } from './live'
@@ -166,6 +169,9 @@ import {
 import { isFiled, isMontage } from './filed'
 
 export {
+  asEmailHtml,
+  htmlOfText,
+  textOfEmailHtml,
   cancelUploading,
   pastCancelling,
   runUpload,

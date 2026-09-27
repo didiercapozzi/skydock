@@ -455,9 +455,9 @@ describe('emailing the passenger their link', () => {
     await expect
       .element(dialog.getByLabelText('Subject'))
       .toHaveValue('Ta vidéo et tes photos de ton saut en montage')
-    const preview = dialog.getByTitle('Email preview').element() as HTMLIFrameElement
-    expect(preview.srcdoc).toContain('Bonjour Luc,')
-    expect(preview.srcdoc).toContain(LINK)
+    const preview = dialog.getByLabelText('Email preview')
+    await expect.element(preview.getByText('Bonjour Luc,')).toBeVisible()
+    expect(preview.element().innerHTML).toContain(LINK)
     await page.screenshot({ path: './playwright-screenshots/email-dialog.png' })
   })
 
@@ -547,8 +547,7 @@ describe('the montages on the storage', () => {
     )
     await userEvent.click(page.getByRole('button', { name: 'Email…' }))
     const dialog = page.getByRole('dialog', { name: 'Email the link' })
-    const preview = dialog.getByTitle('Email preview').element() as HTMLIFrameElement
-    expect(preview.srcdoc).toContain('Bonjour Ana,')
+    await expect.element(dialog.getByLabelText('Email preview').getByText('Bonjour Ana,')).toBeVisible()
     await userEvent.fill(dialog.getByLabelText('To'), 'ana@example.com')
     await userEvent.click(dialog.getByRole('button', { name: 'Mark as sent' }))
     await vi.waitFor(() =>

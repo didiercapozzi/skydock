@@ -3,8 +3,10 @@ import { describe, it, expect } from 'vitest'
 import {
   defaultPassengerEmail,
   gmailComposeUrl,
+  htmlOfText,
   mailtoUrl,
-  renderPassengerEmail
+  renderPassengerEmail,
+  textOfEmailHtml
 } from '../src/passengerEmail'
 
 /* The passenger email: written in French, laid out so it arrives the same in every mail program,
@@ -52,16 +54,64 @@ describe('the passenger email', () => {
     expect(fragment.split('Ta vidéo et tes photos de ton saut en montage')).toHaveLength(2)
   })
 
-  it('never lets what was typed turn into markup', () => {
+  /* the subject and the link are plain text; the message comes cleaned by the page it is written on */
+  it('never lets the subject or the link turn into markup', () => {
     const { html } = renderPassengerEmail({
       subject: '<b>x</b>',
-      body: '<script>alert(1)</script>',
+      body: 'a < b',
       signature: '',
       shareUrl: `${LINK}"><img src=x>`
     })
-    expect(html).not.toContain('<script>')
+    expect(html).not.toContain('<b>x</b>')
     expect(html).not.toContain('"><img')
-    expect(html).toContain('&lt;script&gt;')
+    expect(html).toContain('&lt;b&gt;x&lt;/b&gt;')
+    expect(html).toContain('a &lt; b')
+  })
+
+  it('gives what was written the email’s own look, and keeps its bold, lists and links', () => {
+    const { fragment } = renderPassengerEmail({
+      subject: 's',
+      body: '<p>Salut <strong>Luc</strong></p><ul><li>un</li></ul><p><a href="https://club.ch">le club</a></p>',
+      signature: '<p>L’équipe</p>',
+      shareUrl: LINK
+    })
+    expect(fragment).toContain('<p style="margin:0 0 16px;font-size:16px;')
+    expect(fragment).toContain('<strong>Luc</strong>')
+    expect(fragment).toMatch(/<ul style="[^"]*padding-left:22px/)
+    expect(fragment).toMatch(/<a style="color:#0f6e62;" href="https:\/\/club\.ch">le club<\/a>/)
+  })
+
+  it('is written in only where the preview allows, and copied without that', () => {
+    const shown = renderPassengerEmail({
+      subject: 's',
+      body: '<p>x</p>',
+      signature: '',
+      shareUrl: LINK,
+      editable: true
+    })
+    const copied = renderPassengerEmail({
+      subject: 's',
+      body: '<p>x</p>',
+      signature: '',
+      shareUrl: LINK
+    })
+    expect(shown.fragment.match(/contenteditable/g)).toHaveLength(2)
+    expect(copied.fragment).not.toContain('contenteditable')
+    expect(copied.fragment).not.toContain('data-edit')
+  })
+
+  it('says the same in plain text, lists and links included', () => {
+    expect(
+      textOfEmailHtml(
+        '<p>Salut <strong>Luc</strong>,<br>voici</p><ul><li>un</li><li>deux</li></ul><p><a href="https://club.ch">le club</a> &amp; nous</p>'
+      )
+    ).toBe('Salut Luc,\nvoici\n\n• un\n• deux\n\nle club (https://club.ch) & nous')
+  })
+
+  it('writes a plain draft as paragraphs and line breaks', () => {
+    expect(htmlOfText('Bonjour,\n\nligne un\nligne deux')).toBe(
+      '<p>Bonjour,</p><p>ligne un<br>ligne deux</p>'
+    )
   })
 })
 
