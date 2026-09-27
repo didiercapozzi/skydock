@@ -175,15 +175,18 @@ const DialogHost = ({
           const about = group
             ? {
                 firstname: group.passenger?.firstname ?? '',
+                lastname: group.passenger?.lastname ?? '',
                 day: group.day,
-                hasFilm: group.files.some((f) => isVideoFile(f.path)),
-                photos: group.files.filter((f) => !isVideoFile(f.path)).length
+                videos: group.files.filter((f) => isVideoFile(f.path)).length,
+                photos: group.files.filter((f) => !isVideoFile(f.path)).length,
+                seconds: facts[group.id]?.film?.seconds ?? null
               }
             : entry
               ? {
                   firstname: entry.firstname,
+                  lastname: entry.lastname,
                   day: entry.day,
-                  hasFilm: entry.videos > 0,
+                  videos: entry.videos,
                   photos: entry.photos
                 }
               : null

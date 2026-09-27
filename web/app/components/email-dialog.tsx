@@ -1,7 +1,11 @@
 import {
   asEmailHtml,
-  defaultPassengerEmail,
+  DEFAULT_TEMPLATE,
+  EMAIL_VARIABLES,
+  fillEmailTemplate,
   htmlOfText,
+  markVariables,
+  variablesOf,
   gmailComposeUrl,
   mailtoUrl,
   renderPassengerEmail
@@ -10,6 +14,8 @@ import { useState } from 'react'
 import { cleanEmailHtml } from '../helpers/emailHtml'
 import { setMailApp, useMailApp } from '../hooks/useMailApp'
 import type { MailApp } from '../hooks/useMailApp'
+import type { EmailFacts } from '@skydock/scripts'
+import { setEmailTemplate, useEmailTemplate } from '../hooks/useEmailTemplate'
 import { setSignature, useSignature } from '../hooks/useSignature'
 import { Go, Mini } from './buttons'
 import { Field, INPUT, Modal, Spacer } from './modal'
@@ -68,14 +74,9 @@ const copyText = async (text: string) => {
   }
 }
 
-/* What the email is about — a montage on this machine, or one the storage's list alone knows. */
-type EmailSubject = {
-  firstname: string
-  day: string
-  hasFilm: boolean
-  photos: number
-  shareUrl: string
-}
+/* What the email is about — a montage on this machine, or one the storage's list alone knows — and
+   everything the template's variables are filled from. */
+type EmailSubject = EmailFacts & { shareUrl: string }
 
 const sentLabel = (at: number) => new Date(at * 1000).toLocaleDateString('de-CH')
 
@@ -95,28 +96,56 @@ const EmailDialog = ({
   onClose: () => void
 }) => {
   const { firstname, shareUrl } = about
-  const drafted = defaultPassengerEmail(about)
+  /* The club's email, written once with its {variables}, and this one drafted from it. It is kept on
+     this machine, and cleaned again as it is read, like anything written in the email. */
+  const stored = useEmailTemplate()
+  const template = { subject: stored.subject, body: cleanEmailHtml(asEmailHtml(stored.body)) }
+  const drafted = fillEmailTemplate(template, about)
+  const values = variablesOf(about)
   const [to, setTo] = useState(emailed?.to ?? '')
   const [subject, setSubject] = useState(drafted.subject)
   const [body, setBody] = useState(drafted.body)
   /* the signature is the club's, the same on every email, so it is remembered */
-  /* kept on this machine, and cleaned again as it is read like anything written in the email */
   const signature = cleanEmailHtml(asEmailHtml(useSignature()))
   const { fragment, text } = renderPassengerEmail({ subject, body, signature, shareUrl })
+  /* This email, or the template every email is drafted from. */
+  const [writingTemplate, setWritingTemplate] = useState(false)
   /* What the email shown is laid out from. What is written in it is read from it as it is typed and
      never laid back over it — that would move the caret — so it is laid again only when the heading
-     changes, from what has been written so far. */
+     changes or the template is opened or closed, from what has been written so far. */
   const [laid, setLaid] = useState({ body, signature })
   const shown = renderPassengerEmail({
-    subject,
+    subject: writingTemplate ? template.subject : subject,
     body: laid.body,
     signature: laid.signature,
     shareUrl,
     editable: true
   }).fragment
   const retitle = (next: string) => {
-    setSubject(next)
-    setLaid({ body, signature })
+    if (writingTemplate) {
+      setEmailTemplate({ ...template, subject: next })
+      setLaid({ body: markVariables(template.body), signature })
+    } else {
+      setSubject(next)
+      setLaid({ body, signature })
+    }
+  }
+  /* The template opened: its {variables} shown as such. Closed again: this email drafted afresh from
+     it, since that is what changing the template was for. */
+  const openTemplate = () => {
+    setWritingTemplate(true)
+    setLaid({ body: markVariables(template.body), signature })
+  }
+  const closeTemplate = () => {
+    const filled = fillEmailTemplate(template, about)
+    setWritingTemplate(false)
+    setSubject(filled.subject)
+    setBody(filled.body)
+    setLaid({ body: filled.body, signature })
+  }
+  const resetTemplate = () => {
+    setEmailTemplate(DEFAULT_TEMPLATE)
+    setLaid({ body: markVariables(DEFAULT_TEMPLATE.body), signature })
   }
   /* what was written, cleaned down to what an email carries, kept as it is typed */
   const written = (target: EventTarget) => {
@@ -124,7 +153,25 @@ const EmailDialog = ({
     if (!part) return
     const cleaned = cleanEmailHtml(part.innerHTML)
     if (part.getAttribute('data-edit') === 'signature') setSignature(cleaned)
+    else if (writingTemplate) setEmailTemplate({ ...template, body: cleaned })
     else setBody(cleaned)
+  }
+  /* A {variable} put where the caret was. Choosing it from the list takes the caret out of the email,
+     so where it was is kept as it moves in the email and put back to write it in. */
+  const [caret, setCaret] = useState<Range | null>(null)
+  const keepCaret = () => {
+    const selection = window.getSelection()
+    if (editing() && selection && selection.rangeCount > 0)
+      setCaret(selection.getRangeAt(0).cloneRange())
+  }
+  const putVariable = (name: string) => {
+    const selection = window.getSelection()
+    if (!caret || !selection) return
+    const part = caret.startContainer.parentElement?.closest('[data-edit]')
+    if (part instanceof HTMLElement) part.focus()
+    selection.removeAllRanges()
+    selection.addRange(caret)
+    document.execCommand('insertText', false, `{${name}}`)
   }
   /* a link asked for: the words picked are kept, and the address is asked for beside the toolbar */
   const [linking, setLinking] = useState<{ range: Range; href: string } | null>(null)
@@ -186,41 +233,49 @@ const EmailDialog = ({
       wide
       onClose={onClose}
       footer={
-        <>
-          {/* whether it went is only known once someone says so — sending happens in their mail */}
-          {canRecord &&
-            (emailed ? (
-              <span className='flex items-center gap-2 text-[12px] font-semibold text-up'>
-                ✓ Sent {sentLabel(emailed.at)}
-                {emailed.to ? ` to ${emailed.to}` : ''}
+        writingTemplate ? (
+          <>
+            <span className='text-[12px] text-ink-2'>Kept as it is written, for every email.</span>
+            <Spacer />
+            <Go onClick={closeTemplate}>Done — back to this email</Go>
+          </>
+        ) : (
+          <>
+            {/* whether it went is only known once someone says so — sending happens in their mail */}
+            {canRecord &&
+              (emailed ? (
+                <span className='flex items-center gap-2 text-[12px] font-semibold text-up'>
+                  ✓ Sent {sentLabel(emailed.at)}
+                  {emailed.to ? ` to ${emailed.to}` : ''}
+                  <Mini
+                    title='It was not sent after all'
+                    onClick={() => onRecord(false, to)}>
+                    Undo
+                  </Mini>
+                </span>
+              ) : (
                 <Mini
-                  title='It was not sent after all'
-                  onClick={() => onRecord(false, to)}>
-                  Undo
+                  title='Say on the storage’s list that they have their link'
+                  onClick={() => onRecord(true, to)}>
+                  Mark as sent
                 </Mini>
-              </span>
-            ) : (
-              <Mini
-                title='Say on the storage’s list that they have their link'
-                onClick={() => onRecord(true, to)}>
-                Mark as sent
-              </Mini>
-            ))}
-          <Spacer />
-          <Mini onClick={onClose}>Close</Mini>
-          <Mini
-            title='Laid out as shown, to paste into any mail'
-            onClick={() => void copy('email', copyEmail(fragment, text))}>
-            {copied === 'email' ? '✓ copied — paste it' : 'Copy email'}
-          </Mini>
-          {/* the one used last is the one offered first */}
-          <Mini onClick={() => void openMail(other)}>{label(other)}</Mini>
-          <Go
-            title='Copies the email and opens a new message, addressed and titled — paste it in, then press Send'
-            onClick={() => void openMail(mailApp)}>
-            {label(mailApp)}
-          </Go>
-        </>
+              ))}
+            <Spacer />
+            <Mini onClick={onClose}>Close</Mini>
+            <Mini
+              title='Laid out as shown, to paste into any mail'
+              onClick={() => void copy('email', copyEmail(fragment, text))}>
+              {copied === 'email' ? '✓ copied — paste it' : 'Copy email'}
+            </Mini>
+            {/* the one used last is the one offered first */}
+            <Mini onClick={() => void openMail(other)}>{label(other)}</Mini>
+            <Go
+              title='Copies the email and opens a new message, addressed and titled — paste it in, then press Send'
+              onClick={() => void openMail(mailApp)}>
+              {label(mailApp)}
+            </Go>
+          </>
+        )
       }>
       <p className='m-0 rounded-r-md border-l-[3px] border-local bg-local-soft px-3 py-[9px] text-[12px] text-ink-2'>
         <b className='text-ink'>Copy & open</b> puts the email below on the clipboard and opens a
@@ -238,10 +293,18 @@ const EmailDialog = ({
           className={INPUT}
         />
       </Field>
-      <Field label='Subject'>
+      {writingTemplate && (
+        <p className='m-0 rounded-r-md border-l-[3px] border-accent bg-accent-soft px-3 py-[9px] text-[12px] text-ink-2'>
+          <b className='text-ink'>The template for every email.</b> What is written here is kept on
+          this machine and drafts every passenger’s email; each {'{variable}'} is filled from their
+          montage. A line whose variables are all empty for a montage — no film, no photos — is left
+          out of their email.
+        </p>
+      )}
+      <Field label={writingTemplate ? 'Subject — for every email' : 'Subject'}>
         <input
           type='text'
-          value={subject}
+          value={writingTemplate ? template.subject : subject}
           onChange={(e) => retitle(e.target.value)}
           className={INPUT}
         />
@@ -291,7 +354,36 @@ const EmailDialog = ({
             <Mini onClick={putLink}>Add link</Mini>
           </span>
         )}
+        {writingTemplate && (
+          <select
+            aria-label='Put in a variable'
+            value=''
+            onChange={(e) => e.target.value && putVariable(e.target.value)}
+            className='rounded-[5px] border border-line bg-pane px-1.5 py-0.5 text-[12px] text-ink-2'>
+            <option value=''>Put in a variable…</option>
+            {EMAIL_VARIABLES.map((variable) => (
+              <option
+                key={variable.name}
+                value={variable.name}>
+                {`{${variable.name}} — ${variable.about}${values[variable.name] ? ` · here “${values[variable.name]}”` : ' · empty here'}`}
+              </option>
+            ))}
+          </select>
+        )}
         <Spacer />
+        {writingTemplate ? (
+          <Mini
+            title='Put the template back as SkyDock first wrote it'
+            onClick={resetTemplate}>
+            Back to the first template
+          </Mini>
+        ) : (
+          <Mini
+            title='Change the email every passenger gets, with the words that change as variables'
+            onClick={openTemplate}>
+            Edit the template…
+          </Mini>
+        )}
         <Mini onClick={() => void copy('subject', copyText(subject))}>
           {copied === 'subject' ? '✓ copied' : 'Copy subject'}
         </Mini>
@@ -305,7 +397,12 @@ const EmailDialog = ({
           back cleaned; a paste brings its words and the few styles an email keeps, nothing else. */}
       <div
         aria-label='Email preview'
-        onInput={(e) => written(e.target)}
+        onInput={(e) => {
+          written(e.target)
+          keepCaret()
+        }}
+        onKeyUp={keepCaret}
+        onMouseUp={keepCaret}
         onPaste={(e) => {
           if (!editing()) return
           e.preventDefault()

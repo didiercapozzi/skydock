@@ -1,17 +1,27 @@
 import { createElement } from 'react'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { EmailDialog } from '../../app/components/email-dialog'
 import { cleanEmailHtml } from '../../app/helpers/emailHtml'
+import { setEmailTemplate } from '../../app/hooks/useEmailTemplate'
 import { setSignature } from '../../app/hooks/useSignature'
+import { DEFAULT_TEMPLATE } from '@skydock/scripts'
 
 /* The passenger email is written in the email itself, as it will arrive (RULES, Sending the link):
    typed in place, with bold, italic, lists and links, and whatever is pasted or typed kept to what an
    email carries well. What is copied is what was seen. */
 
 const LINK = 'https://nas.example/sharing/AbC123'
-const about = { firstname: 'Luc', day: '01.08.2026', hasFilm: true, photos: 3, shareUrl: LINK }
+const about = {
+  firstname: 'Luc',
+  lastname: 'Favre',
+  day: '01.08.2026',
+  videos: 2,
+  photos: 3,
+  seconds: 200,
+  shareUrl: LINK
+}
 
 /* what the copy buttons put on the clipboard, as the laid-out email */
 const copied: string[] = []
@@ -27,6 +37,10 @@ const catchClipboard = () => {
     }
   })
 }
+
+beforeEach(() => {
+  setEmailTemplate(DEFAULT_TEMPLATE)
+})
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -93,6 +107,47 @@ describe('writing the passenger email', () => {
     await open()
 
     expect(part('signature').textContent).toContain('L’équipe de Colombier')
+  })
+})
+
+/* The club's email, written once with its {variables}, drafts every passenger's (RULES, Sending the
+   link). */
+describe('the email template', () => {
+  test('is written with variables, and drafts the email from them', async () => {
+    setEmailTemplate(DEFAULT_TEMPLATE)
+    await open()
+    await userEvent.click(page.getByRole('button', { name: 'Edit the template…' }))
+    await expect.element(preview().getByText('{prénom}')).toBeVisible()
+
+    await userEvent.fill(page.getByLabelText('Subject — for every email'), 'Salut {prénom}, ton film dure {durée}')
+    await userEvent.click(page.getByRole('button', { name: 'Done — back to this email' }))
+
+    await expect.element(page.getByLabelText('Subject')).toHaveValue('Salut Luc, ton film dure 3 min 20')
+    await expect.element(preview().getByText('Bonjour Luc,')).toBeVisible()
+  })
+
+  test('puts a variable in where the caret is', async () => {
+    setEmailTemplate({ subject: 's', body: '<p>Merci</p>' })
+    await open()
+    await userEvent.click(page.getByRole('button', { name: 'Edit the template…' }))
+    await userEvent.click(part('body'))
+    await userEvent.keyboard('{Control>}{End}{/Control} ')
+
+    await userEvent.selectOptions(page.getByLabelText('Put in a variable'), 'prénom')
+    await userEvent.click(page.getByRole('button', { name: 'Done — back to this email' }))
+
+    await expect.element(preview().getByText('Merci Luc')).toBeVisible()
+  })
+
+  test('goes back to the first template when asked', async () => {
+    setEmailTemplate({ subject: 'autre', body: '<p>autre</p>' })
+    await open()
+    await userEvent.click(page.getByRole('button', { name: 'Edit the template…' }))
+
+    await userEvent.click(page.getByRole('button', { name: 'Back to the first template' }))
+    await userEvent.click(page.getByRole('button', { name: 'Done — back to this email' }))
+
+    await expect.element(page.getByLabelText('Subject')).toHaveValue('Ta vidéo et tes photos de ton saut en montage')
   })
 })
 

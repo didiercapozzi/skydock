@@ -1223,6 +1223,19 @@ address — and loses everything else, so text pasted from a document or a web p
 never its fonts, colours or anything that runs. The heading, which is the subject, the button and the
 link cannot be written over. The signature is the club's, remembered on this machine for every email.
 
+**The email template.** Every passenger's email is drafted from the club's template, written once in
+the same way — its subject and its message — and remembered on this machine. The words that change
+are written as variables, filled from each montage: `{prénom}`, `{nom}`, `{montage}` (the montage's
+name), `{date}` (the day of the jump, in words), `{contenu}` ("Ta vidéo et tes photos", as there are),
+`{prêt}` ("est prête" or "sont prêtes", agreeing with it), `{vidéos}` and `{photos}` (how many, empty
+with none) and `{durée}` (how long the film runs, empty with no film). While the template is written
+its variables are shown as such, and each can be put in where the caret is, from a list that also
+says what it would be for this montage. A line whose variables are all empty for a montage is left
+out of its email, so "Ton film dure {durée}." never reaches someone with photos alone; a name that is
+no variable stays as typed, braces and all, so the slip shows. Leaving the template drafts this email
+afresh from it; the first template can be put back at any time. Changing one email never changes the
+template.
+
 SkyDock sends nothing itself and needs nothing set up. One press copies the email, laid out, and opens a
 new message — in Gmail or in the computer's own mail program, whichever was used last — with the address
 and subject filled in; the email is pasted in and sent from there. The email, the subject and the link

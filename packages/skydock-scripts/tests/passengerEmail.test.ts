@@ -2,6 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   defaultPassengerEmail,
+  fillEmailTemplate,
   gmailComposeUrl,
   htmlOfText,
   mailtoUrl,
@@ -18,8 +19,9 @@ describe('the passenger email', () => {
   it('greets the passenger by name and says what is ready, on the day of the jump', () => {
     const email = defaultPassengerEmail({
       firstname: 'Luc',
+      lastname: 'Favre',
       day: '01.08.2026',
-      hasFilm: true,
+      videos: 2,
       photos: 12
     })
     expect(email.subject).toBe('Ta vidéo et tes photos de ton saut en montage')
@@ -78,7 +80,9 @@ describe('the passenger email', () => {
     expect(fragment).toContain('<p style="margin:0 0 16px;font-size:16px;')
     expect(fragment).toContain('<strong>Luc</strong>')
     expect(fragment).toMatch(/<ul style="[^"]*padding-left:22px/)
-    expect(fragment).toMatch(/<a style="color:#0f6e62;" href="https:\/\/club\.ch">le club<\/a>/)
+    expect(fragment).toContain(
+      '<a style="color:rgb(244, 74, 74);" href="https://club.ch">le club</a>'
+    )
   })
 
   it('is written in only where the preview allows, and copied without that', () => {
@@ -112,6 +116,57 @@ describe('the passenger email', () => {
     expect(htmlOfText('Bonjour,\n\nligne un\nligne deux')).toBe(
       '<p>Bonjour,</p><p>ligne un<br>ligne deux</p>'
     )
+  })
+})
+
+/* The club's email is written once, with {variables} filled from each montage (RULES, Sending the
+   link). */
+describe('the email template', () => {
+  const luc = {
+    firstname: 'Luc',
+    lastname: 'Favre',
+    day: '01.08.2026',
+    videos: 2,
+    photos: 0,
+    seconds: 200
+  }
+
+  it('fills every variable from the montage', () => {
+    const email = fillEmailTemplate(
+      {
+        subject: 'Ton saut du {date}',
+        body: '<p>{prénom} {nom} — {montage}, {contenu} {prêt}, {vidéos} clips, {durée}</p>'
+      },
+      luc
+    )
+    expect(email.subject).toBe('Ton saut du 1er août 2026')
+    expect(email.body).toBe('<p>Luc Favre — Luc Favre, Ta vidéo est prête, 2 clips, 3 min 20</p>')
+  })
+
+  it('leaves out a line whose variables are all empty for this montage', () => {
+    const email = fillEmailTemplate(
+      {
+        subject: 's',
+        body: '<p>Bonjour {prénom},</p><p>Et {photos} photos en plus !</p><ul><li>{photos} photos</li></ul>'
+      },
+      luc
+    )
+    expect(email.body).toBe('<p>Bonjour Luc,</p>')
+  })
+
+  it('leaves a name that is no variable as it was typed, so the slip shows', () => {
+    expect(fillEmailTemplate({ subject: '{prenom}', body: '<p>{prenom}</p>' }, luc)).toEqual({
+      subject: '{prenom}',
+      body: '<p>{prenom}</p>'
+    })
+  })
+
+  it('never lets a name turn into markup', () => {
+    const email = fillEmailTemplate(
+      { subject: 's', body: '<p>Bonjour {prénom}</p>' },
+      { ...luc, firstname: '<b>Luc</b>' }
+    )
+    expect(email.body).toBe('<p>Bonjour &lt;b&gt;Luc&lt;/b&gt;</p>')
   })
 })
 

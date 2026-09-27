@@ -59,6 +59,11 @@ import {
   shareLinkFor
 } from './nas'
 import {
+  DEFAULT_TEMPLATE,
+  EMAIL_VARIABLES,
+  fillEmailTemplate,
+  markVariables,
+  variablesOf,
   asEmailHtml,
   defaultPassengerEmail,
   gmailComposeUrl,
@@ -67,6 +72,7 @@ import {
   renderPassengerEmail,
   textOfEmailHtml
 } from './passengerEmail'
+import type { EmailFacts, EmailTemplate } from './passengerEmail'
 import { liveEventSchema, publish, subscribe } from './live'
 import type { LiveEvent } from './live'
 import { lastSegment, parentOf } from './paths'
@@ -169,6 +175,11 @@ import {
 import { isFiled, isMontage } from './filed'
 
 export {
+  DEFAULT_TEMPLATE,
+  EMAIL_VARIABLES,
+  fillEmailTemplate,
+  markVariables,
+  variablesOf,
   asEmailHtml,
   htmlOfText,
   textOfEmailHtml,
@@ -300,6 +311,8 @@ export {
   writeUploadProgress
 }
 export type {
+  EmailFacts,
+  EmailTemplate,
   LiveEvent,
   MontageProgress,
   PartFile,

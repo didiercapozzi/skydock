@@ -39,38 +39,6 @@ const dayInFrench = (day: string) => {
   return `${d === 1 ? '1er' : d} ${MONTHS_FR[m - 1]} ${y}`
 }
 
-const defaultPassengerEmail = ({
-  firstname,
-  day,
-  hasFilm,
-  photos
-}: {
-  firstname: string
-  day: string
-  hasFilm: boolean
-  photos: number
-}) => {
-  const what = hasFilm
-    ? photos > 0
-      ? 'Ta vidéo et tes photos'
-      : 'Ta vidéo'
-    : photos > 0
-      ? 'Tes photos'
-      : 'Tes souvenirs'
-  const ready = what.startsWith('Ta vidéo') && photos === 0 ? 'est prête' : 'sont prêtes'
-  return {
-    subject: `${what} de ton saut en montage`,
-    body: htmlOfText(
-      [
-        `Bonjour ${firstname.trim()},`,
-        `Merci d’avoir sauté avec nous ! ${what} du ${dayInFrench(day)} ${ready}.`,
-        'Tu peux tout regarder et télécharger avec le bouton ci-dessous. Pense à enregistrer tes fichiers : le lien ne reste pas ouvert indéfiniment.',
-        'À bientôt dans les airs !'
-      ].join('\n\n')
-    )
-  }
-}
-
 const escapeHtml = (text: string) =>
   text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
@@ -115,9 +83,132 @@ const textOfEmailHtml = (html: string) =>
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 
-const ACCENT = '#0f6e62'
+const ACCENT = 'rgb(244, 74, 74)'
 const INK = '#171c22'
 const INK_2 = '#545e6b'
+
+/* What is known of a montage when its email is written: who it is for, the day, and what was made. */
+type EmailFacts = {
+  firstname: string
+  lastname: string
+  day: string
+  videos: number
+  photos: number
+  /* how long the film runs, when there is one and it has been measured */
+  seconds?: number | null
+}
+
+/* A film's length said the way it is said: "3 min 20", or "45 s". */
+const lengthInFrench = (seconds: number) => {
+  const whole = Math.round(seconds)
+  const min = Math.floor(whole / 60)
+  const sec = whole % 60
+  return min === 0
+    ? `${sec} s`
+    : sec === 0
+      ? `${min} min`
+      : `${min} min ${String(sec).padStart(2, '0')}`
+}
+
+/* The words a template can ask for, each worked out from the montage it is sent for. Named in French,
+   as the email is written: they are what the person writing the template reads and types. One the
+   montage has nothing for is empty. */
+const EMAIL_VARIABLES = [
+  { name: 'prénom', about: 'their first name' },
+  { name: 'nom', about: 'their last name' },
+  { name: 'montage', about: 'the montage’s name' },
+  { name: 'date', about: 'the day of the jump, in words' },
+  { name: 'contenu', about: '“Ta vidéo et tes photos”, as there are' },
+  { name: 'prêt', about: '“est prête” or “sont prêtes”, agreeing with it' },
+  { name: 'vidéos', about: 'how many clips, empty with none' },
+  { name: 'photos', about: 'how many photos, empty with none' },
+  { name: 'durée', about: 'how long the film runs, empty with no film' }
+] as const
+
+type EmailVariable = (typeof EMAIL_VARIABLES)[number]['name']
+
+const variablesOf = (facts: EmailFacts): Record<EmailVariable, string> => {
+  const film = facts.videos > 0
+  const what = film
+    ? facts.photos > 0
+      ? 'Ta vidéo et tes photos'
+      : 'Ta vidéo'
+    : facts.photos > 0
+      ? 'Tes photos'
+      : 'Tes souvenirs'
+  return {
+    prénom: facts.firstname.trim(),
+    nom: facts.lastname.trim(),
+    montage: `${facts.firstname.trim()} ${facts.lastname.trim()}`.trim(),
+    date: dayInFrench(facts.day),
+    contenu: what,
+    prêt: film && facts.photos === 0 ? 'est prête' : 'sont prêtes',
+    vidéos: facts.videos > 0 ? String(facts.videos) : '',
+    photos: facts.photos > 0 ? String(facts.photos) : '',
+    durée: film && facts.seconds ? lengthInFrench(facts.seconds) : ''
+  }
+}
+
+/* The club's email, written once with the words that change left as {variables}. The message is
+   cleaned HTML, as anything written in the email is. */
+type EmailTemplate = { subject: string; body: string }
+
+const DEFAULT_TEMPLATE: EmailTemplate = {
+  subject: '{contenu} de ton saut en montage',
+  body: htmlOfText(
+    [
+      'Bonjour {prénom},',
+      'Merci d’avoir sauté avec nous ! {contenu} du {date} {prêt}.',
+      'Tu peux tout regarder et télécharger avec le bouton ci-dessous. Pense à enregistrer tes fichiers : le lien ne reste pas ouvert indéfiniment.',
+      'À bientôt dans les airs !'
+    ].join('\n\n')
+  )
+}
+
+const VARIABLE = /\{([^{}<>]+)\}/g
+
+/* Each {variable} put in, as the montage has it. A name that is no variable is left as it was typed,
+   braces and all, so a slip shows in the email rather than vanishing from it. */
+const fill = (text: string, values: Record<string, string>, as: (value: string) => string) =>
+  text.replace(VARIABLE, (whole, name: string) =>
+    Object.hasOwn(values, name.trim()) ? as(values[name.trim()] ?? '') : whole
+  )
+
+/* A line only there to say something this montage does not have — every variable in it empty, like
+   "Ton film dure {durée}." for photos alone — is left out rather than sent half said. */
+const saysNothing = (line: string, values: Record<string, string>) => {
+  const names = [...line.matchAll(VARIABLE)].map((m) => (m[1] ?? '').trim())
+  return (
+    names.length > 0 && names.every((name) => Object.hasOwn(values, name) && values[name] === '')
+  )
+}
+
+/* The email for one montage, from the template: the subject and the message with every variable put
+   in, and the lines that would say nothing left out. */
+const fillEmailTemplate = (template: EmailTemplate, facts: EmailFacts) => {
+  const values = variablesOf(facts)
+  const body = template.body
+    .replace(/<(p|li)>(.*?)<\/\1>/g, (line: string) => (saysNothing(line, values) ? '' : line))
+    .replace(/<(ul|ol)><\/\1>/g, '')
+  return {
+    subject: fill(template.subject, values, (v) => v)
+      .replace(/\s+/g, ' ')
+      .trim(),
+    body: fill(body, values, escapeHtml)
+  }
+}
+
+/* the email as it is written for a montage when nobody has written the club's own */
+const defaultPassengerEmail = (facts: EmailFacts) => fillEmailTemplate(DEFAULT_TEMPLATE, facts)
+
+/* The variables of a template drawn apart from the words around them, for the template being
+   written: there, a {variable} is shown as one, not yet put in. */
+const markVariables = (html: string) =>
+  html.replace(
+    VARIABLE,
+    (whole) =>
+      `<span style="background:#ffe5e5;color:${ACCENT};border-radius:4px;padding:0 2px;">${whole}</span>`
+  )
 
 /* The email's own look given to cleaned HTML, tag by tag: the only tags it has, and none styled yet. */
 const styled = (html: string, text: { size: number; line: number; color: string }) => {
@@ -193,11 +284,16 @@ const mailtoUrl = ({ to, subject }: { to: string; subject: string }) =>
 export {
   asEmailHtml,
   dayInFrench,
+  DEFAULT_TEMPLATE,
   defaultPassengerEmail,
+  EMAIL_VARIABLES,
+  fillEmailTemplate,
+  markVariables,
+  variablesOf,
   gmailComposeUrl,
   htmlOfText,
   mailtoUrl,
   renderPassengerEmail,
   textOfEmailHtml
 }
-export type { PassengerEmail }
+export type { EmailFacts, EmailTemplate, EmailVariable, PassengerEmail }
