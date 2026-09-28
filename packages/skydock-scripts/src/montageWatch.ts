@@ -1,7 +1,12 @@
 import * as fs from 'node:fs'
 import { publish } from './live'
 import { getGroupsPath, loadManifest } from './manifest'
-import { isNamedMontage, statMontageArtifacts, montageArtifacts } from './montageArtifacts'
+import {
+  isNamedMontage,
+  montageArtifacts,
+  secondsOf,
+  statMontageArtifacts
+} from './montageArtifacts'
 import type { Manifest } from './types'
 import { getManifestPath, hasCommand } from './utils'
 import { passengerOf } from './workspace'
@@ -72,9 +77,13 @@ const lookAtMontages = (outputDir: string) => {
   const manifest = currentManifest(outputDir)
   if (!manifest) return
   const { seen } = watch()
+  /* what every montage holds, read once per look and only when one of them has something to tell */
+  let facts: ReturnType<typeof statMontageArtifacts> | null = null
   for (const group of manifest.groups) {
     if (!isNamedMontage(group) || group.freed) continue
     const found = montageArtifacts(outputDir, group)
+    /* its length is asked for as soon as it is seen, so it is known by the time it has settled */
+    secondsOf(found)
     const film = found.film ? `${found.film.size}:${found.film.mtime}` : 'none'
     const signature = `${found.project}|${film}`
     const before = seen.get(group.id)
@@ -90,7 +99,8 @@ const lookAtMontages = (outputDir: string) => {
     seen.set(group.id, state)
     if (state.unchanged < SETTLED_AFTER || state.told === signature) continue
 
-    const fact = statMontageArtifacts(manifest, outputDir)[group.id]
+    facts ??= statMontageArtifacts(manifest, outputDir)
+    const fact = facts[group.id]
     if (!fact) continue
     /* a film that cannot be read yet is one the editor has not finished, whatever its size says */
     if (fact.film && fact.film.seconds === null && hasCommand('ffprobe')) continue

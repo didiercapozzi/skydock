@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import type { Modifiers } from '../components/file-list'
 import type { ManifestFile } from '../components/types'
 import { typingInField } from '../helpers/keys'
@@ -134,55 +134,57 @@ const useSelection = ({
 
   const clear = () => pickOnly([], null)
 
-  /* the keys belong to the window, so this listens there */
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (paused) return
-      /* never take a key from a field being typed in */
-      if (typingInField(e)) return
-      if (comparing) {
-        if (e.key === 'Escape') setComparing(null)
-        return
-      }
-      const ids = idsOf(order)
-      if (e.key === 'Escape') {
-        clear()
-        return
-      }
-      const targets = pickedFiles.length ? pickedFiles : previewed ? [previewed] : []
-      if ((e.key === 'Delete' || e.key === 'Backspace') && targets.length > 0) {
-        e.preventDefault()
-        onDelete(targets)
-        return
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
-        e.preventDefault()
-        const all = pickableOf(ids)
-        pickOnly(all, all[0] ?? null)
-        return
-      }
-      if (e.key === 'Enter' && targets.length === 1) {
-        const file = order.find((f) => f.id === targets[0])
-        if (file) onOpen(file)
-        return
-      }
-      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
-      e.preventDefault()
-      const at = anchor ? ids.indexOf(anchor) : -1
-      const next = ids[Math.max(0, Math.min(ids.length - 1, at + (e.key === 'ArrowDown' ? 1 : -1)))]
-      if (!next) return
-      if (e.shiftKey) {
-        setPickedFiles(pickableOf([...new Set([...pickedFiles, next])]))
-        setPreviewed(null)
-      } else setPreviewed(next)
-      setAnchor(next)
-      document
-        .querySelector(`[data-file="${CSS.escape(next)}"]`)
-        ?.scrollIntoView({ block: 'nearest' })
+  /* The keys belong to the window, so this listens there — once, reading what is picked now each
+     time a key comes, rather than listening afresh every time the board is drawn. */
+  const onKey = useEffectEvent((e: KeyboardEvent) => {
+    if (paused) return
+    /* never take a key from a field being typed in */
+    if (typingInField(e)) return
+    if (comparing) {
+      if (e.key === 'Escape') setComparing(null)
+      return
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    const ids = idsOf(order)
+    if (e.key === 'Escape') {
+      clear()
+      return
+    }
+    const targets = pickedFiles.length ? pickedFiles : previewed ? [previewed] : []
+    if ((e.key === 'Delete' || e.key === 'Backspace') && targets.length > 0) {
+      e.preventDefault()
+      onDelete(targets)
+      return
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'a') {
+      e.preventDefault()
+      const all = pickableOf(ids)
+      pickOnly(all, all[0] ?? null)
+      return
+    }
+    if (e.key === 'Enter' && targets.length === 1) {
+      const file = order.find((f) => f.id === targets[0])
+      if (file) onOpen(file)
+      return
+    }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+    e.preventDefault()
+    const at = anchor ? ids.indexOf(anchor) : -1
+    const next = ids[Math.max(0, Math.min(ids.length - 1, at + (e.key === 'ArrowDown' ? 1 : -1)))]
+    if (!next) return
+    if (e.shiftKey) {
+      setPickedFiles(pickableOf([...new Set([...pickedFiles, next])]))
+      setPreviewed(null)
+    } else setPreviewed(next)
+    setAnchor(next)
+    document
+      .querySelector(`[data-file="${CSS.escape(next)}"]`)
+      ?.scrollIntoView({ block: 'nearest' })
   })
+  useEffect(() => {
+    const listen = (e: KeyboardEvent) => onKey(e)
+    window.addEventListener('keydown', listen)
+    return () => window.removeEventListener('keydown', listen)
+  }, [])
 
   return {
     pickedFiles,

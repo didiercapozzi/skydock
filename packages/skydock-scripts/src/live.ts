@@ -147,11 +147,14 @@ const subscribe = (listener: (event: LiveEvent) => void) => {
 }
 
 /* One file's work, said from start to end: at once that it began, each step forward as it comes —
-   never backward, never the same figure twice — and how it ended. */
+   never backward, never the same figure twice, and two percent at a time, which moves a bar as
+   visibly as one and is half the telling — and how it ended. */
+const STEP = 2
+
 const following = (work: z.infer<typeof workSchema>, fileId: string | undefined) => {
   let last = -1
   const at = (percent: number) => {
-    if (!fileId || percent <= last) return
+    if (!fileId || percent <= last || (last >= 0 && percent < last + STEP)) return
     last = percent
     publish({ kind: 'file', work, fileId, percent })
   }

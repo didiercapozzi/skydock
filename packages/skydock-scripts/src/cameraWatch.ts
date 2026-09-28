@@ -215,7 +215,8 @@ const copyNext = async (outputDir: string) => {
   /* each file on the board as it lands; gathered into jumps once the card is done */
   const arrived: string[] = []
   const onCopied = (copied: Copied) => {
-    if (putOnBoard(outputDir, copied)) arrived.push(copied.id)
+    putOnBoard(outputDir, copied)
+    arrived.push(copied.id)
   }
   try {
     const result = isKioCamera(cameraDir)
@@ -227,20 +228,20 @@ const copyNext = async (outputDir: string) => {
           onCopied,
           stop: stop.signal
         })
-    gatherArrivals(outputDir, arrived)
+    const onBoard = gatherArrivals(outputDir, arrived)
     /* Every file that came off is on the board already; the scan is only for one that could not be
        put there — no board yet, or one that could not be read. It reads the whole library, which is
        no price to pay for nothing. */
-    if (result.copied > arrived.length) await scanMedia({ outputDir })
+    if (result.copied > onBoard) await scanMedia({ outputDir })
     if (result.copied > 0) void buildMissingProxies(outputDir).catch(() => undefined)
     publish({ kind: 'camera', camera, state: 'done', ...result })
   } catch (e) {
     const gone = e instanceof CameraGone
     const stopped = e instanceof CopyStopped
-    gatherArrivals(outputDir, arrived)
+    const onBoard = gatherArrivals(outputDir, arrived)
     /* what did make it across is whole, and is on the board — scanned for, if it could not be put
        there as it landed */
-    if (last.copied > arrived.length) await scanMedia({ outputDir }).catch(() => undefined)
+    if (last.copied > onBoard) await scanMedia({ outputDir }).catch(() => undefined)
     publish({
       kind: 'camera',
       camera,

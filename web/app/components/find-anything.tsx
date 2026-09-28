@@ -1,5 +1,5 @@
 import { t } from '@lingui/core/macro'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 type Found = { key: string; label: string; where: string; go: () => void }
 
@@ -8,10 +8,18 @@ type Found = { key: string; label: string; where: string; go: () => void }
    (RULES, Finding anything). */
 const FindAnything = ({ find }: { find: (query: string) => Found[] }) => {
   const [query, setQuery] = useState('')
-  const found = find(query)
+  /* looked for once typing pauses, not at every key: the whole board is gone through each time */
+  const [asked, setAsked] = useState('')
+  const typed = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const ask = (next: string) => {
+    setQuery(next)
+    if (typed.current) clearTimeout(typed.current)
+    typed.current = setTimeout(() => setAsked(next), next.trim().length < 2 ? 0 : 120)
+  }
+  const found = asked.trim().length >= 2 ? find(asked) : []
   const go = (one: Found | undefined) => {
     if (!one) return
-    setQuery('')
+    ask('')
     one.go()
   }
   return (
@@ -21,14 +29,14 @@ const FindAnything = ({ find }: { find: (query: string) => Found[] }) => {
         value={query}
         aria-label={t`Find anything`}
         placeholder={t`Find a name, a file…`}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(e) => ask(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') go(found[0])
-          if (e.key === 'Escape') setQuery('')
+          if (e.key === 'Enter') go(found[0] ?? find(query)[0])
+          if (e.key === 'Escape') ask('')
         }}
         className='w-44 rounded-md border border-line bg-ground px-2 py-[5px] text-[12.5px] text-ink placeholder:text-ink-3 focus:w-60'
       />
-      {query.trim().length >= 2 && (
+      {asked.trim().length >= 2 && query.trim().length >= 2 && (
         <ul
           aria-label={t`Found`}
           className='absolute top-full right-0 z-50 m-0 mt-1.5 flex max-h-[60vh] w-[min(340px,calc(100vw-2rem))] list-none flex-col overflow-y-auto rounded-lg border border-line bg-pane p-1 shadow-card'>

@@ -160,13 +160,18 @@ const rememberZoom = (factor: number) => {
   }
 }
 
+let zoomKept: ReturnType<typeof setTimeout> | null = null
+
 /* A size asked for, kept between half and three times, on the tenth, told to the page so its own
    control says it, and remembered. */
 const zoomTo = (contents: WebContents, asked: number) => {
   const factor = Math.round(Math.min(3, Math.max(0.5, asked)) * 10) / 10
   contents.setZoomFactor(factor)
   contents.send('zoom:changed', factor)
-  rememberZoom(factor)
+  /* written once the keys stop: a key held down asks many times a second, and the disk need hear
+     only where it ended */
+  if (zoomKept) clearTimeout(zoomKept)
+  zoomKept = setTimeout(() => rememberZoom(factor), 300)
   return factor
 }
 

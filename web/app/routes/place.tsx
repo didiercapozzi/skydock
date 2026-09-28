@@ -53,6 +53,7 @@ import type { Place } from '../helpers/places'
 import { useSafeSearchParams } from '../helpers/routing'
 import { GROUPINGS, cardsOf, sectionsOf } from '../helpers/sections'
 import { boardViewSchema } from '../helpers/view'
+import { useCameraCopying } from '../hooks/liveStore'
 import { useBoard } from '../hooks/useBoardModel'
 import type { BoardModel } from '../hooks/useBoardModel'
 import { useSelection } from '../hooks/useSelection'
@@ -117,6 +118,7 @@ const Place = () => {
   const model = useBoard()
   const { board, frozen, statusContext, statusOf, setDialog } = model
   const { groups, busy, send, setNote, setProblem } = board
+  const copying = useCameraCopying()
   const address = useParams()
   const place = placeFromParams(address)
   const goTo = useNavigate()
@@ -282,13 +284,14 @@ const Place = () => {
         {place.kind === 'camera' ? (
           <CameraFiles
             mount={place.name}
-            stamp={`${board.cameras.map((c) => c.mount).join('\n')}\n${board.cameraCopy?.state ?? ''}`}
+            stamp={`${board.cameras.map((c) => c.mount).join('\n')}\n${copying ? 'copying' : ''}`}
             onNote={setNote}
             onCopyBack={(paths) => send('copy-back', { intent: 'copy-back', paths })}
           />
         ) : place.kind === 'bin' ? (
           <BinFiles
-            stamp={groups}
+            /* read again when files left the board or came back to it, not after every change */
+            stamp={board.loose.length + groups.reduce((n, g) => n + g.files.length, 0)}
             bringing={busy === 'from-bin'}
             onBringBack={(paths) => send('from-bin', { intent: 'from-bin', paths })}
           />
@@ -331,7 +334,6 @@ const Place = () => {
             statusContext={statusContext}
             statusOf={statusOf}
             proxies={board.proxies}
-            live={board.liveFiles}
             deliveredName={model.deliveredName}
             onFile={selection.clickFile}
             onPick={selection.pickFile}

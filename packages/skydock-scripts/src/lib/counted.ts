@@ -14,6 +14,9 @@ import { idFromHash } from '../fileId'
    then being read again from end to end while the board sits silent. Used wherever a file is written
    into the originals — dropped in from the computer, copied off a camera — and, counted only, for a
    processed copy made whole, which is known by its source and needs no hash of its own. */
+/* how often the bytes are said: four times a second reads as moving, and costs the board nothing */
+const TELL_EVERY_MS = 250
+
 const counted = (onBytes?: (done: number) => void, hashing = true) => {
   const hash = hashing ? crypto.createHash('sha256') : null
   let done = 0
@@ -25,7 +28,7 @@ const counted = (onBytes?: (done: number) => void, hashing = true) => {
         hash?.update(chunk)
         done += chunk.byteLength
         const now = Date.now()
-        if (onBytes && done !== told && now - toldAt >= 100) {
+        if (onBytes && done !== told && now - toldAt >= TELL_EVERY_MS) {
           toldAt = now
           told = done
           onBytes(done)

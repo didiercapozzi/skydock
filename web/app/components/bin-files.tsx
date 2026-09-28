@@ -157,6 +157,7 @@ const BinFiles = ({
                       src={getThumbUrl(file.path, isVideoFile(file.path) ? 1 : 0, 64)}
                       alt=''
                       loading='lazy'
+                      decoding='async'
                       className='h-9 w-16 flex-none rounded bg-line-2 object-cover'
                     />
                     <span className='min-w-0 flex-1 truncate font-mono text-[12px] text-ink'>

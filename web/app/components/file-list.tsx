@@ -9,10 +9,11 @@ import {
   UPLOADED_LOCKED
 } from '@skydock/scripts'
 import type { ProxyFact, StatusContext } from '@skydock/scripts'
-import { useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { pictureWidthFor, stepTileSize, useTileSize } from '../hooks/useTileSize'
 import { StatusChip, statusName } from './file-status'
 import type { ShownStatus } from './file-status'
+import { useLiveFile } from '../hooks/liveStore'
 import type { LiveFile } from '../hooks/useLiveProgress'
 import type { ManifestFile } from './types'
 import { clock, formatSize, formatTime, getPictureUrl, isVideoFile } from './utils'
@@ -53,8 +54,6 @@ type Props = {
   /* the name the file has once a copy exists — what goes to the NAS and what the passenger sees */
   deliveredName: (file: ManifestFile) => string | null
   selecting: boolean
-  /* files being processed or proxied right now, by file, and how far through */
-  live?: Record<string, LiveFile>
 }
 
 /* A card of 500 photos must not put 500 things on screen before they have been asked for. */
@@ -290,6 +289,37 @@ const LiveBar = ({ live, filename }: { live: LiveFile; filename: string }) => (
   </span>
 )
 
+/* A file's progress, heard by the file's own row or tile: a tick of one file draws that file and
+   nothing else. On a row it stands where the status would, which is back once the work ends; on a
+   tile it lies over the foot of the picture, on a dark band so the figures read on any frame. */
+const WhileLive = ({
+  id,
+  filename,
+  otherwise = null,
+  band = false
+}: {
+  id: string | undefined
+  filename: string
+  otherwise?: React.ReactNode
+  band?: boolean
+}) => {
+  const live = useLiveFile(id)
+  if (!live) return otherwise
+  return band ? (
+    <span className='pointer-events-none absolute inset-x-0 bottom-0 bg-black/[0.66] px-1 py-[3px] [&_span]:text-white'>
+      <LiveBar
+        live={live}
+        filename={filename}
+      />
+    </span>
+  ) : (
+    <LiveBar
+      live={live}
+      filename={filename}
+    />
+  )
+}
+
 const Row = ({
   file,
   lane,
@@ -297,7 +327,6 @@ const Row = ({
   locked,
   status,
   proxy,
-  live,
   name,
   previewed,
   offGap: strayed,
@@ -312,7 +341,6 @@ const Row = ({
   locked: string | null
   status: ShownStatus
   proxy?: ProxyFact
-  live?: LiveFile
   name: string | null
   previewed: boolean
   offGap: boolean
@@ -344,7 +372,7 @@ const Row = ({
         e.preventDefault()
         onPick(file)
       }}
-      className={`flex h-[38px] w-full items-center gap-2.5 rounded-md border px-[7px] text-left ${
+      className={`flex h-[38px] w-full items-center gap-2.5 rounded-md border px-[7px] text-left [contain-intrinsic-size:auto_38px] [content-visibility:auto] ${
         picked
           ? 'border-accent bg-accent-soft'
           : previewed
@@ -381,6 +409,7 @@ const Row = ({
             src={getPictureUrl(file, proxy, 80)}
             alt=''
             loading='lazy'
+            decoding='async'
             style={turnedThumb(file.rotation)}
             className='h-full w-full object-cover'
           />
@@ -432,14 +461,11 @@ const Row = ({
         {formatSize(file.size)}
       </span>
       <span className='flex w-[76px] flex-none justify-end'>
-        {live ? (
-          <LiveBar
-            live={live}
-            filename={file.filename}
-          />
-        ) : (
-          <StatusChip status={status} />
-        )}
+        <WhileLive
+          id={file.id}
+          filename={file.filename}
+          otherwise={<StatusChip status={status} />}
+        />
       </span>
     </div>
   )
@@ -452,7 +478,6 @@ const Tile = ({
   locked,
   status,
   proxy,
-  live,
   selecting,
   previewed,
   offGap: strayed,
@@ -470,7 +495,6 @@ const Tile = ({
   /* how wide a picture to ask for, from how big the thumbnails are drawn */
   picture: number
   proxy?: ProxyFact
-  live?: LiveFile
   selecting: boolean
   previewed: boolean
   offGap: boolean
@@ -503,7 +527,7 @@ const Tile = ({
     title={`${file.filename} · ${formatTime(file.mtime)} · ${formatSize(file.size)} · ${statusName(status)}${
       proxy?.state === 'none' ? ` · ${proxy.reason ? t`proxy failed` : t`no proxy yet`}` : ''
     }${isWholeFrame(file.frame) ? '' : ` · ${t`framed`}`}${file.rotation ? ` · ${turnedTitle(file.rotation)}` : ''}`}
-    className={`group relative aspect-[4/3] max-w-full cursor-pointer overflow-hidden rounded-[5px] border-2 bg-line-2 p-0 ${
+    className={`group relative aspect-[4/3] max-w-full cursor-pointer overflow-hidden rounded-[5px] border-2 bg-line-2 p-0 [contain-intrinsic-size:auto_120px] [content-visibility:auto] ${
       picked ? 'border-accent' : previewed ? 'border-ink-3' : 'border-transparent'
     }`}>
     {/* a freed file is on the storage only: nothing here to draw it from */}
@@ -512,6 +536,7 @@ const Tile = ({
         src={getPictureUrl(file, proxy, picture)}
         alt=''
         loading='lazy'
+        decoding='async'
         style={turnedThumb(file.rotation)}
         className='absolute inset-0 h-full w-full object-cover'
       />
@@ -553,14 +578,11 @@ const Tile = ({
       />
     )}
     {/* over the foot of the picture, on a dark band so the figures read on any frame */}
-    {live && (
-      <span className='pointer-events-none absolute inset-x-0 bottom-0 bg-black/[0.66] px-1 py-[3px] [&_span]:text-white'>
-        <LiveBar
-          live={live}
-          filename={file.filename}
-        />
-      </span>
-    )}
+    <WhileLive
+      id={file.id}
+      filename={file.filename}
+      band
+    />
     {!locked && (
       <PickMark
         picked={picked}
@@ -649,6 +671,33 @@ const zoomWithWheel = (grid: HTMLDivElement | null) => {
 }
 
 /* one run of files, already in order: the list itself, a page at a time */
+/* The next page is drawn as the end of this one comes near, so a long day scrolls on by itself
+   rather than waiting on a button — a page at a time, so opening it never draws a thousand files at
+   once. The buttons below stay, for the keyboard and for going straight to all of it. */
+const DrawMoreWhenNear = ({ onNear }: { onNear: () => void }) => {
+  const mark = useRef<HTMLSpanElement | null>(null)
+  const near = useEffectEvent(onNear)
+  useEffect(() => {
+    const at = mark.current
+    if (!at || typeof IntersectionObserver === 'undefined') return
+    const watch = new IntersectionObserver(
+      (seen) => {
+        if (seen.some((one) => one.isIntersecting)) near()
+      },
+      { rootMargin: '600px 0px' }
+    )
+    watch.observe(at)
+    return () => watch.disconnect()
+  }, [])
+  return (
+    <span
+      ref={mark}
+      aria-hidden='true'
+      className='block h-px'
+    />
+  )
+}
+
 const Lane = ({
   lane,
   shape,
@@ -662,8 +711,7 @@ const Lane = ({
   deliveredName,
   previewed,
   offGap,
-  selecting,
-  live
+  selecting
 }: Omit<Props, 'files' | 'kind' | 'sortKey'> & { lane: ManifestFile[] }) => {
   const [shown, setShown] = useState(PAGE[shape])
   const tileSize = useTileSize()
@@ -672,6 +720,7 @@ const Lane = ({
   }
   const page = Math.min(shown, lane.length)
   const drawn = lane.slice(0, page)
+  const pickedSet = new Set(picked)
   const total = lane.length
   const more = Math.min(PAGE[shape], lane.length - page)
   return (
@@ -692,11 +741,10 @@ const Lane = ({
               key={file.id ?? file.path}
               file={file}
               lane={lane}
-              picked={Boolean(file.id && picked.includes(file.id))}
+              picked={Boolean(file.id && pickedSet.has(file.id))}
               locked={locked}
               status={shownStatus(file, context)}
               proxy={proxies[file.path]}
-              live={file.id ? live?.[file.id] : undefined}
               name={deliveredName(file)}
               previewed={Boolean(file.id && file.id === previewed)}
               offGap={Boolean(file.id && offGap.has(file.id))}
@@ -710,11 +758,10 @@ const Lane = ({
               key={file.id ?? file.path}
               file={file}
               lane={lane}
-              picked={Boolean(file.id && picked.includes(file.id))}
+              picked={Boolean(file.id && pickedSet.has(file.id))}
               locked={locked}
               status={fileStatus(file, context)}
               proxy={proxies[file.path]}
-              live={file.id ? live?.[file.id] : undefined}
               selecting={selecting}
               previewed={Boolean(file.id && file.id === previewed)}
               offGap={Boolean(file.id && offGap.has(file.id))}
@@ -727,6 +774,13 @@ const Lane = ({
           )
         })}
       </div>
+      {page < lane.length && (
+        /* a mark of its own per page, so one still in view after a page is drawn asks again */
+        <DrawMoreWhenNear
+          key={page}
+          onNear={() => setShown(page + PAGE[shape])}
+        />
+      )}
       {lane.length > PAGE[shape] && (
         <div className='mt-[9px] flex flex-wrap items-center gap-2 border-t border-line-2 pt-2 text-[12px] text-ink-2'>
           <span className='mr-0.5 tabular-nums'>

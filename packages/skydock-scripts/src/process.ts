@@ -49,8 +49,8 @@ const exif = async (args: string[]) => {
 
 /* The picture as it is watched: a clip carrying a turn in its metadata is shown turned, and the
    filters are handed frames already turned that way, so its sides are measured that way round. */
-const shownShape = (src: string) => {
-  const shape = videoShape(src)
+const shownShape = async (src: string) => {
+  const shape = await videoShape(src)
   return shape && (shape.turned ? { width: shape.height, height: shape.width } : shape)
 }
 
@@ -209,7 +209,7 @@ const recodeVideo = async (
   /* A graphics card is the fast way, not the only one. Whatever the card, its driver or the clip's
      format, a clip it cannot do is done again on the processor — slower, and certain wherever
      ffmpeg is — so no machine is ever left unable to deliver a turned or cropped clip. */
-  const pick = proxyEncoder()
+  const pick = await proxyEncoder()
   const first = await encode(pick)
   if (first.ok || pick === 'cpu') return first
   const again = await encode('cpu')
@@ -316,7 +316,7 @@ const writeCutProxy = async (
      would have somebody editing a picture that is not the one about to be rendered. The rectangle
      is fractions of the frame, which is why it applies to a 640-wide copy as readily as to the clip. */
   if (!isWholeFrame(file.frame) || file.rotation) {
-    const shape = shownShape(file.proxy)
+    const shape = await shownShape(file.proxy)
     if (!shape) return null
     const filter = pictureFilter({ frame: file.frame, rotation: file.rotation, ...shape })
     if (!filter) return null
@@ -325,7 +325,7 @@ const writeCutProxy = async (
       : null
   }
   if (trimmed) {
-    if (!cropProxy(file.proxy, target, file.cropStart, file.cropEnd)) return null
+    if (!(await cropProxy(file.proxy, target, file.cropStart, file.cropEnd))) return null
   } else {
     fs.mkdirSync(path.dirname(target), { recursive: true })
     await fs.promises.copyFile(file.proxy, target)
@@ -338,7 +338,7 @@ const copyMedia = async (file: ManifestFile, dest: string, time: Date, onPercent
   const trimmed = isTrimmed(file)
   /* the picture itself changes — cut, turned or both — so the clip is encoded again */
   const reshaped = video && (!isWholeFrame(file.frame) || Boolean(file.rotation))
-  const shape = reshaped ? shownShape(file.path) : null
+  const shape = reshaped ? await shownShape(file.path) : null
   if (reshaped && !shape)
     throw new Error(`Cannot read the size of ${file.filename}: install ffprobe to crop or turn it`)
   /* nothing to do to the picture after all — a landscape fill asked of a clip already landscape */

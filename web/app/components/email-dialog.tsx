@@ -12,7 +12,7 @@ import {
 } from '@skydock/scripts'
 import { i18n } from '@lingui/core'
 import { msg, t } from '@lingui/core/macro'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { cleanEmailHtml } from '../helpers/emailHtml'
 import { setMailApp, useMailApp } from '../hooks/useMailApp'
 import type { MailApp } from '../hooks/useMailApp'
@@ -183,19 +183,21 @@ const EmailDialog = ({
   }
   /* A {variable} put where the caret was. Choosing it from the list takes the caret out of the email,
      so where it was is kept as it moves in the email and put back to write it in. */
-  const [caret, setCaret] = useState<Range | null>(null)
+  /* kept aside, not drawn: the caret moves with every key, and the email need not be drawn again for it */
+  const caret = useRef<Range | null>(null)
   const keepCaret = () => {
     const selection = window.getSelection()
     if (editing() && selection && selection.rangeCount > 0)
-      setCaret(selection.getRangeAt(0).cloneRange())
+      caret.current = selection.getRangeAt(0).cloneRange()
   }
   const putVariable = (name: string) => {
     const selection = window.getSelection()
-    if (!caret || !selection) return
-    const part = caret.startContainer.parentElement?.closest('[data-edit]')
+    const at = caret.current
+    if (!at || !selection) return
+    const part = at.startContainer.parentElement?.closest('[data-edit]')
     if (part instanceof HTMLElement) part.focus()
     selection.removeAllRanges()
-    selection.addRange(caret)
+    selection.addRange(at)
     document.execCommand('insertText', false, `{${name}}`)
   }
   /* a link asked for: the words picked are kept, and the address is asked for beside the toolbar */

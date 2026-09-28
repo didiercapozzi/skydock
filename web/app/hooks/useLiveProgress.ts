@@ -4,6 +4,7 @@ import type { LiveEvent, ProxyFact, MontageFact } from '@skydock/scripts'
 import { useEffect, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { routingEngine } from '../helpers/routing'
+import { forgetLive, liveCamera, liveFiles, liveImporting } from './liveStore'
 
 /* what is being done to a file right now, and how far through it — in the words the events use */
 type LiveFile = Pick<Extract<LiveEvent, { kind: 'file' }>, 'work' | 'percent'>
@@ -22,7 +23,9 @@ type Mounted = Extract<LiveEvent, { kind: 'cameras' }>['mounted'][number]
 type Importing = Omit<Extract<LiveEvent, { kind: 'import' }>, 'kind'>
 
 /* What is happening to the files as it happens, heard over one stream the server keeps open — so a
-   file being processed, or a proxy being made, shows how far along it is with nobody asking. The
+   file being processed, or a proxy being made, shows how far along it is with nobody asking. What
+   moves many times a second goes to the live store (liveStore), read by what shows it; what the
+   board itself shows is kept here. The
    browser reconnects by itself, and on connecting the server first says what is already under way.
 
    Only ever a hint for the eyes. What a file is comes from the board's own answers; the one thing
@@ -34,14 +37,13 @@ const useLiveProgress = (
   onMontages: Dispatch<SetStateAction<Record<string, MontageFact>>>,
   onNote: Dispatch<SetStateAction<{ text: string; problem: boolean } | null>>
 ) => {
-  const [files, setFiles] = useState<Record<string, LiveFile>>({})
-  const [camera, setCamera] = useState<CameraCopy | null>(null)
   const [ended, setEnded] = useState<CameraEnded | null>(null)
   const [cameras, setCameras] = useState<Mounted[]>([])
   const [disk, setDisk] = useState<Disk | null>(null)
-  const [importing, setImporting] = useState<Importing | null>(null)
 
   useEffect(() => {
+    /* what an earlier line said is not taken for now: the server says again what is under way */
+    forgetLive()
     const source = new EventSource(routingEngine.href({ url: '/api/events' }))
     source.onmessage = (message) => {
       const parsed = jsonText.pipe(liveEventSchema).safeParse(String(message.data))
@@ -57,7 +59,7 @@ const useLiveProgress = (
       if (event.kind === 'camera') {
         /* the card's list comes once, at the start; after it, each file says how it went */
         if (event.state === 'copying')
-          setCamera((before) => {
+          liveCamera.update((before) => {
             const same = before?.camera === event.camera && !event.files ? before : null
             return {
               ...event,
@@ -69,7 +71,7 @@ const useLiveProgress = (
             }
           })
         else {
-          setCamera(null)
+          liveCamera.update(() => null)
           setEnded((before) => ({ ...event, seq: (before?.seq ?? 0) + 1 }))
         }
         return
@@ -78,7 +80,7 @@ const useLiveProgress = (
         /* Kept until the copy is over, not until its bytes are: a file whose last byte has landed
            is still being read, and a bar that emptied itself at that moment was the board saying a
            finished copy had not started. */
-        setImporting(event.phase === 'done' ? null : event)
+        liveImporting.update(() => (event.phase === 'done' ? null : event))
         return
       }
       if (event.kind === 'disk') {
@@ -90,13 +92,16 @@ const useLiveProgress = (
         return
       }
       if (event.kind === 'file') {
-        setFiles((now) => ({
-          ...now,
-          [event.fileId]: { work: event.work, percent: event.percent }
-        }))
+        liveFiles.update((now) => {
+          const before = now[event.fileId]
+          /* the same step said again changes nothing, and draws nothing */
+          if (before?.work === event.work && before.percent === event.percent) return now
+          return { ...now, [event.fileId]: { work: event.work, percent: event.percent } }
+        })
         return
       }
-      setFiles((now) => {
+      liveFiles.update((now) => {
+        if (!(event.fileId in now)) return now
         const { [event.fileId]: _ended, ...rest } = now
         return rest
       })
@@ -106,7 +111,7 @@ const useLiveProgress = (
     return () => source.close()
   }, [onProxies, onMontages, onNote])
 
-  return { files, camera, ended, cameras, disk, importing }
+  return { ended, cameras, disk }
 }
 
 export { useLiveProgress }

@@ -12,7 +12,7 @@ import type { MontageFact } from '@skydock/scripts'
 import { useState } from 'react'
 import { Go, Mini } from './buttons'
 import { kindOf } from './file-list'
-import { formatFilmSize, getFileUrl, getThumbUrl, hhmm, pad } from './utils'
+import { formatFilmSize, getFileUrl, getPictureUrl, hhmm, pad } from './utils'
 import type { ManifestGroup } from './types'
 
 /* A montage is named once, by one name — "Luc Favre", "Boogie 2026" — and the name *is* the folder
@@ -97,9 +97,10 @@ const PassengerFrames = ({
         {shown.map((file) => (
           <img
             key={file.id ?? file.path}
-            src={getThumbUrl(file.path, 0.5, 80)}
+            src={getPictureUrl(file, undefined, 80)}
             alt={alt}
             loading='lazy'
+            decoding='async'
             className='h-6 w-[34px] rounded-[3px] bg-line-2 object-cover'
           />
         ))}
@@ -111,9 +112,10 @@ const PassengerFrames = ({
       {shown.map((file) => (
         <img
           key={file.id ?? file.path}
-          src={getThumbUrl(file.path, 0.5, 160)}
+          src={getPictureUrl(file, undefined, 160)}
           alt={alt}
           loading='lazy'
+          decoding='async'
           className='h-[42px] w-full min-w-0 rounded-[4px] bg-line-2 object-cover'
         />
       ))}

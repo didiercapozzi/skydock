@@ -9,7 +9,7 @@ import type { ManifestFile } from '../../app/components/types'
 import { setFileView } from '../../app/hooks/useFileView'
 import { setTileSize } from '../../app/hooks/useTileSize'
 
-/* A long list is drawn a page at a time, and all of it in one go when asked; thumbnails can be drawn
+/* A long list is drawn a page at a time, the next as its end comes near; thumbnails can be drawn
    bigger or smaller, from the header or with Ctrl/⌘ and the wheel over them (RULES, The board). */
 
 const clip = (n: number): ManifestFile => ({
@@ -42,20 +42,20 @@ const list = (count: number, shape: 'rows' | 'grid') =>
   )
 
 describe('a long list', () => {
-  test('shows all of it in one go when asked', async () => {
+  /* a page at a time, the next one drawn as the end of the last comes near */
+  test('draws the rest by itself as its end comes into view', async () => {
     await list(130, 'rows')
-    await expect.element(page.getByText(/of 130 shown/)).toBeInTheDocument()
+    await expect.element(page.getByText('GX0039.MP4')).toBeInTheDocument()
 
-    await userEvent.click(page.getByRole('button', { name: 'Show all 130' }))
-
-    await expect.element(page.getByText('GX0129.MP4')).toBeInTheDocument()
-    await expect.element(page.getByRole('button', { name: /Show all/ })).not.toBeInTheDocument()
-  })
-
-  test('offers all of it only while more than one page is left', async () => {
-    await list(60, 'rows')
-    await expect.element(page.getByRole('button', { name: 'Show 20 more' })).toBeVisible()
-    await expect.element(page.getByRole('button', { name: /Show all/ })).not.toBeInTheDocument()
+    /* scrolled down to the end of each page in turn, as a person reading down the list would */
+    for (const [last, next] of [
+      ['GX0039.MP4', 'GX0079.MP4'],
+      ['GX0079.MP4', 'GX0119.MP4'],
+      ['GX0119.MP4', 'GX0129.MP4']
+    ] as const) {
+      page.getByText(last).element().scrollIntoView()
+      await expect.element(page.getByText(next)).toBeInTheDocument()
+    }
   })
 })
 

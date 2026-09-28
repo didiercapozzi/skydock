@@ -28,8 +28,12 @@ let stop: () => void
 let readable = true
 
 const film = () => path.join(folder, 'luc_favre_20260801.mp4')
-const look = (times = 1) => {
-  for (let i = 0; i < times; i++) lookAtMontages(outputDir)
+/* a film's length is read behind the look, so each look is given the moment that takes */
+const look = async (times = 1) => {
+  for (let i = 0; i < times; i++) {
+    lookAtMontages(outputDir)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  }
 }
 const montagesTold = () => heard.flatMap((e) => (e.kind === 'montage' ? [e] : []))
 
@@ -81,56 +85,56 @@ afterEach(() => {
 })
 
 describe('a film rendered by the editor', () => {
-  it('is told to the board once it has stopped being written', () => {
-    look(3)
+  it('is told to the board once it has stopped being written', async () => {
+    await look(3)
     fs.writeFileSync(film(), Buffer.alloc(64, 1))
 
-    look()
+    await look()
     expect(montagesTold().at(-1)?.fact.film).toBeNull()
 
-    look(2)
+    await look(2)
     const told = montagesTold().at(-1)
     expect(told).toMatchObject({ groupId: 'g1', who: 'Luc Favre', rendered: true })
     expect(told?.fact.film).toMatchObject({ size: 64, seconds: 312 })
   })
 
   /* it grows at every look while the editor writes it, and that is not a film yet */
-  it('is not told while it is still growing', () => {
-    look(3)
+  it('is not told while it is still growing', async () => {
+    await look(3)
     const before = montagesTold().length
     for (const size of [10, 20, 30, 40]) {
       fs.writeFileSync(film(), Buffer.alloc(size, 1))
-      look()
+      await look()
     }
     expect(montagesTold()).toHaveLength(before)
   })
 
   /* size alone can stand still in the middle of a render; a film with no length is not finished */
-  it('is not told while it cannot be read, however still it sits', () => {
-    look(3)
+  it('is not told while it cannot be read, however still it sits', async () => {
+    await look(3)
     const before = montagesTold().length
     readable = false
     fs.writeFileSync(film(), Buffer.alloc(64, 1))
 
-    look(5)
+    await look(5)
 
     expect(montagesTold()).toHaveLength(before)
   })
 
-  it('is told once, not at every look', () => {
-    look(3)
+  it('is told once, not at every look', async () => {
+    await look(3)
     fs.writeFileSync(film(), Buffer.alloc(64, 1))
-    look(8)
+    await look(8)
 
     expect(montagesTold().filter((e) => e.rendered)).toHaveLength(1)
   })
 
   /* The board was drawn from a look of its own a moment before this began, so the first telling is
      where every montage stands — said plainly, not as news. */
-  it('first says where the montage stands, without calling a film already there a new render', () => {
+  it('first says where the montage stands, without calling a film already there a new render', async () => {
     fs.writeFileSync(film(), Buffer.alloc(64, 1))
 
-    look(3)
+    await look(3)
 
     expect(montagesTold()).toHaveLength(1)
     expect(montagesTold()[0]).toMatchObject({ rendered: false })

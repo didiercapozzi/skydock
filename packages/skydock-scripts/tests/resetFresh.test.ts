@@ -124,10 +124,10 @@ describe('a file sent back to be sorted', () => {
 })
 
 describe('resetting Fresh files', () => {
-  it('puts every file back on its camera time, with no trim or turn', () => {
+  it('puts every file back on its camera time, with no trim or turn', async () => {
     const manifest = board()
 
-    resetFresh(manifest)
+    await resetFresh(manifest)
 
     const a = manifest.files.find((f) => f.id === 'a.MP4')
     expect(a?.mtime).toBe(CAMERA)
@@ -135,10 +135,10 @@ describe('resetting Fresh files', () => {
     expect(manifest.files.find((f) => f.id === 'b.MP4')?.rotation).toBeUndefined()
   })
 
-  it('makes the jumps again by the gap rule alone, forgetting the ones made and named by hand', () => {
+  it('makes the jumps again by the gap rule alone, forgetting the ones made and named by hand', async () => {
     const manifest = board()
 
-    expect(resetFresh(manifest)).toEqual({ files: 3, jumps: 1 })
+    expect(await resetFresh(manifest)).toEqual({ files: 3, jumps: 1 })
 
     const fresh = manifest.groups.filter((g) => !g.destination)
     expect(fresh.map((g) => g.files.map((f) => f.id))).toEqual([['a.MP4', 'b.MP4']])
@@ -147,21 +147,21 @@ describe('resetting Fresh files', () => {
     expect(manifest.groups.some((g) => g.files.some((f) => f.id === 'far.MP4'))).toBe(false)
   })
 
-  it('ends the copies brought into Fresh files, which no scan ever made', () => {
+  it('ends the copies brought into Fresh files, which no scan ever made', async () => {
     const manifest = board()
     copyFiles(manifest, new Set(['y1.MP4']), 'group_1')
 
-    resetFresh(manifest)
+    await resetFresh(manifest)
 
     expect(manifest.files.some((f) => f.copyOf)).toBe(false)
   })
 
   /* somebody's work: only what is still to be sorted is reset */
-  it('touches nothing filed to a dropzone or a passenger', () => {
+  it('touches nothing filed to a dropzone or a passenger', async () => {
     const manifest = board()
     const before = JSON.stringify(manifest.groups.find((g) => g.id === 'group_2'))
 
-    resetFresh(manifest)
+    await resetFresh(manifest)
 
     expect(JSON.stringify(manifest.groups.find((g) => g.id === 'group_2'))).toBe(before)
     expect(manifest.files.find((f) => f.id === 'y1.MP4')).toMatchObject({
@@ -170,30 +170,30 @@ describe('resetting Fresh files', () => {
     })
   })
 
-  it('never touches an original', () => {
+  it('never touches an original', async () => {
     const manifest = board()
     const originals = () => fs.readdirSync(path.join(dir, 'original_files')).sort()
     const before = originals()
 
-    resetFresh(manifest)
+    await resetFresh(manifest)
 
     expect(originals()).toEqual(before)
   })
 
-  it('has nothing to do when Fresh files is empty', () => {
+  it('has nothing to do when Fresh files is empty', async () => {
     const manifest = board()
     manifest.groups[0]!.destination = 'Yverdon'
 
-    expect(resetFresh(manifest)).toBeNull()
+    expect(await resetFresh(manifest)).toBeNull()
   })
 })
 
 /* When the mistake was a correction, only the times go back: everything else that was decided stays. */
 describe('resetting only the times of Fresh files', () => {
-  it('puts every file back on its camera time', () => {
+  it('puts every file back on its camera time', async () => {
     const manifest = board()
 
-    expect(resetFreshTimes(manifest)).toEqual({ files: 3, jumps: 1 })
+    expect(await resetFreshTimes(manifest)).toEqual({ files: 3, jumps: 1 })
 
     expect(manifest.files.find((f) => f.id === 'a.MP4')?.mtime).toBe(CAMERA)
     expect(manifest.groups[0]?.files.map((f) => f.mtime)).toEqual([
@@ -203,10 +203,10 @@ describe('resetting only the times of Fresh files', () => {
     ])
   })
 
-  it('keeps the jump, its name, and every trim and turn', () => {
+  it('keeps the jump, its name, and every trim and turn', async () => {
     const manifest = board()
 
-    resetFreshTimes(manifest)
+    await resetFreshTimes(manifest)
 
     const jump = manifest.groups[0]
     expect(jump).toMatchObject({ id: 'group_1', name: 'Sunset load' })
@@ -215,18 +215,18 @@ describe('resetting only the times of Fresh files', () => {
     expect(jump?.files[1]?.rotation).toBe(90)
   })
 
-  it('files the jump under the day its files were really shot', () => {
+  it('files the jump under the day its files were really shot', async () => {
     const manifest = board()
 
-    resetFreshTimes(manifest)
+    await resetFreshTimes(manifest)
 
     expect(manifest.groups[0]?.day).toBe('01.08.2026')
   })
 
-  it('touches nothing filed to a dropzone or a passenger', () => {
+  it('touches nothing filed to a dropzone or a passenger', async () => {
     const manifest = board()
 
-    resetFreshTimes(manifest)
+    await resetFreshTimes(manifest)
 
     expect(manifest.files.find((f) => f.id === 'y1.MP4')?.mtime).toBe(CORRECTED + 20_000)
   })

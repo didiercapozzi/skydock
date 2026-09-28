@@ -5,7 +5,13 @@ import * as url from 'node:url'
 import { Readable } from 'node:stream'
 import { createRequestHandler } from 'react-router'
 import type { ServerBuild } from 'react-router'
-import { cancelProcessing, rememberOutputDir, resolveOutputDir, stopTools } from '@skydock/scripts'
+import {
+  cancelProcessing,
+  flushAllBoardChanges,
+  rememberOutputDir,
+  resolveOutputDir,
+  stopTools
+} from '@skydock/scripts'
 import { letGo, sendAnswer, writeOut } from './answer'
 
 /* SkyDock as an installed program: the same app the development server runs, served by Node itself
@@ -129,6 +135,8 @@ const stopOn = (server: http.Server) => {
     stopping = true
     cancelProcessing()
     stopTools()
+    /* what the board recorded by itself in the last half second is not lost with the server */
+    flushAllBoardChanges()
     server.close(() => process.exit(0))
     /* a live stream holds its connection open for as long as the board is there to read it */
     server.closeAllConnections()

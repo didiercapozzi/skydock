@@ -177,7 +177,7 @@ const ComparisonDialog = ({
             cropEnd={null}
             zoom={zoom}
             readOnly
-            thumbSrc={(seek) => getThumbUrl(file.path, seek)}
+            thumbSrc={(seek) => getThumbUrl(file.proxy ?? file.path, seek)}
             onSeek={onSeek}
             onCropChange={() => {}}
             onApply={() => {}}

@@ -159,6 +159,7 @@ const CameraFiles = ({
   const pickable = listing?.deletable
     ? files.filter((f) => f.state === 'stored' || f.state === 'binned')
     : []
+  const canPick = new Set(pickable)
   const chosen = pickable.filter((f) => picked.has(f.path))
   const stored = files.filter((f) => f.state === 'stored')
   const missing = files.filter((f) => f.state === 'missing')
@@ -334,11 +335,11 @@ const CameraFiles = ({
               <label
                 title={i18n._(STANDING[file.state].title)}
                 className={`flex h-[34px] w-full items-center gap-2.5 rounded-md px-[7px] ${
-                  pickable.includes(file) ? 'cursor-pointer hover:bg-line-2' : ''
+                  canPick.has(file) ? 'cursor-pointer hover:bg-line-2' : ''
                 }`}>
                 {/* only a file on the storage or in the bin has a tick: nothing else could go */}
                 <span className='w-4 flex-none'>
-                  {pickable.includes(file) && (
+                  {canPick.has(file) && (
                     <input
                       type='checkbox'
                       aria-label={pickLabel(file.name)}

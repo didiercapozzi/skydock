@@ -213,7 +213,12 @@ const fetchInto = async (
     throw new CameraGone('The camera stopped answering during the copy.')
   }
   if (said?.mtime) fs.utimesSync(partial, said.mtime, said.mtime)
-  const twin = here.named(clip.name, size).find((one) => sameBytes(partial, one.path))
+  let twin: { path: string } | undefined
+  for (const one of here.named(clip.name, size))
+    if (await sameBytes(partial, one.path)) {
+      twin = one
+      break
+    }
   if (twin) {
     fs.rmSync(partial, { force: true })
     return { copied: false, at: twin.path, size, shot: 0 }

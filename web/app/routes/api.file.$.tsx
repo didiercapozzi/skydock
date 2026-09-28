@@ -37,44 +37,30 @@ const streamFile = (
     ? fs.createReadStream(filePath, { start: range.start, end: range.end })
     : fs.createReadStream(filePath)
 
-  let destroyed = false
-
-  const destroy = () => {
-    if (!destroyed) {
-      destroyed = true
-      nodeStream.destroy()
-    }
-  }
-
-  const readable = new ReadableStream({
-    start(controller) {
-      nodeStream.on('data', (chunk) => {
-        if (destroyed) return
-        try {
-          controller.enqueue(chunk)
-        } catch {
-          destroy()
-        }
-      })
-      nodeStream.on('end', () => {
-        if (!destroyed) {
-          try {
-            controller.close()
-          } catch {}
-        }
-      })
-      nodeStream.on('error', (err) => {
-        if (!destroyed) {
-          try {
-            controller.error(err)
-          } catch {}
-        }
-      })
+  /* Read as it is sent, never ahead of it: a clip of several gigabytes asked for from its start
+     is read only as fast as the page takes it, instead of being pulled into memory as fast as the
+     disk can go. A page that lets go stops the reading. */
+  const readable = new ReadableStream<Uint8Array>(
+    {
+      start: (controller) => {
+        nodeStream.on('data', (chunk) => {
+          controller.enqueue(typeof chunk === 'string' ? new TextEncoder().encode(chunk) : chunk)
+          /* the page has not taken what it was given yet: wait for it */
+          if ((controller.desiredSize ?? 1) <= 0) nodeStream.pause()
+        })
+        nodeStream.on('end', () => controller.close())
+        nodeStream.on('error', (err) => controller.error(err))
+      },
+      pull: () => {
+        nodeStream.resume()
+      },
+      cancel: () => {
+        nodeStream.destroy()
+      }
     },
-    cancel() {
-      destroy()
-    }
-  })
+    /* a few chunks ahead of the page, no more */
+    { highWaterMark: 4 }
+  )
 
   const status = range ? 206 : 200
   const headers: Record<string, string> = {
@@ -110,11 +96,13 @@ const loader = async ({
   const rangeHeader = request.headers.get('range')
   let range: { start: number; end: number } | null = null
   if (rangeHeader) {
-    const parts = rangeHeader.replace(/bytes=/, '').split('-')
-    const start = parseInt(parts[0], 10)
-    const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1
+    const [from = '', to = ''] = rangeHeader.replace(/bytes=/, '').split('-')
+    /* "bytes=-N" is the last N bytes; an end past the file is the file's end */
+    const last = stat.size - 1
+    const start = from === '' ? Math.max(0, stat.size - parseInt(to, 10)) : parseInt(from, 10)
+    const end = from === '' || to === '' ? last : Math.min(parseInt(to, 10), last)
     const parsed = rangeSchema.safeParse({ start, end })
-    if (parsed.success) range = parsed.data
+    if (parsed.success && parsed.data.start <= parsed.data.end) range = parsed.data
   }
 
   return streamFile(filePath, contentType, stat.size, range)

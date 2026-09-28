@@ -19,7 +19,12 @@ const useUploadProgress = (scope: string | null) => {
         })
         if (raw === null || raw === undefined) return
         const parsed = uploadProgressStateSchema.safeParse(raw)
-        if (parsed.success && parsed.data.scope === scope && !cancelled) setRawProgress(parsed.data)
+        if (!parsed.success || parsed.data.scope !== scope || cancelled) return
+        /* the same as a second ago draws nothing again */
+        const now = parsed.data
+        setRawProgress((before) =>
+          before && JSON.stringify(before) === JSON.stringify(now) ? before : now
+        )
       } catch {}
     }
     queueMicrotask(fetchOnce)

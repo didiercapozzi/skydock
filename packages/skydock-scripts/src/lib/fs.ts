@@ -27,28 +27,32 @@ const findMediaFiles = (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH) => {
 
 /* Whether two files hold the same bytes, read a block at a time and given up on at the first
    difference — the whole of it only when they really are the same. Read here rather than asked of
-   another program: it is the same work, and it needs nothing installed. */
-const sameBytes = (left: string, right: string) => {
+   another program: it is the same work, and it needs nothing installed. Read without holding the
+   server: two 4 GB clips take seconds. */
+const sameBytes = async (left: string, right: string) => {
   const size = 1024 * 1024
   const a = Buffer.alloc(size)
   const b = Buffer.alloc(size)
-  let first: number | null = null
-  let second: number | null = null
+  let first: fs.promises.FileHandle | null = null
+  let second: fs.promises.FileHandle | null = null
   try {
-    first = fs.openSync(left, 'r')
-    second = fs.openSync(right, 'r')
-    if (fs.fstatSync(first).size !== fs.fstatSync(second).size) return false
+    first = await fs.promises.open(left, 'r')
+    second = await fs.promises.open(right, 'r')
+    if ((await first.stat()).size !== (await second.stat()).size) return false
     for (;;) {
-      const read = fs.readSync(first, a, 0, size, null)
-      if (read !== fs.readSync(second, b, 0, size, null)) return false
-      if (read === 0) return true
-      if (!a.subarray(0, read).equals(b.subarray(0, read))) return false
+      const [one, two] = await Promise.all([
+        first.read(a, 0, size, null),
+        second.read(b, 0, size, null)
+      ])
+      if (one.bytesRead !== two.bytesRead) return false
+      if (one.bytesRead === 0) return true
+      if (!a.subarray(0, one.bytesRead).equals(b.subarray(0, two.bytesRead))) return false
     }
   } catch {
     return false
   } finally {
-    if (first !== null) fs.closeSync(first)
-    if (second !== null) fs.closeSync(second)
+    await first?.close()
+    await second?.close()
   }
 }
 

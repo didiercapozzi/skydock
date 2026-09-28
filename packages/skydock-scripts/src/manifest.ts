@@ -135,11 +135,9 @@ const loadManifest = (manifestPath: string) => {
    the history in minutes. */
 const keepBoardStep = (manifestPath: string) => {
   const groupsPath = getGroupsPath(manifestPath)
-  try {
-    if (!readPair(manifestPath, groupsPath)) return
-  } catch {
-    return
-  }
+  /* copied as it is, not read again: whoever asks has just read it, and a step that cannot be read
+     is simply not listed */
+  if (!fs.existsSync(manifestPath)) return
   const history = historyDir(manifestPath)
   /* two changes in the same millisecond are still two steps, in the order they were made */
   const at = new Date().toISOString().replace(/[:.]/g, '-')
@@ -207,6 +205,64 @@ const restoreBoard = (manifestPath: string, step: string) => {
   return was
 }
 
+/* Changes the board records by itself — a file landing off a camera, a proxy made — come many a
+   second, and loading, checking and writing the whole board for each one held the server for all of
+   it. So they are gathered and written together, half a second after the first, on the board as it
+   is on the disk then; one given a key replaces the one waiting under the same key, since it says
+   the same thing more recently. `flushBoardChanges` writes what is waiting at once, for whoever
+   needs it written now. */
+const BATCH_MS = 500
+
+type Waiting = { changes: Map<string, (board: Manifest) => void>; timer: NodeJS.Timeout | null }
+
+declare global {
+  var skydockBoardChanges: Map<string, Waiting> | undefined
+}
+
+const waitingFor = (manifestPath: string) => {
+  const all = (globalThis.skydockBoardChanges ??= new Map())
+  let waiting = all.get(manifestPath)
+  if (!waiting) {
+    waiting = { changes: new Map(), timer: null }
+    all.set(manifestPath, waiting)
+  }
+  return waiting
+}
+
+let unnamed = 0
+
+const flushBoardChanges = (manifestPath: string) => {
+  const waiting = waitingFor(manifestPath)
+  if (waiting.timer) clearTimeout(waiting.timer)
+  waiting.timer = null
+  if (waiting.changes.size === 0) return
+  const changes = [...waiting.changes.values()]
+  waiting.changes.clear()
+  try {
+    const board = loadManifest(manifestPath)
+    if (!board) return
+    for (const change of changes) change(board)
+    saveManifest(manifestPath, board)
+  } catch (e) {
+    console.warn(
+      '[Manifest] could not record what was waiting:',
+      e instanceof Error ? e.message : e
+    )
+  }
+}
+
+/* everything waiting, for every board — written before the server stops */
+const flushAllBoardChanges = () => {
+  for (const manifestPath of globalThis.skydockBoardChanges?.keys() ?? [])
+    flushBoardChanges(manifestPath)
+}
+
+const changeBoardSoon = (manifestPath: string, change: (board: Manifest) => void, key?: string) => {
+  const waiting = waitingFor(manifestPath)
+  waiting.changes.set(key ?? `#${unnamed++}`, change)
+  waiting.timer ??= setTimeout(() => flushBoardChanges(manifestPath), BATCH_MS)
+}
+
 /* What the disk currently says about each processed copy, keyed by the file's identity. The record alone
    cannot know that someone emptied `processed/` or that a crop was re-rendered shorter, so the
    status is only trustworthy with this alongside it. One stat per processed file. */
@@ -264,6 +320,9 @@ const saveManifest = (manifestPath: string, manifest: Manifest) => {
 }
 
 export {
+  changeBoardSoon,
+  flushAllBoardChanges,
+  flushBoardChanges,
   boardHistory,
   keepBoardStep,
   getGroupsPath,

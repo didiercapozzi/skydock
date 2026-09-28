@@ -11,7 +11,7 @@ import { NameMontage, PassengerFrames, PassengerName } from './montage-card'
 import { StepTrail } from './montage-steps'
 import type { Passenger } from './montage-card'
 import type { ManifestFile, ManifestGroup } from './types'
-import { dateLabel, formatSize, getThumbUrl, minFileMtime, shortDate } from './utils'
+import { dateLabel, formatSize, getPictureUrl, minFileMtime, shortDate } from './utils'
 
 /* The right-hand pane says everything about whatever is selected — one file, several, a jump, or
    the folder itself when nothing is — and offers what can be done with it, so nothing has to be
@@ -424,7 +424,7 @@ const FilePanel = ({
         title={t`Open it — trim, frame and turn`}
         className='relative aspect-video w-full overflow-hidden rounded-lg border-0 bg-line-2 p-0'>
         <img
-          src={getThumbUrl(file.path, 0.5, 480)}
+          src={getPictureUrl(file, undefined, 480)}
           alt=''
           style={
             file.rotation

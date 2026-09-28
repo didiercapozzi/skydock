@@ -2,6 +2,8 @@ import {
   earlierMontagesDirs,
   ensureNasSession,
   forgetLostFiles,
+  flushBoardChanges,
+  getManifestPath,
   getOutputDir,
   learnStorage,
   listRemoteFiles,
@@ -21,7 +23,7 @@ import { keepBackupAsPlace } from '../../../packages/skydock-scripts/src/destina
 import { diskSpace } from '../../../packages/skydock-scripts/src/diskSpace'
 import { lostOnStorage, readMontageIndex } from '../../../packages/skydock-scripts/src/montageIndex'
 import { t } from '@lingui/core/macro'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet } from 'react-router'
 import type { ShouldRevalidateFunctionArgs } from 'react-router'
 import { BoardHeader } from '../components/board-header'
@@ -36,6 +38,7 @@ import { formatTime } from '../components/utils'
 import { fromComputer } from '../helpers/import'
 import { typingInField } from '../helpers/keys'
 import { routingEngine } from '../helpers/routing'
+import { useCameraCopying } from '../hooks/liveStore'
 import { useBoardModel } from '../hooks/useBoardModel'
 import type { Route } from './+types/board'
 
@@ -53,23 +56,19 @@ const shouldRevalidate = ({
     ? defaultShouldRevalidate
     : false
 
-const loader = async (_args: Route.LoaderArgs) => {
-  const outputDir = getOutputDir()
-  let manifest = null
-  try {
-    manifest = loadManifest(`${outputDir}/manifest.json`)
-  } catch {
-    manifest = null
-  }
+type NasState = { connected: boolean; hostname: string | null; username: string | null }
+
+type StorageLook = Awaited<ReturnType<typeof lookAtStorage>>
+
+/* What the storage says, asked after the board is drawn rather than before: a storage that is slow,
+   or cannot be reached at all, never holds the board (RULES, The board). What it changes on this
+   machine's record — a backup folder made a place, a file the storage no longer holds forgotten —
+   is saved here and reaches the board with its next answer. */
+const lookAtStorage = async (outputDir: string) => {
+  const manifestPath = getManifestPath(outputDir)
   /* a session file is not a session: ask DSM whether the id still works (and let it refresh
      itself if it does not), so the board never shows a connection that is already dead */
-  let nas: {
-    connected: boolean
-    hostname: string | null
-    username: string | null
-  } = { connected: false, hostname: null, username: null }
-  /* the first look at the NAS happens here rather than on mount: the page then arrives already
-     correct, and the Refresh button re-runs the same check through /api/remote-files */
+  let nas: NasState = { connected: false, hostname: null, username: null }
   let remote: { dirs: string[]; sizes: Record<string, number | null>; at: number } | null = null
   let storage: {
     dir: string
@@ -79,61 +78,68 @@ const loader = async (_args: Route.LoaderArgs) => {
   } | null = null
   try {
     const session = await ensureNasSession()
-    if (session) {
-      nas = {
-        connected: true,
-        hostname: session.hostname,
-        username: session.username
-      }
-      /* a backup folder chosen before backups went into destinations becomes one (RULES, Places) */
-      if (manifest && session.backupFolder && keepBackupAsPlace(manifest, session.backupFolder))
-        saveManifest(`${outputDir}/manifest.json`, manifest)
-      if (manifest) {
-        /* where SkyDock's lists are kept is fixed the first time there is a place to work it out
-           from, and never moves after (RULES, Network storage) */
-        const settled = settleListsDir(manifest) ?? session
-        remote = await listRemoteFiles(manifest, settled)
-        /* the board as it is once the storage has answered — a file may have landed meanwhile */
-        manifest = loadManifest(`${outputDir}/manifest.json`) ?? manifest
-        /* footage that is nowhere is not listed: a freed file the storage no longer holds has
-           nothing left anywhere, so the app forgets it rather than offering a dead row */
-        const forgotten = forgetLostFiles(manifest, remote)
-        if (forgotten.length > 0) {
-          saveManifest(`${outputDir}/manifest.json`, manifest)
-          console.log(`[Board] Forgot ${forgotten.length} file(s) nowhere: ${forgotten.join(', ')}`)
-        }
-        /* What the storage holds is written into its own list, whoever put it there: a place can be
-           pointed at a folder that was full of footage long before SkyDock saw it, and an upload
-           must not send a second copy of what is already up there (RULES, Network storage). It is
-           the board's own reading of those folders, so it costs nothing more to look — and a
-           storage that will not have it written changes nothing about the board. */
-        await learnStorage(manifest, settled, remote).catch((e: unknown) => {
-          console.warn(
-            `[Board] The storage's list of what it holds was not written: ${messageOf(e)}`
-          )
-        })
-        /* the storage's own list of montages — every one it holds, from here or from elsewhere */
-        const dir = montagesRemoteDir(manifest, settled)
-        if (dir)
-          storage = await readMontageIndex(settled, dir, earlierMontagesDirs(manifest))
-            .then(async (index) => ({
-              dir,
-              montages: index.montages,
-              /* what the list names that the storage no longer holds: the list remembers, the
-                 storage says what is there (RULES, Network storage) */
-              lost: await lostOnStorage(settled, index.montages),
-              problem: null as string | null
-            }))
-            .catch((e: unknown) => ({
-              dir,
-              montages: [],
-              lost: { folders: [], links: [] },
-              problem: messageOf(e)
-            }))
-      }
+    if (!session) return { nas, remote, storage }
+    nas = { connected: true, hostname: session.hostname, username: session.username }
+    let manifest = loadManifest(manifestPath)
+    if (!manifest) return { nas, remote, storage }
+    /* a backup folder chosen before backups went into destinations becomes one (RULES, Places) */
+    if (session.backupFolder && keepBackupAsPlace(manifest, session.backupFolder))
+      saveManifest(manifestPath, manifest)
+    /* where SkyDock's lists are kept is fixed the first time there is a place to work it out
+       from, and never moves after (RULES, Network storage) */
+    const settled = settleListsDir(manifest) ?? session
+    remote = await listRemoteFiles(manifest, settled)
+    /* the board as it is once the storage has answered — a file may have landed meanwhile */
+    manifest = loadManifest(manifestPath) ?? manifest
+    /* footage that is nowhere is not listed: a freed file the storage no longer holds has
+       nothing left anywhere, so the app forgets it rather than offering a dead row */
+    const forgotten = forgetLostFiles(manifest, remote)
+    if (forgotten.length > 0) {
+      saveManifest(manifestPath, manifest)
+      console.log(`[Board] Forgot ${forgotten.length} file(s) nowhere: ${forgotten.join(', ')}`)
     }
+    /* What the storage holds is written into its own list, whoever put it there: a place can be
+       pointed at a folder that was full of footage long before SkyDock saw it, and an upload
+       must not send a second copy of what is already up there (RULES, Network storage). It is
+       the board's own reading of those folders, so it costs nothing more to look — and a
+       storage that will not have it written changes nothing about the board. */
+    await learnStorage(manifest, settled, remote).catch((e: unknown) => {
+      console.warn(`[Board] The storage's list of what it holds was not written: ${messageOf(e)}`)
+    })
+    /* the storage's own list of montages — every one it holds, from here or from elsewhere */
+    const dir = montagesRemoteDir(manifest, settled)
+    if (dir)
+      storage = await readMontageIndex(settled, dir, earlierMontagesDirs(manifest))
+        .then(async (index) => ({
+          dir,
+          montages: index.montages,
+          /* what the list names that the storage no longer holds: the list remembers, the
+             storage says what is there (RULES, Network storage) */
+          lost: await lostOnStorage(settled, index.montages),
+          problem: null as string | null
+        }))
+        .catch((e: unknown) => ({
+          dir,
+          montages: [],
+          lost: { folders: [], links: [] },
+          problem: messageOf(e)
+        }))
   } catch {
     nas = { connected: false, hostname: null, username: null }
+  }
+  return { nas, remote, storage }
+}
+
+const loader = async (_args: Route.LoaderArgs) => {
+  const outputDir = getOutputDir()
+  const manifestPath = getManifestPath(outputDir)
+  /* what the board recorded by itself a moment ago is on the page too */
+  flushBoardChanges(manifestPath)
+  let manifest = null
+  try {
+    manifest = loadManifest(manifestPath)
+  } catch {
+    manifest = null
   }
   const grouped = new Set(
     (manifest?.groups ?? []).flatMap((g) => g.files.map((f) => f.id ?? f.path))
@@ -156,10 +162,13 @@ const loader = async (_args: Route.LoaderArgs) => {
     /* and what each montage's folder holds: nothing tells SkyDock when the editor finishes, so a
        film is only ever noticed by looking (RULES, The editing project) */
     montages: manifest ? statMontageArtifacts(manifest, outputDir) : {},
-    remote,
-    storage,
+    /* until the storage has answered, it is being asked */
+    nas: { connected: false, hostname: null, username: null } as NasState,
+    remote: null,
+    storage: null,
+    /* what the storage says, sent after the board, once it has answered */
+    storageLook: lookAtStorage(outputDir),
     hasManifest: manifest !== null,
-    nas,
     /* what is being processed right now, if anything — a page loaded in the middle of it has to
        show it still running rather than offer to start it again */
     processing: processingNow(),
@@ -173,7 +182,33 @@ const loader = async (_args: Route.LoaderArgs) => {
    and the folder the address names is drawn beside the rail by its own route, as is a file opened
    in it (RULES, The board). */
 const Board = ({ loaderData }: Route.ComponentProps) => {
-  const model = useBoardModel(loaderData)
+  /* the storage's answer, once it comes: the board is drawn and used without waiting for it */
+  const [looked, setLooked] = useState<StorageLook | null>(null)
+  const asking = loaderData.storageLook
+  useEffect(() => {
+    let current = true
+    void Promise.resolve(asking).then((answer) => {
+      if (current && answer) setLooked(answer)
+    })
+    return () => {
+      current = false
+    }
+  }, [asking])
+  const storageAsked = asking !== undefined && looked === null
+  /* while it is being worked on, a frame the board took too long to draw is said in the console,
+     so a heavy page is found by its line rather than by a hand that felt it stutter */
+  useEffect(() => {
+    if (!import.meta.env.DEV || typeof PerformanceObserver === 'undefined') return
+    if (!PerformanceObserver.supportedEntryTypes?.includes('long-animation-frame')) return
+    const watch = new PerformanceObserver((list) => {
+      for (const frame of list.getEntries())
+        if (frame.duration > 50)
+          console.warn(`[Board] a frame took ${Math.round(frame.duration)} ms`)
+    })
+    watch.observe({ type: 'long-animation-frame', buffered: false })
+    return () => watch.disconnect()
+  }, [])
+  const model = useBoardModel(looked ? { ...loaderData, ...looked } : loaderData)
   const { board, nas, drag, setDialog } = model
   const { groups, loose, places, note, setNote, send } = board
   const dialogOpen = model.dialog !== null
@@ -235,7 +270,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           onClick: () => setDialog({ kind: 'disconnect' })
         }
       ]
-    : [{ label: t`Connect the storage`, onClick: model.openConnect }]
+    : storageAsked
+      ? [{ label: t`Checking the storage…`, disabled: true, onClick: () => {} }]
+      : [{ label: t`Connect the storage`, onClick: model.openConnect }]
 
   /* a dialog that ends in a change closes, then asks for it */
   const closeThen = (then: () => void) => {
@@ -243,10 +280,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     then()
   }
 
-  const partCopied =
-    model.watching && model.watching.total > 0
-      ? Math.min(1, model.watching.done / model.watching.total)
-      : 0
+  /* a card being copied: only whether, which changes twice a copy — its bytes are the panel's */
+  const copying = useCameraCopying()
 
   return (
     <main
@@ -372,7 +407,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           /* the folder is not left while something is being written into it */
           working: board.uploading
             ? t`An upload is running`
-            : board.cameraCopy
+            : copying
               ? t`A camera is being copied`
               : model.coming
                 ? t`Files are being copied in`
@@ -386,11 +421,10 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
       {/* what is on its way, in the corner, whatever page is open: a camera being copied off, files
           being copied in, and the upload going out — one above the other when several are */}
-      {(model.coming || board.uploading || board.cameraCopy) && (
+      {(model.coming || board.uploading || copying) && (
         <div className='fixed right-4 bottom-4 z-40 flex flex-col items-end gap-2'>
-          {board.cameraCopy && (
+          {copying && (
             <CameraPanel
-              copy={board.cameraCopy}
               onStop={() =>
                 void routingEngine
                   .action({ url: '/api/camera', actionArgs: { stop: true } })
@@ -412,8 +446,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               files={model.coming.files}
               done={model.coming.done}
               failed={model.coming.failed}
-              part={partCopied}
-              reading={model.watching?.phase === 'reading'}
             />
           )}
         </div>

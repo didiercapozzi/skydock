@@ -1,5 +1,7 @@
 import { t } from '@lingui/core/macro'
+import { tokenFor } from '../helpers/import'
 import type { Coming } from '../helpers/import'
+import { useImporting } from '../hooks/liveStore'
 import { ProgressPanel } from './progress-panel'
 import { formatSize } from './utils'
 
@@ -13,9 +15,7 @@ const ImportPanel = ({
   where,
   files,
   done,
-  failed,
-  part,
-  reading
+  failed
 }: {
   /* the folder they are going into, named as the board names it */
   where: string
@@ -23,11 +23,15 @@ const ImportPanel = ({
   /* how many are copied in, which is also which one is being copied now */
   done: number
   failed: number
-  /* how far through the one being copied, between 0 and 1, where the server is saying */
-  part: number
-  /* its bytes have landed and it is being read — its date, and the name it will be known by */
-  reading: boolean
 }) => {
+  /* How far through the one being copied, as the server says it while its bytes land — heard here,
+     by the panel that shows it, so its ticks draw nothing else — and whether its bytes have landed
+     and it is being read: its date, and the name it will be known by. Only ever the one this panel
+     is counting. */
+  const said = useImporting()
+  const watching = said && said.token === tokenFor(done) ? said : null
+  const part = watching && watching.total > 0 ? Math.min(1, watching.done / watching.total) : 0
+  const reading = watching?.phase === 'reading'
   const total = files.length
   const bytes = files.reduce((sum, file) => sum + file.size, 0)
   const size = formatSize(bytes)

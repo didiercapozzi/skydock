@@ -1,6 +1,6 @@
 import { plural, t } from '@lingui/core/macro'
 import { useState } from 'react'
-import type { CameraCopy } from '../hooks/useLiveProgress'
+import { useCameraCopy } from '../hooks/liveStore'
 import { Mini } from './buttons'
 import { ProgressPanel } from './progress-panel'
 import type { ProgressRow } from './progress-panel'
@@ -10,8 +10,11 @@ import { formatSize } from './utils'
    same corner and the same shape as files dropped in and an upload going out — every file on the
    card, which ones are copied, which were here already, and the one under way, filling as its bytes
    land. */
-const CameraPanel = ({ copy, onStop }: { copy: CameraCopy; onStop: () => void }) => {
+const CameraPanel = ({ onStop }: { onStop: () => void }) => {
   const [stopping, setStopping] = useState(false)
+  /* every byte of the card, heard by this panel alone */
+  const copy = useCameraCopy()
+  if (!copy) return null
   const { camera, done, total, copied, skipped } = copy
   const outcomes = copy.outcomes ?? []
   const rows: ProgressRow[] = (copy.files ?? []).map((file, at) => ({

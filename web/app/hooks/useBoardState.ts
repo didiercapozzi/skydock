@@ -8,6 +8,7 @@ import type {
   MontageFact
 } from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
+import { useCameraLanded } from './liveStore'
 import { z } from 'zod'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
 import {
@@ -65,6 +66,9 @@ const refusalSchema = z
    answered last. The server answers every edit with the board as it saved it, or with the reason it
    refused, and a new answer is adopted the moment it is seen, during the render that sees it: the
    answer already is the next state, and nothing about it needs the screen to have been drawn first. */
+/* how often the board looks again while a card lands */
+const LOOK_EVERY_MS = 2000
+
 const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   const { groups, setGroups, updateGroups } = useGroups(loaded.groups)
   /* A page loaded mid-processing takes the work up where the server has it: that one montage says it
@@ -101,10 +105,15 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   /* files being processed or proxied right now, and how far through; a proxy that lands is
      flagged at once, since the event carries what the server read off the disk */
   const live = useLiveProgress(setProxies, setMontageFacts, setSpoken)
-  const liveFiles = live.files
   const [remoteAfterUpload, setRemoteAfterUpload] = useState<CheckedListing | null>(null)
   /* the storage's list of montages, as the loader read it or as the last change wrote it */
   const [storage, setStorage] = useState(loaded.storage)
+  /* the storage answers after the board is drawn: its list is taken up when it comes */
+  const [storageLoaded, setStorageLoaded] = useState(loaded.storage)
+  if (loaded.storage !== storageLoaded) {
+    setStorageLoaded(loaded.storage)
+    setStorage(loaded.storage)
+  }
   /* the first scan is what creates the manifest, so this is state and not read from the loader */
   const [hasManifest, setHasManifest] = useState(loaded.hasManifest)
   const fetcher = useSafeFetcher()
@@ -220,7 +229,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   }
 
   /* While a camera is copied off, each file it brings goes on the board as it lands, and the board
-     looks again after each — quietly, on a request of its own, so that nothing said and nothing
+     looks again as they come — quietly, on a request of its own, so that nothing said and nothing
      under way is disturbed by it. One look at a time: the next file brings the next one. */
   const arrivals = useSafeFetcher()
   const [seenArrivals, setSeenArrivals] = useState<unknown>(null)
@@ -229,12 +238,14 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     adopt(arrivals.data, true)
   }
   /* by camera as well as by count: a second camera's fifth file is not the first camera's fifth */
-  const landed =
-    live.camera && live.camera.copied > 0 ? `${live.camera.camera}:${live.camera.copied}` : ''
-  const lookedAt = useRef('')
+  const landed = useCameraLanded()
+  const lookedAt = useRef({ landed: '', at: 0 })
   useEffect(() => {
-    if (!landed || landed === lookedAt.current || arrivals.state !== 'idle') return
-    lookedAt.current = landed
+    if (landed.endsWith(':0') || !landed || landed === lookedAt.current.landed) return
+    /* a fast card lands several files a second: the board looks at most every two seconds, and
+       once more when the card is done */
+    if (arrivals.state !== 'idle' || Date.now() - lookedAt.current.at < LOOK_EVERY_MS) return
+    lookedAt.current = { landed, at: Date.now() }
     /* the same look the board takes after files dropped in, taken quietly */
     arrivals.submit({ url: '/api/manifest', actionArgs: { intent: 'imported' } })
   }, [landed, arrivals])
@@ -338,13 +349,8 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     outputs,
     proxies,
     proxyProgress,
-    liveFiles,
-    /* a camera being copied off right now, as it goes */
-    cameraCopy: live.camera,
     cameras: live.cameras,
     disk: live.disk,
-    /* how far through the one file a drop is copying in right now */
-    importing: live.importing,
     montageFacts,
     remoteAfterUpload,
     storage,

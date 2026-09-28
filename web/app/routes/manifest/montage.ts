@@ -10,6 +10,7 @@ import {
   messageOf
 } from '@skydock/scripts'
 import { openInEditor } from '../../../../packages/skydock-scripts/src/editor'
+import { mediaSeconds } from '../../../../packages/skydock-scripts/src/lib/media'
 import { createMontageProject } from '../../../../packages/skydock-scripts/src/montage'
 import { writeCutProxy } from '../../../../packages/skydock-scripts/src/process'
 import { getCutProxyDir } from '../../../../packages/skydock-scripts/src/proxy'
@@ -70,11 +71,15 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
       const source = measured && manifest.files.find((f) => f.id === measured.id)
       if (!fs.existsSync(proxy) && measured && source?.proxy)
         await writeCutProxy({ ...measured, proxy: source.proxy }, file, outputDir, group.id)
+      const hasProxy = fs.existsSync(proxy)
+      /* read here, without holding the server, for the markers that must fall inside the clip */
+      const seconds = measured?.moments ? await mediaSeconds(hasProxy ? proxy : file) : null
       clips.push({
         path: file,
-        ...(fs.existsSync(proxy) ? { proxy } : {}),
+        ...(hasProxy ? { proxy } : {}),
         moments: measured?.moments,
-        cropStart: measured?.cropStart
+        cropStart: measured?.cropStart,
+        ...(seconds !== null ? { seconds } : {})
       })
     }
     const made = createMontageProject({

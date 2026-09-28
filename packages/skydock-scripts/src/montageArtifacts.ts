@@ -27,18 +27,25 @@ const statOrNull = (target: string) => {
 }
 
 /* How long the film runs, which is what says at a glance that the render is the whole jump and not
-   a test of the first minute. Asked of ffprobe once per film as it is on disk: the board looks at
-   every montage each time it answers, and a film does not change length without changing size. */
+   a test of the first minute. Asked of ffprobe once per film as it is on disk, and never while an
+   answer waits: the board looks at every montage each time it answers, so a film not measured yet
+   is measured behind the answer, and the next one says its length. A film does not change length
+   without changing size. */
 const durations = new Map<string, number | null>()
+const measuring = new Set<string>()
 
 const filmSeconds = (target: string, size: number, mtime: number) => {
   const key = `${target}\0${size}\0${mtime}`
   const known = durations.get(key)
   if (known !== undefined) return known
-  const exact = mediaSeconds(target)
-  const seconds = exact === null ? null : Math.round(exact)
-  durations.set(key, seconds)
-  return seconds
+  if (!measuring.has(key)) {
+    measuring.add(key)
+    void mediaSeconds(target).then((exact) => {
+      durations.set(key, exact === null ? null : Math.round(exact))
+      measuring.delete(key)
+    })
+  }
+  return null
 }
 
 /* What a montage's folder actually holds. Nothing tells SkyDock when the editor finishes, so the
@@ -57,6 +64,16 @@ const montageArtifacts = (outputDir: string, group: ManifestGroup) => {
     strayFilms: entries.filter((e) => e.endsWith('.mp4') && e !== filmNameOf(baseName))
   }
 }
+
+/* how long a folder's film runs, asked behind the look when it has not been yet */
+const secondsOf = (found: ReturnType<typeof montageArtifacts>) =>
+  found.film
+    ? filmSeconds(
+        path.join(found.dir, filmNameOf(found.baseName)),
+        found.film.size,
+        found.film.mtime
+      )
+    : null
 
 /* Once there is an edit, the montage is frozen. The project points at the copies by path, with its
    cuts as times inside each clip, and lives in the folder the passenger's name makes: a trim shifts
@@ -117,11 +134,7 @@ const statMontageArtifacts = (manifest: Manifest, outputDir: string) => {
       film: found.film
         ? {
             ...found.film,
-            seconds: filmSeconds(
-              path.join(found.dir, filmNameOf(found.baseName)),
-              found.film.size,
-              found.film.mtime
-            ),
+            seconds: secondsOf(found),
             path: path.join(found.dir, filmNameOf(found.baseName))
           }
         : null,
@@ -141,5 +154,6 @@ export {
   rushesNameOf,
   sameEditedGroup,
   statMontageArtifacts,
-  montageArtifacts
+  montageArtifacts,
+  secondsOf
 }

@@ -2,6 +2,7 @@ import { getOutputDir, jumpTrack } from '@skydock/scripts'
 import type { JumpTrack } from '@skydock/scripts'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { limited } from '../../../packages/skydock-scripts/src/lib/queue'
 
 /* A clip's jump as a series, for the graph under the footage (RULES, The jump on a graph). Read off
    the original rather than kept in the manifest: it is a few hundred numbers per clip, wanted only
@@ -14,10 +15,13 @@ const held = new Map<string, JumpTrack | null>()
 
 const KEEP = 40
 
+/* two read at a time, the rest in turn; the same clip asked twice is read once */
+const reading = limited<JumpTrack | null>(2)
+
 const trackOf = async (filePath: string, mtime: number) => {
   const key = `${filePath}:${mtime}`
   if (held.has(key)) return held.get(key) ?? null
-  const track = await jumpTrack(filePath)
+  const track = await reading(key, () => jumpTrack(filePath))
   /* oldest out first, so a day of scrubbing does not grow without end */
   if (held.size >= KEEP) held.delete([...held.keys()][0])
   held.set(key, track)

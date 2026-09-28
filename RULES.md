@@ -500,8 +500,10 @@ because the jump itself changed.
 state — or as a grid of thumbnails, whichever was chosen last, for the whole board, until the window
 is closed. Once a copy exists, the name shown is the copy's name, the one that is handed over, with the
 camera's name kept beside it. A clip shorter than the moment its thumbnail is taken at shows its first
-frame. Long lists are drawn a page at a time — forty rows or a hundred and twenty thumbnails — with the
-next page, or all the rest at once, a press away. Thumbnails can be drawn smaller or bigger, from a
+frame. Long lists are drawn a page at a time — forty rows or a hundred and twenty thumbnails — the
+next page drawn by itself as the end of the last comes near, and still a press away, as is all the
+rest at once; what is scrolled out of sight is not drawn, so a whole card costs no more to look
+through than a page. Thumbnails can be drawn smaller or bigger, from a
 wall of small ones to see a whole card at once to large ones to tell two near-identical shots apart:
 with a slider in the header while thumbnails are shown, or with Ctrl or ⌘ and the mouse wheel over
 them; the size is remembered on this machine, and a bigger thumbnail asks for a sharper picture. Every day and every jump says how many videos and photos
@@ -707,6 +709,14 @@ size it needs, from half to three times, a tenth at a time. It scales the whole 
 answers to the size it is drawn at rather than being stretched. The size chosen is kept, and the
 window opens at it next time. A browser tab showing the board zooms with the browser's own keys and
 offers no control of its own.
+
+**Never held.** The board is drawn from this machine at once and never waits on the storage: what
+the storage holds, whether it is connected and its list of montages come in after, the header saying
+it is checking the storage until then, and a storage that does not answer within seconds is taken
+to be unreachable rather than waited for. Nothing the machine does while the board is open — reading
+a card's dates, measuring a film, comparing two files, making proxies — holds the board up; what it
+records by itself as it goes is written a few times a second at most, and progress moves the one
+row or panel that shows it, never the whole board. Frames are cut a few at a time, the rest in turn.
 
 **What the board says.** After anything is done the board says what happened in one line above the
 files. News is in the app's own colour; a refusal — nothing happened, and why — is in the colour of

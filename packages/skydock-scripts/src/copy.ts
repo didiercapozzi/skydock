@@ -97,7 +97,7 @@ const alreadyThere = async (src: string, srcStat: fs.Stats, dir: string) => {
     }
     if (stat.size !== srcStat.size) continue
     if (Math.floor(stat.mtimeMs / 1000) === Math.floor(srcStat.mtimeMs / 1000)) return existing
-    if (sameBytes(src, existing)) return existing
+    if (await sameBytes(src, existing)) return existing
   }
   return null
 }

@@ -131,6 +131,9 @@ const dsmEntryUrl = (host: string) => `${normalizeHost(host)}/webapi/entry.cgi`
 const dsmRequestUrl = (host: string, params: Record<string, string>) =>
   new URL(`${dsmEntryUrl(host)}?${new URLSearchParams(params)}`)
 
+/* how long a question to the storage may take before it is taken to be unreachable */
+const QUESTION_MS = 15_000
+
 type DsmFetchOptions = {
   headers?: Record<string, string>
   timeoutMs?: number
@@ -145,8 +148,12 @@ const dsmFetch = async (
   body?: BodyInit,
   options: DsmFetchOptions = {}
 ) => {
-  const controller = options.timeoutMs ? new AbortController() : null
-  const timer = controller ? setTimeout(() => controller.abort(), options.timeoutMs) : null
+  /* A question with nothing sent has an answer in seconds or not at all: a storage that cannot be
+     reached must not hold whoever asked for as long as the network would wait. What sends a file
+     takes as long as the file takes, and is given no limit here. */
+  const timeoutMs = options.timeoutMs ?? (body ? undefined : QUESTION_MS)
+  const controller = timeoutMs ? new AbortController() : null
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null
   /* the work this request is for can be stopped — an upload cancelled — and the request with it */
   const stop = stopSignal()
   const signals = [controller?.signal, stop].filter((s) => s !== undefined)
@@ -174,7 +181,9 @@ const dsmFetch = async (
   } catch (err) {
     if (stop?.aborted) throw new UploadCancelled()
     if (controller && err instanceof Error && err.name === 'AbortError') {
-      throw new Error(`DSM request timed out after ${options.timeoutMs}ms`)
+      throw new Error(
+        `The storage did not answer within ${Math.round((timeoutMs ?? 0) / 1000)} seconds`
+      )
     }
     throw err
   } finally {

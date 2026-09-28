@@ -1,4 +1,10 @@
-import { getManifestPath, getOutputDir, keepBoardStep, loadManifest } from '@skydock/scripts'
+import {
+  flushBoardChanges,
+  getManifestPath,
+  getOutputDir,
+  keepBoardStep,
+  loadManifest
+} from '@skydock/scripts'
 import type { Route } from './+types/api.manifest'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 import { actionArgs } from './manifest/args'
@@ -99,6 +105,8 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       return errors.toResponse(422)
     }
     const manifestPath = getManifestPath(getOutputDir())
+    /* what the board recorded by itself a moment ago is written first, so this change is made on it */
+    flushBoardChanges(manifestPath)
     const manifest = loadManifest(manifestPath)
     if (!manifest) return refuse('No manifest found. Run a scan first.')
     /* a change asked for on the board is one step of its history, to go back to (RULES, Going back) */

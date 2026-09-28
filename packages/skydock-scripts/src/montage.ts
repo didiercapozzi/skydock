@@ -22,7 +22,6 @@ import {
 } from './lib/mlt'
 import type { XmlNode } from './lib/mlt'
 import { walkFiles } from './lib/fs'
-import { mediaSeconds } from './lib/media'
 import { marksFor } from './montageMarks'
 import { jumpMomentsSchema } from './types'
 
@@ -313,9 +312,9 @@ const createMontageProject = (rawOptions: MontageOptions) => {
   const chains = options.clips.map((clip, index) => {
     const id = `chain_skydock_${index}`
     const chain = chainOf(clip, id, firstId + index)
-    /* a moment past the end of the copy is not in it, so its length is read when there are moments
-       to place; with no length to go by, none is dropped */
-    const seconds = clip.moments ? (clip.seconds ?? mediaSeconds(clip.proxy ?? clip.path)) : null
+    /* a moment past the end of the copy is not in it, so its length is said when there are moments
+       to place (read by whoever hands the clip over); with no length to go by, none is dropped */
+    const seconds = clip.moments ? (clip.seconds ?? null) : null
     const marks = marksFor({
       moments: clip.moments,
       cropStart: clip.cropStart,

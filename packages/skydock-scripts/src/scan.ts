@@ -78,7 +78,9 @@ const HASH_POOL_SIZE = 4
    it is gone or unreadable, everything is read as before. */
 const knownIdsSchema = z.record(
   z.string(),
-  z.object({ size: z.number(), at: z.number(), id: z.string() })
+  /* `shot` is when the file was shot, as read then — kept too, so an unchanged file costs neither a
+     read through nor a question to exiftool */
+  z.object({ size: z.number(), at: z.number(), id: z.string(), shot: z.number().optional() })
 )
 type KnownIds = z.infer<typeof knownIdsSchema>
 
@@ -94,12 +96,22 @@ const readKnownIds = (originalDir: string) => {
   }
 }
 
-const scanFiles = async (originalDir: string, timeMap: Map<string, string>) => {
+const scanFiles = async (originalDir: string) => {
   const known = readKnownIds(originalDir)
   const seen: KnownIds = {}
   const files = findMediaFiles(originalDir)
   const manifestFiles: ManifestFile[] = new Array(files.length)
-  const stats = files.map((filepath) => fs.statSync(filepath))
+  const stats = await Promise.all(files.map((filepath) => fs.promises.stat(filepath)))
+  const unchanged = (i: number) => {
+    const before = known[files[i] ?? '']
+    const stat = stats[i]
+    return before && stat && before.size === stat.size && before.at === stat.mtimeMs ? before : null
+  }
+  /* exiftool is asked only about what is new or changed, and without holding the server */
+  const timeMap = await readExifMap(
+    files.filter((_, i) => unchanged(i)?.shot === undefined),
+    TIME_TAGS
+  )
   let next = 0
   const workers = Array.from(
     { length: Math.min(HASH_POOL_SIZE, Math.max(files.length, 1)) },
@@ -110,16 +122,14 @@ const scanFiles = async (originalDir: string, timeMap: Map<string, string>) => {
         const filepath = files[i]
         const stat = stats[i]
         if (!filepath || !stat) continue
-        const before = known[filepath]
-        const id =
-          before && before.size === stat.size && before.at === stat.mtimeMs
-            ? before.id
-            : await computeFileId(filepath)
-        seen[filepath] = { size: stat.size, at: stat.mtimeMs, id }
+        const before = unchanged(i)
+        const id = before ? before.id : await computeFileId(filepath)
+        const shot = before?.shot ?? getCaptureEpoch(filepath, timeMap)
+        seen[filepath] = { size: stat.size, at: stat.mtimeMs, id, shot }
         manifestFiles[i] = {
           path: filepath,
           size: stat.size,
-          mtime: getCaptureEpoch(filepath, timeMap),
+          mtime: shot,
           filename: path.basename(filepath),
           id
         }
@@ -294,8 +304,7 @@ const scanMedia = async (options?: { outputDir?: string }) => {
      working in, and so the scan below has somewhere to look. */
   fs.mkdirSync(originalDir, { recursive: true })
 
-  const timeMap = buildTimeMap(findMediaFiles(originalDir))
-  const diskFiles = await scanFiles(originalDir, timeMap)
+  const diskFiles = await scanFiles(originalDir)
 
   const existing = loadManifest(manifestPath)
 

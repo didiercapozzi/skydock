@@ -1,6 +1,7 @@
 import { getOutputDir, subscribe, watchMontages } from '@skydock/scripts'
 import { watchCameras } from '../../../packages/skydock-scripts/src/cameraWatch'
 import { watchDisk } from '../../../packages/skydock-scripts/src/diskSpace'
+import { watchServerHolds } from '../../../packages/skydock-scripts/src/lib/lag'
 import { resumeProxies } from '../../../packages/skydock-scripts/src/proxy'
 import type { Route } from './+types/api.events'
 
@@ -35,6 +36,8 @@ const loader = ({ request }: Route.LoaderArgs) => {
       resumeProxies(getOutputDir())
       /* the room left on the disk, told to the board as it changes */
       watchDisk(getOutputDir())
+      /* anything that holds the server long enough to be felt on the board is said in the log */
+      watchServerHolds()
       /* while a board listens, the montages' folders are looked at for a film the editor finished */
       const stopWatching = watchMontages(getOutputDir())
       const heartbeat = setInterval(() => send(': still here\n\n'), HEARTBEAT_MS)

@@ -71,6 +71,28 @@ describe('playing a file', () => {
     expect(totalBytes).toBe(1024)
   })
 
+  /* a player asks for the end of a clip first, to read its index */
+  test('gives the last bytes of a clip when asked for them from its end', async () => {
+    const res = await loader({
+      params: makeParams('test-stream/test-video.mp4'),
+      request: new Request('http://localhost/api/file/x', { headers: { range: 'bytes=-100' } })
+    })
+
+    expect(res.status).toBe(206)
+    expect(res.headers.get('Content-Range')).toBe('bytes 924-1023/1024')
+    expect((await res.arrayBuffer()).byteLength).toBe(100)
+  })
+
+  test('stops at the end of the clip when asked for more than there is', async () => {
+    const res = await loader({
+      params: makeParams('test-stream/test-video.mp4'),
+      request: new Request('http://localhost/api/file/x', { headers: { range: 'bytes=1000-5000' } })
+    })
+
+    expect(res.headers.get('Content-Range')).toBe('bytes 1000-1023/1024')
+    expect((await res.arrayBuffer()).byteLength).toBe(24)
+  })
+
   test('is closed mid-play without harm', async () => {
     const res = await loader({
       params: makeParams('test-stream/test-video.mp4'),

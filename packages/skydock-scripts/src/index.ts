@@ -44,6 +44,8 @@ import {
 } from './frameCrop'
 import {
   boardHistory,
+  flushAllBoardChanges,
+  flushBoardChanges,
   keepBoardStep,
   loadManifest,
   restoreBoard,
@@ -282,6 +284,8 @@ export {
   listRemoteFiles,
   loadManifest,
   boardHistory,
+  flushAllBoardChanges,
+  flushBoardChanges,
   keepBoardStep,
   restoreBoard,
   lostOf,

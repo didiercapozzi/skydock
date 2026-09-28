@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import { dayOfFiles, freshIds, groupFromFiles, splitByGap } from './clustering'
-import { cameraTimes } from './scan'
+import { shotTimes } from './scan'
 import { isFiled } from './filed'
 import type { Manifest } from './types'
 
@@ -17,11 +17,11 @@ import type { Manifest } from './types'
    name, its trim, frame and turn. A copy goes back to its original's camera time, being the same
    file. What was processed from a file reads as changed by itself, since its time is part of what
    a processed copy is made from. */
-const resetFreshTimes = (manifest: Manifest) => {
+const resetFreshTimes = async (manifest: Manifest) => {
   const fresh = freshIds(manifest)
   if (fresh.size === 0) return null
   const isFresh = (f: { id?: string }) => Boolean(f.id && fresh.has(f.id))
-  const times = cameraTimes(manifest.files.filter(isFresh).map((f) => f.path))
+  const times = await shotTimes(manifest.files.filter(isFresh).map((f) => f.path))
   const jumps = manifest.groups.filter((g) => !isFiled(g))
   for (const file of [...manifest.files, ...jumps.flatMap((g) => g.files)])
     if (isFresh(file)) file.mtime = times.get(file.path) || file.mtime
@@ -32,7 +32,7 @@ const resetFreshTimes = (manifest: Manifest) => {
   return { files: fresh.size, jumps: jumps.length }
 }
 
-const resetFresh = (manifest: Manifest) => {
+const resetFresh = async (manifest: Manifest) => {
   const fresh = freshIds(manifest)
   if (fresh.size === 0) return null
   const isFresh = (f: { id?: string }) => Boolean(f.id && fresh.has(f.id))
@@ -51,7 +51,7 @@ const resetFresh = (manifest: Manifest) => {
 
   /* a copy exists for the jump that held it; a scan never made one */
   const kept = manifest.files.filter((f) => !(isFresh(f) && f.copyOf))
-  const times = cameraTimes(kept.filter(isFresh).map((f) => f.path))
+  const times = await shotTimes(kept.filter(isFresh).map((f) => f.path))
   manifest.files = kept.map((file) => {
     if (!isFresh(file)) return file
     const {

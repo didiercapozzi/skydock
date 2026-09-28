@@ -27,7 +27,7 @@ import type { Passenger } from '../components/montage-card'
 import type { OverviewRow } from '../components/overview-dialog'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
 import { setOutputRoot, shortDate } from '../components/utils'
-import { importFiles, tokenFor, whatIsComing } from '../helpers/import'
+import { importFiles, whatIsComing } from '../helpers/import'
 import type { Coming, Dropped } from '../helpers/import'
 import { folderOnStorage } from '../helpers/jumps'
 import {
@@ -98,10 +98,19 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   const facts = fileFacts({ outputs: board.outputs, remote: nas.remote, frozenFiles })
   const { statusContext } = facts
 
-  const groupOfFile = (file: ManifestFile) =>
-    groups.find((g) => g.files.some((f) => (f.id ?? f.path) === (file.id ?? file.path)))
-  const fileById = (id: string) =>
-    [...groups.flatMap((g) => g.files), ...loose].find((f) => f.id === id)
+  /* every file and the jump it is in, looked up by a map made once per board rather than by
+     walking the whole board for each file asked about — which, asked for each file on screen, was
+     the whole board times itself */
+  const jumpOf = new Map<string, ManifestGroup>()
+  const byId = new Map<string, ManifestFile>()
+  for (const g of groups)
+    for (const f of g.files) {
+      jumpOf.set(f.id ?? f.path, g)
+      if (f.id) byId.set(f.id, f)
+    }
+  for (const f of loose) if (f.id && !byId.has(f.id)) byId.set(f.id, f)
+  const groupOfFile = (file: ManifestFile) => jumpOf.get(file.id ?? file.path)
+  const fileById = (id: string) => byId.get(id)
   /* filed nowhere — neither as a lone file nor through its jump — and so free to go to the bin */
   const inUnsorted = (file: ManifestFile) => {
     const group = groupOfFile(file)
@@ -138,15 +147,17 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
           emailed: Boolean(emailedOn(group))
         })
       : null
-  const passengerProgress = (name: string) =>
-    furthestBehind(
-      groups
-        .filter((g) => isMontage(g) && passengerOf(g) === name)
-        .flatMap((g) => {
-          const shown = progressOf(g)
-          return shown ? [shown] : []
-        })
-    )
+  /* where each montage has got to, worked out once for the board rather than once per montage asked
+     about — the rail asks for every one of them */
+  const progressByName = new Map<string, NonNullable<ReturnType<typeof progressOf>>[]>()
+  for (const g of groups) {
+    if (!isMontage(g)) continue
+    const shown = progressOf(g)
+    if (!shown) continue
+    const name = passengerOf(g)
+    progressByName.set(name, [...(progressByName.get(name) ?? []), shown])
+  }
+  const passengerProgress = (name: string) => furthestBehind(progressByName.get(name) ?? [])
   /* A montage freed and walked to its last step has nothing left to do here, so it leaves the
      montages and lives on in the storage's own list. */
   const listed = groups.filter((g) => !(g.freed && progressOf(g)?.next === null))
@@ -487,10 +498,6 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     setComing(null)
     board.manifest({ intent: 'imported', imported: tally })
   }
-  /* How far through the file being copied right now, as the server says it while the bytes land —
-     only ever the one the board is counting. */
-  const said = board.importing
-  const watching = coming && said && said.token === tokenFor(coming.done) ? said : null
 
   /* Something filed under a destination is followed there: its page opens, showing it where it now
      is (RULES, Jumps). */
@@ -766,7 +773,6 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     addPlace,
     chooseFolder,
     coming,
-    watching,
     importDropped,
     drag,
     flashPlace,

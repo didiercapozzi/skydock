@@ -47,7 +47,7 @@ const Files = ({ shape }: { shape: 'rows' | 'grid' }) => {
   })
   const [, setMontages] = useState({})
   const [, setNote] = useState<{ text: string; problem: boolean } | null>(null)
-  const live = useLiveProgress(setProxies, setMontages, setNote)
+  useLiveProgress(setProxies, setMontages, setNote)
   return createElement(FileList, {
     files: [clip('a'), clip('b')],
     kind: 'all',
@@ -55,7 +55,6 @@ const Files = ({ shape }: { shape: 'rows' | 'grid' }) => {
     picked: [],
     statusContext: () => ({}),
     proxies,
-    live: live.files,
     onFile: () => {},
     onPick: () => {},
     onOpen: () => {},

@@ -17,8 +17,20 @@ const formatSize = (bytes: number) => {
    the window run on the same machine, so both write a day the same way. */
 const DATE_LOCALE: Record<string, string> = { en: 'en-GB', fr: 'fr-CH', de: 'de-CH' }
 
-const written = (date: Date, options: Intl.DateTimeFormatOptions) =>
-  new Intl.DateTimeFormat(DATE_LOCALE[i18n.locale] ?? 'en-GB', options).format(date)
+/* one writer per language and way of writing, made once: making one is slow, and a list writes a
+   date on every row */
+const writers = new Map<string, Intl.DateTimeFormat>()
+
+const written = (date: Date, options: Intl.DateTimeFormatOptions) => {
+  const locale = DATE_LOCALE[i18n.locale] ?? 'en-GB'
+  const key = `${locale}|${JSON.stringify(options)}`
+  let writer = writers.get(key)
+  if (!writer) {
+    writer = new Intl.DateTimeFormat(locale, options)
+    writers.set(key, writer)
+  }
+  return writer.format(date)
+}
 
 /* a day written out */
 const dayWritten = (date: Date) => written(date, { day: 'numeric', month: 'long', year: 'numeric' })
@@ -51,12 +63,13 @@ const formatFilmSize = (bytes: number) =>
 const clock = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${String(Math.floor(Math.max(0, seconds) % 60)).padStart(2, '0')}`
 
-const formatTime = (epoch: number) =>
-  new Date(epoch * 1000).toLocaleTimeString('de-CH', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  })
+const TIME_WRITER = new Intl.DateTimeFormat('de-CH', {
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit'
+})
+
+const formatTime = (epoch: number) => TIME_WRITER.format(new Date(epoch * 1000))
 
 const toTimeInputValue = (epoch: number, includeSeconds = false) => {
   const date = new Date(epoch * 1000)

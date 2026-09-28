@@ -1,12 +1,11 @@
-import * as childProcess from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { ProxyFact } from './boardAnswer'
-import { loadManifest, saveManifest } from './manifest'
+import { changeBoardSoon, flushBoardChanges, loadManifest } from './manifest'
 import type { Manifest, ManifestFile } from './types'
 import { jumpMoments } from './jumpMoments'
 import { following } from './live'
-import { lastComplaint, runWatched } from './tools'
+import { lastComplaint, run, runWatched } from './tools'
 import {
   ffmpegPath,
   ffprobePath,
@@ -88,31 +87,27 @@ const ENCODER_ARGS: Record<ProxyEncoder, string[]> = {
    The trial carries the same settings the real thing does, `-g 1` included. One that leaves them
    out proves only that the encoder exists: NVENC passed exactly such a trial and then refused
    every clip on the card, because what it objects to is the all-intra setting and nothing else. */
-const canEncode = (args: string[], before: string[] = []) => {
-  try {
-    childProcess.execFileSync(
-      ffmpegPath(),
-      [
-        '-hide_banner',
-        '-loglevel',
-        'error',
-        ...before,
-        '-f',
-        'lavfi',
-        '-i',
-        'color=black:s=320x240:d=0.2',
-        ...args,
-        ...TRIAL_ARGS,
-        '-f',
-        'null',
-        '-'
-      ],
-      { stdio: 'ignore', timeout: 20_000 }
-    )
-    return true
-  } catch {
-    return false
-  }
+const canEncode = async (args: string[], before: string[] = []) => {
+  const trial = run(ffmpegPath(), [
+    '-hide_banner',
+    '-loglevel',
+    'error',
+    ...before,
+    '-f',
+    'lavfi',
+    '-i',
+    'color=black:s=320x240:d=0.2',
+    ...args,
+    ...TRIAL_ARGS,
+    '-f',
+    'null',
+    '-'
+  ])
+  /* a card that hangs is a card that cannot encode, and must not hold everything waiting on it */
+  const hung = new Promise<{ ok: false }>((resolve) =>
+    setTimeout(() => resolve({ ok: false }), 20_000).unref()
+  )
+  return (await Promise.race([trial, hung])).ok
 }
 
 /* A VAAPI card that can encode cannot necessarily scale. Resizing on the card goes through its
@@ -121,7 +116,7 @@ const canEncode = (args: string[], before: string[] = []) => {
    VAProfile is not supported". So the scaler gets a trial of its own, and a card without one still
    decodes and encodes while the processor does the resize in between: 5 seconds of 2.7K HEVC in 2
    seconds that way, against the 165s the processor takes doing all of it. */
-const vaapiCanScale = () =>
+const vaapiCanScale = async () =>
   canEncode(
     [...ENCODER_ARGS.vaapi, '-vf', 'format=nv12,hwupload,scale_vaapi=w=160:h=-2'],
     ['-vaapi_device', DRI_DEVICE()]
@@ -129,32 +124,34 @@ const vaapiCanScale = () =>
 
 type Detected = { encoder: ProxyEncoder; cardScales: boolean }
 
-const detectEncoder = (): Detected => {
+/* Tried once, in the background, as soon as anything needs an encoder — never while a request
+   waits: each trial can take seconds, and a card that hangs, twenty. */
+const detectEncoder = async (): Promise<Detected> => {
   const asked = process.env.SKYDOCK_PROXY_ENCODER?.trim().toLowerCase()
-  const vaapiReady = () =>
+  const vaapiReady = async () =>
     fs.existsSync(DRI_DEVICE()) &&
-    canEncode(
+    (await canEncode(
       [...ENCODER_ARGS.vaapi, '-vf', 'format=nv12,hwupload'],
       ['-vaapi_device', DRI_DEVICE()]
-    )
+    ))
   if (asked === 'cpu' || asked === 'nvenc') return { encoder: asked, cardScales: true }
-  if (asked === 'vaapi') return { encoder: 'vaapi', cardScales: vaapiCanScale() }
+  if (asked === 'vaapi') return { encoder: 'vaapi', cardScales: await vaapiCanScale() }
   if (!hasCommand('ffmpeg')) return { encoder: 'cpu', cardScales: false }
-  if (canEncode(ENCODER_ARGS.nvenc)) return { encoder: 'nvenc', cardScales: true }
-  if (vaapiReady()) return { encoder: 'vaapi', cardScales: vaapiCanScale() }
+  if (await canEncode(ENCODER_ARGS.nvenc)) return { encoder: 'nvenc', cardScales: true }
+  if (await vaapiReady()) return { encoder: 'vaapi', cardScales: await vaapiCanScale() }
   return { encoder: 'cpu', cardScales: false }
 }
 
-let detected: Detected | null = null
+let detected: Promise<Detected> | null = null
 
 const detection = () => (detected ??= detectEncoder())
 
-const proxyEncoder = () => detection().encoder
+const proxyEncoder = async () => (await detection()).encoder
 
 /* only for tests and for saying which one was picked in a log line. A card is assumed to scale
    unless a test says otherwise, as most cards do. */
 const setProxyEncoder = (next: ProxyEncoder | null, cardScales = true) => {
-  detected = next === null ? null : { encoder: next, cardScales }
+  detected = next === null ? null : Promise.resolve({ encoder: next, cardScales })
 }
 
 /* everything the real command sets, minus the container, since a trial writes to nothing */
@@ -179,38 +176,32 @@ const getProxyPath = (file: ManifestFile, outputDir?: string) => {
 
 /* Width, height and how the clip is meant to be turned. A phone or a 360 camera records sideways
    and records the turn beside it, so the frame on disk is not the frame anyone sees. */
-const videoShape = (src: string) => {
+const videoShape = async (src: string) => {
   if (!hasCommand('ffprobe')) return null
-  try {
-    const out = childProcess.execFileSync(
-      ffprobePath(),
-      [
-        '-v',
-        'error',
-        '-select_streams',
-        'v:0',
-        '-show_entries',
-        'stream=width,height:stream_side_data=rotation',
-        '-of',
-        'default=nw=1',
-        src
-      ],
-      { encoding: 'utf-8' }
-    )
-    const read = (key: string) => {
-      const line = out.split(/\r?\n/).find((l) => l.startsWith(`${key}=`))
-      const value = Number.parseInt(line?.slice(key.length + 1) ?? '', 10)
-      return Number.isFinite(value) ? value : null
-    }
-    const width = read('width')
-    const height = read('height')
-    if (width === null || height === null) return null
-    /* a quarter turn either way swaps what counts as the wide edge */
-    const turned = Math.abs(read('rotation') ?? 0) % 180 === 90
-    return { width, height, turned }
-  } catch {
-    return null
+  const ran = await run(ffprobePath(), [
+    '-v',
+    'error',
+    '-select_streams',
+    'v:0',
+    '-show_entries',
+    'stream=width,height:stream_side_data=rotation',
+    '-of',
+    'default=nw=1',
+    src
+  ])
+  if (!ran.ok) return null
+  const out = ran.stdout
+  const read = (key: string) => {
+    const line = out.split(/\r?\n/).find((l) => l.startsWith(`${key}=`))
+    const value = Number.parseInt(line?.slice(key.length + 1) ?? '', 10)
+    return Number.isFinite(value) ? value : null
   }
+  const width = read('width')
+  const height = read('height')
+  if (width === null || height === null) return null
+  /* a quarter turn either way swaps what counts as the wide edge */
+  const turned = Math.abs(read('rotation') ?? 0) % 180 === 90
+  return { width, height, turned }
 }
 
 /* How wide the clip looks to someone watching it, which is the number the proxy has to shrink. */
@@ -234,12 +225,12 @@ const scaleFilter = (shape: { turned: boolean } | null, hardware: boolean) => {
 const buildProxy = async (
   src: string,
   dest: string,
-  shape: ReturnType<typeof videoShape> = null,
+  shape: Awaited<ReturnType<typeof videoShape>> = null,
   /* how far through the clip it is, for whoever is watching */
   onPercent?: (percent: number) => void
 ) => {
   if (!hasCommand('ffmpeg')) return { ok: false as const, reason: 'ffmpeg is not installed' }
-  const { encoder: pick, cardScales } = detection()
+  const { encoder: pick, cardScales } = await detection()
   /* A VAAPI card with no scaler decodes into ordinary memory instead, where ffmpeg turns the frame
      the right way up exactly as it does for the processor path, and hands the resized frame back
      to the card to encode. */
@@ -286,7 +277,7 @@ const buildProxy = async (
    transcode, and the same frames as the processed copy. */
 /* Either end on its own is a trim: no start means from the beginning, no end means to the end of
    the clip. */
-const cropProxy = (
+const cropProxy = async (
   src: string,
   dest: string,
   cropStart: number | null | undefined,
@@ -294,27 +285,19 @@ const cropProxy = (
 ) => {
   if (!hasCommand('ffmpeg')) return false
   fs.mkdirSync(path.dirname(dest), { recursive: true })
-  try {
-    childProcess.execFileSync(
-      ffmpegPath(),
-      [
-        '-y',
-        ...(cropStart != null ? ['-ss', String(cropStart)] : []),
-        '-i',
-        src,
-        ...(cropEnd != null ? ['-t', (cropEnd - (cropStart ?? 0)).toFixed(6)] : []),
-        '-c',
-        'copy',
-        '-avoid_negative_ts',
-        'make_zero',
-        dest
-      ],
-      { stdio: 'ignore' }
-    )
-    return true
-  } catch {
-    return false
-  }
+  const ran = await run(ffmpegPath(), [
+    '-y',
+    ...(cropStart != null ? ['-ss', String(cropStart)] : []),
+    '-i',
+    src,
+    ...(cropEnd != null ? ['-t', (cropEnd - (cropStart ?? 0)).toFixed(6)] : []),
+    '-c',
+    'copy',
+    '-avoid_negative_ts',
+    'make_zero',
+    dest
+  ])
+  return ran.ok
 }
 
 /* a freed clip is on the storage only — there is nothing here to make a small copy of */
@@ -370,7 +353,7 @@ const ensureProxies = async (
       continue
     }
     if (!fs.existsSync(file.path)) continue
-    const shape = videoShape(file.path)
+    const shape = await videoShape(file.path)
     /* already smaller than the proxy would be — the clip is its own proxy */
     if (shape !== null && shownWidth(shape) <= PROXY_MIN_WIDTH) {
       if (file.proxy !== file.path) {
@@ -419,23 +402,26 @@ let running: Promise<ProxyReport> | null = null
    this pass began with would quietly undo it — which is how two of four files dropped in together
    came to be on the disk with no row on the board. So only what this pass is here to write is
    carried over: the small copy it made, and the jump it looked for on the way. */
-const recordProxies = (manifestPath: string, pass: Manifest) => {
-  const current = loadManifest(manifestPath)
-  if (!current) return saveManifest(manifestPath, pass)
-  const made = new Map(pass.files.map((file) => [file.id ?? file.path, file]))
-  for (const file of current.files) {
-    const done = made.get(file.id ?? file.path)
-    if (!done) continue
-    if (done.proxy) file.proxy = done.proxy
-    /* a proxy that could not be made leaves no record behind — but only the disk may say that */ else if (
-      file.proxy &&
-      !fs.existsSync(file.proxy)
-    )
-      delete file.proxy
-    if (file.moments === undefined && done.moments !== undefined) file.moments = done.moments
-  }
-  saveManifest(manifestPath, current)
-}
+const recordProxies = (manifestPath: string, pass: Manifest) =>
+  changeBoardSoon(
+    manifestPath,
+    (current) => {
+      const made = new Map(pass.files.map((file) => [file.id ?? file.path, file]))
+      for (const file of current.files) {
+        const done = made.get(file.id ?? file.path)
+        if (!done) continue
+        if (done.proxy) file.proxy = done.proxy
+        /* a proxy that could not be made leaves no record behind — but only the disk may say that */ else if (
+          file.proxy &&
+          !fs.existsSync(file.proxy)
+        )
+          delete file.proxy
+        if (file.moments === undefined && done.moments !== undefined) file.moments = done.moments
+      }
+    },
+    /* the pass as it is now says everything an earlier call of it did */
+    'proxies'
+  )
 
 /* Loads, builds what is missing, saves. Kept apart from the scan itself because a scan should
    answer at once — the proxies catch up behind it, and everything works without them meanwhile.
@@ -457,6 +443,8 @@ const buildMissingProxies = async (outputDir?: string) => {
       const pass = await ensureProxies(manifest, dir, undefined, () =>
         recordProxies(manifestPath, manifest)
       )
+      /* the next round reads the board with this one's proxies on it */
+      flushBoardChanges(manifestPath)
       report.built += pass.built
       report.skipped = pass.skipped
       /* a clip the next round tries again is one clip that could not be made, not two */
@@ -464,12 +452,14 @@ const buildMissingProxies = async (outputDir?: string) => {
       report.reason ??= pass.reason
       if (pass.built === 0) break
     }
-    if (report.built > 0)
+    if (report.built > 0) {
+      const { encoder, cardScales } = await detection()
       console.log(
-        `[Proxy] Built ${report.built} proxy file(s) in ${dir}/proxies using ${proxyEncoder()}${
-          proxyEncoder() === 'vaapi' && !detection().cardScales ? ' (resized on the processor)' : ''
+        `[Proxy] Built ${report.built} proxy file(s) in ${dir}/proxies using ${encoder}${
+          encoder === 'vaapi' && !cardScales ? ' (resized on the processor)' : ''
         }`
       )
+    }
     if (report.failed.length > 0)
       console.warn(
         `[Proxy] Could not build ${report.failed.length} of ${report.failed.length + report.built + report.skipped}: ${report.reason}\n[Proxy] ${report.failed.join(', ')}`

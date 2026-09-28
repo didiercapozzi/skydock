@@ -2,7 +2,7 @@ import { i18n } from '@lingui/core'
 import type { MessageDescriptor } from '@lingui/core'
 import { msg, t } from '@lingui/core/macro'
 import { fitRatio, FrameCropper } from './frame-cropper'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { Danger, Go, Mini } from './buttons'
 import { typingInField } from '../helpers/keys'
 import { createScrub } from '../helpers/scrub'
@@ -308,7 +308,7 @@ const PreviewDrawer = ({
   /* Escape leaves full screen, or closes when there is none to leave; F fills the screen with the
      picture; R turns a quarter clockwise, as the button does; space plays and pauses a clip,
      whichever button was pressed last — never while a field has the keyboard. One listener on the
-     window, renewed each render so it sees the latest turn. */
+     window, set once, which reads the latest turn each time a key comes. */
   /* where it was going when it was stopped to ask about unsaved changes */
   const [leaving, setLeaving] = useState<null | (() => void)>(null)
   /* What is on screen against what is on the file: the one tells you there is something to save.
@@ -324,31 +324,32 @@ const PreviewDrawer = ({
   /* Leaving with changes not saved asks first — Esc, a click outside, Close, Prev and Next all leave —
      rather than dropping a trim somebody spent a minute on (RULES, Cropping and turning). */
   const leave = (go: () => void) => (dirty ? setLeaving(() => go) : go())
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (leaving) setLeaving(null)
-        else if (big) leaveBig()
-        else leave(onClose)
-      }
-      if (typingInField(e)) return
-      if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault()
-        if (big) leaveBig()
-        else showBig()
-      }
-      if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault()
-        turn(90)
-      }
-      if (e.key === ' ' && videoRef.current) {
-        e.preventDefault()
-        toggle()
-      }
+  const onKey = useEffectEvent((e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      if (leaving) setLeaving(null)
+      else if (big) leaveBig()
+      else leave(onClose)
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    if (typingInField(e)) return
+    if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault()
+      if (big) leaveBig()
+      else showBig()
+    }
+    if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault()
+      turn(90)
+    }
+    if (e.key === ' ' && videoRef.current) {
+      e.preventDefault()
+      toggle()
+    }
   })
+  useEffect(() => {
+    const listen = (e: KeyboardEvent) => onKey(e)
+    window.addEventListener('keydown', listen)
+    return () => window.removeEventListener('keydown', listen)
+  }, [])
 
   if (!file) return null
 
@@ -599,7 +600,7 @@ const PreviewDrawer = ({
                     cropEnd={cropEnd}
                     zoom={zoom}
                     compact
-                    thumbSrc={(seek) => getThumbUrl(file.path, seek)}
+                    thumbSrc={(seek) => getThumbUrl(proxy?.play ?? file.proxy ?? file.path, seek)}
                     moments={shownMoments}
                     onMomentChange={
                       locked
