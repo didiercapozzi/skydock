@@ -1652,8 +1652,8 @@ msgid "Group"
 msgstr "Grouper"
 
 #: app/components/folder-owed.tsx
-msgid "group them into jumps"
-msgstr "les regrouper en sauts"
+msgid "Group loose files into jumps"
+msgstr "Regrouper les fichiers en vrac en sauts"
 
 #: app/components/camera-files.tsx
 msgid "handed over, not a drive — slower than a card reader"
@@ -2680,6 +2680,10 @@ msgstr "Réinitialiser le recadrage"
 msgid "Reset Fresh files"
 msgstr "Réinitialiser les Nouveaux fichiers"
 
+#: app/components/folder-owed.tsx
+msgid "Reset Fresh files…"
+msgstr "Réinitialiser Nouveaux fichiers…"
+
 #: app/components/take-back-dialog.tsx
 msgid "Reset montage"
 msgstr "Réinitialiser le montage"
@@ -2687,10 +2691,6 @@ msgstr "Réinitialiser le montage"
 #: app/components/reset-fresh-dialog.tsx
 msgid "Reset the {files, plural, one {# file} other {# files}} in Fresh files"
 msgstr "Réinitialiser les {files, plural, one {# fichier} other {# fichiers}} des Nouveaux fichiers"
-
-#: app/components/folder-owed.tsx
-msgid "reset…"
-msgstr "réinitialiser…"
 
 #: app/routes/place.tsx
 msgid "Reset…"

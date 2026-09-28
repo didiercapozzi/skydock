@@ -268,8 +268,10 @@ already filed never grows by itself. Every jump already there keeps its files, h
   shot on. So a file taken out of its jump, sent back from a place, or left by a jump that was deleted
   goes back to the time its camera gave it. Its trim, frame and turn are kept: those are about the clip.
   A file that moves to another jump, or is filed to a place, keeps the time it was given.
-- **Fresh files can be reset**, by as much as is wanted, from one place that offers both and says what
-  each forgets and keeps — choosing is the asking first. _Times only_ is for when a correction was the
+- **Fresh files can be reset**, by as much as is wanted, from _Reset Fresh files…_ at the far end of
+  their line, which offers both and says what each forgets and keeps — choosing is the asking first.
+  It is set apart from _Group loose files into jumps_, beside the count of loose files, which only
+  gathers those files by the gap rule, forgets nothing, and asks nothing. _Times only_ is for when a correction was the
   mistake; _Everything, as just scanned_ is for when the sorting has gone wrong and starting over beats
   undoing it. Either way nothing filed to a dropzone or a montage is touched, and no original is.
 

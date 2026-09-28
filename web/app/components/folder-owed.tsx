@@ -61,23 +61,25 @@ const FolderOwed = ({
                   title={t`Gather the loose files here into jumps, by the gap rule — nothing is forgotten`}
                   onClick={onRegroup}
                   className='border-0 bg-transparent p-0 text-[12px] text-accent underline disabled:opacity-40'>
-                  {t`group them into jumps`}
+                  {t`Group loose files into jumps`}
                 </button>
               </>
             )}
           </Owed>
         )}
-        <button
-          type='button'
-          disabled={busy}
-          title={t`Put Fresh files back — the times alone, or everything as just scanned. Asks which first.`}
-          onClick={onReset}
-          className='border-0 bg-transparent p-0 text-[12px] text-accent underline disabled:opacity-40'>
-          {t`reset…`}
-        </button>
         <span className='ml-auto text-ink-3 max-[900px]:hidden'>
           {t`Drag a jump onto a folder on the left, or use`}{' '}
           <b className='text-ink-2'>{t`File to`}</b> {t`on its line`}
+        </span>
+        {/* at the far end and drawn as a button: it is not another way of grouping, it asks what to
+            forget */}
+        <span className='max-[900px]:ml-auto'>
+          <Mini
+            disabled={busy}
+            title={t`Put Fresh files back — the times alone, or everything as just scanned. Asks which first.`}
+            onClick={onReset}>
+            {t`Reset Fresh files…`}
+          </Mini>
         </span>
       </>
     )

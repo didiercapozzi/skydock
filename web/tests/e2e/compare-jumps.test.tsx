@@ -226,13 +226,14 @@ describe('jumps as cards', () => {
 })
 
 /* Fresh files can be put back by as much as is wanted: the times alone, or everything as just
-   scanned. The two are offered together, each saying what it forgets, and choosing is the asking. */
+   scanned. The two are offered together, each saying what it forgets, and choosing is the asking.
+   Gathering the loose files into jumps is another thing, which forgets nothing, and is named apart. */
 describe('resetting Fresh files', () => {
   const asked: unknown[] = []
-  const renderWithRequests = async () => {
+  const renderWithRequests = async (shown: unknown = board) => {
     asked.length = 0
     const Stub = createRoutesStub([
-      boardRoute(() => board),
+      boardRoute(() => shown),
       {
         path: '/api/manifest',
         action: async ({ request }) => {
@@ -249,7 +250,7 @@ describe('resetting Fresh files', () => {
   test('offers the times alone or everything, each saying what it forgets and keeps', async () => {
     await renderWithRequests()
 
-    await userEvent.click(page.getByRole('button', { name: 'reset…' }))
+    await userEvent.click(page.getByRole('button', { name: 'Reset Fresh files…' }))
 
     await expect.element(dialog().getByRole('button', { name: /^Times only/ })).toBeInTheDocument()
     await expect
@@ -263,7 +264,7 @@ describe('resetting Fresh files', () => {
 
   test('resets only the times when that is chosen', async () => {
     await renderWithRequests()
-    await userEvent.click(page.getByRole('button', { name: 'reset…' }))
+    await userEvent.click(page.getByRole('button', { name: 'Reset Fresh files…' }))
 
     await userEvent.click(dialog().getByRole('button', { name: /^Times only/ }))
 
@@ -274,7 +275,7 @@ describe('resetting Fresh files', () => {
 
   test('resets everything when that is chosen', async () => {
     await renderWithRequests()
-    await userEvent.click(page.getByRole('button', { name: 'reset…' }))
+    await userEvent.click(page.getByRole('button', { name: 'Reset Fresh files…' }))
 
     await userEvent.click(dialog().getByRole('button', { name: /^Everything/ }))
 
@@ -283,9 +284,19 @@ describe('resetting Fresh files', () => {
     )
   })
 
+  test('is offered apart from gathering the loose files into jumps, which asks nothing', async () => {
+    await renderWithRequests({ ...board, looseFiles: [file('solo', AT + 9000)] })
+
+    await expect.element(page.getByRole('button', { name: 'Reset Fresh files…' })).toBeVisible()
+    await userEvent.click(page.getByRole('button', { name: 'Group loose files into jumps' }))
+
+    await vi.waitFor(() => expect(asked).toContainEqual({ intent: 'regroup-loose' }))
+    await expect.element(dialog()).not.toBeInTheDocument()
+  })
+
   test('does nothing when the dialog is closed', async () => {
     await renderWithRequests()
-    await userEvent.click(page.getByRole('button', { name: 'reset…' }))
+    await userEvent.click(page.getByRole('button', { name: 'Reset Fresh files…' }))
 
     await userEvent.click(dialog().getByRole('button', { name: 'Close' }))
 
