@@ -730,9 +730,6 @@ then what it does, last, on the right. What deletes or lets go of something is r
 icon and anything else without; a jump with processed copies is deleted only after a dialog of the
 app's own says what goes.
 
-**The jump cards** can be drawn whole, with frames off each jump; compact, a line each, so a busy day
-does not push its files off the screen; or folded away. The choice is remembered on this machine.
-
 **Finding anything.** One box in the header finds anything on the board by a piece of its name — a
 montage, a destination, a file — says where each is, and goes to it: Enter goes to the first, a click
 to any.

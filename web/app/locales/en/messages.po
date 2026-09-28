@@ -209,10 +209,6 @@ msgstr "{copies, plural, one {# processed copy is} other {# processed copies are
 msgid "{copies, plural, one {the # processed copy} other {the # processed copies}}"
 msgstr "{copies, plural, one {the # processed copy} other {the # processed copies}}"
 
-#: app/components/file-browser.tsx
-msgid "{count, plural, one {# card} other {# cards}}"
-msgstr "{count, plural, one {# card} other {# cards}}"
-
 #: app/components/bin-files.tsx
 #: app/components/camera-files.tsx
 #: app/components/remove-files-dialog.tsx
@@ -1164,10 +1160,6 @@ msgstr "Close (Esc)"
 msgid "Close the player"
 msgstr "Close the player"
 
-#: app/components/file-browser.tsx
-msgid "Compact"
-msgstr "Compact"
-
 #: app/components/comparison-dialog.tsx
 msgid "Compare jumps"
 msgstr "Compare jumps"
@@ -1733,10 +1725,6 @@ msgstr "Find anything"
 #: app/components/file-list.tsx
 msgid "Finding the jump"
 msgstr "Finding the jump"
-
-#: app/components/file-browser.tsx
-msgid "Folded"
-msgstr "Folded"
 
 #: app/components/nas-folder-browser.tsx
 msgid "Folder name"
@@ -3250,10 +3238,6 @@ msgstr "Size"
 msgid "Size of the board"
 msgstr "Size of the board"
 
-#: app/components/file-browser.tsx
-msgid "Size of the cards"
-msgstr "Size of the cards"
-
 #: app/components/camera-files.tsx
 msgid "SkyDock is going over the camera, file by file, as it copies it. What it has been over is listed here; the rest follow on their own."
 msgstr "SkyDock is going over the camera, file by file, as it copies it. What it has been over is listed here; the rest follow on their own."
@@ -4070,10 +4054,6 @@ msgstr "Where this montage has got to"
 #: app/components/comparison-dialog.tsx
 msgid "Which date should the merged jump have? The chosen jump keeps its times."
 msgstr "Which date should the merged jump have? The chosen jump keeps its times."
-
-#: app/components/file-browser.tsx
-msgid "Whole"
-msgstr "Whole"
 
 #: app/components/inspector.tsx
 msgid "whole frame"

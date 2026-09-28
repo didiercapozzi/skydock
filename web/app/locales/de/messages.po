@@ -209,10 +209,6 @@ msgstr "{copies, plural, one {# aufbereitete Kopie wird} other {# aufbereitete K
 msgid "{copies, plural, one {the # processed copy} other {the # processed copies}}"
 msgstr "{copies, plural, one {die # aufbereitete Kopie} other {die # aufbereiteten Kopien}}"
 
-#: app/components/file-browser.tsx
-msgid "{count, plural, one {# card} other {# cards}}"
-msgstr "{count, plural, one {# Karte} other {# Karten}}"
-
 #: app/components/bin-files.tsx
 #: app/components/camera-files.tsx
 #: app/components/remove-files-dialog.tsx
@@ -1164,10 +1160,6 @@ msgstr "Schließen (Esc)"
 msgid "Close the player"
 msgstr "Player schließen"
 
-#: app/components/file-browser.tsx
-msgid "Compact"
-msgstr "Kompakt"
-
 #: app/components/comparison-dialog.tsx
 msgid "Compare jumps"
 msgstr "Sprünge vergleichen"
@@ -1733,10 +1725,6 @@ msgstr "Alles durchsuchen"
 #: app/components/file-list.tsx
 msgid "Finding the jump"
 msgstr "Sprung wird gesucht"
-
-#: app/components/file-browser.tsx
-msgid "Folded"
-msgstr "Eingeklappt"
 
 #: app/components/nas-folder-browser.tsx
 msgid "Folder name"
@@ -3250,10 +3238,6 @@ msgstr "Größe"
 msgid "Size of the board"
 msgstr "Größe des Boards"
 
-#: app/components/file-browser.tsx
-msgid "Size of the cards"
-msgstr "Größe der Karten"
-
 #: app/components/camera-files.tsx
 msgid "SkyDock is going over the camera, file by file, as it copies it. What it has been over is listed here; the rest follow on their own."
 msgstr "SkyDock geht die Kamera beim Kopieren Datei für Datei durch. Was schon durchgegangen ist, steht hier; der Rest folgt von selbst."
@@ -4070,10 +4054,6 @@ msgstr "Wie weit diese Montage ist"
 #: app/components/comparison-dialog.tsx
 msgid "Which date should the merged jump have? The chosen jump keeps its times."
 msgstr "Welches Datum soll der zusammengeführte Sprung haben? Der gewählte Sprung behält seine Zeiten."
-
-#: app/components/file-browser.tsx
-msgid "Whole"
-msgstr "Ganz"
 
 #: app/components/inspector.tsx
 msgid "whole frame"
