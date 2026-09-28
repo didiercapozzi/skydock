@@ -75,11 +75,6 @@ msgstr "{0, plural, one {— envoyez-le à nouveau pour le remettre.} other {—
 msgid "{0, plural, one {{names} is on the board already, and stayed in the bin.} other {{names} are on the board already, and stayed in the bin.}}"
 msgstr "{0, plural, one {{names} est déjà sur le tableau, et reste dans la corbeille.} other {{names} sont déjà sur le tableau, et restent dans la corbeille.}}"
 
-#. placeholder {0}: list.length
-#: app/components/booking-list-dialog.tsx
-msgid "{0, plural, one {# booking on the list} other {# bookings on the list}}"
-msgstr "{0, plural, one {# réservation sur la liste} other {# réservations sur la liste}}"
-
 #. placeholder {0}: parts.videos.length
 #: app/components/upload-dialog.tsx
 msgid "{0, plural, one {# clip} other {# clips}}"
@@ -95,17 +90,13 @@ msgstr "{0, plural, one {# fichier qu’il utilise n’est pas ici : {missing}. 
 msgid "{0, plural, one {# file selected} other {# files selected}}"
 msgstr "{0, plural, one {# fichier sélectionné} other {# fichiers sélectionnés}}"
 
-#. placeholder {0}: step.files
 #. placeholder {0}: template.assets
-#: app/components/history-dialog.tsx
 #: app/components/templates-dialog.tsx
 msgid "{0, plural, one {# file} other {# files}}"
 msgstr "{0, plural, one {# fichier} other {# fichiers}}"
 
 #. placeholder {0}: jumps.length
-#. placeholder {0}: step.jumps
 #: app/components/free-place-dialog.tsx
-#: app/components/history-dialog.tsx
 msgid "{0, plural, one {# jump} other {# jumps}}"
 msgstr "{0, plural, one {# saut} other {# sauts}}"
 
@@ -139,6 +130,11 @@ msgstr "{0, plural, one {dans # zip} other {dans # zips}}"
 msgid "{0, plural, one {Process the # named montage} other {Process the # named montages}}"
 msgstr "{0, plural, one {Préparer le # montage nommé} other {Préparer les # montages nommés}}"
 
+#. placeholder {0}: change.processed
+#: app/components/history-dialog.tsx
+msgid "{0, plural, one {Processed # file} other {Processed # files}}"
+msgstr "{0, plural, one {# fichier préparé} other {# fichiers préparés}}"
+
 #. placeholder {0}: count ?? 0
 #: app/components/name-montage-dialog.tsx
 msgid "{0, plural, one {This file becomes a montage once it has a name.} other {These # files become a montage once it has a name.}}"
@@ -154,10 +150,20 @@ msgstr "{0, plural, one {ceci n’est plus sur le stockage :} other {ceux-ci ne 
 msgid "{0, plural, one {Upload the # rendered film} other {Upload the # rendered films}}"
 msgstr "{0, plural, one {Envoyer le # film rendu} other {Envoyer les # films rendus}}"
 
+#. placeholder {0}: change.uploaded
+#: app/components/history-dialog.tsx
+msgid "{0, plural, one {Uploaded # file} other {Uploaded # files}}"
+msgstr "{0, plural, one {# fichier envoyé} other {# fichiers envoyés}}"
+
 #. placeholder {0}: r.who
 #: app/components/overview-dialog.tsx
 msgid "{0} has paid"
 msgstr "{0} a payé"
+
+#. placeholder {0}: to.name
+#: app/components/history-dialog.tsx
+msgid "{0}’s montage"
+msgstr "Montage de {0}"
 
 #: app/helpers/notes.ts
 msgid "{addedCount, plural, one {# file} other {# files}} have been added to {where}"
@@ -306,6 +312,18 @@ msgstr "{filename} est de retour sur cette machine, tel qu’il a été filmé."
 msgid "{files, plural, one {Copied # file into the jump — it stays where it was as well} other {Copied # files into the jump — they stay where they were as well}}"
 msgstr "{files, plural, one {# fichier copié dans le saut — il reste aussi là où il était} other {# fichiers copiés dans le saut — ils restent aussi là où ils étaient}}"
 
+#: app/components/history-dialog.tsx
+msgid "{files, plural, one {Moved # file to {where}} other {Moved # files to {where}}}"
+msgstr "{files, plural, one {# fichier déplacé vers {where}} other {# fichiers déplacés vers {where}}}"
+
+#: app/components/history-dialog.tsx
+msgid "{filesAdded, plural, one {# new file} other {# new files}}"
+msgstr "{filesAdded, plural, one {# nouveau fichier} other {# nouveaux fichiers}}"
+
+#: app/components/history-dialog.tsx
+msgid "{filesGone, plural, one {# file left the board} other {# files left the board}}"
+msgstr "{filesGone, plural, one {# fichier a quitté le tableau} other {# fichiers ont quitté le tableau}}"
+
 #: app/components/upload-panel.tsx
 msgid "{finished} of {count, plural, one {# item} other {# items}} on the storage — {size} in all"
 msgstr "{finished} sur {count, plural, one {# élément} other {# éléments}} sur le stockage — {size} au total"
@@ -334,6 +352,18 @@ msgstr "{jumps, plural, one {# saut} other {# sauts}}"
 #: app/components/folder-owed.tsx
 msgid "{jumps, plural, one {# jump} other {# jumps}} to file"
 msgstr "{jumps, plural, one {# saut} other {# sauts}} à classer"
+
+#: app/components/history-dialog.tsx
+msgid "{jumpsGone, plural, one {Removed # jump} other {Removed # jumps}}"
+msgstr "{jumpsGone, plural, one {# saut supprimé} other {# sauts supprimés}}"
+
+#: app/components/history-dialog.tsx
+msgid "{jumpsMade, plural, one {Made # jump} other {Made # jumps}}"
+msgstr "{jumpsMade, plural, one {# saut créé} other {# sauts créés}}"
+
+#: app/components/history-dialog.tsx
+msgid "{jumpsRenamed, plural, one {Renamed # jump} other {Renamed # jumps}}"
+msgstr "{jumpsRenamed, plural, one {# saut renommé} other {# sauts renommés}}"
 
 #: app/components/free-place-dialog.tsx
 msgid "{kept, plural, one {# jump or loose file not all uploaded yet, left here as they are} other {# jump or loose files not all uploaded yet, left here as they are}}"
@@ -462,6 +492,10 @@ msgstr "{ready} clips sur {total} ont leur petite copie. Elles se font en arriè
 msgid "{reshaped, plural, one {# file} other {# files}} went up trimmed, framed or turned. Only the part that went up is kept, on the storage: what was cut off is deleted with the original, for good."
 msgstr "{reshaped, plural, one {# fichier est parti} other {# fichiers sont partis}} coupés, recadrés ou pivotés. Seule la partie envoyée est gardée, sur le stockage : ce qui a été retiré est supprimé avec l’original, définitivement."
 
+#: app/components/history-dialog.tsx
+msgid "{retimed, plural, one {Changed the time of # file} other {Changed the time of # files}}"
+msgstr "{retimed, plural, one {Heure changée sur # fichier} other {Heure changée sur # fichiers}}"
+
 #. placeholder {0}: used.length
 #: app/components/upload-dialog.tsx
 msgid "{sends, plural, one {# item} other {# items}} to {0, plural, one {# destination} other {# destinations}}"
@@ -531,6 +565,10 @@ msgstr "{trimmed, plural, one {# clip coupé} other {# clips coupés}} au saut �
 msgid "{trimmed, plural, one {# clip} other {# clips}} trimmed to the jump."
 msgstr "{trimmed, plural, one {# clip coupé} other {# clips coupés}} au saut."
 
+#: app/components/history-dialog.tsx
+msgid "{trimmed, plural, one {Trimmed, framed or turned # file} other {Trimmed, framed or turned # files}}"
+msgstr "{trimmed, plural, one {# fichier coupé, recadré ou pivoté} other {# fichiers coupés, recadrés ou pivotés}}"
+
 #: app/components/folder-owed.tsx
 msgid "{unnamed} to name"
 msgstr "{unnamed} à nommer"
@@ -571,6 +609,14 @@ msgstr "{waiting} pas encore envoyés par e-mail"
 #: app/components/remove-place-dialog.tsx
 msgid "{what} filed there come back to Fresh files, whole — every jump keeps its files, its name and its trims, and can be filed somewhere else"
 msgstr "{what} classés là reviennent dans Nouveaux fichiers, entiers — chaque saut garde ses fichiers, son nom et ses coupes, et peut être classé ailleurs"
+
+#: app/components/history-dialog.tsx
+msgid "{who} marked paid"
+msgstr "{who} marqué comme payé"
+
+#: app/components/history-dialog.tsx
+msgid "{who} no longer marked paid"
+msgstr "{who} n’est plus marqué comme payé"
 
 #: app/helpers/notes.ts
 msgid "{who}: {files} of {of} files found here"
@@ -706,10 +752,6 @@ msgstr "Une copie ne peut pas aller à la corbeille — son original reste où i
 #: app/components/montage-card.tsx
 msgid "a copy of the film"
 msgstr "une copie du film"
-
-#: app/components/booking-list-dialog.tsx
-msgid "A CSV file"
-msgstr "Un fichier CSV"
 
 #: app/components/inspector.tsx
 msgid "A frame from this montage, to tell who it is"
@@ -919,22 +961,6 @@ msgstr "Corbeille"
 msgid "Bold"
 msgstr "Gras"
 
-#: app/components/montage-card.tsx
-msgid "Booked {bookedAt}: {bookedName}"
-msgstr "Réservé à {bookedAt} : {bookedName}"
-
-#: app/components/montage-card.tsx
-msgid "Booked nearest to when this jump began"
-msgstr "Réservation la plus proche du début de ce saut"
-
-#: app/components/booking-list-dialog.tsx
-msgid "Booking list"
-msgstr "Liste des réservations"
-
-#: app/components/board-header.tsx
-msgid "Booking list…"
-msgstr "Liste des réservations…"
-
 #: app/components/bin-files.tsx
 msgid "Bring {picks, plural, one {# file} other {# files}} back to Fresh files"
 msgstr "Remettre {picks, plural, one {# fichier} other {# fichiers}} dans Nouveaux fichiers"
@@ -946,10 +972,6 @@ msgstr "Importer un modèle"
 #: app/components/bin-files.tsx
 msgid "Bring back to Fresh files"
 msgstr "Remettre dans Nouveaux fichiers"
-
-#: app/components/booking-list-dialog.tsx
-msgid "Bring in the list"
-msgstr "Importer la liste"
 
 #: app/components/storage-folder.tsx
 msgid "Bring it back"
@@ -1099,10 +1121,6 @@ msgstr "Choix d’un autre dossier"
 msgid "Clear (esc)"
 msgstr "Désélectionner (esc)"
 
-#: app/components/booking-list-dialog.tsx
-msgid "Clear the list"
-msgstr "Vider la liste"
-
 #: app/components/nas-folder-browser.tsx
 msgid "Click to choose, double-click to open. Nothing is guessed: a dropzone with no folder is asked for one rather than filed somewhere sensible-looking."
 msgstr "Cliquez pour choisir, double-cliquez pour ouvrir. Rien n’est deviné : pour une dropzone sans dossier, on vous en demande un plutôt que de la ranger dans un endroit qui semble raisonnable."
@@ -1123,7 +1141,6 @@ msgstr "Cliquer pour afficher ses fichiers · ⌘/ctrl-clic sur un second saut p
 msgid "close"
 msgstr "fermer"
 
-#: app/components/booking-list-dialog.tsx
 #: app/components/comparison-dialog.tsx
 #: app/components/email-dialog.tsx
 #: app/components/history-dialog.tsx
@@ -1537,10 +1554,6 @@ msgstr "Déposer ici : cela crée un zip"
 msgid "Drop on the Montages heading"
 msgstr "Déposer sur l’en-tête Montages"
 
-#: app/components/history-dialog.tsx
-msgid "Each change to the board — filing, naming, trimming — keeps what the board was before it. Going back puts the jumps, names and trims back; no file on the disk or on the storage is touched."
-msgstr "Chaque modification du tableau — classement, nom, coupe — garde ce qu’était le tableau avant. Revenir en arrière rétablit les sauts, les noms et les coupes ; aucun fichier sur le disque ni sur le stockage n’est touché."
-
 #: app/components/inspector.tsx
 msgid "Each clip from its exit to a few seconds after its landing"
 msgstr "Chaque clip, de sa sortie d’avion à quelques secondes après son atterrissage"
@@ -1818,6 +1831,7 @@ msgid "freefall"
 msgstr "chute libre"
 
 #: app/components/dialog-host.tsx
+#: app/components/history-dialog.tsx
 #: app/components/move-to.tsx
 #: app/helpers/places.ts
 #: app/hooks/useDragAndDrop.ts
@@ -1868,14 +1882,6 @@ msgstr "Donnez un nom au dossier du projet"
 #: app/components/storage-folder.tsx
 msgid "Give this one file a link — anybody holding it can fetch it, and nothing else in the folder"
 msgstr "Donner un lien à ce seul fichier — quiconque a le lien peut le récupérer, et rien d’autre du dossier"
-
-#: app/components/history-dialog.tsx
-msgid "Go back to an earlier board"
-msgstr "Revenir à un tableau antérieur"
-
-#: app/components/history-dialog.tsx
-msgid "Go back to this"
-msgstr "Revenir à cet état"
 
 #: app/components/preview-drawer.tsx
 msgid "Go to the {moment}"
@@ -2200,6 +2206,7 @@ msgstr "En vrac dans Nouveaux fichiers"
 msgid "lowercase letters, digits and - only"
 msgstr "minuscules, chiffres et - uniquement"
 
+#: app/components/history-dialog.tsx
 #: app/hooks/useBoardModel.ts
 msgid "Made {who}’s montage"
 msgstr "Montage de {who} créé"
@@ -2724,10 +2731,6 @@ msgstr "Le mot de passe est requis"
 msgid "Password must be at least 3 characters"
 msgstr "Le mot de passe doit comporter au moins 3 caractères"
 
-#: app/components/booking-list-dialog.tsx
-msgid "Paste the booking system’s export, or choose its CSV file: a name on each line — or first name and last name — and, where there is one, an email address and the time they are booked. Headings in English, French or German are understood."
-msgstr "Collez l’export du système de réservation, ou choisissez son fichier CSV : un nom par ligne — ou prénom et nom — et, s’il y en a, une adresse e-mail et l’heure de réservation. Les en-têtes en anglais, français ou allemand sont compris."
-
 #: app/components/inspector.tsx
 msgid "photo"
 msgstr "photo"
@@ -2900,6 +2903,10 @@ msgstr "Mis sur le stockage à ce moment-là — son nom ne dit pas quand il a �
 msgid "Put the template back as SkyDock first wrote it"
 msgstr "Rétablir le modèle tel que SkyDock l’a écrit au départ"
 
+#: app/components/history-dialog.tsx
+msgid "Puts the board back as it was just before this change"
+msgstr "Remet le tableau tel qu’il était juste avant ce changement"
+
 #: app/components/email-dialog.tsx
 msgid "puts the email below on the clipboard and opens a new message with the address and the subject already filled in — in Gmail, or in the mail program this computer uses (Outlook, Apple Mail, Thunderbird…). Click into the message, paste it (Ctrl+V, or ⌘V on a Mac) and press Send. The one used last is offered first."
 msgstr "copie l’e-mail ci-dessous dans le presse-papiers et ouvre un nouveau message avec l’adresse et l’objet déjà remplis — dans Gmail, ou dans le logiciel de messagerie de cet ordinateur (Outlook, Apple Mail, Thunderbird…). Cliquez dans le message, collez-le (Ctrl+V, ou ⌘V sur Mac) et appuyez sur Envoyer. Le dernier utilisé est proposé en premier."
@@ -3015,10 +3022,6 @@ msgstr "Faites d’abord le rendu du film dans kdenlive"
 #: app/components/montage-card.tsx
 msgid "rendered {renderedAt}"
 msgstr "rendu le {renderedAt}"
-
-#: app/components/booking-list-dialog.tsx
-msgid "Replace the list"
-msgstr "Remplacer la liste"
 
 #: app/hooks/useBoardState.ts
 msgid "Request failed"
@@ -3492,14 +3495,6 @@ msgstr "La copie a été interrompue — réessayez."
 msgid "the corrected times, the jumps made and named by hand, any copies, and every trim, frame and turn{alreadySet}. The gap rule makes the jumps again"
 msgstr "les heures corrigées, les sauts créés et nommés à la main, toutes les copies, et chaque coupe, cadrage et rotation{alreadySet}. La règle des écarts recrée les sauts"
 
-#: app/components/booking-list-dialog.tsx
-msgid "The day’s bookings"
-msgstr "Les réservations du jour"
-
-#: app/components/board-header.tsx
-msgid "The day’s bookings from the booking system — montages are named from it, and emails addressed"
-msgstr "Les réservations du jour, tirées du système de réservation — les montages sont nommés d’après elles, et les e-mails adressés"
-
 #: app/components/board-header.tsx
 msgid "The editing templates a montage is made from — look them over, or bring one in"
 msgstr "Les modèles de montage dont un montage est fait — les parcourir, ou en importer un"
@@ -3556,17 +3551,13 @@ msgstr "le projet kdenlive — le montage lui-même, ce qui est irréversible"
 msgid "the kdenlive project, and the record of what went where"
 msgstr "le projet kdenlive, et la trace de ce qui est allé où"
 
+#: app/components/history-dialog.tsx
+msgid "The last changes made on the board, the latest first. Going back to before one undoes it and every change after it — the jumps, names and trims; no file on the disk or on the storage is touched."
+msgstr "Les derniers changements faits sur le tableau, le plus récent en premier. Revenir avant l’un d’eux l’annule, ainsi que tous ceux qui ont suivi — les sauts, les noms et les coupes ; aucun fichier sur le disque ou sur le stockage n’est touché."
+
 #: app/components/email-dialog.tsx
 msgid "The link as a QR code, for a phone to take it now"
 msgstr "Le lien en QR code, pour qu’un téléphone le prenne tout de suite"
-
-#: app/components/booking-list-dialog.tsx
-msgid "The list"
-msgstr "La liste"
-
-#: app/hooks/useBookingList.ts
-msgid "The list could not be brought in."
-msgstr "La liste n’a pas pu être importée."
 
 #: app/components/upload-dialog.tsx
 msgid "The montage"
@@ -3773,12 +3764,6 @@ msgstr "Vignettes"
 msgid "Tick several to drag them together, or tick them and press Put here on a destination. Each can go to several destinations."
 msgstr "Cochez-en plusieurs pour les glisser ensemble, ou cochez-les et appuyez sur Placer ici sur une destination. Chacun peut aller dans plusieurs destinations."
 
-#: app/components/booking-list-dialog.tsx
-msgid "Time;First name;Last name;Email\n"
-"10:30;Luc;Favre;luc@example.com"
-msgstr "Heure;Prénom;Nom;E-mail\n"
-"10:30;Luc;Favre;luc@example.com"
-
 #: app/components/reset-fresh-dialog.tsx
 msgid "Times only"
 msgstr "Heures seulement"
@@ -3794,6 +3779,10 @@ msgstr "À"
 #: app/components/montage-card.tsx
 msgid "To hand over"
 msgstr "À remettre"
+
+#: app/components/history-dialog.tsx
+msgid "Took {who}’s montage apart"
+msgstr "Montage de {who} défait"
 
 #: app/components/preview-drawer.tsx
 msgid "Trim"
@@ -3882,6 +3871,10 @@ msgstr "sous voile"
 #: app/components/email-dialog.tsx
 msgid "Undo"
 msgstr "Annuler"
+
+#: app/components/history-dialog.tsx
+msgid "Undo from here"
+msgstr "Annuler depuis ici"
 
 #: app/routes/place.tsx
 msgid "Undo the montage, at any step — its files go back to Fresh files, loose, without their name or trims"
@@ -4014,6 +4007,10 @@ msgstr "Regarder…"
 #: app/components/upload-dialog.tsx
 msgid "What can be sent"
 msgstr "Ce qui peut être envoyé"
+
+#: app/components/history-dialog.tsx
+msgid "What changed on the board"
+msgstr "Ce qui a changé sur le tableau"
 
 #: app/components/disconnect-dialog.tsx
 #: app/components/remove-place-dialog.tsx

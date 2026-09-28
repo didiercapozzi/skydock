@@ -17,7 +17,6 @@ const routes = [
   route('api/bin', 'routes/api.bin.ts'),
   route('api/busy', 'routes/api.busy.ts'),
   route('api/history', 'routes/api.history.ts'),
-  route('api/bookings', 'routes/api.bookings.ts'),
   route('api/import', 'routes/api.import.ts'),
   route('api/dropped', 'routes/api.dropped.ts'),
   route('api/templates', 'routes/api.templates.ts'),

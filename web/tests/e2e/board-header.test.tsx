@@ -26,7 +26,6 @@ const header = (over: Partial<Parameters<typeof BoardHeader>[0]> = {}) =>
       onHistory: () => {},
       onShortcuts: () => {},
       onOverview: () => {},
-      onBookings: () => {},
       find: () => [],
       proxies: { ready: 48, waiting: 2, total: 50 },
       disk: null,
@@ -79,7 +78,7 @@ describe('the top of the board', () => {
 
     await userEvent.click(page.getByRole('button', { name: 'Settings' }))
 
-    for (const name of ['Auto', 'Light', 'Dark', 'English', 'Templates…', 'Booking list…', 'Work folder…', 'History…'])
+    for (const name of ['Auto', 'Light', 'Dark', 'English', 'Templates…', 'Work folder…', 'History…'])
       await expect.element(page.getByRole('button', { name })).toBeVisible()
     await userEvent.keyboard('{Escape}')
     await expect.element(page.getByRole('group', { name: 'Settings' })).not.toBeInTheDocument()

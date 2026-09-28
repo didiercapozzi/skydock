@@ -21,7 +21,6 @@ import { WorkFolderDialog } from './work-folder-dialog'
 import { ShortcutsDialog } from './shortcuts-dialog'
 import { HistoryDialog } from './history-dialog'
 import { OverviewDialog } from './overview-dialog'
-import { BookingListDialog } from './booking-list-dialog'
 import type { OverviewRow } from './overview-dialog'
 import { folderOnStorage } from '../helpers/jumps'
 import type { Passenger } from './montage-card'
@@ -61,7 +60,6 @@ type BoardDialog =
   | { kind: 'shortcuts' }
   | { kind: 'history' }
   | { kind: 'overview' }
-  | { kind: 'booking-list' }
 
 const DialogHost = ({
   dialog,
@@ -270,8 +268,6 @@ const DialogHost = ({
         })()}
 
       {dialog?.kind === 'shortcuts' && <ShortcutsDialog onClose={close} />}
-
-      {dialog?.kind === 'booking-list' && <BookingListDialog onClose={close} />}
 
       {dialog?.kind === 'overview' && (
         <OverviewDialog

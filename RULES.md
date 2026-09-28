@@ -386,8 +386,8 @@ output/
 ```
 
 The board's own record of the work sits at the top of the output folder, with the last copy of it
-read whole kept beside it, what each original was found to be last time (so a Rescan reads through only what
-is new), and the day's booking list when one was brought in.
+read whole kept beside it, and what each original was found to be last time (so a Rescan reads
+through only what is new).
 
 Of a montage's folder, only the film and the photos archive are handed over. The project and the
 working copies stay on the machine; the originals go to the backup.
@@ -554,9 +554,7 @@ with nothing, so the board goes to Fresh files with them.
 screen, beside its name: a jump from its panel, several picked files, or a single file from its own
 panel — or from what is dropped on the _Montages_ heading, which asks for the name in a dialog of its
 own. Asking comes first — the name only appears once asked for, starting from the jump's own name
-when it has one — and the name is saved by Enter or the button; Escape or Cancel changes nothing.
-With the day's booking list brought in (The booking list), every name on it is offered as it is
-typed, and the name booked nearest when the jump began is offered in one press. A
+when it has one — and the name is saved by Enter or the button; Escape or Cancel changes nothing. A
 name that is already a montage's, however capitalised, says it will join that montage and saves the
 name exactly as already written: the new jump is a jump of that montage, keeping its own times. Once
 made, the montage's page opens and its entry lights up briefly in the menu. Renaming a montage later is
@@ -686,7 +684,7 @@ montages are not looked at; nothing of them is here.
 behind _Settings_: on the bar, finding anything, the overview, scanning, how many clips still wait
 for their proxy, rows or grid, the keys the board knows, the storage — whether it is connected, as whom
 and to what, a way to check what it holds now, and a way to disconnect; behind Settings, light or
-dark, the language, the editing templates, the booking list, the work folder and the history. The storage is named the way somebody would say it, who and where: the account the session was
+dark, the language, the editing templates, the work folder and the history. The storage is named the way somebody would say it, who and where: the account the session was
 opened with, and the machine's name without the scheme or the port it is reached on, which are how a
 machine reaches it and not something to read across the top of a screen. The settings that are chosen
 once and then only glanced at — rows or grid, light or dark, checking and disconnecting — are marks
@@ -1346,8 +1344,7 @@ link cannot be written over. The signature is the club's, remembered on this mac
 English or German — and is then drafted again from that language's own template, with the day, what is
 ready and the button said in that language; the variables keep their French names in every language,
 since they are what the person writing the template types. The language the board is in says nothing
-of theirs, so it does not decide. The address is filled in from the day's booking list
-when it has one for that name, until something is typed.
+of theirs, so it does not decide.
 
 **A QR code of the link** is shown on request, for whoever it is for, standing at the counter, to take it with
 their phone before the email has even gone.
@@ -1373,27 +1370,16 @@ email as sent records it on the storage's list, and can be undone. Once the mail
 here, the dialog asks _Sent it?_ where that is recorded, so a montage does not stay "to email" long
 after its email went.
 
-## The booking list
-
-The day's bookings — whoever the montages will be for — can be brought in from the booking system's
-export, or pasted from anywhere,
-under Settings: a name on each line — or a first name and a last name — and, where there is one, an
-email address and the time they are booked. The first line is read as headings when it names its
-columns, in English, French or German; otherwise the first column is the name and an address or a
-time is found wherever it is. Commas, semicolons and tabs all separate. A line without a name is left
-out, and a list with no name at all is refused rather than kept empty. The list is kept in the work
-folder, beside the board, since it belongs to the day's work; bringing in another replaces it, and it
-can be cleared. It names montages (Making a montage) and addresses emails (Sending the link); it moves
-and renames nothing on its own.
-
 ## Going back
 
 Every change made on the board — filing, naming, trimming, a scan — keeps what the board was just
 before, the last thirty of them; what the board records by itself as it goes, a file landing off a
-camera, a proxy made, a copy processed, keeps none, so a card copied in does not push the changes
-made by hand out of reach. _History…_ under Settings lists them, and _History…_ under Settings lists them, the latest first, each
-with when and how many jumps and files it held. Going back to one puts the board as it was then: the
-jumps, their names and trims, what was filed where. It is itself a change, so it can be gone back from
+camera or a proxy made, keeps none, so a card copied in does not push the changes
+made by hand out of reach. _History…_ under Settings lists them, the latest first, each
+said in words — "Moved 3 files to Yverdon", "Made Luc Favre's montage", "Trimmed, framed or turned 2
+files" — with the time it was made, and the day too when it was not today; a change that changed
+nothing is not listed. _Undo from here_ puts the board back as it was just before that change,
+undoing it and every change after it: the jumps, their names and trims, what was filed where. It is itself a change, so it can be gone back from
 in the same way. No file is touched by it — nothing on the disk, nothing on the storage — only the
 board's record of them: a file put in the bin since shows on the board again until the next scan,
 which finds it gone.

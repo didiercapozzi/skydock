@@ -62,7 +62,6 @@ const BoardHeader = ({
   onHistory,
   onShortcuts,
   onOverview,
-  onBookings,
   find,
   proxies,
   disk,
@@ -80,8 +79,6 @@ const BoardHeader = ({
   onShortcuts: () => void
   /* every montage in one table, with what is done to many at once */
   onOverview: () => void
-  /* the day's bookings, brought in from the booking system */
-  onBookings: () => void
   /* anything on the board, by a piece of its name */
   find: (query: string) => Found[]
   proxies: { ready: number; waiting: number; total: number }
@@ -280,14 +277,6 @@ const BoardHeader = ({
                     onTemplates()
                   }}>
                   {t`Templates…`}
-                </MenuItem>
-                <MenuItem
-                  title={t`The day’s bookings from the booking system — montages are named from it, and emails addressed`}
-                  onClick={() => {
-                    close()
-                    onBookings()
-                  }}>
-                  {t`Booking list…`}
                 </MenuItem>
                 <MenuItem
                   title={t`The folder SkyDock keeps its work in — the originals, what is handed over, the board — and another one to work in`}

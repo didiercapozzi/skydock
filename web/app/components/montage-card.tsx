@@ -1,6 +1,5 @@
 import { plural, t } from '@lingui/core/macro'
 import {
-  bookedNear,
   filmNameOf,
   hasCompletePassenger,
   lastSegment,
@@ -10,11 +9,10 @@ import {
   montageUploadKey
 } from '@skydock/scripts'
 import type { MontageFact } from '@skydock/scripts'
-import { useId, useState } from 'react'
-import { useBookingList } from '../hooks/useBookingList'
+import { useState } from 'react'
 import { Go, Mini } from './buttons'
 import { kindOf } from './file-list'
-import { formatFilmSize, getFileUrl, getThumbUrl, hhmm, minFileMtime, pad } from './utils'
+import { formatFilmSize, getFileUrl, getThumbUrl, hhmm, pad } from './utils'
 import type { ManifestGroup } from './types'
 
 /* A montage is named once, by one name — "Luc Favre", "Boogie 2026" — and the name *is* the folder
@@ -157,14 +155,6 @@ const NameMontage = ({
   const [name, setName] = useState(initial)
   const typed = passengerFrom(name)
   const complete = hasCompletePassenger(typed)
-  /* the day's bookings: every name on it offered as it is typed, and the one booked nearest when the
-     jump began offered in one press */
-  const list = useBookingList()
-  const names = useId()
-  const began = group ? (minFileMtime(group.files) ?? null) : null
-  const booked = began !== null ? bookedNear(list, began) : null
-  const bookedName = booked?.name ?? ''
-  const bookedAt = booked?.time ?? ''
   const joins = complete ? sameName(passengers, typed) : undefined
   const save = () => {
     if (!complete) return
@@ -189,7 +179,6 @@ const NameMontage = ({
         placeholder={t`Name`}
         aria-label={t`Name`}
         autoFocus
-        list={list.length > 0 ? names : undefined}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => {
           e.stopPropagation()
@@ -198,23 +187,6 @@ const NameMontage = ({
         }}
         className='w-44 rounded-[5px] border border-pick bg-pane px-[7px] py-0.5 text-[12px] text-ink'
       />
-      {list.length > 0 && (
-        <datalist id={names}>
-          {list.map((b, i) => (
-            <option
-              key={`${b.name}:${i}`}
-              value={b.name}
-            />
-          ))}
-        </datalist>
-      )}
-      {booked && name.trim().toLowerCase() !== bookedName.toLowerCase() && (
-        <Mini
-          title={t`Booked nearest to when this jump began`}
-          onClick={() => setName(bookedName)}>
-          {t`Booked ${bookedAt}: ${bookedName}`}
-        </Mini>
-      )}
       <span
         className={`min-w-[128px] text-[11px] ${joins ? 'font-semibold text-accent' : 'text-ink-3'}`}>
         {joins

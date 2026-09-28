@@ -93,7 +93,6 @@ describe('the thumbnails', () => {
         onHistory: () => {},
         onShortcuts: () => {},
         onOverview: () => {},
-        onBookings: () => {},
         find: () => [],
         proxies: { ready: 0, waiting: 0, total: 0 },
         disk: null,

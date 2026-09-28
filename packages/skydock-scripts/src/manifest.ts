@@ -1,5 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { changedNothing, describeChange } from './boardChange'
 import { z } from 'zod'
 import { outputKeyOf } from './fileStatus'
 import { writeJsonAtomic } from './lib/fs'
@@ -154,29 +155,45 @@ const keepBoardStep = (manifestPath: string) => {
     fs.rmSync(path.join(history, old), { recursive: true, force: true })
 }
 
-/* The board's earlier states, the latest first: when each was, and how many jumps and files it had. */
+/* The board's earlier states, the latest first, each with what the change made from it did — read
+   off the board it was and the one that came after, the next step or the board as it is now. A step
+   whose change changed nothing is not listed. */
 const boardHistory = (manifestPath: string) => {
   const history = historyDir(manifestPath)
   if (!fs.existsSync(history)) return []
-  return fs
+  const read = (step: string) => {
+    try {
+      return readPair(
+        path.join(history, step, 'manifest.json'),
+        path.join(history, step, 'groups.json')
+      )
+    } catch {
+      return null
+    }
+  }
+  const steps = fs
     .readdirSync(history)
     .sort()
-    .reverse()
     .flatMap((step) => {
-      try {
-        const was = readPair(
-          path.join(history, step, 'manifest.json'),
-          path.join(history, step, 'groups.json')
-        )
-        if (!was) return []
-        const at = fs.statSync(path.join(history, step, 'manifest.json')).mtimeMs
-        return [
-          { step, at: Math.floor(at / 1000), jumps: was.groups.length, files: was.files.length }
-        ]
-      } catch {
-        return []
-      }
+      const board = read(step)
+      if (!board) return []
+      const at = fs.statSync(path.join(history, step, 'manifest.json')).mtimeMs
+      return [{ step, at: Math.floor(at / 1000), board }]
     })
+  let now: Manifest | null = null
+  try {
+    now = loadManifest(manifestPath)
+  } catch {
+    now = null
+  }
+  return steps
+    .flatMap(({ step, at, board }, i) => {
+      const after = steps[i + 1]?.board ?? now
+      if (!after) return []
+      const change = describeChange(board, after)
+      return changedNothing(change) ? [] : [{ step, at, change }]
+    })
+    .reverse()
 }
 
 /* The board put back as it was at an earlier step. What it is now becomes a step of its own first,

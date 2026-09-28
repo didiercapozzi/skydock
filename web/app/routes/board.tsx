@@ -270,7 +270,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         onHistory={() => setDialog({ kind: 'history' })}
         onShortcuts={() => setDialog({ kind: 'shortcuts' })}
         onOverview={() => setDialog({ kind: 'overview' })}
-        onBookings={() => setDialog({ kind: 'booking-list' })}
         find={model.findAnything}
         proxies={board.proxyProgress}
         disk={board.disk ?? loaderData.disk}

@@ -180,7 +180,7 @@ reloads before saving; template paths pointing outside their folder; corrupt set
   preview, rename by Enter/Save only, red dangerous buttons, app dialogs instead of `confirm()`,
   Escape and focus trap in every dialog, notes told apart, drawer for the details panel, Move to…,
   compact/folded jump cards, next step from the trail, "Sent it?", overview with batch process and
-  upload queue, paid mark, booking list import, trim to the jump, landscape with blurred sides,
+  upload queue, paid mark, trim to the jump, landscape with blurred sides,
   find anything, email in three languages, QR code of the link, faster rescans.
 
 - **A camera is copied again without unplugging it.** Its page offers "Copy N files here" for what is

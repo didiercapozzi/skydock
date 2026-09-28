@@ -80,7 +80,8 @@ describe('going back', () => {
     change(board(['a', 'b']))
     change(board(['a', 'b', 'c']))
 
-    expect(boardHistory(manifestPath).map((step) => step.jumps)).toEqual([2, 1])
+    /* each step says what the change after it did: here, one jump more each time */
+    expect(boardHistory(manifestPath).map((step) => step.change.jumpsMade)).toEqual([1, 1])
   })
 
   /* a camera copy saves the board file by file, and must not push the changes made by hand out */
@@ -90,7 +91,7 @@ describe('going back', () => {
     saveManifest(manifestPath, board(['a', 'b', 'c']))
     saveManifest(manifestPath, board(['a', 'b', 'c', 'd']))
 
-    expect(boardHistory(manifestPath).map((step) => step.jumps)).toEqual([1])
+    expect(boardHistory(manifestPath).map((step) => step.change.jumpsMade)).toEqual([3])
   })
 
   it('puts the board back as it was, and can itself be undone', () => {
@@ -101,6 +102,13 @@ describe('going back', () => {
     restoreBoard(manifestPath, earlier!.step)
 
     expect(loadManifest(manifestPath)?.groups).toHaveLength(1)
-    expect(boardHistory(manifestPath)[0]?.jumps).toBe(2)
+    expect(boardHistory(manifestPath)[0]?.change.jumpsGone).toBe(1)
+  })
+
+  it('does not list a change that changed nothing', () => {
+    change(board(['a']))
+    change(board(['a']))
+
+    expect(boardHistory(manifestPath)).toEqual([])
   })
 })

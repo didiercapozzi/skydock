@@ -2,7 +2,6 @@ import {
   asEmailHtml,
   DEFAULT_TEMPLATES,
   EMAIL_VARIABLES,
-  emailFor,
   fillEmailTemplate,
   htmlOfText,
   markVariables,
@@ -16,7 +15,6 @@ import { msg, t } from '@lingui/core/macro'
 import { useState } from 'react'
 import { cleanEmailHtml } from '../helpers/emailHtml'
 import { setMailApp, useMailApp } from '../hooks/useMailApp'
-import { useBookingList } from '../hooks/useBookingList'
 import type { MailApp } from '../hooks/useMailApp'
 import type { EmailFacts, EmailLanguage, EmailTemplate } from '@skydock/scripts'
 import { readEmailTemplate, setEmailTemplate, useEmailTemplate } from '../hooks/useEmailTemplate'
@@ -115,10 +113,7 @@ const EmailDialog = ({
   const template = readable(stored)
   const drafted = fillEmailTemplate(template, about, lang)
   const values = variablesOf(about, lang)
-  /* addressed already when the day's booking list has an address for the name, until something is typed */
-  const list = useBookingList()
-  const [typedTo, setTo] = useState<string | null>(null)
-  const to = typedTo ?? emailed?.to ?? emailFor(list, `${about.firstname} ${about.lastname}`) ?? ''
+  const [to, setTo] = useState(emailed?.to ?? '')
   const [subject, setSubject] = useState(drafted.subject)
   const [body, setBody] = useState(drafted.body)
   /* the signature is the club's, the same on every email, so it is remembered */
