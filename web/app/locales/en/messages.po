@@ -20,6 +20,7 @@ msgid " · here “{here}”"
 msgstr " · here “{here}”"
 
 #: app/components/free-place-dialog.tsx
+#: app/components/leave-montage-dialog.tsx
 #: app/components/remove-place-dialog.tsx
 #: app/components/trash-dialog.tsx
 msgid " and "
@@ -293,6 +294,7 @@ msgstr "{kept, plural, one {# jump or loose file not all uploaded yet, left here
 msgid "{kept, plural, one {# not all uploaded yet stays here.} other {# not all uploaded yet stay here.}}"
 msgstr "{kept, plural, one {# not all uploaded yet stays here.} other {# not all uploaded yet stay here.}}"
 
+#: app/components/leave-montage-dialog.tsx
 #: app/components/trash-dialog.tsx
 msgid "{kinds}, {inAll} in all"
 msgstr "{kinds}, {inAll} in all"
@@ -367,6 +369,7 @@ msgstr "{passedOver} already there"
 msgid "{percent}% of {size}"
 msgstr "{percent}% of {size}"
 
+#: app/components/leave-montage-dialog.tsx
 #: app/components/storage-list.tsx
 #: app/components/trash-dialog.tsx
 msgid "{photos, plural, one {# photo} other {# photos}}"
@@ -485,6 +488,7 @@ msgstr "{uploaded} uploaded"
 msgid "{user} on {storage} is connected."
 msgstr "{user} on {storage} is connected."
 
+#: app/components/leave-montage-dialog.tsx
 #: app/components/storage-list.tsx
 #: app/components/trash-dialog.tsx
 msgid "{videos, plural, one {# video} other {# videos}}"
@@ -616,6 +620,10 @@ msgstr "A camera is being copied"
 #: app/components/file-list.tsx
 msgid "A copy — the same clip is in another jump too. This one has its own trim and time, and is processed for this jump. Taken out of the jump, it simply ends: the original stays where it is."
 msgstr "A copy — the same clip is in another jump too. This one has its own trim and time, and is processed for this jump. Taken out of the jump, it simply ends: the original stays where it is."
+
+#: app/components/leave-montage-dialog.tsx
+msgid "A copy cannot go to the bin — its original stays where it is"
+msgstr "A copy cannot go to the bin — its original stays where it is"
 
 #: app/components/montage-card.tsx
 msgid "a copy of the film"
@@ -772,6 +780,10 @@ msgstr "Back to as shot"
 msgid "Back to before processing — keeps the name, the crops, the frames and the times"
 msgstr "Back to before processing — keeps the name, the crops, the frames and the times"
 
+#: app/components/leave-montage-dialog.tsx
+msgid "Back to Fresh files"
+msgstr "Back to Fresh files"
+
 #: app/components/take-back-dialog.tsx
 msgid "Back to Fresh files, loose"
 msgstr "Back to Fresh files, loose"
@@ -860,6 +872,7 @@ msgstr "cancel"
 #: app/components/comparison-dialog.tsx
 #: app/components/connection-dialog.tsx
 #: app/components/jump-name.tsx
+#: app/components/leave-montage-dialog.tsx
 #: app/components/montage-card.tsx
 #: app/components/nas-folder-browser.tsx
 #: app/components/trash-dialog.tsx
@@ -1883,6 +1896,10 @@ msgstr "Looking in the bin…"
 msgid "Loose files"
 msgstr "Loose files"
 
+#: app/components/leave-montage-dialog.tsx
+msgid "loose, on their camera's time, to be filed again. Their trims are kept."
+msgstr "loose, on their camera's time, to be filed again. Their trims are kept."
+
 #: app/components/upload-dialog.tsx
 msgid "lowercase letters, digits and - only"
 msgstr "lowercase letters, digits and - only"
@@ -2251,6 +2268,10 @@ msgstr "of {total} shown"
 msgid "of the picture"
 msgstr "of the picture"
 
+#: app/components/leave-montage-dialog.tsx
+msgid "off the board and out of the originals, moved to the bin, not erased. They can be brought back from the Bin page."
+msgstr "off the board and out of the originals, moved to the bin, not erased. They can be brought back from the Bin page."
+
 #: app/components/folder-owed.tsx
 msgid "on its line"
 msgstr "on its line"
@@ -2532,6 +2553,7 @@ msgstr "Put in a variable"
 msgid "Put in a variable…"
 msgstr "Put in a variable…"
 
+#: app/components/leave-montage-dialog.tsx
 #: app/components/trash-dialog.tsx
 msgid "Put in the bin"
 msgstr "Put in the bin"
@@ -2851,6 +2873,10 @@ msgstr "SkyDock works in"
 msgid "Small enough already — this clip is its own proxy, nothing to build"
 msgstr "Small enough already — this clip is its own proxy, nothing to build"
 
+#: app/components/leave-montage-dialog.tsx
+msgid "Some of these are copies: a copy can only be taken out, and its original stays where it is."
+msgstr "Some of these are copies: a copy can only be taken out, and its original stays where it is."
+
 #: app/components/preview-drawer.tsx
 msgid "Square"
 msgstr "Square"
@@ -2944,9 +2970,21 @@ msgstr "Take {0} out of {1}"
 msgid "Take {0} out of {name}"
 msgstr "Take {0} out of {name}"
 
+#: app/components/leave-montage-dialog.tsx
+msgid "Take {count, plural, one {# file} other {# files}} out of {who}?"
+msgstr "Take {count, plural, one {# file} other {# files}} out of {who}?"
+
 #: app/hooks/useBoardModel.ts
 msgid "Take out of its jump (⌫)"
 msgstr "Take out of its jump (⌫)"
+
+#: app/components/leave-montage-dialog.tsx
+msgid "Take out of the montage"
+msgstr "Take out of the montage"
+
+#: app/hooks/useBoardModel.ts
+msgid "Take out of the montage… (⌫)"
+msgstr "Take out of the montage… (⌫)"
 
 #: app/hooks/useBoardModel.ts
 msgid "Take out of their jumps (⌫)"
@@ -2959,6 +2997,14 @@ msgstr "Take the link away — the file stays where it is"
 #: app/routes/place.tsx
 msgid "Take this place off the board — what is filed here goes back to Fresh files, and nothing is deleted"
 msgstr "Take this place off the board — what is filed here goes back to Fresh files, and nothing is deleted"
+
+#: app/components/bin-files.tsx
+msgid "Taken out of a montage"
+msgstr "Taken out of a montage"
+
+#: app/components/bin-files.tsx
+msgid "Taken out of the montage {montage}"
+msgstr "Taken out of the montage {montage}"
 
 #: app/components/templates-dialog.tsx
 msgid "Templates"

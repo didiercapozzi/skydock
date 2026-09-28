@@ -506,7 +506,10 @@ picked, whichever way picking is asked for; one that stops being movable while p
 montage's editing project is made, simply stops being one of the picks. The picks — or, with none, the file
 being looked at — go one step back by button or Delete: filed files come back to Fresh files, files in
 one of its jumps come out of the jump and are loose, and only loose files already there, with nowhere
-further back to go, are offered the bin. The button says which of these it will do.
+further back to go, are offered the bin. The button says which of these it will do. A montage's files
+have two ways out, so taking them out asks which: **back to Fresh files**, loose, or **into the bin**.
+Nothing moves until one is chosen, and Cancel leaves them where they were. A copy can only be taken
+out, its original staying where it is, so it cannot be sent to the bin from there.
 
 **Filing.** Drag a jump or a selection onto a place in the menu to file it there, or onto another jump to
 move it. Dragging is the way: there is no list of places to pick from. While something is carried, the
@@ -574,15 +577,18 @@ dropped video shown in the board's place is the board gone, and in SkyDock's own
 way back to it. In that window a dropped file is taken where it already lies rather than copied in,
 since the app and the machine it came off are the same one.
 
-**Putting files in the bin.** A test shot or footage of the ground can be got rid of, but only as a loose
-file in Fresh files: a file filed somewhere is somebody's, and one in a jump belongs with it, so taking it
-back to Fresh files, then out of its jump, are the steps that say it no longer does. A file copied into
+**Putting files in the bin.** Wherever it is offered, putting files in the bin is a red button with a
+bin on it, so it is never taken for anything else. A test shot or footage of the ground can be got rid of, as a loose file
+in Fresh files, or straight out of a montage when that is the way out chosen for it. A file filed to a
+dropzone is that place's, and one in a jump there belongs with it, so taking it back to Fresh files,
+then out of its jump, are the steps that say it no longer does. A file copied into
 a jump cannot go while the copy is there. Nothing goes without a warning first, saying how many files, how many videos and photos
 and how much space, and that these are originals nobody has been given yet — if the camera card has
 been wiped, the bin holds the only copy. Once confirmed, the files leave the board and the originals
 folder, so a scan does not bring them back; the copies and proxies made from them are deleted, since
 they have nothing left to come from. The files themselves are moved, not erased, into a folder of the
-bin named for that moment, keeping the day folder each came from. A file put in the bin this way is
+bin named for that moment — and for the montage they came out of, when they came out of one — keeping
+the day folder each came from. A file put in the bin this way is
 one nobody wants, so while its camera is plugged in it can also be deleted from the camera's card
 (Seeing what is on a camera). SkyDock never empties the bin, so
 nothing is lost for good and no space comes back until someone empties it by hand. The bin is a folder
@@ -590,7 +596,8 @@ of its own beside the work, apart from the originals and the delivered copies. N
 bin while something is being processed.
 
 **Looking into the bin.** _Bin_, in the menu, shows everything in it — each time something was put
-aside, the latest first, saying whether it came from Fresh files or off a camera, and when — with each
+aside, the latest first, saying whether it came from Fresh files, out of a montage or off a camera, and
+when — with each
 file's picture, name, time and size. Nothing can be deleted from there: the bin is emptied by hand,
 from the machine's own folders, and the page says which folder that is. Picked files can be **brought
 back to Fresh files**: each leaves the bin for the originals, under the day it was shot and never over

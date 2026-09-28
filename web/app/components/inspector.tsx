@@ -2,7 +2,7 @@ import { plural, t } from '@lingui/core/macro'
 import { hasCompletePassenger, isMontage, isVideoFile, passengerName } from '@skydock/scripts'
 import type { FileStatus, ProxyFact, MontageFact } from '@skydock/scripts'
 import { useState } from 'react'
-import { Go, Mini } from './buttons'
+import { Go, Mini, ToBin } from './buttons'
 import { StatusChip } from './file-status'
 import type { ShownStatus } from './file-status'
 import { JumpForm } from './jump-name'
@@ -470,7 +470,7 @@ const FilePanel = ({
         <Box heading={t`Move`}>
           <span>
             {onTrash ? (
-              <Mini onClick={onTrash}>{t`Put in the bin… (⌫)`}</Mini>
+              <ToBin onClick={onTrash}>{t`Put in the bin… (⌫)`}</ToBin>
             ) : (
               <Mini onClick={onSendBack}>{backLabel}</Mini>
             )}
@@ -558,7 +558,7 @@ const ManyPanel = ({
             <Mini onClick={() => setMaking(true)}>{t`Make a jump of these…`}</Mini>
           )}
           {onTrash ? (
-            <Mini onClick={onTrash}>{t`Put in the bin… (⌫)`}</Mini>
+            <ToBin onClick={onTrash}>{t`Put in the bin… (⌫)`}</ToBin>
           ) : (
             <Mini onClick={onSendBack}>{backLabel}</Mini>
           )}

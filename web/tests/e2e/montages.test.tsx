@@ -200,12 +200,14 @@ describe('a montage emptied', () => {
     return renderBoard({ groups: shown.groups }, '/montage/Boogie 2026', shown)
   }
   const fresh = () => page.getByRole('heading', { name: /^Fresh files/ })
+  const takeOut = () => page.getByRole('dialog', { name: 'Take out of the montage' })
 
   test('goes back to Fresh files once its last file is sent back', async () => {
     await at([file('m', AT)])
     await userEvent.click(page.getByRole('button', { name: /m\.MP4/ }).first())
 
     await userEvent.keyboard('{Delete}')
+    await userEvent.click(takeOut().getByRole('button', { name: 'Back to Fresh files' }))
 
     await vi.waitFor(() => expect(sent).toContainEqual(expect.objectContaining({ intent: 'move-files', fileIds: ['m'] })))
     await expect.element(fresh()).toBeVisible()
@@ -216,9 +218,74 @@ describe('a montage emptied', () => {
     await userEvent.click(page.getByRole('button', { name: /m\.MP4/ }).first())
 
     await userEvent.keyboard('{Delete}')
+    await userEvent.click(takeOut().getByRole('button', { name: 'Back to Fresh files' }))
 
     await vi.waitFor(() => expect(sent).toContainEqual(expect.objectContaining({ intent: 'move-files', fileIds: ['m'] })))
     await expect.element(pageHeading('Boogie 2026')).toBeVisible()
+  })
+})
+
+/* A file taken out of a montage has two ways out, and which one is asked (RULES, Montages): back to
+   Fresh files, or into the bin. */
+describe('files taken out of a montage', () => {
+  const at = (files: (ReturnType<typeof file> & { copyOf?: string })[]) => {
+    const shown = { ...board, groups: [...board.groups, montage(['Boogie', '2026'], files)] }
+    return renderBoard({ groups: shown.groups }, '/montage/Boogie 2026', shown)
+  }
+  const takeOut = () => page.getByRole('dialog', { name: 'Take out of the montage' })
+
+  test('ask whether they go back to Fresh files or into the bin, and move nothing until then', async () => {
+    await at([file('m', AT), file('n', AT + 60)])
+    await userEvent.click(page.getByRole('button', { name: /m\.MP4/ }).first())
+
+    await userEvent.keyboard('{Delete}')
+
+    await expect.element(takeOut().getByRole('button', { name: 'Back to Fresh files' })).toBeVisible()
+    await expect.element(takeOut().getByRole('button', { name: 'Put in the bin' })).toBeVisible()
+    expect(sent).toEqual([])
+  })
+
+  test('offer the bin as the red button with the bin on it', async () => {
+    await at([file('m', AT), file('n', AT + 60)])
+    await userEvent.click(page.getByRole('button', { name: /m\.MP4/ }).first())
+
+    await userEvent.keyboard('{Delete}')
+
+    const toBin = takeOut().getByRole('button', { name: 'Put in the bin' }).element()
+    expect(getComputedStyle(toBin).backgroundColor).toBe('rgb(198, 40, 40)')
+    expect(toBin.querySelector('svg')).not.toBeNull()
+  })
+
+  test('go into the bin when that is chosen', async () => {
+    await at([file('m', AT), file('n', AT + 60)])
+    await userEvent.click(page.getByRole('button', { name: /m\.MP4/ }).first())
+
+    await userEvent.keyboard('{Delete}')
+    await userEvent.click(takeOut().getByRole('button', { name: 'Put in the bin' }))
+
+    await vi.waitFor(() => expect(sent).toContainEqual({ intent: 'trash-unsorted', fileIds: ['m'] }))
+  })
+
+  test('stay where they are when it is cancelled', async () => {
+    await at([file('m', AT), file('n', AT + 60)])
+    await userEvent.click(page.getByRole('button', { name: /m\.MP4/ }).first())
+
+    await userEvent.keyboard('{Delete}')
+    await userEvent.click(takeOut().getByRole('button', { name: 'Cancel' }))
+
+    await expect.element(takeOut()).not.toBeInTheDocument()
+    expect(sent).toEqual([])
+  })
+
+  /* a copy is the montage's own hold on a file that stays where it is */
+  test('cannot put a copy in the bin', async () => {
+    await at([file('m', AT), { ...file('c', AT + 60), copyOf: 'plane' }])
+    for (const name of [/m\.MP4/, /c\.MP4/])
+      await userEvent.click(page.getByRole('button', { name }).first(), { modifiers: ['ControlOrMeta'] })
+
+    await userEvent.keyboard('{Delete}')
+
+    await expect.element(takeOut().getByRole('button', { name: 'Put in the bin' })).toBeDisabled()
   })
 })
 

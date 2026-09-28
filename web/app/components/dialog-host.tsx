@@ -7,6 +7,7 @@ import { FreeDialog } from './free-dialog'
 import { FreePlaceDialog } from './free-place-dialog'
 import { DisconnectDialog } from './disconnect-dialog'
 import { RemovePlaceDialog } from './remove-place-dialog'
+import { LeaveMontageDialog } from './leave-montage-dialog'
 import { NameMontageDialog } from './name-montage-dialog'
 import { NasFolderBrowser } from './nas-folder-browser'
 import { ResetFreshDialog } from './reset-fresh-dialog'
@@ -41,6 +42,8 @@ type BoardDialog =
   | { kind: 'disconnect' }
   /* unsorted files about to go to the bin */
   | { kind: 'trash'; files: ManifestFile[] }
+  /* files taken out of a montage, waiting to hear whether back to Fresh files or into the bin */
+  | { kind: 'leave-montage'; files: ManifestFile[] }
   /* a montage on this board by its jump, or one the storage's list alone knows, by its folder */
   | { kind: 'email'; groupId?: string; folder?: string }
   /* Fresh files put back, by as much as is chosen there */
@@ -78,6 +81,7 @@ const DialogHost = ({
   passengers,
   onNameMontage,
   workFolder,
+  onLeaveMontage,
   onResetFresh
 }: {
   dialog: BoardDialog
@@ -117,6 +121,7 @@ const DialogHost = ({
   onNameMontage: (what: { groupId?: string; fileIds?: string[] }, passenger: Passenger) => void
   /* the folder SkyDock works in, and what is writing into it right now */
   workFolder: { folder: string; working: string | null }
+  onLeaveMontage: (to: 'fresh' | 'bin', files: ManifestFile[]) => void
   onResetFresh: (what: 'times' | 'everything') => void
 }) => {
   const close = () => onDialog(null)
@@ -218,6 +223,19 @@ const DialogHost = ({
           onClose={close}
         />
       )}
+
+      {dialog?.kind === 'leave-montage' &&
+        (() => {
+          const holder = groups.find((g) => g.files.some((f) => f.id === dialog.files[0]?.id))
+          return (
+            <LeaveMontageDialog
+              who={holder ? passengerOf(holder) : ''}
+              files={dialog.files}
+              onClose={close}
+              onChoose={(to) => onLeaveMontage(to, dialog.files)}
+            />
+          )
+        })()}
 
       {dialog?.kind === 'work-folder' && (
         <WorkFolderDialog

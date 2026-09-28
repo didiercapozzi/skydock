@@ -157,7 +157,7 @@ const Place = () => {
         return found ? [found] : []
       })
       if (files.length > 0 && files.every(model.binnable)) model.askTrash(files)
-      else model.moveFiles(ids, { destination: null })
+      else model.sendBack(files)
     }
   })
   /* a change elsewhere took the picks away, or another folder was opened: let go of them */
@@ -653,7 +653,7 @@ const Inspector = ({
         proxy={board.proxies[one.path]}
         locked={locked}
         onOpen={() => onOpenFile(one)}
-        onSendBack={() => model.moveFiles([one.id ?? ''], { destination: null })}
+        onSendBack={() => model.sendBack([one])}
         onTrash={model.binnable(one) ? () => model.askTrash([one]) : undefined}
         backLabel={model.backLabel([one])}
         onRetime={
@@ -677,7 +677,7 @@ const Inspector = ({
       <ManyPanel
         files={picked}
         statusOf={statusOf}
-        onSendBack={() => model.moveFiles(ids, { destination: null })}
+        onSendBack={() => model.sendBack(picked)}
         onTrash={picked.every(model.binnable) ? () => model.askTrash(picked) : undefined}
         backLabel={model.backLabel(picked)}
         onMakeJump={

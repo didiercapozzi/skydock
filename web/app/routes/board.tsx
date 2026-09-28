@@ -323,6 +323,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         onMontage={(groupId, template) => closeThen(() => model.makeMontage(groupId, template))}
         passengers={model.passengers}
         onNameMontage={(what, passenger) => closeThen(() => model.nameDropped(what, passenger))}
+        onLeaveMontage={(to, files) => closeThen(() => model.leaveMontage(to, files))}
         workFolder={{
           folder: loaderData.outputDir,
           /* the folder is not left while something is being written into it */

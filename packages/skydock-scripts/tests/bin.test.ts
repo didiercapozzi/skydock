@@ -37,16 +37,20 @@ const putAside = (folder: string, within: string, bytes = within) => {
 const empty = (): Manifest => ({ version: 2, createdAt: '2026-09-12', files: [], groups: [] })
 
 describe('what the bin holds', () => {
-  it('is each time something was put aside, the latest first, saying from where', () => {
+  it('is each time something was put aside, the latest first, saying from where — Fresh files, a montage or a camera', () => {
     putAside('unsorted-2026-09-20T09-00-00-000Z', '2026-09-12/GX010001.MP4')
     putAside('camera-OsmoNano-2026-09-24T12-30-05-123Z', 'DCIM/100MEDIA/DJI_0001.MP4')
+    putAside('montage-boogie-2026-2026-09-22T08-00-00-000Z', '2026-09-12/GX010002.MP4')
 
     const batches = listBin(trash)
 
-    expect(batches.map((b) => [b.from, b.camera, b.files.map((f) => f.name)])).toEqual([
-      ['camera', 'OsmoNano', ['DJI_0001.MP4']],
-      ['fresh', undefined, ['GX010001.MP4']]
-    ])
+    expect(batches.map((b) => [b.from, b.camera ?? b.montage, b.files.map((f) => f.name)])).toEqual(
+      [
+        ['camera', 'OsmoNano', ['DJI_0001.MP4']],
+        ['montage', 'boogie-2026', ['GX010002.MP4']],
+        ['fresh', undefined, ['GX010001.MP4']]
+      ]
+    )
     expect(batches[0]?.at).toBe(Date.UTC(2026, 8, 24, 12, 30, 5) / 1000)
   })
 

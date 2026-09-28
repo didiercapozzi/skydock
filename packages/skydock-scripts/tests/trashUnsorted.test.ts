@@ -86,6 +86,52 @@ describe('putting unsorted files in the bin', () => {
     expect(manifest.files).toHaveLength(1)
   })
 
+  /* out of a montage, when that is the way out chosen for them (RULES, Montages) */
+  it('takes a montage’s file into a folder of the bin named after the montage', async () => {
+    const a = original('a')
+    const b = original('b')
+    const manifest = board(
+      [a, b],
+      [
+        {
+          id: 'm1',
+          label: 'm1',
+          day: '12.09.2026',
+          montageJump: true,
+          passenger: { firstname: 'Boogie', lastname: '2026' },
+          files: [a, b]
+        }
+      ]
+    )
+
+    const { bin } = await trashUnsorted(manifest, new Set(['a']), out, trash)
+
+    expect(path.basename(bin)).toMatch(/^montage-boogie-2026-/)
+    expect(fs.existsSync(path.join(bin, '2026-09-12', 'a.MP4'))).toBe(true)
+    expect(manifest.groups[0]?.files.map((f) => f.id)).toEqual(['b'])
+  })
+
+  it('refuses a copy in a montage, whose original stays where it is', async () => {
+    const a = original('a')
+    const copy = { ...a, id: 'a~1', copyOf: 'a' }
+    const manifest = board(
+      [a, copy],
+      [
+        {
+          id: 'm1',
+          label: 'm1',
+          day: '12.09.2026',
+          montageJump: true,
+          passenger: { firstname: 'Boogie', lastname: '2026' },
+          files: [copy]
+        }
+      ]
+    )
+
+    await expect(trashUnsorted(manifest, new Set(['a~1']), out, trash)).rejects.toThrow(/copy/)
+    expect(fs.existsSync(a.path)).toBe(true)
+  })
+
   it('refuses a loose file filed to a place', async () => {
     const a = original('a', { destination: 'Yverdon' })
 

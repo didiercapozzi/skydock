@@ -25,16 +25,20 @@ const putAsideAt = (folder: string, dir: string) => {
   return Math.floor(fs.statSync(dir).mtimeMs / 1000)
 }
 
-/* what it came from, off the start of its name: Fresh files, or a camera — named after it */
+/* what it came from, off the start of its name: Fresh files, a montage or a camera — named after it */
+const namedIn = (folder: string, prefix: string) =>
+  folder.replace(STAMP, '').replace(/-$/, '').slice(prefix.length)
 const fromOf = (folder: string) =>
   folder.startsWith('unsorted-')
     ? { from: 'fresh' as const }
-    : folder.startsWith('camera-')
-      ? {
-          from: 'camera' as const,
-          camera: folder.replace(STAMP, '').replace(/-$/, '').slice('camera-'.length)
-        }
-      : { from: 'other' as const }
+    : folder.startsWith('montage-')
+      ? { from: 'montage' as const, montage: namedIn(folder, 'montage-') }
+      : folder.startsWith('camera-')
+        ? {
+            from: 'camera' as const,
+            camera: namedIn(folder, 'camera-')
+          }
+        : { from: 'other' as const }
 
 /* every picture and film under a folder of the bin, however deep it was kept */
 const filesUnder = (dir: string): BinFile[] =>

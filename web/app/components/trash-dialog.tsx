@@ -1,6 +1,6 @@
 import { isVideoFile } from '@skydock/scripts'
 import { plural, t } from '@lingui/core/macro'
-import { Go, Mini } from './buttons'
+import { Mini, ToBin } from './buttons'
 import { Modal, Spacer } from './modal'
 import { formatSize } from './utils'
 import type { ManifestFile } from './types'
@@ -37,7 +37,11 @@ const TrashDialog = ({
         <>
           <Spacer />
           <Mini onClick={onClose}>{t`Cancel`}</Mini>
-          <Go onClick={onConfirm}>{t`Put in the bin`}</Go>
+          <ToBin
+            size='go'
+            onClick={onConfirm}>
+            {t`Put in the bin`}
+          </ToBin>
         </>
       }>
       <p className='m-0 text-[12.5px] text-ink-2'>
