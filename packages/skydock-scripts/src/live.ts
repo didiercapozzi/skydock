@@ -50,6 +50,8 @@ const liveEventSchema = z.discriminatedUnion('kind', [
     files: z.array(z.object({ name: z.string(), size: z.number() })).optional(),
     /* how the file just finished went */
     last: z.enum(['copied', 'skipped']).optional(),
+    /* how far through the file being copied now, between 0 and 1 */
+    part: z.number().optional(),
     /* how every finished file went, in order — kept for a board that starts listening mid-copy */
     outcomes: z.array(z.enum(['copied', 'skipped'])).optional()
   }),

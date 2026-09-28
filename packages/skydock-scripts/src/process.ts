@@ -2,6 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as streams from 'node:stream/promises'
 import { startOfFiles } from './clustering'
+import { counted } from './lib/counted'
 import { loadManifest, saveManifest } from './manifest'
 import { isWholeFrame, orientationAfter, pictureFilter } from './frameCrop'
 import { cropProxy, DRI_DEVICE, getCutProxyDir, proxyEncoder, videoShape } from './proxy'
@@ -148,26 +149,17 @@ const runFfmpeg = async (args: string[], onPercent?: OnPercent, seconds?: number
   return ran.ok ? { ok: true as const } : { ok: false as const, reason: lastComplaint(ran.stderr) }
 }
 
-/* A whole file copied as it is. The copy is left to the system, which is the fast way and says
-   nothing while it works — so how far it has got is read off the size of what it has written. */
+/* A whole file copied as it is, streamed, so a run that is cancelled stops mid-file — and counted as
+   it goes (lib/counted), so how far it has got is said without asking the disk. */
 const copyWhole = async (src: string, dest: string, onPercent?: OnPercent) => {
   const total = onPercent ? fs.statSync(src).size : 0
-  const watch =
-    onPercent && total > 0
-      ? setInterval(() => {
-          fs.stat(dest, (error, stats) => {
-            if (!error) onPercent(Math.min(99, Math.floor((stats.size / total) * 100)))
-          })
-        }, 500)
-      : null
-  try {
-    /* streamed rather than copied in one call, so a run that is cancelled stops mid-file */
-    await streams.pipeline(fs.createReadStream(src), fs.createWriteStream(dest), {
-      signal: stoppable().getStore()
-    })
-  } finally {
-    if (watch) clearInterval(watch)
-  }
+  const bytes = counted(
+    total > 0 ? (done) => onPercent?.(Math.min(99, Math.floor((done / total) * 100))) : undefined,
+    false
+  )
+  await streams.pipeline(fs.createReadStream(src), bytes.through, fs.createWriteStream(dest), {
+    signal: stoppable().getStore()
+  })
 }
 
 /* The picture changed — cut, turned, or both — and the ends with it if they were set. Decoding on the

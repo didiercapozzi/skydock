@@ -2,13 +2,15 @@ import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { isMediaName } from './constants'
-import { CameraGone, DATE_TAGS, dayOfStat, freeName, isNameFor, loadBoard } from './copy'
-import type { CopyProgress } from './copy'
+import { CameraGone, isNameFor, landingFor, loadBoard } from './copy'
+import type { Copied, CopyProgress } from './copy'
+import { computeFileId } from './fileId'
+import { watchGrowth } from './lib/growing'
 import { kioReader } from './kio'
 import type { KioFile, KioReader } from './kio'
-import { readExifMap } from './lib/exif'
 import { findMediaFiles, sameBytes } from './lib/fs'
 import type { Manifest, ManifestFile } from './types'
+import { shotTimes } from './scan'
 import { getOutputDir } from './utils'
 
 /* A camera read through KDE rather than as a drive (RULES, Copying a camera off).
@@ -121,13 +123,16 @@ const copyOverKio = async ({
   outputDir = getOutputDir(),
   manifest = loadBoard(outputDir),
   onProgress,
-  onClip
+  onClip,
+  onCopied
 }: {
   camera: string
   reader: KioReader
   outputDir?: string
   manifest?: Manifest | null
   onProgress?: (progress: CopyProgress) => void
+  /* each clip as it lands, so the board can show it before the whole camera is done */
+  onCopied?: (copied: Copied) => Promise<void> | void
   /* each clip as it is settled: here already, given back, or fetched just now */
   onClip?: (clip: SeenClip) => void
 }) => {
@@ -152,10 +157,17 @@ const copyOverKio = async ({
           progress.skipped++
           onClip?.({ ...clip, size: said.size, mtime: said.mtime, original: found })
         } else {
-          const fetched = await fetchInto(reader, clip, said, incoming, outputDir, here)
+          const fetched = await fetchInto(reader, clip, said, incoming, outputDir, here, (part) =>
+            onProgress?.({ ...progress, part })
+          )
           if (fetched.copied) {
             progress.copied++
             last = 'copied'
+            await onCopied?.({
+              dest: fetched.at,
+              id: await computeFileId(fetched.at),
+              shot: fetched.shot
+            })
           } else progress.skipped++
           onClip?.({
             ...clip,
@@ -186,10 +198,14 @@ const fetchInto = async (
   said: KioFile | null,
   incoming: string,
   outputDir: string,
-  here: ReturnType<typeof hereAlready>
+  here: ReturnType<typeof hereAlready>,
+  /* how far through, read off what has landed so far, when the camera said how big it is */
+  onPart?: (part: number) => void
 ) => {
   const partial = path.join(incoming, `${crypto.randomBytes(6).toString('hex')}-${clip.name}`)
-  const landed = await reader.copy(clip.url, partial)
+  /* KDE may write under a name of its own until the clip is whole, so either is watched */
+  const stop = onPart && said ? watchGrowth([partial, `${partial}.part`], said.size, onPart) : null
+  const landed = await reader.copy(clip.url, partial).finally(() => stop?.())
   const size = landed && fs.existsSync(partial) ? fs.statSync(partial).size : -1
   if (!landed || size < 0 || (said && size !== said.size)) {
     fs.rmSync(partial, { force: true })
@@ -199,16 +215,13 @@ const fetchInto = async (
   const twin = here.named(clip.name, size).find((one) => sameBytes(partial, one.path))
   if (twin) {
     fs.rmSync(partial, { force: true })
-    return { copied: false, at: twin.path, size }
+    return { copied: false, at: twin.path, size, shot: 0 }
   }
-  const day =
-    (await readExifMap([partial], DATE_TAGS)).get(partial) ?? dayOfStat(fs.statSync(partial))
-  const dir = path.join(outputDir, 'original_files', day)
-  fs.mkdirSync(dir, { recursive: true })
-  const dest = path.join(dir, freeName(dir, clip.name))
+  const shot = (await shotTimes([partial])).get(partial) ?? Math.floor(Date.now() / 1000)
+  const dest = landingFor(outputDir, clip.name, shot)
   fs.renameSync(partial, dest)
   here.add(dest)
-  return { copied: true, at: dest, size }
+  return { copied: true, at: dest, size, shot }
 }
 
 /* the cameras KDE can reach right now, through whatever reader this machine has */

@@ -16,6 +16,7 @@ import type { LiveEvent } from '../src/live'
 import { loadManifest, saveManifest } from '../src/manifest'
 import { scanMedia } from '../src/scan'
 import { getManifestPath } from '../src/utils'
+import { computeFileId } from '../src/fileId'
 import { createTmpDir, onPlatform } from './fixtures'
 
 /* A camera is copied off into the originals — by hand or by plugging it in. Real files, really
@@ -113,10 +114,44 @@ describe('copying a camera off', () => {
         { name: 'GX010003.MP4', size: 8 }
       ]
     })
-    expect(said.slice(1).map((p) => (p as { last: string }).last)).toEqual([
-      'skipped',
-      'skipped',
-      'copied'
+    expect(
+      said.flatMap((p) => {
+        const last = (p as { last?: string }).last
+        return last ? [last] : []
+      })
+    ).toEqual(['skipped', 'skipped', 'copied'])
+  })
+
+  /* a long clip is watched filling, and each file is handed over, by what it contains, as it lands */
+  it('fills the bar of the file being copied as its bytes land, and says what it holds once it has', async () => {
+    const root = card('GOPRO', { 'GX010001.MP4': { bytes: 3 * 1024 * 1024, fill: 1, at: DAY } })
+    const said: { part?: number }[] = []
+    const landed: { dest: string; id: string; shot: number }[] = []
+    const slow = Date.now
+    let clock = 0
+    Date.now = () => (clock += 250)
+    try {
+      await copyCamera({
+        cameraDir: path.join(root, 'DCIM'),
+        outputDir,
+        onProgress: (p) => said.push(p),
+        onCopied: (c) => {
+          landed.push(c)
+        }
+      })
+    } finally {
+      Date.now = slow
+    }
+
+    const parts = said.flatMap((p) => (p.part === undefined ? [] : [p.part]))
+    expect(parts.length).toBeGreaterThan(0)
+    expect(parts.every((p, i) => p > 0 && p <= 1 && (i === 0 || p >= parts[i - 1]!))).toBe(true)
+    expect(landed).toEqual([
+      {
+        dest: day('GX010001.MP4'),
+        id: await computeFileId(day('GX010001.MP4')),
+        shot: Math.floor(DAY.getTime() / 1000)
+      }
     ])
   })
 
@@ -284,6 +319,31 @@ describe('copying a camera again while it stays plugged in', () => {
 
     expect(fs.readdirSync(day()).sort()).toEqual(['GX01.MP4', 'GX02.MP4'])
     expect(fs.statSync(day('GX02.MP4')).mtimeMs).toBe(kept)
+  })
+
+  /* each file is on the board the moment it lands, loose in Fresh files, not when the card is done;
+     once it is, what came off is gathered into jumps (RULES, Copying a camera off) */
+  it('puts each file on the board as it lands, and gathers them into jumps at the end', async () => {
+    saveManifest(getManifestPath(outputDir), { version: 2, createdAt: 'x', files: [], groups: [] })
+    const root = card('GOPRO', {
+      'GX01.MP4': { bytes: 32, fill: 1, at: DAY },
+      'GX02.MP4': { bytes: 32, fill: 2, at: new Date(DAY.getTime() + 60_000) }
+    })
+    const onBoardAsItLanded: number[] = []
+    const stop = subscribe((event) => {
+      if (event.kind === 'camera' && event.last === 'copied')
+        onBoardAsItLanded.push(loadManifest(getManifestPath(outputDir))!.files.length)
+    })
+
+    copyAgain(outputDir, root, [root])
+    await copied()
+    stop()
+
+    expect(onBoardAsItLanded).toEqual([1, 2])
+    const board = loadManifest(getManifestPath(outputDir))!
+    expect(board.groups.map((g) => g.files.map((f) => f.filename))).toEqual([
+      ['GX01.MP4', 'GX02.MP4']
+    ])
   })
 
   it('asks for nothing of a camera that is not plugged in', () => {

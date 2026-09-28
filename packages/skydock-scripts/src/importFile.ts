@@ -2,10 +2,10 @@ import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { pipeline } from 'node:stream/promises'
-import { Transform } from 'node:stream'
 import type { Readable } from 'node:stream'
 import { MEDIA_EXTENSIONS_SET } from './constants'
-import { idFromHash } from './fileId'
+import { counted } from './lib/counted'
+import { landingFor } from './copy'
 import { publish } from './live'
 import { loadManifest, saveManifest } from './manifest'
 import { cameraTimes } from './scan'
@@ -13,7 +13,6 @@ import { copyFiles, moveFiles } from './moveFiles'
 import { frozenMontages, isNamedMontage } from './montageArtifacts'
 import type { Manifest, ManifestFile } from './types'
 import { getExtension } from './utils'
-import { two } from './lib/clock'
 import { isMontage } from './filed'
 import { passengerOf } from './workspace'
 
@@ -39,20 +38,15 @@ type ImportResult =
   | { filename: string; outcome: 'there' }
   | { filename: string; outcome: 'kept'; reason: string }
 
-/* the folder a scan files it under: the local calendar day it was taken */
-const dayFolder = (epoch: number) => {
-  const d = new Date(epoch * 1000)
-  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`
-}
-
-/* its own name, unless that name is already taken in that day by different bytes */
-const freeName = (dir: string, filename: string) => {
-  const ext = path.extname(filename)
-  const stem = path.basename(filename, ext)
-  let candidate = filename
-  for (let n = 2; fs.existsSync(path.join(dir, candidate)); n++) candidate = `${stem}_${n}${ext}`
-  return candidate
-}
+/* An original that has just landed, as the registry knows it: where it is, what it weighs, when it
+   was shot, and what it contains. The same whether it was dropped in or copied off a camera. */
+const originalEntry = (dest: string, id: string, mtime: number) => ({
+  path: dest,
+  size: fs.statSync(dest).size,
+  mtime,
+  filename: path.basename(dest),
+  id
+})
 
 /* where a file is, in the words the board uses for places */
 const placeOf = (manifest: Manifest, id: string) => {
@@ -122,55 +116,27 @@ const placeExisting = (
   return { filename: file.filename, outcome: 'moved', from }
 }
 
-/* How far through one file's bytes we are, said as they go by rather than asked for afterwards.
-
-   Said at most ten times a second: one long clip is tens of thousands of chunks, and a board told
-   about every one of them is a board doing nothing else. Without a token nobody is watching, and a
-   copy nobody is watching costs nothing to run.
-
-   The same bytes are hashed on their way past, which is what the file will be known by. Hashing
-   them here rather than reading the whole file back afterwards is the difference between a 1.2 GB
-   clip landing and a 1.2 GB clip landing and then being read again from end to end while the board
-   sits full and silent. */
+/* How far through one file's bytes we are, said as they go by rather than asked for afterwards,
+   counted and hashed on the way (lib/counted). Without a token nobody is watching, and a copy nobody
+   is watching costs nothing to run. */
 const counting = (token: string | undefined, total: number) => {
-  const hash = crypto.createHash('sha256')
-  let done = 0
-  let said = -1
-  let lastAt = 0
   let over = false
-  const tell = (phase: 'copying' | 'reading' | 'done') => {
-    if (!token) return
-    said = done
-    publish({ kind: 'import', token, done, total, phase })
+  const tell = (done: number, phase: 'copying' | 'reading' | 'done') => {
+    if (token) publish({ kind: 'import', token, done, total, phase })
   }
+  const bytes = counted((done) => tell(done, 'copying'))
   return {
-    through: new Transform({
-      transform(chunk: Buffer, _encoding, next) {
-        hash.update(chunk)
-        done += chunk.byteLength
-        const now = Date.now()
-        if (done !== said && now - lastAt >= 100) {
-          lastAt = now
-          tell('copying')
-        }
-        next(null, chunk)
-      }
-    }),
-    /* what it will be known by, off the bytes that have just gone past */
-    id: () => idFromHash(hash),
+    through: bytes.through,
+    id: bytes.id,
     /* The copy is over and the reading of it has begun: still something happening, and the board is
        told which, so a full bar is never a bar with nothing behind it. */
-    reading: () => {
-      done = total
-      tell('reading')
-    },
+    reading: () => tell(total, 'reading'),
     /* Nothing left to watch, whether it landed or failed: a bar left part full is a bar nothing
        will ever fill. */
     ended: () => {
       if (over) return
       over = true
-      done = total
-      tell('done')
+      tell(total, 'done')
     }
   }
 }
@@ -247,17 +213,11 @@ const importFile = async ({
     }
 
     const mtime = cameraTimes([partial]).get(partial) ?? Math.floor(when.getTime() / 1000)
-    const dir = path.join(outputDir, 'original_files', dayFolder(mtime))
-    fs.mkdirSync(dir, { recursive: true })
-    const dest = path.join(dir, freeName(dir, filename))
+    const dest = landingFor(outputDir, filename, mtime)
     fs.renameSync(partial, dest)
 
     const file: ManifestFile = {
-      path: dest,
-      size: fs.statSync(dest).size,
-      mtime,
-      filename: path.basename(dest),
-      id,
+      ...originalEntry(dest, id, mtime),
       ...(target.kind === 'destination' ? { destination: target.name.trim() } : {})
     }
     manifest.files.push(file)
@@ -282,5 +242,5 @@ const importFile = async ({
   }
 }
 
-export { dayFolder, freeName, importFile }
+export { importFile, originalEntry }
 export type { ImportResult, ImportTarget }

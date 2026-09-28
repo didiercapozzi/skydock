@@ -3,7 +3,7 @@ import * as path from 'node:path'
 import type { BinBatch, BinFile } from './binEntry'
 import { isMediaName } from './constants'
 import { computeFileId } from './fileId'
-import { dayFolder, freeName } from './importFile'
+import { landingFor } from './copy'
 import { moveFile } from './lib/fs'
 import { cameraTimes } from './scan'
 import type { Manifest } from './types'
@@ -105,9 +105,7 @@ const bringBackFromBin = async ({
       continue
     }
     const shot = times.get(file) ?? Math.floor(fs.statSync(file).mtimeMs / 1000)
-    const day = path.join(outputDir, 'original_files', dayFolder(shot))
-    fs.mkdirSync(day, { recursive: true })
-    await moveFile(file, path.join(day, freeName(day, path.basename(file))))
+    await moveFile(file, landingFor(outputDir, path.basename(file), shot))
     back.push(path.basename(file))
   }
   return { back, kept }

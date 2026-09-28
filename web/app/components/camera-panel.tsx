@@ -6,7 +6,8 @@ import { formatSize } from './utils'
 
 /* A camera plugged in and copied off by itself, while it is (RULES, Copying a camera off): in the
    same corner and the same shape as files dropped in and an upload going out — every file on the
-   card, which ones are copied, which were here already, and the one under way. */
+   card, which ones are copied, which were here already, and the one under way, filling as its bytes
+   land. */
 const CameraPanel = ({ copy }: { copy: CameraCopy }) => {
   const { camera, done, total, copied, skipped } = copy
   const outcomes = copy.outcomes ?? []
@@ -19,7 +20,7 @@ const CameraPanel = ({ copy }: { copy: CameraCopy }) => {
         ? { at: 'skipped' as const, note: t`already here` }
         : { at: 'done' as const }
       : at === done
-        ? { at: 'now' as const }
+        ? { at: 'now' as const, part: copy.part ?? 0 }
         : { at: 'later' as const }),
     /* a camera handing its files over says how big each is only when asked */
     ...(file.size === 0 && at >= done ? { note: '' } : {})
@@ -37,9 +38,8 @@ const CameraPanel = ({ copy }: { copy: CameraCopy }) => {
           ? t`${done} of ${total} gone over — ${size} on the card`
           : t`${done} of ${total} gone over`
       }
-      through={total > 0 ? Math.min(1, done / total) : 0}
       rows={rows}
-      counted={{ at: done, of: total }}
+      counted={{ at: done, of: total, part: copy.part }}
       footer={
         <span className='min-w-0 flex-1 truncate text-ink-2'>
           {plural(copied, { one: '# new file copied', other: '# new files copied' })}

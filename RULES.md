@@ -112,8 +112,8 @@ that could be taken for an original.
 
 **Plugging a camera in is enough.** Once a board has been opened, and from then on for as long as
 SkyDock runs, anything that turns up with a DCIM folder at its top — where every camera keeps its
-pictures — is copied off by itself, then scanned if anything new came off it, so its jumps are on the
-board with nobody pressing anything.
+pictures — is copied off by itself, each file on the board as it lands and gathered into jumps once
+the card is done, with nobody pressing anything.
 
 **A camera that hands its files over is a camera too.** Many cameras — a GoPro among them — never
 show their card as a drive: they answer for it one request at a time, and only one program at a time
@@ -130,9 +130,13 @@ plugged in and on its page, because a camera that is merely slow and a camera th
 A desktop that neither makes a folder nor is KDE leaves such a camera unseen, and its card has to go in
 a reader. The copy is shown in the corner of the board, whatever page is open, in the same panel as
 files being copied in and an upload going out: every file on the card, listed before the first is
-copied, each marked waiting, being copied, copied, or here already, and as it goes how many are new
-and how many were here already — a camera plugged in again is looked over file by file, and a file already here
-costs a look and not a copy, so the looking must not be mistaken for copying it all again. The board
+copied, each marked waiting, being copied — its own bar filling as its bytes land — copied, or here
+already, and as it goes how many are new and how many were here already. Each file copied is on the
+board at once, loose in Fresh files, without waiting for the rest of the card; once the card is done,
+what came off it and is still loose is gathered into jumps by the gap rule, as a scan would. A file
+off a camera is filed under the day it was shot, read the same way as for a file scanned or dropped
+in. A camera plugged in again is looked over file by file, and a file already here costs a look and
+not a copy, so the looking must not be mistaken for copying it all again. The board
 says what came off once it is done: how many new files and how many already there. A camera is copied
 each time it is plugged in, and again whenever asked while it stays plugged in — from its page, which
 offers to copy what is not here yet, or with Rescan cameras, which copies every camera plugged in and

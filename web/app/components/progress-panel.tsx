@@ -45,7 +45,6 @@ const ProgressPanel = ({
   label,
   title,
   rows,
-  through,
   barLabel,
   barTitle,
   doing,
@@ -56,20 +55,26 @@ const ProgressPanel = ({
   label: string
   title: string
   rows: Row[]
-  /* the whole, between 0 and 1, counting the one under way for as much of itself as is done */
-  through: number
   barLabel: string
   barTitle: string
   /* what is done to each, said of the one under way: copying it, sending it */
   doing: string
   footer?: React.ReactNode
-  /* how far, counted, when there is no list to count it from yet */
-  counted?: { at: number; of: number }
+  /* how far, counted, when there is no list to count it from yet — `part` of the one under way */
+  counted?: { at: number; of: number; part?: number }
 }) => {
   /* folded down to its title and its count, for whoever wants the corner back while it runs */
   const [folded, setFolded] = useState(false)
   const finished = rows.filter((r) => r.at === 'done' || r.at === 'skipped' || r.at === 'failed')
   const current = rows.findIndex((r) => r.at === 'now')
+  /* the whole, counting the one under way for as much of itself as is done — so one long file on
+     its own is a bar that moves rather than a bar that waits */
+  const through =
+    rows.length > 0
+      ? Math.min(1, (finished.length + (rows[current]?.part ?? 0)) / rows.length)
+      : counted && counted.of > 0
+        ? Math.min(1, (counted.at + (counted.part ?? 0)) / counted.of)
+        : 0
   const count =
     rows.length > 0
       ? `${Math.min((current === -1 ? finished.length : current) + 1, rows.length)}/${rows.length}`

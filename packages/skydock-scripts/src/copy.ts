@@ -1,8 +1,11 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { readExifMap } from './lib/exif'
+import * as streams from 'node:stream/promises'
+import { two } from './lib/clock'
+import { counted } from './lib/counted'
 import { findMediaFiles, sameBytes } from './lib/fs'
 import { loadManifest } from './manifest'
+import { shotTimes } from './scan'
 import type { Manifest, ManifestFile } from './types'
 import { getManifestPath, getOutputDir, isCliModule } from './utils'
 
@@ -25,7 +28,13 @@ type CopyProgress = {
   skipped: number
   files?: CopyItem[]
   last?: 'copied' | 'skipped'
+  /* how far through the file being copied now, between 0 and 1, said as its bytes go by */
+  part?: number
 }
+
+/* what a file copied off is known by, where it landed and when it was shot — for whoever puts it on
+   the board */
+type Copied = { dest: string; id: string; shot: number }
 
 const sizeOf = (file: string) => {
   try {
@@ -35,19 +44,24 @@ const sizeOf = (file: string) => {
   }
 }
 
-const parseDate = (raw: string) => {
-  const match = raw.match(/^(\d{4}):(\d{2}):(\d{2})/)
-  return match ? `${match[1]}-${match[2]}-${match[3]}` : null
+/* the folder an original is filed under: the local calendar day it was shot */
+const dayFolder = (epoch: number) => {
+  const d = new Date(epoch * 1000)
+  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`
 }
 
-const DATE_TAGS = { photoTags: ['-DateTimeOriginal'], videoTags: ['-CreateDate'], parse: parseDate }
+/* The day folder an original lands in, made if it is not there yet — the one place every way into
+   the originals files a file: copied off a camera, dropped in, brought back from the bin. */
+const originalsDay = (outputDir: string, shot: number) => {
+  const dir = path.join(outputDir, 'original_files', dayFolder(shot))
+  fs.mkdirSync(dir, { recursive: true })
+  return dir
+}
 
-const dayOfStat = (stat: fs.Stats) => {
-  const date = new Date(stat.mtimeMs)
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
+/* where a file of that name, shot then, lands among the originals — never over another */
+const landingFor = (outputDir: string, name: string, shot: number) => {
+  const dir = originalsDay(outputDir, shot)
+  return path.join(dir, freeName(dir, name))
 }
 
 /* Whether a name in the originals is one this camera file could have been filed under: its own, or
@@ -126,12 +140,22 @@ class CameraGone extends Error {}
 
 /* One file off a card into its day folder, written under a temporary name and given its own only
    once it is whole — so a card pulled out half way leaves nothing behind that could be taken for an
-   original. Its own name, or its own with a number where that is taken by another file. */
-const copyOne = async (src: string, srcStat: fs.Stats, destDir: string) => {
+   original. Its own name, or its own with a number where that is taken by another file.
+
+   Its bytes are counted and hashed as they go by (lib/counted), the same as a file dropped in: a long
+   clip is watched filling rather than waited out, and what it will be known by costs no second
+   read. */
+const copyOne = async (
+  src: string,
+  srcStat: fs.Stats,
+  destDir: string,
+  onPart?: (part: number) => void
+) => {
   const dest = path.join(destDir, freeName(destDir, path.basename(src)))
   const partial = `${dest}.part`
+  const bytes = counted((done) => onPart?.(srcStat.size > 0 ? Math.min(1, done / srcStat.size) : 0))
   try {
-    await fs.promises.copyFile(src, partial)
+    await streams.pipeline(fs.createReadStream(src), bytes.through, fs.createWriteStream(partial))
     fs.utimesSync(partial, srcStat.atime, srcStat.mtime)
     fs.renameSync(partial, dest)
   } catch (e) {
@@ -139,7 +163,7 @@ const copyOne = async (src: string, srcStat: fs.Stats, destDir: string) => {
     if (!fs.existsSync(src)) throw new CameraGone('The camera was disconnected during the copy.')
     throw e
   }
-  return dest
+  return { dest, id: bytes.id() }
 }
 
 /* One camera, copied without holding the thread. Each file is written under a temporary name and
@@ -149,16 +173,18 @@ const copyCamera = async ({
   cameraDir,
   outputDir = getOutputDir(),
   manifest = loadBoard(outputDir),
-  onProgress
+  onProgress,
+  onCopied
 }: {
   cameraDir: string
   outputDir?: string
   manifest?: Manifest | null
   onProgress?: (progress: CopyProgress) => void
+  /* each file as it lands, so the board can show it before the whole card is done */
+  onCopied?: (copied: Copied) => Promise<void> | void
 }) => {
-  const originalDir = path.join(outputDir, 'original_files')
   const files = findMediaFiles(cameraDir)
-  const days = await readExifMap(files, DATE_TAGS)
+  const shots = await shotTimes(files)
   /* a file is in the registry and in its jump, and either may carry the mark */
   const board = manifest
     ? [...manifest.files, ...manifest.groups.flatMap((g) => g.files)]
@@ -176,15 +202,18 @@ const copyCamera = async ({
     } catch {
       throw new CameraGone('The camera was disconnected during the copy.')
     }
-    const destDir = path.join(originalDir, days.get(src) ?? dayOfStat(srcStat))
-    fs.mkdirSync(destDir, { recursive: true })
+    const shot = shots.get(src) ?? Math.floor(srcStat.mtimeMs / 1000)
+    const destDir = originalsDay(outputDir, shot)
     /* the mark first: it asks nothing of the disk */
     const there =
       freedAlready(board, src, srcStat, destDir) || (await alreadyThere(src, srcStat, destDir))
     if (there) progress.skipped++
     else {
-      await copyOne(src, srcStat, destDir)
+      const copied = await copyOne(src, srcStat, destDir, (part) =>
+        onProgress?.({ ...progress, part })
+      )
       progress.copied++
+      await onCopied?.({ ...copied, shot })
     }
     progress.done++
     onProgress?.({ ...progress, last: there ? 'skipped' : 'copied' })
@@ -205,8 +234,7 @@ const copyBack = async ({
   outputDir?: string
   onProgress?: (progress: CopyProgress) => void
 }) => {
-  const originalDir = path.join(outputDir, 'original_files')
-  const days = await readExifMap(paths, DATE_TAGS)
+  const shots = await shotTimes(paths)
   const progress: CopyProgress = { done: 0, total: paths.length, copied: 0, skipped: 0 }
   onProgress?.({ ...progress })
   for (const src of paths) {
@@ -216,8 +244,7 @@ const copyBack = async ({
     } catch {
       throw new CameraGone('The camera was disconnected during the copy.')
     }
-    const destDir = path.join(originalDir, days.get(src) ?? dayOfStat(srcStat))
-    fs.mkdirSync(destDir, { recursive: true })
+    const destDir = originalsDay(outputDir, shots.get(src) ?? Math.floor(srcStat.mtimeMs / 1000))
     if (await alreadyThere(src, srcStat, destDir)) progress.skipped++
     else {
       await copyOne(src, srcStat, destDir)
@@ -253,27 +280,27 @@ if (isCliModule('copy')) {
 
 /* the day folder each of a camera's files belongs in among the originals */
 const dayFoldersOf = async (files: string[], outputDir: string) => {
-  const days = await readExifMap(files, DATE_TAGS)
+  const shots = await shotTimes(files)
   return new Map(
     files.map((file) => [
       file,
-      path.join(outputDir, 'original_files', days.get(file) ?? dayOfStat(fs.statSync(file)))
+      path.join(outputDir, 'original_files', dayFolder(shots.get(file) ?? 0))
     ])
   )
 }
 
 export {
   CameraGone,
-  DATE_TAGS,
   alreadyThere,
   copyBack,
   copyCamera,
   copyFromCameras,
+  dayFolder,
   dayFoldersOf,
-  dayOfStat,
   freeName,
+  landingFor,
   freedAlready,
   isNameFor,
   loadBoard
 }
-export type { CopyOptions, CopyProgress }
+export type { Copied, CopyOptions, CopyProgress }

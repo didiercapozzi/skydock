@@ -181,12 +181,14 @@ const freshIds = (manifest: Manifest) => {
 
 /* Re-clusters only the files sitting in no jump, so putting the sorting area back in order never
    disturbs a jump that has already been filed. */
-const regroupLooseFiles = (manifest: Manifest) => {
-  const grouped = new Set<string>()
-  for (const group of manifest.groups)
-    for (const file of group.files) if (file.id) grouped.add(file.id)
+/* the files in no jump and filed nowhere: loose in Fresh files */
+const looseFiles = (manifest: Manifest) => {
+  const grouped = new Set(manifest.groups.flatMap((g) => idsOf(g.files)))
+  return manifest.files.filter((f) => f.id && !grouped.has(f.id) && !f.destination)
+}
 
-  const loose = manifest.files.filter((f) => f.id && !grouped.has(f.id) && !f.destination)
+const regroupLooseFiles = (manifest: Manifest) => {
+  const loose = looseFiles(manifest)
   if (loose.length === 0) return 0
 
   /* a run of one is not a jump, the same as on a scan — it stays loose (RULES, Jumps) */
@@ -242,6 +244,7 @@ export {
   freshIds,
   groupFromFiles,
   groupNewFiles,
+  looseFiles,
   offGap,
   reclusterGroups,
   regroupLooseFiles,

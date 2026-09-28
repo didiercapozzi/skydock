@@ -35,6 +35,7 @@ const says = (event: Record<string, unknown>) =>
   stream?.onmessage?.({ data: JSON.stringify({ kind: 'camera', ...event }) })
 
 const requests: unknown[] = []
+let onBoard: unknown[] = []
 
 const renderBoard = async () => {
   requests.length = 0
@@ -55,6 +56,8 @@ const renderBoard = async () => {
       action: async ({ request }) => {
         const asked = await request.json()
         requests.push(asked)
+        /* the board as the machine has it now: what landed so far is loose in Fresh files */
+        if (asked.intent === 'imported') return { groups: [], looseFiles: onBoard }
         return { groups: [], cameraCopied: asked.cameraCopied }
       }
     }
@@ -64,6 +67,7 @@ const renderBoard = async () => {
 
 afterEach(() => {
   vi.stubGlobal('EventSource', silent)
+  onBoard = []
 })
 
 describe('a camera plugged in', () => {
@@ -104,6 +108,34 @@ describe('a camera plugged in', () => {
     await userEvent.click(panel.getByRole('button', { name: 'Show the list' }))
 
     await expect.element(panel.getByText('GX010001.MP4')).toBeVisible()
+  })
+
+  /* a long clip is watched filling, not waited out */
+  test('fills the bar of the file being copied as its bytes land', async () => {
+    await renderBoard()
+    const card = ['GX010001.MP4', 'GX010002.MP4'].map((name) => ({ name, size: 4_000_000_000 }))
+    says({ camera: 'GOPRO', state: 'copying', done: 0, total: 2, copied: 0, skipped: 0, files: card })
+
+    says({ camera: 'GOPRO', state: 'copying', done: 0, total: 2, copied: 0, skipped: 0, part: 0.4 })
+
+    const panel = page.getByRole('complementary', { name: 'Copying GOPRO' })
+    await expect.element(panel.getByRole('progressbar', { name: 'Copying GX010001.MP4' })).toHaveAttribute('aria-valuenow', '40')
+    await expect.element(panel.getByRole('progressbar', { name: 'Copied off GOPRO' })).toHaveAttribute('aria-valuenow', '20')
+  })
+
+  /* each file is on the board as it lands, not once the whole card is done */
+  test('shows each file in Fresh files as soon as it is copied', async () => {
+    onBoard = [
+      { id: 'c1', path: '/o/GX010001.MP4', filename: 'GX010001.MP4', size: 1, mtime: 1_785_000_000 }
+    ]
+    await renderBoard()
+    const card = ['GX010001.MP4', 'GX010002.MP4'].map((name) => ({ name, size: 1_000_000 }))
+    says({ camera: 'GOPRO', state: 'copying', done: 0, total: 2, copied: 0, skipped: 0, files: card })
+
+    says({ camera: 'GOPRO', state: 'copying', done: 1, total: 2, copied: 1, skipped: 0, last: 'copied' })
+
+    await vi.waitFor(() => expect(requests).toContainEqual({ intent: 'imported' }))
+    await expect.element(page.getByRole('button', { name: /^Loose files, / })).toBeInTheDocument()
   })
 
   /* A camera plugged in again goes through every file on it, and a file already here costs a look and

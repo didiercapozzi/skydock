@@ -1,7 +1,8 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { CameraGone, copyCamera } from './copy'
-import type { CopyProgress } from './copy'
+import type { Copied, CopyProgress } from './copy'
+import { gatherArrivals, putOnBoard } from './arrivals'
 import { kioReader } from './kio'
 import { camerasThroughKde, copyOverKio, isKioCamera, kioCameraName } from './kioCamera'
 import type { SeenClip } from './kioCamera'
@@ -207,20 +208,33 @@ const copyNext = async (outputDir: string) => {
     last = progress
     publish({ kind: 'camera', camera, state: 'copying', ...progress })
   }
+  /* each file on the board as it lands; gathered into jumps once the card is done */
+  const arrived: string[] = []
+  const onCopied = (copied: Copied) => {
+    if (putOnBoard(outputDir, copied)) arrived.push(copied.id)
+  }
   try {
     const result = isKioCamera(cameraDir)
-      ? await copyThroughKde(cameraDir, outputDir, onProgress)
-      : await copyCamera({ cameraDir: path.join(cameraDir, 'DCIM'), outputDir, onProgress })
-    /* only a copy that brought something new is worth a scan */
-    if (result.copied > 0) {
-      await scanMedia({ outputDir })
-      void buildMissingProxies(outputDir).catch(() => undefined)
-    }
+      ? await copyThroughKde(cameraDir, outputDir, onProgress, onCopied)
+      : await copyCamera({
+          cameraDir: path.join(cameraDir, 'DCIM'),
+          outputDir,
+          onProgress,
+          onCopied
+        })
+    gatherArrivals(outputDir, arrived)
+    /* Every file that came off is on the board already; the scan is only for one that could not be
+       put there — no board yet, or one that could not be read. It reads the whole library, which is
+       no price to pay for nothing. */
+    if (result.copied > arrived.length) await scanMedia({ outputDir })
+    if (result.copied > 0) void buildMissingProxies(outputDir).catch(() => undefined)
     publish({ kind: 'camera', camera, state: 'done', ...result })
   } catch (e) {
     const gone = e instanceof CameraGone
-    /* what did make it across is whole, and is scanned so it is not left out of the board */
-    if (last.copied > 0) await scanMedia({ outputDir }).catch(() => undefined)
+    gatherArrivals(outputDir, arrived)
+    /* what did make it across is whole, and is on the board — scanned for, if it could not be put
+       there as it landed */
+    if (last.copied > arrived.length) await scanMedia({ outputDir }).catch(() => undefined)
     publish({
       kind: 'camera',
       camera,
@@ -239,7 +253,8 @@ const copyNext = async (outputDir: string) => {
 const copyThroughKde = async (
   camera: string,
   outputDir: string,
-  onProgress: (progress: CopyProgress) => void
+  onProgress: (progress: CopyProgress) => void,
+  onCopied: (copied: Copied) => void
 ) => {
   const reader = await kioReader()
   if (!reader) throw new CameraGone('KDE no longer reaches this camera.')
@@ -251,6 +266,7 @@ const copyThroughKde = async (
       reader,
       outputDir,
       onProgress,
+      onCopied,
       onClip: (clip) => seen.clips.push(clip)
     })
   } finally {

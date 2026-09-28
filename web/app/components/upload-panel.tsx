@@ -79,8 +79,6 @@ const UploadPanel = ({
   const items = progress?.items ?? []
   const rows = items.map(rowOf)
   const finished = rows.filter((r) => r.at !== 'now' && r.at !== 'later').length
-  const underWay = rows.find((r) => r.at === 'now')?.part ?? 0
-  const through = rows.length > 0 ? Math.min(1, (finished + underWay) / rows.length) : 0
   const bytes = items.reduce((sum, item) => sum + item.size, 0)
   const phase = progress ? phaseOf(progress) : t`Starting…`
   const size = formatSize(bytes)
@@ -92,7 +90,6 @@ const UploadPanel = ({
       barLabel={t`Uploaded of ${label}`}
       doing={t`Sending`}
       barTitle={t`${finished} of ${plural(count, { one: '# item', other: '# items' })} on the storage — ${size} in all`}
-      through={through}
       rows={rows}
       footer={
         <>

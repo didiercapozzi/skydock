@@ -106,7 +106,8 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   const jobs = useSafeFetcher()
 
   /* a board answer, whichever request it answers */
-  const adopt = (data: unknown) => {
+  /* `quiet`: a look taken for the eyes only — the board as it is, with nothing said about it */
+  const adopt = (data: unknown, quiet = false) => {
     const answered = boardAnswerSchema.safeParse(data)
     if (answered.success) {
       const {
@@ -185,7 +186,8 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
                                         ? fromBinNote(fromBin)
                                         : null
       /* the work stands even when the list could not follow it, and that is said alongside */
-      setNote(storageProblem ? [said, storageProblem].filter(Boolean).join(' · ') : said)
+      if (!quiet)
+        setNote(storageProblem ? [said, storageProblem].filter(Boolean).join(' · ') : said)
     } else {
       const refused = refusalSchema.safeParse(data)
       if (refused.success) setNote(refused.data.globalErrors?.[0] ?? t`Request failed`)
@@ -206,6 +208,26 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     setCancelling(false)
     adopt(jobs.data)
   }
+
+  /* While a camera is copied off, each file it brings goes on the board as it lands, and the board
+     looks again after each — quietly, on a request of its own, so that nothing said and nothing
+     under way is disturbed by it. One look at a time: the next file brings the next one. */
+  const arrivals = useSafeFetcher()
+  const [seenArrivals, setSeenArrivals] = useState<unknown>(null)
+  if (arrivals.data && arrivals.data !== seenArrivals) {
+    setSeenArrivals(arrivals.data)
+    adopt(arrivals.data, true)
+  }
+  /* by camera as well as by count: a second camera's fifth file is not the first camera's fifth */
+  const landed =
+    live.camera && live.camera.copied > 0 ? `${live.camera.camera}:${live.camera.copied}` : ''
+  const lookedAt = useRef('')
+  useEffect(() => {
+    if (!landed || landed === lookedAt.current || arrivals.state !== 'idle') return
+    lookedAt.current = landed
+    /* the same look the board takes after files dropped in, taken quietly */
+    arrivals.submit({ url: '/api/manifest', actionArgs: { intent: 'imported' } })
+  }, [landed, arrivals])
 
   /* A camera's copy has ended — its files are copied and scanned on the machine — so the board asks
      for itself again, and hears what came off. A request to the machine is what an effect is for;

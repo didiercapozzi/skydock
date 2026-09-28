@@ -662,16 +662,21 @@ describe('processing, said as it happens', () => {
     await processJumps({ manifestPath, outputDir })
     stop()
 
-    /* one after the other, never two at once: a file ends before the next begins */
-    expect(
-      heard.map((e) =>
-        e.kind === 'file-done'
-          ? `file-done ${e.fileId} ${e.ok}`
-          : e.kind === 'file'
-            ? `file ${e.fileId}`
-            : /* anything else said while a file is being written is itself a failure */ e.kind
-      )
-    ).toEqual(['file id0', 'file-done id0 true', 'file id1', 'file-done id1 true'])
+    /* one after the other, never two at once: a file ends before the next begins — however many
+       steps forward it says on the way */
+    const said = heard.map((e) =>
+      e.kind === 'file-done'
+        ? `file-done ${e.fileId} ${e.ok}`
+        : e.kind === 'file'
+          ? `file ${e.fileId}`
+          : /* anything else said while a file is being written is itself a failure */ e.kind
+    )
+    expect(said.filter((one, at) => one !== said[at - 1])).toEqual([
+      'file id0',
+      'file-done id0 true',
+      'file id1',
+      'file-done id1 true'
+    ])
   })
 
   it('asks ffmpeg to say where it is, on the clips it has to write itself', async () => {

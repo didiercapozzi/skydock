@@ -7,7 +7,7 @@ import {
   isCliModule,
   sortFilesByMtime
 } from './utils'
-import { buildExifMap } from './lib/exif'
+import { buildExifMap, readExifMap } from './lib/exif'
 import { loadManifest, MANIFEST_VERSION, saveManifest } from './manifest'
 import { computeFileId } from './fileId'
 import { groupNewFiles, reclusterGroups } from './clustering'
@@ -20,18 +20,21 @@ const parseDateTime = (raw: string) => {
   return match ? `${match[1]}-${match[2]}-${match[3]} ${match[4]}:${match[5]}:${match[6]}` : null
 }
 
-const buildTimeMap = (files: string[]) =>
-  buildExifMap(files, {
-    photoTags: ['-DateTimeOriginal', '-CreateDate', '-MediaCreateDate'],
-    videoTags: [
-      '-CreateDate',
-      '-MediaCreateDate',
-      '-TrackCreateDate',
-      '-DateTimeOriginal',
-      '-ModifyDate'
-    ],
-    parse: parseDateTime
-  })
+/* The one reading of when a file was shot, whichever way it arrives — scanned, dropped in, copied off
+   a camera, brought back from the bin — so it is filed under the same day however it came. */
+const TIME_TAGS = {
+  photoTags: ['-DateTimeOriginal', '-CreateDate', '-MediaCreateDate'],
+  videoTags: [
+    '-CreateDate',
+    '-MediaCreateDate',
+    '-TrackCreateDate',
+    '-DateTimeOriginal',
+    '-ModifyDate'
+  ],
+  parse: parseDateTime
+}
+
+const buildTimeMap = (files: string[]) => buildExifMap(files, TIME_TAGS)
 
 const getCaptureEpoch = (filepath: string, timeMap: Map<string, string>) => {
   const tag = timeMap.get(filepath)
@@ -55,6 +58,12 @@ const getCaptureEpoch = (filepath: string, timeMap: Map<string, string>) => {
    before anybody corrected it. */
 const cameraTimes = (paths: string[]) => {
   const timeMap = buildTimeMap(paths)
+  return new Map(paths.map((filepath) => [filepath, getCaptureEpoch(filepath, timeMap)]))
+}
+
+/* the same, without holding the server while exiftool reads a whole card */
+const shotTimes = async (paths: string[]) => {
+  const timeMap = await readExifMap(paths, TIME_TAGS)
   return new Map(paths.map((filepath) => [filepath, getCaptureEpoch(filepath, timeMap)]))
 }
 
@@ -314,5 +323,5 @@ if (isCliModule('scan')) {
     .catch(console.error)
 }
 
-export { cameraTimes, scanMedia }
+export { cameraTimes, shotTimes, scanMedia }
 export type { ScanResult }
