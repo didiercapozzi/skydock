@@ -667,11 +667,13 @@ single Scan button and the instruction to copy the cameras first.
 **Light and dark.** The board follows the machine by default and can be pinned light or dark. The
 choice is remembered on that machine and applied before the first thing is drawn.
 
-**How big it is drawn.** SkyDock's own window zooms the way a browser does — ⌘ or ctrl with + or −,
-or the wheel — so a board read from across a packing hall is read at the size it needs. It scales
-the whole of it, so the layout answers to the size it is drawn at rather than being stretched. A
-size that should hold from one day to the next is written in SkyDock's settings file instead, as a
-factor or as the percentage anybody would say out loud, and the window opens at it.
+**How big it is drawn.** SkyDock's own window zooms the whole board — from the − and + at the end of
+the header, which say the size as a percentage and go back to as drawn when it is pressed, or with ⌘
+or ctrl and + or −, and 0 for as drawn — so a board read from across a packing hall is read at the
+size it needs, from half to three times, a tenth at a time. It scales the whole of it, so the layout
+answers to the size it is drawn at rather than being stretched. The size chosen is kept, and the
+window opens at it next time. A browser tab showing the board zooms with the browser's own keys and
+offers no control of its own.
 
 ## Cropping and turning
 

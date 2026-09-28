@@ -740,6 +740,10 @@ msgstr "Apply to the whole jump"
 msgid "as a {0} folder · {1}"
 msgstr "as a {0} folder · {1}"
 
+#: app/components/board-header.tsx
+msgid "As drawn"
+msgstr "As drawn"
+
 #: app/components/inspector.tsx
 msgid "as shot"
 msgstr "as shot"
@@ -773,6 +777,10 @@ msgstr "Auto"
 msgid "Back into the originals, under the day each was shot, and into Fresh files"
 msgstr "Back into the originals, under the day each was shot, and into Fresh files"
 
+#: app/components/board-header.tsx
+msgid "Back to as drawn"
+msgstr "Back to as drawn"
+
 #: app/components/preview-drawer.tsx
 msgid "Back to as shot"
 msgstr "Back to as shot"
@@ -800,6 +808,10 @@ msgstr "Backup · {backupName}"
 #: app/components/templates-dialog.tsx
 msgid "beside it — chosen whole. Or the one archive, if it was packed as .zip or .tar.gz. Or the project and its files picked one by one. Each file the project names is pointed at the copy brought in with it, so a template made on another machine finds its own files here. Bringing one in under a name already there replaces it, files and all."
 msgstr "beside it — chosen whole. Or the one archive, if it was packed as .zip or .tar.gz. Or the project and its files picked one by one. Each file the project names is pointed at the copy brought in with it, so a template made on another machine finds its own files here. Bringing one in under a name already there replaces it, files and all."
+
+#: app/components/board-header.tsx
+msgid "Bigger"
+msgstr "Bigger"
 
 #: app/components/places-tree.tsx
 #: app/helpers/places.ts
@@ -1672,6 +1684,10 @@ msgstr "Hold alt while dropping to copy it into the other jump instead."
 #: app/components/connection-dialog.tsx
 msgid "Hostname is required"
 msgstr "Hostname is required"
+
+#: app/components/board-header.tsx
+msgid "How big the whole board is drawn — or ⌘/ctrl with + and −, and 0 for as drawn. Kept for next time."
+msgstr "How big the whole board is drawn — or ⌘/ctrl with + and −, and 0 for as drawn. Kept for next time."
 
 #: app/components/board-header.tsx
 msgid "How files are shown"
@@ -2834,6 +2850,10 @@ msgstr "Show the list"
 msgid "Size"
 msgstr "Size"
 
+#: app/components/board-header.tsx
+msgid "Size of the board"
+msgstr "Size of the board"
+
 #: app/components/camera-files.tsx
 msgid "SkyDock is going over the camera, file by file, as it copies it. What it has been over is listed here; the rest follow on their own."
 msgstr "SkyDock is going over the camera, file by file, as it copies it. What it has been over is listed here; the rest follow on their own."
@@ -2853,6 +2873,10 @@ msgstr "SkyDock works in"
 #: app/components/file-list.tsx
 msgid "Small enough already — this clip is its own proxy, nothing to build"
 msgstr "Small enough already — this clip is its own proxy, nothing to build"
+
+#: app/components/board-header.tsx
+msgid "Smaller"
+msgstr "Smaller"
 
 #: app/components/remove-files-dialog.tsx
 msgid "Some of these are copies: a copy can only be taken out, and its original stays where it is."

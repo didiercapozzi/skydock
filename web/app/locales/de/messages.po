@@ -740,6 +740,10 @@ msgstr "Auf den ganzen Sprung anwenden"
 msgid "as a {0} folder · {1}"
 msgstr "als Ordner {0} · {1}"
 
+#: app/components/board-header.tsx
+msgid "As drawn"
+msgstr "Originalgröße"
+
 #: app/components/inspector.tsx
 msgid "as shot"
 msgstr "wie aufgenommen"
@@ -773,6 +777,10 @@ msgstr "Automatisch"
 msgid "Back into the originals, under the day each was shot, and into Fresh files"
 msgstr "Zurück in die Originale, unter den Tag, an dem jede aufgenommen wurde, und in Neue Dateien"
 
+#: app/components/board-header.tsx
+msgid "Back to as drawn"
+msgstr "Zurück zur Originalgröße"
+
 #: app/components/preview-drawer.tsx
 msgid "Back to as shot"
 msgstr "Zurück wie aufgenommen"
@@ -800,6 +808,10 @@ msgstr "Sicherung · {backupName}"
 #: app/components/templates-dialog.tsx
 msgid "beside it — chosen whole. Or the one archive, if it was packed as .zip or .tar.gz. Or the project and its files picked one by one. Each file the project names is pointed at the copy brought in with it, so a template made on another machine finds its own files here. Bringing one in under a name already there replaces it, files and all."
 msgstr "daneben schreibt — als Ganzes gewählt. Oder das eine Archiv, wenn es als .zip oder .tar.gz gepackt wurde. Oder das Projekt und seine Dateien einzeln ausgewählt. Jede Datei, die das Projekt nennt, wird auf die mitgebrachte Kopie verwiesen, sodass eine auf einem anderen Rechner erstellte Vorlage hier ihre eigenen Dateien findet. Eine unter einem schon vorhandenen Namen hinzuzufügen, ersetzt diese samt Dateien."
+
+#: app/components/board-header.tsx
+msgid "Bigger"
+msgstr "Größer"
 
 #: app/components/places-tree.tsx
 #: app/helpers/places.ts
@@ -1672,6 +1684,10 @@ msgstr "Halte beim Ablegen Alt gedrückt, um es stattdessen in den anderen Sprun
 #: app/components/connection-dialog.tsx
 msgid "Hostname is required"
 msgstr "Hostname ist erforderlich"
+
+#: app/components/board-header.tsx
+msgid "How big the whole board is drawn — or ⌘/ctrl with + and −, and 0 for as drawn. Kept for next time."
+msgstr "Wie groß das ganze Board gezeichnet wird — oder ⌘/Strg mit + und −, und 0 für die Originalgröße. Wird fürs nächste Mal behalten."
 
 #: app/components/board-header.tsx
 msgid "How files are shown"
@@ -2834,6 +2850,10 @@ msgstr "Liste anzeigen"
 msgid "Size"
 msgstr "Größe"
 
+#: app/components/board-header.tsx
+msgid "Size of the board"
+msgstr "Größe des Boards"
+
 #: app/components/camera-files.tsx
 msgid "SkyDock is going over the camera, file by file, as it copies it. What it has been over is listed here; the rest follow on their own."
 msgstr "SkyDock geht die Kamera beim Kopieren Datei für Datei durch. Was schon durchgegangen ist, steht hier; der Rest folgt von selbst."
@@ -2853,6 +2873,10 @@ msgstr "SkyDock arbeitet in"
 #: app/components/file-list.tsx
 msgid "Small enough already — this clip is its own proxy, nothing to build"
 msgstr "Schon klein genug — dieser Clip ist sein eigener Proxy, nichts zu erstellen"
+
+#: app/components/board-header.tsx
+msgid "Smaller"
+msgstr "Kleiner"
 
 #: app/components/remove-files-dialog.tsx
 msgid "Some of these are copies: a copy can only be taken out, and its original stays where it is."

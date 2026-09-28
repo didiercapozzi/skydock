@@ -42,8 +42,8 @@ const carried = (name: string) => {
 
 const configDir = () => app.getPath('userData')
 
-/* What the app was told last time: where to work, and how big to draw. Both are the server's to
-   write, so this only reads them, and anything else in there is none of this side's business. */
+/* What the app was told last time: where to work, and how big to draw. Where to work is the
+   server's to write; how big to draw is this side's, and anything else in there is left as it is. */
 const settingsSchema = z.object({ outputDir: z.string().optional(), zoom: z.number().optional() })
 
 const settings = () => {
@@ -138,20 +138,59 @@ const zoomLevel = () => {
 
 const ZOOM_STEP: Record<string, number> = { '+': 0.1, '=': 0.1, '-': -0.1, _: -0.1 }
 
+/* A size chosen is kept for next time, in the settings beside where to work — as the percentage
+   anybody would say out loud. Whatever else is in the file stays as it is. */
+const rememberZoom = (factor: number) => {
+  const file = path.join(configDir(), 'settings.json')
+  try {
+    const kept = (() => {
+      try {
+        const read = z
+          .record(z.string(), z.unknown())
+          .safeParse(JSON.parse(fs.readFileSync(file, 'utf-8')))
+        return read.success ? read.data : {}
+      } catch {
+        return {}
+      }
+    })()
+    fs.mkdirSync(configDir(), { recursive: true })
+    fs.writeFileSync(file, JSON.stringify({ ...kept, zoom: Math.round(factor * 100) }, null, 2))
+  } catch (e) {
+    console.error(`[SkyDock] the size could not be kept for next time: ${e}`)
+  }
+}
+
+/* A size asked for, kept between half and three times, on the tenth, told to the page so its own
+   control says it, and remembered. */
+const zoomTo = (contents: WebContents, asked: number) => {
+  const factor = Math.round(Math.min(3, Math.max(0.5, asked)) * 10) / 10
+  contents.setZoomFactor(factor)
+  contents.send('zoom:changed', factor)
+  rememberZoom(factor)
+  return factor
+}
+
 /* ⌘/ctrl with + or − and 0, as they do in any browser. The engine does the zooming; which keys ask
    for it is the window's own to say. Where it starts is the window's to say when it is made: a
    factor set before the first page has loaded is lost to that page on some machines and not on
    others. */
-const zoomHotkeys = (contents: WebContents, start: number) => {
+const zoomHotkeys = (contents: WebContents) => {
   contents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown' || !(input.control || input.meta)) return
     const step = ZOOM_STEP[input.key]
     if (step === undefined && input.key !== '0') return
     event.preventDefault()
-    const asked = input.key === '0' ? start : contents.getZoomFactor() + (step ?? 0)
-    contents.setZoomFactor(Math.min(3, Math.max(0.5, asked)))
+    zoomTo(contents, input.key === '0' ? 1 : contents.getZoomFactor() + (step ?? 0))
   })
 }
+
+/* the same, asked for from the board's own control */
+ipcMain.handle('zoom:get', (event) => event.sender.getZoomFactor())
+ipcMain.handle('zoom:set', (event, asked: unknown) =>
+  typeof asked === 'number' && Number.isFinite(asked)
+    ? zoomTo(event.sender, asked)
+    : event.sender.getZoomFactor()
+)
 
 /* The window itself: a browser on the server behind it, and nothing else. A link out of the board —
    the passenger's email, a share link — belongs to the machine's own browser; opened in here it
@@ -175,7 +214,7 @@ const openWindow = (address: string) => {
     if (/^https?:/.test(asked)) void shell.openExternal(asked)
     return { action: 'deny' }
   })
-  zoomHotkeys(window.webContents, zoom)
+  zoomHotkeys(window.webContents)
   void window.loadURL(address)
   console.log(`[SkyDock] the window is open on ${address}`)
   return window

@@ -4,11 +4,20 @@ import { z } from 'zod'
 import { routingEngine } from './routing'
 
 /* What the window can do that a browser tab cannot, offered by the app around the page: say where a
-   dropped file already is, and move the work to another folder. Nothing else of the app is reachable
+   dropped file already is, move the work to another folder, and draw the whole board bigger or
+   smaller. Nothing else of the app is reachable
    from here. */
 declare global {
   interface Window {
-    skydock?: { pathOf: (file: File) => string | null; chooseWorkFolder?: () => Promise<unknown> }
+    skydock?: {
+      pathOf: (file: File) => string | null
+      chooseWorkFolder?: () => Promise<unknown>
+      zoom?: {
+        get: () => Promise<number>
+        set: (factor: number) => Promise<number>
+        onChange: (listen: (factor: number) => void) => () => void
+      }
+    }
   }
 }
 

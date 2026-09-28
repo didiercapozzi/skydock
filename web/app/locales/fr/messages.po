@@ -740,6 +740,10 @@ msgstr "Appliquer à tout le saut"
 msgid "as a {0} folder · {1}"
 msgstr "en dossier {0} · {1}"
 
+#: app/components/board-header.tsx
+msgid "As drawn"
+msgstr "Taille d'origine"
+
 #: app/components/inspector.tsx
 msgid "as shot"
 msgstr "tel que filmé"
@@ -773,6 +777,10 @@ msgstr "Auto"
 msgid "Back into the originals, under the day each was shot, and into Fresh files"
 msgstr "Retour dans les originaux, sous le jour où chacun a été filmé, et dans Nouveaux fichiers"
 
+#: app/components/board-header.tsx
+msgid "Back to as drawn"
+msgstr "Revenir à la taille d'origine"
+
 #: app/components/preview-drawer.tsx
 msgid "Back to as shot"
 msgstr "Revenir tel que filmé"
@@ -800,6 +808,10 @@ msgstr "Sauvegarde · {backupName}"
 #: app/components/templates-dialog.tsx
 msgid "beside it — chosen whole. Or the one archive, if it was packed as .zip or .tar.gz. Or the project and its files picked one by one. Each file the project names is pointed at the copy brought in with it, so a template made on another machine finds its own files here. Bringing one in under a name already there replaces it, files and all."
 msgstr "à côté — choisi en entier. Ou l’archive unique, si elle a été compressée en .zip ou .tar.gz. Ou le projet et ses fichiers choisis un par un. Chaque fichier que le projet cite est relié à la copie importée avec lui, ainsi un modèle fait sur une autre machine retrouve ici ses propres fichiers. En importer un sous un nom déjà présent le remplace, fichiers compris."
+
+#: app/components/board-header.tsx
+msgid "Bigger"
+msgstr "Plus grand"
 
 #: app/components/places-tree.tsx
 #: app/helpers/places.ts
@@ -1672,6 +1684,10 @@ msgstr "Maintenez alt en déposant pour le copier plutôt dans l’autre saut."
 #: app/components/connection-dialog.tsx
 msgid "Hostname is required"
 msgstr "Le nom d’hôte est requis"
+
+#: app/components/board-header.tsx
+msgid "How big the whole board is drawn — or ⌘/ctrl with + and −, and 0 for as drawn. Kept for next time."
+msgstr "La taille de tout le tableau — ou ⌘/ctrl avec + et −, et 0 pour la taille d'origine. Gardée pour la prochaine fois."
 
 #: app/components/board-header.tsx
 msgid "How files are shown"
@@ -2834,6 +2850,10 @@ msgstr "Afficher la liste"
 msgid "Size"
 msgstr "Taille"
 
+#: app/components/board-header.tsx
+msgid "Size of the board"
+msgstr "Taille du tableau"
+
 #: app/components/camera-files.tsx
 msgid "SkyDock is going over the camera, file by file, as it copies it. What it has been over is listed here; the rest follow on their own."
 msgstr "SkyDock parcourt la caméra, fichier par fichier, en la copiant. Ce qui a déjà été parcouru est listé ici ; le reste suit tout seul."
@@ -2853,6 +2873,10 @@ msgstr "SkyDock travaille dans"
 #: app/components/file-list.tsx
 msgid "Small enough already — this clip is its own proxy, nothing to build"
 msgstr "Déjà assez petit — ce clip est son propre proxy, rien à créer"
+
+#: app/components/board-header.tsx
+msgid "Smaller"
+msgstr "Plus petit"
 
 #: app/components/remove-files-dialog.tsx
 msgid "Some of these are copies: a copy can only be taken out, and its original stays where it is."

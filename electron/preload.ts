@@ -1,5 +1,5 @@
-/* The two things the window can do that a browser tab cannot: say where a dropped file is, and move
-   the work to another folder.
+/* The things the window can do that a browser tab cannot: say where a dropped file is, move the work
+   to another folder, and draw the whole board bigger or smaller.
 
    A video dragged in from the machine is the board's to file. The page is handed the file itself and
    could send its bytes, but the server is on this very machine — so where the file already is, is
@@ -19,5 +19,17 @@ contextBridge.exposeInMainWorld('skydock', {
     }
   },
   /* the machine's own folder picker; the folder chosen, none when nothing changed, or why not */
-  chooseWorkFolder: () => ipcRenderer.invoke('work-folder:choose')
+  chooseWorkFolder: () => ipcRenderer.invoke('work-folder:choose'),
+  /* how big the whole window is drawn: asked, set, and heard when the keys change it */
+  zoom: {
+    get: () => ipcRenderer.invoke('zoom:get'),
+    set: (factor: number) => ipcRenderer.invoke('zoom:set', factor),
+    onChange: (listen: (factor: number) => void) => {
+      const heard = (_event: unknown, factor: number) => listen(factor)
+      ipcRenderer.on('zoom:changed', heard)
+      return () => {
+        ipcRenderer.removeListener('zoom:changed', heard)
+      }
+    }
+  }
 })

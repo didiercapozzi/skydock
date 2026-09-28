@@ -5,6 +5,7 @@ import { keepLanguage, spokenNow } from '../helpers/language'
 import type { Language } from '../helpers/language'
 import { Seg } from './buttons'
 import { setFileView, useFileView } from '../hooks/useFileView'
+import { useZoom } from '../hooks/useZoom'
 import { setTileSize, TILE_SIZE, useTileSize } from '../hooks/useTileSize'
 import { setTheme, useTheme } from '../hooks/useTheme'
 import { formatSize } from './utils'
@@ -72,6 +73,7 @@ const BoardHeader = ({
 }) => {
   const view = useFileView()
   const tileSize = useTileSize()
+  const zoom = useZoom()
   const theme = useTheme()
   const language = spokenNow()
   /* named, so a translator reads what each one is */
@@ -218,6 +220,39 @@ const BoardHeader = ({
           options={LANGUAGE_NAMES}
           onPick={speakIn}
         />
+        {/* how big the whole board is drawn, in SkyDock's own window — ⌘/ctrl with + − 0 too */}
+        {zoom && (
+          <span
+            role='group'
+            aria-label={t`Size of the board`}
+            title={t`How big the whole board is drawn — or ⌘/ctrl with + and −, and 0 for as drawn. Kept for next time.`}
+            className='flex items-center overflow-hidden rounded-md border border-line text-[12px]'>
+            <button
+              type='button'
+              aria-label={t`Smaller`}
+              disabled={zoom.factor <= 0.5}
+              onClick={zoom.smaller}
+              className='bg-pane px-[9px] py-[5px] text-ink-2 hover:text-ink disabled:opacity-40'>
+              −
+            </button>
+            <button
+              type='button'
+              aria-label={t`As drawn`}
+              title={t`Back to as drawn`}
+              onClick={zoom.asDrawn}
+              className='border-x border-line bg-pane px-[7px] py-[5px] font-mono text-[11.5px] text-ink-2 tabular-nums hover:text-ink'>
+              {Math.round(zoom.factor * 100)}%
+            </button>
+            <button
+              type='button'
+              aria-label={t`Bigger`}
+              disabled={zoom.factor >= 3}
+              onClick={zoom.bigger}
+              className='bg-pane px-[9px] py-[5px] text-ink-2 hover:text-ink disabled:opacity-40'>
+              +
+            </button>
+          </span>
+        )}
       </span>
     </header>
   )

@@ -1,5 +1,5 @@
 import { createElement } from 'react'
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { BoardHeader } from '../../app/components/board-header'
@@ -110,6 +110,40 @@ describe('the language of the board', () => {
     } finally {
       speak('en')
     }
+  })
+})
+
+/* How big the whole board is drawn, in SkyDock's own window: a size asked for is set and shown,
+   and a browser tab, which zooms with its own keys, is offered nothing (RULES, The board). */
+describe('the size of the board', () => {
+  afterEach(() => {
+    delete window.skydock
+  })
+
+  test('is shown and changed in the window, a tenth at a time', async () => {
+    let now = 1
+    const set = vi.fn(async (factor: number) => {
+      now = Math.round(factor * 10) / 10
+      return now
+    })
+    window.skydock = {
+      pathOf: () => null,
+      zoom: { get: async () => now, set, onChange: () => () => {} }
+    }
+    await header()
+    const size = page.getByRole('group', { name: 'Size of the board' })
+
+    await expect.element(size.getByRole('button', { name: 'As drawn' })).toHaveTextContent('100%')
+    await userEvent.click(size.getByRole('button', { name: 'Bigger' }))
+
+    expect(set).toHaveBeenCalledWith(1.1)
+    await expect.element(size.getByRole('button', { name: 'As drawn' })).toHaveTextContent('110%')
+  })
+
+  test('is not offered in a browser tab, which zooms with its own keys', async () => {
+    await header()
+
+    await expect.element(page.getByRole('group', { name: 'Size of the board' })).not.toBeInTheDocument()
   })
 })
 
