@@ -81,7 +81,7 @@ const scanNote = (scan: ScanResult) => {
 
 const uploadedNote = (uploaded: number, skipped?: number) => {
   const done = t`Uploaded ${plural(uploaded, { one: '# file', other: '# files' })}`
-  return skipped ? `${done} · ${t`${skipped} already on the NAS`}` : done
+  return skipped ? `${done} · ${t`${skipped} already on the storage`}` : done
 }
 
 const freedNote = ({ files, bytes }: { files: number; bytes: number }) => {
@@ -116,18 +116,29 @@ const cameraNote = ({
   state,
   copied,
   skipped,
-  reason
+  reason,
+  unreadable = []
 }: {
   camera: string
-  state: 'done' | 'gone' | 'failed' | 'copying'
+  state: 'done' | 'gone' | 'failed' | 'copying' | 'stopped'
   copied: number
   skipped: number
   reason?: string
+  unreadable?: string[]
 }) => {
   const newCopied = t`${plural(copied, { one: '# new file', other: '# new files' })} copied`
-  const tally = skipped > 0 ? `${newCopied} · ${t`${skipped} already here`}` : newCopied
+  const named = unreadable.join(', ')
+  const tally = [
+    newCopied,
+    skipped > 0 ? t`${skipped} already here` : null,
+    unreadable.length > 0 ? t`could not be read, left on the card: ${named}` : null
+  ]
+    .filter(Boolean)
+    .join(' · ')
   if (state === 'gone')
     return t`${camera} was unplugged during the copy — ${tally}; plug it in again for the rest`
+  if (state === 'stopped')
+    return t`Copying ${camera} stopped when asked — ${tally}; the rest is still on the card for the next Rescan`
   const why = reason ?? t`unknown reason`
   if (state === 'failed') return t`Copying ${camera} stopped: ${why} — ${tally}`
   return copied > 0
@@ -181,8 +192,8 @@ const copiedBackNote = ({ copied, skipped }: { copied: number; skipped: number }
   copied === 0
     ? t`Nothing was copied back — every file asked for is already here.`
     : skipped > 0
-      ? t`${plural(copied, { one: '# file', other: '# files' })} copied back off the camera, ${skipped} already here — ready to prepare again.`
-      : t`${plural(copied, { one: '# file', other: '# files' })} copied back off the camera — ready to prepare again.`
+      ? t`${plural(copied, { one: '# file', other: '# files' })} copied back off the camera, ${skipped} already here — ready to process again.`
+      : t`${plural(copied, { one: '# file', other: '# files' })} copied back off the camera — ready to process again.`
 
 /* What came back off the storage, and what it is: a montage's originals go up as themselves, a
    dropzone's never do — so what returns from a dropzone is the copy that was delivered, already
@@ -190,7 +201,7 @@ const copiedBackNote = ({ copied, skipped }: { copied: number; skipped: number }
 const broughtBackNote = ({ filename, original }: { filename: string; original: boolean }) =>
   original
     ? t`${filename} is back on this machine, as it was shot.`
-    : t`${filename} is back — the copy that was delivered, already cut, so its trim is cleared. Prepare it again from here.`
+    : t`${filename} is back — the copy that was delivered, already cut, so its trim is cleared. Process it again from here.`
 
 /* What came back out of the bin, and what stayed there because the board already has it. */
 const fromBinNote = ({ back, kept }: { back: number; kept: string[] }) => {

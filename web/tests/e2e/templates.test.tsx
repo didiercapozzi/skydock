@@ -156,6 +156,7 @@ describe('the editing templates, from the header', () => {
     machineHas([template('epco')])
     await renderBoard()
 
+    await userEvent.click(page.getByRole('button', { name: 'Settings' }))
     await userEvent.click(page.getByRole('button', { name: 'Templates…' }))
 
     await expect.element(dialog().getByText('epco', { exact: true })).toBeInTheDocument()
@@ -171,6 +172,7 @@ describe('the editing templates, from the header', () => {
       templates: [template('epco'), template('summer', { missing: ['intro.mp3'] })]
     }))
     await renderBoard()
+    await userEvent.click(page.getByRole('button', { name: 'Settings' }))
     await userEvent.click(page.getByRole('button', { name: 'Templates…' }))
 
     await userEvent.upload(
@@ -187,6 +189,7 @@ describe('the editing templates, from the header', () => {
       error: 'There is no kdenlive project in that archive.'
     }))
     await renderBoard()
+    await userEvent.click(page.getByRole('button', { name: 'Settings' }))
     await userEvent.click(page.getByRole('button', { name: 'Templates…' }))
 
     await userEvent.upload(
@@ -206,6 +209,7 @@ describe('the editing templates, from the header', () => {
       return { ok: true, templates: [template('epco'), template('club')] }
     })
     await renderBoard()
+    await userEvent.click(page.getByRole('button', { name: 'Settings' }))
     await userEvent.click(page.getByRole('button', { name: 'Templates…' }))
 
     await userEvent.upload(dialog().getByLabelText('The template and its files'), [
@@ -225,6 +229,7 @@ describe('the editing templates, from the header', () => {
       return { ok: true, templates: [template('epco'), template('summer', { byDefault: true })] }
     })
     await renderBoard()
+    await userEvent.click(page.getByRole('button', { name: 'Settings' }))
     await userEvent.click(page.getByRole('button', { name: 'Templates…' }))
 
     await userEvent.click(dialog().getByRole('button', { name: 'Use by default' }).nth(1))
@@ -241,6 +246,7 @@ describe('the editing templates, from the header', () => {
       return { ok: true, templates: [template('epco'), template('club')] }
     })
     await renderBoard()
+    await userEvent.click(page.getByRole('button', { name: 'Settings' }))
     await userEvent.click(page.getByRole('button', { name: 'Templates…' }))
 
     /* a real folder on disk, the shape kdenlive leaves — which is the only way a browser will

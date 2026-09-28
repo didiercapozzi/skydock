@@ -7,6 +7,7 @@ import { placeLabel } from '../helpers/places'
 import type { Place } from '../helpers/places'
 import type { Grouping } from '../helpers/sections'
 import { KindBadges } from './file-list'
+import { Notice } from './notice'
 import type { Kind } from './file-list'
 import type { ManifestFile } from './types'
 
@@ -30,7 +31,6 @@ const PlacePane = ({
   kind,
   tools,
   left,
-  strip,
   note,
   incoming,
   onImport,
@@ -47,9 +47,8 @@ const PlacePane = ({
   tools?: React.ReactNode
   /* what is still to do here, and anything that belongs to the folder, like its storage folder */
   left?: React.ReactNode
-  /* an upload under way */
-  strip?: React.ReactNode
-  note: string | null
+  /* what the board last said, and whether it was a refusal */
+  note: { text: string; problem: boolean; onClose: () => void } | null
   /* where a file from the computer dropped anywhere on the pane goes, if anywhere */
   incoming: { target: string; where: string } | null
   onImport: (list: Dropped[], target: string, where: string) => void
@@ -128,17 +127,19 @@ const PlacePane = ({
         </span>
       </div>
 
-      {(left || strip) && (
+      {left && (
         <div className='flex flex-wrap items-center gap-2 border-b border-line bg-pane px-4 py-1.5 text-[12px] text-ink-2'>
           {left}
-          {strip && <span className='flex-[1_1_100%]'>{strip}</span>}
         </div>
       )}
 
       {note && (
-        <p className='m-0 border-b border-line bg-accent-soft px-4 py-[7px] text-[12.5px] text-ink-2'>
-          {note}
-        </p>
+        <Notice
+          problem={note.problem}
+          onClose={note.onClose}
+          className='border-b px-4 py-[7px]'>
+          {note.text}
+        </Notice>
       )}
 
       <div className='flex-1 overflow-y-auto px-4 pb-10'>{children}</div>

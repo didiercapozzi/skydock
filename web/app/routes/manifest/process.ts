@@ -1,12 +1,20 @@
-import { cancelProcessing, loadManifest, processJumps, whenProcessed } from '@skydock/scripts'
+import {
+  cancelProcessing,
+  processJumps,
+  whenProcessed,
+  busyWith,
+  messageOf
+} from '@skydock/scripts'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
-import { messageOf } from '@skydock/scripts'
 
 /* Process the jumps asked for — by id, by place, or all of them — and answer with the manifest as
    processing left it. */
-const processIntent: Intent = async ({ data, manifest, manifestPath, outputDir, refuse }) => {
+const processIntent: Intent = async ({ data, manifestPath, outputDir, refuse, latest }) => {
   const requestedGroups = data.groupIds ?? (data.groupId ? [data.groupId] : undefined)
+  /* what is going up is read as it goes: its copies are not written over meanwhile */
+  if (busyWith({ groupIds: requestedGroups, destination: data.destination }) === 'uploading')
+    return refuse('It is being uploaded — process it again once the upload is done.')
   /* A montage with an edit is prepared again like any other. Preparing writes the copies and nothing
      else: the project, the film and the archives sit beside them and are left where they are, and
      the copies keep the names the passenger and the clips' own times give them, which is what the
@@ -23,21 +31,21 @@ const processIntent: Intent = async ({ data, manifest, manifestPath, outputDir, 
   } catch (e) {
     return refuse(messageOf(e))
   }
-  return boardAnswer(loadManifest(manifestPath) ?? manifest)
+  return boardAnswer(latest())
 }
 
 /* a page that came back while something was being processed waits here for it to finish */
-const processWait: Intent = async ({ manifest, manifestPath }) => {
+const processWait: Intent = async ({ latest }) => {
   await whenProcessed()
-  return boardAnswer(loadManifest(manifestPath) ?? manifest)
+  return boardAnswer(latest())
 }
 
 /* Stops what is being processed, and answers once it has stopped, with the board as the run left
    it: the copies already finished stay on the disk, and nothing of the run counts as processed. */
-const cancelProcess: Intent = async ({ manifest, manifestPath, refuse }) => {
+const cancelProcess: Intent = async ({ refuse, latest }) => {
   if (!cancelProcessing()) return refuse('Nothing is being processed.')
   await whenProcessed()
-  return { ...boardAnswer(loadManifest(manifestPath) ?? manifest), processCancelled: true }
+  return { ...boardAnswer(latest()), processCancelled: true }
 }
 
 export { cancelProcess, processIntent, processWait }

@@ -168,6 +168,21 @@ const TREE = 'flex flex-col rounded-lg border border-line bg-ground px-1 py-1.5'
 const dropLook = (over: boolean) =>
   over ? 'border-2 border-dashed border-pick bg-pick-soft' : 'border border-line bg-pane'
 
+/* the same as dragging a part onto a zip, for whoever would rather press */
+const AddParts = ({ parts, onAdd }: { parts: SendPart[]; onAdd: (part: SendPart) => void }) =>
+  parts.length === 0 ? null : (
+    <span className='flex flex-wrap justify-center gap-1.5'>
+      {parts.map((part) => (
+        <Mini
+          key={part}
+          title={t`Put ${partName(part)} in this zip`}
+          onClick={() => onAdd(part)}>
+          + {partName(part)}
+        </Mini>
+      ))}
+    </span>
+  )
+
 /* where something dragged in this dialog says what it is: a part in step one, items in step two */
 const carry = (e: React.DragEvent, what: string) => {
   e.dataTransfer.setData('text/plain', what)
@@ -368,7 +383,7 @@ const UploadDialog = ({
       <div className='flex flex-col gap-2'>
         <b className='text-[13px]'>{t`What the montage has`}</b>
         <span className='text-[12px] text-ink-2'>
-          {t`Drag any of these onto a zip. The same one can go into several zips.`}
+          {t`Drag any of these onto a zip, or press + on the zip. The same one can go into several zips.`}
         </span>
         {present.map((part) => (
           <div
@@ -386,7 +401,7 @@ const UploadDialog = ({
               </span>
             </span>
             {zipsIn(part) > 0 && (
-              <span className='rounded-full bg-pick-soft px-1.5 text-[10.5px] font-semibold whitespace-nowrap text-pick'>
+              <span className='rounded-full bg-pick-soft px-1.5 text-[11px] font-semibold whitespace-nowrap text-pick'>
                 {plural(zipsIn(part), { one: 'in # zip', other: 'in # zips' })}
               </span>
             )}
@@ -451,7 +466,7 @@ const UploadDialog = ({
                   <Spacer />
                   {size > 0 && formatFilmSize(size)}
                 </label>
-                <span className='text-[10.5px] font-semibold tracking-[.08em] text-ink-3 uppercase'>
+                <span className='text-[11px] font-semibold tracking-[.08em] text-ink-3 uppercase'>
                   {t`Inside the zip`}
                 </span>
                 <div className={TREE}>
@@ -474,6 +489,10 @@ const UploadDialog = ({
                     </span>
                   )}
                 </div>
+                <AddParts
+                  parts={present.filter((part) => !zip.parts.includes(part))}
+                  onAdd={(part) => putInZip(part, at)}
+                />
               </section>
             )
           })}
@@ -499,6 +518,10 @@ const UploadDialog = ({
           <span className='text-[11.5px]'>
             {t`Named ${stem}.….zip — you choose the end, or none.`}
           </span>
+          <AddParts
+            parts={present}
+            onAdd={(part) => putInZip(part, null)}
+          />
         </div>
         {plan.zips.length === 0 && (
           <span className='text-center text-[11.5px] text-ink-2'>
@@ -533,9 +556,9 @@ const UploadDialog = ({
             {item.zip ? item.name.slice(stem.length + 1) : partName(item.holds[0]!)}
           </span>
           {(item.zip || item.holds[0] === 'film' || item.holds[0] === 'project') && (
-            <code className='font-mono text-[10.5px] break-all text-ink-2'>{item.name}</code>
+            <code className='font-mono text-[11px] break-all text-ink-2'>{item.name}</code>
           )}
-          <span className='text-[10.5px] text-ink-2'>
+          <span className='text-[11px] text-ink-2'>
             {item.zip
               ? `${item.holds.map((part) => (part === 'videos' || part === 'photos' ? `${part}/` : partName(part).toLowerCase())).join(', ')} · ${formatFilmSize(item.size)}`
               : item.holds[0] === 'videos' || item.holds[0] === 'photos'
@@ -544,11 +567,11 @@ const UploadDialog = ({
           </span>
         </span>
         {n > 0 ? (
-          <span className='rounded-full bg-pick-soft px-1.5 text-[10.5px] font-semibold whitespace-nowrap text-pick'>
+          <span className='rounded-full bg-pick-soft px-1.5 text-[11px] font-semibold whitespace-nowrap text-pick'>
             {plural(n, { one: '→ # place', other: '→ # places' })}
           </span>
         ) : (
-          <span className='text-[10.5px] whitespace-nowrap text-ink-3'>
+          <span className='text-[11px] whitespace-nowrap text-ink-3'>
             {!item.zip && zippedAway(item.holds[0]!) ? t`in a zip` : t`stays here`}
           </span>
         )}
@@ -561,15 +584,15 @@ const UploadDialog = ({
       <div className='flex flex-col gap-2'>
         <b className='text-[13px]'>{t`What can be sent`}</b>
         <span className='text-[12px] text-ink-2'>
-          {t`Tick several to drag them together. Each can go to several destinations.`}
+          {t`Tick several to drag them together, or tick them and press Put here on a destination. Each can go to several destinations.`}
         </span>
         {zipItems.length > 0 && (
-          <span className='pt-1 text-[10.5px] font-semibold tracking-[.08em] text-ink-3 uppercase'>
+          <span className='pt-1 text-[11px] font-semibold tracking-[.08em] text-ink-3 uppercase'>
             {t`Your zips`}
           </span>
         )}
         {zipItems.map(itemRow)}
-        <span className='pt-1 text-[10.5px] font-semibold tracking-[.08em] text-ink-3 uppercase'>
+        <span className='pt-1 text-[11px] font-semibold tracking-[.08em] text-ink-3 uppercase'>
           {t`As they are`}
         </span>
         {looseItems.map(itemRow)}
@@ -616,6 +639,15 @@ const UploadDialog = ({
                 <span className='flex flex-wrap items-center gap-2 text-[13.5px]'>
                   <span>⌂</span>
                   <b>{p.name}</b>
+                  {ticked.length > 0 && (
+                    <Mini
+                      onClick={() => {
+                        place(ticked, p.name)
+                        setTicked([])
+                      }}>
+                      {t`Put here (${ticked.length})`}
+                    </Mini>
+                  )}
                   {here.some((item) => item.holds.includes('film')) && (
                     <span className='text-[11.5px] font-semibold text-accent'>
                       🔗 {t`share link`}

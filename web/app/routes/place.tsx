@@ -5,15 +5,17 @@ import {
   lastSegment,
   offGap,
   outputKeyOf,
+  passengerName,
   passengerOf,
-  montageUploadKey,
-  waitingForProxy
+  waitingForProxy,
+  idsOf,
+  lostOf
 } from '@skydock/scripts'
 import type { FileStatus } from '@skydock/scripts'
 import { plural, t } from '@lingui/core/macro'
 import { useEffect, useState } from 'react'
 import { Outlet, useNavigate, useParams } from 'react-router'
-import { Go, Mini } from '../components/buttons'
+import { Danger, Go, Mini } from '../components/buttons'
 import { BinFiles } from '../components/bin-files'
 import { CameraFiles } from '../components/camera-files'
 import { ComparisonDialog } from '../components/comparison-dialog'
@@ -21,6 +23,7 @@ import { FileBrowser } from '../components/file-browser'
 import { lanesOf, lockReason, shownStatus } from '../components/file-list'
 import { FolderOwed } from '../components/folder-owed'
 import { Box, FilePanel, FolderPanel, JumpPanel, ManyPanel, Shell } from '../components/inspector'
+import { MoveTo } from '../components/move-to'
 import { PlacePane } from '../components/place-pane'
 import { StorageFolder } from '../components/storage-folder'
 import { StorageList } from '../components/storage-list'
@@ -28,7 +31,6 @@ import {
   FilmStrip,
   GoneFromStorage,
   MontageCardActions,
-  UploadStrip,
   UploadedCards
 } from '../components/montage-card'
 import { StepTrail } from '../components/montage-steps'
@@ -54,7 +56,6 @@ import { boardViewSchema } from '../helpers/view'
 import { useBoard } from '../hooks/useBoardModel'
 import type { BoardModel } from '../hooks/useBoardModel'
 import { useSelection } from '../hooks/useSelection'
-import { idsOf, lostOf } from '@skydock/scripts'
 
 /* A folder of the board, by its address: /dropzone/yverdon, /montage/Lily%20DONZALLAZ, /storage.
    The board around it is the layout — the rail, the dialogs, what the whole board shares — and this
@@ -115,7 +116,7 @@ const useFolder = (model: BoardModel, place: Place) => {
 const Place = () => {
   const model = useBoard()
   const { board, frozen, statusContext, statusOf, setDialog } = model
-  const { groups, busy, send, setNote } = board
+  const { groups, busy, send, setNote, setProblem } = board
   const address = useParams()
   const place = placeFromParams(address)
   const goTo = useNavigate()
@@ -271,12 +272,11 @@ const Place = () => {
             onPlace={model.pickPlace}
           />
         }
-        strip={
-          place.kind === 'dz' && board.uploading === `dest:${place.name}` && model.progress ? (
-            <UploadStrip progress={model.progress} />
-          ) : undefined
+        note={
+          board.note
+            ? { text: board.note, problem: board.noteIsProblem, onClose: () => setNote(null) }
+            : null
         }
-        note={board.note}
         incoming={paneTarget}
         onImport={(list, target, where) => void model.importDropped(list, target, where)}>
         {place.kind === 'camera' ? (
@@ -365,7 +365,7 @@ const Place = () => {
             where={storageWhere}
             stamp={board.remoteAfterUpload?.at}
             hereToo={hereToo}
-            onProblem={setNote}
+            onProblem={setProblem}
             onBringBack={(file) => {
               /* the board knows it by where it was sent, which is what its upload recorded */
               const mine = [...groups.flatMap((g) => g.files), ...board.loose].find(
@@ -373,7 +373,7 @@ const Place = () => {
               )
               if (!mine?.id) {
                 const name = file.name
-                setNote(t`${name} was not sent from this machine, so it cannot come back.`)
+                setProblem(t`${name} was not sent from this machine, so it cannot come back.`)
                 return
               }
               send(`back:${mine.id}`, { intent: 'bring-back', fileIds: [mine.id] })
@@ -514,20 +514,13 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
         blocked={model.gateFor(group.files)}
         proxiesWaiting={waitingForProxy(group.files, board.proxies).length}
         named={hasCompletePassenger(group.passenger)}
-        onProcess={() => board.send(group.id, { intent: 'process', groupId: group.id })}
+        onProcess={() => model.takeStep(group, 'Processed')}
         onCancelProcess={model.cancelProcess}
-        onMontage={() => void model.askMontage(group)}
-        onOpenMontage={() =>
-          board.send(`open:${group.id}`, { intent: 'open-montage', groupId: group.id })
-        }
-        onUpload={() => model.askUpload(group)}
+        onMontage={() => model.takeStep(group, 'Edited')}
+        onOpenMontage={() => model.takeStep(group, 'Rendered')}
+        onUpload={() => model.takeStep(group, 'Uploaded')}
         onFree={() => model.setDialog({ kind: 'free', groupId: group.id })}
       />
-      {board.uploading === montageUploadKey(group.id) && model.progress && (
-        <span className='mt-0.5 flex-[1_1_100%]'>
-          <UploadStrip progress={model.progress} />
-        </span>
-      )}
     </>
   )
 }
@@ -559,9 +552,9 @@ const PlaceTools = ({ place }: { place: Place }) => {
     return (
       <Mini
         disabled={busy}
-        title={t`Take this place off the board — what is filed here goes back to Fresh files, and nothing is deleted`}
+        title={t`Take this destination off the board — what is filed here goes back to Fresh files, and nothing is deleted`}
         onClick={() => setDialog({ kind: 'remove-place', place: place.name })}>
-        {board.busy === `remove:dz:${place.name}` ? t`Removing…` : t`Remove place…`}
+        {board.busy === `remove:dz:${place.name}` ? t`Removing…` : t`Remove destination…`}
       </Mini>
     )
   if (place.kind !== 'pax') return null
@@ -591,16 +584,17 @@ const PlaceTools = ({ place }: { place: Place }) => {
         <>
           <Mini
             disabled={busy}
-            title={t`Back to before processing — keeps the name, the crops, the frames and the times`}
+            title={t`Back to before processing — keeps the name, the trims, the frames and the times`}
             onClick={() => setDialog({ kind: 'take-back', mode: 'reset', who: place.name })}>
             {t`Reset…`}
           </Mini>
-          <Mini
+          <Danger
+            size='mini'
             disabled={busy}
-            title={t`Undo the montage, at any step — its files go back to Fresh files, loose, without their name or crops`}
+            title={t`Undo the montage, at any step — its files go back to Fresh files, loose, without their name or trims`}
             onClick={() => setDialog({ kind: 'take-back', mode: 'delete', who: place.name })}>
-            {t`Delete…`}
-          </Mini>
+            {t`Delete montage…`}
+          </Danger>
         </>
       )}
     </span>
@@ -627,7 +621,7 @@ const Inspector = ({
   onMakingJump: (making: { file: string; from?: string }) => void
 }) => {
   const model = useBoard()
-  const { board, frozen, statusContext, statusOf, setDialog } = model
+  const { board, frozen, statusContext, statusOf } = model
   const everyFile = [...board.groups.flatMap((g) => g.files), ...board.loose]
   const picked = selection.pickedFiles.flatMap((id) => {
     const found = everyFile.find((f) => f.id === id)
@@ -638,6 +632,15 @@ const Inspector = ({
     ? everyFile.find((f) => f.id === selection.previewed)
     : undefined
   const one = previewed ?? (picked.length === 1 ? picked[0] : undefined)
+  /* the same filing a drag does, from a menu */
+  const moveMenu = (what: { files: string[] } | { jumps: string[] }) => (
+    <MoveTo
+      here={place}
+      destinations={board.places.map((d) => d.name)}
+      montages={model.passengers.map(passengerName)}
+      onMove={(to) => model.drag.moveTo(to, what)}
+    />
+  )
   if (one) {
     const group = model.groupOfFile(one)
     const context = statusContext(one)
@@ -665,6 +668,7 @@ const Inspector = ({
                 })
         }
         montage={one.freed ? undefined : model.montageOffer([one], place)}
+        move={one.freed || !one.id ? undefined : moveMenu({ files: [one.id] })}
       />
     )
   }
@@ -687,6 +691,7 @@ const Inspector = ({
             : undefined
         }
         montage={picked.some((f) => f.freed) ? undefined : model.montageOffer(picked, place)}
+        move={picked.some((f) => f.freed) ? undefined : moveMenu({ files: ids })}
         onClear={selection.clear}
       />
     )
@@ -728,16 +733,21 @@ const Inspector = ({
             ? undefined
             : (name) => model.renameJump(jump.id, name)
         }
-        /* A named montage is deleted at whatever step it has reached, through the dialog that says
-           what goes with it; any other jump goes the plain way, which an edit or an upload closes. */
+        /* A named montage is deleted from its page's own Delete…, once, for all of it; any other
+           jump goes the plain way, which an edit or an upload closes. */
         onDelete={
-          jump.freed
+          jump.freed ||
+          (isMontage(jump) && hasCompletePassenger(jump.passenger)) ||
+          frozen.has(jump.id) ||
+          jump.uploaded
             ? undefined
-            : isMontage(jump) && hasCompletePassenger(jump.passenger)
-              ? () => setDialog({ kind: 'take-back', mode: 'delete', who: passengerOf(jump) })
-              : frozen.has(jump.id) || jump.uploaded
-                ? undefined
-                : () => model.deleteJump(jump)
+            : () => model.deleteJump(jump)
+        }
+        move={jump.freed || frozen.has(jump.id) ? undefined : moveMenu({ jumps: [jump.id] })}
+        onTrimToJump={
+          jump.freed || frozen.has(jump.id) || !jump.files.some((f) => f.moments)
+            ? undefined
+            : () => model.trimToJump(jump)
         }
       />
     )
@@ -749,25 +759,17 @@ const Inspector = ({
       sub={summary}
       files={folder.files}
       statusOf={statusOf}>
-      {place.kind === 'dz' && (
-        <Box heading={t`On the storage`}>
-          <p className='m-0 font-mono text-[12px] break-all'>
-            {model.folderFor(place.name) ?? t`no folder yet`}
-          </p>
-          {dz?.shareUrl && (
-            <a
-              href={dz.shareUrl}
-              target='_blank'
-              rel='noreferrer'
-              className='truncate font-mono text-[11.5px] text-accent underline'>
-              {dz.shareUrl}
-            </a>
-          )}
-          <span>
-            <Mini onClick={() => setDialog({ kind: 'folder', destination: place.name })}>
-              {model.folderFor(place.name) ? t`Change folder` : t`Choose a folder`}
-            </Mini>
-          </span>
+      {/* where it goes is said once, above its files, where it can be changed; here is only the
+          link handed out of it */}
+      {dz?.shareUrl && (
+        <Box heading={t`Shared link`}>
+          <a
+            href={dz.shareUrl}
+            target='_blank'
+            rel='noreferrer'
+            className='truncate font-mono text-[11.5px] text-accent underline'>
+            {dz.shareUrl}
+          </a>
         </Box>
       )}
       {folder.family === 'montages' &&
@@ -779,6 +781,8 @@ const Inspector = ({
               group={model.asOnStorage(g)}
               facts={board.montageFacts[g.id]}
               emailed={Boolean(model.emailedOn(g))}
+              onStep={g.freed ? undefined : (step) => model.takeStep(g, step)}
+              busy={board.busy !== null}
             />
           </Box>
         ))}

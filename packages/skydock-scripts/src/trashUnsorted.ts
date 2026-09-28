@@ -14,6 +14,14 @@ import { getTrashDir } from './utils'
    away. The file leaves the originals folder, so a scan does not find it again, and nothing is
    erased: the bin is never emptied by SkyDock, and a file can be brought back out of it. */
 
+/* files taken off the board, and a jump left with none goes with them */
+const dropFromBoard = (manifest: Manifest, ids: Set<string>) => {
+  manifest.files = manifest.files.filter((f) => !f.id || !ids.has(f.id))
+  manifest.groups = manifest.groups
+    .map((g) => ({ ...g, files: g.files.filter((f) => !f.id || !ids.has(f.id)) }))
+    .filter((g) => g.files.length > 0)
+}
+
 const trashUnsorted = async (
   manifest: Manifest,
   ids: Set<string>,
@@ -66,10 +74,7 @@ const trashUnsorted = async (
       if (made) fs.rmSync(made, { force: true })
   }
 
-  manifest.files = manifest.files.filter((f) => !f.id || !ids.has(f.id))
-  manifest.groups = manifest.groups
-    .map((g) => ({ ...g, files: g.files.filter((f) => !f.id || !ids.has(f.id)) }))
-    .filter((g) => g.files.length > 0)
+  dropFromBoard(manifest, ids)
 
   return {
     count: going.length,
@@ -78,4 +83,4 @@ const trashUnsorted = async (
   }
 }
 
-export { trashUnsorted }
+export { dropFromBoard, trashUnsorted }

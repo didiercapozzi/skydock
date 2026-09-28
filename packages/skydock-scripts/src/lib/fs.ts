@@ -52,24 +52,6 @@ const sameBytes = (left: string, right: string) => {
   }
 }
 
-const fileMatchesExisting = (src: string, destDir: string) => {
-  const existing = path.join(destDir, path.basename(src))
-  return fs.existsSync(existing) && sameBytes(src, existing)
-}
-
-const countFiles = (dir: string) => {
-  let count = 0
-  try {
-    const entries = fs.readdirSync(dir, { withFileTypes: true })
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name)
-      if (entry.isFile()) count++
-      else if (entry.isDirectory()) count += countFiles(fullPath)
-    }
-  } catch {}
-  return count
-}
-
 type WalkItem = {
   full: string
   dir: boolean
@@ -123,10 +105,24 @@ const hashFile = (filePath: string, algorithm = 'md5') =>
     stream.on('end', () => resolve(hash.digest('hex')))
   })
 
+/* Written whole or not at all: under a name of its own — two writers never share one — flushed to the
+   disk, then renamed over the old file, so a crash or a power cut leaves the old file or the new one,
+   never half of either. */
 const writeJsonAtomic = (target: string, value: unknown) => {
-  const tmp = `${target}.tmp`
-  fs.writeFileSync(tmp, JSON.stringify(value, null, 2))
-  fs.renameSync(tmp, target)
+  const tmp = `${target}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`
+  try {
+    const fd = fs.openSync(tmp, 'w')
+    try {
+      fs.writeFileSync(fd, JSON.stringify(value, null, 2))
+      fs.fsyncSync(fd)
+    } finally {
+      fs.closeSync(fd)
+    }
+    fs.renameSync(tmp, target)
+  } catch (e) {
+    fs.rmSync(tmp, { force: true })
+    throw e
+  }
 }
 
 /* A file moved to another folder, which may be on another drive — a camera's card, the bin on the
@@ -155,9 +151,7 @@ const moveFile = async (from: string, to: string) => {
 }
 
 export {
-  countFiles,
   DEFAULT_MAX_FIND_DEPTH,
-  fileMatchesExisting,
   findMediaFiles,
   hashFile,
   moveFile,

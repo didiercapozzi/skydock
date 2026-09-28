@@ -4,6 +4,9 @@ import { msg, t } from '@lingui/core/macro'
 import { keepLanguage, spokenNow } from '../helpers/language'
 import type { Language } from '../helpers/language'
 import { Seg } from './buttons'
+import { FindAnything } from './find-anything'
+import type { Found } from './find-anything'
+import { MenuItem, SettingsMenu, SettingsRow } from './settings-menu'
 import { setFileView, useFileView } from '../hooks/useFileView'
 import { useZoom } from '../hooks/useZoom'
 import { setTileSize, TILE_SIZE, useTileSize } from '../hooks/useTileSize'
@@ -56,6 +59,11 @@ const BoardHeader = ({
   onScan,
   onTemplates,
   onWorkFolder,
+  onHistory,
+  onShortcuts,
+  onOverview,
+  onBookings,
+  find,
   proxies,
   disk,
   nas
@@ -66,6 +74,16 @@ const BoardHeader = ({
   onTemplates: () => void
   /* the folder SkyDock works in, and another one to work in */
   onWorkFolder: () => void
+  /* the board's earlier states, to go back to one */
+  onHistory: () => void
+  /* every key the board knows */
+  onShortcuts: () => void
+  /* every montage in one table, with what is done to many at once */
+  onOverview: () => void
+  /* the day's bookings, brought in from the booking system */
+  onBookings: () => void
+  /* anything on the board, by a piece of its name */
+  find: (query: string) => Found[]
   proxies: { ready: number; waiting: number; total: number }
   /* the room left on the output folder's disk; said only once it runs low */
   disk?: { free: number; level: 'ok' | 'low' | 'full' } | null
@@ -111,27 +129,21 @@ const BoardHeader = ({
         </span>
       )}
       <span className='ml-auto flex flex-wrap items-center gap-2'>
+        <FindAnything find={find} />
+        <button
+          type='button'
+          onClick={onOverview}
+          title={t`Every montage in one table: where each has got to, its link, whether it was emailed`}
+          className='rounded-md border border-line bg-pane px-[11px] py-[5px] text-[12.5px] font-medium hover:border-ink-3'>
+          {t`Overview`}
+        </button>
         <button
           type='button'
           disabled={scanning}
           onClick={onScan}
-          title={t`Copy what is new on every camera plugged in — what is here already is passed over — and look through the output folder for files the board does not know yet`}
+          title={t`Copy what is new on every camera plugged in — what is here already is passed over — and look through the work folder for files the board does not know yet`}
           className='rounded-md border border-line bg-pane px-[11px] py-[5px] text-[12.5px] font-medium hover:border-ink-3 disabled:opacity-40'>
           {scanning ? t`Scanning…` : t`Rescan cameras`}
-        </button>
-        <button
-          type='button'
-          onClick={onTemplates}
-          title={t`The editing templates a montage is made from — look them over, or bring one in`}
-          className='rounded-md border border-line bg-pane px-[11px] py-[5px] text-[12.5px] font-medium hover:border-ink-3'>
-          {t`Templates…`}
-        </button>
-        <button
-          type='button'
-          onClick={onWorkFolder}
-          title={t`The folder SkyDock keeps its work in — the originals, what is handed over, the board — and another one to work in`}
-          className='rounded-md border border-line bg-pane px-[11px] py-[5px] text-[12.5px] font-medium hover:border-ink-3'>
-          {t`Work folder…`}
         </button>
         {/* Only while some clip is still without one. They are built behind whatever asked for
             them and nothing watches them arrive, so this is how far along the last look was. */}
@@ -139,7 +151,7 @@ const BoardHeader = ({
           <span
             title={t`${ready} of ${total} clips have their small copy. They are built in the background; the count catches up whenever the board is redrawn.`}
             className='inline-flex items-center gap-1.5 rounded-full border border-line bg-pane px-2.5 py-[3px] font-mono text-[12px] text-ink-2 tabular-nums'>
-            {t`proxies ${ready}/${total}`}
+            {t`Proxies ready ${ready}/${total}`}
           </span>
         )}
         {/* Who the storage was connected as, and where: the same question a NAS asks at its own
@@ -208,18 +220,6 @@ const BoardHeader = ({
             <span aria-hidden='true'>◻</span>
           </label>
         )}
-        <Seg
-          label={t`Theme`}
-          value={theme}
-          options={said(THEMES)}
-          onPick={setTheme}
-        />
-        <Seg
-          label={t`Language`}
-          value={language}
-          options={LANGUAGE_NAMES}
-          onPick={speakIn}
-        />
         {/* how big the whole board is drawn, in SkyDock's own window — ⌘/ctrl with + − 0 too */}
         {zoom && (
           <span
@@ -253,6 +253,77 @@ const BoardHeader = ({
             </button>
           </span>
         )}
+        <SettingsMenu>
+          {(close) => (
+            <>
+              <SettingsRow label={t`Theme`}>
+                <Seg
+                  label={t`Theme`}
+                  value={theme}
+                  options={said(THEMES)}
+                  onPick={setTheme}
+                />
+              </SettingsRow>
+              <SettingsRow label={t`Language`}>
+                <Seg
+                  label={t`Language`}
+                  value={language}
+                  options={LANGUAGE_NAMES}
+                  onPick={speakIn}
+                />
+              </SettingsRow>
+              <div className='flex flex-col border-t border-line pt-2'>
+                <MenuItem
+                  title={t`The editing templates a montage is made from — look them over, or bring one in`}
+                  onClick={() => {
+                    close()
+                    onTemplates()
+                  }}>
+                  {t`Templates…`}
+                </MenuItem>
+                <MenuItem
+                  title={t`The day’s bookings from the booking system — montages are named from it, and emails addressed`}
+                  onClick={() => {
+                    close()
+                    onBookings()
+                  }}>
+                  {t`Booking list…`}
+                </MenuItem>
+                <MenuItem
+                  title={t`The folder SkyDock keeps its work in — the originals, what is handed over, the board — and another one to work in`}
+                  onClick={() => {
+                    close()
+                    onWorkFolder()
+                  }}>
+                  {t`Work folder…`}
+                </MenuItem>
+                <MenuItem
+                  title={t`The board as it was after each of the last changes — go back to one`}
+                  onClick={() => {
+                    close()
+                    onHistory()
+                  }}>
+                  {t`History…`}
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    close()
+                    onShortcuts()
+                  }}>
+                  {t`Keyboard shortcuts…`}
+                </MenuItem>
+              </div>
+            </>
+          )}
+        </SettingsMenu>
+        <button
+          type='button'
+          aria-label={t`Keyboard shortcuts`}
+          title={t`Keyboard shortcuts (?)`}
+          onClick={onShortcuts}
+          className='flex h-7 w-7 items-center justify-center rounded-full border border-line bg-pane text-[12.5px] font-semibold text-ink-2 hover:border-ink-3 hover:text-ink'>
+          ?
+        </button>
       </span>
     </header>
   )

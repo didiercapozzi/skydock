@@ -91,7 +91,7 @@ const Node = ({
               {label}
             </span>
             {todo && (
-              <span className='flex-none rounded-full bg-local-soft px-1.5 text-[10.5px] font-semibold whitespace-nowrap text-local max-[780px]:hidden'>
+              <span className='flex-none rounded-full bg-local-soft px-1.5 text-[11px] font-semibold whitespace-nowrap text-local max-[780px]:hidden'>
                 {todo}
               </span>
             )}
@@ -127,7 +127,7 @@ const Node = ({
 }
 
 const Heading = ({ children }: { children: string }) => (
-  <h2 className='mx-2 mt-[15px] mb-1.5 text-[10px] font-semibold tracking-[0.1em] text-ink-3 uppercase first:mt-[3px] max-[780px]:my-0 max-[780px]:mr-0.5 max-[780px]:ml-1.5 max-[780px]:flex-none max-[780px]:first:ml-0'>
+  <h2 className='mx-2 mt-[15px] mb-1.5 text-[11px] font-semibold tracking-[0.1em] text-ink-3 uppercase first:mt-[3px] max-[780px]:my-0 max-[780px]:mr-0.5 max-[780px]:ml-1.5 max-[780px]:flex-none max-[780px]:first:ml-0'>
     {children}
   </h2>
 )
@@ -147,12 +147,12 @@ const MontagesHeading = ({
   <h2
     {...dropTarget}
     title={t`Drop a jump or files here to make a montage — its name is asked for first`}
-    className={`mx-0 mt-[15px] mb-1.5 flex items-center gap-2 rounded-md border px-2 py-0.5 text-[10px] font-semibold tracking-[0.1em] text-ink-3 uppercase max-[780px]:my-0 max-[780px]:flex-none ${
+    className={`mx-0 mt-[15px] mb-1.5 flex items-center gap-2 rounded-md border px-2 py-0.5 text-[11px] font-semibold tracking-[0.1em] text-ink-3 uppercase max-[780px]:my-0 max-[780px]:flex-none ${
       over ? 'border-dashed border-pick bg-pick-soft' : 'border-transparent'
     }`}>
     <span className='flex-1'>{t`Montages`}</span>
     {todo && (
-      <span className='flex-none rounded-full bg-local-soft px-1.5 text-[10.5px] font-semibold tracking-normal whitespace-nowrap text-local normal-case max-[780px]:hidden'>
+      <span className='flex-none rounded-full bg-local-soft px-1.5 text-[11px] font-semibold tracking-normal whitespace-nowrap text-local normal-case max-[780px]:hidden'>
         {todo}
       </span>
     )}
@@ -192,7 +192,7 @@ const Entry = ({
         </span>
         <span className={`min-w-0 flex-1 truncate ${current ? 'font-semibold' : ''}`}>{label}</span>
         {badge && (
-          <span className='flex-none rounded-full bg-local-soft px-1.5 text-[10.5px] font-semibold whitespace-nowrap text-local max-[780px]:hidden'>
+          <span className='flex-none rounded-full bg-local-soft px-1.5 text-[11px] font-semibold whitespace-nowrap text-local max-[780px]:hidden'>
             {badge}
           </span>
         )}

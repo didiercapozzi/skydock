@@ -11,6 +11,10 @@ msgstr ""
 msgid " — copied, {keeps} keeps its own"
 msgstr " — kopiert, {keeps} behält die eigenen"
 
+#: app/components/overview-dialog.tsx
+msgid " · {uploadedCount} uploaded · {emailedCount} emailed · {paidCount} paid"
+msgstr " · {uploadedCount} hochgeladen · {emailedCount} per E-Mail benachrichtigt · {paidCount} bezahlt"
+
 #: app/components/email-dialog.tsx
 msgid " · empty here"
 msgstr " · hier leer"
@@ -53,6 +57,10 @@ msgstr ", aber der Vorlage {missing, plural, one {fehlt # Datei} other {fehlen #
 msgid ", kept as they sat on the card, and stay there until it is emptied by hand."
 msgstr ", so abgelegt, wie sie auf der Karte lagen, und bleiben dort, bis er von Hand geleert wird."
 
+#: app/components/shortcuts-dialog.tsx
+msgid "?"
+msgstr "?"
+
 #: app/components/preview-drawer.tsx
 msgid "‹ Prev"
 msgstr "‹ Zurück"
@@ -66,6 +74,11 @@ msgstr "{0, plural, one {— lade es erneut hoch, um es zurückzubringen.} other
 #: app/helpers/notes.ts
 msgid "{0, plural, one {{names} is on the board already, and stayed in the bin.} other {{names} are on the board already, and stayed in the bin.}}"
 msgstr "{0, plural, one {{names} ist schon in der Übersicht und bleibt im Papierkorb.} other {{names} sind schon in der Übersicht und bleiben im Papierkorb.}}"
+
+#. placeholder {0}: list.length
+#: app/components/booking-list-dialog.tsx
+msgid "{0, plural, one {# booking on the list} other {# bookings on the list}}"
+msgstr "{0, plural, one {# Buchung auf der Liste} other {# Buchungen auf der Liste}}"
 
 #. placeholder {0}: parts.videos.length
 #: app/components/upload-dialog.tsx
@@ -82,15 +95,24 @@ msgstr "{0, plural, one {# Datei, die sie verwendet, ist nicht hier: {missing}. 
 msgid "{0, plural, one {# file selected} other {# files selected}}"
 msgstr "{0, plural, one {# Datei ausgewählt} other {# Dateien ausgewählt}}"
 
+#. placeholder {0}: step.files
 #. placeholder {0}: template.assets
+#: app/components/history-dialog.tsx
 #: app/components/templates-dialog.tsx
 msgid "{0, plural, one {# file} other {# files}}"
 msgstr "{0, plural, one {# Datei} other {# Dateien}}"
 
 #. placeholder {0}: jumps.length
+#. placeholder {0}: step.jumps
 #: app/components/free-place-dialog.tsx
+#: app/components/history-dialog.tsx
 msgid "{0, plural, one {# jump} other {# jumps}}"
 msgstr "{0, plural, one {# Sprung} other {# Sprünge}}"
+
+#. placeholder {0}: ids.length
+#: app/hooks/useBoardModel.ts
+msgid "{0, plural, one {# montage} other {# montages}}"
+msgstr "{0, plural, one {# Montage} other {# Montagen}}"
 
 #. placeholder {0}: parts.photos.length
 #: app/components/upload-dialog.tsx
@@ -112,6 +134,11 @@ msgstr "{0, plural, one {die # hochgeladene Kopie wird hier und vom Speicher geh
 msgid "{0, plural, one {in # zip} other {in # zips}}"
 msgstr "{0, plural, one {in # ZIP} other {in # ZIPs}}"
 
+#. placeholder {0}: toProcess.length
+#: app/components/overview-dialog.tsx
+msgid "{0, plural, one {Process the # named montage} other {Process the # named montages}}"
+msgstr "{0, plural, one {Die # benannte Montage aufbereiten} other {Die # benannten Montagen aufbereiten}}"
+
 #. placeholder {0}: count ?? 0
 #: app/components/name-montage-dialog.tsx
 msgid "{0, plural, one {This file becomes a montage once it has a name.} other {These # files become a montage once it has a name.}}"
@@ -121,6 +148,16 @@ msgstr "{0, plural, one {Diese Datei wird zur Montage, sobald sie einen Namen ha
 #: app/components/montage-card.tsx
 msgid "{0, plural, one {this is no longer on the storage:} other {these are no longer on the storage:}}"
 msgstr "{0, plural, one {das ist nicht mehr auf dem Speicher:} other {diese sind nicht mehr auf dem Speicher:}}"
+
+#. placeholder {0}: toUpload.length
+#: app/components/overview-dialog.tsx
+msgid "{0, plural, one {Upload the # rendered film} other {Upload the # rendered films}}"
+msgstr "{0, plural, one {Den # gerenderten Film hochladen} other {Die # gerenderten Filme hochladen}}"
+
+#. placeholder {0}: r.who
+#: app/components/overview-dialog.tsx
+msgid "{0} has paid"
+msgstr "{0} hat bezahlt"
 
 #: app/helpers/notes.ts
 msgid "{addedCount, plural, one {# file} other {# files}} have been added to {where}"
@@ -139,11 +176,11 @@ msgid "{camera} was unplugged during the copy — {tally}; plug it in again for 
 msgstr "{camera} wurde während des Kopierens getrennt — {tally}; schließ sie für den Rest erneut an"
 
 #: app/helpers/notes.ts
-msgid "{copied, plural, one {# file} other {# files}} copied back off the camera — ready to prepare again."
+msgid "{copied, plural, one {# file} other {# files}} copied back off the camera — ready to process again."
 msgstr "{copied, plural, one {# Datei} other {# Dateien}} erneut von der Kamera kopiert — bereit zum erneuten Aufbereiten."
 
 #: app/helpers/notes.ts
-msgid "{copied, plural, one {# file} other {# files}} copied back off the camera, {skipped} already here — ready to prepare again."
+msgid "{copied, plural, one {# file} other {# files}} copied back off the camera, {skipped} already here — ready to process again."
 msgstr "{copied, plural, one {# Datei} other {# Dateien}} erneut von der Kamera kopiert, {skipped} schon hier — bereit zum erneuten Aufbereiten."
 
 #: app/components/camera-panel.tsx
@@ -158,9 +195,17 @@ msgstr "{copied, plural, one {# neue Datei} other {# neue Dateien}} kopiert"
 msgid "{copiedHere} copied here, not uploaded yet"
 msgstr "{copiedHere} hierher kopiert, noch nicht hochgeladen"
 
+#: app/components/delete-jump-dialog.tsx
+msgid "{copies, plural, one {# processed copy is} other {# processed copies are}} deleted, and made again when it is processed next"
+msgstr "{copies, plural, one {# aufbereitete Kopie wird} other {# aufbereitete Kopien werden}} gelöscht und beim nächsten Aufbereiten neu erstellt"
+
 #: app/components/take-back-dialog.tsx
 msgid "{copies, plural, one {the # processed copy} other {the # processed copies}}"
 msgstr "{copies, plural, one {die # aufbereitete Kopie} other {die # aufbereiteten Kopien}}"
+
+#: app/components/file-browser.tsx
+msgid "{count, plural, one {# card} other {# cards}}"
+msgstr "{count, plural, one {# Karte} other {# Karten}}"
 
 #: app/components/bin-files.tsx
 #: app/components/camera-files.tsx
@@ -250,8 +295,8 @@ msgid "{fileCount, plural, one {# file} other {# files}}, loose, to be sorted ag
 msgstr "{fileCount, plural, one {# Datei} other {# Dateien}}, lose, neu zu sortieren"
 
 #: app/helpers/notes.ts
-msgid "{filename} is back — the copy that was delivered, already cut, so its trim is cleared. Prepare it again from here."
-msgstr "{filename} ist zurück — die ausgelieferte Kopie, schon gekürzt, daher ist ihre Kürzung entfernt. Bereite sie von hier aus erneut auf."
+msgid "{filename} is back — the copy that was delivered, already cut, so its trim is cleared. Process it again from here."
+msgstr "{filename} ist zurück — die ausgelieferte Kopie, schon geschnitten, daher ist ihre Kürzung aufgehoben. Bereite sie von hier aus erneut auf."
 
 #: app/helpers/notes.ts
 msgid "{filename} is back on this machine, as it was shot."
@@ -347,6 +392,10 @@ msgstr "{name}  ·  aus {filename}"
 msgid "{name} was not sent from this machine, so it cannot come back."
 msgstr "{name} wurde nicht von diesem Rechner hochgeladen und kann daher nicht zurückkommen."
 
+#: app/components/move-to.tsx
+msgid "{name}’s montage"
+msgstr "Montage von {name}"
+
 #: app/components/camera-files.tsx
 msgid "{notCopied} not copied yet"
 msgstr "{notCopied} noch nicht kopiert"
@@ -378,8 +427,8 @@ msgid "{photos, plural, one {# photo} other {# photos}}"
 msgstr "{photos, plural, one {# Foto} other {# Fotos}}"
 
 #: app/components/remove-place-dialog.tsx
-msgid "{place} stops being a place files can be filed under"
-msgstr "{place} ist kein Ort mehr, unter dem Dateien eingeordnet werden können"
+msgid "{place} stops being a destination files can be filed under"
+msgstr "{place} ist kein Ziel mehr, unter dem Dateien abgelegt werden können"
 
 #: app/helpers/notes.ts
 msgid "{place}: {files, plural, one {# file} other {# files}} freed from this machine — {size} given back. They are on the storage only now, listed below."
@@ -410,8 +459,8 @@ msgid "{ready} of {total} clips have their small copy. They are built in the bac
 msgstr "{ready} von {total} Clips haben ihre kleine Kopie. Sie entstehen im Hintergrund; die Zahl holt auf, sobald die Übersicht neu gezeichnet wird."
 
 #: app/components/free-place-dialog.tsx
-msgid "{reshaped, plural, one {# file} other {# files}} went up trimmed, cropped or turned. Only the part that went up is kept, on the storage: what was cut off is deleted with the original, for good."
-msgstr "{reshaped, plural, one {# Datei wurde} other {# Dateien wurden}} gekürzt, zugeschnitten oder gedreht hochgeladen. Nur der hochgeladene Teil bleibt erhalten, auf dem Speicher: was abgeschnitten wurde, wird mit dem Original endgültig gelöscht."
+msgid "{reshaped, plural, one {# file} other {# files}} went up trimmed, framed or turned. Only the part that went up is kept, on the storage: what was cut off is deleted with the original, for good."
+msgstr "{reshaped, plural, one {# Datei wurde} other {# Dateien wurden}} gekürzt, zugeschnitten oder gedreht hochgeladen. Nur der hochgeladene Teil bleibt erhalten, auf dem Speicher: Was abgeschnitten wurde, wird mit dem Original endgültig gelöscht."
 
 #. placeholder {0}: used.length
 #: app/components/upload-dialog.tsx
@@ -427,12 +476,8 @@ msgid "{skipped} already here"
 msgstr "{skipped} schon hier"
 
 #: app/helpers/notes.ts
-msgid "{skipped} already on the NAS"
-msgstr "{skipped} schon auf dem NAS"
-
-#: app/components/montage-card.tsx
-msgid "{skipped} already there"
-msgstr "{skipped} schon dort"
+msgid "{skipped} already on the storage"
+msgstr "{skipped} schon auf dem Speicher"
 
 #: app/components/disconnect-dialog.tsx
 msgid "{storage} is connected."
@@ -458,6 +503,10 @@ msgstr "{times}× hochskaliert, wirkt unscharf"
 msgid "{toEdit} to edit"
 msgstr "{toEdit} zu schneiden"
 
+#: app/components/overview-dialog.tsx
+msgid "{toEmail, plural, one {# montage still to email} other {# montages still to email}}"
+msgstr "{toEmail, plural, one {# Montage noch zu mailen} other {# Montagen noch zu mailen}}"
+
 #: app/components/folder-owed.tsx
 msgid "{toProcess} to process"
 msgstr "{toProcess} aufzubereiten"
@@ -466,9 +515,21 @@ msgstr "{toProcess} aufzubereiten"
 msgid "{toRender} to render"
 msgstr "{toRender} zu rendern"
 
+#: app/components/overview-dialog.tsx
+msgid "{total, plural, one {# montage} other {# montages}}"
+msgstr "{total, plural, one {# Montage} other {# Montagen}}"
+
 #: app/components/folder-owed.tsx
 msgid "{toUpload} to upload"
 msgstr "{toUpload} hochzuladen"
+
+#: app/hooks/useBoardModel.ts
+msgid "{trimmed, plural, one {# clip} other {# clips}} trimmed to the jump — {left, plural, one {# clip has} other {# clips have}} no exit found, and kept its trim."
+msgstr "{trimmed, plural, one {# Clip} other {# Clips}} auf den Sprung gekürzt — bei {left, plural, one {# Clip wurde} other {# Clips wurde}} kein Absprung gefunden, die Kürzung bleibt."
+
+#: app/hooks/useBoardModel.ts
+msgid "{trimmed, plural, one {# clip} other {# clips}} trimmed to the jump."
+msgstr "{trimmed, plural, one {# Clip} other {# Clips}} auf den Sprung gekürzt."
 
 #: app/components/folder-owed.tsx
 msgid "{unnamed} to name"
@@ -531,6 +592,10 @@ msgstr "{working} — warte, bis es fertig ist."
 msgid "← Back to the zips"
 msgstr "← Zurück zu den ZIPs"
 
+#: app/components/shortcuts-dialog.tsx
+msgid "↑ ↓"
+msgstr "↑ ↓"
+
 #. placeholder {0}: files.length - SHOWN
 #: app/components/upload-dialog.tsx
 msgid "+ {0} more"
@@ -543,6 +608,22 @@ msgstr "+ Ziel hinzufügen"
 #: app/components/nas-folder-browser.tsx
 msgid "+ New folder"
 msgstr "+ Neuer Ordner"
+
+#: app/components/shortcuts-dialog.tsx
+msgid "⌘/Ctrl + + − 0"
+msgstr "⌘/Strg + + − 0"
+
+#: app/components/shortcuts-dialog.tsx
+msgid "⌘/Ctrl + A"
+msgstr "⌘/Strg + A"
+
+#: app/components/shortcuts-dialog.tsx
+msgid "⌘/Ctrl + click a second jump"
+msgstr "⌘/Strg + Klick auf einen zweiten Sprung"
+
+#: app/components/shortcuts-dialog.tsx
+msgid "⌘/Ctrl + wheel over thumbnails"
+msgstr "⌘/Strg + Mausrad über den Miniaturen"
 
 #: app/components/preview-drawer.tsx
 msgid "▶ Open in the player"
@@ -589,10 +670,6 @@ msgstr "✓ Kopiert — füge es in die Nachricht ein"
 msgid "✓ Emailed · again…"
 msgstr "✓ Gemailt · erneut…"
 
-#: app/components/montage-card.tsx
-msgid "✓ uploaded"
-msgstr "✓ hochgeladen"
-
 #. placeholder {0}: hhmm(uploaded.at)
 #: app/components/upload-dialog.tsx
 msgid "✓ uploaded {0}"
@@ -630,6 +707,10 @@ msgstr "Eine Kopie kann nicht in den Papierkorb — ihr Original bleibt, wo es i
 msgid "a copy of the film"
 msgstr "eine Kopie des Films"
 
+#: app/components/booking-list-dialog.tsx
+msgid "A CSV file"
+msgstr "Eine CSV-Datei"
+
 #: app/components/inspector.tsx
 msgid "A frame from this montage, to tell who it is"
 msgstr "Ein Bild aus dieser Montage, um zu erkennen, wer es ist"
@@ -649,6 +730,10 @@ msgstr "eine Montage"
 #: app/components/montage-card.tsx
 msgid "A name: a person, an event"
 msgstr "Ein Name: eine Person, ein Ereignis"
+
+#: app/components/move-to.tsx
+msgid "A new montage…"
+msgstr "Eine neue Montage…"
 
 #: app/components/montage-card.tsx
 msgid "A new montage{copied}"
@@ -714,6 +799,14 @@ msgstr "schon dort"
 msgid "Already uploaded — a new name means processing and uploading again, and the old folder stays on the storage under the old name."
 msgstr "Schon hochgeladen — ein neuer Name bedeutet erneutes Aufbereiten und Hochladen, und der alte Ordner bleibt unter dem alten Namen auf dem Speicher."
 
+#: app/components/shortcuts-dialog.tsx
+msgid "Alt or Ctrl while dropping"
+msgstr "Alt oder Strg beim Ablegen"
+
+#: app/components/shortcuts-dialog.tsx
+msgid "An open clip"
+msgstr "Ein geöffneter Clip"
+
 #: app/routes/board.tsx
 msgid "An upload is running"
 msgstr "Ein Upload läuft"
@@ -752,13 +845,13 @@ msgstr "wie aufgenommen"
 msgid "As they are"
 msgstr "Wie sie sind"
 
-#: app/routes/board.tsx
-msgid "Ask the NAS what it holds now — a file deleted there stops reading as uploaded."
-msgstr "Den NAS fragen, was er jetzt enthält — eine dort gelöschte Datei gilt dann nicht mehr als hochgeladen."
-
 #: app/components/storage-folder.tsx
 msgid "Ask the storage again what this folder holds"
 msgstr "Den Speicher erneut fragen, was dieser Ordner enthält"
+
+#: app/routes/board.tsx
+msgid "Ask the storage what it holds now — a file deleted there stops reading as uploaded."
+msgstr "Den Speicher fragen, was er jetzt enthält — eine dort gelöschte Datei gilt nicht mehr als hochgeladen."
 
 #: app/components/storage-folder.tsx
 msgid "Asking the storage…"
@@ -786,8 +879,8 @@ msgid "Back to as shot"
 msgstr "Zurück wie aufgenommen"
 
 #: app/routes/place.tsx
-msgid "Back to before processing — keeps the name, the crops, the frames and the times"
-msgstr "Zurück vor das Aufbereiten — Name, Kürzungen, Bildausschnitte und Zeiten bleiben"
+msgid "Back to before processing — keeps the name, the trims, the frames and the times"
+msgstr "Zurück auf den Stand vor dem Aufbereiten — Name, Kürzungen, Bildausschnitte und Zeiten bleiben"
 
 #: app/components/take-back-dialog.tsx
 msgid "Back to Fresh files, loose"
@@ -813,6 +906,10 @@ msgstr "daneben schreibt — als Ganzes gewählt. Oder das eine Archiv, wenn es 
 msgid "Bigger"
 msgstr "Größer"
 
+#: app/components/shortcuts-dialog.tsx
+msgid "bigger or smaller thumbnails"
+msgstr "größere oder kleinere Miniaturen"
+
 #: app/components/places-tree.tsx
 #: app/helpers/places.ts
 msgid "Bin"
@@ -821,6 +918,22 @@ msgstr "Papierkorb"
 #: app/components/email-dialog.tsx
 msgid "Bold"
 msgstr "Fett"
+
+#: app/components/montage-card.tsx
+msgid "Booked {bookedAt}: {bookedName}"
+msgstr "Gebucht {bookedAt}: {bookedName}"
+
+#: app/components/montage-card.tsx
+msgid "Booked nearest to when this jump began"
+msgstr "Gebucht am nächsten zum Beginn dieses Sprungs"
+
+#: app/components/booking-list-dialog.tsx
+msgid "Booking list"
+msgstr "Buchungsliste"
+
+#: app/components/board-header.tsx
+msgid "Booking list…"
+msgstr "Buchungsliste…"
 
 #: app/components/bin-files.tsx
 msgid "Bring {picks, plural, one {# file} other {# files}} back to Fresh files"
@@ -833,6 +946,10 @@ msgstr "Vorlage hinzufügen"
 #: app/components/bin-files.tsx
 msgid "Bring back to Fresh files"
 msgstr "Zurück in Neue Dateien holen"
+
+#: app/components/booking-list-dialog.tsx
+msgid "Bring in the list"
+msgstr "Liste übernehmen"
 
 #: app/components/storage-folder.tsx
 msgid "Bring it back"
@@ -878,12 +995,18 @@ msgstr "Kamera {camera}: nichts Neues — alle {skipped} Dateien schon hier"
 msgid "cancel"
 msgstr "abbrechen"
 
+#: app/components/camera-files.tsx
 #: app/components/comparison-dialog.tsx
 #: app/components/connection-dialog.tsx
+#: app/components/delete-jump-dialog.tsx
+#: app/components/free-dialog.tsx
+#: app/components/free-place-dialog.tsx
 #: app/components/jump-name.tsx
 #: app/components/montage-card.tsx
 #: app/components/nas-folder-browser.tsx
 #: app/components/remove-files-dialog.tsx
+#: app/components/remove-place-dialog.tsx
+#: app/components/take-back-dialog.tsx
 #: app/components/upload-panel.tsx
 #: app/routes/place.tsx
 msgid "Cancel"
@@ -898,13 +1021,12 @@ msgid "Cancelling…"
 msgstr "Wird abgebrochen…"
 
 #: app/components/folder-owed.tsx
-#: app/routes/place.tsx
 msgid "Change folder"
 msgstr "Ordner ändern"
 
 #: app/components/email-dialog.tsx
-msgid "Change the email every passenger gets, with the words that change as variables"
-msgstr "Die E-Mail ändern, die jeder Passagier bekommt, mit den wechselnden Wörtern als Variablen"
+msgid "Change the email every montage sends, with the words that change as variables"
+msgstr "Die E-Mail ändern, die jede Montage verschickt, mit den wechselnden Wörtern als Variablen"
 
 #: app/components/file-status.tsx
 msgid "changed"
@@ -933,18 +1055,17 @@ msgstr "Wird geprüft und gelöscht…"
 msgid "Checking the storage…"
 msgstr "Speicher wird geprüft…"
 
-#: app/components/montage-card.tsx
-msgid "Checking what is already there —"
-msgstr "Prüfe, was schon da ist —"
-
 #: app/components/folder-owed.tsx
-#: app/routes/place.tsx
 msgid "Choose a folder"
 msgstr "Ordner wählen"
 
 #: app/components/upload-dialog.tsx
 msgid "Choose a folder on the storage for every destination used"
 msgstr "Wähle für jedes verwendete Ziel einen Ordner auf dem Speicher"
+
+#: app/components/nas-folder-browser.tsx
+msgid "Choose a storage folder"
+msgstr "Ordner auf dem Speicher wählen"
 
 #: app/components/templates-dialog.tsx
 msgid "Choose a template first"
@@ -962,10 +1083,6 @@ msgstr "Stattdessen Dateien wählen…"
 msgid "choose its folder on the storage"
 msgstr "Ordner auf dem Speicher wählen"
 
-#: app/components/nas-folder-browser.tsx
-msgid "Choose NAS Folder"
-msgstr "NAS-Ordner wählen"
-
 #: app/components/templates-dialog.tsx
 msgid "Choose the folder…"
 msgstr "Ordner wählen…"
@@ -981,6 +1098,10 @@ msgstr "Anderen Ordner wählen"
 #: app/components/inspector.tsx
 msgid "Clear (esc)"
 msgstr "Auswahl aufheben (esc)"
+
+#: app/components/booking-list-dialog.tsx
+msgid "Clear the list"
+msgstr "Liste leeren"
 
 #: app/components/nas-folder-browser.tsx
 msgid "Click to choose, double-click to open. Nothing is guessed: a dropzone with no folder is asked for one rather than filed somewhere sensible-looking."
@@ -998,17 +1119,20 @@ msgstr "Klicken, um die Dateien anzuzeigen"
 msgid "Click to list its files · ⌘/ctrl-click a second jump to compare the two · drop files here to move them into it, holding alt to copy them instead · drag onto a folder to file the whole jump"
 msgstr "Klicken, um die Dateien anzuzeigen · ⌘/Strg-Klick auf einen zweiten Sprung, um beide zu vergleichen · Dateien hier ablegen, um sie hineinzuverschieben, mit gedrückter Alt-Taste stattdessen kopieren · auf einen Ordner ziehen, um den ganzen Sprung abzulegen"
 
-#: app/components/camera-files.tsx
+#: app/components/shortcuts-dialog.tsx
+msgid "close"
+msgstr "schließen"
+
+#: app/components/booking-list-dialog.tsx
 #: app/components/comparison-dialog.tsx
 #: app/components/email-dialog.tsx
-#: app/components/free-dialog.tsx
-#: app/components/free-place-dialog.tsx
+#: app/components/history-dialog.tsx
 #: app/components/montage-card.tsx
+#: app/components/overview-dialog.tsx
 #: app/components/preview-drawer.tsx
-#: app/components/remove-place-dialog.tsx
 #: app/components/reset-fresh-dialog.tsx
+#: app/components/shortcuts-dialog.tsx
 #: app/components/storage-folder.tsx
-#: app/components/take-back-dialog.tsx
 #: app/components/templates-dialog.tsx
 #: app/components/upload-dialog.tsx
 #: app/components/work-folder-dialog.tsx
@@ -1023,9 +1147,17 @@ msgstr "Schließen (Esc)"
 msgid "Close the player"
 msgstr "Player schließen"
 
+#: app/components/file-browser.tsx
+msgid "Compact"
+msgstr "Kompakt"
+
 #: app/components/comparison-dialog.tsx
 msgid "Compare jumps"
 msgstr "Sprünge vergleichen"
+
+#: app/components/shortcuts-dialog.tsx
+msgid "compare two jumps side by side"
+msgstr "zwei Sprünge nebeneinander vergleichen"
 
 #: app/components/comparison-dialog.tsx
 msgid "Confirm merge"
@@ -1036,16 +1168,12 @@ msgid "Connect"
 msgstr "Verbinden"
 
 #: app/routes/board.tsx
-msgid "Connect the NAS"
-msgstr "NAS verbinden"
+msgid "Connect the storage"
+msgstr "Speicher verbinden"
 
 #: app/components/connection-dialog.tsx
-msgid "Connect to NAS"
-msgstr "Mit NAS verbinden"
-
-#: app/components/connection-dialog.tsx
-msgid "Connect to the NAS"
-msgstr "Mit dem NAS verbinden"
+msgid "Connect to the storage"
+msgstr "Mit dem Speicher verbinden"
 
 #: app/components/board-header.tsx
 msgid "Connected to {host}"
@@ -1097,8 +1225,8 @@ msgid "copied, not uploaded"
 msgstr "kopiert, nicht hochgeladen"
 
 #: app/hooks/useBoardModel.ts
-msgid "copied, the place keeps its own"
-msgstr "kopiert, der Ort behält seine eigenen"
+msgid "copied, the destination keeps its own"
+msgstr "kopiert, das Ziel behält die eigenen"
 
 #: app/components/email-dialog.tsx
 msgid "Copies the email and opens a new message, addressed and titled — paste it in, then press Send"
@@ -1132,6 +1260,10 @@ msgstr "Kopieren & Mail-App öffnen"
 msgid "Copy email"
 msgstr "E-Mail kopieren"
 
+#: app/components/shortcuts-dialog.tsx
+msgid "copy instead of moving"
+msgstr "kopieren statt verschieben"
+
 #: app/components/inspector.tsx
 msgid "Copy into a montage…"
 msgstr "In eine Montage kopieren…"
@@ -1149,10 +1281,6 @@ msgstr "Link kopieren"
 msgid "Copy subject"
 msgstr "Betreff kopieren"
 
-#: app/routes/board.tsx
-msgid "Copy the cameras into the output folder, then scan to find the jumps."
-msgstr "Kopiere die Kameras in den Arbeitsordner und lies sie dann ein, um die Sprünge zu finden."
-
 #: app/components/storage-folder.tsx
 msgid "Copy the link"
 msgstr "Link kopieren"
@@ -1162,8 +1290,8 @@ msgid "Copy these back onto this machine — the one way back from having given 
 msgstr "Diese wieder auf diesen Rechner kopieren — der einzige Weg zurück, nachdem sie zurückgegeben wurden"
 
 #: app/components/board-header.tsx
-msgid "Copy what is new on every camera plugged in — what is here already is passed over — and look through the output folder for files the board does not know yet"
-msgstr "Kopiert, was auf jeder angeschlossenen Kamera neu ist — was schon hier ist, wird übersprungen — und durchsucht den Arbeitsordner nach Dateien, die die Übersicht noch nicht kennt"
+msgid "Copy what is new on every camera plugged in — what is here already is passed over — and look through the work folder for files the board does not know yet"
+msgstr "Neues von jeder angeschlossenen Kamera kopieren — was schon hier ist, wird übersprungen — und im Arbeitsordner nach Dateien suchen, die die Übersicht noch nicht kennt"
 
 #: app/components/camera-files.tsx
 msgid "Copy what is not on this machine yet, without unplugging the camera — what is here already is passed over"
@@ -1183,6 +1311,10 @@ msgid "Copying {camera} — the header shows how far it has got."
 msgstr "{camera} wird kopiert — die Kopfzeile zeigt, wie weit es ist."
 
 #: app/helpers/notes.ts
+msgid "Copying {camera} stopped when asked — {tally}; the rest is still on the card for the next Rescan"
+msgstr "Kopieren von {camera} wie gewünscht gestoppt — {tally}; der Rest bleibt für das nächste Neu-Einlesen auf der Karte"
+
+#: app/helpers/notes.ts
 msgid "Copying {camera} stopped: {why} — {tally}"
 msgstr "Kopieren von {camera} abgebrochen: {why} — {tally}"
 
@@ -1198,6 +1330,14 @@ msgstr "Kopiere die Kamera {camera}"
 msgid "could not be made — {reason}"
 msgstr "konnte nicht erstellt werden — {reason}"
 
+#: app/components/camera-panel.tsx
+msgid "could not be read"
+msgstr "konnte nicht gelesen werden"
+
+#: app/helpers/notes.ts
+msgid "could not be read, left on the card: {named}"
+msgstr "konnte nicht gelesen werden, bleibt auf der Karte: {named}"
+
 #: app/components/nas-folder-browser.tsx
 msgid "Create"
 msgstr "Erstellen"
@@ -1205,18 +1345,6 @@ msgstr "Erstellen"
 #: app/components/storage-folder.tsx
 msgid "Create a link"
 msgstr "Link erstellen"
-
-#: app/components/inspector.tsx
-msgid "Crop and turn…"
-msgstr "Zuschneiden und drehen…"
-
-#: app/components/file-list.tsx
-msgid "Crop applied when this file was processed"
-msgstr "Kürzung beim Aufbereiten dieser Datei angewendet"
-
-#: app/components/file-list.tsx
-msgid "Crop saved — applied at the next Process"
-msgstr "Kürzung gespeichert — wird beim nächsten Aufbereiten angewendet"
 
 #: app/components/comparison-dialog.tsx
 msgid "Custom"
@@ -1230,9 +1358,17 @@ msgstr "Schneide eine Halterung oder einen Finger aus der Ecke. Gleich behält d
 msgid "Dark"
 msgstr "Dunkel"
 
+#: app/components/overview-dialog.tsx
+msgid "Day"
+msgstr "Tag"
+
 #: app/components/take-back-dialog.tsx
 msgid "Delete"
 msgstr "Löschen"
+
+#: app/components/delete-jump-dialog.tsx
+msgid "Delete {label}"
+msgstr "{label} löschen"
 
 #: app/components/camera-files.tsx
 msgid "Delete {picks, plural, one {# file} other {# files}} from the camera…"
@@ -1262,6 +1398,7 @@ msgstr "Löscht von diesem Rechner, was {name} auf dem Speicher hat, sobald nach
 msgid "Delete it from this machine — only once the storage is proved to hold every file"
 msgstr "Von diesem Rechner löschen — erst wenn nachgewiesen ist, dass der Speicher jede Datei enthält"
 
+#: app/components/delete-jump-dialog.tsx
 #: app/components/inspector.tsx
 msgid "Delete jump"
 msgstr "Sprung löschen"
@@ -1270,17 +1407,13 @@ msgstr "Sprung löschen"
 msgid "Delete montage"
 msgstr "Montage löschen"
 
-#: app/components/inspector.tsx
+#: app/routes/place.tsx
 msgid "Delete montage…"
 msgstr "Montage löschen…"
 
-#: app/hooks/useBoardModel.ts
-msgid "Delete this jump? Its {files, plural, one {# file} other {# files}} stay, loose in Fresh files, with their crops — but {copies, plural, one {# processed copy} other {# processed copies}} will be deleted and have to be processed again."
-msgstr "Diesen Sprung löschen? Seine {files, plural, one {# Datei bleibt} other {# Dateien bleiben}} lose in Neue Dateien, mit ihren Kürzungen — aber {copies, plural, one {# aufbereitete Kopie wird gelöscht und muss} other {# aufbereitete Kopien werden gelöscht und müssen}} neu aufbereitet werden."
-
-#: app/routes/place.tsx
-msgid "Delete…"
-msgstr "Löschen…"
+#: app/components/shortcuts-dialog.tsx
+msgid "Delete or ⌫"
+msgstr "Entf oder ⌫"
 
 #: app/components/bin-files.tsx
 msgid "Deleted from the camera"
@@ -1298,6 +1431,14 @@ msgstr "Von diesem Rechner gelöscht"
 msgid "Deleting proves each file against the storage by reading it through, byte for byte, which needs the camera readable as files. Delete them on the camera itself."
 msgstr "Beim Löschen wird jede Datei Byte für Byte mit dem Speicher abgeglichen, dafür muss die Kamera als Dateien lesbar sein. Lösche sie auf der Kamera selbst."
 
+#: app/components/preview-drawer.tsx
+msgid "Delivered as a landscape clip: the picture in the middle, the sides filled with it blurred — nothing cut away"
+msgstr "Als Querformat-Clip ausgeliefert: das Bild in der Mitte, die Seiten mit ihm unscharf gefüllt — nichts wird weggeschnitten"
+
+#: app/hooks/useBoardModel.ts
+msgid "Destination"
+msgstr "Ziel"
+
 #: app/components/places-tree.tsx
 msgid "Destinations"
 msgstr "Ziele"
@@ -1305,6 +1446,10 @@ msgstr "Ziele"
 #: app/components/inspector.tsx
 msgid "Details"
 msgstr "Details"
+
+#: app/components/preview-drawer.tsx
+msgid "Discard"
+msgstr "Verwerfen"
 
 #: app/components/disconnect-dialog.tsx
 msgid "Disconnect"
@@ -1315,7 +1460,12 @@ msgstr "Trennen"
 msgid "Disconnect the storage"
 msgstr "Speicher trennen"
 
+#: app/components/notice.tsx
+msgid "Dismiss"
+msgstr "Ausblenden"
+
 #: app/components/file-browser.tsx
+#: app/components/overview-dialog.tsx
 msgid "done"
 msgstr "fertig"
 
@@ -1336,12 +1486,16 @@ msgid "down"
 msgstr "hoch"
 
 #: app/components/folder-owed.tsx
-msgid "Drag a jump onto a folder on the left, or use"
-msgstr "Zieh einen Sprung auf einen Ordner links, oder nutze"
+msgid "Drag a jump onto a destination on the left, or use Move to… on it"
+msgstr "Zieh einen Sprung auf ein Ziel links oder nutze darauf Verschieben nach…"
+
+#: app/components/shortcuts-dialog.tsx
+msgid "Drag a jump or files onto a dropzone"
+msgstr "Einen Sprung oder Dateien auf eine Dropzone ziehen"
 
 #: app/components/upload-dialog.tsx
-msgid "Drag any of these onto a zip. The same one can go into several zips."
-msgstr "Zieh eines davon auf ein ZIP. Dasselbe kann in mehrere ZIPs."
+msgid "Drag any of these onto a zip, or press + on the zip. The same one can go into several zips."
+msgstr "Zieh eines davon auf ein ZIP oder drück + am ZIP. Dasselbe kann in mehrere ZIPs."
 
 #: app/components/preview-drawer.tsx
 msgid "Drag the corners to any shape"
@@ -1360,8 +1514,8 @@ msgid "Drag to trim the start"
 msgstr "Ziehen, um den Anfang zu kürzen"
 
 #: app/routes/board.tsx
-msgid "Drop a clip on a place, a montage or a jump to add it."
-msgstr "Leg einen Clip auf einem Ort, einer Montage oder einem Sprung ab, um ihn hinzuzufügen."
+msgid "Drop a clip on a destination, a montage or a jump to add it."
+msgstr "Leg einen Clip auf einem Ziel, einer Montage oder einem Sprung ab, um ihn hinzuzufügen."
 
 #: app/components/places-tree.tsx
 msgid "Drop a jump or files here to make a montage — its name is asked for first"
@@ -1378,6 +1532,18 @@ msgstr "Hier ablegen für ein weiteres ZIP"
 #: app/components/upload-dialog.tsx
 msgid "Drop here: it makes a zip"
 msgstr "Hier ablegen: daraus wird ein ZIP"
+
+#: app/components/shortcuts-dialog.tsx
+msgid "Drop on the Montages heading"
+msgstr "Auf der Überschrift Montagen ablegen"
+
+#: app/components/history-dialog.tsx
+msgid "Each change to the board — filing, naming, trimming — keeps what the board was before it. Going back puts the jumps, names and trims back; no file on the disk or on the storage is touched."
+msgstr "Jede Änderung an der Übersicht — Ablegen, Benennen, Kürzen — merkt sich, wie die Übersicht vorher war. Zurückgehen stellt Sprünge, Namen und Kürzungen wieder her; keine Datei auf der Festplatte oder auf dem Speicher wird angefasst."
+
+#: app/components/inspector.tsx
+msgid "Each clip from its exit to a few seconds after its landing"
+msgstr "Jeder Clip vom Absprung bis wenige Sekunden nach der Landung"
 
 #: app/components/free-dialog.tsx
 msgid "each file that went up is hashed here and by the storage, and both must match what was sent:"
@@ -1396,8 +1562,8 @@ msgid "Editing templates"
 msgstr "Schnittvorlagen"
 
 #: app/components/reset-fresh-dialog.tsx
-msgid "Either way, nothing filed to a dropzone or a passenger is touched, and no original file is."
-msgstr "So oder so wird nichts angerührt, was einer Dropzone oder einem Passagier zugeordnet ist, und auch keine Originaldatei."
+msgid "Either way, nothing filed to a destination or a montage is touched, and no original file is."
+msgstr "So oder so wird nichts angefasst, was in einem Ziel oder einer Montage abgelegt ist, und auch keine Originaldatei."
 
 #: app/components/email-dialog.tsx
 msgid "Email {firstname} their link"
@@ -1415,9 +1581,17 @@ msgstr "E-Mail-Vorschau"
 msgid "Email the link"
 msgstr "Link per E-Mail senden"
 
+#: app/components/montage-steps.tsx
+msgid "Email the link…"
+msgstr "Link per E-Mail senden…"
+
 #: app/components/storage-list.tsx
 msgid "Email…"
 msgstr "E-Mail…"
+
+#: app/components/overview-dialog.tsx
+msgid "Emailed"
+msgstr "Gemailt"
 
 #: app/components/storage-list.tsx
 msgid "emailed {emailedOn}"
@@ -1439,9 +1613,13 @@ msgstr "Am Abspielkopf enden"
 msgid "End here"
 msgstr "Hier enden"
 
-#: app/components/take-back-dialog.tsx
-msgid "every crop and frame, and every corrected time"
-msgstr "jede Kürzung und jeder Zuschnitt, und jede korrigierte Zeit"
+#: app/components/shortcuts-dialog.tsx
+msgid "Enter, or double-click"
+msgstr "Enter oder Doppelklick"
+
+#: app/components/shortcuts-dialog.tsx
+msgid "Esc"
+msgstr "Esc"
 
 #: app/components/templates-dialog.tsx
 msgid "every file here"
@@ -1459,6 +1637,14 @@ msgstr "Alle Dateien ziehen mit, die Abstände zwischen ihnen bleiben"
 msgid "every file on this machine stays as it is, and the board goes on working"
 msgstr "alle Dateien auf diesem Rechner bleiben, wie sie sind, und die Übersicht funktioniert weiter"
 
+#: app/components/overview-dialog.tsx
+msgid "Every montage"
+msgstr "Alle Montagen"
+
+#: app/components/board-header.tsx
+msgid "Every montage in one table: where each has got to, its link, whether it was emailed"
+msgstr "Alle Montagen in einer Tabelle: wie weit jede ist, ihr Link, ob sie gemailt wurde"
+
 #: app/components/remove-place-dialog.tsx
 msgid "every original stays on this machine, exactly where it is"
 msgstr "jedes Original bleibt auf diesem Rechner, genau wo es ist"
@@ -1468,8 +1654,12 @@ msgid "Every step done — {total} of {total}"
 msgstr "Alle Schritte erledigt — {total} von {total}"
 
 #: app/components/montage-steps.tsx
-msgid "Every step done — the passenger has their film."
-msgstr "Alle Schritte erledigt — der Passagier hat seinen Film."
+msgid "Every step done — whoever it is for has their film."
+msgstr "Alle Schritte erledigt — der Empfänger hat seinen Film."
+
+#: app/components/take-back-dialog.tsx
+msgid "every trim and frame, and every corrected time"
+msgstr "jede Kürzung und jeder Bildausschnitt sowie jede korrigierte Zeit"
 
 #: app/components/disconnect-dialog.tsx
 msgid "everything on the storage stays exactly as it is"
@@ -1483,6 +1673,10 @@ msgstr "alles auf dem Speicher, weiterhin hier aufgeführt und abspielbar"
 msgid "Everything, as just scanned"
 msgstr "Alles, wie gerade eingelesen"
 
+#: app/components/shortcuts-dialog.tsx
+msgid "F"
+msgstr "F"
+
 #: app/components/storage-folder.tsx
 msgid "Fetch it back onto this machine"
 msgstr "Wieder auf diesen Rechner holen"
@@ -1491,12 +1685,12 @@ msgstr "Wieder auf diesen Rechner holen"
 msgid "File {position} of {fileCount}:"
 msgstr "Datei {position} von {fileCount}:"
 
-#: app/components/folder-owed.tsx
-msgid "File to"
-msgstr "Ablegen in"
+#: app/components/shortcuts-dialog.tsx
+msgid "file them there"
+msgstr "dort ablegen"
 
-#: app/components/montage-card.tsx
-msgid "files"
+#: app/components/shortcuts-dialog.tsx
+msgid "Files"
 msgstr "Dateien"
 
 #: app/routes/board.tsx
@@ -1511,9 +1705,25 @@ msgstr "Dateien von {jump}"
 msgid "Find a file"
 msgstr "Datei suchen"
 
+#: app/components/overview-dialog.tsx
+msgid "Find a montage"
+msgstr "Montage suchen"
+
+#: app/components/find-anything.tsx
+msgid "Find a name, a file…"
+msgstr "Einen Namen, eine Datei suchen…"
+
+#: app/components/find-anything.tsx
+msgid "Find anything"
+msgstr "Alles durchsuchen"
+
 #: app/components/file-list.tsx
 msgid "Finding the jump"
 msgstr "Sprung wird gesucht"
+
+#: app/components/file-browser.tsx
+msgid "Folded"
+msgstr "Eingeklappt"
 
 #: app/components/nas-folder-browser.tsx
 msgid "Folder name"
@@ -1531,29 +1741,34 @@ msgstr "Für eine seitlich oder kopfüber montierte Kamera — eine Vierteldrehu
 msgid "For a camera mounted sideways or upside down."
 msgstr "Für eine seitlich oder kopfüber montierte Kamera."
 
+#: app/components/find-anything.tsx
+msgid "Found"
+msgstr "Gefunden"
+
 #: app/components/preview-drawer.tsx
 msgid "Frame"
 msgstr "Bildausschnitt"
 
 #: app/components/file-list.tsx
-msgid "Frame crop saved — about {kept}% of the picture, keeping its shape. Applied at the next Process."
-msgstr "Zuschnitt gespeichert — etwa {kept} % des Bildes, Form bleibt erhalten. Wird beim nächsten Aufbereiten angewendet."
+msgid "Frame saved — about {kept}% of the picture, keeping its shape. Applied at the next Process."
+msgstr "Bildausschnitt gespeichert — etwa {kept} % des Bildes, Form bleibt erhalten. Wird beim nächsten Aufbereiten angewendet."
 
 #: app/components/file-list.tsx
-msgid "frame cropped"
-msgstr "zugeschnitten"
-
-#: app/components/file-list.tsx
-msgid "Frame cropped when this file was processed — about {kept}% of the picture, keeping its shape"
-msgstr "Beim Aufbereiten dieser Datei zugeschnitten — etwa {kept} % des Bildes, Form bleibt erhalten"
-
-#: app/components/preview-drawer.tsx
-msgid "Frame cropped."
-msgstr "Zugeschnitten."
-
 #: app/components/inspector.tsx
 msgid "framed"
 msgstr "zugeschnitten"
+
+#: app/components/file-list.tsx
+msgid "Framed"
+msgstr "Zugeschnitten"
+
+#: app/components/file-list.tsx
+msgid "Framed when this file was processed — about {kept}% of the picture, keeping its shape"
+msgstr "Beim Aufbereiten dieser Datei zugeschnitten — etwa {kept} % des Bildes, Form bleibt erhalten"
+
+#: app/components/preview-drawer.tsx
+msgid "Framed."
+msgstr "Zugeschnitten."
 
 #: app/components/preview-drawer.tsx
 msgid "Free"
@@ -1581,6 +1796,10 @@ msgstr "Platz freigeben — {who}"
 msgid "Free up space…"
 msgstr "Platz freigeben…"
 
+#: app/components/overview-dialog.tsx
+msgid "Freed"
+msgstr "Freigegeben"
+
 #: app/components/storage-list.tsx
 msgid "Freed from the machine that made it — the storage is the only copy"
 msgstr "Vom Rechner, der es erstellt hat, freigegeben — der Speicher hat die einzige Kopie"
@@ -1599,6 +1818,7 @@ msgid "freefall"
 msgstr "Freifall"
 
 #: app/components/dialog-host.tsx
+#: app/components/move-to.tsx
 #: app/helpers/places.ts
 #: app/hooks/useDragAndDrop.ts
 #: app/routes/place.tsx
@@ -1616,6 +1836,14 @@ msgstr "aus {filename}"
 #: app/components/file-list.tsx
 msgid "from {start}"
 msgstr "ab {start}"
+
+#: app/components/preview-drawer.tsx
+msgid "From the exit to a few seconds after the landing"
+msgstr "Vom Absprung bis wenige Sekunden nach der Landung"
+
+#: app/components/shortcuts-dialog.tsx
+msgid "full size"
+msgstr "Originalgröße"
 
 #: app/components/file-list.tsx
 msgid "gap"
@@ -1640,6 +1868,14 @@ msgstr "Gib dem Projektordner einen Namen"
 #: app/components/storage-folder.tsx
 msgid "Give this one file a link — anybody holding it can fetch it, and nothing else in the folder"
 msgstr "Nur dieser Datei einen Link geben — wer ihn hat, kann sie herunterladen, und sonst nichts im Ordner"
+
+#: app/components/history-dialog.tsx
+msgid "Go back to an earlier board"
+msgstr "Zu einem früheren Stand der Übersicht zurückkehren"
+
+#: app/components/history-dialog.tsx
+msgid "Go back to this"
+msgstr "Hierhin zurückkehren"
 
 #: app/components/preview-drawer.tsx
 msgid "Go to the {moment}"
@@ -1669,6 +1905,10 @@ msgstr "übergeben, kein Laufwerk — langsamer als ein Kartenleser"
 msgid "here too"
 msgstr "auch hier"
 
+#: app/components/inspector.tsx
+msgid "Hide details"
+msgstr "Details ausblenden"
+
 #: app/components/storage-list.tsx
 msgid "Hide files"
 msgstr "Dateien ausblenden"
@@ -1676,6 +1916,14 @@ msgstr "Dateien ausblenden"
 #: app/components/progress-panel.tsx
 msgid "Hide the list"
 msgstr "Liste ausblenden"
+
+#: app/components/history-dialog.tsx
+msgid "History"
+msgstr "Verlauf"
+
+#: app/components/board-header.tsx
+msgid "History…"
+msgstr "Verlauf…"
 
 #: app/hooks/useBoardModel.ts
 msgid "Hold alt while dropping to copy it into the other jump instead."
@@ -1739,6 +1987,10 @@ msgstr "Im ZIP"
 msgid "is filled from their montage. A line whose variables are all empty for a montage — no film, no photos — is left out of their email."
 msgstr "wird aus seiner Montage befüllt. Eine Zeile, deren Variablen für eine Montage alle leer sind — kein Film, keine Fotos —, fällt aus seiner E-Mail weg."
 
+#: app/hooks/useBoardModel.ts
+msgid "It cannot be uploaded yet."
+msgstr "Es kann noch nicht hochgeladen werden."
+
 #: app/components/remove-place-dialog.tsx
 msgid "it stops being linked to {linked} on the storage"
 msgstr "er ist nicht mehr mit {linked} auf dem Speicher verknüpft"
@@ -1750,6 +2002,10 @@ msgstr "Sie wurde doch nicht gesendet"
 #: app/components/email-dialog.tsx
 msgid "Italic"
 msgstr "Kursiv"
+
+#: app/components/delete-jump-dialog.tsx
+msgid "its {files, plural, one {# file stays} other {# files stay}}, loose in Fresh files, with their trims"
+msgstr "seine {files, plural, one {# Datei bleibt} other {# Dateien bleiben}}, lose in Neue Dateien, mit ihren Kürzungen"
 
 #: app/components/storage-list.tsx
 msgid "Its files are on this board, waiting to be sorted: put them back together as {who}’s montage, at the times they had"
@@ -1768,6 +2024,10 @@ msgid "Joined {who}’s montage"
 msgstr "Zur Montage von {who} hinzugefügt"
 
 #: app/components/montage-card.tsx
+msgid "Joins {joined}’s montage"
+msgstr "Kommt zur Montage von {joined}"
+
+#: app/components/montage-card.tsx
 msgid "Joins {joined}’s montage{copied}"
 msgstr "Kommt zur Montage von {joined}{copied}"
 
@@ -1775,9 +2035,17 @@ msgstr "Kommt zur Montage von {joined}{copied}"
 msgid "jump {day}"
 msgstr "Sprung {day}"
 
+#: app/components/shortcuts-dialog.tsx
+msgid "Jumps"
+msgstr "Sprünge"
+
 #: app/components/templates-dialog.tsx
 msgid "kdenlive version not said"
 msgstr "kdenlive-Version nicht angegeben"
+
+#: app/components/preview-drawer.tsx
+msgid "Keep editing"
+msgstr "Weiter bearbeiten"
 
 #: app/components/jump-name.tsx
 #: app/components/templates-dialog.tsx
@@ -1809,13 +2077,34 @@ msgstr "Auf dem Speicher behalten"
 msgid "Kept, ready to process again"
 msgstr "Behalten, bereit zum erneuten Aufbereiten"
 
+#: app/components/board-header.tsx
+#: app/components/shortcuts-dialog.tsx
+msgid "Keyboard shortcuts"
+msgstr "Tastenkürzel"
+
+#: app/components/board-header.tsx
+msgid "Keyboard shortcuts (?)"
+msgstr "Tastenkürzel (?)"
+
+#: app/components/board-header.tsx
+msgid "Keyboard shortcuts…"
+msgstr "Tastenkürzel…"
+
 #: app/components/email-dialog.tsx
 msgid "Laid out as shown, to paste into any mail"
 msgstr "So formatiert wie angezeigt, zum Einfügen in jede Mail"
 
+#: app/components/preview-drawer.tsx
+msgid "Landscape, blurred sides"
+msgstr "Querformat, unscharfe Seiten"
+
 #: app/components/board-header.tsx
 msgid "Language"
 msgstr "Sprache"
+
+#: app/components/email-dialog.tsx
+msgid "Language of the email"
+msgstr "Sprache der E-Mail"
 
 #: app/routes/board.tsx
 msgid "Last checked {checkedAt}."
@@ -1838,11 +2127,16 @@ msgstr "Leer lassen, um ihn nach seiner Position unter den Sprüngen zu benennen
 msgid "Leave it empty to name it after the project"
 msgstr "Leer lassen, um es nach dem Projekt zu benennen"
 
+#: app/components/shortcuts-dialog.tsx
+msgid "let go of the picks"
+msgstr "Auswahl aufheben"
+
 #: app/components/board-header.tsx
 msgid "Light"
 msgstr "Hell"
 
 #: app/components/email-dialog.tsx
+#: app/components/overview-dialog.tsx
 msgid "Link"
 msgstr "Link"
 
@@ -1943,12 +2237,17 @@ msgid "Make the montage"
 msgstr "Montage erstellen"
 
 #: app/components/montage-card.tsx
+#: app/components/montage-steps.tsx
 msgid "Make the project"
 msgstr "Projekt erstellen"
 
 #: app/components/upload-dialog.tsx
 msgid "Make the zips"
 msgstr "ZIPs erstellen"
+
+#: app/components/shortcuts-dialog.tsx
+msgid "make them a montage, named first"
+msgstr "daraus eine Montage machen, zuerst benennen"
 
 #: app/components/upload-panel.tsx
 msgid "Making the zips…"
@@ -1967,6 +2266,8 @@ msgid "Merge date"
 msgstr "Datum der Zusammenführung"
 
 #: app/components/inspector.tsx
+#: app/components/overview-dialog.tsx
+#: app/hooks/useBoardModel.ts
 msgid "Montage"
 msgstr "Montage"
 
@@ -1994,6 +2295,10 @@ msgstr "Verschieben"
 #: app/components/inspector.tsx
 msgid "Move them"
 msgstr "Verschieben"
+
+#: app/components/move-to.tsx
+msgid "Move to…"
+msgstr "Verschieben nach…"
 
 #: app/helpers/notes.ts
 msgid "Moved {movedCount} files already on the board to {where}"
@@ -2029,14 +2334,6 @@ msgstr "name@example.com — oder in Gmail eingeben"
 msgid "Named {stem}.….zip — you choose the end, or none."
 msgstr "Heißt {stem}.….zip — das Ende wählst du, oder keines."
 
-#: app/components/dialog-host.tsx
-msgid "NAS folder for {destination}"
-msgstr "NAS-Ordner für {destination}"
-
-#: app/components/connection-dialog.tsx
-msgid "NAS Hostname"
-msgstr "NAS-Hostname"
-
 #: app/components/montage-card.tsx
 msgid "never shared"
 msgstr "nie geteilt"
@@ -2065,13 +2362,13 @@ msgstr "Weiter: {how} — {at} von {total} Schritten erledigt"
 msgid "Next: where it goes →"
 msgstr "Weiter: wohin es geht →"
 
-#: app/components/preview-drawer.tsx
-msgid "No crop — the file goes out as shot."
-msgstr "Kein Zuschnitt — die Datei geht so raus, wie sie aufgenommen wurde."
+#: app/components/overview-dialog.tsx
+msgid "no"
+msgstr "nein"
 
-#: app/components/preview-drawer.tsx
-msgid "No crop — the whole picture goes out as shot"
-msgstr "Kein Zuschnitt — das ganze Bild geht so raus, wie es aufgenommen wurde"
+#: app/hooks/useBoardModel.ts
+msgid "No clip in this jump has an exit found — trim them by hand."
+msgstr "Bei keinem Clip dieses Sprungs wurde ein Absprung gefunden — kürze sie von Hand."
 
 #: app/components/upload-dialog.tsx
 msgid "No destination yet."
@@ -2082,7 +2379,6 @@ msgid "No exit found — nothing to hang a cut on."
 msgstr "Kein Absprung gefunden — nichts, woran sich ein Schnitt festmachen lässt."
 
 #: app/components/folder-owed.tsx
-#: app/routes/place.tsx
 msgid "no folder yet"
 msgstr "noch kein Ordner"
 
@@ -2110,6 +2406,10 @@ msgstr "Noch keine Montage gerendert — zuerst in kdenlive rendern."
 msgid "No montage uploaded yet — each one is listed here once it is."
 msgstr "Noch keine Montage hochgeladen — jede erscheint hier, sobald sie oben ist."
 
+#: app/components/overview-dialog.tsx
+msgid "No montage yet — name a jump to make one."
+msgstr "Noch keine Montage — benenne einen Sprung, um eine zu erstellen."
+
 #: app/helpers/places.ts
 msgid "No name yet"
 msgstr "Noch kein Name"
@@ -2133,6 +2433,10 @@ msgstr "Noch keine Vorlage — füge unten eine hinzu."
 #: app/components/upload-dialog.tsx
 msgid "No zip at all is fine: everything can still go as it is."
 msgstr "Gar kein ZIP geht auch: alles kann weiterhin so hochgeladen werden, wie es ist."
+
+#: app/components/overview-dialog.tsx
+msgid "Nobody is waiting for an email"
+msgstr "Niemand wartet auf eine E-Mail"
 
 #: app/components/preview-drawer.tsx
 msgid "None"
@@ -2174,9 +2478,17 @@ msgstr "nicht hochgeladen"
 msgid "not trimmed"
 msgstr "nicht gekürzt"
 
+#: app/components/preview-drawer.tsx
+msgid "Not trimmed, framed or turned — the file goes out as shot."
+msgstr "Nicht gekürzt, zugeschnitten oder gedreht — die Datei geht so raus, wie sie aufgenommen wurde."
+
 #: app/components/free-dialog.tsx
 msgid "nothing about the montage changed since it was uploaded"
 msgstr "an der Montage hat sich seit dem Hochladen nichts geändert"
+
+#: app/components/find-anything.tsx
+msgid "Nothing by that name"
+msgstr "Nichts mit diesem Namen"
 
 #: app/components/reset-fresh-dialog.tsx
 msgid "nothing decided about these files"
@@ -2226,6 +2538,10 @@ msgstr "Nichts auf der Karte der Kamera."
 msgid "nothing this montage has"
 msgstr "nichts, was diese Montage hat"
 
+#: app/components/history-dialog.tsx
+msgid "Nothing to go back to yet."
+msgstr "Noch nichts, wohin man zurückkehren kann."
+
 #: app/components/storage-folder.tsx
 msgid "Nothing up there yet — what is uploaded from here is listed once it is."
 msgstr "Dort oben ist noch nichts — was von hier hochgeladen wird, erscheint, sobald es oben ist."
@@ -2258,10 +2574,6 @@ msgstr "des Bildes"
 msgid "off the board and out of the originals, moved to the bin, not erased. They can be brought back from the Bin page. If the camera card has been wiped, the bin holds the only copy."
 msgstr "vom Board und aus den Originalen entfernt, in den Papierkorb verschoben, nicht gelöscht. Sie lassen sich auf der Seite Papierkorb zurückholen. Wurde die Kamerakarte geleert, ist der Papierkorb die einzige Kopie."
 
-#: app/components/folder-owed.tsx
-msgid "on its line"
-msgstr "in seiner Zeile"
-
 #: app/components/camera-files.tsx
 msgid "On the camera"
 msgstr "Auf der Kamera"
@@ -2278,19 +2590,15 @@ msgstr "In der Datei"
 msgid "on the ground"
 msgstr "am Boden"
 
-#: app/components/file-status.tsx
-msgid "On the NAS"
-msgstr "Auf dem NAS"
-
 #: app/components/camera-files.tsx
 msgid "on the storage"
 msgstr "auf dem Speicher"
 
+#: app/components/file-status.tsx
 #: app/components/places-tree.tsx
 #: app/components/storage-folder.tsx
 #: app/components/storage-list.tsx
 #: app/helpers/places.ts
-#: app/routes/place.tsx
 msgid "On the storage"
 msgstr "Auf dem Speicher"
 
@@ -2323,6 +2631,7 @@ msgid "Open"
 msgstr "Öffnen"
 
 #: app/components/montage-card.tsx
+#: app/components/montage-steps.tsx
 msgid "Open in kdenlive"
 msgstr "In kdenlive öffnen"
 
@@ -2337,6 +2646,10 @@ msgstr "In dieser Übersicht öffnen"
 #: app/components/preview-drawer.tsx
 msgid "Open the clip in this machine's own player — the file as it was shot, whatever the browser can decode"
 msgstr "Den Clip im Player dieses Rechners öffnen — die Datei so, wie sie aufgenommen wurde, egal was der Browser dekodieren kann"
+
+#: app/components/shortcuts-dialog.tsx
+msgid "open the file"
+msgstr "Datei öffnen"
 
 #: app/components/montage-card.tsx
 msgid "Open the film in a new tab"
@@ -2386,6 +2699,15 @@ msgstr "Originalfotos"
 msgid "Original videos"
 msgstr "Originalvideos"
 
+#: app/components/board-header.tsx
+#: app/components/overview-dialog.tsx
+msgid "Overview"
+msgstr "Überblick"
+
+#: app/components/overview-dialog.tsx
+msgid "Paid"
+msgstr "Bezahlt"
+
 #: app/components/frame-cropper.tsx
 msgid "Part of the picture to keep"
 msgstr "Bildausschnitt, der bleibt"
@@ -2401,6 +2723,10 @@ msgstr "Passwort ist erforderlich"
 #: app/components/connection-dialog.tsx
 msgid "Password must be at least 3 characters"
 msgstr "Das Passwort muss mindestens 3 Zeichen lang sein"
+
+#: app/components/booking-list-dialog.tsx
+msgid "Paste the booking system’s export, or choose its CSV file: a name on each line — or first name and last name — and, where there is one, an email address and the time they are booked. Headings in English, French or German are understood."
+msgstr "Füge den Export des Buchungssystems ein oder wähle seine CSV-Datei: ein Name pro Zeile — oder Vorname und Nachname — und, falls vorhanden, eine E-Mail-Adresse und die gebuchte Uhrzeit. Überschriften auf Englisch, Französisch oder Deutsch werden erkannt."
 
 #: app/components/inspector.tsx
 msgid "photo"
@@ -2424,6 +2750,14 @@ msgstr "{0} auswählen"
 msgid "Pick {name}"
 msgstr "{name} auswählen"
 
+#: app/components/shortcuts-dialog.tsx
+msgid "pick a run of files"
+msgstr "einen Bereich von Dateien auswählen"
+
+#: app/components/shortcuts-dialog.tsx
+msgid "pick every file shown"
+msgstr "alle angezeigten Dateien auswählen"
+
 #: app/components/camera-files.tsx
 msgid "Pick every file that can go"
 msgstr "Alle Dateien auswählen, die weg können"
@@ -2444,6 +2778,14 @@ msgstr "Nur Text"
 msgid "Play it from the storage"
 msgstr "Vom Speicher abspielen"
 
+#: app/components/shortcuts-dialog.tsx
+msgid "play or pause"
+msgstr "abspielen oder pausieren"
+
+#: app/routes/board.tsx
+msgid "Plug a camera in — it is copied off by itself — or copy its files into the work folder, then scan to find the jumps."
+msgstr "Schließ eine Kamera an — sie wird von selbst kopiert — oder kopiere ihre Dateien in den Arbeitsordner und lies dann ein, um die Sprünge zu finden."
+
 #: app/components/preview-drawer.tsx
 msgid "Portrait"
 msgstr "Hochformat"
@@ -2453,6 +2795,7 @@ msgid "Preview"
 msgstr "Vorschau"
 
 #: app/components/montage-card.tsx
+#: app/components/montage-steps.tsx
 msgid "Process"
 msgstr "Aufbereiten"
 
@@ -2477,8 +2820,8 @@ msgid "Processed once and changed since — it needs processing again before it 
 msgstr "Einmal aufbereitet und seitdem geändert — muss erneut aufbereitet werden, bevor es irgendwohin kann"
 
 #: app/components/file-status.tsx
-msgid "Processed, not on the NAS yet"
-msgstr "Aufbereitet, noch nicht auf dem NAS"
+msgid "Processed, not on the storage yet"
+msgstr "Aufbereitet, noch nicht auf dem Speicher"
 
 #: app/components/file-list.tsx
 msgid "Processing"
@@ -2503,12 +2846,8 @@ msgid "Proved first"
 msgstr "Zuerst geprüft"
 
 #: app/components/board-header.tsx
-msgid "proxies {ready}/{total}"
-msgstr "Proxys {ready}/{total}"
-
-#: app/components/file-list.tsx
-msgid "proxy"
-msgstr "Proxy"
+msgid "Proxies ready {ready}/{total}"
+msgstr "Proxys fertig {ready}/{total}"
 
 #: app/components/file-list.tsx
 #: app/components/inspector.tsx
@@ -2519,9 +2858,10 @@ msgstr "Proxy"
 msgid "proxy failed"
 msgstr "Proxy fehlgeschlagen"
 
-#: app/components/file-list.tsx
-msgid "Proxy ready — the crop bar plays it, and the editor opens on it"
-msgstr "Proxy fertig — die Schnittleiste spielt ihn ab, und der Editor öffnet ihn"
+#. placeholder {0}: partName(part)
+#: app/components/upload-dialog.tsx
+msgid "Put {0} in this zip"
+msgstr "{0} in dieses ZIP legen"
 
 #: app/components/upload-dialog.tsx
 msgid "Put at least one thing in a destination"
@@ -2530,6 +2870,11 @@ msgstr "Leg mindestens ein Element in ein Ziel"
 #: app/components/folder-owed.tsx
 msgid "Put Fresh files back — the times alone, or everything as just scanned. Asks which first."
 msgstr "Neue Dateien zurücksetzen — nur die Zeiten oder alles wie frisch eingelesen. Fragt vorher, was davon."
+
+#. placeholder {0}: ticked.length
+#: app/components/upload-dialog.tsx
+msgid "Put here ({0})"
+msgstr "Hierher legen ({0})"
 
 #: app/components/email-dialog.tsx
 msgid "Put in a variable"
@@ -2559,6 +2904,18 @@ msgstr "Die Vorlage so wiederherstellen, wie SkyDock sie ursprünglich geschrieb
 msgid "puts the email below on the clipboard and opens a new message with the address and the subject already filled in — in Gmail, or in the mail program this computer uses (Outlook, Apple Mail, Thunderbird…). Click into the message, paste it (Ctrl+V, or ⌘V on a Mac) and press Send. The one used last is offered first."
 msgstr "legt die E-Mail unten in die Zwischenablage und öffnet eine neue Nachricht mit bereits ausgefüllter Adresse und Betreff — in Gmail oder im Mailprogramm dieses Computers (Outlook, Apple Mail, Thunderbird…). Klick in die Nachricht, füge sie ein (Strg+V, oder ⌘V auf dem Mac) und drück auf Senden. Das zuletzt benutzte wird zuerst angeboten."
 
+#: app/components/email-dialog.tsx
+msgid "QR code"
+msgstr "QR-Code"
+
+#: app/components/share-qr.tsx
+msgid "QR code of the link"
+msgstr "QR-Code des Links"
+
+#: app/components/shortcuts-dialog.tsx
+msgid "R"
+msgstr "R"
+
 #: app/components/import-panel.tsx
 msgid "reading it…"
 msgstr "wird gelesen…"
@@ -2566,6 +2923,10 @@ msgstr "wird gelesen…"
 #: app/components/camera-files.tsx
 msgid "Reading the camera…"
 msgstr "Kamera wird gelesen…"
+
+#: app/components/history-dialog.tsx
+msgid "Reading the history…"
+msgstr "Verlauf wird gelesen…"
 
 #: app/components/templates-dialog.tsx
 msgid "Reading the templates…"
@@ -2604,20 +2965,24 @@ msgid "Remove {place}"
 msgstr "{place} entfernen"
 
 #: app/components/remove-place-dialog.tsx
-msgid "Remove a place"
-msgstr "Einen Ort entfernen"
+msgid "Remove a destination"
+msgstr "Ein Ziel entfernen"
+
+#: app/routes/place.tsx
+msgid "Remove destination…"
+msgstr "Ziel entfernen…"
 
 #: app/components/remove-files-dialog.tsx
 msgid "Remove files"
 msgstr "Dateien entfernen"
 
-#: app/routes/place.tsx
-msgid "Remove place…"
-msgstr "Ort entfernen…"
-
 #: app/components/storage-folder.tsx
 msgid "Remove the link"
 msgstr "Link entfernen"
+
+#: app/components/shortcuts-dialog.tsx
+msgid "remove the picked files — asks where they go"
+msgstr "ausgewählte Dateien entfernen — fragt, wohin sie sollen"
 
 #: app/hooks/useBoardModel.ts
 msgid "Remove these copies (⌫)"
@@ -2651,6 +3016,10 @@ msgstr "Zuerst den Film in kdenlive rendern"
 msgid "rendered {renderedAt}"
 msgstr "gerendert {renderedAt}"
 
+#: app/components/booking-list-dialog.tsx
+msgid "Replace the list"
+msgstr "Liste ersetzen"
+
 #: app/hooks/useBoardState.ts
 msgid "Request failed"
 msgstr "Anfrage fehlgeschlagen"
@@ -2668,11 +3037,6 @@ msgstr "Zurücksetzen"
 msgid "Reset {who} to before processing"
 msgstr "{who} auf den Stand vor dem Aufbereiten zurücksetzen"
 
-#: app/components/preview-drawer.tsx
-#: app/components/video-cropper.tsx
-msgid "Reset crop"
-msgstr "Zuschnitt zurücksetzen"
-
 #: app/components/reset-fresh-dialog.tsx
 msgid "Reset Fresh files"
 msgstr "Neue Dateien zurücksetzen"
@@ -2688,6 +3052,14 @@ msgstr "Montage zurücksetzen"
 #: app/components/reset-fresh-dialog.tsx
 msgid "Reset the {files, plural, one {# file} other {# files}} in Fresh files"
 msgstr "Die {files, plural, one {# Datei} other {# Dateien}} in Neue Dateien zurücksetzen"
+
+#: app/components/video-cropper.tsx
+msgid "Reset trim"
+msgstr "Kürzung zurücksetzen"
+
+#: app/components/preview-drawer.tsx
+msgid "Reset trim, frame and turn"
+msgstr "Kürzung, Bildausschnitt und Drehung zurücksetzen"
 
 #: app/routes/place.tsx
 msgid "Reset…"
@@ -2713,10 +3085,6 @@ msgstr "{count} Montagen aus der Liste des Speichers wiederhergestellt — wiede
 msgid "Restored {person}’s montage from the storage’s list — named again, at the times they had; process it to carry on"
 msgstr "Montage von {person} aus der Liste des Speichers wiederhergestellt — wieder benannt, zu ihren früheren Zeiten; bereite sie auf, um weiterzumachen"
 
-#: app/components/preview-drawer.tsx
-msgid "Rotate"
-msgstr "Drehen"
-
 #: app/components/board-header.tsx
 msgid "Rows"
 msgstr "Zeilen"
@@ -2725,13 +3093,14 @@ msgstr "Zeilen"
 msgid "Same"
 msgstr "Gleich"
 
+#: app/components/montage-card.tsx
 #: app/components/preview-drawer.tsx
 msgid "Save"
 msgstr "Speichern"
 
 #: app/components/preview-drawer.tsx
-msgid "Save crop"
-msgstr "Zuschnitt speichern"
+msgid "Save the changes to this file?"
+msgstr "Änderungen an dieser Datei speichern?"
 
 #: app/components/email-dialog.tsx
 msgid "Say on the storage’s list that they have their link"
@@ -2740,6 +3109,10 @@ msgstr "In der Liste des Speichers vermerken, dass sie ihren Link haben"
 #: app/routes/board.tsx
 msgid "Scan"
 msgstr "Einlesen"
+
+#: app/components/email-dialog.tsx
+msgid "Scan it with a phone’s camera to open the link"
+msgstr "Mit der Handykamera scannen, um den Link zu öffnen"
 
 #: app/helpers/notes.ts
 msgid "Scan: +{added} new, −{removed} gone, {moved} moved — {fileCount} files in {groupCount} jumps"
@@ -2767,8 +3140,8 @@ msgid "See the photo full screen, at its own size (F)"
 msgstr "Foto im Vollbild ansehen, in Originalgröße (F)"
 
 #: app/components/inspector.tsx
-msgid "Select a file or a jump to see it here. Double-click a file to crop or turn it."
-msgstr "Wähle eine Datei oder einen Sprung aus, um sie hier zu sehen. Doppelklicke eine Datei, um sie zuzuschneiden oder zu drehen."
+msgid "Select a file or a jump to see it here. Double-click a file to trim, frame or turn it."
+msgstr "Wähle eine Datei oder einen Sprung, um sie hier zu sehen. Doppelklick auf eine Datei, um sie zu kürzen, zuzuschneiden oder zu drehen."
 
 #: app/components/inspector.tsx
 msgid "Select its {fileCount, plural, one {# file} other {# files}}"
@@ -2794,6 +3167,14 @@ msgstr "Gesendet am {sentOn}"
 msgid "Sent {sentOn} to {sentTo}"
 msgstr "Am {sentOn} an {sentTo} gesendet"
 
+#: app/components/email-dialog.tsx
+msgid "Sent it?"
+msgstr "Gesendet?"
+
+#: app/components/overview-dialog.tsx
+msgid "Sent one after the other, each as the upload dialog was last set"
+msgstr "Nacheinander hochgeladen, jeweils so, wie der Upload-Dialog zuletzt eingestellt war"
+
 #: app/components/jump-time.tsx
 msgid "Set"
 msgstr "Übernehmen"
@@ -2802,13 +3183,25 @@ msgstr "Übernehmen"
 msgid "Set a date and a time"
 msgstr "Gib ein Datum und eine Uhrzeit an"
 
+#: app/components/settings-menu.tsx
+msgid "Settings"
+msgstr "Einstellungen"
+
 #: app/components/upload-dialog.tsx
 msgid "share link"
 msgstr "Freigabelink"
 
+#: app/routes/place.tsx
+msgid "Shared link"
+msgstr "Geteilter Link"
+
 #: app/components/nas-folder-browser.tsx
 msgid "Shares"
 msgstr "Freigaben"
+
+#: app/components/shortcuts-dialog.tsx
+msgid "Shift + ↑ ↓"
+msgstr "Umschalt + ↑ ↓"
 
 #: app/components/inspector.tsx
 msgid "Shot"
@@ -2854,6 +3247,10 @@ msgstr "Größe"
 msgid "Size of the board"
 msgstr "Größe des Boards"
 
+#: app/components/file-browser.tsx
+msgid "Size of the cards"
+msgstr "Größe der Karten"
+
 #: app/components/camera-files.tsx
 msgid "SkyDock is going over the camera, file by file, as it copies it. What it has been over is listed here; the rest follow on their own."
 msgstr "SkyDock geht die Kamera beim Kopieren Datei für Datei durch. Was schon durchgegangen ist, steht hier; der Rest folgt von selbst."
@@ -2870,10 +3267,6 @@ msgstr "SkyDock leert den Papierkorb nie. Um diese Dateien endgültig zu lösche
 msgid "SkyDock works in"
 msgstr "SkyDock arbeitet in"
 
-#: app/components/file-list.tsx
-msgid "Small enough already — this clip is its own proxy, nothing to build"
-msgstr "Schon klein genug — dieser Clip ist sein eigener Proxy, nichts zu erstellen"
-
 #: app/components/board-header.tsx
 msgid "Smaller"
 msgstr "Kleiner"
@@ -2881,6 +3274,10 @@ msgstr "Kleiner"
 #: app/components/remove-files-dialog.tsx
 msgid "Some of these are copies: a copy can only be taken out, and its original stays where it is."
 msgstr "Einige davon sind Kopien: Eine Kopie kann nur entfernt werden, ihr Original bleibt, wo es ist."
+
+#: app/components/shortcuts-dialog.tsx
+msgid "Space"
+msgstr "Leertaste"
 
 #: app/components/preview-drawer.tsx
 msgid "Square"
@@ -2927,6 +3324,10 @@ msgstr "bleibt hier"
 msgid "Stays on this machine: {0}"
 msgstr "Bleibt auf diesem Rechner: {0}"
 
+#: app/components/shortcuts-dialog.tsx
+msgid "step through the files"
+msgstr "durch die Dateien blättern"
+
 #: app/components/camera-files.tsx
 msgid "still going over the camera — {count, plural, one {# file} other {# files}} so far"
 msgstr "Kamera wird noch durchgegangen — bisher {count, plural, one {# Datei} other {# Dateien}}"
@@ -2934,6 +3335,14 @@ msgstr "Kamera wird noch durchgegangen — bisher {count, plural, one {# Datei} 
 #: app/hooks/useBoardState.ts
 msgid "Still processing — the board updates itself when it is done"
 msgstr "Wird noch aufbereitet — die Übersicht aktualisiert sich von selbst, wenn es fertig ist"
+
+#: app/components/camera-panel.tsx
+msgid "Stop"
+msgstr "Stoppen"
+
+#: app/components/camera-panel.tsx
+msgid "Stop after the file under way — what came across stays, the rest stays on the card"
+msgstr "Nach der laufenden Datei stoppen — was schon kopiert ist, bleibt, der Rest bleibt auf der Karte"
 
 #: app/components/upload-panel.tsx
 msgid "Stop it now — nothing of it is recorded, and what already went up is found there next time"
@@ -2943,9 +3352,21 @@ msgstr "Jetzt abbrechen — nichts davon wird vermerkt, und was schon oben ist, 
 msgid "Stop using by default"
 msgstr "Nicht mehr standardmäßig verwenden"
 
+#: app/components/camera-panel.tsx
+msgid "Stopping…"
+msgstr "Wird gestoppt…"
+
 #: app/components/places-tree.tsx
 msgid "Storage"
 msgstr "Speicher"
+
+#: app/components/connection-dialog.tsx
+msgid "Storage address"
+msgstr "Adresse des Speichers"
+
+#: app/components/dialog-host.tsx
+msgid "Storage folder for {destination}"
+msgstr "Ordner auf dem Speicher für {destination}"
 
 #: app/components/file-browser.tsx
 #: app/components/storage-list.tsx
@@ -2980,8 +3401,8 @@ msgid "Take the link away — the file stays where it is"
 msgstr "Link entfernen — die Datei bleibt, wo sie ist"
 
 #: app/routes/place.tsx
-msgid "Take this place off the board — what is filed here goes back to Fresh files, and nothing is deleted"
-msgstr "Diesen Ort aus der Übersicht nehmen — was hier abgelegt ist, geht zurück zu Neue Dateien, und nichts wird gelöscht"
+msgid "Take this destination off the board — what is filed here goes back to Fresh files, and nothing is deleted"
+msgstr "Dieses Ziel aus der Übersicht nehmen — was hier abgelegt ist, kommt zurück in Neue Dateien, und nichts wird gelöscht"
 
 #: app/components/bin-files.tsx
 msgid "Taken out of a montage"
@@ -3011,6 +3432,18 @@ msgstr "die Archive und der Vermerk, was hochgeladen wurde"
 msgid "The bin is empty."
 msgstr "Der Papierkorb ist leer."
 
+#: app/components/shortcuts-dialog.tsx
+msgid "The board"
+msgstr "Die Übersicht"
+
+#: app/components/board-header.tsx
+msgid "The board as it was after each of the last changes — go back to one"
+msgstr "Die Übersicht, wie sie nach jeder der letzten Änderungen war — kehre zu einem Stand zurück"
+
+#: app/hooks/useBoardState.ts
+msgid "The board is back as it was — Settings › History can undo this too."
+msgstr "Die Übersicht ist wieder wie vorher — Einstellungen › Verlauf kann auch das rückgängig machen."
+
 #: app/routes/board.tsx
 msgid "The board is busy"
 msgstr "Die Übersicht ist beschäftigt"
@@ -3018,6 +3451,10 @@ msgstr "Die Übersicht ist beschäftigt"
 #: app/components/work-folder-dialog.tsx
 msgid "the board opens on what that folder holds — empty, or the work already kept there"
 msgstr "die Übersicht öffnet sich mit dem, was dieser Ordner enthält — leer oder die dort schon abgelegte Arbeit"
+
+#: app/components/history-dialog.tsx
+msgid "The board’s history could not be read."
+msgstr "Der Verlauf der Übersicht konnte nicht gelesen werden."
 
 #: app/components/preview-drawer.tsx
 msgid "The browser cannot show this clip’s picture — it is in a format only the editor reads, such as 4K HEVC. Its proxy is being made, and the preview plays it as soon as it is ready."
@@ -3055,6 +3492,14 @@ msgstr "Das Kopieren wurde abgebrochen — versuch es noch einmal."
 msgid "the corrected times, the jumps made and named by hand, any copies, and every trim, frame and turn{alreadySet}. The gap rule makes the jumps again"
 msgstr "die korrigierten Zeiten, die von Hand angelegten und benannten Sprünge, alle Kopien und jedes Kürzen, jeder Ausschnitt und jede Drehung{alreadySet}. Die Lückenregel bildet die Sprünge neu"
 
+#: app/components/booking-list-dialog.tsx
+msgid "The day’s bookings"
+msgstr "Die Buchungen des Tages"
+
+#: app/components/board-header.tsx
+msgid "The day’s bookings from the booking system — montages are named from it, and emails addressed"
+msgstr "Die Buchungen des Tages aus dem Buchungssystem — Montagen werden danach benannt und E-Mails adressiert"
+
 #: app/components/board-header.tsx
 msgid "The editing templates a montage is made from — look them over, or bring one in"
 msgstr "Die Schnittvorlagen, aus denen eine Montage entsteht — ansehen oder eine neue hinzufügen"
@@ -3083,10 +3528,6 @@ msgstr "Der Ordner, den kdenlive hinterlassen hat"
 msgid "The folder SkyDock keeps its work in — the originals, what is handed over, the board — and another one to work in"
 msgstr "Der Ordner, in dem SkyDock seine Arbeit ablegt — die Originale, das Ausgelieferte, die Übersicht — und ein anderer zum Arbeiten"
 
-#: app/components/file-list.tsx
-msgid "The frame is cropped"
-msgstr "Das Bild ist zugeschnitten"
-
 #: app/components/preview-drawer.tsx
 msgid "The jump"
 msgstr "Der Sprung"
@@ -3096,8 +3537,8 @@ msgid "The jump against the clip"
 msgstr "Der Sprung im Vergleich zum Clip"
 
 #: app/components/inspector.tsx
-msgid "The jump goes; its files are kept, loose in Fresh files, with their crops"
-msgstr "Der Sprung verschwindet; seine Dateien bleiben, lose in Neue Dateien, mit ihren Zuschnitten"
+msgid "The jump goes; its files are kept, loose in Fresh files, with their trims"
+msgstr "Der Sprung verschwindet; seine Dateien bleiben, lose in Neue Dateien, mit ihren Kürzungen"
 
 #: app/components/reset-fresh-dialog.tsx
 msgid "the jumps and their names, and every trim, frame and turn"
@@ -3114,6 +3555,18 @@ msgstr "das kdenlive-Projekt — der Schnitt selbst, was nicht rückgängig zu m
 #: app/components/free-dialog.tsx
 msgid "the kdenlive project, and the record of what went where"
 msgstr "das kdenlive-Projekt und der Vermerk, was wohin ging"
+
+#: app/components/email-dialog.tsx
+msgid "The link as a QR code, for a phone to take it now"
+msgstr "Der Link als QR-Code, damit ein Handy ihn gleich übernehmen kann"
+
+#: app/components/booking-list-dialog.tsx
+msgid "The list"
+msgstr "Die Liste"
+
+#: app/hooks/useBookingList.ts
+msgid "The list could not be brought in."
+msgstr "Die Liste konnte nicht übernommen werden."
 
 #: app/components/upload-dialog.tsx
 msgid "The montage"
@@ -3132,8 +3585,8 @@ msgid "the name, {who}"
 msgstr "der Name, {who}"
 
 #: app/components/take-back-dialog.tsx
-msgid "the name, every crop and frame, and every corrected time — each file goes back to the time its camera gave it"
-msgstr "der Name, jeder Zuschnitt und Ausschnitt und jede korrigierte Zeit — jede Datei bekommt wieder die Zeit ihrer Kamera"
+msgid "the name, every trim and frame, and every corrected time — each file goes back to the time its camera gave it"
+msgstr "der Name, jede Kürzung und jeder Bildausschnitt sowie jede korrigierte Zeit — jede Datei bekommt wieder die Zeit ihrer Kamera"
 
 #: app/components/jump-graph.tsx
 msgid "the opening"
@@ -3227,6 +3680,10 @@ msgstr "Häkchen oder ⌘/Strg-Klick wählt eine aus · Umschalt-Klick nimmt ein
 msgid "the times that were corrected — every file goes back to the time its camera gave it"
 msgstr "die korrigierten Zeiten — jede Datei bekommt wieder die Zeit ihrer Kamera"
 
+#: app/components/preview-drawer.tsx
+msgid "The trim, frame or turn you set has not been saved yet."
+msgstr "Die gesetzte Kürzung, der Bildausschnitt oder die Drehung ist noch nicht gespeichert."
+
 #: app/components/upload-panel.tsx
 msgid "The upload stopped"
 msgstr "Der Upload wurde gestoppt"
@@ -3234,6 +3691,10 @@ msgstr "Der Upload wurde gestoppt"
 #: app/components/templates-dialog.tsx
 msgid "the usual one"
 msgstr "die übliche"
+
+#: app/components/shortcuts-dialog.tsx
+msgid "the whole board bigger, smaller, as drawn"
+msgstr "die ganze Übersicht größer, kleiner, Originalgröße"
 
 #: app/components/board-header.tsx
 msgid "Theme"
@@ -3288,6 +3749,10 @@ msgstr "Dieser Sprung wird zur Montage, sobald er einen Namen hat."
 msgid "This jump runs from {start} to {end}"
 msgstr "Dieser Sprung dauert von {start} bis {end}"
 
+#: app/components/shortcuts-dialog.tsx
+msgid "this list"
+msgstr "diese Liste"
+
 #: app/components/disconnect-dialog.tsx
 msgid "this machine forgets the connection"
 msgstr "dieser Rechner vergisst die Verbindung"
@@ -3305,8 +3770,14 @@ msgid "Thumbnails"
 msgstr "Miniaturen"
 
 #: app/components/upload-dialog.tsx
-msgid "Tick several to drag them together. Each can go to several destinations."
-msgstr "Mehrere ankreuzen, um sie zusammen zu ziehen. Jedes kann an mehrere Ziele."
+msgid "Tick several to drag them together, or tick them and press Put here on a destination. Each can go to several destinations."
+msgstr "Hake mehrere an, um sie zusammen zu ziehen, oder hake sie an und drück bei einem Ziel auf Hierher legen. Jedes kann in mehrere Ziele."
+
+#: app/components/booking-list-dialog.tsx
+msgid "Time;First name;Last name;Email\n"
+"10:30;Luc;Favre;luc@example.com"
+msgstr "Zeit;Vorname;Nachname;E-Mail\n"
+"10:30;Luc;Favre;luc@example.com"
 
 #: app/components/reset-fresh-dialog.tsx
 msgid "Times only"
@@ -3328,6 +3799,26 @@ msgstr "Zur Übergabe"
 msgid "Trim"
 msgstr "Kürzen"
 
+#: app/components/file-list.tsx
+msgid "Trim applied when this file was processed"
+msgstr "Kürzung beim Aufbereiten dieser Datei angewendet"
+
+#: app/components/inspector.tsx
+msgid "Trim every clip to the jump"
+msgstr "Jeden Clip auf den Sprung kürzen"
+
+#: app/components/file-list.tsx
+msgid "Trim saved — applied at the next Process"
+msgstr "Kürzung gespeichert — wird beim nächsten Aufbereiten angewendet"
+
+#: app/components/preview-drawer.tsx
+msgid "Trim to the jump"
+msgstr "Auf den Sprung kürzen"
+
+#: app/components/inspector.tsx
+msgid "Trim, frame and turn…"
+msgstr "Kürzen, zuschneiden und drehen…"
+
 #: app/components/inspector.tsx
 msgid "trimmed"
 msgstr "gekürzt"
@@ -3337,8 +3828,16 @@ msgid "Trimmed to {trimmedFrom} – {trimmedTo}."
 msgstr "Gekürzt auf {trimmedFrom} – {trimmedTo}."
 
 #: app/components/preview-drawer.tsx
+msgid "Turn"
+msgstr "Drehen"
+
+#: app/components/preview-drawer.tsx
 msgid "Turn a quarter clockwise (R)"
 msgstr "Eine Vierteldrehung im Uhrzeigersinn (R)"
+
+#: app/components/shortcuts-dialog.tsx
+msgid "turn by a quarter"
+msgstr "eine Vierteldrehung"
 
 #: app/components/preview-drawer.tsx
 msgid "Turn every clip in this jump the same way — a camera on its side is on its side for the whole jump"
@@ -3385,12 +3884,8 @@ msgid "Undo"
 msgstr "Rückgängig"
 
 #: app/routes/place.tsx
-msgid "Undo the montage, at any step — its files go back to Fresh files, loose, without their name or crops"
-msgstr "Montage auflösen, in jedem Schritt — ihre Dateien gehen lose zurück zu Neue Dateien, ohne Namen und Zuschnitte"
-
-#: app/components/inspector.tsx
-msgid "Undo the montage, whatever step it is at — its files go back to Fresh files, loose. Asks first."
-msgstr "Montage auflösen, egal in welchem Schritt — ihre Dateien gehen lose zurück zu Neue Dateien. Fragt vorher nach."
+msgid "Undo the montage, at any step — its files go back to Fresh files, loose, without their name or trims"
+msgstr "Die Montage in jedem Schritt auflösen — ihre Dateien kommen lose zurück in Neue Dateien, ohne Namen und Kürzungen"
 
 #: app/helpers/notes.ts
 msgid "unknown reason"
@@ -3425,10 +3920,7 @@ msgid "Upload cancelled — nothing was recorded; what already went up is found 
 msgstr "Upload abgebrochen — nichts wurde vermerkt; was schon oben ist, wird beim nächsten Mal dort gefunden."
 
 #: app/components/montage-card.tsx
-msgid "Upload failed: {error}"
-msgstr "Upload fehlgeschlagen: {error}"
-
-#: app/components/montage-card.tsx
+#: app/components/montage-steps.tsx
 msgid "Upload…"
 msgstr "Hochladen…"
 
@@ -3438,6 +3930,7 @@ msgid "uploaded"
 msgstr "hochgeladen"
 
 #: app/components/inspector.tsx
+#: app/components/overview-dialog.tsx
 msgid "Uploaded"
 msgstr "Hochgeladen"
 
@@ -3545,8 +4038,8 @@ msgid "what is up there stops being listed here, so nothing can be uploaded, fre
 msgstr "was oben liegt, wird hier nicht mehr aufgeführt, also kann nichts hochgeladen, freigegeben oder vom Speicher abgespielt werden, bis er wieder verbunden ist"
 
 #: app/components/email-dialog.tsx
-msgid "What is written here is kept on this machine and drafts every passenger’s email; each"
-msgstr "Was hier steht, bleibt auf diesem Rechner und ist der Entwurf für die E-Mail jedes Passagiers; jede"
+msgid "What is written here is kept on this machine and drafts every email; each"
+msgstr "Was hier steht, wird auf diesem Rechner gespeichert und ist der Entwurf für jede E-Mail; jede"
 
 #: app/components/upload-dialog.tsx
 msgid "What the montage has"
@@ -3569,6 +4062,10 @@ msgstr "Wo in {0}"
 msgid "Where it goes"
 msgstr "Wohin es geht"
 
+#: app/components/overview-dialog.tsx
+msgid "Where it has got to"
+msgstr "Wie weit sie ist"
+
 #: app/components/montage-steps.tsx
 msgid "Where this montage has got to"
 msgstr "Wie weit diese Montage ist"
@@ -3577,9 +4074,17 @@ msgstr "Wie weit diese Montage ist"
 msgid "Which date should the merged jump have? The chosen jump keeps its times."
 msgstr "Welches Datum soll der zusammengeführte Sprung haben? Der gewählte Sprung behält seine Zeiten."
 
+#: app/components/file-browser.tsx
+msgid "Whole"
+msgstr "Ganz"
+
 #: app/components/inspector.tsx
 msgid "whole frame"
 msgstr "ganzes Bild"
+
+#: app/components/preview-drawer.tsx
+msgid "Whole frame — the whole picture goes out as shot"
+msgstr "Ganzes Bild — das ganze Bild geht so raus, wie es aufgenommen wurde"
 
 #: app/components/preview-drawer.tsx
 msgid "Widescreen"
@@ -3605,6 +4110,10 @@ msgstr "Das kdenlive-Projekt schreiben — Clips angeordnet, Renderziel gesetzt 
 msgid "Writing…"
 msgstr "Wird geschrieben…"
 
+#: app/components/email-dialog.tsx
+msgid "Written in"
+msgstr "Geschrieben auf"
+
 #: app/components/jump-time.tsx
 msgid "Wrong camera clock? Set when this jump really started — every file in it moves with it"
 msgstr "Kamerauhr falsch? Gib an, wann dieser Sprung wirklich begann — jede Datei darin verschiebt sich mit"
@@ -3612,6 +4121,14 @@ msgstr "Kamerauhr falsch? Gib an, wann dieser Sprung wirklich begann — jede Da
 #: app/components/inspector.tsx
 msgid "Wrong time on this one file? Set when it was really shot"
 msgstr "Falsche Zeit bei dieser einen Datei? Gib an, wann sie wirklich aufgenommen wurde"
+
+#: app/components/overview-dialog.tsx
+msgid "yes"
+msgstr "ja"
+
+#: app/components/email-dialog.tsx
+msgid "Yes — mark as sent"
+msgstr "Ja — als gesendet markieren"
 
 #: app/components/upload-dialog.tsx
 msgid "Your zips"
@@ -3632,10 +4149,6 @@ msgstr "wird gezippt"
 #: app/components/upload-panel.tsx
 msgid "Zipping"
 msgstr "Zippen"
-
-#: app/components/montage-card.tsx
-msgid "Zipping the {zip} —"
-msgstr "{zip} wird gezippt —"
 
 #: app/components/upload-dialog.tsx
 msgid "Zips"

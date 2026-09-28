@@ -69,8 +69,8 @@ const NasFolderBrowser = ({ onSelect, onClose, initialPath, title }: Props) => {
   return (
     <Modal
       data-nas-folder-dialog='true'
-      label={title ?? t`Choose NAS Folder`}
-      title={title ?? t`Choose NAS Folder`}
+      label={title ?? t`Choose a storage folder`}
+      title={title ?? t`Choose a storage folder`}
       onClose={onClose}
       footer={
         <>

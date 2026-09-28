@@ -1,5 +1,5 @@
 import { plural, t } from '@lingui/core/macro'
-import { Go, Mini } from './buttons'
+import { Danger, Mini } from './buttons'
 import { Line, Modal, Spacer } from './modal'
 import { formatFilmSize } from './utils'
 import type { MontageFact } from '@skydock/scripts'
@@ -49,8 +49,8 @@ const TakeBackDialog = ({
       footer={
         <>
           <Spacer />
-          <Mini onClick={onClose}>{t`Close`}</Mini>
-          <Go onClick={onConfirm}>{reset ? t`Reset` : t`Delete`}</Go>
+          <Mini onClick={onClose}>{t`Cancel`}</Mini>
+          <Danger onClick={onConfirm}>{reset ? t`Reset` : t`Delete`}</Danger>
         </>
       }>
       <p className='m-0 text-[12.5px] font-semibold text-ink'>{t`Deleted from this machine`}</p>
@@ -74,7 +74,7 @@ const TakeBackDialog = ({
         {reset ? (
           <>
             <Line mark='✓'>{t`the name, ${who}`}</Line>
-            <Line mark='✓'>{t`every crop and frame, and every corrected time`}</Line>
+            <Line mark='✓'>{t`every trim and frame, and every corrected time`}</Line>
             <Line mark='✓'>
               {t`${plural(jumpCount, { one: '# jump', other: '# jumps' })}, ${plural(fileCount, { one: '# file', other: '# files' })}, still under Montages`}
             </Line>
@@ -92,7 +92,7 @@ const TakeBackDialog = ({
               })}
             </Line>
             <Line mark='✕'>
-              {t`the name, every crop and frame, and every corrected time — each file goes back to the time its camera gave it`}
+              {t`the name, every trim and frame, and every corrected time — each file goes back to the time its camera gave it`}
             </Line>
           </>
         )}

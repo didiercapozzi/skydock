@@ -46,7 +46,7 @@ const Files = ({ shape }: { shape: 'rows' | 'grid' }) => {
     '/o/a.MP4': { state: 'none', play: '/o/a.MP4' }
   })
   const [, setMontages] = useState({})
-  const [, setNote] = useState<string | null>(null)
+  const [, setNote] = useState<{ text: string; problem: boolean } | null>(null)
   const live = useLiveProgress(setProxies, setMontages, setNote)
   return createElement(FileList, {
     files: [clip('a'), clip('b')],

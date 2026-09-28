@@ -34,22 +34,22 @@ const renderBoard = async () => {
 describe('connecting to the storage', () => {
   test('offers to connect while no session exists', async () => {
     await renderBoard()
-    await expect.element(page.getByRole('button', { name: 'Connect the NAS' })).toBeInTheDocument()
+    await expect.element(page.getByRole('button', { name: 'Connect the storage' })).toBeInTheDocument()
   })
 
   test('Connect opens the login', async () => {
     await renderBoard()
-    await userEvent.click(page.getByRole('button', { name: 'Connect the NAS' }))
-    await expect.element(page.getByText('Connect to NAS')).toBeInTheDocument()
-    await expect.element(page.getByRole('textbox', { name: 'NAS Hostname' })).toBeInTheDocument()
+    await userEvent.click(page.getByRole('button', { name: 'Connect the storage' }))
+    await expect.element(page.getByText('Connect to the storage')).toBeInTheDocument()
+    await expect.element(page.getByRole('textbox', { name: 'Storage address' })).toBeInTheDocument()
     await expect.element(page.getByRole('textbox', { name: 'Username' })).toBeInTheDocument()
     await expect.element(page.getByRole('textbox', { name: 'Password' })).toBeInTheDocument()
   })
 
   test('Cancel closes the login', async () => {
     await renderBoard()
-    await userEvent.click(page.getByRole('button', { name: 'Connect the NAS' }))
-    await expect.element(page.getByText('Connect to NAS')).toBeInTheDocument()
+    await userEvent.click(page.getByRole('button', { name: 'Connect the storage' }))
+    await expect.element(page.getByText('Connect to the storage')).toBeInTheDocument()
     await userEvent.click(page.getByText('Cancel'))
     await expect.poll(() => document.querySelector('[data-connection-dialog]') === null).toBe(true)
   })
@@ -81,8 +81,8 @@ describe('connecting to the storage — 2-step verification', () => {
       }
     ])
     await render(createElement(Stub, { initialEntries: ['/'] }))
-    await userEvent.click(page.getByRole('button', { name: 'Connect the NAS' }))
-    await userEvent.fill(page.getByRole('textbox', { name: 'NAS Hostname' }), 'https://nas.local:5001')
+    await userEvent.click(page.getByRole('button', { name: 'Connect the storage' }))
+    await userEvent.fill(page.getByRole('textbox', { name: 'Storage address' }), 'https://nas.local:5001')
     await userEvent.fill(page.getByRole('textbox', { name: 'Username' }), 'admin')
     await userEvent.fill(page.getByRole('textbox', { name: 'Password' }), 'secret')
     await userEvent.click(page.getByRole('button', { name: 'Connect', exact: true }))

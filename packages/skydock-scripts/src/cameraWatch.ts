@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { CameraGone, copyCamera } from './copy'
+import { CameraGone, CopyStopped, copyCamera } from './copy'
 import type { Copied, CopyProgress } from './copy'
 import { gatherArrivals, putOnBoard } from './arrivals'
 import { kioReader } from './kio'
@@ -174,6 +174,8 @@ type Watch = {
   /* what each camera read through KDE was found to hold, as its copy went over it — and whether
      that copy has been over all of it — kept while it stays plugged in */
   seenOn: Record<string, { done: boolean; clips: SeenClip[] }>
+  /* stops the camera being copied now, between one file and the next */
+  stop?: AbortController
 }
 
 declare global {
@@ -202,6 +204,8 @@ const copyNext = async (outputDir: string) => {
   if (!cameraDir || state.copying) return
   state.copying = true
   state.current = cameraDir
+  const stop = new AbortController()
+  state.stop = stop
   const camera = cameraName(cameraDir)
   let last = { done: 0, total: 0, copied: 0, skipped: 0 }
   const onProgress = (progress: CopyProgress) => {
@@ -215,12 +219,13 @@ const copyNext = async (outputDir: string) => {
   }
   try {
     const result = isKioCamera(cameraDir)
-      ? await copyThroughKde(cameraDir, outputDir, onProgress, onCopied)
+      ? await copyThroughKde(cameraDir, outputDir, onProgress, onCopied, stop.signal)
       : await copyCamera({
           cameraDir: path.join(cameraDir, 'DCIM'),
           outputDir,
           onProgress,
-          onCopied
+          onCopied,
+          stop: stop.signal
         })
     gatherArrivals(outputDir, arrived)
     /* Every file that came off is on the board already; the scan is only for one that could not be
@@ -231,6 +236,7 @@ const copyNext = async (outputDir: string) => {
     publish({ kind: 'camera', camera, state: 'done', ...result })
   } catch (e) {
     const gone = e instanceof CameraGone
+    const stopped = e instanceof CopyStopped
     gatherArrivals(outputDir, arrived)
     /* what did make it across is whole, and is on the board — scanned for, if it could not be put
        there as it landed */
@@ -238,13 +244,14 @@ const copyNext = async (outputDir: string) => {
     publish({
       kind: 'camera',
       camera,
-      state: gone ? 'gone' : 'failed',
+      state: gone ? 'gone' : stopped ? 'stopped' : 'failed',
       ...last,
       reason: messageOf(e)
     })
   } finally {
     state.copying = false
     state.current = undefined
+    state.stop = undefined
     if (state.queue.length > 0) void copyNext(outputDir)
   }
 }
@@ -254,7 +261,8 @@ const copyThroughKde = async (
   camera: string,
   outputDir: string,
   onProgress: (progress: CopyProgress) => void,
-  onCopied: (copied: Copied) => void
+  onCopied: (copied: Copied) => void,
+  stop: AbortSignal
 ) => {
   const reader = await kioReader()
   if (!reader) throw new CameraGone('KDE no longer reaches this camera.')
@@ -267,6 +275,7 @@ const copyThroughKde = async (
       outputDir,
       onProgress,
       onCopied,
+      stop,
       onClip: (clip) => seen.clips.push(clip)
     })
   } finally {
@@ -377,6 +386,17 @@ const copyAgain = (outputDir: string, camera?: string, mounts = mountedCameras()
   return wanted.length
 }
 
+/* The copy stopped when asked, with every camera waiting its turn: what came across is whole and on
+   the board, and the rest stays on the card for the next Rescan or plug-in (RULES, Copying a
+   camera). Says whether there was anything to stop. */
+const stopCameraCopy = () => {
+  const state = watch()
+  const running = state.copying || state.queue.length > 0
+  state.queue = []
+  state.stop?.abort()
+  return running
+}
+
 /* whether a camera is being copied right now — nothing is taken off one while it is read */
 const cameraCopying = () => watch().copying || watch().queue.length > 0
 
@@ -388,6 +408,7 @@ const seenOnCamera = (camera: string) => watch().seenOn[camera] ?? { done: false
 
 export {
   askKde,
+  stopCameraCopy,
   cameraCopying,
   cameraName,
   camerasSeenThroughKde,

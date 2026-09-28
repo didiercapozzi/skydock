@@ -29,7 +29,21 @@ const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 /* A rectangle covering everything is the same as no rectangle: the picture is untouched, and
    saying so is what lets processing copy the file instead of encoding it again. */
 const isWholeFrame = (crop: FrameCrop | null | undefined) =>
-  !crop || (crop.x <= 0 && crop.y <= 0 && crop.width >= 1 && crop.height >= 1)
+  !crop || (!crop.fill && crop.x <= 0 && crop.y <= 0 && crop.width >= 1 && crop.height >= 1)
+
+/* Two rectangles are the same rectangle, with no rectangle at all counting as the whole frame —
+   so drawing one that happens to cover everything does not make a processed copy look stale. */
+const sameFrame = (left: FrameCrop | null | undefined, right: FrameCrop | null | undefined) => {
+  if (isWholeFrame(left) && isWholeFrame(right)) return true
+  if (!left || !right) return false
+  return (
+    left.x === right.x &&
+    left.y === right.y &&
+    left.width === right.width &&
+    left.height === right.height &&
+    left.fill === right.fill
+  )
+}
 
 /* Kept inside the picture whatever it was asked for, and never shrunk to nothing. A rectangle
    dragged off the edge is moved back in rather than clipped, so its shape survives — clipping
@@ -119,9 +133,21 @@ const ROTATE_FILTER: Record<Rotation, string | null> = {
   270: 'transpose=2'
 }
 
+/* An upright picture set in a landscape frame the height of its own width — so as many pixels as it
+   had, and not four times as many — with the picture blurred and stretched behind it to fill the
+   sides. Nothing of the jumper is cut away, and nothing is black. A picture already wider than it
+   is tall is left as it is. */
+const landscapeFill = (width: number, height: number) => {
+  if (width >= height) return null
+  const h = evenBound(width)
+  const w = evenBound((h * 16) / 9)
+  return `split[wide][tall];[wide]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},gblur=sigma=40[sides];[tall]scale=-2:${h}[middle];[sides][middle]overlay=(W-w)/2:(H-h)/2`
+}
+
 /* Everything done to the picture, in the order it is seen: turned first, then the rectangle cut out
-   of the turned picture — it was drawn on the turned picture — and put back to that picture's size.
-   A quarter-turned 4K clip comes out as a 2160-wide portrait clip. Null when nothing is done to it. */
+   of the turned picture — it was drawn on the turned picture — and put back to that picture's size,
+   and last, when asked, set in a landscape frame with blurred sides. A quarter-turned 4K clip comes
+   out as a 2160-wide portrait clip. Null when nothing is done to it. */
 const pictureFilter = ({
   frame,
   rotation,
@@ -135,9 +161,11 @@ const pictureFilter = ({
 }) => {
   const turn = ROTATE_FILTER[rotation ?? 0]
   const shown = turnedSize(width, height, rotation)
+  const cut = frame && !isWholeFrame({ ...frame, fill: undefined })
   const parts = [
     turn,
-    isWholeFrame(frame) ? null : cropFilter(frame!, shown.width, shown.height)
+    cut ? cropFilter(frame, shown.width, shown.height) : null,
+    frame?.fill === 'blur' ? landscapeFill(shown.width, shown.height) : null
   ].filter((p): p is string => p !== null)
   return parts.length > 0 ? parts.join(',') : null
 }
@@ -160,6 +188,7 @@ export {
   isWholeFrame,
   orientationAfter,
   pictureFilter,
+  sameFrame,
   ROTATIONS,
   turnBy,
   turnedSize,

@@ -61,8 +61,8 @@ const ConnectionDialog = ({ onConnect, onCancel, error, codeAsked }: ConnectionD
   return (
     <Modal
       data-connection-dialog='true'
-      label={t`Connect to the NAS`}
-      title={t`Connect to NAS`}
+      label={t`Connect to the storage`}
+      title={t`Connect to the storage`}
       onClose={form.isSubmitting ? undefined : onCancel}
       footer={
         <>
@@ -87,7 +87,7 @@ const ConnectionDialog = ({ onConnect, onCancel, error, codeAsked }: ConnectionD
         className='flex flex-col gap-2.5'>
         <FormField
           field={form.fields.host}
-          label={t`NAS Hostname`}>
+          label={t`Storage address`}>
           {(control) => (
             <input
               {...control}

@@ -1,6 +1,7 @@
 import { parentOf } from './paths'
 import type { OutputFact } from './boardAnswer'
-import type { ManifestFile } from './types'
+import { sameFrame } from './frameCrop'
+import type { FrameCrop, ManifestFile } from './types'
 
 /* Free of node imports: the board runs this in the browser. */
 
@@ -23,30 +24,13 @@ type StatusContext = {
   crop?: {
     cropStart?: number | null
     cropEnd?: number | null
-    frame?: { x: number; y: number; width: number; height: number } | null
+    frame?: FrameCrop | null
     rotation?: 0 | 90 | 180 | 270 | null
   }
   output?: OutputFact
   remote?: RemoteListing | null
   /* the file belongs to a montage that has an edit, which freezes it (RULES, The editing project) */
   inEdit?: boolean
-}
-
-/* Two rectangles are the same rectangle, with no rectangle at all counting as the whole frame —
-   so drawing one that happens to cover everything does not make a processed copy look stale. */
-const sameFrame = (
-  left: { x: number; y: number; width: number; height: number } | null | undefined,
-  right: { x: number; y: number; width: number; height: number } | null | undefined
-) => {
-  const whole = (c: typeof left) => !c || (c.x <= 0 && c.y <= 0 && c.width >= 1 && c.height >= 1)
-  if (whole(left) && whole(right)) return true
-  if (!left || !right) return false
-  return (
-    left.x === right.x &&
-    left.y === right.y &&
-    left.width === right.width &&
-    left.height === right.height
-  )
 }
 
 /* every input that decided what `execute` wrote — bytes, capture time, crop range, frame */

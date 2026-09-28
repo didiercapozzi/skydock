@@ -6,6 +6,9 @@ import type { Section } from '../helpers/sections'
 import { FileList, kindOf } from './file-list'
 import type { FileShape, Kind, Modifiers } from './file-list'
 import type { LiveFile } from '../hooks/useLiveProgress'
+import { setCardSize, useCardSize } from '../hooks/useCardSize'
+import type { CardSize } from '../hooks/useCardSize'
+import { Seg } from './buttons'
 import { StepMeter } from './montage-steps'
 import type { ManifestFile, ManifestGroup } from './types'
 import { dateLabel, getPictureUrl, hhmm, minFileMtime } from './utils'
@@ -125,10 +128,13 @@ const JumpCard = ({
   jump,
   proxies,
   strays,
+  compact,
   onOpen
 }: {
   section: Exclude<Section, { kind: 'day' } | { kind: 'all' }>
   open: boolean
+  /* a line each: its name, its state, when — no frames */
+  compact: boolean
   statusOf: (file: ManifestFile) => FileStatus
   jump: JumpControls
   /* where each clip's small copy is, so the card's frames are cut from it rather than from 4K */
@@ -141,9 +147,8 @@ const JumpCard = ({
   const frozen = group ? jump.frozen.has(group.id) : false
   const over = group !== null && jump.overTarget === `group:${group.id}`
   const from = minFileMtime(section.files) ?? 0
-  const frames = group?.freed
-    ? []
-    : [...section.files].sort((a, b) => a.mtime - b.mtime).slice(0, 4)
+  const frames =
+    group?.freed || compact ? [] : [...section.files].sort((a, b) => a.mtime - b.mtime).slice(0, 4)
   const label = section.kind === 'jump' ? section.label : t`Loose files`
   const progress = group ? (jump.progress?.(group) ?? null) : null
   return (
@@ -180,7 +185,7 @@ const JumpCard = ({
       }
       /* the loose card is not a jump and must not pass for one: dashed, flat, on the page's own
          ground rather than raised on white */
-      className={`flex min-w-0 flex-col gap-1.5 rounded-[10px] border-2 p-2.5 text-left ${
+      className={`flex min-w-0 flex-col rounded-[10px] border-2 text-left ${compact ? 'gap-0.5 px-2 py-1.5' : 'gap-1.5 p-2.5'} ${
         group ? 'shadow-card' : 'border-dashed'
       } ${group && !frozen ? 'cursor-grab' : 'cursor-pointer'} ${
         over
@@ -204,7 +209,7 @@ const JumpCard = ({
           progressTag(section.files, statusOf)
         )}
       </span>
-      {progress && <StepMeter progress={progress} />}
+      {progress && !compact && <StepMeter progress={progress} />}
       {/* a file off the gap rule is flagged where it is, and its jump says so from the outside */}
       {strays > 0 && (
         <span
@@ -213,7 +218,7 @@ const JumpCard = ({
             other:
               '# files more than 15 minutes from the rest of this jump — the gap rule would not have put them here'
           })}
-          className='self-start rounded border border-dashed border-changed bg-changed-soft px-1.5 font-mono text-[10px] leading-4 font-semibold text-changed'>
+          className='self-start rounded border border-dashed border-changed bg-changed-soft px-1.5 font-mono text-[11px] leading-4 font-semibold text-changed'>
           ⧗ {t`${strays} off the gap`}
         </span>
       )}
@@ -225,7 +230,7 @@ const JumpCard = ({
       ) : (
         <span className='text-[11.5px] text-ink-2 italic'>{t`in no jump`}</span>
       )}
-      <span className='text-[11.5px] text-ink-3'>{counts(section.files)}</span>
+      {!compact && <span className='text-[11.5px] text-ink-3'>{counts(section.files)}</span>}
       {frames.length > 0 && (
         <span className='pointer-events-none grid grid-cols-4 gap-1'>
           {frames.map((f) => (
@@ -244,7 +249,25 @@ const JumpCard = ({
   )
 }
 
+/* how much room the cards take, chosen above them */
+const CardSizes = ({ size, count }: { size: CardSize; count: number }) => (
+  <div className='mt-3 flex items-center gap-2 text-[12px] text-ink-2'>
+    <span>{plural(count, { one: '# card', other: '# cards' })}</span>
+    <Seg
+      label={t`Size of the cards`}
+      value={size}
+      options={[
+        ['full', t`Whole`],
+        ['compact', t`Compact`],
+        ['hidden', t`Folded`]
+      ]}
+      onPick={setCardSize}
+    />
+  </div>
+)
+
 const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props) => {
+  const size = useCardSize()
   if (sections.length === 0)
     return (
       <div className='mt-3 rounded-[9px] border border-dashed border-line bg-pane px-4 py-7 text-center text-ink-3'>
@@ -272,7 +295,18 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
     return (
       <div className='@container'>
         {!cards.hidden && (
-          <div className='mt-3 grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-2'>
+          <CardSizes
+            size={size}
+            count={cardSections.length}
+          />
+        )}
+        {!cards.hidden && size !== 'hidden' && (
+          <div
+            className={`mt-1.5 grid gap-2 ${
+              size === 'compact'
+                ? 'grid-cols-[repeat(auto-fill,minmax(160px,1fr))]'
+                : 'grid-cols-[repeat(auto-fill,minmax(200px,1fr))]'
+            }`}>
             {cardSections.map((s) => (
               <JumpCard
                 key={s.key}
@@ -282,6 +316,7 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
                 jump={jump}
                 proxies={list.proxies}
                 strays={s.files.filter((f) => f.id && list.offGap.has(f.id)).length}
+                compact={size === 'compact'}
                 onOpen={() => cards.onOpen(s.key)}
               />
             ))}

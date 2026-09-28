@@ -5,6 +5,7 @@ import { ConnectionDialog } from './connection-dialog'
 import { EmailDialog } from './email-dialog'
 import { FreeDialog } from './free-dialog'
 import { FreePlaceDialog } from './free-place-dialog'
+import { DeleteJumpDialog } from './delete-jump-dialog'
 import { DisconnectDialog } from './disconnect-dialog'
 import { RemovePlaceDialog } from './remove-place-dialog'
 import { RemoveFilesDialog } from './remove-files-dialog'
@@ -17,9 +18,14 @@ import type { TakeBackMode } from './take-back-dialog'
 import type { Destination, ManifestFile, ManifestGroup } from './types'
 import { UploadDialog } from './upload-dialog'
 import { WorkFolderDialog } from './work-folder-dialog'
+import { ShortcutsDialog } from './shortcuts-dialog'
+import { HistoryDialog } from './history-dialog'
+import { OverviewDialog } from './overview-dialog'
+import { BookingListDialog } from './booking-list-dialog'
+import type { OverviewRow } from './overview-dialog'
 import { folderOnStorage } from '../helpers/jumps'
 import type { Passenger } from './montage-card'
-import type { SendPlan } from '@skydock/scripts'
+import type { MontageStep, SendPlan } from '@skydock/scripts'
 
 type UploadDialogState = { kind: 'upload'; groupId: string }
 
@@ -51,6 +57,11 @@ type BoardDialog =
   /* what was dropped on the Montages heading, waiting for the montage's name */
   | { kind: 'name-montage'; groupId?: string; fileIds?: string[]; keeps?: string }
   | { kind: 'work-folder' }
+  | { kind: 'delete-jump'; groupId: string }
+  | { kind: 'shortcuts' }
+  | { kind: 'history' }
+  | { kind: 'overview' }
+  | { kind: 'booking-list' }
 
 const DialogHost = ({
   dialog,
@@ -74,12 +85,15 @@ const DialogHost = ({
   onRemovePlace,
   onDisconnect,
   onTakeBack,
+  onDeleteJump,
   onMontage,
   passengers,
   onNameMontage,
   workFolder,
   onRemoveFiles,
-  onResetFresh
+  onGoBack,
+  onResetFresh,
+  overview
 }: {
   dialog: BoardDialog
   onDialog: (dialog: BoardDialog) => void
@@ -111,6 +125,7 @@ const DialogHost = ({
   onRemovePlace: (place: string) => void
   onDisconnect: () => void
   onTakeBack: (mode: TakeBackMode, group: ManifestGroup) => void
+  onDeleteJump: (group: ManifestGroup) => void
   onMontage: (groupId: string, template: string) => void
   /* the montages there are, for a name to join */
   passengers: Passenger[]
@@ -118,7 +133,19 @@ const DialogHost = ({
   /* the folder SkyDock works in, and what is writing into it right now */
   workFolder: { folder: string; working: string | null }
   onRemoveFiles: (to: 'fresh' | 'bin', files: ManifestFile[]) => void
+  /* the board put back as it was at an earlier step */
+  onGoBack: (step: string) => void
   onResetFresh: (what: 'times' | 'everything') => void
+  /* every montage, and what the overview does to one or to many */
+  overview: {
+    rows: () => OverviewRow[]
+    busy: boolean
+    onGo: (who: string) => void
+    onStep: (id: string, step: MontageStep) => void
+    onProcessAll: (ids: string[]) => void
+    onUploadAll: (ids: string[]) => void
+    onPaid: (id: string, paid: boolean) => void
+  }
 }) => {
   const close = () => onDialog(null)
   return (
@@ -138,7 +165,7 @@ const DialogHost = ({
           return (
             <NasFolderBrowser
               initialPath={places.find((d) => d.name === destination)?.path ?? undefined}
-              title={t`NAS folder for ${destination}`}
+              title={t`Storage folder for ${destination}`}
               onSelect={(path) => onChooseFolder(path, dialog.destination)}
               onClose={() => onDialog(dialog.back ?? null)}
             />
@@ -242,6 +269,30 @@ const DialogHost = ({
           )
         })()}
 
+      {dialog?.kind === 'shortcuts' && <ShortcutsDialog onClose={close} />}
+
+      {dialog?.kind === 'booking-list' && <BookingListDialog onClose={close} />}
+
+      {dialog?.kind === 'overview' && (
+        <OverviewDialog
+          rows={overview.rows()}
+          busy={overview.busy}
+          onGo={overview.onGo}
+          onStep={overview.onStep}
+          onProcessAll={overview.onProcessAll}
+          onUploadAll={overview.onUploadAll}
+          onPaid={overview.onPaid}
+          onClose={close}
+        />
+      )}
+
+      {dialog?.kind === 'history' && (
+        <HistoryDialog
+          onGoBack={onGoBack}
+          onClose={close}
+        />
+      )}
+
       {dialog?.kind === 'work-folder' && (
         <WorkFolderDialog
           folder={workFolder.folder}
@@ -306,6 +357,21 @@ const DialogHost = ({
               facts={theirs.map((g) => facts[g.id])}
               onClose={close}
               onConfirm={() => onTakeBack(dialog.mode, first)}
+            />
+          )
+        })()}
+
+      {dialog?.kind === 'delete-jump' &&
+        (() => {
+          const group = groups.find((g) => g.id === dialog.groupId)
+          if (!group) return null
+          return (
+            <DeleteJumpDialog
+              label={group.label}
+              files={group.files.length}
+              copies={group.files.filter((f) => f.processed).length}
+              onClose={close}
+              onConfirm={() => onDeleteJump(group)}
             />
           )
         })()}

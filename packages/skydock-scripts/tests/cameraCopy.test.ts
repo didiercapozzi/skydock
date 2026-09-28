@@ -10,7 +10,7 @@ import {
   overMtp,
   watchCameras
 } from '../src/cameraWatch'
-import { CameraGone, copyBack, copyCamera } from '../src/copy'
+import { CameraGone, CopyStopped, copyBack, copyCamera } from '../src/copy'
 import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
 import { loadManifest, saveManifest } from '../src/manifest'
@@ -153,6 +153,46 @@ describe('copying a camera off', () => {
         shot: Math.floor(DAY.getTime() / 1000)
       }
     ])
+  })
+
+  /* one file that will not come across does not stop the rest; it is named (RULES, Copying a camera
+     off) — here, a day it cannot be filed under, since a file of that name is in the way */
+  it('passes over a file it cannot copy, names it, and copies the rest', async () => {
+    const root = card('GOPRO', {
+      'GX010001.MP4': { bytes: 32, fill: 1, at: DAY },
+      'GX010002.MP4': { bytes: 32, fill: 2, at: new Date(2026, 7, 2, 10, 0, 0) }
+    })
+    fs.mkdirSync(path.join(outputDir, 'original_files'), { recursive: true })
+    fs.writeFileSync(path.join(outputDir, 'original_files', '2026-08-01'), 'in the way')
+
+    const result = await copyCamera({ cameraDir: path.join(root, 'DCIM'), outputDir })
+
+    expect(result).toMatchObject({ copied: 1, unreadable: ['GX010001.MP4'] })
+    expect(
+      fs.existsSync(path.join(outputDir, 'original_files', '2026-08-02', 'GX010002.MP4'))
+    ).toBe(true)
+  })
+
+  /* asked to stop, the copy finishes the file in hand and begins nothing after it (RULES, Copying a
+     camera off) */
+  it('stops between one file and the next when asked, leaving the rest on the card', async () => {
+    const root = card('GOPRO', {
+      'GX010001.MP4': { bytes: 32, fill: 1, at: DAY },
+      'GX010002.MP4': { bytes: 32, fill: 2, at: DAY }
+    })
+    const stop = new AbortController()
+
+    await expect(
+      copyCamera({
+        cameraDir: path.join(root, 'DCIM'),
+        outputDir,
+        stop: stop.signal,
+        onCopied: () => stop.abort()
+      })
+    ).rejects.toBeInstanceOf(CopyStopped)
+
+    expect(fs.existsSync(day('GX010001.MP4'))).toBe(true)
+    expect(fs.existsSync(day('GX010002.MP4'))).toBe(false)
   })
 
   /* two cameras of one make both start at GX010001 — the second must never write over the first */

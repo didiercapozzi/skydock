@@ -1,20 +1,59 @@
-import { t } from '@lingui/core/macro'
+import { i18n } from '@lingui/core'
+import type { MessageDescriptor } from '@lingui/core'
+import { msg, t } from '@lingui/core/macro'
 import { montageSteps } from '@skydock/scripts'
-import type { MontageFact, MontageProgress } from '@skydock/scripts'
+import type { MontageFact, MontageProgress, MontageStep } from '@skydock/scripts'
+import { Mini } from './buttons'
 import type { ManifestGroup } from './types'
+
+/* the steps a press takes, in the words of each step's own button; naming is typed, so it has none */
+const STEP_ACTION: Partial<Record<MontageStep, MessageDescriptor>> = {
+  Processed: msg`Process`,
+  Edited: msg`Make the project`,
+  Rendered: msg`Open in kdenlive`,
+  Uploaded: msg`Upload…`,
+  Emailed: msg`Email the link…`
+}
+
+/* the button that takes a step, where one does */
+const StepButton = ({
+  step,
+  busy,
+  onStep
+}: {
+  step: MontageStep
+  busy: boolean
+  onStep: (step: MontageStep) => void
+}) => {
+  const action = STEP_ACTION[step]
+  if (!action) return null
+  return (
+    <Mini
+      disabled={busy}
+      onClick={() => onStep(step)}>
+      {i18n._(action)}
+    </Mini>
+  )
+}
 
 /* Where a montage has got to, one step under the other the way it is walked: what is done ticked in
    green and joined up, the step it is at ringed, with what to do next right under it, and what is
    still to come greyed. The whole way is there at once, so nobody has to remember what comes after
-   a render. */
+   a render. Where no montage's own buttons are on screen — the Montages page with none open — the step
+   it is at can be taken from here, so what says what is next also does it. */
 const StepTrail = ({
   group,
   facts,
-  emailed
+  emailed,
+  onStep,
+  busy = false
 }: {
   group: ManifestGroup
   facts?: MontageFact
   emailed: boolean
+  /* takes the step it is at; absent where the trail only reports, or the step is not one a press does */
+  onStep?: (step: MontageStep) => void
+  busy?: boolean
 }) => {
   const { steps, at, next } = montageSteps({ group, facts, emailed })
   const how = next?.how ?? ''
@@ -35,7 +74,7 @@ const StepTrail = ({
                 aria-hidden='true'
                 className='flex flex-col items-center'>
                 <span
-                  className={`grid h-5 w-5 flex-none place-items-center rounded-full text-[10.5px] font-bold ${
+                  className={`grid h-5 w-5 flex-none place-items-center rounded-full text-[11px] font-bold ${
                     step.done
                       ? 'bg-up text-white'
                       : now
@@ -59,6 +98,15 @@ const StepTrail = ({
                 {now && next && (
                   <span className='text-[11.5px] text-accent'>{t`Next: ${how}`}</span>
                 )}
+                {now && onStep && (
+                  <span className='mt-1'>
+                    <StepButton
+                      step={step.name}
+                      busy={busy}
+                      onStep={onStep}
+                    />
+                  </span>
+                )}
               </span>
             </li>
           )
@@ -66,7 +114,7 @@ const StepTrail = ({
       </ol>
       {at === steps.length && (
         <p className='m-0 text-[12px] font-semibold text-up'>
-          {t`Every step done — the passenger has their film.`}
+          {t`Every step done — whoever it is for has their film.`}
         </p>
       )}
     </div>
@@ -107,4 +155,4 @@ const StepMeter = ({
   )
 }
 
-export { StepMeter, StepTrail }
+export { StepButton, StepMeter, StepTrail }

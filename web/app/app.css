@@ -15,7 +15,7 @@
   /* type, loudest to quietest */
   --color-ink: #171c22;
   --color-ink-2: #545e6b;
-  --color-ink-3: #8b95a2;
+  --color-ink-3: #6b7582;
 
   /* borders: the one you see, and the one that only separates */
   --color-line: #dde2e8;
@@ -70,7 +70,7 @@
     --color-rail: #131820;
     --color-ink: #e7ecf1;
     --color-ink-2: #9aa5b2;
-    --color-ink-3: #6b7683;
+    --color-ink-3: #8a95a3;
     --color-line: #262d36;
     --color-line-2: #1f252d;
     --color-accent: #3fb3a6;
@@ -100,7 +100,7 @@
   --color-rail: #131820;
   --color-ink: #e7ecf1;
   --color-ink-2: #9aa5b2;
-  --color-ink-3: #6b7683;
+  --color-ink-3: #8a95a3;
   --color-line: #262d36;
   --color-line-2: #1f252d;
   --color-accent: #3fb3a6;

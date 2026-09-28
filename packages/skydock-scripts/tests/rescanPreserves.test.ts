@@ -74,6 +74,29 @@ describe('a scan keeps the work already done', () => {
     expect(kept.uploaded?.md5).toBe('abc')
   })
 
+  /* A file can land while a scan is reading the disk — off a camera being copied, put on the board as
+     it landed. The scan did not see it, but it is there: it stays on the board (RULES, Copying a
+     camera off). Stood in for here by a file the listing does not walk. */
+  it('keeps a file it did not see, as long as the file is there', async () => {
+    const origDir = path.join(outputDir, 'original_files')
+    writeTempFile(origDir, 'DJI_0001.MP4')
+    await scanMedia({ outputDir })
+    const manifestPath = path.join(outputDir, 'manifest.json')
+    const board = loadManifest(manifestPath)!
+    const unseen = writeTempFile(path.join(outputDir, 'landing'), 'DJI_0002.MP4')
+    board.files.push({ id: 'landed', path: unseen, filename: 'DJI_0002.MP4', size: 1, mtime: 1 })
+    saveManifest(manifestPath, board)
+
+    writeTempFile(origDir, 'DJI_0003.MP4')
+    await scanMedia({ outputDir })
+
+    expect(
+      loadManifest(manifestPath)!
+        .files.map((f) => f.filename)
+        .sort()
+    ).toEqual(['DJI_0001.MP4', 'DJI_0002.MP4', 'DJI_0003.MP4'])
+  })
+
   it('lets the disk win on what the disk measures', async () => {
     const origDir = path.join(outputDir, 'original_files')
     const target = writeTempFile(origDir, 'DJI_0001.MP4')

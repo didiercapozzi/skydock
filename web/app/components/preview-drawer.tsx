@@ -3,15 +3,17 @@ import type { MessageDescriptor } from '@lingui/core'
 import { msg, t } from '@lingui/core/macro'
 import { fitRatio, FrameCropper } from './frame-cropper'
 import { useEffect, useRef, useState } from 'react'
-import { Go, Mini } from './buttons'
+import { Danger, Go, Mini } from './buttons'
 import { typingInField } from '../helpers/keys'
 import { createScrub } from '../helpers/scrub'
-import { Spacer } from './modal'
+import { Modal, Spacer } from './modal'
 import {
   cropToPixels,
   cutFrom,
+  jumpTrim,
   isQuarterTurn,
   isWholeFrame,
+  sameFrame,
   nameOfMoment,
   turnBy,
   turnedSize
@@ -39,7 +41,7 @@ type VideoRef = {
 /* One block of the side panel: a quiet heading and whatever it is about. */
 const Panel = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div>
-    <h5 className='mb-1.5 text-[10.5px] font-semibold tracking-[0.08em] text-ink-3 uppercase'>
+    <h5 className='mb-1.5 text-[11px] font-semibold tracking-[0.08em] text-ink-3 uppercase'>
       {title}
     </h5>
     {children}
@@ -72,7 +74,7 @@ const RATIOS: RatioOption[] = [
     label: 'None',
     name: msg`None`,
     ratio: null,
-    title: msg`No crop — the whole picture goes out as shot`
+    title: msg`Whole frame — the whole picture goes out as shot`
   },
   { label: 'Same', name: msg`Same`, ratio: null, title: msg`Keep the shape this clip already has` },
   { label: '9:16', ratio: 9 / 16, title: msg`Upright, for a phone` },
@@ -240,6 +242,23 @@ const PreviewDrawer = ({
   const pick = (label: string, next: number | null) =>
     setPicked({ key: fileKey, label, ratio: next })
 
+  /* A landscape fill stays through whatever is done to the rectangle — dragged, reshaped, taken
+     away — since it is about how the picture is delivered, not what is cut out of it. Only Reset
+     and its own switch take it away. */
+  const filled = frame?.fill === 'blur'
+  const reframe = (next: FrameCrop | null) =>
+    onFrameChange(
+      filled ? { ...(next ?? { x: 0, y: 0, width: 1, height: 1 }), fill: 'blur' } : next
+    )
+  const fillSides = (on: boolean) => {
+    const rest = frame && !isWholeFrame({ ...frame, fill: undefined }) ? frame : null
+    onFrameChange(
+      on
+        ? { ...(rest ?? { x: 0, y: 0, width: 1, height: 1 }), fill: 'blur' }
+        : rest && { x: rest.x, y: rest.y, width: rest.width, height: rest.height }
+    )
+  }
+
   /* A quarter turn swaps the picture's shape, so a rectangle on it is fitted again at the shape it
      had — "Same" becoming the new shape — rather than left the wrong way round. */
   const turn = (by: number) => {
@@ -249,7 +268,7 @@ const PreviewDrawer = ({
       const after = turnedSize(shape.width, shape.height, next)
       const keep = shown === 'Same' || ratio === null ? after.width / after.height : ratio
       if (shown === 'Same') pick('Same', keep)
-      onFrameChange(fitRatio(keep, after.width, after.height))
+      reframe(fitRatio(keep, after.width, after.height))
     }
     onRotate(next)
   }
@@ -290,11 +309,27 @@ const PreviewDrawer = ({
      picture; R turns a quarter clockwise, as the button does; space plays and pauses a clip,
      whichever button was pressed last — never while a field has the keyboard. One listener on the
      window, renewed each render so it sees the latest turn. */
+  /* where it was going when it was stopped to ask about unsaved changes */
+  const [leaving, setLeaving] = useState<null | (() => void)>(null)
+  /* What is on screen against what is on the file: the one tells you there is something to save.
+     Both halves count: watching only the trim would leave the button dead after a rectangle had
+     been dragged, which reads as "it did not work" — and the rectangle is the half with no other way
+     of telling. */
+  const sameRectangle = sameFrame(frame, file?.frame)
+  const dirty =
+    (cropStart ?? null) !== (file?.cropStart ?? null) ||
+    (cropEnd ?? null) !== (file?.cropEnd ?? null) ||
+    !sameRectangle ||
+    rotation !== (file?.rotation ?? 0)
+  /* Leaving with changes not saved asks first — Esc, a click outside, Close, Prev and Next all leave —
+     rather than dropping a trim somebody spent a minute on (RULES, Cropping and turning). */
+  const leave = (go: () => void) => (dirty ? setLeaving(() => go) : go())
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (big) leaveBig()
-        else onClose()
+        if (leaving) setLeaving(null)
+        else if (big) leaveBig()
+        else leave(onClose)
       }
       if (typingInField(e)) return
       if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -327,12 +362,12 @@ const PreviewDrawer = ({
   const pickRatio = (option: RatioOption) => {
     if (option.label === 'None') {
       pick('None', null)
-      onFrameChange(null)
+      reframe(null)
       return
     }
     const next = option.label === 'Free' ? null : (option.ratio ?? turned.width / turned.height)
     pick(option.label, next)
-    onFrameChange(
+    reframe(
       next === null
         ? (frame ?? fitRatio(turned.width / turned.height, turned.width, turned.height))
         : fitRatio(next, turned.width, turned.height)
@@ -358,22 +393,6 @@ const PreviewDrawer = ({
   const shownMoments = file.moments && { ...file.moments, exit: cutAt }
   const from = cropStart ?? 0
   const to = cropEnd ?? duration
-  /* What is on screen against what is on the file: the one tells you there is something to save.
-     Both halves count: watching only the trim would leave the button dead after a rectangle had
-     been dragged, which reads as "it did not work" — and the rectangle is the half with no other way
-     of telling. */
-  const sameRectangle =
-    isWholeFrame(frame) === isWholeFrame(file.frame) &&
-    (isWholeFrame(frame) ||
-      (frame?.x === file.frame?.x &&
-        frame?.y === file.frame?.y &&
-        frame?.width === file.frame?.width &&
-        frame?.height === file.frame?.height))
-  const dirty =
-    (cropStart ?? null) !== (file.cropStart ?? null) ||
-    (cropEnd ?? null) !== (file.cropEnd ?? null) ||
-    !sameRectangle ||
-    rotation !== (file.rotation ?? 0)
   /* named, so a translator reads what each one is */
   const proxyFailure = proxy?.reason ?? ''
   const trimmedFrom = clock(file.cropStart ?? 0)
@@ -387,14 +406,14 @@ const PreviewDrawer = ({
 
   return (
     <div
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onClick={(e) => e.target === e.currentTarget && leave(onClose)}
       className='fixed inset-0 z-40 grid place-items-center bg-[rgba(8,12,16,0.64)] p-4'>
       <div
         data-preview-drawer='true'
         role='dialog'
         aria-modal='true'
         aria-label={t`Preview`}
-        className='flex max-h-full w-[min(1040px,100%)] flex-col overflow-hidden rounded-xl bg-pane text-ink shadow-[0_20px_60px_rgba(0,0,0,0.4)]'>
+        className='relative flex max-h-full w-[min(1040px,100%)] flex-col overflow-hidden rounded-xl bg-pane text-ink shadow-[0_20px_60px_rgba(0,0,0,0.4)]'>
         {/* head and foot stay put; only the body scrolls, so Save crop is never below the fold */}
         <div className='flex flex-none flex-wrap items-center gap-2.5 border-b border-line px-3.5 py-2.5'>
           <span className='truncate font-mono text-[13px] font-semibold'>{file.filename}</span>
@@ -408,12 +427,12 @@ const PreviewDrawer = ({
           </span>
           <Mini
             disabled={index === 0}
-            onClick={onPrevious}>
+            onClick={() => leave(onPrevious)}>
             {t`‹ Prev`}
           </Mini>
           <Mini
             disabled={index === files.length - 1}
-            onClick={onNext}>
+            onClick={() => leave(onNext)}>
             {t`Next ›`}
           </Mini>
           <Mini
@@ -529,7 +548,7 @@ const PreviewDrawer = ({
                     crop={frame}
                     ratio={ratio}
                     frame={turned}
-                    onChange={onFrameChange}
+                    onChange={reframe}
                   />
                 )}
                 {/* how much of the picture the rectangle keeps, riding on its corner as it is
@@ -538,7 +557,7 @@ const PreviewDrawer = ({
                   <span
                     aria-hidden='true'
                     style={{ left: `${frame.x * 100}%`, top: `${frame.y * 100}%` }}
-                    className='pointer-events-none absolute z-10 mt-1 ml-1 rounded-sm bg-black/70 px-1.5 py-px font-mono text-[10.5px] text-white tabular-nums'>
+                    className='pointer-events-none absolute z-10 mt-1 ml-1 rounded-sm bg-black/70 px-1.5 py-px font-mono text-[11px] text-white tabular-nums'>
                     {percent(frame.width)} × {percent(frame.height)}
                   </span>
                 )}
@@ -676,11 +695,21 @@ const PreviewDrawer = ({
                   <Mini onClick={() => onCropChange({ cropStart, cropEnd: currentTime })}>
                     {t`End at playhead`}
                   </Mini>
+                  {file.moments && (
+                    <Mini
+                      title={t`From the exit to a few seconds after the landing`}
+                      onClick={() =>
+                        file.moments &&
+                        onCropChange(jumpTrim(file.moments, montage, cropEnd ?? null))
+                      }>
+                      {t`Trim to the jump`}
+                    </Mini>
+                  )}
                 </div>
               </Panel>
             )}
 
-            <Panel title={t`Rotate`}>
+            <Panel title={t`Turn`}>
               <div className='flex flex-wrap items-center gap-1.5'>
                 <span className='min-w-[38px] font-mono text-[12px] font-semibold'>
                   {rotation}°
@@ -740,6 +769,16 @@ const PreviewDrawer = ({
                     </Mini>
                   ))}
                 </div>
+                {!locked && turned.height > turned.width && (
+                  <div className='mt-1.5'>
+                    <Mini
+                      pressed={filled}
+                      title={t`Delivered as a landscape clip: the picture in the middle, the sides filled with it blurred — nothing cut away`}
+                      onClick={() => fillSides(!filled)}>
+                      {t`Landscape, blurred sides`}
+                    </Mini>
+                  </div>
+                )}
                 <div className='mt-1 text-[12px] text-ink-2'>
                   {framing
                     ? t`Drag the rectangle to move it, a corner to resize. What is dimmed is cut away.`
@@ -784,12 +823,12 @@ const PreviewDrawer = ({
                 {/* both halves, separately, because a rectangle cannot be read off a row and a
                     panel saying only "crop saved" leaves you guessing which one it meant */}
                 {!saved
-                  ? t`No crop — the file goes out as shot.`
+                  ? t`Not trimmed, framed or turned — the file goes out as shot.`
                   : [
                       file.cropStart != null || file.cropEnd != null
                         ? t`Trimmed to ${trimmedFrom} – ${trimmedTo}.`
                         : null,
-                      !isWholeFrame(file.frame) ? t`Frame cropped.` : null,
+                      !isWholeFrame(file.frame) ? t`Framed.` : null,
                       file.rotation ? t`Turned ${turnedBy}°.` : null,
                       t`Applied the next time this file is processed.`
                     ]
@@ -812,22 +851,55 @@ const PreviewDrawer = ({
                 onRotate(0)
                 onApply({ cropStart: null, cropEnd: null })
               }}>
-              {t`Reset crop`}
+              {t`Reset trim, frame and turn`}
             </Mini>
           )}
           {dirty && (
             <span className='text-[11.5px] font-semibold text-local'>{t`Unsaved changes`}</span>
           )}
           <Spacer />
-          <Mini onClick={onClose}>{t`Close`}</Mini>
+          <Mini onClick={() => leave(onClose)}>{t`Close`}</Mini>
           {!locked && (
             <Go
               disabled={!dirty}
               onClick={() => onApply({ cropStart, cropEnd })}>
-              {video ? t`Save crop` : t`Save`}
+              {t`Save`}
             </Go>
           )}
         </div>
+        {leaving && (
+          <Modal
+            label={t`Unsaved changes`}
+            title={t`Save the changes to this file?`}
+            onClose={() => setLeaving(null)}
+            footer={
+              <>
+                <Mini onClick={() => setLeaving(null)}>{t`Keep editing`}</Mini>
+                <Spacer />
+                <Danger
+                  onClick={() => {
+                    const go = leaving
+                    setLeaving(null)
+                    go()
+                  }}>
+                  {t`Discard`}
+                </Danger>
+                <Go
+                  onClick={() => {
+                    const go = leaving
+                    setLeaving(null)
+                    onApply({ cropStart, cropEnd })
+                    go()
+                  }}>
+                  {t`Save`}
+                </Go>
+              </>
+            }>
+            <p className='m-0 text-[12.5px] text-ink-2'>
+              {t`The trim, frame or turn you set has not been saved yet.`}
+            </p>
+          </Modal>
+        )}
       </div>
     </div>
   )

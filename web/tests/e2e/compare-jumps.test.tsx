@@ -257,7 +257,7 @@ describe('resetting Fresh files', () => {
       .element(dialog().getByRole('button', { name: /^Everything, as just scanned/ }))
       .toBeInTheDocument()
     await expect
-      .element(dialog().getByText(/nothing filed to a dropzone or a passenger is touched/))
+      .element(dialog().getByText(/nothing filed to a destination or a montage is touched/))
       .toBeInTheDocument()
     expect(asked).toEqual([])
   })

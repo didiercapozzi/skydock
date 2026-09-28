@@ -8,30 +8,38 @@ import {
   idsOf,
   isFiled,
   isMontage,
+  isVideoFile,
+  jumpTrim,
   passengerName,
   passengerOf,
+  placeNameProblem,
   startOfFiles,
   montageSteps,
-  montageUploadKey
+  montageUploadKey,
+  UPLOAD_QUEUE_KEY
 } from '@skydock/scripts'
-import type { FrameCrop, Rotation, SendPlan } from '@skydock/scripts'
+import type { FrameCrop, MontageStep, Rotation, SendPlan } from '@skydock/scripts'
 import { useEffect, useState } from 'react'
 import { useNavigate, useOutletContext, useParams } from 'react-router'
 import type { BoardDialog } from '../components/dialog-host'
 import { lockReason } from '../components/file-list'
 import type { Passenger } from '../components/montage-card'
+import type { OverviewRow } from '../components/overview-dialog'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
 import { setOutputRoot, shortDate } from '../components/utils'
 import { importFiles, tokenFor, whatIsComing } from '../helpers/import'
 import type { Coming, Dropped } from '../helpers/import'
 import { folderOnStorage } from '../helpers/jumps'
 import {
+  fileHref,
   groupsIn,
   looseIn,
   placeFromParams,
   placeHref,
   placeKey,
-  placeLabel
+  placeLabel,
+  placeOfGroup,
+  placeOfLoose
 } from '../helpers/places'
 import type { Place } from '../helpers/places'
 import { routingEngine, useSafeSearchParams } from '../helpers/routing'
@@ -53,13 +61,16 @@ type Loaded = Parameters<typeof useBoardState>[0] & Parameters<typeof useNas>[0]
    and the dialogs over them: what the board holds, what is known about each jump, and every change
    that can be asked for. It lives in the layout and reaches the folder and the file through the
    outlet, so each address draws only its own part and none of them works out the board again. */
+/* a montage with no host or no progress yet is not listed */
+const NO_ROWS: OverviewRow[] = []
+
 const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   /* told rather than assumed: an installed app keeps the work wherever it was asked to */
   setOutputRoot(loaded.outputDir)
   const [dialog, setDialog] = useState<BoardDialog>(null)
   /* uploaded and freed: the one thing left is to tell whoever it is for, so that is offered */
   const board = useBoardState(loaded, (groupId) => setDialog({ kind: 'email', groupId }))
-  const { groups, updateGroups, loose, places, setPlaces, busy, setNote, send } = board
+  const { groups, updateGroups, loose, places, setPlaces, busy, setNote, setProblem, send } = board
   const nas = useNas(loaded, board.remoteAfterUpload)
   const sendPlan = useSendPlan()
   const view = useFileView()
@@ -161,6 +172,28 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     ).values()
   ]
   const hostOf = (who: string) => named.find((g) => passengerOf(g) === who)
+  /* every named montage once, as the overview lists it */
+  const overviewRows = () =>
+    passengers.flatMap((p) => {
+      const who = passengerName(p)
+      const host = hostOf(who)
+      const progress = passengerProgress(who)
+      if (!host || !progress) return NO_ROWS
+      const theirs = named.filter((g) => passengerOf(g) === who)
+      const entry = board.storage?.montages.find((m) => m.folder === folderOnStorage(host))
+      return [
+        {
+          who,
+          id: host.id,
+          day: host.day,
+          progress,
+          link: entry?.shareUrl ?? host.publish?.shareUrl,
+          emailed: Boolean(emailedOn(host)),
+          freed: theirs.every((g) => g.freed),
+          paid: theirs.some((g) => g.paid)
+        }
+      ]
+    })
   const folderFor = (destination: string) =>
     places.find((d) => d.name === destination)?.path ?? null
 
@@ -169,6 +202,46 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   const pickPlace = (next: Place) => {
     clearSelection()
     goTo(placeHref(next, { kind: looking.kind }))
+  }
+
+  /* Anything on the board by a piece of its name — a montage, a destination, a file — and where it
+     is, most useful first, a dozen at most (RULES, Finding anything). */
+  const findAnything = (query: string) => {
+    const q = query.trim().toLowerCase()
+    if (q.length < 2) return []
+    const has = (text: string) => text.toLowerCase().includes(q)
+    const montages = passengers
+      .map(passengerName)
+      .filter(has)
+      .map((who) => ({
+        key: `pax:${who}`,
+        label: who,
+        where: t`Montage`,
+        go: () => pickPlace({ kind: 'pax', name: who })
+      }))
+    const destinations = places
+      .filter((d) => has(d.name))
+      .map((d) => ({
+        key: `dz:${d.name}`,
+        label: d.name,
+        where: t`Destination`,
+        go: () => pickPlace({ kind: 'dz', name: d.name })
+      }))
+    const files = [
+      ...groups.flatMap((g) => g.files.map((f) => ({ f, at: placeOfGroup(g) }))),
+      ...loose.map((f) => ({ f, at: placeOfLoose(f) }))
+    ]
+      .filter(({ f }) => f.id && has(f.filename))
+      .map(({ f, at }) => ({
+        key: `file:${f.id}`,
+        label: f.filename,
+        where: placeLabel(at),
+        go: () => {
+          clearSelection()
+          goTo(fileHref(at, f.id ?? '', { kind: looking.kind }))
+        }
+      }))
+    return [...montages, ...destinations, ...files].slice(0, 12)
   }
 
   /* A lone file's crop goes through the same save as everything else, on the registry entry — and
@@ -191,6 +264,33 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     updateGroups(groups, [cropped])
   }
 
+  /* Every clip of a jump trimmed to the jump it holds, in one press — those whose exit was found;
+     the rest are left as they are, and the note says how many were (RULES, Trimming to the jump). */
+  const trimToJump = (group: ManifestGroup) => {
+    if (frozen.has(group.id)) {
+      setProblem(EDIT_LOCKED)
+      return
+    }
+    const montage = isMontage(group)
+    let trimmed = 0
+    const files = group.files.map((f) => {
+      if (!f.moments || !isVideoFile(f.path) || lockReason(f, statusContext(f))) return f
+      trimmed++
+      return { ...f, ...jumpTrim(f.moments, montage, f.cropEnd ?? null) }
+    })
+    if (trimmed === 0) {
+      setProblem(t`No clip in this jump has an exit found — trim them by hand.`)
+      return
+    }
+    updateGroups(groups.map((g) => (g.id === group.id ? { ...g, files } : g)))
+    const left = group.files.filter((f) => isVideoFile(f.path)).length - trimmed
+    setNote(
+      left > 0
+        ? t`${plural(trimmed, { one: '# clip', other: '# clips' })} trimmed to the jump — ${plural(left, { one: '# clip has', other: '# clips have' })} no exit found, and kept its trim.`
+        : t`${plural(trimmed, { one: '# clip', other: '# clips' })} trimmed to the jump.`
+    )
+  }
+
   /* Fresh files put back, by as much as is chosen in the dialog, which says what each choice costs */
   const resetFresh = () => {
     const jumps = groups.filter((g) => !isFiled(g))
@@ -205,16 +305,11 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   }
   /* The jump goes; its files stay, loose in Fresh files, crops and all. Only processed copies are
      lost — they no longer match where the files are — so that alone is asked about first. */
-  const deleteJump = (group: ManifestGroup) => {
-    const copies = group.files.filter((f) => f.processed).length
-    const files = group.files.length
-    if (
-      copies > 0 &&
-      !window.confirm(
-        t`Delete this jump? Its ${plural(files, { one: '# file', other: '# files' })} stay, loose in Fresh files, with their crops — but ${plural(copies, { one: '# processed copy', other: '# processed copies' })} will be deleted and have to be processed again.`
-      )
-    )
+  const deleteJump = (group: ManifestGroup, asked = false) => {
+    if (!asked && group.files.some((f) => f.processed)) {
+      setDialog({ kind: 'delete-jump', groupId: group.id })
       return
+    }
     clearSelection()
     send('delete-jump', { intent: 'delete-jump', groupId: group.id })
   }
@@ -228,8 +323,8 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
        still be copied: nothing about it changes. Only a freed one cannot, having no file here. */
     if (where.copy && where.targetGroupId) {
       const here = ids.filter((id) => !fileById(id)?.freed)
-      if (here.length === 0) setNote(t`Freed from this machine — there is no file here to copy.`)
-      else if (frozen.has(where.targetGroupId)) setNote(EDIT_LOCKED)
+      if (here.length === 0) setProblem(t`Freed from this machine — there is no file here to copy.`)
+      else if (frozen.has(where.targetGroupId)) setProblem(EDIT_LOCKED)
       else send('copy', { intent: 'copy-files', fileIds: here, targetGroupId: where.targetGroupId })
       return
     }
@@ -239,7 +334,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       return file && !frozenFiles.has(id) && lockReason(file, statusContext(file))
     })
     if (locked.length === ids.length) {
-      setNote(
+      setProblem(
         t`On the storage already, so it cannot move — hold alt while dropping to copy it instead.`
       )
       return
@@ -247,7 +342,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     /* a montage with an edit neither gives files up nor takes them in */
     const free = ids.filter((id) => !frozenFiles.has(id) && !locked.includes(id))
     if (free.length === 0 || (where.targetGroupId && frozen.has(where.targetGroupId))) {
-      setNote(
+      setProblem(
         free.length === 0 && where.targetGroupId
           ? `${EDIT_LOCKED} ${t`Hold alt while dropping to copy it into the other jump instead.`}`
           : EDIT_LOCKED
@@ -263,7 +358,8 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       ...(where.name ? { name: where.name } : {}),
       ...(where.startsAt !== undefined ? { anchorEpoch: where.startsAt } : {})
     })
-    if (free.length < ids.length) setNote(`${EDIT_LOCKED} ${t`Its files stayed where they were.`}`)
+    if (free.length < ids.length)
+      setProblem(`${EDIT_LOCKED} ${t`Its files stayed where they were.`}`)
     if (!where.destination && !where.targetGroupId) leaveEmptied(free)
   }
 
@@ -305,6 +401,11 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   const addPlace = (name: string) => {
     const trimmed = name.trim()
     if (!trimmed || places.some((d) => d.name === trimmed)) return
+    const problem = placeNameProblem(trimmed)
+    if (problem) {
+      setProblem(problem)
+      return
+    }
     saveDestinations([...places, { name: trimmed }])
   }
   /* A place's folder is part of the workspace, saved with the destinations like any other edit. */
@@ -375,7 +476,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     const files = await whatIsComing(list)
     if (files.length === 0) {
       board.setBusy(null)
-      setNote(t`Nothing in that drop is a video or a photo SkyDock can show.`)
+      setProblem(t`Nothing in that drop is a video or a photo SkyDock can show.`)
       return
     }
     setNote(null)
@@ -450,12 +551,12 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   /* a montage with an edit takes nothing in: its project names its clips, and new ones are not */
   const editedMontage = (who: string) => {
     if (!groups.some((g) => frozen.has(g.id) && passengerOf(g) === who)) return false
-    setNote(t`${who}’s montage has an edit — change it in kdenlive.`)
+    setProblem(t`${who}’s montage has an edit — change it in kdenlive.`)
     return true
   }
   const madeNote = (who: string, joining: boolean, copied: boolean) => {
     const made = joining ? t`Joined ${who}’s montage` : t`Made ${who}’s montage`
-    setNote(copied ? `${made} — ${t`copied, the place keeps its own`}` : made)
+    setNote(copied ? `${made} — ${t`copied, the destination keeps its own`}` : made)
     flash({ kind: 'pax', name: who })
     setGoingTo(who)
   }
@@ -570,6 +671,23 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       { intent: 'upload-montage', groupId: group.id, plan }
     )
   }
+  /* Several montages sent up one after the other, each on the plan the upload dialog last used —
+     one job on the server, so the next starts the moment the one before ends. */
+  const uploadAll = (ids: string[]) => {
+    if (board.uploading || ids.length === 0) return
+    if (!nas.connected) {
+      openConnect()
+      return
+    }
+    board.sendUpload(
+      {
+        key: UPLOAD_QUEUE_KEY,
+        label: plural(ids.length, { one: '# montage', other: '# montages' })
+      },
+      { intent: 'upload-montages', groupIds: ids, plan: sendPlan }
+    )
+  }
+
   /* A template is somebody's branding, so which one is never decided here. With a single template
      that is whole there is nothing to decide and the project is made at once; with several, or one
      with a hole, the person is shown them first. */
@@ -583,6 +701,19 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       parsed.success && parsed.data.templates.length === 1 ? parsed.data.templates[0] : null
     if (only && only.missing.length === 0) makeMontage(group.id, only.name)
     else setDialog({ kind: 'templates', groupId: group.id })
+  }
+  /* A montage's next step, taken from where its trail says what it is — the same thing each step's
+     own button does, whichever of them is on screen. */
+  const takeStep = (group: ManifestGroup, step: MontageStep) => {
+    if (step === 'Processed') send(group.id, { intent: 'process', groupId: group.id })
+    if (step === 'Edited') void askMontage(group)
+    if (step === 'Rendered') send(`open:${group.id}`, { intent: 'open-montage', groupId: group.id })
+    if (step === 'Uploaded') {
+      const gate = facts.gateFor(group.files)
+      if (gate.blocked) board.setProblem(gate.message ?? t`It cannot be uploaded yet.`)
+      else askUpload(group)
+    }
+    if (step === 'Emailed') setDialog({ kind: 'email', groupId: group.id })
   }
   /* what is being processed is stopped; the answer comes once it has */
   const cancelProcess = () => send('cancel-process', { intent: 'cancel-process' })
@@ -622,6 +753,8 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     labelOf,
     passengers,
     hostOf,
+    overviewRows,
+    findAnything,
     folderFor,
     pickPlace,
     cropLoneFile,
@@ -647,9 +780,12 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     openConnect,
     requestUpload,
     askUpload,
+    uploadAll,
     confirmUpload,
     makeMontage,
     askMontage,
+    takeStep,
+    trimToJump,
     cancelProcess,
     freeableOf
   }

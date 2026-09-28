@@ -1,8 +1,7 @@
-import { loadManifest, scanMedia } from '@skydock/scripts'
+import { loadManifest, scanMedia, messageOf } from '@skydock/scripts'
 import { copyBack } from '../../../../packages/skydock-scripts/src/copy'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
-import { messageOf } from '@skydock/scripts'
 
 /* Files this machine gave back, asked for again from the card they are still on.
 

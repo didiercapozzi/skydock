@@ -118,7 +118,7 @@ describe('saving a crop that is only a rectangle', () => {
   test('nothing to save before anything is touched', async () => {
     await render(createElement(Drawer, {}))
 
-    await expect.element(page.getByRole('button', { name: 'Save crop' })).toBeDisabled()
+    await expect.element(page.getByRole('button', { name: 'Save' })).toBeDisabled()
   })
 
   /* Picking a shape only puts the rectangle up at full size, which is not yet a crop — nothing has
@@ -129,7 +129,7 @@ describe('saving a crop that is only a rectangle', () => {
     await userEvent.click(page.getByRole('button', { name: 'Same', exact: true }))
 
     await expect.element(page.getByLabelText('Part of the picture to keep')).toBeVisible()
-    await expect.element(page.getByRole('button', { name: 'Save crop' })).toBeDisabled()
+    await expect.element(page.getByRole('button', { name: 'Save' })).toBeDisabled()
   })
 
   test('a rectangle dragged in is something to save, with no trim at all', async () => {
@@ -144,12 +144,12 @@ describe('saving a crop that is only a rectangle', () => {
     )
 
     await expect.element(page.getByText('Unsaved changes')).toBeVisible()
-    await expect.element(page.getByRole('button', { name: 'Save crop' })).toBeEnabled()
+    await expect.element(page.getByRole('button', { name: 'Save' })).toBeEnabled()
   })
 
   test('the file says a frame was cropped, not just that a crop was saved', async () => {
     await render(createElement(Drawer, { saved: { x: 0.1, y: 0.1, width: 0.8, height: 0.8 } }))
 
-    await expect.element(page.getByText(/Frame cropped/)).toBeVisible()
+    await expect.element(page.getByText(/Framed/)).toBeVisible()
   })
 })

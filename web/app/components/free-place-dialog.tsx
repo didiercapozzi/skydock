@@ -1,6 +1,6 @@
 import type { freeablePlace } from '@skydock/scripts'
 import { plural, t } from '@lingui/core/macro'
-import { Go, Mini } from './buttons'
+import { Danger, Mini } from './buttons'
 import { Line, Modal, Spacer } from './modal'
 import { formatFilmSize } from './utils'
 
@@ -36,8 +36,8 @@ const FreePlaceDialog = ({
       footer={
         <>
           <Spacer />
-          <Mini onClick={onClose}>{t`Close`}</Mini>
-          <Go onClick={onConfirm}>{t`Check and free about ${about}`}</Go>
+          <Mini onClick={onClose}>{t`Cancel`}</Mini>
+          <Danger onClick={onConfirm}>{t`Check and free about ${about}`}</Danger>
         </>
       }>
       <p className='m-0 text-[12.5px] font-semibold text-ink'>{t`Proved first`}</p>
@@ -58,7 +58,7 @@ const FreePlaceDialog = ({
 
       {reshaped > 0 && (
         <p className='m-0 rounded-r-md border-l-[3px] border-changed bg-changed-soft px-3 py-[9px] text-[12px] text-ink-2'>
-          {t`${plural(reshaped, { one: '# file', other: '# files' })} went up trimmed, cropped or turned. Only the part that went up is kept, on the storage: what was cut off is deleted with the original, for good.`}
+          {t`${plural(reshaped, { one: '# file', other: '# files' })} went up trimmed, framed or turned. Only the part that went up is kept, on the storage: what was cut off is deleted with the original, for good.`}
         </p>
       )}
 

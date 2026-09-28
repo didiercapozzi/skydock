@@ -9,7 +9,7 @@ import { PassengerName } from '../../app/components/montage-card'
 import type { ManifestGroup } from '../../app/components/types'
 
 /* A montage is named once, by one name — a person, an event — and that name is its folder. It is
-   saved when the field is left or on Enter, and a single word is a whole name.
+   saved by Enter or Save, never by clicking away, and a single word is a whole name.
 
    The real browser is what decides here: this is about where focus goes and when blur fires, and
    a synthesised event would prove nothing. */
@@ -23,21 +23,64 @@ const group = (passenger?: { firstname: string; lastname: string }): ManifestGro
   files: []
 })
 
-const renderName = async (passenger?: { firstname: string; lastname: string }) => {
+const renderName = async (
+  passenger?: { firstname: string; lastname: string },
+  passengers: { firstname: string; lastname: string }[] = []
+) => {
   const onSave = vi.fn()
-  await render(createElement(PassengerName, { group: group(passenger), onSave }))
+  await render(createElement(PassengerName, { group: group(passenger), passengers, onSave }))
   return { onSave }
 }
 
 describe('naming a montage', () => {
-  test('saves the name when focus leaves it', async () => {
+  /* a rename moves the montage's folder, so leaving the field half-typed must not do it */
+  test('saves nothing when focus leaves it', async () => {
+    const { onSave } = await renderName({ firstname: 'Luc', lastname: 'Favre' })
+
+    await userEvent.fill(page.getByLabelText('Name'), 'Luc Fa')
+    await userEvent.click(document.body)
+
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
+  test('Save saves it', async () => {
     const { onSave } = await renderName()
 
     await userEvent.fill(page.getByLabelText('Name'), 'Luc Favre')
-    /* clicking away is what finishing looks like */
-    await userEvent.click(document.body)
+    await userEvent.click(page.getByRole('button', { name: 'Save' }))
 
     expect(onSave).toHaveBeenCalledWith('Luc', 'Favre')
+  })
+
+  test('Escape puts the name back as it was', async () => {
+    const { onSave } = await renderName({ firstname: 'Luc', lastname: 'Favre' })
+
+    await userEvent.fill(page.getByLabelText('Name'), 'Someone else')
+    await userEvent.keyboard('{Escape}')
+
+    await expect.element(page.getByLabelText('Name')).toHaveValue('Luc Favre')
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
+  test('an emptied name saves nothing', async () => {
+    const { onSave } = await renderName({ firstname: 'Luc', lastname: 'Favre' })
+
+    await userEvent.clear(page.getByLabelText('Name'))
+    await userEvent.keyboard('{Enter}')
+
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
+  test('says so before a name joins another montage, and joins it as that one is spelled', async () => {
+    const { onSave } = await renderName({ firstname: 'Luc', lastname: 'Favre' }, [
+      { firstname: 'Chloé', lastname: 'Perret' }
+    ])
+
+    await userEvent.fill(page.getByLabelText('Name'), 'chloé perret')
+    await expect.element(page.getByText('Joins Chloé Perret’s montage')).toBeVisible()
+    await userEvent.keyboard('{Enter}')
+
+    expect(onSave).toHaveBeenCalledWith('Chloé', 'Perret')
   })
 
   test('Enter saves without waiting to be clicked away from', async () => {

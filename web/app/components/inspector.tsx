@@ -2,7 +2,7 @@ import { plural, t } from '@lingui/core/macro'
 import { hasCompletePassenger, isMontage, isVideoFile, passengerName } from '@skydock/scripts'
 import type { FileStatus, ProxyFact, MontageFact } from '@skydock/scripts'
 import { useState } from 'react'
-import { Go, Mini } from './buttons'
+import { Danger, Go, Mini } from './buttons'
 import { StatusChip } from './file-status'
 import type { ShownStatus } from './file-status'
 import { JumpForm } from './jump-name'
@@ -17,13 +17,36 @@ import { dateLabel, formatSize, getThumbUrl, minFileMtime, shortDate } from './u
    the folder itself when nothing is — and offers what can be done with it, so nothing has to be
    opened just to be looked at. */
 
-const Shell = ({ children }: { children: React.ReactNode }) => (
-  <aside
-    aria-label={t`Details`}
-    className='flex min-h-0 flex-col gap-3 overflow-y-auto border-l border-line bg-pane p-3.5 max-[1100px]:hidden'>
-    {children}
-  </aside>
-)
+/* Beside the files when the window is wide enough for three columns; below that it is a drawer
+   pulled out from the right edge, because what only it offers — naming a montage, fixing a jump's
+   start, deleting a jump — must not go missing just because the window is narrow or the board is
+   drawn bigger. */
+const Shell = ({ children }: { children: React.ReactNode }) => {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button
+        type='button'
+        aria-expanded={open}
+        onClick={() => setOpen((was) => !was)}
+        className={`fixed top-1/2 right-0 z-30 -translate-y-1/2 rounded-l-md border border-r-0 border-line bg-pane px-1.5 py-3 text-[12px] font-semibold text-ink-2 shadow-card [writing-mode:vertical-rl] hover:text-ink min-[1101px]:hidden ${
+          open ? 'right-[min(340px,90vw)]' : ''
+        }`}>
+        {open ? t`Hide details` : t`Details`}
+      </button>
+      <aside
+        aria-label={t`Details`}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape' && open) setOpen(false)
+        }}
+        className={`flex min-h-0 flex-col gap-3 overflow-y-auto border-l border-line bg-pane p-3.5 max-[1100px]:fixed max-[1100px]:inset-y-0 max-[1100px]:right-0 max-[1100px]:z-30 max-[1100px]:w-[min(340px,90vw)] max-[1100px]:shadow-[0_0_40px_rgba(0,0,0,0.25)] ${
+          open ? '' : 'max-[1100px]:hidden'
+        }`}>
+        {children}
+      </aside>
+    </>
+  )
+}
 
 const Title = ({ title, sub }: { title: React.ReactNode; sub?: string }) => (
   <div>
@@ -34,7 +57,7 @@ const Title = ({ title, sub }: { title: React.ReactNode; sub?: string }) => (
 
 const Box = ({ heading, children }: { heading: string; children: React.ReactNode }) => (
   <section className='flex flex-col gap-2 rounded-lg border border-line bg-ground px-3 py-2.5'>
-    <h4 className='m-0 text-[10.5px] font-semibold tracking-[0.08em] text-ink-3 uppercase'>
+    <h4 className='m-0 text-[11px] font-semibold tracking-[0.08em] text-ink-3 uppercase'>
       {heading}
     </h4>
     {children}
@@ -108,7 +131,7 @@ const FolderPanel = ({
     )}
     {children}
     <Hint>
-      {t`Select a file or a jump to see it here. Double-click a file to crop or turn it.`}
+      {t`Select a file or a jump to see it here. Double-click a file to trim, frame or turn it.`}
     </Hint>
   </>
 )
@@ -172,7 +195,9 @@ const JumpPanel = ({
   onSelectFiles,
   onShift,
   onRename,
-  onDelete
+  onDelete,
+  move,
+  onTrimToJump
 }: {
   group: ManifestGroup
   label: string
@@ -192,6 +217,10 @@ const JumpPanel = ({
   onRename?: (name: string) => void
   /* the jump goes and its files stay, loose in Unsorted; absent when it cannot */
   onDelete?: () => void
+  /* filing it somewhere else without dragging it; absent when it cannot move */
+  move?: React.ReactNode
+  /* every clip trimmed to its jump; absent when no clip has an exit found, or it is past changing */
+  onTrimToJump?: () => void
 }) => {
   const [renaming, setRenaming] = useState(false)
   const from = minFileMtime(group.files) ?? 0
@@ -289,6 +318,7 @@ const JumpPanel = ({
               <PassengerName
                 key={group.id}
                 group={group}
+                passengers={passengers}
                 onSave={onName}
               />
               {named && (group.processed || group.uploaded) && (
@@ -314,19 +344,24 @@ const JumpPanel = ({
       )}
       {!group.freed && group.files.length > 0 && (
         <span className='flex flex-wrap gap-1.5'>
+          {move}
+          {onTrimToJump && (
+            <Mini
+              title={t`Each clip from its exit to a few seconds after its landing`}
+              onClick={onTrimToJump}>
+              {t`Trim every clip to the jump`}
+            </Mini>
+          )}
           <Mini onClick={onSelectFiles}>
             {t`Select its ${plural(fileCount, { one: '# file', other: '# files' })}`}
           </Mini>
           {onDelete && (
-            <Mini
+            <Danger
+              size='mini'
               onClick={onDelete}
-              title={
-                montage && named
-                  ? t`Undo the montage, whatever step it is at — its files go back to Fresh files, loose. Asks first.`
-                  : t`The jump goes; its files are kept, loose in Fresh files, with their crops`
-              }>
-              {montage && named ? t`Delete montage…` : t`Delete jump`}
-            </Mini>
+              title={t`The jump goes; its files are kept, loose in Fresh files, with their trims`}>
+              {t`Delete jump`}
+            </Danger>
           )}
         </span>
       )}
@@ -353,7 +388,8 @@ const FilePanel = ({
   onSendBack,
   backLabel,
   onRetime,
-  montage
+  montage,
+  move
 }: {
   file: ManifestFile
   name: string | null
@@ -369,6 +405,8 @@ const FilePanel = ({
   onRetime?: (epoch: number) => void
   /* made a montage on its own — copied in when a place keeps it; absent when it cannot be */
   montage?: MontageOffer
+  /* filing it somewhere else without dragging it */
+  move?: React.ReactNode
 }) => {
   const video = isVideoFile(file.path)
   const filename = file.filename
@@ -459,13 +497,14 @@ const FilePanel = ({
               .join(' · ')}
           </p>
           <span>
-            <Go onClick={onOpen}>{t`Crop and turn…`}</Go>
+            <Go onClick={onOpen}>{t`Trim, frame and turn…`}</Go>
           </span>
         </Box>
       )}
       {!locked && (
         <Box heading={t`Move`}>
-          <span>
+          <span className='flex flex-wrap gap-1.5'>
+            {move}
             <Mini onClick={onSendBack}>{backLabel}</Mini>
           </span>
         </Box>
@@ -494,6 +533,7 @@ const ManyPanel = ({
   backLabel,
   onMakeJump,
   montage,
+  move,
   onClear
 }: {
   files: ManifestFile[]
@@ -505,6 +545,8 @@ const ManyPanel = ({
   onMakeJump?: (startsAt?: number) => void
   /* made into a montage — moved out of Fresh files, copied from anywhere else */
   montage?: MontageOffer
+  /* filing them somewhere else without dragging them */
+  move?: React.ReactNode
   onClear: () => void
 }) => {
   const [making, setMaking] = useState(false)
@@ -544,6 +586,7 @@ const ManyPanel = ({
       )}
       <Box heading={t`Move them`}>
         <span className='flex flex-wrap gap-1.5'>
+          {move}
           {onMakeJump && !making && (
             <Mini onClick={() => setMaking(true)}>{t`Make a jump of these…`}</Mini>
           )}

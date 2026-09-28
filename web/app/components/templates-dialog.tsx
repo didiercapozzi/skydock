@@ -247,7 +247,7 @@ const TemplatesDialog = ({
       )}
 
       <section className='flex flex-col gap-2 rounded-lg border border-line bg-ground px-3 py-2.5'>
-        <h4 className='m-0 text-[10.5px] font-semibold tracking-[0.08em] text-ink-3 uppercase'>
+        <h4 className='m-0 text-[11px] font-semibold tracking-[0.08em] text-ink-3 uppercase'>
           {t`Bring a template in`}
         </h4>
         <p className='m-0 text-[12px] text-ink-2'>

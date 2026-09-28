@@ -75,12 +75,16 @@ const copyBack = (entry: ManifestFile, id: string, size: number): ManifestFile =
 const bringBack = async ({
   manifest,
   session,
-  fileId
+  fileId,
+  latest = () => manifest
 }: {
   manifest: Manifest
   session: NasSession
   /* which file, by what it contains — the id its entry carries */
   fileId: string
+  /* the board as it is once the download is done, which may have moved on while it ran — the one
+     the file is put back on */
+  latest?: () => Manifest
 }) => {
   const entry = [...manifest.files, ...manifest.groups.flatMap((g) => g.files)].find(
     (f) => f.id === fileId
@@ -94,16 +98,17 @@ const bringBack = async ({
   const id = await computeFileId(entry.path)
   const { size } = fs.statSync(entry.path)
   const original = id === entry.id
+  const board = latest()
   /* the entry is the same entry wherever it is held — the registry's, and the jump's own */
   const put = (file: ManifestFile) =>
     file.id === fileId ? (original ? sameFileBack : copyBack)(file, id, size) : file
-  manifest.files = manifest.files.map(put)
-  manifest.groups = manifest.groups.map((group) => ({ ...group, files: group.files.map(put) }))
+  board.files = board.files.map(put)
+  board.groups = board.groups.map((group) => ({ ...group, files: group.files.map(put) }))
   /* a jump lives on the storage only for as long as nothing of it is here */
-  manifest.groups = manifest.groups.map((group) =>
+  board.groups = board.groups.map((group) =>
     group.freed && group.files.some((f) => f.id === id) ? { ...group, freed: undefined } : group
   )
-  return { filename: entry.filename, original, size }
+  return { filename: entry.filename, original, size, board }
 }
 
 export { bringBack }

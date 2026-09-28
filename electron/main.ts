@@ -192,6 +192,52 @@ ipcMain.handle('zoom:set', (event, asked: unknown) =>
     : event.sender.getZoomFactor()
 )
 
+/* What the server behind the window is writing right now, or null — asked of it, since only it knows. */
+const runningNow = async (window: BrowserWindow) => {
+  try {
+    const address = new URL('/api/busy', window.webContents.getURL())
+    const said = z
+      .object({ running: z.string().nullable() })
+      .safeParse(await (await fetch(address)).json())
+    return said.success ? said.data.running : null
+  } catch {
+    return null
+  }
+}
+
+/* Asked before anything that ends the work in the middle — closing the window, installing an
+   update: an upload, processing or a camera copy cut off halfway is work to do again. */
+const goAheadDespite = async (window: BrowserWindow, doing: string) => {
+  const running = await runningNow(window)
+  if (!running) return true
+  const { response } = await dialog.showMessageBox(window, {
+    type: 'warning',
+    title: 'SkyDock is working',
+    message: `${running}.`,
+    detail: `${doing} now stops it halfway. What was finished stays; the rest has to be done again.`,
+    buttons: ['Keep working', `${doing} anyway`],
+    defaultId: 0,
+    cancelId: 0
+  })
+  return response === 1
+}
+
+/* set once the app has been told to go — an update being installed asked already */
+let leaving = false
+
+const askBeforeClosing = (window: BrowserWindow) => {
+  let asked = false
+  window.on('close', (event) => {
+    if (asked || leaving) return
+    event.preventDefault()
+    void goAheadDespite(window, 'Closing').then((close) => {
+      if (!close) return
+      asked = true
+      window.close()
+    })
+  })
+}
+
 /* The window itself: a browser on the server behind it, and nothing else. A link out of the board —
    the passenger's email, a share link — belongs to the machine's own browser; opened in here it
    would be the board gone, with no way back to it. */
@@ -215,6 +261,7 @@ const openWindow = (address: string) => {
     return { action: 'deny' }
   })
   zoomHotkeys(window.webContents)
+  askBeforeClosing(window)
   void window.loadURL(address)
   console.log(`[SkyDock] the window is open on ${address}`)
   return window
@@ -339,8 +386,11 @@ const offerUpdate = () => {
         defaultId: 0,
         cancelId: 1
       })
-      .then(({ response }) => {
+      .then(async ({ response }) => {
         if (response !== 0) return
+        const [window] = BrowserWindow.getAllWindows()
+        if (window && !(await goAheadDespite(window, 'Installing'))) return
+        leaving = true
         /* the server is stopped on the way out, as it is however the app ends */
         stopServer()
         autoUpdater.quitAndInstall()
@@ -357,6 +407,9 @@ ipcMain.handle('work-folder:choose', async (event) => {
   if (toldWhere())
     return { refused: 'This window shows a development server, which keeps its own folder.' }
   const window = BrowserWindow.fromWebContents(event.sender) ?? undefined
+  /* the page asks this too; the window makes sure, since leaving mid-way cuts the work off */
+  const running = window ? await runningNow(window) : null
+  if (running) return { refused: `${running} — wait until it is done.` }
   const current = settings().outputDir
   const options = {
     title: 'Where should SkyDock work from now on?',

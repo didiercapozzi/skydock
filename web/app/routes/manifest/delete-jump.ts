@@ -1,4 +1,4 @@
-import { processingNow, saveManifest } from '@skydock/scripts'
+import { busyWith, processingNow, saveManifest } from '@skydock/scripts'
 import { deleteJump } from '../../../../packages/skydock-scripts/src/moveFiles'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
@@ -22,6 +22,8 @@ const deleteJumpIntent: Intent = ({
   if (group.uploaded || group.files.some((f) => f.uploaded))
     return refuse('This jump is on the storage — uploaded is the end of editing.')
   if (processingNow()) return refuse('Something is being processed — wait for it to finish.')
+  if (busyWith({ groupIds: [data.groupId ?? ''] }) === 'uploading')
+    return refuse('It is being uploaded — delete it once the upload is done.')
   deleteJump(manifest, group.id)
   saveManifest(manifestPath, manifest)
   return boardAnswer(manifest)

@@ -39,7 +39,7 @@ describe('one upload at a time', () => {
     const upload = held()
     const done = runUpload(going, upload.work)
 
-    expect(uploadingNow()).toEqual(going)
+    expect(uploadingNow()).toEqual({ ...going, groupIds: [] })
     upload.letGo()
     await expect(done).resolves.toBe('sent')
     expect(uploadingNow()).toBeNull()

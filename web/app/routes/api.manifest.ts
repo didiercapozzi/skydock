@@ -1,4 +1,4 @@
-import { loadManifest, getOutputDir } from '@skydock/scripts'
+import { getManifestPath, getOutputDir, keepBoardStep, loadManifest } from '@skydock/scripts'
 import type { Route } from './+types/api.manifest'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 import { actionArgs } from './manifest/args'
@@ -21,6 +21,7 @@ import { moveFilesIntent } from './manifest/move-files'
 import { openMontage } from './manifest/open-montage'
 import { copyBackIntent } from './manifest/copy-back'
 import { fromBinIntent } from './manifest/from-bin'
+import { goBack } from './manifest/go-back'
 import { bringBackIntent } from './manifest/from-storage'
 import { playFile } from './manifest/play-file'
 import { cancelProcess, processIntent, processWait } from './manifest/process'
@@ -34,7 +35,8 @@ import { deleteMontageIntent, resetMontageIntent } from './manifest/take-back'
 import { trashUnsortedIntent } from './manifest/trash-unsorted'
 import { uploadGroup } from './manifest/upload-group'
 import { cancelUpload, uploadWait } from './manifest/upload-wait'
-import { uploadMontageIntent } from './manifest/upload-montage'
+import { uploadMontageIntent, uploadMontagesIntent } from './manifest/upload-montage'
+import { markPaid } from './manifest/mark-paid'
 
 /* Every change the board makes comes through here, one intent at a time, each answered with the
    board's data (RULES, The board). */
@@ -46,6 +48,7 @@ const intents: Record<ActionData['intent'], Intent> = {
   'copy-back': copyBackIntent,
   'bring-back': bringBackIntent,
   'from-bin': fromBinIntent,
+  'go-back': goBack,
   process: processIntent,
   'process-wait': processWait,
   'cancel-process': cancelProcess,
@@ -54,6 +57,7 @@ const intents: Record<ActionData['intent'], Intent> = {
   'cancel-upload': cancelUpload,
   montage,
   'upload-montage': uploadMontageIntent,
+  'upload-montages': uploadMontagesIntent,
   'shift-group-time': shiftGroupTime,
   'retime-file': retimeFileIntent,
   'set-moment': setMomentIntent,
@@ -72,8 +76,20 @@ const intents: Record<ActionData['intent'], Intent> = {
   'copy-files': copyFilesIntent,
   'make-montage': makeMontageIntent,
   'reset-fresh': resetFreshIntent,
-  'camera-copied': cameraCopied
+  'camera-copied': cameraCopied,
+  'mark-paid': markPaid
 }
+
+/* what only waits, looks or stops, and changes nothing a person would want to go back from */
+const ONLY_ASKING = new Set<string>([
+  'upload-wait',
+  'process-wait',
+  'play-file',
+  'cancel-upload',
+  'cancel-process',
+  'camera-copied',
+  'go-back'
+])
 
 const action = createValidatedFormAction<Route.ActionArgs>()({
   schema: actionArgs,
@@ -82,8 +98,11 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       errors.addGlobalError(message)
       return errors.toResponse(422)
     }
-    const manifest = loadManifest(`${getOutputDir()}/manifest.json`)
+    const manifestPath = getManifestPath(getOutputDir())
+    const manifest = loadManifest(manifestPath)
     if (!manifest) return refuse('No manifest found. Run a scan first.')
+    /* a change asked for on the board is one step of its history, to go back to (RULES, Going back) */
+    if (!ONLY_ASKING.has(data.intent)) keepBoardStep(manifestPath)
     return intents[data.intent](changeOn(manifest, data, refuse))
   }
 })

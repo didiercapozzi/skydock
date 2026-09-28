@@ -1,8 +1,7 @@
-import { saveManifest, UPLOADED_LOCKED } from '@skydock/scripts'
+import { saveManifest, UPLOADED_LOCKED, messageOf } from '@skydock/scripts'
 import { moveFiles } from '../../../../packages/skydock-scripts/src/moveFiles'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
-import { messageOf } from '@skydock/scripts'
 
 /* Files go from wherever they are into a jump, a new jump or a place — the one move a drag on the
    board and a drop from the computer both make (RULES, Jumps). */

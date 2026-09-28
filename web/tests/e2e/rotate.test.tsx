@@ -70,7 +70,7 @@ describe('turning a picture', () => {
 
     await userEvent.click(page.getByRole('button', { name: '0°', exact: true }))
     await expect.element(page.getByText('0°', { exact: true })).toBeVisible()
-    await expect.element(page.getByRole('button', { name: 'Save crop' })).toBeDisabled()
+    await expect.element(page.getByRole('button', { name: 'Save' })).toBeDisabled()
   })
 
   test('a turn is something to save', async () => {
@@ -79,7 +79,7 @@ describe('turning a picture', () => {
     await userEvent.click(page.getByRole('button', { name: '↻ +180°' }))
 
     await expect.element(page.getByText('Unsaved changes')).toBeVisible()
-    await userEvent.click(page.getByRole('button', { name: 'Save crop' }))
+    await userEvent.click(page.getByRole('button', { name: 'Save' }))
     expect(saved.rotation).toBe(180)
   })
 

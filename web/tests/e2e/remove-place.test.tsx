@@ -27,7 +27,7 @@ describe('removing a place', () => {
   test('says what comes back to Fresh files, and that nothing is deleted', async () => {
     await open()
 
-    const dialog = page.getByRole('dialog', { name: 'Remove a place' })
+    const dialog = page.getByRole('dialog', { name: 'Remove a destination' })
     await expect.element(dialog).toBeVisible()
     await expect.poll(() => dialog.element().textContent).toContain('2 jumps and 1 loose file')
     await expect.poll(() => dialog.element().textContent).toContain('come back to Fresh files')
@@ -39,7 +39,7 @@ describe('removing a place', () => {
   test('says the storage is left alone, when the place has a folder up there', async () => {
     await open({ linked: '/SkyDock/Yverdon' })
 
-    const dialog = page.getByRole('dialog', { name: 'Remove a place' })
+    const dialog = page.getByRole('dialog', { name: 'Remove a destination' })
     await expect
       .poll(() => dialog.element().textContent)
       .toContain('stays on the storage, and so does any link handed out of it')
@@ -48,7 +48,7 @@ describe('removing a place', () => {
   test('says so plainly when nothing is filed there', async () => {
     await open({ jumps: 0, loose: 0 })
 
-    const dialog = page.getByRole('dialog', { name: 'Remove a place' })
+    const dialog = page.getByRole('dialog', { name: 'Remove a destination' })
     await expect.poll(() => dialog.element().textContent).toContain('nothing is filed there')
   })
 
@@ -99,8 +99,8 @@ describe('a dropzone on the board', () => {
   test('can be taken off the board, and asks before it is', async () => {
     const sent = await openYverdon()
 
-    await userEvent.click(page.getByRole('button', { name: 'Remove place…' }))
-    await expect.element(page.getByRole('dialog', { name: 'Remove a place' })).toBeVisible()
+    await userEvent.click(page.getByRole('button', { name: 'Remove destination…' }))
+    await expect.element(page.getByRole('dialog', { name: 'Remove a destination' })).toBeVisible()
     expect(sent).toEqual([])
 
     await userEvent.click(page.getByRole('button', { name: 'Remove Yverdon' }))
@@ -111,6 +111,6 @@ describe('a dropzone on the board', () => {
   test('offers it even with nothing in it, which is the one worth removing', async () => {
     await openYverdon()
 
-    await expect.element(page.getByRole('button', { name: 'Remove place…' })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Remove destination…' })).toBeVisible()
   })
 })

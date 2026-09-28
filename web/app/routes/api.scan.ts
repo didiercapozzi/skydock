@@ -1,7 +1,13 @@
-import { getOutputDir, loadManifest, scanMedia } from '@skydock/scripts'
+import {
+  getManifestPath,
+  getOutputDir,
+  keepBoardStep,
+  loadManifest,
+  scanMedia,
+  messageOf
+} from '@skydock/scripts'
 import { z } from 'zod'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
-import { messageOf } from '@skydock/scripts'
 /* server-only: it shells out to ffmpeg, so it is imported here rather than through the barrel the
    browser evaluates */
 import { buildMissingProxies } from '../../../packages/skydock-scripts/src/proxy'
@@ -20,6 +26,8 @@ const action = createValidatedFormAction()({
   handler: async () => {
     const outputDir = getOutputDir()
     copyAgain(outputDir)
+    /* a scan can regroup what was not filed: one more step to go back to */
+    keepBoardStep(getManifestPath(outputDir))
     const result = await scanMedia({ outputDir })
     /* Proxies are built behind the answer, not inside it: transcoding a card of clips takes
        minutes, and everything works without them meanwhile — the crop bar falls back to the clip
@@ -27,7 +35,7 @@ const action = createValidatedFormAction()({
     void buildMissingProxies(outputDir).catch((e: unknown) => {
       console.error('[Proxy] pass failed:', messageOf(e))
     })
-    const manifest = loadManifest(`${outputDir}/manifest.json`)
+    const manifest = loadManifest(getManifestPath(outputDir))
     return { scan: result, ...(manifest ? boardAnswer(manifest) : { groups: [] }) }
   }
 })

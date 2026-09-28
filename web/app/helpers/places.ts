@@ -111,6 +111,19 @@ const stillHere = (place: Place, files: ManifestFile[]) =>
 const hereIn = (place: Place, groups: ManifestGroup[], loose: ManifestFile[]) =>
   stillHere(place, filesIn(place, groups, loose))
 
+/* the folder a jump is shown in, and a loose file — the inverse of the two above */
+const placeOfGroup = (g: ManifestGroup): Place =>
+  isMontage(g)
+    ? hasCompletePassenger(g.passenger)
+      ? { kind: 'pax', name: passengerOf(g) }
+      : { kind: 'unnamed' }
+    : g.destination
+      ? { kind: 'dz', name: g.destination }
+      : { kind: 'sort' }
+
+const placeOfLoose = (f: ManifestFile): Place =>
+  f.destination ? { kind: 'dz', name: f.destination } : { kind: 'sort' }
+
 /* Each folder's own address, in the words the folder is called by, so that an address can be read
    and typed: /dropzone/yverdon, /montage/Lily%20DONZALLAZ, /storage. One list, read both ways.
    Fresh files is what the board opens on and has the plainest word of them. */
@@ -168,6 +181,8 @@ const fileHref = (place: Place, fileId: string, view: BoardView = {}) =>
   })
 
 export {
+  placeOfGroup,
+  placeOfLoose,
   familyOf,
   fileHref,
   filesIn,

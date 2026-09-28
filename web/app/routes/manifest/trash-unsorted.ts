@@ -1,8 +1,10 @@
-import { processingNow, saveManifest } from '@skydock/scripts'
-import { trashUnsorted } from '../../../../packages/skydock-scripts/src/trashUnsorted'
+import { processingNow, saveManifest, messageOf } from '@skydock/scripts'
+import {
+  dropFromBoard,
+  trashUnsorted
+} from '../../../../packages/skydock-scripts/src/trashUnsorted'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
-import { messageOf } from '@skydock/scripts'
 
 /* Files nobody wants go to the bin, from Fresh files or out of a montage (RULES, Putting files in the
    bin). Not while something is being processed: a file taken away underneath would leave its copy
@@ -14,7 +16,8 @@ const trashUnsortedIntent: Intent = async ({
   outputDir,
   frozenFiles,
   refuse,
-  refuseFrozen
+  refuseFrozen,
+  latest
 }) => {
   const ids = new Set(data.fileIds ?? [])
   if (ids.size === 0) return refuse('Select at least one file to put in the bin.')
@@ -25,8 +28,11 @@ const trashUnsortedIntent: Intent = async ({
   } catch (e) {
     return refuse(messageOf(e))
   }
-  saveManifest(manifestPath, manifest)
-  return boardAnswer(manifest)
+  /* the files are moved; they come off the board as it is now */
+  const board = latest()
+  dropFromBoard(board, ids)
+  saveManifest(manifestPath, board)
+  return boardAnswer(board)
 }
 
 export { trashUnsortedIntent }

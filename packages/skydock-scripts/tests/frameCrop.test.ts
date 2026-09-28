@@ -168,3 +168,31 @@ describe('turning the picture', () => {
     expect(orientationAfter(3, 180)).toBe(1)
   })
 })
+
+/* An upright clip delivered as a landscape one, its sides filled with itself blurred, so nothing of
+   the jumper is cut away (RULES, Cropping and turning). */
+describe('a portrait clip set in a landscape frame', () => {
+  const WHOLE = { x: 0, y: 0, width: 1, height: 1, fill: 'blur' as const }
+
+  it('is a picture to change, even with nothing cut out of it', () => {
+    expect(isWholeFrame(WHOLE)).toBe(false)
+  })
+
+  it('comes out 16:9, as high as the clip was wide, with blurred sides behind it', () => {
+    const filter = pictureFilter({ frame: WHOLE, rotation: null, width: 1512, height: 2688 })
+
+    expect(filter).toContain('overlay=(W-w)/2:(H-h)/2')
+    expect(filter).toContain('scale=2688:1512')
+    expect(filter).toContain('gblur')
+  })
+
+  it('leaves a clip that is already landscape as it is', () => {
+    expect(pictureFilter({ frame: WHOLE, rotation: null, width: 3840, height: 2160 })).toBeNull()
+  })
+
+  it('fills a sideways clip once it is turned upright', () => {
+    expect(pictureFilter({ frame: WHOLE, rotation: 90, width: 3840, height: 2160 })).toMatch(
+      /^transpose=1,split/
+    )
+  })
+})

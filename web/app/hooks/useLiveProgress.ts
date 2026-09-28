@@ -32,7 +32,7 @@ const useLiveProgress = (
   onProxies: Dispatch<SetStateAction<Record<string, ProxyFact>>>,
   /* what a montage's folder holds, when it changed by the editor's hand — a film just rendered */
   onMontages: Dispatch<SetStateAction<Record<string, MontageFact>>>,
-  onNote: Dispatch<SetStateAction<string | null>>
+  onNote: Dispatch<SetStateAction<{ text: string; problem: boolean } | null>>
 ) => {
   const [files, setFiles] = useState<Record<string, LiveFile>>({})
   const [camera, setCamera] = useState<CameraCopy | null>(null)
@@ -50,7 +50,8 @@ const useLiveProgress = (
       if (event.kind === 'montage') {
         onMontages((now) => ({ ...now, [event.groupId]: event.fact }))
         const who = event.who
-        if (event.rendered) onNote(t`${who}’s film is rendered — ready to upload`)
+        if (event.rendered)
+          onNote({ text: t`${who}’s film is rendered — ready to upload`, problem: false })
         return
       }
       if (event.kind === 'camera') {

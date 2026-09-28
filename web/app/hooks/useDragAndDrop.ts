@@ -136,6 +136,50 @@ const useDragAndDrop = ({
     }
   }
 
+  /* Where something carried ends up, however it got there — dropped, or sent from a Move to… menu:
+     files or whole jumps, back to Fresh files, under a destination, into a named montage, or to
+     the Montages heading, which asks for a name first. */
+  const land = (
+    to: { kind: 'sort' } | { kind: 'dz'; name: string } | { kind: 'montage' },
+    what: { files: string[] } | { jumps: string[] },
+    how: { into?: { passenger: Passenger; hostId: string }; copy?: boolean } = {}
+  ) => {
+    const destination = to.kind === 'dz' ? to.name : null
+    const { into, copy = false } = how
+    if ('files' in what) {
+      if (what.files.length === 0) return
+      if (into) moveFiles(what.files, { targetGroupId: into.hostId, copy })
+      else if (to.kind === 'montage') askMontageName({ fileIds: what.files })
+      else moveFiles(what.files, { destination })
+    } else {
+      const [first] = what.jumps
+      if (!first) return
+      if (into) toMontage(what.jumps, into.passenger)
+      else if (to.kind === 'montage') askMontageName({ groupId: first })
+      else assign(what.jumps, destination)
+    }
+    if (destination) onFiled(destination)
+  }
+
+  /* the same, named by a folder on the left */
+  const moveTo = (target: Place, what: { files: string[] } | { jumps: string[] }) => {
+    if (target.kind === 'sort' || target.kind === 'dz') {
+      land(target, what)
+      return
+    }
+    if (target.kind === 'montages') {
+      land({ kind: 'montage' }, what)
+      return
+    }
+    if (target.kind !== 'pax') return
+    const host = groups.find((g) => isMontage(g) && passengerOf(g) === target.name)
+    land(
+      { kind: 'montage' },
+      what,
+      host?.passenger ? { into: { passenger: host.passenger, hostId: host.id } } : {}
+    )
+  }
+
   /* `key` names the thing on screen that lights up, which is not always the destination: the same
      dropzone is a target in the menu and on its own card, and each has to light on its own. `to` is
      where it lands: back among the fresh files, a destination, or the montages. */
@@ -145,7 +189,6 @@ const useDragAndDrop = ({
     /* a named montage: what is dropped joins it rather than starting a montage of its own */
     into?: { passenger: Passenger; hostId: string }
   ) => {
-    const destination = to.kind === 'dz' ? to.name : null
     const key = named ?? (to.kind === 'dz' ? `dest:${to.name}` : to.kind)
     /* the sorting area takes files back; a destination card takes whole jumps as well */
     const accepts =
@@ -176,15 +219,10 @@ const useDragAndDrop = ({
           if (incoming) void importDropped(carried, incoming.target, incoming.where)
           return
         }
-        if (draggedFiles.length > 0)
-          if (into) moveFiles(draggedFiles, { targetGroupId: into.hostId, copy: copying(e) })
-          else if (to.kind === 'montage') askMontageName({ fileIds: draggedFiles })
-          else moveFiles(draggedFiles, { destination })
-        else if (dragged.length > 0)
-          if (into) toMontage(dragged, into.passenger)
-          else if (to.kind === 'montage') askMontageName({ groupId: dragged[0]! })
-          else assign(dragged, destination)
-        if (destination && (draggedFiles.length > 0 || dragged.length > 0)) onFiled(destination)
+        land(to, draggedFiles.length > 0 ? { files: draggedFiles } : { jumps: dragged }, {
+          into,
+          copy: copying(e)
+        })
         setDragged([])
         setDraggedFiles([])
       }
@@ -223,7 +261,8 @@ const useDragAndDrop = ({
     startFileDrag,
     endDrag,
     groupDropTarget,
-    placeDrop
+    placeDrop,
+    moveTo
   }
 }
 

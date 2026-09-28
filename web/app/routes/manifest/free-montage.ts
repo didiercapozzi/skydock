@@ -1,29 +1,35 @@
 import {
   ensureNasSession,
-  loadManifest,
   processingNow,
   saveManifest,
   earlierMontagesDirs,
-  montagesRemoteDir
+  montagesRemoteDir,
+  messageOf
 } from '@skydock/scripts'
 import { freeMontage, markFreed } from '../../../../packages/skydock-scripts/src/freeMontage'
 import { entryOfMontage, upsert } from '../../../../packages/skydock-scripts/src/montageIndex'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 import { recordOnStorage } from './storage'
-import { messageOf } from '@skydock/scripts'
 
 /* Delete a montage from this machine, once the storage is proved to hold all of it (RULES, Freeing
    space). The proof is the storage's own checksum, so it has to be reachable. */
-const freeMontageIntent: Intent = async ({ data, manifest, manifestPath, outputDir, refuse }) => {
+const freeMontageIntent: Intent = async ({
+  data,
+  manifest,
+  manifestPath,
+  outputDir,
+  refuse,
+  latest
+}) => {
   const session = await ensureNasSession()
   if (!session)
-    return refuse('Connect the NAS first — freeing needs it to prove it holds the files.')
+    return refuse('Connect the storage first — freeing needs it to prove it holds the files.')
   if (processingNow()) return refuse('Something is being processed — wait for it to finish.')
   try {
     const result = await freeMontage({ manifest, outputDir, groupId: data.groupId ?? '', session })
     /* checking gigabytes takes a while; whatever was saved meanwhile is kept */
-    const saved = loadManifest(manifestPath) ?? manifest
+    const saved = latest()
     markFreed(saved, result)
     saveManifest(manifestPath, saved)
     /* the storage's list says it is the only copy now */

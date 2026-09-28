@@ -27,7 +27,9 @@ type CopyProgress = {
   copied: number
   skipped: number
   files?: CopyItem[]
-  last?: 'copied' | 'skipped'
+  last?: 'copied' | 'skipped' | 'failed'
+  /* files the card would not give up — a read error, a name the disk refuses — passed over, named */
+  unreadable?: string[]
   /* how far through the file being copied now, between 0 and 1, said as its bytes go by */
   part?: number
 }
@@ -107,13 +109,15 @@ const alreadyThere = async (src: string, srcStat: fs.Stats, dir: string) => {
    Read without touching the card: the day it belongs to, the name it would be filed under, its size.
    Not its time — the time kept for a file is the time it was shot, which may have been put right by
    hand since, while the card still holds the time it was written. */
+/* a file this machine gave back, by the name it had and its size — wherever it was */
+const givenBack = (files: ManifestFile[], name: string, size: number) =>
+  files.some((f) => f.freed && f.size === size && isNameFor(f.filename, name))
+
 const freedAlready = (board: ManifestFile[], src: string, srcStat: fs.Stats, dir: string) =>
-  board.some(
-    (f) =>
-      f.freed &&
-      f.size === srcStat.size &&
-      path.resolve(path.dirname(f.path)) === path.resolve(dir) &&
-      isNameFor(f.filename, path.basename(src))
+  givenBack(
+    board.filter((f) => path.resolve(path.dirname(f.path)) === path.resolve(dir)),
+    path.basename(src),
+    srcStat.size
   )
 
 /* What the board knows, for the rule above. A jumps file that cannot be read stops a scan, on
@@ -137,6 +141,9 @@ const freeName = (dir: string, name: string) => {
 }
 
 class CameraGone extends Error {}
+
+/* the copy stopped because it was asked to, between one file and the next */
+class CopyStopped extends Error {}
 
 /* One file off a card into its day folder, written under a temporary name and given its own only
    once it is whole — so a card pulled out half way leaves nothing behind that could be taken for an
@@ -174,11 +181,14 @@ const copyCamera = async ({
   outputDir = getOutputDir(),
   manifest = loadBoard(outputDir),
   onProgress,
-  onCopied
+  onCopied,
+  stop
 }: {
   cameraDir: string
   outputDir?: string
   manifest?: Manifest | null
+  /* asked to stop: the file in hand is finished, whole, and nothing after it is begun */
+  stop?: AbortSignal
   onProgress?: (progress: CopyProgress) => void
   /* each file as it lands, so the board can show it before the whole card is done */
   onCopied?: (copied: Copied) => Promise<void> | void
@@ -196,6 +206,7 @@ const copyCamera = async ({
   })
 
   for (const src of files) {
+    if (stop?.aborted) throw new CopyStopped('Stopped when asked.')
     let srcStat: fs.Stats
     try {
       srcStat = fs.statSync(src)
@@ -203,20 +214,31 @@ const copyCamera = async ({
       throw new CameraGone('The camera was disconnected during the copy.')
     }
     const shot = shots.get(src) ?? Math.floor(srcStat.mtimeMs / 1000)
-    const destDir = originalsDay(outputDir, shot)
-    /* the mark first: it asks nothing of the disk */
-    const there =
-      freedAlready(board, src, srcStat, destDir) || (await alreadyThere(src, srcStat, destDir))
-    if (there) progress.skipped++
-    else {
-      const copied = await copyOne(src, srcStat, destDir, (part) =>
-        onProgress?.({ ...progress, part })
-      )
-      progress.copied++
-      await onCopied?.({ ...copied, shot })
+    let last: 'copied' | 'skipped' | 'failed' = 'skipped'
+    /* One file that will not come across — a read error, a folder or a name the disk refuses — does
+       not stop the rest: it is passed over and named. A camera that has gone is another thing: then
+       nothing more can come off it. */
+    try {
+      const destDir = originalsDay(outputDir, shot)
+      /* the mark first: it asks nothing of the disk */
+      const there =
+        freedAlready(board, src, srcStat, destDir) || (await alreadyThere(src, srcStat, destDir))
+      if (there) progress.skipped++
+      else {
+        const copied = await copyOne(src, srcStat, destDir, (part) =>
+          onProgress?.({ ...progress, part })
+        )
+        progress.copied++
+        last = 'copied'
+        await onCopied?.({ ...copied, shot })
+      }
+    } catch (e) {
+      if (e instanceof CameraGone || e instanceof CopyStopped) throw e
+      progress.unreadable = [...(progress.unreadable ?? []), path.basename(src)]
+      last = 'failed'
     }
     progress.done++
-    onProgress?.({ ...progress, last: there ? 'skipped' : 'copied' })
+    onProgress?.({ ...progress, last })
   }
   return progress
 }
@@ -290,7 +312,9 @@ const dayFoldersOf = async (files: string[], outputDir: string) => {
 }
 
 export {
+  givenBack,
   CameraGone,
+  CopyStopped,
   alreadyThere,
   copyBack,
   copyCamera,

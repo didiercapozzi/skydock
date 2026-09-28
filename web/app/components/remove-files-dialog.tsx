@@ -44,8 +44,8 @@ const RemoveFilesDialog = ({
       onClose={onClose}
       footer={
         <>
-          <Mini onClick={onClose}>{t`Cancel`}</Mini>
           <Spacer />
+          <Mini onClick={onClose}>{t`Cancel`}</Mini>
           <ToBin
             size='go'
             disabled={copies}

@@ -71,6 +71,10 @@ describe('a frame saved on a clip', () => {
     await userEvent.click(shape('1:1'))
 
     await userEvent.click(page.getByRole('button', { name: /Next/ }))
+    /* the 1:1 was never saved, so leaving asks first */
+    await userEvent.click(
+      page.getByRole('dialog', { name: 'Unsaved changes' }).getByRole('button', { name: 'Discard', exact: true })
+    )
 
     await expect.element(shape('None')).toHaveAttribute('aria-pressed', 'true')
     await expect.element(page.getByLabelText('Part of the picture to keep')).not.toBeInTheDocument()
@@ -92,5 +96,20 @@ describe('the part of the picture kept', () => {
     await expect.poll(said).toContain('Keeps 56% across · 100% down · 56% of the picture')
     await expect.poll(said).toContain('56% × 100%')
     await page.screenshot({ path: './playwright-screenshots/frame-percent.png' })
+  })
+
+  /* leaving with a change not saved asks first, and Escape on the question keeps editing
+     (RULES, Cropping and turning) */
+  test('asks before a change not saved is left behind, and keeps editing when not answered', async () => {
+    await render(createElement(Drawer))
+    await userEvent.click(shape('1:1'))
+
+    await userEvent.keyboard('{Escape}')
+    const asking = page.getByRole('dialog', { name: 'Unsaved changes' })
+    await expect.element(asking).toBeVisible()
+    await userEvent.keyboard('{Escape}')
+
+    await expect.element(asking).not.toBeInTheDocument()
+    await expect.element(shape('1:1')).toHaveAttribute('aria-pressed', 'true')
   })
 })

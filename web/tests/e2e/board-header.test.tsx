@@ -23,6 +23,11 @@ const header = (over: Partial<Parameters<typeof BoardHeader>[0]> = {}) =>
       onScan: () => {},
       onTemplates: () => {},
       onWorkFolder: () => {},
+      onHistory: () => {},
+      onShortcuts: () => {},
+      onOverview: () => {},
+      onBookings: () => {},
+      find: () => [],
       proxies: { ready: 48, waiting: 2, total: 50 },
       disk: null,
       nas: {
@@ -51,27 +56,33 @@ describe('the top of the board', () => {
         connected: false,
         host: null,
         user: null,
-        links: [{ label: 'Connect the NAS', onClick: () => {} }]
+        links: [{ label: 'Connect the storage', onClick: () => {} }]
       }
     })
 
-    await expect.element(page.getByRole('button', { name: 'Connect the NAS' })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Connect the storage' })).toBeVisible()
     await expect.element(page.getByText('didier')).not.toBeInTheDocument()
   })
 
-  /* the marks are shorthand, not a loss: everything still answers to its own name */
-  test('keeps every setting, each answering to its name', async () => {
+  /* what is used every day is on the bar; what is set once is behind Settings — and every mark still
+     answers to its own name */
+  test('keeps what is used every day on the bar, and the rest behind Settings', async () => {
     await header()
 
-    for (const name of ['Rows', 'Thumbnails', 'Auto', 'Light', 'Dark'])
+    for (const name of ['Overview', 'Rows', 'Thumbnails', 'Rescan cameras', 'Keyboard shortcuts'])
       await expect.element(page.getByRole('button', { name })).toBeVisible()
     for (const name of ['Check the storage again', 'Disconnect the storage'])
       await expect.element(page.getByRole('button', { name })).toBeVisible()
-    for (const name of ['Rescan cameras', 'Templates…'])
-      await expect.element(page.getByRole('button', { name })).toBeVisible()
-    await expect.element(page.getByText(/proxies\s*48\s*\/\s*50/)).toBeVisible()
-
+    await expect.element(page.getByText(/Proxies ready\s*48\s*\/\s*50/)).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Templates…' })).not.toBeInTheDocument()
     await page.screenshot({ path: './playwright-screenshots/board-header.png' })
+
+    await userEvent.click(page.getByRole('button', { name: 'Settings' }))
+
+    for (const name of ['Auto', 'Light', 'Dark', 'English', 'Templates…', 'Booking list…', 'Work folder…', 'History…'])
+      await expect.element(page.getByRole('button', { name })).toBeVisible()
+    await userEvent.keyboard('{Escape}')
+    await expect.element(page.getByRole('group', { name: 'Settings' })).not.toBeInTheDocument()
   })
 
   test('says which way files are drawn, and how the app is lit', async () => {
@@ -90,6 +101,7 @@ describe('the top of the board', () => {
 describe('the language of the board', () => {
   test('offers the three languages, each named in itself, and marks the one spoken', async () => {
     await header()
+    await userEvent.click(page.getByRole('button', { name: 'Settings' }))
 
     await expect.element(page.getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'true')
     await expect.element(page.getByRole('button', { name: 'Français' })).toBeVisible()
@@ -101,6 +113,7 @@ describe('the language of the board', () => {
       speak('fr')
       const french = await header()
       await expect.element(page.getByRole('button', { name: 'Relire les caméras' })).toBeVisible()
+      await userEvent.click(page.getByRole('button', { name: 'Réglages' }))
       await expect.element(page.getByRole('button', { name: 'Français' })).toHaveAttribute('aria-pressed', 'true')
       await french.unmount()
 

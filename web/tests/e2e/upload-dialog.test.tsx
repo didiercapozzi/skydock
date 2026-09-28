@@ -430,7 +430,7 @@ describe('freeing an uploaded montage', () => {
     )
     /* what freeing gave back is said once, when it happens — not on every visit */
     await expect.element(page.getByText(/given back/)).not.toBeInTheDocument()
-    for (const name of ['Reset…', 'Delete…', 'Free up space…', 'Upload again…'])
+    for (const name of ['Reset…', 'Delete montage…', 'Free up space…', 'Upload again…'])
       await expect.element(page.getByRole('button', { name })).not.toBeInTheDocument()
   })
 })
@@ -772,7 +772,7 @@ describe('a film the editor has just rendered', () => {
 /* A montage can be deleted at whatever step it has reached — this one has an edit and a film — and
    deleting asks first, saying what goes with it and that its files come back loose. */
 describe('deleting a montage that is already edited and rendered', () => {
-  test('is offered on its panel, and says what goes and where the files go', async () => {
+  test('is offered on its page, once, and says what goes and where the files go', async () => {
     requests.length = 0
     await renderBoard(board, false)
 

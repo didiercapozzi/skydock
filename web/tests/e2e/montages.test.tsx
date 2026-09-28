@@ -404,3 +404,114 @@ describe('files grouped by day', () => {
     }
   })
 })
+
+/* Everything a drag files can be filed from a menu as well, since a drag is the one way a trackpad,
+   a long list or a narrow window makes hard (RULES, Sorting). */
+describe('Move to…', () => {
+  const moving = () => details().getByRole('group', { name: 'Move to…' })
+
+  test('files a jump under a destination, and leaves out where it already is', async () => {
+    await renderBoard({ groups: [] })
+    await userEvent.click(card(/^Sunset load, /))
+    await userEvent.click(details().getByRole('button', { name: 'Move to…' }))
+
+    await expect.element(moving().getByRole('button', { name: 'Fresh files' })).not.toBeInTheDocument()
+    await userEvent.click(moving().getByRole('button', { name: 'Yverdon' }))
+
+    await expect
+      .poll(() => sent.at(-1))
+      .toMatchObject({
+        intent: 'save-groups',
+        groups: expect.arrayContaining([expect.objectContaining({ id: 'g1', destination: 'Yverdon' })])
+      })
+  })
+
+  test('sends picked files into a montage that has a name', async () => {
+    await renderBoard({ groups: [] }, '/', {
+      ...board,
+      groups: [FRESH_JUMP, YVERDON_JUMP, montage(['Luc', 'Favre'], [file('m', AT + 3600)])]
+    })
+    await userEvent.click(card(/^Sunset load, /))
+    for (const name of [/a\.MP4/, /b\.MP4/])
+      await userEvent.click(page.getByRole('button', { name }).last(), { modifiers: ['ControlOrMeta'] })
+    await userEvent.click(details().getByRole('button', { name: 'Move to…' }))
+    await userEvent.click(moving().getByRole('button', { name: 'Luc Favre’s montage' }))
+
+    await expect
+      .poll(() => sent.at(-1))
+      .toMatchObject({ intent: 'move-files', fileIds: ['a', 'b'], targetGroupId: 'm1' })
+  })
+
+  test('to a new montage asks for its name first', async () => {
+    await renderBoard({ groups: [] })
+    await userEvent.click(card(/^Sunset load, /))
+    await userEvent.click(details().getByRole('button', { name: 'Move to…' }))
+    await userEvent.click(moving().getByRole('button', { name: 'A new montage…' }))
+
+    await expect.element(page.getByRole('dialog', { name: /montage/i })).toBeInTheDocument()
+    expect(sent).toEqual([])
+  })
+})
+
+/* Every montage in one table, with what is done to many at once (RULES, The overview). */
+describe('the overview', () => {
+  const overview = () => page.getByRole('dialog', { name: 'Overview' })
+  const shown = {
+    ...board,
+    groups: [
+      FRESH_JUMP,
+      montage(['Luc', 'Favre'], [file('m', AT + 3600)]),
+      { ...montage(['Chloé', 'Perret'], [file('n', AT + 5400)]), id: 'm2', label: 'm2', processed: true }
+    ]
+  }
+
+  test('lists every named montage with the step it is at', async () => {
+    await renderBoard({ groups: [] }, '/', shown)
+    await userEvent.click(page.getByRole('button', { name: 'Overview' }))
+
+    await expect.element(overview().getByRole('button', { name: 'Luc Favre' })).toBeVisible()
+    await expect.element(overview().getByRole('button', { name: 'Chloé Perret' })).toBeVisible()
+    await expect.element(overview().getByText('to process')).toBeVisible()
+  })
+
+  test('processes every named montage not yet processed in one go', async () => {
+    await renderBoard({ groups: [] }, '/', shown)
+    await userEvent.click(page.getByRole('button', { name: 'Overview' }))
+    await userEvent.click(overview().getByRole('button', { name: 'Process the 1 named montage' }))
+
+    await expect.poll(() => sent.at(-1)).toMatchObject({ intent: 'process', groupIds: ['m1'] })
+  })
+
+  test('finds a montage by its name', async () => {
+    await renderBoard({ groups: [] }, '/', shown)
+    await userEvent.click(page.getByRole('button', { name: 'Overview' }))
+    await userEvent.fill(overview().getByRole('searchbox', { name: 'Find a montage' }), 'chlo')
+
+    await expect.element(overview().getByRole('button', { name: 'Luc Favre' })).not.toBeInTheDocument()
+    await expect.element(overview().getByRole('button', { name: 'Chloé Perret' })).toBeVisible()
+  })
+})
+
+/* One box finds anything on the board by a piece of its name, and goes to it (RULES, Finding
+   anything). */
+describe('finding anything', () => {
+  const shown = { ...board, groups: [FRESH_JUMP, YVERDON_JUMP, montage(['Luc', 'Favre'], [file('m', AT + 3600)])] }
+  const box = () => page.getByRole('searchbox', { name: 'Find anything' })
+
+  test('goes to a montage by a piece of its name', async () => {
+    await renderBoard({ groups: [] }, '/', shown)
+    await userEvent.fill(box(), 'favr')
+    await userEvent.click(page.getByRole('list', { name: 'Found' }).getByRole('button', { name: /Luc Favre/ }))
+
+    await expect.element(pageHeading('Luc Favre')).toBeVisible()
+  })
+
+  test('finds a file by its name, and says where it is', async () => {
+    await renderBoard({ groups: [] }, '/', shown)
+    await userEvent.fill(box(), 'z.MP4')
+
+    await expect
+      .element(page.getByRole('list', { name: 'Found' }).getByRole('button', { name: /z\.MP4\s*Yverdon/ }))
+      .toBeVisible()
+  })
+})

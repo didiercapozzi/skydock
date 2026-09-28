@@ -2,8 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { Readable } from 'node:stream'
 import type { ReadableStream as NodeWebStream } from 'node:stream/web'
-import { getOutputDir } from '@skydock/scripts'
-import { messageOf } from '@skydock/scripts'
+import { getOutputDir, messageOf } from '@skydock/scripts'
 /* server-only: it writes files and shells out, so it is imported here rather than through the barrel
    the browser evaluates */
 import { importFile } from '../../../packages/skydock-scripts/src/importFile'

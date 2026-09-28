@@ -11,7 +11,7 @@ import {
 import type { ProxyFact, StatusContext } from '@skydock/scripts'
 import { useState } from 'react'
 import { pictureWidthFor, stepTileSize, useTileSize } from '../hooks/useTileSize'
-import { StatusChip } from './file-status'
+import { StatusChip, statusName } from './file-status'
 import type { ShownStatus } from './file-status'
 import type { LiveFile } from '../hooks/useLiveProgress'
 import type { ManifestFile } from './types'
@@ -111,10 +111,10 @@ const CropFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) =
     <span
       title={
         applied
-          ? t`Crop applied when this file was processed`
-          : t`Crop saved — applied at the next Process`
+          ? t`Trim applied when this file was processed`
+          : t`Trim saved — applied at the next Process`
       }
-      className={`flex-none rounded px-1.5 font-mono text-[10px] leading-4 font-semibold whitespace-nowrap ${
+      className={`flex-none rounded px-1.5 font-mono text-[11px] leading-4 font-semibold whitespace-nowrap ${
         applied
           ? 'border border-accent bg-accent text-white'
           : 'border border-dashed border-local bg-local-soft text-local'
@@ -125,29 +125,11 @@ const CropFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) =
   )
 }
 
-/* Whether the small copy exists yet. Only clips have one, and it is worth saying out loud: a card
-   where none of them built looks exactly like a card still building. `own` is a clip already small
-   enough to be its own proxy — finished, with nothing left to make. */
-const PROXY_FLAG: Record<
-  ProxyFact['state'],
-  { label: MessageDescriptor; title: MessageDescriptor; className: string }
-> = {
-  ready: {
-    label: msg`proxy`,
-    title: msg`Proxy ready — the crop bar plays it, and the editor opens on it`,
-    className: 'border border-proc bg-proc-soft text-proc'
-  },
-  own: {
-    label: msg`proxy`,
-    title: msg`Small enough already — this clip is its own proxy, nothing to build`,
-    className: 'border border-line bg-line-2 text-ink-3'
-  },
-  none: {
-    label: msg`no proxy`,
-    title: msg`No proxy yet — it is built behind the scan. Meanwhile the clip plays as it is and the editor makes its own.`,
-    className: 'border border-dashed border-local bg-local-soft text-local'
-  }
-}
+/* Whether the small copy exists yet — said only while it does not. Only clips have one, and a card
+   where none of them built looks exactly like a card still building, so a missing one is worth
+   saying out loud; one that exists is the ordinary case, and a chip on every clip saying so is
+   noise the eye learns to skip, taking the missing ones with it. */
+const NO_PROXY_TITLE = msg`No proxy yet — it is built behind the scan. Meanwhile the clip plays as it is and the editor makes its own.`
 
 /* A file its jump holds against the gap rule — dragged in, or re-timed away from the rest. Only
    said, never acted on: the person who put it there may well be right. */
@@ -156,7 +138,7 @@ const GAP_TITLE = msg`More than 15 minutes from the rest of its jump — the gap
 const GapFlag = () => (
   <span
     title={i18n._(GAP_TITLE)}
-    className='flex-none rounded border border-dashed border-changed bg-changed-soft px-1.5 font-mono text-[10px] leading-4 font-semibold whitespace-nowrap text-changed'>
+    className='flex-none rounded border border-dashed border-changed bg-changed-soft px-1.5 font-mono text-[11px] leading-4 font-semibold whitespace-nowrap text-changed'>
     ⧗ {t`gap`}
   </span>
 )
@@ -169,7 +151,7 @@ const COPY_TITLE = msg`A copy — the same clip is in another jump too. This one
 const CopyFlag = () => (
   <span
     title={i18n._(COPY_TITLE)}
-    className='flex-none rounded border border-line bg-line-2 px-1.5 font-mono text-[10px] leading-4 font-semibold whitespace-nowrap text-ink-2'>
+    className='flex-none rounded border border-line bg-line-2 px-1.5 font-mono text-[11px] leading-4 font-semibold whitespace-nowrap text-ink-2'>
     ⧉ {t`copy`}
   </span>
 )
@@ -179,13 +161,12 @@ const proxyFailedTitle = (reason: string) =>
   t`The proxy could not be made: ${reason}. It is tried again on the next pass; meanwhile the clip plays as it is.`
 
 const ProxyFlag = ({ fact }: { fact?: ProxyFact }) => {
-  if (!fact) return null
-  const { label, title, className } = PROXY_FLAG[fact.state]
+  if (fact?.state !== 'none') return null
   return (
     <span
-      title={fact.reason ? proxyFailedTitle(fact.reason) : i18n._(title)}
-      className={`flex-none rounded px-1.5 font-mono text-[10px] leading-4 font-semibold whitespace-nowrap ${className}`}>
-      {fact.reason ? t`proxy failed` : i18n._(label)}
+      title={fact.reason ? proxyFailedTitle(fact.reason) : i18n._(NO_PROXY_TITLE)}
+      className='flex-none rounded border border-dashed border-local bg-local-soft px-1.5 font-mono text-[11px] leading-4 font-semibold whitespace-nowrap text-local'>
+      {fact.reason ? t`proxy failed` : t`no proxy`}
     </span>
   )
 }
@@ -201,10 +182,10 @@ const FrameFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) 
     <span
       title={
         applied
-          ? t`Frame cropped when this file was processed — about ${kept}% of the picture, keeping its shape`
-          : t`Frame crop saved — about ${kept}% of the picture, keeping its shape. Applied at the next Process.`
+          ? t`Framed when this file was processed — about ${kept}% of the picture, keeping its shape`
+          : t`Frame saved — about ${kept}% of the picture, keeping its shape. Applied at the next Process.`
       }
-      className={`flex-none rounded px-1.5 font-mono text-[10px] leading-4 font-semibold whitespace-nowrap ${
+      className={`flex-none rounded px-1.5 font-mono text-[11px] leading-4 font-semibold whitespace-nowrap ${
         applied
           ? 'border border-accent bg-accent text-white'
           : 'border border-dashed border-local bg-local-soft text-local'
@@ -227,7 +208,7 @@ const TurnFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) =
           ? t`Turned ${turn}° when this file was processed`
           : t`Turned ${turn}° — applied at the next Process`
       }
-      className={`flex-none rounded px-1.5 font-mono text-[10px] leading-4 font-semibold whitespace-nowrap ${
+      className={`flex-none rounded px-1.5 font-mono text-[11px] leading-4 font-semibold whitespace-nowrap ${
         applied
           ? 'border border-accent bg-accent text-white'
           : 'border border-dashed border-local bg-local-soft text-local'
@@ -305,9 +286,7 @@ const LiveBar = ({ live, filename }: { live: LiveFile; filename: string }) => (
         style={{ width: `${live.percent}%` }}
       />
     </span>
-    <span className='flex-none font-mono text-[10.5px] text-ink-2 tabular-nums'>
-      {live.percent}%
-    </span>
+    <span className='flex-none font-mono text-[11px] text-ink-2 tabular-nums'>{live.percent}%</span>
   </span>
 )
 
@@ -407,7 +386,7 @@ const Row = ({
           />
         )}
         {isVideoFile(file.path) && (
-          <i className='absolute bottom-0.5 left-0.5 rounded-sm bg-black/[0.66] px-[3px] font-mono text-[8px] leading-[1.3] text-white not-italic'>
+          <i className='absolute bottom-0.5 left-0.5 rounded-sm bg-black/[0.66] px-[3px] font-mono text-[9.5px] leading-[1.3] text-white not-italic'>
             ▶
           </i>
         )}
@@ -419,7 +398,7 @@ const Row = ({
       </span>
       {name && (
         <span
-          className='max-w-[130px] flex-none truncate font-mono text-[10.5px] text-ink-3'
+          className='max-w-[130px] flex-none truncate font-mono text-[11px] text-ink-3'
           title={t`the name it came off the camera with`}>
           {file.filename}
         </span>
@@ -441,7 +420,7 @@ const Row = ({
       />
       {locked && (
         <span
-          className='flex-none cursor-help text-[10px] opacity-55'
+          className='flex-none cursor-help text-[11px] opacity-55'
           title={locked}>
           🔒
         </span>
@@ -521,9 +500,9 @@ const Tile = ({
       e.preventDefault()
       onPick(file)
     }}
-    title={`${file.filename} · ${formatTime(file.mtime)} · ${formatSize(file.size)} · ${status}${
+    title={`${file.filename} · ${formatTime(file.mtime)} · ${formatSize(file.size)} · ${statusName(status)}${
       proxy?.state === 'none' ? ` · ${proxy.reason ? t`proxy failed` : t`no proxy yet`}` : ''
-    }${isWholeFrame(file.frame) ? '' : ` · ${t`frame cropped`}`}${file.rotation ? ` · ${turnedTitle(file.rotation)}` : ''}`}
+    }${isWholeFrame(file.frame) ? '' : ` · ${t`framed`}`}${file.rotation ? ` · ${turnedTitle(file.rotation)}` : ''}`}
     className={`group relative aspect-[4/3] max-w-full cursor-pointer overflow-hidden rounded-[5px] border-2 bg-line-2 p-0 ${
       picked ? 'border-accent' : previewed ? 'border-ink-3' : 'border-transparent'
     }`}>
@@ -538,30 +517,30 @@ const Tile = ({
       />
     )}
     {isVideoFile(file.path) && (
-      <i className='absolute bottom-1 left-1 rounded-[3px] bg-black/[0.66] px-1 font-mono text-[9px] text-white not-italic'>
+      <i className='absolute bottom-1 left-1 rounded-[3px] bg-black/[0.66] px-1 font-mono text-[10px] text-white not-italic'>
         ▶
       </i>
     )}
-    {locked && <span className='absolute right-1 bottom-1 text-[10px]'>🔒</span>}
+    {locked && <span className='absolute right-1 bottom-1 text-[11px]'>🔒</span>}
     {file.copyOf && (
       <span
         title={i18n._(COPY_TITLE)}
-        className='absolute top-1 left-1/2 -translate-x-1/2 rounded-[3px] bg-black/[0.66] px-1 font-mono text-[9px] text-white'>
+        className='absolute top-1 left-1/2 -translate-x-1/2 rounded-[3px] bg-black/[0.66] px-1 font-mono text-[10px] text-white'>
         ⧉
       </span>
     )}
     {strayed && (
       <span
         title={i18n._(GAP_TITLE)}
-        className='absolute top-1 left-1/2 -translate-x-1/2 rounded-[3px] border border-dashed border-changed bg-changed-soft px-1 font-mono text-[9px] font-semibold text-changed'>
+        className='absolute top-1 left-1/2 -translate-x-1/2 rounded-[3px] border border-dashed border-changed bg-changed-soft px-1 font-mono text-[10px] font-semibold text-changed'>
         ⧗
       </span>
     )}
     {/* a rectangle is invisible on a thumbnail of the whole frame, so it is said rather than shown */}
     {!isWholeFrame(file.frame) && (
       <span
-        title={t`The frame is cropped`}
-        className='absolute top-1 left-1 rounded-[3px] bg-black/[0.66] px-1 font-mono text-[9px] text-white'>
+        title={t`Framed`}
+        className='absolute top-1 left-1 rounded-[3px] bg-black/[0.66] px-1 font-mono text-[10px] text-white'>
         ▣
       </span>
     )}
@@ -569,7 +548,7 @@ const Tile = ({
         a grid is where hundreds of stills are culled, so it stays as quiet as it can */}
     {proxy?.state === 'none' && (
       <span
-        title={proxy.reason ? proxyFailedTitle(proxy.reason) : i18n._(PROXY_FLAG.none.title)}
+        title={proxy.reason ? proxyFailedTitle(proxy.reason) : i18n._(NO_PROXY_TITLE)}
         className='pointer-events-none absolute bottom-1 left-1 h-2 w-2 rounded-full border border-dashed border-white bg-local shadow-[0_0_0_1.5px_rgba(0,0,0,0.45)]'
       />
     )}

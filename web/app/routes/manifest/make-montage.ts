@@ -3,13 +3,13 @@ import {
   montageCalled,
   passengerName,
   passengerOf,
-  saveManifest
+  saveManifest,
+  messageOf
 } from '@skydock/scripts'
 import { freshIds } from '../../../../packages/skydock-scripts/src/clustering'
 import { copyIntoMontage, moveFiles } from '../../../../packages/skydock-scripts/src/moveFiles'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
-import { messageOf } from '@skydock/scripts'
 
 /* Picked files, or a whole jump, made a montage under one name (RULES, Making a montage). Whether
    they move or are copied is not the person's to decide: files still in Fresh files belong nowhere

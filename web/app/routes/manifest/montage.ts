@@ -6,7 +6,8 @@ import {
   passengerOf,
   saveManifest,
   statProxies,
-  waitingForProxy
+  waitingForProxy,
+  messageOf
 } from '@skydock/scripts'
 import { openInEditor } from '../../../../packages/skydock-scripts/src/editor'
 import { createMontageProject } from '../../../../packages/skydock-scripts/src/montage'
@@ -14,11 +15,10 @@ import { writeCutProxy } from '../../../../packages/skydock-scripts/src/process'
 import { getCutProxyDir } from '../../../../packages/skydock-scripts/src/proxy'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
-import { messageOf } from '@skydock/scripts'
 
 /* A processed montage gets an editing project, the template as its owner made it with the clips in
    its bin, and the project is opened in the same press: it exists to be edited (RULES, The editing project). */
-const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse }) => {
+const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse, latest }) => {
   const group = manifest.groups.find((g) => g.id === data.groupId)
   if (!group) return refuse('Group not found.')
   if (!isNamedMontage(group))
@@ -86,17 +86,21 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
       photos,
       clips
     })
-    group.montage = {
-      projectPath: made.projectPath,
-      filmPath: made.filmPath,
-      template: made.template,
-      clips: made.clips,
-      at: Math.floor(Date.now() / 1000)
-    }
-    saveManifest(manifestPath, manifest)
+    /* the cuts took a while: the project is written down on the board as it is now */
+    const board = latest()
+    const target = board.groups.find((g) => g.id === group.id)
+    if (target)
+      target.montage = {
+        projectPath: made.projectPath,
+        filmPath: made.filmPath,
+        template: made.template,
+        clips: made.clips,
+        at: Math.floor(Date.now() / 1000)
+      }
+    saveManifest(manifestPath, board)
     const opened = await openInEditor(made.projectPath)
     return {
-      ...boardAnswer(manifest),
+      ...boardAnswer(board),
       montage: {
         clips: made.clips,
         photos: made.photos,

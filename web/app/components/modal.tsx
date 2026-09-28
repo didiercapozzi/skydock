@@ -1,6 +1,12 @@
+import { useEffect, useRef } from 'react'
+
 /* Every dialog in the app is this shape: a title, a body that scrolls if it has to, and a row of
    buttons at the bottom with the one that does the thing on the right. Keeping the shell here is
    what stops five dialogs from each inventing their own padding. */
+
+/* what Tab can land on inside a dialog */
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 const Modal = ({
   label,
@@ -17,37 +23,81 @@ const Modal = ({
   wide?: boolean
   /* the whole window, for two things shown side by side */
   full?: boolean
-  /* clicking the backdrop closes; a dialog that must not be dismissed that way leaves it out */
+  /* clicking the backdrop or pressing Escape closes; a dialog that must not be dismissed that way
+     leaves it out */
   onClose?: () => void
   children: React.ReactNode
   footer?: React.ReactNode
-} & Record<`data-${string}`, string | undefined>) => (
-  <div
-    {...rest}
-    onClick={onClose ? (e) => e.target === e.currentTarget && onClose() : undefined}
-    className='fixed inset-0 z-40 grid place-items-center bg-[rgba(8,12,16,0.5)] p-4'>
+} & Record<`data-${string}`, string | undefined>) => {
+  const box = useRef<HTMLDivElement>(null)
+  /* Focus goes into the dialog and stays there while it is open — Tab past the last button comes
+     back to the first, as behind a sheet of glass — and goes back where it was when it closes, so
+     the keyboard is never left on something the dialog hid. */
+  /* where focus was when the dialog opened, read as it is first drawn — before anything inside it
+     takes focus for itself */
+  const opener = useRef(typeof document === 'undefined' ? null : document.activeElement)
+  useEffect(() => {
+    const was = opener.current
+    if (!box.current?.contains(document.activeElement))
+      box.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus()
+    return () => {
+      if (was instanceof HTMLElement && was.isConnected) was.focus()
+    }
+  }, [])
+  const keys = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape' && onClose) {
+      /* the board behind has its own use for Escape */
+      e.stopPropagation()
+      onClose()
+      return
+    }
+    if (e.key !== 'Tab' || !box.current) return
+    const all = [...box.current.querySelectorAll<HTMLElement>(FOCUSABLE)]
+    const first = all[0]
+    const last = all[all.length - 1]
+    if (!first || !last) return
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault()
+      last.focus()
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault()
+      first.focus()
+    }
+  }
+  return (
     <div
-      role='dialog'
-      aria-modal='true'
-      aria-label={label}
-      className={`flex max-h-full flex-col overflow-hidden rounded-xl border border-line bg-pane text-ink shadow-[0_20px_60px_rgba(0,0,0,0.35)] ${
-        full ? 'h-[90vh] w-[90vw]' : wide ? 'w-[min(680px,100%)]' : 'w-[min(560px,100%)]'
-      }`}>
-      <h4 className='m-0 border-b border-line px-4 py-[13px] text-[14px] font-semibold'>{title}</h4>
+      {...rest}
+      onClick={onClose ? (e) => e.target === e.currentTarget && onClose() : undefined}
+      className='fixed inset-0 z-40 grid place-items-center bg-[rgba(8,12,16,0.5)] p-4'>
       <div
-        className={
-          full
-            ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
-            : 'flex flex-col gap-2.5 overflow-auto px-4 py-3.5'
-        }>
-        {children}
+        ref={box}
+        role='dialog'
+        aria-modal='true'
+        aria-label={label}
+        onKeyDown={keys}
+        className={`flex max-h-full flex-col overflow-hidden rounded-xl border border-line bg-pane text-ink shadow-[0_20px_60px_rgba(0,0,0,0.35)] ${
+          full ? 'h-[90vh] w-[90vw]' : wide ? 'w-[min(680px,100%)]' : 'w-[min(560px,100%)]'
+        }`}>
+        <h4 className='m-0 border-b border-line px-4 py-[13px] text-[14px] font-semibold'>
+          {title}
+        </h4>
+        <div
+          className={
+            full
+              ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
+              : 'flex flex-col gap-2.5 overflow-auto px-4 py-3.5'
+          }>
+          {children}
+        </div>
+        {footer && (
+          <div className='flex items-center gap-2 border-t border-line px-4 py-[11px]'>
+            {footer}
+          </div>
+        )}
       </div>
-      {footer && (
-        <div className='flex items-center gap-2 border-t border-line px-4 py-[11px]'>{footer}</div>
-      )}
     </div>
-  </div>
-)
+  )
+}
 
 /* the gap that pushes whatever follows it to the right-hand end of the row */
 const Spacer = () => <span className='flex-1' />

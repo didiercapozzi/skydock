@@ -1,5 +1,4 @@
-import { loadManifest, scanMedia } from '@skydock/scripts'
-import { messageOf } from '@skydock/scripts'
+import { loadManifest, scanMedia, messageOf } from '@skydock/scripts'
 import { bringBackFromBin } from '../../../../packages/skydock-scripts/src/bin'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'

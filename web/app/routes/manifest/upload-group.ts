@@ -3,7 +3,6 @@ import {
   groupsInScope,
   isNamedMontage,
   listRemoteFiles,
-  loadManifest,
   outputKeyOf,
   pastCancelling,
   runUpload,
@@ -12,15 +11,17 @@ import {
   statProcessedOutputs,
   UploadCancelled,
   uploadGate,
-  uploadScope
+  uploadScope,
+  busyWith,
+  idsOf
 } from '@skydock/scripts'
 import { boardAnswer } from '../../helpers/manifest'
-import type { Intent } from './change'
+import type { Change, Intent } from './change'
 import { uploadReporter } from './progress'
 
 /* A jump, several, or a whole place goes up to its folder on the storage, each file checked
    against what is already there before a byte moves (RULES, Network storage). */
-const uploadGroup: Intent = async ({ data, manifest, manifestPath, outputDir, refuse }) => {
+const uploadGroup: Intent = async ({ data, manifest, manifestPath, outputDir, refuse, latest }) => {
   const scope = { groupId: data.groupId, groupIds: data.groupIds, destination: data.destination }
   const key = scopeKey(scope)
   if (key === 'group:' && !scope.destination)
@@ -33,10 +34,12 @@ const uploadGroup: Intent = async ({ data, manifest, manifestPath, outputDir, re
     return refuse(
       'Upload a montage from its own card: its film and photos go to its folder and its original videos to the backup, which an upload of the whole folder cannot do.'
     )
+  if (busyWith({ groupIds: idsOf(asked), destination: scope.destination }) === 'processing')
+    return refuse('It is being processed — upload it once that is done.')
   /* a stored session is only a session if DSM still takes it — this is also what lets an expired
      one refresh itself instead of failing the upload */
   const session = await ensureNasSession()
-  if (!session) return refuse('Not connected to NAS. Please connect first.')
+  if (!session) return refuse('Not connected to the storage. Please connect first.')
   /* the same rule the button uses, so the server never accepts what the board would refuse — and
      catches a file that changed between the click and the request */
   const outputs = statProcessedOutputs(manifest)
@@ -49,12 +52,11 @@ const uploadGroup: Intent = async ({ data, manifest, manifestPath, outputDir, re
   const label = scope.destination ?? asked.map((g) => g.label).join(', ')
   /* one upload at a time: a second is refused before it touches what the first is showing */
   try {
-    return await runUpload({ key, label }, () =>
-      send({ scope, key, label, manifest, manifestPath, outputDir, session })
+    return await runUpload({ key, label, groupIds: asked.map((g) => g.id) }, () =>
+      send({ scope, key, label, manifest, manifestPath, outputDir, session, latest })
     )
   } catch (err) {
-    if (err instanceof UploadCancelled)
-      return { ...boardAnswer(loadManifest(manifestPath) ?? manifest), uploadCancelled: true }
+    if (err instanceof UploadCancelled) return { ...boardAnswer(latest()), uploadCancelled: true }
     return refuse(err instanceof Error ? err.message : 'Upload failed.')
   }
 }
@@ -66,7 +68,8 @@ const send = async ({
   manifest,
   manifestPath,
   outputDir,
-  session
+  session,
+  latest
 }: {
   scope: Parameters<typeof uploadScope>[0]['scope']
   key: string
@@ -75,6 +78,7 @@ const send = async ({
   manifestPath: string
   outputDir: string
   session: NonNullable<Awaited<ReturnType<typeof ensureNasSession>>>
+  latest: Change['latest']
 }) => {
   const report = uploadReporter({ scope: key, label, outputDir })
   try {
@@ -89,7 +93,7 @@ const send = async ({
     })
     /* it runs for minutes; anything saved meanwhile is on disk and must not be clobbered by the
        copy loaded before it started */
-    const saved = loadManifest(manifestPath) ?? manifest
+    const saved = latest()
     /* every file now proved to be on the storage — sent or found identical there */
     const byOutput = new Map(
       saved.files.flatMap((f) => (f.processed ? [[f.processed.path, f] as const] : []))

@@ -12,7 +12,7 @@ import {
   seenOnCamera
 } from './cameraWatch'
 import { alreadyThere, dayFoldersOf, freedAlready } from './copy'
-import { ID_HEX_LENGTH } from './fileId'
+import { idFromHash } from './fileId'
 import { givenBack } from './kioCamera'
 import { listBin } from './bin'
 import { findMediaFiles, hashFile, moveFile } from './lib/fs'
@@ -125,9 +125,7 @@ const fingerprint = (file: string) =>
         md5.update(chunk)
       })
       .on('error', reject)
-      .on('end', () =>
-        resolve({ id: sha.digest('hex').slice(0, ID_HEX_LENGTH), md5: md5.digest('hex') })
-      )
+      .on('end', () => resolve({ id: idFromHash(sha), md5: md5.digest('hex') }))
   })
 
 /* Each proof asks the same few questions of the storage and of the zips here; asked once each. */

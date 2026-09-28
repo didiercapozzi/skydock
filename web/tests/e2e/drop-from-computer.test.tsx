@@ -157,7 +157,7 @@ describe('a clip dragged in from the computer', () => {
 
     expect(dropped.defaultPrevented).toBe(true)
     await expect
-      .element(page.getByText(/Drop a clip on a place, a montage or a jump/))
+      .element(page.getByText(/Drop a clip on a destination, a montage or a jump/))
       .toBeInTheDocument()
     expect(asked).toEqual([])
   })

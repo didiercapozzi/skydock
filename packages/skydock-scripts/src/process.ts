@@ -338,13 +338,12 @@ const copyMedia = async (file: ManifestFile, dest: string, time: Date, onPercent
   const trimmed = isTrimmed(file)
   /* the picture itself changes — cut, turned or both — so the clip is encoded again */
   const reshaped = video && (!isWholeFrame(file.frame) || Boolean(file.rotation))
-  if (reshaped) {
-    const shape = shownShape(file.path)
-    if (!shape)
-      throw new Error(
-        `Cannot read the size of ${file.filename}: install ffprobe to crop or turn it`
-      )
-    const filter = pictureFilter({ frame: file.frame, rotation: file.rotation, ...shape })!
+  const shape = reshaped ? shownShape(file.path) : null
+  if (reshaped && !shape)
+    throw new Error(`Cannot read the size of ${file.filename}: install ffprobe to crop or turn it`)
+  /* nothing to do to the picture after all — a landscape fill asked of a clip already landscape */
+  const filter = shape && pictureFilter({ frame: file.frame, rotation: file.rotation, ...shape })
+  if (filter) {
     const made = await recodeVideo(file.path, dest, filter, file.cropStart, file.cropEnd, onPercent)
     if (!made.ok) throw new Error(`ffmpeg could not crop or turn ${file.filename}: ${made.reason}`)
   } else if (video && trimmed) {

@@ -1,5 +1,5 @@
 import * as crypto from 'node:crypto'
-import * as fs from 'node:fs'
+import { hashFile } from './lib/fs'
 
 const ID_HEX_LENGTH = 16
 
@@ -8,14 +8,8 @@ const ID_HEX_LENGTH = 16
    going past on their way to disk can be recognised without being read a second time. */
 const idFromHash = (hash: crypto.Hash) => hash.digest('hex').slice(0, ID_HEX_LENGTH)
 
-const computeFileId = async (filePath: string) => {
-  return new Promise<string>((resolve, reject) => {
-    const hash = crypto.createHash('sha256')
-    const stream = fs.createReadStream(filePath)
-    stream.on('data', (chunk) => hash.update(chunk))
-    stream.on('end', () => resolve(idFromHash(hash)))
-    stream.on('error', reject)
-  })
-}
+/* the same hash every other whole-file read uses, a megabyte at a time */
+const computeFileId = async (filePath: string) =>
+  (await hashFile(filePath, 'sha256')).slice(0, ID_HEX_LENGTH)
 
-export { ID_HEX_LENGTH, computeFileId, idFromHash }
+export { computeFileId, idFromHash }

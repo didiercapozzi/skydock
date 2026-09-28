@@ -25,16 +25,16 @@ folders; the others are traced in the code. Line numbers are as of commit `33386
 
 ### Can lose footage or all the sorting
 
-- **An unreadable manifest, then a Scan, erases every jump.** [reproduced] `loadManifest` reads a
+- **An unreadable manifest with an unreadable `.bak` too, then a Scan, erases every jump.** The
+  board now falls back to the last good pair; only when both are unreadable does this remain. [reproduced] `loadManifest` reads a
   manifest that does not parse as "no manifest" (`manifest.ts:112`). The board then offers only a
   Scan, which also starts by itself when a camera is plugged in (`cameraWatch.ts:212`). The Scan
   builds from nothing and overwrites `groups.json` (`scan.ts:249-255`). Every jump, place, montage,
   upload record and freed record is gone. Only montages on the storage's list can come back.
   Fix: refuse, set the file aside as `.bad`, and never rebuild while `groups.json` exists.
-- **Two servers on one `output/` corrupt the manifest.** [reproduced] Every JSON write uses the same
-  temp name, `<file>.tmp` (`lib/fs.ts:127`), with no fsync and no lock across processes. The
-  Electron single-instance lock does not cover the dev server. This leads to the loss above. Fix:
-  a temp name from pid plus a random part, fsync, and a lock file on the output folder.
+- **Two servers on one `output/` can still interleave their saves.** Writes now use a unique temp
+  name and fsync, but there is no lock across processes, and the Electron single-instance lock does
+  not cover the dev server. Fix: a lock file on the output folder.
 - **A stale tab's save overwrites the server's jumps.** [reproduced] save-groups does
   `manifest.groups = data.groups` (`save-groups.ts:69`), and the board never reloads. An old copy
   drops freed, uploaded, processed and share-link records, and jumps made elsewhere, such as by a
@@ -66,9 +66,6 @@ folders; the others are traced in the code. Line numbers are as of commit `33386
 - **No way to write the storage's list of montages again from this board.** A list lost or
   emptied on the NAS stays so until each montage is uploaded, freed or emailed again. Fix: a way to
   rewrite the list from the manifest.
-- **One bad file on a card stops the copy of every file after it, on every plug-in.** [reproduced]
-  `copyOne` rethrows (`copy.ts:122,164`). A name that is too long or a read error does it. Fix: skip
-  the file, count it, name it in the "done" note.
 - **A zero-byte or corrupt clip makes processing fail every time.** [reproduced for exiftool]
   exiftool exits 1 for the whole batch (`process.ts:233-255`), and the message says to install
   exiftool. All zero-byte files also share one id. Fix: write metadata per file, or accept exit 1
@@ -97,15 +94,11 @@ folders; the others are traced in the code. Line numbers are as of commit `33386
   (`useBoardState.ts`), and drag and add-place do not check `busy`, so a running process looks
   stopped. Uploads now have a fetcher of their own; processing still does not. Fix: the same for
   processing, or block sends while busy.
-- **Taking a montage back, or deleting it, is not blocked while it is being uploaded.**
 - **An uploaded jump can be moved to another place, and its upload record is erased.** [reproduced]
   The lock only covers file-level changes (`save-groups.ts:38-52`), and lines 55-67 then delete
   `uploaded`. This breaks RULES' "uploaded is the end of editing". Fix: refuse jump-level changes to
   a jump with uploaded or freed files, and do not let them be dragged.
-- **Long actions save the manifest loaded before they started.** Bring-back (`from-storage.ts:19-20`),
-  restore-montages, trash-unsorted and the board loader's NAS checks undo trims and renames made
-  meanwhile. Fix: reload just before saving.
-- **Names `..` and `.` escape their folder.** [reproduced] Only `/` and `\` are removed
+- **Montage names `..` and `.` escape their folder** (destination names are now refused). [reproduced] Only `/` and `\` are removed
   (`workspace.ts:50-53`, `process.ts:283`). A montage named `..` works in `output/processed`, and
   freeing it removes everything there except `.kdenlive` files (`freeMontage.ts:245-249`), once the
   proof passes. Fix: refuse such names on the page and the server.
@@ -130,7 +123,7 @@ folders; the others are traced in the code. Line numbers are as of commit `33386
   card is writable first, and remove the bin copy on failure.
 - **`output/.trash` is never emptied** (`cameraFiles.ts:321-324`), so freeing a card costs the same
   space on the machine. Fix: show its size and offer to empty it.
-- **Every scan re-hashes and re-reads exif for the whole library** (`scan.ts:64-86,244`, using
+- **Every scan re-reads exif for the whole library** (ids are now reused for unchanged files) (`scan.ts:64-86,244`, using
   `execFileSync`). The header sits at "copying" and deleting from the camera is refused until it
   ends. Fix: reuse the id when size and mtime are unchanged, and add a "scanning" phase.
 - **On KDE, a full local disk reads "The camera stopped answering"** (`kioCamera.ts:190-192`). Fix: a
@@ -150,11 +143,12 @@ folders; the others are traced in the code. Line numbers are as of commit `33386
   the board now only says its link is gone.
 - **Two machines writing the storage's lists**: the last writer wins, and delivered names can
   collide, putting the other machine's file in the bin.
-- **Closing the window or "Install now" kills a running upload or process without asking**
-  (`main.ts:295-298,343-344`). Fix: confirm quitting while work runs.
 - **Leftovers after a crash:** `.part` files in the day folders and `.incoming` stay forever.
 - **A scan that changed nothing still rewrites both JSON files**: the early return in
   `mergeManifests` leaves `returned` undefined (`scan.ts:175` against `:257`).
+
+- **"Group loose files into jumps" can say there is nothing to group** while the board shows a loose
+  file (seen for a file that arrived through a rescan, 2026-09-28).
 
 ### Open question
 
@@ -170,6 +164,24 @@ the NAS; an interrupted upload retried; processing, which runs one at a time, ca
 reloads before saving; template paths pointing outside their folder; corrupt settings or NAS session.
 
 ## Done
+
+- **Safe state writes, and bookkeeping from the server.** Unique temp names with fsync, the last good
+  manifest/groups pair kept as `.bak` and read when the main pair cannot be, a history of the last 30
+  boards to go back to, and save-groups keeping uploaded, freed, link, project and paid as the server
+  has them. Long actions (bring-back, restore, bin, montage project, the board loader) save on the
+  board as it is after their wait.
+
+- **Dead ends and running work.** A card file that cannot be copied is passed over and named; a
+  destination named `montages`, `.` or `..` is refused; closing, updating or switching folder asks
+  while work runs; processing and uploading refuse to overlap on the same jump; a camera copy can be
+  stopped.
+
+- **Audit follow-up (2026-09-28).** Settings menu, one word per thing, unsaved-change guard in the
+  preview, rename by Enter/Save only, red dangerous buttons, app dialogs instead of `confirm()`,
+  Escape and focus trap in every dialog, notes told apart, drawer for the details panel, Move to…,
+  compact/folded jump cards, next step from the trail, "Sent it?", overview with batch process and
+  upload queue, paid mark, booking list import, trim to the jump, landscape with blurred sides,
+  find anything, email in three languages, QR code of the link, faster rescans.
 
 - **A camera is copied again without unplugging it.** Its page offers "Copy N files here" for what is
   not here yet, and Rescan cameras copies every camera plugged in before it scans; what is here is

@@ -1,5 +1,6 @@
 import { plural, t } from '@lingui/core/macro'
 import {
+  bookedNear,
   filmNameOf,
   hasCompletePassenger,
   lastSegment,
@@ -9,43 +10,70 @@ import {
   montageUploadKey
 } from '@skydock/scripts'
 import type { MontageFact } from '@skydock/scripts'
-import { useState } from 'react'
-import type { UploadProgressState } from '../hooks/useUploadProgress'
+import { useId, useState } from 'react'
+import { useBookingList } from '../hooks/useBookingList'
 import { Go, Mini } from './buttons'
 import { kindOf } from './file-list'
-import { formatFilmSize, getFileUrl, getThumbUrl, hhmm, pad } from './utils'
+import { formatFilmSize, getFileUrl, getThumbUrl, hhmm, minFileMtime, pad } from './utils'
 import type { ManifestGroup } from './types'
 
 /* A montage is named once, by one name — "Luc Favre", "Boogie 2026" — and the name *is* the folder
-   it gets (RULES, Places). Saved when the field is left or on Enter. */
+   it gets (RULES, Places). Renaming moves the montage, or joins it to another, so it is never done by
+   clicking away: Enter or Save does it, Escape puts the name back, and an emptied field saves nothing. */
 const PassengerName = ({
   group,
+  passengers,
   onSave
 }: {
   group: ManifestGroup
+  passengers: Passenger[]
   onSave: (firstname: string, lastname: string) => void
 }) => {
-  const [name, setName] = useState(passengerName(group.passenger))
+  const was = passengerName(group.passenger)
+  const [name, setName] = useState(was)
+  const typed = passengerFrom(name)
+  const changed = hasCompletePassenger(typed) && passengerName(typed) !== was
+  const joins = changed ? sameName(passengers, typed) : undefined
   const save = () => {
-    const { firstname, lastname } = passengerFrom(name)
+    if (!changed) return
+    const { firstname, lastname } = joins ?? typed
     onSave(firstname, lastname)
   }
+  const joined = joins ? passengerName(joins) : ''
   return (
-    <input
-      type='text'
-      value={name}
-      placeholder={t`Name`}
-      aria-label={t`Name`}
+    <span
       onClick={(e) => e.stopPropagation()}
-      onChange={(e) => setName(e.target.value)}
-      onBlur={save}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') save()
-      }}
-      className='w-full max-w-[16rem] rounded-[5px] border border-line bg-pane px-1.5 py-0.5 text-[12px]'
-    />
+      className='flex flex-wrap items-center gap-1.5'>
+      <input
+        type='text'
+        value={name}
+        placeholder={t`Name`}
+        aria-label={t`Name`}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') save()
+          if (e.key === 'Escape') setName(was)
+        }}
+        className='w-full max-w-[16rem] rounded-[5px] border border-line bg-pane px-1.5 py-0.5 text-[12px]'
+      />
+      {changed && (
+        <>
+          {joins && (
+            <span className='text-[11px] font-semibold text-accent'>{t`Joins ${joined}’s montage`}</span>
+          )}
+          <Go onClick={save}>{t`Save`}</Go>
+          <Mini onClick={() => setName(was)}>{t`Cancel`}</Mini>
+        </>
+      )}
+    </span>
   )
 }
+
+type Passenger = NonNullable<ManifestGroup['passenger']>
+
+/* the montage a name already belongs to, whatever its case — one name is one folder */
+const sameName = (passengers: Passenger[], typed: Passenger) =>
+  passengers.find((p) => passengerName(p).toLowerCase() === passengerName(typed).toLowerCase())
 
 /* A few frames off the clips, which is how you tell who a montage belongs to. A name is read off a
    form or a face, so asking for one beside a pair of counts is asking somebody to remember what
@@ -95,8 +123,6 @@ const PassengerFrames = ({
   )
 }
 
-type Passenger = NonNullable<ManifestGroup['passenger']>
-
 /* Making a montage, named once, from what is on screen: the jump or the files and their name side by
    side, so nothing has to be dragged, or found again on another page.
 
@@ -131,9 +157,15 @@ const NameMontage = ({
   const [name, setName] = useState(initial)
   const typed = passengerFrom(name)
   const complete = hasCompletePassenger(typed)
-  const joins = complete
-    ? passengers.find((p) => passengerName(p).toLowerCase() === passengerName(typed).toLowerCase())
-    : undefined
+  /* the day's bookings: every name on it offered as it is typed, and the one booked nearest when the
+     jump began offered in one press */
+  const list = useBookingList()
+  const names = useId()
+  const began = group ? (minFileMtime(group.files) ?? null) : null
+  const booked = began !== null ? bookedNear(list, began) : null
+  const bookedName = booked?.name ?? ''
+  const bookedAt = booked?.time ?? ''
+  const joins = complete ? sameName(passengers, typed) : undefined
   const save = () => {
     if (!complete) return
     onSave(joins ?? typed)
@@ -157,6 +189,7 @@ const NameMontage = ({
         placeholder={t`Name`}
         aria-label={t`Name`}
         autoFocus
+        list={list.length > 0 ? names : undefined}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => {
           e.stopPropagation()
@@ -165,6 +198,23 @@ const NameMontage = ({
         }}
         className='w-44 rounded-[5px] border border-pick bg-pane px-[7px] py-0.5 text-[12px] text-ink'
       />
+      {list.length > 0 && (
+        <datalist id={names}>
+          {list.map((b, i) => (
+            <option
+              key={`${b.name}:${i}`}
+              value={b.name}
+            />
+          ))}
+        </datalist>
+      )}
+      {booked && name.trim().toLowerCase() !== bookedName.toLowerCase() && (
+        <Mini
+          title={t`Booked nearest to when this jump began`}
+          onClick={() => setName(bookedName)}>
+          {t`Booked ${bookedAt}: ${bookedName}`}
+        </Mini>
+      )}
       <span
         className={`min-w-[128px] text-[11px] ${joins ? 'font-semibold text-accent' : 'text-ink-3'}`}>
         {joins
@@ -386,72 +436,6 @@ const MontageCardActions = ({
   )
 }
 
-/* The one upload strip, wherever an upload is happening — the same shape in a day header, a montage
-   header or on its own, so it is recognised before it is read. */
-const UploadStrip = ({ progress }: { progress: UploadProgressState }) => {
-  const percent =
-    progress.totalBytes > 0
-      ? Math.min(100, Math.round((progress.bytesUploaded / progress.totalBytes) * 100))
-      : 0
-  const shell =
-    'flex flex-wrap items-center gap-2.5 rounded-lg border px-3 py-2 text-[12.5px] text-ink-2'
-  if (progress.state === 'archiving') {
-    const zip = progress.filename.replace('.zip', '')
-    return (
-      <div className={`${shell} border-accent bg-accent-soft`}>
-        {t`Zipping the ${zip} —`}{' '}
-        <b className='font-mono text-ink tabular-nums'>
-          {progress.fileIndex}/{progress.totalFiles}
-        </b>{' '}
-        {t`files`}
-      </div>
-    )
-  }
-  if (progress.state === 'checking')
-    return (
-      <div className={`${shell} border-accent bg-accent-soft`}>
-        {t`Checking what is already there —`}{' '}
-        <b className='font-mono text-ink tabular-nums'>
-          {progress.checked ?? 0}/{progress.totalFiles}
-        </b>
-      </div>
-    )
-  if (progress.state === 'error') {
-    const error = progress.error ?? ''
-    return (
-      <div className={`${shell} border-dashed border-local bg-local-soft text-local`}>
-        {t`Upload failed: ${error}`}
-      </div>
-    )
-  }
-  if (progress.state === 'done') {
-    const skipped = progress.skipped
-    return (
-      <div className={`${shell} border-up bg-up-soft`}>
-        <span className='font-semibold text-up'>{t`✓ uploaded`}</span>
-        {skipped ? <span>{t`${skipped} already there`}</span> : null}
-      </div>
-    )
-  }
-  return (
-    <div className={`${shell} border-accent bg-accent-soft`}>
-      <span className='flex-[1_1_140px] truncate'>
-        <b className='font-mono text-ink tabular-nums'>
-          {progress.fileIndex + 1}/{progress.totalFiles}
-        </b>{' '}
-        · {progress.filename}
-      </span>
-      <span className='h-1.5 max-w-[260px] flex-[1_1_160px] overflow-hidden rounded-[3px] bg-black/10'>
-        <i
-          className='block h-full bg-accent transition-[width] duration-100 ease-linear'
-          style={{ width: `${percent}%` }}
-        />
-      </span>
-      <span className='w-[38px] text-right font-mono text-[11.5px] tabular-nums'>{percent}%</span>
-    </div>
-  )
-}
-
 /* Once it is uploaded, what matters is what is on the NAS — not the files it was made from. One
    parcel per folder up there, each listing exactly what is in it. That is what makes an uploaded
    montage worth opening months later. */
@@ -601,7 +585,6 @@ export {
   PassengerFrames,
   PassengerName,
   ProjectPath,
-  MontageCardActions,
-  UploadStrip
+  MontageCardActions
 }
 export type { Passenger }

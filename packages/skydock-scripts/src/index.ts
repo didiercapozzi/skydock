@@ -24,6 +24,7 @@ import {
 import { fileChanged, fileStatus, outputKeyOf, uploadGate, UPLOADED_LOCKED } from './fileStatus'
 import type { FileStatus, RemoteListing, StatusContext } from './fileStatus'
 import { forgetLostFiles } from './forgetLost'
+import { busyWith } from './busy'
 import { learnStorage, settleListsDir } from './originIndex'
 import { freeablePlace } from './freeable'
 import { jsonText } from './lib/json'
@@ -36,11 +37,19 @@ import {
   fitRatio,
   isQuarterTurn,
   isWholeFrame,
+  sameFrame,
   turnBy,
   turnedSize,
   withRatio
 } from './frameCrop'
-import { loadManifest, saveManifest, statProcessedOutputs } from './manifest'
+import {
+  boardHistory,
+  keepBoardStep,
+  loadManifest,
+  restoreBoard,
+  saveManifest,
+  statProcessedOutputs
+} from './manifest'
 import {
   clearNasSession,
   dsmCreateFolder,
@@ -60,6 +69,7 @@ import {
 } from './nas'
 import {
   DEFAULT_TEMPLATE,
+  DEFAULT_TEMPLATES,
   EMAIL_VARIABLES,
   fillEmailTemplate,
   markVariables,
@@ -72,7 +82,7 @@ import {
   renderPassengerEmail,
   textOfEmailHtml
 } from './passengerEmail'
-import type { EmailFacts, EmailTemplate } from './passengerEmail'
+import type { EmailFacts, EmailLanguage, EmailTemplate } from './passengerEmail'
 import { liveEventSchema, publish, subscribe } from './live'
 import type { LiveEvent } from './live'
 import { lastSegment, parentOf } from './paths'
@@ -83,7 +93,7 @@ import {
   processJumps,
   whenProcessed
 } from './process'
-import { cutFrom } from './jumpMoments'
+import { cutFrom, jumpTrim } from './jumpMoments'
 import { MOMENTS, nameOfMoment } from './moments'
 import type { Moment } from './moments'
 import { jumpTrack } from './jumpTrack'
@@ -114,7 +124,17 @@ import {
 import type { PartFile, SendItem } from './sending'
 import { watchMontages } from './montageWatch'
 import { furthestBehind, montageSteps } from './montageSteps'
-import type { MontageProgress } from './montageSteps'
+import {
+  bookedNear,
+  bookingSchema,
+  emailFor,
+  parseBookingList,
+  bookingListSchema,
+  readBookingList,
+  saveBookingList
+} from './bookingList'
+import type { Booking } from './bookingList'
+import type { MontageProgress, MontageStep } from './montageSteps'
 import { folderOfUpload } from './montageIndex'
 import { lostOf } from './montageEntry'
 import type { MontageEntry, MontageLost } from './montageEntry'
@@ -150,6 +170,7 @@ import {
   clearUploadProgress,
   readUploadProgress,
   montageUploadKey,
+  UPLOAD_QUEUE_KEY,
   uploadProgressStateSchema,
   writeUploadProgress
 } from './uploadProgress'
@@ -162,7 +183,7 @@ import {
   uploadingNow,
   whenUploaded
 } from './uploading'
-import { ffmpegPath, getOutputDir, isoDay, isVideoFile } from './utils'
+import { ffmpegPath, getManifestPath, getOutputDir, isoDay, isVideoFile } from './utils'
 import {
   buildPassengerFolder,
   hasCompletePassenger,
@@ -170,12 +191,15 @@ import {
   montageCalled,
   passengerFrom,
   passengerName,
-  passengerOf
+  passengerOf,
+  placeNameProblem
 } from './workspace'
 import { isFiled, isMontage } from './filed'
 
 export {
+  busyWith,
   DEFAULT_TEMPLATE,
+  DEFAULT_TEMPLATES,
   EMAIL_VARIABLES,
   fillEmailTemplate,
   markVariables,
@@ -190,6 +214,7 @@ export {
   uploadingNow,
   whenUploaded,
   cutFrom,
+  jumpTrim,
   jumpTrack,
   rememberOutputDir,
   stopTools,
@@ -209,6 +234,13 @@ export {
   isMontage,
   folderOfUpload,
   montageSteps,
+  bookedNear,
+  bookingSchema,
+  emailFor,
+  parseBookingList,
+  bookingListSchema,
+  readBookingList,
+  saveBookingList,
   sendPlanSchema,
   DEFAULT_PLAN,
   itemsFrom,
@@ -242,6 +274,7 @@ export {
   frozenMontages,
   getGroupProcessedDir,
   ffmpegPath,
+  getManifestPath,
   getOutputDir,
   gmailComposeUrl,
   goneFromStorage,
@@ -254,6 +287,7 @@ export {
   isNamedMontage,
   isVideoFile,
   isWholeFrame,
+  sameFrame,
   lastSegment,
   learnStorage,
   settleListsDir,
@@ -261,6 +295,9 @@ export {
   liveShareLinks,
   listRemoteFiles,
   loadManifest,
+  boardHistory,
+  keepBoardStep,
+  restoreBoard,
   lostOf,
   loadNasSession,
   loginWithSession,
@@ -277,6 +314,7 @@ export {
   passengerFrom,
   passengerName,
   passengerOf,
+  placeNameProblem,
   cancelProcessing,
   processingNow,
   processJumps,
@@ -300,6 +338,7 @@ export {
   earlierMontagesDirs,
   montagesRemoteDir,
   montageUploadKey,
+  UPLOAD_QUEUE_KEY,
   turnBy,
   turnedSize,
   uploadGate,
@@ -312,9 +351,12 @@ export {
 }
 export type {
   EmailFacts,
+  EmailLanguage,
   EmailTemplate,
   LiveEvent,
   MontageProgress,
+  MontageStep,
+  Booking,
   PartFile,
   SendItem,
   SendPart,

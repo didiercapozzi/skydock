@@ -35,13 +35,18 @@ installed without being asked — a machine in the middle of somebody's day is n
 that changed by itself. A machine with no way out to the internet, or one that finds nothing, opens
 its board exactly as it always does.
 
+**Nothing running is cut off unasked.** Closing the window or installing an update while an upload,
+processing or a camera copy is running asks first, saying which; keeping on working is the choice
+offered first. Another work folder is not offered at all while something is being written into
+this one (below).
+
 The first time it is opened it asks where to keep its work, offering a folder of its own in the
 machine's videos. That answer is remembered, and everything below — the originals, the copies, the
 proxies, the record of it all — is under it. The bin is kept with the work, so a file put aside from
 this machine is moved, never copied from one disk to another; the app's own settings, the storage
 connection among them, are kept apart from the work.
 
-**Another work folder** can be chosen afterwards, from _Work folder_ at the top of the board, which says
+**Another work folder** can be chosen afterwards, from _Work folder_ under Settings, which says
 where the work is now. Nothing is copied or moved: SkyDock starts again in the folder chosen and the
 board opens on what it holds — empty, or the work already kept there — and that folder is remembered
 from then on. The folder left behind stays exactly as it is and can be chosen again; to take the work
@@ -135,9 +140,15 @@ already, and as it goes how many are new and how many were here already. Each fi
 board at once, loose in Fresh files, without waiting for the rest of the card; once the card is done,
 what came off it and is still loose is gathered into jumps by the gap rule, as a scan would. A file
 off a camera is filed under the day it was shot, read the same way as for a file scanned or dropped
-in. A camera plugged in again is looked over file by file, and a file already here costs a look and
+in. A file that cannot be copied — the card will not give it up, or the disk will not take it — is
+passed over, marked in the list, and named when the copy is done; it stays on the card, and the rest
+are copied all the same. Through KDE a clip that cannot be fetched means the camera has stopped
+answering, so the copy ends there, with what came before it whole. A camera plugged in again is looked over file by file, and a file already here costs a look and
 not a copy, so the looking must not be mistaken for copying it all again. The board
-says what came off once it is done: how many new files and how many already there. A camera is copied
+says what came off once it is done: how many new files and how many already there. The copy can be stopped from its panel: the file under
+way is finished, whole, nothing after it is begun, every camera waiting its turn is let go, and what
+came across stays on the board; the rest stays on the card for the next plug-in or Rescan cameras,
+which pass over what is already here. A camera is copied
 each time it is plugged in, and again whenever asked while it stays plugged in — from its page, which
 offers to copy what is not here yet, or with Rescan cameras, which copies every camera plugged in and
 then scans — so what went missing here comes back across without unplugging anything; a camera asked
@@ -188,7 +199,10 @@ a camera while one is being copied or anything is being processed.
 **2. Scan.** SkyDock reads each file's capture time and groups files shot close together into jumps.
 A scan can be asked for at any time; one run after more cameras were copied off picks up the new files,
 groups them among themselves — joining a jump still in Fresh files when they fall within its gap — and
-leaves every filed jump as it is. The grouping is a guess, and the board exists to correct it.
+leaves every filed jump as it is. The grouping is a guess, and the board exists to correct it. A file is
+known by what is in it, so the first scan reads every file through; after that a file that has not
+been written since keeps what it was found to be, and only what is new or changed is read through.
+When each was shot is still asked of every file, which is quick beside reading them.
 
 A scan of a work folder nothing has been copied into yet finds nothing, and says so — but it settles
 the folder: the originals folder is made, and an empty record is written. A folder SkyDock has been
@@ -198,7 +212,7 @@ come off a camera, and a file can be dropped straight onto the board of a fresh 
 A scan also makes a **proxy** of every clip: a small copy, the same length at the same speed, which the
 board plays instead of the full clip and which the editor later opens on. Proxies are made in the
 background; everything works without them, and a clip without one simply plays as it is. Each clip
-says whether it has one. Proxies are working files: never listed, never sorted, never uploaded. The small square the board
+says whether it has one — only while it has none, since a clip with one is the ordinary case. Proxies are working files: never listed, never sorted, never uploaded. The small square the board
 draws a file by is cut from the proxy once there is one — the same frame, at a third of the cost —
 and kept, so a jump opened again is drawn from what was already cut rather than from the footage. A
 file that changes is drawn again; the kept frames are a few kilobytes each and nothing is lost by
@@ -324,7 +338,8 @@ Filing a jump answers one question: where does it go?
 - **A destination** (Yverdon, Colombier, …) is a place. Its jumps belong to nobody in
   particular, and their files all sit directly in its folder: no folder per jump, videos and photos
   together. Many days share the folder, which is why it is never wiped. No destination is special,
-  whatever it is called.
+  whatever it is called — but a name is a folder's, so a new one cannot be `.`, `..`, a path, or
+  "Montages" in any case, which is the folder the montages are worked in; the board says why.
 - **A montage** is a film made for someone: a tandem passenger, a boogie, a day at a dropzone. It
   belongs to no destination. It has **one name**, typed once — "Luc Favre", "Boogie 2026" — and a
   single word is a whole name. The name is its working folder on this machine, named as typed, with
@@ -366,10 +381,13 @@ output/
 ├── proxies/                  the small copies, and for each montage a set cut to match its processed clips
 ├── templates/                one editing template per folder, with the music and logos it uses
 ├── .thumbs/                  the frames the board draws, cut once and kept
-└── .projects/                every version of each montage's editing project, kept and never deleted
+├── .projects/                every version of each montage's editing project, kept and never deleted
+└── .history/                 the board's last thirty states, to go back to
 ```
 
-The board's own record of the work sits at the top of the output folder.
+The board's own record of the work sits at the top of the output folder, with the last copy of it
+read whole kept beside it, what each original was found to be last time (so a Rescan reads through only what
+is new), and the day's booking list when one was brought in.
 
 Of a montage's folder, only the film and the photos archive are handed over. The project and the
 working copies stay on the machine; the originals go to the backup.
@@ -399,7 +417,9 @@ in each language; one missing is a fault.
 The board is the everyday screen. A menu of **places** — everywhere a file can be — is pinned down the
 left, and the place picked there fills the pane beside it. Only the pane scrolls, so a file can always
 be dragged to any place. On a narrow screen the menu becomes a strip across the top, and on one
-narrower than a laptop's the panel on the right is not shown.
+narrower than a laptop's the panel on the right folds away into a drawer pulled out from the right
+edge — so what only it offers, naming a montage, setting a jump's start, deleting a jump, is never out
+of reach because the window is small or the board is drawn big.
 
 **Every folder has its own address**, and so has a file opened in it: the front page is the fresh
 files, `/dropzone/yverdon` is that dropzone, `/montage/Lily DONZALLAZ` is hers, and
@@ -423,8 +443,8 @@ in Fresh files, the files still to do at a dropzone. Every place of work takes f
 and every one but Fresh files a whole jump; the storage's list and the cameras take nothing. A montage
 is listed once, however many jumps it has.
 
-There is no page of every montage: a montage is worked on one at a time, so the way in is always its
-own entry. The _Montages_ heading says how many montages are not uploaded yet, and takes a jump or
+A montage is worked on one at a time, so the way in is its own entry; every montage at once is the
+_Overview_ (below). The _Montages_ heading says how many montages are not uploaded yet, and takes a jump or
 files dropped on it: the montage's name is asked for first, and nothing moves until it is saved —
 cancelled, what was dropped stays where it was. Clicking it goes nowhere. A montage that
 has been freed and has walked every step, its link emailed, has nothing left to do here: it leaves the
@@ -520,7 +540,11 @@ original staying where it is, so it cannot be sent to the bin, and copies alone 
 asking.
 
 **Filing.** Drag a jump or a selection onto a place in the menu to file it there, or onto another jump to
-move it. Dragging is the way: there is no list of places to pick from. While something is carried, the
+move it. Everything a drag files can be filed from a menu as well: _Move to…_, on a jump's panel, a
+file's and a selection's, lists Fresh files, every destination, every named montage and _A new
+montage…_, leaving out where it already is, and does exactly what dropping it there would — a new
+montage asks for its name first. A trackpad, a long list or a narrow window makes a drag hard; it is
+never the only way. While something is carried, the
 place or jump under the pointer lights up when it would take it. Something dropped on a destination is
 followed there: that destination's page opens, with what was just filed in it. Dropping onto a montage
 joins that montage, never a new one. A montage whose last files are taken back to Fresh files is left
@@ -530,10 +554,15 @@ with nothing, so the board goes to Fresh files with them.
 screen, beside its name: a jump from its panel, several picked files, or a single file from its own
 panel — or from what is dropped on the _Montages_ heading, which asks for the name in a dialog of its
 own. Asking comes first — the name only appears once asked for, starting from the jump's own name
-when it has one — and the name is saved by Enter or the button; Escape or Cancel changes nothing. A
+when it has one — and the name is saved by Enter or the button; Escape or Cancel changes nothing.
+With the day's booking list brought in (The booking list), every name on it is offered as it is
+typed, and the name booked nearest when the jump began is offered in one press. A
 name that is already a montage's, however capitalised, says it will join that montage and saves the
 name exactly as already written: the new jump is a jump of that montage, keeping its own times. Once
-made, the montage's page opens and its entry lights up briefly in the menu. A montage whose name was
+made, the montage's page opens and its entry lights up briefly in the menu. Renaming a montage later is
+the same: it moves its folder or joins it to another, so it is saved only by Enter or Save, never by
+clicking away; Escape puts the name back, an emptied name saves nothing, and a name that is another
+montage's says it will join it before anything is saved. A montage whose name was
 taken away stays visible under _No name yet_, which says how many are waiting for one.
 
 Whether the files move or are copied is SkyDock's to decide, never a key held. **Files in Fresh files
@@ -653,9 +682,11 @@ name SkyDock gave the montage that is watched; one rendered under another name i
 when the montage is uploaded. A project saved or removed by hand is noticed the same way. Freed
 montages are not looked at; nothing of them is here.
 
-**The header** holds what applies to the whole board: scanning, the editing templates, how many clips still wait for their proxy, the storage — whether it is connected, as whom
-and to what, a way to check what it holds now, and a way to disconnect — rows or grid, and light or
-dark. The storage is named the way somebody would say it, who and where: the account the session was
+**The header** holds what applies to the whole board, what is used every day on the bar and the rest
+behind _Settings_: on the bar, finding anything, the overview, scanning, how many clips still wait
+for their proxy, rows or grid, the keys the board knows, the storage — whether it is connected, as whom
+and to what, a way to check what it holds now, and a way to disconnect; behind Settings, light or
+dark, the language, the editing templates, the booking list, the work folder and the history. The storage is named the way somebody would say it, who and where: the account the session was
 opened with, and the machine's name without the scheme or the port it is reached on, which are how a
 machine reaches it and not something to read across the top of a screen. The settings that are chosen
 once and then only glanced at — rows or grid, light or dark, checking and disconnecting — are marks
@@ -678,6 +709,40 @@ size it needs, from half to three times, a tenth at a time. It scales the whole 
 answers to the size it is drawn at rather than being stretched. The size chosen is kept, and the
 window opens at it next time. A browser tab showing the board zooms with the browser's own keys and
 offers no control of its own.
+
+**What the board says.** After anything is done the board says what happened in one line above the
+files. News is in the app's own colour; a refusal — nothing happened, and why — is in the colour of
+something still owed and is announced at once to a screen reader, so the one is never read as the
+other. Every such line can be dismissed, and the next thing done replaces it.
+
+**Dialogs.** Every dialog closes with Escape, as a click outside it does, unless it is one that must
+be answered. While one is open the keyboard stays inside it, and goes back where it was when it
+closes. Its buttons are in one order everywhere: _Cancel_ — or _Close_, where nothing is decided —
+then what it does, last, on the right. What deletes or lets go of something is red, the bin with its
+icon and anything else without; a jump with processed copies is deleted only after a dialog of the
+app's own says what goes.
+
+**The jump cards** can be drawn whole, with frames off each jump; compact, a line each, so a busy day
+does not push its files off the screen; or folded away. The choice is remembered on this machine.
+
+**Finding anything.** One box in the header finds anything on the board by a piece of its name — a
+montage, a destination, a file — says where each is, and goes to it: Enter goes to the first, a click
+to any.
+
+**The overview.** Every named montage in one table: who, the day, the step it is at, whether it went
+up, its link, whether they were emailed, whether it was freed, and whether they have paid, with the
+day's counts beneath and a box to find one by name. What is next for one is a press on its line. What
+is done to many at once is above it: every named montage not yet processed, processed in one go; every
+rendered film not yet sent, uploaded one after the other, each as the upload dialog was last set — one
+that cannot go says why by name, and the rest still go; one cancelled stops the queue there. _Paid_ is
+said once for the montage, for every jump of it, and a page that did not see it being said cannot undo
+it.
+
+**Taking the next step from where it is said.** Where a montage's own buttons are not on screen —
+the Montages page with no montage open, and the overview — the step it is at is taken from there:
+_Process_, _Make the project_, _Open in kdenlive_ to render, _Upload…_, _Email the link…_ —
+the same as each step's own button. Where its buttons are on screen, the trail only says; each thing
+is offered once. Naming is typed, so it has no button.
 
 ## Cropping and turning
 
@@ -713,6 +778,11 @@ set the start and end at the playhead. Either end on its own is a trim: an end w
 from the clip's beginning, a start with no end runs to the clip's end. Trimming moves no
 pixels: the clip is copied with its ends cut off, losing nothing.
 
+**Trimming to the jump.** A clip whose exit was found (Where the jump is in a clip) is trimmed to its
+jump in one press: from the exit, with the second before it a cut is made from, to eight seconds after
+the landing, or its own end when it stops sooner — or to the end it had, when no landing was found. A jump's panel does it to every clip
+in it at once; clips with no exit found keep their trim, and the board says how many that was.
+
 **Framing.** A mount, a strut or a finger in a corner is cut away by dragging a rectangle over the
 picture: what is dimmed goes. The rectangle keeps the shape the clip already has unless another is
 chosen, so a 16:9 jump is still 16:9 when handed over, and what is left is put back to the size the clip
@@ -721,6 +791,14 @@ one press. How much the rectangle keeps is said as it is dragged, in percent —
 rectangle itself, and with the share of the picture beside it — and the trim says the share of the clip
 it keeps the same way. Opened again, a clip shows its rectangle where it was saved, with its shape marked as the one
 chosen; each clip opens on its own shape, never on the last one's. Photos have no frame.
+
+**Landscape, blurred sides.** A clip that stands upright — shot in portrait by mistake, or turned
+upright — can be delivered as a landscape one: the picture whole in the middle of a 16:9 frame, as high
+as the clip was wide, its sides filled with the same picture blurred rather than left black. Nothing
+of the jumper is cut away, and nothing is made up: a camera records only the frame it shows, so there
+is no wider picture to recover. It stays through anything done to the rectangle, is taken away by its
+own switch or by Reset, and like a frame it makes a processed copy out of date. A clip already
+landscape is left as it is.
 
 **Turning.** A camera mounted sideways or upside down is put right a quarter or a half turn at a time,
 clockwise, by button — R turns a quarter — or back to as shot. The picture on screen turns with it and takes the shape
@@ -733,6 +811,10 @@ encoded again — for quality rather than speed, on the graphics card when there
 processor otherwise, so it works on every machine — and the proxy the editor opens on is cut and turned
 to match. A photo is turned without touching its pixels, by the orientation it carries, which every
 viewer follows.
+
+**Leaving with changes not saved** asks first — Escape, a click outside, Close, Previous and Next all
+leave — offering to keep editing, discard or save, rather than dropping a trim somebody spent a minute
+on.
 
 Rows show the trim, the frame and the turn beside the name, dashed until applied and solid after.
 Thumbnails show the picture turned. Any of these set after a file was processed makes its copy out of
@@ -760,6 +842,7 @@ processed, so processing again takes it up. Edits made meanwhile are
 kept, and a jump changed while its copies were being written is not marked processed.
 
 **Nothing is uploaded until everything in it is processed**, and what is waiting is said plainly.
+An upload's progress is shown once, in its panel in the corner of the board, whatever page is open.
 
 **The film.** Once rendered, the film shows above its montage: its name, how long it runs, its size, and
 when it was rendered. It can be watched there or opened on its own, so the render is checked before it
@@ -865,7 +948,10 @@ every zip as it is made, then every file going to every folder up there, each ma
 sent with how far it has got, sent, or already there. The upload belongs to the machine, not to the
 page: leaving the page, making another change meanwhile, reloading or reopening the window neither
 stops it nor offers it again — the board shows it still going and updates itself when it ends. Each
-panel in the corner can be folded down to its title and how far it has got, and opened again.
+panel in the corner can be folded down to its title and how far it has got, and opened again. What is
+being uploaded is not processed again, reset or deleted until the upload is done, and what is being
+processed is not uploaded until that is done — one would rewrite what the other is reading; the
+board says which to wait for.
 
 **Cancelling an upload.** It can be cancelled at any moment from that panel, with nothing to confirm,
 since nothing is lost: the file being sent is cut off, nothing more is sent, and nothing of the upload
@@ -1256,7 +1342,17 @@ address — and loses everything else, so text pasted from a document or a web p
 never its fonts, colours or anything that runs. The heading, which is the subject, the button and the
 link cannot be written over. The signature is the club's, remembered on this machine for every email.
 
-**The email template.** Every passenger's email is drafted from the club's template, written once in
+**In the language of whoever it is for.** The email is written in French until another is picked for it —
+English or German — and is then drafted again from that language's own template, with the day, what is
+ready and the button said in that language; the variables keep their French names in every language,
+since they are what the person writing the template types. The language the board is in says nothing
+of theirs, so it does not decide. The address is filled in from the day's booking list
+when it has one for that name, until something is typed.
+
+**A QR code of the link** is shown on request, for whoever it is for, standing at the counter, to take it with
+their phone before the email has even gone.
+
+**The email template.** Every montage's email is drafted from the club's template, once per language, written once in
 the same way — its subject and its message — and remembered on this machine. The words that change
 are written as variables, filled from each montage: `{prénom}`, `{nom}`, `{montage}` (the montage's
 name), `{date}` (the day of the jump, in words), `{contenu}` ("Ta vidéo et tes photos", as there are),
@@ -1273,7 +1369,38 @@ SkyDock sends nothing itself and needs nothing set up. One press copies the emai
 new message — in Gmail or in the computer's own mail program, whichever was used last — with the address
 and subject filled in; the email is pasted in and sent from there. The email, the subject and the link
 can also be copied on their own. The link always comes from what the upload recorded. Marking the
-email as sent records it on the storage's list, and can be undone.
+email as sent records it on the storage's list, and can be undone. Once the mail has been opened from
+here, the dialog asks _Sent it?_ where that is recorded, so a montage does not stay "to email" long
+after its email went.
+
+## The booking list
+
+The day's bookings — whoever the montages will be for — can be brought in from the booking system's
+export, or pasted from anywhere,
+under Settings: a name on each line — or a first name and a last name — and, where there is one, an
+email address and the time they are booked. The first line is read as headings when it names its
+columns, in English, French or German; otherwise the first column is the name and an address or a
+time is found wherever it is. Commas, semicolons and tabs all separate. A line without a name is left
+out, and a list with no name at all is refused rather than kept empty. The list is kept in the work
+folder, beside the board, since it belongs to the day's work; bringing in another replaces it, and it
+can be cleared. It names montages (Making a montage) and addresses emails (Sending the link); it moves
+and renames nothing on its own.
+
+## Going back
+
+Every change made on the board — filing, naming, trimming, a scan — keeps what the board was just
+before, the last thirty of them; what the board records by itself as it goes, a file landing off a
+camera, a proxy made, a copy processed, keeps none, so a card copied in does not push the changes
+made by hand out of reach. _History…_ under Settings lists them, and _History…_ under Settings lists them, the latest first, each
+with when and how many jumps and files it held. Going back to one puts the board as it was then: the
+jumps, their names and trims, what was filed where. It is itself a change, so it can be gone back from
+in the same way. No file is touched by it — nothing on the disk, nothing on the storage — only the
+board's record of them: a file put in the bin since shows on the board again until the next scan,
+which finds it gone.
+
+The board is written whole or not at all, and the last good record is kept beside it: a board that
+cannot be read — cut off half written by a crash or a power cut — is read from that one instead, and
+said so, rather than lost.
 
 ## Not built
 
@@ -1285,7 +1412,15 @@ Worth knowing, so nobody goes looking:
 - **Nothing renders the film.** The editor does, by a person's hand; SkyDock only notices.
 - **Nothing is ever doubled on the disk.** A clip copied into another jump is still one original; each
   jump it is in makes a processed copy of its own from it.
-- **A dropzone can be created, not renamed or removed.**
+- **A dropzone can be created, not renamed.**
+- **No logo is burnt into the copies.** A club's branding is in its editing templates, on the film;
+  putting it on every clip would mean encoding every clip again, and the originals handed over are
+  meant untouched.
+- **Two machines do not share one work folder.** One machine works in a folder at a time; nothing
+  stops a second from opening the same folder over a network share, and nothing makes that safe.
+- **A scan, proxies being made, and freeing are not stopped half way.** A scan reads only what is
+  new; proxies are made behind everything and cost nothing to leave running; freeing deletes only
+  what it has proved, one file at a time, and is quick once proved.
 - **Nothing comes back from the storage on its own.** Its list of montages is read and its videos and
   photos are streamed to be watched; a file is only saved here again when somebody asks for that one
   file back.

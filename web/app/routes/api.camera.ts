@@ -1,15 +1,25 @@
-import { ensureNasSession, getOutputDir, loadManifest, processingNow } from '@skydock/scripts'
+import {
+  ensureNasSession,
+  getOutputDir,
+  loadManifest,
+  processingNow,
+  messageOf
+} from '@skydock/scripts'
 import { z } from 'zod'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 import { deleteFromCameras, listCameras } from '../../../packages/skydock-scripts/src/cameraFiles'
-import { copyAgain } from '../../../packages/skydock-scripts/src/cameraWatch'
-import { messageOf } from '@skydock/scripts'
+import { copyAgain, stopCameraCopy } from '../../../packages/skydock-scripts/src/cameraWatch'
 
 /* What is on the cameras plugged in, each file saying whether it is copied here, and on the storage. */
 const loader = async () => Response.json({ cameras: await listCameras(getOutputDir()) })
 
 /* what is picked on a camera's page to be deleted from it — or the camera, to be copied again */
-const actionArgs = z.object({ paths: z.array(z.string()).optional(), copy: z.string().optional() })
+const actionArgs = z.object({
+  paths: z.array(z.string()).optional(),
+  copy: z.string().optional(),
+  /* the camera copy under way, and those waiting, stopped */
+  stop: z.boolean().optional()
+})
 
 /* A camera's files deleted from it, into the bin, once each is proved to be on the storage, or its
    copy here to be in the bin, by its bytes (RULES, Seeing what is on a camera). All or nothing, with
@@ -17,6 +27,13 @@ const actionArgs = z.object({ paths: z.array(z.string()).optional(), copy: z.str
 const action = createValidatedFormAction()({
   schema: actionArgs,
   handler: async ({ data, errors }) => {
+    if (data.stop) {
+      if (!stopCameraCopy()) {
+        errors.addGlobalError('No camera is being copied.')
+        return errors.toResponse(422)
+      }
+      return { stopping: true }
+    }
     /* Copied again while it stays plugged in, as plugging it in copies it: what is here already is
        passed over. The copy goes on behind the answer, shown in the header. */
     if (data.copy) {

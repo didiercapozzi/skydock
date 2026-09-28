@@ -72,7 +72,7 @@ const Confirm = ({
       footer={
         <>
           <Spacer />
-          <Mini onClick={onClose}>{t`Close`}</Mini>
+          <Mini onClick={onClose}>{t`Cancel`}</Mini>
           <Go onClick={onConfirm}>
             {t`Check and delete ${plural(count, { one: '# file', other: '# files' })} from the camera`}
           </Go>

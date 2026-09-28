@@ -3,7 +3,7 @@ import * as path from 'node:path'
 import { z } from 'zod'
 import { getExtension, VIDEO_EXTENSIONS_SET } from './constants'
 import type { ManifestFile } from './types'
-import { DEFAULT_MAX_FIND_DEPTH, fileMatchesExisting, findMediaFiles, walkFiles } from './lib/fs'
+import { DEFAULT_MAX_FIND_DEPTH, findMediaFiles, walkFiles } from './lib/fs'
 
 /* Where the tools are. The installed app carries its own ffmpeg, ffprobe and exiftool and says
    where they are; anywhere else they are looked for on the machine's PATH, as they always were —
@@ -214,7 +214,6 @@ export {
   exiftoolPath,
   checkExiftool,
   DEFAULT_MAX_FIND_DEPTH,
-  fileMatchesExisting,
   findMediaFiles,
   formatDay,
   isoDay,

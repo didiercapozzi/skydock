@@ -10,6 +10,8 @@ import {
 import { buildExifMap, readExifMap } from './lib/exif'
 import { loadManifest, MANIFEST_VERSION, saveManifest } from './manifest'
 import { computeFileId } from './fileId'
+import { writeJsonAtomic } from './lib/fs'
+import { z } from 'zod'
 import { groupNewFiles, reclusterGroups } from './clustering'
 import { buildMissingProxies } from './proxy'
 import type { ScanResult } from './boardAnswer'
@@ -69,7 +71,32 @@ const shotTimes = async (paths: string[]) => {
 
 const HASH_POOL_SIZE = 4
 
+/* What each original was found to be last time, by where it sits, with the size and the moment it
+   was last written then. A file that has not changed since keeps the identity it was given, so a
+   Rescan reads the new files through and not the whole library again; a file written since — even
+   at the same size — is read in full. Beside the board in the work folder, and only a shortcut: if
+   it is gone or unreadable, everything is read as before. */
+const knownIdsSchema = z.record(
+  z.string(),
+  z.object({ size: z.number(), at: z.number(), id: z.string() })
+)
+type KnownIds = z.infer<typeof knownIdsSchema>
+
+const NOTHING_KNOWN: KnownIds = {}
+
+const knownIdsPath = (originalDir: string) => path.join(path.dirname(originalDir), '.ids.json')
+
+const readKnownIds = (originalDir: string) => {
+  try {
+    return knownIdsSchema.parse(JSON.parse(fs.readFileSync(knownIdsPath(originalDir), 'utf8')))
+  } catch {
+    return NOTHING_KNOWN
+  }
+}
+
 const scanFiles = async (originalDir: string, timeMap: Map<string, string>) => {
+  const known = readKnownIds(originalDir)
+  const seen: KnownIds = {}
   const files = findMediaFiles(originalDir)
   const manifestFiles: ManifestFile[] = new Array(files.length)
   const stats = files.map((filepath) => fs.statSync(filepath))
@@ -83,7 +110,12 @@ const scanFiles = async (originalDir: string, timeMap: Map<string, string>) => {
         const filepath = files[i]
         const stat = stats[i]
         if (!filepath || !stat) continue
-        const id = await computeFileId(filepath)
+        const before = known[filepath]
+        const id =
+          before && before.size === stat.size && before.at === stat.mtimeMs
+            ? before.id
+            : await computeFileId(filepath)
+        seen[filepath] = { size: stat.size, at: stat.mtimeMs, id }
         manifestFiles[i] = {
           path: filepath,
           size: stat.size,
@@ -95,6 +127,11 @@ const scanFiles = async (originalDir: string, timeMap: Map<string, string>) => {
     }
   )
   await Promise.all(workers)
+  try {
+    writeJsonAtomic(knownIdsPath(originalDir), seen)
+  } catch {
+    /* only a shortcut: the next scan reads everything instead */
+  }
 
   return sortFilesByMtime(manifestFiles)
 }
@@ -179,6 +216,13 @@ const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => 
       claimedDiskPaths.add(freshPath)
       keptFiles.push(kept(f, movedDisk))
       moved++
+      continue
+    }
+    /* On the disk after all, only not when the disk was looked at: a file that landed while this
+       scan was reading — off a camera being copied, put on the board as it landed — is kept as the
+       registry has it, not taken for gone. */
+    if (fs.existsSync(f.path)) {
+      keptFiles.push(f)
       continue
     }
     removed++

@@ -20,8 +20,8 @@ const LABELS: Record<ShownStatus, MessageDescriptor> = {
 const TITLES: Record<ShownStatus, MessageDescriptor> = {
   local: msg`Not processed yet`,
   changed: msg`Processed once and changed since — it needs processing again before it can go anywhere`,
-  processed: msg`Processed, not on the NAS yet`,
-  uploaded: msg`On the NAS`
+  processed: msg`Processed, not on the storage yet`,
+  uploaded: msg`On the storage`
 }
 
 /* Each state keeps its own colour and the tint made for it. Only `changed` is outlined, because it
@@ -33,13 +33,16 @@ const CHIP: Record<ShownStatus, string> = {
   uploaded: 'bg-up-soft text-up px-[7px]'
 }
 
+/* the state in words, for where there is no room for the chip */
+const statusName = (status: ShownStatus) => i18n._(LABELS[status])
+
 const StatusChip = ({ status }: { status: ShownStatus }) => (
   <span
     title={i18n._(TITLES[status])}
-    className={`rounded-full py-px text-[10px] font-semibold tracking-[0.04em] uppercase ${CHIP[status]}`}>
+    className={`rounded-full py-px text-[11px] font-semibold tracking-[0.04em] uppercase ${CHIP[status]}`}>
     {i18n._(LABELS[status])}
   </span>
 )
 
-export { StatusChip }
+export { StatusChip, statusName }
 export type { ShownStatus }

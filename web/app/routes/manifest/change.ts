@@ -1,8 +1,14 @@
-import { EDIT_LOCKED, frozenMontages, getOutputDir } from '@skydock/scripts'
+import {
+  EDIT_LOCKED,
+  frozenMontages,
+  getManifestPath,
+  getOutputDir,
+  loadManifest,
+  idsOf
+} from '@skydock/scripts'
 import type { BoardAnswer, Manifest } from '@skydock/scripts'
 import type { FormResult } from '../../../../packages/ui/forms/types'
 import type { ActionData, actionArgs } from './args'
-import { idsOf } from '@skydock/scripts'
 
 type Refusal = FormResult<typeof actionArgs>
 
@@ -19,6 +25,10 @@ type Change = {
   frozenFiles: Set<string>
   refuse: (message: string) => Refusal
   refuseFrozen: () => Refusal
+  /* The board as it is on the disk now. A change that waits on anything — the storage, a copy, a
+     cut — makes its own change on this, read after the wait, and saves that: saving the board read
+     before it would undo whatever was written meanwhile, a file off a camera or a proxy finished. */
+  latest: () => Manifest
 }
 
 /* an intent answers with the board's data, or says why not */
@@ -33,12 +43,13 @@ const changeOn = (manifest: Manifest, data: ActionData, refuse: (message: string
   return {
     data,
     manifest,
-    manifestPath: `${outputDir}/manifest.json`,
+    manifestPath: getManifestPath(outputDir),
     outputDir,
     frozen,
     frozenFiles,
     refuse,
-    refuseFrozen: () => refuse(EDIT_LOCKED)
+    refuseFrozen: () => refuse(EDIT_LOCKED),
+    latest: () => loadManifest(getManifestPath(outputDir)) ?? manifest
   }
 }
 

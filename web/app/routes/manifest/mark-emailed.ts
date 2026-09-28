@@ -13,7 +13,7 @@ import { recordOnStorage } from './storage'
 const markEmailed: Intent = async ({ data, manifest, refuse }) => {
   const session = await ensureNasSession()
   if (!session || !data.emailed)
-    return refuse('Connect the NAS first — the list of montages is kept there.')
+    return refuse('Connect the storage first — the list of montages is kept there.')
   const { folder, to, sent } = data.emailed
   let known = true
   const listing = await recordOnStorage(

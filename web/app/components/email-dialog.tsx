@@ -1,7 +1,8 @@
 import {
   asEmailHtml,
-  DEFAULT_TEMPLATE,
+  DEFAULT_TEMPLATES,
   EMAIL_VARIABLES,
+  emailFor,
   fillEmailTemplate,
   htmlOfText,
   markVariables,
@@ -15,12 +16,14 @@ import { msg, t } from '@lingui/core/macro'
 import { useState } from 'react'
 import { cleanEmailHtml } from '../helpers/emailHtml'
 import { setMailApp, useMailApp } from '../hooks/useMailApp'
+import { useBookingList } from '../hooks/useBookingList'
 import type { MailApp } from '../hooks/useMailApp'
-import type { EmailFacts } from '@skydock/scripts'
-import { setEmailTemplate, useEmailTemplate } from '../hooks/useEmailTemplate'
+import type { EmailFacts, EmailLanguage, EmailTemplate } from '@skydock/scripts'
+import { readEmailTemplate, setEmailTemplate, useEmailTemplate } from '../hooks/useEmailTemplate'
 import { setSignature, useSignature } from '../hooks/useSignature'
-import { Go, Mini } from './buttons'
+import { Go, Mini, Seg } from './buttons'
 import { Field, INPUT, Modal, Spacer } from './modal'
+import { ShareQr } from './share-qr'
 
 /* The passenger's link, ready to go. The email is written and laid out already, and shown exactly as
    it will arrive; one press copies it and opens a new Gmail message with the address and subject
@@ -100,16 +103,27 @@ const EmailDialog = ({
   const { firstname, shareUrl } = about
   /* The club's email, written once with its {variables}, and this one drafted from it. It is kept on
      this machine, and cleaned again as it is read, like anything written in the email. */
-  const stored = useEmailTemplate()
-  const template = { subject: stored.subject, body: cleanEmailHtml(asEmailHtml(stored.body)) }
-  const drafted = fillEmailTemplate(template, about)
-  const values = variablesOf(about)
-  const [to, setTo] = useState(emailed?.to ?? '')
+  /* in the language of whoever it is for: French, as the club writes, until another is picked —
+     the language this screen is in says nothing of theirs */
+  const [lang, setLang] = useState<EmailLanguage>('fr')
+  const [showingQr, setShowingQr] = useState(false)
+  const stored = useEmailTemplate(lang)
+  const readable = (raw: EmailTemplate) => ({
+    subject: raw.subject,
+    body: cleanEmailHtml(asEmailHtml(raw.body))
+  })
+  const template = readable(stored)
+  const drafted = fillEmailTemplate(template, about, lang)
+  const values = variablesOf(about, lang)
+  /* addressed already when the day's booking list has an address for the name, until something is typed */
+  const list = useBookingList()
+  const [typedTo, setTo] = useState<string | null>(null)
+  const to = typedTo ?? emailed?.to ?? emailFor(list, `${about.firstname} ${about.lastname}`) ?? ''
   const [subject, setSubject] = useState(drafted.subject)
   const [body, setBody] = useState(drafted.body)
   /* the signature is the club's, the same on every email, so it is remembered */
   const signature = cleanEmailHtml(asEmailHtml(useSignature()))
-  const { fragment, text } = renderPassengerEmail({ subject, body, signature, shareUrl })
+  const { fragment, text } = renderPassengerEmail({ subject, body, signature, shareUrl, lang })
   /* This email, or the template every email is drafted from. */
   const [writingTemplate, setWritingTemplate] = useState(false)
   /* What the email shown is laid out from. What is written in it is read from it as it is typed and
@@ -121,11 +135,12 @@ const EmailDialog = ({
     body: laid.body,
     signature: laid.signature,
     shareUrl,
-    editable: true
+    editable: true,
+    lang
   }).fragment
   const retitle = (next: string) => {
     if (writingTemplate) {
-      setEmailTemplate({ ...template, subject: next })
+      setEmailTemplate(lang, { ...template, subject: next })
       setLaid({ body: markVariables(template.body), signature })
     } else {
       setSubject(next)
@@ -139,15 +154,28 @@ const EmailDialog = ({
     setLaid({ body: markVariables(template.body), signature })
   }
   const closeTemplate = () => {
-    const filled = fillEmailTemplate(template, about)
+    const filled = fillEmailTemplate(template, about, lang)
     setWritingTemplate(false)
     setSubject(filled.subject)
     setBody(filled.body)
     setLaid({ body: filled.body, signature })
   }
   const resetTemplate = () => {
-    setEmailTemplate(DEFAULT_TEMPLATE)
-    setLaid({ body: markVariables(DEFAULT_TEMPLATE.body), signature })
+    setEmailTemplate(lang, DEFAULT_TEMPLATES[lang])
+    setLaid({ body: markVariables(DEFAULT_TEMPLATES[lang].body), signature })
+  }
+  /* another language: this email drafted again from that language's template */
+  const speak = (next: EmailLanguage) => {
+    const other = readable(readEmailTemplate(next))
+    setLang(next)
+    if (writingTemplate) {
+      setLaid({ body: markVariables(other.body), signature })
+      return
+    }
+    const filled = fillEmailTemplate(other, about, next)
+    setSubject(filled.subject)
+    setBody(filled.body)
+    setLaid({ body: filled.body, signature })
   }
   /* what was written, cleaned down to what an email carries, kept as it is typed */
   const written = (target: EventTarget) => {
@@ -155,7 +183,7 @@ const EmailDialog = ({
     if (!part) return
     const cleaned = cleanEmailHtml(part.innerHTML)
     if (part.getAttribute('data-edit') === 'signature') setSignature(cleaned)
-    else if (writingTemplate) setEmailTemplate({ ...template, body: cleaned })
+    else if (writingTemplate) setEmailTemplate(lang, { ...template, body: cleaned })
     else setBody(cleaned)
   }
   /* A {variable} put where the caret was. Choosing it from the list takes the caret out of the email,
@@ -214,8 +242,12 @@ const EmailDialog = ({
      still counts, so Gmail is not taken for a pop-up. The computer's own mail program is reached by
      a mailto link, which opens it without leaving this page. */
   const mailApp = useMailApp()
+  /* once the mail is open, whether it went is asked for where it is recorded — or the montage stays
+     "to email" long after the email went */
+  const [opened, setOpened] = useState(false)
   const openMail = async (app: MailApp) => {
     setMailApp(app)
+    setOpened(true)
     await copy(app, copyEmail(fragment, text))
     if (app === 'gmail') window.open(gmailComposeUrl({ to, subject }), '_blank', 'noopener')
     else window.location.href = mailtoUrl({ to, subject })
@@ -257,6 +289,17 @@ const EmailDialog = ({
                     {t`Undo`}
                   </Mini>
                 </span>
+              ) : opened ? (
+                <span
+                  role='status'
+                  className='flex items-center gap-2 rounded-md bg-accent-soft px-2 py-1 text-[12px] font-semibold text-accent'>
+                  {t`Sent it?`}
+                  <Mini
+                    title={t`Say on the storage’s list that they have their link`}
+                    onClick={() => onRecord(true, to)}>
+                    {t`Yes — mark as sent`}
+                  </Mini>
+                </span>
               ) : (
                 <Mini
                   title={t`Say on the storage’s list that they have their link`}
@@ -285,6 +328,31 @@ const EmailDialog = ({
         <b className='text-ink'>{t`Copy & open`}</b>{' '}
         {t`puts the email below on the clipboard and opens a new message with the address and the subject already filled in — in Gmail, or in the mail program this computer uses (Outlook, Apple Mail, Thunderbird…). Click into the message, paste it (Ctrl+V, or ⌘V on a Mac) and press Send. The one used last is offered first.`}
       </p>
+      <span className='flex flex-wrap items-center gap-2 text-[12px] text-ink-2'>
+        <Mini
+          pressed={showingQr}
+          title={t`The link as a QR code, for a phone to take it now`}
+          onClick={() => setShowingQr(!showingQr)}>
+          {t`QR code`}
+        </Mini>
+        {t`Written in`}
+        <Seg
+          label={t`Language of the email`}
+          value={lang}
+          options={[
+            ['fr', 'Français'],
+            ['en', 'English'],
+            ['de', 'Deutsch']
+          ]}
+          onPick={speak}
+        />
+      </span>
+      {showingQr && (
+        <span className='flex flex-col items-center gap-1.5'>
+          <ShareQr url={shareUrl} />
+          <span className='text-[11.5px] text-ink-2'>{t`Scan it with a phone’s camera to open the link`}</span>
+        </span>
+      )}
       <Field label={t`To`}>
         <input
           type='email'
@@ -298,7 +366,7 @@ const EmailDialog = ({
       {writingTemplate && (
         <p className='m-0 rounded-r-md border-l-[3px] border-accent bg-accent-soft px-3 py-[9px] text-[12px] text-ink-2'>
           <b className='text-ink'>{t`The template for every email.`}</b>{' '}
-          {t`What is written here is kept on this machine and drafts every passenger’s email; each`}{' '}
+          {t`What is written here is kept on this machine and drafts every email; each`}{' '}
           {'{variable}'}{' '}
           {t`is filled from their montage. A line whose variables are all empty for a montage — no film, no photos — is left out of their email.`}
         </p>
@@ -349,7 +417,10 @@ const EmailDialog = ({
               onChange={(e) => setLinking({ ...linking, href: e.target.value })}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') putLink()
-                if (e.key === 'Escape') setLinking(null)
+                if (e.key !== 'Escape') return
+                /* it puts the link away, not the whole email */
+                e.stopPropagation()
+                setLinking(null)
               }}
               className={`${INPUT} w-56 py-0.5 text-[12px]`}
             />
@@ -384,7 +455,7 @@ const EmailDialog = ({
           </Mini>
         ) : (
           <Mini
-            title={t`Change the email every passenger gets, with the words that change as variables`}
+            title={t`Change the email every montage sends, with the words that change as variables`}
             onClick={openTemplate}>
             {t`Edit the template…`}
           </Mini>

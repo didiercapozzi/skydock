@@ -1,4 +1,3 @@
-// vite.config.js
 import { transformAsync } from '@babel/core'
 import { lingui } from '@lingui/vite-plugin'
 import { reactRouter } from '@react-router/dev/vite'
@@ -6,8 +5,6 @@ import tailwindcss from '@tailwindcss/vite'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import babel from 'vite-plugin-babel'
-
-const ReactCompilerConfig = {/* ... */}
 
 /* The installed app carries the server as one file with no node_modules beside it, so a build puts
    everything it uses inside it rather than leaving it to be found at runtime. A build only: the
@@ -56,11 +53,12 @@ export default defineConfig({
        seeing it */
     lingui(),
     linguiMacros,
+    /* the React compiler, which memoises what it can prove is safe to */
     babel({
       filter: /\.[jt]sx?$/,
       babelConfig: {
-        presets: ['@babel/preset-typescript'], // if you use TypeScript
-        plugins: [['babel-plugin-react-compiler', ReactCompilerConfig]]
+        presets: ['@babel/preset-typescript'],
+        plugins: [['babel-plugin-react-compiler', {}]]
       }
     })
   ]

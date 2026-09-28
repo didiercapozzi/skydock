@@ -60,8 +60,9 @@ describe('opening a file from the board', () => {
   test('opens it on a second click, with no double-click of its own', async () => {
     const row = await renderBoard()
 
-    await userEvent.click(row)
-    await userEvent.click(row)
+    /* two clicks as a hand makes them: one after the other at once — two separate commands to the
+       browser can land further apart than a hand ever would, on a busy machine */
+    await userEvent.dblClick(row)
 
     await expect.element(preview()).toBeInTheDocument()
   })

@@ -19,7 +19,11 @@ const frameCropSchema = z.object({
   x: fraction,
   y: fraction,
   width: fraction,
-  height: fraction
+  height: fraction,
+  /* An upright picture delivered as a landscape one: set in the middle of a 16:9 frame, the sides
+     filled with the same picture blurred rather than left black — what a portrait clip needs to sit
+     in a landscape film without cutting the jumper out of it. */
+  fill: z.literal('blur').optional()
 })
 
 /* What processing wrote for this file, and the exact inputs that produced it. Change any of those
@@ -181,7 +185,10 @@ const manifestGroupSchema = z.object({
   destination: z.string().optional(),
   /* A jump of a montage: a film made for someone, named once. It belongs to no destination — where
      its film and its backups go is chosen when it is uploaded. (`montage` is its editing project.) */
-  montageJump: z.boolean().optional()
+  montageJump: z.boolean().optional(),
+  /* whoever it is for has paid for the montage — said by the person at the counter, and kept by the
+     server like every other record of what happened to it */
+  paid: z.boolean().optional()
 })
 
 const groupsFileSchema = z.object({

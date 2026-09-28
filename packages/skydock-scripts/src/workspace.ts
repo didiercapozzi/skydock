@@ -5,6 +5,19 @@ import type { ManifestGroup, ManifestPassenger } from './types'
 /* Where montages are worked on, on this machine: each in a folder of its own inside this one. */
 const MONTAGES_FOLDER = 'Montages'
 
+/* A name a dropzone cannot have, and why — a dropzone is a folder, beside the montages' own. A name
+   that is a folder's own words ('.', '..'), a path, or the montages' folder whatever its case, would
+   put its files somewhere else, or among every montage's. Nothing else is refused. */
+const placeNameProblem = (name: string) => {
+  const trimmed = name.trim()
+  if (!trimmed) return 'A dropzone needs a name.'
+  if (trimmed === '.' || trimmed === '..' || /[\\/]/.test(trimmed))
+    return `“${trimmed}” cannot be a dropzone’s name — it is not a folder name.`
+  if (trimmed.toLowerCase() === MONTAGES_FOLDER.toLowerCase())
+    return `“${trimmed}” is where the montages are kept — give the dropzone another name.`
+  return null
+}
+
 /* A montage is named by one name — "Luc Favre", "Boogie 2026" — and any name is a whole one: it is
    the folder and the file names. */
 const hasCompletePassenger = (passenger: ManifestPassenger | null | undefined) =>
@@ -149,6 +162,7 @@ export {
   passengerOf,
   isMontage,
   MONTAGES_FOLDER,
+  placeNameProblem,
   resolveDestinationPath,
   toFileStem
 }

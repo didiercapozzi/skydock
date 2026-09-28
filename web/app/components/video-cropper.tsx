@@ -291,7 +291,7 @@ const VideoCropper = ({
                 style={{ left: `${positionFromTime(at)}%` }}>
                 <div className='pointer-events-none absolute top-0 bottom-0 left-1/2 -ml-px w-0.5 bg-sky-300/90' />
                 <span
-                  className={`pointer-events-none absolute left-1.5 rounded bg-sky-300/90 px-1 text-[9px] leading-[13px] font-medium text-black whitespace-nowrap ${
+                  className={`pointer-events-none absolute left-1.5 rounded bg-sky-300/90 px-1 text-[10px] leading-[13px] font-medium text-black whitespace-nowrap ${
                     low ? 'bottom-0.5' : 'top-0.5'
                   }`}>
                   {label}
@@ -390,7 +390,7 @@ const VideoCropper = ({
               data-action='reset-crop'
               onClick={handleResetCrop}
               className='rounded-[5px] border border-white/30 bg-white/10 px-2.5 py-1 text-[12px] text-white hover:bg-white/20'>
-              {t`Reset crop`}
+              {t`Reset trim`}
             </button>
           )}
         </div>

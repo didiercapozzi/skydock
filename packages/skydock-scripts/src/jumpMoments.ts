@@ -47,6 +47,26 @@ const RUN_UP = 1
 const cutFrom = (moments: JumpMoments, montage: boolean) =>
   montage ? moments.exit : Math.max(0, moments.exit - RUN_UP)
 
+/* A clip trimmed to its jump in one press: from the exit, as a cut is made from it, to a few seconds
+   after touching down — the landing is the end of the jump, and the smile after it is the part
+   people keep. A clip whose landing was not found keeps the end it has; one that stops sooner than
+   that runs to its own end. */
+const AFTER_LANDING = 8
+
+const jumpTrim = (
+  moments: JumpMoments,
+  montage: boolean,
+  cropEnd: number | null,
+  /* how long the clip runs, when known: the end is never past it */
+  duration?: number
+) => {
+  const landed = moments.landing !== undefined ? moments.landing + AFTER_LANDING : null
+  return {
+    cropStart: cutFrom(moments, montage),
+    cropEnd: landed === null ? cropEnd : duration && landed >= duration ? null : landed
+  }
+}
+
 /* Leaving the plane, as the seconds around it average: under a gravity for the few seconds it takes
    the air to catch up. How deep the dip goes differs by camera and by how fast the aeroplane was
    going — a GoPro on one jump floors at 0.2, a DJI on another at 0.43 — so what is asked of it is
@@ -331,4 +351,4 @@ const jumpMoments = async (clip: string, onPercent?: (percent: number) => void) 
   return written ? readFelt(READERS[written.kind](written.data), written.seconds) : null
 }
 
-export { cutFrom, jumpMoments, readFelt, RUN_UP }
+export { cutFrom, jumpMoments, jumpTrim, readFelt, RUN_UP }

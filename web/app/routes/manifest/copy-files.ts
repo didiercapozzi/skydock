@@ -1,8 +1,7 @@
-import { saveManifest } from '@skydock/scripts'
+import { saveManifest, messageOf } from '@skydock/scripts'
 import { copyFiles } from '../../../../packages/skydock-scripts/src/moveFiles'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
-import { messageOf } from '@skydock/scripts'
 
 /* Files copied into another jump, staying where they are as well (RULES, Jumps). A montage with an
    edit takes nothing in, a copy included: its project names its clips, and a new one is not among

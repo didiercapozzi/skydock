@@ -68,8 +68,7 @@ const FolderOwed = ({
           </Owed>
         )}
         <span className='ml-auto text-ink-3 max-[900px]:hidden'>
-          {t`Drag a jump onto a folder on the left, or use`}{' '}
-          <b className='text-ink-2'>{t`File to`}</b> {t`on its line`}
+          {t`Drag a jump onto a destination on the left, or use Move to… on it`}
         </span>
         {/* at the far end and drawn as a button: it is not another way of grouping, it asks what to
             forget */}

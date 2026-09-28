@@ -1,13 +1,14 @@
 import {
   hasEdit,
   passengerOf,
+  placeNameProblem,
   sameEditedGroup,
   saveManifest,
-  UPLOADED_LOCKED
+  UPLOADED_LOCKED,
+  idsOf
 } from '@skydock/scripts'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
-import { idsOf } from '@skydock/scripts'
 
 /* The board's own picture of the jumps, the places and each file's crop, saved as sent — bar what a
    frozen montage forbids — and answered with what was saved, so the board redraws from the server
@@ -23,6 +24,12 @@ const saveGroups: Intent = ({
   refuseFrozen
 }) => {
   if (!data.groups) return refuse('Save needs groups.')
+  /* a dropzone is a folder: a new one must have a name a folder can have, and not the montages' own */
+  for (const place of data.destinations ?? []) {
+    if (manifest.destinations?.some((d) => d.name === place.name)) continue
+    const problem = placeNameProblem(place.name)
+    if (problem) return refuse(problem)
+  }
   /* a frozen montage has to arrive exactly as it is, and none of its files may be edited on the side */
   for (const id of frozen) {
     const before = manifest.groups.find((g) => g.id === id)
@@ -71,7 +78,27 @@ const saveGroups: Intent = ({
       delete file.uploaded
     }
   }
-  manifest.groups = data.groups
+  /* What only the server does is only the server's to say: whether a jump went up, was freed, has a
+     link or an editing project. A page that was open while that happened sends what it last saw, and
+     must not undo it — so those are kept as the server has them, whatever the page sends. */
+  manifest.groups = data.groups.map((incoming) => {
+    const before = manifest.groups.find((g) => g.id === incoming.id)
+    if (!before) return incoming
+    const { uploaded: _u, freed: _f, publish: _p, montage: _m, paid: _pd, ...decided } = incoming
+    /* a jump changed since its link was made is not what the link shows any more */
+    const changed =
+      !sameEditedGroup(before, incoming) ||
+      before.label !== incoming.label ||
+      before.day !== incoming.day
+    return {
+      ...decided,
+      ...(before.uploaded ? { uploaded: before.uploaded } : {}),
+      ...(before.freed ? { freed: before.freed } : {}),
+      ...(before.publish && !changed ? { publish: before.publish } : {}),
+      ...(before.montage ? { montage: before.montage } : {}),
+      ...(before.paid ? { paid: before.paid } : {})
+    }
+  })
   if (data.destinations) manifest.destinations = data.destinations
 
   /* named fields only — never a spread of whatever the client sent */

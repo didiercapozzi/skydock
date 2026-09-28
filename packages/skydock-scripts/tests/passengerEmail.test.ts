@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import {
+  DEFAULT_TEMPLATES,
   defaultPassengerEmail,
   fillEmailTemplate,
   gmailComposeUrl,
@@ -196,5 +197,37 @@ describe("the new message in the computer's own mail program", () => {
 
   it('opens unaddressed while there is no address yet', () => {
     expect(mailtoUrl({ to: ' ', subject: 's' })).toBe('mailto:?subject=s')
+  })
+})
+
+/* The email goes out in the passenger's language — French, English or German — and what it says
+   around the club's own words follows (RULES, Sending the link). */
+describe('an email in the passenger’s language', () => {
+  const facts = { firstname: 'Luc', lastname: 'Favre', day: '01.08.2026', videos: 1, photos: 3 }
+
+  it('says the day, and what is ready, in English', () => {
+    const email = fillEmailTemplate(DEFAULT_TEMPLATES.en, facts, 'en')
+
+    expect(email.subject).toBe('Your video and photos from your jump')
+    expect(email.body).toContain('Your video and photos from 1 August 2026 are ready.')
+  })
+
+  it('says them in German', () => {
+    const email = fillEmailTemplate(DEFAULT_TEMPLATES.de, facts, 'de')
+
+    expect(email.body).toContain('vom 1. August 2026 sind bereit.')
+  })
+
+  it('draws its button in the language too', () => {
+    const { fragment, text } = renderPassengerEmail({
+      subject: 's',
+      body: '<p>b</p>',
+      signature: '',
+      shareUrl: 'https://x.test/s',
+      lang: 'de'
+    })
+
+    expect(fragment).toContain('Ansehen und herunterladen')
+    expect(text).toContain('Ansehen und herunterladen: https://x.test/s')
   })
 })

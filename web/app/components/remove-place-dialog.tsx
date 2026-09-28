@@ -1,5 +1,5 @@
 import { plural, t } from '@lingui/core/macro'
-import { Go, Mini } from './buttons'
+import { Danger, Mini } from './buttons'
 import { Line, Modal, Spacer } from './modal'
 
 /* Taking a place off the board deletes nothing, and the dialog's whole job is to say so: what was
@@ -28,19 +28,19 @@ const RemovePlaceDialog = ({
   const what = filed.join(t` and `)
   return (
     <Modal
-      label={t`Remove a place`}
+      label={t`Remove a destination`}
       title={t`Remove ${place}`}
       onClose={onClose}
       footer={
         <>
           <Spacer />
-          <Mini onClick={onClose}>{t`Close`}</Mini>
-          <Go onClick={onConfirm}>{t`Remove ${place}`}</Go>
+          <Mini onClick={onClose}>{t`Cancel`}</Mini>
+          <Danger onClick={onConfirm}>{t`Remove ${place}`}</Danger>
         </>
       }>
       <p className='m-0 text-[12.5px] font-semibold text-ink'>{t`What happens`}</p>
       <ul className='m-0 flex list-none flex-col gap-1 p-0'>
-        <Line mark='✕'>{t`${place} stops being a place files can be filed under`}</Line>
+        <Line mark='✕'>{t`${place} stops being a destination files can be filed under`}</Line>
         {filed.length > 0 ? (
           <Line mark='↩'>
             {t`${what} filed there come back to Fresh files, whole — every jump keeps its files, its name and its trims, and can be filed somewhere else`}

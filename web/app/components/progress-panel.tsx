@@ -150,7 +150,7 @@ const ProgressPanel = ({
                     title={row.title ?? row.name}>
                     {row.name}
                   </span>
-                  <span className='flex-none font-mono text-[10.5px] tabular-nums'>
+                  <span className='flex-none font-mono text-[11px] tabular-nums'>
                     {row.note ??
                       (row.at === 'now' && (row.part ?? 0) > 0
                         ? ofSize(row.part ?? 0, row.size)

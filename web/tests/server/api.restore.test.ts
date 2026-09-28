@@ -137,6 +137,6 @@ describe('restoring montages from the storage’s list', () => {
   it('needs the storage, where the list is kept', async () => {
     fs.rmSync(path.join(tmpDir, 'nas.json'), { force: true })
     const said = await send({ intent: 'restore-montages' })
-    expect(said.globalErrors?.[0]).toContain('Connect the NAS first')
+    expect(said.globalErrors?.[0]).toContain('Connect the storage first')
   })
 })

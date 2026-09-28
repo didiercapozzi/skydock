@@ -20,7 +20,14 @@ class UploadCancelled extends Error {
   }
 }
 
-type Upload = { key: string; label: string; done: Promise<unknown>; stop: AbortController }
+type Upload = {
+  key: string
+  label: string
+  /* the jumps it is sending, so what would rewrite them waits for it */
+  groupIds: string[]
+  done: Promise<unknown>
+  stop: AbortController
+}
 
 declare global {
   var skydockUpload: Upload | undefined
@@ -28,7 +35,7 @@ declare global {
 
 const uploadingNow = () => {
   const upload = globalThis.skydockUpload
-  return upload ? { key: upload.key, label: upload.label } : null
+  return upload ? { key: upload.key, label: upload.label, groupIds: upload.groupIds } : null
 }
 
 /* settles when the upload going now has finished, however it ended */
@@ -59,12 +66,12 @@ const stopIfUploadCancelled = () => {
 const pastCancelling = <T>(work: () => Promise<T>) => stoppable().exit(work)
 
 const runUpload = async <T>(
-  { key, label }: { key: string; label: string },
+  { key, label, groupIds = [] }: { key: string; label: string; groupIds?: string[] },
   work: () => Promise<T>
 ) => {
   const going = globalThis.skydockUpload
   if (going) throw new Error(`Already uploading ${going.label} — wait for it, or cancel it, first.`)
-  const job: Upload = { key, label, done: Promise.resolve(), stop: new AbortController() }
+  const job: Upload = { key, label, groupIds, done: Promise.resolve(), stop: new AbortController() }
   const done = stoppable().run(job.stop.signal, work)
   job.done = done
   globalThis.skydockUpload = job

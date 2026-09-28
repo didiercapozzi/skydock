@@ -2,14 +2,14 @@ import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { isMediaName } from './constants'
-import { CameraGone, isNameFor, landingFor, loadBoard } from './copy'
+import { CameraGone, CopyStopped, givenBack, isNameFor, landingFor, loadBoard } from './copy'
 import type { Copied, CopyProgress } from './copy'
 import { computeFileId } from './fileId'
 import { watchGrowth } from './lib/growing'
 import { kioReader } from './kio'
 import type { KioFile, KioReader } from './kio'
 import { findMediaFiles, sameBytes } from './lib/fs'
-import type { Manifest, ManifestFile } from './types'
+import type { Manifest } from './types'
 import { shotTimes } from './scan'
 import { getOutputDir } from './utils'
 
@@ -109,11 +109,6 @@ const hereAlready = (outputDir: string) => {
   }
 }
 
-/* A clip this machine gave back is passed over like one that is here, as on a card — known by its
-   name and its size, since which day it belongs to is only known once it has been fetched. */
-const givenBack = (files: ManifestFile[], name: string, size: number) =>
-  files.some((f) => f.freed && f.size === size && isNameFor(f.filename, name))
-
 /* One camera read through KDE, copied off. Asked before each clip how big it is and when it was
    written, so a clip already here costs a question and not a copy: plugging the camera in again
    reads almost nothing. A clip the camera cannot say that of is fetched and compared here instead. */
@@ -124,10 +119,13 @@ const copyOverKio = async ({
   manifest = loadBoard(outputDir),
   onProgress,
   onClip,
-  onCopied
+  onCopied,
+  stop
 }: {
   camera: string
   reader: KioReader
+  /* asked to stop: the clip in hand is finished, and nothing after it is begun */
+  stop?: AbortSignal
   outputDir?: string
   manifest?: Manifest | null
   onProgress?: (progress: CopyProgress) => void
@@ -150,9 +148,12 @@ const copyOverKio = async ({
       const batch = clips.slice(at, at + ASKED_AT_ONCE)
       const told = await Promise.all(batch.map((clip) => reader.stat(clip.url)))
       for (const [i, clip] of batch.entries()) {
+        if (stop?.aborted) throw new CopyStopped('Stopped when asked.')
         const said = told[i] ?? null
         const found = said ? here.find(clip.name, said) : null
         let last: 'copied' | 'skipped' = 'skipped'
+        /* one this machine gave back is passed over as on a card — by its name and size alone,
+           since which day it belongs to is only known once it has been fetched */
         if (said && (found || givenBack(board, clip.name, said.size))) {
           progress.skipped++
           onClip?.({ ...clip, size: said.size, mtime: said.mtime, original: found })

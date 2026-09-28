@@ -39,7 +39,7 @@ const catchClipboard = () => {
 }
 
 beforeEach(() => {
-  setEmailTemplate(DEFAULT_TEMPLATE)
+  setEmailTemplate('fr', DEFAULT_TEMPLATE)
 })
 
 afterEach(() => {
@@ -110,11 +110,40 @@ describe('writing the passenger email', () => {
   })
 })
 
+/* The email goes out in the passenger's language, drafted from that language's own template (RULES,
+   Sending the link). */
+describe('the language of the email', () => {
+  test('is French until another is picked, and the email is drafted again in the one picked', async () => {
+    catchClipboard()
+    await open()
+    await expect.element(preview().getByText('Voir et télécharger')).toBeVisible()
+
+    await userEvent.click(page.getByRole('button', { name: 'English' }))
+
+    await expect.element(preview().getByText('Watch and download')).toBeVisible()
+    expect(await copyEmail()).toContain('Hello Luc,')
+  })
+})
+
+/* The link as a QR code, for a phone at the counter (RULES, Sending the link). */
+describe('the link as a QR code', () => {
+  test('is shown when asked for, and is a picture of the link', async () => {
+    await open()
+    await expect.element(page.getByRole('img', { name: 'QR code of the link' })).not.toBeInTheDocument()
+
+    await userEvent.click(page.getByRole('button', { name: 'QR code' }))
+
+    const qr = page.getByRole('img', { name: 'QR code of the link' })
+    await expect.element(qr).toBeVisible()
+    expect(qr.element().querySelector('path')?.getAttribute('d')?.length).toBeGreaterThan(100)
+  })
+})
+
 /* The club's email, written once with its {variables}, drafts every passenger's (RULES, Sending the
    link). */
 describe('the email template', () => {
   test('is written with variables, and drafts the email from them', async () => {
-    setEmailTemplate(DEFAULT_TEMPLATE)
+    setEmailTemplate('fr', DEFAULT_TEMPLATE)
     await open()
     await userEvent.click(page.getByRole('button', { name: 'Edit the template…' }))
     await expect.element(preview().getByText('{prénom}')).toBeVisible()
@@ -127,7 +156,7 @@ describe('the email template', () => {
   })
 
   test('puts a variable in where the caret is', async () => {
-    setEmailTemplate({ subject: 's', body: '<p>Merci</p>' })
+    setEmailTemplate('fr', { subject: 's', body: '<p>Merci</p>' })
     await open()
     await userEvent.click(page.getByRole('button', { name: 'Edit the template…' }))
     await userEvent.click(part('body'))
@@ -140,7 +169,7 @@ describe('the email template', () => {
   })
 
   test('goes back to the first template when asked', async () => {
-    setEmailTemplate({ subject: 'autre', body: '<p>autre</p>' })
+    setEmailTemplate('fr', { subject: 'autre', body: '<p>autre</p>' })
     await open()
     await userEvent.click(page.getByRole('button', { name: 'Edit the template…' }))
 

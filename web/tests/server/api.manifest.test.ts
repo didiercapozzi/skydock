@@ -433,7 +433,7 @@ describe('changes made on the board', () => {
         })
       ])
       const res = refusal(await send({ intent: 'free-montage', groupId: 'group_1' }))
-      expect(res.globalErrors?.[0]).toContain('Connect the NAS')
+      expect(res.globalErrors?.[0]).toContain('Connect the storage')
     })
   })
 
@@ -447,11 +447,26 @@ describe('changes made on the board', () => {
           emailed: { folder: '/SkyDock/Passengers/Luc Favre', sent: true }
         })
       )
-      expect(res.globalErrors?.[0]).toContain('Connect the NAS')
+      expect(res.globalErrors?.[0]).toContain('Connect the storage')
     })
   })
 
   describe('saving the board', () => {
+    /* a dropzone is a folder beside the montages' own (RULES, Places) */
+    it('refuses a new dropzone named like the montages’ folder, whatever its case', async () => {
+      writeManifest([])
+
+      const res = refusal(
+        await send({
+          intent: 'save-groups',
+          groups: [],
+          destinations: [{ name: 'Yverdon' }, { name: 'montages' }]
+        })
+      )
+
+      expect(res.globalErrors?.[0]).toContain('montages are kept')
+    })
+
     it('needs the list it is meant to save', async () => {
       writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
       const res = refusal(await send({ intent: 'save-groups' }))
@@ -494,6 +509,29 @@ describe('changes made on the board', () => {
 
       expect(res.globalErrors?.[0]).toBe(UPLOADED_LOCKED)
       expect(loadManifest(path.join(tmpDir, 'manifest.json'))?.files[0]?.cropStart).toBe(2)
+    })
+
+    /* What only the server does — an upload, a freeing, a link, a project — is kept as the server
+       has it: a page open while it happened sends what it last saw, and must not undo it. */
+    it('keeps a jump’s upload and link when a page that never saw them saves', async () => {
+      const a = file({ id: 'a' })
+      writeManifest([
+        group({
+          id: 'group_1',
+          files: [a],
+          uploaded: { at: 5, shareUrl: 'https://nas/sharing/x' },
+          publish: { shareUrl: 'https://nas/sharing/x' }
+        })
+      ])
+
+      const res = answer(
+        await send({ intent: 'save-groups', groups: [group({ id: 'group_1', files: [a] })] })
+      )
+
+      expect(res.groups[0]).toMatchObject({
+        uploaded: { at: 5, shareUrl: 'https://nas/sharing/x' },
+        publish: { shareUrl: 'https://nas/sharing/x' }
+      })
     })
 
     it('saves an uploaded file sent back exactly as it is', async () => {
@@ -1076,6 +1114,61 @@ describe('changes made on the board', () => {
 
       expect(res.success).toBe(false)
       expect(res.globalErrors?.[0]).toContain('no longer on the board')
+    })
+  })
+
+  /* several montages go up one after the other; one that cannot go says why, by name, and the
+     others still go (RULES, Uploading a montage) */
+  describe('uploading several montages', () => {
+    it('says which could not go, and why, when none could', async () => {
+      writeManifest([
+        group({ id: 'm1', montageJump: true, passenger: { firstname: 'Luc', lastname: 'Favre' } }),
+        group({
+          id: 'm2',
+          montageJump: true,
+          passenger: { firstname: 'Chloé', lastname: 'Perret' }
+        })
+      ])
+
+      const res = refusal(await send({ intent: 'upload-montages', groupIds: ['m1', 'm2'] }))
+
+      expect(res.success).toBe(false)
+      expect(res.globalErrors?.[0]).toContain('Luc Favre:')
+      expect(res.globalErrors?.[0]).toContain('Chloé Perret:')
+    })
+
+    it('refuses an empty list', async () => {
+      writeManifest([])
+
+      const res = refusal(await send({ intent: 'upload-montages', groupIds: [] }))
+
+      expect(res.globalErrors?.[0]).toBe('Nothing to upload.')
+    })
+  })
+
+  /* paid is said once for the montage, and a page that did not see it cannot undo it (RULES, The
+     overview) */
+  describe('a montage marked paid', () => {
+    const luc = { firstname: 'Luc', lastname: 'Favre' }
+
+    it('is paid for every jump of it', async () => {
+      writeManifest([
+        group({ id: 'm1', montageJump: true, passenger: luc }),
+        group({ id: 'm2', montageJump: true, passenger: luc })
+      ])
+
+      const res = answer(await send({ intent: 'mark-paid', groupId: 'm1', paid: true }))
+
+      expect(res.groups.map((g) => g.paid)).toEqual([true, true])
+    })
+
+    it('stays paid when a page that did not see it saves its jumps', async () => {
+      const before = writeManifest([group({ id: 'm1', montageJump: true, passenger: luc })])
+      await send({ intent: 'mark-paid', groupId: 'm1', paid: true })
+
+      const res = answer(await send({ intent: 'save-groups', groups: before.groups }))
+
+      expect(res.groups[0]?.paid).toBe(true)
     })
   })
 })

@@ -13,18 +13,20 @@ import {
   statProcessedOutputs,
   statProxies,
   statMontageArtifacts,
-  montagesRemoteDir
+  montagesRemoteDir,
+  messageOf
 } from '@skydock/scripts'
 import type { MontageEntry, MontageLost } from '@skydock/scripts'
 import { keepBackupAsPlace } from '../../../packages/skydock-scripts/src/destinations'
 import { diskSpace } from '../../../packages/skydock-scripts/src/diskSpace'
 import { lostOnStorage, readMontageIndex } from '../../../packages/skydock-scripts/src/montageIndex'
 import { t } from '@lingui/core/macro'
+import { useEffect } from 'react'
 import { Outlet } from 'react-router'
 import type { ShouldRevalidateFunctionArgs } from 'react-router'
 import { BoardHeader } from '../components/board-header'
 import type { NasLink } from '../components/board-header'
-import { Callout } from '../components/callout'
+import { Notice } from '../components/notice'
 import { DialogHost } from '../components/dialog-host'
 import { CameraPanel } from '../components/camera-panel'
 import { ImportPanel } from '../components/import-panel'
@@ -32,9 +34,10 @@ import { UploadPanel } from '../components/upload-panel'
 import { PlacesTree } from '../components/places-tree'
 import { formatTime } from '../components/utils'
 import { fromComputer } from '../helpers/import'
+import { typingInField } from '../helpers/keys'
+import { routingEngine } from '../helpers/routing'
 import { useBoardModel } from '../hooks/useBoardModel'
 import type { Route } from './+types/board'
-import { messageOf } from '@skydock/scripts'
 
 /* The board's data is read once, and every change comes back in the answer the endpoint gives: the
    board adopts that answer, so reading everything again — the disk, and the storage over the
@@ -90,6 +93,8 @@ const loader = async (_args: Route.LoaderArgs) => {
            from, and never moves after (RULES, Network storage) */
         const settled = settleListsDir(manifest) ?? session
         remote = await listRemoteFiles(manifest, settled)
+        /* the board as it is once the storage has answered — a file may have landed meanwhile */
+        manifest = loadManifest(`${outputDir}/manifest.json`) ?? manifest
         /* footage that is nowhere is not listed: a freed file the storage no longer holds has
            nothing left anywhere, so the app forgets it rather than offering a dead row */
         const forgotten = forgetLostFiles(manifest, remote)
@@ -171,15 +176,33 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const model = useBoardModel(loaderData)
   const { board, nas, drag, setDialog } = model
   const { groups, loose, places, note, setNote, send } = board
+  const dialogOpen = model.dialog !== null
+  /* ? opens the list of every key the board knows — a key of the whole window, so it listens there */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== '?' || dialogOpen || typingInField(e)) return
+      e.preventDefault()
+      setDialog({ kind: 'shortcuts' })
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [dialogOpen, setDialog])
 
   if (!board.hasManifest) {
     return (
       <main className='mx-auto max-w-5xl p-6'>
         <h1 className='text-[15px] font-bold tracking-[-0.02em]'>{t`Nothing here yet`}</h1>
         <p className='mt-2 text-[12.5px] text-ink-2'>
-          {t`Copy the cameras into the output folder, then scan to find the jumps.`}
+          {t`Plug a camera in — it is copied off by itself — or copy its files into the work folder, then scan to find the jumps.`}
         </p>
-        {note && <Callout tone='warn'>{note}</Callout>}
+        {note && (
+          <Notice
+            problem={board.noteIsProblem}
+            onClose={() => setNote(null)}
+            className='mt-3 rounded-r-md border-l-[3px] px-3 py-[9px]'>
+            {note}
+          </Notice>
+        )}
         <button
           type='button'
           disabled={board.scanning}
@@ -199,8 +222,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           label: nas.checking ? t`Checking the storage…` : t`Check the storage again`,
           mark: '⟳',
           title: checkedAt
-            ? `${t`Ask the NAS what it holds now — a file deleted there stops reading as uploaded.`} ${t`Last checked ${checkedAt}.`}`
-            : t`Ask the NAS what it holds now — a file deleted there stops reading as uploaded.`,
+            ? `${t`Ask the storage what it holds now — a file deleted there stops reading as uploaded.`} ${t`Last checked ${checkedAt}.`}`
+            : t`Ask the storage what it holds now — a file deleted there stops reading as uploaded.`,
           disabled: nas.checking,
           onClick: nas.checkRemote
         },
@@ -212,7 +235,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           onClick: () => setDialog({ kind: 'disconnect' })
         }
       ]
-    : [{ label: t`Connect the NAS`, onClick: model.openConnect }]
+    : [{ label: t`Connect the storage`, onClick: model.openConnect }]
 
   /* a dialog that ends in a change closes, then asks for it */
   const closeThen = (then: () => void) => {
@@ -236,7 +259,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       onDrop={(e) => {
         e.preventDefault()
         if (!fromComputer(e)) return
-        setNote(t`Drop a clip on a place, a montage or a jump to add it.`)
+        setNote(t`Drop a clip on a destination, a montage or a jump to add it.`)
       }}
       className='flex h-screen flex-col'>
       <BoardHeader
@@ -244,6 +267,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         onScan={board.scan}
         onTemplates={() => setDialog({ kind: 'templates' })}
         onWorkFolder={() => setDialog({ kind: 'work-folder' })}
+        onHistory={() => setDialog({ kind: 'history' })}
+        onShortcuts={() => setDialog({ kind: 'shortcuts' })}
+        onOverview={() => setDialog({ kind: 'overview' })}
+        onBookings={() => setDialog({ kind: 'booking-list' })}
+        find={model.findAnything}
         proxies={board.proxyProgress}
         disk={board.disk ?? loaderData.disk}
         nas={{ connected: nas.connected, host: nas.host, user: nas.user, links: nasLinks }}
@@ -314,6 +342,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             if (mode === 'delete') model.pickPlace({ kind: 'sort' })
           })
         }
+        onDeleteJump={(group) => closeThen(() => model.deleteJump(group, true))}
         onResetFresh={(what) =>
           closeThen(() => {
             model.clearSelection()
@@ -324,6 +353,21 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         passengers={model.passengers}
         onNameMontage={(what, passenger) => closeThen(() => model.nameDropped(what, passenger))}
         onRemoveFiles={(to, files) => closeThen(() => model.removeTo(to, files))}
+        onGoBack={(step) => closeThen(() => send('go-back', { intent: 'go-back', step }))}
+        overview={{
+          rows: model.overviewRows,
+          busy: board.busy !== null || board.uploading !== null,
+          onGo: (who) => closeThen(() => model.pickPlace({ kind: 'pax', name: who })),
+          onStep: (id, step) => {
+            const group = groups.find((g) => g.id === id)
+            if (!group) return
+            /* a step that opens a dialog of its own replaces this one; the rest leave it open */
+            model.takeStep(group, step)
+          },
+          onProcessAll: (ids) => send('process', { intent: 'process', groupIds: ids }),
+          onUploadAll: (ids) => closeThen(() => model.uploadAll(ids)),
+          onPaid: (id, paid) => send('paid', { intent: 'mark-paid', groupId: id, paid })
+        }}
         workFolder={{
           folder: loaderData.outputDir,
           /* the folder is not left while something is being written into it */
@@ -345,7 +389,16 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           being copied in, and the upload going out — one above the other when several are */}
       {(model.coming || board.uploading || board.cameraCopy) && (
         <div className='fixed right-4 bottom-4 z-40 flex flex-col items-end gap-2'>
-          {board.cameraCopy && <CameraPanel copy={board.cameraCopy} />}
+          {board.cameraCopy && (
+            <CameraPanel
+              copy={board.cameraCopy}
+              onStop={() =>
+                void routingEngine
+                  .action({ url: '/api/camera', actionArgs: { stop: true } })
+                  .catch(() => null)
+              }
+            />
+          )}
           {board.uploading && (
             <UploadPanel
               label={board.uploadLabel ?? ''}

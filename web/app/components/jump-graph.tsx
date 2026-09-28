@@ -218,7 +218,7 @@ const JumpGraph = ({
           ))}
         </svg>
         <span
-          className='pointer-events-none absolute left-1 font-mono text-[9px] text-ink-3'
+          className='pointer-events-none absolute left-1 font-mono text-[10px] text-ink-3'
           style={{ top: HEIGHT - (1 / FORCE_TO) * HEIGHT - 12 }}>
           1 g
         </span>

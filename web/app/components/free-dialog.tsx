@@ -1,6 +1,6 @@
 import { lastSegment } from '@skydock/scripts'
 import { plural, t } from '@lingui/core/macro'
-import { Go, Mini } from './buttons'
+import { Danger, Mini } from './buttons'
 import { Line, Modal, Spacer } from './modal'
 import { formatFilmSize } from './utils'
 import type { ManifestGroup } from './types'
@@ -46,8 +46,8 @@ const FreeDialog = ({
       footer={
         <>
           <Spacer />
-          <Mini onClick={onClose}>{t`Close`}</Mini>
-          <Go onClick={onConfirm}>{t`Check and free about ${about}`}</Go>
+          <Mini onClick={onClose}>{t`Cancel`}</Mini>
+          <Danger onClick={onConfirm}>{t`Check and free about ${about}`}</Danger>
         </>
       }>
       <p className='m-0 text-[12.5px] font-semibold text-ink'>{t`Proved first`}</p>

@@ -1,7 +1,8 @@
-/* The board has three buttons. `Go` is the one thing a panel is asking to be done next, and there is
+/* The board has four buttons. `Go` is the one thing a panel is asking to be done next, and there is
    never more than one of it in view; `Mini` is everything else — small, quiet, and at the right-hand
    end of the line it belongs to; `ToBin` is putting files in the bin, always red and always with its
-   icon, so the one way off the board is never mistaken for another (RULES, The board). Keeping them
+   icon, so the one way off the board is never mistaken for another; `Danger` is the same red without
+   the bin, for what deletes or lets go of something that is not going to the bin (RULES, The board). Keeping them
    here is what stops a fourth from being invented inline. */
 
 type Props = {
@@ -60,14 +61,13 @@ const BinIcon = () => (
   </svg>
 )
 
-/* Putting files in the bin, at the size of the buttons around it: a `Mini` in a panel, a `Go` at the
-   foot of a dialog. */
-const ToBin = ({
+/* Red, at the size of the buttons around it: a `Mini` in a panel, a `Go` at the foot of a dialog. */
+const Danger = ({
   children,
   title,
   disabled,
   onClick,
-  size = 'mini'
+  size = 'go'
 }: Omit<Props, 'type' | 'form' | 'pressed'> & { size?: 'mini' | 'go' }) => (
   <button
     type='button'
@@ -77,9 +77,22 @@ const ToBin = ({
     className={`inline-flex items-center gap-1.5 rounded-[5px] border border-bin bg-bin text-white hover:brightness-110 disabled:cursor-default disabled:opacity-45 ${
       size === 'go' ? 'px-3 py-1 text-[12px] font-semibold' : 'px-2 py-[3px] text-[11.5px]'
     }`}>
-    <BinIcon />
     {children}
   </button>
+)
+
+/* Putting files in the bin: red, and with its icon. */
+const ToBin = ({
+  children,
+  size = 'mini',
+  ...rest
+}: Omit<Props, 'type' | 'form' | 'pressed'> & { size?: 'mini' | 'go' }) => (
+  <Danger
+    size={size}
+    {...rest}>
+    <BinIcon />
+    {children}
+  </Danger>
 )
 
 /* A run of choices where exactly one is on: rows or thumbnails, auto or light or dark. The pressed
@@ -122,4 +135,4 @@ const Seg = <T extends string>({
   </span>
 )
 
-export { Go, Mini, Seg, ToBin }
+export { Danger, Go, Mini, Seg, ToBin }

@@ -73,7 +73,7 @@ const ResetFreshDialog = ({
         onChoose={() => onReset('everything')}
       />
       <p className='m-0 rounded-r-md border-l-[3px] border-local bg-local-soft px-3 py-[9px] text-[12px] text-ink-2'>
-        {t`Either way, nothing filed to a dropzone or a passenger is touched, and no original file is.`}
+        {t`Either way, nothing filed to a destination or a montage is touched, and no original file is.`}
       </p>
     </Modal>
   )

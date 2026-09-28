@@ -40,7 +40,7 @@ const liveEventSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('camera'),
     camera: z.string(),
-    state: z.enum(['copying', 'done', 'gone', 'failed']),
+    state: z.enum(['copying', 'done', 'gone', 'failed', 'stopped']),
     done: z.number(),
     total: z.number(),
     copied: z.number(),
@@ -49,11 +49,13 @@ const liveEventSchema = z.discriminatedUnion('kind', [
     /* every file on the card, said once as the copy starts */
     files: z.array(z.object({ name: z.string(), size: z.number() })).optional(),
     /* how the file just finished went */
-    last: z.enum(['copied', 'skipped']).optional(),
+    last: z.enum(['copied', 'skipped', 'failed']).optional(),
+    /* files the card would not give up, passed over */
+    unreadable: z.array(z.string()).optional(),
     /* how far through the file being copied now, between 0 and 1 */
     part: z.number().optional(),
     /* how every finished file went, in order — kept for a board that starts listening mid-copy */
-    outcomes: z.array(z.enum(['copied', 'skipped'])).optional()
+    outcomes: z.array(z.enum(['copied', 'skipped', 'failed'])).optional()
   }),
   /* the room left on the output folder's disk, said when it changes enough to matter */
   z.object({

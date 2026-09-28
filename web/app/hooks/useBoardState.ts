@@ -77,9 +77,16 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
         : 'process'
       : null
   )
-  const [note, setNote] = useState<string | null>(
-    running ? t`Still processing — the board updates itself when it is done` : null
+  /* The one line the board says after anything happens. A refusal is told apart from news — in its
+     colour, and to a screen reader, which interrupts for it — because "nothing happened, and why"
+     read as good news is how work gets lost. */
+  const [spoken, setSpoken] = useState<{ text: string; problem: boolean } | null>(
+    running
+      ? { text: t`Still processing — the board updates itself when it is done`, problem: false }
+      : null
   )
+  const setNote = (text: string | null) => setSpoken(text ? { text, problem: false } : null)
+  const setProblem = (text: string) => setSpoken({ text, problem: true })
   const [loose, setLoose] = useState<ManifestFile[]>(loaded.looseFiles)
   const [places, setPlaces] = useState<Destination[]>(loaded.destinations)
   /* A page loaded mid-upload takes it up the same way: the upload shows as going, no Upload is
@@ -93,7 +100,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   const [montageFacts, setMontageFacts] = useState<Record<string, MontageFact>>(loaded.montages)
   /* files being processed or proxied right now, and how far through; a proxy that lands is
      flagged at once, since the event carries what the server read off the disk */
-  const live = useLiveProgress(setProxies, setMontageFacts, setNote)
+  const live = useLiveProgress(setProxies, setMontageFacts, setSpoken)
   const liveFiles = live.files
   const [remoteAfterUpload, setRemoteAfterUpload] = useState<CheckedListing | null>(null)
   /* the storage's list of montages, as the loader read it or as the last change wrote it */
@@ -135,6 +142,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
         copiedBack,
         broughtBack,
         fromBin,
+        wentBack,
         storage: listed,
         storageProblem
       } = answered.data
@@ -184,13 +192,15 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
                                       ? broughtBackNote(broughtBack)
                                       : fromBin
                                         ? fromBinNote(fromBin)
-                                        : null
+                                        : wentBack
+                                          ? t`The board is back as it was — Settings › History can undo this too.`
+                                          : null
       /* the work stands even when the list could not follow it, and that is said alongside */
-      if (!quiet)
-        setNote(storageProblem ? [said, storageProblem].filter(Boolean).join(' · ') : said)
+      if (!quiet && storageProblem) setProblem([said, storageProblem].filter(Boolean).join(' · '))
+      else if (!quiet) setNote(said)
     } else {
       const refused = refusalSchema.safeParse(data)
-      if (refused.success) setNote(refused.data.globalErrors?.[0] ?? t`Request failed`)
+      if (refused.success) setProblem(refused.data.globalErrors?.[0] ?? t`Request failed`)
     }
   }
 
@@ -232,12 +242,19 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   /* A camera's copy has ended — its files are copied and scanned on the machine — so the board asks
      for itself again, and hears what came off. A request to the machine is what an effect is for;
      the number of the ending is the guard, so each ending asks once. */
+  /* on a request of its own: processing or another change under way keeps its own answer */
+  const ends = useSafeFetcher()
+  const [seenEnd, setSeenEnd] = useState<unknown>(null)
+  if (ends.data && ends.data !== seenEnd) {
+    setSeenEnd(ends.data)
+    adopt(ends.data)
+  }
   const askedAfter = useRef(0)
   useEffect(() => {
     const ended = live.ended
     if (!ended || askedAfter.current === ended.seq) return
     askedAfter.current = ended.seq
-    fetcher.submit({
+    ends.submit({
       url: '/api/manifest',
       actionArgs: {
         intent: 'camera-copied',
@@ -246,11 +263,12 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
           state: ended.state,
           copied: ended.copied,
           skipped: ended.skipped,
-          ...(ended.reason ? { reason: ended.reason } : {})
+          ...(ended.reason ? { reason: ended.reason } : {}),
+          ...(ended.unreadable?.length ? { unreadable: ended.unreadable } : {})
         }
       }
     })
-  }, [live.ended, fetcher])
+  }, [live.ended, ends])
 
   /* Arriving while something is being processed: its answer is the board as it ends, asked for
      once. Asking is a request to the machine, which is what an effect is for; the guard is what
@@ -333,8 +351,10 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     hasManifest,
     busy,
     setBusy,
-    note,
+    note: spoken?.text ?? null,
+    noteIsProblem: spoken?.problem ?? false,
     setNote,
+    setProblem,
     /* the key of what is being uploaded, and how the board names it */
     uploading: upload?.key ?? null,
     uploadLabel: upload?.label ?? null,

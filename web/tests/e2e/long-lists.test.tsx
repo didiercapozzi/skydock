@@ -90,6 +90,11 @@ describe('the thumbnails', () => {
         onScan: () => {},
         onTemplates: () => {},
         onWorkFolder: () => {},
+        onHistory: () => {},
+        onShortcuts: () => {},
+        onOverview: () => {},
+        onBookings: () => {},
+        find: () => [],
         proxies: { ready: 0, waiting: 0, total: 0 },
         disk: null,
         nas: { connected: false, host: null, user: null, links: [] }
