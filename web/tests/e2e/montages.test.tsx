@@ -9,6 +9,7 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
   return { ...actual, loadManifest: vi.fn(() => null) }
 })
 
+import { speak } from '../../app/i18n'
 import { boardRoute } from './board-route'
 
 /* A montage is named once, and naming is making: a jump or picked files in Fresh files become one,
@@ -200,14 +201,14 @@ describe('a montage emptied', () => {
     return renderBoard({ groups: shown.groups }, '/montage/Boogie 2026', shown)
   }
   const fresh = () => page.getByRole('heading', { name: /^Fresh files/ })
-  const takeOut = () => page.getByRole('dialog', { name: 'Take out of the montage' })
+  const takeOut = () => page.getByRole('dialog', { name: 'Remove files' })
 
   test('goes back to Fresh files once its last file is sent back', async () => {
     await at([file('m', AT)])
     await userEvent.click(page.getByRole('button', { name: /m\.MP4/ }).first())
 
     await userEvent.keyboard('{Delete}')
-    await userEvent.click(takeOut().getByRole('button', { name: 'Back to Fresh files' }))
+    await userEvent.click(takeOut().getByRole('button', { name: 'Loose in Fresh files' }))
 
     await vi.waitFor(() => expect(sent).toContainEqual(expect.objectContaining({ intent: 'move-files', fileIds: ['m'] })))
     await expect.element(fresh()).toBeVisible()
@@ -218,7 +219,7 @@ describe('a montage emptied', () => {
     await userEvent.click(page.getByRole('button', { name: /m\.MP4/ }).first())
 
     await userEvent.keyboard('{Delete}')
-    await userEvent.click(takeOut().getByRole('button', { name: 'Back to Fresh files' }))
+    await userEvent.click(takeOut().getByRole('button', { name: 'Loose in Fresh files' }))
 
     await vi.waitFor(() => expect(sent).toContainEqual(expect.objectContaining({ intent: 'move-files', fileIds: ['m'] })))
     await expect.element(pageHeading('Boogie 2026')).toBeVisible()
@@ -232,7 +233,7 @@ describe('files taken out of a montage', () => {
     const shown = { ...board, groups: [...board.groups, montage(['Boogie', '2026'], files)] }
     return renderBoard({ groups: shown.groups }, '/montage/Boogie 2026', shown)
   }
-  const takeOut = () => page.getByRole('dialog', { name: 'Take out of the montage' })
+  const takeOut = () => page.getByRole('dialog', { name: 'Remove files' })
 
   test('ask whether they go back to Fresh files or into the bin, and move nothing until then', async () => {
     await at([file('m', AT), file('n', AT + 60)])
@@ -240,7 +241,7 @@ describe('files taken out of a montage', () => {
 
     await userEvent.keyboard('{Delete}')
 
-    await expect.element(takeOut().getByRole('button', { name: 'Back to Fresh files' })).toBeVisible()
+    await expect.element(takeOut().getByRole('button', { name: 'Loose in Fresh files' })).toBeVisible()
     await expect.element(takeOut().getByRole('button', { name: 'Put in the bin' })).toBeVisible()
     expect(sent).toEqual([])
   })
@@ -335,5 +336,71 @@ describe('dropped on the Montages heading', () => {
     await userEvent.click(naming().getByRole('button', { name: 'Make montage' }))
 
     expect(sent[0]).toMatchObject({ intent: 'make-montage', fileIds: ['a', 'b'], name: 'Boogie 2026' })
+  })
+})
+
+/* Removing files asks the one question every time, wherever they are (RULES, Putting files in the
+   bin): loose in Fresh files, or into the bin. */
+describe('removing files', () => {
+  const removing = () => page.getByRole('dialog', { name: 'Remove files' })
+
+  test('out of a jump in Fresh files asks, and moves nothing until answered', async () => {
+    await renderBoard({ groups: board.groups })
+    await userEvent.click(card(/^Sunset load, /))
+    await userEvent.click(page.getByRole('button', { name: /a\.MP4/ }).last())
+
+    await userEvent.keyboard('{Delete}')
+
+    await expect.element(removing().getByRole('button', { name: 'Loose in Fresh files' })).toBeVisible()
+    await expect.element(removing().getByRole('button', { name: 'Put in the bin' })).toBeVisible()
+    expect(sent).toEqual([])
+  })
+
+  test('out of a dropzone asks too, and goes into the bin when that is chosen', async () => {
+    await renderBoard({ groups: board.groups }, '/dropzone/Yverdon')
+    await userEvent.click(page.getByRole('button', { name: /y\.MP4/ }).last())
+
+    await userEvent.keyboard('{Delete}')
+    await expect.element(removing().getByText(/from Yverdon/)).toBeVisible()
+    await userEvent.click(removing().getByRole('button', { name: 'Put in the bin' }))
+
+    await vi.waitFor(() => expect(sent).toContainEqual({ intent: 'trash-unsorted', fileIds: ['y'] }))
+  })
+
+  /* a loose file in Fresh files has nowhere further back to go: only the bin is left */
+  test('already loose in Fresh files offers only the bin', async () => {
+    await renderBoard({ groups: board.groups })
+    await userEvent.click(card(/^Loose files, /))
+    await userEvent.click(page.getByRole('button', { name: /solo\.MP4/ }).last())
+
+    await userEvent.keyboard('{Delete}')
+
+    await expect.element(removing().getByRole('button', { name: 'Put in the bin' })).toBeVisible()
+    await expect.element(removing().getByRole('button', { name: 'Loose in Fresh files' })).not.toBeInTheDocument()
+  })
+})
+
+/* a day is written out in words, in the language the board speaks */
+describe('files grouped by day', () => {
+  test('are headed by their day, written out', async () => {
+    await renderBoard({ groups: board.groups })
+
+    await userEvent.click(page.getByRole('group', { name: 'Group' }).getByRole('button', { name: 'By day' }))
+
+    await expect.element(page.getByText(/1 August 2026/).first()).toBeVisible()
+    await expect.element(page.getByText(/object Object/)).not.toBeInTheDocument()
+  })
+
+  test('are written the way the language the board speaks writes them', async () => {
+    speak('fr')
+    try {
+      await renderBoard({ groups: board.groups })
+
+      await userEvent.click(page.getByRole('group', { name: 'Grouper' }).getByRole('button', { name: 'Par jour' }))
+
+      await expect.element(page.getByText(/1 août 2026/).first()).toBeVisible()
+    } finally {
+      speak('en')
+    }
   })
 })

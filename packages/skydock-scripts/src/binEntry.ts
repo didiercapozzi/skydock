@@ -13,11 +13,13 @@ const binFileSchema = z.object({
 const binBatchSchema = z.object({
   /* its folder in the bin, which is what it is known by */
   folder: z.string(),
-  from: z.enum(['fresh', 'montage', 'camera', 'other']),
+  from: z.enum(['fresh', 'montage', 'dropzone', 'camera', 'other']),
   /* the camera it came off, for a camera's files */
   camera: z.string().optional(),
   /* the montage it was taken out of, as its folder is named */
   montage: z.string().optional(),
+  /* the dropzone it was taken out of, as its folder is named */
+  dropzone: z.string().optional(),
   /* when it was put aside */
   at: z.number(),
   files: z.array(binFileSchema)

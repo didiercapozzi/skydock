@@ -33,12 +33,14 @@ const fromOf = (folder: string) =>
     ? { from: 'fresh' as const }
     : folder.startsWith('montage-')
       ? { from: 'montage' as const, montage: namedIn(folder, 'montage-') }
-      : folder.startsWith('camera-')
-        ? {
-            from: 'camera' as const,
-            camera: namedIn(folder, 'camera-')
-          }
-        : { from: 'other' as const }
+      : folder.startsWith('dropzone-')
+        ? { from: 'dropzone' as const, dropzone: namedIn(folder, 'dropzone-') }
+        : folder.startsWith('camera-')
+          ? {
+              from: 'camera' as const,
+              camera: namedIn(folder, 'camera-')
+            }
+          : { from: 'other' as const }
 
 /* every picture and film under a folder of the bin, however deep it was kept */
 const filesUnder = (dir: string): BinFile[] =>

@@ -24,7 +24,6 @@ const header = (over: Partial<Parameters<typeof BoardHeader>[0]> = {}) =>
       onTemplates: () => {},
       onWorkFolder: () => {},
       proxies: { ready: 48, waiting: 2, total: 50 },
-      camera: null,
       disk: null,
       nas: {
         connected: true,
@@ -111,27 +110,6 @@ describe('the language of the board', () => {
     } finally {
       speak('en')
     }
-  })
-})
-
-/* A camera plugged in again is looked over file by file, and a file already here costs a look and
-   not a copy — said as it goes, so looking over a card is never taken for copying all of it again
-   (RULES, Copying a camera off). */
-describe('a camera being looked over', () => {
-  test('says how many are here already, and how many are new', async () => {
-    await header({
-      camera: { camera: 'HERO5 Black', done: 120, total: 300, copied: 2, skipped: 118 }
-    })
-
-    await expect.element(page.getByText('2 new · 118 here already')).toBeVisible()
-  })
-
-  test('says nothing of the sort while everything is new', async () => {
-    await header({
-      camera: { camera: 'HERO5 Black', done: 3, total: 300, copied: 3, skipped: 0 }
-    })
-
-    await expect.element(page.getByText(/here already/)).not.toBeInTheDocument()
   })
 })
 

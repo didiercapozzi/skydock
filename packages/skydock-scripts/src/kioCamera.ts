@@ -135,7 +135,8 @@ const copyOverKio = async ({
   const here = hereAlready(outputDir)
   const board = manifest ? [...manifest.files, ...manifest.groups.flatMap((g) => g.files)] : []
   const progress: CopyProgress = { done: 0, total: clips.length, copied: 0, skipped: 0 }
-  onProgress?.({ ...progress })
+  /* how big each is, the camera says only when asked, clip by clip */
+  onProgress?.({ ...progress, files: clips.map((clip) => ({ name: clip.name, size: 0 })) })
 
   const incoming = path.join(outputDir, '.incoming')
   fs.mkdirSync(incoming, { recursive: true })
@@ -146,13 +147,16 @@ const copyOverKio = async ({
       for (const [i, clip] of batch.entries()) {
         const said = told[i] ?? null
         const found = said ? here.find(clip.name, said) : null
+        let last: 'copied' | 'skipped' = 'skipped'
         if (said && (found || givenBack(board, clip.name, said.size))) {
           progress.skipped++
           onClip?.({ ...clip, size: said.size, mtime: said.mtime, original: found })
         } else {
           const fetched = await fetchInto(reader, clip, said, incoming, outputDir, here)
-          if (fetched.copied) progress.copied++
-          else progress.skipped++
+          if (fetched.copied) {
+            progress.copied++
+            last = 'copied'
+          } else progress.skipped++
           onClip?.({
             ...clip,
             size: fetched.size,
@@ -161,7 +165,7 @@ const copyOverKio = async ({
           })
         }
         progress.done++
-        onProgress?.({ ...progress })
+        onProgress?.({ ...progress, last })
       }
     }
   } finally {

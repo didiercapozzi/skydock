@@ -26,6 +26,7 @@ import { BoardHeader } from '../components/board-header'
 import type { NasLink } from '../components/board-header'
 import { Callout } from '../components/callout'
 import { DialogHost } from '../components/dialog-host'
+import { CameraPanel } from '../components/camera-panel'
 import { ImportPanel } from '../components/import-panel'
 import { UploadPanel } from '../components/upload-panel'
 import { PlacesTree } from '../components/places-tree'
@@ -33,7 +34,7 @@ import { formatTime } from '../components/utils'
 import { fromComputer } from '../helpers/import'
 import { useBoardModel } from '../hooks/useBoardModel'
 import type { Route } from './+types/board'
-import { idsOf, messageOf } from '@skydock/scripts'
+import { messageOf } from '@skydock/scripts'
 
 /* The board's data is read once, and every change comes back in the answer the endpoint gives: the
    board adopts that answer, so reading everything again — the disk, and the storage over the
@@ -244,7 +245,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         onTemplates={() => setDialog({ kind: 'templates' })}
         onWorkFolder={() => setDialog({ kind: 'work-folder' })}
         proxies={board.proxyProgress}
-        camera={board.cameraCopy}
         disk={board.disk ?? loaderData.disk}
         nas={{ connected: nas.connected, host: nas.host, user: nas.user, links: nasLinks }}
       />
@@ -323,7 +323,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         onMontage={(groupId, template) => closeThen(() => model.makeMontage(groupId, template))}
         passengers={model.passengers}
         onNameMontage={(what, passenger) => closeThen(() => model.nameDropped(what, passenger))}
-        onLeaveMontage={(to, files) => closeThen(() => model.leaveMontage(to, files))}
+        onRemoveFiles={(to, files) => closeThen(() => model.removeTo(to, files))}
         workFolder={{
           folder: loaderData.outputDir,
           /* the folder is not left while something is being written into it */
@@ -339,21 +339,13 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                     ? t`The board is busy`
                     : null
         }}
-        onTrash={(files) =>
-          closeThen(() => {
-            model.clearSelection()
-            send('trash', {
-              intent: 'trash-unsorted',
-              fileIds: idsOf(files)
-            })
-          })
-        }
       />
 
-      {/* what is on its way, in the corner, whatever page is open: files being copied in, and the
-          upload going out — one above the other when both are */}
-      {(model.coming || board.uploading) && (
+      {/* what is on its way, in the corner, whatever page is open: a camera being copied off, files
+          being copied in, and the upload going out — one above the other when several are */}
+      {(model.coming || board.uploading || board.cameraCopy) && (
         <div className='fixed right-4 bottom-4 z-40 flex flex-col items-end gap-2'>
+          {board.cameraCopy && <CameraPanel copy={board.cameraCopy} />}
           {board.uploading && (
             <UploadPanel
               label={board.uploadLabel ?? ''}

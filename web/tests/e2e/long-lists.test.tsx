@@ -91,7 +91,6 @@ describe('the thumbnails', () => {
         onTemplates: () => {},
         onWorkFolder: () => {},
         proxies: { ready: 0, waiting: 0, total: 0 },
-        camera: null,
         disk: null,
         nas: { connected: false, host: null, user: null, links: [] }
       })

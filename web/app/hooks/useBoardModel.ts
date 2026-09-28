@@ -96,27 +96,14 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     const group = groupOfFile(file)
     return !file.destination && !(group && isFiled(group))
   }
-  /* Deleting goes one step at a time: a file in a jump comes out of it and is loose; only a loose
-     file in Fresh files, deleted again, goes to the bin. */
-  const binnable = (file: ManifestFile) => inUnsorted(file) && !groupOfFile(file)
-  const inAMontage = (file: ManifestFile) => {
-    const group = groupOfFile(file)
-    return group !== undefined && isMontage(group)
-  }
-  /* a copy has nowhere to be sent back to — its original is wherever it already is — so it ends; a
-     montage's own files are asked about, since they have two ways out */
+  /* a copy has nowhere to be sent back to — its original is wherever it already is — so it ends;
+     anything else is asked about, loose in Fresh files or into the bin */
   const backLabel = (files: ManifestFile[]) =>
     files.every((f) => f.copyOf)
       ? files.length === 1
         ? t`Remove this copy (⌫)`
         : t`Remove these copies (⌫)`
-      : files.every(inAMontage)
-        ? t`Take out of the montage… (⌫)`
-        : files.every(inUnsorted)
-          ? files.length === 1
-            ? t`Take out of its jump (⌫)`
-            : t`Take out of their jumps (⌫)`
-          : t`Send back to Fresh files (⌫)`
+      : t`Remove… (⌫)`
 
   /* A montage is uploaded while the storage still holds what was sent, and not a moment longer —
      the record says what went up, the listing says whether it is still there. */
@@ -204,7 +191,6 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     updateGroups(groups, [cropped])
   }
 
-  const askTrash = (files: ManifestFile[]) => setDialog({ kind: 'trash', files })
   /* Fresh files put back, by as much as is chosen in the dialog, which says what each choice costs */
   const resetFresh = () => {
     const jumps = groups.filter((g) => !isFiled(g))
@@ -290,17 +276,18 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     if (theirs.length > 0 && left.length === 0) pickPlace({ kind: 'sort' })
   }
 
-  /* Files taken out of a montage have two ways out — back to Fresh files, or into the bin — and which
-     is asked rather than guessed (RULES, Montages). Only copies have one: they are removed, their
-     originals staying where they are. Anything else goes one step back, as it always has. */
+  /* Removing files asks every time, wherever they are: loose in Fresh files, or into the bin (RULES,
+     Putting files in the bin). Only copies have one way out: they are removed, their originals staying
+     where they are. */
   const sendBack = (files: ManifestFile[]) => {
-    if (files.length > 0 && files.every(inAMontage) && !files.every((f) => f.copyOf)) {
-      setDialog({ kind: 'leave-montage', files })
+    if (files.length === 0) return
+    if (files.every((f) => f.copyOf)) {
+      moveFiles(idsOf(files), { destination: null })
       return
     }
-    moveFiles(idsOf(files), { destination: null })
+    setDialog({ kind: 'remove-files', files })
   }
-  const leaveMontage = (to: 'fresh' | 'bin', files: ManifestFile[]) => {
+  const removeTo = (to: 'fresh' | 'bin', files: ManifestFile[]) => {
     const ids = idsOf(files)
     if (to === 'fresh') {
       moveFiles(ids, { destination: null })
@@ -624,7 +611,6 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     groupOfFile,
     fileById,
     inUnsorted,
-    binnable,
     backLabel,
     goneById,
     asOnStorage,
@@ -639,12 +625,11 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     folderFor,
     pickPlace,
     cropLoneFile,
-    askTrash,
     resetFresh,
     deleteJump,
     moveFiles,
     sendBack,
-    leaveMontage,
+    removeTo,
     addPlace,
     chooseFolder,
     coming,

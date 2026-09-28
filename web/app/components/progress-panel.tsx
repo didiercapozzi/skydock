@@ -1,4 +1,5 @@
 import { t } from '@lingui/core/macro'
+import { useState } from 'react'
 import { formatSize } from './utils'
 
 /* The panel in the corner that says what is on its way and how far it has got — files being copied
@@ -48,7 +49,8 @@ const ProgressPanel = ({
   barLabel,
   barTitle,
   doing,
-  footer
+  footer,
+  counted
 }: {
   /* what the panel is, read out */
   label: string
@@ -61,92 +63,122 @@ const ProgressPanel = ({
   /* what is done to each, said of the one under way: copying it, sending it */
   doing: string
   footer?: React.ReactNode
+  /* how far, counted, when there is no list to count it from yet */
+  counted?: { at: number; of: number }
 }) => {
+  /* folded down to its title and its count, for whoever wants the corner back while it runs */
+  const [folded, setFolded] = useState(false)
   const finished = rows.filter((r) => r.at === 'done' || r.at === 'skipped' || r.at === 'failed')
   const current = rows.findIndex((r) => r.at === 'now')
+  const count =
+    rows.length > 0
+      ? `${Math.min((current === -1 ? finished.length : current) + 1, rows.length)}/${rows.length}`
+      : counted
+        ? `${counted.at}/${counted.of}`
+        : null
   return (
     <aside
       aria-label={label}
       className='flex max-h-[min(420px,60vh)] w-[min(340px,calc(100vw-2rem))] flex-col rounded-lg border border-line bg-pane shadow-card'>
-      <div className='flex items-baseline gap-2 border-b border-line px-3 py-2'>
+      <div className={`flex items-center gap-2 px-3 py-2 ${folded ? '' : 'border-b border-line'}`}>
         <span className='min-w-0 flex-1 truncate text-[12px] font-semibold text-ink'>{title}</span>
-        {rows.length > 0 && (
-          <span className='flex-none font-mono text-[11px] text-ink-3 tabular-nums'>
-            {Math.min((current === -1 ? finished.length : current) + 1, rows.length)}/{rows.length}
-          </span>
+        {count && (
+          <span className='flex-none font-mono text-[11px] text-ink-3 tabular-nums'>{count}</span>
         )}
+        <button
+          type='button'
+          aria-expanded={!folded}
+          aria-label={folded ? t`Show the list` : t`Hide the list`}
+          title={folded ? t`Show the list` : t`Hide the list`}
+          onClick={() => setFolded(!folded)}
+          className='grid h-5 w-5 flex-none place-items-center rounded border-0 bg-transparent p-0 text-ink-3 hover:bg-line-2 hover:text-ink'>
+          <svg
+            aria-hidden='true'
+            viewBox='0 0 16 16'
+            className={`h-3.5 w-3.5 transition-transform duration-150 ${folded ? 'rotate-180' : ''}`}
+            fill='none'
+            stroke='currentColor'
+            strokeWidth='1.8'
+            strokeLinecap='round'
+            strokeLinejoin='round'>
+            <path d='M4 6l4 4 4-4' />
+          </svg>
+        </button>
       </div>
+      {!folded && (
+        <>
+          <div
+            role='progressbar'
+            aria-label={barLabel}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(through * 100)}
+            title={barTitle}
+            className='mx-3 mt-2 flex h-[4px] flex-none overflow-hidden rounded-sm bg-line-2'>
+            <i
+              className='block h-full bg-local transition-[width] duration-200'
+              style={{ width: `${Math.round(through * 100)}%` }}
+            />
+          </div>
 
-      <div
-        role='progressbar'
-        aria-label={barLabel}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Math.round(through * 100)}
-        title={barTitle}
-        className='mx-3 mt-2 flex h-[4px] flex-none overflow-hidden rounded-sm bg-line-2'>
-        <i
-          className='block h-full bg-local transition-[width] duration-200'
-          style={{ width: `${Math.round(through * 100)}%` }}
-        />
-      </div>
-
-      <ol className='mt-1 min-h-0 flex-1 overflow-y-auto px-3 py-1.5'>
-        {rows.map((row) => (
-          <li
-            key={row.key}
-            className={`py-[2px] text-[12px] ${
-              row.at === 'now'
-                ? 'text-ink'
-                : row.at === 'later'
-                  ? 'text-ink-3/70'
-                  : row.at === 'failed'
-                    ? 'text-local'
-                    : 'text-ink-3'
-            }`}>
-            <span className='flex items-baseline gap-2'>
-              <span
-                aria-hidden='true'
-                className='w-3 flex-none text-center'>
-                {MARK[row.at]}
-              </span>
-              <span
-                className={`min-w-0 flex-1 truncate ${row.at === 'now' ? 'font-semibold' : ''}`}
-                title={row.title ?? row.name}>
-                {row.name}
-              </span>
-              <span className='flex-none font-mono text-[10.5px] tabular-nums'>
-                {row.note ??
-                  (row.at === 'now' && (row.part ?? 0) > 0
-                    ? ofSize(row.part ?? 0, row.size)
-                    : formatSize(row.size))}
-              </span>
-            </span>
-            {/* The one under way gets a bar of its own. The bar above is the whole, where a single
+          <ol className='mt-1 min-h-0 flex-1 overflow-y-auto px-3 py-1.5'>
+            {rows.map((row) => (
+              <li
+                key={row.key}
+                className={`py-[2px] text-[12px] ${
+                  row.at === 'now'
+                    ? 'text-ink'
+                    : row.at === 'later'
+                      ? 'text-ink-3/70'
+                      : row.at === 'failed'
+                        ? 'text-local'
+                        : 'text-ink-3'
+                }`}>
+                <span className='flex items-baseline gap-2'>
+                  <span
+                    aria-hidden='true'
+                    className='w-3 flex-none text-center'>
+                    {MARK[row.at]}
+                  </span>
+                  <span
+                    className={`min-w-0 flex-1 truncate ${row.at === 'now' ? 'font-semibold' : ''}`}
+                    title={row.title ?? row.name}>
+                    {row.name}
+                  </span>
+                  <span className='flex-none font-mono text-[10.5px] tabular-nums'>
+                    {row.note ??
+                      (row.at === 'now' && (row.part ?? 0) > 0
+                        ? ofSize(row.part ?? 0, row.size)
+                        : formatSize(row.size))}
+                  </span>
+                </span>
+                {/* The one under way gets a bar of its own. The bar above is the whole, where a single
                 file of fifty moves it by two hundredths and looks like nothing happening — this is
                 the file itself, from nothing to full. */}
-            {row.at === 'now' && (
-              <span
-                role='progressbar'
-                aria-label={underWay(row.doing ?? doing, row.name)}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={Math.round((row.part ?? 0) * 100)}
-                className='mt-[3px] mb-[2px] ml-[20px] flex h-[3px] overflow-hidden rounded-sm bg-line-2'>
-                <i
-                  className='block h-full bg-accent transition-[width] duration-200'
-                  style={{ width: `${Math.round((row.part ?? 0) * 100)}%` }}
-                />
-              </span>
-            )}
-          </li>
-        ))}
-      </ol>
+                {row.at === 'now' && (
+                  <span
+                    role='progressbar'
+                    aria-label={underWay(row.doing ?? doing, row.name)}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round((row.part ?? 0) * 100)}
+                    className='mt-[3px] mb-[2px] ml-[20px] flex h-[3px] overflow-hidden rounded-sm bg-line-2'>
+                    <i
+                      className='block h-full bg-accent transition-[width] duration-200'
+                      style={{ width: `${Math.round((row.part ?? 0) * 100)}%` }}
+                    />
+                  </span>
+                )}
+              </li>
+            ))}
+          </ol>
 
-      {footer && (
-        <div className='flex flex-none items-center gap-2 border-t border-line px-3 py-1.5 text-[11px]'>
-          {footer}
-        </div>
+          {footer && (
+            <div className='flex flex-none items-center gap-2 border-t border-line px-3 py-1.5 text-[11px]'>
+              {footer}
+            </div>
+          )}
+        </>
       )}
     </aside>
   )

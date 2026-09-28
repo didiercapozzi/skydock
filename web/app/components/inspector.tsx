@@ -2,7 +2,7 @@ import { plural, t } from '@lingui/core/macro'
 import { hasCompletePassenger, isMontage, isVideoFile, passengerName } from '@skydock/scripts'
 import type { FileStatus, ProxyFact, MontageFact } from '@skydock/scripts'
 import { useState } from 'react'
-import { Go, Mini, ToBin } from './buttons'
+import { Go, Mini } from './buttons'
 import { StatusChip } from './file-status'
 import type { ShownStatus } from './file-status'
 import { JumpForm } from './jump-name'
@@ -352,7 +352,6 @@ const FilePanel = ({
   onOpen,
   onSendBack,
   backLabel,
-  onTrash,
   onRetime,
   montage
 }: {
@@ -364,10 +363,8 @@ const FilePanel = ({
   locked: string | null
   onOpen: () => void
   onSendBack: () => void
-  /* what sending back does from here — out of a jump, or back to Unsorted from a place */
+  /* what removing does from here: a copy ends, anything else is asked about */
   backLabel: string
-  /* in Unsorted there is nowhere to send it back to, so the way out is the bin */
-  onTrash?: () => void
   /* when it was shot, corrected on its own; absent when the file is past changing */
   onRetime?: (epoch: number) => void
   /* made a montage on its own — copied in when a place keeps it; absent when it cannot be */
@@ -469,11 +466,7 @@ const FilePanel = ({
       {!locked && (
         <Box heading={t`Move`}>
           <span>
-            {onTrash ? (
-              <ToBin onClick={onTrash}>{t`Put in the bin… (⌫)`}</ToBin>
-            ) : (
-              <Mini onClick={onSendBack}>{backLabel}</Mini>
-            )}
+            <Mini onClick={onSendBack}>{backLabel}</Mini>
           </span>
         </Box>
       )}
@@ -499,7 +492,6 @@ const ManyPanel = ({
   statusOf,
   onSendBack,
   backLabel,
-  onTrash,
   onMakeJump,
   montage,
   onClear
@@ -507,10 +499,8 @@ const ManyPanel = ({
   files: ManifestFile[]
   statusOf: (file: ManifestFile) => FileStatus
   onSendBack: () => void
-  /* what sending back does from here — out of a jump, or back to Unsorted from a place */
+  /* what removing does from here: a copy ends, anything else is asked about */
   backLabel: string
-  /* offered only when every one of them is in Unsorted */
-  onTrash?: () => void
   /* the same: gathered into a jump of their own, when the gap rule did not see them as one */
   onMakeJump?: (startsAt?: number) => void
   /* made into a montage — moved out of Fresh files, copied from anywhere else */
@@ -557,11 +547,7 @@ const ManyPanel = ({
           {onMakeJump && !making && (
             <Mini onClick={() => setMaking(true)}>{t`Make a jump of these…`}</Mini>
           )}
-          {onTrash ? (
-            <ToBin onClick={onTrash}>{t`Put in the bin… (⌫)`}</ToBin>
-          ) : (
-            <Mini onClick={onSendBack}>{backLabel}</Mini>
-          )}
+          <Mini onClick={onSendBack}>{backLabel}</Mini>
           <Mini onClick={onClear}>{t`Clear (esc)`}</Mini>
         </span>
       </Box>

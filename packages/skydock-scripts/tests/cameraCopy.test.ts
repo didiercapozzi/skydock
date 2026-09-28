@@ -87,6 +87,39 @@ describe('copying a camera off', () => {
     expect(fs.statSync(day('GX010001.MP4')).ino).toBe(before)
   })
 
+  /* the board lists the card before the first file is copied, and marks each as it goes (RULES,
+     Copying a camera off) */
+  it('names every file on the card first, then says how each one went', async () => {
+    const root = card('GOPRO', {
+      'GX010001.MP4': { bytes: 32, fill: 1, at: DAY },
+      'GX010002.MP4': { bytes: 16, fill: 2, at: DAY }
+    })
+    await copyCamera({ cameraDir: path.join(root, 'DCIM'), outputDir })
+    fs.writeFileSync(path.join(root, 'DCIM', '100GOPRO', 'GX010003.MP4'), Buffer.alloc(8, 3))
+    const said: unknown[] = []
+
+    await copyCamera({
+      cameraDir: path.join(root, 'DCIM'),
+      outputDir,
+      onProgress: (p) => said.push(p)
+    })
+
+    expect(said[0]).toMatchObject({
+      done: 0,
+      total: 3,
+      files: [
+        { name: 'GX010001.MP4', size: 32 },
+        { name: 'GX010002.MP4', size: 16 },
+        { name: 'GX010003.MP4', size: 8 }
+      ]
+    })
+    expect(said.slice(1).map((p) => (p as { last: string }).last)).toEqual([
+      'skipped',
+      'skipped',
+      'copied'
+    ])
+  })
+
   /* two cameras of one make both start at GX010001 — the second must never write over the first */
   it('keeps a second camera’s clip of the same name beside the first, never over it', async () => {
     const first = card('GOPRO_A', { 'GX010001.MP4': { bytes: 32, fill: 1, at: DAY } })

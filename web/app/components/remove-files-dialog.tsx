@@ -5,18 +5,23 @@ import { Modal, Spacer } from './modal'
 import { formatSize } from './utils'
 import type { ManifestFile } from './types'
 
-/* Files taken out of a montage have two ways out, and which one is said before anything moves (RULES,
-   Montages): back to Fresh files, loose, to be filed again — or into the bin, off the board and out
-   of the originals, to be brought back from the Bin page if they were wanted after all. A copy is
-   the montage's own hold on a file that stays where it is, so it cannot go to the bin. */
-const LeaveMontageDialog = ({
-  who,
+/* Removing files asks the one question every time, wherever they are (RULES, Putting files in the
+   bin): loose in Fresh files, to be filed again — or into the bin, off the board and out of the
+   originals, to be brought back from the Bin page if they were wanted after all. Files already loose
+   in Fresh files have only the bin left. A copy is a jump's own hold on a file that stays where it
+   is, so it cannot go to the bin. */
+const RemoveFilesDialog = ({
+  from,
   files,
+  canLoose,
   onClose,
   onChoose
 }: {
-  who: string
+  /* where they are being removed from, named as the board names it; none when from several places */
+  from: string | null
   files: ManifestFile[]
+  /* whether they have somewhere to go back to — not when already loose in Fresh files */
+  canLoose: boolean
   onClose: () => void
   onChoose: (to: 'fresh' | 'bin') => void
 }) => {
@@ -31,10 +36,11 @@ const LeaveMontageDialog = ({
     .join(t` and `)
   const inAll = formatSize(files.reduce((n, f) => n + f.size, 0))
   const copies = files.some((f) => f.copyOf)
+  const counted = plural(count, { one: '# file', other: '# files' })
   return (
     <Modal
-      label={t`Take out of the montage`}
-      title={t`Take ${plural(count, { one: '# file', other: '# files' })} out of ${who}?`}
+      label={t`Remove files`}
+      title={from ? t`Remove ${counted} from ${from}?` : t`Remove ${counted}?`}
       onClose={onClose}
       footer={
         <>
@@ -49,7 +55,7 @@ const LeaveMontageDialog = ({
             onClick={() => onChoose('bin')}>
             {t`Put in the bin`}
           </ToBin>
-          <Go onClick={() => onChoose('fresh')}>{t`Back to Fresh files`}</Go>
+          {canLoose && <Go onClick={() => onChoose('fresh')}>{t`Loose in Fresh files`}</Go>}
         </>
       }>
       <p className='m-0 text-[12.5px] text-ink-2'>
@@ -66,13 +72,15 @@ const LeaveMontageDialog = ({
         .
       </p>
       <ul className='m-0 flex list-none flex-col gap-1.5 p-0 text-[12.5px] text-ink-2'>
-        <li>
-          <b className='text-ink'>{t`Back to Fresh files`}</b> —{' '}
-          {t`loose, on their camera's time, to be filed again. Their trims are kept.`}
-        </li>
+        {canLoose && (
+          <li>
+            <b className='text-ink'>{t`Loose in Fresh files`}</b> —{' '}
+            {t`on their camera's time, to be filed again. Their trims are kept.`}
+          </li>
+        )}
         <li>
           <b className='text-ink'>{t`Put in the bin`}</b> —{' '}
-          {t`off the board and out of the originals, moved to the bin, not erased. They can be brought back from the Bin page.`}
+          {t`off the board and out of the originals, moved to the bin, not erased. They can be brought back from the Bin page. If the camera card has been wiped, the bin holds the only copy.`}
         </li>
       </ul>
       {copies && (
@@ -84,4 +92,4 @@ const LeaveMontageDialog = ({
   )
 }
 
-export { LeaveMontageDialog }
+export { RemoveFilesDialog }

@@ -2,19 +2,17 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { moveFile } from './lib/fs'
 import { getProxyPath } from './proxy'
-import { isFiled, isMontage } from './filed'
+import { isMontage } from './filed'
 import { slugOf } from './sending'
 import { passengerOf } from './workspace'
 import type { Manifest } from './types'
 import { getTrashDir } from './utils'
-import { idsOf } from './lib/words'
 
 /* Files nobody wants — a test shot, footage of the ground — are put in the bin rather than deleted
-   (RULES, Putting files in the bin). From Fresh files, or out of a montage when that is what is
-   chosen: a file filed to a dropzone is that place's, and sending it back to Fresh files is the step
-   that says it no longer is. The file leaves the originals folder, so a scan does not find it again,
-   and nothing is erased: the bin is never emptied by SkyDock, and a file can be brought back out of
-   it. */
+   (RULES, Putting files in the bin), from wherever they are, once that is the way out chosen for
+   them. Not a file already on the storage: what went up is somebody's, and not the board's to throw
+   away. The file leaves the originals folder, so a scan does not find it again, and nothing is
+   erased: the bin is never emptied by SkyDock, and a file can be brought back out of it. */
 
 const trashUnsorted = async (
   manifest: Manifest,
@@ -22,20 +20,18 @@ const trashUnsorted = async (
   outputDir: string,
   trashDir = getTrashDir()
 ) => {
-  const atPlace = new Set(
-    manifest.groups.filter((g) => isFiled(g) && !isMontage(g)).flatMap((g) => idsOf(g.files))
-  )
   const going = manifest.files.filter((f) => f.id && ids.has(f.id))
   if (going.length === 0) throw new Error('Those files are no longer on the board.')
-  if (going.some((f) => f.destination || atPlace.has(f.id ?? '')))
+  const sent = going.find((f) => f.uploaded || f.freed)
+  if (sent)
     throw new Error(
-      'Only files in Fresh files or a montage can be put in the bin — send them back to Fresh files first.'
+      `${sent.filename} is on the storage already — it is not the board’s to throw away.`
     )
   /* a copy is the jump's own hold on a file that stays where it is: it is taken out, never binned */
   const copy = going.find((f) => f.copyOf)
   if (copy)
     throw new Error(
-      `${copy.filename} is a copy — take it out of the montage instead; its original stays.`
+      `${copy.filename} is a copy — take it out of its jump instead; its original stays.`
     )
   /* the bin takes the file off the disk, and a copy of it in a jump is of that very file */
   const copied = going.find((f) => manifest.files.some((c) => c.copyOf === f.id))
@@ -47,15 +43,17 @@ const trashUnsorted = async (
   /* one folder per time the bin is asked for, keeping each file where it sat among the originals,
      so what went in together can be found together and put back where it came from */
   const originals = path.join(outputDir, 'original_files')
-  /* named after the montage they came out of, when they all came out of the one */
-  const montages = new Set(
+  /* named after the montage or the dropzone they came out of, when they all came out of the one */
+  const places = new Set(
     going.map((f) => {
-      const group = manifest.groups.find((g) => isMontage(g) && g.files.some((h) => h.id === f.id))
-      return group ? slugOf(passengerOf(group)) || 'montage' : null
+      const group = manifest.groups.find((g) => g.files.some((h) => h.id === f.id))
+      if (group && isMontage(group)) return `montage-${slugOf(passengerOf(group)) || 'montage'}`
+      const place = group?.destination ?? f.destination
+      return place ? `dropzone-${slugOf(place) || 'dropzone'}` : 'unsorted'
     })
   )
-  const [only] = [...montages]
-  const from = montages.size === 1 && only ? `montage-${only}` : 'unsorted'
+  const [only] = [...places]
+  const from = places.size === 1 && only ? only : 'unsorted'
   const bin = path.join(trashDir, `${from}-${new Date().toISOString().replace(/[:.]/g, '-')}`)
 
   for (const file of going) {

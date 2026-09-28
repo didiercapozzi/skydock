@@ -156,8 +156,7 @@ const Place = () => {
         const found = model.fileById(id)
         return found ? [found] : []
       })
-      if (files.length > 0 && files.every(model.binnable)) model.askTrash(files)
-      else model.sendBack(files)
+      model.sendBack(files)
     }
   })
   /* a change elsewhere took the picks away, or another folder was opened: let go of them */
@@ -654,7 +653,6 @@ const Inspector = ({
         locked={locked}
         onOpen={() => onOpenFile(one)}
         onSendBack={() => model.sendBack([one])}
-        onTrash={model.binnable(one) ? () => model.askTrash([one]) : undefined}
         backLabel={model.backLabel([one])}
         onRetime={
           locked
@@ -678,7 +676,6 @@ const Inspector = ({
         files={picked}
         statusOf={statusOf}
         onSendBack={() => model.sendBack(picked)}
-        onTrash={picked.every(model.binnable) ? () => model.askTrash(picked) : undefined}
         backLabel={model.backLabel(picked)}
         onMakeJump={
           fresh

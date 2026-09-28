@@ -1,6 +1,6 @@
 import { folderOfUpload, isoDay } from '@skydock/scripts'
 import type { ManifestFile, ManifestGroup } from '../components/types'
-import { MONTHS, minFileMtime, pad } from '../components/utils'
+import { dayWritten, minFileMtime, pad } from '../components/utils'
 
 /* local calendar day, built without Intl so the server and the client agree */
 const dayOfMtime = (mtime: number) => {
@@ -19,7 +19,7 @@ const dayOfFile = (file: ManifestFile) => dayOfMtime(file.mtime)
 const dayLabel = (day: string) => {
   const [year, month, date] = day.split('-').map(Number)
   if (!year || !month || !date) return day
-  return `${date} ${MONTHS[month - 1]} ${year}`
+  return dayWritten(new Date(year, month - 1, date))
 }
 
 /* a montage's folder on the storage — the one its film went to — which is what the storage's list of

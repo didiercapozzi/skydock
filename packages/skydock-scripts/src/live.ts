@@ -45,7 +45,13 @@ const liveEventSchema = z.discriminatedUnion('kind', [
     total: z.number(),
     copied: z.number(),
     skipped: z.number(),
-    reason: z.string().optional()
+    reason: z.string().optional(),
+    /* every file on the card, said once as the copy starts */
+    files: z.array(z.object({ name: z.string(), size: z.number() })).optional(),
+    /* how the file just finished went */
+    last: z.enum(['copied', 'skipped']).optional(),
+    /* how every finished file went, in order — kept for a board that starts listening mid-copy */
+    outcomes: z.array(z.enum(['copied', 'skipped'])).optional()
   }),
   /* the room left on the output folder's disk, said when it changes enough to matter */
   z.object({
@@ -108,9 +114,19 @@ const publish = (event: LiveEvent) => {
     if (event.phase === 'done') underWay.delete(`import:${event.token}`)
     else underWay.set(`import:${event.token}`, event)
   }
+  /* a copy's list is said once, so what is kept for a late listener carries it on, with how every
+     file so far went */
   if (event.kind === 'camera') {
-    if (event.state === 'copying') underWay.set(`camera:${event.camera}`, event)
-    else underWay.delete(`camera:${event.camera}`)
+    const key = `camera:${event.camera}`
+    const before = underWay.get(key)
+    const kept = before?.kind === 'camera' && !event.files ? before : undefined
+    if (event.state === 'copying')
+      underWay.set(key, {
+        ...event,
+        files: event.files ?? kept?.files,
+        outcomes: [...(kept?.outcomes ?? []), ...(event.last ? [event.last] : [])]
+      })
+    else underWay.delete(key)
   }
   for (const listener of listeners) listener(event)
 }

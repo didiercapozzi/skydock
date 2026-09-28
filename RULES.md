@@ -128,8 +128,10 @@ anything is fetched, so plugging the camera in again reads almost nothing. A cam
 slower than the same card in a reader, since nothing can be read ahead, and that is said where it is
 plugged in and on its page, because a camera that is merely slow and a camera that is stuck look alike.
 A desktop that neither makes a folder nor is KDE leaves such a camera unseen, and its card has to go in
-a reader. The header shows the copy file by file, and as it goes how many
-were here already — a camera plugged in again is looked over file by file, and a file already here
+a reader. The copy is shown in the corner of the board, whatever page is open, in the same panel as
+files being copied in and an upload going out: every file on the card, listed before the first is
+copied, each marked waiting, being copied, copied, or here already, and as it goes how many are new
+and how many were here already — a camera plugged in again is looked over file by file, and a file already here
 costs a look and not a copy, so the looking must not be mistaken for copying it all again. The board
 says what came off once it is done: how many new files and how many already there. A camera is copied
 each time it is plugged in, and again whenever asked while it stays plugged in — from its page, which
@@ -506,12 +508,12 @@ green ring with a tick; picked rows a green tick and background. Picking is choo
 file that cannot move — on the storage, freed, or in a montage with an edit — has no tick and is never
 picked, whichever way picking is asked for; one that stops being movable while picked, as when its
 montage's editing project is made, simply stops being one of the picks. The picks — or, with none, the file
-being looked at — go one step back by button or Delete: filed files come back to Fresh files, files in
-one of its jumps come out of the jump and are loose, and only loose files already there, with nowhere
-further back to go, are offered the bin. The button says which of these it will do. A montage's files
-have two ways out, so taking them out asks which: **back to Fresh files**, loose, or **into the bin**.
-Nothing moves until one is chosen, and Cancel leaves them where they were. A copy can only be taken
-out, its original staying where it is, so it cannot be sent to the bin from there.
+being looked at — are removed by button or Delete, and removing asks the same question every time,
+wherever they are: **loose in Fresh files**, out of any jump and any place, or **into the bin**. Files
+already loose in Fresh files have nowhere further back to go, so only the bin is offered. Nothing
+moves until one is chosen, and Cancel leaves them where they were. A copy can only be taken out, its
+original staying where it is, so it cannot be sent to the bin, and copies alone are removed without
+asking.
 
 **Filing.** Drag a jump or a selection onto a place in the menu to file it there, or onto another jump to
 move it. Dragging is the way: there is no list of places to pick from. While something is carried, the
@@ -580,16 +582,16 @@ way back to it. In that window a dropped file is taken where it already lies rat
 since the app and the machine it came off are the same one.
 
 **Putting files in the bin.** Wherever it is offered, putting files in the bin is a red button with a
-bin on it, so it is never taken for anything else. A test shot or footage of the ground can be got rid of, as a loose file
-in Fresh files, or straight out of a montage when that is the way out chosen for it. A file filed to a
-dropzone is that place's, and one in a jump there belongs with it, so taking it back to Fresh files,
-then out of its jump, are the steps that say it no longer does. A file copied into
-a jump cannot go while the copy is there. Nothing goes without a warning first, saying how many files, how many videos and photos
+bin on it, so it is never taken for anything else. A test shot or footage of the ground can be got rid
+of from wherever it is — Fresh files, a jump, a dropzone, a montage — when the bin is the way out
+chosen for it on removing it. A file already on the storage is not the board's to throw away and never
+goes. A file copied into a jump cannot go while the copy is there. Nothing goes without a warning first, saying how many files, how many videos and photos
 and how much space, and that these are originals nobody has been given yet — if the camera card has
 been wiped, the bin holds the only copy. Once confirmed, the files leave the board and the originals
 folder, so a scan does not bring them back; the copies and proxies made from them are deleted, since
 they have nothing left to come from. The files themselves are moved, not erased, into a folder of the
-bin named for that moment — and for the montage they came out of, when they came out of one — keeping
+bin named for that moment — and for the montage or dropzone they came out of, when they came out of
+one — keeping
 the day folder each came from. A file put in the bin this way is
 one nobody wants, so while its camera is plugged in it can also be deleted from the camera's card
 (Seeing what is on a camera). SkyDock never empties the bin, so
@@ -598,7 +600,7 @@ of its own beside the work, apart from the originals and the delivered copies. N
 bin while something is being processed.
 
 **Looking into the bin.** _Bin_, in the menu, shows everything in it — each time something was put
-aside, the latest first, saying whether it came from Fresh files, out of a montage or off a camera, and
+aside, the latest first, saying whether it came from Fresh files, out of a montage or a dropzone, or off a camera, and
 when — with each
 file's picture, name, time and size. Nothing can be deleted from there: the bin is emptied by hand,
 from the machine's own folders, and the page says which folder that is. Picked files can be **brought
@@ -647,8 +649,7 @@ name SkyDock gave the montage that is watched; one rendered under another name i
 when the montage is uploaded. A project saved or removed by hand is noticed the same way. Freed
 montages are not looked at; nothing of them is here.
 
-**The header** holds what applies to the whole board: scanning, the editing templates, a camera being
-copied off, how many clips still wait for their proxy, the storage — whether it is connected, as whom
+**The header** holds what applies to the whole board: scanning, the editing templates, how many clips still wait for their proxy, the storage — whether it is connected, as whom
 and to what, a way to check what it holds now, and a way to disconnect — rows or grid, and light or
 dark. The storage is named the way somebody would say it, who and where: the account the session was
 opened with, and the machine's name without the scheme or the port it is reached on, which are how a
@@ -852,11 +853,13 @@ one is being sent and how far it is, and how many were already there.
 
 **One upload at a time, shown wherever you are.** Only one upload goes at a time — a dropzone or a
 montage — and while it goes no Upload is offered anywhere, each saying what is being uploaded. It is
-shown in the corner of the board, whatever page is open, in the same panel as files being copied in:
+shown in the corner of the board, whatever page is open, in the same panel as files being copied in
+and a camera being copied off:
 every zip as it is made, then every file going to every folder up there, each marked waiting, being
 sent with how far it has got, sent, or already there. The upload belongs to the machine, not to the
 page: leaving the page, making another change meanwhile, reloading or reopening the window neither
-stops it nor offers it again — the board shows it still going and updates itself when it ends.
+stops it nor offers it again — the board shows it still going and updates itself when it ends. Each
+panel in the corner can be folded down to its title and how far it has got, and opened again.
 
 **Cancelling an upload.** It can be cancelled at any moment from that panel, with nothing to confirm,
 since nothing is lost: the file being sent is cut off, nothing more is sent, and nothing of the upload

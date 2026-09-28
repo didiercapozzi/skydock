@@ -1,5 +1,4 @@
 import { i18n } from '@lingui/core'
-import { msg } from '@lingui/core/macro'
 import { getOutputDir, isVideoFile, startOfFiles } from '@skydock/scripts'
 import type { ProxyFact } from '@skydock/scripts'
 import type { ManifestFile, ManifestGroup } from './types'
@@ -13,36 +12,22 @@ const formatSize = (bytes: number) => {
   return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${mb} MB`
 }
 
-/* the months, named in the language the app speaks */
-const MONTHS = [
-  msg`January`,
-  msg`February`,
-  msg`March`,
-  msg`April`,
-  msg`May`,
-  msg`June`,
-  msg`July`,
-  msg`August`,
-  msg`September`,
-  msg`October`,
-  msg`November`,
-  msg`December`
-]
+/* Dates are written by the machine's own Intl, in the language the app speaks, the way that
+   language writes them where the club is: 1 August 2026, 1 août 2026, 1. August 2026. The server and
+   the window run on the same machine, so both write a day the same way. */
+const DATE_LOCALE: Record<string, string> = { en: 'en-GB', fr: 'fr-CH', de: 'de-CH' }
 
-const monthOf = (d: Date) => i18n._(MONTHS[d.getMonth()]!)
+const written = (date: Date, options: Intl.DateTimeFormatOptions) =>
+  new Intl.DateTimeFormat(DATE_LOCALE[i18n.locale] ?? 'en-GB', options).format(date)
 
-/* a day written out, built without Intl so the server and the client agree on it — its month in the
-   language the app speaks */
-const dateLabel = (epoch: number) => {
-  const d = new Date(epoch * 1000)
-  return `${d.getDate()} ${monthOf(d)} ${d.getFullYear()}`
-}
+/* a day written out */
+const dayWritten = (date: Date) => written(date, { day: 'numeric', month: 'long', year: 'numeric' })
+
+const dateLabel = (epoch: number) => dayWritten(new Date(epoch * 1000))
 
 /* just enough date to tell two days apart, for where a full one would not fit */
-const shortDate = (epoch: number) => {
-  const d = new Date(epoch * 1000)
-  return `${d.getDate()} ${monthOf(d).slice(0, 3)}`
-}
+const shortDate = (epoch: number) =>
+  written(new Date(epoch * 1000), { day: 'numeric', month: 'short' })
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
@@ -137,7 +122,7 @@ const getTrackUrl = (filePath: string) => `/api/track${relativeToOutput(filePath
 
 export {
   setOutputRoot,
-  MONTHS,
+  dayWritten,
   formatFilmSize,
   hhmm,
   localeDate,

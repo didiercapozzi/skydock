@@ -1,4 +1,4 @@
-import { buildPassengerFolder, isVideoFile, lostOf, passengerOf } from '@skydock/scripts'
+import { buildPassengerFolder, isMontage, isVideoFile, lostOf, passengerOf } from '@skydock/scripts'
 import type { MontageEntry, MontageLost, MontageFact, freeablePlace } from '@skydock/scripts'
 import { t } from '@lingui/core/macro'
 import { ConnectionDialog } from './connection-dialog'
@@ -7,14 +7,13 @@ import { FreeDialog } from './free-dialog'
 import { FreePlaceDialog } from './free-place-dialog'
 import { DisconnectDialog } from './disconnect-dialog'
 import { RemovePlaceDialog } from './remove-place-dialog'
-import { LeaveMontageDialog } from './leave-montage-dialog'
+import { RemoveFilesDialog } from './remove-files-dialog'
 import { NameMontageDialog } from './name-montage-dialog'
 import { NasFolderBrowser } from './nas-folder-browser'
 import { ResetFreshDialog } from './reset-fresh-dialog'
 import { TakeBackDialog } from './take-back-dialog'
 import { TemplatesDialog } from './templates-dialog'
 import type { TakeBackMode } from './take-back-dialog'
-import { TrashDialog } from './trash-dialog'
 import type { Destination, ManifestFile, ManifestGroup } from './types'
 import { UploadDialog } from './upload-dialog'
 import { WorkFolderDialog } from './work-folder-dialog'
@@ -41,9 +40,8 @@ type BoardDialog =
   /* the storage about to be let go of — a mark the size of a full stop, so it is asked first */
   | { kind: 'disconnect' }
   /* unsorted files about to go to the bin */
-  | { kind: 'trash'; files: ManifestFile[] }
-  /* files taken out of a montage, waiting to hear whether back to Fresh files or into the bin */
-  | { kind: 'leave-montage'; files: ManifestFile[] }
+  /* files being removed, waiting to hear whether loose in Fresh files or into the bin */
+  | { kind: 'remove-files'; files: ManifestFile[] }
   /* a montage on this board by its jump, or one the storage's list alone knows, by its folder */
   | { kind: 'email'; groupId?: string; folder?: string }
   /* Fresh files put back, by as much as is chosen there */
@@ -76,12 +74,11 @@ const DialogHost = ({
   onRemovePlace,
   onDisconnect,
   onTakeBack,
-  onTrash,
   onMontage,
   passengers,
   onNameMontage,
   workFolder,
-  onLeaveMontage,
+  onRemoveFiles,
   onResetFresh
 }: {
   dialog: BoardDialog
@@ -114,14 +111,13 @@ const DialogHost = ({
   onRemovePlace: (place: string) => void
   onDisconnect: () => void
   onTakeBack: (mode: TakeBackMode, group: ManifestGroup) => void
-  onTrash: (files: ManifestFile[]) => void
   onMontage: (groupId: string, template: string) => void
   /* the montages there are, for a name to join */
   passengers: Passenger[]
   onNameMontage: (what: { groupId?: string; fileIds?: string[] }, passenger: Passenger) => void
   /* the folder SkyDock works in, and what is writing into it right now */
   workFolder: { folder: string; working: string | null }
-  onLeaveMontage: (to: 'fresh' | 'bin', files: ManifestFile[]) => void
+  onRemoveFiles: (to: 'fresh' | 'bin', files: ManifestFile[]) => void
   onResetFresh: (what: 'times' | 'everything') => void
 }) => {
   const close = () => onDialog(null)
@@ -224,15 +220,24 @@ const DialogHost = ({
         />
       )}
 
-      {dialog?.kind === 'leave-montage' &&
+      {dialog?.kind === 'remove-files' &&
         (() => {
-          const holder = groups.find((g) => g.files.some((f) => f.id === dialog.files[0]?.id))
+          /* where they are, named the way the board names it — one place, or none said */
+          const placeOf = (file: ManifestFile) => {
+            const holder = groups.find((g) => g.files.some((f) => f.id === file.id))
+            if (holder && isMontage(holder)) return passengerOf(holder) || t`a montage`
+            return holder?.destination ?? file.destination ?? t`Fresh files`
+          }
+          const places = new Set(dialog.files.map(placeOf))
+          const loose = (file: ManifestFile) =>
+            !file.destination && !groups.some((g) => g.files.some((f) => f.id === file.id))
           return (
-            <LeaveMontageDialog
-              who={holder ? passengerOf(holder) : ''}
+            <RemoveFilesDialog
+              from={places.size === 1 ? [...places][0]! : null}
               files={dialog.files}
+              canLoose={!dialog.files.every(loose)}
               onClose={close}
-              onChoose={(to) => onLeaveMontage(to, dialog.files)}
+              onChoose={(to) => onRemoveFiles(to, dialog.files)}
             />
           )
         })()}
@@ -304,14 +309,6 @@ const DialogHost = ({
             />
           )
         })()}
-
-      {dialog?.kind === 'trash' && (
-        <TrashDialog
-          files={dialog.files}
-          onClose={close}
-          onConfirm={() => onTrash(dialog.files)}
-        />
-      )}
 
       {dialog?.kind === 'reset-fresh' && (
         <ResetFreshDialog

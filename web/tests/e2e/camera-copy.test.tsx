@@ -2,7 +2,7 @@ import { createElement } from 'react'
 import { createRoutesStub } from 'react-router'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import { page } from 'vitest/browser'
+import { page, userEvent } from 'vitest/browser'
 
 vi.mock(import('@skydock/scripts'), async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>
@@ -67,14 +67,55 @@ afterEach(() => {
 })
 
 describe('a camera plugged in', () => {
-  test('shows its copy in the header as it goes', async () => {
+  /* in the corner, the way files dropped in and an upload going out are shown (RULES, Copying a
+     camera off) */
+  test('shows its copy in the corner as it goes, every file on the card', async () => {
+    await renderBoard()
+    const card = ['GX010001.MP4', 'GX010002.MP4', 'GX010003.MP4', 'GX010004.MP4'].map((name) => ({
+      name,
+      size: 1_000_000
+    }))
+
+    says({ camera: 'GOPRO', state: 'copying', done: 0, total: 4, copied: 0, skipped: 0, files: card })
+    says({ camera: 'GOPRO', state: 'copying', done: 1, total: 4, copied: 0, skipped: 1, last: 'skipped' })
+    says({ camera: 'GOPRO', state: 'copying', done: 2, total: 4, copied: 1, skipped: 1, last: 'copied' })
+
+    const panel = page.getByRole('complementary', { name: 'Copying GOPRO' })
+    await expect.element(panel.getByRole('progressbar', { name: 'Copied off GOPRO' })).toHaveAttribute('aria-valuenow', '50')
+    await expect.element(panel.getByText('GX010003.MP4')).toBeVisible()
+    await expect.element(panel.getByText('already here', { exact: true })).toBeVisible()
+    await expect.element(panel.getByRole('progressbar', { name: 'Copying GX010003.MP4' })).toBeVisible()
+  })
+
+  /* folded down to its title and how many, and opened again */
+  test('folds down to its title and its count, and opens again', async () => {
+    await renderBoard()
+    const card = ['GX010001.MP4', 'GX010002.MP4'].map((name) => ({ name, size: 1_000_000 }))
+    says({ camera: 'GOPRO', state: 'copying', done: 0, total: 2, copied: 0, skipped: 0, files: card })
+    says({ camera: 'GOPRO', state: 'copying', done: 1, total: 2, copied: 1, skipped: 0, last: 'copied' })
+    const panel = page.getByRole('complementary', { name: 'Copying GOPRO' })
+
+    await userEvent.click(panel.getByRole('button', { name: 'Hide the list' }))
+
+    await expect.element(panel.getByText('Copying the camera GOPRO')).toBeVisible()
+    await expect.element(panel.getByText('2/2')).toBeVisible()
+    await expect.element(panel.getByText('GX010001.MP4')).not.toBeInTheDocument()
+
+    await userEvent.click(panel.getByRole('button', { name: 'Show the list' }))
+
+    await expect.element(panel.getByText('GX010001.MP4')).toBeVisible()
+  })
+
+  /* A camera plugged in again goes through every file on it, and a file already here costs a look and
+     not a copy — said as it goes, so looking over a card is never taken for copying all of it again. */
+  test('says how many are new and how many were here already', async () => {
     await renderBoard()
 
-    says({ camera: 'GOPRO', state: 'copying', done: 12, total: 40, copied: 9, skipped: 3 })
+    says({ camera: 'HERO5 Black', state: 'copying', done: 120, total: 300, copied: 2, skipped: 118 })
 
-    const bar = page.getByRole('progressbar', { name: 'Copying GOPRO' })
-    await expect.element(bar).toHaveAttribute('aria-valuenow', '12')
-    await expect.poll(() => bar.element().textContent).toContain('12/40')
+    await expect
+      .element(page.getByRole('complementary', { name: 'Copying HERO5 Black' }).getByText(/2 new files copied · 118 already here/))
+      .toBeVisible()
   })
 
   test('once copied, the board looks again and says what came off', async () => {
@@ -83,7 +124,7 @@ describe('a camera plugged in', () => {
 
     says({ camera: 'GOPRO', state: 'done', done: 40, total: 40, copied: 31, skipped: 9 })
 
-    await expect.element(page.getByRole('progressbar', { name: 'Copying GOPRO' })).not.toBeInTheDocument()
+    await expect.element(page.getByRole('complementary', { name: 'Copying GOPRO' })).not.toBeInTheDocument()
     await vi.waitFor(() =>
       expect(requests).toContainEqual({
         intent: 'camera-copied',

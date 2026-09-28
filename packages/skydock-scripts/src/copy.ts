@@ -15,7 +15,25 @@ type CopyOptions = {
 }
 
 /* how far a camera's copy has got, for whoever is watching it */
-type CopyProgress = { done: number; total: number; copied: number; skipped: number }
+/* How far a copy off a card has got. The first report names every file on the card, so the board can
+   list them before the first is copied; each after that says how the file it finished went. */
+type CopyItem = { name: string; size: number }
+type CopyProgress = {
+  done: number
+  total: number
+  copied: number
+  skipped: number
+  files?: CopyItem[]
+  last?: 'copied' | 'skipped'
+}
+
+const sizeOf = (file: string) => {
+  try {
+    return fs.statSync(file).size
+  } catch {
+    return 0
+  }
+}
 
 const parseDate = (raw: string) => {
   const match = raw.match(/^(\d{4}):(\d{2}):(\d{2})/)
@@ -146,7 +164,10 @@ const copyCamera = async ({
     ? [...manifest.files, ...manifest.groups.flatMap((g) => g.files)]
     : ([] as ManifestFile[])
   const progress: CopyProgress = { done: 0, total: files.length, copied: 0, skipped: 0 }
-  onProgress?.({ ...progress })
+  onProgress?.({
+    ...progress,
+    files: files.map((file) => ({ name: path.basename(file), size: sizeOf(file) }))
+  })
 
   for (const src of files) {
     let srcStat: fs.Stats
@@ -158,14 +179,15 @@ const copyCamera = async ({
     const destDir = path.join(originalDir, days.get(src) ?? dayOfStat(srcStat))
     fs.mkdirSync(destDir, { recursive: true })
     /* the mark first: it asks nothing of the disk */
-    if (freedAlready(board, src, srcStat, destDir) || (await alreadyThere(src, srcStat, destDir)))
-      progress.skipped++
+    const there =
+      freedAlready(board, src, srcStat, destDir) || (await alreadyThere(src, srcStat, destDir))
+    if (there) progress.skipped++
     else {
       await copyOne(src, srcStat, destDir)
       progress.copied++
     }
     progress.done++
-    onProgress?.({ ...progress })
+    onProgress?.({ ...progress, last: there ? 'skipped' : 'copied' })
   }
   return progress
 }

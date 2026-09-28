@@ -74,18 +74,6 @@ describe('putting unsorted files in the bin', () => {
   })
 
   /* filed is somebody's: sending it back to Unsorted is the step that says it no longer is */
-  it('refuses a file in a jump that has been filed, and moves nothing', async () => {
-    const a = original('a')
-    const manifest = board(
-      [a],
-      [{ id: 'g1', label: 'jump', day: '12.09.2026', destination: 'Yverdon', files: [a] }]
-    )
-
-    await expect(trashUnsorted(manifest, new Set(['a']), out, trash)).rejects.toThrow(/Fresh files/)
-    expect(fs.existsSync(a.path)).toBe(true)
-    expect(manifest.files).toHaveLength(1)
-  })
-
   /* out of a montage, when that is the way out chosen for them (RULES, Montages) */
   it('takes a montage’s file into a folder of the bin named after the montage', async () => {
     const a = original('a')
@@ -132,12 +120,28 @@ describe('putting unsorted files in the bin', () => {
     expect(fs.existsSync(a.path)).toBe(true)
   })
 
-  it('refuses a loose file filed to a place', async () => {
-    const a = original('a', { destination: 'Yverdon' })
-
-    await expect(trashUnsorted(board([a]), new Set(['a']), out, trash)).rejects.toThrow(
-      /Fresh files/
+  /* from a dropzone too, once that is the way out chosen for them (RULES, Putting files in the bin) */
+  it('takes a dropzone’s file into a folder of the bin named after the dropzone', async () => {
+    const a = original('a')
+    const b = original('b', { destination: 'Yverdon' })
+    const manifest = board(
+      [a, b],
+      [{ id: 'g1', label: 'jump', day: '12.09.2026', destination: 'Yverdon', files: [a] }]
     )
+
+    const { bin } = await trashUnsorted(manifest, new Set(['a', 'b']), out, trash)
+
+    expect(path.basename(bin)).toMatch(/^dropzone-yverdon-/)
+    expect(manifest.files).toEqual([])
+  })
+
+  it('refuses a file already on the storage, and moves nothing', async () => {
+    const a = original('a', {
+      destination: 'Yverdon',
+      uploaded: { remotePath: '/nas/a.mp4', md5: 'x', size: 10, localPath: '/o/a.mp4', at: 1 }
+    })
+
+    await expect(trashUnsorted(board([a]), new Set(['a']), out, trash)).rejects.toThrow(/storage/)
     expect(fs.existsSync(a.path)).toBe(true)
   })
 

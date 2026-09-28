@@ -54,7 +54,19 @@ const useLiveProgress = (
         return
       }
       if (event.kind === 'camera') {
-        if (event.state === 'copying') setCamera(event)
+        /* the card's list comes once, at the start; after it, each file says how it went */
+        if (event.state === 'copying')
+          setCamera((before) => {
+            const same = before?.camera === event.camera && !event.files ? before : null
+            return {
+              ...event,
+              files: event.files ?? same?.files,
+              outcomes: event.outcomes ?? [
+                ...(same?.outcomes ?? []),
+                ...(event.last ? [event.last] : [])
+              ]
+            }
+          })
         else {
           setCamera(null)
           setEnded((before) => ({ ...event, seq: (before?.seq ?? 0) + 1 }))

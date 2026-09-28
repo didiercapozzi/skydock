@@ -15,17 +15,20 @@ import { dateLabel, formatSize, getThumbUrl, hhmm } from './utils'
 const fromWhere = (batch: BinBatch) => {
   const camera = batch.camera
   const montage = batch.montage
+  const dropzone = batch.dropzone ?? ''
   return batch.from === 'fresh'
     ? t`Put in the bin from Fresh files`
-    : batch.from === 'montage'
-      ? montage
-        ? t`Taken out of the montage ${montage}`
-        : t`Taken out of a montage`
-      : batch.from === 'camera'
-        ? camera
-          ? t`Deleted from the camera ${camera}`
-          : t`Deleted from the camera`
-        : batch.folder
+    : batch.from === 'dropzone'
+      ? t`Taken out of the dropzone ${dropzone}`
+      : batch.from === 'montage'
+        ? montage
+          ? t`Taken out of the montage ${montage}`
+          : t`Taken out of a montage`
+        : batch.from === 'camera'
+          ? camera
+            ? t`Deleted from the camera ${camera}`
+            : t`Deleted from the camera`
+          : batch.folder
 }
 
 /* a file's box, read out */
