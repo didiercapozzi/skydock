@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SkyDock Studio — the idea</title>
+<link rel="stylesheet" href="studio.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#ffffff}</style>
+</helmet>
+<div class="lb" style="width: 1440px; height: 900px">
+<div style="display: grid; grid-template-columns: 500px minmax(0, 1fr); height: 100%">
+  <section style="padding: 44px 48px 40px; display: flex; flex-direction: column; gap: 20px; background: var(--sheet-2); border-right: 1px solid var(--line)">
+    <div class="row" style="gap: 10px"><svg width="28" height="28" viewBox="0 0 22 22" aria-hidden="true"><rect width="22" height="22" rx="5.5" fill="var(--accent)"></rect><path d="M5 10.5c2-4.4 10-4.4 12 0" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"></path><path d="M6 10.8 11 16l5-5.2" fill="none" stroke="#fff" stroke-width="1" stroke-opacity=".75"></path><circle cx="11" cy="16.3" r="1.5" fill="#fff"></circle></svg><b style="font-size: 16px; font-weight: 600; letter-spacing: -.02em">SkyDock</b><span class="eyebrow" style="margin-left: auto">Visual direction · v5</span></div>
+    <div style="margin-top: 40px">
+      <span class="eyebrow" style="display: block; margin-bottom: 12px; color: var(--accent)">Studio</span>
+      <h1 style="margin: 0; font-size: 36px; font-weight: 700; letter-spacing: -.035em; line-height: 1.1">A professional tool for a day of footage.</h1>
+    </div>
+    <p class="soft" style="margin: 0; font-size: 14px; line-height: 1.65">SkyDock should feel like the tools the footage goes on to: an editor, a review app, a file manager. Panels meet edge to edge on fine lines, everything is set in one typeface, and colour is kept for what it means.</p>
+    <p class="soft" style="margin: 0; font-size: 14px; line-height: 1.65">The thumbnails carry the pictures. The interface around them stays neutral grey, with a single blue for selection and the next action. Every screen, button and rule is today's.</p>
+    <div style="margin-top: auto; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 8px; background: var(--sheet); overflow: hidden">
+      <div style="padding: 12px 14px; border-right: 1px solid var(--line)"><div style="font-size: 18px; font-weight: 600">Inter</div><div class="note">one typeface</div></div>
+      <div style="padding: 12px 14px; border-right: 1px solid var(--line)"><div style="font-size: 18px; font-weight: 600">1</div><div class="note">accent colour</div></div>
+      <div style="padding: 12px 14px; border-right: 1px solid var(--line)"><div style="font-size: 18px; font-weight: 600">6 px</div><div class="note">corner radius</div></div>
+      <div style="padding: 12px 14px"><div style="font-size: 18px; font-weight: 600">13 px</div><div class="note">base size</div></div>
+    </div>
+  </section>
+  <section style="padding: 40px 48px 36px; display: flex; flex-direction: column; gap: 24px; overflow: hidden">
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 36px">
+      <div style="display: grid; grid-template-columns: 28px minmax(0, 1fr); padding: 14px 0; border-top: 1px solid var(--line)"><span class="mono dim" style="font-size: 11.5px; padding-top: 2px">01</span><div><b style="font-weight: 600; font-size: 13.5px">Panels, not cards</b><p class="soft" style="margin: 3px 0 0; font-size: 12.5px; line-height: 1.55">Places, the list and the inspector sit side by side on hairlines, like an editing suite. Nothing floats except menus, dialogs and what is copying.</p></div></div>
+      <div style="display: grid; grid-template-columns: 28px minmax(0, 1fr); padding: 14px 0; border-top: 1px solid var(--line)"><span class="mono dim" style="font-size: 11.5px; padding-top: 2px">02</span><div><b style="font-weight: 600; font-size: 13.5px">One typeface</b><p class="soft" style="margin: 3px 0 0; font-size: 12.5px; line-height: 1.55">Inter for everything, with tabular figures so times and sizes line up. Weight, not size, makes the hierarchy. File names are in JetBrains Mono.</p></div></div>
+      <div style="display: grid; grid-template-columns: 28px minmax(0, 1fr); padding: 14px 0; border-top: 1px solid var(--line)"><span class="mono dim" style="font-size: 11.5px; padding-top: 2px">03</span><div><b style="font-weight: 600; font-size: 13.5px">Grey, then blue</b><p class="soft" style="margin: 3px 0 0; font-size: 12.5px; line-height: 1.55">Zinc greys for surfaces and text. Blue marks the place you are on, the open jump, what is picked and the button that does the next step.</p></div></div>
+      <div style="display: grid; grid-template-columns: 28px minmax(0, 1fr); padding: 14px 0; border-top: 1px solid var(--line)"><span class="mono dim" style="font-size: 11.5px; padding-top: 2px">04</span><div><b style="font-weight: 600; font-size: 13.5px">Status as badges</b><p class="soft" style="margin: 3px 0 0; font-size: 12.5px; line-height: 1.55">Local, processed and uploaded are small tinted badges in amber, violet and green, so a column of files reads like a report.</p></div></div>
+    </div>
+    <div class="col" style="gap: 10px">
+      <div class="eyebrow">Colour</div>
+      <div class="row" style="gap: 0; border-radius: 6px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line)"><div style="flex: 1; height: 28px; background: #ffffff"></div><div style="flex: 1; height: 28px; background: #fafafa"></div><div style="flex: 1; height: 28px; background: #f4f4f5"></div><div style="flex: 1; height: 28px; background: #e4e4e7"></div><div style="flex: 1; height: 28px; background: #c4c4cc"></div><div style="flex: 1; height: 28px; background: #8b8b94"></div><div style="flex: 1; height: 28px; background: #52525b"></div><div style="flex: 1; height: 28px; background: #27272a"></div><div style="flex: 1; height: 28px; background: #18181b"></div></div>
+      <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-top: 4px">
+        <div class="col" style="gap: 5px"><div style="height: 44px; border-radius: 6px; background: #2563eb; box-shadow: inset 0 0 0 1px rgba(24,24,27,.08)"></div><b style="font-size: 12px; font-weight: 600">Blue</b><span class="note" style="font-size: 11px">#2563EB · here, picked, next</span></div><div class="col" style="gap: 5px"><div style="height: 44px; border-radius: 6px; background: #fef3e2; box-shadow: inset 0 0 0 1px rgba(24,24,27,.08)"></div><b style="font-size: 12px; font-weight: 600">Local</b><span class="note" style="font-size: 11px">#B45309 on #FEF3E2</span></div><div class="col" style="gap: 5px"><div style="height: 44px; border-radius: 6px; background: #f3efff; box-shadow: inset 0 0 0 1px rgba(24,24,27,.08)"></div><b style="font-size: 12px; font-weight: 600">Processed</b><span class="note" style="font-size: 11px">#6D28D9 on #F3EFFF</span></div><div class="col" style="gap: 5px"><div style="height: 44px; border-radius: 6px; background: #e9f8ef; box-shadow: inset 0 0 0 1px rgba(24,24,27,.08)"></div><b style="font-size: 12px; font-weight: 600">Uploaded</b><span class="note" style="font-size: 11px">#15803D on #E9F8EF</span></div><div class="col" style="gap: 5px"><div style="height: 44px; border-radius: 6px; background: #dc2626; box-shadow: inset 0 0 0 1px rgba(24,24,27,.08)"></div><b style="font-size: 12px; font-weight: 600">Bin</b><span class="note" style="font-size: 11px">#DC2626</span></div><div class="col" style="gap: 5px"><div style="height: 44px; border-radius: 6px; background: #18181b; box-shadow: inset 0 0 0 1px rgba(24,24,27,.08)"></div><b style="font-size: 12px; font-weight: 600">Text</b><span class="note" style="font-size: 11px">#18181B</span></div>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 36px">
+      <div class="col" style="gap: 10px">
+        <div class="eyebrow">Type</div>
+        <div class="row" style="gap: 14px; align-items: baseline"><span style="font-size: 20px; font-weight: 600; letter-spacing: -.02em">Fresh files</span><span class="note">Inter 600 · 20</span></div>
+        <div class="row" style="gap: 14px; align-items: baseline"><span style="font-size: 13px; font-weight: 500">Make a montage</span><span class="note">Inter 500 · 13</span></div>
+        <div class="row" style="gap: 14px; align-items: baseline"><span style="font-size: 13px">14:32:01 · 2.1 GB</span><span class="note">Inter 400 · tabular figures</span></div>
+        <div class="row" style="gap: 14px; align-items: baseline"><span class="mono" style="font-size: 12.5px">GX010231.MP4</span><span class="note">JetBrains Mono · file names</span></div>
+      </div>
+      <div class="col" style="gap: 10px">
+        <div class="eyebrow">A file's state</div>
+        <div class="row" style="flex-wrap: wrap; gap: 6px"><span class="tag local">Local</span><span class="tag changed">Changed</span><span class="tag proc">Processed</span><span class="tag up">Uploaded</span><span class="tag gone">Only on the storage</span></div>
+        <div class="work" style="width: 200px; margin-top: 4px"><div class="lbl"><span>Processing</span><span>58%</span></div><div class="bar"><i style="width: 58%"></i></div></div>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 36px; margin-top: auto; padding-top: 18px; border-top: 1px solid var(--line)">
+      <div class="col" style="gap: 10px"><div class="eyebrow">Controls</div>
+        <div class="row" style="flex-wrap: wrap"><button class="btn primary" type="button">Process 24</button><button class="btn" type="button">Move to…</button><button class="btn danger" type="button">Delete jump</button><div class="seg" role="group" aria-label="Group"><button type="button" class="on">By jump</button><button type="button">By day</button><button type="button">One list</button></div></div></div>
+      <div class="col" style="gap: 10px"><div class="eyebrow">Dark</div>
+        <span class="soft" style="font-size: 12.5px">The same design on near-black for the hangar at the end of the day. It follows the machine, or is pinned in Settings as today.</span></div>
+    </div>
+  </section>
+</div>
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SkyDock — trim, frame and turn</title>
+<link rel="stylesheet" href="studio.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>body{margin:0;background:#ffffff}</style>
+</helmet>
+<div class="lb" style="width: 1440px; height: 900px">
+<div class="app">
+<nav class="side" aria-label="Places">
+<div class="brand"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect width="22" height="22" rx="5.5" fill="var(--accent)"></rect><path d="M5 10.5c2-4.4 10-4.4 12 0" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"></path><path d="M6 10.8 11 16l5-5.2" fill="none" stroke="#fff" stroke-width="1" stroke-opacity=".75"></path><circle cx="11" cy="16.3" r="1.5" fill="#fff"></circle></svg><b>SkyDock</b></div>
+<a class="nav here" href="#"><div class="line1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16v12H4zM4 7l2-3h12l2 3"></path><path d="M10 12h4"></path></svg><span class="nm">Fresh files</span><span class="n">64</span></div><div class="line2"><span class="owe">5 jumps to file</span></div></a>
+<h4>Destinations</h4>
+<a class="nav" href="#"><div class="line1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"></path><circle cx="12" cy="9.5" r="2.4"></circle></svg><span class="nm">Yverdon</span><span class="n">212</span></div><div class="line2"><div class="split"><i class="u" style="width: 80%"></i><i class="p" style="width: 9%"></i><i class="l" style="width: 11%"></i></div><span class="owe">24 to process</span></div></a>
+<a class="nav" href="#"><div class="line1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"></path><circle cx="12" cy="9.5" r="2.4"></circle></svg><span class="nm">Ecuvillens</span><span class="n">86</span></div><div class="line2"><div class="split"><i class="u" style="width: 82%"></i><i class="p" style="width: 18%"></i></div><span>all up</span></div></a>
+<a class="nav" href="#"><div class="line1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"></path><circle cx="12" cy="9.5" r="2.4"></circle></svg><span class="nm">Backup</span><span class="n">0</span></div></a>
+<div class="addplace"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Add a destination…</div>
+<h4>Montages <span class="owe">4 not up</span></h4>
+<a class="nav" href="#"><div class="line1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M7 5v14M17 5v14"></path></svg><span class="nm">Lily Donzallaz</span></div><div class="line2"><span>to upload</span><div class="steps"><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="n"></i><i></i></div></div></a>
+<a class="nav" href="#"><div class="line1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M7 5v14M17 5v14"></path></svg><span class="nm">Luc Favre</span></div><div class="line2"><span>to render</span><div class="steps"><i class="d"></i><i class="d"></i><i class="d"></i><i class="n"></i><i></i><i></i></div></div></a>
+<a class="nav" href="#"><div class="line1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M7 5v14M17 5v14"></path></svg><span class="nm">Noah Berset</span></div><div class="line2"><span>to process</span><div class="steps"><i class="d"></i><i class="n"></i><i></i><i></i><i></i><i></i></div></div></a>
+<a class="nav" href="#"><div class="line1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M7 5v14M17 5v14"></path></svg><span class="nm">Camille Rey</span></div><div class="line2"><span>to email</span><div class="steps"><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="n"></i></div></div></a>
+<a class="nav" href="#"><div class="line1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M7 5v14M17 5v14"></path></svg><span class="nm" style="font-style: italic; color: var(--ink-3)">No name yet</span><span class="n">1</span></div></a>
+<h4>Elsewhere</h4>
+<a class="nav" href="#"><div class="line1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="2"></rect><rect x="3" y="13" width="18" height="7" rx="2"></rect><path d="M7 7.5h.01M7 16.5h.01"></path></svg><span class="nm">On the storage</span><span class="n">41</span></div><div class="line2"><span>Every montage up there</span></div></a>
+<a class="nav" href="#"><div class="line1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h4l2-3h6l2 3h4v11H3z"></path><circle cx="12" cy="13" r="3.5"></circle></svg><span class="nm">DJI Action 5</span><span class="n">44</span></div><div class="line2"><div class="mini"><i style="width: 70%"></i></div><span>copying 31 of 44</span></div></a>
+<a class="nav" href="#"><div class="line1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg><span class="nm">Bin</span><span class="n">17</span></div></a>
+</nav>
+<div class="top">
+  <label class="search"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg><input type="text" aria-label="Find anything" placeholder="Find anything"><span class="key">/</span></label>
+  <span class="status"><span class="ring"></span>12 to proxy</span>
+  <div class="grow"></div>
+  <button class="btn sm ghost" type="button">Overview</button>
+  <button class="btn sm ghost" type="button">Scan</button>
+  <div class="seg" role="group" aria-label="Show as"><button type="button" class="on" aria-label="Rows"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg></button><button type="button" aria-label="Grid"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1"></rect><rect x="13" y="4" width="7" height="7" rx="1"></rect><rect x="4" y="13" width="7" height="7" rx="1"></rect><rect x="13" y="13" width="7" height="7" rx="1"></rect></svg></button></div>
+  <button class="btn sm icon ghost" type="button" aria-label="Keys"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"></rect><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"></path></svg></button>
+  <div class="nas"><span class="live"></span><b>capo @ clubnas</b>
+    <button class="btn sm icon ghost" type="button" aria-label="Check the storage"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"></path></svg></button>
+    <button class="btn sm icon ghost" type="button" aria-label="Disconnect"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4 5 12h14zM5 17h14"></path></svg></button>
+  </div>
+  <button class="btn sm icon ghost" type="button" aria-label="Settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"></path><circle cx="16" cy="6" r="2"></circle><circle cx="10" cy="12" r="2"></circle><circle cx="18" cy="18" r="2"></circle></svg></button>
+  <div class="seg" role="group" aria-label="Zoom"><button type="button">−</button><button type="button" class="mono" style="font-size: 11.5px">100%</button><button type="button">+</button></div>
+</div>
+<main class="sheet pane">
+  <div class="head">
+    <div class="row" style="align-items: flex-end; gap: 16px"><h1>Fresh files</h1><span class="meta" style="padding-bottom: 5px">64 files · 48 videos · 16 photos · off the cameras, not filed yet</span></div>
+    <div class="tools"><div class="seg" role="group" aria-label="Show"><button type="button">Videos <span class="n">48</span></button><button type="button">Photos <span class="n">16</span></button><button type="button" class="on">All</button></div><div class="seg" role="group" aria-label="Group"><button type="button" class="on">By jump</button><button type="button">By day</button><button type="button">One list</button></div><label class="narrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"></path></svg>Narrow by name</label></div>
+  </div>
+  <div class="body">
+    <div class="said"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--pine)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17 19 7"></path></svg><span>Copied <b>22 new files</b> off DJI Action 5 · 9 were here already · gathered into 2 jumps</span><button class="x" type="button" aria-label="Dismiss">×</button></div>
+    <div class="jumps"><div class="jump loose" style="width: 112px"><div class="pic">2 files</div><div class="cap"><b style="color: var(--ink-3)">Loose</b></div><div class="sub">in no jump</div></div><div class="jump"><div class="pic"><img src="../../images/golden.jpg" alt=""><span class="count">▶ 6 · ◻ 2</span></div><div class="cap"><b>15:47</b><span>Jump 8</span></div><div class="sub">Sun 28 Sep · 11.0 GB</div></div><div class="jump open"><div class="pic"><img src="../../images/tandem.jpg" alt=""><span class="count">▶ 9 · ◻ 5</span><div class="strip"><img src="../../images/canopy.jpg" alt=""><img src="../../images/landing.jpg" alt=""></div></div><div class="cap"><b>14:32</b><span>Jump 7</span></div><div class="sub">Sun 28 Sep · 18.4 GB</div></div><div class="jump"><div class="pic"><img src="../../images/horizon.jpg" alt=""><span class="count">▶ 7 · ◻ 3</span></div><div class="cap"><b>12:05</b><span>Jump 6</span></div><div class="sub">Sun 28 Sep · 14.2 GB</div></div><div class="jump"><div class="pic"><img src="../../images/freefall.jpg" alt=""><span class="count">▶ 8 · ◻ 0</span></div><div class="cap"><b>10:58</b><span>Jump 5</span></div><div class="sub">Sun 28 Sep · 15.9 GB</div></div></div>
+    <div>
+      <div class="tbl-head"><span></span><span></span><span style="letter-spacing: 0; text-transform: none; font-size: 12.5px; color: var(--ink)"><b style="font-weight: 600">Jump 7</b> <span class="dim" style="font-weight: 400">· 14 files</span></span><span>Picture</span><span>Shot</span><span style="text-align: right">Size</span><span>State</span></div>
+      <div class="file look"><span class="check on"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17 19 7"></path></svg></span><img class="th" src="../../images/door.jpg" alt="" style=""><div class="nm"><b>DJI_20260928143201_0012_D.MP4</b><span>DJI Action 5 · 1:48</span></div><div class="adj"></div><span class="t">14:32:01</span><span class="s">2.1 GB</span><span class="tag local">Local</span></div>
+<div class="file picked"><span class="check on"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17 19 7"></path></svg></span><img class="th" src="../../images/tandem.jpg" alt="" style=""><div class="nm"><b>GX010231.MP4</b><span>GoPro HERO12 · 3:12</span></div><div class="adj"><span class="unsaved">trim</span></div><span class="t">14:33:40</span><span class="s">3.4 GB</span><div class="work"><div class="lbl"><span>Proxy</span><span class="mono">62%</span></div><div class="bar"><i style="width: 62%"></i></div></div></div>
+<div class="file picked"><span class="check on"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17 19 7"></path></svg></span><img class="th" src="../../images/freefall.jpg" alt="" style=""><div class="nm"><b>GX010232.MP4</b><span>GoPro HERO12 · 2:06 · no proxy yet</span></div><div class="adj"></div><span class="t">14:36:55</span><span class="s">2.2 GB</span><span class="tag local">Local</span></div>
+<div class="file "><span class="check"></span><img class="th" src="../../images/canopy.jpg" alt="" style=""><div class="nm"><b>DJI_20260928143812_0013_D.MP4</b><span>DJI Action 5 · 4:02</span></div><div class="adj"><span class="">turn ¼</span></div><span class="t">14:38:12</span><span class="s">4.3 GB</span><div class="work"><div class="lbl"><span>Proxy</span><span class="mono">18%</span></div><div class="bar"><i style="width: 18%"></i></div></div></div>
+<div class="file "><span class="check"></span><img class="th" src="../../images/landing.jpg" alt="" style=""><div class="nm"><b>G0020417.JPG</b><span>GoPro HERO12 · photo</span></div><div class="adj"></div><span class="t">14:41:06</span><span class="s">4.8 MB</span><span class="tag local">Local</span></div>
+<div class="file "><span class="check"></span><img class="th" src="../../images/landing.jpg" alt="" style=""><div class="nm"><b>GX010233.MP4</b><span>GoPro HERO12 · 0:52</span></div><div class="adj"><span class="">frame</span></div><span class="t">14:42:30</span><span class="s">0.9 GB</span><span class="tag local">Local</span></div>
+<div class="file "><span class="check"></span><img class="th" src="../../images/horizon.jpg" alt="" style=""><div class="nm"><b>DJI_20260928144419_0014_D.MP4</b><span>DJI Action 5 · 1:10</span></div><div class="adj"></div><span class="t">14:44:19</span><span class="s">1.3 GB</span><span class="tag local">Local</span></div>
+      <div class="note" style="padding: 10px 10px 0">Click previews · the tick picks · double-click opens</div>
+    </div>
+  </div>
+</main>
+<aside class="sheet insp" aria-label="The open jump">
+  <div class="hero" style="height: 150px"><img src="../../images/tandem.jpg" alt=""></div>
+  <div class="who">
+    <span class="eyebrow">A jump in Fresh files</span>
+    <h2>Jump 7</h2>
+    <span class="dim">9 videos · 5 photos · 18.4 GB</span>
+  </div>
+  <div class="part">
+    <span class="eyebrow">Starts</span>
+    <button class="bigtime" type="button" title="Click to correct"><b>14:32</b><span class="note">Sun 28 Sep 2026<br>click to correct</span></button>
+  </div>
+  <div class="part">
+    <span class="eyebrow">Montage</span>
+    <div class="field"><input type="text" aria-label="Their name" placeholder="Their name"><button class="btn accent" type="button">Make</button></div>
+    <span class="note">The name becomes its folder, its files and its film. These files move out of Fresh files.</span>
+  </div>
+  <div class="part">
+    <span class="eyebrow">The jump</span>
+    <div class="row"><button class="btn sm grow" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>Move to…</button><button class="btn sm grow" type="button">Select its 14 files</button></div>
+    <button class="btn sm full" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M8.5 7.5 20 18M8.5 16.5 20 6"></path></svg>Trim every clip to the jump</button>
+    <div class="row" style="justify-content: space-between"><span class="note">⌘ or ctrl-click another jump to open the two side by side.</span><button class="btn sm ghost danger" type="button">Delete jump</button></div>
+  </div>
+</aside>
+</div><div class="scrim"></div>
+<section class="dialog" role="dialog" aria-label="Trim, frame and turn" style="left: 40px; top: 28px; width: 1360px; height: 844px">
+  <header>
+    <div class="col" style="gap: 4px"><h2>GX010231.MP4</h2><span class="dim">GoPro HERO12 · 4K · 3:12 · Jump 7, clip 2 of 9</span></div>
+    <div class="grow"></div>
+    <button class="btn sm" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>Previous</button><button class="btn sm" type="button">Next<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg></button>
+    <button class="btn sm ghost" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"></path></svg>Full screen <span class="key">F</span></button>
+    <button class="btn sm ghost" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"></path></svg>In the machine's player</button>
+    <button class="btn sm icon ghost" type="button" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg></button>
+  </header>
+  <div style="flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 372px; min-height: 0">
+    <div class="col" style="padding: 18px 24px 12px; gap: 12px; min-width: 0">
+      <div style="position: relative; height: 420px; border-radius: 12px; overflow: hidden; background: #141311">
+        <img src="../../images/tandem.jpg" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block">
+        <div style="position: absolute; left: 6%; right: 6%; top: 6%; bottom: 6%; box-shadow: 0 0 0 999px rgba(20,19,17,.55); border: 1.5px solid #fff; border-radius: 3px">
+          <span class="mono" style="position: absolute; left: -1px; top: -30px; background: #fff; color: #1c1b19; font-size: 11.5px; padding: 3px 8px; border-radius: 5px">88% across × 88% down</span>
+          <span class="mono" style="position: absolute; right: 8px; bottom: 8px; background: #fff; color: #1c1b19; font-size: 11.5px; padding: 3px 8px; border-radius: 5px">keeps 77% of the picture · 16:9</span>
+          <i style="position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; background: #fff; border-radius: 2px"></i><i style="position: absolute; right: -5px; top: -5px; width: 10px; height: 10px; background: #fff; border-radius: 2px"></i><i style="position: absolute; left: -5px; bottom: -5px; width: 10px; height: 10px; background: #fff; border-radius: 2px"></i><i style="position: absolute; right: -5px; bottom: -5px; width: 10px; height: 10px; background: #fff; border-radius: 2px"></i>
+        </div>
+        <span style="position: absolute; left: 12px; bottom: 10px; color: rgba(255,255,255,.8); font-size: 11.5px">playing the proxy · the file itself in full screen</span>
+      </div>
+      <div class="row" style="gap: 12px">
+        <button class="btn icon primary" type="button" aria-label="Play" style="border-radius: 50%"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4l13 8-13 8z" fill="currentColor"></path></svg></button>
+        <span class="mono" style="font-size: 15px">0:54.60</span><span class="mono dim">/ 3:12.00</span><span class="key">space</span>
+        <div class="grow"></div>
+        <button class="btn sm" type="button">Start here</button><button class="btn sm" type="button">End here</button>
+      </div>
+      <div style="position: relative; padding-top: 4px">
+        <svg width="940" height="176" viewBox="0 0 940 176" style="display: block; overflow: visible" aria-label="The jump on a graph">
+  <rect x="0" y="16" width="940" height="142" rx="0" fill="var(--sheet-2)"></rect>
+  <rect x="118" y="16" width="310" height="142" fill="var(--slate-soft)"></rect>
+  <rect x="428" y="16" width="44" height="142" fill="var(--ochre-soft)"></rect>
+  <rect x="472" y="16" width="385" height="142" fill="var(--accent-soft)"></rect>
+  <line x1="0" y1="118" x2="940" y2="118" stroke="var(--line)" stroke-dasharray="3 4"></line>
+  <text x="4" y="114" font-family="JetBrains Mono" font-size="9.5" fill="var(--ink-3)">1 g</text>
+  <polyline points="0,18.0 4,18.0 8,18.0 12,18.0 16,18.0 20,18.0 24,18.0 28,18.0 32,18.0 36,18.0 40,18.0 44,18.0 48,18.0 52,18.0 56,18.0 60,18.0 64,18.0 68,18.0 72,18.0 76,18.0 80,18.0 84,18.0 88,18.0 92,18.0 96,18.0 100,18.0 104,18.0 108,18.0 112,18.0 116,18.0 120,18.6 124,19.7 128,20.8 132,22.0 136,23.1 140,24.2 144,25.3 148,26.5 152,27.6 156,28.7 160,29.9 164,31.0 168,32.1 172,33.2 176,34.4 180,35.5 184,36.6 188,37.8 192,38.9 196,40.0 200,41.1 204,42.3 208,43.4 212,44.5 216,45.7 220,46.8 224,47.9 228,49.0 232,50.2 236,51.3 240,52.4 244,53.6 248,54.7 252,55.8 256,57.0 260,58.1 264,59.2 268,60.3 272,61.5 276,62.6 280,63.7 284,64.9 288,66.0 292,67.1 296,68.2 300,69.4 304,70.5 308,71.6 312,72.8 316,73.9 320,75.0 324,76.1 328,77.3 332,78.4 336,79.5 340,80.7 344,81.8 348,82.9 352,84.0 356,85.2 360,86.3 364,87.4 368,88.6 372,89.7 376,90.8 380,92.0 384,93.1 388,94.2 392,95.3 396,96.5 400,97.6 404,98.7 408,99.9 412,101.0 416,102.1 420,103.2 424,104.4 428,105.5 432,105.8 436,106.0 440,106.3 444,106.5 448,106.8 452,107.0 456,107.3 460,107.5 464,107.8 468,108.0 472,108.3 476,108.8 480,109.3 484,109.8 488,110.4 492,110.9 496,111.4 500,111.9 504,112.4 508,112.9 512,113.5 516,114.0 520,114.5 524,115.0 528,115.5 532,116.0 536,116.6 540,117.1 544,117.6 548,118.1 552,118.6 556,119.1 560,119.7 564,120.2 568,120.7 572,121.2 576,121.7 580,122.2 584,122.8 588,123.3 592,123.8 596,124.3 600,124.8 604,125.3 608,125.9 612,126.4 616,126.9 620,127.4 624,127.9 628,128.4 632,129.0 636,129.5 640,130.0 644,130.5 648,131.0 652,131.5 656,132.1 660,132.6 664,133.1 668,133.6 672,134.1 676,134.6 680,135.2 684,135.7 688,136.2 692,136.7 696,137.2 700,137.7 704,138.2 708,138.8 712,139.3 716,139.8 720,140.3 724,140.8 728,141.3 732,141.9 736,142.4 740,142.9 744,143.4 748,143.9 752,144.4 756,145.0 760,145.5 764,146.0 768,146.5 772,147.0 776,147.5 780,148.1 784,148.6 788,149.1 792,149.6 796,150.1 800,150.6 804,151.2 808,151.7 812,152.2 816,152.7 820,153.2 824,153.7 828,154.3 832,154.8 836,155.3 840,155.8 844,156.3 848,156.8 852,157.4 856,157.9 860,158.0 864,158.0 868,158.0 872,158.0 876,158.0 880,158.0 884,158.0 888,158.0 892,158.0 896,158.0 900,158.0 904,158.0 908,158.0 912,158.0 916,158.0 920,158.0 924,158.0 928,158.0 932,158.0 936,158.0 940,158.0" fill="none" stroke="var(--slate)" stroke-width="1.6" opacity=".8"></polyline>
+  <polyline points="0,158.0 4,158.0 8,158.0 12,158.0 16,158.0 20,158.0 24,158.0 28,158.0 32,158.0 36,158.0 40,158.0 44,158.0 48,158.0 52,158.0 56,158.0 60,158.0 64,158.0 68,158.0 72,158.0 76,158.0 80,158.0 84,158.0 88,158.0 92,158.0 96,158.0 100,158.0 104,158.0 108,158.0 112,158.0 116,158.0 120,149.8 124,134.9 128,121.9 132,110.5 136,100.6 140,91.9 144,84.2 148,77.5 152,71.7 156,66.6 160,62.1 164,58.2 168,54.8 172,51.8 176,49.1 180,46.8 184,44.8 188,43.1 192,41.5 196,40.2 200,39.0 204,38.0 208,37.1 212,36.3 216,35.6 220,35.0 224,34.4 228,34.0 232,33.6 236,33.2 240,32.9 244,32.6 248,32.4 252,32.2 256,32.0 260,31.8 264,31.7 268,31.6 272,31.5 276,31.4 280,31.3 284,31.2 288,31.2 292,31.1 296,31.1 300,31.0 304,31.0 308,31.0 312,30.9 316,30.9 320,30.9 324,30.9 328,30.8 332,30.8 336,30.8 340,30.8 344,30.8 348,30.8 352,30.8 356,30.8 360,30.8 364,30.8 368,30.8 372,30.8 376,30.8 380,30.7 384,30.7 388,30.7 392,30.7 396,30.7 400,30.7 404,30.7 408,30.7 412,30.7 416,30.7 420,30.7 424,30.7 428,30.7 432,40.0 436,49.2 440,58.5 444,67.8 448,77.0 452,86.3 456,95.5 460,104.8 464,114.0 468,123.3 472,132.5 476,132.6 480,132.7 484,132.7 488,132.8 492,132.8 496,132.9 500,132.9 504,133.0 508,133.0 512,133.1 516,133.1 520,133.2 524,133.2 528,133.3 532,133.3 536,133.4 540,133.4 544,133.5 548,133.6 552,133.6 556,133.7 560,133.7 564,133.8 568,133.8 572,133.9 576,133.9 580,134.0 584,134.0 588,134.1 592,134.1 596,134.2 600,134.2 604,134.3 608,134.3 612,134.4 616,134.4 620,134.5 624,134.6 628,134.6 632,134.7 636,134.7 640,134.8 644,134.8 648,134.9 652,134.9 656,135.0 660,135.0 664,135.1 668,135.1 672,135.2 676,135.2 680,135.3 684,135.3 688,135.4 692,135.5 696,135.5 700,135.6 704,135.6 708,135.7 712,135.7 716,135.8 720,135.8 724,135.9 728,135.9 732,136.0 736,136.0 740,136.1 744,136.1 748,136.2 752,136.2 756,136.3 760,136.4 764,136.4 768,136.5 772,136.5 776,136.6 780,136.6 784,136.7 788,136.7 792,136.8 796,136.8 800,136.9 804,136.9 808,137.0 812,137.0 816,137.1 820,137.1 824,137.2 828,137.3 832,137.3 836,137.4 840,137.4 844,137.5 848,137.5 852,137.6 856,137.6 860,158.0 864,158.0 868,158.0 872,158.0 876,158.0 880,158.0 884,158.0 888,158.0 892,158.0 896,158.0 900,158.0 904,158.0 908,158.0 912,158.0 916,158.0 920,158.0 924,158.0 928,158.0 932,158.0 936,158.0 940,158.0" fill="none" stroke="var(--ink-3)" stroke-width="1.3" stroke-dasharray="4 3"></polyline>
+  <polyline points="0,118.0 4,116.2 8,117.1 12,119.4 16,119.5 20,117.3 24,116.1 28,117.8 32,119.8 36,119.0 40,116.7 44,116.4 48,118.5 52,119.9 56,118.3 60,116.3 64,116.8 68,119.2 72,119.7 76,117.6 80,116.1 84,117.5 88,119.7 92,119.3 96,117.0 100,116.2 104,118.2 108,119.9 112,118.7 116,116.4 120,111.0 124,117.3 128,117.4 132,121.0 136,123.7 140,120.9 144,121.9 148,124.1 152,120.9 156,120.7 160,123.2 164,120.4 168,119.3 172,122.1 176,120.1 180,118.2 184,121.1 188,119.9 192,117.4 196,120.2 200,119.9 204,117.0 208,119.4 212,120.0 216,116.8 220,118.6 224,120.1 228,116.9 232,117.9 236,120.2 240,117.2 244,117.3 248,120.1 252,117.5 256,116.8 260,119.9 264,118.0 268,116.4 272,119.6 276,118.5 280,116.2 284,119.2 288,119.0 292,116.2 296,118.7 300,119.4 304,116.3 308,118.1 312,119.7 316,116.5 320,117.6 324,119.9 328,116.9 332,117.1 336,119.9 340,117.4 344,116.7 348,119.8 352,117.9 356,116.3 360,119.5 364,118.4 368,116.1 372,119.1 376,118.9 380,116.1 384,118.7 388,119.3 392,116.2 396,118.2 400,119.7 404,116.5 408,117.6 412,119.9 416,116.8 420,117.1 424,119.9 428,118.0 432,92.3 436,68.7 440,49.1 444,35.0 448,27.7 452,27.7 456,35.0 460,49.1 464,68.7 468,92.3 472,115.5 476,116.5 480,117.8 484,119.1 488,120.2 492,120.9 496,121.0 500,120.5 504,119.6 508,118.3 512,117.0 516,115.9 520,115.1 524,115.0 528,115.4 532,116.3 536,117.6 540,118.9 544,120.1 548,120.8 552,121.0 556,120.6 560,119.7 564,118.5 568,117.2 572,116.0 576,115.2 580,115.0 584,115.3 588,116.2 592,117.4 596,118.7 600,119.9 604,120.8 608,121.0 612,120.7 616,119.9 620,118.7 624,117.3 628,116.1 632,115.3 636,115.0 640,115.2 644,116.0 648,117.2 652,118.6 656,119.8 660,120.7 664,121.0 668,120.8 672,120.0 676,118.9 680,117.5 684,116.1 688,112.3 692,109.2 696,106.9 700,105.6 704,105.2 708,105.5 712,106.4 716,107.5 720,108.8 724,110.0 728,111.3 732,112.5 736,113.8 740,115.4 744,115.5 748,115.0 752,115.1 756,115.8 760,116.9 764,118.2 768,119.5 772,120.5 776,121.0 780,120.9 784,120.3 788,119.2 792,117.9 796,116.6 800,115.6 804,115.0 808,115.0 812,115.6 816,116.7 820,118.0 824,119.3 828,120.4 832,121.0 836,121.0 840,120.4 844,119.4 848,118.1 852,116.8 856,115.7 860,90.9 864,105.8 868,112.5 872,115.5 876,116.9 880,117.5 884,118 888,118 892,118 896,118 900,118 904,118 908,118 912,118 916,118 920,118 924,118 928,118 932,118 936,118 940,118" fill="none" stroke="var(--ink)" stroke-width="1.8" stroke-linejoin="round"></polyline>
+  <line x1="118" y1="16" x2="118" y2="158" stroke="var(--ink)" stroke-width="1.5"></line><rect x="118" y="0" width="40" height="16" rx="4" fill="var(--ink)"></rect><text x="124" y="11.5" font-family="JetBrains Mono" font-size="9.5" font-weight="500" fill="#fff" letter-spacing=".04em">EXIT</text>
+  <line x1="428" y1="16" x2="428" y2="158" stroke="var(--ochre)" stroke-width="1.5"></line><rect x="428" y="0" width="0" height="16" rx="4" fill="var(--ochre)"></rect><text x="434" y="11.5" font-family="JetBrains Mono" font-size="9.5" font-weight="500" fill="#fff" letter-spacing=".04em"></text><line x1="455" y1="16" x2="455" y2="158" stroke="var(--ochre)" stroke-width="1.5"></line><rect x="455" y="0" width="0" height="16" rx="4" fill="var(--ochre)"></rect><text x="461" y="11.5" font-family="JetBrains Mono" font-size="9.5" font-weight="500" fill="#fff" letter-spacing=".04em"></text>
+  <rect x="380" y="0" width="48" height="16" rx="4" fill="var(--ochre)"></rect><text x="386" y="11.5" font-family="JetBrains Mono" font-size="9.5" font-weight="500" fill="#fff">OPENS</text>
+  <line x1="472" y1="16" x2="472" y2="158" stroke="var(--accent)" stroke-width="1.5"></line><rect x="472" y="0" width="54" height="16" rx="4" fill="var(--accent)"></rect><text x="478" y="11.5" font-family="JetBrains Mono" font-size="9.5" font-weight="500" fill="#fff" letter-spacing=".04em">CANOPY</text>
+  <line x1="857" y1="16" x2="857" y2="158" stroke="var(--ink)" stroke-width="1.5"></line><rect x="857" y="0" width="56" height="16" rx="4" fill="var(--ink)"></rect><text x="863" y="11.5" font-family="JetBrains Mono" font-size="9.5" font-weight="500" fill="#fff" letter-spacing=".04em">GROUND</text>
+  <text x="6" y="172" font-family="JetBrains Mono" font-size="9.5" fill="var(--ink-3)">PLANE</text>
+  <text x="124" y="172" font-family="JetBrains Mono" font-size="9.5" fill="var(--slate)">FREEFALL</text>
+  <text x="478" y="172" font-family="JetBrains Mono" font-size="9.5" fill="var(--accent)">UNDER THE CANOPY</text>
+  <text x="863" y="172" font-family="JetBrains Mono" font-size="9.5" fill="var(--ink-3)">GROUND</text>
+  <rect x="0" y="16" width="112" height="142" fill="var(--ink)" opacity=".07"></rect>
+  <rect x="891" y="16" width="49" height="142" fill="var(--ink)" opacity=".07"></rect>
+</svg>
+        <div style="position: absolute; left: 107px; top: 18px; width: 11px; height: 146px; border-radius: 4px; background: var(--sheet); border: 2px solid var(--accent)" aria-label="Trim start"></div>
+        <div style="position: absolute; left: 888px; top: 18px; width: 11px; height: 146px; border-radius: 4px; background: var(--sheet); border: 2px solid var(--accent)" aria-label="Trim end"></div>
+        <div style="position: absolute; left: 273px; top: 12px; width: 2px; height: 160px; background: var(--accent)"></div>
+        <div class="mono" style="position: absolute; left: 283px; top: 40px; background: var(--ink); color: var(--sheet); font-size: 11.5px; padding: 6px 9px; border-radius: 8px; line-height: 1.5; box-shadow: var(--float)"><b style="font-size: 14px; font-weight: 500">1.04 g</b> · freefall<br>2 790 m · 198 km/h</div>
+      </div>
+      <div class="row" style="gap: 18px; font-size: 12px; color: var(--ink-2)">
+        <span class="row" style="gap: 6px"><i style="width: 16px; height: 2px; background: var(--ink)"></i>force felt</span>
+        <span class="row" style="gap: 6px"><i style="width: 16px; height: 2px; background: var(--slate)"></i>height, 0–4 000 m</span>
+        <span class="row" style="gap: 6px"><i style="width: 16px; height: 0; border-top: 2px dashed var(--ink-3)"></i>speed, 0–220 km/h</span>
+        <span class="note" style="margin-left: auto">drag along the graph to move the picture · marks move only in order</span>
+      </div>
+    </div>
+    <div class="col" style="border-left: 1px solid var(--line-2); overflow: hidden">
+      <div class="part">
+        <span class="eyebrow">Trim</span>
+        <div class="row" style="gap: 24px"><div class="col"><span class="note">Start</span><span class="serif" style="font-size: 18px; line-height: 1">0:22.9</span></div><div class="col"><span class="note">End</span><span class="serif" style="font-size: 18px; line-height: 1">3:02.5</span></div></div>
+        <span class="note">Keeps 2:39.6, 83% of the clip. Trimming moves no pixels.</span>
+        <button class="btn sm" type="button" style="align-self: flex-start"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M8.5 7.5 20 18M8.5 16.5 20 6"></path></svg>Trim to the jump</button>
+        <span class="note">From a second before the exit to eight seconds after the landing.</span>
+      </div>
+      <div class="part">
+        <span class="eyebrow">Turn</span>
+        <div class="seg" style="align-self: flex-start"><button type="button" class="on">As shot</button><button type="button">↻ ¼ <span class="n">R</span></button><button type="button">↻ ½</button></div>
+        <a href="#" class="note" style="color: var(--ink-2)">Give to every clip in the jump</a>
+      </div>
+      <div class="part">
+        <span class="eyebrow">Frame</span>
+        <div class="seg" style="align-self: flex-start"><button type="button" class="on">16:9</button><button type="button">4:3</button><button type="button">1:1</button><button type="button">9:16</button><button type="button">Free</button></div>
+        <a href="#" class="note" style="color: var(--ink-2)">Give to every clip in the jump</a>
+        <div class="row" style="gap: 10px; opacity: .55"><span class="toggle"></span><span>Landscape, blurred sides</span></div>
+        <span class="note">Only for a clip that stands upright. This one is landscape already.</span>
+      </div>
+      <div class="part">
+        <span class="eyebrow">On the file now</span>
+        <div class="adj"><span>trim</span><span class="unsaved">frame</span><span style="opacity: .4">turn</span></div>
+        <span class="note">Solid is saved, dashed is not yet. Framing encodes the clip again when it is processed.</span>
+        <button class="btn sm ghost quiet" type="button" style="align-self: flex-start; padding-left: 0">Reset</button>
+      </div>
+    </div>
+  </div>
+  <footer>
+    <span class="note">Leaving with changes asks first: keep editing, discard or save.</span>
+    <div class="grow"></div>
+    <button class="btn" type="button">Close</button>
+    <button class="btn primary" type="button">Save</button>
+  </footer>
+</section>
+</div>
+</x-dc>
+</body>
+</html>
