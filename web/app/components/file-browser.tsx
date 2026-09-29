@@ -143,6 +143,7 @@ const JumpCard = ({
   const frozen = group ? jump.frozen.has(group.id) : false
   const over = group !== null && jump.overTarget === `group:${group.id}`
   const from = minFileMtime(section.files) ?? 0
+  const to = section.files.reduce((latest, f) => Math.max(latest, f.mtime), from)
   const first = group?.freed ? undefined : [...section.files].sort((a, b) => a.mtime - b.mtime)[0]
   const label = section.kind === 'jump' ? section.label : t`Loose files`
   const progress = group ? (jump.progress?.(group) ?? null) : null
@@ -180,15 +181,15 @@ const JumpCard = ({
           ? t`Click to list its files · ⌘/ctrl-click a second jump to compare the two · drop files here to move them into it, holding alt to copy them instead · drag onto a folder to file the whole jump`
           : t`Click to list its files`
       }
-      /* the loose card is not a jump and must not pass for one: narrower, dashed, and on nothing of
-         its own */
-      className={`flex flex-none flex-col overflow-hidden rounded-lg border text-left ${
-        group ? 'w-[184px]' : 'w-[112px] border-dashed'
+      /* the loose card is not a jump and must not pass for one: dashed, flat and on nothing of its
+         own — but the same size, so the cards keep their rows and columns */
+      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border text-left ${
+        group ? '' : 'border-dashed'
       } ${group && !frozen ? 'cursor-grab' : 'cursor-pointer'} ${
         over
           ? 'border-dashed border-pick bg-pick-soft'
           : open
-            ? 'border-accent bg-pane shadow-[0_0_0_1px_var(--color-accent)]'
+            ? 'border-accent bg-accent-soft shadow-[0_0_0_1px_var(--color-accent)]'
             : group
               ? 'border-line bg-pane hover:border-line-strong'
               : 'border-line-strong bg-transparent hover:border-ink-3'
@@ -218,18 +219,21 @@ const JumpCard = ({
       <span className='flex items-baseline justify-between gap-2 px-2.5 pt-2'>
         {group ? (
           <>
-            <b className='flex-none text-[13px] font-semibold text-ink tabular-nums'>
-              {hhmm(from)}
-            </b>
-            <span className='min-w-0 truncate text-[11.5px] text-ink-3'>{label}</span>
+            {/* a jump is a gathering of files, so it is named as one — never by one file's time */}
+            <b className='min-w-0 truncate text-[13px] font-semibold text-ink'>{label}</b>
+            <span className='flex-none text-[11.5px] text-ink-3 tabular-nums'>
+              {formatSize(size)}
+            </span>
           </>
         ) : (
           <b className='text-[13px] font-medium text-ink-3'>{t`Loose`}</b>
         )}
       </span>
-      <span className='truncate px-2.5 pt-px pb-2 text-[11.5px] text-ink-3'>
+      <span className='truncate px-2.5 pt-px pb-2 text-[11.5px] text-ink-3 tabular-nums'>
         {group
-          ? `${weekday(new Date(from * 1000), 'short')} ${shortDate(from)} · ${formatSize(size)}`
+          ? `${weekday(new Date(from * 1000), 'short')} ${shortDate(from)} · ${hhmm(from)}${
+              hhmm(to) === hhmm(from) ? '' : `–${hhmm(to)}`
+            }`
           : t`in no jump`}
       </span>
       {/* what it has got to, small and last, so every card keeps the same face above it */}
@@ -291,10 +295,12 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
   if (cards && cardSections.length > 0) {
     const open = cardSections.find((s) => s.key === cards.open) ?? cardSections[0]!
     const openLabel = open.kind === 'jump' ? open.label : t`Loose files`
+    /* one grid of equal cells, so with many jumps the cards line up in columns and rows, the loose
+       files' card among them; a row's cards are as tall as its tallest */
     return (
       <div className='@container'>
         {!cards.hidden && (
-          <div className='mt-3 flex flex-wrap items-start gap-2.5'>
+          <div className='mt-3 grid grid-cols-[repeat(auto-fill,184px)] gap-2.5'>
             {cardSections.map((s) => (
               <JumpCard
                 key={s.key}

@@ -41,6 +41,16 @@ type Props = {
 /* One row of the rail: its mark, its name and how many files it holds, and under that what it still
    owes — with, where it says more than a number, how far its files have got. The folder being looked
    at is filled in blue; one something is dragged over is ringed, to say it will take the drop. */
+/* each kind of place in a colour of its own, so the rail is read by colour before it is read by word */
+const TINT: Partial<Record<IconName, string>> = {
+  fresh: 'text-accent',
+  place: 'text-teal',
+  montage: 'text-proc',
+  storage: 'text-up',
+  camera: 'text-local',
+  bin: 'text-bin'
+}
+
 const Row = ({
   place,
   icon,
@@ -91,7 +101,7 @@ const Row = ({
             <Icon
               name={icon}
               size={15}
-              className={lit ? 'text-white' : 'text-ink-3'}
+              className={lit ? 'text-white' : TINT[icon]}
             />
             <span
               className={`min-w-0 flex-1 truncate text-[13px] font-medium ${quiet ? 'italic' : ''} ${
@@ -293,7 +303,7 @@ const PlacesTree = ({
   return (
     <nav
       aria-label={t`Folders`}
-      className='sticky top-0 self-start overflow-y-auto border-line bg-rail px-2 pt-1 pb-6 max-[780px]:z-[8] max-[780px]:flex max-[780px]:h-auto max-[780px]:items-center max-[780px]:gap-1.5 max-[780px]:overflow-x-auto max-[780px]:overflow-y-hidden max-[780px]:border-b max-[780px]:px-3 max-[780px]:py-2 min-[781px]:flex min-[781px]:h-full min-[781px]:flex-col min-[781px]:border-r'>
+      className='sticky top-0 self-start overflow-y-auto border-line backdrop-rail bg-rail px-2 pt-1 pb-6 max-[780px]:z-[8] max-[780px]:flex max-[780px]:h-auto max-[780px]:items-center max-[780px]:gap-1.5 max-[780px]:overflow-x-auto max-[780px]:overflow-y-hidden max-[780px]:border-b max-[780px]:px-3 max-[780px]:py-2 min-[781px]:flex min-[781px]:h-full min-[781px]:flex-col min-[781px]:border-r'>
       {/* what came off the cameras and is not filed yet: one entry, and the first thing on it */}
       <Heading first>{t`Work`}</Heading>
       <Row

@@ -125,7 +125,7 @@ const PlacePane = ({
         e.preventDefault()
         onImport(carried, incoming.target, incoming.where)
       }}
-      className='flex min-h-0 min-w-0 flex-col bg-pane'>
+      className='backdrop-pane flex min-h-0 min-w-0 flex-col bg-pane'>
       <div className='flex flex-col gap-3 border-b border-line px-4 pt-3 pb-2.5'>
         <div className='flex flex-wrap items-baseline gap-x-4 gap-y-1.5'>
           <h1 className='m-0 text-[17px] leading-[1.2] font-semibold tracking-[-0.02em] text-ink'>

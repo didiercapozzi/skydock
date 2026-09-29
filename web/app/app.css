@@ -3,65 +3,50 @@
 @import '@fontsource-variable/inter';
 @import '@fontsource-variable/jetbrains-mono';
 
-/* The palette, the type and the spacing of the "Studio" design (docs/mockups/studio): a professional
-   media tool — Inter throughout, neutral zinc greys, one blue for the place you are on, what is
-   picked and the next action, and a file's state as a small tinted badge. Every colour in the app
-   comes from here, so the two can be held side by side and compared. */
+/* The palette, the type and the spacing of the "Studio" design (docs/mockups/studio), kept sober:
+   cool slate greys and one clear blue for where you are, what is picked and the next action; amber
+   for what is still to do, violet for what is processed, green for what is up, teal for
+   destinations. A file's state is a small tinted badge. Every colour in the app comes from here. */
 @theme {
   --font-sans: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
 
-  /* the surfaces: behind everything, the panes on it, the places down the side, the window's own
-     chrome — toolbar, status bar, dialog headers — and a well for what sits sunk in them */
-  --color-ground: #f4f4f5;
+  --color-ground: #f1f4f8;
   --color-pane: #ffffff;
-  --color-rail: #fafafa;
-  --color-chrome: #eeeef0;
-  --color-well: #f4f4f5;
-
-  /* type, loudest to quietest */
-  --color-ink: #18181b;
-  --color-ink-2: #52525b;
-  --color-ink-3: #8b8b94;
-
-  /* hairlines: the one that separates, the one that barely does, and the one that frames */
-  --color-line: #e4e4e7;
-  --color-line-2: #efeff1;
-  --color-line-strong: #d9d9de;
-
-  /* the one blue: where you are, what is picked, and the button that does the next thing */
-  --color-accent: #2563eb;
-  --color-accent-ink: #1d4ed8;
-  --color-accent-soft: #eff4ff;
-  --color-pick: #2563eb;
-  --color-pick-soft: #eff4ff;
-
-  /* a file's state, each a colour on a tint: local amber, processed violet, uploaded green */
+  --color-rail: #f6f8fb;
+  --color-chrome: #edf1f6;
+  --color-well: #eef2f7;
+  --color-ink: #0f1b2d;
+  --color-ink-2: #4a5a70;
+  --color-ink-3: #74839a;
+  --color-line: #dfe5ee;
+  --color-line-2: #ebeff5;
+  --color-line-strong: #cdd6e3;
+  --color-accent: #1a73d9;
+  --color-accent-ink: #0f56ad;
+  --color-accent-soft: #e8f1fc;
+  --color-pick: #1a73d9;
+  --color-pick-soft: #e8f1fc;
   --color-local: #b45309;
-  --color-local-soft: #fef3e2;
+  --color-local-soft: #fdf1e1;
   --color-local-bar: #f59e0b;
-  --color-proc: #6d28d9;
-  --color-proc-soft: #f3efff;
-  --color-up: #15803d;
-  --color-up-soft: #e9f8ef;
+  --color-proc: #6d3fd8;
+  --color-proc-soft: #f1ecfd;
+  --color-up: #16803c;
+  --color-up-soft: #e7f5ec;
+  --color-teal: #0f8a9b;
+  --color-lock: #4a5a70;
+  --color-lock-soft: #eef2f7;
+  --color-changed: #0f56ad;
+  --color-changed-soft: #e8f1fc;
+  --color-changed-line: #0f56ad;
+  --color-bin: #d43434;
+  --color-bin-soft: #fbeaea;
 
-  /* uploaded, and therefore closed to editing: said quietly, with a lock */
-  --color-lock: #52525b;
-  --color-lock-soft: #f4f4f5;
-
-  /* processed once and changed since: the blue of the next action, outlined */
-  --color-changed: #1d4ed8;
-  --color-changed-soft: #eff4ff;
-  --color-changed-line: #1d4ed8;
-
-  /* the bin, and anything that deletes: red wherever it is offered, in either theme */
-  --color-bin: #dc2626;
-  --color-bin-soft: #fdeeee;
-
-  --shadow-card: 0 1px 2px rgba(24, 24, 27, 0.05);
+  --shadow-card: 0 1px 2px rgba(16, 35, 58, 0.06);
   --shadow-float:
-    0 0 0 1px rgba(24, 24, 27, 0.06), 0 12px 32px rgba(24, 24, 27, 0.14),
-    0 2px 6px rgba(24, 24, 27, 0.06);
+    0 0 0 1px rgba(16, 35, 58, 0.08), 0 12px 32px rgba(16, 35, 58, 0.16),
+    0 2px 6px rgba(16, 35, 58, 0.06);
 
   /* The shared form package names its colours by role rather than by shade, so that whatever uses
      it supplies the palette. These are that supply. */
@@ -70,81 +55,133 @@
   --color-destructive: var(--color-bin);
 }
 
-/* Dark is the same design on near-black for the hangar at the end of the day: the same tokens
-   redefined, so every utility follows. Two ways in, and `data-theme` wins over the machine's own
-   setting — the selector carrying it is more specific than a bare `:root`. */
+/* What sits behind the panes, kept discreet: a few fine contour lines, like a map of the ground
+   seen from altitude, at the foot of the places and the details and in the corner of the list, over
+   a barely-there gradient. They are properties so the dark theme can redraw them in its own tints. */
+:root {
+  --backdrop-rail: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 224 320'%3E%3Cpath d='M0 168C40.32 154.0 71.68 182.0 112.0 168S183.67999999999998 154.0 224 176.4' fill='none' stroke='%231a73d9' stroke-opacity='.11' stroke-width='1'/%3E%3Cpath d='M0 184C40.32 171.12 71.68 196.88 112.0 184S183.67999999999998 171.12 224 191.728' fill='none' stroke='%231a73d9' stroke-opacity='.11' stroke-width='1'/%3E%3Cpath d='M0 200C40.32 188.24 71.68 211.76 112.0 200S183.67999999999998 188.24 224 207.056' fill='none' stroke='%231a73d9' stroke-opacity='.11' stroke-width='1'/%3E%3Cpath d='M0 216C40.32 205.36 71.68 226.64 112.0 216S183.67999999999998 205.36 224 222.38400000000001' fill='none' stroke='%231a73d9' stroke-opacity='.11' stroke-width='1'/%3E%3Cpath d='M0 232C40.32 222.48 71.68 241.52 112.0 232S183.67999999999998 222.48 224 237.712' fill='none' stroke='%231a73d9' stroke-opacity='.11' stroke-width='1'/%3E%3Cpath d='M0 248C40.32 239.6 71.68 256.4 112.0 248S183.67999999999998 239.6 224 253.04' fill='none' stroke='%231a73d9' stroke-opacity='.11' stroke-width='1'/%3E%3Cpath d='M0 264C40.32 256.72 71.68 271.28 112.0 264S183.67999999999998 256.72 224 268.368' fill='none' stroke='%231a73d9' stroke-opacity='.11' stroke-width='1'/%3E%3Cpath d='M0 280C40.32 273.84 71.68 286.16 112.0 280S183.67999999999998 273.84 224 283.696' fill='none' stroke='%231a73d9' stroke-opacity='.11' stroke-width='1'/%3E%3Cpath d='M0 296C40.32 290.96 71.68 301.04 112.0 296S183.67999999999998 290.96 224 299.024' fill='none' stroke='%231a73d9' stroke-opacity='.11' stroke-width='1'/%3E%3C/svg%3E");
+  --backdrop-pane: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 560 320'%3E%3Cpath d='M0 150C100.8 124.0 179.20000000000002 176.0 280.0 150S459.2 124.0 560 165.6' fill='none' stroke='%231a73d9' stroke-opacity='.09' stroke-width='1'/%3E%3Cpath d='M0 168C100.8 144.07999999999998 179.20000000000002 191.92000000000002 280.0 168S459.2 144.07999999999998 560 182.352' fill='none' stroke='%231a73d9' stroke-opacity='.09' stroke-width='1'/%3E%3Cpath d='M0 186C100.8 164.16 179.20000000000002 207.84 280.0 186S459.2 164.16 560 199.10399999999998' fill='none' stroke='%231a73d9' stroke-opacity='.09' stroke-width='1'/%3E%3Cpath d='M0 204C100.8 184.24 179.20000000000002 223.76 280.0 204S459.2 184.24 560 215.856' fill='none' stroke='%231a73d9' stroke-opacity='.09' stroke-width='1'/%3E%3Cpath d='M0 222C100.8 204.32 179.20000000000002 239.68 280.0 222S459.2 204.32 560 232.608' fill='none' stroke='%231a73d9' stroke-opacity='.09' stroke-width='1'/%3E%3Cpath d='M0 240C100.8 224.4 179.20000000000002 255.6 280.0 240S459.2 224.4 560 249.36' fill='none' stroke='%231a73d9' stroke-opacity='.09' stroke-width='1'/%3E%3Cpath d='M0 258C100.8 244.48 179.20000000000002 271.52 280.0 258S459.2 244.48 560 266.112' fill='none' stroke='%231a73d9' stroke-opacity='.09' stroke-width='1'/%3E%3Cpath d='M0 276C100.8 264.56 179.20000000000002 287.44 280.0 276S459.2 264.56 560 282.864' fill='none' stroke='%231a73d9' stroke-opacity='.09' stroke-width='1'/%3E%3Cpath d='M0 294C100.8 284.64 179.20000000000002 303.36 280.0 294S459.2 284.64 560 299.616' fill='none' stroke='%231a73d9' stroke-opacity='.09' stroke-width='1'/%3E%3C/svg%3E");
+  --sky: linear-gradient(180deg, #f2f6fa 0%, #f6f8fb 50%);
+  --bar: linear-gradient(180deg, #f4f7fa, #e9eef4);
+}
+
+/* Dark is the same design on deep navy: the same tokens redefined, so every utility
+   follows. Two ways in, and `data-theme` wins over the machine's own setting — the selector
+   carrying it is more specific than a bare `:root`. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --color-ground: #0c0c0e;
-    --color-pane: #141416;
-    --color-rail: #19191c;
-    --color-chrome: #1c1c1f;
-    --color-well: #1f1f23;
-    --color-ink: #f4f4f5;
-    --color-ink-2: #b4b4bb;
-    --color-ink-3: #7c7c85;
-    --color-line: #27272b;
-    --color-line-2: #202024;
-    --color-line-strong: #2f2f34;
-    --color-accent: #4b83f5;
-    --color-accent-ink: #8db1ff;
-    --color-accent-soft: #172442;
-    --color-pick: #4b83f5;
-    --color-pick-soft: #172442;
-    --color-local: #f0b44c;
-    --color-local-soft: #2e2413;
-    --color-proc: #b39cff;
-    --color-proc-soft: #241d3d;
-    --color-up: #4fd18b;
-    --color-up-soft: #13291d;
-    --color-lock: #b4b4bb;
-    --color-lock-soft: #1f1f23;
-    --color-changed: #8db1ff;
-    --color-changed-soft: #172442;
-    --color-changed-line: #8db1ff;
-    --color-bin: #f26b6b;
-    --color-bin-soft: #331719;
+    --color-ground: #080c13;
+    --color-pane: #0e141e;
+    --color-rail: #0c111a;
+    --color-chrome: #111926;
+    --color-well: #161f2d;
+    --color-ink: #e8eef6;
+    --color-ink-2: #a3b1c4;
+    --color-ink-3: #74839a;
+    --color-line: #1c2636;
+    --color-line-2: #151d2b;
+    --color-line-strong: #273349;
+    --color-accent: #4a9bf0;
+    --color-accent-ink: #86bcf7;
+    --color-accent-soft: #10253f;
+    --color-pick: #4a9bf0;
+    --color-pick-soft: #10253f;
+    --color-local: #f0a24f;
+    --color-local-soft: #2b1f10;
+    --color-proc: #b7a0ff;
+    --color-proc-soft: #221b3d;
+    --color-teal: #3cc4d3;
+    --color-up: #4fcb87;
+    --color-up-soft: #10271a;
+    --color-lock: #a3b1c4;
+    --color-lock-soft: #161f2d;
+    --color-changed: #86bcf7;
+    --color-changed-soft: #10253f;
+    --color-changed-line: #86bcf7;
+    --color-bin: #ef6b6b;
+    --color-bin-soft: #301618;
     --shadow-card: none;
-    --shadow-float: 0 0 0 1px #2e2e33, 0 16px 40px rgba(0, 0, 0, 0.6);
+    --shadow-float: 0 0 0 1px #27395a, 0 16px 40px rgba(0, 0, 0, 0.6);
+    --backdrop-rail: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 224 320'%3E%3Cpath d='M0 168C40.32 154.0 71.68 182.0 112.0 168S183.67999999999998 154.0 224 176.4' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 184C40.32 171.12 71.68 196.88 112.0 184S183.67999999999998 171.12 224 191.728' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 200C40.32 188.24 71.68 211.76 112.0 200S183.67999999999998 188.24 224 207.056' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 216C40.32 205.36 71.68 226.64 112.0 216S183.67999999999998 205.36 224 222.38400000000001' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 232C40.32 222.48 71.68 241.52 112.0 232S183.67999999999998 222.48 224 237.712' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 248C40.32 239.6 71.68 256.4 112.0 248S183.67999999999998 239.6 224 253.04' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 264C40.32 256.72 71.68 271.28 112.0 264S183.67999999999998 256.72 224 268.368' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 280C40.32 273.84 71.68 286.16 112.0 280S183.67999999999998 273.84 224 283.696' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 296C40.32 290.96 71.68 301.04 112.0 296S183.67999999999998 290.96 224 299.024' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3C/svg%3E");
+    --backdrop-pane: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 560 320'%3E%3Cpath d='M0 150C100.8 124.0 179.20000000000002 176.0 280.0 150S459.2 124.0 560 165.6' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 168C100.8 144.07999999999998 179.20000000000002 191.92000000000002 280.0 168S459.2 144.07999999999998 560 182.352' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 186C100.8 164.16 179.20000000000002 207.84 280.0 186S459.2 164.16 560 199.10399999999998' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 204C100.8 184.24 179.20000000000002 223.76 280.0 204S459.2 184.24 560 215.856' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 222C100.8 204.32 179.20000000000002 239.68 280.0 222S459.2 204.32 560 232.608' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 240C100.8 224.4 179.20000000000002 255.6 280.0 240S459.2 224.4 560 249.36' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 258C100.8 244.48 179.20000000000002 271.52 280.0 258S459.2 244.48 560 266.112' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 276C100.8 264.56 179.20000000000002 287.44 280.0 276S459.2 264.56 560 282.864' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 294C100.8 284.64 179.20000000000002 303.36 280.0 294S459.2 284.64 560 299.616' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3C/svg%3E");
+    --sky: linear-gradient(180deg, #0f1826 0%, #0c111a 50%);
+    --bar: linear-gradient(180deg, #141d2b, #0f1722);
 
     color-scheme: dark;
   }
 }
 
 :root[data-theme='dark'] {
-  --color-ground: #0c0c0e;
-  --color-pane: #141416;
-  --color-rail: #19191c;
-  --color-chrome: #1c1c1f;
-  --color-well: #1f1f23;
-  --color-ink: #f4f4f5;
-  --color-ink-2: #b4b4bb;
-  --color-ink-3: #7c7c85;
-  --color-line: #27272b;
-  --color-line-2: #202024;
-  --color-line-strong: #2f2f34;
-  --color-accent: #4b83f5;
-  --color-accent-ink: #8db1ff;
-  --color-accent-soft: #172442;
-  --color-pick: #4b83f5;
-  --color-pick-soft: #172442;
-  --color-local: #f0b44c;
-  --color-local-soft: #2e2413;
-  --color-proc: #b39cff;
-  --color-proc-soft: #241d3d;
-  --color-up: #4fd18b;
-  --color-up-soft: #13291d;
-  --color-lock: #b4b4bb;
-  --color-lock-soft: #1f1f23;
-  --color-changed: #8db1ff;
-  --color-changed-soft: #172442;
-  --color-changed-line: #8db1ff;
-  --color-bin: #f26b6b;
-  --color-bin-soft: #331719;
+  --color-ground: #080c13;
+  --color-pane: #0e141e;
+  --color-rail: #0c111a;
+  --color-chrome: #111926;
+  --color-well: #161f2d;
+  --color-ink: #e8eef6;
+  --color-ink-2: #a3b1c4;
+  --color-ink-3: #74839a;
+  --color-line: #1c2636;
+  --color-line-2: #151d2b;
+  --color-line-strong: #273349;
+  --color-accent: #4a9bf0;
+  --color-accent-ink: #86bcf7;
+  --color-accent-soft: #10253f;
+  --color-pick: #4a9bf0;
+  --color-pick-soft: #10253f;
+  --color-local: #f0a24f;
+  --color-local-soft: #2b1f10;
+  --color-proc: #b7a0ff;
+  --color-proc-soft: #221b3d;
+  --color-teal: #3cc4d3;
+  --color-up: #4fcb87;
+  --color-up-soft: #10271a;
+  --color-lock: #a3b1c4;
+  --color-lock-soft: #161f2d;
+  --color-changed: #86bcf7;
+  --color-changed-soft: #10253f;
+  --color-changed-line: #86bcf7;
+  --color-bin: #ef6b6b;
+  --color-bin-soft: #301618;
   --shadow-card: none;
-  --shadow-float: 0 0 0 1px #2e2e33, 0 16px 40px rgba(0, 0, 0, 0.6);
+  --shadow-float: 0 0 0 1px #27395a, 0 16px 40px rgba(0, 0, 0, 0.6);
+  --backdrop-rail: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 224 320'%3E%3Cpath d='M0 168C40.32 154.0 71.68 182.0 112.0 168S183.67999999999998 154.0 224 176.4' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 184C40.32 171.12 71.68 196.88 112.0 184S183.67999999999998 171.12 224 191.728' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 200C40.32 188.24 71.68 211.76 112.0 200S183.67999999999998 188.24 224 207.056' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 216C40.32 205.36 71.68 226.64 112.0 216S183.67999999999998 205.36 224 222.38400000000001' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 232C40.32 222.48 71.68 241.52 112.0 232S183.67999999999998 222.48 224 237.712' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 248C40.32 239.6 71.68 256.4 112.0 248S183.67999999999998 239.6 224 253.04' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 264C40.32 256.72 71.68 271.28 112.0 264S183.67999999999998 256.72 224 268.368' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 280C40.32 273.84 71.68 286.16 112.0 280S183.67999999999998 273.84 224 283.696' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 296C40.32 290.96 71.68 301.04 112.0 296S183.67999999999998 290.96 224 299.024' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3C/svg%3E");
+  --backdrop-pane: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 560 320'%3E%3Cpath d='M0 150C100.8 124.0 179.20000000000002 176.0 280.0 150S459.2 124.0 560 165.6' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 168C100.8 144.07999999999998 179.20000000000002 191.92000000000002 280.0 168S459.2 144.07999999999998 560 182.352' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 186C100.8 164.16 179.20000000000002 207.84 280.0 186S459.2 164.16 560 199.10399999999998' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 204C100.8 184.24 179.20000000000002 223.76 280.0 204S459.2 184.24 560 215.856' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 222C100.8 204.32 179.20000000000002 239.68 280.0 222S459.2 204.32 560 232.608' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 240C100.8 224.4 179.20000000000002 255.6 280.0 240S459.2 224.4 560 249.36' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 258C100.8 244.48 179.20000000000002 271.52 280.0 258S459.2 244.48 560 266.112' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 276C100.8 264.56 179.20000000000002 287.44 280.0 276S459.2 264.56 560 282.864' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 294C100.8 284.64 179.20000000000002 303.36 280.0 294S459.2 284.64 560 299.616' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3C/svg%3E");
+  --sky: linear-gradient(180deg, #0f1826 0%, #0c111a 50%);
+  --bar: linear-gradient(180deg, #141d2b, #0f1722);
 
   color-scheme: dark;
+}
+
+@layer components {
+  /* the toolbar and the status bar: a gentle step of tone, top to bottom */
+  .bar {
+    background-image: var(--bar);
+  }
+  /* the places, over a soft gradient, contour lines at their foot */
+  .backdrop-rail {
+    background-image: var(--backdrop-rail), var(--sky);
+    background-repeat: no-repeat;
+    background-position:
+      bottom left,
+      top;
+    background-size:
+      100% auto,
+      100% 100%;
+  }
+  /* the same lines at the foot of the details, on the pane's own ground */
+  .backdrop-side {
+    background-image: var(--backdrop-rail);
+    background-repeat: repeat-x;
+    background-position: bottom left;
+    background-size: auto 260px;
+  }
+  /* the lines in the corner of the list, behind the files */
+  .backdrop-pane {
+    background-image: var(--backdrop-pane);
+    background-repeat: no-repeat;
+    background-position: right 8px bottom 0;
+    background-size: min(560px, 60%) auto;
+  }
 }
 
 /* In the base layer, not bare: CSS outside a layer beats every Tailwind utility, so a bare

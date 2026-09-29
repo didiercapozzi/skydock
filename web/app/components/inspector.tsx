@@ -7,12 +7,12 @@ import { StatusChip } from './file-status'
 import type { ShownStatus } from './file-status'
 import { Icon } from './icons'
 import { JumpForm } from './jump-name'
-import { JumpSpan, hhmmss } from './jump-time'
+import { JumpSpan } from './jump-time'
 import { NameMontage, PassengerName } from './montage-card'
 import { StepTrail } from './montage-steps'
 import type { Passenger } from './montage-card'
 import type { ManifestFile, ManifestGroup } from './types'
-import { dateLabel, formatSize, getPictureUrl, minFileMtime, shortDate } from './utils'
+import { dateLabel, formatSize, getPictureUrl, hhmm, minFileMtime, shortDate } from './utils'
 
 /* The right-hand pane says everything about whatever is selected — one file, several, a jump, or
    the folder itself when nothing is — and offers what can be done with it, so nothing has to be
@@ -40,7 +40,7 @@ const Shell = ({ children }: { children: React.ReactNode }) => {
         onKeyDown={(e) => {
           if (e.key === 'Escape' && open) setOpen(false)
         }}
-        className={`flex min-h-0 flex-col overflow-y-auto border-l border-line bg-pane max-[1100px]:fixed max-[1100px]:inset-y-0 max-[1100px]:right-0 max-[1100px]:z-30 max-[1100px]:w-[min(340px,90vw)] max-[1100px]:shadow-[0_0_40px_rgba(0,0,0,0.25)] ${
+        className={`backdrop-side flex min-h-0 flex-col overflow-y-auto border-l border-line bg-pane max-[1100px]:fixed max-[1100px]:inset-y-0 max-[1100px]:right-0 max-[1100px]:z-30 max-[1100px]:w-[min(340px,90vw)] max-[1100px]:shadow-[0_0_40px_rgba(0,0,0,0.25)] ${
           open ? '' : 'max-[1100px]:hidden'
         }`}>
         {children}
@@ -367,7 +367,7 @@ const JumpPanel = ({
             onShift={onShift}
           />
         ) : (
-          <span className='text-[12.5px] tabular-nums'>{`${dateLabel(from)} ${hhmmss(from)}`}</span>
+          <span className='text-[12.5px] tabular-nums'>{`${dateLabel(from)} ${hhmm(from)}`}</span>
         )}
       </Part>
       {montage && (
@@ -564,7 +564,7 @@ const FilePanel = ({
                   tip={t`Wrong time on this one file? Set when it was really shot`}
                 />
               ) : (
-                `${dateLabel(file.mtime)} ${hhmmss(file.mtime)}`
+                `${dateLabel(file.mtime)} ${hhmm(file.mtime)}`
               )
             ],
             [t`Size`, formatSize(file.size)],

@@ -31,5 +31,5 @@
       "Read(/workspace/.env)"
     ]
   },
-  "model": "opus[1m]"
+  "model": "sonnet"
 }

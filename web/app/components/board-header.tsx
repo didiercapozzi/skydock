@@ -97,7 +97,7 @@ const BoardHeader = ({
     window.location.reload()
   }
   return (
-    <header className='flex h-[42px] flex-none items-center gap-1 border-b border-line-strong bg-chrome px-2.5'>
+    <header className='flex h-[42px] flex-none items-center gap-1 bar border-b border-line-strong bg-chrome px-2.5'>
       <button
         type='button'
         onClick={onOverview}
@@ -283,7 +283,7 @@ const StatusBar = ({
   const user = nas.user
   const item = 'inline-flex h-5 items-center gap-1.5 px-2 whitespace-nowrap'
   return (
-    <footer className='flex h-[26px] flex-none items-center gap-0.5 border-t border-line-strong bg-chrome px-2 text-[11.5px] text-ink-2 [&>*+*]:border-l [&>*+*]:border-line-strong'>
+    <footer className='flex h-[26px] flex-none items-center gap-0.5 bar border-t border-line-strong bg-chrome px-2 text-[11.5px] text-ink-2 [&>*+*]:border-l [&>*+*]:border-line-strong'>
       {/* Who the storage was connected as, and where: the same question a NAS asks at its own
           login, answered on the board rather than left to be remembered. */}
       <span

@@ -1414,6 +1414,7 @@ msgstr "Schneide eine Halterung oder einen Finger aus der Ecke. Gleich behält d
 msgid "Dark"
 msgstr "Dunkel"
 
+#: app/components/jump-time.tsx
 #: app/components/overview-dialog.tsx
 msgid "Day"
 msgstr "Tag"
@@ -3984,6 +3985,10 @@ msgstr "Miniaturen"
 #: app/components/upload-dialog.tsx
 msgid "Tick several to drag them together, or tick them and press Put here on a destination. Each can go to several destinations."
 msgstr "Hake mehrere an, um sie zusammen zu ziehen, oder hake sie an und drück bei einem Ziel auf Hierher legen. Jedes kann in mehrere Ziele."
+
+#: app/components/jump-time.tsx
+msgid "Time"
+msgstr "Uhrzeit"
 
 #: app/components/reset-fresh-dialog.tsx
 msgid "Times only"

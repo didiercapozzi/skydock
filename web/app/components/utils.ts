@@ -66,10 +66,10 @@ const formatFilmSize = (bytes: number) =>
 const clock = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${String(Math.floor(Math.max(0, seconds) % 60)).padStart(2, '0')}`
 
+/* hours and minutes: seconds are only ever asked for where a time is set */
 const TIME_WRITER = new Intl.DateTimeFormat('de-CH', {
   hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit'
+  minute: '2-digit'
 })
 
 const formatTime = (epoch: number) => TIME_WRITER.format(new Date(epoch * 1000))

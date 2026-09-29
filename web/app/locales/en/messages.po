@@ -1414,6 +1414,7 @@ msgstr "Cut a mount or a finger out of the corner. Same keeps the shape the clip
 msgid "Dark"
 msgstr "Dark"
 
+#: app/components/jump-time.tsx
 #: app/components/overview-dialog.tsx
 msgid "Day"
 msgstr "Day"
@@ -3984,6 +3985,10 @@ msgstr "Thumbnails"
 #: app/components/upload-dialog.tsx
 msgid "Tick several to drag them together, or tick them and press Put here on a destination. Each can go to several destinations."
 msgstr "Tick several to drag them together, or tick them and press Put here on a destination. Each can go to several destinations."
+
+#: app/components/jump-time.tsx
+msgid "Time"
+msgstr "Time"
 
 #: app/components/reset-fresh-dialog.tsx
 msgid "Times only"

@@ -477,8 +477,10 @@ by clicking the start; emptying the name puts back its place among the jumps. Th
 the board calls the jump — no file is named after it, so renaming never makes anything stale — and it
 is kept through a scan. A jump that already had one keeps it, and making it a montage starts from it.
 
-Arranged by jump, every jump is a card, side by side, newest first, so the numbers count down to Jump 1,
-the first of all. A card carries its name, its date in full and its start time to the minute, how many
+Arranged by jump, every jump is a card, in a grid of equal cells — so many jumps line up in columns
+and rows, the loose files' card among them — newest first, so the numbers count down to Jump 1,
+the first of all. A card carries its name and how big it is, its day and the span of times its files cover to the
+minute — never one file's time, since a jump is a gathering of files — how many
 videos and photos it holds, how far it has got, and a few frames off it, so jumps are told apart at a
 glance. The loose files get one card of their own, always first: drawn dashed and flat so it never
 passes for a jump, and carrying no date, since loose files share no one moment.
@@ -652,7 +654,7 @@ the start of either, or onto a time typed in — for two cameras on one jump, on
 clock. Each side is worked through from the keyboard as any list on the board is: up and down move
 along its files, Enter takes the one they are on, and left and right go to another jump on that
 side — never to the one the other side is already showing. Moving and taking are two things here,
-since taking a file plays it. Every time in there is said in full and to the minute, the day
+since taking a file plays it. Every time on the board is said to the minute; seconds are only ever asked for in the picker that sets a time. Every time in there is said in full, the day
 included: the clocks being compared are the whole point, and the seconds between them were never
 what anybody was reading. The other way round, several files picked in Fresh files — loose, or
 taken out of a jump — can be made a jump of their own, or a montage, each by a button of its own that
@@ -686,8 +688,12 @@ montages are not looked at; nothing of them is here.
 
 **The toolbar and the status bar.** SkyDock is drawn as the desktop tool it is: under the window's
 own title bar a toolbar, three panes side by side — the places, the list, and what is open — and a
-status bar along the bottom, all neutral greys with one blue for where you are, what is picked and
-the button that does the next thing. The toolbar holds what is used every day: the overview,
+status bar along the bottom, in cool slate greys with one clear blue for where you are, what is picked and the button that does
+the next thing — amber for what is still to do, violet for what is processed, green for what is up —
+and a colour for each kind of place in the rail: blue for Fresh files, teal for destinations, violet
+for montages, green for the storage, amber for cameras, red for the bin. Behind the panes sit only a
+few fine contour lines, like a map of the ground seen from altitude, at the foot of the places and the
+details and in the corner of the list. Dark is the same on deep navy. The toolbar holds what is used every day: the overview,
 scanning, rows or thumbnails, finding anything (Ctrl or ⌘ with F goes there), the keys the board
 knows, and behind _Settings_ light or dark, the language, the editing templates, the work folder and
 the history. The status bar says what is going on: the storage — whether it is connected, as whom

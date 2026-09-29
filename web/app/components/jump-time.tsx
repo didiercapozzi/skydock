@@ -1,14 +1,7 @@
 import { t } from '@lingui/core/macro'
 import { useState } from 'react'
 import { Go } from './buttons'
-import { dateLabel, pad } from './utils'
-
-/* to the second, like every other time on the board: two files a second apart is the whole reason
-   the order inside a jump is worth looking at */
-const hhmmss = (epoch: number) => {
-  const d = new Date(epoch * 1000)
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-}
+import { dateLabel, hhmm, pad } from './utils'
 
 /* what a datetime-local field wants, in the reader's own timezone */
 const toLocalInput = (epoch: number) => {
@@ -58,7 +51,7 @@ const JumpSpan = ({
 }) => {
   const [draft, setDraft] = useState<string | null>(null)
   /* the full date, year and all: a camera clock that is wrong is as often wrong by a year */
-  const show = (at: number) => (withDate ? `${dateLabel(at)} ${hhmmss(at)}` : hhmmss(at))
+  const show = (at: number) => (withDate ? `${dateLabel(at)} ${hhmm(at)}` : hhmm(at))
 
   const start = show(from)
   const end = show(to)
@@ -74,7 +67,7 @@ const JumpSpan = ({
         onClick={open}
         title={`${tip}\n${t`This jump runs from ${start} to ${end}`}`}
         className='flex items-center gap-2.5 rounded-md border border-line bg-transparent px-2.5 py-1.5 text-left text-ink hover:border-line-strong hover:bg-rail disabled:opacity-60'>
-        <b className='text-[20px] font-semibold tracking-[-0.02em] tabular-nums'>{hhmmss(from)}</b>
+        <b className='text-[20px] font-semibold tracking-[-0.02em] tabular-nums'>{hhmm(from)}</b>
         <span className='text-[11.5px] leading-normal text-ink-3'>
           {dateLabel(from)}
           <br />
@@ -103,32 +96,51 @@ const JumpSpan = ({
     setDraft(null)
     if (anchor !== null && anchor !== from) onShift(anchor)
   }
+  /* the day and the time are two fields, side by side where there is room and one above the other
+     where there is not: a single date-and-time field is too wide for the right-hand panel, and its
+     time — the part being corrected — was cut off. The time is the one place seconds are asked for:
+     two files a second apart are why the order inside a jump is worth setting right. */
+  const [day = '', time = ''] = draft.split('T')
+  const key = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') commit()
+    if (e.key === 'Escape') setDraft(null)
+  }
+  const field =
+    'h-[30px] min-w-0 rounded-md border border-accent bg-pane px-2 text-[12.5px] text-ink tabular-nums'
   return (
     <span
       onClick={(e) => e.stopPropagation()}
       className='flex flex-wrap items-center gap-1.5'>
       <input
-        type='datetime-local'
-        step='1'
+        type='date'
+        aria-label={t`Day`}
         autoFocus
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') commit()
-          if (e.key === 'Escape') setDraft(null)
-        }}
-        className='h-[30px] min-w-0 flex-1 rounded-md border border-accent bg-pane px-2 text-[12.5px] text-ink tabular-nums'
+        value={day}
+        onChange={(e) => setDraft(`${e.target.value}T${time}`)}
+        onKeyDown={key}
+        className={`${field} min-w-[9.5rem] flex-1`}
       />
-      <Go onClick={commit}>{t`Set`}</Go>
-      <button
-        type='button'
-        onClick={() => setDraft(null)}
-        className='border-0 bg-transparent p-0 text-[11.5px] text-ink-3 underline hover:text-ink'>
-        {t`cancel`}
-      </button>
+      <input
+        type='time'
+        step='1'
+        aria-label={t`Time`}
+        value={time}
+        onChange={(e) => setDraft(`${day}T${e.target.value}`)}
+        onKeyDown={key}
+        className={`${field} min-w-[8rem] flex-1`}
+      />
+      <span className='flex basis-full items-center gap-2'>
+        <Go onClick={commit}>{t`Set`}</Go>
+        <button
+          type='button'
+          onClick={() => setDraft(null)}
+          className='border-0 bg-transparent p-0 text-[11.5px] text-ink-3 underline hover:text-ink'>
+          {t`cancel`}
+        </button>
+      </span>
       <span className='basis-full text-[11.5px] leading-normal text-ink-3'>{hint}</span>
     </span>
   )
 }
 
-export { JumpSpan, fromLocalInput, hhmmss, toLocalInput }
+export { JumpSpan, fromLocalInput, toLocalInput }

@@ -253,7 +253,7 @@ describe('files taken out of a montage', () => {
     await userEvent.keyboard('{Delete}')
 
     const toBin = takeOut().getByRole('button', { name: 'Put in the bin' }).element()
-    expect(getComputedStyle(toBin).backgroundColor).toBe('rgb(220, 38, 38)')
+    expect(getComputedStyle(toBin).backgroundColor).toBe('rgb(212, 52, 52)')
     expect(toBin.querySelector('svg')).not.toBeNull()
   })
 
