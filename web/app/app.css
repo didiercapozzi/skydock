@@ -1,124 +1,148 @@
 @import 'tailwindcss';
 
-/* The palette, the type and the spacing of `skydock-mockup.html`, which is the approved design.
-   Every colour in the app comes from here — no stock Tailwind palette anywhere — so the two can be
-   held side by side and compared. Changing a value here changes it everywhere it is used. */
-@theme {
-  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
 
-  /* the three surfaces: the page behind, the panels on it, the menu rail beside them */
-  --color-ground: #f2f4f6;
+/* The palette, the type and the spacing of the "Studio" design (docs/mockups/studio): a professional
+   media tool — Inter throughout, neutral zinc greys, one blue for the place you are on, what is
+   picked and the next action, and a file's state as a small tinted badge. Every colour in the app
+   comes from here, so the two can be held side by side and compared. */
+@theme {
+  --font-sans: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+
+  /* the surfaces: behind everything, the panes on it, the places down the side, the window's own
+     chrome — toolbar, status bar, dialog headers — and a well for what sits sunk in them */
+  --color-ground: #f4f4f5;
   --color-pane: #ffffff;
-  --color-rail: #eaedf1;
+  --color-rail: #fafafa;
+  --color-chrome: #eeeef0;
+  --color-well: #f4f4f5;
 
   /* type, loudest to quietest */
-  --color-ink: #171c22;
-  --color-ink-2: #545e6b;
-  --color-ink-3: #6b7582;
+  --color-ink: #18181b;
+  --color-ink-2: #52525b;
+  --color-ink-3: #8b8b94;
 
-  /* borders: the one you see, and the one that only separates */
-  --color-line: #dde2e8;
-  --color-line-2: #eef1f4;
+  /* hairlines: the one that separates, the one that barely does, and the one that frames */
+  --color-line: #e4e4e7;
+  --color-line-2: #efeff1;
+  --color-line-strong: #d9d9de;
 
-  /* the app's own colour, and the colour of a selection */
-  --color-accent: #0f6f68;
-  --color-accent-soft: #e3f2f0;
+  /* the one blue: where you are, what is picked, and the button that does the next thing */
+  --color-accent: #2563eb;
+  --color-accent-ink: #1d4ed8;
+  --color-accent-soft: #eff4ff;
   --color-pick: #2563eb;
-  --color-pick-soft: #e6eefc;
+  --color-pick-soft: #eff4ff;
 
-  /* the three file states, each with the tint its chip sits on */
-  --color-local: #a4560a;
-  --color-local-soft: #fbeddc;
-  --color-proc: #0f6f68;
-  --color-proc-soft: #dcefec;
-  --color-up: #1c7a3e;
-  --color-up-soft: #ddf0e2;
+  /* a file's state, each a colour on a tint: local amber, processed violet, uploaded green */
+  --color-local: #b45309;
+  --color-local-soft: #fef3e2;
+  --color-local-bar: #f59e0b;
+  --color-proc: #6d28d9;
+  --color-proc-soft: #f3efff;
+  --color-up: #15803d;
+  --color-up-soft: #e9f8ef;
 
-  /* uploaded, and therefore closed to editing */
-  --color-lock: #7a4fb5;
-  --color-lock-soft: #efe7fa;
+  /* uploaded, and therefore closed to editing: said quietly, with a lock */
+  --color-lock: #52525b;
+  --color-lock-soft: #f4f4f5;
 
-  /* prepared once and changed since — an amber that is not any of the three states */
-  --color-changed: #9a3412;
-  --color-changed-soft: #fde6d3;
-  --color-changed-line: #c2703a;
+  /* processed once and changed since: the blue of the next action, outlined */
+  --color-changed: #1d4ed8;
+  --color-changed-soft: #eff4ff;
+  --color-changed-line: #1d4ed8;
 
-  /* the bin: the one way off the board, red wherever it is offered, in either theme */
-  --color-bin: #c62828;
+  /* the bin, and anything that deletes: red wherever it is offered, in either theme */
+  --color-bin: #dc2626;
+  --color-bin-soft: #fdeeee;
 
-  --shadow-card: 0 1px 2px rgba(20, 28, 38, 0.06), 0 4px 14px rgba(20, 28, 38, 0.05);
+  --shadow-card: 0 1px 2px rgba(24, 24, 27, 0.05);
+  --shadow-float:
+    0 0 0 1px rgba(24, 24, 27, 0.06), 0 12px 32px rgba(24, 24, 27, 0.14),
+    0 2px 6px rgba(24, 24, 27, 0.06);
 
   /* The shared form package names its colours by role rather than by shade, so that whatever uses
-     it supplies the palette. These are that supply. They point at the tokens above rather than
-     repeating their values, so dark follows without a second set. */
+     it supplies the palette. These are that supply. */
   --color-foreground: var(--color-ink);
   --color-muted-foreground: var(--color-ink-2);
-  --color-destructive: var(--color-local);
+  --color-destructive: var(--color-bin);
 }
 
-/* Dark is the same design with the surfaces inverted and the accents lifted, so it is the same
-   tokens redefined rather than a second set of classes. Every utility reads the variable.
-
-   Two ways in, and `data-theme` wins over the machine's own setting — the selector carrying it is
-   more specific than a bare `:root`. That is what makes the choice in the header stick, and what
-   lets this be held beside `skydock-mockup.html`, which is built the same way. */
+/* Dark is the same design on near-black for the hangar at the end of the day: the same tokens
+   redefined, so every utility follows. Two ways in, and `data-theme` wins over the machine's own
+   setting — the selector carrying it is more specific than a bare `:root`. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --color-ground: #101418;
-    --color-pane: #171c22;
-    --color-rail: #131820;
-    --color-ink: #e7ecf1;
-    --color-ink-2: #9aa5b2;
-    --color-ink-3: #8a95a3;
-    --color-line: #262d36;
-    --color-line-2: #1f252d;
-    --color-accent: #3fb3a6;
-    --color-accent-soft: #14312e;
-    --color-pick: #5b8dee;
-    --color-pick-soft: #182640;
-    --color-local: #d99544;
-    --color-local-soft: #33260f;
-    --color-proc: #3fb3a6;
-    --color-proc-soft: #14312e;
-    --color-up: #57b877;
-    --color-up-soft: #15301e;
-    --color-lock: #b191e2;
-    --color-lock-soft: #241a33;
-    --color-changed: #f0a97a;
-    --color-changed-soft: #3a2113;
-    --color-changed-line: #a4633a;
-    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.3);
+    --color-ground: #0c0c0e;
+    --color-pane: #141416;
+    --color-rail: #19191c;
+    --color-chrome: #1c1c1f;
+    --color-well: #1f1f23;
+    --color-ink: #f4f4f5;
+    --color-ink-2: #b4b4bb;
+    --color-ink-3: #7c7c85;
+    --color-line: #27272b;
+    --color-line-2: #202024;
+    --color-line-strong: #2f2f34;
+    --color-accent: #4b83f5;
+    --color-accent-ink: #8db1ff;
+    --color-accent-soft: #172442;
+    --color-pick: #4b83f5;
+    --color-pick-soft: #172442;
+    --color-local: #f0b44c;
+    --color-local-soft: #2e2413;
+    --color-proc: #b39cff;
+    --color-proc-soft: #241d3d;
+    --color-up: #4fd18b;
+    --color-up-soft: #13291d;
+    --color-lock: #b4b4bb;
+    --color-lock-soft: #1f1f23;
+    --color-changed: #8db1ff;
+    --color-changed-soft: #172442;
+    --color-changed-line: #8db1ff;
+    --color-bin: #f26b6b;
+    --color-bin-soft: #331719;
+    --shadow-card: none;
+    --shadow-float: 0 0 0 1px #2e2e33, 0 16px 40px rgba(0, 0, 0, 0.6);
 
     color-scheme: dark;
   }
 }
 
 :root[data-theme='dark'] {
-  --color-ground: #101418;
-  --color-pane: #171c22;
-  --color-rail: #131820;
-  --color-ink: #e7ecf1;
-  --color-ink-2: #9aa5b2;
-  --color-ink-3: #8a95a3;
-  --color-line: #262d36;
-  --color-line-2: #1f252d;
-  --color-accent: #3fb3a6;
-  --color-accent-soft: #14312e;
-  --color-pick: #5b8dee;
-  --color-pick-soft: #182640;
-  --color-local: #d99544;
-  --color-local-soft: #33260f;
-  --color-proc: #3fb3a6;
-  --color-proc-soft: #14312e;
-  --color-up: #57b877;
-  --color-up-soft: #15301e;
-  --color-lock: #b191e2;
-  --color-lock-soft: #241a33;
-  --color-changed: #f0a97a;
-  --color-changed-soft: #3a2113;
-  --color-changed-line: #a4633a;
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.3);
+  --color-ground: #0c0c0e;
+  --color-pane: #141416;
+  --color-rail: #19191c;
+  --color-chrome: #1c1c1f;
+  --color-well: #1f1f23;
+  --color-ink: #f4f4f5;
+  --color-ink-2: #b4b4bb;
+  --color-ink-3: #7c7c85;
+  --color-line: #27272b;
+  --color-line-2: #202024;
+  --color-line-strong: #2f2f34;
+  --color-accent: #4b83f5;
+  --color-accent-ink: #8db1ff;
+  --color-accent-soft: #172442;
+  --color-pick: #4b83f5;
+  --color-pick-soft: #172442;
+  --color-local: #f0b44c;
+  --color-local-soft: #2e2413;
+  --color-proc: #b39cff;
+  --color-proc-soft: #241d3d;
+  --color-up: #4fd18b;
+  --color-up-soft: #13291d;
+  --color-lock: #b4b4bb;
+  --color-lock-soft: #1f1f23;
+  --color-changed: #8db1ff;
+  --color-changed-soft: #172442;
+  --color-changed-line: #8db1ff;
+  --color-bin: #f26b6b;
+  --color-bin-soft: #331719;
+  --shadow-card: none;
+  --shadow-float: 0 0 0 1px #2e2e33, 0 16px 40px rgba(0, 0, 0, 0.6);
 
   color-scheme: dark;
 }
@@ -136,9 +160,11 @@
     background: var(--color-ground);
     color: var(--color-ink);
     font-family: var(--font-sans);
-    /* the mockup's own base: everything else is sized relative to reading this comfortably */
-    font-size: 13.5px;
+    /* Inter's clearer 1 and l, and figures that line up in a column of times and sizes */
+    font-feature-settings: 'cv11', 'ss01', 'tnum';
+    font-size: 13px;
     line-height: 1.45;
+    letter-spacing: -0.003em;
     -webkit-font-smoothing: antialiased;
   }
 

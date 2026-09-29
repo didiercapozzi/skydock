@@ -403,7 +403,7 @@ Taking a file out of a jump deletes the copy made from it, so nothing stale is l
 
 ## Languages
 
-SkyDock speaks **English, French and German**. It speaks the one chosen in the header — EN, FR or DE,
+SkyDock speaks **English, French and German**. It speaks the one chosen under Settings — EN, FR or DE,
 each named in its own language — and, until one is chosen, the first language the machine asks for
 that it speaks, else English; the desktop window asks in the system's language by itself. The choice
 is kept on this machine, and the page is drawn again in it at once, from the server as well, so what
@@ -434,10 +434,12 @@ decided and not yet saved — a trim, a rectangle, a turn — is in none of it: 
 come back to, and a trim nobody saved is not.
 
 **The places.** Three places of work: _Fresh files_, a single entry holding everything off the
-cameras that is not filed yet; _Destinations_, one entry per destination, and a field to add one; and
-_Montages_, one entry per named montage and one for the montages still waiting for a name. Below them, once the storage is
-connected, is _On the storage_, its list of montages; at the foot, each camera plugged in, for as long
-as it stays plugged in. Each place of work says how many files it holds, how much of it is still local,
+cameras that is not filed yet; _Destinations_, one entry per destination, and _Add a destination…_,
+which opens the field to name one; and
+_Montages_, one entry per named montage and one for the montages still waiting for a name. Under
+_Elsewhere_ come what is not worked on here: once the storage is connected, _On the storage_, its list
+of montages; each camera plugged in, for as long as it stays plugged in; and the _Bin_. The place you
+are on is drawn in the blue. Each place of work says how many files it holds, how much of it is still local,
 processed or uploaded — a montage shows its steps instead — and what is left: the jumps still to file
 in Fresh files, the files still to do at a dropzone. Every place of work takes files dropped on it,
 and every one but Fresh files a whole jump; the storage's list and the cameras take nothing. A montage
@@ -505,7 +507,7 @@ next page drawn by itself as the end of the last comes near, and still a press a
 rest at once; what is scrolled out of sight is not drawn, so a whole card costs no more to look
 through than a page. Thumbnails can be drawn smaller or bigger, from a
 wall of small ones to see a whole card at once to large ones to tell two near-identical shots apart:
-with a slider in the header while thumbnails are shown, or with Ctrl or ⌘ and the mouse wheel over
+with a slider on the toolbar while thumbnails are shown, or with Ctrl or ⌘ and the mouse wheel over
 them; the size is remembered on this machine, and a bigger thumbnail asks for a sharper picture. Every day and every jump says how many videos and photos
 it holds. The pane's heading carries badges for the place — how many videos and photos — that show one
 kind, the other, or all, the choice holding across the board; all is both side by side, videos in one
@@ -682,28 +684,31 @@ name SkyDock gave the montage that is watched; one rendered under another name i
 when the montage is uploaded. A project saved or removed by hand is noticed the same way. Freed
 montages are not looked at; nothing of them is here.
 
-**The header** holds what applies to the whole board, what is used every day on the bar and the rest
-behind _Settings_: on the bar, finding anything, the overview, scanning, how many clips still wait
-for their proxy, rows or grid, the keys the board knows, the storage — whether it is connected, as whom
-and to what, a way to check what it holds now, and a way to disconnect; behind Settings, light or
-dark, the language, the editing templates, the work folder and the history. The storage is named the way somebody would say it, who and where: the account the session was
-opened with, and the machine's name without the scheme or the port it is reached on, which are how a
-machine reaches it and not something to read across the top of a screen. The settings that are chosen
-once and then only glanced at — rows or grid, light or dark, checking and disconnecting — are marks
-rather than words, each still answering to its own name. Disconnecting asks first: it changes nothing
-on the storage and nothing on this machine, but connecting again wants the password and, where the
-account has two-step verification, a code — a poor thing to have to find because a mark was clicked
-by mistake. It also warns
-when the disk the work is on runs out of room — almost full under five gigabytes left, saying how much,
-and full under one, saying that copying a camera, making proxies and saving will fail — and follows the
-disk while the board is open, whatever else on the machine is filling it. With nothing scanned yet, the board is a
+**The toolbar and the status bar.** SkyDock is drawn as the desktop tool it is: under the window's
+own title bar a toolbar, three panes side by side — the places, the list, and what is open — and a
+status bar along the bottom, all neutral greys with one blue for where you are, what is picked and
+the button that does the next thing. The toolbar holds what is used every day: the overview,
+scanning, rows or thumbnails, finding anything (Ctrl or ⌘ with F goes there), the keys the board
+knows, and behind _Settings_ light or dark, the language, the editing templates, the work folder and
+the history. The status bar says what is going on: the storage — whether it is connected, as whom
+and to what, a way to check what it holds now, and a way to disconnect — what is being copied or
+uploaded and how far, how many clips still wait for their proxy, and how big the board is drawn. The
+storage is named the way somebody would say it, who and where: the account the session was opened
+with, and the machine's name without the scheme or the port it is reached on. What is chosen once and
+then only glanced at — rows or thumbnails, checking and disconnecting — are marks rather than words,
+each still answering to its own name. Disconnecting asks first: it changes nothing on the storage and
+nothing on this machine, but connecting again wants the password and, where the account has two-step
+verification, a code — a poor thing to have to find because a mark was clicked by mistake. The status
+bar also warns when the disk the work is on runs out of room — almost full under five gigabytes left,
+saying how much, and full under one, saying that copying a camera, making proxies and saving will
+fail — and follows the disk while the board is open, whatever else on the machine is filling it. With nothing scanned yet, the board is a
 single Scan button and the instruction to copy the cameras first.
 
 **Light and dark.** The board follows the machine by default and can be pinned light or dark. The
 choice is remembered on that machine and applied before the first thing is drawn.
 
 **How big it is drawn.** SkyDock's own window zooms the whole board — from the − and + at the end of
-the header, which say the size as a percentage and go back to as drawn when it is pressed, or with ⌘
+the status bar, which say the size as a percentage and go back to as drawn when it is pressed, or with ⌘
 or ctrl and + or −, and 0 for as drawn — so a board read from across a packing hall is read at the
 size it needs, from half to three times, a tenth at a time. It scales the whole of it, so the layout
 answers to the size it is drawn at rather than being stretched. The size chosen is kept, and the
@@ -730,13 +735,13 @@ then what it does, last, on the right. What deletes or lets go of something is r
 icon and anything else without; a jump with processed copies is deleted only after a dialog of the
 app's own says what goes.
 
-**Finding anything.** One box in the header finds anything on the board by a piece of its name — a
+**Finding anything.** One box on the toolbar finds anything on the board by a piece of its name — a
 montage, a destination, a file — says where each is, and goes to it: Enter goes to the first, a click
 to any.
 
 **The overview.** Every named montage in one table: who, the day, the step it is at, whether it went
 up, its link, whether they were emailed, whether it was freed, and whether they have paid, with the
-day's counts beneath and a box to find one by name. What is next for one is a press on its line. What
+day's counts at its head beside a box to find one by name. What is next for one is a press on its line. What
 is done to many at once is above it: every named montage not yet processed, processed in one go; every
 rendered film not yet sent, uploaded one after the other, each as the upload dialog was last set — one
 that cannot go says why by name, and the rest still go; one cancelled stops the queue there. _Paid_ is
@@ -1195,8 +1200,9 @@ Neither touches the originals or the storage, and neither can run while the mont
 A montage belongs to no destination, so uploading it says where each thing goes. It has four parts to
 send, each taken whole and never file by file: its **original videos**, its **original photos** as
 prepared, **the montage** itself (the rendered film), and **the kdenlive project**. A part the montage
-does not have — no photos, say — is simply not offered. Uploading is two steps, in one dialog, and
-nothing is sent until its own button is pressed.
+does not have — no photos, say — is simply not offered. Uploading is two steps, side by side in one
+dialog — the zips on the left, where it all goes on the right — and nothing is sent until its own
+button is pressed.
 
 **1. Make the zips.** Each part is dragged onto a zip, and a part
 dropped on the empty space makes a new zip. **The same part can go into several zips**, and each part
@@ -1370,7 +1376,8 @@ afresh from it; the first template can be put back at any time. Changing one ema
 template.
 
 SkyDock sends nothing itself and needs nothing set up. One press copies the email, laid out, and opens a
-new message — in Gmail or in the computer's own mail program, whichever was used last — with the address
+new message — in Gmail or in the computer's own mail program, whichever is chosen beside the button,
+remembered from last time — with the address
 and subject filled in; the email is pasted in and sent from there. The email, the subject and the link
 can also be copied on their own. The link always comes from what the upload recorded. Marking the
 email as sent records it on the storage's list, and can be undone. Once the mail has been opened from

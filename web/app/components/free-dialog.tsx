@@ -82,7 +82,7 @@ const FreeDialog = ({
         <Line mark='✓'>{t`the kdenlive project, and the record of what went where`}</Line>
       </ul>
 
-      <p className='m-0 rounded-r-md border-l-[3px] border-local bg-local-soft px-3 py-[9px] text-[12px] text-ink-2'>
+      <p className='m-0 rounded-md bg-local-soft px-2.5 py-2 text-[12px] text-ink-2'>
         {t`After this the montage lives on the storage only: it cannot be processed, edited or uploaded again from here, and a rescan leaves it as it is. If any check fails, nothing at all is deleted, and it says which.`}
       </p>
     </Modal>

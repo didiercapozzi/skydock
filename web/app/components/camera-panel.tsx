@@ -38,6 +38,7 @@ const CameraPanel = ({ onStop }: { onStop: () => void }) => {
   return (
     <ProgressPanel
       label={t`Copying ${camera}`}
+      icon='copying'
       title={t`Copying the camera ${camera}`}
       barLabel={t`Copied off ${camera}`}
       doing={t`Copying`}
@@ -48,26 +49,26 @@ const CameraPanel = ({ onStop }: { onStop: () => void }) => {
       }
       rows={rows}
       counted={{ at: done, of: total, part: copy.part }}
-      footer={
+      summary={
         <>
-          <span className='min-w-0 flex-1 truncate text-ink-2'>
-            {plural(copied, { one: '# new file copied', other: '# new files copied' })}
-            {skipped > 0
-              ? ` · ${plural(skipped, { one: '# already here', other: '# already here' })}`
-              : ''}
-            {' · '}
-            {t`scanned when done`}
-          </span>
-          <Mini
-            disabled={stopping}
-            title={t`Stop after the file under way — what came across stays, the rest stays on the card`}
-            onClick={() => {
-              setStopping(true)
-              onStop()
-            }}>
-            {stopping ? t`Stopping…` : t`Stop`}
-          </Mini>
+          {plural(copied, { one: '# new file copied', other: '# new files copied' })}
+          {skipped > 0
+            ? ` · ${plural(skipped, { one: '# already here', other: '# already here' })}`
+            : ''}
+          {' · '}
+          {t`scanned when done`}
         </>
+      }
+      action={
+        <Mini
+          disabled={stopping}
+          title={t`Stop after the file under way — what came across stays, the rest stays on the card`}
+          onClick={() => {
+            setStopping(true)
+            onStop()
+          }}>
+          {stopping ? t`Stopping…` : t`Stop`}
+        </Mini>
       }
     />
   )

@@ -17,7 +17,7 @@ const Choice = ({
   <button
     type='button'
     onClick={onChoose}
-    className='flex flex-col gap-1 rounded-lg border border-line bg-ground px-3 py-2.5 text-left hover:border-accent hover:bg-accent-soft'>
+    className='flex flex-col gap-1 rounded-md border border-line bg-pane px-3 py-2.5 text-left shadow-card hover:border-accent hover:bg-accent-soft'>
     <b className='text-[13px] font-semibold text-ink'>{title}</b>
     <span className='text-[12px] text-ink-2'>
       <span className='text-changed'>✕</span> {forgets}
@@ -72,7 +72,7 @@ const ResetFreshDialog = ({
         keeps={t`nothing decided about these files`}
         onChoose={() => onReset('everything')}
       />
-      <p className='m-0 rounded-r-md border-l-[3px] border-local bg-local-soft px-3 py-[9px] text-[12px] text-ink-2'>
+      <p className='m-0 rounded-md bg-local-soft px-2.5 py-2 text-[12px] text-ink-2'>
         {t`Either way, nothing filed to a destination or a montage is touched, and no original file is.`}
       </p>
     </Modal>

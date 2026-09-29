@@ -2,6 +2,7 @@ import {
   EDIT_LOCKED,
   hasCompletePassenger,
   isMontage,
+  isVideoFile,
   lastSegment,
   offGap,
   outputKeyOf,
@@ -22,20 +23,21 @@ import { ComparisonDialog } from '../components/comparison-dialog'
 import { FileBrowser } from '../components/file-browser'
 import { lanesOf, lockReason, shownStatus } from '../components/file-list'
 import { FolderOwed } from '../components/folder-owed'
-import { Box, FilePanel, FolderPanel, JumpPanel, ManyPanel, Shell } from '../components/inspector'
+import { FilePanel, FolderPanel, JumpPanel, ManyPanel, Part, Shell } from '../components/inspector'
 import { MoveTo } from '../components/move-to'
 import { PlacePane } from '../components/place-pane'
 import { StorageFolder } from '../components/storage-folder'
 import { StorageList } from '../components/storage-list'
 import {
+  FilmNote,
   FilmStrip,
   GoneFromStorage,
   MontageCardActions,
   UploadedCards
 } from '../components/montage-card'
-import { StepTrail } from '../components/montage-steps'
+import { NextStep, StepTrail } from '../components/montage-steps'
 import type { ManifestFile, ManifestGroup } from '../components/types'
-import { formatSize } from '../components/utils'
+import { formatSize, getPictureUrl } from '../components/utils'
 import { folderOnStorage } from '../helpers/jumps'
 import {
   familyOf,
@@ -356,7 +358,13 @@ const Place = () => {
               onSelect: (groupId, e) => selection.selectJump(groupId, e, openJump?.id),
               onDrag: model.drag.startJumpDrag,
               actions: (group) => <MontageActions group={group} />,
-              above: (group) => <MontageAbove group={group} />,
+              /* by jump, the film stands beside the montage's next step; any other way, above it */
+              above: (group) => (
+                <MontageAbove
+                  group={group}
+                  withFilm={folder.grouping !== 'jump'}
+                />
+              ),
               progress: model.progressOf
             }}
           />
@@ -501,16 +509,33 @@ const DropzoneStep = ({ name }: { name: string }) => {
   )
 }
 
-/* A montage's line carries its one next step, and its upload while it runs. */
+/* a frame off a montage's own footage, to stand for its film until the film plays */
+const filmPicture = (group: ManifestGroup) => {
+  const file = group.files.find((f) => isVideoFile(f.path)) ?? group.files[0]
+  return file ? getPictureUrl(file, undefined, 640) : undefined
+}
+
+/* A montage's line carries its one next step, and its upload while it runs — beside its film. */
 const MontageActions = ({ group }: { group: ManifestGroup }) => {
   const model = useBoard()
   const { board } = model
-  if (!isMontage(group) || group.freed) return null
+  const progress = model.progressOf(group)
+  if (!isMontage(group) || group.freed || !progress) return null
+  const facts = board.montageFacts[group.id]
   return (
-    <>
+    <NextStep
+      progress={progress}
+      film={
+        group.uploaded ? undefined : (
+          <FilmStrip
+            facts={facts}
+            picture={filmPicture(group)}
+          />
+        )
+      }>
       <MontageCardActions
         group={group}
-        facts={board.montageFacts[group.id]}
+        facts={facts}
         busy={board.busy}
         upload={board.uploading ? { key: board.uploading, label: board.uploadLabel ?? '' } : null}
         blocked={model.gateFor(group.files)}
@@ -523,22 +548,37 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
         onUpload={() => model.takeStep(group, 'Uploaded')}
         onFree={() => model.setDialog({ kind: 'free', groupId: group.id })}
       />
-    </>
+    </NextStep>
   )
 }
 
-/* above a montage's files: what went missing from the storage, what the storage holds, the film */
-const MontageAbove = ({ group }: { group: ManifestGroup }) => {
+/* above a montage's files: what went missing from the storage, what the storage holds, the film and
+   what holds its files while it has an edit */
+const MontageAbove = ({ group, withFilm }: { group: ManifestGroup; withFilm: boolean }) => {
   const model = useBoard()
   if (!isMontage(group)) return null
+  const facts = model.board.montageFacts[group.id]
+  const editLocked = EDIT_LOCKED
   return (
-    <div className='mb-2'>
+    <div className='mb-2 flex flex-col gap-3'>
       <GoneFromStorage
         gone={model.goneById[group.id] ?? []}
         at={model.board.groups.find((g) => g.id === group.id)?.uploaded?.at}
       />
       {group.uploaded && <UploadedCards group={group} />}
-      {!group.uploaded && <FilmStrip facts={model.board.montageFacts[group.id]} />}
+      {withFilm && !group.uploaded && (
+        <FilmStrip
+          facts={facts}
+          picture={filmPicture(group)}
+          className='max-w-[330px]'
+        />
+      )}
+      {!group.uploaded && (
+        <FilmNote
+          facts={facts}
+          locked={model.frozen.has(group.id) ? editLocked : null}
+        />
+      )}
     </div>
   )
 }
@@ -651,6 +691,7 @@ const Inspector = ({
       <FilePanel
         key={one.id}
         file={one}
+        where={placeLabel(place)}
         name={model.deliveredName(one)}
         jumpLabel={group ? model.labelOf(group) : null}
         status={shownStatus(one, context)}
@@ -680,6 +721,7 @@ const Inspector = ({
     return (
       <ManyPanel
         files={picked}
+        where={placeLabel(place)}
         statusOf={statusOf}
         onSendBack={() => model.sendBack(picked)}
         backLabel={model.backLabel(picked)}
@@ -705,6 +747,7 @@ const Inspector = ({
         key={jump.id}
         group={model.asOnStorage(jump)}
         label={model.labels.get(jump.id) ?? jump.label}
+        where={placeLabel(place)}
         facts={board.montageFacts[jump.id]}
         emailed={Boolean(model.emailedOn(jump))}
         locked={
@@ -764,19 +807,19 @@ const Inspector = ({
       {/* where it goes is said once, above its files, where it can be changed; here is only the
           link handed out of it */}
       {dz?.shareUrl && (
-        <Box heading={t`Shared link`}>
+        <Part heading={t`Shared link`}>
           <a
             href={dz.shareUrl}
             target='_blank'
             rel='noreferrer'
-            className='truncate font-mono text-[11.5px] text-accent underline'>
+            className='truncate font-mono text-[11.5px] text-accent-ink hover:underline'>
             {dz.shareUrl}
           </a>
-        </Box>
+        </Part>
       )}
       {folder.family === 'montages' &&
         folder.groups.map((g) => (
-          <Box
+          <Part
             key={g.id}
             heading={model.labelOf(g)}>
             <StepTrail
@@ -786,10 +829,12 @@ const Inspector = ({
               onStep={g.freed ? undefined : (step) => model.takeStep(g, step)}
               busy={board.busy !== null}
             />
-          </Box>
+          </Part>
         ))}
       {place.kind === 'storage' && board.storage && (
-        <p className='m-0 font-mono text-[12px] break-all text-ink-2'>{board.storage.dir}</p>
+        <Part heading={t`Its folder`}>
+          <p className='m-0 font-mono text-[11.5px] break-all text-ink-3'>{board.storage.dir}</p>
+        </Part>
       )}
     </FolderPanel>
   )

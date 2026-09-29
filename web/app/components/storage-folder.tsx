@@ -1,4 +1,5 @@
-import { plural, t } from '@lingui/core/macro'
+import { i18n } from '@lingui/core'
+import { msg, plural, t } from '@lingui/core/macro'
 import { useState } from 'react'
 import { z } from 'zod'
 import type { StorageFile } from '../../../packages/skydock-scripts/src/storageEntry'
@@ -7,6 +8,7 @@ import { refusalSchema } from '../hooks/useBoardState'
 import { useStorageFolder } from '../hooks/useStorageFolder'
 import type { StorageWhere } from '../hooks/useStorageFolder'
 import { Mini } from './buttons'
+import { Icon } from './icons'
 import { Modal } from './modal'
 import { dateLabel, formatSize, hhmm } from './utils'
 
@@ -18,7 +20,8 @@ const linkAnswerSchema = z.object({ path: z.string(), shareUrl: z.string().nulla
 const storageFileUrl = (filePath: string) =>
   `/api/storage-file${filePath.split('/').map(encodeURIComponent).join('/')}`
 
-const GLYPH = { video: '▶', photo: '▣', other: '·' }
+/* what each kind of file is called, under its name */
+const KIND = { video: msg`video`, photo: msg`photo`, other: msg`file` }
 
 /* One file off the storage, played or shown where it is. A film is streamed, not fetched whole: the
    player asks for the part it is showing, so a jump to the middle costs the middle. */
@@ -46,6 +49,14 @@ const StoragePlayer = ({ file, onClose }: { file: StorageFile; onClose: () => vo
     )}
     <p className='m-0 font-mono text-[11px] break-all text-ink-3'>{file.path}</p>
   </Modal>
+)
+
+/* a button's word as short as the row has room for, and in full to whoever hears it read out */
+const Short = ({ shown, said }: { shown: string; said: string }) => (
+  <>
+    <span aria-hidden='true'>{shown}</span>
+    <span className='sr-only'>{said}</span>
+  </>
 )
 
 /* One file handed out by a link of its own, or that link taken away. A link is a way in — anybody
@@ -80,7 +91,19 @@ const LinkButtons = ({
         disabled={busy}
         title={t`Give this one file a link — anybody holding it can fetch it, and nothing else in the folder`}
         onClick={() => onLink(file, 'create')}>
-        {busy ? t`Asking…` : t`Create a link`}
+        <Icon
+          name='link'
+          size={14}
+          className='text-ink-2'
+        />
+        {busy ? (
+          t`Asking…`
+        ) : (
+          <Short
+            shown={t`Link`}
+            said={t`Create a link`}
+          />
+        )}
       </Mini>
     )
   return (
@@ -88,13 +111,23 @@ const LinkButtons = ({
       <Mini
         title={shareUrl}
         onClick={() => void copy()}>
-        {copied ? `✓ ${t`copied`}` : t`Copy the link`}
+        {copied ? (
+          `✓ ${t`copied`}`
+        ) : (
+          <Short
+            shown={t`Copy link`}
+            said={t`Copy the link`}
+          />
+        )}
       </Mini>
       <Mini
         disabled={busy}
         title={t`Take the link away — the file stays where it is`}
         onClick={() => onLink(file, 'remove')}>
-        {t`Remove the link`}
+        <Short
+          shown={t`Take link away`}
+          said={t`Remove the link`}
+        />
       </Mini>
     </>
   )
@@ -158,91 +191,103 @@ const StorageFolder = ({
     <section
       aria-label={t`On the storage`}
       className='mt-5'>
-      <div className='flex flex-wrap items-baseline gap-2 px-0.5 pb-1.5'>
-        <h3 className='m-0 text-[13px] font-semibold text-ink'>{t`On the storage`}</h3>
+      <div className='flex flex-wrap items-center gap-2 border-b border-line pt-1 pb-2'>
+        <h3 className='m-0 text-[11.5px] font-medium text-ink-3'>{t`On the storage`}</h3>
+        {folder?.ok && <code className='font-mono text-[11.5px] text-ink-3'>{folder.dir}</code>}
         {folder?.ok && (
-          <span className='text-[12px] text-ink-2'>
+          <span className='text-[11.5px] text-ink-3'>
             {plural(count, { one: '# file', other: '# files' })}
             {only > 0 ? ` · ${t`${only} only there`}` : ''}
           </span>
         )}
-        <Mini
-          onClick={() => setAgain(again + 1)}
-          title={t`Ask the storage again what this folder holds`}>
-          {t`Look again`}
-        </Mini>
-        {folder?.ok && (
-          <code className='ml-auto font-mono text-[11px] text-ink-3'>{folder.dir}</code>
-        )}
+        <span className='ml-auto'>
+          <Mini
+            onClick={() => setAgain(again + 1)}
+            title={t`Ask the storage again what this folder holds`}>
+            {t`Look again`}
+          </Mini>
+        </span>
       </div>
       {!folder ? (
-        <p className='m-0 px-0.5 text-[12.5px] text-ink-3'>{t`Asking the storage…`}</p>
+        <p className='m-0 py-3 text-[12.5px] text-ink-3'>{t`Asking the storage…`}</p>
       ) : !folder.ok ? (
-        <p className='m-0 rounded-md bg-local-soft px-3 py-2 text-[12.5px] text-local'>
+        <p className='m-0 mt-2 rounded-md bg-local-soft px-3 py-2 text-[12.5px] text-local'>
           {folder.reason}
         </p>
       ) : files.length === 0 ? (
-        <p className='m-0 rounded-[9px] border border-dashed border-line px-3 py-4 text-center text-[12.5px] text-ink-3'>
+        <p className='m-0 mt-2 rounded-lg border border-dashed border-line px-3 py-4 text-center text-[12.5px] text-ink-3'>
           {t`Nothing up there yet — what is uploaded from here is listed once it is.`}
         </p>
       ) : (
-        <ul className='m-0 flex list-none flex-col gap-px rounded-lg border border-line bg-pane p-[7px]'>
+        <ul className='m-0 flex list-none flex-col p-0'>
           {files.map((file) => {
             const playable = file.kind !== 'other'
+            const here = hereToo?.has(file.name) ?? false
+            /* when it was shot, as its name says; the storage's own date is only a stand-in for a
+               file not named by SkyDock, and says what it is */
+            const when = file.shot
+              ? `${dateLabel(file.shot)} ${hhmm(file.shot)}`
+              : file.mtime
+                ? dateLabel(file.mtime)
+                : null
             return (
               <li
                 key={file.path}
-                className='flex items-center gap-1.5'>
+                className='flex h-[50px] items-center gap-2 border-b border-line-2 last:border-b-0'>
                 <button
                   type='button'
                   disabled={!playable}
                   onClick={() => setPlaying(file)}
                   title={playable ? t`Play it from the storage` : t`Kept on the storage`}
-                  className='flex h-[34px] min-w-0 flex-1 items-center gap-2.5 rounded-md border border-transparent bg-transparent px-[7px] text-left enabled:hover:bg-line-2 disabled:cursor-default'>
-                  <span
-                    aria-hidden='true'
-                    className='w-3.5 flex-none text-center text-[11px] text-ink-3'>
-                    {GLYPH[file.kind]}
-                  </span>
-                  <span className='min-w-0 flex-1 truncate font-mono text-[12px] text-ink'>
-                    {file.name}
+                  className='flex h-full min-w-0 flex-1 items-center gap-3.5 rounded-md border-0 bg-transparent px-1 text-left enabled:hover:bg-rail disabled:cursor-default'>
+                  <Icon
+                    name='storage'
+                    size={15}
+                    className='text-ink-3'
+                  />
+                  <span className='flex min-w-0 flex-1 flex-col'>
+                    <span className='truncate text-[13px] font-medium text-ink'>{file.name}</span>
+                    <span
+                      title={
+                        file.shot
+                          ? t`Shot then, as its name says`
+                          : file.mtime
+                            ? t`Put on the storage then — its name does not say when it was shot`
+                            : undefined
+                      }
+                      className='truncate text-[11.5px] text-ink-3'>
+                      {[
+                        i18n._(KIND[file.kind]),
+                        file.size === null ? null : formatSize(file.size),
+                        when
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
                   </span>
                   {hereToo && (
                     <span
-                      className={`flex-none rounded-full px-[7px] py-px text-[11px] font-semibold whitespace-nowrap ${
-                        hereToo.has(file.name) ? 'bg-line-2 text-ink-3' : 'bg-up-soft text-up'
+                      className={`inline-flex h-5 flex-none items-center gap-[5px] rounded px-[7px] text-[11.5px] font-medium whitespace-nowrap before:size-1.5 before:rounded-full before:content-[''] ${
+                        here
+                          ? 'bg-up-soft text-up before:bg-current'
+                          : 'border border-line text-up before:shadow-[inset_0_0_0_1.5px_currentColor]'
                       }`}>
-                      {hereToo.has(file.name) ? t`here too` : t`only on the storage`}
+                      {here ? t`Here too` : t`Only there`}
                     </span>
                   )}
-                  {/* when it was shot, as its name says; the storage's own date is only a stand-in
-                      for a file not named by SkyDock, and says what it is */}
-                  <span
-                    title={
-                      file.shot
-                        ? t`Shot then, as its name says`
-                        : file.mtime
-                          ? t`Put on the storage then — its name does not say when it was shot`
-                          : undefined
-                    }
-                    className='w-[150px] flex-none text-right font-mono text-[11px] text-ink-3 tabular-nums'>
-                    {file.shot
-                      ? `${dateLabel(file.shot)} ${hhmm(file.shot)}`
-                      : file.mtime
-                        ? dateLabel(file.mtime)
-                        : ''}
-                  </span>
-                  <span className='w-[64px] flex-none text-right font-mono text-[11px] text-ink-3 tabular-nums'>
-                    {file.size === null ? '' : formatSize(file.size)}
-                  </span>
                 </button>
                 {/* the one thing that cannot be done from anywhere else: what is only up there is
                     footage this machine no longer holds, and this is the way back */}
-                {onBringBack && hereToo && !hereToo.has(file.name) && (
+                {onBringBack && hereToo && !here && (
                   <Mini
                     title={t`Fetch it back onto this machine`}
                     onClick={() => onBringBack(file)}>
-                    {t`Bring it back`}
+                    <Icon
+                      name='back'
+                      size={14}
+                      className='text-ink-2'
+                    />
+                    {t`Bring back`}
                   </Mini>
                 )}
                 <LinkButtons

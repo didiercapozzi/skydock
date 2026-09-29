@@ -38,6 +38,7 @@ const ImportPanel = ({
   return (
     <ProgressPanel
       label={t`Adding ${total} to ${where}`}
+      icon='copying'
       title={t`Adding to ${where}`}
       barLabel={t`Copied into ${where}`}
       doing={t`Copying`}
@@ -50,7 +51,7 @@ const ImportPanel = ({
         part: at === done ? part : undefined,
         note: at === done && reading ? t`reading it…` : undefined
       }))}
-      footer={
+      summary={
         failed > 0 ? (
           <span className='text-local'>
             {t`${failed} could not be added — the board will say why when the drop is done.`}

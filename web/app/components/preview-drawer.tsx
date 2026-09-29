@@ -30,6 +30,7 @@ import {
   getThumbUrl,
   isVideoFile
 } from './utils'
+import { Icon } from './icons'
 import { JumpGraph } from './jump-graph'
 import { useJumpTrack } from '../hooks/useJumpTrack'
 import { VideoCropper } from './video-cropper'
@@ -38,23 +39,119 @@ type VideoRef = {
   seek: (time: number) => void
 }
 
-/* One block of the side panel: a quiet heading and whatever it is about. */
-const Panel = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div>
-    <h5 className='mb-1.5 text-[11px] font-semibold tracking-[0.08em] text-ink-3 uppercase'>
+/* One part of the side panel: a quiet heading, whatever it is about under it, and a hairline
+   between it and the next. */
+const Part = ({
+  title,
+  aside,
+  children
+}: {
+  title: string
+  aside?: React.ReactNode
+  children: React.ReactNode
+}) => (
+  <section className='flex flex-col gap-2 border-b border-line px-4 py-3 last:border-b-0'>
+    <h5 className='m-0 flex items-center justify-between text-[11.5px] font-medium text-ink-3'>
       {title}
+      {aside}
     </h5>
     {children}
-  </div>
+  </section>
 )
 
-const KV = ({ children }: { children: React.ReactNode }) => (
-  <div className='font-mono text-[12px] text-ink-2'>{children}</div>
+/* the small print under a control: what it did, or what it is for */
+const Note = ({ children }: { children: React.ReactNode }) => (
+  <div className='text-[11.5px] leading-[1.5] text-ink-3'>{children}</div>
 )
 
 const V = ({ children }: { children: React.ReactNode }) => (
-  <b className='font-semibold text-ink'>{children}</b>
+  <b className='font-medium text-ink-2'>{children}</b>
 )
+
+/* a key on the keyboard that does the same as the button it sits in */
+const Key = ({ children }: { children: React.ReactNode }) => (
+  <span className='rounded-[3px] border border-line px-1 font-sans text-[10.5px] leading-4 font-medium text-ink-3'>
+    {children}
+  </span>
+)
+
+/* A header button with no box of its own: the dialog's chrome is its background, so the two
+   buttons that step through the files are the only ones that stand out there. */
+const Ghost = ({
+  label,
+  title,
+  onClick,
+  children
+}: {
+  label?: string
+  title?: string
+  onClick: () => void
+  children: React.ReactNode
+}) => (
+  <button
+    type='button'
+    aria-label={label}
+    title={title}
+    onClick={onClick}
+    className='inline-flex h-7 items-center gap-1.5 rounded-[5px] px-[9px] text-[12.5px] font-medium whitespace-nowrap text-ink hover:bg-well'>
+    {children}
+  </button>
+)
+
+/* One of a run of choices drawn like `Seg`, for runs whose buttons each carry an explanation when
+   hovered, or where most of them turn the picture rather than name where it stands. */
+const Choice = ({
+  on,
+  label,
+  title,
+  onClick,
+  children
+}: {
+  on?: boolean
+  label?: string
+  title?: string
+  onClick: () => void
+  children: React.ReactNode
+}) => (
+  <button
+    type='button'
+    aria-pressed={on}
+    aria-label={label}
+    title={title}
+    onClick={onClick}
+    className={`inline-flex items-center justify-center gap-1.5 rounded-[5px] px-[8px] text-[12px] font-medium whitespace-nowrap ${
+      on
+        ? 'bg-pane text-ink shadow-[0_1px_2px_rgba(24,24,27,0.08),0_0_0_1px_rgba(24,24,27,0.04)]'
+        : 'text-ink-2 hover:text-ink'
+    }`}>
+    {children}
+  </button>
+)
+
+const CHOICES =
+  'inline-flex h-[30px] self-start gap-px rounded-[7px] border border-line-2 bg-well p-[2px]'
+
+/* what is on the file for one part of it: solid when saved, dashed when changed and not saved yet,
+   faint when there is nothing */
+const Adj = ({
+  saved,
+  changed,
+  children
+}: {
+  saved: boolean
+  changed: boolean
+  children: string
+}) => (
+  <span
+    className={`rounded-[4px] border border-line px-[5px] text-[11px] font-medium text-ink-2 ${
+      changed ? 'border-dashed bg-transparent' : saved ? 'bg-well' : 'bg-well opacity-40'
+    }`}>
+    {children}
+  </span>
+)
+
+/* how tall the dark stage the picture sits on is */
+const STAGE = 'min(48vh, 420px)'
 
 /* a share of the whole, as the preview says it: to the percent, and never 0% for something kept */
 const percent = (share: number) => `${Math.max(share > 0 ? 1 : 0, Math.round(share * 100))}%`
@@ -405,73 +502,113 @@ const PreviewDrawer = ({
     !isWholeFrame(file.frame) ||
     Boolean(file.rotation)
 
+  /* each part of what is on the file, apart, for the marks that say which are saved */
+  const trimSaved = file.cropStart != null || file.cropEnd != null
+  const trimChanged =
+    (cropStart ?? null) !== (file.cropStart ?? null) || (cropEnd ?? null) !== (file.cropEnd ?? null)
+  const frameSaved = !isWholeFrame(file.frame)
+  const turnSaved = Boolean(file.rotation)
+  const turnChanged = rotation !== (file.rotation ?? 0)
+  const upright = turned.height > turned.width
+  const facts = [
+    dateLabel(file.mtime),
+    formatTime(file.mtime),
+    formatSize(file.size),
+    ...(status ? [status] : []),
+    t`${index + 1} of ${files.length}`
+  ].join(' · ')
+
   return (
     <div
       onClick={(e) => e.target === e.currentTarget && leave(onClose)}
-      className='fixed inset-0 z-40 grid place-items-center bg-[rgba(8,12,16,0.64)] p-4'>
+      className='fixed inset-0 z-40 grid place-items-center bg-[rgba(24,24,27,0.4)] p-4'>
       <div
         data-preview-drawer='true'
         role='dialog'
         aria-modal='true'
         aria-label={t`Preview`}
-        className='relative flex max-h-full w-[min(1040px,100%)] flex-col overflow-hidden rounded-xl bg-pane text-ink shadow-[0_20px_60px_rgba(0,0,0,0.4)]'>
-        {/* head and foot stay put; only the body scrolls, so Save crop is never below the fold */}
-        <div className='flex flex-none flex-wrap items-center gap-2.5 border-b border-line px-3.5 py-2.5'>
-          <span className='truncate font-mono text-[13px] font-semibold'>{file.filename}</span>
-          <span className='text-[12px] text-ink-2'>
-            {dateLabel(file.mtime)} · {formatTime(file.mtime)} · {formatSize(file.size)}
-            {status ? ` · ${status}` : ''}
-          </span>
+        className='relative flex h-[92vh] max-h-full w-[min(1360px,94vw)] flex-col overflow-hidden rounded-lg bg-pane text-ink shadow-float'>
+        {/* head and foot stay put; only the body scrolls, so Save is never below the fold */}
+        <div className='flex flex-none flex-wrap items-center gap-2 border-b border-line-strong bg-chrome px-3.5 py-2.5'>
+          <div className='flex min-w-0 flex-col gap-1'>
+            <h2 className='m-0 truncate text-[14px] leading-[1.3] font-semibold tracking-[-0.015em]'>
+              {file.filename}
+            </h2>
+            <span className='truncate text-[12px] text-ink-3'>{facts}</span>
+          </div>
           <Spacer />
-          <span className='font-mono text-[12px] text-ink-2 tabular-nums'>
-            {index + 1} / {files.length}
-          </span>
           <Mini
             disabled={index === 0}
             onClick={() => leave(onPrevious)}>
-            {t`‹ Prev`}
+            <Icon
+              name='previous'
+              size={14}
+            />
+            {t`Previous`}
           </Mini>
           <Mini
             disabled={index === files.length - 1}
             onClick={() => leave(onNext)}>
-            {t`Next ›`}
+            {t`Next`}
+            <Icon
+              name='next'
+              size={14}
+            />
           </Mini>
-          <Mini
+          <Ghost
+            label={t`⛶ Full screen`}
             title={
               video
                 ? t`See the clip full screen, at its own size (F)`
                 : t`See the photo full screen, at its own size (F)`
             }
             onClick={showBig}>
-            {t`⛶ Full screen`}
-          </Mini>
+            <Icon
+              name='fullScreen'
+              size={14}
+            />
+            {t`Full screen`}
+            <Key>F</Key>
+          </Ghost>
           {onPlayOutside && (
-            <Mini
+            <Ghost
               title={
                 video
                   ? t`Open the clip in this machine's own player — the file as it was shot, whatever the browser can decode`
                   : t`Open the photo in this machine's own player — the file as it was shot, whatever the browser can decode`
               }
               onClick={onPlayOutside}>
-              {t`▶ Open in the player`}
-            </Mini>
+              <Icon
+                name='open'
+                size={14}
+              />
+              {t`In the machine's player`}
+            </Ghost>
           )}
-          <Mini
+          {/* Escape and a click beside the dialog already close it; this is the same for the mouse,
+              kept out of the keyboard's way and out of what is read out, so the Close button in the
+              footer stays the only one by that name */}
+          <button
+            type='button'
+            tabIndex={-1}
+            aria-hidden='true'
             title={t`Close (Esc)`}
-            onClick={onClose}>
-            ✕
-          </Mini>
+            onClick={onClose}
+            className='grid h-7 w-7 flex-none place-items-center rounded-[5px] text-ink-2 hover:bg-well hover:text-ink'>
+            <Icon name='close' />
+          </button>
         </div>
 
-        <div className='grid min-h-0 grid-cols-1 overflow-auto sm:grid-cols-[minmax(0,1fr)_300px]'>
-          <div className='min-w-0 bg-[#0b0f13] p-3.5'>
+        <div className='grid min-h-0 flex-1 grid-cols-1 overflow-auto sm:grid-cols-[minmax(0,1fr)_372px] sm:overflow-hidden'>
+          <div className='flex min-w-0 flex-col gap-3 px-6 pt-[18px] pb-3 sm:overflow-y-auto'>
             <div
               ref={stage}
               onDoubleClick={() => (big ? leaveBig() : showBig())}
+              style={big ? undefined : { height: STAGE }}
               className={
                 big
                   ? 'fixed inset-0 z-50 grid place-items-center bg-black'
-                  : 'grid h-[min(46vh,380px)] place-items-center overflow-hidden'
+                  : 'relative grid flex-none place-items-center overflow-hidden rounded-xl bg-[#141311] p-3'
               }>
               {/* A box the shape of the picture as it will come out — turned — with the picture
                   turned inside it, and the rectangle laid over the box: it is drawn on the
@@ -484,7 +621,7 @@ const PreviewDrawer = ({
                   aspectRatio: `${turned.width} / ${turned.height}`,
                   width: big
                     ? `min(100vw, calc(100vh * ${turned.width / turned.height}))`
-                    : `min(100%, calc(min(46vh, 380px) * ${turned.width / turned.height}))`
+                    : `min(100%, calc((${STAGE} - 24px) * ${turned.width / turned.height}))`
                 }}>
                 {video ? (
                   <video
@@ -516,7 +653,7 @@ const PreviewDrawer = ({
                     }}
                     onError={() => wontPlay(playUrl)}
                     style={pictureStyle(shape, rotation)}
-                    className='absolute top-1/2 left-1/2 rounded-md transition-transform duration-150'
+                    className='absolute top-1/2 left-1/2 rounded-[3px] transition-transform duration-150'
                   />
                 ) : (
                   <img
@@ -528,13 +665,13 @@ const PreviewDrawer = ({
                         setShape({ width: img.naturalWidth, height: img.naturalHeight })
                     }}
                     style={pictureStyle(shape, rotation)}
-                    className='absolute top-1/2 left-1/2 rounded-md transition-transform duration-150'
+                    className='absolute top-1/2 left-1/2 rounded-[3px] transition-transform duration-150'
                   />
                 )}
                 {video && cannotShow && (
                   <span
                     role='status'
-                    className='absolute inset-0 grid place-items-center rounded-md bg-[#0b0f13] p-4 text-center text-[12.5px] text-white/80'>
+                    className='absolute inset-0 grid place-items-center rounded-[3px] bg-[#141311] p-4 text-center text-[12.5px] text-white/80'>
                     {!playsProxies()
                       ? t`This browser cannot play H.264 video — the format every proxy is made in — so no clip can be shown here. Open the board in Chrome, Edge or Safari, or in Firefox with its video codecs installed, and the clips play.`
                       : proxy?.state === 'none' && proxy.reason
@@ -552,15 +689,35 @@ const PreviewDrawer = ({
                     onChange={reframe}
                   />
                 )}
-                {/* how much of the picture the rectangle keeps, riding on its corner as it is
-                    dragged — out of the way of the handles, and never in the way of a drag */}
+                {/* how much of the picture the rectangle keeps, riding on its corners as it is
+                    dragged — above the top one where there is room, and never in the way of a drag */}
                 {video && framing && frame && !big && (
-                  <span
-                    aria-hidden='true'
-                    style={{ left: `${frame.x * 100}%`, top: `${frame.y * 100}%` }}
-                    className='pointer-events-none absolute z-10 mt-1 ml-1 rounded-sm bg-black/70 px-1.5 py-px font-mono text-[11px] text-white tabular-nums'>
-                    {percent(frame.width)} × {percent(frame.height)}
-                  </span>
+                  <>
+                    <span
+                      aria-hidden='true'
+                      style={{
+                        left: `${frame.x * 100}%`,
+                        top:
+                          frame.y > 0.08
+                            ? `calc(${frame.y * 100}% - 26px)`
+                            : `calc(${frame.y * 100}% + 8px)`,
+                        marginLeft: frame.y > 0.08 ? 0 : 8
+                      }}
+                      className='pointer-events-none absolute z-10 rounded-[5px] bg-white px-2 py-[3px] font-mono text-[11px] leading-[1.3] text-[#1c1b19] tabular-nums'>
+                      {percent(frame.width)} × {percent(frame.height)}
+                    </span>
+                    <span
+                      aria-hidden='true'
+                      style={{
+                        right: `calc(${(1 - frame.x - frame.width) * 100}% + 8px)`,
+                        bottom: `calc(${(1 - frame.y - frame.height) * 100}% + 8px)`
+                      }}
+                      className='pointer-events-none absolute z-10 rounded-[5px] bg-white px-2 py-[3px] font-mono text-[11px] leading-[1.3] whitespace-nowrap text-[#1c1b19] tabular-nums'>
+                      {t`keeps ${percent(frame.width * frame.height)} of the picture`}
+                      {/* and the shape it is held to, when that shape has a name */}
+                      {shown.includes(':') && ` · ${shown}`}
+                    </span>
+                  </>
                 )}
               </span>
               {big && (
@@ -580,73 +737,112 @@ const PreviewDrawer = ({
             </div>
             {video && (
               <>
-                <div className='mt-3 flex items-center gap-2.5 text-[#e7ecf1]'>
+                <div className='flex flex-wrap items-center gap-3'>
                   <button
                     type='button'
+                    aria-label={playing ? t`❚❚ Pause` : t`▶ Play`}
                     onClick={toggle}
-                    className='min-w-[64px] rounded-[5px] border border-white/30 bg-white/10 px-2.5 py-1 text-[12px] text-white hover:bg-white/20'>
-                    {playing ? t`❚❚ Pause` : t`▶ Play`}
+                    className='grid h-[30px] w-[30px] flex-none place-items-center rounded-full bg-accent text-white hover:brightness-110'>
+                    {playing ? (
+                      <svg
+                        aria-hidden='true'
+                        width='12'
+                        height='12'
+                        viewBox='0 0 12 12'
+                        fill='currentColor'>
+                        <rect
+                          x='2'
+                          y='1.5'
+                          width='3'
+                          height='9'
+                          rx='0.6'
+                        />
+                        <rect
+                          x='7'
+                          y='1.5'
+                          width='3'
+                          height='9'
+                          rx='0.6'
+                        />
+                      </svg>
+                    ) : (
+                      <Icon
+                        name='play'
+                        size={13}
+                        className='ml-0.5'
+                      />
+                    )}
                   </button>
-                  <span className='flex-1' />
-                  <span className='min-w-[88px] text-right font-mono text-[11.5px] tabular-nums'>
-                    {clock(currentTime)} / {clock(duration)}
+                  <span className='flex items-baseline gap-2 font-mono tabular-nums'>
+                    <span className='text-[15px] text-ink'>{clock(currentTime)}</span>{' '}
+                    <span className='text-[12.5px] text-ink-3'>/ {clock(duration)}</span>
                   </span>
+                  <Key>space</Key>
+                  <Spacer />
+                  {!locked && (
+                    <>
+                      <Mini
+                        title={t`Start the clip at the playhead`}
+                        onClick={() => onCropChange({ cropStart: currentTime, cropEnd })}>
+                        {t`Start here`}
+                      </Mini>
+                      <Mini
+                        title={t`End the clip at the playhead`}
+                        onClick={() => onCropChange({ cropStart, cropEnd: currentTime })}>
+                        {t`End here`}
+                      </Mini>
+                    </>
+                  )}
                 </div>
-                <div className='mt-3'>
-                  <VideoCropper
-                    duration={duration}
-                    currentTime={currentTime}
-                    cropStart={cropStart}
-                    cropEnd={cropEnd}
-                    zoom={zoom}
-                    compact
-                    thumbSrc={(seek) => getThumbUrl(proxy?.play ?? file.proxy ?? file.path, seek)}
-                    moments={shownMoments}
-                    onMomentChange={
-                      locked
-                        ? undefined
-                        : onMomentChange &&
-                          ((which, seconds) =>
-                            onMomentChange(
-                              which,
-                              /* dragged where the cut should start, kept as the instant it stands
-                                 for, so what is written down is still a measurement */
-                              which === 'exit'
-                                ? seconds + (file.moments?.exit ?? 0) - cutAt
-                                : seconds
-                            ))
-                    }
-                    onSeek={onSeek}
-                    onCropChange={locked ? () => {} : onCropChange}
-                    onApply={locked ? () => {} : onApply}
-                    onZoomChange={onZoomChange}
-                  />
-                </div>
+                <VideoCropper
+                  duration={duration}
+                  currentTime={currentTime}
+                  cropStart={cropStart}
+                  cropEnd={cropEnd}
+                  zoom={zoom}
+                  compact
+                  thumbSrc={(seek) => getThumbUrl(proxy?.play ?? file.proxy ?? file.path, seek)}
+                  moments={shownMoments}
+                  onMomentChange={
+                    locked
+                      ? undefined
+                      : onMomentChange &&
+                        ((which, seconds) =>
+                          onMomentChange(
+                            which,
+                            /* dragged where the cut should start, kept as the instant it stands
+                               for, so what is written down is still a measurement */
+                            which === 'exit' ? seconds + (file.moments?.exit ?? 0) - cutAt : seconds
+                          ))
+                  }
+                  onSeek={onSeek}
+                  onCropChange={locked ? () => {} : onCropChange}
+                  onApply={locked ? () => {} : onApply}
+                  onZoomChange={onZoomChange}
+                />
                 {/* The jump itself, drawn against the same clip and dragged the same way: the force
                     the camera felt, the phases behind it, and the height and speed when the camera
                     knew them. It sits under the timeline because the two are read together. */}
-                <div className='mt-3'>
-                  <JumpGraph
-                    track={track.track}
-                    waiting={track.waiting}
-                    moments={shownMoments}
-                    currentTime={currentTime}
-                    duration={duration}
-                    onSeek={onSeek}
-                  />
-                </div>
+                <JumpGraph
+                  track={track.track}
+                  waiting={track.waiting}
+                  moments={shownMoments}
+                  currentTime={currentTime}
+                  duration={duration}
+                  onSeek={onSeek}
+                />
               </>
             )}
           </div>
 
-          <div className='flex flex-col gap-3.5 border-line p-3.5 max-sm:border-t sm:border-l'>
+          <div className='flex min-w-0 flex-col border-line-2 max-sm:border-t sm:overflow-y-auto sm:border-l'>
             {/* Where the jump is, and what the marks on the timeline mean. Each one seeks there,
                 since the only way to tell a mark is right is to look at the frame under it. A clip
                 the camera said nothing about says so plainly — most clips are not jumps. */}
             {video && file.moments !== undefined && (
-              <Panel title={t`The jump`}>
+              <Part title={t`The jump`}>
                 {file.moments === null ? (
-                  <KV>{t`No exit found — nothing to hang a cut on.`}</KV>
+                  <Note>{t`No exit found — nothing to hang a cut on.`}</Note>
                 ) : (
                   <div className='flex flex-wrap gap-1.5'>
                     {(
@@ -666,84 +862,105 @@ const PreviewDrawer = ({
                               type='button'
                               onClick={() => onSeek(at)}
                               title={t`Go to the ${moment}`}
-                              className='rounded-[5px] border border-line px-2 py-1 font-mono text-[11.5px] text-ink-2 hover:bg-surface-2'>
-                              {moment} <V>{clock(at)}</V>
+                              className='inline-flex h-6 items-center gap-1.5 rounded-[5px] border border-line-strong bg-pane px-2 text-[11.5px] text-ink-2 shadow-card hover:bg-well'>
+                              {moment}{' '}
+                              <b className='font-mono font-medium text-ink tabular-nums'>
+                                {clock(at)}
+                              </b>
                             </button>
                           ]
                     })}
                   </div>
                 )}
-              </Panel>
+              </Part>
             )}
             {video && (
-              <Panel title={t`Trim`}>
-                <KV>
-                  {t`Start`} <V>{clock(from)}</V> · {t`End`} <V>{clock(to)}</V>
-                </KV>
-                <KV>
+              <Part title={t`Trim`}>
+                <div className='flex gap-6'>
+                  <div className='flex flex-col gap-1'>
+                    <Note>{t`Start`}</Note>{' '}
+                    <span className='text-[18px] leading-none font-semibold tracking-[-0.02em] tabular-nums'>
+                      {clock(from)}
+                    </span>
+                  </div>
+                  <div className='flex flex-col gap-1'>
+                    <Note>{t`End`}</Note>{' '}
+                    <span className='text-[18px] leading-none font-semibold tracking-[-0.02em] tabular-nums'>
+                      {clock(to)}
+                    </span>
+                  </div>
+                </div>
+                <Note>
                   {t`Keeps`} <V>{clock(Math.max(0, to - from))}</V> {t`of`} {clock(duration)}
                   {duration > 0 && (
                     <>
-                      {' '}
-                      · <V>{percent(Math.max(0, to - from) / duration)}</V>
+                      , <V>{percent(Math.max(0, to - from) / duration)}</V>
                     </>
                   )}
-                </KV>
-                <div className={`mt-1.5 flex flex-wrap gap-1.5 ${locked ? 'hidden' : ''}`}>
-                  <Mini onClick={() => onCropChange({ cropStart: currentTime, cropEnd })}>
-                    {t`Start at playhead`}
-                  </Mini>
-                  <Mini onClick={() => onCropChange({ cropStart, cropEnd: currentTime })}>
-                    {t`End at playhead`}
-                  </Mini>
-                  {file.moments && (
-                    <Mini
-                      title={t`From the exit to a few seconds after the landing`}
-                      onClick={() =>
-                        file.moments &&
-                        onCropChange(jumpTrim(file.moments, montage, cropEnd ?? null))
-                      }>
-                      {t`Trim to the jump`}
-                    </Mini>
-                  )}
-                </div>
-              </Panel>
-            )}
-
-            <Panel title={t`Turn`}>
-              <div className='flex flex-wrap items-center gap-1.5'>
-                <span className='min-w-[38px] font-mono text-[12px] font-semibold'>
-                  {rotation}°
-                </span>
-                {!locked && (
+                  . {t`Trimming moves no pixels.`}
+                </Note>
+                {!locked && file.moments && (
                   <>
-                    <Mini
-                      title={t`Turn a quarter clockwise (R)`}
-                      onClick={() => turn(90)}>
-                      ↻ +90°
-                    </Mini>
-                    <Mini
-                      title={t`Turn upside down`}
-                      onClick={() => turn(180)}>
-                      ↻ +180°
-                    </Mini>
-                    {rotation !== 0 && (
+                    <div className='self-start'>
                       <Mini
-                        title={t`Back to as shot`}
-                        onClick={() => turn(360 - rotation)}>
-                        0°
+                        title={t`From the exit to a few seconds after the landing`}
+                        onClick={() =>
+                          file.moments &&
+                          onCropChange(jumpTrim(file.moments, montage, cropEnd ?? null))
+                        }>
+                        <Icon
+                          name='scissors'
+                          size={14}
+                        />
+                        {t`Trim to the jump`}
                       </Mini>
-                    )}
+                    </div>
+                    <Note>{t`From the exit to a few seconds after the landing.`}</Note>
                   </>
                 )}
-              </div>
-              <div className='mt-1 text-[12px] text-ink-2'>
+              </Part>
+            )}
+
+            <Part
+              title={t`Turn`}
+              aside={
+                <span className='font-mono text-[11.5px] font-medium text-ink-2 tabular-nums'>
+                  {rotation}°
+                </span>
+              }>
+              {!locked && (
+                <span
+                  role='group'
+                  aria-label={t`Turn`}
+                  className={CHOICES}>
+                  <Choice
+                    on={rotation === 0}
+                    label='0°'
+                    title={t`Back to as shot`}
+                    onClick={() => rotation !== 0 && turn(360 - rotation)}>
+                    {t`As shot`}
+                  </Choice>
+                  <Choice
+                    label='↻ +90°'
+                    title={t`Turn a quarter clockwise (R)`}
+                    onClick={() => turn(90)}>
+                    ↻ ¼ <span className='text-[10.5px] text-ink-3'>R</span>
+                  </Choice>
+                  <Choice
+                    label='↻ +180°'
+                    title={t`Turn upside down`}
+                    onClick={() => turn(180)}>
+                    ↻ ½
+                  </Choice>
+                </span>
+              )}
+              <Note>
                 {quarter
                   ? t`For a camera mounted sideways or upside down — a quarter turn makes it portrait.`
                   : t`For a camera mounted sideways or upside down.`}
-              </div>
+              </Note>
               {!locked && rotation !== 0 && onRotationApplyToJump && (
-                <div className='mt-1.5'>
+                <div className='self-start'>
                   <Mini
                     title={
                       video
@@ -751,52 +968,75 @@ const PreviewDrawer = ({
                         : t`Turn every photo in this jump the same way — a camera on its side is on its side for the whole jump`
                     }
                     onClick={onRotationApplyToJump}>
-                    {t`Apply to the whole jump`}
+                    {video ? t`Give to every clip in the jump` : t`Give to every photo in the jump`}
                   </Mini>
                 </div>
               )}
-            </Panel>
+            </Part>
 
             {video && (
-              <Panel title={t`Frame`}>
-                <div className={`flex flex-wrap gap-1.5 ${locked ? 'hidden' : ''}`}>
-                  {RATIOS.map((option) => (
+              <Part title={t`Frame`}>
+                {!locked && (
+                  <span
+                    role='group'
+                    aria-label={t`Frame`}
+                    className={CHOICES}>
+                    {RATIOS.map((option) => (
+                      <Choice
+                        key={option.label}
+                        on={shown === option.label}
+                        title={i18n._(option.title)}
+                        onClick={() => pickRatio(option)}>
+                        {option.name ? i18n._(option.name) : option.label}
+                      </Choice>
+                    ))}
+                  </span>
+                )}
+                {framing && onFrameApplyToJump && (
+                  <div className='self-start'>
                     <Mini
-                      key={option.label}
-                      pressed={shown === option.label}
-                      title={i18n._(option.title)}
-                      onClick={() => pickRatio(option)}>
-                      {option.name ? i18n._(option.name) : option.label}
-                    </Mini>
-                  ))}
-                </div>
-                {!locked && turned.height > turned.width && (
-                  <div className='mt-1.5'>
-                    <Mini
-                      pressed={filled}
-                      title={t`Delivered as a landscape clip: the picture in the middle, the sides filled with it blurred — nothing cut away`}
-                      onClick={() => fillSides(!filled)}>
-                      {t`Landscape, blurred sides`}
+                      title={t`Give every other clip in this jump the same rectangle — a badly mounted camera is badly mounted for the whole jump`}
+                      onClick={onFrameApplyToJump}>
+                      {t`Give to every clip in the jump`}
                     </Mini>
                   </div>
                 )}
-                <div className='mt-1 text-[12px] text-ink-2'>
+                {!locked && (
+                  <button
+                    type='button'
+                    aria-pressed={filled}
+                    disabled={!upright}
+                    title={t`Delivered as a landscape clip: the picture in the middle, the sides filled with it blurred — nothing cut away`}
+                    onClick={() => fillSides(!filled)}
+                    className='flex items-center gap-2.5 self-start text-[12.5px] text-ink disabled:opacity-55'>
+                    <span
+                      className={`relative h-[18px] w-[30px] flex-none rounded-full transition-colors after:absolute after:top-[2px] after:left-[2px] after:h-[14px] after:w-[14px] after:rounded-full after:bg-white after:shadow-[0_1px_2px_rgba(0,0,0,0.25)] after:transition-transform ${
+                        filled ? 'bg-accent after:translate-x-3' : 'bg-line'
+                      }`}
+                    />
+                    {t`Landscape, blurred sides`}
+                  </button>
+                )}
+                {!locked && !upright && (
+                  <Note>{t`Only for a clip that stands upright. This one is landscape.`}</Note>
+                )}
+                <Note>
                   {framing
                     ? t`Drag the rectangle to move it, a corner to resize. What is dimmed is cut away.`
                     : t`Cut a mount or a finger out of the corner. Same keeps the shape the clip already has.`}
-                </div>
+                </Note>
                 {/* What is left, in pixels, and what it is stretched back to. A crop is put back to
                   the size the clip came at, so a small rectangle is a big upscale — which looks
                   soft, and nothing else on screen would say so. */}
                 {framing && frame && (
-                  <KV>
+                  <Note>
                     {t`Keeps`} <V>{percent(frame.width)}</V> {t`across`} ·{' '}
                     <V>{percent(frame.height)}</V> {t`down`} ·{' '}
                     <V>{percent(frame.width * frame.height)}</V> {t`of the picture`}
-                  </KV>
+                  </Note>
                 )}
                 {framing && frame && (
-                  <div className='mt-1 font-mono text-[11.5px] text-ink-3'>
+                  <div className='font-mono text-[11px] text-ink-3'>
                     {(() => {
                       const box = cropToPixels(frame, turned.width, turned.height)
                       const stretch = turned.width / box.width
@@ -807,56 +1047,79 @@ const PreviewDrawer = ({
                     })()}
                   </div>
                 )}
-                {framing && onFrameApplyToJump && (
-                  <div className='mt-1.5'>
-                    <Mini
-                      title={t`Give every other clip in this jump the same rectangle — a badly mounted camera is badly mounted for the whole jump`}
-                      onClick={onFrameApplyToJump}>
-                      {t`Apply to the whole jump`}
-                    </Mini>
-                  </div>
-                )}
-              </Panel>
+              </Part>
             )}
 
-            <Panel title={t`On the file`}>
-              <div className='text-[12px] text-ink-2'>
+            <Part title={t`On the file now`}>
+              <div className='flex gap-1'>
+                {video && (
+                  <Adj
+                    saved={trimSaved}
+                    changed={trimChanged}>
+                    {t`trim`}
+                  </Adj>
+                )}
+                {video && (
+                  <Adj
+                    saved={frameSaved}
+                    changed={!sameRectangle}>
+                    {t`frame`}
+                  </Adj>
+                )}
+                <Adj
+                  saved={turnSaved}
+                  changed={turnChanged}>
+                  {t`turn`}
+                </Adj>
+              </div>
+              <Note>
                 {/* both halves, separately, because a rectangle cannot be read off a row and a
                     panel saying only "crop saved" leaves you guessing which one it meant */}
                 {!saved
                   ? t`Not trimmed, framed or turned — the file goes out as shot.`
                   : [
-                      file.cropStart != null || file.cropEnd != null
-                        ? t`Trimmed to ${trimmedFrom} – ${trimmedTo}.`
-                        : null,
-                      !isWholeFrame(file.frame) ? t`Framed.` : null,
-                      file.rotation ? t`Turned ${turnedBy}°.` : null,
+                      trimSaved ? t`Trimmed to ${trimmedFrom} – ${trimmedTo}.` : null,
+                      frameSaved ? t`Framed.` : null,
+                      turnSaved ? t`Turned ${turnedBy}°.` : null,
                       t`Applied the next time this file is processed.`
                     ]
                       .filter(Boolean)
-                      .join(' ')}
-              </div>
-            </Panel>
+                      .join(' ')}{' '}
+                {t`Solid is saved, dashed is not yet.`}
+              </Note>
+              {!locked && (
+                <button
+                  type='button'
+                  aria-label={t`Reset trim, frame and turn`}
+                  disabled={!saved && !dirty}
+                  onClick={() => {
+                    onCropChange({ cropStart: null, cropEnd: null })
+                    /* every part, because one Reset that left another behind would be a trap */
+                    onFrameChange(null)
+                    onRotate(0)
+                    onApply({ cropStart: null, cropEnd: null })
+                  }}
+                  className='self-start text-[12.5px] font-medium text-ink hover:text-accent disabled:text-ink-3 disabled:hover:text-ink-3'>
+                  {t`Reset`}
+                </button>
+              )}
+            </Part>
           </div>
         </div>
 
-        <div className='flex flex-none flex-wrap items-center gap-2.5 border-t border-line px-3.5 py-2.5'>
-          {locked && <span className='text-[11.5px] text-ink-2'>🔒 {locked}</span>}
-          {!locked && (
-            <Mini
-              disabled={!saved && !dirty}
-              onClick={() => {
-                onCropChange({ cropStart: null, cropEnd: null })
-                /* every part, because one Reset that left another behind would be a trap */
-                onFrameChange(null)
-                onRotate(0)
-                onApply({ cropStart: null, cropEnd: null })
-              }}>
-              {t`Reset trim, frame and turn`}
-            </Mini>
-          )}
-          {dirty && (
+        <div className='flex flex-none flex-wrap items-center gap-2 border-t border-line-strong bg-chrome px-3.5 py-2.5'>
+          {locked ? (
+            <span className='inline-flex items-center gap-1.5 text-[11.5px] text-ink-2'>
+              <Icon
+                name='lock'
+                size={13}
+              />
+              {locked}
+            </span>
+          ) : dirty ? (
             <span className='text-[11.5px] font-semibold text-local'>{t`Unsaved changes`}</span>
+          ) : (
+            <Note>{t`Leaving with changes asks first: keep editing, discard or save.`}</Note>
           )}
           <Spacer />
           <Mini onClick={() => leave(onClose)}>{t`Close`}</Mini>

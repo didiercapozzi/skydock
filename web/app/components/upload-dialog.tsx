@@ -4,6 +4,7 @@ import { i18n } from '@lingui/core'
 import { msg, plural, t } from '@lingui/core/macro'
 import { useState } from 'react'
 import { Go, Mini, Seg } from './buttons'
+import { Icon } from './icons'
 import { INPUT, Modal, Spacer } from './modal'
 import type { Destination, ManifestGroup } from './types'
 import { formatFilmSize, hhmm, isVideoFile } from './utils'
@@ -25,8 +26,6 @@ const PART_NAMES = {
 
 /* a part, named in the language the app speaks */
 const partName = (part: SendPart) => i18n._(PART_NAMES[part])
-
-const ICON: Record<SendPart, string> = { videos: '🎞', photos: '🖼', film: '▶', project: '✎' }
 
 /* how many files a group shows by name before it says how many more */
 const SHOWN = 3
@@ -69,116 +68,104 @@ const aboutPart = (part: SendPart, parts: Parts, stem: string) => {
   return `${stem}.${part === 'film' ? 'mp4' : 'kdenlive'}${much}`
 }
 
-/* One line of a tree: a folder, a file or a zip, indented by how deep it sits. */
-const Row = ({
-  depth,
-  mark,
-  name,
-  note,
-  strong,
-  quiet,
-  remove
-}: {
-  depth: number
-  mark?: string
-  name: string
-  note?: string
-  strong?: boolean
-  quiet?: boolean
-  remove?: { label: string; onClick: () => void }
-}) => (
-  <span
-    className='flex min-h-6 items-center gap-1.5 rounded px-1.5'
-    style={{ paddingLeft: 6 + depth * 16 }}>
-    <span className='w-4 flex-none text-center text-[12px] text-accent'>{mark}</span>
-    <code
-      className={`min-w-0 flex-1 font-mono text-[11.5px] break-all ${strong ? 'font-semibold' : ''} ${quiet ? 'text-ink-2' : ''}`}>
-      {name}
-    </code>
-    {note && <span className='flex-none text-[11px] text-ink-2'>{note}</span>}
-    {remove && (
-      <button
-        type='button'
-        aria-label={remove.label}
-        onClick={remove.onClick}
-        className='border-0 bg-transparent px-1 text-[12px] text-ink-3 hover:text-ink'>
-        ✕
-      </button>
-    )}
+/* the small grey line that says how something works, under or beside what it is about */
+const NOTE = 'text-[11.5px] leading-normal text-ink-3'
+
+/* a button with no box of its own, for what sits at the end of a line: take out, remove, leave out */
+const QUIET =
+  'inline-flex flex-none items-center gap-1 rounded-[5px] font-medium whitespace-nowrap text-ink-2 hover:bg-well hover:text-ink'
+
+/* Each step keeps what is dragged from held at its top and lets what it is dropped on scroll beneath,
+   so the thing being carried is never scrolled away from the place it is going. */
+const HELD = 'flex flex-none flex-col gap-3 px-6 pt-[18px] pb-3'
+const SCROLL = 'flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-6 pb-[18px]'
+
+type Remove = { label: string; onClick: () => void }
+
+/* taking one thing out of a zip or a destination, said the same short way everywhere; the label
+   says exactly what comes out of where */
+const TakeOut = ({ remove }: { remove: Remove }) => (
+  <button
+    type='button'
+    aria-label={remove.label}
+    onClick={remove.onClick}
+    className={`${QUIET} h-[22px] px-1.5 text-[11.5px]`}>
+    {t`Take out`}
+  </button>
+)
+
+/* A step's heading: its number, quiet, and what it does. */
+const Heading = ({ n, children }: { n: string; children: React.ReactNode }) => (
+  <span className='flex items-baseline gap-3 tracking-[-0.02em]'>
+    <span className='text-[18px] font-semibold text-ink-3'>{n}</span>
+    <h3 className='m-0 text-[15px] font-semibold'>{children}</h3>
   </span>
 )
 
-/* A part as it sits in a zip or a destination: a folder with its first files named, or one file. */
-const PartTree = ({
+/* A part as it sits in a zip or a destination, on one line: a folder with its first files named or
+   what it holds, or one file. */
+const PartLine = ({
   part,
   parts,
   stem,
-  depth,
+  named,
   remove
 }: {
   part: SendPart
   parts: Parts
   stem: string
-  depth: number
-  remove?: { label: string; onClick: () => void }
+  /* the folder's first files by name, as a zip lays them out, rather than how many there are */
+  named?: boolean
+  remove?: Remove
 }) => {
-  if (part === 'film' || part === 'project')
-    return (
-      <Row
-        depth={depth}
-        mark={ICON[part]}
-        name={`${stem}.${part === 'film' ? 'mp4' : 'kdenlive'}`}
-        note={part === 'film' ? formatFilmSize(sizeOfPart(parts.film)) : undefined}
-        remove={remove}
-      />
-    )
   const files = parts[part]
+  const folder = part === 'videos' || part === 'photos'
   return (
-    <>
-      <Row
-        depth={depth}
-        mark='📁'
-        name={`${part}/`}
-        note={aboutPart(part, parts, stem)}
-        strong
-        remove={remove}
-      />
-      {files.slice(0, SHOWN).map((f) => (
-        <Row
-          key={f.file}
-          depth={depth + 1}
-          name={f.name}
-          quiet
-        />
-      ))}
-      {files.length > SHOWN && (
-        <span
-          className='text-[11px] text-ink-3 italic'
-          style={{ paddingLeft: 28 + (depth + 1) * 16 }}>
-          {t`+ ${files.length - SHOWN} more`}
-        </span>
-      )}
-    </>
+    <span className='flex min-h-[22px] items-center gap-2 text-[12px]'>
+      <span className='flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2'>
+        <code className='font-mono break-all'>
+          {folder ? `${part}/` : `${stem}.${part === 'film' ? 'mp4' : 'kdenlive'}`}
+        </code>
+        {folder && named && (
+          <code className='font-mono text-[11.5px] break-all text-ink-3'>
+            {files.slice(0, SHOWN).map((f, i) => (
+              <span key={f.file}>
+                {i > 0 && ', '}
+                {f.name}
+              </span>
+            ))}
+            {files.length > SHOWN && ` ${t`+ ${files.length - SHOWN} more`}`}
+          </code>
+        )}
+        {folder && !named && <span className={NOTE}>{aboutPart(part, parts, stem)}</span>}
+        {part === 'film' && <span className={NOTE}>{formatFilmSize(sizeOfPart(files))}</span>}
+      </span>
+      {remove && <TakeOut remove={remove} />}
+    </span>
   )
 }
 
-const TREE = 'flex flex-col rounded-lg border border-line bg-ground px-1 py-1.5'
-
 /* a drop target's look, quiet until something is held over it */
-const dropLook = (over: boolean) =>
-  over ? 'border-2 border-dashed border-pick bg-pick-soft' : 'border border-line bg-pane'
+const dropLook = (over: boolean, quiet: string) =>
+  over ? 'border border-dashed border-accent bg-accent-soft' : quiet
 
 /* the same as dragging a part onto a zip, for whoever would rather press */
 const AddParts = ({ parts, onAdd }: { parts: SendPart[]; onAdd: (part: SendPart) => void }) =>
   parts.length === 0 ? null : (
-    <span className='flex flex-wrap justify-center gap-1.5'>
+    <span className='flex flex-wrap justify-center gap-1'>
       {parts.map((part) => (
-        <Mini
+        <button
           key={part}
+          type='button'
           title={t`Put ${partName(part)} in this zip`}
-          onClick={() => onAdd(part)}>
-          + {partName(part)}
-        </Mini>
+          onClick={() => onAdd(part)}
+          className={`${QUIET} h-6 px-1.5 text-[11.5px]`}>
+          <Icon
+            name='plus'
+            size={12}
+          />
+          {partName(part)}
+        </button>
       ))}
     </span>
   )
@@ -241,7 +228,6 @@ const UploadDialog = ({
   onClose: () => void
   onUpload: (plan: SendPlan) => void
 }) => {
-  const [step, setStep] = useState<1 | 2>(1)
   const [over, setOver] = useState<string | null>(null)
   const [ticked, setTicked] = useState<string[]>([])
   const [added, setAdded] = useState<string[]>([])
@@ -252,7 +238,6 @@ const UploadDialog = ({
   const present = PARTS.filter((part) => parts[part].length > 0)
   const items = itemsFrom(parts, stem, plan.zips)
   const zipItems = items.filter((item) => item.zip)
-  const looseItems = items.filter((item) => !item.zip)
   const placed = Object.keys(plan.placed).length > 0 ? plan.placed : suggested(items, places)
   /* where an item goes, among the destinations there are now: one remembered from an earlier
      montage that has since been removed or renamed is no place to send anything, and is left out */
@@ -347,7 +332,6 @@ const UploadDialog = ({
   const left = items.filter(
     (item) => placesOf(item.key).length === 0 && (item.zip || !zippedAway(item.holds[0]!))
   )
-  const sends = items.reduce((sum, item) => sum + placesOf(item.key).length, 0)
   const waitingForFilm = parts.videos.length > 0 && parts.film.length === 0
   const blocked = waitingForFilm
     ? t`Render the film in kdenlive first`
@@ -360,29 +344,18 @@ const UploadDialog = ({
           : null
   const uploaded = group.uploaded
 
-  const steps = (
-    <span className='flex items-center gap-3 text-[12.5px]'>
-      {[t`Make the zips`, t`Where it goes`].map((label, i) => (
-        <span
-          key={label}
-          className={`flex items-center gap-1.5 ${step === i + 1 ? 'font-semibold text-ink' : 'text-ink-2'}`}>
-          <span
-            className={`grid h-5 w-5 place-items-center rounded-full text-[11px] font-semibold ${
-              step >= i + 1 ? 'bg-accent text-white' : 'border border-line text-ink-3'
-            }`}>
-            {step > i + 1 ? '✓' : i + 1}
-          </span>
-          {label}
-        </span>
-      ))}
-    </span>
-  )
+  /* what the footer sums up: every zip built once, every item counted once per destination it goes to */
+  const toMake = zipItems.filter((item) => placesOf(item.key).length > 0).length
+  const toSend = items.reduce((sum, item) => sum + item.size * placesOf(item.key).length, 0)
+  const sharing = (name: string) =>
+    items.some((item) => item.holds.includes('film') && placesOf(item.key).includes(name))
+  const links = used.filter(sharing).length
 
   const stepOne = (
-    <div className='grid min-h-0 flex-1 grid-cols-[320px_minmax(0,1fr)] gap-4 max-[800px]:grid-cols-1'>
-      <div className='flex flex-col gap-2'>
-        <b className='text-[13px]'>{t`What the montage has`}</b>
-        <span className='text-[12px] text-ink-2'>
+    <>
+      <div className={HELD}>
+        <Heading n='01'>{t`Make the zips`}</Heading>
+        <span className={NOTE}>
           {t`Drag any of these onto a zip, or press + on the zip. The same one can go into several zips.`}
         </span>
         {present.map((part) => (
@@ -391,20 +364,19 @@ const UploadDialog = ({
             draggable
             onDragStart={(e) => carry(e, part)}
             aria-label={partName(part)}
-            className='flex cursor-grab items-center gap-2 rounded-[9px] border border-line bg-pane px-3 py-2.5'>
-            <span className='text-ink-3'>⠿</span>
-            <span className='w-4 text-accent'>{ICON[part]}</span>
-            <span className='flex min-w-0 flex-1 flex-col'>
-              <span className='text-[13.5px] font-semibold'>{partName(part)}</span>
-              <span className='text-[11.5px] break-all text-ink-2'>
-                {aboutPart(part, parts, stem)}
-              </span>
+            className='flex h-[52px] flex-none cursor-grab items-center gap-3 rounded-[10px] border border-line bg-pane px-3 hover:border-line-strong'>
+            <span
+              aria-hidden='true'
+              className='tracking-[-2px] text-ink-3'>
+              ⋮⋮
             </span>
-            {zipsIn(part) > 0 && (
-              <span className='rounded-full bg-pick-soft px-1.5 text-[11px] font-semibold whitespace-nowrap text-pick'>
-                {plural(zipsIn(part), { one: 'in # zip', other: 'in # zips' })}
-              </span>
-            )}
+            <span className='flex min-w-0 flex-1 flex-col'>
+              <b className='text-[13px] font-semibold'>{partName(part)}</b>
+              <span className={`${NOTE} truncate`}>{aboutPart(part, parts, stem)}</span>
+            </span>
+            <span className={`${NOTE} whitespace-nowrap`}>
+              {plural(zipsIn(part), { one: 'in # zip', other: 'in # zips' })}
+            </span>
           </div>
         ))}
         {waitingForFilm && (
@@ -413,20 +385,16 @@ const UploadDialog = ({
           </span>
         )}
       </div>
-      <div
-        aria-label={t`Zips`}
-        className='flex min-h-0 flex-col gap-2.5 rounded-[10px] bg-ground p-3'>
-        <b className='text-[13px]'>
-          {t`Zips`}{' '}
-          <span className='font-normal text-ink-2'>
-            — {plural(zipItems.length, { one: '# zip', other: '# zips' })}
-          </span>
-        </b>
-        <div className='grid grid-cols-[repeat(auto-fill,minmax(400px,1fr))] items-start gap-3'>
+      <div className={SCROLL}>
+        <div
+          aria-label={t`Zips`}
+          className='flex flex-col gap-3'>
           {plan.zips.map((zip, at) => {
             const name = zipNameOf(stem, zip.ending)
             const inside = present.filter((part) => zip.parts.includes(part))
             const size = inside.reduce((sum, part) => sum + sizeOfPart(parts[part]), 0)
+            /* the ending is what tells one zip from another, so it is the part of the name picked out */
+            const ending = name.slice(stem.length + 1, -'.zip'.length)
             return (
               <section
                 key={at}
@@ -440,43 +408,49 @@ const UploadDialog = ({
                   () => setOver(`zip:${at}`),
                   () => leave(`zip:${at}`)
                 )}
-                className={`flex flex-col gap-2 rounded-[10px] p-3 ${dropLook(over === `zip:${at}`)}`}>
+                className={`flex flex-none flex-col gap-2 rounded-xl px-3.5 py-3 ${dropLook(over === `zip:${at}`, 'border border-line bg-rail')}`}>
                 <span className='flex items-center gap-2'>
-                  <span className='text-accent'>🗜</span>
-                  <code className='min-w-0 flex-1 font-mono text-[12.5px] font-semibold break-all'>
-                    {name}
+                  <Icon
+                    name='storage'
+                    className='text-ink-2'
+                  />
+                  <code className='min-w-0 flex-1 font-mono text-[12px] break-all'>
+                    {ending ? (
+                      <>
+                        {stem}.<b className='font-medium text-accent'>{ending}</b>.zip
+                      </>
+                    ) : (
+                      name
+                    )}
                   </code>
                   <button
                     type='button'
                     aria-label={t`Remove ${name}`}
                     onClick={() => setZips(plan.zips.filter((_, i) => i !== at))}
-                    className='rounded-[5px] border border-line bg-pane px-2 py-0.5 text-[12px] text-ink-3 hover:text-ink'>
-                    ✕
+                    className={`${QUIET} h-7 px-[9px] text-[12.5px]`}>
+                    {t`Remove`}
                   </button>
                 </span>
-                <label className='flex items-center gap-2 text-[11.5px] text-ink-2'>
+                <label className={`flex items-center gap-2 ${NOTE}`}>
                   {t`Name ends with`}
                   <input
                     aria-label={t`Name ends with`}
                     value={zip.ending}
                     onChange={(e) => renameZip(at, e.target.value)}
                     onBlur={tidyEndings}
-                    className={`${INPUT} w-32 py-0.5 font-mono text-[12px]`}
+                    className={`${INPUT} h-6 w-32 py-0 font-mono text-[12px]`}
                   />
                   <Spacer />
                   {size > 0 && formatFilmSize(size)}
                 </label>
-                <span className='text-[11px] font-semibold tracking-[.08em] text-ink-3 uppercase'>
-                  {t`Inside the zip`}
-                </span>
-                <div className={TREE}>
+                <div className='flex flex-col gap-1 text-ink-2'>
                   {inside.map((part) => (
-                    <PartTree
+                    <PartLine
                       key={part}
                       part={part}
                       parts={parts}
                       stem={stem}
-                      depth={0}
+                      named
                       remove={{
                         label: t`Take ${partName(part)} out of ${name}`,
                         onClick: () => takeFromZip(part, at)
@@ -484,9 +458,7 @@ const UploadDialog = ({
                     />
                   ))}
                   {inside.length === 0 && (
-                    <span className='py-1 text-center text-[12px] text-ink-3'>
-                      {t`nothing this montage has`}
-                    </span>
+                    <span className={`${NOTE} text-center`}>{t`nothing this montage has`}</span>
                   )}
                 </div>
                 <AddParts
@@ -507,32 +479,36 @@ const UploadDialog = ({
             () => setOver('new'),
             () => leave('new')
           )}
-          className={`flex flex-col items-center gap-1 rounded-[10px] px-4 text-center text-ink-2 ${
-            plan.zips.length === 0 ? 'py-14' : 'py-4'
-          } ${over === 'new' ? 'border-2 border-dashed border-pick bg-pick-soft' : 'border-2 border-dashed border-line'}`}>
-          <span className='text-[13px] font-semibold'>
+          className={`flex flex-none flex-col items-center gap-1 rounded-xl px-4 text-center text-ink-3 ${
+            plan.zips.length === 0 ? 'py-12' : 'py-3.5'
+          } ${over === 'new' ? 'border-[1.5px] border-dashed border-accent bg-accent-soft' : 'border-[1.5px] border-dashed border-line'}`}>
+          <span className='text-[12.5px]'>
             {plan.zips.length === 0
               ? t`Drop here: it makes a zip`
               : t`Drop here to make another zip`}
           </span>
-          <span className='text-[11.5px]'>
-            {t`Named ${stem}.….zip — you choose the end, or none.`}
-          </span>
+          <span className={NOTE}>{t`Named ${stem}.….zip — you choose the end, or none.`}</span>
           <AddParts
             parts={present}
             onAdd={(part) => putInZip(part, null)}
           />
         </div>
         {plan.zips.length === 0 && (
-          <span className='text-center text-[11.5px] text-ink-2'>
-            {t`No zip at all is fine: everything can still go as it is.`}
+          <span
+            className={NOTE}>{t`No zip at all is fine: everything can still go as it is.`}</span>
+        )}
+        {plan.zips.some((zip) => zip.parts.includes('project')) && (
+          <span className={NOTE}>
+            {t`The project names the clips where they sat, so from a backup it reopens only with them put back there.`}
           </span>
         )}
+        {endingTrouble && <span className='text-[12px] text-local'>{endingTrouble}</span>}
       </div>
-    </div>
+    </>
   )
 
-  const itemRow = (item: SendItem) => {
+  /* One item in the list of what can be sent: green once it goes somewhere, hollow while it stays. */
+  const itemChip = (item: SendItem) => {
     const n = placesOf(item.key).length
     const on = ticked.includes(item.key)
     return (
@@ -541,215 +517,220 @@ const UploadDialog = ({
         draggable
         onDragStart={(e) => carry(e, dragged(item.key))}
         aria-label={item.name}
-        className={`flex cursor-grab items-center gap-2 rounded-lg border border-line px-2.5 py-2 ${on ? 'bg-accent-soft' : 'bg-pane'}`}>
+        title={
+          item.zip
+            ? `${item.holds.map((part) => (part === 'videos' || part === 'photos' ? `${part}/` : partName(part).toLowerCase())).join(', ')} · ${formatFilmSize(item.size)}`
+            : item.holds[0] === 'videos' || item.holds[0] === 'photos'
+              ? t`as a ${item.name} folder · ${aboutPart(item.holds[0], parts, stem)}`
+              : formatFilmSize(item.size)
+        }
+        className={`flex h-[26px] cursor-grab items-center gap-1.5 rounded-[7px] border px-2 text-[11.5px] font-medium ${
+          on
+            ? 'border-accent bg-accent-soft text-accent-ink'
+            : n > 0
+              ? 'border-line bg-up-soft text-up'
+              : 'border-line text-ink-3'
+        }`}>
         <input
           type='checkbox'
           aria-label={t`Pick ${item.name}`}
           checked={on}
           onChange={(e) => tick(item.key, e.target.checked)}
+          className='size-3 accent-accent'
         />
-        <span className='text-ink-3'>⠿</span>
-        <span className='w-4 text-accent'>{item.zip ? '🗜' : ICON[item.holds[0]!]}</span>
-        <span className='flex min-w-0 flex-1 flex-col'>
-          <span
-            className={`font-semibold break-all ${item.zip ? 'font-mono text-[12.5px]' : 'text-[13px]'}`}>
-            {item.zip ? item.name.slice(stem.length + 1) : partName(item.holds[0]!)}
-          </span>
-          {(item.zip || item.holds[0] === 'film' || item.holds[0] === 'project') && (
-            <code className='font-mono text-[11px] break-all text-ink-2'>{item.name}</code>
-          )}
-          <span className='text-[11px] text-ink-2'>
-            {item.zip
-              ? `${item.holds.map((part) => (part === 'videos' || part === 'photos' ? `${part}/` : partName(part).toLowerCase())).join(', ')} · ${formatFilmSize(item.size)}`
-              : item.holds[0] === 'videos' || item.holds[0] === 'photos'
-                ? t`as a ${item.name} folder · ${aboutPart(item.holds[0], parts, stem)}`
-                : item.size > 0 && formatFilmSize(item.size)}
-          </span>
+        <span
+          aria-hidden='true'
+          className={`size-1.5 flex-none rounded-full ${n > 0 ? 'bg-current' : 'shadow-[inset_0_0_0_1.5px_currentColor]'}`}
+        />
+        <code className='font-mono text-[11px] break-all'>{item.name}</code>
+        <span className='whitespace-nowrap opacity-75'>
+          ·{' '}
+          {n > 0
+            ? plural(n, { one: '→ # place', other: '→ # places' })
+            : !item.zip && zippedAway(item.holds[0]!)
+              ? t`in a zip`
+              : t`stays here`}
         </span>
-        {n > 0 ? (
-          <span className='rounded-full bg-pick-soft px-1.5 text-[11px] font-semibold whitespace-nowrap text-pick'>
-            {plural(n, { one: '→ # place', other: '→ # places' })}
-          </span>
-        ) : (
-          <span className='text-[11px] whitespace-nowrap text-ink-3'>
-            {!item.zip && zippedAway(item.holds[0]!) ? t`in a zip` : t`stays here`}
-          </span>
-        )}
       </div>
     )
   }
 
   const stepTwo = (
-    <div className='grid min-h-0 flex-1 grid-cols-[380px_minmax(0,1fr)] gap-4 max-[800px]:grid-cols-1'>
-      <div className='flex flex-col gap-2'>
-        <b className='text-[13px]'>{t`What can be sent`}</b>
-        <span className='text-[12px] text-ink-2'>
-          {t`Tick several to drag them together, or tick them and press Put here on a destination. Each can go to several destinations.`}
+    <>
+      <div className={HELD}>
+        <span className='flex flex-wrap items-center gap-3'>
+          <Heading n='02'>{t`Where it goes`}</Heading>
+          <Spacer />
+          <label className={`flex items-center gap-2 ${NOTE}`}>
+            {t`Project folder`}
+            <input
+              aria-label={t`Project folder`}
+              title={t`lowercase letters, digits and - only`}
+              value={folder}
+              onChange={(e) => setFolder(slugOf(e.target.value, true))}
+              onBlur={() => setFolder(slugOf(folder))}
+              className='h-7 w-44 rounded-[7px] border border-line bg-pane px-[9px] font-mono text-[12px] text-ink'
+            />
+          </label>
         </span>
-        {zipItems.length > 0 && (
-          <span className='pt-1 text-[11px] font-semibold tracking-[.08em] text-ink-3 uppercase'>
-            {t`Your zips`}
+        <div
+          role='group'
+          aria-label={t`What can be sent`}
+          className='flex flex-wrap items-center gap-1.5'>
+          <span className='mr-1 text-[11.5px] font-medium text-ink-3'>
+            {t`Every item · drag onto a destination`}
           </span>
-        )}
-        {zipItems.map(itemRow)}
-        <span className='pt-1 text-[11px] font-semibold tracking-[.08em] text-ink-3 uppercase'>
-          {t`As they are`}
+          {items.map(itemChip)}
+        </div>
+        <span className={NOTE}>
+          {left.length > 0
+            ? t`Stays on this machine: ${left.map((item) => (item.zip ? item.name : partName(item.holds[0]!))).join(', ')}`
+            : t`Tick several to drag them together, or tick them and press Put here on a destination. Each can go to several destinations.`}
         </span>
-        {looseItems.map(itemRow)}
       </div>
-      <div className='flex min-h-0 flex-col gap-2.5'>
-        <label className='flex flex-wrap items-center gap-2.5 rounded-[9px] border border-line bg-ground px-3 py-2 text-[13px] font-semibold'>
-          📁 {t`Project folder`}
-          <input
-            aria-label={t`Project folder`}
-            value={folder}
-            onChange={(e) => setFolder(slugOf(e.target.value, true))}
-            onBlur={() => setFolder(slugOf(folder))}
-            className={`${INPUT} w-48 py-1 font-mono text-[12.5px] font-normal`}
-          />
-          <span className='text-[11.5px] font-normal text-ink-2'>
-            {t`lowercase letters, digits and - only`}
-          </span>
-        </label>
-        <div className='flex flex-col gap-2.5'>
-          {shown.map((p) => {
-            const here = items.filter((item) => placesOf(item.key).includes(p.name))
-            const root = inRoot.includes(p.name)
-            const depth = root ? 1 : 2
-            const remove = (item: SendItem) => ({
-              label: t`Take ${item.name} out of ${p.name}`,
-              onClick: () => takeOut(item.key, p.name)
-            })
-            return (
-              <section
-                key={p.name}
-                aria-label={p.name}
-                {...dropZone(
-                  (what) => {
-                    setOver(null)
-                    place(
-                      what.split('\n').filter((key) => items.some((item) => item.key === key)),
-                      p.name
-                    )
-                  },
-                  () => setOver(p.name),
-                  () => leave(p.name)
+      <div className={SCROLL}>
+        {shown.map((p) => {
+          const here = items.filter((item) => placesOf(item.key).includes(p.name))
+          const root = inRoot.includes(p.name)
+          const share = here.some((item) => item.holds.includes('film'))
+          const remove = (item: SendItem) => ({
+            label: t`Take ${item.name} out of ${p.name}`,
+            onClick: () => takeOut(item.key, p.name)
+          })
+          return (
+            <section
+              key={p.name}
+              aria-label={p.name}
+              {...dropZone(
+                (what) => {
+                  setOver(null)
+                  place(
+                    what.split('\n').filter((key) => items.some((item) => item.key === key)),
+                    p.name
+                  )
+                },
+                () => setOver(p.name),
+                () => leave(p.name)
+              )}
+              className={`flex flex-none flex-col overflow-hidden rounded-xl ${dropLook(over === p.name, 'border border-line')}`}>
+              <span className='flex flex-wrap items-center gap-2 border-b border-line-2 bg-rail px-3.5 py-[11px]'>
+                <Icon
+                  name='place'
+                  className={share ? 'text-accent' : 'text-ink-3'}
+                />
+                <b className='text-[13px] font-semibold'>{p.name}</b>
+                {p.path && <code className='font-mono text-[11.5px] text-ink-3'>{p.path}</code>}
+                {share && (
+                  <span className='inline-flex items-center gap-1 text-[11.5px] font-medium text-accent'>
+                    <Icon
+                      name='link'
+                      size={13}
+                    />
+                    {t`share link`}
+                  </span>
                 )}
-                className={`flex flex-col gap-2 rounded-[10px] px-3 py-2.5 ${dropLook(over === p.name)}`}>
-                <span className='flex flex-wrap items-center gap-2 text-[13.5px]'>
-                  <span>⌂</span>
-                  <b>{p.name}</b>
-                  {ticked.length > 0 && (
-                    <Mini
-                      onClick={() => {
-                        place(ticked, p.name)
-                        setTicked([])
-                      }}>
-                      {t`Put here (${ticked.length})`}
+                <Spacer />
+                {ticked.length > 0 && (
+                  <Mini
+                    onClick={() => {
+                      place(ticked, p.name)
+                      setTicked([])
+                    }}>
+                    {t`Put here (${ticked.length})`}
+                  </Mini>
+                )}
+                <Seg
+                  label={t`Where in ${p.name}`}
+                  value={root ? 'root' : 'folder'}
+                  options={[
+                    ['root', t`Straight in`],
+                    ['folder', t`In the project folder`]
+                  ]}
+                  onPick={(where) => setRoot(p.name, where === 'root')}
+                />
+              </span>
+              <div className='flex flex-col gap-[7px] px-3.5 py-2.5'>
+                {!p.path && (
+                  <span>
+                    <Mini onClick={() => onPickFolder(p.name)}>
+                      {t`choose its folder on the storage`}
                     </Mini>
-                  )}
-                  {here.some((item) => item.holds.includes('film')) && (
-                    <span className='text-[11.5px] font-semibold text-accent'>
-                      🔗 {t`share link`}
-                    </span>
-                  )}
-                  <Spacer />
-                  <button
-                    type='button'
-                    aria-label={t`Leave ${p.name} out of this upload`}
-                    onClick={() => dropDestination(p.name)}
-                    className='order-last border-0 bg-transparent px-1 text-[12px] text-ink-3 hover:text-ink'>
-                    ✕
-                  </button>
-                  <Seg
-                    label={t`Where in ${p.name}`}
-                    value={root ? 'root' : 'folder'}
-                    options={[
-                      ['root', t`In the root`],
-                      ['folder', t`In ${projectFolder || '…'}/`]
-                    ]}
-                    onPick={(where) => setRoot(p.name, where === 'root')}
-                  />
-                </span>
-                <div className={TREE}>
-                  {p.path ? (
-                    <Row
-                      depth={0}
-                      mark='⌂'
-                      name={`${p.path}/`}
-                      quiet
-                    />
+                  </span>
+                )}
+                {(p.path || !root) && (
+                  <code className='font-mono text-[11.5px] text-ink-3'>
+                    {p.path && `${p.path}/`}
+                    {!root && <b className='font-medium text-ink'>{`${projectFolder || '…'}/`}</b>}
+                  </code>
+                )}
+                {here.map((item) =>
+                  item.zip ? (
+                    /* a zip says what is inside it here too, set apart from what lands as it is */
+                    <div
+                      key={item.key}
+                      aria-label={t`Inside ${item.name}`}
+                      className='flex flex-col gap-1 px-2.5'>
+                      <span className='flex min-h-[22px] items-center gap-2 text-[12px]'>
+                        <code className='min-w-0 font-mono break-all'>{item.name}</code>
+                        <span className={`${NOTE} flex-1`}>{formatFilmSize(item.size)}</span>
+                        <TakeOut remove={remove(item)} />
+                      </span>
+                      <div className='ml-1 flex flex-col border-l border-dashed border-line-strong pl-3 text-ink-2'>
+                        {item.holds.map((part) => (
+                          <PartLine
+                            key={part}
+                            part={part}
+                            parts={parts}
+                            stem={stem}
+                            named
+                          />
+                        ))}
+                      </div>
+                    </div>
                   ) : (
-                    <span className='px-1.5'>
-                      <Mini onClick={() => onPickFolder(p.name)}>
-                        {t`choose its folder on the storage`}
-                      </Mini>
-                    </span>
-                  )}
-                  {!root && (
-                    <Row
-                      depth={1}
-                      mark='📁'
-                      name={`${projectFolder || '…'}/`}
-                      strong
-                    />
-                  )}
-                  {here.map((item) =>
-                    item.zip ? (
-                      /* a zip says what is inside it here too, set apart from what lands as it is */
-                      <div
-                        key={item.key}
-                        aria-label={t`Inside ${item.name}`}
-                        className='flex flex-col'>
-                        <Row
-                          depth={depth}
-                          mark='🗜'
-                          name={item.name}
-                          note={formatFilmSize(item.size)}
-                          strong
+                    <span
+                      key={item.key}
+                      className={`flex items-center gap-2 rounded-lg px-2.5 ${item.holds[0] === 'film' ? 'bg-accent-soft py-1.5' : ''}`}>
+                      {item.holds[0] === 'film' && (
+                        <Icon
+                          name='link'
+                          size={14}
+                          className='text-accent'
+                        />
+                      )}
+                      <span className='min-w-0 flex-1'>
+                        <PartLine
+                          part={item.holds[0]!}
+                          parts={parts}
+                          stem={stem}
                           remove={remove(item)}
                         />
-                        <div
-                          className='my-0.5 mr-1 flex flex-col rounded-r-md border-l-2 border-dashed border-accent/40 bg-accent-soft py-0.5'
-                          style={{ marginLeft: 14 + depth * 16 }}>
-                          {item.holds.map((part) => (
-                            <PartTree
-                              key={part}
-                              part={part}
-                              parts={parts}
-                              stem={stem}
-                              depth={0}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <PartTree
-                        key={item.key}
-                        part={item.holds[0]!}
-                        parts={parts}
-                        stem={stem}
-                        depth={depth}
-                        remove={remove(item)}
-                      />
-                    )
-                  )}
-                  {here.length === 0 && (
-                    <span className='py-1 text-center text-[12px] text-ink-3'>{t`drop here`}</span>
-                  )}
-                </div>
-              </section>
-            )
-          })}
+                      </span>
+                    </span>
+                  )
+                )}
+                {here.length === 0 && (
+                  <span className={`${NOTE} py-1 text-center`}>{t`drop here`}</span>
+                )}
+              </div>
+            </section>
+          )
+        })}
+        <span className='flex flex-wrap items-center gap-1'>
           {hidden.length > 0 && (
-            <label className='flex items-center justify-center gap-2.5 rounded-[10px] border-2 border-dashed border-line px-3 py-3 text-[13px] font-semibold text-ink-2'>
-              {t`+ Add a destination`}
+            <span className={`${QUIET} relative h-7 text-[12.5px]`}>
+              <Icon
+                name='plus'
+                size={14}
+                className='pointer-events-none absolute left-[9px]'
+              />
+              {/* the choice itself is the button, so picking a destination is one gesture */}
               <select
                 aria-label={t`Add a destination`}
                 value=''
                 onChange={(e) => e.target.value && setAdded([...added, e.target.value])}
-                className='rounded-[5px] border border-line bg-pane px-1.5 py-0.5 text-[12px] font-normal text-ink-2'>
-                <option value=''>{t`Choose…`}</option>
+                className='h-7 cursor-pointer appearance-none rounded-[5px] bg-transparent [&>option]:bg-pane pr-[9px] pl-[29px] font-medium text-ink'>
+                <option value=''>{t`Add a destination`}</option>
                 {hidden.map((p) => (
                   <option
                     key={p.name}
@@ -758,65 +739,83 @@ const UploadDialog = ({
                   </option>
                 ))}
               </select>
-            </label>
+            </span>
           )}
+          {shown.map((p) => (
+            <button
+              key={p.name}
+              type='button'
+              aria-label={t`Leave ${p.name} out of this upload`}
+              onClick={() => dropDestination(p.name)}
+              className={`${QUIET} h-7 px-[9px] text-[12.5px]`}>
+              {t`Leave ${p.name} out`}
+            </button>
+          ))}
           {shown.length === 0 && hidden.length === 0 && (
-            <span className='text-[12px] text-ink-3'>{t`No destination yet.`}</span>
+            <span className={NOTE}>{t`No destination yet.`}</span>
           )}
-        </div>
+        </span>
+        <span className={`${NOTE} mt-auto`}>
+          {t`Remembered on this machine: the next montage opens with the same zips, each item where it went this time.`}
+        </span>
       </div>
-    </div>
+    </>
   )
 
   return (
     <Modal
       label={t`Upload`}
-      title={who}
+      title={t`Upload ${who}`}
+      sub={t`nothing is sent until Upload is pressed`}
+      aside={
+        uploaded && (
+          <span className='text-[12px] font-semibold text-up'>
+            {t`✓ uploaded ${hhmm(uploaded.at)}`}
+          </span>
+        )
+      }
       full
       onClose={onClose}
       footer={
-        step === 1 ? (
-          <>
-            <span className='text-[12px] text-ink-2'>
-              {endingTrouble ?? t`Remembered for the next montage: the zips and what goes in each.`}
-            </span>
-            <Spacer />
-            <Mini onClick={onClose}>{t`Close`}</Mini>
-            <Go
-              disabled={endingTrouble !== null}
-              onClick={() => setStep(2)}>
-              {t`Next: where it goes →`}
-            </Go>
-          </>
-        ) : (
-          <>
-            <Mini onClick={() => setStep(1)}>{t`← Back to the zips`}</Mini>
-            <span className='text-[12px] text-ink-2'>
-              {left.length > 0
-                ? t`Stays on this machine: ${left.map((item) => (item.zip ? item.name : partName(item.holds[0]!))).join(', ')}`
-                : t`${plural(sends, { one: '# item', other: '# items' })} to ${plural(used.length, { one: '# destination', other: '# destinations' })}`}
-            </span>
-            <Spacer />
-            <Mini onClick={onClose}>{t`Close`}</Mini>
-            <Go
-              disabled={blocked !== null}
-              title={blocked ?? t`Build each item once, then send it to every destination it is in`}
-              onClick={() => onUpload(asked)}>
-              {uploaded ? t`Upload again` : t`Upload`}
-            </Go>
-          </>
-        )
+        <>
+          <span className='text-[12.5px] text-ink-2'>
+            {[
+              plural(used.length, { one: '# destination', other: '# destinations' }),
+              ...(toMake > 0
+                ? [plural(toMake, { one: '# zip to make', other: '# zips to make' })]
+                : [])
+            ].join(' · ')}
+            {toSend > 0 && (
+              <>
+                {' · '}
+                <b className='font-semibold text-ink'>{formatFilmSize(toSend)}</b> {t`to send`}
+              </>
+            )}
+            {links > 0 && ` · ${plural(links, { one: 'one share link', other: '# share links' })}`}
+          </span>
+          <Spacer />
+          <Mini onClick={onClose}>{t`Cancel`}</Mini>
+          <Go
+            disabled={blocked !== null || endingTrouble !== null}
+            title={
+              endingTrouble ??
+              blocked ??
+              t`Build each item once, then send it to every destination it is in`
+            }
+            onClick={() => onUpload(asked)}>
+            <Icon
+              name='upload'
+              size={14}
+            />
+            {uploaded ? t`Upload again` : t`Upload`}
+          </Go>
+        </>
       }>
-      <div className='flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-4 py-3.5'>
-        <div className='flex flex-wrap items-center gap-3'>
-          {steps}
-          {uploaded && (
-            <span className='ml-auto text-[12px] font-semibold text-up'>
-              {t`✓ uploaded ${hhmm(uploaded.at)}`}
-            </span>
-          )}
+      <div className='grid min-h-0 flex-1 grid-cols-[500px_minmax(0,1fr)] max-[900px]:grid-cols-1 max-[900px]:overflow-auto'>
+        <div className='flex min-h-0 flex-col border-r border-line-2 max-[900px]:border-r-0'>
+          {stepOne}
         </div>
-        {step === 1 ? stepOne : stepTwo}
+        <div className='flex min-h-0 flex-col'>{stepTwo}</div>
       </div>
     </Modal>
   )

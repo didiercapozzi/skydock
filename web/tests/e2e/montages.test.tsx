@@ -200,7 +200,7 @@ describe('a montage emptied', () => {
     const shown = { ...board, groups: [...board.groups, montage(['Boogie', '2026'], files)] }
     return renderBoard({ groups: shown.groups }, '/montage/Boogie 2026', shown)
   }
-  const fresh = () => page.getByRole('heading', { name: /^Fresh files/ })
+  const fresh = () => page.getByRole('heading', { level: 1, name: /^Fresh files/ })
   const takeOut = () => page.getByRole('dialog', { name: 'Remove files' })
 
   test('goes back to Fresh files once its last file is sent back', async () => {
@@ -253,7 +253,7 @@ describe('files taken out of a montage', () => {
     await userEvent.keyboard('{Delete}')
 
     const toBin = takeOut().getByRole('button', { name: 'Put in the bin' }).element()
-    expect(getComputedStyle(toBin).backgroundColor).toBe('rgb(198, 40, 40)')
+    expect(getComputedStyle(toBin).backgroundColor).toBe('rgb(220, 38, 38)')
     expect(toBin.querySelector('svg')).not.toBeNull()
   })
 

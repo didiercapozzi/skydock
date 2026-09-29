@@ -3,6 +3,7 @@ import type { MontageEntry, MontageLost } from '@skydock/scripts'
 import { useState } from 'react'
 import { lastSegment, lostOf } from '@skydock/scripts'
 import { Go, Mini } from './buttons'
+import { Icon } from './icons'
 import { StorageFolder } from './storage-folder'
 import { localeDate } from './utils'
 
@@ -10,6 +11,10 @@ import { localeDate } from './utils'
    or uploaded from another one. Each says who it was for, when it went up, whether the passenger was
    emailed, and where its link and its backup are — and, when the storage no longer holds its folder
    or no longer honours its link, says that instead of offering what is not there. */
+
+/* a state beside a montage, as a small tinted badge like a file's */
+const TAG =
+  'inline-flex h-5 items-center gap-[5px] rounded px-[7px] text-[11.5px] font-medium whitespace-nowrap'
 
 /* the day of the jump, 01.08.2026, read the way the list writes it */
 const jumpDay = (day: string) => day.replace(/^0/, '').replace(/\.0/, '.')
@@ -57,46 +62,62 @@ const Row = ({
   const originals = backup ?? ''
   return (
     <div className='border-b border-line-2 last:border-b-0'>
-      <div className='flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2'>
+      <div className='flex min-h-[50px] flex-wrap items-center gap-x-3.5 gap-y-1 py-2'>
+        <Icon
+          name='montage'
+          size={15}
+          className='text-ink-3'
+        />
         <span className='min-w-[150px] flex-[1_1_160px]'>
-          <b className='text-[13px] font-semibold text-ink'>
+          <b className='text-[13px] font-medium text-ink'>
             {entry.firstname} {entry.lastname}
           </b>
-          <span className='ml-2 text-[12px] text-ink-3'>{t`jump ${day}`}</span>
+          <span className='ml-2 text-[11.5px] text-ink-3'>{t`jump ${day}`}</span>
         </span>
-        <span className='text-[12px] text-ink-2'>
+        <span className='text-[11.5px] text-ink-3'>
           {plural(videos, { one: '# video', other: '# videos' })} ·{' '}
           {plural(photos, { one: '# photo', other: '# photos' })}
         </span>
-        <span className='text-[12px] text-ink-2'>{t`uploaded ${uploadedOn}`}</span>
+        <span className='text-[11.5px] text-ink-3'>{t`uploaded ${uploadedOn}`}</span>
         {entry.emailed ? (
           <span
             title={emailedTo ? t`Emailed to ${emailedTo}` : undefined}
-            className='rounded-full bg-up-soft px-2 py-px text-[11px] font-semibold text-up'>
-            ✓ {t`emailed ${emailedOn}`}
+            className={`${TAG} bg-up-soft text-up`}>
+            <Icon
+              name='check'
+              size={11}
+              weight={2.5}
+            />
+            {t`emailed ${emailedOn}`}
           </span>
         ) : (
-          <span className='rounded-full bg-local-soft px-2 py-px text-[11px] font-semibold text-local'>
+          <span
+            className={`${TAG} bg-local-soft text-local before:size-1.5 before:rounded-full before:bg-current before:content-['']`}>
             {t`not emailed`}
           </span>
         )}
         {entry.freedAt ? (
           <span
             title={t`Freed from the machine that made it — the storage is the only copy`}
-            className='rounded-full bg-line-2 px-2 py-px text-[11px] text-ink-2'>
-            🔒 {t`storage only`}
+            className={`${TAG} bg-well text-ink-2`}>
+            <Icon
+              name='lock'
+              size={11}
+              weight={2}
+            />
+            {t`storage only`}
           </span>
         ) : null}
         {lost === 'folder' ? (
           <span
             title={t`${folder} is not on the storage any more — the list keeps what it said of it`}
-            className='rounded-full bg-local-soft px-2 py-px text-[11px] font-semibold text-local'>
+            className={`${TAG} bg-local-soft text-local`}>
             {t`no longer on the storage`}
           </span>
         ) : lost === 'link' ? (
           <span
             title={t`The storage no longer honours its link: revoked, or expired`}
-            className='rounded-full bg-local-soft px-2 py-px text-[11px] font-semibold text-local'>
+            className={`${TAG} bg-local-soft text-local`}>
             {t`link gone`}
           </span>
         ) : null}
@@ -142,7 +163,7 @@ const Row = ({
         </span>
       </div>
       {watching && lost !== 'folder' && (
-        <div className='px-3 pb-3'>
+        <div className='pb-3 pl-[29px]'>
           <StorageFolder where={{ folder: entry.folder }} />
         </div>
       )}
@@ -181,17 +202,17 @@ const StorageList = ({
   const problem = storage.problem ?? ''
   return (
     <section className='mt-5'>
-      <div className='flex flex-wrap items-baseline gap-2 px-0.5 pb-1.5'>
-        <h3 className='m-0 text-[13px] font-semibold text-ink'>{t`On the storage`}</h3>
-        <span className='text-[12px] text-ink-2'>
+      <div className='flex flex-wrap items-center gap-2 border-b border-line pt-1 pb-2'>
+        <h3 className='m-0 text-[11.5px] font-medium text-ink-3'>{t`On the storage`}</h3>
+        <span className='text-[11.5px] text-ink-3'>
           {plural(count, { one: '# montage', other: '# montages' })}
           {waiting > 0 ? ` · ${t`${waiting} not emailed yet`}` : ''}
         </span>
-        <code className='ml-auto font-mono text-[11px] text-ink-3'>{storage.dir}</code>
+        <code className='ml-auto font-mono text-[11.5px] text-ink-3'>{storage.dir}</code>
       </div>
       {/* a board scanned again from nothing: the storage remembers what it has forgotten */}
       {forgotten.length > 1 && (
-        <p className='m-0 mb-2 flex flex-wrap items-center gap-2 rounded-r-md border-l-[3px] border-accent bg-accent-soft px-3 py-2 text-[12.5px] text-ink-2'>
+        <p className='m-0 mt-2 flex flex-wrap items-center gap-2 rounded-md border border-line bg-rail px-2.5 py-[7px] text-[12.5px] text-ink-2'>
           <span className='flex-1'>
             {t`${lostCount} montages on this list have their files on this board, waiting to be sorted — this board has forgotten them.`}
           </span>
@@ -201,15 +222,15 @@ const StorageList = ({
         </p>
       )}
       {storage.problem ? (
-        <p className='m-0 rounded-md bg-local-soft px-3 py-2 text-[12.5px] text-local'>
+        <p className='m-0 mt-2 rounded-md bg-local-soft px-3 py-2 text-[12.5px] text-local'>
           {t`The storage’s list of montages could not be read: ${problem}`}
         </p>
       ) : storage.montages.length === 0 ? (
-        <p className='m-0 rounded-[9px] border border-dashed border-line px-3 py-4 text-center text-[12.5px] text-ink-3'>
+        <p className='m-0 mt-2 rounded-lg border border-dashed border-line px-3 py-4 text-center text-[12.5px] text-ink-3'>
           {t`No montage uploaded yet — each one is listed here once it is.`}
         </p>
       ) : (
-        <div className='overflow-hidden rounded-[9px] border border-line bg-pane'>
+        <div>
           {storage.montages.map((entry) => (
             <Row
               key={entry.folder}

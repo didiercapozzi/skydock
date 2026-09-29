@@ -24,13 +24,14 @@ const TITLES: Record<ShownStatus, MessageDescriptor> = {
   uploaded: msg`On the storage`
 }
 
-/* Each state keeps its own colour and the tint made for it. Only `changed` is outlined, because it
-   is the one that is asking to be dealt with rather than simply reporting where a file has got to. */
+/* Each state a colour on its own tint, with a dot of it before the word, so a column of files reads
+   like a report. Only `changed` is outlined — the dot drawn as a ring — because it is the one asking
+   to be dealt with rather than simply saying where a file has got to. */
 const CHIP: Record<ShownStatus, string> = {
-  local: 'bg-local-soft text-local px-[7px]',
-  changed: 'bg-changed-soft text-changed border border-dashed border-changed-line px-1.5',
-  processed: 'bg-proc-soft text-proc px-[7px]',
-  uploaded: 'bg-up-soft text-up px-[7px]'
+  local: 'bg-local-soft text-local before:bg-current',
+  changed: 'bg-changed-soft text-changed before:shadow-[inset_0_0_0_1.5px_currentColor]',
+  processed: 'bg-proc-soft text-proc before:bg-current',
+  uploaded: 'bg-up-soft text-up before:bg-current'
 }
 
 /* the state in words, for where there is no room for the chip */
@@ -39,7 +40,7 @@ const statusName = (status: ShownStatus) => i18n._(LABELS[status])
 const StatusChip = ({ status }: { status: ShownStatus }) => (
   <span
     title={i18n._(TITLES[status])}
-    className={`rounded-full py-px text-[11px] font-semibold tracking-[0.04em] uppercase ${CHIP[status]}`}>
+    className={`inline-flex h-5 w-max items-center gap-[5px] rounded px-[7px] text-[11.5px] font-medium whitespace-nowrap capitalize before:size-1.5 before:rounded-full before:content-[''] ${CHIP[status]}`}>
     {i18n._(LABELS[status])}
   </span>
 )

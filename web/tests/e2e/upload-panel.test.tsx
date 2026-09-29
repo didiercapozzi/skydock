@@ -169,7 +169,6 @@ describe('an upload going', () => {
     setSendPlan(DEFAULT_PLAN)
     await renderBoard(board)
     await userEvent.click(page.getByRole('button', { name: 'Upload…', exact: true }))
-    await userEvent.click(page.getByRole('button', { name: /Next: where it goes/ }))
     await userEvent.click(page.getByRole('button', { name: 'Upload', exact: true }))
     await expect.element(panel()).toBeVisible()
 

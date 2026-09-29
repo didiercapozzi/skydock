@@ -1,7 +1,8 @@
 import { plural, t } from '@lingui/core/macro'
 import { useEffect, useRef, useState } from 'react'
 import { Go, Mini } from './buttons'
-import { Modal, Spacer } from './modal'
+import { Icon } from './icons'
+import { INPUT, Modal, Spacer } from './modal'
 import type { VideoRef } from './preview-drawer'
 import type { ManifestGroup } from './types'
 import { VideoCropper } from './video-cropper'
@@ -154,7 +155,7 @@ const ComparisonDialog = ({
     const fileUrl = getPlaybackUrl(file)
     return (
       <div className='flex flex-col gap-2'>
-        <div className='flex h-[200px] items-center justify-center overflow-hidden rounded-lg bg-[#0b0f13]'>
+        <div className='flex h-[200px] items-center justify-center overflow-hidden rounded-xl bg-[#141311]'>
           {isVideoFile(file.filename) ? (
             <PreviewVideo
               src={fileUrl}
@@ -307,67 +308,73 @@ const ComparisonDialog = ({
       {showDatePopup && (
         <div
           data-merge-date-popup='true'
-          className='fixed inset-0 z-50 grid place-items-center bg-[rgba(8,12,16,0.5)] p-4'>
-          <div className='w-[380px] rounded-xl border border-line bg-pane p-4 text-ink shadow-[0_20px_60px_rgba(0,0,0,0.35)]'>
-            <h3 className='mb-1 text-[14px] font-semibold'>{t`Merge date`}</h3>
-            <p className='mb-3.5 text-[12.5px] text-ink-2'>
-              {t`Which date should the merged jump have? The chosen jump keeps its times.`}
-            </p>
-            <div className='space-y-2 mb-4'>
-              <label className='flex cursor-pointer flex-row items-center gap-2 rounded-lg border border-line px-3 py-2 hover:bg-line-2'>
-                <input
-                  type='radio'
-                  name='merge-date'
-                  data-date-choice='left'
-                  checked={dateChoice === 'left'}
-                  onChange={() => setDateChoice('left')}
-                />
-                <span className='text-[12.5px] text-ink'>
-                  {leftGroup.label} — {getGroupDate(leftGroup)}
-                </span>
-              </label>
-              <label className='flex cursor-pointer flex-row items-center gap-2 rounded-lg border border-line px-3 py-2 hover:bg-line-2'>
-                <input
-                  type='radio'
-                  name='merge-date'
-                  data-date-choice='right'
-                  checked={dateChoice === 'right'}
-                  onChange={() => setDateChoice('right')}
-                />
-                <span className='text-[12.5px] text-ink'>
-                  {rightGroup.label} — {getGroupDate(rightGroup)}
-                </span>
-              </label>
-              <label className='flex cursor-pointer flex-row items-center gap-2 rounded-lg border border-line px-3 py-2 hover:bg-line-2'>
-                <input
-                  type='radio'
-                  name='merge-date'
-                  data-date-choice='custom'
-                  checked={dateChoice === 'custom'}
-                  onChange={() => setDateChoice('custom')}
-                />
-                <span className='text-[12.5px] text-ink'>{t`Custom`}</span>
-              </label>
-              {dateChoice === 'custom' && (
-                <div className='flex gap-2 pl-7'>
+          className='fixed inset-0 z-50 grid place-items-center bg-[rgba(24,24,27,0.4)] p-4'>
+          {/* drawn as every dialog is — header and footer in the window's chrome — while staying
+              inside the comparison, whose keys it shares */}
+          <div className='flex w-[380px] flex-col overflow-hidden rounded-lg bg-pane text-ink shadow-float'>
+            <h3 className='m-0 border-b border-line-strong bg-chrome px-3.5 py-2.5 text-[14px] leading-[1.3] font-semibold tracking-[-0.015em]'>
+              {t`Merge date`}
+            </h3>
+            <div className='px-4 pt-3.5'>
+              <p className='mb-3.5 text-[12.5px] text-ink-2'>
+                {t`Which date should the merged jump have? The chosen jump keeps its times.`}
+              </p>
+              <div className='space-y-2 mb-4'>
+                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-md border border-line px-3 py-2 hover:bg-rail has-checked:border-accent has-checked:bg-accent-soft'>
                   <input
-                    type='date'
-                    data-custom-date='true'
-                    value={customDate}
-                    onChange={(e) => setCustomDate(e.target.value)}
-                    className='rounded-md border border-line bg-ground px-[9px] py-1.5 text-[13px] text-ink'
+                    type='radio'
+                    name='merge-date'
+                    data-date-choice='left'
+                    checked={dateChoice === 'left'}
+                    onChange={() => setDateChoice('left')}
                   />
+                  <span className='text-[12.5px] text-ink'>
+                    {leftGroup.label} — {getGroupDate(leftGroup)}
+                  </span>
+                </label>
+                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-md border border-line px-3 py-2 hover:bg-rail has-checked:border-accent has-checked:bg-accent-soft'>
                   <input
-                    type='time'
-                    data-custom-time='true'
-                    value={customTime}
-                    onChange={(e) => setCustomTime(e.target.value)}
-                    className='rounded-md border border-line bg-ground px-[9px] py-1.5 text-[13px] text-ink'
+                    type='radio'
+                    name='merge-date'
+                    data-date-choice='right'
+                    checked={dateChoice === 'right'}
+                    onChange={() => setDateChoice('right')}
                   />
-                </div>
-              )}
+                  <span className='text-[12.5px] text-ink'>
+                    {rightGroup.label} — {getGroupDate(rightGroup)}
+                  </span>
+                </label>
+                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-md border border-line px-3 py-2 hover:bg-rail has-checked:border-accent has-checked:bg-accent-soft'>
+                  <input
+                    type='radio'
+                    name='merge-date'
+                    data-date-choice='custom'
+                    checked={dateChoice === 'custom'}
+                    onChange={() => setDateChoice('custom')}
+                  />
+                  <span className='text-[12.5px] text-ink'>{t`Custom`}</span>
+                </label>
+                {dateChoice === 'custom' && (
+                  <div className='flex gap-2 pl-7'>
+                    <input
+                      type='date'
+                      data-custom-date='true'
+                      value={customDate}
+                      onChange={(e) => setCustomDate(e.target.value)}
+                      className={INPUT}
+                    />
+                    <input
+                      type='time'
+                      data-custom-time='true'
+                      value={customTime}
+                      onChange={(e) => setCustomTime(e.target.value)}
+                      className={INPUT}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
-            <div className='flex items-center justify-end gap-3'>
+            <div className='flex items-center justify-end gap-2 border-t border-line-strong bg-chrome px-3.5 py-2.5'>
               <Mini onClick={() => setShowDatePopup(false)}>{t`Cancel`}</Mini>
               <Go
                 disabled={anchor === null}
@@ -457,45 +464,29 @@ const ComparePanel = ({
     <div
       data-compare-side={side}
       className='flex-1 flex flex-col overflow-hidden min-w-0'>
-      <div className='border-b border-line bg-ground px-3 py-2.5'>
+      <div className='border-b border-line bg-rail px-3 py-2.5'>
         <div className='flex items-center justify-between mb-2'>
           <div className='flex items-center gap-2'>
             <button
               type='button'
               data-action={`group-prev-${side}`}
               onClick={onGroupPrev}
-              className='flex h-6 w-6 items-center justify-center rounded text-ink-2 hover:bg-line-2 hover:text-ink'>
-              <svg
-                className='w-4 h-4'
-                fill='none'
-                viewBox='0 0 24 24'
-                stroke='currentColor'
-                strokeWidth={2}>
-                <path
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  d='M15 19l-7-7 7-7'
-                />
-              </svg>
+              className='grid h-7 w-7 place-items-center rounded-[5px] border border-line-strong bg-pane text-ink-2 shadow-card hover:bg-well hover:text-ink'>
+              <Icon
+                name='previous'
+                size={15}
+              />
             </button>
             <h3 className='min-w-0 truncate text-[13px] font-semibold'>{group.label}</h3>
             <button
               type='button'
               data-action={`group-next-${side}`}
               onClick={onGroupNext}
-              className='flex h-6 w-6 items-center justify-center rounded text-ink-2 hover:bg-line-2 hover:text-ink'>
-              <svg
-                className='w-4 h-4'
-                fill='none'
-                viewBox='0 0 24 24'
-                stroke='currentColor'
-                strokeWidth={2}>
-                <path
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  d='M9 5l7 7-7 7'
-                />
-              </svg>
+              className='grid h-7 w-7 place-items-center rounded-[5px] border border-line-strong bg-pane text-ink-2 shadow-card hover:bg-well hover:text-ink'>
+              <Icon
+                name='next'
+                size={15}
+              />
             </button>
           </div>
           <span className='font-mono text-[11px] text-ink-3 tabular-nums'>
@@ -525,7 +516,7 @@ const ComparePanel = ({
           else if (e.key === 'ArrowLeft') toAnotherJump(e, onGroupPrev)
           else if (e.key === 'ArrowRight') toAnotherJump(e, onGroupNext)
         }}
-        className='flex-1 overflow-y-auto p-3 space-y-1 min-h-0'>
+        className='flex-1 overflow-y-auto p-2 space-y-px min-h-0'>
         {group.files.map((f, i) => (
           <div
             key={f.path}
@@ -541,10 +532,10 @@ const ComparePanel = ({
               e.preventDefault()
               onFileIndexChange(i)
             }}
-            className={`px-3 py-2 rounded-lg cursor-pointer transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent ${
+            className={`px-3 py-2 rounded-[5px] cursor-pointer transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent ${
               i === fileIndex
-                ? 'border border-pick bg-pick-soft'
-                : 'border border-transparent hover:bg-line-2'
+                ? 'bg-accent-soft shadow-[inset_2px_0_0_var(--color-accent)]'
+                : 'hover:bg-rail'
             }`}>
             <div className='flex items-center justify-between'>
               <span className='truncate font-mono text-[11.5px]'>{f.filename}</span>
@@ -557,7 +548,7 @@ const ComparePanel = ({
       </div>
 
       {file && (
-        <div className='flex h-[320px] shrink-0 flex-col border-t border-line p-3'>
+        <div className='flex h-[320px] shrink-0 flex-col border-t border-line px-4 py-3'>
           <div className='flex-1 min-h-0'>
             {renderPreview(
               file,

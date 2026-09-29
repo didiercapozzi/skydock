@@ -11,7 +11,7 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
 
 import { boardRoute } from './board-route'
 
-/* The header warns when the disk the work is on runs out of room (RULES, The board): nothing while
+/* The status bar warns when the disk the work is on runs out of room (RULES, The board): nothing while
    there is plenty, almost full with how much is left, and full with what will fail. */
 
 const GB = 1024 ** 3
@@ -34,7 +34,7 @@ const boardWith = (disk: { free: number; total: number; level: 'ok' | 'low' | 'f
 const renderWith = async (disk: Parameters<typeof boardWith>[0]) => {
   const Stub = createRoutesStub([boardRoute(() => boardWith(disk))])
   await render(createElement(Stub, { initialEntries: ['/'] }))
-  await expect.element(page.getByText('Dock')).toBeInTheDocument()
+  await expect.element(page.getByRole('button', { name: 'Overview' })).toBeInTheDocument()
 }
 
 describe('the disk running out of room', () => {

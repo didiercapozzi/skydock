@@ -31,6 +31,7 @@ const MoveTo = ({
   return (
     <Menu
       label={t`Move to…`}
+      lead='moveTo'
       side='left'>
       {(close) => (
         <span className='flex flex-col'>

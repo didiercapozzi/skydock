@@ -1,6 +1,6 @@
 import { i18n } from '@lingui/core'
 import type { MessageDescriptor } from '@lingui/core'
-import { msg, t } from '@lingui/core/macro'
+import { msg, plural, t } from '@lingui/core/macro'
 import {
   EDIT_LOCKED,
   fileChanged,
@@ -16,7 +16,9 @@ import type { ShownStatus } from './file-status'
 import { useLiveFile } from '../hooks/liveStore'
 import type { LiveFile } from '../hooks/useLiveProgress'
 import type { ManifestFile } from './types'
-import { clock, formatSize, formatTime, getPictureUrl, isVideoFile } from './utils'
+import { Mini } from './buttons'
+import { Icon } from './icons'
+import { clock, formatSize, formatTime, getPictureUrl, hhmm, isVideoFile } from './utils'
 
 /* Videos and photos are two different jobs on a montage — 15 clips to cut, 500 stills to cull — so
    the badges say which is on screen. The counts are always of everything there, never of what the
@@ -54,6 +56,8 @@ type Props = {
   /* the name the file has once a copy exists — what goes to the NAS and what the passenger sees */
   deliveredName: (file: ManifestFile) => string | null
   selecting: boolean
+  /* what the rows are headed with, before how many there are — the open jump's name */
+  title?: string
 }
 
 /* A card of 500 photos must not put 500 things on screen before they have been asked for. */
@@ -99,34 +103,50 @@ const lockReason = (file: ManifestFile, context: StatusContext) =>
 const shownStatus = (file: ManifestFile, context: StatusContext): ShownStatus =>
   fileChanged(file, context) ? 'changed' : fileStatus(file, context)
 
-/* What was kept, not that something was. A crop is the one edit whose effect cannot be seen on the
-   row itself, so the row says it in full — and says whether it has happened yet. */
+/* An edit to the picture, said as a small chip in the row's Picture column: solid once it has been
+   applied, dashed while it is only saved and waits for the next Process. The chip names the edit;
+   what exactly was kept — the range, the share of the picture, the turn — is in its title. */
+const Adj = ({
+  applied,
+  title,
+  children
+}: {
+  applied: boolean
+  title: string
+  children: React.ReactNode
+}) => (
+  <span
+    title={title}
+    className={`flex-none rounded border px-[5px] text-[11px] leading-4 font-medium whitespace-nowrap text-ink-2 ${
+      applied ? 'border-line bg-well' : 'border-dashed border-line-strong bg-transparent'
+    }`}>
+    {children}
+  </span>
+)
+
+/* What was kept, not only that something was: a crop is the one edit whose effect cannot be seen on
+   the thumbnail, so its title says the range in full — and whether it has happened yet. */
 const CropFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) => {
   if (file.cropStart == null && file.cropEnd == null) return null
   const from = file.cropStart ?? 0
   const start = clock(from)
   const range = file.cropEnd != null ? `${start}–${clock(file.cropEnd)}` : t`from ${start}`
   return (
-    <span
+    <Adj
+      applied={applied}
       title={
         applied
-          ? t`Trim applied when this file was processed`
-          : t`Trim saved — applied at the next Process`
-      }
-      className={`flex-none rounded px-1.5 font-mono text-[11px] leading-4 font-semibold whitespace-nowrap ${
-        applied
-          ? 'border border-accent bg-accent text-white'
-          : 'border border-dashed border-local bg-local-soft text-local'
-      }`}>
-      {range}
-      {applied ? ' ✓' : ''}
-    </span>
+          ? t`Trim ${range} — applied when this file was processed`
+          : t`Trim ${range} — saved, applied at the next Process`
+      }>
+      {t`trim`}
+    </Adj>
   )
 }
 
 /* Whether the small copy exists yet — said only while it does not. Only clips have one, and a card
    where none of them built looks exactly like a card still building, so a missing one is worth
-   saying out loud; one that exists is the ordinary case, and a chip on every clip saying so is
+   saying out loud; one that exists is the ordinary case, and a word on every clip saying so is
    noise the eye learns to skip, taking the missing ones with it. */
 const NO_PROXY_TITLE = msg`No proxy yet — it is built behind the scan. Meanwhile the clip plays as it is and the editor makes its own.`
 
@@ -134,10 +154,13 @@ const NO_PROXY_TITLE = msg`No proxy yet — it is built behind the scan. Meanwhi
    said, never acted on: the person who put it there may well be right. */
 const GAP_TITLE = msg`More than 15 minutes from the rest of its jump — the gap rule would not have put it here`
 
+/* the small words under a file's name, each quiet and in the colour of what it warns of */
+const NOTE = 'whitespace-nowrap'
+
 const GapFlag = () => (
   <span
     title={i18n._(GAP_TITLE)}
-    className='flex-none rounded border border-dashed border-changed bg-changed-soft px-1.5 font-mono text-[11px] leading-4 font-semibold whitespace-nowrap text-changed'>
+    className={`${NOTE} text-changed`}>
     ⧗ {t`gap`}
   </span>
 )
@@ -150,7 +173,7 @@ const COPY_TITLE = msg`A copy — the same clip is in another jump too. This one
 const CopyFlag = () => (
   <span
     title={i18n._(COPY_TITLE)}
-    className='flex-none rounded border border-line bg-line-2 px-1.5 font-mono text-[11px] leading-4 font-semibold whitespace-nowrap text-ink-2'>
+    className={`${NOTE} text-ink-2`}>
     ⧉ {t`copy`}
   </span>
 )
@@ -164,56 +187,48 @@ const ProxyFlag = ({ fact }: { fact?: ProxyFact }) => {
   return (
     <span
       title={fact.reason ? proxyFailedTitle(fact.reason) : i18n._(NO_PROXY_TITLE)}
-      className='flex-none rounded border border-dashed border-local bg-local-soft px-1.5 font-mono text-[11px] leading-4 font-semibold whitespace-nowrap text-local'>
+      className={`${NOTE} text-local`}>
       {fact.reason ? t`proxy failed` : t`no proxy`}
     </span>
   )
 }
 
-/* The trim shows as a range on the row, and the rectangle beside it, so a crop that was set can be
-   told from one that was not without opening the file. It reads as the share of
-   the picture kept, because "cropped" alone does not say how much. Solid once it has been applied,
-   dashed while it is still only saved — the same distinction the trim makes. */
+/* A frame that was set is told from one that was not without opening the file. Its title reads as
+   the share of the picture kept, because "cropped" alone does not say how much. */
 const FrameFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) => {
   if (isWholeFrame(file.frame)) return null
   const kept = Math.round((file.frame!.width + file.frame!.height) * 50)
   return (
-    <span
+    <Adj
+      applied={applied}
       title={
         applied
           ? t`Framed when this file was processed — about ${kept}% of the picture, keeping its shape`
           : t`Frame saved — about ${kept}% of the picture, keeping its shape. Applied at the next Process.`
-      }
-      className={`flex-none rounded px-1.5 font-mono text-[11px] leading-4 font-semibold whitespace-nowrap ${
-        applied
-          ? 'border border-accent bg-accent text-white'
-          : 'border border-dashed border-local bg-local-soft text-local'
-      }`}>
-      ▣ {kept}%
-    </span>
+      }>
+      {t`frame`}
+    </Adj>
   )
 }
 
 const turnedTitle = (turn: number) => t`turned ${turn}°`
 
-/* The turn, the same way: solid once applied, dashed while only saved. */
+/* a turn said as the share of a whole turn it is, the way it is read at a glance */
+const QUARTERS: Record<number, string> = { 90: '¼', 180: '½', 270: '¾' }
+
 const TurnFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) => {
   if (!file.rotation) return null
   const turn = file.rotation
   return (
-    <span
+    <Adj
+      applied={applied}
       title={
         applied
           ? t`Turned ${turn}° when this file was processed`
           : t`Turned ${turn}° — applied at the next Process`
-      }
-      className={`flex-none rounded px-1.5 font-mono text-[11px] leading-4 font-semibold whitespace-nowrap ${
-        applied
-          ? 'border border-accent bg-accent text-white'
-          : 'border border-dashed border-local bg-local-soft text-local'
-      }`}>
-      ↻ {file.rotation}°
-    </span>
+      }>
+      {t`turn`} {QUARTERS[turn] ?? `${turn}°`}
+    </Adj>
   )
 }
 
@@ -227,14 +242,10 @@ const turnedThumb = (rotation: ManifestFile['rotation']): React.CSSProperties | 
       }
     : undefined
 
-/* Picked or not, in the corner of every thumbnail once a selection is under way: an empty ring to
-   say it can be picked, filled with the board's green and a tick once it is. A white edge and a
-   soft shadow keep it legible over any picture. It replaces the coloured status dot that stood
-   there — orange on most of a card, and easily taken for a warning — the state is still in the
-   thumbnail's title, and on every row. */
-/* The tick on a thumbnail is a button of its own, since clicking the picture only looks at it.
-   Always there once something is picked; before that it appears under the pointer, so the grid
-   stays quiet until picking starts. */
+/* The tick on a thumbnail is a button of its own, since clicking the picture only looks at it: a
+   blue square with a tick once picked, an empty one to say it can be. Always there once something is
+   picked; before that it appears under the pointer, so the grid stays quiet until picking starts. A
+   white edge and a soft shadow keep it legible over any picture. */
 const PickMark = ({
   picked,
   selecting,
@@ -252,25 +263,38 @@ const PickMark = ({
       e.stopPropagation()
       onPick()
     }}
-    className={`absolute top-1.5 right-1.5 grid h-[18px] w-[18px] place-items-center rounded-full border-0 p-0 text-[11px] leading-none font-bold transition-[colors,opacity] duration-100 ${
+    className={`absolute top-1.5 left-1.5 grid h-[18px] w-[18px] place-items-center rounded border-0 p-0 transition-[colors,opacity] duration-100 ${
       picked
-        ? 'bg-accent text-white shadow-[0_0_0_2px_#fff,0_1px_4px_rgba(0,0,0,0.35)]'
+        ? 'bg-accent text-white shadow-[0_1px_3px_rgba(0,0,0,0.3)]'
         : 'bg-black/20 text-transparent shadow-[inset_0_0_0_1.5px_rgba(255,255,255,0.92),0_1px_3px_rgba(0,0,0,0.3)]'
     } ${selecting || picked ? '' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'}`}>
-    ✓
+    <Icon
+      name='check'
+      size={11}
+      weight={3.5}
+    />
   </button>
 )
 
 /* A file being worked on, said where the file is: what is being done and how far through, moving
-   as it goes. It stands where the status would — until the work ends the status is about to
-   change anyway — and once it ends the status is back, read from the board's own answer. */
+   as it goes. It stands where the state would — until the work ends the state is about to change
+   anyway — and once it ends the state is back, read from the board's own answer. */
 const LIVE_WORK: Record<LiveFile['work'], MessageDescriptor> = {
   process: msg`Processing`,
   proxy: msg`Proxy`,
   moments: msg`Finding the jump`
 }
 
-const LiveBar = ({ live, filename }: { live: LiveFile; filename: string }) => (
+/* on a row, what is being done over its bar; under a thumbnail, where there is less room, the bar */
+const LiveBar = ({
+  live,
+  filename,
+  short
+}: {
+  live: LiveFile
+  filename: string
+  short: boolean
+}) => (
   <span
     role='progressbar'
     aria-label={`${i18n._(LIVE_WORK[live.work])} ${filename}`}
@@ -278,47 +302,50 @@ const LiveBar = ({ live, filename }: { live: LiveFile; filename: string }) => (
     aria-valuemax={100}
     aria-valuenow={live.percent}
     title={`${i18n._(LIVE_WORK[live.work])} — ${live.percent}%`}
-    className='flex w-full items-center gap-1.5'>
-    <span className='h-1 min-w-0 flex-1 overflow-hidden rounded-sm bg-line-2'>
+    className={`flex flex-col gap-1 ${short ? 'w-20' : 'w-[104px]'}`}>
+    {!short && (
+      <span className='flex justify-between text-[11.5px] text-ink-2'>
+        <span className='truncate'>{i18n._(LIVE_WORK[live.work])}</span>
+        <span className='font-mono text-[11px] tabular-nums'>{live.percent}%</span>
+      </span>
+    )}
+    <span className='block h-1 overflow-hidden rounded-sm bg-line'>
       <i
         className={`block h-full transition-[width] duration-500 ${live.work === 'process' ? 'bg-proc' : 'bg-accent'}`}
         style={{ width: `${live.percent}%` }}
       />
     </span>
-    <span className='flex-none font-mono text-[11px] text-ink-2 tabular-nums'>{live.percent}%</span>
   </span>
 )
 
 /* A file's progress, heard by the file's own row or tile: a tick of one file draws that file and
-   nothing else. On a row it stands where the status would, which is back once the work ends; on a
-   tile it lies over the foot of the picture, on a dark band so the figures read on any frame. */
+   nothing else. It stands where the state would, which is back once the work ends. */
 const WhileLive = ({
   id,
   filename,
-  otherwise = null,
-  band = false
+  otherwise,
+  short = false
 }: {
   id: string | undefined
   filename: string
-  otherwise?: React.ReactNode
-  band?: boolean
+  otherwise: React.ReactNode
+  short?: boolean
 }) => {
   const live = useLiveFile(id)
   if (!live) return otherwise
-  return band ? (
-    <span className='pointer-events-none absolute inset-x-0 bottom-0 bg-black/[0.66] px-1 py-[3px] [&_span]:text-white'>
-      <LiveBar
-        live={live}
-        filename={filename}
-      />
-    </span>
-  ) : (
+  return (
     <LiveBar
       live={live}
       filename={filename}
+      short={short}
     />
   )
 }
+
+/* The columns of a list of rows, the same on its heading and on every row under it: tick, picture,
+   name, what was done to the picture, when it was shot, how big, and where it has got to. */
+const COLUMNS =
+  'grid grid-cols-[18px_64px_minmax(0,1fr)_96px_74px_64px_116px] items-center gap-x-3 px-2'
 
 const Row = ({
   file,
@@ -350,6 +377,7 @@ const Row = ({
   onDragFile: Props['onDragFile']
 }) => {
   const filename = file.filename
+  const applied = status === 'processed' || status === 'uploaded'
   return (
     <div
       role='button'
@@ -372,17 +400,25 @@ const Row = ({
         e.preventDefault()
         onPick(file)
       }}
-      className={`flex h-[38px] w-full items-center gap-2.5 rounded-md border px-[7px] text-left [contain-intrinsic-size:auto_38px] [content-visibility:auto] ${
-        picked
-          ? 'border-accent bg-accent-soft'
-          : previewed
-            ? 'border-ink-3 bg-line-2'
-            : 'border-transparent hover:bg-line-2'
+      /* the one looked at is marked apart from the picked ones by a line down its left edge */
+      className={`${COLUMNS} h-[50px] w-full border-b border-line-2 text-left [contain-intrinsic-size:auto_50px] [content-visibility:auto] ${
+        previewed
+          ? 'bg-accent-soft shadow-[inset_2px_0_0_var(--color-accent)]'
+          : picked
+            ? 'bg-accent-soft'
+            : 'hover:bg-rail'
       }`}>
-      {/* a file that cannot move has nothing to be picked for, so it has no tick — only the room
-        one would take, so the rows stay in line */}
+      {/* a file that cannot move has nothing to be picked for, so it has no tick — a lock in its
+        place says why, and keeps the rows in line */}
       {locked ? (
-        <span className='h-3.5 w-3.5 flex-none' />
+        <span
+          className='grid cursor-help place-items-center text-ink-3'
+          title={locked}>
+          <Icon
+            name='lock'
+            size={13}
+          />
+        </span>
       ) : (
         <button
           type='button'
@@ -392,21 +428,23 @@ const Row = ({
             e.stopPropagation()
             onPick(file)
           }}
-          /* transparent, not white, when not ticked, so it stays quiet on a dark panel as well as a
-         light one */
-          className={`grid h-3.5 w-3.5 flex-none place-items-center rounded-[3px] border-[1.5px] p-0 text-[9px] ${
+          className={`grid h-[15px] w-[15px] place-items-center rounded border-[1.5px] p-0 ${
             picked
               ? 'border-accent bg-accent text-white'
-              : 'border-line bg-transparent text-transparent hover:border-accent'
+              : 'border-ink-3/55 bg-pane text-transparent hover:border-accent'
           }`}>
-          ✓
+          <Icon
+            name='check'
+            size={10}
+            weight={3.5}
+          />
         </button>
       )}
-      <span className='relative h-[30px] w-10 flex-none overflow-hidden rounded-[3px] bg-line-2'>
+      <span className='relative h-9 w-16 overflow-hidden rounded bg-well'>
         {/* a freed file is on the storage only: nothing here to draw it from */}
         {!file.freed && (
           <img
-            src={getPictureUrl(file, proxy, 80)}
+            src={getPictureUrl(file, proxy, 160)}
             alt=''
             loading='lazy'
             decoding='async'
@@ -414,53 +452,49 @@ const Row = ({
             className='h-full w-full object-cover'
           />
         )}
-        {isVideoFile(file.path) && (
-          <i className='absolute bottom-0.5 left-0.5 rounded-sm bg-black/[0.66] px-[3px] font-mono text-[9.5px] leading-[1.3] text-white not-italic'>
-            ▶
-          </i>
-        )}
       </span>
-      <span
-        className='min-w-0 flex-1 truncate font-mono text-[11.5px]'
-        title={name ? t`${name}  ·  from ${filename}` : file.filename}>
-        {name ?? file.filename}
-      </span>
-      {name && (
+      <span className='min-w-0'>
         <span
-          className='max-w-[130px] flex-none truncate font-mono text-[11px] text-ink-3'
-          title={t`the name it came off the camera with`}>
-          {file.filename}
+          className='block truncate text-[12.5px] font-medium text-ink'
+          title={name ? t`${name}  ·  from ${filename}` : file.filename}>
+          {name ?? file.filename}
         </span>
-      )}
-      <ProxyFlag fact={proxy} />
-      {file.copyOf && <CopyFlag />}
-      {strayed && <GapFlag />}
-      <FrameFlag
-        file={file}
-        applied={status === 'processed' || status === 'uploaded'}
-      />
-      <CropFlag
-        file={file}
-        applied={status === 'processed' || status === 'uploaded'}
-      />
-      <TurnFlag
-        file={file}
-        applied={status === 'processed' || status === 'uploaded'}
-      />
-      {locked && (
-        <span
-          className='flex-none cursor-help text-[11px] opacity-55'
-          title={locked}>
-          🔒
+        {/* the camera's name once a copy is named for handing over, or else what kind of file it
+            is — then whatever is worth a second look about it */}
+        <span className='flex min-w-0 gap-1 truncate text-[11.5px] text-ink-3 [&>*+*]:before:mr-1 [&>*+*]:before:text-ink-3 [&>*+*]:before:content-["·"]'>
+          {name ? (
+            <span
+              className='truncate'
+              title={t`the name it came off the camera with`}>
+              {file.filename}
+            </span>
+          ) : (
+            <span>{isVideoFile(file.path) ? t`video` : t`photo`}</span>
+          )}
+          <ProxyFlag fact={proxy} />
+          {file.copyOf && <CopyFlag />}
+          {strayed && <GapFlag />}
         </span>
-      )}
-      <span className='w-[62px] flex-none text-right font-mono text-[11px] text-ink-3 tabular-nums'>
-        {formatTime(file.mtime)}
       </span>
-      <span className='w-[58px] flex-none text-right font-mono text-[11px] text-ink-3 tabular-nums'>
+      <span className='flex flex-wrap gap-1 overflow-hidden'>
+        <CropFlag
+          file={file}
+          applied={applied}
+        />
+        <FrameFlag
+          file={file}
+          applied={applied}
+        />
+        <TurnFlag
+          file={file}
+          applied={applied}
+        />
+      </span>
+      <span className='text-[12px] text-ink-2 tabular-nums'>{formatTime(file.mtime)}</span>
+      <span className='text-right text-[12px] text-ink-2 tabular-nums'>
         {formatSize(file.size)}
       </span>
-      <span className='flex w-[76px] flex-none justify-end'>
+      <span className='flex'>
         <WhileLive
           id={file.id}
           filename={file.filename}
@@ -470,6 +504,10 @@ const Row = ({
     </div>
   )
 }
+
+/* what sits over a thumbnail's picture, small and dark so it reads on any frame */
+const OVER =
+  'rounded bg-black/[0.62] px-[5px] text-[10.5px] leading-4 font-medium whitespace-nowrap text-white'
 
 const Tile = ({
   file,
@@ -491,7 +529,7 @@ const Tile = ({
   lane: ManifestFile[]
   picked: boolean
   locked: string | null
-  status: ReturnType<typeof fileStatus>
+  status: ShownStatus
   /* how wide a picture to ask for, from how big the thumbnails are drawn */
   picture: number
   proxy?: ProxyFact
@@ -527,135 +565,104 @@ const Tile = ({
     title={`${file.filename} · ${formatTime(file.mtime)} · ${formatSize(file.size)} · ${statusName(status)}${
       proxy?.state === 'none' ? ` · ${proxy.reason ? t`proxy failed` : t`no proxy yet`}` : ''
     }${isWholeFrame(file.frame) ? '' : ` · ${t`framed`}`}${file.rotation ? ` · ${turnedTitle(file.rotation)}` : ''}`}
-    className={`group relative aspect-[4/3] max-w-full cursor-pointer overflow-hidden rounded-[5px] border-2 bg-line-2 p-0 [contain-intrinsic-size:auto_120px] [content-visibility:auto] ${
-      picked ? 'border-accent' : previewed ? 'border-ink-3' : 'border-transparent'
-    }`}>
-    {/* a freed file is on the storage only: nothing here to draw it from */}
-    {!file.freed && (
-      <img
-        src={getPictureUrl(file, proxy, picture)}
-        alt=''
-        loading='lazy'
-        decoding='async'
-        style={turnedThumb(file.rotation)}
-        className='absolute inset-0 h-full w-full object-cover'
-      />
-    )}
-    {isVideoFile(file.path) && (
-      <i className='absolute bottom-1 left-1 rounded-[3px] bg-black/[0.66] px-1 font-mono text-[10px] text-white not-italic'>
-        ▶
-      </i>
-    )}
-    {locked && <span className='absolute right-1 bottom-1 text-[11px]'>🔒</span>}
-    {file.copyOf && (
-      <span
-        title={i18n._(COPY_TITLE)}
-        className='absolute top-1 left-1/2 -translate-x-1/2 rounded-[3px] bg-black/[0.66] px-1 font-mono text-[10px] text-white'>
-        ⧉
+    className='group @container/tile flex max-w-full min-w-0 cursor-pointer flex-col gap-1.5 [contain-intrinsic-size:auto_140px] [content-visibility:auto]'>
+    <span className='relative block aspect-[16/10] overflow-hidden rounded-md bg-well'>
+      {/* a freed file is on the storage only: nothing here to draw it from */}
+      {!file.freed && (
+        <img
+          src={getPictureUrl(file, proxy, picture)}
+          alt=''
+          loading='lazy'
+          decoding='async'
+          style={turnedThumb(file.rotation)}
+          className='absolute inset-0 h-full w-full object-cover'
+        />
+      )}
+      {isVideoFile(file.path) && (
+        <span className={`absolute top-1.5 right-1.5 inline-flex items-center py-[3px] ${OVER}`}>
+          <Icon
+            name='play'
+            size={9}
+          />
+        </span>
+      )}
+      <span className='pointer-events-none absolute bottom-1.5 left-1.5 flex items-center gap-1'>
+        {/* only the clip still waiting is marked here — a proxy that exists is the ordinary case,
+            and a grid is where hundreds of stills are culled, so it stays as quiet as it can */}
+        {proxy?.state === 'none' && (
+          <span
+            title={proxy.reason ? proxyFailedTitle(proxy.reason) : i18n._(NO_PROXY_TITLE)}
+            className='h-2 w-2 rounded-full border border-dashed border-white bg-local shadow-[0_0_0_1.5px_rgba(0,0,0,0.45)]'
+          />
+        )}
+        {/* a rectangle is invisible on a thumbnail of the whole frame, so it is said rather than
+            shown */}
+        {!isWholeFrame(file.frame) && (
+          <span
+            title={t`Framed`}
+            className={OVER}>
+            ▣
+          </span>
+        )}
+        {file.copyOf && (
+          <span
+            title={i18n._(COPY_TITLE)}
+            className={OVER}>
+            ⧉
+          </span>
+        )}
+        {strayed && (
+          <span
+            title={i18n._(GAP_TITLE)}
+            className={OVER}>
+            ⧗
+          </span>
+        )}
       </span>
-    )}
-    {strayed && (
-      <span
-        title={i18n._(GAP_TITLE)}
-        className='absolute top-1 left-1/2 -translate-x-1/2 rounded-[3px] border border-dashed border-changed bg-changed-soft px-1 font-mono text-[10px] font-semibold text-changed'>
-        ⧗
-      </span>
-    )}
-    {/* a rectangle is invisible on a thumbnail of the whole frame, so it is said rather than shown */}
-    {!isWholeFrame(file.frame) && (
-      <span
-        title={t`Framed`}
-        className='absolute top-1 left-1 rounded-[3px] bg-black/[0.66] px-1 font-mono text-[10px] text-white'>
-        ▣
-      </span>
-    )}
-    {/* only the clip still waiting is marked here — a proxy that exists is the ordinary case, and
-        a grid is where hundreds of stills are culled, so it stays as quiet as it can */}
-    {proxy?.state === 'none' && (
-      <span
-        title={proxy.reason ? proxyFailedTitle(proxy.reason) : i18n._(NO_PROXY_TITLE)}
-        className='pointer-events-none absolute bottom-1 left-1 h-2 w-2 rounded-full border border-dashed border-white bg-local shadow-[0_0_0_1.5px_rgba(0,0,0,0.45)]'
+      {locked && (
+        <span
+          title={locked}
+          className={`absolute right-1.5 bottom-1.5 inline-flex items-center py-[3px] ${OVER}`}>
+          <Icon
+            name='lock'
+            size={10}
+          />
+        </span>
+      )}
+      {/* the picked one ringed in blue, the one looked at in grey — drawn over the picture, since
+          a ring outside it would be cut off by the tile's own edge */}
+      {(picked || previewed) && (
+        <span
+          className={`pointer-events-none absolute inset-0 rounded-md ring-2 ring-inset ${
+            picked ? 'ring-accent' : 'ring-ink-3'
+          }`}
+        />
+      )}
+      {!locked && (
+        <PickMark
+          picked={picked}
+          selecting={selecting}
+          onPick={() => onPick(file)}
+        />
+      )}
+    </span>
+    {/* when it was shot and where it has got to; on a small thumbnail there is room for the time
+        only, and the state is in its title */}
+    <span className='flex min-h-[18px] items-center justify-between gap-1.5'>
+      <span className='font-mono text-[11px] text-ink-2 tabular-nums'>{hhmm(file.mtime)}</span>
+      <WhileLive
+        id={file.id}
+        filename={file.filename}
+        short
+        otherwise={
+          <span className='hidden @[128px]/tile:flex [&>span]:h-[18px] [&>span]:px-1.5 [&>span]:text-[11px]'>
+            <StatusChip status={status} />
+          </span>
+        }
       />
-    )}
-    {/* over the foot of the picture, on a dark band so the figures read on any frame */}
-    <WhileLive
-      id={file.id}
-      filename={file.filename}
-      band
-    />
-    {!locked && (
-      <PickMark
-        picked={picked}
-        selecting={selecting}
-        onPick={() => onPick(file)}
-      />
-    )}
+    </span>
   </div>
 )
-
-const KindBadges = ({
-  files,
-  kind,
-  withAll,
-  onPick
-}: {
-  files: ManifestFile[]
-  kind: Kind
-  withAll: boolean
-  onPick: (kind: Kind) => void
-}) => {
-  const videos = files.filter((f) => kindOf(f) === 'video').length
-  const photos = files.length - videos
-  /* Shown on every header, even where one kind is absent, so every header reads the same and says
-     what is in it at a glance. A kind with nothing in it is on show but cannot be picked. */
-  if (files.length === 0) return null
-  const active: Kind = withAll
-    ? kind
-    : kind === 'photo' || (kind === 'all' && videos === 0)
-      ? 'photo'
-      : 'video'
-  const all: [Kind, string, number, string] = ['all', t`All`, files.length, t`Show everything`]
-  const video: [Kind, string, number, string] = [
-    'video',
-    t`Videos`,
-    videos,
-    t`Show only the ${videos} videos`
-  ]
-  const photo: [Kind, string, number, string] = [
-    'photo',
-    t`Photos`,
-    photos,
-    t`Show only the ${photos} photos`
-  ]
-  const options = withAll ? [all, video, photo] : [video, photo]
-  return (
-    <span
-      role='group'
-      aria-label={t`Videos or photos`}
-      className='flex overflow-hidden rounded-md border border-line'>
-      {options.map(([value, label, count, title]) => (
-        <button
-          key={value}
-          type='button'
-          aria-pressed={active === value}
-          disabled={count === 0 && active !== value}
-          title={title}
-          onClick={() => onPick(value)}
-          className={`inline-flex items-center gap-1.5 px-[11px] py-[5px] text-[12px] disabled:cursor-default disabled:opacity-45 ${
-            active === value ? 'bg-accent-soft font-semibold text-accent' : 'bg-pane text-ink-2'
-          }`}>
-          {label}
-          <span
-            className={`rounded-full px-1.5 font-mono text-[11px] tabular-nums ${
-              active === value ? 'bg-pane text-accent' : 'bg-line-2 text-ink-3'
-            }`}>
-            {count}
-          </span>
-        </button>
-      ))}
-    </span>
-  )
-}
 
 /* Ctrl or ⌘ with the wheel over the thumbnails draws them bigger or smaller. A listener of the page's
    own, since only one that is not passive can keep the wheel from zooming the whole window instead. */
@@ -698,8 +705,38 @@ const DrawMoreWhenNear = ({ onNear }: { onNear: () => void }) => {
   )
 }
 
+/* The heading over a list of rows: what it is and how many, then the name of each column. */
+const TableHead = ({ label, count }: { label: string; count: string }) => (
+  <div
+    className={`${COLUMNS} h-[26px] border-y border-line bg-rail text-[11.5px] font-medium text-ink-2`}>
+    <span />
+    <span />
+    <span className='truncate text-[12.5px] text-ink'>
+      {label && <b className='font-semibold'>{label} </b>}
+      <span className='font-normal text-ink-3'>
+        {label ? '· ' : ''}
+        {count}
+      </span>
+    </span>
+    <span>{t`Picture`}</span>
+    <span>{t`Shot`}</span>
+    <span className='text-right'>{t`Size`}</span>
+    <span>{t`State`}</span>
+  </div>
+)
+
+/* how many a run of files holds, in the word for what it holds */
+const countOf = (lane: ManifestFile[], kind: Kind) =>
+  kind === 'video'
+    ? plural(lane.length, { one: '# video', other: '# videos' })
+    : kind === 'photo'
+      ? plural(lane.length, { one: '# photo', other: '# photos' })
+      : plural(lane.length, { one: '# file', other: '# files' })
+
 const Lane = ({
   lane,
+  laneKind,
+  title = '',
   shape,
   picked,
   statusContext,
@@ -712,11 +749,14 @@ const Lane = ({
   previewed,
   offGap,
   selecting
-}: Omit<Props, 'files' | 'kind' | 'sortKey'> & { lane: ManifestFile[] }) => {
+}: Omit<Props, 'files' | 'kind' | 'sortKey'> & {
+  lane: ManifestFile[]
+  laneKind: Kind
+}) => {
   const [shown, setShown] = useState(PAGE[shape])
   const tileSize = useTileSize()
   if (lane.length === 0) {
-    return <p className='px-[7px] py-1 text-[12px] text-ink-3'>{t`Nothing here.`}</p>
+    return <p className='px-2 py-1 text-[12px] text-ink-3'>{t`Nothing here.`}</p>
   }
   const page = Math.min(shown, lane.length)
   const drawn = lane.slice(0, page)
@@ -725,12 +765,27 @@ const Lane = ({
   const more = Math.min(PAGE[shape], lane.length - page)
   return (
     <>
+      {shape === 'rows' ? (
+        <TableHead
+          label={title}
+          count={countOf(lane, laneKind)}
+        />
+      ) : (
+        (title || laneKind !== 'all') && (
+          <p className='mb-2 text-[12.5px] text-ink-3'>
+            {title && <b className='font-semibold text-ink'>{title} · </b>}
+            {countOf(lane, laneKind)}
+          </p>
+        )
+      )}
       <div
         ref={shape === 'grid' ? zoomWithWheel : undefined}
-        className={shape === 'rows' ? 'flex flex-col gap-px' : 'grid gap-1.5'}
+        className={shape === 'rows' ? 'flex flex-col' : 'grid gap-3'}
         style={
           shape === 'grid'
-            ? { gridTemplateColumns: `repeat(auto-fill, minmax(${tileSize}px, 1fr))` }
+            ? {
+                gridTemplateColumns: `repeat(auto-fill, minmax(${tileSize}px, 1fr))`
+              }
             : undefined
         }>
         {drawn.map((file) => {
@@ -760,7 +815,7 @@ const Lane = ({
               lane={lane}
               picked={Boolean(file.id && pickedSet.has(file.id))}
               locked={locked}
-              status={fileStatus(file, context)}
+              status={shownStatus(file, context)}
               proxy={proxies[file.path]}
               selecting={selecting}
               previewed={Boolean(file.id && file.id === previewed)}
@@ -782,46 +837,30 @@ const Lane = ({
         />
       )}
       {lane.length > PAGE[shape] && (
-        <div className='mt-[9px] flex flex-wrap items-center gap-2 border-t border-line-2 pt-2 text-[12px] text-ink-2'>
+        <div className='mt-2.5 flex flex-wrap items-center gap-2 px-2 text-[12px] text-ink-2'>
           <span className='mr-0.5 tabular-nums'>
             <b className='font-semibold text-ink'>{page}</b> {t`of ${total} shown`}
           </span>
           {page < lane.length && (
-            <button
-              type='button'
-              onClick={() => setShown(page + PAGE[shape])}
-              className='rounded-[5px] border border-line bg-pane px-2 py-[3px] text-[11.5px] text-ink-2 hover:border-ink-3 hover:text-ink'>
-              {t`Show ${more} more`}
-            </button>
+            <Mini onClick={() => setShown(page + PAGE[shape])}>{t`Show ${more} more`}</Mini>
           )}
           {/* the rest in one go, for when looking through all of it is the point */}
           {lane.length - page > PAGE[shape] && (
-            <button
-              type='button'
-              onClick={() => setShown(lane.length)}
-              className='rounded-[5px] border border-line bg-pane px-2 py-[3px] text-[11.5px] text-ink-2 hover:border-ink-3 hover:text-ink'>
-              {t`Show all ${total}`}
-            </button>
+            <Mini onClick={() => setShown(lane.length)}>{t`Show all ${total}`}</Mini>
           )}
-          {page > PAGE[shape] && (
-            <button
-              type='button'
-              onClick={() => setShown(PAGE[shape])}
-              className='rounded-[5px] border border-line bg-pane px-2 py-[3px] text-[11.5px] text-ink-2 hover:border-ink-3 hover:text-ink'>
-              {t`Show fewer`}
-            </button>
-          )}
+          {page > PAGE[shape] && <Mini onClick={() => setShown(PAGE[shape])}>{t`Show fewer`}</Mini>}
         </div>
       )}
     </>
   )
 }
 
-/* Videos and photos are two different jobs, so showing all of them is showing both side by side: the
-   clips in one column, the stills in the other, each in its own order and with its own "show more".
-   Picking a range stays within a column, since a range across the two would mean nothing. One kind
-   picked is that kind alone; a list of only one kind is simply that list. Where the pane is narrow
-   the two columns stack. */
+/* Videos and photos are two different jobs, so showing all of them is showing both: the clips and
+   the stills each in their own run, in their own order and with their own "show more". Picking a
+   range stays within a run, since a range across the two would mean nothing. One kind picked is that
+   kind alone; a list of only one kind is simply that list. Rows need the width of their columns, so
+   the two runs of rows stand one above the other unless the pane is very wide; thumbnails stand side
+   by side as soon as there is room. */
 const FileList = ({ files, kind, sortKey, ...rest }: Props) => {
   const lanes = lanesOf(files, kind, sortKey)
   if (lanes.length === 1)
@@ -829,23 +868,22 @@ const FileList = ({ files, kind, sortKey, ...rest }: Props) => {
       <Lane
         {...rest}
         lane={lanes[0] ?? []}
+        laneKind={kind}
       />
     )
   return (
-    <div className='grid grid-cols-1 gap-x-4 gap-y-3 @3xl:grid-cols-2'>
+    <div
+      className={`flex flex-col gap-y-5 ${
+        rest.shape === 'rows' ? '@[88rem]:flex-row @[88rem]:gap-x-4' : '@3xl:flex-row @3xl:gap-x-4'
+      }`}>
       {lanes.map((lane, i) => (
         <div
           key={i}
-          className='min-w-0'>
-          <div className='mb-1 flex items-baseline gap-1.5 px-[7px] text-[11px] font-semibold tracking-[0.04em] text-ink-3 uppercase'>
-            {i === 0 ? t`Videos` : t`Photos`}
-            <span className='font-mono font-normal tracking-normal tabular-nums'>
-              {lane.length}
-            </span>
-          </div>
+          className='min-w-0 flex-1'>
           <Lane
             {...rest}
             lane={lane}
+            laneKind={i === 0 ? 'video' : 'photo'}
           />
         </div>
       ))}
@@ -853,5 +891,5 @@ const FileList = ({ files, kind, sortKey, ...rest }: Props) => {
   )
 }
 
-export { FileList, KindBadges, kindOf, lanesOf, lockReason, matchesKind, shownStatus }
+export { FileList, kindOf, lanesOf, lockReason, matchesKind, shownStatus }
 export type { FileShape, Kind, Modifiers }

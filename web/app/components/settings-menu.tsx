@@ -1,16 +1,26 @@
 import { t } from '@lingui/core/macro'
 import { useEffect, useRef, useState } from 'react'
+import { Icon } from './icons'
+import type { IconName } from './icons'
+
+/* a tool on the toolbar: no frame until the pointer is over it */
+const TOOL =
+  'inline-flex h-[30px] items-center gap-1.5 rounded-[5px] border border-transparent px-[9px] text-[12.5px] font-medium text-ink hover:bg-line disabled:opacity-40'
 
 /* A button that opens a small panel of choices under it. It closes on Escape, on a click outside
    it, and once something in it is chosen. */
 const Menu = ({
   label,
-  mark,
+  icon,
+  lead,
   side = 'right',
   children
 }: {
   label: string
-  mark?: string
+  /* drawn as this mark alone, the label its name, as a tool on the toolbar is */
+  icon?: IconName
+  /* a mark before the label, on a button that shows its label */
+  lead?: IconName
   /* which edge of the button the panel lines up with */
   side?: 'left' | 'right'
   children: (close: () => void) => React.ReactNode
@@ -39,19 +49,40 @@ const Menu = ({
     <div
       ref={holder}
       className='relative'>
-      <button
-        type='button'
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-        className='inline-flex items-center gap-1.5 rounded-md border border-line bg-pane px-[11px] py-[5px] text-[12.5px] font-medium hover:border-ink-3'>
-        {mark && <span aria-hidden='true'>{mark}</span>}
-        {label}
-      </button>
+      {icon ? (
+        <button
+          type='button'
+          aria-expanded={open}
+          aria-label={label}
+          title={label}
+          onClick={() => setOpen(!open)}
+          className={`${TOOL} w-[30px] justify-center px-0 ${open ? 'bg-line' : ''}`}>
+          <Icon
+            name={icon}
+            className='text-ink-2'
+          />
+        </button>
+      ) : (
+        <button
+          type='button'
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+          className='inline-flex h-7 w-full items-center justify-center gap-1.5 rounded-[5px] border border-line-strong bg-pane px-[9px] text-[12.5px] font-medium shadow-card hover:bg-well'>
+          {lead && (
+            <Icon
+              name={lead}
+              size={14}
+              className='text-ink-2'
+            />
+          )}
+          {label}
+        </button>
+      )}
       {open && (
         <div
           role='group'
           aria-label={label}
-          className={`absolute top-full z-50 mt-1.5 flex max-h-[60vh] w-max max-w-[min(300px,calc(100vw-2rem))] min-w-[200px] flex-col gap-3 overflow-y-auto rounded-lg border border-line bg-pane p-3 shadow-card ${
+          className={`absolute top-full z-50 mt-1.5 flex max-h-[60vh] w-max max-w-[min(300px,calc(100vw-2rem))] min-w-[200px] flex-col gap-3 overflow-y-auto rounded-md bg-pane p-3 shadow-float ${
             side === 'right' ? 'right-0' : 'left-0'
           }`}>
           {children(close)}
@@ -67,7 +98,7 @@ const Menu = ({
 const SettingsMenu = ({ children }: { children: (close: () => void) => React.ReactNode }) => (
   <Menu
     label={t`Settings`}
-    mark='⚙'>
+    icon='settings'>
     {children}
   </Menu>
 )
@@ -99,4 +130,4 @@ const MenuItem = ({
   </button>
 )
 
-export { Menu, MenuItem, SettingsMenu, SettingsRow }
+export { Menu, MenuItem, SettingsMenu, SettingsRow, TOOL }

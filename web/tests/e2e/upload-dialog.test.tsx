@@ -114,9 +114,11 @@ const place = (name: string) => dialog().getByRole('region', { name })
 /* dragged onto a destination, scrolled into view first so nothing moves mid-drag */
 const dropOn = async (name: string, destination: string) => {
   place(destination).element().scrollIntoView({ block: 'center' })
-  await userEvent.dragAndDrop(dialog().getByLabelText(name, { exact: true }), place(destination))
+  await userEvent.dragAndDrop(
+    dialog().getByRole('group', { name: 'What can be sent' }).getByLabelText(name, { exact: true }),
+    place(destination)
+  )
 }
-const next = () => userEvent.click(dialog().getByRole('button', { name: /Next: where it goes/ }))
 
 describe('uploading a montage — the zips', () => {
   test('shows each zip with what is inside it, before anything is sent', async () => {
@@ -195,13 +197,12 @@ describe('uploading a montage — where it goes', () => {
   test('puts an item in a destination, the same one in two, and takes it out again', async () => {
     setSendPlan(PLACED)
     await renderBoard()
-    await next()
 
     await userEvent.selectOptions(dialog().getByLabelText('Add a destination', { exact: true }), 'Yverdon')
     await dropOn(`${STEM}.mp4`, 'Yverdon')
     await expect.element(place('Yverdon').getByText(`${STEM}.mp4`)).toBeInTheDocument()
     await expect.element(place('Passengers').getByText(`${STEM}.mp4`)).toBeInTheDocument()
-    await expect.element(place('Yverdon').getByText('🔗 share link')).toBeInTheDocument()
+    await expect.element(place('Yverdon').getByText('share link')).toBeInTheDocument()
 
     await userEvent.click(dialog().getByRole('button', { name: `Take ${STEM}.mp4 out of Yverdon` }))
     await expect.element(place('Yverdon').getByText(`${STEM}.mp4`)).not.toBeInTheDocument()
@@ -210,7 +211,6 @@ describe('uploading a montage — where it goes', () => {
   test('shows only the destinations in use, and adds another when asked', async () => {
     setSendPlan(PLACED)
     await renderBoard()
-    await next()
 
     await expect.element(place('Passengers')).toBeInTheDocument()
     await expect.element(place('Yverdon')).not.toBeInTheDocument()
@@ -224,7 +224,6 @@ describe('uploading a montage — where it goes', () => {
   test('takes an item dragged onto a destination', async () => {
     setSendPlan(PLACED)
     await renderBoard()
-    await next()
 
     await userEvent.selectOptions(dialog().getByLabelText('Add a destination', { exact: true }), 'Yverdon')
     await dropOn(`${STEM}.full.zip`, 'Yverdon')
@@ -238,7 +237,6 @@ describe('uploading a montage — where it goes', () => {
   test('carries every picked item when one of them is dragged', async () => {
     setSendPlan(PLACED)
     await renderBoard()
-    await next()
 
     await userEvent.click(dialog().getByLabelText(`Pick ${STEM}.full.zip`))
     await userEvent.click(dialog().getByLabelText(`Pick ${STEM}.mp4`))
@@ -252,14 +250,13 @@ describe('uploading a montage — where it goes', () => {
   test('puts the items in the project folder, or straight into the destination’s folder', async () => {
     setSendPlan(PLACED)
     await renderBoard()
-    await next()
 
     await expect.element(place('Passengers').getByText('luc-favre/', { exact: true })).toBeInTheDocument()
     await page.screenshot({ path: './playwright-screenshots/upload-dialog-where.png' })
     await userEvent.click(
       dialog()
         .getByRole('group', { name: 'Where in Passengers' })
-        .getByRole('button', { name: 'In the root' })
+        .getByRole('button', { name: 'Straight in' })
     )
     await expect
       .element(place('Passengers').getByText('luc-favre/', { exact: true }))
@@ -271,7 +268,6 @@ describe('uploading a montage — where it goes', () => {
     setSendPlan({ ...DEFAULT_PLAN, placed: { film: ['Passengers', 'Gone'], 'zip:full': ['Gone'] } })
     requests.length = 0
     await renderBoard()
-    await next()
 
     await expect.element(dialog().getByRole('button', { name: 'Upload', exact: true })).toBeEnabled()
     await userEvent.click(dialog().getByRole('button', { name: 'Upload', exact: true }))
@@ -291,7 +287,6 @@ describe('uploading a montage — where it goes', () => {
     setSendPlan(PLACED)
     requests.length = 0
     await renderBoard()
-    await next()
     await userEvent.fill(dialog().getByLabelText('Project folder'), 'Boogie 2026')
     expect(requests).toEqual([])
 
@@ -490,6 +485,7 @@ describe('emailing the passenger their link', () => {
   test('offers the computer\'s own mail program too, for anyone not on Gmail', async () => {
     await renderBoard(linked, false)
     const dialog = await openEmail()
+    await userEvent.click(dialog.getByRole('button', { name: 'Mail program' }))
     await expect
       .element(dialog.getByRole('button', { name: 'Copy & open my mail app' }))
       .toBeInTheDocument()
@@ -536,7 +532,7 @@ describe('the montages on the storage', () => {
     await expect.element(page.getByRole('region', { name: 'On the storage' })).toBeInTheDocument()
     await expect.element(page.getByText('Ana Roth')).toBeInTheDocument()
     await expect.element(page.getByText('not emailed', { exact: true })).toBeInTheDocument()
-    await expect.element(page.getByText('🔒 storage only')).toBeInTheDocument()
+    await expect.element(page.getByText('storage only', { exact: true })).toBeInTheDocument()
   })
 
   test('emails it from its entry, and says on the list that it was sent', async () => {

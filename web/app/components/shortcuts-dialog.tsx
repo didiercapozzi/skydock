@@ -3,7 +3,7 @@ import { Mini } from './buttons'
 import { Modal, Spacer } from './modal'
 
 /* Every key and gesture the board knows, in one place, so none of them has to be found by accident
-   (RULES, The board). Opened from Settings, the ? beside it, or the ? key. */
+   (RULES, The board). Opened from Settings, the keyboard on the toolbar, or the ? key. */
 const ShortcutsDialog = ({ onClose }: { onClose: () => void }) => {
   const sections: [string, [string, string][]][] = [
     [
@@ -39,6 +39,7 @@ const ShortcutsDialog = ({ onClose }: { onClose: () => void }) => {
       t`The board`,
       [
         [t`⌘/Ctrl + wheel over thumbnails`, t`bigger or smaller thumbnails`],
+        [t`⌘/Ctrl + F`, t`find anything`],
         [t`⌘/Ctrl + + − 0`, t`the whole board bigger, smaller, as drawn`],
         [t`?`, t`this list`]
       ]
@@ -57,13 +58,15 @@ const ShortcutsDialog = ({ onClose }: { onClose: () => void }) => {
       }>
       {sections.map(([heading, keys]) => (
         <section key={heading}>
-          <h5 className='m-0 mb-1 text-[12px] font-semibold text-ink'>{heading}</h5>
-          <dl className='m-0 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-[12.5px]'>
+          <h5 className='m-0 mb-1.5 text-[11.5px] font-medium text-ink-3'>{heading}</h5>
+          <dl className='m-0 grid grid-cols-[230px_1fr] items-center gap-x-4 gap-y-1.5 text-[12.5px]'>
             {keys.map(([key, does]) => (
               <div
                 key={key}
                 className='contents'>
-                <dt className='font-mono text-[12px] text-ink'>{key}</dt>
+                <dt className='w-max rounded-[3px] border border-line bg-rail px-1 text-[11px] leading-4 font-medium text-ink-2'>
+                  {key}
+                </dt>
                 <dd className='m-0 text-ink-2'>{does}</dd>
               </div>
             ))}

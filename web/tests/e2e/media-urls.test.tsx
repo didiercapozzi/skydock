@@ -61,7 +61,7 @@ describe('the pictures the board shows', () => {
     await expect.element(page.getByText('two.MP4').first()).toBeInTheDocument()
     await expect
       .poll(() => [...document.querySelectorAll('img')].map((img) => img.getAttribute('src')))
-      .toContain('/api/thumb/original_files/2026-08-01/two.MP4?seek=0.5&width=80')
+      .toContain('/api/thumb/original_files/2026-08-01/two.MP4?seek=0.5&width=160')
   })
 
   /* a photo used to be drawn from the original, a megabyte and a full decode for eighty pixels */
@@ -74,7 +74,7 @@ describe('the pictures the board shows', () => {
       [...document.querySelectorAll('img')].map((img) => img.getAttribute('src') ?? '')
     await expect
       .poll(drawn)
-      .toContain('/api/thumb/original_files/2026-08-01/G0091.JPG?seek=0.5&width=80')
+      .toContain('/api/thumb/original_files/2026-08-01/G0091.JPG?seek=0.5&width=160')
   })
 
   /* seeking a 4K original for an eighty-pixel square costs three times what the copy costs, and a
@@ -95,9 +95,9 @@ describe('the pictures the board shows', () => {
     await expect.element(page.getByText('two.MP4').first()).toBeInTheDocument()
     const drawn = () =>
       [...document.querySelectorAll('img')].map((img) => img.getAttribute('src') ?? '')
-    await expect.poll(drawn).toContain('/api/thumb/proxies/two.mp4?seek=0.5&width=80')
+    await expect.poll(drawn).toContain('/api/thumb/proxies/two.mp4?seek=0.5&width=160')
     /* the one without a copy yet is still cut from itself */
-    expect(drawn()).toContain('/api/thumb/original_files/2026-08-01/one.MP4?seek=0.5&width=80')
+    expect(drawn()).toContain('/api/thumb/original_files/2026-08-01/one.MP4?seek=0.5&width=160')
     expect(drawn().some((src) => src.startsWith('/api/file/'))).toBe(false)
   })
 })

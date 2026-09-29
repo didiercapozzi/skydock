@@ -1,6 +1,6 @@
 import { folderOfUpload, isoDay } from '@skydock/scripts'
 import type { ManifestFile, ManifestGroup } from '../components/types'
-import { dayWritten, minFileMtime, pad } from '../components/utils'
+import { dayWritten, minFileMtime, pad, weekday } from '../components/utils'
 
 /* local calendar day, built without Intl so the server and the client agree */
 const dayOfMtime = (mtime: number) => {
@@ -16,10 +16,12 @@ const dayOf = (group: ManifestGroup) => isoDay(group.day) || dayOfMtime(minFileM
 
 const dayOfFile = (file: ManifestFile) => dayOfMtime(file.mtime)
 
-const dayLabel = (day: string) => {
+/* a day written out, and with its day of the week where it heads a run of files */
+const dayLabel = (day: string, withWeekday = false) => {
   const [year, month, date] = day.split('-').map(Number)
   if (!year || !month || !date) return day
-  return dayWritten(new Date(year, month - 1, date))
+  const at = new Date(year, month - 1, date)
+  return withWeekday ? `${weekday(at, 'long')} ${dayWritten(at)}` : dayWritten(at)
 }
 
 /* a montage's folder on the storage — the one its film went to — which is what the storage's list of

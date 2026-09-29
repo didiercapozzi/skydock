@@ -5,6 +5,8 @@ import type { BinBatch, BinFile } from '../../../packages/skydock-scripts/src/bi
 import { isVideoFile } from '@skydock/scripts'
 import { routingEngine } from '../helpers/routing'
 import { Go } from './buttons'
+import { TD, TH, Tick } from './camera-files'
+import { Icon } from './icons'
 import { Spacer } from './modal'
 import { dateLabel, formatSize, getThumbUrl, hhmm } from './utils'
 
@@ -91,15 +93,21 @@ const BinFiles = ({
   return (
     <section
       aria-label={t`In the bin`}
-      className='pt-3'>
-      <div className='flex flex-wrap items-center gap-2 px-0.5 pb-1.5'>
+      className='flex flex-col gap-3'>
+      <div className='flex min-h-[30px] flex-wrap items-center gap-2'>
         {answered && (
-          <span className='text-[12px] text-ink-2'>
+          <span className='text-[12.5px] text-ink-3'>
             {plural(count, { one: '# file', other: '# files' })} ·{' '}
             {formatSize(files.reduce((n, f) => n + f.size, 0))}
           </span>
         )}
         <Spacer />
+        {picks > 0 && (
+          <span className='text-[12.5px] text-ink-2'>
+            <b className='font-semibold text-ink'>{t`${picks} picked`}</b> ·{' '}
+            {formatSize(chosen.reduce((n, f) => n + f.size, 0))}
+          </span>
+        )}
         <Go
           disabled={chosen.length === 0 || bringing}
           title={t`Back into the originals, under the day each was shot, and into Fresh files`}
@@ -117,64 +125,96 @@ const BinFiles = ({
         </Go>
       </div>
       {answered && (
-        <p className='m-0 mb-2 rounded-r-md border-l-[3px] border-line bg-line-2 px-3 py-[9px] text-[12px] text-ink-2'>
-          {t`SkyDock never empties the bin. To delete these files for good, remove them yourself from`}{' '}
-          <code className='font-mono break-all text-ink'>{answered.dir}</code>
+        <p className='m-0 flex items-center gap-[9px] rounded-md border border-line bg-rail px-2.5 py-[7px] text-[12.5px] text-ink-2'>
+          <Icon
+            name='bin'
+            size={14}
+            className='text-ink-3'
+          />
+          <span className='min-w-0'>
+            {t`SkyDock never empties the bin. To delete these files for good, remove them yourself from`}{' '}
+            <code className='font-mono text-[12px] break-all text-ink'>{answered.dir}</code>
+          </span>
         </p>
       )}
       {problem && (
         <p
           role='alert'
-          className='m-0 mb-2 rounded-md bg-local-soft px-3 py-2 text-[12.5px] text-local'>
+          className='m-0 rounded-md bg-local-soft px-3 py-2 text-[12.5px] text-local'>
           {problem}
         </p>
       )}
       {answered === null && !problem ? (
         <p className='m-0 px-0.5 text-[12.5px] text-ink-3'>{t`Looking in the bin…`}</p>
       ) : answered && batches.length === 0 ? (
-        <p className='m-0 rounded-[9px] border border-dashed border-line px-3 py-4 text-center text-[12.5px] text-ink-3'>
+        <p className='m-0 rounded-md border border-dashed border-line px-3 py-4 text-center text-[12.5px] text-ink-3'>
           {t`The bin is empty.`}
         </p>
       ) : (
-        batches.map((batch) => (
-          <div
-            key={batch.folder}
-            className='mb-3'>
-            <h3 className='m-0 px-0.5 pb-1 text-[12px] font-semibold text-ink-2'>
-              {fromWhere(batch)} · {dateLabel(batch.at)} {hhmm(batch.at)}
-            </h3>
-            <ul className='m-0 flex list-none flex-col gap-px rounded-lg border border-line bg-pane p-[7px]'>
+        <table className='w-full table-fixed border-collapse text-[12.5px]'>
+          <thead>
+            <tr>
+              <th className={`${TH} w-[36px]`} />
+              <th className={`${TH} w-[88px]`} />
+              <th className={TH}>{t`File`}</th>
+              <th className={`${TH} w-[160px]`}>{t`Shot`}</th>
+              <th className={`${TH} w-[84px] text-right`}>{t`Size`}</th>
+            </tr>
+          </thead>
+          {/* each time files were put aside is a run of its own, headed by where they came from */}
+          {batches.map((batch) => (
+            <tbody key={batch.folder}>
+              <tr>
+                <th
+                  colSpan={5}
+                  scope='colgroup'
+                  className='border-b border-line-2 px-2.5 pt-4 pb-1.5 text-left font-normal'>
+                  <h3 className='m-0 truncate text-[12.5px] font-semibold text-ink'>
+                    {fromWhere(batch)}
+                    <span className='font-normal text-ink-3'>
+                      {' '}
+                      · {dateLabel(batch.at)} {hhmm(batch.at)}
+                    </span>
+                  </h3>
+                </th>
+              </tr>
               {batch.files.map((file) => (
-                <li key={file.path}>
-                  <label className='flex h-[44px] w-full cursor-pointer items-center gap-2.5 rounded-md px-[7px] hover:bg-line-2'>
-                    <input
-                      type='checkbox'
-                      aria-label={pickLabel(file.name)}
+                <tr
+                  key={file.path}
+                  /* the whole line picks, as a box's label would; the box itself answers its own
+                     click */
+                  onClick={(e) => {
+                    if (!(e.target instanceof HTMLInputElement)) toggle(file)
+                  }}
+                  className={`cursor-pointer ${picked.has(file.path) ? 'bg-accent-soft' : 'hover:bg-rail'}`}>
+                  <td className={TD}>
+                    <Tick
+                      label={pickLabel(file.name)}
                       checked={picked.has(file.path)}
                       onChange={() => toggle(file)}
                     />
+                  </td>
+                  <td className={TD}>
                     <img
                       src={getThumbUrl(file.path, isVideoFile(file.path) ? 1 : 0, 64)}
                       alt=''
                       loading='lazy'
                       decoding='async'
-                      className='h-9 w-16 flex-none rounded bg-line-2 object-cover'
+                      className='block h-9 w-16 rounded bg-well object-cover'
                     />
-                    <span className='min-w-0 flex-1 truncate font-mono text-[12px] text-ink'>
-                      {file.name}
-                    </span>
-                    <span className='w-[150px] flex-none text-right font-mono text-[11px] text-ink-3 tabular-nums'>
-                      {dateLabel(file.mtime)} {hhmm(file.mtime)}
-                    </span>
-                    <span className='w-[64px] flex-none text-right font-mono text-[11px] text-ink-3 tabular-nums'>
-                      {formatSize(file.size)}
-                    </span>
-                  </label>
-                </li>
+                  </td>
+                  <td className={`${TD} truncate font-medium text-ink`}>{file.name}</td>
+                  <td className={`${TD} text-[12px] text-ink-2 tabular-nums`}>
+                    {dateLabel(file.mtime)} {hhmm(file.mtime)}
+                  </td>
+                  <td className={`${TD} text-right text-[12px] text-ink-2 tabular-nums`}>
+                    {formatSize(file.size)}
+                  </td>
+                </tr>
               ))}
-            </ul>
-          </div>
-        ))
+            </tbody>
+          ))}
+        </table>
       )}
     </section>
   )

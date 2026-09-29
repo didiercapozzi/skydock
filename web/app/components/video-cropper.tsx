@@ -2,6 +2,7 @@ import { t } from '@lingui/core/macro'
 import { MOMENTS } from '@skydock/scripts'
 import type { Moment } from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
+import { Go, Mini } from './buttons'
 
 /* The moments of the jump, in seconds: what the camera measured, or what somebody moved it to. */
 
@@ -214,15 +215,14 @@ const VideoCropper = ({
     <div
       data-video-cropper='true'
       className='w-full select-none'>
-      {/* the cropper sits on the dark stage, so its own controls are lit from the same side */}
-      <div className='mb-2 flex items-center gap-2.5 font-mono text-[11.5px] text-white/70 tabular-nums'>
+      <div className='mb-1.5 flex items-center gap-2.5 font-mono text-[11.5px] text-ink-3 tabular-nums'>
         <span data-zoom-display='true'>{zoomClamped.toFixed(1)}x</span>
         {zoomClamped !== 1 && (
           <button
             type='button'
             data-action='reset-zoom'
             onClick={handleBarResetZoom}
-            className='rounded border border-white/30 bg-white/10 px-2 py-0.5 text-[11.5px] text-white hover:bg-white/20'>
+            className='rounded-[4px] border border-line-strong bg-pane px-1.5 font-sans text-[11px] leading-[18px] font-medium text-ink-2 hover:bg-well hover:text-ink'>
             {t`Reset`}
           </button>
         )}
@@ -245,7 +245,7 @@ const VideoCropper = ({
         onLostPointerCapture={() => {
           draggingRef.current = null
         }}
-        className='relative h-12 cursor-crosshair overflow-hidden rounded-md border border-white/20 bg-white/[0.08]'>
+        className='relative h-12 cursor-crosshair overflow-hidden rounded-md border border-line-strong bg-well'>
         {thumbs.length > 0 && (
           <div
             data-thumbs='true'
@@ -289,9 +289,9 @@ const VideoCropper = ({
                   onMomentChange ? 'cursor-ew-resize' : 'pointer-events-none'
                 }`}
                 style={{ left: `${positionFromTime(at)}%` }}>
-                <div className='pointer-events-none absolute top-0 bottom-0 left-1/2 -ml-px w-0.5 bg-sky-300/90' />
+                <div className='pointer-events-none absolute top-0 bottom-0 left-1/2 -ml-px w-0.5 bg-ink' />
                 <span
-                  className={`pointer-events-none absolute left-1.5 rounded bg-sky-300/90 px-1 text-[10px] leading-[13px] font-medium text-black whitespace-nowrap ${
+                  className={`pointer-events-none absolute left-1.5 rounded-[3px] bg-ink px-1 font-mono text-[9.5px] leading-[14px] font-medium tracking-[0.06em] text-pane whitespace-nowrap uppercase ${
                     low ? 'bottom-0.5' : 'top-0.5'
                   }`}>
                   {label}
@@ -303,7 +303,7 @@ const VideoCropper = ({
           data-playhead='true'
           className='absolute top-0 bottom-0 w-4 -ml-2 cursor-ew-resize z-30 pointer-events-none'
           style={{ left: `${playheadPct}%` }}>
-          <div className='pointer-events-none absolute top-0 bottom-0 left-1/2 -ml-px w-0.5 bg-white' />
+          <div className='pointer-events-none absolute top-0 bottom-0 left-1/2 -ml-px w-0.5 bg-accent' />
         </div>
         {/* Both ends are always there to grab, sitting at the clip's own start and end until they
             are moved — a trim is a drag from the edge, not a button to find first. One not yet set is
@@ -331,7 +331,7 @@ const VideoCropper = ({
                       ? t`Drag to trim the start`
                       : t`Drag to trim the end`
                 }
-                className={`absolute top-0 bottom-0 z-20 w-3 cursor-ew-resize rounded bg-accent hover:brightness-110 ${
+                className={`absolute top-0 bottom-0 z-20 w-3 cursor-ew-resize rounded-[4px] border-2 border-accent bg-pane hover:bg-accent-soft ${
                   set ? '' : 'opacity-60 hover:opacity-100'
                 }`}
                 /* centred on its moment, but never half off the bar at either edge */
@@ -362,37 +362,11 @@ const VideoCropper = ({
         )}
       </div>
       {!readOnly && !compact && (
-        <div className='mt-3 flex flex-wrap gap-2'>
-          <button
-            type='button'
-            data-action='start-here'
-            onClick={handleStartHere}
-            className='rounded-[5px] border border-white/30 bg-white/10 px-2.5 py-1 text-[12px] text-white hover:bg-white/20'>
-            {t`Start here`}
-          </button>
-          <button
-            type='button'
-            data-action='end-here'
-            onClick={handleEndHere}
-            className='rounded-[5px] border border-white/30 bg-white/10 px-2.5 py-1 text-[12px] text-white hover:bg-white/20'>
-            {t`End here`}
-          </button>
-          <button
-            type='button'
-            data-action='apply'
-            onClick={handleApply}
-            className='rounded-[5px] border border-accent bg-accent px-2.5 py-1 text-[12px] font-semibold text-white hover:brightness-110'>
-            {t`Apply`}
-          </button>
-          {hasCrop && (
-            <button
-              type='button'
-              data-action='reset-crop'
-              onClick={handleResetCrop}
-              className='rounded-[5px] border border-white/30 bg-white/10 px-2.5 py-1 text-[12px] text-white hover:bg-white/20'>
-              {t`Reset trim`}
-            </button>
-          )}
+        <div className='mt-2.5 flex flex-wrap gap-1.5'>
+          <Mini onClick={handleStartHere}>{t`Start here`}</Mini>
+          <Mini onClick={handleEndHere}>{t`End here`}</Mini>
+          <Go onClick={handleApply}>{t`Apply`}</Go>
+          {hasCrop && <Mini onClick={handleResetCrop}>{t`Reset trim`}</Mini>}
         </div>
       )}
     </div>

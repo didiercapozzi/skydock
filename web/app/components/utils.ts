@@ -41,6 +41,9 @@ const dateLabel = (epoch: number) => dayWritten(new Date(epoch * 1000))
 const shortDate = (epoch: number) =>
   written(new Date(epoch * 1000), { day: 'numeric', month: 'short' })
 
+/* the day of the week, whole or short, for where a date is read by the week it fell in */
+const weekday = (date: Date, style: 'long' | 'short') => written(date, { weekday: style })
+
 const pad = (n: number) => String(n).padStart(2, '0')
 
 /* hours and minutes, for when something happened */
@@ -155,5 +158,6 @@ export {
   isVideoFile,
   minFileMtime,
   toDateInputValue,
-  toTimeInputValue
+  toTimeInputValue,
+  weekday
 }

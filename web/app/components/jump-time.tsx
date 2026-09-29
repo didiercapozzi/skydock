@@ -1,5 +1,6 @@
 import { t } from '@lingui/core/macro'
 import { useState } from 'react'
+import { Go } from './buttons'
 import { dateLabel, pad } from './utils'
 
 /* to the second, like every other time on the board: two files a second apart is the whole reason
@@ -35,6 +36,7 @@ const JumpSpan = ({
   from,
   to,
   withDate,
+  big = false,
   disabled,
   onShift,
   hint = t`every file in the jump moves with it`,
@@ -45,6 +47,9 @@ const JumpSpan = ({
   /* a jump whose ends fall on different days has to date them, or the figures mean nothing and the
      editor opening on another date looks like a fault */
   withDate?: boolean
+  /* drawn as the one figure its part is about: the time large, the day and what a click does under
+     it — where it stands alone rather than in a line of facts */
+  big?: boolean
   disabled: boolean
   onShift: (anchorEpoch: number) => void
   /* what setting it does — the same editor corrects one file, which moves nothing else */
@@ -57,6 +62,26 @@ const JumpSpan = ({
 
   const start = show(from)
   const end = show(to)
+  const open = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setDraft(toLocalInput(from))
+  }
+  if (draft === null && big)
+    return (
+      <button
+        type='button'
+        disabled={disabled}
+        onClick={open}
+        title={`${tip}\n${t`This jump runs from ${start} to ${end}`}`}
+        className='flex items-center gap-2.5 rounded-md border border-line bg-transparent px-2.5 py-1.5 text-left text-ink hover:border-line-strong hover:bg-rail disabled:opacity-60'>
+        <b className='text-[20px] font-semibold tracking-[-0.02em] tabular-nums'>{hhmmss(from)}</b>
+        <span className='text-[11.5px] leading-normal text-ink-3'>
+          {dateLabel(from)}
+          <br />
+          {t`click to correct`}
+        </span>
+      </button>
+    )
   if (draft === null)
     return (
       <span
@@ -65,12 +90,9 @@ const JumpSpan = ({
         <button
           type='button'
           disabled={disabled}
-          onClick={(e) => {
-            e.stopPropagation()
-            setDraft(toLocalInput(from))
-          }}
+          onClick={open}
           title={tip}
-          className='cursor-text border-0 bg-transparent p-0 font-mono text-[12.5px] font-semibold text-ink underline decoration-dotted underline-offset-[3px] tabular-nums hover:text-accent disabled:opacity-60'>
+          className='cursor-text border-0 bg-transparent p-0 text-[12.5px] font-medium text-ink underline decoration-dotted underline-offset-[3px] tabular-nums hover:text-accent disabled:opacity-60'>
           {start}
         </button>
       </span>
@@ -84,7 +106,7 @@ const JumpSpan = ({
   return (
     <span
       onClick={(e) => e.stopPropagation()}
-      className='inline-flex flex-wrap items-center gap-[5px]'>
+      className='flex flex-wrap items-center gap-1.5'>
       <input
         type='datetime-local'
         step='1'
@@ -95,21 +117,16 @@ const JumpSpan = ({
           if (e.key === 'Enter') commit()
           if (e.key === 'Escape') setDraft(null)
         }}
-        className='rounded-[5px] border border-pick bg-pane px-[5px] py-0.5 font-mono text-[12px] text-ink'
+        className='h-[30px] min-w-0 flex-1 rounded-md border border-accent bg-pane px-2 text-[12.5px] text-ink tabular-nums'
       />
-      <button
-        type='button'
-        onClick={commit}
-        className='rounded-[5px] border border-accent bg-accent px-3 py-1 text-[12px] font-semibold text-white'>
-        {t`Set`}
-      </button>
+      <Go onClick={commit}>{t`Set`}</Go>
       <button
         type='button'
         onClick={() => setDraft(null)}
-        className='text-[11px] text-ink-3 underline'>
+        className='border-0 bg-transparent p-0 text-[11.5px] text-ink-3 underline hover:text-ink'>
         {t`cancel`}
       </button>
-      <span className='text-[11px] text-ink-3'>{hint}</span>
+      <span className='basis-full text-[11.5px] leading-normal text-ink-3'>{hint}</span>
     </span>
   )
 }

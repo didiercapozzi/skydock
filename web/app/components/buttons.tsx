@@ -1,8 +1,9 @@
 /* The board has four buttons. `Go` is the one thing a panel is asking to be done next, and there is
    never more than one of it in view; `Mini` is everything else — small, quiet, and at the right-hand
    end of the line it belongs to; `ToBin` is putting files in the bin, always red and always with its
-   icon, so the one way off the board is never mistaken for another; `Danger` is the same red without
-   the bin, for what deletes or lets go of something that is not going to the bin (RULES, The board). Keeping them
+   icon, so the one way off the board is never mistaken for another; `Danger` says it in red on a
+   plain button, for what deletes or lets go of something that is not going to the bin (RULES, The
+   board). Keeping them
    here is what stops a fourth from being invented inline. */
 
 type Props = {
@@ -24,7 +25,7 @@ const Go = ({ children, title, disabled, type = 'button', form, onClick }: Props
     title={title}
     disabled={disabled}
     onClick={onClick}
-    className='rounded-[5px] border border-accent bg-accent px-3 py-1 text-[12px] font-semibold text-white hover:brightness-110 disabled:cursor-default disabled:opacity-45'>
+    className='inline-flex h-[30px] items-center justify-center gap-1.5 rounded-[5px] border border-accent bg-accent px-[11px] text-[12.5px] font-medium whitespace-nowrap text-white hover:brightness-110 disabled:cursor-default disabled:opacity-45'>
     {children}
   </button>
 )
@@ -37,10 +38,10 @@ const Mini = ({ children, title, disabled, type = 'button', form, onClick, press
     disabled={disabled}
     onClick={onClick}
     aria-pressed={pressed}
-    className={`rounded-[5px] border px-2 py-[3px] text-[11.5px] disabled:cursor-default disabled:opacity-40 ${
+    className={`inline-flex h-7 items-center justify-center gap-1.5 rounded-[5px] border px-[9px] text-[12.5px] font-medium whitespace-nowrap shadow-card disabled:cursor-default disabled:opacity-40 ${
       pressed
-        ? 'border-accent bg-accent-soft font-semibold text-ink'
-        : 'border-line bg-pane text-ink-2 hover:border-ink-3 hover:text-ink'
+        ? 'border-accent bg-accent-soft text-accent-ink'
+        : 'border-line-strong bg-pane text-ink hover:bg-well'
     }`}>
     {children}
   </button>
@@ -74,8 +75,8 @@ const Danger = ({
     title={title}
     disabled={disabled}
     onClick={onClick}
-    className={`inline-flex items-center gap-1.5 rounded-[5px] border border-bin bg-bin text-white hover:brightness-110 disabled:cursor-default disabled:opacity-45 ${
-      size === 'go' ? 'px-3 py-1 text-[12px] font-semibold' : 'px-2 py-[3px] text-[11.5px]'
+    className={`inline-flex items-center justify-center gap-1.5 rounded-[5px] border border-line-strong bg-pane font-medium whitespace-nowrap text-bin shadow-card hover:bg-bin-soft disabled:cursor-default disabled:opacity-45 ${
+      size === 'go' ? 'h-[30px] px-[11px] text-[12.5px]' : 'h-7 px-[9px] text-[12.5px]'
     }`}>
     {children}
   </button>
@@ -84,15 +85,22 @@ const Danger = ({
 /* Putting files in the bin: red, and with its icon. */
 const ToBin = ({
   children,
-  size = 'mini',
-  ...rest
+  title,
+  disabled,
+  onClick,
+  size = 'mini'
 }: Omit<Props, 'type' | 'form' | 'pressed'> & { size?: 'mini' | 'go' }) => (
-  <Danger
-    size={size}
-    {...rest}>
+  <button
+    type='button'
+    title={title}
+    disabled={disabled}
+    onClick={onClick}
+    className={`inline-flex items-center justify-center gap-1.5 rounded-[5px] border border-bin bg-bin font-medium whitespace-nowrap text-white hover:brightness-110 disabled:cursor-default disabled:opacity-45 ${
+      size === 'go' ? 'h-[30px] px-[11px] text-[12.5px]' : 'h-7 px-[9px] text-[12.5px]'
+    }`}>
     <BinIcon />
     {children}
-  </Danger>
+  </button>
 )
 
 /* A run of choices where exactly one is on: rows or thumbnails, auto or light or dark. The pressed
@@ -117,7 +125,7 @@ const Seg = <T extends string>({
   <span
     role='group'
     aria-label={label}
-    className='flex overflow-hidden rounded-md border border-line'>
+    className='inline-flex h-[30px] gap-px rounded-[7px] border border-line-2 bg-well p-[2px]'>
     {options.map(([option, name, mark]) => (
       <button
         key={option}
@@ -126,8 +134,10 @@ const Seg = <T extends string>({
         aria-label={mark ? name : undefined}
         title={mark ? name : undefined}
         onClick={() => onPick(option)}
-        className={`py-[5px] text-[12px] ${mark ? 'w-8 text-center' : 'px-[11px]'} ${
-          value === option ? 'bg-accent-soft font-semibold text-accent' : 'bg-pane text-ink-2'
+        className={`inline-flex items-center justify-center gap-1.5 rounded-[5px] text-[12px] font-medium whitespace-nowrap ${mark ? 'w-[30px]' : 'px-[9px]'} ${
+          value === option
+            ? 'bg-pane text-ink shadow-[0_1px_2px_rgba(24,24,27,0.08),0_0_0_1px_rgba(24,24,27,0.04)]'
+            : 'text-ink-2 hover:text-ink'
         }`}>
         {mark ?? name}
       </button>

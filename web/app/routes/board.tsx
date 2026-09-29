@@ -26,7 +26,7 @@ import { t } from '@lingui/core/macro'
 import { useEffect, useState } from 'react'
 import { Outlet } from 'react-router'
 import type { ShouldRevalidateFunctionArgs } from 'react-router'
-import { BoardHeader } from '../components/board-header'
+import { BoardHeader, StatusBar } from '../components/board-header'
 import type { NasLink } from '../components/board-header'
 import { Notice } from '../components/notice'
 import { DialogHost } from '../components/dialog-host'
@@ -234,7 +234,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           <Notice
             problem={board.noteIsProblem}
             onClose={() => setNote(null)}
-            className='mt-3 rounded-r-md border-l-[3px] px-3 py-[9px]'>
+            className='mt-3 rounded-md border px-2.5 py-[7px]'>
             {note}
           </Notice>
         )}
@@ -306,12 +306,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         onShortcuts={() => setDialog({ kind: 'shortcuts' })}
         onOverview={() => setDialog({ kind: 'overview' })}
         find={model.findAnything}
-        proxies={board.proxyProgress}
-        disk={board.disk ?? loaderData.disk}
-        nas={{ connected: nas.connected, host: nas.host, user: nas.user, links: nasLinks }}
       />
 
-      <div className='grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] min-[781px]:grid-cols-[250px_minmax(0,1fr)] min-[781px]:grid-rows-[minmax(0,1fr)] min-[1101px]:grid-cols-[250px_minmax(0,1fr)_300px]'>
+      <div className='grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] bg-pane min-[781px]:grid-cols-[224px_minmax(0,1fr)] min-[781px]:grid-rows-[minmax(0,1fr)] min-[1101px]:grid-cols-[224px_minmax(0,1fr)_312px]'>
         <PlacesTree
           destinations={places}
           groups={model.listed}
@@ -329,6 +326,23 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         {/* the folder the address names: its pane and the panel beside it */}
         <Outlet context={model} />
       </div>
+
+      <StatusBar
+        proxies={board.proxyProgress}
+        disk={board.disk ?? loaderData.disk}
+        nas={{ connected: nas.connected, host: nas.host, user: nas.user, links: nasLinks }}
+        uploading={
+          board.uploading && model.progress
+            ? {
+                label: board.uploadLabel ?? '',
+                part:
+                  model.progress.totalBytes > 0
+                    ? model.progress.bytesUploaded / model.progress.totalBytes
+                    : 0
+              }
+            : null
+        }
+      />
 
       <DialogHost
         dialog={model.dialog}
@@ -422,7 +436,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       {/* what is on its way, in the corner, whatever page is open: a camera being copied off, files
           being copied in, and the upload going out — one above the other when several are */}
       {(model.coming || board.uploading || copying) && (
-        <div className='fixed right-4 bottom-4 z-40 flex flex-col items-end gap-2'>
+        <div className='fixed bottom-[34px] left-4 z-40 flex flex-col items-start gap-2 min-[781px]:left-[240px]'>
           {copying && (
             <CameraPanel
               onStop={() =>

@@ -61,7 +61,7 @@ const RemovePlaceDialog = ({
         )}
       </ul>
 
-      <p className='m-0 rounded-r-md border-l-[3px] border-local bg-local-soft px-3 py-[9px] text-[12px] text-ink-2'>
+      <p className='m-0 rounded-md bg-local-soft px-2.5 py-2 text-[12px] text-ink-2'>
         {t`The copies already made for ${place} were written into a folder named after it, so they are forgotten and made again wherever those jumps are filed next. Making the place again by the same name does not bring the filing back.`}
       </p>
     </Modal>

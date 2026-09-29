@@ -12,8 +12,14 @@ import type { MontageFact } from '@skydock/scripts'
 import { useState } from 'react'
 import { Go, Mini } from './buttons'
 import { kindOf } from './file-list'
+import { Icon } from './icons'
+import type { IconName } from './icons'
 import { formatFilmSize, getFileUrl, getPictureUrl, hhmm, pad } from './utils'
 import type { ManifestGroup } from './types'
+
+/* a name typed in, as tall as the button beside it */
+const FIELD =
+  'h-[30px] min-w-0 flex-1 rounded-md border border-line bg-pane px-2.5 text-[13px] text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none'
 
 /* A montage is named once, by one name — "Luc Favre", "Boogie 2026" — and the name *is* the folder
    it gets (RULES, Places). Renaming moves the montage, or joins it to another, so it is never done by
@@ -41,27 +47,25 @@ const PassengerName = ({
   return (
     <span
       onClick={(e) => e.stopPropagation()}
-      className='flex flex-wrap items-center gap-1.5'>
-      <input
-        type='text'
-        value={name}
-        placeholder={t`Name`}
-        aria-label={t`Name`}
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') save()
-          if (e.key === 'Escape') setName(was)
-        }}
-        className='w-full max-w-[16rem] rounded-[5px] border border-line bg-pane px-1.5 py-0.5 text-[12px]'
-      />
-      {changed && (
-        <>
-          {joins && (
-            <span className='text-[11px] font-semibold text-accent'>{t`Joins ${joined}’s montage`}</span>
-          )}
-          <Go onClick={save}>{t`Save`}</Go>
-          <Mini onClick={() => setName(was)}>{t`Cancel`}</Mini>
-        </>
+      className='flex flex-col gap-2'>
+      <span className='flex gap-1.5'>
+        <input
+          type='text'
+          value={name}
+          placeholder={t`Name`}
+          aria-label={t`Name`}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') save()
+            if (e.key === 'Escape') setName(was)
+          }}
+          className={FIELD}
+        />
+        {changed && <Go onClick={save}>{t`Save`}</Go>}
+        {changed && <Mini onClick={() => setName(was)}>{t`Cancel`}</Mini>}
+      </span>
+      {joins && (
+        <span className='text-[11.5px] font-medium text-accent-ink'>{t`Joins ${joined}’s montage`}</span>
       )}
     </span>
   )
@@ -167,7 +171,7 @@ const NameMontage = ({
   return (
     <span
       onClick={(e) => e.stopPropagation()}
-      className='flex flex-wrap items-center gap-1.5'>
+      className='flex flex-col gap-2'>
       {framed && group && (
         <PassengerFrames
           group={group}
@@ -175,92 +179,155 @@ const NameMontage = ({
           inline
         />
       )}
-      <input
-        type='text'
-        value={name}
-        placeholder={t`Name`}
-        aria-label={t`Name`}
-        autoFocus
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => {
-          e.stopPropagation()
-          if (e.key === 'Enter') save()
-          if (e.key === 'Escape') onCancel?.()
-        }}
-        className='w-44 rounded-[5px] border border-pick bg-pane px-[7px] py-0.5 text-[12px] text-ink'
-      />
-      <span
-        className={`min-w-[128px] text-[11px] ${joins ? 'font-semibold text-accent' : 'text-ink-3'}`}>
-        {joins
-          ? t`Joins ${joined}’s montage${copied}`
-          : complete
-            ? t`A new montage${copied}`
-            : t`A name: a person, an event`}
+      <span className='flex gap-1.5'>
+        <input
+          type='text'
+          value={name}
+          placeholder={t`Name`}
+          aria-label={t`Name`}
+          autoFocus
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            e.stopPropagation()
+            if (e.key === 'Enter') save()
+            if (e.key === 'Escape') onCancel?.()
+          }}
+          className={FIELD}
+        />
+        <Go
+          disabled={!complete}
+          onClick={save}>
+          {joins ? t`Join montage` : keeps ? t`Copy into montage` : t`Make montage`}
+        </Go>
       </span>
-      <Go
-        disabled={!complete}
-        onClick={save}>
-        {joins ? t`Join montage` : keeps ? t`Copy into montage` : t`Make montage`}
-      </Go>
-      {onCancel && <Mini onClick={onCancel}>{t`Cancel`}</Mini>}
+      <span className='flex items-start justify-between gap-2'>
+        <span
+          className={`text-[11.5px] leading-normal ${joins ? 'font-medium text-accent-ink' : 'text-ink-3'}`}>
+          {joins
+            ? t`Joins ${joined}’s montage${copied}`
+            : complete
+              ? t`A new montage${copied}`
+              : t`A name: a person, an event`}
+        </span>
+        {onCancel && <Mini onClick={onCancel}>{t`Cancel`}</Mini>}
+      </span>
     </span>
   )
 }
 
-/* the film, once it exists: the one thing here nobody can make again — so it is said out loud, above
-   the montage it came from, rather than as a size beside its buttons. How long it runs is what tells a
-   whole jump from a test render of its first minute. */
-const FilmStrip = ({ facts }: { facts?: MontageFact }) => {
+/* how long a film runs, the way a player writes it */
+const runtime = (seconds: number | null) =>
+  seconds === null ? null : `${Math.floor(seconds / 60)}:${pad(seconds % 60)}`
+
+/* the render time in the address, so a film rendered again is fetched again rather than replayed
+   from the browser's copy of the last one */
+const filmUrl = (film: NonNullable<MontageFact['film']>) =>
+  `${getFileUrl(film.path)}?v=${film.mtime}`
+
+/* The film, once it exists: the one thing here nobody can make again — so it is shown as a picture of
+   its own, above the montage it came from, and watched right there, since the whole point is to check
+   the render before it goes to anyone. How long it runs is what tells a whole jump from a test render
+   of its first minute. The picture is a frame off the montage's own footage, the film having none of
+   its own to show until it plays. */
+const FilmStrip = ({
+  facts,
+  picture,
+  className = ''
+}: {
+  facts?: MontageFact
+  picture?: string
+  className?: string
+}) => {
   const [watching, setWatching] = useState(false)
   if (!facts?.film) return null
-  const { seconds, size, mtime } = facts.film
-  /* the render time in the address, so a film rendered again is fetched again rather than replayed
-     from the browser's copy of the last one */
-  const url = `${getFileUrl(facts.film.path)}?v=${mtime}`
-  const renderedAt = hhmm(mtime)
+  const url = filmUrl(facts.film)
   return (
-    <div className='mt-2.5 rounded-[9px] border border-accent bg-accent-soft px-3 py-[9px]'>
-      <div className='flex flex-wrap items-center gap-2.5'>
-        <span
-          aria-hidden='true'
-          className='text-accent'>
-          ▶
-        </span>
-        {/* the name opens the film on its own, where the browser can also save it */}
-        <a
-          href={url}
-          target='_blank'
-          rel='noreferrer'
-          title={t`Open the film in a new tab`}
-          className='font-mono text-[12.5px] font-bold text-ink hover:text-accent hover:underline'>
-          {filmNameOf(facts.baseName)}
-        </a>
-        <span className='text-[12px] text-ink-2'>
-          {[
-            seconds === null ? null : `${Math.floor(seconds / 60)}:${pad(seconds % 60)}`,
-            formatFilmSize(size),
-            t`rendered ${renderedAt}`
-          ]
-            .filter(Boolean)
-            .join(' · ')}
-        </span>
-        <span className='ml-auto'>
-          <Mini
-            title={watching ? t`Close the player` : t`Watch the film here`}
-            onClick={() => setWatching(!watching)}>
-            {watching ? t`Close` : t`▶ Watch`}
-          </Mini>
-        </span>
-      </div>
-      {/* watched where it is — the whole point is to check the render before it goes to anyone */}
-      {watching && (
-        <video
-          src={url}
-          controls
-          autoPlay
-          className='mt-2.5 max-h-[60vh] w-full rounded-md bg-black'
-        />
+    <div className={`relative h-[196px] overflow-hidden rounded-xl bg-[#18181b] ${className}`}>
+      {watching ? (
+        <>
+          <video
+            src={url}
+            controls
+            autoPlay
+            className='h-full w-full bg-black'
+          />
+          <button
+            type='button'
+            aria-label={t`Close the player`}
+            title={t`Close the player`}
+            onClick={() => setWatching(false)}
+            className='absolute top-2 right-2 grid h-7 w-7 place-items-center rounded-full border-0 bg-black/60 text-white hover:bg-black/80'>
+            <Icon
+              name='close'
+              size={14}
+            />
+          </button>
+        </>
+      ) : (
+        <>
+          {picture && (
+            <img
+              src={picture}
+              alt=''
+              className='h-full w-full object-cover'
+            />
+          )}
+          <span className='absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0)_45%,rgba(20,19,17,0.62))]' />
+          <button
+            type='button'
+            aria-label={t`Watch the film here`}
+            title={t`Watch the film here`}
+            onClick={() => setWatching(true)}
+            className='absolute top-[44%] left-1/2 grid h-[52px] w-[52px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-0 bg-white/90 text-ink shadow-[0_4px_18px_rgba(0,0,0,0.25)] hover:bg-white'>
+            <Icon
+              name='play'
+              size={18}
+            />
+          </button>
+          <span className='absolute right-3.5 bottom-3 left-3.5 flex justify-between text-[12px] text-white'>
+            <span>{t`The film`}</span>
+            <span className='font-mono'>{runtime(facts.film.seconds)}</span>
+          </span>
+        </>
       )}
+    </div>
+  )
+}
+
+/* What the film is, said under it: its name — which opens it on its own, where the browser can also
+   save it — how big it is and when it was rendered; and, while the montage has an edit, that the edit
+   holds its files, with the lock that says so. */
+const FilmNote = ({ facts, locked }: { facts?: MontageFact; locked?: string | null }) => {
+  if (!facts?.film && !locked) return null
+  const film = facts?.film
+  const renderedAt = film ? hhmm(film.mtime) : ''
+  return (
+    <div className='flex items-center gap-3.5 rounded-[10px] border border-line-2 bg-rail px-3.5 py-3'>
+      <Icon
+        name={locked ? 'lock' : 'play'}
+        className='text-ink-2'
+      />
+      <span className='flex min-w-0 flex-1 flex-col gap-0.5'>
+        {film && facts && (
+          <span className='text-[13px]'>
+            <a
+              href={filmUrl(film)}
+              target='_blank'
+              rel='noreferrer'
+              title={t`Open the film in a new tab`}
+              className='font-semibold break-all text-ink hover:text-accent hover:underline'>
+              {filmNameOf(facts.baseName)}
+            </a>{' '}
+            <span className='text-ink-3'>
+              ·{' '}
+              {[runtime(film.seconds), formatFilmSize(film.size), t`rendered ${renderedAt}`]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+          </span>
+        )}
+        {locked && <span className='text-[11.5px] leading-normal text-ink-3'>{locked}</span>}
+      </span>
     </div>
   )
 }
@@ -284,7 +351,7 @@ const ProjectPath = ({ path: projectPath }: { path: string }) => {
       type='button'
       onClick={copy}
       title={`${projectPath}\n\n${t`Click to copy`}`}
-      className='max-w-[22rem] truncate border-0 bg-transparent p-0 font-mono text-[11px] text-ink-3 hover:text-accent'>
+      className='max-w-full truncate border-0 bg-transparent p-0 font-mono text-[11.5px] text-ink-3 hover:text-accent'>
       {copied ? t`✓ copied` : `${projectPath} ⧉`}
     </button>
   )
@@ -333,7 +400,7 @@ const MontageCardActions = ({
   const uploading = upload?.label ?? ''
   if (!group.processed)
     return (
-      <span className='ml-auto flex flex-wrap items-center gap-1.5'>
+      <span className='flex flex-wrap items-center gap-2'>
         <Go
           disabled={working || !named}
           onClick={onProcess}>
@@ -344,7 +411,7 @@ const MontageCardActions = ({
     )
   if (!facts?.project)
     return (
-      <span className='ml-auto flex flex-wrap items-center gap-1.5'>
+      <span className='flex flex-wrap items-center gap-2'>
         {/* The editor opens on proxies, and a project made before them opens on the full clips, so
             it waits until each clip has one, or has failed to get one (RULES, The editing project). */}
         {proxiesWaiting > 0 && (
@@ -368,16 +435,34 @@ const MontageCardActions = ({
       </span>
     )
   return (
-    <span className='ml-auto flex flex-wrap items-center gap-2'>
-      <ProjectPath path={facts.projectPath} />
+    <span className='flex flex-wrap items-center gap-2'>
+      <Go
+        disabled={working || blocked.blocked || upload !== null}
+        title={
+          upload && upload.key !== uploadKey
+            ? t`Uploading ${uploading} — wait for it, or cancel it`
+            : (blocked.message ??
+              t`Zip the photos and the rushes, then send the film and the photos to the montage’s folder`)
+        }
+        onClick={onUpload}>
+        <Icon
+          name='upload'
+          size={14}
+          weight={2}
+        />
+        {upload?.key === uploadKey ? t`Uploading…` : group.uploaded ? t`Upload again…` : t`Upload…`}
+      </Go>
       <Mini
         disabled={working}
         title={t`Open this project in the editor`}
         onClick={onOpenMontage}>
+        <Icon
+          name='open'
+          size={14}
+          className='text-ink-2'
+        />
         {busy === `open:${group.id}` ? t`Opening…` : t`Open in kdenlive`}
       </Mini>
-      {/* the film itself is shown above the montage once it exists */}
-      {!facts.film && <span className='text-[12px] text-ink-3'>{t`edit and render it`}</span>}
       {/* A montage with an edit is prepared again like any other: the copies are rewritten under the
           same names and the project is left where it is, so a trim or a frame corrected afterwards
           can still reach the footage the editor plays (RULES, The editing project). */}
@@ -395,17 +480,11 @@ const MontageCardActions = ({
           {busy === `free:${group.id}` ? t`Checking the storage…` : t`Free up space…`}
         </Mini>
       )}
-      <Go
-        disabled={working || blocked.blocked || upload !== null}
-        title={
-          upload && upload.key !== uploadKey
-            ? t`Uploading ${uploading} — wait for it, or cancel it`
-            : (blocked.message ??
-              t`Zip the photos and the rushes, then send the film and the photos to the montage’s folder`)
-        }
-        onClick={onUpload}>
-        {upload?.key === uploadKey ? t`Uploading…` : group.uploaded ? t`Upload again…` : t`Upload…`}
-      </Go>
+      {/* the film itself is shown above the montage once it exists */}
+      {!facts.film && <span className='text-[11.5px] text-ink-3'>{t`edit and render it`}</span>}
+      <span className='basis-full'>
+        <ProjectPath path={facts.projectPath} />
+      </span>
     </span>
   )
 }
@@ -413,6 +492,9 @@ const MontageCardActions = ({
 /* Once it is uploaded, what matters is what is on the NAS — not the files it was made from. One
    parcel per folder up there, each listing exactly what is in it. That is what makes an uploaded
    montage worth opening months later. */
+/* one thing in a folder up there: what it is drawn as, called, weighs, and is for */
+type NasItem = { icon: IconName; name: string; size: number; what: string }
+
 const NasCard = ({
   title,
   dir,
@@ -423,37 +505,42 @@ const NasCard = ({
   title: string
   dir: string
   tag: string
-  items: { icon: string; name: string; size: number; what: string }[]
+  items: NasItem[]
   shareUrl?: string
 }) => (
-  <div className='mt-2.5 overflow-hidden rounded-[9px] border border-line'>
-    <div className='flex flex-wrap items-center gap-2 border-b border-line bg-ground px-3 py-[9px] text-[13px]'>
+  <div className='mt-2.5 overflow-hidden rounded-[10px] border border-line'>
+    <div className='flex flex-wrap items-center gap-2 border-b border-line bg-rail px-3.5 py-2 text-[12.5px]'>
       <b className='font-semibold'>{title}</b>
-      <span className='text-ink-3'>→</span>
-      <code className='rounded-[3px] bg-line-2 px-1.5 py-px font-mono text-[11.5px] text-ink'>
-        {dir}
-      </code>
-      <span className='ml-auto text-[12px] text-ink-2'>{tag}</span>
+      <span className='font-mono text-[11.5px] text-ink-3'>{dir}</span>
+      <span className='ml-auto text-[11.5px] text-ink-3'>{tag}</span>
     </div>
     <div className='px-1.5 py-1'>
       {items.map((item) => (
         <div
           key={item.name}
-          className='flex items-center gap-2.5 rounded-[5px] p-1.5 hover:bg-line-2'>
-          <span className='w-[15px] flex-none text-center text-accent'>{item.icon}</span>
-          <code className='font-mono text-[11.5px]'>{item.name}</code>
-          <span className='text-[12px] text-ink-2'>{formatFilmSize(item.size)}</span>
-          <span className='mr-2.5 ml-auto text-[12px] text-ink-2'>{item.what}</span>
+          className='flex items-center gap-2.5 rounded-[5px] px-2 py-1.5 hover:bg-well'>
+          <Icon
+            name={item.icon}
+            size={14}
+            className='text-ink-3'
+          />
+          <span className='min-w-0 truncate text-[12.5px] font-medium'>{item.name}</span>
+          <span className='text-[11.5px] text-ink-3'>{formatFilmSize(item.size)}</span>
+          <span className='mr-1 ml-auto text-[11.5px] text-ink-3'>{item.what}</span>
         </div>
       ))}
       {shareUrl && (
-        <div className='mt-1 flex items-center gap-2.5 border-t border-line-2 px-1.5 pt-2 pb-1.5'>
-          <span className='w-[15px] flex-none text-center'>🔗</span>
+        <div className='mt-1 flex items-center gap-2.5 border-t border-line-2 px-2 pt-2 pb-1.5'>
+          <Icon
+            name='link'
+            size={14}
+            className='text-ink-3'
+          />
           <a
             href={shareUrl}
             target='_blank'
             rel='noreferrer'
-            className='truncate font-mono text-[11px] text-accent underline'>
+            className='truncate font-mono text-[11px] text-accent-ink hover:underline'>
             {shareUrl}
           </a>
         </div>
@@ -468,7 +555,7 @@ const GoneFromStorage = ({ gone, at }: { gone: { remotePath: string }[]; at?: nu
   if (gone.length === 0) return null
   const uploadedOn = at ? new Date(at * 1000).toLocaleDateString('de-CH') : ''
   return (
-    <p className='mt-2.5 mb-0 rounded-md bg-changed-soft px-3 py-2 text-[12.5px] text-changed'>
+    <p className='mt-2.5 mb-0 rounded-[10px] border border-line-2 bg-changed-soft px-3.5 py-2.5 text-[12.5px] text-changed'>
       {at ? t`Uploaded ${uploadedOn}, but ` : ''}
       {plural(gone.length, {
         one: 'this is no longer on the storage:',
@@ -490,18 +577,18 @@ const UploadedCards = ({ group }: { group: ManifestGroup }) => {
   if (!record) return null
   const passenger = [
     record.film && {
-      icon: '▶',
+      icon: 'play',
       name: lastSegment(record.film.remotePath),
       size: record.film.size,
       what: t`the film`
     },
     record.photos && {
-      icon: '🗜',
+      icon: 'fresh',
       name: lastSegment(record.photos.remotePath),
       size: record.photos.size,
       what: t`the photos`
     }
-  ].filter((x): x is { icon: string; name: string; size: number; what: string } => Boolean(x))
+  ].filter((x): x is NasItem => Boolean(x))
   const anchor = record.film ?? record.photos
   return (
     <>
@@ -521,7 +608,7 @@ const UploadedCards = ({ group }: { group: ManifestGroup }) => {
           tag={t`never shared`}
           items={[
             {
-              icon: '🗜',
+              icon: 'fresh',
               name: lastSegment(record.rushes.remotePath),
               size: record.rushes.size,
               what: t`the originals`
@@ -536,7 +623,7 @@ const UploadedCards = ({ group }: { group: ManifestGroup }) => {
           dir={parentOf(record.originals[0]!.remotePath)}
           tag={t`never shared`}
           items={record.originals.map((original) => ({
-            icon: '▶',
+            icon: 'play',
             name: lastSegment(original.remotePath),
             size: original.size,
             what:
@@ -555,6 +642,7 @@ export {
   NameMontage,
   UploadedCards,
   GoneFromStorage,
+  FilmNote,
   FilmStrip,
   PassengerFrames,
   PassengerName,

@@ -6,7 +6,9 @@ import type { Dropped } from '../helpers/import'
 import { placeLabel } from '../helpers/places'
 import type { Place } from '../helpers/places'
 import type { Grouping } from '../helpers/sections'
-import { KindBadges } from './file-list'
+import { Seg } from './buttons'
+import { kindOf } from './file-list'
+import { Icon } from './icons'
 import { Notice } from './notice'
 import type { Kind } from './file-list'
 import type { ManifestFile } from './types'
@@ -17,10 +19,61 @@ const GROUPING_LABEL: Record<Grouping, MessageDescriptor> = {
   none: msg`One list`
 }
 
-/* The folder that is open: the path to it, what it holds, the ways of finding and arranging its
-   files, and — always at the top right — the one thing the folder as a whole asks for next. Under
-   it, what is left to do there, and the board's one line of news. The pane takes files dropped from
-   the computer, for the folder it shows. */
+/* how many of a kind, small and grey beside its name */
+const Count = ({ n }: { n: number }) => (
+  <span className='text-[11px] font-normal text-ink-3 tabular-nums'>{n}</span>
+)
+
+/* Videos, photos or both — each with how many the folder holds. Shown on every folder, even where
+   one kind is absent, so every head reads the same and says what is in it at a glance. A kind with
+   nothing in it is on show but cannot be picked. */
+const KindSeg = ({
+  files,
+  kind,
+  onPick
+}: {
+  files: ManifestFile[]
+  kind: Kind
+  onPick: (kind: Kind) => void
+}) => {
+  if (files.length === 0) return null
+  const videos = files.filter((f) => kindOf(f) === 'video').length
+  const photos = files.length - videos
+  const options: [Kind, string, number | null, string][] = [
+    ['video', t`Videos`, videos, t`Show only the ${videos} videos`],
+    ['photo', t`Photos`, photos, t`Show only the ${photos} photos`],
+    ['all', t`All`, null, t`Show everything`]
+  ]
+  return (
+    <span
+      role='group'
+      aria-label={t`Videos or photos`}
+      className='inline-flex h-[30px] gap-px rounded-[7px] border border-line-2 bg-well p-[2px]'>
+      {options.map(([value, label, count, title]) => (
+        <button
+          key={value}
+          type='button'
+          aria-pressed={kind === value}
+          disabled={count === 0 && kind !== value}
+          title={title}
+          onClick={() => onPick(value)}
+          className={`inline-flex items-center justify-center gap-1.5 rounded-[5px] px-[9px] text-[12px] font-medium whitespace-nowrap disabled:cursor-default disabled:opacity-45 ${
+            kind === value
+              ? 'bg-pane text-ink shadow-[0_1px_2px_rgba(24,24,27,0.08),0_0_0_1px_rgba(24,24,27,0.04)]'
+              : 'text-ink-2 hover:text-ink'
+          }`}>
+          {label}
+          {count !== null && <Count n={count} />}
+        </button>
+      ))}
+    </span>
+  )
+}
+
+/* The folder that is open: its name and what it holds, the folder's own tools at the far end, and
+   under them the ways of finding and arranging its files. Under the head, what is left to do there
+   and the board's one line of news, which stay put while the files scroll. The pane takes files
+   dropped from the computer, for the folder it shows. */
 const PlacePane = ({
   place,
   summary,
@@ -41,9 +94,13 @@ const PlacePane = ({
   files: ManifestFile[]
   query: string
   onQuery: (query: string) => void
-  grouping: { value: Grouping; options: readonly Grouping[]; onChange: (g: Grouping) => void }
+  grouping: {
+    value: Grouping
+    options: readonly Grouping[]
+    onChange: (g: Grouping) => void
+  }
   kind: { value: Kind; onChange: (k: Kind) => void }
-  /* what else the folder offers — a passenger's email, taking a montage back */
+  /* what else the folder offers — a montage's email, taking a montage back */
   tools?: React.ReactNode
   /* what is still to do here, and anything that belongs to the folder, like its storage folder */
   left?: React.ReactNode
@@ -68,86 +125,71 @@ const PlacePane = ({
         e.preventDefault()
         onImport(carried, incoming.target, incoming.where)
       }}
-      className='flex min-h-0 min-w-0 flex-col bg-ground'>
-      <div className='flex flex-wrap items-center gap-x-[9px] gap-y-1.5 border-b border-line bg-pane px-4 pt-2.5 pb-2'>
-        <span className='flex items-center gap-1.5 text-[12.5px] text-ink-3'>
-          <b className='text-[15px] font-semibold text-ink'>{placeLabel(place)}</b>
-        </span>
-        <span className='text-[12px] text-ink-2'>{summary}</span>
-        {tools}
-        <span className='ml-auto flex flex-wrap items-center gap-2'>
-          {browsing && (
-            <>
-              <label className='flex items-center gap-1.5 rounded-md border border-line bg-ground px-[9px] py-[3px]'>
-                <span
-                  aria-hidden='true'
-                  className='text-[12px] text-ink-3'>
-                  ⌕
-                </span>
-                <input
-                  type='text'
-                  value={query}
-                  onChange={(e) => onQuery(e.target.value)}
-                  placeholder={t`Find a file`}
-                  aria-label={t`Find a file`}
-                  className='w-[130px] border-0 bg-transparent text-[12.5px] outline-none placeholder:text-ink-3 max-[780px]:w-[90px]'
-                />
-              </label>
-              <KindBadges
-                files={files}
-                kind={kind.value}
-                withAll
-                onPick={kind.onChange}
+      className='flex min-h-0 min-w-0 flex-col bg-pane'>
+      <div className='flex flex-col gap-3 border-b border-line px-4 pt-3 pb-2.5'>
+        <div className='flex flex-wrap items-baseline gap-x-4 gap-y-1.5'>
+          <h1 className='m-0 text-[17px] leading-[1.2] font-semibold tracking-[-0.02em] text-ink'>
+            {placeLabel(place)}
+          </h1>
+          <span className='text-[12.5px] text-ink-3'>{summary}</span>
+          {tools && <span className='ml-auto flex items-center gap-2 self-center'>{tools}</span>}
+        </div>
+        {browsing && (
+          <div className='flex flex-wrap items-center gap-2'>
+            <KindSeg
+              files={files}
+              kind={kind.value}
+              onPick={kind.onChange}
+            />
+            {/* every way of arranging the folder in plain sight, one press each — a place with
+                only one way has nothing to choose */}
+            {grouping.options.length > 1 && (
+              <Seg
+                label={t`Group`}
+                value={grouping.value}
+                options={grouping.options.map((g) => [g, i18n._(GROUPING_LABEL[g])] as const)}
+                onPick={grouping.onChange}
               />
-              {/* every way of arranging the folder in plain sight, one press each — a place with
-                  only one way has nothing to choose */}
-              {grouping.options.length > 1 && (
-                <span
-                  role='group'
-                  aria-label={t`Group`}
-                  className='flex overflow-hidden rounded-md border border-line'>
-                  {grouping.options.map((g) => (
-                    <button
-                      key={g}
-                      type='button'
-                      aria-pressed={grouping.value === g}
-                      onClick={() => grouping.onChange(g)}
-                      className={`px-[11px] py-[5px] text-[12px] ${
-                        grouping.value === g
-                          ? 'bg-accent-soft font-semibold text-accent'
-                          : 'bg-pane text-ink-2 hover:text-ink'
-                      }`}>
-                      {i18n._(GROUPING_LABEL[g])}
-                    </button>
-                  ))}
-                </span>
-              )}
-            </>
-          )}
-        </span>
+            )}
+            <label className='flex h-[30px] w-[180px] items-center gap-[7px] rounded-md border border-line px-[9px] text-ink-3 focus-within:border-accent max-[780px]:w-[130px]'>
+              <Icon
+                name='narrow'
+                size={14}
+                weight={2}
+              />
+              <input
+                type='text'
+                value={query}
+                onChange={(e) => onQuery(e.target.value)}
+                placeholder={t`Narrow by name`}
+                aria-label={t`Find a file`}
+                className='min-w-0 flex-1 border-0 bg-transparent text-[12.5px] text-ink outline-none placeholder:text-ink-3'
+              />
+            </label>
+          </div>
+        )}
       </div>
 
-      {left && (
-        <div className='flex flex-wrap items-center gap-2 border-b border-line bg-pane px-4 py-1.5 text-[12px] text-ink-2'>
+      {(left || note) && (
+        <div className='flex flex-col gap-3 px-4 pt-3'>
           {left}
+          {note && (
+            <Notice
+              problem={note.problem}
+              onClose={note.onClose}>
+              {note.text}
+            </Notice>
+          )}
         </div>
       )}
 
-      {note && (
-        <Notice
-          problem={note.problem}
-          onClose={note.onClose}
-          className='border-b px-4 py-[7px]'>
-          {note.text}
-        </Notice>
-      )}
-
-      <div className='flex-1 overflow-y-auto px-4 pb-10'>{children}</div>
+      <div className='flex-1 overflow-y-auto px-4 pt-3 pb-10'>{children}</div>
     </section>
   )
 }
 
-/* one thing still owed in the folder, said as a small count; one that can be acted on is a button */
+/* one thing still owed in the folder, said as a short count in the colour of its state; one that
+   can be acted on is a button */
 const Owed = ({
   tone,
   children,
@@ -158,19 +200,19 @@ const Owed = ({
   onClick?: () => void
 }) => {
   const look = {
-    todo: 'border-local bg-local-soft text-local',
-    done: 'border-up bg-up-soft text-up',
-    plain: 'border-line bg-ground text-ink-2'
+    todo: 'font-medium text-local',
+    done: 'font-medium text-up',
+    plain: 'text-ink-2'
   }[tone]
   return onClick ? (
     <button
       type='button'
       onClick={onClick}
-      className={`rounded-full border px-2.5 py-px text-[12px] hover:brightness-95 ${look}`}>
+      className={`border-0 bg-transparent p-0 text-[12.5px] hover:underline ${look}`}>
       {children}
     </button>
   ) : (
-    <span className={`rounded-full border px-2.5 py-px text-[12px] ${look}`}>{children}</span>
+    <span className={`text-[12.5px] ${look}`}>{children}</span>
   )
 }
 

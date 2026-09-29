@@ -2,13 +2,13 @@ import { createElement } from 'react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
-import { BoardHeader } from '../../app/components/board-header'
+import { BoardHeader, StatusBar } from '../../app/components/board-header'
 import { DisconnectDialog } from '../../app/components/disconnect-dialog'
 import { speak } from '../../app/i18n'
 
-/* The top of the board says who the storage is connected as and where, and offers what applies to
-   the whole board: scanning, the templates, the connection, how files are drawn and how the app is
-   lit (RULES, The board). It is read at a glance and acted on rarely, so the settings are marks
+/* The toolbar offers what applies to the whole board — scanning, the overview, how files are drawn,
+   and behind Settings the templates, how the app is lit — and the status bar says who the storage is
+   connected as and where, what is going on, and how big the board is drawn (RULES, The board). It is read at a glance and acted on rarely, so the settings are marks
    with names on them rather than eight words spelled out across the screen. */
 
 const links = [
@@ -16,35 +16,40 @@ const links = [
   { label: 'Disconnect the storage', mark: '⏻', onClick: () => {} }
 ]
 
-const header = (over: Partial<Parameters<typeof BoardHeader>[0]> = {}) =>
-  render(
-    createElement(BoardHeader, {
-      scanning: false,
-      onScan: () => {},
-      onTemplates: () => {},
-      onWorkFolder: () => {},
-      onHistory: () => {},
-      onShortcuts: () => {},
-      onOverview: () => {},
-      find: () => [],
-      proxies: { ready: 48, waiting: 2, total: 50 },
-      disk: null,
-      nas: {
-        connected: true,
-        host: 'https://didiercapozzi.synology.me:9500/',
-        user: 'didier',
-        links
-      },
-      ...over
-    })
+type Frame = Parameters<typeof BoardHeader>[0] & Parameters<typeof StatusBar>[0]
+
+/* the toolbar across the top and the status bar along the bottom, as the board draws them */
+const header = (over: Partial<Frame> = {}) => {
+  const all: Frame = {
+    scanning: false,
+    onScan: () => {},
+    onTemplates: () => {},
+    onWorkFolder: () => {},
+    onHistory: () => {},
+    onShortcuts: () => {},
+    onOverview: () => {},
+    find: () => [],
+    proxies: { ready: 48, waiting: 2, total: 50 },
+    disk: null,
+    nas: {
+      connected: true,
+      host: 'https://didiercapozzi.synology.me:9500/',
+      user: 'didier',
+      links
+    },
+    uploading: null,
+    ...over
+  }
+  return render(
+    createElement('div', null, createElement(BoardHeader, all), createElement(StatusBar, all))
   )
+}
 
 describe('the top of the board', () => {
   test('says who the storage is connected as, and where', async () => {
     await header()
 
-    await expect.element(page.getByText('didier')).toBeVisible()
-    await expect.element(page.getByText('didiercapozzi.synology.me')).toBeVisible()
+    await expect.element(page.getByText('didier @ didiercapozzi.synology.me')).toBeVisible()
     /* how a machine reaches it is not something to read across the top */
     await expect.element(page.getByText('9500')).not.toBeInTheDocument()
   })

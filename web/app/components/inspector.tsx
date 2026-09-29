@@ -5,9 +5,10 @@ import { useState } from 'react'
 import { Danger, Go, Mini } from './buttons'
 import { StatusChip } from './file-status'
 import type { ShownStatus } from './file-status'
+import { Icon } from './icons'
 import { JumpForm } from './jump-name'
 import { JumpSpan, hhmmss } from './jump-time'
-import { NameMontage, PassengerFrames, PassengerName } from './montage-card'
+import { NameMontage, PassengerName } from './montage-card'
 import { StepTrail } from './montage-steps'
 import type { Passenger } from './montage-card'
 import type { ManifestFile, ManifestGroup } from './types'
@@ -39,7 +40,7 @@ const Shell = ({ children }: { children: React.ReactNode }) => {
         onKeyDown={(e) => {
           if (e.key === 'Escape' && open) setOpen(false)
         }}
-        className={`flex min-h-0 flex-col gap-3 overflow-y-auto border-l border-line bg-pane p-3.5 max-[1100px]:fixed max-[1100px]:inset-y-0 max-[1100px]:right-0 max-[1100px]:z-30 max-[1100px]:w-[min(340px,90vw)] max-[1100px]:shadow-[0_0_40px_rgba(0,0,0,0.25)] ${
+        className={`flex min-h-0 flex-col overflow-y-auto border-l border-line bg-pane max-[1100px]:fixed max-[1100px]:inset-y-0 max-[1100px]:right-0 max-[1100px]:z-30 max-[1100px]:w-[min(340px,90vw)] max-[1100px]:shadow-[0_0_40px_rgba(0,0,0,0.25)] ${
           open ? '' : 'max-[1100px]:hidden'
         }`}>
         {children}
@@ -48,43 +49,82 @@ const Shell = ({ children }: { children: React.ReactNode }) => {
   )
 }
 
-const Title = ({ title, sub }: { title: React.ReactNode; sub?: string }) => (
-  <div>
-    <h3 className='m-0 text-[14px] font-semibold break-all'>{title}</h3>
-    {sub && <p className='m-0 mt-0.5 text-[12px] text-ink-3'>{sub}</p>}
+/* Who or what the panel is about: what kind of thing and where, its name, and what it holds — over
+   a hairline, the way every section under it is set off from the next. With no picture above it, it
+   sits a little lower, where the picture would have ended. */
+const Who = ({
+  eyebrow,
+  title,
+  sub,
+  lower = false
+}: {
+  eyebrow?: string
+  title: React.ReactNode
+  sub?: React.ReactNode
+  lower?: boolean
+}) => (
+  <div
+    className={`flex flex-col gap-0.5 border-b border-line px-4 pb-3 ${lower ? 'pt-5' : 'pt-3.5'}`}>
+    {eyebrow && <span className='text-[11.5px] font-medium text-ink-3'>{eyebrow}</span>}
+    <h2 className='m-0 mt-0.5 text-[17px] leading-[1.25] font-semibold tracking-[-0.02em] break-words'>
+      {title}
+    </h2>
+    {sub && <span className='text-[12px] text-ink-3'>{sub}</span>}
   </div>
 )
 
-const Box = ({ heading, children }: { heading: string; children: React.ReactNode }) => (
-  <section className='flex flex-col gap-2 rounded-lg border border-line bg-ground px-3 py-2.5'>
-    <h4 className='m-0 text-[11px] font-semibold tracking-[0.08em] text-ink-3 uppercase'>
-      {heading}
-    </h4>
+/* the picture at the top of the panel: what is being looked at, before any word about it */
+const Hero = ({ children }: { children: React.ReactNode }) => (
+  <div className='relative mx-3.5 mt-3.5 h-[150px] flex-none overflow-hidden rounded-md bg-well'>
+    {children}
+  </div>
+)
+
+/* One part of the panel: what it is about in a quiet word over it, a hairline under it. */
+const Part = ({ heading, children }: { heading?: string; children: React.ReactNode }) => (
+  <section className='flex flex-col gap-2 border-b border-line px-4 py-3 last:border-b-0'>
+    {heading && <h3 className='m-0 text-[11.5px] font-medium text-ink-3'>{heading}</h3>}
     {children}
   </section>
 )
 
+/* buttons of a part two to a row, each taking half */
+const Pair = ({ children }: { children: React.ReactNode }) => (
+  <div className='grid grid-cols-2 gap-2 [&>button]:w-full'>{children}</div>
+)
+
+/* one button across the whole part */
+const Whole = ({ children }: { children: React.ReactNode }) => (
+  <div className='grid [&>button]:w-full'>{children}</div>
+)
+
 const Facts = ({ rows }: { rows: [string, React.ReactNode][] }) => (
-  <dl className='m-0 grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-1 text-[12.5px]'>
+  <dl className='m-0 grid grid-cols-[84px_minmax(0,1fr)] gap-y-1.5 text-[12.5px]'>
     {rows.map(([term, value]) => (
       <div
         key={term}
         className='contents'>
         <dt className='text-ink-3'>{term}</dt>
-        <dd className='m-0 min-w-0 font-mono text-[12px] break-all'>{value}</dd>
+        <dd className='m-0 min-w-0 break-words tabular-nums'>{value}</dd>
       </div>
     ))}
   </dl>
 )
 
+/* what holds the thing still — an edit, or being on the storage only — drawn with a lock */
 const Lock = ({ children }: { children: React.ReactNode }) => (
-  <p className='m-0 rounded-r-md border-l-[3px] border-lock bg-lock-soft px-2.5 py-[7px] text-[12px] text-ink-2'>
-    {children}
+  <p className='m-0 flex gap-2.5 rounded-md border border-line-2 bg-rail px-3 py-2 text-[12px] text-ink-2'>
+    <Icon
+      name='lock'
+      size={14}
+      className='mt-px text-ink-2'
+    />
+    <span>{children}</span>
   </p>
 )
 
 const Hint = ({ children }: { children: React.ReactNode }) => (
-  <p className='m-0 text-[12px] text-ink-3'>{children}</p>
+  <p className='m-0 text-[11.5px] leading-normal text-ink-3'>{children}</p>
 )
 
 const tally = (files: ManifestFile[], statusOf: (file: ManifestFile) => FileStatus) => {
@@ -107,7 +147,7 @@ type MontageOffer = {
 const bytes = (files: ManifestFile[]) => formatSize(files.reduce((n, f) => n + f.size, 0))
 
 /* Nothing selected: the folder itself — what it holds, how far along it is, and anything the folder
-   as a whole has, like a dropzone's folder on the storage or a passenger's progress. */
+   as a whole has, like a dropzone's folder on the storage or a montage's progress. */
 const FolderPanel = ({
   title,
   sub,
@@ -122,17 +162,23 @@ const FolderPanel = ({
   children?: React.ReactNode
 }) => (
   <>
-    <Title
+    <Who
+      eyebrow={t`Nothing selected`}
       title={title}
       sub={sub}
+      lower
     />
     {files.length > 0 && (
-      <Facts rows={tally(files, statusOf).map(([name, n]) => [name, String(n)])} />
+      <Part heading={t`What it holds`}>
+        <Facts rows={tally(files, statusOf).map(([name, n]) => [name, String(n)])} />
+      </Part>
     )}
     {children}
-    <Hint>
-      {t`Select a file or a jump to see it here. Double-click a file to trim, frame or turn it.`}
-    </Hint>
+    <Part>
+      <Hint>
+        {t`Select a file or a jump to see it here. Double-click a file to trim, frame or turn it.`}
+      </Hint>
+    </Part>
   </>
 )
 
@@ -166,24 +212,40 @@ const MontageNamer = ({
       onCancel={() => setMaking(false)}
     />
   ) : (
-    <span>
+    <Whole>
       <Mini onClick={() => setMaking(true)}>
+        <Icon
+          name='montage'
+          size={14}
+          className='text-ink-2'
+        />
         {keeps
           ? t`Copy into a montage…`
           : what
             ? t`Make a montage of ${ofWhat}…`
             : t`Make a montage…`}
       </Mini>
-    </span>
+    </Whole>
   )
 }
 
-/* A jump: when it started — set right here, every file moving with it — a few frames of it, and the
-   way to make it a passenger's montage or delete it. It is filed by dragging it onto a place. A montage
-   shows how far it has got, and its name can be changed while nothing has been edited from it. */
+/* the first frame worth showing: a video's, where there is one, since a face is likelier in footage */
+const firstFrame = (files: ManifestFile[]) => files.find((f) => isVideoFile(f.path)) ?? files[0]
+
+const counts = (files: ManifestFile[]) => {
+  const videos = files.filter((f) => isVideoFile(f.path)).length
+  const photos = files.length - videos
+  const size = bytes(files)
+  return t`${plural(videos, { one: '# video', other: '# videos' })} · ${plural(photos, { one: '# photo', other: '# photos' })} · ${size}`
+}
+
+/* A jump: when it started — set right here, every file moving with it — a picture of it, and the
+   way to make it a montage or delete it. It is filed by dragging it onto a place. A montage shows how
+   far it has got, and its name can be changed while nothing has been edited from it. */
 const JumpPanel = ({
   group,
   label,
+  where,
   facts,
   emailed,
   locked,
@@ -201,6 +263,8 @@ const JumpPanel = ({
 }: {
   group: ManifestGroup
   label: string
+  /* the folder the jump is in, said over its name */
+  where?: string
   facts?: MontageFact
   emailed: boolean
   locked: string | null
@@ -225,30 +289,46 @@ const JumpPanel = ({
   const [renaming, setRenaming] = useState(false)
   const from = minFileMtime(group.files) ?? 0
   const to = group.files.reduce((n, f) => Math.max(n, f.mtime), 0)
-  const videos = group.files.filter((f) => isVideoFile(f.path)).length
   const montage = isMontage(group)
   const named = hasCompletePassenger(group.passenger)
-  const photos = group.files.length - videos
-  const size = bytes(group.files)
-  const sub = t`${plural(videos, { one: '# video', other: '# videos' })} · ${plural(photos, { one: '# photo', other: '# photos' })} · ${size}`
   const fileCount = group.files.length
+  const frame = group.freed ? undefined : firstFrame(group.files)
+  /* a named montage is told by its name; anything else is told apart by what it shows */
+  const pictured = frame && !(montage && named)
+  const tallied = tally(group.files, statusOf)
+    .filter(([, n]) => n > 0)
+    .map(([name, n]) => `${n} ${name.toLowerCase()}`)
+    .join(' · ')
   return (
     <>
+      {pictured && (
+        <Hero>
+          <img
+            src={getPictureUrl(frame, undefined, 480)}
+            alt={montage && !named ? t`A frame from this montage, to tell who it is` : label}
+            className='h-full w-full object-cover'
+          />
+        </Hero>
+      )}
       {/* the name is changed where it is read, the way its start is */}
       {renaming && onRename ? (
-        <JumpForm
-          name={group.name}
-          submitLabel={t`Rename`}
-          onSubmit={(name) => {
-            setRenaming(false)
-            onRename(name)
-          }}
-          onCancel={() => setRenaming(false)}
-        />
+        <div className='border-b border-line px-4 py-3.5'>
+          <JumpForm
+            name={group.name}
+            submitLabel={t`Rename`}
+            onSubmit={(name) => {
+              setRenaming(false)
+              onRename(name)
+            }}
+            onCancel={() => setRenaming(false)}
+          />
+        </div>
       ) : (
         /* The name and the day kept apart: each is changed by clicking it, and the day is changed
            down in Starts, not here — so only the name is drawn as something to click. */
-        <Title
+        <Who
+          eyebrow={montage ? t`Montage` : where ? t`A jump in ${where}` : t`A jump`}
+          lower={!pictured}
           title={
             <span className='inline-flex flex-wrap items-baseline gap-x-2'>
               {onRename ? (
@@ -256,71 +336,71 @@ const JumpPanel = ({
                   type='button'
                   onClick={() => setRenaming(true)}
                   title={t`Rename this jump`}
-                  className='cursor-text border-0 bg-transparent p-0 text-left font-[inherit] text-[inherit] text-ink underline decoration-dotted underline-offset-[3px] hover:text-accent'>
+                  className='cursor-text border-0 bg-transparent p-0 text-left font-[inherit] text-[inherit] text-ink hover:text-accent hover:underline hover:decoration-dotted hover:underline-offset-[3px]'>
                   {label}
                 </button>
               ) : (
                 label
               )}
-              <span className='rounded border border-line px-1.5 text-[11.5px] font-normal text-ink-3'>
+              <span className='text-[12px] font-normal tracking-normal text-ink-3'>
                 {shortDate(from)}
               </span>
             </span>
           }
-          sub={sub}
+          sub={
+            <>
+              {counts(group.files)}
+              {tallied && <span className='block'>{tallied}</span>}
+            </>
+          }
         />
       )}
       {/* when it started is the one thing about a jump that can be set right, so it is set here */}
-      <Facts
-        rows={[
-          [
-            t`Starts`,
-            onShift && group.files.length > 0 ? (
-              <JumpSpan
-                key='starts'
-                from={from}
-                to={to}
-                withDate
-                disabled={false}
-                onShift={onShift}
-              />
-            ) : (
-              `${dateLabel(from)} ${hhmmss(from)}`
-            )
-          ]
-        ]}
-      />
-      {!group.freed && (
-        <PassengerFrames
-          group={group}
-          alt={montage && !named ? t`A frame from this montage, to tell who it is` : label}
-        />
-      )}
+      <Part heading={t`Starts`}>
+        {onShift && group.files.length > 0 ? (
+          <JumpSpan
+            from={from}
+            to={to}
+            withDate
+            big
+            disabled={false}
+            onShift={onShift}
+          />
+        ) : (
+          <span className='text-[12.5px] tabular-nums'>{`${dateLabel(from)} ${hhmmss(from)}`}</span>
+        )}
+      </Part>
       {montage && (
-        <StepTrail
-          group={group}
-          facts={facts}
-          emailed={emailed}
-        />
+        <Part heading={t`Where it has got to`}>
+          <StepTrail
+            group={group}
+            facts={facts}
+            emailed={emailed}
+          />
+        </Part>
       )}
-      {locked && <Lock>{locked}</Lock>}
+      {locked && (
+        <Part>
+          <Lock>{locked}</Lock>
+        </Part>
+      )}
       {montage ? (
-        <Box heading={t`Montage`}>
+        <Part heading={t`Montage`}>
           {locked ? (
             <p className='m-0 text-[13px] font-semibold'>{passengerName(group.passenger)}</p>
           ) : (
             <>
-              <p className='m-0 text-[12px] text-ink-2'>
-                {named
-                  ? t`The name is the folder, the file names and the film.`
-                  : t`Give it a name — a person, an event. It becomes the montage’s folder.`}
-              </p>
               <PassengerName
                 key={group.id}
                 group={group}
                 passengers={passengers}
                 onSave={onName}
               />
+              <Hint>
+                {named
+                  ? t`The name is the folder, the file names and the film.`
+                  : t`Give it a name — a person, an event. It becomes the montage’s folder.`}
+              </Hint>
               {named && (group.processed || group.uploaded) && (
                 <p className='m-0 text-[11.5px] text-changed'>
                   {group.uploaded
@@ -330,9 +410,9 @@ const JumpPanel = ({
               )}
             </>
           )}
-        </Box>
+        </Part>
       ) : (
-        <Box heading={t`Montage`}>
+        <Part heading={t`Montage`}>
           <MontageNamer
             key={group.id}
             initial={group.name}
@@ -340,37 +420,44 @@ const JumpPanel = ({
             passengers={passengers}
             onSave={onNameMontage}
           />
-        </Box>
+        </Part>
       )}
       {!group.freed && group.files.length > 0 && (
-        <span className='flex flex-wrap gap-1.5'>
-          {move}
-          {onTrimToJump && (
-            <Mini
-              title={t`Each clip from its exit to a few seconds after its landing`}
-              onClick={onTrimToJump}>
-              {t`Trim every clip to the jump`}
+        <Part heading={montage ? t`Its files` : t`The jump`}>
+          <Pair>
+            {move}
+            <Mini onClick={onSelectFiles}>
+              {t`Select its ${plural(fileCount, { one: '# file', other: '# files' })}`}
             </Mini>
+          </Pair>
+          {onTrimToJump && (
+            <Whole>
+              <Mini
+                title={t`Each clip from its exit to a few seconds after its landing`}
+                onClick={onTrimToJump}>
+                <Icon
+                  name='scissors'
+                  size={14}
+                  weight={2}
+                  className='text-ink-2'
+                />
+                {t`Trim every clip to the jump`}
+              </Mini>
+            </Whole>
           )}
-          <Mini onClick={onSelectFiles}>
-            {t`Select its ${plural(fileCount, { one: '# file', other: '# files' })}`}
-          </Mini>
-          {onDelete && (
-            <Danger
-              size='mini'
-              onClick={onDelete}
-              title={t`The jump goes; its files are kept, loose in Fresh files, with their trims`}>
-              {t`Delete jump`}
-            </Danger>
-          )}
-        </span>
+          <div className='flex items-center justify-between gap-2'>
+            <Hint>{t`⌘ or ctrl-click another jump to open the two side by side.`}</Hint>
+            {onDelete && (
+              <Danger
+                size='mini'
+                onClick={onDelete}
+                title={t`The jump goes; its files are kept, loose in Fresh files, with their trims`}>
+                {t`Delete jump`}
+              </Danger>
+            )}
+          </div>
+        </Part>
       )}
-      <Hint>
-        {tally(group.files, statusOf)
-          .filter(([, n]) => n > 0)
-          .map(([name, n]) => `${n} ${name.toLowerCase()}`)
-          .join(' · ')}
-      </Hint>
     </>
   )
 }
@@ -380,6 +467,7 @@ const JumpPanel = ({
 const FilePanel = ({
   file,
   name,
+  where,
   jumpLabel,
   status,
   proxy,
@@ -393,6 +481,8 @@ const FilePanel = ({
 }: {
   file: ManifestFile
   name: string | null
+  /* the folder it is in, said over its name */
+  where?: string
   jumpLabel: string | null
   status: ShownStatus
   proxy?: ProxyFact
@@ -414,80 +504,100 @@ const FilePanel = ({
   const reason = proxy?.reason ?? ''
   return (
     <>
-      <Title
-        title={name ?? file.filename}
+      <Hero>
+        <button
+          type='button'
+          onClick={onOpen}
+          title={t`Open it — trim, frame and turn`}
+          className='h-full w-full border-0 bg-transparent p-0'>
+          <img
+            src={getPictureUrl(file, undefined, 480)}
+            alt=''
+            style={
+              file.rotation
+                ? {
+                    transform: `rotate(${file.rotation}deg)${file.rotation % 180 ? ' scale(0.5625)' : ''}`
+                  }
+                : undefined
+            }
+            className='h-full w-full object-cover'
+          />
+          {video && (
+            <span className='absolute inset-0 grid place-items-center'>
+              <span className='grid h-10 w-10 place-items-center rounded-full bg-white/90 text-ink shadow-[0_4px_18px_rgba(0,0,0,0.25)]'>
+                <Icon
+                  name='play'
+                  size={15}
+                />
+              </span>
+            </span>
+          )}
+        </button>
+      </Hero>
+      <Who
+        eyebrow={
+          where
+            ? video
+              ? t`A video in ${where}`
+              : t`A photo in ${where}`
+            : video
+              ? t`A video`
+              : t`A photo`
+        }
+        title={<span className='break-all'>{name ?? file.filename}</span>}
         sub={name ? t`from ${filename}` : video ? t`video` : t`photo`}
       />
-      <button
-        type='button'
-        onClick={onOpen}
-        title={t`Open it — trim, frame and turn`}
-        className='relative aspect-video w-full overflow-hidden rounded-lg border-0 bg-line-2 p-0'>
-        <img
-          src={getPictureUrl(file, undefined, 480)}
-          alt=''
-          style={
-            file.rotation
-              ? {
-                  transform: `rotate(${file.rotation}deg)${file.rotation % 180 ? ' scale(0.5625)' : ''}`
-                }
-              : undefined
-          }
-          className='h-full w-full object-contain'
-        />
-        {video && (
-          <span className='absolute inset-0 grid place-items-center text-[28px] text-white/90 drop-shadow'>
-            ▶
-          </span>
-        )}
-      </button>
-      <Facts
-        rows={[
-          [
-            t`Shot`,
-            onRetime ? (
-              <JumpSpan
-                key='shot'
-                from={file.mtime}
-                to={file.mtime}
-                withDate
-                disabled={false}
-                onShift={onRetime}
-                hint={t`only this file moves — the rest of the jump stays`}
-                tip={t`Wrong time on this one file? Set when it was really shot`}
+      <Part heading={t`About it`}>
+        <Facts
+          rows={[
+            [
+              t`Shot`,
+              onRetime ? (
+                <JumpSpan
+                  key='shot'
+                  from={file.mtime}
+                  to={file.mtime}
+                  withDate
+                  disabled={false}
+                  onShift={onRetime}
+                  hint={t`only this file moves — the rest of the jump stays`}
+                  tip={t`Wrong time on this one file? Set when it was really shot`}
+                />
+              ) : (
+                `${dateLabel(file.mtime)} ${hhmmss(file.mtime)}`
+              )
+            ],
+            [t`Size`, formatSize(file.size)],
+            [t`In`, jumpLabel ?? t`no jump — a loose file`],
+            ...(video && proxy
+              ? ([
+                  [
+                    t`Proxy`,
+                    proxy.state !== 'none'
+                      ? t`ready`
+                      : proxy.reason
+                        ? t`could not be made — ${reason}`
+                        : t`not made yet`
+                  ]
+                ] satisfies [string, string][])
+              : []),
+            [
+              t`Status`,
+              <StatusChip
+                key='status'
+                status={status}
               />
-            ) : (
-              `${dateLabel(file.mtime)} ${hhmmss(file.mtime)}`
-            )
-          ],
-          [t`Size`, formatSize(file.size)],
-          [t`In`, jumpLabel ?? t`no jump — a loose file`],
-          ...(video && proxy
-            ? ([
-                [
-                  t`Proxy`,
-                  proxy.state !== 'none'
-                    ? t`ready`
-                    : proxy.reason
-                      ? t`could not be made — ${reason}`
-                      : t`not made yet`
-                ]
-              ] satisfies [string, string][])
-            : []),
-          [
-            t`Status`,
-            <StatusChip
-              key='status'
-              status={status}
-            />
-          ]
-        ]}
-      />
+            ]
+          ]}
+        />
+      </Part>
       {locked ? (
-        <Lock>{locked}</Lock>
+        <Part>
+          <Lock>{locked}</Lock>
+        </Part>
       ) : (
-        <Box heading={t`Picture`}>
-          <p className='m-0 text-[12px] text-ink-2'>
+        <Part heading={t`Picture`}>
+          <Hint>
             {[
               file.cropStart != null || file.cropEnd != null ? t`trimmed` : t`not trimmed`,
               video ? (file.frame ? t`framed` : t`whole frame`) : null,
@@ -495,22 +605,29 @@ const FilePanel = ({
             ]
               .filter(Boolean)
               .join(' · ')}
-          </p>
-          <span>
-            <Go onClick={onOpen}>{t`Trim, frame and turn…`}</Go>
-          </span>
-        </Box>
+          </Hint>
+          <Whole>
+            <Go onClick={onOpen}>
+              <Icon
+                name='scissors'
+                size={14}
+                weight={2}
+              />
+              {t`Trim, frame and turn…`}
+            </Go>
+          </Whole>
+        </Part>
       )}
       {!locked && (
-        <Box heading={t`Move`}>
-          <span className='flex flex-wrap gap-1.5'>
+        <Part heading={t`Move`}>
+          <Pair>
             {move}
             <Mini onClick={onSendBack}>{backLabel}</Mini>
-          </span>
-        </Box>
+          </Pair>
+        </Part>
       )}
       {montage && (
-        <Box heading={t`Montage`}>
+        <Part heading={t`Montage`}>
           <MontageNamer
             key={file.id}
             keeps={montage.keeps}
@@ -518,9 +635,11 @@ const FilePanel = ({
             passengers={montage.passengers}
             onSave={montage.onMake}
           />
-        </Box>
+        </Part>
       )}
-      <Hint>{t`Double-click or ↵ opens it · the tick picks it · ↑↓ step through · esc clears`}</Hint>
+      <Part>
+        <Hint>{t`Double-click or ↵ opens it · the tick picks it · ↑↓ step through · esc clears`}</Hint>
+      </Part>
     </>
   )
 }
@@ -528,6 +647,7 @@ const FilePanel = ({
 /* Several files: what they add up to, and where they all go. */
 const ManyPanel = ({
   files,
+  where,
   statusOf,
   onSendBack,
   backLabel,
@@ -537,6 +657,8 @@ const ManyPanel = ({
   onClear
 }: {
   files: ManifestFile[]
+  /* the folder they were picked in, said over how many */
+  where?: string
   statusOf: (file: ManifestFile) => FileStatus
   onSendBack: () => void
   /* what removing does from here: a copy ends, anything else is asked about */
@@ -550,21 +672,34 @@ const ManyPanel = ({
   onClear: () => void
 }) => {
   const [making, setMaking] = useState(false)
-  const videos = files.filter((f) => isVideoFile(f.path)).length
-  const photos = files.length - videos
-  const size = bytes(files)
   return (
     <>
-      <Title
+      <Who
+        eyebrow={where ? t`Picked in ${where}` : t`Picked`}
         title={plural(files.length, {
           one: '# file selected',
           other: '# files selected'
         })}
-        sub={t`${plural(videos, { one: '# video', other: '# videos' })} · ${plural(photos, { one: '# photo', other: '# photos' })} · ${size}`}
+        sub={counts(files)}
+        lower
       />
-      <Facts rows={tally(files, statusOf).map(([name, n]) => [name, String(n)])} />
+      {/* the first few, so what was picked is seen and not only counted */}
+      <div className='flex gap-2 border-b border-line px-4 pt-4 pb-3'>
+        {files.slice(0, 3).map((file) => (
+          <img
+            key={file.id ?? file.path}
+            src={getPictureUrl(file, undefined, 160)}
+            alt=''
+            loading='lazy'
+            className='aspect-[16/10] w-0 min-w-0 flex-1 rounded-md bg-well object-cover'
+          />
+        ))}
+      </div>
+      <Part heading={t`What they are`}>
+        <Facts rows={tally(files, statusOf).map(([name, n]) => [name, String(n)])} />
+      </Part>
       {making && onMakeJump ? (
-        <Box heading={t`A jump of these`}>
+        <Part heading={t`A jump of these`}>
           <JumpForm
             named={false}
             startsAt={minFileMtime(files) ?? 0}
@@ -572,34 +707,47 @@ const ManyPanel = ({
             onSubmit={(_name, startsAt) => onMakeJump(startsAt)}
             onCancel={() => setMaking(false)}
           />
-        </Box>
+        </Part>
       ) : null}
       {montage && (
-        <Box heading={t`Montage`}>
+        <Part heading={t`Montage`}>
           <MontageNamer
             keeps={montage.keeps}
             what={t`these`}
             passengers={montage.passengers}
             onSave={montage.onMake}
           />
-        </Box>
+        </Part>
       )}
-      <Box heading={t`Move them`}>
-        <span className='flex flex-wrap gap-1.5'>
+      <Part heading={t`Move them`}>
+        <Pair>
           {move}
-          {onMakeJump && !making && (
-            <Mini onClick={() => setMaking(true)}>{t`Make a jump of these…`}</Mini>
-          )}
           <Mini onClick={onSendBack}>{backLabel}</Mini>
-          <Mini onClick={onClear}>{t`Clear (esc)`}</Mini>
+        </Pair>
+        {onMakeJump && !making && (
+          <Whole>
+            <Mini onClick={() => setMaking(true)}>{t`Make a jump of these…`}</Mini>
+          </Whole>
+        )}
+      </Part>
+      <Part>
+        <span>
+          <Mini
+            title={t`Clear (esc)`}
+            onClick={onClear}>
+            {t`Clear`}
+            <kbd className='rounded-[3px] border border-line bg-rail px-1 font-sans text-[10.5px] leading-4 font-medium text-ink-3'>
+              esc
+            </kbd>
+          </Mini>
         </span>
-      </Box>
-      <Hint>
-        {t`The tick or ⌘/ctrl-click picks one · shift-click takes a range · ⌘A takes them all · drag them onto a jump to move them, holding alt to copy them there instead`}
-      </Hint>
+        <Hint>
+          {t`The tick or ⌘/ctrl-click picks one · shift-click takes a range · ⌘A takes them all · drag them onto a jump to move them, holding alt to copy them there instead`}
+        </Hint>
+      </Part>
     </>
   )
 }
 
-export { Box, FilePanel, FolderPanel, Hint, JumpPanel, ManyPanel, Shell, Title }
+export { FilePanel, FolderPanel, Hint, JumpPanel, ManyPanel, Part, Shell }
 export type { MontageOffer }

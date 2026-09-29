@@ -98,7 +98,7 @@ const TakeBackDialog = ({
         )}
       </ul>
 
-      <p className='m-0 rounded-r-md border-l-[3px] border-local bg-local-soft px-3 py-[9px] text-[12px] text-ink-2'>
+      <p className='m-0 rounded-md bg-local-soft px-2.5 py-2 text-[12px] text-ink-2'>
         {t`The original files are never touched, and nothing is deleted from the storage:`}{' '}
         {uploaded
           ? t`what was uploaded stays there until someone removes it by hand.`

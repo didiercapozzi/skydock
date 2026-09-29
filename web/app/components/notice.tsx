@@ -1,9 +1,10 @@
 import { t } from '@lingui/core/macro'
+import { Icon } from './icons'
 
-/* The line the board says after anything happens, drawn the same wherever it is shown. News in the
-   app's own colour; a refusal in the colour of something still owed, and announced at once rather
-   than when the reader gets round to it. Always dismissable, since it stays until the next thing
-   happens and the next thing may be a while. */
+/* The line the board says after anything happens, drawn the same wherever it is shown: a quiet
+   hairline box with a tick for news; a refusal in the colour of something still owed, and announced
+   at once rather than when the reader gets round to it. Always dismissable, since it stays until the
+   next thing happens and the next thing may be a while. */
 const Notice = ({
   problem,
   onClose,
@@ -17,17 +18,28 @@ const Notice = ({
 }) => (
   <p
     role={problem ? 'alert' : 'status'}
-    className={`m-0 flex items-start gap-2 text-[12.5px] text-ink-2 ${
-      problem ? 'border-local bg-local-soft' : 'border-accent bg-accent-soft'
+    className={`m-0 flex items-center gap-[9px] rounded-md border px-2.5 py-[7px] text-[12.5px] ${
+      problem ? 'border-local/40 bg-local-soft text-local' : 'border-line bg-rail text-ink-2'
     } ${className}`}>
+    {!problem && (
+      <Icon
+        name='check'
+        size={14}
+        weight={2.2}
+        className='text-up'
+      />
+    )}
     <span className='flex-1'>{children}</span>
     <button
       type='button'
       aria-label={t`Dismiss`}
       title={t`Dismiss`}
       onClick={onClose}
-      className='flex-none rounded px-1 leading-5 text-ink-3 hover:text-ink'>
-      ✕
+      className='flex-none rounded border-0 bg-transparent px-1 text-ink-3 hover:text-ink'>
+      <Icon
+        name='close'
+        size={13}
+      />
     </button>
   </p>
 )

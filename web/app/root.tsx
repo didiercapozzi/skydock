@@ -18,17 +18,8 @@ const links: Route.LinksFunction = () => [
   { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
   { rel: 'icon', type: 'image/png', sizes: '256x256', href: '/icon-256.png' },
   { rel: 'icon', type: 'image/png', sizes: '128x128', href: '/icon-128.png' },
-  { rel: 'apple-touch-icon', type: 'image/png', sizes: '256x256', href: '/icon-256.png' },
-  { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-  {
-    rel: 'preconnect',
-    href: 'https://fonts.gstatic.com',
-    crossOrigin: 'anonymous'
-  },
-  {
-    rel: 'stylesheet',
-    href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap'
-  }
+  { rel: 'apple-touch-icon', type: 'image/png', sizes: '256x256', href: '/icon-256.png' }
+  /* the typefaces come with the app: it is often used where there is no network */
 ]
 
 /* The language the page is drawn in, worked out on the server for each request (RULES, Languages). */

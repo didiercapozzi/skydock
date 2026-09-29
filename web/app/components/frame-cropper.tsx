@@ -102,7 +102,7 @@ const FrameCropper = ({
       onPointerCancel={end}
       className='absolute inset-0 touch-none select-none'>
       {/* what is being cut away, dimmed so the kept part is what the eye lands on */}
-      <div className='pointer-events-none absolute inset-0 bg-black/55' />
+      <div className='pointer-events-none absolute inset-0 bg-[rgba(20,19,17,0.55)]' />
       <div
         role='presentation'
         aria-label={t`Part of the picture to keep`}
@@ -113,17 +113,16 @@ const FrameCropper = ({
           width: `${crop.width * 100}%`,
           height: `${crop.height * 100}%`
         }}
-        className='absolute cursor-move shadow-[0_0_0_9999px_rgba(0,0,0,0.0)] outline outline-2 outline-white/90'>
+        className='absolute cursor-move rounded-[3px] border-[1.5px] border-white'>
         {/* the picture shows through here, because the dim layer is behind this one */}
-        <div className='absolute inset-0 bg-transparent backdrop-brightness-[1.8]' />
-        <div className='pointer-events-none absolute inset-0 border border-white/30' />
+        <div className='absolute inset-0 rounded-[2px] bg-transparent backdrop-brightness-[1.8]' />
         {HANDLES.map(({ corner, style }) => (
           <span
             key={corner}
             role='presentation'
             aria-label={t`Resize ${corner}`}
             onPointerDown={start(corner)}
-            className={`absolute h-3 w-3 rounded-[2px] border border-ink bg-white ${style}`}
+            className={`absolute h-2.5 w-2.5 rounded-[2px] bg-white shadow-[0_0_0_1px_rgba(20,19,17,0.25)] ${style}`}
           />
         ))}
       </div>

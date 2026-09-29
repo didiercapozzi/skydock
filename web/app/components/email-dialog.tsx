@@ -11,7 +11,7 @@ import {
   renderPassengerEmail
 } from '@skydock/scripts'
 import { i18n } from '@lingui/core'
-import { msg, t } from '@lingui/core/macro'
+import { msg, plural, t } from '@lingui/core/macro'
 import { useRef, useState } from 'react'
 import { cleanEmailHtml } from '../helpers/emailHtml'
 import { setMailApp, useMailApp } from '../hooks/useMailApp'
@@ -20,7 +20,8 @@ import type { EmailFacts, EmailLanguage, EmailTemplate } from '@skydock/scripts'
 import { readEmailTemplate, setEmailTemplate, useEmailTemplate } from '../hooks/useEmailTemplate'
 import { setSignature, useSignature } from '../hooks/useSignature'
 import { Go, Mini, Seg } from './buttons'
-import { Field, INPUT, Modal, Spacer } from './modal'
+import { Icon } from './icons'
+import { INPUT, Modal, Spacer } from './modal'
 import { ShareQr } from './share-qr'
 
 /* The passenger's link, ready to go. The email is written and laid out already, and shown exactly as
@@ -80,6 +81,17 @@ const copyText = async (text: string) => {
 /* What the email is about — a montage on this machine, or one the storage's list alone knows — and
    everything the template's variables are filled from. */
 type EmailSubject = EmailFacts & { shareUrl: string }
+
+/* the quiet name beside a field, and the field itself: a tall, calm box across the column */
+const EYEBROW = 'text-[11.5px] font-medium text-ink-3'
+const FIELD =
+  'h-[38px] min-w-0 flex-1 rounded-[9px] border border-line bg-pane px-3 text-[13px] text-ink placeholder:font-normal placeholder:text-ink-3'
+/* the email's toolbar: small and flat, lit only under the pointer */
+const TOOL =
+  'grid h-7 w-7 place-items-center rounded-[5px] text-[13px] text-ink-2 hover:bg-well hover:text-ink'
+/* a quiet button, for what is at hand without asking to be pressed */
+const QUIET =
+  'inline-flex h-7 items-center rounded-[5px] px-[9px] text-[12.5px] font-medium text-ink-2 hover:bg-well hover:text-ink'
 
 const sentLabel = (at: number) => new Date(at * 1000).toLocaleDateString('de-CH')
 
@@ -241,15 +253,14 @@ const EmailDialog = ({
   const mailApp = useMailApp()
   /* once the mail is open, whether it went is asked for where it is recorded — or the montage stays
      "to email" long after the email went */
-  const [opened, setOpened] = useState(false)
+  const [opened, setOpened] = useState<MailApp | null>(null)
   const openMail = async (app: MailApp) => {
     setMailApp(app)
-    setOpened(true)
+    setOpened(app)
     await copy(app, copyEmail(fragment, text))
     if (app === 'gmail') window.open(gmailComposeUrl({ to, subject }), '_blank', 'noopener')
     else window.location.href = mailtoUrl({ to, subject })
   }
-  const other: MailApp = mailApp === 'gmail' ? 'mailto' : 'gmail'
   const label = (app: MailApp) =>
     copied === app
       ? t`✓ Copied — paste it into the message`
@@ -259,237 +270,322 @@ const EmailDialog = ({
   /* when it was said to have gone, and to whom */
   const sentOn = emailed ? sentLabel(emailed.at) : ''
   const sentTo = emailed?.to
+  /* what the montage holds, said under the title */
+  const holds = [
+    about.videos ? t`film` : '',
+    about.photos ? plural(about.photos, { one: '# photo', other: '# photos' }) : ''
+  ]
+    .filter(Boolean)
+    .join(t` and `)
 
   return (
     <Modal
       label={t`Email the link`}
-      title={t`Email ${firstname} their link`}
-      wide
+      title={t`Email the link`}
+      sub={[`${firstname} ${about.lastname}`.trim(), about.day, holds].filter(Boolean).join(' · ')}
+      aside={
+        <Seg
+          label={t`Language of the email`}
+          value={lang}
+          options={[
+            ['fr', 'Français', 'FR'],
+            ['en', 'English', 'EN'],
+            ['de', 'Deutsch', 'DE']
+          ]}
+          onPick={speak}
+        />
+      }
+      full
       onClose={onClose}
       footer={
         writingTemplate ? (
           <>
-            <span className='text-[12px] text-ink-2'>{t`Kept as it is written, for every email.`}</span>
+            <span className='text-[11.5px] text-ink-3'>{t`Kept as it is written, for every email.`}</span>
             <Spacer />
             <Go onClick={closeTemplate}>{t`Done — back to this email`}</Go>
           </>
         ) : (
           <>
-            {/* whether it went is only known once someone says so — sending happens in their mail */}
-            {canRecord &&
-              (emailed ? (
-                <span className='flex items-center gap-2 text-[12px] font-semibold text-up'>
-                  ✓ {sentTo ? t`Sent ${sentOn} to ${sentTo}` : t`Sent ${sentOn}`}
-                  <Mini
-                    title={t`It was not sent after all`}
-                    onClick={() => onRecord(false, to)}>
-                    {t`Undo`}
-                  </Mini>
-                </span>
-              ) : opened ? (
-                <span
-                  role='status'
-                  className='flex items-center gap-2 rounded-md bg-accent-soft px-2 py-1 text-[12px] font-semibold text-accent'>
-                  {t`Sent it?`}
-                  <Mini
-                    title={t`Say on the storage’s list that they have their link`}
-                    onClick={() => onRecord(true, to)}>
-                    {t`Yes — mark as sent`}
-                  </Mini>
-                </span>
-              ) : (
-                <Mini
-                  title={t`Say on the storage’s list that they have their link`}
-                  onClick={() => onRecord(true, to)}>
-                  {t`Mark as sent`}
-                </Mini>
-              ))}
+            <span className='min-w-0 text-[11.5px] leading-normal text-ink-3'>
+              {t`SkyDock sends nothing: it copies the email and opens a new message with the address and subject filled in. Click into it, paste (Ctrl+V, or ⌘V on a Mac) and press Send.`}
+            </span>
             <Spacer />
             <Mini onClick={onClose}>{t`Close`}</Mini>
+            {/* the one used last is the one offered */}
+            <Seg
+              label={t`Open the message in`}
+              value={mailApp}
+              options={[
+                ['gmail', 'Gmail'],
+                ['mailto', t`Mail program`]
+              ]}
+              onPick={setMailApp}
+            />
+            <Go
+              title={t`Copies the email and opens a new message, addressed and titled — paste it in, then press Send`}
+              onClick={() => void openMail(mailApp)}>
+              <Icon name='mail' />
+              <span aria-hidden='true'>{copied === mailApp ? label(mailApp) : t`Copy & open`}</span>
+              <span className='sr-only'>{label(mailApp)}</span>
+            </Go>
+          </>
+        )
+      }>
+      <div className='grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_340px]'>
+        <div className='flex min-h-0 flex-col gap-3 overflow-y-auto border-r border-line-2 px-6 py-[18px]'>
+          <label className='flex items-center gap-3.5'>
+            <span className={`${EYEBROW} w-11 flex-none`}>{t`To`}</span>
+            <input
+              type='email'
+              value={to}
+              autoFocus
+              placeholder={t`name@example.com — or type it in Gmail`}
+              onChange={(e) => setTo(e.target.value)}
+              className={`${FIELD} font-medium`}
+            />
+          </label>
+          {writingTemplate && (
+            <p className='m-0 rounded-r-md border-l-[3px] border-accent bg-accent-soft px-3 py-[9px] text-[12px] text-ink-2'>
+              <b className='text-ink'>{t`The template for every email.`}</b>{' '}
+              {t`What is written here is kept on this machine and drafts every email; each`}{' '}
+              {'{variable}'}{' '}
+              {t`is filled from their montage. A line whose variables are all empty for a montage — no film, no photos — is left out of their email.`}
+            </p>
+          )}
+          <label className='flex items-center gap-3.5'>
+            <span className={`${EYEBROW} max-w-24 min-w-11 flex-none`}>
+              {writingTemplate ? t`Subject — for every email` : t`Subject`}
+            </span>
+            <input
+              type='text'
+              value={writingTemplate ? template.subject : subject}
+              onChange={(e) => retitle(e.target.value)}
+              className={`${FIELD} font-semibold`}
+            />
+          </label>
+          <div className='flex min-h-[300px] flex-1 flex-col overflow-hidden rounded-xl border border-line'>
+            <div className='flex flex-none flex-wrap items-center gap-0.5 border-b border-line-2 bg-rail px-2 py-1.5'>
+              {/* pressed without taking the caret out of the email, so what is picked stays picked */}
+              <span
+                role='toolbar'
+                aria-label={t`Style`}
+                className='flex gap-0.5'>
+                {STYLES.map(([command, name, mark]) => (
+                  <button
+                    key={command}
+                    type='button'
+                    aria-label={i18n._(name)}
+                    title={i18n._(name)}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => style(command)}
+                    className={`${TOOL} ${command === 'bold' ? 'font-bold' : command === 'italic' ? 'font-serif text-[15px] italic' : ''}`}>
+                    {command === 'insertUnorderedList' ? <Icon name='rows' /> : mark}
+                  </button>
+                ))}
+                <button
+                  type='button'
+                  aria-label={t`Link`}
+                  title={t`Link`}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={askLink}
+                  className={TOOL}>
+                  <Icon name='link' />
+                </button>
+              </span>
+              {linking && (
+                <span className='ml-1.5 flex items-center gap-1'>
+                  <input
+                    aria-label={t`Link address`}
+                    value={linking.href}
+                    autoFocus
+                    onChange={(e) => setLinking({ ...linking, href: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') putLink()
+                      if (e.key !== 'Escape') return
+                      /* it puts the link away, not the whole email */
+                      e.stopPropagation()
+                      setLinking(null)
+                    }}
+                    className={`${INPUT} w-56 py-0.5 text-[12px]`}
+                  />
+                  <Mini onClick={putLink}>{t`Add link`}</Mini>
+                </span>
+              )}
+              {writingTemplate && (
+                <select
+                  aria-label={t`Put in a variable`}
+                  value=''
+                  onChange={(e) => e.target.value && putVariable(e.target.value)}
+                  className='ml-1.5 h-7 rounded-[5px] border border-line-strong bg-pane px-1.5 text-[12px] text-ink-2'>
+                  <option value=''>{t`Put in a variable…`}</option>
+                  {EMAIL_VARIABLES.map((variable) => {
+                    const here = values[variable.name]
+                    return (
+                      <option
+                        key={variable.name}
+                        value={variable.name}>
+                        {`{${variable.name}} — ${variable.about}${here ? t` · here “${here}”` : t` · empty here`}`}
+                      </option>
+                    )
+                  })}
+                </select>
+              )}
+              <span className='ml-auto pr-1.5 pl-3 text-[11.5px] text-ink-3'>
+                {t`Shown as it will arrive — write in it; the signature stays for every email`}
+              </span>
+            </div>
+            {/* The email as it will arrive, written in where it can be. What is typed or pasted is
+                read back cleaned; a paste brings its words and the few styles an email keeps,
+                nothing else. */}
+            <div
+              aria-label={t`Email preview`}
+              onInput={(e) => {
+                written(e.target)
+                keepCaret()
+              }}
+              onKeyUp={keepCaret}
+              onMouseUp={keepCaret}
+              onPaste={(e) => {
+                if (!editing()) return
+                e.preventDefault()
+                const pasted = e.clipboardData.getData('text/html')
+                const plain = e.clipboardData.getData('text/plain')
+                document.execCommand(
+                  'insertHTML',
+                  false,
+                  pasted ? cleanEmailHtml(pasted) : htmlOfText(plain.replace(/\n/g, '\n\n'))
+                )
+              }}
+              dangerouslySetInnerHTML={{ __html: shown }}
+              className='min-h-0 w-full flex-1 overflow-y-auto bg-[#eef1f4] text-[#171c22]'
+            />
+          </div>
+          <div className='flex flex-none flex-wrap items-center gap-2'>
             <Mini
               title={t`Laid out as shown, to paste into any mail`}
               onClick={() => void copy('email', copyEmail(fragment, text))}>
               {copied === 'email' ? t`✓ copied — paste it` : t`Copy email`}
             </Mini>
-            {/* the one used last is the one offered first */}
-            <Mini onClick={() => void openMail(other)}>{label(other)}</Mini>
-            <Go
-              title={t`Copies the email and opens a new message, addressed and titled — paste it in, then press Send`}
-              onClick={() => void openMail(mailApp)}>
-              {label(mailApp)}
-            </Go>
-          </>
-        )
-      }>
-      <p className='m-0 rounded-r-md border-l-[3px] border-local bg-local-soft px-3 py-[9px] text-[12px] text-ink-2'>
-        <b className='text-ink'>{t`Copy & open`}</b>{' '}
-        {t`puts the email below on the clipboard and opens a new message with the address and the subject already filled in — in Gmail, or in the mail program this computer uses (Outlook, Apple Mail, Thunderbird…). Click into the message, paste it (Ctrl+V, or ⌘V on a Mac) and press Send. The one used last is offered first.`}
-      </p>
-      <span className='flex flex-wrap items-center gap-2 text-[12px] text-ink-2'>
-        <Mini
-          pressed={showingQr}
-          title={t`The link as a QR code, for a phone to take it now`}
-          onClick={() => setShowingQr(!showingQr)}>
-          {t`QR code`}
-        </Mini>
-        {t`Written in`}
-        <Seg
-          label={t`Language of the email`}
-          value={lang}
-          options={[
-            ['fr', 'Français'],
-            ['en', 'English'],
-            ['de', 'Deutsch']
-          ]}
-          onPick={speak}
-        />
-      </span>
-      {showingQr && (
-        <span className='flex flex-col items-center gap-1.5'>
-          <ShareQr url={shareUrl} />
-          <span className='text-[11.5px] text-ink-2'>{t`Scan it with a phone’s camera to open the link`}</span>
-        </span>
-      )}
-      <Field label={t`To`}>
-        <input
-          type='email'
-          value={to}
-          autoFocus
-          placeholder={t`name@example.com — or type it in Gmail`}
-          onChange={(e) => setTo(e.target.value)}
-          className={INPUT}
-        />
-      </Field>
-      {writingTemplate && (
-        <p className='m-0 rounded-r-md border-l-[3px] border-accent bg-accent-soft px-3 py-[9px] text-[12px] text-ink-2'>
-          <b className='text-ink'>{t`The template for every email.`}</b>{' '}
-          {t`What is written here is kept on this machine and drafts every email; each`}{' '}
-          {'{variable}'}{' '}
-          {t`is filled from their montage. A line whose variables are all empty for a montage — no film, no photos — is left out of their email.`}
-        </p>
-      )}
-      <Field label={writingTemplate ? t`Subject — for every email` : t`Subject`}>
-        <input
-          type='text'
-          value={writingTemplate ? template.subject : subject}
-          onChange={(e) => retitle(e.target.value)}
-          className={INPUT}
-        />
-      </Field>
-      <div className='flex flex-wrap items-center gap-2 text-[12px] text-ink-2'>
-        <span>{t`Write in the email itself — the signature stays for every email`}</span>
-        {/* pressed without taking the caret out of the email, so what is picked stays picked */}
-        <span
-          role='toolbar'
-          aria-label={t`Style`}
-          className='flex gap-1'>
-          {STYLES.map(([command, name, mark]) => (
-            <button
-              key={command}
-              type='button'
-              aria-label={i18n._(name)}
-              title={i18n._(name)}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => style(command)}
-              className={`w-7 rounded-[5px] border border-line bg-pane py-[2px] text-[12px] text-ink hover:border-ink-3 ${command === 'bold' ? 'font-bold' : command === 'italic' ? 'italic' : ''}`}>
-              {mark}
-            </button>
-          ))}
-          <button
-            type='button'
-            aria-label={t`Link`}
-            title={t`Link`}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={askLink}
-            className='rounded-[5px] border border-line bg-pane px-2 py-[2px] text-[12px] text-ink hover:border-ink-3'>
-            {t`Link`}
-          </button>
-        </span>
-        {linking && (
-          <span className='flex items-center gap-1'>
-            <input
-              aria-label={t`Link address`}
-              value={linking.href}
-              autoFocus
-              onChange={(e) => setLinking({ ...linking, href: e.target.value })}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') putLink()
-                if (e.key !== 'Escape') return
-                /* it puts the link away, not the whole email */
-                e.stopPropagation()
-                setLinking(null)
-              }}
-              className={`${INPUT} w-56 py-0.5 text-[12px]`}
-            />
-            <Mini onClick={putLink}>{t`Add link`}</Mini>
+            <Mini onClick={() => void copy('subject', copyText(subject))}>
+              {copied === 'subject' ? t`✓ copied` : t`Copy subject`}
+            </Mini>
+            <Mini
+              title={shareUrl}
+              onClick={() => void copy('link', copyText(shareUrl))}>
+              {copied === 'link' ? t`✓ copied` : t`Copy link`}
+            </Mini>
+            <Spacer />
+            {writingTemplate ? (
+              <button
+                type='button'
+                title={t`Put the template back as SkyDock first wrote it`}
+                onClick={resetTemplate}
+                className={QUIET}>
+                {t`Back to the first template`}
+              </button>
+            ) : (
+              <button
+                type='button'
+                title={t`Change the email every montage sends, with the words that change as variables`}
+                onClick={openTemplate}
+                className={QUIET}>
+                {t`Edit the template…`}
+              </button>
+            )}
+          </div>
+        </div>
+        {/* For whoever it is for, standing at the counter: the link taken with a phone now, and
+            whether it went said where it is recorded — or the montage stays "to email" long after
+            the email went. */}
+        <div className='flex min-h-0 flex-col gap-3.5 overflow-y-auto bg-rail px-[22px] py-5'>
+          <span className={EYEBROW}>{t`At the counter`}</span>
+          <span className='text-[15px] leading-[1.15] font-semibold tracking-[-0.02em]'>
+            {t`${firstname} can take the link with a phone, before the email has even gone.`}
           </span>
-        )}
-        {writingTemplate && (
-          <select
-            aria-label={t`Put in a variable`}
-            value=''
-            onChange={(e) => e.target.value && putVariable(e.target.value)}
-            className='rounded-[5px] border border-line bg-pane px-1.5 py-0.5 text-[12px] text-ink-2'>
-            <option value=''>{t`Put in a variable…`}</option>
-            {EMAIL_VARIABLES.map((variable) => {
-              const here = values[variable.name]
-              return (
-                <option
-                  key={variable.name}
-                  value={variable.name}>
-                  {`{${variable.name}} — ${variable.about}${here ? t` · here “${here}”` : t` · empty here`}`}
-                </option>
-              )
-            })}
-          </select>
-        )}
-        <Spacer />
-        {writingTemplate ? (
-          <Mini
-            title={t`Put the template back as SkyDock first wrote it`}
-            onClick={resetTemplate}>
-            {t`Back to the first template`}
-          </Mini>
-        ) : (
-          <Mini
-            title={t`Change the email every montage sends, with the words that change as variables`}
-            onClick={openTemplate}>
-            {t`Edit the template…`}
-          </Mini>
-        )}
-        <Mini onClick={() => void copy('subject', copyText(subject))}>
-          {copied === 'subject' ? t`✓ copied` : t`Copy subject`}
-        </Mini>
-        <Mini
-          title={shareUrl}
-          onClick={() => void copy('link', copyText(shareUrl))}>
-          {copied === 'link' ? t`✓ copied` : t`Copy link`}
-        </Mini>
+          {showingQr ? (
+            <span className='self-start rounded-xl border border-line bg-white p-1.5'>
+              <ShareQr
+                url={shareUrl}
+                size={196}
+              />
+            </span>
+          ) : (
+            <span className='grid h-[210px] w-[210px] place-items-center rounded-xl border border-dashed border-line-strong'>
+              <Mini
+                pressed={false}
+                title={t`The link as a QR code, for a phone to take it now`}
+                onClick={() => setShowingQr(true)}>
+                {t`QR code`}
+              </Mini>
+            </span>
+          )}
+          <span className='flex items-center gap-2'>
+            <span className='min-w-0 font-mono text-[11.5px] break-all text-ink-3'>
+              {shareUrl.replace(/^https?:\/\//, '')}
+            </span>
+            {showingQr && (
+              <>
+                <Spacer />
+                <Mini
+                  pressed
+                  title={t`Scan it with a phone’s camera to open the link`}
+                  onClick={() => setShowingQr(false)}>
+                  {t`QR code`}
+                </Mini>
+              </>
+            )}
+          </span>
+          {/* whether it went is only known once someone says so — sending happens in their mail */}
+          {canRecord && (
+            <div
+              role={opened && !emailed ? 'status' : undefined}
+              className='mt-auto flex flex-col gap-2 rounded-xl border border-line bg-pane p-4'>
+              {emailed ? (
+                <>
+                  <span className='text-[15px] leading-none font-semibold tracking-[-0.02em] text-up'>
+                    ✓ {sentTo ? t`Sent ${sentOn} to ${sentTo}` : t`Sent ${sentOn}`}
+                  </span>
+                  <span className='flex'>
+                    <Mini
+                      title={t`It was not sent after all`}
+                      onClick={() => onRecord(false, to)}>
+                      {t`Undo`}
+                    </Mini>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className='text-[15px] leading-none font-semibold tracking-[-0.02em]'>
+                    {t`Sent it?`}
+                  </span>
+                  <span className='text-[11.5px] leading-normal text-ink-3'>
+                    {opened === 'gmail'
+                      ? t`The mail was opened in Gmail from here. Say so once it went, and the storage’s list records it.`
+                      : opened
+                        ? t`The mail was opened in the mail program from here. Say so once it went, and the storage’s list records it.`
+                        : t`Say so once the email went, and the storage’s list records it.`}
+                  </span>
+                  <span className='mt-1 flex'>
+                    {opened ? (
+                      <Go
+                        title={t`Say on the storage’s list that they have their link`}
+                        onClick={() => onRecord(true, to)}>
+                        {t`Yes — mark as sent`}
+                      </Go>
+                    ) : (
+                      <Mini
+                        title={t`Say on the storage’s list that they have their link`}
+                        onClick={() => onRecord(true, to)}>
+                        {t`Mark as sent`}
+                      </Mini>
+                    )}
+                  </span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-      {/* The email as it will arrive, written in where it can be. What is typed or pasted is read
-          back cleaned; a paste brings its words and the few styles an email keeps, nothing else. */}
-      <div
-        aria-label={t`Email preview`}
-        onInput={(e) => {
-          written(e.target)
-          keepCaret()
-        }}
-        onKeyUp={keepCaret}
-        onMouseUp={keepCaret}
-        onPaste={(e) => {
-          if (!editing()) return
-          e.preventDefault()
-          const pasted = e.clipboardData.getData('text/html')
-          const plain = e.clipboardData.getData('text/plain')
-          document.execCommand(
-            'insertHTML',
-            false,
-            pasted ? cleanEmailHtml(pasted) : htmlOfText(plain.replace(/\n/g, '\n\n'))
-          )
-        }}
-        dangerouslySetInnerHTML={{ __html: shown }}
-        className='h-[460px] w-full flex-none overflow-y-auto rounded-lg border border-line bg-[#eef1f4] text-[#171c22]'
-      />
     </Modal>
   )
 }

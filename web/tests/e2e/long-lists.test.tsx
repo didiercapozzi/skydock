@@ -93,10 +93,7 @@ describe('the thumbnails', () => {
         onHistory: () => {},
         onShortcuts: () => {},
         onOverview: () => {},
-        find: () => [],
-        proxies: { ready: 0, waiting: 0, total: 0 },
-        disk: null,
-        nas: { connected: false, host: null, user: null, links: [] }
+        find: () => []
       })
     )
     await expect.element(page.getByRole('slider', { name: 'Thumbnail size' })).toBeVisible()

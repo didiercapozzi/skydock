@@ -86,9 +86,9 @@ describe('a place’s folder on the storage', () => {
     await expect.element(list.getByText('3 files · 2 only there')).toBeInTheDocument()
     await expect.element(list.getByText(DIR)).toBeInTheDocument()
     const photo = list.getByRole('button', { name: /luc_1\.jpg/ })
-    await expect.poll(() => photo.element().textContent).toContain('here too')
+    await expect.poll(() => photo.element().textContent).toContain('Here too')
     const film = list.getByRole('button', { name: /luc favre\.mp4/ })
-    await expect.poll(() => film.element().textContent).toContain('only on the storage')
+    await expect.poll(() => film.element().textContent).toContain('Only there')
   })
 
   /* through the board's own server, the path in pieces so the space in the name survives */

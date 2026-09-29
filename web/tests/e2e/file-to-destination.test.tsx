@@ -58,7 +58,8 @@ const renderBoard = async () => {
 
 const yverdon = () =>
   page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /Yverdon/ })
-const heading = () => page.getByRole('heading', { name: /^Yverdon/ })
+/* the open folder's own name, at the head of the middle pane */
+const heading = () => page.getByRole('heading', { level: 1, name: /^Yverdon/ })
 
 describe('dropping on a destination', () => {
   test('opens the destination a file was dropped on', async () => {

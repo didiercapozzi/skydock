@@ -86,21 +86,20 @@ const UploadPanel = ({
   return (
     <ProgressPanel
       label={t`Uploading ${label}`}
+      icon='upload'
       title={t`Uploading ${label}`}
       barLabel={t`Uploaded of ${label}`}
       doing={t`Sending`}
       barTitle={t`${finished} of ${plural(count, { one: '# item', other: '# items' })} on the storage — ${size} in all`}
       rows={rows}
-      footer={
-        <>
-          <span className='min-w-0 flex-1 truncate text-ink-2'>{phase}</span>
-          <Mini
-            disabled={cancelling}
-            title={t`Stop it now — nothing of it is recorded, and what already went up is found there next time`}
-            onClick={onCancel}>
-            {cancelling ? t`Cancelling…` : t`Cancel`}
-          </Mini>
-        </>
+      summary={phase}
+      action={
+        <Mini
+          disabled={cancelling}
+          title={t`Stop it now — nothing of it is recorded, and what already went up is found there next time`}
+          onClick={onCancel}>
+          {cancelling ? t`Cancelling…` : t`Cancel`}
+        </Mini>
       }
     />
   )

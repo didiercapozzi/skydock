@@ -1,5 +1,7 @@
 import { t } from '@lingui/core/macro'
 import { useState } from 'react'
+import { Icon } from './icons'
+import type { IconName } from './icons'
 import { formatSize } from './utils'
 
 /* The panel in the corner that says what is on its way and how far it has got — files being copied
@@ -23,12 +25,14 @@ type Row = {
   doing?: string
 }
 
-const MARK: Record<Row['at'], string> = {
-  done: '✓',
-  now: '›',
-  later: '·',
-  skipped: '=',
-  failed: '✕'
+/* where each has got to, in the colour the board gives it: done in green, the one under way in
+   blue, the rest quiet until they are reached */
+const TONE: Record<Row['at'], string> = {
+  done: 'text-up',
+  now: 'text-accent',
+  later: 'text-ink-3',
+  skipped: 'text-ink-3',
+  failed: 'text-local'
 }
 
 /* how far through one file, said of its size */
@@ -44,22 +48,29 @@ const underWay = (doing: string, name: string) => t`${doing} ${name}`
 const ProgressPanel = ({
   label,
   title,
+  icon,
   rows,
   barLabel,
   barTitle,
   doing,
-  footer,
+  summary,
+  action,
   counted
 }: {
   /* what the panel is, read out */
   label: string
   title: string
+  /* what kind of work it is, drawn before the title */
+  icon: IconName
   rows: Row[]
   barLabel: string
   barTitle: string
   /* what is done to each, said of the one under way: copying it, sending it */
   doing: string
-  footer?: React.ReactNode
+  /* how it is going, in words, under the bar — what the bar says when pointed at, if nothing else */
+  summary?: React.ReactNode
+  /* the one thing that can be done to the work itself — stop it — kept in view even folded */
+  action?: React.ReactNode
   /* how far, counted, when there is no list to count it from yet — `part` of the one under way */
   counted?: { at: number; of: number; part?: number }
 }) => {
@@ -75,6 +86,7 @@ const ProgressPanel = ({
       : counted && counted.of > 0
         ? Math.min(1, (counted.at + (counted.part ?? 0)) / counted.of)
         : 0
+  const percent = Math.round(through * 100)
   const count =
     rows.length > 0
       ? `${Math.min((current === -1 ? finished.length : current) + 1, rows.length)}/${rows.length}`
@@ -84,19 +96,30 @@ const ProgressPanel = ({
   return (
     <aside
       aria-label={label}
-      className='flex max-h-[min(420px,60vh)] w-[min(340px,calc(100vw-2rem))] flex-col rounded-lg border border-line bg-pane shadow-card'>
-      <div className={`flex items-center gap-2 px-3 py-2 ${folded ? '' : 'border-b border-line'}`}>
-        <span className='min-w-0 flex-1 truncate text-[12px] font-semibold text-ink'>{title}</span>
-        {count && (
+      className='flex max-h-[min(440px,60vh)] w-[min(330px,calc(100vw-2rem))] flex-col gap-2 rounded-md bg-pane px-3.5 py-3 text-ink shadow-float'>
+      <div className='flex items-center gap-2'>
+        <Icon
+          name={icon}
+          size={15}
+          className='text-accent'
+        />
+        <b
+          title={title}
+          className='min-w-0 flex-1 truncate text-[12.5px] font-semibold'>
+          {title}
+        </b>
+        {/* open, the bar and the list say how far; folded, this is all that does */}
+        {folded && count && (
           <span className='flex-none font-mono text-[11px] text-ink-3 tabular-nums'>{count}</span>
         )}
+        {action}
         <button
           type='button'
           aria-expanded={!folded}
           aria-label={folded ? t`Show the list` : t`Hide the list`}
           title={folded ? t`Show the list` : t`Hide the list`}
           onClick={() => setFolded(!folded)}
-          className='grid h-5 w-5 flex-none place-items-center rounded border-0 bg-transparent p-0 text-ink-3 hover:bg-line-2 hover:text-ink'>
+          className='grid size-7 flex-none place-items-center rounded-[5px] border border-line-strong bg-pane p-0 text-ink-2 shadow-card hover:bg-well hover:text-ink'>
           <svg
             aria-hidden='true'
             viewBox='0 0 16 16'
@@ -117,71 +140,56 @@ const ProgressPanel = ({
             aria-label={barLabel}
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-valuenow={Math.round(through * 100)}
+            aria-valuenow={percent}
             title={barTitle}
-            className='mx-3 mt-2 flex h-[4px] flex-none overflow-hidden rounded-sm bg-line-2'>
+            className='flex h-1 flex-none overflow-hidden rounded-sm bg-line'>
             <i
-              className='block h-full bg-local transition-[width] duration-200'
-              style={{ width: `${Math.round(through * 100)}%` }}
+              className='block h-full bg-accent transition-[width] duration-200'
+              style={{ width: `${percent}%` }}
             />
           </div>
+          <div className='flex items-baseline justify-between gap-3 text-[11.5px] text-ink-3'>
+            <span className='min-w-0'>{summary ?? barTitle}</span>
+            <span className='flex-none font-mono tabular-nums'>{percent}%</span>
+          </div>
 
-          <ol className='mt-1 min-h-0 flex-1 overflow-y-auto px-3 py-1.5'>
-            {rows.map((row) => (
-              <li
-                key={row.key}
-                className={`py-[2px] text-[12px] ${
-                  row.at === 'now'
-                    ? 'text-ink'
-                    : row.at === 'later'
-                      ? 'text-ink-3/70'
-                      : row.at === 'failed'
-                        ? 'text-local'
-                        : 'text-ink-3'
-                }`}>
-                <span className='flex items-baseline gap-2'>
-                  <span
-                    aria-hidden='true'
-                    className='w-3 flex-none text-center'>
-                    {MARK[row.at]}
+          {rows.length > 0 && (
+            <ol className='m-0 flex min-h-0 flex-1 list-none flex-col gap-0.5 overflow-y-auto border-t border-line-2 p-0 pt-[7px] font-mono text-[11px] text-ink-2'>
+              {rows.map((row) => (
+                <li key={row.key}>
+                  <span className='flex items-baseline justify-between gap-3'>
+                    <span
+                      className={`min-w-0 truncate ${row.at === 'now' ? 'text-ink' : row.at === 'later' ? 'text-ink-3' : ''}`}
+                      title={row.title ?? row.name}>
+                      {row.name}
+                    </span>
+                    <span className={`flex-none tabular-nums ${TONE[row.at]}`}>
+                      {row.note ??
+                        (row.at === 'now' && (row.part ?? 0) > 0
+                          ? ofSize(row.part ?? 0, row.size)
+                          : formatSize(row.size))}
+                    </span>
                   </span>
-                  <span
-                    className={`min-w-0 flex-1 truncate ${row.at === 'now' ? 'font-semibold' : ''}`}
-                    title={row.title ?? row.name}>
-                    {row.name}
-                  </span>
-                  <span className='flex-none font-mono text-[11px] tabular-nums'>
-                    {row.note ??
-                      (row.at === 'now' && (row.part ?? 0) > 0
-                        ? ofSize(row.part ?? 0, row.size)
-                        : formatSize(row.size))}
-                  </span>
-                </span>
-                {/* The one under way gets a bar of its own. The bar above is the whole, where a single
-                file of fifty moves it by two hundredths and looks like nothing happening — this is
-                the file itself, from nothing to full. */}
-                {row.at === 'now' && (
-                  <span
-                    role='progressbar'
-                    aria-label={underWay(row.doing ?? doing, row.name)}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={Math.round((row.part ?? 0) * 100)}
-                    className='mt-[3px] mb-[2px] ml-[20px] flex h-[3px] overflow-hidden rounded-sm bg-line-2'>
-                    <i
-                      className='block h-full bg-accent transition-[width] duration-200'
-                      style={{ width: `${Math.round((row.part ?? 0) * 100)}%` }}
-                    />
-                  </span>
-                )}
-              </li>
-            ))}
-          </ol>
-
-          {footer && (
-            <div className='flex flex-none items-center gap-2 border-t border-line px-3 py-1.5 text-[11px]'>
-              {footer}
-            </div>
+                  {/* The one under way gets a bar of its own. The bar above is the whole, where a
+                      single file of fifty moves it by two hundredths and looks like nothing
+                      happening — this is the file itself, from nothing to full. */}
+                  {row.at === 'now' && (
+                    <span
+                      role='progressbar'
+                      aria-label={underWay(row.doing ?? doing, row.name)}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={Math.round((row.part ?? 0) * 100)}
+                      className='mt-[3px] mb-[2px] flex h-[3px] overflow-hidden rounded-sm bg-line-2'>
+                      <i
+                        className='block h-full bg-accent transition-[width] duration-200'
+                        style={{ width: `${Math.round((row.part ?? 0) * 100)}%` }}
+                      />
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ol>
           )}
         </>
       )}

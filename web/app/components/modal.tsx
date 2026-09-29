@@ -1,16 +1,29 @@
+import { t } from '@lingui/core/macro'
 import { useEffect, useRef } from 'react'
+import { Icon } from './icons'
 
-/* Every dialog in the app is this shape: a title, a body that scrolls if it has to, and a row of
-   buttons at the bottom with the one that does the thing on the right. Keeping the shell here is
-   what stops five dialogs from each inventing their own padding. */
+/* Every dialog in the app is this shape: a header bar in the window's own chrome with the title, a
+   quieter line under it and whatever the dialog keeps at hand on the right; a body that scrolls if
+   it has to; and a footer bar in the same chrome with the one button that does the thing on the
+   right. Keeping the shell here is what stops five dialogs from each inventing their own padding. */
 
 /* what Tab can land on inside a dialog */
-const FOCUSABLE =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+const FOCUSABLE = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]'
+]
+  .map((what) => `${what}:not([tabindex="-1"])`)
+  .join(', ')
 
 const Modal = ({
   label,
   title,
+  sub,
+  aside,
   wide,
   full,
   onClose,
@@ -20,6 +33,10 @@ const Modal = ({
 }: {
   label: string
   title: React.ReactNode
+  /* a quieter line under the title: what the dialog is about, in figures */
+  sub?: React.ReactNode
+  /* what sits at the right-hand end of the header, before the close button */
+  aside?: React.ReactNode
   wide?: boolean
   /* the whole window, for two things shown side by side */
   full?: boolean
@@ -68,19 +85,44 @@ const Modal = ({
     <div
       {...rest}
       onClick={onClose ? (e) => e.target === e.currentTarget && onClose() : undefined}
-      className='fixed inset-0 z-40 grid place-items-center bg-[rgba(8,12,16,0.5)] p-4'>
+      className='fixed inset-0 z-40 grid place-items-center bg-[rgba(24,24,27,0.4)] p-4'>
       <div
         ref={box}
         role='dialog'
         aria-modal='true'
         aria-label={label}
         onKeyDown={keys}
-        className={`flex max-h-full flex-col overflow-hidden rounded-xl border border-line bg-pane text-ink shadow-[0_20px_60px_rgba(0,0,0,0.35)] ${
-          full ? 'h-[90vh] w-[90vw]' : wide ? 'w-[min(680px,100%)]' : 'w-[min(560px,100%)]'
+        className={`flex max-h-full flex-col overflow-hidden rounded-lg bg-pane text-ink shadow-float ${
+          full
+            ? 'h-[92vh] w-[min(1360px,94vw)]'
+            : wide
+              ? 'w-[min(680px,100%)]'
+              : 'w-[min(560px,100%)]'
         }`}>
-        <h4 className='m-0 border-b border-line px-4 py-[13px] text-[14px] font-semibold'>
-          {title}
-        </h4>
+        <div className='flex flex-none items-center gap-2 border-b border-line-strong bg-chrome px-3.5 py-2.5'>
+          <div className='flex min-w-0 flex-col gap-1'>
+            <h2 className='m-0 text-[14px] leading-[1.3] font-semibold tracking-[-0.015em]'>
+              {title}
+            </h2>
+            {sub && <span className='text-[12px] text-ink-3'>{sub}</span>}
+          </div>
+          <span className='flex-1' />
+          {aside}
+          {/* Escape and a click beside the dialog already close it; this is the same for the mouse,
+              kept out of the keyboard's way and out of what is read out, so the one Close button
+              in the footer stays the only one by that name */}
+          {onClose && (
+            <button
+              type='button'
+              tabIndex={-1}
+              aria-hidden='true'
+              title={t`Close (Esc)`}
+              onClick={onClose}
+              className='grid h-7 w-7 flex-none place-items-center rounded-[5px] text-ink-2 hover:bg-well hover:text-ink'>
+              <Icon name='close' />
+            </button>
+          )}
+        </div>
         <div
           className={
             full
@@ -90,7 +132,7 @@ const Modal = ({
           {children}
         </div>
         {footer && (
-          <div className='flex items-center gap-2 border-t border-line px-4 py-[11px]'>
+          <div className='flex flex-none items-center gap-2 border-t border-line-strong bg-chrome px-3.5 py-2.5'>
             {footer}
           </div>
         )}
@@ -111,7 +153,7 @@ const Field = ({ label, children }: { label: string; children: React.ReactNode }
 )
 
 const INPUT =
-  'rounded-md border border-line bg-ground px-[9px] py-1.5 text-[13px] text-ink placeholder:text-ink-3 disabled:opacity-50'
+  'rounded-md border border-line bg-pane px-2.5 py-[5px] text-[13px] text-ink placeholder:text-ink-3 disabled:opacity-50'
 
 const ERROR = 'rounded-md bg-local-soft px-2.5 py-[7px] text-[12.5px] text-local'
 
