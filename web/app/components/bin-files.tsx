@@ -147,7 +147,7 @@ const BinFiles = ({
       {answered === null && !problem ? (
         <p className='m-0 px-0.5 text-[12.5px] text-ink-3'>{t`Looking in the bin…`}</p>
       ) : answered && batches.length === 0 ? (
-        <p className='m-0 rounded-2xl border-[1.5px] border-dashed border-line-strong px-3 py-5 text-center text-[12.5px] text-ink-3'>
+        <p className='m-0 rounded-2xl border-2 border-dashed border-line-strong px-3 py-5 text-center text-[12.5px] text-ink-3'>
           {t`The bin is empty.`}
         </p>
       ) : (

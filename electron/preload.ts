@@ -7,7 +7,14 @@
    The work folder is the server's whole world, so changing it is the window's to do: it asks, and
    starts the server again there. Nothing else of the app is reachable from the page. */
 
-import { contextBridge, ipcRenderer, webUtils } from 'electron'
+import { contextBridge, ipcRenderer, webFrame, webUtils } from 'electron'
+
+/* The window has nothing behind the page, so the page must not paint a ground of its own: the
+   space between the panels is the desktop. Inserted here, before the page is drawn, so nothing
+   flashes opaque first. */
+webFrame.insertCSS(
+  'html, body { background: transparent !important } .ground { background: none !important }'
+)
 
 contextBridge.exposeInMainWorld('skydock', {
   /* the address of a file let go on the window, or nothing when the engine will not say */
@@ -16,6 +23,20 @@ contextBridge.exposeInMainWorld('skydock', {
       return webUtils.getPathForFile(file) || null
     } catch {
       return null
+    }
+  },
+  /* the window's own title bar: what its buttons ask, and whether it is maximised */
+  frame: {
+    minimize: () => ipcRenderer.send('window:minimize'),
+    toggleMaximize: () => ipcRenderer.send('window:toggle-maximize'),
+    close: () => ipcRenderer.send('window:close'),
+    isMaximized: () => ipcRenderer.invoke('window:state'),
+    onMaximized: (listen: (maximized: boolean) => void) => {
+      const heard = (_event: unknown, maximized: boolean) => listen(maximized)
+      ipcRenderer.on('window:maximized', heard)
+      return () => {
+        ipcRenderer.removeListener('window:maximized', heard)
+      }
     }
   },
   /* the machine's own folder picker; the folder chosen, none when nothing changed, or why not */

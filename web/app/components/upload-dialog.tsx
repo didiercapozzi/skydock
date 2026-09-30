@@ -476,7 +476,7 @@ const UploadDialog = ({
                     className={`${INPUT} ${VALUE} w-[120px]`}
                   />
                 </label>
-                <div className='flex flex-col rounded-[12px] border-[1.5px] border-dashed border-ink-3 bg-well px-3 py-1.5 text-ink-2'>
+                <div className='flex flex-col rounded-[12px] border-2 border-dashed border-ink-3 bg-well px-3 py-1.5 text-ink-2'>
                   {inside.map((part) => (
                     <PartLine
                       key={part}
@@ -509,7 +509,7 @@ const UploadDialog = ({
           title={t`Named ${stem}.….zip — you choose the end, or none.`}
           className={`flex flex-none flex-col items-center gap-1.5 rounded-[16px] px-4 text-center font-semibold text-ink-3 ${
             plan.zips.length === 0 ? 'py-12' : 'py-4'
-          } ${over === 'new' ? 'border-[1.5px] border-dashed border-accent bg-accent-soft' : 'border-[1.5px] border-dashed border-ink-3'}`}>
+          } ${over === 'new' ? 'border-2 border-dashed border-accent bg-accent-soft' : 'border-2 border-dashed border-ink-3'}`}>
           <Icon
             name='zip'
             size={22}
@@ -551,7 +551,7 @@ const UploadDialog = ({
       </div>
       <div className={SCROLL}>
         {shown.length === 0 && (
-          <div className='flex flex-none flex-col items-center gap-1 rounded-[16px] border-[1.5px] border-dashed border-ink-3 px-4 py-10 text-center text-[12.5px] text-ink-3'>
+          <div className='flex flex-none flex-col items-center gap-1 rounded-[16px] border-2 border-dashed border-ink-3 px-4 py-10 text-center text-[12.5px] text-ink-3'>
             <Icon
               name='place'
               size={22}
@@ -667,7 +667,7 @@ const UploadDialog = ({
                     {/* what a zip holds is set apart from what lands as it is: a box of its own, dashed
                         and on a different ground, under the zip */}
                     {item.zip && (
-                      <div className='ml-[26px] flex flex-col rounded-[12px] border-[1.5px] border-dashed border-ink-3 bg-well px-3 py-1.5 text-ink-2'>
+                      <div className='ml-[26px] flex flex-col rounded-[12px] border-2 border-dashed border-ink-3 bg-well px-3 py-1.5 text-ink-2'>
                         {item.holds.map((part) => (
                           <PartLine
                             key={part}

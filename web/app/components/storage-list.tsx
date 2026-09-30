@@ -226,7 +226,7 @@ const StorageList = ({
           {t`The storage’s list of montages could not be read: ${problem}`}
         </p>
       ) : storage.montages.length === 0 ? (
-        <p className='m-0 mt-2 rounded-2xl border-[1.5px] border-dashed border-line-strong px-3 py-5 text-center text-[12.5px] text-ink-3'>
+        <p className='m-0 mt-2 rounded-2xl border-2 border-dashed border-line-strong px-3 py-5 text-center text-[12.5px] text-ink-3'>
           {t`No montage uploaded yet — each one is listed here once it is.`}
         </p>
       ) : (

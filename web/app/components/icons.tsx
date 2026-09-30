@@ -233,6 +233,28 @@ const PATHS = {
   next: <path d='m9 6 6 6-6 6' />,
   fullScreen: <path d='M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5' />,
   close: <path d='M6 6l12 12M18 6 6 18' />,
+  minimise: <path d='M6 12h12' />,
+  maximise: (
+    <rect
+      x='6'
+      y='6'
+      width='12'
+      height='12'
+      rx='2'
+    />
+  ),
+  restore: (
+    <>
+      <rect
+        x='4.5'
+        y='8.5'
+        width='11'
+        height='11'
+        rx='2'
+      />
+      <path d='M8.5 8.5v-2a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-2' />
+    </>
+  ),
   back: <path d='M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3' />,
   mail: (
     <>

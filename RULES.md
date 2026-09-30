@@ -697,11 +697,14 @@ name SkyDock gave the montage that is watched; one rendered under another name i
 when the montage is uploaded. A project saved or removed by hand is noticed the same way. Freed
 montages are not looked at; nothing of them is here.
 
-**The toolbar and the status bar.** SkyDock is drawn as the desktop tool it is: under the window's
-own title bar, three floating rounded panels side by side on a quiet backdrop — the places, the work
+**The toolbar and the status bar.** SkyDock is drawn as the desktop tool it is. The installed app's window has no frame of the
+desktop's and nothing behind the page: its own title bar is a panel like the others, with the name and
+the minimise, maximise and close buttons, that moves the window when dragged and maximises it when
+pressed twice — and the space between the panels is the desktop itself, seen through. Under it,
+three floating rounded panels side by side — the places, the work
 (its toolbar and its list as one panel) and what is open — and a status bar along the bottom. One
-ultramarine is for where you are, what is picked and the button that does the next thing. A file's
-state is a small tinted badge: amber for what is still to do, magenta for what is processed, green
+petrol teal is for where you are, what is picked and the button that does the next thing. A file's
+state is a small tinted badge: amber for what is still to do, blue for what is processed, green
 for what is up. A colour marks each kind of place: blue for Fresh files, teal for destinations,
 violet for montages, green for the storage, amber for cameras, red for the bin. Pictures lead: a
 jump is a photograph of its own footage with its name on it, and a thumbnail is a photograph. Titles

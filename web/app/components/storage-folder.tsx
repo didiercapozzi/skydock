@@ -215,7 +215,7 @@ const StorageFolder = ({
           {folder.reason}
         </p>
       ) : files.length === 0 ? (
-        <p className='m-0 mt-2 rounded-2xl border-[1.5px] border-dashed border-line-strong px-3 py-5 text-center text-[12.5px] text-ink-3'>
+        <p className='m-0 mt-2 rounded-2xl border-2 border-dashed border-line-strong px-3 py-5 text-center text-[12.5px] text-ink-3'>
           {t`Nothing up there yet — what is uploaded from here is listed once it is.`}
         </p>
       ) : (
@@ -272,7 +272,7 @@ const StorageFolder = ({
                       className={`inline-flex h-[22px] flex-none items-center gap-1.5 rounded-full px-[9px] text-[11.5px] font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:content-[''] ${
                         here
                           ? 'bg-up-soft text-up before:bg-current'
-                          : 'bg-well text-up before:shadow-[inset_0_0_0_1.5px_currentColor]'
+                          : 'bg-well text-up before:shadow-[inset_0_0_0_2px_currentColor]'
                       }`}>
                       {here ? t`Here too` : t`Only there`}
                     </span>

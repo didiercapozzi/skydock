@@ -268,7 +268,7 @@ const PickMark = ({ picked, onPick }: { picked: boolean; onPick: () => void }) =
       e.stopPropagation()
       onPick()
     }}
-    className={`absolute top-[9px] left-[9px] z-[2] grid size-5 place-items-center rounded-[7px] border-[1.5px] p-0 ${
+    className={`absolute top-[9px] left-[9px] z-[2] grid size-5 place-items-center rounded-[7px] border-2 p-0 ${
       picked
         ? 'border-accent bg-accent text-white'
         : 'border-white/90 bg-[rgba(8,12,22,0.28)] text-transparent'
@@ -411,7 +411,7 @@ const Row = ({
       /* the one looked at is marked apart from the picked ones by a ring round it */
       className={`${COLUMNS} h-[60px] w-full rounded-[13px] text-left [contain-intrinsic-size:auto_60px] [content-visibility:auto] ${
         previewed
-          ? 'bg-accent-soft shadow-[inset_0_0_0_1.5px_var(--color-accent)]'
+          ? 'bg-accent-soft shadow-[inset_0_0_0_2px_var(--color-accent)]'
           : picked
             ? 'bg-accent-soft'
             : 'hover:bg-well'
@@ -436,7 +436,7 @@ const Row = ({
             e.stopPropagation()
             onPick(file)
           }}
-          className={`grid size-[18px] place-items-center rounded-[6px] border-[1.5px] p-0 ${
+          className={`grid size-[18px] place-items-center rounded-[6px] border-2 p-0 ${
             picked
               ? 'border-accent bg-accent text-white'
               : 'border-check bg-pane text-transparent hover:border-accent'
@@ -586,9 +586,9 @@ const Tile = ({
        content-visibility: that would clip the ring at the tile's edge. */
     className={`@container/tile relative aspect-[16/11] max-w-full min-w-0 cursor-pointer overflow-hidden rounded-[14px] bg-well ${
       picked
-        ? 'shadow-[0_0_0_3px_var(--color-pane),0_0_0_5.5px_var(--color-accent)]'
+        ? 'shadow-[0_0_0_3px_var(--color-pane),0_0_0_5px_var(--color-accent)]'
         : previewed
-          ? 'shadow-[0_0_0_3px_var(--color-pane),0_0_0_5.5px_var(--color-ink-3)]'
+          ? 'shadow-[0_0_0_3px_var(--color-pane),0_0_0_5px_var(--color-ink-3)]'
           : 'shadow-card'
     }`}>
     {/* a freed file is on the storage only: nothing here to draw it from */}

@@ -189,12 +189,12 @@ const JumpCard = ({
       className={`relative block h-[150px] w-full overflow-hidden rounded-[16px] text-left ${
         group
           ? `bg-well text-white ${frozen ? 'cursor-pointer' : 'cursor-grab'}`
-          : 'cursor-pointer border-[1.5px] border-dashed border-line-strong bg-transparent text-ink-3 hover:border-ink-3'
+          : 'cursor-pointer border-2 border-dashed border-line-strong bg-transparent text-ink-3 hover:border-ink-3'
       } ${
         over
-          ? 'shadow-[0_0_0_3px_var(--color-pane),0_0_0_5.5px_var(--color-pick)]'
+          ? 'shadow-[0_0_0_3px_var(--color-pane),0_0_0_5px_var(--color-pick)]'
           : open
-            ? 'shadow-[0_0_0_3px_var(--color-pane),0_0_0_5.5px_var(--color-accent)]'
+            ? 'shadow-[0_0_0_3px_var(--color-pane),0_0_0_5px_var(--color-accent)]'
             : group
               ? 'shadow-card'
               : ''
@@ -274,7 +274,7 @@ const JumpCard = ({
 const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props) => {
   if (sections.length === 0)
     return (
-      <div className='mt-3 rounded-[16px] border-[1.5px] border-dashed border-line-strong px-4 py-7 text-center font-medium text-ink-3'>
+      <div className='mt-3 rounded-[16px] border-2 border-dashed border-line-strong px-4 py-7 text-center font-medium text-ink-3'>
         {empty}
       </div>
     )

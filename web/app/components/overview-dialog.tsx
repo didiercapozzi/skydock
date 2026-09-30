@@ -279,7 +279,7 @@ const OverviewDialog = ({
                             checked={r.paid}
                             disabled={busy}
                             onChange={(e) => onPaid(r.id, e.target.checked)}
-                            className='peer size-[18px] cursor-pointer appearance-none rounded-[6px] border-[1.5px] border-check bg-pane checked:border-accent checked:bg-accent disabled:cursor-default'
+                            className='peer size-[18px] cursor-pointer appearance-none rounded-[6px] border-2 border-check bg-pane checked:border-accent checked:bg-accent disabled:cursor-default'
                           />
                           <span className='pointer-events-none absolute hidden text-white peer-checked:block'>
                             <Icon

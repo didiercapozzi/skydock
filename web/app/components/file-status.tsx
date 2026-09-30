@@ -29,7 +29,7 @@ const TITLES: Record<ShownStatus, MessageDescriptor> = {
    to be dealt with rather than simply saying where a file has got to. */
 const CHIP: Record<ShownStatus, string> = {
   local: 'bg-local-soft text-local before:bg-current',
-  changed: 'bg-changed-soft text-changed before:shadow-[inset_0_0_0_1.5px_currentColor]',
+  changed: 'bg-changed-soft text-changed before:shadow-[inset_0_0_0_2px_currentColor]',
   processed: 'bg-proc-soft text-proc before:bg-current',
   uploaded: 'bg-up-soft text-up before:bg-current'
 }

@@ -407,7 +407,7 @@ const StatusBar = ({
         <span
           title={t`${ready} of ${total} clips have their small copy. They are built in the background; the count catches up whenever the board is redrawn.`}
           className={item}>
-          <span className='size-2.5 flex-none animate-spin rounded-full border-[1.5px] border-line-strong border-t-accent' />
+          <span className='size-2.5 flex-none animate-spin rounded-full border-2 border-line-strong border-t-accent' />
           {t`Proxies ready ${ready}/${total}`}
         </span>
       )}
@@ -416,7 +416,7 @@ const StatusBar = ({
         <span
           title={t`${read} of ${clips} clips have been read for where the jump is in them. They are read in the background; each clip says how far it has got.`}
           className={item}>
-          <span className='size-2.5 flex-none animate-spin rounded-full border-[1.5px] border-line-strong border-t-accent' />
+          <span className='size-2.5 flex-none animate-spin rounded-full border-2 border-line-strong border-t-accent' />
           {t`Marks found ${read}/${clips}`}
           <span className='ml-px h-1 w-20 flex-none overflow-hidden rounded-sm bg-line'>
             <i

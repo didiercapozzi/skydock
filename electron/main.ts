@@ -190,6 +190,18 @@ const zoomHotkeys = (contents: WebContents) => {
 }
 
 /* the same, asked for from the board's own control */
+/* what the page's own title bar asks of the window it is in */
+ipcMain.handle(
+  'window:state',
+  (event) => BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false
+)
+ipcMain.on('window:minimize', (event) => BrowserWindow.fromWebContents(event.sender)?.minimize())
+ipcMain.on('window:toggle-maximize', (event) => {
+  const window = BrowserWindow.fromWebContents(event.sender)
+  if (window) window.isMaximized() ? window.unmaximize() : window.maximize()
+})
+ipcMain.on('window:close', (event) => BrowserWindow.fromWebContents(event.sender)?.close())
+
 ipcMain.handle('zoom:get', (event) => event.sender.getZoomFactor())
 ipcMain.handle('zoom:set', (event, asked: unknown) =>
   typeof asked === 'number' && Number.isFinite(asked)
@@ -255,7 +267,11 @@ const openWindow = (address: string) => {
     minWidth: 900,
     minHeight: 600,
     autoHideMenuBar: true,
-    backgroundColor: '#f2f4f6',
+    /* No frame of the desktop's, and nothing behind the page: the space between the panels is the
+       desktop itself. The page draws its own title bar, and asks the window to do what its buttons say. */
+    frame: false,
+    transparent: true,
+    backgroundColor: '#00000000',
     webPreferences: {
       preload: path.join(app.getAppPath(), 'build', 'electron', 'preload.cjs'),
       zoomFactor: zoom
@@ -267,6 +283,9 @@ const openWindow = (address: string) => {
   })
   zoomHotkeys(window.webContents)
   askBeforeClosing(window)
+  const tellMaximized = () => window.webContents.send('window:maximized', window.isMaximized())
+  window.on('maximize', tellMaximized)
+  window.on('unmaximize', tellMaximized)
   void window.loadURL(address)
   console.log(`[SkyDock] the window is open on ${address}`)
   return window

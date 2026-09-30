@@ -1172,6 +1172,7 @@ msgstr "close"
 #: app/components/shortcuts-dialog.tsx
 #: app/components/storage-folder.tsx
 #: app/components/templates-dialog.tsx
+#: app/components/window-bar.tsx
 #: app/components/work-folder-dialog.tsx
 msgid "Close"
 msgstr "Close"
@@ -2388,6 +2389,10 @@ msgstr "Mark as sent"
 msgid "Marks found {read}/{clips}"
 msgstr "Marks found {read}/{clips}"
 
+#: app/components/window-bar.tsx
+msgid "Maximise"
+msgstr "Maximise"
+
 #: app/components/comparison-dialog.tsx
 msgid "Merge"
 msgstr "Merge"
@@ -2395,6 +2400,10 @@ msgstr "Merge"
 #: app/components/comparison-dialog.tsx
 msgid "Merge date"
 msgstr "Merge date"
+
+#: app/components/window-bar.tsx
+msgid "Minimise"
+msgstr "Minimise"
 
 #: app/components/inspector.tsx
 #: app/components/overview-dialog.tsx
@@ -3225,6 +3234,10 @@ msgstr "Reset…"
 #: app/components/frame-cropper.tsx
 msgid "Resize {corner}"
 msgstr "Resize {corner}"
+
+#: app/components/window-bar.tsx
+msgid "Restore"
+msgstr "Restore"
 
 #: app/components/storage-list.tsx
 msgid "Restore · {waiting, plural, one {# file} other {# files}}"

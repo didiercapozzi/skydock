@@ -12,6 +12,13 @@ declare global {
     skydock?: {
       pathOf: (file: File) => string | null
       chooseWorkFolder?: () => Promise<unknown>
+      frame?: {
+        minimize: () => void
+        toggleMaximize: () => void
+        close: () => void
+        isMaximized: () => Promise<boolean>
+        onMaximized: (listen: (maximized: boolean) => void) => () => void
+      }
       zoom?: {
         get: () => Promise<number>
         set: (factor: number) => Promise<number>

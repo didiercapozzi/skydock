@@ -25,7 +25,7 @@ const STANDING = {
   missing: {
     label: msg`not copied yet`,
     many: msg`not copied yet`,
-    tone: 'bg-changed-soft text-changed before:shadow-[inset_0_0_0_1.5px_currentColor]',
+    tone: 'bg-changed-soft text-changed before:shadow-[inset_0_0_0_2px_currentColor]',
     ink: 'text-accent',
     title: msg`Not copied here yet — it cannot be deleted from the camera`
   },
@@ -79,7 +79,7 @@ const Tick = ({
       aria-label={label}
       checked={checked}
       onChange={onChange}
-      className='peer m-0 size-[18px] cursor-pointer appearance-none rounded-[6px] border-[1.5px] border-check bg-pane checked:border-accent checked:bg-accent hover:border-accent'
+      className='peer m-0 size-[18px] cursor-pointer appearance-none rounded-[6px] border-2 border-check bg-pane checked:border-accent checked:bg-accent hover:border-accent'
     />
     <Icon
       name='check'
@@ -401,7 +401,7 @@ const CameraFiles = ({
           {t`This camera is not plugged in any more.`}
         </p>
       ) : files.length === 0 && listing ? (
-        <p className='m-0 rounded-2xl border-[1.5px] border-dashed border-line-strong px-3 py-5 text-center text-[12.5px] text-ink-3'>
+        <p className='m-0 rounded-2xl border-2 border-dashed border-line-strong px-3 py-5 text-center text-[12.5px] text-ink-3'>
           {looking
             ? t`Going over the camera — its files appear here as they are reached.`
             : t`Nothing on the camera’s card.`}

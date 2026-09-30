@@ -131,7 +131,7 @@ const FrameCropper = ({
           width: `${crop.width * 100}%`,
           height: `${crop.height * 100}%`
         }}
-        className='absolute cursor-move rounded-[6px] border-[1.5px] border-white'>
+        className='absolute cursor-move rounded-[6px] border-2 border-white'>
         {/* the picture shows through here, because the dim layer is behind this one */}
         <div className='absolute inset-0 rounded-[2px] bg-transparent backdrop-brightness-[1.8]' />
         {HANDLES.map(({ corner, style }) => (
