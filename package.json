@@ -27,6 +27,7 @@
     "format:check": "oxfmt --config oxfmt.config.ts --check .",
     "installers": "npm run tools && SKYDOCK_TOOLS_DIR=\"$PWD/build/tools\" npm run pack && npm run shell && electron-builder --publish never",
     "lint": "oxlint --config oxlint.config.ts .",
+    "moments:redo": "npx tsx scripts/redo-moments.ts",
     "pack": "npx tsx scripts/build-payload.ts",
     "release": "npx tsx scripts/release.ts",
     "scan": "npx tsx packages/skydock-scripts/src/scan.ts",

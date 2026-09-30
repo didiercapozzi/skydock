@@ -501,6 +501,10 @@ msgid "{proxiesWaiting, plural, one {waiting for # proxy} other {waiting for # p
 msgstr "{proxiesWaiting, plural, one {# proxy en attente} other {# proxys en attente}}"
 
 #: app/components/board-header.tsx
+msgid "{read} of {clips} clips have been read for where the jump is in them. They are read in the background; each clip says how far it has got."
+msgstr "{read} clips sur {clips} ont été lus pour trouver où est le saut. Ils sont lus en arrière-plan ; chaque clip dit où il en est."
+
+#: app/components/board-header.tsx
 msgid "{ready} of {total} clips have their small copy. They are built in the background; the count catches up whenever the board is redrawn."
 msgstr "{ready} clips sur {total} ont leur petite copie. Elles se font en arrière-plan ; le compte se met à jour chaque fois que le tableau est redessiné."
 
@@ -1748,6 +1752,10 @@ msgstr "tout ce qui est sur le stockage, toujours listé et lisible depuis cette
 msgid "Everything, as just scanned"
 msgstr "Tout, tel qu’analysé à l’instant"
 
+#: app/components/file-list.tsx
+msgid "exit"
+msgstr "sortie"
+
 #: app/components/shortcuts-dialog.tsx
 msgid "F"
 msgstr "F"
@@ -2127,6 +2135,10 @@ msgstr "Ses fichiers sont restés où ils étaient."
 msgid "Its folder"
 msgstr "Son dossier"
 
+#: app/components/file-list.tsx
+msgid "Its jump was found — the exit is at {exit}"
+msgstr "Son saut a été trouvé — la sortie est à {exit}"
+
 #: app/components/montage-card.tsx
 msgid "Join montage"
 msgstr "Rejoindre le montage"
@@ -2396,6 +2408,10 @@ msgstr "Création des zips…"
 #: app/components/email-dialog.tsx
 msgid "Mark as sent"
 msgstr "Marquer comme envoyé"
+
+#: app/components/board-header.tsx
+msgid "Marks found {read}/{clips}"
+msgstr "Repères trouvés {read}/{clips}"
 
 #: app/components/comparison-dialog.tsx
 msgid "Merge"

@@ -3,14 +3,13 @@ import {
   getOutputDir,
   keepBoardStep,
   loadManifest,
-  scanMedia,
-  messageOf
+  scanMedia
 } from '@skydock/scripts'
 import { z } from 'zod'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 /* server-only: it shells out to ffmpeg, so it is imported here rather than through the barrel the
    browser evaluates */
-import { buildMissingProxies } from '../../../packages/skydock-scripts/src/proxy'
+import { catchUp } from '../../../packages/skydock-scripts/src/catchUp'
 import { copyAgain } from '../../../packages/skydock-scripts/src/cameraWatch'
 import { boardAnswer } from '../helpers/manifest'
 
@@ -32,9 +31,7 @@ const action = createValidatedFormAction()({
     /* Proxies are built behind the answer, not inside it: transcoding a card of clips takes
        minutes, and everything works without them meanwhile — the crop bar falls back to the clip
        itself and the editor makes its own. Each one appears on the next thing the board asks. */
-    void buildMissingProxies(outputDir).catch((e: unknown) => {
-      console.error('[Proxy] pass failed:', messageOf(e))
-    })
+    void catchUp(outputDir)
     const manifest = loadManifest(getManifestPath(outputDir))
     return { scan: result, ...(manifest ? boardAnswer(manifest) : { groups: [] }) }
   }

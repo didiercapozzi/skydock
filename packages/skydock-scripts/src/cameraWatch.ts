@@ -7,7 +7,7 @@ import { kioReader } from './kio'
 import { camerasThroughKde, copyOverKio, isKioCamera, kioCameraName } from './kioCamera'
 import type { SeenClip } from './kioCamera'
 import { publish } from './live'
-import { buildMissingProxies } from './proxy'
+import { catchUp } from './catchUp'
 import { scanMedia } from './scan'
 import { messageOf } from './lib/words'
 
@@ -233,7 +233,7 @@ const copyNext = async (outputDir: string) => {
        put there — no board yet, or one that could not be read. It reads the whole library, which is
        no price to pay for nothing. */
     if (result.copied > onBoard) await scanMedia({ outputDir })
-    if (result.copied > 0) void buildMissingProxies(outputDir).catch(() => undefined)
+    if (result.copied > 0) void catchUp(outputDir)
     publish({ kind: 'camera', camera, state: 'done', ...result })
   } catch (e) {
     const gone = e instanceof CameraGone

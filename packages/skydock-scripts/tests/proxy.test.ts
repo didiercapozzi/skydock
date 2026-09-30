@@ -129,8 +129,6 @@ describe('proxies', () => {
     execSyncMock.mockImplementation(toolsPresent())
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123')])
-    /* already asked where its jump is, so what is heard here is the proxy alone */
-    manifest.files[0].moments = null
     const heard: LiveEvent[] = []
     const stop = subscribe((event) => heard.push(event))
 
@@ -276,7 +274,6 @@ describe('proxies', () => {
     })
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123')])
-    manifest.files[0].moments = null
     const heard: LiveEvent[] = []
     const stop = subscribe((event) => heard.push(event))
 
@@ -441,56 +438,10 @@ describe('a build still in progress', () => {
     expect(statProxies(manifest, outputDir)[src]).toEqual({ state: 'ready', play: proxyPath })
   })
 
-  /* Asking a clip where its jump is costs a moment, and the answer for most clips is that there is
-     no jump in them. That answer is written down too, so no pass asks the same clip again. */
-  it('writes down that a clip has no jump in it, so it is not asked twice', async () => {
-    const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
-    const manifest = manifestOf([fileEntry(src, 'abc123')])
-
-    await ensureProxies(manifest, outputDir)
-
-    expect(manifest.files[0].moments).toBeNull()
-  })
-
-  /* Finding the jump reads through the whole clip, so it is said on the clip as it goes, the way
-     its proxy is, and ends before the proxy starts (RULES, Work shown as it happens). */
-  it('says as it happens that the jump in a clip is being found, before its proxy', async () => {
-    execSyncMock.mockImplementation(toolsPresent())
-    const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
-    const manifest = manifestOf([fileEntry(src, 'abc123')])
-    const heard: LiveEvent[] = []
-    const stop = subscribe((event) => heard.push(event))
-
-    await ensureProxies(manifest, outputDir)
-    stop()
-
-    const said = heard.flatMap((event) =>
-      event.kind === 'file' || event.kind === 'file-done' ? [`${event.kind}:${event.work}`] : []
-    )
-    expect(said.slice(0, 2)).toEqual(['file:moments', 'file-done:moments'])
-    expect(said.indexOf('file-done:moments')).toBeLessThan(said.indexOf('file:proxy'))
-  })
-
-  /* a clip already asked is not asked again, and nothing is said of it */
-  it('says nothing of the jump in a clip that was already asked', async () => {
-    const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
-    const manifest = manifestOf([fileEntry(src, 'abc123')])
-    manifest.files[0].moments = null
-    const heard: LiveEvent[] = []
-    const stop = subscribe((event) => heard.push(event))
-
-    await ensureProxies(manifest, outputDir)
-    stop()
-
-    expect(heard.some((event) => 'work' in event && event.work === 'moments')).toBe(false)
-  })
-
   it('writes the record down as each one lands, not once at the end', async () => {
     const one = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const two = writeTempFile(outputDir, 'original_files/GX010024.MP4')
     const manifest = manifestOf([fileEntry(one, 'abc123'), fileEntry(two, 'def456')])
-    /* both already asked where their jump is, so what is counted here is the proxies alone */
-    for (const file of manifest.files) file.moments = null
 
     const saves: number[] = []
     await ensureProxies(manifest, outputDir, undefined, () =>

@@ -227,6 +227,40 @@ describe('where the jump is in a clip', () => {
 /* What is measured is when this camera's wearer became airborne. What an edit starts from is the
    moment the jump begins on screen — and on a fun jump the group is out of the door a second before
    whoever is filming them. A montage is its own subject, and wants the instant itself. */
+/* The whole clip is read before the door is chosen, not the first thing that looks like one: a clip
+   with a dip aboard the plane and the real exit long after it, as one from a DJI did — a lull of
+   0.8 at 33 seconds, the door at 76, the canopy at 131 — is the later one. */
+describe('the door of a clip with a lull aboard before it', () => {
+  const clip = () => {
+    const felt = [
+      ...Array.from({ length: 30 }, () => second(1)).flat(),
+      ...Array.from({ length: 4 }, () => second(0.8)).flat(),
+      ...Array.from({ length: 42 }, () => second(1)).flat(),
+      ...Array.from({ length: 5 }, () => second(0.4)).flat(),
+      ...Array.from({ length: 50 }, () => second(1.1)).flat(),
+      ...Array.from({ length: OPENING }, () => second(2.1)).flat(),
+      ...Array.from({ length: 60 }, () => second(1)).flat(),
+      ...second(1.5),
+      ...Array.from({ length: 5 }, () => second(1)).flat()
+    ]
+    return { felt, seconds: felt.length / 200 }
+  }
+
+  it('is the exit the canopy follows, not the lull', () => {
+    const { felt, seconds } = clip()
+    const moments = readFelt(felt, seconds)
+    expect(moments?.exit).toBe(76)
+    expect(moments?.opening).toBeDefined()
+    expect(moments?.landing).toBeDefined()
+  })
+
+  it('is the deepest dip when the clip ends before any canopy', () => {
+    const { felt } = clip()
+    const cut = felt.slice(0, 90 * 200)
+    expect(readFelt(cut, 90)?.exit).toBe(76)
+  })
+})
+
 describe('where a cut starts from', () => {
   const moments = { exit: 38.6, canopy: 101.6, landing: 192.7 }
 

@@ -336,6 +336,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
       <StatusBar
         proxies={board.proxyProgress}
+        jumps={board.jumpProgress}
         disk={board.disk ?? loaderData.disk}
         nas={{ connected: nas.connected, host: nas.host, user: nas.user, links: nasLinks }}
         uploading={

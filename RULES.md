@@ -678,7 +678,12 @@ one line open to the machine and hears it. A clip is flagged as having its proxy
 A board opened, or reconnected, in the middle of a run starts with what is already under way. The
 figure is a percentage of what is being written, so a trimmed clip counts against its trim — or, while
 a jump is being found, of the clip being read through. Finding it never holds up the rest of the
-board: the clips are read one after another in the background, and the board goes on answering. This is
+board: the clips are read one after another in the background, and the board goes on answering. Finding
+the jump is a pass of its own, beside the proxies' and never waiting on them: a clip is read for its
+jump while another is still being transcoded. The moment a jump is found it is on the clip — a small
+green "exit" on its row, an arrow on its thumbnail, saying where the exit is — with no reload; a clip
+with none is left unmarked, since most clips are not jumps. The status bar counts the clips read out of
+the clips there are, with a bar, while some are still to be. This is
 only ever for the eyes: what a file _is_ still comes from what the board is told when the work ends,
 so a figure that never arrives costs a bar that lags and never a wrong status. Work started from the
 command line is not heard, only work the board started.
@@ -1057,10 +1062,16 @@ asked of them allows for that. An opening is a deceleration that lasts and has a
 after it, which is what tells it from a jumper tracking or head-down; it is marked twice because a film
 wants both ends of it.
 
-Every clip is asked once, in the background, off the original — a copy keeps the picture and the
+Every clip is asked once, in the background, in a pass of its own beside the proxies', off the original — a copy keeps the picture and the
 sound, not what the camera felt. Most clips have no jump in them: a clip shot on the ground, one
 that never left the plane, one off a camera that measures nothing. Saying so is the answer, kept so
 that nothing is asked twice, and it is never made up.
+
+The whole clip is read before anything is marked, never the first thing that looks like a door: a
+clip can hold a lull aboard the aeroplane long before the real exit, and taking the first dip would
+mark the cabin as the jump and find nothing after it. Every dip that looks like a door is weighed,
+and the exit is the one a canopy follows — or, when none is followed by one, as with a clip that ends
+in freefall, the deepest of them. The other marks are then read from that exit.
 
 A jump is cut around those moments, and what SkyDock finds is a starting point, shown where it can be
 seen and corrected, never a decision taken silently. A jump runs door, opening, canopy, ground, and a

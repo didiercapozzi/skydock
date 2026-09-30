@@ -278,24 +278,35 @@ const beganAt = (felt: number[], rate: number, second: number) => {
   return Math.round((earliest / rate) * 10) / 10
 }
 
-/* The door is the first light second with lighter ones after it; the canopy the first heavy second
-   a sensible while later; the ground the last heavy second of all — each then placed to the tenth
-   of a second by the readings themselves. */
+/* The door is the light second, with lighter ones after it, that a canopy follows — or the lightest
+   of them when none does; the canopy the hardest heavy second a sensible while later; the ground the
+   last heavy second of all — each then placed to the tenth of a second by the readings themselves. */
 const readFelt = (felt: number[], seconds: number): JumpMoments | null => {
   if (felt.length < 100 || seconds <= 0) return null
   const weighed = bySecond(felt, seconds)
   if (weighed.length < 5) return null
 
-  const exit = weighed.findIndex((second, at) => {
-    if (second >= STILL_ABOARD) return false
+  /* Every place the plane could have been left, not the first: a lull aboard — a turn, turbulence, a
+     pushover — weighs as little as a shallow exit does, and taking the first one that looks like
+     a door marks a clip's cabin as its jump and then finds nothing after it. Each dip that looks
+     like a door is a candidate, and the whole clip is read before one is chosen. */
+  const dips = weighed.flatMap((second, at) => {
+    if (second >= STILL_ABOARD) return []
     const falling = weighed.slice(at, at + FALLING_FOR)
-    if (falling.length < FALLING_FOR) return false
-    if (falling.reduce((sum, one) => sum + one, 0) / FALLING_FOR >= LEAVING) return false
+    if (falling.length < FALLING_FOR) return []
+    if (falling.reduce((sum, one) => sum + one, 0) / FALLING_FOR >= LEAVING) return []
     return weighed
       .slice(Math.max(0, at - ABOARD_WITHIN), at)
       .some((before) => before >= STILL_ABOARD)
+      ? [at]
+      : []
   })
-  if (exit === -1) return null
+  /* a dip that lasts several seconds is one candidate, the door being where it began */
+  const candidates = dips.filter((at, index) => dips[index - 1] !== at - 1)
+  if (candidates.length === 0) return null
+  /* how light the seconds after it are: the door is the deepest of them */
+  const depthAt = (at: number) =>
+    weighed.slice(at, at + FALLING_FOR).reduce((sum, one) => sum + one, 0) / FALLING_FOR
 
   /* A deceleration that lasts, with flying under a canopy on the other side of it. Neither half
      alone will do: a jump holds other decelerations that last — a camera flyer turning away from
@@ -316,17 +327,27 @@ const readFelt = (felt: number[], seconds: number): JumpMoments | null => {
   }
   /* and the hardest of those, since a manoeuvre can sit a few seconds before a real opening and be
      followed by the same canopy flight — nothing in a jump stops a body as hard as its canopy */
-  const canopy = weighed.reduce(
-    (best, _, at) =>
-      at >= exit + SHORTEST_FREEFALL &&
-      at <= exit + LONGEST_FREEFALL &&
-      opening(at) >= OPENING_MEAN &&
-      opening(at) > (best === -1 ? 0 : opening(best)) &&
-      flyingAfter(at)
-        ? at
-        : best,
-    -1
-  )
+  const canopyAfter = (exit: number) =>
+    weighed.reduce(
+      (best, _, at) =>
+        at >= exit + SHORTEST_FREEFALL &&
+        at <= exit + LONGEST_FREEFALL &&
+        opening(at) >= OPENING_MEAN &&
+        opening(at) > (best === -1 ? 0 : opening(best)) &&
+        flyingAfter(at)
+          ? at
+          : best,
+      -1
+    )
+  /* The door that a canopy follows is the door of the jump; of those, or of all of them when none
+     has one — a clip that ends in freefall — the deepest. */
+  const read = candidates.map((at) => ({ at, canopy: canopyAfter(at) }))
+  const chosen = read.reduce((best, one) => {
+    if ((one.canopy !== -1) !== (best.canopy !== -1)) return one.canopy !== -1 ? one : best
+    return depthAt(one.at) < depthAt(best.at) ? one : best
+  })
+  const exit = chosen.at
+  const canopy = chosen.canopy
   /* the ground: the last second of the jump that weighs more than a canopy ride does */
   const last = weighed.reduce<number | undefined>(
     (found, second, at) => (second >= HEAVY ? at : found),

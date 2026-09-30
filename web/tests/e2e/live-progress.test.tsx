@@ -47,9 +47,12 @@ const Files = ({ shape }: { shape: 'rows' | 'grid' }) => {
   })
   const [, setMontages] = useState({})
   const [, setNote] = useState<{ text: string; problem: boolean } | null>(null)
-  useLiveProgress(setProxies, setMontages, setNote)
+  const [files, setFiles] = useState([clip('a'), clip('b')])
+  useLiveProgress(setProxies, setMontages, setNote, (id, moments) =>
+    setFiles((now) => now.map((f) => (f.id === id ? { ...f, moments } : f)))
+  )
   return createElement(FileList, {
-    files: [clip('a'), clip('b')],
+    files,
     kind: 'all',
     shape,
     picked: [],
@@ -163,6 +166,29 @@ describe('the jump in a clip being found', () => {
     says({ kind: 'file', work: 'moments', fileId: 'b', percent: 45 })
 
     await expect.element(bar('Finding the jump b.MP4')).toHaveAttribute('aria-valuenow', '45')
+  })
+
+  test('is flagged with its exit the moment the jump is found, and left bare when there is none', async () => {
+    await render(createElement(Files, { shape: 'rows' }))
+    await expect.element(page.getByText(/↓ exit/)).not.toBeInTheDocument()
+
+    says({ kind: 'file-done', work: 'moments', fileId: 'a', ok: true, moments: { exit: 38 } })
+    says({ kind: 'file-done', work: 'moments', fileId: 'b', ok: true, moments: null })
+
+    await expect.element(page.getByText(/↓ exit/)).toBeVisible()
+    expect(page.getByText(/↓ exit/).elements()).toHaveLength(1)
+  })
+
+  /* the proxy and the jump are made side by side, so one ending leaves the other's bar as it was */
+  test('leaves the proxy’s bar alone when the jump is found while it is still being made', async () => {
+    await render(createElement(Files, { shape: 'rows' }))
+    says({ kind: 'file', work: 'proxy', fileId: 'a', percent: 20 })
+    says({ kind: 'file', work: 'moments', fileId: 'a', percent: 60 })
+    await expect.element(bar('Finding the jump a.MP4')).toBeInTheDocument()
+
+    says({ kind: 'file-done', work: 'moments', fileId: 'a', ok: true, moments: null })
+
+    await expect.element(bar('Proxy a.MP4')).toHaveAttribute('aria-valuenow', '20')
   })
 
   test('gives way to the proxy once the jump is found', async () => {

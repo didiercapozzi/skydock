@@ -7,7 +7,7 @@ import { getOutputDir, messageOf } from '@skydock/scripts'
    the browser evaluates */
 import { importFile } from '../../../packages/skydock-scripts/src/importFile'
 import type { ImportTarget } from '../../../packages/skydock-scripts/src/importFile'
-import { buildMissingProxies } from '../../../packages/skydock-scripts/src/proxy'
+import { catchUp } from '../../../packages/skydock-scripts/src/catchUp'
 import type { Route } from './+types/api.import'
 
 /* One file dragged in from the computer: its bytes are the body, and where it goes is in the address
@@ -66,8 +66,8 @@ const action = async ({ request }: Route.ActionArgs) => {
       target,
       token: url.searchParams.get('token') ?? undefined
     })
-    /* a clip needs its small copy for the crop bar and the editor, built behind the answer */
-    void buildMissingProxies().catch(() => undefined)
+    /* a clip needs its small copy for the crop bar and the editor, and its jump found, behind the answer */
+    void catchUp()
     return Response.json({ ok: true, ...result })
   } catch (e) {
     return Response.json({ ok: false, error: messageOf(e) }, { status: 422 })

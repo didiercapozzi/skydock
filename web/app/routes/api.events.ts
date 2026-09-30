@@ -2,6 +2,7 @@ import { getOutputDir, subscribe, watchMontages } from '@skydock/scripts'
 import { watchCameras } from '../../../packages/skydock-scripts/src/cameraWatch'
 import { watchDisk } from '../../../packages/skydock-scripts/src/diskSpace'
 import { watchServerHolds } from '../../../packages/skydock-scripts/src/lib/lag'
+import { resumeMoments } from '../../../packages/skydock-scripts/src/momentPass'
 import { resumeProxies } from '../../../packages/skydock-scripts/src/proxy'
 import type { Route } from './+types/api.events'
 
@@ -32,8 +33,10 @@ const loader = ({ request }: Route.LoaderArgs) => {
       /* a camera plugged in is copied off by itself — watched from the first board on, and for as long
          as the server runs */
       watchCameras(getOutputDir())
-      /* proxies a stopped server never finished are made now, not at the next scan */
+      /* proxies a stopped server never finished are made now, and jumps never found are found, not at
+         the next scan */
       resumeProxies(getOutputDir())
+      resumeMoments(getOutputDir())
       /* the room left on the disk, told to the board as it changes */
       watchDisk(getOutputDir())
       /* anything that holds the server long enough to be felt on the board is said in the log */

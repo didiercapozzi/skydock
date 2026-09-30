@@ -282,11 +282,14 @@ const DetailsToggle = () => {
    board is drawn (RULES, The board). */
 const StatusBar = ({
   proxies,
+  jumps,
   disk,
   nas,
   uploading
 }: {
   proxies: { ready: number; waiting: number; total: number }
+  /* the clips asked where their jump is, out of the clips there are */
+  jumps: { read: number; total: number }
   /* the room left on the output folder's disk; said only once it runs low */
   disk?: { free: number; level: 'ok' | 'low' | 'full' } | null
   nas: { connected: boolean; host: string | null; user: string | null; links: NasLink[] }
@@ -315,6 +318,7 @@ const StatusBar = ({
   /* named, so a translator reads what each one is */
   const left = disk ? formatSize(disk.free) : ''
   const { ready, total, waiting } = proxies
+  const { read, total: clips } = jumps
   const host = nas.host ?? t`the storage`
   const user = nas.user
   const item = 'inline-flex h-5 items-center gap-1.5 px-2 whitespace-nowrap'
@@ -410,6 +414,21 @@ const StatusBar = ({
           className={`${item} !border-l-0`}>
           <span className='size-2.5 flex-none animate-spin rounded-full border-[1.5px] border-line-strong border-t-accent' />
           {t`Proxies ready ${ready}/${total}`}
+        </span>
+      )}
+      {/* the same for the jump in each clip, found in a pass of its own: a bar as they are read */}
+      {read < clips && (
+        <span
+          title={t`${read} of ${clips} clips have been read for where the jump is in them. They are read in the background; each clip says how far it has got.`}
+          className={`${item} !border-l-0`}>
+          <span className='size-2.5 flex-none animate-spin rounded-full border-[1.5px] border-line-strong border-t-accent' />
+          {t`Marks found ${read}/${clips}`}
+          <span className='h-[3px] w-[70px] flex-none overflow-hidden rounded-sm bg-line'>
+            <i
+              className='block h-full bg-accent transition-[width] duration-500'
+              style={{ width: `${Math.round((read / clips) * 100)}%` }}
+            />
+          </span>
         </span>
       )}
       {/* how big the whole board is drawn, in SkyDock's own window — ⌘/ctrl with + − 0 too */}

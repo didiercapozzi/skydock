@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { proxyFactSchema, montageFactSchema } from './boardAnswer'
+import { jumpMomentsSchema } from './types'
 
 /* What is happening to a file right now, said as it happens so the board can show it without
    asking. These are for the eyes only: what a file *is* — processed, proxied, uploaded — stays a
@@ -17,13 +18,15 @@ const liveEventSchema = z.discriminatedUnion('kind', [
     fileId: z.string(),
     percent: z.number()
   }),
-  /* the work on it ended, well or not — and for a proxy that landed, what the clip now plays */
+  /* the work on it ended, well or not — and for a proxy that landed, what the clip now plays; for
+     the jump found in it, where it is, or `null` for a clip that shows none */
   z.object({
     kind: z.literal('file-done'),
     work: workSchema,
     fileId: z.string(),
     ok: z.boolean(),
-    proxy: z.object({ path: z.string(), fact: proxyFactSchema }).optional()
+    proxy: z.object({ path: z.string(), fact: proxyFactSchema }).optional(),
+    moments: jumpMomentsSchema.nullable().optional()
   }),
   /* What a montage's folder holds, looked at again because it changed under nobody's hand here — the
      editor saved a project, or finished rendering the film. `rendered` is a film that was not there,
@@ -161,8 +164,14 @@ const following = (work: z.infer<typeof workSchema>, fileId: string | undefined)
   at(0)
   return {
     at,
-    done: (ok: boolean, proxy?: { path: string; fact: z.infer<typeof proxyFactSchema> }) => {
-      if (fileId) publish({ kind: 'file-done', work, fileId, ok, proxy })
+    done: (
+      ok: boolean,
+      landed?: {
+        proxy?: { path: string; fact: z.infer<typeof proxyFactSchema> }
+        moments?: z.infer<typeof jumpMomentsSchema> | null
+      }
+    ) => {
+      if (fileId) publish({ kind: 'file-done', work, fileId, ok, ...landed })
     }
   }
 }

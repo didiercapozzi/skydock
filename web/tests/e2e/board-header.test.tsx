@@ -30,6 +30,7 @@ const header = (over: Partial<Frame> = {}) => {
     onOverview: () => {},
     find: () => [],
     proxies: { ready: 48, waiting: 2, total: 50 },
+    jumps: { read: 50, total: 50 },
     disk: null,
     nas: {
       connected: true,
@@ -68,6 +69,13 @@ describe('the top of the board', () => {
     await expect.element(page.getByText('didier')).not.toBeInTheDocument()
   })
 
+  /* the jump in each clip is found in a pass of its own, and its progress is said beside the proxies' */
+  test('says how many clips have been read for their jump while some are still to be', async () => {
+    await header({ jumps: { read: 12, total: 40 } })
+
+    await expect.element(page.getByText(/Marks found\s*12\s*\/\s*40/)).toBeVisible()
+  })
+
   /* what is used every day is on the bar; what is set once is behind Settings — and every mark still
      answers to its own name */
   test('keeps what is used every day on the bar, and the rest behind Settings', async () => {
@@ -78,6 +86,8 @@ describe('the top of the board', () => {
     for (const name of ['Check the storage again', 'Disconnect the storage'])
       await expect.element(page.getByRole('button', { name })).toBeVisible()
     await expect.element(page.getByText(/Proxies ready\s*48\s*\/\s*50/)).toBeVisible()
+    /* every clip has been read for its jump, so there is nothing to say about it */
+    await expect.element(page.getByText(/Marks found/)).not.toBeInTheDocument()
     await expect.element(page.getByRole('button', { name: 'Templates…' })).not.toBeInTheDocument()
     await page.screenshot({ path: './playwright-screenshots/board-header.png' })
 

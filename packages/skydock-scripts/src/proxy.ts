@@ -3,7 +3,6 @@ import * as path from 'node:path'
 import type { ProxyFact } from './boardAnswer'
 import { changeBoardSoon, flushBoardChanges, loadManifest } from './manifest'
 import type { Manifest, ManifestFile } from './types'
-import { jumpMoments } from './jumpMoments'
 import { following } from './live'
 import { lastComplaint, run, runWatched } from './tools'
 import {
@@ -327,21 +326,6 @@ const ensureProxies = async (
 
   for (const [index, file] of candidates.entries()) {
     onProgress?.(index, candidates.length, file.filename)
-    /* Where the jump is in this clip, while a clip is being looked at anyway. Asked of the original
-       once and written down either way — the answer for most clips is that there is no jump in them.
-       Reading it goes through the whole file, so it is said on the clip as it goes, and a reading
-       that fails is not written down: the clip is asked again next time rather than told it has no
-       jump. */
-    if (file.moments === undefined && fs.existsSync(file.path)) {
-      const reading = following('moments', file.id)
-      try {
-        file.moments = await jumpMoments(file.path, reading.at)
-        reading.done(true)
-        onBuilt?.()
-      } catch {
-        reading.done(false)
-      }
-    }
     const proxyPath = getProxyPath(file, outputDir)
     if (!proxyPath) continue
     if (fs.existsSync(proxyPath)) {
@@ -372,7 +356,7 @@ const ensureProxies = async (
       file.proxy = proxyPath
       report.built++
       onBuilt?.()
-      live.done(true, { path: file.path, fact: { state: 'ready', play: proxyPath } })
+      live.done(true, { proxy: { path: file.path, fact: { state: 'ready', play: proxyPath } } })
     } else {
       delete file.proxy
       proxyFailures().set(file.path, built.reason)
@@ -381,8 +365,10 @@ const ensureProxies = async (
       /* the failure said with its reason, so the board knows the clip is settled — it plays as it
          is, and a montage no longer waits on it — without reading everything again */
       live.done(false, {
-        path: file.path,
-        fact: { state: 'none', play: file.path, reason: built.reason }
+        proxy: {
+          path: file.path,
+          fact: { state: 'none', play: file.path, reason: built.reason }
+        }
       })
     }
   }
@@ -401,7 +387,7 @@ let running: Promise<ProxyReport> | null = null
    in, a jump named, a clip trimmed. All of that is saved by whoever did it, and saving the snapshot
    this pass began with would quietly undo it — which is how two of four files dropped in together
    came to be on the disk with no row on the board. So only what this pass is here to write is
-   carried over: the small copy it made, and the jump it looked for on the way. */
+   carried over: the small copy it made. */
 const recordProxies = (manifestPath: string, pass: Manifest) =>
   changeBoardSoon(
     manifestPath,
@@ -416,7 +402,6 @@ const recordProxies = (manifestPath: string, pass: Manifest) =>
           !fs.existsSync(file.proxy)
         )
           delete file.proxy
-        if (file.moments === undefined && done.moments !== undefined) file.moments = done.moments
       }
     },
     /* the pass as it is now says everything an earlier call of it did */

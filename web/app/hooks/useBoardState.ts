@@ -1,6 +1,7 @@
 import { t } from '@lingui/core/macro'
-import { boardAnswerSchema } from '@skydock/scripts'
+import { boardAnswerSchema, isVideoFile } from '@skydock/scripts'
 import type {
+  JumpMoments,
   OutputFact,
   ProxyFact,
   MontageEntry,
@@ -104,7 +105,18 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   const [montageFacts, setMontageFacts] = useState<Record<string, MontageFact>>(loaded.montages)
   /* files being processed or proxied right now, and how far through; a proxy that lands is
      flagged at once, since the event carries what the server read off the disk */
-  const live = useLiveProgress(setProxies, setMontageFacts, setSpoken)
+  /* the jump found in a clip, on the clip at once wherever the board holds it: the server has it
+     written down before it says so, so the next answer says the same */
+  const foundJump = (fileId: string, moments: JumpMoments | null) => {
+    const found = (file: ManifestFile) => (file.id === fileId ? { ...file, moments } : file)
+    setGroups((now) =>
+      now.map((g) =>
+        g.files.some((f) => f.id === fileId) ? { ...g, files: g.files.map(found) } : g
+      )
+    )
+    setLoose((now) => now.map(found))
+  }
+  const live = useLiveProgress(setProxies, setMontageFacts, setSpoken, foundJump)
   const [remoteAfterUpload, setRemoteAfterUpload] = useState<CheckedListing | null>(null)
   /* the storage's list of montages, as the loader read it or as the last change wrote it */
   const [storage, setStorage] = useState(loaded.storage)
@@ -331,6 +343,14 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
 
   /* how many clips have their small copy, out of the ones that want one */
   const proxyFacts = Object.values(proxies)
+  /* how many clips have been asked where their jump is, out of the ones that will be */
+  const clips = [...groups.flatMap((g) => g.files), ...loose].filter(
+    (f) => isVideoFile(f.path) && f.id && !f.freed
+  )
+  const jumpProgress = {
+    read: clips.filter((f) => f.moments !== undefined).length,
+    total: clips.length
+  }
   const proxyProgress = {
     ready: proxyFacts.filter((f) => f.state !== 'none').length,
     /* a clip whose proxy failed is not waiting for one */
@@ -349,6 +369,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     outputs,
     proxies,
     proxyProgress,
+    jumpProgress,
     cameras: live.cameras,
     disk: live.disk,
     montageFacts,

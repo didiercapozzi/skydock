@@ -13,7 +13,7 @@ import { computeFileId } from './fileId'
 import { writeJsonAtomic } from './lib/fs'
 import { z } from 'zod'
 import { groupNewFiles, reclusterGroups } from './clustering'
-import { buildMissingProxies } from './proxy'
+import { catchUp } from './catchUp'
 import type { ScanResult } from './boardAnswer'
 import type { Manifest, ManifestFile, ManifestGroup } from './types'
 
@@ -369,10 +369,10 @@ const scanMedia = async (options?: { outputDir?: string }) => {
 }
 
 if (isCliModule('scan')) {
-  /* from a terminal the proxies are built in front of you rather than behind the answer, because
-     there is no board here to show them arriving later */
+  /* from a terminal the proxies and the jumps are found in front of you rather than behind the
+     answer, because there is no board here to show them arriving later */
   scanMedia()
-    .then(() => buildMissingProxies())
+    .then(() => catchUp())
     .catch(console.error)
 }
 

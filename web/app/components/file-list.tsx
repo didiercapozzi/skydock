@@ -193,6 +193,19 @@ const ProxyFlag = ({ fact }: { fact?: ProxyFact }) => {
   )
 }
 
+/* A clip whose jump was found says so, with where the door was left. A clip with none says nothing:
+   most clips are not jumps, and a word on each of them would only hide the ones that are. */
+const jumpTitle = (exit: string) => t`Its jump was found — the exit is at ${exit}`
+
+const JumpFlag = ({ file }: { file: ManifestFile }) =>
+  file.moments && (
+    <span
+      title={jumpTitle(clock(file.moments.exit))}
+      className={`${NOTE} text-up`}>
+      ↓ {t`exit`}
+    </span>
+  )
+
 /* A frame that was set is told from one that was not without opening the file. Its title reads as
    the share of the picture kept, because "cropped" alone does not say how much. */
 const FrameFlag = ({ file, applied }: { file: ManifestFile; applied: boolean }) => {
@@ -474,6 +487,7 @@ const Row = ({
           ) : (
             <span>{isVideoFile(file.path) ? t`video` : t`photo`}</span>
           )}
+          <JumpFlag file={file} />
           <ProxyFlag fact={proxy} />
           {file.copyOf && <CopyFlag />}
           {strayed && <GapFlag />}
@@ -597,6 +611,13 @@ const Tile = ({
             title={proxy.reason ? proxyFailedTitle(proxy.reason) : i18n._(NO_PROXY_TITLE)}
             className='h-2 w-2 rounded-full border border-dashed border-white bg-local shadow-[0_0_0_1.5px_rgba(0,0,0,0.45)]'
           />
+        )}
+        {file.moments && (
+          <span
+            title={jumpTitle(clock(file.moments.exit))}
+            className={OVER}>
+            ↓
+          </span>
         )}
         {/* a rectangle is invisible on a thumbnail of the whole frame, so it is said rather than
             shown */}

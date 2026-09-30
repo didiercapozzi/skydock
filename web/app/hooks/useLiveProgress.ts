@@ -1,10 +1,10 @@
 import { t } from '@lingui/core/macro'
 import { jsonText, liveEventSchema } from '@skydock/scripts'
-import type { LiveEvent, ProxyFact, MontageFact } from '@skydock/scripts'
-import { useEffect, useState } from 'react'
+import type { JumpMoments, LiveEvent, ProxyFact, MontageFact } from '@skydock/scripts'
+import { useEffect, useEffectEvent, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { routingEngine } from '../helpers/routing'
-import { forgetLive, liveCamera, liveFiles, liveImporting } from './liveStore'
+import { forgetLive, liveCamera, liveFiles, liveImporting, liveKey } from './liveStore'
 
 /* what is being done to a file right now, and how far through it — in the words the events use */
 type LiveFile = Pick<Extract<LiveEvent, { kind: 'file' }>, 'work' | 'percent'>
@@ -29,14 +29,17 @@ type Importing = Omit<Extract<LiveEvent, { kind: 'import' }>, 'kind'>
    browser reconnects by itself, and on connecting the server first says what is already under way.
 
    Only ever a hint for the eyes. What a file is comes from the board's own answers; the one thing
-   taken from here is a proxy that has just landed, which is a fact the server read off the disk and
-   sent with the event, so the clip is flagged the moment it is ready. */
+   taken from here is a proxy that has just landed, or the jump just found in a clip, which are facts
+   the server read and sent with the event, so the clip is flagged the moment it is ready. */
 const useLiveProgress = (
   onProxies: Dispatch<SetStateAction<Record<string, ProxyFact>>>,
   /* what a montage's folder holds, when it changed by the editor's hand — a film just rendered */
   onMontages: Dispatch<SetStateAction<Record<string, MontageFact>>>,
-  onNote: Dispatch<SetStateAction<{ text: string; problem: boolean } | null>>
+  onNote: Dispatch<SetStateAction<{ text: string; problem: boolean } | null>>,
+  /* where the jump is in a clip, as it is found — `null` for a clip that shows none */
+  onJump: (fileId: string, moments: JumpMoments | null) => void
 ) => {
+  const found = useEffectEvent(onJump)
   const [ended, setEnded] = useState<CameraEnded | null>(null)
   const [cameras, setCameras] = useState<Mounted[]>([])
   const [disk, setDisk] = useState<Disk | null>(null)
@@ -93,20 +96,22 @@ const useLiveProgress = (
       }
       if (event.kind === 'file') {
         liveFiles.update((now) => {
-          const before = now[event.fileId]
+          const key = liveKey(event.work, event.fileId)
           /* the same step said again changes nothing, and draws nothing */
-          if (before?.work === event.work && before.percent === event.percent) return now
-          return { ...now, [event.fileId]: { work: event.work, percent: event.percent } }
+          if (now[key]?.percent === event.percent) return now
+          return { ...now, [key]: { work: event.work, percent: event.percent } }
         })
         return
       }
       liveFiles.update((now) => {
-        if (!(event.fileId in now)) return now
-        const { [event.fileId]: _ended, ...rest } = now
+        const key = liveKey(event.work, event.fileId)
+        if (!(key in now)) return now
+        const { [key]: _ended, ...rest } = now
         return rest
       })
       const landed = event.proxy
       if (landed) onProxies((now) => ({ ...now, [landed.path]: landed.fact }))
+      if (event.moments !== undefined) found(event.fileId, event.moments)
     }
     return () => source.close()
   }, [onProxies, onMontages, onNote])

@@ -56,11 +56,27 @@ const forgetLive = () => {
   liveImporting.update(() => null)
 }
 
+/* What is under way is kept by the work and the file, since the proxy and the jump are made side by
+   side and one ending must not take the other's bar with it. */
+const liveKey = (work: LiveFile['work'], fileId: string) => `${work}:${fileId}`
+
+/* Which of a file's works the row shows when several are under way: the one it is being made
+   ready by hand for first, then the jump, then the proxy. */
+const SHOWN_FIRST: LiveFile['work'][] = ['process', 'moments', 'proxy']
+
 /* one file's progress, and nothing else: a row is drawn again only when its own file moves */
 const useLiveFile = (id: string | undefined) =>
   useSyncExternalStore(
     liveFiles.subscribe,
-    () => (id ? liveFiles.get()[id] : undefined),
+    () => {
+      if (!id) return undefined
+      const now = liveFiles.get()
+      for (const work of SHOWN_FIRST) {
+        const live = now[liveKey(work, id)]
+        if (live) return live
+      }
+      return undefined
+    },
     () => undefined
   )
 
@@ -95,6 +111,7 @@ export {
   liveCamera,
   liveFiles,
   liveImporting,
+  liveKey,
   useCameraCopy,
   useCameraCopying,
   useCameraLanded,
