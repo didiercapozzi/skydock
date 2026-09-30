@@ -33,6 +33,34 @@ https://claude.ai/artifact/Xea6NY8WUhxsqX5W3YFRan.
 | `08-email-the-link`      | Sending the link: FR/EN/DE, QR code, "Sent it?"     |
 | `09-dark`                | The board in dark mode                              |
 
+## Horizon: a new direction, drawn as an installed app
+
+`horizon/` draws SkyDock as the desktop app it is: a real window on a real desktop, with the
+system's title bar and panel. Every page comes in a light and a dark version (`-light` and `-dark`),
+which are the same design with the same names for everything. It is on the design canvas, light in
+the left column and dark in the right, at https://claude.ai/artifact/NHrngyaqa2qDhpTRDG5BVh
+(private until shared from its Share menu). Nothing is added or removed.
+
+- **Frame:** under the title bar, three floating islands on a quiet backdrop: the places, the work
+  and the details. The status bar sits under them.
+- **Photographs lead:** a jump is a photograph with its name on it, a thumbnail is a photograph,
+  and a picked selection gets a floating bar. The controls stay small and quiet.
+- **Type:** Bricolage Grotesque for titles, Instrument Sans for the interface, and JetBrains Mono
+  for file names.
+- **Colour:** one ultramarine, for the next action and for what is selected. A file's state is a
+  small tinted badge: amber for local, magenta for processed and green for uploaded.
+
+| Page          | What it shows                                                   |
+| ------------- | --------------------------------------------------------------- |
+| `00-idea`     | The principles, colours, type and controls                      |
+| `01-board`    | The board: Fresh files by jump, one jump open, a file's panel   |
+| `02-dropzone` | A dropzone by day, as thumbnails, with three picked             |
+| `03-montage`  | A montage with its film rendered and the upload next            |
+| `04-upload`   | Uploading a montage: the zips, then where it goes               |
+| `05-overview` | The overview of every montage                                   |
+
+The pages share `horizon/horizon.css`. The footage stills are in `images/`.
+
 ## Canopy: a new direction
 
 `canopy/` draws the same app again, with nothing added or removed. It is on the design canvas at
