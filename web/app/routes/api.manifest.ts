@@ -35,7 +35,7 @@ import { regroupLoose } from './manifest/regroup-loose'
 import { removeDestinationIntent } from './manifest/remove-destination'
 import { saveGroups } from './manifest/save-groups'
 import { retimeFileIntent } from './manifest/retime-file'
-import { resetMomentsIntent, setMomentIntent } from './manifest/set-moment'
+import { redoMomentsIntent, resetMomentsIntent, setMomentIntent } from './manifest/set-moment'
 import { shiftGroupTime } from './manifest/shift-group-time'
 import { deleteMontageIntent, resetMontageIntent } from './manifest/take-back'
 import { trashUnsortedIntent } from './manifest/trash-unsorted'
@@ -68,6 +68,7 @@ const intents: Record<ActionData['intent'], Intent> = {
   'retime-file': retimeFileIntent,
   'set-moment': setMomentIntent,
   'reset-moments': resetMomentsIntent,
+  'redo-moments': redoMomentsIntent,
   'move-files': moveFilesIntent,
   'delete-jump': deleteJumpIntent,
   'remove-destination': removeDestinationIntent,

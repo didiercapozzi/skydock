@@ -1,4 +1,6 @@
+import * as path from 'node:path'
 import { saveManifest } from '@skydock/scripts'
+import { buildMissingMoments } from '../../../../packages/skydock-scripts/src/momentPass'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 
@@ -58,4 +60,25 @@ const resetMomentsIntent: Intent = ({ data, manifest, manifestPath, refuse }) =>
   return boardAnswer(manifest)
 }
 
-export { resetMomentsIntent, setMomentIntent }
+/* For development only: a clip forgets where its jump is, marks moved by hand and all, and the pass
+   that finds it runs again at once, with its progress shown as ever — for trying the finding out on
+   real footage. Refused anywhere else, since it throws away what somebody may have corrected. */
+const redoMomentsIntent: Intent = ({ data, manifest, manifestPath, refuse }) => {
+  if (!import.meta.env.DEV) return refuse('This is only for development.')
+  const id = data.fileIds?.[0]
+  if (!id || (data.fileIds?.length ?? 0) > 1) return refuse('Redo one clip at a time.')
+  const file = manifest.files.find((f) => f.id === id)
+  if (!file) return refuse('That file is no longer on the board.')
+  for (const one of [file, ...manifest.groups.flatMap((g) => g.files)])
+    if (one.id === id) {
+      delete one.moments
+      delete one.foundMoments
+    }
+  saveManifest(manifestPath, manifest)
+  void buildMissingMoments(path.dirname(manifestPath)).catch((e: unknown) => {
+    console.error('[Moments] pass failed:', e)
+  })
+  return boardAnswer(manifest)
+}
+
+export { redoMomentsIntent, resetMomentsIntent, setMomentIntent }

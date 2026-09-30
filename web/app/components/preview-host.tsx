@@ -12,6 +12,7 @@ const PreviewHost = ({
   statusContext,
   onMomentChange,
   onMomentsReset,
+  onMomentsRedo,
   onPlayOutside,
   montage
 }: {
@@ -27,6 +28,8 @@ const PreviewHost = ({
   ) => void
   /* its marks put back where the camera measured them */
   onMomentsReset: (file: ManifestFile) => void
+  /* development only: its marks forgotten and found again */
+  onMomentsRedo: (file: ManifestFile) => void
   /* the file, handed to the machine's own player */
   onPlayOutside: (file: ManifestFile) => void
   /* whether the jump being looked at is a montage, which decides where its cut starts */
@@ -65,6 +68,7 @@ const PreviewHost = ({
       locked={lockReason(shown, statusContext(shown))}
       onMomentChange={(which, seconds) => onMomentChange(shown, which, seconds)}
       onMomentsReset={() => onMomentsReset(shown)}
+      onMomentsRedo={() => onMomentsRedo(shown)}
       onPlayOutside={shown.freed ? undefined : () => onPlayOutside(shown)}
       montage={montage}
     />

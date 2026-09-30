@@ -34,6 +34,8 @@ const actionArgs = z.object({
     'set-moment',
     /* the marks of a clip put back where the camera measured them */
     'reset-moments',
+    /* development only: a clip's marks forgotten and found again */
+    'redo-moments',
     'move-files',
     /* the same files into another jump as well, staying where they are */
     'copy-files',

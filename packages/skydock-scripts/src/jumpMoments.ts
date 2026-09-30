@@ -1,4 +1,5 @@
-import { GRAVITY, READERS, telemetryOf } from './telemetry'
+import { GRAVITY, READERS, telemetryOf, VECTOR_READERS } from './telemetry'
+import type { Push } from './telemetry'
 import type { JumpMoments } from './types'
 
 /* The moments a jump is cut around: leaving the plane, the canopy — its first tug and where that
@@ -198,6 +199,70 @@ const leftAt = (felt: number[], rate: number, second: number, level: number) => 
   return second
 }
 
+/* Which way a camera was pushed says something the weight does not, and sooner. Aboard the aeroplane
+   gravity comes from one direction as the camera sees it, whoever is wearing it and however the
+   axes are named; letting go of the aeroplane turns the wearer over, and that direction swings
+   through a right angle and more while the weight is still a gravity or more — the airflow against
+   somebody hanging out of the door weighs about that much for most of a second before the fall
+   settles into weightlessness. So a clip whose weight lags its exit, as one does where the wearer
+   climbs out and hangs on the strut before letting go, is marked where the direction went, not
+   where the weight did.
+
+   Measured against the frames of seven jumps — the moment somebody was seen to let go — the swing
+   came within half a second of it on every one, and on the one that hung out of the door it came
+   at the very frame while the weight came almost a second after. On the others the two come within
+   a third of a second of each other, and there the weight, which is read to the tenth of a second
+   by its crossing, is the finer of the two: the swing is used only where it is well ahead. */
+const TIPPED_OVER = 90
+
+/* what aboard looked like: the direction of gravity from four seconds before the candidate to one
+   second before it, so the swing itself is not part of what it is measured against */
+const ABOARD_FROM = 4
+
+const ABOARD_TO = 1
+
+/* How much earlier than the weight the swing may come and still be the same exit. The one seen
+   hanging from the strut let go 0.9 seconds before its weight went; a swing further back than a second
+   and a half is somebody moving about the cabin, not leaving it. */
+const TIP_WITHIN = 1.5
+
+/* the direction gravity came from over a stretch, as a unit vector */
+const facingOver = (pushes: Push[], rate: number, from: number, to: number) => {
+  const sum: Push = [0, 0, 0]
+  const first = Math.max(0, Math.floor(from * rate))
+  const last = Math.min(pushes.length, Math.floor(to * rate))
+  for (let at = first; at < last; at++) {
+    const push = pushes[at]
+    const size = Math.hypot(push[0], push[1], push[2]) || 1
+    sum[0] += push[0] / size
+    sum[1] += push[1] / size
+    sum[2] += push[2] / size
+  }
+  const size = Math.hypot(sum[0], sum[1], sum[2])
+  return size === 0 || last <= first
+    ? null
+    : ([sum[0] / size, sum[1] / size, sum[2] / size] as Push)
+}
+
+/* how far ahead of the weight the swing has to be to be believed over it: the clips where they agree
+   differ by up to 0.3 seconds, and the one that hung out of the door by 0.9 */
+const WELL_AHEAD = 0.5
+
+/* the first moment, no earlier than TIP_WITHIN before the exit that the weight found, that the direction
+   of gravity had swung through TIPPED_OVER from what aboard was — when that is well ahead of the
+   weight; the exit as found when it never was */
+const tippedAt = (pushes: Push[], rate: number, exit: number) => {
+  for (let at = exit - TIP_WITHIN; at <= exit; at += 0.05) {
+    const now = facingOver(pushes, rate, at, at + 0.1)
+    const aboard = facingOver(pushes, rate, at - ABOARD_FROM, at - ABOARD_TO)
+    if (!now || !aboard) continue
+    const cosine = now[0] * aboard[0] + now[1] * aboard[1] + now[2] * aboard[2]
+    if ((Math.acos(Math.max(-1, Math.min(1, cosine))) * 180) / Math.PI >= TIPPED_OVER)
+      return exit - at >= WELL_AHEAD ? Math.round(at * 10) / 10 : exit
+  }
+  return exit
+}
+
 /* The ground is the other way round — the weight arrives rather than leaves — so it is the first
    moment inside that second which weighs more than a canopy ride does. Smoothed the other way round
    too: a window that looks back lands a fifth of a second after the impact, having waited for its
@@ -281,7 +346,7 @@ const beganAt = (felt: number[], rate: number, second: number) => {
 /* The door is the light second, with lighter ones after it, that a canopy follows — or the lightest
    of them when none does; the canopy the hardest heavy second a sensible while later; the ground the
    last heavy second of all — each then placed to the tenth of a second by the readings themselves. */
-const readFelt = (felt: number[], seconds: number): JumpMoments | null => {
+const readFelt = (felt: number[], seconds: number, pushes?: Push[]): JumpMoments | null => {
   if (felt.length < 100 || seconds <= 0) return null
   const weighed = bySecond(felt, seconds)
   if (weighed.length < 5) return null
@@ -356,8 +421,9 @@ const readFelt = (felt: number[], seconds: number): JumpMoments | null => {
   const landing = canopy !== -1 && last !== undefined && last > canopy ? last : undefined
 
   const rate = felt.length / seconds
+  const left = leftAt(felt, rate, exit, STILL_ABOARD)
   return {
-    exit: leftAt(felt, rate, exit, STILL_ABOARD),
+    exit: pushes && pushes.length === felt.length ? tippedAt(pushes, rate, left) : left,
     opening: canopy === -1 ? undefined : beganAt(felt, rate, canopy),
     canopy: canopy === -1 ? undefined : easedAt(felt, rate, canopy),
     landing: landing === undefined ? undefined : struckAt(felt, rate, landing, HEAVY)
@@ -369,7 +435,13 @@ const readFelt = (felt: number[], seconds: number): JumpMoments | null => {
    is showing it. */
 const jumpMoments = async (clip: string, onPercent?: (percent: number) => void) => {
   const written = await telemetryOf(clip, onPercent)
-  return written ? readFelt(READERS[written.kind](written.data), written.seconds) : null
+  return written
+    ? readFelt(
+        READERS[written.kind](written.data),
+        written.seconds,
+        VECTOR_READERS[written.kind](written.data)
+      )
+    : null
 }
 
 export { cutFrom, jumpMoments, jumpTrim, readFelt, RUN_UP }

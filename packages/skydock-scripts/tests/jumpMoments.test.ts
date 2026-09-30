@@ -261,6 +261,64 @@ describe('the door of a clip with a lull aboard before it', () => {
   })
 })
 
+/* Which way the camera was pushed says when somebody let go before the weight does: a wearer who hangs
+   out of the door on the strut weighs a gravity and more in the airflow for most of a second after
+   letting go, then goes weightless. Marked where the weight went that would be a second late. */
+describe('the door of a wearer who hangs out before letting go', () => {
+  type Dir = 1 | -1
+
+  /* a second of readings weighing this much, the camera's gravity coming from up or from down */
+  const pushes = (gravities: number, dir: Dir): [number, number, number][] =>
+    Array.from({ length: 200 }, () => [0, 0, gravities * GRAVITY * dir])
+
+  /* forty seconds aboard, then `hang` seconds pushed the other way at the weight the air gives, then
+     five weightless, then the fall — the direction turned over at second 40 */
+  const clip = (turnedAt: number, hang: number) => {
+    const plan: [number, number, Dir][] = [
+      [turnedAt, 1, 1],
+      [40 - turnedAt, 1.2, -1],
+      [hang, 1.2, -1],
+      [5, 0.3, -1],
+      [50, 1, -1],
+      [OPENING, 2.1, -1],
+      [60, 1, -1],
+      [1, 1.5, -1],
+      [5, 1, -1]
+    ]
+    const seconds = plan.flatMap(([length, gravities, dir]) =>
+      Array.from({ length }, () => ({ gravities, dir }))
+    )
+    const felt = seconds.flatMap(({ gravities }) => second(gravities))
+    const vectors = seconds.flatMap(({ gravities, dir }) => pushes(gravities, dir))
+    return { felt, vectors, seconds: felt.length / 200 }
+  }
+
+  it('is where the direction turned over, not where the weight went', () => {
+    /* turned over at 40, a second of airflow, weightless from 41 */
+    const { felt, vectors, seconds } = clip(40, 1)
+    expect(readFelt(felt, seconds)?.exit).toBeGreaterThanOrEqual(40.8)
+    expect(readFelt(felt, seconds, vectors)?.exit).toBeCloseTo(40, 0)
+  })
+
+  it('leaves the weight alone where the two agree to within a few tenths', () => {
+    /* the weight goes 0.3 seconds after the turn: too close to be a hang */
+    const { felt, vectors, seconds } = clip(40, 0)
+    expect(readFelt(felt, seconds, vectors)?.exit).toBe(readFelt(felt, seconds)?.exit)
+  })
+
+  it('leaves the weight alone when the direction never turned', () => {
+    const { felt, seconds } = clip(40, 1)
+    const same = felt.map((one) => [0, 0, one] as [number, number, number])
+    expect(readFelt(felt, seconds, same)?.exit).toBe(readFelt(felt, seconds)?.exit)
+  })
+
+  /* somebody moving about the cabin turns the camera over long before anybody leaves */
+  it('ignores a turn further back than a second and a half before the weight goes', () => {
+    const { felt, vectors, seconds } = clip(36, 1)
+    expect(readFelt(felt, seconds, vectors)?.exit).toBe(readFelt(felt, seconds)?.exit)
+  })
+})
+
 describe('where a cut starts from', () => {
   const moments = { exit: 38.6, canopy: 101.6, landing: 192.7 }
 

@@ -1064,6 +1064,20 @@ describe('changes made on the board', () => {
       expect(saved?.files[0]?.moments?.exit).toBe(38)
     })
 
+    /* for development only: the marks are forgotten, moved ones and the measured copy too, so the
+       pass that finds them has everything to do again */
+    it('is forgotten on request, in development', async () => {
+      marked()
+      await send({ intent: 'set-moment', fileIds: ['a'], moment: { which: 'exit', seconds: 40 } })
+
+      const res = answer(await send({ intent: 'redo-moments', fileIds: ['a'] }))
+
+      expect(res.groups[0]?.files[0]?.moments).toBeUndefined()
+      const saved = loadManifest(path.join(tmpDir, 'manifest.json'))
+      expect(saved?.files[0]?.moments).toBeUndefined()
+      expect(saved?.files[0]?.foundMoments).toBeUndefined()
+    })
+
     it('has nothing to go back to when none was moved', async () => {
       marked()
 

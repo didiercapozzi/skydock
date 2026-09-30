@@ -1514,6 +1514,10 @@ msgid "Details"
 msgstr "Details"
 
 #: app/components/preview-drawer.tsx
+msgid "Development only: forget the marks, moved ones too, and find them again from the footage"
+msgstr "Nur Entwicklung: die Marken vergessen, auch verschobene, und aus dem Filmmaterial neu finden"
+
+#: app/components/preview-drawer.tsx
 msgid "Discard"
 msgstr "Verwerfen"
 
@@ -1811,6 +1815,10 @@ msgstr "alles finden"
 #: app/components/find-anything.tsx
 msgid "Find anything"
 msgstr "Alles durchsuchen"
+
+#: app/components/preview-drawer.tsx
+msgid "Find the marks again"
+msgstr "Marken neu finden"
 
 #: app/components/file-list.tsx
 msgid "Finding the jump"
@@ -3801,6 +3809,10 @@ msgstr "Die Mail wurde von hier aus in Gmail geöffnet. Sag Bescheid, sobald sie
 #: app/components/email-dialog.tsx
 msgid "The mail was opened in the mail program from here. Say so once it went, and the storage’s list records it."
 msgstr "Die Mail wurde von hier aus im Mailprogramm geöffnet. Sag Bescheid, sobald sie raus ist, dann trägt die Liste des Speichers es ein."
+
+#: app/components/preview-drawer.tsx
+msgid "The marks have not been found yet."
+msgstr "Die Marken wurden noch nicht gefunden."
 
 #: app/components/upload-dialog.tsx
 msgid "The montage"

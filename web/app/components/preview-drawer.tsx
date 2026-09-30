@@ -251,6 +251,7 @@ const PreviewDrawer = ({
   locked,
   onMomentChange,
   onMomentsReset,
+  onMomentsRedo,
   onPlayOutside,
   montage = false
 }: {
@@ -292,6 +293,8 @@ const PreviewDrawer = ({
   onMomentChange?: (which: 'exit' | 'opening' | 'canopy' | 'landing', seconds: number) => void
   /* the marks put back where the camera measured them, offered once any was moved by hand */
   onMomentsReset?: () => void
+  /* development only: the marks forgotten and found again from the footage */
+  onMomentsRedo?: () => void
   /* hand this file to the machine's own player; absent for a file this machine no longer holds */
   onPlayOutside?: () => void
   /* Whether this clip's jump is a montage, which decides where a cut starts from: a montage is its own
@@ -842,9 +845,11 @@ const PreviewDrawer = ({
             {/* Where the jump is, and what the marks on the timeline mean. Each one seeks there,
                 since the only way to tell a mark is right is to look at the frame under it. A clip
                 the camera said nothing about says so plainly — most clips are not jumps. */}
-            {video && file.moments !== undefined && (
+            {video && (file.moments !== undefined || import.meta.env.DEV) && (
               <Part title={t`The jump`}>
-                {file.moments === null ? (
+                {file.moments === undefined ? (
+                  <Note>{t`The marks have not been found yet.`}</Note>
+                ) : file.moments === null ? (
                   <Note>{t`No exit found — nothing to hang a cut on.`}</Note>
                 ) : (
                   <div className='flex flex-wrap gap-1.5'>
@@ -873,6 +878,19 @@ const PreviewDrawer = ({
                             </button>
                           ]
                     })}
+                  </div>
+                )}
+                {import.meta.env.DEV && onMomentsRedo && (
+                  <div className='self-start'>
+                    <Mini
+                      title={t`Development only: forget the marks, moved ones too, and find them again from the footage`}
+                      onClick={onMomentsRedo}>
+                      <Icon
+                        name='scan'
+                        size={14}
+                      />
+                      {t`Find the marks again`}
+                    </Mini>
                   </div>
                 )}
                 {file.foundMoments && onMomentsReset && (

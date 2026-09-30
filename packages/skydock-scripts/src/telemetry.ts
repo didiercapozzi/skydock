@@ -149,21 +149,30 @@ const gpmf = (buffer: Buffer, onEntry: (entry: Entry) => void) => {
   walk(0, buffer.length, [1])
 }
 
-/* how hard the camera was pushed, whichever way it was pointing */
-const accelerationIn = (buffer: Buffer) => {
-  const felt: number[] = []
+/* One reading: how hard the camera was pushed along each of its three axes, in metres a second
+   squared. The size of it is how hard, whichever way the camera was pointing; the direction of it is
+   which way, which is the same whatever the camera calls its axes. */
+type Push = [number, number, number]
+
+const sizeOf = ([x, y, z]: Push) => Math.sqrt(x * x + y * y + z * z)
+
+const accelerationVectorsIn = (buffer: Buffer) => {
+  const pushes: Push[] = []
   gpmf(buffer, ({ key, type, at, length, scale }) => {
     if (key !== 'ACCL' || type !== 's') return
     const by = scale[0]
-    for (let one = 0; one + 6 <= length; one += 6) {
-      const x = buffer.readInt16BE(at + one) / by
-      const y = buffer.readInt16BE(at + one + 2) / by
-      const z = buffer.readInt16BE(at + one + 4) / by
-      felt.push(Math.sqrt(x * x + y * y + z * z))
-    }
+    for (let one = 0; one + 6 <= length; one += 6)
+      pushes.push([
+        buffer.readInt16BE(at + one) / by,
+        buffer.readInt16BE(at + one + 2) / by,
+        buffer.readInt16BE(at + one + 4) / by
+      ])
   })
-  return felt
+  return pushes
 }
+
+/* how hard the camera was pushed, whichever way it was pointing */
+const accelerationIn = (buffer: Buffer) => accelerationVectorsIn(buffer).map(sizeOf)
 
 /* Where the camera was, when it was told: a satellite fix is metres above the sea and how fast the
    thing was moving through the air, which is the one honest source of either. A camera with its
@@ -245,8 +254,8 @@ const varintAt = (buffer: Buffer, from: number) => {
   return null
 }
 
-const djiAcceleration = (buffer: Buffer) => {
-  const felt: number[] = []
+const djiVectors = (buffer: Buffer) => {
+  const pushes: Push[] = []
   const here = (path: readonly number[]) =>
     path.length === DJI_ACCELERATION.length && path.every((one, at) => one === DJI_ACCELERATION[at])
 
@@ -277,15 +286,26 @@ const djiAcceleration = (buffer: Buffer) => {
         at = length.at + length.value
       } else break
     }
-    if (components.size === DJI_COMPONENTS.length) {
-      let square = 0
-      for (const one of components.values()) square += one * one
-      felt.push(Math.sqrt(square) * GRAVITY)
-    }
+    /* in gravities in the file; metres a second squared here, as the other camera's are */
+    if (components.size === DJI_COMPONENTS.length)
+      pushes.push([
+        (components.get(2) ?? 0) * GRAVITY,
+        (components.get(3) ?? 0) * GRAVITY,
+        (components.get(4) ?? 0) * GRAVITY
+      ])
   }
 
   walk(0, buffer.length, [])
-  return felt
+  return pushes
+}
+
+const djiAcceleration = (buffer: Buffer) => djiVectors(buffer).map(sizeOf)
+
+/* the same measurements with their directions, which is what the moment somebody let go of the
+   aeroplane shows in before the weight does */
+const VECTOR_READERS: Record<Kind, (written: Buffer) => Push[]> = {
+  gopro: accelerationVectorsIn,
+  dji: djiVectors
 }
 
 /* what each camera's measurements are read by */
@@ -303,12 +323,15 @@ const POSITION: Record<Kind, ((written: Buffer) => Fix[]) | null> = {
 
 export {
   accelerationIn,
+  accelerationVectorsIn,
   djiAcceleration,
+  djiVectors,
   GRAVITY,
   gpsIn,
   POSITION,
   READERS,
   secondsOf,
-  telemetryOf
+  telemetryOf,
+  VECTOR_READERS
 }
-export type { Fix, Kind }
+export type { Fix, Kind, Push }

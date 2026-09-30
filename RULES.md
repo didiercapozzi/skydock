@@ -1073,6 +1073,17 @@ mark the cabin as the jump and find nothing after it. Every dip that looks like 
 and the exit is the one a canopy follows — or, when none is followed by one, as with a clip that ends
 in freefall, the deepest of them. The other marks are then read from that exit.
 
+The door is placed by which way the camera was pushed as well as by its weight. Letting go of the
+aeroplane turns the wearer over, and the direction gravity comes from swings through a right angle
+before the weight goes: somebody who hangs out of the door on the strut weighs a gravity and more in
+the airflow for most of a second after letting go, and a mark placed where the weight went would be
+that second late. So when the swing is well ahead of the weight — half a second or more, and no more
+than a second and a half — the exit is where the swing is; otherwise the weight, which is read more
+finely, decides. Which way the camera calls up makes no difference, so it serves every camera alike.
+It was checked against the frames of seven jumps off one make of camera, the exit read from the
+picture: the marks fall within about four tenths of a second of the moment somebody was seen to let
+go, where the weight alone was out by nearly a second on the one that hung from the strut.
+
 A jump is cut around those moments, and what SkyDock finds is a starting point, shown where it can be
 seen and corrected, never a decision taken silently. A jump runs door, opening, canopy, ground, and a
 mark moved out of that order is refused — one of the two is wrong, and only the person moving them
@@ -1081,7 +1092,7 @@ there: a montage is the subject of its own film, so its cut starts at the instan
 jump is filmed by somebody who goes out after the group, so its cut starts a second earlier. Moving a
 mark moves the measurement; the second's lead follows it. What the camera measured is kept from the
 first move, and the clip's panel offers, for as long as a mark differs from it, to put every mark back
-where it was found — for a slip of the hand, or a correction that was itself wrong.
+where it was found — for a slip of the hand, or a correction that was itself wrong. While the app runs in development, and only then, the same panel can also make a clip forget its marks altogether, moved ones and the measured copy with them, and find them again from the footage at once, its progress shown as ever — for trying the finding out on real clips.
 
 ## The jump on a graph
 

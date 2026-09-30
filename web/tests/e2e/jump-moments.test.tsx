@@ -25,11 +25,13 @@ const Drawer = ({
   found,
   onMomentChange,
   onMomentsReset,
+  onMomentsRedo,
   montage = true
 }: {
   moments: Moments | null | undefined
   found?: Moments
   onMomentsReset?: () => void
+  onMomentsRedo?: () => void
   onMomentChange?: (which: 'exit' | 'opening' | 'canopy' | 'landing', seconds: number) => void
   montage?: boolean
 }) =>
@@ -56,10 +58,21 @@ const Drawer = ({
     onVideoRef: () => {},
     onMomentChange,
     onMomentsReset,
+    onMomentsRedo,
     montage
   })
 
 describe('where the jump is in a clip', () => {
+  /* the tests run in development, where a clip's marks can be forgotten and found again */
+  test('can be found again from the footage, in development', async () => {
+    const redo = vi.fn()
+    await render(
+      createElement(Drawer, { moments: { exit: 38, canopy: 94 }, onMomentsRedo: redo })
+    )
+    await page.getByRole('button', { name: 'Find the marks again' }).click()
+    expect(redo).toHaveBeenCalledOnce()
+  })
+
   test('is put back where the camera measured it, once it was moved', async () => {
     const back = vi.fn()
     await render(

@@ -43,6 +43,9 @@ const PreviewedFile = () => {
           moment: { which, seconds }
         })
       }
+      onMomentsRedo={(file) =>
+        board.send('moment', { intent: 'redo-moments', fileIds: [file.id ?? ''] })
+      }
       onMomentsReset={(file) =>
         board.send('moment', { intent: 'reset-moments', fileIds: [file.id ?? ''] })
       }
