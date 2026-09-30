@@ -17,9 +17,8 @@ const WindowBar = () => {
         {/* The part that drags is only the name's end of the bar, and the buttons are beside it, not
             inside it: on a transparent frameless window a button inside a drag region can be
             swallowed by the drag, and the window would not close. */}
-        <div
-          onDoubleClick={frame.toggleMaximize}
-          className='flex h-full min-w-0 flex-1 items-center gap-2.5 pl-3 [-webkit-app-region:drag]'>
+        {/* pressed twice, the window maximises: the engine does it for a drag region itself */}
+        <div className='flex h-full min-w-0 flex-1 items-center gap-2.5 pl-3 [-webkit-app-region:drag]'>
           <Mark size={18} />
           <span>SkyDock</span>
         </div>

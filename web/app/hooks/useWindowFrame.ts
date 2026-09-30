@@ -22,9 +22,11 @@ const useWindowFrame = () => {
   return frame
     ? {
         maximized,
-        minimize: frame.minimize,
-        toggleMaximize: frame.toggleMaximize,
-        close: frame.close
+        /* called with nothing, each one: a click's event handed straight to the window's bridge cannot
+           be copied across it, and the button would do nothing */
+        minimize: () => frame.minimize(),
+        toggleMaximize: () => frame.toggleMaximize(),
+        close: () => frame.close()
       }
     : null
 }

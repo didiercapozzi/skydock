@@ -228,27 +228,30 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
   if (!board.hasManifest) {
     return (
-      <main className='mx-auto max-w-5xl p-6'>
-        <h1 className='text-[15px] font-bold tracking-[-0.02em]'>{t`Nothing here yet`}</h1>
-        <p className='mt-2 text-[12.5px] text-ink-2'>
-          {t`Plug a camera in — it is copied off by itself — or copy its files into the work folder, then scan to find the jumps.`}
-        </p>
-        {note && (
-          <Notice
-            problem={board.noteIsProblem}
-            onClose={() => setNote(null)}
-            className='mt-3 rounded-md border px-2.5 py-[7px]'>
-            {note}
-          </Notice>
-        )}
-        <button
-          type='button'
-          disabled={board.scanning}
-          onClick={board.scan}
-          className='mt-4 rounded-md border border-accent bg-accent px-[11px] py-[5px] text-[12.5px] font-medium text-white disabled:opacity-40'>
-          {board.scanning ? t`Scanning…` : t`Scan`}
-        </button>
-      </main>
+      <div className='ground flex h-screen flex-col overflow-hidden'>
+        <WindowBar />
+        <main className='mx-2.5 mb-2.5 flex-1 overflow-auto rounded-[18px] bg-pane p-6 shadow-card'>
+          <h1 className='font-display text-[20px] font-bold tracking-[-0.03em]'>{t`Nothing here yet`}</h1>
+          <p className='mt-2 text-[12.5px] text-ink-2'>
+            {t`Plug a camera in — it is copied off by itself — or copy its files into the work folder, then scan to find the jumps.`}
+          </p>
+          {note && (
+            <Notice
+              problem={board.noteIsProblem}
+              onClose={() => setNote(null)}
+              className='mt-3 rounded-md border px-2.5 py-[7px]'>
+              {note}
+            </Notice>
+          )}
+          <button
+            type='button'
+            disabled={board.scanning}
+            onClick={board.scan}
+            className='mt-4 rounded-md border border-accent bg-accent px-[11px] py-[5px] text-[12.5px] font-medium text-white disabled:opacity-40'>
+            {board.scanning ? t`Scanning…` : t`Scan`}
+          </button>
+        </main>
+      </div>
     )
   }
 
@@ -299,7 +302,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         if (!fromComputer(e)) return
         setNote(t`Drop a clip on a destination, a montage or a jump to add it.`)
       }}
-      className='ground flex h-screen flex-col'>
+      className='ground flex h-screen flex-col overflow-hidden'>
       <WindowBar />
       <div
         className={`grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_auto_minmax(0,1fr)] gap-y-2.5 px-2.5 pt-2.5 pb-2 min-[781px]:pt-0 min-[781px]:grid-cols-[264px_10px_minmax(0,1fr)] min-[781px]:grid-rows-[56px_minmax(0,1fr)] min-[781px]:gap-y-0 min-[1101px]:transition-[grid-template-columns] min-[1101px]:duration-300 min-[1101px]:ease-out motion-reduce:transition-none ${

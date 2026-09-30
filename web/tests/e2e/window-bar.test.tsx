@@ -29,9 +29,10 @@ describe('the window’s own title bar', () => {
     await page.getByRole('button', { name: 'Maximise' }).click()
     await page.getByRole('button', { name: 'Close' }).click()
 
-    expect(asked.minimize).toHaveBeenCalledOnce()
-    expect(asked.toggleMaximize).toHaveBeenCalledOnce()
-    expect(asked.close).toHaveBeenCalledOnce()
+    /* each with no arguments: a click's own event cannot cross the window's bridge */
+    expect(asked.minimize).toHaveBeenCalledExactlyOnceWith()
+    expect(asked.toggleMaximize).toHaveBeenCalledExactlyOnceWith()
+    expect(asked.close).toHaveBeenCalledExactlyOnceWith()
   })
 
   test('is not there in a browser tab', async () => {

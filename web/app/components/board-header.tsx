@@ -318,7 +318,7 @@ const StatusBar = ({
   const user = nas.user
   const item = 'inline-flex h-5 items-center gap-[7px] whitespace-nowrap'
   return (
-    <footer className='flex h-[30px] flex-none items-center gap-5 px-[18px] text-[11.5px] font-semibold text-ink-2'>
+    <footer className='mx-2.5 mb-2 flex h-[30px] flex-none items-center gap-5 rounded-[12px] bg-pane px-3.5 text-[11.5px] shadow-card font-semibold text-ink-2'>
       {/* Who the storage was connected as, and where: the same question a NAS asks at its own
           login, answered on the board rather than left to be remembered. */}
       <span
