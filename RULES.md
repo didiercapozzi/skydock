@@ -1387,11 +1387,13 @@ Once a montage has a share link, its page offers to email whoever it is for, and
 opens the email straight away. The email is written already, in French, for a tandem passenger — the
 film a montage is most often made for: it greets them by the first word of the montage's name, says
 what is ready and from which day, and has one button to the folder with the link repeated as text. It is shown exactly as it will arrive, and the message and the signature are written in
-it, where they stand, with **bold**, _italic_, lists and links from a small toolbar. What is typed or
+it, where they stand — and so is the heading, which is the subject: typing in the heading is typing in
+the Subject field, and the other way round; and so is the small line above it, which starts as "Saut
+en montage" ("Your jump", "Dein Sprung"). Both are plain words on one line, without the toolbar's styles.
+The message and the signature take **bold**, _italic_, lists and links from a small toolbar. What is typed or
 pasted keeps only those — paragraphs, line breaks, bold, italic, lists and links to a page or an email
 address — and loses everything else, so text pasted from a document or a web page brings its words and
-never its fonts, colours or anything that runs. The heading, which is the subject, the button and the
-link cannot be written over. The signature is the club's, remembered on this machine for every email.
+never its fonts, colours or anything that runs. The button and the link cannot be written over. The signature is the club's, remembered on this machine for every email.
 
 **In the language of whoever it is for.** The email is written in French until another is picked for it —
 English or German — and is then drafted again from that language's own template, with the day, what is
@@ -1403,7 +1405,8 @@ of theirs, so it does not decide.
 their phone before the email has even gone.
 
 **The email template.** Every montage's email is drafted from the club's template, once per language, written once in
-the same way — its subject and its message — and remembered on this machine. The words that change
+the same way — the small line above the heading, its subject and its message — and remembered on this
+machine; a template written before that line could be changed says none, and gets its language's own. The words that change
 are written as variables, filled from each montage: `{prénom}`, `{nom}`, `{montage}` (the montage's
 name), `{date}` (the day of the jump, in words), `{contenu}` ("Ta vidéo et tes photos", as there are),
 `{prêt}` ("est prête" or "sont prêtes", agreeing with it), `{vidéos}` and `{photos}` (how many, empty

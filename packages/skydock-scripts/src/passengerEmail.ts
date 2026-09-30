@@ -13,7 +13,10 @@ type PassengerEmail = {
   body: string
   signature: string
   shareUrl: string
-  /* for the preview: the message and the signature can be written in, and are marked to be found */
+  /* the small line above the heading, plain text: the language's own until written otherwise */
+  kicker?: string
+  /* for the preview: the heading, the message and the signature can be written in, and are marked
+     to be found */
   editable?: boolean
   /* the language of what the email says around the club's words */
   lang?: EmailLanguage
@@ -246,11 +249,18 @@ const variablesOf = (
 }
 
 /* The club's email, written once with the words that change left as {variables}. The message is
-   cleaned HTML, as anything written in the email is. */
-type EmailTemplate = { subject: string; body: string }
+   cleaned HTML, as anything written in the email is. The line above the heading is the language's
+   own when the template says none — which is how a template written before it could be changed
+   still reads. */
+type EmailTemplate = { subject: string; body: string; kicker?: string }
+
+/* the line above the heading a template says, or its language's own */
+const kickerOf = (template: EmailTemplate, lang: EmailLanguage) =>
+  template.kicker ?? WORDS[lang].kicker
 
 const DEFAULT_TEMPLATES: Record<EmailLanguage, EmailTemplate> = {
   fr: {
+    kicker: WORDS.fr.kicker,
     subject: '{contenu} de ton saut en montage',
     body: htmlOfText(
       [
@@ -262,6 +272,7 @@ const DEFAULT_TEMPLATES: Record<EmailLanguage, EmailTemplate> = {
     )
   },
   en: {
+    kicker: WORDS.en.kicker,
     subject: '{contenu} from your jump',
     body: htmlOfText(
       [
@@ -273,6 +284,7 @@ const DEFAULT_TEMPLATES: Record<EmailLanguage, EmailTemplate> = {
     )
   },
   de: {
+    kicker: WORDS.de.kicker,
     subject: '{contenu} von deinem Sprung',
     body: htmlOfText(
       [
@@ -305,8 +317,8 @@ const saysNothing = (line: string, values: Record<string, string>) => {
   )
 }
 
-/* The email for one montage, from the template: the subject and the message with every variable put
-   in, and the lines that would say nothing left out. */
+/* The email for one montage, from the template: the line above the heading, the subject and the
+   message with every variable put in, and the lines that would say nothing left out. */
 const fillEmailTemplate = (
   template: EmailTemplate,
   facts: EmailFacts,
@@ -316,10 +328,13 @@ const fillEmailTemplate = (
   const body = template.body
     .replace(/<(p|li)>(.*?)<\/\1>/g, (line: string) => (saysNothing(line, values) ? '' : line))
     .replace(/<(ul|ol)><\/\1>/g, '')
-  return {
-    subject: fill(template.subject, values, (v) => v)
+  const oneLine = (text: string) =>
+    fill(text, values, (v) => v)
       .replace(/\s+/g, ' ')
-      .trim(),
+      .trim()
+  return {
+    kicker: oneLine(kickerOf(template, lang)),
+    subject: oneLine(template.subject),
     body: fill(body, values, escapeHtml)
   }
 }
@@ -352,6 +367,7 @@ const renderPassengerEmail = ({
   body,
   signature,
   shareUrl,
+  kicker,
   editable,
   lang = 'fr'
 }: PassengerEmail) => {
@@ -367,8 +383,8 @@ const renderPassengerEmail = ({
 <tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(16,24,32,0.08);">
 <tr><td style="background:${ACCENT};padding:34px 32px 30px;">
-<div style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.72);">${words.kicker}</div>
-<div style="margin-top:8px;font-size:26px;line-height:1.25;font-weight:700;color:#ffffff;">${escapeHtml(subject)}</div>
+<div style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.72);${editable ? 'outline:none;min-height:1.25em;' : ''}"${writable('kicker')}>${escapeHtml(kicker ?? words.kicker)}</div>
+<div style="margin-top:8px;font-size:26px;line-height:1.25;font-weight:700;color:#ffffff;${editable ? 'outline:none;min-height:1.25em;' : ''}"${writable('subject')}>${escapeHtml(subject)}</div>
 </td></tr>
 <tr><td style="padding:32px 32px 8px;outline:none;"${writable('body')}>${blocks}</td></tr>
 <tr><td align="center" style="padding:8px 32px 28px;">
@@ -423,6 +439,7 @@ export {
   defaultPassengerEmail,
   EMAIL_VARIABLES,
   fillEmailTemplate,
+  kickerOf,
   markVariables,
   variablesOf,
   gmailComposeUrl,

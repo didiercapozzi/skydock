@@ -6,7 +6,12 @@ import { remembered } from './remembered'
 /* The club's email, written once per language with its {variables} and remembered on this
    machine, as the signature is (RULES, Sending the link). Anything stored that does not read as one
    is the default rather than a guess. The French one keeps the name it always had. */
-const emailTemplateSchema = z.object({ subject: z.string(), body: z.string() })
+const emailTemplateSchema = z.object({
+  subject: z.string(),
+  body: z.string(),
+  /* absent from one written before the line above the heading could be changed */
+  kicker: z.string().optional()
+})
 
 const templateIn = (lang: EmailLanguage) =>
   remembered<EmailTemplate>({

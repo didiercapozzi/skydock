@@ -100,7 +100,7 @@ describe('the passenger email', () => {
       signature: '',
       shareUrl: LINK
     })
-    expect(shown.fragment.match(/contenteditable/g)).toHaveLength(2)
+    expect(shown.fragment.match(/contenteditable/g)).toHaveLength(4)
     expect(copied.fragment).not.toContain('contenteditable')
     expect(copied.fragment).not.toContain('data-edit')
   })
@@ -156,7 +156,7 @@ describe('the email template', () => {
   })
 
   it('leaves a name that is no variable as it was typed, so the slip shows', () => {
-    expect(fillEmailTemplate({ subject: '{prenom}', body: '<p>{prenom}</p>' }, luc)).toEqual({
+    expect(fillEmailTemplate({ subject: '{prenom}', body: '<p>{prenom}</p>' }, luc)).toMatchObject({
       subject: '{prenom}',
       body: '<p>{prenom}</p>'
     })
@@ -168,6 +168,52 @@ describe('the email template', () => {
       { ...luc, firstname: '<b>Luc</b>' }
     )
     expect(email.body).toBe('<p>Bonjour &lt;b&gt;Luc&lt;/b&gt;</p>')
+  })
+})
+
+/* The small line above the heading is the club's to write, like the subject, and the language's own
+   until it does (RULES, Sending the link). */
+describe('the line above the heading', () => {
+  const luc = {
+    firstname: 'Luc',
+    lastname: 'Favre',
+    day: '01.08.2026',
+    videos: 2,
+    photos: 0,
+    seconds: 200
+  }
+
+  it('is the language’s own until the template says otherwise', () => {
+    expect(fillEmailTemplate({ subject: 's', body: '<p>x</p>' }, luc, 'fr').kicker).toBe(
+      'Saut en montage'
+    )
+    expect(fillEmailTemplate({ subject: 's', body: '<p>x</p>' }, luc, 'de').kicker).toBe(
+      'Dein Sprung'
+    )
+  })
+
+  it('is what the template says, its variables filled from the montage', () => {
+    const email = fillEmailTemplate(
+      { subject: 's', body: '<p>x</p>', kicker: 'Le saut de {prénom}' },
+      luc
+    )
+    expect(email.kicker).toBe('Le saut de Luc')
+  })
+
+  it('is drawn above the heading, as written, and never as markup', () => {
+    const { fragment } = renderPassengerEmail({
+      subject: 's',
+      kicker: '<b>Club</b>',
+      body: '',
+      signature: '',
+      shareUrl: LINK
+    })
+    expect(fragment).toContain('&lt;b&gt;Club&lt;/b&gt;')
+    expect(fragment).not.toContain('Saut en montage')
+  })
+
+  it('is left empty when the template says none', () => {
+    expect(fillEmailTemplate({ subject: 's', body: '<p>x</p>', kicker: '' }, luc).kicker).toBe('')
   })
 })
 

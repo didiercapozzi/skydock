@@ -57,7 +57,7 @@ const open = () =>
   )
 
 const preview = () => page.getByLabelText('Email preview')
-const part = (which: 'body' | 'signature') =>
+const part = (which: 'kicker' | 'subject' | 'body' | 'signature') =>
   preview().element().querySelector<HTMLElement>(`[data-edit="${which}"]`)!
 
 const copyEmail = async () => {
@@ -88,13 +88,63 @@ describe('writing the passenger email', () => {
     expect(await copyEmail()).toMatch(/<strong>Bonjour Luc,/)
   })
 
-  test('keeps the heading, the button and the link out of reach', async () => {
+  test('keeps the button and the link out of reach', async () => {
     await open()
     const editable = [...preview().element().querySelectorAll('[contenteditable="true"]')]
 
-    expect(editable.map((node) => node.getAttribute('data-edit'))).toEqual(['body', 'signature'])
+    expect(editable.map((node) => node.getAttribute('data-edit'))).toEqual([
+      'kicker',
+      'subject',
+      'body',
+      'signature'
+    ])
     await expect.element(preview().getByText('Voir et télécharger')).toBeVisible()
     await page.screenshot({ path: './playwright-screenshots/email-editor.png' })
+  })
+
+  /* the heading is the subject: typing in it is typing in the Subject field, and the other way round */
+  test('has its heading written in place, and the Subject field follows it', async () => {
+    catchClipboard()
+    await open()
+
+    await userEvent.click(part('subject'))
+    await userEvent.keyboard('{Control>}{End}{/Control} — pour toi')
+
+    await expect
+      .element(page.getByLabelText('Subject'))
+      .toHaveValue('Ta vidéo et tes photos de ton saut en montage — pour toi')
+    expect(await copyEmail()).toContain('Ta vidéo et tes photos de ton saut en montage — pour toi')
+  })
+
+  /* the small line above the heading is the club's to write too */
+  test('has the line above its heading written in place, and copied as written', async () => {
+    catchClipboard()
+    await open()
+    await expect.poll(() => part('kicker').textContent).toBe('Saut en montage')
+
+    await userEvent.click(part('kicker'))
+    await userEvent.keyboard('{Control>}a{/Control}Colombier Skydive')
+
+    expect(await copyEmail()).toContain('Colombier Skydive')
+    expect(part('subject').textContent).toBe('Ta vidéo et tes photos de ton saut en montage')
+  })
+
+  test('has its heading follow the Subject field', async () => {
+    await open()
+
+    await userEvent.fill(page.getByLabelText('Subject'), 'Ton film')
+
+    await expect.poll(() => part('subject').textContent).toBe('Ton film')
+  })
+
+  test('keeps its heading on one line, whatever is done to it', async () => {
+    await open()
+
+    await userEvent.click(part('subject'))
+    await userEvent.keyboard('{Control>}{End}{/Control}{Enter}suite')
+
+    expect(part('subject').querySelector('br, div, p')).toBeNull()
+    expect(part('subject').textContent).toContain('montagesuite')
   })
 
   test('remembers the signature for the next email', async () => {
@@ -177,6 +227,45 @@ describe('the email template', () => {
     await userEvent.click(page.getByRole('button', { name: 'Done — back to this email' }))
 
     await expect.element(page.getByLabelText('Subject')).toHaveValue('Ta vidéo et tes photos de ton saut en montage')
+  })
+})
+
+describe('the heading of the template', () => {
+  test('is written in place too, and drafts the email from it', async () => {
+    setEmailTemplate('fr', DEFAULT_TEMPLATE)
+    await open()
+    await userEvent.click(page.getByRole('button', { name: 'Edit the template…' }))
+
+    await userEvent.click(part('subject'))
+    await userEvent.keyboard('{Control>}a{/Control}Salut {{prénom}')
+    await userEvent.click(page.getByRole('button', { name: 'Done — back to this email' }))
+
+    await expect.element(page.getByLabelText('Subject')).toHaveValue('Salut Luc')
+  })
+})
+
+describe('the line above the heading of the template', () => {
+  test('is written in the template, and every email is drafted with it', async () => {
+    setEmailTemplate('fr', DEFAULT_TEMPLATE)
+    const first = await open()
+    await userEvent.click(page.getByRole('button', { name: 'Edit the template…' }))
+    await userEvent.click(part('kicker'))
+    await userEvent.keyboard('{Control>}a{/Control}Le saut de {{prénom}')
+    await userEvent.click(page.getByRole('button', { name: 'Done — back to this email' }))
+    await expect.poll(() => part('kicker').textContent).toBe('Le saut de Luc')
+    await first.unmount()
+
+    await open()
+
+    await expect.poll(() => part('kicker').textContent).toBe('Le saut de Luc')
+    setEmailTemplate('fr', DEFAULT_TEMPLATE)
+  })
+
+  test('is the language’s own for a template written before it could be changed', async () => {
+    setEmailTemplate('fr', { subject: 's', body: '<p>Merci</p>' })
+    await open()
+
+    await expect.poll(() => part('kicker').textContent).toBe('Saut en montage')
   })
 })
 

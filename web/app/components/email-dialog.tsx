@@ -3,6 +3,7 @@ import {
   DEFAULT_TEMPLATES,
   EMAIL_VARIABLES,
   fillEmailTemplate,
+  kickerOf,
   htmlOfText,
   markVariables,
   variablesOf,
@@ -39,6 +40,11 @@ const STYLES = [
   ['insertUnorderedList', msg`List`, '•'],
   ['removeFormat', msg`Plain text`, 'T̸']
 ] as const
+
+/* The heading and the small line above it are one line of plain words each, unlike the message and
+   the signature. */
+const isOneLine = (part: Element) =>
+  ['subject', 'kicker'].includes(part.getAttribute('data-edit') ?? '')
 
 /* the part of the email being written in, when the caret is in one */
 const editing = () => {
@@ -118,8 +124,8 @@ const EmailDialog = ({
   const [lang, setLang] = useState<EmailLanguage>('fr')
   const [showingQr, setShowingQr] = useState(false)
   const stored = useEmailTemplate(lang)
-  const readable = (raw: EmailTemplate) => ({
-    subject: raw.subject,
+  const readable = (raw: EmailTemplate): EmailTemplate => ({
+    ...raw,
     body: cleanEmailHtml(asEmailHtml(raw.body))
   })
   const template = readable(stored)
@@ -127,18 +133,27 @@ const EmailDialog = ({
   const values = variablesOf(about, lang)
   const [to, setTo] = useState(emailed?.to ?? '')
   const [subject, setSubject] = useState(drafted.subject)
+  const [kicker, setKicker] = useState(drafted.kicker)
   const [body, setBody] = useState(drafted.body)
   /* the signature is the club's, the same on every email, so it is remembered */
   const signature = cleanEmailHtml(asEmailHtml(useSignature()))
-  const { fragment, text } = renderPassengerEmail({ subject, body, signature, shareUrl, lang })
+  const { fragment, text } = renderPassengerEmail({
+    subject,
+    kicker,
+    body,
+    signature,
+    shareUrl,
+    lang
+  })
   /* This email, or the template every email is drafted from. */
   const [writingTemplate, setWritingTemplate] = useState(false)
   /* What the email shown is laid out from. What is written in it is read from it as it is typed and
      never laid back over it — that would move the caret — so it is laid again only when the heading
      changes or the template is opened or closed, from what has been written so far. */
-  const [laid, setLaid] = useState({ body, signature })
+  const [laid, setLaid] = useState({ subject, kicker, body, signature })
   const shown = renderPassengerEmail({
-    subject: writingTemplate ? template.subject : subject,
+    subject: laid.subject,
+    kicker: laid.kicker,
     body: laid.body,
     signature: laid.signature,
     shareUrl,
@@ -148,46 +163,79 @@ const EmailDialog = ({
   const retitle = (next: string) => {
     if (writingTemplate) {
       setEmailTemplate(lang, { ...template, subject: next })
-      setLaid({ body: markVariables(template.body), signature })
+      setLaid({
+        subject: next,
+        kicker: kickerOf(template, lang),
+        body: markVariables(template.body),
+        signature
+      })
     } else {
       setSubject(next)
-      setLaid({ body, signature })
+      setLaid({ subject: next, kicker, body, signature })
     }
   }
   /* The template opened: its {variables} shown as such. Closed again: this email drafted afresh from
      it, since that is what changing the template was for. */
   const openTemplate = () => {
     setWritingTemplate(true)
-    setLaid({ body: markVariables(template.body), signature })
+    setLaid({
+      subject: template.subject,
+      kicker: kickerOf(template, lang),
+      body: markVariables(template.body),
+      signature
+    })
   }
   const closeTemplate = () => {
     const filled = fillEmailTemplate(template, about, lang)
     setWritingTemplate(false)
     setSubject(filled.subject)
+    setKicker(filled.kicker)
     setBody(filled.body)
-    setLaid({ body: filled.body, signature })
+    setLaid({ subject: filled.subject, kicker: filled.kicker, body: filled.body, signature })
   }
   const resetTemplate = () => {
-    setEmailTemplate(lang, DEFAULT_TEMPLATES[lang])
-    setLaid({ body: markVariables(DEFAULT_TEMPLATES[lang].body), signature })
+    const first = DEFAULT_TEMPLATES[lang]
+    setEmailTemplate(lang, first)
+    setLaid({
+      subject: first.subject,
+      kicker: kickerOf(first, lang),
+      body: markVariables(first.body),
+      signature
+    })
   }
   /* another language: this email drafted again from that language's template */
   const speak = (next: EmailLanguage) => {
     const other = readable(readEmailTemplate(next))
     setLang(next)
     if (writingTemplate) {
-      setLaid({ body: markVariables(other.body), signature })
+      setLaid({
+        subject: other.subject,
+        kicker: kickerOf(other, next),
+        body: markVariables(other.body),
+        signature
+      })
       return
     }
     const filled = fillEmailTemplate(other, about, next)
     setSubject(filled.subject)
+    setKicker(filled.kicker)
     setBody(filled.body)
-    setLaid({ body: filled.body, signature })
+    setLaid({ subject: filled.subject, kicker: filled.kicker, body: filled.body, signature })
   }
   /* what was written, cleaned down to what an email carries, kept as it is typed */
   const written = (target: EventTarget) => {
     const part = target instanceof Element ? target.closest('[data-edit]') : null
     if (!part) return
+    /* the heading is the subject, and the small line above it: plain words, on one line — and the
+       Subject field above follows the heading */
+    const which = part.getAttribute('data-edit')
+    if (which === 'subject' || which === 'kicker') {
+      const typed = (part.textContent ?? '').replace(/\s+/g, ' ')
+      if (writingTemplate) setEmailTemplate(lang, { ...template, [which]: typed })
+      else if (which === 'subject') setSubject(typed)
+      else setKicker(typed)
+      return
+    }
     const cleaned = cleanEmailHtml(part.innerHTML)
     if (part.getAttribute('data-edit') === 'signature') setSignature(cleaned)
     else if (writingTemplate) setEmailTemplate(lang, { ...template, body: cleaned })
@@ -214,14 +262,19 @@ const EmailDialog = ({
   }
   /* a link asked for: the words picked are kept, and the address is asked for beside the toolbar */
   const [linking, setLinking] = useState<{ range: Range; href: string } | null>(null)
+  /* bold, lists and links are for the message and the signature, never the heading */
+  const styleable = () => {
+    const part = editing()
+    return part !== null && !isOneLine(part)
+  }
   const style = (command: string) => {
-    if (!editing()) return
+    if (!styleable()) return
     document.execCommand(command)
     if (command === 'removeFormat') document.execCommand('unlink')
   }
   const askLink = () => {
     const selection = window.getSelection()
-    if (!editing() || !selection || selection.rangeCount === 0) return
+    if (!styleable() || !selection || selection.rangeCount === 0) return
     setLinking({ range: selection.getRangeAt(0).cloneRange(), href: 'https://' })
   }
   const putLink = () => {
@@ -445,11 +498,21 @@ const EmailDialog = ({
               }}
               onKeyUp={keepCaret}
               onMouseUp={keepCaret}
+              onKeyDown={(e) => {
+                /* the heading is one line: Enter there is not a new paragraph */
+                const part = editing()
+                if (e.key === 'Enter' && part && isOneLine(part)) e.preventDefault()
+              }}
               onPaste={(e) => {
-                if (!editing()) return
+                const part = editing()
+                if (!part) return
                 e.preventDefault()
                 const pasted = e.clipboardData.getData('text/html')
                 const plain = e.clipboardData.getData('text/plain')
+                if (isOneLine(part)) {
+                  document.execCommand('insertText', false, plain.replace(/\s+/g, ' '))
+                  return
+                }
                 document.execCommand(
                   'insertHTML',
                   false,
