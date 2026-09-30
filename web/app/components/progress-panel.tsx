@@ -35,6 +35,18 @@ const TONE: Record<Row['at'], string> = {
   failed: 'text-bin'
 }
 
+/* where each has got to, in words — said beside each item when the panel is opened out */
+const stateOf = (at: Row['at']) =>
+  at === 'done'
+    ? t`done`
+    : at === 'now'
+      ? t`under way`
+      : at === 'later'
+        ? t`waiting`
+        : at === 'skipped'
+          ? t`already there`
+          : t`failed`
+
 /* how far through one file, said of its size */
 const ofSize = (part: number, bytes: number) => {
   const percent = Math.round(part * 100)
@@ -44,6 +56,58 @@ const ofSize = (part: number, bytes: number) => {
 
 /* the one under way, read out: what is done to it, and its name */
 const underWay = (doing: string, name: string) => t`${doing} ${name}`
+
+/* every item with a mark for where it is, and the one under way with a bar of its own. Opened out,
+   each shows its whole name, where it goes and what became of it in words. */
+const ProgressRows = ({ rows, doing, opened }: { rows: Row[]; doing: string; opened: boolean }) => (
+  <ol className='m-0 flex min-h-0 flex-1 list-none flex-col gap-0.5 overflow-y-auto border-t border-line-2 p-0 pt-[7px] font-mono text-[11px] text-ink-2'>
+    {rows.map((row) => (
+      <li key={row.key}>
+        <span className='flex items-baseline justify-between gap-3'>
+          <span
+            className={`min-w-0 ${opened ? 'break-all' : 'truncate'} ${row.at === 'now' ? 'text-ink' : row.at === 'later' ? 'text-ink-3' : ''}`}
+            title={row.title ?? row.name}>
+            {row.name}
+          </span>
+          {opened && row.note !== stateOf(row.at) && (
+            <span className={`flex-none font-sans text-[11px] ${TONE[row.at]}`}>
+              {stateOf(row.at)}
+            </span>
+          )}
+          <span className={`flex-none tabular-nums ${TONE[row.at]}`}>
+            {row.note ??
+              (row.at === 'now' && (row.part ?? 0) > 0
+                ? ofSize(row.part ?? 0, row.size)
+                : row.size > 0
+                  ? formatSize(row.size)
+                  : '')}
+          </span>
+        </span>
+        {/* where it goes, whole, for whoever opened the panel out to see */}
+        {opened && row.title && row.title !== row.name && (
+          <span className='block text-[10.5px] break-all text-ink-3'>{row.title}</span>
+        )}
+        {/* The one under way gets a bar of its own. The bar above is the whole, where a single file
+            of fifty moves it by two hundredths and looks like nothing happening — this is the file
+            itself, from nothing to full. */}
+        {row.at === 'now' && (
+          <span
+            role='progressbar'
+            aria-label={underWay(row.doing ?? doing, row.name)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round((row.part ?? 0) * 100)}
+            className='mt-[3px] mb-[2px] flex h-[3px] overflow-hidden rounded-[2px] bg-line'>
+            <i
+              className='block h-full bg-accent transition-[width] duration-200'
+              style={{ width: `${Math.round((row.part ?? 0) * 100)}%` }}
+            />
+          </span>
+        )}
+      </li>
+    ))}
+  </ol>
+)
 
 const ProgressPanel = ({
   label,
@@ -76,6 +140,9 @@ const ProgressPanel = ({
 }) => {
   /* folded down to its title and its count, for whoever wants the corner back while it runs */
   const [folded, setFolded] = useState(false)
+  /* opened out: big enough to read everything, with each item's whole name, where it goes and what
+     became of it — the corner's small panel says how far, this says everything */
+  const [opened, setOpened] = useState(false)
   const finished = rows.filter((r) => r.at === 'done' || r.at === 'skipped' || r.at === 'failed')
   const current = rows.findIndex((r) => r.at === 'now')
   /* the whole, counting the one under way for as much of itself as is done — so one long file on
@@ -96,7 +163,11 @@ const ProgressPanel = ({
   return (
     <aside
       aria-label={label}
-      className='flex max-h-[min(440px,60vh)] w-[min(330px,calc(100vw-2rem))] flex-col gap-2 rounded-[18px] bg-pane px-4 py-3.5 text-ink shadow-float'>
+      className={`flex flex-col gap-2 rounded-[18px] bg-pane px-4 py-3.5 text-ink shadow-float ${
+        opened
+          ? 'max-h-[min(78vh,720px)] w-[min(760px,calc(100vw-2rem))]'
+          : 'max-h-[min(440px,60vh)] w-[min(330px,calc(100vw-2rem))]'
+      }`}>
       <div className='flex items-center gap-2'>
         <Icon
           name={icon}
@@ -113,6 +184,21 @@ const ProgressPanel = ({
           <span className='flex-none font-mono text-[11px] text-ink-3 tabular-nums'>{count}</span>
         )}
         {action}
+        <button
+          type='button'
+          aria-pressed={opened}
+          aria-label={opened ? t`Make it small again` : t`Open it out to see more`}
+          title={opened ? t`Make it small again` : t`Open it out to see more`}
+          onClick={() => {
+            setOpened(!opened)
+            setFolded(false)
+          }}
+          className='grid size-7 flex-none place-items-center rounded-[9px] border-0 bg-well p-0 text-ink-2 hover:bg-line hover:text-ink'>
+          <Icon
+            name={opened ? 'restore' : 'maximise'}
+            size={14}
+          />
+        </button>
         <button
           type='button'
           aria-expanded={!folded}
@@ -154,44 +240,11 @@ const ProgressPanel = ({
           </div>
 
           {rows.length > 0 && (
-            <ol className='m-0 flex min-h-0 flex-1 list-none flex-col gap-0.5 overflow-y-auto border-t border-line-2 p-0 pt-[7px] font-mono text-[11px] text-ink-2'>
-              {rows.map((row) => (
-                <li key={row.key}>
-                  <span className='flex items-baseline justify-between gap-3'>
-                    <span
-                      className={`min-w-0 truncate ${row.at === 'now' ? 'text-ink' : row.at === 'later' ? 'text-ink-3' : ''}`}
-                      title={row.title ?? row.name}>
-                      {row.name}
-                    </span>
-                    <span className={`flex-none tabular-nums ${TONE[row.at]}`}>
-                      {row.note ??
-                        (row.at === 'now' && (row.part ?? 0) > 0
-                          ? ofSize(row.part ?? 0, row.size)
-                          : formatSize(row.size))}
-                    </span>
-                  </span>
-                  {/* The one under way gets a bar of its own. The bar above is the whole, where a
-                      single file of fifty moves it by two hundredths and looks like nothing
-                      happening — this is the file itself, from nothing to full. */}
-                  {row.at === 'now' && (
-                    <span
-                      role='progressbar'
-                      aria-label={underWay(row.doing ?? doing, row.name)}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-valuenow={Math.round((row.part ?? 0) * 100)}
-                      className='mt-[3px] mb-[2px] flex h-[3px] overflow-hidden rounded-[2px] bg-line'>
-                      <i
-                        className='block h-full bg-accent transition-[width] duration-200'
-                        style={{
-                          width: `${Math.round((row.part ?? 0) * 100)}%`
-                        }}
-                      />
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ol>
+            <ProgressRows
+              rows={rows}
+              doing={doing}
+              opened={opened}
+            />
           )}
         </>
       )}
@@ -199,5 +252,5 @@ const ProgressPanel = ({
   )
 }
 
-export { ProgressPanel }
+export { ProgressPanel, ProgressRows, stateOf }
 export type { Row as ProgressRow }

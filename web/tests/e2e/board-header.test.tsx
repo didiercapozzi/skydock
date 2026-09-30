@@ -39,6 +39,7 @@ const header = (over: Partial<Frame> = {}) => {
       links
     },
     uploading: null,
+    transfers: { open: false, onToggle: () => {} },
     ...over
   }
   return render(
@@ -67,6 +68,19 @@ describe('the top of the board', () => {
 
     await expect.element(page.getByRole('button', { name: 'Connect the storage' })).toBeVisible()
     await expect.element(page.getByText('didier')).not.toBeInTheDocument()
+  })
+
+  /* what was sent and copied in is always there to be looked at, done or not */
+  test('has the transfers to open whenever, and says when they are open', async () => {
+    const onToggle = vi.fn()
+    await header({ transfers: { open: false, onToggle } })
+
+    await expect
+      .element(page.getByRole('button', { name: 'Transfers' }))
+      .toHaveAttribute('aria-pressed', 'false')
+    await userEvent.click(page.getByRole('button', { name: 'Transfers' }))
+
+    expect(onToggle).toHaveBeenCalledTimes(1)
   })
 
   /* the jump in each clip is found in a pass of its own, and its progress is said beside the proxies' */

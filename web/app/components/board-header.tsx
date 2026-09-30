@@ -280,7 +280,8 @@ const StatusBar = ({
   jumps,
   disk,
   nas,
-  uploading
+  uploading,
+  transfers
 }: {
   proxies: { ready: number; waiting: number; total: number }
   /* the clips asked where their jump is, out of the clips there are */
@@ -290,6 +291,8 @@ const StatusBar = ({
   nas: { connected: boolean; host: string | null; user: string | null; links: NasLink[] }
   /* what is going up right now, and how far through, between 0 and 1 */
   uploading: { label: string; part: number } | null
+  /* the panel of what was sent and copied, opened at any time — even when it is all done */
+  transfers: { open: boolean; onToggle: () => void }
 }) => {
   const zoom = useZoom()
   /* a card being copied is heard here, so its bytes move this line and nothing else */
@@ -369,6 +372,20 @@ const StatusBar = ({
           </button>
         ))}
       </span>
+      {/* what was sent and copied in, to look at after it is done: always here */}
+      <button
+        type='button'
+        aria-pressed={transfers.open}
+        title={t`What was sent and copied in, and how it went — even when it is all done`}
+        onClick={transfers.onToggle}
+        className={`${item} rounded-[6px] px-1.5 hover:bg-line hover:text-ink ${transfers.open ? 'bg-line text-ink' : ''}`}>
+        <Icon
+          name='upload'
+          size={12}
+          weight={2}
+        />
+        {t`Transfers`}
+      </button>
       {working && (
         <span className={`${item} text-ink`}>
           <Icon

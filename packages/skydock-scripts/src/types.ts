@@ -165,7 +165,19 @@ const montageUploadSchema = z.object({
   /* Every item that went up and every folder it went to. The fields above are each part's first
      place, which is what is proved and freed against; this is the whole of where things went. */
   sent: z
-    .array(z.object({ name: z.string(), holds: z.array(sendPartSchema), to: z.array(z.string()) }))
+    .array(
+      z.object({
+        name: z.string(),
+        holds: z.array(sendPartSchema),
+        to: z.array(z.string()),
+        /* how big it was before any zipping, and — for a zip — the name of every entry in it, as it
+           sits in the zip: videos/…, photos/…, the project and the film at its top. Both absent from
+           what was sent before they were kept. */
+        size: z.number().optional(),
+        zip: z.boolean().optional(),
+        contents: z.array(z.string()).optional()
+      })
+    )
     .optional()
 })
 

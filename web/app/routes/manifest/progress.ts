@@ -1,5 +1,5 @@
-import { clearUploadProgress, writeUploadProgress } from '@skydock/scripts'
-import type { UploadItem, UploadProgressState } from '@skydock/scripts'
+import { clearUploadProgress, recordTransfer, writeUploadProgress } from '@skydock/scripts'
+import type { TransferItem, UploadItem, UploadProgressState } from '@skydock/scripts'
 import type { ArchiveProgress } from '../../../../packages/skydock-scripts/src/archive'
 import type {
   CheckProgress,
@@ -55,6 +55,40 @@ const uploadReporter = ({
     )
   clearUploadProgress(outputDir)
   write({ state: 'checking', fileIndex: 0, totalFiles: 0 })
+  /* What became of each, kept when the upload ends so the panel that showed it can be opened again to
+     see (RULES, Transfers). What was sent, what the storage held already, what failed, and — when it
+     was stopped — what was never reached. */
+  const keep = (state: 'done' | 'failed' | 'cancelled', reason?: string) => {
+    try {
+      recordTransfer(
+        {
+          kind: 'upload',
+          label,
+          state,
+          ...(reason ? { reason } : {}),
+          items: [...items.values()].map((item): TransferItem => {
+            const result: TransferItem['result'] =
+              item.state === 'sent' || item.state === 'zipped'
+                ? 'done'
+                : item.state === 'there'
+                  ? 'skipped'
+                  : item.state === 'failed'
+                    ? 'failed'
+                    : 'left'
+            return {
+              name: item.name,
+              size: item.size,
+              ...(item.to ? { to: item.to } : {}),
+              result
+            }
+          })
+        },
+        outputDir
+      )
+    } catch {
+      /* a history that cannot be written is no reason to fail what it is the history of */
+    }
+  }
   return {
     onArchive: (archive: ArchiveProgress & { name: string }) => {
       const key = `zip:${archive.name}`
@@ -134,16 +168,19 @@ const uploadReporter = ({
         skipped,
         state: 'done'
       })
+      keep('done')
     },
     failed: (error: string) => {
       settle('sending', 'failed')
       write({ state: 'error', error })
+      keep('failed', error)
     },
     /* what was under way is left as it was — it is not up there, and nothing says it is */
     cancelled: () => {
       settle('sending', 'waiting')
       settle('zipping', 'waiting')
       write({ state: 'cancelled' })
+      keep('cancelled')
     }
   }
 }

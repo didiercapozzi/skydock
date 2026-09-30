@@ -3,7 +3,6 @@ import {
   filmNameOf,
   hasCompletePassenger,
   lastSegment,
-  parentOf,
   passengerFrom,
   passengerName,
   montageUploadKey
@@ -13,7 +12,8 @@ import { useState } from 'react'
 import { Go, Mini } from './buttons'
 import { kindOf } from './file-list'
 import { Icon } from './icons'
-import type { IconName } from './icons'
+import { parcelsOfGroup } from '../helpers/parcels'
+import type { Inside, Parcel } from '../helpers/parcels'
 import { formatFilmSize, getFileUrl, getPictureUrl, hhmm, pad } from './utils'
 import type { ManifestGroup } from './types'
 
@@ -499,46 +499,98 @@ const MontageCardActions = ({
 }
 
 /* Once it is uploaded, what matters is what is on the NAS — not the files it was made from. One
-   parcel per folder up there, each listing exactly what is in it. That is what makes an uploaded
-   montage worth opening months later. */
-/* one thing in a folder up there: what it is drawn as, called, weighs, and is for */
-type NasItem = { icon: IconName; name: string; size: number; what: string }
+   parcel per folder up there, each listing exactly what is in it, and for a zip what is inside the
+   zip. That is what makes an uploaded montage worth opening months later. */
 
-const NasCard = ({
-  title,
-  dir,
-  tag,
-  items,
-  shareUrl
-}: {
-  title: string
-  dir: string
-  tag: string
-  items: NasItem[]
-  shareUrl?: string
-}) => (
+/* how many files a folder inside a zip names before it says how many more */
+const INSIDE_SHOWN = 3
+
+/* what a folder inside a zip holds: how many, and — where the names are known — the first of them, the
+   rest a press away */
+const FolderInside = ({ line }: { line: Extract<Inside, { kind: 'folder' }> }) => {
+  const [all, setAll] = useState(false)
+  const count = line.count
+  const named = all ? line.files : line.files.slice(0, INSIDE_SHOWN)
+  const more = line.files.length - named.length
+  return (
+    <div>
+      <span className='flex items-baseline gap-2'>
+        <span className='font-mono text-[11.5px] font-semibold text-ink-2'>{line.name}</span>
+        <span className='text-[11.5px] text-ink-3'>
+          {line.name === 'videos/'
+            ? plural(count, { one: '# clip', other: '# clips' })
+            : line.name === 'photos/'
+              ? plural(count, { one: '# photo', other: '# photos' })
+              : plural(count, { one: '# file', other: '# files' })}
+        </span>
+      </span>
+      {named.map((name) => (
+        <span
+          key={name}
+          className='block truncate pl-4 font-mono text-[11px]'>
+          {name}
+        </span>
+      ))}
+      {line.files.length > INSIDE_SHOWN && (
+        <button
+          type='button'
+          aria-expanded={all}
+          onClick={() => setAll(!all)}
+          className='ml-4 cursor-pointer border-0 bg-transparent p-0 text-[11px] font-semibold text-accent-ink hover:underline'>
+          {all ? t`Show fewer` : t`+ ${more} more — show all`}
+        </button>
+      )}
+    </div>
+  )
+}
+
+/* what is in a zip, or in a folder sent as it is */
+const InsideList = ({ inside }: { inside: Inside[] }) => (
+  <div className='mt-0.5 mb-1.5 ml-[30px] flex flex-col gap-1 border-l border-line-2 pl-3 text-ink-3'>
+    <span className='text-[10.5px] font-semibold tracking-[0.06em] uppercase'>{t`Inside`}</span>
+    {inside.map((line) =>
+      line.kind === 'folder' ? (
+        <FolderInside
+          key={line.name}
+          line={line}
+        />
+      ) : (
+        <span
+          key={line.name}
+          className='font-mono text-[11.5px] text-ink-2'>
+          {line.name}
+        </span>
+      )
+    )}
+  </div>
+)
+
+const NasCard = ({ parcel }: { parcel: Parcel }) => (
   <div className='mt-2.5 overflow-hidden rounded-[16px] shadow-[0_0_0_1px_var(--color-line)]'>
     <div className='flex flex-wrap items-center gap-2.5 bg-well px-3.5 py-[11px] text-[12.5px]'>
-      <b className='font-bold'>{title}</b>
-      <span className='font-mono text-[11.5px] text-ink-3'>{dir}</span>
-      <span className='ml-auto text-[11.5px] text-ink-3'>{tag}</span>
+      <b className='font-bold'>{parcel.title}</b>
+      <span className='font-mono text-[11.5px] text-ink-3'>{parcel.dir}</span>
+      <span className='ml-auto text-[11.5px] text-ink-3'>{parcel.tag}</span>
     </div>
     <div className='px-1.5 py-1'>
-      {items.map((item) => (
-        <div
-          key={item.name}
-          className='flex items-center gap-2.5 rounded-[9px] px-2 py-1.5 hover:bg-well'>
-          <Icon
-            name={item.icon}
-            size={14}
-            className='text-ink-3'
-          />
-          <span className='min-w-0 truncate text-[12.5px] font-medium'>{item.name}</span>
-          <span className='text-[11.5px] text-ink-3'>{formatFilmSize(item.size)}</span>
-          <span className='mr-1 ml-auto text-[11.5px] text-ink-3'>{item.what}</span>
+      {parcel.items.map((item) => (
+        <div key={item.key}>
+          <div className='flex items-center gap-2.5 rounded-[9px] px-2 py-1.5 hover:bg-well'>
+            <Icon
+              name={item.icon}
+              size={14}
+              className='text-ink-3'
+            />
+            <span className='min-w-0 truncate text-[12.5px] font-medium'>{item.name}</span>
+            {item.size ? (
+              <span className='text-[11.5px] text-ink-3'>{formatFilmSize(item.size)}</span>
+            ) : null}
+            <span className='mr-1 ml-auto text-[11.5px] text-ink-3'>{item.what}</span>
+          </div>
+          {item.inside && <InsideList inside={item.inside} />}
         </div>
       ))}
-      {shareUrl && (
+      {parcel.shareUrl && (
         <div className='mt-1 flex items-center gap-2.5 border-t border-line-2 px-2 pt-2 pb-1.5'>
           <Icon
             name='link'
@@ -546,16 +598,28 @@ const NasCard = ({
             className='text-ink-3'
           />
           <a
-            href={shareUrl}
+            href={parcel.shareUrl}
             target='_blank'
             rel='noreferrer'
             className='truncate font-mono text-[11px] text-accent-ink hover:underline'>
-            {shareUrl}
+            {parcel.shareUrl}
           </a>
         </div>
       )}
     </div>
   </div>
+)
+
+/* every parcel of a montage, as handed over */
+const ParcelCards = ({ parcels }: { parcels: Parcel[] }) => (
+  <>
+    {parcels.map((parcel) => (
+      <NasCard
+        key={parcel.key}
+        parcel={parcel}
+      />
+    ))}
+  </>
 )
 
 /* Uploaded, then gone from the storage: the montage reads as not uploaded again, and this says why —
@@ -581,74 +645,13 @@ const GoneFromStorage = ({ gone, at }: { gone: { remotePath: string }[]; at?: nu
   )
 }
 
-const UploadedCards = ({ group }: { group: ManifestGroup }) => {
-  const record = group.uploaded
-  if (!record) return null
-  const passenger = [
-    record.film && {
-      icon: 'play',
-      name: lastSegment(record.film.remotePath),
-      size: record.film.size,
-      what: t`the film`
-    },
-    record.photos && {
-      icon: 'fresh',
-      name: lastSegment(record.photos.remotePath),
-      size: record.photos.size,
-      what: t`the photos`
-    }
-  ].filter((x): x is NasItem => Boolean(x))
-  const anchor = record.film ?? record.photos
-  return (
-    <>
-      {anchor && passenger.length > 0 && (
-        <NasCard
-          title={t`To hand over`}
-          dir={parentOf(anchor.remotePath)}
-          tag={t`ready to hand over`}
-          items={passenger}
-          shareUrl={record.shareUrl ?? group.publish?.shareUrl}
-        />
-      )}
-      {record.rushes && (
-        <NasCard
-          title={t`Backup`}
-          dir={parentOf(record.rushes.remotePath)}
-          tag={t`never shared`}
-          items={[
-            {
-              icon: 'fresh',
-              name: lastSegment(record.rushes.remotePath),
-              size: record.rushes.size,
-              what: t`the originals`
-            }
-          ]}
-        />
-      )}
-      {/* kept as plain files, each original is on the storage on its own */}
-      {record.originals && record.originals.length > 0 && (
-        <NasCard
-          title={t`Backup`}
-          dir={parentOf(record.originals[0]!.remotePath)}
-          tag={t`never shared`}
-          items={record.originals.map((original) => ({
-            icon: 'play',
-            name: lastSegment(original.remotePath),
-            size: original.size,
-            what:
-              record.film &&
-              lastSegment(original.remotePath) === lastSegment(record.film.remotePath)
-                ? t`a copy of the film`
-                : t`original`
-          }))}
-        />
-      )}
-    </>
-  )
-}
+const UploadedCards = ({ group }: { group: ManifestGroup }) => (
+  <ParcelCards parcels={parcelsOfGroup(group)} />
+)
 
 export {
   NameMontage,
+  ParcelCards,
   UploadedCards,
   GoneFromStorage,
   FilmNote,

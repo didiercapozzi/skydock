@@ -2,8 +2,11 @@ import { plural, t } from '@lingui/core/macro'
 import type { MontageEntry, MontageLost } from '@skydock/scripts'
 import { useState } from 'react'
 import { lastSegment, lostOf } from '@skydock/scripts'
+import { parcelsOfEntry, parcelsOfGroup } from '../helpers/parcels'
 import { Go, Mini } from './buttons'
 import { Icon } from './icons'
+import { ParcelCards } from './montage-card'
+import type { ManifestGroup } from './types'
 import { StorageFolder } from './storage-folder'
 import { localeDate } from './utils'
 
@@ -21,6 +24,7 @@ const jumpDay = (day: string) => day.replace(/^0/, '').replace(/\.0/, '.')
 
 const Row = ({
   entry,
+  group,
   here,
   lost,
   waiting,
@@ -29,6 +33,8 @@ const Row = ({
   onRestore
 }: {
   entry: MontageEntry
+  /* the montage on this board, when it is still there: what its upload recorded says the most */
+  group?: ManifestGroup
   here: boolean
   /* what the storage no longer holds of it: its folder, or only its link */
   lost: 'folder' | 'link' | null
@@ -41,6 +47,9 @@ const Row = ({
   const [copied, setCopied] = useState(false)
   /* its folder on the storage, listed under it: the film and photos, to be watched from here */
   const [watching, setWatching] = useState(false)
+  /* how it was handed over: each folder up there, what is in it and what is inside each zip — kept
+     by the storage's list, so it is there for a montage freed from this machine or made on another */
+  const [detailed, setDetailed] = useState(false)
   const copy = async () => {
     if (!entry.shareUrl) return
     try {
@@ -62,7 +71,14 @@ const Row = ({
   const originals = backup ?? ''
   return (
     <div className=''>
-      <div className='flex min-h-[60px] flex-wrap items-center gap-x-3.5 gap-y-1 rounded-[13px] px-3 py-2 hover:bg-well'>
+      {/* a montage only the storage holds has nothing else to open: pressing its row opens its contents;
+          the buttons on it keep doing their own */}
+      <div
+        onClick={(event) => {
+          if (entry.freedAt && !(event.target as HTMLElement).closest('button, a'))
+            setDetailed(!detailed)
+        }}
+        className={`flex min-h-[60px] flex-wrap items-center gap-x-3.5 gap-y-1 rounded-[13px] px-3 py-2 hover:bg-well ${entry.freedAt ? 'cursor-pointer' : ''}`}>
         <Icon
           name='montage'
           size={15}
@@ -129,6 +145,12 @@ const Row = ({
               {t`Restore · ${plural(waiting, { one: '# file', other: '# files' })}`}
             </Go>
           )}
+          <Mini
+            pressed={detailed}
+            title={t`What was handed over: where each item went, how big it is and what is inside each zip`}
+            onClick={() => setDetailed(!detailed)}>
+            {detailed ? t`Hide contents` : t`Contents`}
+          </Mini>
           {lost !== 'folder' && (
             <Mini
               title={t`List what its folder on the storage holds, and watch it from here`}
@@ -162,6 +184,11 @@ const Row = ({
           {entry.shareUrl && !lost && <Mini onClick={onEmail}>{t`Email…`}</Mini>}
         </span>
       </div>
+      {detailed && (
+        <div className='pb-3 pl-[29px]'>
+          <ParcelCards parcels={group?.uploaded ? parcelsOfGroup(group) : parcelsOfEntry(entry)} />
+        </div>
+      )}
       {watching && lost !== 'folder' && (
         <div className='pb-3 pl-[29px]'>
           <StorageFolder where={{ folder: entry.folder }} />
@@ -174,6 +201,7 @@ const Row = ({
 const StorageList = ({
   storage,
   isHere,
+  groupOf,
   waitingFiles,
   onOpen,
   onEmail,
@@ -187,6 +215,8 @@ const StorageList = ({
   } | null
   /* whether this montage is still on this board, and the name to open it under */
   isHere: (entry: MontageEntry) => boolean
+  /* the montage on this board, for the upload it recorded */
+  groupOf: (entry: MontageEntry) => ManifestGroup | undefined
   /* how many of a montage's files are on this board, still to be sorted */
   waitingFiles: (entry: MontageEntry) => number
   onOpen: (entry: MontageEntry) => void
@@ -235,6 +265,7 @@ const StorageList = ({
             <Row
               key={entry.folder}
               entry={entry}
+              group={groupOf(entry)}
               here={isHere(entry)}
               lost={lostOf(storage.lost, entry.folder)}
               waiting={isHere(entry) ? 0 : waitingFiles(entry)}

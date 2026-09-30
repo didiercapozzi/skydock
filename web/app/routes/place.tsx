@@ -324,6 +324,7 @@ const Place = () => {
             <StorageList
               storage={board.storage}
               isHere={(entry) => groups.some((g) => folderOnStorage(g) === entry.folder)}
+              groupOf={(entry) => groups.find((g) => folderOnStorage(g) === entry.folder)}
               onOpen={(entry) =>
                 model.pickPlace({
                   kind: 'pax',

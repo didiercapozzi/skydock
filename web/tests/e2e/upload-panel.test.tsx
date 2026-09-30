@@ -157,6 +157,26 @@ describe('an upload going', () => {
     await page.screenshot({ path: './playwright-screenshots/upload-panel.png' })
   })
 
+  test('opens out to show each item whole, where it goes and what became of it, and closes again', async () => {
+    await renderBoard({ ...board, uploading: going })
+    await expect.element(panel()).toBeVisible()
+    const small = panel().element().getBoundingClientRect().width
+    /* small, the destination of each item is only in its tooltip */
+    await expect.element(panel().getByText('/SkyDock/Tandems/luc-favre/luc_favre.mp4')).not.toBeInTheDocument()
+
+    await userEvent.click(panel().getByRole('button', { name: 'Open it out to see more' }))
+
+    await expect.element(panel().getByText('/SkyDock/Tandems/luc-favre/luc_favre.mp4')).toBeVisible()
+    await expect.element(panel().getByText('already there', { exact: true }).first()).toBeVisible()
+    await expect.element(panel().getByText('under way')).toBeVisible()
+    expect(panel().element().getBoundingClientRect().width).toBeGreaterThan(small * 1.8)
+    await page.screenshot({ path: './playwright-screenshots/upload-panel-opened.png' })
+
+    await userEvent.click(panel().getByRole('button', { name: 'Make it small again' }))
+    await expect.element(panel().getByText('under way')).not.toBeInTheDocument()
+    expect(panel().element().getBoundingClientRect().width).toBeLessThan(small * 1.2)
+  })
+
   test('taken up by a page that comes back to it: nothing is offered on top of it', async () => {
     await renderBoard({ ...board, uploading: going })
 

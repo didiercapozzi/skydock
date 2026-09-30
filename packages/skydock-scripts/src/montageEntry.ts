@@ -18,6 +18,20 @@ const montageEntrySchema = z.object({
   photosZip: z.string().optional(),
   /* the originals: the backup zip, or the folder they were sent into as plain files */
   backup: z.string().optional(),
+  /* Every item that went up, and the folder up there each went into — which is what lets the montage
+     be shown as it was handed over, on a machine that has never held it. Absent from an entry
+     written before they were kept. */
+  items: z
+    .array(
+      z.object({
+        name: z.string(),
+        dir: z.string(),
+        size: z.number(),
+        holds: z.array(z.enum(['videos', 'photos', 'film', 'project'])),
+        zip: z.boolean()
+      })
+    )
+    .optional(),
   emailed: z.object({ at: z.number(), to: z.string().optional() }).optional(),
   /* freed from the machine that made it: the storage is the only copy since */
   freedAt: z.number().optional(),

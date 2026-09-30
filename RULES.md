@@ -874,7 +874,7 @@ processed, so processing again takes it up. Edits made meanwhile are
 kept, and a jump changed while its copies were being written is not marked processed.
 
 **Nothing is uploaded until everything in it is processed**, and what is waiting is said plainly.
-An upload's progress is shown once, in its panel in the corner of the board, whatever page is open.
+An upload's progress is shown once, in its panel in the bottom-right corner of the board, whatever page is open.
 
 **The film.** Once rendered, the film shows above its montage: its name, how long it runs, its size, and
 when it was rendered. It can be watched there or opened on its own, so the render is checked before it
@@ -980,7 +980,9 @@ every zip as it is made, then every file going to every folder up there, each ma
 sent with how far it has got, sent, or already there. The upload belongs to the machine, not to the
 page: leaving the page, making another change meanwhile, reloading or reopening the window neither
 stops it nor offers it again — the board shows it still going and updates itself when it ends. Each
-panel in the corner can be folded down to its title and how far it has got, and opened again. What is
+panel in the corner can be folded down to its title and how far it has got, and opened again — or
+opened out to a large panel that shows every item whole, where it is going and what became of it (done,
+under way, waiting, already there, or failed), and made small again. What is
 being uploaded is not processed again, reset or deleted until the upload is done, and what is being
 processed is not uploaded until that is done — one would rewrite what the other is reading; the
 board says which to wait for.
@@ -1293,6 +1295,34 @@ Uploading again after a re-render sends what changed and leaves the rest. A zip 
 should, newer than everything in it, is not built again. The film is taken on trust: nothing checks
 that it was rendered from this project.
 
+**What was handed over, shown afterwards.** Once a montage is uploaded, its page shows it as it went up:
+one card per folder up there — the one that holds the film is _To hand over_, with its share link, and
+every other is _Backup_, never shared — each listing what is in it, how big, and what it is for, and
+for a **zip what is inside it**: the videos under `videos/` and the photos under `photos/`, each with
+how many and the first names, the rest a press away, and the film and the project at its top. The
+upload writes down each item, its size and the name of every entry in each zip, so this is what was
+sent, not a guess. It stays the same once the montage is freed from this machine, since it is read
+from the record and not from the files. And it is there for a montage only the storage has — freed, or
+uploaded from another machine — from the storage's own list: in _On the storage_, **Contents** on a
+montage opens the same cards, from what the list keeps of each item and its folder — and so does a
+press anywhere on the row of a montage kept only on the storage, a second press closing them; the
+buttons on the row keep doing their own. A zip of such a
+montage says how many clips and photos it holds, since their names are only in the zip. A montage
+uploaded before these were kept shows what its record or its list entry says: its film, its photos'
+zip and its backup, and what they hold.
+
+**Transfers, looked at afterwards.** The panels that show an upload, a drop from the computer or a camera
+copy going are gone when it is done. The status bar's **Transfers** button is always there, even when
+everything is done, and opens the history in the same small window at the bottom right, with the same
+button to open it out: each transfer the machine kept, the latest first, says what it was of (an upload of
+a montage, a drop, a camera), when it ended and how — done, failed or cancelled — counted as how many were
+done, how many were there already and how many were not done. The latest is open; a press on another opens
+it, listing every item with its size, where it went and what became of it, and why it stopped when
+something did. It is kept on this machine, so it is there after a reload or a restart: the last 30
+transfers, and of each at most 400 items — what was done comes before what was passed over, and what is not
+listed is counted and said, never dropped silently. A camera plugged in again with nothing new to copy
+records nothing. **Clear** forgets the list and nothing else: nothing that was sent or copied is touched.
+
 ## Freeing space
 
 Once a montage is uploaded, everything of it on this machine can be deleted — originals, copies, working
@@ -1349,7 +1379,7 @@ follows it to the end, and a freed one goes on showing what the storage holds of
 The storage holds a list of every montage uploaded, kept in the same place as the list of where each
 file came from — a montage goes into any destination, so the list belongs to none. It says who it
 was for, the day, how many videos and photos, when it went up, its share link, where its film, photos
-and backup are, whether it was freed, and whether its link was emailed and to which address. A montage
+and backup are, every item that went up with its folder and its size, whether it was freed, and whether its link was emailed and to which address. A montage
 is known on it by the folder its film went to. A list kept somewhere else before the lists' place was
 fixed is read from there until the new one is written, and is then put in the storage's bin, so
 nothing listed there is lost and there are never two lists telling different stories. _On the

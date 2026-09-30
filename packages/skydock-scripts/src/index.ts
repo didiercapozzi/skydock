@@ -171,6 +171,14 @@ import {
 } from './uploadProgress'
 import type { UploadItem, UploadProgressState } from './uploadProgress'
 import {
+  clearTransfers,
+  readTransfers,
+  recordTransfer,
+  transferSchema,
+  transfersFileSchema
+} from './transfers'
+import type { NewTransfer, Transfer, TransferItem } from './transfers'
+import {
   cancelUploading,
   pastCancelling,
   runUpload,
@@ -192,6 +200,11 @@ import {
 import { isFiled, isMontage } from './filed'
 
 export {
+  clearTransfers,
+  readTransfers,
+  recordTransfer,
+  transferSchema,
+  transfersFileSchema,
   busyWith,
   DEFAULT_TEMPLATE,
   DEFAULT_TEMPLATES,
@@ -342,6 +355,9 @@ export {
   writeUploadProgress
 }
 export type {
+  NewTransfer,
+  Transfer,
+  TransferItem,
   EmailFacts,
   EmailLanguage,
   EmailTemplate,

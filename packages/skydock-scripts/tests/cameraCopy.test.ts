@@ -15,6 +15,7 @@ import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
 import { loadManifest, saveManifest } from '../src/manifest'
 import { scanMedia } from '../src/scan'
+import { readTransfers } from '../src/transfers'
 import { getManifestPath } from '../src/utils'
 import { computeFileId } from '../src/fileId'
 import { createTmpDir, onPlatform } from './fixtures'
@@ -377,6 +378,23 @@ describe('copying a camera again while it stays plugged in', () => {
     expect(board.groups.map((g) => g.files.map((f) => f.filename))).toEqual([
       ['GX01.MP4', 'GX02.MP4']
     ])
+  })
+
+  /* what a copy did is kept to be looked at afterwards (RULES, Transfers); a plug-in with nothing new
+     is not worth a line */
+  it('keeps a transfer of what was copied, and none of a plug-in with nothing new', async () => {
+    const root = card('GOPRO', { 'GX01.MP4': { bytes: 32, fill: 1, at: DAY } })
+
+    copyAgain(outputDir, root, [root])
+    await copied()
+    const first = readTransfers(outputDir)
+    expect(first).toHaveLength(1)
+    expect(first[0]).toMatchObject({ kind: 'camera', state: 'done' })
+    expect(first[0]!.items.map((i) => [i.name, i.result])).toEqual([['GX01.MP4', 'done']])
+
+    copyAgain(outputDir, root, [root])
+    await copied()
+    expect(readTransfers(outputDir)).toHaveLength(1)
   })
 
   it('asks for nothing of a camera that is not plugged in', () => {

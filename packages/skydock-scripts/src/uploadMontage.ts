@@ -217,7 +217,9 @@ const uploadMontage = async ({
       sent: items.map((item) => ({
         name: item.name,
         holds: item.holds,
-        to: (plan.placed[item.key] ?? []).map((destination) => remoteOf.get(destination)!)
+        to: (plan.placed[item.key] ?? []).map((destination) => remoteOf.get(destination)!),
+        size: item.size,
+        ...(item.zip ? { zip: true, contents: item.entries.map((entry) => entry.name) } : {})
       }))
     }
   }

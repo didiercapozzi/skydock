@@ -10,6 +10,9 @@ import { publish } from './live'
 import { catchUp } from './catchUp'
 import { scanMedia } from './scan'
 import { messageOf } from './lib/words'
+import { recordTransfer } from './transfers'
+import type { TransferItem } from './transfers'
+import { sizeOf } from './utils'
 
 /* A camera plugged in is copied off on its own. The machine mounts its card like any drive; while the
    board's server runs, the mounted drives are looked at every couple of seconds, and one that has
@@ -207,16 +210,48 @@ const copyNext = async (outputDir: string) => {
   const stop = new AbortController()
   state.stop = stop
   const camera = cameraName(cameraDir)
-  let last = { done: 0, total: 0, copied: 0, skipped: 0 }
+  let last: CopyProgress = { done: 0, total: 0, copied: 0, skipped: 0 }
   const onProgress = (progress: CopyProgress) => {
     last = progress
     publish({ kind: 'camera', camera, state: 'copying', ...progress })
   }
   /* each file on the board as it lands; gathered into jumps once the card is done */
   const arrived: string[] = []
+  /* and each one by name, kept when the copy ends so what came off can be looked at after (RULES,
+     Transfers) */
+  const came: TransferItem[] = []
   const onCopied = (copied: Copied) => {
     putOnBoard(outputDir, copied)
     arrived.push(copied.id)
+    came.push({
+      name: path.basename(copied.dest),
+      size: sizeOf(copied.dest),
+      result: 'done'
+    })
+  }
+  /* The copy's end, kept — unless nothing came and nothing went wrong, which is a card plugged in
+     again and would fill the history with nothing. */
+  const keep = (state: 'done' | 'failed' | 'cancelled', reason?: string) => {
+    const unreadable = last.unreadable ?? []
+    if (state === 'done' && came.length === 0 && unreadable.length === 0) return
+    try {
+      recordTransfer(
+        {
+          kind: 'camera',
+          label: camera,
+          state,
+          ...(reason ? { reason } : {}),
+          items: [
+            ...came,
+            ...unreadable.map((name): TransferItem => ({ name, size: 0, result: 'failed' }))
+          ],
+          passedOver: last.skipped
+        },
+        outputDir
+      )
+    } catch {
+      /* a history that cannot be written is no reason to fail the copy it is the history of */
+    }
   }
   try {
     const result = isKioCamera(cameraDir)
@@ -234,6 +269,8 @@ const copyNext = async (outputDir: string) => {
        no price to pay for nothing. */
     if (result.copied > onBoard) await scanMedia({ outputDir })
     if (result.copied > 0) void catchUp(outputDir)
+    last = { ...last, ...result }
+    keep('done')
     publish({ kind: 'camera', camera, state: 'done', ...result })
   } catch (e) {
     const gone = e instanceof CameraGone
@@ -242,6 +279,7 @@ const copyNext = async (outputDir: string) => {
     /* what did make it across is whole, and is on the board — scanned for, if it could not be put
        there as it landed */
     if (last.copied > onBoard) await scanMedia({ outputDir }).catch(() => undefined)
+    keep(stopped ? 'cancelled' : 'failed', messageOf(e))
     publish({
       kind: 'camera',
       camera,

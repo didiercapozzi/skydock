@@ -33,6 +33,7 @@ import { Notice } from '../components/notice'
 import { DialogHost } from '../components/dialog-host'
 import { CameraPanel } from '../components/camera-panel'
 import { ImportPanel } from '../components/import-panel'
+import { TransfersPanel } from '../components/transfers-panel'
 import { UploadPanel } from '../components/upload-panel'
 import { PlacesTree } from '../components/places-tree'
 import { formatTime } from '../components/utils'
@@ -288,6 +289,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
   /* a card being copied: only whether, which changes twice a copy — its bytes are the panel's */
   const copying = useCameraCopying()
+  /* the panel of what was sent and copied, open at will — done or not */
+  const [transfersOpen, setTransfersOpen] = useState(false)
 
   return (
     <main
@@ -340,6 +343,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       </div>
 
       <StatusBar
+        transfers={{ open: transfersOpen, onToggle: () => setTransfersOpen(!transfersOpen) }}
         proxies={board.proxyProgress}
         jumps={board.jumpProgress}
         disk={board.disk ?? loaderData.disk}
@@ -446,10 +450,10 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         }}
       />
 
-      {/* what is on its way, in the corner, whatever page is open: a camera being copied off, files
+      {/* what is on its way, in the bottom-right corner, whatever page is open: a camera being copied off, files
           being copied in, and the upload going out — one above the other when several are */}
-      {(model.coming || board.uploading || copying) && (
-        <div className='fixed bottom-[34px] left-4 z-40 flex flex-col items-start gap-2 min-[781px]:left-[240px]'>
+      {(model.coming || board.uploading || copying || transfersOpen) && (
+        <div className='fixed right-4 bottom-[34px] z-40 flex flex-col items-end gap-2'>
           {copying && (
             <CameraPanel
               onStop={() =>
@@ -465,6 +469,12 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               progress={model.progress}
               cancelling={board.cancelling}
               onCancel={board.cancelUpload}
+            />
+          )}
+          {transfersOpen && (
+            <TransfersPanel
+              stamp={`${board.uploading ?? ''}|${model.coming ? 1 : 0}|${copying ? 1 : 0}`}
+              onClose={() => setTransfersOpen(false)}
             />
           )}
           {model.coming && (

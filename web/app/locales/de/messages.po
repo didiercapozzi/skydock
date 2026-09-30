@@ -128,6 +128,11 @@ msgstr "{0, plural, one {die # hochgeladene Kopie wird hier und vom Speicher geh
 msgid "{0, plural, one {in # zip} other {in # zips}}"
 msgstr "{0, plural, one {in # ZIP} other {in # ZIPs}}"
 
+#. placeholder {0}: transfer.passedOver ?? 0
+#: app/components/transfers-panel.tsx
+msgid "{0, plural, one {Nothing was done: # was there already.} other {Nothing was done: # were there already.}}"
+msgstr "{0, plural, one {Nichts wurde getan: # war schon da.} other {Nichts wurde getan: # waren schon da.}}"
+
 #. placeholder {0}: toProcess.length
 #: app/components/overview-dialog.tsx
 msgid "{0, plural, one {Process the # named montage} other {Process the # named montages}}"
@@ -218,8 +223,13 @@ msgstr "{copies, plural, one {die # aufbereitete Kopie} other {die # aufbereitet
 msgid "{copyWhat} · copying {copyDone} of {copyTotal}"
 msgstr "{copyWhat} · kopiere {copyDone} von {copyTotal}"
 
+#: app/components/montage-card.tsx
+msgid "{count, plural, one {# clip} other {# clips}}"
+msgstr "{count, plural, one {# Clip} other {# Clips}}"
+
 #: app/components/bin-files.tsx
 #: app/components/camera-files.tsx
+#: app/components/montage-card.tsx
 #: app/components/remove-files-dialog.tsx
 #: app/components/storage-folder.tsx
 msgid "{count, plural, one {# file} other {# files}}"
@@ -232,6 +242,10 @@ msgstr "{count, plural, one {# Datei} other {# Dateien}} — {size} — kommen v
 #: app/components/storage-list.tsx
 msgid "{count, plural, one {# montage} other {# montages}}"
 msgstr "{count, plural, one {# Montage} other {# Montagen}}"
+
+#: app/components/montage-card.tsx
+msgid "{count, plural, one {# photo} other {# photos}}"
+msgstr "{count, plural, one {# Foto} other {# Fotos}}"
 
 #: app/components/free-dialog.tsx
 msgid "{count, plural, one {the # original} other {the # originals}} ({originalsSize})"
@@ -268,6 +282,10 @@ msgstr "{deleted}: die Originale, die Kopien und die Arbeitskopien"
 #: app/components/progress-panel.tsx
 msgid "{doing} {name}"
 msgstr "{doing} {name}"
+
+#: app/components/transfers-panel.tsx
+msgid "{done} done"
+msgstr "{done} erledigt"
 
 #: app/components/import-panel.tsx
 msgid "{done} of {total} copied into the originals — {size} in all"
@@ -423,6 +441,10 @@ msgstr "{lostCount} Montagen dieser Liste haben ihre Dateien in dieser Übersich
 msgid "{montages, plural, one {# montage} other {# montages}}"
 msgstr "{montages, plural, one {# Montage} other {# Montagen}}"
 
+#: app/components/transfers-panel.tsx
+msgid "{more, plural, one {… and # more, not listed here.} other {… and # more, not listed here.}}"
+msgstr "{more, plural, one {… und # weitere, hier nicht aufgelistet.} other {… und # weitere, hier nicht aufgelistet.}}"
+
 #: app/components/file-list.tsx
 msgid "{name}  ·  from {filename}"
 msgstr "{name}  ·  aus {filename}"
@@ -537,6 +559,10 @@ msgstr "{strays} außerhalb der Lücke"
 msgid "{there} already in {where}"
 msgstr "{there} schon in {where}"
 
+#: app/components/transfers-panel.tsx
+msgid "{there} already there"
+msgstr "{there} schon da"
+
 #: app/components/preview-drawer.tsx
 msgid "{times}× upscale, will look soft"
 msgstr "{times}× hochskaliert, wirkt unscharf"
@@ -642,6 +668,10 @@ msgstr "Die Montage von {who} hat einen Schnitt — ändere ihn in kdenlive."
 msgid "{working} — wait until it is done."
 msgstr "{working} — warte, bis es fertig ist."
 
+#: app/components/transfers-panel.tsx
+msgid "{wrong} not done"
+msgstr "{wrong} nicht erledigt"
+
 #: app/components/shortcuts-dialog.tsx
 msgid "↑ ↓"
 msgstr "↑ ↓"
@@ -650,6 +680,10 @@ msgstr "↑ ↓"
 #: app/components/upload-dialog.tsx
 msgid "+ {0} more"
 msgstr "+ {0} weitere"
+
+#: app/components/montage-card.tsx
+msgid "+ {more} more — show all"
+msgstr "+ {more} weitere — alle anzeigen"
 
 #: app/components/nas-folder-browser.tsx
 msgid "+ New folder"
@@ -749,7 +783,7 @@ msgstr "Eine Kopie — derselbe Clip ist auch in einem anderen Sprung. Diese hat
 msgid "A copy cannot go to the bin — its original stays where it is"
 msgstr "Eine Kopie kann nicht in den Papierkorb — ihr Original bleibt, wo es ist"
 
-#: app/components/montage-card.tsx
+#: app/helpers/parcels.ts
 msgid "a copy of the film"
 msgstr "eine Kopie des Films"
 
@@ -857,6 +891,7 @@ msgstr "schon hier"
 msgid "Already processed — a new name means processing it again, into the new folder."
 msgstr "Schon aufbereitet — ein neuer Name bedeutet, es erneut aufzubereiten, in den neuen Ordner."
 
+#: app/components/progress-panel.tsx
 #: app/components/upload-panel.tsx
 msgid "already there"
 msgstr "schon dort"
@@ -954,7 +989,7 @@ msgstr "Zurück zur ersten Vorlage"
 msgid "Back to the measured marks"
 msgstr "Zurück zu den gemessenen Marken"
 
-#: app/components/montage-card.tsx
+#: app/helpers/parcels.ts
 msgid "Backup"
 msgstr "Sicherung"
 
@@ -1052,6 +1087,10 @@ msgstr "abbrechen"
 msgid "Cancel"
 msgstr "Abbrechen"
 
+#: app/components/transfers-panel.tsx
+msgid "cancelled"
+msgstr "abgebrochen"
+
 #: app/components/upload-panel.tsx
 msgid "Cancelled — nothing was recorded"
 msgstr "Abgebrochen — nichts wurde gespeichert"
@@ -1132,6 +1171,7 @@ msgid "Choosing another folder"
 msgstr "Anderen Ordner wählen"
 
 #: app/components/inspector.tsx
+#: app/components/transfers-panel.tsx
 msgid "Clear"
 msgstr "Aufheben"
 
@@ -1172,6 +1212,7 @@ msgstr "schließen"
 #: app/components/shortcuts-dialog.tsx
 #: app/components/storage-folder.tsx
 #: app/components/templates-dialog.tsx
+#: app/components/transfers-panel.tsx
 #: app/components/window-bar.tsx
 #: app/components/work-folder-dialog.tsx
 msgid "Close"
@@ -1226,6 +1267,10 @@ msgstr "Beim erneuten Verbinden wird das Passwort abgefragt — und ein Code von
 msgid "Connecting…"
 msgstr "Verbinde…"
 
+#: app/components/storage-list.tsx
+msgid "Contents"
+msgstr "Inhalt"
+
 #: app/components/storage-folder.tsx
 #: app/components/storage-list.tsx
 msgid "copied"
@@ -1243,9 +1288,17 @@ msgstr "Hierher kopiert und dann in den Papierkorb gelegt — kann von der Kamer
 msgid "Copied here, not on the storage yet — upload it, or put it in the bin, before deleting it from the camera"
 msgstr "Hierher kopiert, noch nicht auf dem Speicher — lade es hoch oder leg es in den Papierkorb, bevor du es von der Kamera löschst"
 
+#: app/components/transfers-panel.tsx
+msgid "Copied in"
+msgstr "Vom Computer kopiert"
+
 #: app/components/import-panel.tsx
 msgid "Copied into {where}"
 msgstr "Nach {where} kopiert"
+
+#: app/components/transfers-panel.tsx
+msgid "Copied off"
+msgstr "Von der Kamera kopiert"
 
 #: app/components/camera-panel.tsx
 msgid "Copied off {camera}"
@@ -1505,6 +1558,8 @@ msgstr "Ausblenden"
 
 #: app/components/file-browser.tsx
 #: app/components/overview-dialog.tsx
+#: app/components/progress-panel.tsx
+#: app/components/transfers-panel.tsx
 msgid "done"
 msgstr "fertig"
 
@@ -1737,6 +1792,11 @@ msgstr "Absprung"
 msgid "F"
 msgstr "F"
 
+#: app/components/progress-panel.tsx
+#: app/components/transfers-panel.tsx
+msgid "failed"
+msgstr "fehlgeschlagen"
+
 #: app/components/storage-folder.tsx
 msgid "Fetch it back onto this machine"
 msgstr "Wieder auf diesen Rechner holen"
@@ -1812,6 +1872,10 @@ msgstr "Für eine seitlich oder kopfüber montierte Kamera — eine Vierteldrehu
 #: app/components/preview-drawer.tsx
 msgid "For a camera mounted sideways or upside down."
 msgstr "Für eine seitlich oder kopfüber montierte Kamera."
+
+#: app/components/transfers-panel.tsx
+msgid "Forget what is listed here — nothing that was sent or copied is touched"
+msgstr "Vergessen, was hier aufgelistet ist — nichts, was gesendet oder kopiert wurde, wird angetastet"
 
 #: app/components/find-anything.tsx
 msgid "Found"
@@ -2003,6 +2067,10 @@ msgstr "hier, nicht hochgeladen"
 msgid "here, put in the bin"
 msgstr "hier, in den Papierkorb gelegt"
 
+#: app/components/storage-list.tsx
+msgid "Hide contents"
+msgstr "Inhalt ausblenden"
+
 #: app/components/board-header.tsx
 msgid "Hide details"
 msgstr "Details ausblenden"
@@ -2062,6 +2130,10 @@ msgstr "im Flugzeug"
 #: app/components/upload-dialog.tsx
 msgid "In the project folder"
 msgstr "Im Projektordner"
+
+#: app/components/montage-card.tsx
+msgid "Inside"
+msgstr "Enthalten"
 
 #. placeholder {0}: item.name
 #: app/components/upload-dialog.tsx
@@ -2303,6 +2375,10 @@ msgstr "Sehe mir an, was abgelegt wurde…"
 msgid "Looking in the bin…"
 msgstr "Sehe im Papierkorb nach…"
 
+#: app/components/transfers-panel.tsx
+msgid "Looking…"
+msgstr "Suche…"
+
 #: app/components/file-browser.tsx
 msgid "Loose"
 msgstr "Lose"
@@ -2339,6 +2415,10 @@ msgstr "Eine Montage aus {ofWhat} machen…"
 #: app/components/inspector.tsx
 msgid "Make a montage…"
 msgstr "Eine Montage machen…"
+
+#: app/components/progress-panel.tsx
+msgid "Make it small again"
+msgstr "Wieder klein machen"
 
 #: app/components/montage-card.tsx
 msgid "Make montage"
@@ -2471,7 +2551,7 @@ msgstr "Heißt {stem}.….zip — das Ende wählst du, oder keines."
 msgid "Narrow by name"
 msgstr "Nach Name eingrenzen"
 
-#: app/components/montage-card.tsx
+#: app/helpers/parcels.ts
 msgid "never shared"
 msgstr "nie geteilt"
 
@@ -2596,6 +2676,10 @@ msgstr "nicht per E-Mail verschickt"
 msgid "Not processed yet"
 msgstr "Noch nicht aufbereitet"
 
+#: app/components/transfers-panel.tsx
+msgid "not reached"
+msgstr "nicht erreicht"
+
 #: app/components/upload-panel.tsx
 msgid "not sent"
 msgstr "nicht hochgeladen"
@@ -2619,6 +2703,10 @@ msgstr "Nichts mit diesem Namen"
 #: app/components/reset-fresh-dialog.tsx
 msgid "nothing decided about these files"
 msgstr "zu diesen Dateien ist nichts entschieden"
+
+#: app/components/transfers-panel.tsx
+msgid "Nothing has been sent or copied yet — each upload, drop and camera copy is listed here once it is done."
+msgstr "Noch nichts wurde gesendet oder kopiert — jeder Upload, jedes Ablegen und jede Kamerakopie wird hier aufgelistet, sobald es fertig ist."
 
 #: app/routes/place.tsx
 msgid "Nothing here matches that."
@@ -2790,6 +2878,10 @@ msgstr "Öffnen — kürzen, zuschneiden und drehen"
 msgid "Open it on this board"
 msgstr "In dieser Übersicht öffnen"
 
+#: app/components/progress-panel.tsx
+msgid "Open it out to see more"
+msgstr "Vergrößern, um mehr zu sehen"
+
 #: app/components/montage-card.tsx
 msgid "Open on its own"
 msgstr "Für sich öffnen"
@@ -2846,7 +2938,7 @@ msgstr "Wird geöffnet…"
 msgid "Opening…"
 msgstr "Wird geöffnet…"
 
-#: app/components/montage-card.tsx
+#: app/helpers/parcels.ts
 msgid "original"
 msgstr "Original"
 
@@ -3113,7 +3205,7 @@ msgstr "Vorlagen werden gelesen…"
 msgid "Reading what the camera measured…"
 msgstr "Messwerte der Kamera werden gelesen…"
 
-#: app/components/montage-card.tsx
+#: app/helpers/parcels.ts
 msgid "ready to hand over"
 msgstr "bereit zum Ausliefern"
 
@@ -3334,6 +3426,7 @@ msgstr "Alles aus {name} hochladen, was aufbereitet und noch nicht oben ist — 
 msgid "Send the link"
 msgstr "Link senden"
 
+#: app/components/transfers-panel.tsx
 #: app/components/upload-panel.tsx
 msgid "Sending"
 msgstr "Hochladen"
@@ -3402,6 +3495,7 @@ msgid "Show everything"
 msgstr "Alles anzeigen"
 
 #: app/components/file-list.tsx
+#: app/components/montage-card.tsx
 msgid "Show fewer"
 msgstr "Weniger anzeigen"
 
@@ -3681,7 +3775,7 @@ msgstr "die korrigierten Zeiten, die von Hand angelegten und benannten Sprünge,
 msgid "The editing templates a montage is made from — look them over, or bring one in"
 msgstr "Die Schnittvorlagen, aus denen eine Montage entsteht — ansehen oder eine neue hinzufügen"
 
-#: app/components/montage-card.tsx
+#: app/helpers/parcels.ts
 msgid "the film"
 msgstr "den Film"
 
@@ -3729,6 +3823,10 @@ msgstr "Der Sprung verschwindet; seine Dateien bleiben, lose in Neue Dateien, mi
 #: app/components/reset-fresh-dialog.tsx
 msgid "the jumps and their names, and every trim, frame and turn"
 msgstr "die Sprünge und ihre Namen sowie jedes Kürzen, jeder Ausschnitt und jede Drehung"
+
+#: app/helpers/parcels.ts
+msgid "the kdenlive project"
+msgstr "das kdenlive-Projekt"
 
 #: app/components/upload-dialog.tsx
 msgid "The kdenlive project"
@@ -3790,7 +3888,7 @@ msgstr "die Öffnung"
 msgid "The original files are never touched, and nothing is deleted from the storage:"
 msgstr "Die Originaldateien werden nie angefasst, und nichts wird vom Speicher gelöscht:"
 
-#: app/components/montage-card.tsx
+#: app/helpers/parcels.ts
 msgid "the originals"
 msgstr "die Originale"
 
@@ -3802,7 +3900,7 @@ msgstr "die Originale entsprechen genau dem, was die Sicherung enthält"
 msgid "The originals: {originals}"
 msgstr "Die Originale: {originals}"
 
-#: app/components/montage-card.tsx
+#: app/helpers/parcels.ts
 msgid "the photos"
 msgstr "die Fotos"
 
@@ -3813,6 +3911,10 @@ msgstr "die aufbereiteten Kopien und die Arbeitskopien für das Schnittprogramm"
 #: app/components/take-back-dialog.tsx
 msgid "the processed folder"
 msgstr "der aufbereitete Ordner"
+
+#: app/helpers/parcels.ts
+msgid "the project"
+msgstr "das Projekt"
 
 #: app/components/upload-dialog.tsx
 msgid "The project reopens only with its clips back where they sat."
@@ -3988,7 +4090,7 @@ msgstr "Zeiten zurückgesetzt — {files, plural, one {# Datei} other {# Dateien
 msgid "To"
 msgstr "An"
 
-#: app/components/montage-card.tsx
+#: app/helpers/parcels.ts
 msgid "To hand over"
 msgstr "Zur Übergabe"
 
@@ -4015,6 +4117,11 @@ msgstr "Montage von {who} aufgelöst"
 #: app/components/inspector.tsx
 msgid "Total size"
 msgstr "Gesamtgröße"
+
+#: app/components/board-header.tsx
+#: app/components/transfers-panel.tsx
+msgid "Transfers"
+msgstr "Übertragungen"
 
 #: app/components/file-list.tsx
 #: app/components/preview-drawer.tsx
@@ -4110,6 +4217,10 @@ msgstr "Zwei ZIPs enden gleich — gib jedem ein eigenes Ende"
 msgid "under the canopy"
 msgstr "unter dem Schirm"
 
+#: app/components/progress-panel.tsx
+msgid "under way"
+msgstr "läuft"
+
 #: app/components/email-dialog.tsx
 msgid "Undo"
 msgstr "Rückgängig"
@@ -4170,6 +4281,7 @@ msgstr "hochgeladen"
 
 #: app/components/inspector.tsx
 #: app/components/overview-dialog.tsx
+#: app/components/transfers-panel.tsx
 msgid "Uploaded"
 msgstr "Hochgeladen"
 
@@ -4256,6 +4368,10 @@ msgstr "Videos"
 msgid "Videos or photos"
 msgstr "Videos oder Fotos"
 
+#: app/components/progress-panel.tsx
+msgid "waiting"
+msgstr "wartet"
+
 #: app/components/montage-card.tsx
 msgid "Watch the film here"
 msgstr "Film hier ansehen"
@@ -4298,9 +4414,17 @@ msgstr "Was hier steht, wird auf diesem Rechner gespeichert und ist der Entwurf 
 msgid "What it holds"
 msgstr "Was es enthält"
 
+#: app/components/storage-list.tsx
+msgid "What was handed over: where each item went, how big it is and what is inside each zip"
+msgstr "Was übergeben wurde: wohin jedes Element ging, wie groß es ist und was in jedem ZIP steckt"
+
 #: app/components/places-tree.tsx
 msgid "What was put aside — look through it, and bring files back to Fresh files"
 msgstr "Was beiseitegelegt wurde — durchsehen und Dateien zurück zu Neue Dateien holen"
+
+#: app/components/board-header.tsx
+msgid "What was sent and copied in, and how it went — even when it is all done"
+msgstr "Was gesendet und kopiert wurde und wie es lief — auch wenn alles fertig ist"
 
 #: app/components/take-back-dialog.tsx
 msgid "what was uploaded stays there until someone removes it by hand."

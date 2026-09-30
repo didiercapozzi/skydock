@@ -295,7 +295,22 @@ describe('uploading a montage — where each item goes', () => {
     expect(result.record.sent).toContainEqual({
       name: `${stem}.mp4`,
       holds: ['film'],
-      to: ['/SkyDock/Passengers/luc-favre']
+      to: ['/SkyDock/Passengers/luc-favre'],
+      size: 128
+    })
+  })
+
+  /* kept so the montage can be shown as it was handed over, long after its files are freed */
+  it('records how big each item was, and the name of every entry in each zip', async () => {
+    const { result, stem } = await upload()
+
+    expect(result.record.sent).toContainEqual({
+      name: `${stem}.videos.zip`,
+      holds: ['videos', 'project'],
+      to: ['/Backup/luc-favre'],
+      size: expect.any(Number),
+      zip: true,
+      contents: ['videos/GX018570.MP4', 'videos/GX018571.MP4', `${stem}.kdenlive`]
     })
   })
 })

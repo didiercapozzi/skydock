@@ -256,6 +256,61 @@ describe('a montage’s entry', () => {
     expect(listed.entry.folder).toBe('/Dropzones/Yverdon/Boogie 2026')
   })
 
+  /* so the montage can be shown as it was handed over on a machine that never held it */
+  it('keeps every item that went up, with its folder and its size, once per folder it went to', () => {
+    const group: ManifestGroup = {
+      id: 'g1',
+      label: 'jump',
+      day: '01.08.2026',
+      montageJump: true,
+      passenger: { firstname: 'Luc', lastname: 'Favre' },
+      files: [{ id: 'v', path: '/o/GX01.MP4', filename: 'GX01.MP4', size: 1, mtime: 1 }],
+      uploaded: {
+        at: 500,
+        sent: [
+          { name: 'luc.mp4', holds: ['film'], to: ['/A/luc', '/B/luc'], size: 600 },
+          {
+            name: 'luc.full.zip',
+            holds: ['videos', 'project'],
+            to: ['/Backup/luc'],
+            size: 5000,
+            zip: true,
+            contents: ['videos/GX01.MP4', 'luc.kdenlive']
+          }
+        ]
+      }
+    }
+
+    expect(entryOfMontage(group)!.entry.items).toEqual([
+      { name: 'luc.mp4', dir: '/A/luc', size: 600, holds: ['film'], zip: false },
+      { name: 'luc.mp4', dir: '/B/luc', size: 600, holds: ['film'], zip: false },
+      {
+        name: 'luc.full.zip',
+        dir: '/Backup/luc',
+        size: 5000,
+        holds: ['videos', 'project'],
+        zip: true
+      }
+    ])
+  })
+
+  it('keeps no items for one uploaded before they were written down', () => {
+    const group: ManifestGroup = {
+      id: 'g1',
+      label: 'jump',
+      day: '01.08.2026',
+      montageJump: true,
+      passenger: { firstname: 'Luc', lastname: 'Favre' },
+      files: [],
+      uploaded: {
+        at: 500,
+        film: { remotePath: `${DIR}/Luc Favre/luc.mp4`, md5: 'x', size: 1, localPath: '/l', at: 1 }
+      }
+    }
+
+    expect(entryOfMontage(group)!.entry.items).toBeUndefined()
+  })
+
   it('does not exist for a montage that was never uploaded', () => {
     expect(
       entryOfMontage({ id: 'g', label: 'j', day: '01.08.2026', files: [] } as ManifestGroup)

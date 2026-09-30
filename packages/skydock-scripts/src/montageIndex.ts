@@ -133,6 +133,19 @@ const entryOfMontage = (group: ManifestGroup, listDir?: string | null) => {
     photosZip: record.photos?.remotePath,
     backup:
       record.rushes?.remotePath ?? (firstOriginal ? parentOf(firstOriginal.remotePath) : undefined),
+    ...(record.sent
+      ? {
+          items: record.sent.flatMap((item) =>
+            item.to.map((dir) => ({
+              name: item.name,
+              dir,
+              size: item.size ?? 0,
+              holds: item.holds,
+              zip: item.zip ?? item.name.endsWith('.zip')
+            }))
+          )
+        }
+      : {}),
     ...(group.freed ? { freedAt: group.freed.at } : {}),
     /* by what each file contains — for a copy, that is the identity of the file it is a copy of,
        which is the one a scan from nothing gives back */
