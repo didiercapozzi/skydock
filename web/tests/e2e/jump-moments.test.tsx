@@ -10,26 +10,31 @@ import { PreviewDrawer } from '../../app/components/preview-drawer'
 
 type Moments = { exit: number; opening?: number; canopy?: number; landing?: number }
 
-const clip = (moments: Moments | null | undefined) => ({
+const clip = (moments: Moments | null | undefined, foundMoments?: Moments) => ({
   path: '/o/original_files/2026-09-13/GX018663.MP4',
   size: 1,
   mtime: 1,
   filename: 'GX018663.MP4',
   id: 'g1',
-  moments
+  moments,
+  foundMoments
 })
 
 const Drawer = ({
   moments,
+  found,
   onMomentChange,
+  onMomentsReset,
   montage = true
 }: {
   moments: Moments | null | undefined
+  found?: Moments
+  onMomentsReset?: () => void
   onMomentChange?: (which: 'exit' | 'opening' | 'canopy' | 'landing', seconds: number) => void
   montage?: boolean
 }) =>
   createElement(PreviewDrawer, {
-    files: [clip(moments)],
+    files: [clip(moments, found)],
     index: 0,
     frame: null,
     onFrameChange: () => {},
@@ -50,10 +55,33 @@ const Drawer = ({
     onDurationChange: () => {},
     onVideoRef: () => {},
     onMomentChange,
+    onMomentsReset,
     montage
   })
 
 describe('where the jump is in a clip', () => {
+  test('is put back where the camera measured it, once it was moved', async () => {
+    const back = vi.fn()
+    await render(
+      createElement(Drawer, {
+        moments: { exit: 40, canopy: 94 },
+        found: { exit: 38, canopy: 94 },
+        onMomentsReset: back
+      })
+    )
+    await page.getByRole('button', { name: 'Back to the measured marks' }).click()
+    expect(back).toHaveBeenCalledOnce()
+  })
+
+  test('offers no way back for marks that were never moved', async () => {
+    await render(
+      createElement(Drawer, { moments: { exit: 38, canopy: 94 }, onMomentsReset: () => {} })
+    )
+    await expect
+      .element(page.getByRole('button', { name: 'Back to the measured marks' }))
+      .not.toBeInTheDocument()
+  })
+
   test('is marked on the timeline, each moment in its place', async () => {
     await render(
       createElement(Drawer, { moments: { exit: 38, opening: 91, canopy: 94, landing: 185 } })

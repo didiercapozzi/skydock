@@ -2,6 +2,7 @@ import { plural, t } from '@lingui/core/macro'
 import { hasCompletePassenger, isMontage, isVideoFile, passengerName } from '@skydock/scripts'
 import type { FileStatus, ProxyFact, MontageFact } from '@skydock/scripts'
 import { useState } from 'react'
+import { setDetailsDrawer, useDetailsColumn, useDetailsDrawer } from '../hooks/useDetails'
 import { Danger, Go, Mini } from './buttons'
 import { StatusChip } from './file-status'
 import type { ShownStatus } from './file-status'
@@ -23,27 +24,23 @@ import { dateLabel, formatSize, getPictureUrl, hhmm, minFileMtime, shortDate } f
    start, deleting a jump — must not go missing just because the window is narrow or the board is
    drawn bigger. */
 const Shell = ({ children }: { children: React.ReactNode }) => {
-  const [open, setOpen] = useState(false)
+  const column = useDetailsColumn()
+  const drawer = useDetailsDrawer()
   return (
     <>
-      <button
-        type='button'
-        aria-expanded={open}
-        onClick={() => setOpen((was) => !was)}
-        className={`fixed top-1/2 right-0 z-30 -translate-y-1/2 rounded-l-md border border-r-0 border-line bg-pane px-1.5 py-3 text-[12px] font-semibold text-ink-2 shadow-card [writing-mode:vertical-rl] hover:text-ink min-[1101px]:hidden ${
-          open ? 'right-[min(340px,90vw)]' : ''
-        }`}>
-        {open ? t`Hide details` : t`Details`}
-      </button>
+      {/* shut, it slides away and is then taken out of sight and of the tab order, so it is not
+          read out while it is not there */}
       <aside
         aria-label={t`Details`}
         onKeyDown={(e) => {
-          if (e.key === 'Escape' && open) setOpen(false)
+          if (e.key === 'Escape' && drawer) setDetailsDrawer(false)
         }}
-        className={`backdrop-side flex min-h-0 flex-col overflow-y-auto border-l border-line bg-pane max-[1100px]:fixed max-[1100px]:inset-y-0 max-[1100px]:right-0 max-[1100px]:z-30 max-[1100px]:w-[min(340px,90vw)] max-[1100px]:shadow-[0_0_40px_rgba(0,0,0,0.25)] ${
-          open ? '' : 'max-[1100px]:hidden'
-        }`}>
-        {children}
+        className={`backdrop-side flex min-h-0 min-w-0 flex-col overflow-x-hidden overflow-y-auto border-l border-line bg-pane transition-[translate,visibility] duration-300 ease-out motion-reduce:transition-none max-[1100px]:fixed max-[1100px]:inset-y-0 max-[1100px]:right-0 max-[1100px]:z-30 max-[1100px]:w-[min(340px,90vw)] max-[1100px]:shadow-[0_0_40px_rgba(0,0,0,0.25)] ${
+          drawer ? '' : 'max-[1100px]:invisible max-[1100px]:translate-x-full'
+        } ${column ? '' : 'min-[1101px]:invisible'}`}>
+        {/* as wide as the column is when open, so what is inside slides out of view rather than
+            being squeezed while the column closes */}
+        <div className='flex min-h-full w-[312px] flex-col max-[1100px]:w-full'>{children}</div>
       </aside>
     </>
   )

@@ -11,6 +11,12 @@ import { MenuItem, SettingsMenu, SettingsRow, TOOL } from './settings-menu'
 import { setFileView, useFileView } from '../hooks/useFileView'
 import { useCameraCopy } from '../hooks/liveStore'
 import { useZoom } from '../hooks/useZoom'
+import {
+  setDetailsColumn,
+  setDetailsDrawer,
+  useDetailsColumn,
+  useDetailsDrawer
+} from '../hooks/useDetails'
 import { setTileSize, TILE_SIZE, useTileSize } from '../hooks/useTileSize'
 import { setTheme, useTheme } from '../hooks/useTheme'
 import { formatSize } from './utils'
@@ -236,7 +242,37 @@ const BoardHeader = ({
           </>
         )}
       </SettingsMenu>
+      <span className='mx-1.5 h-5 w-px bg-line-strong' />
+      <DetailsToggle />
     </header>
+  )
+}
+
+/* Puts the panel on the right away and brings it back, an icon lit while the panel is there. It is
+   one panel drawn two ways — a column beside the files, a drawer on a narrow window — each with its
+   own choice, so the button for the way it is not drawn stays out of sight. */
+const DetailsToggle = () => {
+  const column = useDetailsColumn()
+  const drawer = useDetailsDrawer()
+  const one = (open: boolean, set: (open: boolean) => void, only: string) => (
+    <button
+      type='button'
+      aria-pressed={open}
+      aria-label={open ? t`Hide details` : t`Details`}
+      title={open ? t`Hide details` : t`Details`}
+      onClick={() => set(!open)}
+      className={`${TOOL} w-[30px] justify-center px-0 ${only}`}>
+      <Icon
+        name='details'
+        className={open ? 'text-accent-ink' : 'text-ink-2'}
+      />
+    </button>
+  )
+  return (
+    <>
+      {one(column, setDetailsColumn, 'max-[1100px]:hidden')}
+      {one(drawer, setDetailsDrawer, 'min-[1101px]:hidden')}
+    </>
   )
 }
 
@@ -413,5 +449,5 @@ const StatusBar = ({
   )
 }
 
-export { BoardHeader, StatusBar }
+export { DetailsToggle, BoardHeader, StatusBar }
 export type { NasLink }

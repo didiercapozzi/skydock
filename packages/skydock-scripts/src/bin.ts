@@ -52,7 +52,7 @@ const filesUnder = (dir: string): BinFile[] =>
     return [{ path: at, name: entry.name, size: stat.size, mtime: Math.floor(stat.mtimeMs / 1000) }]
   })
 
-/* What the bin holds, the latest put aside first. A batch whose files have all been brought back is
+/* What the bin holds, the latest put aside first, and in each batch the newest file first. A batch whose files have all been brought back is
    left out: its folder is still there, empty, since nothing in the bin is deleted by SkyDock. */
 const listBin = (trashDir = getTrashDir()): BinBatch[] => {
   if (!fs.existsSync(trashDir)) return []
@@ -61,7 +61,10 @@ const listBin = (trashDir = getTrashDir()): BinBatch[] => {
     .filter((entry) => entry.isDirectory())
     .flatMap((entry) => {
       const dir = path.join(trashDir, entry.name)
-      const files = filesUnder(dir).sort((a, b) => a.name.localeCompare(b.name))
+      /* newest first, like every list of files on the board — never by name */
+      const files = filesUnder(dir).sort(
+        (a, b) => b.mtime - a.mtime || a.name.localeCompare(b.name)
+      )
       if (files.length === 0) return []
       return [{ folder: entry.name, ...fromOf(entry.name), at: putAsideAt(entry.name, dir), files }]
     })

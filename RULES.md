@@ -419,7 +419,11 @@ left, and the place picked there fills the pane beside it. Only the pane scrolls
 be dragged to any place. On a narrow screen the menu becomes a strip across the top, and on one
 narrower than a laptop's the panel on the right folds away into a drawer pulled out from the right
 edge — so what only it offers, naming a montage, setting a jump's start, deleting a jump, is never out
-of reach because the window is small or the board is drawn big.
+of reach because the window is small or the board is drawn big. The panel can be put away on any
+screen with an icon at the right end of the toolbar, lit while the panel is there, and brought back the same way: it slides out of the way and the
+files widen into its place, both in a short, smooth movement (none for whoever has asked their
+machine for less motion). Beside the files the choice is remembered on this machine; as a drawer it
+is shut again on the next visit.
 
 **Every folder has its own address**, and so has a file opened in it: the front page is the fresh
 files, `/dropzone/yverdon` is that dropzone, `/montage/Lily DONZALLAZ` is hers, and
@@ -513,7 +517,9 @@ with a slider on the toolbar while thumbnails are shown, or with Ctrl or ⌘ and
 them; the size is remembered on this machine, and a bigger thumbnail asks for a sharper picture. Every day and every jump says how many videos and photos
 it holds. The pane's heading carries badges for the place — how many videos and photos — that show one
 kind, the other, or all, the choice holding across the board; all is both side by side, videos in one
-column and photos in the other, stacked on a narrow screen. A badge for a kind with nothing in it is
+column and photos in the other, stacked on a narrow screen; as rows, each column leaves out what was
+done to the picture and the size when it is too narrow for them, and putting the details away is often
+what makes the room for two. A badge for a kind with nothing in it is
 shown but cannot be chosen.
 
 **Arranging and finding.** The pane's heading has one button per way of arranging the place — by jump,
@@ -639,7 +645,7 @@ bin while something is being processed.
 **Looking into the bin.** _Bin_, in the menu, shows everything in it — each time something was put
 aside, the latest first, saying whether it came from Fresh files, out of a montage or a dropzone, or off a camera, and
 when — with each
-file's picture, name, time and size. Nothing can be deleted from there: the bin is emptied by hand,
+file's picture, name, time and size, the newest file first. Nothing can be deleted from there: the bin is emptied by hand,
 from the machine's own folders, and the page says which folder that is. Picked files can be **brought
 back to Fresh files**: each leaves the bin for the originals, under the day it was shot and never over
 a file already there, and is scanned in as any new file is. One whose footage is on the board already
@@ -1062,7 +1068,9 @@ mark moved out of that order is refused — one of the two is wrong, and only th
 knows which. A mark says when the camera's own wearer left the plane, and a cut does not always start
 there: a montage is the subject of its own film, so its cut starts at the instant itself, while a fun
 jump is filmed by somebody who goes out after the group, so its cut starts a second earlier. Moving a
-mark moves the measurement; the second's lead follows it.
+mark moves the measurement; the second's lead follows it. What the camera measured is kept from the
+first move, and the clip's panel offers, for as long as a mark differs from it, to put every mark back
+where it was found — for a slip of the hand, or a correction that was itself wrong.
 
 ## The jump on a graph
 

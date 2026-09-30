@@ -343,9 +343,12 @@ const WhileLive = ({
 }
 
 /* The columns of a list of rows, the same on its heading and on every row under it: tick, picture,
-   name, what was done to the picture, when it was shot, how big, and where it has got to. */
+   name, what was done to the picture, when it was shot, how big, and where it has got to. In a run
+   that stands beside another, too narrow for all of them, what was done to the picture and the
+   size are left out, so the name keeps its room. */
 const COLUMNS =
-  'grid grid-cols-[18px_64px_minmax(0,1fr)_96px_74px_64px_116px] items-center gap-x-3 px-2'
+  'grid grid-cols-[18px_64px_minmax(0,1fr)_96px_74px_64px_116px] items-center gap-x-3 px-2 @max-[45rem]/lane:grid-cols-[18px_64px_minmax(0,1fr)_74px_116px]'
+const SPARED = '@max-[45rem]/lane:hidden'
 
 const Row = ({
   file,
@@ -476,7 +479,7 @@ const Row = ({
           {strayed && <GapFlag />}
         </span>
       </span>
-      <span className='flex flex-wrap gap-1 overflow-hidden'>
+      <span className={`flex flex-wrap gap-1 overflow-hidden ${SPARED}`}>
         <CropFlag
           file={file}
           applied={applied}
@@ -491,7 +494,7 @@ const Row = ({
         />
       </span>
       <span className='text-[12px] text-ink-2 tabular-nums'>{formatTime(file.mtime)}</span>
-      <span className='text-right text-[12px] text-ink-2 tabular-nums'>
+      <span className={`text-right text-[12px] text-ink-2 tabular-nums ${SPARED}`}>
         {formatSize(file.size)}
       </span>
       <span className='flex'>
@@ -718,9 +721,9 @@ const TableHead = ({ label, count }: { label: string; count: string }) => (
         {count}
       </span>
     </span>
-    <span>{t`Picture`}</span>
+    <span className={SPARED}>{t`Picture`}</span>
     <span>{t`Shot`}</span>
-    <span className='text-right'>{t`Size`}</span>
+    <span className={`text-right ${SPARED}`}>{t`Size`}</span>
     <span>{t`State`}</span>
   </div>
 )
@@ -859,8 +862,8 @@ const Lane = ({
    the stills each in their own run, in their own order and with their own "show more". Picking a
    range stays within a run, since a range across the two would mean nothing. One kind picked is that
    kind alone; a list of only one kind is simply that list. Rows need the width of their columns, so
-   the two runs of rows stand one above the other unless the pane is very wide; thumbnails stand side
-   by side as soon as there is room. */
+   the two runs of rows stand one above the other unless the pane is wide enough for two, which
+   putting the details away makes it; thumbnails stand side by side as soon as there is room. */
 const FileList = ({ files, kind, sortKey, ...rest }: Props) => {
   const lanes = lanesOf(files, kind, sortKey)
   if (lanes.length === 1)
@@ -874,12 +877,12 @@ const FileList = ({ files, kind, sortKey, ...rest }: Props) => {
   return (
     <div
       className={`flex flex-col gap-y-5 ${
-        rest.shape === 'rows' ? '@[88rem]:flex-row @[88rem]:gap-x-4' : '@3xl:flex-row @3xl:gap-x-4'
+        rest.shape === 'rows' ? '@5xl:flex-row @5xl:gap-x-4' : '@3xl:flex-row @3xl:gap-x-4'
       }`}>
       {lanes.map((lane, i) => (
         <div
           key={i}
-          className='min-w-0 flex-1'>
+          className='@container/lane min-w-0 flex-1'>
           <Lane
             {...rest}
             lane={lane}

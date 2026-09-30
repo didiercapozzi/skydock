@@ -11,6 +11,7 @@ const PreviewHost = ({
   proxies,
   statusContext,
   onMomentChange,
+  onMomentsReset,
   onPlayOutside,
   montage
 }: {
@@ -24,6 +25,8 @@ const PreviewHost = ({
     which: 'exit' | 'opening' | 'canopy' | 'landing',
     seconds: number
   ) => void
+  /* its marks put back where the camera measured them */
+  onMomentsReset: (file: ManifestFile) => void
   /* the file, handed to the machine's own player */
   onPlayOutside: (file: ManifestFile) => void
   /* whether the jump being looked at is a montage, which decides where its cut starts */
@@ -61,6 +64,7 @@ const PreviewHost = ({
       onRotationApplyToJump={open.groupId === LOOSE ? undefined : preview.handleRotationApplyToJump}
       locked={lockReason(shown, statusContext(shown))}
       onMomentChange={(which, seconds) => onMomentChange(shown, which, seconds)}
+      onMomentsReset={() => onMomentsReset(shown)}
       onPlayOutside={shown.freed ? undefined : () => onPlayOutside(shown)}
       montage={montage}
     />

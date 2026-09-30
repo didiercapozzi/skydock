@@ -30,10 +30,32 @@ const setMomentIntent: Intent = ({ data, manifest, manifestPath, refuse }) => {
 
   /* every copy of the file, not only the registry's: a jump holds its own resolved copy, and the
      board is answered out of those — a mark written to one of the two comes back looking unmoved */
+  const found = file.foundMoments ?? file.moments ?? undefined
   for (const one of [file, ...manifest.groups.flatMap((g) => g.files)])
-    if (one.id === id) one.moments = moved
+    if (one.id === id) {
+      one.moments = moved
+      one.foundMoments = found
+    }
   saveManifest(manifestPath, manifest)
   return boardAnswer(manifest)
 }
 
-export { setMomentIntent }
+/* The marks put back where the camera measured them, whatever was moved by hand since. Only a file
+   that was moved has anything to go back to. */
+const resetMomentsIntent: Intent = ({ data, manifest, manifestPath, refuse }) => {
+  const id = data.fileIds?.[0]
+  if (!id || (data.fileIds?.length ?? 0) > 1) return refuse('Put back one clip at a time.')
+  const file = manifest.files.find((f) => f.id === id)
+  if (!file) return refuse('That file is no longer on the board.')
+  const found = file.foundMoments
+  if (!found) return refuse('Its marks are where the camera put them.')
+  for (const one of [file, ...manifest.groups.flatMap((g) => g.files)])
+    if (one.id === id) {
+      one.moments = found
+      delete one.foundMoments
+    }
+  saveManifest(manifestPath, manifest)
+  return boardAnswer(manifest)
+}
+
+export { resetMomentsIntent, setMomentIntent }

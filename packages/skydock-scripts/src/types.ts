@@ -115,6 +115,9 @@ const manifestFileSchema = z.object({
      the ground. `null` is the answer for a clip that shows none of it — ground footage, or a camera
      that writes nothing down — and it is kept, so nothing is asked twice. */
   moments: jumpMomentsSchema.nullable().optional(),
+  /* what the camera measured, kept from the first time a mark is moved by hand, so the marks can be
+     put back where they were found */
+  foundMoments: jumpMomentsSchema.optional(),
   /* deleted from this machine once the storage was proved to hold it — the record stays */
   freed: z.boolean().optional()
 })

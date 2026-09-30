@@ -1039,6 +1039,38 @@ describe('changes made on the board', () => {
       const saved = loadManifest(path.join(tmpDir, 'manifest.json'))
       expect(saved?.files[0]?.moments?.opening).toBe(94)
     })
+
+    /* What the camera measured is kept from the first move, so the marks can go back to it however
+       many times they were moved. */
+    it('is put back where the camera measured it', async () => {
+      marked()
+      await send({
+        intent: 'set-moment',
+        fileIds: ['a'],
+        moment: { which: 'opening', seconds: 95 }
+      })
+      await send({ intent: 'set-moment', fileIds: ['a'], moment: { which: 'exit', seconds: 40 } })
+
+      const res = answer(await send({ intent: 'reset-moments', fileIds: ['a'] }))
+
+      expect(res.groups[0]?.files[0]?.moments).toEqual({
+        exit: 38,
+        opening: 94,
+        canopy: 97,
+        landing: 185
+      })
+      expect(res.groups[0]?.files[0]?.foundMoments).toBeUndefined()
+      const saved = loadManifest(path.join(tmpDir, 'manifest.json'))
+      expect(saved?.files[0]?.moments?.exit).toBe(38)
+    })
+
+    it('has nothing to go back to when none was moved', async () => {
+      marked()
+
+      const res = refusal(await send({ intent: 'reset-moments', fileIds: ['a'] }))
+
+      expect(res.success).toBe(false)
+    })
   })
 
   /* A place taken off the board: what was filed there comes back to Fresh files, and nothing is

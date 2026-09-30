@@ -54,6 +54,16 @@ describe('what the bin holds', () => {
     expect(batches[0]?.at).toBe(Date.UTC(2026, 8, 24, 12, 30, 5) / 1000)
   })
 
+  /* files are never listed by name: the newest comes first, as everywhere on the board */
+  it('lists the files of a batch newest first, not by name', () => {
+    const a = putAside('unsorted-2026-09-20T09-00-00-000Z', '2026-09-12/A.MP4')
+    const z = putAside('unsorted-2026-09-20T09-00-00-000Z', '2026-09-12/Z.MP4')
+    fs.utimesSync(z, new Date(2026, 8, 12, 11, 0, 0), new Date(2026, 8, 12, 11, 0, 0))
+    fs.utimesSync(a, new Date(2026, 8, 12, 9, 0, 0), new Date(2026, 8, 12, 9, 0, 0))
+
+    expect(listBin(trash)[0]?.files.map((f) => f.name)).toEqual(['Z.MP4', 'A.MP4'])
+  })
+
   it('lists only pictures and films, and nothing for a bin never used', () => {
     putAside('unsorted-2026-09-20T09-00-00-000Z', 'notes.txt')
     expect(listBin(trash)).toEqual([])

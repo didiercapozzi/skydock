@@ -40,6 +40,7 @@ import { typingInField } from '../helpers/keys'
 import { routingEngine } from '../helpers/routing'
 import { useCameraCopying } from '../hooks/liveStore'
 import { useBoardModel } from '../hooks/useBoardModel'
+import { useDetailsColumn } from '../hooks/useDetails'
 import type { Route } from './+types/board'
 
 /* The board's data is read once, and every change comes back in the answer the endpoint gives: the
@@ -209,6 +210,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     return () => watch.disconnect()
   }, [])
   const model = useBoardModel(looked ? { ...loaderData, ...looked } : loaderData)
+  const details = useDetailsColumn()
   const { board, nas, drag, setDialog } = model
   const { groups, loose, places, note, setNote, send } = board
   const dialogOpen = model.dialog !== null
@@ -308,7 +310,12 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         find={model.findAnything}
       />
 
-      <div className='grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] bg-pane min-[781px]:grid-cols-[224px_minmax(0,1fr)] min-[781px]:grid-rows-[minmax(0,1fr)] min-[1101px]:grid-cols-[224px_minmax(0,1fr)_312px]'>
+      <div
+        className={`grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] bg-pane min-[781px]:grid-cols-[224px_minmax(0,1fr)] min-[781px]:grid-rows-[minmax(0,1fr)] min-[1101px]:transition-[grid-template-columns] min-[1101px]:duration-300 min-[1101px]:ease-out motion-reduce:transition-none ${
+          details
+            ? 'min-[1101px]:grid-cols-[224px_minmax(0,1fr)_312px]'
+            : 'min-[1101px]:grid-cols-[224px_minmax(0,1fr)_0px]'
+        }`}>
         <PlacesTree
           destinations={places}
           groups={model.listed}

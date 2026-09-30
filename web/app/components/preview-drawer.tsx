@@ -250,6 +250,7 @@ const PreviewDrawer = ({
   onRotationApplyToJump,
   locked,
   onMomentChange,
+  onMomentsReset,
   onPlayOutside,
   montage = false
 }: {
@@ -289,6 +290,8 @@ const PreviewDrawer = ({
   locked?: string | null
   /* one of the jump's moments, moved on the timeline */
   onMomentChange?: (which: 'exit' | 'opening' | 'canopy' | 'landing', seconds: number) => void
+  /* the marks put back where the camera measured them, offered once any was moved by hand */
+  onMomentsReset?: () => void
   /* hand this file to the machine's own player; absent for a file this machine no longer holds */
   onPlayOutside?: () => void
   /* Whether this clip's jump is a montage, which decides where a cut starts from: a montage is its own
@@ -870,6 +873,19 @@ const PreviewDrawer = ({
                             </button>
                           ]
                     })}
+                  </div>
+                )}
+                {file.foundMoments && onMomentsReset && (
+                  <div className='self-start'>
+                    <Mini
+                      title={t`Put every mark back where the camera measured it`}
+                      onClick={onMomentsReset}>
+                      <Icon
+                        name='back'
+                        size={14}
+                      />
+                      {t`Back to the measured marks`}
+                    </Mini>
                   </div>
                 )}
               </Part>

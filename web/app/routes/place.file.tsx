@@ -43,6 +43,9 @@ const PreviewedFile = () => {
           moment: { which, seconds }
         })
       }
+      onMomentsReset={(file) =>
+        board.send('moment', { intent: 'reset-moments', fileIds: [file.id ?? ''] })
+      }
       onPlayOutside={(file) =>
         board.send(`play:${file.id ?? file.path}`, {
           intent: 'play-file',

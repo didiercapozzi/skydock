@@ -32,6 +32,8 @@ const actionArgs = z.object({
     'retime-file',
     /* where the jump is in a clip: a mark moved by hand */
     'set-moment',
+    /* the marks of a clip put back where the camera measured them */
+    'reset-moments',
     'move-files',
     /* the same files into another jump as well, staying where they are */
     'copy-files',

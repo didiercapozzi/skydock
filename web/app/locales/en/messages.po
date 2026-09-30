@@ -975,6 +975,10 @@ msgstr "Back to Fresh files, loose"
 msgid "Back to the first template"
 msgstr "Back to the first template"
 
+#: app/components/preview-drawer.tsx
+msgid "Back to the measured marks"
+msgstr "Back to the measured marks"
+
 #: app/components/montage-card.tsx
 msgid "Backup"
 msgstr "Backup"
@@ -1500,6 +1504,7 @@ msgstr "Destination"
 msgid "Destinations"
 msgstr "Destinations"
 
+#: app/components/board-header.tsx
 #: app/components/inspector.tsx
 msgid "Details"
 msgstr "Details"
@@ -2005,7 +2010,7 @@ msgstr "here, not uploaded"
 msgid "here, put in the bin"
 msgstr "here, put in the bin"
 
-#: app/components/inspector.tsx
+#: app/components/board-header.tsx
 msgid "Hide details"
 msgstr "Hide details"
 
@@ -3041,6 +3046,10 @@ msgstr "Put {0} in this zip"
 #: app/components/upload-dialog.tsx
 msgid "Put at least one thing in a destination"
 msgstr "Put at least one thing in a destination"
+
+#: app/components/preview-drawer.tsx
+msgid "Put every mark back where the camera measured it"
+msgstr "Put every mark back where the camera measured it"
 
 #: app/components/folder-owed.tsx
 msgid "Put Fresh files back — the times alone, or everything as just scanned. Asks which first."

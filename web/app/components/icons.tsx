@@ -137,6 +137,18 @@ const PATHS = {
       />
     </>
   ),
+  details: (
+    <>
+      <rect
+        x='3'
+        y='4.5'
+        width='18'
+        height='15'
+        rx='2.5'
+      />
+      <path d='M15 4.5v15' />
+    </>
+  ),
   narrow: <path d='M4 6h16M7 12h10M10 18h4' />,
   check: <path d='M5 12.5 10 17 19 7' />,
   moveTo: <path d='M5 12h14M13 6l6 6-6 6' />,
