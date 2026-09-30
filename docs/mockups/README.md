@@ -8,7 +8,7 @@ has a `screens/` folder with pictures of every page at 1440×900.
 The same screens are on the design canvas at
 https://claude.ai/artifact/Xea6NY8WUhxsqX5W3YFRan.
 
-## Studio: the current direction
+## Studio: the direction the app is drawn in today
 
 `studio/` shows SkyDock as the installed app in its own window.
 
@@ -32,6 +32,32 @@ https://claude.ai/artifact/Xea6NY8WUhxsqX5W3YFRan.
 | `07-a-camera`            | A camera plugged in, and deleting from it           |
 | `08-email-the-link`      | Sending the link: FR/EN/DE, QR code, "Sent it?"     |
 | `09-dark`                | The board in dark mode                              |
+
+## Canopy: a new direction
+
+`canopy/` draws the same app again, with nothing added or removed. It is on the design canvas at
+https://claude.ai/artifact/1nQwWQJUvHXwkL9J8on56y (private until shared from its Share menu).
+
+- **Frame:** a deep ink rail down the left holds the places. The work sits on soft white cards over
+  a cool mist, with the details panel on the right and the status bar along the foot.
+- **Type:** Manrope for everything, and IBM Plex Mono for file names.
+- **Colour:** one warm canopy orange, for the next action and for what is selected. A file's
+  state is a small tinted badge: amber for local, violet for processed and green for uploaded.
+- **Shapes:** large rounded cards, a pill search field, and segmented controls in place of tabs.
+  A zip's contents sit in a dashed box on a tinted ground.
+- **Dark mode:** the same design on deep navy (`06-dark`).
+
+| Page               | What it shows                                                  |
+| ------------------ | -------------------------------------------------------------- |
+| `00-the-idea`      | The principles, colours, type and controls                     |
+| `01-fresh-files`   | The board: Fresh files by jump, one jump open, a file's panel  |
+| `02-a-dropzone`    | A dropzone by day, as thumbnails, with three picked            |
+| `03-a-montage`     | A montage with its film rendered and the upload next           |
+| `04-upload`        | Uploading a montage: the zips, then where it goes              |
+| `05-overview`      | The overview of every montage                                  |
+| `06-dark`          | The board in dark mode                                         |
+
+The pages share `canopy/canopy.css`. The footage stills are in `images/`.
 
 ## Earlier versions
 
