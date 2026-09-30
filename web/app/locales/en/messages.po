@@ -85,15 +85,11 @@ msgid "{0, plural, one {# file it uses is not here: {missing}. The edit can star
 msgstr "{0, plural, one {# file it uses is not here: {missing}. The edit can start without it, with a hole where each belongs.} other {# files it uses are not here: {missing}. The edit can start without them, with a hole where each belongs.}}"
 
 #. placeholder {0}: files.length
-#: app/components/inspector.tsx
-msgid "{0, plural, one {# file selected} other {# files selected}}"
-msgstr "{0, plural, one {# file selected} other {# files selected}}"
-
 #. placeholder {0}: lane.length
 #. placeholder {0}: section.files.length
-#. placeholder {0}: template.assets
 #: app/components/file-browser.tsx
 #: app/components/file-list.tsx
+#: app/components/inspector.tsx
 #: app/components/templates-dialog.tsx
 msgid "{0, plural, one {# file} other {# files}}"
 msgstr "{0, plural, one {# file} other {# files}}"
@@ -793,14 +789,6 @@ msgstr "A new montage…"
 msgid "A new montage{copied}"
 msgstr "A new montage{copied}"
 
-#: app/components/inspector.tsx
-msgid "A photo"
-msgstr "A photo"
-
-#: app/components/inspector.tsx
-msgid "A photo in {where}"
-msgstr "A photo in {where}"
-
 #: app/components/overview-dialog.tsx
 msgid "A press on a line takes its next step."
 msgstr "A press on a line takes its next step."
@@ -812,18 +800,6 @@ msgstr "A scan is running"
 #: app/components/templates-dialog.tsx
 msgid "A template for {who}’s montage"
 msgstr "A template for {who}’s montage"
-
-#: app/components/inspector.tsx
-msgid "A video"
-msgstr "A video"
-
-#: app/components/inspector.tsx
-msgid "A video in {where}"
-msgstr "A video in {where}"
-
-#: app/components/inspector.tsx
-msgid "About it"
-msgstr "About it"
 
 #: app/components/preview-drawer.tsx
 msgid "across"
@@ -1385,10 +1361,6 @@ msgstr "Copying a camera, making proxies, processing and saving the board all ne
 msgid "Copying the camera {camera}"
 msgstr "Copying the camera {camera}"
 
-#: app/components/inspector.tsx
-msgid "could not be made — {reason}"
-msgstr "could not be made — {reason}"
-
 #: app/components/camera-panel.tsx
 msgid "could not be read"
 msgstr "could not be read"
@@ -1417,6 +1389,7 @@ msgstr "Cut a mount or a finger out of the corner. Same keeps the shape the clip
 msgid "Dark"
 msgstr "Dark"
 
+#: app/components/inspector.tsx
 #: app/components/jump-time.tsx
 #: app/components/overview-dialog.tsx
 msgid "Day"
@@ -1755,6 +1728,10 @@ msgstr "Everything, as just scanned"
 msgid "exit"
 msgstr "exit"
 
+#: app/components/inspector.tsx
+msgid "Exit"
+msgstr "Exit"
+
 #: app/components/shortcuts-dialog.tsx
 msgid "F"
 msgstr "F"
@@ -1930,6 +1907,10 @@ msgid "Fresh files reset — {files, plural, one {# file} other {# files}} back 
 msgstr "Fresh files reset — {files, plural, one {# file} other {# files}} back as scanned, in {jumps, plural, one {# jump} other {# jumps}}"
 
 #: app/components/inspector.tsx
+msgid "From"
+msgstr "From"
+
+#: app/components/inspector.tsx
 msgid "from {filename}"
 msgstr "from {filename}"
 
@@ -2056,10 +2037,6 @@ msgstr "How big the whole board is drawn — or ⌘/ctrl with + and −, and 0 f
 #: app/components/board-header.tsx
 msgid "How files are shown"
 msgstr "How files are shown"
-
-#: app/components/inspector.tsx
-msgid "In"
-msgstr "In"
 
 #: app/components/file-browser.tsx
 msgid "in no jump"
@@ -2221,6 +2198,10 @@ msgstr "Keyboard shortcuts…"
 #: app/components/email-dialog.tsx
 msgid "Laid out as shown, to paste into any mail"
 msgstr "Laid out as shown, to paste into any mail"
+
+#: app/components/inspector.tsx
+msgid "Landing"
+msgstr "Landing"
 
 #: app/components/preview-drawer.tsx
 msgid "Landscape, blurred sides"
@@ -2438,14 +2419,6 @@ msgstr "Montages"
 msgid "More than 15 minutes from the rest of its jump — the gap rule would not have put it here"
 msgstr "More than 15 minutes from the rest of its jump — the gap rule would not have put it here"
 
-#: app/components/inspector.tsx
-msgid "Move"
-msgstr "Move"
-
-#: app/components/inspector.tsx
-msgid "Move them"
-msgstr "Move them"
-
 #: app/components/move-to.tsx
 msgid "Move to…"
 msgstr "Move to…"
@@ -2462,6 +2435,7 @@ msgstr "Moved {name} from {from} to {where}"
 msgid "Must be a valid URL (e.g. https://nas.local:5001)"
 msgstr "Must be a valid URL (e.g. https://nas.local:5001)"
 
+#: app/components/file-list.tsx
 #: app/components/jump-name.tsx
 #: app/components/montage-card.tsx
 #: app/components/templates-dialog.tsx
@@ -2545,10 +2519,6 @@ msgstr "No folders in here. Make one, or use this folder as it is."
 msgid "no height or speed — this camera wrote none"
 msgstr "no height or speed — this camera wrote none"
 
-#: app/components/inspector.tsx
-msgid "no jump — a loose file"
-msgstr "no jump — a loose file"
-
 #: app/components/storage-list.tsx
 msgid "no longer on the storage"
 msgstr "no longer on the storage"
@@ -2613,10 +2583,6 @@ msgstr "not copied yet"
 msgid "not emailed"
 msgstr "not emailed"
 
-#: app/components/inspector.tsx
-msgid "not made yet"
-msgstr "not made yet"
-
 #: app/components/file-status.tsx
 msgid "Not processed yet"
 msgstr "Not processed yet"
@@ -2625,13 +2591,13 @@ msgstr "Not processed yet"
 msgid "not sent"
 msgstr "not sent"
 
-#: app/components/inspector.tsx
-msgid "not trimmed"
-msgstr "not trimmed"
-
 #: app/components/preview-drawer.tsx
 msgid "Not trimmed, framed or turned — the file goes out as shot."
 msgstr "Not trimmed, framed or turned — the file goes out as shot."
+
+#: app/components/inspector.tsx
+msgid "Not yet processed"
+msgstr "Not yet processed"
 
 #: app/components/free-dialog.tsx
 msgid "nothing about the montage changed since it was uploaded"
@@ -2797,6 +2763,7 @@ msgstr "Only there"
 msgid "only this file moves — the rest of the jump stays"
 msgstr "only this file moves — the rest of the jump stays"
 
+#: app/components/inspector.tsx
 #: app/components/storage-list.tsx
 msgid "Open"
 msgstr "Open"
@@ -2813,6 +2780,10 @@ msgstr "Open it — trim, frame and turn"
 #: app/components/storage-list.tsx
 msgid "Open it on this board"
 msgstr "Open it on this board"
+
+#: app/components/montage-card.tsx
+msgid "Open on its own"
+msgstr "Open on its own"
 
 #: app/components/preview-drawer.tsx
 msgid "Open the clip in this machine's own player — the file as it was shot, whatever the browser can decode"
@@ -2837,6 +2808,10 @@ msgstr "Open the photo in this machine's own player — the file as it was shot,
 #: app/components/montage-card.tsx
 msgid "Open this project in the editor"
 msgstr "Open this project in the editor"
+
+#: app/components/inspector.tsx
+msgid "Opening"
+msgstr "Opening"
 
 #: app/components/work-folder-dialog.tsx
 msgid "Opening {chosen}…"
@@ -2900,10 +2875,13 @@ msgid "Password must be at least 3 characters"
 msgstr "Password must be at least 3 characters"
 
 #: app/components/file-list.tsx
-#: app/components/inspector.tsx
 #: app/components/storage-folder.tsx
 msgid "photo"
 msgstr "photo"
+
+#: app/components/inspector.tsx
+msgid "Photo"
+msgstr "Photo"
 
 #: app/components/place-pane.tsx
 msgid "Photos"
@@ -3035,13 +3013,24 @@ msgid "Proxies ready {ready}/{total}"
 msgstr "Proxies ready {ready}/{total}"
 
 #: app/components/file-list.tsx
-#: app/components/inspector.tsx
 msgid "Proxy"
 msgstr "Proxy"
+
+#: app/components/inspector.tsx
+msgid "Proxy could not be made — {reason}"
+msgstr "Proxy could not be made — {reason}"
 
 #: app/components/file-list.tsx
 msgid "proxy failed"
 msgstr "proxy failed"
+
+#: app/components/inspector.tsx
+msgid "Proxy not made yet"
+msgstr "Proxy not made yet"
+
+#: app/components/inspector.tsx
+msgid "Proxy ready"
+msgstr "Proxy ready"
 
 #: app/components/upload-dialog.tsx
 msgid "Put at least one thing in a destination"
@@ -3114,10 +3103,6 @@ msgstr "Reading the templates…"
 #: app/components/jump-graph.tsx
 msgid "Reading what the camera measured…"
 msgstr "Reading what the camera measured…"
-
-#: app/components/inspector.tsx
-msgid "ready"
-msgstr "ready"
 
 #: app/components/montage-card.tsx
 msgid "ready to hand over"
@@ -3502,10 +3487,6 @@ msgstr "Starts"
 #: app/components/file-list.tsx
 msgid "State"
 msgstr "State"
-
-#: app/components/inspector.tsx
-msgid "Status"
-msgstr "Status"
 
 #: app/components/disconnect-dialog.tsx
 msgid "Stay connected"
@@ -3990,6 +3971,7 @@ msgid "Times reset — {files, plural, one {# file} other {# files}} back on the
 msgstr "Times reset — {files, plural, one {# file} other {# files}} back on the camera’s time; jumps, names and trims kept"
 
 #: app/components/email-dialog.tsx
+#: app/components/inspector.tsx
 msgid "To"
 msgstr "To"
 
@@ -4017,6 +3999,10 @@ msgstr "to upload"
 msgid "Took {who}’s montage apart"
 msgstr "Took {who}’s montage apart"
 
+#: app/components/inspector.tsx
+msgid "Total size"
+msgstr "Total size"
+
 #: app/components/file-list.tsx
 #: app/components/preview-drawer.tsx
 msgid "trim"
@@ -4041,10 +4027,6 @@ msgstr "Trim every clip to the jump"
 #: app/components/preview-drawer.tsx
 msgid "Trim to the jump"
 msgstr "Trim to the jump"
-
-#: app/components/inspector.tsx
-msgid "Trim, frame and turn…"
-msgstr "Trim, frame and turn…"
 
 #: app/components/inspector.tsx
 msgid "trimmed"
@@ -4245,10 +4227,13 @@ msgid "Username must be at least 2 characters"
 msgstr "Username must be at least 2 characters"
 
 #: app/components/file-list.tsx
-#: app/components/inspector.tsx
 #: app/components/storage-folder.tsx
 msgid "video"
 msgstr "video"
+
+#: app/components/inspector.tsx
+msgid "Video"
+msgstr "Video"
 
 #: app/components/place-pane.tsx
 msgid "Videos"
@@ -4300,10 +4285,6 @@ msgstr "What is written here is kept on this machine and drafts every email; eac
 msgid "What it holds"
 msgstr "What it holds"
 
-#: app/components/inspector.tsx
-msgid "What they are"
-msgstr "What they are"
-
 #: app/components/places-tree.tsx
 msgid "What was put aside — look through it, and bring files back to Fresh files"
 msgstr "What was put aside — look through it, and bring files back to Fresh files"
@@ -4327,6 +4308,10 @@ msgstr "Where it goes"
 msgid "Where it has got to"
 msgstr "Where it has got to"
 
+#: app/components/inspector.tsx
+msgid "Where the jump is"
+msgstr "Where the jump is"
+
 #: app/components/montage-steps.tsx
 msgid "Where this montage has got to"
 msgstr "Where this montage has got to"
@@ -4336,8 +4321,8 @@ msgid "Which date should the merged jump have? The chosen jump keeps its times."
 msgstr "Which date should the merged jump have? The chosen jump keeps its times."
 
 #: app/components/inspector.tsx
-msgid "whole frame"
-msgstr "whole frame"
+msgid "Who it is for"
+msgstr "Who it is for"
 
 #: app/components/preview-drawer.tsx
 msgid "Whole frame — the whole picture goes out as shot"

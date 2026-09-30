@@ -83,15 +83,15 @@ const copyText = async (text: string) => {
 type EmailSubject = EmailFacts & { shareUrl: string }
 
 /* the quiet name beside a field, and the field itself: a tall, calm box across the column */
-const EYEBROW = 'text-[11.5px] font-medium text-ink-3'
+const EYEBROW = 'text-[11.5px] font-bold text-ink-3'
 const FIELD =
-  'h-[38px] min-w-0 flex-1 rounded-[9px] border border-line bg-pane px-3 text-[13px] text-ink placeholder:font-normal placeholder:text-ink-3'
+  'h-[38px] min-w-0 flex-1 rounded-[10px] border-0 bg-well px-3 text-[13px] text-ink placeholder:font-normal placeholder:text-ink-3'
 /* the email's toolbar: small and flat, lit only under the pointer */
 const TOOL =
-  'grid h-7 w-7 place-items-center rounded-[5px] text-[13px] text-ink-2 hover:bg-well hover:text-ink'
+  'grid h-7 w-7 place-items-center rounded-[9px] text-[13px] text-ink-2 hover:bg-well hover:text-ink'
 /* a quiet button, for what is at hand without asking to be pressed */
 const QUIET =
-  'inline-flex h-7 items-center rounded-[5px] px-[9px] text-[12.5px] font-medium text-ink-2 hover:bg-well hover:text-ink'
+  'inline-flex h-7 items-center rounded-[9px] px-[9px] text-[12.5px] font-medium text-ink-2 hover:bg-well hover:text-ink'
 
 const sentLabel = (at: number) => new Date(at * 1000).toLocaleDateString('de-CH')
 
@@ -363,8 +363,8 @@ const EmailDialog = ({
               className={`${FIELD} font-semibold`}
             />
           </label>
-          <div className='flex min-h-[300px] flex-1 flex-col overflow-hidden rounded-xl border border-line'>
-            <div className='flex flex-none flex-wrap items-center gap-0.5 border-b border-line-2 bg-rail px-2 py-1.5'>
+          <div className='flex min-h-[300px] flex-1 flex-col overflow-hidden rounded-[16px] border border-line'>
+            <div className='flex flex-none flex-wrap items-center gap-0.5 border-b border-line-2 bg-well px-2 py-1.5'>
               {/* pressed without taking the caret out of the email, so what is picked stays picked */}
               <span
                 role='toolbar'
@@ -416,7 +416,7 @@ const EmailDialog = ({
                   aria-label={t`Put in a variable`}
                   value=''
                   onChange={(e) => e.target.value && putVariable(e.target.value)}
-                  className='ml-1.5 h-7 rounded-[5px] border border-line-strong bg-pane px-1.5 text-[12px] text-ink-2'>
+                  className='ml-1.5 h-7 rounded-[9px] border border-line-strong bg-pane px-1.5 text-[12px] text-ink-2'>
                   <option value=''>{t`Put in a variable…`}</option>
                   {EMAIL_VARIABLES.map((variable) => {
                     const here = values[variable.name]
@@ -497,20 +497,20 @@ const EmailDialog = ({
         {/* For whoever it is for, standing at the counter: the link taken with a phone now, and
             whether it went said where it is recorded — or the montage stays "to email" long after
             the email went. */}
-        <div className='flex min-h-0 flex-col gap-3.5 overflow-y-auto bg-rail px-[22px] py-5'>
+        <div className='flex min-h-0 flex-col gap-3.5 overflow-y-auto bg-well px-[22px] py-5'>
           <span className={EYEBROW}>{t`At the counter`}</span>
           <span className='text-[15px] leading-[1.15] font-semibold tracking-[-0.02em]'>
             {t`${firstname} can take the link with a phone, before the email has even gone.`}
           </span>
           {showingQr ? (
-            <span className='self-start rounded-xl border border-line bg-white p-1.5'>
+            <span className='self-start rounded-[16px] border border-line bg-white p-1.5'>
               <ShareQr
                 url={shareUrl}
                 size={196}
               />
             </span>
           ) : (
-            <span className='grid h-[210px] w-[210px] place-items-center rounded-xl border border-dashed border-line-strong'>
+            <span className='grid h-[210px] w-[210px] place-items-center rounded-[16px] border border-dashed border-line-strong'>
               <Mini
                 pressed={false}
                 title={t`The link as a QR code, for a phone to take it now`}
@@ -539,7 +539,7 @@ const EmailDialog = ({
           {canRecord && (
             <div
               role={opened && !emailed ? 'status' : undefined}
-              className='mt-auto flex flex-col gap-2 rounded-xl border border-line bg-pane p-4'>
+              className='mt-auto flex flex-col gap-2 rounded-[16px] border border-line bg-pane p-4'>
               {emailed ? (
                 <>
                   <span className='text-[15px] leading-none font-semibold tracking-[-0.02em] text-up'>

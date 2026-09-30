@@ -143,7 +143,7 @@ const NasFolderBrowser = ({ onSelect, onClose, initialPath, title }: Props) => {
         </div>
       )}
 
-      <div className='max-h-[260px] overflow-auto rounded-lg border border-line'>
+      <div className='max-h-[260px] overflow-auto rounded-[12px] border border-line'>
         {parentPath && (
           <button
             type='button'

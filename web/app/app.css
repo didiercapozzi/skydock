@@ -1,52 +1,58 @@
 @import 'tailwindcss';
 
-@import '@fontsource-variable/inter';
+@import '@fontsource-variable/bricolage-grotesque';
+@import '@fontsource-variable/instrument-sans';
 @import '@fontsource-variable/jetbrains-mono';
 
-/* The palette, the type and the spacing of the "Studio" design (docs/mockups/studio), kept sober:
-   cool slate greys and one clear blue for where you are, what is picked and the next action; amber
-   for what is still to do, violet for what is processed, green for what is up, teal for
-   destinations. A file's state is a small tinted badge. Every colour in the app comes from here. */
+/* The palette, the type and the shapes of the "Horizon" design (docs/mockups/horizon): the window is
+   a quiet backdrop with floating islands on it — the places, the work, the details — and every
+   colour in the app comes from here. One ultramarine for where you are, what is picked and the next
+   action; a file's state is a small tinted badge, amber for what is still to do, magenta for what is
+   processed and green for what is up. Bricolage Grotesque for titles, Instrument Sans for the
+   interface, JetBrains Mono for file names. Light and dark are the same design with the same names. */
 @theme {
-  --font-sans: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Instrument Sans Variable', 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-display:
+    'Bricolage Grotesque Variable', 'Bricolage Grotesque', 'Instrument Sans Variable',
+    ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
 
-  --color-ground: #f1f4f8;
+  --color-ground: #e6eaf2;
   --color-pane: #ffffff;
-  --color-rail: #f6f8fb;
-  --color-chrome: #edf1f6;
-  --color-well: #eef2f7;
-  --color-ink: #0f1b2d;
-  --color-ink-2: #4a5a70;
-  --color-ink-3: #74839a;
-  --color-line: #dfe5ee;
-  --color-line-2: #ebeff5;
-  --color-line-strong: #cdd6e3;
-  --color-accent: #1a73d9;
-  --color-accent-ink: #0f56ad;
-  --color-accent-soft: #e8f1fc;
-  --color-pick: #1a73d9;
-  --color-pick-soft: #e8f1fc;
-  --color-local: #b45309;
-  --color-local-soft: #fdf1e1;
-  --color-local-bar: #f59e0b;
-  --color-proc: #6d3fd8;
-  --color-proc-soft: #f1ecfd;
-  --color-up: #16803c;
-  --color-up-soft: #e7f5ec;
+  --color-rail: #ffffff;
+  --color-chrome: #e6eaf2;
+  --color-well: #f1f3f8;
+  --color-ink: #10131a;
+  --color-ink-2: #454d61;
+  --color-ink-3: #66708a;
+  --color-line: #e4e8f0;
+  --color-line-2: #eef1f6;
+  --color-line-strong: #d3d9e4;
+  --color-accent: #4f46e5;
+  --color-accent-ink: #3730a3;
+  --color-accent-soft: #eef0ff;
+  --color-pick: #4f46e5;
+  --color-pick-soft: #eef0ff;
+  --color-local: #a04f07;
+  --color-local-soft: #fef1de;
+  --color-local-bar: #f0a231;
+  --color-proc: #a3217a;
+  --color-proc-soft: #fce9f4;
+  --color-up: #0c7c55;
+  --color-up-soft: #dcf5ea;
   --color-teal: #0f8a9b;
-  --color-lock: #4a5a70;
-  --color-lock-soft: #eef2f7;
-  --color-changed: #0f56ad;
-  --color-changed-soft: #e8f1fc;
-  --color-changed-line: #0f56ad;
-  --color-bin: #d43434;
-  --color-bin-soft: #fbeaea;
+  --color-lock: #454d61;
+  --color-lock-soft: #f1f3f8;
+  --color-changed: #3730a3;
+  --color-changed-soft: #eef0ff;
+  --color-changed-line: #3730a3;
+  --color-bin: #c0262d;
+  --color-bin-soft: #fdecec;
 
-  --shadow-card: 0 1px 2px rgba(16, 35, 58, 0.06);
+  --shadow-card: 0 1px 2px rgba(16, 19, 26, 0.05), 0 8px 24px rgba(16, 19, 26, 0.06);
   --shadow-float:
-    0 0 0 1px rgba(16, 35, 58, 0.08), 0 12px 32px rgba(16, 35, 58, 0.16),
-    0 2px 6px rgba(16, 35, 58, 0.06);
+    0 0 0 1px rgba(16, 19, 26, 0.08), 0 30px 80px rgba(16, 19, 26, 0.3),
+    0 4px 12px rgba(16, 19, 26, 0.1);
 
   /* The shared form package names its colours by role rather than by shade, so that whatever uses
      it supplies the palette. These are that supply. */
@@ -55,170 +61,93 @@
   --color-destructive: var(--color-bin);
 }
 
-/* What sits behind the panes, kept discreet: a few fine contour lines, like a map of the ground
-   seen from altitude, at the foot of the places and the details and in the corner of the list, over
-   a barely-there gradient. They are properties so the dark theme can redraw them in its own tints. */
-:root {
-  --backdrop-rail: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 224 320'%3E%3Cpath d='M0 168C40.32 154.0 71.68 182.0 112.0 168S183.67999999999998 154.0 224 176.4' fill='none' stroke='%231a73d9' stroke-opacity='.11' stroke-width='1'/%3E%3Cpath d='M0 184C40.32 171.12 71.68 196.88 112.0 184S183.67999999999998 171.12 224 191.728' fill='none' stroke='%231a73d9' stroke-opacity='.11' stroke-width='1'/%3E%3Cpath d='M0 200C40.32 188.24 71.68 211.76 112.0 200S183.67999999999998 188.24 224 207.056' fill='none' stroke='%231a73d9' stroke-opacity='.11' stroke-width='1'/%3E%3Cpath d='M0 216C40.32 205.36 71.68 226.64 112.0 216S183.67999999999998 205.36 224 222.38400000000001' fill='none' stroke='%231a73d9' stroke-opacity='.11' stroke-width='1'/%3E%3Cpath d='M0 232C40.32 222.48 71.68 241.52 112.0 232S183.67999999999998 222.48 224 237.712' fill='none' stroke='%231a73d9' stroke-opacity='.11' stroke-width='1'/%3E%3Cpath d='M0 248C40.32 239.6 71.68 256.4 112.0 248S183.67999999999998 239.6 224 253.04' fill='none' stroke='%231a73d9' stroke-opacity='.11' stroke-width='1'/%3E%3Cpath d='M0 264C40.32 256.72 71.68 271.28 112.0 264S183.67999999999998 256.72 224 268.368' fill='none' stroke='%231a73d9' stroke-opacity='.11' stroke-width='1'/%3E%3Cpath d='M0 280C40.32 273.84 71.68 286.16 112.0 280S183.67999999999998 273.84 224 283.696' fill='none' stroke='%231a73d9' stroke-opacity='.11' stroke-width='1'/%3E%3Cpath d='M0 296C40.32 290.96 71.68 301.04 112.0 296S183.67999999999998 290.96 224 299.024' fill='none' stroke='%231a73d9' stroke-opacity='.11' stroke-width='1'/%3E%3C/svg%3E");
-  --backdrop-pane: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 560 320'%3E%3Cpath d='M0 150C100.8 124.0 179.20000000000002 176.0 280.0 150S459.2 124.0 560 165.6' fill='none' stroke='%231a73d9' stroke-opacity='.09' stroke-width='1'/%3E%3Cpath d='M0 168C100.8 144.07999999999998 179.20000000000002 191.92000000000002 280.0 168S459.2 144.07999999999998 560 182.352' fill='none' stroke='%231a73d9' stroke-opacity='.09' stroke-width='1'/%3E%3Cpath d='M0 186C100.8 164.16 179.20000000000002 207.84 280.0 186S459.2 164.16 560 199.10399999999998' fill='none' stroke='%231a73d9' stroke-opacity='.09' stroke-width='1'/%3E%3Cpath d='M0 204C100.8 184.24 179.20000000000002 223.76 280.0 204S459.2 184.24 560 215.856' fill='none' stroke='%231a73d9' stroke-opacity='.09' stroke-width='1'/%3E%3Cpath d='M0 222C100.8 204.32 179.20000000000002 239.68 280.0 222S459.2 204.32 560 232.608' fill='none' stroke='%231a73d9' stroke-opacity='.09' stroke-width='1'/%3E%3Cpath d='M0 240C100.8 224.4 179.20000000000002 255.6 280.0 240S459.2 224.4 560 249.36' fill='none' stroke='%231a73d9' stroke-opacity='.09' stroke-width='1'/%3E%3Cpath d='M0 258C100.8 244.48 179.20000000000002 271.52 280.0 258S459.2 244.48 560 266.112' fill='none' stroke='%231a73d9' stroke-opacity='.09' stroke-width='1'/%3E%3Cpath d='M0 276C100.8 264.56 179.20000000000002 287.44 280.0 276S459.2 264.56 560 282.864' fill='none' stroke='%231a73d9' stroke-opacity='.09' stroke-width='1'/%3E%3Cpath d='M0 294C100.8 284.64 179.20000000000002 303.36 280.0 294S459.2 284.64 560 299.616' fill='none' stroke='%231a73d9' stroke-opacity='.09' stroke-width='1'/%3E%3C/svg%3E");
-  --sky: linear-gradient(180deg, #f2f6fa 0%, #f6f8fb 50%);
-  --bar: linear-gradient(180deg, #f4f7fa, #e9eef4);
-}
-
 /* Dark is the same design on deep navy: the same tokens redefined, so every utility
    follows. Two ways in, and `data-theme` wins over the machine's own setting — the selector
    carrying it is more specific than a bare `:root`. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --color-ground: #080c13;
-    --color-pane: #0e141e;
-    --color-rail: #0c111a;
-    --color-chrome: #111926;
-    --color-well: #161f2d;
-    --color-ink: #e8eef6;
-    --color-ink-2: #a3b1c4;
-    --color-ink-3: #74839a;
-    --color-line: #1c2636;
-    --color-line-2: #151d2b;
-    --color-line-strong: #273349;
-    --color-accent: #4a9bf0;
-    --color-accent-ink: #86bcf7;
-    --color-accent-soft: #10253f;
-    --color-pick: #4a9bf0;
-    --color-pick-soft: #10253f;
-    --color-local: #f0a24f;
-    --color-local-soft: #2b1f10;
-    --color-proc: #b7a0ff;
-    --color-proc-soft: #221b3d;
+    --color-ground: #0b0e15;
+    --color-pane: #141922;
+    --color-rail: #141922;
+    --color-chrome: #0b0e15;
+    --color-well: #1b212d;
+    --color-ink: #eef1f7;
+    --color-ink-2: #b6bece;
+    --color-ink-3: #8b94a8;
+    --color-line: #262d3b;
+    --color-line-2: #1d2430;
+    --color-line-strong: #323b4d;
+    --color-accent: #8b85ff;
+    --color-accent-ink: #b7b3ff;
+    --color-accent-soft: #232052;
+    --color-pick: #8b85ff;
+    --color-pick-soft: #232052;
+    --color-local: #f5b25a;
+    --color-local-soft: #3a2a10;
+    --color-proc: #f58ad0;
+    --color-proc-soft: #3c1531;
     --color-teal: #3cc4d3;
-    --color-up: #4fcb87;
-    --color-up-soft: #10271a;
-    --color-lock: #a3b1c4;
-    --color-lock-soft: #161f2d;
-    --color-changed: #86bcf7;
-    --color-changed-soft: #10253f;
-    --color-changed-line: #86bcf7;
-    --color-bin: #ef6b6b;
-    --color-bin-soft: #301618;
-    --shadow-card: none;
-    --shadow-float: 0 0 0 1px #27395a, 0 16px 40px rgba(0, 0, 0, 0.6);
-    --backdrop-rail: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 224 320'%3E%3Cpath d='M0 168C40.32 154.0 71.68 182.0 112.0 168S183.67999999999998 154.0 224 176.4' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 184C40.32 171.12 71.68 196.88 112.0 184S183.67999999999998 171.12 224 191.728' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 200C40.32 188.24 71.68 211.76 112.0 200S183.67999999999998 188.24 224 207.056' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 216C40.32 205.36 71.68 226.64 112.0 216S183.67999999999998 205.36 224 222.38400000000001' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 232C40.32 222.48 71.68 241.52 112.0 232S183.67999999999998 222.48 224 237.712' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 248C40.32 239.6 71.68 256.4 112.0 248S183.67999999999998 239.6 224 253.04' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 264C40.32 256.72 71.68 271.28 112.0 264S183.67999999999998 256.72 224 268.368' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 280C40.32 273.84 71.68 286.16 112.0 280S183.67999999999998 273.84 224 283.696' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 296C40.32 290.96 71.68 301.04 112.0 296S183.67999999999998 290.96 224 299.024' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3C/svg%3E");
-    --backdrop-pane: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 560 320'%3E%3Cpath d='M0 150C100.8 124.0 179.20000000000002 176.0 280.0 150S459.2 124.0 560 165.6' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 168C100.8 144.07999999999998 179.20000000000002 191.92000000000002 280.0 168S459.2 144.07999999999998 560 182.352' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 186C100.8 164.16 179.20000000000002 207.84 280.0 186S459.2 164.16 560 199.10399999999998' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 204C100.8 184.24 179.20000000000002 223.76 280.0 204S459.2 184.24 560 215.856' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 222C100.8 204.32 179.20000000000002 239.68 280.0 222S459.2 204.32 560 232.608' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 240C100.8 224.4 179.20000000000002 255.6 280.0 240S459.2 224.4 560 249.36' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 258C100.8 244.48 179.20000000000002 271.52 280.0 258S459.2 244.48 560 266.112' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 276C100.8 264.56 179.20000000000002 287.44 280.0 276S459.2 264.56 560 282.864' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 294C100.8 284.64 179.20000000000002 303.36 280.0 294S459.2 284.64 560 299.616' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3C/svg%3E");
-    --sky: linear-gradient(180deg, #0f1826 0%, #0c111a 50%);
-    --bar: linear-gradient(180deg, #141d2b, #0f1722);
+    --color-up: #4fd6a0;
+    --color-up-soft: #0e3325;
+    --color-lock: #b6bece;
+    --color-lock-soft: #1b212d;
+    --color-changed: #b7b3ff;
+    --color-changed-soft: #232052;
+    --color-changed-line: #b7b3ff;
+    --color-bin: #ff8a90;
+    --color-bin-soft: #3a171b;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-float: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 30px 80px rgba(0, 0, 0, 0.6);
 
     color-scheme: dark;
   }
 }
 
 :root[data-theme='dark'] {
-  --color-ground: #080c13;
-  --color-pane: #0e141e;
-  --color-rail: #0c111a;
-  --color-chrome: #111926;
-  --color-well: #161f2d;
-  --color-ink: #e8eef6;
-  --color-ink-2: #a3b1c4;
-  --color-ink-3: #74839a;
-  --color-line: #1c2636;
-  --color-line-2: #151d2b;
-  --color-line-strong: #273349;
-  --color-accent: #4a9bf0;
-  --color-accent-ink: #86bcf7;
-  --color-accent-soft: #10253f;
-  --color-pick: #4a9bf0;
-  --color-pick-soft: #10253f;
-  --color-local: #f0a24f;
-  --color-local-soft: #2b1f10;
-  --color-proc: #b7a0ff;
-  --color-proc-soft: #221b3d;
+  --color-ground: #0b0e15;
+  --color-pane: #141922;
+  --color-rail: #141922;
+  --color-chrome: #0b0e15;
+  --color-well: #1b212d;
+  --color-ink: #eef1f7;
+  --color-ink-2: #b6bece;
+  --color-ink-3: #8b94a8;
+  --color-line: #262d3b;
+  --color-line-2: #1d2430;
+  --color-line-strong: #323b4d;
+  --color-accent: #8b85ff;
+  --color-accent-ink: #b7b3ff;
+  --color-accent-soft: #232052;
+  --color-pick: #8b85ff;
+  --color-pick-soft: #232052;
+  --color-local: #f5b25a;
+  --color-local-soft: #3a2a10;
+  --color-proc: #f58ad0;
+  --color-proc-soft: #3c1531;
   --color-teal: #3cc4d3;
-  --color-up: #4fcb87;
-  --color-up-soft: #10271a;
-  --color-lock: #a3b1c4;
-  --color-lock-soft: #161f2d;
-  --color-changed: #86bcf7;
-  --color-changed-soft: #10253f;
-  --color-changed-line: #86bcf7;
-  --color-bin: #ef6b6b;
-  --color-bin-soft: #301618;
-  --shadow-card: none;
-  --shadow-float: 0 0 0 1px #27395a, 0 16px 40px rgba(0, 0, 0, 0.6);
-  --backdrop-rail: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 224 320'%3E%3Cpath d='M0 168C40.32 154.0 71.68 182.0 112.0 168S183.67999999999998 154.0 224 176.4' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 184C40.32 171.12 71.68 196.88 112.0 184S183.67999999999998 171.12 224 191.728' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 200C40.32 188.24 71.68 211.76 112.0 200S183.67999999999998 188.24 224 207.056' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 216C40.32 205.36 71.68 226.64 112.0 216S183.67999999999998 205.36 224 222.38400000000001' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 232C40.32 222.48 71.68 241.52 112.0 232S183.67999999999998 222.48 224 237.712' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 248C40.32 239.6 71.68 256.4 112.0 248S183.67999999999998 239.6 224 253.04' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 264C40.32 256.72 71.68 271.28 112.0 264S183.67999999999998 256.72 224 268.368' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 280C40.32 273.84 71.68 286.16 112.0 280S183.67999999999998 273.84 224 283.696' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3Cpath d='M0 296C40.32 290.96 71.68 301.04 112.0 296S183.67999999999998 290.96 224 299.024' fill='none' stroke='%234a9bf0' stroke-opacity='.13' stroke-width='1'/%3E%3C/svg%3E");
-  --backdrop-pane: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 560 320'%3E%3Cpath d='M0 150C100.8 124.0 179.20000000000002 176.0 280.0 150S459.2 124.0 560 165.6' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 168C100.8 144.07999999999998 179.20000000000002 191.92000000000002 280.0 168S459.2 144.07999999999998 560 182.352' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 186C100.8 164.16 179.20000000000002 207.84 280.0 186S459.2 164.16 560 199.10399999999998' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 204C100.8 184.24 179.20000000000002 223.76 280.0 204S459.2 184.24 560 215.856' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 222C100.8 204.32 179.20000000000002 239.68 280.0 222S459.2 204.32 560 232.608' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 240C100.8 224.4 179.20000000000002 255.6 280.0 240S459.2 224.4 560 249.36' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 258C100.8 244.48 179.20000000000002 271.52 280.0 258S459.2 244.48 560 266.112' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 276C100.8 264.56 179.20000000000002 287.44 280.0 276S459.2 264.56 560 282.864' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3Cpath d='M0 294C100.8 284.64 179.20000000000002 303.36 280.0 294S459.2 284.64 560 299.616' fill='none' stroke='%234a9bf0' stroke-opacity='.10' stroke-width='1'/%3E%3C/svg%3E");
-  --sky: linear-gradient(180deg, #0f1826 0%, #0c111a 50%);
-  --bar: linear-gradient(180deg, #141d2b, #0f1722);
+  --color-up: #4fd6a0;
+  --color-up-soft: #0e3325;
+  --color-lock: #b6bece;
+  --color-lock-soft: #1b212d;
+  --color-changed: #b7b3ff;
+  --color-changed-soft: #232052;
+  --color-changed-line: #b7b3ff;
+  --color-bin: #ff8a90;
+  --color-bin-soft: #3a171b;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-float: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 30px 80px rgba(0, 0, 0, 0.6);
 
   color-scheme: dark;
 }
 
-@layer components {
-  /* the toolbar and the status bar: a gentle step of tone, top to bottom */
-  .bar {
-    background-image: var(--bar);
-  }
-  /* the places, over a soft gradient, contour lines at their foot */
-  .backdrop-rail {
-    background-image: var(--backdrop-rail), var(--sky);
-    background-repeat: no-repeat;
-    background-position:
-      bottom left,
-      top;
-    background-size:
-      100% auto,
-      100% 100%;
-  }
-  /* the same lines at the foot of the details, on the pane's own ground */
-  .backdrop-side {
-    background-image: var(--backdrop-rail);
-    background-repeat: repeat-x;
-    background-position: bottom left;
-    background-size: auto 260px;
-  }
-  /* the lines in the corner of the list, behind the files */
-  .backdrop-pane {
-    background-image: var(--backdrop-pane);
-    background-repeat: no-repeat;
-    background-position: right 8px bottom 0;
-    background-size: min(560px, 60%) auto;
-  }
-}
-
-/* In the base layer, not bare: CSS outside a layer beats every Tailwind utility, so a bare
-   `button { font: inherit; color: inherit }` quietly overrode the size, font and colour of every
-   button on the board — chips, badges and Mini buttons all came out as body text. */
+/* The interface's own type: the size everything inherits, the leading that sits with it, and
+   tabular figures so a column of counts and times lines up. */
 @layer base {
-  html,
   body {
-    height: 100%;
-  }
-
-  body {
-    background: var(--color-ground);
-    color: var(--color-ink);
-    font-family: var(--font-sans);
-    /* Inter's clearer 1 and l, and figures that line up in a column of times and sizes */
-    font-feature-settings: 'cv11', 'ss01', 'tnum';
-    font-size: 13px;
+    font-size: 13.5px;
     line-height: 1.45;
-    letter-spacing: -0.003em;
+    font-feature-settings: 'tnum';
     -webkit-font-smoothing: antialiased;
-  }
-
-  button,
-  input {
-    font: inherit;
-    color: inherit;
-  }
-
-  button {
-    cursor: pointer;
-  }
-
-  :focus-visible {
-    outline: 2px solid var(--color-pick);
-    outline-offset: 2px;
-    border-radius: 4px;
   }
 }
 
@@ -227,6 +156,6 @@
   0%,
   40% {
     background: var(--color-accent-soft);
-    border-color: var(--color-accent);
+    box-shadow: inset 0 0 0 1px var(--color-accent);
   }
 }

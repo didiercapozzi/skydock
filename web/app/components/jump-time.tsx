@@ -66,7 +66,7 @@ const JumpSpan = ({
         disabled={disabled}
         onClick={open}
         title={`${tip}\n${t`This jump runs from ${start} to ${end}`}`}
-        className='flex items-center gap-2.5 rounded-md border border-line bg-transparent px-2.5 py-1.5 text-left text-ink hover:border-line-strong hover:bg-rail disabled:opacity-60'>
+        className='flex items-center gap-2.5 rounded-[10px] border border-line bg-transparent px-2.5 py-1.5 text-left text-ink hover:border-line-strong hover:bg-well disabled:opacity-60'>
         <b className='text-[20px] font-semibold tracking-[-0.02em] tabular-nums'>{hhmm(from)}</b>
         <span className='text-[11.5px] leading-normal text-ink-3'>
           {dateLabel(from)}
@@ -106,7 +106,7 @@ const JumpSpan = ({
     if (e.key === 'Escape') setDraft(null)
   }
   const field =
-    'h-[30px] min-w-0 rounded-md border border-accent bg-pane px-2 text-[12.5px] text-ink tabular-nums'
+    'h-[30px] min-w-0 rounded-[10px] border border-accent bg-pane px-2 text-[12.5px] text-ink tabular-nums'
   return (
     <span
       onClick={(e) => e.stopPropagation()}

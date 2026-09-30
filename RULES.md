@@ -504,8 +504,8 @@ stops meaning anything once filed there. A jump is filed under the day it starte
 dropping a file from another day into it does not move it, while re-timing it or merging two does,
 because the jump itself changed.
 
-**Showing files.** Every file is shown the same way: as rows — tick, thumbnail, name, crop, time, size,
-state — or as a grid of thumbnails, whichever was chosen last, for the whole board, until the window
+**Showing files.** Every file is shown the same way: as rows — tick, thumbnail, name, time, size,
+state, with what was done to the picture said under the name — or as a grid of thumbnails, whichever was chosen last, for the whole board, until the window
 is closed. Once a copy exists, the name shown is the copy's name, the one that is handed over, with the
 camera's name kept beside it. A clip shorter than the moment its thumbnail is taken at shows its first
 frame. Long lists are drawn a page at a time — forty rows or a hundred and twenty thumbnails — the
@@ -517,8 +517,8 @@ with a slider on the toolbar while thumbnails are shown, or with Ctrl or ⌘ and
 them; the size is remembered on this machine, and a bigger thumbnail asks for a sharper picture. Every day and every jump says how many videos and photos
 it holds. The pane's heading carries badges for the place — how many videos and photos — that show one
 kind, the other, or all, the choice holding across the board; all is both side by side, videos in one
-column and photos in the other, stacked on a narrow screen; as rows, each column leaves out what was
-done to the picture and the size when it is too narrow for them, and putting the details away is often
+column and photos in the other, stacked on a narrow screen; as rows, each column leaves out the size
+when it is too narrow for it, and putting the details away is often
 what makes the room for two. A badge for a kind with nothing in it is
 shown but cannot be chosen.
 
@@ -698,13 +698,15 @@ when the montage is uploaded. A project saved or removed by hand is noticed the 
 montages are not looked at; nothing of them is here.
 
 **The toolbar and the status bar.** SkyDock is drawn as the desktop tool it is: under the window's
-own title bar a toolbar, three panes side by side — the places, the list, and what is open — and a
-status bar along the bottom, in cool slate greys with one clear blue for where you are, what is picked and the button that does
-the next thing — amber for what is still to do, violet for what is processed, green for what is up —
-and a colour for each kind of place in the rail: blue for Fresh files, teal for destinations, violet
-for montages, green for the storage, amber for cameras, red for the bin. Behind the panes sit only a
-few fine contour lines, like a map of the ground seen from altitude, at the foot of the places and the
-details and in the corner of the list. Dark is the same on deep navy. The toolbar holds what is used every day: the overview,
+own title bar, three floating rounded panels side by side on a quiet backdrop — the places, the work
+(its toolbar and its list as one panel) and what is open — and a status bar along the bottom. One
+ultramarine is for where you are, what is picked and the button that does the next thing. A file's
+state is a small tinted badge: amber for what is still to do, magenta for what is processed, green
+for what is up. A colour marks each kind of place: blue for Fresh files, teal for destinations,
+violet for montages, green for the storage, amber for cameras, red for the bin. Pictures lead: a
+jump is a photograph of its own footage with its name on it, and a thumbnail is a photograph. Titles
+are set in Bricolage Grotesque, the rest in Instrument Sans, and file names in JetBrains Mono. Dark is
+the same design on deep navy. The toolbar holds what is used every day: the overview,
 scanning, rows or thumbnails, finding anything (Ctrl or ⌘ with F goes there), the keys the board
 knows, and behind _Settings_ light or dark, the language, the editing templates, the work folder and
 the history. The status bar says what is going on: the storage — whether it is connected, as whom

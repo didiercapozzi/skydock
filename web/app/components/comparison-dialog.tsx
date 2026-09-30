@@ -155,7 +155,7 @@ const ComparisonDialog = ({
     const fileUrl = getPlaybackUrl(file)
     return (
       <div className='flex flex-col gap-2'>
-        <div className='flex h-[200px] items-center justify-center overflow-hidden rounded-xl bg-[#141311]'>
+        <div className='flex h-[200px] items-center justify-center overflow-hidden rounded-[16px] bg-[#141311]'>
           {isVideoFile(file.filename) ? (
             <PreviewVideo
               src={fileUrl}
@@ -308,19 +308,19 @@ const ComparisonDialog = ({
       {showDatePopup && (
         <div
           data-merge-date-popup='true'
-          className='fixed inset-0 z-50 grid place-items-center bg-[rgba(24,24,27,0.4)] p-4'>
-          {/* drawn as every dialog is — header and footer in the window's chrome — while staying
+          className='fixed inset-0 z-50 grid place-items-center bg-[rgba(16,19,26,0.42)] p-4 dark:bg-[rgba(3,5,10,0.62)]'>
+          {/* drawn as every dialog is — a plain header and a footer on a tinted well — while staying
               inside the comparison, whose keys it shares */}
-          <div className='flex w-[380px] flex-col overflow-hidden rounded-lg bg-pane text-ink shadow-float'>
-            <h3 className='m-0 border-b border-line-strong bg-chrome px-3.5 py-2.5 text-[14px] leading-[1.3] font-semibold tracking-[-0.015em]'>
+          <div className='flex w-[380px] flex-col overflow-hidden rounded-[22px] bg-pane text-ink shadow-float'>
+            <h3 className='font-display m-0 border-b border-line-2 px-[26px] pt-5 pb-4 text-[23px] leading-[1.15] font-bold tracking-[-0.03em]'>
               {t`Merge date`}
             </h3>
-            <div className='px-4 pt-3.5'>
+            <div className='px-[26px] pt-5'>
               <p className='mb-3.5 text-[12.5px] text-ink-2'>
                 {t`Which date should the merged jump have? The chosen jump keeps its times.`}
               </p>
               <div className='space-y-2 mb-4'>
-                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-md border border-line px-3 py-2 hover:bg-rail has-checked:border-accent has-checked:bg-accent-soft'>
+                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-[12px] border border-line px-3 py-2 hover:bg-well has-checked:border-accent has-checked:bg-accent-soft'>
                   <input
                     type='radio'
                     name='merge-date'
@@ -332,7 +332,7 @@ const ComparisonDialog = ({
                     {leftGroup.label} — {getGroupDate(leftGroup)}
                   </span>
                 </label>
-                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-md border border-line px-3 py-2 hover:bg-rail has-checked:border-accent has-checked:bg-accent-soft'>
+                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-[12px] border border-line px-3 py-2 hover:bg-well has-checked:border-accent has-checked:bg-accent-soft'>
                   <input
                     type='radio'
                     name='merge-date'
@@ -344,7 +344,7 @@ const ComparisonDialog = ({
                     {rightGroup.label} — {getGroupDate(rightGroup)}
                   </span>
                 </label>
-                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-md border border-line px-3 py-2 hover:bg-rail has-checked:border-accent has-checked:bg-accent-soft'>
+                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-[12px] border border-line px-3 py-2 hover:bg-well has-checked:border-accent has-checked:bg-accent-soft'>
                   <input
                     type='radio'
                     name='merge-date'
@@ -374,7 +374,7 @@ const ComparisonDialog = ({
                 )}
               </div>
             </div>
-            <div className='flex items-center justify-end gap-2 border-t border-line-strong bg-chrome px-3.5 py-2.5'>
+            <div className='flex items-center justify-end gap-3 bg-well px-[26px] py-3.5'>
               <Mini onClick={() => setShowDatePopup(false)}>{t`Cancel`}</Mini>
               <Go
                 disabled={anchor === null}
@@ -464,14 +464,14 @@ const ComparePanel = ({
     <div
       data-compare-side={side}
       className='flex-1 flex flex-col overflow-hidden min-w-0'>
-      <div className='border-b border-line bg-rail px-3 py-2.5'>
+      <div className='border-b border-line bg-well px-3 py-2.5'>
         <div className='flex items-center justify-between mb-2'>
           <div className='flex items-center gap-2'>
             <button
               type='button'
               data-action={`group-prev-${side}`}
               onClick={onGroupPrev}
-              className='grid h-7 w-7 place-items-center rounded-[5px] border border-line-strong bg-pane text-ink-2 shadow-card hover:bg-well hover:text-ink'>
+              className='grid h-7 w-7 place-items-center rounded-[9px] border border-line-strong bg-pane text-ink-2 hover:bg-well hover:text-ink'>
               <Icon
                 name='previous'
                 size={15}
@@ -482,7 +482,7 @@ const ComparePanel = ({
               type='button'
               data-action={`group-next-${side}`}
               onClick={onGroupNext}
-              className='grid h-7 w-7 place-items-center rounded-[5px] border border-line-strong bg-pane text-ink-2 shadow-card hover:bg-well hover:text-ink'>
+              className='grid h-7 w-7 place-items-center rounded-[9px] border border-line-strong bg-pane text-ink-2 hover:bg-well hover:text-ink'>
               <Icon
                 name='next'
                 size={15}
@@ -532,10 +532,10 @@ const ComparePanel = ({
               e.preventDefault()
               onFileIndexChange(i)
             }}
-            className={`px-3 py-2 rounded-[5px] cursor-pointer transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent ${
+            className={`px-3 py-2 rounded-[9px] cursor-pointer transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent ${
               i === fileIndex
                 ? 'bg-accent-soft shadow-[inset_2px_0_0_var(--color-accent)]'
-                : 'hover:bg-rail'
+                : 'hover:bg-well'
             }`}>
             <div className='flex items-center justify-between'>
               <span className='truncate font-mono text-[11.5px]'>{f.filename}</span>

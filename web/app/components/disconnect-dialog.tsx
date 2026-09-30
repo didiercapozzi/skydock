@@ -50,7 +50,7 @@ const DisconnectDialog = ({
         </Line>
       </ul>
 
-      <p className='m-0 rounded-md bg-local-soft px-2.5 py-2 text-[12px] text-ink-2'>
+      <p className='m-0 rounded-[10px] bg-local-soft px-2.5 py-2 text-[12px] text-ink-2'>
         {t`Connecting again asks for the password — and for a code off your phone, if the account has two-step verification.`}
       </p>
     </Modal>

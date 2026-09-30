@@ -38,13 +38,13 @@ const StoragePlayer = ({ file, onClose }: { file: StorageFile; onClose: () => vo
         controls
         autoPlay
         aria-label={file.name}
-        className='max-h-[70vh] w-full rounded-md bg-black'
+        className='max-h-[70vh] w-full rounded-[14px] bg-black'
       />
     ) : (
       <img
         src={storageFileUrl(file.path)}
         alt={file.name}
-        className='max-h-[70vh] w-full rounded-md bg-black object-contain'
+        className='max-h-[70vh] w-full rounded-[14px] bg-black object-contain'
       />
     )}
     <p className='m-0 font-mono text-[11px] break-all text-ink-3'>{file.path}</p>
@@ -191,11 +191,11 @@ const StorageFolder = ({
     <section
       aria-label={t`On the storage`}
       className='mt-5'>
-      <div className='flex flex-wrap items-center gap-2 border-b border-line pt-1 pb-2'>
-        <h3 className='m-0 text-[11.5px] font-medium text-ink-3'>{t`On the storage`}</h3>
+      <div className='flex flex-wrap items-center gap-3 pt-1 pb-2'>
+        <h3 className='m-0 font-display text-[20px] font-bold tracking-[-0.03em] text-ink'>{t`On the storage`}</h3>
         {folder?.ok && <code className='font-mono text-[11.5px] text-ink-3'>{folder.dir}</code>}
         {folder?.ok && (
-          <span className='text-[11.5px] text-ink-3'>
+          <span className='text-[13.5px] font-medium text-ink-3'>
             {plural(count, { one: '# file', other: '# files' })}
             {only > 0 ? ` · ${t`${only} only there`}` : ''}
           </span>
@@ -211,11 +211,11 @@ const StorageFolder = ({
       {!folder ? (
         <p className='m-0 py-3 text-[12.5px] text-ink-3'>{t`Asking the storage…`}</p>
       ) : !folder.ok ? (
-        <p className='m-0 mt-2 rounded-md bg-local-soft px-3 py-2 text-[12.5px] text-local'>
+        <p className='m-0 mt-2 rounded-xl bg-local-soft px-3.5 py-2.5 text-[12.5px] text-local'>
           {folder.reason}
         </p>
       ) : files.length === 0 ? (
-        <p className='m-0 mt-2 rounded-lg border border-dashed border-line px-3 py-4 text-center text-[12.5px] text-ink-3'>
+        <p className='m-0 mt-2 rounded-2xl border-[1.5px] border-dashed border-line-strong px-3 py-5 text-center text-[12.5px] text-ink-3'>
           {t`Nothing up there yet — what is uploaded from here is listed once it is.`}
         </p>
       ) : (
@@ -233,20 +233,22 @@ const StorageFolder = ({
             return (
               <li
                 key={file.path}
-                className='flex h-[50px] items-center gap-2 border-b border-line-2 last:border-b-0'>
+                className='flex h-[60px] items-center gap-2'>
                 <button
                   type='button'
                   disabled={!playable}
                   onClick={() => setPlaying(file)}
                   title={playable ? t`Play it from the storage` : t`Kept on the storage`}
-                  className='flex h-full min-w-0 flex-1 items-center gap-3.5 rounded-md border-0 bg-transparent px-1 text-left enabled:hover:bg-rail disabled:cursor-default'>
+                  className='flex h-full min-w-0 flex-1 items-center gap-3.5 rounded-[13px] border-0 bg-transparent px-3 text-left enabled:hover:bg-well disabled:cursor-default'>
                   <Icon
                     name='storage'
                     size={15}
                     className='text-ink-3'
                   />
                   <span className='flex min-w-0 flex-1 flex-col'>
-                    <span className='truncate text-[13px] font-medium text-ink'>{file.name}</span>
+                    <span className='truncate font-mono text-[12.5px] tracking-[-0.02em] text-ink'>
+                      {file.name}
+                    </span>
                     <span
                       title={
                         file.shot
@@ -255,7 +257,7 @@ const StorageFolder = ({
                             ? t`Put on the storage then — its name does not say when it was shot`
                             : undefined
                       }
-                      className='truncate text-[11.5px] text-ink-3'>
+                      className='truncate text-[12px] font-medium text-ink-3'>
                       {[
                         i18n._(KIND[file.kind]),
                         file.size === null ? null : formatSize(file.size),
@@ -267,10 +269,10 @@ const StorageFolder = ({
                   </span>
                   {hereToo && (
                     <span
-                      className={`inline-flex h-5 flex-none items-center gap-[5px] rounded px-[7px] text-[11.5px] font-medium whitespace-nowrap before:size-1.5 before:rounded-full before:content-[''] ${
+                      className={`inline-flex h-[22px] flex-none items-center gap-1.5 rounded-full px-[9px] text-[11.5px] font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:content-[''] ${
                         here
                           ? 'bg-up-soft text-up before:bg-current'
-                          : 'border border-line text-up before:shadow-[inset_0_0_0_1.5px_currentColor]'
+                          : 'bg-well text-up before:shadow-[inset_0_0_0_1.5px_currentColor]'
                       }`}>
                       {here ? t`Here too` : t`Only there`}
                     </span>

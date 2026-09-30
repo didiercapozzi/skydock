@@ -40,7 +40,7 @@ const statusName = (status: ShownStatus) => i18n._(LABELS[status])
 const StatusChip = ({ status }: { status: ShownStatus }) => (
   <span
     title={i18n._(TITLES[status])}
-    className={`inline-flex h-5 w-max items-center gap-[5px] rounded px-[7px] text-[11.5px] font-medium whitespace-nowrap capitalize before:size-1.5 before:rounded-full before:content-[''] ${CHIP[status]}`}>
+    className={`inline-flex h-[22px] w-max items-center gap-1.5 rounded-full px-[9px] text-[11.5px] font-bold whitespace-nowrap capitalize before:size-1.5 before:rounded-full before:content-[''] ${CHIP[status]}`}>
     {i18n._(LABELS[status])}
   </span>
 )

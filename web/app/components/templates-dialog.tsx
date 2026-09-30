@@ -46,10 +46,10 @@ const TemplateRow = ({
   const missing = template.missing.join(', ')
   return (
     <div
-      className={`flex flex-col gap-1 rounded-md border px-3 py-2 ${
+      className={`flex flex-col gap-1 rounded-[10px] border px-3 py-2 ${
         picked
           ? 'border-accent bg-accent-soft shadow-[0_0_0_1px_var(--color-accent)]'
-          : 'border-line bg-pane shadow-card'
+          : 'border-line bg-pane'
       }`}>
       {/* the row picks the template; saying which one is the usual is its own thing to press, so it
           sits beside the label rather than inside it, where pressing it would pick as well */}
@@ -70,13 +70,13 @@ const TemplateRow = ({
             {plural(template.assets, { one: '# file', other: '# files' })}
           </span>
           {template.missing.length === 0 && template.assets > 0 && (
-            <span className='inline-flex h-5 items-center rounded bg-up-soft px-[7px] text-[11.5px] font-medium text-up'>
+            <span className='inline-flex h-5 items-center rounded bg-up-soft px-[7px] text-[11.5px] font-bold text-up'>
               {t`every file here`}
             </span>
           )}
         </label>
         {template.byDefault && (
-          <span className='inline-flex h-5 items-center rounded bg-accent-soft px-[7px] text-[11.5px] font-medium text-accent-ink'>
+          <span className='inline-flex h-5 items-center rounded bg-accent-soft px-[7px] text-[11.5px] font-bold text-accent-ink'>
             {t`the usual one`}
           </span>
         )}
@@ -87,7 +87,7 @@ const TemplateRow = ({
         )}
       </span>
       {template.missing.length > 0 && (
-        <span className='rounded-md bg-local-soft px-2.5 py-1.5 text-[12px] text-ink-2'>
+        <span className='rounded-[10px] bg-local-soft px-2.5 py-1.5 text-[12px] text-ink-2'>
           {plural(template.missing.length, {
             one: `# file it uses is not here: ${missing}. The edit can start without it, with a hole where each belongs.`,
             other: `# files it uses are not here: ${missing}. The edit can start without them, with a hole where each belongs.`
@@ -243,13 +243,13 @@ const TemplatesDialog = ({
       {problem && (
         <p
           role='alert'
-          className='m-0 rounded-md bg-local-soft px-3 py-2 text-[12.5px] text-local'>
+          className='m-0 rounded-[10px] bg-local-soft px-3 py-2 text-[12.5px] text-local'>
           {problem}
         </p>
       )}
 
-      <section className='flex flex-col gap-2 rounded-md border border-line bg-rail px-3 py-2.5'>
-        <h4 className='m-0 text-[11.5px] font-medium text-ink-3'>{t`Bring a template in`}</h4>
+      <section className='flex flex-col gap-2 rounded-[10px] border border-line bg-well px-3 py-2.5'>
+        <h4 className='m-0 text-[11.5px] font-bold text-ink-3'>{t`Bring a template in`}</h4>
         <p className='m-0 text-[12px] text-ink-2'>
           <b>{t`The folder kdenlive left`}</b>{' '}
           {t`— Project › Archive project, which writes the project with its`} <i>images</i> {t`and`}{' '}

@@ -96,7 +96,7 @@ const BinFiles = ({
       className='flex flex-col gap-3'>
       <div className='flex min-h-[30px] flex-wrap items-center gap-2'>
         {answered && (
-          <span className='text-[12.5px] text-ink-3'>
+          <span className='text-[13.5px] font-medium text-ink-3'>
             {plural(count, { one: '# file', other: '# files' })} ·{' '}
             {formatSize(files.reduce((n, f) => n + f.size, 0))}
           </span>
@@ -125,7 +125,7 @@ const BinFiles = ({
         </Go>
       </div>
       {answered && (
-        <p className='m-0 flex items-center gap-[9px] rounded-md border border-line bg-rail px-2.5 py-[7px] text-[12.5px] text-ink-2'>
+        <p className='m-0 flex items-center gap-2.5 rounded-xl bg-well px-3 py-2 text-[12.5px] font-medium text-ink-2'>
           <Icon
             name='bin'
             size={14}
@@ -140,14 +140,14 @@ const BinFiles = ({
       {problem && (
         <p
           role='alert'
-          className='m-0 rounded-md bg-local-soft px-3 py-2 text-[12.5px] text-local'>
+          className='m-0 rounded-xl bg-local-soft px-3.5 py-2.5 text-[12.5px] text-local'>
           {problem}
         </p>
       )}
       {answered === null && !problem ? (
         <p className='m-0 px-0.5 text-[12.5px] text-ink-3'>{t`Looking in the bin…`}</p>
       ) : answered && batches.length === 0 ? (
-        <p className='m-0 rounded-md border border-dashed border-line px-3 py-4 text-center text-[12.5px] text-ink-3'>
+        <p className='m-0 rounded-2xl border-[1.5px] border-dashed border-line-strong px-3 py-5 text-center text-[12.5px] text-ink-3'>
           {t`The bin is empty.`}
         </p>
       ) : (
@@ -155,7 +155,7 @@ const BinFiles = ({
           <thead>
             <tr>
               <th className={`${TH} w-[36px]`} />
-              <th className={`${TH} w-[88px]`} />
+              <th className={`${TH} w-[112px]`} />
               <th className={TH}>{t`File`}</th>
               <th className={`${TH} w-[160px]`}>{t`Shot`}</th>
               <th className={`${TH} w-[84px] text-right`}>{t`Size`}</th>
@@ -168,10 +168,10 @@ const BinFiles = ({
                 <th
                   colSpan={5}
                   scope='colgroup'
-                  className='border-b border-line-2 px-2.5 pt-4 pb-1.5 text-left font-normal'>
-                  <h3 className='m-0 truncate text-[12.5px] font-semibold text-ink'>
+                  className='px-3 pt-5 pb-1.5 text-left font-normal'>
+                  <h3 className='m-0 truncate font-display text-[16px] font-bold tracking-[-0.02em] text-ink'>
                     {fromWhere(batch)}
-                    <span className='font-normal text-ink-3'>
+                    <span className='font-sans text-[12.5px] font-medium tracking-normal text-ink-3'>
                       {' '}
                       · {dateLabel(batch.at)} {hhmm(batch.at)}
                     </span>
@@ -186,7 +186,7 @@ const BinFiles = ({
                   onClick={(e) => {
                     if (!(e.target instanceof HTMLInputElement)) toggle(file)
                   }}
-                  className={`cursor-pointer ${picked.has(file.path) ? 'bg-accent-soft' : 'hover:bg-rail'}`}>
+                  className={`cursor-pointer ${picked.has(file.path) ? 'bg-accent-soft' : 'hover:bg-well'}`}>
                   <td className={TD}>
                     <Tick
                       label={pickLabel(file.name)}
@@ -200,10 +200,12 @@ const BinFiles = ({
                       alt=''
                       loading='lazy'
                       decoding='async'
-                      className='block h-9 w-16 rounded bg-well object-cover'
+                      className='block h-11 w-[78px] rounded-[9px] bg-well object-cover'
                     />
                   </td>
-                  <td className={`${TD} truncate font-medium text-ink`}>{file.name}</td>
+                  <td className={`${TD} truncate font-mono text-[12.5px] font-normal text-ink`}>
+                    {file.name}
+                  </td>
                   <td className={`${TD} text-[12px] text-ink-2 tabular-nums`}>
                     {dateLabel(file.mtime)} {hhmm(file.mtime)}
                   </td>

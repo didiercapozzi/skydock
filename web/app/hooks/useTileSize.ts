@@ -3,7 +3,7 @@ import { remembered } from './remembered'
 
 /* How big the thumbnails are drawn, remembered on this machine (RULES, The board): from a wall of
    small ones to see a whole card at once, to large ones to tell two near-identical shots apart. */
-const TILE_SIZE = { min: 64, max: 320, step: 8, fallback: 84 }
+const TILE_SIZE = { min: 64, max: 320, step: 8, fallback: 160 }
 
 const tileSizeSchema = z.coerce.number().int().min(TILE_SIZE.min).max(TILE_SIZE.max)
 

@@ -14,7 +14,7 @@ import { localeDate } from './utils'
 
 /* a state beside a montage, as a small tinted badge like a file's */
 const TAG =
-  'inline-flex h-5 items-center gap-[5px] rounded px-[7px] text-[11.5px] font-medium whitespace-nowrap'
+  'inline-flex h-[22px] items-center gap-1.5 rounded-full px-2.5 text-[11.5px] font-bold whitespace-nowrap'
 
 /* the day of the jump, 01.08.2026, read the way the list writes it */
 const jumpDay = (day: string) => day.replace(/^0/, '').replace(/\.0/, '.')
@@ -61,24 +61,24 @@ const Row = ({
   const backupName = backup ? lastSegment(backup) : ''
   const originals = backup ?? ''
   return (
-    <div className='border-b border-line-2 last:border-b-0'>
-      <div className='flex min-h-[50px] flex-wrap items-center gap-x-3.5 gap-y-1 py-2'>
+    <div className=''>
+      <div className='flex min-h-[60px] flex-wrap items-center gap-x-3.5 gap-y-1 rounded-[13px] px-3 py-2 hover:bg-well'>
         <Icon
           name='montage'
           size={15}
           className='text-ink-3'
         />
         <span className='min-w-[150px] flex-[1_1_160px]'>
-          <b className='text-[13px] font-medium text-ink'>
+          <b className='text-[14px] font-semibold text-ink'>
             {entry.firstname} {entry.lastname}
           </b>
-          <span className='ml-2 text-[11.5px] text-ink-3'>{t`jump ${day}`}</span>
+          <span className='ml-2 text-[12px] font-medium text-ink-3'>{t`jump ${day}`}</span>
         </span>
-        <span className='text-[11.5px] text-ink-3'>
+        <span className='text-[12px] font-medium text-ink-3'>
           {plural(videos, { one: '# video', other: '# videos' })} ·{' '}
           {plural(photos, { one: '# photo', other: '# photos' })}
         </span>
-        <span className='text-[11.5px] text-ink-3'>{t`uploaded ${uploadedOn}`}</span>
+        <span className='text-[12px] font-medium text-ink-3'>{t`uploaded ${uploadedOn}`}</span>
         {entry.emailed ? (
           <span
             title={emailedTo ? t`Emailed to ${emailedTo}` : undefined}
@@ -202,9 +202,9 @@ const StorageList = ({
   const problem = storage.problem ?? ''
   return (
     <section className='mt-5'>
-      <div className='flex flex-wrap items-center gap-2 border-b border-line pt-1 pb-2'>
-        <h3 className='m-0 text-[11.5px] font-medium text-ink-3'>{t`On the storage`}</h3>
-        <span className='text-[11.5px] text-ink-3'>
+      <div className='flex flex-wrap items-center gap-3 pt-1 pb-2'>
+        <h3 className='m-0 font-display text-[20px] font-bold tracking-[-0.03em] text-ink'>{t`On the storage`}</h3>
+        <span className='text-[13.5px] font-medium text-ink-3'>
           {plural(count, { one: '# montage', other: '# montages' })}
           {waiting > 0 ? ` · ${t`${waiting} not emailed yet`}` : ''}
         </span>
@@ -212,7 +212,7 @@ const StorageList = ({
       </div>
       {/* a board scanned again from nothing: the storage remembers what it has forgotten */}
       {forgotten.length > 1 && (
-        <p className='m-0 mt-2 flex flex-wrap items-center gap-2 rounded-md border border-line bg-rail px-2.5 py-[7px] text-[12.5px] text-ink-2'>
+        <p className='m-0 mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-well px-3 py-2 text-[12.5px] text-ink-2'>
           <span className='flex-1'>
             {t`${lostCount} montages on this list have their files on this board, waiting to be sorted — this board has forgotten them.`}
           </span>
@@ -222,11 +222,11 @@ const StorageList = ({
         </p>
       )}
       {storage.problem ? (
-        <p className='m-0 mt-2 rounded-md bg-local-soft px-3 py-2 text-[12.5px] text-local'>
+        <p className='m-0 mt-2 rounded-xl bg-local-soft px-3.5 py-2.5 text-[12.5px] text-local'>
           {t`The storage’s list of montages could not be read: ${problem}`}
         </p>
       ) : storage.montages.length === 0 ? (
-        <p className='m-0 mt-2 rounded-lg border border-dashed border-line px-3 py-4 text-center text-[12.5px] text-ink-3'>
+        <p className='m-0 mt-2 rounded-2xl border-[1.5px] border-dashed border-line-strong px-3 py-5 text-center text-[12.5px] text-ink-3'>
           {t`No montage uploaded yet — each one is listed here once it is.`}
         </p>
       ) : (

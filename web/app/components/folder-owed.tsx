@@ -18,12 +18,12 @@ const Stat = ({
   first?: boolean
   children: string
 }) => (
-  <span className={`flex flex-col gap-0.5 ${first ? 'pr-3.5' : 'border-l border-line-2 px-3.5'}`}>
+  <span className={`flex flex-col gap-0.5 ${first ? 'pr-3.5' : 'border-l border-line px-3.5'}`}>
     <span
-      className={`text-[22px] leading-none font-semibold tracking-[-0.02em] tabular-nums ${n > 0 ? tone : 'text-ink-3'}`}>
+      className={`font-display text-[26px] leading-none font-bold tracking-[-0.03em] tabular-nums ${n > 0 ? tone : 'text-ink-3'}`}>
       {n}
     </span>{' '}
-    <span className='text-[11.5px] text-ink-3'>{children}</span>
+    <span className='text-[12px] font-medium text-ink-3'>{children}</span>
   </span>
 )
 
@@ -115,7 +115,7 @@ const FolderOwed = ({
     const unsent = count('processed')
     const onStorage = count('uploaded')
     return (
-      <div className='flex flex-wrap items-center gap-x-2 gap-y-2 rounded-xl border border-line px-4 py-3'>
+      <div className='flex flex-wrap items-center gap-x-2 gap-y-2 rounded-2xl bg-well px-4 py-3.5'>
         <Stat
           n={unprocessed}
           tone='text-local'
@@ -132,12 +132,12 @@ const FolderOwed = ({
           tone='text-up'>
           {t`on the storage`}
         </Stat>
-        <span className='flex min-w-[200px] flex-1 flex-col gap-1 border-l border-line-2 px-3 text-[11.5px] leading-normal text-ink-3'>
+        <span className='flex min-w-[200px] flex-1 flex-col gap-1 border-l border-line px-3 text-[11.5px] leading-normal text-ink-3'>
           {t`Every file in the folder that needs it, whatever is filtered or picked. Upload opens once all are processed.`}
           {folder && (
             <span className='flex flex-wrap items-center gap-1.5'>
               {t`Goes to`}
-              <code className='rounded-[3px] bg-well px-[5px] py-px font-mono text-[11px] text-ink'>
+              <code className='rounded-md bg-pane px-1.5 py-px font-mono text-[11px] text-ink'>
                 {folder.path ?? t`no folder yet`}
               </code>
               <button

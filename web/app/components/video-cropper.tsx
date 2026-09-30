@@ -165,9 +165,15 @@ const VideoCropper = ({
     const time = timeFromPosition(e.clientX)
     seekTo(time)
     if (dragging === 'start') {
-      onCropChange({ cropStart: clamp(time, 0, cropEnd ?? safeDuration), cropEnd })
+      onCropChange({
+        cropStart: clamp(time, 0, cropEnd ?? safeDuration),
+        cropEnd
+      })
     } else if (dragging === 'end') {
-      onCropChange({ cropStart, cropEnd: clamp(time, cropStart ?? 0, safeDuration) })
+      onCropChange({
+        cropStart,
+        cropEnd: clamp(time, cropStart ?? 0, safeDuration)
+      })
     } else if (dragging !== 'playhead') {
       onMomentChange?.(dragging, clamp(time, 0, safeDuration))
     }
@@ -222,7 +228,7 @@ const VideoCropper = ({
             type='button'
             data-action='reset-zoom'
             onClick={handleBarResetZoom}
-            className='rounded-[4px] border border-line-strong bg-pane px-1.5 font-sans text-[11px] leading-[18px] font-medium text-ink-2 hover:bg-well hover:text-ink'>
+            className='rounded-[6px] bg-well px-2 font-sans text-[11px] leading-[20px] font-semibold text-ink-2 hover:bg-line hover:text-ink'>
             {t`Reset`}
           </button>
         )}
@@ -245,7 +251,7 @@ const VideoCropper = ({
         onLostPointerCapture={() => {
           draggingRef.current = null
         }}
-        className='relative h-12 cursor-crosshair overflow-hidden rounded-md border border-line-strong bg-well'>
+        className='relative h-12 cursor-crosshair overflow-hidden rounded-[12px] bg-well'>
         {thumbs.length > 0 && (
           <div
             data-thumbs='true'
@@ -335,7 +341,9 @@ const VideoCropper = ({
                   set ? '' : 'opacity-60 hover:opacity-100'
                 }`}
                 /* centred on its moment, but never half off the bar at either edge */
-                style={{ left: `clamp(0px, calc(${pct}% - 6px), calc(100% - 12px))` }}
+                style={{
+                  left: `clamp(0px, calc(${pct}% - 6px), calc(100% - 12px))`
+                }}
               />
             )
           })}

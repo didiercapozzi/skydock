@@ -50,8 +50,8 @@ const Part = ({
   aside?: React.ReactNode
   children: React.ReactNode
 }) => (
-  <section className='flex flex-col gap-2 border-b border-line px-4 py-3 last:border-b-0'>
-    <h5 className='m-0 flex items-center justify-between text-[11.5px] font-medium text-ink-3'>
+  <section className='flex flex-col gap-2 px-5 py-3'>
+    <h5 className='m-0 flex items-center justify-between text-[11px] font-bold tracking-[0.08em] text-ink-3 uppercase'>
       {title}
       {aside}
     </h5>
@@ -70,7 +70,7 @@ const V = ({ children }: { children: React.ReactNode }) => (
 
 /* a key on the keyboard that does the same as the button it sits in */
 const Key = ({ children }: { children: React.ReactNode }) => (
-  <span className='rounded-[3px] border border-line px-1 font-sans text-[10.5px] leading-4 font-medium text-ink-3'>
+  <span className='rounded-[5px] bg-well px-1.5 font-sans text-[10.5px] leading-4 font-semibold text-ink-3'>
     {children}
   </span>
 )
@@ -93,7 +93,7 @@ const Ghost = ({
     aria-label={label}
     title={title}
     onClick={onClick}
-    className='inline-flex h-7 items-center gap-1.5 rounded-[5px] px-[9px] text-[12.5px] font-medium whitespace-nowrap text-ink hover:bg-well'>
+    className='inline-flex h-8 items-center gap-1.5 rounded-[10px] px-[10px] text-[12.5px] font-semibold whitespace-nowrap text-ink hover:bg-well'>
     {children}
   </button>
 )
@@ -119,7 +119,7 @@ const Choice = ({
     aria-label={label}
     title={title}
     onClick={onClick}
-    className={`inline-flex items-center justify-center gap-1.5 rounded-[5px] px-[8px] text-[12px] font-medium whitespace-nowrap ${
+    className={`inline-flex items-center justify-center gap-1.5 rounded-[9px] px-[9px] text-[12px] font-semibold whitespace-nowrap ${
       on
         ? 'bg-pane text-ink shadow-[0_1px_2px_rgba(24,24,27,0.08),0_0_0_1px_rgba(24,24,27,0.04)]'
         : 'text-ink-2 hover:text-ink'
@@ -143,7 +143,7 @@ const Adj = ({
   children: string
 }) => (
   <span
-    className={`rounded-[4px] border border-line px-[5px] text-[11px] font-medium text-ink-2 ${
+    className={`rounded-[6px] px-[6px] text-[11px] font-semibold text-ink-2 ${
       changed ? 'border-dashed bg-transparent' : saved ? 'bg-well' : 'bg-well opacity-40'
     }`}>
     {children}
@@ -173,12 +173,22 @@ const RATIOS: RatioOption[] = [
     ratio: null,
     title: msg`Whole frame — the whole picture goes out as shot`
   },
-  { label: 'Same', name: msg`Same`, ratio: null, title: msg`Keep the shape this clip already has` },
+  {
+    label: 'Same',
+    name: msg`Same`,
+    ratio: null,
+    title: msg`Keep the shape this clip already has`
+  },
   { label: '9:16', ratio: 9 / 16, title: msg`Upright, for a phone` },
   { label: '4:5', ratio: 4 / 5, title: msg`Portrait` },
   { label: '1:1', ratio: 1, title: msg`Square` },
   { label: '16:9', ratio: 16 / 9, title: msg`Widescreen` },
-  { label: 'Free', name: msg`Free`, ratio: null, title: msg`Drag the corners to any shape` }
+  {
+    label: 'Free',
+    name: msg`Free`,
+    ratio: null,
+    title: msg`Drag the corners to any shape`
+  }
 ]
 
 /* Whether this browser plays H.264, the format proxies are made in. Some do not — a browser built
@@ -358,7 +368,12 @@ const PreviewDrawer = ({
     onFrameChange(
       on
         ? { ...(rest ?? { x: 0, y: 0, width: 1, height: 1 }), fill: 'blur' }
-        : rest && { x: rest.x, y: rest.y, width: rest.width, height: rest.height }
+        : rest && {
+            x: rest.x,
+            y: rest.y,
+            width: rest.width,
+            height: rest.height
+          }
     )
   }
 
@@ -527,17 +542,17 @@ const PreviewDrawer = ({
   return (
     <div
       onClick={(e) => e.target === e.currentTarget && leave(onClose)}
-      className='fixed inset-0 z-40 grid place-items-center bg-[rgba(24,24,27,0.4)] p-4'>
+      className='fixed inset-0 z-40 grid place-items-center bg-[rgba(16,19,26,0.42)] p-4'>
       <div
         data-preview-drawer='true'
         role='dialog'
         aria-modal='true'
         aria-label={t`Preview`}
-        className='relative flex h-[92vh] max-h-full w-[min(1360px,94vw)] flex-col overflow-hidden rounded-lg bg-pane text-ink shadow-float'>
+        className='relative flex h-[92vh] max-h-full w-[min(1360px,94vw)] flex-col overflow-hidden rounded-[22px] bg-pane text-ink shadow-float'>
         {/* head and foot stay put; only the body scrolls, so Save is never below the fold */}
-        <div className='flex flex-none flex-wrap items-center gap-2 border-b border-line-strong bg-chrome px-3.5 py-2.5'>
+        <div className='flex flex-none flex-wrap items-center gap-2 border-b border-line-2 bg-pane px-5 py-3'>
           <div className='flex min-w-0 flex-col gap-1'>
-            <h2 className='m-0 truncate text-[14px] leading-[1.3] font-semibold tracking-[-0.015em]'>
+            <h2 className='m-0 truncate font-display text-[19px] leading-[1.25] font-bold tracking-[-0.03em]'>
               {file.filename}
             </h2>
             <span className='truncate text-[12px] text-ink-3'>{facts}</span>
@@ -600,7 +615,7 @@ const PreviewDrawer = ({
             aria-hidden='true'
             title={t`Close (Esc)`}
             onClick={onClose}
-            className='grid h-7 w-7 flex-none place-items-center rounded-[5px] text-ink-2 hover:bg-well hover:text-ink'>
+            className='grid h-7 w-7 flex-none place-items-center rounded-[9px] text-ink-2 hover:bg-well hover:text-ink'>
             <Icon name='close' />
           </button>
         </div>
@@ -653,7 +668,10 @@ const PreviewDrawer = ({
                       if (currentTime > 0 && Math.abs(v.currentTime - currentTime) > 0.05)
                         scrub.seek(v, currentTime)
                       if (v.videoWidth && v.videoHeight)
-                        setShape({ width: v.videoWidth, height: v.videoHeight })
+                        setShape({
+                          width: v.videoWidth,
+                          height: v.videoHeight
+                        })
                       /* sound and no picture: the browser has no decoder for this video */ else
                         wontPlay(playUrl)
                     }}
@@ -668,7 +686,10 @@ const PreviewDrawer = ({
                     onLoad={(e) => {
                       const img = e.currentTarget
                       if (img.naturalWidth && img.naturalHeight)
-                        setShape({ width: img.naturalWidth, height: img.naturalHeight })
+                        setShape({
+                          width: img.naturalWidth,
+                          height: img.naturalHeight
+                        })
                     }}
                     style={pictureStyle(shape, rotation)}
                     className='absolute top-1/2 left-1/2 rounded-[3px] transition-transform duration-150'
@@ -729,7 +750,7 @@ const PreviewDrawer = ({
               {big && (
                 <div className='absolute top-3 right-3 flex items-center gap-2'>
                   {shrunk && (
-                    <span className='rounded-md bg-black/70 px-2 py-1 text-[11.5px] text-white/80'>
+                    <span className='rounded-[8px] bg-black/70 px-2 py-1 text-[11.5px] text-white/80'>
                       {t`This browser has no decoder for the clip itself — the small copy is playing`}
                     </span>
                   )}
@@ -870,7 +891,7 @@ const PreviewDrawer = ({
                               type='button'
                               onClick={() => onSeek(at)}
                               title={t`Go to the ${moment}`}
-                              className='inline-flex h-6 items-center gap-1.5 rounded-[5px] border border-line-strong bg-pane px-2 text-[11.5px] text-ink-2 shadow-card hover:bg-well'>
+                              className='inline-flex h-6 items-center gap-1.5 rounded-[8px] bg-well px-2 text-[11.5px] font-semibold text-ink-2 hover:bg-line'>
                               {moment}{' '}
                               <b className='font-mono font-medium text-ink tabular-nums'>
                                 {clock(at)}
@@ -1141,7 +1162,7 @@ const PreviewDrawer = ({
           </div>
         </div>
 
-        <div className='flex flex-none flex-wrap items-center gap-2 border-t border-line-strong bg-chrome px-3.5 py-2.5'>
+        <div className='flex flex-none flex-wrap items-center gap-2 border-t border-line-2 bg-well px-5 py-3'>
           {locked ? (
             <span className='inline-flex items-center gap-1.5 text-[11.5px] text-ink-2'>
               <Icon

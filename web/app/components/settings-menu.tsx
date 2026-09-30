@@ -5,7 +5,7 @@ import type { IconName } from './icons'
 
 /* a tool on the toolbar: no frame until the pointer is over it */
 const TOOL =
-  'inline-flex h-[30px] items-center gap-1.5 rounded-[5px] border border-transparent px-[9px] text-[12.5px] font-medium text-ink hover:bg-line disabled:opacity-40'
+  'inline-flex h-[34px] items-center gap-2 rounded-[10px] border-0 px-[11px] text-[13.5px] font-semibold text-ink hover:bg-well disabled:opacity-40'
 
 /* A button that opens a small panel of choices under it. It closes on Escape, on a click outside
    it, and once something in it is chosen. */
@@ -56,7 +56,7 @@ const Menu = ({
           aria-label={label}
           title={label}
           onClick={() => setOpen(!open)}
-          className={`${TOOL} w-[30px] justify-center px-0 ${open ? 'bg-line' : ''}`}>
+          className={`${TOOL} w-[34px] justify-center px-0 ${open ? 'bg-well' : ''}`}>
           <Icon
             name={icon}
             className='text-ink-2'
@@ -67,7 +67,7 @@ const Menu = ({
           type='button'
           aria-expanded={open}
           onClick={() => setOpen(!open)}
-          className='inline-flex h-7 w-full items-center justify-center gap-1.5 rounded-[5px] border border-line-strong bg-pane px-[9px] text-[12.5px] font-medium shadow-card hover:bg-well'>
+          className='inline-flex h-[30px] w-full items-center justify-center gap-1.5 rounded-[10px] bg-well px-3 text-[12.5px] font-bold hover:bg-line'>
           {lead && (
             <Icon
               name={lead}
@@ -82,7 +82,7 @@ const Menu = ({
         <div
           role='group'
           aria-label={label}
-          className={`absolute top-full z-50 mt-1.5 flex max-h-[60vh] w-max max-w-[min(300px,calc(100vw-2rem))] min-w-[200px] flex-col gap-3 overflow-y-auto rounded-md bg-pane p-3 shadow-float ${
+          className={`absolute top-full z-50 mt-1.5 flex max-h-[60vh] w-max max-w-[min(300px,calc(100vw-2rem))] min-w-[200px] flex-col gap-3 overflow-y-auto rounded-[16px] bg-pane p-3.5 shadow-float ${
             side === 'right' ? 'right-0' : 'left-0'
           }`}>
           {children(close)}
@@ -105,7 +105,7 @@ const SettingsMenu = ({ children }: { children: (close: () => void) => React.Rea
 
 /* one line of the menu: what it is, and the control for it */
 const SettingsRow = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div className='flex items-center justify-between gap-3 text-[12.5px] text-ink-2'>
+  <div className='flex items-center justify-between gap-3 text-[12.5px] font-semibold text-ink-2'>
     <span>{label}</span>
     {children}
   </div>
@@ -125,7 +125,7 @@ const MenuItem = ({
     type='button'
     title={title}
     onClick={onClick}
-    className='w-full rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-[12.5px] text-ink hover:bg-line-2'>
+    className='w-full rounded-[9px] border-0 bg-transparent px-2.5 py-1.5 text-left text-[12.5px] font-semibold text-ink hover:bg-well'>
     {children}
   </button>
 )

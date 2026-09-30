@@ -39,7 +39,7 @@ const STANDING = {
   binned: {
     label: msg`in the bin`,
     many: msg`here, put in the bin`,
-    tone: 'bg-well text-bin before:bg-current',
+    tone: 'bg-bin-soft text-bin before:bg-current',
     ink: 'text-bin',
     title: msg`Copied here and then put in the bin — can be deleted from the camera`
   },
@@ -58,8 +58,9 @@ const STATES = ['missing', 'copied', 'binned', 'stored'] as const
 /* A list of files as the board draws every table: a quiet header on the rail, rows of an even
    height divided by a hairline. Shared with the bin, which is the same kind of list. */
 const TH =
-  'border-y border-line bg-rail px-2.5 py-2 text-left text-[11.5px] font-medium whitespace-nowrap text-ink-3'
-const TD = 'h-[46px] border-b border-line-2 px-2.5 whitespace-nowrap'
+  'px-3 py-2 text-left text-[11px] font-bold tracking-[0.07em] whitespace-nowrap text-ink-3 uppercase'
+const TD =
+  'h-[52px] border-t border-line-2 px-3 font-semibold whitespace-nowrap first:rounded-l-[13px] last:rounded-r-[13px]'
 
 /* a file's box, drawn the way the board's own lists draw it and still a checkbox to whoever reads
    the page out */
@@ -72,17 +73,17 @@ const Tick = ({
   checked: boolean
   onChange: () => void
 }) => (
-  <span className='relative grid size-[15px] place-items-center'>
+  <span className='relative grid size-[18px] place-items-center'>
     <input
       type='checkbox'
       aria-label={label}
       checked={checked}
       onChange={onChange}
-      className='peer m-0 size-[15px] cursor-pointer appearance-none rounded border-[1.5px] border-ink-3/55 bg-pane checked:border-accent checked:bg-accent hover:border-accent'
+      className='peer m-0 size-[18px] cursor-pointer appearance-none rounded-[6px] border-[1.5px] border-ink-3 bg-transparent opacity-80 checked:border-accent checked:bg-accent checked:opacity-100 hover:border-accent'
     />
     <Icon
       name='check'
-      size={10}
+      size={11}
       weight={3.5}
       className='pointer-events-none absolute text-white opacity-0 peer-checked:opacity-100'
     />
@@ -122,7 +123,7 @@ const Confirm = ({
       <p className='m-0 text-[12.5px] text-ink-2'>
         {t`${plural(count, { one: '# file', other: '# files' })} — ${size} — come off the camera’s card. Each is first read through and matched, by its bytes and not its name, with what the storage holds or with its copy in the bin; if any one does not match, nothing at all is deleted, and it says which.`}
       </p>
-      <p className='m-0 rounded-r-md border-l-[3px] border-local bg-local-soft px-3 py-[9px] text-[12px] text-ink-2'>
+      <p className='m-0 rounded-xl bg-local-soft px-3.5 py-2.5 text-[12px] text-ink-2'>
         {t`They are not erased: they go to the bin,`} <span className='font-mono'>.trash/</span>
         {t`, kept as they sat on the card, and stay there until it is emptied by hand.`}
       </p>
@@ -271,14 +272,14 @@ const CameraFiles = ({
       className='flex flex-col gap-3'>
       {/* how far the card has got, counted — and, beside it, the one thing to do next about it */}
       {listing && (
-        <div className='flex items-center rounded-xl border border-line py-3'>
+        <div className='flex items-center rounded-2xl bg-well py-3.5'>
           {STATES.map((state, at) => (
             <span
               key={state}
               title={i18n._(STANDING[state].title)}
-              className={`flex flex-col gap-0.5 px-[22px] text-[11.5px] text-ink-3 ${at > 0 ? 'border-l border-line-2' : ''}`}>
+              className={`flex flex-col gap-0.5 px-[22px] text-[12px] font-medium text-ink-3 ${at > 0 ? 'border-l border-line' : ''}`}>
               <b
-                className={`text-[22px] leading-none font-semibold tracking-[-0.02em] tabular-nums ${STANDING[state].ink}`}>
+                className={`font-display text-[26px] leading-none font-bold tracking-[-0.03em] tabular-nums ${STANDING[state].ink}`}>
                 {files.filter((f) => f.state === state).length}
               </b>{' '}
               {i18n._(STANDING[state].many)}
@@ -302,14 +303,14 @@ const CameraFiles = ({
       )}
       <div className='flex min-h-[30px] flex-wrap items-center gap-2'>
         {listing && (
-          <span className='text-[12.5px] text-ink-3'>
+          <span className='text-[13.5px] font-medium text-ink-3'>
             {plural(count, { one: '# file', other: '# files' })} · {size}
           </span>
         )}
         {looking && (
           <span
             title={t`SkyDock is going over the camera, file by file, as it copies it. What it has been over is listed here; the rest follow on their own.`}
-            className='inline-flex h-5 items-center rounded bg-accent-soft px-[7px] text-[11.5px] font-medium text-accent-ink'>
+            className='inline-flex h-[22px] items-center rounded-full bg-accent-soft px-2.5 text-[11.5px] font-bold text-accent-ink'>
             {t`still going over the camera — ${plural(count, { one: '# file', other: '# files' })} so far`}
           </span>
         )}
@@ -319,7 +320,7 @@ const CameraFiles = ({
         {listing?.over === 'mtp' && (
           <span
             title={t`This camera hands its files over one request at a time rather than showing its card as a drive. Everything works; it is slower than the same card in a reader, which is worth knowing before a full card.`}
-            className='inline-flex h-5 items-center rounded bg-local-soft px-[7px] text-[11.5px] font-medium text-local'>
+            className='inline-flex h-[22px] items-center rounded-full bg-local-soft px-2.5 text-[11.5px] font-bold text-local'>
             {t`handed over, not a drive — slower than a card reader`}
           </span>
         )}
@@ -368,7 +369,7 @@ const CameraFiles = ({
         )}
       </div>
       {listing && (
-        <p className='m-0 flex items-center gap-[9px] rounded-md border border-line bg-rail px-2.5 py-[7px] text-[12.5px] text-ink-2'>
+        <p className='m-0 flex items-center gap-2.5 rounded-xl bg-well px-3 py-2 text-[12.5px] font-medium text-ink-2'>
           <Icon
             name='lock'
             size={14}
@@ -389,18 +390,18 @@ const CameraFiles = ({
       {problem && (
         <p
           role='alert'
-          className='m-0 rounded-md bg-local-soft px-3 py-2 text-[12.5px] text-local'>
+          className='m-0 rounded-xl bg-local-soft px-3.5 py-2.5 text-[12.5px] text-local'>
           {problem}
         </p>
       )}
       {answered === null && !problem ? (
         <p className='m-0 px-0.5 text-[12.5px] text-ink-3'>{t`Reading the camera…`}</p>
       ) : listing === null ? (
-        <p className='m-0 rounded-md bg-local-soft px-3 py-2 text-[12.5px] text-local'>
+        <p className='m-0 rounded-xl bg-local-soft px-3.5 py-2.5 text-[12.5px] text-local'>
           {t`This camera is not plugged in any more.`}
         </p>
       ) : files.length === 0 && listing ? (
-        <p className='m-0 rounded-md border border-dashed border-line px-3 py-4 text-center text-[12.5px] text-ink-3'>
+        <p className='m-0 rounded-2xl border-[1.5px] border-dashed border-line-strong px-3 py-5 text-center text-[12.5px] text-ink-3'>
           {looking
             ? t`Going over the camera — its files appear here as they are reached.`
             : t`Nothing on the camera’s card.`}
@@ -427,7 +428,7 @@ const CameraFiles = ({
                 }}
                 className={
                   canPick.has(file)
-                    ? `cursor-pointer ${picked.has(file.path) ? 'bg-accent-soft' : 'hover:bg-rail'}`
+                    ? `cursor-pointer ${picked.has(file.path) ? 'bg-accent-soft' : 'hover:bg-well'}`
                     : ''
                 }>
                 {/* only a file on the storage or in the bin has a box: nothing else could go */}
@@ -450,7 +451,7 @@ const CameraFiles = ({
                 </td>
                 <td className={TD}>
                   <span
-                    className={`inline-flex h-5 w-max items-center gap-[5px] rounded px-[7px] text-[11.5px] font-medium before:size-1.5 before:rounded-full before:content-[''] ${STANDING[file.state].tone}`}>
+                    className={`inline-flex h-[22px] w-max items-center gap-1.5 rounded-full px-[9px] text-[11.5px] font-bold before:size-1.5 before:rounded-full before:content-[''] ${STANDING[file.state].tone}`}>
                     <span className='inline-block first-letter:uppercase'>
                       {i18n._(STANDING[file.state].label)}
                     </span>

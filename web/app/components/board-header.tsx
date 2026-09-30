@@ -103,7 +103,7 @@ const BoardHeader = ({
     window.location.reload()
   }
   return (
-    <header className='flex h-[42px] flex-none items-center gap-1 bar border-b border-line-strong bg-chrome px-2.5'>
+    <header className='flex h-14 flex-none items-center gap-1 rounded-t-[18px] border-b border-line-2 bg-pane px-3.5 shadow-card max-[780px]:rounded-[18px] max-[780px]:border-b-0 min-[781px]:col-start-3 min-[781px]:row-start-1'>
       <button
         type='button'
         onClick={onOverview}
@@ -128,11 +128,11 @@ const BoardHeader = ({
         />
         {scanning ? t`Scanning…` : t`Scan`}
       </button>
-      <span className='mx-1.5 h-5 w-px bg-line-strong' />
+      <span className='mx-1.5 h-5 w-px bg-line' />
       <span
         role='group'
         aria-label={t`How files are shown`}
-        className='inline-flex h-[30px] gap-px rounded-[7px] border border-line-2 bg-well p-[2px]'>
+        className='inline-flex gap-1'>
         {VIEWS.map(([option, name, icon]) => (
           <button
             key={option}
@@ -141,15 +141,10 @@ const BoardHeader = ({
             aria-label={i18n._(name)}
             title={i18n._(name)}
             onClick={() => setFileView(option)}
-            className={`inline-flex w-[30px] items-center justify-center rounded-[5px] ${
-              view === option
-                ? 'bg-pane text-ink shadow-[0_1px_2px_rgba(24,24,27,0.08),0_0_0_1px_rgba(24,24,27,0.04)]'
-                : 'text-ink-2 hover:text-ink'
+            className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] ${
+              view === option ? 'bg-accent-soft text-accent' : 'text-ink-2 hover:bg-well'
             }`}>
-            <Icon
-              name={icon}
-              size={14}
-            />
+            <Icon name={icon} />
           </button>
         ))}
       </span>
@@ -175,13 +170,13 @@ const BoardHeader = ({
       )}
       <span className='flex-1' />
       <FindAnything find={find} />
-      <span className='mx-1.5 h-5 w-px bg-line-strong' />
+      <span className='flex-1' />
       <button
         type='button'
         aria-label={t`Keyboard shortcuts`}
         title={t`Keyboard shortcuts (?)`}
         onClick={onShortcuts}
-        className={`${TOOL} w-[30px] justify-center px-0`}>
+        className={`${TOOL} w-[34px] justify-center px-0`}>
         <Icon
           name='keyboard'
           className='text-ink-2'
@@ -242,7 +237,7 @@ const BoardHeader = ({
           </>
         )}
       </SettingsMenu>
-      <span className='mx-1.5 h-5 w-px bg-line-strong' />
+      <span className='mx-1.5 h-5 w-px bg-line' />
       <DetailsToggle />
     </header>
   )
@@ -261,10 +256,10 @@ const DetailsToggle = () => {
       aria-label={open ? t`Hide details` : t`Details`}
       title={open ? t`Hide details` : t`Details`}
       onClick={() => set(!open)}
-      className={`${TOOL} w-[30px] justify-center px-0 ${only}`}>
+      className={`${TOOL} w-[34px] justify-center px-0 ${only} ${open ? 'bg-accent-soft hover:bg-accent-soft' : ''}`}>
       <Icon
         name='details'
-        className={open ? 'text-accent-ink' : 'text-ink-2'}
+        className={open ? 'text-accent' : 'text-ink-2'}
       />
     </button>
   )
@@ -321,9 +316,9 @@ const StatusBar = ({
   const { read, total: clips } = jumps
   const host = nas.host ?? t`the storage`
   const user = nas.user
-  const item = 'inline-flex h-5 items-center gap-1.5 px-2 whitespace-nowrap'
+  const item = 'inline-flex h-5 items-center gap-[7px] whitespace-nowrap'
   return (
-    <footer className='flex h-[26px] flex-none items-center gap-0.5 bar border-t border-line-strong bg-chrome px-2 text-[11.5px] text-ink-2 [&>*+*]:border-l [&>*+*]:border-line-strong'>
+    <footer className='flex h-[30px] flex-none items-center gap-5 px-[18px] text-[11.5px] font-semibold text-ink-2'>
       {/* Who the storage was connected as, and where: the same question a NAS asks at its own
           login, answered on the board rather than left to be remembered. */}
       <span
@@ -336,7 +331,7 @@ const StatusBar = ({
         }
         className={item}>
         <span
-          className={`size-[7px] flex-none rounded-full ${nas.connected ? 'bg-up' : 'bg-ink-3'}`}
+          className={`size-[7px] flex-none rounded-full ${nas.connected ? 'bg-[#23b877]' : 'bg-ink-3'}`}
         />
         {nas.connected && (
           <span className='max-w-[15rem] truncate'>
@@ -383,7 +378,7 @@ const StatusBar = ({
             className='text-accent'
           />
           {working.what}
-          <span className='h-[3px] w-[70px] flex-none overflow-hidden rounded-sm bg-line'>
+          <span className='ml-px h-1 w-20 flex-none overflow-hidden rounded-sm bg-line'>
             <i
               className='block h-full bg-accent'
               style={{ width: `${Math.round(working.part * 100)}%` }}
@@ -405,13 +400,13 @@ const StatusBar = ({
             : t`⚠ Disk almost full — ${left} left`}
         </span>
       )}
-      <span className='flex-1 !border-l-0' />
+      <span className='flex-1' />
       {/* Only while some clip is still without one. They are built behind whatever asked for them
           and nothing watches them arrive, so this is how far along the last look was. */}
       {waiting > 0 && (
         <span
           title={t`${ready} of ${total} clips have their small copy. They are built in the background; the count catches up whenever the board is redrawn.`}
-          className={`${item} !border-l-0`}>
+          className={item}>
           <span className='size-2.5 flex-none animate-spin rounded-full border-[1.5px] border-line-strong border-t-accent' />
           {t`Proxies ready ${ready}/${total}`}
         </span>
@@ -420,10 +415,10 @@ const StatusBar = ({
       {read < clips && (
         <span
           title={t`${read} of ${clips} clips have been read for where the jump is in them. They are read in the background; each clip says how far it has got.`}
-          className={`${item} !border-l-0`}>
+          className={item}>
           <span className='size-2.5 flex-none animate-spin rounded-full border-[1.5px] border-line-strong border-t-accent' />
           {t`Marks found ${read}/${clips}`}
-          <span className='h-[3px] w-[70px] flex-none overflow-hidden rounded-sm bg-line'>
+          <span className='ml-px h-1 w-20 flex-none overflow-hidden rounded-sm bg-line'>
             <i
               className='block h-full bg-accent transition-[width] duration-500'
               style={{ width: `${Math.round((read / clips) * 100)}%` }}
@@ -443,7 +438,7 @@ const StatusBar = ({
             aria-label={t`Smaller`}
             disabled={zoom.factor <= 0.5}
             onClick={zoom.smaller}
-            className='grid size-[18px] place-items-center rounded-[3px] hover:bg-line disabled:opacity-40'>
+            className='grid size-[18px] place-items-center rounded-[5px] hover:bg-line disabled:opacity-40'>
             −
           </button>
           <button
@@ -459,7 +454,7 @@ const StatusBar = ({
             aria-label={t`Bigger`}
             disabled={zoom.factor >= 3}
             onClick={zoom.bigger}
-            className='grid size-[18px] place-items-center rounded-[3px] hover:bg-line disabled:opacity-40'>
+            className='grid size-[18px] place-items-center rounded-[5px] hover:bg-line disabled:opacity-40'>
             +
           </button>
         </span>

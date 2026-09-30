@@ -14,10 +14,22 @@ import { useRef, useState } from 'react'
 type Handle = 'nw' | 'ne' | 'sw' | 'se' | 'move'
 
 const HANDLES: { corner: Exclude<Handle, 'move'>; style: string }[] = [
-  { corner: 'nw', style: 'top-0 left-0 cursor-nwse-resize -translate-x-1/2 -translate-y-1/2' },
-  { corner: 'ne', style: 'top-0 right-0 cursor-nesw-resize translate-x-1/2 -translate-y-1/2' },
-  { corner: 'sw', style: 'bottom-0 left-0 cursor-nesw-resize -translate-x-1/2 translate-y-1/2' },
-  { corner: 'se', style: 'bottom-0 right-0 cursor-nwse-resize translate-x-1/2 translate-y-1/2' }
+  {
+    corner: 'nw',
+    style: 'top-0 left-0 cursor-nwse-resize -translate-x-1/2 -translate-y-1/2'
+  },
+  {
+    corner: 'ne',
+    style: 'top-0 right-0 cursor-nesw-resize translate-x-1/2 -translate-y-1/2'
+  },
+  {
+    corner: 'sw',
+    style: 'bottom-0 left-0 cursor-nesw-resize -translate-x-1/2 translate-y-1/2'
+  },
+  {
+    corner: 'se',
+    style: 'bottom-0 right-0 cursor-nwse-resize translate-x-1/2 translate-y-1/2'
+  }
 ]
 
 /* Dragging a corner moves the opposite one not at all: that corner is the anchor, and the new
@@ -86,7 +98,13 @@ const FrameCropper = ({
     const point = at(e)
     if (!point) return
     if (dragging === 'move') {
-      onChange(containCrop({ ...crop, x: point.x - crop.width / 2, y: point.y - crop.height / 2 }))
+      onChange(
+        containCrop({
+          ...crop,
+          x: point.x - crop.width / 2,
+          y: point.y - crop.height / 2
+        })
+      )
       return
     }
     onChange(resized(crop, dragging, point, ratio, frame))
@@ -113,7 +131,7 @@ const FrameCropper = ({
           width: `${crop.width * 100}%`,
           height: `${crop.height * 100}%`
         }}
-        className='absolute cursor-move rounded-[3px] border-[1.5px] border-white'>
+        className='absolute cursor-move rounded-[6px] border-[1.5px] border-white'>
         {/* the picture shows through here, because the dim layer is behind this one */}
         <div className='absolute inset-0 rounded-[2px] bg-transparent backdrop-brightness-[1.8]' />
         {HANDLES.map(({ corner, style }) => (

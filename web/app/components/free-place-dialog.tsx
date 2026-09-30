@@ -57,7 +57,7 @@ const FreePlaceDialog = ({
       </ul>
 
       {reshaped > 0 && (
-        <p className='m-0 rounded-md bg-changed-soft px-2.5 py-2 text-[12px] text-ink-2'>
+        <p className='m-0 rounded-[10px] bg-changed-soft px-2.5 py-2 text-[12px] text-ink-2'>
           {t`${plural(reshaped, { one: '# file', other: '# files' })} went up trimmed, framed or turned. Only the part that went up is kept, on the storage: what was cut off is deleted with the original, for good.`}
         </p>
       )}
@@ -75,7 +75,7 @@ const FreePlaceDialog = ({
         )}
       </ul>
 
-      <p className='m-0 rounded-md bg-local-soft px-2.5 py-2 text-[12px] text-ink-2'>
+      <p className='m-0 rounded-[10px] bg-local-soft px-2.5 py-2 text-[12px] text-ink-2'>
         {t`After this those files live on the storage only: they cannot be processed, moved or uploaded again from here, and a rescan leaves them as they are. If any check fails, nothing at all is deleted, and it says which.`}
       </p>
     </Modal>

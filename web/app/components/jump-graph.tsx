@@ -29,7 +29,13 @@ const PHASES = [
   { from: 'landing', label: msg`on the ground`, fill: 'fill-ink-3/5' }
 ] as const
 
-type Line = { at: (number | null)[]; low: number; high: number; stroke: string; faint?: boolean }
+type Line = {
+  at: (number | null)[]
+  low: number
+  high: number
+  stroke: string
+  faint?: boolean
+}
 
 /* Freefall buffets a camera hard enough to swing it a whole gravity between one reading and the
    next, so the measurement drawn as it stands is a hedge, not a shape. The reading itself is kept,
@@ -137,10 +143,23 @@ const JumpGraph = ({
   const lines = [
     ...force,
     ...(track.altitude && height
-      ? [{ at: track.altitude, ...height, stroke: 'stroke-amber-400' } satisfies Line]
+      ? [
+          {
+            at: track.altitude,
+            ...height,
+            stroke: 'stroke-amber-400'
+          } satisfies Line
+        ]
       : []),
     ...(track.speed && pace
-      ? [{ at: track.speed, low: 0, high: pace.high, stroke: 'stroke-emerald-400' } satisfies Line]
+      ? [
+          {
+            at: track.speed,
+            low: 0,
+            high: pace.high,
+            stroke: 'stroke-emerald-400'
+          } satisfies Line
+        ]
       : [])
   ]
 
@@ -176,7 +195,7 @@ const JumpGraph = ({
         onPointerMove={handleMove}
         onPointerUp={handleUp}
         onPointerCancel={handleUp}
-        className='relative cursor-ew-resize touch-none overflow-hidden rounded-[5px] border border-line bg-surface-2'
+        className='relative cursor-ew-resize touch-none overflow-hidden rounded-[12px] bg-well'
         style={{ height: HEIGHT }}>
         <svg
           width='100%'

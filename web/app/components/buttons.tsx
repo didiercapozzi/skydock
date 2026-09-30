@@ -25,7 +25,7 @@ const Go = ({ children, title, disabled, type = 'button', form, onClick }: Props
     title={title}
     disabled={disabled}
     onClick={onClick}
-    className='inline-flex h-[30px] items-center justify-center gap-1.5 rounded-[5px] border border-accent bg-accent px-[11px] text-[12.5px] font-medium whitespace-nowrap text-white hover:brightness-110 disabled:cursor-default disabled:opacity-45'>
+    className='inline-flex h-[34px] items-center justify-center gap-2 rounded-[11px] bg-accent px-3.5 text-[13px] font-bold whitespace-nowrap text-white shadow-[0_6px_18px_color-mix(in_srgb,var(--color-accent)_38%,transparent)] hover:brightness-110 disabled:cursor-default disabled:opacity-45 disabled:shadow-none dark:text-[#0c0a2a]'>
     {children}
   </button>
 )
@@ -38,10 +38,8 @@ const Mini = ({ children, title, disabled, type = 'button', form, onClick, press
     disabled={disabled}
     onClick={onClick}
     aria-pressed={pressed}
-    className={`inline-flex h-7 items-center justify-center gap-1.5 rounded-[5px] border px-[9px] text-[12.5px] font-medium whitespace-nowrap shadow-card disabled:cursor-default disabled:opacity-40 ${
-      pressed
-        ? 'border-accent bg-accent-soft text-accent-ink'
-        : 'border-line-strong bg-pane text-ink hover:bg-well'
+    className={`inline-flex h-[30px] items-center justify-center gap-1.5 rounded-[10px] px-3 text-[12.5px] font-bold whitespace-nowrap disabled:cursor-default disabled:opacity-40 ${
+      pressed ? 'bg-accent-soft text-accent-ink' : 'bg-well text-ink hover:bg-line'
     }`}>
     {children}
   </button>
@@ -75,8 +73,8 @@ const Danger = ({
     title={title}
     disabled={disabled}
     onClick={onClick}
-    className={`inline-flex items-center justify-center gap-1.5 rounded-[5px] border border-line-strong bg-pane font-medium whitespace-nowrap text-bin shadow-card hover:bg-bin-soft disabled:cursor-default disabled:opacity-45 ${
-      size === 'go' ? 'h-[30px] px-[11px] text-[12.5px]' : 'h-7 px-[9px] text-[12.5px]'
+    className={`inline-flex items-center justify-center gap-1.5 rounded-[11px] bg-well font-bold whitespace-nowrap text-bin hover:bg-bin-soft disabled:cursor-default disabled:opacity-45 ${
+      size === 'go' ? 'h-[34px] px-3.5 text-[13px]' : 'h-[30px] px-3 text-[12.5px]'
     }`}>
     {children}
   </button>
@@ -95,8 +93,8 @@ const ToBin = ({
     title={title}
     disabled={disabled}
     onClick={onClick}
-    className={`inline-flex items-center justify-center gap-1.5 rounded-[5px] border border-bin bg-bin font-medium whitespace-nowrap text-white hover:brightness-110 disabled:cursor-default disabled:opacity-45 ${
-      size === 'go' ? 'h-[30px] px-[11px] text-[12.5px]' : 'h-7 px-[9px] text-[12.5px]'
+    className={`inline-flex items-center justify-center gap-1.5 rounded-[11px] bg-bin font-bold whitespace-nowrap text-white hover:brightness-110 disabled:cursor-default disabled:opacity-45 dark:text-[#2a0a0c] ${
+      size === 'go' ? 'h-[34px] px-3.5 text-[13px]' : 'h-[30px] px-3 text-[12.5px]'
     }`}>
     <BinIcon />
     {children}
@@ -125,7 +123,7 @@ const Seg = <T extends string>({
   <span
     role='group'
     aria-label={label}
-    className='inline-flex h-[30px] gap-px rounded-[7px] border border-line-2 bg-well p-[2px]'>
+    className='inline-flex h-9 gap-0.5 rounded-[12px] bg-well p-[3px]'>
     {options.map(([option, name, mark]) => (
       <button
         key={option}
@@ -134,9 +132,9 @@ const Seg = <T extends string>({
         aria-label={mark ? name : undefined}
         title={mark ? name : undefined}
         onClick={() => onPick(option)}
-        className={`inline-flex items-center justify-center gap-1.5 rounded-[5px] text-[12px] font-medium whitespace-nowrap ${mark ? 'w-[30px]' : 'px-[9px]'} ${
+        className={`inline-flex items-center justify-center gap-1.5 rounded-[9px] text-[13.5px] font-semibold whitespace-nowrap ${mark ? 'w-[30px]' : 'px-[13px]'} ${
           value === option
-            ? 'bg-pane text-ink shadow-[0_1px_2px_rgba(24,24,27,0.08),0_0_0_1px_rgba(24,24,27,0.04)]'
+            ? 'bg-pane text-ink shadow-[0_0_0_1px_var(--color-line),0_1px_2px_rgba(16,19,26,0.06)]'
             : 'text-ink-2 hover:text-ink'
         }`}>
         {mark ?? name}

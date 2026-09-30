@@ -41,8 +41,18 @@ const Mark = ({ on, label }: { on: boolean; label: string }) => (
 
 /* a table's column heading and its cells, as every table in a dialog draws them */
 const TH =
-  'border-b border-line bg-rail px-2.5 py-2 text-[11.5px] font-medium whitespace-nowrap text-ink-3'
-const TD = 'h-[46px] border-b border-line-2 px-2.5 whitespace-nowrap'
+  'bg-pane px-3.5 py-2.5 text-left text-[11px] font-bold tracking-[0.07em] whitespace-nowrap text-ink-3 uppercase'
+const TD = 'h-[52px] border-t border-line-2 px-3.5 font-semibold whitespace-nowrap'
+
+/* what is done to many at once, drawn as the small buttons of the page: white on the tinted bar */
+const BAR_BUTTONS =
+  '[&_button]:h-8 [&_button]:gap-2 [&_button]:rounded-[9px] [&_button]:bg-pane [&_button]:px-3 [&_button]:hover:bg-line-2'
+
+/* the next step's button on a line: the one thing asked of you is drawn as the page's primary, and
+   the last step, which only tells someone, stays plain */
+const NEXT_BUTTON = '[&_button]:h-8 [&_button]:rounded-[9px] [&_button]:px-3'
+const NEXT_PRIMARY =
+  '[&_button]:bg-accent [&_button]:text-white [&_button]:shadow-[0_6px_18px_color-mix(in_srgb,var(--color-accent)_38%,transparent)] dark:[&_button]:text-[#0c0a2a]'
 
 /* the day a montage heads, whole for the heading of its run and short on its own line */
 const dayShort = (day: string) => {
@@ -125,32 +135,30 @@ const OverviewDialog = ({
         </>
       }
       aside={
-        <label className='flex h-7 w-[260px] items-center gap-[7px] rounded-[5px] px-2 text-ink-3 focus-within:bg-pane'>
-          <Icon
-            name='search'
-            size={15}
-          />
+        <label className='flex h-9 w-[260px] items-center gap-2.5 rounded-[11px] bg-well px-3 text-ink-3'>
+          <Icon name='search' />
           <input
             type='search'
             aria-label={t`Find a montage`}
             placeholder={t`Find a montage`}
             value={find}
             onChange={(e) => setFind(e.target.value)}
-            className='min-w-0 flex-1 bg-transparent text-[12.5px] text-ink outline-none placeholder:text-ink-3'
+            className='min-w-0 flex-1 bg-transparent font-medium text-ink outline-none placeholder:text-ink-3'
           />
         </label>
       }
-      full
+      full={1300}
       onClose={onClose}
       footer={
         <>
-          <span className='text-[11.5px] text-ink-3'>{t`A press on a line takes its next step.`}</span>
+          <span className='font-medium text-ink-3'>{t`A press on a line takes its next step.`}</span>
           <Spacer />
           <Mini onClick={onClose}>{t`Close`}</Mini>
         </>
       }>
-      <div className='flex flex-none flex-wrap items-center gap-2.5 border-b border-line-2 bg-rail px-6 py-3'>
-        <span className='mr-1.5 text-[11.5px] font-medium text-ink-3'>{t`To many at once`}</span>
+      <div
+        className={`flex flex-none flex-wrap items-center gap-3 bg-well px-[26px] py-3 ${BAR_BUTTONS}`}>
+        <span className='font-bold text-ink-3'>{t`To many at once`}</span>
         <Mini
           disabled={busy || toProcess.length === 0}
           onClick={() => onProcessAll(toProcess)}>
@@ -175,13 +183,13 @@ const OverviewDialog = ({
           {t`Uploaded one after the other, each as the upload dialog was last set. One that cannot go says why; the rest still go.`}
         </span>
       </div>
-      <div className='min-h-0 flex-1 overflow-auto px-6 pt-1 pb-4'>
+      <div className='min-h-0 flex-1 overflow-auto px-3.5 py-1'>
         {rows.length === 0 ? (
           <p className='mt-6 text-center text-[12.5px] text-ink-3'>
             {t`No montage yet — name a jump to make one.`}
           </p>
         ) : (
-          <table className='w-full border-collapse text-[12.5px]'>
+          <table className='w-full border-collapse'>
             <thead>
               <tr className='text-left'>
                 <th className={TH}>{t`Montage`}</th>
@@ -200,11 +208,11 @@ const OverviewDialog = ({
                 <tr>
                   <td
                     colSpan={9}
-                    className='h-11 border-b border-line px-2.5 pt-2.5 align-bottom whitespace-nowrap'>
-                    <span className='text-[14px] font-semibold tracking-[-0.02em]'>
-                      {dayLabel(isoDay(day), true)}
+                    className='h-[46px] px-3.5 font-display text-[16px] font-bold tracking-[-0.02em] whitespace-nowrap'>
+                    {dayLabel(isoDay(day), true)}
+                    <span className='ml-2.5 font-sans text-[12px] font-medium tracking-normal text-ink-3'>
+                      {counts(ofDay)}
                     </span>
-                    <span className='ml-3 text-[11.5px] text-ink-3'>{counts(ofDay)}</span>
                   </td>
                 </tr>
                 {ofDay.map((r) => {
@@ -219,17 +227,15 @@ const OverviewDialog = ({
                           {r.who}
                         </button>
                       </td>
-                      <td className={`${TD} font-mono text-[12px] text-ink-3`}>
-                        {dayShort(r.day)}
-                      </td>
+                      <td className={`${TD} text-ink-3`}>{dayShort(r.day)}</td>
                       <td className={TD}>
-                        <span className='flex items-center gap-2.5'>
+                        <span className='flex items-center gap-2'>
                           <StepMeter
                             progress={r.progress}
-                            className='w-[70px] flex-none'
+                            className='w-[90px] flex-none [&>i]:h-[5px] [&>i]:rounded-[3px]'
                           />
                           <span
-                            className={`text-[11.5px] ${r.progress.next ? 'text-accent-ink' : 'text-ink-3'}`}>
+                            className={`ml-0.5 text-[12px] font-semibold ${r.progress.next ? 'text-accent-ink' : 'text-ink-3'}`}>
                             {r.progress.next?.todo ?? t`done`}
                           </span>
                         </span>
@@ -246,7 +252,7 @@ const OverviewDialog = ({
                             href={r.link}
                             target='_blank'
                             rel='noreferrer'
-                            className='font-mono text-[12px] text-ink-2 hover:text-accent-ink hover:underline'>
+                            className='font-mono text-[12px] tracking-[-0.02em] text-ink-2 hover:text-accent-ink hover:underline'>
                             {r.link}
                           </a>
                         ) : (
@@ -273,18 +279,19 @@ const OverviewDialog = ({
                             checked={r.paid}
                             disabled={busy}
                             onChange={(e) => onPaid(r.id, e.target.checked)}
-                            className='peer size-[15px] cursor-pointer appearance-none rounded border-[1.5px] border-[#c4c4cc] bg-pane checked:border-accent checked:bg-accent disabled:cursor-default'
+                            className='peer size-[18px] cursor-pointer appearance-none rounded-[6px] border-[1.5px] border-ink-3 bg-transparent opacity-80 checked:border-accent checked:bg-accent checked:opacity-100 disabled:cursor-default'
                           />
                           <span className='pointer-events-none absolute hidden text-white peer-checked:block'>
                             <Icon
                               name='check'
-                              size={11}
+                              size={12}
                               weight={3}
                             />
                           </span>
                         </span>
                       </td>
-                      <td className={`${TD} text-right`}>
+                      <td
+                        className={`${TD} text-right ${NEXT_BUTTON} ${step === 'Emailed' ? '' : NEXT_PRIMARY}`}>
                         {step && !r.freed ? (
                           <StepButton
                             step={step}
@@ -293,7 +300,7 @@ const OverviewDialog = ({
                           />
                         ) : (
                           !r.progress.next && (
-                            <span className='text-[11.5px] text-ink-3'>{t`done`}</span>
+                            <span className='font-medium text-ink-3'>{t`done`}</span>
                           )
                         )}
                       </td>

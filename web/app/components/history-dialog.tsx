@@ -113,11 +113,11 @@ const HistoryDialog = ({
       ) : steps && steps.length === 0 ? (
         <p className='m-0 text-[12.5px] text-ink-3'>{t`Nothing to go back to yet.`}</p>
       ) : (
-        <ul className='m-0 flex list-none flex-col overflow-hidden rounded-md border border-line'>
+        <ul className='m-0 flex list-none flex-col overflow-hidden rounded-[10px] border border-line'>
           {(steps ?? []).map((step) => (
             <li
               key={step.step}
-              className='flex items-center gap-3 border-b border-line-2 px-2.5 py-2 text-[12.5px] last:border-b-0 hover:bg-rail'>
+              className='flex items-center gap-3 border-b border-line-2 px-2.5 py-2 text-[12.5px] last:border-b-0 hover:bg-well'>
               <span className='w-[7.5rem] flex-none font-mono text-[12px] text-ink-3 tabular-nums'>
                 {whenSaid(step.at)}
               </span>

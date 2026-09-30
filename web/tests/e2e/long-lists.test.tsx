@@ -36,8 +36,7 @@ const list = (count: number, shape: 'rows' | 'grid') =>
       offGap: new Set<string>(),
       onDragFile: () => {},
       sortKey: (file: ManifestFile) => file.filename,
-      deliveredName: () => null,
-      selecting: false
+      deliveredName: () => null
     })
   )
 

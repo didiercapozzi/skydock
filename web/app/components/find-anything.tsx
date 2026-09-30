@@ -37,12 +37,8 @@ const FindAnything = ({ find }: { find: (query: string) => Found[] }) => {
   }
   return (
     <div className='relative'>
-      <label className='flex h-7 w-[280px] items-center gap-[7px] rounded-[5px] border border-line-strong bg-pane pr-1 pl-2 text-ink-3'>
-        <Icon
-          name='search'
-          size={14}
-          weight={2.2}
-        />
+      <label className='flex h-9 w-[330px] items-center gap-2.5 rounded-[11px] bg-well px-3 text-ink-3'>
+        <Icon name='search' />
         <input
           ref={box}
           type='search'
@@ -54,16 +50,16 @@ const FindAnything = ({ find }: { find: (query: string) => Found[] }) => {
             if (e.key === 'Enter') go(found[0] ?? find(query)[0])
             if (e.key === 'Escape') ask('')
           }}
-          className='min-w-0 flex-1 border-0 bg-transparent text-[12.5px] text-ink outline-none placeholder:text-ink-3'
+          className='min-w-0 flex-1 border-0 bg-transparent text-[13.5px] font-medium text-ink outline-none placeholder:text-ink-3'
         />
-        <kbd className='rounded-[3px] border border-line bg-rail px-1 font-sans text-[10.5px] leading-4 font-medium text-ink-3'>
+        <kbd className='rounded-[6px] bg-pane px-[7px] py-0.5 font-sans text-[11px] leading-[normal] font-semibold text-ink-3 shadow-[0_0_0_1px_var(--color-line)]'>
           Ctrl F
         </kbd>
       </label>
       {asked.trim().length >= 2 && query.trim().length >= 2 && (
         <ul
           aria-label={t`Found`}
-          className='absolute top-full right-0 z-50 m-0 mt-1.5 flex max-h-[60vh] w-[min(340px,calc(100vw-2rem))] list-none flex-col overflow-y-auto rounded-md bg-pane p-1 shadow-float'>
+          className='absolute top-full right-0 z-50 m-0 mt-1.5 flex max-h-[60vh] w-[min(340px,calc(100vw-2rem))] list-none flex-col overflow-y-auto rounded-[16px] bg-pane p-1.5 shadow-float'>
           {found.length === 0 ? (
             <li className='px-2 py-1.5 text-[12.5px] text-ink-3'>{t`Nothing by that name`}</li>
           ) : (
@@ -72,7 +68,7 @@ const FindAnything = ({ find }: { find: (query: string) => Found[] }) => {
                 <button
                   type='button'
                   onClick={() => go(one)}
-                  className='flex w-full items-baseline gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] hover:bg-line-2'>
+                  className='flex w-full items-baseline gap-2 rounded-[9px] px-2 py-1.5 text-left text-[12.5px] hover:bg-well'>
                   <span className='min-w-0 flex-1 truncate text-ink'>{one.label}</span>
                   <span className='flex-none text-[11px] text-ink-3'>{one.where}</span>
                 </button>

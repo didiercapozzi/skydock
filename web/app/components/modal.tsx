@@ -2,10 +2,9 @@ import { t } from '@lingui/core/macro'
 import { useEffect, useRef } from 'react'
 import { Icon } from './icons'
 
-/* Every dialog in the app is this shape: a header bar in the window's own chrome with the title, a
-   quieter line under it and whatever the dialog keeps at hand on the right; a body that scrolls if
-   it has to; and a footer bar in the same chrome with the one button that does the thing on the
-   right. Keeping the shell here is what stops five dialogs from each inventing their own padding. */
+/* Every dialog in the app is this shape: a floating sheet with a plain header — the title, a
+   quieter line under it and whatever the dialog keeps at hand on the right — a body that scrolls if
+   it has to, and a footer on a tinted well with the one button that does the thing on the right. Keeping the shell here is what stops five dialogs from each inventing their own padding. */
 
 /* what Tab can land on inside a dialog */
 const FOCUSABLE = [
@@ -38,8 +37,9 @@ const Modal = ({
   /* what sits at the right-hand end of the header, before the close button */
   aside?: React.ReactNode
   wide?: boolean
-  /* the whole window, for two things shown side by side */
-  full?: boolean
+  /* the whole window, for two things shown side by side: as wide as this many pixels, or the
+     window's width when it is narrower; plain `true` takes almost all of a large one */
+  full?: boolean | number
   /* clicking the backdrop or pressing Escape closes; a dialog that must not be dismissed that way
      leaves it out */
   onClose?: () => void
@@ -85,26 +85,27 @@ const Modal = ({
     <div
       {...rest}
       onClick={onClose ? (e) => e.target === e.currentTarget && onClose() : undefined}
-      className='fixed inset-0 z-40 grid place-items-center bg-[rgba(24,24,27,0.4)] p-4'>
+      className='fixed inset-0 z-40 grid place-items-center bg-[rgba(16,19,26,0.42)] dark:bg-[rgba(3,5,10,0.62)] p-4'>
       <div
         ref={box}
         role='dialog'
         aria-modal='true'
         aria-label={label}
         onKeyDown={keys}
-        className={`flex max-h-full flex-col overflow-hidden rounded-lg bg-pane text-ink shadow-float ${
+        style={full ? { width: `min(${full === true ? 1360 : full}px, 94vw)` } : undefined}
+        className={`flex max-h-full flex-col overflow-hidden rounded-[22px] bg-pane text-ink shadow-[0_0_0_1px_rgba(16,19,26,0.08),0_30px_80px_rgba(16,19,26,0.3)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.1),0_30px_80px_rgba(0,0,0,0.6)] ${
           full
-            ? 'h-[92vh] w-[min(1360px,94vw)]'
+            ? typeof full === 'number'
+              ? 'h-[min(800px,94vh)]'
+              : 'h-[92vh]'
             : wide
               ? 'w-[min(680px,100%)]'
               : 'w-[min(560px,100%)]'
         }`}>
-        <div className='flex flex-none items-center gap-2 border-b border-line-strong bg-chrome px-3.5 py-2.5'>
-          <div className='flex min-w-0 flex-col gap-1'>
-            <h2 className='m-0 text-[14px] leading-[1.3] font-semibold tracking-[-0.015em]'>
-              {title}
-            </h2>
-            {sub && <span className='text-[12px] text-ink-3'>{sub}</span>}
+        <div className='flex flex-none items-center gap-3.5 border-b border-line-2 px-[26px] pt-5 pb-4'>
+          <div className='flex min-w-0 flex-col'>
+            <h2 className='font-display m-0 text-[23px] font-bold tracking-[-0.03em]'>{title}</h2>
+            {sub && <span className='font-medium text-ink-3'>{sub}</span>}
           </div>
           <span className='flex-1' />
           {aside}
@@ -118,7 +119,7 @@ const Modal = ({
               aria-hidden='true'
               title={t`Close (Esc)`}
               onClick={onClose}
-              className='grid h-7 w-7 flex-none place-items-center rounded-[5px] text-ink-2 hover:bg-well hover:text-ink'>
+              className='grid h-8 w-8 flex-none place-items-center rounded-[10px] text-ink-2 hover:bg-well hover:text-ink'>
               <Icon name='close' />
             </button>
           )}
@@ -127,12 +128,12 @@ const Modal = ({
           className={
             full
               ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
-              : 'flex flex-col gap-2.5 overflow-auto px-4 py-3.5'
+              : 'flex flex-col gap-3 overflow-auto px-[26px] py-5'
           }>
           {children}
         </div>
         {footer && (
-          <div className='flex flex-none items-center gap-2 border-t border-line-strong bg-chrome px-3.5 py-2.5'>
+          <div className='flex flex-none items-center gap-3 bg-well px-[26px] py-3.5 [&_button]:h-[38px] [&_button]:gap-2 [&_button]:rounded-[11px] [&_button]:px-4 [&_button]:text-[13.5px]'>
             {footer}
           </div>
         )}
@@ -146,16 +147,16 @@ const Spacer = () => <span className='flex-1' />
 
 /* A labelled field, stacked, quiet label over a loud value — the same in every dialog. */
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <label className='flex flex-col gap-1 text-[12px] text-ink-2'>
+  <label className='flex flex-col gap-1.5 text-[12.5px] font-semibold text-ink-2'>
     {label}
     {children}
   </label>
 )
 
 const INPUT =
-  'rounded-md border border-line bg-pane px-2.5 py-[5px] text-[13px] text-ink placeholder:text-ink-3 disabled:opacity-50'
+  'rounded-[10px] border-0 bg-well px-3 py-2 text-[13px] text-ink placeholder:text-ink-3 focus:outline-2 focus:outline-accent disabled:opacity-50'
 
-const ERROR = 'rounded-md bg-local-soft px-2.5 py-[7px] text-[12.5px] text-local'
+const ERROR = 'rounded-[10px] bg-local-soft px-3 py-2 text-[12.5px] text-local'
 
 /* one line of what a dialog proves, deletes or keeps, marked with what happens to it */
 const Line = ({ mark, children }: { mark: string; children: React.ReactNode }) => (

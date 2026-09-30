@@ -32,7 +32,7 @@ const TONE: Record<Row['at'], string> = {
   now: 'text-accent',
   later: 'text-ink-3',
   skipped: 'text-ink-3',
-  failed: 'text-local'
+  failed: 'text-bin'
 }
 
 /* how far through one file, said of its size */
@@ -96,7 +96,7 @@ const ProgressPanel = ({
   return (
     <aside
       aria-label={label}
-      className='flex max-h-[min(440px,60vh)] w-[min(330px,calc(100vw-2rem))] flex-col gap-2 rounded-md bg-pane px-3.5 py-3 text-ink shadow-float'>
+      className='flex max-h-[min(440px,60vh)] w-[min(330px,calc(100vw-2rem))] flex-col gap-2 rounded-[18px] bg-pane px-4 py-3.5 text-ink shadow-float'>
       <div className='flex items-center gap-2'>
         <Icon
           name={icon}
@@ -105,7 +105,7 @@ const ProgressPanel = ({
         />
         <b
           title={title}
-          className='min-w-0 flex-1 truncate text-[12.5px] font-semibold'>
+          className='min-w-0 flex-1 truncate font-display text-[15px] font-bold tracking-[-0.02em]'>
           {title}
         </b>
         {/* open, the bar and the list say how far; folded, this is all that does */}
@@ -119,7 +119,7 @@ const ProgressPanel = ({
           aria-label={folded ? t`Show the list` : t`Hide the list`}
           title={folded ? t`Show the list` : t`Hide the list`}
           onClick={() => setFolded(!folded)}
-          className='grid size-7 flex-none place-items-center rounded-[5px] border border-line-strong bg-pane p-0 text-ink-2 shadow-card hover:bg-well hover:text-ink'>
+          className='grid size-7 flex-none place-items-center rounded-[9px] border-0 bg-well p-0 text-ink-2 hover:bg-line hover:text-ink'>
           <svg
             aria-hidden='true'
             viewBox='0 0 16 16'
@@ -142,13 +142,13 @@ const ProgressPanel = ({
             aria-valuemax={100}
             aria-valuenow={percent}
             title={barTitle}
-            className='flex h-1 flex-none overflow-hidden rounded-sm bg-line'>
+            className='flex h-1 flex-none overflow-hidden rounded-[2px] bg-line'>
             <i
               className='block h-full bg-accent transition-[width] duration-200'
               style={{ width: `${percent}%` }}
             />
           </div>
-          <div className='flex items-baseline justify-between gap-3 text-[11.5px] text-ink-3'>
+          <div className='flex items-baseline justify-between gap-3 text-[11.5px] font-medium text-ink-3'>
             <span className='min-w-0'>{summary ?? barTitle}</span>
             <span className='flex-none font-mono tabular-nums'>{percent}%</span>
           </div>
@@ -180,10 +180,12 @@ const ProgressPanel = ({
                       aria-valuemin={0}
                       aria-valuemax={100}
                       aria-valuenow={Math.round((row.part ?? 0) * 100)}
-                      className='mt-[3px] mb-[2px] flex h-[3px] overflow-hidden rounded-sm bg-line-2'>
+                      className='mt-[3px] mb-[2px] flex h-[3px] overflow-hidden rounded-[2px] bg-line'>
                       <i
                         className='block h-full bg-accent transition-[width] duration-200'
-                        style={{ width: `${Math.round((row.part ?? 0) * 100)}%` }}
+                        style={{
+                          width: `${Math.round((row.part ?? 0) * 100)}%`
+                        }}
                       />
                     </span>
                   )}

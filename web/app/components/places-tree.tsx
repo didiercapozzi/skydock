@@ -41,15 +41,6 @@ type Props = {
 /* One row of the rail: its mark, its name and how many files it holds, and under that what it still
    owes — with, where it says more than a number, how far its files have got. The folder being looked
    at is filled in blue; one something is dragged over is ringed, to say it will take the drop. */
-/* each kind of place in a colour of its own, so the rail is read by colour before it is read by word */
-const TINT: Partial<Record<IconName, string>> = {
-  fresh: 'text-accent',
-  place: 'text-teal',
-  montage: 'text-proc',
-  storage: 'text-up',
-  camera: 'text-local',
-  bin: 'text-bin'
-}
 
 const Row = ({
   place,
@@ -84,12 +75,12 @@ const Row = ({
     title={title}
     {...dropTarget}
     className={(current) =>
-      `block w-full rounded-[5px] border px-2 py-1 text-left text-ink max-[780px]:w-auto max-[780px]:flex-none max-[780px]:rounded-full max-[780px]:border-line max-[780px]:px-[11px] ${
+      `block w-full rounded-[11px] px-2.5 py-[7px] text-left text-ink max-[780px]:w-auto max-[780px]:flex-none max-[780px]:rounded-full max-[780px]:border max-[780px]:border-line max-[780px]:px-[11px] ${
         over
-          ? 'border-dashed border-pick bg-pick-soft'
+          ? 'bg-pick-soft outline-1 -outline-offset-1 outline-pick outline-dashed'
           : current
-            ? 'border-accent bg-accent text-white'
-            : 'border-transparent hover:bg-line-2 max-[780px]:bg-pane'
+            ? 'bg-accent-soft text-accent-ink'
+            : 'hover:bg-line-2 max-[780px]:bg-pane'
       } ${flash ? 'animate-[placeflash_1.8s_ease-out]' : ''}`
     }>
     {(current) => {
@@ -97,36 +88,31 @@ const Row = ({
       const second = below?.(lit)
       return (
         <>
-          <span className='flex items-center gap-2'>
+          <span className='flex items-center gap-2.5'>
             <Icon
               name={icon}
-              size={15}
-              className={lit ? 'text-white' : TINT[icon]}
+              size={18}
+              className={lit ? 'text-accent' : 'text-ink-3'}
             />
             <span
-              className={`min-w-0 flex-1 truncate text-[13px] font-medium ${quiet ? 'italic' : ''} ${
-                lit ? 'text-white' : quiet ? 'text-ink-3' : ''
+              className={`min-w-0 flex-1 truncate text-[13.5px] font-semibold ${quiet ? 'italic' : ''} ${
+                quiet && !lit ? 'text-ink-3' : ''
               }`}
               title={label}>
               {label}
             </span>
             {count !== undefined && (
-              <span className={`text-[11.5px] tabular-nums ${lit ? 'text-white' : 'text-ink-3'}`}>
+              <span
+                className={`text-[11.5px] font-semibold tabular-nums ${lit ? 'text-accent' : 'text-ink-3'}`}>
                 {count}
               </span>
             )}
           </span>
           {(owed || second) && (
-            <span
-              className={`mt-0.5 ml-[23px] flex items-center gap-2 text-[11.5px] max-[780px]:hidden ${
-                lit ? 'text-white' : 'text-ink-3'
-              }`}>
+            <span className='mt-0.5 ml-7 flex items-center gap-2 text-[11.5px] font-medium text-ink-3 max-[780px]:hidden'>
               {second}
               {owed && (
-                <span
-                  className={`whitespace-nowrap font-medium ${lit ? 'text-white opacity-90' : 'text-local'} ${second ? '' : 'mr-auto'}`}>
-                  {owed}
-                </span>
+                <span className={`whitespace-nowrap ${second ? '' : 'mr-auto'}`}>{owed}</span>
               )}
             </span>
           )}
@@ -148,7 +134,7 @@ const Split = ({
   for (const file of files) counts[fileStatus(file, statusContext(file))] += 1
   const width = (n: number) => `${(n / (files.length || 1)) * 100}%`
   return (
-    <span className='flex h-[3px] flex-1 gap-px overflow-hidden rounded-sm bg-line'>
+    <span className='flex h-1 w-11 flex-none overflow-hidden rounded-[2px] bg-line'>
       <i
         className='block h-full bg-up'
         style={{ width: width(counts.uploaded) }}
@@ -158,7 +144,7 @@ const Split = ({
         style={{ width: width(counts.processed) }}
       />
       <i
-        className='block h-full bg-local-bar'
+        className='block h-full bg-local'
         style={{ width: width(counts.local) }}
       />
     </span>
@@ -167,8 +153,8 @@ const Split = ({
 
 const Heading = ({ children, first }: { children: string; first?: boolean }) => (
   <h2
-    className={`mx-2 mb-0.5 text-[10.5px] font-semibold tracking-[0.04em] text-ink-3 uppercase max-[780px]:my-0 max-[780px]:mr-0.5 max-[780px]:ml-1.5 max-[780px]:flex-none ${
-      first ? 'mt-2' : 'mt-3'
+    className={`mx-2.5 mb-[5px] text-[11px] font-bold tracking-[0.08em] text-ink-3 uppercase max-[780px]:my-0 max-[780px]:mr-0.5 max-[780px]:ml-1.5 max-[780px]:flex-none ${
+      first ? 'mt-1' : 'mt-3.5'
     }`}>
     {children}
   </h2>
@@ -189,12 +175,12 @@ const MontagesHeading = ({
   <h2
     {...dropTarget}
     title={t`Drop a jump or files here to make a montage — its name is asked for first`}
-    className={`mx-0 mt-2 mb-0.5 flex items-center gap-2 rounded-[5px] border px-2 py-0.5 text-[10.5px] font-semibold tracking-[0.04em] text-ink-3 uppercase max-[780px]:my-0 max-[780px]:flex-none ${
-      over ? 'border-dashed border-pick bg-pick-soft' : 'border-transparent'
+    className={`mx-0 mt-3 mb-[3px] flex items-center gap-2 rounded-[11px] px-2.5 py-0.5 text-[11px] font-bold tracking-[0.08em] text-ink-3 uppercase max-[780px]:my-0 max-[780px]:flex-none ${
+      over ? 'bg-pick-soft outline-1 -outline-offset-1 outline-pick outline-dashed' : ''
     }`}>
     <span className='flex-1'>{t`Montages`}</span>
     {todo && (
-      <span className='flex-none text-[11px] font-medium tracking-normal whitespace-nowrap text-local normal-case max-[780px]:hidden'>
+      <span className='flex-none tracking-normal whitespace-nowrap text-accent-ink normal-case max-[780px]:hidden'>
         {todo}
       </span>
     )}
@@ -216,10 +202,10 @@ const AddPlace = ({ onAdd }: { onAdd: (name: string) => void }) => {
       <button
         type='button'
         onClick={() => setOpen(true)}
-        className='flex w-full items-center gap-2 rounded-[5px] px-2 py-[5px] text-left text-[12.5px] text-ink-3 hover:bg-line-2 hover:text-ink-2 max-[780px]:hidden'>
+        className='mt-1.5 flex w-full items-center gap-2.5 rounded-[11px] px-2.5 py-[7px] text-left text-[13.5px] font-semibold text-ink-3 hover:bg-well hover:text-ink-2 max-[780px]:hidden'>
         <Icon
           name='plus'
-          size={15}
+          size={16}
         />
         {t`Add a destination…`}
       </button>
@@ -240,7 +226,7 @@ const AddPlace = ({ onAdd }: { onAdd: (name: string) => void }) => {
         onBlur={() => {
           if (!adding.trim()) setOpen(false)
         }}
-        className='h-7 min-w-0 flex-1 rounded-[5px] border border-line-strong bg-pane px-2 text-[12.5px] outline-none placeholder:text-ink-3 focus:border-accent'
+        className='h-8 min-w-0 flex-1 rounded-[9px] border border-line-strong bg-well px-2.5 text-[12.5px] outline-none placeholder:text-ink-3 focus:border-accent'
       />
       <Mini onClick={add}>{t`Add`}</Mini>
     </span>
@@ -303,7 +289,7 @@ const PlacesTree = ({
   return (
     <nav
       aria-label={t`Folders`}
-      className='sticky top-0 self-start overflow-y-auto border-line backdrop-rail bg-rail px-2 pt-1 pb-6 max-[780px]:z-[8] max-[780px]:flex max-[780px]:h-auto max-[780px]:items-center max-[780px]:gap-1.5 max-[780px]:overflow-x-auto max-[780px]:overflow-y-hidden max-[780px]:border-b max-[780px]:px-3 max-[780px]:py-2 min-[781px]:flex min-[781px]:h-full min-[781px]:flex-col min-[781px]:border-r'>
+      className='sticky top-0 gap-px self-start overflow-y-auto rounded-[18px] bg-rail px-2.5 py-3.5 shadow-card max-[780px]:z-[8] max-[780px]:flex max-[780px]:h-auto max-[780px]:items-center max-[780px]:gap-1.5 max-[780px]:overflow-x-auto max-[780px]:overflow-y-hidden max-[780px]:px-3 max-[780px]:py-2 min-[781px]:col-start-1 min-[781px]:row-span-2 min-[781px]:row-start-1 min-[781px]:flex min-[781px]:h-full min-[781px]:flex-col'>
       {/* what came off the cameras and is not filed yet: one entry, and the first thing on it */}
       <Heading first>{t`Work`}</Heading>
       <Row
@@ -361,10 +347,8 @@ const PlacesTree = ({
                       <StepMeter
                         progress={progress}
                         className={
-                          /* on the blue of the folder being looked at, the step it is at is white */
-                          lit
-                            ? 'ml-auto [&>i.bg-accent]:bg-white [&>i.bg-line-2]:bg-white/30'
-                            : 'ml-auto'
+                          /* on the tint of the folder being looked at, the steps still to take need a line that shows */
+                          lit ? 'flex-1 [&>i.bg-line]:bg-accent/20' : 'flex-1'
                         }
                       />
                     </>

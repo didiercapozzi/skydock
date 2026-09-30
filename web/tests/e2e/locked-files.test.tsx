@@ -38,8 +38,7 @@ const renderList = (shape: 'rows' | 'grid') =>
       offGap: new Set<string>(),
       onDragFile: () => {},
       sortKey: (file: ManifestFile) => file.filename,
-      deliveredName: () => null,
-      selecting: true
+      deliveredName: () => null
     })
   )
 

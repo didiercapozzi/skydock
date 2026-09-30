@@ -33,6 +33,7 @@ import {
   FilmStrip,
   GoneFromStorage,
   MontageCardActions,
+  OpenFilm,
   UploadedCards
 } from '../components/montage-card'
 import { NextStep, StepTrail } from '../components/montage-steps'
@@ -113,7 +114,18 @@ const useFolder = (model: BoardModel, place: Place) => {
   const cards = cardsOf(sections)
   const openCard =
     grouping === 'jump' ? (cards.find((s) => s.key === looking.card) ?? cards[0]) : undefined
-  return { looking, query, family, groups, loose, files, options, grouping, sections, openCard }
+  return {
+    looking,
+    query,
+    family,
+    groups,
+    loose,
+    files,
+    options,
+    grouping,
+    sections,
+    openCard
+  }
 }
 
 const Place = () => {
@@ -165,7 +177,10 @@ const Place = () => {
     }
   })
   /* a change elsewhere took the picks away, or another folder was opened: let go of them */
-  const [seen, setSeen] = useState({ gone: model.picksGone, at: placeKey(place) })
+  const [seen, setSeen] = useState({
+    gone: model.picksGone,
+    at: placeKey(place)
+  })
   if (seen.gone !== model.picksGone || seen.at !== placeKey(place)) {
     setSeen({ gone: model.picksGone, at: placeKey(place) })
     selection.clear()
@@ -174,7 +189,10 @@ const Place = () => {
   /* A jump made from picked files is opened as soon as it exists — its card, and with it its panel.
      Its id is the server's to give, so it is known by its first file, once the answer has that file
      in a jump it was not in before; a move that was refused opens nothing. */
-  const [makingJump, setMakingJump] = useState<{ file: string; from?: string } | null>(null)
+  const [makingJump, setMakingJump] = useState<{
+    file: string
+    from?: string
+  } | null>(null)
   const made =
     makingJump && busy === null
       ? groups.find((g) => g.files.some((f) => f.id === makingJump.file))
@@ -278,7 +296,11 @@ const Place = () => {
         }
         note={
           board.note
-            ? { text: board.note, problem: board.noteIsProblem, onClose: () => setNote(null) }
+            ? {
+                text: board.note,
+                problem: board.noteIsProblem,
+                onClose: () => setNote(null)
+              }
             : null
         }
         incoming={paneTarget}
@@ -388,7 +410,10 @@ const Place = () => {
                 setProblem(t`${name} was not sent from this machine, so it cannot come back.`)
                 return
               }
-              send(`back:${mine.id}`, { intent: 'bring-back', fileIds: [mine.id] })
+              send(`back:${mine.id}`, {
+                intent: 'bring-back',
+                fileIds: [mine.id]
+              })
             }}
           />
         )}
@@ -421,7 +446,12 @@ const Place = () => {
           onMerge={(leftId, rightId, anchorEpoch) => {
             selection.setComparing(null)
             selection.clear()
-            send('merge', { intent: 'merge-groups', leftId, rightId, anchorEpoch })
+            send('merge', {
+              intent: 'merge-groups',
+              leftId,
+              rightId,
+              anchorEpoch
+            })
           }}
         />
       )}
@@ -524,32 +554,37 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
   const progress = model.progressOf(group)
   if (!isMontage(group) || group.freed || !progress) return null
   const facts = board.montageFacts[group.id]
+  const actions = (
+    <MontageCardActions
+      group={group}
+      facts={facts}
+      busy={board.busy}
+      upload={board.uploading ? { key: board.uploading, label: board.uploadLabel ?? '' } : null}
+      blocked={model.gateFor(group.files)}
+      proxiesWaiting={waitingForProxy(group.files, board.proxies).length}
+      named={hasCompletePassenger(group.passenger)}
+      onProcess={() => model.takeStep(group, 'Processed')}
+      onCancelProcess={model.cancelProcess}
+      onMontage={() => model.takeStep(group, 'Edited')}
+      onOpenMontage={() => model.takeStep(group, 'Rendered')}
+      onUpload={() => model.takeStep(group, 'Uploaded')}
+      onFree={() => model.setDialog({ kind: 'free', groupId: group.id })}>
+      {facts?.film && <OpenFilm film={facts.film} />}
+    </MontageCardActions>
+  )
   return (
     <NextStep
       progress={progress}
       film={
-        group.uploaded ? undefined : (
+        facts?.film && !group.uploaded ? (
           <FilmStrip
             facts={facts}
-            picture={filmPicture(group)}
-          />
-        )
+            picture={filmPicture(group)}>
+            {actions}
+          </FilmStrip>
+        ) : undefined
       }>
-      <MontageCardActions
-        group={group}
-        facts={facts}
-        busy={board.busy}
-        upload={board.uploading ? { key: board.uploading, label: board.uploadLabel ?? '' } : null}
-        blocked={model.gateFor(group.files)}
-        proxiesWaiting={waitingForProxy(group.files, board.proxies).length}
-        named={hasCompletePassenger(group.passenger)}
-        onProcess={() => model.takeStep(group, 'Processed')}
-        onCancelProcess={model.cancelProcess}
-        onMontage={() => model.takeStep(group, 'Edited')}
-        onOpenMontage={() => model.takeStep(group, 'Rendered')}
-        onUpload={() => model.takeStep(group, 'Uploaded')}
-        onFree={() => model.setDialog({ kind: 'free', groupId: group.id })}
-      />
+      {actions}
     </NextStep>
   )
 }
@@ -572,15 +607,9 @@ const MontageAbove = ({ group, withFilm }: { group: ManifestGroup; withFilm: boo
         <FilmStrip
           facts={facts}
           picture={filmPicture(group)}
-          className='max-w-[330px]'
         />
       )}
-      {!group.uploaded && (
-        <FilmNote
-          facts={facts}
-          locked={model.frozen.has(group.id) ? editLocked : null}
-        />
-      )}
+      {!group.uploaded && <FilmNote locked={model.frozen.has(group.id) ? editLocked : null} />}
     </div>
   )
 }
@@ -731,8 +760,16 @@ const Inspector = ({
           fresh
             ? (startsAt) => {
                 const first = picked[0]
-                if (first?.id) onMakingJump({ file: first.id, from: model.groupOfFile(first)?.id })
-                model.moveFiles(ids, { destination: null, newGroup: true, startsAt })
+                if (first?.id)
+                  onMakingJump({
+                    file: first.id,
+                    from: model.groupOfFile(first)?.id
+                  })
+                model.moveFiles(ids, {
+                  destination: null,
+                  newGroup: true,
+                  startsAt
+                })
               }
             : undefined
         }

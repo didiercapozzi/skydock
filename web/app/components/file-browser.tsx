@@ -7,15 +7,7 @@ import { FileList, kindOf } from './file-list'
 import type { FileShape, Kind, Modifiers } from './file-list'
 import { StepMeter } from './montage-steps'
 import type { ManifestFile, ManifestGroup } from './types'
-import {
-  dateLabel,
-  formatSize,
-  getPictureUrl,
-  hhmm,
-  minFileMtime,
-  shortDate,
-  weekday
-} from './utils'
+import { dateLabel, formatSize, getPictureUrl, hhmm, minFileMtime } from './utils'
 
 /* A folder's files. By day, under headers that stay pinned while their files scroll by; as one list,
    all together. By jump, the jumps are cards side by side and one is open, its files listed under
@@ -63,12 +55,17 @@ type Props = {
   empty: string
 }
 
-/* A fact about a run of files, said quietly: a small word in the colour of what it says */
-const Tag = ({ tone, children }: { tone: 'local' | 'proc' | 'up' | 'lock'; children: string }) => (
+/* A fact about a run of files, said as a small tinted pill with a dot of its colour */
+const TAGS = {
+  local: 'bg-local-soft text-local',
+  proc: 'bg-proc-soft text-proc',
+  up: 'bg-up-soft text-up',
+  lock: 'bg-lock-soft text-lock'
+}
+
+const Tag = ({ tone, children }: { tone: keyof typeof TAGS; children: string }) => (
   <span
-    className={`text-[11px] font-medium whitespace-nowrap ${
-      { local: 'text-local', proc: 'text-proc', up: 'text-up', lock: 'text-lock' }[tone]
-    }`}>
+    className={`inline-flex h-[22px] items-center gap-1.5 rounded-full px-[9px] text-[11.5px] font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current before:content-[''] ${TAGS[tone]}`}>
     {children}
   </span>
 )
@@ -81,6 +78,13 @@ const progressTag = (files: ManifestFile[], statusOf: (file: ManifestFile) => Fi
   if (local > 0) return <Tag tone='local'>{t`${local} to process`}</Tag>
   if (processed > 0) return <Tag tone='proc'>{t`${processed} to upload`}</Tag>
   return <Tag tone='up'>{t`uploaded`}</Tag>
+}
+
+/* when a run of files began and ended, to the minute */
+const timeSpan = (files: ManifestFile[]) => {
+  const from = minFileMtime(files) ?? 0
+  const to = files.reduce((latest, f) => Math.max(latest, f.mtime), from)
+  return `${hhmm(from)}${hhmm(to) === hhmm(from) ? '' : `–${hhmm(to)}`}`
 }
 
 const videosIn = (files: ManifestFile[]) => files.filter((f) => kindOf(f) === 'video').length
@@ -104,11 +108,11 @@ const DayHeader = ({
   loose?: boolean
   statusOf: (file: ManifestFile) => FileStatus
 }) => (
-  <div className='sticky top-0 z-[3] flex flex-wrap items-baseline gap-x-2.5 gap-y-1 bg-pane pt-4 pb-2.5'>
-    <span className='text-[15px] font-semibold text-ink'>
+  <div className='sticky top-0 z-[3] flex flex-wrap items-center gap-x-3 gap-y-1 bg-pane pt-[18px] pb-[18px]'>
+    <span className='font-display text-[20px] font-bold tracking-[-0.03em] text-ink'>
       {loose ? t`Loose files` : dayLabel(day, true)}
     </span>
-    <span className='text-[12px] text-ink-3'>
+    <span className='text-[13.5px] font-medium text-ink-3'>
       {loose ? `${day ? `${dayLabel(day)} · ` : ''}${t`in no jump`} · ` : ''}
       {counts(files)}
     </span>
@@ -143,11 +147,9 @@ const JumpCard = ({
   const frozen = group ? jump.frozen.has(group.id) : false
   const over = group !== null && jump.overTarget === `group:${group.id}`
   const from = minFileMtime(section.files) ?? 0
-  const to = section.files.reduce((latest, f) => Math.max(latest, f.mtime), from)
   const first = group?.freed ? undefined : [...section.files].sort((a, b) => a.mtime - b.mtime)[0]
   const label = section.kind === 'jump' ? section.label : t`Loose files`
   const progress = group ? (jump.progress?.(group) ?? null) : null
-  const videos = videosIn(section.files)
   const size = section.files.reduce((sum, f) => sum + f.size, 0)
   return (
     <div
@@ -181,92 +183,90 @@ const JumpCard = ({
           ? t`Click to list its files · ⌘/ctrl-click a second jump to compare the two · drop files here to move them into it, holding alt to copy them instead · drag onto a folder to file the whole jump`
           : t`Click to list its files`
       }
-      /* the loose card is not a jump and must not pass for one: dashed, flat and on nothing of its
-         own — but the same size, so the cards keep their rows and columns */
-      className={`flex h-full w-full flex-col overflow-hidden rounded-lg border text-left ${
-        group ? '' : 'border-dashed'
-      } ${group && !frozen ? 'cursor-grab' : 'cursor-pointer'} ${
+      /* a jump is a photograph: its first frame full-bleed under a dark foot, its name and time
+         written on it. The loose card is not a jump and must not pass for one: dashed, flat and on
+         no picture — but the same size, so the cards keep their rows and columns */
+      className={`relative block h-[150px] w-full overflow-hidden rounded-[16px] text-left ${
+        group
+          ? `bg-well text-white ${frozen ? 'cursor-pointer' : 'cursor-grab'}`
+          : 'cursor-pointer border-[1.5px] border-dashed border-line-strong bg-transparent text-ink-3 hover:border-ink-3'
+      } ${
         over
-          ? 'border-dashed border-pick bg-pick-soft'
+          ? 'shadow-[0_0_0_3px_var(--color-pane),0_0_0_5.5px_var(--color-pick)]'
           : open
-            ? 'border-accent bg-accent-soft shadow-[0_0_0_1px_var(--color-accent)]'
+            ? 'shadow-[0_0_0_3px_var(--color-pane),0_0_0_5.5px_var(--color-accent)]'
             : group
-              ? 'border-line bg-pane hover:border-line-strong'
-              : 'border-line-strong bg-transparent hover:border-ink-3'
+              ? 'shadow-card'
+              : ''
       }`}>
       {group ? (
-        <span className='pointer-events-none relative block h-[100px] flex-none overflow-hidden bg-well'>
+        <>
           {first && (
             <img
-              src={getPictureUrl(first, proxies[first.path], 320)}
+              src={getPictureUrl(first, proxies[first.path], 640)}
               alt=''
               loading='lazy'
               decoding='async'
               draggable={false}
-              className='block h-full w-full object-cover'
+              className='pointer-events-none absolute inset-0 block h-full w-full object-cover'
             />
           )}
-          <span className='absolute bottom-1.5 left-1.5 rounded bg-black/[0.62] px-1.5 py-px text-[10.5px] font-medium text-white tabular-nums'>
-            ▶ {videos} · ◻ {section.files.length - videos}
+          <span className='pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(8,12,22,0)_35%,rgba(8,12,22,0.78)_100%)]' />
+          <span
+            className={`pointer-events-none absolute top-[11px] left-3 z-[1] flex h-[22px] items-center rounded-full px-[9px] text-[11.5px] font-bold backdrop-blur-[6px] ${
+              open ? 'bg-accent text-white' : 'bg-[rgba(8,12,22,0.55)]'
+            }`}>
+            {plural(section.files.length, { one: '# file', other: '# files' })} · {formatSize(size)}
           </span>
-        </span>
+        </>
       ) : (
         /* loose files share no one moment and no one picture: only how many there are */
-        <span className='grid h-[100px] flex-none place-items-center text-[12px] text-ink-3'>
+        <span className='pointer-events-none absolute top-[11px] left-3 text-[12px] font-semibold'>
           {plural(section.files.length, { one: '# file', other: '# files' })}
         </span>
       )}
-      <span className='flex items-baseline justify-between gap-2 px-2.5 pt-2'>
-        {group ? (
-          <>
-            {/* a jump is a gathering of files, so it is named as one — never by one file's time */}
-            <b className='min-w-0 truncate text-[13px] font-semibold text-ink'>{label}</b>
-            <span className='flex-none text-[11.5px] text-ink-3 tabular-nums'>
-              {formatSize(size)}
-            </span>
-          </>
-        ) : (
-          <b className='text-[13px] font-medium text-ink-3'>{t`Loose`}</b>
-        )}
-      </span>
-      <span className='truncate px-2.5 pt-px pb-2 text-[11.5px] text-ink-3 tabular-nums'>
-        {group
-          ? `${weekday(new Date(from * 1000), 'short')} ${shortDate(from)} · ${hhmm(from)}${
-              hhmm(to) === hhmm(from) ? '' : `–${hhmm(to)}`
-            }`
-          : t`in no jump`}
-      </span>
-      {/* what it has got to, small and last, so every card keeps the same face above it */}
+      {/* what it has got to, small and at the top, so every card keeps the same face */}
       {group && (
-        <span className='-mt-1.5 flex flex-col gap-1.5 px-2.5 pb-2'>
-          <span className='flex flex-wrap items-center gap-x-2 gap-y-0.5'>
-            {group.freed ? (
-              <Tag tone='lock'>{t`storage only`}</Tag>
-            ) : progress ? (
-              /* a montage says the step it is at, which says more than its files' state */
-              <Tag tone={progress.next ? 'local' : 'up'}>{progress.next?.todo ?? t`done`}</Tag>
-            ) : frozen ? (
-              <Tag tone='lock'>{t`🔒 edit`}</Tag>
-            ) : (
-              progressTag(section.files, statusOf)
-            )}
-            {/* a file off the gap rule is flagged where it is, and its jump says so from the
-                outside */}
-            {strays > 0 && (
-              <span
-                title={plural(strays, {
-                  one: '# file more than 15 minutes from the rest of this jump — the gap rule would not have put it here',
-                  other:
-                    '# files more than 15 minutes from the rest of this jump — the gap rule would not have put them here'
-                })}
-                className='text-[11px] font-medium whitespace-nowrap text-changed'>
-                ⧗ {t`${strays} off the gap`}
-              </span>
-            )}
-          </span>
-          {progress && <StepMeter progress={progress} />}
+        <span className='pointer-events-none absolute top-[11px] right-3 z-[1] flex flex-col items-end gap-1'>
+          {group.freed ? (
+            <Tag tone='lock'>{t`storage only`}</Tag>
+          ) : progress ? (
+            /* a montage says the step it is at, which says more than its files' state */
+            <Tag tone={progress.next ? 'local' : 'up'}>{progress.next?.todo ?? t`done`}</Tag>
+          ) : frozen ? (
+            <Tag tone='lock'>{t`🔒 edit`}</Tag>
+          ) : (
+            progressTag(section.files, statusOf)
+          )}
+          {/* a file off the gap rule is flagged where it is, and its jump says so from the
+              outside */}
+          {strays > 0 && (
+            <span
+              title={plural(strays, {
+                one: '# file more than 15 minutes from the rest of this jump — the gap rule would not have put it here',
+                other:
+                  '# files more than 15 minutes from the rest of this jump — the gap rule would not have put them here'
+              })}
+              className='pointer-events-auto inline-flex h-[22px] items-center rounded-full bg-changed-soft px-[9px] text-[11.5px] font-bold whitespace-nowrap text-changed'>
+              ⧗ {t`${strays} off the gap`}
+            </span>
+          )}
         </span>
       )}
+      <span className='pointer-events-none absolute right-3.5 bottom-3 left-3.5 z-[1] flex flex-col gap-1.5'>
+        {group && progress && <StepMeter progress={progress} />}
+        <span className='flex items-end gap-2'>
+          {/* a jump is a gathering of files, so it is named as one — never by one file's time */}
+          <b
+            className={`min-w-0 truncate font-display text-[19px] font-bold tracking-[-0.02em] ${group ? '' : 'text-ink-3'}`}>
+            {group ? label : t`Loose`}
+          </b>
+          <span
+            className={`ml-auto flex-none text-[12px] font-semibold tabular-nums ${group ? 'opacity-[0.92]' : ''}`}>
+            {group ? timeSpan(section.files) : t`in no jump`}
+          </span>
+        </span>
+      </span>
     </div>
   )
 }
@@ -274,18 +274,20 @@ const JumpCard = ({
 const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props) => {
   if (sections.length === 0)
     return (
-      <div className='mt-3 rounded-lg border border-dashed border-line-strong px-4 py-7 text-center text-ink-3'>
+      <div className='mt-3 rounded-[16px] border-[1.5px] border-dashed border-line-strong px-4 py-7 text-center font-medium text-ink-3'>
         {empty}
       </div>
     )
-  const files = (key: string, shown: ManifestFile[], title?: string) => (
-    <FileList
-      key={`files:${key}`}
-      {...list}
-      files={shown}
-      title={title}
-      selecting={list.picked.length > 0}
-    />
+  const files = (key: string, shown: ManifestFile[], title?: string, about?: string) => (
+    /* one block, so the space between a jump's parts is not also put inside its list */
+    <div key={`files:${key}`}>
+      <FileList
+        {...list}
+        files={shown}
+        title={title}
+        about={about}
+      />
+    </div>
   )
 
   /* By jump: every jump a card in a strip, and under them the open one's files. Nothing repeats
@@ -300,7 +302,7 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
     return (
       <div className='@container'>
         {!cards.hidden && (
-          <div className='mt-3 grid grid-cols-[repeat(auto-fill,184px)] gap-2.5'>
+          <div className='grid grid-cols-[repeat(auto-fill,minmax(230px,1fr))] gap-3.5'>
             {cardSections.map((s) => (
               <JumpCard
                 key={s.key}
@@ -317,12 +319,18 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
         )}
         <section
           aria-label={openLabel}
-          className='mt-3.5 flex flex-col gap-2.5'>
+          className='mt-[18px] flex flex-col gap-[18px]'>
           {open.kind === 'jump' && jump.actions?.(open.group) && (
             <div className='flex flex-wrap items-center gap-2'>{jump.actions(open.group)}</div>
           )}
           {open.kind === 'jump' && jump.above?.(open.group)}
-          {!(open.kind === 'jump' && open.group.freed) && files(open.key, open.files, openLabel)}
+          {!(open.kind === 'jump' && open.group.freed) &&
+            files(
+              open.key,
+              open.files,
+              openLabel,
+              open.kind === 'jump' ? timeSpan(open.files) : undefined
+            )}
         </section>
       </div>
     )

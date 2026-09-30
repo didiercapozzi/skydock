@@ -74,12 +74,19 @@ const NOTE = 'text-[11.5px] leading-normal text-ink-3'
 
 /* a button with no box of its own, for what sits at the end of a line: take out, remove, leave out */
 const QUIET =
-  'inline-flex flex-none items-center gap-1 rounded-[5px] font-medium whitespace-nowrap text-ink-2 hover:bg-well hover:text-ink'
+  'inline-flex flex-none items-center gap-1 rounded-[9px] font-semibold whitespace-nowrap text-ink-2 hover:bg-well hover:text-ink'
 
 /* Each step keeps what is dragged from held at its top and lets what it is dropped on scroll beneath,
    so the thing being carried is never scrolled away from the place it is going. */
-const HELD = 'flex flex-none flex-col gap-3 px-6 pt-[18px] pb-3'
-const SCROLL = 'flex min-h-0 flex-1 flex-col gap-3 overflow-auto px-6 pb-[18px]'
+const HELD = 'flex flex-none flex-col gap-3.5 px-[26px] pt-[22px] pb-3.5'
+const SCROLL = 'flex min-h-0 flex-1 flex-col gap-3.5 overflow-auto px-[26px] pt-px pb-[22px]'
+
+/* what a step says about itself, at the size of the words around it */
+const HELP = 'font-medium text-ink-3'
+
+/* a typed value in a dialog: a well with the text in the face file names are read in */
+const VALUE =
+  'h-9 rounded-[10px] border-0 bg-well px-3 font-mono text-[12.5px] tracking-[-0.02em] text-ink'
 
 type Remove = { label: string; onClick: () => void }
 
@@ -101,9 +108,11 @@ const TakeOut = ({ remove }: { remove: Remove }) => (
 
 /* A step's heading: its number, quiet, and what it does. */
 const Heading = ({ n, children }: { n: string; children: React.ReactNode }) => (
-  <span className='flex items-baseline gap-3 tracking-[-0.02em]'>
-    <span className='text-[18px] font-semibold text-ink-3'>{n}</span>
-    <h3 className='m-0 text-[15px] font-semibold'>{children}</h3>
+  <span className='flex items-center gap-2.5'>
+    <span className='grid size-[26px] flex-none place-items-center self-center rounded-[9px] bg-accent text-[12px] font-bold text-white dark:text-[#0c0a2a]'>
+      {n}
+    </span>
+    <h3 className='font-display m-0 text-[18px] font-bold tracking-[-0.03em]'>{children}</h3>
   </span>
 )
 
@@ -132,18 +141,17 @@ const PartLine = ({
               .join(', ')}${files.length > SHOWN ? ` ${t`+ ${files.length - SHOWN} more`}` : ''}`
           : undefined
       }
-      className='flex min-h-[22px] items-center gap-2 text-[12px]'>
-      <span className='flex min-w-0 flex-1 items-center gap-2'>
+      className='flex h-[30px] items-center gap-2.5 font-medium'>
+      <span className='flex min-w-0 flex-1 items-center gap-2.5'>
         <Icon
           name={PART_ICONS[part]}
-          size={14}
-          className='text-ink-3'
+          size={15}
         />
-        <code className='font-mono break-all'>
+        <code className='font-mono text-[12px] font-medium tracking-[-0.02em] break-all text-ink'>
           {folder ? `${part}/` : `${stem}.${part === 'film' ? 'mp4' : 'kdenlive'}`}
         </code>
         {folder && (
-          <span className={NOTE}>
+          <span>
             {part === 'videos'
               ? plural(files.length, { one: '# clip', other: '# clips' })
               : plural(files.length, { one: '# photo', other: '# photos' })}
@@ -352,13 +360,13 @@ const UploadDialog = ({
   const stepOne = (
     <>
       <div className={HELD}>
-        <Heading n='01'>{t`Make the zips`}</Heading>
+        <Heading n='1'>{t`Make the zips`}</Heading>
         <span
-          className={NOTE}
+          className={`-mt-1.5 ${HELP}`}
           title={t`The same one can go into several zips.`}>
           {t`Drag onto a zip, or press one to make a new zip.`}
         </span>
-        <div className='flex flex-wrap gap-1.5'>
+        <div className='flex flex-wrap gap-2'>
           {present.map((part) => (
             <div
               key={part}
@@ -375,25 +383,19 @@ const UploadDialog = ({
               }}
               aria-label={partName(part)}
               title={`${aboutPart(part, parts, stem)} — ${t`press to put it in a new zip`}`}
-              className={`flex h-8 cursor-grab items-center gap-1.5 rounded-lg border px-2.5 text-[12.5px] font-medium ${
-                zipsIn(part) > 0
-                  ? 'border-line bg-up-soft text-up'
-                  : 'border-line bg-pane text-ink hover:border-line-strong'
+              className={`flex h-9 cursor-grab items-center gap-2 rounded-[12px] px-3.5 font-bold ${
+                zipsIn(part) > 0 ? 'bg-up-soft text-up' : 'bg-well text-ink hover:bg-line'
               }`}>
-              <Icon
-                name={PART_ICONS[part]}
-                size={14}
-              />
+              <Icon name={PART_ICONS[part]} />
               {partName(part)}
               {zipsIn(part) === 1 && (
                 <Icon
                   name='check'
-                  size={12}
-                  weight={2.4}
+                  size={14}
                 />
               )}
               {zipsIn(part) > 1 && (
-                <span className='text-[11.5px] font-normal'>
+                <span className='text-[12px] font-semibold'>
                   {plural(zipsIn(part), { one: 'in # zip', other: 'in # zips' })}
                 </span>
               )}
@@ -401,7 +403,7 @@ const UploadDialog = ({
           ))}
         </div>
         {waitingForFilm && (
-          <span className='text-[12px] text-local'>
+          <span className='text-[12.5px] text-local'>
             {t`No montage rendered yet — render it in kdenlive first.`}
           </span>
         )}
@@ -409,7 +411,7 @@ const UploadDialog = ({
       <div className={SCROLL}>
         <div
           aria-label={t`Zips`}
-          className='flex flex-col gap-3'>
+          className='flex flex-col gap-3.5'>
           {plan.zips.map((zip, at) => {
             const name = zipNameOf(stem, zip.ending)
             const inside = present.filter((part) => zip.parts.includes(part))
@@ -428,17 +430,18 @@ const UploadDialog = ({
                   () => setOver(`zip:${at}`),
                   () => leave(`zip:${at}`)
                 )}
-                className={`flex flex-none flex-col gap-2 rounded-xl px-3.5 py-3 ${dropLook(over === `zip:${at}`, 'border border-line bg-rail')}`}>
+                className={`flex flex-none flex-col gap-2.5 rounded-[16px] px-4 py-3.5 ${dropLook(over === `zip:${at}`, 'bg-pane shadow-[0_0_0_1px_var(--color-line)]')}`}>
                 <span
                   draggable
                   onDragStart={(e) => carry(e, `zip:${zip.ending}`)}
                   aria-label={t`Send ${name}`}
-                  className='flex cursor-grab items-center gap-2'>
+                  className='flex cursor-grab items-center gap-2.5'>
                   <Icon
                     name='zip'
+                    size={20}
                     className='text-accent'
                   />
-                  <code className='min-w-0 flex-1 font-mono text-[12px] break-all'>
+                  <code className='min-w-0 flex-1 font-mono text-[12.5px] tracking-[-0.02em] break-all'>
                     {ending ? (
                       <>
                         {stem}.<b className='font-medium text-accent'>{ending}</b>.zip
@@ -447,7 +450,9 @@ const UploadDialog = ({
                       name
                     )}
                   </code>
-                  {size > 0 && <span className={NOTE}>{formatFilmSize(size)}</span>}
+                  {size > 0 && (
+                    <span className='font-semibold text-ink-3'>{formatFilmSize(size)}</span>
+                  )}
                   <button
                     type='button'
                     aria-label={t`Remove ${name}`}
@@ -460,7 +465,7 @@ const UploadDialog = ({
                     />
                   </button>
                 </span>
-                <label className={`flex items-center gap-2 ${NOTE}`}>
+                <label className='flex items-center gap-2.5 font-semibold text-ink-3'>
                   {t`Ends with`}
                   <input
                     aria-label={t`Name ends with`}
@@ -468,10 +473,10 @@ const UploadDialog = ({
                     value={zip.ending}
                     onChange={(e) => renameZip(at, e.target.value)}
                     onBlur={tidyEndings}
-                    className={`${INPUT} h-6 w-32 py-0 font-mono text-[12px]`}
+                    className={`${INPUT} ${VALUE} w-[120px]`}
                   />
                 </label>
-                <div className='flex flex-col gap-0.5 rounded-lg border border-dashed border-line-strong bg-well px-3 py-1.5 text-ink-2'>
+                <div className='flex flex-col rounded-[12px] border-[1.5px] border-dashed border-ink-3 bg-well px-3 py-1.5 text-ink-2'>
                   {inside.map((part) => (
                     <PartLine
                       key={part}
@@ -502,25 +507,25 @@ const UploadDialog = ({
             () => leave('new')
           )}
           title={t`Named ${stem}.….zip — you choose the end, or none.`}
-          className={`flex flex-none flex-col items-center gap-1 rounded-xl px-4 text-center text-ink-3 ${
-            plan.zips.length === 0 ? 'py-12' : 'py-3.5'
-          } ${over === 'new' ? 'border-[1.5px] border-dashed border-accent bg-accent-soft' : 'border-[1.5px] border-dashed border-line'}`}>
+          className={`flex flex-none flex-col items-center gap-1.5 rounded-[16px] px-4 text-center font-semibold text-ink-3 ${
+            plan.zips.length === 0 ? 'py-12' : 'py-4'
+          } ${over === 'new' ? 'border-[1.5px] border-dashed border-accent bg-accent-soft' : 'border-[1.5px] border-dashed border-ink-3'}`}>
           <Icon
             name='zip'
-            size={18}
+            size={22}
           />
-          <span className='text-[12.5px]'>
+          <span>
             {plan.zips.length === 0
               ? t`Drop here: it makes a zip`
               : t`Drop here to make another zip`}
           </span>
         </div>
         {plan.zips.some((zip) => zip.parts.includes('project')) && (
-          <span className={NOTE}>
+          <span className={HELP}>
             {t`The project reopens only with its clips back where they sat.`}
           </span>
         )}
-        {endingTrouble && <span className='text-[12px] text-local'>{endingTrouble}</span>}
+        {endingTrouble && <span className='text-[12.5px] text-local'>{endingTrouble}</span>}
       </div>
     </>
   )
@@ -529,9 +534,9 @@ const UploadDialog = ({
     <>
       <div className={HELD}>
         <span className='flex flex-wrap items-center gap-3'>
-          <Heading n='02'>{t`Where it goes`}</Heading>
+          <Heading n='2'>{t`Where it goes`}</Heading>
           <Spacer />
-          <label className={`flex items-center gap-2 ${NOTE}`}>
+          <label className='flex items-center gap-2.5 font-semibold text-ink-3'>
             {t`Project folder`}
             <input
               aria-label={t`Project folder`}
@@ -539,14 +544,14 @@ const UploadDialog = ({
               value={folder}
               onChange={(e) => setFolder(slugOf(e.target.value, true))}
               onBlur={() => setFolder(slugOf(folder))}
-              className='h-7 w-44 rounded-[7px] border border-line bg-pane px-[9px] font-mono text-[12px] text-ink'
+              className={`${VALUE} w-[170px]`}
             />
           </label>
         </span>
       </div>
       <div className={SCROLL}>
         {shown.length === 0 && (
-          <div className='flex flex-none flex-col items-center gap-1 rounded-xl border-[1.5px] border-dashed border-line px-4 py-10 text-center text-[12.5px] text-ink-3'>
+          <div className='flex flex-none flex-col items-center gap-1 rounded-[16px] border-[1.5px] border-dashed border-ink-3 px-4 py-10 text-center text-[12.5px] text-ink-3'>
             <Icon
               name='place'
               size={22}
@@ -577,15 +582,16 @@ const UploadDialog = ({
                 () => setOver(p.name),
                 () => leave(p.name)
               )}
-              className={`flex flex-none flex-col overflow-hidden rounded-xl ${dropLook(over === p.name, 'border border-line')}`}>
-              <span className='flex flex-wrap items-center gap-2 border-b border-line-2 bg-rail px-3.5 py-[11px]'>
+              className={`flex flex-none flex-col overflow-hidden rounded-[16px] ${dropLook(over === p.name, 'shadow-[0_0_0_1px_var(--color-line)]')}`}>
+              <span className='flex flex-wrap items-center gap-2.5 bg-well px-3.5 py-[11px]'>
                 <Icon
                   name='place'
+                  size={18}
                   className={share ? 'text-accent' : 'text-ink-3'}
                 />
-                <b className='text-[13px] font-semibold'>{p.name}</b>
+                <b className='font-bold'>{p.name}</b>
                 {share && (
-                  <span className='inline-flex items-center gap-1 text-[11.5px] font-medium text-accent'>
+                  <span className='inline-flex items-center gap-1 text-[12px] font-bold text-accent'>
                     <Icon
                       name='link'
                       size={13}
@@ -615,7 +621,7 @@ const UploadDialog = ({
                   />
                 </button>
               </span>
-              <div className='flex flex-col gap-[7px] px-3.5 py-2.5'>
+              <div className='flex flex-col gap-1.5 px-4 py-3'>
                 {!p.path && (
                   <span>
                     <Mini onClick={() => onPickFolder(p.name)}>
@@ -624,26 +630,26 @@ const UploadDialog = ({
                   </span>
                 )}
                 {(p.path || !root) && (
-                  <code className='font-mono text-[12.5px] text-ink-2'>
+                  <code className='font-mono text-[12px] tracking-[-0.02em] text-ink-2'>
                     {p.path && `${p.path}/`}
-                    {!root && <b className='font-medium text-ink'>{`${projectFolder || '…'}/`}</b>}
+                    {!root && <b className='font-bold text-ink'>{`${projectFolder || '…'}/`}</b>}
                   </code>
                 )}
                 {here.map((item) => (
                   <div
                     key={item.key}
                     aria-label={item.zip ? t`Inside ${item.name}` : undefined}
-                    className='flex flex-col gap-1'>
+                    className='flex flex-col gap-1.5'>
                     <span
-                      className={`flex items-center gap-2 rounded-lg px-2.5 ${item.holds[0] === 'film' ? 'bg-accent-soft py-1' : ''}`}>
+                      className={`flex items-center gap-2.5 rounded-[10px] px-2.5 py-1.5 ${item.holds[0] === 'film' ? 'bg-accent-soft' : ''}`}>
                       <Icon
                         name={iconOfItem(item)}
-                        size={15}
+                        size={16}
                         className={
                           item.zip || item.holds[0] === 'film' ? 'text-accent' : 'text-ink-3'
                         }
                       />
-                      <code className='min-w-0 flex-1 font-mono text-[13px] break-all text-ink'>
+                      <code className='min-w-0 flex-1 font-mono text-[12.5px] tracking-[-0.02em] break-all text-ink'>
                         {item.zip ? item.name : partLabel(item.holds[0]!, stem)}
                       </code>
                       {item.holds[0] === 'film' && !item.zip && (
@@ -661,7 +667,7 @@ const UploadDialog = ({
                     {/* what a zip holds is set apart from what lands as it is: a box of its own, dashed
                         and on a different ground, under the zip */}
                     {item.zip && (
-                      <div className='ml-[17px] flex flex-col rounded-lg border border-dashed border-line-strong bg-well px-3 py-1.5 text-ink-2'>
+                      <div className='ml-[26px] flex flex-col rounded-[12px] border-[1.5px] border-dashed border-ink-3 bg-well px-3 py-1.5 text-ink-2'>
                         {item.holds.map((part) => (
                           <PartLine
                             key={part}
@@ -683,10 +689,9 @@ const UploadDialog = ({
         })}
         <span className='flex flex-wrap items-center gap-1'>
           {hidden.length > 0 && (
-            <span className={`${QUIET} relative h-7 text-[12.5px]`}>
+            <span className={`${QUIET} relative h-7 text-[13.5px] font-bold`}>
               <Icon
                 name='plus'
-                size={14}
                 className='pointer-events-none absolute left-[9px]'
               />
               {/* the choice itself is the button, so picking a destination is one gesture */}
@@ -694,7 +699,7 @@ const UploadDialog = ({
                 aria-label={t`Add a destination`}
                 value=''
                 onChange={(e) => e.target.value && setAdded([...added, e.target.value])}
-                className='h-7 cursor-pointer appearance-none rounded-[5px] bg-transparent [&>option]:bg-pane pr-[9px] pl-[29px] font-medium text-ink'>
+                className='h-7 cursor-pointer appearance-none rounded-[9px] bg-transparent [&>option]:bg-pane pr-[9px] pl-[29px] font-bold text-ink-2'>
                 <option value=''>{t`Add a destination`}</option>
                 {hidden.map((p) => (
                   <option
@@ -726,11 +731,11 @@ const UploadDialog = ({
           </span>
         )
       }
-      full
+      full={1240}
       onClose={onClose}
       footer={
         <>
-          <span className='text-[12.5px] text-ink-2'>
+          <span className='font-semibold text-ink-2'>
             {[
               plural(used.length, { one: '# destination', other: '# destinations' }),
               ...(toMake > 0
@@ -740,7 +745,7 @@ const UploadDialog = ({
             {toSend > 0 && (
               <>
                 {' · '}
-                <b className='font-semibold text-ink'>{formatFilmSize(toSend)}</b> {t`to send`}
+                <b className='font-bold text-ink'>{formatFilmSize(toSend)}</b> {t`to send`}
               </>
             )}
             {links > 0 && ` · ${plural(links, { one: 'one share link', other: '# share links' })}`}
@@ -763,8 +768,8 @@ const UploadDialog = ({
           </Go>
         </>
       }>
-      <div className='grid min-h-0 flex-1 grid-cols-[500px_minmax(0,1fr)] max-[900px]:grid-cols-1 max-[900px]:overflow-auto'>
-        <div className='flex min-h-0 flex-col border-r border-line-2 max-[900px]:border-r-0'>
+      <div className='grid min-h-0 flex-1 grid-cols-[520px_minmax(0,1fr)] max-[900px]:grid-cols-1 max-[900px]:overflow-auto'>
+        <div className='flex min-h-0 flex-col shadow-[1px_0_0_var(--color-line-2)] max-[900px]:shadow-none'>
           {stepOne}
         </div>
         <div className='flex min-h-0 flex-col'>{stepTwo}</div>
