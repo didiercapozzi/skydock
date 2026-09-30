@@ -323,8 +323,10 @@ const Place = () => {
                     open: openCard.key,
                     onOpen: (key) => {
                       look({ card: key })
-                      /* the loose card is no jump: the panel lets go of the last one */
-                      if (key === 'loose') selection.clear()
+                      /* A card asks for its own panel: a file looked at or picked in the jump would
+                         otherwise keep it, and the jump's could not be got back to. The loose card
+                         is no jump, so the panel lets go of the last one as well. */
+                      selection.clear()
                     }
                   }
                 : undefined
