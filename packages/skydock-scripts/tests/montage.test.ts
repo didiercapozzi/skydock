@@ -365,9 +365,9 @@ describe('montage — where the film goes', () => {
     expect(xml).toContain(
       `<property name="kdenlive:docproperties.renderurl">${path.join(groupDir, 'luc_favre_20260802.mp4')}</property>`
     )
-    /* the card's own encoder, not the processor's (RULES, The editing project) */
-    expect(xml).toContain('"kdenlive:docproperties.renderprofile">NVENC H264 VBR<')
-    expect(xml).toContain('"kdenlive:docproperties.rendercategory">hw<')
+    /* an ordinary MP4, H.264 and AAC, whatever the machine has (RULES, The editing project) */
+    expect(xml).toContain('"kdenlive:docproperties.renderprofile">MP4-H264/AAC<')
+    expect(xml).not.toContain('kdenlive:docproperties.rendercategory')
   })
 
   it('leaves nothing that would render the film without a person', () => {

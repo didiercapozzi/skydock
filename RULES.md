@@ -1124,9 +1124,8 @@ film to make, of its photos: they wait in the bin instead, in the order shot, ea
 as kdenlive makes one, to be stretched or cut on the timeline. Crops and turns are already applied, each clip playing
 from its proxy with the real clip recorded as what the edit is of, so the editor opens ready to work and
 renders from the footage. The film's destination and format are filled in, so what is left is the edit
-and pressing render — and the format asks for the graphics card's own encoder, since a delivery film is
-encoded once and watched, never encoded again. A machine whose editor has no such encoder is shown its
-own list instead.
+and pressing render — and the format is the editor's ordinary MP4, H.264 video with AAC sound, which
+plays wherever the film is sent and needs no particular graphics card.
 
 **The project waits for the proxies.** The editor opens on them, and a project made before they exist
 opens on the full clips — the slowest way there is to edit. So it cannot be made while any clip in the

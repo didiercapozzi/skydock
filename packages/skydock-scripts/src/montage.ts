@@ -60,13 +60,11 @@ const PHOTO_SECONDS = 5
 type MontageClip = z.infer<typeof montageClipSchema>
 type MontageOptions = z.input<typeof montageOptionsSchema>
 
-/* The film is rendered by the card rather than by the processor. A delivery film is encoded once and
-   watched, never re-encoded, so what matters is the hour it saves on a full-length montage; kdenlive
-   ships this profile and shows it only where ffmpeg has the encoder, so on a machine without such a
-   card the dialog simply opens on its own list instead. */
-const RENDER_PROFILE = 'NVENC H264 VBR'
-
-const RENDER_CATEGORY = 'hw'
+/* The film is rendered as an ordinary MP4 — H.264 video, AAC sound — which plays everywhere it is
+   sent, and which every machine's editor can make, with no graphics card asked for. It is
+   kdenlive's own preset, found by its name; no category is written beside it, since the editor
+   finds a preset by name and a category guessed wrong would only send it looking in the wrong list. */
+const RENDER_PROFILE = 'MP4-H264/AAC'
 
 /* The templates the app itself carries, as against the ones a dropzone brings in. The installed app
    says where they are, since a packaged bundle is one file and has no folder of its own to count
@@ -352,7 +350,6 @@ const createMontageProject = (rawOptions: MontageOptions) => {
   const filmPath = path.join(options.groupDir, `${options.baseName}.mp4`)
   setProp(bin, 'kdenlive:docproperties.renderurl', toHost(filmPath))
   setProp(bin, 'kdenlive:docproperties.renderprofile', RENDER_PROFILE)
-  setProp(bin, 'kdenlive:docproperties.rendercategory', RENDER_CATEGORY)
 
   /* The template's own declaration is preserved through the parse and written back out, so adding
      one here made every project start with two — which is not XML, and is why none of them ever
