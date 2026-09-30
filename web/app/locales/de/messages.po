@@ -68,6 +68,7 @@ msgstr "{0, plural, one {— lade es erneut hoch, um es zurückzubringen.} other
 msgid "{0, plural, one {{names} is on the board already, and stayed in the bin.} other {{names} are on the board already, and stayed in the bin.}}"
 msgstr "{0, plural, one {{names} ist schon in der Übersicht und bleibt im Papierkorb.} other {{names} sind schon in der Übersicht und bleiben im Papierkorb.}}"
 
+#. placeholder {0}: files.length
 #. placeholder {0}: parts.videos.length
 #: app/components/upload-dialog.tsx
 msgid "{0, plural, one {# clip} other {# clips}}"
@@ -108,8 +109,8 @@ msgid "{0, plural, one {# montage} other {# montages}}"
 msgstr "{0, plural, one {# Montage} other {# Montagen}}"
 
 #. placeholder {0}: about.photos
+#. placeholder {0}: files.length
 #. placeholder {0}: lane.length
-#. placeholder {0}: parts.photos.length
 #: app/components/email-dialog.tsx
 #: app/components/file-list.tsx
 #: app/components/upload-dialog.tsx
@@ -425,10 +426,6 @@ msgstr "{lostCount} Montagen dieser Liste haben ihre Dateien in dieser Übersich
 #: app/routes/place.tsx
 msgid "{montages, plural, one {# montage} other {# montages}}"
 msgstr "{montages, plural, one {# Montage} other {# Montagen}}"
-
-#: app/components/upload-dialog.tsx
-msgid "{n, plural, one {→ # place} other {→ # places}}"
-msgstr "{n, plural, one {→ # Ziel} other {→ # Ziele}}"
 
 #: app/components/file-list.tsx
 msgid "{name}  ·  from {filename}"
@@ -840,6 +837,10 @@ msgstr "Hinzufügen"
 msgid "Add a destination"
 msgstr "Ziel hinzufügen"
 
+#: app/components/upload-dialog.tsx
+msgid "Add a destination, then drag what should go there onto it."
+msgstr "Ein Ziel hinzufügen und dann hineinziehen, was dorthin soll."
+
 #: app/components/places-tree.tsx
 msgid "Add a destination…"
 msgstr "Ziel hinzufügen…"
@@ -911,12 +912,6 @@ msgstr "Wird beim nächsten Aufbereiten dieser Datei angewendet."
 #: app/components/video-cropper.tsx
 msgid "Apply"
 msgstr "Anwenden"
-
-#. placeholder {0}: item.name
-#. placeholder {1}: aboutPart(item.holds[0], parts, stem)
-#: app/components/upload-dialog.tsx
-msgid "as a {0} folder · {1}"
-msgstr "als Ordner {0} · {1}"
 
 #: app/components/board-header.tsx
 msgid "As drawn"
@@ -1564,8 +1559,8 @@ msgid "Drag a jump or files onto a dropzone"
 msgstr "Einen Sprung oder Dateien auf eine Dropzone ziehen"
 
 #: app/components/upload-dialog.tsx
-msgid "Drag any of these onto a zip, or press + on the zip. The same one can go into several zips."
-msgstr "Zieh eines davon auf ein ZIP oder drück + am ZIP. Dasselbe kann in mehrere ZIPs."
+msgid "Drag onto a zip, or press one to make a new zip."
+msgstr "Auf ein Zip ziehen oder eines drücken, um ein neues Zip zu machen."
 
 #: app/components/preview-drawer.tsx
 msgid "Drag the corners to any shape"
@@ -1684,6 +1679,10 @@ msgstr "Hier enden"
 msgid "End the clip at the playhead"
 msgstr "Clip an der Abspielposition beenden"
 
+#: app/components/upload-dialog.tsx
+msgid "Ends with"
+msgstr "Endet auf"
+
 #: app/components/shortcuts-dialog.tsx
 msgid "Enter, or double-click"
 msgstr "Enter oder Doppelklick"
@@ -1711,10 +1710,6 @@ msgstr "Alle Dateien ziehen mit, die Abstände zwischen ihnen bleiben"
 #: app/components/disconnect-dialog.tsx
 msgid "every file on this machine stays as it is, and the board goes on working"
 msgstr "alle Dateien auf diesem Rechner bleiben, wie sie sind, und die Übersicht funktioniert weiter"
-
-#: app/components/upload-dialog.tsx
-msgid "Every item · drag onto a destination"
-msgstr "Jedes Element · auf ein Ziel ziehen"
 
 #: app/components/board-header.tsx
 msgid "Every montage in one table: where each has got to, its link, whether it was emailed"
@@ -2066,10 +2061,6 @@ msgstr "Darstellung der Dateien"
 msgid "In"
 msgstr "In"
 
-#: app/components/upload-dialog.tsx
-msgid "in a zip"
-msgstr "in einem ZIP"
-
 #: app/components/file-browser.tsx
 msgid "in no jump"
 msgstr "in keinem Sprung"
@@ -2246,11 +2237,6 @@ msgstr "Sprache der E-Mail"
 #: app/routes/board.tsx
 msgid "Last checked {checkedAt}."
 msgstr "Zuletzt geprüft: {checkedAt}."
-
-#. placeholder {0}: p.name
-#: app/components/upload-dialog.tsx
-msgid "Leave {0} out"
-msgstr "{0} weglassen"
 
 #. placeholder {0}: p.name
 #: app/components/upload-dialog.tsx
@@ -2599,10 +2585,6 @@ msgstr "Noch kein Proxy — er entsteht nach dem Einlesen. Bis dahin wird der Cl
 msgid "No template yet — bring one in below."
 msgstr "Noch keine Vorlage — füge unten eine hinzu."
 
-#: app/components/upload-dialog.tsx
-msgid "No zip at all is fine: everything can still go as it is."
-msgstr "Gar kein ZIP geht auch: alles kann weiterhin so hochgeladen werden, wie es ist."
-
 #: app/components/overview-dialog.tsx
 msgid "Nobody is waiting for an email"
 msgstr "Niemand wartet auf eine E-Mail"
@@ -2931,11 +2913,6 @@ msgstr "Fotos"
 msgid "Pick"
 msgstr "Auswählen"
 
-#. placeholder {0}: item.name
-#: app/components/upload-dialog.tsx
-msgid "Pick {0}"
-msgstr "{0} auswählen"
-
 #: app/components/bin-files.tsx
 #: app/components/camera-files.tsx
 msgid "Pick {name}"
@@ -2989,6 +2966,10 @@ msgstr "Schließ eine Kamera an — sie wird von selbst kopiert — oder kopiere
 #: app/components/preview-drawer.tsx
 msgid "Portrait"
 msgstr "Hochformat"
+
+#: app/components/upload-dialog.tsx
+msgid "press to put it in a new zip"
+msgstr "drücken, um es in ein neues Zip zu legen"
 
 #: app/components/preview-drawer.tsx
 msgid "Preview"
@@ -3062,11 +3043,6 @@ msgstr "Proxy"
 msgid "proxy failed"
 msgstr "Proxy fehlgeschlagen"
 
-#. placeholder {0}: partName(part)
-#: app/components/upload-dialog.tsx
-msgid "Put {0} in this zip"
-msgstr "{0} in dieses ZIP legen"
-
 #: app/components/upload-dialog.tsx
 msgid "Put at least one thing in a destination"
 msgstr "Leg mindestens ein Element in ein Ziel"
@@ -3078,11 +3054,6 @@ msgstr "Jede Marke dorthin zurücksetzen, wo die Kamera sie gemessen hat"
 #: app/components/folder-owed.tsx
 msgid "Put Fresh files back — the times alone, or everything as just scanned. Asks which first."
 msgstr "Neue Dateien zurücksetzen — nur die Zeiten oder alles wie frisch eingelesen. Fragt vorher, was davon."
-
-#. placeholder {0}: ticked.length
-#: app/components/upload-dialog.tsx
-msgid "Put here ({0})"
-msgstr "Hierher legen ({0})"
 
 #: app/components/email-dialog.tsx
 msgid "Put in a variable"
@@ -3151,14 +3122,6 @@ msgstr "fertig"
 #: app/components/montage-card.tsx
 msgid "ready to hand over"
 msgstr "bereit zum Ausliefern"
-
-#: app/components/upload-dialog.tsx
-msgid "Remembered on this machine: the next montage opens with the same zips, each item where it went this time."
-msgstr "Auf diesem Rechner gemerkt: Die nächste Montage öffnet mit denselben ZIPs, jedes Element dort, wo es diesmal hinkam."
-
-#: app/components/upload-dialog.tsx
-msgid "Remove"
-msgstr "Entfernen"
 
 #: app/components/remove-files-dialog.tsx
 msgid "Remove {counted} from {from}?"
@@ -3361,6 +3324,10 @@ msgstr "Wähle eine Datei oder einen Sprung, um sie hier zu sehen. Doppelklick a
 msgid "Select its {fileCount, plural, one {# file} other {# files}}"
 msgstr "Seine {fileCount, plural, one {# Datei} other {# Dateien}} auswählen"
 
+#: app/components/upload-dialog.tsx
+msgid "Send {name}"
+msgstr "{name} senden"
+
 #: app/routes/place.tsx
 msgid "Send everything in {name} that is processed and not up there yet — {toUpload, plural, one {# file} other {# files}}, whatever the search or the filter is showing."
 msgstr "Alles aus {name} hochladen, was aufbereitet und noch nicht oben ist — {toUpload, plural, one {# Datei} other {# Dateien}}, egal was Suche oder Filter gerade zeigen."
@@ -3544,15 +3511,6 @@ msgstr "Status"
 msgid "Stay connected"
 msgstr "Verbunden bleiben"
 
-#: app/components/upload-dialog.tsx
-msgid "stays here"
-msgstr "bleibt hier"
-
-#. placeholder {0}: left.map((item) => (item.zip ? item.name : partName(item.holds[0]!))).join(', ')
-#: app/components/upload-dialog.tsx
-msgid "Stays on this machine: {0}"
-msgstr "Bleibt auf diesem Rechner: {0}"
-
 #: app/components/shortcuts-dialog.tsx
 msgid "step through the files"
 msgstr "durch die Dateien blättern"
@@ -3628,10 +3586,6 @@ msgstr "{0} aus {name} nehmen"
 #: app/components/storage-folder.tsx
 msgid "Take link away"
 msgstr "Link entfernen"
-
-#: app/components/upload-dialog.tsx
-msgid "Take out"
-msgstr "Herausnehmen"
 
 #: app/components/storage-folder.tsx
 msgid "Take the link away — the file stays where it is"
@@ -3867,8 +3821,8 @@ msgid "the processed folder"
 msgstr "der aufbereitete Ordner"
 
 #: app/components/upload-dialog.tsx
-msgid "The project names the clips where they sat, so from a backup it reopens only with them put back there."
-msgstr "Das Projekt verweist auf die Clips dort, wo sie lagen, daher öffnet es sich aus einer Sicherung nur, wenn sie wieder dort liegen."
+msgid "The project reopens only with its clips back where they sat."
+msgstr "Das Projekt öffnet sich nur, wenn seine Clips wieder dort liegen, wo sie waren."
 
 #: app/components/file-list.tsx
 msgid "The proxy could not be made: {reason}. It is tried again on the next pass; meanwhile the clip plays as it is."
@@ -3877,6 +3831,10 @@ msgstr "Der Proxy konnte nicht erstellt werden: {reason}. Er wird beim nächsten
 #: app/components/take-back-dialog.tsx
 msgid "the rendered film ({filmSize})"
 msgstr "der gerenderte Film ({filmSize})"
+
+#: app/components/upload-dialog.tsx
+msgid "The same one can go into several zips."
+msgstr "Dasselbe kann in mehrere Zips."
 
 #: app/components/board-header.tsx
 msgid "the storage"
@@ -4018,10 +3976,6 @@ msgstr "Größe der Miniaturen — oder Strg/⌘ und das Mausrad über den Minia
 #: app/components/board-header.tsx
 msgid "Thumbnails"
 msgstr "Miniaturen"
-
-#: app/components/upload-dialog.tsx
-msgid "Tick several to drag them together, or tick them and press Put here on a destination. Each can go to several destinations."
-msgstr "Hake mehrere an, um sie zusammen zu ziehen, oder hake sie an und drück bei einem Ziel auf Hierher legen. Jedes kann in mehrere Ziele."
 
 #: app/components/jump-time.tsx
 msgid "Time"
@@ -4311,10 +4265,6 @@ msgstr "Film hier ansehen"
 #: app/components/storage-list.tsx
 msgid "Watch…"
 msgstr "Ansehen…"
-
-#: app/components/upload-dialog.tsx
-msgid "What can be sent"
-msgstr "Was hochgeladen werden kann"
 
 #: app/components/history-dialog.tsx
 msgid "What changed on the board"

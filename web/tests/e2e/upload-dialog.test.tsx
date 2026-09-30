@@ -112,12 +112,15 @@ const dialog = () => page.getByRole('dialog', { name: 'Upload' })
 const zip = (ending: string) => dialog().getByRole('region', { name: `${STEM}.${ending}.zip` })
 const place = (name: string) => dialog().getByRole('region', { name })
 /* dragged onto a destination, scrolled into view first so nothing moves mid-drag */
+/* what is dragged onto a destination comes from the first step: a zip by its header, a part by its pill */
+const source = (item: string) =>
+  item.endsWith('.zip')
+    ? dialog().getByLabelText(`Send ${item}`, { exact: true })
+    : dialog().getByLabelText(item === `${STEM}.mp4` ? 'The montage' : item, { exact: true })
+
 const dropOn = async (name: string, destination: string) => {
   place(destination).element().scrollIntoView({ block: 'center' })
-  await userEvent.dragAndDrop(
-    dialog().getByRole('group', { name: 'What can be sent' }).getByLabelText(name, { exact: true }),
-    place(destination)
-  )
+  await userEvent.dragAndDrop(source(name), place(destination))
 }
 
 describe('uploading a montage — the zips', () => {
@@ -127,7 +130,8 @@ describe('uploading a montage — the zips', () => {
     await renderBoard()
 
     await expect.element(zip('full').getByText('videos/', { exact: true })).toBeInTheDocument()
-    await expect.element(zip('full').getByText('GX010001.MP4')).toBeInTheDocument()
+    /* the folder's files by name are in its title, not spelled out on the line */
+    await expect.element(zip('full').getByTitle(/GX010001\.MP4/)).toBeInTheDocument()
     await expect.element(zip('full').getByText('photos/', { exact: true })).toBeInTheDocument()
     await expect.element(zip('full').getByText(`${STEM}.kdenlive`)).toBeInTheDocument()
     await page.screenshot({ path: './playwright-screenshots/upload-dialog.png' })
@@ -148,6 +152,16 @@ describe('uploading a montage — the zips', () => {
     await expect
       .element(dialog().getByLabelText('Original photos', { exact: true }).getByText('in 2 zips'))
       .toBeInTheDocument()
+  })
+
+  /* pressing a part is the same as dropping it on the drop area: it makes a zip of its own */
+  test('puts a part that is pressed into a new zip', async () => {
+    setSendPlan(DEFAULT_PLAN)
+    await renderBoard()
+
+    await userEvent.click(dialog().getByLabelText('Original photos', { exact: true }))
+
+    await expect.element(zip('photos').getByText('photos/', { exact: true })).toBeInTheDocument()
   })
 
   test('names a zip by the ending typed for it', async () => {
@@ -229,22 +243,12 @@ describe('uploading a montage — where it goes', () => {
     await dropOn(`${STEM}.full.zip`, 'Yverdon')
 
     await expect.element(place('Yverdon').getByText(`${STEM}.full.zip`)).toBeInTheDocument()
+    /* what is inside it is set apart under it, as it is in the zip itself */
     await expect
-      .element(place('Yverdon').getByLabelText(`Inside ${STEM}.full.zip`).getByText('videos/', { exact: true }))
+      .element(
+        place('Yverdon').getByLabelText(`Inside ${STEM}.full.zip`).getByText('videos/', { exact: true })
+      )
       .toBeInTheDocument()
-  })
-
-  test('carries every picked item when one of them is dragged', async () => {
-    setSendPlan(PLACED)
-    await renderBoard()
-
-    await userEvent.click(dialog().getByLabelText(`Pick ${STEM}.full.zip`))
-    await userEvent.click(dialog().getByLabelText(`Pick ${STEM}.mp4`))
-    await userEvent.selectOptions(dialog().getByLabelText('Add a destination', { exact: true }), 'Yverdon')
-    await dropOn(`${STEM}.mp4`, 'Yverdon')
-
-    await expect.element(place('Yverdon').getByText(`${STEM}.full.zip`)).toBeInTheDocument()
-    await expect.element(place('Yverdon').getByText(`${STEM}.mp4`)).toBeInTheDocument()
   })
 
   test('puts the items in the project folder, or straight into the destination’s folder', async () => {

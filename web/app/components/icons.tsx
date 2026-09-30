@@ -149,6 +149,43 @@ const PATHS = {
       <path d='M15 4.5v15' />
     </>
   ),
+  zip: (
+    <>
+      <rect
+        x='5'
+        y='3'
+        width='14'
+        height='18'
+        rx='2'
+      />
+      <path d='M12 3v8M10 6h4M10 9h4' />
+      <rect
+        x='10'
+        y='12'
+        width='4'
+        height='4'
+        rx='1'
+      />
+    </>
+  ),
+  photo: (
+    <>
+      <rect
+        x='3'
+        y='5'
+        width='18'
+        height='14'
+        rx='2'
+      />
+      <circle
+        cx='9'
+        cy='10'
+        r='1.6'
+      />
+      <path d='M21 16l-5-5-9 8' />
+    </>
+  ),
+  project: <path d='M4 7h8M4 12h16M4 17h11' />,
   narrow: <path d='M4 6h16M7 12h10M10 18h4' />,
   check: <path d='M5 12.5 10 17 19 7' />,
   moveTo: <path d='M5 12h14M13 6l6 6-6 6' />,
