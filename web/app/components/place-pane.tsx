@@ -125,7 +125,7 @@ const PlacePane = ({
         e.preventDefault()
         onImport(carried, incoming.target, incoming.where)
       }}
-      className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-b-[18px] bg-pane shadow-card max-[780px]:rounded-[18px] min-[781px]:col-start-3 min-[781px]:row-start-2'>
+      className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-b-[18px] isle-pane shadow-card max-[780px]:rounded-[18px] min-[781px]:col-start-3 min-[781px]:row-start-2'>
       <div className='flex flex-col gap-[18px] px-7 pt-[22px] pb-3'>
         <div className='flex flex-wrap items-end gap-x-3.5 gap-y-3'>
           <div className='min-w-0'>

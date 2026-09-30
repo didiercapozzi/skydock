@@ -79,7 +79,7 @@ const Tick = ({
       aria-label={label}
       checked={checked}
       onChange={onChange}
-      className='peer m-0 size-[18px] cursor-pointer appearance-none rounded-[6px] border-[1.5px] border-ink-3 bg-transparent opacity-80 checked:border-accent checked:bg-accent checked:opacity-100 hover:border-accent'
+      className='peer m-0 size-[18px] cursor-pointer appearance-none rounded-[6px] border-[1.5px] border-check bg-pane checked:border-accent checked:bg-accent hover:border-accent'
     />
     <Icon
       name='check'

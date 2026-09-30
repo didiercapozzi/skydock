@@ -439,7 +439,7 @@ const Row = ({
           className={`grid size-[18px] place-items-center rounded-[6px] border-[1.5px] p-0 ${
             picked
               ? 'border-accent bg-accent text-white'
-              : 'border-ink-3 bg-transparent text-transparent opacity-80 hover:border-accent hover:opacity-100'
+              : 'border-check bg-pane text-transparent hover:border-accent'
           }`}>
           <Icon
             name='check'

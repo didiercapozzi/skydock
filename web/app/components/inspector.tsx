@@ -35,7 +35,7 @@ const Shell = ({ children }: { children: React.ReactNode }) => {
         onKeyDown={(e) => {
           if (e.key === 'Escape' && drawer) setDetailsDrawer(false)
         }}
-        className={`flex min-h-0 min-w-0 flex-col overflow-x-hidden overflow-y-auto rounded-[18px] bg-pane min-[1101px]:shadow-card transition-[translate,visibility] duration-300 ease-out motion-reduce:transition-none max-[1100px]:fixed max-[1100px]:inset-y-0 max-[1100px]:right-0 max-[1100px]:z-30 max-[1100px]:w-[min(340px,90vw)] max-[1100px]:shadow-[0_0_40px_rgba(0,0,0,0.25)] min-[1101px]:col-start-5 min-[1101px]:row-span-2 min-[1101px]:row-start-1 ${
+        className={`flex min-h-0 min-w-0 flex-col overflow-x-hidden overflow-y-auto rounded-[18px] isle-side min-[1101px]:shadow-card transition-[translate,visibility] duration-300 ease-out motion-reduce:transition-none max-[1100px]:fixed max-[1100px]:inset-y-0 max-[1100px]:right-0 max-[1100px]:z-30 max-[1100px]:w-[min(340px,90vw)] max-[1100px]:shadow-[0_0_40px_rgba(0,0,0,0.25)] min-[1101px]:col-start-5 min-[1101px]:row-span-2 min-[1101px]:row-start-1 ${
           drawer ? '' : 'max-[1100px]:invisible max-[1100px]:translate-x-full'
         } ${column ? '' : 'min-[1101px]:invisible'}`}>
         {/* as wide as the column is when open, so what is inside slides out of view rather than
@@ -142,13 +142,16 @@ const PlainTag = ({ children }: { children: React.ReactNode }) => (
   </span>
 )
 
+/* each tile its own soft colour, so a panel of facts is not a grey block */
+const TILES = ['bg-tile-1', 'bg-tile-2', 'bg-tile-3', 'bg-tile-4']
+
 /* what is known, as small tiles two across: the name muted over the value in bold */
 const Facts = ({ rows }: { rows: [string, React.ReactNode][] }) => (
   <dl className='m-0 grid grid-cols-2 gap-2 text-[13.5px]'>
-    {rows.map(([term, value]) => (
+    {rows.map(([term, value], at) => (
       <div
         key={term}
-        className='min-w-0 rounded-[12px] bg-well px-3 py-[9px]'>
+        className={`min-w-0 rounded-[12px] px-3 py-[9px] ${TILES[at % TILES.length]}`}>
         <dt className='text-[11.5px] font-medium text-ink-3'>{term}</dt>
         <dd className='m-0 min-w-0 font-bold break-words tabular-nums [&_button]:text-[13.5px] [&_button]:font-bold'>
           {value}

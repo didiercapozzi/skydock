@@ -25,7 +25,7 @@ const Go = ({ children, title, disabled, type = 'button', form, onClick }: Props
     title={title}
     disabled={disabled}
     onClick={onClick}
-    className='inline-flex h-[34px] items-center justify-center gap-2 rounded-[11px] bg-accent px-3.5 text-[13px] font-bold whitespace-nowrap text-white shadow-[0_6px_18px_color-mix(in_srgb,var(--color-accent)_38%,transparent)] hover:brightness-110 disabled:cursor-default disabled:opacity-45 disabled:shadow-none dark:text-[#0c0a2a]'>
+    className='inline-flex h-[34px] items-center justify-center gap-2 rounded-[11px] go-fill px-3.5 text-[13px] font-bold whitespace-nowrap text-white shadow-[0_6px_18px_color-mix(in_srgb,var(--color-accent)_38%,transparent)] hover:brightness-110 disabled:cursor-default disabled:opacity-45 disabled:shadow-none dark:text-[#03222b]'>
     {children}
   </button>
 )
@@ -134,7 +134,7 @@ const Seg = <T extends string>({
         onClick={() => onPick(option)}
         className={`inline-flex items-center justify-center gap-1.5 rounded-[9px] text-[13.5px] font-semibold whitespace-nowrap ${mark ? 'w-[30px]' : 'px-[13px]'} ${
           value === option
-            ? 'bg-pane text-ink shadow-[0_0_0_1px_var(--color-line),0_1px_2px_rgba(16,19,26,0.06)]'
+            ? 'bg-pane text-accent-ink shadow-[0_0_0_1px_var(--color-line-strong),0_1px_2px_rgba(16,19,26,0.06)]'
             : 'text-ink-2 hover:text-ink'
         }`}>
         {mark ?? name}

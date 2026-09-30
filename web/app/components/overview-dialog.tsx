@@ -52,7 +52,7 @@ const BAR_BUTTONS =
    the last step, which only tells someone, stays plain */
 const NEXT_BUTTON = '[&_button]:h-8 [&_button]:rounded-[9px] [&_button]:px-3'
 const NEXT_PRIMARY =
-  '[&_button]:bg-accent [&_button]:text-white [&_button]:shadow-[0_6px_18px_color-mix(in_srgb,var(--color-accent)_38%,transparent)] dark:[&_button]:text-[#0c0a2a]'
+  '[&_button]:bg-accent [&_button]:text-white [&_button]:shadow-[0_6px_18px_color-mix(in_srgb,var(--color-accent)_38%,transparent)] dark:[&_button]:text-[#03222b]'
 
 /* the day a montage heads, whole for the heading of its run and short on its own line */
 const dayShort = (day: string) => {
@@ -279,7 +279,7 @@ const OverviewDialog = ({
                             checked={r.paid}
                             disabled={busy}
                             onChange={(e) => onPaid(r.id, e.target.checked)}
-                            className='peer size-[18px] cursor-pointer appearance-none rounded-[6px] border-[1.5px] border-ink-3 bg-transparent opacity-80 checked:border-accent checked:bg-accent checked:opacity-100 disabled:cursor-default'
+                            className='peer size-[18px] cursor-pointer appearance-none rounded-[6px] border-[1.5px] border-check bg-pane checked:border-accent checked:bg-accent disabled:cursor-default'
                           />
                           <span className='pointer-events-none absolute hidden text-white peer-checked:block'>
                             <Icon

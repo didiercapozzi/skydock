@@ -109,7 +109,7 @@ const TakeOut = ({ remove }: { remove: Remove }) => (
 /* A step's heading: its number, quiet, and what it does. */
 const Heading = ({ n, children }: { n: string; children: React.ReactNode }) => (
   <span className='flex items-center gap-2.5'>
-    <span className='grid size-[26px] flex-none place-items-center self-center rounded-[9px] bg-accent text-[12px] font-bold text-white dark:text-[#0c0a2a]'>
+    <span className='grid size-[26px] flex-none place-items-center self-center rounded-[9px] bg-accent text-[12px] font-bold text-white dark:text-[#03222b]'>
       {n}
     </span>
     <h3 className='font-display m-0 text-[18px] font-bold tracking-[-0.03em]'>{children}</h3>

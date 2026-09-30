@@ -1,53 +1,68 @@
 @import 'tailwindcss';
 
-@import '@fontsource-variable/bricolage-grotesque';
-@import '@fontsource-variable/instrument-sans';
+@import '@fontsource-variable/sora';
+@import '@fontsource-variable/plus-jakarta-sans';
 @import '@fontsource-variable/jetbrains-mono';
 
 /* The palette, the type and the shapes of the "Horizon" design (docs/mockups/horizon): the window is
    a quiet backdrop with floating islands on it — the places, the work, the details — and every
    colour in the app comes from here. One ultramarine for where you are, what is picked and the next
    action; a file's state is a small tinted badge, amber for what is still to do, magenta for what is
-   processed and green for what is up. Bricolage Grotesque for titles, Instrument Sans for the
+   processed and green for what is up. Sora for titles, Plus Jakarta Sans for the
    interface, JetBrains Mono for file names. Light and dark are the same design with the same names. */
 @theme {
-  --font-sans: 'Instrument Sans Variable', 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-sans:
+    'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
   --font-display:
-    'Bricolage Grotesque Variable', 'Bricolage Grotesque', 'Instrument Sans Variable',
-    ui-sans-serif, system-ui, sans-serif;
+    'Sora Variable', 'Sora', 'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
 
-  --color-ground: #e6eaf2;
+  /* Lighter weights than the utilities' usual 500/600/700: the interface reads calmer, and the
+     variable fonts have every weight in between. Every `font-semibold` and `font-bold` follows. */
+  --font-weight-medium: 470;
+  --font-weight-semibold: 500;
+  --font-weight-bold: 540;
+  --font-weight-extrabold: 580;
+
+  --color-ground: #e3edf1;
   --color-pane: #ffffff;
   --color-rail: #ffffff;
   --color-chrome: #e6eaf2;
-  --color-well: #f1f3f8;
-  --color-ink: #10131a;
-  --color-ink-2: #454d61;
-  --color-ink-3: #66708a;
-  --color-line: #e4e8f0;
-  --color-line-2: #eef1f6;
-  --color-line-strong: #d3d9e4;
-  --color-accent: #4f46e5;
-  --color-accent-ink: #3730a3;
-  --color-accent-soft: #eef0ff;
-  --color-pick: #4f46e5;
-  --color-pick-soft: #eef0ff;
+  --color-well: #e5f1f5;
+  --color-check: #4f9db3;
+  --color-ink: #1d3540;
+  --color-ink-2: #3d5763;
+  --color-ink-3: #587a88;
+  --color-line: #dbe9ee;
+  --color-line-2: #e8f1f4;
+  --color-line-strong: #b9d6df;
+  --color-accent: #0e7490;
+  --color-accent-ink: #155e75;
+  --color-accent-soft: #e3f4f8;
+  --color-pick: #0e7490;
+  --color-pick-soft: #e3f4f8;
   --color-local: #a04f07;
   --color-local-soft: #fef1de;
   --color-local-bar: #f0a231;
-  --color-proc: #a3217a;
-  --color-proc-soft: #fce9f4;
+  --color-proc: #2b63d6;
+  --color-proc-soft: #e2ebfc;
   --color-up: #0c7c55;
   --color-up-soft: #dcf5ea;
   --color-teal: #0f8a9b;
   --color-lock: #454d61;
   --color-lock-soft: #f1f3f8;
-  --color-changed: #3730a3;
-  --color-changed-soft: #eef0ff;
-  --color-changed-line: #3730a3;
+  --color-changed: #155e75;
+  --color-changed-soft: #e3f4f8;
+  --color-changed-line: #155e75;
   --color-bin: #c0262d;
   --color-bin-soft: #fdecec;
+
+  /* the fact tiles of the details, each a different soft colour */
+  --color-here: #ffffff;
+  --color-tile-1: #e6f3f7;
+  --color-tile-2: #e8eefb;
+  --color-tile-3: #e5f4ee;
+  --color-tile-4: #f4f1ec;
 
   --shadow-card: 0 1px 2px rgba(16, 19, 26, 0.05), 0 8px 24px rgba(16, 19, 26, 0.06);
   --shadow-float:
@@ -70,32 +85,39 @@
     --color-pane: #141922;
     --color-rail: #141922;
     --color-chrome: #0b0e15;
-    --color-well: #1b212d;
-    --color-ink: #eef1f7;
-    --color-ink-2: #b6bece;
-    --color-ink-3: #8b94a8;
-    --color-line: #262d3b;
-    --color-line-2: #1d2430;
-    --color-line-strong: #323b4d;
-    --color-accent: #8b85ff;
-    --color-accent-ink: #b7b3ff;
-    --color-accent-soft: #232052;
-    --color-pick: #8b85ff;
-    --color-pick-soft: #232052;
+    --color-well: #17303a;
+    --color-check: #4fb3cc;
+    --color-ink: #e1edf2;
+    --color-ink-2: #b3ccd6;
+    --color-ink-3: #86a9b6;
+    --color-line: #22363f;
+    --color-line-2: #1b2b33;
+    --color-line-strong: #2b4a57;
+    --color-accent: #38bdd8;
+    --color-accent-ink: #86dcee;
+    --color-accent-soft: #0c3340;
+    --color-pick: #38bdd8;
+    --color-pick-soft: #0c3340;
     --color-local: #f5b25a;
     --color-local-soft: #3a2a10;
-    --color-proc: #f58ad0;
-    --color-proc-soft: #3c1531;
+    --color-proc: #8db4ff;
+    --color-proc-soft: #16264f;
     --color-teal: #3cc4d3;
     --color-up: #4fd6a0;
     --color-up-soft: #0e3325;
     --color-lock: #b6bece;
     --color-lock-soft: #1b212d;
-    --color-changed: #b7b3ff;
-    --color-changed-soft: #232052;
-    --color-changed-line: #b7b3ff;
+    --color-changed: #86dcee;
+    --color-changed-soft: #0c3340;
+    --color-changed-line: #86dcee;
     --color-bin: #ff8a90;
     --color-bin-soft: #3a171b;
+    --color-here: #0c3340;
+    --color-here: #0c3340;
+    --color-tile-1: #12303b;
+    --color-tile-2: #172a52;
+    --color-tile-3: #123227;
+    --color-tile-4: #24262c;
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
     --shadow-float: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 30px 80px rgba(0, 0, 0, 0.6);
 
@@ -108,32 +130,37 @@
   --color-pane: #141922;
   --color-rail: #141922;
   --color-chrome: #0b0e15;
-  --color-well: #1b212d;
-  --color-ink: #eef1f7;
-  --color-ink-2: #b6bece;
-  --color-ink-3: #8b94a8;
-  --color-line: #262d3b;
-  --color-line-2: #1d2430;
-  --color-line-strong: #323b4d;
-  --color-accent: #8b85ff;
-  --color-accent-ink: #b7b3ff;
-  --color-accent-soft: #232052;
-  --color-pick: #8b85ff;
-  --color-pick-soft: #232052;
+  --color-well: #17303a;
+  --color-check: #4fb3cc;
+  --color-ink: #e1edf2;
+  --color-ink-2: #b3ccd6;
+  --color-ink-3: #86a9b6;
+  --color-line: #22363f;
+  --color-line-2: #1b2b33;
+  --color-line-strong: #2b4a57;
+  --color-accent: #38bdd8;
+  --color-accent-ink: #86dcee;
+  --color-accent-soft: #0c3340;
+  --color-pick: #38bdd8;
+  --color-pick-soft: #0c3340;
   --color-local: #f5b25a;
   --color-local-soft: #3a2a10;
-  --color-proc: #f58ad0;
-  --color-proc-soft: #3c1531;
+  --color-proc: #8db4ff;
+  --color-proc-soft: #16264f;
   --color-teal: #3cc4d3;
   --color-up: #4fd6a0;
   --color-up-soft: #0e3325;
   --color-lock: #b6bece;
   --color-lock-soft: #1b212d;
-  --color-changed: #b7b3ff;
-  --color-changed-soft: #232052;
-  --color-changed-line: #b7b3ff;
+  --color-changed: #86dcee;
+  --color-changed-soft: #0c3340;
+  --color-changed-line: #86dcee;
   --color-bin: #ff8a90;
   --color-bin-soft: #3a171b;
+  --color-tile-1: #12303b;
+  --color-tile-2: #172a52;
+  --color-tile-3: #123227;
+  --color-tile-4: #24262c;
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-float: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 30px 80px rgba(0, 0, 0, 0.6);
 
@@ -142,12 +169,139 @@
 
 /* The interface's own type: the size everything inherits, the leading that sits with it, and
    tabular figures so a column of counts and times lines up. */
+/* Colour and shape, kept quiet. Each island has its own faint tint — the places a cool blue-grey
+   with a few fine arcs and contour lines, the work a pale wash at its head with a parachute's arcs
+   in the corner, the details a lavender-to-white wash with waves at its foot — over a backdrop of
+   soft blue and lilac glows. Drawn from these variables, so light and dark redraw them in their own
+   tints. */
+:root {
+  --ground-bg:
+    radial-gradient(50rem 32rem at 4% -8%, #d3e9f0 0%, transparent 64%),
+    radial-gradient(44rem 30rem at 100% 0%, #dcebf3 0%, transparent 62%),
+    radial-gradient(50rem 32rem at 96% 108%, #d8ede8 0%, transparent 62%), #e3edf1;
+  --rail-bg:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 264 830' preserveAspectRatio='xMidYMid slice'%3E%3Cg fill='none' stroke='%230e7490' stroke-opacity='.10'%3E%3Ccircle cx='260' cy='20' r='70'/%3E%3Ccircle cx='260' cy='20' r='110'/%3E%3Ccircle cx='260' cy='20' r='150'/%3E%3C/g%3E%3Cg fill='none' stroke='%230e7490' stroke-opacity='.09'%3E%3Cpath d='M0 720c44-22 88 22 132 0s88-22 132 0'/%3E%3Cpath d='M0 746c44-22 88 22 132 0s88-22 132 0'/%3E%3Cpath d='M0 772c44-22 88 22 132 0s88-22 132 0'/%3E%3Cpath d='M0 798c44-22 88 22 132 0s88-22 132 0'/%3E%3C/g%3E%3C/svg%3E")
+      center / cover no-repeat,
+    linear-gradient(180deg, #eef7f9 0%, #e6f1f4 100%);
+  --head-tint: linear-gradient(90deg, #f2f9fb 0%, #edf5f8 100%);
+  --pane-shapes:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 560 240'%3E%3Cg fill='none' stroke='%230e7490' stroke-opacity='.07'%3E%3Ccircle cx='500' cy='230' r='70'/%3E%3Ccircle cx='500' cy='230' r='112'/%3E%3Ccircle cx='500' cy='230' r='154'/%3E%3Ccircle cx='500' cy='230' r='196'/%3E%3C/g%3E%3C/svg%3E")
+      right top / 560px 240px no-repeat,
+    linear-gradient(180deg, #eff8fa 0, #ffffff 240px);
+  --side-wash:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 338 240'%3E%3Cg fill='none' stroke='%230e7490' stroke-opacity='.08'%3E%3Cpath d='M0 150c56-28 112 28 169 0s113-28 169 0'/%3E%3Cpath d='M0 174c56-28 112 28 169 0s113-28 169 0'/%3E%3Cpath d='M0 198c56-28 112 28 169 0s113-28 169 0'/%3E%3Cpath d='M0 222c56-28 112 28 169 0s113-28 169 0'/%3E%3C/g%3E%3C/svg%3E")
+      left bottom / 100% auto no-repeat,
+    linear-gradient(180deg, #f0f8fa 0%, #f6fbfc 45%, #ffffff 100%);
+  --go-fill: linear-gradient(135deg, #0f8fb0 0%, #0a6a86 100%);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ground-bg:
+      radial-gradient(50rem 32rem at 4% -8%, #0f2f3a 0%, transparent 64%),
+      radial-gradient(44rem 30rem at 100% 0%, #12233a 0%, transparent 62%),
+      radial-gradient(50rem 32rem at 96% 108%, #0e2d2f 0%, transparent 62%), #0a0f14;
+    --rail-bg:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 264 830' preserveAspectRatio='xMidYMid slice'%3E%3Cg fill='none' stroke='%2338bdd8' stroke-opacity='.13'%3E%3Ccircle cx='260' cy='20' r='70'/%3E%3Ccircle cx='260' cy='20' r='110'/%3E%3Ccircle cx='260' cy='20' r='150'/%3E%3C/g%3E%3Cg fill='none' stroke='%2338bdd8' stroke-opacity='.11'%3E%3Cpath d='M0 720c44-22 88 22 132 0s88-22 132 0'/%3E%3Cpath d='M0 746c44-22 88 22 132 0s88-22 132 0'/%3E%3Cpath d='M0 772c44-22 88 22 132 0s88-22 132 0'/%3E%3Cpath d='M0 798c44-22 88 22 132 0s88-22 132 0'/%3E%3C/g%3E%3C/svg%3E")
+        center / cover no-repeat,
+      linear-gradient(180deg, #142a33 0%, #111f28 100%);
+    --head-tint: linear-gradient(90deg, #142530 0%, #131f2b 100%);
+    --pane-shapes:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 560 240'%3E%3Cg fill='none' stroke='%2338bdd8' stroke-opacity='.11'%3E%3Ccircle cx='500' cy='230' r='70'/%3E%3Ccircle cx='500' cy='230' r='112'/%3E%3Ccircle cx='500' cy='230' r='154'/%3E%3Ccircle cx='500' cy='230' r='196'/%3E%3C/g%3E%3C/svg%3E")
+        right top / 560px 240px no-repeat,
+      linear-gradient(180deg, #14232d 0, #141922 240px);
+    --side-wash:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 338 240'%3E%3Cg fill='none' stroke='%2338bdd8' stroke-opacity='.12'%3E%3Cpath d='M0 150c56-28 112 28 169 0s113-28 169 0'/%3E%3Cpath d='M0 174c56-28 112 28 169 0s113-28 169 0'/%3E%3Cpath d='M0 198c56-28 112 28 169 0s113-28 169 0'/%3E%3Cpath d='M0 222c56-28 112 28 169 0s113-28 169 0'/%3E%3C/g%3E%3C/svg%3E")
+        left bottom / 100% auto no-repeat,
+      linear-gradient(180deg, #15252f 0%, #131d27 45%, #141922 100%);
+    --go-fill: linear-gradient(135deg, #48c9e0 0%, #3aa0d8 100%);
+  }
+}
+:root[data-theme='dark'] {
+  --ground-bg:
+    radial-gradient(50rem 32rem at 4% -8%, #0f2f3a 0%, transparent 64%),
+    radial-gradient(44rem 30rem at 100% 0%, #12233a 0%, transparent 62%),
+    radial-gradient(50rem 32rem at 96% 108%, #0e2d2f 0%, transparent 62%), #0a0f14;
+  --rail-bg:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 264 830' preserveAspectRatio='xMidYMid slice'%3E%3Cg fill='none' stroke='%2338bdd8' stroke-opacity='.13'%3E%3Ccircle cx='260' cy='20' r='70'/%3E%3Ccircle cx='260' cy='20' r='110'/%3E%3Ccircle cx='260' cy='20' r='150'/%3E%3C/g%3E%3Cg fill='none' stroke='%2338bdd8' stroke-opacity='.11'%3E%3Cpath d='M0 720c44-22 88 22 132 0s88-22 132 0'/%3E%3Cpath d='M0 746c44-22 88 22 132 0s88-22 132 0'/%3E%3Cpath d='M0 772c44-22 88 22 132 0s88-22 132 0'/%3E%3Cpath d='M0 798c44-22 88 22 132 0s88-22 132 0'/%3E%3C/g%3E%3C/svg%3E")
+      center / cover no-repeat,
+    linear-gradient(180deg, #142a33 0%, #111f28 100%);
+  --head-tint: linear-gradient(90deg, #142530 0%, #131f2b 100%);
+  --pane-shapes:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 560 240'%3E%3Cg fill='none' stroke='%2338bdd8' stroke-opacity='.11'%3E%3Ccircle cx='500' cy='230' r='70'/%3E%3Ccircle cx='500' cy='230' r='112'/%3E%3Ccircle cx='500' cy='230' r='154'/%3E%3Ccircle cx='500' cy='230' r='196'/%3E%3C/g%3E%3C/svg%3E")
+      right top / 560px 240px no-repeat,
+    linear-gradient(180deg, #14232d 0, #141922 240px);
+  --side-wash:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 338 240'%3E%3Cg fill='none' stroke='%2338bdd8' stroke-opacity='.12'%3E%3Cpath d='M0 150c56-28 112 28 169 0s113-28 169 0'/%3E%3Cpath d='M0 174c56-28 112 28 169 0s113-28 169 0'/%3E%3Cpath d='M0 198c56-28 112 28 169 0s113-28 169 0'/%3E%3Cpath d='M0 222c56-28 112 28 169 0s113-28 169 0'/%3E%3C/g%3E%3C/svg%3E")
+      left bottom / 100% auto no-repeat,
+    linear-gradient(180deg, #15252f 0%, #131d27 45%, #141922 100%);
+  --go-fill: linear-gradient(135deg, #48c9e0 0%, #3aa0d8 100%);
+}
+
+@layer components {
+  .ground {
+    background: var(--ground-bg);
+  }
+  .isle-rail {
+    background: var(--rail-bg);
+  }
+  .isle-head {
+    background: var(--head-tint);
+  }
+  .isle-pane {
+    background: var(--pane-shapes);
+  }
+  .isle-side {
+    background: var(--side-wash);
+  }
+  .go-fill {
+    background: var(--go-fill);
+  }
+}
+
+/* In the base layer, not bare: CSS outside a layer beats every Tailwind utility, so a bare
+   `button { font: inherit; color: inherit }` quietly overrode the size, font and colour of every
+   button on the board — chips, badges and Mini buttons all came out as body text. */
 @layer base {
+  html,
   body {
-    font-size: 13.5px;
-    line-height: 1.45;
+    height: 100%;
+  }
+
+  body {
+    background: var(--color-ground);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    /* figures that line up in a column of times and sizes */
     font-feature-settings: 'tnum';
+    font-size: 13.5px;
+    font-weight: 450;
+    line-height: 1.45;
+    /* Plus Jakarta Sans sets its word gaps tight: a touch more, so a line of small words reads */
+    word-spacing: 0.06em;
     -webkit-font-smoothing: antialiased;
+  }
+
+  button,
+  input {
+    font: inherit;
+    color: inherit;
+    word-spacing: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  /* native radios and checkboxes in the accent, not the browser's grey-blue */
+  input[type='radio'],
+  input[type='checkbox'] {
+    accent-color: var(--color-accent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-pick);
+    outline-offset: 2px;
+    border-radius: 4px;
   }
 }
 

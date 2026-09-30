@@ -79,7 +79,7 @@ const Row = ({
         over
           ? 'bg-pick-soft outline-1 -outline-offset-1 outline-pick outline-dashed'
           : current
-            ? 'bg-accent-soft text-accent-ink'
+            ? 'bg-here text-accent-ink shadow-[0_0_0_1px_var(--color-line),0_1px_3px_rgba(16,19,26,0.07)]'
             : 'hover:bg-line-2 max-[780px]:bg-pane'
       } ${flash ? 'animate-[placeflash_1.8s_ease-out]' : ''}`
     }>
@@ -289,7 +289,7 @@ const PlacesTree = ({
   return (
     <nav
       aria-label={t`Folders`}
-      className='sticky top-0 gap-px self-start overflow-y-auto rounded-[18px] bg-rail px-2.5 py-3.5 shadow-card max-[780px]:z-[8] max-[780px]:flex max-[780px]:h-auto max-[780px]:items-center max-[780px]:gap-1.5 max-[780px]:overflow-x-auto max-[780px]:overflow-y-hidden max-[780px]:px-3 max-[780px]:py-2 min-[781px]:col-start-1 min-[781px]:row-span-2 min-[781px]:row-start-1 min-[781px]:flex min-[781px]:h-full min-[781px]:flex-col'>
+      className='sticky top-0 gap-px self-start overflow-y-auto rounded-[18px] isle-rail px-2.5 py-3.5 shadow-card max-[780px]:z-[8] max-[780px]:flex max-[780px]:h-auto max-[780px]:items-center max-[780px]:gap-1.5 max-[780px]:overflow-x-auto max-[780px]:overflow-y-hidden max-[780px]:px-3 max-[780px]:py-2 min-[781px]:col-start-1 min-[781px]:row-span-2 min-[781px]:row-start-1 min-[781px]:flex min-[781px]:h-full min-[781px]:flex-col'>
       {/* what came off the cameras and is not filed yet: one entry, and the first thing on it */}
       <Heading first>{t`Work`}</Heading>
       <Row

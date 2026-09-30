@@ -154,7 +154,7 @@ const Field = ({ label, children }: { label: string; children: React.ReactNode }
 )
 
 const INPUT =
-  'rounded-[10px] border-0 bg-well px-3 py-2 text-[13px] text-ink placeholder:text-ink-3 focus:outline-2 focus:outline-accent disabled:opacity-50'
+  'rounded-[10px] border border-line-strong bg-pane px-3 py-2 text-[13px] text-ink placeholder:text-ink-3 hover:border-check focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50'
 
 const ERROR = 'rounded-[10px] bg-local-soft px-3 py-2 text-[12.5px] text-local'
 

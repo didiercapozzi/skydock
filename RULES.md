@@ -705,7 +705,7 @@ state is a small tinted badge: amber for what is still to do, magenta for what i
 for what is up. A colour marks each kind of place: blue for Fresh files, teal for destinations,
 violet for montages, green for the storage, amber for cameras, red for the bin. Pictures lead: a
 jump is a photograph of its own footage with its name on it, and a thumbnail is a photograph. Titles
-are set in Bricolage Grotesque, the rest in Instrument Sans, and file names in JetBrains Mono. Dark is
+are set in Sora, the rest in Plus Jakarta Sans, and file names in JetBrains Mono. Dark is
 the same design on deep navy. The toolbar holds what is used every day: the overview,
 scanning, rows or thumbnails, finding anything (Ctrl or ⌘ with F goes there), the keys the board
 knows, and behind _Settings_ light or dark, the language, the editing templates, the work folder and

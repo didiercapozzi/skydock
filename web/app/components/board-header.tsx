@@ -103,7 +103,7 @@ const BoardHeader = ({
     window.location.reload()
   }
   return (
-    <header className='flex h-14 flex-none items-center gap-1 rounded-t-[18px] border-b border-line-2 bg-pane px-3.5 shadow-card max-[780px]:rounded-[18px] max-[780px]:border-b-0 min-[781px]:col-start-3 min-[781px]:row-start-1'>
+    <header className='flex h-14 flex-none items-center gap-1 rounded-t-[18px] border-b border-line-2 isle-head px-3.5 shadow-card max-[780px]:rounded-[18px] max-[780px]:border-b-0 min-[781px]:col-start-3 min-[781px]:row-start-1'>
       <button
         type='button'
         onClick={onOverview}
