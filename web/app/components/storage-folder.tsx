@@ -204,7 +204,7 @@ const FileButtons = ({
    again from this board. */
 /* the row's own control, whether it plays or opens the storage's interface */
 const ROW =
-  'flex h-full min-w-0 flex-1 items-center gap-3.5 rounded-[13px] border-0 bg-transparent px-3 text-left no-underline enabled:hover:bg-well disabled:cursor-default'
+  'flex h-full min-w-0 flex-1 items-center gap-3.5 rounded-[13px] border-0 bg-transparent px-3 text-left no-underline enabled:hover:bg-pane disabled:cursor-default'
 
 const StorageFolder = ({
   where,
@@ -235,9 +235,18 @@ const StorageFolder = ({
   return (
     <section
       aria-label={t`On the storage`}
-      className='mt-5'>
+      /* what is up there is its own panel, apart from the files here above it: a tint, a hairline and a
+         mark of the storage, so it is never taken for more of the list */
+      className='mt-10 rounded-[18px] bg-well/60 px-4 pt-3.5 pb-3 shadow-[0_0_0_1px_var(--color-line)]'>
       <div className='flex flex-wrap items-center gap-3 pt-1 pb-2'>
-        <h3 className='m-0 font-display text-[20px] font-bold tracking-[-0.03em] text-ink'>{t`On the storage`}</h3>
+        <h3 className='m-0 flex items-center gap-2 font-display text-[20px] font-bold tracking-[-0.03em] text-ink'>
+          <Icon
+            name='storage'
+            size={18}
+            className='text-accent'
+          />
+          {t`On the storage`}
+        </h3>
         {folder?.ok && <code className='font-mono text-[11.5px] text-ink-3'>{folder.dir}</code>}
         {folder?.ok && (
           <span className='text-[13.5px] font-medium text-ink-3'>
@@ -286,7 +295,7 @@ const StorageFolder = ({
                     target='_blank'
                     rel='noreferrer'
                     title={t`Show it in the storage’s own web interface, in a new tab`}
-                    className={`${ROW} hover:bg-well`}>
+                    className={`${ROW} hover:bg-pane`}>
                     <Icon
                       name='storage'
                       size={15}

@@ -1312,6 +1312,7 @@ msgstr "Copier dans le montage"
 #: app/components/montage-card.tsx
 #: app/components/storage-folder.tsx
 #: app/components/storage-list.tsx
+#: app/routes/place.tsx
 msgid "Copy link"
 msgstr "Copier le lien"
 
@@ -1321,6 +1322,7 @@ msgstr "Copier l’objet"
 
 #: app/components/montage-card.tsx
 #: app/components/storage-folder.tsx
+#: app/routes/place.tsx
 msgid "Copy the link"
 msgstr "Copier le lien"
 
@@ -1383,6 +1385,7 @@ msgstr "Créer un lien"
 
 #: app/components/montage-card.tsx
 #: app/components/storage-list.tsx
+#: app/routes/place.tsx
 msgid "Create link"
 msgstr "Créer un lien"
 
@@ -2348,6 +2351,7 @@ msgstr "Faire un saut de ceux-ci…"
 
 #: app/components/montage-card.tsx
 #: app/components/storage-list.tsx
+#: app/routes/place.tsx
 msgid "Make a link to its folder, to send"
 msgstr "Créer un lien vers son dossier, à envoyer"
 
@@ -2550,6 +2554,7 @@ msgid "no height or speed — this camera wrote none"
 msgstr "ni hauteur ni vitesse — cette caméra n’en a enregistré aucune"
 
 #: app/components/montage-card.tsx
+#: app/routes/place.tsx
 msgid "No link"
 msgstr "Pas de lien"
 
@@ -3177,6 +3182,7 @@ msgstr "Retirer des fichiers"
 
 #: app/components/montage-card.tsx
 #: app/components/storage-list.tsx
+#: app/routes/place.tsx
 msgid "Remove link"
 msgstr "Supprimer le lien"
 
@@ -3642,6 +3648,7 @@ msgstr "Supprimer le lien — le fichier reste où il est"
 
 #: app/components/montage-card.tsx
 #: app/components/storage-list.tsx
+#: app/routes/place.tsx
 msgid "Take the link away — the folder stays where it is"
 msgstr "Supprimer le lien — le dossier reste où il est"
 

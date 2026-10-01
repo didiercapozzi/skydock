@@ -183,7 +183,10 @@ const targetForGroup = (
     localDir: dir,
     remoteDir: base === null ? null : flat ? base : `${base}/${path.basename(dir)}`,
     destination,
-    groupIds: [group.id]
+    groupIds: [group.id],
+    /* a destination's folder is not given a link by being uploaded into: one is made, and taken away,
+       by hand, from the destination's own panel */
+    share: false
   }
 }
 
@@ -237,7 +240,8 @@ const resolveUploadTargets = ({
         localDir: getDestinationDir(outputDir, scope.destination),
         remoteDir: base,
         destination: scope.destination,
-        groupIds: []
+        groupIds: [],
+        share: false
       })
     }
   }

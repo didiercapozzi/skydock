@@ -157,6 +157,15 @@ describe('an upload going', () => {
     await page.screenshot({ path: './playwright-screenshots/upload-panel.png' })
   })
 
+  test('offers Open in DSM only on what is up there already, not on what is waiting or going', async () => {
+    await renderBoard({ ...board, uploading: going })
+    await expect.element(panel()).toBeVisible()
+
+    /* the one sent and the one that was there already: not the one being sent */
+    await expect.element(panel().getByRole('link', { name: 'Open in DSM' }).first()).toBeVisible()
+    expect(panel().getByRole('link', { name: 'Open in DSM' }).elements()).toHaveLength(2)
+  })
+
   test('opens out to show each item whole, where it goes and what became of it, and closes again', async () => {
     await renderBoard({ ...board, uploading: going })
     await expect.element(panel()).toBeVisible()

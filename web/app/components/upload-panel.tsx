@@ -17,8 +17,11 @@ const base = (item: UploadItem, where: string, dsmHost?: string | null) => ({
   size: item.size,
   part: item.part,
   title: where,
-  /* a file that is up there, or in the way: its folder in the storage's own interface */
-  ...(dsmHost && item.to && item.state !== 'zipping' && item.state !== 'zipped'
+  /* a file that is up there, or in the way — not one still waiting or going: its folder in the
+     storage's own interface, once it is */
+  ...(dsmHost &&
+  item.to &&
+  (item.state === 'sent' || item.state === 'there' || item.state === 'taken')
     ? { href: dsmFolderUrl(dsmHost, where) ?? undefined }
     : {})
 })

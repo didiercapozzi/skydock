@@ -1312,6 +1312,7 @@ msgstr "Copy into montage"
 #: app/components/montage-card.tsx
 #: app/components/storage-folder.tsx
 #: app/components/storage-list.tsx
+#: app/routes/place.tsx
 msgid "Copy link"
 msgstr "Copy link"
 
@@ -1321,6 +1322,7 @@ msgstr "Copy subject"
 
 #: app/components/montage-card.tsx
 #: app/components/storage-folder.tsx
+#: app/routes/place.tsx
 msgid "Copy the link"
 msgstr "Copy the link"
 
@@ -1383,6 +1385,7 @@ msgstr "Create a link"
 
 #: app/components/montage-card.tsx
 #: app/components/storage-list.tsx
+#: app/routes/place.tsx
 msgid "Create link"
 msgstr "Create link"
 
@@ -2348,6 +2351,7 @@ msgstr "Make a jump of these…"
 
 #: app/components/montage-card.tsx
 #: app/components/storage-list.tsx
+#: app/routes/place.tsx
 msgid "Make a link to its folder, to send"
 msgstr "Make a link to its folder, to send"
 
@@ -2550,6 +2554,7 @@ msgid "no height or speed — this camera wrote none"
 msgstr "no height or speed — this camera wrote none"
 
 #: app/components/montage-card.tsx
+#: app/routes/place.tsx
 msgid "No link"
 msgstr "No link"
 
@@ -3177,6 +3182,7 @@ msgstr "Remove files"
 
 #: app/components/montage-card.tsx
 #: app/components/storage-list.tsx
+#: app/routes/place.tsx
 msgid "Remove link"
 msgstr "Remove link"
 
@@ -3642,6 +3648,7 @@ msgstr "Take the link away — the file stays where it is"
 
 #: app/components/montage-card.tsx
 #: app/components/storage-list.tsx
+#: app/routes/place.tsx
 msgid "Take the link away — the folder stays where it is"
 msgstr "Take the link away — the folder stays where it is"
 

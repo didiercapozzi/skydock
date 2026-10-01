@@ -943,16 +943,55 @@ const Inspector = ({
       files={folder.files}
       statusOf={statusOf}>
       {/* where it goes is said once, above its files, where it can be changed; here is only the
-          link handed out of it */}
-      {dz?.shareUrl && (
+          link handed out of it — none by default, made and taken away by hand */}
+      {dz?.path && model.nas.connected && (
         <Part heading={t`Shared link`}>
-          <a
-            href={dz.shareUrl}
-            target='_blank'
-            rel='noreferrer'
-            className='truncate font-mono text-[11.5px] text-accent-ink hover:underline'>
-            {dz.shareUrl}
-          </a>
+          {dz.shareUrl ? (
+            <>
+              <a
+                href={dz.shareUrl}
+                target='_blank'
+                rel='noreferrer'
+                className='truncate font-mono text-[11.5px] text-accent-ink hover:underline'>
+                {dz.shareUrl}
+              </a>
+              <span className='flex gap-1.5'>
+                <Mini
+                  title={t`Copy the link`}
+                  onClick={() =>
+                    void navigator.clipboard?.writeText(dz.shareUrl ?? '').catch(() => undefined)
+                  }>
+                  {t`Copy link`}
+                </Mini>
+                <Mini
+                  title={t`Take the link away — the folder stays where it is`}
+                  onClick={() =>
+                    board.send(`link:${dz.path}`, {
+                      intent: 'destination-link',
+                      link: { folder: dz.path ?? '', make: false }
+                    })
+                  }>
+                  {t`Remove link`}
+                </Mini>
+              </span>
+            </>
+          ) : (
+            <>
+              <span className='text-[11.5px] text-ink-3'>{t`No link`}</span>
+              <span className='flex'>
+                <Mini
+                  title={t`Make a link to its folder, to send`}
+                  onClick={() =>
+                    board.send(`link:${dz.path}`, {
+                      intent: 'destination-link',
+                      link: { folder: dz.path ?? '', make: true }
+                    })
+                  }>
+                  {t`Create link`}
+                </Mini>
+              </span>
+            </>
+          )}
         </Part>
       )}
       {folder.family === 'montages' &&

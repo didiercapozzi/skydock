@@ -63,6 +63,8 @@ const actionArgs = z.object({
     'mark-emailed',
     /* a montage's folder on the storage given a link, or its link taken away */
     'montage-link',
+    /* a destination's folder given a link by hand, or its link taken away */
+    'destination-link',
     /* montages the storage's list names, put back on a board that has forgotten them */
     'restore-montages',
     /* a clip handed to the machine's own video player, to be watched at its full size */

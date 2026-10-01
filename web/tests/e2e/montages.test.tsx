@@ -453,6 +453,42 @@ describe('Move to…', () => {
   })
 })
 
+/* A destination's folder is given no link by being uploaded into; one is made and taken away by hand,
+   from its panel (RULES, Network storage). */
+describe('a destination’s link', () => {
+  const shown = (shareUrl?: string) => ({
+    ...board,
+    destinations: [{ name: 'Yverdon', path: '/SkyDock/Yverdon', ...(shareUrl ? { shareUrl } : {}) }],
+    nas: { connected: true, hostname: 'nas.local', backupFolder: '/Backup' }
+  })
+  const open = async (data: unknown) => {
+    await renderBoard({ groups: [] }, '/', data)
+    await userEvent.click(
+      page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /Yverdon/ })
+    )
+  }
+
+  test('has none by default, and one is made from the panel', async () => {
+    await open(shown())
+
+    await expect.element(details().getByText('No link')).toBeVisible()
+    await userEvent.click(details().getByRole('button', { name: 'Create link' }))
+    await expect
+      .poll(() => sent.at(-1))
+      .toMatchObject({ intent: 'destination-link', link: { folder: '/SkyDock/Yverdon', make: true } })
+  })
+
+  test('is taken away from the panel', async () => {
+    await open(shown('https://nas.local/sharing/Yv'))
+
+    await expect.element(details().getByText('https://nas.local/sharing/Yv')).toBeVisible()
+    await userEvent.click(details().getByRole('button', { name: 'Remove link' }))
+    await expect
+      .poll(() => sent.at(-1))
+      .toMatchObject({ intent: 'destination-link', link: { folder: '/SkyDock/Yverdon', make: false } })
+  })
+})
+
 /* One box finds anything on the board by a piece of its name, and goes to it (RULES, Finding
    anything). */
 describe('finding anything', () => {

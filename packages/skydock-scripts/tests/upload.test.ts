@@ -173,6 +173,17 @@ describe('where an upload goes', () => {
     expect(target.localDir).toBe('/out/processed/Yverdon')
   })
 
+  /* a destination is not handed out by uploading into it: its link is made by hand, when wanted */
+  it('gives the folder of a destination no link by default', () => {
+    const manifest = manifestOf([group({ destination: 'Yverdon' })])
+    const targets = resolveUploadTargets({
+      outputDir,
+      manifest,
+      scope: { groupIds: ['group_1'] }
+    })
+    expect(targets.every((target) => target.share === false)).toBe(true)
+  })
+
   /* a montage belongs to no destination: its upload says where each thing goes */
   it('gives a montage no folder of its own to be uploaded into as a place', () => {
     const manifest = manifestOf([

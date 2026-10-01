@@ -234,7 +234,7 @@ person, an event. A jump is processed once it is filed.
 montage or the dropzone and the time they were shot, cropped and turned as asked, and stamped so that
 each file's date matches its name.
 
-**5. Hand over.** A dropzone folder is **uploaded** whole and gets a share link. A montage is given an
+**5. Hand over.** A dropzone folder is **uploaded** whole, with no share link: one is made, and taken away again, by hand from the destination's own panel, when it is wanted. A montage is given an
 **editing project** — its clips waiting in the bin — someone edits and renders the film, and the
 montage is then **uploaded**: the film and the photos to its folder, the original videos to the backup
 folder. Finally whoever it is for is **emailed** the link.
@@ -1032,7 +1032,9 @@ it was made from. Originals never carry it: what proves a file against a camera 
 note would change them.
 
 **Share links.** A folder's link is reused while it works, so uploading again does not change the link
-somebody already has.
+somebody already has. Uploading into a destination never makes one. Its panel says whether the folder has a link, shows it with
+**Copy link** and **Remove link**, or offers **Create link** when there is none; taking it away leaves the folder
+and its files where they were.
 
 Any one file on the storage can be handed out by a link of its own, from the row it is listed on: one
 jump somebody asks for, a single photo, the film alone, without giving away the folder around it. A
