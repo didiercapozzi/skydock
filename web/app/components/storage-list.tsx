@@ -1,12 +1,13 @@
 import { plural, t } from '@lingui/core/macro'
 import type { MontageEntry, MontageLost } from '@skydock/scripts'
 import { useState } from 'react'
-import { goneSent, lastSegment, lostOf } from '@skydock/scripts'
+import { goneSent, lostOf } from '@skydock/scripts'
 import { parcelsOfEntry, parcelsOfGroup } from '../helpers/parcels'
-import { Go, Mini } from './buttons'
+import { Go } from './buttons'
 import { Icon } from './icons'
 import { dsmFolderUrl } from '../helpers/dsm'
 import { ParcelCards } from './montage-card'
+import { Menu, MenuItem } from './settings-menu'
 import type { ManifestGroup } from './types'
 import { localeDate } from './utils'
 
@@ -27,11 +28,10 @@ const Row = ({
   group,
   dsmHost,
   remote,
-  here,
   lost,
   waiting,
-  onOpen,
   onEmail,
+  onLink,
   onRestore
 }: {
   entry: MontageEntry
@@ -41,13 +41,13 @@ const Row = ({
   remote?: { dirs: string[]; sizes: Record<string, number | null> } | null
   /* the montage on this board, when it is still there: what its upload recorded says the most */
   group?: ManifestGroup
-  here: boolean
   /* what the storage no longer holds of it: its folder, or only its link */
   lost: 'folder' | 'link' | null
   /* how many of its files are on this board waiting to be sorted — a board that forgot it */
   waiting: number
-  onOpen: () => void
   onEmail: () => void
+  /* a link to the montage's folder made, or taken away */
+  onLink: (make: boolean) => void
   onRestore: () => void
 }) => {
   const [copied, setCopied] = useState(false)
@@ -67,23 +67,23 @@ const Row = ({
   }
   /* named, so a translator reads what each one is */
   const day = jumpDay(entry.day)
-  const { videos, photos, folder, backup } = entry
+  const { videos, photos, folder } = entry
   const uploadedOn = localeDate(entry.uploadedAt)
   const emailedTo = entry.emailed?.to
   const emailedOn = entry.emailed ? localeDate(entry.emailed.at) : ''
+  /* a link that works: one the storage no longer honours is as good as none */
+  const hasLink = !!entry.shareUrl && !lost
   const who = `${entry.firstname} ${entry.lastname}`.trim()
-  const backupName = backup ? lastSegment(backup) : ''
-  const originals = backup ?? ''
   return (
-    <div className=''>
-      {/* a montage only the storage holds has nothing else to open: pressing its row opens its contents;
-          the buttons on it keep doing their own */}
+    <div
+      className={`rounded-[13px] border ${detailed ? 'border-line bg-well/40' : 'border-transparent'}`}>
+      {/* pressing the row opens and closes what was handed over; what is on it keeps doing its own */}
       <div
         onClick={(event) => {
-          if (entry.freedAt && !(event.target as HTMLElement).closest('button, a'))
+          if (!(event.target as HTMLElement).closest('button, a, [role=group]'))
             setDetailed(!detailed)
         }}
-        className={`flex min-h-[60px] flex-wrap items-center gap-x-3.5 gap-y-1 rounded-[13px] px-3 py-2 hover:bg-well ${entry.freedAt ? 'cursor-pointer' : ''}`}>
+        className='flex min-h-[60px] cursor-pointer flex-wrap items-center gap-x-3.5 gap-y-1 rounded-[13px] px-3 py-2 hover:bg-well'>
         <Icon
           name='montage'
           size={15}
@@ -150,12 +150,6 @@ const Row = ({
               {t`Restore · ${plural(waiting, { one: '# file', other: '# files' })}`}
             </Go>
           )}
-          <Mini
-            pressed={detailed}
-            title={t`What was handed over: where each item went, how big it is and what is inside each zip`}
-            onClick={() => setDetailed(!detailed)}>
-            {detailed ? t`Hide contents` : t`Contents`}
-          </Mini>
           {/* the storage's own web interface, on the folder this montage went to */}
           {dsmHost && lost !== 'folder' && dsmFolderUrl(dsmHost, folder) && (
             <a
@@ -167,30 +161,51 @@ const Row = ({
               {t`Open`}
             </a>
           )}
-          {here && (
-            <Mini
-              title={t`Open it on this board`}
-              onClick={onOpen}>
-              {t`On the board`}
-            </Mini>
+          {/* the rest, behind three dots: its link and the email */}
+          {lost !== 'folder' && (
+            <Menu
+              label={t`More`}
+              icon='more'>
+              {(close) => (
+                <div className='flex flex-col'>
+                  {entry.shareUrl && !lost && (
+                    <MenuItem
+                      icon='link'
+                      title={entry.shareUrl}
+                      onClick={() => {
+                        void copy()
+                        close()
+                      }}>
+                      {copied ? `✓ ${t`copied`}` : t`Copy link`}
+                    </MenuItem>
+                  )}
+                  {entry.shareUrl && !lost && (
+                    <MenuItem
+                      icon='mail'
+                      onClick={() => {
+                        onEmail()
+                        close()
+                      }}>
+                      {t`Email…`}
+                    </MenuItem>
+                  )}
+                  <MenuItem
+                    icon={hasLink ? 'close' : 'plus'}
+                    title={
+                      hasLink
+                        ? t`Take the link away — the folder stays where it is`
+                        : t`Make a link to its folder, to send`
+                    }
+                    onClick={() => {
+                      onLink(!hasLink)
+                      close()
+                    }}>
+                    {hasLink ? t`Remove link` : t`Create link`}
+                  </MenuItem>
+                </div>
+              )}
+            </Menu>
           )}
-          {entry.backup && (
-            <Mini
-              title={t`The originals: ${originals}`}
-              onClick={() =>
-                void navigator.clipboard?.writeText(entry.backup ?? '').catch(() => undefined)
-              }>
-              {t`Backup · ${backupName}`}
-            </Mini>
-          )}
-          {entry.shareUrl && !lost && (
-            <Mini
-              title={entry.shareUrl}
-              onClick={() => void copy()}>
-              {copied ? `✓ ${t`copied`}` : t`Copy link`}
-            </Mini>
-          )}
-          {entry.shareUrl && !lost && <Mini onClick={onEmail}>{t`Email…`}</Mini>}
         </span>
       </div>
       {detailed && (
@@ -213,8 +228,8 @@ const StorageList = ({
   isHere,
   groupOf,
   waitingFiles,
-  onOpen,
   onEmail,
+  onLink,
   onRestore
 }: {
   /* the storage's own address, for showing a file in its web interface */
@@ -233,15 +248,20 @@ const StorageList = ({
   groupOf: (entry: MontageEntry) => ManifestGroup | undefined
   /* how many of a montage's files are on this board, still to be sorted */
   waitingFiles: (entry: MontageEntry) => number
-  onOpen: (entry: MontageEntry) => void
   onEmail: (entry: MontageEntry) => void
+  /* a link to its folder made, or taken away */
+  onLink: (entry: MontageEntry, make: boolean) => void
   /* put these montages back on the board, by their folder on the storage */
   onRestore: (folders: string[]) => void
 }) => {
   if (!storage) return null
-  const forgotten = storage.montages.filter((m) => !isHere(m) && waitingFiles(m) > 0)
-  const waiting = storage.montages.filter((m) => !m.emailed).length
-  const count = storage.montages.length
+  /* A folder the storage no longer holds is an earlier delivery — a montage sent to another
+     destination, or sent again, and since taken away. The list keeps it, for it says who was emailed,
+     but it is not shown among what is there. */
+  const present = storage.montages.filter((m) => lostOf(storage.lost, m.folder) !== 'folder')
+  const forgotten = present.filter((m) => !isHere(m) && waitingFiles(m) > 0)
+  const waiting = present.filter((m) => !m.emailed).length
+  const count = present.length
   const lostCount = forgotten.length
   const problem = storage.problem ?? ''
   return (
@@ -269,24 +289,23 @@ const StorageList = ({
         <p className='m-0 mt-2 rounded-xl bg-local-soft px-3.5 py-2.5 text-[12.5px] text-local'>
           {t`The storage’s list of montages could not be read: ${problem}`}
         </p>
-      ) : storage.montages.length === 0 ? (
+      ) : present.length === 0 ? (
         <p className='m-0 mt-2 rounded-2xl border-2 border-dashed border-line-strong px-3 py-5 text-center text-[12.5px] text-ink-3'>
           {t`No montage uploaded yet — each one is listed here once it is.`}
         </p>
       ) : (
         <div>
-          {storage.montages.map((entry) => (
+          {present.map((entry) => (
             <Row
               key={entry.folder}
               entry={entry}
               group={groupOf(entry)}
               dsmHost={dsmHost}
               remote={remote}
-              here={isHere(entry)}
               lost={lostOf(storage.lost, entry.folder)}
               waiting={isHere(entry) ? 0 : waitingFiles(entry)}
-              onOpen={() => onOpen(entry)}
               onEmail={() => onEmail(entry)}
+              onLink={(make) => onLink(entry, make)}
               onRestore={() => onRestore([entry.folder])}
             />
           ))}

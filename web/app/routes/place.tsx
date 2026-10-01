@@ -362,13 +362,13 @@ const Place = () => {
               remote={model.nas.remote}
               isHere={(entry) => groups.some((g) => folderOnStorage(g) === entry.folder)}
               groupOf={(entry) => groups.find((g) => folderOnStorage(g) === entry.folder)}
-              onOpen={(entry) =>
-                model.pickPlace({
-                  kind: 'pax',
-                  name: `${entry.firstname} ${entry.lastname}`.trim()
+              onEmail={(entry) => setDialog({ kind: 'email', folder: entry.folder })}
+              onLink={(entry, make) =>
+                send(`link:${entry.folder}`, {
+                  intent: 'montage-link',
+                  link: { folder: entry.folder, make }
                 })
               }
-              onEmail={(entry) => setDialog({ kind: 'email', folder: entry.folder })}
               waitingFiles={(entry) => (entry.files ?? []).filter((f) => toSort.has(f.id)).length}
               onRestore={(folders) => send('restore', { intent: 'restore-montages', folders })}
             />
@@ -607,6 +607,14 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
       onMontage={() => model.takeStep(group, 'Edited')}
       onOpenMontage={() => model.takeStep(group, 'Rendered')}
       onUpload={() => model.takeStep(group, 'Uploaded')}
+      onEmail={
+        group.uploaded && progress.steps[progress.at]?.name === 'Emailed'
+          ? {
+              name: group.passenger?.firstname ?? '',
+              open: () => model.takeStep(group, 'Emailed')
+            }
+          : undefined
+      }
       onFree={() => model.setDialog({ kind: 'free', groupId: group.id })}>
       {facts?.film && <OpenFilm film={facts.film} />}
     </MontageCardActions>

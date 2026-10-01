@@ -69,7 +69,7 @@ describe('the transfers panel', () => {
         label: 'Vincent',
         at: 1_785_100_000,
         state: 'failed',
-        reason: 'a.zip is already on the storage, with other contents, so nothing was sent.',
+        reason: 'a.zip is already on the storage, so nothing was sent.',
         items: [{ name: 'a.zip', size: 10, to: '/home/tmp/Backup', result: 'failed', note: 'taken' }]
       }
     ])
@@ -79,6 +79,19 @@ describe('the transfers panel', () => {
     const link = page.getByRole('link', { name: 'Open in DSM' }).element() as HTMLAnchorElement
     expect(link.target).toBe('_blank')
     expect(decodeURIComponent(decodeURIComponent(link.href))).toContain('openfile=/home/tmp/Backup/a.zip')
+  })
+
+  test('links a file already uploaded to its folder on the storage too', async () => {
+    answers([upload])
+    await panel(vi.fn(), 'https://nas.example:5001')
+
+    /* every row of an upload has its button: the one sent, and the one that was there already */
+    await expect.element(page.getByRole('link', { name: 'Open in DSM' }).first()).toBeVisible()
+    const links = page.getByRole('link', { name: 'Open in DSM' }).elements() as HTMLAnchorElement[]
+    expect(links).toHaveLength(2)
+    expect(decodeURIComponent(decodeURIComponent(links[1]!.href))).toContain(
+      'openfile=/Passengers/luc/luc.photos.zip'
+    )
   })
 
   test('says so when nothing was ever done', async () => {

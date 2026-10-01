@@ -858,7 +858,8 @@ date.
 Each dropzone and each montage offers its next step, always in the same place, and never out of order.
 A dropzone is **processed**, then **uploaded**, as a whole. A montage is **processed**, then given an
 **editing project**, then **uploaded**: the upload opens once there is a project, and sends nothing until the
-film is rendered. Freeing space is offered beside the upload once there is something to free.
+film is rendered. Once it is uploaded, the last step — emailing the link to whoever the film is for — is the
+primary button, ahead of Upload again, which steps back to a quiet one. Freeing space is offered beside the upload once there is something to free.
 
 **A dropzone's step stands beside what it deals with**: in the row that says what the folder still
 owes — so many to process, so many to upload, so many on the storage — and not among the ways of
@@ -964,15 +965,17 @@ which is when it was shot — so the storage lists and sorts it by that, not by 
 files — sending the folder whole. A montage cannot be uploaded this way, because its files go to two
 places; asking is refused and says why.
 
-**Sending what changed.** A file with the same name and size on the storage is checksummed on both
-sides and skipped only if they match. Anything uncertain is sent. A file whose name is already taken
-up there by different bytes — a clip prepared again after its trim was put right, a film rendered
-again — is not written over, and is not moved or renamed by SkyDock either. Before anything is sent,
-every folder of the upload is looked at, and if any file is in the way the whole upload does not
-start: nothing is sent, the board says so, and each file in the way is listed with a link that opens
-its folder in the storage's own web interface, in a new tab, where a person renames or deletes it, where a person renames or deletes it. The list of transfers opens by itself when an upload is turned away this way.
-The upload is then started again. The board reports what is happening throughout: how many files are being checked, which
-one is being sent and how far it is, and how many were already there.
+**Sending what changed.** A file whose name is already taken up there — by different bytes, such as a
+clip prepared again after its trim was put right or a film rendered again, or by the very same ones —
+is not written over, and is not moved or renamed by SkyDock either. Before anything is sent, every
+folder of the upload is looked at, and if any file is in the way the whole upload does not start:
+nothing is sent, the board says so, and each file in the way is listed with a button that opens its
+folder in the storage's own web interface, in a new tab, where a person renames or deletes it. The warning line
+leads to the list of transfers, which is not opened by itself.
+The upload is then started again. Footage the storage already holds under another name is the one thing
+passed over: it is not sent again, and the list says it was already uploaded, with the same button to
+find it. The board reports what is happening throughout: how many files are being checked, which one is
+being sent and how far it is, and how many were already there.
 
 **One upload at a time, shown wherever you are.** Only one upload goes at a time — a dropzone or a
 montage — and while it goes no Upload is offered anywhere, each saying what is being uploaded. It is
@@ -1293,7 +1296,8 @@ upload going, naming it. A montage
 with no video at all is uploaded without a film. A film rendered under a different name, when it is
 the only one there, is taken as the film, and goes up named after the montage.
 
-Uploading again after a re-render sends what changed and leaves the rest. A zip holding exactly what it
+Uploading again after a re-render is turned away while the earlier film, zips or folders are still up
+there under the same names: they are renamed or deleted on the storage first. A zip holding exactly what it
 should, newer than everything in it, is not built again. The film is taken on trust: nothing checks
 that it was rendered from this project.
 
@@ -1305,10 +1309,13 @@ how many and the first names, the rest a press away, and the film and the projec
 upload writes down each item, its size and the name of every entry in each zip, so this is what was
 sent, not a guess. It stays the same once the montage is freed from this machine, since it is read
 from the record and not from the files. And it is there for a montage only the storage has — freed, or
-uploaded from another machine — from the storage's own list: in _On the storage_, **Contents** on a
-montage opens the same cards, from what the list keeps of each item and its folder — and so does a
-press anywhere on the row of a montage kept only on the storage, a second press closing them; the
-buttons on the row keep doing their own. A zip of such a
+uploaded from another machine — from the storage's own list: in _On the storage_, a press anywhere on the
+row of a montage opens the same cards, from what the list keeps of each item and its folder, and a
+second press closes them; what is on the row keeps doing its own. Each row keeps its buttons few:
+**Open** shows its folder in the storage's own web interface, and three dots hold the rest, each with a
+small mark of one colour — copy its link, email it, and make its link or take it away. Making a
+link gives its folder one the storage hands back if it already has it; taking it away leaves the folder
+where it was, and the list is told either way. A zip of such a
 montage says how many clips and photos it holds, since their names are only in the zip. A montage
 uploaded before these were kept shows what its record or its list entry says: its film, its photos'
 zip and its backup, and what they hold.
@@ -1319,7 +1326,7 @@ everything is done, and opens the history in the same small window at the bottom
 button to open it out: each transfer the machine kept, the latest first, says what it was of (an upload of
 a montage, a drop, a camera), when it ended and how — done, failed or cancelled — counted as how many were
 done, how many were there already and how many were not done. The latest is open; a press on another opens
-it, listing every item with its size, where it went and what became of it, and why it stopped when
+it, listing every item with its size, where it went and what became of it — each with an **Open in DSM** button that shows its folder in the storage's own web interface, in a new tab — and why it stopped when
 something did. It is kept on this machine, so it is there after a reload or a restart: the last 30
 transfers, and of each at most 400 items — what was done comes before what was passed over, and what is not
 listed is counted and said, never dropped silently. A camera plugged in again with nothing new to copy
@@ -1393,8 +1400,10 @@ and one still on this board can be opened.
 say — who a montage was for, whether its passenger was emailed and at which address, that it was
 freed, which files it was made of. Whether its folder is still there and whether its link still works
 are asked of the storage each time the board opens and after every change to the list. A montage whose
-folder is gone is shown as no longer on the storage, and one whose link was revoked or has expired as
-having no link; neither offers what is not there — no link to copy or email, no folder to watch — and
+folder is gone is put aside in the list of what is on the storage: one line says how many earlier
+deliveries are no longer there and shows them on request, marked as no longer on the storage, and they
+are not counted among the montages. One whose link was revoked or has expired is shown as having no
+link; neither offers what is not there — no link to copy or email, no folder to watch — and
 neither is taken off the list, the only place that says it was emailed or freed. A question the
 storage did not answer takes nothing away.
 
@@ -1456,8 +1465,9 @@ remembered from last time — with the address
 and subject filled in; the email is pasted in and sent from there. The email, the subject and the link
 can also be copied on their own. The link always comes from what the upload recorded. Marking the
 email as sent records it on the storage's list, and can be undone. Once the mail has been opened from
-here, the dialog asks _Sent it?_ where that is recorded, so a montage does not stay "to email" long
-after its email went.
+here, a dialog of its own asks _Was the email sent?_ and cannot be put away — not by Escape, not by a
+click beside it — until one of the two answers is given: _Yes_ records it on the storage's list, _Not
+sent_ leaves the montage to email. So a montage does not stay "to email" long after its email went.
 
 ## Going back
 

@@ -232,11 +232,10 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   /* the panel of what was sent and copied, open at will — done or not */
   const transfersPanel = useTransfersPanel()
   const transfersOpen = transfersPanel.open
-  /* An upload the storage turned away, because files of the same names are up there already, says so
-     in the line above; the panel that names each one, with its button to the storage's own interface,
-     opens by itself, so that nobody has to look for it. */
+  /* A line that says a transfer failed leads to the panel that names what went wrong; it does not
+     open it by itself. */
   const upsetBy = board.noteIsProblem ? board.note : null
-  const { setTrouble, show } = transfersPanel
+  const { setTrouble } = transfersPanel
   useEffect(() => {
     if (!upsetBy) {
       setTrouble(false)
@@ -250,13 +249,12 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         const failed = !!latest && latest.state === 'failed' && Date.now() / 1000 - latest.at < 120
         if (cancelled) return
         setTrouble(failed)
-        if (failed && latest.items.some((item) => item.note === 'taken')) show()
       })
       .catch(() => undefined)
     return () => {
       cancelled = true
     }
-  }, [upsetBy, setTrouble, show])
+  }, [upsetBy, setTrouble])
 
   if (!board.hasManifest) {
     return (

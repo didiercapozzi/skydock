@@ -38,15 +38,12 @@ const rowsOf = (transfer: Transfer, dsmHost?: string | null): ProgressRow[] =>
     /* a drop says where a file was before it was joined to a second jump; anything else, where it went */
     ...(item.to || item.note ? { title: item.to ? `${item.to}/${item.name}` : item.note } : {}),
     ...(item.result === 'left' ? { note: t`not reached` } : {}),
-    /* a file that was in the way: its folder, in the storage's own interface, to rename or delete it */
-    ...(item.note === 'taken'
-      ? {
-          note: t`already on the storage`,
-          ...(dsmHost && item.to
-            ? { href: dsmFolderUrl(dsmHost, `${item.to}/${item.name}`) ?? undefined }
-            : {})
-        }
+    /* every file an upload put or found up there, whatever became of it: its folder in the storage's own
+       interface, the file chosen in it */
+    ...(transfer.kind === 'upload' && dsmHost && item.to
+      ? { href: dsmFolderUrl(dsmHost, `${item.to}/${item.name}`) ?? undefined }
       : {}),
+    ...(item.note === 'taken' ? { note: t`already on the storage` } : {}),
     ...(item.result === 'skipped' && transfer.kind === 'upload'
       ? { note: t`already uploaded — not sent again` }
       : {})

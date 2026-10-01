@@ -63,6 +63,8 @@ const actionArgs = z.object({
     'imported',
     /* the passenger was emailed — or, taken back, was not — said on the storage's list */
     'mark-emailed',
+    /* a montage's folder on the storage given a link, or its link taken away */
+    'montage-link',
     /* montages the storage's list names, put back on a board that has forgotten them */
     'restore-montages',
     /* a clip handed to the machine's own video player, to be watched at its full size */
@@ -126,6 +128,7 @@ const actionArgs = z.object({
   emailed: z
     .object({ folder: z.string(), to: z.string().optional(), sent: z.boolean() })
     .optional(),
+  link: z.object({ folder: z.string(), make: z.boolean() }).optional(),
   imported: importOutcomeSchema.optional()
 })
 

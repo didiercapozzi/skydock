@@ -6,7 +6,7 @@ import { jsonText } from './lib/json'
 import { getStatusDir } from './utils'
 
 /* One thing this upload sends, as the list of it shows it: a zip being made, then each file going to
-   each folder up there — waiting, being sent, sent, already there and skipped, or in the way: a file of that name is up there already, with other contents. `part` is how far
+   each folder up there — waiting, being sent, sent, already there and skipped, or in the way: a file of that name is up there already. `part` is how far
    the one under way has got. */
 const uploadItemSchema = z.object({
   key: z.string(),

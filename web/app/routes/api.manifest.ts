@@ -15,6 +15,7 @@ import { freeDropzoneIntent } from './manifest/free-dropzone'
 import { freeMontageIntent } from './manifest/free-montage'
 import { imported } from './manifest/imported'
 import { markEmailed } from './manifest/mark-emailed'
+import { montageLink } from './manifest/montage-link'
 import { cameraCopied } from './manifest/camera-copied'
 import { copyFilesIntent } from './manifest/copy-files'
 import { makeMontageIntent } from './manifest/make-montage'
@@ -80,6 +81,7 @@ const intents: Record<ActionData['intent'], Intent> = {
   'free-dropzone': freeDropzoneIntent,
   imported,
   'mark-emailed': markEmailed,
+  'montage-link': montageLink,
   'restore-montages': restoreMontagesIntent,
   'copy-files': copyFilesIntent,
   'make-montage': makeMontageIntent,

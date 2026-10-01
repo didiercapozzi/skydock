@@ -444,7 +444,7 @@ describe('emailing the passenger their link', () => {
   }
 
   const openEmail = async () => {
-    await userEvent.click(page.getByRole('button', { name: 'Email Luc…' }))
+    await userEvent.click(page.getByRole('button', { name: 'Email Luc…' }).first())
     return page.getByRole('dialog', { name: 'Email the link' })
   }
 
@@ -539,12 +539,63 @@ describe('the montages on the storage', () => {
     await expect.element(page.getByText('storage only', { exact: true })).toBeInTheDocument()
   })
 
+  test('asks, in a dialog that cannot be put away, whether the mail went once it was opened', async () => {
+    requests.length = 0
+    const open = window.open
+    window.open = (() => null) as typeof window.open
+    try {
+      await renderBoard(listed, false)
+      await userEvent.click(
+        page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /On the storage/ })
+      )
+      await userEvent.click(page.getByRole('button', { name: 'More' }))
+      await userEvent.click(page.getByRole('button', { name: 'Email…' }))
+      /* the one used last is remembered, whatever an earlier test chose */
+      await userEvent.click(page.getByRole('button', { name: 'Gmail', exact: true }))
+      await userEvent.click(page.getByRole('button', { name: 'Copy & open Gmail' }))
+
+      const ask = page.getByRole('dialog', { name: 'Was the email sent?' })
+      await expect.element(ask).toBeVisible()
+      /* nothing closes it but an answer */
+      await userEvent.keyboard('{Escape}')
+      await expect.element(ask).toBeVisible()
+
+      await userEvent.click(ask.getByRole('button', { name: 'Yes — it was sent' }))
+      await vi.waitFor(() =>
+        expect(requests).toContainEqual(
+          expect.objectContaining({ intent: 'mark-emailed', emailed: expect.objectContaining({ sent: true }) })
+        )
+      )
+      await expect.element(ask).not.toBeInTheDocument()
+    } finally {
+      window.open = open
+    }
+  })
+
+  test('has its link made or taken away from the three dots', async () => {
+    requests.length = 0
+    await renderBoard(listed, false)
+    await userEvent.click(
+      page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /On the storage/ })
+    )
+    await userEvent.click(page.getByRole('button', { name: 'More' }))
+    await expect.element(page.getByRole('button', { name: 'Copy link' })).toBeVisible()
+    await userEvent.click(page.getByRole('button', { name: 'Remove link' }))
+    await vi.waitFor(() =>
+      expect(requests).toContainEqual({
+        intent: 'montage-link',
+        link: { folder: `${DIR}/Ana Roth`, make: false }
+      })
+    )
+  })
+
   test('emails it from its entry, and says on the list that it was sent', async () => {
     requests.length = 0
     await renderBoard(listed, false)
     await userEvent.click(
       page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /On the storage/ })
     )
+    await userEvent.click(page.getByRole('button', { name: 'More' }))
     await userEvent.click(page.getByRole('button', { name: 'Email…' }))
     const dialog = page.getByRole('dialog', { name: 'Email the link' })
     await expect.element(dialog.getByLabelText('Email preview').getByText('Bonjour Ana,')).toBeVisible()
@@ -592,10 +643,12 @@ describe('a montage on the storage’s list that the storage no longer holds', (
     await expect.element(page.getByRole('button', { name: 'Copy link' })).not.toBeInTheDocument()
   })
 
-  test('says it is no longer on the storage once its folder is gone', async () => {
+  test('does not list a delivery once its folder is gone', async () => {
     await renderBoard(lostAs({ folders: [ana.folder], links: [] }), false)
     await openStorage()
-    await expect.element(page.getByText('no longer on the storage')).toBeInTheDocument()
+    /* a delivery the storage no longer holds is not listed among what is there */
+    await expect.element(page.getByText('Ana Roth')).not.toBeInTheDocument()
+    await expect.element(page.getByText(/no longer on the storage/)).not.toBeInTheDocument()
     await expect.element(page.getByRole('link', { name: 'Open' })).not.toBeInTheDocument()
   })
 
@@ -612,7 +665,6 @@ describe('a montage on the storage’s list that the storage no longer holds', (
     expect(decodeURIComponent(decodeURIComponent(href.split('launchParam=')[1] ?? ''))).toBe(
       `openfile=${DIR}/Ana Roth`
     )
-    await expect.element(page.getByRole('button', { name: 'Watch…' })).not.toBeInTheDocument()
   })
 })
 

@@ -3,7 +3,7 @@ import type { MessageDescriptor } from '@lingui/core'
 import { msg, t } from '@lingui/core/macro'
 import { montageSteps } from '@skydock/scripts'
 import type { MontageFact, MontageProgress, MontageStep } from '@skydock/scripts'
-import { Mini } from './buttons'
+import { Go, Mini } from './buttons'
 import type { ManifestGroup } from './types'
 
 /* the steps a press takes, in the words of each step's own button; naming is typed, so it has none */
@@ -27,12 +27,15 @@ const StepButton = ({
 }) => {
   const action = STEP_ACTION[step]
   if (!action) return null
+  /* emailing the link is the last step, and the one that is easy to miss: it is drawn as the
+     primary button */
+  const Button = step === 'Emailed' ? Go : Mini
   return (
-    <Mini
+    <Button
       disabled={busy}
       onClick={() => onStep(step)}>
       {i18n._(action)}
-    </Mini>
+    </Button>
   )
 }
 

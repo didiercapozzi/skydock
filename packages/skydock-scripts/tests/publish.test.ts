@@ -249,8 +249,8 @@ describe('uploading a folder', () => {
   })
 
   /* Nothing on the storage is written over, or moved (RULES, Principles). A file already there under
-     the name about to be sent, holding other bytes — a clip prepared again after its trim was put
-     right, a film rendered again — stops the upload before a byte is sent: a person renames or
+     the name about to be sent, holding other bytes or the same — a clip prepared again after its trim
+     was put right, a film rendered again, a montage sent twice — stops the upload before a byte is sent: a person renames or
      deletes it on the storage, and the files in the way are named. */
   describe('a file already there under the same name', () => {
     const video = () => path.join(dir, 'videos', 'a.mp4')
@@ -285,14 +285,15 @@ describe('uploading a folder', () => {
       expect(plans[0]?.taken).toMatchObject([{ name: 'a.mp4', to: '/SkyDock/jump/videos' }])
     })
 
-    it('is neither moved nor sent when it holds the same bytes', async () => {
-      const moved = storageHolding(5)
+    it('stops the upload too when it holds the same bytes: the name is what is taken', async () => {
+      const touched = storageHolding(5)
 
-      const result = await publish({ files: [video()] })
+      await expect(publish({ files: [video()] })).rejects.toThrow(
+        /a\.mp4 is already on the storage, so nothing was sent/
+      )
 
-      expect(moved).toEqual([])
+      expect(touched).toEqual([])
       expect(server.uploads).toEqual([])
-      expect(result).toMatchObject({ uploaded: 0, skipped: 1 })
     })
 
     /* beside the folder the file was delivered into, never inside it, one folder per moment */

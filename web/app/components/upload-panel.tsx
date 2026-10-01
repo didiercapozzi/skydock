@@ -11,12 +11,16 @@ import { formatSize } from './utils'
    in the same corner and the same shape as files being copied in. It can be stopped at any moment:
    nothing of it is recorded, and what already went up is found there next time. */
 
-const base = (item: UploadItem, where: string) => ({
+const base = (item: UploadItem, where: string, dsmHost?: string | null) => ({
   key: item.key,
   name: item.name,
   size: item.size,
   part: item.part,
-  title: where
+  title: where,
+  /* a file that is up there, or in the way: its folder in the storage's own interface */
+  ...(dsmHost && item.to && item.state !== 'zipping' && item.state !== 'zipped'
+    ? { href: dsmFolderUrl(dsmHost, where) ?? undefined }
+    : {})
 })
 
 const rowOf = (item: UploadItem, dsmHost?: string | null): ProgressRow => {
@@ -24,22 +28,26 @@ const rowOf = (item: UploadItem, dsmHost?: string | null): ProgressRow => {
   switch (item.state) {
     case 'zipping':
       return {
-        ...base(item, where),
+        ...base(item, where, dsmHost),
         at: 'now',
         doing: t`Zipping`,
         note: `${t`zipping`} · ${percent(item)}`
       }
     case 'zipped':
-      return { ...base(item, where), at: 'done', note: t`zipped` }
+      return { ...base(item, where, dsmHost), at: 'done', note: t`zipped` }
     case 'sending':
-      return { ...base(item, where), at: 'now', doing: t`Sending` }
+      return { ...base(item, where, dsmHost), at: 'now', doing: t`Sending` }
     case 'sent':
-      return { ...base(item, where), at: 'done' }
+      return { ...base(item, where, dsmHost), at: 'done' }
     case 'there':
-      return { ...base(item, where), at: 'skipped', note: t`already uploaded — not sent again` }
+      return {
+        ...base(item, where, dsmHost),
+        at: 'skipped',
+        note: t`already uploaded — not sent again`
+      }
     case 'taken':
       return {
-        ...base(item, where),
+        ...base(item, where, dsmHost),
         at: 'failed',
         note: t`already on the storage`,
         ...(dsmHost && item.to
@@ -47,9 +55,9 @@ const rowOf = (item: UploadItem, dsmHost?: string | null): ProgressRow => {
           : {})
       }
     case 'failed':
-      return { ...base(item, where), at: 'failed', note: t`not sent` }
+      return { ...base(item, where, dsmHost), at: 'failed', note: t`not sent` }
     default:
-      return { ...base(item, where), at: 'later' }
+      return { ...base(item, where, dsmHost), at: 'later' }
   }
 }
 

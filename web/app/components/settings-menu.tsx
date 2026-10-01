@@ -111,21 +111,30 @@ const SettingsRow = ({ label, children }: { label: string; children: React.React
   </div>
 )
 
-/* one choice in a menu */
+/* one choice in a menu, with a small mark before it in the colour of the words, when it has one */
 const MenuItem = ({
   children,
   title,
+  icon,
   onClick
 }: {
   children: React.ReactNode
   title?: string
+  icon?: IconName
   onClick: () => void
 }) => (
   <button
     type='button'
     title={title}
     onClick={onClick}
-    className='w-full rounded-[9px] border-0 bg-transparent px-2.5 py-1.5 text-left text-[12.5px] font-semibold text-ink hover:bg-well'>
+    className='flex w-full items-center gap-2 rounded-[9px] border-0 bg-transparent px-2.5 py-1.5 text-left text-[12.5px] font-semibold text-ink hover:bg-well'>
+    {icon && (
+      <Icon
+        name={icon}
+        size={14}
+        className='text-ink-3'
+      />
+    )}
     {children}
   </button>
 )

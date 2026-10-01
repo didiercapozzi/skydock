@@ -59,7 +59,8 @@ type PlannedFile = { name: string; size: number; to: string }
 type PlanProgress = { send: PlannedFile[]; there: PlannedFile[]; taken: PlannedFile[] }
 
 /* an upload that stopped before sending anything, because the storage holds files under the names
-   it would send — SkyDock never writes over what is up there, nor moves it: a person does, there */
+   it would send, whatever they hold — SkyDock never writes over what is up there, nor moves it: a
+   person does, there */
 class UploadBlocked extends Error {
   override name = 'UploadBlocked'
 }
@@ -425,9 +426,10 @@ type JumpArgs = PublishArgs & {
 }
 
 /* What the storage holds, looked at before a byte moves: what to send, what is there already, and
-   what cannot be sent because its name is taken up there by other bytes — a clip prepared again
-   after its trim was put right, a film rendered again. Such a file is not written over, and SkyDock
-   does not move it either: a person renames or deletes it in the storage's own interface. */
+   what cannot be sent because its name is taken up there — by other bytes, such as a clip prepared
+   again after its trim was put right or a film rendered again, or by the very same ones. Such a file
+   is not written over, and SkyDock does not move it either: a person renames or deletes it in the
+   storage's own interface, so an upload never leaves it unclear which of two is the one up there. */
 const checkJump = async (
   args: JumpArgs,
   handlers?: { onCheck?: (progress: CheckProgress) => void }
@@ -449,7 +451,7 @@ const checkJump = async (
   })
   const held = new Set(planned.held)
   const taken: PlannedFile[] = [
-    ...planned.upload.map((file) => ({
+    ...[...planned.upload, ...planned.skip.map((verdict) => verdict.localPath)].map((file) => ({
       name: path.basename(file),
       size: fs.statSync(file).size,
       to: remoteDirOf(args.localDir, args.remoteDir, file)
@@ -470,8 +472,8 @@ const refuseTaken = (taken: PlannedFile[], onPlan?: (plan: PlanProgress) => void
   onPlan?.({ send: [], there: [], taken })
   throw new UploadBlocked(
     taken.length === 1
-      ? `${taken[0]?.name} is already on the storage, with other contents, so nothing was sent. Rename or delete it there, then upload again.`
-      : `${taken.length} files are already on the storage, with other contents, so nothing was sent. Rename or delete them there, then upload again.`
+      ? `${taken[0]?.name} is already on the storage, so nothing was sent. Rename or delete it there, then upload again.`
+      : `${taken.length} files are already on the storage, so nothing was sent. Rename or delete them there, then upload again.`
   )
 }
 

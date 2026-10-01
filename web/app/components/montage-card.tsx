@@ -381,6 +381,7 @@ const MontageCardActions = ({
   onMontage,
   onOpenMontage,
   onUpload,
+  onEmail,
   onFree,
   children
 }: {
@@ -399,6 +400,8 @@ const MontageCardActions = ({
   onMontage: () => void
   onOpenMontage: () => void
   onUpload: () => void
+  /* given when emailing the link is the step it is at: it comes first, and Upload again steps back */
+  onEmail?: { name: string; open: () => void }
   /* offered once it is uploaded: delete it from this machine, on proof the storage holds it */
   onFree?: () => void
   /* buttons of the film's own, beside the others */
@@ -443,9 +446,24 @@ const MontageCardActions = ({
         </Go>
       </span>
     )
+  /* Upload again steps back, to a quieter button, once emailing is the step it is at */
+  const Upload = onEmail ? Mini : Go
   return (
     <span className='flex flex-wrap items-center gap-2'>
-      <Go
+      {onEmail && (
+        <Go
+          disabled={working}
+          title={t`Everything is on the storage — send the link to whoever the film is for`}
+          onClick={onEmail.open}>
+          <Icon
+            name='mail'
+            size={14}
+            weight={2}
+          />
+          {t`Email ${onEmail.name}…`}
+        </Go>
+      )}
+      <Upload
         disabled={working || blocked.blocked || upload !== null}
         title={
           upload && upload.key !== uploadKey
@@ -460,7 +478,7 @@ const MontageCardActions = ({
           weight={2}
         />
         {upload?.key === uploadKey ? t`Uploading…` : group.uploaded ? t`Upload again…` : t`Upload…`}
-      </Go>
+      </Upload>
       <Mini
         disabled={working}
         title={t`Open this project in the editor`}

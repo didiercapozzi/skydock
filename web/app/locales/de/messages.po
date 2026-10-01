@@ -1002,10 +1002,6 @@ msgstr "Zurück zu den gemessenen Marken"
 msgid "Backup"
 msgstr "Sicherung"
 
-#: app/components/storage-list.tsx
-msgid "Backup · {backupName}"
-msgstr "Sicherung · {backupName}"
-
 #: app/components/templates-dialog.tsx
 msgid "beside it — chosen whole. Or the one archive, if it was packed as .zip or .tar.gz. Or the project and its files picked one by one. Each file the project names is pointed at the copy brought in with it, so a template made on another machine finds its own files here. Bringing one in under a name already there replaces it, files and all."
 msgstr "daneben schreibt — als Ganzes gewählt. Oder das eine Archiv, wenn es als .zip oder .tar.gz gepackt wurde. Oder das Projekt und seine Dateien einzeln ausgewählt. Jede Datei, die das Projekt nennt, wird auf die mitgebrachte Kopie verwiesen, sodass eine auf einem anderen Rechner erstellte Vorlage hier ihre eigenen Dateien findet. Eine unter einem schon vorhandenen Namen hinzuzufügen, ersetzt diese samt Dateien."
@@ -1276,10 +1272,6 @@ msgstr "Beim erneuten Verbinden wird das Passwort abgefragt — und ein Code von
 msgid "Connecting…"
 msgstr "Verbinde…"
 
-#: app/components/storage-list.tsx
-msgid "Contents"
-msgstr "Inhalt"
-
 #: app/components/storage-folder.tsx
 #: app/components/storage-list.tsx
 msgid "copied"
@@ -1438,6 +1430,10 @@ msgstr "Erstellen"
 
 #: app/components/storage-folder.tsx
 msgid "Create a link"
+msgstr "Link erstellen"
+
+#: app/components/storage-list.tsx
+msgid "Create link"
 msgstr "Link erstellen"
 
 #: app/components/comparison-dialog.tsx
@@ -1672,6 +1668,11 @@ msgstr "So oder so wird nichts angefasst, was in einem Ziel oder einer Montage a
 msgid "Elsewhere"
 msgstr "Anderswo"
 
+#. placeholder {0}: onEmail.name
+#: app/components/montage-card.tsx
+msgid "Email {0}…"
+msgstr "{0} mailen…"
+
 #: app/routes/place.tsx
 msgid "Email {firstname}…"
 msgstr "{firstname} mailen…"
@@ -1772,6 +1773,10 @@ msgstr "Alle Schritte erledigt — der Empfänger hat seinen Film."
 #: app/components/take-back-dialog.tsx
 msgid "every trim and frame, and every corrected time"
 msgstr "jede Kürzung und jeder Bildausschnitt sowie jede korrigierte Zeit"
+
+#: app/components/montage-card.tsx
+msgid "Everything is on the storage — send the link to whoever the film is for"
+msgstr "Alles ist auf dem Speicher — den Link an die Person senden, für die der Film ist"
 
 #: app/components/montage-steps.tsx
 msgid "Everything is on the storage. Send the link to whoever the film is for."
@@ -2083,10 +2088,6 @@ msgstr "hier, nicht hochgeladen"
 #: app/components/camera-files.tsx
 msgid "here, put in the bin"
 msgstr "hier, in den Papierkorb gelegt"
-
-#: app/components/storage-list.tsx
-msgid "Hide contents"
-msgstr "Inhalt ausblenden"
 
 #: app/components/board-header.tsx
 msgid "Hide details"
@@ -2418,6 +2419,10 @@ msgstr "Mailprogramm"
 msgid "Make a jump of these…"
 msgstr "Daraus einen Sprung machen…"
 
+#: app/components/storage-list.tsx
+msgid "Make a link to its folder, to send"
+msgstr "Einen Link zu seinem Ordner erstellen, zum Senden"
+
 #: app/components/inspector.tsx
 msgid "Make a montage of {ofWhat}…"
 msgstr "Eine Montage aus {ofWhat} machen…"
@@ -2513,6 +2518,10 @@ msgstr "Montage fertig — {photos, plural, one {# Foto} other {# Fotos}} im Pap
 #: app/helpers/places.ts
 msgid "Montages"
 msgstr "Montagen"
+
+#: app/components/storage-list.tsx
+msgid "More"
+msgstr "Mehr"
 
 #: app/components/file-list.tsx
 msgid "More than 15 minutes from the rest of its jump — the gap rule would not have put it here"
@@ -2695,6 +2704,14 @@ msgstr "nicht erreicht"
 msgid "not sent"
 msgstr "nicht hochgeladen"
 
+#: app/components/email-dialog.tsx
+msgid "Not sent"
+msgstr "Nicht gesendet"
+
+#: app/components/email-dialog.tsx
+msgid "Not sent: it stays to email"
+msgstr "Nicht gesendet: bleibt zu senden"
+
 #: app/components/preview-drawer.tsx
 msgid "Not trimmed, framed or turned — the file goes out as shot."
 msgstr "Nicht gekürzt, zugeschnitten oder gedreht — die Datei geht so raus, wie sie aufgenommen wurde."
@@ -2807,10 +2824,6 @@ msgstr "des Bildes"
 msgid "off the board and out of the originals, moved to the bin, not erased. They can be brought back from the Bin page. If the camera card has been wiped, the bin holds the only copy."
 msgstr "vom Board und aus den Originalen entfernt, in den Papierkorb verschoben, nicht gelöscht. Sie lassen sich auf der Seite Papierkorb zurückholen. Wurde die Kamerakarte geleert, ist der Papierkorb die einzige Kopie."
 
-#: app/components/storage-list.tsx
-msgid "On the board"
-msgstr "Auf dem Board"
-
 #: app/components/camera-files.tsx
 msgid "On the camera"
 msgstr "Auf der Kamera"
@@ -2877,7 +2890,6 @@ msgid "only this file moves — the rest of the jump stays"
 msgstr "nur diese Datei wird verschoben — der Rest des Sprungs bleibt"
 
 #: app/components/inspector.tsx
-#: app/components/storage-list.tsx
 msgid "Open"
 msgstr "Öffnen"
 
@@ -2893,10 +2905,6 @@ msgstr "In kdenlive öffnen"
 #: app/components/inspector.tsx
 msgid "Open it — trim, frame and turn"
 msgstr "Öffnen — kürzen, zuschneiden und drehen"
-
-#: app/components/storage-list.tsx
-msgid "Open it on this board"
-msgstr "In dieser Übersicht öffnen"
 
 #: app/components/progress-panel.tsx
 msgid "Open it out to see more"
@@ -3257,6 +3265,10 @@ msgstr "Ziel entfernen…"
 msgid "Remove files"
 msgstr "Dateien entfernen"
 
+#: app/components/storage-list.tsx
+msgid "Remove link"
+msgstr "Link entfernen"
+
 #: app/components/storage-folder.tsx
 msgid "Remove the link"
 msgstr "Link entfernen"
@@ -3525,7 +3537,6 @@ msgid "Show it in the storage’s own web interface, in a new tab"
 msgstr "Im Web-Interface des Speichers anzeigen, in einem neuen Tab"
 
 #: app/components/progress-panel.tsx
-#: app/components/storage-list.tsx
 msgid "Show its folder in the storage’s own web interface, in a new tab"
 msgstr "Ihren Ordner im Web-Interface des Speichers anzeigen, in einem neuen Tab"
 
@@ -3717,6 +3728,10 @@ msgstr "Link entfernen"
 msgid "Take the link away — the file stays where it is"
 msgstr "Link entfernen — die Datei bleibt, wo sie ist"
 
+#: app/components/storage-list.tsx
+msgid "Take the link away — the folder stays where it is"
+msgstr "Link entfernen — der Ordner bleibt, wo er ist"
+
 #: app/routes/place.tsx
 msgid "Take this destination off the board — what is filed here goes back to Fresh files, and nothing is deleted"
 msgstr "Dieses Ziel aus der Übersicht nehmen — was hier abgelegt ist, kommt zurück in Neue Dateien, und nichts wird gelöscht"
@@ -3887,6 +3902,10 @@ msgid "The link as a QR code, for a phone to take it now"
 msgstr "Der Link als QR-Code, damit ein Handy ihn gleich übernehmen kann"
 
 #: app/components/email-dialog.tsx
+msgid "The mail was opened from here. Say whether it went: the storage’s list records it, and the montage stays to email until it does."
+msgstr "Die Nachricht wurde von hier geöffnet. Sagen Sie, ob sie gesendet wurde: die Liste des Speichers hält es fest, und der Film bleibt zu senden, bis es so ist."
+
+#: app/components/email-dialog.tsx
 msgid "The mail was opened in Gmail from here. Say so once it went, and the storage’s list records it."
 msgstr "Die Mail wurde von hier aus in Gmail geöffnet. Sag Bescheid, sobald sie raus ist, dann trägt die Liste des Speichers es ein."
 
@@ -3933,10 +3952,6 @@ msgstr "die Originale"
 #: app/components/free-dialog.tsx
 msgid "the originals are exactly what the backup holds"
 msgstr "die Originale entsprechen genau dem, was die Sicherung enthält"
-
-#: app/components/storage-list.tsx
-msgid "The originals: {originals}"
-msgstr "Die Originale: {originals}"
 
 #: app/helpers/parcels.ts
 msgid "the photos"
@@ -4410,6 +4425,10 @@ msgstr "Videos oder Fotos"
 msgid "waiting"
 msgstr "wartet"
 
+#: app/components/email-dialog.tsx
+msgid "Was the email sent?"
+msgstr "Wurde die E-Mail gesendet?"
+
 #: app/components/storage-folder.tsx
 msgid "Watch"
 msgstr "Ansehen"
@@ -4455,10 +4474,6 @@ msgstr "Was hier steht, wird auf diesem Rechner gespeichert und ist der Entwurf 
 #: app/components/inspector.tsx
 msgid "What it holds"
 msgstr "Was es enthält"
-
-#: app/components/storage-list.tsx
-msgid "What was handed over: where each item went, how big it is and what is inside each zip"
-msgstr "Was übergeben wurde: wohin jedes Element ging, wie groß es ist und was in jedem ZIP steckt"
 
 #: app/components/places-tree.tsx
 msgid "What was put aside — look through it, and bring files back to Fresh files"
@@ -4550,6 +4565,10 @@ msgstr "Falsche Zeit bei dieser einen Datei? Gib an, wann sie wirklich aufgenomm
 #: app/components/overview-dialog.tsx
 msgid "yes"
 msgstr "ja"
+
+#: app/components/email-dialog.tsx
+msgid "Yes — it was sent"
+msgstr "Ja — sie wurde gesendet"
 
 #: app/components/email-dialog.tsx
 msgid "Yes — mark as sent"

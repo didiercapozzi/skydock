@@ -83,7 +83,7 @@ describe('a montage only the storage has', () => {
     await expect.element(page.getByText('storage only', { exact: true })).toBeInTheDocument()
     await expect.element(page.getByText('To hand over')).not.toBeInTheDocument()
 
-    await userEvent.click(page.getByRole('button', { name: 'Contents' }))
+    await userEvent.click(page.getByRole('region', { name: 'On the storage' }).getByText('Ana Roth'))
 
     await expect.element(page.getByText('To hand over')).toBeVisible()
     await expect.element(page.getByText('ready to hand over')).toBeVisible()
@@ -100,7 +100,7 @@ describe('a montage only the storage has', () => {
      a link that opens File Station on the folder, in a new tab */
   test('links each file and folder to the storage’s own web interface', async () => {
     await openStorage(base)
-    await userEvent.click(page.getByRole('button', { name: 'Contents' }))
+    await userEvent.click(page.getByRole('region', { name: 'On the storage' }).getByText('Ana Roth'))
 
     const film = page.getByRole('link', { name: /ana_roth_20260728\.mp4/ })
     await expect.element(film).toBeVisible()
@@ -166,16 +166,16 @@ describe('a montage only the storage has', () => {
   test('opens its contents when its row is pressed, and closes them when pressed again', async () => {
     await openStorage(base)
 
-    await userEvent.click(page.getByText('Ana Roth'))
+    await userEvent.click(page.getByRole('region', { name: 'On the storage' }).getByText('Ana Roth'))
     await expect.element(page.getByText('To hand over')).toBeVisible()
 
-    await userEvent.click(page.getByText('Ana Roth'))
+    await userEvent.click(page.getByRole('region', { name: 'On the storage' }).getByText('Ana Roth'))
     await expect.element(page.getByText('To hand over')).not.toBeInTheDocument()
   })
 
   test('says what is inside a zip', async () => {
     await openStorage(base)
-    await userEvent.click(page.getByRole('button', { name: 'Contents' }))
+    await userEvent.click(page.getByRole('region', { name: 'On the storage' }).getByText('Ana Roth'))
 
     await expect.element(page.getByText('Inside')).toBeVisible()
     await expect.element(page.getByText('videos/', { exact: true })).toBeVisible()
@@ -187,10 +187,10 @@ describe('a montage only the storage has', () => {
 
   test('closes its contents again', async () => {
     await openStorage(base)
-    await userEvent.click(page.getByRole('button', { name: 'Contents' }))
+    await userEvent.click(page.getByRole('region', { name: 'On the storage' }).getByText('Ana Roth'))
     await expect.element(page.getByText('To hand over')).toBeVisible()
 
-    await userEvent.click(page.getByRole('button', { name: 'Hide contents' }))
+    await userEvent.click(page.getByRole('region', { name: 'On the storage' }).getByText('Ana Roth'))
 
     await expect.element(page.getByText('To hand over')).not.toBeInTheDocument()
   })
@@ -212,7 +212,7 @@ describe('a montage only the storage has', () => {
       }
     })
 
-    await userEvent.click(page.getByRole('button', { name: 'Contents' }))
+    await userEvent.click(page.getByRole('region', { name: 'On the storage' }).getByText('Ana Roth'))
 
     await expect.element(page.getByText('ana.mp4')).toBeVisible()
     await expect.element(page.getByText('ana.photos.zip')).toBeVisible()
@@ -278,7 +278,7 @@ describe('a freed montage this board still holds', () => {
   test('lists what its upload recorded, with the names inside each zip', async () => {
     await openStorage(held)
 
-    await userEvent.click(page.getByRole('button', { name: 'Contents' }))
+    await userEvent.click(page.getByRole('region', { name: 'On the storage' }).getByText('Ana Roth'))
 
     await expect.element(page.getByText('ana_roth_20260728.videos.zip')).toBeVisible()
     await expect.element(page.getByText('GX01.MP4')).toBeVisible()
