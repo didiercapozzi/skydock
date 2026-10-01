@@ -83,6 +83,7 @@ const PlacePane = ({
   grouping,
   kind,
   tools,
+  head,
   left,
   note,
   incoming,
@@ -102,6 +103,9 @@ const PlacePane = ({
   kind: { value: Kind; onChange: (k: Kind) => void }
   /* what else the folder offers — a montage's email, taking a montage back */
   tools?: React.ReactNode
+  /* a head of the page's own in place of the plain one, handed the ways of finding and arranging the
+     folder's files to put where it wants them */
+  head?: (controls: React.ReactNode) => React.ReactNode
   /* what is still to do here, and anything that belongs to the folder, like its storage folder */
   left?: React.ReactNode
   /* what the board last said, and whether it was a refusal */
@@ -112,6 +116,40 @@ const PlacePane = ({
   children: React.ReactNode
 }) => {
   const browsing = place.kind !== 'storage'
+  const controls = browsing ? (
+    <>
+      {browsing && (
+        <label className='flex h-9 w-[160px] items-center gap-2.5 rounded-[11px] bg-well px-3 text-ink-3 focus-within:shadow-[0_0_0_1.5px_var(--color-accent)] max-[780px]:w-[130px]'>
+          <Icon name='narrow' />
+          <input
+            type='text'
+            value={query}
+            onChange={(e) => onQuery(e.target.value)}
+            placeholder={t`Narrow by name`}
+            aria-label={t`Find a file`}
+            className='min-w-0 flex-1 border-0 bg-transparent text-[13.5px] font-medium text-ink outline-none placeholder:text-ink-3'
+          />
+        </label>
+      )}
+      {/* every way of arranging the folder in plain sight, one press each — a place with only
+          one way has nothing to choose */}
+      {browsing && grouping.options.length > 1 && (
+        <Seg
+          label={t`Group`}
+          value={grouping.value}
+          options={grouping.options.map((g) => [g, i18n._(GROUPING_LABEL[g])] as const)}
+          onPick={grouping.onChange}
+        />
+      )}
+      {browsing && (
+        <KindSeg
+          files={files}
+          kind={kind.value}
+          onPick={kind.onChange}
+        />
+      )}
+    </>
+  ) : null
   return (
     <section
       aria-label={placeLabel(place)}
@@ -126,57 +164,31 @@ const PlacePane = ({
         onImport(carried, incoming.target, incoming.where)
       }}
       className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-b-[18px] isle-pane shadow-card max-[780px]:rounded-[18px] min-[781px]:col-start-3 min-[781px]:row-start-2'>
-      <div className='flex flex-col gap-[18px] px-7 pt-[22px] pb-3'>
-        <div className='flex flex-wrap items-end gap-x-3.5 gap-y-3'>
-          <div className='min-w-0'>
-            <h1 className='m-0 font-display text-[32px] leading-[1.05] font-bold tracking-[-0.035em] text-ink'>
+      {/* a page's own head, or the plain one: one row, the folder's name and count and at the right
+          everything that acts on it — narrowing by name, the ways of arranging it, kinds, and the
+          folder's own tools */}
+      {head ? (
+        head(controls)
+      ) : (
+        <div className='flex flex-wrap items-center gap-x-3.5 gap-y-2.5 px-7 pt-4 pb-2'>
+          {/* the count beside the name, on its line, so the controls at the right are level with it */}
+          <div className='flex min-w-0 flex-wrap items-baseline gap-x-3'>
+            <h1 className='m-0 font-display text-[28px] leading-[1.15] font-bold tracking-[-0.035em] text-ink'>
               {placeLabel(place)}
             </h1>
-            <p className='m-0 mt-[5px] text-[13.5px] font-medium text-ink-3'>{summary}</p>
+            <p className='m-0 text-[13px] font-medium text-ink-3'>{summary}</p>
           </div>
-          {browsing && (
-            <div className='ml-auto flex flex-wrap items-center gap-3.5'>
-              {/* every way of arranging the folder in plain sight, one press each — a place with
-                  only one way has nothing to choose */}
-              {grouping.options.length > 1 && (
-                <Seg
-                  label={t`Group`}
-                  value={grouping.value}
-                  options={grouping.options.map((g) => [g, i18n._(GROUPING_LABEL[g])] as const)}
-                  onPick={grouping.onChange}
-                />
-              )}
-              <KindSeg
-                files={files}
-                kind={kind.value}
-                onPick={kind.onChange}
-              />
+          {(browsing || tools) && (
+            <div className='ml-auto flex flex-wrap items-center gap-x-3.5 gap-y-2'>
+              {controls}
+              {tools && <span className='flex items-center gap-2'>{tools}</span>}
             </div>
           )}
         </div>
-        {/* what the mockup's head does not have: narrowing by name and the folder's own tools, under it */}
-        {(browsing || tools) && (
-          <div className='-mt-1.5 flex flex-wrap items-center gap-x-3.5 gap-y-2'>
-            {browsing && (
-              <label className='flex h-9 w-[220px] items-center gap-2.5 rounded-[11px] bg-well px-3 text-ink-3 focus-within:shadow-[0_0_0_1.5px_var(--color-accent)] max-[780px]:w-[130px]'>
-                <Icon name='narrow' />
-                <input
-                  type='text'
-                  value={query}
-                  onChange={(e) => onQuery(e.target.value)}
-                  placeholder={t`Narrow by name`}
-                  aria-label={t`Find a file`}
-                  className='min-w-0 flex-1 border-0 bg-transparent text-[13.5px] font-medium text-ink outline-none placeholder:text-ink-3'
-                />
-              </label>
-            )}
-            {tools && <span className='ml-auto flex items-center gap-2'>{tools}</span>}
-          </div>
-        )}
-      </div>
+      )}
 
       {(left || note) && (
-        <div className='flex flex-col gap-3 px-7 pt-1'>
+        <div className='flex flex-col gap-2.5 px-7 pt-0.5'>
           {left}
           {note && (
             <Notice
@@ -189,7 +201,7 @@ const PlacePane = ({
         </div>
       )}
 
-      <div className='flex-1 overflow-y-auto px-7 pt-2 pb-10'>{children}</div>
+      <div className='flex-1 overflow-y-auto px-7 pt-1.5 pb-10'>{children}</div>
     </section>
   )
 }

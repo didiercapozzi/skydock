@@ -95,8 +95,8 @@ const counts = (files: ManifestFile[]) => {
   return t`${plural(videos, { one: '# video', other: '# videos' })} · ${plural(photos, { one: '# photo', other: '# photos' })}`
 }
 
-/* A day heads its files as a line of type, pinned while they scroll by: the day in full, then
-   quietly what it holds and how far it has got. */
+/* A day heads its files as a line of type: the day in full, then quietly what it holds — files, videos
+   and photos on one line — and how far it has got. */
 const DayHeader = ({
   day,
   files,
@@ -108,13 +108,14 @@ const DayHeader = ({
   loose?: boolean
   statusOf: (file: ManifestFile) => FileStatus
 }) => (
-  <div className='sticky top-0 z-[3] flex flex-wrap items-center gap-x-3 gap-y-1 bg-pane pt-[18px] pb-[18px]'>
-    <span className='font-display text-[20px] font-bold tracking-[-0.03em] text-ink'>
+  <div className='flex flex-wrap items-center gap-x-3 gap-y-1 pt-3.5 pb-2.5'>
+    {/* small and grey like the column headings under it, but in the words' own case, so the day reads as part of the table, not above it */}
+    <span className='text-[12px] font-bold text-ink-3'>
       {loose ? t`Loose files` : dayLabel(day, true)}
     </span>
-    <span className='text-[13.5px] font-medium text-ink-3'>
+    <span className='text-[12px] font-medium text-ink-3'>
       {loose ? `${day ? `${dayLabel(day)} · ` : ''}${t`in no jump`} · ` : ''}
-      {counts(files)}
+      {plural(files.length, { one: '# file', other: '# files' })} · {counts(files)}
     </span>
     <span className='self-center'>{progressTag(files, statusOf)}</span>
   </div>
@@ -278,7 +279,13 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
         {empty}
       </div>
     )
-  const files = (key: string, shown: ManifestFile[], title?: string, about?: string) => (
+  const files = (
+    key: string,
+    shown: ManifestFile[],
+    title?: string,
+    about?: string,
+    bare?: boolean
+  ) => (
     /* one block, so the space between a jump's parts is not also put inside its list */
     <div key={`files:${key}`}>
       <FileList
@@ -286,6 +293,7 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
         files={shown}
         title={title}
         about={about}
+        bare={bare}
       />
     </div>
   )
@@ -360,7 +368,14 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
           {section.kind === 'all' && <div className='h-3' />}
           {section.kind === 'jump' && jump.above?.(section.group)}
           {!(section.kind === 'jump' && section.group.freed) &&
-            files(section.key, section.files, section.kind === 'jump' ? section.label : undefined)}
+            files(
+              section.key,
+              section.files,
+              section.kind === 'jump' ? section.label : undefined,
+              undefined,
+              /* a day says how many it holds in its own heading */
+              section.kind === 'day' || section.kind === 'loose'
+            )}
         </section>
       ))}
     </div>

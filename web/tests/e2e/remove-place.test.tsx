@@ -99,6 +99,7 @@ describe('a dropzone on the board', () => {
   test('can be taken off the board, and asks before it is', async () => {
     const sent = await openYverdon()
 
+    await userEvent.click(page.getByRole('button', { name: 'More' }))
     await userEvent.click(page.getByRole('button', { name: 'Remove destination…' }))
     await expect.element(page.getByRole('dialog', { name: 'Remove a destination' })).toBeVisible()
     expect(sent).toEqual([])
@@ -111,6 +112,7 @@ describe('a dropzone on the board', () => {
   test('offers it even with nothing in it, which is the one worth removing', async () => {
     await openYverdon()
 
+    await userEvent.click(page.getByRole('button', { name: 'More' }))
     await expect.element(page.getByRole('button', { name: 'Remove destination…' })).toBeVisible()
   })
 })

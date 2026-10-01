@@ -26,7 +26,8 @@ const processIntent: Intent = async ({ data, manifestPath, outputDir, refuse, la
       manifestPath,
       outputDir,
       groupIds: requestedGroups && requestedGroups.length > 0 ? requestedGroups : undefined,
-      destination: data.destination
+      destination: data.destination,
+      fileIds: data.fileIds
     })
   } catch (e) {
     return refuse(messageOf(e))

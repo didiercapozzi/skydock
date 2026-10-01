@@ -79,7 +79,20 @@ describe('a dropzone day, from the board', () => {
 
     await userEvent.click(page.getByRole('button', { name: 'Process 2 files', exact: true }))
 
-    await expect.poll(() => requests).toContainEqual({ intent: 'process', destination: 'Yverdon' })
+    /* asked for by the files that need it, so what is up there already is not prepared again */
+    await expect
+      .poll(() => requests)
+      .toContainEqual({ intent: 'process', destination: 'Yverdon', fileIds: ['a', 'b'] })
+  })
+
+  test('prepares only the file that needs it when another is up there already', async () => {
+    await openYverdon(boardWith([shot('a', 'GX01.MP4', true), shot('b', 'GX02.MP4', false)]))
+
+    await userEvent.click(page.getByRole('button', { name: 'Process 1 file', exact: true }))
+
+    await expect
+      .poll(() => requests)
+      .toContainEqual({ intent: 'process', destination: 'Yverdon', fileIds: ['b'] })
   })
 
   test('is uploaded as one, once every file in it is processed', async () => {
@@ -104,6 +117,7 @@ describe('a dropzone day, from the board', () => {
 
     /* the step and the count of what it deals with are in one row, so what it acts on is plain */
     const row = page.getByRole('button', { name: 'Process 2 files' }).element().parentElement!
+      .parentElement!
     expect(row.textContent).toContain('2 to process')
     /* and not up among the ways of looking at the folder */
     expect(row.textContent).not.toContain('Find a file')

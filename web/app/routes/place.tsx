@@ -23,6 +23,7 @@ import { CameraFiles } from '../components/camera-files'
 import { ComparisonDialog } from '../components/comparison-dialog'
 import { FileBrowser } from '../components/file-browser'
 import { lanesOf, lockReason, shownStatus } from '../components/file-list'
+import { DestinationHeader } from '../components/destination-header'
 import { FolderOwed } from '../components/folder-owed'
 import { FilePanel, FolderPanel, JumpPanel, ManyPanel, Part, Shell } from '../components/inspector'
 import { MoveTo } from '../components/move-to'
@@ -58,6 +59,8 @@ import { useSafeSearchParams } from '../helpers/routing'
 import { GROUPINGS, cardsOf, sectionsOf } from '../helpers/sections'
 import { boardViewSchema } from '../helpers/view'
 import { useCameraCopying } from '../hooks/liveStore'
+import { StorageTwinsContext } from '../hooks/storageTwins'
+import { useStorageFolder } from '../hooks/useStorageFolder'
 import { useTransfersPanel } from '../hooks/transfersPanel'
 import { useBoard } from '../hooks/useBoardModel'
 import type { BoardModel } from '../hooks/useBoardModel'
@@ -258,6 +261,17 @@ const Place = () => {
       return film ? [lastSegment(film.path)] : []
     })
   ])
+  /* What the storage holds of a dropzone's folder, asked here and not by the list alone: each file
+     here that is up there too says so on its own row, and the list under them is what is only there. */
+  const [lookedAgain, setLookedAgain] = useState(0)
+  const storageListing = useStorageFolder(
+    place.kind === 'dz' && model.nas.connected ? storageWhere : null,
+    `${String(board.remoteAfterUpload?.at)}:${lookedAgain}`
+  )
+  const twins = {
+    byName: new Map((storageListing?.ok ? storageListing.files : []).map((f) => [f.name, f])),
+    dsmHost: model.nas.host ?? null
+  }
   /* the files still to be sorted, by what they contain — how the storage's list knows a montage
      this board may have forgotten */
   const toSort = new Set(idsOf(filesIn({ kind: 'sort' }, groups, board.loose)))
@@ -281,7 +295,7 @@ const Place = () => {
         : 'local'
 
   return (
-    <>
+    <StorageTwinsContext value={place.kind === 'dz' ? twins : null}>
       <PlacePane
         place={place}
         summary={summary}
@@ -295,28 +309,41 @@ const Place = () => {
         }}
         kind={{ value: kind, onChange: (next) => look({ kind: next }) }}
         tools={<PlaceTools place={place} />}
+        head={
+          place.kind === 'dz'
+            ? (controls) => (
+                <DestinationHeader
+                  name={placeLabel(place)}
+                  summary={summary}
+                  path={model.folderFor(place.name)}
+                  stages={{
+                    unprocessed: folder.files.filter((f) => statusOf(f) === 'local').length,
+                    unsent: folder.files.filter((f) => statusOf(f) === 'processed').length,
+                    onStorage: folder.files.filter((f) => statusOf(f) === 'uploaded').length
+                  }}
+                  actions={<DropzoneStep name={place.name} />}
+                  onChangeFolder={() => setDialog({ kind: 'folder', destination: place.name })}
+                  onRemove={() => setDialog({ kind: 'remove-place', place: place.name })}
+                  removing={busy === `remove:dz:${place.name}`}
+                  busy={busy !== null}
+                  controls={controls}
+                />
+              )
+            : undefined
+        }
         left={
-          <FolderOwed
-            actions={place.kind === 'dz' ? <DropzoneStep name={place.name} /> : undefined}
-            place={place}
-            groups={folder.groups}
-            loose={folder.loose}
-            files={folder.files}
-            facts={board.montageFacts}
-            statusOf={statusOf}
-            busy={busy !== null}
-            folder={
-              place.kind === 'dz'
-                ? {
-                    path: model.folderFor(place.name),
-                    onChoose: () => setDialog({ kind: 'folder', destination: place.name })
-                  }
-                : undefined
-            }
-            onRegroup={() => send('regroup', { intent: 'regroup-loose' })}
-            onReset={model.resetFresh}
-            onPlace={model.pickPlace}
-          />
+          place.kind === 'dz' ? undefined : (
+            <FolderOwed
+              place={place}
+              groups={folder.groups}
+              loose={folder.loose}
+              facts={board.montageFacts}
+              busy={busy !== null}
+              onRegroup={() => send('regroup', { intent: 'regroup-loose' })}
+              onReset={model.resetFresh}
+              onPlace={model.pickPlace}
+            />
+          )
         }
         note={
           board.note
@@ -469,6 +496,13 @@ const Place = () => {
             dsmHost={model.nas.host}
             stamp={board.remoteAfterUpload?.at}
             hereToo={hereToo}
+            {...(place.kind === 'dz'
+              ? {
+                  listing: storageListing,
+                  onAgain: () => setLookedAgain(lookedAgain + 1),
+                  onlyThere: true
+                }
+              : {})}
             onProblem={setProblem}
           />
         )}
@@ -513,7 +547,7 @@ const Place = () => {
 
       {/* the file open in this folder, when the address names one */}
       <Outlet context={model} />
-    </>
+    </StorageTwinsContext>
   )
 }
 
@@ -530,31 +564,6 @@ const DropzoneStep = ({ name }: { name: string }) => {
   const waiting = (state: FileStatus) => files.filter((f) => statusOf(f) === state).length
   const toProcess = waiting('local')
   const toUpload = waiting('processed')
-  if (gateFor(files).blocked) {
-    const needs = (f: ManifestFile) => statusOf(f) === 'local'
-    const jumps = groupsIn({ kind: 'dz', name }, board.groups).filter((g) => g.files.some(needs))
-    const lone = looseIn({ kind: 'dz', name }, board.loose).some(needs)
-    return (
-      <>
-        <Go
-          disabled={busy !== null}
-          title={t`Make the copies that get handed over, for everything in ${name} that has none — ${plural(toProcess, { one: '# file', other: '# files' })}, whatever the search or the filter is showing.`}
-          onClick={() =>
-            send(
-              label,
-              lone
-                ? { intent: 'process', destination: name }
-                : { intent: 'process', groupIds: jumps.map((g) => g.id) }
-            )
-          }>
-          {busy === label
-            ? t`Processing…`
-            : t`Process ${plural(toProcess, { one: '# file', other: '# files' })}`}
-        </Go>
-        {busy === label && <Mini onClick={model.cancelProcess}>{t`Cancel`}</Mini>}
-      </>
-    )
-  }
   /* what is proved on the storage can be freed from here, whatever is still to upload */
   const free =
     model.freeableOf(name).files.length > 0 ? (
@@ -569,6 +578,31 @@ const DropzoneStep = ({ name }: { name: string }) => {
         {busy === `free:dz:${name}` ? t`Checking the storage…` : t`Free up space…`}
       </Mini>
     ) : null
+  if (gateFor(files).blocked) {
+    const needs = (f: ManifestFile) => statusOf(f) === 'local'
+    return (
+      <>
+        <Go
+          disabled={busy !== null}
+          title={t`Make the copies that get handed over, for everything in ${name} that has none — ${plural(toProcess, { one: '# file', other: '# files' })}, whatever the search or the filter is showing.`}
+          onClick={() =>
+            /* those files and no others: one still to prepare does not have the day's other files, which
+               are up there already, prepared again with it */
+            send(label, {
+              intent: 'process',
+              destination: name,
+              fileIds: files.filter(needs).map((f) => f.id ?? f.path)
+            })
+          }>
+          {busy === label
+            ? t`Processing…`
+            : t`Process ${plural(toProcess, { one: '# file', other: '# files' })}`}
+        </Go>
+        {busy === label && <Mini onClick={model.cancelProcess}>{t`Cancel`}</Mini>}
+        {free}
+      </>
+    )
+  }
   if (files.every((f) => statusOf(f) === 'uploaded'))
     return (
       <>
@@ -718,17 +752,8 @@ const PlaceTools = ({ place }: { place: Place }) => {
   const model = useBoard()
   const { board, setDialog, emailedOn } = model
   const busy = board.busy !== null
-  /* A dropzone can be taken off the board. Offered here rather than beside the folder's next step,
-     because a place with nothing in it has no next step and is exactly the one worth removing. */
-  if (place.kind === 'dz')
-    return (
-      <Mini
-        disabled={busy}
-        title={t`Take this destination off the board — what is filed here goes back to Fresh files, and nothing is deleted`}
-        onClick={() => setDialog({ kind: 'remove-place', place: place.name })}>
-        {board.busy === `remove:dz:${place.name}` ? t`Removing…` : t`Remove destination…`}
-      </Mini>
-    )
+  /* a dropzone's own tools are in the panel at the right, at its foot */
+  if (place.kind === 'dz') return null
   if (place.kind !== 'pax') return null
   const theirs = board.groups.filter((g) => passengerOf(g) === place.name)
   /* the link, by email — once there is a link to send */

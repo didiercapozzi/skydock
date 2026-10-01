@@ -38,6 +38,9 @@ type ProcessOptions = {
   outputDir?: string
   groupIds?: string[]
   destination?: string
+  /* only these files of a dropzone, by their id: a dropzone's day with one file still to prepare is
+     not prepared again whole — what is up there already is left as it is */
+  fileIds?: string[]
 }
 
 /* exiftool where it has to succeed: what it printed, or the reason it did not */
@@ -396,7 +399,8 @@ const writeGroup = async (
   group: ManifestGroup,
   outputDir: string,
   usedNames: Set<string>,
-  record: (source: ManifestFile, destPath: string) => void
+  record: (source: ManifestFile, destPath: string) => void,
+  only?: Set<string>
 ) => {
   const { dir, baseName, dayEpoch, flat } = getGroupProcessedDir(outputDir, group)
   /* the edit as it stands, copied aside before the copies underneath it are written again */
@@ -408,6 +412,7 @@ const writeGroup = async (
      way costs the files it did not reach, and nothing more. */
   for (const file of group.files) {
     stopIfCancelled()
+    if (only && !only.has(file.id ?? file.path)) continue
     if (!fs.existsSync(file.path)) continue
     const targetDir = flat ? dir : path.join(dir, isVideoFile(file.path) ? 'videos' : 'photos')
     fs.mkdirSync(targetDir, { recursive: true })
@@ -546,9 +551,11 @@ const runProcess = async (options?: ProcessOptions) => {
   }
 
   const filesInGroups = new Set(manifest.groups.flatMap((g) => g.files.map((f) => f.path)))
+  const only = options?.fileIds ? new Set(options.fileIds) : undefined
   const looseByDestination = new Map<string, ManifestFile[]>()
   for (const file of manifest.files) {
     if (!file.destination || filesInGroups.has(file.path)) continue
+    if (only && !only.has(file.id ?? file.path)) continue
     looseByDestination.set(file.destination, [
       ...(looseByDestination.get(file.destination) ?? []),
       file
@@ -573,8 +580,13 @@ const runProcess = async (options?: ProcessOptions) => {
       !g.freed &&
       (groupIds.length > 0
         ? groupIds.includes(g.id)
-        : !options?.destination || g.destination === options.destination)
+        : !options?.destination || g.destination === options.destination) &&
+      (!only || g.files.some((f) => only.has(f.id ?? f.path)))
   )
+  /* what a run does to a jump: all of it, or — for a dropzone's, when asked for particular files —
+     only those; a montage's copies are one folder that is kept to what the run wrote, so it is
+     prepared whole */
+  const takenOf = (g: ManifestGroup) => (only && isFlatGroup(g) ? only : undefined)
 
   const namePools = new Map<string, Set<string>>()
   const poolFor = (dir: string) => {
@@ -588,7 +600,12 @@ const runProcess = async (options?: ProcessOptions) => {
      storage, and a dropzone's jump processed on its own cannot be given the name a loose file shot
      in the same second already has and sent over the top of it. */
   const inRun = new Set([
-    ...groups.flatMap((g) => g.files.map((f) => f.id ?? f.path)),
+    ...groups.flatMap((g) =>
+      g.files.flatMap((f) => {
+        const taken = takenOf(g)
+        return !taken || taken.has(f.id ?? f.path) ? [f.id ?? f.path] : []
+      })
+    ),
     ...destinations.flatMap((d) => (looseByDestination.get(d) ?? []).map((f) => f.id ?? f.path))
   ])
   /* the folder each copy belongs to is the one the run writes into, not the one it sits in: a
@@ -618,7 +635,8 @@ const runProcess = async (options?: ProcessOptions) => {
       group,
       outputDir,
       poolFor(getGroupProcessedDir(outputDir, group).dir),
-      record
+      record,
+      takenOf(group)
     )
   for (const destination of destinations) {
     copied += await writeLooseFiles(

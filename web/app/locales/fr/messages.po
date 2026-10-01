@@ -1052,13 +1052,17 @@ msgstr "Annulé — rien n’a été enregistré"
 msgid "Cancelling…"
 msgstr "Annulation…"
 
-#: app/components/folder-owed.tsx
-msgid "Change folder"
-msgstr "Changer de dossier"
+#: app/components/destination-header.tsx
+msgid "Change folder…"
+msgstr "Changer de dossier…"
 
 #: app/components/email-dialog.tsx
 msgid "Change the email every montage sends, with the words that change as variables"
 msgstr "Modifier l’e-mail envoyé pour chaque montage, avec les mots qui changent en variables"
+
+#: app/components/destination-header.tsx
+msgid "Change the folder this destination goes to"
+msgstr "Changer le dossier où va cette destination"
 
 #: app/components/file-status.tsx
 msgid "changed"
@@ -1087,13 +1091,21 @@ msgstr "Vérification et suppression…"
 msgid "Checking the storage…"
 msgstr "Vérification du stockage…"
 
-#: app/components/folder-owed.tsx
+#: app/components/destination-header.tsx
 msgid "Choose a folder"
 msgstr "Choisir un dossier"
+
+#: app/components/destination-header.tsx
+msgid "Choose a folder on the storage"
+msgstr "Choisir un dossier sur le stockage"
 
 #: app/components/upload-dialog.tsx
 msgid "Choose a folder on the storage for every destination used"
 msgstr "Choisissez un dossier sur le stockage pour chaque destination utilisée"
+
+#: app/components/destination-header.tsx
+msgid "Choose a folder…"
+msgstr "Choisir un dossier…"
 
 #: app/components/nas-folder-browser.tsx
 msgid "Choose a storage folder"
@@ -1681,10 +1693,6 @@ msgstr "Esc"
 msgid "every file here"
 msgstr "tous les fichiers ici"
 
-#: app/components/folder-owed.tsx
-msgid "Every file in the folder that needs it, whatever is filtered or picked. Upload opens once all are processed."
-msgstr "Chaque fichier du dossier qui en a besoin, quels que soient le filtre ou la sélection. L’envoi s’ouvre une fois tous préparés."
-
 #: app/components/jump-time.tsx
 msgid "every file in the jump moves with it"
 msgstr "tous les fichiers du saut suivent"
@@ -1987,10 +1995,6 @@ msgstr "Appliquer à chaque photo du saut"
 #: app/components/preview-drawer.tsx
 msgid "Go to the {moment}"
 msgstr "Aller à : {moment}"
-
-#: app/components/folder-owed.tsx
-msgid "Goes to"
-msgstr "Va dans"
 
 #: app/components/camera-files.tsx
 msgid "Going over the camera — its files appear here as they are reached."
@@ -2450,6 +2454,7 @@ msgstr "Montage prêt — {photos, plural, one {# photo} other {# photos}} dans 
 msgid "Montages"
 msgstr "Montages"
 
+#: app/components/destination-header.tsx
 #: app/components/storage-list.tsx
 msgid "More"
 msgstr "Plus"
@@ -2540,10 +2545,6 @@ msgstr "Pas encore de destination."
 #: app/components/preview-drawer.tsx
 msgid "No exit found — nothing to hang a cut on."
 msgstr "Aucune sortie d’avion trouvée — rien sur quoi caler une coupe."
-
-#: app/components/folder-owed.tsx
-msgid "no folder yet"
-msgstr "pas encore de dossier"
 
 #: app/components/nas-folder-browser.tsx
 msgid "No folders in here. Make one, or use this folder as it is."
@@ -2768,11 +2769,12 @@ msgid "on the ground"
 msgstr "au sol"
 
 #: app/components/camera-files.tsx
-#: app/components/folder-owed.tsx
+#: app/components/destination-header.tsx
 msgid "on the storage"
 msgstr "sur le stockage"
 
 #: app/components/file-status.tsx
+#: app/components/inspector.tsx
 #: app/components/storage-folder.tsx
 #: app/components/storage-list.tsx
 #: app/helpers/places.ts
@@ -2805,6 +2807,10 @@ msgid "Only for a clip that stands upright. This one is landscape."
 msgstr "Seulement pour un clip vertical. Celui-ci est en paysage."
 
 #: app/components/storage-folder.tsx
+msgid "Only on the storage"
+msgstr "Seulement sur le stockage"
+
+#: app/components/storage-folder.tsx
 msgid "Only there"
 msgstr "Seulement là-bas"
 
@@ -2817,6 +2823,7 @@ msgstr "seul ce fichier est déplacé — le reste du saut ne bouge pas"
 msgid "Open"
 msgstr "Ouvrir"
 
+#: app/components/inspector.tsx
 #: app/components/progress-panel.tsx
 msgid "Open in DSM"
 msgstr "Ouvrir dans DSM"
@@ -3172,7 +3179,7 @@ msgstr "Supprimer {place}"
 msgid "Remove a destination"
 msgstr "Supprimer une destination"
 
-#: app/routes/place.tsx
+#: app/components/destination-header.tsx
 msgid "Remove destination…"
 msgstr "Supprimer la destination…"
 
@@ -3206,7 +3213,7 @@ msgstr "Supprimer cette copie (⌫)"
 msgid "Remove… (⌫)"
 msgstr "Retirer… (⌫)"
 
-#: app/routes/place.tsx
+#: app/components/destination-header.tsx
 msgid "Removing…"
 msgstr "Suppression…"
 
@@ -3448,6 +3455,7 @@ msgstr "Tout afficher"
 msgid "Show fewer"
 msgstr "Afficher moins"
 
+#: app/components/inspector.tsx
 #: app/components/montage-card.tsx
 #: app/components/storage-folder.tsx
 msgid "Show it in the storage’s own web interface, in a new tab"
@@ -3652,7 +3660,7 @@ msgstr "Supprimer le lien — le fichier reste où il est"
 msgid "Take the link away — the folder stays where it is"
 msgstr "Supprimer le lien — le dossier reste où il est"
 
-#: app/routes/place.tsx
+#: app/components/destination-header.tsx
 msgid "Take this destination off the board — what is filed here goes back to Fresh files, and nothing is deleted"
 msgstr "Retirer cette destination du tableau — ce qui y est classé revient dans Nouveaux fichiers, et rien n’est supprimé"
 
@@ -4067,7 +4075,7 @@ msgstr "À"
 msgid "To hand over"
 msgstr "À remettre"
 
-#: app/components/folder-owed.tsx
+#: app/components/destination-header.tsx
 msgid "to process"
 msgstr "à préparer"
 
@@ -4075,7 +4083,7 @@ msgstr "à préparer"
 msgid "to send"
 msgstr "à envoyer"
 
-#: app/components/folder-owed.tsx
+#: app/components/destination-header.tsx
 msgid "to upload"
 msgstr "à envoyer"
 

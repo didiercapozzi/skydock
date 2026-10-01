@@ -281,6 +281,57 @@ describe('where a dropzone lands', () => {
   })
 })
 
+/* A dropzone's day with one file still to prepare and one already up there: asked for the one, only
+   the one is prepared, and what is up there is left as it is (RULES, A dropzone's step). */
+describe('particular files of a dropzone', () => {
+  it('prepares only those, and leaves what is up there alone', async () => {
+    const first = clip('DJI_0001.MP4', 0)
+    const second = clip('DJI_0002.MP4', 60)
+    const { manifestPath } = write({ destination: 'Yverdon', files: [first, second] })
+    await processJumps({ manifestPath, outputDir })
+    /* the first has gone up, with the copy it has */
+    const done = loadManifest(manifestPath)!
+    const copy = done.files.find((f) => f.id === first.id)!
+    copy.uploaded = {
+      remotePath: '/n/a.mp4',
+      md5: 'x',
+      size: 5,
+      localPath: copy.processed!.path,
+      at: 1
+    }
+    done.groups[0]!.files = done.groups[0]!.files.map((f) => (f.id === first.id ? copy : f))
+    /* the second is still to prepare: its copy is gone, as for a file never prepared */
+    const target = done.files.find((f) => f.id === second.id)!
+    fs.rmSync(target.processed!.path)
+    delete target.processed
+    saveManifest(manifestPath, done)
+    execSyncMock.mockClear()
+
+    await processJumps({ manifestPath, outputDir, destination: 'Yverdon', fileIds: [second.id!] })
+
+    const after = loadManifest(manifestPath)!
+    expect(after.files.find((f) => f.id === second.id)!.processed).toBeDefined()
+    /* the first was not written again, so what says it went up still stands */
+    expect(after.files.find((f) => f.id === first.id)!.uploaded).toBeDefined()
+    expect(ffmpegCalls().length).toBeLessThanOrEqual(1)
+  })
+
+  it('prepares only the loose files asked for', async () => {
+    const lone: ManifestFile = { ...clip('DJI_0003.MP4', 0), id: 'lone', destination: 'Yverdon' }
+    const other: ManifestFile = { ...clip('DJI_0004.MP4', 90), id: 'other', destination: 'Yverdon' }
+    const { manifestPath } = write({ id: 'g9', files: [clip('GX010009.MP4', 300)] })
+    const manifest = loadManifest(manifestPath)!
+    manifest.files = [...manifest.files, lone, other]
+    saveManifest(manifestPath, manifest)
+
+    await processJumps({ manifestPath, outputDir, destination: 'Yverdon', fileIds: ['other'] })
+
+    const after = loadManifest(manifestPath)!
+    expect(after.files.find((f) => f.id === 'other')!.processed).toBeDefined()
+    expect(after.files.find((f) => f.id === 'lone')!.processed).toBeUndefined()
+  })
+})
+
 describe('a jump filed nowhere', () => {
   it('gets a folder of its own, named after the jump and its date', async () => {
     const { manifestPath } = write({

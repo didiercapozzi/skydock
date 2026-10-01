@@ -855,7 +855,18 @@ primary button, ahead of Upload again, which steps back to a quiet one. Freeing 
 owes — so many to process, so many to upload, so many on the storage — and not among the ways of
 looking at the folder. It says how many it will take, and it means every file in the folder that
 needs it: never the ones a search or a filter happens to be showing, and never a selection. A folder
-holding a day nobody is looking at is a folder whose day is processed all the same.
+holding a day nobody is looking at is a folder whose day is processed all the same. Only the files that
+need it are prepared: a day with one file still to prepare and another already on the storage prepares
+the one, and leaves the other — and its record of having gone up — as it is, so the upload that follows
+is of that one file.
+
+**A destination's page is headed in three parts.** First, who it is: its name, the folder on the storage it
+goes to — pressing it changes it — and how many files it holds, with a menu of three dots for what is set
+once and left alone: changing the folder and taking the destination off the board. Second, the way its
+files travel, as three stations in a row — to process, to upload, on the storage — the first with
+something in it lifted, and the step that moves them on, and freeing space, at the end of the same row.
+Third, the ways of finding and arranging its files: narrowing by name, by day or one list, videos or
+photos. Its right panel keeps its shared link, made and taken away by hand.
 
 **Processing** runs on the machine, not in the page: closing or refreshing the page does not stop it,
 and the board stays usable meanwhile. A page opened while processing runs says so and updates itself
@@ -938,6 +949,11 @@ picked for it, and the header carries only what is about the storage as a whole.
 their folder on the storage holds — the very folder their uploads go to, and for a montage already
 uploaded the one it actually went to — so what is up there is listed, and watched, from the board
 whether or not any of it is still on this machine: a freed montage, last month's days at a dropzone. A montage that has been uploaded is in two places, here and up there, so its page has two tabs, _Local_ and _On the storage_, and shows one at a time: it opens on _Local_, or on _On the storage_ for a montage freed from this machine, which has nothing left here. How it was handed over — the cards of each folder up there, with what is in them — is on _On the storage_, and not under the files on _Local_. The folder's files are not listed a second time under those cards: what could be done to a file in that list — watch a film, give it a link of its own and copy or take away that link — is done from the file's own row in the cards. The link of the folder that was handed over, shown at the foot of its card, can be copied or taken away from there, and once it is gone the same place offers to make a new one; taking it away leaves the folder and its files where they were, and the board's record and the storage's list both say it has no link any more.
+On a dropzone's page a file that is on this machine and up there too says so in its right panel, under
+_On the storage_, with **Open in DSM** — nothing to watch from there, since the file is here; its row says
+only what its state says. Paired by the name it was delivered under. The list under the files is then
+only what is on the storage and not on this machine, titled _Only on the storage_, and it is not there at
+all when nothing is only up there.
 Each file says what it is, how big, when it was shot — read off its name, which SkyDock gives every
 file it delivers, since the storage's own date for anything sent before files kept theirs is the day it
 was sent — and whether it is here too or only on the storage. A file SkyDock did not name shows when it
@@ -1360,13 +1376,10 @@ reachable. An original another jump still holds stays until that jump is freed a
 
 **Asked for, it comes back.** Freeing is deliberate, and nothing undoes it by itself: plugging the
 camera in again passes the file over, and a scan leaves it as it is. It comes back only when somebody
-asks for that file — off the card it is still on, from its page there, or fetched off the storage from
-the list of what the folder holds. What comes back rejoins the jump it was in, by what it contains
-rather than by what it is called, and stops reading as freed; its delivered copy went with the
-freeing, so it is a file to prepare again. What the storage holds is not always the original: a
-montage's originals go up as themselves and come back whole, while a dropzone only ever sends copies,
-so what comes back from one is the delivered copy, already cut — and then the trim, the frame and the
-turn are cleared rather than applied to it twice. The board says which of the two it was.
+asks for that file, off the card it is still on, from its page there. What comes back rejoins the jump
+it was in, by what it contains rather than by what it is called, and stops reading as freed; its
+delivered copy went with the freeing, so it is a file to prepare again. Fetching a file back from the
+storage onto this machine is not offered for now.
 
 Once freed, a jump or a loose file leaves the dropzone's own list: it is named and played from the list
 of what the folder holds, under the dropzone's files, and saying it twice would only add a row where

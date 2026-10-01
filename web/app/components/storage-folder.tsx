@@ -2,7 +2,10 @@ import { i18n } from '@lingui/core'
 import { msg, plural, t } from '@lingui/core/macro'
 import { useState } from 'react'
 import { z } from 'zod'
-import type { StorageFile } from '../../../packages/skydock-scripts/src/storageEntry'
+import type {
+  StorageFile,
+  StorageFolder as StorageListing
+} from '../../../packages/skydock-scripts/src/storageEntry'
 import { dsmFolderUrl } from '../helpers/dsm'
 import { routingEngine } from '../helpers/routing'
 import { refusalSchema } from '../hooks/useBoardState'
@@ -211,6 +214,9 @@ const StorageFolder = ({
   stamp,
   dsmHost,
   hereToo,
+  listing,
+  onAgain,
+  onlyThere,
   onProblem
 }: {
   where: StorageWhere
@@ -221,16 +227,28 @@ const StorageFolder = ({
   /* the names of the delivered files this machine still holds, where that is known: on a place's
      own page it is, and each file then says whether it is here too */
   hereToo?: Set<string>
+  /* the folder as the page already asked for it, when the page needs it for more than this list;
+     absent, this list asks for itself */
+  listing?: StorageListing | null
+  /* asking the storage again, when the page asked for the listing */
+  onAgain?: () => void
+  /* only what is not on this machine is listed here: what is on both is shown on the file's own row,
+     and a folder with nothing only up there has no list at all */
+  onlyThere?: boolean
   /* what the storage said when it would not do what was asked */
   onProblem?: (problem: string) => void
 }) => {
   const [again, setAgain] = useState(0)
   const actions = useFileActions(onProblem)
   const { playing, setPlaying } = actions
-  const folder = useStorageFolder(where, `${String(stamp)}:${again}`)
-  const files = folder?.ok ? folder.files : []
-  const only = hereToo ? files.filter((f) => !hereToo.has(f.name)).length : 0
+  const own = useStorageFolder(listing === undefined ? where : null, `${String(stamp)}:${again}`)
+  const folder = listing === undefined ? own : listing
+  const held = folder?.ok ? folder.files : []
+  const files = onlyThere && hereToo ? held.filter((f) => !hereToo.has(f.name)) : held
+  const only = hereToo ? held.filter((f) => !hereToo.has(f.name)).length : 0
   const count = files.length
+  /* while it is being asked, and when nothing is only up there, the list is not there at all */
+  if (onlyThere && (!folder || (folder.ok && files.length === 0))) return null
 
   return (
     <section
@@ -245,7 +263,7 @@ const StorageFolder = ({
             size={18}
             className='text-accent'
           />
-          {t`On the storage`}
+          {onlyThere ? t`Only on the storage` : t`On the storage`}
         </h3>
         {folder?.ok && <code className='font-mono text-[11.5px] text-ink-3'>{folder.dir}</code>}
         {folder?.ok && (
@@ -256,7 +274,7 @@ const StorageFolder = ({
         )}
         <span className='ml-auto'>
           <Mini
-            onClick={() => setAgain(again + 1)}
+            onClick={() => (onAgain ? onAgain() : setAgain(again + 1))}
             title={t`Ask the storage again what this folder holds`}>
             {t`Look again`}
           </Mini>
@@ -440,4 +458,4 @@ const StorageCards = ({
   )
 }
 
-export { StorageCards, StorageFolder, storageFileUrl }
+export { StorageCards, StorageFolder, StoragePlayer, storageFileUrl }

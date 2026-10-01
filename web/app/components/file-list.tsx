@@ -59,6 +59,8 @@ type Props = {
   title?: string
   /* and what goes before the count: when the jump ran */
   about?: string
+  /* the count is said by the heading above it, so only the column names are drawn */
+  bare?: boolean
 }
 
 /* A card of 500 photos must not put 500 things on screen before they have been asked for. */
@@ -732,21 +734,21 @@ const DrawMoreWhenNear = ({ onNear }: { onNear: () => void }) => {
 
 /* what a run of files is and how many it holds, as a line of type over it */
 const LaneTitle = ({ label, count }: { label: string; count: string }) => (
-  <p className={`m-0 flex items-center gap-3 ${label ? 'mb-[18px]' : 'mb-3'}`}>
-    {label && (
-      <b className='font-display text-[20px] font-bold tracking-[-0.03em] text-ink'>{label}</b>
-    )}
-    <span className='text-[13.5px] font-medium text-ink-3'>{count}</span>
+  <p className={`m-0 flex items-center gap-3 ${label ? 'mb-2.5' : 'mb-2'}`}>
+    {label && <b className='text-[12px] font-bold text-ink-3'>{label}</b>}
+    <span className='text-[12px] font-medium text-ink-3'>{count}</span>
   </p>
 )
 
 /* The heading over a list of rows: what it is and how many, then the name of each column. */
-const TableHead = ({ label, count }: { label: string; count: string }) => (
+const TableHead = ({ label, count, bare }: { label: string; count: string; bare?: boolean }) => (
   <>
-    <LaneTitle
-      label={label}
-      count={count}
-    />
+    {!bare && (
+      <LaneTitle
+        label={label}
+        count={count}
+      />
+    )}
     <div
       className={`${COLUMNS} mb-0.5 h-[26px] text-[11px] font-bold tracking-[0.07em] text-ink-3 uppercase`}>
       <span />
@@ -772,6 +774,7 @@ const Lane = ({
   laneKind,
   title = '',
   about,
+  bare,
   shape,
   picked,
   statusContext,
@@ -804,6 +807,7 @@ const Lane = ({
         <TableHead
           label={title}
           count={counted}
+          bare={bare}
         />
       ) : (
         (title || laneKind !== 'all') && (

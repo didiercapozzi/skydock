@@ -2,6 +2,8 @@ import { plural, t } from '@lingui/core/macro'
 import { hasCompletePassenger, isMontage, isVideoFile, passengerName } from '@skydock/scripts'
 import type { FileStatus, ProxyFact, MontageFact } from '@skydock/scripts'
 import { useState } from 'react'
+import { dsmFolderUrl } from '../helpers/dsm'
+import { useStorageTwin } from '../hooks/storageTwins'
 import { setDetailsDrawer, useDetailsColumn, useDetailsDrawer } from '../hooks/useDetails'
 import { Danger, Go, Mini } from './buttons'
 import { StatusChip } from './file-status'
@@ -549,6 +551,36 @@ const JumpPanel = ({
 
 /* One file: the picture, what is known about it, and where it goes. Opening it is where it is
    trimmed, framed and turned. */
+/* A file here that is up there too, with the way to it: its folder in the storage's own web interface,
+   in a new tab. Nothing to watch from there — the file is here — so that is all it offers. */
+const StorageTwinPart = ({ name }: { name: string | null }) => {
+  const twin = useStorageTwin(name)
+  if (!twin) return null
+  const dsm = twin.dsmHost ? dsmFolderUrl(twin.dsmHost, twin.file.path) : null
+  return (
+    <Part heading={t`On the storage`}>
+      <span className='font-mono text-[11.5px] break-all text-ink-3'>{twin.file.path}</span>
+      {dsm && (
+        <span className='flex'>
+          <a
+            href={dsm}
+            target='_blank'
+            rel='noreferrer'
+            title={t`Show it in the storage’s own web interface, in a new tab`}
+            className='inline-flex h-[30px] items-center justify-center gap-1.5 rounded-[10px] bg-well px-3 text-[12.5px] font-bold whitespace-nowrap text-ink no-underline hover:bg-line'>
+            <Icon
+              name='open'
+              size={14}
+              className='text-ink-2'
+            />
+            {t`Open in DSM`}
+          </a>
+        </span>
+      )}
+    </Part>
+  )
+}
+
 const FilePanel = ({
   file,
   name,
@@ -681,6 +713,7 @@ const FilePanel = ({
           ]}
         />
       </Part>
+      <StorageTwinPart name={name} />
       {video && file.moments && (
         <Part heading={t`Where the jump is`}>
           <JumpMarks moments={file.moments} />
@@ -860,5 +893,5 @@ const ManyPanel = ({
   )
 }
 
-export { FilePanel, FolderPanel, Hint, JumpPanel, ManyPanel, Part, Shell }
+export { FilePanel, FolderPanel, Hint, JumpPanel, ManyPanel, Part, Shell, StorageTwinPart }
 export type { MontageOffer }

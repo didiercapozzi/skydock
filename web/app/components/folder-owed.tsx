@@ -1,45 +1,20 @@
 import { plural, t } from '@lingui/core/macro'
 import { hasCompletePassenger } from '@skydock/scripts'
-import type { FileStatus, MontageFact } from '@skydock/scripts'
+import type { MontageFact } from '@skydock/scripts'
 import type { Place } from '../helpers/places'
 import { Mini } from './buttons'
 import { Owed } from './place-pane'
 import type { ManifestFile, ManifestGroup } from './types'
 
-/* one of a dropzone's counts: the number large, what it counts under it, grey when it is none */
-const Stat = ({
-  n,
-  tone,
-  first,
-  children
-}: {
-  n: number
-  tone: string
-  first?: boolean
-  children: string
-}) => (
-  <span className={`flex flex-col gap-0.5 ${first ? 'pr-3.5' : 'border-l border-line px-3.5'}`}>
-    <span
-      className={`font-display text-[26px] leading-none font-bold tracking-[-0.03em] tabular-nums ${n > 0 ? tone : 'text-ink-3'}`}>
-      {n}
-    </span>{' '}
-    <span className='text-[12px] font-medium text-ink-3'>{children}</span>
-  </span>
-)
-
-/* What is still owed in a folder, above its files: jumps to file in the sorting area, files to
-   process or upload in a dropzone, and where each montage has got to. A count that can be dealt with
+/* What is still owed in a folder, above its files: jumps to file in the sorting area, and where each
+   montage has got to. A dropzone's own head says how far its files have got. A count that can be dealt with
    from here is a button. */
 const FolderOwed = ({
   place,
   groups,
   loose,
-  files,
   facts,
-  statusOf,
   busy,
-  folder,
-  actions,
   onRegroup,
   onReset,
   onPlace
@@ -47,14 +22,8 @@ const FolderOwed = ({
   place: Place
   groups: ManifestGroup[]
   loose: ManifestFile[]
-  files: ManifestFile[]
   facts: Record<string, MontageFact>
-  statusOf: (file: ManifestFile) => FileStatus
   busy: boolean
-  /* a dropzone's folder on the storage, and a way to choose it */
-  folder?: { path: string | null; onChoose: () => void }
-  /* what deals with what is owed, beside the counts it deals with — a folder's whole next step */
-  actions?: React.ReactNode
   onRegroup: () => void
   /* everything still to be sorted, back as a scan would first have left it */
   onReset: () => void
@@ -103,53 +72,6 @@ const FolderOwed = ({
             {t`Reset Fresh files…`}
           </Mini>
         </span>
-      </div>
-    )
-  }
-  /* A dropzone's card: how many files are still to process, to upload and already on the storage,
-     large enough to be read across the room, then what that means and the one step that deals with
-     it. All three are always shown, so the card reads the same from one day to the next. */
-  if (place.kind === 'dz') {
-    const count = (s: FileStatus) => files.filter((f) => statusOf(f) === s).length
-    const unprocessed = count('local')
-    const unsent = count('processed')
-    const onStorage = count('uploaded')
-    return (
-      <div className='flex flex-wrap items-center gap-x-2 gap-y-2 rounded-2xl bg-well px-4 py-3.5'>
-        <Stat
-          n={unprocessed}
-          tone='text-local'
-          first>
-          {t`to process`}
-        </Stat>
-        <Stat
-          n={unsent}
-          tone='text-local'>
-          {t`to upload`}
-        </Stat>
-        <Stat
-          n={onStorage}
-          tone='text-up'>
-          {t`on the storage`}
-        </Stat>
-        <span className='flex min-w-[200px] flex-1 flex-col gap-1 border-l border-line px-3 text-[11.5px] leading-normal text-ink-3'>
-          {t`Every file in the folder that needs it, whatever is filtered or picked. Upload opens once all are processed.`}
-          {folder && (
-            <span className='flex flex-wrap items-center gap-1.5'>
-              {t`Goes to`}
-              <code className='rounded-md bg-pane px-1.5 py-px font-mono text-[11px] text-ink'>
-                {folder.path ?? t`no folder yet`}
-              </code>
-              <button
-                type='button'
-                onClick={folder.onChoose}
-                className='border-0 bg-transparent p-0 text-[11.5px] font-medium text-accent hover:underline'>
-                {folder.path ? t`Change folder` : t`Choose a folder`}
-              </button>
-            </span>
-          )}
-        </span>
-        {actions}
       </div>
     )
   }

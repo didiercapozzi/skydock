@@ -116,18 +116,24 @@ const MenuItem = ({
   children,
   title,
   icon,
+  danger,
+  disabled,
   onClick
 }: {
   children: React.ReactNode
   title?: string
   icon?: IconName
+  /* what it does is not undone by pressing it again: drawn in the colour of a warning */
+  danger?: boolean
+  disabled?: boolean
   onClick: () => void
 }) => (
   <button
     type='button'
     title={title}
     onClick={onClick}
-    className='flex w-full items-center gap-2 rounded-[9px] border-0 bg-transparent px-2.5 py-1.5 text-left text-[12.5px] font-semibold text-ink hover:bg-well'>
+    disabled={disabled}
+    className={`flex w-full items-center gap-2 rounded-[9px] border-0 bg-transparent px-2.5 py-1.5 text-left text-[12.5px] font-semibold hover:bg-well disabled:cursor-default disabled:opacity-40 ${danger ? 'text-bin' : 'text-ink'}`}>
     {icon && (
       <Icon
         name={icon}
