@@ -29,7 +29,6 @@ import { FilePanel, FolderPanel, JumpPanel, ManyPanel, Part, Shell } from '../co
 import { MoveTo } from '../components/move-to'
 import { PlacePane } from '../components/place-pane'
 import { FolderCard, StorageCards, StorageFolder } from '../components/storage-folder'
-import { StorageList } from '../components/storage-list'
 import {
   FilmNote,
   FilmStrip,
@@ -210,22 +209,15 @@ const Place = () => {
     if (toOpen) look({ card: toOpen })
   }, [toOpen, look])
 
-  /* only what the storage still holds: a delivery whose folder was taken away is not counted */
-  const montages = (board.storage?.montages ?? []).filter(
-    (m) => lostOf(board.storage?.lost, m.folder) !== 'folder'
-  ).length
   const jumps = folder.groups.length
   const fileCount = folder.files.length
-  const summary =
-    place.kind === 'storage'
-      ? plural(montages, { one: '# montage', other: '# montages' })
-      : [
-          jumps && family !== 'dz' ? plural(jumps, { one: '# jump', other: '# jumps' }) : null,
-          plural(fileCount, { one: '# file', other: '# files' }),
-          formatSize(folder.files.reduce((n, f) => n + f.size, 0))
-        ]
-          .filter(Boolean)
-          .join(' · ')
+  const summary = [
+    jumps && family !== 'dz' ? plural(jumps, { one: '# jump', other: '# jumps' }) : null,
+    plural(fileCount, { one: '# file', other: '# files' }),
+    formatSize(folder.files.reduce((n, f) => n + f.size, 0))
+  ]
+    .filter(Boolean)
+    .join(' · ')
 
   /* where a file from the computer dropped anywhere on the pane goes — the folder it shows */
   const paneHost = place.kind === 'pax' ? model.hostOf(place.name) : undefined
@@ -271,10 +263,6 @@ const Place = () => {
     byName: new Map((storageListing?.ok ? storageListing.files : []).map((f) => [f.name, f])),
     dsmHost: model.nas.host ?? null
   }
-  /* the files still to be sorted, by what they contain — how the storage's list knows a montage
-     this board may have forgotten */
-  const toSort = new Set(idsOf(filesIn({ kind: 'sort' }, groups, board.loose)))
-
   /* A montage that has been uploaded is in two places: the files kept on this machine, and its folder
      on the storage. They are two views of one montage, so a tab switches between them rather than
      the one being found under the other. It opens on what is here — for a montage freed from this
@@ -389,26 +377,6 @@ const Place = () => {
             bringing={busy === 'from-bin'}
             onBringBack={(paths) => send('from-bin', { intent: 'from-bin', paths })}
           />
-        ) : place.kind === 'storage' ? (
-          <div className='pt-3'>
-            <StorageList
-              storage={board.storage}
-              dsmHost={model.nas.host}
-              places={board.places}
-              remote={model.nas.remote}
-              isHere={(entry) => groups.some((g) => folderOnStorage(g) === entry.folder)}
-              groupOf={(entry) => groups.find((g) => folderOnStorage(g) === entry.folder)}
-              onEmail={(entry) => setDialog({ kind: 'email', folder: entry.folder })}
-              onLink={(entry, make) =>
-                send(`link:${entry.folder}`, {
-                  intent: 'montage-link',
-                  link: { folder: entry.folder, make }
-                })
-              }
-              waitingFiles={(entry) => (entry.files ?? []).filter((f) => toSort.has(f.id)).length}
-              onRestore={(folders) => send('restore', { intent: 'restore-montages', folders })}
-            />
-          </div>
         ) : view === 'storage' ? null : (
           <FileBrowser
             sections={sections}
@@ -757,11 +725,38 @@ const MontageAbove = ({
   )
 }
 
+/* A montage's two ways back, for all of it — each asks first — last in the panel at the right, out of the
+   way of the page's own steps */
+const MontageEnd = ({ who }: { who: string }) => {
+  const { board, setDialog } = useBoard()
+  const busy = board.busy !== null
+  const theirs = board.groups.filter((g) => passengerOf(g) === who)
+  if (theirs.length === 0 || theirs.some((g) => g.freed)) return null
+  return (
+    <Part>
+      <span className='flex flex-wrap items-center gap-2'>
+        <Mini
+          disabled={busy}
+          title={t`Back to before processing — keeps the name, the trims, the frames and the times`}
+          onClick={() => setDialog({ kind: 'take-back', mode: 'reset', who })}>
+          {t`Reset…`}
+        </Mini>
+        <Danger
+          size='mini'
+          disabled={busy}
+          title={t`Undo the montage, at any step — its files go back to Fresh files, loose, without their name or trims`}
+          onClick={() => setDialog({ kind: 'take-back', mode: 'delete', who })}>
+          {t`Delete montage…`}
+        </Danger>
+      </span>
+    </Part>
+  )
+}
+
 /* The folder's own tools: a montage's email and its two ways back, a dropzone's way off the board. */
 const PlaceTools = ({ place }: { place: Place }) => {
   const model = useBoard()
   const { board, setDialog, emailedOn } = model
-  const busy = board.busy !== null
   /* a dropzone's own tools are in the panel at the right, at its foot */
   if (place.kind === 'dz') return null
   if (place.kind !== 'pax') return null
@@ -785,24 +780,6 @@ const PlaceTools = ({ place }: { place: Place }) => {
           onClick={() => setDialog({ kind: 'email', groupId: linked.id })}>
           {emailedOn(linked) ? t`✓ Emailed · again…` : t`Email ${firstname}…`}
         </Mini>
-      )}
-      {/* the two ways back from a montage, for all of it — each asks first */}
-      {!theirs.some((g) => g.freed) && (
-        <>
-          <Mini
-            disabled={busy}
-            title={t`Back to before processing — keeps the name, the trims, the frames and the times`}
-            onClick={() => setDialog({ kind: 'take-back', mode: 'reset', who: place.name })}>
-            {t`Reset…`}
-          </Mini>
-          <Danger
-            size='mini'
-            disabled={busy}
-            title={t`Undo the montage, at any step — its files go back to Fresh files, loose, without their name or trims`}
-            onClick={() => setDialog({ kind: 'take-back', mode: 'delete', who: place.name })}>
-            {t`Delete montage…`}
-          </Danger>
-        </>
       )}
     </span>
   )
@@ -967,6 +944,7 @@ const Inspector = ({
             ? undefined
             : () => model.trimToJump(jump)
         }
+        end={place.kind === 'pax' ? <MontageEnd who={place.name} /> : undefined}
       />
     )
   }
@@ -1043,11 +1021,7 @@ const Inspector = ({
             />
           </Part>
         ))}
-      {place.kind === 'storage' && board.storage && (
-        <Part heading={t`Its folder`}>
-          <p className='m-0 font-mono text-[11.5px] break-all text-ink-3'>{board.storage.dir}</p>
-        </Part>
-      )}
+      {place.kind === 'pax' && <MontageEnd who={place.name} />}
     </FolderPanel>
   )
 }

@@ -1,5 +1,5 @@
-import { fileStatus, hasCompletePassenger, isMontage, lostOf, passengerOf } from '@skydock/scripts'
-import type { StatusContext, MontageEntry, MontageLost, MontageProgress } from '@skydock/scripts'
+import { fileStatus, hasCompletePassenger, isMontage, passengerOf } from '@skydock/scripts'
+import type { StatusContext, MontageProgress } from '@skydock/scripts'
 import { t } from '@lingui/core/macro'
 import { useState } from 'react'
 import { groupsIn, hereIn, looseIn, placeKey, placeLabel } from '../helpers/places'
@@ -13,7 +13,7 @@ import { StepMeter } from './montage-steps'
 import type { Destination, ManifestFile, ManifestGroup } from './types'
 
 /* The folders, down the left like any file manager's, in four runs: the work still to sort, the
-   destinations, the montages, and what lies elsewhere — the storage, a camera plugged in, the bin.
+   destinations, the montages, and what lies elsewhere — a camera plugged in, the bin.
    Each says how many files it holds and, under that, what it still owes, in the colour of work left:
    a destination with a thin bar of how much is local, processed or uploaded, a montage with the
    steps it has taken — so the state of the whole club is read without opening anything. Pinned: only
@@ -23,7 +23,6 @@ type Props = {
   destinations: Destination[]
   groups: ManifestGroup[]
   looseFiles: ManifestFile[]
-  storage: { montages: MontageEntry[]; lost?: MontageLost } | null
   /* the cameras plugged in right now */
   cameras: Mounted[]
   statusContext: (file: ManifestFile) => StatusContext
@@ -240,7 +239,6 @@ const PlacesTree = ({
   destinations,
   groups,
   looseFiles,
-  storage,
   cameras,
   statusContext,
   montageOpen,
@@ -285,11 +283,6 @@ const PlacesTree = ({
     over: overTarget === placeKey(p),
     flash: flashPlace === placeKey(p)
   })
-  /* what the storage holds: a delivery whose folder was taken away is not counted, nor owed an email */
-  const onStorage = (storage?.montages ?? []).filter(
-    (m) => lostOf(storage?.lost, m.folder) !== 'folder'
-  )
-  const notEmailed = onStorage.filter((m) => !m.emailed).length
   return (
     <nav
       aria-label={t`Folders`}
@@ -371,14 +364,6 @@ const PlacesTree = ({
         />
       )}
       <Heading>{t`Elsewhere`}</Heading>
-      {storage && (
-        <Row
-          place={{ kind: 'storage' }}
-          icon='storage'
-          count={onStorage.length}
-          owed={notEmailed > 0 ? t`${notEmailed} to email` : null}
-        />
-      )}
       {/* a camera is listed for as long as it is plugged in, and goes with it */}
       {cameras.map((c) => {
         const camera = c.camera

@@ -95,7 +95,6 @@ msgstr "{0, plural, one {# file it uses is not here: {missing}. The edit can sta
 msgid "{0, plural, one {# file} other {# files}}"
 msgstr "{0, plural, one {# file} other {# files}}"
 
-#. placeholder {0}: 1
 #. placeholder {0}: here.length
 #: app/helpers/parcels.ts
 msgid "{0, plural, one {# item} other {# items}}"
@@ -226,10 +225,6 @@ msgstr "{count, plural, one {# file} other {# files}}"
 msgid "{count, plural, one {# file} other {# files}} — {size} — come off the camera’s card. Each is first read through and matched, by its bytes and not its name, with what the storage holds or with its copy in the bin; if any one does not match, nothing at all is deleted, and it says which."
 msgstr "{count, plural, one {# file} other {# files}} — {size} — come off the camera’s card. Each is first read through and matched, by its bytes and not its name, with what the storage holds or with its copy in the bin; if any one does not match, nothing at all is deleted, and it says which."
 
-#: app/components/storage-list.tsx
-msgid "{count, plural, one {# montage} other {# montages}}"
-msgstr "{count, plural, one {# montage} other {# montages}}"
-
 #: app/components/montage-card.tsx
 msgid "{count, plural, one {# photo} other {# photos}}"
 msgstr "{count, plural, one {# photo} other {# photos}}"
@@ -342,10 +337,6 @@ msgstr "{finished} of {count, plural, one {# item} other {# items}} on the stora
 msgid "{firstname} can take the link with a phone, before the email has even gone."
 msgstr "{firstname} can take the link with a phone, before the email has even gone."
 
-#: app/components/storage-list.tsx
-msgid "{folder} is not on the storage any more — the list keeps what it said of it"
-msgstr "{folder} is not on the storage any more — the list keeps what it said of it"
-
 #: app/components/take-back-dialog.tsx
 msgid "{jumpCount, plural, one {# jump} other {# jumps}}, {fileCount, plural, one {# file} other {# files}}, still under Montages"
 msgstr "{jumpCount, plural, one {# jump} other {# jumps}}, {fileCount, plural, one {# file} other {# files}}, still under Montages"
@@ -416,14 +407,6 @@ msgstr "{loose, plural, one {# loose file} other {# loose files}}"
 msgid "{looseCount, plural, one {# loose file} other {# loose files}}"
 msgstr "{looseCount, plural, one {# loose file} other {# loose files}}"
 
-#: app/components/storage-list.tsx
-msgid "{lostCount} montages on this list have their files on this board, waiting to be sorted — this board has forgotten them."
-msgstr "{lostCount} montages on this list have their files on this board, waiting to be sorted — this board has forgotten them."
-
-#: app/routes/place.tsx
-msgid "{montages, plural, one {# montage} other {# montages}}"
-msgstr "{montages, plural, one {# montage} other {# montages}}"
-
 #: app/components/transfers-panel.tsx
 msgid "{more, plural, one {… and # more, not listed here.} other {… and # more, not listed here.}}"
 msgstr "{more, plural, one {… and # more, not listed here.} other {… and # more, not listed here.}}"
@@ -435,10 +418,6 @@ msgstr "{name}  ·  from {filename}"
 #: app/components/move-to.tsx
 msgid "{name}’s montage"
 msgstr "{name}’s montage"
-
-#: app/components/places-tree.tsx
-msgid "{notEmailed} to email"
-msgstr "{notEmailed} to email"
 
 #: app/components/storage-folder.tsx
 msgid "{only} only there"
@@ -453,7 +432,6 @@ msgid "{percent}% of {size}"
 msgstr "{percent}% of {size}"
 
 #: app/components/remove-files-dialog.tsx
-#: app/components/storage-list.tsx
 msgid "{photos, plural, one {# photo} other {# photos}}"
 msgstr "{photos, plural, one {# photo} other {# photos}}"
 
@@ -587,7 +565,6 @@ msgid "{user} on {storage} is connected."
 msgstr "{user} on {storage} is connected."
 
 #: app/components/remove-files-dialog.tsx
-#: app/components/storage-list.tsx
 msgid "{videos, plural, one {# video} other {# videos}}"
 msgstr "{videos, plural, one {# video} other {# videos}}"
 
@@ -598,10 +575,6 @@ msgstr "{videos, plural, one {# video} other {# videos}} · {photos, plural, one
 #: app/components/inspector.tsx
 msgid "{videos, plural, one {# video} other {# videos}} · {photos, plural, one {# photo} other {# photos}} · {size}"
 msgstr "{videos, plural, one {# video} other {# videos}} · {photos, plural, one {# photo} other {# photos}} · {size}"
-
-#: app/components/storage-list.tsx
-msgid "{waiting} not emailed yet"
-msgstr "{waiting} not emailed yet"
 
 #: app/components/remove-place-dialog.tsx
 msgid "{what} filed there come back to Fresh files, whole — every jump keeps its files, its name and its trims, and can be filed somewhere else"
@@ -1239,7 +1212,6 @@ msgid "Connecting…"
 msgstr "Connecting…"
 
 #: app/components/storage-folder.tsx
-#: app/components/storage-list.tsx
 msgid "copied"
 msgstr "copied"
 
@@ -1330,7 +1302,6 @@ msgstr "Copy into montage"
 #: app/components/email-dialog.tsx
 #: app/components/montage-card.tsx
 #: app/components/storage-folder.tsx
-#: app/components/storage-list.tsx
 #: app/routes/place.tsx
 msgid "Copy link"
 msgstr "Copy link"
@@ -1403,7 +1374,6 @@ msgid "Create a link"
 msgstr "Create a link"
 
 #: app/components/montage-card.tsx
-#: app/components/storage-list.tsx
 #: app/routes/place.tsx
 msgid "Create link"
 msgstr "Create link"
@@ -1659,18 +1629,6 @@ msgstr "Email the link"
 msgid "Email the link…"
 msgstr "Email the link…"
 
-#: app/components/storage-list.tsx
-msgid "Email…"
-msgstr "Email…"
-
-#: app/components/storage-list.tsx
-msgid "emailed {emailedOn}"
-msgstr "emailed {emailedOn}"
-
-#: app/components/storage-list.tsx
-msgid "Emailed to {emailedTo}"
-msgstr "Emailed to {emailedTo}"
-
 #: app/components/preview-drawer.tsx
 msgid "End"
 msgstr "End"
@@ -1910,10 +1868,6 @@ msgstr "Free up space — {who}"
 msgid "Free up space…"
 msgstr "Free up space…"
 
-#: app/components/storage-list.tsx
-msgid "Freed from the machine that made it — the storage is the only copy"
-msgstr "Freed from the machine that made it — the storage is the only copy"
-
 #: app/components/file-list.tsx
 #: app/routes/place.tsx
 msgid "Freed from this machine — it is on the storage only now."
@@ -2133,17 +2087,9 @@ msgstr "its {files, plural, one {# file stays} other {# files stay}}, loose in F
 msgid "Its files"
 msgstr "Its files"
 
-#: app/components/storage-list.tsx
-msgid "Its files are on this board, waiting to be sorted: put them back together as {who}’s montage, at the times they had"
-msgstr "Its files are on this board, waiting to be sorted: put them back together as {who}’s montage, at the times they had"
-
 #: app/hooks/useBoardModel.ts
 msgid "Its files stayed where they were."
 msgstr "Its files stayed where they were."
-
-#: app/routes/place.tsx
-msgid "Its folder"
-msgstr "Its folder"
 
 #: app/components/file-list.tsx
 msgid "Its jump was found — the exit is at {exit}"
@@ -2164,10 +2110,6 @@ msgstr "Joins {joined}’s montage"
 #: app/components/montage-card.tsx
 msgid "Joins {joined}’s montage{copied}"
 msgstr "Joins {joined}’s montage{copied}"
-
-#: app/components/storage-list.tsx
-msgid "jump {day}"
-msgstr "jump {day}"
 
 #: app/components/shortcuts-dialog.tsx
 msgid "Jumps"
@@ -2291,10 +2233,6 @@ msgstr "Link"
 msgid "Link address"
 msgstr "Link address"
 
-#: app/components/storage-list.tsx
-msgid "link gone"
-msgstr "link gone"
-
 #: app/components/email-dialog.tsx
 msgid "List"
 msgstr "List"
@@ -2366,7 +2304,6 @@ msgid "Make a jump of these…"
 msgstr "Make a jump of these…"
 
 #: app/components/montage-card.tsx
-#: app/components/storage-list.tsx
 #: app/routes/place.tsx
 msgid "Make a link to its folder, to send"
 msgstr "Make a link to its folder, to send"
@@ -2467,7 +2404,6 @@ msgid "Montages"
 msgstr "Montages"
 
 #: app/components/destination-header.tsx
-#: app/components/storage-list.tsx
 msgid "More"
 msgstr "More"
 
@@ -2568,17 +2504,12 @@ msgid "No link"
 msgstr "No link"
 
 #: app/components/montage-card.tsx
-#: app/components/storage-list.tsx
 msgid "no longer on the storage"
 msgstr "no longer on the storage"
 
 #: app/components/upload-dialog.tsx
 msgid "No montage rendered yet — render it in kdenlive first."
 msgstr "No montage rendered yet — render it in kdenlive first."
-
-#: app/components/storage-list.tsx
-msgid "No montage uploaded yet — each one is listed here once it is."
-msgstr "No montage uploaded yet — each one is listed here once it is."
 
 #: app/helpers/places.ts
 msgid "No name yet"
@@ -2619,10 +2550,6 @@ msgstr "Not copied here yet — it cannot be deleted from the camera"
 #: app/components/camera-files.tsx
 msgid "not copied yet"
 msgstr "not copied yet"
-
-#: app/components/storage-list.tsx
-msgid "not emailed"
-msgstr "not emailed"
 
 #: app/components/file-status.tsx
 msgid "Not processed yet"
@@ -2784,8 +2711,6 @@ msgstr "on the storage"
 #: app/components/file-status.tsx
 #: app/components/inspector.tsx
 #: app/components/storage-folder.tsx
-#: app/components/storage-list.tsx
-#: app/helpers/places.ts
 #: app/routes/place.tsx
 msgid "On the storage"
 msgstr "On the storage"
@@ -2827,7 +2752,6 @@ msgid "only this file moves — the rest of the jump stays"
 msgstr "only this file moves — the rest of the jump stays"
 
 #: app/components/inspector.tsx
-#: app/components/storage-list.tsx
 msgid "Open"
 msgstr "Open"
 
@@ -3185,7 +3109,6 @@ msgid "Remove files"
 msgstr "Remove files"
 
 #: app/components/montage-card.tsx
-#: app/components/storage-list.tsx
 #: app/routes/place.tsx
 msgid "Remove link"
 msgstr "Remove link"
@@ -3283,14 +3206,6 @@ msgstr "Resize {corner}"
 #: app/components/window-bar.tsx
 msgid "Restore"
 msgstr "Restore"
-
-#: app/components/storage-list.tsx
-msgid "Restore · {waiting, plural, one {# file} other {# files}}"
-msgstr "Restore · {waiting, plural, one {# file} other {# files}}"
-
-#: app/components/storage-list.tsx
-msgid "Restore all {lostCount}"
-msgstr "Restore all {lostCount}"
 
 #: app/helpers/notes.ts
 msgid "Restored {count} montages from the storage’s list — named again, at the times they had; process them to carry on"
@@ -3459,7 +3374,6 @@ msgid "Show it in the storage’s own web interface, in a new tab"
 msgstr "Show it in the storage’s own web interface, in a new tab"
 
 #: app/components/progress-panel.tsx
-#: app/components/storage-list.tsx
 msgid "Show its folder in the storage’s own web interface, in a new tab"
 msgstr "Show its folder in the storage’s own web interface, in a new tab"
 
@@ -3616,7 +3530,6 @@ msgid "Storage folder for {destination}"
 msgstr "Storage folder for {destination}"
 
 #: app/components/file-browser.tsx
-#: app/components/storage-list.tsx
 msgid "storage only"
 msgstr "storage only"
 
@@ -3656,7 +3569,6 @@ msgid "Take the link away — the file stays where it is"
 msgstr "Take the link away — the file stays where it is"
 
 #: app/components/montage-card.tsx
-#: app/components/storage-list.tsx
 #: app/routes/place.tsx
 msgid "Take the link away — the folder stays where it is"
 msgstr "Take the link away — the folder stays where it is"
@@ -3806,10 +3718,6 @@ msgstr "The jump goes; its files are kept, loose in Fresh files, with their trim
 msgid "the jumps and their names, and every trim, frame and turn"
 msgstr "the jumps and their names, and every trim, frame and turn"
 
-#: app/helpers/parcels.ts
-msgid "the kdenlive project"
-msgstr "the kdenlive project"
-
 #: app/components/upload-dialog.tsx
 msgid "The kdenlive project"
 msgstr "The kdenlive project"
@@ -3926,10 +3834,6 @@ msgstr "The storage"
 msgid "The storage could not be reached."
 msgstr "The storage could not be reached."
 
-#: app/components/storage-list.tsx
-msgid "The storage no longer honours its link: revoked, or expired"
-msgstr "The storage no longer honours its link: revoked, or expired"
-
 #: app/components/storage-folder.tsx
 msgid "The storage would not do that."
 msgstr "The storage would not do that."
@@ -3937,10 +3841,6 @@ msgstr "The storage would not do that."
 #: app/hooks/useStorageFolder.ts
 msgid "The storage’s answer could not be read."
 msgstr "The storage’s answer could not be read."
-
-#: app/components/storage-list.tsx
-msgid "The storage’s list of montages could not be read: {problem}"
-msgstr "The storage’s list of montages could not be read: {problem}"
 
 #: app/routes/place.tsx
 msgid "The storage’s list says the link was sent — open it to send it again"
@@ -4261,10 +4161,6 @@ msgstr "Uploaded"
 #: app/helpers/notes.ts
 msgid "Uploaded {uploaded, plural, one {# file} other {# files}}"
 msgstr "Uploaded {uploaded, plural, one {# file} other {# files}}"
-
-#: app/components/storage-list.tsx
-msgid "uploaded {uploadedOn}"
-msgstr "uploaded {uploadedOn}"
 
 #: app/components/montage-card.tsx
 msgid "Uploaded {uploadedOn}, but "

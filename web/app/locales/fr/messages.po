@@ -95,7 +95,6 @@ msgstr "{0, plural, one {# fichier qu’il utilise n’est pas ici : {missing}. 
 msgid "{0, plural, one {# file} other {# files}}"
 msgstr "{0, plural, one {# fichier} other {# fichiers}}"
 
-#. placeholder {0}: 1
 #. placeholder {0}: here.length
 #: app/helpers/parcels.ts
 msgid "{0, plural, one {# item} other {# items}}"
@@ -226,10 +225,6 @@ msgstr "{count, plural, one {# fichier} other {# fichiers}}"
 msgid "{count, plural, one {# file} other {# files}} — {size} — come off the camera’s card. Each is first read through and matched, by its bytes and not its name, with what the storage holds or with its copy in the bin; if any one does not match, nothing at all is deleted, and it says which."
 msgstr "{count, plural, one {# fichier} other {# fichiers}} — {size} — quittent la carte de la caméra. Chacun est d’abord lu en entier et comparé, par ses octets et non par son nom, à ce que contient le stockage ou à sa copie dans la corbeille ; si un seul ne correspond pas, rien du tout n’est supprimé, et il est indiqué lequel."
 
-#: app/components/storage-list.tsx
-msgid "{count, plural, one {# montage} other {# montages}}"
-msgstr "{count, plural, one {# montage} other {# montages}}"
-
 #: app/components/montage-card.tsx
 msgid "{count, plural, one {# photo} other {# photos}}"
 msgstr "{count, plural, one {# photo} other {# photos}}"
@@ -342,10 +337,6 @@ msgstr "{finished} sur {count, plural, one {# élément} other {# éléments}} s
 msgid "{firstname} can take the link with a phone, before the email has even gone."
 msgstr "{firstname} peut prendre le lien avec un téléphone, avant même que l’e-mail soit parti."
 
-#: app/components/storage-list.tsx
-msgid "{folder} is not on the storage any more — the list keeps what it said of it"
-msgstr "{folder} n’est plus sur le stockage — la liste garde ce qu’elle en disait"
-
 #: app/components/take-back-dialog.tsx
 msgid "{jumpCount, plural, one {# jump} other {# jumps}}, {fileCount, plural, one {# file} other {# files}}, still under Montages"
 msgstr "{jumpCount, plural, one {# saut} other {# sauts}}, {fileCount, plural, one {# fichier} other {# fichiers}}, toujours sous Montages"
@@ -416,14 +407,6 @@ msgstr "{loose, plural, one {# fichier en vrac} other {# fichiers en vrac}}"
 msgid "{looseCount, plural, one {# loose file} other {# loose files}}"
 msgstr "{looseCount, plural, one {# fichier en vrac} other {# fichiers en vrac}}"
 
-#: app/components/storage-list.tsx
-msgid "{lostCount} montages on this list have their files on this board, waiting to be sorted — this board has forgotten them."
-msgstr "{lostCount} montages de cette liste ont leurs fichiers sur ce tableau, en attente de tri — ce tableau les a oubliés."
-
-#: app/routes/place.tsx
-msgid "{montages, plural, one {# montage} other {# montages}}"
-msgstr "{montages, plural, one {# montage} other {# montages}}"
-
 #: app/components/transfers-panel.tsx
 msgid "{more, plural, one {… and # more, not listed here.} other {… and # more, not listed here.}}"
 msgstr "{more, plural, one {… et # de plus, non listé ici.} other {… et # de plus, non listés ici.}}"
@@ -435,10 +418,6 @@ msgstr "{name}  ·  de {filename}"
 #: app/components/move-to.tsx
 msgid "{name}’s montage"
 msgstr "Montage de {name}"
-
-#: app/components/places-tree.tsx
-msgid "{notEmailed} to email"
-msgstr "{notEmailed} à envoyer par e-mail"
 
 #: app/components/storage-folder.tsx
 msgid "{only} only there"
@@ -453,7 +432,6 @@ msgid "{percent}% of {size}"
 msgstr "{percent} % de {size}"
 
 #: app/components/remove-files-dialog.tsx
-#: app/components/storage-list.tsx
 msgid "{photos, plural, one {# photo} other {# photos}}"
 msgstr "{photos, plural, one {# photo} other {# photos}}"
 
@@ -587,7 +565,6 @@ msgid "{user} on {storage} is connected."
 msgstr "{user} sur {storage} est connecté."
 
 #: app/components/remove-files-dialog.tsx
-#: app/components/storage-list.tsx
 msgid "{videos, plural, one {# video} other {# videos}}"
 msgstr "{videos, plural, one {# vidéo} other {# vidéos}}"
 
@@ -598,10 +575,6 @@ msgstr "{videos, plural, one {# vidéo} other {# vidéos}} · {photos, plural, o
 #: app/components/inspector.tsx
 msgid "{videos, plural, one {# video} other {# videos}} · {photos, plural, one {# photo} other {# photos}} · {size}"
 msgstr "{videos, plural, one {# vidéo} other {# vidéos}} · {photos, plural, one {# photo} other {# photos}} · {size}"
-
-#: app/components/storage-list.tsx
-msgid "{waiting} not emailed yet"
-msgstr "{waiting} pas encore envoyés par e-mail"
 
 #: app/components/remove-place-dialog.tsx
 msgid "{what} filed there come back to Fresh files, whole — every jump keeps its files, its name and its trims, and can be filed somewhere else"
@@ -1239,7 +1212,6 @@ msgid "Connecting…"
 msgstr "Connexion…"
 
 #: app/components/storage-folder.tsx
-#: app/components/storage-list.tsx
 msgid "copied"
 msgstr "copié"
 
@@ -1330,7 +1302,6 @@ msgstr "Copier dans le montage"
 #: app/components/email-dialog.tsx
 #: app/components/montage-card.tsx
 #: app/components/storage-folder.tsx
-#: app/components/storage-list.tsx
 #: app/routes/place.tsx
 msgid "Copy link"
 msgstr "Copier le lien"
@@ -1403,7 +1374,6 @@ msgid "Create a link"
 msgstr "Créer un lien"
 
 #: app/components/montage-card.tsx
-#: app/components/storage-list.tsx
 #: app/routes/place.tsx
 msgid "Create link"
 msgstr "Créer un lien"
@@ -1659,18 +1629,6 @@ msgstr "Envoyer le lien par e-mail"
 msgid "Email the link…"
 msgstr "Envoyer le lien par e-mail…"
 
-#: app/components/storage-list.tsx
-msgid "Email…"
-msgstr "E-mail…"
-
-#: app/components/storage-list.tsx
-msgid "emailed {emailedOn}"
-msgstr "envoyé par e-mail le {emailedOn}"
-
-#: app/components/storage-list.tsx
-msgid "Emailed to {emailedTo}"
-msgstr "Envoyé par e-mail à {emailedTo}"
-
 #: app/components/preview-drawer.tsx
 msgid "End"
 msgstr "Fin"
@@ -1910,10 +1868,6 @@ msgstr "Libérer de l’espace — {who}"
 msgid "Free up space…"
 msgstr "Libérer de l’espace…"
 
-#: app/components/storage-list.tsx
-msgid "Freed from the machine that made it — the storage is the only copy"
-msgstr "Libéré de la machine qui l’a créé — le stockage en est la seule copie"
-
 #: app/components/file-list.tsx
 #: app/routes/place.tsx
 msgid "Freed from this machine — it is on the storage only now."
@@ -2133,17 +2087,9 @@ msgstr "{files, plural, one {son # fichier reste} other {ses # fichiers restent}
 msgid "Its files"
 msgstr "Ses fichiers"
 
-#: app/components/storage-list.tsx
-msgid "Its files are on this board, waiting to be sorted: put them back together as {who}’s montage, at the times they had"
-msgstr "Ses fichiers sont sur ce tableau, en attente de tri : les réunir à nouveau en montage de {who}, aux heures qu’ils avaient"
-
 #: app/hooks/useBoardModel.ts
 msgid "Its files stayed where they were."
 msgstr "Ses fichiers sont restés où ils étaient."
-
-#: app/routes/place.tsx
-msgid "Its folder"
-msgstr "Son dossier"
 
 #: app/components/file-list.tsx
 msgid "Its jump was found — the exit is at {exit}"
@@ -2164,10 +2110,6 @@ msgstr "Rejoint le montage de {joined}"
 #: app/components/montage-card.tsx
 msgid "Joins {joined}’s montage{copied}"
 msgstr "Rejoint le montage de {joined}{copied}"
-
-#: app/components/storage-list.tsx
-msgid "jump {day}"
-msgstr "saut du {day}"
 
 #: app/components/shortcuts-dialog.tsx
 msgid "Jumps"
@@ -2291,10 +2233,6 @@ msgstr "Lien"
 msgid "Link address"
 msgstr "Adresse du lien"
 
-#: app/components/storage-list.tsx
-msgid "link gone"
-msgstr "lien expiré"
-
 #: app/components/email-dialog.tsx
 msgid "List"
 msgstr "Liste"
@@ -2366,7 +2304,6 @@ msgid "Make a jump of these…"
 msgstr "Faire un saut de ceux-ci…"
 
 #: app/components/montage-card.tsx
-#: app/components/storage-list.tsx
 #: app/routes/place.tsx
 msgid "Make a link to its folder, to send"
 msgstr "Créer un lien vers son dossier, à envoyer"
@@ -2467,7 +2404,6 @@ msgid "Montages"
 msgstr "Montages"
 
 #: app/components/destination-header.tsx
-#: app/components/storage-list.tsx
 msgid "More"
 msgstr "Plus"
 
@@ -2568,17 +2504,12 @@ msgid "No link"
 msgstr "Pas de lien"
 
 #: app/components/montage-card.tsx
-#: app/components/storage-list.tsx
 msgid "no longer on the storage"
 msgstr "n’est plus sur le stockage"
 
 #: app/components/upload-dialog.tsx
 msgid "No montage rendered yet — render it in kdenlive first."
 msgstr "Aucun montage rendu pour l’instant — faites d’abord le rendu dans kdenlive."
-
-#: app/components/storage-list.tsx
-msgid "No montage uploaded yet — each one is listed here once it is."
-msgstr "Aucun montage envoyé pour l’instant — chacun apparaît ici une fois envoyé."
 
 #: app/helpers/places.ts
 msgid "No name yet"
@@ -2619,10 +2550,6 @@ msgstr "Pas encore copié ici — il ne peut pas être supprimé de la caméra"
 #: app/components/camera-files.tsx
 msgid "not copied yet"
 msgstr "pas encore copié"
-
-#: app/components/storage-list.tsx
-msgid "not emailed"
-msgstr "pas envoyé par e-mail"
 
 #: app/components/file-status.tsx
 msgid "Not processed yet"
@@ -2784,8 +2711,6 @@ msgstr "sur le stockage"
 #: app/components/file-status.tsx
 #: app/components/inspector.tsx
 #: app/components/storage-folder.tsx
-#: app/components/storage-list.tsx
-#: app/helpers/places.ts
 #: app/routes/place.tsx
 msgid "On the storage"
 msgstr "Sur le stockage"
@@ -2827,7 +2752,6 @@ msgid "only this file moves — the rest of the jump stays"
 msgstr "seul ce fichier est déplacé — le reste du saut ne bouge pas"
 
 #: app/components/inspector.tsx
-#: app/components/storage-list.tsx
 msgid "Open"
 msgstr "Ouvrir"
 
@@ -3185,7 +3109,6 @@ msgid "Remove files"
 msgstr "Retirer des fichiers"
 
 #: app/components/montage-card.tsx
-#: app/components/storage-list.tsx
 #: app/routes/place.tsx
 msgid "Remove link"
 msgstr "Supprimer le lien"
@@ -3283,14 +3206,6 @@ msgstr "Redimensionner {corner}"
 #: app/components/window-bar.tsx
 msgid "Restore"
 msgstr "Restaurer"
-
-#: app/components/storage-list.tsx
-msgid "Restore · {waiting, plural, one {# file} other {# files}}"
-msgstr "Restaurer · {waiting, plural, one {# fichier} other {# fichiers}}"
-
-#: app/components/storage-list.tsx
-msgid "Restore all {lostCount}"
-msgstr "Tout restaurer ({lostCount})"
 
 #: app/helpers/notes.ts
 msgid "Restored {count} montages from the storage’s list — named again, at the times they had; process them to carry on"
@@ -3459,7 +3374,6 @@ msgid "Show it in the storage’s own web interface, in a new tab"
 msgstr "L’afficher dans l’interface web du stockage, dans un nouvel onglet"
 
 #: app/components/progress-panel.tsx
-#: app/components/storage-list.tsx
 msgid "Show its folder in the storage’s own web interface, in a new tab"
 msgstr "Afficher son dossier dans l’interface web du stockage, dans un nouvel onglet"
 
@@ -3616,7 +3530,6 @@ msgid "Storage folder for {destination}"
 msgstr "Dossier du stockage pour {destination}"
 
 #: app/components/file-browser.tsx
-#: app/components/storage-list.tsx
 msgid "storage only"
 msgstr "stockage seulement"
 
@@ -3656,7 +3569,6 @@ msgid "Take the link away — the file stays where it is"
 msgstr "Supprimer le lien — le fichier reste où il est"
 
 #: app/components/montage-card.tsx
-#: app/components/storage-list.tsx
 #: app/routes/place.tsx
 msgid "Take the link away — the folder stays where it is"
 msgstr "Supprimer le lien — le dossier reste où il est"
@@ -3806,10 +3718,6 @@ msgstr "Le saut disparaît ; ses fichiers sont gardés, en vrac dans Nouveaux fi
 msgid "the jumps and their names, and every trim, frame and turn"
 msgstr "les sauts et leurs noms, et chaque coupe, cadrage et rotation"
 
-#: app/helpers/parcels.ts
-msgid "the kdenlive project"
-msgstr "le projet kdenlive"
-
 #: app/components/upload-dialog.tsx
 msgid "The kdenlive project"
 msgstr "Le projet kdenlive"
@@ -3926,10 +3834,6 @@ msgstr "Le stockage"
 msgid "The storage could not be reached."
 msgstr "Le stockage est injoignable."
 
-#: app/components/storage-list.tsx
-msgid "The storage no longer honours its link: revoked, or expired"
-msgstr "Le stockage n’honore plus son lien : révoqué, ou expiré"
-
 #: app/components/storage-folder.tsx
 msgid "The storage would not do that."
 msgstr "Le stockage a refusé."
@@ -3937,10 +3841,6 @@ msgstr "Le stockage a refusé."
 #: app/hooks/useStorageFolder.ts
 msgid "The storage’s answer could not be read."
 msgstr "La réponse du stockage n’a pas pu être lue."
-
-#: app/components/storage-list.tsx
-msgid "The storage’s list of montages could not be read: {problem}"
-msgstr "La liste des montages du stockage n’a pas pu être lue : {problem}"
 
 #: app/routes/place.tsx
 msgid "The storage’s list says the link was sent — open it to send it again"
@@ -4261,10 +4161,6 @@ msgstr "Envoyé"
 #: app/helpers/notes.ts
 msgid "Uploaded {uploaded, plural, one {# file} other {# files}}"
 msgstr "{uploaded, plural, one {# fichier envoyé} other {# fichiers envoyés}}"
-
-#: app/components/storage-list.tsx
-msgid "uploaded {uploadedOn}"
-msgstr "envoyé le {uploadedOn}"
 
 #: app/components/montage-card.tsx
 msgid "Uploaded {uploadedOn}, but "

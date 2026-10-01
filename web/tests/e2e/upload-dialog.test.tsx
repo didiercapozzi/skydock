@@ -503,53 +503,49 @@ describe('emailing the passenger their link', () => {
 
 /* The storage's own list of montages, under On the storage: every montage up there — this machine's
    and the ones it no longer has — with whether the passenger was emailed, and a way to say so. */
-describe('the montages on the storage', () => {
+/* Once the mail was opened from the board, whether it went is asked in a dialog of its own, which is
+   left only by an answer (RULES, Emailing the link). The storage's list is where the answer is kept. */
+describe('saying whether the email went', () => {
   const DIR = '/SkyDock/Passengers'
-  const listed = {
+  const LINK = 'https://nas.local/sharing/Luc'
+  const said = {
     ...board,
+    groups: [
+      {
+        ...board.groups[0],
+        uploaded: {
+          at: 1_785_010_000,
+          shareUrl: LINK,
+          sent: [{ name: 'luc.mp4', holds: ['film'], to: [`${DIR}/Luc Favre`], size: 1 }]
+        }
+      }
+    ],
     storage: {
       dir: DIR,
       problem: null,
       lost: { folders: [], links: [] },
       montages: [
         {
-          folder: `${DIR}/Ana Roth`,
-          firstname: 'Ana',
-          lastname: 'Roth',
-          day: '28.07.2026',
-          videos: 12,
-          photos: 40,
-          uploadedAt: 1_785_000_000,
-          shareUrl: 'https://nas.local/sharing/Ana',
-          backup: '/Backup/ana_roth_20260728.rushes.zip',
-          freedAt: 1_785_100_000
+          folder: `${DIR}/Luc Favre`,
+          firstname: 'Luc',
+          lastname: 'Favre',
+          day: '01.08.2026',
+          videos: 2,
+          photos: 1,
+          uploadedAt: 1_785_010_000,
+          shareUrl: LINK
         }
       ]
     }
   }
 
-  test('lists a montage this machine no longer has, and whether its passenger was emailed', async () => {
-    await renderBoard(listed, false)
-    await userEvent.click(
-      page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /On the storage/ })
-    )
-    await expect.element(page.getByRole('region', { name: 'On the storage' })).toBeInTheDocument()
-    await expect.element(page.getByText('Ana Roth')).toBeInTheDocument()
-    await expect.element(page.getByText('not emailed', { exact: true })).toBeInTheDocument()
-    await expect.element(page.getByText('storage only', { exact: true })).toBeInTheDocument()
-  })
-
-  test('asks, in a dialog that cannot be put away, whether the mail went once it was opened', async () => {
+  test('asks, in a dialog that cannot be put away, once the mail was opened', async () => {
     requests.length = 0
     const open = window.open
     window.open = (() => null) as typeof window.open
     try {
-      await renderBoard(listed, false)
-      await userEvent.click(
-        page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /On the storage/ })
-      )
-      await userEvent.click(page.getByRole('button', { name: 'More' }))
-      await userEvent.click(page.getByRole('button', { name: 'Email…' }))
+      await renderBoard(said, false)
+      await userEvent.click(page.getByRole('button', { name: 'Email Luc…' }).first())
       /* the one used last is remembered, whatever an earlier test chose */
       await userEvent.click(page.getByRole('button', { name: 'Gmail', exact: true }))
       await userEvent.click(page.getByRole('button', { name: 'Copy & open Gmail' }))
@@ -563,115 +559,16 @@ describe('the montages on the storage', () => {
       await userEvent.click(ask.getByRole('button', { name: 'Yes — it was sent' }))
       await vi.waitFor(() =>
         expect(requests).toContainEqual(
-          expect.objectContaining({ intent: 'mark-emailed', emailed: expect.objectContaining({ sent: true }) })
+          expect.objectContaining({
+            intent: 'mark-emailed',
+            emailed: expect.objectContaining({ sent: true })
+          })
         )
       )
       await expect.element(ask).not.toBeInTheDocument()
     } finally {
       window.open = open
     }
-  })
-
-  test('has its link made or taken away from the three dots', async () => {
-    requests.length = 0
-    await renderBoard(listed, false)
-    await userEvent.click(
-      page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /On the storage/ })
-    )
-    await userEvent.click(page.getByRole('button', { name: 'More' }))
-    await expect.element(page.getByRole('button', { name: 'Copy link' })).toBeVisible()
-    await userEvent.click(page.getByRole('button', { name: 'Remove link' }))
-    await vi.waitFor(() =>
-      expect(requests).toContainEqual({
-        intent: 'montage-link',
-        link: { folder: `${DIR}/Ana Roth`, make: false }
-      })
-    )
-  })
-
-  test('emails it from its entry, and says on the list that it was sent', async () => {
-    requests.length = 0
-    await renderBoard(listed, false)
-    await userEvent.click(
-      page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /On the storage/ })
-    )
-    await userEvent.click(page.getByRole('button', { name: 'More' }))
-    await userEvent.click(page.getByRole('button', { name: 'Email…' }))
-    const dialog = page.getByRole('dialog', { name: 'Email the link' })
-    await expect.element(dialog.getByLabelText('Email preview').getByText('Bonjour Ana,')).toBeVisible()
-    await userEvent.fill(dialog.getByLabelText('To'), 'ana@example.com')
-    await userEvent.click(dialog.getByRole('button', { name: 'Mark as sent' }))
-    await vi.waitFor(() =>
-      expect(requests).toContainEqual({
-        intent: 'mark-emailed',
-        emailed: { folder: `${DIR}/Ana Roth`, sent: true, to: 'ana@example.com' }
-      })
-    )
-  })
-})
-
-/* The list remembers; the storage says what is there. A montage whose link the storage no longer
-   honours, or whose folder it no longer holds, stays on the list for what it says — whether its
-   passenger was emailed, that it was freed — but offers nothing that is not there to offer. */
-describe('a montage on the storage’s list that the storage no longer holds', () => {
-  const DIR = '/SkyDock/Passengers'
-  const ana = {
-    folder: `${DIR}/Ana Roth`,
-    firstname: 'Ana',
-    lastname: 'Roth',
-    day: '28.07.2026',
-    videos: 12,
-    photos: 40,
-    uploadedAt: 1_785_000_000,
-    shareUrl: 'https://nas.local/sharing/Ana'
-  }
-  const lostAs = (lost: { folders: string[]; links: string[] }) => ({
-    ...board,
-    storage: { dir: DIR, problem: null, lost, montages: [ana] }
-  })
-  const openStorage = () =>
-    userEvent.click(
-      page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /On the storage/ })
-    )
-
-  test('offers no link to send or copy once the storage no longer honours it', async () => {
-    await renderBoard(lostAs({ folders: [], links: [ana.folder] }), false)
-    await openStorage()
-    await expect.element(page.getByText('Ana Roth')).toBeInTheDocument()
-    await expect.element(page.getByText('link gone')).toBeInTheDocument()
-    await expect.element(page.getByRole('button', { name: 'Email…' })).not.toBeInTheDocument()
-    await expect.element(page.getByRole('button', { name: 'Copy link' })).not.toBeInTheDocument()
-  })
-
-  test('does not count a delivery whose folder is gone, nor say it is owed an email', async () => {
-    await renderBoard(lostAs({ folders: [ana.folder], links: [] }), false)
-    const rail = page.getByRole('navigation', { name: 'Folders' })
-    await expect.element(rail.getByRole('link', { name: /On the storage/ })).toBeVisible()
-    await expect.element(rail.getByText(/to email/)).not.toBeInTheDocument()
-  })
-
-  test('does not list a delivery once its folder is gone', async () => {
-    await renderBoard(lostAs({ folders: [ana.folder], links: [] }), false)
-    await openStorage()
-    /* a delivery the storage no longer holds is not listed among what is there */
-    await expect.element(page.getByText('Ana Roth')).not.toBeInTheDocument()
-    await expect.element(page.getByText(/no longer on the storage/)).not.toBeInTheDocument()
-    await expect.element(page.getByRole('link', { name: 'Open' })).not.toBeInTheDocument()
-  })
-
-  /* Open on a montage up there opens the storage's own web interface, File Station, on its folder */
-  test('opens the storage’s own web interface on its folder, in a new tab', async () => {
-    await renderBoard(lostAs({ folders: [], links: [] }), false)
-    await openStorage()
-
-    const open = page.getByRole('link', { name: 'Open' })
-    await expect.element(open).toBeVisible()
-    expect(open.element().getAttribute('target')).toBe('_blank')
-    const href = open.element().getAttribute('href') ?? ''
-    expect(href.startsWith('https://nas.local/index.cgi?launchApp=SYNO.SDS.App.FileStation3.Instance')).toBe(true)
-    expect(decodeURIComponent(decodeURIComponent(href.split('launchParam=')[1] ?? ''))).toBe(
-      `openfile=${DIR}/Ana Roth`
-    )
   })
 })
 
@@ -773,8 +670,6 @@ describe('a montage with nothing left to do', () => {
 
     await expect.element(menu().getByRole('heading', { name: /Montages/ })).toBeInTheDocument()
     await expect.element(menu().getByRole('link', { name: /Luc Favre/ })).not.toBeInTheDocument()
-    /* still there, where every montage on the storage is */
-    await expect.poll(() => menu().element().textContent).toContain('On the storage')
   })
 
   /* freed alone is not done: the passenger still has to hear about it */
@@ -861,61 +756,6 @@ describe('deleting a montage that is already edited and rendered', () => {
     await userEvent.click(dialog.getByRole('button', { name: 'Delete', exact: true }))
     await vi.waitFor(() =>
       expect(requests).toContainEqual({ intent: 'delete-montage', groupId: 'g1' })
-    )
-  })
-})
-
-/* A board scanned again from nothing has forgotten its montages, and the storage's list has not: a
-   montage whose files are here, waiting to be sorted, is offered back where the list names it. */
-describe('a montage this board has forgotten', () => {
-  const DIR = '/SkyDock/Passengers'
-  const entry = (who: [string, string], ids: string[]) => ({
-    folder: `${DIR}/${who.join(' ')}`,
-    firstname: who[0],
-    lastname: who[1],
-    day: '25.07.2026',
-    videos: ids.length,
-    photos: 0,
-    uploadedAt: 1_785_010_000,
-    files: ids.map((id) => ({ id, filename: `${id}.MP4`, mtime: 1_785_000_000 }))
-  })
-  /* Ana Roth's two clips sit in a jump nobody filed; Luc Favre is still on the board as he was */
-  const forgot = {
-    ...board,
-    groups: [
-      ...board.groups,
-      {
-        id: 'g9',
-        label: 'g9',
-        day: '25.07.2026',
-        files: [file('a1', 'GX020001.MP4', GB), file('a2', 'GX020002.MP4', GB)]
-      }
-    ],
-    storage: {
-      dir: DIR,
-      problem: null,
-      lost: { folders: [], links: [] },
-      montages: [entry(['Ana', 'Roth'], ['a1', 'a2']), entry(['Luc', 'Favre'], ['v1', 'v2'])]
-    }
-  }
-
-  test('is offered back from the storage’s list, and only the one that was forgotten', async () => {
-    requests.length = 0
-    await renderBoard(forgot, false)
-    await userEvent.click(
-      page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /On the storage/ })
-    )
-
-    const restore = page.getByRole('button', { name: /^Restore · 2 files$/ })
-    await expect.element(restore).toBeInTheDocument()
-    expect(page.getByRole('button', { name: /^Restore ·/ }).elements()).toHaveLength(1)
-
-    await userEvent.click(restore)
-    await vi.waitFor(() =>
-      expect(requests).toContainEqual({
-        intent: 'restore-montages',
-        folders: [`${DIR}/Ana Roth`]
-      })
     )
   })
 })

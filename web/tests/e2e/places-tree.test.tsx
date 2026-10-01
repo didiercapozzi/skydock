@@ -14,7 +14,6 @@ const renderTree = async (onAddPlace: (name: string) => void) => {
       destinations: [{ name: 'Yverdon' }],
       groups: [],
       looseFiles: [],
-      storage: null,
       cameras: [],
       statusContext: () => ({}),
       montageOpen: () => false,

@@ -1,6 +1,6 @@
 import { plural, t } from '@lingui/core/macro'
 import { isVideoFile, lastSegment, parentOf, stemOf } from '@skydock/scripts'
-import type { MontageEntry, SendPart } from '@skydock/scripts'
+import type { SendPart } from '@skydock/scripts'
 import type { ManifestGroup } from '../components/types'
 
 /* A montage as it was handed over (RULES, Uploading a montage): one parcel per folder up there, each
@@ -113,19 +113,6 @@ const insideOfParts = (holds: SendPart[], group: ManifestGroup): Inside[] => {
     ...(holds.includes('project') ? [{ kind: 'file' as const, name: `${stem}.kdenlive` }] : [])
   ]
 }
-
-/* the same, from a storage list's entry, which knows how many but not which: the names are only in
-   the zip */
-const insideOfCounts = (holds: SendPart[], entry: MontageEntry): Inside[] => [
-  ...(holds.includes('videos') && entry.videos > 0
-    ? [{ kind: 'folder' as const, name: 'videos/', count: entry.videos, files: [] }]
-    : []),
-  ...(holds.includes('photos') && entry.photos > 0
-    ? [{ kind: 'folder' as const, name: 'photos/', count: entry.photos, files: [] }]
-    : []),
-  ...(holds.includes('film') ? [{ kind: 'file' as const, name: t`the film` }] : []),
-  ...(holds.includes('project') ? [{ kind: 'file' as const, name: t`the kdenlive project` }] : [])
-]
 
 /* items sharing a folder up there make one parcel, named for the destination it is; the one the film
    went into comes first, and is the one the link is of */
@@ -240,76 +227,6 @@ const parcelsOfGroup = (group: ManifestGroup, places?: Places): Parcel[] => {
   return parcelsFrom(placed, shareUrl, places)
 }
 
-/* The parcels of a montage the storage's list names: from its items where it kept them, else from the
-   three places an older entry says — the film, the photos' zip and the backup. */
-const parcelsOfEntry = (entry: MontageEntry, places?: Places): Parcel[] => {
-  const shareUrl = entry.shareUrl
-  if (entry.items && entry.items.length > 0)
-    return parcelsFrom(
-      entry.items.map((item) => ({
-        dir: item.dir,
-        film: item.holds.includes('film') && !item.zip,
-        item: {
-          key: `${item.dir}/${item.name}`,
-          icon: iconOf(item.holds, item.zip),
-          name: item.name,
-          ...(item.size > 0 ? { size: item.size } : {}),
-          what: whatOf(item.holds),
-          ...(item.zip || item.holds.some((p) => p === 'videos' || p === 'photos')
-            ? { inside: insideOfCounts(item.holds, entry) }
-            : {})
-        }
-      })),
-      shareUrl,
-      places
-    )
-  const placed: Parameters<typeof parcelsFrom>[0] = []
-  if (entry.film)
-    placed.push({
-      dir: parentOf(entry.film),
-      film: true,
-      item: { key: entry.film, icon: 'play', name: lastSegment(entry.film), what: t`the film` }
-    })
-  if (entry.photosZip)
-    placed.push({
-      dir: parentOf(entry.photosZip),
-      film: false,
-      item: {
-        key: entry.photosZip,
-        icon: 'zip',
-        name: lastSegment(entry.photosZip),
-        what: t`the photos`,
-        inside: insideOfCounts(['photos'], entry)
-      }
-    })
-  const parcels = parcelsFrom(placed, shareUrl, places)
-  return entry.backup
-    ? [
-        ...parcels,
-        {
-          key: entry.backup,
-          title: destinationNamed(
-            entry.backup.endsWith('.zip') ? parentOf(entry.backup) : entry.backup,
-            places
-          ),
-          dir: entry.backup.endsWith('.zip') ? parentOf(entry.backup) : entry.backup,
-          tag: plural(1, { one: '# item', other: '# items' }),
-          items: [
-            {
-              key: entry.backup,
-              icon: entry.backup.endsWith('.zip') ? 'zip' : 'fresh',
-              name: entry.backup.endsWith('.zip') ? lastSegment(entry.backup) : t`the originals`,
-              what: t`the originals`,
-              ...(entry.backup.endsWith('.zip')
-                ? { inside: insideOfCounts(['videos'], entry) }
-                : {})
-            }
-          ]
-        }
-      ]
-    : parcels
-}
-
 /* What a folder up there holds, as the same card a montage's parcel is drawn as: no title of its own —
    the folder is the place's — its files each with what kind it is and whether it is here too. */
 const parcelOfFolder = ({
@@ -338,5 +255,5 @@ const parcelOfFolder = ({
   }))
 })
 
-export { parcelOfFolder, parcelsOfEntry, parcelsOfGroup }
+export { parcelOfFolder, parcelsOfGroup }
 export type { Inside, Parcel, ParcelItem, Places }

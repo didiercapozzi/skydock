@@ -115,7 +115,7 @@ const PlacePane = ({
   onImport: (list: Dropped[], target: string, where: string) => void
   children: React.ReactNode
 }) => {
-  const browsing = place.kind !== 'storage'
+  const browsing = true
   const controls = browsing ? (
     <>
       {browsing && (

@@ -2,9 +2,8 @@
 import { i18n } from '@lingui/core'
 import { describe, expect, it } from 'vitest'
 import { stemOf } from '@skydock/scripts'
-import type { MontageEntry } from '@skydock/scripts'
 import type { ManifestGroup } from '../../app/components/types'
-import { parcelsOfEntry, parcelsOfGroup } from '../../app/helpers/parcels'
+import { parcelsOfGroup } from '../../app/helpers/parcels'
 
 /* A montage as it was handed over: one parcel per folder up there, named for its destination, what is in it, and what is inside
    each zip — from what the upload recorded, or from what the storage's list says when this board
@@ -175,73 +174,5 @@ describe('the parcels of a montage this board holds', () => {
 
   it('has no parcel for a montage that was never uploaded', () => {
     expect(parcelsOfGroup(group(undefined))).toEqual([])
-  })
-})
-
-describe('the parcels of a montage only the storage’s list knows', () => {
-  const entry: MontageEntry = {
-    folder: '/Tandems/luc-favre',
-    firstname: 'Luc',
-    lastname: 'Favre',
-    day: '01.08.2026',
-    videos: 19,
-    photos: 337,
-    uploadedAt: 1,
-    shareUrl: LINK,
-    freedAt: 2,
-    items: [
-      {
-        name: 'luc.mp4',
-        dir: '/Tandems/luc-favre',
-        size: 600_000_000,
-        holds: ['film'],
-        zip: false
-      },
-      {
-        name: 'luc.videos.zip',
-        dir: '/Backup/luc-favre',
-        size: 5_000_000_000,
-        holds: ['videos', 'project'],
-        zip: true
-      }
-    ]
-  }
-
-  it('gives each folder, its items with their sizes, and the link', () => {
-    const [handed, kept] = parcelsOfEntry(entry)
-
-    expect(handed).toMatchObject({ shareUrl: LINK })
-    expect(handed?.items[0]).toMatchObject({ name: 'luc.mp4', size: 600_000_000 })
-    expect(kept).toMatchObject({ dir: '/Backup/luc-favre' })
-  })
-
-  it('says how many are inside a zip, since the names are only in the zip', () => {
-    expect(parcelsOfEntry(entry)[1]!.items[0]!.inside).toEqual([
-      { kind: 'folder', name: 'videos/', count: 19, files: [] },
-      { kind: 'file', name: 'the kdenlive project' }
-    ])
-  })
-
-  it('reads an entry written before its items were kept, from its film, photos and backup', () => {
-    const [handed, kept] = parcelsOfEntry({
-      folder: '/Tandems/luc-favre',
-      firstname: 'Luc',
-      lastname: 'Favre',
-      day: '01.08.2026',
-      videos: 2,
-      photos: 12,
-      uploadedAt: 1,
-      shareUrl: LINK,
-      film: '/Tandems/luc-favre/luc.mp4',
-      photosZip: '/Tandems/luc-favre/luc.photos.zip',
-      backup: '/Backup/luc-favre/luc.rushes.zip'
-    })
-
-    expect(handed?.items.map((item) => item.name)).toEqual(['luc.mp4', 'luc.photos.zip'])
-    expect(handed?.items[1]?.inside).toEqual([
-      { kind: 'folder', name: 'photos/', count: 12, files: [] }
-    ])
-    expect(kept).toMatchObject({ dir: '/Backup/luc-favre' })
-    expect(kept?.items[0]?.name).toBe('luc.rushes.zip')
   })
 })

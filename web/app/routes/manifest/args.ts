@@ -65,8 +65,6 @@ const actionArgs = z.object({
     'montage-link',
     /* a destination's folder given a link by hand, or its link taken away */
     'destination-link',
-    /* montages the storage's list names, put back on a board that has forgotten them */
-    'restore-montages',
     /* a clip handed to the machine's own video player, to be watched at its full size */
     'play-file',
     /* files this machine gave back, copied off the camera again because they are wanted here */
@@ -116,8 +114,6 @@ const actionArgs = z.object({
     .optional(),
   /* how much of Fresh files to reset: the times alone, or everything decided about it */
   resetWhat: z.enum(['times', 'everything']).optional(),
-  /* which of the storage's montages to put back, by their folder up there; absent is every one */
-  folders: z.array(z.string()).optional(),
   /* what a jump is called, when it is made or renamed — and a montage's one name, when it is made */
   name: z.string().optional(),
   /* how a montage goes up: what is zipped, and which destinations each item goes to */

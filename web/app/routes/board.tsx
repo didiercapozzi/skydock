@@ -357,7 +357,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           destinations={places}
           groups={model.listed}
           looseFiles={loose}
-          storage={board.storage}
           cameras={board.cameras}
           statusContext={model.statusContext}
           montageOpen={(g) => !model.asOnStorage(g).uploaded}

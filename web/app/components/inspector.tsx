@@ -355,7 +355,8 @@ const JumpPanel = ({
   onRename,
   onDelete,
   move,
-  onTrimToJump
+  onTrimToJump,
+  end
 }: {
   group: ManifestGroup
   label: string
@@ -381,6 +382,8 @@ const JumpPanel = ({
   move?: React.ReactNode
   /* every clip trimmed to its jump; absent when no clip has an exit found, or it is past changing */
   onTrimToJump?: () => void
+  /* what is set once and left alone, last in the panel: a montage's ways back */
+  end?: React.ReactNode
 }) => {
   const [renaming, setRenaming] = useState(false)
   const from = minFileMtime(group.files) ?? 0
@@ -551,6 +554,7 @@ const JumpPanel = ({
           </div>
         </Part>
       )}
+      {end}
     </>
   )
 }

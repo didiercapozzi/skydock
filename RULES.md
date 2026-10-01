@@ -442,12 +442,13 @@ come back to, and a trim nobody saved is not.
 cameras that is not filed yet; _Destinations_, one entry per destination, and _Add a destination…_,
 which opens the field to name one; and
 _Montages_, one entry per named montage and one for the montages still waiting for a name. Under
-_Elsewhere_ come what is not worked on here: once the storage is connected, _On the storage_, its list
-of montages; each camera plugged in, for as long as it stays plugged in; and the _Bin_. The place you
+_Elsewhere_ come what is not worked on here: each camera plugged in, for as long as it stays plugged
+in; and the _Bin_. There is no page of what the storage holds as a whole: each destination and each
+montage shows its own folder up there, on its own _On the storage_ tab. The place you
 are on is drawn in the blue. Each place of work says how many files it holds, how much of it is still local,
 processed or uploaded — a montage shows its steps instead — and what is left: the jumps still to file
 in Fresh files, the files still to do at a dropzone. Every place of work takes files dropped on it,
-and every one but Fresh files a whole jump; the storage's list and the cameras take nothing. A montage
+and every one but Fresh files a whole jump; the cameras take nothing. A montage
 is listed once, however many jumps it has.
 
 A montage is worked on one at a time, so the way in is its own entry. The _Montages_ heading says how many montages are not uploaded yet, and takes a jump or
@@ -865,7 +866,7 @@ goes to — pressing it changes it — and how many files it holds, with a menu 
 once and left alone: changing the folder and taking the destination off the board. Second, the way its
 files travel, as three stations in a row — to process, to upload, on the storage — the first with
 something in it lifted, and the step that moves them on, and freeing space, at the end of the same row.
-Third, the ways of finding and arranging its files: narrowing by name, by day or one list, videos or
+Third, the ways of finding and arranging its files: narrowing by name, and videos or
 photos. Its shared link is made and taken away by hand in its right panel, and only there. Like a montage's, its page has two tabs under that head, _Local_ and _On the storage_, one at a time: _Local_ lists the files kept on this machine, and _On the storage_ shows its folder up there as the same card a montage's handed-over folder is — its path and every file it holds with what kind it is and whether it is here too or only up there — with watching a film and a file's own link on each row.
 
 **Processing** runs on the machine, not in the page: closing or refreshing the page does not stop it,
@@ -1231,7 +1232,7 @@ can apply is worse.
 
 ## Taking a montage back
 
-A montage can be **reset** or **deleted** from its page. Either applies to the whole montage, because
+A montage can be **reset** or **deleted** from its page — from the foot of the panel at the right, and nowhere else on the page. Either applies to the whole montage, because
 one name is one folder, and each asks first, saying what goes and what stays, naming the edit on
 its own when there is one.
 
@@ -1319,17 +1320,9 @@ many and the first names, the rest a press away, and the film and the project at
 film went into is listed first; nothing else tells one folder from another by what it is for. The
 upload writes down each item, its size and the name of every entry in each zip, so this is what was
 sent, not a guess. It stays the same once the montage is freed from this machine, since it is read
-from the record and not from the files. And it is there for a montage only the storage has — freed, or
-uploaded from another machine — from the storage's own list: in _On the storage_, a press anywhere on the
-row of a montage opens the same cards, from what the list keeps of each item and its folder, and a
-second press closes them; what is on the row keeps doing its own. Each row keeps its buttons few:
-**Open** shows its folder in the storage's own web interface, and three dots hold the rest, each with a
-small mark of one colour — copy its link, email it, and make its link or take it away. Making a
-link gives its folder one the storage hands back if it already has it; taking it away leaves the folder
-where it was, and the list is told either way. A zip of such a
-montage says how many clips and photos it holds, since their names are only in the zip. A montage
-uploaded before these were kept shows what its record or its list entry says: its film, its photos'
-zip and its backup, and what they hold.
+from the record and not from the files. A zip of a montage says how many clips and photos it holds,
+since their names are only in the zip. A montage uploaded before every item was kept shows what its record
+says: its film, its photos' zip and its backup, and what they hold.
 
 **Transfers, looked at afterwards.** The panels that show an upload, a drop from the computer or a camera
 copy going are gone when it is done. The status bar's **Transfers** button is always there, even when
@@ -1399,31 +1392,18 @@ was for, the day, how many videos and photos, when it went up, its share link, w
 and backup are, every item that went up with its folder and its size, whether it was freed, and whether its link was emailed and to which address. A montage
 is known on it by the folder its film went to. A list kept somewhere else before the lists' place was
 fixed is read from there until the new one is written, and is then put in the storage's bin, so
-nothing listed there is lost and there are never two lists telling different stories. _On the
-storage_, in the menu once the storage is connected, shows this list, so every montage the storage holds is there, including
-ones this machine no longer has and ones uploaded from another machine. Each can be emailed from there,
-and one still on this board can be opened.
+nothing listed there is lost and there are never two lists telling different stories. There is no
+page that shows it whole: each montage on this board reads its own entry — whether it was emailed, its
+link, what became of its folder — and a montage this board has forgotten is not shown.
 
 **What the storage says for itself is asked of the storage.** The list keeps what the storage cannot
 say — who a montage was for, whether its passenger was emailed and at which address, that it was
 freed, which files it was made of. Whether its folder is still there and whether its link still works
 are asked of the storage each time the board opens and after every change to the list. A montage whose
-folder is gone is put aside in the list of what is on the storage: one line says how many earlier
-deliveries are no longer there and shows them on request, marked as no longer on the storage, and they
-are not counted among the montages. One whose link was revoked or has expired is shown as having no
+folder is gone is shown on its page as no longer on the storage, and is not counted. One whose link was revoked or has expired is shown as having no
 link; neither offers what is not there — no link to copy or email, no folder to watch — and
 neither is taken off the list, the only place that says it was emailed or freed. A question the
 storage did not answer takes nothing away.
-
-**Putting a forgotten montage back.** The list also writes down which files each montage is made of — each
-by what it contains, which is how a file is known whatever it is called — and the times they were given.
-A board scanned again from nothing gives every file that same identity, so a montage on the list whose
-files are here, waiting to be sorted, is offered back where the list names it, one at a time or all at
-once. It comes back named, at the times its files had, and waiting to be processed: what was made from
-it is not claimed back, since uploaded is only ever said of a copy proved on both sides, and uploading
-again skips what the storage already holds. Files somebody has filed since stay where they were put; a
-freed montage has no files here to find; one only partly here is restored with what there is, and says
-how many. A montage's two jumps share one entry, which keeps the files of both.
 
 The list follows the work and never replaces it. It is updated after every upload, every freeing, and
 when the email is marked as sent. Each change reads the latest list first and alters only its own

@@ -6,13 +6,13 @@ import { familyOf } from './places'
 import type { Place } from './places'
 
 /* How a folder's files are grouped on screen: under their jumps, under the days they were shot, or
-   in one list. A dropzone has no jumps — its files are flat — so it groups by day or not at all. */
+   in one list. A dropzone has no jumps — its files are flat — so it groups by day, and only by day. */
 type Grouping = 'jump' | 'day' | 'none'
 
 const GROUPINGS: Record<'sort' | 'dz' | 'montages', readonly Grouping[]> = {
   sort: ['jump', 'day', 'none'],
-  dz: ['day', 'none'],
-  montages: ['jump', 'none']
+  dz: ['day'],
+  montages: ['jump']
 }
 
 /* One run of files under one header. A jump's header files and names it; a day's says what the day

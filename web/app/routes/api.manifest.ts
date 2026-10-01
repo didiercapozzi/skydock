@@ -21,7 +21,6 @@ import { cameraCopied } from './manifest/camera-copied'
 import { copyFilesIntent } from './manifest/copy-files'
 import { makeMontageIntent } from './manifest/make-montage'
 import { resetFreshIntent } from './manifest/reset-fresh'
-import { restoreMontagesIntent } from './manifest/restore-montages'
 import { mergeGroupsIntent } from './manifest/merge-groups'
 import { montage } from './manifest/montage'
 import { deleteJumpIntent } from './manifest/delete-jump'
@@ -82,7 +81,6 @@ const intents: Record<ActionData['intent'], Intent> = {
   'mark-emailed': markEmailed,
   'montage-link': montageLink,
   'destination-link': destinationLink,
-  'restore-montages': restoreMontagesIntent,
   'copy-files': copyFilesIntent,
   'make-montage': makeMontageIntent,
   'reset-fresh': resetFreshIntent,

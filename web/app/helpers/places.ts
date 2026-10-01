@@ -6,8 +6,7 @@ import { routingEngine } from './routing'
 import type { BoardView } from './view'
 
 /* Where a file can be, as the folders down the left of the board: the fresh files still to sort, a
-   dropzone, all the passengers, the ones still without a name, one passenger, what the storage
-   itself holds, the bin, and a camera plugged in, by where it is mounted. One is open at a time and its files
+   dropzone, all the passengers, the ones still without a name, one passenger, the bin, and a camera plugged in, by where it is mounted. One is open at a time and its files
    fill the pane. */
 const placeSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('sort') }),
@@ -15,7 +14,6 @@ const placeSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('montages') }),
   z.object({ kind: z.literal('unnamed') }),
   z.object({ kind: z.literal('pax'), name: z.string().min(1) }),
-  z.object({ kind: z.literal('storage') }),
   z.object({ kind: z.literal('bin') }),
   z.object({ kind: z.literal('camera'), name: z.string().min(1) })
 ])
@@ -42,13 +40,11 @@ const placeLabel = (place: Place) =>
       ? t`Montages`
       : place.kind === 'unnamed'
         ? t`No name yet`
-        : place.kind === 'storage'
-          ? t`On the storage`
-          : place.kind === 'bin'
-            ? t`Bin`
-            : place.kind === 'camera'
-              ? cameraLabel(place.name)
-              : place.name
+        : place.kind === 'bin'
+          ? t`Bin`
+          : place.kind === 'camera'
+            ? cameraLabel(place.name)
+            : place.name
 
 /* the three families of folder, which is what decides how their files can be grouped */
 const familyOf = (place: Place) =>
@@ -56,7 +52,7 @@ const familyOf = (place: Place) =>
     ? 'sort'
     : place.kind === 'dz'
       ? 'dz'
-      : place.kind === 'storage' || place.kind === 'camera' || place.kind === 'bin'
+      : place.kind === 'camera' || place.kind === 'bin'
         ? 'storage'
         : 'montages'
 
@@ -73,7 +69,6 @@ const groupsIn = (place: Place, groups: ManifestGroup[]) => {
       return groups.filter((g) => isMontage(g) && !hasCompletePassenger(g.passenger))
     case 'pax':
       return groups.filter((g) => isMontage(g) && passengerOf(g) === place.name)
-    case 'storage':
     case 'camera':
     case 'bin':
       return []
@@ -125,7 +120,7 @@ const placeOfLoose = (f: ManifestFile): Place =>
   f.destination ? { kind: 'dz', name: f.destination } : { kind: 'sort' }
 
 /* Each folder's own address, in the words the folder is called by, so that an address can be read
-   and typed: /dropzone/yverdon, /montage/Lily%20DONZALLAZ, /storage. One list, read both ways.
+   and typed: /dropzone/yverdon, /montage/Lily%20DONZALLAZ. One list, read both ways.
    Fresh files is what the board opens on and has the plainest word of them. */
 const PLACE_WORDS = {
   sort: 'fresh',
@@ -133,7 +128,6 @@ const PLACE_WORDS = {
   montages: 'montages',
   unnamed: 'no-name',
   pax: 'montage',
-  storage: 'storage',
   bin: 'bin',
   camera: 'camera'
 } as const satisfies Record<Place['kind'], string>

@@ -184,6 +184,17 @@ describe('an uploaded montage', () => {
     await expect.element(page.getByText('Open on its own')).not.toBeInTheDocument()
   })
 
+  /* a montage is shown by its jump only, and its ways back are in the panel at the right */
+  test('has no grouping choice, and Reset and Delete only in the panel', async () => {
+    await open(board(group({}, [clip(1)])))
+
+    await expect.element(page.getByRole('group', { name: 'Group' })).not.toBeInTheDocument()
+    const panel = page.getByRole('complementary', { name: 'Details' })
+    await expect.element(panel.getByRole('button', { name: 'Reset…' })).toBeVisible()
+    await expect.element(panel.getByRole('button', { name: 'Delete montage…' })).toBeVisible()
+    expect(page.getByRole('button', { name: 'Reset…' }).elements()).toHaveLength(1)
+  })
+
   test('has no tabs before it is uploaded', async () => {
     await open(board(group({ uploaded: undefined }, [clip(1)])))
 

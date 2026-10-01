@@ -46,7 +46,7 @@ type BoardDialog =
   /* files being removed, waiting to hear whether loose in Fresh files or into the bin */
   | { kind: 'remove-files'; files: ManifestFile[] }
   /* a montage on this board by its jump, or one the storage's list alone knows, by its folder */
-  | { kind: 'email'; groupId?: string; folder?: string }
+  | { kind: 'email'; groupId?: string }
   /* Fresh files put back, by as much as is chosen there */
   | { kind: 'reset-fresh'; files: number; decided: number }
   /* the editing templates — chosen between for this montage's editing project, or only looked over */
@@ -179,10 +179,9 @@ const DialogHost = ({
 
       {dialog?.kind === 'email' &&
         (() => {
-          /* a montage on this board is drafted from its files; one the storage alone knows, from
-             what its list says */
+          /* a montage on this board is drafted from its files */
           const group = dialog.groupId ? groups.find((g) => g.id === dialog.groupId) : undefined
-          const folder = dialog.folder ?? (group ? folderOnStorage(group) : null)
+          const folder = group ? folderOnStorage(group) : null
           const entry = folder ? storage?.montages.find((m) => m.folder === folder) : undefined
           /* a link the storage no longer honours is not one to send anybody */
           const shareUrl =
@@ -198,15 +197,7 @@ const DialogHost = ({
                 photos: group.files.filter((f) => !isVideoFile(f.path)).length,
                 seconds: facts[group.id]?.film?.seconds ?? null
               }
-            : entry
-              ? {
-                  firstname: entry.firstname,
-                  lastname: entry.lastname,
-                  day: entry.day,
-                  videos: entry.videos,
-                  photos: entry.photos
-                }
-              : null
+            : null
           if (!about || !shareUrl) return null
           return (
             <EmailDialog
