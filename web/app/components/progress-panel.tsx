@@ -21,6 +21,8 @@ type Row = {
   note?: string
   /* shown when the name is pointed at */
   title?: string
+  /* where the name leads, when it is a link: opened in a new tab */
+  href?: string
   /* what is being done to the one under way, when it is not what the panel does to all of them */
   doing?: string
 }
@@ -63,19 +65,34 @@ const ProgressRows = ({ rows, doing, opened }: { rows: Row[]; doing: string; ope
   <ol className='m-0 flex min-h-0 flex-1 list-none flex-col gap-0.5 overflow-y-auto border-t border-line-2 p-0 pt-[7px] font-mono text-[11px] text-ink-2'>
     {rows.map((row) => (
       <li key={row.key}>
-        <span className='flex items-baseline justify-between gap-3'>
+        <span className='flex items-baseline gap-3'>
           <span
-            className={`min-w-0 ${opened ? 'break-all' : 'truncate'} ${row.at === 'now' ? 'text-ink' : row.at === 'later' ? 'text-ink-3' : ''}`}
+            className={`min-w-0 flex-1 ${opened ? 'break-all' : 'truncate'} ${row.at === 'now' ? 'text-ink' : row.at === 'later' ? 'text-ink-3' : ''}`}
             title={row.title ?? row.name}>
             {row.name}
           </span>
+          {/* a file to deal with elsewhere: a plain button to its folder in the storage's own interface */}
+          {row.href && (
+            <a
+              href={row.href}
+              target='_blank'
+              rel='noreferrer'
+              title={t`Show its folder in the storage’s own web interface, in a new tab`}
+              className='inline-flex h-[22px] flex-none items-center rounded-full bg-accent px-2.5 font-sans text-[11px] font-bold whitespace-nowrap text-white no-underline hover:opacity-90'>
+              {t`Open in DSM`}
+            </a>
+          )}
+          {/* what became of it and how big it is, kept together at the right in two columns, so the
+              words line up down the list instead of following each name wherever it ends */}
           {opened && row.note !== stateOf(row.at) && (
-            <span className={`flex-none font-sans text-[11px] ${TONE[row.at]}`}>
-              {stateOf(row.at)}
+            <span
+              className={`flex-none text-right font-sans text-[11px] ${row.at === 'skipped' && row.note ? '' : 'w-[5.5rem]'} ${TONE[row.at]}`}>
+              {row.at === 'skipped' && row.note ? row.note : stateOf(row.at)}
             </span>
           )}
-          <span className={`flex-none tabular-nums ${TONE[row.at]}`}>
-            {row.note ??
+          <span
+            className={`flex-none text-right tabular-nums ${opened ? 'w-[4.5rem]' : ''} ${TONE[row.at]}`}>
+            {(opened && row.at === 'skipped' ? undefined : row.note) ??
               (row.at === 'now' && (row.part ?? 0) > 0
                 ? ofSize(row.part ?? 0, row.size)
                 : row.size > 0

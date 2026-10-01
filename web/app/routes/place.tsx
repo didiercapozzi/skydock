@@ -12,11 +12,12 @@ import {
   idsOf,
   lostOf
 } from '@skydock/scripts'
+import { goneSent } from '@skydock/scripts'
 import type { FileStatus } from '@skydock/scripts'
 import { plural, t } from '@lingui/core/macro'
 import { useEffect, useState } from 'react'
 import { Outlet, useNavigate, useParams } from 'react-router'
-import { Danger, Go, Mini } from '../components/buttons'
+import { Danger, Go, Mini, Seg } from '../components/buttons'
 import { BinFiles } from '../components/bin-files'
 import { CameraFiles } from '../components/camera-files'
 import { ComparisonDialog } from '../components/comparison-dialog'
@@ -57,6 +58,7 @@ import { useSafeSearchParams } from '../helpers/routing'
 import { GROUPINGS, cardsOf, sectionsOf } from '../helpers/sections'
 import { boardViewSchema } from '../helpers/view'
 import { useCameraCopying } from '../hooks/liveStore'
+import { useTransfersPanel } from '../hooks/transfersPanel'
 import { useBoard } from '../hooks/useBoardModel'
 import type { BoardModel } from '../hooks/useBoardModel'
 import { useSelection } from '../hooks/useSelection'
@@ -130,6 +132,7 @@ const useFolder = (model: BoardModel, place: Place) => {
 
 const Place = () => {
   const model = useBoard()
+  const transfersPanel = useTransfersPanel()
   const { board, frozen, statusContext, statusOf, setDialog } = model
   const { groups, busy, send, setNote, setProblem } = board
   const copying = useCameraCopying()
@@ -256,6 +259,22 @@ const Place = () => {
      this board may have forgotten */
   const toSort = new Set(idsOf(filesIn({ kind: 'sort' }, groups, board.loose)))
 
+  /* A montage that has been uploaded is in two places: the files kept on this machine, and its folder
+     on the storage. They are two views of one montage, so a tab switches between them rather than
+     the one being found under the other. It opens on what is here — for a montage freed from this
+     machine, that is the cards of how it was handed over. */
+  const [chosen, setChosen] = useState<{ key: string; view: 'local' | 'storage' } | null>(null)
+  const twoViews =
+    place.kind === 'pax' &&
+    model.nas.connected &&
+    storageWhere !== null &&
+    folder.groups.some((g) => g.uploaded)
+  const view: 'local' | 'storage' | 'both' = !twoViews
+    ? 'both'
+    : chosen?.key === placeKey(place)
+      ? chosen.view
+      : 'local'
+
   return (
     <>
       <PlacePane
@@ -299,12 +318,28 @@ const Place = () => {
             ? {
                 text: board.note,
                 problem: board.noteIsProblem,
-                onClose: () => setNote(null)
+                onClose: () => setNote(null),
+                ...(board.noteIsProblem && transfersPanel.trouble
+                  ? { onOpen: transfersPanel.show }
+                  : {})
               }
             : null
         }
         incoming={paneTarget}
         onImport={(list, target, where) => void model.importDropped(list, target, where)}>
+        {twoViews && (
+          <div className='pt-1 pb-1'>
+            <Seg
+              label={t`Where to look`}
+              value={view === 'storage' ? 'storage' : 'local'}
+              options={[
+                ['local', t`Local`],
+                ['storage', t`On the storage`]
+              ]}
+              onPick={(next) => setChosen({ key: placeKey(place), view: next })}
+            />
+          </div>
+        )}
         {place.kind === 'camera' ? (
           <CameraFiles
             mount={place.name}
@@ -323,6 +358,8 @@ const Place = () => {
           <div className='pt-3'>
             <StorageList
               storage={board.storage}
+              dsmHost={model.nas.host}
+              remote={model.nas.remote}
               isHere={(entry) => groups.some((g) => folderOnStorage(g) === entry.folder)}
               groupOf={(entry) => groups.find((g) => folderOnStorage(g) === entry.folder)}
               onOpen={(entry) =>
@@ -336,7 +373,7 @@ const Place = () => {
               onRestore={(folders) => send('restore', { intent: 'restore-montages', folders })}
             />
           </div>
-        ) : (
+        ) : view === 'storage' ? null : (
           <FileBrowser
             sections={sections}
             cards={
@@ -394,10 +431,11 @@ const Place = () => {
             }}
           />
         )}
-        {model.nas.connected && storageWhere && (
+        {model.nas.connected && storageWhere && view !== 'local' && (
           <StorageFolder
             key={placeKey(place)}
             where={storageWhere}
+            dsmHost={model.nas.host}
             stamp={board.remoteAfterUpload?.at}
             hereToo={hereToo}
             onProblem={setProblem}
@@ -603,7 +641,13 @@ const MontageAbove = ({ group, withFilm }: { group: ManifestGroup; withFilm: boo
         gone={model.goneById[group.id] ?? []}
         at={model.board.groups.find((g) => g.id === group.id)?.uploaded?.at}
       />
-      {group.uploaded && <UploadedCards group={group} />}
+      {group.uploaded && (
+        <UploadedCards
+          group={group}
+          dsmHost={model.nas.host}
+          gone={new Set(goneSent(group.uploaded, model.nas.remote))}
+        />
+      )}
       {withFilm && !group.uploaded && (
         <FilmStrip
           facts={facts}

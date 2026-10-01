@@ -95,6 +95,13 @@ const recordTransfer = (transfer: NewTransfer, outputDir?: string) => {
   return made
 }
 
+/* One transfer forgotten, the others kept: only what is kept about what happened, as with clearing. */
+const removeTransfer = (id: string, outputDir?: string) => {
+  const kept = readTransfers(outputDir).filter((transfer) => transfer.id !== id)
+  if (kept.length === 0) clearTransfers(outputDir)
+  else writeJsonAtomic(getTransfersPath(outputDir), { transfers: kept })
+}
+
 const clearTransfers = (outputDir?: string) => {
   const target = getTransfersPath(outputDir)
   if (fs.existsSync(target)) fs.unlinkSync(target)
@@ -107,6 +114,7 @@ export {
   KEPT,
   readTransfers,
   recordTransfer,
+  removeTransfer,
   transferSchema,
   transfersFileSchema
 }

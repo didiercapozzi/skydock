@@ -887,18 +887,27 @@ msgstr "all up"
 msgid "already here"
 msgstr "already here"
 
+#: app/components/transfers-panel.tsx
+#: app/components/upload-panel.tsx
+msgid "already on the storage"
+msgstr "already on the storage"
+
 #: app/components/inspector.tsx
 msgid "Already processed — a new name means processing it again, into the new folder."
 msgstr "Already processed — a new name means processing it again, into the new folder."
 
 #: app/components/progress-panel.tsx
-#: app/components/upload-panel.tsx
 msgid "already there"
 msgstr "already there"
 
 #: app/components/inspector.tsx
 msgid "Already uploaded — a new name means processing and uploading again, and the old folder stays on the storage under the old name."
 msgstr "Already uploaded — a new name means processing and uploading again, and the old folder stays on the storage under the old name."
+
+#: app/components/transfers-panel.tsx
+#: app/components/upload-panel.tsx
+msgid "already uploaded — not sent again"
+msgstr "already uploaded — not sent again"
 
 #: app/components/shortcuts-dialog.tsx
 msgid "Alt or Ctrl while dropping"
@@ -1874,6 +1883,14 @@ msgid "For a camera mounted sideways or upside down."
 msgstr "For a camera mounted sideways or upside down."
 
 #: app/components/transfers-panel.tsx
+msgid "Forget {what} · {label}"
+msgstr "Forget {what} · {label}"
+
+#: app/components/transfers-panel.tsx
+msgid "Forget this one — nothing that was sent or copied is touched"
+msgstr "Forget this one — nothing that was sent or copied is touched"
+
+#: app/components/transfers-panel.tsx
 msgid "Forget what is listed here — nothing that was sent or copied is touched"
 msgstr "Forget what is listed here — nothing that was sent or copied is touched"
 
@@ -2074,10 +2091,6 @@ msgstr "Hide contents"
 #: app/components/board-header.tsx
 msgid "Hide details"
 msgstr "Hide details"
-
-#: app/components/storage-list.tsx
-msgid "Hide files"
-msgstr "Hide files"
 
 #: app/components/progress-panel.tsx
 msgid "Hide the list"
@@ -2339,10 +2352,6 @@ msgstr "link gone"
 msgid "List"
 msgstr "List"
 
-#: app/components/storage-list.tsx
-msgid "List what its folder on the storage holds, and watch it from here"
-msgstr "List what its folder on the storage holds, and watch it from here"
-
 #: app/components/nas-folder-browser.tsx
 msgid "Loading…"
 msgstr "Loading…"
@@ -2352,6 +2361,7 @@ msgid "local"
 msgstr "local"
 
 #: app/components/inspector.tsx
+#: app/routes/place.tsx
 msgid "Local"
 msgstr "Local"
 
@@ -2608,6 +2618,7 @@ msgstr "No folders in here. Make one, or use this folder as it is."
 msgid "no height or speed — this camera wrote none"
 msgstr "no height or speed — this camera wrote none"
 
+#: app/components/montage-card.tsx
 #: app/components/storage-list.tsx
 msgid "no longer on the storage"
 msgstr "no longer on the storage"
@@ -2796,6 +2807,10 @@ msgstr "of the picture"
 msgid "off the board and out of the originals, moved to the bin, not erased. They can be brought back from the Bin page. If the camera card has been wiped, the bin holds the only copy."
 msgstr "off the board and out of the originals, moved to the bin, not erased. They can be brought back from the Bin page. If the camera card has been wiped, the bin holds the only copy."
 
+#: app/components/storage-list.tsx
+msgid "On the board"
+msgstr "On the board"
+
 #: app/components/camera-files.tsx
 msgid "On the camera"
 msgstr "On the camera"
@@ -2825,6 +2840,7 @@ msgstr "on the storage"
 #: app/components/storage-folder.tsx
 #: app/components/storage-list.tsx
 #: app/helpers/places.ts
+#: app/routes/place.tsx
 msgid "On the storage"
 msgstr "On the storage"
 
@@ -2864,6 +2880,10 @@ msgstr "only this file moves — the rest of the jump stays"
 #: app/components/storage-list.tsx
 msgid "Open"
 msgstr "Open"
+
+#: app/components/progress-panel.tsx
+msgid "Open in DSM"
+msgstr "Open in DSM"
 
 #: app/components/montage-card.tsx
 #: app/components/montage-steps.tsx
@@ -3499,6 +3519,16 @@ msgstr "Show everything"
 msgid "Show fewer"
 msgstr "Show fewer"
 
+#: app/components/montage-card.tsx
+#: app/components/storage-folder.tsx
+msgid "Show it in the storage’s own web interface, in a new tab"
+msgstr "Show it in the storage’s own web interface, in a new tab"
+
+#: app/components/progress-panel.tsx
+#: app/components/storage-list.tsx
+msgid "Show its folder in the storage’s own web interface, in a new tab"
+msgstr "Show its folder in the storage’s own web interface, in a new tab"
+
 #: app/components/place-pane.tsx
 msgid "Show only the {photos} photos"
 msgstr "Show only the {photos} photos"
@@ -3510,6 +3540,14 @@ msgstr "Show only the {videos} videos"
 #: app/components/progress-panel.tsx
 msgid "Show the list"
 msgstr "Show the list"
+
+#: app/components/notice.tsx
+msgid "Show the transfer that failed"
+msgstr "Show the transfer that failed"
+
+#: app/components/montage-card.tsx
+msgid "Show this folder in the storage’s own web interface, in a new tab"
+msgstr "Show this folder in the storage’s own web interface, in a new tab"
 
 #: app/components/email-dialog.tsx
 msgid "Shown as it will arrive — write in it; the signature stays for every email"
@@ -4372,13 +4410,17 @@ msgstr "Videos or photos"
 msgid "waiting"
 msgstr "waiting"
 
+#: app/components/storage-folder.tsx
+msgid "Watch"
+msgstr "Watch"
+
+#: app/components/storage-folder.tsx
+msgid "Watch it from the storage"
+msgstr "Watch it from the storage"
+
 #: app/components/montage-card.tsx
 msgid "Watch the film here"
 msgstr "Watch the film here"
-
-#: app/components/storage-list.tsx
-msgid "Watch…"
-msgstr "Watch…"
 
 #: app/components/history-dialog.tsx
 msgid "What changed on the board"
@@ -4452,6 +4494,10 @@ msgstr "Where the jump is"
 #: app/components/montage-steps.tsx
 msgid "Where this montage has got to"
 msgstr "Where this montage has got to"
+
+#: app/routes/place.tsx
+msgid "Where to look"
+msgstr "Where to look"
 
 #: app/components/comparison-dialog.tsx
 msgid "Which date should the merged jump have? The chosen jump keeps its times."

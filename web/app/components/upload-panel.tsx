@@ -3,6 +3,7 @@ import type { UploadItem, UploadProgressState } from '@skydock/scripts'
 import { Mini } from './buttons'
 import { ProgressPanel } from './progress-panel'
 import type { ProgressRow } from './progress-panel'
+import { dsmFolderUrl } from '../helpers/dsm'
 import { formatSize } from './utils'
 
 /* What an upload is sending, while it is (RULES, Uploading): every zip as it is made, then every
@@ -18,7 +19,7 @@ const base = (item: UploadItem, where: string) => ({
   title: where
 })
 
-const rowOf = (item: UploadItem): ProgressRow => {
+const rowOf = (item: UploadItem, dsmHost?: string | null): ProgressRow => {
   const where = item.to ? `${item.to}/${item.name}` : item.name
   switch (item.state) {
     case 'zipping':
@@ -35,7 +36,16 @@ const rowOf = (item: UploadItem): ProgressRow => {
     case 'sent':
       return { ...base(item, where), at: 'done' }
     case 'there':
-      return { ...base(item, where), at: 'skipped', note: t`already there` }
+      return { ...base(item, where), at: 'skipped', note: t`already uploaded — not sent again` }
+    case 'taken':
+      return {
+        ...base(item, where),
+        at: 'failed',
+        note: t`already on the storage`,
+        ...(dsmHost && item.to
+          ? { href: dsmFolderUrl(dsmHost, `${item.to}/${item.name}`) ?? undefined }
+          : {})
+      }
     case 'failed':
       return { ...base(item, where), at: 'failed', note: t`not sent` }
     default:
@@ -68,8 +78,11 @@ const UploadPanel = ({
   label,
   progress,
   cancelling,
+  dsmHost,
   onCancel
 }: {
+  /* the storage's own address, to show a file that is in the way */
+  dsmHost?: string | null
   /* what is being uploaded, named as the board names it */
   label: string
   progress: UploadProgressState | null
@@ -77,7 +90,7 @@ const UploadPanel = ({
   onCancel: () => void
 }) => {
   const items = progress?.items ?? []
-  const rows = items.map(rowOf)
+  const rows = items.map((item) => rowOf(item, dsmHost))
   const finished = rows.filter((r) => r.at !== 'now' && r.at !== 'later').length
   const bytes = items.reduce((sum, item) => sum + item.size, 0)
   const phase = progress ? phaseOf(progress) : t`Starting…`

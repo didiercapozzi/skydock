@@ -596,6 +596,22 @@ describe('a montage on the storage’s list that the storage no longer holds', (
     await renderBoard(lostAs({ folders: [ana.folder], links: [] }), false)
     await openStorage()
     await expect.element(page.getByText('no longer on the storage')).toBeInTheDocument()
+    await expect.element(page.getByRole('link', { name: 'Open' })).not.toBeInTheDocument()
+  })
+
+  /* Open on a montage up there opens the storage's own web interface, File Station, on its folder */
+  test('opens the storage’s own web interface on its folder, in a new tab', async () => {
+    await renderBoard(lostAs({ folders: [], links: [] }), false)
+    await openStorage()
+
+    const open = page.getByRole('link', { name: 'Open' })
+    await expect.element(open).toBeVisible()
+    expect(open.element().getAttribute('target')).toBe('_blank')
+    const href = open.element().getAttribute('href') ?? ''
+    expect(href.startsWith('https://nas.local/index.cgi?launchApp=SYNO.SDS.App.FileStation3.Instance')).toBe(true)
+    expect(decodeURIComponent(decodeURIComponent(href.split('launchParam=')[1] ?? ''))).toBe(
+      `openfile=${DIR}/Ana Roth`
+    )
     await expect.element(page.getByRole('button', { name: 'Watch…' })).not.toBeInTheDocument()
   })
 })

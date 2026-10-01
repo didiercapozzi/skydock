@@ -887,18 +887,27 @@ msgstr "tout envoyé"
 msgid "already here"
 msgstr "déjà ici"
 
+#: app/components/transfers-panel.tsx
+#: app/components/upload-panel.tsx
+msgid "already on the storage"
+msgstr "déjà sur le stockage"
+
 #: app/components/inspector.tsx
 msgid "Already processed — a new name means processing it again, into the new folder."
 msgstr "Déjà préparé — un nouveau nom implique de le préparer à nouveau, dans le nouveau dossier."
 
 #: app/components/progress-panel.tsx
-#: app/components/upload-panel.tsx
 msgid "already there"
 msgstr "déjà là"
 
 #: app/components/inspector.tsx
 msgid "Already uploaded — a new name means processing and uploading again, and the old folder stays on the storage under the old name."
 msgstr "Déjà envoyé — un nouveau nom implique de préparer et d’envoyer à nouveau, et l’ancien dossier reste sur le stockage sous l’ancien nom."
+
+#: app/components/transfers-panel.tsx
+#: app/components/upload-panel.tsx
+msgid "already uploaded — not sent again"
+msgstr "déjà envoyé — pas renvoyé"
 
 #: app/components/shortcuts-dialog.tsx
 msgid "Alt or Ctrl while dropping"
@@ -1874,6 +1883,14 @@ msgid "For a camera mounted sideways or upside down."
 msgstr "Pour une caméra montée de côté ou à l’envers."
 
 #: app/components/transfers-panel.tsx
+msgid "Forget {what} · {label}"
+msgstr "Oublier {what} · {label}"
+
+#: app/components/transfers-panel.tsx
+msgid "Forget this one — nothing that was sent or copied is touched"
+msgstr "Oublier celui-ci — rien de ce qui a été envoyé ou copié n’est touché"
+
+#: app/components/transfers-panel.tsx
 msgid "Forget what is listed here — nothing that was sent or copied is touched"
 msgstr "Oublier ce qui est listé ici — rien de ce qui a été envoyé ou copié n’est touché"
 
@@ -2074,10 +2091,6 @@ msgstr "Masquer le contenu"
 #: app/components/board-header.tsx
 msgid "Hide details"
 msgstr "Masquer les détails"
-
-#: app/components/storage-list.tsx
-msgid "Hide files"
-msgstr "Masquer les fichiers"
 
 #: app/components/progress-panel.tsx
 msgid "Hide the list"
@@ -2339,10 +2352,6 @@ msgstr "lien expiré"
 msgid "List"
 msgstr "Liste"
 
-#: app/components/storage-list.tsx
-msgid "List what its folder on the storage holds, and watch it from here"
-msgstr "Lister ce que contient son dossier sur le stockage, et le suivre d’ici"
-
 #: app/components/nas-folder-browser.tsx
 msgid "Loading…"
 msgstr "Chargement…"
@@ -2352,6 +2361,7 @@ msgid "local"
 msgstr "local"
 
 #: app/components/inspector.tsx
+#: app/routes/place.tsx
 msgid "Local"
 msgstr "Local"
 
@@ -2608,6 +2618,7 @@ msgstr "Aucun dossier ici. Créez-en un, ou utilisez ce dossier tel quel."
 msgid "no height or speed — this camera wrote none"
 msgstr "ni hauteur ni vitesse — cette caméra n’en a enregistré aucune"
 
+#: app/components/montage-card.tsx
 #: app/components/storage-list.tsx
 msgid "no longer on the storage"
 msgstr "n’est plus sur le stockage"
@@ -2796,6 +2807,10 @@ msgstr "de l’image"
 msgid "off the board and out of the originals, moved to the bin, not erased. They can be brought back from the Bin page. If the camera card has been wiped, the bin holds the only copy."
 msgstr "retirés du tableau et des originaux, déplacés dans la corbeille, pas effacés. On peut les récupérer depuis la page Corbeille. Si la carte de la caméra a été vidée, la corbeille en garde la seule copie."
 
+#: app/components/storage-list.tsx
+msgid "On the board"
+msgstr "Sur le tableau"
+
 #: app/components/camera-files.tsx
 msgid "On the camera"
 msgstr "Sur la caméra"
@@ -2825,6 +2840,7 @@ msgstr "sur le stockage"
 #: app/components/storage-folder.tsx
 #: app/components/storage-list.tsx
 #: app/helpers/places.ts
+#: app/routes/place.tsx
 msgid "On the storage"
 msgstr "Sur le stockage"
 
@@ -2864,6 +2880,10 @@ msgstr "seul ce fichier est déplacé — le reste du saut ne bouge pas"
 #: app/components/storage-list.tsx
 msgid "Open"
 msgstr "Ouvrir"
+
+#: app/components/progress-panel.tsx
+msgid "Open in DSM"
+msgstr "Ouvrir dans DSM"
 
 #: app/components/montage-card.tsx
 #: app/components/montage-steps.tsx
@@ -3499,6 +3519,16 @@ msgstr "Tout afficher"
 msgid "Show fewer"
 msgstr "Afficher moins"
 
+#: app/components/montage-card.tsx
+#: app/components/storage-folder.tsx
+msgid "Show it in the storage’s own web interface, in a new tab"
+msgstr "L’afficher dans l’interface web du stockage, dans un nouvel onglet"
+
+#: app/components/progress-panel.tsx
+#: app/components/storage-list.tsx
+msgid "Show its folder in the storage’s own web interface, in a new tab"
+msgstr "Afficher son dossier dans l’interface web du stockage, dans un nouvel onglet"
+
 #: app/components/place-pane.tsx
 msgid "Show only the {photos} photos"
 msgstr "N’afficher que les {photos} photos"
@@ -3510,6 +3540,14 @@ msgstr "N’afficher que les {videos} vidéos"
 #: app/components/progress-panel.tsx
 msgid "Show the list"
 msgstr "Afficher la liste"
+
+#: app/components/notice.tsx
+msgid "Show the transfer that failed"
+msgstr "Voir le transfert en échec"
+
+#: app/components/montage-card.tsx
+msgid "Show this folder in the storage’s own web interface, in a new tab"
+msgstr "Afficher ce dossier dans l’interface web du stockage, dans un nouvel onglet"
 
 #: app/components/email-dialog.tsx
 msgid "Shown as it will arrive — write in it; the signature stays for every email"
@@ -4372,13 +4410,17 @@ msgstr "Vidéos ou photos"
 msgid "waiting"
 msgstr "en attente"
 
+#: app/components/storage-folder.tsx
+msgid "Watch"
+msgstr "Regarder"
+
+#: app/components/storage-folder.tsx
+msgid "Watch it from the storage"
+msgstr "La regarder depuis le stockage"
+
 #: app/components/montage-card.tsx
 msgid "Watch the film here"
 msgstr "Regarder le film ici"
-
-#: app/components/storage-list.tsx
-msgid "Watch…"
-msgstr "Regarder…"
 
 #: app/components/history-dialog.tsx
 msgid "What changed on the board"
@@ -4452,6 +4494,10 @@ msgstr "Où est le saut"
 #: app/components/montage-steps.tsx
 msgid "Where this montage has got to"
 msgstr "Où en est ce montage"
+
+#: app/routes/place.tsx
+msgid "Where to look"
+msgstr "Où regarder"
 
 #: app/components/comparison-dialog.tsx
 msgid "Which date should the merged jump have? The chosen jump keeps its times."

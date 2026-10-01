@@ -1,6 +1,7 @@
 import { plural, t } from '@lingui/core/macro'
 import type { Transfer } from '@skydock/scripts'
 import { useState } from 'react'
+import { dsmFolderUrl } from '../helpers/dsm'
 import { routingEngine } from '../helpers/routing'
 import { useTransfers } from '../hooks/useTransfers'
 import { Mini } from './buttons'
@@ -21,7 +22,7 @@ const ICON: Record<Transfer['kind'], IconName> = {
   camera: 'camera'
 }
 
-const rowsOf = (transfer: Transfer): ProgressRow[] =>
+const rowsOf = (transfer: Transfer, dsmHost?: string | null): ProgressRow[] =>
   transfer.items.map((item, at) => ({
     key: `${item.to ?? ''}/${item.name}:${at}`,
     name: item.name,
@@ -36,7 +37,19 @@ const rowsOf = (transfer: Transfer): ProgressRow[] =>
             : 'later',
     /* a drop says where a file was before it was joined to a second jump; anything else, where it went */
     ...(item.to || item.note ? { title: item.to ? `${item.to}/${item.name}` : item.note } : {}),
-    ...(item.result === 'left' ? { note: t`not reached` } : {})
+    ...(item.result === 'left' ? { note: t`not reached` } : {}),
+    /* a file that was in the way: its folder, in the storage's own interface, to rename or delete it */
+    ...(item.note === 'taken'
+      ? {
+          note: t`already on the storage`,
+          ...(dsmHost && item.to
+            ? { href: dsmFolderUrl(dsmHost, `${item.to}/${item.name}`) ?? undefined }
+            : {})
+        }
+      : {}),
+    ...(item.result === 'skipped' && transfer.kind === 'upload'
+      ? { note: t`already uploaded — not sent again` }
+      : {})
   }))
 
 /* how it ended, counted: what was done, what was there already, what went wrong or was never reached */
@@ -72,12 +85,17 @@ const kindOf = (transfer: Transfer) =>
 
 const Entry = ({
   transfer,
+  dsmHost,
   open,
-  onToggle
+  onToggle,
+  onForget
 }: {
   transfer: Transfer
+  dsmHost?: string | null
   open: boolean
   onToggle: () => void
+  /* this one forgotten, and not the others */
+  onForget: () => void
 }) => {
   const { word, tone } = outcomeOf(transfer)
   const what = kindOf(transfer)
@@ -88,44 +106,68 @@ const Entry = ({
   const more = transfer.more ?? 0
   return (
     <li className='rounded-[12px] bg-well'>
-      <button
-        type='button'
-        aria-expanded={open}
-        onClick={onToggle}
-        className='flex w-full cursor-pointer items-center gap-2.5 rounded-[12px] border-0 bg-transparent px-3 py-2 text-left text-ink'>
-        <Icon
-          name={ICON[transfer.kind]}
-          size={14}
-          className='flex-none text-accent'
-        />
-        <span className='min-w-0 flex-1'>
-          <b className='block truncate text-[13px] font-semibold'>
-            {what} · {label}
-          </b>
-          <span className='block truncate text-[11.5px] text-ink-3'>
-            {when}
-            {counts ? ` · ${counts}` : ''}
+      <div className='flex items-center'>
+        <button
+          type='button'
+          aria-expanded={open}
+          onClick={onToggle}
+          className='flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-[12px] border-0 bg-transparent px-3 py-2 text-left text-ink'>
+          <Icon
+            name={ICON[transfer.kind]}
+            size={14}
+            className='flex-none text-accent'
+          />
+          <span className='min-w-0 flex-1'>
+            <b className='block truncate text-[13px] font-semibold'>
+              {what} · {label}
+            </b>
+            <span className='block truncate text-[11.5px] text-ink-3'>
+              {when}
+              {counts ? ` · ${counts}` : ''}
+            </span>
           </span>
-        </span>
-        <span className={`flex-none text-[11.5px] font-semibold ${tone}`}>{word}</span>
-        <svg
-          aria-hidden='true'
-          viewBox='0 0 16 16'
-          className={`h-3.5 w-3.5 flex-none text-ink-3 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
-          fill='none'
-          stroke='currentColor'
-          strokeWidth='1.8'
-          strokeLinecap='round'
-          strokeLinejoin='round'>
-          <path d='M4 6l4 4 4-4' />
-        </svg>
-      </button>
+          <span className={`flex-none text-[11.5px] font-semibold ${tone}`}>{word}</span>
+          <svg
+            aria-hidden='true'
+            viewBox='0 0 16 16'
+            className={`h-3.5 w-3.5 flex-none text-ink-3 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
+            fill='none'
+            stroke='currentColor'
+            strokeWidth='1.8'
+            strokeLinecap='round'
+            strokeLinejoin='round'>
+            <path d='M4 6l4 4 4-4' />
+          </svg>
+        </button>
+        {/* a button of its own, beside the row and not inside it */}
+        <button
+          type='button'
+          aria-label={t`Forget ${what} · ${label}`}
+          title={t`Forget this one — nothing that was sent or copied is touched`}
+          onClick={onForget}
+          className='mr-1.5 grid size-7 flex-none place-items-center rounded-[9px] border-0 bg-transparent p-0 text-ink-3 hover:bg-line hover:text-ink'>
+          <Icon
+            name='close'
+            size={13}
+          />
+        </button>
+      </div>
       {open && (
         <div className='flex flex-col gap-1.5 px-3 pb-3'>
-          {reason && <p className='m-0 text-[12px] text-bin'>{reason}</p>}
+          {reason && (
+            <div className='flex flex-col gap-1'>
+              <p className='m-0 text-[12px] text-bin'>{reason.split('\n')[0]}</p>
+              {/* what the storage itself said, apart and quiet: for whoever has to look into it */}
+              {reason.includes('\n') && (
+                <p className='m-0 font-mono text-[10.5px] break-all text-ink-3'>
+                  {reason.slice(reason.indexOf('\n') + 1)}
+                </p>
+              )}
+            </div>
+          )}
           {transfer.items.length > 0 ? (
             <ProgressRows
-              rows={rowsOf(transfer)}
+              rows={rowsOf(transfer, dsmHost)}
               doing={t`Sending`}
               opened
             />
@@ -151,12 +193,27 @@ const Entry = ({
   )
 }
 
-const TransfersPanel = ({ stamp, onClose }: { stamp: string; onClose: () => void }) => {
-  const { transfers, forget } = useTransfers(stamp)
+const TransfersPanel = ({
+  stamp,
+  dsmHost,
+  onClose
+}: {
+  stamp: string
+  /* the storage's own address, to show a file that was in the way */
+  dsmHost?: string | null
+  onClose: () => void
+}) => {
+  const { transfers, forget, forgetOne } = useTransfers(stamp)
   /* the latest is open, for whoever came to see what just happened */
   const [chosen, setChosen] = useState<string | null | undefined>(undefined)
   const first = transfers?.[0]?.id ?? null
   const opened = chosen === undefined ? first : chosen
+  const forgetThis = async (id: string) => {
+    await routingEngine
+      .action({ url: '/api/transfers', actionArgs: { remove: id } })
+      .catch(() => null)
+    forgetOne(id)
+  }
   const clear = async () => {
     await routingEngine
       .action({ url: '/api/transfers', actionArgs: { clear: true } })
@@ -207,8 +264,10 @@ const TransfersPanel = ({ stamp, onClose }: { stamp: string; onClose: () => void
             <Entry
               key={transfer.id}
               transfer={transfer}
+              dsmHost={dsmHost}
               open={opened === transfer.id}
               onToggle={() => setChosen(opened === transfer.id ? null : transfer.id)}
+              onForget={() => void forgetThis(transfer.id)}
             />
           ))}
         </ol>

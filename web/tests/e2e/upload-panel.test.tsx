@@ -153,7 +153,7 @@ describe('an upload going', () => {
     await expect.element(panel()).toBeVisible()
     await expect.element(panel().getByText('luc_favre.full.zip')).toBeVisible()
     await expect.element(panel().getByRole('progressbar', { name: 'Sending luc_favre.mp4' })).toBeVisible()
-    await expect.element(panel().getByText('already there')).toBeVisible()
+    await expect.element(panel().getByText('already uploaded — not sent again')).toBeVisible()
     await page.screenshot({ path: './playwright-screenshots/upload-panel.png' })
   })
 
@@ -167,7 +167,7 @@ describe('an upload going', () => {
     await userEvent.click(panel().getByRole('button', { name: 'Open it out to see more' }))
 
     await expect.element(panel().getByText('/SkyDock/Tandems/luc-favre/luc_favre.mp4')).toBeVisible()
-    await expect.element(panel().getByText('already there', { exact: true }).first()).toBeVisible()
+    await expect.element(panel().getByText('already uploaded — not sent again', { exact: true }).first()).toBeVisible()
     await expect.element(panel().getByText('under way')).toBeVisible()
     expect(panel().element().getBoundingClientRect().width).toBeGreaterThan(small * 1.8)
     await page.screenshot({ path: './playwright-screenshots/upload-panel-opened.png' })

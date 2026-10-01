@@ -4,6 +4,7 @@ import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   clearTransfers,
+  removeTransfer,
   getTransfersPath,
   ITEMS_KEPT,
   KEPT,
@@ -115,5 +116,17 @@ describe('the history of transfers', () => {
 
     expect(readTransfers(outputDir)).toEqual([])
     expect(fs.existsSync(other)).toBe(true)
+  })
+
+  it('forgets one transfer and keeps the others', () => {
+    const first = recordTransfer(
+      { kind: 'upload', label: 'a', state: 'done', items: [] },
+      outputDir
+    )
+    recordTransfer({ kind: 'camera', label: 'b', state: 'done', items: [] }, outputDir)
+
+    removeTransfer(first.id, outputDir)
+
+    expect(readTransfers(outputDir).map((t) => t.label)).toEqual(['b'])
   })
 })

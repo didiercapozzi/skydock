@@ -1,4 +1,4 @@
-import { clearTransfers, getOutputDir, readTransfers } from '@skydock/scripts'
+import { clearTransfers, getOutputDir, readTransfers, removeTransfer } from '@skydock/scripts'
 import { z } from 'zod'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 
@@ -6,15 +6,17 @@ import { createValidatedFormAction } from '../../../packages/ui/forms/server'
    showed it going has gone (RULES, Transfers). */
 const loader = () => Response.json({ transfers: readTransfers(getOutputDir()) })
 
-const actionArgs = z.object({ clear: z.literal(true) })
+/* all of them forgotten, or just the one named */
+const actionArgs = z.object({ clear: z.literal(true).optional(), remove: z.string().optional() })
 
-/* The history forgotten. Only what is kept about what happened: nothing that was sent, copied or
-   recorded anywhere else is touched. */
+/* The history forgotten, all of it or one transfer of it. Only what is kept about what happened:
+   nothing that was sent, copied or recorded anywhere else is touched. */
 const action = createValidatedFormAction()({
   schema: actionArgs,
-  handler: () => {
-    clearTransfers(getOutputDir())
-    return { transfers: [] }
+  handler: ({ data }) => {
+    if (data.remove) removeTransfer(data.remove, getOutputDir())
+    else clearTransfers(getOutputDir())
+    return { transfers: readTransfers(getOutputDir()) }
   }
 })
 

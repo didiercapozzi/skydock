@@ -12,6 +12,7 @@ import { useState } from 'react'
 import { Go, Mini } from './buttons'
 import { kindOf } from './file-list'
 import { Icon } from './icons'
+import { dsmFolderUrl } from '../helpers/dsm'
 import { parcelsOfGroup } from '../helpers/parcels'
 import type { Inside, Parcel } from '../helpers/parcels'
 import { formatFilmSize, getFileUrl, getPictureUrl, hhmm, pad } from './utils'
@@ -565,58 +566,114 @@ const InsideList = ({ inside }: { inside: Inside[] }) => (
   </div>
 )
 
-const NasCard = ({ parcel }: { parcel: Parcel }) => (
-  <div className='mt-2.5 overflow-hidden rounded-[16px] shadow-[0_0_0_1px_var(--color-line)]'>
-    <div className='flex flex-wrap items-center gap-2.5 bg-well px-3.5 py-[11px] text-[12.5px]'>
-      <b className='font-bold'>{parcel.title}</b>
-      <span className='font-mono text-[11.5px] text-ink-3'>{parcel.dir}</span>
-      <span className='ml-auto text-[11.5px] text-ink-3'>{parcel.tag}</span>
-    </div>
-    <div className='px-1.5 py-1'>
-      {parcel.items.map((item) => (
-        <div key={item.key}>
-          <div className='flex items-center gap-2.5 rounded-[9px] px-2 py-1.5 hover:bg-well'>
+const NasCard = ({
+  parcel,
+  dsmHost,
+  gone
+}: {
+  parcel: Parcel
+  dsmHost?: string | null
+  /* where each item the storage no longer holds was: its folder and name */
+  gone?: Set<string>
+}) => {
+  /* its folder in the storage's own web interface, opened in a new tab: what is up there is looked
+     for there, and each file is shown by the folder it is in */
+  const dsm = dsmHost ? dsmFolderUrl(dsmHost, parcel.dir) : null
+  return (
+    <div className='mt-2.5 overflow-hidden rounded-[16px] shadow-[0_0_0_1px_var(--color-line)]'>
+      <div className='flex flex-wrap items-center gap-2.5 bg-well px-3.5 py-[11px] text-[12.5px]'>
+        <b className='font-bold'>{parcel.title}</b>
+        {dsm ? (
+          <a
+            href={dsm}
+            target='_blank'
+            rel='noreferrer'
+            title={t`Show this folder in the storage’s own web interface, in a new tab`}
+            className='font-mono text-[11.5px] text-accent-ink hover:underline'>
+            {parcel.dir}
+          </a>
+        ) : (
+          <span className='font-mono text-[11.5px] text-ink-3'>{parcel.dir}</span>
+        )}
+        <span className='ml-auto text-[11.5px] text-ink-3'>{parcel.tag}</span>
+      </div>
+      <div className='px-1.5 py-1'>
+        {parcel.items.map((item) => {
+          /* what was sent and is not there now: said so, and nothing to open */
+          const missing = gone?.has(`${parcel.dir}/${item.name}`) ?? false
+          return (
+            <div key={item.key}>
+              <a
+                href={dsm && !missing ? dsm : undefined}
+                target='_blank'
+                rel='noreferrer'
+                title={
+                  dsm && !missing
+                    ? t`Show it in the storage’s own web interface, in a new tab`
+                    : undefined
+                }
+                className={`flex items-center gap-2.5 rounded-[9px] px-2 py-1.5 text-ink no-underline hover:bg-well ${dsm && !missing ? 'cursor-pointer' : 'cursor-default'}`}>
+                <Icon
+                  name={item.icon}
+                  size={14}
+                  className='text-ink-3'
+                />
+                <span
+                  className={`min-w-0 truncate text-[12.5px] font-medium ${missing ? 'text-ink-3 line-through' : ''}`}>
+                  {item.name}
+                </span>
+                {missing && (
+                  <span className='inline-flex h-[22px] flex-none items-center rounded-full bg-local-soft px-[9px] text-[11.5px] font-bold whitespace-nowrap text-local'>
+                    {t`no longer on the storage`}
+                  </span>
+                )}
+                {item.size ? (
+                  <span className='text-[11.5px] text-ink-3'>{formatFilmSize(item.size)}</span>
+                ) : null}
+                <span className='mr-1 ml-auto text-[11.5px] text-ink-3'>{item.what}</span>
+              </a>
+              {item.inside && !missing && <InsideList inside={item.inside} />}
+            </div>
+          )
+        })}
+        {parcel.shareUrl && (
+          <div className='mt-1 flex items-center gap-2.5 border-t border-line-2 px-2 pt-2 pb-1.5'>
             <Icon
-              name={item.icon}
+              name='link'
               size={14}
               className='text-ink-3'
             />
-            <span className='min-w-0 truncate text-[12.5px] font-medium'>{item.name}</span>
-            {item.size ? (
-              <span className='text-[11.5px] text-ink-3'>{formatFilmSize(item.size)}</span>
-            ) : null}
-            <span className='mr-1 ml-auto text-[11.5px] text-ink-3'>{item.what}</span>
+            <a
+              href={parcel.shareUrl}
+              target='_blank'
+              rel='noreferrer'
+              className='truncate font-mono text-[11px] text-accent-ink hover:underline'>
+              {parcel.shareUrl}
+            </a>
           </div>
-          {item.inside && <InsideList inside={item.inside} />}
-        </div>
-      ))}
-      {parcel.shareUrl && (
-        <div className='mt-1 flex items-center gap-2.5 border-t border-line-2 px-2 pt-2 pb-1.5'>
-          <Icon
-            name='link'
-            size={14}
-            className='text-ink-3'
-          />
-          <a
-            href={parcel.shareUrl}
-            target='_blank'
-            rel='noreferrer'
-            className='truncate font-mono text-[11px] text-accent-ink hover:underline'>
-            {parcel.shareUrl}
-          </a>
-        </div>
-      )}
+        )}
+      </div>
     </div>
-  </div>
-)
+  )
+}
 
 /* every parcel of a montage, as handed over */
-const ParcelCards = ({ parcels }: { parcels: Parcel[] }) => (
+const ParcelCards = ({
+  parcels,
+  dsmHost,
+  gone
+}: {
+  parcels: Parcel[]
+  dsmHost?: string | null
+  gone?: Set<string>
+}) => (
   <>
     {parcels.map((parcel) => (
       <NasCard
         key={parcel.key}
         parcel={parcel}
+        dsmHost={dsmHost}
+        gone={gone}
       />
     ))}
   </>
@@ -645,8 +702,20 @@ const GoneFromStorage = ({ gone, at }: { gone: { remotePath: string }[]; at?: nu
   )
 }
 
-const UploadedCards = ({ group }: { group: ManifestGroup }) => (
-  <ParcelCards parcels={parcelsOfGroup(group)} />
+const UploadedCards = ({
+  group,
+  dsmHost,
+  gone
+}: {
+  group: ManifestGroup
+  dsmHost?: string | null
+  gone?: Set<string>
+}) => (
+  <ParcelCards
+    parcels={parcelsOfGroup(group)}
+    dsmHost={dsmHost}
+    gone={gone}
+  />
 )
 
 export {

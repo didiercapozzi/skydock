@@ -3,6 +3,7 @@ import { msg, plural, t } from '@lingui/core/macro'
 import { useState } from 'react'
 import { z } from 'zod'
 import type { StorageFile } from '../../../packages/skydock-scripts/src/storageEntry'
+import { dsmFolderUrl } from '../helpers/dsm'
 import { routingEngine } from '../helpers/routing'
 import { refusalSchema } from '../hooks/useBoardState'
 import { useStorageFolder } from '../hooks/useStorageFolder'
@@ -137,9 +138,14 @@ const LinkButtons = ({
    passenger's — listed and played from here whether or not any of it is still on this machine. Each
    file says whether it is here too, because "only on the storage" is the one that cannot be made
    again from this board. */
+/* the row's own control, whether it plays or opens the storage's interface */
+const ROW =
+  'flex h-full min-w-0 flex-1 items-center gap-3.5 rounded-[13px] border-0 bg-transparent px-3 text-left no-underline enabled:hover:bg-well disabled:cursor-default'
+
 const StorageFolder = ({
   where,
   stamp,
+  dsmHost,
   hereToo,
   onBringBack,
   onProblem
@@ -147,6 +153,8 @@ const StorageFolder = ({
   where: StorageWhere
   /* changes when the folder is worth asking for again — after an upload */
   stamp?: unknown
+  /* the storage's own address, so each file can be shown in its web interface: where it is known */
+  dsmHost?: string | null
   /* the names of the delivered files this machine still holds, where that is known: on a place's
      own page it is, and each file then says whether it is here too */
   hereToo?: Set<string>
@@ -222,6 +230,7 @@ const StorageFolder = ({
         <ul className='m-0 flex list-none flex-col p-0'>
           {files.map((file) => {
             const playable = file.kind !== 'other'
+            const dsm = dsmHost ? dsmFolderUrl(dsmHost, file.path) : null
             const here = hereToo?.has(file.name) ?? false
             /* when it was shot, as its name says; the storage's own date is only a stand-in for a
                file not named by SkyDock, and says what it is */
@@ -234,50 +243,111 @@ const StorageFolder = ({
               <li
                 key={file.path}
                 className='flex h-[60px] items-center gap-2'>
-                <button
-                  type='button'
-                  disabled={!playable}
-                  onClick={() => setPlaying(file)}
-                  title={playable ? t`Play it from the storage` : t`Kept on the storage`}
-                  className='flex h-full min-w-0 flex-1 items-center gap-3.5 rounded-[13px] border-0 bg-transparent px-3 text-left enabled:hover:bg-well disabled:cursor-default'>
-                  <Icon
-                    name='storage'
-                    size={15}
-                    className='text-ink-3'
-                  />
-                  <span className='flex min-w-0 flex-1 flex-col'>
-                    <span className='truncate font-mono text-[12.5px] tracking-[-0.02em] text-ink'>
-                      {file.name}
+                {dsm ? (
+                  <a
+                    href={dsm}
+                    target='_blank'
+                    rel='noreferrer'
+                    title={t`Show it in the storage’s own web interface, in a new tab`}
+                    className={`${ROW} hover:bg-well`}>
+                    <Icon
+                      name='storage'
+                      size={15}
+                      className='text-ink-3'
+                    />
+                    <span className='flex min-w-0 flex-1 flex-col'>
+                      <span className='truncate font-mono text-[12.5px] tracking-[-0.02em] text-ink'>
+                        {file.name}
+                      </span>
+                      <span
+                        title={
+                          file.shot
+                            ? t`Shot then, as its name says`
+                            : file.mtime
+                              ? t`Put on the storage then — its name does not say when it was shot`
+                              : undefined
+                        }
+                        className='truncate text-[12px] font-medium text-ink-3'>
+                        {[
+                          i18n._(KIND[file.kind]),
+                          file.size === null ? null : formatSize(file.size),
+                          when
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
                     </span>
-                    <span
-                      title={
-                        file.shot
-                          ? t`Shot then, as its name says`
-                          : file.mtime
-                            ? t`Put on the storage then — its name does not say when it was shot`
-                            : undefined
-                      }
-                      className='truncate text-[12px] font-medium text-ink-3'>
-                      {[
-                        i18n._(KIND[file.kind]),
-                        file.size === null ? null : formatSize(file.size),
-                        when
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
+                    {hereToo && (
+                      <span
+                        className={`inline-flex h-[22px] flex-none items-center gap-1.5 rounded-full px-[9px] text-[11.5px] font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:content-[''] ${
+                          here
+                            ? 'bg-up-soft text-up before:bg-current'
+                            : 'bg-well text-up before:shadow-[inset_0_0_0_2px_currentColor]'
+                        }`}>
+                        {here ? t`Here too` : t`Only there`}
+                      </span>
+                    )}
+                  </a>
+                ) : (
+                  <button
+                    type='button'
+                    disabled={!playable}
+                    onClick={() => setPlaying(file)}
+                    title={playable ? t`Play it from the storage` : t`Kept on the storage`}
+                    className={ROW}>
+                    <Icon
+                      name='storage'
+                      size={15}
+                      className='text-ink-3'
+                    />
+                    <span className='flex min-w-0 flex-1 flex-col'>
+                      <span className='truncate font-mono text-[12.5px] tracking-[-0.02em] text-ink'>
+                        {file.name}
+                      </span>
+                      <span
+                        title={
+                          file.shot
+                            ? t`Shot then, as its name says`
+                            : file.mtime
+                              ? t`Put on the storage then — its name does not say when it was shot`
+                              : undefined
+                        }
+                        className='truncate text-[12px] font-medium text-ink-3'>
+                        {[
+                          i18n._(KIND[file.kind]),
+                          file.size === null ? null : formatSize(file.size),
+                          when
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
                     </span>
-                  </span>
-                  {hereToo && (
-                    <span
-                      className={`inline-flex h-[22px] flex-none items-center gap-1.5 rounded-full px-[9px] text-[11.5px] font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:content-[''] ${
-                        here
-                          ? 'bg-up-soft text-up before:bg-current'
-                          : 'bg-well text-up before:shadow-[inset_0_0_0_2px_currentColor]'
-                      }`}>
-                      {here ? t`Here too` : t`Only there`}
-                    </span>
-                  )}
-                </button>
+                    {hereToo && (
+                      <span
+                        className={`inline-flex h-[22px] flex-none items-center gap-1.5 rounded-full px-[9px] text-[11.5px] font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:content-[''] ${
+                          here
+                            ? 'bg-up-soft text-up before:bg-current'
+                            : 'bg-well text-up before:shadow-[inset_0_0_0_2px_currentColor]'
+                        }`}>
+                        {here ? t`Here too` : t`Only there`}
+                      </span>
+                    )}
+                  </button>
+                )}
+                {/* the player is a button of its own once the row itself opens the storage's interface,
+                    and only a video is watched */}
+                {dsm && file.kind === 'video' && (
+                  <Mini
+                    title={t`Watch it from the storage`}
+                    onClick={() => setPlaying(file)}>
+                    <Icon
+                      name='play'
+                      size={12}
+                      className='text-ink-2'
+                    />
+                    {t`Watch`}
+                  </Mini>
+                )}
                 {/* the one thing that cannot be done from anywhere else: what is only up there is
                     footage this machine no longer holds, and this is the way back */}
                 {onBringBack && hereToo && !here && (

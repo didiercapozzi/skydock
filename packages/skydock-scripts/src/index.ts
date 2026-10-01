@@ -154,6 +154,7 @@ import type {
 } from './types'
 import {
   goneFromStorage,
+  goneSent,
   groupsInScope,
   listRemoteFiles,
   scopeKey,
@@ -172,6 +173,7 @@ import {
 import type { UploadItem, UploadProgressState } from './uploadProgress'
 import {
   clearTransfers,
+  removeTransfer,
   readTransfers,
   recordTransfer,
   transferSchema,
@@ -201,6 +203,7 @@ import { isFiled, isMontage } from './filed'
 
 export {
   clearTransfers,
+  removeTransfer,
   readTransfers,
   recordTransfer,
   transferSchema,
@@ -281,6 +284,7 @@ export {
   getOutputDir,
   gmailComposeUrl,
   goneFromStorage,
+  goneSent,
   groupsInScope,
   hasCompletePassenger,
   hasEdit,

@@ -96,6 +96,73 @@ describe('a montage only the storage has', () => {
     await page.screenshot({ path: './playwright-screenshots/montage-parcels.png' })
   })
 
+  /* what is up there is looked for in the storage's own web interface: each file, and each folder, is
+     a link that opens File Station on the folder, in a new tab */
+  test('links each file and folder to the storage’s own web interface', async () => {
+    await openStorage(base)
+    await userEvent.click(page.getByRole('button', { name: 'Contents' }))
+
+    const film = page.getByRole('link', { name: /ana_roth_20260728\.mp4/ })
+    await expect.element(film).toBeVisible()
+    const link = film.element()
+    expect(link.getAttribute('target')).toBe('_blank')
+    const href = link.getAttribute('href') ?? ''
+    expect(href.startsWith('https://nas.local/index.cgi?launchApp=SYNO.SDS.App.FileStation3.Instance')).toBe(true)
+    expect(decodeURIComponent(decodeURIComponent(href.split('launchParam=')[1] ?? ''))).toBe(
+      `openfile=${DIR}/ana-roth`
+    )
+  })
+
+  /* what the upload handed over and the storage no longer holds is said so, and has nothing to open */
+  test('says an item is no longer on the storage once its folder no longer lists it', async () => {
+    const held = {
+      ...base,
+      groups: [
+        {
+          id: 'g1',
+          label: 'jump',
+          day: '28.07.2026',
+          montageJump: true,
+          passenger: { firstname: 'Ana', lastname: 'Roth' },
+          processed: true,
+          files: [clip(1)],
+          uploaded: {
+            at: 1_785_000_000,
+            sent: [
+              { name: 'ana_roth_20260728.mp4', holds: ['film'], to: [`${DIR}/ana-roth`], size: 3 * GB },
+              { name: 'ana_roth_20260728.project.zip', holds: ['project'], to: [`${DIR}/ana-roth`], size: GB, zip: true, contents: ['x.kdenlive'] }
+            ]
+          }
+        }
+      ],
+      remote: {
+        ok: true,
+        dirs: [`${DIR}/ana-roth`],
+        sizes: { [`${DIR}/ana-roth/ana_roth_20260728.mp4`]: 3 * GB },
+        at: 1_785_000_100
+      }
+    }
+    const Stub = createRoutesStub([
+      boardRoute(() => held),
+      { path: '/api/manifest', action: async () => ({ ok: true }) },
+      { path: '/api/nas', action: async () => ({ ok: true }) },
+      { path: '/api/storage-folder', loader: () => ({ ok: false, reason: 'test' }) },
+      { path: '/api/remote-files', loader: () => ({ ok: false, reason: 'test' }) }
+    ])
+    await render(createElement(Stub, { initialEntries: ['/'] }))
+    await userEvent.click(
+      page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /Ana Roth/ })
+    )
+
+    await expect.element(page.getByText('ana_roth_20260728.project.zip')).toBeVisible()
+    await expect.element(page.getByText('no longer on the storage')).toBeVisible()
+    /* it is still there to read, but is no link into the storage's interface */
+    expect(
+      page.getByText('ana_roth_20260728.project.zip').element().closest('a')?.hasAttribute('href')
+    ).toBe(false)
+    await expect.element(page.getByRole('link', { name: /ana_roth_20260728\.mp4/ })).toBeVisible()
+  })
+
   test('opens its contents when its row is pressed, and closes them when pressed again', async () => {
     await openStorage(base)
 

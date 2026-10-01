@@ -887,18 +887,27 @@ msgstr "alles oben"
 msgid "already here"
 msgstr "schon hier"
 
+#: app/components/transfers-panel.tsx
+#: app/components/upload-panel.tsx
+msgid "already on the storage"
+msgstr "bereits auf dem Speicher"
+
 #: app/components/inspector.tsx
 msgid "Already processed — a new name means processing it again, into the new folder."
 msgstr "Schon aufbereitet — ein neuer Name bedeutet, es erneut aufzubereiten, in den neuen Ordner."
 
 #: app/components/progress-panel.tsx
-#: app/components/upload-panel.tsx
 msgid "already there"
 msgstr "schon dort"
 
 #: app/components/inspector.tsx
 msgid "Already uploaded — a new name means processing and uploading again, and the old folder stays on the storage under the old name."
 msgstr "Schon hochgeladen — ein neuer Name bedeutet erneutes Aufbereiten und Hochladen, und der alte Ordner bleibt unter dem alten Namen auf dem Speicher."
+
+#: app/components/transfers-panel.tsx
+#: app/components/upload-panel.tsx
+msgid "already uploaded — not sent again"
+msgstr "bereits hochgeladen — nicht erneut gesendet"
 
 #: app/components/shortcuts-dialog.tsx
 msgid "Alt or Ctrl while dropping"
@@ -1874,6 +1883,14 @@ msgid "For a camera mounted sideways or upside down."
 msgstr "Für eine seitlich oder kopfüber montierte Kamera."
 
 #: app/components/transfers-panel.tsx
+msgid "Forget {what} · {label}"
+msgstr "{what} · {label} vergessen"
+
+#: app/components/transfers-panel.tsx
+msgid "Forget this one — nothing that was sent or copied is touched"
+msgstr "Diesen vergessen — nichts, was gesendet oder kopiert wurde, wird angetastet"
+
+#: app/components/transfers-panel.tsx
 msgid "Forget what is listed here — nothing that was sent or copied is touched"
 msgstr "Vergessen, was hier aufgelistet ist — nichts, was gesendet oder kopiert wurde, wird angetastet"
 
@@ -2074,10 +2091,6 @@ msgstr "Inhalt ausblenden"
 #: app/components/board-header.tsx
 msgid "Hide details"
 msgstr "Details ausblenden"
-
-#: app/components/storage-list.tsx
-msgid "Hide files"
-msgstr "Dateien ausblenden"
 
 #: app/components/progress-panel.tsx
 msgid "Hide the list"
@@ -2339,10 +2352,6 @@ msgstr "Link ungültig"
 msgid "List"
 msgstr "Liste"
 
-#: app/components/storage-list.tsx
-msgid "List what its folder on the storage holds, and watch it from here"
-msgstr "Auflisten, was sein Ordner auf dem Speicher enthält, und ihn von hier aus verfolgen"
-
 #: app/components/nas-folder-browser.tsx
 msgid "Loading…"
 msgstr "Wird geladen…"
@@ -2352,6 +2361,7 @@ msgid "local"
 msgstr "lokal"
 
 #: app/components/inspector.tsx
+#: app/routes/place.tsx
 msgid "Local"
 msgstr "Lokal"
 
@@ -2608,6 +2618,7 @@ msgstr "Hier gibt es keine Ordner. Leg einen an oder nimm diesen Ordner, wie er 
 msgid "no height or speed — this camera wrote none"
 msgstr "keine Höhe oder Geschwindigkeit — diese Kamera hat keine aufgezeichnet"
 
+#: app/components/montage-card.tsx
 #: app/components/storage-list.tsx
 msgid "no longer on the storage"
 msgstr "nicht mehr auf dem Speicher"
@@ -2796,6 +2807,10 @@ msgstr "des Bildes"
 msgid "off the board and out of the originals, moved to the bin, not erased. They can be brought back from the Bin page. If the camera card has been wiped, the bin holds the only copy."
 msgstr "vom Board und aus den Originalen entfernt, in den Papierkorb verschoben, nicht gelöscht. Sie lassen sich auf der Seite Papierkorb zurückholen. Wurde die Kamerakarte geleert, ist der Papierkorb die einzige Kopie."
 
+#: app/components/storage-list.tsx
+msgid "On the board"
+msgstr "Auf dem Board"
+
 #: app/components/camera-files.tsx
 msgid "On the camera"
 msgstr "Auf der Kamera"
@@ -2825,6 +2840,7 @@ msgstr "auf dem Speicher"
 #: app/components/storage-folder.tsx
 #: app/components/storage-list.tsx
 #: app/helpers/places.ts
+#: app/routes/place.tsx
 msgid "On the storage"
 msgstr "Auf dem Speicher"
 
@@ -2864,6 +2880,10 @@ msgstr "nur diese Datei wird verschoben — der Rest des Sprungs bleibt"
 #: app/components/storage-list.tsx
 msgid "Open"
 msgstr "Öffnen"
+
+#: app/components/progress-panel.tsx
+msgid "Open in DSM"
+msgstr "In DSM öffnen"
 
 #: app/components/montage-card.tsx
 #: app/components/montage-steps.tsx
@@ -3499,6 +3519,16 @@ msgstr "Alles anzeigen"
 msgid "Show fewer"
 msgstr "Weniger anzeigen"
 
+#: app/components/montage-card.tsx
+#: app/components/storage-folder.tsx
+msgid "Show it in the storage’s own web interface, in a new tab"
+msgstr "Im Web-Interface des Speichers anzeigen, in einem neuen Tab"
+
+#: app/components/progress-panel.tsx
+#: app/components/storage-list.tsx
+msgid "Show its folder in the storage’s own web interface, in a new tab"
+msgstr "Ihren Ordner im Web-Interface des Speichers anzeigen, in einem neuen Tab"
+
 #: app/components/place-pane.tsx
 msgid "Show only the {photos} photos"
 msgstr "Nur die {photos} Fotos anzeigen"
@@ -3510,6 +3540,14 @@ msgstr "Nur die {videos} Videos anzeigen"
 #: app/components/progress-panel.tsx
 msgid "Show the list"
 msgstr "Liste anzeigen"
+
+#: app/components/notice.tsx
+msgid "Show the transfer that failed"
+msgstr "Die fehlgeschlagene Übertragung anzeigen"
+
+#: app/components/montage-card.tsx
+msgid "Show this folder in the storage’s own web interface, in a new tab"
+msgstr "Diesen Ordner im Web-Interface des Speichers anzeigen, in einem neuen Tab"
 
 #: app/components/email-dialog.tsx
 msgid "Shown as it will arrive — write in it; the signature stays for every email"
@@ -4372,13 +4410,17 @@ msgstr "Videos oder Fotos"
 msgid "waiting"
 msgstr "wartet"
 
+#: app/components/storage-folder.tsx
+msgid "Watch"
+msgstr "Ansehen"
+
+#: app/components/storage-folder.tsx
+msgid "Watch it from the storage"
+msgstr "Vom Speicher aus ansehen"
+
 #: app/components/montage-card.tsx
 msgid "Watch the film here"
 msgstr "Film hier ansehen"
-
-#: app/components/storage-list.tsx
-msgid "Watch…"
-msgstr "Ansehen…"
 
 #: app/components/history-dialog.tsx
 msgid "What changed on the board"
@@ -4452,6 +4494,10 @@ msgstr "Wo der Sprung liegt"
 #: app/components/montage-steps.tsx
 msgid "Where this montage has got to"
 msgstr "Wie weit diese Montage ist"
+
+#: app/routes/place.tsx
+msgid "Where to look"
+msgstr "Wo nachsehen"
 
 #: app/components/comparison-dialog.tsx
 msgid "Which date should the merged jump have? The chosen jump keeps its times."

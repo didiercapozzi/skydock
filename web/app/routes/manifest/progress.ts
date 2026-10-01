@@ -72,13 +72,14 @@ const uploadReporter = ({
                 ? 'done'
                 : item.state === 'there'
                   ? 'skipped'
-                  : item.state === 'failed'
+                  : item.state === 'failed' || item.state === 'taken'
                     ? 'failed'
                     : 'left'
             return {
               name: item.name,
               size: item.size,
               ...(item.to ? { to: item.to } : {}),
+              ...(item.state === 'taken' ? { note: 'taken' } : {}),
               result
             }
           })
@@ -130,6 +131,14 @@ const uploadReporter = ({
           size: file.size,
           to: file.to,
           state: 'waiting'
+        })
+      for (const file of plan.taken)
+        put({
+          key: `${file.to}/${file.name}`,
+          name: file.name,
+          size: file.size,
+          to: file.to,
+          state: 'taken'
         })
       for (const file of plan.there)
         put({

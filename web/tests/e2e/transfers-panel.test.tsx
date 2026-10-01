@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { TransfersPanel } from '../../app/components/transfers-panel'
+import { Notice } from '../../app/components/notice'
 
 /* What was sent and copied, opened again after the panels that showed it going have gone (RULES,
    Transfers): the latest open, the others a click away, and all of it forgotten on request. */
@@ -29,15 +30,21 @@ const camera = {
   passedOver: 3
 }
 
+const sent: string[] = []
+
 const answers = (transfers: unknown[]) =>
-  vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) =>
-    Response.json({ transfers: init?.method === 'POST' ? [] : transfers })
-  )
+  vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) => {
+    if (init?.method === 'POST') sent.push(String(init.body))
+    return Response.json({ transfers: init?.method === 'POST' ? [] : transfers })
+  })
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  sent.length = 0
+  vi.unstubAllGlobals()
+})
 
-const panel = (onClose = vi.fn()) =>
-  render(createElement(TransfersPanel, { stamp: '', onClose }))
+const panel = (onClose = vi.fn(), dsmHost?: string) =>
+  render(createElement(TransfersPanel, { stamp: '', dsmHost, onClose }))
 
 describe('the transfers panel', () => {
   test('lists each transfer, the latest open to show what it did', async () => {
@@ -52,6 +59,26 @@ describe('the transfers panel', () => {
     await userEvent.click(page.getByText(/Copied off · GoPro/))
     await expect.element(page.getByText('GX01.MP4')).toBeVisible()
     await expect.element(page.getByText('The camera was unplugged')).toBeVisible()
+  })
+
+  test('names a file that was in the way, linked to its folder on the storage', async () => {
+    answers([
+      {
+        id: 'c',
+        kind: 'upload',
+        label: 'Vincent',
+        at: 1_785_100_000,
+        state: 'failed',
+        reason: 'a.zip is already on the storage, with other contents, so nothing was sent.',
+        items: [{ name: 'a.zip', size: 10, to: '/home/tmp/Backup', result: 'failed', note: 'taken' }]
+      }
+    ])
+    await panel(vi.fn(), 'https://nas.example:5001')
+
+    await expect.element(page.getByText('already on the storage', { exact: true })).toBeVisible()
+    const link = page.getByRole('link', { name: 'Open in DSM' }).element() as HTMLAnchorElement
+    expect(link.target).toBe('_blank')
+    expect(decodeURIComponent(decodeURIComponent(link.href))).toContain('openfile=/home/tmp/Backup/a.zip')
   })
 
   test('says so when nothing was ever done', async () => {
@@ -72,5 +99,34 @@ describe('the transfers panel', () => {
 
     await userEvent.click(page.getByRole('button', { name: 'Close' }))
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  /* one forgotten, the others kept: a cross on each, beside it and not inside it */
+  test('forgets one transfer and keeps the others', async () => {
+    answers([upload, camera])
+    await panel()
+
+    await userEvent.click(page.getByRole('button', { name: /Forget Uploaded · Luc Favre/ }))
+
+    await expect.element(page.getByText(/Uploaded · Luc Favre/)).not.toBeInTheDocument()
+    await expect.element(page.getByText(/Copied off · GoPro/)).toBeVisible()
+    expect(sent.join('')).toContain('"remove":"a"')
+    expect(sent.join('')).not.toContain('clear')
+  })
+})
+
+describe('the line that says a transfer failed', () => {
+  test('is a way into the transfers when it is about one', async () => {
+    const opened = vi.fn()
+    await render(
+      createElement(Notice, {
+        problem: true,
+        onClose: vi.fn(),
+        onOpen: opened,
+        children: 'a.zip is in the way'
+      })
+    )
+    await userEvent.click(page.getByRole('button', { name: 'a.zip is in the way' }))
+    expect(opened).toHaveBeenCalledOnce()
   })
 })

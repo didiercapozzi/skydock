@@ -26,7 +26,13 @@ const useTransfers = (stamp: string) => {
     }
   }, [stamp])
 
-  return { transfers, forget: () => setTransfers([]) }
+  return {
+    transfers,
+    forget: () => setTransfers([]),
+    /* one of them forgotten, the others kept */
+    forgetOne: (id: string) =>
+      setTransfers((now) => (now === null ? now : now.filter((transfer) => transfer.id !== id)))
+  }
 }
 
 export { useTransfers }

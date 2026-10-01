@@ -84,7 +84,8 @@ Everything below follows from these.
 - **A file's state is a fact that can be checked, not a flag to remember.** Every claim SkyDock makes
   about a file — processed, on the storage — is backed by evidence it can look at again.
 - **Nothing on the network storage is ever deleted by SkyDock.** It uploads and creates folders; a file
-  asked to be sent again over one already there is moved into a bin first, never written over. Taking
+  asked to be sent again over one already there is never written over, nor moved: the upload does not
+  start, and says which files are in the way. Taking
   something off the storage is done by a person, in the storage's own interface. SkyDock's part is to
   notice. A link is not a file: taking a link away leaves what it pointed at exactly where it was.
 - **Not knowing is not evidence.** When the storage did not answer or a check failed, SkyDock keeps what
@@ -945,13 +946,13 @@ picked for it, and the header carries only what is about the storage as a whole.
 **A place is connected to its folder.** A dropzone's page and a montage's page each end with what
 their folder on the storage holds — the very folder their uploads go to, and for a montage already
 uploaded the one it actually went to — so what is up there is listed, and watched, from the board
-whether or not any of it is still on this machine: a freed montage, last month's days at a dropzone.
+whether or not any of it is still on this machine: a freed montage, last month's days at a dropzone. A montage that has been uploaded is in two places, here and up there, so its page has two tabs, _Local_ and _On the storage_, and shows one at a time: it opens on _Local_, which for a montage freed from this machine is how it was handed over.
 Each file says what it is, how big, when it was shot — read off its name, which SkyDock gives every
 file it delivers, since the storage's own date for anything sent before files kept theirs is the day it
 was sent — and whether it is here too or only on the storage. A file SkyDock did not name shows when it
 was put there instead, and says so.
-A video or a photo is played by clicking it, streamed from the storage through the board, so a film is
-scrubbed without being downloaded first; an archive is listed and not opened. The storage's list of
+A video or a photo is played by clicking it (or its _Watch_ button, where a click opens the storage's interface), streamed from the storage through the board, so a film is
+scrubbed without being downloaded first; an archive is listed and not opened. Where the storage's address is known, pressing any file the board lists as being on the storage — in a place's folder, in the storage's list, or among what an upload handed over — opens the storage's own web interface, File Station, on the folder that holds it, in a new browser tab; so does a folder's own name. Watching a film from here is then a _Watch_ button on the row of a video — a photo has none — and on the storage's list a montage's _Open_ opens its folder in that interface, where it used to list its files in place. It is only a link, so nothing is sent to the storage from here, and the storage's own sign-in applies as ever. The storage's list of
 montages lists and plays each montage's folder the same way, including ones this machine never held,
 without saying which files are also here. All of it only reads what a folder holds: nothing is
 fetched, and only files inside the folders SkyDock uploads into are ever opened.
@@ -966,10 +967,11 @@ places; asking is refused and says why.
 **Sending what changed.** A file with the same name and size on the storage is checksummed on both
 sides and skipped only if they match. Anything uncertain is sent. A file whose name is already taken
 up there by different bytes — a clip prepared again after its trim was put right, a film rendered
-again — is not written over: what is there is moved into a bin on the storage first, beside the
-folder it was delivered into, under the moment it was replaced, and SkyDock never empties that bin.
-If the storage will not move it aside, the upload stops there and says which file; what was already
-sent stands. The board reports what is happening throughout: how many files are being checked, which
+again — is not written over, and is not moved or renamed by SkyDock either. Before anything is sent,
+every folder of the upload is looked at, and if any file is in the way the whole upload does not
+start: nothing is sent, the board says so, and each file in the way is listed with a link that opens
+its folder in the storage's own web interface, in a new tab, where a person renames or deletes it, where a person renames or deletes it. The list of transfers opens by itself when an upload is turned away this way.
+The upload is then started again. The board reports what is happening throughout: how many files are being checked, which
 one is being sent and how far it is, and how many were already there.
 
 **One upload at a time, shown wherever you are.** Only one upload goes at a time — a dropzone or a
@@ -1049,7 +1051,7 @@ be given one: a link is a way in, and anybody holding it fetches that file witho
 **Noticing deletions.** SkyDock looks at the storage when the board opens, when a place is opened,
 right after an upload, and when the check button is pressed — never on a timer. A file it can no
 longer find stops counting as uploaded and is ready to be sent again; the local file is untouched.
-Between those moments the board says what it last proved.
+Between those moments the board says what it last proved. The same look covers every folder an upload put something in, not only each part's first: an item of what was handed over that its folder no longer lists is struck through on the montage's cards with _no longer on the storage_, and has nothing to open.
 
 ## Where the jump is in a clip
 
@@ -1321,7 +1323,7 @@ it, listing every item with its size, where it went and what became of it, and w
 something did. It is kept on this machine, so it is there after a reload or a restart: the last 30
 transfers, and of each at most 400 items — what was done comes before what was passed over, and what is not
 listed is counted and said, never dropped silently. A camera plugged in again with nothing new to copy
-records nothing. **Clear** forgets the list and nothing else: nothing that was sent or copied is touched.
+records nothing. **Clear** forgets the list, and a small cross on a transfer forgets that one and keeps the others: in both, nothing that was sent or copied is touched.
 
 ## Freeing space
 

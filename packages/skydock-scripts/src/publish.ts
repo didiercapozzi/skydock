@@ -55,7 +55,14 @@ type CheckProgress = { checked: number; total: number; filename: string }
 /* What one folder's upload is about to do, once it has looked: every file it will send, and every
    one the storage already holds — so what is shown lists it all before a byte moves. */
 type PlannedFile = { name: string; size: number; to: string }
-type PlanProgress = { send: PlannedFile[]; there: PlannedFile[] }
+/* `taken` is what cannot be sent: a file of that name is on the storage already, holding other bytes */
+type PlanProgress = { send: PlannedFile[]; there: PlannedFile[]; taken: PlannedFile[] }
+
+/* an upload that stopped before sending anything, because the storage holds files under the names
+   it would send — SkyDock never writes over what is up there, nor moves it: a person does, there */
+class UploadBlocked extends Error {
+  override name = 'UploadBlocked'
+}
 
 /* footage the storage already holds, wanted in another of its folders: it copies it to itself
    rather than being sent it again */
@@ -231,15 +238,11 @@ const uploadFile = async (
    reliably say whether it is there. */
 const BIN = '.skydock-trash'
 
-/* one step above the folder the file is in, unless that folder is a share, which has nothing above */
 const binFor = (remotePath: string, at: Date) => {
   const folder = parentOf(remotePath)
   const above = parentOf(folder)
   return `${above === '/' || above === '' ? folder : above}/${BIN}/${stampOf(at)}`
 }
-
-const moveAside = async (host: string, sid: string, remotePath: string, at: Date) =>
-  await dsmCopyMove(host, sid, remotePath, binFor(remotePath, at))
 
 /* `path.relative(dir, dir)` is '', not '.', and joining that on produced a trailing slash —
    which DSM refuses with error 418, "illegal name or path". Only reachable since flat fun jumps
@@ -414,18 +417,20 @@ const planUpload = async ({
   }
 }
 
-const publishJump = async (
-  args: PublishArgs & {
-    origins?: {
-      index: OriginIndex
-      of: (localPath: string) => { from?: string; cut?: [number, number] } | undefined
-    }
-  },
-  handlers?: {
-    onProgress?: (progress: UploadProgress) => void
-    onCheck?: (progress: CheckProgress) => void
-    onPlan?: (plan: PlanProgress) => void
+type JumpArgs = PublishArgs & {
+  origins?: {
+    index: OriginIndex
+    of: (localPath: string) => { from?: string; cut?: [number, number] } | undefined
   }
+}
+
+/* What the storage holds, looked at before a byte moves: what to send, what is there already, and
+   what cannot be sent because its name is taken up there by other bytes — a clip prepared again
+   after its trim was put right, a film rendered again. Such a file is not written over, and SkyDock
+   does not move it either: a person renames or deletes it in the storage's own interface. */
+const checkJump = async (
+  args: JumpArgs,
+  handlers?: { onCheck?: (progress: CheckProgress) => void }
 ) => {
   const sid = await loginWithSession(
     args,
@@ -442,6 +447,47 @@ const publishJump = async (
     files: args.files,
     origins: args.origins
   })
+  const held = new Set(planned.held)
+  const taken: PlannedFile[] = [
+    ...planned.upload.map((file) => ({
+      name: path.basename(file),
+      size: fs.statSync(file).size,
+      to: remoteDirOf(args.localDir, args.remoteDir, file)
+    })),
+    ...(planned.copyOver ?? []).map((over) => ({
+      name: lastSegment(over.to),
+      size: fs.statSync(over.local).size,
+      to: parentOf(over.to)
+    }))
+  ].filter((file) => held.has(`${file.to}/${file.name}`))
+  return { sid, planned, taken }
+}
+type Checked = Awaited<ReturnType<typeof checkJump>>
+
+/* the upload stops before anything is sent, naming each file that is in the way */
+const refuseTaken = (taken: PlannedFile[], onPlan?: (plan: PlanProgress) => void) => {
+  if (taken.length === 0) return
+  onPlan?.({ send: [], there: [], taken })
+  throw new UploadBlocked(
+    taken.length === 1
+      ? `${taken[0]?.name} is already on the storage, with other contents, so nothing was sent. Rename or delete it there, then upload again.`
+      : `${taken.length} files are already on the storage, with other contents, so nothing was sent. Rename or delete them there, then upload again.`
+  )
+}
+
+const publishJump = async (
+  args: JumpArgs,
+  handlers?: {
+    onProgress?: (progress: UploadProgress) => void
+    onCheck?: (progress: CheckProgress) => void
+    onPlan?: (plan: PlanProgress) => void
+  },
+  /* the look at the storage, when it was made already for the whole job */
+  ahead?: Checked
+) => {
+  const checked = ahead ?? (await checkJump(args, handlers))
+  if (!ahead) refuseTaken(checked.taken, handlers?.onPlan)
+  const { sid, planned } = checked
 
   /* What the storage already holds is copied by the storage into the folder that wants it, and
      given the name that folder would have given it — nothing travels from here. A copy the storage
@@ -472,12 +518,6 @@ const publishJump = async (
   }
   planned.upload.push(...couldNotCopy)
 
-  /* A file whose name is already taken up there by different bytes — a clip prepared again after its
-     trim was put right, a film rendered again — is not written over: what is there is moved into the
-     bin first, and if the storage will not move it the upload stops here, saying which file. What
-     was sent before that stands, and the next upload finds it there. */
-  const held = new Set(planned.held)
-  const asideAt = new Date()
   const totalFiles = planned.upload.length
   const already = (verdict: UploadVerdict) => ({
     name: lastSegment(verdict.remotePath),
@@ -490,17 +530,14 @@ const publishJump = async (
       size: fs.statSync(file).size,
       to: remoteDirOf(args.localDir, args.remoteDir, file)
     })),
-    there: [...planned.skip, ...copied].map(already)
+    there: [...planned.skip, ...copied].map(already),
+    taken: []
   })
   const sent: UploadVerdict[] = []
   for (const [index, file] of planned.upload.entries()) {
     stopIfUploadCancelled()
     const remoteDir = remoteDirOf(args.localDir, args.remoteDir, file)
     const remotePath = `${remoteDir}/${path.basename(file)}`
-    if (held.has(remotePath) && !(await moveAside(args.host, sid, remotePath, asideAt)))
-      throw new Error(
-        `The storage would not put ${lastSegment(remotePath)} aside, so it was not sent — what is up there is untouched.`
-      )
     const { md5, size } = await uploadFile(args.host, sid, remoteDir, file, (progress) =>
       handlers?.onProgress?.({ ...progress, fileIndex: index, totalFiles, to: remoteDir })
     )
@@ -529,5 +566,13 @@ const publishJump = async (
   }
 }
 
-export { binFor, planUpload, publishJump, uploadFile }
-export type { CheckProgress, PlanProgress, PublishArgs, Seen, UploadProgress, UploadVerdict }
+export { binFor, checkJump, planUpload, publishJump, refuseTaken, uploadFile, UploadBlocked }
+export type {
+  Checked,
+  CheckProgress,
+  PlanProgress,
+  PublishArgs,
+  Seen,
+  UploadProgress,
+  UploadVerdict
+}

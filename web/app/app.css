@@ -288,8 +288,30 @@
     word-spacing: inherit;
   }
 
-  button {
+  /* a hand over everything that answers a press, whatever it is made of — not only a `button` — and
+     the plain arrow over what is switched off */
+  button,
+  a[href],
+  summary,
+  select,
+  label[for],
+  [role='button'],
+  [role='link'],
+  [role='tab'],
+  [role='menuitem'],
+  [role='switch'],
+  input[type='checkbox'],
+  input[type='radio'],
+  input[type='range'],
+  input[type='file'] {
     cursor: pointer;
+  }
+
+  button:disabled,
+  select:disabled,
+  input:disabled,
+  [aria-disabled='true'] {
+    cursor: default;
   }
 
   /* native radios and checkboxes in the accent, not the browser's grey-blue */

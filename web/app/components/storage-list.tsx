@@ -1,13 +1,13 @@
 import { plural, t } from '@lingui/core/macro'
 import type { MontageEntry, MontageLost } from '@skydock/scripts'
 import { useState } from 'react'
-import { lastSegment, lostOf } from '@skydock/scripts'
+import { goneSent, lastSegment, lostOf } from '@skydock/scripts'
 import { parcelsOfEntry, parcelsOfGroup } from '../helpers/parcels'
 import { Go, Mini } from './buttons'
 import { Icon } from './icons'
+import { dsmFolderUrl } from '../helpers/dsm'
 import { ParcelCards } from './montage-card'
 import type { ManifestGroup } from './types'
-import { StorageFolder } from './storage-folder'
 import { localeDate } from './utils'
 
 /* Every montage the storage's list names: the ones still on this machine and the ones freed from it
@@ -25,6 +25,8 @@ const jumpDay = (day: string) => day.replace(/^0/, '').replace(/\.0/, '.')
 const Row = ({
   entry,
   group,
+  dsmHost,
+  remote,
   here,
   lost,
   waiting,
@@ -33,6 +35,10 @@ const Row = ({
   onRestore
 }: {
   entry: MontageEntry
+  /* the storage's own address, for showing a file in its web interface */
+  dsmHost?: string | null
+  /* what the storage was last found to hold */
+  remote?: { dirs: string[]; sizes: Record<string, number | null> } | null
   /* the montage on this board, when it is still there: what its upload recorded says the most */
   group?: ManifestGroup
   here: boolean
@@ -46,7 +52,6 @@ const Row = ({
 }) => {
   const [copied, setCopied] = useState(false)
   /* its folder on the storage, listed under it: the film and photos, to be watched from here */
-  const [watching, setWatching] = useState(false)
   /* how it was handed over: each folder up there, what is in it and what is inside each zip — kept
      by the storage's list, so it is there for a montage freed from this machine or made on another */
   const [detailed, setDetailed] = useState(false)
@@ -151,18 +156,22 @@ const Row = ({
             onClick={() => setDetailed(!detailed)}>
             {detailed ? t`Hide contents` : t`Contents`}
           </Mini>
-          {lost !== 'folder' && (
-            <Mini
-              title={t`List what its folder on the storage holds, and watch it from here`}
-              onClick={() => setWatching(!watching)}>
-              {watching ? t`Hide files` : t`Watch…`}
-            </Mini>
+          {/* the storage's own web interface, on the folder this montage went to */}
+          {dsmHost && lost !== 'folder' && dsmFolderUrl(dsmHost, folder) && (
+            <a
+              href={dsmFolderUrl(dsmHost, folder) ?? undefined}
+              target='_blank'
+              rel='noreferrer'
+              title={t`Show its folder in the storage’s own web interface, in a new tab`}
+              className='inline-flex h-[30px] items-center justify-center gap-1.5 rounded-[10px] bg-well px-3 text-[12.5px] font-bold whitespace-nowrap text-ink no-underline hover:bg-line'>
+              {t`Open`}
+            </a>
           )}
           {here && (
             <Mini
               title={t`Open it on this board`}
               onClick={onOpen}>
-              {t`Open`}
+              {t`On the board`}
             </Mini>
           )}
           {entry.backup && (
@@ -186,12 +195,11 @@ const Row = ({
       </div>
       {detailed && (
         <div className='pb-3 pl-[29px]'>
-          <ParcelCards parcels={group?.uploaded ? parcelsOfGroup(group) : parcelsOfEntry(entry)} />
-        </div>
-      )}
-      {watching && lost !== 'folder' && (
-        <div className='pb-3 pl-[29px]'>
-          <StorageFolder where={{ folder: entry.folder }} />
+          <ParcelCards
+            parcels={group?.uploaded ? parcelsOfGroup(group) : parcelsOfEntry(entry)}
+            dsmHost={dsmHost}
+            gone={new Set(goneSent(group?.uploaded, remote ?? null))}
+          />
         </div>
       )}
     </div>
@@ -200,6 +208,8 @@ const Row = ({
 
 const StorageList = ({
   storage,
+  dsmHost,
+  remote,
   isHere,
   groupOf,
   waitingFiles,
@@ -207,6 +217,10 @@ const StorageList = ({
   onEmail,
   onRestore
 }: {
+  /* the storage's own address, for showing a file in its web interface */
+  dsmHost?: string | null
+  /* what the storage was last found to hold, to say what of an upload is gone */
+  remote?: { dirs: string[]; sizes: Record<string, number | null> } | null
   storage: {
     dir: string
     montages: MontageEntry[]
@@ -266,6 +280,8 @@ const StorageList = ({
               key={entry.folder}
               entry={entry}
               group={groupOf(entry)}
+              dsmHost={dsmHost}
+              remote={remote}
               here={isHere(entry)}
               lost={lostOf(storage.lost, entry.folder)}
               waiting={isHere(entry) ? 0 : waitingFiles(entry)}

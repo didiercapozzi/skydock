@@ -34,8 +34,8 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-const renderFolder = (hereToo?: Set<string>) =>
-  render(createElement(StorageFolder, { where: { groupId: 'g1' }, hereToo }))
+const renderFolder = (hereToo?: Set<string>, dsmHost?: string) =>
+  render(createElement(StorageFolder, { where: { groupId: 'g1' }, hereToo, dsmHost }))
 
 /* A file on the storage can be handed out by a link of its own — one clip, one photo — without the
    folder's link, which opens everything in it (RULES, Network storage). */
@@ -73,6 +73,47 @@ describe('a file’s own link', () => {
     expect(asked.some((a) => a.includes('/api/share-link') && a.includes('"intent":"create"'))).toBe(
       true
     )
+  })
+})
+
+/* Where the storage's address is known, a file is a link: pressed, it opens the storage's own web
+   interface — File Station — on that file's folder, in a new browser tab. The player is a button of its
+   own then. The address is the one the board is connected with. */
+describe('a file shown in the storage’s own web interface', () => {
+  test('is a link to File Station on that file, opened in a new tab', async () => {
+    storageAnswers(folder)
+    await renderFolder(undefined, 'https://nas.local:5001/')
+
+    const row = page.getByRole('link', { name: /luc favre\.mp4/ })
+    await expect.element(row).toBeVisible()
+    const link = row.element()
+    expect(link.getAttribute('target')).toBe('_blank')
+    const href = link.getAttribute('href') ?? ''
+    expect(href.startsWith('https://nas.local:5001/index.cgi?launchApp=SYNO.SDS.App.FileStation3.Instance')).toBe(true)
+    /* the file itself, so its folder is shown with it chosen — its path twice encoded as File Station reads it */
+    expect(decodeURIComponent(decodeURIComponent(href.split('launchParam=')[1] ?? ''))).toMatch(
+      new RegExp(`^openfile=${DIR}/`)
+    )
+  })
+
+  /* a film is watched from a button of its own; a photo has none, and its row is only the link */
+  test('is watched from a button of its own, on a video only', async () => {
+    storageAnswers(folder)
+    await renderFolder(undefined, 'https://nas.local:5001/')
+
+    await expect.element(page.getByRole('button', { name: 'Watch' })).toBeVisible()
+    expect(page.getByRole('button', { name: 'Watch' }).elements()).toHaveLength(1)
+    await userEvent.click(page.getByRole('button', { name: 'Watch' }))
+
+    await expect.element(page.getByRole('dialog')).toBeVisible()
+  })
+
+  test('is a button that plays where the storage’s address is not known', async () => {
+    storageAnswers(folder)
+    await renderFolder()
+
+    await expect.element(page.getByText('luc favre.mp4')).toBeVisible()
+    await expect.element(page.getByRole('link', { name: /luc favre\.mp4/ })).not.toBeInTheDocument()
   })
 })
 

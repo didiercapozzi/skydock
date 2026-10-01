@@ -11,6 +11,17 @@ import { createTmpDir, routeArgs } from './fixtures'
 let tmpDir: string
 let previous: string | undefined
 
+const remove = (id: string) =>
+  action(
+    routeArgs(
+      new Request('http://localhost/api/transfers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ remove: id })
+      })
+    )
+  )
+
 const clear = () =>
   action(
     routeArgs(
@@ -48,5 +59,15 @@ describe('the transfers kept', () => {
 
     await clear()
     expect(await loader().json()).toEqual({ transfers: [] })
+  })
+
+  it('forgets one and keeps the others', async () => {
+    const luc = recordTransfer({ kind: 'upload', label: 'Luc', state: 'done', items: [] }, tmpDir)
+    recordTransfer({ kind: 'camera', label: 'GoPro', state: 'failed', items: [] }, tmpDir)
+
+    await remove(luc.id)
+
+    const said = await loader().json()
+    expect(said.transfers.map((t: { label: string }) => t.label)).toEqual(['GoPro'])
   })
 })

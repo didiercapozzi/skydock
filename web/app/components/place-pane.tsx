@@ -105,7 +105,7 @@ const PlacePane = ({
   /* what is still to do here, and anything that belongs to the folder, like its storage folder */
   left?: React.ReactNode
   /* what the board last said, and whether it was a refusal */
-  note: { text: string; problem: boolean; onClose: () => void } | null
+  note: { text: string; problem: boolean; onClose: () => void; onOpen?: () => void } | null
   /* where a file from the computer dropped anywhere on the pane goes, if anywhere */
   incoming: { target: string; where: string } | null
   onImport: (list: Dropped[], target: string, where: string) => void
@@ -181,7 +181,8 @@ const PlacePane = ({
           {note && (
             <Notice
               problem={note.problem}
-              onClose={note.onClose}>
+              onClose={note.onClose}
+              onOpen={note.onOpen}>
               {note.text}
             </Notice>
           )}

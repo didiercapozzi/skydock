@@ -11,8 +11,15 @@ import {
 } from './originIndex'
 import { originsOf } from './originEntry'
 import type { OriginIndex } from './originEntry'
-import { publishJump } from './publish'
-import type { CheckProgress, PlanProgress, Seen, UploadProgress, UploadVerdict } from './publish'
+import { checkJump, publishJump, refuseTaken } from './publish'
+import type {
+  Checked,
+  CheckProgress,
+  PlanProgress,
+  Seen,
+  UploadProgress,
+  UploadVerdict
+} from './publish'
 import { listNasFiles } from './nas'
 import { isNamedMontage } from './montageArtifacts'
 import type { NasSession } from './nas'
@@ -73,6 +80,9 @@ const listRemoteFiles = async (manifest: Manifest, session: NasSession) => {
       ...manifest.groups.flatMap((g) =>
         uploadedFiles(g.uploaded).map((f) => parentOf(f.remotePath))
       ),
+      /* and every other folder an item of it went to: the whole of where it went, not only each part's
+         first place */
+      ...manifest.groups.flatMap((g) => g.uploaded?.sent?.flatMap((item) => item.to) ?? []),
       /* and every folder this club delivers into, uploaded into yet or not: a place pointed at a
          folder that was already full of footage is worth looking at from the first day, since what
          is up there is what an upload must not send a second time (RULES, Network storage) */
@@ -106,6 +116,22 @@ const goneFromStorage = (
         const size = remote.sizes[f.remotePath]
         return size === undefined || (size !== null && size !== f.size)
       })
+    : []
+
+/* What an upload handed over that the storage no longer has, by where it was: an item of what was sent,
+   in a folder that answered and no longer lists it. Only a folder that answered counts, as above. */
+const goneSent = (
+  record: ManifestGroup['uploaded'],
+  remote: { dirs: string[]; sizes: Record<string, number | null> } | null
+) =>
+  remote
+    ? (record?.sent ?? []).flatMap((item) =>
+        item.to
+          .filter(
+            (dir) => remote.dirs.includes(dir) && remote.sizes[`${dir}/${item.name}`] === undefined
+          )
+          .map((dir) => `${dir}/${item.name}`)
+      )
     : []
 
 const scopeKey = (scope: UploadScope) => {
@@ -271,31 +297,44 @@ const uploadTargets = async ({
     }))
     return known
   }
+  /* every folder looked at before anything is sent, so a file in the way stops the whole job and not
+     only the folder it was found in */
+  const argsOf = async (target: UploadTarget) => ({
+    host: session.hostname,
+    user: session.username,
+    password: '',
+    localDir: target.localDir,
+    remoteDir: target.remoteDir as string,
+    files: target.files,
+    share: target.share,
+    ...(origins
+      ? {
+          origins: {
+            index: await theIndex(),
+            of: (localPath: string) => origins.get(localPath)
+          }
+        }
+      : {})
+  })
+  const looked: Checked[] = []
   for (const target of targets) {
     stopIfUploadCancelled()
+    looked.push(await checkJump(await argsOf(target), { onCheck }))
+  }
+  refuseTaken(
+    looked.flatMap((one) => one.taken),
+    onPlan
+  )
+  for (const [index, target] of targets.entries()) {
+    stopIfUploadCancelled()
     const result = await publishJump(
-      {
-        host: session.hostname,
-        user: session.username,
-        password: '',
-        localDir: target.localDir,
-        remoteDir: target.remoteDir as string,
-        files: target.files,
-        share: target.share,
-        ...(origins
-          ? {
-              origins: {
-                index: await theIndex(),
-                of: (localPath: string) => origins.get(localPath)
-              }
-            }
-          : {})
-      },
+      await argsOf(target),
       {
         onProgress: (progress) => onProgress?.({ ...progress, groupIds: target.groupIds }),
         onCheck,
         onPlan
-      }
+      },
+      looked[index]
     )
     if (result.shareUrl) shareUrls.push({ target, shareUrl: result.shareUrl })
     files.push(...result.files)
@@ -381,6 +420,7 @@ const uploadScope = async ({
 export {
   destBaseOf,
   LIST_CONCURRENCY,
+  goneSent,
   uploadedFiles,
   goneFromStorage,
   groupsInScope,

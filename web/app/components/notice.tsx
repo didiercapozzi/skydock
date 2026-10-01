@@ -8,11 +8,14 @@ import { Icon } from './icons'
 const Notice = ({
   problem,
   onClose,
+  onOpen,
   className = '',
   children
 }: {
   problem: boolean
   onClose: () => void
+  /* when the line is about something with a place of its own, pressing it goes there */
+  onOpen?: () => void
   className?: string
   children: React.ReactNode
 }) => (
@@ -29,7 +32,17 @@ const Notice = ({
         className='text-up'
       />
     )}
-    <span className='flex-1'>{children}</span>
+    {onOpen ? (
+      <button
+        type='button'
+        title={t`Show the transfer that failed`}
+        onClick={onOpen}
+        className='flex-1 border-0 bg-transparent p-0 text-left text-inherit underline decoration-dotted underline-offset-2'>
+        {children}
+      </button>
+    ) : (
+      <span className='flex-1'>{children}</span>
+    )}
     <button
       type='button'
       aria-label={t`Dismiss`}

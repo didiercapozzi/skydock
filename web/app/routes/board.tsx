@@ -16,7 +16,8 @@ import {
   statProxies,
   statMontageArtifacts,
   montagesRemoteDir,
-  messageOf
+  messageOf,
+  transfersFileSchema
 } from '@skydock/scripts'
 import type { MontageEntry, MontageLost } from '@skydock/scripts'
 import { keepBackupAsPlace } from '../../../packages/skydock-scripts/src/destinations'
@@ -41,6 +42,7 @@ import { fromComputer } from '../helpers/import'
 import { typingInField } from '../helpers/keys'
 import { routingEngine } from '../helpers/routing'
 import { useCameraCopying } from '../hooks/liveStore'
+import { useTransfersPanel } from '../hooks/transfersPanel'
 import { useBoardModel } from '../hooks/useBoardModel'
 import { useDetailsColumn } from '../hooks/useDetails'
 import type { Route } from './+types/board'
@@ -227,6 +229,35 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     return () => window.removeEventListener('keydown', onKey)
   }, [dialogOpen, setDialog])
 
+  /* the panel of what was sent and copied, open at will — done or not */
+  const transfersPanel = useTransfersPanel()
+  const transfersOpen = transfersPanel.open
+  /* An upload the storage turned away, because files of the same names are up there already, says so
+     in the line above; the panel that names each one, with its button to the storage's own interface,
+     opens by itself, so that nobody has to look for it. */
+  const upsetBy = board.noteIsProblem ? board.note : null
+  const { setTrouble, show } = transfersPanel
+  useEffect(() => {
+    if (!upsetBy) {
+      setTrouble(false)
+      return
+    }
+    let cancelled = false
+    void routingEngine
+      .loader({ url: '/api/transfers' })
+      .then((raw) => {
+        const latest = transfersFileSchema.safeParse(raw).data?.transfers[0]
+        const failed = !!latest && latest.state === 'failed' && Date.now() / 1000 - latest.at < 120
+        if (cancelled) return
+        setTrouble(failed)
+        if (failed && latest.items.some((item) => item.note === 'taken')) show()
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [upsetBy, setTrouble, show])
+
   if (!board.hasManifest) {
     return (
       <div className='ground flex h-screen flex-col overflow-hidden'>
@@ -240,6 +271,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             <Notice
               problem={board.noteIsProblem}
               onClose={() => setNote(null)}
+              onOpen={
+                board.noteIsProblem && transfersPanel.trouble ? transfersPanel.show : undefined
+              }
               className='mt-3 rounded-md border px-2.5 py-[7px]'>
               {note}
             </Notice>
@@ -289,8 +323,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
   /* a card being copied: only whether, which changes twice a copy — its bytes are the panel's */
   const copying = useCameraCopying()
-  /* the panel of what was sent and copied, open at will — done or not */
-  const [transfersOpen, setTransfersOpen] = useState(false)
 
   return (
     <main
@@ -343,7 +375,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       </div>
 
       <StatusBar
-        transfers={{ open: transfersOpen, onToggle: () => setTransfersOpen(!transfersOpen) }}
+        transfers={{ open: transfersOpen, onToggle: transfersPanel.toggle }}
         proxies={board.proxyProgress}
         jumps={board.jumpProgress}
         disk={board.disk ?? loaderData.disk}
@@ -467,14 +499,17 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             <UploadPanel
               label={board.uploadLabel ?? ''}
               progress={model.progress}
+              dsmHost={nas.host}
               cancelling={board.cancelling}
               onCancel={board.cancelUpload}
             />
           )}
           {transfersOpen && (
             <TransfersPanel
+              key={transfersPanel.shown}
+              dsmHost={nas.host}
               stamp={`${board.uploading ?? ''}|${model.coming ? 1 : 0}|${copying ? 1 : 0}`}
-              onClose={() => setTransfersOpen(false)}
+              onClose={transfersPanel.close}
             />
           )}
           {model.coming && (
