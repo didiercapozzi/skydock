@@ -93,6 +93,26 @@ describe('bringing a template in from a kdenlive archive', () => {
     expect(fs.existsSync(path.join(templatesDir(), 'club', 'audio', 'music.mp3'))).toBe(true)
   })
 
+  /* the editor runs as the person on the host: what an archive packed private must not stay so */
+  it('leaves every file of it open to whoever edits it, whatever mode it was packed with', async () => {
+    const staged = path.join(incoming, 'club')
+    fs.mkdirSync(path.join(staged, 'audio'), { recursive: true })
+    fs.writeFileSync(path.join(staged, 'club.kdenlive'), project())
+    fs.writeFileSync(path.join(staged, 'audio', 'music.mp3'), 'm')
+    fs.chmodSync(path.join(staged, 'audio', 'music.mp3'), 0o600)
+    fs.chmodSync(path.join(staged, 'audio'), 0o700)
+    const archive = path.join(incoming, 'club.tar.gz')
+    execSync(`tar -czf "${archive}" -C "${incoming}" club`)
+
+    await bringIn(archive)
+
+    const home = path.join(templatesDir(), 'club')
+    const mode = (...parts: string[]) => fs.statSync(path.join(home, ...parts)).mode & 0o777
+    expect(mode('audio', 'music.mp3')).toBe(0o666)
+    expect(mode('audio')).toBe(0o777)
+    expect(mode('club.kdenlive')).toBe(0o666)
+  })
+
   it('unpacks a tar.gz the same way', async () => {
     const staged = path.join(incoming, 'club')
     fs.mkdirSync(path.join(staged, 'audio'), { recursive: true })

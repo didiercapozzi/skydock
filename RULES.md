@@ -1205,6 +1205,11 @@ It is named after the project unless given a name. **Brought in again under a na
 replaces what was there, files and all** — an import is a whole template, and half of an old one
 mixed with half of a new one is nobody's.
 
+**Open to the editor.** The editor runs as the person on the computer, while SkyDock may run as another
+user (in a container, as root). Whatever the archive brought is left owned by the owner of the output
+folder and readable and writable by anyone, whatever mode it was packed with, so the editor can open
+every file of the template.
+
 **The project is made once.** Asking again for a montage that has a project is refused.
 
 **An edit freezes the montage.** The project points at the montage's copies by name and at moments inside

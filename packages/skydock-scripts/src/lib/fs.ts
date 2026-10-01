@@ -109,6 +109,31 @@ const hashFile = (filePath: string, algorithm = 'md5') =>
     stream.on('end', () => resolve(hash.digest('hex')))
   })
 
+/* Everything under a folder made the host user's, like the folder it will live in: owned by whoever
+   owns `like` and readable and writable by anyone. SkyDock may run as root in a container while the
+   editor runs as the person on the host, and what an archive brings keeps the modes it was packed with
+   — a file left root's or private is one the editor cannot open. Best effort: where a change is not
+   allowed it is left as it is. */
+const openToHost = (dir: string, like: string) => {
+  const owner = fs.statSync(like)
+  const root = process.getuid?.() === 0
+  const stack = [dir]
+  while (stack.length > 0) {
+    const here = stack.pop()!
+    try {
+      const stat = fs.lstatSync(here)
+      if (stat.isSymbolicLink()) continue
+      if (root && (stat.uid !== owner.uid || stat.gid !== owner.gid))
+        fs.chownSync(here, owner.uid, owner.gid)
+      fs.chmodSync(here, stat.isDirectory() ? 0o777 : stat.mode | 0o666)
+      if (stat.isDirectory())
+        for (const name of fs.readdirSync(here)) stack.push(path.join(here, name))
+    } catch {
+      /* not ours to change */
+    }
+  }
+}
+
 /* Written whole or not at all: under a name of its own — two writers never share one — flushed to the
    disk, then renamed over the old file, so a crash or a power cut leaves the old file or the new one,
    never half of either. */
@@ -159,6 +184,7 @@ export {
   findMediaFiles,
   hashFile,
   moveFile,
+  openToHost,
   sameBytes,
   walkFiles,
   writeJsonAtomic
