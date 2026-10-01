@@ -34,6 +34,8 @@ type Parcel = {
   /* said at the top right: handed over with a link, or kept and never shared */
   tag: string
   shareUrl?: string
+  /* the one that holds the film: what was handed over, whether or not it has a link now */
+  handed?: boolean
   items: ParcelItem[]
 }
 
@@ -125,12 +127,13 @@ const parcelsFrom = (
       title: handed ? t`To hand over` : t`Backup`,
       dir,
       tag: handed ? t`ready to hand over` : t`never shared`,
+      handed,
       ...(handed && shareUrl ? { shareUrl } : {}),
       items: here.map((entry) => entry.item)
     }
   })
   /* what is handed over first, whatever order it was sent in */
-  return parcels.sort((a, b) => Number(Boolean(b.shareUrl)) - Number(Boolean(a.shareUrl)))
+  return parcels.sort((a, b) => Number(Boolean(b.handed)) - Number(Boolean(a.handed)))
 }
 
 /* The parcels of a montage this board still knows the upload of. */

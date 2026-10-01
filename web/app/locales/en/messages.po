@@ -1362,6 +1362,7 @@ msgid "Copy into montage"
 msgstr "Copy into montage"
 
 #: app/components/email-dialog.tsx
+#: app/components/montage-card.tsx
 #: app/components/storage-folder.tsx
 #: app/components/storage-list.tsx
 msgid "Copy link"
@@ -1371,6 +1372,7 @@ msgstr "Copy link"
 msgid "Copy subject"
 msgstr "Copy subject"
 
+#: app/components/montage-card.tsx
 #: app/components/storage-folder.tsx
 msgid "Copy the link"
 msgstr "Copy the link"
@@ -1432,6 +1434,7 @@ msgstr "Create"
 msgid "Create a link"
 msgstr "Create a link"
 
+#: app/components/montage-card.tsx
 #: app/components/storage-list.tsx
 msgid "Create link"
 msgstr "Create link"
@@ -2419,6 +2422,7 @@ msgstr "Mail program"
 msgid "Make a jump of these…"
 msgstr "Make a jump of these…"
 
+#: app/components/montage-card.tsx
 #: app/components/storage-list.tsx
 msgid "Make a link to its folder, to send"
 msgstr "Make a link to its folder, to send"
@@ -2626,6 +2630,10 @@ msgstr "No folders in here. Make one, or use this folder as it is."
 #: app/components/jump-graph.tsx
 msgid "no height or speed — this camera wrote none"
 msgstr "no height or speed — this camera wrote none"
+
+#: app/components/montage-card.tsx
+msgid "No link"
+msgstr "No link"
 
 #: app/components/montage-card.tsx
 #: app/components/storage-list.tsx
@@ -2890,6 +2898,7 @@ msgid "only this file moves — the rest of the jump stays"
 msgstr "only this file moves — the rest of the jump stays"
 
 #: app/components/inspector.tsx
+#: app/components/storage-list.tsx
 msgid "Open"
 msgstr "Open"
 
@@ -3265,6 +3274,7 @@ msgstr "Remove destination…"
 msgid "Remove files"
 msgstr "Remove files"
 
+#: app/components/montage-card.tsx
 #: app/components/storage-list.tsx
 msgid "Remove link"
 msgstr "Remove link"
@@ -3537,6 +3547,7 @@ msgid "Show it in the storage’s own web interface, in a new tab"
 msgstr "Show it in the storage’s own web interface, in a new tab"
 
 #: app/components/progress-panel.tsx
+#: app/components/storage-list.tsx
 msgid "Show its folder in the storage’s own web interface, in a new tab"
 msgstr "Show its folder in the storage’s own web interface, in a new tab"
 
@@ -3728,6 +3739,7 @@ msgstr "Take link away"
 msgid "Take the link away — the file stays where it is"
 msgstr "Take the link away — the file stays where it is"
 
+#: app/components/montage-card.tsx
 #: app/components/storage-list.tsx
 msgid "Take the link away — the folder stays where it is"
 msgstr "Take the link away — the folder stays where it is"

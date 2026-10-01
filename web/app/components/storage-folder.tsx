@@ -134,6 +134,89 @@ const LinkButtons = ({
   )
 }
 
+/* The links made and taken away since a folder was listed, by the file they are for — the row answers
+   at once rather than the whole folder being asked for again — and the file being watched. Shared by
+   the folder's own list and by the cards of what was handed over. */
+const useFileActions = (onProblem?: (problem: string) => void) => {
+  const [playing, setPlaying] = useState<StorageFile | null>(null)
+  const [linked, setLinked] = useState<Record<string, string | null>>({})
+  const [asking, setAsking] = useState<string | null>(null)
+  const setLink = async (file: StorageFile, intent: 'create' | 'remove') => {
+    setAsking(file.path)
+    const raw = await routingEngine
+      .action({ url: '/api/share-link', actionArgs: { intent, path: file.path } })
+      .catch(() => null)
+    setAsking(null)
+    const done = linkAnswerSchema.safeParse(raw)
+    if (done.success) {
+      setLinked((was) => ({ ...was, [done.data.path]: done.data.shareUrl }))
+      return
+    }
+    const refused = refusalSchema.safeParse(raw)
+    onProblem?.(
+      refused.success
+        ? (refused.data.globalErrors?.[0] ?? t`The storage would not do that.`)
+        : t`The storage would not do that.`
+    )
+  }
+  return { playing, setPlaying, linked, asking, setLink }
+}
+type FileActionsState = ReturnType<typeof useFileActions>
+
+/* What can be done to one file up there, as buttons beside it: watch it, if it is a film; fetch it back
+   onto this machine, if it is only up there; give it a link, copy it, or take it away. */
+const FileButtons = ({
+  file,
+  actions,
+  watch,
+  here,
+  onBringBack
+}: {
+  file: StorageFile
+  actions: FileActionsState
+  /* the row itself opens the storage's interface, so the player is a button of its own */
+  watch: boolean
+  /* whether this machine holds it too, where that is known; only what is not is brought back */
+  here?: boolean
+  onBringBack?: (file: StorageFile) => void
+}) => (
+  <>
+    {/* only a video is watched */}
+    {watch && file.kind === 'video' && (
+      <Mini
+        title={t`Watch it from the storage`}
+        onClick={() => actions.setPlaying(file)}>
+        <Icon
+          name='play'
+          size={12}
+          className='text-ink-2'
+        />
+        {t`Watch`}
+      </Mini>
+    )}
+    {/* the one thing that cannot be done from anywhere else: what is only up there is footage this
+        machine no longer holds, and this is the way back */}
+    {onBringBack && here === false && (
+      <Mini
+        title={t`Fetch it back onto this machine`}
+        onClick={() => onBringBack(file)}>
+        <Icon
+          name='back'
+          size={14}
+          className='text-ink-2'
+        />
+        {t`Bring back`}
+      </Mini>
+    )}
+    <LinkButtons
+      file={file}
+      shareUrl={file.path in actions.linked ? (actions.linked[file.path] ?? null) : file.shareUrl}
+      busy={actions.asking === file.path}
+      onLink={(one, intent) => void actions.setLink(one, intent)}
+    />
+  </>
+)
+
 /* What a place's folder on the storage holds, under the place's own files: a dropzone's folder, a
    passenger's — listed and played from here whether or not any of it is still on this machine. Each
    file says whether it is here too, because "only on the storage" is the one that cannot be made
@@ -166,30 +249,8 @@ const StorageFolder = ({
   onProblem?: (problem: string) => void
 }) => {
   const [again, setAgain] = useState(0)
-  const [playing, setPlaying] = useState<StorageFile | null>(null)
-  /* the links made and taken away since this folder was listed, by the file they are for: the row
-     answers at once rather than the whole folder being asked for again */
-  const [linked, setLinked] = useState<Record<string, string | null>>({})
-  const [asking, setAsking] = useState<string | null>(null)
-
-  const setLink = async (file: StorageFile, intent: 'create' | 'remove') => {
-    setAsking(file.path)
-    const raw = await routingEngine
-      .action({ url: '/api/share-link', actionArgs: { intent, path: file.path } })
-      .catch(() => null)
-    setAsking(null)
-    const done = linkAnswerSchema.safeParse(raw)
-    if (done.success) {
-      setLinked((was) => ({ ...was, [done.data.path]: done.data.shareUrl }))
-      return
-    }
-    const refused = refusalSchema.safeParse(raw)
-    onProblem?.(
-      refused.success
-        ? (refused.data.globalErrors?.[0] ?? t`The storage would not do that.`)
-        : t`The storage would not do that.`
-    )
-  }
+  const actions = useFileActions(onProblem)
+  const { playing, setPlaying } = actions
   const folder = useStorageFolder(where, `${String(stamp)}:${again}`)
   const files = folder?.ok ? folder.files : []
   const only = hereToo ? files.filter((f) => !hereToo.has(f.name)).length : 0
@@ -334,39 +395,12 @@ const StorageFolder = ({
                     )}
                   </button>
                 )}
-                {/* the player is a button of its own once the row itself opens the storage's interface,
-                    and only a video is watched */}
-                {dsm && file.kind === 'video' && (
-                  <Mini
-                    title={t`Watch it from the storage`}
-                    onClick={() => setPlaying(file)}>
-                    <Icon
-                      name='play'
-                      size={12}
-                      className='text-ink-2'
-                    />
-                    {t`Watch`}
-                  </Mini>
-                )}
-                {/* the one thing that cannot be done from anywhere else: what is only up there is
-                    footage this machine no longer holds, and this is the way back */}
-                {onBringBack && hereToo && !here && (
-                  <Mini
-                    title={t`Fetch it back onto this machine`}
-                    onClick={() => onBringBack(file)}>
-                    <Icon
-                      name='back'
-                      size={14}
-                      className='text-ink-2'
-                    />
-                    {t`Bring back`}
-                  </Mini>
-                )}
-                <LinkButtons
+                <FileButtons
                   file={file}
-                  shareUrl={file.path in linked ? (linked[file.path] ?? null) : file.shareUrl}
-                  busy={asking === file.path}
-                  onLink={(one, intent) => void setLink(one, intent)}
+                  actions={actions}
+                  watch={dsm !== null}
+                  here={hereToo ? here : undefined}
+                  onBringBack={onBringBack}
                 />
               </li>
             )
@@ -383,4 +417,51 @@ const StorageFolder = ({
   )
 }
 
-export { StorageFolder, storageFileUrl }
+/* How a montage was handed over — the cards of each folder up there — with, beside each item the
+   folder still holds, what can be done to it: watch it, fetch it back, give it a link. The folder is
+   asked of the storage for that, and its files are not listed a second time under the cards. */
+const StorageCards = ({
+  where,
+  stamp,
+  hereToo,
+  onBringBack,
+  onProblem,
+  children
+}: {
+  where: StorageWhere
+  stamp?: unknown
+  /* the names of the delivered files this machine still holds */
+  hereToo?: Set<string>
+  onBringBack?: (file: StorageFile) => void
+  onProblem?: (problem: string) => void
+  children: (itemActions: (dir: string, name: string) => React.ReactNode) => React.ReactNode
+}) => {
+  const actions = useFileActions(onProblem)
+  const folder = useStorageFolder(where, String(stamp))
+  const byPath = new Map((folder?.ok ? folder.files : []).map((file) => [file.path, file]))
+  const itemActions = (dir: string, name: string) => {
+    const file = byPath.get(`${dir}/${name}`)
+    return file ? (
+      <FileButtons
+        file={file}
+        actions={actions}
+        watch
+        here={hereToo ? hereToo.has(file.name) : undefined}
+        onBringBack={onBringBack}
+      />
+    ) : null
+  }
+  return (
+    <>
+      {children(itemActions)}
+      {actions.playing && (
+        <StoragePlayer
+          file={actions.playing}
+          onClose={() => actions.setPlaying(null)}
+        />
+      )}
+    </>
+  )
+}
+
+export { StorageCards, StorageFolder, storageFileUrl }

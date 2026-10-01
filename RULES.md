@@ -947,7 +947,7 @@ picked for it, and the header carries only what is about the storage as a whole.
 **A place is connected to its folder.** A dropzone's page and a montage's page each end with what
 their folder on the storage holds — the very folder their uploads go to, and for a montage already
 uploaded the one it actually went to — so what is up there is listed, and watched, from the board
-whether or not any of it is still on this machine: a freed montage, last month's days at a dropzone. A montage that has been uploaded is in two places, here and up there, so its page has two tabs, _Local_ and _On the storage_, and shows one at a time: it opens on _Local_, which for a montage freed from this machine is how it was handed over.
+whether or not any of it is still on this machine: a freed montage, last month's days at a dropzone. A montage that has been uploaded is in two places, here and up there, so its page has two tabs, _Local_ and _On the storage_, and shows one at a time: it opens on _Local_, or on _On the storage_ for a montage freed from this machine, which has nothing left here. How it was handed over — the cards of each folder up there, with what is in them — is on _On the storage_, and not under the files on _Local_. The folder's files are not listed a second time under those cards: what could be done to a file in that list — watch a film, fetch it back onto this machine, give it a link of its own and copy or take away that link — is done from the file's own row in the cards. The link of the folder that was handed over, shown at the foot of its card, can be copied or taken away from there, and once it is gone the same place offers to make a new one; taking it away leaves the folder and its files where they were, and the board's record and the storage's list both say it has no link any more.
 Each file says what it is, how big, when it was shot — read off its name, which SkyDock gives every
 file it delivers, since the storage's own date for anything sent before files kept theirs is the day it
 was sent — and whether it is here too or only on the storage. A file SkyDock did not name shows when it
@@ -1301,7 +1301,7 @@ there under the same names: they are renamed or deleted on the storage first. A 
 should, newer than everything in it, is not built again. The film is taken on trust: nothing checks
 that it was rendered from this project.
 
-**What was handed over, shown afterwards.** Once a montage is uploaded, its page shows it as it went up:
+**What was handed over, shown afterwards.** Once a montage is uploaded, its page shows it as it went up, on the _On the storage_ tab:
 one card per folder up there — the one that holds the film is _To hand over_, with its share link, and
 every other is _Backup_, never shared — each listing what is in it, how big, and what it is for, and
 for a **zip what is inside it**: the videos under `videos/` and the photos under `photos/`, each with

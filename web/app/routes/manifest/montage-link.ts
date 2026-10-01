@@ -1,11 +1,13 @@
 import {
   createShareLink,
+  folderOfUpload,
   earlierMontagesDirs,
   ensureNasSession,
   messageOf,
   montagesRemoteDir,
   parentOf,
   removeShareLink,
+  saveManifest,
   shareLinkFor
 } from '@skydock/scripts'
 import { withinStorage } from '../../../../packages/skydock-scripts/src/storageFolder'
@@ -17,7 +19,7 @@ import { recordOnStorage } from './storage'
    list told which, so that any machine of the club sees it. A link taken away takes nothing off the
    storage: the folder stays exactly where it was (RULES, Principles). A link the storage already has
    is handed back rather than a second one made. */
-const montageLink: Intent = async ({ data, manifest, refuse }) => {
+const montageLink: Intent = async ({ data, manifest, manifestPath, latest, refuse }) => {
   const session = await ensureNasSession()
   if (!session || !data.link)
     return refuse('Connect the storage first — the list of montages is kept there.')
@@ -37,6 +39,19 @@ const montageLink: Intent = async ({ data, manifest, refuse }) => {
   } catch (e) {
     return refuse(messageOf(e))
   }
+  /* the board's own record of the upload says the same, read after the wait */
+  const board = latest()
+  for (const group of board.groups) {
+    if (!group.uploaded || folderOfUpload(group.uploaded) !== folder) continue
+    if (shareUrl) {
+      group.uploaded.shareUrl = shareUrl
+      group.publish = { shareUrl }
+    } else {
+      delete group.uploaded.shareUrl
+      delete group.publish
+    }
+  }
+  saveManifest(manifestPath, board)
   let known = true
   const listing = await recordOnStorage(
     session,
@@ -50,7 +65,7 @@ const montageLink: Intent = async ({ data, manifest, refuse }) => {
     earlierMontagesDirs(manifest)
   )
   if (!known) return refuse('This montage is not on the storage’s list — upload it first.')
-  return { ...boardAnswer(manifest), ...listing }
+  return { ...boardAnswer(board), ...listing }
 }
 
 export { montageLink }

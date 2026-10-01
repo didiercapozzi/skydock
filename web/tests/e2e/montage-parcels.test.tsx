@@ -154,6 +154,8 @@ describe('a montage only the storage has', () => {
       page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /Ana Roth/ })
     )
 
+    /* how it was handed over is on the storage's tab */
+    await userEvent.click(page.getByRole('group', { name: 'Where to look' }).getByRole('button', { name: 'On the storage' }))
     await expect.element(page.getByText('ana_roth_20260728.project.zip')).toBeVisible()
     await expect.element(page.getByText('no longer on the storage')).toBeVisible()
     /* it is still there to read, but is no link into the storage's interface */

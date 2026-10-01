@@ -27,7 +27,7 @@ import { FolderOwed } from '../components/folder-owed'
 import { FilePanel, FolderPanel, JumpPanel, ManyPanel, Part, Shell } from '../components/inspector'
 import { MoveTo } from '../components/move-to'
 import { PlacePane } from '../components/place-pane'
-import { StorageFolder } from '../components/storage-folder'
+import { StorageCards, StorageFolder } from '../components/storage-folder'
 import { StorageList } from '../components/storage-list'
 import {
   FilmNote,
@@ -262,7 +262,7 @@ const Place = () => {
   /* A montage that has been uploaded is in two places: the files kept on this machine, and its folder
      on the storage. They are two views of one montage, so a tab switches between them rather than
      the one being found under the other. It opens on what is here — for a montage freed from this
-     machine, that is the cards of how it was handed over. */
+     machine nothing is, so it opens on the storage's, where how it was handed over is shown. */
   const [chosen, setChosen] = useState<{ key: string; view: 'local' | 'storage' } | null>(null)
   const twoViews =
     place.kind === 'pax' &&
@@ -273,7 +273,9 @@ const Place = () => {
     ? 'both'
     : chosen?.key === placeKey(place)
       ? chosen.view
-      : 'local'
+      : folder.groups.length > 0 && folder.groups.every((g) => g.freed)
+        ? 'storage'
+        : 'local'
 
   return (
     <>
@@ -425,13 +427,55 @@ const Place = () => {
                 <MontageAbove
                   group={group}
                   withFilm={folder.grouping !== 'jump'}
+                  tabbed={twoViews}
                 />
               ),
               progress: model.progressOf
             }}
           />
         )}
-        {model.nas.connected && storageWhere && view !== 'local' && (
+        {/* on the storage's tab: how each montage was handed over, with what can be done to each item
+            up there — the folder's files are not listed a second time under the cards */}
+        {twoViews && view === 'storage' && model.nas.connected && storageWhere && (
+          <StorageCards
+            key={placeKey(place)}
+            where={storageWhere}
+            stamp={board.remoteAfterUpload?.at}
+            hereToo={hereToo}
+            onProblem={setProblem}
+            onBringBack={(file) => {
+              /* the board knows it by where it was sent, which is what its upload recorded */
+              const mine = [...groups.flatMap((g) => g.files), ...board.loose].find(
+                (f) => f.uploaded?.remotePath === file.path
+              )
+              if (!mine?.id) {
+                const name = file.name
+                setProblem(t`${name} was not sent from this machine, so it cannot come back.`)
+                return
+              }
+              send(`back:${mine.id}`, {
+                intent: 'bring-back',
+                fileIds: [mine.id]
+              })
+            }}>
+            {(itemActions) => (
+              <div className='mb-2 flex flex-col gap-3'>
+                {folder.groups.filter(isMontage).map((g) => (
+                  <HandedOver
+                    key={g.id}
+                    group={g}
+                    itemActions={itemActions}
+                    onLink={(dir, make) =>
+                      send(`link:${dir}`, { intent: 'montage-link', link: { folder: dir, make } })
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </StorageCards>
+        )}
+        {/* a folder with no cards over it — a dropzone's — lists what the storage holds */}
+        {!twoViews && model.nas.connected && storageWhere && view !== 'local' && (
           <StorageFolder
             key={placeKey(place)}
             where={storageWhere}
@@ -636,15 +680,20 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
   )
 }
 
-/* above a montage's files: what went missing from the storage, what the storage holds, the film and
-   what holds its files while it has an edit */
-const MontageAbove = ({ group, withFilm }: { group: ManifestGroup; withFilm: boolean }) => {
+/* what a montage's upload handed over, as it was handed over, and what has gone missing of it since */
+const HandedOver = ({
+  group,
+  itemActions,
+  onLink
+}: {
+  group: ManifestGroup
+  itemActions?: (dir: string, name: string) => React.ReactNode
+  /* its folder's link taken away */
+  onLink?: (dir: string, make: boolean) => void
+}) => {
   const model = useBoard()
-  if (!isMontage(group)) return null
-  const facts = model.board.montageFacts[group.id]
-  const editLocked = EDIT_LOCKED
   return (
-    <div className='mb-2 flex flex-col gap-3'>
+    <>
       <GoneFromStorage
         gone={model.goneById[group.id] ?? []}
         at={model.board.groups.find((g) => g.id === group.id)?.uploaded?.at}
@@ -654,8 +703,33 @@ const MontageAbove = ({ group, withFilm }: { group: ManifestGroup; withFilm: boo
           group={group}
           dsmHost={model.nas.host}
           gone={new Set(goneSent(group.uploaded, model.nas.remote))}
+          itemActions={itemActions}
+          onLink={onLink}
         />
       )}
+    </>
+  )
+}
+
+/* above a montage's files: what went missing from the storage, what the storage holds, the film and
+   what holds its files while it has an edit */
+const MontageAbove = ({
+  group,
+  withFilm,
+  tabbed
+}: {
+  group: ManifestGroup
+  withFilm: boolean
+  /* the montage has its two tabs: how it was handed over is on the storage's, not here */
+  tabbed: boolean
+}) => {
+  const model = useBoard()
+  if (!isMontage(group)) return null
+  const facts = model.board.montageFacts[group.id]
+  const editLocked = EDIT_LOCKED
+  return (
+    <div className='mb-2 flex flex-col gap-3'>
+      {!tabbed && <HandedOver group={group} />}
       {withFilm && !group.uploaded && (
         <FilmStrip
           facts={facts}
