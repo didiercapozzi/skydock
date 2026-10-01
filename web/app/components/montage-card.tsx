@@ -14,6 +14,7 @@ import { kindOf } from './file-list'
 import { Icon } from './icons'
 import { dsmFolderUrl } from '../helpers/dsm'
 import { parcelsOfGroup } from '../helpers/parcels'
+import type { Places } from '../helpers/parcels'
 import type { Inside, Parcel } from '../helpers/parcels'
 import { formatFilmSize, getFileUrl, getPictureUrl, hhmm, pad } from './utils'
 import type { ManifestGroup } from './types'
@@ -225,18 +226,6 @@ const runtime = (seconds: number | null) =>
 const filmUrl = (film: NonNullable<MontageFact['film']>) =>
   `${getFileUrl(film.path)}?v=${film.mtime}`
 
-/* The film opened on its own, in a tab, where the browser can also save it */
-const OpenFilm = ({ film }: { film: NonNullable<MontageFact['film']> }) => (
-  <a
-    href={filmUrl(film)}
-    target='_blank'
-    rel='noreferrer'
-    title={t`Open the film in a new tab`}
-    className='inline-flex h-[30px] items-center justify-center rounded-[10px] bg-well px-3 text-[12.5px] font-bold whitespace-nowrap text-ink hover:bg-line'>
-    {t`Open on its own`}
-  </a>
-)
-
 /* The film, once it exists: the one thing here nobody can make again — so it is a photograph of its
    own, above the montage it came from, with what it is written on it and, on it, what can be done
    with it next. It is watched right there, since the whole point is to check the render before it
@@ -252,7 +241,7 @@ const FilmStrip = ({
 }: {
   facts?: MontageFact
   picture?: string
-  /* what can be done with the film, as buttons; without them it can only be opened on its own */
+  /* what can be done with the film, as buttons; without them it can only be watched */
   children?: React.ReactNode
   className?: string
 }) => {
@@ -305,9 +294,7 @@ const FilmStrip = ({
                 .filter(Boolean)
                 .join(' · ')}
             </span>
-            <div className='mt-2 flex flex-wrap items-center gap-2.5'>
-              {children ?? <OpenFilm film={film} />}
-            </div>
+            <div className='mt-2 flex flex-wrap items-center gap-2.5'>{children}</div>
           </div>
           <button
             type='button'
@@ -584,6 +571,89 @@ const InsideList = ({ inside }: { inside: Inside[] }) => (
   </div>
 )
 
+/* One thing in a folder up there. A zip, or a folder sent as it is, is closed until its row is pressed,
+   and pressed again closes it: what is inside it is there to look at, and out of the way when it is not.
+   Any other row opens the storage's own web interface on its folder, in a new tab. What was sent and
+   is not there now is said so, and has nothing to open. */
+const ParcelRow = ({
+  item,
+  dir,
+  dsm,
+  missing,
+  actions
+}: {
+  item: Parcel['items'][number]
+  dir: string
+  dsm: string | null
+  missing: boolean
+  actions?: (dir: string, name: string) => React.ReactNode
+}) => {
+  const [open, setOpen] = useState(false)
+  const holds = Boolean(item.inside && item.inside.length > 0) && !missing
+  const ROW =
+    'flex min-w-0 flex-1 items-center gap-2.5 rounded-[9px] px-2 py-1.5 text-ink no-underline hover:bg-well'
+  const body = (
+    <>
+      {holds && (
+        <Icon
+          name='next'
+          size={12}
+          className={`flex-none text-ink-3 transition-transform duration-150 ${open ? 'rotate-90' : ''}`}
+        />
+      )}
+      <Icon
+        name={item.icon}
+        size={14}
+        className='text-ink-3'
+      />
+      <span
+        className={`min-w-0 truncate text-[12.5px] font-medium ${missing ? 'text-ink-3 line-through' : ''}`}>
+        {item.name}
+      </span>
+      {missing && (
+        <span className='inline-flex h-[22px] flex-none items-center rounded-full bg-local-soft px-[9px] text-[11.5px] font-bold whitespace-nowrap text-local'>
+          {t`no longer on the storage`}
+        </span>
+      )}
+      {item.size ? (
+        <span className='text-[11.5px] text-ink-3'>{formatFilmSize(item.size)}</span>
+      ) : null}
+      <span className='mr-1 ml-auto text-[11.5px] text-ink-3'>{item.what}</span>
+    </>
+  )
+  return (
+    <div>
+      <div className='flex items-center gap-2'>
+        {holds ? (
+          <button
+            type='button'
+            aria-expanded={open}
+            title={open ? t`Close what is inside` : t`Show what is inside`}
+            onClick={() => setOpen(!open)}
+            className={`${ROW} cursor-pointer border-0 bg-transparent text-left`}>
+            {body}
+          </button>
+        ) : (
+          <a
+            href={dsm && !missing ? dsm : undefined}
+            target='_blank'
+            rel='noreferrer'
+            title={
+              dsm && !missing
+                ? t`Show it in the storage’s own web interface, in a new tab`
+                : undefined
+            }
+            className={`${ROW} ${dsm && !missing ? 'cursor-pointer' : 'cursor-default'}`}>
+            {body}
+          </a>
+        )}
+        {!missing && actions?.(dir, item.name)}
+      </div>
+      {holds && open && item.inside && <InsideList inside={item.inside} />}
+    </div>
+  )
+}
+
 const NasCard = ({
   parcel,
   dsmHost,
@@ -606,7 +676,7 @@ const NasCard = ({
   return (
     <div className='mt-2.5 overflow-hidden rounded-[16px] shadow-[0_0_0_1px_var(--color-line)]'>
       <div className='flex flex-wrap items-center gap-2.5 bg-well px-3.5 py-[11px] text-[12.5px]'>
-        <b className='font-bold'>{parcel.title}</b>
+        {parcel.title && <b className='font-bold'>{parcel.title}</b>}
         {dsm ? (
           <a
             href={dsm}
@@ -622,48 +692,17 @@ const NasCard = ({
         <span className='ml-auto text-[11.5px] text-ink-3'>{parcel.tag}</span>
       </div>
       <div className='px-1.5 py-1'>
-        {parcel.items.map((item) => {
-          /* what was sent and is not there now: said so, and nothing to open */
-          const missing = gone?.has(`${parcel.dir}/${item.name}`) ?? false
-          return (
-            <div key={item.key}>
-              <div className='flex items-center gap-2'>
-                <a
-                  href={dsm && !missing ? dsm : undefined}
-                  target='_blank'
-                  rel='noreferrer'
-                  title={
-                    dsm && !missing
-                      ? t`Show it in the storage’s own web interface, in a new tab`
-                      : undefined
-                  }
-                  className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-[9px] px-2 py-1.5 text-ink no-underline hover:bg-well ${dsm && !missing ? 'cursor-pointer' : 'cursor-default'}`}>
-                  <Icon
-                    name={item.icon}
-                    size={14}
-                    className='text-ink-3'
-                  />
-                  <span
-                    className={`min-w-0 truncate text-[12.5px] font-medium ${missing ? 'text-ink-3 line-through' : ''}`}>
-                    {item.name}
-                  </span>
-                  {missing && (
-                    <span className='inline-flex h-[22px] flex-none items-center rounded-full bg-local-soft px-[9px] text-[11.5px] font-bold whitespace-nowrap text-local'>
-                      {t`no longer on the storage`}
-                    </span>
-                  )}
-                  {item.size ? (
-                    <span className='text-[11.5px] text-ink-3'>{formatFilmSize(item.size)}</span>
-                  ) : null}
-                  <span className='mr-1 ml-auto text-[11.5px] text-ink-3'>{item.what}</span>
-                </a>
-                {!missing && itemActions?.(parcel.dir, item.name)}
-              </div>
-              {item.inside && !missing && <InsideList inside={item.inside} />}
-            </div>
-          )
-        })}
-        {!parcel.shareUrl && parcel.handed && onLink && (
+        {parcel.items.map((item) => (
+          <ParcelRow
+            key={item.key}
+            item={item}
+            dir={parcel.dir}
+            dsm={dsm}
+            missing={gone?.has(`${parcel.dir}/${item.name}`) ?? false}
+            actions={itemActions}
+          />
+        ))}
+        {!parcel.shareUrl && onLink && (
           <div className='mt-1 flex items-center gap-2.5 border-t border-line-2 px-2 pt-2 pb-1.5'>
             <Icon
               name='link'
@@ -775,16 +814,19 @@ const UploadedCards = ({
   dsmHost,
   gone,
   itemActions,
-  onLink
+  onLink,
+  places
 }: {
   group: ManifestGroup
   dsmHost?: string | null
+  /* the destinations the board knows, to name each folder the montage went to */
+  places?: Places
   gone?: Set<string>
   itemActions?: (dir: string, name: string) => React.ReactNode
   onLink?: (dir: string, make: boolean) => void
 }) => (
   <ParcelCards
-    parcels={parcelsOfGroup(group)}
+    parcels={parcelsOfGroup(group, places)}
     dsmHost={dsmHost}
     gone={gone}
     itemActions={itemActions}
@@ -799,7 +841,6 @@ export {
   GoneFromStorage,
   FilmNote,
   FilmStrip,
-  OpenFilm,
   PassengerFrames,
   PassengerName,
   ProjectPath,

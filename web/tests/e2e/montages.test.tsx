@@ -1,6 +1,6 @@
 import { createElement } from 'react'
 import { createRoutesStub } from 'react-router'
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 
@@ -78,7 +78,8 @@ const renderBoard = async (answer: unknown, at = '/', shown: unknown = board) =>
         sent.push((await request.json()) as Record<string, unknown>)
         return answer
       }
-    }
+    },
+    { path: '/api/storage-folder', loader: () => ({ ok: true, dir: '/SkyDock/Yverdon', files: [] }) }
   ])
   await render(createElement(Stub, { initialEntries: [at] }))
 }
@@ -454,19 +455,39 @@ describe('Move to…', () => {
 })
 
 /* A destination's folder is given no link by being uploaded into; one is made and taken away by hand,
-   from its panel (RULES, Network storage). */
+   from its panel on the right, and only there (RULES, Network storage). */
 describe('a destination’s link', () => {
+  afterEach(() => vi.unstubAllGlobals())
   const shown = (shareUrl?: string) => ({
     ...board,
     destinations: [{ name: 'Yverdon', path: '/SkyDock/Yverdon', ...(shareUrl ? { shareUrl } : {}) }],
     nas: { connected: true, hostname: 'nas.local', backupFolder: '/Backup' }
   })
   const open = async (data: unknown) => {
+    /* the page asks the storage for the folder over the network, so the network is stood in for */
+    const realFetch = window.fetch.bind(window)
+    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) =>
+      String(url).includes('/api/storage-folder')
+        ? new Response(JSON.stringify({ ok: true, dir: '/SkyDock/Yverdon', files: [] }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        : realFetch(url, init)
+    )
     await renderBoard({ groups: [] }, '/', data)
     await userEvent.click(
       page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /Yverdon/ })
     )
   }
+
+  test('has the same Local and On the storage tabs as a montage', async () => {
+    await open(shown())
+
+    const tabs = page.getByRole('group', { name: 'Where to look' })
+    await expect.element(tabs.getByRole('button', { name: 'Local' })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(tabs.getByRole('button', { name: 'On the storage' }))
+    await expect.element(tabs.getByRole('button', { name: 'On the storage' })).toHaveAttribute('aria-pressed', 'true')
+    await expect.element(page.getByRole('button', { name: /^Process/ })).toBeVisible()
+  })
 
   test('has none by default, and one is made from the panel', async () => {
     await open(shown())

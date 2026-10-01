@@ -77,21 +77,26 @@ const openStorage = async (data: Record<string, unknown>) => {
   )
 }
 
+/* a zip, or a folder sent as it is, is closed until its row is pressed: open every one */
+const openInsides = async () => {
+  const closed = page.getByTitle('Show what is inside')
+  await expect.element(closed.first()).toBeVisible()
+  for (const row of closed.elements()) await userEvent.click(row)
+}
+
 describe('a montage only the storage has', () => {
   test('shows how it was handed over when its contents are opened', async () => {
     await openStorage(base)
     await expect.element(page.getByText('storage only', { exact: true })).toBeInTheDocument()
-    await expect.element(page.getByText('To hand over')).not.toBeInTheDocument()
+    await expect.element(page.getByText(`${DIR}/ana-roth`, { exact: true })).not.toBeInTheDocument()
 
     await userEvent.click(page.getByRole('region', { name: 'On the storage' }).getByText('Ana Roth'))
 
-    await expect.element(page.getByText('To hand over')).toBeVisible()
-    await expect.element(page.getByText('ready to hand over')).toBeVisible()
+    await expect.element(page.getByText(`${DIR}/ana-roth`, { exact: true })).toBeVisible()
     await expect.element(page.getByText('ana_roth_20260728.mp4')).toBeVisible()
     await expect.element(page.getByText('3.0 GB')).toBeVisible()
     await expect.element(page.getByText(LINK, { exact: true })).toBeVisible()
     await expect.element(page.getByText('/Backup/ana-roth')).toBeVisible()
-    await expect.element(page.getByText('never shared')).toBeVisible()
     await expect.element(page.getByText('ana_roth_20260728.backup.full.zip')).toBeVisible()
     await page.screenshot({ path: './playwright-screenshots/montage-parcels.png' })
   })
@@ -169,17 +174,29 @@ describe('a montage only the storage has', () => {
     await openStorage(base)
 
     await userEvent.click(page.getByRole('region', { name: 'On the storage' }).getByText('Ana Roth'))
-    await expect.element(page.getByText('To hand over')).toBeVisible()
+    await expect.element(page.getByText(`${DIR}/ana-roth`, { exact: true })).toBeVisible()
 
     await userEvent.click(page.getByRole('region', { name: 'On the storage' }).getByText('Ana Roth'))
-    await expect.element(page.getByText('To hand over')).not.toBeInTheDocument()
+    await expect.element(page.getByText(`${DIR}/ana-roth`, { exact: true })).not.toBeInTheDocument()
+  })
+
+  test('keeps a zip closed until its row is pressed, and closes it again when pressed again', async () => {
+    await openStorage(base)
+    await userEvent.click(page.getByRole('region', { name: 'On the storage' }).getByText('Ana Roth'))
+
+    await expect.element(page.getByText('12 clips')).not.toBeInTheDocument()
+    await openInsides()
+    await expect.element(page.getByText('12 clips')).toBeVisible()
+    await userEvent.click(page.getByTitle('Close what is inside').first())
+    await expect.element(page.getByText('12 clips')).not.toBeInTheDocument()
   })
 
   test('says what is inside a zip', async () => {
     await openStorage(base)
     await userEvent.click(page.getByRole('region', { name: 'On the storage' }).getByText('Ana Roth'))
 
-    await expect.element(page.getByText('Inside')).toBeVisible()
+    await openInsides()
+    await expect.element(page.getByText('Inside').first()).toBeVisible()
     await expect.element(page.getByText('videos/', { exact: true })).toBeVisible()
     await expect.element(page.getByText('12 clips')).toBeVisible()
     await expect.element(page.getByText('photos/', { exact: true })).toBeVisible()
@@ -190,11 +207,11 @@ describe('a montage only the storage has', () => {
   test('closes its contents again', async () => {
     await openStorage(base)
     await userEvent.click(page.getByRole('region', { name: 'On the storage' }).getByText('Ana Roth'))
-    await expect.element(page.getByText('To hand over')).toBeVisible()
+    await expect.element(page.getByText(`${DIR}/ana-roth`, { exact: true })).toBeVisible()
 
     await userEvent.click(page.getByRole('region', { name: 'On the storage' }).getByText('Ana Roth'))
 
-    await expect.element(page.getByText('To hand over')).not.toBeInTheDocument()
+    await expect.element(page.getByText(`${DIR}/ana-roth`, { exact: true })).not.toBeInTheDocument()
   })
 
   test('still says what it can of one listed before its items were kept', async () => {
@@ -216,6 +233,7 @@ describe('a montage only the storage has', () => {
 
     await userEvent.click(page.getByRole('region', { name: 'On the storage' }).getByText('Ana Roth'))
 
+    await openInsides()
     await expect.element(page.getByText('ana.mp4')).toBeVisible()
     await expect.element(page.getByText('ana.photos.zip')).toBeVisible()
     await expect.element(page.getByText('ana.rushes.zip')).toBeVisible()
@@ -271,7 +289,8 @@ describe('a freed montage this board still holds', () => {
       page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /Ana Roth/ })
     )
 
-    await expect.element(page.getByText('To hand over')).toBeVisible()
+    await expect.element(page.getByText(`${DIR}/ana-roth`, { exact: true })).toBeVisible()
+    await openInsides()
     await expect.element(page.getByText('ana_roth_20260728.videos.zip')).toBeVisible()
     await expect.element(page.getByText('GX01.MP4')).toBeVisible()
     await expect.element(page.getByText(LINK, { exact: true })).toBeVisible()
@@ -282,6 +301,7 @@ describe('a freed montage this board still holds', () => {
 
     await userEvent.click(page.getByRole('region', { name: 'On the storage' }).getByText('Ana Roth'))
 
+    await openInsides()
     await expect.element(page.getByText('ana_roth_20260728.videos.zip')).toBeVisible()
     await expect.element(page.getByText('GX01.MP4')).toBeVisible()
     await expect.element(page.getByText('GX02.MP4')).toBeVisible()

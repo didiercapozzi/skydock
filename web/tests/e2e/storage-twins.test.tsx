@@ -5,7 +5,7 @@ import { page } from 'vitest/browser'
 
 import { FileList } from '../../app/components/file-list'
 import { StorageTwinPart } from '../../app/components/inspector'
-import { StorageFolder } from '../../app/components/storage-folder'
+import { FolderCard } from '../../app/components/storage-folder'
 import type { ManifestFile } from '../../app/components/types'
 import { StorageTwinsContext } from '../../app/hooks/storageTwins'
 
@@ -100,38 +100,37 @@ describe('a file that is up there too', () => {
   })
 })
 
-describe('the list under the files', () => {
+describe('a destination’s storage tab', () => {
   const listing = {
     ok: true as const,
     dir: DIR,
     files: [there('yverdon_20260927_120500.mp4'), there('only_there.mp4')]
   }
-
-  test('holds only what is not on this machine', async () => {
-    await render(
-      createElement(StorageFolder, {
-        where: { destination: 'Yverdon' },
+  const card = () =>
+    render(
+      createElement(FolderCard, {
         listing,
+        dsmHost: 'https://nas.local:5001',
         hereToo: new Set(['yverdon_20260927_120500.mp4']),
-        onlyThere: true
+        onAgain: () => {}
       })
     )
+
+  test('is the card a montage’s folder is: its path, its files, each saying whether it is here too', async () => {
+    await card()
 
     const region = page.getByRole('region', { name: 'On the storage' })
+    await expect.element(region.getByText(DIR)).toBeVisible()
     await expect.element(region.getByText('only_there.mp4')).toBeVisible()
-    await expect.element(region.getByText('yverdon_20260927_120500.mp4')).not.toBeInTheDocument()
+    await expect.element(region.getByText('video · here too')).toBeVisible()
+    await expect.element(region.getByText('video · only there')).toBeVisible()
   })
 
-  test('is not there at all when everything up there is here too', async () => {
-    await render(
-      createElement(StorageFolder, {
-        where: { destination: 'Yverdon' },
-        listing: { ...listing, files: [listing.files[0]!] },
-        hereToo: new Set(['yverdon_20260927_120500.mp4']),
-        onlyThere: true
-      })
-    )
+  test('has no link of its own: that is made in the destination’s panel', async () => {
+    await card()
 
-    await expect.element(page.getByRole('region', { name: 'On the storage' })).not.toBeInTheDocument()
+    await expect.element(page.getByText(DIR)).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Create link' })).not.toBeInTheDocument()
+    await expect.element(page.getByRole('button', { name: 'Remove link' })).not.toBeInTheDocument()
   })
 })

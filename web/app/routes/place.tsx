@@ -28,14 +28,13 @@ import { FolderOwed } from '../components/folder-owed'
 import { FilePanel, FolderPanel, JumpPanel, ManyPanel, Part, Shell } from '../components/inspector'
 import { MoveTo } from '../components/move-to'
 import { PlacePane } from '../components/place-pane'
-import { StorageCards, StorageFolder } from '../components/storage-folder'
+import { FolderCard, StorageCards, StorageFolder } from '../components/storage-folder'
 import { StorageList } from '../components/storage-list'
 import {
   FilmNote,
   FilmStrip,
   GoneFromStorage,
   MontageCardActions,
-  OpenFilm,
   UploadedCards
 } from '../components/montage-card'
 import { NextStep, StepTrail } from '../components/montage-steps'
@@ -282,15 +281,19 @@ const Place = () => {
      machine nothing is, so it opens on the storage's, where how it was handed over is shown. */
   const [chosen, setChosen] = useState<{ key: string; view: 'local' | 'storage' } | null>(null)
   const twoViews =
-    place.kind === 'pax' &&
     model.nas.connected &&
     storageWhere !== null &&
-    folder.groups.some((g) => g.uploaded)
+    (place.kind === 'dz' || (place.kind === 'pax' && folder.groups.some((g) => g.uploaded)))
+  /* nothing of it is left here: a destination whose files were all freed, a montage freed whole */
+  const nothingHere =
+    place.kind === 'dz'
+      ? folder.files.length > 0 && folder.files.every((f) => f.freed)
+      : folder.groups.length > 0 && folder.groups.every((g) => g.freed)
   const view: 'local' | 'storage' | 'both' = !twoViews
     ? 'both'
     : chosen?.key === placeKey(place)
       ? chosen.view
-      : folder.groups.length > 0 && folder.groups.every((g) => g.freed)
+      : nothingHere
         ? 'storage'
         : 'local'
 
@@ -391,6 +394,7 @@ const Place = () => {
             <StorageList
               storage={board.storage}
               dsmHost={model.nas.host}
+              places={board.places}
               remote={model.nas.remote}
               isHere={(entry) => groups.some((g) => folderOnStorage(g) === entry.folder)}
               groupOf={(entry) => groups.find((g) => folderOnStorage(g) === entry.folder)}
@@ -466,7 +470,7 @@ const Place = () => {
         )}
         {/* on the storage's tab: how each montage was handed over, with what can be done to each item
             up there — the folder's files are not listed a second time under the cards */}
-        {twoViews && view === 'storage' && model.nas.connected && storageWhere && (
+        {place.kind === 'pax' && twoViews && view === 'storage' && storageWhere && (
           <StorageCards
             key={placeKey(place)}
             where={storageWhere}
@@ -488,24 +492,31 @@ const Place = () => {
             )}
           </StorageCards>
         )}
-        {/* a folder with no cards over it — a dropzone's — lists what the storage holds */}
-        {!twoViews && model.nas.connected && storageWhere && view !== 'local' && (
-          <StorageFolder
-            key={placeKey(place)}
-            where={storageWhere}
+        {/* a dropzone's storage tab shows its folder up there as the card a montage's handed-over folder
+            is, with its link at the foot; any other folder with no cards over it lists it under its files */}
+        {place.kind === 'dz' && twoViews && view === 'storage' && (
+          <FolderCard
+            listing={storageListing}
             dsmHost={model.nas.host}
-            stamp={board.remoteAfterUpload?.at}
             hereToo={hereToo}
-            {...(place.kind === 'dz'
-              ? {
-                  listing: storageListing,
-                  onAgain: () => setLookedAgain(lookedAgain + 1),
-                  onlyThere: true
-                }
-              : {})}
+            onAgain={() => setLookedAgain(lookedAgain + 1)}
             onProblem={setProblem}
           />
         )}
+        {place.kind !== 'dz' &&
+          model.nas.connected &&
+          storageWhere &&
+          view !== 'local' &&
+          !(place.kind === 'pax' && twoViews) && (
+            <StorageFolder
+              key={placeKey(place)}
+              where={storageWhere}
+              dsmHost={model.nas.host}
+              stamp={board.remoteAfterUpload?.at}
+              hereToo={hereToo}
+              onProblem={setProblem}
+            />
+          )}
       </PlacePane>
 
       <Shell>
@@ -665,9 +676,7 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
             }
           : undefined
       }
-      onFree={() => model.setDialog({ kind: 'free', groupId: group.id })}>
-      {facts?.film && <OpenFilm film={facts.film} />}
-    </MontageCardActions>
+      onFree={() => model.setDialog({ kind: 'free', groupId: group.id })}></MontageCardActions>
   )
   return (
     <NextStep
@@ -708,6 +717,7 @@ const HandedOver = ({
         <UploadedCards
           group={group}
           dsmHost={model.nas.host}
+          places={model.board.places}
           gone={new Set(goneSent(group.uploaded, model.nas.remote))}
           itemActions={itemActions}
           onLink={onLink}
@@ -967,8 +977,8 @@ const Inspector = ({
       sub={summary}
       files={folder.files}
       statusOf={statusOf}>
-      {/* where it goes is said once, above its files, where it can be changed; here is only the
-          link handed out of it — none by default, made and taken away by hand */}
+      {/* the link handed out of a destination's folder — none by default, made and taken away by hand,
+          and only here */}
       {dz?.path && model.nas.connected && (
         <Part heading={t`Shared link`}>
           {dz.shareUrl ? (

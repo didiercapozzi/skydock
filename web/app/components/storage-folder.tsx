@@ -11,8 +11,10 @@ import { routingEngine } from '../helpers/routing'
 import { refusalSchema } from '../hooks/useBoardState'
 import { useStorageFolder } from '../hooks/useStorageFolder'
 import type { StorageWhere } from '../hooks/useStorageFolder'
+import { parcelOfFolder } from '../helpers/parcels'
 import { Mini } from './buttons'
 import { Icon } from './icons'
+import { ParcelCards } from './montage-card'
 import { Modal } from './modal'
 import { dateLabel, formatSize, hhmm } from './utils'
 
@@ -214,9 +216,6 @@ const StorageFolder = ({
   stamp,
   dsmHost,
   hereToo,
-  listing,
-  onAgain,
-  onlyThere,
   onProblem
 }: {
   where: StorageWhere
@@ -227,28 +226,17 @@ const StorageFolder = ({
   /* the names of the delivered files this machine still holds, where that is known: on a place's
      own page it is, and each file then says whether it is here too */
   hereToo?: Set<string>
-  /* the folder as the page already asked for it, when the page needs it for more than this list;
-     absent, this list asks for itself */
-  listing?: StorageListing | null
-  /* asking the storage again, when the page asked for the listing */
-  onAgain?: () => void
-  /* only what is not on this machine is listed here: what is on both is shown on the file's own row,
-     and a folder with nothing only up there has no list at all */
-  onlyThere?: boolean
   /* what the storage said when it would not do what was asked */
   onProblem?: (problem: string) => void
 }) => {
   const [again, setAgain] = useState(0)
   const actions = useFileActions(onProblem)
   const { playing, setPlaying } = actions
-  const own = useStorageFolder(listing === undefined ? where : null, `${String(stamp)}:${again}`)
-  const folder = listing === undefined ? own : listing
+  const folder = useStorageFolder(where, `${String(stamp)}:${again}`)
   const held = folder?.ok ? folder.files : []
-  const files = onlyThere && hereToo ? held.filter((f) => !hereToo.has(f.name)) : held
+  const files = held
   const only = hereToo ? held.filter((f) => !hereToo.has(f.name)).length : 0
   const count = files.length
-  /* while it is being asked, and when nothing is only up there, the list is not there at all */
-  if (onlyThere && (!folder || (folder.ok && files.length === 0))) return null
 
   return (
     <section
@@ -263,7 +251,7 @@ const StorageFolder = ({
             size={18}
             className='text-accent'
           />
-          {onlyThere ? t`Only on the storage` : t`On the storage`}
+          {t`On the storage`}
         </h3>
         {folder?.ok && <code className='font-mono text-[11.5px] text-ink-3'>{folder.dir}</code>}
         {folder?.ok && (
@@ -274,7 +262,7 @@ const StorageFolder = ({
         )}
         <span className='ml-auto'>
           <Mini
-            onClick={() => (onAgain ? onAgain() : setAgain(again + 1))}
+            onClick={() => setAgain(again + 1)}
             title={t`Ask the storage again what this folder holds`}>
             {t`Look again`}
           </Mini>
@@ -458,4 +446,64 @@ const StorageCards = ({
   )
 }
 
-export { StorageCards, StorageFolder, StoragePlayer, storageFileUrl }
+/* A destination's folder up there, on its storage tab, drawn as the card a montage's handed-over folder is:
+   its path and its files each with what can be done to it. Its link is not here: that is made, and
+   taken away, in the destination's own panel. What the folder holds is asked of the storage by the page, which hands it in. */
+const FolderCard = ({
+  listing,
+  dsmHost,
+  hereToo,
+  onAgain,
+  onProblem
+}: {
+  listing: StorageListing | null
+  dsmHost?: string | null
+  hereToo?: Set<string>
+  onAgain: () => void
+  onProblem?: (problem: string) => void
+}) => {
+  const actions = useFileActions(onProblem)
+  const byPath = new Map((listing?.ok ? listing.files : []).map((file) => [file.path, file]))
+  const itemActions = (dir: string, name: string) => {
+    const file = byPath.get(`${dir}/${name}`)
+    return file ? (
+      <FileButtons
+        file={file}
+        actions={actions}
+        watch
+      />
+    ) : null
+  }
+  return (
+    <section aria-label={t`On the storage`}>
+      <div className='flex justify-end'>
+        <Mini
+          onClick={onAgain}
+          title={t`Ask the storage again what this folder holds`}>
+          {t`Look again`}
+        </Mini>
+      </div>
+      {!listing ? (
+        <p className='m-0 py-3 text-[12.5px] text-ink-3'>{t`Asking the storage…`}</p>
+      ) : !listing.ok ? (
+        <p className='m-0 mt-2 rounded-xl bg-local-soft px-3.5 py-2.5 text-[12.5px] text-local'>
+          {listing.reason}
+        </p>
+      ) : (
+        <ParcelCards
+          parcels={[parcelOfFolder({ dir: listing.dir, files: listing.files, hereToo })]}
+          dsmHost={dsmHost}
+          itemActions={itemActions}
+        />
+      )}
+      {actions.playing && (
+        <StoragePlayer
+          file={actions.playing}
+          onClose={() => actions.setPlaying(null)}
+        />
+      )}
+    </section>
+  )
+}
+
+export { FolderCard, StorageCards, StorageFolder, StoragePlayer, storageFileUrl }

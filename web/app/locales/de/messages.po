@@ -91,8 +91,15 @@ msgstr "{0, plural, one {# Datei, die sie verwendet, ist nicht hier: {missing}. 
 #: app/components/file-list.tsx
 #: app/components/inspector.tsx
 #: app/components/templates-dialog.tsx
+#: app/helpers/parcels.ts
 msgid "{0, plural, one {# file} other {# files}}"
 msgstr "{0, plural, one {# Datei} other {# Dateien}}"
+
+#. placeholder {0}: 1
+#. placeholder {0}: here.length
+#: app/helpers/parcels.ts
+msgid "{0, plural, one {# item} other {# items}}"
+msgstr "{0, plural, one {# Element} other {# Elemente}}"
 
 #. placeholder {0}: jumps.length
 #: app/components/free-place-dialog.tsx
@@ -950,10 +957,6 @@ msgstr "Zurück zur ersten Vorlage"
 msgid "Back to the measured marks"
 msgstr "Zurück zu den gemessenen Marken"
 
-#: app/helpers/parcels.ts
-msgid "Backup"
-msgstr "Sicherung"
-
 #: app/components/templates-dialog.tsx
 msgid "beside it — chosen whole. Or the one archive, if it was packed as .zip or .tar.gz. Or the project and its files picked one by one. Each file the project names is pointed at the copy brought in with it, so a template made on another machine finds its own files here. Bringing one in under a name already there replaces it, files and all."
 msgstr "daneben schreibt — als Ganzes gewählt. Oder das eine Archiv, wenn es als .zip oder .tar.gz gepackt wurde. Oder das Projekt und seine Dateien einzeln ausgewählt. Jede Datei, die das Projekt nennt, wird auf die mitgebrachte Kopie verwiesen, sodass eine auf einem anderen Rechner erstellte Vorlage hier ihre eigenen Dateien findet. Eine unter einem schon vorhandenen Namen hinzuzufügen, ersetzt diese samt Dateien."
@@ -1190,6 +1193,10 @@ msgstr "Schließen (Esc)"
 #: app/components/montage-card.tsx
 msgid "Close the player"
 msgstr "Player schließen"
+
+#: app/components/montage-card.tsx
+msgid "Close what is inside"
+msgstr "Den Inhalt schließen"
 
 #: app/components/comparison-dialog.tsx
 msgid "Compare jumps"
@@ -1763,6 +1770,7 @@ msgid "failed"
 msgstr "fehlgeschlagen"
 
 #: app/components/storage-folder.tsx
+#: app/helpers/parcels.ts
 msgid "file"
 msgstr "Datei"
 
@@ -2011,6 +2019,10 @@ msgstr "Lose Dateien zu Sprüngen gruppieren"
 #: app/components/camera-files.tsx
 msgid "handed over, not a drive — slower than a card reader"
 msgstr "übergeben, kein Laufwerk — langsamer als ein Kartenleser"
+
+#: app/helpers/parcels.ts
+msgid "here too"
+msgstr "auch hier"
 
 #: app/components/storage-folder.tsx
 msgid "Here too"
@@ -2506,10 +2518,6 @@ msgstr "Heißt {stem}.….zip — das Ende wählst du, oder keines."
 msgid "Narrow by name"
 msgstr "Nach Name eingrenzen"
 
-#: app/helpers/parcels.ts
-msgid "never shared"
-msgstr "nie geteilt"
-
 #: app/components/places-tree.tsx
 msgid "New destination"
 msgstr "Neues Ziel"
@@ -2806,9 +2814,9 @@ msgstr "Nur eine Datei, die der Speicher nachweislich Byte für Byte enthält, o
 msgid "Only for a clip that stands upright. This one is landscape."
 msgstr "Nur für einen Clip im Hochformat. Dieser ist im Querformat."
 
-#: app/components/storage-folder.tsx
-msgid "Only on the storage"
-msgstr "Nur auf dem Speicher"
+#: app/helpers/parcels.ts
+msgid "only there"
+msgstr "nur dort"
 
 #: app/components/storage-folder.tsx
 msgid "Only there"
@@ -2841,10 +2849,6 @@ msgstr "Öffnen — kürzen, zuschneiden und drehen"
 msgid "Open it out to see more"
 msgstr "Vergrößern, um mehr zu sehen"
 
-#: app/components/montage-card.tsx
-msgid "Open on its own"
-msgstr "Für sich öffnen"
-
 #: app/components/preview-drawer.tsx
 msgid "Open the clip in this machine's own player — the file as it was shot, whatever the browser can decode"
 msgstr "Den Clip im Player dieses Rechners öffnen — die Datei so, wie sie aufgenommen wurde, egal was der Browser dekodieren kann"
@@ -2852,10 +2856,6 @@ msgstr "Den Clip im Player dieses Rechners öffnen — die Datei so, wie sie auf
 #: app/components/shortcuts-dialog.tsx
 msgid "open the file"
 msgstr "Datei öffnen"
-
-#: app/components/montage-card.tsx
-msgid "Open the film in a new tab"
-msgstr "Den Film in einem neuen Tab öffnen"
 
 #: app/components/email-dialog.tsx
 msgid "Open the message in"
@@ -2927,6 +2927,7 @@ msgstr "Das Passwort muss mindestens 3 Zeichen lang sein"
 
 #: app/components/file-list.tsx
 #: app/components/storage-folder.tsx
+#: app/helpers/parcels.ts
 msgid "photo"
 msgstr "Foto"
 
@@ -3154,10 +3155,6 @@ msgstr "Vorlagen werden gelesen…"
 #: app/components/jump-graph.tsx
 msgid "Reading what the camera measured…"
 msgstr "Messwerte der Kamera werden gelesen…"
-
-#: app/helpers/parcels.ts
-msgid "ready to hand over"
-msgstr "bereit zum Ausliefern"
 
 #: app/components/remove-files-dialog.tsx
 msgid "Remove {counted} from {from}?"
@@ -3417,7 +3414,7 @@ msgstr "Freigabelink"
 
 #: app/routes/place.tsx
 msgid "Shared link"
-msgstr "Geteilter Link"
+msgstr "Freigabelink"
 
 #: app/components/nas-folder-browser.tsx
 msgid "Shares"
@@ -3485,6 +3482,10 @@ msgstr "Die fehlgeschlagene Übertragung anzeigen"
 #: app/components/montage-card.tsx
 msgid "Show this folder in the storage’s own web interface, in a new tab"
 msgstr "Diesen Ordner im Web-Interface des Speichers anzeigen, in einem neuen Tab"
+
+#: app/components/montage-card.tsx
+msgid "Show what is inside"
+msgstr "Den Inhalt anzeigen"
 
 #: app/components/email-dialog.tsx
 msgid "Shown as it will arrive — write in it; the signature stays for every email"
@@ -4071,10 +4072,6 @@ msgstr "Zeiten zurückgesetzt — {files, plural, one {# Datei} other {# Dateien
 msgid "To"
 msgstr "An"
 
-#: app/helpers/parcels.ts
-msgid "To hand over"
-msgstr "Zur Übergabe"
-
 #: app/components/destination-header.tsx
 msgid "to process"
 msgstr "aufzubereiten"
@@ -4325,6 +4322,7 @@ msgstr "Der Benutzername muss mindestens 2 Zeichen lang sein"
 
 #: app/components/file-list.tsx
 #: app/components/storage-folder.tsx
+#: app/helpers/parcels.ts
 msgid "video"
 msgstr "Video"
 

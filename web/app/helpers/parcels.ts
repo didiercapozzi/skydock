@@ -1,4 +1,4 @@
-import { t } from '@lingui/core/macro'
+import { plural, t } from '@lingui/core/macro'
 import { isVideoFile, lastSegment, parentOf, stemOf } from '@skydock/scripts'
 import type { MontageEntry, SendPart } from '@skydock/scripts'
 import type { ManifestGroup } from '../components/types'
@@ -29,14 +29,29 @@ type ParcelItem = {
 
 type Parcel = {
   key: string
+  /* the destination it is, as the board names it — or the folder's own name where none is */
   title: string
   dir: string
-  /* said at the top right: handed over with a link, or kept and never shared */
+  /* said at the top right: how many things it holds */
   tag: string
   shareUrl?: string
-  /* the one that holds the film: what was handed over, whether or not it has a link now */
+  /* the one the film went into, which is the one the montage's link is of: listed first */
   handed?: boolean
   items: ParcelItem[]
+}
+
+/* the destinations the board knows, by where each goes on the storage */
+type Places = { name: string; path?: string }[]
+
+/* which destination a folder up there is: the one whose folder it is or lies inside — the longest such,
+   a destination inside another being the nearer — else the folder's own name */
+const destinationNamed = (dir: string, places: Places = []) => {
+  const inside = (root: string) => dir === root || dir.startsWith(`${root.replace(/\/$/, '')}/`)
+  const found = places
+    .filter((place): place is { name: string; path: string } => Boolean(place.path))
+    .filter((place) => inside(place.path))
+    .sort((a, b) => b.path.length - a.path.length)[0]
+  return found ? found.name : lastSegment(dir)
 }
 
 /* what a part is called, said in the language the app speaks */
@@ -112,11 +127,12 @@ const insideOfCounts = (holds: SendPart[], entry: MontageEntry): Inside[] => [
   ...(holds.includes('project') ? [{ kind: 'file' as const, name: t`the kdenlive project` }] : [])
 ]
 
-/* items sharing a folder up there make one parcel; the one that holds the film is what was handed over,
-   with its link, and every other is kept and never shared */
+/* items sharing a folder up there make one parcel, named for the destination it is; the one the film
+   went into comes first, and is the one the link is of */
 const parcelsFrom = (
   placed: { dir: string; item: ParcelItem; film: boolean }[],
-  shareUrl?: string
+  shareUrl?: string,
+  places?: Places
 ) => {
   const byDir = new Map<string, typeof placed>()
   for (const entry of placed) byDir.set(entry.dir, [...(byDir.get(entry.dir) ?? []), entry])
@@ -124,20 +140,20 @@ const parcelsFrom = (
     const handed = here.some((entry) => entry.film)
     return {
       key: dir,
-      title: handed ? t`To hand over` : t`Backup`,
+      title: destinationNamed(dir, places),
       dir,
-      tag: handed ? t`ready to hand over` : t`never shared`,
+      tag: plural(here.length, { one: '# item', other: '# items' }),
       handed,
       ...(handed && shareUrl ? { shareUrl } : {}),
       items: here.map((entry) => entry.item)
     }
   })
-  /* what is handed over first, whatever order it was sent in */
+  /* the one the film went into first, whatever order it was sent in */
   return parcels.sort((a, b) => Number(Boolean(b.handed)) - Number(Boolean(a.handed)))
 }
 
 /* The parcels of a montage this board still knows the upload of. */
-const parcelsOfGroup = (group: ManifestGroup): Parcel[] => {
+const parcelsOfGroup = (group: ManifestGroup, places?: Places): Parcel[] => {
   const record = group.uploaded
   if (!record) return []
   const shareUrl = record.shareUrl ?? group.publish?.shareUrl
@@ -167,7 +183,8 @@ const parcelsOfGroup = (group: ManifestGroup): Parcel[] => {
           }
         })
       ),
-      shareUrl
+      shareUrl,
+      places
     )
   /* uploaded before every item was written down: what the record keeps of each part */
   const placed: Parameters<typeof parcelsFrom>[0] = []
@@ -220,17 +237,12 @@ const parcelsOfGroup = (group: ManifestGroup): Parcel[] => {
       false,
       'play'
     )
-  /* the photos as they went up, when there was no film to hand over with them */
-  return parcelsFrom(placed, shareUrl).map((parcel) =>
-    parcel.items.some((item) => item.what === t`the film`)
-      ? parcel
-      : { ...parcel, title: t`Backup`, tag: t`never shared` }
-  )
+  return parcelsFrom(placed, shareUrl, places)
 }
 
 /* The parcels of a montage the storage's list names: from its items where it kept them, else from the
    three places an older entry says — the film, the photos' zip and the backup. */
-const parcelsOfEntry = (entry: MontageEntry): Parcel[] => {
+const parcelsOfEntry = (entry: MontageEntry, places?: Places): Parcel[] => {
   const shareUrl = entry.shareUrl
   if (entry.items && entry.items.length > 0)
     return parcelsFrom(
@@ -248,7 +260,8 @@ const parcelsOfEntry = (entry: MontageEntry): Parcel[] => {
             : {})
         }
       })),
-      shareUrl
+      shareUrl,
+      places
     )
   const placed: Parameters<typeof parcelsFrom>[0] = []
   if (entry.film)
@@ -269,15 +282,18 @@ const parcelsOfEntry = (entry: MontageEntry): Parcel[] => {
         inside: insideOfCounts(['photos'], entry)
       }
     })
-  const parcels = parcelsFrom(placed, shareUrl)
+  const parcels = parcelsFrom(placed, shareUrl, places)
   return entry.backup
     ? [
         ...parcels,
         {
           key: entry.backup,
-          title: t`Backup`,
+          title: destinationNamed(
+            entry.backup.endsWith('.zip') ? parentOf(entry.backup) : entry.backup,
+            places
+          ),
           dir: entry.backup.endsWith('.zip') ? parentOf(entry.backup) : entry.backup,
-          tag: t`never shared`,
+          tag: plural(1, { one: '# item', other: '# items' }),
           items: [
             {
               key: entry.backup,
@@ -294,5 +310,33 @@ const parcelsOfEntry = (entry: MontageEntry): Parcel[] => {
     : parcels
 }
 
-export { parcelsOfEntry, parcelsOfGroup }
-export type { Inside, Parcel, ParcelItem }
+/* What a folder up there holds, as the same card a montage's parcel is drawn as: no title of its own —
+   the folder is the place's — its files each with what kind it is and whether it is here too. */
+const parcelOfFolder = ({
+  dir,
+  files,
+  hereToo
+}: {
+  dir: string
+  files: { name: string; size: number | null; kind: 'video' | 'photo' | 'other' }[]
+  /* the names of the delivered files this machine still holds, where that is known */
+  hereToo?: Set<string>
+}): Parcel => ({
+  key: dir,
+  title: '',
+  dir,
+  tag: plural(files.length, { one: '# file', other: '# files' }),
+  items: files.map((file) => ({
+    key: `${dir}/${file.name}`,
+    icon: file.kind === 'video' ? 'play' : file.kind === 'photo' ? 'photo' : 'zip',
+    name: file.name,
+    ...(file.size === null ? {} : { size: file.size }),
+    what: [
+      file.kind === 'video' ? t`video` : file.kind === 'photo' ? t`photo` : t`file`,
+      ...(hereToo ? [hereToo.has(file.name) ? t`here too` : t`only there`] : [])
+    ].join(' · ')
+  }))
+})
+
+export { parcelOfFolder, parcelsOfEntry, parcelsOfGroup }
+export type { Inside, Parcel, ParcelItem, Places }

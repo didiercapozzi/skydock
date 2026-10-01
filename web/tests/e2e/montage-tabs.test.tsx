@@ -131,12 +131,12 @@ describe('an uploaded montage', () => {
     await open(board(group({ freed: { at: 1_785_100_000, bytes: 2 * GB } }, freed)))
 
     await expect.element(tabs().getByRole('button', { name: 'On the storage' })).toHaveAttribute('aria-pressed', 'true')
-    await expect.element(page.getByText('To hand over')).toBeVisible()
+    await expect.element(page.getByText(`${DIR}/ana-roth`, { exact: true })).toBeVisible()
     await expect.element(page.getByText('ana_roth_20260728.mp4')).toBeVisible()
   })
 
   /* the link of what is handed over is on its card, and can be taken away from there */
-  test('can take the folder’s link away from the To hand over card', async () => {
+  test('can take the folder’s link away from the folder’s card', async () => {
     asked.length = 0
     await open(board(group({}, [clip(1)])))
     await userEvent.click(tabs().getByRole('button', { name: 'On the storage' }))
@@ -169,11 +169,19 @@ describe('an uploaded montage', () => {
   test('shows how it was handed over on the storage’s tab only', async () => {
     await open(board(group({}, [clip(1)])))
 
-    await expect.element(page.getByText('To hand over')).not.toBeInTheDocument()
+    await expect.element(page.getByText(`${DIR}/ana-roth`, { exact: true })).not.toBeInTheDocument()
     await userEvent.click(tabs().getByRole('button', { name: 'On the storage' }))
-    await expect.element(page.getByText('To hand over')).toBeVisible()
+    await expect.element(page.getByText(`${DIR}/ana-roth`, { exact: true })).toBeVisible()
     await userEvent.click(tabs().getByRole('button', { name: 'Local' }))
-    await expect.element(page.getByText('To hand over')).not.toBeInTheDocument()
+    await expect.element(page.getByText(`${DIR}/ana-roth`, { exact: true })).not.toBeInTheDocument()
+  })
+
+  /* a montage's files are headed and listed as a destination's day is */
+  test('lists its files under a day heading with the counts on one line', async () => {
+    await open(board(group({}, [clip(1), clip(2)])))
+
+    await expect.element(page.getByText('2 files · 2 videos · 0 photos')).toBeVisible()
+    await expect.element(page.getByText('Open on its own')).not.toBeInTheDocument()
   })
 
   test('has no tabs before it is uploaded', async () => {

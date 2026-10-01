@@ -3,6 +3,7 @@ import type { MontageEntry, MontageLost } from '@skydock/scripts'
 import { useState } from 'react'
 import { goneSent, lostOf } from '@skydock/scripts'
 import { parcelsOfEntry, parcelsOfGroup } from '../helpers/parcels'
+import type { Places } from '../helpers/parcels'
 import { Go } from './buttons'
 import { Icon } from './icons'
 import { dsmFolderUrl } from '../helpers/dsm'
@@ -27,6 +28,7 @@ const Row = ({
   entry,
   group,
   dsmHost,
+  places,
   remote,
   lost,
   waiting,
@@ -37,6 +39,8 @@ const Row = ({
   entry: MontageEntry
   /* the storage's own address, for showing a file in its web interface */
   dsmHost?: string | null
+  /* the destinations the board knows, to name each folder a montage went to */
+  places?: Places
   /* what the storage was last found to hold */
   remote?: { dirs: string[]; sizes: Record<string, number | null> } | null
   /* the montage on this board, when it is still there: what its upload recorded says the most */
@@ -211,7 +215,9 @@ const Row = ({
       {detailed && (
         <div className='mb-3 ml-[21px] border-l-2 border-accent/30 pb-1 pl-4'>
           <ParcelCards
-            parcels={group?.uploaded ? parcelsOfGroup(group) : parcelsOfEntry(entry)}
+            parcels={
+              group?.uploaded ? parcelsOfGroup(group, places) : parcelsOfEntry(entry, places)
+            }
             dsmHost={dsmHost}
             gone={new Set(goneSent(group?.uploaded, remote ?? null))}
           />
@@ -224,6 +230,7 @@ const Row = ({
 const StorageList = ({
   storage,
   dsmHost,
+  places,
   remote,
   isHere,
   groupOf,
@@ -234,6 +241,8 @@ const StorageList = ({
 }: {
   /* the storage's own address, for showing a file in its web interface */
   dsmHost?: string | null
+  /* the destinations the board knows, to name each folder a montage went to */
+  places?: Places
   /* what the storage was last found to hold, to say what of an upload is gone */
   remote?: { dirs: string[]; sizes: Record<string, number | null> } | null
   storage: {
@@ -301,6 +310,7 @@ const StorageList = ({
               entry={entry}
               group={groupOf(entry)}
               dsmHost={dsmHost}
+              places={places}
               remote={remote}
               lost={lostOf(storage.lost, entry.folder)}
               waiting={isHere(entry) ? 0 : waitingFiles(entry)}

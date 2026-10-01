@@ -1,6 +1,9 @@
 // @vitest-environment node
+import { i18n } from '@lingui/core'
 import { describe, it, expect } from 'vitest'
 import { montageNote } from '../../app/helpers/notes'
+
+i18n.loadAndActivate({ locale: 'en', messages: {} })
 
 /* What the board says once a montage is made — how much went in the bin, and whether the editor came
    up — and, when nothing was put in the bin, that an existing project is being opened again rather

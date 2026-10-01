@@ -866,7 +866,7 @@ once and left alone: changing the folder and taking the destination off the boar
 files travel, as three stations in a row — to process, to upload, on the storage — the first with
 something in it lifted, and the step that moves them on, and freeing space, at the end of the same row.
 Third, the ways of finding and arranging its files: narrowing by name, by day or one list, videos or
-photos. Its right panel keeps its shared link, made and taken away by hand.
+photos. Its shared link is made and taken away by hand in its right panel, and only there. Like a montage's, its page has two tabs under that head, _Local_ and _On the storage_, one at a time: _Local_ lists the files kept on this machine, and _On the storage_ shows its folder up there as the same card a montage's handed-over folder is — its path and every file it holds with what kind it is and whether it is here too or only up there — with watching a film and a file's own link on each row.
 
 **Processing** runs on the machine, not in the page: closing or refreshing the page does not stop it,
 and the board stays usable meanwhile. A page opened while processing runs says so and updates itself
@@ -879,9 +879,12 @@ kept, and a jump changed while its copies were being written is not marked proce
 **Nothing is uploaded until everything in it is processed**, and what is waiting is said plainly.
 An upload's progress is shown once, in its panel in the bottom-right corner of the board, whatever page is open.
 
+**A montage's files are listed as a destination's are.** Under its steps, a montage's files are headed
+by its day — the day, how many files, videos and photos on one line, and how far they have got — and
+listed in the same table: picture, name, shot, size, state.
+
 **The film.** Once rendered, the film shows above its montage: its name, how long it runs, its size, and
-when it was rendered. It can be watched there or opened on its own, so the render is checked before it
-goes to anyone. A film rendered again is the one that plays. Once the montage is uploaded, what went up
+when it was rendered. It can be watched there, so the render is checked before it goes to anyone. A film rendered again is the one that plays. Once the montage is uploaded, what went up
 is shown in its place.
 
 ## File status
@@ -951,10 +954,7 @@ uploaded the one it actually went to — so what is up there is listed, and watc
 whether or not any of it is still on this machine: a freed montage, last month's days at a dropzone. A montage that has been uploaded is in two places, here and up there, so its page has two tabs, _Local_ and _On the storage_, and shows one at a time: it opens on _Local_, or on _On the storage_ for a montage freed from this machine, which has nothing left here. How it was handed over — the cards of each folder up there, with what is in them — is on _On the storage_, and not under the files on _Local_. The folder's files are not listed a second time under those cards: what could be done to a file in that list — watch a film, give it a link of its own and copy or take away that link — is done from the file's own row in the cards. The link of the folder that was handed over, shown at the foot of its card, can be copied or taken away from there, and once it is gone the same place offers to make a new one; taking it away leaves the folder and its files where they were, and the board's record and the storage's list both say it has no link any more.
 On a dropzone's page a file that is on this machine and up there too says so in its right panel, under
 _On the storage_, with **Open in DSM** — nothing to watch from there, since the file is here; its row says
-only what its state says. Paired by the name it was delivered under. The list under the files is then
-only what is on the storage and not on this machine, titled _Only on the storage_, and it is not there at
-all when nothing is only up there.
-Each file says what it is, how big, when it was shot — read off its name, which SkyDock gives every
+only what its state says. Paired by the name it was delivered under. Each file says what it is, how big, when it was shot — read off its name, which SkyDock gives every
 file it delivers, since the storage's own date for anything sent before files kept theirs is the day it
 was sent — and whether it is here too or only on the storage. A file SkyDock did not name shows when it
 was put there instead, and says so.
@@ -1048,7 +1048,7 @@ it was made from. Originals never carry it: what proves a file against a camera 
 note would change them.
 
 **Share links.** A folder's link is reused while it works, so uploading again does not change the link
-somebody already has. Uploading into a destination never makes one. Its panel says whether the folder has a link, shows it with
+somebody already has. Uploading into a destination never makes one. Its right panel says whether the folder has a link, shows it with
 **Copy link** and **Remove link**, or offers **Create link** when there is none; taking it away leaves the folder
 and its files where they were.
 
@@ -1310,10 +1310,13 @@ should, newer than everything in it, is not built again. The film is taken on tr
 that it was rendered from this project.
 
 **What was handed over, shown afterwards.** Once a montage is uploaded, its page shows it as it went up, on the _On the storage_ tab:
-one card per folder up there — the one that holds the film is _To hand over_, with its share link, and
-every other is _Backup_, never shared — each listing what is in it, how big, and what it is for, and
-for a **zip what is inside it**: the videos under `videos/` and the photos under `photos/`, each with
-how many and the first names, the rest a press away, and the film and the project at its top. The
+one card per destination it is linked to — each named for the destination its folder is (or, where it
+is none the board knows, for the folder), with the folder's path, how many things it holds, and the
+folder's own link at its foot, made, copied or taken away — each listing what is in it, how big, and what
+it is for. A **zip, or a folder sent as it is, is closed until its row is pressed**, and pressing it
+again closes it: inside it, the videos under `videos/` and the photos under `photos/`, each with how
+many and the first names, the rest a press away, and the film and the project at its top. The card the
+film went into is listed first; nothing else tells one folder from another by what it is for. The
 upload writes down each item, its size and the name of every entry in each zip, so this is what was
 sent, not a guess. It stays the same once the montage is freed from this machine, since it is read
 from the record and not from the files. And it is there for a montage only the storage has — freed, or

@@ -1,4 +1,5 @@
 import { plural, t } from '@lingui/core/macro'
+import { isMontage } from '@skydock/scripts'
 import type { FileStatus, ProxyFact, StatusContext, MontageProgress } from '@skydock/scripts'
 import { dayLabel } from '../helpers/jumps'
 import { cardsOf } from '../helpers/sections'
@@ -332,13 +333,26 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
             <div className='flex flex-wrap items-center gap-2'>{jump.actions(open.group)}</div>
           )}
           {open.kind === 'jump' && jump.above?.(open.group)}
-          {!(open.kind === 'jump' && open.group.freed) &&
+          {/* a montage's files are headed as a destination's day is — the day, what it holds on one
+              line, how far it has got — and listed the same way under it */}
+          {open.kind === 'jump' && isMontage(open.group) && !open.group.freed ? (
+            <>
+              <DayHeader
+                day={open.group.day}
+                files={open.files}
+                statusOf={statusOf}
+              />
+              {files(open.key, open.files, undefined, undefined, true)}
+            </>
+          ) : (
+            !(open.kind === 'jump' && open.group.freed) &&
             files(
               open.key,
               open.files,
               openLabel,
               open.kind === 'jump' ? timeSpan(open.files) : undefined
-            )}
+            )
+          )}
         </section>
       </div>
     )

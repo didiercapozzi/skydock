@@ -1,13 +1,16 @@
 // @vitest-environment node
+import { i18n } from '@lingui/core'
 import { describe, expect, it } from 'vitest'
 import { stemOf } from '@skydock/scripts'
 import type { MontageEntry } from '@skydock/scripts'
 import type { ManifestGroup } from '../../app/components/types'
 import { parcelsOfEntry, parcelsOfGroup } from '../../app/helpers/parcels'
 
-/* A montage as it was handed over: one parcel per folder up there, what is in it, and what is inside
+/* A montage as it was handed over: one parcel per folder up there, named for its destination, what is in it, and what is inside
    each zip — from what the upload recorded, or from what the storage's list says when this board
    never held it (RULES, Uploading a montage). */
+
+i18n.loadAndActivate({ locale: 'en', messages: {} })
 
 const LINK = 'https://nas.local/sharing/abc'
 
@@ -69,10 +72,11 @@ describe('the parcels of a montage this board holds', () => {
   it('hands over what holds the film, with its link, before what is kept', () => {
     const [handed, kept] = parcelsOfGroup(sent)
 
+    /* named for the folder where the board knows no destination, listed first, and the one with the link */
     expect(handed).toMatchObject({
-      title: 'To hand over',
+      title: 'luc-favre',
       dir: '/Tandems/luc-favre',
-      tag: 'ready to hand over',
+      tag: '1 item',
       shareUrl: LINK
     })
     expect(handed?.items[0]).toMatchObject({
@@ -80,7 +84,7 @@ describe('the parcels of a montage this board holds', () => {
       size: 600_000_000,
       what: 'the film'
     })
-    expect(kept).toMatchObject({ title: 'Backup', dir: '/Backup/luc-favre', tag: 'never shared' })
+    expect(kept).toMatchObject({ title: 'luc-favre', dir: '/Backup/luc-favre', tag: '1 item' })
     expect(kept?.shareUrl).toBeUndefined()
   })
 
@@ -166,7 +170,7 @@ describe('the parcels of a montage this board holds', () => {
         files: ['luc_20260801_1.jpg', 'luc_20260801_2.jpg']
       }
     ])
-    expect(kept).toMatchObject({ title: 'Backup', dir: '/Backup/luc' })
+    expect(kept).toMatchObject({ dir: '/Backup/luc' })
   })
 
   it('has no parcel for a montage that was never uploaded', () => {
@@ -206,9 +210,9 @@ describe('the parcels of a montage only the storage’s list knows', () => {
   it('gives each folder, its items with their sizes, and the link', () => {
     const [handed, kept] = parcelsOfEntry(entry)
 
-    expect(handed).toMatchObject({ title: 'To hand over', shareUrl: LINK })
+    expect(handed).toMatchObject({ shareUrl: LINK })
     expect(handed?.items[0]).toMatchObject({ name: 'luc.mp4', size: 600_000_000 })
-    expect(kept).toMatchObject({ title: 'Backup', dir: '/Backup/luc-favre' })
+    expect(kept).toMatchObject({ dir: '/Backup/luc-favre' })
   })
 
   it('says how many are inside a zip, since the names are only in the zip', () => {

@@ -1,5 +1,11 @@
 import { plural, t } from '@lingui/core/macro'
-import { hasCompletePassenger, isMontage, isVideoFile, passengerName } from '@skydock/scripts'
+import {
+  hasCompletePassenger,
+  isMontage,
+  isVideoFile,
+  passengerName,
+  UPLOADED_LOCKED
+} from '@skydock/scripts'
 import type { FileStatus, ProxyFact, MontageFact } from '@skydock/scripts'
 import { useState } from 'react'
 import { dsmFolderUrl } from '../helpers/dsm'
@@ -469,7 +475,7 @@ const JumpPanel = ({
           />
         </Part>
       )}
-      {locked && (
+      {locked && locked !== UPLOADED_LOCKED && (
         <Part>
           <Lock>{locked}</Lock>
         </Part>
@@ -720,9 +726,13 @@ const FilePanel = ({
         </Part>
       )}
       {locked ? (
-        <Part>
-          <Lock>{locked}</Lock>
-        </Part>
+        /* a file on the storage says so by its state, and by the lock on its row: the panel does not
+           say it a second time */
+        locked !== UPLOADED_LOCKED && (
+          <Part>
+            <Lock>{locked}</Lock>
+          </Part>
+        )
       ) : (
         <Part>
           <Acts>
