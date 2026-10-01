@@ -20,11 +20,9 @@ import { UploadDialog } from './upload-dialog'
 import { WorkFolderDialog } from './work-folder-dialog'
 import { ShortcutsDialog } from './shortcuts-dialog'
 import { HistoryDialog } from './history-dialog'
-import { OverviewDialog } from './overview-dialog'
-import type { OverviewRow } from './overview-dialog'
 import { folderOnStorage } from '../helpers/jumps'
 import type { Passenger } from './montage-card'
-import type { MontageStep, SendPlan } from '@skydock/scripts'
+import type { SendPlan } from '@skydock/scripts'
 
 type UploadDialogState = { kind: 'upload'; groupId: string }
 
@@ -59,7 +57,6 @@ type BoardDialog =
   | { kind: 'delete-jump'; groupId: string }
   | { kind: 'shortcuts' }
   | { kind: 'history' }
-  | { kind: 'overview' }
 
 const DialogHost = ({
   dialog,
@@ -90,8 +87,7 @@ const DialogHost = ({
   workFolder,
   onRemoveFiles,
   onGoBack,
-  onResetFresh,
-  overview
+  onResetFresh
 }: {
   dialog: BoardDialog
   onDialog: (dialog: BoardDialog) => void
@@ -134,16 +130,6 @@ const DialogHost = ({
   /* the board put back as it was at an earlier step */
   onGoBack: (step: string) => void
   onResetFresh: (what: 'times' | 'everything') => void
-  /* every montage, and what the overview does to one or to many */
-  overview: {
-    rows: () => OverviewRow[]
-    busy: boolean
-    onGo: (who: string) => void
-    onStep: (id: string, step: MontageStep) => void
-    onProcessAll: (ids: string[]) => void
-    onUploadAll: (ids: string[]) => void
-    onPaid: (id: string, paid: boolean) => void
-  }
 }) => {
   const close = () => onDialog(null)
   return (
@@ -268,19 +254,6 @@ const DialogHost = ({
         })()}
 
       {dialog?.kind === 'shortcuts' && <ShortcutsDialog onClose={close} />}
-
-      {dialog?.kind === 'overview' && (
-        <OverviewDialog
-          rows={overview.rows()}
-          busy={overview.busy}
-          onGo={overview.onGo}
-          onStep={overview.onStep}
-          onProcessAll={overview.onProcessAll}
-          onUploadAll={overview.onUploadAll}
-          onPaid={overview.onPaid}
-          onClose={close}
-        />
-      )}
 
       {dialog?.kind === 'history' && (
         <HistoryDialog

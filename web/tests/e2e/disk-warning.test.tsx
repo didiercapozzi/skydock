@@ -34,7 +34,7 @@ const boardWith = (disk: { free: number; total: number; level: 'ok' | 'low' | 'f
 const renderWith = async (disk: Parameters<typeof boardWith>[0]) => {
   const Stub = createRoutesStub([boardRoute(() => boardWith(disk))])
   await render(createElement(Stub, { initialEntries: ['/'] }))
-  await expect.element(page.getByRole('button', { name: 'Overview' })).toBeInTheDocument()
+  await expect.element(page.getByRole('button', { name: 'Rescan cameras' })).toBeInTheDocument()
 }
 
 describe('the disk running out of room', () => {

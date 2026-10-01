@@ -91,7 +91,6 @@ describe('the thumbnails', () => {
         onWorkFolder: () => {},
         onHistory: () => {},
         onShortcuts: () => {},
-        onOverview: () => {},
         find: () => []
       })
     )

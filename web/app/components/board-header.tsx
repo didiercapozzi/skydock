@@ -63,7 +63,7 @@ type NasLink = {
 const shortHost = (host: string) => host.replace(/^https?:\/\//, '').replace(/[:/].*$/, '')
 
 /* The toolbar, across the top under the window's title bar: what applies to the whole board and is
-   used every day — the overview, scanning, rows or thumbnails, finding anything — with what is set
+   used every day — scanning, rows or thumbnails, finding anything — with what is set
    once and then left alone behind Settings, and the keys the board knows beside it (RULES, The
    board). What is going on — the storage, a copy, the proxies, the size — is in the status bar
    along the bottom. */
@@ -74,7 +74,6 @@ const BoardHeader = ({
   onWorkFolder,
   onHistory,
   onShortcuts,
-  onOverview,
   find
 }: {
   scanning: boolean
@@ -87,8 +86,6 @@ const BoardHeader = ({
   onHistory: () => void
   /* every key the board knows */
   onShortcuts: () => void
-  /* every montage in one table, with what is done to many at once */
-  onOverview: () => void
   /* anything on the board, by a piece of its name */
   find: (query: string) => Found[]
 }) => {
@@ -104,17 +101,6 @@ const BoardHeader = ({
   }
   return (
     <header className='flex h-14 flex-none items-center gap-1 rounded-t-[18px] border-b border-line-2 isle-head px-3.5 shadow-card max-[780px]:rounded-[18px] max-[780px]:border-b-0 min-[781px]:col-start-3 min-[781px]:row-start-1'>
-      <button
-        type='button'
-        onClick={onOverview}
-        title={t`Every montage in one table: where each has got to, its link, whether it was emailed`}
-        className={TOOL}>
-        <Icon
-          name='overview'
-          className='text-ink-2'
-        />
-        {t`Overview`}
-      </button>
       <button
         type='button'
         disabled={scanning}

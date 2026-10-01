@@ -99,11 +99,6 @@ msgstr "{0, plural, one {# Datei} other {# Dateien}}"
 msgid "{0, plural, one {# jump} other {# jumps}}"
 msgstr "{0, plural, one {# Sprung} other {# Sprünge}}"
 
-#. placeholder {0}: ids.length
-#: app/hooks/useBoardModel.ts
-msgid "{0, plural, one {# montage} other {# montages}}"
-msgstr "{0, plural, one {# Montage} other {# Montagen}}"
-
 #. placeholder {0}: about.photos
 #. placeholder {0}: files.length
 #. placeholder {0}: lane.length
@@ -133,11 +128,6 @@ msgstr "{0, plural, one {in # ZIP} other {in # ZIPs}}"
 msgid "{0, plural, one {Nothing was done: # was there already.} other {Nothing was done: # were there already.}}"
 msgstr "{0, plural, one {Nichts wurde getan: # war schon da.} other {Nichts wurde getan: # waren schon da.}}"
 
-#. placeholder {0}: toProcess.length
-#: app/components/overview-dialog.tsx
-msgid "{0, plural, one {Process the # named montage} other {Process the # named montages}}"
-msgstr "{0, plural, one {Die # benannte Montage aufbereiten} other {Die # benannten Montagen aufbereiten}}"
-
 #. placeholder {0}: change.processed
 #: app/components/history-dialog.tsx
 msgid "{0, plural, one {Processed # file} other {Processed # files}}"
@@ -153,20 +143,10 @@ msgstr "{0, plural, one {Diese Datei wird zur Montage, sobald sie einen Namen ha
 msgid "{0, plural, one {this is no longer on the storage:} other {these are no longer on the storage:}}"
 msgstr "{0, plural, one {das ist nicht mehr auf dem Speicher:} other {diese sind nicht mehr auf dem Speicher:}}"
 
-#. placeholder {0}: toUpload.length
-#: app/components/overview-dialog.tsx
-msgid "{0, plural, one {Upload the # rendered film} other {Upload the # rendered films}}"
-msgstr "{0, plural, one {Den # gerenderten Film hochladen} other {Die # gerenderten Filme hochladen}}"
-
 #. placeholder {0}: change.uploaded
 #: app/components/history-dialog.tsx
 msgid "{0, plural, one {Uploaded # file} other {Uploaded # files}}"
 msgstr "{0, plural, one {# Datei hochgeladen} other {# Dateien hochgeladen}}"
-
-#. placeholder {0}: r.who
-#: app/components/overview-dialog.tsx
-msgid "{0} has paid"
-msgstr "{0} hat bezahlt"
 
 #. placeholder {0}: index + 1
 #. placeholder {1}: files.length
@@ -302,10 +282,6 @@ msgstr "{done} von {total} durchgesehen — {size} auf der Karte"
 #: app/routes/place.tsx
 msgid "{editLocked} Open it in kdenlive, or reset the montage."
 msgstr "{editLocked} Öffne sie in kdenlive oder setze die Montage zurück."
-
-#: app/components/overview-dialog.tsx
-msgid "{emailed} emailed"
-msgstr "{emailed} gemailt"
 
 #: app/components/import-panel.tsx
 msgid "{failed} could not be added — the board will say why when the drop is done."
@@ -449,10 +425,6 @@ msgstr "{more, plural, one {… und # weitere, hier nicht aufgelistet.} other {�
 msgid "{name}  ·  from {filename}"
 msgstr "{name}  ·  aus {filename}"
 
-#: app/routes/place.tsx
-msgid "{name} was not sent from this machine, so it cannot come back."
-msgstr "{name} wurde nicht von diesem Rechner hochgeladen und kann daher nicht zurückkommen."
-
 #: app/components/move-to.tsx
 msgid "{name}’s montage"
 msgstr "Montage von {name}"
@@ -464,10 +436,6 @@ msgstr "{notEmailed} zu mailen"
 #: app/components/storage-folder.tsx
 msgid "{only} only there"
 msgstr "{only} nur dort"
-
-#: app/components/overview-dialog.tsx
-msgid "{paid} paid"
-msgstr "{paid} bezahlt"
 
 #: app/helpers/notes.ts
 msgid "{passedOver} already there"
@@ -571,10 +539,6 @@ msgstr "{times}× hochskaliert, wirkt unscharf"
 msgid "{toEdit} to edit"
 msgstr "{toEdit} zu schneiden"
 
-#: app/components/overview-dialog.tsx
-msgid "{toEmail, plural, one {# montage still to email} other {# montages still to email}}"
-msgstr "{toEmail, plural, one {# Montage noch zu mailen} other {# Montagen noch zu mailen}}"
-
 #: app/components/upload-dialog.tsx
 msgid "{toMake, plural, one {# zip to make} other {# zips to make}}"
 msgstr "{toMake, plural, one {# ZIP zu erstellen} other {# ZIPs zu erstellen}}"
@@ -586,10 +550,6 @@ msgstr "{toProcess} aufzubereiten"
 #: app/components/folder-owed.tsx
 msgid "{toRender} to render"
 msgstr "{toRender} zu rendern"
-
-#: app/components/overview-dialog.tsx
-msgid "{total, plural, one {# montage} other {# montages}}"
-msgstr "{total, plural, one {# Montage} other {# Montagen}}"
 
 #: app/components/folder-owed.tsx
 msgid "{toUpload} to upload"
@@ -610,10 +570,6 @@ msgstr "{trimmed, plural, one {# Datei gekürzt, zugeschnitten oder gedreht} oth
 #: app/components/folder-owed.tsx
 msgid "{unnamed} to name"
 msgstr "{unnamed} zu benennen"
-
-#: app/components/overview-dialog.tsx
-msgid "{up} uploaded"
-msgstr "{up} hochgeladen"
 
 #: app/components/folder-owed.tsx
 msgid "{uploaded} uploaded"
@@ -823,10 +779,6 @@ msgstr "Eine neue Montage…"
 msgid "A new montage{copied}"
 msgstr "Eine neue Montage{copied}"
 
-#: app/components/overview-dialog.tsx
-msgid "A press on a line takes its next step."
-msgstr "Ein Klick auf eine Zeile macht ihren nächsten Schritt."
-
 #: app/routes/board.tsx
 msgid "A scan is running"
 msgstr "Ein Einlesen läuft"
@@ -1030,10 +982,6 @@ msgstr "{picks, plural, one {# Datei} other {# Dateien}} zurück in Neue Dateien
 msgid "Bring a template in"
 msgstr "Vorlage hinzufügen"
 
-#: app/components/storage-folder.tsx
-msgid "Bring back"
-msgstr "Zurückholen"
-
 #: app/components/bin-files.tsx
 msgid "Bring back to Fresh files"
 msgstr "Zurück in Neue Dateien holen"
@@ -1211,7 +1159,6 @@ msgstr "schließen"
 #: app/components/comparison-dialog.tsx
 #: app/components/email-dialog.tsx
 #: app/components/history-dialog.tsx
-#: app/components/overview-dialog.tsx
 #: app/components/preview-drawer.tsx
 #: app/components/reset-fresh-dialog.tsx
 #: app/components/shortcuts-dialog.tsx
@@ -1453,7 +1400,6 @@ msgstr "Dunkel"
 
 #: app/components/inspector.tsx
 #: app/components/jump-time.tsx
-#: app/components/overview-dialog.tsx
 msgid "Day"
 msgstr "Tag"
 
@@ -1565,7 +1511,6 @@ msgid "Dismiss"
 msgstr "Ausblenden"
 
 #: app/components/file-browser.tsx
-#: app/components/overview-dialog.tsx
 #: app/components/progress-panel.tsx
 #: app/components/transfers-panel.tsx
 msgid "done"
@@ -1696,10 +1641,6 @@ msgstr "Link per E-Mail senden…"
 msgid "Email…"
 msgstr "E-Mail…"
 
-#: app/components/overview-dialog.tsx
-msgid "Emailed"
-msgstr "Gemailt"
-
 #: app/components/storage-list.tsx
 msgid "emailed {emailedOn}"
 msgstr "gemailt am {emailedOn}"
@@ -1752,10 +1693,6 @@ msgstr "Alle Dateien ziehen mit, die Abstände zwischen ihnen bleiben"
 #: app/components/disconnect-dialog.tsx
 msgid "every file on this machine stays as it is, and the board goes on working"
 msgstr "alle Dateien auf diesem Rechner bleiben, wie sie sind, und die Übersicht funktioniert weiter"
-
-#: app/components/board-header.tsx
-msgid "Every montage in one table: where each has got to, its link, whether it was emailed"
-msgstr "Alle Montagen in einer Tabelle: wie weit jede ist, ihr Link, ob sie gemailt wurde"
 
 #: app/components/remove-place-dialog.tsx
 msgid "every original stays on this machine, exactly where it is"
@@ -1815,10 +1752,6 @@ msgid "failed"
 msgstr "fehlgeschlagen"
 
 #: app/components/storage-folder.tsx
-msgid "Fetch it back onto this machine"
-msgstr "Wieder auf diesen Rechner holen"
-
-#: app/components/storage-folder.tsx
 msgid "file"
 msgstr "Datei"
 
@@ -1853,10 +1786,6 @@ msgstr "Film"
 #: app/components/place-pane.tsx
 msgid "Find a file"
 msgstr "Datei suchen"
-
-#: app/components/overview-dialog.tsx
-msgid "Find a montage"
-msgstr "Montage suchen"
 
 #: app/components/shortcuts-dialog.tsx
 msgid "find anything"
@@ -1961,10 +1890,6 @@ msgstr "Platz freigeben — {who}"
 #: app/routes/place.tsx
 msgid "Free up space…"
 msgstr "Platz freigeben…"
-
-#: app/components/overview-dialog.tsx
-msgid "Freed"
-msgstr "Freigegeben"
 
 #: app/components/storage-list.tsx
 msgid "Freed from the machine that made it — the storage is the only copy"
@@ -2339,7 +2264,6 @@ msgid "Light"
 msgstr "Hell"
 
 #: app/components/email-dialog.tsx
-#: app/components/overview-dialog.tsx
 #: app/components/storage-folder.tsx
 msgid "Link"
 msgstr "Link"
@@ -2505,7 +2429,6 @@ msgid "Minimise"
 msgstr "Minimieren"
 
 #: app/components/inspector.tsx
-#: app/components/overview-dialog.tsx
 #: app/hooks/useBoardModel.ts
 msgid "Montage"
 msgstr "Montage"
@@ -2586,7 +2509,6 @@ msgstr "Neues Ziel"
 msgid "New folder name"
 msgstr "Name des neuen Ordners"
 
-#: app/components/overview-dialog.tsx
 #: app/components/preview-drawer.tsx
 msgid "Next"
 msgstr "Weiter"
@@ -2602,10 +2524,6 @@ msgstr "Weiter: {how}"
 #: app/components/montage-steps.tsx
 msgid "Next: {how} — {at} of {total} steps done"
 msgstr "Weiter: {how} — {at} von {total} Schritten erledigt"
-
-#: app/components/overview-dialog.tsx
-msgid "no"
-msgstr "nein"
 
 #: app/hooks/useBoardModel.ts
 msgid "No clip in this jump has an exit found — trim them by hand."
@@ -2648,10 +2566,6 @@ msgstr "Noch keine Montage gerendert — zuerst in kdenlive rendern."
 msgid "No montage uploaded yet — each one is listed here once it is."
 msgstr "Noch keine Montage hochgeladen — jede erscheint hier, sobald sie oben ist."
 
-#: app/components/overview-dialog.tsx
-msgid "No montage yet — name a jump to make one."
-msgstr "Noch keine Montage — benenne einen Sprung, um eine zu erstellen."
-
 #: app/helpers/places.ts
 msgid "No name yet"
 msgstr "Noch kein Name"
@@ -2671,10 +2585,6 @@ msgstr "Noch kein Proxy — er entsteht nach dem Einlesen. Bis dahin wird der Cl
 #: app/components/templates-dialog.tsx
 msgid "No template yet — bring one in below."
 msgstr "Noch keine Vorlage — füge unten eine hinzu."
-
-#: app/components/overview-dialog.tsx
-msgid "Nobody is waiting for an email"
-msgstr "Niemand wartet auf eine E-Mail"
 
 #: app/components/preview-drawer.tsx
 msgid "None"
@@ -2986,15 +2896,6 @@ msgstr "Originalfotos"
 #: app/components/upload-dialog.tsx
 msgid "Original videos"
 msgstr "Originalvideos"
-
-#: app/components/board-header.tsx
-#: app/components/overview-dialog.tsx
-msgid "Overview"
-msgstr "Überblick"
-
-#: app/components/overview-dialog.tsx
-msgid "Paid"
-msgstr "Bezahlt"
 
 #: app/components/frame-cropper.tsx
 msgid "Part of the picture to keep"
@@ -4159,10 +4060,6 @@ msgstr "An"
 msgid "To hand over"
 msgstr "Zur Übergabe"
 
-#: app/components/overview-dialog.tsx
-msgid "To many at once"
-msgstr "An mehrere auf einmal"
-
 #: app/components/folder-owed.tsx
 msgid "to process"
 msgstr "aufzubereiten"
@@ -4345,7 +4242,6 @@ msgid "uploaded"
 msgstr "hochgeladen"
 
 #: app/components/inspector.tsx
-#: app/components/overview-dialog.tsx
 #: app/components/transfers-panel.tsx
 msgid "Uploaded"
 msgstr "Hochgeladen"
@@ -4365,10 +4261,6 @@ msgstr "Am {uploadedOn} hochgeladen, aber "
 #: app/components/upload-panel.tsx
 msgid "Uploaded of {label}"
 msgstr "Hochgeladen von {label}"
-
-#: app/components/overview-dialog.tsx
-msgid "Uploaded one after the other, each as the upload dialog was last set. One that cannot go says why; the rest still go."
-msgstr "Nacheinander hochgeladen, jede so, wie der Upload-Dialog zuletzt eingestellt war. Eine, die nicht hochgeladen werden kann, sagt, warum; die übrigen gehen trotzdem."
 
 #. placeholder {0}: uploading.label
 #: app/components/board-header.tsx
@@ -4510,7 +4402,6 @@ msgstr "Wohin es geht"
 
 #: app/components/camera-files.tsx
 #: app/components/inspector.tsx
-#: app/components/overview-dialog.tsx
 msgid "Where it has got to"
 msgstr "Wie weit sie ist"
 
@@ -4573,10 +4464,6 @@ msgstr "Kamerauhr falsch? Gib an, wann dieser Sprung wirklich begann — jede Da
 #: app/components/inspector.tsx
 msgid "Wrong time on this one file? Set when it was really shot"
 msgstr "Falsche Zeit bei dieser einen Datei? Gib an, wann sie wirklich aufgenommen wurde"
-
-#: app/components/overview-dialog.tsx
-msgid "yes"
-msgstr "ja"
 
 #: app/components/email-dialog.tsx
 msgid "Yes — it was sent"

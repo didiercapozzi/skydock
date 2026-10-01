@@ -42,8 +42,7 @@ import { deleteMontageIntent, resetMontageIntent } from './manifest/take-back'
 import { trashUnsortedIntent } from './manifest/trash-unsorted'
 import { uploadGroup } from './manifest/upload-group'
 import { cancelUpload, uploadWait } from './manifest/upload-wait'
-import { uploadMontageIntent, uploadMontagesIntent } from './manifest/upload-montage'
-import { markPaid } from './manifest/mark-paid'
+import { uploadMontageIntent } from './manifest/upload-montage'
 
 /* Every change the board makes comes through here, one intent at a time, each answered with the
    board's data (RULES, The board). */
@@ -64,7 +63,6 @@ const intents: Record<ActionData['intent'], Intent> = {
   'cancel-upload': cancelUpload,
   montage,
   'upload-montage': uploadMontageIntent,
-  'upload-montages': uploadMontagesIntent,
   'shift-group-time': shiftGroupTime,
   'retime-file': retimeFileIntent,
   'set-moment': setMomentIntent,
@@ -86,8 +84,7 @@ const intents: Record<ActionData['intent'], Intent> = {
   'copy-files': copyFilesIntent,
   'make-montage': makeMontageIntent,
   'reset-fresh': resetFreshIntent,
-  'camera-copied': cameraCopied,
-  'mark-paid': markPaid
+  'camera-copied': cameraCopied
 }
 
 /* what only waits, looks or stops, and changes nothing a person would want to go back from */

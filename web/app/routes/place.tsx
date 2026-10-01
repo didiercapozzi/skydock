@@ -208,7 +208,10 @@ const Place = () => {
     if (toOpen) look({ card: toOpen })
   }, [toOpen, look])
 
-  const montages = board.storage?.montages.length ?? 0
+  /* only what the storage still holds: a delivery whose folder was taken away is not counted */
+  const montages = (board.storage?.montages ?? []).filter(
+    (m) => lostOf(board.storage?.lost, m.folder) !== 'folder'
+  ).length
   const jumps = folder.groups.length
   const fileCount = folder.files.length
   const summary =
@@ -441,23 +444,7 @@ const Place = () => {
             key={placeKey(place)}
             where={storageWhere}
             stamp={board.remoteAfterUpload?.at}
-            hereToo={hereToo}
-            onProblem={setProblem}
-            onBringBack={(file) => {
-              /* the board knows it by where it was sent, which is what its upload recorded */
-              const mine = [...groups.flatMap((g) => g.files), ...board.loose].find(
-                (f) => f.uploaded?.remotePath === file.path
-              )
-              if (!mine?.id) {
-                const name = file.name
-                setProblem(t`${name} was not sent from this machine, so it cannot come back.`)
-                return
-              }
-              send(`back:${mine.id}`, {
-                intent: 'bring-back',
-                fileIds: [mine.id]
-              })
-            }}>
+            onProblem={setProblem}>
             {(itemActions) => (
               <div className='mb-2 flex flex-col gap-3'>
                 {folder.groups.filter(isMontage).map((g) => (
@@ -483,21 +470,6 @@ const Place = () => {
             stamp={board.remoteAfterUpload?.at}
             hereToo={hereToo}
             onProblem={setProblem}
-            onBringBack={(file) => {
-              /* the board knows it by where it was sent, which is what its upload recorded */
-              const mine = [...groups.flatMap((g) => g.files), ...board.loose].find(
-                (f) => f.uploaded?.remotePath === file.path
-              )
-              if (!mine?.id) {
-                const name = file.name
-                setProblem(t`${name} was not sent from this machine, so it cannot come back.`)
-                return
-              }
-              send(`back:${mine.id}`, {
-                intent: 'bring-back',
-                fileIds: [mine.id]
-              })
-            }}
           />
         )}
       </PlacePane>

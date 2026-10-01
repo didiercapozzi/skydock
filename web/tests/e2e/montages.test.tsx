@@ -453,45 +453,6 @@ describe('Move to…', () => {
   })
 })
 
-/* Every montage in one table, with what is done to many at once (RULES, The overview). */
-describe('the overview', () => {
-  const overview = () => page.getByRole('dialog', { name: 'Overview' })
-  const shown = {
-    ...board,
-    groups: [
-      FRESH_JUMP,
-      montage(['Luc', 'Favre'], [file('m', AT + 3600)]),
-      { ...montage(['Chloé', 'Perret'], [file('n', AT + 5400)]), id: 'm2', label: 'm2', processed: true }
-    ]
-  }
-
-  test('lists every named montage with the step it is at', async () => {
-    await renderBoard({ groups: [] }, '/', shown)
-    await userEvent.click(page.getByRole('button', { name: 'Overview' }))
-
-    await expect.element(overview().getByRole('button', { name: 'Luc Favre' })).toBeVisible()
-    await expect.element(overview().getByRole('button', { name: 'Chloé Perret' })).toBeVisible()
-    await expect.element(overview().getByText('to process')).toBeVisible()
-  })
-
-  test('processes every named montage not yet processed in one go', async () => {
-    await renderBoard({ groups: [] }, '/', shown)
-    await userEvent.click(page.getByRole('button', { name: 'Overview' }))
-    await userEvent.click(overview().getByRole('button', { name: 'Process the 1 named montage' }))
-
-    await expect.poll(() => sent.at(-1)).toMatchObject({ intent: 'process', groupIds: ['m1'] })
-  })
-
-  test('finds a montage by its name', async () => {
-    await renderBoard({ groups: [] }, '/', shown)
-    await userEvent.click(page.getByRole('button', { name: 'Overview' }))
-    await userEvent.fill(overview().getByRole('searchbox', { name: 'Find a montage' }), 'chlo')
-
-    await expect.element(overview().getByRole('button', { name: 'Luc Favre' })).not.toBeInTheDocument()
-    await expect.element(overview().getByRole('button', { name: 'Chloé Perret' })).toBeVisible()
-  })
-})
-
 /* One box finds anything on the board by a piece of its name, and goes to it (RULES, Finding
    anything). */
 describe('finding anything', () => {

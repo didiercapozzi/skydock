@@ -450,8 +450,7 @@ in Fresh files, the files still to do at a dropzone. Every place of work takes f
 and every one but Fresh files a whole jump; the storage's list and the cameras take nothing. A montage
 is listed once, however many jumps it has.
 
-A montage is worked on one at a time, so the way in is its own entry; every montage at once is the
-_Overview_ (below). The _Montages_ heading says how many montages are not uploaded yet, and takes a jump or
+A montage is worked on one at a time, so the way in is its own entry. The _Montages_ heading says how many montages are not uploaded yet, and takes a jump or
 files dropped on it: the montage's name is asked for first, and nothing moves until it is saved —
 cancelled, what was dropped stays where it was. Clicking it goes nowhere. A montage that
 has been freed and has walked every step, its link emailed, has nothing left to do here: it leaves the
@@ -710,7 +709,7 @@ for what is up. A colour marks each kind of place: blue for Fresh files, teal fo
 violet for montages, green for the storage, amber for cameras, red for the bin. Pictures lead: a
 jump is a photograph of its own footage with its name on it, and a thumbnail is a photograph. Titles
 are set in Sora, the rest in Plus Jakarta Sans, and file names in JetBrains Mono. Dark is
-the same design on deep navy. The toolbar holds what is used every day: the overview,
+the same design on deep navy. The toolbar holds what is used every day:
 scanning, rows or thumbnails, finding anything (Ctrl or ⌘ with F goes there), the keys the board
 knows, and behind _Settings_ light or dark, the language, the editing templates, the work folder and
 the history. The status bar says what is going on: the storage — whether it is connected, as whom
@@ -762,17 +761,8 @@ app's own says what goes.
 montage, a destination, a file — says where each is, and goes to it: Enter goes to the first, a click
 to any.
 
-**The overview.** Every named montage in one table: who, the day, the step it is at, whether it went
-up, its link, whether they were emailed, whether it was freed, and whether they have paid, with the
-day's counts at its head beside a box to find one by name. What is next for one is a press on its line. What
-is done to many at once is above it: every named montage not yet processed, processed in one go; every
-rendered film not yet sent, uploaded one after the other, each as the upload dialog was last set — one
-that cannot go says why by name, and the rest still go; one cancelled stops the queue there. _Paid_ is
-said once for the montage, for every jump of it, and a page that did not see it being said cannot undo
-it.
-
 **Taking the next step from where it is said.** Where a montage's own buttons are not on screen —
-the Montages page with no montage open, and the overview — the step it is at is taken from there:
+the Montages page with no montage open — the step it is at is taken from there:
 _Process_, _Make the project_, _Open in kdenlive_ to render, _Upload…_, _Email the link…_ —
 the same as each step's own button. Where its buttons are on screen, the trail only says; each thing
 is offered once. Naming is typed, so it has no button.
@@ -947,7 +937,7 @@ picked for it, and the header carries only what is about the storage as a whole.
 **A place is connected to its folder.** A dropzone's page and a montage's page each end with what
 their folder on the storage holds — the very folder their uploads go to, and for a montage already
 uploaded the one it actually went to — so what is up there is listed, and watched, from the board
-whether or not any of it is still on this machine: a freed montage, last month's days at a dropzone. A montage that has been uploaded is in two places, here and up there, so its page has two tabs, _Local_ and _On the storage_, and shows one at a time: it opens on _Local_, or on _On the storage_ for a montage freed from this machine, which has nothing left here. How it was handed over — the cards of each folder up there, with what is in them — is on _On the storage_, and not under the files on _Local_. The folder's files are not listed a second time under those cards: what could be done to a file in that list — watch a film, fetch it back onto this machine, give it a link of its own and copy or take away that link — is done from the file's own row in the cards. The link of the folder that was handed over, shown at the foot of its card, can be copied or taken away from there, and once it is gone the same place offers to make a new one; taking it away leaves the folder and its files where they were, and the board's record and the storage's list both say it has no link any more.
+whether or not any of it is still on this machine: a freed montage, last month's days at a dropzone. A montage that has been uploaded is in two places, here and up there, so its page has two tabs, _Local_ and _On the storage_, and shows one at a time: it opens on _Local_, or on _On the storage_ for a montage freed from this machine, which has nothing left here. How it was handed over — the cards of each folder up there, with what is in them — is on _On the storage_, and not under the files on _Local_. The folder's files are not listed a second time under those cards: what could be done to a file in that list — watch a film, give it a link of its own and copy or take away that link — is done from the file's own row in the cards. The link of the folder that was handed over, shown at the foot of its card, can be copied or taken away from there, and once it is gone the same place offers to make a new one; taking it away leaves the folder and its files where they were, and the board's record and the storage's list both say it has no link any more.
 Each file says what it is, how big, when it was shot — read off its name, which SkyDock gives every
 file it delivers, since the storage's own date for anything sent before files kept theirs is the day it
 was sent — and whether it is here too or only on the storage. A file SkyDock did not name shows when it

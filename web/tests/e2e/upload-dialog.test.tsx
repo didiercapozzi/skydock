@@ -643,6 +643,13 @@ describe('a montage on the storage’s list that the storage no longer holds', (
     await expect.element(page.getByRole('button', { name: 'Copy link' })).not.toBeInTheDocument()
   })
 
+  test('does not count a delivery whose folder is gone, nor say it is owed an email', async () => {
+    await renderBoard(lostAs({ folders: [ana.folder], links: [] }), false)
+    const rail = page.getByRole('navigation', { name: 'Folders' })
+    await expect.element(rail.getByRole('link', { name: /On the storage/ })).toBeVisible()
+    await expect.element(rail.getByText(/to email/)).not.toBeInTheDocument()
+  })
+
   test('does not list a delivery once its folder is gone', async () => {
     await renderBoard(lostAs({ folders: [ana.folder], links: [] }), false)
     await openStorage()

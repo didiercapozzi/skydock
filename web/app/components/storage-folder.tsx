@@ -163,22 +163,17 @@ const useFileActions = (onProblem?: (problem: string) => void) => {
 }
 type FileActionsState = ReturnType<typeof useFileActions>
 
-/* What can be done to one file up there, as buttons beside it: watch it, if it is a film; fetch it back
-   onto this machine, if it is only up there; give it a link, copy it, or take it away. */
+/* What can be done to one file up there, as buttons beside it: watch it, if it is a film; give it a link,
+   copy it, or take it away. */
 const FileButtons = ({
   file,
   actions,
-  watch,
-  here,
-  onBringBack
+  watch
 }: {
   file: StorageFile
   actions: FileActionsState
   /* the row itself opens the storage's interface, so the player is a button of its own */
   watch: boolean
-  /* whether this machine holds it too, where that is known; only what is not is brought back */
-  here?: boolean
-  onBringBack?: (file: StorageFile) => void
 }) => (
   <>
     {/* only a video is watched */}
@@ -192,20 +187,6 @@ const FileButtons = ({
           className='text-ink-2'
         />
         {t`Watch`}
-      </Mini>
-    )}
-    {/* the one thing that cannot be done from anywhere else: what is only up there is footage this
-        machine no longer holds, and this is the way back */}
-    {onBringBack && here === false && (
-      <Mini
-        title={t`Fetch it back onto this machine`}
-        onClick={() => onBringBack(file)}>
-        <Icon
-          name='back'
-          size={14}
-          className='text-ink-2'
-        />
-        {t`Bring back`}
       </Mini>
     )}
     <LinkButtons
@@ -230,7 +211,6 @@ const StorageFolder = ({
   stamp,
   dsmHost,
   hereToo,
-  onBringBack,
   onProblem
 }: {
   where: StorageWhere
@@ -241,10 +221,6 @@ const StorageFolder = ({
   /* the names of the delivered files this machine still holds, where that is known: on a place's
      own page it is, and each file then says whether it is here too */
   hereToo?: Set<string>
-  /* Fetching one back onto this machine, for a file the board knows by its upload record and no
-     longer holds. Absent where nothing can be fetched — a folder of a montage this board never had,
-     or a file it never sent. */
-  onBringBack?: (file: StorageFile) => void
   /* what the storage said when it would not do what was asked */
   onProblem?: (problem: string) => void
 }) => {
@@ -399,8 +375,6 @@ const StorageFolder = ({
                   file={file}
                   actions={actions}
                   watch={dsm !== null}
-                  here={hereToo ? here : undefined}
-                  onBringBack={onBringBack}
                 />
               </li>
             )
@@ -418,21 +392,16 @@ const StorageFolder = ({
 }
 
 /* How a montage was handed over — the cards of each folder up there — with, beside each item the
-   folder still holds, what can be done to it: watch it, fetch it back, give it a link. The folder is
+   folder still holds, what can be done to it: watch it, give it a link. The folder is
    asked of the storage for that, and its files are not listed a second time under the cards. */
 const StorageCards = ({
   where,
   stamp,
-  hereToo,
-  onBringBack,
   onProblem,
   children
 }: {
   where: StorageWhere
   stamp?: unknown
-  /* the names of the delivered files this machine still holds */
-  hereToo?: Set<string>
-  onBringBack?: (file: StorageFile) => void
   onProblem?: (problem: string) => void
   children: (itemActions: (dir: string, name: string) => React.ReactNode) => React.ReactNode
 }) => {
@@ -446,8 +415,6 @@ const StorageCards = ({
         file={file}
         actions={actions}
         watch
-        here={hereToo ? hereToo.has(file.name) : undefined}
-        onBringBack={onBringBack}
       />
     ) : null
   }

@@ -25,8 +25,6 @@ const actionArgs = z.object({
     'cancel-upload',
     'montage',
     'upload-montage',
-    /* several montages, one after the other */
-    'upload-montages',
     'shift-group-time',
     /* one file's time, corrected on its own */
     'retime-file',
@@ -76,13 +74,10 @@ const actionArgs = z.object({
     /* files taken back out of the bin, into Fresh files */
     'from-bin',
     /* the board put back as it was at an earlier step */
-    'go-back',
-    /* a montage marked paid, or not */
-    'mark-paid'
+    'go-back'
   ]),
   /* an earlier state of the board, by its step in the history */
   step: z.string().optional(),
-  paid: z.boolean().optional(),
   groupId: z.string().optional(),
   /* files on a camera, by where they sit on its card — or in the bin */
   paths: z.array(z.string()).optional(),

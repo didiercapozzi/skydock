@@ -15,8 +15,7 @@ import {
   placeNameProblem,
   startOfFiles,
   montageSteps,
-  montageUploadKey,
-  UPLOAD_QUEUE_KEY
+  montageUploadKey
 } from '@skydock/scripts'
 import type { FrameCrop, MontageStep, Rotation, SendPlan } from '@skydock/scripts'
 import { useEffect, useState } from 'react'
@@ -24,7 +23,6 @@ import { useNavigate, useOutletContext, useParams } from 'react-router'
 import type { BoardDialog } from '../components/dialog-host'
 import { lockReason } from '../components/file-list'
 import type { Passenger } from '../components/montage-card'
-import type { OverviewRow } from '../components/overview-dialog'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
 import { setOutputRoot, shortDate } from '../components/utils'
 import { importFiles, whatIsComing } from '../helpers/import'
@@ -61,9 +59,6 @@ type Loaded = Parameters<typeof useBoardState>[0] & Parameters<typeof useNas>[0]
    and the dialogs over them: what the board holds, what is known about each jump, and every change
    that can be asked for. It lives in the layout and reaches the folder and the file through the
    outlet, so each address draws only its own part and none of them works out the board again. */
-/* a montage with no host or no progress yet is not listed */
-const NO_ROWS: OverviewRow[] = []
-
 const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   /* told rather than assumed: an installed app keeps the work wherever it was asked to */
   setOutputRoot(loaded.outputDir)
@@ -183,28 +178,6 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     ).values()
   ]
   const hostOf = (who: string) => named.find((g) => passengerOf(g) === who)
-  /* every named montage once, as the overview lists it */
-  const overviewRows = () =>
-    passengers.flatMap((p) => {
-      const who = passengerName(p)
-      const host = hostOf(who)
-      const progress = passengerProgress(who)
-      if (!host || !progress) return NO_ROWS
-      const theirs = named.filter((g) => passengerOf(g) === who)
-      const entry = board.storage?.montages.find((m) => m.folder === folderOnStorage(host))
-      return [
-        {
-          who,
-          id: host.id,
-          day: host.day,
-          progress,
-          link: entry?.shareUrl ?? host.publish?.shareUrl,
-          emailed: Boolean(emailedOn(host)),
-          freed: theirs.every((g) => g.freed),
-          paid: theirs.some((g) => g.paid)
-        }
-      ]
-    })
   const folderFor = (destination: string) =>
     places.find((d) => d.name === destination)?.path ?? null
 
@@ -678,23 +651,6 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       { intent: 'upload-montage', groupId: group.id, plan }
     )
   }
-  /* Several montages sent up one after the other, each on the plan the upload dialog last used —
-     one job on the server, so the next starts the moment the one before ends. */
-  const uploadAll = (ids: string[]) => {
-    if (board.uploading || ids.length === 0) return
-    if (!nas.connected) {
-      openConnect()
-      return
-    }
-    board.sendUpload(
-      {
-        key: UPLOAD_QUEUE_KEY,
-        label: plural(ids.length, { one: '# montage', other: '# montages' })
-      },
-      { intent: 'upload-montages', groupIds: ids, plan: sendPlan }
-    )
-  }
-
   /* A template is somebody's branding, so which one is never decided here. With a single template
      that is whole there is nothing to decide and the project is made at once; with several, or one
      with a hole, the person is shown them first. */
@@ -760,7 +716,6 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     labelOf,
     passengers,
     hostOf,
-    overviewRows,
     findAnything,
     folderFor,
     pickPlace,
@@ -786,7 +741,6 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     openConnect,
     requestUpload,
     askUpload,
-    uploadAll,
     confirmUpload,
     makeMontage,
     askMontage,

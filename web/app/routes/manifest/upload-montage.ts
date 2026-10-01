@@ -12,14 +12,13 @@ import {
   earlierMontagesDirs,
   montagesRemoteDir,
   montageUploadKey,
-  UPLOAD_QUEUE_KEY,
   uploadGate,
   busyWith
 } from '@skydock/scripts'
 import { entryOfMontage, upsert } from '../../../../packages/skydock-scripts/src/montageIndex'
 import { uploadMontage } from '../../../../packages/skydock-scripts/src/uploadMontage'
 import { boardAnswer } from '../../helpers/manifest'
-import type { Change, Intent, Refusal } from './change'
+import type { Change, Intent } from './change'
 import { uploadReporter } from './progress'
 import { recordOnStorage } from './storage'
 
@@ -111,43 +110,4 @@ const sendMontage = async (
 
 const uploadMontageIntent: Intent = (change) => sendMontage(change, change.data.groupId)
 
-/* Several montages, one after the other, each on the plan the upload dialog last used — the
-   storage is sent one thing at a time. One that cannot go says why and the rest still go; one
-   cancelled stops the queue there (RULES, Uploading a montage). */
-const aside = (message: string): Refusal => ({
-  success: false,
-  status: 422,
-  globalErrors: [message]
-})
-
-const uploadMontagesIntent: Intent = async (change) => {
-  const ids = change.data.groupIds ?? []
-  if (ids.length === 0) return change.refuse('Nothing to upload.')
-  const refused: string[] = []
-  let last: Awaited<ReturnType<typeof sendMontage>> | null = null
-  for (const id of ids) {
-    /* each one's refusal is kept to itself, and said with its name once the queue is through */
-    const answer = await sendMontage(
-      { ...change, manifest: change.latest(), refuse: aside },
-      id,
-      UPLOAD_QUEUE_KEY
-    )
-    if (!('success' in answer)) {
-      last = answer
-      if ('uploadCancelled' in answer) break
-      continue
-    }
-    if (answer.success) continue
-    const who = change.latest().groups.find((g) => g.id === id)
-    refused.push(
-      `${who ? passengerName(who.passenger) : id}: ${answer.globalErrors?.[0] ?? 'refused'}`
-    )
-  }
-  if (!last) return change.refuse(refused.join('; '))
-  const before = 'storageProblem' in last ? last.storageProblem : undefined
-  return refused.length > 0
-    ? { ...last, storageProblem: [before, ...refused].filter(Boolean).join('; ') }
-    : last
-}
-
-export { uploadMontageIntent, uploadMontagesIntent }
+export { uploadMontageIntent }

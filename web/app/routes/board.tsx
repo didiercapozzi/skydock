@@ -350,7 +350,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           onWorkFolder={() => setDialog({ kind: 'work-folder' })}
           onHistory={() => setDialog({ kind: 'history' })}
           onShortcuts={() => setDialog({ kind: 'shortcuts' })}
-          onOverview={() => setDialog({ kind: 'overview' })}
           find={model.findAnything}
         />
 
@@ -449,20 +448,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         onNameMontage={(what, passenger) => closeThen(() => model.nameDropped(what, passenger))}
         onRemoveFiles={(to, files) => closeThen(() => model.removeTo(to, files))}
         onGoBack={(step) => closeThen(() => send('go-back', { intent: 'go-back', step }))}
-        overview={{
-          rows: model.overviewRows,
-          busy: board.busy !== null || board.uploading !== null,
-          onGo: (who) => closeThen(() => model.pickPlace({ kind: 'pax', name: who })),
-          onStep: (id, step) => {
-            const group = groups.find((g) => g.id === id)
-            if (!group) return
-            /* a step that opens a dialog of its own replaces this one; the rest leave it open */
-            model.takeStep(group, step)
-          },
-          onProcessAll: (ids) => send('process', { intent: 'process', groupIds: ids }),
-          onUploadAll: (ids) => closeThen(() => model.uploadAll(ids)),
-          onPaid: (id, paid) => send('paid', { intent: 'mark-paid', groupId: id, paid })
-        }}
         workFolder={{
           folder: loaderData.outputDir,
           /* the folder is not left while something is being written into it */

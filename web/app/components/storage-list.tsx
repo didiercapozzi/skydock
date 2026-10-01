@@ -75,8 +75,7 @@ const Row = ({
   const hasLink = !!entry.shareUrl && !lost
   const who = `${entry.firstname} ${entry.lastname}`.trim()
   return (
-    <div
-      className={`rounded-[13px] border ${detailed ? 'border-line bg-well/40' : 'border-transparent'}`}>
+    <div>
       {/* pressing the row opens and closes what was handed over; what is on it keeps doing its own */}
       <div
         onClick={(event) => {
@@ -208,8 +207,9 @@ const Row = ({
           )}
         </span>
       </div>
+      {/* no box round the row: a line down from its mark, and the cards hung from it, say they are its */}
       {detailed && (
-        <div className='pb-3 pl-[29px]'>
+        <div className='mb-3 ml-[21px] border-l-2 border-accent/30 pb-1 pl-4'>
           <ParcelCards
             parcels={group?.uploaded ? parcelsOfGroup(group) : parcelsOfEntry(entry)}
             dsmHost={dsmHost}

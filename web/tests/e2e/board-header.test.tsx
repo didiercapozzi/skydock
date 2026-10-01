@@ -6,7 +6,7 @@ import { BoardHeader, StatusBar } from '../../app/components/board-header'
 import { DisconnectDialog } from '../../app/components/disconnect-dialog'
 import { speak } from '../../app/i18n'
 
-/* The toolbar offers what applies to the whole board — scanning, the overview, how files are drawn,
+/* The toolbar offers what applies to the whole board — scanning, how files are drawn,
    and behind Settings the templates, how the app is lit — and the status bar says who the storage is
    connected as and where, what is going on, and how big the board is drawn (RULES, The board). It is read at a glance and acted on rarely, so the settings are marks
    with names on them rather than eight words spelled out across the screen. */
@@ -27,7 +27,6 @@ const header = (over: Partial<Frame> = {}) => {
     onWorkFolder: () => {},
     onHistory: () => {},
     onShortcuts: () => {},
-    onOverview: () => {},
     find: () => [],
     proxies: { ready: 48, waiting: 2, total: 50 },
     jumps: { read: 50, total: 50 },
@@ -95,7 +94,7 @@ describe('the top of the board', () => {
   test('keeps what is used every day on the bar, and the rest behind Settings', async () => {
     await header()
 
-    for (const name of ['Overview', 'Rows', 'Thumbnails', 'Rescan cameras', 'Keyboard shortcuts'])
+    for (const name of ['Rows', 'Thumbnails', 'Rescan cameras', 'Keyboard shortcuts'])
       await expect.element(page.getByRole('button', { name })).toBeVisible()
     for (const name of ['Check the storage again', 'Disconnect the storage'])
       await expect.element(page.getByRole('button', { name })).toBeVisible()

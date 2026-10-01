@@ -1,5 +1,5 @@
-import { fileStatus, hasCompletePassenger, isMontage, passengerOf } from '@skydock/scripts'
-import type { StatusContext, MontageEntry, MontageProgress } from '@skydock/scripts'
+import { fileStatus, hasCompletePassenger, isMontage, lostOf, passengerOf } from '@skydock/scripts'
+import type { StatusContext, MontageEntry, MontageLost, MontageProgress } from '@skydock/scripts'
 import { t } from '@lingui/core/macro'
 import { useState } from 'react'
 import { groupsIn, hereIn, looseIn, placeKey, placeLabel } from '../helpers/places'
@@ -23,7 +23,7 @@ type Props = {
   destinations: Destination[]
   groups: ManifestGroup[]
   looseFiles: ManifestFile[]
-  storage: { montages: MontageEntry[] } | null
+  storage: { montages: MontageEntry[]; lost?: MontageLost } | null
   /* the cameras plugged in right now */
   cameras: Mounted[]
   statusContext: (file: ManifestFile) => StatusContext
@@ -285,7 +285,11 @@ const PlacesTree = ({
     over: overTarget === placeKey(p),
     flash: flashPlace === placeKey(p)
   })
-  const notEmailed = storage?.montages.filter((t) => !t.emailed).length ?? 0
+  /* what the storage holds: a delivery whose folder was taken away is not counted, nor owed an email */
+  const onStorage = (storage?.montages ?? []).filter(
+    (m) => lostOf(storage?.lost, m.folder) !== 'folder'
+  )
+  const notEmailed = onStorage.filter((m) => !m.emailed).length
   return (
     <nav
       aria-label={t`Folders`}
@@ -371,7 +375,7 @@ const PlacesTree = ({
         <Row
           place={{ kind: 'storage' }}
           icon='storage'
-          count={storage.montages.length}
+          count={onStorage.length}
           owed={notEmailed > 0 ? t`${notEmailed} to email` : null}
         />
       )}
