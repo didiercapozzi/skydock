@@ -94,6 +94,26 @@ describe('a file fetched back off the storage', () => {
     expect(manifest.groups[0]!.freed).toBeUndefined()
   })
 
+  /* it is shown going: its name and size before the first byte, then how many bytes have landed */
+  it('says what it is and how far it has got while the bytes land', async () => {
+    const bytes = Buffer.from('the delivered copy, already trimmed')
+    storageHolds(bytes)
+    const manifest = manifestOf(entryOf('b699e6083df5095a'))
+    const started: [string, number][] = []
+    const landed: number[] = []
+
+    await bringBack({
+      manifest,
+      session,
+      fileId: 'b699e6083df5095a',
+      onStart: (name, size) => started.push([name, size]),
+      onBytes: (done) => landed.push(done)
+    })
+
+    expect(started).toEqual([['DJI_0088.MP4', 400]])
+    expect(landed.at(-1)).toBe(bytes.length)
+  })
+
   /* a dropzone never sends originals: what went up is the copy that was delivered, already cut */
   it('is the delivered copy when that is what the storage held, with its trim cleared', async () => {
     storageHolds(Buffer.from('the delivered copy, already trimmed'))

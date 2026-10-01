@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { Readable } from 'node:stream'
+import { Readable, Transform } from 'node:stream'
 import * as streams from 'node:stream/promises'
 import type { ReadableStream as NodeWebStream } from 'node:stream/web'
 import { computeFileId } from './fileId'
@@ -26,7 +26,14 @@ import type { Manifest, ManifestFile } from './types'
 /* One file off the storage onto this machine, written under a temporary name and given its own only
    once it is whole — as everything written here is, so a fetch cut off leaves nothing that could be
    taken for the file. */
-const fetchNasFile = async (host: string, sid: string, filePath: string, localPath: string) => {
+const fetchNasFile = async (
+  host: string,
+  sid: string,
+  filePath: string,
+  localPath: string,
+  /* how many bytes have landed, of how many the storage said it would send */
+  onBytes?: (landed: number, total: number) => void
+) => {
   const url = dsmRequestUrl(host, {
     api: 'SYNO.FileStation.Download',
     version: '2',
@@ -40,8 +47,17 @@ const fetchNasFile = async (host: string, sid: string, filePath: string, localPa
   const partial = `${localPath}.part`
   fs.mkdirSync(path.dirname(localPath), { recursive: true })
   try {
+    const total = Number(res.headers.get('content-length') ?? 0)
+    let landed = 0
     await streams.pipeline(
       Readable.fromWeb(res.body as NodeWebStream<Uint8Array>),
+      new Transform({
+        transform(chunk: Buffer, _encoding, done) {
+          landed += chunk.length
+          onBytes?.(landed, total)
+          done(null, chunk)
+        }
+      }),
       fs.createWriteStream(partial)
     )
     fs.renameSync(partial, localPath)
@@ -76,7 +92,9 @@ const bringBack = async ({
   manifest,
   session,
   fileId,
-  latest = () => manifest
+  latest = () => manifest,
+  onStart,
+  onBytes
 }: {
   manifest: Manifest
   session: NasSession
@@ -85,6 +103,9 @@ const bringBack = async ({
   /* the board as it is once the download is done, which may have moved on while it ran — the one
      the file is put back on */
   latest?: () => Manifest
+  /* said once the file is known, before its first byte: what it is called and how big it is */
+  onStart?: (name: string, size: number) => void
+  onBytes?: (landed: number, total: number) => void
 }) => {
   const entry = [...manifest.files, ...manifest.groups.flatMap((g) => g.files)].find(
     (f) => f.id === fileId
@@ -94,7 +115,8 @@ const bringBack = async ({
   if (!sent) throw new Error(`${entry.filename} was never uploaded, so there is nothing to fetch.`)
   if (fs.existsSync(entry.path)) throw new Error(`${entry.filename} is already on this machine.`)
 
-  await fetchNasFile(session.hostname, session.sessionId, sent.remotePath, entry.path)
+  onStart?.(entry.filename, sent.size)
+  await fetchNasFile(session.hostname, session.sessionId, sent.remotePath, entry.path, onBytes)
   const id = await computeFileId(entry.path)
   const { size } = fs.statSync(entry.path)
   const original = id === entry.id

@@ -19,7 +19,8 @@ import { dateLabel, hhmm } from './utils'
 const ICON: Record<Transfer['kind'], IconName> = {
   upload: 'upload',
   import: 'copying',
-  camera: 'camera'
+  camera: 'camera',
+  bring: 'back'
 }
 
 const rowsOf = (transfer: Transfer, dsmHost?: string | null): ProgressRow[] =>
@@ -78,7 +79,9 @@ const kindOf = (transfer: Transfer) =>
     ? t`Uploaded`
     : transfer.kind === 'import'
       ? t`Copied in`
-      : t`Copied off`
+      : transfer.kind === 'bring'
+        ? t`Brought back`
+        : t`Copied off`
 
 const Entry = ({
   transfer,

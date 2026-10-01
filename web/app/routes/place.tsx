@@ -468,6 +468,18 @@ const Place = () => {
             dsmHost={model.nas.host}
             hereToo={hereToo}
             onAgain={() => setLookedAgain(lookedAgain + 1)}
+            onBringBack={(file) => {
+              /* the board knows it by where it was sent, which is what its upload recorded */
+              const mine = [...groups.flatMap((g) => g.files), ...board.loose].find(
+                (f) => f.uploaded?.remotePath === file.path
+              )
+              if (!mine?.id) {
+                const name = file.name
+                setProblem(t`${name} was not sent from this machine, so it cannot come back.`)
+                return
+              }
+              send(`back:${mine.id}`, { intent: 'bring-back', fileIds: [mine.id] })
+            }}
             onProblem={setProblem}
           />
         )}

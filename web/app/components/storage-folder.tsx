@@ -173,12 +173,17 @@ type FileActionsState = ReturnType<typeof useFileActions>
 const FileButtons = ({
   file,
   actions,
-  watch
+  watch,
+  here,
+  onBringBack
 }: {
   file: StorageFile
   actions: FileActionsState
   /* the row itself opens the storage's interface, so the player is a button of its own */
   watch: boolean
+  /* whether this machine holds it too, where that is known; only what is not can be brought back */
+  here?: boolean
+  onBringBack?: (file: StorageFile) => void
 }) => (
   <>
     {/* only a video is watched */}
@@ -192,6 +197,19 @@ const FileButtons = ({
           className='text-ink-2'
         />
         {t`Watch`}
+      </Mini>
+    )}
+    {/* what is only up there is footage this machine no longer holds, and this is the way back */}
+    {onBringBack && here === false && (
+      <Mini
+        title={t`Fetch it back onto this machine`}
+        onClick={() => onBringBack(file)}>
+        <Icon
+          name='back'
+          size={14}
+          className='text-ink-2'
+        />
+        {t`Bring back`}
       </Mini>
     )}
     <LinkButtons
@@ -454,12 +472,15 @@ const FolderCard = ({
   dsmHost,
   hereToo,
   onAgain,
+  onBringBack,
   onProblem
 }: {
   listing: StorageListing | null
   dsmHost?: string | null
   hereToo?: Set<string>
   onAgain: () => void
+  /* fetching a file back onto this machine, for one that is only up there */
+  onBringBack?: (file: StorageFile) => void
   onProblem?: (problem: string) => void
 }) => {
   const actions = useFileActions(onProblem)
@@ -471,6 +492,8 @@ const FolderCard = ({
         file={file}
         actions={actions}
         watch
+        here={hereToo ? hereToo.has(file.name) : undefined}
+        onBringBack={onBringBack}
       />
     ) : null
   }

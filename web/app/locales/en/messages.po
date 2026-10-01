@@ -415,6 +415,14 @@ msgstr "{more, plural, one {… and # more, not listed here.} other {… and # m
 msgid "{name}  ·  from {filename}"
 msgstr "{name}  ·  from {filename}"
 
+#: app/components/bring-panel.tsx
+msgid "{name} — {bytes}"
+msgstr "{name} — {bytes}"
+
+#: app/routes/place.tsx
+msgid "{name} was not sent from this machine, so it cannot come back."
+msgstr "{name} was not sent from this machine, so it cannot come back."
+
 #: app/components/move-to.tsx
 msgid "{name}’s montage"
 msgstr "{name}’s montage"
@@ -958,9 +966,21 @@ msgstr "Bring {picks, plural, one {# file} other {# files}} back to Fresh files"
 msgid "Bring a template in"
 msgstr "Bring a template in"
 
+#: app/components/storage-folder.tsx
+msgid "Bring back"
+msgstr "Bring back"
+
 #: app/components/bin-files.tsx
 msgid "Bring back to Fresh files"
 msgstr "Bring back to Fresh files"
+
+#: app/components/bring-panel.tsx
+msgid "Bringing back {name}"
+msgstr "Bringing back {name}"
+
+#: app/components/bring-panel.tsx
+msgid "Bringing back from the storage"
+msgstr "Bringing back from the storage"
 
 #: app/components/bin-files.tsx
 msgid "Bringing back…"
@@ -969,6 +989,14 @@ msgstr "Bringing back…"
 #: app/components/templates-dialog.tsx
 msgid "Bringing in {bringing}…"
 msgstr "Bringing in {bringing}…"
+
+#: app/components/transfers-panel.tsx
+msgid "Brought back"
+msgstr "Brought back"
+
+#: app/components/bring-panel.tsx
+msgid "Brought back of {name}"
+msgstr "Brought back of {name}"
 
 #: app/components/upload-dialog.tsx
 msgid "Build each item once, then send it to every destination it is in"
@@ -1498,6 +1526,7 @@ msgstr "Disconnect"
 msgid "Disconnect the storage"
 msgstr "Disconnect the storage"
 
+#: app/components/bring-panel.tsx
 #: app/components/notice.tsx
 msgid "Dismiss"
 msgstr "Dismiss"
@@ -1726,6 +1755,14 @@ msgstr "F"
 #: app/components/transfers-panel.tsx
 msgid "failed"
 msgstr "failed"
+
+#: app/components/storage-folder.tsx
+msgid "Fetch it back onto this machine"
+msgstr "Fetch it back onto this machine"
+
+#: app/components/bring-panel.tsx
+msgid "Fetching"
+msgstr "Fetching"
 
 #: app/components/storage-folder.tsx
 #: app/helpers/parcels.ts
@@ -2538,6 +2575,10 @@ msgstr "None"
 #: app/helpers/notes.ts
 msgid "not added — {reasons}"
 msgstr "not added — {reasons}"
+
+#: app/components/bring-panel.tsx
+msgid "not brought back"
+msgstr "not brought back"
 
 #: app/components/board-header.tsx
 msgid "Not connected to the storage"

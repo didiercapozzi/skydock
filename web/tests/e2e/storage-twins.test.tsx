@@ -1,7 +1,7 @@
 import { createElement } from 'react'
 import { describe, expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
-import { page } from 'vitest/browser'
+import { page, userEvent } from 'vitest/browser'
 
 import { FileList } from '../../app/components/file-list'
 import { StorageTwinPart } from '../../app/components/inspector'
@@ -124,6 +124,26 @@ describe('a destination’s storage tab', () => {
     await expect.element(region.getByText('only_there.mp4')).toBeVisible()
     await expect.element(region.getByText('video · here too')).toBeVisible()
     await expect.element(region.getByText('video · only there')).toBeVisible()
+  })
+
+  test('can bring back only a file that is only up there', async () => {
+    const asked: string[] = []
+    await render(
+      createElement(FolderCard, {
+        listing,
+        dsmHost: 'https://nas.local:5001',
+        hereToo: new Set(['yverdon_20260927_120500.mp4']),
+        onAgain: () => {},
+        onBringBack: (file) => asked.push(file.name)
+      })
+    )
+
+    /* one button: the file that is here too has none */
+    const buttons = page.getByRole('button', { name: 'Bring back' })
+    await expect.element(buttons.first()).toBeVisible()
+    expect(buttons.elements()).toHaveLength(1)
+    await userEvent.click(buttons.first())
+    expect(asked).toEqual(['only_there.mp4'])
   })
 
   test('has no link of its own: that is made in the destination’s panel', async () => {

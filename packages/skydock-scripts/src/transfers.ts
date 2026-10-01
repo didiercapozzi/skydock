@@ -25,7 +25,7 @@ const transferItemSchema = z.object({
 
 const transferSchema = z.object({
   id: z.string(),
-  kind: z.enum(['upload', 'import', 'camera']),
+  kind: z.enum(['upload', 'import', 'camera', 'bring']),
   /* what it was of, named as the board named it while it went */
   label: z.string(),
   /* when it ended, in seconds */

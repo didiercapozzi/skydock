@@ -867,7 +867,7 @@ once and left alone: changing the folder and taking the destination off the boar
 files travel, as three stations in a row — to process, to upload, on the storage — the first with
 something in it lifted, and the step that moves them on, and freeing space, at the end of the same row.
 Third, the ways of finding and arranging its files: narrowing by name, and videos or
-photos. Its shared link is made and taken away by hand in its right panel, and only there. Like a montage's, its page has two tabs under that head, _Local_ and _On the storage_, one at a time: _Local_ lists the files kept on this machine, and _On the storage_ shows its folder up there as the same card a montage's handed-over folder is — its path and every file it holds with what kind it is and whether it is here too or only up there — with watching a film and a file's own link on each row.
+photos. Its shared link is made and taken away by hand in its right panel, and only there. Like a montage's, its page has two tabs under that head, _Local_ and _On the storage_, one at a time: _Local_ lists the files kept on this machine, and _On the storage_ shows its folder up there as the same card a montage's handed-over folder is — its path and every file it holds with what kind it is and whether it is here too or only up there — with watching a film and a file's own link on each row, and, on a file that is only up there, **Bring back**, which fetches it onto this machine again. Bringing back is offered here and nowhere else, and only for a file this machine sent.
 
 **Processing** runs on the machine, not in the page: closing or refreshing the page does not stop it,
 and the board stays usable meanwhile. A page opened while processing runs says so and updates itself
@@ -1324,11 +1324,16 @@ from the record and not from the files. A zip of a montage says how many clips a
 since their names are only in the zip. A montage uploaded before every item was kept shows what its record
 says: its film, its photos' zip and its backup, and what they hold.
 
-**Transfers, looked at afterwards.** The panels that show an upload, a drop from the computer or a camera
-copy going are gone when it is done. The status bar's **Transfers** button is always there, even when
+**A file brought back is shown going.** While **Bring back** fetches a file from the storage, a panel in the
+corner, with the other transfers', names it, says how big it is and shows how far through it is as the
+bytes land. When it ends it is kept with the transfers, as _Brought back_; one that failed stays in the
+corner saying why, until it is put away.
+
+**Transfers, looked at afterwards.** The panels that show an upload, a drop from the computer, a camera
+copy or a file brought back going are gone when it is done. The status bar's **Transfers** button is always there, even when
 everything is done, and opens the history in the same small window at the bottom right, with the same
 button to open it out: each transfer the machine kept, the latest first, says what it was of (an upload of
-a montage, a drop, a camera), when it ended and how — done, failed or cancelled — counted as how many were
+a montage, a drop, a camera, a file brought back), when it ended and how — done, failed or cancelled — counted as how many were
 done, how many were there already and how many were not done. The latest is open; a press on another opens
 it, listing every item with its size, where it went and what became of it — each with an **Open in DSM** button that shows its folder in the storage's own web interface, in a new tab — and why it stopped when
 something did. It is kept on this machine, so it is there after a reload or a restart: the last 30
@@ -1372,10 +1377,12 @@ reachable. An original another jump still holds stays until that jump is freed a
 
 **Asked for, it comes back.** Freeing is deliberate, and nothing undoes it by itself: plugging the
 camera in again passes the file over, and a scan leaves it as it is. It comes back only when somebody
-asks for that file, off the card it is still on, from its page there. What comes back rejoins the jump
-it was in, by what it contains rather than by what it is called, and stops reading as freed; its
-delivered copy went with the freeing, so it is a file to prepare again. Fetching a file back from the
-storage onto this machine is not offered for now.
+asks for that file: off the card it is still on, from its page there, or — for a dropzone's file — from
+**Bring back** on its row in the destination's _On the storage_ tab, which fetches it from where its upload
+says it went. What comes back rejoins the jump it was in, by what it contains rather than by what it is
+called, and stops reading as freed. A dropzone only ever sends the delivered copy, already trimmed,
+cropped and turned, so that is what returns, with its trim, frame and turn cleared rather than applied
+twice; its delivered copy went with the freeing, so it is a file to prepare again.
 
 Once freed, a jump or a loose file leaves the dropzone's own list: it is named and played from the list
 of what the folder holds, under the dropzone's files, and saying it twice would only add a row where

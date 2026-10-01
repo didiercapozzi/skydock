@@ -4,7 +4,14 @@ import type { JumpMoments, LiveEvent, ProxyFact, MontageFact } from '@skydock/sc
 import { useEffect, useEffectEvent, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { routingEngine } from '../helpers/routing'
-import { forgetLive, liveCamera, liveFiles, liveImporting, liveKey } from './liveStore'
+import {
+  forgetLive,
+  liveBringing,
+  liveCamera,
+  liveFiles,
+  liveImporting,
+  liveKey
+} from './liveStore'
 
 /* what is being done to a file right now, and how far through it — in the words the events use */
 type LiveFile = Pick<Extract<LiveEvent, { kind: 'file' }>, 'work' | 'percent'>
@@ -21,6 +28,9 @@ type Mounted = Extract<LiveEvent, { kind: 'cameras' }>['mounted'][number]
 
 /* one file being copied in from the computer, by the name the page gave that copy */
 type Importing = Omit<Extract<LiveEvent, { kind: 'import' }>, 'kind'>
+
+/* one file being fetched back from the storage */
+type Bringing = Omit<Extract<LiveEvent, { kind: 'bring' }>, 'kind'>
 
 /* What is happening to the files as it happens, heard over one stream the server keeps open — so a
    file being processed, or a proxy being made, shows how far along it is with nobody asking. What
@@ -86,6 +96,12 @@ const useLiveProgress = (
         liveImporting.update(() => (event.phase === 'done' ? null : event))
         return
       }
+      if (event.kind === 'bring') {
+        /* kept while it goes and a moment after, so the corner shows how it ended; the board's own
+           answer says the file is back */
+        liveBringing.update(() => (event.state === 'done' ? null : event))
+        return
+      }
       if (event.kind === 'disk') {
         setDisk({ free: event.free, total: event.total, level: event.level })
         return
@@ -120,4 +136,4 @@ const useLiveProgress = (
 }
 
 export { useLiveProgress }
-export type { CameraCopy, CameraEnded, Disk, Importing, LiveFile, Mounted }
+export type { Bringing, CameraCopy, CameraEnded, Disk, Importing, LiveFile, Mounted }

@@ -60,6 +60,18 @@ const liveEventSchema = z.discriminatedUnion('kind', [
     /* how every finished file went, in order — kept for a board that starts listening mid-copy */
     outcomes: z.array(z.enum(['copied', 'skipped', 'failed'])).optional()
   }),
+  /* A file being fetched back from the storage onto this machine: how far through it is, and how it
+     ended. Named by the file's id, which the board knows it by. */
+  z.object({
+    kind: z.literal('bring'),
+    fileId: z.string(),
+    name: z.string(),
+    state: z.enum(['going', 'done', 'failed']),
+    /* between 0 and 1 */
+    part: z.number(),
+    size: z.number(),
+    reason: z.string().optional()
+  }),
   /* the room left on the output folder's disk, said when it changes enough to matter */
   z.object({
     kind: z.literal('disk'),

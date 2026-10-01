@@ -415,6 +415,14 @@ msgstr "{more, plural, one {… und # weitere, hier nicht aufgelistet.} other {�
 msgid "{name}  ·  from {filename}"
 msgstr "{name}  ·  aus {filename}"
 
+#: app/components/bring-panel.tsx
+msgid "{name} — {bytes}"
+msgstr "{name} — {bytes}"
+
+#: app/routes/place.tsx
+msgid "{name} was not sent from this machine, so it cannot come back."
+msgstr "{name} wurde nicht von dieser Maschine gesendet und kann deshalb nicht zurückkommen."
+
 #: app/components/move-to.tsx
 msgid "{name}’s montage"
 msgstr "Montage von {name}"
@@ -958,9 +966,21 @@ msgstr "{picks, plural, one {# Datei} other {# Dateien}} zurück in Neue Dateien
 msgid "Bring a template in"
 msgstr "Vorlage hinzufügen"
 
+#: app/components/storage-folder.tsx
+msgid "Bring back"
+msgstr "Zurückholen"
+
 #: app/components/bin-files.tsx
 msgid "Bring back to Fresh files"
 msgstr "Zurück in Neue Dateien holen"
+
+#: app/components/bring-panel.tsx
+msgid "Bringing back {name}"
+msgstr "{name} wird zurückgeholt"
+
+#: app/components/bring-panel.tsx
+msgid "Bringing back from the storage"
+msgstr "Zurückholen vom Speicher"
 
 #: app/components/bin-files.tsx
 msgid "Bringing back…"
@@ -969,6 +989,14 @@ msgstr "Wird zurückgeholt…"
 #: app/components/templates-dialog.tsx
 msgid "Bringing in {bringing}…"
 msgstr "{bringing} wird hinzugefügt…"
+
+#: app/components/transfers-panel.tsx
+msgid "Brought back"
+msgstr "Zurückgeholt"
+
+#: app/components/bring-panel.tsx
+msgid "Brought back of {name}"
+msgstr "Zurückgeholt von {name}"
 
 #: app/components/upload-dialog.tsx
 msgid "Build each item once, then send it to every destination it is in"
@@ -1498,6 +1526,7 @@ msgstr "Trennen"
 msgid "Disconnect the storage"
 msgstr "Speicher trennen"
 
+#: app/components/bring-panel.tsx
 #: app/components/notice.tsx
 msgid "Dismiss"
 msgstr "Ausblenden"
@@ -1726,6 +1755,14 @@ msgstr "F"
 #: app/components/transfers-panel.tsx
 msgid "failed"
 msgstr "fehlgeschlagen"
+
+#: app/components/storage-folder.tsx
+msgid "Fetch it back onto this machine"
+msgstr "Auf diese Maschine zurückholen"
+
+#: app/components/bring-panel.tsx
+msgid "Fetching"
+msgstr "Wird geholt"
 
 #: app/components/storage-folder.tsx
 #: app/helpers/parcels.ts
@@ -2538,6 +2575,10 @@ msgstr "Keiner"
 #: app/helpers/notes.ts
 msgid "not added — {reasons}"
 msgstr "nicht hinzugefügt — {reasons}"
+
+#: app/components/bring-panel.tsx
+msgid "not brought back"
+msgstr "nicht zurückgeholt"
 
 #: app/components/board-header.tsx
 msgid "Not connected to the storage"

@@ -34,6 +34,7 @@ import { Notice } from '../components/notice'
 import { DialogHost } from '../components/dialog-host'
 import { CameraPanel } from '../components/camera-panel'
 import { ImportPanel } from '../components/import-panel'
+import { BringPanel } from '../components/bring-panel'
 import { TransfersPanel } from '../components/transfers-panel'
 import { UploadPanel } from '../components/upload-panel'
 import { PlacesTree } from '../components/places-tree'
@@ -41,7 +42,7 @@ import { formatTime } from '../components/utils'
 import { fromComputer } from '../helpers/import'
 import { typingInField } from '../helpers/keys'
 import { routingEngine } from '../helpers/routing'
-import { useCameraCopying } from '../hooks/liveStore'
+import { useBringing, useCameraCopying } from '../hooks/liveStore'
 import { useTransfersPanel } from '../hooks/transfersPanel'
 import { useBoardModel } from '../hooks/useBoardModel'
 import { useDetailsColumn } from '../hooks/useDetails'
@@ -321,6 +322,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
   /* a card being copied: only whether, which changes twice a copy — its bytes are the panel's */
   const copying = useCameraCopying()
+  const bringing = useBringing()
 
   return (
     <main
@@ -466,7 +468,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
       {/* what is on its way, in the bottom-right corner, whatever page is open: a camera being copied off, files
           being copied in, and the upload going out — one above the other when several are */}
-      {(model.coming || board.uploading || copying || transfersOpen) && (
+      {(model.coming || board.uploading || copying || bringing || transfersOpen) && (
         <div className='fixed right-4 bottom-[34px] z-40 flex flex-col items-end gap-2'>
           {copying && (
             <CameraPanel
@@ -486,11 +488,12 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
               onCancel={board.cancelUpload}
             />
           )}
+          {bringing && <BringPanel />}
           {transfersOpen && (
             <TransfersPanel
               key={transfersPanel.shown}
               dsmHost={nas.host}
-              stamp={`${board.uploading ?? ''}|${model.coming ? 1 : 0}|${copying ? 1 : 0}`}
+              stamp={`${board.uploading ?? ''}|${model.coming ? 1 : 0}|${copying ? 1 : 0}|${bringing?.state ?? ''}`}
               onClose={transfersPanel.close}
             />
           )}

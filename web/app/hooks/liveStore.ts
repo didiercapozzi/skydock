@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import type { CameraCopy, Importing, LiveFile } from './useLiveProgress'
+import type { Bringing, CameraCopy, Importing, LiveFile } from './useLiveProgress'
 
 /* What moves many times a second — how far each file being processed or proxied has got, the bytes
    of a card being copied, the bytes of a file being copied in — kept here rather than in the board.
@@ -48,12 +48,14 @@ const NO_FILES: Record<string, LiveFile> = {}
 const liveFiles = slice(NO_FILES)
 const liveCamera = slice<CameraCopy | null>(null)
 const liveImporting = slice<Importing | null>(null)
+const liveBringing = slice<Bringing | null>(null)
 
 /* everything heard so far let go of, for a line to the machine opened afresh */
 const forgetLive = () => {
   liveFiles.update(() => NO_FILES)
   liveCamera.update(() => null)
   liveImporting.update(() => null)
+  liveBringing.update(() => null)
 }
 
 /* What is under way is kept by the work and the file, since the proxy and the jump are made side by
@@ -106,12 +108,17 @@ const useCameraCopying = () =>
 const useImporting = () =>
   useSyncExternalStore(liveImporting.subscribe, liveImporting.get, () => null)
 
+/* the file being fetched back from the storage, and how far through */
+const useBringing = () => useSyncExternalStore(liveBringing.subscribe, liveBringing.get, () => null)
+
 export {
   forgetLive,
+  liveBringing,
   liveCamera,
   liveFiles,
   liveImporting,
   liveKey,
+  useBringing,
   useCameraCopy,
   useCameraCopying,
   useCameraLanded,

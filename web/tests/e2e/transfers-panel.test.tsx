@@ -94,6 +94,22 @@ describe('the transfers panel', () => {
     )
   })
 
+  test('lists a file brought back from the storage', async () => {
+    answers([
+      {
+        id: 'd',
+        kind: 'bring',
+        label: 'yverdon.mp4',
+        at: 1_785_200_000,
+        state: 'done',
+        items: [{ name: 'yverdon.mp4', size: 527_000_000, to: 'this machine', result: 'done' }]
+      }
+    ])
+    await panel()
+
+    await expect.element(page.getByText(/Brought back · yverdon\.mp4/)).toBeVisible()
+  })
+
   test('says so when nothing was ever done', async () => {
     answers([])
     await panel()
