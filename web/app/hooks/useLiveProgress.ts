@@ -53,6 +53,8 @@ const useLiveProgress = (
   const [ended, setEnded] = useState<CameraEnded | null>(null)
   const [cameras, setCameras] = useState<Mounted[]>([])
   const [disk, setDisk] = useState<Disk | null>(null)
+  /* which state of the board's record was last said to have changed outside this page */
+  const [changed, setChanged] = useState<string | null>(null)
 
   useEffect(() => {
     /* what an earlier line said is not taken for now: the server says again what is under way */
@@ -96,6 +98,10 @@ const useLiveProgress = (
         liveImporting.update(() => (event.phase === 'done' ? null : event))
         return
       }
+      if (event.kind === 'board') {
+        setChanged(event.stamp)
+        return
+      }
       if (event.kind === 'bring') {
         /* kept while it goes and a moment after, so the corner shows how it ended; the board's own
            answer says the file is back */
@@ -132,7 +138,7 @@ const useLiveProgress = (
     return () => source.close()
   }, [onProxies, onMontages, onNote])
 
-  return { ended, cameras, disk }
+  return { ended, cameras, disk, changed }
 }
 
 export { useLiveProgress }

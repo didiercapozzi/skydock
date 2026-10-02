@@ -280,6 +280,27 @@ const statProcessedOutputs = (manifest: Manifest) => {
   return outputs
 }
 
+/* What the pair on disk looks like now, as one short string: it changes whenever either file is
+   written. */
+const stampOfFile = (target: string) => {
+  try {
+    const stat = fs.statSync(target)
+    return `${stat.size}:${stat.mtimeMs}`
+  } catch {
+    return 'none'
+  }
+}
+const pairStamp = (manifestPath: string) =>
+  `${stampOfFile(manifestPath)}|${stampOfFile(getGroupsPath(manifestPath))}`
+
+declare global {
+  var skydockManifestWritten: Map<string, string> | undefined
+}
+
+/* the pair as this process last wrote it whole, by path: what a watcher must not take for somebody
+   else's change, since whoever asked has been answered with it already */
+const writtenHere = () => (globalThis.skydockManifestWritten ??= new Map())
+
 const saveManifest = (manifestPath: string, manifest: Manifest) => {
   manifestSchema.parse(manifest)
   fs.mkdirSync(path.dirname(manifestPath), { recursive: true })
@@ -317,10 +338,13 @@ const saveManifest = (manifestPath: string, manifest: Manifest) => {
   /* the pair just written whole is the one to fall back on */
   fs.copyFileSync(manifestPath, backupOf(manifestPath))
   fs.copyFileSync(getGroupsPath(manifestPath), backupOf(getGroupsPath(manifestPath)))
+  writtenHere().set(manifestPath, pairStamp(manifestPath))
 }
 
 export {
   changeBoardSoon,
+  pairStamp,
+  writtenHere,
   flushAllBoardChanges,
   flushBoardChanges,
   boardHistory,

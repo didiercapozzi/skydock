@@ -4,7 +4,7 @@ import { useSafeFetcher } from '../helpers/routing'
 
 const useGroups = (initialGroups: ManifestGroup[]) => {
   const [groups, setGroups] = useState<ManifestGroup[]>(initialGroups)
-  const { submit } = useSafeFetcher()
+  const { submit, state } = useSafeFetcher()
 
   /* `destinations` rides along when an edit also adds a place. Saved separately, the place's answer
      would carry the groups as they were before and the board could take it over the edit it had just
@@ -49,7 +49,8 @@ const useGroups = (initialGroups: ManifestGroup[]) => {
     })
   }
 
-  return { groups, setGroups, updateGroups }
+  /* a save is on its way: an answer about the record taken meanwhile would be of what it was before */
+  return { groups, setGroups, updateGroups, saving: state !== 'idle' }
 }
 
 export { useGroups }

@@ -28,6 +28,7 @@ import {
   uploadedNote
 } from '../helpers/notes'
 import { useSafeFetcher } from '../helpers/routing'
+import { sameJson } from '../helpers/sameJson'
 import type { actionArgs as manifestArgs } from '../routes/api.manifest'
 import { useGroups } from './useJumps'
 import { useLiveProgress } from './useLiveProgress'
@@ -71,7 +72,7 @@ const refusalSchema = z
 const LOOK_EVERY_MS = 2000
 
 const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
-  const { groups, setGroups, updateGroups } = useGroups(loaded.groups)
+  const { groups, setGroups, updateGroups, saving } = useGroups(loaded.groups)
   /* A page loaded mid-processing takes the work up where the server has it: that one montage says it
      is processing, everything else waits, and the board asks to hear when it is done. */
   const running = loaded.processing
@@ -261,6 +262,31 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     /* the same look the board takes after files dropped in, taken quietly */
     arrivals.submit({ url: '/api/manifest', actionArgs: { intent: 'imported' } })
   }, [landed, arrivals])
+
+  /* The record changed outside this page — another tab, a script, a hand edit — and has stopped
+     changing: the board looks at it again, quietly, on a request of its own. It waits for whatever
+     this page is saving or answering, since what it would be told is the record as it was before, and
+     asks again once that is done. A look that finds the board as it is changes nothing. */
+  const looks = useSafeFetcher()
+  const [seenLook, setSeenLook] = useState<unknown>(null)
+  if (looks.data && looks.data !== seenLook) {
+    setSeenLook(looks.data)
+    const found = boardAnswerSchema.safeParse(looks.data)
+    const same =
+      found.success &&
+      sameJson(found.data.groups, groups) &&
+      sameJson(found.data.looseFiles ?? [], loose) &&
+      sameJson(found.data.destinations ?? [], places)
+    if (!same) adopt(looks.data, true)
+  }
+  const occupied = fetcher.state !== 'idle' || jobs.state !== 'idle' || saving
+  const lookedAfter = useRef<string | null>(null)
+  useEffect(() => {
+    if (!live.changed || lookedAfter.current === live.changed) return
+    if (occupied || looks.state !== 'idle') return
+    lookedAfter.current = live.changed
+    looks.submit({ url: '/api/manifest', actionArgs: { intent: 'look-at-board' } })
+  }, [live.changed, occupied, looks])
 
   /* A camera's copy has ended — its files are copied and scanned on the machine — so the board asks
      for itself again, and hears what came off. A request to the machine is what an effect is for;

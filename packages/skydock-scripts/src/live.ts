@@ -60,6 +60,13 @@ const liveEventSchema = z.discriminatedUnion('kind', [
     /* how every finished file went, in order — kept for a board that starts listening mid-copy */
     outcomes: z.array(z.enum(['copied', 'skipped', 'failed'])).optional()
   }),
+  /* The board's own record (manifest.json and its groups) changed under nobody's hand here — another
+     tab, a script, a hand edit, work done outside the page — and has stopped changing. `stamp` says
+     which state it is, so a board that has already adopted it can tell. */
+  z.object({
+    kind: z.literal('board'),
+    stamp: z.string()
+  }),
   /* A file being fetched back from the storage onto this machine: how far through it is, and how it
      ended. Named by the file's id, which the board knows it by. */
   z.object({

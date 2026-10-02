@@ -15,6 +15,7 @@ import { freeDropzoneIntent } from './manifest/free-dropzone'
 import { freeMontageIntent } from './manifest/free-montage'
 import { imported } from './manifest/imported'
 import { markEmailed } from './manifest/mark-emailed'
+import { lookAtBoard } from './manifest/look-at-board'
 import { montageLink } from './manifest/montage-link'
 import { destinationLink } from './manifest/destination-link'
 import { cameraCopied } from './manifest/camera-copied'
@@ -84,7 +85,8 @@ const intents: Record<ActionData['intent'], Intent> = {
   'copy-files': copyFilesIntent,
   'make-montage': makeMontageIntent,
   'reset-fresh': resetFreshIntent,
-  'camera-copied': cameraCopied
+  'camera-copied': cameraCopied,
+  'look-at-board': lookAtBoard
 }
 
 /* what only waits, looks or stops, and changes nothing a person would want to go back from */
@@ -95,6 +97,7 @@ const ONLY_ASKING = new Set<string>([
   'cancel-upload',
   'cancel-process',
   'camera-copied',
+  'look-at-board',
   'go-back'
 ])
 

@@ -18,6 +18,8 @@ const actionArgs = z.object({
     'process-wait',
     /* what is being processed, stopped */
     'cancel-process',
+    /* the record changed outside this page: the board looks at it again, writing nothing */
+    'look-at-board',
     'upload-group',
     /* a page that came back while something was being uploaded waits here for it to finish */
     'upload-wait',

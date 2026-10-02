@@ -124,6 +124,7 @@ import {
 } from './sending'
 import type { PartFile, SendItem } from './sending'
 import { watchMontages } from './montageWatch'
+import { watchBoard } from './manifestWatch'
 import { boardChangeSchema } from './boardChange'
 import type { BoardChange } from './boardChange'
 import { furthestBehind, montageSteps } from './montageSteps'
@@ -232,6 +233,7 @@ export {
   startOfFiles,
   outputKeyOf,
   watchMontages,
+  watchBoard,
   liveEventSchema,
   publish,
   subscribe,

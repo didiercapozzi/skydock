@@ -523,6 +523,17 @@ when it is too narrow for it, and putting the details away is often
 what makes the room for two. A badge for a kind with nothing in it is
 shown but cannot be chosen.
 
+**The board follows its record.** The board's record — `manifest.json` and the groups kept beside it — is
+written by more than the page that has it open: another tab, a script, a hand edit, work done outside
+the page. While a board is open the record is looked at every couple of seconds, and when it has changed
+and then stopped changing the board looks at it again by itself and shows what changed, with nothing
+reloaded and no note said. Only the record's own two files count; the copies, temporary files and
+history beside them are not changes. What this machine's own server wrote itself is not told again:
+whoever asked was answered with it. A look only reads — it writes nothing and is no step of the
+history — and it waits for anything the page is saving or answering, so an edit just made is never
+shown reverted; a look that finds the board as it is changes nothing on screen. A record that cannot be
+read whole is never shown as an older one.
+
 **Arranging and finding.** The pane's heading has one button per way of arranging the place — by jump,
 by day, or as one list, whichever that place offers — so every choice is in sight and a single press
 away. Each kind of place opens arranged its own way — Fresh files and a montage by jump, a dropzone

@@ -1,4 +1,4 @@
-import { getOutputDir, subscribe, watchMontages } from '@skydock/scripts'
+import { getOutputDir, subscribe, watchBoard, watchMontages } from '@skydock/scripts'
 import { watchCameras } from '../../../packages/skydock-scripts/src/cameraWatch'
 import { watchDisk } from '../../../packages/skydock-scripts/src/diskSpace'
 import { watchServerHolds } from '../../../packages/skydock-scripts/src/lib/lag'
@@ -43,10 +43,13 @@ const loader = ({ request }: Route.LoaderArgs) => {
       watchServerHolds()
       /* while a board listens, the montages' folders are looked at for a film the editor finished */
       const stopWatching = watchMontages(getOutputDir())
+      /* and the board's own record, for a change made outside this page */
+      const stopWatchingBoard = watchBoard(getOutputDir())
       const heartbeat = setInterval(() => send(': still here\n\n'), HEARTBEAT_MS)
       request.signal.addEventListener('abort', () => {
         clearInterval(heartbeat)
         stopWatching()
+        stopWatchingBoard()
         unsubscribe()
         try {
           controller.close()
