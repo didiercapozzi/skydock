@@ -57,6 +57,7 @@ describe('a trimmed clip in the preview', () => {
     const Stub = createRoutesStub([boardRoute(() => board)])
     await render(createElement(Stub, { initialEntries: ['/'] }))
 
+    await userEvent.click(page.getByRole('button', { name: /^Jump 1,/ }))
     await userEvent.dblClick(page.getByRole('button', { name: /later\.MP4/ }).first())
 
     await expect.poll(said).toContain('0:12 /')
@@ -66,6 +67,7 @@ describe('a trimmed clip in the preview', () => {
   test('opens the next clip on its own trim, not the one just left', async () => {
     const Stub = createRoutesStub([boardRoute(() => board)])
     await render(createElement(Stub, { initialEntries: ['/'] }))
+    await userEvent.click(page.getByRole('button', { name: /^Jump 1,/ }))
     await userEvent.dblClick(page.getByRole('button', { name: /early\.MP4/ }).first())
     await expect.poll(said).toContain('0:05 /')
 

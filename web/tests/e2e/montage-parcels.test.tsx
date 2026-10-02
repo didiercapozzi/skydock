@@ -12,7 +12,7 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
 import { boardRoute } from './board-route'
 
 /* A montage as it was handed over — each folder up there, named for its destination, what is in it,
-   how big, the link, and what is inside each zip — on the montage's own page, on its storage tab
+   how big, the link, and what is inside each zip — on the montage's own page, on its storage card
    (RULES, Uploading a montage). */
 
 const DIR = '/SkyDock/Passengers'
@@ -65,7 +65,7 @@ const montage = (extra: Record<string, unknown> = {}) => ({
   storage: { dir: DIR, problem: null, lost: { folders: [], links: [] }, montages: [] }
 })
 
-/* freed from this machine, so its page opens on the storage's tab, where how it was handed over is shown */
+/* freed from this machine, so its page shows only the storage, where how it was handed over is shown */
 const freed = montage({
   freed: { at: 1_785_100_000, bytes: 16 * GB },
   files: [clip(1), clip(2)].map((f) => ({ ...f, freed: true }))
@@ -99,7 +99,8 @@ describe('a montage as it was handed over', () => {
     await expect.element(page.getByText(`${DIR}/ana-roth`, { exact: true })).toBeVisible()
     await expect.element(page.getByText('ana_roth_20260728.mp4')).toBeVisible()
     await expect.element(page.getByText('3.0 GB')).toBeVisible()
-    await expect.element(page.getByText(LINK, { exact: true })).toBeVisible()
+    /* the link is the montage's, in the panel, not on the folders' cards */
+    await expect.element(page.getByText('…/Ana')).toBeVisible()
     await expect.element(page.getByText('/Backup/ana-roth', { exact: true })).toBeVisible()
     await expect.element(page.getByText('ana_roth_20260728.videos.zip')).toBeVisible()
     await page.screenshot({ path: './playwright-screenshots/montage-parcels.png' })
@@ -162,9 +163,9 @@ describe('a montage as it was handed over', () => {
     }
     await open(held)
 
-    /* how it was handed over is on the storage's tab */
-    await userEvent.click(page.getByRole('group', { name: 'Where to look' }).getByRole('button', { name: 'On the storage' }))
-    await expect.element(page.getByText('ana_roth_20260728.project.zip')).toBeVisible()
+    /* how it was handed over is on the storage's card */
+    /* in the document, not asserted visible: its name is squeezed to nothing in a narrow card */
+    await expect.element(page.getByText('ana_roth_20260728.project.zip')).toBeInTheDocument()
     await expect.element(page.getByText('no longer on the storage')).toBeVisible()
     /* it is still there to read, but is no link into the storage's interface */
     expect(

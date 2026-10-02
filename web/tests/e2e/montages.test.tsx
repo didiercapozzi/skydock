@@ -145,7 +145,7 @@ describe('picked files in Fresh files', () => {
 
   test('one file on its own can be made a montage', async () => {
     await renderBoard({ groups: [FRESH_JUMP, YVERDON_JUMP, montage(['Solo', ''], [file('solo', AT + 9000)])] })
-    await userEvent.click(card(/^Loose files, /))
+    await userEvent.click(page.getByRole('button', { name: /^Loose files/ }))
     await userEvent.click(page.getByRole('button', { name: /solo\.MP4/ }).last())
     await userEvent.click(details().getByRole('button', { name: 'Make a montage of this…' }))
     await userEvent.fill(details().getByRole('textbox', { name: 'Name' }), 'Solo')
@@ -371,7 +371,7 @@ describe('removing files', () => {
   /* a loose file in Fresh files has nowhere further back to go: only the bin is left */
   test('already loose in Fresh files offers only the bin', async () => {
     await renderBoard({ groups: board.groups })
-    await userEvent.click(card(/^Loose files, /))
+    await userEvent.click(page.getByRole('button', { name: /^Loose files/ }))
     await userEvent.click(page.getByRole('button', { name: /solo\.MP4/ }).last())
 
     await userEvent.keyboard('{Delete}')
@@ -386,9 +386,7 @@ describe('files grouped by day', () => {
   test('are headed by their day, written out', async () => {
     await renderBoard({ groups: board.groups })
 
-    await userEvent.click(page.getByRole('group', { name: 'Group' }).getByRole('button', { name: 'By day' }))
-
-    await expect.element(page.getByText(/1 August 2026/).first()).toBeVisible()
+    await expect.element(page.getByRole('button', { name: /1 August 2026/ }).first()).toBeVisible()
     await expect.element(page.getByText(/object Object/)).not.toBeInTheDocument()
   })
 
@@ -397,9 +395,7 @@ describe('files grouped by day', () => {
     try {
       await renderBoard({ groups: board.groups })
 
-      await userEvent.click(page.getByRole('group', { name: 'Grouper' }).getByRole('button', { name: 'Par jour' }))
-
-      await expect.element(page.getByText(/1 août 2026/).first()).toBeVisible()
+        await expect.element(page.getByRole('button', { name: /1 août 2026/ }).first()).toBeVisible()
     } finally {
       speak('en')
     }
@@ -414,10 +410,9 @@ describe('Move to…', () => {
   test('files a jump under a destination, and leaves out where it already is', async () => {
     await renderBoard({ groups: [] })
     await userEvent.click(card(/^Sunset load, /))
-    await userEvent.click(details().getByRole('button', { name: 'Move to…' }))
 
-    await expect.element(moving().getByRole('button', { name: 'Fresh files' })).not.toBeInTheDocument()
-    await userEvent.click(moving().getByRole('button', { name: 'Yverdon' }))
+    await expect.element(details().getByRole('button', { name: 'Fresh files' })).not.toBeInTheDocument()
+    await userEvent.click(details().getByRole('button', { name: 'Yverdon' }))
 
     await expect
       .poll(() => sent.at(-1))
@@ -446,10 +441,9 @@ describe('Move to…', () => {
   test('to a new montage asks for its name first', async () => {
     await renderBoard({ groups: [] })
     await userEvent.click(card(/^Sunset load, /))
-    await userEvent.click(details().getByRole('button', { name: 'Move to…' }))
-    await userEvent.click(moving().getByRole('button', { name: 'A new montage…' }))
+    await userEvent.click(details().getByRole('button', { name: 'Make a montage…' }))
 
-    await expect.element(page.getByRole('dialog', { name: /montage/i })).toBeInTheDocument()
+    await expect.element(details().getByRole('textbox', { name: 'Name' })).toBeVisible()
     expect(sent).toEqual([])
   })
 })
@@ -492,7 +486,7 @@ describe('a destination’s link', () => {
   test('has none by default, and one is made from the panel', async () => {
     await open(shown())
 
-    await expect.element(details().getByText('No link')).toBeVisible()
+    await expect.element(details().getByText('None yet')).toBeVisible()
     await userEvent.click(details().getByRole('button', { name: 'Create link' }))
     await expect
       .poll(() => sent.at(-1))

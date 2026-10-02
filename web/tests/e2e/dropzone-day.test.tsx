@@ -118,7 +118,7 @@ describe('a dropzone day, from the board', () => {
     /* the step and the count of what it deals with are in one row, so what it acts on is plain */
     const row = page.getByRole('button', { name: 'Process 2 files' }).element().parentElement!
       .parentElement!
-    expect(row.textContent).toContain('2 to process')
+    expect(row.textContent).toContain('2 files need processing')
     /* and not up among the ways of looking at the folder */
     expect(row.textContent).not.toContain('Find a file')
 

@@ -80,15 +80,15 @@ describe('comparing two jumps', () => {
     await expect.element(comparison()).not.toBeInTheDocument()
   })
 
-  /* the jump whose card is open is the one it is about, whether or not it was ever clicked */
-  test('compares with the jump already open, without it having to be clicked first', async () => {
+  /* no jump is open until one is clicked, so a ⌘/ctrl-click on the first has nothing to compare it with */
+  test('does not open when no jump is open to compare with', async () => {
     await renderBoard()
 
     await userEvent.keyboard('{Control>}')
     await userEvent.click(card(/^Jump 1, /))
     await userEvent.keyboard('{/Control}')
 
-    await expect.element(comparison()).toBeInTheDocument()
+    await expect.element(comparison()).not.toBeInTheDocument()
   })
 })
 
@@ -160,12 +160,13 @@ describe('the keyboard in the comparison', () => {
   })
 })
 
-/* One jump's card is always open — the one last chosen, or else the first, the newest — with its files listed
-   under the cards. The panel on the right describes that same jump: a lit card beside a panel about
-   something else was two answers to which jump this is about. */
+/* A jump's card is open once it is clicked, with its files listed under the cards. The panel on the
+   right describes that same jump: a lit card beside a panel about something else was two answers to
+   which jump this is about. */
 describe('the jump whose card is open', () => {
-  test('is the one the panel describes, before anything is clicked', async () => {
+  test('is the one the panel describes', async () => {
     await renderBoard()
+    await userEvent.click(card(/^Jump 2, /))
 
     const panel = page.getByRole('complementary')
     await expect.element(panel.getByRole('heading', { name: /^Jump 2\b/ })).toBeInTheDocument()
@@ -218,6 +219,7 @@ describe('jumps as cards', () => {
     const Stub = createRoutesStub([boardRoute(() => days)])
     await render(createElement(Stub, { initialEntries: ['/'] }))
 
+    await userEvent.click(page.getByRole('button', { name: 'Search' }))
     await userEvent.fill(page.getByRole('textbox', { name: 'Find a file' }), 'early2')
 
     await expect.element(card(/^Jump 3, /)).toBeInTheDocument()
@@ -250,6 +252,7 @@ describe('resetting Fresh files', () => {
   test('offers the times alone or everything, each saying what it forgets and keeps', async () => {
     await renderWithRequests()
 
+    await userEvent.click(page.getByRole('button', { name: 'More' }))
     await userEvent.click(page.getByRole('button', { name: 'Reset Fresh files…' }))
 
     await expect.element(dialog().getByRole('button', { name: /^Times only/ })).toBeInTheDocument()
@@ -264,6 +267,7 @@ describe('resetting Fresh files', () => {
 
   test('resets only the times when that is chosen', async () => {
     await renderWithRequests()
+    await userEvent.click(page.getByRole('button', { name: 'More' }))
     await userEvent.click(page.getByRole('button', { name: 'Reset Fresh files…' }))
 
     await userEvent.click(dialog().getByRole('button', { name: /^Times only/ }))
@@ -275,6 +279,7 @@ describe('resetting Fresh files', () => {
 
   test('resets everything when that is chosen', async () => {
     await renderWithRequests()
+    await userEvent.click(page.getByRole('button', { name: 'More' }))
     await userEvent.click(page.getByRole('button', { name: 'Reset Fresh files…' }))
 
     await userEvent.click(dialog().getByRole('button', { name: /^Everything/ }))
@@ -287,8 +292,10 @@ describe('resetting Fresh files', () => {
   test('is offered apart from gathering the loose files into jumps, which asks nothing', async () => {
     await renderWithRequests({ ...board, looseFiles: [file('solo', AT + 9000)] })
 
+    await userEvent.click(page.getByRole('button', { name: 'More' }))
     await expect.element(page.getByRole('button', { name: 'Reset Fresh files…' })).toBeVisible()
-    await userEvent.click(page.getByRole('button', { name: 'Group loose files into jumps' }))
+    await userEvent.keyboard('{Escape}')
+    await userEvent.click(page.getByRole('button', { name: 'Group 1 loose file' }))
 
     await vi.waitFor(() => expect(asked).toContainEqual({ intent: 'regroup-loose' }))
     await expect.element(dialog()).not.toBeInTheDocument()
@@ -296,6 +303,7 @@ describe('resetting Fresh files', () => {
 
   test('does nothing when the dialog is closed', async () => {
     await renderWithRequests()
+    await userEvent.click(page.getByRole('button', { name: 'More' }))
     await userEvent.click(page.getByRole('button', { name: 'Reset Fresh files…' }))
 
     await userEvent.click(dialog().getByRole('button', { name: 'Close' }))
@@ -308,6 +316,7 @@ describe('resetting Fresh files', () => {
 describe('the files of a jump', () => {
   test('are listed newest first', async () => {
     await renderBoard()
+    await userEvent.click(card(/^Jump 2, /))
 
     await expect.element(page.getByText('g2b.MP4').first()).toBeInTheDocument()
     await expect

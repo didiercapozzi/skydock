@@ -12,7 +12,7 @@ vi.mock(import('@skydock/scripts'), async (importOriginal) => {
 import { boardRoute } from './board-route'
 
 /* A montage that has been uploaded is in two places — the files kept here, and its folder on the
-   storage — and a tab switches between them (RULES, A place is connected to its folder). */
+   storage — and its page shows the two side by side (RULES, A place is connected to its folder). */
 
 const DIR = '/SkyDock/Passengers'
 const GB = 1024 ** 3
@@ -105,93 +105,87 @@ const open = async (data: unknown) => {
 const asked: Record<string, unknown>[] = []
 
 const tabs = () => page.getByRole('group', { name: 'Where to look' })
+const panel = () => page.getByRole('complementary', { name: 'Details' })
 
 describe('an uploaded montage', () => {
-  test('has a tab for what is here and a tab for what is on the storage', async () => {
+  test('has no tabs, but a card for what is here and a card for what is on the storage', async () => {
     await open(board(group({}, [clip(1), clip(2)])))
 
-    await expect.element(tabs().getByRole('button', { name: 'Local' })).toHaveAttribute('aria-pressed', 'true')
-    await expect.element(page.getByText('GX01.MP4').first()).toBeVisible()
-    await expect.element(page.getByText('ana_roth_20260728.mp4')).not.toBeInTheDocument()
-
-    await userEvent.click(tabs().getByRole('button', { name: 'On the storage' }))
-
-    /* how it was handed over, once: the folder's files are not listed again under the cards */
+    await expect.element(tabs()).not.toBeInTheDocument()
+    await expect.element(page.getByRole('heading', { name: 'On this machine' })).toBeVisible()
+    await expect.element(page.getByRole('heading', { name: 'On the storage' })).toBeVisible()
+    await expect.element(page.getByText('Everything here is also on the storage.')).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Free up space…' })).toBeVisible()
     await expect.element(page.getByText('ana_roth_20260728.mp4')).toBeVisible()
+    /* the files kept here are not listed again */
     await expect.element(page.getByText('GX01.MP4')).not.toBeInTheDocument()
-
-    await userEvent.click(tabs().getByRole('button', { name: 'Local' }))
-    await expect.element(page.getByText('GX01.MP4').first()).toBeVisible()
   })
 
-  /* freed from this machine, nothing is left here: it opens on the storage, where how it was handed
-     over is shown */
-  test('opens on the storage when nothing is left of it here', async () => {
+  /* freed from this machine, nothing is left here: the page says what is left, on the storage */
+  test('shows what is left of it, only on the storage, once it is freed', async () => {
     const freed = [clip(1), clip(2)].map((f) => ({ ...f, freed: true }))
     await open(board(group({ freed: { at: 1_785_100_000, bytes: 2 * GB } }, freed)))
 
-    await expect.element(tabs().getByRole('button', { name: 'On the storage' })).toHaveAttribute('aria-pressed', 'true')
+    await expect.element(page.getByText('Stored', { exact: true })).toBeVisible()
+    await expect.element(page.getByText('This machine', { exact: true })).toBeVisible()
+    await expect.element(page.getByRole('heading', { name: 'Only on the storage now' })).toBeVisible()
     await expect.element(page.getByText(`${DIR}/ana-roth`, { exact: true })).toBeVisible()
     await expect.element(page.getByText('ana_roth_20260728.mp4')).toBeVisible()
   })
 
-  /* the link of what is handed over is on its card, and can be taken away from there */
-  test('can take the folder’s link away from the folder’s card', async () => {
+  /* the montage's link is in the panel, and can be taken away from there */
+  test('can take the link away from the panel', async () => {
     asked.length = 0
     await open(board(group({}, [clip(1)])))
-    await userEvent.click(tabs().getByRole('button', { name: 'On the storage' }))
 
-    await expect.element(page.getByText('https://nas.local/sharing/Ana')).toBeVisible()
-    await userEvent.click(page.getByRole('button', { name: 'Remove link', exact: true }))
+    await expect.element(panel().getByText('…/sharing/Ana')).toBeVisible()
+    await userEvent.click(panel().getByRole('button', { name: 'Remove link', exact: true }))
     await vi.waitFor(() => expect(JSON.stringify(asked)).toContain('montage-link'))
   })
 
-  /* once its link is gone, the same card makes a new one */
-  test('offers to create the link again once the card has none', async () => {
+  /* once its link is gone, the panel makes a new one */
+  test('offers to create the link again once it has none', async () => {
     asked.length = 0
     await open(board(group({ uploaded: { ...uploaded, shareUrl: undefined } }, [clip(1)])))
-    await userEvent.click(tabs().getByRole('button', { name: 'On the storage' }))
 
-    await userEvent.click(page.getByRole('button', { name: 'Create link', exact: true }))
+    await expect.element(panel().getByText('No link')).toBeVisible()
+    await userEvent.click(panel().getByRole('button', { name: 'Create link', exact: true }))
     await vi.waitFor(() => expect(JSON.stringify(asked)).toContain('"make":true'))
   })
 
-  /* what the folder's own list let you do to a file is on the card's item instead */
-  test('has watch and link buttons on the items of the cards', async () => {
+  /* the folder cards have a Watch button on a video, and no link of their own */
+  test('has a watch button on the items of the cards, and no link buttons there', async () => {
     await open(board(group({}, [clip(1)])))
-    await userEvent.click(tabs().getByRole('button', { name: 'On the storage' }))
 
     await expect.element(page.getByRole('button', { name: 'Watch' })).toBeVisible()
-    await expect.element(page.getByRole('button', { name: 'Create a link' })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Create a link' })).not.toBeInTheDocument()
   })
 
-  /* the cards of how it was handed over are on the storage's tab, not under the files here */
-  test('shows how it was handed over on the storage’s tab only', async () => {
+  test('says in the panel where the film went', async () => {
     await open(board(group({}, [clip(1)])))
 
-    await expect.element(page.getByText(`${DIR}/ana-roth`, { exact: true })).not.toBeInTheDocument()
-    await userEvent.click(tabs().getByRole('button', { name: 'On the storage' }))
-    await expect.element(page.getByText(`${DIR}/ana-roth`, { exact: true })).toBeVisible()
-    await userEvent.click(tabs().getByRole('button', { name: 'Local' }))
-    await expect.element(page.getByText(`${DIR}/ana-roth`, { exact: true })).not.toBeInTheDocument()
+    await expect.element(panel().getByText('Delivery')).toBeVisible()
+    await expect.element(panel().getByText('Film', { exact: true })).toBeVisible()
+    await expect.element(panel().getByText('Passengers').first()).toBeVisible()
   })
 
-  /* a montage's files are headed and listed as a destination's day is */
-  test('lists its files under a day heading with the counts on one line', async () => {
-    await open(board(group({}, [clip(1), clip(2)])))
+  /* a montage's files are headed and listed in one card, before it is uploaded */
+  test('lists its files in one card under its own heading before it is uploaded', async () => {
+    await open(board(group({ uploaded: undefined }, [clip(1), clip(2)])))
 
-    await expect.element(page.getByText('2 files · 2 videos · 0 photos')).toBeVisible()
+    await expect.element(page.getByRole('heading', { name: 'Its files' })).toBeVisible()
+    await expect.element(page.getByText('GX01.MP4').first()).toBeVisible()
+    await expect.element(page.getByText('GX02.MP4').first()).toBeVisible()
     await expect.element(page.getByText('Open on its own')).not.toBeInTheDocument()
   })
 
   /* a montage is shown by its jump only, and its ways back are in the panel at the right */
-  test('has no grouping choice, and Reset and Delete only in the panel', async () => {
-    await open(board(group({}, [clip(1)])))
+  test('has no grouping choice, and Reset and Delete in the panel', async () => {
+    await open(board(group({ uploaded: undefined }, [clip(1)])))
 
     await expect.element(page.getByRole('group', { name: 'Group' })).not.toBeInTheDocument()
-    const panel = page.getByRole('complementary', { name: 'Details' })
-    await expect.element(panel.getByRole('button', { name: 'Reset…' })).toBeVisible()
-    await expect.element(panel.getByRole('button', { name: 'Delete montage…' })).toBeVisible()
+    await expect.element(panel().getByRole('button', { name: 'Reset…' })).toBeVisible()
+    await expect.element(panel().getByRole('button', { name: 'Delete montage…' })).toBeVisible()
     expect(page.getByRole('button', { name: 'Reset…' }).elements()).toHaveLength(1)
   })
 

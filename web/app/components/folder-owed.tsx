@@ -75,7 +75,7 @@ const FolderOwed = ({
       </div>
     )
   }
-  if (place.kind === 'bin') return null
+  if (place.kind === 'bin' || place.kind === 'delivered') return null
   const live = groups.filter((g) => !g.freed)
   const by = (test: (g: ManifestGroup) => boolean) => live.filter(test).length
   const unnamed = by((g) => !hasCompletePassenger(g.passenger))

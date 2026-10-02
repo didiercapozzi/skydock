@@ -6,7 +6,7 @@ import {
   passengerName,
   UPLOADED_LOCKED
 } from '@skydock/scripts'
-import type { FileStatus, ProxyFact, MontageFact } from '@skydock/scripts'
+import type { FileStatus, ProxyFact } from '@skydock/scripts'
 import { useState } from 'react'
 import { dsmFolderUrl } from '../helpers/dsm'
 import { useStorageTwin } from '../hooks/storageTwins'
@@ -15,12 +15,13 @@ import { Danger, Go, Mini } from './buttons'
 import { StatusChip } from './file-status'
 import type { ShownStatus } from './file-status'
 import { Icon } from './icons'
+import type { IconName } from './icons'
 import { JumpForm } from './jump-name'
 import { JumpSpan } from './jump-time'
 import { NameMontage, PassengerName } from './montage-card'
-import { StepTrail } from './montage-steps'
 import type { Passenger } from './montage-card'
 import type { ManifestFile, ManifestGroup } from './types'
+import { kindsSaid } from './kinds'
 import { dateLabel, formatSize, getPictureUrl, hhmm, minFileMtime, shortDate } from './utils'
 
 /* The right-hand pane says everything about whatever is selected — one file, several, a jump, or
@@ -73,7 +74,7 @@ const Who = ({
   file?: boolean
   lower?: boolean
 }) => (
-  <div className={`flex flex-col px-5 pb-1.5 ${lower ? 'pt-[22px]' : 'pt-4'}`}>
+  <div className={`flex flex-col px-6 pb-1.5 ${lower ? 'pt-[26px]' : 'pt-5'}`}>
     {eyebrow && (
       <span className='text-[11px] font-bold tracking-[0.08em] text-ink-3 uppercase'>
         {eyebrow}
@@ -82,26 +83,26 @@ const Who = ({
     <h2
       className={`m-0 mt-1 mb-2 leading-[1.45] tracking-[-0.03em] break-words ${
         file
-          ? 'font-mono text-[14.5px] font-medium break-all'
-          : 'font-display text-[21px] font-bold'
+          ? 'font-display text-[19px] leading-[1.25] font-semibold break-all'
+          : 'font-display text-[24px] font-semibold'
       }`}>
       {title}
     </h2>
     {sub && <span className='font-medium text-ink-3'>{sub}</span>}
-    {tags && <div className='flex flex-wrap gap-1'>{tags}</div>}
+    {tags && <div className='mt-1 flex flex-wrap gap-1'>{tags}</div>}
   </div>
 )
 
 /* the picture at the top of the panel: what is being looked at, before any word about it */
 const Hero = ({ children }: { children: React.ReactNode }) => (
-  <div className='relative mx-4 mt-4 aspect-[16/10] flex-none overflow-hidden rounded-[14px] bg-well'>
+  <div className='relative h-[190px] flex-none overflow-hidden bg-[linear-gradient(135deg,#9fc6cf,#cfe3e7)] dark:bg-well'>
     {children}
   </div>
 )
 
 /* One part of the panel: what it is about in a quiet capital line over it. */
 const Part = ({ heading, children }: { heading?: string; children: React.ReactNode }) => (
-  <section className='flex flex-col gap-2.5 px-5 py-3'>
+  <section className='flex flex-col gap-2.5 px-6 py-2.5'>
     {heading && (
       <h3 className='m-0 text-[11px] font-bold tracking-[0.08em] text-ink-3 uppercase'>
         {heading}
@@ -115,7 +116,7 @@ const Part = ({ heading, children }: { heading?: string; children: React.ReactNo
    a menu's button is wrapped once, so it is reached by what it does, and the entries of its open
    list are left as they are. */
 const BIG =
-  '[&>button]:h-[38px] [&>button]:w-full [&>button]:gap-2 [&>button]:rounded-[11px] [&>button]:px-4 [&>button]:text-[13.5px] [&_button[aria-expanded]]:h-[38px] [&_button[aria-expanded]]:gap-2 [&_button[aria-expanded]]:rounded-[11px] [&_button[aria-expanded]]:px-4 [&_button[aria-expanded]]:text-[13.5px] [&_button[aria-expanded]_svg]:size-4'
+  '[&>button]:h-[42px] [&>button]:w-full [&>button]:justify-start [&>button]:gap-2.5 [&>button]:rounded-[13px] [&>button]:px-3.5 [&>button]:text-[14px] [&_button[aria-expanded]]:h-[42px] [&_button[aria-expanded]]:w-full [&_button[aria-expanded]]:justify-start [&_button[aria-expanded]]:gap-2.5 [&_button[aria-expanded]]:rounded-[13px] [&_button[aria-expanded]]:px-3.5 [&_button[aria-expanded]]:text-[14px] [&_button[aria-expanded]_svg]:size-[18px]'
 
 /* what can be done, two buttons to a row and a wide one across; a button alone in its row takes it */
 const Acts = ({ children }: { children: React.ReactNode }) => (
@@ -124,7 +125,7 @@ const Acts = ({ children }: { children: React.ReactNode }) => (
 
 /* buttons of a part two to a row, each taking half */
 const Pair = ({ children }: { children: React.ReactNode }) => (
-  <div className={`grid grid-cols-2 gap-2 [&>:only-child]:col-span-2 ${BIG}`}>{children}</div>
+  <div className={`grid grid-cols-1 gap-2 ${BIG}`}>{children}</div>
 )
 
 /* one button across the whole part */
@@ -137,8 +138,7 @@ const BinButton = ({ children, onClick }: { children: React.ReactNode; onClick: 
   <button
     type='button'
     onClick={onClick}
-    className='inline-flex h-[38px] items-center justify-center gap-2 rounded-[11px] bg-transparent px-4 text-[13.5px] font-bold whitespace-nowrap text-bin hover:bg-bin-soft'>
-    <Icon name='bin' />
+    className='inline-flex h-[34px] items-center justify-center gap-2 rounded-[11px] bg-well px-3.5 text-[13px] font-bold whitespace-nowrap text-bin hover:bg-bin-soft'>
     {children}
   </button>
 )
@@ -150,18 +150,15 @@ const PlainTag = ({ children }: { children: React.ReactNode }) => (
   </span>
 )
 
-/* each tile its own soft colour, so a panel of facts is not a grey block */
-const TILES = ['bg-tile-1', 'bg-tile-2', 'bg-tile-3', 'bg-tile-4']
-
-/* what is known, as small tiles two across: the name muted over the value in bold */
+/* what is known, one line each: the name muted at the left, the value in bold at the right */
 const Facts = ({ rows }: { rows: [string, React.ReactNode][] }) => (
-  <dl className='m-0 grid grid-cols-2 gap-2 text-[13.5px]'>
-    {rows.map(([term, value], at) => (
+  <dl className='m-0 flex flex-col text-[14px]'>
+    {rows.map(([term, value]) => (
       <div
         key={term}
-        className={`min-w-0 rounded-[12px] px-3 py-[9px] ${TILES[at % TILES.length]}`}>
-        <dt className='text-[11.5px] font-medium text-ink-3'>{term}</dt>
-        <dd className='m-0 min-w-0 font-bold break-words tabular-nums [&_button]:text-[13.5px] [&_button]:font-bold'>
+        className='flex min-w-0 items-baseline justify-between gap-3 border-t border-line-2 py-2.5 first:border-t-0'>
+        <dt className='flex-none text-ink-3'>{term}</dt>
+        <dd className='m-0 min-w-0 text-right font-bold break-words tabular-nums [&_button]:text-[14px] [&_button]:font-bold'>
           {value}
         </dd>
       </div>
@@ -247,35 +244,55 @@ const bytes = (files: ManifestFile[]) => formatSize(files.reduce((n, f) => n + f
 const FolderPanel = ({
   title,
   sub,
-  files,
-  statusOf,
+  eyebrow,
   children
 }: {
   title: string
   sub: string
-  files: ManifestFile[]
-  statusOf: (file: ManifestFile) => FileStatus
+  eyebrow?: string
   children?: React.ReactNode
 }) => (
   <>
     <Who
-      eyebrow={t`Nothing selected`}
+      eyebrow={eyebrow ?? t`Nothing selected`}
       title={title}
       sub={sub}
       lower
     />
-    {files.length > 0 && (
-      <Part heading={t`What it holds`}>
-        <Facts rows={tally(files, statusOf).map(([name, n]) => [name, String(n)])} />
-      </Part>
-    )}
     {children}
-    <Part>
-      <Hint>
-        {t`Select a file or a jump to see it here. Double-click a file to trim, frame or turn it.`}
-      </Hint>
-    </Part>
   </>
+)
+
+/* One setting of a folder, as a line: its mark, what it is and what it is now, and the one button
+   that changes it. */
+const SettingRow = ({
+  icon,
+  label,
+  value,
+  mono = false,
+  children
+}: {
+  icon: IconName
+  label: string
+  value: React.ReactNode
+  mono?: boolean
+  children?: React.ReactNode
+}) => (
+  <div className='flex items-center gap-3 border-t border-line-2 py-3 first:border-t-0'>
+    <span className='grid size-[38px] flex-none place-items-center rounded-[12px] bg-well text-ink-2'>
+      <Icon
+        name={icon}
+        size={18}
+      />
+    </span>
+    <div className='min-w-0 flex-1'>
+      <b>{label}</b>
+      <div className={`truncate text-ink-3 ${mono ? 'font-mono text-[12px]' : 'text-[12.5px]'}`}>
+        {value}
+      </div>
+    </div>
+    {children}
+  </div>
 )
 
 /* Making a montage is a choice before it is a form: the name waits behind one button, so what is only
@@ -286,6 +303,7 @@ const MontageNamer = ({
   keeps,
   what,
   passengers,
+  primary = false,
   onSave
 }: {
   initial?: string
@@ -293,10 +311,13 @@ const MontageNamer = ({
   /* what the montage is made of, said on the button: "these", "this" */
   what?: string
   passengers: Passenger[]
+  /* the one thing to do here, drawn as the main button */
+  primary?: boolean
   onSave: (passenger: Passenger) => void
 }) => {
   const [making, setMaking] = useState(false)
   const ofWhat = what ?? ''
+  const Button = primary ? Go : Mini
   return making ? (
     <NameMontage
       initial={initial}
@@ -309,18 +330,20 @@ const MontageNamer = ({
     />
   ) : (
     <Whole>
-      <Mini onClick={() => setMaking(true)}>
-        <Icon
-          name='montage'
-          size={14}
-          className='text-ink-2'
-        />
+      <Button onClick={() => setMaking(true)}>
+        {!primary && (
+          <Icon
+            name='montage'
+            size={14}
+            className='text-ink-2'
+          />
+        )}
         {keeps
           ? t`Copy into a montage…`
           : what
             ? t`Make a montage of ${ofWhat}…`
             : t`Make a montage…`}
-      </Mini>
+      </Button>
     </Whole>
   )
 }
@@ -342,8 +365,6 @@ const JumpPanel = ({
   group,
   label,
   where,
-  facts,
-  emailed,
   locked,
   statusOf,
   passengers,
@@ -356,14 +377,13 @@ const JumpPanel = ({
   onDelete,
   move,
   onTrimToJump,
+  fileTo,
   end
 }: {
   group: ManifestGroup
   label: string
   /* the folder the jump is in, said over its name */
   where?: string
-  facts?: MontageFact
-  emailed: boolean
   locked: string | null
   statusOf: (file: ManifestFile) => FileStatus
   passengers: Passenger[]
@@ -382,6 +402,8 @@ const JumpPanel = ({
   move?: React.ReactNode
   /* every clip trimmed to its jump; absent when no clip has an exit found, or it is past changing */
   onTrimToJump?: () => void
+  /* the destinations a jump still in Fresh files can be filed to, each a button of its own */
+  fileTo?: { places: string[]; onFile: (place: string) => void }
   /* what is set once and left alone, last in the panel: a montage's ways back */
   end?: React.ReactNode
 }) => {
@@ -398,6 +420,79 @@ const JumpPanel = ({
     .filter(([, n]) => n > 0)
     .map(([name, n]) => `${n} ${name.toLowerCase()}`)
     .join(' · ')
+  /* A jump waiting in Fresh files has one decision to take: where it goes. The destinations are laid
+     out as buttons, with making it a montage under them, so nothing is looked for in a menu. */
+  if (fileTo && !montage && !group.freed) {
+    const videos = group.files.filter((f) => isVideoFile(f.path)).length
+    const photos = fileCount - videos
+    const starts = hhmm(from)
+    return (
+      <>
+        <Who
+          eyebrow={t`Jump · ${dateLabel(from)}`}
+          lower
+          title={label}
+          sub={`${kindsSaid(videos, photos, ' · ')} · ${t`starts ${starts}`}`}
+        />
+        {fileTo.places.length > 0 && (
+          <Part heading={t`File it to`}>
+            <div className='flex flex-col gap-2'>
+              {fileTo.places.map((name) => (
+                <button
+                  key={name}
+                  type='button'
+                  onClick={() => fileTo.onFile(name)}
+                  className='flex h-[46px] w-full cursor-pointer items-center justify-between gap-2.5 rounded-[14px] border-0 bg-well px-4 text-[14px] font-bold text-ink hover:bg-line'>
+                  <span className='truncate'>{name}</span>
+                  <Icon
+                    name='next'
+                    size={16}
+                    className='text-ink-3'
+                  />
+                </button>
+              ))}
+            </div>
+          </Part>
+        )}
+        <Part heading={t`Or make it a film`}>
+          <MontageNamer
+            key={group.id}
+            initial={group.name}
+            keeps={keeps}
+            primary
+            passengers={passengers}
+            onSave={onNameMontage}
+          />
+          <Hint>{t`Give it a name — a person or an event. The name becomes its folder and its film.`}</Hint>
+        </Part>
+        {onShift && fileCount > 0 && (
+          <Part heading={t`Starts`}>
+            <JumpSpan
+              from={from}
+              to={to}
+              withDate
+              big
+              disabled={false}
+              onShift={onShift}
+            />
+          </Part>
+        )}
+        <div className='mt-auto flex items-center justify-between gap-2 px-6 pt-4 pb-6'>
+          <Mini onClick={onSelectFiles}>
+            {t`Select its ${plural(fileCount, { one: '# file', other: '# files' })}`}
+          </Mini>
+          {onDelete && (
+            <Danger
+              size='mini'
+              onClick={onDelete}
+              title={t`The jump goes; its files are kept, loose in Fresh files, with their trims`}>
+              {t`Delete jump`}
+            </Danger>
+          )}
+        </div>
+      </>
+    )
+  }
   return (
     <>
       {pictured && (
@@ -469,15 +564,6 @@ const JumpPanel = ({
           <span className='text-[12.5px] tabular-nums'>{`${dateLabel(from)} ${hhmm(from)}`}</span>
         )}
       </Part>
-      {montage && (
-        <Part heading={t`Where it has got to`}>
-          <StepTrail
-            group={group}
-            facts={facts}
-            emailed={emailed}
-          />
-        </Part>
-      )}
       {locked && locked !== UPLOADED_LOCKED && (
         <Part>
           <Lock>{locked}</Lock>
@@ -568,25 +654,30 @@ const StorageTwinPart = ({ name }: { name: string | null }) => {
   if (!twin) return null
   const dsm = twin.dsmHost ? dsmFolderUrl(twin.dsmHost, twin.file.path) : null
   return (
-    <Part heading={t`On the storage`}>
-      <span className='font-mono text-[11.5px] break-all text-ink-3'>{twin.file.path}</span>
-      {dsm && (
-        <span className='flex'>
-          <a
-            href={dsm}
-            target='_blank'
-            rel='noreferrer'
-            title={t`Show it in the storage’s own web interface, in a new tab`}
-            className='inline-flex h-[30px] items-center justify-center gap-1.5 rounded-[10px] bg-well px-3 text-[12.5px] font-bold whitespace-nowrap text-ink no-underline hover:bg-line'>
-            <Icon
-              name='open'
-              size={14}
-              className='text-ink-2'
-            />
-            {t`Open in DSM`}
-          </a>
-        </span>
-      )}
+    <Part>
+      <div className='flex flex-col gap-2.5 rounded-[16px] bg-up-soft px-4 py-3.5'>
+        <b className='flex items-center gap-2'>
+          <Icon
+            name='storage'
+            size={18}
+            className='text-up'
+          />
+          {t`On the storage`}
+        </b>
+        <span className='font-mono text-[12px] break-all text-ink-3'>{twin.file.path}</span>
+        {dsm && (
+          <span className='flex'>
+            <a
+              href={dsm}
+              target='_blank'
+              rel='noreferrer'
+              title={t`Show it in the storage’s own web interface, in a new tab`}
+              className='inline-flex h-[34px] items-center justify-center gap-1.5 rounded-[11px] bg-accent px-3.5 text-[13px] font-bold whitespace-nowrap text-white no-underline'>
+              {t`Open in DSM`}
+            </a>
+          </span>
+        )}
+      </div>
     </Part>
   )
 }
@@ -695,6 +786,7 @@ const FilePanel = ({
                 <span
                   key='shot'
                   className='[&_input]:min-w-0 [&_input]:basis-full'>
+                  {`${shortDate(file.mtime)} · `}
                   <JumpSpan
                     from={file.mtime}
                     to={file.mtime}
@@ -705,10 +797,9 @@ const FilePanel = ({
                   />
                 </span>
               ) : (
-                hhmm(file.mtime)
+                `${hhmm(file.mtime)} · ${shortDate(file.mtime)}`
               )
             ],
-            [t`Day`, shortDate(file.mtime)],
             [t`Size`, formatSize(file.size)],
             [
               t`Picture`,
@@ -745,30 +836,27 @@ const FilePanel = ({
                 title={t`Open it — trim, frame and turn`}
                 onClick={onOpen}>
                 <Icon name='open' />
-                {t`Open`}
+                {t`Trim, frame or turn…`}
               </Mini>
               {move}
+              {montage && (
+                <MontageNamer
+                  key={file.id}
+                  keeps={montage.keeps}
+                  what={t`this`}
+                  passengers={montage.passengers}
+                  onSave={montage.onMake}
+                />
+              )}
             </Pair>
-            <Whole>
-              <BinButton onClick={onSendBack}>{backLabel}</BinButton>
-            </Whole>
           </Acts>
         </Part>
       )}
-      {montage && (
-        <Part heading={t`Montage`}>
-          <MontageNamer
-            key={file.id}
-            keeps={montage.keeps}
-            what={t`this`}
-            passengers={montage.passengers}
-            onSave={montage.onMake}
-          />
-        </Part>
+      {!locked && (
+        <div className='mt-auto px-6 pt-4 pb-6'>
+          <BinButton onClick={onSendBack}>{backLabel}</BinButton>
+        </div>
       )}
-      <Part>
-        <Hint>{t`Double-click or ↵ opens it · the tick picks it · ↑↓ step through · esc clears`}</Hint>
-      </Part>
     </>
   )
 }
@@ -907,4 +995,14 @@ const ManyPanel = ({
   )
 }
 
-export { FilePanel, FolderPanel, JumpPanel, ManyPanel, Part, Shell, StorageTwinPart }
+export {
+  FilePanel,
+  FolderPanel,
+  JumpPanel,
+  ManyPanel,
+  Part,
+  SettingRow,
+  Shell,
+  StorageTwinPart,
+  Who
+}

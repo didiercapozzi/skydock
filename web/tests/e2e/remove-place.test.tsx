@@ -100,7 +100,7 @@ describe('a dropzone on the board', () => {
     const sent = await openYverdon()
 
     await userEvent.click(page.getByRole('button', { name: 'More' }))
-    await userEvent.click(page.getByRole('button', { name: 'Remove destination…' }))
+    await userEvent.click(page.getByRole('button', { name: 'Remove destination…' }).first())
     await expect.element(page.getByRole('dialog', { name: 'Remove a destination' })).toBeVisible()
     expect(sent).toEqual([])
 
@@ -113,6 +113,8 @@ describe('a dropzone on the board', () => {
     await openYverdon()
 
     await userEvent.click(page.getByRole('button', { name: 'More' }))
-    await expect.element(page.getByRole('button', { name: 'Remove destination…' })).toBeVisible()
+    await expect
+      .element(page.getByRole('button', { name: 'Remove destination…' }).first())
+      .toBeVisible()
   })
 })

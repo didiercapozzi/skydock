@@ -110,7 +110,6 @@ const renderJump = async (group: ManifestGroup) => {
     createElement(JumpPanel, {
       group,
       label: group.name ?? 'Jump 1',
-      emailed: false,
       locked: null,
       statusOf: () => LOCAL,
       passengers: [],

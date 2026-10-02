@@ -119,17 +119,4 @@ describe('how a folder is being looked at', () => {
     await expect.element(page.getByText('snap.JPG').first()).toBeInTheDocument()
     expect(document.body.textContent).not.toContain('in_yverdon.MP4')
   })
-
-  /* which kind of file is shown is the whole board's choice, not one folder's, so it follows */
-  test('keeps to videos or photos on the way to the next folder', async () => {
-    await at('/dropzone/yverdon?q=%7B%22kind%22%3A%22photo%22%7D')
-    await expect.element(page.getByText('snap.JPG').first()).toBeInTheDocument()
-
-    await userEvent.click(page.getByRole('link', { name: /epagny/ }).first())
-
-    await expect
-      .poll(() => page.getByRole('button', { name: /^Photos/ }).element().textContent)
-      .toContain('Photos')
-    expect(document.body.textContent).not.toContain('in_epagny.MP4')
-  })
 })

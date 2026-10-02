@@ -14,7 +14,7 @@ import { boardRoute } from './board-route'
 /* Several files picked in Fresh files are made a jump of their own — left unnamed, since a name makes
    them a montage — and the new jump is selected as soon as it is made, its panel open. Picked and
    made in a real browser, the answer the server's. One loose file stays behind, so the loose files
-   are still there to be the card left open. */
+   are still listed. */
 
 const AT = Math.floor(new Date(2026, 7, 1, 10, 0, 0).getTime() / 1000)
 
@@ -61,7 +61,8 @@ const renderBoard = async (answer: unknown) => {
 }
 
 const makeJumpOfPicked = async () => {
-  for (const name of [/plane\.MP4/, /exit\.MP4/])
+await userEvent.click(page.getByRole('button', { name: /^Loose files/ }))
+for (const name of [/plane\.MP4/, /exit\.MP4/])
     await userEvent.click(page.getByRole('button', { name }).last(), {
       modifiers: ['ControlOrMeta']
     })
@@ -96,7 +97,7 @@ describe('making a jump of files picked in Fresh files', () => {
     await expect
       .element(page.getByRole('button', { name: /Make a jump of these/ }))
       .not.toBeInTheDocument()
-    await expect.element(card(/^Loose files, /)).toHaveAttribute('aria-pressed', 'true')
+    await expect.element(page.getByRole('region', { name: 'Loose files' })).toBeVisible()
     await expect.element(card(/^Morning load, /)).toHaveAttribute('aria-pressed', 'false')
   })
 })

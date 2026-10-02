@@ -175,10 +175,13 @@ const FileButtons = ({
   actions,
   watch,
   here,
-  onBringBack
+  onBringBack,
+  links = true
 }: {
   file: StorageFile
   actions: FileActionsState
+  /* the file's own link, made and taken away here — a montage's is the panel's */
+  links?: boolean
   /* the row itself opens the storage's interface, so the player is a button of its own */
   watch: boolean
   /* whether this machine holds it too, where that is known; only what is not can be brought back */
@@ -212,12 +215,14 @@ const FileButtons = ({
         {t`Bring back`}
       </Mini>
     )}
-    <LinkButtons
-      file={file}
-      shareUrl={file.path in actions.linked ? (actions.linked[file.path] ?? null) : file.shareUrl}
-      busy={actions.asking === file.path}
-      onLink={(one, intent) => void actions.setLink(one, intent)}
-    />
+    {links && (
+      <LinkButtons
+        file={file}
+        shareUrl={file.path in actions.linked ? (actions.linked[file.path] ?? null) : file.shareUrl}
+        busy={actions.asking === file.path}
+        onLink={(one, intent) => void actions.setLink(one, intent)}
+      />
+    )}
   </>
 )
 
@@ -431,10 +436,13 @@ const StorageCards = ({
   where,
   stamp,
   onProblem,
+  quiet = false,
   children
 }: {
   where: StorageWhere
   stamp?: unknown
+  /* no link buttons on the files: the montage's link is its panel's */
+  quiet?: boolean
   onProblem?: (problem: string) => void
   children: (itemActions: (dir: string, name: string) => React.ReactNode) => React.ReactNode
 }) => {
@@ -448,6 +456,7 @@ const StorageCards = ({
         file={file}
         actions={actions}
         watch
+        links={!quiet}
       />
     ) : null
   }

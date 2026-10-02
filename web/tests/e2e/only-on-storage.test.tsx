@@ -96,6 +96,6 @@ describe('a dropzone shows what this machine holds', () => {
   test('counts only what is here', async () => {
     await openYverdon()
 
-    await expect.element(page.getByText(/^1 file · /).first()).toBeInTheDocument()
+    await expect.element(page.getByText('1 file', { exact: true }).first()).toBeInTheDocument()
   })
 })

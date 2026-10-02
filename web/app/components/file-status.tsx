@@ -1,6 +1,6 @@
 import { i18n } from '@lingui/core'
 import type { MessageDescriptor } from '@lingui/core'
-import { msg } from '@lingui/core/macro'
+import { msg, t } from '@lingui/core/macro'
 import type { FileStatus } from '@skydock/scripts'
 
 /* local — only the original exists; nothing has been made from it yet.
@@ -37,13 +37,22 @@ const CHIP: Record<ShownStatus, string> = {
 /* the state in words, for where there is no room for the chip */
 const statusName = (status: ShownStatus) => i18n._(LABELS[status])
 
-const StatusChip = ({ status }: { status: ShownStatus }) => (
-  <span
-    title={i18n._(TITLES[status])}
-    className={`inline-flex h-[22px] w-max items-center gap-1.5 rounded-full px-[9px] text-[11.5px] font-bold whitespace-nowrap capitalize before:size-1.5 before:rounded-full before:content-[''] ${CHIP[status]}`}>
-    {i18n._(LABELS[status])}
-  </span>
-)
+/* `prepared` is what a montage's copies are called: processed, and nothing is left to do with them but
+   go on, so they read as done rather than as waiting to be uploaded */
+const StatusChip = ({ status, prepared = false }: { status: ShownStatus; prepared?: boolean }) =>
+  prepared && status === 'processed' ? (
+    <span
+      title={i18n._(TITLES[status])}
+      className='inline-flex h-6 w-max items-center rounded-full bg-up-soft px-2.5 text-[12px] font-bold whitespace-nowrap text-up'>
+      {t`prepared`}
+    </span>
+  ) : (
+    <span
+      title={i18n._(TITLES[status])}
+      className={`inline-flex h-[22px] w-max items-center gap-1.5 rounded-full px-[9px] text-[11.5px] font-bold whitespace-nowrap capitalize before:size-1.5 before:rounded-full before:content-[''] ${CHIP[status]}`}>
+      {i18n._(LABELS[status])}
+    </span>
+  )
 
 export { StatusChip, statusName }
 export type { ShownStatus }

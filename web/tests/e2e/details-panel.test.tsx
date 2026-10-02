@@ -36,10 +36,10 @@ describe('the details panel', () => {
     await expect.element(page.getByRole('button', { name: 'Hide details' })).toBeVisible()
     await page.getByRole('button', { name: 'Hide details' }).click()
     await expect.element(panel()).not.toBeVisible()
-    expect(localStorage.getItem('skydock.details')).toBe('shut')
+    expect(localStorage.getItem('skydock.details')).toBeNull()
     await page.getByRole('button', { name: 'Details' }).click()
     await expect.element(panel()).toBeVisible()
-    expect(localStorage.getItem('skydock.details')).toBeNull()
+    expect(localStorage.getItem('skydock.details')).toBe('open')
   })
 
   test('is a drawer on a narrow window, shut until asked for, and not remembered', async () => {

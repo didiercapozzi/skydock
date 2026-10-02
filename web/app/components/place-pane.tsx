@@ -105,7 +105,7 @@ const PlacePane = ({
   tools?: React.ReactNode
   /* a head of the page's own in place of the plain one, handed the ways of finding and arranging the
      folder's files to put where it wants them */
-  head?: (controls: React.ReactNode) => React.ReactNode
+  head?: (pane: { query: string; onQuery: (query: string) => void }) => React.ReactNode
   /* what is still to do here, and anything that belongs to the folder, like its storage folder */
   left?: React.ReactNode
   /* what the board last said, and whether it was a refusal */
@@ -168,7 +168,7 @@ const PlacePane = ({
           everything that acts on it — narrowing by name, the ways of arranging it, kinds, and the
           folder's own tools */}
       {head ? (
-        head(controls)
+        head({ query, onQuery })
       ) : (
         <div className='flex flex-wrap items-center gap-x-3.5 gap-y-2.5 px-7 pt-4 pb-2'>
           {/* the count beside the name, on its line, so the controls at the right are level with it */}

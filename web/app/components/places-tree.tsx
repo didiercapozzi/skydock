@@ -7,7 +7,6 @@ import type { Place } from '../helpers/places'
 import type { Mounted } from '../hooks/useLiveProgress'
 import { Mini } from './buttons'
 import { Icon } from './icons'
-import type { IconName } from './icons'
 import { PlaceLink } from './place-link'
 import { StepMeter } from './montage-steps'
 import type { Destination, ManifestFile, ManifestGroup } from './types'
@@ -28,6 +27,8 @@ type Props = {
   statusContext: (file: ManifestFile) => StatusContext
   /* whether a montage still has a step to take here */
   montageOpen: (group: ManifestGroup) => boolean
+  /* how many montages are finished — emailed and freed, so only the storage holds them */
+  delivered: number
   /* where a passenger has got to — their jump furthest behind */
   passengerProgress: (name: string) => MontageProgress | null
   onAddPlace: (name: string) => void
@@ -43,7 +44,6 @@ type Props = {
 
 const Row = ({
   place,
-  icon,
   label = placeLabel(place),
   count,
   owed = null,
@@ -55,7 +55,6 @@ const Row = ({
   quiet = false
 }: {
   place: Place
-  icon: IconName
   label?: string
   count?: number
   /* what is still owed there, in words: "3 to file", "7 to do" — in the colour of work left */
@@ -74,11 +73,11 @@ const Row = ({
     title={title}
     {...dropTarget}
     className={(current) =>
-      `block w-full rounded-[11px] px-2.5 py-[7px] text-left text-ink max-[780px]:w-auto max-[780px]:flex-none max-[780px]:rounded-full max-[780px]:border max-[780px]:border-line max-[780px]:px-[11px] ${
+      `block w-full rounded-[12px] px-2.5 py-[9px] text-left text-ink max-[780px]:w-auto max-[780px]:flex-none max-[780px]:rounded-full max-[780px]:border max-[780px]:border-line max-[780px]:px-[11px] ${
         over
           ? 'bg-pick-soft outline-1 -outline-offset-1 outline-pick outline-dashed'
           : current
-            ? 'bg-here text-accent-ink shadow-[0_0_0_1px_var(--color-line),0_1px_3px_rgba(16,19,26,0.07)]'
+            ? 'bg-pane shadow-[0_0_0_1px_var(--color-line),0_4px_12px_rgba(20,41,46,0.07)]'
             : 'hover:bg-line-2 max-[780px]:bg-pane'
       } ${flash ? 'animate-[placeflash_1.8s_ease-out]' : ''}`
     }>
@@ -87,32 +86,23 @@ const Row = ({
       const second = below?.(lit)
       return (
         <>
-          <span className='flex items-center gap-2.5'>
-            <Icon
-              name={icon}
-              size={18}
-              className={lit ? 'text-accent' : 'text-ink-3'}
-            />
+          <span className='flex items-center justify-between gap-2'>
             <span
-              className={`min-w-0 flex-1 truncate text-[13.5px] font-semibold ${quiet ? 'italic' : ''} ${
+              className={`min-w-0 truncate text-[14px] font-semibold ${quiet ? 'italic' : ''} ${
                 quiet && !lit ? 'text-ink-3' : ''
               }`}
               title={label}>
               {label}
             </span>
-            {count !== undefined && (
-              <span
-                className={`text-[11.5px] font-semibold tabular-nums ${lit ? 'text-accent' : 'text-ink-3'}`}>
-                {count}
+            {(owed || count !== undefined) && !second && (
+              <span className='flex-none text-[12px] font-bold whitespace-nowrap text-ink-3 tabular-nums max-[780px]:hidden'>
+                {owed ?? count}
               </span>
             )}
           </span>
-          {(owed || second) && (
-            <span className='mt-0.5 ml-7 flex items-center gap-2 text-[11.5px] font-medium text-ink-3 max-[780px]:hidden'>
+          {second && (
+            <span className='mt-1.5 flex flex-col gap-1.5 text-[11.5px] font-medium text-ink-3 max-[780px]:hidden'>
               {second}
-              {owed && (
-                <span className={`whitespace-nowrap ${second ? '' : 'mr-auto'}`}>{owed}</span>
-              )}
             </span>
           )}
         </>
@@ -120,35 +110,6 @@ const Row = ({
     }}
   </PlaceLink>
 )
-
-/* how much of a folder is local, processed or uploaded, as one thin bar */
-const Split = ({
-  files,
-  statusContext
-}: {
-  files: ManifestFile[]
-  statusContext: (file: ManifestFile) => StatusContext
-}) => {
-  const counts = { local: 0, processed: 0, uploaded: 0 }
-  for (const file of files) counts[fileStatus(file, statusContext(file))] += 1
-  const width = (n: number) => `${(n / (files.length || 1)) * 100}%`
-  return (
-    <span className='flex h-1 w-11 flex-none overflow-hidden rounded-[2px] bg-line'>
-      <i
-        className='block h-full bg-up'
-        style={{ width: width(counts.uploaded) }}
-      />
-      <i
-        className='block h-full bg-proc'
-        style={{ width: width(counts.processed) }}
-      />
-      <i
-        className='block h-full bg-local'
-        style={{ width: width(counts.local) }}
-      />
-    </span>
-  )
-}
 
 const Heading = ({ children, first }: { children: string; first?: boolean }) => (
   <h2
@@ -242,6 +203,7 @@ const PlacesTree = ({
   cameras,
   statusContext,
   montageOpen,
+  delivered,
   passengerProgress,
   onAddPlace,
   dropTarget,
@@ -291,7 +253,6 @@ const PlacesTree = ({
       <Heading first>{t`Work`}</Heading>
       <Row
         {...folder({ kind: 'sort' })}
-        icon='fresh'
         owed={toFile({ kind: 'sort' })}
       />
       <Heading>{t`Destinations`}</Heading>
@@ -302,21 +263,7 @@ const PlacesTree = ({
           <Row
             key={placeKey(p)}
             {...folder(p)}
-            icon='place'
-            owed={toDo(p)}
-            below={
-              held.length > 0
-                ? () => (
-                    <>
-                      <Split
-                        files={held}
-                        statusContext={statusContext}
-                      />
-                      {!toDo(p) && <span className='whitespace-nowrap'>{t`all up`}</span>}
-                    </>
-                  )
-                : null
-            }
+            owed={toDo(p) ?? (held.length > 0 ? t`all up` : t`new`)}
           />
         )
       })}
@@ -335,12 +282,10 @@ const PlacesTree = ({
           <Row
             key={placeKey(p)}
             {...folder(p)}
-            icon='montage'
             below={
               progress
                 ? (lit) => (
                     <>
-                      {todo && <span className='mr-auto whitespace-nowrap'>{todo}</span>}
                       <StepMeter
                         progress={progress}
                         className={
@@ -348,6 +293,7 @@ const PlacesTree = ({
                           lit ? 'flex-1 [&>i.bg-line]:bg-accent/20' : 'flex-1'
                         }
                       />
+                      {todo && <span className='whitespace-nowrap'>{todo}</span>}
                     </>
                   )
                 : null
@@ -355,10 +301,14 @@ const PlacesTree = ({
           />
         )
       })}
+      {passengers.length === 0 && unnamed === 0 && delivered > 0 && (
+        <span className='px-2.5 py-1 text-[12.5px] text-ink-3 max-[780px]:hidden'>
+          {t`Nothing left to do`}
+        </span>
+      )}
       {unnamed > 0 && (
         <Row
           {...folder({ kind: 'unnamed' })}
-          icon='montage'
           quiet
           owed={counted(unnamed, (count) => t`${count} to name`)}
         />
@@ -371,7 +321,6 @@ const PlacesTree = ({
           <Row
             key={c.mount}
             place={{ kind: 'camera', name: c.mount }}
-            icon='camera'
             label={c.camera}
             /* a camera with no drive to offer is read a request at a time, which is the whole of
                why it is slower than the same card in a reader */
@@ -384,10 +333,16 @@ const PlacesTree = ({
           />
         )
       })}
+      {delivered > 0 && (
+        <Row
+          place={{ kind: 'delivered' }}
+          count={delivered}
+          title={t`Montages that are done: emailed, and freed from this machine — only the storage holds them`}
+        />
+      )}
       {/* what was put aside, to be looked through and brought back from — never emptied from here */}
       <Row
         place={{ kind: 'bin' }}
-        icon='bin'
         title={t`What was put aside — look through it, and bring files back to Fresh files`}
       />
     </nav>

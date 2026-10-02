@@ -2,44 +2,54 @@ import {
   EDIT_LOCKED,
   hasCompletePassenger,
   isMontage,
-  isVideoFile,
   lastSegment,
   offGap,
   outputKeyOf,
   passengerName,
   passengerOf,
-  waitingForProxy,
-  idsOf,
-  lostOf
+  idsOf
 } from '@skydock/scripts'
-import { goneSent } from '@skydock/scripts'
 import type { FileStatus } from '@skydock/scripts'
 import { plural, t } from '@lingui/core/macro'
 import { useEffect, useState } from 'react'
+import { setDetailsColumn } from '../hooks/useDetails'
 import { Outlet, useNavigate, useParams } from 'react-router'
-import { Danger, Go, Mini, Seg } from '../components/buttons'
+import { Go, Mini, Seg } from '../components/buttons'
 import { BinFiles } from '../components/bin-files'
 import { CameraFiles } from '../components/camera-files'
 import { ComparisonDialog } from '../components/comparison-dialog'
 import { FileBrowser } from '../components/file-browser'
 import { lanesOf, lockReason, shownStatus } from '../components/file-list'
-import { DestinationHeader } from '../components/destination-header'
+import { PageHead, StatusCard } from '../components/page-head'
+import { MenuItem } from '../components/settings-menu'
 import { FolderOwed } from '../components/folder-owed'
-import { FilePanel, FolderPanel, JumpPanel, ManyPanel, Part, Shell } from '../components/inspector'
+import {
+  FilePanel,
+  FolderPanel,
+  JumpPanel,
+  ManyPanel,
+  Part,
+  SettingRow,
+  Shell
+} from '../components/inspector'
 import { MoveTo } from '../components/move-to'
 import { PlacePane } from '../components/place-pane'
 import { FolderCard, StorageCards, StorageFolder } from '../components/storage-folder'
+import { DeliveredList } from '../components/delivered-list'
+import { MontagePanel } from '../components/montage-panel'
 import {
-  FilmNote,
-  FilmStrip,
-  GoneFromStorage,
-  MontageCardActions,
-  UploadedCards
-} from '../components/montage-card'
-import { NextStep, StepTrail } from '../components/montage-steps'
+  HandedOver,
+  MontageAbove,
+  MontageActions,
+  MontageBody,
+  MontageEnd,
+  MontageMenu,
+  WayDone,
+  montageSub
+} from '../components/montage-view'
+import { StepTrail } from '../components/montage-steps'
 import type { ManifestFile, ManifestGroup } from '../components/types'
-import { formatSize, getPictureUrl } from '../components/utils'
-import { folderOnStorage } from '../helpers/jumps'
+import { formatSize } from '../components/utils'
 import {
   familyOf,
   fileHref,
@@ -86,7 +96,8 @@ const useFolder = (model: BoardModel, place: Place) => {
   const family = familyOf(place)
   /* A dropzone's page is what this machine holds: its freed files are listed with the storage's own
      files under them rather than twice over (RULES, Freeing space). */
-  const groups = groupsIn(place, listed)
+  /* a montage's own page is there for as long as the montage is, finished or not */
+  const groups = groupsIn(place, place.kind === 'pax' ? board.groups : listed)
     .map(asOnStorage)
     .map((group) => ({ ...group, files: stillHere(place, group.files) }))
     .filter((group) => group.files.length > 0 || !holdsItsOwn(place))
@@ -115,9 +126,15 @@ const useFolder = (model: BoardModel, place: Place) => {
   /* By jump, the jumps are cards and one is open: the one last chosen while it is still here, or
      else the first. Only its files are on screen. */
   const cards = cardsOf(sections)
+  /* In Fresh files the jumps are tiles to choose from and none is open to begin with: what is listed
+     under them is the loose files, and a jump's own files are brought up from its panel. */
+  const plain = place.kind === 'sort' && grouping === 'jump'
   const openCard =
-    grouping === 'jump' ? (cards.find((s) => s.key === looking.card) ?? cards[0]) : undefined
+    grouping === 'jump'
+      ? (cards.find((s) => s.key === looking.card) ?? (plain ? undefined : cards[0]))
+      : undefined
   return {
+    plain,
     looking,
     query,
     family,
@@ -142,7 +159,7 @@ const Place = () => {
   const goTo = useNavigate()
   const { setSearchParams: look } = useSafeSearchParams(boardViewSchema)
   const folder = useFolder(model, place)
-  const { looking, query, family, openCard, sections } = folder
+  const { looking, query, family, openCard, sections, plain } = folder
   const kind = looking.kind ?? 'all'
 
   /* The jump whose card is open: its files are what is listed and its card is the one lit, so it is
@@ -154,7 +171,13 @@ const Place = () => {
     place.kind === 'pax' && folder.groups.length === 1
       ? groups.find((g) => g.id === folder.groups[0]?.id)
       : undefined
-  const onScreen = openCard ? [openCard] : sections
+  /* the montage that is on the storage and is shown as two cards, when there is only one */
+  const delivered = soleMontage?.uploaded && model.nas.connected ? soleMontage : undefined
+  const onScreen = plain
+    ? sections.filter((s) => s.key === looking.card)
+    : openCard
+      ? [openCard]
+      : sections
   /* every file on screen, in the order it is drawn, for the arrow keys to step through */
   const order = onScreen.flatMap((s) =>
     s.kind === 'jump' && s.group.freed ? [] : lanesOf(s.files, kind, sortKey).flat()
@@ -180,6 +203,15 @@ const Place = () => {
       model.sendBack(files)
     }
   })
+  /* The panel at the right is not there until it is wanted: it comes by itself when a file or a jump is
+     picked or opened, and on a montage's page, where it is the place the montage is worked on. */
+  const wanted =
+    selection.pickedFiles.length + (selection.pickedJump ? 1 : 0) + (address.fileId ? 1 : 0) > 0 ||
+    place.kind === 'pax'
+  const here = placeKey(place)
+  useEffect(() => {
+    if (wanted) setDetailsColumn(true)
+  }, [wanted, here])
   /* a change elsewhere took the picks away, or another folder was opened: let go of them */
   const [seen, setSeen] = useState({
     gone: model.picksGone,
@@ -299,31 +331,125 @@ const Place = () => {
           onChange: (by) => look({ by })
         }}
         kind={{ value: kind, onChange: (next) => look({ kind: next }) }}
-        tools={<PlaceTools place={place} />}
         head={
-          place.kind === 'dz'
-            ? (controls) => (
-                <DestinationHeader
-                  name={placeLabel(place)}
-                  summary={summary}
-                  path={model.folderFor(place.name)}
-                  stages={{
-                    unprocessed: folder.files.filter((f) => statusOf(f) === 'local').length,
-                    unsent: folder.files.filter((f) => statusOf(f) === 'processed').length,
-                    onStorage: folder.files.filter((f) => statusOf(f) === 'uploaded').length
-                  }}
-                  actions={<DropzoneStep name={place.name} />}
-                  onChangeFolder={() => setDialog({ kind: 'folder', destination: place.name })}
-                  onRemove={() => setDialog({ kind: 'remove-place', place: place.name })}
-                  removing={busy === `remove:dz:${place.name}`}
-                  busy={busy !== null}
-                  controls={controls}
-                />
-              )
-            : undefined
+          place.kind === 'pax'
+            ? () => {
+                const mine = soleMontage
+                return (
+                  <PageHead
+                    large
+                    tile={{
+                      letter: place.name.charAt(0).toUpperCase(),
+                      done: Boolean(mine?.freed)
+                    }}
+                    title={place.name}
+                    sub={mine ? montageSub(mine, model.emailedOn(mine)?.at ?? null) : summary}
+                    aside={mine?.freed ? <WayDone /> : undefined}
+                    menu={
+                      mine
+                        ? (close) => (
+                            <MontageMenu
+                              group={mine}
+                              close={close}
+                              trimToJump={
+                                frozen.has(mine.id) || !mine.files.some((f) => f.moments)
+                                  ? undefined
+                                  : () => model.trimToJump(mine)
+                              }
+                            />
+                          )
+                        : undefined
+                    }
+                  />
+                )
+              }
+            : place.kind === 'dz'
+              ? ({ query: q, onQuery }) => (
+                  <PageHead
+                    tile={{ icon: 'place' }}
+                    title={placeLabel(place)}
+                    sub={
+                      folder.files.length === 0
+                        ? t`No files yet`
+                        : plural(folder.files.length, { one: '# file', other: '# files' })
+                    }
+                    query={q}
+                    onQuery={onQuery}
+                    menu={(close) => (
+                      <div className='flex flex-col'>
+                        <MenuItem
+                          icon='storage'
+                          onClick={() => {
+                            setDialog({ kind: 'folder', destination: place.name })
+                            close()
+                          }}>
+                          {model.folderFor(place.name) ? t`Change folder…` : t`Choose a folder…`}
+                        </MenuItem>
+                        <MenuItem
+                          icon='bin'
+                          danger
+                          disabled={busy !== null}
+                          title={t`Take this destination off the board — what is filed here goes back to Fresh files, and nothing is deleted`}
+                          onClick={() => {
+                            setDialog({ kind: 'remove-place', place: place.name })
+                            close()
+                          }}>
+                          {busy === `remove:dz:${place.name}`
+                            ? t`Removing…`
+                            : t`Remove destination…`}
+                        </MenuItem>
+                      </div>
+                    )}
+                    status={<DropzoneCard name={place.name} />}
+                  />
+                )
+              : place.kind === 'sort'
+                ? ({ query: q, onQuery }) => (
+                    <PageHead
+                      tile={{ icon: 'fresh' }}
+                      title={placeLabel(place)}
+                      sub={t`What came off the cameras, waiting to be sorted`}
+                      query={q}
+                      onQuery={onQuery}
+                      menu={(close) => (
+                        <MenuItem
+                          icon='back'
+                          danger
+                          disabled={busy !== null}
+                          title={t`Put Fresh files back — the times alone, or everything as just scanned. Asks which first.`}
+                          onClick={() => {
+                            model.resetFresh()
+                            close()
+                          }}>
+                          {t`Reset Fresh files…`}
+                        </MenuItem>
+                      )}
+                      status={
+                        <FreshCard
+                          jumps={folder.groups.length}
+                          loose={folder.loose.length}
+                          busy={busy !== null}
+                          onRegroup={() => send('regroup', { intent: 'regroup-loose' })}
+                        />
+                      }
+                    />
+                  )
+                : place.kind === 'delivered'
+                  ? ({ query: q, onQuery }) => (
+                      <PageHead
+                        tile={{ icon: 'check', up: true }}
+                        title={placeLabel(place)}
+                        sub={t`${plural(model.delivered, { one: '# montage', other: '# montages' })} · finished, emailed and freed — everything is on the storage`}
+                        query={q}
+                        onQuery={onQuery}
+                        searchOpen
+                        findLabel={t`Find a montage`}
+                      />
+                    )
+                  : undefined
         }
         left={
-          place.kind === 'dz' ? undefined : (
+          place.kind === 'dz' || place.kind === 'sort' || place.kind === 'pax' ? undefined : (
             <FolderOwed
               place={place}
               groups={folder.groups}
@@ -350,7 +476,15 @@ const Place = () => {
         }
         incoming={paneTarget}
         onImport={(list, target, where) => void model.importDropped(list, target, where)}>
-        {twoViews && (
+        {/* a montage that is on the storage is its two places side by side, not a list of its files */}
+        {delivered && (
+          <MontageBody
+            group={delivered}
+            stamp={board.remoteAfterUpload?.at}
+            onProblem={setProblem}
+          />
+        )}
+        {twoViews && !delivered && (
           <div className='pt-1 pb-1'>
             <Seg
               label={t`Where to look`}
@@ -370,6 +504,11 @@ const Place = () => {
             onNote={setNote}
             onCopyBack={(paths) => send('copy-back', { intent: 'copy-back', paths })}
           />
+        ) : place.kind === 'delivered' ? (
+          <DeliveredList
+            groups={groups.filter(model.finished)}
+            query={query}
+          />
         ) : place.kind === 'bin' ? (
           <BinFiles
             /* read again when files left the board or came back to it, not after every change */
@@ -377,14 +516,15 @@ const Place = () => {
             bringing={busy === 'from-bin'}
             onBringBack={(paths) => send('from-bin', { intent: 'from-bin', paths })}
           />
-        ) : view === 'storage' ? null : (
+        ) : delivered || view === 'storage' ? null : (
           <FileBrowser
             sections={sections}
             cards={
-              openCard
+              openCard || plain
                 ? {
                     hidden: soleMontage !== undefined,
-                    open: openCard.key,
+                    plain,
+                    open: openCard?.key ?? '',
                     onOpen: (key) => {
                       look({ card: key })
                       /* A card asks for its own panel: a file looked at or picked in the jump would
@@ -438,7 +578,7 @@ const Place = () => {
         )}
         {/* on the storage's tab: how each montage was handed over, with what can be done to each item
             up there — the folder's files are not listed a second time under the cards */}
-        {place.kind === 'pax' && twoViews && view === 'storage' && storageWhere && (
+        {place.kind === 'pax' && !delivered && twoViews && view === 'storage' && storageWhere && (
           <StorageCards
             key={placeKey(place)}
             where={storageWhere}
@@ -487,6 +627,7 @@ const Place = () => {
           model.nas.connected &&
           storageWhere &&
           view !== 'local' &&
+          !delivered &&
           !(place.kind === 'pax' && twoViews) && (
             <StorageFolder
               key={placeKey(place)}
@@ -542,6 +683,121 @@ const Place = () => {
   )
 }
 
+/* Where a dropzone has got to, in a sentence, with the one button that moves it on. */
+const DropzoneCard = ({ name }: { name: string }) => {
+  const model = useBoard()
+  const { board, statusOf } = model
+  const files = filesIn({ kind: 'dz', name }, board.groups, board.loose)
+  const total = files.length
+  const count = (state: FileStatus) => files.filter((f) => statusOf(f) === state).length
+  const local = count('local')
+  const processed = count('processed')
+  const onStorage = count('uploaded')
+  const folder = model.folderFor(name)
+  if (total === 0)
+    return folder ? (
+      <StatusCard
+        tone='plain'
+        icon='upload'
+        title={t`Drop files here`}
+        text={t`Or drag a jump from Fresh files onto ${name} in the sidebar.`}
+      />
+    ) : (
+      <StatusCard
+        tone='plain'
+        icon='storage'
+        title={t`Where should it go?`}
+        text={t`Choose a folder on the storage. Files dropped here are sent there.`}>
+        <Go onClick={() => model.setDialog({ kind: 'folder', destination: name })}>
+          {t`Choose a folder…`}
+        </Go>
+      </StatusCard>
+    )
+  const progress = { done: onStorage, of: total, word: t`${onStorage} of ${total} on the storage` }
+  const freeable = model.freeableOf(name)
+  return local > 0 ? (
+    <StatusCard
+      tone='todo'
+      icon='alert'
+      title={plural(local, { one: '# file needs processing', other: '# files need processing' })}
+      text={t`Then it is ready to go to the storage.`}
+      progress={progress}>
+      <DropzoneStep name={name} />
+    </StatusCard>
+  ) : processed > 0 ? (
+    <StatusCard
+      tone='plain'
+      icon='upload'
+      title={plural(processed, {
+        one: '# file is ready to upload',
+        other: '# files are ready to upload'
+      })}
+      text={t`They go to the storage, into ${folder ?? t`its folder`}.`}
+      progress={progress}>
+      <DropzoneStep name={name} />
+    </StatusCard>
+  ) : (
+    <StatusCard
+      tone='done'
+      icon='check'
+      title={t`Everything is on the storage`}
+      text={
+        freeable.files.length > 0
+          ? t`You can free ${formatSize(freeable.bytes)} on this machine. It asks first.`
+          : undefined
+      }
+      progress={progress}>
+      <DropzoneStep name={name} />
+    </StatusCard>
+  )
+}
+
+/* Where Fresh files stand: jumps waiting for a home, or nothing left to sort. */
+const FreshCard = ({
+  jumps,
+  loose,
+  busy,
+  onRegroup
+}: {
+  jumps: number
+  loose: number
+  busy: boolean
+  onRegroup: () => void
+}) =>
+  jumps === 0 && loose === 0 ? (
+    <StatusCard
+      tone='done'
+      icon='check'
+      title={t`Nothing left to sort`}
+      text={t`Copy more cameras off and rescan to see their jumps here.`}
+    />
+  ) : (
+    <StatusCard
+      tone='plain'
+      icon='next'
+      title={
+        jumps > 0
+          ? plural(jumps, {
+              one: '# jump is waiting for a home',
+              other: '# jumps are waiting for a home'
+            })
+          : plural(loose, {
+              one: '# loose file is waiting for a home',
+              other: '# loose files are waiting for a home'
+            })
+      }
+      text={t`Drag one onto a destination in the sidebar — or open it and press Move to…`}>
+      {loose > 0 && (
+        <Mini
+          disabled={busy}
+          title={t`Gather the loose files here into jumps, by the gap rule — nothing is forgotten`}
+          onClick={onRegroup}>
+          {plural(loose, { one: 'Group # loose file', other: 'Group # loose files' })}
+        </Mini>
+      )}
+    </StatusCard>
+  )
+
 /* A dropzone is processed, then uploaded, as a whole (RULES, Acting): the step stands beside the
    counts of what is owed, and means everything in the folder that needs it — never what a search or
    a filter happens to be showing. */
@@ -594,13 +850,7 @@ const DropzoneStep = ({ name }: { name: string }) => {
       </>
     )
   }
-  if (files.every((f) => statusOf(f) === 'uploaded'))
-    return (
-      <>
-        {free}
-        <span className='text-[12px] font-semibold text-up'>{t`✓ all on the storage`}</span>
-      </>
-    )
+  if (files.every((f) => statusOf(f) === 'uploaded')) return <>{free}</>
   const uploadLabel = model.board.uploadLabel ?? ''
   return (
     <>
@@ -618,182 +868,6 @@ const DropzoneStep = ({ name }: { name: string }) => {
           : t`Upload ${plural(toUpload, { one: '# file', other: '# files' })}`}
       </Go>
     </>
-  )
-}
-
-/* a frame off a montage's own footage, to stand for its film until the film plays */
-const filmPicture = (group: ManifestGroup) => {
-  const file = group.files.find((f) => isVideoFile(f.path)) ?? group.files[0]
-  return file ? getPictureUrl(file, undefined, 640) : undefined
-}
-
-/* A montage's line carries its one next step, and its upload while it runs — beside its film. */
-const MontageActions = ({ group }: { group: ManifestGroup }) => {
-  const model = useBoard()
-  const { board } = model
-  const progress = model.progressOf(group)
-  if (!isMontage(group) || group.freed || !progress) return null
-  const facts = board.montageFacts[group.id]
-  const actions = (
-    <MontageCardActions
-      group={group}
-      facts={facts}
-      busy={board.busy}
-      upload={board.uploading ? { key: board.uploading, label: board.uploadLabel ?? '' } : null}
-      blocked={model.gateFor(group.files)}
-      proxiesWaiting={waitingForProxy(group.files, board.proxies).length}
-      named={hasCompletePassenger(group.passenger)}
-      onProcess={() => model.takeStep(group, 'Processed')}
-      onCancelProcess={model.cancelProcess}
-      onMontage={() => model.takeStep(group, 'Edited')}
-      onOpenMontage={() => model.takeStep(group, 'Rendered')}
-      onUpload={() => model.takeStep(group, 'Uploaded')}
-      onEmail={
-        group.uploaded && progress.steps[progress.at]?.name === 'Emailed'
-          ? {
-              name: group.passenger?.firstname ?? '',
-              open: () => model.takeStep(group, 'Emailed')
-            }
-          : undefined
-      }
-      onFree={() => model.setDialog({ kind: 'free', groupId: group.id })}></MontageCardActions>
-  )
-  return (
-    <NextStep
-      progress={progress}
-      film={
-        facts?.film && !group.uploaded ? (
-          <FilmStrip
-            facts={facts}
-            picture={filmPicture(group)}>
-            {actions}
-          </FilmStrip>
-        ) : undefined
-      }>
-      {actions}
-    </NextStep>
-  )
-}
-
-/* what a montage's upload handed over, as it was handed over, and what has gone missing of it since */
-const HandedOver = ({
-  group,
-  itemActions,
-  onLink
-}: {
-  group: ManifestGroup
-  itemActions?: (dir: string, name: string) => React.ReactNode
-  /* its folder's link taken away */
-  onLink?: (dir: string, make: boolean) => void
-}) => {
-  const model = useBoard()
-  return (
-    <>
-      <GoneFromStorage
-        gone={model.goneById[group.id] ?? []}
-        at={model.board.groups.find((g) => g.id === group.id)?.uploaded?.at}
-      />
-      {group.uploaded && (
-        <UploadedCards
-          group={group}
-          dsmHost={model.nas.host}
-          places={model.board.places}
-          gone={new Set(goneSent(group.uploaded, model.nas.remote))}
-          itemActions={itemActions}
-          onLink={onLink}
-        />
-      )}
-    </>
-  )
-}
-
-/* above a montage's files: what went missing from the storage, what the storage holds, the film and
-   what holds its files while it has an edit */
-const MontageAbove = ({
-  group,
-  withFilm,
-  tabbed
-}: {
-  group: ManifestGroup
-  withFilm: boolean
-  /* the montage has its two tabs: how it was handed over is on the storage's, not here */
-  tabbed: boolean
-}) => {
-  const model = useBoard()
-  if (!isMontage(group)) return null
-  const facts = model.board.montageFacts[group.id]
-  const editLocked = EDIT_LOCKED
-  return (
-    <div className='mb-2 flex flex-col gap-3'>
-      {!tabbed && <HandedOver group={group} />}
-      {withFilm && !group.uploaded && (
-        <FilmStrip
-          facts={facts}
-          picture={filmPicture(group)}
-        />
-      )}
-      {!group.uploaded && <FilmNote locked={model.frozen.has(group.id) ? editLocked : null} />}
-    </div>
-  )
-}
-
-/* A montage's two ways back, for all of it — each asks first — last in the panel at the right, out of the
-   way of the page's own steps */
-const MontageEnd = ({ who }: { who: string }) => {
-  const { board, setDialog } = useBoard()
-  const busy = board.busy !== null
-  const theirs = board.groups.filter((g) => passengerOf(g) === who)
-  if (theirs.length === 0 || theirs.some((g) => g.freed)) return null
-  return (
-    <Part>
-      <span className='flex flex-wrap items-center gap-2'>
-        <Mini
-          disabled={busy}
-          title={t`Back to before processing — keeps the name, the trims, the frames and the times`}
-          onClick={() => setDialog({ kind: 'take-back', mode: 'reset', who })}>
-          {t`Reset…`}
-        </Mini>
-        <Danger
-          size='mini'
-          disabled={busy}
-          title={t`Undo the montage, at any step — its files go back to Fresh files, loose, without their name or trims`}
-          onClick={() => setDialog({ kind: 'take-back', mode: 'delete', who })}>
-          {t`Delete montage…`}
-        </Danger>
-      </span>
-    </Part>
-  )
-}
-
-/* The folder's own tools: a montage's email and its two ways back, a dropzone's way off the board. */
-const PlaceTools = ({ place }: { place: Place }) => {
-  const model = useBoard()
-  const { board, setDialog, emailedOn } = model
-  /* a dropzone's own tools are in the panel at the right, at its foot */
-  if (place.kind === 'dz') return null
-  if (place.kind !== 'pax') return null
-  const theirs = board.groups.filter((g) => passengerOf(g) === place.name)
-  /* the link, by email — once there is a link to send */
-  const linked = theirs.find(
-    (g) =>
-      (g.uploaded?.shareUrl ?? g.publish?.shareUrl) &&
-      !lostOf(board.storage?.lost, folderOnStorage(g) ?? '')
-  )
-  const firstname = linked?.passenger?.firstname ?? ''
-  return (
-    <span className='flex items-center gap-1.5'>
-      {linked && (
-        <Mini
-          title={
-            emailedOn(linked)
-              ? t`The storage’s list says the link was sent — open it to send it again`
-              : t`Send the link`
-          }
-          onClick={() => setDialog({ kind: 'email', groupId: linked.id })}>
-          {emailedOn(linked) ? t`✓ Emailed · again…` : t`Email ${firstname}…`}
-        </Mini>
-      )}
-    </span>
   )
 }
 
@@ -902,6 +976,29 @@ const Inspector = ({
       />
     )
   }
+  if (jump && isMontage(jump)) {
+    const editLocked = EDIT_LOCKED
+    return (
+      <MontagePanel
+        key={jump.id}
+        group={model.asOnStorage(jump)}
+        locked={
+          jump.freed
+            ? t`Freed from this machine — it is on the storage only now.`
+            : frozen.has(jump.id)
+              ? t`${editLocked} Open it in kdenlive, or reset the montage.`
+              : null
+        }
+        passengers={model.passengers}
+        onName={(first, last) => model.setPassenger(jump.id, first, last)}
+        onShift={
+          jump.freed || frozen.has(jump.id) || board.busy !== null
+            ? undefined
+            : (at) => model.shiftJump(jump.id, at)
+        }
+      />
+    )
+  }
   if (jump) {
     const editLocked = EDIT_LOCKED
     return (
@@ -910,8 +1007,6 @@ const Inspector = ({
         group={model.asOnStorage(jump)}
         label={model.labels.get(jump.id) ?? jump.label}
         where={placeLabel(place)}
-        facts={board.montageFacts[jump.id]}
-        emailed={Boolean(model.emailedOn(jump))}
         locked={
           jump.freed
             ? t`Freed from this machine — it is on the storage only now.`
@@ -951,6 +1046,14 @@ const Inspector = ({
             : () => model.deleteJump(jump)
         }
         move={jump.freed || frozen.has(jump.id) ? undefined : moveMenu({ jumps: [jump.id] })}
+        fileTo={
+          !isMontage(jump) && !jump.destination && !jump.freed && !frozen.has(jump.id)
+            ? {
+                places: board.places.map((d) => d.name),
+                onFile: (name) => model.drag.moveTo({ kind: 'dz', name }, { jumps: [jump.id] })
+              }
+            : undefined
+        }
         onTrimToJump={
           jump.freed || frozen.has(jump.id) || !jump.files.some((f) => f.moments)
             ? undefined
@@ -960,50 +1063,73 @@ const Inspector = ({
       />
     )
   }
+  /* what is on the page is all there is to say of it */
+  if (place.kind === 'delivered')
+    return (
+      <FolderPanel
+        eyebrow={t`Montages`}
+        title={placeLabel(place)}
+        sub={t`Done — only the storage holds them now`}
+      />
+    )
   const dz = place.kind === 'dz' ? board.places.find((d) => d.name === place.name) : undefined
+  const goesTo = place.kind === 'dz' ? model.folderFor(place.name) : undefined
   return (
     <FolderPanel
       title={placeLabel(place)}
-      sub={summary}
-      files={folder.files}
-      statusOf={statusOf}>
-      {/* the link handed out of a destination's folder — none by default, made and taken away by hand,
-          and only here */}
-      {dz?.path && model.nas.connected && (
-        <Part heading={t`Shared link`}>
-          {dz.shareUrl ? (
-            <>
-              <a
-                href={dz.shareUrl}
-                target='_blank'
-                rel='noreferrer'
-                className='truncate font-mono text-[11.5px] text-accent-ink hover:underline'>
-                {dz.shareUrl}
-              </a>
-              <span className='flex gap-1.5'>
-                <Mini
-                  title={t`Copy the link`}
-                  onClick={() =>
-                    void navigator.clipboard?.writeText(dz.shareUrl ?? '').catch(() => undefined)
-                  }>
-                  {t`Copy link`}
-                </Mini>
-                <Mini
-                  title={t`Take the link away — the folder stays where it is`}
-                  onClick={() =>
-                    board.send(`link:${dz.path}`, {
-                      intent: 'destination-link',
-                      link: { folder: dz.path ?? '', make: false }
-                    })
-                  }>
-                  {t`Remove link`}
-                </Mini>
-              </span>
-            </>
-          ) : (
-            <>
-              <span className='text-[11.5px] text-ink-3'>{t`No link`}</span>
-              <span className='flex'>
+      sub={place.kind === 'dz' ? t`Where its files go` : summary}
+      eyebrow={place.kind === 'dz' ? t`Destination` : undefined}>
+      {/* where a destination's files go and the link handed out of it — none by default, made and
+          taken away by hand, and only here */}
+      {place.kind === 'dz' && (
+        <Part>
+          <SettingRow
+            icon='storage'
+            label={t`Storage folder`}
+            value={goesTo ?? t`None chosen yet`}
+            mono={Boolean(goesTo)}>
+            <Mini onClick={() => model.setDialog({ kind: 'folder', destination: place.name })}>
+              {goesTo ? t`Change` : t`Choose…`}
+            </Mini>
+          </SettingRow>
+          {dz?.path && model.nas.connected && (
+            <SettingRow
+              icon='link'
+              label={t`Shared link`}
+              value={
+                dz.shareUrl ? (
+                  <a
+                    href={dz.shareUrl}
+                    target='_blank'
+                    rel='noreferrer'
+                    className='text-accent-ink hover:underline'>
+                    {dz.shareUrl}
+                  </a>
+                ) : (
+                  t`None yet`
+                )
+              }>
+              {dz.shareUrl ? (
+                <span className='flex gap-1.5'>
+                  <Mini
+                    title={t`Copy the link`}
+                    onClick={() =>
+                      void navigator.clipboard?.writeText(dz.shareUrl ?? '').catch(() => undefined)
+                    }>
+                    {t`Copy`}
+                  </Mini>
+                  <Mini
+                    title={t`Take the link away — the folder stays where it is`}
+                    onClick={() =>
+                      board.send(`link:${dz.path}`, {
+                        intent: 'destination-link',
+                        link: { folder: dz.path ?? '', make: false }
+                      })
+                    }>
+                    {t`Remove link`}
+                  </Mini>
+                </span>
+              ) : (
                 <Mini
                   title={t`Make a link to its folder, to send`}
                   onClick={() =>
@@ -1014,10 +1140,21 @@ const Inspector = ({
                   }>
                   {t`Create link`}
                 </Mini>
-              </span>
-            </>
+              )}
+            </SettingRow>
           )}
         </Part>
+      )}
+      {place.kind === 'dz' && (
+        <div className='mt-auto px-6 pt-4 pb-6'>
+          <button
+            type='button'
+            disabled={board.busy !== null}
+            onClick={() => model.setDialog({ kind: 'remove-place', place: place.name })}
+            className='cursor-pointer border-0 bg-transparent p-0 text-[13px] font-bold text-bin disabled:opacity-40'>
+            {t`Remove destination…`}
+          </button>
+        </div>
       )}
       {folder.family === 'montages' &&
         folder.groups.map((g) => (

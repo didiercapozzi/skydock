@@ -14,6 +14,7 @@ const placeSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('montages') }),
   z.object({ kind: z.literal('unnamed') }),
   z.object({ kind: z.literal('pax'), name: z.string().min(1) }),
+  z.object({ kind: z.literal('delivered') }),
   z.object({ kind: z.literal('bin') }),
   z.object({ kind: z.literal('camera'), name: z.string().min(1) })
 ])
@@ -40,11 +41,13 @@ const placeLabel = (place: Place) =>
       ? t`Montages`
       : place.kind === 'unnamed'
         ? t`No name yet`
-        : place.kind === 'bin'
-          ? t`Bin`
-          : place.kind === 'camera'
-            ? cameraLabel(place.name)
-            : place.name
+        : place.kind === 'delivered'
+          ? t`Delivered`
+          : place.kind === 'bin'
+            ? t`Bin`
+            : place.kind === 'camera'
+              ? cameraLabel(place.name)
+              : place.name
 
 /* the three families of folder, which is what decides how their files can be grouped */
 const familyOf = (place: Place) =>
@@ -52,7 +55,7 @@ const familyOf = (place: Place) =>
     ? 'sort'
     : place.kind === 'dz'
       ? 'dz'
-      : place.kind === 'camera' || place.kind === 'bin'
+      : place.kind === 'camera' || place.kind === 'bin' || place.kind === 'delivered'
         ? 'storage'
         : 'montages'
 
@@ -71,6 +74,7 @@ const groupsIn = (place: Place, groups: ManifestGroup[]) => {
       return groups.filter((g) => isMontage(g) && passengerOf(g) === place.name)
     case 'camera':
     case 'bin':
+    case 'delivered':
       return []
   }
 }
@@ -128,6 +132,7 @@ const PLACE_WORDS = {
   montages: 'montages',
   unnamed: 'no-name',
   pax: 'montage',
+  delivered: 'delivered',
   bin: 'bin',
   camera: 'camera'
 } as const satisfies Record<Place['kind'], string>

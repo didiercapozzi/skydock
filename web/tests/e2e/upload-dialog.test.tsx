@@ -108,6 +108,8 @@ const renderBoard = async (data: typeof board | Record<string, unknown> = board,
 
 const STEM = stemOf({ id: 'g1', label: 'jump', day: '01.08.2026', montageJump: true, passenger: { firstname: 'Luc', lastname: 'Favre' }, files })
 
+const stepper = () => document.querySelector('ol[aria-hidden="true"]')
+const stepAt = () => stepper()?.querySelector('[aria-current="step"]')?.textContent
 const dialog = () => page.getByRole('dialog', { name: 'Upload' })
 const zip = (ending: string) => dialog().getByRole('region', { name: `${STEM}.${ending}.zip` })
 const place = (name: string) => dialog().getByRole('region', { name })
@@ -358,6 +360,7 @@ describe('an uploaded montage, checked against the storage', () => {
 
   test('reads as not uploaded once the files are gone, and names them', async () => {
     await renderBoard(uploaded({ [`${dir}/luc_favre_20260801.photos.zip`]: 5 * 1024 ** 2 }), false)
+    await userEvent.click(page.getByRole('button', { name: 'More' }))
     await expect
       .element(page.getByRole('button', { name: 'Upload…', exact: true }))
       .toBeInTheDocument()
@@ -588,15 +591,18 @@ describe('where every passenger has got to', () => {
       .toBeInTheDocument()
   })
 
-  test('shows the whole way in the panel, with what to do next at the step it is at', async () => {
+  /* the montage's own page draws the way as a stepper, hidden from a reader, and says the step it is
+     at in the next-step card beneath it */
+  test('shows the whole way on the montage page, with what to do next at the step it is at', async () => {
     await renderBoard(board, false)
 
-    const trail = page.getByRole('list', { name: 'Where this montage has got to' }).first()
-    await expect.element(trail).toBeInTheDocument()
+    /* a rendered film is the page's picture and carries the next step's button itself, so there is
+       no next-step card: the stepper says where it is, the film's button takes the step */
+    await expect.poll(stepAt).toMatch(/Delivered\s*Next up/)
     await expect
-      .poll(() => trail.element().querySelector('[aria-current="step"]')?.textContent)
-      .toMatch(/Uploaded\s*Next: Upload it$/)
-    await expect.element(trail.getByText('Rendered — done')).toBeInTheDocument()
+      .element(page.getByRole('button', { name: 'Upload…', exact: true }).first())
+      .toBeInTheDocument()
+    expect(stepper()?.textContent).toContain('Film — done')
   })
 
   /* a passenger with two jumps has a card for each, and each says its own step */
@@ -621,11 +627,9 @@ describe('where every passenger has got to', () => {
     await renderBoard(board, false)
 
     await expect.element(page.getByRole('button', { name: /^Luc Favre, / })).not.toBeInTheDocument()
-    await expect
-      .element(page.getByRole('list', { name: 'Where this montage has got to' }))
-      .toBeInTheDocument()
+    await expect.poll(stepAt).toMatch(/Delivered/)
     /* the panel's own way of acting on it is there without selecting anything */
-    await expect.element(page.getByRole('button', { name: /Select its 3 files/ })).toBeInTheDocument()
+    await expect.element(page.getByRole('heading', { name: 'Who it is for' })).toBeInTheDocument()
   })
 })
 
@@ -713,10 +717,7 @@ describe('a film the editor has just rendered', () => {
     )
     const waiting = { ...board, montages: { g1: { ...board.montages.g1, film: null } } }
     await renderBoard(waiting, false)
-    const trail = page.getByRole('list', { name: 'Where this montage has got to' })
-    await expect
-      .poll(() => trail.element().querySelector('[aria-current="step"]')?.textContent)
-      .toContain('Rendered')
+    await expect.poll(stepAt).toContain('Film')
 
     stream!.onmessage?.({
       data: JSON.stringify({
@@ -728,9 +729,7 @@ describe('a film the editor has just rendered', () => {
       })
     })
 
-    await expect
-      .poll(() => trail.element().querySelector('[aria-current="step"]')?.textContent)
-      .toContain('Uploaded')
+    await expect.poll(stepAt).toContain('Delivered')
     await expect
       .element(page.getByText('Luc Favre’s film is rendered — ready to upload'))
       .toBeInTheDocument()

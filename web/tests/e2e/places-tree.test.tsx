@@ -17,6 +17,7 @@ const renderTree = async (onAddPlace: (name: string) => void) => {
       cameras: [],
       statusContext: () => ({}),
       montageOpen: () => false,
+      delivered: 0,
       passengerProgress: () => null,
       onAddPlace,
       dropTarget: () => ({}),
@@ -52,5 +53,29 @@ describe('adding a destination from the rail', () => {
 
     await expect.element(field()).not.toBeInTheDocument()
     expect(onAddPlace).not.toHaveBeenCalled()
+  })
+})
+
+/* a montage that is done — emailed and freed — is counted under Delivered, not among the montages */
+describe('finished montages in the rail', () => {
+  test('are listed under Delivered', async () => {
+    const Tree = () =>
+      createElement(PlacesTree, {
+        destinations: [],
+        groups: [],
+        looseFiles: [],
+        cameras: [],
+        statusContext: () => ({}),
+        montageOpen: () => false,
+        delivered: 3,
+        passengerProgress: () => null,
+        onAddPlace: () => {},
+        dropTarget: () => ({}),
+        overTarget: null
+      })
+    const Stub = createRoutesStub([{ path: '*', Component: Tree }])
+    await render(createElement(Stub, { initialEntries: ['/'] }))
+
+    await expect.element(page.getByRole('link', { name: /Delivered/ })).toBeVisible()
   })
 })

@@ -51,6 +51,8 @@ const board = {
 const renderBoard = async () => {
   const Stub = createRoutesStub([boardRoute(() => board)])
   await render(createElement(Stub, { initialEntries: ['/'] }))
+  /* no jump is open until its tile is clicked */
+  await userEvent.click(page.getByRole('button', { name: /^Jump 1,/ }))
   return page.getByRole('button', { name: /later\.MP4/ }).first()
 }
 

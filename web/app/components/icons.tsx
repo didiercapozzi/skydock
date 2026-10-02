@@ -226,6 +226,16 @@ const PATHS = {
     </>
   ),
   open: <path d='M14 4h6v6M20 4l-9 9M18 14v6H4V6h6' />,
+  alert: (
+    <>
+      <circle
+        cx='12'
+        cy='12'
+        r='9'
+      />
+      <path d='M12 8v5M12 16.5h.01' />
+    </>
+  ),
   more: (
     <>
       <circle
@@ -250,6 +260,18 @@ const PATHS = {
   ),
   previous: <path d='m15 6-6 6 6 6' />,
   next: <path d='m9 6 6 6-6 6' />,
+  monitor: (
+    <>
+      <rect
+        x='3'
+        y='4'
+        width='18'
+        height='12'
+        rx='2'
+      />
+      <path d='M8 20h8M12 16v4' />
+    </>
+  ),
   fullScreen: <path d='M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5' />,
   close: <path d='M6 6l12 12M18 6 6 18' />,
   minimise: <path d='M6 12h12' />,

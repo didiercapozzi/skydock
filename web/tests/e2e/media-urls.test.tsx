@@ -2,7 +2,7 @@ import { createElement } from 'react'
 import { createRoutesStub } from 'react-router'
 import { describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import { page } from 'vitest/browser'
+import { page, userEvent } from 'vitest/browser'
 
 vi.mock(import('@skydock/scripts'), async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>
@@ -58,6 +58,7 @@ describe('the pictures the board shows', () => {
     const Stub = createRoutesStub([boardRoute(() => board)])
     await render(createElement(Stub, { initialEntries: ['/'] }))
 
+    await userEvent.click(page.getByRole('button', { name: /^Jump 1, / }))
     await expect.element(page.getByText('two.MP4').first()).toBeInTheDocument()
     await expect
       .poll(() => [...document.querySelectorAll('img')].map((img) => img.getAttribute('src')))
@@ -69,6 +70,7 @@ describe('the pictures the board shows', () => {
     const Stub = createRoutesStub([boardRoute(() => board)])
     await render(createElement(Stub, { initialEntries: ['/'] }))
 
+    await userEvent.click(page.getByRole('button', { name: /^Jump 1, / }))
     await expect.element(page.getByText('G0091.JPG').first()).toBeInTheDocument()
     const drawn = () =>
       [...document.querySelectorAll('img')].map((img) => img.getAttribute('src') ?? '')
@@ -92,6 +94,7 @@ describe('the pictures the board shows', () => {
     const Stub = createRoutesStub([boardRoute(() => withProxy)])
     await render(createElement(Stub, { initialEntries: ['/'] }))
 
+    await userEvent.click(page.getByRole('button', { name: /^Jump 1, / }))
     await expect.element(page.getByText('two.MP4').first()).toBeInTheDocument()
     const drawn = () =>
       [...document.querySelectorAll('img')].map((img) => img.getAttribute('src') ?? '')

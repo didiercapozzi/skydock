@@ -103,18 +103,18 @@ describe('the record changing outside the page', () => {
   test('leaves the board as it is when the look finds nothing new', async () => {
     await open(board([jump('g1', 'Sunset load', 'Yverdon')]))
     await userEventOpenYverdon()
-    await expect.element(page.getByText('1 file · 1 B').first()).toBeVisible()
+    await expect.element(page.getByText('g1f.MP4').first()).toBeVisible()
 
     says('stamp-1')
 
     await vi.waitFor(() => expect(asked).toContainEqual({ intent: 'look-at-board' }))
-    await expect.element(page.getByText('1 file · 1 B').first()).toBeVisible()
+    await expect.element(page.getByText('g1f.MP4').first()).toBeVisible()
   })
 
   test('is looked at again, and what changed is shown', async () => {
     await open(board([jump('g1', 'Sunset load', 'Yverdon')]))
     await expect.element(page.getByRole('link', { name: /Yverdon/ }).first()).toBeVisible()
-    await expect.element(page.getByText('Late arrival')).not.toBeInTheDocument()
+    await expect.element(page.getByText('g2f.MP4')).not.toBeInTheDocument()
 
     /* somebody else filed a second jump at the destination, and renamed the first */
     record = answerOf([jump('g1', 'Sunset load', 'Yverdon'), jump('g2', 'Late arrival', 'Yverdon')])
@@ -122,7 +122,7 @@ describe('the record changing outside the page', () => {
 
     await vi.waitFor(() => expect(asked).toContainEqual({ intent: 'look-at-board' }))
     await userEventOpenYverdon()
-    await expect.element(page.getByText('2 files · 2 B').first()).toBeVisible()
+    await expect.element(page.getByText('g2f.MP4').first()).toBeVisible()
   })
 
   test('asks once for one change, however often it is said', async () => {

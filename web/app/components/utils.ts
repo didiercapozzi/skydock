@@ -35,6 +35,10 @@ const written = (date: Date, options: Intl.DateTimeFormatOptions) => {
 /* a day written out */
 const dayWritten = (date: Date) => written(date, { day: 'numeric', month: 'long', year: 'numeric' })
 
+/* a day written short with its year: 1 Oct 2026 */
+const dayShort = (epoch: number) =>
+  written(new Date(epoch * 1000), { day: 'numeric', month: 'short', year: 'numeric' })
+
 const dateLabel = (epoch: number) => dayWritten(new Date(epoch * 1000))
 
 /* just enough date to tell two days apart, for where a full one would not fit */
@@ -137,6 +141,7 @@ const getPictureUrl = (file: ManifestFile, fact: ProxyFact | undefined, width: n
 const getTrackUrl = (filePath: string) => `/api/track${relativeToOutput(filePath)}`
 
 export {
+  dayShort,
   setOutputRoot,
   dayWritten,
   formatFilmSize,

@@ -362,6 +362,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           cameras={board.cameras}
           statusContext={model.statusContext}
           montageOpen={(g) => !model.asOnStorage(g).uploaded}
+          delivered={model.delivered}
           passengerProgress={model.passengerProgress}
           onAddPlace={model.addPlace}
           dropTarget={drag.placeDrop}

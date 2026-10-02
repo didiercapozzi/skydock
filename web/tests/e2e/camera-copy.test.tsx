@@ -135,7 +135,8 @@ describe('a camera plugged in', () => {
     says({ camera: 'GOPRO', state: 'copying', done: 1, total: 2, copied: 1, skipped: 0, last: 'copied' })
 
     await vi.waitFor(() => expect(requests).toContainEqual({ intent: 'imported' }))
-    await expect.element(page.getByRole('button', { name: /^Loose files, / })).toBeInTheDocument()
+    await userEvent.click(page.getByRole('button', { name: /^Loose files/ }))
+    await expect.element(page.getByRole('region', { name: 'Loose files' })).toBeInTheDocument()
   })
 
   /* A camera plugged in again goes through every file on it, and a file already here costs a look and

@@ -80,6 +80,7 @@ describe('making a montage from a jump', () => {
       }
     ])
     await render(createElement(Stub, { initialEntries: ['/'] }))
+    await userEvent.click(page.getByRole('button', { name: /^Jump 1, / }))
     await userEvent.click(page.getByRole('button', { name: 'Make a montage…' }))
     await expect.element(page.getByRole('textbox', { name: 'Name' })).toBeVisible()
   }
@@ -116,6 +117,7 @@ describe('a clip whose proxy could not be made', () => {
     }
     const Stub = createRoutesStub([boardRoute(() => failed)])
     await render(createElement(Stub, { initialEntries: ['/'] }))
+    await userEvent.click(page.getByRole('button', { name: /^Jump 1, / }))
 
     const flag = page.getByText('proxy failed')
     await expect.element(flag).toBeVisible()

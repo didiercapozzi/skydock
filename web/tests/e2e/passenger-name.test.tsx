@@ -133,7 +133,6 @@ describe('the panel a montage is named on', () => {
           createElement(JumpPanel, {
             group,
             label: 'jump',
-            emailed: false,
             locked: null,
             statusOf: () => 'local' as const,
             passengers: [],

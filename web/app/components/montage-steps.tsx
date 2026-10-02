@@ -3,7 +3,9 @@ import type { MessageDescriptor } from '@lingui/core'
 import { msg, t } from '@lingui/core/macro'
 import { montageSteps } from '@skydock/scripts'
 import type { MontageFact, MontageProgress, MontageStep } from '@skydock/scripts'
+import { useState } from 'react'
 import { Go, Mini } from './buttons'
+import { Icon } from './icons'
 import type { ManifestGroup } from './types'
 
 /* the steps a press takes, in the words of each step's own button; naming is typed, so it has none */
@@ -43,10 +45,20 @@ const StepButton = ({
 const STEP_ABOUT: Record<MontageStep, MessageDescriptor> = {
   Named: msg`It needs a name first — a person, an event. The name becomes its folder, its file names and its film.`,
   Processed: msg`Makes the copies that get handed over: each clip and photo trimmed, framed and turned, in the montage’s own folder.`,
-  Edited: msg`Writes the kdenlive project — clips laid out, render destination set — ready to be edited.`,
+  Edited: msg`Lays the clips out in kdenlive. You edit there — the board notices the film by itself.`,
   Rendered: msg`Edit it in kdenlive and render the film there. The board notices the film by itself.`,
   Uploaded: msg`The film is rendered. Send it, the photos and the originals where you choose.`,
-  Emailed: msg`Everything is on the storage. Send the link to whoever the film is for.`
+  Emailed: msg`The film is on the storage and the link works. The email is written already.`
+}
+
+/* what each step is called on the page: the way a person says what it gives, not what the app does */
+const STEP_WORD: Record<MontageStep, MessageDescriptor> = {
+  Named: msg`Named`,
+  Processed: msg`Prepared`,
+  Edited: msg`Project`,
+  Rendered: msg`Film`,
+  Uploaded: msg`Delivered`,
+  Emailed: msg`Sent`
 }
 
 /* a tick, for a step that is done */
@@ -123,7 +135,7 @@ const StepTrail = ({
               <span className='flex min-w-0 flex-col'>
                 <span
                   className={`text-[13px] ${step.done || now ? 'font-semibold text-ink' : 'font-medium text-ink-3'}`}>
-                  {step.name}
+                  {i18n._(STEP_WORD[step.name])}
                   {step.done && <span className='sr-only'> {t`— done`}</span>}
                 </span>
                 {now && next && (
@@ -186,81 +198,203 @@ const StepMeter = ({
   )
 }
 
-/* The whole way along, in one line: a circle per step joined to the next — a green disc with a tick
-   for what is done, a ringed one with a soft halo for the step it is at, an empty one for what is
-   still to come. */
-const StepLine = ({ progress }: { progress: MontageProgress }) => {
+/* what is said under each step: what a finished one gave, and for the rest what is to come */
+const STEP_HINT: Record<MontageStep, { later: MessageDescriptor; done: MessageDescriptor }> = {
+  Named: { later: msg`Give it a name`, done: msg`Named` },
+  Processed: { later: msg`Prepare the files`, done: msg`Files ready` },
+  Edited: { later: msg`Make the project`, done: msg`Project made` },
+  Rendered: { later: msg`Render in kdenlive`, done: msg`Film rendered` },
+  Uploaded: { later: msg`Upload to the storage`, done: msg`On the storage` },
+  Emailed: { later: msg`Email the link`, done: msg`Link sent` }
+}
+
+/* what taking each step is called when it is the one asked for */
+const STEP_TITLE: Record<MontageStep, MessageDescriptor> = {
+  Named: msg`Give it a name`,
+  Processed: msg`Prepare the files`,
+  Edited: msg`Make the editing project`,
+  Rendered: msg`Render the film in kdenlive`,
+  Uploaded: msg`Upload it to the storage`,
+  Emailed: msg`Email the link`
+}
+
+/* The whole way along, side by side: a disc per step on a line that is green as far as the step it
+   is at — a tick for what is done, a ring for the step it is at, its number for what is still to
+   come — each with its name and, under it, what it gave or what it will be. */
+const StepLine = ({
+  progress,
+  who,
+  mini = false
+}: {
+  progress: MontageProgress
+  /* the name the montage was given, which is what the first step gave */
+  who?: string
+  /* late in the way, the steps shrink to one line of names: what is behind is ticked, nothing more */
+  mini?: boolean
+}) => {
   const { steps, at } = progress
+  if (mini)
+    return (
+      <ol
+        aria-hidden='true'
+        className='m-0 flex list-none flex-wrap items-center gap-x-1.5 gap-y-2 p-0'>
+        {steps.map((step, i) => (
+          <li
+            key={step.name}
+            aria-current={i === at ? 'step' : undefined}
+            className='flex items-center gap-2'>
+            <span
+              className={`grid size-[22px] place-items-center rounded-full ${
+                step.done
+                  ? 'bg-up text-white'
+                  : 'bg-pane shadow-[inset_0_0_0_3px_var(--color-accent)]'
+              }`}>
+              {step.done && <Tick size={11} />}
+            </span>
+            <b className={`text-[12.5px] ${i === at ? 'text-accent-ink' : ''}`}>
+              {i18n._(STEP_WORD[step.name])}
+              {step.done && <span className='sr-only'> {t`— done`}</span>}
+            </b>
+            {i < steps.length - 1 && (
+              <span
+                className={`h-[3px] w-[26px] rounded-[3px] ${steps[i + 1]?.done ? 'bg-up' : 'bg-line'}`}
+              />
+            )}
+          </li>
+        ))}
+      </ol>
+    )
+  const reach = steps.length > 1 ? Math.min(at, steps.length - 1) / (steps.length - 1) : 0
   return (
     /* a glance, hidden from a reader: the panel beside it lists the same steps with what to press */
     <ol
       aria-hidden='true'
-      className='m-0 flex list-none gap-0 p-0 px-1.5 py-1'>
-      {steps.map((step, i) => (
-        <li
-          key={step.name}
-          aria-current={i === at ? 'step' : undefined}
-          className={`flex items-center gap-2.5 text-[13.5px] font-semibold after:mr-2.5 after:h-0.5 after:min-w-3 after:flex-1 after:content-[''] last:after:hidden flex-1 ${
-            step.done
-              ? 'text-ink after:bg-up'
-              : i === at
-                ? 'text-accent-ink after:bg-line'
-                : 'text-ink-3 after:bg-line'
-          }`}>
-          <span
-            aria-hidden='true'
-            className={`grid h-[26px] w-[26px] flex-none place-items-center rounded-full border-2 ${
-              step.done
-                ? 'border-up bg-up text-white'
-                : i === at
-                  ? 'border-accent shadow-[0_0_0_4px_var(--color-accent-soft)]'
-                  : 'border-line'
-            }`}>
-            {step.done && <Tick size={13} />}
-          </span>
-          {step.name}
-          {step.done && <span className='sr-only'> {t`— done`}</span>}
-        </li>
-      ))}
+      className='relative m-0 grid list-none gap-0 p-0 py-1'
+      style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
+      <span
+        className='absolute top-[17px] right-[8.33%] left-[8.33%] h-0.5 rounded bg-line'
+        aria-hidden='true'
+      />
+      <span
+        className='absolute top-[17px] left-[8.33%] h-0.5 rounded bg-up'
+        style={{ width: `${reach * 83.33}%` }}
+        aria-hidden='true'
+      />
+      {steps.map((step, i) => {
+        const now = i === at
+        return (
+          <li
+            key={step.name}
+            aria-current={now ? 'step' : undefined}
+            className='relative flex min-w-0 flex-col items-center gap-1 text-center'>
+            <span
+              aria-hidden='true'
+              className={`grid size-[34px] place-items-center rounded-full border-2 bg-pane text-[13px] font-bold ${
+                step.done
+                  ? 'border-up bg-up text-white'
+                  : now
+                    ? 'border-accent shadow-[0_0_0_4px_var(--color-accent-soft)]'
+                    : 'border-line text-ink-3'
+              }`}>
+              {step.done ? (
+                <Tick size={15} />
+              ) : now ? (
+                <span className='size-3 rounded-full bg-accent' />
+              ) : (
+                i + 1
+              )}
+            </span>
+            <b
+              className={`text-[13.5px] ${now ? 'text-accent-ink' : step.done ? 'text-ink' : 'text-ink-3'}`}>
+              {i18n._(STEP_WORD[step.name])}
+              {step.done && <span className='sr-only'> {t`— done`}</span>}
+            </b>
+            <span className='max-w-full truncate text-[12px] text-ink-3'>
+              {step.done
+                ? step.name === 'Named' && who
+                  ? who
+                  : i18n._(STEP_HINT[step.name].done)
+                : now
+                  ? t`Next up`
+                  : i18n._(STEP_HINT[step.name].later)}
+            </span>
+          </li>
+        )
+      })}
     </ol>
   )
 }
 
-/* The step a montage is at, as the thing its page is asking for: which step of how many, what it is
-   called, what taking it does, and the buttons that take it. Once there is a film, the film is the
-   page's picture and carries the buttons itself, so the render is looked at before it is sent. */
+/* The step a montage is at, as one calm row: its name with which step of how many, one line of what
+   it does, a "?" for the whole of it — and the button that takes it. Once there is a film, the film
+   is the page's picture and carries the buttons itself, so the render is looked at before it is sent. */
 const NextStep = ({
   progress,
+  who,
   film,
+  mini = false,
   children
 }: {
   progress: MontageProgress
+  who?: string
+  /* the way is drawn as one short line, for a montage that is already on the storage */
+  mini?: boolean
   film?: React.ReactNode
   children: React.ReactNode
 }) => {
-  const { steps, at, next } = progress
+  const [explained, explain] = useState(false)
+  const { steps, at } = progress
   const step = steps[at]
   const n = at + 1
   const total = steps.length
   return (
-    <div className='flex w-full basis-full flex-col gap-[18px]'>
-      <StepLine progress={progress} />
+    <div className='flex w-full basis-full flex-col gap-4'>
+      <StepLine
+        progress={progress}
+        who={who}
+        mini={mini}
+      />
       {film ?? (
-        <div className='flex flex-col justify-center gap-2.5'>
-          <span className='text-[11px] font-bold tracking-[0.08em] text-accent-ink uppercase'>
-            {step ? t`Next · step ${n} of ${total}` : t`Every step done`}
+        <div className='flex items-center gap-3.5 rounded-[18px] bg-accent-soft px-4 py-3'>
+          <span className='grid size-[42px] flex-none place-items-center rounded-[14px] bg-pane text-accent-ink'>
+            <Icon
+              name={step ? (step.name === 'Emailed' ? 'mail' : 'next') : 'check'}
+              size={20}
+            />
           </span>
-          {step && next && (
-            <span className='font-display text-[27px] leading-none font-bold tracking-[-0.03em]'>
-              {next.how}
-            </span>
+          <div className='min-w-0 flex-1'>
+            <div className='flex flex-wrap items-baseline gap-x-2'>
+              <b className='font-display text-[16px] font-semibold'>
+                {step
+                  ? step.name === 'Emailed' && who
+                    ? t`Send ${who} the link`
+                    : i18n._(STEP_TITLE[step.name])
+                  : t`Every step done`}
+              </b>
+              {step && (
+                <span className='text-[11px] font-bold tracking-[0.08em] text-accent-ink uppercase'>
+                  {step.name === 'Emailed' ? t`Last step` : t`Step ${n} of ${total}`}
+                </span>
+              )}
+            </div>
+            <p className={`m-0 text-[12.5px] text-ink-2 ${explained ? '' : 'truncate'}`}>
+              {step
+                ? i18n._(STEP_ABOUT[step.name])
+                : t`Every step done — whoever it is for has their film.`}
+            </p>
+          </div>
+          {step && (
+            <button
+              type='button'
+              aria-label={t`What happens?`}
+              aria-expanded={explained}
+              title={t`What happens?`}
+              onClick={() => explain(!explained)}
+              className='grid size-[34px] flex-none cursor-pointer place-items-center rounded-[11px] border-0 bg-pane text-[13px] font-bold text-accent-ink'>
+              ?
+            </button>
           )}
-          <span className='max-w-[420px] text-[13px] text-ink-2'>
-            {step
-              ? i18n._(STEP_ABOUT[step.name])
-              : t`Every step done — whoever it is for has their film.`}
-          </span>
-          <div className='mt-1'>{children}</div>
+          <div className='flex-none'>{children}</div>
         </div>
       )}
     </div>

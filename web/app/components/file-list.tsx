@@ -61,6 +61,8 @@ type Props = {
   about?: string
   /* the count is said by the heading above it, so only the column names are drawn */
   bare?: boolean
+  /* the rows share one card, a line between them, instead of a box each */
+  joined?: boolean
 }
 
 /* A card of 500 photos must not put 500 things on screen before they have been asked for. */
@@ -349,13 +351,10 @@ const WhileLive = ({
   )
 }
 
-/* The columns of a list of rows, the same on its heading and on every row under it: tick, picture,
-   name, when it was shot, how big, and where it has got to. What was done to the picture is said
-   under the name. In a run that stands beside another, too narrow for all of them, the size is left
-   out, so the name keeps its room. */
-const COLUMNS =
-  'grid grid-cols-[22px_78px_minmax(0,1fr)_84px_78px_112px] items-center gap-x-3.5 px-3 @max-[45rem]/lane:grid-cols-[22px_78px_minmax(0,1fr)_84px_112px]'
-const SPARED = '@max-[45rem]/lane:hidden'
+/* The columns of a list of rows: tick, picture, the name with what it is under it — when it was shot,
+   how big, what was done to the picture — and where it has got to. Few things, so a row reads at a
+   glance; the rest is in the panel when the file is picked. */
+const COLUMNS = 'grid grid-cols-[22px_64px_minmax(0,1fr)_112px] items-center gap-x-3.5 px-3'
 
 const Row = ({
   file,
@@ -370,10 +369,12 @@ const Row = ({
   onFile,
   onPick,
   onOpen,
-  onDragFile
+  onDragFile,
+  joined = false
 }: {
   file: ManifestFile
   lane: ManifestFile[]
+  joined?: boolean
   picked: boolean
   locked: string | null
   status: ShownStatus
@@ -411,12 +412,18 @@ const Row = ({
         onPick(file)
       }}
       /* the one looked at is marked apart from the picked ones by a ring round it */
-      className={`${COLUMNS} h-[60px] w-full rounded-[13px] text-left [contain-intrinsic-size:auto_60px] [content-visibility:auto] ${
-        previewed
-          ? 'bg-accent-soft shadow-[inset_0_0_0_2px_var(--color-accent)]'
-          : picked
-            ? 'bg-accent-soft'
-            : 'hover:bg-well'
+      className={`${COLUMNS} w-full text-left [content-visibility:auto] ${
+        joined
+          ? `h-[52px] rounded-[10px] [contain-intrinsic-size:auto_52px] not-first:border-t not-first:border-line-2 ${
+              previewed ? 'bg-accent-soft' : picked ? 'bg-accent-soft' : 'hover:bg-well'
+            }`
+          : `h-[64px] rounded-[16px] [contain-intrinsic-size:auto_64px] ${
+              previewed
+                ? 'bg-accent-soft shadow-[0_0_0_2px_var(--color-accent)]'
+                : picked
+                  ? 'bg-accent-soft shadow-[0_0_0_1px_var(--color-line)]'
+                  : 'bg-pane shadow-[0_0_0_1px_var(--color-line)] hover:bg-well'
+            }`
       }`}>
       {/* a file that cannot move has nothing to be picked for, so it has no tick — a lock in its
         place says why, and keeps the rows in line */}
@@ -450,7 +457,8 @@ const Row = ({
           />
         </button>
       )}
-      <span className='relative h-11 w-[78px] overflow-hidden rounded-[9px] bg-well'>
+      <span
+        className={`relative overflow-hidden bg-well ${joined ? 'h-[34px] w-[46px] rounded-[9px]' : 'h-11 w-16 rounded-[11px]'}`}>
         {/* a freed file is on the storage only: nothing here to draw it from */}
         {!file.freed && (
           <img
@@ -472,14 +480,15 @@ const Row = ({
         {/* the camera's name once a copy is named for handing over, or else what kind of file it
             is — then whatever is worth a second look about it */}
         <span className='flex min-w-0 items-center gap-1 truncate text-[12px] font-medium text-ink-3 [&>*+*]:before:mr-1 [&>*+*]:before:text-ink-3 [&>*+*]:before:content-["·"]'>
-          {name ? (
+          <span className='tabular-nums'>
+            {formatTime(file.mtime)} · {formatSize(file.size)}
+          </span>
+          {name && (
             <span
               className='truncate'
               title={t`the name it came off the camera with`}>
               {file.filename}
             </span>
-          ) : (
-            <span>{isVideoFile(file.path) ? t`video` : t`photo`}</span>
           )}
           <JumpFlag file={file} />
           <ProxyFlag fact={proxy} />
@@ -499,17 +508,16 @@ const Row = ({
           />
         </span>
       </span>
-      <span className='text-[13.5px] font-semibold text-ink-2 tabular-nums'>
-        {formatTime(file.mtime)}
-      </span>
-      <span className={`text-[13.5px] font-semibold text-ink-2 tabular-nums ${SPARED}`}>
-        {formatSize(file.size)}
-      </span>
       <span className='flex'>
         <WhileLive
           id={file.id}
           filename={file.filename}
-          otherwise={<StatusChip status={status} />}
+          otherwise={
+            <StatusChip
+              status={status}
+              prepared={joined}
+            />
+          }
         />
       </span>
     </div>
@@ -740,26 +748,15 @@ const LaneTitle = ({ label, count }: { label: string; count: string }) => (
   </p>
 )
 
-/* The heading over a list of rows: what it is and how many, then the name of each column. */
-const TableHead = ({ label, count, bare }: { label: string; count: string; bare?: boolean }) => (
-  <>
-    {!bare && (
-      <LaneTitle
-        label={label}
-        count={count}
-      />
-    )}
-    <div
-      className={`${COLUMNS} mb-0.5 h-[26px] text-[11px] font-bold tracking-[0.07em] text-ink-3 uppercase`}>
-      <span />
-      <span>{t`Picture`}</span>
-      <span>{t`Name`}</span>
-      <span>{t`Shot`}</span>
-      <span className={SPARED}>{t`Size`}</span>
-      <span>{t`State`}</span>
-    </div>
-  </>
-)
+/* The heading over a list of rows: what it is and how many. The columns have no names of their own —
+   a row says what it is. */
+const TableHead = ({ label, count, bare }: { label: string; count: string; bare?: boolean }) =>
+  bare ? null : (
+    <LaneTitle
+      label={label}
+      count={count}
+    />
+  )
 
 /* how many a run of files holds, in the word for what it holds */
 const countOf = (lane: ManifestFile[], kind: Kind) =>
@@ -775,6 +772,7 @@ const Lane = ({
   title = '',
   about,
   bare,
+  joined,
   shape,
   picked,
   statusContext,
@@ -819,7 +817,13 @@ const Lane = ({
       )}
       <div
         ref={shape === 'grid' ? zoomWithWheel : undefined}
-        className={shape === 'rows' ? 'flex flex-col gap-0.5' : 'grid gap-3'}
+        className={
+          shape === 'rows'
+            ? joined
+              ? 'flex flex-col rounded-[18px] bg-pane px-3.5 py-1.5 shadow-[0_0_0_1px_var(--color-line)]'
+              : 'flex flex-col gap-2'
+            : 'grid gap-3'
+        }
         style={
           shape === 'grid'
             ? {
@@ -842,6 +846,7 @@ const Lane = ({
               name={deliveredName(file)}
               previewed={Boolean(file.id && file.id === previewed)}
               offGap={Boolean(file.id && offGap.has(file.id))}
+              joined={joined}
               onFile={onFile}
               onPick={onPick}
               onOpen={onOpen}
@@ -900,7 +905,8 @@ const Lane = ({
    the two runs of rows stand one above the other unless the pane is wide enough for two, which
    putting the details away makes it; thumbnails stand side by side as soon as there is room. */
 const FileList = ({ files, kind, sortKey, ...rest }: Props) => {
-  const lanes = lanesOf(files, kind, sortKey)
+  /* in one card the clips and the stills are one list, clips first */
+  const lanes = rest.joined ? [lanesOf(files, kind, sortKey).flat()] : lanesOf(files, kind, sortKey)
   if (lanes.length === 1)
     return (
       <Lane

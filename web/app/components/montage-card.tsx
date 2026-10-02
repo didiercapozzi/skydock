@@ -368,6 +368,7 @@ const MontageCardActions = ({
   onUpload,
   onEmail,
   onFree,
+  compact = false,
   children
 }: {
   group: ManifestGroup
@@ -389,6 +390,8 @@ const MontageCardActions = ({
   onEmail?: { name: string; open: () => void }
   /* offered once it is uploaded: delete it from this machine, on proof the storage holds it */
   onFree?: () => void
+  /* only the one button that takes the step it is at — the rest are in the page's menu */
+  compact?: boolean
   /* buttons of the film's own, beside the others */
   children?: React.ReactNode
 }) => {
@@ -431,6 +434,44 @@ const MontageCardActions = ({
         </Go>
       </span>
     )
+  if (compact) {
+    /* the next step is the one thing on the page's card; whatever else can be done is in the menu */
+    if (onEmail)
+      return (
+        <Go
+          disabled={working}
+          title={t`Everything is on the storage — send the link to whoever the film is for`}
+          onClick={onEmail.open}>
+          {t`Email ${onEmail.name}…`}
+        </Go>
+      )
+    if (!facts.film)
+      return (
+        <Go
+          disabled={working}
+          title={t`Open this project in the editor`}
+          onClick={onOpenMontage}>
+          {busy === `open:${group.id}` ? t`Opening…` : t`Open in kdenlive`}
+        </Go>
+      )
+    if (!group.uploaded)
+      return (
+        <Go
+          disabled={working || blocked.blocked || upload !== null}
+          title={blocked.message ?? undefined}
+          onClick={onUpload}>
+          {upload?.key === uploadKey ? t`Uploading…` : t`Upload…`}
+        </Go>
+      )
+    return onFree ? (
+      <Go
+        disabled={working}
+        title={t`Delete it from this machine — only once the storage is proved to hold every file`}
+        onClick={onFree}>
+        {busy === `free:${group.id}` ? t`Checking the storage…` : t`Free up space…`}
+      </Go>
+    ) : null
+  }
   /* Upload again steps back, to a quieter button, once emailing is the step it is at */
   const Upload = onEmail ? Mini : Go
   return (
@@ -599,13 +640,9 @@ const ParcelRow = ({
           className={`flex-none text-ink-3 transition-transform duration-150 ${open ? 'rotate-90' : ''}`}
         />
       )}
-      <Icon
-        name={item.icon}
-        size={14}
-        className='text-ink-3'
-      />
       <span
-        className={`min-w-0 truncate text-[12.5px] font-medium ${missing ? 'text-ink-3 line-through' : ''}`}>
+        className={`min-w-0 flex-1 truncate font-mono text-[12px] ${missing ? 'text-ink-3 line-through' : ''}`}
+        title={item.name}>
         {item.name}
       </span>
       {missing && (
@@ -613,10 +650,12 @@ const ParcelRow = ({
           {t`no longer on the storage`}
         </span>
       )}
+      <span className='flex-none text-[12.5px] whitespace-nowrap text-ink-3'>{item.what}</span>
       {item.size ? (
-        <span className='text-[11.5px] text-ink-3'>{formatFilmSize(item.size)}</span>
+        <span className='mr-1 flex-none text-[12.5px] whitespace-nowrap text-ink-3'>
+          {formatFilmSize(item.size)}
+        </span>
       ) : null}
-      <span className='mr-1 ml-auto text-[11.5px] text-ink-3'>{item.what}</span>
     </>
   )
   return (
@@ -657,7 +696,8 @@ const NasCard = ({
   dsmHost,
   gone,
   itemActions,
-  onLink
+  onLink,
+  quiet = false
 }: {
   parcel: Parcel
   dsmHost?: string | null
@@ -667,6 +707,8 @@ const NasCard = ({
   itemActions?: (dir: string, name: string) => React.ReactNode
   /* its folder's link taken away */
   onLink?: (dir: string, make: boolean) => void
+  /* no link line at the foot: the link is the panel's */
+  quiet?: boolean
 }) => {
   /* its folder in the storage's own web interface, opened in a new tab: what is up there is looked
      for there, and each file is shown by the folder it is in */
@@ -700,7 +742,7 @@ const NasCard = ({
             actions={itemActions}
           />
         ))}
-        {!parcel.shareUrl && onLink && (
+        {!quiet && !parcel.shareUrl && onLink && (
           <div className='mt-1 flex items-center gap-2.5 border-t border-line-2 px-2 pt-2 pb-1.5'>
             <Icon
               name='link'
@@ -717,7 +759,7 @@ const NasCard = ({
             </span>
           </div>
         )}
-        {parcel.shareUrl && (
+        {!quiet && parcel.shareUrl && (
           <div className='mt-1 flex items-center gap-2.5 border-t border-line-2 px-2 pt-2 pb-1.5'>
             <Icon
               name='link'
@@ -762,13 +804,15 @@ const ParcelCards = ({
   dsmHost,
   gone,
   itemActions,
-  onLink
+  onLink,
+  quiet
 }: {
   parcels: Parcel[]
   dsmHost?: string | null
   gone?: Set<string>
   itemActions?: (dir: string, name: string) => React.ReactNode
   onLink?: (dir: string, make: boolean) => void
+  quiet?: boolean
 }) => (
   <>
     {parcels.map((parcel) => (
@@ -779,6 +823,7 @@ const ParcelCards = ({
         gone={gone}
         itemActions={itemActions}
         onLink={onLink}
+        quiet={quiet}
       />
     ))}
   </>
@@ -813,7 +858,8 @@ const UploadedCards = ({
   gone,
   itemActions,
   onLink,
-  places
+  places,
+  quiet
 }: {
   group: ManifestGroup
   dsmHost?: string | null
@@ -822,6 +868,7 @@ const UploadedCards = ({
   gone?: Set<string>
   itemActions?: (dir: string, name: string) => React.ReactNode
   onLink?: (dir: string, make: boolean) => void
+  quiet?: boolean
 }) => (
   <ParcelCards
     parcels={parcelsOfGroup(group, places)}
@@ -829,6 +876,7 @@ const UploadedCards = ({
     gone={gone}
     itemActions={itemActions}
     onLink={onLink}
+    quiet={quiet}
   />
 )
 

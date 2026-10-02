@@ -132,6 +132,10 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   /* whether the storage's list says this montage's link was sent */
   const emailedOn = (group: ManifestGroup) =>
     board.storage?.montages.find((m) => m.folder === folderOnStorage(group))?.emailed ?? null
+  /* A montage is finished when it was emailed and freed: nothing is left to do, and all that is left
+     of it is on the storage. It leaves the Montages and is listed under Delivered. */
+  const finished = (group: ManifestGroup) =>
+    isMontage(group) && Boolean(group.freed) && progressOf(group)?.next === null
   /* Where each montage has got to — one answer for its panel, its card and its entry in the menu,
      so the three can never disagree. */
   const progressOf = (group: ManifestGroup) =>
@@ -155,7 +159,13 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   const passengerProgress = (name: string) => furthestBehind(progressByName.get(name) ?? [])
   /* A montage freed and walked to its last step has nothing left to do here, so it leaves the
      montages and lives on in the storage's own list. */
-  const listed = groups.filter((g) => !(g.freed && progressOf(g)?.next === null))
+  const listed = groups.filter((g) => !finished(g))
+  /* how many montages are in Delivered: one per name, however many jumps it had */
+  const delivered = new Set(
+    groups
+      .filter((g) => finished(g) && !listed.some((l) => passengerOf(l) === passengerOf(g)))
+      .map(passengerOf)
+  ).size
 
   /* what each jump is called wherever it appears: its place among the jumps where it is filed, or
      its montage's name — the montages counted apart, belonging to no place */
@@ -709,9 +719,11 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     goneById,
     asOnStorage,
     emailedOn,
+    finished,
     progressOf,
     passengerProgress,
     listed,
+    delivered,
     labels,
     labelOf,
     passengers,

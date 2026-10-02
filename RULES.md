@@ -424,7 +424,8 @@ of reach because the window is small or the board is drawn big. The panel can be
 screen with an icon at the right end of the toolbar, lit while the panel is there, and brought back the same way: it slides out of the way and the
 files widen into its place, both in a short, smooth movement (none for whoever has asked their
 machine for less motion). Beside the files the choice is remembered on this machine; as a drawer it
-is shut again on the next visit.
+is shut again on the next visit. A page starts without the panel, calm: it comes by itself when a file
+or a jump is picked or opened, and on a montage's page, where it is the place the montage is worked on.
 
 **Every folder has its own address**, and so has a file opened in it: the front page is the fresh
 files, `/dropzone/yverdon` is that dropzone, `/montage/Lily DONZALLAZ` is hers, and
@@ -433,21 +434,44 @@ one is going there: the back button walks the folders and clips looked at, a pag
 where it was, and an address can be kept or sent to somebody — a montage's opens its page even on a
 board that no longer holds it, showing what the storage has of it. One nobody recognises opens the fresh files rather than
 nothing. How a folder is being looked at travels with its address:
-what is typed in the box, how the files are grouped, which jump card is open. Which kind of file is
-shown belongs to the whole board instead, so it follows from one folder to the next. What is being
+what is typed in the box, how the files are grouped, which jump card is open. What is being
 decided and not yet saved — a trim, a rectangle, a turn — is in none of it: an address is somewhere to
 come back to, and a trim nobody saved is not.
+
+**A destination's page and Fresh files are calm.** Each opens with its name, one quiet line, a search icon
+(the box to narrow by name opens when it is pressed, and stays while something is typed in it) and a ⋯ menu
+holding what is set once — choosing its storage folder, taking it off the board, resetting Fresh files.
+Under that sits one card saying in a sentence where things stand — how many files need processing, are
+ready to upload, are all on the storage (then offering to free space, which asks first), or how many jumps
+are waiting for a home — with a slim bar of how many are on the storage and the one button that goes next.
+A destination with no files yet says so, and asks where it should go. The list has no column headings and no
+choice of kind: each file is a row with its picture, name, time and size, and a day whose files are all on
+the storage is folded into one line, opened by a click; each row is a box of its own. Fresh files shows
+its jumps as white tiles, three pictures side by side over the jump's name, its day and time, what it holds
+and a "to file" tag, and the files in no jump as one more card among them, without pictures, with one
+button to group the loose files into jumps. No card is chosen to begin with. Choosing one lights it and
+lists under the cards only that card's files — a jump's own, or the loose ones — so each can be looked at.
+
+**The panel on the right says nothing that the page already says.** With nothing selected, a destination's
+panel holds only what is set once: where its files go on the storage and the link handed out of it, each a
+line with the one button that changes it, and _Remove destination…_ at the foot. A jump waiting in Fresh
+files, when chosen, offers each destination as a button to file it to, and under them _Make a montage…_,
+with its start time kept below and _Select its files_ and _Delete jump_ at the foot. A file's panel puts
+its picture across the top, its name, its state, then its facts a line each — when it was shot, its size,
+how the picture was changed — then what can be done with it, one wide row each (_Trim, frame or turn…_,
+_Move to…_), with putting it in the bin small at the foot; a file that is also on the storage shows where, in
+a green box with a way to open it there. A montage's panel does not repeat the steps its page shows.
 
 **The places.** Three places of work: _Fresh files_, a single entry holding everything off the
 cameras that is not filed yet; _Destinations_, one entry per destination, and _Add a destination…_,
 which opens the field to name one; and
 _Montages_, one entry per named montage and one for the montages still waiting for a name. Under
 _Elsewhere_ come what is not worked on here: each camera plugged in, for as long as it stays plugged
-in; and the _Bin_. There is no page of what the storage holds as a whole: each destination and each
+in; _Delivered_, with how many montages are in it, once there is one; and the _Bin_. There is no page of what the storage holds as a whole: each destination and each
 montage shows its own folder up there, on its own _On the storage_ tab. The place you
-are on is drawn in the blue. Each place of work says how many files it holds, how much of it is still local,
-processed or uploaded — a montage shows its steps instead — and what is left: the jumps still to file
-in Fresh files, the files still to do at a dropzone. Every place of work takes files dropped on it,
+are on is drawn as a white card. Each place is one line, its name and, at the right, what is left there in
+a few words: the jumps still to file in Fresh files, the files still to do at a destination ("all up" when
+none is, "new" when it holds nothing); a montage shows a segment per step with the next one named under it. Every place of work takes files dropped on it,
 and every one but Fresh files a whole jump; the cameras take nothing. A montage
 is listed once, however many jumps it has.
 
@@ -455,19 +479,26 @@ A montage is worked on one at a time, so the way in is its own entry. The _Monta
 files dropped on it: the montage's name is asked for first, and nothing moves until it is saved —
 cancelled, what was dropped stays where it was. Clicking it goes nowhere. A montage that
 has been freed and has walked every step, its link emailed, has nothing left to do here: it leaves the
-Montages, its entry with it, and is found in the storage's own list. Whether it was emailed is read off
-that list, so while the storage cannot be reached, nothing leaves.
+Montages, its entry with it, and is found under _Delivered_ in the menu: a page listing each finished
+montage — its name, how many files it holds on the storage, when its link was sent — with a button to
+open its page, where what the storage holds of it can still be looked at. Whether it was emailed is read
+off the storage's list, so while the storage cannot be reached, nothing leaves.
 
 **Where every montage has got to.** A montage walks the same six steps every time — _Named_,
-_Processed_, _Edited_, _Rendered_, _Uploaded_, _Emailed_ — and the board shows every montage where it
+_Prepared_, _Project_, _Film_, _Delivered_, _Sent_ — and the board shows every montage where it
 is on them, so nobody has to remember what comes after a render. Each montage's entry in the menu says
 the step that is next ("to render", "to email") with a segment per step beneath it, done ones in green
-and the one it is at in the same colour as those words; its card says the same. Its panel, and its
-page, show the whole way one step under the other: what is done ticked and joined up, the step it is
-at ringed with what to do next written under it, and what is still to come greyed. Each step is read
+and the one it is at in the same colour as those words; its card says the same. Its page shows the whole way in one row of six, a line joining them green as far as the step it is at,
+each with a word under it — what it gave, or what it will be — and under the row one calm line saying
+which step it is at and what to do next, with the one button that takes it and a "?" that says what taking it
+does. Each step is read
 off what is there — the name, the copies, the project, the film, the upload, the storage's list. A
 freed montage went through every step up to the upload, with nothing left here to show for it. A
 montage with several jumps is where the one furthest behind is, since one name is one folder.
+
+**A montage's page changes with where the montage is.** While there is work to do, it has the way in six steps, the next-step card, and under them _Its files_: one card listing every file, clips and photos together, each marked _prepared_ once its copy is made. Once the montage is delivered, the steps shrink to one line of names and the files give way to two cards side by side: _On this machine_ — how much is here, a line saying everything here is also on the storage, and _Free up space…_ with what it does — and _On the storage_, the folders it was handed over into, each with what is in it and a way to watch the film. The link is not on those cards: it is in the panel at the right, with _Copy link_ and _Remove link_ (or _Create link_ where there is none), and under it where the film and the originals went. Once the montage is freed, the page says so in three cards — what is stored, the link and when it was emailed, and that this machine holds nothing — over what is only on the storage now, and the panel tells when it was emailed and to whom. What else can be done to a montage — open it in kdenlive, process it again, upload again, free up space, email again, reset, delete — is in the ⋯ menu of its page, so the page carries only the one next step. A montage's address opens its page for as long as the montage exists, finished or not.
+
+**Delivered** lists the finished montages as a table — who it was for, the day, when its link was emailed, how much is on the storage, whether its link still works — each with a button to its page. With no montage left to do the Montages heading says so.
 
 The menu lists no days: a date is only what a camera's clock said, and a clock that was wrong only adds
 a day that means nothing. Days are still there to be seen: each card carries its date, and a place can
