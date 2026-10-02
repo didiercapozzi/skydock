@@ -29,8 +29,8 @@ import { Outlet } from 'react-router'
 import type { ShouldRevalidateFunctionArgs } from 'react-router'
 import { BoardHeader, StatusBar } from '../components/board-header'
 import type { NasLink } from '../components/board-header'
+import { FirstScan } from '../components/first-scan'
 import { WindowBar } from '../components/window-bar'
-import { Notice } from '../components/notice'
 import { DialogHost } from '../components/dialog-host'
 import { CameraPanel } from '../components/camera-panel'
 import { ImportPanel } from '../components/import-panel'
@@ -259,33 +259,14 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
   if (!board.hasManifest) {
     return (
-      <div className='ground flex h-screen flex-col overflow-hidden'>
-        <WindowBar />
-        <main className='mx-2.5 mb-2.5 flex-1 overflow-auto rounded-[18px] bg-pane p-6 shadow-card'>
-          <h1 className='font-display text-[20px] font-bold tracking-[-0.03em]'>{t`Nothing here yet`}</h1>
-          <p className='mt-2 text-[12.5px] text-ink-2'>
-            {t`Plug a camera in — it is copied off by itself — or copy its files into the work folder, then scan to find the jumps.`}
-          </p>
-          {note && (
-            <Notice
-              problem={board.noteIsProblem}
-              onClose={() => setNote(null)}
-              onOpen={
-                board.noteIsProblem && transfersPanel.trouble ? transfersPanel.show : undefined
-              }
-              className='mt-3 rounded-md border px-2.5 py-[7px]'>
-              {note}
-            </Notice>
-          )}
-          <button
-            type='button'
-            disabled={board.scanning}
-            onClick={board.scan}
-            className='mt-4 rounded-md border border-accent bg-accent px-[11px] py-[5px] text-[12.5px] font-medium text-white disabled:opacity-40'>
-            {board.scanning ? t`Scanning…` : t`Scan`}
-          </button>
-        </main>
-      </div>
+      <FirstScan
+        scanning={board.scanning}
+        onScan={board.scan}
+        note={note}
+        problem={board.noteIsProblem}
+        onClose={() => setNote(null)}
+        onOpen={board.noteIsProblem && transfersPanel.trouble ? transfersPanel.show : undefined}
+      />
     )
   }
 

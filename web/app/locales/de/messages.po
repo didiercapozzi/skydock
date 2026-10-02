@@ -2242,6 +2242,11 @@ msgstr "Darstellung der Dateien"
 msgid "in no jump"
 msgstr "in keinem Sprung"
 
+#. placeholder {0}: chosen.files.length
+#: app/components/file-browser.tsx
+msgid "in no jump · {0}"
+msgstr "in keinem Sprung · {0}"
+
 #: app/components/camera-files.tsx
 msgid "in the bin"
 msgstr "im Papierkorb"
@@ -2897,10 +2902,6 @@ msgstr "Noch nichts wurde gesendet oder kopiert — jeder Upload, jedes Ablegen 
 msgid "Nothing here matches that."
 msgstr "Hier passt nichts dazu."
 
-#: app/routes/board.tsx
-msgid "Nothing here yet"
-msgstr "Hier ist noch nichts"
-
 #: app/routes/place.tsx
 msgid "Nothing here yet. Drag a jump onto this folder, or drop files from the computer."
 msgstr "Hier ist noch nichts. Zieh einen Sprung auf diesen Ordner oder leg Dateien vom Computer hier ab."
@@ -3240,10 +3241,6 @@ msgstr "Vom Speicher abspielen"
 #: app/components/shortcuts-dialog.tsx
 msgid "play or pause"
 msgstr "abspielen oder pausieren"
-
-#: app/routes/board.tsx
-msgid "Plug a camera in — it is copied off by itself — or copy its files into the work folder, then scan to find the jumps."
-msgstr "Schließ eine Kamera an — sie wird von selbst kopiert — oder kopiere ihre Dateien in den Arbeitsordner und lies dann ein, um die Sprünge zu finden."
 
 #: app/components/preview-drawer.tsx
 msgid "Portrait"
@@ -3610,7 +3607,7 @@ msgid "Say so once the email went, and the storage’s list records it."
 msgstr "Sag Bescheid, sobald die E-Mail raus ist, dann trägt die Liste des Speichers es ein."
 
 #: app/components/board-header.tsx
-#: app/routes/board.tsx
+#: app/components/first-scan.tsx
 msgid "Scan"
 msgstr "Einlesen"
 
@@ -3631,7 +3628,7 @@ msgid "scanned when done"
 msgstr "wird danach eingelesen"
 
 #: app/components/board-header.tsx
-#: app/routes/board.tsx
+#: app/components/first-scan.tsx
 msgid "Scanning…"
 msgstr "Wird eingelesen…"
 
@@ -4267,6 +4264,10 @@ msgstr "die übliche"
 #: app/components/shortcuts-dialog.tsx
 msgid "the whole board bigger, smaller, as drawn"
 msgstr "die ganze Übersicht größer, kleiner, Originalgröße"
+
+#: app/components/first-scan.tsx
+msgid "The work folder could not be looked through"
+msgstr "Der Arbeitsordner konnte nicht durchsucht werden"
 
 #: app/components/board-header.tsx
 msgid "Theme"

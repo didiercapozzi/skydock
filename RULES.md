@@ -217,6 +217,11 @@ the folder: the originals folder is made, and an empty record is written. A fold
 pointed at is therefore a folder SkyDock is working in after one scan, whether or not anything has
 come off a camera, and a file can be dropped straight onto the board of a fresh install.
 
+That one scan is not left to be asked for: a work folder with no record yet is looked through the
+moment the board opens on it, and the window shows only a loader saying so — no page of instructions, no
+button. Then the board opens, empty or with what was found. When the look fails the reason is said, with
+the way to ask again.
+
 A scan also makes a **proxy** of every clip: a small copy, the same length at the same speed, which the
 board plays instead of the full clip and which the editor later opens on. Proxies are made in the
 background; everything works without them, and a clip without one simply plays as it is. Each clip
@@ -750,7 +755,7 @@ montages are not looked at; nothing of them is here.
 **The toolbar and the status bar.** SkyDock is drawn as the desktop tool it is. The installed app's window has no frame of the
 desktop's and nothing behind the page: its own title bar is a panel like the others, with the name and
 the minimise, maximise and close buttons, that moves the window when dragged and maximises it when
-pressed twice — and the space between the panels is the desktop itself, seen through. Under it,
+pressed twice — and the space between the panels is the pane colour at half strength, white in the light theme, with the desktop faintly seen through it. Under it,
 three floating rounded panels side by side — the places, the work
 (its toolbar and its list as one panel) and what is open — and a status bar along the bottom. One
 petrol teal is for where you are, what is picked and the button that does the next thing. A file's
