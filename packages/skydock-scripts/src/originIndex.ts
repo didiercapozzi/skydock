@@ -167,7 +167,6 @@ export {
   deliveryFolders,
   INDEX_NAME,
   learnStorage,
-  listsDirOf,
   originsDirOf,
   placeFolders,
   readOriginIndex,

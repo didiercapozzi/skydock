@@ -396,4 +396,4 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
 }
 
 export { refusalSchema, useBoardState }
-export type { CheckedListing, ManifestArgs, Storage }
+export type { CheckedListing, Storage }

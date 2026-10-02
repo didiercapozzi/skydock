@@ -91,4 +91,3 @@ const relinkTemplate = (projectPath: string): Relinked => {
 }
 
 export { relinkTemplate }
-export type { Relinked }

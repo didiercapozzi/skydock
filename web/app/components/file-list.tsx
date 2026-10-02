@@ -929,5 +929,5 @@ const FileList = ({ files, kind, sortKey, ...rest }: Props) => {
   )
 }
 
-export { FileList, kindOf, lanesOf, lockReason, matchesKind, shownStatus }
+export { FileList, kindOf, lanesOf, lockReason, shownStatus }
 export type { FileShape, Kind, Modifiers }

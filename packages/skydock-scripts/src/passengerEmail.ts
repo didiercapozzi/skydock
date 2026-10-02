@@ -448,4 +448,4 @@ export {
   renderPassengerEmail,
   textOfEmailHtml
 }
-export type { EmailFacts, EmailLanguage, EmailTemplate, EmailVariable, PassengerEmail }
+export type { EmailFacts, EmailLanguage, EmailTemplate }

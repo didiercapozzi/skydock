@@ -517,7 +517,6 @@ const statProxies = (manifest: Manifest, outputDir?: string) => {
 export {
   buildMissingProxies,
   resumeProxies,
-  buildProxy,
   cropProxy,
   DRI_DEVICE,
   proxyEncoder,
@@ -525,11 +524,8 @@ export {
   videoShape,
   ensureProxies,
   getCutProxyDir,
-  getProxyDir,
   getProxyPath,
   needsProxy,
-  PROXY_MIN_WIDTH,
-  PROXY_WIDTH,
   statProxies
 }
-export type { ProxyEncoder, ProxyReport }
+export type { ProxyEncoder }

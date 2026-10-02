@@ -136,4 +136,4 @@ const useLiveProgress = (
 }
 
 export { useLiveProgress }
-export type { Bringing, CameraCopy, CameraEnded, Disk, Importing, LiveFile, Mounted }
+export type { Bringing, CameraCopy, Disk, Importing, LiveFile, Mounted }

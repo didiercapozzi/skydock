@@ -588,14 +588,6 @@ msgstr "{videos, plural, one {# Video} other {# Videos}} · {photos, plural, one
 msgid "{what} filed there come back to Fresh files, whole — every jump keeps its files, its name and its trims, and can be filed somewhere else"
 msgstr "{what}, dort eingeordnet, kommen vollständig zurück in Neue Dateien — jeder Sprung behält seine Dateien, seinen Namen und seine Kürzungen und kann woanders eingeordnet werden"
 
-#: app/components/history-dialog.tsx
-msgid "{who} marked paid"
-msgstr "{who} als bezahlt markiert"
-
-#: app/components/history-dialog.tsx
-msgid "{who} no longer marked paid"
-msgstr "{who} nicht mehr als bezahlt markiert"
-
 #: app/helpers/notes.ts
 msgid "{who}: {files} of {of} files found here"
 msgstr "{who}: {files} von {of} Dateien hier gefunden"

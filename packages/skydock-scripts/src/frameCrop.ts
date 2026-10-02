@@ -189,7 +189,6 @@ export {
   orientationAfter,
   pictureFilter,
   sameFrame,
-  ROTATIONS,
   turnBy,
   turnedSize,
   withRatio

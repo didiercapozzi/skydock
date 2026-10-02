@@ -55,4 +55,3 @@ const tagOf = (version: string) => `v${version}`
 const versionedFiles = () => Object.keys(VERSION_IN) as Versioned[]
 
 export { nextVersion, tagOf, versionIn, versionedFiles, withVersion }
-export type { Versioned }

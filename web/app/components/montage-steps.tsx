@@ -267,4 +267,4 @@ const NextStep = ({
   )
 }
 
-export { NextStep, StepButton, StepMeter, StepTrail }
+export { NextStep, StepMeter, StepTrail }

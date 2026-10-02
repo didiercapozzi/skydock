@@ -397,4 +397,3 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
 }
 
 export { FileBrowser }
-export type { JumpControls }

@@ -168,4 +168,3 @@ const DestinationHeader = ({
 }
 
 export { DestinationHeader }
-export type { Stages }

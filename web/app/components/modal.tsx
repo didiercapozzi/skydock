@@ -145,14 +145,6 @@ const Modal = ({
 /* the gap that pushes whatever follows it to the right-hand end of the row */
 const Spacer = () => <span className='flex-1' />
 
-/* A labelled field, stacked, quiet label over a loud value — the same in every dialog. */
-const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <label className='flex flex-col gap-1.5 text-[12.5px] font-semibold text-ink-2'>
-    {label}
-    {children}
-  </label>
-)
-
 const INPUT =
   'rounded-[10px] border border-line-strong bg-pane px-3 py-2 text-[13px] text-ink placeholder:text-ink-3 hover:border-check focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50'
 
@@ -166,4 +158,4 @@ const Line = ({ mark, children }: { mark: string; children: React.ReactNode }) =
   </li>
 )
 
-export { ERROR, Field, INPUT, Line, Modal, Spacer }
+export { ERROR, INPUT, Line, Modal, Spacer }

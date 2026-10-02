@@ -74,6 +74,28 @@ describe('filing survives being written down and read back', () => {
   })
 })
 
+/* A montage once carried a "paid" mark that nothing sets any more. A manifest saved with it still loads,
+   with everything else as it was; the mark is simply not kept (RULES, Principles). */
+describe('a manifest saved with a mark no longer kept', () => {
+  it('still loads, and loses only the mark', () => {
+    saveManifest(manifestPath, filed())
+    const groupsPath = path.join(outputDir, 'groups.json')
+    const saved = JSON.parse(fs.readFileSync(groupsPath, 'utf8'))
+    const list = Array.isArray(saved) ? saved : saved.groups
+    list[0].paid = true
+    fs.writeFileSync(
+      groupsPath,
+      JSON.stringify(Array.isArray(saved) ? list : { ...saved, groups: list })
+    )
+
+    const back = loadManifest(manifestPath)
+
+    expect(back?.groups).toHaveLength(1)
+    expect(back?.groups[0].destination).toBe('Yverdon')
+    expect(back?.groups[0]).not.toHaveProperty('paid')
+  })
+})
+
 describe('the saved jumps, when they cannot be read', () => {
   /* Returning "no jumps" for a file that plainly holds some is the worst answer available: the
      next scan re-clusters from nothing, mints new ids and files nothing, and a day of sorting is

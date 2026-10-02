@@ -256,4 +256,4 @@ const parcelOfFolder = ({
 })
 
 export { parcelOfFolder, parcelsOfGroup }
-export type { Inside, Parcel, ParcelItem, Places }
+export type { Inside, Parcel, Places }

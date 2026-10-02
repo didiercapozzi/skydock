@@ -23,12 +23,10 @@ import { uploadReporter } from './progress'
 import { recordOnStorage } from './storage'
 
 /* A montage goes up as its plan says — each item built once and sent to every destination it was put
-   in — and the storage's own list of montages follows (RULES, Uploading a montage). `scope` is what
-   its progress is told under: its own, or the queue's it is one of. */
+   in — and the storage's own list of montages follows (RULES, Uploading a montage). */
 const sendMontage = async (
   { data, manifest, manifestPath, outputDir, refuse, latest }: Change,
-  groupId: string | undefined,
-  scope?: string
+  groupId: string | undefined
 ) => {
   const group = manifest.groups.find((g) => g.id === groupId)
   if (!group) return refuse('Group not found.')
@@ -93,7 +91,7 @@ const sendMontage = async (
   /* one upload at a time: a second is refused before it touches what the first is showing */
   try {
     return await runUpload({ key, label, groupIds: [group.id] }, async () => {
-      const report = uploadReporter({ scope: scope ?? key, label, groupId: group.id, outputDir })
+      const report = uploadReporter({ scope: key, label, groupId: group.id, outputDir })
       try {
         return await send(report)
       } catch (err) {

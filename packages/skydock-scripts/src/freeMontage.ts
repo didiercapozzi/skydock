@@ -278,4 +278,3 @@ const markFreed = (manifest: Manifest, result: FreeResult) => {
 }
 
 export { freeMontage, markFreed, removeFile, removeTree }
-export type { FreeResult }

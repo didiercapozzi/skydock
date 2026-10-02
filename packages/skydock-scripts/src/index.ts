@@ -78,12 +78,10 @@ import {
   markVariables,
   variablesOf,
   asEmailHtml,
-  defaultPassengerEmail,
   gmailComposeUrl,
   htmlOfText,
   mailtoUrl,
-  renderPassengerEmail,
-  textOfEmailHtml
+  renderPassengerEmail
 } from './passengerEmail'
 import type { EmailFacts, EmailLanguage, EmailTemplate } from './passengerEmail'
 import { liveEventSchema, publish, subscribe } from './live'
@@ -166,7 +164,6 @@ import {
   clearUploadProgress,
   readUploadProgress,
   montageUploadKey,
-  UPLOAD_QUEUE_KEY,
   uploadProgressStateSchema,
   writeUploadProgress
 } from './uploadProgress'
@@ -176,10 +173,9 @@ import {
   removeTransfer,
   readTransfers,
   recordTransfer,
-  transferSchema,
   transfersFileSchema
 } from './transfers'
-import type { NewTransfer, Transfer, TransferItem } from './transfers'
+import type { Transfer, TransferItem } from './transfers'
 import {
   cancelUploading,
   pastCancelling,
@@ -206,7 +202,6 @@ export {
   removeTransfer,
   readTransfers,
   recordTransfer,
-  transferSchema,
   transfersFileSchema,
   busyWith,
   DEFAULT_TEMPLATE,
@@ -218,7 +213,6 @@ export {
   variablesOf,
   asEmailHtml,
   htmlOfText,
-  textOfEmailHtml,
   cancelUploading,
   pastCancelling,
   runUpload,
@@ -263,7 +257,6 @@ export {
   containCrop,
   createShareLink,
   cropToPixels,
-  defaultPassengerEmail,
   destinationSchema,
   dsmCreateFolder,
   dsmListFolder,
@@ -347,7 +340,6 @@ export {
   earlierMontagesDirs,
   montagesRemoteDir,
   montageUploadKey,
-  UPLOAD_QUEUE_KEY,
   turnBy,
   turnedSize,
   uploadGate,
@@ -359,7 +351,6 @@ export {
   writeUploadProgress
 }
 export type {
-  NewTransfer,
   Transfer,
   TransferItem,
   EmailFacts,

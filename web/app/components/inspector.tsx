@@ -907,5 +907,4 @@ const ManyPanel = ({
   )
 }
 
-export { FilePanel, FolderPanel, Hint, JumpPanel, ManyPanel, Part, Shell, StorageTwinPart }
-export type { MontageOffer }
+export { FilePanel, FolderPanel, JumpPanel, ManyPanel, Part, Shell, StorageTwinPart }

@@ -382,4 +382,3 @@ const VideoCropper = ({
 }
 
 export { VideoCropper }
-export type { VideoCropperProps }

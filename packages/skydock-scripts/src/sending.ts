@@ -167,7 +167,6 @@ export {
   DEFAULT_PLAN,
   itemsFrom,
   PARTS,
-  partEntries,
   planOf,
   projectFolderOf,
   sendItems,

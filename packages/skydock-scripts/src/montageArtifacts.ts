@@ -150,8 +150,6 @@ export {
   frozenMontages,
   hasEdit,
   isNamedMontage,
-  photosNameOf,
-  rushesNameOf,
   sameEditedGroup,
   statMontageArtifacts,
   montageArtifacts,

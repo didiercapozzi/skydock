@@ -88,4 +88,3 @@ const remembered = <T>({
 }
 
 export { remembered }
-export type { Remembering }

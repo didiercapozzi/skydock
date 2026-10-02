@@ -243,4 +243,4 @@ const importFile = async ({
 }
 
 export { importFile, originalEntry }
-export type { ImportResult, ImportTarget }
+export type { ImportTarget }

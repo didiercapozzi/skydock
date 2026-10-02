@@ -22,12 +22,10 @@
   --font-weight-medium: 470;
   --font-weight-semibold: 500;
   --font-weight-bold: 540;
-  --font-weight-extrabold: 580;
 
   --color-ground: #e3edf1;
   --color-pane: #ffffff;
   --color-rail: #ffffff;
-  --color-chrome: #e6eaf2;
   --color-well: #e5f1f5;
   --color-check: #4f9db3;
   --color-ink: #1d3540;
@@ -48,12 +46,10 @@
   --color-proc-soft: #e2ebfc;
   --color-up: #0c7c55;
   --color-up-soft: #dcf5ea;
-  --color-teal: #0f8a9b;
   --color-lock: #454d61;
   --color-lock-soft: #f1f3f8;
   --color-changed: #155e75;
   --color-changed-soft: #e3f4f8;
-  --color-changed-line: #155e75;
   --color-bin: #c0262d;
   --color-bin-soft: #fdecec;
 
@@ -84,7 +80,6 @@
     --color-ground: #0b0e15;
     --color-pane: #141922;
     --color-rail: #141922;
-    --color-chrome: #0b0e15;
     --color-well: #17303a;
     --color-check: #4fb3cc;
     --color-ink: #e1edf2;
@@ -102,14 +97,12 @@
     --color-local-soft: #3a2a10;
     --color-proc: #8db4ff;
     --color-proc-soft: #16264f;
-    --color-teal: #3cc4d3;
     --color-up: #4fd6a0;
     --color-up-soft: #0e3325;
     --color-lock: #b6bece;
     --color-lock-soft: #1b212d;
     --color-changed: #86dcee;
     --color-changed-soft: #0c3340;
-    --color-changed-line: #86dcee;
     --color-bin: #ff8a90;
     --color-bin-soft: #3a171b;
     --color-here: #0c3340;
@@ -129,7 +122,6 @@
   --color-ground: #0b0e15;
   --color-pane: #141922;
   --color-rail: #141922;
-  --color-chrome: #0b0e15;
   --color-well: #17303a;
   --color-check: #4fb3cc;
   --color-ink: #e1edf2;
@@ -147,14 +139,12 @@
   --color-local-soft: #3a2a10;
   --color-proc: #8db4ff;
   --color-proc-soft: #16264f;
-  --color-teal: #3cc4d3;
   --color-up: #4fd6a0;
   --color-up-soft: #0e3325;
   --color-lock: #b6bece;
   --color-lock-soft: #1b212d;
   --color-changed: #86dcee;
   --color-changed-soft: #0c3340;
-  --color-changed-line: #86dcee;
   --color-bin: #ff8a90;
   --color-bin-soft: #3a171b;
   --color-tile-1: #12303b;

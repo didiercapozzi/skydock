@@ -153,4 +153,4 @@ const ConnectionDialog = ({ onConnect, onCancel, error, codeAsked }: ConnectionD
   )
 }
 
-export { ConnectionDialog, connectionSchema }
+export { ConnectionDialog }

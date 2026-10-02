@@ -269,5 +269,5 @@ const ProgressPanel = ({
   )
 }
 
-export { ProgressPanel, ProgressRows, stateOf }
+export { ProgressPanel, ProgressRows }
 export type { Row as ProgressRow }

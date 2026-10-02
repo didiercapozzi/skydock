@@ -82,4 +82,3 @@ const journeysAdrift = (named: string[]) =>
   )
 
 export { JOURNEYS, SPINE, journeysAdrift }
-export type { Journey }

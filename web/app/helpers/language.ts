@@ -43,5 +43,5 @@ const keepLanguage = (language: Language) => {
 /* the language the app speaks right now */
 const spokenNow = (): Language => languageSchema.safeParse(i18n.locale).data ?? 'en'
 
-export { keepLanguage, LANGUAGES, languageOf, languageSchema, spokenNow }
+export { keepLanguage, languageOf, spokenNow }
 export type { Language }

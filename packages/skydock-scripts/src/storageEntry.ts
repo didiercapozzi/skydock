@@ -23,5 +23,5 @@ const storageFolderSchema = z.discriminatedUnion('ok', [
 type StorageFile = z.infer<typeof storageFileSchema>
 type StorageFolder = z.infer<typeof storageFolderSchema>
 
-export { storageFileSchema, storageFolderSchema }
+export { storageFolderSchema }
 export type { StorageFile, StorageFolder }

@@ -693,4 +693,3 @@ const EmailDialog = ({
 }
 
 export { EmailDialog }
-export type { EmailSubject }

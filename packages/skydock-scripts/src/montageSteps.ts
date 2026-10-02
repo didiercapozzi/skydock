@@ -56,5 +56,5 @@ const furthestBehind = (progress: MontageProgress[]) =>
     null
   )
 
-export { furthestBehind, MONTAGE_STEPS, montageSteps }
+export { furthestBehind, montageSteps }
 export type { MontageProgress, MontageStep }

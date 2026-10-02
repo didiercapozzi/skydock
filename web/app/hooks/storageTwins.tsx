@@ -20,4 +20,3 @@ const useStorageTwin = (name: string | null) => {
 }
 
 export { StorageTwinsContext, useStorageTwin }
-export type { StorageTwins }

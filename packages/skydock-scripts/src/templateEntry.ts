@@ -18,5 +18,5 @@ const templatesAnswerSchema = z.object({ templates: z.array(templateFactSchema) 
 type TemplateFact = z.infer<typeof templateFactSchema>
 type TemplatesAnswer = z.infer<typeof templatesAnswerSchema>
 
-export { templateFactSchema, templatesAnswerSchema }
+export { templatesAnswerSchema }
 export type { TemplateFact, TemplatesAnswer }

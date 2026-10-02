@@ -698,8 +698,6 @@ export {
   isFlatGroup,
   processingNow,
   processJumps,
-  pruneStaleMedia,
   whenProcessed,
   writeCutProxy
 }
-export type { ProcessOptions }

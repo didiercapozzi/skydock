@@ -200,10 +200,7 @@ const manifestGroupSchema = z.object({
   destination: z.string().optional(),
   /* A jump of a montage: a film made for someone, named once. It belongs to no destination — where
      its film and its backups go is chosen when it is uploaded. (`montage` is its editing project.) */
-  montageJump: z.boolean().optional(),
-  /* whoever it is for has paid for the montage — said by the person at the counter, and kept by the
-     server like every other record of what happened to it */
-  paid: z.boolean().optional()
+  montageJump: z.boolean().optional()
 })
 
 const groupsFileSchema = z.object({
@@ -277,23 +274,12 @@ export type {
 }
 
 export {
-  sendPartSchema,
   sendPlanSchema,
-  montageUploadSchema,
-  frameCropSchema,
   destinationSchema,
-  destinationsSchema,
-  groupFileRefSchema,
   groupsFileSchema,
   jumpMomentsSchema,
   jumpTrackSchema,
   manifestFileSchema,
   manifestGroupSchema,
-  manifestSchema,
-  montageRecordSchema,
-  passengerSchema,
-  processedRecordSchema,
-  publishSchema,
-  rotationSchema,
-  uploadedRecordSchema
+  manifestSchema
 }

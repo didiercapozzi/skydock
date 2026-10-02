@@ -529,4 +529,4 @@ const FolderCard = ({
   )
 }
 
-export { FolderCard, StorageCards, StorageFolder, StoragePlayer, storageFileUrl }
+export { FolderCard, StorageCards, StorageFolder }

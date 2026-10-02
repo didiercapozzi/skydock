@@ -568,13 +568,5 @@ const publishJump = async (
   }
 }
 
-export { binFor, checkJump, planUpload, publishJump, refuseTaken, uploadFile, UploadBlocked }
-export type {
-  Checked,
-  CheckProgress,
-  PlanProgress,
-  PublishArgs,
-  Seen,
-  UploadProgress,
-  UploadVerdict
-}
+export { binFor, checkJump, planUpload, publishJump, refuseTaken, uploadFile }
+export type { Checked, CheckProgress, PlanProgress, Seen, UploadProgress, UploadVerdict }

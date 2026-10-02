@@ -42,8 +42,6 @@ const uploadProgressStateSchema = z.object({
 
 /* one place both sides name a montage's upload, so the poller cannot look for a scope nobody writes */
 const montageUploadKey = (groupId: string) => `montage:${groupId}`
-/* the progress of montages uploaded one after the other, told under one name however many there are */
-const UPLOAD_QUEUE_KEY = 'queue'
 type UploadProgressState = z.infer<typeof uploadProgressStateSchema>
 type UploadItem = z.infer<typeof uploadItemSchema>
 
@@ -76,8 +74,6 @@ const clearUploadProgress = (outputDir?: string) => {
 export {
   clearUploadProgress,
   montageUploadKey,
-  getUploadProgressPath,
-  UPLOAD_QUEUE_KEY,
   readUploadProgress,
   uploadProgressStateSchema,
   writeUploadProgress

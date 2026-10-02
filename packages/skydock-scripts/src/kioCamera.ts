@@ -233,14 +233,5 @@ const fetchInto = async (
 /* the cameras KDE can reach right now, through whatever reader this machine has */
 const camerasThroughKde = async () => kioCameras(await kioReader())
 
-export {
-  camerasThroughKde,
-  clipsUnder,
-  copyOverKio,
-  givenBack,
-  hereAlready,
-  isKioCamera,
-  kioCameraName,
-  kioCameras
-}
+export { camerasThroughKde, copyOverKio, givenBack, isKioCamera, kioCameraName, kioCameras }
 export type { SeenClip }

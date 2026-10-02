@@ -128,4 +128,3 @@ const markDropzoneFreed = (manifest: Manifest, result: DropzoneFreeResult) => {
 }
 
 export { freeDropzone, markDropzoneFreed }
-export type { DropzoneFreeResult }

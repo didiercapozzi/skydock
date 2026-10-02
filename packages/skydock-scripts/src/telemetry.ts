@@ -323,9 +323,7 @@ const POSITION: Record<Kind, ((written: Buffer) => Fix[]) | null> = {
 
 export {
   accelerationIn,
-  accelerationVectorsIn,
   djiAcceleration,
-  djiVectors,
   GRAVITY,
   gpsIn,
   POSITION,

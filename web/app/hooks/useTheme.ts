@@ -26,5 +26,5 @@ const theme = remembered<Theme>({
 const setTheme = theme.set
 const useTheme = theme.use
 
-export { applyTheme, setTheme, useTheme }
+export { setTheme, useTheme }
 export type { Theme }

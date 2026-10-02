@@ -30,5 +30,5 @@ const binAnswerSchema = z.object({ dir: z.string(), batches: z.array(binBatchSch
 type BinFile = z.infer<typeof binFileSchema>
 type BinBatch = z.infer<typeof binBatchSchema>
 
-export { binAnswerSchema, binBatchSchema, binFileSchema }
+export { binAnswerSchema }
 export type { BinBatch, BinFile }

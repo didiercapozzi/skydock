@@ -47,5 +47,5 @@ const marksFor = ({
   })
 }
 
-export { marksFor, markSchema }
+export { marksFor }
 export type { Mark }

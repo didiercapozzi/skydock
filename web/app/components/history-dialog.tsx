@@ -52,8 +52,6 @@ const saidOf = (change: BoardChange) => {
     lines.push(plural(change.processed, { one: 'Processed # file', other: 'Processed # files' }))
   if (change.uploaded > 0)
     lines.push(plural(change.uploaded, { one: 'Uploaded # file', other: 'Uploaded # files' }))
-  for (const who of change.paid) lines.push(t`${who} marked paid`)
-  for (const who of change.unpaid) lines.push(t`${who} no longer marked paid`)
   return lines
 }
 

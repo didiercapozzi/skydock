@@ -79,5 +79,5 @@ const originsOf = (manifest: Manifest) => {
   return origins
 }
 
-export { alreadyUp, originEntrySchema, originIndexSchema, originsOf, sameSizeUnknown, worthReading }
+export { alreadyUp, originIndexSchema, originsOf, sameSizeUnknown, worthReading }
 export type { OriginEntry, OriginIndex }

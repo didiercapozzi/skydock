@@ -142,5 +142,5 @@ const startDetached = (parts: string[], target: string, command: string, setting
   })
 }
 
-export { GRACE_MS, startDetached, tokenize }
+export { startDetached, tokenize }
 export type { OpenResult }

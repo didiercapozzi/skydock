@@ -817,14 +817,10 @@ const ensureNasSession = async (configDir?: string) => {
 }
 
 export {
-  DsmLoginError,
   clearNasSession,
   createShareLink,
-  decryptPasswordFromStorage,
   dsmConfigSchema,
   dsmCreateFolder,
-  dsmEntryUrl,
-  dsmFetch,
   dsmFileMd5,
   dsmCopyMove,
   dsmListFolder,
@@ -834,10 +830,8 @@ export {
   dsmRequestUrl,
   dsmResponseSchema,
   dsmValidateSession,
-  encryptPasswordForStorage,
   ensureNasSession,
   ensureShareLink,
-  findShareLink,
   listNasFiles,
   listNasFolder,
   listShareLinks,
@@ -850,8 +844,6 @@ export {
   removeShareLink,
   saveNasSession,
   shareLinkFor,
-  tryAutoRefreshSession,
-  NO_SUCH_PATH,
   StorageUnreadable
 }
-export type { DsmAuth, DsmConfig, NasFolderEntry, NasSession }
+export type { DsmConfig, NasSession }

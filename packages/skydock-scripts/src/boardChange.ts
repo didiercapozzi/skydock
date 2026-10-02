@@ -28,9 +28,7 @@ const boardChangeSchema = z.object({
   filesAdded: z.number(),
   filesGone: z.number(),
   processed: z.number(),
-  uploaded: z.number(),
-  paid: z.array(z.string()),
-  unpaid: z.array(z.string())
+  uploaded: z.number()
 })
 
 type BoardChange = z.infer<typeof boardChangeSchema>
@@ -71,9 +69,6 @@ const montageNames = (board: Manifest) =>
       .map((g) => passengerOf(g))
   )
 
-const paidNames = (board: Manifest) =>
-  new Set(board.groups.filter((g) => g.paid).map((g) => passengerOf(g)))
-
 const sameWhere = (a: Where | undefined, b: Where | undefined) =>
   a?.kind === b?.kind && (a && 'name' in a ? a.name : '') === (b && 'name' in b ? b.name : '')
 
@@ -105,8 +100,6 @@ const describeChange = (before: Manifest, after: Manifest) => {
   }
   const madeBefore = montageNames(before)
   const madeAfter = montageNames(after)
-  const paidBefore = paidNames(before)
-  const paidAfter = paidNames(after)
   const jumpsBefore = new Map(before.groups.map((g) => [g.id, g]))
   const jumpsAfter = new Set(after.groups.map((g) => g.id))
   return {
@@ -124,9 +117,7 @@ const describeChange = (before: Manifest, after: Manifest) => {
     filesAdded: [...is.keys()].filter((id) => !was.has(id)).length,
     filesGone: [...was.keys()].filter((id) => !is.has(id)).length,
     processed,
-    uploaded,
-    paid: [...paidAfter].filter((n) => !paidBefore.has(n)),
-    unpaid: [...paidBefore].filter((n) => !paidAfter.has(n))
+    uploaded
   }
 }
 

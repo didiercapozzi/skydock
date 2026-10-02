@@ -84,7 +84,7 @@ const saveGroups: Intent = ({
   manifest.groups = data.groups.map((incoming) => {
     const before = manifest.groups.find((g) => g.id === incoming.id)
     if (!before) return incoming
-    const { uploaded: _u, freed: _f, publish: _p, montage: _m, paid: _pd, ...decided } = incoming
+    const { uploaded: _u, freed: _f, publish: _p, montage: _m, ...decided } = incoming
     /* a jump changed since its link was made is not what the link shows any more */
     const changed =
       !sameEditedGroup(before, incoming) ||
@@ -95,8 +95,7 @@ const saveGroups: Intent = ({
       ...(before.uploaded ? { uploaded: before.uploaded } : {}),
       ...(before.freed ? { freed: before.freed } : {}),
       ...(before.publish && !changed ? { publish: before.publish } : {}),
-      ...(before.montage ? { montage: before.montage } : {}),
-      ...(before.paid ? { paid: before.paid } : {})
+      ...(before.montage ? { montage: before.montage } : {})
     }
   })
   if (data.destinations) manifest.destinations = data.destinations

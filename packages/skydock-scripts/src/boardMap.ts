@@ -246,4 +246,4 @@ export {
   sharedRefusals,
   tidy
 }
-export type { BoardMap, MappedIntent, Reach, Refusal }
+export type { BoardMap, MappedIntent, Refusal }

@@ -236,14 +236,12 @@ const filmUrl = (film: NonNullable<MontageFact['film']>) =>
 const FilmStrip = ({
   facts,
   picture,
-  children,
-  className = ''
+  children
 }: {
   facts?: MontageFact
   picture?: string
   /* what can be done with the film, as buttons; without them it can only be watched */
   children?: React.ReactNode
-  className?: string
 }) => {
   const [watching, setWatching] = useState(false)
   if (!facts?.film) return null
@@ -251,7 +249,7 @@ const FilmStrip = ({
   const renderedAt = hhmm(film.mtime)
   return (
     <div
-      className={`relative h-[250px] flex-none overflow-hidden rounded-[18px] bg-[#10131a] text-white shadow-card [--color-ink-2:rgba(255,255,255,0.8)] [--color-ink-3:rgba(255,255,255,0.7)] [--color-ink:#fff] [--color-line:rgba(255,255,255,0.3)] [--color-well:rgba(255,255,255,0.2)] ${className}`}>
+      className={`relative h-[250px] flex-none overflow-hidden rounded-[18px] bg-[#10131a] text-white shadow-card [--color-ink-2:rgba(255,255,255,0.8)] [--color-ink-3:rgba(255,255,255,0.7)] [--color-ink:#fff] [--color-line:rgba(255,255,255,0.3)] [--color-well:rgba(255,255,255,0.2)]`}>
       {watching ? (
         <>
           <video

@@ -960,10 +960,8 @@ file it delivers, since the storage's own date for anything sent before files ke
 was sent — and whether it is here too or only on the storage. A file SkyDock did not name shows when it
 was put there instead, and says so.
 A video or a photo is played by clicking it (or its _Watch_ button, where a click opens the storage's interface), streamed from the storage through the board, so a film is
-scrubbed without being downloaded first; an archive is listed and not opened. Where the storage's address is known, pressing any file the board lists as being on the storage — in a place's folder, in the storage's list, or among what an upload handed over — opens the storage's own web interface, File Station, on the folder that holds it, in a new browser tab; so does a folder's own name. Watching a film from here is then a _Watch_ button on the row of a video — a photo has none — and on the storage's list a montage's _Open_ opens its folder in that interface, where it used to list its files in place. It is only a link, so nothing is sent to the storage from here, and the storage's own sign-in applies as ever. The storage's list of
-montages lists and plays each montage's folder the same way, including ones this machine never held,
-without saying which files are also here. All of it only reads what a folder holds: nothing is
-fetched, and only files inside the folders SkyDock uploads into are ever opened.
+scrubbed without being downloaded first; an archive is listed and not opened. Where the storage's address is known, pressing any file the board lists as being on the storage — in a place's folder, or among what an upload handed over — opens the storage's own web interface, File Station, on the folder that holds it, in a new browser tab; so does a folder's own name. Watching a film from here is then a _Watch_ button on the row of a video — a photo has none. It is only a link, so nothing is sent to the storage from here, and the storage's own sign-in applies as ever. All of it only reads what a folder holds: nothing is
+fetched by it (**Bring back** is the one thing that fetches, and is its own button), and only files inside the folders SkyDock uploads into are ever opened.
 
 **Files keep their date.** Every file is sent with its own date — the one processing stamped on it,
 which is when it was shot — so the storage lists and sorts it by that, not by the day it went up.

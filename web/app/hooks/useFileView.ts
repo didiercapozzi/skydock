@@ -17,4 +17,3 @@ const setFileView = view.set
 const useFileView = view.use
 
 export { setFileView, useFileView }
-export type { FileView }

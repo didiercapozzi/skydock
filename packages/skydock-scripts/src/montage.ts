@@ -392,7 +392,5 @@ export {
   DEFAULT_MARK,
   inspectTemplate,
   listMontageTemplates,
-  montageOptionsSchema,
   readTemplate
 }
-export type { MontageClip, MontageOptions }

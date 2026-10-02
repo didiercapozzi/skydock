@@ -319,12 +319,10 @@ export {
   copyBack,
   copyCamera,
   copyFromCameras,
-  dayFolder,
   dayFoldersOf,
-  freeName,
   landingFor,
   freedAlready,
   isNameFor,
   loadBoard
 }
-export type { Copied, CopyOptions, CopyProgress }
+export type { Copied, CopyProgress }

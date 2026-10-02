@@ -437,4 +437,4 @@ export {
   uploadScope,
   uploadTargets
 }
-export type { UploadScope, UploadTarget }
+export type { UploadTarget }

@@ -27,8 +27,6 @@ const NOTHING = {
   filesGone: 0,
   processed: 0,
   uploaded: 0,
-  paid: [],
-  unpaid: []
 }
 
 const shown = async () => {

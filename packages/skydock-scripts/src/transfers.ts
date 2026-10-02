@@ -115,7 +115,6 @@ export {
   readTransfers,
   recordTransfer,
   removeTransfer,
-  transferSchema,
   transfersFileSchema
 }
-export type { NewTransfer, Transfer, TransferItem }
+export type { Transfer, TransferItem }
