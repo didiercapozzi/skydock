@@ -12,6 +12,7 @@ import { spawn } from 'node:child_process'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { BrowserWindow, Menu, app, dialog, ipcMain, shell } from 'electron'
 import type { WebContents } from 'electron'
 import updater from 'electron-updater'
@@ -71,20 +72,75 @@ const suggestedWorkFolder = () => {
 
 /* Where the work lives. Asked for once, the first time the app is opened, because it is a dropzone's
    whole season of footage and nobody should find out afterwards that it went somewhere surprising.
-   Answered once and never asked again — the server writes it down. Not answering is an answer too:
-   the suggested folder is used, and it can be moved later. */
-const workFolder = async () => {
-  const remembered = settings().outputDir?.trim()
-  if (remembered) return remembered
-  const suggested = suggestedWorkFolder()
-  fs.mkdirSync(suggested, { recursive: true })
-  const asked = await dialog.showOpenDialog({
-    title: 'Where should SkyDock keep its work?',
-    defaultPath: suggested,
-    properties: ['openDirectory', 'createDirectory']
-  })
-  return asked.canceled ? suggested : (asked.filePaths[0] ?? suggested)
+   The asking is a page of the app's own — what SkyDock is, what the folder will hold, and one button
+   to choose it — shown in the window before any server is started. Answered once and never asked
+   again: the server writes it down. */
+const welcomeFile = () => path.join(app.getAppPath(), 'build', 'electron', 'welcome.html')
+
+/* only that page may ask for the folder: the board's own pages have their own way, in Settings */
+const isWelcome = (contents: WebContents) =>
+  contents.getURL().startsWith(pathToFileURL(welcomeFile()).href)
+
+/* the folder chosen on that page, until it says to open the board */
+let picked: string | null = null
+
+/* a folder that is not made yet has no disk of its own to ask: the nearest one that is has */
+const spaceFree = (folder: string) => {
+  let at = folder
+  while (!fs.existsSync(at) && path.dirname(at) !== at) at = path.dirname(at)
+  try {
+    const found = fs.statfsSync(at)
+    return found.bavail * found.bsize
+  } catch {
+    return null
+  }
 }
+
+/* what the page says of a folder: where it is, how much room is left, and whether it already holds
+   the work of an earlier SkyDock */
+const aboutFolder = (folder: string) => ({
+  folder,
+  free: spaceFree(folder),
+  found: fs.existsSync(path.join(folder, 'manifest.json'))
+})
+
+ipcMain.handle('welcome:suggested', (event) =>
+  isWelcome(event.sender) ? aboutFolder(suggestedWorkFolder()) : null
+)
+
+ipcMain.handle('welcome:use-suggested', (event) => {
+  if (!isWelcome(event.sender)) return null
+  picked = suggestedWorkFolder()
+  return aboutFolder(picked)
+})
+
+/* The machine's own folder picker, opened on the folder SkyDock would suggest. Not choosing leaves
+   the page as it was: the work does not go anywhere nobody said. */
+ipcMain.handle('welcome:choose', async (event) => {
+  if (!isWelcome(event.sender)) return null
+  const window = BrowserWindow.fromWebContents(event.sender) ?? undefined
+  const suggested = suggestedWorkFolder()
+  const options = {
+    title: 'Where should SkyDock keep its work?',
+    defaultPath: fs.existsSync(suggested) ? suggested : path.dirname(suggested),
+    properties: ['openDirectory', 'createDirectory'] as ('openDirectory' | 'createDirectory')[]
+  }
+  const asked = window
+    ? await dialog.showOpenDialog(window, options)
+    : await dialog.showOpenDialog(options)
+  const chosen = asked.canceled ? undefined : asked.filePaths[0]
+  if (!chosen) return null
+  picked = chosen
+  return aboutFolder(chosen)
+})
+
+/* the page says to start: the server is started in the folder, and the window shows its board */
+ipcMain.handle('welcome:open', (event) => {
+  if (!isWelcome(event.sender) || !picked) return false
+  const window = BrowserWindow.fromWebContents(event.sender) ?? undefined
+  void startServer(picked, window)
+  return true
+})
 
 /* What the server is told before it starts: where to work, where its settings and its bin are, and
    where the tools it runs are, since a packaged app carries its own and must not go looking for
@@ -315,7 +371,12 @@ const stopServer = () => {
    Given a folder and a window, it is the work moving to another folder: the server there is started
    and the window already open is pointed at it, rather than a second one opened. */
 const startServer = async (folder?: string, into?: BrowserWindow) => {
-  const outputDir = folder ?? (await workFolder())
+  const outputDir = folder ?? settings().outputDir?.trim()
+  /* the first time: no server yet, only the page that asks where to keep the work */
+  if (!outputDir) {
+    openWindow(pathToFileURL(welcomeFile()).href)
+    return
+  }
   fs.mkdirSync(outputDir, { recursive: true })
   const script = path.join(resourcesDir(), 'skydock-server.mjs')
   if (!fs.existsSync(script)) {

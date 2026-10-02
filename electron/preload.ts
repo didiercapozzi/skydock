@@ -41,6 +41,13 @@ contextBridge.exposeInMainWorld('skydock', {
   },
   /* the machine's own folder picker; the folder chosen, none when nothing changed, or why not */
   chooseWorkFolder: () => ipcRenderer.invoke('work-folder:choose'),
+  /* the first-run page, and only it: suggests a folder, opens the picker, and says when to start */
+  welcome: {
+    suggested: () => ipcRenderer.invoke('welcome:suggested'),
+    useSuggested: () => ipcRenderer.invoke('welcome:use-suggested'),
+    choose: () => ipcRenderer.invoke('welcome:choose'),
+    open: () => ipcRenderer.invoke('welcome:open')
+  },
   /* how big the whole window is drawn: asked, set, and heard when the keys change it */
   zoom: {
     get: () => ipcRenderer.invoke('zoom:get'),

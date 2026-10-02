@@ -30,6 +30,9 @@ const ensureElectron = () => {
    the page is allowed to ask of the window. Both are what the machine runs rather than what anybody
    reads, so they are built rather than kept. */
 const shell = async () => {
+  /* the page that asks where to keep the work, the first time: plain HTML, carried as it is */
+  fs.mkdirSync(into, { recursive: true })
+  fs.copyFileSync(path.join(root, 'electron', 'welcome.html'), path.join(into, 'welcome.html'))
   await build({
     entryPoints: [path.join(root, 'electron', 'main.ts')],
     outfile: path.join(into, 'main.cjs'),

@@ -1,0 +1,989 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1" />
+    <title>SkyDock</title>
+    <style>
+      :root {
+        --ink: #14292e;
+        --ink-2: #3d5459;
+        --ink-3: #46606a;
+        --line: #d3e1e4;
+        --well: #eaf2f3;
+        --accent: #0e7a8f;
+        --accent-ink: #0a5565;
+        --accent-soft: #dcf1f4;
+        --up: #1f8a5a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+      h1,
+      h2,
+      p {
+        margin: 0;
+      }
+      button {
+        font: inherit;
+        cursor: pointer;
+      }
+      button:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 3px;
+      }
+      #app {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        border-radius: 18px;
+        overflow: hidden;
+        position: relative;
+        background: linear-gradient(135deg, #d6e8ec 0%, #e8f1ee 100%);
+        font-family:
+          'Plus Jakarta Sans',
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+        color: var(--ink);
+        font-size: 16px;
+        line-height: 1.5;
+      }
+      .waves {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+      .bar {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 26px 56px 18px;
+        -webkit-app-region: drag;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .mark {
+        width: 46px;
+        height: 46px;
+        border-radius: 15px;
+        background: var(--accent);
+        color: #fff;
+        display: grid;
+        place-items: center;
+        box-shadow: 0 8px 20px rgba(14, 122, 143, 0.32);
+      }
+      .brand b {
+        font-family: Sora, system-ui, sans-serif;
+        font-size: 24px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+      }
+      .frame {
+        display: flex;
+        gap: 6px;
+        -webkit-app-region: no-drag;
+      }
+      .frame button {
+        width: 36px;
+        height: 36px;
+        border-radius: 11px;
+        border: 0;
+        background: rgba(255, 255, 255, 0.6);
+        color: var(--ink-2);
+        display: grid;
+        place-items: center;
+      }
+      .frame button:hover {
+        background: #fff;
+      }
+      main {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        padding: 0 56px 32px;
+        display: grid;
+      }
+      section[hidden] {
+        display: none;
+      }
+      .welcome {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+        gap: 64px;
+        align-items: center;
+        margin: auto 0;
+      }
+      .eyebrow {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--accent-ink);
+      }
+      h1 {
+        font-family: Sora, system-ui, sans-serif;
+        font-weight: 600;
+        letter-spacing: -0.04em;
+        line-height: 1.05;
+        font-size: clamp(34px, 4.1vw, 58px);
+      }
+      .lead {
+        font-size: clamp(16px, 1.4vw, 19px);
+        color: var(--ink-2);
+        max-width: 600px;
+      }
+      .col {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        max-width: 700px;
+      }
+      ol {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      li {
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+      }
+      .n {
+        flex: none;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 0 0 1px #cfe0e4;
+        display: grid;
+        place-items: center;
+        font-weight: 700;
+        color: var(--accent-ink);
+      }
+      li small {
+        display: block;
+        color: var(--ink-3);
+        font-size: 14.5px;
+      }
+      .go {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        height: 58px;
+        padding: 0 30px;
+        border-radius: 18px;
+        border: 0;
+        background: var(--accent);
+        color: #fff;
+        font-size: 18px;
+        font-weight: 700;
+        box-shadow: 0 12px 28px rgba(14, 122, 143, 0.38);
+      }
+      .go:hover {
+        background: #0c6c7f;
+      }
+      .go:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+      .quiet {
+        text-align: left;
+        background: none;
+        border: 0;
+        padding: 0;
+        color: var(--accent-ink);
+        font-weight: 600;
+        font-size: 14px;
+        text-decoration: underline;
+      }
+      .note {
+        font-size: 13.5px;
+        color: var(--ink-3);
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+      }
+      .card {
+        width: 100%;
+        max-width: 560px;
+        padding: 28px;
+        border-radius: 26px;
+        background: rgba(251, 253, 253, 0.88);
+        box-shadow:
+          0 1px 2px rgba(20, 41, 46, 0.06),
+          0 24px 60px rgba(20, 41, 46, 0.12);
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        justify-self: center;
+      }
+      .card h2 {
+        font-family: Sora, system-ui, sans-serif;
+        font-size: 21px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+      }
+      .head {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .tile {
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+        background: var(--accent-soft);
+        color: var(--accent-ink);
+        display: grid;
+        place-items: center;
+        flex: none;
+      }
+      .row {
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 0 0 1px var(--line);
+      }
+      .row + .row {
+        margin-top: 10px;
+      }
+      .ico {
+        flex: none;
+        width: 36px;
+        height: 36px;
+        border-radius: 11px;
+        background: var(--well);
+        color: var(--ink-2);
+        display: grid;
+        place-items: center;
+      }
+      .mono {
+        font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .row small {
+        font-size: 13.5px;
+        color: var(--ink-3);
+        display: block;
+      }
+      .foot {
+        font-size: 13px;
+        color: var(--ink-3);
+        border-top: 1px solid #e3edef;
+        padding-top: 16px;
+      }
+      .chosen {
+        place-items: center;
+      }
+      .chosen .card {
+        max-width: 760px;
+        padding: 40px;
+        gap: 24px;
+      }
+      .done {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+      .done .tile {
+        width: 60px;
+        height: 60px;
+        border-radius: 20px;
+        background: var(--up);
+        color: #fff;
+      }
+      .path {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 16px 18px;
+        border-radius: 18px;
+        background: #fff;
+        box-shadow: 0 0 0 1px var(--line);
+      }
+      .path .mono {
+        flex: 1;
+        min-width: 0;
+        font-size: 14px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .small-btn {
+        height: 36px;
+        padding: 0 16px;
+        border-radius: 12px;
+        border: 0;
+        background: var(--well);
+        color: var(--ink);
+        font-weight: 700;
+        font-size: 13.5px;
+      }
+      .facts {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+      .fact {
+        padding: 16px 18px;
+        border-radius: 18px;
+        background: #fff;
+        box-shadow: 0 0 0 1px var(--line);
+      }
+      .fact span {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+      }
+      .fact b {
+        display: block;
+        font-family: Sora, system-ui, sans-serif;
+        font-size: 24px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        margin-top: 2px;
+      }
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .go.slim {
+        height: 54px;
+        font-size: 17px;
+        padding: 0 28px;
+      }
+      @media (max-height: 700px) {
+        .col {
+          gap: 14px;
+        }
+        ol {
+          gap: 8px;
+        }
+        li small {
+          display: none;
+        }
+        .lead {
+          font-size: 15px;
+        }
+        h1 {
+          font-size: 30px;
+        }
+        main {
+          padding-bottom: 16px;
+        }
+        .quiet {
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .go {
+          height: 50px;
+          font-size: 16px;
+        }
+        .welcome {
+          gap: 28px;
+        }
+        .card {
+          padding: 20px;
+          gap: 14px;
+        }
+        .foot {
+          display: none;
+        }
+      }
+      @media (max-width: 1100px) {
+        .welcome {
+          gap: 28px;
+        }
+        .bar,
+        main {
+          padding-left: 32px;
+          padding-right: 32px;
+        }
+        .card {
+          padding: 20px;
+        }
+        .row {
+          padding: 10px 12px;
+        }
+      }
+      @media (max-width: 800px) {
+        .welcome {
+          grid-template-columns: 1fr;
+          gap: 32px;
+        }
+        .bar,
+        main {
+          padding-left: 28px;
+          padding-right: 28px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <svg
+        class="waves"
+        aria-hidden="true"
+        viewBox="0 0 1520 820"
+        preserveAspectRatio="xMidYMax slice"
+        fill="none">
+        <g
+          stroke="#9fc3cb"
+          stroke-opacity=".45"
+          stroke-width="1.5">
+          <path d="M-40 640C200 560 340 700 600 640S980 520 1240 600 1480 560 1580 520" />
+          <path d="M-40 680C200 600 340 740 600 680S980 560 1240 640 1480 600 1580 560" />
+          <path d="M-40 720C200 640 340 780 600 720S980 600 1240 680 1480 640 1580 600" />
+          <path d="M-40 760C200 680 340 820 600 760S980 640 1240 720 1480 680 1580 640" />
+        </g>
+      </svg>
+
+      <header class="bar">
+        <div class="brand">
+          <div
+            class="mark"
+            aria-hidden="true">
+            <svg
+              width="26"
+              height="26"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round">
+              <path
+                d="M3 11a9 9 0 0 1 18 0c-1.5-1.2-3-1.2-4.5 0-1.5-1.2-3-1.2-4.5 0-1.5-1.2-3-1.2-4.5 0C6 9.8 4.5 9.8 3 11z" />
+              <path d="M3.5 11.5 12 20l8.5-8.5" />
+            </svg>
+          </div>
+          <b>SkyDock</b>
+        </div>
+        <div
+          class="frame"
+          id="frame"
+          hidden>
+          <button
+            type="button"
+            data-do="minimize"
+            aria-label="Minimise">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round">
+              <path d="M6 12h12" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            data-do="toggleMaximize"
+            aria-label="Maximise">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linejoin="round">
+              <rect
+                x="6"
+                y="6"
+                width="12"
+                height="12"
+                rx="1" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            data-do="close"
+            aria-label="Close">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round">
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <main>
+        <section
+          id="welcome"
+          class="welcome"
+          aria-labelledby="hello">
+          <div class="col">
+            <div style="display: flex; flex-direction: column; gap: 14px">
+              <span
+                class="eyebrow"
+                data-t="welcome"></span>
+              <h1
+                id="hello"
+                data-t="headline"></h1>
+              <p
+                class="lead"
+                data-t="lead"></p>
+            </div>
+            <ol>
+              <li>
+                <span class="n">1</span>
+                <div><b data-t="s1"></b><small data-t="s1b"></small></div>
+              </li>
+              <li>
+                <span class="n">2</span>
+                <div><b data-t="s2"></b><small data-t="s2b"></small></div>
+              </li>
+              <li>
+                <span class="n">3</span>
+                <div><b data-t="s3"></b><small data-t="s3b"></small></div>
+              </li>
+            </ol>
+            <div style="display: flex; flex-direction: column; gap: 14px; align-items: flex-start">
+              <button
+                type="button"
+                class="go"
+                id="start">
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.9"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true">
+                  <path d="M3 7h6l2 2h10v10H3z" />
+                </svg>
+                <span data-t="start"></span>
+              </button>
+              <button
+                type="button"
+                class="quiet"
+                id="suggested"></button>
+              <p class="note">
+                <svg
+                  style="flex: none; margin-top: 2px"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#1f8a5a"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true">
+                  <rect
+                    x="5"
+                    y="11"
+                    width="14"
+                    height="9"
+                    rx="2" />
+                  <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+                </svg>
+                <span data-t="safe"></span>
+              </p>
+            </div>
+          </div>
+
+          <div
+            class="card"
+            aria-label="">
+            <div class="head">
+              <div class="tile">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true">
+                  <path d="M3 7h6l2 2h10v10H3z" />
+                </svg>
+              </div>
+              <div>
+                <h2 data-t="folderTitle"></h2>
+                <p
+                  style="font-size: 13.5px; color: var(--ink-3)"
+                  data-t="folderSub"></p>
+              </div>
+            </div>
+            <div>
+              <div class="row">
+                <div class="ico">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.9"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true">
+                    <rect
+                      x="3"
+                      y="6"
+                      width="18"
+                      height="13"
+                      rx="3" />
+                    <circle
+                      cx="12"
+                      cy="12.5"
+                      r="3" />
+                    <path d="M8 6l1-2h6l1 2" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="mono">original_files/</div>
+                  <small data-t="f1"></small>
+                </div>
+              </div>
+              <div class="row">
+                <div class="ico">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.9"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true">
+                    <path d="M6 3v18M18 3v18M3 8h6M15 8h6M3 16h6M15 16h6" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="mono">processed/</div>
+                  <small data-t="f2"></small>
+                </div>
+              </div>
+              <div class="row">
+                <div class="ico">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.9"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true">
+                    <path d="M6 3h9l4 4v14H6z" />
+                    <path d="M14 3v5h5M9 13h6M9 17h6" />
+                  </svg>
+                </div>
+                <div>
+                  <div class="mono">manifest.json</div>
+                  <small data-t="f3"></small>
+                </div>
+              </div>
+            </div>
+            <p
+              class="foot"
+              data-t="room"></p>
+          </div>
+        </section>
+
+        <section
+          id="chosen"
+          class="chosen"
+          hidden
+          aria-labelledby="chosenTitle">
+          <div class="card">
+            <div class="done">
+              <div class="tile">
+                <svg
+                  width="30"
+                  height="30"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true">
+                  <path d="M5 12.5 10 17 19 7" />
+                </svg>
+              </div>
+              <div>
+                <h1
+                  id="chosenTitle"
+                  style="font-size: clamp(28px, 3vw, 36px)"
+                  data-t="chosenTitle"></h1>
+                <p
+                  style="color: var(--ink-3)"
+                  id="chosenSub"></p>
+              </div>
+            </div>
+            <div class="path">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#0e7a8f"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true">
+                <path d="M3 7h6l2 2h10v10H3z" />
+              </svg>
+              <span
+                class="mono"
+                id="where"></span>
+              <button
+                type="button"
+                class="small-btn"
+                id="change"
+                data-t="change"></button>
+            </div>
+            <div class="facts">
+              <div class="fact"><span data-t="free"></span><b id="free"></b></div>
+              <div class="fact"><span data-t="found"></span><b id="found"></b></div>
+            </div>
+            <div class="actions">
+              <button
+                type="button"
+                class="go slim"
+                id="open">
+                <span data-t="open"></span>
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </button>
+              <span
+                style="font-size: 13.5px; color: var(--ink-3)"
+                data-t="then"></span>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      /* what is said, in the languages the app speaks: nothing of the app is up yet to ask which one */
+      const WORDS = {
+        en: {
+          welcome: 'Welcome',
+          headline: 'Every jump, from the camera card to the film.',
+          lead: 'SkyDock copies what your cameras recorded, sorts it into jumps, and takes it all the way to a finished film in somebody’s inbox. It keeps everything in one folder, so first, choose where.',
+          s1: 'Copy and sort',
+          s1b: 'Plug a card in. Every file is copied and grouped into the jump it belongs to.',
+          s2: 'File it or make a film',
+          s2b: 'Send a jump to its dropzone, or name it and make a montage for the person it is for.',
+          s3: 'Deliver',
+          s3b: 'Trim, upload to your storage, and email the link. The board always shows what is next.',
+          start: 'Start — choose the work folder',
+          suggested: 'Or use {path}',
+          safe: 'Camera cards are only read. Nothing is deleted unless you ask, and you can change the folder later.',
+          folderTitle: 'Your work folder',
+          folderSub: 'One place for everything SkyDock makes.',
+          f1: 'What came off the cameras, as shot, by day.',
+          f2: 'Trimmed, framed copies and the films, by destination and by montage.',
+          f3: 'SkyDock’s record of every jump, file and step, kept with a backup.',
+          room: 'Pick a folder with room to grow — a few hundred gigabytes is common after a season. An external drive works well.',
+          chosenTitle: 'That’s your work folder.',
+          sub: 'SkyDock sets it up when the board opens. Nothing in it is changed.',
+          subFound: 'Work is already kept here — the board opens on it.',
+          change: 'Change',
+          free: 'Space free',
+          found: 'Found here',
+          nothing: 'Nothing yet',
+          work: 'Work from before',
+          open: 'Open the board',
+          then: 'Plug in a camera card and its jumps appear in Fresh files.',
+          opening: 'Opening…',
+          minimise: 'Minimise',
+          maximise: 'Maximise',
+          close: 'Close'
+        },
+        fr: {
+          welcome: 'Bienvenue',
+          headline: 'Chaque saut, de la carte de la caméra au film.',
+          lead: 'SkyDock copie ce que vos caméras ont enregistré, le range en sauts, et le mène jusqu’au film terminé dans la boîte mail de quelqu’un. Il garde tout dans un seul dossier : choisissez d’abord lequel.',
+          s1: 'Copier et ranger',
+          s1b: 'Branchez une carte. Chaque fichier est copié et rangé dans le saut auquel il appartient.',
+          s2: 'Le classer ou en faire un film',
+          s2b: 'Envoyez un saut à sa dropzone, ou nommez-le et faites un montage pour la personne concernée.',
+          s3: 'Livrer',
+          s3b: 'Coupez, envoyez sur votre stockage et envoyez le lien par e-mail. Le tableau montre toujours la suite.',
+          start: 'Commencer — choisir le dossier de travail',
+          suggested: 'Ou utiliser {path}',
+          safe: 'Les cartes des caméras sont seulement lues. Rien n’est supprimé sans votre demande, et vous pourrez changer de dossier plus tard.',
+          folderTitle: 'Votre dossier de travail',
+          folderSub: 'Un seul endroit pour tout ce que SkyDock produit.',
+          f1: 'Ce qui sort des caméras, tel que filmé, par jour.',
+          f2: 'Copies coupées et cadrées et films, par destination et par montage.',
+          f3: 'Le registre de SkyDock : chaque saut, fichier et étape, gardé avec une sauvegarde.',
+          room: 'Choisissez un dossier avec de la place — quelques centaines de gigaoctets après une saison, c’est courant. Un disque externe convient bien.',
+          chosenTitle: 'Voilà votre dossier de travail.',
+          sub: 'SkyDock le prépare à l’ouverture du tableau. Rien dedans n’est modifié.',
+          subFound: 'Du travail est déjà gardé ici — le tableau s’ouvre dessus.',
+          change: 'Changer',
+          free: 'Place libre',
+          found: 'Trouvé ici',
+          nothing: 'Rien pour l’instant',
+          work: 'Travail d’avant',
+          open: 'Ouvrir le tableau',
+          then: 'Branchez une carte de caméra et ses sauts apparaissent dans Nouveaux fichiers.',
+          opening: 'Ouverture…',
+          minimise: 'Réduire',
+          maximise: 'Agrandir',
+          close: 'Fermer'
+        },
+        de: {
+          welcome: 'Willkommen',
+          headline: 'Jeder Sprung, von der Kamerakarte bis zum Film.',
+          lead: 'SkyDock kopiert, was deine Kameras aufgenommen haben, sortiert es in Sprünge und bringt es bis zum fertigen Film in jemandes Postfach. Alles liegt in einem Ordner — wähle zuerst, wo.',
+          s1: 'Kopieren und sortieren',
+          s1b: 'Karte einstecken. Jede Datei wird kopiert und dem Sprung zugeordnet, zu dem sie gehört.',
+          s2: 'Ablegen oder einen Film machen',
+          s2b: 'Schicke einen Sprung zu seiner Dropzone, oder benenne ihn und mache ein Montage für die Person, für die es ist.',
+          s3: 'Liefern',
+          s3b: 'Kürzen, auf deinen Speicher hochladen und den Link per E-Mail senden. Das Board zeigt immer, was als Nächstes kommt.',
+          start: 'Los — Arbeitsordner wählen',
+          suggested: 'Oder {path} verwenden',
+          safe: 'Kamerakarten werden nur gelesen. Nichts wird gelöscht, wenn du es nicht verlangst, und den Ordner kannst du später ändern.',
+          folderTitle: 'Dein Arbeitsordner',
+          folderSub: 'Ein Ort für alles, was SkyDock macht.',
+          f1: 'Was von den Kameras kam, wie aufgenommen, nach Tag.',
+          f2: 'Gekürzte, zugeschnittene Kopien und die Filme, nach Ziel und nach Montage.',
+          f3: 'SkyDocks Aufzeichnung jedes Sprungs, jeder Datei und jedes Schritts, mit Sicherung.',
+          room: 'Wähle einen Ordner mit Platz — nach einer Saison sind einige hundert Gigabyte üblich. Eine externe Festplatte eignet sich gut.',
+          chosenTitle: 'Das ist dein Arbeitsordner.',
+          sub: 'SkyDock richtet ihn ein, wenn das Board sich öffnet. Nichts darin wird verändert.',
+          subFound: 'Hier liegt schon Arbeit — das Board öffnet sich darauf.',
+          change: 'Ändern',
+          free: 'Freier Platz',
+          found: 'Hier gefunden',
+          nothing: 'Noch nichts',
+          work: 'Frühere Arbeit',
+          open: 'Board öffnen',
+          then: 'Kamerakarte einstecken, und ihre Sprünge erscheinen in Neue Dateien.',
+          opening: 'Öffnet…',
+          minimise: 'Minimieren',
+          maximise: 'Maximieren',
+          close: 'Schließen'
+        }
+      }
+      const lang = (navigator.language || 'en').slice(0, 2)
+      const words = WORDS[lang] || WORDS.en
+      for (const el of document.querySelectorAll('[data-t]'))
+        el.textContent = words[el.dataset.t] || ''
+      document.documentElement.lang = WORDS[lang] ? lang : 'en'
+      for (const [name, key] of [
+        ['minimize', 'minimise'],
+        ['toggleMaximize', 'maximise'],
+        ['close', 'close']
+      ]) {
+        const b = document.querySelector('[data-do="' + name + '"]')
+        if (b) b.setAttribute('aria-label', words[key])
+      }
+
+      const host = window.skydock
+      const $ = (id) => document.getElementById(id)
+      if (host && host.frame) {
+        $('frame').hidden = false
+        for (const b of document.querySelectorAll('[data-do]'))
+          b.addEventListener('click', () => host.frame[b.dataset.do]())
+      }
+
+      const size = (bytes) => {
+        if (bytes == null) return '—'
+        const gb = bytes / 1024 ** 3
+        return gb >= 1000 ? (gb / 1024).toFixed(1) + ' TB' : Math.round(gb) + ' GB'
+      }
+
+      const show = (about) => {
+        $('where').textContent = about.folder
+        $('where').title = about.folder
+        $('free').textContent = size(about.free)
+        $('found').textContent = about.found ? words.work : words.nothing
+        $('chosenSub').textContent = about.found ? words.subFound : words.sub
+        $('welcome').hidden = true
+        $('chosen').hidden = false
+        $('open').focus()
+      }
+
+      const choose = async () => {
+        if (!host || !host.welcome) return
+        const about = await host.welcome.choose()
+        if (about) show(about)
+      }
+      $('start').addEventListener('click', choose)
+      $('change').addEventListener('click', choose)
+      $('suggested').addEventListener('click', async () => {
+        const about = await host.welcome.useSuggested()
+        if (about) show(about)
+      })
+      $('open').addEventListener('click', async () => {
+        $('open').disabled = true
+        $('open').firstElementChild.textContent = words.opening
+        const ok = await host.welcome.open()
+        if (!ok) {
+          $('open').disabled = false
+          $('open').firstElementChild.textContent = words.open
+        }
+      })
+      if (host && host.welcome) {
+        host.welcome.suggested().then((about) => {
+          if (about) $('suggested').textContent = words.suggested.replace('{path}', about.folder)
+          else $('suggested').hidden = true
+        })
+      } else $('suggested').hidden = true
+    </script>
+  </body>
+</html>

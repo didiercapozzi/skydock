@@ -40,8 +40,15 @@ processing or a camera copy is running asks first, saying which; keeping on work
 offered first. Another work folder is not offered at all while something is being written into
 this one (below).
 
-The first time it is opened it asks where to keep its work, offering a folder of its own in the
-machine's videos. That answer is remembered, and everything below — the originals, the copies, the
+The first time it is opened it shows a welcome page of its own, before anything else: what SkyDock
+does in three steps, what the work folder will hold — the originals, the copies and films, and the
+record — that camera cards are only read and nothing is deleted unless asked, and one button, _Start_,
+that opens the machine's folder picker on a folder of its own in the machine's videos. A quieter link
+offers that folder as it is. Choosing a folder shows it with how much room is left and whether the work
+of an earlier SkyDock is already in it, with _Change_ and _Open the board_; nothing is created or
+changed in it until the board opens. Closing the picker without choosing leaves the page as it was —
+the work never goes anywhere nobody said. The page speaks English, French or German, as the machine
+does. That answer is remembered, and everything below — the originals, the copies, the
 proxies, the record of it all — is under it. The bin is kept with the work, so a file put aside from
 this machine is moved, never copied from one disk to another; the app's own settings, the storage
 connection among them, are kept apart from the work.
