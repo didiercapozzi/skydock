@@ -82,6 +82,7 @@ const JumpGraph = ({
   moments,
   currentTime,
   duration,
+  view,
   onSeek
 }: {
   track: JumpTrack | null
@@ -90,16 +91,23 @@ const JumpGraph = ({
   moments?: JumpMoments | null
   currentTime: number
   duration: number
+  /* the stretch of the clip the timeline shows, when it is zoomed: the graph shows the same one */
+  view?: { from: number; span: number } | null
   onSeek: (seconds: number) => void
 }) => {
   const frame = useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = useState(false)
 
   const seconds = track?.seconds ?? duration
+  /* the stretch drawn: the whole clip, or what the timeline is zoomed to */
+  const shownSpan = (): [number, number] =>
+    view && view.span > 0 && view.span < seconds ? [view.from, view.span] : [0, seconds || 1]
   const timeAt = (clientX: number) => {
     const box = frame.current?.getBoundingClientRect()
     if (!box || box.width === 0) return 0
-    return Math.min(seconds, Math.max(0, ((clientX - box.left) / box.width) * seconds))
+    const ratio = (clientX - box.left) / box.width
+    const [from, span] = shownSpan()
+    return Math.min(seconds, Math.max(0, from + ratio * span))
   }
 
   const handleDown = (e: React.PointerEvent) => {
@@ -131,7 +139,8 @@ const JumpGraph = ({
     track.force.length - 1,
     Math.max(0, Math.round((currentTime / (seconds || 1)) * track.force.length))
   )
-  const along = (time: number) => `${Math.min(100, Math.max(0, (time / (seconds || 1)) * 100))}%`
+  const [fromAt, spanAt] = shownSpan()
+  const along = (time: number) => `${Math.min(100, Math.max(0, ((time - fromAt) / spanAt) * 100))}%`
 
   const felt = { low: 0, high: FORCE_TO, stroke: 'stroke-sky-400' }
   const force: Line[] = [
@@ -182,6 +191,10 @@ const JumpGraph = ({
     return [{ ...one, from, upto }]
   })
 
+  /* the weakest and the hardest the camera felt across the whole clip */
+  const felt_ = track.force.filter(Number.isFinite)
+  const lowest = felt_.length > 0 ? Math.min(...felt_) : null
+  const highest = felt_.length > 0 ? Math.max(...felt_) : null
   const shown = at(track.altitude, point)
   const fast = at(track.speed, point)
 
@@ -200,7 +213,7 @@ const JumpGraph = ({
         <svg
           width='100%'
           height={HEIGHT}
-          viewBox={`0 0 ${ALONG} ${HEIGHT}`}
+          viewBox={`${(fromAt / (seconds || 1)) * ALONG} 0 ${(spanAt / (seconds || 1)) * ALONG} ${HEIGHT}`}
           preserveAspectRatio='none'
           className='absolute inset-0'>
           {shading.map(({ fill, from, upto }, index) => (
@@ -256,6 +269,15 @@ const JumpGraph = ({
           {shown === null ? '' : ` · ${Math.round(shown)} m`}
           {fast === null ? '' : ` · ${Math.round(fast)} km/h`} · {i18n._(phase.label)}
         </span>
+        {lowest !== null && highest !== null && (
+          <span
+            data-graph-extremes='true'
+            title={t`The least and the most the camera felt in this clip, in gravities`}
+            className='text-ink-2'>
+            {t`min`} <b className='font-semibold text-sky-500'>{lowest.toFixed(2)} g</b> {t`max`}{' '}
+            <b className='font-semibold text-sky-500'>{highest.toFixed(2)} g</b>
+          </span>
+        )}
         {track.altitude ? (
           <>
             <span className='text-amber-500'>{t`— height`}</span>

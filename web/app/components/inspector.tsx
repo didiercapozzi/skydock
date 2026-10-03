@@ -45,7 +45,7 @@ const Shell = ({ children }: { children: React.ReactNode }) => {
         onKeyDown={(e) => {
           if (e.key === 'Escape' && drawer) setDetailsDrawer(false)
         }}
-        className={`flex min-h-0 min-w-0 flex-col overflow-x-hidden overflow-y-auto rounded-[18px] isle-side min-[1101px]:shadow-card transition-[translate,visibility] duration-300 ease-out motion-reduce:transition-none max-[1100px]:fixed max-[1100px]:inset-y-0 max-[1100px]:right-0 max-[1100px]:z-30 max-[1100px]:w-[min(340px,90vw)] max-[1100px]:shadow-[0_0_40px_rgba(0,0,0,0.25)] min-[1101px]:col-start-5 min-[1101px]:row-span-2 min-[1101px]:row-start-1 ${
+        className={`flex min-h-0 min-w-0 flex-col overflow-x-hidden overflow-y-auto rounded-[18px] isle-side min-[1101px]:rounded-l-none min-[1101px]:rounded-b-none min-[1101px]:border-l min-[1101px]:border-line-2 min-[1101px]:shadow-card transition-[translate,visibility] duration-300 ease-out motion-reduce:transition-none max-[1100px]:fixed max-[1100px]:inset-y-0 max-[1100px]:right-0 max-[1100px]:z-30 max-[1100px]:w-[min(340px,90vw)] max-[1100px]:shadow-[0_0_40px_rgba(0,0,0,0.25)] min-[1101px]:col-start-5 min-[1101px]:row-span-2 min-[1101px]:row-start-1 ${
           drawer ? '' : 'max-[1100px]:invisible max-[1100px]:translate-x-full'
         } ${column ? '' : 'min-[1101px]:invisible'}`}>
         {/* as wide as the column is when open, so what is inside slides out of view rather than
@@ -862,13 +862,10 @@ const FilePanel = ({
   )
 }
 
-/* the pictures of what was picked, front to back: each further one is shown a little higher and to the
-   right of the one before it, and fainter */
-const STACK = [
-  { left: 0, top: 20, right: 38, boxShadow: '0 10px 30px rgba(0,0,0,0.25)' },
-  { left: 19, top: 10, right: 19, opacity: 0.8 },
-  { left: 38, top: 0, right: 0, opacity: 0.55 }
-]
+/* how many of what was picked are shown as pictures at the top, and in how many columns: a few are
+   shown large, many small, and what does not fit is counted on the last tile */
+const SHOWN = 9
+const columnsFor = (count: number) => (count <= 1 ? 1 : count <= 4 ? 2 : 3)
 
 /* Several files: what they add up to, and where they all go. */
 const ManyPanel = ({
@@ -903,24 +900,34 @@ const ManyPanel = ({
   const notYet = tallied[0]?.[1] ?? 0
   return (
     <>
-      {/* the first few, fanned out behind one another, so what was picked is seen and not only
-          counted */}
-      <div className='relative mx-4 mt-[18px] h-[190px] flex-none'>
-        {STACK.slice(0, files.length)
-          .map((layer, at) => ({ layer, file: files[at] }))
-          .reverse()
-          .map(({ layer, file }) =>
-            file ? (
-              <img
+      {/* what was picked, as pictures in the order it was shot — enough of them to tell the files apart at
+          a glance, the rest counted on the last tile */}
+      <div
+        className='mx-4 mt-[18px] grid flex-none gap-1.5'
+        style={{ gridTemplateColumns: `repeat(${columnsFor(files.length)}, minmax(0, 1fr))` }}>
+        {[...files]
+          .sort((a, b) => a.mtime - b.mtime)
+          .slice(0, SHOWN)
+          .map((file, at, shown) => {
+            const more = files.length - shown.length
+            return (
+              <span
                 key={file.id ?? file.path}
-                src={getPictureUrl(file, undefined, 480)}
-                alt=''
-                loading='lazy'
-                style={layer}
-                className='absolute h-[170px] rounded-[14px] bg-well object-cover'
-              />
-            ) : null
-          )}
+                className='relative block aspect-[4/3] overflow-hidden rounded-[12px] bg-well'>
+                <img
+                  src={getPictureUrl(file, undefined, 320)}
+                  alt=''
+                  loading='lazy'
+                  className='absolute inset-0 h-full w-full object-cover'
+                />
+                {more > 0 && at === shown.length - 1 && (
+                  <span className='absolute inset-0 grid place-items-center bg-black/55 text-[15px] font-bold text-white'>
+                    +{more}
+                  </span>
+                )}
+              </span>
+            )
+          })}
       </div>
       <Who
         eyebrow={where ? t`Picked in ${where}` : t`Picked`}

@@ -126,12 +126,14 @@ const useFolder = (model: BoardModel, place: Place) => {
   /* By jump, the jumps are cards and one is open: the one last chosen while it is still here, or
      else the first. Only its files are on screen. */
   const cards = cardsOf(sections)
-  /* In Fresh files the jumps are tiles to choose from and none is open to begin with: what is listed
-     under them is the loose files, and a jump's own files are brought up from its panel. */
+  /* In Fresh files the jumps are tiles to choose from, and what is open to begin with is the loose
+     files, when there are any — the first thing there is to file. A jump's own files are brought up from
+     its panel. */
   const plain = place.kind === 'sort' && grouping === 'jump'
   const openCard =
     grouping === 'jump'
-      ? (cards.find((s) => s.key === looking.card) ?? (plain ? undefined : cards[0]))
+      ? (cards.find((s) => s.key === looking.card) ??
+        (plain ? cards.find((s) => s.kind === 'loose') : cards[0]))
       : undefined
   return {
     plain,

@@ -457,7 +457,7 @@ choice of kind: each file is a row with its picture, name, time and size, and a 
 the storage is folded into one line, opened by a click; each row is a box of its own. Fresh files shows
 its jumps as white tiles, three pictures side by side over the jump's name, its day and time, what it holds
 and a "to file" tag, and the files in no jump as one more card among them, without pictures, with one
-button to group the loose files into jumps. No card is chosen to begin with. Choosing one lights it and
+button to group the loose files into jumps. Opening Fresh files from the rail chooses the loose files' card, when there are any, since they are the first thing there is to file; with none, no card is chosen to begin with. Choosing one lights it and
 lists under the cards only that card's files — a jump's own, or the loose ones — so each can be looked at.
 
 **The panel on the right says nothing that the page already says.** With nothing selected, a destination's
@@ -469,6 +469,7 @@ its picture across the top, its name, its state, then its facts a line each — 
 how the picture was changed — then what can be done with it, one wide row each (_Trim, frame or turn…_,
 _Move to…_), with putting it in the bin small at the foot; a file that is also on the storage shows where, in
 a green box with a way to open it there. A montage's panel does not repeat the steps its page shows.
+A group of picked files puts several of their pictures across the top, up to nine in the order they were shot — larger when few, smaller when many — with what does not fit counted on the last tile, then how many files, their total size and the times they span.
 
 **The places.** Three places of work: _Fresh files_, a single entry holding everything off the
 cameras that is not filed yet; _Destinations_, one entry per destination, and _Add a destination…_,
@@ -1180,7 +1181,9 @@ canopy ride, the ground — and the marks in their places. The measurement is dr
 the jump's shape over it, since freefall buffets a camera hard enough to hide the shape of anything.
 It is tied to the frame on screen and dragged like the timeline: a point dragged along the graph
 moves the footage to that instant, and the graph reads out what that instant weighed and which part
-of the jump it belongs to.
+of the jump it belongs to. Zooming the timeline zooms the graph to the same stretch of the clip, and
+the drag along it is read against that stretch. Under the graph it also says the least and the most the camera felt across
+the whole clip, in g, whatever frame is on screen.
 
 How high and how fast are drawn beside it whenever a camera wrote them down, in metres and kilometres
 an hour. Only satellites know either, so a camera with its receiver off, or without one, says nothing

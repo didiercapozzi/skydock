@@ -316,6 +316,8 @@ const PreviewDrawer = ({
   const file = files[index]
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [playing, setPlaying] = useState(false)
+  /* the stretch of the clip the timeline shows, which the jump's graph shows too */
+  const [view, setView] = useState<{ from: number; span: number } | null>(null)
   /* the clip's own pixel size, read off the video once it has loaded — a ratio is measured against
      the picture, and until it is known the rectangle cannot be shaped */
   const [shape, setShape] = useState({ width: 16, height: 9 })
@@ -851,6 +853,7 @@ const PreviewDrawer = ({
                   onCropChange={locked ? () => {} : onCropChange}
                   onApply={locked ? () => {} : onApply}
                   onZoomChange={onZoomChange}
+                  onView={setView}
                 />
                 {/* The jump itself, drawn against the same clip and dragged the same way: the force
                     the camera felt, the phases behind it, and the height and speed when the camera
@@ -861,6 +864,7 @@ const PreviewDrawer = ({
                   moments={shownMoments}
                   currentTime={currentTime}
                   duration={duration}
+                  view={view}
                   onSeek={onSeek}
                 />
               </>

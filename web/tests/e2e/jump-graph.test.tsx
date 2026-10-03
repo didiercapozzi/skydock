@@ -32,9 +32,11 @@ const moments = { exit: 38, opening: 98, canopy: 101.6, landing: 192 }
 const Graph = ({
   currentTime = 0,
   onSeek = () => {},
+  view,
   ...over
 }: {
   currentTime?: number
+  view?: { from: number; span: number }
   onSeek?: (seconds: number) => void
   altitude?: (number | null)[]
   speed?: (number | null)[]
@@ -45,6 +47,7 @@ const Graph = ({
     moments,
     currentTime,
     duration: SECONDS,
+    view,
     onSeek
   })
 
@@ -67,6 +70,14 @@ describe('the jump on a graph', () => {
     await expect.element(page.getByText(/freefall/)).toBeVisible()
   })
 
+  /* the least and the most the camera felt across the whole clip, whatever frame is on screen */
+  test('says the least and the most the camera felt', async () => {
+    await render(createElement(Graph, { currentTime: 0 }))
+
+    const extremes = document.querySelector('[data-graph-extremes]')
+    await expect.poll(() => extremes?.textContent ?? document.querySelector('[data-graph-extremes]')?.textContent).toMatch(/min 0\.35 g max 2\.20 g/)
+  })
+
   test('says which part of the jump the opening is, once the frame reaches it', async () => {
     await render(createElement(Graph, { currentTime: 99 }))
     await expect.element(page.getByText(/the opening/)).toBeVisible()
@@ -87,6 +98,25 @@ describe('the jump on a graph', () => {
     /* halfway along two hundred seconds */
     expect(asked).toBeGreaterThan(80)
     expect(asked).toBeLessThan(120)
+  })
+
+  /* zoomed in on the timeline, the graph shows the same stretch, and a drag along it is read against it */
+  test('shows the stretch the timeline is zoomed to, and seeks within it', async () => {
+    const moved = vi.fn()
+    await render(createElement(Graph, { onSeek: moved, view: { from: 100, span: 50 } }))
+    const svg = document.querySelector('[data-jump-graph] svg')
+    /* 100 s of 200 along a width of 1000, and a quarter of it wide */
+    expect(svg?.getAttribute('viewBox')).toBe('500 0 250 96')
+    const box = (graph().element() as HTMLElement).getBoundingClientRect()
+
+    await userEvent.dragAndDrop(graph(), graph(), {
+      targetPosition: { x: box.width * 0.5, y: box.height / 2 }
+    })
+
+    const asked = moved.mock.calls[moved.mock.calls.length - 1][0]
+    /* halfway along a stretch from 100 s to 150 s */
+    expect(asked).toBeGreaterThan(120)
+    expect(asked).toBeLessThan(130)
   })
 
   test('carries height and speed when the camera wrote them down', async () => {

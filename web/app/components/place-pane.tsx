@@ -163,7 +163,7 @@ const PlacePane = ({
         e.preventDefault()
         onImport(carried, incoming.target, incoming.where)
       }}
-      className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-b-[18px] isle-pane shadow-card max-[780px]:rounded-[18px] min-[781px]:col-start-3 min-[781px]:row-start-2'>
+      className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-b-[18px] isle-pane shadow-card max-[780px]:rounded-[18px] min-[781px]:rounded-b-none min-[781px]:border-l min-[781px]:border-line-2 min-[781px]:col-start-3 min-[781px]:row-start-2'>
       {/* a page's own head, or the plain one: one row, the folder's name and count and at the right
           everything that acts on it — narrowing by name, the ways of arranging it, kinds, and the
           folder's own tools */}

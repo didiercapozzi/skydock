@@ -124,6 +124,25 @@ describe('a jump in Fresh files', () => {
   })
 })
 
+describe('a group of picked files', () => {
+  /* what was picked is shown as pictures at the top of the panel, enough to tell the files apart, and
+     what does not fit is counted on the last tile */
+  test('shows several pictures at the top of the panel, and counts what does not fit', async () => {
+    const many = Array.from({ length: 12 }, (_, at) => file(`m${at}`, AT + at * 60))
+    await renderBoard({ groups: [] }, '/', { ...board, groups: [{ ...FRESH_JUMP, files: many }] })
+    await userEvent.click(card(/^Sunset load, /))
+    await userEvent.click(page.getByRole('button', { name: /m0\.MP4/ }).last())
+    for (let at = 1; at < 12; at++)
+      await userEvent.click(page.getByRole('button', { name: new RegExp(`m${at}\\.MP4`) }).last(), {
+        modifiers: ['ControlOrMeta']
+      })
+
+    await expect.element(details().getByText('11 files')).toBeVisible()
+    await expect.poll(() => details().element().querySelectorAll('img').length).toBe(9)
+    await expect.element(details().getByText('+2')).toBeVisible()
+  })
+})
+
 describe('picked files in Fresh files', () => {
   test('named, are made a montage, and the board goes to it', async () => {
     await renderBoard({
@@ -141,6 +160,16 @@ describe('picked files in Fresh files', () => {
 
     expect(sent[0]).toMatchObject({ intent: 'make-montage', fileIds: ['a', 'b'], name: 'Boogie 2026' })
     await expect.element(pageHeading('Boogie 2026')).toBeVisible()
+  })
+
+  /* Fresh files opens on the loose files when there are any: the first thing there is to file */
+  test('opens Fresh files on its loose files, without a click', async () => {
+    await renderBoard({ groups: [FRESH_JUMP, montage(['Solo', ''], [file('solo', AT + 9000)])] })
+
+    await expect
+      .element(page.getByRole('button', { name: /^Loose files/ }).first())
+      .toHaveAttribute('aria-pressed', 'true')
+    await expect.element(page.getByRole('button', { name: /solo\.MP4/ }).last()).toBeVisible()
   })
 
   test('one file on its own can be made a montage', async () => {

@@ -2669,6 +2669,10 @@ msgstr "Mark as sent"
 msgid "Marks found {read}/{clips}"
 msgstr "Marks found {read}/{clips}"
 
+#: app/components/jump-graph.tsx
+msgid "max"
+msgstr "max"
+
 #: app/components/window-bar.tsx
 msgid "Maximise"
 msgstr "Maximise"
@@ -2680,6 +2684,10 @@ msgstr "Merge"
 #: app/components/comparison-dialog.tsx
 msgid "Merge date"
 msgstr "Merge date"
+
+#: app/components/jump-graph.tsx
+msgid "min"
+msgstr "min"
 
 #: app/components/window-bar.tsx
 msgid "Minimise"
@@ -4174,6 +4182,10 @@ msgstr "the kdenlive project, and the record of what went where"
 #: app/components/history-dialog.tsx
 msgid "The last changes made on the board, the latest first. Going back to before one undoes it and every change after it — the jumps, names and trims; no file on the disk or on the storage is touched."
 msgstr "The last changes made on the board, the latest first. Going back to before one undoes it and every change after it — the jumps, names and trims; no file on the disk or on the storage is touched."
+
+#: app/components/jump-graph.tsx
+msgid "The least and the most the camera felt in this clip, in gravities"
+msgstr "The least and the most the camera felt in this clip, in gravities"
 
 #: app/components/email-dialog.tsx
 msgid "The link as a QR code, for a phone to take it now"

@@ -322,7 +322,14 @@ const ensureProxies = async (
 ) => {
   const report: ProxyReport = { built: 0, skipped: 0, failed: [] }
   const candidates = manifest.files.filter(needsProxy)
-  if (candidates.length === 0 || !hasCommand('ffmpeg')) return report
+  if (candidates.length === 0) return report
+  /* no ffmpeg: every clip is settled with that as its reason, not left to look as though one is coming */
+  if (!hasCommand('ffmpeg')) {
+    for (const file of candidates)
+      if (!fs.existsSync(getProxyPath(file, outputDir) ?? '') && file.proxy !== file.path)
+        proxyFailures().set(file.path, 'ffmpeg is not installed, so no small copy can be made')
+    return report
+  }
 
   for (const [index, file] of candidates.entries()) {
     onProgress?.(index, candidates.length, file.filename)
@@ -336,7 +343,11 @@ const ensureProxies = async (
       report.skipped++
       continue
     }
-    if (!fs.existsSync(file.path)) continue
+    /* an original that is not here cannot be copied small: said, so the clip does not wait for ever */
+    if (!fs.existsSync(file.path)) {
+      proxyFailures().set(file.path, 'The original is not on this machine')
+      continue
+    }
     const shape = await videoShape(file.path)
     /* already smaller than the proxy would be — the clip is its own proxy */
     if (shape !== null && shownWidth(shape) <= PROXY_MIN_WIDTH) {
@@ -507,7 +518,9 @@ const statProxies = (manifest: Manifest, outputDir?: string) => {
     else if (proxyPath && fs.existsSync(proxyPath))
       facts[file.path] = { state: 'ready', play: proxyPath }
     else {
-      const reason = proxyFailures().get(file.path)
+      const reason =
+        proxyFailures().get(file.path) ??
+        (fs.existsSync(file.path) ? undefined : 'The original is not on this machine')
       facts[file.path] = { state: 'none', play: file.path, ...(reason ? { reason } : {}) }
     }
   }

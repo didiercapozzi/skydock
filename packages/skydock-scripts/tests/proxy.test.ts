@@ -377,6 +377,18 @@ describe('what the board is told about each proxy', () => {
     })
   })
 
+  /* a clip nothing will ever make a small copy of must not read as one that is still coming: the footer
+     would count it as waiting for ever */
+  it('says why a clip whose original is not here has none, so it is not left waiting', () => {
+    const src = path.join(outputDir, 'original_files', 'GONE.MP4')
+    const manifest = manifestOf([fileEntry(src, 'gone1')])
+
+    expect(statProxies(manifest, outputDir)[src]).toMatchObject({
+      state: 'none',
+      reason: 'The original is not on this machine'
+    })
+  })
+
   it('marks a clip that has none yet', async () => {
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123')])

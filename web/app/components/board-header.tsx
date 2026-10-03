@@ -100,7 +100,7 @@ const BoardHeader = ({
     window.location.reload()
   }
   return (
-    <header className='flex h-14 flex-none items-center gap-1 rounded-t-[18px] border-b border-line-2 isle-head px-3.5 shadow-card max-[780px]:rounded-[18px] max-[780px]:border-b-0 min-[781px]:col-start-3 min-[781px]:row-start-1'>
+    <header className='flex h-14 flex-none items-center gap-1 rounded-t-[18px] border-b border-line-2 isle-head px-3.5 shadow-card max-[780px]:rounded-[18px] max-[780px]:border-b-0 min-[781px]:rounded-tl-none min-[781px]:border-l min-[1101px]:group-data-[docked]:rounded-tr-none min-[781px]:col-start-3 min-[781px]:row-start-1'>
       <button
         type='button'
         disabled={scanning}
@@ -307,7 +307,7 @@ const StatusBar = ({
   const user = nas.user
   const item = 'inline-flex h-5 items-center gap-[7px] whitespace-nowrap'
   return (
-    <footer className='mx-2.5 mb-2 flex h-[30px] flex-none items-center gap-5 rounded-[12px] bg-pane px-3.5 text-[11.5px] shadow-card font-semibold text-ink-2'>
+    <footer className='mx-2.5 mb-2 flex h-[30px] flex-none items-center gap-5 rounded-[12px] border-t border-line-2 bg-pane px-3.5 min-[781px]:rounded-t-none text-[11.5px] shadow-card font-semibold text-ink-2'>
       {/* Who the storage was connected as, and where: the same question a NAS asks at its own
           login, answered on the board rather than left to be remembered. */}
       <span

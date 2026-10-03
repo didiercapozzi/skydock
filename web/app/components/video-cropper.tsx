@@ -29,6 +29,8 @@ type VideoCropperProps = {
   onCropChange: (range: { cropStart: number | null; cropEnd: number | null }) => void
   onApply: (range: { cropStart: number | null; cropEnd: number | null }) => void
   onZoomChange: (zoom: number) => void
+  /* the stretch of the clip the bar shows now, so what is drawn beside it can show the same stretch */
+  onView?: (view: { from: number; span: number }) => void
 }
 
 const THUMB_COUNT = 8
@@ -60,7 +62,8 @@ const VideoCropper = ({
   onSeek,
   onCropChange,
   onApply,
-  onZoomChange
+  onZoomChange,
+  onView
 }: VideoCropperProps) => {
   const barRef = useRef<HTMLDivElement | null>(null)
   const draggingRef = useRef<'start' | 'end' | 'playhead' | Moment | null>(null)
@@ -87,6 +90,9 @@ const VideoCropper = ({
   }
 
   const { offset, visibleDuration: vd } = computeVisibleRange(viewOffset)
+  useEffect(() => {
+    onView?.({ from: offset, span: vd })
+  }, [offset, vd])
 
   const timeFromPosition = (clientX: number) => {
     const el = barRef.current
