@@ -1,11 +1,13 @@
 import { plural, t } from '@lingui/core/macro'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { binAnswerSchema } from '../../../packages/skydock-scripts/src/binEntry'
-import type { BinBatch, BinFile } from '../../../packages/skydock-scripts/src/binEntry'
+import type { BinBatch } from '../../../packages/skydock-scripts/src/binEntry'
 import { isVideoFile } from '@skydock/scripts'
-import { routingEngine } from '../helpers/routing'
+import { usePicked } from '../hooks/usePicked'
+import { useLoaded } from '../hooks/useLoaded'
 import { Go } from './buttons'
-import { TD, TH, Tick } from './camera-files'
+import { Empty, Looking, Problem } from './blurbs'
+import { TD, TH, Tick } from './file-table'
 import { Icon } from './icons'
 import { Spacer } from './modal'
 import { dateLabel, formatSize, getThumbUrl, hhmm } from './utils'
@@ -47,34 +49,18 @@ const BinFiles = ({
   bringing: boolean
   onBringBack: (paths: string[]) => void
 }) => {
-  const [answered, setAnswered] = useState<{ dir: string; batches: BinBatch[] } | null>(null)
-  const [problem, setProblem] = useState<string | null>(null)
-  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const { picked, setPicked, toggle } = usePicked()
   /* what was asked back leaves the list at once, not once the scan behind it is done */
   const [asked, setAsked] = useState<Set<string>>(new Set())
 
   /* Read when the page opens, and again once files have come back — never while they are on their
      way, when the bin is half moved. */
-  useEffect(() => {
-    if (bringing) return
-    let cancelled = false
-    routingEngine
-      .loader({ url: '/api/bin' })
-      .then((raw) => {
-        if (cancelled) return
-        const parsed = binAnswerSchema.safeParse(raw)
-        if (parsed.success) {
-          setAnswered(parsed.data)
-          setAsked(new Set())
-        } else setProblem(t`What is in the bin could not be read.`)
-      })
-      .catch(() => {
-        if (!cancelled) setProblem(t`What is in the bin could not be read.`)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [stamp, bringing])
+  const { data: answered, problem } = useLoaded('/api/bin', binAnswerSchema, {
+    failed: t`What is in the bin could not be read.`,
+    skip: bringing,
+    deps: [stamp],
+    onData: () => setAsked(new Set())
+  })
 
   const batches = (answered?.batches ?? [])
     .map((batch) => ({ ...batch, files: batch.files.filter((f) => !asked.has(f.path)) }))
@@ -83,12 +69,6 @@ const BinFiles = ({
   const chosen = files.filter((f) => picked.has(f.path))
   const count = files.length
   const picks = chosen.length
-  const toggle = (file: BinFile) => {
-    const next = new Set(picked)
-    if (next.has(file.path)) next.delete(file.path)
-    else next.add(file.path)
-    setPicked(next)
-  }
 
   return (
     <section
@@ -137,19 +117,11 @@ const BinFiles = ({
           </span>
         </p>
       )}
-      {problem && (
-        <p
-          role='alert'
-          className='m-0 rounded-xl bg-local-soft px-3.5 py-2.5 text-[12.5px] text-local'>
-          {problem}
-        </p>
-      )}
+      {problem && <Problem>{problem}</Problem>}
       {answered === null && !problem ? (
-        <p className='m-0 px-0.5 text-[12.5px] text-ink-3'>{t`Looking in the bin…`}</p>
+        <Looking>{t`Looking in the bin…`}</Looking>
       ) : answered && batches.length === 0 ? (
-        <p className='m-0 rounded-2xl border-2 border-dashed border-line-strong px-3 py-5 text-center text-[12.5px] text-ink-3'>
-          {t`The bin is empty.`}
-        </p>
+        <Empty>{t`The bin is empty.`}</Empty>
       ) : (
         <table className='w-full table-fixed border-collapse text-[12.5px]'>
           <thead>
@@ -184,14 +156,14 @@ const BinFiles = ({
                   /* the whole line picks, as a box's label would; the box itself answers its own
                      click */
                   onClick={(e) => {
-                    if (!(e.target instanceof HTMLInputElement)) toggle(file)
+                    if (!(e.target instanceof HTMLInputElement)) toggle(file.path)
                   }}
                   className={`cursor-pointer ${picked.has(file.path) ? 'bg-accent-soft' : 'hover:bg-well'}`}>
                   <td className={TD}>
                     <Tick
                       label={pickLabel(file.name)}
                       checked={picked.has(file.path)}
-                      onChange={() => toggle(file)}
+                      onChange={() => toggle(file.path)}
                     />
                   </td>
                   <td className={TD}>

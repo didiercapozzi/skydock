@@ -3,6 +3,7 @@ import { plural, t } from '@lingui/core/macro'
 import { Danger, Mini } from './buttons'
 import { Line, Modal, Spacer } from './modal'
 import { formatFilmSize } from './utils'
+import { Note } from './blurbs'
 
 /* Freeing a dropzone deletes its originals from this machine, and what went up of it is the copies,
    so the dialog says before anything happens what is proved, what is deleted — naming how many files
@@ -75,9 +76,9 @@ const FreePlaceDialog = ({
         )}
       </ul>
 
-      <p className='m-0 rounded-[10px] bg-local-soft px-2.5 py-2 text-[12px] text-ink-2'>
+      <Note>
         {t`After this those files live on the storage only: they cannot be processed, moved or uploaded again from here, and a rescan leaves them as they are. If any check fails, nothing at all is deleted, and it says which.`}
-      </p>
+      </Note>
     </Modal>
   )
 }

@@ -16,6 +16,7 @@ import {
   idsOf
 } from '@skydock/scripts'
 import { boardAnswer } from '../../helpers/manifest'
+import { connectFirst } from './change'
 import type { Change, Intent } from './change'
 import { uploadReporter } from './progress'
 
@@ -39,7 +40,7 @@ const uploadGroup: Intent = async ({ data, manifest, manifestPath, outputDir, re
   /* a stored session is only a session if DSM still takes it — this is also what lets an expired
      one refresh itself instead of failing the upload */
   const session = await ensureNasSession()
-  if (!session) return refuse('Not connected to the storage. Please connect first.')
+  if (!session) return refuse(connectFirst())
   /* the same rule the button uses, so the server never accepts what the board would refuse — and
      catches a file that changed between the click and the request */
   const outputs = statProcessedOutputs(manifest)

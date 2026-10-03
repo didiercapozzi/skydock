@@ -1,6 +1,5 @@
 import {
   ensureNasSession,
-  processingNow,
   saveManifest,
   earlierMontagesDirs,
   montagesRemoteDir,
@@ -9,6 +8,7 @@ import {
 import { freeMontage, markFreed } from '../../../../packages/skydock-scripts/src/freeMontage'
 import { entryOfMontage, upsert } from '../../../../packages/skydock-scripts/src/montageIndex'
 import { boardAnswer } from '../../helpers/manifest'
+import { connectFirst } from './change'
 import type { Intent } from './change'
 import { recordOnStorage } from './storage'
 
@@ -20,12 +20,13 @@ const freeMontageIntent: Intent = async ({
   manifestPath,
   outputDir,
   refuse,
+  refuseBusy,
   latest
 }) => {
   const session = await ensureNasSession()
-  if (!session)
-    return refuse('Connect the storage first — freeing needs it to prove it holds the files.')
-  if (processingNow()) return refuse('Something is being processed — wait for it to finish.')
+  if (!session) return refuse(connectFirst('freeing needs it to prove it holds the files'))
+  const busy = refuseBusy()
+  if (busy) return busy
   try {
     const result = await freeMontage({ manifest, outputDir, groupId: data.groupId ?? '', session })
     /* checking gigabytes takes a while; whatever was saved meanwhile is kept */

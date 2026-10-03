@@ -514,6 +514,5 @@ export {
   HandedOver,
   MontageAbove,
   MontageActions,
-  MontageEnd,
-  filmPicture
+  MontageEnd
 }

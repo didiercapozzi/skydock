@@ -9,6 +9,7 @@ import {
 import { normalizeNasPath } from '../../../../packages/skydock-scripts/src/nas'
 import { withinStorage } from '../../../../packages/skydock-scripts/src/storageFolder'
 import { boardAnswer } from '../../helpers/manifest'
+import { connectFirst } from './change'
 import type { Intent } from './change'
 
 /* A destination's folder on the storage handed out by a link — made, or taken away — by hand: uploading
@@ -16,7 +17,7 @@ import type { Intent } from './change'
    (RULES, Principles). A link the storage already has is handed back rather than a second one made. */
 const destinationLink: Intent = async ({ data, manifestPath, latest, refuse }) => {
   const session = await ensureNasSession()
-  if (!session || !data.link) return refuse('Connect the storage first.')
+  if (!session || !data.link) return refuse(connectFirst())
   const { folder, make } = data.link
   const board = latest()
   const place = (board.destinations ?? []).find(

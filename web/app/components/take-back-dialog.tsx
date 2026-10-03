@@ -4,6 +4,7 @@ import { Line, Modal, Spacer } from './modal'
 import { formatFilmSize } from './utils'
 import type { MontageFact } from '@skydock/scripts'
 import type { ManifestGroup } from './types'
+import { Note } from './blurbs'
 
 /* Resetting or deleting a montage throws away work, some of which only a person can make again — the
    edit above all. So the dialog says exactly what goes and what stays before anything does, and the
@@ -98,12 +99,12 @@ const TakeBackDialog = ({
         )}
       </ul>
 
-      <p className='m-0 rounded-[10px] bg-local-soft px-2.5 py-2 text-[12px] text-ink-2'>
+      <Note>
         {t`The original files are never touched, and nothing is deleted from the storage:`}{' '}
         {uploaded
           ? t`what was uploaded stays there until someone removes it by hand.`
           : t`SkyDock never deletes anything up there.`}
-      </p>
+      </Note>
     </Modal>
   )
 }

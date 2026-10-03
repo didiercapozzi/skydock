@@ -1,9 +1,10 @@
-import { ensureNasSession, processingNow, saveManifest, messageOf } from '@skydock/scripts'
+import { ensureNasSession, saveManifest, messageOf } from '@skydock/scripts'
 import {
   freeDropzone,
   markDropzoneFreed
 } from '../../../../packages/skydock-scripts/src/freeDropzone'
 import { boardAnswer } from '../../helpers/manifest'
+import { connectFirst } from './change'
 import type { Intent } from './change'
 
 /* Delete what of a dropzone is on the storage from this machine, once the storage is proved to hold
@@ -14,13 +15,14 @@ const freeDropzoneIntent: Intent = async ({
   manifestPath,
   outputDir,
   refuse,
+  refuseBusy,
   latest
 }) => {
   const destination = data.destination ?? ''
   const session = await ensureNasSession()
-  if (!session)
-    return refuse('Connect the storage first — freeing needs it to prove it holds the files.')
-  if (processingNow()) return refuse('Something is being processed — wait for it to finish.')
+  if (!session) return refuse(connectFirst('freeing needs it to prove it holds the files'))
+  const busy = refuseBusy()
+  if (busy) return busy
   try {
     const result = await freeDropzone({ manifest, outputDir, destination, session })
     /* checking gigabytes takes a while; whatever was saved meanwhile is kept */

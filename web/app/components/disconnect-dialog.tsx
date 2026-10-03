@@ -1,6 +1,7 @@
 import { t } from '@lingui/core/macro'
 import { Go, Mini } from './buttons'
 import { Line, Modal, Spacer } from './modal'
+import { Note } from './blurbs'
 
 /* Disconnecting asks first. It costs nothing on the storage and nothing on this machine, but it
    costs the way back in: connecting again wants the password and, on an account with two-step
@@ -50,9 +51,9 @@ const DisconnectDialog = ({
         </Line>
       </ul>
 
-      <p className='m-0 rounded-[10px] bg-local-soft px-2.5 py-2 text-[12px] text-ink-2'>
+      <Note>
         {t`Connecting again asks for the password — and for a code off your phone, if the account has two-step verification.`}
-      </p>
+      </Note>
     </Modal>
   )
 }

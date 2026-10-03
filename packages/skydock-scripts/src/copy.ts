@@ -7,7 +7,7 @@ import { findMediaFiles, sameBytes } from './lib/fs'
 import { loadManifest } from './manifest'
 import { shotTimes } from './scan'
 import type { Manifest, ManifestFile } from './types'
-import { getManifestPath, getOutputDir, isCliModule } from './utils'
+import { getManifestPath, getOutputDir, isCliModule, sizeOf } from './utils'
 
 /* Copying off a camera, into the originals: every file into a folder named after the day it was
    shot, and never anything written back to the camera (RULES, The workflow). */
@@ -37,14 +37,6 @@ type CopyProgress = {
 /* what a file copied off is known by, where it landed and when it was shot — for whoever puts it on
    the board */
 type Copied = { dest: string; id: string; shot: number }
-
-const sizeOf = (file: string) => {
-  try {
-    return fs.statSync(file).size
-  } catch {
-    return 0
-  }
-}
 
 /* the folder an original is filed under: the local calendar day it was shot */
 const dayFolder = (epoch: number) => {
@@ -318,7 +310,6 @@ export {
   alreadyThere,
   copyBack,
   copyCamera,
-  copyFromCameras,
   dayFoldersOf,
   landingFor,
   freedAlready,

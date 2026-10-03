@@ -10,7 +10,7 @@ import {
 import { buildExifMap, readExifMap } from './lib/exif'
 import { loadManifest, MANIFEST_VERSION, saveManifest } from './manifest'
 import { computeFileId } from './fileId'
-import { writeJsonAtomic } from './lib/fs'
+import { mtimeOf, writeJsonAtomic } from './lib/fs'
 import { z } from 'zod'
 import { groupNewFiles, reclusterGroups } from './clustering'
 import { catchUp } from './catchUp'
@@ -50,7 +50,7 @@ const getCaptureEpoch = (filepath: string, timeMap: Map<string, string>) => {
   }
 
   try {
-    return Math.floor(fs.statSync(filepath).mtimeMs / 1000)
+    return mtimeOf(filepath)
   } catch {
     return 0
   }

@@ -4,6 +4,7 @@ import {
   getManifestPath,
   getOutputDir,
   loadManifest,
+  processingNow,
   idsOf
 } from '@skydock/scripts'
 import type { BoardAnswer, Manifest } from '@skydock/scripts'
@@ -25,6 +26,8 @@ type Change = {
   frozenFiles: Set<string>
   refuse: (message: string) => Refusal
   refuseFrozen: () => Refusal
+  /* refuses while something is being processed, when that is so — nothing may be moved or removed under it */
+  refuseBusy: () => Refusal | null
   /* The board as it is on the disk now. A change that waits on anything — the storage, a copy, a
      cut — makes its own change on this, read after the wait, and saves that: saving the board read
      before it would undo whatever was written meanwhile, a file off a camera or a proxy finished. */
@@ -49,9 +52,15 @@ const changeOn = (manifest: Manifest, data: ActionData, refuse: (message: string
     frozenFiles,
     refuse,
     refuseFrozen: () => refuse(EDIT_LOCKED),
+    refuseBusy: () =>
+      processingNow() ? refuse('Something is being processed — wait for it to finish.') : null,
     latest: () => loadManifest(getManifestPath(outputDir)) ?? manifest
   }
 }
 
-export { changeOn }
+/* what is said when the storage is needed and not connected, and why it is needed where that helps */
+const connectFirst = (because?: string) =>
+  `Connect the storage first${because ? ` — ${because}` : ''}.`
+
+export { changeOn, connectFirst }
 export type { Change, Intent, Refusal }

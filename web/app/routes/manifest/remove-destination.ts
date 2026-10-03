@@ -1,4 +1,4 @@
-import { processingNow, saveManifest } from '@skydock/scripts'
+import { saveManifest } from '@skydock/scripts'
 import {
   hasDestination,
   removeDestination
@@ -14,11 +14,19 @@ import type { Intent } from './change'
    an uploaded jump would leave the board saying it belongs nowhere while the storage says otherwise.
    Not while something is being processed, because what is being written is being written into that
    place's folder. */
-const removeDestinationIntent: Intent = ({ data, manifest, manifestPath, frozen, refuse }) => {
+const removeDestinationIntent: Intent = ({
+  data,
+  manifest,
+  manifestPath,
+  frozen,
+  refuse,
+  refuseBusy
+}) => {
   const name = data.destination?.trim()
   if (!name) return refuse('Removing a place needs to know which one.')
   if (!hasDestination(manifest, name)) return refuse('That place is no longer on the board.')
-  if (processingNow()) return refuse('Something is being processed — wait for it to finish.')
+  const busy = refuseBusy()
+  if (busy) return busy
 
   const filed = manifest.groups.filter((group) => group.destination === name)
   if (filed.some((group) => frozen.has(group.id)))

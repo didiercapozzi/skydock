@@ -1,7 +1,6 @@
-import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { isMediaName } from './constants'
-import { findMediaFiles } from './lib/fs'
+import { findMediaFiles, statOrNull } from './lib/fs'
 
 /* What was let go of on the board, and what it really holds.
 
@@ -12,16 +11,8 @@ import { findMediaFiles } from './lib/fs'
 
    Worked out before a single byte moves, so the board can say what is coming and count it down. */
 
-const statOf = (where: string) => {
-  try {
-    return fs.statSync(where)
-  } catch {
-    return null
-  }
-}
-
 const insideOf = (where: string) => {
-  const said = statOf(where)
+  const said = statOrNull(where)
   if (!said) return []
   if (said.isDirectory()) return findMediaFiles(where)
   return said.isFile() && isMediaName(path.basename(where)) ? [where] : []
@@ -33,7 +24,7 @@ const mediaUnder = (dropped: string[]) =>
   [...new Set(dropped.flatMap(insideOf))].sort().map((where) => ({
     path: where,
     name: path.basename(where),
-    size: statOf(where)?.size ?? 0
+    size: statOrNull(where)?.size ?? 0
   }))
 
 export { mediaUnder }

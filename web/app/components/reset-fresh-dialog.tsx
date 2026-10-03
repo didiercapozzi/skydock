@@ -1,6 +1,7 @@
 import { plural, t } from '@lingui/core/macro'
 import { Mini } from './buttons'
 import { Modal, Spacer } from './modal'
+import { Note } from './blurbs'
 
 /* One choice, said in full: what it puts back and what it leaves alone */
 const Choice = ({
@@ -72,9 +73,9 @@ const ResetFreshDialog = ({
         keeps={t`nothing decided about these files`}
         onChoose={() => onReset('everything')}
       />
-      <p className='m-0 rounded-[10px] bg-local-soft px-2.5 py-2 text-[12px] text-ink-2'>
+      <Note>
         {t`Either way, nothing filed to a destination or a montage is touched, and no original file is.`}
-      </p>
+      </Note>
     </Modal>
   )
 }

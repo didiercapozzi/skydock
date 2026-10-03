@@ -144,10 +144,16 @@ const refusalsIn = (body: string, known: Record<string, string>) => {
     const [, quoted, backticked, named] = found
     if (quoted !== undefined || backticked !== undefined)
       add((quoted ?? backticked) as string, true)
+    else if (named === 'connectFirst') continue
     else if (named && known[named]) add(known[named], true)
     else add('whatever went wrong underneath, in its own words', false)
   }
   if (/refuse\(\s*`[^`]*\$\{/.test(body)) add('a message naming the file or the jump', false)
+  /* the two refusals that are said in one place for every intent that makes them */
+  for (const found of body.matchAll(/connectFirst\(\s*(?:'([^']*)')?\s*\)/g))
+    add(`Connect the storage first${found[1] ? ` — ${found[1]}` : ''}.`, true)
+  if (/\brefuseBusy\(\)/.test(body))
+    add('Something is being processed — wait for it to finish.', true)
   if (/\brefuseFrozen\(\)/.test(body) && known.EDIT_LOCKED) add(known.EDIT_LOCKED, true)
   return refusals
 }

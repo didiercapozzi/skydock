@@ -5,6 +5,7 @@ import {
   montagesRemoteDir
 } from '@skydock/scripts'
 import { boardAnswer } from '../../helpers/manifest'
+import { connectFirst } from './change'
 import type { Intent } from './change'
 import { recordOnStorage } from './storage'
 
@@ -12,8 +13,7 @@ import { recordOnStorage } from './storage'
    said, so that any machine of the club can see it. */
 const markEmailed: Intent = async ({ data, manifest, refuse }) => {
   const session = await ensureNasSession()
-  if (!session || !data.emailed)
-    return refuse('Connect the storage first — the list of montages is kept there.')
+  if (!session || !data.emailed) return refuse(connectFirst('the list of montages is kept there'))
   const { folder, to, sent } = data.emailed
   let known = true
   const listing = await recordOnStorage(

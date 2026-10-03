@@ -15,7 +15,7 @@ import { alreadyThere, dayFoldersOf, freedAlready } from './copy'
 import { idFromHash } from './fileId'
 import { givenBack } from './kioCamera'
 import { listBin } from './bin'
-import { findMediaFiles, hashFile, moveFile } from './lib/fs'
+import { findMediaFiles, hashFile, moveFile, mtimeOf } from './lib/fs'
 import { loadManifest } from './manifest'
 import { dsmFileMd5 } from './nas'
 import type { NasSession } from './nas'
@@ -297,10 +297,7 @@ const listCameraThroughKde = (camera: string, outputDir: string) => {
     /* The camera's own time where it gives one. A GoPro over MTP gives none, and then the copy
        here, which was dated from the clip itself, is the next best; with neither, none. */
     mtime:
-      clip.mtime ??
-      (clip.original && fs.existsSync(clip.original)
-        ? Math.floor(fs.statSync(clip.original).mtimeMs / 1000)
-        : 0),
+      clip.mtime ?? (clip.original && fs.existsSync(clip.original) ? mtimeOf(clip.original) : 0),
     /* its bytes cannot be read from here, so whether its copy went to the bin is not said */
     state: standingOf(manifest, clip.original, (files) => givenBack(files, clip.name, clip.size))
       .state

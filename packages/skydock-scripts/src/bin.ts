@@ -4,7 +4,7 @@ import type { BinBatch, BinFile } from './binEntry'
 import { isMediaName } from './constants'
 import { computeFileId } from './fileId'
 import { landingFor } from './copy'
-import { moveFile } from './lib/fs'
+import { moveFile, mtimeOf } from './lib/fs'
 import { cameraTimes } from './scan'
 import type { Manifest } from './types'
 import { getTrashDir } from './utils'
@@ -22,7 +22,7 @@ const putAsideAt = (folder: string, dir: string) => {
     const [, y, mo, d, h, mi, s, ms] = m.map(Number) as number[]
     return Math.floor(Date.UTC(y!, mo! - 1, d!, h!, mi!, s!, ms!) / 1000)
   }
-  return Math.floor(fs.statSync(dir).mtimeMs / 1000)
+  return mtimeOf(dir)
 }
 
 /* what it came from, off the start of its name: Fresh files, a montage or a camera — named after it */
@@ -107,7 +107,7 @@ const bringBackFromBin = async ({
       kept.push(path.basename(file))
       continue
     }
-    const shot = times.get(file) ?? Math.floor(fs.statSync(file).mtimeMs / 1000)
+    const shot = times.get(file) ?? mtimeOf(file)
     await moveFile(file, landingFor(outputDir, path.basename(file), shot))
     back.push(path.basename(file))
   }

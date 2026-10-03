@@ -74,6 +74,18 @@ const pushEntries = (stack: WalkItem[], dir: string, entries: fs.Dirent[]) => {
   }
 }
 
+/* a file's stat, or nothing for one that is not there */
+const statOrNull = (file: string) => {
+  try {
+    return fs.statSync(file)
+  } catch {
+    return null
+  }
+}
+
+/* when a file was last written, in whole seconds — the time the board keeps for a file */
+const mtimeOf = (file: string) => Math.floor(fs.statSync(file).mtimeMs / 1000)
+
 const walkFiles = (dir: string) => {
   const results: string[] = []
   const stack: WalkItem[] = []
@@ -184,8 +196,10 @@ export {
   findMediaFiles,
   hashFile,
   moveFile,
+  mtimeOf,
   openToHost,
   sameBytes,
+  statOrNull,
   walkFiles,
   writeJsonAtomic
 }

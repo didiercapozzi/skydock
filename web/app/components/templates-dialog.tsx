@@ -1,14 +1,12 @@
 import { i18n } from '@lingui/core'
 import { msg, plural, t } from '@lingui/core/macro'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { SubmitFunction } from 'react-router'
 import { z } from 'zod'
 import { templatesAnswerSchema } from '../../../packages/skydock-scripts/src/templateEntry'
-import type {
-  TemplateFact,
-  TemplatesAnswer
-} from '../../../packages/skydock-scripts/src/templateEntry'
+import type { TemplateFact } from '../../../packages/skydock-scripts/src/templateEntry'
 import { Form, FormField, useForm } from '../../../packages/ui/forms'
+import { useLoaded } from '../hooks/useLoaded'
 import { routingEngine } from '../helpers/routing'
 import { setTemplateChoice, useTemplateChoice } from '../hooks/useTemplateChoice'
 import { Go, Mini } from './buttons'
@@ -112,31 +110,20 @@ const TemplatesDialog = ({
   onClose: () => void
   onChoose?: (template: string) => void
 }) => {
-  const [answer, setAnswer] = useState<TemplatesAnswer | null>(null)
-  const [problem, setProblem] = useState<string | null>(null)
   const [bringing, setBringing] = useState<string | null>(null)
   const [pickedHere, setPickedHere] = useState<string | null>(null)
   const remembered = useTemplateChoice()
   const fileInput = useRef<HTMLInputElement>(null)
   const folderInput = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    let cancelled = false
-    routingEngine
-      .loader({ url: '/api/templates' })
-      .then((raw) => {
-        const parsed = templatesAnswerSchema.safeParse(raw)
-        if (cancelled) return
-        if (parsed.success) setAnswer(parsed.data)
-        else setProblem(t`The templates could not be read.`)
-      })
-      .catch(() => {
-        if (!cancelled) setProblem(t`The templates could not be read.`)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const {
+    data: answer,
+    problem,
+    setData: setAnswer,
+    setProblem
+  } = useLoaded('/api/templates', templatesAnswerSchema, {
+    failed: t`The templates could not be read.`
+  })
 
   const sendOff = async (body: FormData, done?: () => void) => {
     try {

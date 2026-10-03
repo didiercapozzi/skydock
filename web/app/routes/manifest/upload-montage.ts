@@ -18,6 +18,7 @@ import {
 import { entryOfMontage, upsert } from '../../../../packages/skydock-scripts/src/montageIndex'
 import { uploadMontage } from '../../../../packages/skydock-scripts/src/uploadMontage'
 import { boardAnswer } from '../../helpers/manifest'
+import { connectFirst } from './change'
 import type { Change, Intent } from './change'
 import { uploadReporter } from './progress'
 import { recordOnStorage } from './storage'
@@ -33,7 +34,7 @@ const sendMontage = async (
   if (busyWith({ groupIds: [group.id] }) === 'processing')
     return refuse('This montage is being processed — upload it once that is done.')
   const session = await ensureNasSession()
-  if (!session) return refuse('Not connected to the storage. Please connect first.')
+  if (!session) return refuse(connectFirst())
   /* the same rule every upload uses: a film built from a copy that no longer matches its source is
      not this montage's film */
   const outputs = statProcessedOutputs(manifest)

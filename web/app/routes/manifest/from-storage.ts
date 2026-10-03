@@ -7,13 +7,12 @@ import {
 } from '@skydock/scripts'
 import { bringBack } from '../../../../packages/skydock-scripts/src/bringBack'
 import { boardAnswer } from '../../helpers/manifest'
+import { connectFirst } from './change'
 import type { Intent } from './change'
 
 /* One file fetched back off the storage, for footage this machine no longer holds: freeing deleted
    the original once the storage was proved to have it, and this is the way back (RULES, Freeing
    space). */
-
-const needsStorage = 'Connect the storage first.'
 
 const bringBackIntent: Intent = async ({
   data,
@@ -26,7 +25,7 @@ const bringBackIntent: Intent = async ({
   const fileId = data.fileIds?.[0]
   if (!fileId) return refuse('Nothing was asked for.')
   const session = await ensureNasSession()
-  if (!session) return refuse(needsStorage)
+  if (!session) return refuse(connectFirst())
   /* said as it goes, so the corner shows it live; and kept when it ends, so the transfers can be
      opened to see it (RULES, Transfers) */
   let name = ''

@@ -4,6 +4,7 @@ import { Danger, Mini } from './buttons'
 import { Line, Modal, Spacer } from './modal'
 import { formatFilmSize } from './utils'
 import type { ManifestGroup } from './types'
+import { Note } from './blurbs'
 
 /* Freeing an uploaded montage deletes its originals from this machine, so the dialog says three
    things before anything happens: what is proved first, what is then deleted, and what it costs —
@@ -82,9 +83,9 @@ const FreeDialog = ({
         <Line mark='✓'>{t`the kdenlive project, and the record of what went where`}</Line>
       </ul>
 
-      <p className='m-0 rounded-[10px] bg-local-soft px-2.5 py-2 text-[12px] text-ink-2'>
+      <Note>
         {t`After this the montage lives on the storage only: it cannot be processed, edited or uploaded again from here, and a rescan leaves it as it is. If any check fails, nothing at all is deleted, and it says which.`}
-      </p>
+      </Note>
     </Modal>
   )
 }

@@ -887,9 +887,7 @@ export {
   GoneFromStorage,
   FilmNote,
   FilmStrip,
-  PassengerFrames,
   PassengerName,
-  ProjectPath,
   MontageCardActions
 }
 export type { Passenger }

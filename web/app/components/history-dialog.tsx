@@ -1,9 +1,8 @@
 import { plural, t } from '@lingui/core/macro'
-import { useEffect, useState } from 'react'
 import { boardChangeSchema } from '@skydock/scripts'
 import type { BoardChange } from '@skydock/scripts'
 import { z } from 'zod'
-import { routingEngine } from '../helpers/routing'
+import { useLoaded } from '../hooks/useLoaded'
 import { Mini } from './buttons'
 import { Modal, Spacer } from './modal'
 import { dateLabel, hhmm } from './utils'
@@ -72,25 +71,11 @@ const HistoryDialog = ({
   onGoBack: (step: string) => void
   onClose: () => void
 }) => {
-  const [steps, setSteps] = useState<z.infer<typeof historySchema>['steps'] | null>(null)
-  const [problem, setProblem] = useState<string | null>(null)
-  useEffect(() => {
-    let cancelled = false
-    routingEngine
-      .loader({ url: '/api/history' })
-      .then((raw) => {
-        if (cancelled) return
-        const parsed = historySchema.safeParse(raw)
-        if (parsed.success) setSteps(parsed.data.steps)
-        else setProblem(t`The board’s history could not be read.`)
-      })
-      .catch(() => {
-        if (!cancelled) setProblem(t`The board’s history could not be read.`)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const loaded = useLoaded('/api/history', historySchema, {
+    failed: t`The board’s history could not be read.`
+  })
+  const steps = loaded.data?.steps ?? null
+  const problem = loaded.problem
   return (
     <Modal
       label={t`History`}

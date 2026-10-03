@@ -7,8 +7,11 @@ import {
 } from '../../../packages/skydock-scripts/src/cameraEntry'
 import type { CameraFile, CameraListing } from '../../../packages/skydock-scripts/src/cameraEntry'
 import { routingEngine } from '../helpers/routing'
+import { usePicked } from '../hooks/usePicked'
 import { refusalSchema } from '../hooks/useBoardState'
 import { Go, Mini, ToBin } from './buttons'
+import { Empty, Looking, Problem } from './blurbs'
+import { TD, TH, Tick } from './file-table'
 import { Icon } from './icons'
 import { Modal, Spacer } from './modal'
 import { dateLabel, formatFilmSize, formatSize, hhmm } from './utils'
@@ -54,41 +57,6 @@ const STANDING = {
 
 /* the order the count above the list reads in: from what is still to do to what is done */
 const STATES = ['missing', 'copied', 'binned', 'stored'] as const
-
-/* A list of files as the board draws every table: a quiet header on the rail, rows of an even
-   height divided by a hairline. Shared with the bin, which is the same kind of list. */
-const TH =
-  'px-3 py-2 text-left text-[11px] font-bold tracking-[0.07em] whitespace-nowrap text-ink-3 uppercase'
-const TD =
-  'h-[52px] border-t border-line-2 px-3 font-semibold whitespace-nowrap first:rounded-l-[13px] last:rounded-r-[13px]'
-
-/* a file's box, drawn the way the board's own lists draw it and still a checkbox to whoever reads
-   the page out */
-const Tick = ({
-  label,
-  checked,
-  onChange
-}: {
-  label: string
-  checked: boolean
-  onChange: () => void
-}) => (
-  <span className='relative grid size-[18px] place-items-center'>
-    <input
-      type='checkbox'
-      aria-label={label}
-      checked={checked}
-      onChange={onChange}
-      className='peer m-0 size-[18px] cursor-pointer appearance-none rounded-[6px] border-2 border-check bg-pane checked:border-accent checked:bg-accent hover:border-accent'
-    />
-    <Icon
-      name='check'
-      size={11}
-      weight={3.5}
-      className='pointer-events-none absolute text-white opacity-0 peer-checked:opacity-100'
-    />
-  </span>
-)
 
 /* a file's box, read out */
 const pickLabel = (name: string) => t`Pick ${name}`
@@ -149,7 +117,7 @@ const CameraFiles = ({
     null
   )
   const [problem, setProblem] = useState<string | null>(null)
-  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const { picked, setPicked, toggle } = usePicked()
   const [asking, setAsking] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [copying, setCopying] = useState(false)
@@ -217,13 +185,6 @@ const CameraFiles = ({
   const backCount = toCopyBack.length
   const picks = chosen.length
   const deletes = goes.length
-
-  const toggle = (file: CameraFile) => {
-    const next = new Set(picked)
-    if (next.has(file.path)) next.delete(file.path)
-    else next.add(file.path)
-    setPicked(next)
-  }
 
   /* Copied again without unplugging it: what is here already is passed over, so only what is missing
      comes across. The header shows the copy, and the page reads the card again when it ends. */
@@ -389,25 +350,17 @@ const CameraFiles = ({
           )}
         </p>
       )}
-      {problem && (
-        <p
-          role='alert'
-          className='m-0 rounded-xl bg-local-soft px-3.5 py-2.5 text-[12.5px] text-local'>
-          {problem}
-        </p>
-      )}
+      {problem && <Problem>{problem}</Problem>}
       {answered === null && !problem ? (
-        <p className='m-0 px-0.5 text-[12.5px] text-ink-3'>{t`Reading the camera…`}</p>
+        <Looking>{t`Reading the camera…`}</Looking>
       ) : listing === null ? (
-        <p className='m-0 rounded-xl bg-local-soft px-3.5 py-2.5 text-[12.5px] text-local'>
-          {t`This camera is not plugged in any more.`}
-        </p>
+        <Problem>{t`This camera is not plugged in any more.`}</Problem>
       ) : files.length === 0 && listing ? (
-        <p className='m-0 rounded-2xl border-2 border-dashed border-line-strong px-3 py-5 text-center text-[12.5px] text-ink-3'>
+        <Empty>
           {looking
             ? t`Going over the camera — its files appear here as they are reached.`
             : t`Nothing on the camera’s card.`}
-        </p>
+        </Empty>
       ) : (
         <table className='w-full table-fixed border-collapse text-[12.5px]'>
           <thead>
@@ -426,7 +379,8 @@ const CameraFiles = ({
                 title={i18n._(STANDING[file.state].title)}
                 /* the whole line picks, as a box's label would; the box itself answers its own click */
                 onClick={(e) => {
-                  if (canPick.has(file) && !(e.target instanceof HTMLInputElement)) toggle(file)
+                  if (canPick.has(file) && !(e.target instanceof HTMLInputElement))
+                    toggle(file.path)
                 }}
                 className={
                   canPick.has(file)
@@ -439,7 +393,7 @@ const CameraFiles = ({
                     <Tick
                       label={pickLabel(file.name)}
                       checked={picked.has(file.path)}
-                      onChange={() => toggle(file)}
+                      onChange={() => toggle(file.path)}
                     />
                   )}
                 </td>
@@ -491,4 +445,4 @@ const CameraFiles = ({
   )
 }
 
-export { CameraFiles, TD, TH, Tick }
+export { CameraFiles }

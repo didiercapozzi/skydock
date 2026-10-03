@@ -13,6 +13,7 @@ import { useStorageFolder } from '../hooks/useStorageFolder'
 import type { StorageWhere } from '../hooks/useStorageFolder'
 import { parcelOfFolder } from '../helpers/parcels'
 import { Mini } from './buttons'
+import { Empty, Problem } from './blurbs'
 import { Icon } from './icons'
 import { ParcelCards } from './montage-card'
 import { Modal } from './modal'
@@ -294,13 +295,11 @@ const StorageFolder = ({
       {!folder ? (
         <p className='m-0 py-3 text-[12.5px] text-ink-3'>{t`Asking the storage…`}</p>
       ) : !folder.ok ? (
-        <p className='m-0 mt-2 rounded-xl bg-local-soft px-3.5 py-2.5 text-[12.5px] text-local'>
-          {folder.reason}
-        </p>
+        <Problem className='mt-2'>{folder.reason}</Problem>
       ) : files.length === 0 ? (
-        <p className='m-0 mt-2 rounded-2xl border-2 border-dashed border-line-strong px-3 py-5 text-center text-[12.5px] text-ink-3'>
+        <Empty className='mt-2'>
           {t`Nothing up there yet — what is uploaded from here is listed once it is.`}
-        </p>
+        </Empty>
       ) : (
         <ul className='m-0 flex list-none flex-col p-0'>
           {files.map((file) => {
@@ -518,9 +517,7 @@ const FolderCard = ({
       {!listing ? (
         <p className='m-0 py-3 text-[12.5px] text-ink-3'>{t`Asking the storage…`}</p>
       ) : !listing.ok ? (
-        <p className='m-0 mt-2 rounded-xl bg-local-soft px-3.5 py-2.5 text-[12.5px] text-local'>
-          {listing.reason}
-        </p>
+        <Problem className='mt-2'>{listing.reason}</Problem>
       ) : (
         <ParcelCards
           parcels={[parcelOfFolder({ dir: listing.dir, files: listing.files, hereToo })]}

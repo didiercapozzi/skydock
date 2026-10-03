@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { z } from 'zod'
 import { Go, Mini } from './buttons'
 import { Line, Modal, Spacer } from './modal'
+import { Note } from './blurbs'
 
 /* What the window answers when it is asked for another folder. */
 const answerSchema = z.union([
@@ -71,9 +72,9 @@ const WorkFolderDialog = ({
       </ul>
 
       {!choose && (
-        <p className='m-0 rounded-[10px] bg-local-soft px-2.5 py-2 text-[12px] text-ink-2'>
+        <Note>
           {t`The folder is changed from SkyDock’s own window. Here it is the one the server was started with.`}
-        </p>
+        </Note>
       )}
       {working && choose && (
         <p className='m-0 text-[12px] text-local'>{t`${working} — wait until it is done.`}</p>

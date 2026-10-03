@@ -1,6 +1,7 @@
 import { plural, t } from '@lingui/core/macro'
 import { Danger, Mini } from './buttons'
 import { Line, Modal, Spacer } from './modal'
+import { Note } from './blurbs'
 
 /* Taking a place off the board deletes nothing, and the dialog's whole job is to say so: what was
    filed there comes back to Fresh files to be filed again, the files stay where they are on this
@@ -61,9 +62,9 @@ const RemovePlaceDialog = ({
         )}
       </ul>
 
-      <p className='m-0 rounded-[10px] bg-local-soft px-2.5 py-2 text-[12px] text-ink-2'>
+      <Note>
         {t`The copies already made for ${place} were written into a folder named after it, so they are forgotten and made again wherever those jumps are filed next. Making the place again by the same name does not bring the filing back.`}
-      </p>
+      </Note>
     </Modal>
   )
 }

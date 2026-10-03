@@ -1,4 +1,4 @@
-import { processingNow, saveManifest, messageOf } from '@skydock/scripts'
+import { saveManifest, messageOf } from '@skydock/scripts'
 import {
   dropFromBoard,
   trashUnsorted
@@ -16,13 +16,15 @@ const trashUnsortedIntent: Intent = async ({
   outputDir,
   frozenFiles,
   refuse,
+  refuseBusy,
   refuseFrozen,
   latest
 }) => {
   const ids = new Set(data.fileIds ?? [])
   if (ids.size === 0) return refuse('Select at least one file to put in the bin.')
   if ([...ids].some((id) => frozenFiles.has(id))) return refuseFrozen()
-  if (processingNow()) return refuse('Something is being processed — wait for it to finish.')
+  const busy = refuseBusy()
+  if (busy) return busy
   try {
     await trashUnsorted(manifest, ids, outputDir)
   } catch (e) {
