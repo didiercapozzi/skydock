@@ -107,6 +107,28 @@ describe('a camera plugged in', () => {
     await expect.poll(() => sent).toEqual([{ paths: [`${MOUNT}/DCIM/DJI_0004.MP4`] }])
   })
 
+  /* its montage was freed and its archive went with it: it can come back, but nothing proves it can go */
+  test('offers a locked file to copy back and never to delete', async () => {
+    const locked = { ...onCard('DJI_0009.MP4', 'stored'), locked: true }
+    vi.stubGlobal('fetch', async () =>
+      Response.json({ cameras: [{ ...listing.cameras[0], files: [locked] }] })
+    )
+    const onCopyBack = vi.fn()
+    await render(
+      createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack })
+    )
+
+    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0009.MP4' }))
+
+    await expect.element(page.getByRole('button', { name: 'Copy 1 file back here' })).toBeVisible()
+    await expect
+      .element(page.getByRole('button', { name: 'Delete from the camera…' }))
+      .toBeDisabled()
+    await expect
+      .element(page.getByRole('button', { name: 'Pick every file that can go' }))
+      .not.toBeInTheDocument()
+  })
+
   /* a camera stays plugged in and is copied again when asked: only what is not here comes across */
   test('copies what is not here yet when asked, without unplugging the camera', async () => {
     stubServer()

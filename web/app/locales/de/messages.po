@@ -1497,13 +1497,13 @@ msgstr "Tag"
 msgid "Delete"
 msgstr "Löschen"
 
+#: app/components/camera-files.tsx
+msgid "Delete {deletes, plural, one {# file} other {# files}} from the camera…"
+msgstr "{deletes, plural, one {# Datei} other {# Dateien}} von der Kamera löschen…"
+
 #: app/components/delete-jump-dialog.tsx
 msgid "Delete {label}"
 msgstr "{label} löschen"
-
-#: app/components/camera-files.tsx
-msgid "Delete {picks, plural, one {# file} other {# files}} from the camera…"
-msgstr "{picks, plural, one {# Datei} other {# Dateien}} von der Kamera löschen…"
 
 #: app/components/take-back-dialog.tsx
 msgid "Delete {who}’s montage"
@@ -3028,6 +3028,10 @@ msgstr "Schon auf dem Speicher, daher nicht verschiebbar — halte beim Ablegen 
 #: app/helpers/notes.ts
 msgid "On the storage only. {files, plural, one {# file} other {# files}} freed from this machine on {day} — {size} given back. The project is kept here; everything else is on the storage, as above."
 msgstr "Nur auf dem Speicher. {files, plural, one {# Datei} other {# Dateien}} am {day} von diesem Rechner freigegeben — {size} zurückgewonnen. Das Projekt bleibt hier; alles andere ist auf dem Speicher, wie oben."
+
+#: app/components/camera-files.tsx
+msgid "On the storage, but its montage was freed from this machine and nothing here can prove it any more — it stays on the card. It can be copied back."
+msgstr "Auf dem Speicher, aber sein Montage wurde von diesem Rechner freigegeben und nichts hier kann es mehr belegen — es bleibt auf der Karte. Es kann hierher zurückkopiert werden."
 
 #: app/components/remove-files-dialog.tsx
 msgid "on their camera's time, to be filed again. Their trims are kept."

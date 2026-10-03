@@ -8,7 +8,10 @@ const cameraFileSchema = z.object({
   name: z.string(),
   size: z.number(),
   mtime: z.number(),
-  state: z.enum(['missing', 'copied', 'binned', 'stored'])
+  state: z.enum(['missing', 'copied', 'binned', 'stored']),
+  /* on the storage, but nothing is left here to prove it by — its montage was freed and its archive
+     went with it: it can be copied back, and is never offered for deleting */
+  locked: z.boolean().optional()
 })
 
 const cameraListingSchema = z.object({

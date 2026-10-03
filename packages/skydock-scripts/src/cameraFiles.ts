@@ -148,11 +148,15 @@ const prover = (session: NasSession) => {
     once(local, file, () => (fs.existsSync(file) ? hashFile(file) : Promise.resolve(null)))
   /* the zip here is the one that went up, byte for byte, and the storage still holds it */
   const zipSent = async (record: Uploaded) =>
-    (await hashHere(record.localPath)) === record.md5 && (await onStorage(record))
+    fs.existsSync(record.localPath)
+      ? (await hashHere(record.localPath)) === record.md5 && (await onStorage(record))
+      : /* freed from this machine: what it held was written down as it went up, and the storage still
+           holds that very zip */
+        record.entries !== undefined && (await onStorage(record))
   const entryHash = async (record: Uploaded, name: string) =>
     fs.existsSync(record.localPath)
       ? (await once(zips, record.localPath, () => zipEntryHashes(record.localPath))).get(name)
-      : undefined
+      : record.entries?.[name]
 
   return async (claim: Claim, camera: { md5: string }) => {
     if (claim.kind === 'plain') return claim.record.md5 === camera.md5 && onStorage(claim.record)
@@ -215,13 +219,29 @@ const standingOf = (
   given: (files: ManifestFile[]) => boolean
 ) => {
   const entries = manifest ? entriesOf(manifest) : []
+  /* whether something is left to prove it by: a plain copy on the storage, or a zip still here or
+     whose entries were written down — not an archive freed away with nothing kept of what it held */
+  const provable = (list: typeof entries) =>
+    list.some(({ file: f, group }) =>
+      claimsOf(f, group).some(
+        (c) =>
+          c.kind === 'plain' ||
+          !('name' in c && c.name) ||
+          fs.existsSync(c.record.localPath) ||
+          c.record.entries !== undefined
+      )
+    )
   /* gone from here but given back: the copy passes it over by the same rule, so the page says so */
-  if (!original)
-    return given(entries.map(({ file: f }) => f)) ? ('stored' as const) : ('missing' as const)
+  if (!original) {
+    const freed = entries.filter(({ file: f }) => given([f]))
+    return freed.length > 0
+      ? { state: 'stored' as const, locked: !provable(freed) }
+      : { state: 'missing' as const, locked: false }
+  }
   const mine = entries.filter(({ file: f }) => f.path === original)
   return mine.some(({ file: f, group }) => f.freed || claimsOf(f, group).length > 0)
-    ? ('stored' as const)
-    : ('copied' as const)
+    ? { state: 'stored' as const, locked: !provable(mine) }
+    : { state: 'copied' as const, locked: false }
 }
 
 const dcimOf = (mount: string) => path.join(mount, 'DCIM')
@@ -238,14 +258,17 @@ const listCamera = async (mount: string, outputDir: string, trashDir: string) =>
     const stat = fs.statSync(file)
     const dir = folders.get(file) ?? ''
     const original = await alreadyThere(file, stat, dir)
-    const state = standingOf(manifest, original, (files) => freedAlready(files, file, stat, dir))
+    const { state, locked } = standingOf(manifest, original, (files) =>
+      freedAlready(files, file, stat, dir)
+    )
     listed.push({
       path: file,
       name: path.relative(dcimOf(mount), file),
       size: stat.size,
       mtime: Math.floor(stat.mtimeMs / 1000),
       /* one not here any more may have been put in the bin, which only its bytes can tell */
-      state: state === 'missing' && (await binned(file, stat.size)) ? 'binned' : state
+      state: state === 'missing' && (await binned(file, stat.size)) ? 'binned' : state,
+      ...(locked ? { locked: true } : {})
     })
   }
   /* newest first, as every list of files is */
@@ -280,6 +303,7 @@ const listCameraThroughKde = (camera: string, outputDir: string) => {
         : 0),
     /* its bytes cannot be read from here, so whether its copy went to the bin is not said */
     state: standingOf(manifest, clip.original, (files) => givenBack(files, clip.name, clip.size))
+      .state
   }))
   return {
     camera: cameraName(camera),
@@ -351,6 +375,8 @@ const deleteFromCameras = async ({
   /* its copy in the bin is the very file off the card: the same content, read through now */
   const binned = binnedBy(binnedCopies(trashDir), (file) => fingerprint(file).catch(() => null))
   const problems: string[] = []
+  /* proved only by an archive that is no longer here: its montage was freed from this machine */
+  const archived: string[] = []
   for (const file of paths) {
     const camera = await fingerprint(file)
     const mine = entries.filter(
@@ -365,6 +391,17 @@ const deleteFromCameras = async ({
           ? `${name} is neither on the board nor in the bin — copy it and scan first`
           : `${name} is not uploaded yet, nor put in the bin`
       )
+    } else if (
+      claims.every(
+        (c) =>
+          c.kind !== 'plain' &&
+          'name' in c &&
+          c.name &&
+          !fs.existsSync(c.record.localPath) &&
+          !c.record.entries
+      )
+    ) {
+      archived.push(path.basename(file))
     } else {
       const proves = await prove()
       if (!proves) {
@@ -376,6 +413,11 @@ const deleteFromCameras = async ({
       if (!proved) problems.push(`${name} could not be matched with what the storage holds`)
     }
   }
+  /* said once, however many: a card of freed clips would otherwise be a line of names each */
+  if (archived.length > 0)
+    problems.push(
+      `${archived.length === 1 ? `${archived[0]} is` : `${archived.length} files (${archived.slice(0, 3).join(', ')}${archived.length > 3 ? ', …' : ''}) are`} in a montage freed from this machine, whose archive is no longer here to prove ${archived.length === 1 ? 'it' : 'them'} — they stay on the card`
+    )
   if (problems.length > 0) throw new Error(`Nothing was deleted: ${problems.join('; ')}.`)
 
   /* one folder per camera and per time, keeping each file where it sat on the card */

@@ -315,6 +315,22 @@ describe('uploading a montage — where each item goes', () => {
   })
 })
 
+describe('uploading a montage — what each zip held', () => {
+  /* so a camera's file can still be proved against the storage after the zip is freed from this machine */
+  it('records the md5 of every entry in each zip, by its name in it', async () => {
+    const { result } = await upload()
+
+    const entries =
+      result.record.rushes && 'entries' in result.record.rushes
+        ? result.record.rushes.entries
+        : undefined
+    expect(Object.keys(entries ?? {}).sort()).toEqual(
+      expect.arrayContaining(['videos/GX018570.MP4', 'videos/GX018571.MP4'])
+    )
+    for (const sum of Object.values(entries ?? {})) expect(sum).toMatch(/^[0-9a-f]{32}$/)
+  })
+})
+
 describe('uploading a montage — where in a destination', () => {
   it('puts the items straight into a destination’s folder when asked', async () => {
     const { uploads, stem } = await upload({}, { ...PLAN, inRoot: ['Passengers'] })

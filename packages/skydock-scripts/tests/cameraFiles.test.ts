@@ -311,6 +311,88 @@ describe('deleting from a camera', () => {
     expect(fs.existsSync(onCard(root, 'GX01.MP4'))).toBe(false)
   })
 
+  /* freeing a montage deletes its archive here: nothing is left to hold the file against, and it says so */
+  it('keeps a montage file on the card, and says why, once its archive was freed from this machine', async () => {
+    const { root, file } = await setup()
+    const rushes = {
+      localPath: path.join(outputDir, 'gone.rushes.zip'),
+      remotePath: '/Backup/gone.rushes.zip',
+      md5: 'x',
+      size: 1,
+      at: 1
+    }
+    const manifest = board([
+      {
+        ...dropzone([file]),
+        montageJump: true,
+        passenger: { firstname: 'Luc', lastname: 'Favre' },
+        uploaded: { at: 1, rushes }
+      }
+    ])
+    withStorage({ [rushes.remotePath]: 'x' })
+
+    await expect(remove(root, manifest)).rejects.toThrow(
+      /GX01\.MP4 is in a montage freed from this machine, whose archive is no longer here/
+    )
+    expect(fs.existsSync(onCard(root, 'GX01.MP4'))).toBe(true)
+  })
+
+  /* the archive is gone, but what it held was written down as it went up, and the storage holds that zip */
+  it('takes a montage file off the card once its archive was freed, by what the upload wrote down', async () => {
+    const { root, file } = await setup()
+    const rushes = {
+      localPath: path.join(outputDir, 'gone.rushes.zip'),
+      remotePath: '/Backup/gone.rushes.zip',
+      md5: 'zipsum',
+      size: 1,
+      at: 1,
+      holds: ['videos' as const],
+      entries: { [`videos/${file.filename}`]: md5(file.path) }
+    }
+    const manifest = board([
+      {
+        ...dropzone([file]),
+        montageJump: true,
+        passenger: { firstname: 'Luc', lastname: 'Favre' },
+        uploaded: { at: 1, rushes }
+      }
+    ])
+    withStorage({ [rushes.remotePath]: 'zipsum' })
+
+    const [camera] = await listCameras(outputDir, [root], trashDir)
+    expect(camera?.files[0]?.locked).toBeUndefined()
+
+    await remove(root, manifest)
+
+    expect(fs.existsSync(onCard(root, 'GX01.MP4'))).toBe(false)
+  })
+
+  it('lists such a file as locked, so it is never offered for deleting', async () => {
+    const { root, file } = await setup()
+    const rushes = {
+      localPath: path.join(outputDir, 'gone.rushes.zip'),
+      remotePath: '/Backup/gone.rushes.zip',
+      md5: 'x',
+      size: 1,
+      at: 1
+    }
+    saveManifest(
+      path.join(outputDir, 'manifest.json'),
+      board([
+        {
+          ...dropzone([file]),
+          montageJump: true,
+          passenger: { firstname: 'Luc', lastname: 'Favre' },
+          uploaded: { at: 1, rushes }
+        }
+      ])
+    )
+
+    const [camera] = await listCameras(outputDir, [root], trashDir)
+
+    expect(camera?.files[0]).toMatchObject({ state: 'stored', locked: true })
+  })
+
   it('keeps a montage file on the card when the backup zip holds a different file of that name', async () => {
     const { root, file } = await setup()
     const other = path.join(outputDir, 'other.MP4')

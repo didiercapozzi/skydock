@@ -85,7 +85,10 @@ const uploadedRecordSchema = z.object({
   at: z.number(),
   /* for a zip, what it holds — its videos under videos/, its photos under photos/. A zip recorded
      without it is an older one: the videos at its top, or the photos alone. */
-  holds: z.array(sendPartSchema).optional()
+  holds: z.array(sendPartSchema).optional(),
+  /* for a zip, the md5 of each entry as it went in, by its name in the zip — so what the zip held can
+     be proved after the zip itself is gone from this machine. Absent from a zip made before it was kept. */
+  entries: z.record(z.string(), z.string()).optional()
 })
 
 const manifestFileSchema = z.object({

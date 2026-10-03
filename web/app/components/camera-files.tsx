@@ -206,6 +206,9 @@ const CameraFiles = ({
   const missing = files.filter((f) => f.state === 'missing')
   /* only a file on the storage can have been given back, so only those are copied back here */
   const toCopyBack = chosen.filter((f) => f.state === 'stored')
+  /* one whose proof went with its freed montage can come back here, never be deleted */
+  const going = pickable.filter((f) => !f.locked)
+  const goes = chosen.filter((f) => !f.locked)
   /* named, so a translator reads what each one is */
   const count = files.length
   const size = formatSize(files.reduce((n, f) => n + f.size, 0))
@@ -213,6 +216,7 @@ const CameraFiles = ({
   const toCopy = missing.length
   const backCount = toCopyBack.length
   const picks = chosen.length
+  const deletes = goes.length
 
   const toggle = (file: CameraFile) => {
     const next = new Set(picked)
@@ -244,7 +248,7 @@ const CameraFiles = ({
     setDeleting(true)
     setProblem(null)
     const raw = await routingEngine
-      .action({ url: '/api/camera', actionArgs: { paths: chosen.map((f) => f.path) } })
+      .action({ url: '/api/camera', actionArgs: { paths: goes.map((f) => f.path) } })
       .catch(() => null)
     setDeleting(false)
     const done = cameraDeletedSchema.safeParse(raw)
@@ -330,14 +334,12 @@ const CameraFiles = ({
             <b className='font-semibold text-ink'>{t`${picks} picked`}</b> · {pickedSize}
           </span>
         )}
-        {pickable.length > 0 && (
+        {going.length > 0 && (
           <Mini
             onClick={() =>
-              setPicked(
-                chosen.length === pickable.length ? new Set() : new Set(pickable.map((f) => f.path))
-              )
+              setPicked(deletes === going.length ? new Set() : new Set(going.map((f) => f.path)))
             }>
-            {chosen.length === pickable.length ? t`Pick none` : t`Pick every file that can go`}
+            {deletes === going.length ? t`Pick none` : t`Pick every file that can go`}
           </Mini>
         )}
         {toCopyBack.length > 0 && (
@@ -358,12 +360,12 @@ const CameraFiles = ({
         {/* deleted from the card is put in the bin, so it is the bin's red button */}
         {listing?.deletable !== false && (
           <ToBin
-            disabled={chosen.length === 0 || deleting}
+            disabled={deletes === 0 || deleting}
             onClick={() => setAsking(true)}>
             {deleting
               ? t`Checking and deleting…`
-              : chosen.length > 0
-                ? t`Delete ${plural(picks, { one: '# file', other: '# files' })} from the camera…`
+              : deletes > 0
+                ? t`Delete ${plural(deletes, { one: '# file', other: '# files' })} from the camera…`
                 : t`Delete from the camera…`}
           </ToBin>
         )}
@@ -441,7 +443,22 @@ const CameraFiles = ({
                     />
                   )}
                 </td>
-                <td className={`${TD} truncate font-medium text-ink`}>{file.name}</td>
+                <td
+                  title={
+                    file.locked
+                      ? t`On the storage, but its montage was freed from this machine and nothing here can prove it any more — it stays on the card. It can be copied back.`
+                      : undefined
+                  }
+                  className={`${TD} truncate font-medium text-ink`}>
+                  {file.name}
+                  {file.locked && (
+                    <Icon
+                      name='lock'
+                      size={11}
+                      className='ml-2 inline text-ink-3'
+                    />
+                  )}
+                </td>
                 <td className={`${TD} text-[12px] text-ink-2 tabular-nums`}>
                   {/* a camera that gives no time for a file it has not handed over yet */}
                   {file.mtime > 0 ? `${dateLabel(file.mtime)} ${hhmm(file.mtime)}` : '—'}
@@ -465,7 +482,7 @@ const CameraFiles = ({
       {asking && listing && (
         <Confirm
           camera={listing.camera}
-          files={chosen}
+          files={goes}
           onClose={() => setAsking(false)}
           onConfirm={() => void deleteChosen()}
         />

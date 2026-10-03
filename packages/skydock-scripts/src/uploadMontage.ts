@@ -1,5 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { hashFile } from './lib/fs'
 import { PHOTO_LEVEL, VIDEO_LEVEL, writeArchive } from './archive'
 import type { ArchiveProgress } from './archive'
 import type { CheckProgress, PlanProgress, UploadProgress, UploadVerdict } from './publish'
@@ -140,6 +141,16 @@ const uploadMontage = async ({
       )
   }
 
+  /* what each entry of a zip held, by its md5: the zip is deleted from this machine when the montage is
+     freed, and a camera's file is proved against what it held */
+  const hashes = new Map<string, Record<string, string>>()
+  for (const item of items.filter((i) => i.zip)) {
+    stopIfUploadCancelled()
+    const sums: Record<string, string> = {}
+    for (const entry of item.entries) sums[entry.name] = await hashFile(entry.file)
+    hashes.set(item.key, sums)
+  }
+
   /* One target per folder up there: where the montage lands in each destination, and its videos/
      and photos/ inside it for the parts sent as they are. The folder holding the film is the one
      with a share link, which is what is emailed. */
@@ -190,7 +201,13 @@ const uploadMontage = async ({
     const at = local ? path.dirname(local) : ready
     const remote = firstRemote(item) + (at === ready ? '' : `/${path.basename(at)}`)
     const verdict = local ? verdictIn(result.files, local, remote) : undefined
-    return verdict && item.zip ? { ...verdict, holds: item.holds } : verdict
+    return verdict && item.zip
+      ? {
+          ...verdict,
+          holds: item.holds,
+          ...(hashes.has(item.key) ? { entries: hashes.get(item.key) } : {})
+        }
+      : verdict
   }
   const zipHolding = (part: SendPart) => items.find((item) => item.zip && item.holds.includes(part))
   const looseOf = (part: SendPart) => items.find((item) => !item.zip && item.key === part)

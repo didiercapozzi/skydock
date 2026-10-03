@@ -200,8 +200,12 @@ Its page says to delete on the camera itself.
 If any file is not proved, or is not on a camera plugged in now, nothing at all is deleted and the files
 at fault are named — first any not on a camera plugged in, then any neither in the bin nor shown to be on
 the storage. What passes is moved off the card into a folder of the bin named after the camera and the moment,
-kept as it sat on the card. A montage's file is proved through the archive kept here, so once the
-montage has been freed its files can no longer be proved and stay on the card. Nothing is deleted from
+kept as it sat on the card. A montage's file is proved through the archive kept here — and, since the
+upload writes down the md5 of every entry it put in each zip, through that record once the montage has
+been freed and the archive is gone, together with the storage still holding that very zip. A montage
+freed before those were kept has nothing left to prove its files by: they stay on the card, are marked
+with a lock, can still be copied back, and are never offered for deleting, and a deletion that names
+one says why. Nothing is deleted from
 a camera while one is being copied or anything is being processed.
 
 **2. Scan.** SkyDock reads each file's capture time and groups files shot close together into jumps.
