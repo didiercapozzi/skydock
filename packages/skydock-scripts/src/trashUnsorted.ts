@@ -41,11 +41,22 @@ const trashUnsorted = async (
     throw new Error(
       `${copy.filename} is a copy — take it out of its jump instead; its original stays.`
     )
-  /* the bin takes the file off the disk, and a copy of it in a jump is of that very file */
-  const copied = going.find((f) => manifest.files.some((c) => c.copyOf === f.id))
-  if (copied)
+  /* The bin takes the file off the disk, and a copy of it in a jump is of that very file. A jump that was
+     uploaded no longer needs it here — its files are on the storage — so its copy is kept as a file
+     given back, as freeing leaves it; a jump that was not still needs it, and holds it. A copy no jump
+     holds any more is nobody's, and leaves the board with it. */
+  const groupOf = (id: string | undefined) =>
+    manifest.groups.find((g) => g.files.some((h) => h.id === id))
+  const copiesOf = (f: { id?: string }) => manifest.files.filter((c) => c.copyOf === f.id)
+  const held = going.find((f) =>
+    copiesOf(f).some((c) => {
+      const group = groupOf(c.id)
+      return group && !group.uploaded
+    })
+  )
+  if (held)
     throw new Error(
-      `${copied.filename} was copied into a jump, which still needs it — take the copy out first.`
+      `${held.filename} was copied into a jump, which still needs it — take the copy out first.`
     )
 
   /* one folder per time the bin is asked for, keeping each file where it sat among the originals,
@@ -74,7 +85,20 @@ const trashUnsorted = async (
       if (made) fs.rmSync(made, { force: true })
   }
 
-  dropFromBoard(manifest, ids)
+  /* what an uploaded jump held of it stays, as a file given back */
+  for (const file of going)
+    for (const copy of copiesOf(file)) {
+      const group = groupOf(copy.id)
+      if (!group) continue
+      for (const entry of [copy, ...group.files.filter((h) => h.id === copy.id)]) entry.freed = true
+    }
+  dropFromBoard(
+    manifest,
+    new Set([
+      ...ids,
+      ...going.flatMap((f) => copiesOf(f).flatMap((c) => (c.id && !groupOf(c.id) ? [c.id] : [])))
+    ])
+  )
 
   return {
     count: going.length,

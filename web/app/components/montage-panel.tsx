@@ -74,8 +74,8 @@ const MontagePanel = ({
     ? t`Freed from this machine`
     : group.uploaded
       ? emailed
-        ? t`Delivered · emailed ${shortDate(emailed.at)}`
-        : t`Delivered · not emailed yet`
+        ? t`Uploaded · emailed ${shortDate(emailed.at)}`
+        : t`Uploaded · not emailed yet`
       : `${shortDate(from)} · ${kindsSaid(videos, group.files.length - videos, ' · ')}`
 
   return (

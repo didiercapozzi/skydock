@@ -5,6 +5,7 @@ import { fitRatio, FrameCropper } from './frame-cropper'
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { Danger, Go, Mini } from './buttons'
 import { typingInField } from '../helpers/keys'
+import { afterNote } from '../helpers/sizes'
 import { createScrub } from '../helpers/scrub'
 import { Modal, Spacer } from './modal'
 import {
@@ -534,7 +535,11 @@ const PreviewDrawer = ({
   const facts = [
     dateLabel(file.mtime),
     formatTime(file.mtime),
-    formatSize(file.size),
+    `${formatSize(file.size)}${afterNote(file, {
+      kept: duration > 0 && video ? (to - from) / duration : 1,
+      frame,
+      unsaved: trimChanged || JSON.stringify(frame ?? null) !== JSON.stringify(file.frame ?? null)
+    })}`,
     ...(status ? [status] : []),
     t`${index + 1} of ${files.length}`
   ].join(' · ')

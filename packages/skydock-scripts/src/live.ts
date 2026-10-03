@@ -100,6 +100,18 @@ const liveEventSchema = z.discriminatedUnion('kind', [
        not nothing, and a bar that sat full with no word would look stuck. `done` ends it. */
     phase: z.enum(['copying', 'reading', 'done'])
   }),
+  /* One file being deleted off a camera: first read through to be proved, then moved into the bin. `part`
+     is how far through the whole of it, between 0 and 1, the two steps together. Named by the file's
+     path on the card, which is what the camera page lists it by. */
+  z.object({
+    kind: z.literal('camera-delete'),
+    path: z.string(),
+    /* `checked` is proved and waiting: nothing is moved until every file asked for is proved */
+    stage: z.enum(['checking', 'checked', 'moving', 'done', 'failed']),
+    part: z.number(),
+    /* how big the file is, so the row can say how much of it */
+    size: z.number().optional()
+  }),
   /* The cameras plugged in right now, said each time one comes or goes. `over` is how each one
      hands its files over: a drive the machine mounted, or MTP — a camera with no drive to offer,
      which is read a request at a time and is therefore slower than a card in a reader. */

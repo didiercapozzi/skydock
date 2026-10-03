@@ -1,3 +1,4 @@
+import { afterNote } from '../helpers/sizes'
 import { i18n } from '@lingui/core'
 import type { MessageDescriptor } from '@lingui/core'
 import { msg, plural, t } from '@lingui/core/macro'
@@ -482,6 +483,7 @@ const Row = ({
         <span className='flex min-w-0 items-center gap-1 truncate text-[12px] font-medium text-ink-3 [&>*+*]:before:mr-1 [&>*+*]:before:text-ink-3 [&>*+*]:before:content-["·"]'>
           <span className='tabular-nums'>
             {formatTime(file.mtime)} · {formatSize(file.size)}
+            {afterNote(file)}
           </span>
           {name && (
             <span
@@ -588,7 +590,7 @@ const Tile = ({
       e.preventDefault()
       onPick(file)
     }}
-    title={`${file.filename} · ${formatTime(file.mtime)} · ${formatSize(file.size)} · ${statusName(status)}${
+    title={`${file.filename} · ${formatTime(file.mtime)} · ${formatSize(file.size)}${afterNote(file)} · ${statusName(status)}${
       proxy?.state === 'none' ? ` · ${proxy.reason ? t`proxy failed` : t`no proxy yet`}` : ''
     }${isWholeFrame(file.frame) ? '' : ` · ${t`framed`}`}${file.rotation ? ` · ${turnedTitle(file.rotation)}` : ''}`}
     /* the picked one ringed in the accent, the one looked at in grey — a ring outside the picture,

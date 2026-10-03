@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { CameraFiles } from '../../app/components/camera-files'
+import { forgetDeleting, liveDeleting } from '../../app/hooks/liveStore'
 
 /* What is on a camera plugged in (RULES, Seeing what is on a camera): each file says whether it is
    on the storage, only copied here, put in the bin, or not copied yet; only one on the storage or in
@@ -107,29 +108,62 @@ describe('a camera plugged in', () => {
     await expect.poll(() => sent).toEqual([{ paths: [`${MOUNT}/DCIM/DJI_0004.MP4`] }])
   })
 
-  /* its montage was freed and its archive went with it: it can come back, but nothing proves it can go */
-  test('offers a locked file to copy back and never to delete', async () => {
-    const locked = { ...onCard('DJI_0009.MP4', 'stored'), locked: true }
-    vi.stubGlobal('fetch', async () =>
-      Response.json({ cameras: [{ ...listing.cameras[0], files: [locked] }] })
+  /* each file being deleted shows how far it has got on its own row, from what the server says as it
+     reads the file through and moves it into the bin */
+  test('shows a bar on each file being deleted, until the answer comes', async () => {
+    let answer: (value: Response) => void = () => {}
+    vi.stubGlobal('fetch', (_url: string | URL, init?: RequestInit) =>
+      init?.method === 'POST'
+        ? new Promise<Response>((resolve) => (answer = resolve))
+        : Promise.resolve(Response.json(listing))
     )
-    const onCopyBack = vi.fn()
     await render(
-      createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack })
+      createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack: () => {} })
     )
+    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0004.MP4' }))
+    await userEvent.click(page.getByRole('button', { name: 'Delete 1 file from the camera…' }))
+    await userEvent.click(page.getByRole('button', { name: /Check and delete 1 file/ }))
 
-    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0009.MP4' }))
+    liveDeleting.update(() => ({
+      [`${MOUNT}/DCIM/DJI_0004.MP4`]: { stage: 'moving' as const, part: 0.75 }
+    }))
 
-    await expect.element(page.getByRole('button', { name: 'Copy 1 file back here' })).toBeVisible()
-    await expect
-      .element(page.getByRole('button', { name: 'Delete from the camera…' }))
-      .toBeDisabled()
-    await expect
-      .element(page.getByRole('button', { name: 'Pick every file that can go' }))
-      .not.toBeInTheDocument()
+    const bar = page.getByRole('progressbar', { name: /DJI_0004\.MP4/ })
+    await expect.element(bar).toHaveAttribute('aria-valuenow', '75')
+    await expect.element(page.getByText('Moving to the bin')).toBeVisible()
+    /* a file not being deleted has none */
+    await expect.element(page.getByRole('progressbar', { name: /DJI_0001/ })).not.toBeInTheDocument()
+
+    answer(Response.json({ deleted: { count: 1, bytes: 1, bins: [] }, cameras: listing.cameras }))
+    await expect.element(bar).not.toBeInTheDocument()
+    forgetDeleting()
   })
 
-  /* a camera stays plugged in and is copied again when asked: only what is not here comes across */
+  /* a file leaves the list the moment it has gone, not when every file of the delete is over */
+  test('takes a file off the list as soon as it is deleted, while the others are still going', async () => {
+    vi.stubGlobal('fetch', (_url: string | URL, init?: RequestInit) =>
+      init?.method === 'POST'
+        ? new Promise<Response>(() => {})
+        : Promise.resolve(Response.json(listing))
+    )
+    await render(
+      createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack: () => {} })
+    )
+    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0001.MP4' }))
+    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0004.MP4' }))
+    await userEvent.click(page.getByRole('button', { name: 'Delete 2 files from the camera…' }))
+    await userEvent.click(page.getByRole('button', { name: /Check and delete 2 files/ }))
+
+    liveDeleting.update(() => ({
+      [`${MOUNT}/DCIM/DJI_0004.MP4`]: { stage: 'done' as const, part: 1 },
+      [`${MOUNT}/DCIM/DJI_0001.MP4`]: { stage: 'moving' as const, part: 0.7 }
+    }))
+
+    await expect.element(page.getByText('DJI_0004.MP4')).not.toBeInTheDocument()
+    await expect.element(page.getByText('DJI_0001.MP4')).toBeVisible()
+    forgetDeleting()
+  })
+
   test('copies what is not here yet when asked, without unplugging the camera', async () => {
     stubServer()
     const onNote = vi.fn()

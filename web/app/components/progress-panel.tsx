@@ -25,6 +25,8 @@ type Row = {
   href?: string
   /* what is being done to the one under way, when it is not what the panel does to all of them */
   doing?: string
+  /* the name itself in the colour of where it has got to, for a list where that is the point */
+  tint?: boolean
 }
 
 /* where each has got to, in the colour the board gives it: done in green, the one under way in
@@ -52,6 +54,7 @@ const stateOf = (at: Row['at']) =>
 /* how far through one file, said of its size */
 const ofSize = (part: number, bytes: number) => {
   const percent = Math.round(part * 100)
+  if (bytes <= 0) return `${percent}%`
   const size = formatSize(bytes)
   return t`${percent}% of ${size}`
 }
@@ -67,7 +70,7 @@ const ProgressRows = ({ rows, doing, opened }: { rows: Row[]; doing: string; ope
       <li key={row.key}>
         <span className='flex items-baseline gap-3'>
           <span
-            className={`min-w-0 flex-1 ${opened ? 'break-all' : 'truncate'} ${row.at === 'now' ? 'text-ink' : row.at === 'later' ? 'text-ink-3' : ''}`}
+            className={`min-w-0 flex-1 ${opened ? 'break-all' : 'truncate'} ${row.tint ? TONE[row.at] : row.at === 'now' ? 'text-ink' : row.at === 'later' ? 'text-ink-3' : ''}`}
             title={row.title ?? row.name}>
             {row.name}
           </span>
@@ -116,7 +119,7 @@ const ProgressRows = ({ rows, doing, opened }: { rows: Row[]; doing: string; ope
             aria-valuenow={Math.round((row.part ?? 0) * 100)}
             className='mt-[3px] mb-[2px] flex h-[3px] overflow-hidden rounded-[2px] bg-line'>
             <i
-              className='block h-full bg-accent transition-[width] duration-200'
+              className={`block h-full bg-accent transition-[width] duration-200`}
               style={{ width: `${Math.round((row.part ?? 0) * 100)}%` }}
             />
           </span>
@@ -136,7 +139,8 @@ const ProgressPanel = ({
   doing,
   summary,
   action,
-  counted
+  counted,
+  overall
 }: {
   /* what the panel is, read out */
   label: string
@@ -154,6 +158,8 @@ const ProgressPanel = ({
   action?: React.ReactNode
   /* how far, counted, when there is no list to count it from yet — `part` of the one under way */
   counted?: { at: number; of: number; part?: number }
+  /* how far the whole has got, when every item moves at once and the one under way says nothing of it */
+  overall?: number
 }) => {
   /* folded down to its title and its count, for whoever wants the corner back while it runs */
   const [folded, setFolded] = useState(false)
@@ -165,11 +171,13 @@ const ProgressPanel = ({
   /* the whole, counting the one under way for as much of itself as is done — so one long file on
      its own is a bar that moves rather than a bar that waits */
   const through =
-    rows.length > 0
-      ? Math.min(1, (finished.length + (rows[current]?.part ?? 0)) / rows.length)
-      : counted && counted.of > 0
-        ? Math.min(1, (counted.at + (counted.part ?? 0)) / counted.of)
-        : 0
+    overall !== undefined
+      ? Math.min(1, Math.max(0, overall))
+      : rows.length > 0
+        ? Math.min(1, (finished.length + (rows[current]?.part ?? 0)) / rows.length)
+        : counted && counted.of > 0
+          ? Math.min(1, (counted.at + (counted.part ?? 0)) / counted.of)
+          : 0
   const percent = Math.round(through * 100)
   const count =
     rows.length > 0

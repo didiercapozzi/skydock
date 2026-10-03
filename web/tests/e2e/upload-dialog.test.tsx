@@ -598,7 +598,7 @@ describe('where every passenger has got to', () => {
 
     /* a rendered film is the page's picture and carries the next step's button itself, so there is
        no next-step card: the stepper says where it is, the film's button takes the step */
-    await expect.poll(stepAt).toMatch(/Delivered\s*Next up/)
+    await expect.poll(stepAt).toMatch(/Uploaded\s*Next up/)
     await expect
       .element(page.getByRole('button', { name: 'Upload…', exact: true }).first())
       .toBeInTheDocument()
@@ -627,7 +627,7 @@ describe('where every passenger has got to', () => {
     await renderBoard(board, false)
 
     await expect.element(page.getByRole('button', { name: /^Luc Favre, / })).not.toBeInTheDocument()
-    await expect.poll(stepAt).toMatch(/Delivered/)
+    await expect.poll(stepAt).toMatch(/Uploaded/)
     /* the panel's own way of acting on it is there without selecting anything */
     await expect.element(page.getByRole('heading', { name: 'Who it is for' })).toBeInTheDocument()
   })
@@ -729,7 +729,7 @@ describe('a film the editor has just rendered', () => {
       })
     })
 
-    await expect.poll(stepAt).toContain('Delivered')
+    await expect.poll(stepAt).toContain('Uploaded')
     await expect
       .element(page.getByText('Luc Favre’s film is rendered — ready to upload'))
       .toBeInTheDocument()

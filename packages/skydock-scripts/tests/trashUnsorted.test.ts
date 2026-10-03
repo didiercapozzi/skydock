@@ -120,6 +120,55 @@ describe('putting unsorted files in the bin', () => {
     expect(fs.existsSync(a.path)).toBe(true)
   })
 
+  /* a copy is a jump's hold on its original: while a jump holds one the original stays, and once no jump
+     does — the jump was deleted — the copy is nobody's and goes with it */
+  it('refuses a file a jump still holds a copy of', async () => {
+    const a = original('a')
+    const copy = { ...a, id: 'a~1', copyOf: 'a' }
+    const manifest = board([a, copy], [{ id: 'm1', label: 'm1', day: '12.09.2026', files: [copy] }])
+
+    await expect(trashUnsorted(manifest, new Set(['a']), out, trash)).rejects.toThrow(
+      /copied into a jump/
+    )
+    expect(fs.existsSync(a.path)).toBe(true)
+  })
+
+  it('takes a file whose jump was uploaded, leaving the jump’s copy as a file given back', async () => {
+    const a = original('a')
+    const copy = { ...a, id: 'a~1', copyOf: 'a' }
+    const manifest = board(
+      [a, copy],
+      [
+        {
+          id: 'm1',
+          label: 'm1',
+          day: '12.09.2026',
+          montageJump: true,
+          passenger: { firstname: 'Boogie', lastname: '2026' },
+          uploaded: { at: 1 },
+          files: [copy]
+        }
+      ]
+    )
+
+    await trashUnsorted(manifest, new Set(['a']), out, trash)
+
+    expect(fs.existsSync(a.path)).toBe(false)
+    expect(manifest.files.map((f) => f.id)).toEqual(['a~1'])
+    expect(manifest.groups[0]?.files[0]).toMatchObject({ id: 'a~1', freed: true })
+  })
+
+  it('takes a file whose copy no jump holds any more, and the copy with it', async () => {
+    const a = original('a')
+    const copy = { ...a, id: 'a~1', copyOf: 'a' }
+    const manifest = board([a, copy], [])
+
+    await trashUnsorted(manifest, new Set(['a']), out, trash)
+
+    expect(manifest.files).toEqual([])
+    expect(fs.existsSync(a.path)).toBe(false)
+  })
+
   /* from a dropzone too, once that is the way out chosen for them (RULES, Putting files in the bin) */
   it('takes a dropzone’s file into a folder of the bin named after the dropzone', async () => {
     const a = original('a')

@@ -1,3 +1,4 @@
+import { afterNote } from '../helpers/sizes'
 import { plural, t } from '@lingui/core/macro'
 import {
   hasCompletePassenger,
@@ -800,7 +801,7 @@ const FilePanel = ({
                 `${hhmm(file.mtime)} · ${shortDate(file.mtime)}`
               )
             ],
-            [t`Size`, formatSize(file.size)],
+            [t`Size`, `${formatSize(file.size)}${afterNote(file)}`],
             [
               t`Picture`,
               [

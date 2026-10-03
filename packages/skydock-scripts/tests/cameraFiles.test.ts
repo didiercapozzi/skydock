@@ -3,13 +3,14 @@ import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { writeArchive } from '../src/archive'
 import { deleteFromCameras, listCameras } from '../src/cameraFiles'
 import { copyCamera } from '../src/copy'
+import { subscribe } from '../src/live'
+import { readTransfers } from '../src/transfers'
+import type { LiveEvent } from '../src/live'
 import { computeFileId } from '../src/fileId'
 import { saveManifest } from '../src/manifest'
 import { trashUnsorted } from '../src/trashUnsorted'
-import type { NasSession } from '../src/nas'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
 import { createTmpDir, nasStubs, stubFetch } from './fixtures'
 
@@ -23,7 +24,6 @@ let outputDir: string
 let trashDir: string
 
 const DAY = new Date(2026, 7, 1, 10, 0, 0)
-const session: NasSession = { hostname: 'http://nas.test', username: 'u', sessionId: 'sid' }
 const md5 = (file: string) => crypto.createHash('md5').update(fs.readFileSync(file)).digest('hex')
 
 const card = (clips: Record<string, number>) => {
@@ -215,7 +215,6 @@ describe('deleting from a camera', () => {
     deleteFromCameras({
       paths: [onCard(root, 'GX01.MP4')],
       manifest,
-      connect: async () => session,
       trashDir,
       mounts: [root]
     })
@@ -233,16 +232,55 @@ describe('deleting from a camera', () => {
     expect(fs.existsSync(path.join(result.bins[0]!, 'DCIM', '100GOPRO', 'GX01.MP4'))).toBe(true)
   })
 
-  it('keeps it on the card when the storage no longer holds what was sent', async () => {
+  it('says how far each file has got as it is checked and moved, and that it is done', async () => {
     const { root, file } = await setup()
     const storage: Record<string, string> = {}
     const manifest = board([dropzone([sentAsCopy(file, storage)])])
-    withStorage({ '/SkyDock/Yverdon/yverdon_GX01.MP4': 'something-else' })
+    withStorage(storage)
+    const heard: LiveEvent[] = []
+    const stop = subscribe((event) => heard.push(event))
 
-    await expect(remove(root, manifest)).rejects.toThrow(
-      /Nothing was deleted: GX01\.MP4 could not be matched with what the storage holds/
-    )
-    expect(fs.existsSync(onCard(root, 'GX01.MP4'))).toBe(true)
+    await remove(root, manifest)
+    stop()
+
+    const mine = heard.filter((e) => e.kind === 'camera-delete')
+    expect(mine.map((e) => e.stage)).toContain('checking')
+    /* proved and waiting, said before anything is moved */
+    const stages = mine.map((e) => e.stage)
+    expect(stages.indexOf('checked')).toBeGreaterThan(-1)
+    expect(stages.indexOf('checked')).toBeLessThan(stages.indexOf('moving'))
+    expect(mine.at(-1)).toMatchObject({ stage: 'done', part: 1 })
+    expect(mine.every((e) => e.part >= 0 && e.part <= 1)).toBe(true)
+  })
+
+  /* kept with the other transfers (RULES, Transfers): what went, or every file left alone and why */
+  it('keeps a transfer of what was deleted, and of what was refused', async () => {
+    const { root, file } = await setup()
+    const storage: Record<string, string> = {}
+    withStorage(storage)
+
+    await expect(
+      deleteFromCameras({
+        paths: [onCard(root, 'GX01.MP4')],
+        manifest: board([dropzone([file])]),
+        trashDir,
+        mounts: [root],
+        outputDir
+      })
+    ).rejects.toThrow()
+    const refused = readTransfers(outputDir)[0]
+    expect(refused).toMatchObject({ kind: 'delete', state: 'failed' })
+    expect(refused?.items[0]).toMatchObject({ name: 'GX01.MP4', result: 'left' })
+
+    const manifest = board([dropzone([sentAsCopy(file, storage)])])
+    await deleteFromCameras({
+      paths: [onCard(root, 'GX01.MP4')],
+      manifest,
+      trashDir,
+      mounts: [root],
+      outputDir
+    })
+    expect(readTransfers(outputDir)[0]).toMatchObject({ kind: 'delete', state: 'done' })
   })
 
   it('keeps it on the card while it is only copied here, not uploaded', async () => {
@@ -258,18 +296,15 @@ describe('deleting from a camera', () => {
     const manifest = board([])
     manifest.files = [file]
     await trashUnsorted(manifest, new Set([file.id!]), outputDir, trashDir)
-    const connect = vi.fn(async () => null)
 
     await deleteFromCameras({
       paths: [onCard(root, 'GX01.MP4')],
       manifest,
-      connect,
       trashDir,
       mounts: [root]
     })
 
     expect(fs.existsSync(onCard(root, 'GX01.MP4'))).toBe(false)
-    expect(connect).not.toHaveBeenCalled()
   })
 
   it('keeps it on the card when what is in the bin under its name is a different file', async () => {
@@ -283,141 +318,91 @@ describe('deleting from a camera', () => {
     expect(fs.existsSync(onCard(root, 'GX01.MP4'))).toBe(true)
   })
 
-  /* a montage's original goes to the backup inside a zip: the entry in it is held against the camera
-     file, byte for byte, and the zip against the storage */
-  it('takes a montage file off the card when the backup zip holds it, byte for byte', async () => {
+  /* the records say it is on the storage — checked by md5 when it went up, and freed once it was held
+     there — and nothing is asked of the storage again */
+  it('takes a file of a montage that was freed off the card, without asking the storage', async () => {
     const { root, file } = await setup()
-    const zip = path.join(outputDir, 'luc.rushes.zip')
-    await writeArchive(zip, [{ file: file.path, name: file.filename }], { level: 0 })
-    const rushes = {
-      localPath: zip,
-      remotePath: '/Backup/luc.rushes.zip',
-      md5: md5(zip),
-      size: 1,
-      at: 1
-    }
     const manifest = board([
       {
         ...dropzone([file]),
         montageJump: true,
         passenger: { firstname: 'Luc', lastname: 'Favre' },
-        uploaded: { at: 1, rushes }
-      }
-    ])
-    withStorage({ [rushes.remotePath]: rushes.md5 })
-
-    await remove(root, manifest)
-
-    expect(fs.existsSync(onCard(root, 'GX01.MP4'))).toBe(false)
-  })
-
-  /* freeing a montage deletes its archive here: nothing is left to hold the file against, and it says so */
-  it('keeps a montage file on the card, and says why, once its archive was freed from this machine', async () => {
-    const { root, file } = await setup()
-    const rushes = {
-      localPath: path.join(outputDir, 'gone.rushes.zip'),
-      remotePath: '/Backup/gone.rushes.zip',
-      md5: 'x',
-      size: 1,
-      at: 1
-    }
-    const manifest = board([
-      {
-        ...dropzone([file]),
-        montageJump: true,
-        passenger: { firstname: 'Luc', lastname: 'Favre' },
-        uploaded: { at: 1, rushes }
-      }
-    ])
-    withStorage({ [rushes.remotePath]: 'x' })
-
-    await expect(remove(root, manifest)).rejects.toThrow(
-      /GX01\.MP4 is in a montage freed from this machine, whose archive is no longer here/
-    )
-    expect(fs.existsSync(onCard(root, 'GX01.MP4'))).toBe(true)
-  })
-
-  /* the archive is gone, but what it held was written down as it went up, and the storage holds that zip */
-  it('takes a montage file off the card once its archive was freed, by what the upload wrote down', async () => {
-    const { root, file } = await setup()
-    const rushes = {
-      localPath: path.join(outputDir, 'gone.rushes.zip'),
-      remotePath: '/Backup/gone.rushes.zip',
-      md5: 'zipsum',
-      size: 1,
-      at: 1,
-      holds: ['videos' as const],
-      entries: { [`videos/${file.filename}`]: md5(file.path) }
-    }
-    const manifest = board([
-      {
-        ...dropzone([file]),
-        montageJump: true,
-        passenger: { firstname: 'Luc', lastname: 'Favre' },
-        uploaded: { at: 1, rushes }
-      }
-    ])
-    withStorage({ [rushes.remotePath]: 'zipsum' })
-
-    const [camera] = await listCameras(outputDir, [root], trashDir)
-    expect(camera?.files[0]?.locked).toBeUndefined()
-
-    await remove(root, manifest)
-
-    expect(fs.existsSync(onCard(root, 'GX01.MP4'))).toBe(false)
-  })
-
-  it('lists such a file as locked, so it is never offered for deleting', async () => {
-    const { root, file } = await setup()
-    const rushes = {
-      localPath: path.join(outputDir, 'gone.rushes.zip'),
-      remotePath: '/Backup/gone.rushes.zip',
-      md5: 'x',
-      size: 1,
-      at: 1
-    }
-    saveManifest(
-      path.join(outputDir, 'manifest.json'),
-      board([
-        {
-          ...dropzone([file]),
-          montageJump: true,
-          passenger: { firstname: 'Luc', lastname: 'Favre' },
-          uploaded: { at: 1, rushes }
+        freed: { at: 1, bytes: 1 },
+        uploaded: {
+          at: 1,
+          rushes: {
+            localPath: path.join(outputDir, 'gone.rushes.zip'),
+            remotePath: '/Backup/gone.rushes.zip',
+            md5: 'x',
+            size: 1,
+            at: 1
+          }
         }
-      ])
-    )
-
-    const [camera] = await listCameras(outputDir, [root], trashDir)
-
-    expect(camera?.files[0]).toMatchObject({ state: 'stored', locked: true })
-  })
-
-  it('keeps a montage file on the card when the backup zip holds a different file of that name', async () => {
-    const { root, file } = await setup()
-    const other = path.join(outputDir, 'other.MP4')
-    fs.writeFileSync(other, Buffer.alloc(32, 7))
-    const zip = path.join(outputDir, 'luc.rushes.zip')
-    await writeArchive(zip, [{ file: other, name: file.filename }], { level: 0 })
-    const rushes = {
-      localPath: zip,
-      remotePath: '/Backup/luc.rushes.zip',
-      md5: md5(zip),
-      size: 1,
-      at: 1
-    }
-    const manifest = board([
-      {
-        ...dropzone([file]),
-        montageJump: true,
-        passenger: { firstname: 'Luc', lastname: 'Favre' },
-        uploaded: { at: 1, rushes }
       }
     ])
-    withStorage({ [rushes.remotePath]: rushes.md5 })
+    await remove(root, manifest)
 
-    await expect(remove(root, manifest)).rejects.toThrow(/could not be matched/)
+    expect(fs.existsSync(onCard(root, 'GX01.MP4'))).toBe(false)
+  })
+
+  /* each file is its own: the ones shown to be on the storage go, the others stay and are named */
+  it('takes the files that pass off the card and leaves the others, file by file', async () => {
+    const root = card({ 'GX01.MP4': 1, 'GX02.MP4': 2 })
+    await copyCamera({ cameraDir: path.join(root, 'DCIM'), outputDir })
+    const storage: Record<string, string> = {}
+    const first = await entry('GX01.MP4')
+    const manifest = board([dropzone([sentAsCopy(first, storage), await entry('GX02.MP4')])])
+    const heard: LiveEvent[] = []
+    const stop = subscribe((event) => heard.push(event))
+
+    const result = await deleteFromCameras({
+      paths: [onCard(root, 'GX01.MP4'), onCard(root, 'GX02.MP4')],
+      manifest,
+      trashDir,
+      mounts: [root],
+      outputDir
+    })
+    stop()
+
+    expect(result.count).toBe(1)
+    expect(result.stayed).toEqual([
+      {
+        file: onCard(root, 'GX02.MP4'),
+        why: expect.stringMatching(/GX02\.MP4 is not uploaded yet/)
+      }
+    ])
+    expect(fs.existsSync(onCard(root, 'GX01.MP4'))).toBe(false)
+    expect(fs.existsSync(onCard(root, 'GX02.MP4'))).toBe(true)
+    /* the good one is done before the other is even answered for: said as it went, not at the end */
+    const ended = heard.filter((e) => e.kind === 'camera-delete' && e.stage !== 'checking')
+    expect(ended.map((e) => e.kind === 'camera-delete' && e.stage)).toEqual(
+      expect.arrayContaining(['done', 'failed'])
+    )
+    expect(readTransfers(outputDir)[0]?.items.map((i) => [i.name, i.result])).toEqual([
+      ['GX01.MP4', 'done'],
+      ['GX02.MP4', 'failed']
+    ])
+  })
+
+  /* a card the container only reads cannot be deleted from; it is said at once, and nothing is copied
+     into the bin first */
+  it('says at once that a card mounted read-only cannot be deleted from', async () => {
+    const { root, file } = await setup()
+    const storage: Record<string, string> = {}
+    const manifest = board([dropzone([sentAsCopy(file, storage)])])
+
+    await expect(
+      deleteFromCameras({
+        paths: [onCard(root, 'GX01.MP4')],
+        manifest,
+        trashDir,
+        mounts: [root],
+        writable: () => false
+      })
+    ).rejects.toThrow(/mounted read-only/)
+
     expect(fs.existsSync(onCard(root, 'GX01.MP4'))).toBe(true)
+    expect(fs.existsSync(trashDir)).toBe(false)
   })
 
   it('never touches a file that is not on a camera plugged in', async () => {
@@ -428,7 +413,6 @@ describe('deleting from a camera', () => {
       deleteFromCameras({
         paths: [elsewhere],
         manifest: board([]),
-        connect: async () => session,
         trashDir,
         mounts: [card({})]
       })

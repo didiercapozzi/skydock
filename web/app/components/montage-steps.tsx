@@ -57,7 +57,7 @@ const STEP_WORD: Record<MontageStep, MessageDescriptor> = {
   Processed: msg`Prepared`,
   Edited: msg`Project`,
   Rendered: msg`Film`,
-  Uploaded: msg`Delivered`,
+  Uploaded: msg`Uploaded`,
   Emailed: msg`Sent`
 }
 

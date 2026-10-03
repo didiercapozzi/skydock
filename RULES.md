@@ -178,35 +178,27 @@ copy here was put in the bin, can be picked and deleted from the camera, to make
 others have no tick, since until a file is uploaded or thrown away the card is its other copy. The picks
 on the storage are also what can be **copied back here**, which is the one thing that undoes a freeing
 and is never done by plugging the card in. Deleting asks first, saying how many files and how much, and
-that they go to the bin. Then each file is read through and held by its bytes, never by its name:
+that they go to the bin. Then each file is read through and known by its bytes, never by its name:
 one in the bin against the files put in the bin from Fresh files, which has to hold that very content;
-one on the storage against what the storage holds, since every name changes on the way — it has to be a
-file the board knows by its content, and the storage has to hold what that file became. The storage has
-to be reachable only for those.
+one on the storage has to be a file the board knows by its content and whose upload the records say was
+checked. The storage is not asked, so it need not be reachable.
 A camera read through KDE is listed the same way, but from what its copy found rather than by asking
 it again: it answers one question at a time, and a card of sixteen hundred clips is minutes of them.
 It is copied the moment it is plugged in, so its page opens at once; while the copy is still going
 over it, what has been reached is listed and the page says the rest are coming, filling in on its own.
-Nothing is deleted from it here: the proof reads each file through, byte for byte, which needs the
+Nothing is deleted from it here: the check reads each file through, byte for byte, which needs the
 camera readable as files — and for the same reason its page does not say which files are in the bin.
 Its page says to delete on the camera itself.
 
-| What the camera file is | What it is held against on the storage                                    |
-| ----------------------- | ------------------------------------------------------------------------- |
-| a montage's original    | the very file where it went up as it is, or its entry in the zip          |
-| a montage's photo       | its entry in the zip that holds the photos, or the copy sent as it is     |
-| a dropzone's file       | the copy made from it, which is what went up — it never goes up as itself |
-
-If any file is not proved, or is not on a camera plugged in now, nothing at all is deleted and the files
-at fault are named — first any not on a camera plugged in, then any neither in the bin nor shown to be on
-the storage. What passes is moved off the card into a folder of the bin named after the camera and the moment,
-kept as it sat on the card. A montage's file is proved through the archive kept here — and, since the
-upload writes down the md5 of every entry it put in each zip, through that record once the montage has
-been freed and the archive is gone, together with the storage still holding that very zip. A montage
-freed before those were kept has nothing left to prove its files by: they stay on the card, are marked
-with a lock, can still be copied back, and are never offered for deleting, and a deletion that names
-one says why. Nothing is deleted from
-a camera while one is being copied or anything is being processed.
+A file not on a camera plugged in now stops the whole request, and the files at fault are named. Past
+that, each file is its own: one shown to be on the storage, or whose copy is in the bin, is moved off the
+card as soon as it has been read through, without waiting for the others, and one that is not stays on
+the card and is named — the others still go. Only when none can go is it said that nothing was deleted.
+A file leaves the camera's list the moment it has gone. What passes is moved off the card into a folder of the bin named after the camera and the moment,
+kept as it sat on the card. What decides is what the file is, by its contents, and what the records say of it: it is on the storage if its upload was checked by md5 on both sides when it went up, or it was freed once the storage held it. Nothing is asked of the storage when a file is deleted, so there is nothing to wait for. A file the board does not know, one only copied here and not uploaded, or one whose copy in the bin is a different file, stays and is named. The files are read a few at a time and moved one at a time, and each file being deleted
+shows a bar on its own row, first for reading it through and then for moving it into the
+bin, so a long delete is seen to be going. Nothing is deleted from a camera while one is being copied or
+anything is being processed.
 
 **2. Scan.** SkyDock reads each file's capture time and groups files shot close together into jumps.
 A scan can be asked for at any time; one run after more cameras were copied off picks up the new files,
@@ -501,7 +493,7 @@ open its page, where what the storage holds of it can still be looked at. Whethe
 off the storage's list, so while the storage cannot be reached, nothing leaves.
 
 **Where every montage has got to.** A montage walks the same six steps every time — _Named_,
-_Prepared_, _Project_, _Film_, _Delivered_, _Sent_ — and the board shows every montage where it
+_Prepared_, _Project_, _Film_, _Uploaded_, _Sent_ — and the board shows every montage where it
 is on them, so nobody has to remember what comes after a render. Each montage's entry in the menu says
 the step that is next ("to render", "to email") with a segment per step beneath it, done ones in green
 and the one it is at in the same colour as those words; its card says the same. Its page shows the whole way in one row of six, a line joining them green as far as the step it is at,
@@ -687,7 +679,7 @@ since the app and the machine it came off are the same one.
 bin on it, so it is never taken for anything else. A test shot or footage of the ground can be got rid
 of from wherever it is — Fresh files, a jump, a dropzone, a montage — when the bin is the way out
 chosen for it on removing it. A file already on the storage is not the board's to throw away and never
-goes. A file copied into a jump cannot go while the copy is there. Nothing goes without a warning first, saying how many files, how many videos and photos
+goes. A file copied into a jump cannot go while that jump still needs it; once the jump is uploaded it can, and the jump keeps its copy as a file given back, on the storage only. Nothing goes without a warning first, saying how many files, how many videos and photos
 and how much space, and that these are originals nobody has been given yet — if the camera card has
 been wiped, the bin holds the only copy. Once confirmed, the files leave the board and the originals
 folder, so a scan does not bring them back; the copies and proxies made from them are deleted, since
@@ -901,6 +893,15 @@ on.
 Rows show the trim, the frame and the turn beside the name, dashed until applied and solid after.
 Thumbnails show the picture turned. Any of these set after a file was processed makes its copy out of
 date.
+
+**What it will weigh.** Where a file's size is shown and the file is to be trimmed, framed or already
+processed, the size it ends up as is said beside it, after an arrow. Once the copy is made it is the
+copy's own size, as long as it was made with the settings the file has now. Before, it is an estimate,
+marked with a tilde: a trim copies the stream, so it weighs the share of the clip's time that is kept;
+a frame is encoded again at a fixed quality, whose size depends on what is in the picture, so the share
+of the picture that is kept is only a rough guide. Turning changes no size. Nothing is said when nothing
+changes. The estimate is live in the preview while the ends or the frame are being moved; the lists and the
+file's details give the copy's size once it exists.
 
 ## Acting
 
@@ -1402,6 +1403,14 @@ transfers, and of each at most 400 items — what was done comes before what was
 listed is counted and said, never dropped silently. A camera plugged in again with nothing new to copy
 records nothing. **Clear** forgets the list, and a small cross on a transfer forgets that one and keeps the others: in both, nothing that was sent or copied is touched.
 
+**Everything with a bar is in Transfers too.** What is going right now — an upload, files being copied in,
+a camera being copied off, a file brought back from the storage, files being deleted off a camera —
+is listed at the head of the Transfers window, each with how far it has got, and a camera's delete has its
+own small window in the bottom-right corner besides, so the page can be left while it runs: the work runs
+on the server, and what is shown follows it from whatever page is open. When it ends it is kept in the
+list below. A delete off a camera is kept like the others: every file that went, or every file left alone
+and why.
+
 ## Freeing space
 
 Once a montage is uploaded, everything of it on this machine can be deleted — originals, copies, working
@@ -1520,9 +1529,10 @@ new message — in Gmail or in the computer's own mail program, whichever is cho
 remembered from last time — with the address
 and subject filled in; the email is pasted in and sent from there. The email, the subject and the link
 can also be copied on their own. The link always comes from what the upload recorded. Marking the
-email as sent records it on the storage's list, and can be undone. Once the mail has been opened from
-here, a dialog of its own asks _Was the email sent?_ and cannot be put away — not by Escape, not by a
-click beside it — until one of the two answers is given: _Yes_ records it on the storage's list, _Not
+email as sent is kept on the board, and on the storage's list too where the montage has a row there, so
+it stands whether or not the list is reachable; it can be undone. Only when Copy & open is pressed, and
+the montage is not marked already, a dialog of its own asks _Was the email sent?_ and cannot be put away — not by Escape, not by a
+click beside it — until one of the two answers is given: _Yes_ records it, _Not
 sent_ leaves the montage to email. So a montage does not stay "to email" long after its email went.
 
 ## Going back

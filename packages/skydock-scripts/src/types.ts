@@ -85,10 +85,7 @@ const uploadedRecordSchema = z.object({
   at: z.number(),
   /* for a zip, what it holds — its videos under videos/, its photos under photos/. A zip recorded
      without it is an older one: the videos at its top, or the photos alone. */
-  holds: z.array(sendPartSchema).optional(),
-  /* for a zip, the md5 of each entry as it went in, by its name in the zip — so what the zip held can
-     be proved after the zip itself is gone from this machine. Absent from a zip made before it was kept. */
-  entries: z.record(z.string(), z.string()).optional()
+  holds: z.array(sendPartSchema).optional()
 })
 
 const manifestFileSchema = z.object({
@@ -197,6 +194,9 @@ const manifestGroupSchema = z.object({
   publish: publishSchema.optional(),
   montage: montageRecordSchema.optional(),
   uploaded: montageUploadSchema.optional(),
+  /* the passenger was emailed, and when and to whom — kept here as well as on the storage's list, so it
+     stands whether or not that list is reachable or names this montage */
+  emailed: z.object({ at: z.number(), to: z.string().optional() }).optional(),
   /* everything of it deleted from this machine, bar the project, once the storage held it all */
   freed: z.object({ at: z.number(), bytes: z.number() }).optional(),
   day: z.string(),

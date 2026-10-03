@@ -8,10 +8,7 @@ const cameraFileSchema = z.object({
   name: z.string(),
   size: z.number(),
   mtime: z.number(),
-  state: z.enum(['missing', 'copied', 'binned', 'stored']),
-  /* on the storage, but nothing is left here to prove it by — its montage was freed and its archive
-     went with it: it can be copied back, and is never offered for deleting */
-  locked: z.boolean().optional()
+  state: z.enum(['missing', 'copied', 'binned', 'stored'])
 })
 
 const cameraListingSchema = z.object({
@@ -34,7 +31,13 @@ const camerasAnswerSchema = z.object({ cameras: z.array(cameraListingSchema) })
 
 /* what deleting from a camera came to, with the cameras as they are after it */
 const cameraDeletedSchema = camerasAnswerSchema.extend({
-  deleted: z.object({ count: z.number(), bytes: z.number(), bins: z.array(z.string()) })
+  deleted: z.object({
+    count: z.number(),
+    bytes: z.number(),
+    bins: z.array(z.string()),
+    /* files that stayed on the card, and why — the others went all the same */
+    stayed: z.array(z.object({ file: z.string(), why: z.string() })).optional()
+  })
 })
 
 type CameraFile = z.infer<typeof cameraFileSchema>

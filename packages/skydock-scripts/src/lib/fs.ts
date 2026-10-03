@@ -1,6 +1,7 @@
 import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import * as streams from 'node:stream/promises'
 import { isMediaName } from '../constants'
 
 const DEFAULT_MAX_FIND_DEPTH = 10
@@ -170,7 +171,12 @@ const writeJsonAtomic = (target: string, value: unknown) => {
    machine's disk. Within one drive it is renamed; across two it is copied whole under a temporary
    name, given its own only once complete, and only then removed where it was, so a move cut off half
    way leaves the file where it was and nothing that passes for it. */
-const moveFile = async (from: string, to: string) => {
+const moveFile = async (
+  from: string,
+  to: string,
+  /* how many bytes have been copied, of how many, when the file has to be copied rather than renamed */
+  onBytes?: (copied: number, total: number) => void
+) => {
   fs.mkdirSync(path.dirname(to), { recursive: true })
   try {
     await fs.promises.rename(from, to)
@@ -180,15 +186,31 @@ const moveFile = async (from: string, to: string) => {
   }
   const partial = `${to}.part`
   try {
-    await fs.promises.copyFile(from, partial)
     const stat = fs.statSync(from)
+    if (onBytes) {
+      let copied = 0
+      const reading = fs
+        .createReadStream(from, { highWaterMark: 1024 * 1024 })
+        .on('data', (chunk) => {
+          copied += chunk.length
+          onBytes(copied, stat.size)
+        })
+      await streams.pipeline(reading, fs.createWriteStream(partial))
+    } else await fs.promises.copyFile(from, partial)
     fs.utimesSync(partial, stat.atime, stat.mtime)
     fs.renameSync(partial, to)
   } catch (e) {
     fs.rmSync(partial, { force: true })
     throw e
   }
-  await fs.promises.unlink(from)
+  try {
+    await fs.promises.unlink(from)
+  } catch (e) {
+    /* it could not be taken off where it was: the copy is not the file's new place, and is not left
+       beside the original to be taken for one */
+    fs.rmSync(to, { force: true })
+    throw e
+  }
 }
 
 export {

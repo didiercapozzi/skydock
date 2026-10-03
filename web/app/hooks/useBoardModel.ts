@@ -131,7 +131,9 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       : group
   /* whether the storage's list says this montage's link was sent */
   const emailedOn = (group: ManifestGroup) =>
-    board.storage?.montages.find((m) => m.folder === folderOnStorage(group))?.emailed ?? null
+    group.emailed ??
+    board.storage?.montages.find((m) => m.folder === folderOnStorage(group))?.emailed ??
+    null
   /* A montage is finished when it was emailed and freed: nothing is left to do, and all that is left
      of it is on the storage. It leaves the Montages and is listed under Delivered. */
   const finished = (group: ManifestGroup) =>

@@ -7,6 +7,7 @@ import { useTransfers } from '../hooks/useTransfers'
 import { Mini } from './buttons'
 import { Icon } from './icons'
 import type { IconName } from './icons'
+import { RunningNow } from './running-now'
 import { ProgressRows } from './progress-panel'
 import type { ProgressRow } from './progress-panel'
 import { dateLabel, hhmm } from './utils'
@@ -20,7 +21,8 @@ const ICON: Record<Transfer['kind'], IconName> = {
   upload: 'upload',
   import: 'copying',
   camera: 'camera',
-  bring: 'back'
+  bring: 'back',
+  delete: 'camera'
 }
 
 const rowsOf = (transfer: Transfer, dsmHost?: string | null): ProgressRow[] =>
@@ -81,7 +83,9 @@ const kindOf = (transfer: Transfer) =>
       ? t`Copied in`
       : transfer.kind === 'bring'
         ? t`Brought back`
-        : t`Copied off`
+        : transfer.kind === 'delete'
+          ? t`Deleted from the camera`
+          : t`Copied off`
 
 const Entry = ({
   transfer,
@@ -196,9 +200,14 @@ const Entry = ({
 const TransfersPanel = ({
   stamp,
   dsmHost,
+  uploading,
+  importing,
   onClose
 }: {
   stamp: string
+  /* what is going out and coming in, which only the board knows; the rest is heard from the server */
+  uploading: { label: string; part: number } | null
+  importing: { where: string; done: number; total: number } | null
   /* the storage's own address, to show a file that was in the way */
   dsmHost?: string | null
   onClose: () => void
@@ -252,6 +261,10 @@ const TransfersPanel = ({
           />
         </button>
       </div>
+      <RunningNow
+        uploading={uploading}
+        importing={importing}
+      />
       {transfers === null ? (
         <p className='m-0 text-[12.5px] text-ink-3'>{t`Looking…`}</p>
       ) : transfers.length === 0 ? (

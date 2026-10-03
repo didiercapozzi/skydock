@@ -203,8 +203,8 @@ const DialogHost = ({
             <EmailDialog
               key={folder ?? dialog.groupId}
               about={{ ...about, shareUrl }}
-              emailed={entry?.emailed ?? null}
-              canRecord={Boolean(entry && folder)}
+              emailed={group?.emailed ?? entry?.emailed ?? null}
+              canRecord={Boolean(folder)}
               onRecord={(sent, to) => folder && onEmailed(folder, sent, to)}
               onClose={close}
             />

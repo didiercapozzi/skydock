@@ -8,6 +8,7 @@ import {
   forgetLive,
   liveBringing,
   liveCamera,
+  liveDeleting,
   liveFiles,
   liveImporting,
   liveKey
@@ -28,6 +29,9 @@ type Mounted = Extract<LiveEvent, { kind: 'cameras' }>['mounted'][number]
 
 /* one file being copied in from the computer, by the name the page gave that copy */
 type Importing = Omit<Extract<LiveEvent, { kind: 'import' }>, 'kind'>
+
+/* one file being deleted off a camera */
+type Deleting = Omit<Extract<LiveEvent, { kind: 'camera-delete' }>, 'kind' | 'path'>
 
 /* one file being fetched back from the storage */
 type Bringing = Omit<Extract<LiveEvent, { kind: 'bring' }>, 'kind'>
@@ -98,6 +102,24 @@ const useLiveProgress = (
         liveImporting.update(() => (event.phase === 'done' ? null : event))
         return
       }
+      if (event.kind === 'camera-delete') {
+        liveDeleting.update((now) => ({
+          ...now,
+          [event.path]: {
+            stage: event.stage,
+            part: event.part,
+            size: event.size ?? now[event.path]?.size
+          }
+        }))
+        /* once none is still going, what ended is let go of a moment later: it is kept with the other
+           transfers, which is where to look at how it went */
+        setTimeout(() => {
+          const rest = Object.values(liveDeleting.get())
+          if (rest.length > 0 && rest.every((d) => d.stage === 'done' || d.stage === 'failed'))
+            liveDeleting.update(() => ({}))
+        }, 2500)
+        return
+      }
       if (event.kind === 'board') {
         setChanged(event.stamp)
         return
@@ -142,4 +164,4 @@ const useLiveProgress = (
 }
 
 export { useLiveProgress }
-export type { Bringing, CameraCopy, Disk, Importing, LiveFile, Mounted }
+export type { Bringing, CameraCopy, Deleting, Disk, Importing, LiveFile, Mounted }

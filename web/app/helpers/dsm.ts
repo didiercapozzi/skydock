@@ -1,5 +1,5 @@
-/* Where a folder on the storage is in the storage's own web interface: File Station, opened on it. A
-   file is shown by the folder it is in, which is where somebody looking for it wants to be. The
+/* Where a folder on the storage is in the storage's own web interface: File Station, opened on it — or,
+   given a file's path, on the folder it is in with that file chosen. The
    address is the one the board was connected with, since it is the same server; nothing is sent to it
    from here — it is a link, followed by whoever presses it, who signs in there as they always do. The
    path goes in twice encoded, the way File Station reads its launch parameter. Null for an address

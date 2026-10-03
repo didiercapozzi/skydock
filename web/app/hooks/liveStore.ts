@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import type { Bringing, CameraCopy, Importing, LiveFile } from './useLiveProgress'
+import type { Bringing, CameraCopy, Deleting, Importing, LiveFile } from './useLiveProgress'
 
 /* What moves many times a second — how far each file being processed or proxied has got, the bytes
    of a card being copied, the bytes of a file being copied in — kept here rather than in the board.
@@ -50,12 +50,17 @@ const liveCamera = slice<CameraCopy | null>(null)
 const liveImporting = slice<Importing | null>(null)
 const liveBringing = slice<Bringing | null>(null)
 
+const NO_DELETING: Record<string, Deleting> = {}
+/* the files being deleted off a camera, by their path on the card, and how far each has got */
+const liveDeleting = slice(NO_DELETING)
+
 /* everything heard so far let go of, for a line to the machine opened afresh */
 const forgetLive = () => {
   liveFiles.update(() => NO_FILES)
   liveCamera.update(() => null)
   liveImporting.update(() => null)
   liveBringing.update(() => null)
+  liveDeleting.update(() => NO_DELETING)
 }
 
 /* What is under way is kept by the work and the file, since the proxy and the jump are made side by
@@ -104,6 +109,18 @@ const useCameraCopying = () =>
     () => false
   )
 
+/* one file being deleted off a camera, and how far through — a row is drawn again only for its own */
+const useDeleting = (path: string) =>
+  useSyncExternalStore(
+    liveDeleting.subscribe,
+    () => liveDeleting.get()[path],
+    () => undefined
+  )
+
+/* every file being deleted off a camera right now, by path */
+const useDeletingAll = () =>
+  useSyncExternalStore(liveDeleting.subscribe, liveDeleting.get, () => NO_DELETING)
+
 /* the file being copied in from the computer, and how far through */
 const useImporting = () =>
   useSyncExternalStore(liveImporting.subscribe, liveImporting.get, () => null)
@@ -111,10 +128,15 @@ const useImporting = () =>
 /* the file being fetched back from the storage, and how far through */
 const useBringing = () => useSyncExternalStore(liveBringing.subscribe, liveBringing.get, () => null)
 
+/* what was heard of files deleted, let go of once the delete has answered */
+const forgetDeleting = () => liveDeleting.update(() => NO_DELETING)
+
 export {
+  forgetDeleting,
   forgetLive,
   liveBringing,
   liveCamera,
+  liveDeleting,
   liveFiles,
   liveImporting,
   liveKey,
@@ -122,6 +144,8 @@ export {
   useCameraCopy,
   useCameraCopying,
   useCameraLanded,
+  useDeleting,
+  useDeletingAll,
   useImporting,
   useLiveFile
 }

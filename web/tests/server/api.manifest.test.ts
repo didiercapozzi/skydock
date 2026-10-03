@@ -438,16 +438,48 @@ describe('changes made on the board', () => {
   })
 
   describe('marking the email as sent', () => {
-    /* the list is kept on the storage, so saying the email went needs the storage */
-    it('refuses while the storage cannot be reached', async () => {
+    const uploaded = (folder: string) =>
+      group({
+        id: 'group_1',
+        montageJump: true,
+        passenger: { firstname: 'Luc', lastname: 'Favre' },
+        uploaded: {
+          at: 1,
+          film: {
+            remotePath: `${folder}/luc.mp4`,
+            md5: 'x',
+            size: 1,
+            localPath: '/p/luc.mp4',
+            at: 1
+          }
+        },
+        files: [file({ id: 'a' })]
+      })
+    const emailedOf = () =>
+      loadManifest(path.join(tmpDir, 'manifest.json'))?.groups.find((g) => g.id === 'group_1')
+        ?.emailed
+
+    /* the board keeps it, so the storage being out of reach or not naming the montage costs nothing */
+    it('is kept on the board while the storage cannot be reached, and taken back', async () => {
+      writeManifest([uploaded('/SkyDock/Passengers/Luc Favre')])
+      const folder = '/SkyDock/Passengers/Luc Favre'
+
+      await send({ intent: 'mark-emailed', emailed: { folder, to: 'luc@x.ch', sent: true } })
+      expect(emailedOf()).toMatchObject({ to: 'luc@x.ch' })
+
+      await send({ intent: 'mark-emailed', emailed: { folder, sent: false } })
+      expect(emailedOf()).toBeUndefined()
+    })
+
+    it('refuses a montage that is nowhere', async () => {
       writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
       const res = refusal(
         await send({
           intent: 'mark-emailed',
-          emailed: { folder: '/SkyDock/Passengers/Luc Favre', sent: true }
+          emailed: { folder: '/SkyDock/Passengers/Nobody', sent: true }
         })
       )
-      expect(res.globalErrors?.[0]).toContain('Connect the storage')
+      expect(res.globalErrors?.[0]).toContain('not on the board')
     })
   })
 

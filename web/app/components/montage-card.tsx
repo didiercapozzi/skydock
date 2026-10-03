@@ -710,8 +710,8 @@ const NasCard = ({
   /* no link line at the foot: the link is the panel's */
   quiet?: boolean
 }) => {
-  /* its folder in the storage's own web interface, opened in a new tab: what is up there is looked
-     for there, and each file is shown by the folder it is in */
+  /* its folder in the storage's own web interface, opened in a new tab; each file below opens it with
+     that file chosen */
   const dsm = dsmHost ? dsmFolderUrl(dsmHost, parcel.dir) : null
   return (
     <div className='mt-2.5 overflow-hidden rounded-[16px] shadow-[0_0_0_1px_var(--color-line)]'>
@@ -737,7 +737,7 @@ const NasCard = ({
             key={item.key}
             item={item}
             dir={parcel.dir}
-            dsm={dsm}
+            dsm={dsmHost ? dsmFolderUrl(dsmHost, `${parcel.dir}/${item.name}`) : null}
             missing={gone?.has(`${parcel.dir}/${item.name}`) ?? false}
             actions={itemActions}
           />

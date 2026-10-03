@@ -107,7 +107,7 @@ describe('a montage as it was handed over', () => {
   })
 
   /* what is up there is looked for in the storage's own web interface: a file is a link that opens
-     File Station on the folder, in a new tab */
+     File Station on that file, in a new tab */
   test('links a file to the storage’s own web interface', async () => {
     await open(freed)
 
@@ -118,7 +118,7 @@ describe('a montage as it was handed over', () => {
     const href = link.getAttribute('href') ?? ''
     expect(href.startsWith('https://nas.local/index.cgi?launchApp=SYNO.SDS.App.FileStation3.Instance')).toBe(true)
     expect(decodeURIComponent(decodeURIComponent(href.split('launchParam=')[1] ?? ''))).toBe(
-      `openfile=${DIR}/ana-roth`
+      `openfile=${DIR}/ana-roth/ana_roth_20260728.mp4`
     )
   })
 

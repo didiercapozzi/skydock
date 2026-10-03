@@ -1,10 +1,4 @@
-import {
-  ensureNasSession,
-  getOutputDir,
-  loadManifest,
-  processingNow,
-  messageOf
-} from '@skydock/scripts'
+import { getOutputDir, loadManifest, processingNow, messageOf } from '@skydock/scripts'
 import { z } from 'zod'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 import { deleteFromCameras, listCameras } from '../../../packages/skydock-scripts/src/cameraFiles'
@@ -56,8 +50,7 @@ const action = createValidatedFormAction()({
       const deleted = await deleteFromCameras({
         paths: data.paths ?? [],
         manifest,
-        /* only a file uploaded needs the storage to prove it */
-        connect: ensureNasSession
+        outputDir: getOutputDir()
       })
       return { deleted, cameras: await listCameras(getOutputDir()) }
     } catch (e) {

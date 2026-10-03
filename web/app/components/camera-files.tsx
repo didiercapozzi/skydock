@@ -7,6 +7,7 @@ import {
 } from '../../../packages/skydock-scripts/src/cameraEntry'
 import type { CameraFile, CameraListing } from '../../../packages/skydock-scripts/src/cameraEntry'
 import { routingEngine } from '../helpers/routing'
+import { forgetDeleting, useDeleting, useDeletingAll } from '../hooks/liveStore'
 import { usePicked } from '../hooks/usePicked'
 import { refusalSchema } from '../hooks/useBoardState'
 import { Go, Mini, ToBin } from './buttons'
@@ -60,6 +61,39 @@ const STATES = ['missing', 'copied', 'binned', 'stored'] as const
 
 /* a file's box, read out */
 const pickLabel = (name: string) => t`Pick ${name}`
+
+/* how far a file being deleted has got: read through to be proved, then moved into the bin */
+const DeleteBar = ({ path }: { path: string }) => {
+  const live = useDeleting(path)
+  const part = live?.part ?? 0
+  const percent = Math.round(part * 100)
+  const word =
+    live?.stage === 'moving'
+      ? t`Moving to the bin`
+      : live?.stage === 'checked'
+        ? t`Checked — waiting to move`
+        : t`Checking`
+  return (
+    <span
+      role='progressbar'
+      aria-label={t`Deleting ${path}`}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={percent}
+      className='flex w-full flex-col gap-1'>
+      <span className='flex items-center justify-between text-[11.5px] font-bold text-accent-ink'>
+        <span>{word}</span>
+        <span className='tabular-nums'>{percent}%</span>
+      </span>
+      <span className='block h-1.5 overflow-hidden rounded-full bg-well'>
+        <span
+          className={`block h-full rounded-full bg-accent transition-[width] duration-150`}
+          style={{ width: `${percent}%` }}
+        />
+      </span>
+    </span>
+  )
+}
 
 const Confirm = ({
   camera,
@@ -163,7 +197,9 @@ const CameraFiles = ({
     const again = setTimeout(() => setReadAgain((n) => n + 1), 3000)
     return () => clearTimeout(again)
   }, [looking, answered])
-  const files = listing?.files ?? []
+  /* a file leaves the list the moment it has gone, not when the whole delete is over */
+  const going = useDeletingAll()
+  const files = (listing?.files ?? []).filter((f) => going[f.path]?.stage !== 'done')
   /* what can be picked is what could be deleted: what is on the storage or in the bin — nothing, on
      a camera read through KDE */
   const pickable = listing?.deletable
@@ -174,9 +210,6 @@ const CameraFiles = ({
   const missing = files.filter((f) => f.state === 'missing')
   /* only a file on the storage can have been given back, so only those are copied back here */
   const toCopyBack = chosen.filter((f) => f.state === 'stored')
-  /* one whose proof went with its freed montage can come back here, never be deleted */
-  const going = pickable.filter((f) => !f.locked)
-  const goes = chosen.filter((f) => !f.locked)
   /* named, so a translator reads what each one is */
   const count = files.length
   const size = formatSize(files.reduce((n, f) => n + f.size, 0))
@@ -184,7 +217,6 @@ const CameraFiles = ({
   const toCopy = missing.length
   const backCount = toCopyBack.length
   const picks = chosen.length
-  const deletes = goes.length
 
   /* Copied again without unplugging it: what is here already is passed over, so only what is missing
      comes across. The header shows the copy, and the page reads the card again when it ends. */
@@ -209,9 +241,10 @@ const CameraFiles = ({
     setDeleting(true)
     setProblem(null)
     const raw = await routingEngine
-      .action({ url: '/api/camera', actionArgs: { paths: goes.map((f) => f.path) } })
+      .action({ url: '/api/camera', actionArgs: { paths: chosen.map((f) => f.path) } })
       .catch(() => null)
     setDeleting(false)
+    forgetDeleting()
     const done = cameraDeletedSchema.safeParse(raw)
     if (done.success) {
       setAnswered({ mount, listing: done.data.cameras.find((c) => c.mount === mount) ?? null })
@@ -221,6 +254,9 @@ const CameraFiles = ({
       onNote(
         t`${plural(deleted, { one: '# file', other: '# files' })} deleted from the camera — ${size} — and put in the bin.`
       )
+      /* the others stayed on the card, and are named with why */
+      const stayed = done.data.deleted.stayed ?? []
+      if (stayed.length > 0) setProblem(stayed.map((s) => s.why).join('; '))
       return
     }
     const refused = refusalSchema.safeParse(raw)
@@ -295,12 +331,14 @@ const CameraFiles = ({
             <b className='font-semibold text-ink'>{t`${picks} picked`}</b> · {pickedSize}
           </span>
         )}
-        {going.length > 0 && (
+        {pickable.length > 0 && (
           <Mini
             onClick={() =>
-              setPicked(deletes === going.length ? new Set() : new Set(going.map((f) => f.path)))
+              setPicked(
+                picks === pickable.length ? new Set() : new Set(pickable.map((f) => f.path))
+              )
             }>
-            {deletes === going.length ? t`Pick none` : t`Pick every file that can go`}
+            {picks === pickable.length ? t`Pick none` : t`Pick every file that can go`}
           </Mini>
         )}
         {toCopyBack.length > 0 && (
@@ -321,12 +359,12 @@ const CameraFiles = ({
         {/* deleted from the card is put in the bin, so it is the bin's red button */}
         {listing?.deletable !== false && (
           <ToBin
-            disabled={deletes === 0 || deleting}
+            disabled={picks === 0 || deleting}
             onClick={() => setAsking(true)}>
             {deleting
               ? t`Checking and deleting…`
-              : deletes > 0
-                ? t`Delete ${plural(deletes, { one: '# file', other: '# files' })} from the camera…`
+              : picks > 0
+                ? t`Delete ${plural(picks, { one: '# file', other: '# files' })} from the camera…`
                 : t`Delete from the camera…`}
           </ToBin>
         )}
@@ -340,7 +378,7 @@ const CameraFiles = ({
           />
           {listing.deletable ? (
             <span>
-              {t`Only a file the storage is proved to hold by its bytes, or one whose copy here went in the bin, can be picked. Deleted files go to the bin, never erased.`}
+              {t`Only a file uploaded to the storage, or one whose copy here went in the bin, can be picked. Deleted files go to the bin, never erased.`}
             </span>
           ) : (
             <span
@@ -397,22 +435,7 @@ const CameraFiles = ({
                     />
                   )}
                 </td>
-                <td
-                  title={
-                    file.locked
-                      ? t`On the storage, but its montage was freed from this machine and nothing here can prove it any more — it stays on the card. It can be copied back.`
-                      : undefined
-                  }
-                  className={`${TD} truncate font-medium text-ink`}>
-                  {file.name}
-                  {file.locked && (
-                    <Icon
-                      name='lock'
-                      size={11}
-                      className='ml-2 inline text-ink-3'
-                    />
-                  )}
-                </td>
+                <td className={`${TD} truncate font-medium text-ink`}>{file.name}</td>
                 <td className={`${TD} text-[12px] text-ink-2 tabular-nums`}>
                   {/* a camera that gives no time for a file it has not handed over yet */}
                   {file.mtime > 0 ? `${dateLabel(file.mtime)} ${hhmm(file.mtime)}` : '—'}
@@ -421,12 +444,16 @@ const CameraFiles = ({
                   {formatSize(file.size)}
                 </td>
                 <td className={TD}>
-                  <span
-                    className={`inline-flex h-[22px] w-max items-center gap-1.5 rounded-full px-[9px] text-[11.5px] font-bold before:size-1.5 before:rounded-full before:content-[''] ${STANDING[file.state].tone}`}>
-                    <span className='inline-block first-letter:uppercase'>
-                      {i18n._(STANDING[file.state].label)}
+                  {deleting && chosen.includes(file) ? (
+                    <DeleteBar path={file.path} />
+                  ) : (
+                    <span
+                      className={`inline-flex h-[22px] w-max items-center gap-1.5 rounded-full px-[9px] text-[11.5px] font-bold before:size-1.5 before:rounded-full before:content-[''] ${STANDING[file.state].tone}`}>
+                      <span className='inline-block first-letter:uppercase'>
+                        {i18n._(STANDING[file.state].label)}
+                      </span>
                     </span>
-                  </span>
+                  )}
                 </td>
               </tr>
             ))}
@@ -436,7 +463,7 @@ const CameraFiles = ({
       {asking && listing && (
         <Confirm
           camera={listing.camera}
-          files={goes}
+          files={chosen}
           onClose={() => setAsking(false)}
           onConfirm={() => void deleteChosen()}
         />
